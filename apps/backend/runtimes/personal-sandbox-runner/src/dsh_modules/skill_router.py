@@ -448,16 +448,26 @@ class SkillRouter:
         # 4. 探测全网实时检索与最新动态意图（开放域外部资讯/开源生态/最新发布/会议展会时间，而非本地工作区）
         SEARCH_CUES = [
             "最新的", "最新", "最近", "近期", "当前最", "最热门", "热门", "新出", "最新发布",
+            "流行", "最流行", "流行度", "主流", "火爆", "大家都在用", "推荐哪些", "推荐几个", "好用的",
             "实时", "热点", "热搜", "热榜", "榜单", "排行榜", "趋势榜", "今日榜", "实时榜",
             "安装方法", "安装教程", "如何安装", "怎么安装", "安装指南", "installation guide", "how to install",
             "外部生态", "开源社区", "社区生态", "网上", "全网", "市场动态",
+            "插件", "扩展", "第三方库", "有哪些插件", "有哪些扩展", "有哪些库", "有哪些工具", "插件生态", "生态插件",
             "近年", "近几年", "历年", "历届", "举办时间", "什么时候举办", "什么时候开", "召开时间"
         ]
         LOCAL_DISAMBIGUATION = [
             "工作区", "当前目录", "本地文件", "已上传", "生成的", "刚才生成", "历史", "附件"
         ]
         is_asking_local = any(loc in lower_query for loc in LOCAL_DISAMBIGUATION)
-        result.is_search_intent = any(cue in lower_query for cue in SEARCH_CUES) and not is_asking_local
+        is_cues_match = any(cue in lower_query for cue in SEARCH_CUES)
+
+        # 开放域技术/生态/开源项目组件问答探测（如 "xxx 有哪些插件", "xxx 支持哪些模型", "xxx 生态"）
+        is_tech_ecosystem_inquiry = bool(
+            re.search(r'(?:harness|deepseek|langchain|dsh|react|vue|nextjs|docker|k8s|ollama|vllm|unsloth)', lower_query)
+            and re.search(r'(?:插件|扩展|生态|组件|工具|库|有哪些|支持哪些|怎么配|怎么用|是什么)', lower_query)
+        )
+
+        result.is_search_intent = (is_cues_match or is_tech_ecosystem_inquiry) and not is_asking_local
 
         # 仅当不是知识/教程问答且不是开放域最新信息检索时，进行结构化文件动作意图解析
         is_gen, is_insp = resolve_file_action_intent(effective_query, existing_history)

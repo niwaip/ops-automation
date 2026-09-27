@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Optional, Tuple, List, Dict, Any
 
 from .config import WORKSPACE_DIR, KNOWLEDGE_DIR, print_banner
-from .tools import scan_personal_knowledge, perform_multi_web_search, read_workspace_file, get_sandbox_tools
+from .tools import scan_personal_knowledge, perform_multi_web_search, read_workspace_file, get_sandbox_tools, execute_tool
 from .web_tools import enrich_search_context_with_pages
 from .runtime_policy import RuntimePolicy
 from .context_budget import ContextBudget
@@ -24,7 +24,7 @@ from .artifact_exporter import ArtifactExporter
 from .telemetry import TelemetryStats
 from .deliverable_contract import requests_markdown_artifact
 from .html_report_fallback import materialize_html_report_fallback
-from .llm import call_model_proxy, clean_output
+from .llm import call_model_proxy, clean_output, parse_tool_calls
 
 
 
@@ -42,8 +42,12 @@ def _run_planning_phase(
     model_name: str,
     policy: RuntimePolicy,
     deadline: Optional[float] = None,
+    has_web_search_permission: bool = True,
 ) -> Optional[str]:
-    """Execute the thinking model in the planning phase to reason, architect, and outline."""
+    """Execute the thinking model in the planning phase to reason, architect, and outline.
+    Only allows read-only web retrieval tools (web_search, fetch_page) to ground external facts,
+    strictly prohibiting any mutating tools (bash, write_file, patch_file, reminders, etc.).
+    """
     planning_policy = RuntimePolicy(
         temperature=policy.temperature,
         model_socket_timeout=policy.model_socket_timeout,
@@ -52,33 +56,113 @@ def _run_planning_phase(
         thinking=True,
         reasoning_effort=policy.reasoning_effort or "medium",
     )
+    planning_tools = (
+        get_sandbox_tools(allowed_names={"web_search", "fetch_page"})
+        if has_web_search_permission else None
+    )
+
+    planning_instruction = (
+        "【规划阶段任务】：请针对用户的需求与交付物目标进行深入思考与方案规划。\n"
+        "1. 深入分析用户目标、页面/内容结构、排版与视觉设计规范。\n"
+        "2. 若涉及外部开源项目、未知技术组件、最新库/API 或特定插件生态，你可以调用 `web_search` 与 `fetch_page` 检索一手技术事实与官方依据（本阶段仅开放只读网络检索，严禁且不支持写文件或执行命令工具）。\n"
+        "3. 给出详细的实现与落盘规划（包括功能模块划分、代码逻辑与目标落盘文件路径，如 `/workspace/index.html`）。\n"
+        "4. 输出清晰详尽的规划方案。本阶段仅负责思考与架构规划，规划完成后系统将切换至执行与代码落盘阶段。"
+    )
+
     planning_messages = [
         *messages,
         {
             "role": "user",
-            "content": (
-                "【规划阶段任务】：请针对用户的需求与交付物目标进行深入思考与方案规划。\n"
-                "1. 深入分析用户目标、页面/内容结构、排版与视觉设计规范。\n"
-                "2. 给出详细的实现与落盘规划（包括功能模块划分、代码逻辑与目标落盘文件路径，如 `/workspace/index.html`）。\n"
-                "3. 输出清晰的规划方案。本阶段仅负责思考与架构规划，无需调用工具。"
-            ),
+            "content": planning_instruction,
         },
     ]
+
+    max_search_rounds = 2
+    executed_search_count = 0
+
     try:
         print("🧠 [Harness Planning Phase] 开启思考模式：正在规划任务方案与实现架构...", flush=True)
-        res = call_model_proxy(
-            planning_messages,
-            model_name,
-            tools=None,
-            timeout=planning_policy.single_request_timeout,
-            deadline=deadline,
-            policy=planning_policy,
-        )
-        plan_text = res.get("content", "") if isinstance(res, dict) else str(res)
-        clean_plan = clean_output(plan_text).strip()
-        if clean_plan:
-            print("✓ [Harness Planning Phase] 任务规划完成，进入执行与工具调用阶段。", flush=True)
-            return clean_plan
+
+        while executed_search_count <= max_search_rounds:
+            res = call_model_proxy(
+                planning_messages,
+                model_name,
+                tools=planning_tools if executed_search_count < max_search_rounds else None,
+                timeout=planning_policy.single_request_timeout,
+                deadline=deadline,
+                policy=planning_policy,
+            )
+
+            res_text = res.get("content", "") if isinstance(res, dict) else str(res or "")
+            raw_tool_calls = res.get("tool_calls", []) if isinstance(res, dict) else []
+
+            # 过滤只允许规划阶段工具
+            allowed_calls = []
+            if raw_tool_calls:
+                for tc in raw_tool_calls:
+                    fn_name = tc.get("function", {}).get("name", "").lower()
+                    if fn_name in {"web_search", "fetch_page"}:
+                        allowed_calls.append(tc)
+
+            if not allowed_calls and res_text:
+                # 兼容文本形式的 tool_calls
+                text_calls = parse_tool_calls(res_text)
+                for tc in text_calls:
+                    fn_name = tc.get("name", "").lower()
+                    if fn_name in {"web_search", "fetch_page"}:
+                        allowed_calls.append({
+                            "id": tc.get("id") or f"plan_call_{int(time.time()*1000)}",
+                            "type": "function",
+                            "function": {
+                                "name": tc.get("name"),
+                                "arguments": json.dumps(tc.get("parameters", {}))
+                            }
+                        })
+
+            # 如果没有发起工具调用，或者已达到最大搜索轮次，说明规划思考完成
+            if not allowed_calls or executed_search_count >= max_search_rounds:
+                clean_plan = clean_output(res_text).strip()
+                if clean_plan:
+                    print("✓ [Harness Planning Phase] 任务规划完成，进入执行与工具调用阶段。", flush=True)
+                    return clean_plan
+                break
+
+            # 执行规划期只读搜索工具
+            executed_search_count += 1
+            call_names = [c["function"]["name"] for c in allowed_calls]
+            print(f"🔍 [Harness Planning Search] 规划期检索外部事实 (轮次 {executed_search_count}/{max_search_rounds}): {call_names}", flush=True)
+
+            planning_messages.append({
+                "role": "assistant",
+                "content": res_text or None,
+                "tool_calls": allowed_calls
+            })
+
+            for tc in allowed_calls:
+                t_id = tc.get("id") or f"plan_call_{int(time.time()*1000)}"
+                fn = tc.get("function", {})
+                t_name = fn.get("name")
+                t_args_raw = fn.get("arguments", "{}")
+                try:
+                    t_params = json.loads(t_args_raw) if isinstance(t_args_raw, str) else (t_args_raw or {})
+                except Exception:
+                    t_params = {}
+
+                print(f"-> 规划期检索调用: {t_name}({t_params})", flush=True)
+                t_res = execute_tool(t_name, t_params, deadline=deadline)
+                clipped_res = ContextBudget.clip_tool_result(t_res, max_chars=4000)
+                planning_messages.append({
+                    "role": "tool",
+                    "tool_call_id": t_id,
+                    "name": t_name,
+                    "content": clipped_res
+                })
+
+            planning_messages.append({
+                "role": "user",
+                "content": "已获取上述检索数据。请结合上述真实事实，输出最终详尽的实施与架构落盘规划方案（本阶段无需再次调用工具）。"
+            })
+
     except Exception as e:
         print(f"⚠️ [Harness Planning Phase] 规划阶段异常，降级直接进入执行阶段: {e}", flush=True)
     return None
@@ -264,34 +348,21 @@ def cmd_run(args):
             raise TimeoutError("Task total execution deadline exceeded during pre-search")
         if search_context:
             print("✓ 实时数据检索成功，已注入分析上下文。", flush=True)
-            # Small models are prone to inventing names, versions, and install commands
-            # when asked for a "latest plugins" list.  For this narrow, high-risk
-            # intent, deliver the retrieved evidence directly: it is faster and every
-            # item remains auditable. Other search questions still use model synthesis.
-            if _should_deliver_plugin_evidence_directly(search_prompt):
-                page_deadline = min(task_deadline, time.monotonic() + 10.0)
-                original_search_context = search_context
-                try:
-                    search_context = enrich_search_context_with_pages(
-                        search_context,
-                        max_pages=2,
-                        max_chars_per_page=2_500,
-                        deadline=page_deadline,
-                    )
-                except TimeoutError:
-                    search_context = original_search_context
-                if search_context != original_search_context:
-                    print("✓ 已抓取高价值页面正文，将基于原文整理。", flush=True)
-                else:
-                    print("⚠️ 页面正文抓取未在 10 秒内完成，将使用已检索证据继续。", flush=True)
-                _emit_plugin_ecosystem_digest(
-                    prompt,
+            # 若检索到包含高价值外部页面，抓取页面正文以提供真实事实依据
+            page_deadline = min(task_deadline, time.monotonic() + 10.0) if task_deadline is not None else (time.monotonic() + 10.0)
+            original_search_context = search_context
+            try:
+                enriched = enrich_search_context_with_pages(
                     search_context,
-                    existing_history,
-                    history_file,
-                    policy,
+                    max_pages=2,
+                    max_chars_per_page=2_500,
+                    deadline=page_deadline,
                 )
-                return
+                if enriched and enriched != original_search_context:
+                    search_context = enriched
+                    print("✓ 已抓取高价值页面正文，将基于原文整理。", flush=True)
+            except Exception:
+                search_context = original_search_context
 
     # 3. 提取当前会话附件内容
     session_files = resolve_session_attachments(args, session_id)
@@ -379,6 +450,7 @@ def cmd_run(args):
             model_name,
             policy,
             deadline=task_deadline,
+            has_web_search_permission=has_web_search_permission,
         )
         if plan_text:
             messages.append({"role": "assistant", "content": f"【方案规划】\n{plan_text}"})
@@ -582,96 +654,6 @@ def _emit_html_report_recovery(prompt, skill_res, existing_history, history_file
     TelemetryStats.emit_final_output(final_text)
     return True
 
-
-def _should_deliver_plugin_evidence_directly(prompt):
-    """Identify fresh Harness/DeepSeek plugin/ecosystem queries that should remain evidence-only."""
-    normalized = re.sub(r'\s+', ' ', str(prompt or '')).strip().casefold()
-    if not re.search(r'(?:harness|deepseek|dsh)', normalized):
-        return False
-    freshness = r'(?:最新|新版|近期|当前|latest|recent|newest|current)'
-    plugin = r'(?:插件|扩展|生态|plugin|plugins|extension|extensions)'
-    return bool(
-        re.search(rf'{freshness}.{{0,24}}{plugin}', normalized)
-        or re.search(rf'{plugin}.{{0,24}}{freshness}', normalized)
-    )
-
-
-def _emit_plugin_ecosystem_digest(prompt, search_context, existing_history, history_file, policy):
-    """Render a compact grounded digest without a second slow model pass."""
-    link_pattern = re.compile(r'\[([^\]\n]+)\]\((https?://[^)]+)\)')
-    source_context = (search_context or '').split('【高价值页面正文抓取】', 1)[0]
-    seen = set()
-    links = []
-    for title, url in link_pattern.findall(source_context):
-        key = url.rstrip('/').casefold()
-        if key in seen:
-            continue
-        seen.add(key)
-        links.append((re.sub(r'\s+', ' ', title).strip(), url.strip()))
-
-    official_repo = 'https://github.com/deepseek-ai/deepseek-harness'
-    official = []
-    community = []
-    for title, url in links:
-        normalized = url.rstrip('/').casefold()
-        if normalized == official_repo or normalized.startswith(f'{official_repo}/releases'):
-            official.append((title, url))
-        elif '/discussions/' not in normalized and not normalized.startswith('https://github.com/features/'):
-            community.append((title, url))
-    if any(url.rstrip('/').casefold() == official_repo for _, url in official):
-        releases = f'{official_repo}/releases'
-        if not any(url.rstrip('/').casefold() == releases for _, url in official):
-            official.append(('Releases', releases))
-
-    lines = [
-        "## DeepSeek Harness 插件生态",
-        "",
-        "可以确认 **DeepSeek Harness 存在插件体系**。官方仓库是核心入口；具体插件的发现与排行主要来自社区目录，不应将社区统计当成官方背书。",
-        "",
-        "### 官方入口",
-        "",
-        "| 入口 | 用途 |",
-        "|---|---|",
-    ]
-    for title, url in official[:3]:
-        purpose = "版本与发布记录" if '/releases' in url else "官方源码、文档与插件机制"
-        lines.append(f"| [{title}]({url}) | {purpose} |")
-
-    lines.extend(["", "### 社区发现渠道", "", "| 来源 | 定位 |", "|---|---|"])
-    community.sort(key=lambda item: (0 if 'awesome-' in item[1].casefold() else 1, item[1].casefold()))
-    for title, url in community[:4]:
-        normalized = url.casefold()
-        if 'awesome-' in normalized:
-            positioning = "社区维护的插件目录，适合搜索和分类浏览"
-        elif 'github.com/topics/' in normalized:
-            positioning = "GitHub Topic 自动聚合，需自行核验质量与安全性"
-        else:
-            positioning = "第三方社区来源，安装前应检查仓库和发布记录"
-        lines.append(f"| [{title}]({url}) | {positioning} |")
-
-    count_match = re.search(r'共收录\s*\*{0,2}(\d+)\*{0,2}\s*个插件', search_context or '')
-    date_match = re.search(r'目录数据更新于\s*(\d{4}-\d{2}-\d{2})', search_context or '')
-    if count_match:
-        date_note = f"，页面标注更新于 {date_match.group(1)}" if date_match else ""
-        lines.extend([
-            "",
-            f">社区目录页面自述收录 **{count_match.group(1)}** 个插件{date_note}。这是社区口径，不是官方审计数量。",
-        ])
-    lines.extend([
-        "",
-        "建议先从官方仓库确认当前插件规范，再到社区目录按用途筛选；安装前检查源码、最近提交、Release 和所需权限。",
-    ])
-    final_text = "\n".join(lines).strip()
-
-    if history_file:
-        try:
-            existing_history.append({"role": "user", "content": prompt})
-            existing_history.append({"role": "assistant", "content": final_text})
-            with open(history_file, "w", encoding="utf-8") as f:
-                json.dump(existing_history[-policy.recent_history_save_count:], f, ensure_ascii=False, indent=2, default=str)
-        except Exception:
-            pass
-    TelemetryStats.emit_final_output(final_text)
 
 
 def _emit_search_evidence_fallback(

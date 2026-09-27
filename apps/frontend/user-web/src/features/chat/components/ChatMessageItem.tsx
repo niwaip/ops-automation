@@ -1,13 +1,15 @@
 import { memo, useMemo } from 'react';
 import {
   ClockCircleOutlined,
+  CloseCircleFilled,
   FileImageOutlined,
   FolderOutlined,
   PaperClipOutlined,
+  ReloadOutlined,
   RobotOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { App, Avatar, Typography } from 'antd';
+import { App, Avatar, Button, Typography } from 'antd';
 import { resolveChatOutcomePresentation, type ChatMessage } from '@ops/user-core';
 import SharedChatMessageActions from '@chat-web/components/ChatMessageActions';
 import SharedContentPartsRenderer from '@chat-web/components/ContentPartsRenderer';
@@ -205,6 +207,17 @@ export const ChatMessageItem = memo(function ChatMessageItem({
       )
   );
 
+  const isFailedMessage = Boolean(
+    message.role === 'assistant' &&
+      !message.isStreaming &&
+      (resolvedTaskStatus === 'failed' || message.metadata?.taskStatus === 'failed')
+  );
+  const failureText =
+    message.metadata?.errorMessage?.trim() ||
+    message.metadata?.failureReason?.trim() ||
+    (plainContent && plainContent !== '聊天请求失败' ? plainContent : undefined) ||
+    '任务执行遇到异常，未能完成本次响应。';
+
   const hasRenderableContent = Boolean(
     hasRenderableContentParts
       ? filteredContentParts?.some((part) => {
@@ -218,10 +231,11 @@ export const ChatMessageItem = memo(function ChatMessageItem({
             const textValue = (part.type === 'text' ? part.text : part.markdown)?.trim();
             if (!textValue) return false;
             if (hasTaskCard && isDuplicateTaskText(textValue)) return false;
+            if (isFailedMessage && !hasTaskCard && textValue === failureText) return false;
             return (
               !hasDuplicatedTaskSummary &&
-              textValue !== message.metadata?.finalResult?.trim() &&
-              textValue !== message.metadata?.errorMessage?.trim()
+              (!hasTaskCard || textValue !== message.metadata?.finalResult?.trim()) &&
+              (!hasTaskCard || textValue !== message.metadata?.errorMessage?.trim())
             );
           }
           return false;
@@ -229,8 +243,9 @@ export const ChatMessageItem = memo(function ChatMessageItem({
       : plainContent &&
         !hasDuplicatedTaskSummary &&
         !(hasTaskCard && isDuplicateTaskText(plainContent)) &&
-        plainContent !== message.metadata?.finalResult?.trim() &&
-        plainContent !== message.metadata?.errorMessage?.trim()
+        !(isFailedMessage && !hasTaskCard && plainContent === failureText) &&
+        (!hasTaskCard || plainContent !== message.metadata?.finalResult?.trim()) &&
+        (!hasTaskCard || plainContent !== message.metadata?.errorMessage?.trim())
   );
 
   const shouldShowMessageContent = Boolean(
@@ -278,6 +293,36 @@ export const ChatMessageItem = memo(function ChatMessageItem({
               onApproveExecution={onApproveExecution}
               onRejectExecution={onRejectExecution}
             />
+          ) : null}
+          {isFailedMessage && !hasTaskCard ? (
+            <div className="chat-outcome-card error" style={{ margin: '4px 0 8px 0' }}>
+              <div
+                className="chat-outcome-title"
+                style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#dc2626' }}
+              >
+                <CloseCircleFilled />
+                <span>任务执行遇到异常</span>
+              </div>
+              <div
+                className="chat-outcome-body"
+                style={{ fontSize: 13, lineHeight: 1.6, marginTop: 4, whiteSpace: 'pre-wrap' }}
+              >
+                {failureText}
+              </div>
+              {onRetry ? (
+                <div style={{ marginTop: 10 }}>
+                  <Button
+                    type="primary"
+                    danger
+                    size="small"
+                    icon={<ReloadOutlined />}
+                    onClick={() => onRetry(message)}
+                  >
+                    重新尝试
+                  </Button>
+                </div>
+              ) : null}
+            </div>
           ) : null}
           <TaskProgressBlock message={message} />
           {!(shouldPinCollapsedThoughts || shouldPinFinishedTaskThoughts) ? thoughtPanel : null}

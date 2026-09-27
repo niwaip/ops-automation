@@ -33,7 +33,6 @@ from dsh_modules.prompt_builder import build_system_prompt, build_user_turn
 from dsh_modules.runner import (
     _run_planning_phase,
     _emit_search_evidence_fallback,
-    _should_deliver_plugin_evidence_directly,
     _emit_tool_result_recovery,
 )
 from dsh_modules.telemetry import TelemetryStats
@@ -58,8 +57,8 @@ class TestDshCoreModules(unittest.TestCase):
         )
         self.assertNotIn("unrecognized arguments: --files", result.stderr)
 
-    def test_planning_phase_uses_thinking_without_tools(self):
-        """规划阶段使用思考模型进行深度规划架构设计，且不携带工具"""
+    def test_planning_phase_allows_only_readonly_web_search_tools(self):
+        """规划阶段使用思考模型进行深度规划架构设计，只允许只读联网检索工具，严禁任何副作用工具"""
         policy = RuntimePolicy(thinking=True, reasoning_effort="high")
         captured_kwargs = {}
 
@@ -68,13 +67,82 @@ class TestDshCoreModules(unittest.TestCase):
             return {"content": "# 设计规划\n1. 结构\n2. 样式"}
 
         with patch("dsh_modules.runner.call_model_proxy", side_effect=mock_call):
-            plan = _run_planning_phase("生成一页的html报告", [{"role": "user", "content": "生成报告"}], "default", policy)
+            plan = _run_planning_phase("生成一页的html报告", [{"role": "user", "content": "生成报告"}], "default", policy, has_web_search_permission=True)
 
         self.assertIsNotNone(plan)
         self.assertIn("设计规划", plan)
-        self.assertIsNone(captured_kwargs.get("tools"))
+        tools = captured_kwargs.get("tools")
+        self.assertIsNotNone(tools)
+        tool_names = [t["function"]["name"] for t in tools]
+        self.assertEqual(set(tool_names), {"web_search", "fetch_page"})
+        self.assertNotIn("bash", tool_names)
+        self.assertNotIn("write_markdown", tool_names)
         self.assertTrue(captured_kwargs.get("policy").thinking)
         self.assertEqual(captured_kwargs.get("policy").reasoning_effort, "high")
+
+    def test_planning_phase_without_web_permission_has_no_tools(self):
+        """未赋予联网权限时，规划阶段不携带任何工具"""
+        policy = RuntimePolicy(thinking=True, reasoning_effort="high")
+        captured_kwargs = {}
+
+        def mock_call(messages, model, **kwargs):
+            captured_kwargs.update(kwargs)
+            return {"content": "# 设计规划\n1. 结构\n2. 样式"}
+
+        with patch("dsh_modules.runner.call_model_proxy", side_effect=mock_call):
+            plan = _run_planning_phase("生成一页的html报告", [{"role": "user", "content": "生成报告"}], "default", policy, has_web_search_permission=False)
+
+        self.assertIsNotNone(plan)
+        self.assertIsNone(captured_kwargs.get("tools"))
+
+    def test_planning_phase_executes_search_and_grounds_plan(self):
+        """规划阶段模型调用 web_search 检索事实，系统执行工具并将结果回填给模型完成最终规划"""
+        policy = RuntimePolicy(thinking=True, reasoning_effort="high")
+        call_count = 0
+        executed_tools = []
+
+        def mock_call(messages, model, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                # 第一轮模型要求搜索事实
+                return {
+                    "content": "正在检索 deepseek harness 插件生态事实...",
+                    "tool_calls": [
+                        {
+                            "id": "call_search_1",
+                            "type": "function",
+                            "function": {
+                                "name": "web_search",
+                                "arguments": '{"query": "deepseek-harness plugins"}'
+                            }
+                        }
+                    ]
+                }
+            else:
+                # 第二轮模型结合搜索结果产出完整规划
+                return {"content": "# 基于官方插件生态的架构规划\n1. 集成 dsh-web\n2. 接入 OpenViking Memory"}
+
+        def mock_execute_tool(name, params, **kwargs):
+            executed_tools.append((name, params))
+            return "已查到官方流行插件: dsh-web, OpenViking Memory Bundle, dsh-browser"
+
+        with patch("dsh_modules.runner.call_model_proxy", side_effect=mock_call), \
+             patch("dsh_modules.runner.execute_tool", side_effect=mock_execute_tool):
+            plan = _run_planning_phase(
+                "制作展示 deepseek harness 插件的看板",
+                [{"role": "user", "content": "制作看板"}],
+                "default",
+                policy,
+                has_web_search_permission=True
+            )
+
+        self.assertIsNotNone(plan)
+        self.assertIn("基于官方插件生态的架构规划", plan)
+        self.assertEqual(len(executed_tools), 1)
+        self.assertEqual(executed_tools[0][0], "web_search")
+        self.assertEqual(executed_tools[0][1], {"query": "deepseek-harness plugins"})
+        self.assertEqual(call_count, 2)
 
     def test_tool_calling_phase_strictly_disables_thinking(self):
         """工具调用阶段（传入 tools）必须严格关闭思考，确保参数准确与执行高效"""
@@ -218,13 +286,6 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertIn("https://github.com/deepseek-ai/deepseek-harness/releases", final_text)
         self.assertIn("官方版本与发布记录", final_text)
 
-    def test_latest_plugin_queries_use_direct_evidence_delivery(self):
-        self.assertTrue(_should_deliver_plugin_evidence_directly("查看deepseek harness 最新的插件"))
-        self.assertTrue(_should_deliver_plugin_evidence_directly("latest Harness plugins"))
-        self.assertFalse(_should_deliver_plugin_evidence_directly("查看最新 obsidian 插件"))
-        self.assertFalse(_should_deliver_plugin_evidence_directly("latest vscode extensions"))
-        self.assertFalse(_should_deliver_plugin_evidence_directly("查看上海天气"))
-        self.assertFalse(_should_deliver_plugin_evidence_directly("如何开发一个插件"))
 
     def test_direct_evidence_prioritizes_official_repo_and_releases(self):
         context = (

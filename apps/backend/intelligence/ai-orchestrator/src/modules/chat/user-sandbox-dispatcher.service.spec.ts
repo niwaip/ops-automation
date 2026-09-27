@@ -248,6 +248,36 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     expect(errorEvent?.content).not.toContain('Sandbox model execution error: aborted');
   });
 
+  it('returns a friendly retryable timeout for incremental modification (e.g. 追加音效和道具) instead of falling back to raw chat', async () => {
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        'event: observation\ndata: {"content":"⚡ [Harness Tool Call] 正在调用工具: read_file({\'file_path\': \'/workspace/index.html\'})..."}\n\n',
+        'event: done\ndata: {"success":false,"output":"❌ [DeepSeek Harness 超时]: 模型响应超时或连接中断，本次任务未完成且未生成可用产物。请重试。","exitCode":1}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const handled = await service.dispatchPersonalSandbox(
+      { message: '追加音效和道具', userId: 'test_user', modelId: 'uuid-1234', sessionId: 'session-snake' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(handled).toBe(true);
+    const errorEvent = emittedEvents.find((e) => e.type === StreamEventType.ERROR);
+    expect(errorEvent).toBeDefined();
+    expect(errorEvent?.data?.code).toBe('SANDBOX_GENERATION_TIMEOUT');
+    expect(errorEvent?.data?.retryable).toBe(true);
+    expect(errorEvent?.content).toContain('响应超时');
+    expect(errorEvent?.content).toContain('重试继续执行');
+    expect(mockConversationService.persistConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'session-snake',
+        userContent: '追加音效和道具',
+      })
+    );
+  });
+
   it('inherits artifact execution mode for a regenerate follow-up and persists friendly failure', async () => {
     (mockConversationService.getChatHistory as jest.Mock).mockResolvedValue([
       { role: 'user', content: '生成一页的html报告' },

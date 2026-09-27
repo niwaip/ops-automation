@@ -237,20 +237,34 @@ export function useChatStreaming({
         return;
       }
 
-      const nextError = streamError instanceof Error ? streamError.message : '聊天请求失败';
-      setError(nextError);
+      const rawErrorMsg = streamError instanceof Error ? streamError.message : '聊天请求失败';
+      const isTimeout =
+        rawErrorMsg.toLowerCase().includes('timeout') ||
+        rawErrorMsg.toLowerCase().includes('aborted') ||
+        rawErrorMsg.includes('超时');
+      const friendlyErrorMsg = isTimeout
+        ? '⏱️ 模型响应超时或网络连接中断。您可以直接点击下方「重新尝试」继续执行。'
+        : (rawErrorMsg || '聊天请求失败');
+      setError(friendlyErrorMsg);
+
+      const currentMessage = (sessionMessagesRef.current[session.id] || []).find(
+        (message) => message.id === assistantMessageId
+      );
+      const existingContent = currentMessage?.content?.trim();
+      const finalContent =
+        existingContent && !existingContent.includes('⏱️') && !existingContent.includes('⚠️')
+          ? `${existingContent}\n\n⚠️ **执行中断**：${friendlyErrorMsg}`
+          : friendlyErrorMsg;
+
       const errorPatch = {
-        content: nextError,
+        content: finalContent,
         isStreaming: false,
         metadata: {
           mode: request.config?.mode,
           taskStatus: 'failed',
-          errorMessage: nextError,
+          errorMessage: friendlyErrorMsg,
         },
       } satisfies Partial<ChatMessage>;
-      const currentMessage = (sessionMessagesRef.current[session.id] || []).find(
-        (message) => message.id === assistantMessageId
-      );
       if (currentMessage) {
         notifyTaskTerminalState({
           message: buildPatchedMessage(currentMessage, errorPatch),

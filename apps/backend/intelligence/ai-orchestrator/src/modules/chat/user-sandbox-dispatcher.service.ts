@@ -190,10 +190,10 @@ export class UserSandboxDispatcherService {
     );
 
     let recentHistory: Array<{ role: string; content: string }> = [];
+    const sessionAttachedFiles: string[] = [];
+    const currentTurnFiles: string[] = [];
     try {
       // 1. 获取当前会话上下文历史并收集属于当前会话的全部有效附件（会话作用域隔离）
-      const sessionAttachedFiles: string[] = [];
-      const currentTurnFiles: string[] = [];
       const addSessionFile = (name?: string) => {
         if (!name) return;
         const clean = path.basename(name).trim();
@@ -763,13 +763,46 @@ export class UserSandboxDispatcherService {
       emit(this.chatConversationService.buildSessionPatchEvent(sessionId, session));
       return true;
     } catch (err: any) {
+      const errMsg = String(err?.message || '');
       this.logger.warn(
-        `Failed to dispatch to user sandbox (${err.message}).`
+        `Failed to dispatch to user sandbox (${errMsg}).`
       );
+
+      // 判断是否为排队/并发超时
+      const isConcurrencyConflict =
+        errMsg.includes('正在执行其他任务') ||
+        errMsg.includes('沙箱当前正在执行') ||
+        errMsg.includes('正在执行前序任务') ||
+        errMsg.includes('排队等待超时') ||
+        err.status === 409;
+
+      if (isConcurrencyConflict) {
+        const friendlyError =
+          '⏳ 个人专属安全沙箱当前正在执行前序任务，排队等待超时。请稍候片刻再试，或在前一会话中点击“停止”释放沙箱。';
+        emit({
+          type: StreamEventType.ERROR,
+          content: friendlyError,
+          data: {
+            code: 'SANDBOX_QUEUE_TIMEOUT',
+            retryable: true,
+          },
+        });
+        await this.persistFriendlyErrorToSession(
+          sessionId,
+          body,
+          effectiveUserId,
+          friendlyError,
+          errMsg,
+          emit
+        );
+        return true;
+      }
+
+      // 1. 交付物生成或重新生成时模型超时
       if (
         (isArtifactGenerationRequest(body.message) ||
           isArtifactRegenerationRequest(body.message, recentHistory)) &&
-        isTransientSandboxModelFailure(err?.message)
+        isTransientSandboxModelFailure(errMsg)
       ) {
         const friendlyError =
           '⏱️ 模型在执行文件写入前响应超时或连接中断，本次未生成可用文件。深度思考已关闭，可安全重试本次生成。';
@@ -782,66 +815,135 @@ export class UserSandboxDispatcherService {
             artifactCreated: false,
           },
         });
-        try {
-          const failedSession = await this.chatConversationService.persistConversation({
-            sessionId,
-            userContent: body.message,
-            assistantContent: friendlyError,
-            rawAssistantContent: String(err?.message || ''),
-            modelId: body.modelId || 'default',
-            thinkingEnabled: Boolean(body.config?.thinking),
-            ownerUserId: effectiveUserId,
-            clientMessageId: body.clientMessageId,
-            clientAssistantMessageId: body.clientAssistantMessageId,
-            files: body.files,
-          });
-          emit(this.chatConversationService.buildSessionPatchEvent(sessionId, failedSession));
-        } catch (persistError: any) {
-          this.logger.warn(`Failed to persist friendly sandbox generation error: ${persistError?.message}`);
-        }
+        await this.persistFriendlyErrorToSession(
+          sessionId,
+          body,
+          effectiveUserId,
+          friendlyError,
+          errMsg,
+          emit
+        );
         return true;
       }
+
+      // 2. 联网检索结果整理超时
       if (
         isLiveSearchRequest(body.message) &&
-        isTransientSandboxModelFailure(err?.message)
+        isTransientSandboxModelFailure(errMsg)
       ) {
+        const friendlyError =
+          '⏱️ 联网检索已经完成，但指定模型在整理检索结果（或气象数据）时超时或连接中断。为避免丢失检索证据后凭记忆作答，系统已停止无依据的普通聊天降级。请直接重试本次查询。';
         emit({
           type: StreamEventType.ERROR,
-          content:
-            '⏱️ 联网检索已经完成，但指定模型在整理检索结果（或气象数据）时超时或连接中断。为避免丢失检索证据后凭记忆作答，系统已停止无依据的普通聊天降级。请直接重试本次查询。',
+          content: friendlyError,
           data: {
             code: 'SANDBOX_SEARCH_SYNTHESIS_TIMEOUT',
             retryable: true,
             searchCompleted: true,
           },
         });
+        await this.persistFriendlyErrorToSession(
+          sessionId,
+          body,
+          effectiveUserId,
+          friendlyError,
+          errMsg,
+          emit
+        );
         return true;
       }
+
+      // 3. 增量交付物迭代（如追加音效、修改代码等），或沙箱内部已调用工具/进入 Harness 任务执行时的超时
+      const isIncrementalArtifactTask =
+        errMsg.includes('web-prototype') ||
+        errMsg.includes('/workspace/') ||
+        errMsg.includes('read_file') ||
+        errMsg.includes('write_file') ||
+        errMsg.includes('Harness Tool Call') ||
+        errMsg.includes('❌ [DeepSeek Harness 超时]') ||
+        sessionAttachedFiles.length > 0 ||
+        /(?:追加|添加|加入|修改|调整|优化|更新|完善|修复|重构)/.test(body.message);
+
+      if (isIncrementalArtifactTask && isTransientSandboxModelFailure(errMsg)) {
+        const friendlyError =
+          '⏱️ 模型在分析或生成交付物时响应超时（上游网络连接中断）。当前工作区文件安全保留，您可以直接点击下方重试继续执行。';
+        emit({
+          type: StreamEventType.ERROR,
+          content: friendlyError,
+          data: {
+            code: 'SANDBOX_GENERATION_TIMEOUT',
+            retryable: true,
+            artifactCreated: false,
+          },
+        });
+        await this.persistFriendlyErrorToSession(
+          sessionId,
+          body,
+          effectiveUserId,
+          friendlyError,
+          errMsg,
+          emit
+        );
+        return true;
+      }
+
+      // 斜杠指令或专属配置异常
       if (isPersonalSlashCommand(body.message) || body.message.trim().startsWith('/')) {
+        const friendlyError = `⚠️ 沙箱指令执行异常 (${errMsg})，未能完成指令执行。请重试或检查模型服务连接。`;
         emit({
           type: StreamEventType.ERROR,
-          content: `⚠️ 沙箱任务执行异常 (${err.message})，未能完成指令执行。请重试或检查模型服务连接。`,
+          content: friendlyError,
+          data: {
+            code: 'SANDBOX_COMMAND_ERROR',
+            retryable: true,
+          },
         });
+        await this.persistFriendlyErrorToSession(
+          sessionId,
+          body,
+          effectiveUserId,
+          friendlyError,
+          errMsg,
+          emit
+        );
         return true;
       }
-      if (
-        err.message?.includes('正在执行其他任务') ||
-        err.message?.includes('沙箱当前正在执行') ||
-        err.message?.includes('正在执行前序任务') ||
-        err.message?.includes('排队等待超时') ||
-        err.status === 409
-      ) {
-        emit({
-          type: StreamEventType.ERROR,
-          content: '⏳ 个人专属安全沙箱当前正在执行前序任务，排队等待超时。请稍候片刻再试，或在前一会话中点击“停止”释放沙箱。',
-        });
-        return true;
-      }
+
+      // 仅当沙箱基础设施完全无法连接（容器未启动/Broker宕机），且尚未进入任何任务执行时，才降级到标准问答直连模式
       emit({
         type: StreamEventType.OBSERVATION,
-        content: `⚠️ 沙箱连接遇到异常 (${err.message})，正在自动无缝切换到云端模型直连模式...`,
+        content: `⚠️ 沙箱连接遇到异常 (${errMsg})，正在自动无缝切换到云端模型直连模式...`,
       });
       return false;
+    }
+  }
+
+  private async persistFriendlyErrorToSession(
+    sessionId: string,
+    body: ChatRequestDTO,
+    effectiveUserId: string,
+    friendlyError: string,
+    rawError: string,
+    emit: (event: StreamEvent) => void
+  ): Promise<void> {
+    try {
+      const failedSession = await this.chatConversationService.persistConversation({
+        sessionId,
+        userContent: body.message,
+        assistantContent: friendlyError,
+        rawAssistantContent: rawError,
+        modelId: body.modelId || 'default',
+        thinkingEnabled: Boolean(body.config?.thinking),
+        ownerUserId: effectiveUserId,
+        clientMessageId: body.clientMessageId,
+        clientAssistantMessageId: body.clientAssistantMessageId,
+        files: body.files,
+      });
+      if (failedSession) {
+        emit(this.chatConversationService.buildSessionPatchEvent(sessionId, failedSession));
+      }
+    } catch (persistError: any) {
+      this.logger.warn(`Failed to persist friendly sandbox error: ${persistError?.message}`);
     }
   }
 
