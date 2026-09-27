@@ -7,6 +7,7 @@ import {
   areMessagesEquivalent,
   mergeHistoryMessages,
 } from './messageState';
+import { parseMessageContent } from './messageContent';
 import { resolveMessageExecutionId } from './taskStatus';
 
 describe('normalizeComparableMessageText', () => {
@@ -328,3 +329,34 @@ describe('resolveMessageExecutionId', () => {
     expect(resolveMessageExecutionId(message)).toBe('execution-weibo');
   });
 });
+
+describe('parseMessageContent', () => {
+  it('strips think tags and extracts thoughts cleanly without polluting answer', () => {
+    const raw = '<think>The user wants a snake game\nI should write index.html</think>\n\n已经为您生成了贪吃蛇游戏！';
+    const result = parseMessageContent(raw);
+    expect(result.thoughts).toEqual(['The user wants a snake game\nI should write index.html']);
+    expect(result.answer).toBe('已经为您生成了贪吃蛇游戏！');
+    expect(result.answer).not.toContain('<think>');
+    expect(result.answer).not.toContain('snake game');
+  });
+
+  it('returns empty answer when message only contains in-progress or closed think tag', () => {
+    const rawClosed = '<think>I am still thinking...</think>';
+    expect(parseMessageContent(rawClosed).answer).toBe('');
+    expect(parseMessageContent(rawClosed).thoughts).toEqual(['I am still thinking...']);
+
+    const rawUnclosed = '<think>I am currently thinking without close tag';
+    expect(parseMessageContent(rawUnclosed).answer).toBe('');
+    expect(parseMessageContent(rawUnclosed).thoughts).toEqual(['I am currently thinking without close tag']);
+  });
+
+  it('is completely stateless across repeated invocations', () => {
+    const raw = '<think>Reasoning step</think>Final Output';
+    for (let i = 0; i < 5; i++) {
+      const res = parseMessageContent(raw);
+      expect(res.thoughts).toEqual(['Reasoning step']);
+      expect(res.answer).toBe('Final Output');
+    }
+  });
+});
+

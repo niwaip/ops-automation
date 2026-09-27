@@ -166,7 +166,7 @@ export class DeterministicContractAssemblerService {
       });
 
       // Preserve companion narrative fields (e.g. summary) alongside primary output
-      for (const narrativeField of ['summary', 'markdown_content', 'content', 'text']) {
+      for (const narrativeField of ['summary', 'chatSummary', 'markdown_content', 'content', 'text']) {
         if (narrativeField !== primaryOutput && finalNode.outputContract[narrativeField]) {
           const fieldType = finalNode.outputContract[narrativeField]!;
           finalOutputs.push({

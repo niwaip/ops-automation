@@ -1,11 +1,11 @@
 {
   "capabilityKey": "platform.search.web",
-  "definitionVersion": "1.0.4",
-  "definitionDigest": "sha256:ce379fdb64aa8cc8be7aa0e4dc31efa8cb1db24d26ecfbab148b8bb2b4327365",
+  "definitionVersion": "1.0.5",
+  "definitionDigest": "sha256:87352f2395c954c6fb613643eb9c2ac5c06463fcfa611a98e2f476a71aa23525",
   "fileHashes": {
-    "manifest.yaml": "sha256:224c8718da230b51fb848f052dc8d28dee02e821f7e163a80f84972e236f969a",
+    "manifest.yaml": "sha256:82b16a65a33abc73425fb486bb2c31a1d9456298915d6e075be748c9fc7d7ce6",
     "workflow.json": "sha256:e64122599db66239add4c4c4be9b3cda2348feb2e34a7606358920ae4024faab",
     "fixtures/smoke-input.json": "sha256:ca78d5a5495c10449810f70a115362837e363c329ee3b360354ec1ae8423929a"
   },
-  "createdAt": "2026-09-02T00:00:00.000+08:00"
+  "createdAt": "2026-09-27T10:12:00.000+08:00"
 }

@@ -17,6 +17,10 @@ out
 *.tsbuildinfo
 .turbo
 .cache
+**/__pycache__
+*.pyc
+*.pyo
+*.pyd
 
 # Runtime persisted data & state
 data

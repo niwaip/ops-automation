@@ -8,11 +8,17 @@ import io
 import sys
 import unittest
 import urllib.error
+from pathlib import Path
 from unittest.mock import patch, MagicMock
+
+SRC_DIR = Path(__file__).resolve().parent.parent / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
 from dsh_modules.doctor import (
     check_python_modules,
     check_connectivity,
+    check_paths_and_permissions,
     run_doctor_checks,
     cmd_doctor,
 )
@@ -162,6 +168,32 @@ class TestDshDoctor(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             self.assertIn("整体健康状态: 良好", output)
             self.assertNotIn("整体健康状态: 优秀", output)
+
+
+    def test_paths_and_permissions_readonly_accuracy(self):
+        """[P1] 验证系统只读目录准确汇报为‘只读 (系统受保护基线)’，杜绝假汇报‘读写可用’"""
+        with patch("pathlib.Path.exists", return_value=True):
+            def mock_access(path, mode):
+                import os
+                # 可读但不可写
+                if mode == os.R_OK:
+                    return True
+                if mode == os.W_OK:
+                    return False
+                return True
+
+            with patch("os.access", side_effect=mock_access):
+                from dsh_modules.config import SKILL_DIR, WORKSPACE_DIR
+                results = check_paths_and_permissions()
+                skill_check = next(c for c in results if c["name"] == SKILL_DIR)
+                self.assertEqual(skill_check["status"], "PASS")
+                self.assertIn("只读 (系统受保护基线)", skill_check["detail"])
+                self.assertNotIn("读写可用", skill_check["detail"])
+
+                # workspace 必须可写，不可写时必须 FAIL
+                ws_check = next(c for c in results if c["name"] == WORKSPACE_DIR)
+                self.assertEqual(ws_check["status"], "FAIL")
+                self.assertIn("需要可写，当前只读", ws_check["detail"])
 
 
 if __name__ == "__main__":

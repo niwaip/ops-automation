@@ -54,6 +54,9 @@ export class MarkdownArtifactController {
         artifact_ref: result.artifact,
         sha256: result.sha256,
         sizeBytes: result.sizeBytes,
+        markdown_content: content,
+        content,
+        summary: content,
       },
       artifacts: [result.artifact],
     };

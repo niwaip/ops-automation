@@ -136,7 +136,7 @@ export class RunHarnessDto {
   @IsBoolean()
   research?: boolean;
 
-  @ApiPropertyOptional({ description: '使用的模型名称', default: 'deepseek-chat' })
+  @ApiPropertyOptional({ description: '使用的模型名称', default: 'default' })
   @IsOptional()
   @IsString()
   model?: string;
@@ -176,4 +176,24 @@ export class RunHarnessDto {
   @IsOptional()
   @IsArray()
   files?: string[];
+
+  @ApiPropertyOptional({
+    description: '沙箱锁争抢最大排队自旋等待超时（秒，0 - 120）',
+    default: 35,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(120)
+  waitTimeoutSeconds?: number;
+
+  @ApiPropertyOptional({ description: '是否启用模型思考推理过程 (Reasoning / Thinking)' })
+  @IsOptional()
+  @IsBoolean()
+  thinking?: boolean;
+
+  @ApiPropertyOptional({ description: '思考过程强度 (low / medium / high)' })
+  @IsOptional()
+  @IsString()
+  reasoningEffort?: string;
 }

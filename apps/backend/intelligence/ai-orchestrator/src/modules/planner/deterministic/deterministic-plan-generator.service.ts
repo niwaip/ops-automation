@@ -291,7 +291,9 @@ export class DeterministicPlanGeneratorService {
               aliasMap,
               runtimeModelId
             );
-            attachCompletionClaims(planDraft, recipe);
+            if (topologySource === 'recipe') {
+              attachCompletionClaims(planDraft, recipe);
+            }
 
             (planDraft as any).planningRoute = {
               routeClass:

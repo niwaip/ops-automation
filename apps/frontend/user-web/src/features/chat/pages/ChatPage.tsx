@@ -31,7 +31,11 @@ import { useChatPageActions } from '../hooks/useChatPageActions';
 import { useChatSessions } from '../hooks/useChatSessions';
 import { useChatStreaming } from '../hooks/useChatStreaming';
 import { useChatStore } from '../chatStore';
-import { supportsNativeReasoning } from '@/shared/lib/aiModelReasoning';
+import {
+  supportsNativeReasoning,
+  getModelDefaultReasoningEffort,
+  type ReasoningEffort,
+} from '@/shared/lib/aiModelReasoning';
 import {
   CHAT_SESSION_POLL_INTERVAL,
   CHAT_SESSION_STREAMING_POLL_INTERVAL,
@@ -81,6 +85,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   const [selectedModel, setSelectedModel] = useState<string>('default');
   const [chatMode, setChatMode] = useState<'chat' | 'task'>(() => useChatStore.getState().chatMode);
   const [enableThinking, setEnableThinking] = useState(true);
+  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>('medium');
   const [enableWebSearch, setEnableWebSearch] = useState(false);
   const [enableResearch, setEnableResearch] = useState(false);
   const [expandedThoughtMessageId, setExpandedThoughtMessageId] = useState<string | null>(null);
@@ -193,6 +198,25 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     () => supportsNativeReasoning(selectedModelInfo),
     [selectedModelInfo]
   );
+
+  const handleModelChange = useCallback((newModelId: string) => {
+    setSelectedModel(newModelId);
+    const targetModel = newModelId === 'default'
+      ? resolveDefaultChatModel(availableModels)
+      : availableModels.find((m) => m.id === newModelId);
+    if (targetModel && supportsNativeReasoning(targetModel)) {
+      const defEffort = getModelDefaultReasoningEffort(targetModel);
+      setReasoningEffort(defEffort);
+    }
+  }, [availableModels]);
+
+  useEffect(() => {
+    if (selectedModelInfo && supportsNativeReasoning(selectedModelInfo)) {
+      const defEffort = getModelDefaultReasoningEffort(selectedModelInfo);
+      setReasoningEffort((prev) => prev || defEffort);
+    }
+  }, [selectedModelInfo]);
+
   const thinkingToggleLabel = useMemo(() => {
     if (chatMode === 'chat' && nativeReasoningSupported) {
       return '推理';
@@ -201,7 +225,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   }, [chatMode, nativeReasoningSupported]);
   const thinkingToggleHint = useMemo(() => {
     if (chatMode === 'chat' && nativeReasoningSupported) {
-      return '当前模型支持原生推理';
+      return '当前模型支持原生推理，可自由选择思考强度';
     }
     if (chatMode === 'chat') {
       return '当前模型不支持原生推理，将使用思考增强';
@@ -223,6 +247,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     createDraftSession,
     draft,
     enableThinking,
+    reasoningEffort,
     enableWebSearch,
     enableResearch,
     ensureSession,
@@ -619,6 +644,8 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             onChatModeChange={handleChatModeChange}
             enableThinking={enableThinking}
             onEnableThinkingChange={setEnableThinking}
+            reasoningEffort={reasoningEffort}
+            onReasoningEffortChange={setReasoningEffort}
             enableWebSearch={enableWebSearch}
             onEnableWebSearchChange={setEnableWebSearch}
             enableResearch={enableResearch}
@@ -628,7 +655,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             nativeReasoningSupported={nativeReasoningSupported}
             selectedModel={selectedModel}
             availableModels={availableModels}
-            onModelChange={setSelectedModel}
+            onModelChange={handleModelChange}
             isStreaming={isChatBackgroundUnlocked ? false : isStreaming}
             modelsLoading={modelsQuery.isLoading}
             disabled={false}

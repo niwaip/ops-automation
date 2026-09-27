@@ -147,6 +147,7 @@ export interface ChatMessage {
     artifacts?: ChatResultArtifact[];
     normalizedResult?: NormalizedChatExecutionResult;
     promptDebug?: PromptDebugPayload;
+    isQueued?: boolean;
   };
   isStreaming?: boolean;
 }

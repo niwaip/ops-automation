@@ -16,7 +16,7 @@ services:
     ports:
       - "${HOST_BIND_IP:-0.0.0.0}:13007:3007"
     volumes:
-      - ../mock-services/mock-ai-server.js:/app/server.js:ro
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/tests/mock-ai-server/mock-ai-server.js:/app/server.js:ro
 
   # Carbone Engine测试容器
   carbone-engine-test:

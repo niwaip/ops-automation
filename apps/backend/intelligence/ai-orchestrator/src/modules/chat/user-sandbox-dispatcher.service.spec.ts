@@ -33,6 +33,7 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
   beforeEach(async () => {
     mockConversationService = {
       listMessages: jest.fn().mockResolvedValue([]),
+      getChatHistory: jest.fn().mockResolvedValue([]),
       persistConversation: jest.fn().mockResolvedValue({ id: 'sess_1' }),
       buildSessionPatchEvent: jest.fn().mockReturnValue({ type: StreamEventType.SESSION_PATCH, data: {} } as any),
     } as any;
@@ -121,6 +122,55 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     expect(resultEvent.content).toBe('你好世界');
   });
 
+  it('should stream thought events as StreamEventType.THOUGHT and keep delta and result clean without think tags', async () => {
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        'event: thought\ndata: {"content":"正在分析需求..."}\n\n',
+        'event: thought\ndata: {"content":"决定创建index.html"}\n\n',
+        'event: observation\ndata: {"content":"⏳ [Harness Agent] 正在根据执行结果汇总交付物 (第 2 轮)..."}\n\n',
+        'event: delta\ndata: {"content":"已完成文件创建"}\n\n',
+        'event: done\ndata: {"success":true,"output":"<<<DSH_FINAL_OUTPUT>>>已完成文件创建","containerName":"ops-test","durationMs":80,"exitCode":0}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const success = await service.dispatchPersonalSandbox(
+      { message: '帮我写贪吃蛇', userId: 'test_user' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(success).toBe(true);
+
+    // 1. Verify THOUGHT events were emitted
+    const thoughtEvents = emittedEvents.filter((e) => e.type === StreamEventType.THOUGHT);
+    expect(thoughtEvents.length).toBe(2);
+    expect(thoughtEvents[0].content).toBe('正在分析需求...');
+    expect(thoughtEvents[1].content).toBe('决定创建index.html');
+    expect(thoughtEvents[1].data?.thought).toBe('正在分析需求...决定创建index.html');
+    expect(thoughtEvents[1].data?.thoughtLogsSnapshot).toEqual(['正在分析需求...决定创建index.html']);
+    // 思考事件绝不能带有 isDelta 标志，防止冲刷轮次摘要
+    expect(thoughtEvents[0].data?.isDelta).toBeFalsy();
+    expect(thoughtEvents[1].data?.isDelta).toBeFalsy();
+
+    // 2. Verify observation preserved
+    const roundSummary = emittedEvents.find((e) => e.content?.includes('第 2 轮'));
+    expect(roundSummary).toBeDefined();
+
+    // 3. Verify delta has NO <think> tags
+    const deltaEvents = emittedEvents.filter((e) => e.data?.isDelta);
+    expect(deltaEvents.length).toBe(1);
+    expect(deltaEvents[0].content).toBe('已完成文件创建');
+    expect(deltaEvents[0].content).not.toContain('<think>');
+
+    // 4. Verify RESULT has clean answer and thoughtLogsSnapshot in data
+    const resultEvent = emittedEvents.find((e) => e.type === StreamEventType.RESULT);
+    expect(resultEvent).toBeDefined();
+    expect(resultEvent.content).toBe('已完成文件创建');
+    expect(resultEvent.content).not.toContain('<think>');
+    expect(resultEvent.data?.thoughtLogsSnapshot).toEqual(['正在分析需求...决定创建index.html']);
+  });
+
   it('should reset deltaAccumulator when receiving delta_reset event', async () => {
     global.fetch = jest.fn().mockImplementation(async () => {
       return createMockSseResponse([
@@ -170,6 +220,177 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     // Must emit observation with the actual error reason
     const fallbackObs = emittedEvents.find((e) => e.content?.includes('Sandbox model execution error: aborted'));
     expect(fallbackObs).toBeDefined();
+  });
+
+  it('returns a friendly retryable timeout for artifact generation instead of raw aborted', async () => {
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        'event: done\ndata: {"success":false,"output":"Sandbox model execution error: aborted","exitCode":1}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const handled = await service.dispatchPersonalSandbox(
+      { message: '生成贪吃蛇的网页游戏', userId: 'test_user', modelId: 'uuid-1234' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(handled).toBe(true);
+    const errorEvent = emittedEvents.find((e) => e.type === StreamEventType.ERROR);
+    expect(errorEvent?.content).toContain('响应超时或连接中断');
+    expect(errorEvent?.content).toContain('本次未生成可用文件');
+    expect(errorEvent?.data).toEqual({
+      code: 'SANDBOX_GENERATION_TIMEOUT',
+      retryable: true,
+      artifactCreated: false,
+    });
+    expect(errorEvent?.content).not.toContain('Sandbox model execution error: aborted');
+  });
+
+  it('returns a friendly retryable timeout for incremental modification (e.g. 追加音效和道具) instead of falling back to raw chat', async () => {
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        'event: observation\ndata: {"content":"⚡ [Harness Tool Call] 正在调用工具: read_file({\'file_path\': \'/workspace/index.html\'})..."}\n\n',
+        'event: done\ndata: {"success":false,"output":"❌ [DeepSeek Harness 超时]: 模型响应超时或连接中断，本次任务未完成且未生成可用产物。请重试。","exitCode":1}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const handled = await service.dispatchPersonalSandbox(
+      { message: '追加音效和道具', userId: 'test_user', modelId: 'uuid-1234', sessionId: 'session-snake' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(handled).toBe(true);
+    const errorEvent = emittedEvents.find((e) => e.type === StreamEventType.ERROR);
+    expect(errorEvent).toBeDefined();
+    expect(errorEvent?.data?.code).toBe('SANDBOX_GENERATION_TIMEOUT');
+    expect(errorEvent?.data?.retryable).toBe(true);
+    expect(errorEvent?.content).toContain('响应超时');
+    expect(errorEvent?.content).toContain('重试继续执行');
+    expect(mockConversationService.persistConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'session-snake',
+        userContent: '追加音效和道具',
+      })
+    );
+  });
+
+  it('inherits artifact execution mode for a regenerate follow-up and persists friendly failure', async () => {
+    (mockConversationService.getChatHistory as jest.Mock).mockResolvedValue([
+      { role: 'user', content: '生成一页的html报告' },
+      { role: 'assistant', content: '上一次生成未完成' },
+    ]);
+    let capturedPayload: any;
+    global.fetch = jest.fn().mockImplementation(async (_url: string, init: any) => {
+      capturedPayload = JSON.parse(init.body);
+      return createMockSseResponse([
+        'event: done\ndata: {"success":false,"output":"Sandbox model execution error: aborted","exitCode":1}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const handled = await service.dispatchPersonalSandbox(
+      {
+        message: '重新生成',
+        userId: 'test_user',
+        modelId: 'uuid-1234',
+        sessionId: 'session-html',
+        config: { reasoningEffort: 'medium' },
+      } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(handled).toBe(true);
+    expect(capturedPayload.thinking).toBe(false);
+    expect(capturedPayload.reasoningEffort).toBeUndefined();
+    expect(emittedEvents.find((e) => e.type === StreamEventType.ERROR)?.data?.code)
+      .toBe('SANDBOX_GENERATION_TIMEOUT');
+    expect(emittedEvents.find((e) => e.type === StreamEventType.ERROR)?.content)
+      .toContain('深度思考已关闭');
+    expect(mockConversationService.persistConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'session-html',
+        userContent: '重新生成',
+        assistantContent: expect.stringContaining('本次未生成可用文件'),
+      })
+    );
+  });
+
+  it('forwards thinking=true when explicitly requested by user on artifact generation', async () => {
+    let capturedPayload: any;
+    global.fetch = jest.fn().mockImplementation(async (_url: string, init: any) => {
+      capturedPayload = JSON.parse(init.body);
+      return createMockSseResponse([
+        'event: delta\ndata: {"content":"ok"}\n\n',
+        'event: done\ndata: {"success":true,"output":"ok","exitCode":0}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const handled = await service.dispatchPersonalSandbox(
+      {
+        message: '生成一页的html报告',
+        userId: 'test_user',
+        modelId: 'uuid-1234',
+        config: { thinking: true, reasoningEffort: 'high' },
+      } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(handled).toBe(true);
+    expect(capturedPayload.thinking).toBe(true);
+    expect(capturedPayload.reasoningEffort).toBe('high');
+  });
+
+  it('does not discard retrieved evidence by falling back to ungrounded chat after search synthesis failure', async () => {
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        'event: observation\ndata: {"content":"✓ 实时数据检索成功，已注入分析上下文。"}\n\n',
+        'event: done\ndata: {"success":false,"output":"Sandbox model execution error: timeout of 30000ms exceeded","exitCode":1}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const handled = await service.dispatchPersonalSandbox(
+      { message: '查看 DeepSeek Harness 最新的插件', userId: 'test_user', modelId: 'uuid-1234' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(handled).toBe(true);
+    const errorEvent = emittedEvents.find((e) => e.type === StreamEventType.ERROR);
+    expect(errorEvent?.data).toEqual({
+      code: 'SANDBOX_SEARCH_SYNTHESIS_TIMEOUT',
+      retryable: true,
+      searchCompleted: true,
+    });
+    expect(errorEvent?.content).toContain('停止无依据的普通聊天降级');
+  });
+
+  it('returns a friendly search-stage error for an installation guide lookup', async () => {
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        'event: observation\ndata: {"content":"✓ 实时数据检索成功，已注入分析上下文。"}\n\n',
+        'event: done\ndata: {"success":false,"output":"Sandbox model execution error: aborted","exitCode":1}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const handled = await service.dispatchPersonalSandbox(
+      { message: '查看 pi agent的安装方法', userId: 'test_user', modelId: 'uuid-1234' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(handled).toBe(true);
+    const errorEvent = emittedEvents.find((e) => e.type === StreamEventType.ERROR);
+    expect(errorEvent?.data?.code).toBe('SANDBOX_SEARCH_SYNTHESIS_TIMEOUT');
+    expect(errorEvent?.content).toContain('联网检索已经完成');
   });
 
   it('should fail and fallback when SSE ends prematurely without done event', async () => {
@@ -245,6 +466,38 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     expect(resultEvent.content).toContain('生成产物已就绪');
     expect(resultEvent.content).toContain('[《保密合同_审查意见书.docx》](/api/ai/chat/workspace-files/test_user/%E4%BF%9D%E5%AF%86%E5%90%88%E5%90%8C_%E5%AE%A1%E6%9F%A5%E6%84%8F%E8%A7%81%E4%B9%A6.docx)');
     expect(resultEvent.content).toContain('点击直接下载 · 38.0 KB');
+  });
+
+  it('should embed generated Markdown deliverables as download cards', async () => {
+    jest.spyOn(service, 'getWorkspaceFilePath').mockImplementation((uid, fname) => {
+      return fname === 'ai-daily-news-20260926.md'
+        ? '/mock/path/ai-daily-news-20260926.md'
+        : null;
+    });
+    jest.spyOn(fs, 'existsSync').mockImplementation((p: any) => {
+      return String(p).includes('ai-daily-news-20260926.md');
+    });
+    jest.spyOn(fs, 'statSync').mockReturnValue({ size: 2142 } as any);
+
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        'event: done\ndata: {"success":true,"output":"<<<DSH_OUTBOUND_FILE:{\\"filePath\\":\\"/workspace/ai-daily-news-20260926.md\\",\\"fileName\\":\\"ai-daily-news-20260926.md\\"}>>>\\n<<<DSH_FINAL_OUTPUT>>>已生成 **ai-daily-news-20260926.md**，请下载查看。","containerName":"ops-test","durationMs":100,"exitCode":0}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const success = await service.dispatchPersonalSandbox(
+      { message: '获取最新 AI 新闻，总结，输出 md 文件', userId: 'test_user' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(success).toBe(true);
+    const resultEvent = emittedEvents.find((e) => e.type === StreamEventType.RESULT);
+    expect(resultEvent.content).toContain('生成产物已就绪');
+    expect(resultEvent.content).toContain('ai-daily-news-20260926.md');
+    expect(resultEvent.content).toContain('点击直接下载 · 2.1 KB');
+    expect(resultEvent.content).toContain('/api/ai/chat/workspace-files/test_user/ai-daily-news-20260926.md');
   });
 
   it('should NEVER include uploaded session input files in deliverable download cards', async () => {
@@ -495,5 +748,83 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     expect(resultEvent.content).toContain(comment);
     expect(resultEvent.content).toContain('/api/ai/chat/workspace-files/test_user/diag.png');
   });
-});
 
+  it('should forward queuing observation event with isQueued data', async () => {
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        'event: observation\ndata: {"content":"⏳ 任务已排队，等待前序任务完成后自动开始...","data":{"isQueued":true,"waitedMs":500}}\n\n',
+        'event: delta\ndata: {"content":"天气晴朗"}\n\n',
+        'event: done\ndata: {"success":true,"output":"<<<DSH_FINAL_OUTPUT>>>上海今天天气晴朗","containerName":"ops-test","durationMs":600,"exitCode":0}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const success = await service.dispatchPersonalSandbox(
+      { message: '上海的天气', userId: 'test_user' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(success).toBe(true);
+    const queueObs = emittedEvents.find((e) => e.content?.includes('任务已排队'));
+    expect(queueObs).toBeDefined();
+    expect(queueObs.data?.isQueued).toBe(true);
+  });
+
+  it('should emit friendly message instead of raw failure on 409 queue timeout', async () => {
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return {
+        ok: false,
+        status: 409,
+        text: async () => 'Conflict: personal sandbox busy',
+        headers: new Headers(),
+      };
+    });
+
+    const emittedEvents: any[] = [];
+    const handled = await service.dispatchPersonalSandbox(
+      { message: '上海的天气', userId: 'test_user' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(handled).toBe(true);
+    const errorEvt = emittedEvents.find((e) => e.type === StreamEventType.ERROR);
+    expect(errorEvt).toBeDefined();
+    expect(errorEvt.content).toContain('正在执行前序任务，排队等待超时');
+  });
+
+  it('should deliver clean rendered markdown without leaking len= or outer fences when model outputs markdown with emojis', async () => {
+    const rawMarkdown = `\`\`\`markdown\n# 2026年9月最新AI行业重大新闻与趋势总结\n\n🚀 一、 阿里千问战略级升级\n\`\`\``;
+    // Simulate output from runner: python code-point len
+    const pythonLen = Array.from(rawMarkdown).length;
+    const fakeHarnessOutput = `<<<DSH_FINAL_OUTPUT:len=${pythonLen}:${rawMarkdown}>>>\n<<<DSH_FINAL_OUTPUT>>>\n${rawMarkdown}`;
+
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        `event: done\ndata: ${JSON.stringify({
+          success: true,
+          output: fakeHarnessOutput,
+          containerName: 'ops-test',
+          durationMs: 800,
+          exitCode: 0,
+        })}\n\n`,
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const success = await service.dispatchPersonalSandbox(
+      { message: '获取最新 AI 新闻，总结，输出 md 文件', userId: 'test_user' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(success).toBe(true);
+    const resultEvt = emittedEvents.find((e) => e.type === StreamEventType.RESULT);
+    expect(resultEvt).toBeDefined();
+    expect(resultEvt.content).not.toContain('len=');
+    expect(resultEvt.content).not.toMatch(/^```(?:markdown|md)/i);
+    expect(resultEvt.content).toContain('# 2026年9月最新AI行业重大新闻与趋势总结');
+    expect(resultEvt.content).toContain('🚀 一、 阿里千问战略级升级');
+  });
+});

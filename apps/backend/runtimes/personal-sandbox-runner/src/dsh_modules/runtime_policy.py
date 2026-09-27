@@ -28,14 +28,19 @@ class RuntimePolicy:
     temperature: float = 0.4
     max_tokens: int = 16384
     model_socket_timeout: int = 60
-    model_max_retries: int = 3
+    # The central model proxy owns upstream retries. Avoid multiplying retries here.
+    model_max_retries: int = 0
     vision_timeout: int = 60
+    thinking: bool = False
+    reasoning_effort: Optional[str] = None
 
     @classmethod
     def from_env(cls) -> "RuntimePolicy":
         """Factory method to load defaults with environment overrides."""
         single_to = int(os.getenv("DSH_SINGLE_TIMEOUT_SECONDS", "180"))
         total_to = int(os.getenv("DSH_TOTAL_TIMEOUT_SECONDS", os.getenv("DSH_TIMEOUT_SECONDS", "300")))
+        thinking_env = os.getenv("DSH_THINKING", "").lower() in ("true", "1", "yes")
+        reasoning_effort_env = os.getenv("DSH_REASONING_EFFORT", None) or None
         return cls(
             max_rounds=int(os.getenv("DSH_MAX_ROUNDS", "3")),
             max_history_chars=int(os.getenv("DSH_MAX_HISTORY_CHARS", "16000")),
@@ -52,8 +57,10 @@ class RuntimePolicy:
             temperature=float(os.getenv("DSH_TEMPERATURE", "0.4")),
             max_tokens=int(os.getenv("DSH_MAX_TOKENS", "16384")),
             model_socket_timeout=int(os.getenv("DSH_MODEL_SOCKET_TIMEOUT", "60")),
-            model_max_retries=int(os.getenv("DSH_MODEL_MAX_RETRIES", "3")),
-            vision_timeout=int(os.getenv("DSH_VISION_TIMEOUT", "60"))
+            model_max_retries=int(os.getenv("DSH_MODEL_MAX_RETRIES", "0")),
+            vision_timeout=int(os.getenv("DSH_VISION_TIMEOUT", "60")),
+            thinking=thinking_env,
+            reasoning_effort=reasoning_effort_env
         )
 
     def determine_max_rounds(
@@ -101,9 +108,9 @@ class RuntimePolicy:
         lower_prompt = prompt.lower()
         # 兼容无技能上下文时的兜底探测（如用户输入文件生成指令但未匹配技能）
         is_prompt_deliverable = (
-            any(w in lower_prompt for w in ["生成文件", "导出文件", "制作文件", "写入文件"]) or
-            (any(v in lower_prompt for v in ["生成", "导出", "制作", "创建", "做个", "做一份", "写一份", "转为", "转成"]) and
-             any(ext in lower_prompt for ext in [".pdf", ".docx", ".xlsx", ".csv", ".json", "pdf", "word", "excel", "ppt", "表格", "文档", "报表"]))
+            any(w in lower_prompt for w in ["生成文件", "导出文件", "制作文件", "写入文件", "输出文件"]) or
+            (any(v in lower_prompt for v in ["生成", "导出", "输出", "制作", "创建", "做个", "做一份", "写一份", "转为", "转成"]) and
+             any(ext in lower_prompt for ext in [".pdf", ".docx", ".xlsx", ".csv", ".json", ".md", "pdf", "word", "excel", "ppt", "markdown", "md 文件", "表格", "文档", "报表"]))
         )
         if is_prompt_deliverable:
             return 5

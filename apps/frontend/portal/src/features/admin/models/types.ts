@@ -100,6 +100,8 @@ export function mapConfigToFormValues(config?: AIModelConfig) {
     defaultScopes,
     routing_tags: Array.isArray(safeConfig.routing_tags) ? safeConfig.routing_tags : [],
     prefer_for_code: safeConfig.routing_preferences?.prefer_for_code === true,
+    supports_reasoning: safeConfig.supports_reasoning === true || safeConfig.reasoning?.enabled === true,
+    reasoning_effort: safeConfig.reasoning_effort || safeConfig.reasoning?.effort || 'medium',
   };
 }
 
@@ -112,6 +114,10 @@ export function buildConfigFromValues(values: Record<string, unknown>): AIModelC
         (item): item is string => typeof item === 'string' && item.trim().length > 0
       )
     : [];
+  const supportsReasoning = values.supports_reasoning === true;
+  const reasoningEffort = supportsReasoning
+    ? ((values.reasoning_effort as 'low' | 'medium' | 'high') || 'medium')
+    : undefined;
 
   return {
     display_name:
@@ -126,6 +132,14 @@ export function buildConfigFromValues(values: Record<string, unknown>): AIModelC
       ? 'advanced'
       : 'standard') as ModelCapabilityTier,
     routing_tags: routingTags,
+    supports_reasoning: supportsReasoning,
+    reasoning_effort: reasoningEffort,
+    reasoning: supportsReasoning
+      ? {
+          enabled: true,
+          effort: reasoningEffort,
+        }
+      : undefined,
     default_scope: {
       global: defaultScopes.includes('global'),
       admin_chat: defaultScopes.includes('admin_chat'),

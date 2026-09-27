@@ -101,7 +101,16 @@ function applyDisabledReasoning(
       if (supportsOpenAiReasoningOff(model)) payload.reasoning_effort = 'none';
       return;
     case 'generic':
-      if (normModel.includes('deepseek') || normModel.includes('qwen') || normProvider === 'bai') {
+      if (normModel.includes('qwen')) {
+        // Qwen served through vLLM/SGLang commonly consumes the thinking
+        // switch as a chat-template argument. Keep the top-level field too
+        // for OpenAI-compatible gateways that implement the DashScope shape.
+        payload.enable_thinking = false;
+        payload.chat_template_kwargs = {
+          ...((payload.chat_template_kwargs as Record<string, unknown> | undefined) || {}),
+          enable_thinking: false,
+        };
+      } else if (normModel.includes('deepseek') || normProvider === 'bai') {
         payload.enable_thinking = false;
       }
       return;

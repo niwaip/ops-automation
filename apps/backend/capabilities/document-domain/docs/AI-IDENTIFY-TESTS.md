@@ -12,8 +12,10 @@ apps/backend/capabilities/document-domain/
     └── AI-IDENTIFY-TESTS.md             # 测试说明
 
 docker/
-├── docker-compose.test.yml               # 测试环境配置
-└── mock-ai-server.js                     # Mock AI服务器
+└── compose/docker-compose.test.yml       # 测试环境配置
+
+tests/
+└── mock-ai-server/mock-ai-server.js      # Mock AI服务器
 ```
 
 ## 测试覆盖范围

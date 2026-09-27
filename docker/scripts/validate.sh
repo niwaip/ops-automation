@@ -24,6 +24,38 @@ while IFS= read -r -d '' script; do
     bash -n "$script"
 done < <(find "$DOCKER_DIR" -type f -name '*.sh' -print0)
 
+echo "Validating Node.js and Python scripts in Docker directory..."
+while IFS= read -r -d '' script; do
+    node --check "$script" >/dev/null
+done < <(find "$DOCKER_DIR" -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.cjs' \) -print0)
+
+while IFS= read -r -d '' script; do
+    python3 -m py_compile "$script"
+done < <(find "$DOCKER_DIR" -type f -name '*.py' -print0)
+
+# Clean up any pycache created by py_compile during validation
+find "$DOCKER_DIR" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+
+echo "Checking for obsolete artifacts or redundant files..."
+for legacy_path in \
+    "$DOCKER_DIR/browser-worker" \
+    "$DOCKER_DIR/sql" \
+    "$DOCKER_DIR/mock-services" \
+    "$DOCKER_DIR/scripts/utils" \
+    "$DOCKER_DIR/scripts/start.sh" \
+    "$DOCKER_DIR/scripts/start-recorder.sh" \
+    "$DOCKER_DIR/scripts/entrypoint.sh"; do
+    if [ -e "$legacy_path" ]; then
+        echo "Obsolete/misplaced path detected: $legacy_path" >&2
+        exit 1
+    fi
+done
+
+if compgen -G "$DOCKER_DIR/scripts/*.ps1" >/dev/null; then
+    echo "PowerShell scripts must not reside in docker/scripts (keep them in apps/office-addin/public/)." >&2
+    exit 1
+fi
+
 if grep -R -n -F --include='*.yml' '${PROJECT_ROOT:-..}' "$DOCKER_DIR/compose"; then
     echo "Relative PROJECT_ROOT fallback is not allowed." >&2
     exit 1

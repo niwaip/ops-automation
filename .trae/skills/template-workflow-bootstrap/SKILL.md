@@ -25,7 +25,7 @@ Use this skill to create or reconcile `Activity` + `Temporal Workflow` records f
 ## Command
 
 ```bash
-TEMPLATE_ID=<template-id> node scripts/create-template-activity-workflow.js
+TEMPLATE_ID=<template-id> node scripts/tools/create-template-activity-workflow.js
 ```
 
 Optional environment variables:
@@ -36,7 +36,7 @@ CARBONE_BASE=http://localhost:3009 \
 AUTH_USER=admin \
 AUTH_PASS=admin123 \
 TEMPLATE_ID=<template-id> \
-node scripts/create-template-activity-workflow.js
+node scripts/tools/create-template-activity-workflow.js
 ```
 
 ## Expected Output

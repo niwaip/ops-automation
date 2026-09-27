@@ -34,7 +34,7 @@ DOCKER_ENV_FILE="$DOCKER_DIR/.env"
 DOCKER_ENV_TEMPLATE="$DOCKER_DIR/env/.env.example"
 PLATFORM_SCHEMA="$REPO_ROOT/apps/backend/platform/prisma/schema.prisma"
 BROWSER_TEMPLATE_REPAIR_SQL="$REPO_ROOT/apps/backend/capabilities/browser-domain/templates/prisma/manual-sql/20260608_rebuild_templates_current_schema.sql"
-INITIAL_DATA_EXPORT_PATH_DEFAULT="$REPO_ROOT/docker/sql/exports/platform-initial-data-latest.sql"
+INITIAL_DATA_EXPORT_PATH_DEFAULT="$REPO_ROOT/database/exports/platform-initial-data-latest.sql"
 
 DEFAULT_ADMIN_PASSWORD="${DEFAULT_ADMIN_PASSWORD:-admin123}"
 DEFAULT_ADMIN_USERNAME="${DEFAULT_ADMIN_USERNAME:-admin}"

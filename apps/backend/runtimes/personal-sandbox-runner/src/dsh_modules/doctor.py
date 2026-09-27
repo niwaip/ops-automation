@@ -104,23 +104,32 @@ def check_paths_and_permissions() -> List[Dict[str, Any]]:
             continue
 
         readable = os.access(p, os.R_OK)
-        writable = os.access(p, os.W_OK) if need_write else True
+        can_write = os.access(p, os.W_OK)
 
-        if readable and writable:
-            results.append({
-                "category": "沙箱路径挂载",
-                "name": p_str,
-                "status": "PASS",
-                "required": required,
-                "detail": f"{desc} 权限正常 (读写可用)"
-            })
-        else:
+        if not readable:
             results.append({
                 "category": "沙箱路径挂载",
                 "name": p_str,
                 "status": "FAIL",
                 "required": required,
-                "detail": f"{desc} 权限受限 (可读={readable}, 可写={writable})"
+                "detail": f"{desc} 权限受限 (不可读)"
+            })
+        elif need_write and not can_write:
+            results.append({
+                "category": "沙箱路径挂载",
+                "name": p_str,
+                "status": "FAIL",
+                "required": required,
+                "detail": f"{desc} 权限受限 (需要可写，当前只读)"
+            })
+        else:
+            perm_desc = "读写可用" if can_write else "只读 (系统受保护基线)"
+            results.append({
+                "category": "沙箱路径挂载",
+                "name": p_str,
+                "status": "PASS",
+                "required": required,
+                "detail": f"{desc} 权限正常 ({perm_desc})"
             })
     return results
 

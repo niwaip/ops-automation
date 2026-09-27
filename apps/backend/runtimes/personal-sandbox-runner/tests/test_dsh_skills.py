@@ -711,6 +711,43 @@ class TestDshSkillsAndArtifacts(unittest.TestCase):
             self.assertNotIn("【系统产物物理断言拦截】", str(loop_res.messages))
             self.assertNotIn("【系统交付物断言拦截】", str(loop_res.messages))
 
+    def test_html_report_materialize_when_model_only_outputs_declarative_text(self):
+        """验证模型仅口头声明生成 HTML 报告并输出结构化内容时，ArtifactExporter 自动编译落盘并注入 ```html 供前端挂载 HtmlPreviewBlock"""
+        from dsh_modules.artifact_exporter import ArtifactExporter
+        with tempfile.TemporaryDirectory() as tmp_ws:
+            text = (
+                "文件 `/workspace/index.html` 已真实存在并包含完整代码。\n\n"
+                "---\n\n"
+                "**📄 上海市气象监测报告（单页 HTML）**\n\n"
+                "该报告已保存至：`/workspace/index.html`\n\n"
+                "**📊 报告内容概览：**\n\n"
+                "1. **报告头信息**\n"
+                "   - 标题：上海市气象监测报告\n"
+                "   - 日期：2026-09-27\n\n"
+                "2. **未来一周趋势**（表格化呈现）\n\n"
+                "| 日期 | 天气 | 气温范围 | 降水概率 |\n"
+                "| 9/27 今天 | ☁️ 多云 | 23.3°C ~ 28.8°C | 89% |\n"
+                "| 9/28 明天 | ⛈️ 雷阵雨 | 24.1°C ~ 27.3°C | 53% |\n\n"
+                "**🎨 设计风格：** 采用 Calibrated Enterprise Report 风格。"
+            )
+            now = time.time()
+            final_text, exported = ArtifactExporter.export_html(
+                text,
+                is_ppt_intent=False,
+                workspace_dir=tmp_ws,
+                turn_start_time=now,
+                is_design_intent=True,
+                prompt="生成一页的报告"
+            )
+            # 1. 物理文件必须真实写入工作区
+            out_file = Path(tmp_ws) / "index.html"
+            self.assertTrue(out_file.exists())
+            self.assertIn(str(out_file), exported)
+            # 2. 必须包含 ```html 代码块以触发前端 HtmlPreviewBlock（含预览与全屏组件）
+            self.assertIn("```html", final_text)
+            self.assertIn("上海市气象监测报告", out_file.read_text(encoding="utf-8"))
+            self.assertIn("<table>", out_file.read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,4 +1,10 @@
 #!/bin/bash
+# ==============================================================================
+# Container Internal Startup Script: Chrome + Xvfb + noVNC
+# WARNING: This script runs INSIDE the ops-browser-chrome container.
+# Do NOT run this script on the host machine!
+# To start the Docker services from the host, run: ./docker/start-smart.sh
+# ==============================================================================
 set -e
 
 # Default configuration

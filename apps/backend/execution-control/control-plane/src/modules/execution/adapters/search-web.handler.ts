@@ -1,6 +1,7 @@
 import type { BuiltinSkillHandlerResult } from '@ops/backend-builtin-skill-contract';
 import type { RuntimeStepInvokeRequest } from './runtime-adapter.interface';
 import { defaultSearchOrchestrator } from './search/search-orchestrator';
+import type { SearchRequestOptions } from './search/search-engine.types';
 
 function boundedInteger(
   value: unknown,
@@ -39,6 +40,14 @@ export async function executeWebSearch(
   const maxResults = boundedInteger(input.maxResults, 5, 1, 10);
   const topic = input.topic === 'news' ? 'news' : 'general';
   const searchDepth = input.searchDepth === 'advanced' ? 'advanced' : 'basic';
+  const sourcePolicy = input.sourcePolicy === 'official-first' ? 'official-first' : 'balanced';
+  const queries = Array.isArray(input.queries)
+    ? input.queries
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 3)
+    : [];
   const days = input.days == null ? undefined : boundedInteger(input.days, 7, 1, 30);
   const timeoutMs = boundedInteger(
     process.env.WEB_SEARCH_TIMEOUT_MS,
@@ -48,22 +57,26 @@ export async function executeWebSearch(
   );
 
   try {
-    const searchResponse = await defaultSearchOrchestrator.search({
-      query,
+    const searchOptions: Omit<SearchRequestOptions, 'query'> = {
       maxResults,
       topic,
       searchDepth,
+      sourcePolicy,
       days,
       includeDomains: stringList(input.includeDomains),
       excludeDomains: stringList(input.excludeDomains),
       timeoutMs,
-    });
+    };
+    const searchResponse = queries.length > 0
+      ? await defaultSearchOrchestrator.searchMany([query, ...queries], searchOptions)
+      : await defaultSearchOrchestrator.search({ query, ...searchOptions });
 
     return {
       success: true,
       output: {
         query,
         provider: searchResponse.provider,
+        ...(searchResponse.providers ? { providers: searchResponse.providers } : {}),
         ...(searchResponse.answer ? { answer: searchResponse.answer } : {}),
         results: searchResponse.results,
         resultCount: searchResponse.resultCount,

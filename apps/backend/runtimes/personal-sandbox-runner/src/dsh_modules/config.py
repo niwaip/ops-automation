@@ -35,7 +35,10 @@ CUSTOM_SKILL_DIR = os.environ.get("DSH_CUSTOM_SKILL_DIR", "/knowledge/skills")
 def print_banner():
     container_id = os.environ.get("HOSTNAME", "local-sandbox")[:12]
     user = os.environ.get("USER", "sandbox")
-    print(f"⚡ [DeepSeek Harness v{VERSION} | Sandbox: {container_id} | User: {user} | Mode: Personal]")
+    print(
+        f"⚡ [DeepSeek Harness v{VERSION} | Sandbox: {container_id} | User: {user} | Mode: Personal]",
+        flush=True,
+    )
 
 
 def cmd_version(args):

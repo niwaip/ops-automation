@@ -22,6 +22,11 @@
 ```text
 database/
 ├── schema-ownership.json                  # 数据表单一属主映射事实源（全系统表归属权威）
+├── sql/                                   # 数据库基线与结构校验 SQL
+│   ├── verify-existing-platform-baseline.sql # 既有非空库 Baseline 接管校验
+│   └── verify-shared-execution-schema.sql    # 共享执行核心表结构校验
+├── exports/                               # 初始种子与生产数据导出快照
+│   └── platform-initial-data-latest.sql
 ├── security/                              # 生产安全与角色访问控制
 │   ├── access-policy.json                 # 微服务账号与数据库角色的绑定策略
 │   └── roles.sql                          # 生产数据库角色（NOLOGIN 逻辑组）与表级权限定义
@@ -32,6 +37,8 @@ database/
 │   ├── validate-migration-targets.mjs     # 校验各 Schema 迁移目标路径有效性
 │   ├── validate-application-database-targets.mjs # 校验应用环境变量中的数据库连接合规性
 │   └── verify-application-roles.mjs       # 校验 PostgreSQL 实际权限是否严格符合策略
+├── docs/                                  # 数据与缓存存储设计文档
+│   └── redis-schema.md                    # Redis 缓存键命名空间与数据结构规范
 └── test/                                  # 权限策略隔离测试与测试夹具
     ├── create-isolated-access-policy-database.mjs
     └── provision-access-policy-fixture.mjs

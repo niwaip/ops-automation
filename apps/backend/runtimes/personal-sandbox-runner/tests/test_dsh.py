@@ -14,26 +14,174 @@ if str(src_dir) not in sys.path:
 
 import os
 import json
+import subprocess
 import time
 import tempfile
 
 from dsh_modules.config import VERSION
 from dsh_modules.tools import (
-    CITY_PINYIN, normalize_search_query, extract_query_freshness, execute_tool, SANDBOX_TOOLS,
+    CITY_PINYIN, normalize_search_query, extract_query_freshness, decompose_search_queries,
+    perform_multi_web_search, execute_tool, SANDBOX_TOOLS,
     get_sandbox_tools, perform_web_search, fetch_weather, fetch_page, inspect_image, read_workspace_file
 )
-from dsh_modules.web_tools import is_safe_web_url
+from dsh_modules.web_tools import is_safe_web_url, perform_platform_web_search, enrich_search_context_with_pages
 from dsh_modules.llm import parse_tool_calls, clean_output, extract_bare_json_tool_calls, is_promising_action, call_model_proxy
 from dsh_modules.runtime_policy import RuntimePolicy
+from dsh_modules.skill_router import SkillRouter
 from dsh_modules.context_budget import ContextBudget
 from dsh_modules.prompt_builder import build_system_prompt, build_user_turn
+from dsh_modules.runner import (
+    _run_planning_phase,
+    _emit_search_evidence_fallback,
+    _emit_tool_result_recovery,
+)
 from dsh_modules.telemetry import TelemetryStats
 from dsh_modules.agent_loop import (
-    run_agent_loop, sanitize_preview
+    run_agent_loop, sanitize_preview, auto_heal_unexecuted_file_writes,
+    detect_missing_claimed_artifacts, _finalize_agent_text
 )
+from dsh_modules.artifact_exporter import ArtifactExporter
+
 
 
 class TestDshCoreModules(unittest.TestCase):
+
+    def test_cli_accepts_session_files_argument(self):
+        dsh_bin = Path(__file__).resolve().parent.parent / "bin" / "dsh"
+        result = subprocess.run(
+            [sys.executable, str(dsh_bin), "run", "附件是什么", "--files", "a.jpg,b.pdf", "--timeout", "1"],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "DSH_PROXY_URL": "http://127.0.0.1:1"},
+            timeout=5,
+        )
+        self.assertNotIn("unrecognized arguments: --files", result.stderr)
+
+    def test_planning_phase_allows_only_readonly_web_search_tools(self):
+        """规划阶段使用思考模型进行深度规划架构设计，只允许只读联网检索工具，严禁任何副作用工具"""
+        policy = RuntimePolicy(thinking=True, reasoning_effort="high")
+        captured_kwargs = {}
+
+        def mock_call(messages, model, **kwargs):
+            captured_kwargs.update(kwargs)
+            return {"content": "# 设计规划\n1. 结构\n2. 样式"}
+
+        with patch("dsh_modules.runner.call_model_proxy", side_effect=mock_call):
+            plan = _run_planning_phase("生成一页的html报告", [{"role": "user", "content": "生成报告"}], "default", policy, has_web_search_permission=True)
+
+        self.assertIsNotNone(plan)
+        self.assertIn("设计规划", plan)
+        tools = captured_kwargs.get("tools")
+        self.assertIsNotNone(tools)
+        tool_names = [t["function"]["name"] for t in tools]
+        self.assertEqual(set(tool_names), {"web_search", "fetch_page"})
+        self.assertNotIn("bash", tool_names)
+        self.assertNotIn("write_markdown", tool_names)
+        self.assertTrue(captured_kwargs.get("policy").thinking)
+        self.assertEqual(captured_kwargs.get("policy").reasoning_effort, "high")
+
+    def test_planning_phase_without_web_permission_has_no_tools(self):
+        """未赋予联网权限时，规划阶段不携带任何工具"""
+        policy = RuntimePolicy(thinking=True, reasoning_effort="high")
+        captured_kwargs = {}
+
+        def mock_call(messages, model, **kwargs):
+            captured_kwargs.update(kwargs)
+            return {"content": "# 设计规划\n1. 结构\n2. 样式"}
+
+        with patch("dsh_modules.runner.call_model_proxy", side_effect=mock_call):
+            plan = _run_planning_phase("生成一页的html报告", [{"role": "user", "content": "生成报告"}], "default", policy, has_web_search_permission=False)
+
+        self.assertIsNotNone(plan)
+        self.assertIsNone(captured_kwargs.get("tools"))
+
+    def test_planning_phase_executes_search_and_grounds_plan(self):
+        """规划阶段模型调用 web_search 检索事实，系统执行工具并将结果回填给模型完成最终规划"""
+        policy = RuntimePolicy(thinking=True, reasoning_effort="high")
+        call_count = 0
+        executed_tools = []
+
+        def mock_call(messages, model, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                # 第一轮模型要求搜索事实
+                return {
+                    "content": "正在检索 deepseek harness 插件生态事实...",
+                    "tool_calls": [
+                        {
+                            "id": "call_search_1",
+                            "type": "function",
+                            "function": {
+                                "name": "web_search",
+                                "arguments": '{"query": "deepseek-harness plugins"}'
+                            }
+                        }
+                    ]
+                }
+            else:
+                # 第二轮模型结合搜索结果产出完整规划
+                return {"content": "# 基于官方插件生态的架构规划\n1. 集成 dsh-web\n2. 接入 OpenViking Memory"}
+
+        def mock_execute_tool(name, params, **kwargs):
+            executed_tools.append((name, params))
+            return "已查到官方流行插件: dsh-web, OpenViking Memory Bundle, dsh-browser"
+
+        with patch("dsh_modules.runner.call_model_proxy", side_effect=mock_call), \
+             patch("dsh_modules.runner.execute_tool", side_effect=mock_execute_tool):
+            plan = _run_planning_phase(
+                "制作展示 deepseek harness 插件的看板",
+                [{"role": "user", "content": "制作看板"}],
+                "default",
+                policy,
+                has_web_search_permission=True
+            )
+
+        self.assertIsNotNone(plan)
+        self.assertIn("基于官方插件生态的架构规划", plan)
+        self.assertEqual(len(executed_tools), 1)
+        self.assertEqual(executed_tools[0][0], "web_search")
+        self.assertEqual(executed_tools[0][1], {"query": "deepseek-harness plugins"})
+        self.assertEqual(call_count, 2)
+
+    def test_tool_calling_phase_strictly_disables_thinking(self):
+        """工具调用阶段（传入 tools）必须严格关闭思考，确保参数准确与执行高效"""
+        from dsh_modules.llm import call_model_proxy
+        captured_payload = {}
+
+        class MockResp:
+            def __enter__(self):
+                return iter([b'data: {"choices":[{"delta":{"content":"ok"}}]}\n', b'data: [DONE]\n'])
+            def __exit__(self, *args):
+                pass
+
+        def fake_urlopen(request, **_kwargs):
+            captured_payload.update(json.loads(request.data.decode("utf-8")))
+            return MockResp()
+
+        policy = RuntimePolicy(thinking=True, reasoning_effort="high")
+        tools = [{"type": "function", "function": {"name": "bash"}}]
+        with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+            call_model_proxy([{"role": "user", "content": "test"}], tools=tools, policy=policy)
+
+        self.assertFalse(captured_payload.get("thinking"))
+        self.assertNotIn("reasoning_effort", captured_payload)
+
+    def test_detect_missing_claimed_artifacts_rejects_historical_other_task_file(self):
+        """验证已存在但属于历史任务的 index.html 不会被误判为本轮已成功生成"""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            old_file = Path(tmp_dir) / "index.html"
+            old_file.write_text("<html>old task</html>", encoding="utf-8")
+            os.utime(str(old_file), (1000.0, 1000.0))
+
+            with patch("dsh_modules.agent_loop.WORKSPACE_DIR", tmp_dir):
+                # 本轮任务在 2000.0 开始，模型声称已生成 index.html
+                missing = detect_missing_claimed_artifacts(
+                    "已生成文件 /workspace/index.html 请查看",
+                    is_generate_intent=True,
+                    turn_start_time=2000.0,
+                )
+                self.assertIn("index.html", missing)
 
     def test_version_format(self):
         self.assertTrue(VERSION.startswith("1.3.0"))
@@ -51,6 +199,139 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertEqual(extract_query_freshness("查看近7天动态"), "week")
         self.assertEqual(extract_query_freshness("今天最新新闻"), "day")
         self.assertIsNone(extract_query_freshness("普通查询"))
+
+    def test_decompose_latest_plugin_search_into_general_facets(self):
+        queries = decompose_search_queries("查看 deepseek harness 最新的插件")
+        self.assertEqual(len(queries), 3)
+        self.assertIn("deepseek harness", queries[0].lower())
+        self.assertIn("plugins extensions registry", queries[1].lower())
+        self.assertIn("official documentation github releases", queries[2].lower())
+
+    def test_multi_search_deduplicates_urls_and_warns_against_false_absence(self):
+        responses = [
+            "[Official](https://example.com/a)\nA",
+            "[Official duplicate](https://example.com/a)\n[Plugin](https://example.com/b)",
+            "",
+        ]
+        with patch("dsh_modules.web_tools.perform_platform_web_search", return_value=""), \
+             patch("dsh_modules.web_tools.perform_web_search", side_effect=responses):
+            result = perform_multi_web_search("Example 最新插件")
+        self.assertEqual(result.count("https://example.com/a"), 1)
+        self.assertIn("https://example.com/b", result)
+        self.assertIn("单次空结果不代表目标不存在", result)
+
+    def test_multi_search_prefers_platform_structured_gateway(self):
+        with patch("dsh_modules.web_tools.perform_platform_web_search", return_value="platform evidence") as gateway, \
+             patch("dsh_modules.web_tools.perform_web_search") as fallback:
+            result = perform_multi_web_search("DeepSeek harness 最新插件")
+        self.assertEqual(result, "platform evidence")
+        self.assertEqual(gateway.call_args.kwargs["source_policy"], "official-first")
+        fallback.assert_not_called()
+
+    def test_weibo_hot_search_uses_vertical_source_before_platform_gateway(self):
+        hot_list = "【微博实时热搜榜最新排行】:\n1. 示例热搜 (热度值: 123)"
+        with patch("dsh_modules.web_tools.perform_web_search", return_value=hot_list) as vertical, \
+             patch("dsh_modules.web_tools.perform_platform_web_search") as platform:
+            result = perform_multi_web_search("查看今天微博热点")
+        self.assertEqual(result, hot_list)
+        self.assertFalse(vertical.call_args.kwargs["use_platform"])
+        platform.assert_not_called()
+
+    def test_weibo_hot_search_detects_reversed_word_order(self):
+        hot_list = "【微博实时热搜榜最新排行】:\n1. 示例"
+        with patch("dsh_modules.web_tools.perform_web_search", return_value=hot_list) as vertical:
+            result = perform_multi_web_search("热搜榜看微博")
+        self.assertEqual(result, hot_list)
+        vertical.assert_called_once()
+
+    def test_platform_search_returns_empty_so_no_key_fallback_can_run(self):
+        with patch("dsh_modules.web_tools.urllib.request.urlopen", side_effect=OSError("offline")):
+            self.assertEqual(perform_platform_web_search("test"), "")
+
+    def test_search_context_enrichment_fetches_ranked_pages_in_parallel(self):
+        context = (
+            "[Community](https://github.com/topics/deepseek-harness-plugin)\nTopic\n"
+            "[Official](https://github.com/deepseek-ai/deepseek-harness)\nRepo\n"
+            "[Awesome](https://github.com/example/awesome-deepseek-harness-plugins)\nList"
+        )
+        with patch("dsh_modules.web_tools.fetch_page", side_effect=lambda url, *_args: f"CONTENT {url}") as fetch:
+            enriched = enrich_search_context_with_pages(context, max_pages=2)
+        self.assertIn("高价值页面正文抓取", enriched)
+        self.assertIn("CONTENT https://github.com/deepseek-ai/deepseek-harness", enriched)
+        self.assertIn("CONTENT https://github.com/example/awesome-deepseek-harness-plugins", enriched)
+        self.assertEqual(fetch.call_count, 2)
+
+    def test_search_evidence_fallback_only_returns_retrieved_links(self):
+        context = (
+            "[Official repo](https://github.com/deepseek-ai/deepseek-harness)\n"
+            "Official repository\n\n"
+            "[Releases](https://github.com/deepseek-ai/deepseek-harness/releases)\n"
+            "Release notes"
+        )
+        policy = RuntimePolicy()
+        with patch("dsh_modules.runner.TelemetryStats.emit_final_output") as emit:
+            _emit_search_evidence_fallback("latest plugins", context, [], None, policy)
+        final_text = emit.call_args.args[0]
+        self.assertIn("github.com/deepseek-ai/deepseek-harness", final_text)
+        self.assertIn("github.com/deepseek-ai/deepseek-harness/releases", final_text)
+        self.assertIn("[官方]", final_text)
+        self.assertIn("不包含模型记忆补写", final_text)
+
+    def test_direct_evidence_adds_canonical_releases_link_for_official_repo(self):
+        context = "[Official repo](https://github.com/deepseek-ai/deepseek-harness)\nOfficial repository"
+        policy = RuntimePolicy()
+        with patch("dsh_modules.runner.TelemetryStats.emit_final_output") as emit:
+            _emit_search_evidence_fallback("latest plugins", context, [], None, policy, model_failed=False)
+        final_text = emit.call_args.args[0]
+        self.assertIn("https://github.com/deepseek-ai/deepseek-harness/releases", final_text)
+        self.assertIn("官方版本与发布记录", final_text)
+
+
+    def test_direct_evidence_prioritizes_official_repo_and_releases(self):
+        context = (
+            "[Community](https://github.com/topics/deepseek-harness)\nCommunity list\n\n"
+            "[Releases](https://github.com/deepseek-ai/deepseek-harness/releases)\nRelease notes\n\n"
+            "[Official repo](https://github.com/deepseek-ai/deepseek-harness)\nOfficial repository"
+        )
+        policy = RuntimePolicy()
+        with patch("dsh_modules.runner.TelemetryStats.emit_final_output") as emit:
+            _emit_search_evidence_fallback("latest plugins", context, [], None, policy, model_failed=False)
+        final_text = emit.call_args.args[0]
+        self.assertLess(final_text.index("Official repo"), final_text.index("Releases"))
+        self.assertLess(final_text.index("Releases"), final_text.index("Community"))
+        self.assertNotIn("连接中断", final_text)
+
+    def test_search_evidence_fallback_general_query(self):
+        context = (
+            "[Python Docs](https://docs.python.org/3/whatsnew/3.13.html)\nWhat's new in Python 3.13\n\n"
+            "[Blog Post](https://medium.com/@user/python-features)\nBlog post overview"
+        )
+        policy = RuntimePolicy()
+        with patch("dsh_modules.runner.TelemetryStats.emit_final_output") as emit:
+            _emit_search_evidence_fallback("python 3.13 features", context, [], None, policy, model_failed=True)
+        final_text = emit.call_args.args[0]
+        self.assertIn("权威来源", final_text)
+        self.assertIn("Python Docs", final_text)
+        self.assertNotIn("DeepSeek Harness Releases", final_text)
+
+    def test_emit_tool_result_recovery_weather(self):
+        messages = [
+            {"role": "user", "content": "查看上海的天气"},
+            {"role": "assistant", "content": "正在查询天气"},
+            {
+                "role": "tool",
+                "name": "weather",
+                "content": "【上海 实时权威气象与多日预报】\n当前气温: 24°C，晴，湿度: 60%\n未来三天天气预报良好。"
+            }
+        ]
+        policy = RuntimePolicy()
+        with patch("dsh_modules.runner.TelemetryStats.emit_final_output") as emit:
+            recovered = _emit_tool_result_recovery(messages, "查看上海的天气", [], None, policy)
+        self.assertTrue(recovered)
+        final_text = emit.call_args.args[0]
+        self.assertIn("实时天气与气象预报", final_text)
+        self.assertIn("当前气温: 24°C", final_text)
+        self.assertIn("上游大模型在整理排版阶段连接中断", final_text)
 
     def test_city_pinyin_mapping(self):
         self.assertEqual(CITY_PINYIN.get("上海"), "Shanghai")
@@ -171,9 +452,9 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertEqual(calls[0]["params"].get("aspect_ratio"), "16:9")
 
     def test_sandbox_tools_schema_completeness(self):
-        """AC-1: 验证 SANDBOX_TOOLS 包含全部 12 个工具且包含 vision_inspect, image_gen, patch_file 与 create_reminders"""
+        """AC-1: 验证 SANDBOX_TOOLS 包含完整工具集及受控 Markdown 写入能力"""
         tool_names = [t["function"]["name"] for t in SANDBOX_TOOLS]
-        self.assertEqual(len(tool_names), 12)
+        self.assertEqual(len(tool_names), 15)
         self.assertIn("vision_inspect", tool_names)
         self.assertIn("image_gen", tool_names)
         self.assertIn("patch_file", tool_names)
@@ -186,6 +467,9 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertIn("read_skill", tool_names)
         self.assertIn("send_file", tool_names)
         self.assertIn("create_reminders", tool_names)
+        self.assertIn("update_reminder", tool_names)
+        self.assertIn("delete_reminder", tool_names)
+        self.assertIn("write_markdown", tool_names)
 
         # 检查 read_file 是否支持 start_line 与 end_line 切片
         rf_tool = next(t for t in SANDBOX_TOOLS if t["function"]["name"] == "read_file")
@@ -532,8 +816,9 @@ class TestDshCoreModules(unittest.TestCase):
                 self.assertIn('<<<DSH_DELTA:"世界">>>', output)
 
     def test_tool_calling_round_suppresses_delta_streaming(self):
-        """验证工具调用轮次（传入 tools 且触发 tool_calls）不会向 stdout 泄漏内部前置垫话与脚本，并发出 DSH_DELTA_RESET"""
+        """验证工具调用轮次不会泄漏草稿；DELTA_RESET 统一由 agent loop 发出"""
         import io
+        captured_payload = {}
         chunk_data = {
             "choices": [{
                 "delta": {
@@ -556,7 +841,11 @@ class TestDshCoreModules(unittest.TestCase):
                 pass
 
         captured_stdout = io.StringIO()
-        with patch("urllib.request.urlopen", return_value=MockResponse()):
+        def fake_urlopen(request, **_kwargs):
+            captured_payload.update(json.loads(request.data.decode("utf-8")))
+            return MockResponse()
+
+        with patch("urllib.request.urlopen", side_effect=fake_urlopen):
             with patch("sys.stdout", captured_stdout):
                 res = call_model_proxy(
                     [{"role": "user", "content": "生成游戏"}],
@@ -568,8 +857,30 @@ class TestDshCoreModules(unittest.TestCase):
                 # 严禁向 stdout 泄漏内部垫话和 cat > 脚本
                 self.assertNotIn('<<<DSH_DELTA:"我需要使用 bash 工具', output)
                 self.assertNotIn('cat > /workspace/index.html', output)
-                # 必须发送 DSH_DELTA_RESET 确保前端清空
-                self.assertIn('<<<DSH_DELTA_RESET>>>', output)
+                # 避免模型层与 agent loop 重复发送 reset
+                self.assertNotIn('<<<DSH_DELTA_RESET>>>', output)
+                self.assertEqual(captured_payload.get("stream_visibility"), "internal")
+
+    def test_search_grounded_synthesis_requests_longer_proxy_window(self):
+        fake_sse_lines = [b'data: {"choices": [{"delta": {"content": "ok"}}]}\n', b'data: [DONE]\n']
+        captured_payload = {}
+
+        class MockResponse:
+            def __enter__(self):
+                return iter(fake_sse_lines)
+            def __exit__(self, *args):
+                pass
+
+        def fake_urlopen(request, **_kwargs):
+            captured_payload.update(json.loads(request.data.decode("utf-8")))
+            return MockResponse()
+
+        with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+            call_model_proxy([
+                {"role": "user", "content": "[Live Retrieved Information]:\n[Repo](https://github.com/example/repo)"}
+            ])
+
+        self.assertEqual(captured_payload.get("request_context"), "web_search_synthesis")
 
 
     def test_execute_tool_deadline(self):
@@ -994,11 +1305,136 @@ class TestDshCoreModules(unittest.TestCase):
             self.assertIn("<title>贪吃蛇</title>", content)
             # 确认聊天正文中不再残留 write_file 或裸源码
             self.assertNotIn("write_file", cleaned_text)
-            self.assertIn("✨ 已成功生成并保存文件：`/workspace/index.html`", cleaned_text)
+    def test_snake_game_skill_routing_and_tool_preservation(self):
+        """验证贪吃蛇等网页小游戏正确识别为物理产物生成意图，不被误剪裁工具"""
+        from dsh_modules.skill_router import SkillRouter
+        prompt = "生成一个网页版的贪吃蛇游戏"
+        res = SkillRouter.route(prompt, [])
+        self.assertTrue(res.is_generate_intent)
+        # 验证在此意图下，沙箱不会被收敛为只读检索工具，完整保留 bash
+        from dsh_modules.tools import get_sandbox_tools
+        from dsh_modules.deliverable_contract import requests_markdown_artifact
+        wants_md = requests_markdown_artifact(prompt)
+        self.assertFalse(wants_md)
+        is_pure_search = res.is_search_intent and not res.is_generate_intent and not res.requires_execution
+        self.assertFalse(is_pure_search)
+
+    def test_missing_claimed_artifacts_sanitizes_sentence_prefixes(self):
+        """验证带命令回显的句子中提取文件名时不会将句子前缀错当成文件名"""
+        fake_shell = (
+            'chmod +x /workspace/ctx.sh\n'
+            'echo "✅ /workspace/ctx.sh created and made executable"\n'
+            'echo "📜 File content: Snake game server script"\n'
+            'echo "🚀 Run with: ./workspace/ctx.sh"'
+        )
+        missing = detect_missing_claimed_artifacts(fake_shell, is_generate_intent=True)
+        self.assertEqual(missing, ["ctx.sh"])
+
+    def test_finalize_agent_text_blocks_unexecuted_fake_shell_leak(self):
+        """验证当模型输出未执行的伪造 shell 脚本回显且未能自愈时，拒绝向用户泄漏裸脚本"""
+        fake_shell = (
+            "```bash\n"
+            "chmod +x /workspace/ctx.sh\n"
+            'echo "✅ /workspace/ctx.sh created and made executable"\n'
+            'echo "📜 File content: Snake game server script"\n'
+            'echo "🚀 Run with: ./workspace/ctx.sh"\n'
+            "```"
+        )
+        messages = [
+            {"role": "user", "content": "生成一个网页版的贪吃蛇游戏"},
+            {"role": "assistant", "content": fake_shell}
+        ]
+        telemetry = TelemetryStats()
+        policy = RuntimePolicy()
+        final_text, healed = _finalize_agent_text(
+            reply_text=fake_shell,
+            messages=messages,
+            model="mock",
+            policy=policy,
+            deadline=None,
+            is_guide_intent=False,
+            executed_calls_history=[],
+            was_token_truncated=False,
+            telemetry=telemetry,
+            last_user_prompt="生成一个网页版的贪吃蛇游戏"
+        )
+        self.assertEqual(len(healed), 0)
+        self.assertNotIn("chmod +x", final_text)
+        self.assertIn("⚠️ 沙箱运行正常，但上游模型未返回有效回复内容", final_text)
+
+
+    def test_finalize_agent_text_preserves_valid_html_deliverable(self):
+        """验证当模型输出完整的 HTML 交付物时，_finalize_agent_text 保留源码供导出器落盘，不被脚本泄漏守卫误清空"""
+        html_code = (
+            "这里是为您制作的单页天气报告：\n\n"
+            "```html\n"
+            "<!DOCTYPE html>\n"
+            "<html lang=\"zh-CN\">\n"
+            "<head><title>上海天气报告</title></head>\n"
+            "<body><h1>上海天气报告</h1><p>当前气温 26°C，阵雨</p></body>\n"
+            "</html>\n"
+            "```"
+        )
+        messages = [
+            {"role": "user", "content": "生成一页的html报告"},
+            {"role": "assistant", "content": html_code}
+        ]
+        telemetry = TelemetryStats()
+        policy = RuntimePolicy()
+        final_text, healed = _finalize_agent_text(
+            reply_text=html_code,
+            messages=messages,
+            model="mock",
+            policy=policy,
+            deadline=None,
+            is_guide_intent=False,
+            executed_calls_history=[],
+            was_token_truncated=False,
+            telemetry=telemetry,
+            last_user_prompt="生成一页的html报告"
+        )
+        self.assertIn("```html", final_text)
+        self.assertIn("上海天气报告", final_text)
+        self.assertNotIn("上游模型未返回有效回复内容", final_text)
+
+    def test_export_html_recovers_from_session_history_on_hollow_claim(self):
+        """验证当模型给出空 bash 代码块与口头虚假交付时，ArtifactExporter 利用会话历史恢复编译单页 HTML"""
+        hollow_reply = "```bash\n\n```\n\n文件已成功写入 `/workspace/index.html`。"
+        history = [
+            {"role": "user", "content": "查看上海的天气"},
+            {
+                "role": "assistant",
+                "content": "根据实时气象数据，上海当前天气状况如下：\n\n**☀️ 上海实时天气 (2026-09-27 18:46)**\n- **气温**：26°C（体感 30°C）\n- **状况**：阵雨\n- **湿度**：91%\n\n未来三天持续降雨。"
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmp_ws:
+            final_text, exported = ArtifactExporter.export_html(
+                final_text=clean_output(hollow_reply),
+                is_ppt_intent=False,
+                workspace_dir=tmp_ws,
+                prompt="生成一页的html报告",
+                history=history
+            )
+            self.assertEqual(len(exported), 1)
+            out_file = Path(exported[0])
+            self.assertTrue(out_file.exists())
+            self.assertEqual(out_file.name, "index.html")
+            content = out_file.read_text(encoding="utf-8")
+            self.assertIn("<!doctype html>", content.lower())
+            self.assertIn("上海实时天气", content)
+            self.assertIn("26°C", content)
+            # 确认最终回复被挂载了交互预览卡片与注入的 HTML 源码
+            self.assertIn("✨ **交互式页面已生成完毕！**", final_text)
+            self.assertIn("```html", final_text)
+            self.assertNotIn("```bash", final_text)
+
+    def test_clean_output_strips_empty_command_blocks(self):
+        """验证 clean_output 彻底清除模型输出的空 bash / sh / json 代码块"""
+        raw = "```bash\n\n```\n\n文件已准备就绪。"
+        cleaned = clean_output(raw)
+        self.assertNotIn("```bash", cleaned)
+        self.assertIn("文件已准备就绪。", cleaned)
 
 
 if __name__ == "__main__":
     unittest.main()
-
-
-

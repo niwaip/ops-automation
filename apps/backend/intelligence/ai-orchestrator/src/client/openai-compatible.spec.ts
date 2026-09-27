@@ -63,7 +63,8 @@ describe('OpenAICompatibleClient', () => {
             content: '甲方是ABC公司',
           },
         ],
-      })
+      }),
+      expect.objectContaining({ timeout: 90000 })
     );
   });
 
@@ -107,7 +108,8 @@ describe('OpenAICompatibleClient', () => {
         model: 'MiniMax-M3',
         messages: [{ role: 'user', content: 'hello' }],
         thinking: { type: 'adaptive' },
-      })
+      }),
+      expect.objectContaining({ timeout: 90000 })
     );
     expect(postMock.mock.calls[0][1]).not.toHaveProperty('reasoning_effort');
   });
@@ -153,7 +155,8 @@ describe('OpenAICompatibleClient', () => {
         enable_thinking: false,
         response_format: { type: 'json_object' },
         max_tokens: 4000,
-      })
+      }),
+      expect.objectContaining({ timeout: 90000 })
     );
     expect(result).toMatchObject({
       content: '{"markdown_content":"摘要"}',
@@ -188,7 +191,8 @@ describe('OpenAICompatibleClient', () => {
       '/chat/completions',
       expect.objectContaining({
         max_tokens: 6000,
-      })
+      }),
+      expect.objectContaining({ timeout: 90000 })
     );
     expect(postMock.mock.calls[0][1].reasoning).toBeUndefined();
   });
@@ -329,5 +333,72 @@ describe('OpenAICompatibleClient', () => {
     expect(collectedChunks.join('')).toBe(
       '<!DOCTYPE html>\n<meta name="viewport" content="width=device-width" />'
     );
+  });
+
+  it('aborts a stream only after the configured period without upstream events', async () => {
+    const client = new OpenAICompatibleClient({
+      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai',
+      apiKey: 'test-key',
+      model: 'gemini-3.7-flash',
+    });
+    const mockStream = new EventEmitter();
+    (mockStream as any).destroy = jest.fn();
+    (client as any).client.post = jest.fn().mockResolvedValue({ data: mockStream, headers: {} });
+
+    await expect(
+      client.chatCompletionStream(
+        {
+          messages: [{ role: 'user', content: 'generate a long page' }],
+          timeoutMs: 30_000,
+          streamIdleTimeoutMs: 10,
+        },
+        () => undefined
+      )
+    ).rejects.toThrow('Stream idle timeout: no upstream event for 10ms');
+    expect((mockStream as any).destroy).toHaveBeenCalled();
+  });
+
+  it('streams reasoning_content chunk through onChunk metadata', async () => {
+    const client = new OpenAICompatibleClient({
+      baseURL: 'https://api.deepseek.com/v1',
+      apiKey: 'test-key',
+      model: 'deepseek-reasoner',
+    });
+    const mockStream = new EventEmitter();
+    (client as any).client.post = jest.fn().mockResolvedValue({ data: mockStream, headers: {} });
+
+    const collectedMeta: any[] = [];
+    const collectedContent: string[] = [];
+
+    const streamPromise = client.chatCompletionStream(
+      [{ role: 'user', content: 'solve math problem' }],
+      (content, meta) => {
+        collectedContent.push(content);
+        collectedMeta.push(meta);
+      }
+    );
+
+    setImmediate(() => {
+      mockStream.emit(
+        'data',
+        Buffer.from(
+          `data: {"choices":[{"delta":{"reasoning_content":"Thinking step 1..."},"finish_reason":null}]}\n\n`
+        )
+      );
+      mockStream.emit(
+        'data',
+        Buffer.from(
+          `data: {"choices":[{"delta":{"content":"Final Answer 42"},"finish_reason":"stop"}]}\n\n`
+        )
+      );
+      mockStream.emit('data', Buffer.from(`data: [DONE]\n\n`));
+      mockStream.emit('end');
+    });
+
+    const result = await streamPromise;
+    expect(result.content).toBe('Final Answer 42');
+    expect(collectedMeta[0].reasoning_content).toBe('Thinking step 1...');
+    expect(collectedContent[0]).toBe('');
+    expect(collectedContent[1]).toBe('Final Answer 42');
   });
 });

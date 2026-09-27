@@ -1,17 +1,26 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { DeterministicPlanGeneratorService } from './deterministic-plan-generator.service';
 import type { GenerateDeterministicPlanRequestDto } from './deterministic-plan-generator.types';
 
 @Controller('ai/plans/deterministic')
 export class DeterministicPlanController {
+  private readonly logger = new Logger(DeterministicPlanController.name);
+
   constructor(private readonly generatorService: DeterministicPlanGeneratorService) {}
 
   @Post('generate')
   @HttpCode(HttpStatus.OK)
   async generate(@Body() dto: GenerateDeterministicPlanRequestDto) {
+    if (!dto?.userRequest) {
+      throw new BadRequestException({
+        code: 'INVALID_REQUEST',
+        message: 'userRequest is required',
+      });
+    }
     try {
       return await this.generatorService.generatePlan(dto);
     } catch (err: any) {
+      this.logger.error(`Failed to generate deterministic plan: ${err.message}`, err.stack);
       if (err.code === 'CAPABILITY_NOT_FOUND') {
         throw new NotFoundException({
           code: 'CAPABILITY_NOT_FOUND',

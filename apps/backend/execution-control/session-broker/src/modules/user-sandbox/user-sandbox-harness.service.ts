@@ -199,6 +199,10 @@ export class UserSandboxHarnessService {
       history?: Array<{ role: string; content: string }>;
       timeoutMs?: number;
       files?: string[];
+      waitTimeoutSeconds?: number;
+      thinking?: boolean;
+      reasoningEffort?: string;
+      onWaiting?: (waitedMs: number) => void;
       onStdoutChunk?: (chunk: string) => void;
     },
     customExecutor?: SandboxExecutorFn
@@ -231,6 +235,16 @@ export class UserSandboxHarnessService {
     if (options?.research) {
       dshCmd.push('--research');
     }
+    if (options?.thinking !== undefined) {
+      if (options.thinking) {
+        dshCmd.push('--thinking');
+      } else {
+        dshCmd.push('--no-thinking');
+      }
+    }
+    if (options?.reasoningEffort) {
+      dshCmd.push('--reasoning-effort', options.reasoningEffort);
+    }
     if (options?.model) {
       dshCmd.push('--model', options.model);
     }
@@ -250,9 +264,20 @@ export class UserSandboxHarnessService {
     let lockToken: string | null = null;
     if (this.lockService) {
       const ttlSeconds = Math.ceil(timeoutMs / 1000) + 15;
-      const lockResult = await this.lockService.acquireSandboxLock(sanitizedUserId, ttlSeconds);
+      const waitTimeoutSeconds =
+        typeof options?.waitTimeoutSeconds === 'number'
+          ? options.waitTimeoutSeconds
+          : 35;
+      const lockResult = await this.lockService.acquireSandboxLock(
+        sanitizedUserId,
+        ttlSeconds,
+        waitTimeoutSeconds,
+        options?.onWaiting
+      );
       if (!lockResult.success) {
-        throw new ConflictException(`该用户的个人沙箱当前正在执行其他任务，请稍后再试`);
+        throw new ConflictException(
+          `个人沙箱正在执行前序任务，排队等待超时（${waitTimeoutSeconds}秒）。请稍候再试，或在前一会话中点击“停止”后再试。`
+        );
       }
       lockToken = lockResult.token;
     }

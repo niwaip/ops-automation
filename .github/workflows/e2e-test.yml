@@ -57,15 +57,15 @@ jobs:
 
       - name: Setup database schema
         run: |
-          psql -h localhost -U ops -d ops -f docker/sql/migrations/001_init.sql
+          pnpm --filter @ops/platform exec prisma migrate deploy
         env:
-          PGPASSWORD: ops_secret
+          DATABASE_URL: postgresql://ops:ops_secret@localhost:5432/ops
 
       - name: Seed test data
         run: |
-          psql -h localhost -U ops -d ops -f docker/sql/seed.sql
+          pnpm --filter @ops/platform run seed
         env:
-          PGPASSWORD: ops_secret
+          DATABASE_URL: postgresql://ops:ops_secret@localhost:5432/ops
 
       - name: Build services
         run: pnpm build || exit 0

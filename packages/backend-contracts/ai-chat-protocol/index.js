@@ -11,6 +11,7 @@ exports.CHAT_CHANNEL_TYPE = {
 };
 exports.CHAT_TASK_STATUS = {
     RUNNING: 'running',
+    QUEUED: 'queued',
     WAITING_INPUT: 'waiting_input',
     PENDING_APPROVAL: 'pending_approval',
     HUMAN_CONTROL: 'human_control',

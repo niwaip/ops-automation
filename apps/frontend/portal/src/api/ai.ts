@@ -44,6 +44,12 @@ export interface AIModelConfig {
   routing_preferences?: {
     prefer_for_code?: boolean;
   };
+  supports_reasoning?: boolean;
+  reasoning_effort?: 'low' | 'medium' | 'high';
+  reasoning?: {
+    enabled?: boolean;
+    effort?: 'low' | 'medium' | 'high';
+  };
   [key: string]: unknown;
 }
 

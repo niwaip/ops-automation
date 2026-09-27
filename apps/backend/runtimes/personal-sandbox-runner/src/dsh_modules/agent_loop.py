@@ -24,6 +24,17 @@ from .llm import (
     detect_unexecuted_script_leak
 )
 from .config import WORKSPACE_DIR, KNOWLEDGE_DIR
+from .action_protocol import (
+    is_internal_plan_output,
+    recover_text_tool_calls,
+    has_explicit_reminder_intent,
+    has_explicit_reminder_time,
+)
+from .deliverable_contract import (
+    materialize_requested_markdown,
+    requests_markdown_artifact,
+    unwrap_outer_markdown_fence,
+)
 
 
 CLAIM_PATTERNS = [
@@ -35,8 +46,10 @@ CLAIM_PATTERNS = [
 
 DELIVERABLE_EXTS = {
     ".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt", ".pdf",
-    ".html", ".csv", ".json", ".py", ".sh", ".txt", ".png", ".jpg"
+    ".html", ".csv", ".json", ".md", ".py", ".sh", ".txt", ".png", ".jpg"
 }
+
+MAX_AGENT_ROUNDS_HARD_CEILING = 4
 
 
 def is_unclosed_or_truncated_html(text: str) -> bool:
@@ -63,7 +76,8 @@ def is_unclosed_or_truncated_html(text: str) -> bool:
 def detect_missing_claimed_artifacts(
     text: str,
     is_generate_intent: bool = False,
-    is_inspect_intent: bool = False
+    is_inspect_intent: bool = False,
+    turn_start_time: Optional[float] = None,
 ) -> List[str]:
     """
     Detects if the model claimed in text to have generated or outputted deliverable files
@@ -73,13 +87,22 @@ def detect_missing_claimed_artifacts(
     if not text or (is_inspect_intent and not is_generate_intent):
         return []
 
-    if not any(k in text for k in CLAIM_PATTERNS):
+    has_claim_pattern = any(k in text for k in CLAIM_PATTERNS) or bool(
+        re.search(
+            r'(?:已.{0,10}(?:生成|创建|保存|导出|写入|完成)|'
+            r'(?:生成|创建|保存|导出|写入|输出).{0,10}(?:完成|完毕|成功|文件|至|到)|'
+            r'文件名|文件路径|下载并在本地|文件信息|/workspace/|/knowledge/)',
+            text,
+            re.I
+        )
+    )
+    if not is_generate_intent and not has_claim_pattern:
         return []
 
-    # 提取被引号/书名号包裹的文件名（可包含空格）
-    quoted_pattern = r'(?:《|【|“|"|\'|`)([^《》【】“”"\'`\n\r]+?\.(?:docx?|xlsx?|pptx?|pdf|html|csv|json|py|sh|txt|png|jpg))(?:》|】|”|"|\'|`)'
+    # 提取被引号/书名号包裹的文件名（允许合理文件名，但不跨越冒号或整句命令提示）
+    quoted_pattern = r'(?:《|【|“|"|\'|`)([a-zA-Z0-9_\-\u4e00-\u9fa5\.\/ ]*?[a-zA-Z0-9_\-\u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|html|csv|json|md|py|sh|txt|png|jpg))(?:》|】|”|"|\'|`)'
     # 提取未带引号的文件名（以路径或空白/标点分隔，不含空格）
-    unquoted_pattern = r'(?:(?:/workspace/|/knowledge/)|(?:^|[\s，。！？；：\(\)\[\]（）]))([a-zA-Z0-9_\-\u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|html|csv|json|py|sh|txt|png|jpg))'
+    unquoted_pattern = r'(?:(?:/workspace/|/knowledge/|\./workspace/)|\b)([a-zA-Z0-9_\-\u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|html|csv|json|md|py|sh|txt|png|jpg))\b'
 
     found_names = re.findall(quoted_pattern, text) + re.findall(unquoted_pattern, text)
     if not found_names:
@@ -92,7 +115,10 @@ def detect_missing_claimed_artifacts(
         clean_name = name.strip()
         if not clean_name:
             continue
-        clean_name = re.sub(r'^(?:/workspace/|workspace/|/knowledge/|knowledge/)', '', clean_name)
+        clean_name = re.sub(r'^(?:\./|/)?(?:workspace/|knowledge/)?', '', clean_name)
+        if ":" in clean_name or "：" in clean_name:
+            clean_name = re.split(r'[:：]', clean_name)[-1].strip()
+        clean_name = re.sub(r'^(?:\./|/)?(?:workspace/|knowledge/)?', '', clean_name)
         for pfx in sorted(CLAIM_PATTERNS, key=len, reverse=True):
             if clean_name.startswith(pfx):
                 clean_name = clean_name[len(pfx):].strip()
@@ -113,6 +139,11 @@ def detect_missing_claimed_artifacts(
             (ws_file.exists() and ws_file.is_file() and ws_file.stat().st_size > 0) or
             (kn_file.exists() and kn_file.is_file() and kn_file.stat().st_size > 0)
         )
+        if exists_and_nonempty and is_generate_intent and turn_start_time is not None:
+            target_p = ws_file if (ws_file.exists() and ws_file.is_file()) else kn_file
+            if target_p.exists() and target_p.stat().st_mtime < turn_start_time - 2.0:
+                exists_and_nonempty = False
+
         if not exists_and_nonempty and clean_name not in missing:
             missing.append(clean_name)
 
@@ -160,12 +191,26 @@ def detect_missing_requested_deliverable(
     lower = user_prompt.lower()
 
     req_ext = None
-    if any(k in lower for k in ["生成pdf", "导出pdf", "转为pdf", "转成pdf", "生成一页的pdf", "生成一份pdf", "制作pdf", "导出为pdf", "做个pdf"]):
+    if (
+        re.search(r'(?:做成|制作|生成|导出|做个|建个|创建|转为|转成)[^，。\n]{0,8}(?:pdf)', lower) or
+        any(k in lower for k in ["生成pdf", "导出pdf", "转为pdf", "转成pdf", "生成一页的pdf", "生成一份pdf", "制作pdf", "导出为pdf", "做个pdf"])
+    ):
         req_ext = ".pdf"
-    elif any(k in lower for k in ["生成excel", "导出excel", "做成excel", "制作excel", "做个excel", "导出xlsx", "生成xlsx", "做个表", "生成表格"]):
+    elif (
+        re.search(r'(?:做成|制作|生成|导出|做个|建个|创建|整理成)[^，。\n]{0,8}(?:excel|xlsx|表格|表单)', lower) or
+        any(k in lower for k in ["生成excel", "导出excel", "做成excel", "制作excel", "做个excel", "导出xlsx", "生成xlsx", "做个表", "生成表格"])
+    ):
         req_ext = ".xlsx"
-    elif any(k in lower for k in ["生成word", "导出word", "做成word", "制作word", "做个word", "导出docx", "生成docx"]):
+    elif (
+        re.search(r'(?:做成|制作|生成|导出|做个|建个|创建|整理成)[^，。\n]{0,8}(?:word|docx|文档)', lower) or
+        any(k in lower for k in ["生成word", "导出word", "做成word", "制作word", "做个word", "导出docx", "生成docx"])
+    ):
         req_ext = ".docx"
+    elif (
+        re.search(r'(?:输出|生成|创建|导出|保存|写入|制作|做成)[^，。\n]{0,16}(?:\.md\b|\bmarkdown\b|\bmd\b)', lower, re.I) or
+        re.search(r'(?:\.md\b|\bmarkdown\b|\bmd\b)\s*(?:格式)?\s*文件', lower, re.I)
+    ):
+        req_ext = ".md"
     elif (
         any(k in lower for k in ["生成html", "导出html", "做成html", "制作html", "html报告", "生成网页", "做个网页", "生成单页", "网页游戏", "html游戏", "五子棋", "贪吃蛇", "原型", "看板", "大屏"]) or
         (any(v in lower for v in ["生成", "做个", "做成", "制作", "创建", "输出", "开发"]) and any(n in lower for n in ["网页", "单页", "html", "游戏", "页面"]))
@@ -363,7 +408,7 @@ def _extract_last_user_prompt(messages: List[Dict[str, Any]]) -> str:
         if isinstance(msg, dict) and msg.get("role") == "user":
             content = msg.get("content")
             if isinstance(content, str):
-                m_req = re.search(r'\[User Request\]:\s*\n([\s\S]*?)(?:\n\n\[|$)', content)
+                m_req = re.search(r'\[User Request\]:\s*\n([\s\S]*?)(?:\n\n(?:\[|【|---)|$)', content)
                 return m_req.group(1).strip() if m_req else content
             return ""
     return ""
@@ -378,33 +423,55 @@ def _check_no_tool_assertion_guard(
     is_guide_intent: bool,
     expected_deliverables: Optional[List[str]],
     is_generate_intent: bool,
-    is_inspect_intent: bool
+    is_inspect_intent: bool,
+    executed_calls_history: Optional[List[str]] = None,
+    guard_nudges_count: int = 0
 ) -> Tuple[str, Optional[str], int]:
     """
     Evaluates assertion guards when model returns text without tool calls.
     Returns: (action, guard_user_message, new_max_rounds)
       action: "continue" (add message and continue loop), "break" (stop loop), or "pass" (allow completion)
     """
-    # 1. 产物声称物理断言
+    # 普通问答只纠偏一次；明确的文件生成任务允许第二次、更加具体的落盘纠偏。
+    # 仍受全局硬轮次上限约束，避免小模型持续规划而不执行。
+    max_guard_nudges = 2 if is_generate_intent else 1
+    if guard_nudges_count >= max_guard_nudges or round_idx >= MAX_AGENT_ROUNDS_HARD_CEILING - 1:
+        return "pass", None, max_rounds
+
+    bumped_max_rounds = min(MAX_AGENT_ROUNDS_HARD_CEILING, max_rounds + 1)
+
+    # 0. 内部计划与伪工具调用拦截：模型仅输出未执行的计划草稿时引导执行
+    if not is_guide_intent and is_internal_plan_output(reply_text):
+        print("⚡ [Harness Plan Guard] 检测到内部执行草稿，正在引导模型调用工具或输出最终结果...", flush=True)
+        msg = (
+            "检测到当前输出仍为内部执行计划或草稿。若需进一步操作请发起对应工具调用；"
+            "若任务已完成，请直接输出最终的中文结论。"
+        )
+        return "continue", msg, bumped_max_rounds
+
+    # 1. 物理产物声称断言：模型声称生成了文件，但文件物理不存在
     if is_generate_intent or (not is_inspect_intent and not is_guide_intent):
         missing = detect_missing_claimed_artifacts(
             reply_text,
             is_generate_intent=is_generate_intent,
-            is_inspect_intent=is_inspect_intent
+            is_inspect_intent=is_inspect_intent,
+            turn_start_time=start_ts,
         )
-        if missing and (round_idx < max_rounds - 1 or max_rounds < 6):
-            if round_idx >= max_rounds - 1:
-                max_rounds = min(6, max_rounds + 2)
-            print(f"⚡ [Harness Artifact Assertion Guard] 检测到模型声称生成了文件 {missing}，但物理文件并不存在，正在强制拦截并引导执行工具落盘...", flush=True)
-            msg = f"【系统产物物理断言拦截】：你在回复中声称已生成或输出了文件 {', '.join(missing)}，但沙箱物理文件系统检查发现该文件并不存在！请立刻调用 bash 或相应工具实际执行代码或脚本生成该文件并落盘保存到工作区 (/workspace/)，严禁只在文本回复中口头声称！"
-            return "continue", msg, max_rounds
+        if missing:
+            print(f"⚡ [Harness Artifact Assertion Guard] 检测到模型声称生成了文件 {missing}，但物理文件并不存在，正在拦截引导落盘...", flush=True)
+            msg = (
+                f"【系统产物物理断言拦截】：你在回复中提及已生成或保存文件 {', '.join(missing)}，但当前沙箱物理文件并不存在，且未在回复中提供完整代码块。"
+                f"请立即调用 bash 执行代码将目标文件保存到 /workspace/ 路径下，或者直接在回复中以完整的代码块（如 ```html\\n<!DOCTYPE html>...\\n```）输出全部源码。严禁仅做口头汇报！"
+            )
+            return "continue", msg, bumped_max_rounds
 
     # 2. HTML 代码截断拦截
     if is_unclosed_or_truncated_html(reply_text):
         print("⚠️ [Harness HTML Truncation Guard] 检测到输出的 HTML 代码达到上限被截断，立即停止并由导出器安全闭合与明确告警...", flush=True)
         return "break", None, max_rounds
 
-    # 3. 物理交付物闭环校验
+    # 3. 契约交付物缺失断言：用户明确要求生成文件，但工作区尚未生成任何物理文件
+    has_valid_html = ("```html" in reply_text.lower()) and not is_unclosed_or_truncated_html(reply_text)
     if is_generate_intent or (not is_inspect_intent and not is_guide_intent):
         missing_deliverable = detect_missing_requested_deliverable(
             last_user_prompt,
@@ -413,46 +480,57 @@ def _check_no_tool_assertion_guard(
             is_generate_intent=is_generate_intent,
             is_inspect_intent=is_inspect_intent
         )
-        if not is_guide_intent and missing_deliverable and (round_idx < max_rounds - 1 or max_rounds < 6):
-            if round_idx >= max_rounds - 1:
-                max_rounds = min(6, max_rounds + 2)
-            print(f"⚡ [Harness Deliverable Assertion Guard] 检测到用户要求生成 {missing_deliverable} 交付物但沙箱尚未生成，正在强制拦截并引导执行工具落盘...", flush=True)
-            msg = (
-                f"【系统交付物断言拦截】：用户明确要求生成并输出 {missing_deliverable} 文件，当前回复仅提供了文本说明，"
-                f"沙箱工作区 (/workspace/) 中尚未生成任何 {missing_deliverable} 物理文件！"
-                f"请立即调用 bash 工具执行 Python 脚本（使用对应预装库如 fpdf2/python-docx/openpyxl），"
-                f"将上述内容生成并落盘保存到 /workspace/ 路径下，然后再向用户汇报完成！"
-            )
-            return "continue", msg, max_rounds
+        if not is_guide_intent and missing_deliverable:
+            if missing_deliverable == ".html" and has_valid_html:
+                missing_deliverable = None
+            if missing_deliverable:
+                print(f"⚡ [Harness Deliverable Assertion Guard] 检测到用户要求生成 {missing_deliverable} 交付物但沙箱尚未生成，正在引导执行工具落盘...", flush=True)
+                msg = (
+                    f"【系统交付物检查】：用户要求生成 {missing_deliverable} 文件（用户原始指令：『{last_user_prompt}』），当前工作区 (/workspace/) 中尚未检测到该物理文件。"
+                    f"请立即调用 bash 将完整可运行内容写入 /workspace/，或直接在回复中以完整的代码块（如 ```html\n<!DOCTYPE html>...\n```）输出全部源码；不要继续输出功能规划、架构说明、伪代码，"
+                    f"不要要求用户再次确认或回复‘提供完整代码’。严禁仅做口头汇报！"
+                )
+                return "continue", msg, bumped_max_rounds
 
     # 4. 行动垫话拦截
-    if not is_guide_intent and is_promising_action(reply_text) and (round_idx < max_rounds - 1 or max_rounds < 6):
-        if round_idx >= max_rounds - 1:
-            max_rounds = min(6, max_rounds + 2)
+    if not is_guide_intent and is_promising_action(reply_text):
         print("⚡ [Harness Action Nudge] 检测到模型表达了后续执行意图但遗漏了工具调用，正在提醒模型执行工具...", flush=True)
-        msg = "你刚才提出了具体的行动方案，请立刻使用对应的工具函数（如 bash 或 web_search）实际执行该操作，不要仅输出口头承诺！"
-        return "continue", msg, max_rounds
+        msg = "你提出了具体的行动计划，请直接使用工具函数实际执行该操作，不要仅输出口头承诺。"
+        return "continue", msg, bumped_max_rounds
 
     # 5. 消极推诿拦截
-    if not is_guide_intent and detect_passive_deflection(reply_text) and (round_idx < max_rounds - 1 or max_rounds < 6):
-        if round_idx >= max_rounds - 1:
-            max_rounds = min(6, max_rounds + 2)
-        print("⚡ [Harness Anti-Deflection Guard] 检测到模型在技术查阅任务中消极推诿向用户索要链接/上下文，正在强制拦截并引导调用工具执行...", flush=True)
-        msg = "【系统行动指令拦截】：沙箱配备了完整的联网检索（web_search）与系统终端（bash）工具。严禁向用户索取链接或推诿要求更多上下文！请立即调用 web_search 搜索该技术项目、关键词或官方资料，或调用 bash 探测沙箱环境！"
-        return "continue", msg, max_rounds
+    if not is_guide_intent and detect_passive_deflection(reply_text):
+        print("⚡ [Harness Anti-Deflection Guard] 检测到消极推诿向用户索要链接/上下文，正在引导调用工具执行...", flush=True)
+        msg = "沙箱配备了完整的联网检索与系统终端工具，请直接调用相关工具探测解决，严禁推诿索取信息。"
+        return "continue", msg, bumped_max_rounds
 
-    # 6. 未执行脚本泄漏拦截
-    if not is_guide_intent and not is_explicit_code_request(last_user_prompt) and detect_unexecuted_script_leak(reply_text) and (round_idx < max_rounds - 1 or max_rounds < 6):
-        if round_idx >= max_rounds - 1:
-            max_rounds = min(6, max_rounds + 2)
-        print("⚡ [Harness Code Output Guard] 检测到模型直接输出了未执行的代码脚本或文件写入命令，正在强制拦截并引导执行工具落盘...", flush=True)
+    # 6. 未执行脚本泄漏拦截（若已提供完整合法 HTML 交付物则放行至导出器落盘与挂载）
+    if not is_guide_intent and not is_explicit_code_request(last_user_prompt) and not has_valid_html and detect_unexecuted_script_leak(reply_text):
+        print("⚡ [Harness Code Output Guard] 检测到模型直接输出了未执行的代码脚本或文件写入命令，正在引导执行工具落盘...", flush=True)
+        msg = "检测到你输出了未执行的代码脚本或文件写入命令。请调用 bash 工具在终端实际运行脚本完成落盘，然后再向用户汇报完成。"
+        return "continue", msg, bumped_max_rounds
+
+    # 7. 提醒虚假创建断言拦截 (Reminder Assertion Guard)
+    reminder_claims = [
+        "已为您成功创建", "已成功创建日程", "已成功设置提醒", "已为您设置提醒",
+        "已添加提醒", "已成功记录提醒", "写入日程库", "已创建提醒", "已为您定好提醒",
+        "已成功创建提醒", "成功创建提醒"
+    ]
+    has_reminder_claim = any(c in reply_text for c in reminder_claims)
+    user_wants_reminder = has_explicit_reminder_intent(last_user_prompt)
+    has_time_in_user_prompt = bool(re.search(
+        r'(\d+\s*[点时分秒号日周天月年]|明天|后天|大后天|下周|今晚|早上|中午|下午|晚上|半小时|一小时|\d+\s*小时后|\d+\s*分钟后|工作日|每天|每周|每月|准时|到点)',
+        last_user_prompt
+    ))
+    executed = executed_calls_history or []
+    has_executed_reminder = any("create_reminders" in call for call in executed)
+    if user_wants_reminder and has_time_in_user_prompt and has_reminder_claim and not has_executed_reminder:
+        print("⚡ [Harness Reminder Assertion Guard] 检测到模型口头声称已创建提醒但未调用 create_reminders 工具，正在引导调用工具...", flush=True)
         msg = (
-            "【系统执行指令拦截】：检测到你直接向用户输出了未执行的代码脚本、长篇源码或伪工具写入命令（如 write_file/cat/代码块）！"
-            "在当前沙箱环境中，除非用户明确要求查看代码，严禁直接向页面返回代码！"
-            "你必须立即调用 bash 工具在 Linux 终端实际执行命令或运行脚本，将目标文件生成/修改并落盘保存到工作区（例如 /workspace/ 相应路径），"
-            "然后再向用户汇报完成！"
+            "【系统提醒检查】：检测到口头声称已创建提醒，但沙箱中未调用 `create_reminders` 工具。"
+            "口头文字回复无法写入系统数据库与推送通知，请通过 Function Calling 协议调用 `create_reminders` 工具创建真实的系统提醒。"
         )
-        return "continue", msg, max_rounds
+        return "continue", msg, bumped_max_rounds
 
     return "pass", None, max_rounds
 
@@ -467,7 +545,8 @@ def _dispatch_tool_calls(
     outbound_files: List[str],
     deadline: Optional[float],
     is_guide_intent: bool,
-    outbound_reminders: Optional[List[str]] = None
+    outbound_reminders: Optional[List[str]] = None,
+    last_user_prompt: Optional[str] = None
 ) -> bool:
     """
     Executes a round of structured tool calls with safety checks and appends tool responses to messages.
@@ -526,8 +605,44 @@ def _dispatch_tool_calls(
                 })
                 continue
 
+        mutating_reminder_tools = {
+            "create_reminders", "create_reminder", "set_reminder", "set_reminders",
+            "add_reminder", "add_reminders", "remind", "reminder",
+            "update_reminder", "update_reminders", "delete_reminder", "delete_reminders"
+        }
+        if t_name in mutating_reminder_tools:
+            if not has_explicit_reminder_intent(last_user_prompt):
+                print(f"🛡️ [Harness Safety Guard] 绝对阻断未授权的副作用提醒工具调用: {t_name}", flush=True)
+                tool_res = (
+                    "【系统安全拦截】：用户当前提问并非设置或管理提醒的明确意图。沙箱严禁在未获明确授权时执行副作用提醒工具！"
+                    "请直接向用户回复正文内容，不要调用提醒工具。"
+                )
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": t_id,
+                    "name": t_name,
+                    "content": tool_res
+                })
+                continue
+            create_reminder_tools = {
+                "create_reminders", "create_reminder", "set_reminder", "set_reminders",
+                "add_reminder", "add_reminders", "remind", "reminder",
+            }
+            if t_name in create_reminder_tools and not has_explicit_reminder_time(last_user_prompt):
+                print(f"🛡️ [Harness Safety Guard] 阻断缺少用户时间依据的提醒创建: {t_name}", flush=True)
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": t_id,
+                    "name": t_name,
+                    "content": "【系统安全拦截】：用户没有提供提醒时间或周期。请只追问必要时间，不得猜测并创建提醒。"
+                })
+                continue
+
         call_sig = f"{t_name}:{json.dumps(t_params, sort_keys=True, ensure_ascii=False)}"
-        is_idempotent_read = t_name in ("read_skill", "read_workspace_file", "weather")
+        is_idempotent_read = t_name in (
+            "read_skill", "read_workspace_file", "weather",
+            "web_search", "fetch_page", "scan_knowledge", "read_file"
+        )
         threshold = 1 if is_idempotent_read else 2
         if executed_calls_history.count(call_sig) >= threshold:
             print(f"⚠️ [Harness Loop Intercept] 工具 [{t_name}] 已重复调用，主动阻断死循环", flush=True)
@@ -542,14 +657,15 @@ def _dispatch_tool_calls(
             outbound_files.append(m.strip())
 
         if outbound_reminders is not None:
-            for m, _, _ in extract_dsh_markers(tool_res, "REMINDER_CREATE"):
-                outbound_reminders.append(m.strip())
+            for tag in ("REMINDER_CREATE", "REMINDER_UPDATE", "REMINDER_DELETE"):
+                for m, _, _ in extract_dsh_markers(tool_res, tag):
+                    outbound_reminders.append(m.strip())
 
         if t_name.lower() in ["send_file", "send_workspace_file", "send_to_user", "send_to_wechat"]:
             is_file_sent = True
 
         clipped_tool_res = ContextBudget.clip_tool_result(tool_res, max_chars=policy.max_tool_result_chars)
-        clean_tool_res = strip_dsh_markers(clipped_tool_res, ["REMINDER_CREATE"]).strip()
+        clean_tool_res = strip_dsh_markers(clipped_tool_res, ["REMINDER_CREATE", "REMINDER_UPDATE", "REMINDER_DELETE"]).strip()
         messages.append({
             "role": "tool",
             "tool_call_id": t_id,
@@ -601,15 +717,24 @@ def _finalize_agent_text(
     """Finalizes agent text, requesting forced summary if needed and applying fallback reports."""
     has_pending_tool_calls = bool(parse_tool_calls(reply_text, is_guide=is_guide_intent))
     final_text = clean_output(reply_text, is_guide=is_guide_intent)
+    has_internal_plan = is_internal_plan_output(reply_text)
+
+    healed_files: List[str] = []
+    has_valid_html = ("```html" in final_text.lower()) and not is_unclosed_or_truncated_html(final_text)
+    is_hollow_claim = (
+        len(final_text.strip()) < 120 and
+        not has_valid_html and
+        bool(re.search(r'(?:文件|代码|报告)?已成功(?:生成|写入|保存|导出)', final_text))
+    )
 
     is_transitional_filler = (
         len(final_text) < 120 and
-        (any(kw in final_text for kw in ACTION_FILLER_KEYWORDS) or is_promising_action(reply_text))
+        (any(kw in final_text for kw in ACTION_FILLER_KEYWORDS) or is_promising_action(reply_text) or is_hollow_claim)
     )
     has_raw_dsml = bool(re.search(r'<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}', reply_text))
     has_raw_tool = bool(re.search(r'<(?:tool_call|tool_calls)', reply_text))
 
-    if has_pending_tool_calls or not final_text or is_transitional_filler or has_raw_dsml or has_raw_tool:
+    if has_pending_tool_calls or not final_text or is_transitional_filler or has_raw_dsml or has_raw_tool or has_internal_plan:
         messages.append({"role": "assistant", "content": reply_text or None})
         messages.append({
             "role": "user",
@@ -620,7 +745,8 @@ def _finalize_agent_text(
                 messages,
                 model,
                 timeout=policy.single_request_timeout,
-                deadline=deadline
+                deadline=deadline,
+                policy=policy
             )
             telemetry.record_llm_response(forced_res, is_first_round=False)
             forced_reply = forced_res.get("content", "") if isinstance(forced_res, dict) else str(forced_res)
@@ -629,24 +755,49 @@ def _finalize_agent_text(
                 len(forced_clean) < 120 and
                 (any(kw in forced_clean for kw in ACTION_FILLER_KEYWORDS) or is_promising_action(forced_reply))
             )
-            if forced_clean and not is_still_filler:
+            if forced_clean and not is_still_filler and not is_internal_plan_output(forced_clean):
                 final_text = forced_clean
-            elif is_transitional_filler:
+            elif is_transitional_filler or has_internal_plan:
                 final_text = ""
         except TimeoutError:
             raise
         except Exception:
-            if is_transitional_filler:
+            if is_transitional_filler or has_internal_plan:
                 final_text = ""
 
     is_terminal_filler = (
         len(final_text) < 120 and
-        (any(kw in final_text for kw in ACTION_FILLER_KEYWORDS) or is_promising_action(final_text))
+        (any(kw in final_text for kw in ACTION_FILLER_KEYWORDS) or is_promising_action(final_text) or is_hollow_claim)
     )
-    if not final_text or is_terminal_filler:
+    if not final_text or is_terminal_filler or is_internal_plan_output(final_text):
         if deadline is not None and time.monotonic() >= deadline:
             raise TimeoutError(f"Task total execution deadline ({policy.total_task_timeout}s) exceeded")
-        final_text = _build_fallback_report(messages, executed_calls_history)
+
+        html_cues = ["html", "网页", "单页", "报告", "大屏", "看板"]
+        has_html_req = any(cue in (last_user_prompt or "").lower() for cue in html_cues)
+        if has_html_req:
+            try:
+                from .html_report_fallback import materialize_html_report_fallback
+                fallback_path = materialize_html_report_fallback(
+                    prompt=last_user_prompt,
+                    history=messages,
+                    workspace_dir=WORKSPACE_DIR,
+                    notice="本单页报告由系统基于会话中有效内容恢复生成，支持交互预览与全屏查看。"
+                )
+                if fallback_path and Path(fallback_path).exists():
+                    file_content = Path(fallback_path).read_text(encoding="utf-8")
+                    final_text = (
+                        "✨ **单页 HTML 报告已由系统基于会话内容自动整理生成！**\n"
+                        f"- **输出文件**：`/workspace/{Path(fallback_path).name}`\n"
+                        "- **操作提示**：您可以在下方直接**展开在线预览**、**全屏查看**，或点击**下载**保存本地使用。\n\n"
+                        f"```html\n{file_content}\n```"
+                    )
+                    healed_files.append(fallback_path)
+            except Exception as e:
+                print(f"⚠️ [Harness Agent Loop] 自动编译单页 HTML 失败: {e}")
+
+        if not final_text or is_terminal_filler or is_internal_plan_output(final_text):
+            final_text = _build_fallback_report(messages, executed_calls_history)
 
     if was_token_truncated and "```html" not in final_text and not is_unclosed_or_truncated_html(final_text):
         truncation_suffix = (
@@ -658,13 +809,17 @@ def _finalize_agent_text(
         if "输出截断提醒" not in final_text:
             final_text += truncation_suffix
 
-    healed_files: List[str] = []
     if not is_guide_intent and not is_explicit_code_request(last_user_prompt):
-        final_text, healed_files = auto_heal_unexecuted_file_writes(final_text, WORKSPACE_DIR)
-        if healed_files:
+        final_text, extra_healed = auto_heal_unexecuted_file_writes(final_text, WORKSPACE_DIR)
+        healed_files.extend(extra_healed)
+        has_valid_html_final = ("```html" in final_text.lower()) and not is_unclosed_or_truncated_html(final_text)
+        if extra_healed:
             sys.stdout.write("<<<DSH_DELTA_RESET>>>\n")
             sys.stdout.write(f"<<<DSH_DELTA:{json.dumps(final_text, ensure_ascii=False)}>>>\n")
             sys.stdout.flush()
+        elif not has_valid_html_final and detect_unexecuted_script_leak(final_text):
+            print("⚠️ [Harness Script Leak Guard] 检测到模型输出了未执行的脚本回显且未能自愈，触发安全兜底...", flush=True)
+            final_text = _build_fallback_report(messages, executed_calls_history)
 
     return final_text, healed_files
 
@@ -692,11 +847,17 @@ def run_agent_loop(
     was_token_truncated = False
     start_ts = turn_start_time if turn_start_time is not None else time.time()
     last_user_prompt = _extract_last_user_prompt(messages)
+    guard_nudges_count = 0
+    max_rounds = min(max_rounds, MAX_AGENT_ROUNDS_HARD_CEILING)
 
     round_idx = 0
     while round_idx < max_rounds:
         if round_idx > 0:
             print(f"⏳ [Harness Agent] 正在根据执行结果汇总交付物 (第 {round_idx + 1} 轮)...", flush=True)
+            # 用户硬规则：执行阶段不要思考
+            if getattr(policy, "thinking", False):
+                policy.thinking = False
+                policy.reasoning_effort = None
         if deadline is not None and deadline - time.monotonic() <= 0:
             print(f"⚠️ [Harness Timeout] 总任务执行已达到硬截止时间 ({policy.total_task_timeout}s)，立即终止", flush=True)
             raise TimeoutError(f"Task total execution deadline ({policy.total_task_timeout}s) exceeded")
@@ -706,7 +867,8 @@ def run_agent_loop(
             model,
             tools=active_tools,
             timeout=policy.single_request_timeout,
-            deadline=deadline
+            deadline=deadline,
+            policy=policy
         )
         reply_text = llm_res.get("content", "") if isinstance(llm_res, dict) else str(llm_res)
         structured_calls = list(llm_res.get("tool_calls", [])) if isinstance(llm_res, dict) else []
@@ -719,18 +881,66 @@ def run_agent_loop(
         if not structured_calls and reply_text:
             legacy_calls = parse_tool_calls(reply_text, is_guide=is_guide_intent)
             if legacy_calls:
+                has_reminder_intent = has_explicit_reminder_intent(last_user_prompt)
                 for i, lc in enumerate(legacy_calls):
+                    raw_c_name = str(lc.get("name", "")).strip()
+                    c_name = re.sub(r'^[a-zA-Z0-9_\-]+[:.]', '', raw_c_name).lower()
+                    if c_name == "search_web":
+                        c_name = "web_search"
+                    if c_name in (
+                        "create_reminders", "create_reminder", "set_reminder", "set_reminders",
+                        "add_reminder", "add_reminders", "remind", "reminder",
+                        "update_reminders", "delete_reminders"
+                    ):
+                        if not has_reminder_intent:
+                            print(f"⚠️ [Harness Security Guard] 过滤未授权的文本/旧协议提醒工具调用: {raw_c_name}", flush=True)
+                            continue
                     structured_calls.append({
                         "id": f"call_legacy_{round_idx}_{i}",
                         "type": "function",
                         "function": {
-                            "name": lc["name"],
+                            "name": c_name or raw_c_name,
                             "arguments": json.dumps(lc.get("params", {}), ensure_ascii=False)
                         }
                     })
 
+        # 小模型协议适配：恢复明确计划中的安全只读调用，以及参数受限的 Markdown 写入调用。
+        # bash 等通用可变更工具不会通过此路径自动执行。
+        if not structured_calls and reply_text:
+            structured_calls = recover_text_tool_calls(
+                reply_text,
+                user_prompt=last_user_prompt,
+                round_idx=round_idx,
+            )
+            if structured_calls:
+                print(
+                    "⚡ [Harness Protocol Recovery] 已将小模型文本动作转换为受控结构化工具调用...",
+                    flush=True,
+                )
+
         # 若当轮无任何工具调用
         if not structured_calls:
+            # Markdown 是声明式产物：当模型已经给出完整正文时，由运行时安全编译落盘，
+            # 不再要求小模型拼接 bash/heredoc 命令。
+            markdown_path, created_now = materialize_requested_markdown(
+                last_user_prompt,
+                reply_text,
+                WORKSPACE_DIR,
+                turn_start_time=start_ts,
+            )
+            if markdown_path:
+                outbound_payload = json.dumps(
+                    {"filePath": markdown_path, "fileName": Path(markdown_path).name},
+                    ensure_ascii=False,
+                )
+                if outbound_payload not in outbound_files:
+                    outbound_files.append(outbound_payload)
+                if created_now:
+                    print(
+                        f"✨ [Harness Artifact Compiler] 已将最终正文编译为 Markdown 文件: {markdown_path}",
+                        flush=True,
+                    )
+
             action, guard_msg, max_rounds = _check_no_tool_assertion_guard(
                 reply_text=reply_text,
                 last_user_prompt=last_user_prompt,
@@ -740,9 +950,12 @@ def run_agent_loop(
                 is_guide_intent=is_guide_intent,
                 expected_deliverables=expected_deliverables,
                 is_generate_intent=is_generate_intent,
-                is_inspect_intent=is_inspect_intent
+                is_inspect_intent=is_inspect_intent,
+                executed_calls_history=executed_calls_history,
+                guard_nudges_count=guard_nudges_count
             )
             if action == "continue":
+                guard_nudges_count += 1
                 messages.append({"role": "assistant", "content": reply_text})
                 messages.append({"role": "user", "content": guard_msg})
                 round_idx += 1
@@ -775,8 +988,34 @@ def run_agent_loop(
             outbound_files=outbound_files,
             deadline=deadline,
             is_guide_intent=is_guide_intent,
-            outbound_reminders=outbound_reminders
+            outbound_reminders=outbound_reminders,
+            last_user_prompt=last_user_prompt
         )
+
+        # A weather lookup already returns current conditions plus forecast, and a successful
+        # reminder mutation may not be repeated. Remove only these single-use capabilities
+        # from later rounds. Search/read tools remain available because different arguments
+        # can represent legitimate multi-step research.
+        single_use_tools = {
+            "weather",
+            "create_reminders",
+            "create_reminder",
+            "update_reminder",
+            "update_reminders",
+            "delete_reminder",
+            "delete_reminders",
+        }
+        executed_names = {
+            call_sig.split(":", 1)[0]
+            for call_sig in executed_calls_history
+            if ":" in call_sig
+        }
+        exhausted = single_use_tools.intersection(executed_names)
+        if exhausted:
+            active_tools = [
+                tool for tool in active_tools
+                if tool.get("function", {}).get("name") not in exhausted
+            ]
 
         # 当前轮次已执行工具，重置 reply_text，防止内部工具前置垫话或执行脚本残留进入最终回复
         reply_text = ""
@@ -810,9 +1049,31 @@ def run_agent_loop(
         telemetry=telemetry,
         last_user_prompt=last_user_prompt
     )
+    if requests_markdown_artifact(last_user_prompt):
+        final_text = unwrap_outer_markdown_fence(final_text)
     for hf in healed_files:
         if hf not in outbound_files:
             outbound_files.append(hf)
+
+    # 强制总结分支也可能首次产生可交付正文，因此在最终返回前再执行一次声明式产物编译。
+    markdown_path, created_now = materialize_requested_markdown(
+        last_user_prompt,
+        final_text,
+        WORKSPACE_DIR,
+        turn_start_time=start_ts,
+    )
+    if markdown_path:
+        outbound_payload = json.dumps(
+            {"filePath": markdown_path, "fileName": Path(markdown_path).name},
+            ensure_ascii=False,
+        )
+        if outbound_payload not in outbound_files:
+            outbound_files.append(outbound_payload)
+        if created_now:
+            print(
+                f"✨ [Harness Artifact Compiler] 已将最终正文编译为 Markdown 文件: {markdown_path}",
+                flush=True,
+            )
 
     return AgentLoopResult(
         final_text=final_text,

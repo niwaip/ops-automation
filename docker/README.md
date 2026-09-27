@@ -7,13 +7,13 @@ Docker 体系负责整个仓库的基础设施、后端服务及测试环境的�
 为了保持根目录整洁，Docker 目录采用以下标准结构：
 
 - **`compose/`**: 存放所有 `docker-compose.yml` 配置文件。
-- **`scripts/`**: 存放启动、停止及管理容器的脚本。
+- **`scripts/`**: 存放宿主机启动、停止及管理容器的统一脚本与校验门禁。
   - `smoke/`: 各层的冒烟测试脚本。
   - `v4/`: V4 架构分层校验及验收脚本。
-  - `utils/`: 辅助开发工具脚本（如 codegen, bootstrap）。
-- **`sql/`**: 数据库初始化及迁移脚本。
 - **`env/`**: 环境变量模板（`.env.example`）。
-- **`temporal/`**, **`browser-worker/`**, **`office-addin/`**, **`carbone-official/`**: 各特定服务的 Dockerfile 及私有配置。
+- **`browser-chrome/`**, **`temporal/`**, **`temporal-worker/`**, **`user-sandbox/`**, **`carbone-engine/`**, **`carbone-official/`**, **`office-addin/`**: 各特定独立服务的 Dockerfile 及私有配置。
+- **数据库资产说明**：数据库校验、种子快照及数据字典已统一定位至根目录 **`database/`** 进行全局治理。
+- **测试服务说明**：测试用 Mock 服务（如 `mock-ai-server`）统一收敛至根目录 **`tests/`**（与 `tests/mock-erp` 保持一致）。
 
 ## 核心入口
 
@@ -31,11 +31,11 @@ Docker 体系负责整个仓库的基础设施、后端服务及测试环境的�
 
 | 启动模式 | 典型命令 | 包含服务与职责 | 容器数 |
 | :--- | :--- | :--- | :--- |
-| **`dev`** (默认核心) | `./docker/start-smart.sh dev up -d` | 基础设施 (`postgres`, `redis`) + 核心控制 (`platform`, `session-broker`, `control-plane`, `ai-orchestrator`) + 核心前端 (`portal`, `user-web`) + 初始化 (`workspace-deps-init`) | **9 个** |
-| **`dev:browser`** | `./docker/start-smart.sh dev:browser up -d` | 核心栈 + 浏览器自动化 (`browser-worker`, `browser-chrome`, `browser-template`, `browser-semantics`) | 13 个 |
-| **`dev:workflow`** | `./docker/start-smart.sh dev:workflow up -d` | 核心栈 + Temporal 工作流引擎 (`temporal`, `temporal-ui`, `sandbox-worker`, `temporal-worker`) | 13 个 |
-| **`dev:doc`** | `./docker/start-smart.sh dev:doc up -d` | 核心栈 + 文档渲染与报表 (`carbone-engine`, `report`) | 11 个 |
-| **`dev:xiaozhi`** | `./docker/start-smart.sh dev:xiaozhi up -d` | 核心栈 + 小智语音接入通道 (`xiaozhi-connector`) | 10 个 |
+| **`dev`** (默认核心) | `./docker/start-smart.sh dev up -d` | 基础设施 (`postgres`, `redis`) + 核心控制 (`platform`, `session-broker`, `control-plane`, `ai-orchestrator`) + 文档引擎 (`carbone-engine`) + 核心前端 (`portal`, `user-web`) + 初始化 (`workspace-deps-init`) | **10 个** |
+| **`dev:browser`** | `./docker/start-smart.sh dev:browser up -d` | 核心栈 + 浏览器自动化 (`browser-worker`, `browser-chrome`, `browser-template`, `browser-semantics`) | 14 个 |
+| **`dev:workflow`** | `./docker/start-smart.sh dev:workflow up -d` | 核心栈 + Temporal 工作流引擎 (`temporal`, `temporal-ui`, `sandbox-worker`, `temporal-worker`) | 14 个 |
+| **`dev:doc`** | `./docker/start-smart.sh dev:doc up -d` | 核心栈 + 报表服务 (`report`) | 11 个 |
+| **`dev:xiaozhi`** | `./docker/start-smart.sh dev:xiaozhi up -d` | 核心栈 + 小智语音接入通道 (`xiaozhi-connector`) | 11 个 |
 | **`full`** | `./docker/start-smart.sh full up -d` | 全量开发环境（激活全部 Profiles） | 20 个 |
 | **`infra`** | `./docker/start-smart.sh infra up -d` | 仅数据库与缓存 (`postgres`, `redis`) | 2 个 |
 | **`addin`** | `./docker/start-smart.sh addin up -d` | Office Add-in 专用栈 (`carbone-api`, `office-addin`) | 2 个 |

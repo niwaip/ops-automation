@@ -75,9 +75,17 @@ export class ReminderService {
     const title = dto.title !== undefined ? this.resolveTitle(dto.title, dto.message ?? rule.message) : rule.title;
     this.assertContent(title, dto.message ?? rule.message);
     await this.assertWechatAvailable(userId, dto.sendWechat);
-    const cronExpression = dto.cronExpression ?? rule.cronExpression;
+    let cronExpression: string | undefined = dto.cronExpression;
+    let runAt: string | null | undefined = dto.runAt;
+    if (dto.runAt !== undefined && dto.cronExpression === undefined) {
+      cronExpression = '';
+    } else if (dto.cronExpression !== undefined && dto.runAt === undefined) {
+      runAt = null;
+    } else {
+      if (cronExpression === undefined) cronExpression = rule.cronExpression;
+      if (runAt === undefined) runAt = rule.runAt?.toISOString();
+    }
     const timezone = dto.timezone ?? rule.timezone;
-    const runAt = dto.runAt === undefined ? rule.runAt?.toISOString() : dto.runAt;
     const shouldRecalculate = dto.cronExpression !== undefined || dto.runAt !== undefined || dto.timezone !== undefined ||
       (dto.isActive === true && !rule.isActive);
     const schedule = shouldRecalculate ? resolveReminderSchedule(cronExpression, runAt, timezone) : null;

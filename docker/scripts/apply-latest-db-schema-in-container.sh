@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 PLATFORM_SCHEMA="$REPO_ROOT/apps/backend/platform/prisma/schema.prisma"
 CONTROL_PLANE_SCHEMA="$REPO_ROOT/apps/backend/execution-control/control-plane/prisma/schema.prisma"
-EXISTING_PLATFORM_BASELINE_GUARD="$REPO_ROOT/docker/sql/verify-existing-platform-baseline.sql"
+EXISTING_PLATFORM_BASELINE_GUARD="$REPO_ROOT/database/sql/verify-existing-platform-baseline.sql"
 PLATFORM_BASELINED_MIGRATIONS=(
   "20260608_init_platform_baseline"
   "20260704194500_add_skill_access_requests"

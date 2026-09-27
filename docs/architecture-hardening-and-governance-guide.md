@@ -343,7 +343,7 @@ pnpm run validate:outbound-side-effects
   - 阶段一（已完成）：`consumer-span.ts` 规范化 W3C Trace Context 派生、Consumer Span 语义与批量扇出 `SpanLink` 结构化日志对象；在 `ExecutionDispatcherService` 与 `ScheduleFireDispatcherService` 消费链路中完成注入与日志透传；
   - 阶段二（待办）：引入正式 OpenTelemetry SDK、Tracer Provider、`startSpan()` 与 APM OTLP Exporter，实现真正的分布式 APM 导出闭环。
 - [x] **[P1] Durable Scheduler 真实 PostgreSQL 50 并发压测与 Outbox 租约崩溃恢复实测闭环 (ADR-001/003)**：
-  - 编写专用验证套件 `scripts/verify-schedule-fire-concurrency.ts`，基于真实本地 PostgreSQL 容器直连运行；
+  - 编写专用验证套件 `tests/integration/verify-schedule-fire-concurrency.ts`，基于真实本地 PostgreSQL 容器直连运行；
   - 实测验证：
     1. 50 并发抢占单 Slot 产生唯一 ScheduleFire 记录（49 个冲突安全捕获并退出）；
     2. ScheduleFire Worker 崩溃注入下的 Lease 超时自动回收；

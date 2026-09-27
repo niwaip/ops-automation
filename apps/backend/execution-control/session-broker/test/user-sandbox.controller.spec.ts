@@ -97,6 +97,37 @@ describe('UserSandboxController - SSE Stream & Disconnect Handling', () => {
     expect(res.end).toHaveBeenCalled();
   });
 
+  it('should stream queuing observation event when onWaiting callback is triggered', async () => {
+    const res = createMockResponse();
+    const dto: RunHarnessDto = {
+      userId: 'test_user',
+      prompt: 'queued task',
+      waitTimeoutSeconds: 35,
+    };
+
+    (mockService.runHarness as jest.Mock).mockImplementation(async (userId, prompt, options) => {
+      if (options.onWaiting) {
+        options.onWaiting(500);
+      }
+      return {
+        success: true,
+        output: 'done after queue',
+        containerName: 'ops-user-sandbox-test_user',
+        durationMs: 550,
+        exitCode: 0,
+      };
+    });
+
+    await controller.runHarnessStream(dto, res);
+
+    const joinedOutput = res.writtenData.join('');
+    expect(joinedOutput).toContain(
+      'event: observation\ndata: {"content":"⏳ 任务已排队，等待前序任务完成后自动开始...","data":{"isQueued":true,"waitedMs":500}}\n\n'
+    );
+    expect(joinedOutput).toContain('event: done\ndata: {"success":true,"output":"done after queue"');
+    expect(res.end).toHaveBeenCalled();
+  });
+
   it('should emit error event when runHarness fails', async () => {
     const res = createMockResponse();
     const dto: RunHarnessDto = {

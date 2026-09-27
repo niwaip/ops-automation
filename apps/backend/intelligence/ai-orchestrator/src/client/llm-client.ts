@@ -26,6 +26,10 @@ export interface LLMChatRequest {
   maxOutputTokens?: number;
   temperature?: number;
   max_tokens?: number;
+  /** Per-attempt transport timeout. Used by bounded proxy calls; omitted for normal model traffic. */
+  timeoutMs?: number;
+  /** Streaming inactivity timeout; reset whenever any upstream data event arrives. */
+  streamIdleTimeoutMs?: number;
   promptCaching?: PromptCachingConfig;
   reasoning?: {
     enabled?: boolean;

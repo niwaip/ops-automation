@@ -111,7 +111,10 @@ dsh exec python3 -c "import docx; print(docx.__version__)"
 | 参数 | 缩写 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
 | `query` | (必填) | - | 用户输入的任务 Prompt 或指令 |
-| `--web-search` | `-s` | `False` | 显式开启实时联网检索 |
+| `--web-search` | `-s` | `True` | 实时联网检索（默认开启） |
+| `--no-web-search` |  | `False` | 为本次运行显式关闭联网检索 |
+
+联网检索采用统一的分层链路：沙箱只负责实体、时效和来源意图拆分，随后通过签名虚拟令牌调用平台搜索网关；Tavily、Exa、Firecrawl 等真实凭据始终保留在控制面。平台会对最多 3 个扩展查询并行检索、按 URL 去重，并在 `official-first` 策略下优先官方文档、开发者站点和 GitHub/GitLab 来源。供应商返回空结果属于软失败，会继续尝试下一通道。平台不可用或未返回有效结果时，仍保留 `modsearch`、Bing HTML、DuckDuckGo 以及微博/B站/天气专用接口作为免 Key 兜底。
 | `--research` | `-r` | `False` | 显式激活深度研报调研技能规范 |
 | `--model` | `-m` | `None` | 指定模型标识（缺省时使用平台默认模型） |
 | `--model-display-name` | - | `None` | 模型的友好可读名称（便于日志与追踪展示） |

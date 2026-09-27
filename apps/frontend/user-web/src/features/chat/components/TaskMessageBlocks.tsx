@@ -243,11 +243,28 @@ export function TaskOutcomeBlock({
             onRejectExecution(message.id, executionId, effectId);
           }
         }}
+        artifacts={artifacts}
       />
 
       {/* 结果/产物列表 */}
       {shouldShowArtifactActions && artifacts.length > 0 ? (
-        <details className={styles['user-chat-outcome-details']} style={{ marginTop: 8 }} open>
+        <details
+          className={styles['user-chat-outcome-details']}
+          style={{ marginTop: 8 }}
+          open={!artifacts.some((art) => {
+            const name = (art.name || art.label || '').toLowerCase();
+            const url = (art.url || art.downloadUrl || '').toLowerCase();
+            const mime = (art.mimeType || '').toLowerCase();
+            return (
+              mime.includes('text/html') ||
+              name.endsWith('.html') ||
+              url.includes('.html') ||
+              mime.includes('markdown') ||
+              name.endsWith('.md') ||
+              url.includes('.md')
+            );
+          })}
+        >
           <summary style={{ cursor: 'pointer', userSelect: 'none' }}>
             {`查看相关结果与产物链接 (${artifacts.length} 项)`}
           </summary>

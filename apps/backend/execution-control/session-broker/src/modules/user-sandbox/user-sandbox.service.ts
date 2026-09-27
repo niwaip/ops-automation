@@ -207,6 +207,10 @@ export class UserSandboxService implements OnModuleInit, OnModuleDestroy {
       history?: Array<{ role: string; content: string }>;
       timeoutMs?: number;
       files?: string[];
+      waitTimeoutSeconds?: number;
+      thinking?: boolean;
+      reasoningEffort?: string;
+      onWaiting?: (waitedMs: number) => void;
       onStdoutChunk?: (chunk: string) => void;
     }
   ): Promise<UserSandboxHarnessResult> {

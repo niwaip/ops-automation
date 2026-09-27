@@ -96,6 +96,15 @@ export class SearchOrchestrator {
       const provider = chain[i];
       try {
         const response = await provider.search(options, runtimeConfigs);
+        if (response.resultCount === 0) {
+          const nextProvider = chain[i + 1];
+          if (nextProvider) {
+            accumulatedWarnings.push(
+              `搜索通道 '${provider.name}' 未返回结果，已继续尝试 '${nextProvider.name}'`
+            );
+            continue;
+          }
+        }
         if (accumulatedWarnings.length > 0) {
           response.warnings = [...accumulatedWarnings, ...(response.warnings || [])];
         }
@@ -116,6 +125,60 @@ export class SearchOrchestrator {
 
     const detailedSummary = providerErrors.map((e) => `[${e.provider}] ${e.message}`).join('; ');
     throw new Error(`所有联网搜索通道均失败: ${detailedSummary}`);
+  }
+
+  /** Execute a bounded query portfolio and fuse structured evidence across providers. */
+  public async searchMany(
+    queries: string[],
+    options: Omit<SearchRequestOptions, 'query'>
+  ): Promise<SearchEngineResponse> {
+    const uniqueQueries = [...new Set(queries.map((query) => query.trim()).filter(Boolean))].slice(0, 3);
+    if (uniqueQueries.length === 0) throw new Error('联网搜索查询不能为空');
+
+    const settled = await Promise.allSettled(
+      uniqueQueries.map((query) => this.search({ ...options, query }))
+    );
+    const successful = settled
+      .filter((item): item is PromiseFulfilledResult<SearchEngineResponse> => item.status === 'fulfilled')
+      .map((item) => item.value);
+    if (successful.length === 0) {
+      const errors = settled
+        .filter((item): item is PromiseRejectedResult => item.status === 'rejected')
+        .map((item) => (item.reason instanceof Error ? item.reason.message : String(item.reason)));
+      throw new Error(`所有联网搜索查询均失败: ${errors.join('; ')}`);
+    }
+
+    const byUrl = new Map<string, SearchEngineResponse['results'][number]>();
+    for (const response of successful) {
+      for (const result of response.results) {
+        const key = result.url.replace(/\/$/, '').toLowerCase();
+        const existing = byUrl.get(key);
+        if (!existing || result.score > existing.score) byUrl.set(key, result);
+      }
+    }
+    const officialPattern = /(^|\.)(github\.com|gitlab\.com)$|(^|\.)(docs?|developer|developers)\./i;
+    const results = [...byUrl.values()]
+      .sort((left, right) => {
+        if (options.sourcePolicy === 'official-first') {
+          const leftOfficial = officialPattern.test(new URL(left.url).hostname) ? 1 : 0;
+          const rightOfficial = officialPattern.test(new URL(right.url).hostname) ? 1 : 0;
+          if (leftOfficial !== rightOfficial) return rightOfficial - leftOfficial;
+        }
+        return right.score - left.score;
+      })
+      .slice(0, Math.min(10, Math.max(1, options.maxResults || 5)));
+    const providers = [...new Set(successful.map((item) => item.provider))];
+    const warnings = successful.flatMap((item) => item.warnings || []);
+    const failedCount = settled.length - successful.length;
+    if (failedCount > 0) warnings.push(`${failedCount} 个扩展查询失败，已使用其余结果完成聚合`);
+
+    return {
+      provider: providers.length === 1 ? providers[0] : 'multi-provider',
+      providers,
+      results,
+      resultCount: results.length,
+      warnings,
+    };
   }
 }
 

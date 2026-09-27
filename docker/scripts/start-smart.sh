@@ -27,12 +27,12 @@ Usage:
   ./docker/start-smart.sh [mode|compose-file] -f <compose-file>... [docker-compose args]
 
 Recommended modes:
-  dev             Start the lightweight core development stack (backend core + portal + user-web)
+  dev             Start the lightweight core development stack (backend core + portal + user-web + carbone-engine)
   dev:browser     Core stack + Browser automation (worker, chrome, templates, semantics)
   dev:workflow    Core stack + Temporal workflow engine & workers
-  dev:doc         Core stack + Carbone engine & reports
+  dev:doc         Core stack + Report service (report)
   dev:xiaozhi     Core stack + Xiaozhi voice channel connector
-  full            Start the full stack (all 19 containers)
+  full            Start the full stack (all 20 containers)
   infra           Start postgres + redis only
   addin           Start Office Add-in related services
   test            Start the test stack

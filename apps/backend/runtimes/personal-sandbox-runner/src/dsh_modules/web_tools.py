@@ -16,10 +16,11 @@ import http.client
 import subprocess
 import socket
 import ipaddress
+import concurrent.futures
 from pathlib import Path
 from typing import Optional, Tuple
 
-from .config import PLUGIN_DIR
+from .config import PLUGIN_DIR, DEFAULT_PROXY_URL, VIRTUAL_API_KEY
 
 CITY_PINYIN = {
     "北京": "Beijing", "上海": "Shanghai", "广州": "Guangzhou", "深圳": "Shenzhen", "杭州": "Hangzhou",
@@ -389,8 +390,9 @@ def _fetch_jina_fallback(target_url: str, max_chars: int, timeout: float, deadli
                 )
                 return content[:max_chars] + hint, None
             return content, None
-    except TimeoutError:
-        raise
+    except TimeoutError as timeout_err:
+        assert_not_timed_out(deadline, "webpage fetch fallback")
+        return None, f"获取网页内容超时 ({target_url}): {timeout_err}"
     except urllib.error.HTTPError as http_err:
         if http_err.code == 403 and "SSRF Blocked" in str(http_err):
             return None, f"【安全拦截】重定向目标受限 ({target_url}): {http_err.reason}"
@@ -445,7 +447,9 @@ def fetch_page(url: str, max_chars: int = 20000, deadline: Optional[float] = Non
         if main_summary:
             return main_summary
     except TimeoutError:
-        raise
+        # A socket/read timeout belongs to this source, not to the whole task. Only
+        # propagate when the shared task deadline itself has actually elapsed.
+        assert_not_timed_out(deadline, "webpage fetch")
     except urllib.error.HTTPError as http_err:
         if http_err.code == 403 and "SSRF Blocked" in str(http_err):
             return f"【安全拦截】重定向目标受限 ({target_url}): {http_err.reason}"
@@ -477,6 +481,8 @@ def extract_query_freshness(q: str) -> Optional[str]:
         return "day"
     if re.search(r'(最近一年|近一年|今年|past\s*year)', q, re.I):
         return "year"
+    if re.search(r'(最新|近期|最近|latest|recent)', q, re.I):
+        return "week"
     return None
 
 
@@ -502,6 +508,15 @@ def normalize_search_query(q: str) -> str:
         flags=re.I
     ).strip()
     cleaned = re.sub(r'^[的得地]\s*', '', cleaned).strip()
+
+    # 搜索只保留信息主题，剥离“总结、输出文件”等后续交付指令。
+    # 这些动作由执行计划处理，不应污染搜索引擎关键词。
+    cleaned = re.split(
+        r'\s*(?:[，,；;]|然后|并且|并)\s*(?:请)?(?:总结|汇总|归纳|提炼|输出|生成|创建|导出|保存|写入|制作|做成)\b',
+        cleaned,
+        maxsplit=1,
+        flags=re.I,
+    )[0].strip()
 
     substance = re.sub(r'(今天|今日|现在|最新|最近|近年|历年|历届|的|热点|热搜|热门|动态|新闻|\s+)', '', cleaned)
     if len(substance) >= 2:
@@ -533,7 +548,299 @@ def normalize_search_query(q: str) -> str:
     return cleaned or q
 
 
-def perform_web_search(query: str, max_results: int = 8, freshness: Optional[str] = None, deadline: Optional[float] = None) -> str:
+def decompose_search_queries(query: str, max_queries: int = 3) -> list[str]:
+    """Builds a small, general-purpose query portfolio from entity, freshness, and task facets."""
+    clean = normalize_search_query(query).strip()
+    subject = re.sub(
+        r'(最新的?|近期的?|最近的?|当前的?|实时的?|新闻|动态|资讯|情况|信息|有哪些|是什么|'
+        r'latest|recent|news|updates?|information)',
+        ' ',
+        clean,
+        flags=re.I,
+    )
+    subject = re.sub(r'[，,。；;：:？?]+', ' ', subject)
+    subject = re.sub(r'\s+', ' ', subject).strip(' 的') or clean
+
+    queries = [clean]
+    if re.search(r'(插件|扩展|plugin|extension|生态|marketplace|registry)', clean, re.I):
+        queries.append(f'{subject} plugins extensions registry GitHub')
+    elif re.search(r'(安装方法|安装教程|如何安装|怎么安装|安装指南|install(?:ation)?|setup|quickstart)', clean, re.I):
+        queries.append(f'{subject} official installation setup quickstart GitHub')
+    elif re.search(r'(版本|发布|更新|release|changelog|升级)', clean, re.I):
+        queries.append(f'{subject} releases changelog GitHub')
+    elif re.search(r'(热点|热搜|榜单|排行|趋势|trending|ranking)', clean, re.I):
+        queries.append(f'{subject} live trending ranking')
+    else:
+        queries.append(f'{subject} latest updates')
+
+    queries.append(f'{subject} official documentation GitHub releases')
+
+    unique = []
+    seen = set()
+    for item in queries:
+        normalized = re.sub(r'\s+', ' ', item).strip()
+        key = normalized.casefold()
+        if normalized and key not in seen:
+            seen.add(key)
+            unique.append(normalized)
+        if len(unique) >= max(1, max_queries):
+            break
+    return unique
+
+
+def perform_multi_web_search(
+    query: str,
+    max_queries: int = 3,
+    max_results_per_query: int = 5,
+    max_chars: int = 12_000,
+    deadline: Optional[float] = None,
+) -> str:
+    """Runs bounded diversified searches and returns a deduplicated evidence bundle."""
+    clean_q = normalize_search_query(query)
+
+    # 1. 针对天气意图优先调用高精度结构化气象源
+    if re.search(r'(天气|预报|气温|下雨|晴天|降雨|温度|weather|forecast)', clean_q, re.I):
+        weather_res = fetch_weather(clean_q, deadline=deadline)
+        if "实时权威气象与多日预报" in weather_res:
+            return weather_res[:max_chars]
+
+    # Vertical real-time rankings must run before generic web search.  A generic
+    # provider can return topically related pages while still missing the actual
+    # live chart; treating that as success used to prevent Weibo/modsearch from
+    # ever running.
+    if re.search(
+        r'(?:微博|weibo).*?(?:热搜|热点|热榜|榜单|排行|热门)'
+        r'|(?:热搜|热点|热榜|榜单|排行|热门).*?(?:微博|weibo)',
+        query,
+        re.I,
+    ):
+        vertical_result = perform_web_search(
+            query,
+            max_results=max_results_per_query,
+            freshness=extract_query_freshness(query),
+            deadline=deadline,
+            use_platform=False,
+        )
+        if vertical_result:
+            return vertical_result[:max_chars]
+
+    query_plan = decompose_search_queries(query, max_queries=max_queries)
+    freshness = extract_query_freshness(query)
+    platform_result = perform_platform_web_search(
+        query_plan[0],
+        extra_queries=query_plan[1:],
+        max_results=min(10, max_results_per_query * 2),
+        freshness=freshness,
+        source_policy='official-first',
+        deadline=deadline,
+    )
+    if platform_result:
+        return platform_result[:max_chars]
+
+    # Keep no-key organic search as a resilient fallback when the managed gateway is unavailable.
+    sections = []
+    seen_urls = set()
+    indexed_results = {}
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=min(3, len(query_plan)))
+    futures = {
+        executor.submit(
+            perform_web_search,
+            planned_query,
+            max_results_per_query,
+            freshness,
+            deadline,
+            False,
+        ): (idx, planned_query)
+        for idx, planned_query in enumerate(query_plan, 1)
+    }
+    try:
+        remaining = check_deadline(deadline, default_timeout=30.0)
+        for future in concurrent.futures.as_completed(futures, timeout=remaining):
+            idx, planned_query = futures[future]
+            try:
+                indexed_results[idx] = (planned_query, future.result())
+            except Exception:
+                indexed_results[idx] = (planned_query, "")
+    except concurrent.futures.TimeoutError:
+        pass
+    finally:
+        for future in futures:
+            future.cancel()
+        executor.shutdown(wait=False, cancel_futures=True)
+
+    for idx, planned_query in enumerate(query_plan, 1):
+        result = indexed_results.get(idx, (planned_query, ""))[1]
+        if not result.strip():
+            sections.append(f'【检索 {idx}/{len(query_plan)}：{planned_query}】\n- 暂未检索到有效结果。')
+            continue
+
+        kept_lines = []
+        for line in result.splitlines():
+            urls = re.findall(r'https?://[^\s)\]>"]+', line)
+            if urls and all(url in seen_urls for url in urls):
+                continue
+            seen_urls.update(urls)
+            kept_lines.append(line)
+        if kept_lines:
+            sections.append(
+                f'【检索 {idx}/{len(query_plan)}：{planned_query}】\n' + '\n'.join(kept_lines)
+            )
+        if sum(len(section) for section in sections) >= max_chars:
+            break
+
+    coverage = '；'.join(query_plan)
+    bundle = (
+        f'【多查询联网检索覆盖】{coverage}\n'
+        '说明：单次空结果不代表目标不存在；回答应综合多路证据，并优先采用官方文档、官方仓库和发布记录。\n\n'
+        + '\n\n'.join(sections)
+    )
+    return bundle[:max_chars]
+
+
+def enrich_search_context_with_pages(
+    search_context: str,
+    max_pages: int = 3,
+    max_chars_per_page: int = 3_500,
+    deadline: Optional[float] = None,
+) -> str:
+    """Fetch a small, ranked set of result pages for grounded synthesis."""
+    urls = []
+    seen = set()
+    for url in re.findall(r'https?://[^\s)\]>"`]+', search_context or ''):
+        clean_url = url.rstrip('.,;')
+        key = clean_url.rstrip('/').casefold()
+        if key not in seen:
+            seen.add(key)
+            urls.append(clean_url)
+
+    is_harness = bool(re.search(r'(?:harness|deepseek|dsh)', (search_context or '').casefold()))
+
+    def page_priority(url: str):
+        normalized = url.rstrip('/').casefold()
+        if is_harness:
+            if normalized == 'https://github.com/deepseek-ai/deepseek-harness':
+                return (0, normalized)
+            if normalized.startswith('https://github.com/deepseek-ai/deepseek-harness/releases'):
+                return (1, normalized)
+            if 'awesome-' in normalized or 'plugin-registry' in normalized:
+                return (2, normalized)
+            if '/discussions/' in normalized or 'github.com/topics/' in normalized:
+                return (5, normalized)
+            return (3, normalized)
+        # General query: prioritize official documentation, releases, and guides
+        if any(doc in normalized for doc in ('/docs', 'docs.', 'developer.', '/wiki', '/releases')):
+            return (0, normalized)
+        if '/discussions/' in normalized or 'github.com/topics/' in normalized or '/issues/' in normalized:
+            return (5, normalized)
+        if 'github.com' in normalized:
+            return (1, normalized)
+        return (2, normalized)
+
+    selected = sorted(urls, key=page_priority)[:max(1, min(3, max_pages))]
+    if not selected:
+        return search_context
+
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=len(selected))
+    futures = {
+        executor.submit(fetch_page, url, max_chars_per_page, deadline): url
+        for url in selected
+    }
+    fetched = {}
+    try:
+        remaining = check_deadline(deadline, default_timeout=20.0)
+        for future in concurrent.futures.as_completed(futures, timeout=remaining):
+            url = futures[future]
+            try:
+                content = future.result()
+                if content and not content.startswith(('未能获取', '【安全拦截】', '获取网页内容失败')):
+                    fetched[url] = content[:max_chars_per_page]
+            except Exception:
+                continue
+    except concurrent.futures.TimeoutError:
+        pass
+    finally:
+        for future in futures:
+            future.cancel()
+        executor.shutdown(wait=False, cancel_futures=True)
+
+    if not fetched:
+        return search_context
+    sections = [search_context.rstrip(), '', '【高价值页面正文抓取】']
+    for index, url in enumerate(selected, 1):
+        content = fetched.get(url)
+        if content:
+            sections.extend([f'\n--- 页面 {index}: {url} ---', content])
+    return '\n'.join(sections).strip()
+
+
+def perform_platform_web_search(
+    query: str,
+    extra_queries: Optional[list[str]] = None,
+    max_results: int = 8,
+    freshness: Optional[str] = None,
+    source_policy: str = 'balanced',
+    deadline: Optional[float] = None,
+) -> str:
+    """Calls the credential-isolated platform search gateway and preserves result metadata."""
+    days_map = {'day': 1, 'week': 7, 'month': 30}
+    payload = {
+        'query': query,
+        'queries': (extra_queries or [])[:3],
+        'maxResults': max(1, min(10, max_results)),
+        'topic': 'news' if re.search(r'(新闻|资讯|news|热点|热搜)', query, re.I) else 'general',
+        'searchDepth': 'advanced' if extra_queries else 'basic',
+        'sourcePolicy': source_policy if source_policy in ('balanced', 'official-first') else 'balanced',
+    }
+    if freshness in days_map:
+        payload['days'] = days_map[freshness]
+    endpoint = f"{DEFAULT_PROXY_URL.rstrip('/')}/search/web"
+    request = urllib.request.Request(
+        endpoint,
+        data=json.dumps(payload, ensure_ascii=False).encode('utf-8'),
+        headers={
+            'Authorization': f'Bearer {VIRTUAL_API_KEY}',
+            'Content-Type': 'application/json',
+        },
+        method='POST',
+    )
+    try:
+        timeout = check_deadline(deadline, default_timeout=25.0)
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            envelope = json.loads(response.read().decode('utf-8'))
+        if not envelope.get('success'):
+            return ''
+        output = envelope.get('output') or {}
+        results = output.get('results') or []
+        if not results:
+            return ''
+        providers = output.get('providers') or [output.get('provider')]
+        lines = [
+            f"【平台联网检索｜来源: {', '.join(str(item) for item in providers if item)}】",
+            f"查询覆盖：{'；'.join([query] + list(extra_queries or []))}",
+        ]
+        for idx, item in enumerate(results, 1):
+            title = str(item.get('title') or item.get('url') or '').strip()
+            url = str(item.get('url') or '').strip()
+            snippet = str(item.get('snippet') or '').strip()
+            published = str(item.get('publishedAt') or '').strip()
+            date_tag = f"  [发布时间: {published}]" if published else ''
+            if title and url:
+                lines.append(f"{idx}. [{title}]({url}){date_tag}\n    {snippet}")
+        warnings = output.get('warnings') or []
+        if warnings:
+            lines.append('检索提示：' + '；'.join(str(item) for item in warnings))
+        return '\n\n'.join(lines)
+    except (OSError, urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError):
+        return ''
+
+
+def perform_web_search(
+    query: str,
+    max_results: int = 8,
+    freshness: Optional[str] = None,
+    deadline: Optional[float] = None,
+    use_platform: bool = True,
+) -> str:
     """Multi-source organic web search and weather query with optional freshness filtering (day/week/month/year)"""
     effective_freshness = freshness or extract_query_freshness(query)
     clean_q = normalize_search_query(query)
@@ -573,7 +880,19 @@ def perform_web_search(query: str, max_results: int = 8, freshness: Optional[str
             assert_not_timed_out(deadline, "weibo search")
             pass
 
-    # 3. 优先调用管理员预置的 modsearch 模块化搜索引擎插件
+    # 3. 优先使用平台统一搜索网关；真实供应商凭据不会进入个人沙箱。
+    if use_platform:
+        platform_result = perform_platform_web_search(
+            clean_q,
+            max_results=max_results,
+            freshness=effective_freshness,
+            source_policy='balanced',
+            deadline=deadline,
+        )
+        if platform_result:
+            return platform_result
+
+    # 4. 平台不可用或无有效结果时，保留管理员预置的免 Key modsearch/Bing 兜底。
     modsearch_plugin = Path(PLUGIN_DIR) / "modsearch.py"
     if modsearch_plugin.exists():
         to_mod = check_deadline(deadline, default_timeout=25.0)
@@ -596,7 +915,7 @@ def perform_web_search(query: str, max_results: int = 8, freshness: Optional[str
             assert_not_timed_out(deadline, "modsearch")
             pass
 
-    # 4. 通用必应搜索（含口语停用词归一化与结构化标题/链接提取）
+    # 5. 通用必应搜索（含口语停用词归一化与结构化标题/链接提取）
     norm_q = normalize_search_query(clean_q)
     to_bing = check_deadline(deadline, default_timeout=10.0)
     results = []

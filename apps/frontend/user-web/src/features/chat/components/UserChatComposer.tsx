@@ -1,19 +1,22 @@
 import {
   AudioOutlined,
+  BulbOutlined,
   CloudSyncOutlined,
   CompassOutlined,
+  DownOutlined,
   FolderOpenOutlined,
   FolderOutlined,
   GlobalOutlined,
   PaperClipOutlined,
   PlusOutlined,
   RobotOutlined,
+  RocketOutlined,
   SendOutlined,
   StopOutlined,
   ThunderboltOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Button, Input, Select, Segmented, Space, Switch, Tag, Tooltip, Upload, message as antdMessage } from 'antd';
+import { Button, Dropdown, Input, Select, Segmented, Space, Switch, Tag, Tooltip, Upload, message as antdMessage } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
 import type { AIModel, UploadedFileDescriptor } from '@ops/user-core';
@@ -53,6 +56,8 @@ interface UserChatComposerProps {
   onChatModeChange: (mode: 'chat' | 'task') => void;
   enableThinking: boolean;
   onEnableThinkingChange: (enabled: boolean) => void;
+  reasoningEffort?: 'low' | 'medium' | 'high';
+  onReasoningEffortChange?: (effort: 'low' | 'medium' | 'high') => void;
   enableWebSearch?: boolean;
   onEnableWebSearchChange?: (enabled: boolean) => void;
   enableResearch?: boolean;
@@ -83,6 +88,8 @@ export function UserChatComposer(props: UserChatComposerProps) {
     onChatModeChange,
     enableThinking,
     onEnableThinkingChange,
+    reasoningEffort = 'medium',
+    onReasoningEffortChange,
     enableWebSearch = false,
     onEnableWebSearchChange,
     enableResearch = false,
@@ -859,18 +866,112 @@ export function UserChatComposer(props: UserChatComposerProps) {
               ]}
             />
             <div className={styles['user-chat-input-controls']}>
-              <div className={styles['user-chat-control-item']} title={thinkingHint}>
-                <span className={styles['user-chat-control-label']}>{thinkingLabel}</span>
-                {chatMode === 'chat' && nativeReasoningSupported ? (
-                  <span className={styles['user-chat-control-badge']}>原生</span>
-                ) : null}
-                <Switch
-                  size="small"
-                  checked={enableThinking}
-                  onChange={onEnableThinkingChange}
-                  className={styles['user-chat-input-dot-switch']}
-                />
-              </div>
+              {chatMode === 'chat' && nativeReasoningSupported ? (
+                <Dropdown
+                  menu={{
+                    items: [
+                      {
+                        key: 'off',
+                        label: '关闭思考',
+                        icon: <StopOutlined style={{ fontSize: 13 }} />,
+                      },
+                      { type: 'divider' },
+                      {
+                        key: 'low',
+                        label: (
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontWeight: 500 }}>浅度思考 (Low)</span>
+                            <span style={{ fontSize: 11, color: '#8c8c8c' }}>轻度推理，快速响应</span>
+                          </div>
+                        ),
+                        icon: <ThunderboltOutlined style={{ color: '#fa8c16' }} />,
+                      },
+                      {
+                        key: 'medium',
+                        label: (
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontWeight: 500 }}>适中思考 (Medium)</span>
+                            <span style={{ fontSize: 11, color: '#8c8c8c' }}>均衡思考与耗时 (推荐)</span>
+                          </div>
+                        ),
+                        icon: <BulbOutlined style={{ color: '#1890ff' }} />,
+                      },
+                      {
+                        key: 'high',
+                        label: (
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontWeight: 500 }}>深度思考 (High)</span>
+                            <span style={{ fontSize: 11, color: '#8c8c8c' }}>深入推演，适合复杂代码与逻辑</span>
+                          </div>
+                        ),
+                        icon: <RocketOutlined style={{ color: '#722ed1' }} />,
+                      },
+                    ],
+                    selectedKeys: [enableThinking ? reasoningEffort : 'off'],
+                    onClick: ({ key }) => {
+                      if (key === 'off') {
+                        onEnableThinkingChange(false);
+                      } else {
+                        onEnableThinkingChange(true);
+                        onReasoningEffortChange?.(key as 'low' | 'medium' | 'high');
+                      }
+                    },
+                  }}
+                  trigger={['click']}
+                  placement="topLeft"
+                >
+                  <button
+                    type="button"
+                    className={`${styles['user-chat-reasoning-trigger']} ${
+                      enableThinking ? styles['user-chat-reasoning-trigger-active'] : ''
+                    }`}
+                    title="深度思考 / 推理强度调节"
+                  >
+                    <BulbOutlined
+                      className={styles['user-chat-reasoning-trigger-icon']}
+                      style={{ color: enableThinking ? '#6366f1' : undefined }}
+                    />
+                    <span className={styles['user-chat-reasoning-trigger-text']}>
+                      {enableThinking
+                        ? `思考: ${reasoningEffort === 'low' ? '浅' : reasoningEffort === 'high' ? '深' : '中'}`
+                        : '深度思考'}
+                    </span>
+                    <DownOutlined className={styles['user-chat-reasoning-trigger-arrow']} />
+                  </button>
+                </Dropdown>
+              ) : (
+                <Dropdown
+                  menu={{
+                    items: [
+                      { key: 'off', label: '关闭思考', icon: <StopOutlined style={{ fontSize: 13 }} /> },
+                      { key: 'on', label: '开启思考模式', icon: <BulbOutlined style={{ color: '#6366f1' }} /> },
+                    ],
+                    selectedKeys: [enableThinking ? 'on' : 'off'],
+                    onClick: ({ key }) => {
+                      onEnableThinkingChange(key === 'on');
+                    },
+                  }}
+                  trigger={['click']}
+                  placement="topLeft"
+                >
+                  <button
+                    type="button"
+                    className={`${styles['user-chat-reasoning-trigger']} ${
+                      enableThinking ? styles['user-chat-reasoning-trigger-active'] : ''
+                    }`}
+                    title={thinkingHint}
+                  >
+                    <BulbOutlined
+                      className={styles['user-chat-reasoning-trigger-icon']}
+                      style={{ color: enableThinking ? '#6366f1' : undefined }}
+                    />
+                    <span className={styles['user-chat-reasoning-trigger-text']}>
+                      {enableThinking ? `${thinkingLabel}: 开` : thinkingLabel}
+                    </span>
+                    <DownOutlined className={styles['user-chat-reasoning-trigger-arrow']} />
+                  </button>
+                </Dropdown>
+              )}
               {chatMode === 'chat' ? (
                 <div
                   className={styles['user-chat-control-item']}

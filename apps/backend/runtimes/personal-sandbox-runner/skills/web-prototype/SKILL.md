@@ -9,10 +9,12 @@ triggers:
   - "前端原型"
   - "交互原型"
   - "页面原型"
-  - "小游戏"
   - "做个网页"
   - "制作网页"
-  - "五子棋"
+  - "单页应用"
+  - "单页面应用"
+  - "web应用"
+  - "前端应用"
 od:
   mode: prototype
   platform: desktop
@@ -55,7 +57,7 @@ Use `assets/template.html` as the seed for the canonical project file, normally 
 
 Replace the six `:root` variables with the active design system's tokens. Replace the page `<title>` and the topnav brand.
 
-### Step 2 — Plan the section list
+### Step 2 — Plan the structure internally, then continue immediately
 
 **Pick layouts before writing copy.** Default rhythms (from `layouts.md`):
 
@@ -66,7 +68,9 @@ Replace the six `:root` variables with the active design system's tokens. Replac
 | Pricing | 1 hero-center → 8 comparison table → 6 cta |
 | Docs index | 1 hero-center → 7 log list (sections of docs) → 6 cta |
 
-State the chosen list in one sentence to the user *before* writing — they can redirect cheaply now and not after 200 lines of HTML.
+Choose the structure internally and proceed to implementation in the same turn. Do not pause for confirmation, offer a plan instead of a file, or ask the user to reply again for complete code when the request already asks to create/build/generate the prototype.
+
+For interactive apps and games, do not force a marketing-page section rhythm. Build an application shell suited to the task (game canvas/board, score or status HUD, controls, overlays, responsive input) while reusing the seed's design tokens and reset styles.
 
 ### Step 3 — Paste and fill
 
@@ -100,3 +104,5 @@ index.html
 OpenDesign derives the preview from the written project file. Do not also emit a source-code `<artifact>` block for the same generation turn.
 
 One short summary after writing the file. Nothing after.
+
+An explicit create/build/generate request is already authorization to implement. A feature list, architecture proposal, pseudo-code, or “reply to receive the full source” is not a valid deliverable. The turn is incomplete until `index.html` exists and contains the working implementation.

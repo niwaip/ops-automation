@@ -59,13 +59,27 @@ def main():
 
     parser_run = subparsers.add_parser("run", help="Run DeepSeek Harness on a prompt or task")
     parser_run.add_argument("query", nargs="+", help="Prompt or task for DeepSeek Harness")
-    parser_run.add_argument("--web-search", "-s", action="store_true", help="Enable internet search retrieval")
+    parser_run.add_argument(
+        "--web-search", "-s", dest="web_search", action="store_true", default=True,
+        help="Enable internet search retrieval (default: enabled)",
+    )
+    parser_run.add_argument(
+        "--no-web-search", dest="web_search", action="store_false",
+        help="Disable internet search retrieval for this run",
+    )
     parser_run.add_argument("--research", "-r", action="store_true", help="Explicitly enable deep research skill")
     parser_run.add_argument("--model", "-m", default=None, help="Model name (default: platform default)")
     parser_run.add_argument("--model-display-name", default=None, help="Model human-readable display name")
     parser_run.add_argument("--timeout", "-t", type=int, default=None, help="Execution timeout in seconds")
     parser_run.add_argument("--session-id", default=None, help="Session identifier for multi-turn context")
-    parser_run.add_argument("--files", default=None, help="Comma-separated list of session-scoped attachment filenames")
+    parser_run.add_argument(
+        "--files",
+        default=None,
+        help="Comma-separated attachment file names scoped to the current session",
+    )
+    parser_run.add_argument("--thinking", action="store_true", default=None, help="Enable model reasoning/thinking process")
+    parser_run.add_argument("--no-thinking", dest="thinking", action="store_false", help="Disable model reasoning/thinking process")
+    parser_run.add_argument("--reasoning-effort", default=None, choices=["low", "medium", "high"], help="Reasoning effort level")
     parser_run.set_defaults(func=cmd_run)
 
     parser_exec = subparsers.add_parser("exec", help="Execute shell command inside workspace")

@@ -158,6 +158,13 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     (isRunning || (Boolean(isStreaming) && !isWaitingInput && !isPendingApproval && !errorMessage));
   const shouldShowTakeoverCard = isTaskMode && taskStatus === 'human_control';
   const shouldShowErrorCard = isTaskMode && taskStatus === 'failed';
+  const artifacts = useMemo(
+    () =>
+      ((message.metadata?.artifacts ||
+        message.metadata?.normalizedResult?.artifacts ||
+        []) as any[]),
+    [message.metadata?.artifacts, message.metadata?.normalizedResult?.artifacts]
+  );
   const missingInputs = useMemo(
     () =>
       dedupeWaitingInputDisplayFields(
@@ -593,6 +600,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
               onResumeExecution={() => {
                 void handleResumeExecution();
               }}
+              artifacts={artifacts}
             />
             {shouldShowProgressCard ? (
               <TaskProgressCard currentProgressLog={currentProgressLog} isRunning={isRunning} />

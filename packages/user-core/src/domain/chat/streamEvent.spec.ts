@@ -58,4 +58,50 @@ describe('reduceChatStreamEvent', () => {
     assert.equal(r2.messagePatch.isStreaming, true);
     assert.equal(r2.accumulatedContent.includes('【观察】'), false);
   });
+
+  it('correctly sets isQueued and queued taskStatus on queued observation event', () => {
+    const reduced = reduceChatStreamEvent({
+      event: {
+        type: StreamEventType.OBSERVATION,
+        content: '⏳ 任务已排队，等待前序任务完成后自动开始...',
+        data: { isQueued: true, waitedMs: 1200 },
+      },
+      accumulatedContent: '',
+      mode: 'chat',
+    });
+
+    assert.equal(reduced.messagePatch.isStreaming, true);
+    assert.equal(reduced.messagePatch.metadata?.isQueued, true);
+    assert.equal(reduced.messagePatch.metadata?.taskStatus, 'queued');
+    assert.ok(reduced.messagePatch.content?.includes('⏳ 任务已排队'));
+  });
+
+  it('keeps accumulated round summaries intact and does not leak think into contentParts when THOUGHT event arrives', () => {
+    const priorSummary = '⏳ [Harness Agent] 正在根据执行结果汇总交付物 (第 2 轮)...';
+    const reduced = reduceChatStreamEvent({
+      event: {
+        type: StreamEventType.THOUGHT,
+        content: 'I need to write index.html to workspace',
+        data: {
+          mode: 'chat',
+          thought: 'I need to write index.html to workspace',
+          thoughtLogsSnapshot: ['I need to write index.html to workspace'],
+        },
+      },
+      accumulatedContent: priorSummary,
+      mode: 'chat',
+    });
+
+    // 严禁冲刷覆盖已有轮次摘要
+    assert.equal(reduced.accumulatedContent, priorSummary);
+    assert.equal(reduced.messagePatch.content, priorSummary);
+    // 严禁将思考内容作为 text part 泄露到正文气泡
+    assert.equal(reduced.messagePatch.contentParts, undefined);
+    // 思考内容准确挂载在 metadata 中
+    assert.equal(reduced.messagePatch.metadata?.showThinking, true);
+    assert.deepEqual(reduced.messagePatch.metadata?.thoughtLogsSnapshot, [
+      'I need to write index.html to workspace',
+    ]);
+  });
 });
+

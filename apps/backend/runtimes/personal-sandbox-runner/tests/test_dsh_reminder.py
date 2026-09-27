@@ -7,12 +7,26 @@ import json
 from unittest.mock import patch
 import datetime
 import zoneinfo
-from dsh_modules.reminder_tools import create_personal_reminders
+from dsh_modules.reminder_tools import (
+    create_personal_reminders,
+    update_personal_reminder,
+    delete_personal_reminders,
+)
 from dsh_modules.telemetry import extract_dsh_markers, strip_dsh_markers
 from dsh_modules.tools import execute_tool, SANDBOX_TOOLS
 
 
 class TestDshReminderTool(unittest.TestCase):
+    def setUp(self):
+        self._patcher = patch(
+            "dsh_modules.reminder_tools._get_current_time",
+            return_value=datetime.datetime(2026, 9, 26, 8, 0, 0, tzinfo=zoneinfo.ZoneInfo("Asia/Shanghai"))
+        )
+        self._patcher.start()
+
+    def tearDown(self):
+        self._patcher.stop()
+
     def test_create_personal_reminders_batch(self):
         items = [
             {
@@ -203,6 +217,42 @@ class TestDshReminderTool(unittest.TestCase):
         self.assertEqual(calls[0]["name"], "create_reminders")
         self.assertEqual(calls[0]["params"]["title"], "去洗澡")
         self.assertEqual(calls[0]["params"]["scheduled_time"], "2026-09-26T21:35:00+08:00")
+
+    def test_update_personal_reminder_success(self):
+        res = update_personal_reminder(
+            title="周报提醒",
+            run_at="2026-09-26T17:00:00+08:00",
+            send_wechat=True
+        )
+        self.assertIn("<<<DSH_REMINDER_UPDATE:", res)
+        self.assertIn("周报提醒", res)
+        markers = extract_dsh_markers(res, "REMINDER_UPDATE")
+        self.assertEqual(len(markers), 1)
+        parsed = json.loads(markers[0][0])
+        self.assertEqual(parsed["title"], "周报提醒")
+        self.assertEqual(parsed["runAt"], "2026-09-26T17:00:00+08:00")
+        self.assertTrue(parsed["sendWechat"])
+
+    def test_delete_personal_reminders_by_title_and_id(self):
+        res = delete_personal_reminders(title="开会提醒", reminder_id="rem_123")
+        self.assertIn("<<<DSH_REMINDER_DELETE:", res)
+        markers = extract_dsh_markers(res, "REMINDER_DELETE")
+        self.assertEqual(len(markers), 1)
+        parsed = json.loads(markers[0][0])
+        self.assertIn("rem_123", parsed["ids"])
+        self.assertIn("开会提醒", parsed["titles"])
+
+    def test_execute_tool_dispatch_update_and_delete(self):
+        res_up = execute_tool("update_reminder", {
+            "title": "会议提醒",
+            "run_at": "2026-09-26T15:00:00+08:00"
+        })
+        self.assertIn("<<<DSH_REMINDER_UPDATE:", res_up)
+
+        res_del = execute_tool("delete_reminder", {
+            "title": "会议提醒"
+        })
+        self.assertIn("<<<DSH_REMINDER_DELETE:", res_del)
 
 
 if __name__ == "__main__":

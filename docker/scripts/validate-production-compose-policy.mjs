@@ -132,7 +132,7 @@ if (/^\s*VOLUME\b/im.test(runtimeStage)) {
 }
 for (const requiredCopy of [
   'docker/scripts',
-  'docker/sql',
+  'database/sql',
   'database/scripts',
   'database/security',
 ]) {
