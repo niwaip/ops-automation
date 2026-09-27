@@ -202,10 +202,10 @@ export class ModelProxyController {
           };
 
           // Internal tool-selection output is buffered and therefore safe to replay.
-          // Give it one same-model retry even when global retries are disabled.
+          // Give it up to 2 same-model retries when buffered internally to withstand transient network drops.
           const maxStreamRetries = Math.max(
             this.resolveMaxRetries(),
-            bufferInternalStream ? 1 : 0
+            bufferInternalStream ? 2 : 1
           );
           let primaryStreamErr: any;
           for (let attempt = 0; attempt <= maxStreamRetries; attempt++) {

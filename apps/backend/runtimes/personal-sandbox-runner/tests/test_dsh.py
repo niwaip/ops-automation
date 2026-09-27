@@ -34,6 +34,7 @@ from dsh_modules.runner import (
     _run_planning_phase,
     _emit_search_evidence_fallback,
     _should_deliver_plugin_evidence_directly,
+    _emit_tool_result_recovery,
 )
 from dsh_modules.telemetry import TelemetryStats
 from dsh_modules.agent_loop import (
@@ -249,6 +250,25 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertIn("权威来源", final_text)
         self.assertIn("Python Docs", final_text)
         self.assertNotIn("DeepSeek Harness Releases", final_text)
+
+    def test_emit_tool_result_recovery_weather(self):
+        messages = [
+            {"role": "user", "content": "查看上海的天气"},
+            {"role": "assistant", "content": "正在查询天气"},
+            {
+                "role": "tool",
+                "name": "weather",
+                "content": "【上海 实时权威气象与多日预报】\n当前气温: 24°C，晴，湿度: 60%\n未来三天天气预报良好。"
+            }
+        ]
+        policy = RuntimePolicy()
+        with patch("dsh_modules.runner.TelemetryStats.emit_final_output") as emit:
+            recovered = _emit_tool_result_recovery(messages, "查看上海的天气", [], None, policy)
+        self.assertTrue(recovered)
+        final_text = emit.call_args.args[0]
+        self.assertIn("实时天气与气象预报", final_text)
+        self.assertIn("当前气温: 24°C", final_text)
+        self.assertIn("上游大模型在整理排版阶段连接中断", final_text)
 
     def test_city_pinyin_mapping(self):
         self.assertEqual(CITY_PINYIN.get("上海"), "Shanghai")

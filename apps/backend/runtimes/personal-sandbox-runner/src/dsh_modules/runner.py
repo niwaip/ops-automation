@@ -244,7 +244,12 @@ def cmd_run(args):
     # args.web_search 仅表示沙箱具备联网检索工具能力，绝不能将所有普通对话/生成需求直接断定为纯检索任务！
     # 只有当用户显式要求搜索（如以 /search 起始）或语义路由命中真实外部资讯检索意图（is_search_intent）时，才执行前置联网检索
     has_web_search_permission = bool(args.web_search)
-    is_search_intent = prompt.strip().startswith("/search ") or skill_res.is_search_intent
+    is_weather_intent = bool(WEATHER_RE.search(prompt))
+    is_search_intent = (
+        prompt.strip().startswith("/search ")
+        or skill_res.is_search_intent
+        or is_weather_intent
+    )
     search_context = ""
     if is_search_intent and has_web_search_permission:
         if task_deadline is not None and time.monotonic() >= task_deadline:
@@ -474,6 +479,8 @@ def cmd_run(args):
         if search_context:
             _emit_search_evidence_fallback(prompt, search_context, existing_history, history_file, policy)
             return
+        if _emit_tool_result_recovery(messages, prompt, existing_history, history_file, policy):
+            return
         print(f"\n❌ [DeepSeek Harness 异常]: 大模型代理调用失败 ({e.code}): {err_detail}")
         sys.exit(1)
     except Exception as e:
@@ -483,11 +490,57 @@ def cmd_run(args):
             return
         if _emit_html_report_recovery(prompt, skill_res, existing_history, history_file, policy):
             return
+        if _emit_tool_result_recovery(messages, prompt, existing_history, history_file, policy):
+            return
         if re.search(r'(?:\baborted\b|timeout|timed out|socket hang up|econnreset)', raw_error, re.I):
             print("\n❌ [DeepSeek Harness 超时]: 模型响应超时或连接中断，本次任务未完成且未生成可用产物。请重试。")
         else:
             print(f"\n❌ [DeepSeek Harness 异常]: 执行异常: {e}")
         sys.exit(1)
+
+
+def _emit_tool_result_recovery(messages, prompt, existing_history, history_file, policy):
+    """Recover and directly present already-executed tool results when upstream model disconnects."""
+    if not messages or not isinstance(messages, list):
+        return False
+    tool_messages = [m for m in messages if isinstance(m, dict) and m.get("role") == "tool" and m.get("content")]
+    if not tool_messages:
+        return False
+
+    # 1. 优先挽救天气执行结果
+    weather_tools = [
+        m for m in tool_messages
+        if "气象" in str(m.get("content", "")) or "weather" in str(m.get("name", "")).lower()
+    ]
+    if weather_tools:
+        weather_content = str(weather_tools[-1].get("content", "")).strip()
+        final_text = (
+            "## 实时天气与气象预报\n\n"
+            "气象数据已成功获取。上游大模型在整理排版阶段连接中断，系统已直接为您提取并呈现权威气象结果：\n\n"
+            f"{weather_content}"
+        )
+        if history_file:
+            try:
+                existing_history.append({"role": "user", "content": prompt})
+                existing_history.append({"role": "assistant", "content": final_text})
+                with open(history_file, "w", encoding="utf-8") as f:
+                    json.dump(existing_history[-policy.recent_history_save_count:], f, ensure_ascii=False, indent=2, default=str)
+            except Exception:
+                pass
+        TelemetryStats.emit_final_output(final_text)
+        return True
+
+    # 2. 挽救网页检索结果
+    search_tools = [
+        m for m in tool_messages
+        if "web_search" in str(m.get("name", "")).lower() or "【多查询联网检索" in str(m.get("content", ""))
+    ]
+    if search_tools:
+        search_content = str(search_tools[-1].get("content", "")).strip()
+        _emit_search_evidence_fallback(prompt, search_content, existing_history, history_file, policy, model_failed=True)
+        return True
+
+    return False
 
 
 def _emit_html_report_recovery(prompt, skill_res, existing_history, history_file, policy):

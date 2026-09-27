@@ -38,7 +38,7 @@ const isArtifactRegenerationRequest = (
 };
 
 const isLiveSearchRequest = (message: string): boolean =>
-  /(?:联网|搜索|搜一下|查一下|查询|检索|最新|实时|热点|热搜|榜单|排行榜|微博|知乎热榜|百度热榜|抖音热榜|新闻|动态|插件|安装方法|安装教程|如何安装|怎么安装|安装指南|installation guide|how to install|releases?)/i.test(
+  /(?:联网|搜索|搜一下|查一下|查询|查看|检索|最新|实时|热点|热搜|榜单|排行榜|微博|知乎热榜|百度热榜|抖音热榜|新闻|动态|插件|安装方法|安装教程|如何安装|怎么安装|安装指南|installation guide|how to install|releases?|天气|气象|气温|温度|下雨|降雨|暴雨|晴天|预报|几度|转晴|多云)/i.test(
     String(message || '')
   );
 
@@ -808,7 +808,7 @@ export class UserSandboxDispatcherService {
         emit({
           type: StreamEventType.ERROR,
           content:
-            '⏱️ 联网检索已经完成，但指定模型在整理检索结果时超时或连接中断。为避免丢失检索证据后凭记忆作答，系统已停止无依据的普通聊天降级。请直接重试本次查询。',
+            '⏱️ 联网检索已经完成，但指定模型在整理检索结果（或气象数据）时超时或连接中断。为避免丢失检索证据后凭记忆作答，系统已停止无依据的普通聊天降级。请直接重试本次查询。',
           data: {
             code: 'SANDBOX_SEARCH_SYNTHESIS_TIMEOUT',
             retryable: true,
