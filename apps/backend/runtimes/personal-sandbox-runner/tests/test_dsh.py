@@ -218,6 +218,8 @@ class TestDshCoreModules(unittest.TestCase):
     def test_latest_plugin_queries_use_direct_evidence_delivery(self):
         self.assertTrue(_should_deliver_plugin_evidence_directly("查看deepseek harness 最新的插件"))
         self.assertTrue(_should_deliver_plugin_evidence_directly("latest Harness plugins"))
+        self.assertFalse(_should_deliver_plugin_evidence_directly("查看最新 obsidian 插件"))
+        self.assertFalse(_should_deliver_plugin_evidence_directly("latest vscode extensions"))
         self.assertFalse(_should_deliver_plugin_evidence_directly("查看上海天气"))
         self.assertFalse(_should_deliver_plugin_evidence_directly("如何开发一个插件"))
 
@@ -234,6 +236,19 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertLess(final_text.index("Official repo"), final_text.index("Releases"))
         self.assertLess(final_text.index("Releases"), final_text.index("Community"))
         self.assertNotIn("连接中断", final_text)
+
+    def test_search_evidence_fallback_general_query(self):
+        context = (
+            "[Python Docs](https://docs.python.org/3/whatsnew/3.13.html)\nWhat's new in Python 3.13\n\n"
+            "[Blog Post](https://medium.com/@user/python-features)\nBlog post overview"
+        )
+        policy = RuntimePolicy()
+        with patch("dsh_modules.runner.TelemetryStats.emit_final_output") as emit:
+            _emit_search_evidence_fallback("python 3.13 features", context, [], None, policy, model_failed=True)
+        final_text = emit.call_args.args[0]
+        self.assertIn("权威来源", final_text)
+        self.assertIn("Python Docs", final_text)
+        self.assertNotIn("DeepSeek Harness Releases", final_text)
 
     def test_city_pinyin_mapping(self):
         self.assertEqual(CITY_PINYIN.get("上海"), "Shanghai")

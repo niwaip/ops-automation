@@ -136,7 +136,7 @@ export class RunHarnessDto {
   @IsBoolean()
   research?: boolean;
 
-  @ApiPropertyOptional({ description: '使用的模型名称', default: 'deepseek-chat' })
+  @ApiPropertyOptional({ description: '使用的模型名称', default: 'default' })
   @IsOptional()
   @IsString()
   model?: string;

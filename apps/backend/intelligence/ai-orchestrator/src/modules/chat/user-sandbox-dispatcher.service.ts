@@ -341,7 +341,7 @@ export class UserSandboxDispatcherService {
       const isExplicitModel = Boolean(
         body.modelId &&
         body.modelId !== 'default' &&
-        body.modelId !== 'deepseek-chat'
+        !(body.modelId === 'deepseek-chat' && !this.modelService.getClient('deepseek-chat'))
       );
       let effectiveModel = body.modelId;
       let targetModelId = effectiveModel;

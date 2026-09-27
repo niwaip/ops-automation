@@ -713,17 +713,28 @@ def enrich_search_context_with_pages(
             seen.add(key)
             urls.append(clean_url)
 
+    is_harness = bool(re.search(r'(?:harness|deepseek|dsh)', (search_context or '').casefold()))
+
     def page_priority(url: str):
         normalized = url.rstrip('/').casefold()
-        if normalized == 'https://github.com/deepseek-ai/deepseek-harness':
+        if is_harness:
+            if normalized == 'https://github.com/deepseek-ai/deepseek-harness':
+                return (0, normalized)
+            if normalized.startswith('https://github.com/deepseek-ai/deepseek-harness/releases'):
+                return (1, normalized)
+            if 'awesome-' in normalized or 'plugin-registry' in normalized:
+                return (2, normalized)
+            if '/discussions/' in normalized or 'github.com/topics/' in normalized:
+                return (5, normalized)
+            return (3, normalized)
+        # General query: prioritize official documentation, releases, and guides
+        if any(doc in normalized for doc in ('/docs', 'docs.', 'developer.', '/wiki', '/releases')):
             return (0, normalized)
-        if normalized.startswith('https://github.com/deepseek-ai/deepseek-harness/releases'):
-            return (1, normalized)
-        if 'awesome-' in normalized or 'plugin-registry' in normalized:
-            return (2, normalized)
-        if '/discussions/' in normalized or 'github.com/topics/' in normalized:
+        if '/discussions/' in normalized or 'github.com/topics/' in normalized or '/issues/' in normalized:
             return (5, normalized)
-        return (3, normalized)
+        if 'github.com' in normalized:
+            return (1, normalized)
+        return (2, normalized)
 
     selected = sorted(urls, key=page_priority)[:max(1, min(3, max_pages))]
     if not selected:

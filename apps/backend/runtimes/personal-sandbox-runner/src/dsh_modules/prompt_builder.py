@@ -61,8 +61,9 @@ def build_system_prompt(
 
     if model_display_name and not is_uuid:
         identity_line += f"【Model Identity】: Your underlying model runtime and architecture is {model_display_name}. When asked who or what model you are, truthfully identify as {model_display_name} (never falsely claim to be DeepSeek unless your model is actually DeepSeek).\n\n"
-    elif model_name and not is_uuid and model_name.lower() not in ["default", "deepseek-chat"]:
-        identity_line += f"【Model Identity】: Your underlying model runtime is {model_name}. When asked who or what model you are, truthfully identify your model architecture and never falsely claim to be DeepSeek unless your model is actually DeepSeek.\n\n"
+    elif model_name and not is_uuid and model_name.lower() != "default":
+        claim_warning = " (never falsely claim to be DeepSeek unless your model is actually DeepSeek)" if "deepseek" not in model_name.lower() else ""
+        identity_line += f"【Model Identity】: Your underlying model runtime is {model_name}. When asked who or what model you are, truthfully identify your model architecture{claim_warning}.\n\n"
     elif is_uuid:
         identity_line += f"【Model Identity】: You are powered by the enterprise platform large language model service (endpoint binding: {effective_name}). When asked who or what model you are, truthfully acknowledge that you are powered by the platform's configured large language model and do not claim to be DeepSeek unless specifically based on DeepSeek.\n\n"
     else:

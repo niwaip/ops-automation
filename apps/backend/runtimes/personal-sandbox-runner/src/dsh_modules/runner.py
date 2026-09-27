@@ -526,8 +526,10 @@ def _emit_html_report_recovery(prompt, skill_res, existing_history, history_file
 
 
 def _should_deliver_plugin_evidence_directly(prompt):
-    """Identify fresh plugin/ecosystem lists that should remain evidence-only."""
+    """Identify fresh Harness/DeepSeek plugin/ecosystem queries that should remain evidence-only."""
     normalized = re.sub(r'\s+', ' ', str(prompt or '')).strip().casefold()
+    if not re.search(r'(?:harness|deepseek|dsh)', normalized):
+        return False
     freshness = r'(?:最新|新版|近期|当前|latest|recent|newest|current)'
     plugin = r'(?:插件|扩展|生态|plugin|plugins|extension|extensions)'
     return bool(
@@ -640,7 +642,8 @@ def _emit_search_evidence_fallback(
     official_repo = 'https://github.com/deepseek-ai/deepseek-harness'
     official_releases = f'{official_repo}/releases'
     item_urls = {item[1].rstrip('/').casefold() for item in items}
-    if official_repo in item_urls and official_releases not in item_urls:
+    is_harness_query = bool(re.search(r'(?:harness|deepseek|dsh)', f"{prompt} {search_context or ''}".casefold()))
+    if is_harness_query and official_repo in item_urls and official_releases not in item_urls:
         items.append((
             'DeepSeek Harness Releases',
             official_releases,
@@ -649,11 +652,14 @@ def _emit_search_evidence_fallback(
 
     def evidence_priority(item):
         url = item[1].rstrip('/').casefold()
-        if url == 'https://github.com/deepseek-ai/deepseek-harness':
-            return (0, url)
-        if url.startswith('https://github.com/deepseek-ai/deepseek-harness/releases'):
-            return (1, url)
-        if url.startswith('https://github.com/deepseek-ai/deepseek-harness'):
+        if is_harness_query:
+            if url == official_repo:
+                return (0, url)
+            if url.startswith(official_releases):
+                return (1, url)
+            if url.startswith(official_repo):
+                return (2, url)
+        if any(auth in url for auth in ('/docs', 'docs.', 'developer.', '.gov', '.edu', '/releases')):
             return (2, url)
         if 'github.com' in url:
             return (3, url)
@@ -675,12 +681,16 @@ def _emit_search_evidence_fallback(
     ]
     for index, (title, url, snippet) in enumerate(items, 1):
         normalized_url = url.casefold()
-        if normalized_url.startswith(f'{official_repo}/discussions'):
+        if is_harness_query and normalized_url.startswith(f'{official_repo}/discussions'):
             source_label = "官方站点·社区讨论"
-        elif normalized_url.startswith(official_repo):
+        elif is_harness_query and normalized_url.startswith(official_repo):
             source_label = "官方"
-        else:
+        elif is_harness_query:
             source_label = "社区/第三方"
+        elif any(auth in normalized_url for auth in ('docs.', 'developer.', '.gov', '.edu', 'github.com/orgs', 'wikipedia.org')):
+            source_label = "权威来源"
+        else:
+            source_label = "参考来源"
         lines.append(f"{index}. **[{source_label}]** [{title}]({url})")
         if snippet:
             lines.append(f"   {snippet}")
