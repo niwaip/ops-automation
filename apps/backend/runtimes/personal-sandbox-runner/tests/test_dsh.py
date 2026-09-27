@@ -41,6 +41,8 @@ from dsh_modules.agent_loop import (
     run_agent_loop, sanitize_preview, auto_heal_unexecuted_file_writes,
     detect_missing_claimed_artifacts, _finalize_agent_text
 )
+from dsh_modules.artifact_exporter import ArtifactExporter
+
 
 
 class TestDshCoreModules(unittest.TestCase):
@@ -1298,6 +1300,79 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertEqual(len(healed), 0)
         self.assertNotIn("chmod +x", final_text)
         self.assertIn("⚠️ 沙箱运行正常，但上游模型未返回有效回复内容", final_text)
+
+
+    def test_finalize_agent_text_preserves_valid_html_deliverable(self):
+        """验证当模型输出完整的 HTML 交付物时，_finalize_agent_text 保留源码供导出器落盘，不被脚本泄漏守卫误清空"""
+        html_code = (
+            "这里是为您制作的单页天气报告：\n\n"
+            "```html\n"
+            "<!DOCTYPE html>\n"
+            "<html lang=\"zh-CN\">\n"
+            "<head><title>上海天气报告</title></head>\n"
+            "<body><h1>上海天气报告</h1><p>当前气温 26°C，阵雨</p></body>\n"
+            "</html>\n"
+            "```"
+        )
+        messages = [
+            {"role": "user", "content": "生成一页的html报告"},
+            {"role": "assistant", "content": html_code}
+        ]
+        telemetry = TelemetryStats()
+        policy = RuntimePolicy()
+        final_text, healed = _finalize_agent_text(
+            reply_text=html_code,
+            messages=messages,
+            model="mock",
+            policy=policy,
+            deadline=None,
+            is_guide_intent=False,
+            executed_calls_history=[],
+            was_token_truncated=False,
+            telemetry=telemetry,
+            last_user_prompt="生成一页的html报告"
+        )
+        self.assertIn("```html", final_text)
+        self.assertIn("上海天气报告", final_text)
+        self.assertNotIn("上游模型未返回有效回复内容", final_text)
+
+    def test_export_html_recovers_from_session_history_on_hollow_claim(self):
+        """验证当模型给出空 bash 代码块与口头虚假交付时，ArtifactExporter 利用会话历史恢复编译单页 HTML"""
+        hollow_reply = "```bash\n\n```\n\n文件已成功写入 `/workspace/index.html`。"
+        history = [
+            {"role": "user", "content": "查看上海的天气"},
+            {
+                "role": "assistant",
+                "content": "根据实时气象数据，上海当前天气状况如下：\n\n**☀️ 上海实时天气 (2026-09-27 18:46)**\n- **气温**：26°C（体感 30°C）\n- **状况**：阵雨\n- **湿度**：91%\n\n未来三天持续降雨。"
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmp_ws:
+            final_text, exported = ArtifactExporter.export_html(
+                final_text=clean_output(hollow_reply),
+                is_ppt_intent=False,
+                workspace_dir=tmp_ws,
+                prompt="生成一页的html报告",
+                history=history
+            )
+            self.assertEqual(len(exported), 1)
+            out_file = Path(exported[0])
+            self.assertTrue(out_file.exists())
+            self.assertEqual(out_file.name, "index.html")
+            content = out_file.read_text(encoding="utf-8")
+            self.assertIn("<!doctype html>", content.lower())
+            self.assertIn("上海实时天气", content)
+            self.assertIn("26°C", content)
+            # 确认最终回复被挂载了交互预览卡片与注入的 HTML 源码
+            self.assertIn("✨ **交互式页面已生成完毕！**", final_text)
+            self.assertIn("```html", final_text)
+            self.assertNotIn("```bash", final_text)
+
+    def test_clean_output_strips_empty_command_blocks(self):
+        """验证 clean_output 彻底清除模型输出的空 bash / sh / json 代码块"""
+        raw = "```bash\n\n```\n\n文件已准备就绪。"
+        cleaned = clean_output(raw)
+        self.assertNotIn("```bash", cleaned)
+        self.assertIn("文件已准备就绪。", cleaned)
 
 
 if __name__ == "__main__":

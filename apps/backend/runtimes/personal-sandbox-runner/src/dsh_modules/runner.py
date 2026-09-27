@@ -415,13 +415,14 @@ def cmd_run(args):
         )
 
         # 6. 产物导出与落盘 (HTML/PPT 及各种文档交付物)
-        final_text, _ = ArtifactExporter.export_html(
+        final_text, exported_html_files = ArtifactExporter.export_html(
             loop_res.final_text,
             skill_res.is_ppt_intent,
             WORKSPACE_DIR,
             turn_start_time=overall_start_time,
             is_design_intent=skill_res.is_design_intent,
-            prompt=prompt
+            prompt=prompt,
+            history=existing_history
         )
 
         detected_deliverables = ArtifactExporter.export_deliverables(
@@ -444,6 +445,10 @@ def cmd_run(args):
         elapsed_ms = (time.time() - overall_start_time) * 1000
         loop_res.telemetry.set_wall_clock_duration(elapsed_ms)
         outbound_set = list(loop_res.outbound_files)
+        for exp_f in (exported_html_files or []):
+            payload = json.dumps({"filePath": exp_f, "fileName": Path(exp_f).name}, ensure_ascii=False)
+            if payload not in outbound_set and not any(Path(exp_f).name in existing for existing in outbound_set):
+                outbound_set.append(payload)
         for item in detected_deliverables:
             payload = json.dumps({"filePath": item["filePath"], "fileName": item["fileName"]}, ensure_ascii=False)
             if payload not in outbound_set and not any(item["fileName"] in existing for existing in outbound_set):

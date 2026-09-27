@@ -721,7 +721,7 @@ def clean_output(text: str, is_guide: bool = False) -> str:
     text = re.sub(r'```(?:json)?\s*\[?\s*\{\s*"(?:call|action|tool|tool_name|function|name)"\s*:[\s\S]*?\}\s*\]?\s*```', '', text, flags=re.DOTALL)
     # 移除单独成块的裸露 JSON 工具调用对象
     text = re.sub(r'^\s*\{\s*"(?:tool_name|tool|call|action|function|name)"\s*:[\s\S]*?\}\s*$', '', text, flags=re.MULTILINE)
-    text = re.sub(r'```(?:json)?\s*```', '', text)
+    text = re.sub(r'```(?:json|bash|sh|shell|zsh|python|py|javascript|js|html)?\s*```', '', text)
     # 移除单独成行的函数调用伪代码，如 weather(city="上海") 或 web_search(query="...")
     text = re.sub(r'^\s*(?:(?:tool_code|tool_call|call|action)\s*[:：]\s*)?(?:weather|web_search|fetch_page|read_file|write_markdown)\([^\n]*\)\s*$', '', text, flags=re.MULTILINE | re.IGNORECASE)
     text = re.sub(r'\[web_search(?:\s*[:\(][^\]]*\))?\]', '', text, flags=re.IGNORECASE)

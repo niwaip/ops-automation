@@ -216,15 +216,30 @@ def _recent_report_source(history: List[Dict[str, Any]]) -> str:
         if not isinstance(item, dict) or item.get("role") != "assistant":
             continue
         content = str(item.get("content") or "").strip()
-        if len(content) < 180 or re.search(r"(?:未生成可用文件|模型响应超时|上游模型未返回)", content):
+        if len(content) < 60 or re.search(r"(?:未生成可用文件|模型响应超时|上游模型未返回|文件已成功写入)", content):
             continue
         return content[:24000]
     return ""
 
 
+
 def _infer_title(source: str) -> str:
+    # 1. 优先提取明确的 Markdown 一/二级标题或加粗标题
+    for line in source.splitlines():
+        m_head = re.match(r"^#{1,3}\s+(.+)$", line.strip())
+        if m_head:
+            clean = re.sub(r"^[#*\s:：【】📄📊🎨]+|[*\s:：【】]+$", "", m_head.group(1)).strip()
+            if 3 <= len(clean) <= 60:
+                return clean
+    for line in source.splitlines():
+        m_bold = re.match(r"^\*\*(.+?)\*\*", line.strip())
+        if m_bold:
+            clean = re.sub(r"^[#*\s:：【】📄📊🎨]+|[*\s:：【】]+$", "", m_bold.group(1)).strip()
+            if 3 <= len(clean) <= 60 and not clean.startswith("根据") and not clean.startswith("注"):
+                return clean
+    # 2. 兜底扫描首个非停用词的短行
     for line in source.splitlines():
         clean = re.sub(r"^[#*\s:：【】📄📊🎨]+|[*\s:：【】]+$", "", line).strip()
-        if 4 <= len(clean) <= 80 and not clean.startswith("文件") and not clean.startswith("该报告已"):
+        if 4 <= len(clean) <= 80 and not any(clean.startswith(p) for p in ["文件", "该报告已", "根据", "你好", "以下是", "为您"]):
             return clean
     return "单页 HTML 报告"

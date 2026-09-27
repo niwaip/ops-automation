@@ -471,6 +471,7 @@ def _check_no_tool_assertion_guard(
         return "break", None, max_rounds
 
     # 3. 契约交付物缺失断言：用户明确要求生成文件，但工作区尚未生成任何物理文件
+    has_valid_html = ("```html" in reply_text.lower()) and not is_unclosed_or_truncated_html(reply_text)
     if is_generate_intent or (not is_inspect_intent and not is_guide_intent):
         missing_deliverable = detect_missing_requested_deliverable(
             last_user_prompt,
@@ -480,13 +481,16 @@ def _check_no_tool_assertion_guard(
             is_inspect_intent=is_inspect_intent
         )
         if not is_guide_intent and missing_deliverable:
-            print(f"⚡ [Harness Deliverable Assertion Guard] 检测到用户要求生成 {missing_deliverable} 交付物但沙箱尚未生成，正在引导执行工具落盘...", flush=True)
-            msg = (
-                f"【系统交付物检查】：用户要求生成 {missing_deliverable} 文件（用户原始指令：『{last_user_prompt}』），当前工作区 (/workspace/) 中尚未检测到该物理文件。"
-                f"请立即调用 bash 将完整可运行内容写入 /workspace/；不要继续输出功能规划、架构说明、伪代码，"
-                f"不要要求用户再次确认或回复‘提供完整代码’。文件真实存在后再简短汇报。"
-            )
-            return "continue", msg, bumped_max_rounds
+            if missing_deliverable == ".html" and has_valid_html:
+                missing_deliverable = None
+            if missing_deliverable:
+                print(f"⚡ [Harness Deliverable Assertion Guard] 检测到用户要求生成 {missing_deliverable} 交付物但沙箱尚未生成，正在引导执行工具落盘...", flush=True)
+                msg = (
+                    f"【系统交付物检查】：用户要求生成 {missing_deliverable} 文件（用户原始指令：『{last_user_prompt}』），当前工作区 (/workspace/) 中尚未检测到该物理文件。"
+                    f"请立即调用 bash 将完整可运行内容写入 /workspace/，或直接在回复中以完整的代码块（如 ```html\n<!DOCTYPE html>...\n```）输出全部源码；不要继续输出功能规划、架构说明、伪代码，"
+                    f"不要要求用户再次确认或回复‘提供完整代码’。严禁仅做口头汇报！"
+                )
+                return "continue", msg, bumped_max_rounds
 
     # 4. 行动垫话拦截
     if not is_guide_intent and is_promising_action(reply_text):
@@ -500,8 +504,8 @@ def _check_no_tool_assertion_guard(
         msg = "沙箱配备了完整的联网检索与系统终端工具，请直接调用相关工具探测解决，严禁推诿索取信息。"
         return "continue", msg, bumped_max_rounds
 
-    # 6. 未执行脚本泄漏拦截
-    if not is_guide_intent and not is_explicit_code_request(last_user_prompt) and detect_unexecuted_script_leak(reply_text):
+    # 6. 未执行脚本泄漏拦截（若已提供完整合法 HTML 交付物则放行至导出器落盘与挂载）
+    if not is_guide_intent and not is_explicit_code_request(last_user_prompt) and not has_valid_html and detect_unexecuted_script_leak(reply_text):
         print("⚡ [Harness Code Output Guard] 检测到模型直接输出了未执行的代码脚本或文件写入命令，正在引导执行工具落盘...", flush=True)
         msg = "检测到你输出了未执行的代码脚本或文件写入命令。请调用 bash 工具在终端实际运行脚本完成落盘，然后再向用户汇报完成。"
         return "continue", msg, bumped_max_rounds
@@ -715,9 +719,17 @@ def _finalize_agent_text(
     final_text = clean_output(reply_text, is_guide=is_guide_intent)
     has_internal_plan = is_internal_plan_output(reply_text)
 
+    healed_files: List[str] = []
+    has_valid_html = ("```html" in final_text.lower()) and not is_unclosed_or_truncated_html(final_text)
+    is_hollow_claim = (
+        len(final_text.strip()) < 120 and
+        not has_valid_html and
+        bool(re.search(r'(?:文件|代码|报告)?已成功(?:生成|写入|保存|导出)', final_text))
+    )
+
     is_transitional_filler = (
         len(final_text) < 120 and
-        (any(kw in final_text for kw in ACTION_FILLER_KEYWORDS) or is_promising_action(reply_text))
+        (any(kw in final_text for kw in ACTION_FILLER_KEYWORDS) or is_promising_action(reply_text) or is_hollow_claim)
     )
     has_raw_dsml = bool(re.search(r'<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}', reply_text))
     has_raw_tool = bool(re.search(r'<(?:tool_call|tool_calls)', reply_text))
@@ -755,12 +767,37 @@ def _finalize_agent_text(
 
     is_terminal_filler = (
         len(final_text) < 120 and
-        (any(kw in final_text for kw in ACTION_FILLER_KEYWORDS) or is_promising_action(final_text))
+        (any(kw in final_text for kw in ACTION_FILLER_KEYWORDS) or is_promising_action(final_text) or is_hollow_claim)
     )
     if not final_text or is_terminal_filler or is_internal_plan_output(final_text):
         if deadline is not None and time.monotonic() >= deadline:
             raise TimeoutError(f"Task total execution deadline ({policy.total_task_timeout}s) exceeded")
-        final_text = _build_fallback_report(messages, executed_calls_history)
+
+        html_cues = ["html", "网页", "单页", "报告", "大屏", "看板"]
+        has_html_req = any(cue in (last_user_prompt or "").lower() for cue in html_cues)
+        if has_html_req:
+            try:
+                from .html_report_fallback import materialize_html_report_fallback
+                fallback_path = materialize_html_report_fallback(
+                    prompt=last_user_prompt,
+                    history=messages,
+                    workspace_dir=WORKSPACE_DIR,
+                    notice="本单页报告由系统基于会话中有效内容恢复生成，支持交互预览与全屏查看。"
+                )
+                if fallback_path and Path(fallback_path).exists():
+                    file_content = Path(fallback_path).read_text(encoding="utf-8")
+                    final_text = (
+                        "✨ **单页 HTML 报告已由系统基于会话内容自动整理生成！**\n"
+                        f"- **输出文件**：`/workspace/{Path(fallback_path).name}`\n"
+                        "- **操作提示**：您可以在下方直接**展开在线预览**、**全屏查看**，或点击**下载**保存本地使用。\n\n"
+                        f"```html\n{file_content}\n```"
+                    )
+                    healed_files.append(fallback_path)
+            except Exception as e:
+                print(f"⚠️ [Harness Agent Loop] 自动编译单页 HTML 失败: {e}")
+
+        if not final_text or is_terminal_filler or is_internal_plan_output(final_text):
+            final_text = _build_fallback_report(messages, executed_calls_history)
 
     if was_token_truncated and "```html" not in final_text and not is_unclosed_or_truncated_html(final_text):
         truncation_suffix = (
@@ -772,14 +809,15 @@ def _finalize_agent_text(
         if "输出截断提醒" not in final_text:
             final_text += truncation_suffix
 
-    healed_files: List[str] = []
     if not is_guide_intent and not is_explicit_code_request(last_user_prompt):
-        final_text, healed_files = auto_heal_unexecuted_file_writes(final_text, WORKSPACE_DIR)
-        if healed_files:
+        final_text, extra_healed = auto_heal_unexecuted_file_writes(final_text, WORKSPACE_DIR)
+        healed_files.extend(extra_healed)
+        has_valid_html_final = ("```html" in final_text.lower()) and not is_unclosed_or_truncated_html(final_text)
+        if extra_healed:
             sys.stdout.write("<<<DSH_DELTA_RESET>>>\n")
             sys.stdout.write(f"<<<DSH_DELTA:{json.dumps(final_text, ensure_ascii=False)}>>>\n")
             sys.stdout.flush()
-        elif detect_unexecuted_script_leak(final_text):
+        elif not has_valid_html_final and detect_unexecuted_script_leak(final_text):
             print("⚠️ [Harness Script Leak Guard] 检测到模型输出了未执行的脚本回显且未能自愈，触发安全兜底...", flush=True)
             final_text = _build_fallback_report(messages, executed_calls_history)
 

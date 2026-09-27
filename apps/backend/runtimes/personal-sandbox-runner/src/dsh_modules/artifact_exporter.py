@@ -99,7 +99,8 @@ class ArtifactExporter:
         workspace_dir: str,
         turn_start_time: float = None,
         is_design_intent: bool = False,
-        prompt: str = None
+        prompt: str = None,
+        history: List[dict] = None
     ) -> Tuple[str, List[str]]:
         """
         Extracts HTML from output, writes to workspace, and injects interactive banner if needed.
@@ -228,7 +229,7 @@ class ArtifactExporter:
                 recent_htmls.sort(key=lambda f: f.stat().st_mtime, reverse=True)
                 target_file = recent_htmls[0]
 
-        # 容错兜底：若模型口头声明已生成 HTML / 单页报告且提供了实质正文，但未通过 bash 或代码块落盘，
+        # 容错兜底 1：若模型口头声明已生成 HTML / 单页报告且提供了实质正文，但未通过 bash 或代码块落盘，
         # 自动由运行时编译生成单页 HTML 并注入代码块，确保前端挂载 HtmlPreviewBlock（包含预览与全屏组件）
         if not target_file:
             try:
@@ -246,6 +247,22 @@ class ArtifactExporter:
             except Exception as e:
                 print(f"⚠️ [Harness Export] 声明式 HTML 产物自愈失败: {e}")
 
+        # 容错兜底 2：若仍未找到产物文件，且当前具备明确 HTML 意图且存在会话历史上下文（如上一轮查了天气/安装方法/数据），
+        # 自动由运行时基于会话历史编译生成单页 HTML 报告
+        if not target_file and has_html_intent and history:
+            try:
+                from .html_report_fallback import materialize_html_report_fallback
+                fallback_path = materialize_html_report_fallback(
+                    prompt=prompt or "",
+                    history=history,
+                    workspace_dir=workspace_dir,
+                    notice="本单页报告由系统基于会话中有效内容恢复生成，支持交互预览与全屏查看。"
+                )
+                if fallback_path and Path(fallback_path).exists():
+                    target_file = Path(fallback_path)
+            except Exception as e:
+                print(f"⚠️ [Harness Export] 会话历史 HTML 产物自愈失败: {e}")
+
         if target_file and target_file.exists():
             try:
                 with open(target_file, "r", encoding="utf-8") as f:
@@ -254,22 +271,30 @@ class ArtifactExporter:
                     exported_files.append(str(target_file))
                     print(f"✨ [Harness Export] 自动从工作区提取生成文件注入卡片: {target_file}")
 
-                    if not cleaned_text.startswith("✨"):
-                        if is_ppt_intent:
-                            banner = (
-                                "✨ **演示文稿已生成完毕！**\n"
-                                f"- **输出文件**：`/workspace/{target_file.name}`\n"
-                                "- **操作提示**：您可以在下方直接**交互预览**、**全屏播放**（支持键盘 ← → / 空格翻页、ESC 查看大纲），或点击**下载**保存本地播放。\n\n"
-                            )
-                        else:
-                            banner = (
-                                "✨ **交互式页面已生成完毕！**\n"
-                                f"- **输出文件**：`/workspace/{target_file.name}`\n"
-                                "- **操作提示**：您可以在下方直接**展开在线预览**、**全屏查看**，或点击**下载**保存本地使用。\n\n"
-                            )
+                    is_hollow_claim_text = (
+                        len(cleaned_text.strip()) < 80 and
+                        bool(re.search(r'(?:文件|代码|报告)?已成功(?:生成|写入|保存)', cleaned_text))
+                    )
+
+                    if is_ppt_intent:
+                        banner = (
+                            "✨ **演示文稿已生成完毕！**\n"
+                            f"- **输出文件**：`/workspace/{target_file.name}`\n"
+                            "- **操作提示**：您可以在下方直接**交互预览**、**全屏播放**（支持键盘 ← → / 空格翻页、ESC 查看大纲），或点击**下载**保存本地播放。\n\n"
+                        )
+                    else:
+                        banner = (
+                            "✨ **交互式页面已生成完毕！**\n"
+                            f"- **输出文件**：`/workspace/{target_file.name}`\n"
+                            "- **操作提示**：您可以在下方直接**展开在线预览**、**全屏查看**，或点击**下载**保存本地使用。\n\n"
+                        )
+
+                    if is_hollow_claim_text:
+                        cleaned_text = banner
+                    elif not cleaned_text.startswith("✨"):
                         cleaned_text = banner + cleaned_text
 
-                    cleaned_text = cleaned_text + f"\n\n```html\n{file_content}\n```\n"
+                    cleaned_text = cleaned_text.rstrip() + f"\n\n```html\n{file_content}\n```\n"
             except Exception as e:
                 print(f"⚠️ [Harness Export] 读取工作区补全文件异常: {e}")
 
