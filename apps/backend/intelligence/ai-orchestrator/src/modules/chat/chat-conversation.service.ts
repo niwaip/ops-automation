@@ -94,7 +94,10 @@ export class ChatConversationService {
       ownerUserId
     );
 
-    const userMessageForHistory = this.normalizeContentToText(messageContent);
+    const userMessageForHistory =
+      body.message && body.message.trim()
+        ? body.message.trim()
+        : this.normalizeContentToText(messageContent) || '(发送了附件)';
     const explicitMaxTokens =
       typeof (body.config as any)?.maxOutputTokens === 'number'
         ? (body.config as any).maxOutputTokens
@@ -220,9 +223,14 @@ export class ChatConversationService {
     const visibleContent = this.getVisibleChatContent(response.content, thinkingEnabled);
     const historyAssistantContent = this.modelService.stripThinkingTags(response.content);
 
+    const persistentUserContent =
+      body.message && body.message.trim()
+        ? body.message.trim()
+        : this.normalizeContentToText(userContent) || '(发送了附件)';
+
     const session = await this.persistConversation({
       sessionId,
-      userContent: this.normalizeContentToText(userContent),
+      userContent: persistentUserContent,
       assistantContent: historyAssistantContent,
       rawAssistantContent: response.content,
       modelId,

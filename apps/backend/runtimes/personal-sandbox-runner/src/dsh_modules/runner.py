@@ -189,8 +189,16 @@ def select_active_tools(
             allowed.update({"scan_knowledge", "read_file"})
         return get_sandbox_tools(allowed_names=allowed)
 
-    # Complex generation and matched skills may need bash, file and skill tooling.
-    if skill_res.skill_id or skill_res.is_generate_intent or skill_res.requires_execution:
+    # 1. 纯查看/审阅/归纳意图：无论是否匹配技能，均限制在只读工具面，严禁开放 bash、write_file、patch_file 等写盘工具
+    if skill_res.is_inspect_intent and not (skill_res.is_generate_intent or skill_res.requires_execution):
+        allowed = {"read_file", "scan_knowledge", "vision_inspect"}
+        if has_web_search_permission:
+            allowed.update({"web_search", "fetch_page"})
+        if skill_res.is_send_intent:
+            allowed.add("send_file")
+        tools = get_sandbox_tools(allowed_names=allowed)
+    # 2. 复杂生成、明确需要物理落盘产物的技能，提供完整执行环境（bash、文件与技能工具）
+    elif skill_res.is_generate_intent or skill_res.requires_execution or (skill_res.skill_id and not skill_res.is_inspect_intent):
         tools = get_sandbox_tools()
     else:
         allowed = {"web_search", "fetch_page"} if has_web_search_permission else set()
@@ -364,6 +372,10 @@ def cmd_run(args):
             except Exception:
                 search_context = original_search_context
 
+    model_name = getattr(args, "model", None) or os.environ.get("DSH_MODEL") or None
+    raw_display_name = getattr(args, "model_display_name", None) or os.environ.get("DSH_MODEL_DISPLAY_NAME") or None
+    model_display_name = resolve_model_display_name(model_name, raw_display_name)
+
     # 3. 提取当前会话附件内容
     session_files = resolve_session_attachments(args, session_id)
     file_context = ""
@@ -372,15 +384,12 @@ def cmd_run(args):
             raise TimeoutError("Task total execution deadline exceeded before attachment extraction")
         fpath = Path(WORKSPACE_DIR) / fname
         if fpath.exists() and fpath.is_file():
-            extracted = read_workspace_file(fname, deadline=task_deadline)
+            extracted = read_workspace_file(fname, deadline=task_deadline, model_name=model_name)
             if extracted and not extracted.startswith("文件未找到"):
                 clipped = ContextBudget.clip_attachment(extracted, policy.max_attachment_chars)
                 file_context += f"\n\n[Attached File Content - {fname}]:\n{clipped}"
 
     # 4. 组装 System Prompt 与 User Turn (保持前缀稳定以命中 Prompt Caching)
-    model_name = getattr(args, "model", None) or os.environ.get("DSH_MODEL") or None
-    raw_display_name = getattr(args, "model_display_name", None) or os.environ.get("DSH_MODEL_DISPLAY_NAME") or None
-    model_display_name = resolve_model_display_name(model_name, raw_display_name)
     system_prompt = build_system_prompt(
         WORKSPACE_DIR,
         KNOWLEDGE_DIR,
@@ -412,6 +421,7 @@ def cmd_run(args):
         is_office_intent=skill_res.is_office_intent,
         is_research_intent=skill_res.is_research_intent,
         is_inspect_intent=skill_res.is_inspect_intent,
+        is_generate_intent=skill_res.is_generate_intent,
         is_guide_intent=skill_res.is_guide_intent,
         existing_history=existing_history,
         max_skill_chars=policy.max_skill_chars,

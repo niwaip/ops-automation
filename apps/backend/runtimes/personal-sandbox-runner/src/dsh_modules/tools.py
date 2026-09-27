@@ -464,7 +464,10 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
     elif name_clean in ["write_markdown", "write_md", "save_markdown"]:
         file_path = params.get("file_path") or params.get("path") or params.get("filename") or "result.md"
         content = params.get("content") or params.get("markdown") or params.get("text") or ""
-        res = write_markdown_artifact(WORKSPACE_DIR, str(file_path), str(content))
+        try:
+            res = write_markdown_artifact(WORKSPACE_DIR, str(file_path), str(content))
+        except Exception as e:
+            res = f"写入 Markdown 文件失败: {e}"
 
     elif name_clean in ["fetch_page", "read_url", "web_fetch", "curl_page", "browse", "get_page", "page_fetch"]:
         url = (
@@ -494,7 +497,8 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
             e_val = int(e_line) if e_line is not None else None
         except (ValueError, TypeError):
             e_val = None
-        res = read_workspace_file(str(fpath), start_line=s_val, end_line=e_val, deadline=deadline)
+        current_model = os.environ.get("DSH_MODEL") or None
+        res = read_workspace_file(str(fpath), start_line=s_val, end_line=e_val, deadline=deadline, model_name=current_model)
 
     elif name_clean in ["patch_file", "replace_content", "patch", "edit_file", "replace_in_file"]:
         fpath = (
@@ -528,7 +532,8 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
             (str(list(params.values())[0]) if params else "")
         )
         prompt = params.get("prompt") or params.get("instruction") or params.get("query") or ""
-        res = inspect_image(str(fpath), prompt, deadline=deadline)
+        current_model = os.environ.get("DSH_MODEL") or None
+        res = inspect_image(str(fpath), prompt, deadline=deadline, model_name=current_model)
 
     elif name_clean in ["bash", "cmd", "terminal", "sh", "exec"]:
         cmd = params.get("cmd") or params.get("command") or ""

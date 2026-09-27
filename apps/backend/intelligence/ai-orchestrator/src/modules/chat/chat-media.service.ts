@@ -488,26 +488,44 @@ export class ChatMediaService {
         continue;
       }
 
-      // 3. 文本类文件解码
-      try {
-        const rawBuffer = Buffer.from(content, 'base64');
-        const isBinary = rawBuffer.slice(0, 512).includes(0);
-        if (!isBinary) {
-          const decodedContent = rawBuffer.toString('utf-8');
-          contentBlocks.push({
-            type: 'text',
-            text: `\n【文件: ${file.fileName}】\n${decodedContent}`,
-          });
-          continue;
+      // 3. 文本类文件解码（严格限定为文本类型，绝不将 PDF、Office、压缩包等二进制文件当作文本解码）
+      const ext = path.extname(file.fileName || '').toLowerCase();
+      const textExtensions = new Set([
+        '.txt', '.md', '.markdown', '.json', '.csv', '.tsv', '.log',
+        '.py', '.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs',
+        '.html', '.htm', '.css', '.scss', '.less',
+        '.xml', '.yaml', '.yml', '.sql', '.sh', '.bash', '.zsh',
+        '.env', '.ini', '.conf', '.cfg', '.toml', '.properties',
+      ]);
+      const isTextCandidate =
+        textExtensions.has(ext) ||
+        mimeType.startsWith('text/') ||
+        mimeType === 'application/json' ||
+        mimeType === 'application/javascript' ||
+        mimeType === 'application/xml' ||
+        mimeType === 'application/x-yaml';
+
+      if (isTextCandidate) {
+        try {
+          const rawBuffer = Buffer.from(content, 'base64');
+          const isBinary = rawBuffer.slice(0, 1024).includes(0);
+          if (!isBinary) {
+            const decodedContent = rawBuffer.toString('utf-8');
+            contentBlocks.push({
+              type: 'text',
+              text: `\n【文件: ${file.fileName}】\n${decodedContent}`,
+            });
+            continue;
+          }
+        } catch {
+          // ignore
         }
-      } catch {
-        // ignore
       }
 
-      // 4. 二进制文件
+      // 4. 二进制文档与多媒体文件
       contentBlocks.push({
         type: 'text',
-        text: `\n【文件: ${file.fileName} (${mimeType || '二进制文件'}, ${file.size}字节)】\n(二进制文档，已挂载至工作区)`,
+        text: `\n【文件: ${file.fileName} (${mimeType || '文档/二进制文件'}, ${file.size}字节)】\n(二进制文档，已挂载至工作区)`,
       });
     }
 

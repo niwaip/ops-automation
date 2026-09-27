@@ -105,7 +105,7 @@ def write_markdown_artifact(workspace_dir: str, file_path: str, content: str) ->
     clean_name = Path(str(file_path or "result.md")).name
     if not clean_name.lower().endswith(".md"):
         raise ValueError("write_markdown only accepts .md files")
-    if not re.fullmatch(r"[a-zA-Z0-9_\-\u4e00-\u9fa5]+\.md", clean_name, re.I):
+    if not re.fullmatch(r"[a-zA-Z0-9_\-\.\u4e00-\u9fa5]+\.md", clean_name, re.I):
         raise ValueError("invalid Markdown file name")
     body = unwrap_outer_markdown_fence(str(content or ""))
     if not body:

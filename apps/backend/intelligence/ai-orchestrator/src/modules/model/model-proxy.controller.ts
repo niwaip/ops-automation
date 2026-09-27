@@ -75,13 +75,6 @@ export class ModelProxyController {
       body.model === 'ocr' ||
       hasImageContent;
 
-    let client = null;
-    if (isVisionRequested) {
-      const visionModel = this.modelService.getPreferredVisionModel();
-      if (visionModel) {
-        client = this.modelService.getClient(visionModel.id);
-      }
-    }
     const defaultChat =
       this.modelService.getPreferredDefaultModel({ mode: 'chat' }) ||
       this.modelService.getDefaultModel();
@@ -94,7 +87,9 @@ export class ModelProxyController {
       (defaultChat && body.model === defaultChat.id) ||
       (defaultModel && body.model === defaultModel.id);
 
-    if (!client && body.model && !isGenericOrPlaceholder) {
+    let client = null;
+    // 1. 若用户显式选定了具体模型（非 'vision'/'ocr' 虚拟标识，非 generic），优先使用用户选定模型的客户端
+    if (body.model && body.model !== 'vision' && body.model !== 'ocr' && !isGenericOrPlaceholder) {
       client = this.modelService.getClient(body.model);
       if (!client && !apiKey) {
         this.logger.error(`Explicitly requested model [${body.model}] not found and no upstream API key configured`);
@@ -102,6 +97,14 @@ export class ModelProxyController {
           `Requested model [${body.model}] is not configured or unavailable on the platform`,
           HttpStatus.BAD_REQUEST
         );
+      }
+    }
+
+    // 2. 若未绑定用户模型或显式请求了平台视觉模型（model: 'vision'/'ocr' 或缺省多模态），解析首选视觉模型
+    if (!client && isVisionRequested) {
+      const visionModel = this.modelService.getPreferredVisionModel();
+      if (visionModel) {
+        client = this.modelService.getClient(visionModel.id);
       }
     }
     if (!client && isGenericOrPlaceholder) {

@@ -187,10 +187,16 @@ def scan_personal_knowledge() -> str:
     return "\n".join(summary)
 
 
-def inspect_image(image_path: str, prompt: str = "", max_chars: int = 15000, deadline: Optional[float] = None) -> str:
+def inspect_image(
+    image_path: str,
+    prompt: str = "",
+    max_chars: int = 15000,
+    deadline: Optional[float] = None,
+    model_name: Optional[str] = None
+) -> str:
     """
     Inspects, analyzes, and extracts visual information/OCR text from an image file
-    located in /workspace or /knowledge via the platform's multimodal vision model proxy.
+    or scanned PDF located in /workspace or /knowledge via multimodal vision model proxy.
     """
     assert_not_timed_out(deadline, "image vision inspection")
     p, err = resolve_sandboxed_path(image_path, for_write=False, for_outbound=False)
@@ -216,20 +222,35 @@ def inspect_image(image_path: str, prompt: str = "", max_chars: int = 15000, dea
 
     if suffix == ".pdf":
         try:
-            import pypdf
-            reader = pypdf.PdfReader(str(p))
-            for page in reader.pages:
-                if getattr(page, "images", None) and len(page.images) > 0:
-                    sorted_imgs = sorted(page.images, key=lambda img: len(img.data), reverse=True)
-                    best_img = sorted_imgs[0]
-                    image_bytes = best_img.data
-                    img_ext = Path(best_img.name).suffix.lower()
-                    mime = mime_map.get(img_ext, "image/jpeg")
-                    break
+            # 1. 优先使用 pdf2image 高清光栅化整页（获取完整文字、图章与版面）
+            try:
+                import pdf2image
+                import io
+                imgs = pdf2image.convert_from_path(str(p), dpi=150, first_page=1, last_page=3)
+                if imgs:
+                    buf = io.BytesIO()
+                    imgs[0].save(buf, format="JPEG", quality=85)
+                    image_bytes = buf.getvalue()
+                    mime = "image/jpeg"
+            except Exception:
+                pass
+
+            # 2. 备选方案：通过 pypdf 提取嵌入的独立位图对象
             if not image_bytes:
-                # 智能降级：若是纯文字 PDF 且未嵌入独立位图对象，自动调用 read_workspace_file 提取文本，避免中断模型推理
-                txt_fallback = read_workspace_file(str(p), max_chars=max_chars, deadline=deadline)
-                return f"【PDF 识别提示】文档 {p.name} 为文字型 PDF（无独立位图对象），已自动为您提取文档文本内容：\n{txt_fallback}"
+                import pypdf
+                reader = pypdf.PdfReader(str(p))
+                for page in reader.pages:
+                    if getattr(page, "images", None) and len(page.images) > 0:
+                        sorted_imgs = sorted(page.images, key=lambda img: len(img.data), reverse=True)
+                        best_img = sorted_imgs[0]
+                        image_bytes = best_img.data
+                        img_ext = Path(best_img.name).suffix.lower()
+                        mime = mime_map.get(img_ext, "image/jpeg")
+                        break
+
+            if not image_bytes:
+                txt_fallback = read_workspace_file(str(p), max_chars=max_chars, deadline=deadline, model_name=model_name)
+                return f"【PDF 识别提示】文档 {p.name} 无法提取有效页面图像，已尝试提取纯文本内容：\n{txt_fallback}"
         except Exception as e:
             assert_not_timed_out(deadline, "image vision inspection")
             return f"从 PDF 提取页面图片失败 ({p.name}): {e}"
@@ -251,14 +272,15 @@ def inspect_image(image_path: str, prompt: str = "", max_chars: int = 15000, dea
         b64_str = base64.b64encode(image_bytes).decode("ascii")
 
         analysis_prompt = prompt.strip() if prompt and prompt.strip() else (
-            "请详细分析并解读这张图片的内容，识别并提取图中的所有关键文字（OCR）、物体、图表数据、界面元素或主体信息，给出清晰准确的中文说明。"
+            "请详细分析并解读这张图片/扫描件的内容，识别并提取图中的所有关键文字（OCR）、表格数据、条款与主体信息，给出清晰准确的中文说明。"
         )
 
         api_endpoint = f"{DEFAULT_PROXY_URL.rstrip('/')}/chat/completions"
         from .runtime_policy import RuntimePolicy
         pol = RuntimePolicy.from_env()
+        target_model = model_name or os.environ.get("DSH_MODEL") or "default"
         payload = {
-            "model": "vision",
+            "model": target_model,
             "messages": [
                 {
                     "role": "user",
@@ -294,7 +316,7 @@ def inspect_image(image_path: str, prompt: str = "", max_chars: int = 15000, dea
             choices = resp_data.get("choices", [])
             if choices:
                 content = choices[0].get("message", {}).get("content", "")
-                if content:
+                if content and content.strip():
                     for txt_name in [f"{p.stem}.txt", f"{p.name}.txt"]:
                         tp = p.parent / txt_name
                         if not tp.exists():
@@ -302,8 +324,8 @@ def inspect_image(image_path: str, prompt: str = "", max_chars: int = 15000, dea
                                 tp.write_text(content, encoding="utf-8")
                             except Exception:
                                 pass
-                    return f"【图片 ({p.name}) 视觉分析与内容识别结果】:\n{content[:max_chars]}"
-            return f"图片视觉识别未返回有效内容: {resp_data}"
+                    return f"【文档/图片 ({p.name}) 视觉分析与内容识别结果】:\n{content[:max_chars]}"
+            return f"【系统提示】附件 ({p.name}) 属于扫描件/图片，当前选定模型未能识别解析出有效文字内容，无法解析。"
     except TimeoutError:
         raise
     except urllib.error.URLError as ue:
@@ -311,14 +333,13 @@ def inspect_image(image_path: str, prompt: str = "", max_chars: int = 15000, dea
             if deadline is not None and time.monotonic() >= deadline:
                 raise TimeoutError("Task total execution deadline exceeded during image vision inspection")
         assert_not_timed_out(deadline, "image vision inspection")
-        return f"【系统提示】图片视觉分析网络请求失败: {ue}"
+        return f"【系统提示】附件 ({p.name}) 图像分析网络请求失败，无法解析: {ue}"
     except urllib.error.HTTPError as he:
-        # 默认模型若为纯文本模型（如 DeepSeek），代理端会返回 400/404/500
         assert_not_timed_out(deadline, "image vision inspection")
-        return "【系统提示】当前系统默认模型为纯文本模型，暂不支持视觉识别（无法解析图片内容）。"
+        return f"【系统提示】附件 ({p.name}) 属于扫描件/图片，当前选定模型未能识别解析出有效文字内容，无法解析。"
     except Exception as e:
         assert_not_timed_out(deadline, "image vision inspection")
-        return f"【系统提示】当前系统默认模型暂不支持视觉多模态能力: {e}"
+        return f"【系统提示】附件 ({p.name}) 属于扫描件/图片，当前选定模型未能识别解析出有效文字内容，无法解析: {e}"
 
 
 def read_workspace_file(
@@ -326,7 +347,8 @@ def read_workspace_file(
     max_chars: int = 30000,
     start_line: Optional[int] = None,
     end_line: Optional[int] = None,
-    deadline: Optional[float] = None
+    deadline: Optional[float] = None,
+    model_name: Optional[str] = None
 ) -> str:
     """Reads and extracts text from workspace or knowledge files, with native support for .docx, .xlsx, .txt, .md, .json, .py, .pdf, .jpg, .png"""
     p, err = resolve_sandboxed_path(file_path, for_write=False, for_outbound=False)
@@ -347,9 +369,19 @@ def read_workspace_file(
     elif suffix == ".xlsx":
         return extract_xlsx_text(p, max_chars=max_chars, start_line=start_line, end_line=end_line)
 
-    # 3. PDF 文档 (.pdf) 原生提取
+    # 3. PDF 文档 (.pdf) 原生提取与扫描版自动视觉下沉
     elif suffix == ".pdf":
-        return extract_pdf_text(p, max_chars=max_chars, start_line=start_line, end_line=end_line)
+        extracted_pdf = extract_pdf_text(p, max_chars=max_chars, start_line=start_line, end_line=end_line)
+        is_scanned_notice = (
+            not extracted_pdf or
+            "扫描版或图片型 PDF" in extracted_pdf or
+            "未检测到文字内容" in extracted_pdf
+        )
+        if is_scanned_notice:
+            ocr_text = inspect_image(str(p), max_chars=max_chars, deadline=deadline, model_name=model_name)
+            if ocr_text and not ocr_text.startswith("无法识别图片") and not ocr_text.startswith("图片文件未找到"):
+                return ocr_text
+        return extracted_pdf
 
     # 4. PPT 文档 (.pptx) 原生提取
     elif suffix == ".pptx":
@@ -359,7 +391,7 @@ def read_workspace_file(
     txt_sibling = p.parent / f"{p.name}.txt"
     if not txt_sibling.exists():
         txt_sibling = p.parent / f"{p.stem}.txt"
-    if txt_sibling.exists() and suffix in [".docx", ".xlsx", ".pptx", ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"]:
+    if txt_sibling.exists() and suffix in [".docx", ".xlsx", ".pptx", ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".pdf"]:
         try:
             return f"【文件 ({p.name}) 提取文本/视觉识别结果】:\n" + txt_sibling.read_text(encoding="utf-8", errors="ignore")[:max_chars]
         except Exception:
@@ -367,7 +399,7 @@ def read_workspace_file(
 
     # 5. 图片文件 (.jpg, .jpeg, .png, .webp, .gif, .bmp) 视觉识别与解析
     if suffix in [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"]:
-        return inspect_image(str(p), max_chars=max_chars, deadline=deadline)
+        return inspect_image(str(p), max_chars=max_chars, deadline=deadline, model_name=model_name)
 
     # 6. 常规纯文本文件读取 (.txt, .md, .json, .py, .csv, .yml, .sql, .sh 等)
     try:

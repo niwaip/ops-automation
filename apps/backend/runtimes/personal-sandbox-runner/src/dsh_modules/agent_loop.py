@@ -666,6 +666,8 @@ def _dispatch_tool_calls(
 
         clipped_tool_res = ContextBudget.clip_tool_result(tool_res, max_chars=policy.max_tool_result_chars)
         clean_tool_res = strip_dsh_markers(clipped_tool_res, ["REMINDER_CREATE", "REMINDER_UPDATE", "REMINDER_DELETE"]).strip()
+        if not clean_tool_res:
+            clean_tool_res = "（工具执行完成，无控制台输出）"
         messages.append({
             "role": "tool",
             "tool_call_id": t_id,
