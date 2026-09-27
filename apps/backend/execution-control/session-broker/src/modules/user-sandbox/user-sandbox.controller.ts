@@ -160,6 +160,8 @@ export class UserSandboxController {
       timeoutMs: dto.timeoutMs,
       files: dto.files,
       waitTimeoutSeconds: dto.waitTimeoutSeconds,
+      thinking: dto.thinking,
+      reasoningEffort: dto.reasoningEffort,
     });
   }
 
@@ -206,6 +208,8 @@ export class UserSandboxController {
         timeoutMs: dto.timeoutMs,
         files: dto.files,
         waitTimeoutSeconds: dto.waitTimeoutSeconds,
+        thinking: dto.thinking,
+        reasoningEffort: dto.reasoningEffort,
         onWaiting: (waitedMs: number) => {
           sendEvent('observation', {
             content: '⏳ 任务已排队，等待前序任务完成后自动开始...',
@@ -226,6 +230,13 @@ export class UserSandboxController {
               } catch {
                 // ignore
               }
+            } else if (trimmed.startsWith('<<<DSH_THOUGHT:') && trimmed.endsWith('>>>')) {
+              try {
+                const thoughtPayload = JSON.parse(trimmed.slice(15, -3));
+                sendEvent('thought', { content: thoughtPayload });
+              } catch {
+                // ignore
+              }
             } else if (trimmed === '<<<DSH_DELTA_RESET>>>') {
               sendEvent('delta_reset', {});
             } else if (
@@ -233,6 +244,7 @@ export class UserSandboxController {
               trimmed.startsWith('✓') ||
               trimmed.startsWith('🎯') ||
               trimmed.startsWith('🔍') ||
+              trimmed.startsWith('⏳') ||
               trimmed.startsWith('✨')
             ) {
               sendEvent('observation', { content: trimmed });

@@ -11,7 +11,8 @@ from typing import Dict, Any, List, Tuple
 def format_dsh_marker(tag: str, payload: str) -> str:
     """Formats a length-prefixed DSH protocol marker to prevent >>> truncation."""
     p_str = str(payload) if payload is not None else ""
-    return f"<<<DSH_{tag}:len={len(p_str)}:{p_str}>>>"
+    utf16_len = len(p_str.encode("utf-16-le")) // 2
+    return f"<<<DSH_{tag}:len={utf16_len}:{p_str}>>>"
 
 
 def extract_dsh_markers(text: str, tag: str) -> List[Tuple[str, int, int]]:
@@ -39,6 +40,8 @@ def extract_dsh_markers(text: str, tag: str) -> List[Tuple[str, int, int]]:
             try:
                 payload_len = int(len_match.group(1))
                 payload_start = after_prefix + len(len_match.group(0))
+
+                # 1. 尝试直接以 Python 字符/代码点长度匹配
                 payload_end = payload_start + payload_len
                 if text[payload_end:payload_end + 3] == ">>>":
                     payload = text[payload_start:payload_end]
@@ -46,6 +49,32 @@ def extract_dsh_markers(text: str, tag: str) -> List[Tuple[str, int, int]]:
                     results.append((payload, idx, marker_end))
                     curr_pos = marker_end
                     matched_len = True
+                else:
+                    # 2. 尝试以 UTF-16 代码单元长度进行映射匹配（消除 emoji 等代理对字符长度偏移）
+                    prefix_utf16 = len(text[:payload_start].encode("utf-16-le")) // 2
+                    target_utf16 = prefix_utf16 + payload_len
+                    encoded = text.encode("utf-16-le")
+                    target_bytes = target_utf16 * 2
+                    if target_bytes <= len(encoded):
+                        cand_text = encoded[:target_bytes].decode("utf-16-le", errors="ignore")
+                        cand_end = len(cand_text)
+                        if text[cand_end:cand_end + 3] == ">>>":
+                            payload = text[payload_start:cand_end]
+                            marker_end = cand_end + 3
+                            results.append((payload, idx, marker_end))
+                            curr_pos = marker_end
+                            matched_len = True
+
+                # 3. 容错降级：在已识别 len= 前缀的情况下，从 payload_start（严禁从 after_prefix）寻找闭合 >>>
+                if not matched_len:
+                    arrow_idx = text.find(">>>", payload_start)
+                    if arrow_idx != -1:
+                        raw_payload = text[payload_start:arrow_idx]
+                        payload = re.sub(r'^len=\d+:\s*', '', raw_payload).strip()
+                        marker_end = arrow_idx + 3
+                        results.append((payload, idx, marker_end))
+                        curr_pos = marker_end
+                        matched_len = True
             except (ValueError, IndexError):
                 pass
 
@@ -60,18 +89,20 @@ def extract_dsh_markers(text: str, tag: str) -> List[Tuple[str, int, int]]:
             m_arrow = re.match(r'^\s*>>>', rest)
             if m_arrow:
                 marker_end = json_end + len(m_arrow.group(0))
-                payload = text[after_prefix:json_end].strip()
+                raw_payload = text[after_prefix:json_end].strip()
+                payload = re.sub(r'^len=\d+:\s*', '', raw_payload).strip()
                 results.append((payload, idx, marker_end))
                 curr_pos = marker_end
                 continue
         except Exception:
             pass
 
-        # Raw string legacy fallback
+        # Raw string legacy fallback (严防残留 len=\d+: 污染正文)
         arrow_idx = text.find(">>>", after_prefix)
         if arrow_idx != -1:
             marker_end = arrow_idx + 3
-            payload = text[after_prefix:arrow_idx].strip()
+            raw_payload = text[after_prefix:arrow_idx].strip()
+            payload = re.sub(r'^len=\d+:\s*', '', raw_payload).strip()
             results.append((payload, idx, marker_end))
             curr_pos = marker_end
         else:
@@ -102,19 +133,25 @@ def strip_dsh_markers(text: str, tags: List[str]) -> str:
             pos += len(empty_marker)
 
     if not ranges:
-        return text
+        res = text
+    else:
+        ranges.sort(key=lambda r: r[0])
+        parts = []
+        last_end = 0
+        for s, e in ranges:
+            if s > last_end:
+                parts.append(text[last_end:s])
+            last_end = max(last_end, e)
+        if last_end < len(text):
+            parts.append(text[last_end:])
+        res = "".join(parts)
 
-    ranges.sort(key=lambda r: r[0])
-    parts = []
-    last_end = 0
-    for s, e in ranges:
-        if s > last_end:
-            parts.append(text[last_end:s])
-        last_end = max(last_end, e)
-    if last_end < len(text):
-        parts.append(text[last_end:])
+    # 兜底防御：清除任何残余的指定标签未闭合或畸变片段
+    for tag in tags:
+        res = re.sub(rf"<<<DSH_{re.escape(tag)}:[^>]*>>>", "", res)
+        res = re.sub(rf"<<<DSH_{re.escape(tag)}>>>", "", res)
 
-    return "".join(parts)
+    return res
 
 
 @dataclass
@@ -197,13 +234,18 @@ class TelemetryStats:
         """Prints outbound reminder protocol markers."""
         for r in reminders:
             content = r
-            if content.startswith("<<<DSH_REMINDER_CREATE:") and content.endswith(">>>"):
-                content = content[len("<<<DSH_REMINDER_CREATE:"):-3]
-                if content.startswith("len="):
-                    parts = content.split(":", 1)
-                    if len(parts) == 2:
-                        content = parts[1]
-            print(f"\n{format_dsh_marker('REMINDER_CREATE', content)}", flush=True)
+            matched_tag = "REMINDER_CREATE"
+            for tag in ("REMINDER_CREATE", "REMINDER_UPDATE", "REMINDER_DELETE"):
+                prefix = f"<<<DSH_{tag}:"
+                if content.startswith(prefix) and content.endswith(">>>"):
+                    matched_tag = tag
+                    content = content[len(prefix):-3]
+                    if content.startswith("len="):
+                        parts = content.split(":", 1)
+                        if len(parts) == 2:
+                            content = parts[1]
+                    break
+            print(f"\n{format_dsh_marker(matched_tag, content)}", flush=True)
 
     @staticmethod
     def emit_final_output(text: str) -> None:

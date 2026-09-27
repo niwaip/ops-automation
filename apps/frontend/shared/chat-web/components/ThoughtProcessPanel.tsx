@@ -7,22 +7,33 @@ interface ThoughtProcessPanelProps {
   onToggle: () => void;
   collapsedSummary?: string;
   preserveSummaryWhenCollapsed?: boolean;
+  isStreaming?: boolean;
 }
 
 const ThoughtProcessPanel: React.FC<ThoughtProcessPanelProps> = ({
   thoughts,
   expanded,
   onToggle,
-  collapsedSummary,
-  preserveSummaryWhenCollapsed = false,
+  isStreaming = false,
 }) => {
   if (thoughts.length === 0) {
     return null;
   }
 
-  const normalizedSummary = collapsedSummary?.trim();
-  const showCollapsedSummary =
-    preserveSummaryWhenCollapsed && !expanded && Boolean(normalizedSummary);
+  const titleText = expanded
+    ? isStreaming
+      ? '正在思考中...'
+      : '隐藏思考过程'
+    : isStreaming
+    ? '思考中...'
+    : '查看思考过程';
+
+  const countBadge =
+    thoughts.length > 1
+      ? `(${thoughts.length} 步)`
+      : isStreaming
+      ? '(深度思考)'
+      : '(已深度思考)';
 
   return (
     <div className="chat-thoughts-wrapper">
@@ -30,14 +41,9 @@ const ThoughtProcessPanel: React.FC<ThoughtProcessPanelProps> = ({
         {expanded ? <DownOutlined /> : <RightOutlined />}
         <span className="chat-thoughts-header-text">
           <span className="chat-thoughts-header-line">
-            <span className="chat-thoughts-title">
-              {expanded ? '隐藏思考过程' : showCollapsedSummary ? '思考结果' : '查看思考过程'}
-            </span>
-            <span className="chat-thoughts-count">({thoughts.length} 步)</span>
+            <span className="chat-thoughts-title">{titleText}</span>
+            <span className="chat-thoughts-count">{countBadge}</span>
           </span>
-          {showCollapsedSummary ? (
-            <span className="chat-thoughts-summary">{normalizedSummary}</span>
-          ) : null}
         </span>
       </div>
       {expanded ? (

@@ -208,6 +208,8 @@ export class UserSandboxService implements OnModuleInit, OnModuleDestroy {
       timeoutMs?: number;
       files?: string[];
       waitTimeoutSeconds?: number;
+      thinking?: boolean;
+      reasoningEffort?: string;
       onWaiting?: (waitedMs: number) => void;
       onStdoutChunk?: (chunk: string) => void;
     }

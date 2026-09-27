@@ -241,6 +241,45 @@ describe('executeWebSearch', () => {
     expect(result.output?.warnings?.[0]).toContain("搜索通道 'tavily' 异常");
   });
 
+  it('treats an empty provider response as a soft failure and continues', async () => {
+    process.env.TAVILY_API_KEY = 'test-secret';
+    process.env.EXA_API_KEY = 'exa-key';
+    process.env.SEARCH_PROVIDER_ORDER = 'tavily,exa';
+    mockedPost
+      .mockResolvedValueOnce({ data: { results: [] } })
+      .mockResolvedValueOnce({
+        data: { results: [{ title: 'Official', url: 'https://github.com/example/repo', text: 'Repo', score: 0.9 }] },
+      });
+
+    const result = await executeWebSearch({ input: { query: 'example plugin' } } as any);
+
+    expect(result.success).toBe(true);
+    expect(result.output?.provider).toBe('exa');
+    expect(result.output?.warnings?.[0]).toContain('未返回结果');
+  });
+
+  it('runs a bounded query portfolio and prioritizes official sources', async () => {
+    process.env.TAVILY_API_KEY = 'test-secret';
+    process.env.SEARCH_PROVIDER_ORDER = 'tavily';
+    mockedPost
+      .mockResolvedValueOnce({ data: { results: [{ title: 'Blog', url: 'https://blog.example/a', content: 'A', score: 0.99 }] } })
+      .mockResolvedValueOnce({ data: { results: [{ title: 'Repo', url: 'https://github.com/example/repo', content: 'B', score: 0.8 }] } });
+
+    const result = await executeWebSearch({
+      input: {
+        query: 'example plugin',
+        queries: ['example official GitHub releases'],
+        sourcePolicy: 'official-first',
+        maxResults: 5,
+      },
+    } as any);
+
+    expect(result.success).toBe(true);
+    expect(result.output?.providers).toEqual(['tavily']);
+    expect(result.output?.results[0].url).toContain('github.com');
+    expect(mockedPost).toHaveBeenCalledTimes(2);
+  });
+
   it('fails when DuckDuckGo returns an anomaly bot challenge modal', async () => {
     delete process.env.TAVILY_API_KEY;
     process.env.DUCKDUCKGO_ENABLED = 'true';

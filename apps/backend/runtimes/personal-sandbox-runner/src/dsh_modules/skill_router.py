@@ -103,6 +103,12 @@ def check_generation_target_is_physical(lower_q: str) -> bool:
     Distinguishes whether a generative action targets a physical file deliverable
     (.pdf, .docx, .xlsx, .pptx, etc.) or pure in-chat textual content (summary, outline, advice).
     """
+    if (
+        re.search(r'(?:一页|单页|single[- ]page)', lower_q, re.I)
+        and re.search(r'(?:报告|报表|report)', lower_q, re.I)
+    ):
+        return True
+
     # 查找生成动词后紧随的目标词
     m = re.search(r'(?:生成|导出|制作|创建|做|写|输出为|保存为|转为|转成|输出)\s*(?:一份|一个|一张|一段|出|成|为)?\s*([a-zA-Z0-9_\-\u4e00-\u9fa5\.]+)', lower_q)
     if not m:
@@ -169,13 +175,21 @@ def resolve_file_action_intent(query: str, history: Optional[List[Dict[str, Any]
             # 此时交付载体为聊天文本，绝不属于物理文件生成！
             return False, True
 
-    # 4. 上下文追问/确认探测（例如上一轮提供了方案，本轮用户回复“确认生成”、“导出”、“1”）
-    if history and lower_q in ["1", "1.", "一是", "第一个", "确认", "生成", "导出", "确认生成", "请生成"]:
+    # 4. 上下文追问/确认/重试探测。短续作指令必须继承上一轮的
+    # 物理交付意图，否则“重新生成”会退化成普通聊天并重新长篇规划。
+    continuation_cues = [
+        "1", "1.", "一是", "第一个", "确认", "生成", "导出", "确认生成", "请生成",
+        "重新生成", "重新制作", "重做", "再次生成", "再生成一次", "重新导出", "retry", "regenerate"
+    ]
+    if history and lower_q in continuation_cues:
         for h in reversed(history[-4:]):
             if not isinstance(h, dict):
                 continue
             c = str(h.get("content", "")).lower()
-            if any(k in c for k in ["pdf", "word", "excel", "ppt", "导出", "生成文档", "fpdf", "docx", "xlsx"]):
+            if any(k in c for k in [
+                "pdf", "word", "excel", "ppt", "html", "网页", "页面", "单页", "一页", "报告",
+                "导出", "生成文档", "fpdf", "docx", "xlsx"
+            ]) and any(k in c for k in GENERATE_ACTION_PATTERNS):
                 return True, False
 
     return False, False
@@ -434,6 +448,8 @@ class SkillRouter:
         # 4. 探测全网实时检索与最新动态意图（开放域外部资讯/开源生态/最新发布/会议展会时间，而非本地工作区）
         SEARCH_CUES = [
             "最新的", "最新", "最近", "近期", "当前最", "最热门", "热门", "新出", "最新发布",
+            "实时", "热点", "热搜", "热榜", "榜单", "排行榜", "趋势榜", "今日榜", "实时榜",
+            "安装方法", "安装教程", "如何安装", "怎么安装", "安装指南", "installation guide", "how to install",
             "外部生态", "开源社区", "社区生态", "网上", "全网", "市场动态",
             "近年", "近几年", "历年", "历届", "举办时间", "什么时候举办", "什么时候开", "召开时间"
         ]
@@ -478,6 +494,30 @@ class SkillRouter:
                     if s["id"].lower() == cmd or cmd in [a.lower() for a in s.get("aliases", [])]:
                         result.skill_id = s["id"]
                         break
+
+        # A single-page report defaults to a web document unless the user names
+        # another physical format. This also makes short contextual follow-ups
+        # such as "生成一页的报告" deterministic instead of asking a
+        # small model to choose between PPT, HTML, Word, and PDF at execution time.
+        is_single_page_report = bool(
+            re.search(r'(?:一页|单页|single[- ]page)', lower_query, re.I)
+            and re.search(r'(?:报告|报表|report)', lower_query, re.I)
+        )
+        names_non_web_format = bool(
+            re.search(r'(?:pptx?|slides?|幻灯片|演示文稿|pdf|docx?|word|xlsx?|excel)', lower_query, re.I)
+        )
+        if (
+            not result.skill_id
+            and not names_non_web_format
+            and (
+                is_single_page_report
+                or (
+                    re.search(r'(?:html|网页|页面)', lower_query, re.I)
+                    and re.search(r'(?:一页|单页|single[- ]page)', lower_query, re.I)
+                )
+            )
+        ):
+            result.skill_id = "frontend-design"
 
         # 4. 语义亲和度路由器（Semantic Router，彻底替代静态白名单）
         if not result.skill_id:
@@ -528,6 +568,30 @@ class SkillRouter:
                 c = str(h.get("content", "")).lower()
                 if any(k in c for k in ["pdf", "导出", "生成文档", "fpdf", "notosans"]):
                     result.skill_id = "pdf"
+                    break
+
+        # 5b. 交付物重试继承。基于上一条用户交付要求恢复对应技能，
+        # 不依赖当前短句再次写出文件格式。
+        retry_cues = ["重新生成", "重新制作", "重做", "再次生成", "再生成一次", "重新导出", "retry", "regenerate"]
+        if not result.skill_id and existing_history and lower_query in retry_cues:
+            for h in reversed(existing_history[-8:]):
+                if not isinstance(h, dict) or h.get("role") != "user":
+                    continue
+                c = str(h.get("content", "")).lower()
+                if not any(k in c for k in GENERATE_ACTION_PATTERNS):
+                    continue
+                if any(k in c for k in ["html", "网页", "页面", "单页", "一页"]):
+                    result.skill_id = "frontend-design"
+                elif any(k in c for k in ["ppt", "幻灯片", "演示文稿"]):
+                    result.skill_id = "guizang-ppt"
+                elif "pdf" in c:
+                    result.skill_id = "pdf"
+                elif any(k in c for k in ["word", "docx"]):
+                    result.skill_id = "docx"
+                elif any(k in c for k in ["excel", "xlsx", "表格"]):
+                    result.skill_id = "xlsx"
+                if result.skill_id:
+                    result.is_generate_intent = True
                     break
 
         # 6. 前端网页/交互原型/游戏迭代上下文探测（如前轮生成了 HTML/游戏，本轮用户反馈 "加个悔棋"、"改一下颜色"）

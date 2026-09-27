@@ -97,10 +97,46 @@ const isHtmlPreviewBlock = (className?: string, codeText?: string) => {
 };
 
 export const unwrapOuterMarkdownFence = (content: string): string => {
-  const trimmed = content.trim();
-  const match = trimmed.match(/^```(?:markdown|md)\s*\n([\s\S]*?)\n```\s*$/i);
-  return match ? match[1].trim() : content;
+  if (!content) return '';
+  let cleaned = content.trim();
+  // 彻底剔除任何偶发渗透的协议长度标记（如 len=2488:）
+  cleaned = cleaned.replace(/^len=\d+:\s*/, '').trim();
+
+  // 1. 完整包裹的代码块
+  const fullMatch = cleaned.match(/^```(?:markdown|md)\s*\n([\s\S]*?)\n```\s*$/i);
+  if (fullMatch) {
+    return fullMatch[1].trim();
+  }
+
+  // 2. 带有前后过渡引导语或后置说明的代码块
+  const blockMatch = cleaned.match(/^([\s\S]*?)```(?:markdown|md)\s*\n([\s\S]*?)\n```([\s\S]*)$/i);
+  if (blockMatch) {
+    const pre = blockMatch[1].trim();
+    const body = blockMatch[2].trim();
+    const post = blockMatch[3].trim();
+    return [pre, body, post].filter(Boolean).join('\n\n');
+  }
+
+  // 3. 因 Token 上限截断未闭合的代码块
+  const unclosedMatch = cleaned.match(/^([\s\S]*?)```(?:markdown|md)\s*\n([\s\S]*)$/i);
+  if (unclosedMatch) {
+    const pre = unclosedMatch[1].trim();
+    const body = unclosedMatch[2].trim();
+    return [pre, body].filter(Boolean).join('\n\n');
+  }
+
+  return cleaned;
 };
+
+export const StreamingIndicator: React.FC = () => (
+  <span className="streaming-indicator" aria-label="generating">
+    <span className="streaming-dot" />
+    <span className="streaming-dot" />
+    <span className="streaming-dot" />
+    <span className="streaming-dot" />
+    <span className="streaming-dot" />
+  </span>
+);
 
 const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
   content,
@@ -108,11 +144,23 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
   isStreaming = false,
 }) => {
   if (!content) {
+    if (isStreaming) {
+      return (
+        <div className="chat-message-markdown">
+          <StreamingIndicator />
+        </div>
+      );
+    }
     return null;
   }
 
   if (mode === 'plain') {
-    return <div className="chat-message-plain">{content}</div>;
+    return (
+      <div className="chat-message-plain">
+        {content}
+        {isStreaming ? <StreamingIndicator /> : null}
+      </div>
+    );
   }
 
   return (
@@ -296,7 +344,7 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
       >
         {normalizeTabSeparatedTable(unwrapOuterMarkdownFence(content))}
       </ReactMarkdown>
-      {isStreaming ? <span className="streaming-indicator" aria-label="generating" /> : null}
+      {isStreaming ? <StreamingIndicator /> : null}
     </div>
   );
 };

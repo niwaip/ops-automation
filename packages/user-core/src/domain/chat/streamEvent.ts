@@ -376,8 +376,16 @@ const buildContentParts = (
   const parts: ChatContentPart[] = [];
   const executionId = asString(data?.executionId);
 
-  if (contentText.trim()) {
-    parts.push({ type: CONTENT_PART_TYPE.TEXT, text: contentText });
+  // 关键：THOUGHT 事件的思考内容绝不能作为正文 text part 渲染！
+  // 并且任何事件中如果 contentText 去除 <think>...</think> 后为空，也不应该输出 text part
+  if (event.type !== StreamEventTypeValue.THOUGHT) {
+    const cleanText = contentText
+      .replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '')
+      .replace(/<\/?think>/gi, '')
+      .trim();
+    if (cleanText) {
+      parts.push({ type: CONTENT_PART_TYPE.TEXT, text: cleanText });
+    }
   }
 
   if (event.type === StreamEventTypeValue.RESULT && normalizedResult?.structuredData) {
@@ -465,20 +473,21 @@ export const reduceChatStreamEvent = ({
   const terminalTaskResult = event.type === StreamEventTypeValue.RESULT && isTerminalTaskResult(mode, data);
 
   let nextAccumulatedContent = accumulatedContent;
-  if (data?.isDelta) {
+  if (event.type === StreamEventTypeValue.THOUGHT) {
+    // 思考事件专供思维链面板渲染，绝不修改或重置 accumulatedContent 正文流
+    // 也绝不把思考过程作为正文拼接，保证前序轮次摘要（如 ⏳ [Harness Agent] 第2轮...）不被冲刷丢失
+    nextAccumulatedContent = accumulatedContent;
+  } else if (data?.isDelta) {
     nextAccumulatedContent = contentText;
   } else if (
-    event.type === StreamEventTypeValue.THOUGHT ||
     event.type === StreamEventTypeValue.ACTION ||
     event.type === StreamEventTypeValue.OBSERVATION
   ) {
     if (mode !== 'task') {
       const prefix =
-        event.type === StreamEventTypeValue.THOUGHT
-          ? '【思考】'
-          : event.type === StreamEventTypeValue.ACTION
-            ? '【行动】'
-            : '【观察】';
+        event.type === StreamEventTypeValue.ACTION
+          ? '【行动】'
+          : '【观察】';
       nextAccumulatedContent = `${accumulatedContent}${accumulatedContent ? '\n' : ''}${prefix}${event.content}`;
     }
   } else if (event.type === StreamEventTypeValue.RESULT && mode === 'chat') {
@@ -533,7 +542,17 @@ export const reduceChatStreamEvent = ({
             ? true
             : typeof data?.thinking === 'boolean'
               ? data.thinking
-              : undefined,
+              : event.type === StreamEventTypeValue.THOUGHT || data?.thoughtLogsSnapshot || data?.thought
+                ? true
+                : undefined,
+        thoughtLogsSnapshot:
+          Array.isArray(data?.thoughtLogsSnapshot) && data.thoughtLogsSnapshot.length > 0
+            ? (data.thoughtLogsSnapshot as string[])
+            : typeof data?.thought === 'string' && data.thought.trim()
+              ? [data.thought.trim()]
+              : event.type === StreamEventTypeValue.THOUGHT && event.content?.trim()
+                ? [event.content.trim()]
+                : undefined,
         skillUsed: asString(data?.skillUsed) || asString(data?.skillId),
         taskStatus,
         isQueued: Boolean(data?.isQueued),

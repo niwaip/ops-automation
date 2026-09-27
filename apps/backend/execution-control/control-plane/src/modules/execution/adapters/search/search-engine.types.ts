@@ -1,5 +1,6 @@
 export type SearchTopic = 'general' | 'news';
 export type SearchDepth = 'basic' | 'advanced';
+export type SearchSourcePolicy = 'balanced' | 'official-first';
 
 export type SearchRequestOptions = {
   query: string;
@@ -10,6 +11,7 @@ export type SearchRequestOptions = {
   includeDomains?: string[];
   excludeDomains?: string[];
   timeoutMs?: number;
+  sourcePolicy?: SearchSourcePolicy;
 };
 
 export type SearchResultItem = {
@@ -26,6 +28,7 @@ export type SearchEngineResponse = {
   resultCount: number;
   answer?: string;
   warnings?: string[];
+  providers?: string[];
 };
 
 export interface SearchEngineProvider {

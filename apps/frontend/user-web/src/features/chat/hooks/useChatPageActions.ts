@@ -28,6 +28,7 @@ interface UseChatPageActionsOptions {
   createDraftSession: (initialTitle: string, now: string) => ChatSession;
   draft: string;
   enableThinking: boolean;
+  reasoningEffort?: 'low' | 'medium' | 'high';
   enableWebSearch?: boolean;
   enableResearch?: boolean;
   ensureSession: (now: string) => ChatSession;
@@ -59,6 +60,7 @@ export function useChatPageActions({
   createDraftSession,
   draft,
   enableThinking,
+  reasoningEffort = 'medium',
   enableWebSearch = false,
   enableResearch = false,
   ensureSession,
@@ -219,6 +221,7 @@ export function useChatPageActions({
         mode: 'task', // 组织工作流连接的底层执行技能强制以 task 任务规划模式运行
         thinking: enableThinking,
         reasoning: nativeReasoningEnabled,
+        reasoningEffort: nativeReasoningEnabled ? reasoningEffort : undefined,
         webSearch: enableWebSearch,
       });
 
@@ -337,6 +340,7 @@ export function useChatPageActions({
       mode: chatMode,
       thinking: enableThinking,
       reasoning: nativeReasoningEnabled,
+      reasoningEffort: nativeReasoningEnabled ? reasoningEffort : undefined,
       webSearch: chatMode === 'task' ? enableWebSearch : true,
       research: chatMode === 'chat' ? Boolean(enableResearch) : false,
     });
@@ -353,6 +357,7 @@ export function useChatPageActions({
     draft,
     enableResearch,
     enableThinking,
+    reasoningEffort,
     enableWebSearch,
     ensureSession,
     isStreaming,
@@ -518,6 +523,7 @@ export function useChatPageActions({
         mode: chatMode,
         thinking: enableThinking,
         reasoning: nativeReasoningEnabled,
+        reasoningEffort: nativeReasoningEnabled ? reasoningEffort : undefined,
         webSearch: chatMode === 'task' ? enableWebSearch : true,
         research: chatMode === 'chat' ? Boolean(enableResearch) : false,
       });
@@ -530,6 +536,7 @@ export function useChatPageActions({
       clearError,
       enableResearch,
       enableThinking,
+      reasoningEffort,
       enableWebSearch,
       isStreaming,
       nativeReasoningEnabled,

@@ -117,12 +117,9 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
       targetForDetection.includes('AudioContext') ||
       targetForDetection.includes('dashboard'));
 
-  // Reports can execute scripts and load large assets. Mount only on demand.
-  // Games & interactive apps are auto-expanded by default so users can play immediately.
+  // HTML artifacts mount only on demand to keep the chat flow clean and avoid huge inline iframes.
   const [isExpanded, setIsExpanded] = useState<boolean>(
-    defaultExpanded !== undefined
-      ? defaultExpanded
-      : Boolean(isInteractiveApp || isContractReview || isPresentation)
+    defaultExpanded !== undefined ? defaultExpanded : false
   );
 
   // Never mount iframe or expand content while streaming to prevent executing partial code
@@ -255,11 +252,11 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
       }
       return sizeBytes;
     }
-    if (code && code.length > 0) {
+    if (!isStreaming && code && code.length > 0) {
       return `${(code.length / 1024).toFixed(1)} KB`;
     }
     return '';
-  }, [sizeBytes, code]);
+  }, [sizeBytes, code, isStreaming]);
 
   const readyTipText = isTruncated
     ? '⚠️ HTML 产物在生成过程中未完全闭合（点击展开查看已生成部分与恢复指引）'
@@ -408,7 +405,7 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
               >
                 {defaultFileName}
               </span>
-              {approxSize ? (
+              {!isStreaming && approxSize ? (
                 <span
                   style={{
                     fontSize: '11px',

@@ -86,8 +86,8 @@ export class OpenAICompatibleClient {
    * @returns Promise resolving to structured LLM response
    */
   async chatCompletion(request: ChatMessage[] | LLMChatRequest): Promise<LLMResponse> {
+    const normalized = this.normalizeChatRequest(request);
     try {
-      const normalized = this.normalizeChatRequest(request);
       const data: any = {
         model: this.model,
         messages: normalized.messages,
@@ -126,7 +126,8 @@ export class OpenAICompatibleClient {
       const response = await this.postChatCompletionWithReasoningFallback(
         data,
         normalized.reasoning,
-        normalized.maxOutputTokens
+        normalized.maxOutputTokens,
+        normalized.timeoutMs,
       );
 
       const choice = response.data?.choices?.[0];
@@ -145,7 +146,7 @@ export class OpenAICompatibleClient {
         // Check for timeout specifically
         if (axiosError.code === 'ECONNABORTED' || axiosError.message.includes('timeout')) {
           throw new Error(
-            `AI 模型响应超时，请稍后重试或使用更简单的命令 (当前超时设置: ${this.timeout / 1000}秒)`
+            `AI 模型响应超时，请稍后重试或使用更简单的命令 (当前超时设置: ${(normalized.timeoutMs ?? this.timeout) / 1000}秒)`
           );
         }
         throw new Error(
@@ -197,6 +198,7 @@ export class OpenAICompatibleClient {
       // Use /chat/completions since baseURL already includes /v1
       response = await this.client.post<NodeJS.ReadableStream>('/chat/completions', data, {
         responseType: 'stream',
+        timeout: normalized.timeoutMs ?? this.timeout,
       });
     } catch (error: unknown) {
       const errorMsg = await this.extractAxiosErrorMessage(error);
@@ -208,6 +210,7 @@ export class OpenAICompatibleClient {
         try {
           response = await this.client.post<NodeJS.ReadableStream>('/chat/completions', data, {
             responseType: 'stream',
+            timeout: normalized.timeoutMs ?? this.timeout,
           });
         } catch (retryError: unknown) {
           const retryErrorMsg = await this.extractAxiosErrorMessage(retryError);
@@ -221,6 +224,7 @@ export class OpenAICompatibleClient {
         try {
           response = await this.client.post<NodeJS.ReadableStream>('/chat/completions', retryData, {
             responseType: 'stream',
+            timeout: normalized.timeoutMs ?? this.timeout,
           });
         } catch (retryError: unknown) {
           const retryErrorMsg = await this.extractAxiosErrorMessage(retryError);
@@ -239,6 +243,7 @@ export class OpenAICompatibleClient {
       const decoder = new StringDecoder('utf-8');
       let sseBuffer = '';
       let streamFatalError: Error | null = null;
+      let refreshIdleTimeout = () => {};
 
       const processLine = (rawLine: string) => {
         const trimmed = rawLine.trim();
@@ -271,15 +276,17 @@ export class OpenAICompatibleClient {
         const delta = choice?.delta;
         const finishReason = choice?.finish_reason;
         const content = delta?.content || '';
+        const reasoningContent = delta?.reasoning_content ?? delta?.reasoning ?? delta?.thought ?? '';
         if (content) {
           fullContent += content;
-          onChunk(content, { delta, finish_reason: finishReason, usage: parsed.usage });
-        } else if (delta?.tool_calls || finishReason || parsed.usage) {
-          onChunk('', { delta, finish_reason: finishReason, usage: parsed.usage });
+          onChunk(content, { delta, finish_reason: finishReason, usage: parsed.usage, reasoning_content: reasoningContent });
+        } else if (reasoningContent || delta?.tool_calls || finishReason || parsed.usage) {
+          onChunk('', { delta, finish_reason: finishReason, usage: parsed.usage, reasoning_content: reasoningContent });
         }
       };
 
       stream.on('data', (chunk: Buffer) => {
+        refreshIdleTimeout();
         sseBuffer += decoder.write(chunk);
         const lines = sseBuffer.split('\n');
         sseBuffer = lines.pop() ?? '';
@@ -290,9 +297,39 @@ export class OpenAICompatibleClient {
       });
 
       return new Promise((resolve, reject) => {
+        const idleTimeoutMs = normalized.streamIdleTimeoutMs;
+        let idleTimer: NodeJS.Timeout | undefined;
+        let settled = false;
+        const clearIdleTimer = () => {
+          if (idleTimer) clearTimeout(idleTimer);
+          idleTimer = undefined;
+        };
+        const fail = (error: Error) => {
+          if (settled) return;
+          settled = true;
+          clearIdleTimer();
+          reject(error);
+        };
+        refreshIdleTimeout = () => {
+          if (!idleTimeoutMs || settled) return;
+          clearIdleTimer();
+          idleTimer = setTimeout(() => {
+            const idleError = new Error(
+              `OpenAI API Stream idle timeout: no upstream event for ${idleTimeoutMs}ms`
+            );
+            try { (stream as any).destroy?.(idleError); } catch { /* ignore */ }
+            fail(idleError);
+          }, idleTimeoutMs);
+        };
+        // Axios' request timeout bounds the initial response. Once headers arrive,
+        // this watchdog measures stream inactivity and is refreshed by every raw event.
+        try { (stream as any).setTimeout?.(0); } catch { /* ignore */ }
+        refreshIdleTimeout();
+
         stream.on('end', () => {
+          if (settled) return;
           if (streamFatalError) {
-            reject(streamFatalError);
+            fail(streamFatalError);
             return;
           }
           sseBuffer += decoder.end();
@@ -300,16 +337,18 @@ export class OpenAICompatibleClient {
             processLine(sseBuffer);
           }
           if (streamFatalError) {
-            reject(streamFatalError);
+            fail(streamFatalError);
             return;
           }
+          settled = true;
+          clearIdleTimer();
           resolve({
             content: fullContent,
             usage: finalUsage,
             rateLimit,
           });
         });
-        stream.on('error', (err: any) => reject(streamFatalError || err));
+        stream.on('error', (err: any) => fail(streamFatalError || err));
       });
     } catch (error: unknown) {
       const errorMsg = await this.extractAxiosErrorMessage(error);
@@ -427,10 +466,12 @@ export class OpenAICompatibleClient {
       enabled?: boolean;
       effort?: 'low' | 'medium' | 'high';
     },
-    maxOutputTokens?: number
+    maxOutputTokens?: number,
+    timeoutMs?: number,
   ) {
+    const requestConfig = { timeout: timeoutMs ?? this.timeout };
     try {
-      return await this.client.post<ChatCompletionResponse>('/chat/completions', data);
+      return await this.client.post<ChatCompletionResponse>('/chat/completions', data, requestConfig);
     } catch (error: unknown) {
       if (reasoning?.enabled !== false || !this.isReasoningMandatoryError(error)) {
         throw error;
@@ -444,7 +485,7 @@ export class OpenAICompatibleClient {
       const retryData = { ...data };
       this.clearReasoningFields(retryData);
       this.applyReasoningConfig(retryData, { enabled: false }, maxOutputTokens);
-      return this.client.post<ChatCompletionResponse>('/chat/completions', retryData);
+      return this.client.post<ChatCompletionResponse>('/chat/completions', retryData, requestConfig);
     }
   }
 
@@ -564,6 +605,8 @@ export class OpenAICompatibleClient {
     };
     tools?: any[];
     tool_choice?: any;
+    timeoutMs?: number;
+    streamIdleTimeoutMs?: number;
   } {
     if (Array.isArray(request)) {
       return {
@@ -583,6 +626,8 @@ export class OpenAICompatibleClient {
         reasoning: request.reasoning,
         tools: request.tools,
         tool_choice: request.tool_choice,
+        timeoutMs: request.timeoutMs,
+        streamIdleTimeoutMs: request.streamIdleTimeoutMs,
       };
     }
 
@@ -603,6 +648,8 @@ export class OpenAICompatibleClient {
         reasoning: request.reasoning,
         tools: request.tools,
         tool_choice: request.tool_choice,
+        timeoutMs: request.timeoutMs,
+        streamIdleTimeoutMs: request.streamIdleTimeoutMs,
       };
     }
 

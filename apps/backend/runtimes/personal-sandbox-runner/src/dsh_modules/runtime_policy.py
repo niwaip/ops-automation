@@ -28,14 +28,19 @@ class RuntimePolicy:
     temperature: float = 0.4
     max_tokens: int = 16384
     model_socket_timeout: int = 60
-    model_max_retries: int = 3
+    # The central model proxy owns upstream retries. Avoid multiplying retries here.
+    model_max_retries: int = 0
     vision_timeout: int = 60
+    thinking: bool = False
+    reasoning_effort: Optional[str] = None
 
     @classmethod
     def from_env(cls) -> "RuntimePolicy":
         """Factory method to load defaults with environment overrides."""
         single_to = int(os.getenv("DSH_SINGLE_TIMEOUT_SECONDS", "180"))
         total_to = int(os.getenv("DSH_TOTAL_TIMEOUT_SECONDS", os.getenv("DSH_TIMEOUT_SECONDS", "300")))
+        thinking_env = os.getenv("DSH_THINKING", "").lower() in ("true", "1", "yes")
+        reasoning_effort_env = os.getenv("DSH_REASONING_EFFORT", None) or None
         return cls(
             max_rounds=int(os.getenv("DSH_MAX_ROUNDS", "3")),
             max_history_chars=int(os.getenv("DSH_MAX_HISTORY_CHARS", "16000")),
@@ -52,8 +57,10 @@ class RuntimePolicy:
             temperature=float(os.getenv("DSH_TEMPERATURE", "0.4")),
             max_tokens=int(os.getenv("DSH_MAX_TOKENS", "16384")),
             model_socket_timeout=int(os.getenv("DSH_MODEL_SOCKET_TIMEOUT", "60")),
-            model_max_retries=int(os.getenv("DSH_MODEL_MAX_RETRIES", "3")),
-            vision_timeout=int(os.getenv("DSH_VISION_TIMEOUT", "60"))
+            model_max_retries=int(os.getenv("DSH_MODEL_MAX_RETRIES", "0")),
+            vision_timeout=int(os.getenv("DSH_VISION_TIMEOUT", "60")),
+            thinking=thinking_env,
+            reasoning_effort=reasoning_effort_env
         )
 
     def determine_max_rounds(

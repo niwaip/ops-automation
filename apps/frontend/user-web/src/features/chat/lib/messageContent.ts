@@ -28,10 +28,10 @@ export const parseMessageContent = (content: string): { thoughts: string[]; answ
   }
 
   answer = content
-    .replace(thinkTagRegex, '')
+    .replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '')
     .replace(/<\/?think>/gi, '')
-    .replace(thoughtRegex, '')
-    .replace(actionRegex, '')
+    .replace(/【思考】([^\n]*(?:\n(?!【)[^\n]*)*)/g, '')
+    .replace(/【行动】([^\n]*(?:\n(?!【)[^\n]*)*)/g, '')
     .trim();
 
   if (!answer) {

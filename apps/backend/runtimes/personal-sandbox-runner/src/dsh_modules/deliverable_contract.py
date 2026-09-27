@@ -21,14 +21,40 @@ MARKDOWN_FILE_RE = re.compile(
 
 
 def unwrap_outer_markdown_fence(text: str) -> str:
-    """Removes one fence when the entire response is a Markdown document code block."""
+    """Removes one fence when the response contains a Markdown document code block."""
     cleaned = (text or "").strip()
+    if not cleaned:
+        return ""
+    # 彻底杜绝任何偶发协议标记残片
+    cleaned = re.sub(r"^len=\d+:\s*", "", cleaned).strip()
+
+    # 1. 完整包裹的代码块（首尾无其他多余文本）
     match = re.fullmatch(
         r"```(?:markdown|md)\s*\n([\s\S]*?)\n```\s*",
         cleaned,
         re.I,
     )
-    return match.group(1).strip() if match else cleaned
+    if match:
+        return match.group(1).strip()
+
+    # 2. 带有前后过渡引导语或后置说明的代码块
+    m_block = re.search(r"```(?:markdown|md)\s*\n([\s\S]*?)\n```", cleaned, re.I)
+    if m_block:
+        pre = cleaned[:m_block.start()].strip()
+        body = m_block.group(1).strip()
+        post = cleaned[m_block.end():].strip()
+        parts = [p for p in (pre, body, post) if p]
+        return "\n\n".join(parts)
+
+    # 3. 因 Token 上限截断未闭合的代码块
+    m_unclosed = re.search(r"```(?:markdown|md)\s*\n([\s\S]*)$", cleaned, re.I)
+    if m_unclosed:
+        pre = cleaned[:m_unclosed.start()].strip()
+        body = m_unclosed.group(1).strip()
+        parts = [p for p in (pre, body) if p]
+        return "\n\n".join(parts)
+
+    return cleaned
 
 
 def requests_markdown_artifact(prompt: str) -> bool:
@@ -60,7 +86,7 @@ def is_substantive_final_content(text: str) -> bool:
     cleaned = (text or "").strip()
     if len(cleaned) < 120 or is_internal_plan_output(cleaned):
         return False
-    if re.match(r"^write_markdown\s*\(", cleaned, re.I):
+    if re.match(r"^(?:write_markdown|create_reminders)\s*\(", cleaned, re.I):
         return False
     if cleaned.startswith("⚠️") or cleaned.startswith("❌"):
         return False

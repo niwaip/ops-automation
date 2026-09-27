@@ -129,5 +129,62 @@ describe('ReminderService', () => {
       }),
     }));
   });
+
+  it('switches recurring reminder to one-time reminder upon update', async () => {
+    prisma.reminderRule.findFirst.mockResolvedValue({
+      id: 'rule-recurring',
+      userId: 'owner',
+      title: '周会',
+      message: '每周周会',
+      cronExpression: '0 9 * * 1',
+      runAt: null,
+      timezone: 'Asia/Shanghai',
+      isActive: true,
+      deletedAt: null,
+    });
+    prisma.reminderRule.update.mockImplementation(({ where, data }) => Promise.resolve({ ...data, id: where.id }));
+
+    const futureDate = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+    await service.update('owner', 'rule-recurring', {
+      runAt: futureDate,
+    });
+
+    expect(prisma.reminderRule.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'rule-recurring' },
+      data: expect.objectContaining({
+        cronExpression: '',
+        runAt: expect.any(Date),
+        nextRunAt: expect.any(Date),
+      }),
+    }));
+  });
+
+  it('switches one-time reminder to recurring reminder upon update', async () => {
+    prisma.reminderRule.findFirst.mockResolvedValue({
+      id: 'rule-onetime',
+      userId: 'owner',
+      title: '看医生',
+      message: '下午看医生',
+      cronExpression: '',
+      runAt: new Date(Date.now() + 24 * 3600 * 1000),
+      timezone: 'Asia/Shanghai',
+      isActive: true,
+      deletedAt: null,
+    });
+    prisma.reminderRule.update.mockImplementation(({ where, data }) => Promise.resolve({ ...data, id: where.id }));
+
+    await service.update('owner', 'rule-onetime', {
+      cronExpression: '0 10 * * 1-5',
+    });
+
+    expect(prisma.reminderRule.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'rule-onetime' },
+      data: expect.objectContaining({
+        cronExpression: '0 10 * * 1-5',
+        runAt: null,
+        nextRunAt: expect.any(Date),
+      }),
+    }));
+  });
 });
 

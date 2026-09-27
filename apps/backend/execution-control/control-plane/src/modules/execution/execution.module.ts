@@ -74,10 +74,11 @@ import { OpsReportProjectionService } from './plan-runtime/ops-report-projection
 import { RecorderCompositePlanCompilerService } from './plan-runtime/recorder-composite-plan-compiler.service';
 import { DeterministicRuntimeSessionCoordinatorService } from './plan-runtime/deterministic-runtime-session-coordinator.service';
 import { CompletionClaimSynthesizerService } from './plan-runtime/completion-claim-synthesizer.service';
+import { SearchWebController } from './adapters/search-web.controller';
 
 @Module({
   imports: [DiscoveryModule, PrismaModule, BackfillModule, SavedSkillModule, ReminderModule],
-  controllers: [ExecutionController, ResultRefController],
+  controllers: [ExecutionController, ResultRefController, SearchWebController],
   providers: [
     BrowserPhaseRecoveryPlanner,
     BrowserRuntimeAdapter,

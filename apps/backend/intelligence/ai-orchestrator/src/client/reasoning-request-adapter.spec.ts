@@ -1,6 +1,31 @@
 import { applyReasoningRequestAdapter } from './reasoning-request-adapter';
 
 describe('applyReasoningRequestAdapter', () => {
+  it('disables Qwen thinking for both gateway and chat-template dialects', () => {
+    const payload: Record<string, unknown> = {
+      chat_template_kwargs: { custom_flag: true },
+    };
+
+    applyReasoningRequestAdapter(
+      payload,
+      {
+        provider: 'local',
+        baseURL: 'http://localhost:8000/v1',
+        model: 'qwen36-35b-a3b',
+        maxOutputTokens: 6000,
+      },
+      { enabled: false }
+    );
+
+    expect(payload).toEqual({
+      enable_thinking: false,
+      chat_template_kwargs: {
+        custom_flag: true,
+        enable_thinking: false,
+      },
+    });
+  });
+
   it.each([
     ['low', { reasoning: { effort: 'low' } }],
     ['medium', { reasoning: { effort: 'medium' } }],

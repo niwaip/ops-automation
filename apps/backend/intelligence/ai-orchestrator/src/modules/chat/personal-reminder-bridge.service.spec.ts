@@ -84,6 +84,39 @@ describe('PersonalReminderBridgeService - Marker Protocol & Truncation Immunity'
       const stripped = stripDshMarkers(rawText, ['OUTBOUND_FILE']);
       expect(stripped).toBe('');
     });
+
+    it('[P2] correctly extracts markers containing surrogate pair emojis with Python code-point length without leaking len=', () => {
+      const emojiContent = '🚀 一、 旗舰大模型重大突破：阿里千问（Qwen）战略级升级';
+      // Python len(emojiContent) is 30 code points, whereas JS emojiContent.length is 31 UTF-16 code units
+      const pythonLen = Array.from(emojiContent).length;
+      expect(pythonLen).toBe(30);
+      expect(emojiContent.length).toBe(31);
+
+      const rawText = `<<<DSH_FINAL_OUTPUT:len=${pythonLen}:${emojiContent}>>>\n<<<DSH_FINAL_OUTPUT>>>\n${emojiContent}`;
+      const matches = extractDshMarkers(rawText, 'FINAL_OUTPUT');
+
+      expect(matches).toHaveLength(1);
+      expect(matches[0]!.payload).toBe(emojiContent);
+      expect(matches[0]!.payload).not.toMatch(/^len=\d+:/);
+
+      const stripped = stripDshMarkers(rawText, ['FINAL_OUTPUT']);
+      expect(stripped.trim()).toBe(emojiContent);
+      expect(stripped).not.toContain('<<<DSH_FINAL_OUTPUT');
+      expect(stripped).not.toMatch(/len=\d+:/);
+    });
+
+    it('[P2] cleanly recovers payload and never leaks len= when marker has mismatched length', () => {
+      const content = '```markdown\n# 2026年9月最新AI新闻\n正文内容\n```';
+      const brokenMarker = `<<<DSH_FINAL_OUTPUT:len=9999:${content}>>>`;
+
+      const matches = extractDshMarkers(brokenMarker, 'FINAL_OUTPUT');
+      expect(matches).toHaveLength(1);
+      expect(matches[0]!.payload).toBe(content);
+      expect(matches[0]!.payload).not.toMatch(/^len=\d+:/);
+
+      const stripped = stripDshMarkers(brokenMarker, ['FINAL_OUTPUT']);
+      expect(stripped).toBe('');
+    });
   });
 
   describe('createRemindersInControlPlane & processSandboxReminders', () => {
@@ -136,6 +169,109 @@ describe('PersonalReminderBridgeService - Marker Protocol & Truncation Immunity'
       expect(res.error).toBeUndefined();
       expect(res.requestedCount).toBe(1);
       expect(res.cleanOutput).toBe('');
+    });
+
+    it('[P1] successfully processes update reminder marker and updates control-plane', async () => {
+      const mockUpdated = {
+        id: 'rule_1',
+        title: '周报提醒',
+        runAt: '2026-09-26T17:00:00.000Z',
+        isActive: true,
+      };
+
+      global.fetch = jest.fn().mockImplementation((url: string) => {
+        if (url.includes('/reminders/rule_1')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve(mockUpdated),
+          });
+        }
+        return Promise.resolve({ ok: false, status: 404 });
+      });
+
+      const raw = `<<<DSH_REMINDER_UPDATE:{"id": "rule_1", "runAt": "2026-09-26T17:00:00+08:00"}>>>`;
+      const res = await service.processSandboxReminders('user_123', raw);
+
+      expect(res.updated).toBeDefined();
+      expect(res.updated).toHaveLength(1);
+      expect(res.updated?.[0]?.id).toBe('rule_1');
+      expect(res.requestedCount).toBe(1);
+      expect(res.cleanOutput).toBe('');
+    });
+
+    it('[P1] successfully processes delete reminder marker and deletes from control-plane', async () => {
+      global.fetch = jest.fn().mockImplementation((url: string) => {
+        if (url.includes('/reminders/rule_del_1')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({ success: true }),
+          });
+        }
+        return Promise.resolve({ ok: false, status: 404 });
+      });
+
+      const raw = `<<<DSH_REMINDER_DELETE:{"ids": ["rule_del_1"]}>>>`;
+      const res = await service.processSandboxReminders('user_123', raw);
+
+      expect(res.deleted).toBeDefined();
+      expect(res.deleted).toHaveLength(1);
+      expect(res.deleted?.[0]?.id).toBe('rule_del_1');
+      expect(res.requestedCount).toBe(1);
+      expect(res.cleanOutput).toBe('');
+    });
+
+    it('[P1] blocks ambiguous delete when title matches multiple reminders', async () => {
+      global.fetch = jest.fn().mockImplementation((url: string) => {
+        if (url.endsWith('/reminders')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve([
+              { id: 'r1', title: '周报提醒-团队版' },
+              { id: 'r2', title: '周报提醒-个人版' },
+            ]),
+          });
+        }
+        return Promise.resolve({ ok: false, status: 404 });
+      });
+
+      const raw = `<<<DSH_REMINDER_DELETE:{"titles": ["周报提醒"]}>>>`;
+      const res = await service.processSandboxReminders('user_123', raw);
+
+      expect(res.deleted).toBeUndefined();
+      expect(res.deletedErrors).toBeDefined();
+      expect(res.deletedErrors?.[0]?.error).toContain('存在误删风险，已自动阻断');
+    });
+
+    it('[P1] prioritizes exact match when ambiguous substring exists', async () => {
+      global.fetch = jest.fn().mockImplementation((url: string, opts?: any) => {
+        if (url.endsWith('/reminders')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve([
+              { id: 'r_exact', title: '周报提醒' },
+              { id: 'r_other', title: '周报提醒-领导版' },
+            ]),
+          });
+        }
+        if (url.includes('/reminders/r_exact')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({ id: 'r_exact', title: '周报提醒', runAt: '2026-09-27T10:00:00' }),
+          });
+        }
+        return Promise.resolve({ ok: false, status: 404 });
+      });
+
+      const raw = `<<<DSH_REMINDER_UPDATE:{"targetTitle": "周报提醒", "runAt": "2026-09-27T10:00:00"}>>>`;
+      const res = await service.processSandboxReminders('user_123', raw);
+
+      expect(res.updated).toBeDefined();
+      expect(res.updated?.[0]?.id).toBe('r_exact');
     });
   });
 });

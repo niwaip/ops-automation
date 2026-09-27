@@ -186,4 +186,14 @@ export class RunHarnessDto {
   @Min(0)
   @Max(120)
   waitTimeoutSeconds?: number;
+
+  @ApiPropertyOptional({ description: '是否启用模型思考推理过程 (Reasoning / Thinking)' })
+  @IsOptional()
+  @IsBoolean()
+  thinking?: boolean;
+
+  @ApiPropertyOptional({ description: '思考过程强度 (low / medium / high)' })
+  @IsOptional()
+  @IsString()
+  reasoningEffort?: string;
 }

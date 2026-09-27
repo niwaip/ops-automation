@@ -85,6 +85,17 @@ def _process_sse_data(
         if choice.get("finish_reason"):
             finish_reason = choice["finish_reason"]
         delta = choice.get("delta", {})
+        thought_chunk = (
+            delta.get("reasoning_content") or
+            delta.get("reasoning") or
+            delta.get("thought") or
+            ""
+        )
+        if thought_chunk:
+            if ttft_ms is None:
+                ttft_ms = (time.time() - start_time) * 1000
+            sys.stdout.write(f"<<<DSH_THOUGHT:{json.dumps(thought_chunk, ensure_ascii=False)}>>>\n")
+            sys.stdout.flush()
         chunk = delta.get("content", "")
         if chunk:
             if ttft_ms is None:
@@ -190,6 +201,24 @@ def call_model_proxy(
         "max_tokens": effective_max_tokens,
         "stream": True
     }
+    if tools:
+        # Tool-selection rounds are not user-visible. The proxy may buffer and
+        # safely replay them when an upstream stream disconnects mid-response.
+        payload["stream_visibility"] = "internal"
+        # 工具调用阶段不要思考，确保参数格式规范与工具调用效率
+        payload["thinking"] = False
+    elif getattr(active_policy, "thinking", None) is not None:
+        payload["thinking"] = bool(active_policy.thinking)
+    if getattr(active_policy, "reasoning_effort", None) and payload.get("thinking") is not False:
+        payload["reasoning_effort"] = str(active_policy.reasoning_effort)
+    if any(
+        "[Live Retrieved Information]:" in str(message.get("content", ""))
+        for message in messages
+        if isinstance(message, dict)
+    ):
+        # Search synthesis often carries several structured sources. Tell the
+        # proxy to use the longer first-token/idle window without inflating all chats.
+        payload["request_context"] = "web_search_synthesis"
     if model and model != "default":
         payload["model"] = model
     else:
@@ -270,11 +299,7 @@ def call_model_proxy(
         "|DSML|" in res_text
     )
 
-    if has_tool_calls:
-        # 工具调用属于沙箱内部执行过程，严禁在前端显示工具内部命令、前置垫话或执行草稿
-        sys.stdout.write("<<<DSH_DELTA_RESET>>>\n")
-        sys.stdout.flush()
-    elif not effective_stream_deltas and res_text:
+    if not has_tool_calls and not effective_stream_deltas and res_text:
         # 无工具调用且此前因 tools 处于缓冲模式：
         # 若未发生未执行脚本泄漏，则视为向用户直接回复的最终文本，输出打字机流
         if not detect_unexecuted_script_leak(res_text):
@@ -301,7 +326,7 @@ def extract_bare_json_tool_calls(text: str) -> list:
             break
 
         preview = text[idx:idx + 250]
-        if not any(k in preview for k in ['"name"', '"tool"', '"action"', '"arguments"', '"parameters"']):
+        if not any(k in preview for k in ['"name"', '"tool"', '"tool_name"', '"action"', '"function"', '"arguments"', '"parameters"', '"filename"', '"file_path"']):
             pos = idx + 1
             continue
 
@@ -344,13 +369,60 @@ def extract_bare_json_tool_calls(text: str) -> list:
                     pass
 
         if parsed and isinstance(parsed, dict):
-            t_name = parsed.get("name") or parsed.get("tool") or parsed.get("action")
-            t_params = (
-                parsed.get("arguments")
-                or parsed.get("parameters")
-                or parsed.get("params")
-                or parsed.get("action_input")
+            t_name = (
+                parsed.get("name")
+                or parsed.get("tool")
+                or parsed.get("tool_name")
+                or parsed.get("action")
             )
+            if isinstance(parsed.get("function"), dict):
+                t_name = parsed["function"].get("name") or parsed["function"].get("tool_name")
+                t_params = parsed["function"].get("arguments") or parsed.get("arguments")
+            elif isinstance(parsed.get("function"), str):
+                t_name = parsed["function"]
+                t_params = (
+                    parsed.get("arguments")
+                    or parsed.get("parameters")
+                    or parsed.get("params")
+                    or parsed.get("action_input")
+                )
+            else:
+                t_params = (
+                    parsed.get("arguments")
+                    or parsed.get("parameters")
+                    or parsed.get("params")
+                    or parsed.get("action_input")
+                )
+            if isinstance(t_params, str):
+                try:
+                    t_params = json.loads(t_params)
+                except Exception:
+                    pass
+            if not isinstance(t_params, dict) or not t_params:
+                cand_params = {
+                    k: v for k, v in parsed.items()
+                    if k not in (
+                        "name", "tool", "tool_name", "action", "function",
+                        "arguments", "parameters", "params", "action_input",
+                        "type", "id", "raw"
+                    )
+                }
+                if cand_params:
+                    t_params = cand_params
+
+            if not t_name and ("filename" in parsed or "file_path" in parsed) and ("content" in parsed or "markdown" in parsed or "text" in parsed):
+                fname = str(parsed.get("filename") or parsed.get("file_path") or "").strip()
+                if fname.lower().endswith(".md"):
+                    t_name = "write_markdown"
+                    t_params = parsed
+
+            if t_name and isinstance(t_name, str):
+                t_name = re.sub(r'^[a-zA-Z0-9_\-]+[:.]', '', t_name.strip())
+                if t_name == "search_web":
+                    t_name = "web_search"
+
+            if t_name == "create_reminders" and isinstance(t_params, dict) and "reminders" not in t_params:
+                t_params = {"reminders": [t_params]}
             if t_name and isinstance(t_params, dict):
                 tools.append({
                     "type": "bare_json",
@@ -371,7 +443,7 @@ XML_KNOWN_TOOLS = {
     'bash', 'scan_knowledge', 'read_skill', 'send_file', 'vision_inspect', 'image_gen',
     'read_workspace_file', 'list_workspace_files', 'load_skill', 'use_skill', 'skill', 'get_skill',
     'create_reminders', 'create_reminder', 'set_reminder', 'set_reminders',
-    'add_reminder', 'add_reminders', 'remind', 'reminder'
+    'add_reminder', 'add_reminders', 'remind', 'reminder', 'write_markdown'
 }
 
 
@@ -625,7 +697,7 @@ def clean_output(text: str, is_guide: bool = False) -> str:
     text = re.sub(r'<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*(?:calls|tool_calls)>.*?</[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*(?:calls|tool_calls)>', '', text, flags=re.DOTALL)
     text = re.sub(r'<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*invoke[^>]*>.*?(?:</[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*invoke>|</[｜|]{1,2}\s*DSML\s*[｜|]{1,2}>|$)', '', text, flags=re.DOTALL)
     text = re.sub(r'<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}[\s\S]*$', '', text)
-    text = re.sub(r'<tool_call>.*?(?:</tool_call>|</[｜|]{1,2}\s*DSML\s*[｜|]{1,2}(?:\s*invoke)?>|</tool_calls>|$)', '', text, flags=re.DOTALL)
+    text = re.sub(r'<(?:tool_call|tool_code)>.*?(?:</(?:tool_call|tool_code)>|</[｜|]{1,2}\s*DSML\s*[｜|]{1,2}(?:\s*invoke)?>|</tool_calls>|$)', '', text, flags=re.DOTALL)
 
     xml_tools = parse_xml_tool_calls(text)
     for xt in xml_tools:
@@ -644,6 +716,15 @@ def clean_output(text: str, is_guide: bool = False) -> str:
         raw_snippet = bt.get("raw")
         if raw_snippet and raw_snippet in text:
             text = text.replace(raw_snippet, "")
+
+    # 移除裸露的 JSON 工具调用（如 ```json [{"call": "default_api:web_search", ...}] ``` 或 ```json {"tool_name": "weather", ...} ```）
+    text = re.sub(r'```(?:json)?\s*\[?\s*\{\s*"(?:call|action|tool|tool_name|function|name)"\s*:[\s\S]*?\}\s*\]?\s*```', '', text, flags=re.DOTALL)
+    # 移除单独成块的裸露 JSON 工具调用对象
+    text = re.sub(r'^\s*\{\s*"(?:tool_name|tool|call|action|function|name)"\s*:[\s\S]*?\}\s*$', '', text, flags=re.MULTILINE)
+    text = re.sub(r'```(?:json)?\s*```', '', text)
+    # 移除单独成行的函数调用伪代码，如 weather(city="上海") 或 web_search(query="...")
+    text = re.sub(r'^\s*(?:(?:tool_code|tool_call|call|action)\s*[:：]\s*)?(?:weather|web_search|fetch_page|read_file|write_markdown)\([^\n]*\)\s*$', '', text, flags=re.MULTILINE | re.IGNORECASE)
+    text = re.sub(r'\[web_search(?:\s*[:\(][^\]]*\))?\]', '', text, flags=re.IGNORECASE)
 
     # 移除裸露的命令行执行管道遗留
     text = re.sub(r'curl\s+[^\n]+(?:\s*&&\s*python3\s*<<\s*[\'"]?EOF[\'"]?[\s\S]*?EOF)?', '', text, flags=re.DOTALL)
@@ -668,6 +749,9 @@ def clean_output(text: str, is_guide: bool = False) -> str:
         text = re.sub(hs, '', text, flags=re.IGNORECASE)
 
     text = re.sub(r'```(?:json)?\s*```', '', text)
+    # 移除诸如 <search_tool>...</search_tool>、<bash_tool>...</bash_tool> 以及 <arguments>...</arguments> 的模型伪标签块
+    text = re.sub(r'<(?:[a-zA-Z0-9_-]+_tool|tool_[a-zA-Z0-9_-]+|arguments)[^>]*>.*?</(?:[a-zA-Z0-9_-]+_tool|tool_[a-zA-Z0-9_-]+|arguments)>', '', text, flags=re.DOTALL)
+    text = re.sub(r'</?(?:[a-zA-Z0-9_-]+_tool|tool_[a-zA-Z0-9_-]+|arguments)[^>]*>', '', text)
     known_tool_pats = '|'.join(list(XML_KNOWN_TOOLS) + ['invoke', 'function', 'function_call', 'parameter', 'tool_call', 'tool_calls'])
     text = re.sub(rf'</?(?:{known_tool_pats})(?:\s+[^>]*?)?/?>', '', text)
     text = re.sub(r'</?(?:tool_call|tool_calls|[｜|]{1,2}\s*DSML\s*[｜|]{1,2}[^>]*)>', '', text)
@@ -689,7 +773,7 @@ def is_promising_action(text: str) -> bool:
     action_patterns = [
         r"(?:我|让我|我们)?(?:换用|改用|换成|换个|重新|再次|继续|尝试)[^，。！？\n]{0,25}(?:搜索|查询|检索|抓取|获取|查找)",
         r"(?:关键词|词组|检索词)[^，。！？\n]{0,15}(?:搜索|查询|检索|抓取|获取|查找)",
-        r"(?:我来|我将|我去|让我来|接下来|稍后|现在)\s*(?:去|来)?\s*(?:搜索|查询|检索|查找|访问|抓取|查)(?:一下|这个|该|相关|看)?",
+        r"(?:我来|我将|我去|让我来|让我|接下来|稍后|现在)\s*(?:去|来|为你|为您|帮你|帮您)?\s*(?:搜索|查询|检索|查找|访问|抓取|查)(?:一下|这个|该|相关|看)?",
         r"(?:我|让我)?\s*(?:搜索|查询|检索|查找|访问|抓取|查)一下",
         r"需要登录[，,。]?(?:我|我们)?(?:换用|改用|换|重新|尝试)",
     ]

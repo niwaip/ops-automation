@@ -634,14 +634,97 @@
   100% { opacity: 0.72; }
 }
 
+/* 5点波浪呼吸跳动指示器 (加强跳动与呼吸层次效果) */
 .streaming-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 6px;
+  vertical-align: middle;
+  padding: 4px 0;
+  line-height: 1;
+}
+
+.streaming-indicator .streaming-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary-color, #6366f1);
+  display: inline-block;
+  opacity: 0.25;
+  transform: translateY(0) scale(0.8);
+  animation: streaming-breathe-jump 1.4s ease-in-out infinite;
+}
+
+.streaming-indicator .streaming-dot:nth-child(1) {
+  animation-delay: 0s;
+}
+.streaming-indicator .streaming-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.streaming-indicator .streaming-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.streaming-indicator .streaming-dot:nth-child(4) {
+  animation-delay: 0.45s;
+}
+.streaming-indicator .streaming-dot:nth-child(5) {
+  animation-delay: 0.6s;
+}
+
+/* 兼容空元素兜底 */
+.streaming-indicator:empty {
   display: inline-block;
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #6366f1;
+  background: var(--primary-color, #6366f1);
   animation: blink 1s infinite;
   margin-left: 4px;
+}
+
+@keyframes streaming-breathe-jump {
+  0%, 100% {
+    opacity: 0.25;
+    transform: translateY(0) scale(0.8);
+    box-shadow: 0 0 0 rgba(99, 102, 241, 0);
+  }
+  35% {
+    opacity: 1;
+    transform: translateY(-5px) scale(1.2);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.55);
+  }
+  70% {
+    opacity: 0.45;
+    transform: translateY(0) scale(0.9);
+    box-shadow: 0 0 0 rgba(99, 102, 241, 0);
+  }
+}
+
+[data-theme='dark'] .streaming-indicator .streaming-dot {
+  background: #818cf8;
+}
+
+[data-theme='dark'] .streaming-indicator .streaming-dot:nth-child(n) {
+  animation-name: streaming-breathe-jump-dark;
+}
+
+@keyframes streaming-breathe-jump-dark {
+  0%, 100% {
+    opacity: 0.25;
+    transform: translateY(0) scale(0.8);
+    box-shadow: 0 0 0 rgba(129, 140, 248, 0);
+  }
+  35% {
+    opacity: 1;
+    transform: translateY(-5px) scale(1.2);
+    box-shadow: 0 2px 10px rgba(129, 140, 248, 0.7);
+  }
+  70% {
+    opacity: 0.45;
+    transform: translateY(0) scale(0.9);
+    box-shadow: 0 0 0 rgba(129, 140, 248, 0);
+  }
 }
 
 @keyframes blink {

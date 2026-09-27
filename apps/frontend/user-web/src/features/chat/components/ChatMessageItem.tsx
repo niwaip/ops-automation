@@ -3,7 +3,6 @@ import {
   ClockCircleOutlined,
   FileImageOutlined,
   FolderOutlined,
-  LoadingOutlined,
   PaperClipOutlined,
   RobotOutlined,
   UserOutlined,
@@ -14,9 +13,10 @@ import SharedChatMessageActions from '@chat-web/components/ChatMessageActions';
 import SharedContentPartsRenderer from '@chat-web/components/ContentPartsRenderer';
 import SharedMessageContentRenderer from '@chat-web/components/MessageContentRenderer';
 import SharedThoughtProcessPanel from '@chat-web/components/ThoughtProcessPanel';
+import StreamingActivityCard from '@chat-web/components/StreamingActivityCard';
 import { copyTextToClipboard } from '../../../adapters/platform/browserClipboard';
 import { dedupeThoughtTexts, normalizeComparableMessageText } from '../lib/messageState';
-import { parseMessageContent, summarizeThoughts } from '../lib/messageContent';
+import { parseMessageContent } from '../lib/messageContent';
 import { formatMessageTimestamp } from '../lib/messageDisplay';
 import {
   getMessageStatusLabel,
@@ -80,11 +80,6 @@ export const ChatMessageItem = memo(function ChatMessageItem({
   const hasTaskCard = hasTaskOutcomeContent(message);
   const parsedContent = parseMessageContent(message.content);
   const plainContent = (message.role === 'assistant' ? parsedContent.answer : message.content).trim();
-  const hasRenderableContentParts = Boolean(
-    message.contentParts?.some((part) =>
-      ['text', 'markdown', 'structured_result', 'deeplink', 'file_ref'].includes(part.type)
-    )
-  );
   const taskParts = resolveTaskParts(message.contentParts);
   const executionId = resolveMessageExecutionId(message);
   const structuredResult = toStructuredResultText(
@@ -138,17 +133,17 @@ export const ChatMessageItem = memo(function ChatMessageItem({
       message.metadata?.showThinking !== false &&
       thoughtLogs.length > 0
   );
-  const thoughtSummary = summarizeThoughts(thoughtLogs);
   const shouldPinCollapsedThoughts =
     showThoughtLogs && !message.isStreaming && !expandedThought && hasTaskCard;
   const shouldPinFinishedTaskThoughts =
     showThoughtLogs && !message.isStreaming && hasTaskCard && message.metadata?.mode === 'task';
+  const isStreamingThought = Boolean(message.isStreaming) && !plainContent;
+  const isThoughtExpanded = expandedThought || isStreamingThought;
   const thoughtPanel = showThoughtLogs ? (
     <SharedThoughtProcessPanel
       thoughts={thoughtLogs}
-      expanded={expandedThought}
-      collapsedSummary={thoughtSummary}
-      preserveSummaryWhenCollapsed={!message.isStreaming}
+      expanded={isThoughtExpanded}
+      isStreaming={Boolean(message.isStreaming)}
       onToggle={() => onToggleThought(message.id)}
     />
   ) : null;
@@ -173,9 +168,46 @@ export const ChatMessageItem = memo(function ChatMessageItem({
         resolvedTaskStatus === 'human_control')
   );
 
+  const filteredContentParts = useMemo(() => {
+    if (!message.contentParts) return undefined;
+    const parts = message.contentParts
+      .map((part) => {
+        if (part.type === 'text' || part.type === 'markdown') {
+          const rawText = (part.type === 'text' ? part.text : part.markdown) || '';
+          const cleanAnswer = message.role === 'assistant' ? parseMessageContent(rawText).answer : rawText;
+          if (!cleanAnswer.trim()) {
+            return null;
+          }
+          return {
+            ...part,
+            ...(part.type === 'text' ? { text: cleanAnswer } : { markdown: cleanAnswer }),
+          };
+        }
+        return part;
+      })
+      .filter((part): part is NonNullable<typeof part> => Boolean(part));
+
+    if (!hasTaskCard) return parts.length > 0 ? parts : undefined;
+    const deduplicated = parts.filter((part) => {
+      if (part.type === 'text' || part.type === 'markdown') {
+        const textValue = (part.type === 'text' ? part.text : part.markdown)?.trim();
+        return Boolean(textValue && !isDuplicateTaskText(textValue));
+      }
+      return true;
+    });
+    return deduplicated.length > 0 ? deduplicated : undefined;
+  }, [message.contentParts, message.role, hasTaskCard, taskSummaryCandidates]);
+
+  const hasRenderableContentParts = Boolean(
+    filteredContentParts &&
+      filteredContentParts.some((part) =>
+        ['text', 'markdown', 'structured_result', 'deeplink', 'file_ref'].includes(part.type)
+      )
+  );
+
   const hasRenderableContent = Boolean(
     hasRenderableContentParts
-      ? message.contentParts?.some((part) => {
+      ? filteredContentParts?.some((part) => {
           if (part.type === 'structured_result' || part.type === 'file_ref') {
             return true;
           }
@@ -201,21 +233,9 @@ export const ChatMessageItem = memo(function ChatMessageItem({
         plainContent !== message.metadata?.errorMessage?.trim()
   );
 
-  const filteredContentParts = useMemo(() => {
-    if (!message.contentParts) return undefined;
-    if (!hasTaskCard) return message.contentParts;
-    return message.contentParts.filter((part) => {
-      if (part.type === 'text' || part.type === 'markdown') {
-        const textValue = (part.type === 'text' ? part.text : part.markdown)?.trim();
-        return Boolean(textValue && !isDuplicateTaskText(textValue));
-      }
-      return true;
-    });
-  }, [message.contentParts, hasTaskCard, taskSummaryCandidates]);
-
   const shouldShowMessageContent = Boolean(
     !isInteractiveTaskCard &&
-      hasRenderableContent &&
+      (hasRenderableContent || (message.role === 'assistant' && message.isStreaming && Boolean(plainContent || hasRenderableContentParts))) &&
       !(message.metadata?.mode === 'task' && hasProgressLogs && message.isStreaming) &&
       !(isToolExecutionTask && !hasRenderableContentParts)
   );
@@ -363,10 +383,16 @@ export const ChatMessageItem = memo(function ChatMessageItem({
                     <span>排队中</span>
                   </>
                 ) : (
-                  <>
-                    <LoadingOutlined spin />
-                    <span>生成中</span>
-                  </>
+                  <StreamingActivityCard
+                    isStreaming={Boolean(message.isStreaming)}
+                    currentProgressText={plainContent}
+                    realContentLength={
+                      plainContent && !plainContent.startsWith('【观察】') && !plainContent.startsWith('⚡') && !plainContent.startsWith('✓')
+                        ? plainContent.length
+                        : 0
+                    }
+                    compact
+                  />
                 )}
               </span>
             ) : null}

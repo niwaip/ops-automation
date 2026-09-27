@@ -68,6 +68,7 @@ export const ModelFormModal: React.FC<ModelFormModalProps> = ({
   const selectedProviderConfig = selectedProviderConfigId
     ? providerConfigMap.get(selectedProviderConfigId)
     : null;
+  const supportsReasoningWatch = Form.useWatch('supports_reasoning', form);
 
   const isEditing = Boolean(editingModel);
   const canReuseCredential = Boolean(selectedProviderConfig?.hasCredential);
@@ -89,6 +90,8 @@ export const ModelFormModal: React.FC<ModelFormModalProps> = ({
           defaultScopes: [],
           routing_tags: [],
           prefer_for_code: false,
+          supports_reasoning: false,
+          reasoning_effort: 'medium',
         });
       }
       setAvailableModels([]);
@@ -278,6 +281,28 @@ export const ModelFormModal: React.FC<ModelFormModalProps> = ({
               />
             </Form.Item>
           </Col>
+        </Row>
+
+        {/* Section 2.5: Reasoning & Thinking Capability */}
+        <Row gutter={16} align="middle">
+          <Col span={supportsReasoningWatch ? 12 : 24}>
+            <Form.Item name="supports_reasoning" valuePropName="checked" style={{ marginBottom: 16 }}>
+              <Checkbox>支持思维链 / 原生推理 (Reasoning / Thinking)</Checkbox>
+            </Form.Item>
+          </Col>
+          {supportsReasoningWatch ? (
+            <Col span={12}>
+              <Form.Item name="reasoning_effort" label="默认推理思考强度" initialValue="medium" style={{ marginBottom: 16 }}>
+                <Select
+                  options={[
+                    { label: '浅度思考 (Low) · 快速响应', value: 'low' },
+                    { label: '适中思考 (Medium) · 平衡深度', value: 'medium' },
+                    { label: '深度思考 (High) · 最大推理深度', value: 'high' },
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+          ) : null}
         </Row>
 
         {/* Section 3: Credentials */}

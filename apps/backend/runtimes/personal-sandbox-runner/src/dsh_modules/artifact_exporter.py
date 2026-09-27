@@ -202,8 +202,10 @@ class ArtifactExporter:
         for fn in mentioned:
             p = Path(workspace_dir) / fn
             if p.exists() and p.is_file() and p.stat().st_size > 50:
-                # 校验文件是否在当前轮次内被生成/修改，或正文有明确的保存/生成/交付语义
+                # 校验文件是否在当前轮次内被生成/修改，严禁将历史其他任务生成的残留同名文件（如 index.html）误判为本轮产物
                 is_current_turn_file = (turn_start_time is None) or (p.stat().st_mtime >= turn_start_time - 2.0)
+                if turn_start_time is not None and not is_current_turn_file:
+                    continue
                 has_delivery_keyword = bool(re.search(r'(已保存|已生成|保存在|写入|已创建|输出文件|请查看|预览|打开).*?' + re.escape(fn), cleaned_text, re.I))
                 if is_current_turn_file or has_delivery_keyword:
                     target_file = p
@@ -225,6 +227,24 @@ class ArtifactExporter:
             if recent_htmls:
                 recent_htmls.sort(key=lambda f: f.stat().st_mtime, reverse=True)
                 target_file = recent_htmls[0]
+
+        # 容错兜底：若模型口头声明已生成 HTML / 单页报告且提供了实质正文，但未通过 bash 或代码块落盘，
+        # 自动由运行时编译生成单页 HTML 并注入代码块，确保前端挂载 HtmlPreviewBlock（包含预览与全屏组件）
+        if not target_file:
+            try:
+                from .html_report_fallback import materialize_requested_html
+                mat_path, mat_created = materialize_requested_html(
+                    prompt=prompt or "",
+                    final_text=cleaned_text,
+                    workspace_dir=workspace_dir,
+                    turn_start_time=turn_start_time,
+                    is_design_intent=is_design_intent,
+                    is_ppt_intent=is_ppt_intent
+                )
+                if mat_path and Path(mat_path).exists():
+                    target_file = Path(mat_path)
+            except Exception as e:
+                print(f"⚠️ [Harness Export] 声明式 HTML 产物自愈失败: {e}")
 
         if target_file and target_file.exists():
             try:

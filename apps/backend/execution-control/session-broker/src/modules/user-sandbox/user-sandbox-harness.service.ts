@@ -200,6 +200,8 @@ export class UserSandboxHarnessService {
       timeoutMs?: number;
       files?: string[];
       waitTimeoutSeconds?: number;
+      thinking?: boolean;
+      reasoningEffort?: string;
       onWaiting?: (waitedMs: number) => void;
       onStdoutChunk?: (chunk: string) => void;
     },
@@ -232,6 +234,16 @@ export class UserSandboxHarnessService {
     }
     if (options?.research) {
       dshCmd.push('--research');
+    }
+    if (options?.thinking !== undefined) {
+      if (options.thinking) {
+        dshCmd.push('--thinking');
+      } else {
+        dshCmd.push('--no-thinking');
+      }
+    }
+    if (options?.reasoningEffort) {
+      dshCmd.push('--reasoning-effort', options.reasoningEffort);
     }
     if (options?.model) {
       dshCmd.push('--model', options.model);

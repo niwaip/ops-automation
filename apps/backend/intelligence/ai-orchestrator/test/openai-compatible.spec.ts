@@ -63,10 +63,14 @@ describe('OpenAICompatibleClient', () => {
       expect(result.content).toBe('AI response');
       expect(result.usage?.total_tokens).toBe(15);
       expect(result.rateLimit?.requests_remaining).toBe(99);
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/chat/completions', {
-        model: 'gpt-4',
-        messages,
-      });
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+        '/chat/completions',
+        {
+          model: 'gpt-4',
+          messages,
+        },
+        { timeout: 90000 }
+      );
     });
 
     it('should handle API errors', async () => {

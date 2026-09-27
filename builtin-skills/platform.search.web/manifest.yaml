@@ -9,7 +9,7 @@ metadata:
     category: search
     domain: web
 spec:
-  definitionVersion: 1.0.4
+  definitionVersion: 1.0.5
   lifecycle: experimental
   defaultAccess:
     mode: authenticated
@@ -63,6 +63,13 @@ spec:
             type: string
             minLength: 1
             maxLength: 1000
+          queries:
+            type: array
+            maxItems: 3
+            items:
+              type: string
+              minLength: 1
+              maxLength: 1000
           maxResults:
             type: integer
             minimum: 1
@@ -92,6 +99,10 @@ spec:
             items:
               type: string
               maxLength: 253
+          sourcePolicy:
+            type: string
+            enum: [balanced, official-first]
+            default: balanced
     output:
       schemaRef: inline
       schema:
@@ -102,6 +113,9 @@ spec:
         properties:
           query: { type: string }
           provider: { type: string }
+          providers:
+            type: array
+            items: { type: string }
           answer: { type: string }
           results:
             type: array

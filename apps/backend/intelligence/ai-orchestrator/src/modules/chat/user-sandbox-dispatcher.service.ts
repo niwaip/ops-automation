@@ -15,6 +15,33 @@ const SANDBOX_HISTORY_TURNS_LIMIT = Number(process.env.SANDBOX_HISTORY_TURNS_LIM
 const SANDBOX_HISTORY_ITEM_CHAR_LIMIT = Number(process.env.SANDBOX_HISTORY_ITEM_CHAR_LIMIT || 12000);
 const SANDBOX_ATTACHMENT_TEXT_LIMIT = Number(process.env.SANDBOX_ATTACHMENT_TEXT_LIMIT || 16000);
 
+const isArtifactGenerationRequest = (message: string): boolean =>
+  /(?:生成|制作|创建|开发|做个|做一个|导出)[^，。\n]{0,24}(?:网页|页面|游戏|html|ppt|pdf|word|docx|excel|xlsx|文件|报告)/i.test(
+    String(message || '')
+  );
+
+const isArtifactRegenerationRequest = (
+  message: string,
+  history: Array<{ role?: string; content?: unknown }>
+): boolean => {
+  if (!/(?:重新生成|重新制作|重做|再次生成|再生成一次|重新导出|retry|regenerate)/i.test(String(message || ''))) {
+    return false;
+  }
+  return history
+    .slice(-8)
+    .some((item) => item?.role === 'user' && isArtifactGenerationRequest(String(item.content || '')));
+};
+
+const isLiveSearchRequest = (message: string): boolean =>
+  /(?:联网|搜索|搜一下|查一下|查询|检索|最新|实时|热点|热搜|榜单|排行榜|微博|知乎热榜|百度热榜|抖音热榜|新闻|动态|插件|安装方法|安装教程|如何安装|怎么安装|安装指南|installation guide|how to install|releases?)/i.test(
+    String(message || '')
+  );
+
+const isTransientSandboxModelFailure = (message: string): boolean =>
+  /(?:sandbox model execution error|\baborted\b|timeout|timed out|超时|socket hang up|econnreset)/i.test(
+    String(message || '')
+  );
+
 @Injectable()
 export class UserSandboxDispatcherService {
   private readonly logger = new Logger(UserSandboxDispatcherService.name);
@@ -157,14 +184,9 @@ export class UserSandboxDispatcherService {
       `Dispatching personal request to sandbox harness for user [${effectiveUserId}]`
     );
 
-    emit({
-      type: StreamEventType.THOUGHT,
-      content: '正在连接并调度您的个人专属安全沙箱容器 (DeepSeek Harness)...',
-    });
-
+    let recentHistory: Array<{ role: string; content: string }> = [];
     try {
       // 1. 获取当前会话上下文历史并收集属于当前会话的全部有效附件（会话作用域隔离）
-      let recentHistory: Array<{ role: string; content: string }> = [];
       const sessionAttachedFiles: string[] = [];
       const currentTurnFiles: string[] = [];
       const addSessionFile = (name?: string) => {
@@ -308,6 +330,8 @@ export class UserSandboxDispatcherService {
         durationMs: number;
         exitCode: number;
       } | null = null;
+      let thoughtAccumulator = '';
+      let isThinkingRequested: boolean | undefined = undefined;
 
       const isExplicitModel = Boolean(
         body.modelId &&
@@ -337,6 +361,25 @@ export class UserSandboxDispatcherService {
 
         const modelEntity = await this.modelService.getModel(targetModelId || 'default');
         const modelDisplayName = modelEntity?.name || (targetModelId && targetModelId !== 'default' ? targetModelId : undefined);
+        const modelConfig = (modelEntity as any)?.config || {};
+        const isArtifactExecution =
+          isArtifactGenerationRequest(body.message) ||
+          isArtifactRegenerationRequest(body.message, recentHistory);
+        const userThinkingConfig = (body.config as any)?.thinking;
+        isThinkingRequested =
+          userThinkingConfig !== undefined
+            ? Boolean(userThinkingConfig)
+            : isArtifactExecution
+              ? false
+              : (modelConfig.supports_reasoning ? (modelConfig.reasoning?.enabled ?? true) : undefined);
+        const configuredReasoningEffort =
+          (body.config as any)?.reasoningEffort ||
+          (body.config as any)?.reasoning_effort ||
+          modelConfig.reasoning_effort ||
+          modelConfig.reasoning?.effort;
+        const reasoningEffortRequested =
+          isThinkingRequested === false ? undefined : configuredReasoningEffort;
+
         const payload = {
           userId: effectiveUserId,
           prompt: promptForSandbox,
@@ -345,6 +388,8 @@ export class UserSandboxDispatcherService {
           history: recentHistory,
           webSearch: body.config?.webSearch !== undefined ? Boolean(body.config.webSearch) : true,
           research: Boolean((body.config as any)?.research),
+          thinking: isThinkingRequested,
+          reasoningEffort: reasoningEffortRequested,
           model: effectiveModel,
           modelDisplayName,
           timeoutMs,
@@ -392,6 +437,7 @@ export class UserSandboxDispatcherService {
           const decoder = new TextDecoder('utf-8');
           let sseBuffer = '';
           let deltaAccumulator = '';
+          thoughtAccumulator = '';
 
           for (;;) {
             const { done, value } = await reader.read();
@@ -421,10 +467,22 @@ export class UserSandboxDispatcherService {
                 continue;
               }
 
-              if (eventType === 'observation' && parsed?.content) {
+              if (eventType === 'thought' && parsed?.content) {
+                thoughtAccumulator += parsed.content;
+                emit({
+                  type: StreamEventType.THOUGHT,
+                  content: parsed.content,
+                  data: {
+                    mode: 'chat',
+                    thought: thoughtAccumulator,
+                    thoughtLogsSnapshot: [thoughtAccumulator],
+                    isThinking: true,
+                  },
+                });
+              } else if (eventType === 'observation' && parsed?.content) {
                 // 当沙箱开始调用工具或命中技能意图时，说明进入中间行动阶段，清空上一轮的过渡垫话累加器
                 const contentStr = String(parsed.content);
-                if (contentStr.includes('⚡') || contentStr.includes('🎯') || contentStr.includes('🔍')) {
+                if (contentStr.includes('⚡') || contentStr.includes('🎯') || contentStr.includes('🔍') || contentStr.includes('⏳')) {
                   deltaAccumulator = '';
                 }
                 emit({
@@ -494,7 +552,7 @@ export class UserSandboxDispatcherService {
       const firstFinal = finalOutputMarkers[0];
       if (firstFinal && firstFinal.payload) {
         telemetrySummary = rawOutput.slice(0, firstFinal.startIndex).trim();
-        cleanAnswer = firstFinal.payload.trim();
+        cleanAnswer = firstFinal.payload.replace(/^len=\d+:\s*/, '').trim();
       } else if (rawOutput.includes('<<<DSH_FINAL_OUTPUT>>>')) {
         const parts = rawOutput.split('<<<DSH_FINAL_OUTPUT>>>');
         telemetrySummary = (parts[0] || '').trim();
@@ -553,17 +611,30 @@ export class UserSandboxDispatcherService {
 
       // 解析并处理沙箱创建的个人提醒（<<<DSH_REMINDER_CREATE:...>>>）
       let createdReminders: any[] = [];
+      let updatedReminders: any[] = [];
+      let deletedReminders: any[] = [];
       let reminderError: string | undefined;
       let reminderRequestedCount = 0;
-      if (this.reminderBridge && (rawOutput.includes('<<<DSH_REMINDER_CREATE:') || rawOutput.includes('<<<DSH_REMINDER_CREATE'))) {
+      const reminderFailureItems: Array<{ target?: string; error: string }> = [];
+
+      if (this.reminderBridge && (
+        rawOutput.includes('<<<DSH_REMINDER_CREATE:') || rawOutput.includes('<<<DSH_REMINDER_CREATE') ||
+        rawOutput.includes('<<<DSH_REMINDER_UPDATE:') || rawOutput.includes('<<<DSH_REMINDER_UPDATE') ||
+        rawOutput.includes('<<<DSH_REMINDER_DELETE:') || rawOutput.includes('<<<DSH_REMINDER_DELETE')
+      )) {
         try {
           const reminderRes = await this.reminderBridge.processSandboxReminders(
             effectiveUserId,
             rawOutput
           );
           createdReminders = reminderRes.created;
+          updatedReminders = reminderRes.updated || [];
+          deletedReminders = reminderRes.deleted || [];
           reminderError = reminderRes.error;
           reminderRequestedCount = reminderRes.requestedCount || 0;
+          if (reminderRes.createdErrors) reminderFailureItems.push(...reminderRes.createdErrors);
+          if (reminderRes.updatedErrors) reminderFailureItems.push(...reminderRes.updatedErrors);
+          if (reminderRes.deletedErrors) reminderFailureItems.push(...reminderRes.deletedErrors);
         } catch (rErr: any) {
           this.logger.warn(`Failed to process sandbox reminders: ${rErr.message}`);
           reminderError = rErr.message;
@@ -572,27 +643,52 @@ export class UserSandboxDispatcherService {
 
       // 二次防御：彻底剔除可能意外残留在正文中的工具调用裸 JSON 与 XML 标签及协议标记
       cleanAnswer = this.stripToolCallArtifacts(cleanAnswer);
-      const tagsToStrip = ['DELTA', 'DELTA_RESET', 'OUTBOUND_FILE', 'REMINDER_CREATE', 'METRICS', 'FINAL_OUTPUT'];
+      const tagsToStrip = [
+        'DELTA', 'DELTA_RESET', 'OUTBOUND_FILE',
+        'REMINDER_CREATE', 'REMINDER_UPDATE', 'REMINDER_DELETE',
+        'METRICS', 'FINAL_OUTPUT'
+      ];
       cleanAnswer = stripDshMarkers(cleanAnswer, tagsToStrip).trim();
       telemetrySummary = stripDshMarkers(telemetrySummary, tagsToStrip).trim();
+      cleanAnswer = cleanAnswer.replace(/^len=\d+:\s*/, '').trim();
+      cleanAnswer = this.unwrapOuterMarkdownFence(cleanAnswer);
 
       // 纠正虚假提醒成功文案：严格根据控制面确认落库结果校验
       if (reminderRequestedCount > 0) {
-        if (createdReminders.length === 0) {
-          // 控制面未确认落库，提醒调度创建失败！
-          const failureNotice = `⚠️ 【提醒创建失败】后台调度系统未确认落库（原因: ${reminderError || '提醒时间未指定或已过期，调度服务拒绝落库'}）。该提醒并未实际生效，请提供明确的未来具体时间（如 2026-09-26T10:00:00）或 Cron 表达式后重试。`;
+        if (createdReminders.length === 0 && updatedReminders.length === 0 && deletedReminders.length === 0) {
+          // 控制面未确认落库/修改/删除！
+          const isCreateRequest = rawOutput.includes('<<<DSH_REMINDER_CREATE:') || rawOutput.includes('<<<DSH_REMINDER_CREATE');
+          const failureNotice = isCreateRequest
+            ? `⚠️ 【提醒创建失败】后台调度系统未确认落库（原因: ${reminderError || '提醒时间未指定或已过期，调度服务拒绝落库'}）。该提醒并未实际生效，请提供明确的未来具体时间（如 2026-09-26T10:00:00）或 Cron 表达式后重试。`
+            : `⚠️ 【提醒操作未生效】后台调度系统未确认变更（原因: ${reminderError || '参数未通过校验或未找到对应日程，调度服务拒绝处理'}）。`;
           if (/(?:已成功为您创建|已为您创建|已成功创建|已创建|提醒已成功同步|✓ 已成功|已准备提交)/.test(cleanAnswer)) {
             cleanAnswer = failureNotice;
           } else {
             cleanAnswer = `${failureNotice}\n\n${cleanAnswer}`.trim();
           }
-        } else if (createdReminders.length < reminderRequestedCount) {
-          const partialNotice = `⚠️ 部分提醒落库失败（成功 ${createdReminders.length}/${reminderRequestedCount} 条，原因: ${reminderError || '部分时间参数未通过校验'}）。\n已生效提醒：\n${createdReminders.map((r, i) => `${i + 1}. 【${r.title}】下次执行: ${r.nextRunAt}`).join('\n')}`;
-          cleanAnswer = `${partialNotice}\n\n${cleanAnswer}`.trim();
         } else {
-          const confirmationBanner = `✓ [控制面已确认] ${createdReminders.length} 条提醒日程已成功落库并挂载后台调度系统：\n${createdReminders.map((r, i) => `${i + 1}. 【${r.title}】下次执行: ${r.nextRunAt} (渠道: ${r.sendWechat ? '微信+站内' : '站内'})`).join('\n')}`;
-          if (!cleanAnswer.includes('控制面已确认')) {
-            cleanAnswer = `${cleanAnswer}\n\n${confirmationBanner}`.trim();
+          if (createdReminders.length > 0) {
+            const confirmationBanner = `✓ [控制面已确认] ${createdReminders.length} 条提醒日程已成功落库并挂载后台调度系统：\n${createdReminders.map((r, i) => `${i + 1}. 【${r.title}】下次执行: ${r.nextRunAt} (渠道: ${r.sendWechat ? '微信+站内' : '站内'})`).join('\n')}`;
+            if (!cleanAnswer.includes('控制面已确认')) {
+              cleanAnswer = `${cleanAnswer}\n\n${confirmationBanner}`.trim();
+            }
+          }
+          if (updatedReminders.length > 0) {
+            const updateBanner = `✓ [控制面已确认] 成功更新 ${updatedReminders.length} 条提醒日程：\n${updatedReminders.map((r, i) => `${i + 1}. 【${r.title || r.id}】新时间: ${r.runAt || r.cronExpression || '已生效'}`).join('\n')}`;
+            if (!cleanAnswer.includes('成功更新')) {
+              cleanAnswer = `${cleanAnswer}\n\n${updateBanner}`.trim();
+            }
+          }
+          if (deletedReminders.length > 0) {
+            const deleteBanner = `✓ [控制面已确认] 成功删除 ${deletedReminders.length} 条提醒日程。`;
+            if (!cleanAnswer.includes('成功删除')) {
+              cleanAnswer = `${cleanAnswer}\n\n${deleteBanner}`.trim();
+            }
+          }
+          if (reminderFailureItems.length > 0) {
+            const failureLines = reminderFailureItems.map((f, i) => `${i + 1}. ${f.target ? `【${f.target}】: ` : ''}${f.error}`);
+            const partialFailureBanner = `⚠️ 【另有 ${reminderFailureItems.length} 条提醒操作未能生效】：\n${failureLines.join('\n')}`;
+            cleanAnswer = `${cleanAnswer}\n\n${partialFailureBanner}`.trim();
           }
         }
       }
@@ -621,11 +717,17 @@ export class UserSandboxDispatcherService {
         content: telemetrySummary,
       });
 
+      const thoughtLogsSnapshot = thoughtAccumulator ? [thoughtAccumulator.trim()] : undefined;
+      const rawWithThoughts = thoughtAccumulator
+        ? `<think>${thoughtAccumulator.trim()}</think>\n\n${rawOutput}`
+        : rawOutput;
+
       emit({
         type: StreamEventType.RESULT,
         content: cleanAnswer,
         data: {
           mode: 'chat',
+          thoughtLogsSnapshot,
           sandbox: {
             containerName: harnessResult.containerName,
             harness: 'deepseek-harness',
@@ -644,9 +746,9 @@ export class UserSandboxDispatcherService {
         sessionId,
         userContent: body.message,
         assistantContent: cleanAnswer,
-        rawAssistantContent: rawOutput,
+        rawAssistantContent: rawWithThoughts,
         modelId: effectiveModel || body.modelId || 'default',
-        thinkingEnabled: Boolean(body.config?.thinking),
+        thinkingEnabled: Boolean(body.config?.thinking || isThinkingRequested || thoughtAccumulator),
         ownerUserId: effectiveUserId,
         clientMessageId: body.clientMessageId,
         clientAssistantMessageId: body.clientAssistantMessageId,
@@ -659,6 +761,57 @@ export class UserSandboxDispatcherService {
       this.logger.warn(
         `Failed to dispatch to user sandbox (${err.message}).`
       );
+      if (
+        (isArtifactGenerationRequest(body.message) ||
+          isArtifactRegenerationRequest(body.message, recentHistory)) &&
+        isTransientSandboxModelFailure(err?.message)
+      ) {
+        const friendlyError =
+          '⏱️ 模型在执行文件写入前响应超时或连接中断，本次未生成可用文件。深度思考已关闭，可安全重试本次生成。';
+        emit({
+          type: StreamEventType.ERROR,
+          content: friendlyError,
+          data: {
+            code: 'SANDBOX_GENERATION_TIMEOUT',
+            retryable: true,
+            artifactCreated: false,
+          },
+        });
+        try {
+          const failedSession = await this.chatConversationService.persistConversation({
+            sessionId,
+            userContent: body.message,
+            assistantContent: friendlyError,
+            rawAssistantContent: String(err?.message || ''),
+            modelId: body.modelId || 'default',
+            thinkingEnabled: Boolean(body.config?.thinking),
+            ownerUserId: effectiveUserId,
+            clientMessageId: body.clientMessageId,
+            clientAssistantMessageId: body.clientAssistantMessageId,
+            files: body.files,
+          });
+          emit(this.chatConversationService.buildSessionPatchEvent(sessionId, failedSession));
+        } catch (persistError: any) {
+          this.logger.warn(`Failed to persist friendly sandbox generation error: ${persistError?.message}`);
+        }
+        return true;
+      }
+      if (
+        isLiveSearchRequest(body.message) &&
+        isTransientSandboxModelFailure(err?.message)
+      ) {
+        emit({
+          type: StreamEventType.ERROR,
+          content:
+            '⏱️ 联网检索已经完成，但指定模型在整理检索结果时超时或连接中断。为避免丢失检索证据后凭记忆作答，系统已停止无依据的普通聊天降级。请直接重试本次查询。',
+          data: {
+            code: 'SANDBOX_SEARCH_SYNTHESIS_TIMEOUT',
+            retryable: true,
+            searchCompleted: true,
+          },
+        });
+        return true;
+      }
       if (isPersonalSlashCommand(body.message) || body.message.trim().startsWith('/')) {
         emit({
           type: StreamEventType.ERROR,
@@ -691,6 +844,8 @@ export class UserSandboxDispatcherService {
     let res = (raw || '')
       .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '')
       .replace(/<tool_call>[\s\S]*$/g, '')
+      .replace(/<(?:[a-zA-Z0-9_-]+_tool|tool_[a-zA-Z0-9_-]+|arguments)[^>]*>[\s\S]*?<\/(?:[a-zA-Z0-9_-]+_tool|tool_[a-zA-Z0-9_-]+|arguments)>/g, '')
+      .replace(/<\/?(?:[a-zA-Z0-9_-]+_tool|tool_[a-zA-Z0-9_-]+|arguments)[^>]*>/g, '')
       .replace(/<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*(?:calls|tool_calls)>[\s\S]*?<\/[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*(?:calls|tool_calls)>/g, '')
       .replace(/<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*invoke[\s\S]*?<\/[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*invoke>/g, '')
       .replace(/<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}[\s\S]*$/g, '')
@@ -851,7 +1006,7 @@ export class UserSandboxDispatcherService {
     // 2. 文档与交付物扩展名
     const deliverableExts = new Set([
       '.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt',
-      '.pdf', '.zip', '.tar', '.gz', '.csv', '.txt', '.md', '.markdown'
+      '.pdf', '.zip', '.tar', '.gz', '.csv', '.txt', '.md', '.markdown', '.html'
     ]);
 
     // 记录用户上传的原始输入附件文件名，严禁将其作为“新生成产物”推荐给用户
@@ -866,6 +1021,7 @@ export class UserSandboxDispatcherService {
       if (ext === '.pdf') return '📕';
       if (ext === '.md' || ext === '.markdown') return '📝';
       if (ext === '.zip' || ext === '.tar' || ext === '.gz') return '📦';
+      if (ext === '.html') return '🌐';
       return '📎';
     };
 
@@ -879,7 +1035,7 @@ export class UserSandboxDispatcherService {
 
     // 2.1 将正文中现存的 Markdown 链接中的 /workspace/xxx 或本地文件名改写为直链下载地址
     result = result.replace(
-      /\[(.*?)\]\((?:(?:\/workspace\/)?([a-zA-Z0-9_\-\u4e00-\u9fa5 ]+\.(?:docx?|xlsx?|pptx?|pdf|zip|tar|gz|csv|md|markdown)))\)/gi,
+      /\[(.*?)\]\((?:(?:\/workspace\/)?([a-zA-Z0-9_\-\u4e00-\u9fa5 ]+\.(?:docx?|xlsx?|pptx?|pdf|zip|tar|gz|csv|md|markdown|html)))\)/gi,
       (match, label, fileName) => {
         const cleanName = path.basename(fileName.trim());
         const filePath = this.getWorkspaceFilePath(userId, cleanName);
@@ -928,7 +1084,7 @@ export class UserSandboxDispatcherService {
     }
 
     // 扫描正文提及的文件名（如 《保密合同_审查意见书.docx》 或 保密合同_审查意见书.docx）
-    const mentionRegex = /(?:《|【|“|"|'|`|\/workspace\/)?([a-zA-Z0-9_\-\u4e00-\u9fa5 ]+\.(?:docx?|xlsx?|pptx?|pdf|zip|tar|gz|csv|md|markdown))(?:》|】|”|"|'|`|\b)?/gi;
+    const mentionRegex = /(?:《|【|“|"|'|`|\/workspace\/)?([a-zA-Z0-9_\-\u4e00-\u9fa5 ]+\.(?:docx?|xlsx?|pptx?|pdf|zip|tar|gz|csv|md|markdown|html))(?:》|】|”|"|'|`|\b)?/gi;
     let match: RegExpExecArray | null;
     while ((match = mentionRegex.exec(result)) !== null) {
       const foundName = match[1]?.trim();
@@ -987,6 +1143,7 @@ export class UserSandboxDispatcherService {
 
       handledFiles.add(item.fileName);
       const ext = path.extname(item.fileName).toLowerCase();
+      if (ext === '.html' && result.includes('```html')) continue;
       const icon = getFileIcon(ext);
       let sizeInfo = '';
       try {
@@ -1007,5 +1164,33 @@ export class UserSandboxDispatcherService {
     }
 
     return result;
+  }
+
+  private unwrapOuterMarkdownFence(content: string): string {
+    if (!content) return '';
+    let cleaned = content.trim();
+    cleaned = cleaned.replace(/^len=\d+:\s*/, '').trim();
+
+    const fullMatch = cleaned.match(/^```(?:markdown|md)\s*\n([\s\S]*?)\n```\s*$/i);
+    if (fullMatch && fullMatch[1]) {
+      return fullMatch[1].trim();
+    }
+
+    const blockMatch = cleaned.match(/^([\s\S]*?)```(?:markdown|md)\s*\n([\s\S]*?)\n```([\s\S]*)$/i);
+    if (blockMatch) {
+      const pre = (blockMatch[1] || '').trim();
+      const body = (blockMatch[2] || '').trim();
+      const post = (blockMatch[3] || '').trim();
+      return [pre, body, post].filter(Boolean).join('\n\n');
+    }
+
+    const unclosedMatch = cleaned.match(/^([\s\S]*?)```(?:markdown|md)\s*\n([\s\S]*)$/i);
+    if (unclosedMatch) {
+      const pre = (unclosedMatch[1] || '').trim();
+      const body = (unclosedMatch[2] || '').trim();
+      return [pre, body].filter(Boolean).join('\n\n');
+    }
+
+    return cleaned;
   }
 }

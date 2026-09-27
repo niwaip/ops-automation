@@ -18,6 +18,14 @@ import { parseAndVerifySandboxToken } from '../../common/guards/ai-auth.guard';
 
 const DEFAULT_DEEPSEEK_ENDPOINT = 'https://api.deepseek.com';
 
+/** 默认仅重试 1 次，避免慢模型超时形成长尾等待 */
+const DEFAULT_MAX_RETRIES = 1;
+/** 硬上限（绝不允许无限重试） */
+const ABSOLUTE_MAX_RETRIES = 3;
+const DEFAULT_SANDBOX_ATTEMPT_TIMEOUT_MS = 30_000;
+const GENERATION_SANDBOX_ATTEMPT_TIMEOUT_MS = 60_000;
+const LARGE_TOOL_SURFACE_THRESHOLD = 8;
+
 @ApiTags('AI-Proxy')
 @Controller('ai/proxy/v1')
 export class ModelProxyController {
@@ -123,6 +131,20 @@ export class ModelProxyController {
         body.model ||
         'default';
       this.logger.log(`Using platform-managed model client for sandbox proxy (${resolvedModelName})`);
+      // An explicit off switch is authoritative. In particular, artifact execution
+      // may inherit a model-level reasoning effort while deliberately disabling
+      // thinking; the effort must never turn reasoning back on.
+      const resolvedReasoning =
+        body.thinking === false
+          ? { enabled: false }
+          : body.reasoning ||
+            (body.reasoning_effort
+              ? { enabled: true, effort: body.reasoning_effort }
+              : body.thinking !== undefined
+                ? { enabled: Boolean(body.thinking), effort: body.reasoning_effort }
+                : undefined);
+      let chunksSent = 0;
+      let visibleOutputChunksSent = 0;
       try {
         if (isStream) {
           res.setHeader('Content-Type', 'text/event-stream');
@@ -130,13 +152,30 @@ export class ModelProxyController {
           res.setHeader('Connection', 'keep-alive');
 
           let streamSuccess = false;
+          const bufferInternalStream = body.stream_visibility === 'internal';
+          let bufferedSseFrames: string[] = [];
           const writeChunk = (chunk: string, modelName: string, meta?: any) => {
+            chunksSent++;
             const deltaPayload: any = {};
             if (chunk) {
               deltaPayload.content = chunk;
             }
+            const reasoningChunk =
+              meta?.reasoning_content ||
+              meta?.delta?.reasoning_content ||
+              meta?.delta?.reasoning ||
+              meta?.delta?.thought;
+            if (reasoningChunk) {
+              deltaPayload.reasoning_content = reasoningChunk;
+            }
             if (meta?.delta?.tool_calls) {
               deltaPayload.tool_calls = meta.delta.tool_calls;
+            }
+            // Some OpenAI-compatible servers emit leading whitespace/empty
+            // template tokens before inference starts. Those are not committed
+            // user-visible output and must not suppress a safe transient retry.
+            if ((typeof chunk === 'string' && chunk.trim().length > 0) || meta?.delta?.tool_calls) {
+              visibleOutputChunksSent++;
             }
             const ssePayload: any = {
               id: `chatcmpl-${Date.now()}`,
@@ -154,12 +193,26 @@ export class ModelProxyController {
             if (meta?.usage) {
               ssePayload.usage = meta.usage;
             }
-            res.write(`data: ${JSON.stringify(ssePayload)}\n\n`);
+            const frame = `data: ${JSON.stringify(ssePayload)}\n\n`;
+            if (bufferInternalStream) {
+              bufferedSseFrames.push(frame);
+            } else {
+              res.write(frame);
+            }
           };
 
-          const maxStreamRetries = 2;
+          // Internal tool-selection output is buffered and therefore safe to replay.
+          // Give it one same-model retry even when global retries are disabled.
+          const maxStreamRetries = Math.max(
+            this.resolveMaxRetries(),
+            bufferInternalStream ? 1 : 0
+          );
           let primaryStreamErr: any;
           for (let attempt = 0; attempt <= maxStreamRetries; attempt++) {
+            if (attempt > 0 && this.isClientDisconnected(res)) {
+              this.logger.warn(`Client connection closed before stream retry ${attempt}, aborting retries.`);
+              break;
+            }
             try {
               await client.chatCompletionStream(
                 {
@@ -168,20 +221,43 @@ export class ModelProxyController {
                   max_tokens: body.max_tokens,
                   tools: body.tools,
                   tool_choice: body.tool_choice,
+                  reasoning: resolvedReasoning,
+                  timeoutMs: this.resolveAttemptTimeoutMs(body),
+                  streamIdleTimeoutMs: this.resolveStreamIdleTimeoutMs(body),
                 },
-                (chunk: string, meta?: any) => writeChunk(chunk, resolvedModelName, meta)
+                (chunk: string, meta?: any) => writeChunk(chunk, resolvedModelName, meta),
+                resolvedReasoning
               );
               streamSuccess = true;
               break;
             } catch (err: any) {
               primaryStreamErr = err;
               const errMsg = String(err?.message || err);
-              const isTransient = /socket|network|tls|econnreset|econnaborted|timeout|hang up|disconnected|fetch failed/i.test(errMsg);
-              if (isTransient && attempt < maxStreamRetries) {
+              const isTransient = this.isTransientError(err);
+
+              // Once visible answer text or a tool call was sent, replaying would
+              // duplicate user-visible output. Reasoning-only chunks are safe to
+              // retry: they are progress telemetry, not an executed action or final
+              // answer, and treating them as committed output caused short upstream
+              // disconnects to fail otherwise recoverable generation tasks.
+              if (visibleOutputChunksSent > 0 && !bufferInternalStream) {
                 this.logger.warn(
-                  `Primary model [${resolvedModelName}] stream hit transient error (attempt ${attempt + 1}/${maxStreamRetries + 1}): ${errMsg}. Retrying in ${attempt + 1}s...`
+                  `Primary model [${resolvedModelName}] stream failed after sending ${chunksSent} chunks (${visibleOutputChunksSent} visible): ${errMsg}. Not retrying in-stream to prevent duplication.`
                 );
-                await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+                break;
+              }
+
+              if (isTransient && attempt < maxStreamRetries && !this.isClientDisconnected(res)) {
+                const backoffMs = 1000 * (attempt + 1);
+                this.logger.warn(
+                  `Primary model [${resolvedModelName}] stream hit transient error (attempt ${attempt + 1}/${maxStreamRetries + 1}): ${errMsg}. Retrying in ${backoffMs}ms...`
+                );
+                if (bufferInternalStream) {
+                  bufferedSseFrames = [];
+                  chunksSent = 0;
+                  visibleOutputChunksSent = 0;
+                }
+                await this.delay(backoffMs);
                 continue;
               }
               break;
@@ -189,20 +265,32 @@ export class ModelProxyController {
           }
 
           if (!streamSuccess) {
+            const finalStreamErr =
+              primaryStreamErr ||
+              new Error(`Primary model [${resolvedModelName}] stream failed to return a response`);
             // 当显式指定了具体模型时，严禁静默 fallback 到其他模型，避免模型欺骗
             if (body.model && !isGenericOrPlaceholder) {
               this.logger.error(
-                `Primary model [${body.model}] stream failed (${primaryStreamErr?.message}). Explicit model requested; fallback is strictly disabled.`
+                `Primary model [${body.model}] stream failed (${finalStreamErr.message}). Explicit model requested; fallback is strictly disabled.`
               );
-              throw primaryStreamErr;
+              throw finalStreamErr;
             }
 
             this.logger.warn(
-              `Default model stream failed (${primaryStreamErr?.message}). Attempting fallback to platform resilient model...`
+              `Default model stream failed (${finalStreamErr.message}). Attempting fallback to platform resilient model...`
             );
             const fallbackCandidates = this.getResilientFallbackClients(isVisionRequested, client);
             for (const { id: fbKey, client: fbClient } of fallbackCandidates) {
+              if (chunksSent > 0 && !bufferInternalStream) {
+                // 已有数据写入客户端时，不能中途切换模型拼接输出
+                break;
+              }
               try {
+                if (bufferInternalStream) {
+                  bufferedSseFrames = [];
+                  chunksSent = 0;
+                  visibleOutputChunksSent = 0;
+                }
                 this.logger.log(`Trying fallback model client stream [${fbKey}]...`);
                 await fbClient.chatCompletionStream(
                   body.messages || [{ role: 'user', content: body.prompt || '' }],
@@ -215,21 +303,31 @@ export class ModelProxyController {
               }
             }
             if (!streamSuccess) {
-              throw primaryStreamErr;
+              throw finalStreamErr;
             }
           }
 
+          if (bufferInternalStream) {
+            for (const frame of bufferedSseFrames) {
+              res.write(frame);
+            }
+          }
           res.write(`data: [DONE]\n\n`);
           res.end();
           return;
         } else {
           let responseContent = '';
+          let responseReasoningContent: string | undefined;
           let responseUsage: any = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
           let nonStreamSuccess = false;
           let primaryNonStreamErr: any;
 
-          const maxNonStreamRetries = 2;
+          const maxNonStreamRetries = this.resolveMaxRetries();
           for (let attempt = 0; attempt <= maxNonStreamRetries; attempt++) {
+            if (attempt > 0 && this.isClientDisconnected(res)) {
+              this.logger.warn(`Client connection closed before retry ${attempt}, aborting retries.`);
+              break;
+            }
             try {
               const response = await client.chatCompletion({
                 messages: body.messages || [{ role: 'user', content: body.prompt || '' }],
@@ -237,20 +335,24 @@ export class ModelProxyController {
                 max_tokens: body.max_tokens,
                 tools: body.tools,
                 tool_choice: body.tool_choice,
+                reasoning: resolvedReasoning,
+                timeoutMs: this.resolveAttemptTimeoutMs(body),
               });
               responseContent = response.content;
+              responseReasoningContent = response.reasoningContent;
               responseUsage = response.usage || responseUsage;
               nonStreamSuccess = true;
               break;
             } catch (err: any) {
               primaryNonStreamErr = err;
               const errMsg = String(err?.message || err);
-              const isTransient = /socket|network|tls|econnreset|econnaborted|timeout|hang up|disconnected|fetch failed/i.test(errMsg);
-              if (isTransient && attempt < maxNonStreamRetries) {
+              const isTransient = this.isTransientError(err);
+              if (isTransient && attempt < maxNonStreamRetries && !this.isClientDisconnected(res)) {
+                const backoffMs = 1000 * (attempt + 1);
                 this.logger.warn(
-                  `Primary model [${resolvedModelName}] hit transient error (attempt ${attempt + 1}/${maxNonStreamRetries + 1}): ${errMsg}. Retrying in ${attempt + 1}s...`
+                  `Primary model [${resolvedModelName}] hit transient error (attempt ${attempt + 1}/${maxNonStreamRetries + 1}): ${errMsg}. Retrying in ${backoffMs}ms...`
                 );
-                await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+                await this.delay(backoffMs);
                 continue;
               }
               break;
@@ -258,16 +360,19 @@ export class ModelProxyController {
           }
 
           if (!nonStreamSuccess) {
+            const finalNonStreamErr =
+              primaryNonStreamErr ||
+              new Error(`Primary model [${resolvedModelName}] failed to return a response`);
             // 当显式指定了具体模型时，严禁静默 fallback 到其他模型，避免模型欺骗
             if (body.model && !isGenericOrPlaceholder) {
               this.logger.error(
-                `Primary model [${body.model}] failed (${primaryNonStreamErr?.message}). Explicit model requested; fallback is strictly disabled.`
+                `Primary model [${body.model}] failed (${finalNonStreamErr.message}). Explicit model requested; fallback is strictly disabled.`
               );
-              throw primaryNonStreamErr;
+              throw finalNonStreamErr;
             }
 
             this.logger.warn(
-              `Default model failed (${primaryNonStreamErr?.message}). Attempting fallback to platform resilient model...`
+              `Default model failed (${finalNonStreamErr.message}). Attempting fallback to platform resilient model...`
             );
             const fallbackCandidates = this.getResilientFallbackClients(isVisionRequested, client);
             let fallbackSucceeded = false;
@@ -288,8 +393,16 @@ export class ModelProxyController {
               }
             }
             if (!fallbackSucceeded) {
-              throw primaryNonStreamErr;
+              throw finalNonStreamErr;
             }
+          }
+
+          const respMessage: any = {
+            role: 'assistant',
+            content: responseContent,
+          };
+          if (responseReasoningContent) {
+            respMessage.reasoning_content = responseReasoningContent;
           }
 
           res.status(HttpStatus.OK).json({
@@ -300,10 +413,7 @@ export class ModelProxyController {
             choices: [
               {
                 index: 0,
-                message: {
-                  role: 'assistant',
-                  content: responseContent,
-                },
+                message: respMessage,
                 finish_reason: 'stop',
               },
             ],
@@ -312,21 +422,28 @@ export class ModelProxyController {
           return;
         }
       } catch (err: any) {
-        this.logger.error(`ModelService execution failed: ${err.message}`, err.stack);
-        if (res.headersSent) {
+        const errMsg = err?.message || String(err || 'Unknown model execution error');
+        this.logger.error(`ModelService execution failed: ${errMsg}`, err?.stack);
+        if (res.headersSent || chunksSent > 0) {
           const errPayload = {
             error: {
-              message: `Sandbox model execution error: ${err.message}`,
+              message: `Sandbox model execution error: ${errMsg}`,
               type: 'server_error',
               code: 500,
             },
           };
-          res.write(`data: ${JSON.stringify(errPayload)}\n\n`);
-          res.write(`data: [DONE]\n\n`);
-          res.end();
+          if (!res.writableEnded) {
+            try {
+              res.write(`data: ${JSON.stringify(errPayload)}\n\n`);
+              res.write(`data: [DONE]\n\n`);
+              res.end();
+            } catch {
+              // ignore socket errors on already closed connection
+            }
+          }
           return;
         }
-        throw new HttpException(`Sandbox model execution error: ${err.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+        throw new HttpException(`Sandbox model execution error: ${errMsg}`, HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
 
@@ -339,18 +456,37 @@ export class ModelProxyController {
     }
 
     const targetUrl = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
+    const maxAxiosRetries = this.resolveMaxRetries();
 
     try {
       if (isStream) {
         // 流式传输响应
-        const upstreamResponse = await axios.post(targetUrl, body, {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          responseType: 'stream',
-          timeout: 120000,
-        });
+        let upstreamResponse: any;
+        for (let attempt = 0; attempt <= maxAxiosRetries; attempt++) {
+          if (attempt > 0 && this.isClientDisconnected(res)) break;
+          try {
+            upstreamResponse = await axios.post(targetUrl, body, {
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+              },
+              responseType: 'stream',
+              timeout: 120000,
+            });
+            break;
+          } catch (err: any) {
+            const isTransient = this.isTransientError(err);
+            if (isTransient && attempt < maxAxiosRetries && !this.isClientDisconnected(res)) {
+              const backoffMs = 1000 * (attempt + 1);
+              this.logger.warn(
+                `Direct upstream stream hit transient error (attempt ${attempt + 1}/${maxAxiosRetries + 1}): ${err.message}. Retrying in ${backoffMs}ms...`
+              );
+              await this.delay(backoffMs);
+              continue;
+            }
+            throw err;
+          }
+        }
 
         res.status(upstreamResponse.status);
         for (const [key, value] of Object.entries(upstreamResponse.headers)) {
@@ -367,13 +503,31 @@ export class ModelProxyController {
         }
       } else {
         // 普通 JSON 响应
-        const upstreamResponse = await axios.post(targetUrl, body, {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          timeout: 60000,
-        });
+        let upstreamResponse: any;
+        for (let attempt = 0; attempt <= maxAxiosRetries; attempt++) {
+          if (attempt > 0 && this.isClientDisconnected(res)) break;
+          try {
+            upstreamResponse = await axios.post(targetUrl, body, {
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+              },
+              timeout: 60000,
+            });
+            break;
+          } catch (err: any) {
+            const isTransient = this.isTransientError(err);
+            if (isTransient && attempt < maxAxiosRetries && !this.isClientDisconnected(res)) {
+              const backoffMs = 1000 * (attempt + 1);
+              this.logger.warn(
+                `Direct upstream hit transient error (attempt ${attempt + 1}/${maxAxiosRetries + 1}): ${err.message}. Retrying in ${backoffMs}ms...`
+              );
+              await this.delay(backoffMs);
+              continue;
+            }
+            throw err;
+          }
+        }
 
         res.status(upstreamResponse.status).json(upstreamResponse.data);
       }
@@ -558,6 +712,101 @@ export class ModelProxyController {
     }
 
     return candidates;
+  }
+
+  /**
+   * 严格受限的最大重试次数（杜绝无限重试，硬顶上限 3 次，默认 1 次）
+   */
+  resolveMaxRetries(): number {
+    const envVal = process.env.MODEL_PROXY_MAX_RETRIES;
+    if (envVal !== undefined && !Number.isNaN(Number(envVal))) {
+      return Math.min(ABSOLUTE_MAX_RETRIES, Math.max(0, parseInt(envVal, 10)));
+    }
+    return DEFAULT_MAX_RETRIES;
+  }
+
+  resolveAttemptTimeoutMs(body?: Record<string, any>): number {
+    const parsed = Number(process.env.SANDBOX_MODEL_ATTEMPT_TIMEOUT_MS);
+    if (Number.isFinite(parsed)) {
+      return Math.min(90_000, Math.max(5_000, Math.trunc(parsed)));
+    }
+    // Large capability surfaces are used by artifact/code generation turns and
+    // need more decoding time. Small read-only/tool turns keep the short bound
+    // so weather/search failures cannot recreate the former 90-second tail.
+    if (
+      body?.request_context === 'web_search_synthesis' ||
+      (Array.isArray(body?.tools) && body.tools.length >= LARGE_TOOL_SURFACE_THRESHOLD)
+    ) {
+      return GENERATION_SANDBOX_ATTEMPT_TIMEOUT_MS;
+    }
+    return DEFAULT_SANDBOX_ATTEMPT_TIMEOUT_MS;
+  }
+
+  resolveStreamIdleTimeoutMs(body?: Record<string, any>): number {
+    const parsed = Number(process.env.SANDBOX_MODEL_STREAM_IDLE_TIMEOUT_MS);
+    if (Number.isFinite(parsed)) {
+      return Math.min(180_000, Math.max(5_000, Math.trunc(parsed)));
+    }
+    return body?.request_context === 'web_search_synthesis' ||
+      (Array.isArray(body?.tools) && body.tools.length >= LARGE_TOOL_SURFACE_THRESHOLD)
+      ? 60_000
+      : 30_000;
+  }
+
+  /**
+   * 判断模型调用错误是否为可重试的临时网络/通道故障
+   */
+  isTransientError(err: any): boolean {
+    if (!err) return false;
+
+    // 显式客户端业务或鉴权错误不予重试
+    const status = Number(err?.status || err?.statusCode || err?.response?.status);
+    if ([400, 401, 403, 404, 422].includes(status)) {
+      return false;
+    }
+    if ([408, 429, 500, 502, 503, 504].includes(status)) {
+      return true;
+    }
+
+    const code = String(err?.code || err?.cause?.code || '').toUpperCase();
+    const transientCodes = [
+      'ECONNRESET',
+      'ECONNABORTED',
+      'ETIMEDOUT',
+      'ECONNREFUSED',
+      'EPIPE',
+      'ENOTFOUND',
+      'EAI_AGAIN',
+      'ERR_STREAM_PREMATURE_CLOSE',
+      'ERR_HTTP2_STREAM_ERROR',
+      'ERR_HTTP2_SESSION_ERROR',
+    ];
+    if (transientCodes.includes(code)) {
+      return true;
+    }
+
+    if (err?.name === 'AbortError' || err?.name === 'TimeoutError') {
+      return true;
+    }
+
+    const errMsg = String(err?.message || err || '');
+    return /socket|network|tls|econnreset|econnaborted|timeout|timed out|hang up|disconnected|fetch failed|premature close|\baborted?\b|pipeline ended|overloaded|connection reset|reset by peer|bad gateway|service unavailable|rate limit|too many requests/i.test(
+      errMsg
+    );
+  }
+
+  isClientDisconnected(res?: Response): boolean {
+    if (!res) return false;
+    return Boolean(
+      res.destroyed ||
+      res.writableEnded ||
+      (res.socket && (res.socket.destroyed || !res.socket.writable))
+    );
+  }
+
+  private async delay(ms: number): Promise<void> {
+    const effectiveMs = process.env.NODE_ENV === 'test' ? Math.min(ms, 10) : ms;
+    await new Promise((resolve) => setTimeout(resolve, effectiveMs));
   }
 
   private async resolveUpstreamCredentials(): Promise<{ apiKey?: string; baseUrl: string }> {

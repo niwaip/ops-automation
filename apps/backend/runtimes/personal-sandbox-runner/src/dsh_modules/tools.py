@@ -5,6 +5,7 @@ Coordinates web retrieval, office parsing, workspace file manipulation, and shel
 
 import os
 import sys
+import re
 import json
 import time
 import subprocess
@@ -24,7 +25,9 @@ from .web_tools import (
     fetch_page,
     extract_query_freshness,
     normalize_search_query,
+    decompose_search_queries,
     perform_web_search,
+    perform_multi_web_search,
 )
 
 from .office_tools import (
@@ -44,6 +47,8 @@ from .file_tools import (
 
 from .reminder_tools import (
     create_personal_reminders,
+    delete_personal_reminders,
+    update_personal_reminder,
 )
 from .deliverable_contract import write_markdown_artifact
 
@@ -329,6 +334,66 @@ SANDBOX_TOOLS = [
                 "required": ["reminders"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_reminder",
+            "description": "修改或调整已有日程/提醒事项的时间、周期、内容或状态（如“把周报提醒改到5点”）。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "reminder_id": {
+                        "type": "string",
+                        "description": "待修改的提醒事项 ID（若已知）"
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "待修改的提醒标题或事项名称（用于匹配，例如 '周报提醒'）"
+                    },
+                    "run_at": {
+                        "type": "string",
+                        "description": "调整后的新提醒时间（ISO 8601 格式，必须是将来的时间，例如 '2026-09-26T17:00:00+08:00'）"
+                    },
+                    "cron_expression": {
+                        "type": "string",
+                        "description": "调整后的新重复周期（Cron 表达式，与 run_at 二选一）"
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "修改后的提醒详情内容（可选）"
+                    },
+                    "send_wechat": {
+                        "type": "boolean",
+                        "description": "是否同步发送至微信推送（可选）"
+                    },
+                    "is_active": {
+                        "type": "boolean",
+                        "description": "提醒是否启用（true 为启用，false 为暂停）"
+                    }
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_reminder",
+            "description": "删除、取消或移除用户已设置的定时/定期日程提醒（如“删除开会提醒”、“取消周报待办”）。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "reminder_id": {
+                        "type": "string",
+                        "description": "待删除的提醒 ID（若已知）"
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "待删除的提醒标题或关键词（例如 '开会'、'周报提醒'）"
+                    }
+                }
+            }
+        }
     }
 ]
 
@@ -368,7 +433,9 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
     else:
         remaining = None
 
-    name_clean = tool_name.strip().lower()
+    name_clean = re.sub(r'^[a-zA-Z0-9_\-]+[:.]', '', tool_name.strip()).lower()
+    if name_clean == "search_web":
+        name_clean = "web_search"
     res = ""
 
     if name_clean in ["weather", "get_weather", "query_weather"]:
@@ -380,7 +447,7 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
         )
         res = fetch_weather(str(city), deadline=deadline)
 
-    elif name_clean in ["web_search", "search", "google_search", "bing_search", "modsearch"]:
+    elif name_clean in ["web_search", "search_web", "search", "google_search", "bing_search", "modsearch"]:
         query = (
             params.get("__search_query") or
             params.get("query") or
@@ -562,6 +629,17 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
         "add_reminder", "add_reminders", "remind", "reminder"
     ]:
         res = create_personal_reminders(**params)
+
+    elif name_clean in [
+        "delete_reminder", "delete_reminders", "remove_reminder", "remove_reminders",
+        "cancel_reminder", "cancel_reminders", "clear_reminder"
+    ]:
+        res = delete_personal_reminders(**params)
+
+    elif name_clean in [
+        "update_reminder", "update_reminders", "modify_reminder", "edit_reminder", "change_reminder"
+    ]:
+        res = update_personal_reminder(**params)
 
     else:
         plugin_file = Path(PLUGIN_DIR) / f"{tool_name}.py"

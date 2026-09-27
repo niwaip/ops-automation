@@ -10,10 +10,11 @@ import time
 import subprocess
 import urllib.error
 from pathlib import Path
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Dict, Any
 
 from .config import WORKSPACE_DIR, KNOWLEDGE_DIR, print_banner
-from .tools import scan_personal_knowledge, perform_web_search, read_workspace_file, get_sandbox_tools
+from .tools import scan_personal_knowledge, perform_multi_web_search, read_workspace_file, get_sandbox_tools
+from .web_tools import enrich_search_context_with_pages
 from .runtime_policy import RuntimePolicy
 from .context_budget import ContextBudget
 from .prompt_builder import build_system_prompt, build_user_turn
@@ -22,6 +23,121 @@ from .agent_loop import run_agent_loop
 from .artifact_exporter import ArtifactExporter
 from .telemetry import TelemetryStats
 from .deliverable_contract import requests_markdown_artifact
+from .html_report_fallback import materialize_html_report_fallback
+from .llm import call_model_proxy, clean_output
+
+
+
+WEATHER_RE = re.compile(
+    r'(天气|气象|气温|温度|下雨|降雨|暴雨|晴天|预报|几度|转晴|多云|'
+    r'\bweather\b|\bforecast\b|\btemperature\b|\brain(?:ing|y)?\b|\bsnow(?:ing|y)?\b)',
+    re.IGNORECASE,
+)
+REMINDER_RE = re.compile(r'(提醒|闹钟|待办|日程|remind\s+me|reminder|alarm)', re.I)
+
+
+def _run_planning_phase(
+    prompt: str,
+    messages: List[Dict[str, Any]],
+    model_name: str,
+    policy: RuntimePolicy,
+    deadline: Optional[float] = None,
+) -> Optional[str]:
+    """Execute the thinking model in the planning phase to reason, architect, and outline."""
+    planning_policy = RuntimePolicy(
+        temperature=policy.temperature,
+        model_socket_timeout=policy.model_socket_timeout,
+        single_request_timeout=min(policy.single_request_timeout, 120),
+        total_task_timeout=policy.total_task_timeout,
+        thinking=True,
+        reasoning_effort=policy.reasoning_effort or "medium",
+    )
+    planning_messages = [
+        *messages,
+        {
+            "role": "user",
+            "content": (
+                "【规划阶段任务】：请针对用户的需求与交付物目标进行深入思考与方案规划。\n"
+                "1. 深入分析用户目标、页面/内容结构、排版与视觉设计规范。\n"
+                "2. 给出详细的实现与落盘规划（包括功能模块划分、代码逻辑与目标落盘文件路径，如 `/workspace/index.html`）。\n"
+                "3. 输出清晰的规划方案。本阶段仅负责思考与架构规划，无需调用工具。"
+            ),
+        },
+    ]
+    try:
+        print("🧠 [Harness Planning Phase] 开启思考模式：正在规划任务方案与实现架构...", flush=True)
+        res = call_model_proxy(
+            planning_messages,
+            model_name,
+            tools=None,
+            timeout=planning_policy.single_request_timeout,
+            deadline=deadline,
+            policy=planning_policy,
+        )
+        plan_text = res.get("content", "") if isinstance(res, dict) else str(res)
+        clean_plan = clean_output(plan_text).strip()
+        if clean_plan:
+            print("✓ [Harness Planning Phase] 任务规划完成，进入执行与工具调用阶段。", flush=True)
+            return clean_plan
+    except Exception as e:
+        print(f"⚠️ [Harness Planning Phase] 规划阶段异常，降级直接进入执行阶段: {e}", flush=True)
+    return None
+
+
+
+def select_active_tools(
+    prompt: str,
+    skill_res,
+    is_search_intent: bool,
+    has_web_search_permission: bool,
+) -> list:
+    """Selects a small stable tool surface plus intent-scoped capabilities.
+
+    Read-only web tools remain visible whenever web access is enabled. Intent
+    detection may eagerly fetch obvious live information, but it must never be
+    the capability gate: new sites and unfamiliar wording should still work.
+    """
+    if requests_markdown_artifact(prompt) and not skill_res.skill_id:
+        allowed = {"write_markdown"}
+        if has_web_search_permission:
+            allowed.update({"web_search", "fetch_page"})
+        if skill_res.is_knowledge_intent or skill_res.is_inspect_intent:
+            allowed.update({"scan_knowledge", "read_file"})
+        return get_sandbox_tools(allowed_names=allowed)
+
+    # Complex generation and matched skills may need bash, file and skill tooling.
+    if skill_res.skill_id or skill_res.is_generate_intent or skill_res.requires_execution:
+        tools = get_sandbox_tools()
+    else:
+        allowed = {"web_search", "fetch_page"} if has_web_search_permission else set()
+        if WEATHER_RE.search(prompt):
+            allowed.add("weather")
+        if REMINDER_RE.search(prompt):
+            allowed.update({"create_reminders", "update_reminder", "delete_reminder"})
+        if requests_markdown_artifact(prompt):
+            allowed.add("write_markdown")
+        if skill_res.is_knowledge_intent:
+            allowed.update({"scan_knowledge", "read_file"})
+        if skill_res.is_inspect_intent:
+            allowed.update({"read_file", "scan_knowledge", "vision_inspect"})
+        if skill_res.is_send_intent:
+            allowed.add("send_file")
+        tools = get_sandbox_tools(allowed_names=allowed) if allowed else []
+
+    if not has_web_search_permission:
+        tools = [
+            tool for tool in tools
+            if tool.get("function", {}).get("name") not in {"web_search", "fetch_page"}
+        ]
+    if skill_res.skill_id and getattr(skill_res, "skill_context", ""):
+        # The router already injected this skill's contract into the prompt.
+        # Keeping read_skill available invites small models to spend another
+        # round rereading the same long document or switching formats.
+        tools = [
+            tool for tool in tools
+            if tool.get("function", {}).get("name") != "read_skill"
+        ]
+    return tools
 
 
 def load_session_history(session_id: str) -> tuple[Optional[Path], list]:
@@ -107,6 +223,13 @@ def cmd_run(args):
         policy.timeout_seconds = cli_timeout
         policy.single_request_timeout = min(cli_timeout, 240)
 
+    cli_thinking = getattr(args, "thinking", None)
+    if cli_thinking is not None:
+        policy.thinking = bool(cli_thinking)
+    cli_effort = getattr(args, "reasoning_effort", None)
+    if cli_effort:
+        policy.reasoning_effort = str(cli_effort)
+
     task_deadline = time.monotonic() + policy.total_task_timeout
     session_id = getattr(args, "session_id", None)
     history_file, existing_history = load_session_history(session_id)
@@ -116,10 +239,14 @@ def cmd_run(args):
     skill_res = SkillRouter.route(prompt, existing_history, allow_research=allow_research)
     knowledge_context = scan_personal_knowledge() if skill_res.is_knowledge_intent else ""
 
+
     # 2. 联网前置检索
-    is_search_intent = bool(args.web_search) or prompt.strip().startswith("/search ") or skill_res.is_search_intent
+    # args.web_search 仅表示沙箱具备联网检索工具能力，绝不能将所有普通对话/生成需求直接断定为纯检索任务！
+    # 只有当用户显式要求搜索（如以 /search 起始）或语义路由命中真实外部资讯检索意图（is_search_intent）时，才执行前置联网检索
+    has_web_search_permission = bool(args.web_search)
+    is_search_intent = prompt.strip().startswith("/search ") or skill_res.is_search_intent
     search_context = ""
-    if is_search_intent:
+    if is_search_intent and has_web_search_permission:
         if task_deadline is not None and time.monotonic() >= task_deadline:
             raise TimeoutError("Task total execution deadline exceeded before pre-search")
         search_prompt = SkillRouter.resolve_contextual_query(prompt, existing_history)
@@ -127,11 +254,39 @@ def cmd_run(args):
             print(f"🔍 [Harness Web Search] 正在检索实时数据: '{search_prompt}' (根据上下文消歧指代: '{prompt}')...", flush=True)
         else:
             print(f"🔍 [Harness Web Search] 正在检索实时数据: '{prompt}'...", flush=True)
-        search_context = perform_web_search(search_prompt, deadline=task_deadline)
+        search_context = perform_multi_web_search(search_prompt, deadline=task_deadline)
         if task_deadline is not None and time.monotonic() >= task_deadline:
             raise TimeoutError("Task total execution deadline exceeded during pre-search")
         if search_context:
             print("✓ 实时数据检索成功，已注入分析上下文。", flush=True)
+            # Small models are prone to inventing names, versions, and install commands
+            # when asked for a "latest plugins" list.  For this narrow, high-risk
+            # intent, deliver the retrieved evidence directly: it is faster and every
+            # item remains auditable. Other search questions still use model synthesis.
+            if _should_deliver_plugin_evidence_directly(search_prompt):
+                page_deadline = min(task_deadline, time.monotonic() + 10.0)
+                original_search_context = search_context
+                try:
+                    search_context = enrich_search_context_with_pages(
+                        search_context,
+                        max_pages=2,
+                        max_chars_per_page=2_500,
+                        deadline=page_deadline,
+                    )
+                except TimeoutError:
+                    search_context = original_search_context
+                if search_context != original_search_context:
+                    print("✓ 已抓取高价值页面正文，将基于原文整理。", flush=True)
+                else:
+                    print("⚠️ 页面正文抓取未在 10 秒内完成，将使用已检索证据继续。", flush=True)
+                _emit_plugin_ecosystem_digest(
+                    prompt,
+                    search_context,
+                    existing_history,
+                    history_file,
+                    policy,
+                )
+                return
 
     # 3. 提取当前会话附件内容
     session_files = resolve_session_attachments(args, session_id)
@@ -203,21 +358,41 @@ def cmd_run(args):
         is_inspect_intent=skill_res.is_inspect_intent
     )
 
-    # 小模型优先使用与当前意图匹配的最小工具集合，减少工具选择与协议负担。
-    # 专业技能任务保留完整工具集，避免裁掉技能自身所需能力。
-    active_tools = None
-    if not skill_res.skill_id:
-        wants_markdown = requests_markdown_artifact(prompt)
-        if is_search_intent and wants_markdown:
-            active_tools = get_sandbox_tools(
-                allowed_names={"web_search", "fetch_page", "write_markdown"}
-            )
-        elif is_search_intent:
-            active_tools = get_sandbox_tools(allowed_names={"web_search", "fetch_page"})
-        elif wants_markdown:
-            active_tools = get_sandbox_tools(
-                allowed_names={"read_file", "read_workspace_file", "write_markdown"}
-            )
+    active_tools = select_active_tools(
+        prompt,
+        skill_res,
+        is_search_intent,
+        has_web_search_permission,
+    )
+
+    # 5. 思考模式调度：规划阶段（开启思考与架构设计） -> 执行与工具调用阶段（关闭思考）
+    is_deliverable_task = skill_res.is_generate_intent or skill_res.requires_execution
+    if policy.thinking and is_deliverable_task:
+        plan_text = _run_planning_phase(
+            prompt,
+            messages,
+            model_name,
+            policy,
+            deadline=task_deadline,
+        )
+        if plan_text:
+            messages.append({"role": "assistant", "content": f"【方案规划】\n{plan_text}"})
+            messages.append({
+                "role": "user",
+                "content": (
+                    "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
+                    "落盘方式（任选其一，推荐方式 2）：\n"
+                    "1. 调用 `bash` 工具（如 `cat << 'EOF' > /workspace/index.html`）写入目标文件；\n"
+                    "2. 直接在回复中输出完整的 ```html\n<!DOCTYPE html>\n...完整可运行代码...\n``` 代码块（系统将自动写入 /workspace/index.html 并在前端展示交互预览与全屏组件）。\n"
+                    "⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字而不提供代码或工具调用！必须提供完整代码！"
+                ),
+            })
+        policy.thinking = False
+        policy.reasoning_effort = None
+        print("⚡ [Harness Phase Transition] 切换为执行与工具调用阶段：精简推理，优先调用工具落盘。", flush=True)
+    elif is_deliverable_task and policy.thinking:
+        policy.thinking = False
+        policy.reasoning_effort = None
 
     try:
         loop_res = run_agent_loop(
@@ -275,6 +450,11 @@ def cmd_run(args):
         TelemetryStats.emit_final_output(final_text)
 
     except TimeoutError as e:
+        if search_context:
+            _emit_search_evidence_fallback(prompt, search_context, existing_history, history_file, policy)
+            return
+        if _emit_html_report_recovery(prompt, skill_res, existing_history, history_file, policy):
+            return
         print(f"\n❌ [DeepSeek Harness 超时]: 任务执行超时: {e}", file=sys.stderr)
         sys.exit(124)
     except urllib.error.HTTPError as e:
@@ -291,11 +471,236 @@ def cmd_run(args):
             err_detail = err_json.get("message", err_msg)
         except Exception:
             err_detail = err_msg
+        if search_context:
+            _emit_search_evidence_fallback(prompt, search_context, existing_history, history_file, policy)
+            return
         print(f"\n❌ [DeepSeek Harness 异常]: 大模型代理调用失败 ({e.code}): {err_detail}")
         sys.exit(1)
     except Exception as e:
-        print(f"\n❌ [DeepSeek Harness 异常]: 执行异常: {e}")
+        raw_error = str(e)
+        if search_context:
+            _emit_search_evidence_fallback(prompt, search_context, existing_history, history_file, policy)
+            return
+        if _emit_html_report_recovery(prompt, skill_res, existing_history, history_file, policy):
+            return
+        if re.search(r'(?:\baborted\b|timeout|timed out|socket hang up|econnreset)', raw_error, re.I):
+            print("\n❌ [DeepSeek Harness 超时]: 模型响应超时或连接中断，本次任务未完成且未生成可用产物。请重试。")
+        else:
+            print(f"\n❌ [DeepSeek Harness 异常]: 执行异常: {e}")
         sys.exit(1)
+
+
+def _emit_html_report_recovery(prompt, skill_res, existing_history, history_file, policy):
+    """Recover an HTML deliverable from existing grounded session content."""
+    if not (skill_res.is_generate_intent and skill_res.is_design_intent):
+        return False
+    try:
+        out_path = materialize_html_report_fallback(prompt, existing_history, WORKSPACE_DIR)
+    except Exception:
+        return False
+    if not out_path:
+        return False
+    final_text = (
+        "⚠️ 上游模型在写入阶段连接中断，系统已使用本会话中已有的有效内容恢复生成单页报告。\n\n"
+        f"- **输出文件**：`{out_path}`\n"
+        "- **数据说明**：未补写新的事实或数据，可直接预览或下载。"
+    )
+    try:
+        content = Path(out_path).read_text(encoding="utf-8")
+        if content:
+            final_text += f"\n\n```html\n{content}\n```\n"
+    except Exception:
+        pass
+    payload = json.dumps({"filePath": out_path, "fileName": Path(out_path).name}, ensure_ascii=False)
+    TelemetryStats.emit_outbound_files([payload])
+    if history_file:
+        try:
+            existing_history.append({"role": "user", "content": prompt})
+            existing_history.append({"role": "assistant", "content": final_text})
+            with open(history_file, "w", encoding="utf-8") as f:
+                json.dump(existing_history[-policy.recent_history_save_count:], f, ensure_ascii=False, indent=2, default=str)
+        except Exception:
+            pass
+    TelemetryStats.emit_final_output(final_text)
+    return True
+
+
+def _should_deliver_plugin_evidence_directly(prompt):
+    """Identify fresh plugin/ecosystem lists that should remain evidence-only."""
+    normalized = re.sub(r'\s+', ' ', str(prompt or '')).strip().casefold()
+    freshness = r'(?:最新|新版|近期|当前|latest|recent|newest|current)'
+    plugin = r'(?:插件|扩展|生态|plugin|plugins|extension|extensions)'
+    return bool(
+        re.search(rf'{freshness}.{{0,24}}{plugin}', normalized)
+        or re.search(rf'{plugin}.{{0,24}}{freshness}', normalized)
+    )
+
+
+def _emit_plugin_ecosystem_digest(prompt, search_context, existing_history, history_file, policy):
+    """Render a compact grounded digest without a second slow model pass."""
+    link_pattern = re.compile(r'\[([^\]\n]+)\]\((https?://[^)]+)\)')
+    source_context = (search_context or '').split('【高价值页面正文抓取】', 1)[0]
+    seen = set()
+    links = []
+    for title, url in link_pattern.findall(source_context):
+        key = url.rstrip('/').casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        links.append((re.sub(r'\s+', ' ', title).strip(), url.strip()))
+
+    official_repo = 'https://github.com/deepseek-ai/deepseek-harness'
+    official = []
+    community = []
+    for title, url in links:
+        normalized = url.rstrip('/').casefold()
+        if normalized == official_repo or normalized.startswith(f'{official_repo}/releases'):
+            official.append((title, url))
+        elif '/discussions/' not in normalized and not normalized.startswith('https://github.com/features/'):
+            community.append((title, url))
+    if any(url.rstrip('/').casefold() == official_repo for _, url in official):
+        releases = f'{official_repo}/releases'
+        if not any(url.rstrip('/').casefold() == releases for _, url in official):
+            official.append(('Releases', releases))
+
+    lines = [
+        "## DeepSeek Harness 插件生态",
+        "",
+        "可以确认 **DeepSeek Harness 存在插件体系**。官方仓库是核心入口；具体插件的发现与排行主要来自社区目录，不应将社区统计当成官方背书。",
+        "",
+        "### 官方入口",
+        "",
+        "| 入口 | 用途 |",
+        "|---|---|",
+    ]
+    for title, url in official[:3]:
+        purpose = "版本与发布记录" if '/releases' in url else "官方源码、文档与插件机制"
+        lines.append(f"| [{title}]({url}) | {purpose} |")
+
+    lines.extend(["", "### 社区发现渠道", "", "| 来源 | 定位 |", "|---|---|"])
+    community.sort(key=lambda item: (0 if 'awesome-' in item[1].casefold() else 1, item[1].casefold()))
+    for title, url in community[:4]:
+        normalized = url.casefold()
+        if 'awesome-' in normalized:
+            positioning = "社区维护的插件目录，适合搜索和分类浏览"
+        elif 'github.com/topics/' in normalized:
+            positioning = "GitHub Topic 自动聚合，需自行核验质量与安全性"
+        else:
+            positioning = "第三方社区来源，安装前应检查仓库和发布记录"
+        lines.append(f"| [{title}]({url}) | {positioning} |")
+
+    count_match = re.search(r'共收录\s*\*{0,2}(\d+)\*{0,2}\s*个插件', search_context or '')
+    date_match = re.search(r'目录数据更新于\s*(\d{4}-\d{2}-\d{2})', search_context or '')
+    if count_match:
+        date_note = f"，页面标注更新于 {date_match.group(1)}" if date_match else ""
+        lines.extend([
+            "",
+            f">社区目录页面自述收录 **{count_match.group(1)}** 个插件{date_note}。这是社区口径，不是官方审计数量。",
+        ])
+    lines.extend([
+        "",
+        "建议先从官方仓库确认当前插件规范，再到社区目录按用途筛选；安装前检查源码、最近提交、Release 和所需权限。",
+    ])
+    final_text = "\n".join(lines).strip()
+
+    if history_file:
+        try:
+            existing_history.append({"role": "user", "content": prompt})
+            existing_history.append({"role": "assistant", "content": final_text})
+            with open(history_file, "w", encoding="utf-8") as f:
+                json.dump(existing_history[-policy.recent_history_save_count:], f, ensure_ascii=False, indent=2, default=str)
+        except Exception:
+            pass
+    TelemetryStats.emit_final_output(final_text)
+
+
+def _emit_search_evidence_fallback(
+    prompt,
+    search_context,
+    existing_history,
+    history_file,
+    policy,
+    model_failed=True,
+):
+    """Deliver verified links when model synthesis fails after a successful search."""
+    link_pattern = re.compile(r'(?:^|\n)(?:\d+\.\s*)?\[([^\]]+)\]\((https?://[^)]+)\)(?:[^\n]*)\n?\s*([^\n]*)')
+    seen = set()
+    items = []
+    for title, url, snippet in link_pattern.findall(search_context or ""):
+        key = url.rstrip('/').casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        clean_snippet = re.sub(r'\s+', ' ', snippet).strip()
+        clean_snippet = re.sub(r'^[|#>*\-\s]+', '', clean_snippet)
+        if re.search(r'README(?:\.i18n)?\.ya?ml|docs\(readme\)|ctx\.registry|ctx\.plugin', clean_snippet, re.I):
+            clean_snippet = ''
+        items.append((title.strip(), url.strip(), clean_snippet[:240]))
+
+    official_repo = 'https://github.com/deepseek-ai/deepseek-harness'
+    official_releases = f'{official_repo}/releases'
+    item_urls = {item[1].rstrip('/').casefold() for item in items}
+    if official_repo in item_urls and official_releases not in item_urls:
+        items.append((
+            'DeepSeek Harness Releases',
+            official_releases,
+            '官方版本与发布记录页面；请以该页面显示的实际发布内容为准。',
+        ))
+
+    def evidence_priority(item):
+        url = item[1].rstrip('/').casefold()
+        if url == 'https://github.com/deepseek-ai/deepseek-harness':
+            return (0, url)
+        if url.startswith('https://github.com/deepseek-ai/deepseek-harness/releases'):
+            return (1, url)
+        if url.startswith('https://github.com/deepseek-ai/deepseek-harness'):
+            return (2, url)
+        if 'github.com' in url:
+            return (3, url)
+        return (4, url)
+
+    items = sorted(items, key=evidence_priority)[:8]
+
+    explanation = (
+        "联网检索已经完成，但指定模型在整理结果时连接中断。为避免脱离证据编造，下面直接返回检索到的来源："
+        if model_failed
+        else "这是强时效的插件/生态查询。为避免小模型补写未经证实的插件名、版本或安装命令，直接返回可核验来源："
+    )
+
+    lines = [
+        "## 联网检索结果（可核验来源）",
+        "",
+        explanation,
+        "",
+    ]
+    for index, (title, url, snippet) in enumerate(items, 1):
+        normalized_url = url.casefold()
+        if normalized_url.startswith(f'{official_repo}/discussions'):
+            source_label = "官方站点·社区讨论"
+        elif normalized_url.startswith(official_repo):
+            source_label = "官方"
+        else:
+            source_label = "社区/第三方"
+        lines.append(f"{index}. **[{source_label}]** [{title}]({url})")
+        if snippet:
+            lines.append(f"   {snippet}")
+    if not items:
+        lines.extend(["检索已完成，但未能提取可引用链接。请重试本次查询。"])
+    lines.extend([
+        "",
+        "> 说明：以上是检索证据的直接交付，不包含模型记忆补写；社区目录或 Discussions 中的内容不代表官方背书。",
+    ])
+    final_text = "\n".join(lines).strip()
+
+    if history_file:
+        try:
+            existing_history.append({"role": "user", "content": prompt})
+            existing_history.append({"role": "assistant", "content": final_text})
+            with open(history_file, "w", encoding="utf-8") as f:
+                json.dump(existing_history[-policy.recent_history_save_count:], f, ensure_ascii=False, indent=2, default=str)
+        except Exception:
+            pass
+    TelemetryStats.emit_final_output(final_text)
 
 
 def cmd_exec(args):
