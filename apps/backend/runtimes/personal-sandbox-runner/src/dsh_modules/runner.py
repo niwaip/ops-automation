@@ -65,7 +65,7 @@ def _run_planning_phase(
         "【规划阶段任务】：请针对用户的需求与交付物目标进行深入思考与方案规划。\n"
         "1. 深入分析用户目标、页面/内容结构、排版与视觉设计规范。\n"
         "2. 若涉及外部开源项目、未知技术组件、最新库/API 或特定插件生态，你可以调用 `web_search` 与 `fetch_page` 检索一手技术事实与官方依据（本阶段仅开放只读网络检索，严禁且不支持写文件或执行命令工具）。\n"
-        "3. 给出详细的实现与落盘规划（包括功能模块划分、代码逻辑与目标落盘文件路径，如 `/workspace/index.html`）。\n"
+        "3. 给出详细的实现与落盘规划（包括功能模块划分、代码逻辑与目标落盘文件路径，如根据用户交付需求规划目标文件 `/workspace/<文件名>.<扩展名>`）。\n"
         "4. 输出清晰详尽的规划方案。本阶段仅负责思考与架构规划，规划完成后系统将切换至执行与代码落盘阶段。"
     )
 
@@ -189,8 +189,16 @@ def select_active_tools(
             allowed.update({"scan_knowledge", "read_file"})
         return get_sandbox_tools(allowed_names=allowed)
 
-    # Complex generation and matched skills may need bash, file and skill tooling.
-    if skill_res.skill_id or skill_res.is_generate_intent or skill_res.requires_execution:
+    # 1. 纯查看/审阅/归纳意图：无论是否匹配技能，均限制在只读工具面，严禁开放 bash、write_file、patch_file 等写盘工具
+    if skill_res.is_inspect_intent and not (skill_res.is_generate_intent or skill_res.requires_execution):
+        allowed = {"read_file", "scan_knowledge", "vision_inspect"}
+        if has_web_search_permission:
+            allowed.update({"web_search", "fetch_page"})
+        if skill_res.is_send_intent:
+            allowed.add("send_file")
+        tools = get_sandbox_tools(allowed_names=allowed)
+    # 2. 复杂生成、明确需要物理落盘产物的技能，提供完整执行环境（bash、文件与技能工具）
+    elif skill_res.is_generate_intent or skill_res.requires_execution or (skill_res.skill_id and not skill_res.is_inspect_intent):
         tools = get_sandbox_tools()
     else:
         allowed = {"web_search", "fetch_page"} if has_web_search_permission else set()
@@ -364,6 +372,10 @@ def cmd_run(args):
             except Exception:
                 search_context = original_search_context
 
+    model_name = getattr(args, "model", None) or os.environ.get("DSH_MODEL") or None
+    raw_display_name = getattr(args, "model_display_name", None) or os.environ.get("DSH_MODEL_DISPLAY_NAME") or None
+    model_display_name = resolve_model_display_name(model_name, raw_display_name)
+
     # 3. 提取当前会话附件内容
     session_files = resolve_session_attachments(args, session_id)
     file_context = ""
@@ -372,15 +384,12 @@ def cmd_run(args):
             raise TimeoutError("Task total execution deadline exceeded before attachment extraction")
         fpath = Path(WORKSPACE_DIR) / fname
         if fpath.exists() and fpath.is_file():
-            extracted = read_workspace_file(fname, deadline=task_deadline)
+            extracted = read_workspace_file(fname, deadline=task_deadline, model_name=model_name)
             if extracted and not extracted.startswith("文件未找到"):
                 clipped = ContextBudget.clip_attachment(extracted, policy.max_attachment_chars)
                 file_context += f"\n\n[Attached File Content - {fname}]:\n{clipped}"
 
     # 4. 组装 System Prompt 与 User Turn (保持前缀稳定以命中 Prompt Caching)
-    model_name = getattr(args, "model", None) or os.environ.get("DSH_MODEL") or None
-    raw_display_name = getattr(args, "model_display_name", None) or os.environ.get("DSH_MODEL_DISPLAY_NAME") or None
-    model_display_name = resolve_model_display_name(model_name, raw_display_name)
     system_prompt = build_system_prompt(
         WORKSPACE_DIR,
         KNOWLEDGE_DIR,
@@ -412,6 +421,7 @@ def cmd_run(args):
         is_office_intent=skill_res.is_office_intent,
         is_research_intent=skill_res.is_research_intent,
         is_inspect_intent=skill_res.is_inspect_intent,
+        is_generate_intent=skill_res.is_generate_intent,
         is_guide_intent=skill_res.is_guide_intent,
         existing_history=existing_history,
         max_skill_chars=policy.max_skill_chars,
@@ -454,15 +464,52 @@ def cmd_run(args):
         )
         if plan_text:
             messages.append({"role": "assistant", "content": f"【方案规划】\n{plan_text}"})
-            messages.append({
-                "role": "user",
-                "content": (
+
+            # 动态生成符合当前技能与目标交付物格式的执行指引，杜绝将 Word/Excel/PDF 等任务硬编码为 HTML
+            if skill_res.is_docx_intent or (skill_res.deliverables and any(ext.lower() == ".docx" for ext in skill_res.deliverables)):
+                execution_instruction = (
+                    "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
+                    "落盘方式：调用 `bash` 工具运行 Python 脚本（使用 python-docx 库创建并排版文档，保存至 `/workspace/<文件名>.docx`）。\n"
+                    "⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字而不提供代码或工具调用！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！"
+                )
+            elif skill_res.is_office_intent and (skill_res.deliverables and any(ext.lower() == ".xlsx" for ext in skill_res.deliverables)):
+                execution_instruction = (
+                    "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
+                    "落盘方式：调用 `bash` 工具运行 Python 脚本（使用 openpyxl 库创建并排版表格，保存至 `/workspace/<文件名>.xlsx`）。\n"
+                    "⚠️ 严禁仅输出口头文字！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！"
+                )
+            elif skill_res.deliverables and any(ext.lower() == ".pdf" for ext in skill_res.deliverables):
+                execution_instruction = (
+                    "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
+                    "落盘方式：调用 `write_markdown` 或运行脚本生成目标 PDF 文件保存至 `/workspace/`。\n"
+                    "⚠️ 严禁仅输出口头文字！必须实际调用工具完成物理文件落盘！"
+                )
+            elif skill_res.is_ppt_intent:
+                execution_instruction = (
+                    "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
+                    "落盘方式（任选其一，推荐方式 2）：\n"
+                    "1. 调用 `bash` 工具写入 `/workspace/presentation.html`；\n"
+                    "2. 直接在回复中输出完整的 ```html\n<!DOCTYPE html>\n...完整可运行代码...\n``` 代码块（系统将自动写入 /workspace/presentation.html 并在前端展示交互预览与全屏组件）。\n"
+                    "⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字而不提供代码或工具调用！必须提供完整代码！"
+                )
+            elif skill_res.is_design_intent or (skill_res.deliverables and any(ext.lower() == ".html" for ext in skill_res.deliverables)):
+                execution_instruction = (
                     "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
                     "落盘方式（任选其一，推荐方式 2）：\n"
                     "1. 调用 `bash` 工具（如 `cat << 'EOF' > /workspace/index.html`）写入目标文件；\n"
                     "2. 直接在回复中输出完整的 ```html\n<!DOCTYPE html>\n...完整可运行代码...\n``` 代码块（系统将自动写入 /workspace/index.html 并在前端展示交互预览与全屏组件）。\n"
                     "⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字而不提供代码或工具调用！必须提供完整代码！"
-                ),
+                )
+            else:
+                target_ext = skill_res.deliverables[0] if skill_res.deliverables else ""
+                execution_instruction = (
+                    "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
+                    f"落盘方式：调用 `bash` 或对应写文件工具将文件保存至 `/workspace/` 路径下{f'（如 {target_ext} 交付物）' if target_ext else ''}。\n"
+                    "⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字而不提供代码或工具调用！必须完成物理文件落盘！"
+                )
+            messages.append({
+                "role": "user",
+                "content": execution_instruction,
             })
         policy.thinking = False
         policy.reasoning_effort = None

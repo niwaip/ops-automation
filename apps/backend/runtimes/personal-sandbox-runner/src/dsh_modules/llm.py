@@ -763,11 +763,11 @@ def clean_output(text: str, is_guide: bool = False) -> str:
 def is_promising_action(text: str) -> bool:
     """
     Detects if the model's output is an intermediate action promise or continuation intent
-    (e.g., '微博页面需要登录，我换用更精确的关键词组合来搜索这个热搜话题的具体内容。')
+    (e.g., '我换用更精确的关键词搜索...' or '我将使用更稳健的方式初始化文档并直接生成文件')
     without having emitted an actual executable tool call tag.
     """
     cleaned = clean_output(text).strip()
-    if not cleaned or len(cleaned) > 160:
+    if not cleaned or len(cleaned) > 260:
         return False
 
     action_patterns = [
@@ -776,5 +776,7 @@ def is_promising_action(text: str) -> bool:
         r"(?:我来|我将|我去|让我来|让我|接下来|稍后|现在)\s*(?:去|来|为你|为您|帮你|帮您)?\s*(?:搜索|查询|检索|查找|访问|抓取|查)(?:一下|这个|该|相关|看)?",
         r"(?:我|让我)?\s*(?:搜索|查询|检索|查找|访问|抓取|查)一下",
         r"需要登录[，,。]?(?:我|我们)?(?:换用|改用|换|重新|尝试)",
+        r"(?:我|让我|我们)?(?:将|来|去|重新|再次)?(?:使用|通过|采用)?[^，。！？\n]{0,25}(?:稳健|安全|标准|正确)?[^，。！？\n]{0,15}(?:生成|创建|写入|导出|制作|初始化|运行)[^，。！？\n]{0,20}(?:文件|文档|脚本|代码|docx|html|pdf|xlsx)",
+        r"(?:为确保证性|为了保证|避免报错|为了确保|保证可用)[^，。！？\n]{0,25}(?:直接|重新|再次)?(?:生成|创建|写入|导出|运行)[^，。！？\n]{0,15}(?:文件|文档|产物)",
     ]
     return any(re.search(p, cleaned) for p in action_patterns)

@@ -36,6 +36,8 @@ default_rounds: 5
 - ✅ **预装依赖**：沙箱已预装 `python-docx`、`defusedxml`，直接使用，严禁 `pip install`！
 - ✅ **黑盒脚本工具库**：脚本位于 `/opt/dsh/skills/docx/scripts/`，调用时请使用 CLI 方式，严禁将脚本源码读取并刷入模型上下文。
 - ✅ **中文字体规范**：中文字体统一指定为 `微软雅黑` 或 `宋体`，英文指定为 `Calibri` 或 `Arial`。
+  - ⚠️ **底层字体初始化安全红线**：全新空白文档中 `doc.styles['Normal'].element.rPr` 默认是 `None`，**严禁直接访问** `doc.styles['Normal'].element.rPr.rFonts`（必报 `AttributeError: 'NoneType' object has no attribute 'rFonts'`）！
+  - **标准全局设置方式**：必须先执行 `style.font.name = 'Microsoft YaHei'` 初始化底层属性，再设置 `style.element.get_or_add_rPr().get_or_add_rFonts().set(docx.oxml.ns.qn('w:eastAsia'), 'Microsoft YaHei')`；或者直接在段落/Run 级别设置 `run.font.name = 'Microsoft YaHei'`。
 - ✅ **输出位置**：生成或修改的文件必须保存至 `/workspace/<filename>.docx`。
 
 ---
@@ -128,6 +130,7 @@ import docx
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.oxml.ns import qn
 
 doc = docx.Document()
 
@@ -138,7 +141,14 @@ for s in doc.sections:
     s.left_margin = Inches(1.0)
     s.right_margin = Inches(1.0)
 
-# 2. 标题
+# 2. 全局默认字体与样式初始化 (⚠️ 严禁直接访问 style.element.rPr.rFonts，先赋值 font.name 激活底层属性)
+style = doc.styles['Normal']
+style.font.name = 'Microsoft YaHei'
+style.element.get_or_add_rPr().get_or_add_rFonts().set(qn('w:eastAsia'), 'Microsoft YaHei')
+style.font.size = Pt(10.5)
+style.paragraph_format.line_spacing = 1.25
+
+# 3. 标题
 title_p = doc.add_paragraph()
 title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 run_title = title_p.add_run("企业级智能自动化平台设计报告")

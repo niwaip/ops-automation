@@ -748,6 +748,51 @@ class TestDshSkillsAndArtifacts(unittest.TestCase):
             self.assertIn("上海市气象监测报告", out_file.read_text(encoding="utf-8"))
             self.assertIn("<table>", out_file.read_text(encoding="utf-8"))
 
+    def test_pdf_inspect_vs_generate_tool_selection(self):
+        """验证 PDF 附件查看归纳意图仅提供只读工具且阻断 bash，而显式生成意图提供完整写盘工具"""
+        from dsh_modules.runner import select_active_tools
+        from dsh_modules.prompt_builder import build_user_turn
+
+        # 1. 查看归纳意图：命中 pdf 技能识别，但作为只读任务，绝不提供 bash 等副作用工具
+        prompt_inspect = "【当前轮次用户上传附件】: 1.pdf\n用户指令：查看归纳附件内容"
+        res_inspect = SkillRouter.route(prompt_inspect, [])
+        self.assertEqual(res_inspect.skill_id, "pdf")
+        self.assertTrue(res_inspect.is_inspect_intent)
+        self.assertFalse(res_inspect.is_generate_intent)
+        self.assertFalse(res_inspect.requires_execution)
+        self.assertEqual(res_inspect.deliverables, [])
+
+        tools_inspect = select_active_tools(prompt_inspect, res_inspect, False, True)
+        tool_names_inspect = {t["function"]["name"] for t in tools_inspect}
+        self.assertNotIn("bash", tool_names_inspect)
+        self.assertNotIn("write_markdown", tool_names_inspect)
+        self.assertNotIn("patch_file", tool_names_inspect)
+        self.assertTrue({"read_file", "vision_inspect", "scan_knowledge"}.issubset(tool_names_inspect))
+
+        # 验证提示词明确引导纯对话输出与严禁 bash 落盘
+        user_turn = build_user_turn(
+            prompt=prompt_inspect,
+            session_files=["1.pdf"],
+            file_context="[Attached File Content - 1.pdf]: 合同编号 SJ6113",
+            skill_context=res_inspect.skill_context,
+            is_inspect_intent=res_inspect.is_inspect_intent,
+            is_generate_intent=res_inspect.is_generate_intent
+        )
+        self.assertIn("只读审阅与内容归纳规范", user_turn)
+        self.assertIn("严禁调用 bash", user_turn)
+
+        # 2. 显式生成意图：要求生成 PDF 报表，此时必须提供 bash 工具以执行生成脚本
+        prompt_generate = "【当前轮次用户上传附件】: 1.pdf\n用户指令：基于 1.pdf 生成一份测试报告.pdf"
+        res_generate = SkillRouter.route(prompt_generate, [])
+        self.assertEqual(res_generate.skill_id, "pdf")
+        self.assertTrue(res_generate.is_generate_intent)
+        self.assertTrue(res_generate.requires_execution)
+        self.assertIn(".pdf", res_generate.deliverables)
+
+        tools_generate = select_active_tools(prompt_generate, res_generate, False, True)
+        tool_names_generate = {t["function"]["name"] for t in tools_generate}
+        self.assertIn("bash", tool_names_generate)
+
 
 if __name__ == "__main__":
     unittest.main()

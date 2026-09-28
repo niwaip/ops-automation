@@ -32,6 +32,7 @@ from .action_protocol import (
 )
 from .deliverable_contract import (
     materialize_requested_markdown,
+    materialize_script_deliverable,
     requests_markdown_artifact,
     unwrap_outer_markdown_fence,
 )
@@ -409,7 +410,19 @@ def _extract_last_user_prompt(messages: List[Dict[str, Any]]) -> str:
             content = msg.get("content")
             if isinstance(content, str):
                 m_req = re.search(r'\[User Request\]:\s*\n([\s\S]*?)(?:\n\n(?:\[|【|---)|$)', content)
-                return m_req.group(1).strip() if m_req else content
+                if m_req:
+                    return m_req.group(1).strip()
+                # 过滤系统注入的内部过渡或守卫消息，防止污染用户真实意图
+                if (
+                    content.startswith("【执行与代码落盘阶段】")
+                    or content.startswith("【系统产物物理断言拦截】")
+                    or content.startswith("【系统交付物检查】")
+                    or content.startswith("⚠️ 【强制执行守卫")
+                    or content.startswith("工具调用轮次已结束")
+                    or content.startswith("文件已成功标记")
+                ):
+                    continue
+                return content
             return ""
     return ""
 
@@ -425,7 +438,8 @@ def _check_no_tool_assertion_guard(
     is_generate_intent: bool,
     is_inspect_intent: bool,
     executed_calls_history: Optional[List[str]] = None,
-    guard_nudges_count: int = 0
+    guard_nudges_count: int = 0,
+    script_execution_error: Optional[str] = None
 ) -> Tuple[str, Optional[str], int]:
     """
     Evaluates assertion guards when model returns text without tool calls.
@@ -459,9 +473,11 @@ def _check_no_tool_assertion_guard(
         )
         if missing:
             print(f"⚡ [Harness Artifact Assertion Guard] 检测到模型声称生成了文件 {missing}，但物理文件并不存在，正在拦截引导落盘...", flush=True)
+            has_html_in_missing = any(f.endswith(".html") or f.endswith(".htm") for f in missing)
+            code_block_hint = "，或者直接在回复中以完整的代码块（如 ```html\\n<!DOCTYPE html>...\\n```）输出全部源码" if has_html_in_missing else ""
             msg = (
-                f"【系统产物物理断言拦截】：你在回复中提及已生成或保存文件 {', '.join(missing)}，但当前沙箱物理文件并不存在，且未在回复中提供完整代码块。"
-                f"请立即调用 bash 执行代码将目标文件保存到 /workspace/ 路径下，或者直接在回复中以完整的代码块（如 ```html\\n<!DOCTYPE html>...\\n```）输出全部源码。严禁仅做口头汇报！"
+                f"【系统产物物理断言拦截】：你在回复中提及已生成或保存文件 {', '.join(missing)}，但当前沙箱物理文件并不存在{code_block_hint and '，且未在回复中提供完整代码块' or ''}。"
+                f"请立即调用 bash 执行代码将目标文件保存到 /workspace/ 路径下{code_block_hint}。严禁仅做口头汇报！"
             )
             return "continue", msg, bumped_max_rounds
 
@@ -485,11 +501,26 @@ def _check_no_tool_assertion_guard(
                 missing_deliverable = None
             if missing_deliverable:
                 print(f"⚡ [Harness Deliverable Assertion Guard] 检测到用户要求生成 {missing_deliverable} 交付物但沙箱尚未生成，正在引导执行工具落盘...", flush=True)
-                msg = (
-                    f"【系统交付物检查】：用户要求生成 {missing_deliverable} 文件（用户原始指令：『{last_user_prompt}』），当前工作区 (/workspace/) 中尚未检测到该物理文件。"
-                    f"请立即调用 bash 将完整可运行内容写入 /workspace/，或直接在回复中以完整的代码块（如 ```html\n<!DOCTYPE html>...\n```）输出全部源码；不要继续输出功能规划、架构说明、伪代码，"
-                    f"不要要求用户再次确认或回复‘提供完整代码’。严禁仅做口头汇报！"
-                )
+                if script_execution_error:
+                    msg = (
+                        f"【系统脚本执行自愈提示】：检测到你在回复中提供了生成 {missing_deliverable} 的脚本代码，"
+                        f"但在沙箱尝试运行该脚本生成交付物时出现异常报错：\n```\n{script_execution_error}\n```\n"
+                        f"请立即通过 Function Calling 协议调用 `bash` 工具修复并运行脚本，完成物理文件落盘！严禁仅做口头解释！"
+                    )
+                else:
+                    if missing_deliverable in [".html", ".htm"]:
+                        format_write_hint = "，或直接在回复中以完整的代码块（如 ```html\n<!DOCTYPE html>...\n```）输出全部源码"
+                    elif missing_deliverable in [".md", ".markdown"]:
+                        format_write_hint = "，或直接在回复中以完整的 Markdown 代码块输出全部正文"
+                    elif missing_deliverable in [".docx", ".xlsx", ".pdf"]:
+                        format_write_hint = f"（请通过 Function Calling 协议调用 bash 工具运行 Python 脚本生成 {missing_deliverable} 文件）"
+                    else:
+                        format_write_hint = ""
+                    msg = (
+                        f"【系统交付物检查】：用户要求生成 {missing_deliverable} 文件（用户原始指令：『{last_user_prompt}』），当前工作区 (/workspace/) 中尚未检测到该物理文件。"
+                        f"请立即通过 Function Calling 协议调用 `bash` 工具执行代码将完整可运行内容写入 /workspace/{format_write_hint}；不要继续输出功能规划、架构说明、伪代码，"
+                        f"不要要求用户再次确认。严禁仅做口头汇报！"
+                    )
                 return "continue", msg, bumped_max_rounds
 
     # 4. 行动垫话拦截
@@ -666,6 +697,8 @@ def _dispatch_tool_calls(
 
         clipped_tool_res = ContextBudget.clip_tool_result(tool_res, max_chars=policy.max_tool_result_chars)
         clean_tool_res = strip_dsh_markers(clipped_tool_res, ["REMINDER_CREATE", "REMINDER_UPDATE", "REMINDER_DELETE"]).strip()
+        if not clean_tool_res:
+            clean_tool_res = "（工具执行完成，无控制台输出）"
         messages.append({
             "role": "tool",
             "tool_call_id": t_id,
@@ -699,6 +732,31 @@ def _build_fallback_report(messages: List[Dict[str, Any]], executed_calls_histor
             f"上游推理模型连接中断或未返回最终交付文本。{clues_block}\n\n"
             "💡 建议：可尝试重新提问，或在设置中切换为更稳定的模型重试。"
         )
+    # 检查 messages 中是否有有效的方案规划或助手的实质回复（排除未执行脚本泄漏）
+    recent_plan = ""
+    for msg in reversed(messages):
+        if msg.get("role") == "assistant" and msg.get("content"):
+            c = str(msg["content"]).strip()
+            if (
+                c
+                and not c.startswith("⚠️")
+                and not c.startswith("❌")
+                and not detect_unexecuted_script_leak(c)
+                and "chmod" not in c
+                and "```bash" not in c
+                and "```sh" not in c
+            ):
+                recent_plan = c
+                break
+
+    if recent_plan:
+        summary_preview = recent_plan[:350].strip()
+        return (
+            "⚠️ 沙箱已完成方案分析规划，但在自动执行代码生成物理交付物时未成功创建目标文件。\n\n"
+            f"【已规划的方案参考】:\n{summary_preview}...\n\n"
+            "💡 建议：可直接回复「请使用 Python 脚本生成该文档并保存到 /workspace/」重试落盘。"
+        )
+
     return "⚠️ 沙箱运行正常，但上游模型未返回有效回复内容（可能网络连接超时或上游服务异常）。建议重新发送或切换模型重试。"
 
 
@@ -712,7 +770,8 @@ def _finalize_agent_text(
     executed_calls_history: List[str],
     was_token_truncated: bool,
     telemetry: TelemetryStats,
-    last_user_prompt: str = ""
+    last_user_prompt: str = "",
+    expected_deliverables: Optional[List[str]] = None
 ) -> Tuple[str, List[str]]:
     """Finalizes agent text, requesting forced summary if needed and applying fallback reports."""
     has_pending_tool_calls = bool(parse_tool_calls(reply_text, is_guide=is_guide_intent))
@@ -773,8 +832,22 @@ def _finalize_agent_text(
         if deadline is not None and time.monotonic() >= deadline:
             raise TimeoutError(f"Task total execution deadline ({policy.total_task_timeout}s) exceeded")
 
-        html_cues = ["html", "网页", "单页", "报告", "大屏", "看板"]
-        has_html_req = any(cue in (last_user_prompt or "").lower() for cue in html_cues)
+        p_lower = (last_user_prompt or "").lower()
+        names_non_web_format = bool(
+            re.search(r'(?:pptx?|slides?|幻灯片|演示文稿|pdf|docx?|word|xlsx?|excel)', p_lower, re.I)
+        )
+        has_non_html_deliverable = bool(
+            expected_deliverables and any(ext.lower() in [".docx", ".xlsx", ".pdf"] for ext in expected_deliverables)
+        )
+        html_cues = ["html", "网页", "单页", "大屏", "看板"]
+        has_html_req = (
+            not names_non_web_format
+            and not has_non_html_deliverable
+            and (
+                any(cue in p_lower for cue in html_cues)
+                or ("报告" in p_lower and any(cue in p_lower for cue in ["单页", "一页", "html", "网页"]))
+            )
+        )
         if has_html_req:
             try:
                 from .html_report_fallback import materialize_html_report_fallback
@@ -941,6 +1014,31 @@ def run_agent_loop(
                         flush=True,
                     )
 
+            # 物理代码产物（.docx, .xlsx, .pdf 等）：当模型在正文中输出了完整 Python 脚本时，
+            # 自动提取并安全执行落盘，避免因小模型漏发原生 tool_calls 导致交付失败。
+            script_execution_error: Optional[str] = None
+            if expected_deliverables and any(ext.lower() in [".docx", ".xlsx", ".pdf"] for ext in expected_deliverables):
+                script_artifact_path, script_err = materialize_script_deliverable(
+                    reply_text=reply_text,
+                    workspace_dir=WORKSPACE_DIR,
+                    expected_deliverables=expected_deliverables,
+                    turn_start_time=start_ts,
+                )
+                if script_artifact_path:
+                    outbound_payload = json.dumps(
+                        {"filePath": script_artifact_path, "fileName": Path(script_artifact_path).name},
+                        ensure_ascii=False,
+                    )
+                    if outbound_payload not in outbound_files:
+                        outbound_files.append(outbound_payload)
+                    executed_calls_history.append("bash")
+                    print(
+                        f"✨ [Harness Deliverable Compiler] 检测到模型在正文中输出了生成脚本，已自动安全执行落盘: {script_artifact_path}",
+                        flush=True,
+                    )
+                elif script_err:
+                    script_execution_error = script_err
+
             action, guard_msg, max_rounds = _check_no_tool_assertion_guard(
                 reply_text=reply_text,
                 last_user_prompt=last_user_prompt,
@@ -952,7 +1050,8 @@ def run_agent_loop(
                 is_generate_intent=is_generate_intent,
                 is_inspect_intent=is_inspect_intent,
                 executed_calls_history=executed_calls_history,
-                guard_nudges_count=guard_nudges_count
+                guard_nudges_count=guard_nudges_count,
+                script_execution_error=script_execution_error
             )
             if action == "continue":
                 guard_nudges_count += 1
@@ -1047,7 +1146,8 @@ def run_agent_loop(
         executed_calls_history=executed_calls_history,
         was_token_truncated=was_token_truncated,
         telemetry=telemetry,
-        last_user_prompt=last_user_prompt
+        last_user_prompt=last_user_prompt,
+        expected_deliverables=expected_deliverables
     )
     if requests_markdown_artifact(last_user_prompt):
         final_text = unwrap_outer_markdown_fence(final_text)

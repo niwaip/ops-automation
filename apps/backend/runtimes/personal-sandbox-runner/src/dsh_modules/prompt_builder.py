@@ -182,6 +182,7 @@ def build_user_turn(
     is_office_intent: bool = False,
     is_research_intent: bool = False,
     is_inspect_intent: bool = False,
+    is_generate_intent: bool = False,
     is_guide_intent: bool = False,
     existing_history: Optional[List[dict]] = None,
     max_skill_chars: int = 5000,
@@ -218,6 +219,13 @@ def build_user_turn(
         user_parts.append(
             "【Inspect Mode】只做解决问题所需的本地检查；未明确指示深度调研时，切勿发起冗长外部网络调研。"
         )
+        if not is_generate_intent:
+            user_parts.append(
+                "【只读审阅与内容归纳规范 (Read-only Inspection & Summarization)】：\n"
+                "- 当前任务为文档/代码/内容查看、归纳、审阅或分析，属于纯对话交互任务。\n"
+                "- 请直接基于上方提取的文件内容（或仅在必要时调用只读工具）在回复中输出结构化、清晰详尽的归纳分析（Markdown 格式）。\n"
+                "- 严禁调用 bash 或写文件工具在工作区生成临时报告或 Markdown 文件！用户需要的是在当前对话流中直接阅读分析结果，无需落盘交付物。"
+            )
 
     if session_files:
         user_parts.append(

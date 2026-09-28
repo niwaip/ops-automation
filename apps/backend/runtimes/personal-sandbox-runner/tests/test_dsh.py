@@ -38,7 +38,7 @@ from dsh_modules.runner import (
 from dsh_modules.telemetry import TelemetryStats
 from dsh_modules.agent_loop import (
     run_agent_loop, sanitize_preview, auto_heal_unexecuted_file_writes,
-    detect_missing_claimed_artifacts, _finalize_agent_text
+    detect_missing_claimed_artifacts, _finalize_agent_text, _extract_last_user_prompt
 )
 from dsh_modules.artifact_exporter import ArtifactExporter
 
@@ -1434,6 +1434,149 @@ class TestDshCoreModules(unittest.TestCase):
         cleaned = clean_output(raw)
         self.assertNotIn("```bash", cleaned)
         self.assertIn("文件已准备就绪。", cleaned)
+
+    def test_extract_last_user_prompt_ignores_injected_phase_and_guard_messages(self):
+        """验证 _extract_last_user_prompt 跳过系统注入的阶段过渡与守卫消息，准确提取用户原始请求"""
+        messages = [
+            {"role": "user", "content": "[User Request]:\n帮我生成一个word文档\n\n[Loaded Design Skill]..."},
+            {"role": "assistant", "content": "【方案规划】\n# 规划方案：企业报告"},
+            {"role": "user", "content": "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n落盘方式：调用 bash 工具运行 Python 脚本..."},
+        ]
+        extracted = _extract_last_user_prompt(messages)
+        self.assertEqual(extracted, "帮我生成一个word文档")
+
+        # 同样跳过守卫提示
+        messages_with_guard = [
+            {"role": "user", "content": "[User Request]:\n生成季度数据分析表.xlsx\n\n---"},
+            {"role": "assistant", "content": "正在处理..."},
+            {"role": "user", "content": "【系统交付物检查】：用户要求生成 .xlsx 文件..."},
+        ]
+        self.assertEqual(_extract_last_user_prompt(messages_with_guard), "生成季度数据分析表.xlsx")
+
+    def test_finalize_agent_text_word_report_never_falls_back_to_html(self):
+        """验证当用户要求生成 Word 报告（带有'报告'关键字）且上游模型中断时，绝不错误降级为 HTML 报告"""
+        with tempfile.TemporaryDirectory() as tmp_ws:
+            with patch("dsh_modules.agent_loop.WORKSPACE_DIR", tmp_ws):
+                messages = [
+                    {"role": "user", "content": "帮我生成一个销售数据分析报告，导出为word"},
+                    {"role": "assistant", "content": "【方案规划】\n# 销售报告规划"},
+                    {"role": "user", "content": "【执行与代码落盘阶段】：方案规划已完成。"}
+                ]
+                policy = RuntimePolicy()
+                telemetry = TelemetryStats()
+                final_text, healed = _finalize_agent_text(
+                    reply_text="",  # 模拟上游模型连接异常中断返回空
+                    messages=messages,
+                    model="default",
+                    policy=policy,
+                    deadline=None,
+                    is_guide_intent=False,
+                    executed_calls_history=["bash"],
+                    was_token_truncated=False,
+                    telemetry=telemetry,
+                    last_user_prompt="帮我生成一个销售数据分析报告，导出为word",
+                    expected_deliverables=[".docx"]
+                )
+                # 必须输出真实诊断报告，严禁伪造单页 HTML 报告
+                self.assertNotIn("✨ **单页 HTML 报告已由系统基于会话内容自动整理生成！**", final_text)
+                self.assertNotIn("```html", final_text)
+                self.assertIn("⚠️ 沙箱已成功调用工具", final_text)
+                self.assertFalse(any(f.endswith(".html") for f in healed))
+                self.assertFalse((Path(tmp_ws) / "index.html").exists())
+
+    def test_finalize_agent_text_html_request_properly_falls_back_to_html(self):
+        """验证当用户确为单页/HTML需求且正文缺失时，允许正常触发 HTML 报告恢复"""
+        with tempfile.TemporaryDirectory() as tmp_ws:
+            with patch("dsh_modules.agent_loop.WORKSPACE_DIR", tmp_ws):
+                messages = [
+                    {"role": "user", "content": "生成一页的html数据看板"},
+                    {
+                        "role": "assistant",
+                        "content": (
+                            "【方案规划】\n# 核心运营数据看板\n"
+                            "以下为根据最新经营分析提炼的核心关键指标概览：\n"
+                            "- 日活跃用户 (DAU): 120,000 (+12% YoY)\n"
+                            "- 月总交易额 (GMV): $2,450,000\n"
+                            "- 转化漏斗转化率: 3.85%\n"
+                            "- 客户满意度评分: 4.9/5.0\n"
+                        )
+                    }
+                ]
+                policy = RuntimePolicy()
+                telemetry = TelemetryStats()
+                final_text, healed = _finalize_agent_text(
+                    reply_text="",
+                    messages=messages,
+                    model="default",
+                    policy=policy,
+                    deadline=None,
+                    is_guide_intent=False,
+                    executed_calls_history=[],
+                    was_token_truncated=False,
+                    telemetry=telemetry,
+                    last_user_prompt="生成一页的html数据看板",
+                    expected_deliverables=[".html"]
+                )
+                self.assertIn("✨ **单页 HTML 报告已由系统基于会话内容自动整理生成！**", final_text)
+                self.assertIn("```html", final_text)
+                self.assertTrue((Path(tmp_ws) / "index.html").exists())
+
+    def test_artifact_exporter_excludes_word_excel_pdf_reports_from_html_intent(self):
+        """验证包含'报告'关键字的 Word/Excel/PDF 请求不会被 ArtifactExporter 误判为 HTML 意图"""
+        with tempfile.TemporaryDirectory() as tmp_ws:
+            # 制造一个历史遗留的 index.html
+            old_html = Path(tmp_ws) / "index.html"
+            old_html.write_text("<!DOCTYPE html><html><body>Old</body></html>", encoding="utf-8")
+            
+            # 用户要求的是 word 报告
+            cleaned, files = ArtifactExporter.export_html(
+                final_text="Word 报告处理中...",
+                is_ppt_intent=False,
+                workspace_dir=tmp_ws,
+                prompt="生成年度审查报告.docx",
+                is_design_intent=False
+            )
+            # 绝不能把历史 index.html 注入进卡片
+            self.assertEqual(len(files), 0)
+            self.assertNotIn("✨ **交互式页面已生成完毕！**", cleaned)
+            self.assertNotIn("<!DOCTYPE html>", cleaned)
+
+    def test_is_promising_action_catches_file_generation_promises(self):
+        """验证 is_promising_action 能准确拦截'我将使用更稳健的方式直接生成文件'等未调工具的口头承诺"""
+        from dsh_modules.llm import is_promising_action
+        promise_text = (
+            "# 执行结果\n\n"
+            "`python-docx` 在处理未定义样式的文档时，在某些环境中 `doc.styles['Normal']` 可能为 `None`。"
+            "为了确保证性，我将使用更稳健的方式初始化文档并直接生成文件。"
+        )
+        self.assertTrue(is_promising_action(promise_text))
+
+        other_promises = [
+            "好的，我重新生成docx文件。",
+            "为了确保格式正确，我将直接生成Word文档并保存。",
+            "我来重新编写脚本并直接创建文档。"
+        ]
+        for p in other_promises:
+            self.assertTrue(is_promising_action(p), f"Failed for {p}")
+
+    def test_bash_rfonts_attribute_error_self_healing_diag(self):
+        """验证当 bash 执行脚本遇到 docx rFonts/rPr AttributeError 时返回针对性系统自愈提示"""
+        from dsh_modules.tools import execute_tool
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            test_py = Path(tmp_dir) / "err_doc.py"
+            test_py.write_text(
+                "import sys\n"
+                "sys.stderr.write(\"AttributeError: 'NoneType' object has no attribute 'rFonts'\\n\")\n"
+                "sys.exit(1)\n",
+                encoding="utf-8"
+            )
+            with patch.dict(os.environ, {"WORKSPACE": tmp_dir}):
+                with patch("dsh_modules.config.WORKSPACE_DIR", tmp_dir):
+                    res = execute_tool("bash", {"cmd": f"python3 {test_py}"})
+                    self.assertIn("[命令执行失败，退出码 1]", res)
+                    self.assertIn("系统自愈提示", res)
+                    self.assertIn("doc.styles['Normal'].element.rPr.rFonts", res)
+                    self.assertIn("font.name", res)
 
 
 if __name__ == "__main__":
