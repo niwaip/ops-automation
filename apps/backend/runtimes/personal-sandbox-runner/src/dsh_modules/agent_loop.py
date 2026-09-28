@@ -32,6 +32,7 @@ from .action_protocol import (
 )
 from .deliverable_contract import (
     materialize_requested_markdown,
+    materialize_script_deliverable,
     requests_markdown_artifact,
     unwrap_outer_markdown_fence,
 )
@@ -437,7 +438,8 @@ def _check_no_tool_assertion_guard(
     is_generate_intent: bool,
     is_inspect_intent: bool,
     executed_calls_history: Optional[List[str]] = None,
-    guard_nudges_count: int = 0
+    guard_nudges_count: int = 0,
+    script_execution_error: Optional[str] = None
 ) -> Tuple[str, Optional[str], int]:
     """
     Evaluates assertion guards when model returns text without tool calls.
@@ -499,19 +501,26 @@ def _check_no_tool_assertion_guard(
                 missing_deliverable = None
             if missing_deliverable:
                 print(f"⚡ [Harness Deliverable Assertion Guard] 检测到用户要求生成 {missing_deliverable} 交付物但沙箱尚未生成，正在引导执行工具落盘...", flush=True)
-                if missing_deliverable in [".html", ".htm"]:
-                    format_write_hint = "，或直接在回复中以完整的代码块（如 ```html\n<!DOCTYPE html>...\n```）输出全部源码"
-                elif missing_deliverable in [".md", ".markdown"]:
-                    format_write_hint = "，或直接在回复中以完整的 Markdown 代码块输出全部正文"
-                elif missing_deliverable in [".docx", ".xlsx", ".pdf"]:
-                    format_write_hint = f"（如运行 Python 脚本生成 {missing_deliverable} 文件）"
+                if script_execution_error:
+                    msg = (
+                        f"【系统脚本执行自愈提示】：检测到你在回复中提供了生成 {missing_deliverable} 的脚本代码，"
+                        f"但在沙箱尝试运行该脚本生成交付物时出现异常报错：\n```\n{script_execution_error}\n```\n"
+                        f"请立即通过 Function Calling 协议调用 `bash` 工具修复并运行脚本，完成物理文件落盘！严禁仅做口头解释！"
+                    )
                 else:
-                    format_write_hint = ""
-                msg = (
-                    f"【系统交付物检查】：用户要求生成 {missing_deliverable} 文件（用户原始指令：『{last_user_prompt}』），当前工作区 (/workspace/) 中尚未检测到该物理文件。"
-                    f"请立即调用 bash 将完整可运行内容写入 /workspace/{format_write_hint}；不要继续输出功能规划、架构说明、伪代码，"
-                    f"不要要求用户再次确认或回复‘提供完整代码’。严禁仅做口头汇报！"
-                )
+                    if missing_deliverable in [".html", ".htm"]:
+                        format_write_hint = "，或直接在回复中以完整的代码块（如 ```html\n<!DOCTYPE html>...\n```）输出全部源码"
+                    elif missing_deliverable in [".md", ".markdown"]:
+                        format_write_hint = "，或直接在回复中以完整的 Markdown 代码块输出全部正文"
+                    elif missing_deliverable in [".docx", ".xlsx", ".pdf"]:
+                        format_write_hint = f"（请通过 Function Calling 协议调用 bash 工具运行 Python 脚本生成 {missing_deliverable} 文件）"
+                    else:
+                        format_write_hint = ""
+                    msg = (
+                        f"【系统交付物检查】：用户要求生成 {missing_deliverable} 文件（用户原始指令：『{last_user_prompt}』），当前工作区 (/workspace/) 中尚未检测到该物理文件。"
+                        f"请立即通过 Function Calling 协议调用 `bash` 工具执行代码将完整可运行内容写入 /workspace/{format_write_hint}；不要继续输出功能规划、架构说明、伪代码，"
+                        f"不要要求用户再次确认。严禁仅做口头汇报！"
+                    )
                 return "continue", msg, bumped_max_rounds
 
     # 4. 行动垫话拦截
@@ -723,6 +732,31 @@ def _build_fallback_report(messages: List[Dict[str, Any]], executed_calls_histor
             f"上游推理模型连接中断或未返回最终交付文本。{clues_block}\n\n"
             "💡 建议：可尝试重新提问，或在设置中切换为更稳定的模型重试。"
         )
+    # 检查 messages 中是否有有效的方案规划或助手的实质回复（排除未执行脚本泄漏）
+    recent_plan = ""
+    for msg in reversed(messages):
+        if msg.get("role") == "assistant" and msg.get("content"):
+            c = str(msg["content"]).strip()
+            if (
+                c
+                and not c.startswith("⚠️")
+                and not c.startswith("❌")
+                and not detect_unexecuted_script_leak(c)
+                and "chmod" not in c
+                and "```bash" not in c
+                and "```sh" not in c
+            ):
+                recent_plan = c
+                break
+
+    if recent_plan:
+        summary_preview = recent_plan[:350].strip()
+        return (
+            "⚠️ 沙箱已完成方案分析规划，但在自动执行代码生成物理交付物时未成功创建目标文件。\n\n"
+            f"【已规划的方案参考】:\n{summary_preview}...\n\n"
+            "💡 建议：可直接回复「请使用 Python 脚本生成该文档并保存到 /workspace/」重试落盘。"
+        )
+
     return "⚠️ 沙箱运行正常，但上游模型未返回有效回复内容（可能网络连接超时或上游服务异常）。建议重新发送或切换模型重试。"
 
 
@@ -980,6 +1014,31 @@ def run_agent_loop(
                         flush=True,
                     )
 
+            # 物理代码产物（.docx, .xlsx, .pdf 等）：当模型在正文中输出了完整 Python 脚本时，
+            # 自动提取并安全执行落盘，避免因小模型漏发原生 tool_calls 导致交付失败。
+            script_execution_error: Optional[str] = None
+            if expected_deliverables and any(ext.lower() in [".docx", ".xlsx", ".pdf"] for ext in expected_deliverables):
+                script_artifact_path, script_err = materialize_script_deliverable(
+                    reply_text=reply_text,
+                    workspace_dir=WORKSPACE_DIR,
+                    expected_deliverables=expected_deliverables,
+                    turn_start_time=start_ts,
+                )
+                if script_artifact_path:
+                    outbound_payload = json.dumps(
+                        {"filePath": script_artifact_path, "fileName": Path(script_artifact_path).name},
+                        ensure_ascii=False,
+                    )
+                    if outbound_payload not in outbound_files:
+                        outbound_files.append(outbound_payload)
+                    executed_calls_history.append("bash")
+                    print(
+                        f"✨ [Harness Deliverable Compiler] 检测到模型在正文中输出了生成脚本，已自动安全执行落盘: {script_artifact_path}",
+                        flush=True,
+                    )
+                elif script_err:
+                    script_execution_error = script_err
+
             action, guard_msg, max_rounds = _check_no_tool_assertion_guard(
                 reply_text=reply_text,
                 last_user_prompt=last_user_prompt,
@@ -991,7 +1050,8 @@ def run_agent_loop(
                 is_generate_intent=is_generate_intent,
                 is_inspect_intent=is_inspect_intent,
                 executed_calls_history=executed_calls_history,
-                guard_nudges_count=guard_nudges_count
+                guard_nudges_count=guard_nudges_count,
+                script_execution_error=script_execution_error
             )
             if action == "continue":
                 guard_nudges_count += 1

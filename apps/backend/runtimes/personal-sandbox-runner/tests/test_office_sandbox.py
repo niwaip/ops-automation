@@ -212,6 +212,62 @@ class TestOfficeSandbox(unittest.TestCase):
         r_pdf = SkillRouter.route("请帮我将这个分析总结导出pdf")
         self.assertEqual(r_pdf.skill_id, "pdf")
 
+    def test_materialize_script_deliverable_docx(self):
+        """Verify materialize_script_deliverable auto-extracts and runs python-docx script."""
+        from dsh_modules.deliverable_contract import materialize_script_deliverable
+
+        reply_with_docx_script = (
+            "好的，我为您编写了生成报告的脚本：\n"
+            "```python\n"
+            "import docx\n"
+            "doc = docx.Document()\n"
+            "doc.add_heading('AWS Token Plan 分析报告', level=1)\n"
+            "doc.add_paragraph('AWS 在中国主要按量付费。')\n"
+            "doc.save('test_auto_report.docx')\n"
+            "```\n"
+            "请查收已生成的文档。"
+        )
+
+        out_path, err = materialize_script_deliverable(
+            reply_text=reply_with_docx_script,
+            workspace_dir=str(self.work_dir),
+            expected_deliverables=[".docx"],
+            turn_start_time=None
+        )
+
+        self.assertIsNone(err)
+        self.assertIsNotNone(out_path)
+        self.assertTrue(Path(out_path).exists())
+        self.assertTrue(out_path.endswith(".docx"))
+
+        # Verify docx content
+        read_doc = docx.Document(out_path)
+        self.assertEqual(read_doc.paragraphs[0].text, "AWS Token Plan 分析报告")
+
+    def test_materialize_script_deliverable_error_feedback(self):
+        """Verify materialize_script_deliverable returns error string on bad script."""
+        from dsh_modules.deliverable_contract import materialize_script_deliverable
+
+        reply_with_bad_script = (
+            "```python\n"
+            "import docx\n"
+            "doc = docx.Document()\n"
+            "raise ValueError('Custom Test Error')\n"
+            "doc.save('never_saved.docx')\n"
+            "```"
+        )
+
+        out_path, err = materialize_script_deliverable(
+            reply_text=reply_with_bad_script,
+            workspace_dir=str(self.work_dir),
+            expected_deliverables=[".docx"]
+        )
+
+        self.assertIsNone(out_path)
+        self.assertIsNotNone(err)
+        self.assertIn("Custom Test Error", err)
+
 
 if __name__ == "__main__":
     unittest.main()
+
