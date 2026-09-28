@@ -1541,6 +1541,43 @@ class TestDshCoreModules(unittest.TestCase):
             self.assertNotIn("✨ **交互式页面已生成完毕！**", cleaned)
             self.assertNotIn("<!DOCTYPE html>", cleaned)
 
+    def test_is_promising_action_catches_file_generation_promises(self):
+        """验证 is_promising_action 能准确拦截'我将使用更稳健的方式直接生成文件'等未调工具的口头承诺"""
+        from dsh_modules.llm import is_promising_action
+        promise_text = (
+            "# 执行结果\n\n"
+            "`python-docx` 在处理未定义样式的文档时，在某些环境中 `doc.styles['Normal']` 可能为 `None`。"
+            "为了确保证性，我将使用更稳健的方式初始化文档并直接生成文件。"
+        )
+        self.assertTrue(is_promising_action(promise_text))
+
+        other_promises = [
+            "好的，我重新生成docx文件。",
+            "为了确保格式正确，我将直接生成Word文档并保存。",
+            "我来重新编写脚本并直接创建文档。"
+        ]
+        for p in other_promises:
+            self.assertTrue(is_promising_action(p), f"Failed for {p}")
+
+    def test_bash_rfonts_attribute_error_self_healing_diag(self):
+        """验证当 bash 执行脚本遇到 docx rFonts/rPr AttributeError 时返回针对性系统自愈提示"""
+        from dsh_modules.tools import execute_tool
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            test_py = Path(tmp_dir) / "err_doc.py"
+            test_py.write_text(
+                "import sys\n"
+                "sys.stderr.write(\"AttributeError: 'NoneType' object has no attribute 'rFonts'\\n\")\n"
+                "sys.exit(1)\n",
+                encoding="utf-8"
+            )
+            with patch.dict(os.environ, {"WORKSPACE": tmp_dir}):
+                with patch("dsh_modules.config.WORKSPACE_DIR", tmp_dir):
+                    res = execute_tool("bash", {"cmd": f"python3 {test_py}"})
+                    self.assertIn("[命令执行失败，退出码 1]", res)
+                    self.assertIn("系统自愈提示", res)
+                    self.assertIn("doc.styles['Normal'].element.rPr.rFonts", res)
+                    self.assertIn("font.name", res)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -557,7 +557,15 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
                 diag = ""
                 if "ModuleNotFoundError" in combined_err or "No module named" in combined_err:
                     diag = "[系统自愈提示]: 检测到 Python 缺少依赖模块，请调用 bash 执行 `pip install <模块名>` 安装依赖后再重试。"
-                elif "FileNotFoundError" in combined_err or "No such file or directory" in combined_err:
+                elif "AttributeError" in combined_err and ("rFonts" in combined_err or "rPr" in combined_err):
+                    diag = (
+                        "[系统自愈提示]: 检测到 python-docx 样式底层属性未初始化错误 ('NoneType' object has no attribute 'rFonts')。\n"
+                        "严禁直接裸调 `doc.styles['Normal'].element.rPr.rFonts`！\n"
+                        "正确修复方式：必须先设置 `doc.styles['Normal'].font.name = 'Microsoft YaHei'` 初始化底层属性，"
+                        "或者使用 `doc.styles['Normal'].element.get_or_add_rPr().get_or_add_rFonts().set(qn('w:eastAsia'), 'Microsoft YaHei')`，"
+                        "或者直接在 Run 级别设置 `run.font.name = 'Microsoft YaHei'`。请立即调用 bash 修改脚本并重新执行！"
+                    )
+                elif "FileNotFoundError" in combined_err or "No such file or directory" in combined_err or "没有那个文件或目录" in combined_err:
                     diag = "[系统自愈提示]: 检测到目标文件或路径不存在，请先调用 bash 执行 `ls -la` 检查工作区实际文件路径。"
                 elif "SyntaxError" in combined_err:
                     diag = "[系统自愈提示]: 检测到代码语法错误，请检查对应文件行代码并修正。"
