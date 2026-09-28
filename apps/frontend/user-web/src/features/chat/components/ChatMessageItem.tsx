@@ -139,8 +139,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
     showThoughtLogs && !message.isStreaming && !expandedThought && hasTaskCard;
   const shouldPinFinishedTaskThoughts =
     showThoughtLogs && !message.isStreaming && hasTaskCard && message.metadata?.mode === 'task';
-  const isStreamingThought = Boolean(message.isStreaming) && !plainContent;
-  const isThoughtExpanded = expandedThought || isStreamingThought;
+  const isThoughtExpanded = Boolean(expandedThought);
   const thoughtPanel = showThoughtLogs ? (
     <SharedThoughtProcessPanel
       thoughts={thoughtLogs}

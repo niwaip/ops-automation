@@ -109,7 +109,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   onRejectExecution,
   onResumeExecution,
 }) => {
-  const [thoughtsExpanded, setThoughtsExpanded] = useState(true); // 默认展开思考内容
+  const [thoughtsExpanded, setThoughtsExpanded] = useState(false); // 默认收起思考内容
   const [approvalAction, setApprovalAction] = useState<'approve' | 'reject' | 'resume' | null>(
     null
   );

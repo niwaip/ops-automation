@@ -1,5 +1,5 @@
 import { Button, Space } from 'antd';
-import { DownloadOutlined, EyeOutlined, FolderOutlined } from '@ant-design/icons';
+import { DownloadOutlined, EyeOutlined, FolderOutlined, LinkOutlined } from '@ant-design/icons';
 import type { ChatMessage, ChatProgressLog } from '@ops/user-core';
 import {
   isCompletionOnlyResultText,
@@ -87,6 +87,26 @@ export const hasTaskOutcomeContent = (message: ChatMessage): boolean => {
       structuredResult ||
       artifacts.length > 0 ||
       missingInputs.length > 0
+  );
+};
+
+const isDownloadableArtifact = (art?: {
+  artifactType?: string;
+  type?: string;
+  downloadUrl?: string;
+  url?: string;
+  name?: string;
+  label?: string;
+}): boolean => {
+  if (!art) return false;
+  if (art.artifactType === 'url' || art.type === 'url') return false;
+  const url = (art.downloadUrl || art.url || '').toLowerCase();
+  const name = (art.name || art.label || '').toLowerCase();
+  return (
+    url.includes('/download') ||
+    url.includes('/renders/') ||
+    /\.(docx?|pdf|xlsx?|pptx?|zip|tar|gz|csv)$/i.test(name) ||
+    /\.(docx?|pdf|xlsx?|pptx?|zip|tar|gz|csv)$/i.test(url)
   );
 };
 
@@ -198,7 +218,9 @@ export function TaskOutcomeBlock({
           replaceLocalhostWithCurrentHost(
             message.metadata?.downloadUrl ||
               partDownloadUrl ||
-              (artifacts && artifacts[0] ? artifacts[0].downloadUrl || artifacts[0].url : undefined)
+              (artifacts && artifacts[0] && isDownloadableArtifact(artifacts[0])
+                ? artifacts[0].downloadUrl || artifacts[0].url
+                : undefined)
           )
         }
         temporalLink={message.metadata?.temporalLink || partDetailUrl}
@@ -246,24 +268,11 @@ export function TaskOutcomeBlock({
         artifacts={artifacts}
       />
 
-      {/* 结果/产物列表 */}
+      {/* 结果/产物列表 — 默认收起 */}
       {shouldShowArtifactActions && artifacts.length > 0 ? (
         <details
           className={styles['user-chat-outcome-details']}
           style={{ marginTop: 8 }}
-          open={!artifacts.some((art) => {
-            const name = (art.name || art.label || '').toLowerCase();
-            const url = (art.url || art.downloadUrl || '').toLowerCase();
-            const mime = (art.mimeType || '').toLowerCase();
-            return (
-              mime.includes('text/html') ||
-              name.endsWith('.html') ||
-              url.includes('.html') ||
-              mime.includes('markdown') ||
-              name.endsWith('.md') ||
-              url.includes('.md')
-            );
-          })}
         >
           <summary style={{ cursor: 'pointer', userSelect: 'none' }}>
             {`查看相关结果与产物链接 (${artifacts.length} 项)`}
@@ -303,17 +312,22 @@ export function TaskOutcomeBlock({
                   </Button>
                 );
               }
+              const isDownloadable = isDownloadableArtifact(artifact);
               return (
                 <Button
                   key={`${href}-${index}`}
                   size="small"
                   type="primary"
                   ghost
-                  icon={<DownloadOutlined />}
+                  icon={isDownloadable ? <DownloadOutlined /> : <LinkOutlined />}
                   href={href}
                   target="_blank"
                 >
-                  {artifact.label || artifact.name || `下载结果文档 ${index + 1}`}
+                  {artifact.label ||
+                    artifact.name ||
+                    (isDownloadable
+                      ? `下载结果文档 ${index + 1}`
+                      : `查看参考来源 ${index + 1}`)}
                 </Button>
               );
             })}
