@@ -158,3 +158,67 @@ export interface BuiltinContractReviewInvokeDto {
   idempotencyKey?: string;
   input?: BuiltinContractReviewInput;
 }
+
+export interface ParsedClauseItem {
+  clauseIndex: number;
+  clauseNumber: string;
+  title: string;
+  originalContent: string;
+  chapterNumber?: string;
+  chapterTitle?: string;
+  blocks?: DocumentBlock[];
+  formIntegrity: FormIntegrityCheckResult;
+  facts: ExtractedLegalFacts;
+  matchedRules: Array<{
+    id: string;
+    title: string;
+    category: string;
+    severity: string;
+    riskSummary: string;
+    legalAdvice: string;
+    elementId?: string;
+    elementCode?: string;
+    recommendRevision?: (text: string) => string;
+    recommendedRevision?: string;
+  }>;
+}
+
+
+export interface ContractParseOutput {
+  contractType: ContractType;
+  contractTypeName: string;
+  myPosition: PartyPosition;
+  fileName: string;
+  fullText: string;
+  parsedClauses: ParsedClauseItem[];
+  missingClauses: MissingClauseAlert[];
+  formIntegrityStats: {
+    totalUnfilledVariables: number;
+    totalUnfilledBlanks: number;
+  };
+  isTruncated: boolean;
+  warnings: string[];
+  rawPrompt?: string;
+}
+
+export interface ContractRenderReportInput {
+  fileName?: string;
+  contractType: ContractType;
+  contractTypeName: string;
+  myPosition: PartyPosition;
+  metrics: ContractReviewMetrics;
+  clauses: ClauseReviewItem[];
+  chapters?: ReviewChapterGroup[];
+  missingClauses: MissingClauseAlert[];
+  idempotencyKey?: string;
+}
+
+export interface BuiltinContractReviewParseDto extends BuiltinContractReviewInvokeDto {}
+
+export interface BuiltinContractReviewRenderDto {
+  executionId?: string;
+  stepId?: string;
+  idempotencyKey?: string;
+  input: ContractRenderReportInput;
+}
+

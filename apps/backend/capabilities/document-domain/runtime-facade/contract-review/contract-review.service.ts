@@ -7,6 +7,8 @@ import { fixFilenameEncoding } from '../filename-encoding.util';
 import { resolveReviewDocumentPayload, WORKSPACE_ROOT } from '../document-payload-resolver.helper';
 import type {
   BuiltinContractReviewInput,
+  ContractParseOutput,
+  ContractRenderReportInput,
   ContractReviewOutput,
 } from './contract-review.types';
 import { ContractReviewEngineService } from './contract-review-engine.service';
@@ -29,16 +31,15 @@ export class ContractReviewService {
     private readonly htmlRenderer: ContractReviewHtmlRendererService
   ) {}
 
-  async reviewContract(input: BuiltinContractReviewInput): Promise<ContractReviewOutput> {
+  async parseContract(input: BuiltinContractReviewInput): Promise<ContractParseOutput> {
     await resolveReviewDocumentPayload(input, undefined, undefined, this.logger);
 
     const fileName = fixFilenameEncoding(input.fileName || '审查合同文档.docx');
-    this.logger.log(`Starting contract review for "${fileName}", position=${input.myPosition || 'auto'}`);
+    this.logger.log(`Parsing contract structure for "${fileName}", position=${input.myPosition || 'auto'}`);
 
     const effectiveCustomRules = input.customChecklistRules || input.customCheckpoints;
 
-    // 1. Execute Clause-level Engine Analysis
-    const engineResult = await this.reviewEngine.executeReview({
+    return this.reviewEngine.parseContractDocument({
       fileBase64: input.fileBase64,
       fileName,
       text: input.text,
@@ -48,9 +49,14 @@ export class ContractReviewService {
       customChecklistRules: effectiveCustomRules,
       prompt: input.prompt,
       reviewPrompt: input.reviewPrompt,
-      skipLlmReview: input.skipLlmReview,
     });
+  }
 
+  async renderReport(
+    input: ContractRenderReportInput,
+    idempotencyKey?: string
+  ): Promise<ContractReviewOutput> {
+    const fileName = fixFilenameEncoding(input.fileName || '审查合同文档.docx');
     const {
       contractType,
       contractTypeName,
@@ -59,9 +65,9 @@ export class ContractReviewService {
       clauses,
       chapters,
       missingClauses,
-    } = engineResult;
+    } = input;
 
-    // 2. Render Interactive HTML Report
+    // 1. Render Interactive HTML Report
     const htmlReport = this.htmlRenderer.renderHtmlReport({
       fileName,
       contractType,
@@ -73,16 +79,17 @@ export class ContractReviewService {
       missingClauses,
     });
 
-    // 3. Save HTML Artifact
-    const artifact = await this.saveHtmlArtifact(htmlReport, input.idempotencyKey, fileName);
+    // 2. Save HTML Artifact
+    const effectiveIdempotencyKey = idempotencyKey || input.idempotencyKey;
+    const artifact = await this.saveHtmlArtifact(htmlReport, effectiveIdempotencyKey, fileName);
 
-    // 4. Build Structured Executive Markdown Summary
+    // 3. Build Structured Executive Markdown Summary
     const highRiskClauses = clauses.filter((c) => c.riskLevel === 'HIGH');
     const highRiskHighlights = highRiskClauses.slice(0, 3).map((c) => {
       return `- 🔴 **${c.title || c.clauseNumber}**：${c.riskSummary}${c.legalAdvice ? ` *（建议：${c.legalAdvice}）*` : ''}`;
     });
 
-    const missingHighlights = missingClauses.map((m) => {
+    const missingHighlights = (missingClauses || []).map((m) => {
       return `- ⚡ **${m.title}** [必备缺失]：${m.reason}`;
     });
 
@@ -143,6 +150,28 @@ export class ContractReviewService {
       artifact,
       artifacts: [artifact],
     };
+  }
+
+  async reviewContract(input: BuiltinContractReviewInput): Promise<ContractReviewOutput> {
+    const parsedDoc = await this.parseContract(input);
+    const engineResult = await this.reviewEngine.executeSemanticReviewFromParsed(parsedDoc, {
+      skipLlmReview: input.skipLlmReview,
+    });
+
+    return this.renderReport(
+      {
+        fileName: parsedDoc.fileName,
+        contractType: engineResult.contractType,
+        contractTypeName: engineResult.contractTypeName,
+        myPosition: engineResult.myPosition,
+        metrics: engineResult.metrics,
+        clauses: engineResult.clauses,
+        chapters: engineResult.chapters,
+        missingClauses: engineResult.missingClauses,
+        idempotencyKey: input.idempotencyKey,
+      },
+      input.idempotencyKey
+    );
   }
 
   private async saveHtmlArtifact(

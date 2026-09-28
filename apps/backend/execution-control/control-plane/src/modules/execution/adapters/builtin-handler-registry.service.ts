@@ -10,6 +10,7 @@ import { executeEmailUpdate } from './email/email-update.handler';
 import { executeWorkspaceExplorer } from './workspace/workspace-explorer.handler';
 import { ReminderService } from '../../reminders/reminder.service';
 import { OutboundEffectLedgerService } from '../outbox/outbound-effect-ledger.service';
+import { executeContractReviewOrchestration } from './contract/contract-review-orchestrator';
 import {
   DEFAULT_REMINDER_TIMEZONE,
   REMINDER_CAPABILITY_KEY,
@@ -97,11 +98,10 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
       '/internal/document/contract-compare/invoke',
       ['platform.document.contract-comparator']
     );
-    this.registerDocumentDomainHandler(
-      'document.contract.review',
-      '/internal/document/contract-review/invoke',
-      ['platform.document.contract-reviewer']
-    );
+    const contractReviewHandler: BuiltinHandlerFn = (req, idempotencyKey) =>
+      executeContractReviewOrchestration(req, idempotencyKey, this.logger);
+    this.registerHandler('document.contract.review', contractReviewHandler);
+    this.registerHandler('platform.document.contract-reviewer', contractReviewHandler);
 
     // 2. Built-in Email Capabilities (email.messages, email.send, email.update)
     this.registerHandler('email.messages', executeEmailMessages);

@@ -19,9 +19,11 @@ type ClauseLlmReviewResult,
 } from './contract-llm-review.service';
 import type {
 ClauseReviewItem,
+ContractParseOutput,
 ContractReviewMetrics,
 ContractType,
 CustomCheckpointDto,
+ParsedClauseItem,
 PartyPosition,
 PartyPositionInput,
 ReviewChapterGroup
@@ -63,7 +65,7 @@ export class ContractReviewEngineService {
     private readonly elementEvaluator: ReviewElementEvaluatorService = new ReviewElementEvaluatorService()
   ) {}
 
-  async executeReview(input: ReviewEngineInput): Promise<ReviewEngineResult> {
+  async parseContractDocument(input: ReviewEngineInput): Promise<ContractParseOutput> {
     const fileName = input.fileName || '未命名合同';
 
     // 1. Parse AST clauses from base64 or text
@@ -142,42 +144,112 @@ export class ContractReviewEngineService {
       effectiveCustomRules
     );
 
-    // 4. Evaluate each clause using Dual Perspectives (Perspective 1: Form & Integrity; Perspective 2: AI Semantic)
     let totalUnfilledVariables = 0;
     let totalUnfilledBlanks = 0;
 
-    // Concurrency limit of 3 to balance throughput and model inference capacity
+    const parsedClauses: ParsedClauseItem[] = astClauses.map((clause, index) => {
+      const clauseTitle = clause.title || clause.clauseNumber || `第 ${index + 1} 条`;
+      const clauseText = clause.content || '';
+
+      const formIntegrity = this.formScanner.scanClause(
+        clauseText,
+        clauseTitle,
+        index,
+        clause.blocks
+      );
+      totalUnfilledVariables += formIntegrity.unfilledVariables.length;
+      totalUnfilledBlanks += formIntegrity.unfilledBlanksCount;
+
+      const clauseFacts = this.factExtractor.extractClauseFacts(clauseText, clauseTitle);
+
+      const matchedRules = rules
+        .filter((rule) => rule.matcher(clauseText, clauseTitle))
+        .map((r) => ({
+          ...r,
+          id: r.id,
+          title: r.title,
+          category: r.category,
+          severity: r.severity,
+          riskSummary: r.riskSummary,
+          legalAdvice: r.legalAdvice,
+          elementId: r.elementId,
+          elementCode: r.elementCode,
+          recommendRevision: r.recommendRevision,
+          recommendedRevision: r.recommendRevision ? r.recommendRevision(clauseText) : undefined,
+        }));
+
+
+      return {
+        clauseIndex: index,
+        clauseNumber: clause.clauseNumber || `第 ${index + 1} 条`,
+        title: clauseTitle,
+        originalContent: clauseText,
+        chapterNumber: clause.chapterNumber,
+        chapterTitle: clause.chapterTitle,
+        blocks: clause.blocks,
+        formIntegrity,
+        facts: clauseFacts,
+        matchedRules,
+      };
+    });
+
+    const missingClauses = this.checklistMatrix.detectMissingClauses(
+      typeInfo.type,
+      fullText,
+      resolvedPosition,
+      parsedClauses as any
+    );
+
+    return {
+      contractType: typeInfo.type,
+      contractTypeName: typeInfo.displayName,
+      myPosition: resolvedPosition,
+      fileName,
+      fullText,
+      parsedClauses,
+      missingClauses,
+      formIntegrityStats: {
+        totalUnfilledVariables,
+        totalUnfilledBlanks,
+      },
+      isTruncated,
+      warnings,
+      rawPrompt,
+    };
+  }
+
+  async executeSemanticReviewFromParsed(
+    parsedDoc: ContractParseOutput,
+    options?: { skipLlmReview?: boolean }
+  ): Promise<ReviewEngineResult> {
+    const {
+      contractType,
+      contractTypeName,
+      myPosition,
+      parsedClauses,
+      missingClauses,
+      formIntegrityStats,
+      isTruncated,
+      warnings,
+      rawPrompt,
+    } = parsedDoc;
+
+    const totalUnfilledVariables = formIntegrityStats?.totalUnfilledVariables || 0;
+    const totalUnfilledBlanks = formIntegrityStats?.totalUnfilledBlanks || 0;
+
     const reviewedClauses: ClauseReviewItem[] = await this.runWithConcurrency(
-      astClauses,
+      parsedClauses,
       3,
       async (clause, index) => {
         const clauseTitle = clause.title || clause.clauseNumber || `第 ${index + 1} 条`;
-        const clauseText = clause.content || '';
-
-        // Perspective 1: Form & Integrity Inspection
-        const formIntegrity = this.formScanner.scanClause(
-          clauseText,
-          clauseTitle,
-          index,
-          clause.blocks
-        );
-        totalUnfilledVariables += formIntegrity.unfilledVariables.length;
-        totalUnfilledBlanks += formIntegrity.unfilledBlanksCount;
-
-        // Structured Fact Extraction for this clause
-        const clauseFacts = this.factExtractor.extractClauseFacts(clauseText, clauseTitle);
-
-        // Match rules from checklist matrix
-        const matchedRules: CheckpointRule[] = [];
-        for (const rule of rules) {
-          if (rule.matcher(clauseText, clauseTitle)) {
-            matchedRules.push(rule);
-          }
-        }
+        const clauseText = clause.originalContent || '';
+        const formIntegrity = clause.formIntegrity;
+        const clauseFacts = clause.facts;
+        const matchedRules = (clause.matchedRules || []) as any[];
 
         // Perspective 2: AI & Semantic Legal Analysis
         const shouldSkipLlm =
-          input.skipLlmReview === true || process.env.CONTRACT_REVIEW_SKIP_LLM === 'true';
+          options?.skipLlmReview === true || process.env.CONTRACT_REVIEW_SKIP_LLM === 'true';
 
         const semantic = shouldSkipLlm
           ? this.llmReview.reviewClauseRuleBasedFallback({
@@ -185,9 +257,9 @@ export class ContractReviewEngineService {
               clauseNumber: clause.clauseNumber || `第 ${index + 1} 条`,
               clauseTitle,
               clauseText,
-              contractType: typeInfo.type,
-              contractTypeName: typeInfo.displayName,
-              myPosition: resolvedPosition,
+              contractType,
+              contractTypeName,
+              myPosition,
               matchedRules,
               formIntegrity,
               reviewPrompt: rawPrompt || undefined,
@@ -197,16 +269,16 @@ export class ContractReviewEngineService {
               clauseNumber: clause.clauseNumber || `第 ${index + 1} 条`,
               clauseTitle,
               clauseText,
-              contractType: typeInfo.type,
-              contractTypeName: typeInfo.displayName,
-              myPosition: resolvedPosition,
+              contractType,
+              contractTypeName,
+              myPosition,
               matchedRules,
               formIntegrity,
               reviewPrompt: rawPrompt || undefined,
             });
 
-        // Determine accurate primary elementId & elementCode (match with severity & triggering rules)
-        let primaryRule: CheckpointRule | undefined;
+        // Determine accurate primary elementId & elementCode
+        let primaryRule: any = undefined;
         if (semantic.riskLevel === 'HIGH') {
           primaryRule = matchedRules.find((r) => r.severity === 'HIGH') || matchedRules[0];
         } else if (semantic.riskLevel === 'MEDIUM') {
@@ -215,7 +287,6 @@ export class ContractReviewEngineService {
           primaryRule = matchedRules[0];
         }
 
-        // Assemble structured legal findings (P2 evidence model)
         const findings: ClauseLegalFinding[] = matchedRules.map((r) => {
           const evidence = this.locateEvidenceForRule(clauseText, r, clauseFacts);
           return {
@@ -235,11 +306,8 @@ export class ContractReviewEngineService {
           };
         });
 
-        // Ensure issues found by LLM semantic review enter findings even without matched rules
         if (semantic.riskLevel !== 'PASS') {
-          // Check if this specific legal issue is already covered by an existing finding using generic token similarity
           const isAlreadyCovered = this.elementEvaluator.isCoveredByExistingFindings(semantic, findings);
-
           if (!isAlreadyCovered) {
             const llmEvidence = this.locateEvidenceForSemanticRisk(clauseText, semantic);
             findings.unshift({
@@ -281,27 +349,17 @@ export class ContractReviewEngineService {
       }
     );
 
-    // 5. Detect missing essential clauses filtered by party position and AST parsed clauses
-    const missingClauses = this.checklistMatrix.detectMissingClauses(
-      typeInfo.type,
-      fullText,
-      resolvedPosition,
-      reviewedClauses
-    );
-
-    // 6. Compute health score & metrics
     const highRiskCount = reviewedClauses.filter((c) => c.riskLevel === 'HIGH').length;
     const mediumRiskCount = reviewedClauses.filter((c) => c.riskLevel === 'MEDIUM').length;
     const lowRiskCount = reviewedClauses.filter((c) => c.riskLevel === 'LOW').length;
     const passCount = reviewedClauses.filter((c) => c.riskLevel === 'PASS').length;
     const missingCount = missingClauses.length;
 
-    // Base score calculation: 100 max
     let score = 100;
     score -= highRiskCount * 14;
-    score -= missingClauses.filter((m) => m.severity === 'HIGH').length * 15;
+    score -= missingClauses.filter((m: any) => m.severity === 'HIGH').length * 15;
     score -= mediumRiskCount * 7;
-    score -= missingClauses.filter((m) => m.severity === 'MEDIUM').length * 6;
+    score -= missingClauses.filter((m: any) => m.severity === 'MEDIUM').length * 6;
     if (totalUnfilledVariables > 0) {
       score -= Math.min(15, totalUnfilledVariables * 3);
     }
@@ -321,11 +379,9 @@ export class ContractReviewEngineService {
       unfilledBlanksTotal: totalUnfilledBlanks,
       llmReviewedCount,
       isTruncated,
-      warnings: warnings.length > 0 ? warnings : undefined,
+      warnings: warnings && warnings.length > 0 ? warnings : undefined,
     };
 
-    // 7. Group into Document-Faithful Chapter / Section Outline
-    // INVARIANT: Sequential reading order of clauses (0 -> 1 -> 2 -> ... -> N) must NEVER be scrambled.
     const chapterMap = new Map<string, ReviewChapterGroup>();
     let chIdx = 1;
     for (const c of reviewedClauses) {
@@ -366,14 +422,21 @@ export class ContractReviewEngineService {
     const chapters: ReviewChapterGroup[] = Array.from(chapterMap.values());
 
     return {
-      contractType: typeInfo.type,
-      contractTypeName: typeInfo.displayName,
-      myPosition: resolvedPosition,
+      contractType,
+      contractTypeName,
+      myPosition,
       metrics,
       clauses: reviewedClauses,
       chapters,
       missingClauses,
     };
+  }
+
+  async executeReview(input: ReviewEngineInput): Promise<ReviewEngineResult> {
+    const parsedDoc = await this.parseContractDocument(input);
+    return this.executeSemanticReviewFromParsed(parsedDoc, {
+      skipLlmReview: input.skipLlmReview,
+    });
   }
 
   /**
