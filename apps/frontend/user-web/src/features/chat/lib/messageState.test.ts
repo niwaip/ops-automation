@@ -310,6 +310,29 @@ describe('areMessagesEquivalent', () => {
     expect(mergedMessage.id).toBe('a2');
     expect(resolveMessageExecutionId(mergedMessage)).toBe('execution-weibo');
   });
+
+  it('ensures user message always precedes assistant message when timestamps are identical', () => {
+    const ts = '2026-07-20T12:00:00.000Z';
+    const assistantMsg: ChatMessage = {
+      id: 'a1',
+      sessionId: 's1',
+      role: 'assistant',
+      content: 'Assistant answer',
+      timestamp: ts,
+    };
+    const userMsg: ChatMessage = {
+      id: 'u1',
+      sessionId: 's1',
+      role: 'user',
+      content: 'User question',
+      timestamp: ts,
+    };
+
+    // Even if assistantMsg was inserted first into merged map
+    const merged = mergeHistoryMessages([], [assistantMsg, userMsg]);
+    expect(merged[0].role).toBe('user');
+    expect(merged[1].role).toBe('assistant');
+  });
 });
 
 describe('resolveMessageExecutionId', () => {

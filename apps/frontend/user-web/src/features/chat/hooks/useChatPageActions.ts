@@ -151,7 +151,9 @@ export function useChatPageActions({
       updatedAt: now,
       modelId: resolvedModelId,
     });
-    setDraft('');
+    if (contentOverride === undefined) {
+      setDraft('');
+    }
     // 探测是否为规范协同卡片已生成的业务单据（制定/既定操作，已持久化，无需走 AI 能力匹配与模型规划）
     if (
       content.startsWith('### 📋') ||
@@ -528,57 +530,9 @@ export function useChatPageActions({
             )
           : undefined;
 
-      const resolvedModelId =
-        selectedModel && selectedModel !== 'default' ? selectedModel : undefined;
-      const now = toChatTimestamp();
-      const assistantMessageId = buildMessageId();
-      const assistantMessage: ChatMessage = {
-        id: assistantMessageId,
-        sessionId: selectedSession.id,
-        role: 'assistant',
-        content: '',
-        timestamp: now,
-        isStreaming: true,
-        metadata: {
-          mode: chatMode,
-          showThinking: enableThinking,
-        },
-      };
-
-      updateSessionMessages(selectedSession.id, (current) => [...current, assistantMessage]);
-      clearError();
-
-      const request: ChatRequest = buildChatRequest({
-        message: userContent,
-        clientAssistantMessageId: assistantMessageId,
-        sessionId: selectedSession.id,
-        modelId: resolvedModelId,
-        files: retryFiles,
-        mode: chatMode,
-        thinking: enableThinking,
-        reasoning: nativeReasoningEnabled,
-        reasoningEffort: nativeReasoningEnabled ? reasoningEffort : undefined,
-        webSearch: chatMode === 'task' ? enableWebSearch : true,
-        research: chatMode === 'chat' ? Boolean(enableResearch) : false,
-      });
-
-      void runAssistantRequest(selectedSession, request, assistantMessageId);
+      handleSend(retryFiles, userContent);
     },
-    [
-      activeMessages,
-      chatMode,
-      clearError,
-      enableResearch,
-      enableThinking,
-      reasoningEffort,
-      enableWebSearch,
-      isStreaming,
-      nativeReasoningEnabled,
-      runAssistantRequest,
-      selectedModel,
-      selectedSession,
-      updateSessionMessages,
-    ]
+    [activeMessages, handleSend, isStreaming, selectedSession]
   );
 
   return {

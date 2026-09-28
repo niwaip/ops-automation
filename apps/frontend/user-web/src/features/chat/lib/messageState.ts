@@ -391,7 +391,17 @@ export const mergeHistoryMessages = (
     }
   });
 
-  return [...merged.values()].sort(
-    (left, right) => new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime()
-  );
+  return [...merged.values()].sort((left, right) => {
+    const timeDiff = new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime();
+    if (timeDiff !== 0) {
+      return timeDiff;
+    }
+    if (left.role === 'user' && right.role === 'assistant') {
+      return -1;
+    }
+    if (left.role === 'assistant' && right.role === 'user') {
+      return 1;
+    }
+    return 0;
+  });
 };
