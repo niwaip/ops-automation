@@ -65,7 +65,7 @@ def _run_planning_phase(
         "【规划阶段任务】：请针对用户的需求与交付物目标进行深入思考与方案规划。\n"
         "1. 深入分析用户目标、页面/内容结构、排版与视觉设计规范。\n"
         "2. 若涉及外部开源项目、未知技术组件、最新库/API 或特定插件生态，你可以调用 `web_search` 与 `fetch_page` 检索一手技术事实与官方依据（本阶段仅开放只读网络检索，严禁且不支持写文件或执行命令工具）。\n"
-        "3. 给出详细的实现与落盘规划（包括功能模块划分、代码逻辑与目标落盘文件路径，如 `/workspace/index.html`）。\n"
+        "3. 给出详细的实现与落盘规划（包括功能模块划分、代码逻辑与目标落盘文件路径，如根据用户交付需求规划目标文件 `/workspace/<文件名>.<扩展名>`）。\n"
         "4. 输出清晰详尽的规划方案。本阶段仅负责思考与架构规划，规划完成后系统将切换至执行与代码落盘阶段。"
     )
 
@@ -464,15 +464,52 @@ def cmd_run(args):
         )
         if plan_text:
             messages.append({"role": "assistant", "content": f"【方案规划】\n{plan_text}"})
-            messages.append({
-                "role": "user",
-                "content": (
+
+            # 动态生成符合当前技能与目标交付物格式的执行指引，杜绝将 Word/Excel/PDF 等任务硬编码为 HTML
+            if skill_res.is_docx_intent or (skill_res.deliverables and any(ext.lower() == ".docx" for ext in skill_res.deliverables)):
+                execution_instruction = (
+                    "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
+                    "落盘方式：调用 `bash` 工具运行 Python 脚本（使用 python-docx 库创建并排版文档，保存至 `/workspace/<文件名>.docx`）。\n"
+                    "⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字而不提供代码或工具调用！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！"
+                )
+            elif skill_res.is_office_intent and (skill_res.deliverables and any(ext.lower() == ".xlsx" for ext in skill_res.deliverables)):
+                execution_instruction = (
+                    "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
+                    "落盘方式：调用 `bash` 工具运行 Python 脚本（使用 openpyxl 库创建并排版表格，保存至 `/workspace/<文件名>.xlsx`）。\n"
+                    "⚠️ 严禁仅输出口头文字！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！"
+                )
+            elif skill_res.deliverables and any(ext.lower() == ".pdf" for ext in skill_res.deliverables):
+                execution_instruction = (
+                    "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
+                    "落盘方式：调用 `write_markdown` 或运行脚本生成目标 PDF 文件保存至 `/workspace/`。\n"
+                    "⚠️ 严禁仅输出口头文字！必须实际调用工具完成物理文件落盘！"
+                )
+            elif skill_res.is_ppt_intent:
+                execution_instruction = (
+                    "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
+                    "落盘方式（任选其一，推荐方式 2）：\n"
+                    "1. 调用 `bash` 工具写入 `/workspace/presentation.html`；\n"
+                    "2. 直接在回复中输出完整的 ```html\n<!DOCTYPE html>\n...完整可运行代码...\n``` 代码块（系统将自动写入 /workspace/presentation.html 并在前端展示交互预览与全屏组件）。\n"
+                    "⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字而不提供代码或工具调用！必须提供完整代码！"
+                )
+            elif skill_res.is_design_intent or (skill_res.deliverables and any(ext.lower() == ".html" for ext in skill_res.deliverables)):
+                execution_instruction = (
                     "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
                     "落盘方式（任选其一，推荐方式 2）：\n"
                     "1. 调用 `bash` 工具（如 `cat << 'EOF' > /workspace/index.html`）写入目标文件；\n"
                     "2. 直接在回复中输出完整的 ```html\n<!DOCTYPE html>\n...完整可运行代码...\n``` 代码块（系统将自动写入 /workspace/index.html 并在前端展示交互预览与全屏组件）。\n"
                     "⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字而不提供代码或工具调用！必须提供完整代码！"
-                ),
+                )
+            else:
+                target_ext = skill_res.deliverables[0] if skill_res.deliverables else ""
+                execution_instruction = (
+                    "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
+                    f"落盘方式：调用 `bash` 或对应写文件工具将文件保存至 `/workspace/` 路径下{f'（如 {target_ext} 交付物）' if target_ext else ''}。\n"
+                    "⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字而不提供代码或工具调用！必须完成物理文件落盘！"
+                )
+            messages.append({
+                "role": "user",
+                "content": execution_instruction,
             })
         policy.thinking = False
         policy.reasoning_effort = None

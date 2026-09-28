@@ -214,8 +214,16 @@ class ArtifactExporter:
 
         # 仅当本轮具备明确的 HTML 产物意图，且该文件确系在当前轮次生成时，才执行未提及文件名的全局工作区探测
         prompt_str = (prompt or "").lower()
-        html_cues = ["html", "网页", "页面", "前端", "看板", "大屏", "原型", "demo", "五子棋", "ppt", "幻灯片", "演示文稿", "报告", "单页"]
-        has_html_intent = is_ppt_intent or is_design_intent or any(cue in prompt_str for cue in html_cues)
+        names_non_web_format = bool(
+            re.search(r'(?:pptx?|slides?|幻灯片|演示文稿|pdf|docx?|word|xlsx?|excel)', prompt_str, re.I)
+        )
+        html_cues = ["html", "网页", "页面", "前端", "看板", "大屏", "原型", "demo", "五子棋", "ppt", "幻灯片", "演示文稿", "单页"]
+        has_html_intent = (not names_non_web_format) and (
+            is_ppt_intent
+            or is_design_intent
+            or any(cue in prompt_str for cue in html_cues)
+            or ("报告" in prompt_str and any(cue in prompt_str for cue in ["单页", "一页", "html", "网页"]))
+        )
 
         if not target_file and has_html_intent and Path(workspace_dir).exists():
             import time
@@ -333,17 +341,16 @@ class ArtifactExporter:
         if not ws_path.exists():
             return deliverables
 
-        # 1. 扫描本轮次中新增或修改的文件
-        if turn_start_time is not None:
-            min_mtime = turn_start_time - 2.0
-            for item in ws_path.iterdir():
-                if item.is_file() and item.suffix.lower() in doc_exts:
-                    if item.stat().st_size > 0 and item.stat().st_mtime >= min_mtime:
-                        # 过滤未在最终正文中作为交付物明确提及的临时/测试文件（如 test.pdf）
-                        if ArtifactExporter.is_temporary_file(item.name) and (item.name not in final_text):
-                            continue
-                        deliverables.append({"filePath": str(item), "fileName": item.name})
-                        seen_names.add(item.name)
+        # 1. 扫描本轮次中新增或修改的文件（若未指定时间戳则扫描工作区所有有效交付物）
+        min_mtime = (turn_start_time - 2.0) if turn_start_time is not None else 0.0
+        for item in ws_path.iterdir():
+            if item.is_file() and item.suffix.lower() in doc_exts:
+                if item.stat().st_size > 0 and item.stat().st_mtime >= min_mtime:
+                    # 过滤未在最终正文中作为交付物明确提及的临时/测试文件（如 test.pdf）
+                    if ArtifactExporter.is_temporary_file(item.name) and (item.name not in final_text):
+                        continue
+                    deliverables.append({"filePath": str(item), "fileName": item.name})
+                    seen_names.add(item.name)
 
         # 2. 扫描文本中明确提及的文件名
         mentioned = re.findall(

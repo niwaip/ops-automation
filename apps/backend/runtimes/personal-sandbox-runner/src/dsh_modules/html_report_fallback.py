@@ -187,9 +187,18 @@ def materialize_requested_html(
     # 3. 校验意图：用户明确要求 HTML / 网页 / 单页 / 报告，或模型声称输出了 HTML 文件
     p_lower = (prompt or "").lower()
     text_lower = (final_text or "").lower()
-    html_cues = ["html", "单页", "页面", "网页", "报告", "原型", "demo", "大屏", "看板"]
-    has_cue = is_design_intent or any(cue in p_lower for cue in html_cues)
-    claims_html = bool(re.search(r'(?:/workspace/|workspace/|`)([a-zA-Z0-9_\-]+\.html)', final_text or "", re.I)) or ("单页 html" in text_lower)
+    names_non_web_format = bool(
+        re.search(r'(?:pptx?|slides?|幻灯片|演示文稿|pdf|docx?|word|xlsx?|excel)', p_lower, re.I)
+    )
+    html_cues = ["html", "单页", "页面", "网页", "原型", "demo", "大屏", "看板"]
+    has_cue = (not names_non_web_format) and (
+        is_design_intent
+        or any(cue in p_lower for cue in html_cues)
+        or ("报告" in p_lower and any(cue in p_lower for cue in ["单页", "一页", "html", "网页"]))
+    )
+    claims_html = (not names_non_web_format) and (
+        bool(re.search(r'(?:/workspace/|workspace/|`)([a-zA-Z0-9_\-]+\.html)', final_text or "", re.I)) or ("单页 html" in text_lower)
+    )
 
     if not has_cue and not claims_html:
         return None, False
