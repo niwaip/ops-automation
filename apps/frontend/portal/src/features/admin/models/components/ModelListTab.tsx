@@ -114,6 +114,19 @@ export const ModelListTab: React.FC<ModelListTabProps> = ({
                   高级
                 </Tag>
               )}
+              {record.config?.supports_reasoning && (
+                <Tooltip title={`支持原生思考推理 (默认强度: ${record.config.reasoning_effort || 'medium'})`}>
+                  <Tag color="purple" style={{ margin: 0, fontSize: 11 }}>
+                    🧠 思考模型
+                  </Tag>
+                </Tooltip>
+              )}
+              {((record.config?.input && record.config.input.some((m: string) => m !== 'text')) ||
+                record.config?.routing_tags?.includes('multimodal')) && (
+                <Tag color="cyan" style={{ margin: 0, fontSize: 11 }}>
+                  👁️ 多模态
+                </Tag>
+              )}
               {health &&
                 (health.success ? (
                   <Tag color="success" icon={<CheckCircleOutlined />} style={{ margin: 0 }}>

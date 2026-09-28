@@ -15,7 +15,36 @@ import {
   REMINDER_CAPABILITY_KEY,
 } from '../../reminders/reminder.constants';
 
-export type BuiltinHandlerFn = (request: RuntimeStepInvokeRequest, idempotencyKey: string) => Promise<BuiltinSkillHandlerResult>;
+export function formatDocumentDomainError(err: any, serviceName = 'carbone-engine'): Error {
+  const code = err.code || err.cause?.code;
+  const rawMessage = String(err.message || '');
+  if (code === 'ENOTFOUND' || rawMessage.includes('ENOTFOUND')) {
+    return new Error(
+      `文档智能处理服务 (${serviceName}) 未就绪：域名无法解析 (ENOTFOUND)。请检查 ${serviceName} 容器是否已通过 './docker/start-smart.sh dev up -d' 启动并在同一 Docker 网络运行。`
+    );
+  }
+  if (code === 'ECONNREFUSED' || rawMessage.includes('ECONNREFUSED')) {
+    return new Error(
+      `文档智能处理服务 (${serviceName}) 拒绝连接 (ECONNREFUSED)。服务可能仍在启动中或端口未就绪，请检查容器健康状态并稍后重试。`
+    );
+  }
+  if (code === 'ETIMEDOUT' || code === 'ECONNABORTED' || rawMessage.includes('timeout')) {
+    return new Error(
+      `文档智能处理服务 (${serviceName}) 请求超时，服务可能正在处理复杂大文档或处于高负载中。`
+    );
+  }
+  const remoteMsg =
+    err.response?.data?.message ||
+    err.response?.data?.error ||
+    err.message ||
+    'Document domain execution error';
+  return new Error(remoteMsg);
+}
+
+export type BuiltinHandlerFn = (
+  request: RuntimeStepInvokeRequest,
+  idempotencyKey: string
+) => Promise<BuiltinSkillHandlerResult>;
 
 @Injectable()
 export class BuiltinHandlerRegistryService implements OnModuleInit {
@@ -33,18 +62,11 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
 
   private registerDefaultHandlers(): void {
     // 1. Markdown Artifact Writer Handler
-    this.registerHandler('document.markdown-artifact-writer', async (req, idempotencyKey) => {
-      const domainUrl = getCarboneServiceUrl();
-      const response = await axios.post(`${domainUrl}/internal/document/markdown-artifacts/invoke`, {
-        executionId: req.executionId,
-        stepId: req.stepId,
-        capabilityKey: req.publishedSkillId || req.skillId,
-        definitionVersion: req.metadata?.definitionVersion || (req as any).skillVersion,
-        idempotencyKey,
-        input: req.input || {},
-      });
-      return response.data as BuiltinSkillHandlerResult;
-    });
+    this.registerDocumentDomainHandler(
+      'document.markdown-artifact-writer',
+      '/internal/document/markdown-artifacts/invoke',
+      ['platform.document.markdown-artifact-writer']
+    );
 
     // Deterministic document content extraction handlers. Format-specific
     // parsing remains in document-domain; future extractors reuse this route.
@@ -133,22 +155,23 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
     const handler: BuiltinHandlerFn = async (req, idempotencyKey) => {
       const domainUrl = getCarboneServiceUrl();
       try {
-        const response = await axios.post(`${domainUrl}${endpoint}`, {
-          executionId: req.executionId,
-          stepId: req.stepId,
-          capabilityKey: req.publishedSkillId || req.skillId,
-          definitionVersion: req.metadata?.definitionVersion || (req as any).skillVersion,
-          idempotencyKey,
-          input: req.input || {},
-        });
+        const response = await axios.post(
+          `${domainUrl}${endpoint}`,
+          {
+            executionId: req.executionId,
+            stepId: req.stepId,
+            capabilityKey: req.publishedSkillId || req.skillId,
+            definitionVersion: req.metadata?.definitionVersion || (req as any).skillVersion,
+            idempotencyKey,
+            input: req.input || {},
+          },
+          {
+            timeout: 120000,
+          }
+        );
         return response.data as BuiltinSkillHandlerResult;
       } catch (err: any) {
-        const remoteMsg =
-          err.response?.data?.message ||
-          err.response?.data?.error ||
-          err.message ||
-          'Document domain execution error';
-        throw new Error(remoteMsg);
+        throw formatDocumentDomainError(err);
       }
     };
     this.registerHandler(handlerKey, handler);

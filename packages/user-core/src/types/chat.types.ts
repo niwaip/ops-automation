@@ -122,7 +122,7 @@ export interface ChatMessage {
     rateLimit?: LLMRateLimit;
     skillUsed?: string;
     params?: Record<string, unknown>;
-    files?: string[];
+    files?: Array<string | UploadedFileDescriptor>;
     fileUrl?: string;
     downloadUrl?: string;
     temporalLink?: string;

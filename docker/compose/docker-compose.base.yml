@@ -133,7 +133,7 @@ services:
       redis:
         condition: service_healthy
       carbone-engine:
-        condition: service_started
+        condition: service_healthy
 
   xiaozhi-connector:
     <<: *common-node-service
@@ -277,7 +277,7 @@ services:
       redis:
         condition: service_healthy
       carbone-engine:
-        condition: service_started
+        condition: service_healthy
 
   schedule-trigger:
     <<: *common-node-service
@@ -522,6 +522,7 @@ services:
       dockerfile: docker/carbone-engine/Dockerfile
     image: ops-carbone-engine:dev
     container_name: carbone-engine
+    restart: unless-stopped
     command: >
       sh -c "corepack enable
       && pnpm --filter carbone-engine run dev"
@@ -543,6 +544,12 @@ services:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -f http://localhost:${CARBONE_ENGINE_PORT:-3009}/api || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   # ============================================
   # Frontend

@@ -127,7 +127,7 @@ export function useChatPageActions({
       timestamp: now,
       metadata: {
         clientMessageId: userMessageId,
-        files: filesToSend?.map((f) => f.fileName),
+        files: filesToSend && filesToSend.length > 0 ? (filesToSend as any) : undefined,
       },
     };
     const assistantMessageId = buildMessageId();
@@ -481,19 +481,52 @@ export function useChatPageActions({
       if (isStreaming || !selectedSession) return;
 
       let userContent = '';
+      let targetUserMessage: ChatMessage | undefined;
+      const targetIndex = activeMessages.findIndex((m) => m.id === targetMessage.id);
       if (targetMessage.role === 'user') {
+        targetUserMessage = targetMessage;
         userContent = targetMessage.content;
       } else {
-        const idx = activeMessages.findIndex((m) => m.id === targetMessage.id);
-        if (idx > 0 && activeMessages[idx - 1]?.role === 'user') {
-          userContent = activeMessages[idx - 1].content;
+        if (targetIndex > 0 && activeMessages[targetIndex - 1]?.role === 'user') {
+          targetUserMessage = activeMessages[targetIndex - 1];
+          userContent = activeMessages[targetIndex - 1].content;
         } else {
           const lastUser = [...activeMessages].reverse().find((m) => m.role === 'user');
-          if (lastUser) userContent = lastUser.content;
+          if (lastUser) {
+            targetUserMessage = lastUser;
+            userContent = lastUser.content;
+          }
         }
       }
 
       if (!userContent.trim()) return;
+
+      // 提取待重试轮次的附件信息；若直接前序消息缺少 files，向前回溯最近一条包含文件的用户消息
+      let rawFiles = targetUserMessage?.metadata?.files;
+      if (!rawFiles || (Array.isArray(rawFiles) && rawFiles.length === 0)) {
+        const searchPool = targetIndex > 0 ? activeMessages.slice(0, targetIndex) : activeMessages;
+        const messageWithFiles = [...searchPool]
+          .reverse()
+          .find(
+            (m) =>
+              m.role === 'user' &&
+              m.metadata?.files &&
+              Array.isArray(m.metadata.files) &&
+              m.metadata.files.length > 0
+          );
+        if (messageWithFiles?.metadata?.files) {
+          rawFiles = messageWithFiles.metadata.files;
+        }
+      }
+
+      const retryFiles: UploadedFileDescriptor[] | undefined =
+        Array.isArray(rawFiles) && rawFiles.length > 0
+          ? rawFiles.map((f) =>
+              typeof f === 'string'
+                ? { fileName: f }
+                : (f as UploadedFileDescriptor)
+            )
+          : undefined;
 
       const resolvedModelId =
         selectedModel && selectedModel !== 'default' ? selectedModel : undefined;
@@ -520,6 +553,7 @@ export function useChatPageActions({
         clientAssistantMessageId: assistantMessageId,
         sessionId: selectedSession.id,
         modelId: resolvedModelId,
+        files: retryFiles,
         mode: chatMode,
         thinking: enableThinking,
         reasoning: nativeReasoningEnabled,

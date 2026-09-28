@@ -101,7 +101,7 @@ warn_if_running_stack_mismatch() {
     local running_signatures
 
     running_signatures="$(docker ps --format '{{.Names}}\t{{.Label "com.docker.compose.project.config_files"}}' 2>/dev/null \
-        | awk -F'\t' '/^ops-/{print $2}' \
+        | awk -F'\t' '/^(ops-|carbone-engine)/{print $2}' \
         | sed '/^$/d' \
         | sort -u || true)"
 

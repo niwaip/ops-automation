@@ -85,6 +85,14 @@ export const SCOPE_TAG_META: Record<string, { label: string; color: string }> = 
   image_generation: { label: '文生图', color: 'green' },
 };
 
+export const MODALITY_OPTIONS = [
+  { label: '文本 (Text)', value: 'text', icon: '📝' },
+  { label: '视觉/图像 (Vision)', value: 'image', icon: '👁️' },
+  { label: '语音/音频 (Audio)', value: 'audio', icon: '🎙️' },
+  { label: '长文档解析 (Doc)', value: 'document', icon: '📄' },
+  { label: '视频理解 (Video)', value: 'video', icon: '🎬' },
+];
+
 export function mapConfigToFormValues(config?: AIModelConfig) {
   const safeConfig = config || {};
   const defaultScopes = DEFAULT_SCOPE_OPTIONS.map((item) => item.value).filter(
@@ -102,6 +110,10 @@ export function mapConfigToFormValues(config?: AIModelConfig) {
     prefer_for_code: safeConfig.routing_preferences?.prefer_for_code === true,
     supports_reasoning: safeConfig.supports_reasoning === true || safeConfig.reasoning?.enabled === true,
     reasoning_effort: safeConfig.reasoning_effort || safeConfig.reasoning?.effort || 'medium',
+    input:
+      Array.isArray(safeConfig.input) && safeConfig.input.length > 0
+        ? safeConfig.input
+        : ['text'],
   };
 }
 
@@ -114,6 +126,10 @@ export function buildConfigFromValues(values: Record<string, unknown>): AIModelC
         (item): item is string => typeof item === 'string' && item.trim().length > 0
       )
     : [];
+  const inputModalities =
+    Array.isArray(values.input) && values.input.length > 0
+      ? values.input.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      : ['text'];
   const supportsReasoning = values.supports_reasoning === true;
   const reasoningEffort = supportsReasoning
     ? ((values.reasoning_effort as 'low' | 'medium' | 'high') || 'medium')
@@ -132,6 +148,7 @@ export function buildConfigFromValues(values: Record<string, unknown>): AIModelC
       ? 'advanced'
       : 'standard') as ModelCapabilityTier,
     routing_tags: routingTags,
+    input: inputModalities,
     supports_reasoning: supportsReasoning,
     reasoning_effort: reasoningEffort,
     reasoning: supportsReasoning

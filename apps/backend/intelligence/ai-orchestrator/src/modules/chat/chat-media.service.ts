@@ -416,6 +416,102 @@ export class ChatMediaService {
         }
       }
 
+      // 4. Fallback: Lookup by fileName if fileId was missing or not found on disk
+      if (!file.content && !file.extractedText && file.fileName) {
+        let matchedItem: ChatUploadedFileDTO | undefined;
+
+        // 4a. Check in-memory fileStore
+        for (const [sId, sFile] of this.fileStore.entries()) {
+          if (sFile.fileName === file.fileName) {
+            const hasOwnerMatch = Boolean(
+              sFile.ownerUserId &&
+              contextUser.userId &&
+              sFile.ownerUserId === contextUser.userId
+            );
+            const hasOrgMatch = Boolean(
+              sFile.organizationId &&
+              contextUser.organizationId &&
+              sFile.organizationId === contextUser.organizationId
+            );
+            if (isAdmin || hasOwnerMatch || hasOrgMatch) {
+              matchedItem = {
+                ...file,
+                fileId: sId,
+                fileName: sFile.fileName,
+                mimeType: sFile.mimeType,
+                size: sFile.size,
+                content: sFile.content,
+                filePath: sFile.filePath,
+                extractedText: sFile.extractedText,
+              };
+              break;
+            }
+          }
+        }
+
+        // 4b. Check disk-backed upload storage
+        if (!matchedItem) {
+          try {
+            const uploadDir = path.resolve(this.getUploadStorageDir());
+            if (fs.existsSync(uploadDir)) {
+              const metaFileNames = fs
+                .readdirSync(uploadDir)
+                .filter((f) => f.endsWith('.meta.json'));
+              // Sort descending to find most recently uploaded first
+              metaFileNames.sort().reverse();
+
+              for (const mName of metaFileNames) {
+                const fullMetaPath = path.resolve(uploadDir, mName);
+                const meta = JSON.parse(fs.readFileSync(fullMetaPath, 'utf-8'));
+                if (meta.fileName === file.fileName) {
+                  const hasOwnerMatch = Boolean(
+                    meta.ownerUserId &&
+                    contextUser.userId &&
+                    meta.ownerUserId === contextUser.userId
+                  );
+                  const hasOrgMatch = Boolean(
+                    meta.organizationId &&
+                    contextUser.organizationId &&
+                    meta.organizationId === contextUser.organizationId
+                  );
+                  if (isAdmin || hasOwnerMatch || hasOrgMatch) {
+                    if (meta.filePath && fs.existsSync(meta.filePath)) {
+                      const buf = fs.readFileSync(meta.filePath);
+                      matchedItem = {
+                        ...file,
+                        fileId: meta.fileId,
+                        fileName: meta.fileName,
+                        mimeType: meta.mimeType || file.mimeType,
+                        size: meta.size || buf.length,
+                        content: buf.toString('base64'),
+                        filePath: meta.filePath,
+                      };
+                      this.fileStore.set(meta.fileId, {
+                        fileName: meta.fileName,
+                        mimeType: meta.mimeType,
+                        size: meta.size,
+                        content: matchedItem.content || '',
+                        filePath: meta.filePath,
+                        ownerUserId: meta.ownerUserId,
+                        organizationId: meta.organizationId,
+                      });
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          } catch (err: any) {
+            this.logger.warn(`Failed fallback disk lookup for ${file.fileName}: ${err.message}`);
+          }
+        }
+
+        if (matchedItem) {
+          resolved.push(matchedItem);
+          continue;
+        }
+      }
+
       // Drop unverified file references that attempt to access disk/storage without inline content or extractedText
       if (file.storagePath || (!file.content && !file.extractedText)) {
         this.logger.warn(

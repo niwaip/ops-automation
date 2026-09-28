@@ -108,6 +108,36 @@ describe('ChatMediaService with Durable Storage', () => {
       expect(resolved[0].filePath).toBe(uploadRes.filePath);
     });
 
+    it('should fallback and resolve by fileName when fileId is missing or omitted during retry', async () => {
+      const mockFile = {
+        originalname: 'retry-contract.pdf',
+        mimetype: 'application/pdf',
+        size: 32,
+        buffer: Buffer.from('%PDF-1.4 mock pdf content for retry test'),
+      } as Express.Multer.File;
+
+      const userA = { userId: 'user-retry-1', organizationId: 'org-retry-1' };
+      const userB = { userId: 'user-retry-2', organizationId: 'org-retry-2' };
+
+      const uploadRes = service.uploadChatFile(mockFile, userA);
+
+      // User A specifies only fileName (no fileId, no content)
+      const resolvedUserA = await service.resolveUploadedFiles(
+        [{ fileName: 'retry-contract.pdf' }],
+        userA
+      );
+      expect(resolvedUserA).toHaveLength(1);
+      expect(resolvedUserA[0].fileId).toBe(uploadRes.fileId);
+      expect(resolvedUserA[0].content).toBe(Buffer.from('%PDF-1.4 mock pdf content for retry test').toString('base64'));
+
+      // User B should NOT be able to resolve User A's file by fileName
+      const resolvedUserB = await service.resolveUploadedFiles(
+        [{ fileName: 'retry-contract.pdf' }],
+        userB
+      );
+      expect(resolvedUserB).toHaveLength(0);
+    });
+
     it('should prevent cross-tenant and cross-user file access', async () => {
       const mockFile = {
         originalname: 'secret-tenant-data.pdf',
