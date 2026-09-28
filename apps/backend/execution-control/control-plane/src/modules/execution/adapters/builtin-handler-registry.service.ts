@@ -11,6 +11,7 @@ import { executeWorkspaceExplorer } from './workspace/workspace-explorer.handler
 import { ReminderService } from '../../reminders/reminder.service';
 import { OutboundEffectLedgerService } from '../outbox/outbound-effect-ledger.service';
 import { executeContractReviewOrchestration } from './contract/contract-review-orchestrator';
+import { executeContractCompareOrchestration } from './contract/contract-compare-orchestrator';
 import {
   DEFAULT_REMINDER_TIMEZONE,
   REMINDER_CAPABILITY_KEY,
@@ -93,11 +94,10 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
       '/internal/document/pdf/create/invoke',
       ['platform.document.pdf-create']
     );
-    this.registerDocumentDomainHandler(
-      'document.contract.compare',
-      '/internal/document/contract-compare/invoke',
-      ['platform.document.contract-comparator']
-    );
+    const contractCompareHandler: BuiltinHandlerFn = (req, idempotencyKey) =>
+      executeContractCompareOrchestration(req, idempotencyKey, this.logger);
+    this.registerHandler('document.contract.compare', contractCompareHandler);
+    this.registerHandler('platform.document.contract-comparator', contractCompareHandler);
     const contractReviewHandler: BuiltinHandlerFn = (req, idempotencyKey) =>
       executeContractReviewOrchestration(req, idempotencyKey, this.logger);
     this.registerHandler('document.contract.review', contractReviewHandler);

@@ -120,3 +120,32 @@ export interface BuiltinContractCompareInvokeDto {
   idempotencyKey?: string;
   input: ContractCompareInput;
 }
+
+export interface ContractDiffOutput {
+  fileNameA: string;
+  fileNameB: string;
+  alignedClauses: AlignedClausePair[];
+  metrics: ContractCompareMetrics;
+  sourceClauseCount: number;
+  targetClauseCount: number;
+  isTruncated: boolean;
+  warnings?: string[];
+}
+
+export interface ContractRenderCompareReportInput {
+  fileNameA?: string;
+  fileNameB?: string;
+  metrics?: ContractCompareMetrics;
+  alignedClauses: AlignedClausePair[];
+  idempotencyKey?: string;
+}
+
+export interface BuiltinContractCompareDiffDto extends BuiltinContractCompareInvokeDto {}
+
+export interface BuiltinContractCompareRenderDto {
+  executionId?: string;
+  stepId?: string;
+  idempotencyKey?: string;
+  input: ContractRenderCompareReportInput;
+}
+
