@@ -232,40 +232,77 @@ export class ContractReviewHtmlFindingRenderer {
 
       <!-- Workbench Subheader & Operations Bar -->
       <div class="flex items-center justify-between py-1.5 px-1 border-b border-[#E2E8F0] select-none">
-        <div class="flex items-center gap-2">
-          <span class="text-xs font-bold text-[#1E293B] uppercase tracking-wider">审查与批注清单</span>
-          <span id="workbench-count-badge" class="px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-[#2E5882]/10 text-[#2E5882]">
-            ${commentsCount > 0 ? `共 ${findings.length} 风险 · ${commentsCount} 批注` : `共 ${findings.length} 项`}
-          </span>
+        <div class="flex items-center gap-1.5" id="workbench-tabs">
+          <button
+            type="button"
+            id="tab-btn-findings"
+            onclick="switchWorkbenchMode('findings')"
+            class="workbench-tab-btn active"
+          >
+            <span>⚠️ 合规风险</span>
+            <span class="badge-count badge-count-all" id="badge-findings-count">${findings.length}</span>
+          </button>
+          ${
+            commentsCount > 0
+              ? `
+          <button
+            type="button"
+            id="tab-btn-comments"
+            onclick="switchWorkbenchMode('comments')"
+            class="workbench-tab-btn"
+          >
+            <span>💬 原文批注</span>
+            <span class="badge-count badge-count-comment" id="badge-comments-count">${commentsCount}</span>
+          </button>`
+              : ''
+          }
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1.5">
+          <button
+            type="button"
+            onclick="openGlobalCommentModal()"
+            class="text-[11px] text-amber-900 hover:text-amber-950 font-bold px-2.5 py-1 rounded border border-amber-400 bg-amber-100 hover:bg-amber-200 transition cursor-pointer flex items-center gap-1 shadow-2xs"
+            title="追加新批注"
+          >
+            <span>+ 写批注</span>
+          </button>
           <button
             type="button"
             id="toggle-all-details-btn"
             onclick="toggleAllFindingDetails()"
-            class="text-[11px] text-[#2E5882] hover:text-[#1A2D42] font-medium px-2 py-0.5 rounded border border-[#D9E1EC] bg-white transition cursor-pointer"
+            class="text-[11px] text-[#2E5882] hover:text-[#1A2D42] font-medium px-2 py-1 rounded border border-[#D9E1EC] bg-white transition cursor-pointer"
           >
-            展开全部建议
+            展开建议
           </button>
-          <div class="text-[10px] text-[#64748B] hidden sm:inline">
-            快捷键 <kbd class="px-1 py-0.5 bg-white border border-[#D9E1EC] rounded font-mono text-[9px]">P</kbd> 上一项 · <kbd class="px-1 py-0.5 bg-white border border-[#D9E1EC] rounded font-mono text-[9px]">N</kbd> 下一项
-          </div>
         </div>
       </div>
 
       <!-- Scrollable Findings & Comments Cards Stream -->
       <div id="findings-stream" class="space-y-3">
-        ${commentCardsHtml ? `<div id="comments-stream-container" class="space-y-3">${commentCardsHtml}</div>` : ''}
         ${
-          findings.length === 0 && !commentCardsHtml
+          commentCardsHtml
             ? `
-          <div class="p-8 text-center bg-white rounded-lg border border-[#D9E1EC] text-sm text-[#64748B]">
-            <svg class="w-8 h-8 mx-auto text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            合同未检出实质性法律风险或必备要件缺失，条款形式与实质合规规范。
+        <div id="comments-stream-container" class="space-y-3 hidden">
+          <div class="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-between">
+            <span class="font-medium">📌 当前为 Word 原生批注清单（共 ${commentsCount} 条批注）</span>
+            <span class="text-[11px] text-amber-700">点击卡片可高亮正文对应句段</span>
           </div>
-        `
-            : findingCardsHtml
+          ${commentCardsHtml}
+        </div>`
+            : ''
         }
+        <div id="findings-cards-container" class="space-y-3">
+          ${
+            findings.length === 0
+              ? `
+            <div class="p-8 text-center bg-white rounded-lg border border-[#D9E1EC] text-sm text-[#64748B]">
+              <svg class="w-8 h-8 mx-auto text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              合同未检出实质性法律风险或必备要件缺失，条款形式与实质合规规范。
+            </div>
+          `
+              : findingCardsHtml
+          }
+        </div>
       </div>
     </section>
     `;

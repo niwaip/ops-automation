@@ -118,6 +118,29 @@ export class ContractReviewHtmlDocumentRenderer {
     // Has risk / issue indicator on clause level
     const hasHighRisk = c.riskLevel === 'HIGH';
     const hasMediumRisk = c.riskLevel === 'MEDIUM';
+    const hasComments = c.comments && c.comments.length > 0;
+    const commentBannersHtml = hasComments
+      ? c.comments!
+          .map((cm) => {
+            const shortText = cm.text ? (cm.text.length > 60 ? cm.text.slice(0, 58) + '...' : cm.text) : '';
+            return `
+        <div class="clause-comment-banner">
+          <div class="flex items-center gap-2 truncate">
+            <span class="badge-count badge-count-comment shrink-0">💬 批注 #${cm.id}</span>
+            <span class="font-bold text-[#78350F] shrink-0">${this.escapeHtml(cm.author || '审阅人')}：</span>
+            <span class="text-[#92400E] truncate italic">"${this.escapeHtml(shortText)}"</span>
+          </div>
+          <button
+            type="button"
+            onclick="handleCommentClick('${cm.id}', ${c.clauseIndex}, event)"
+            class="shrink-0 px-2 py-0.5 rounded bg-white hover:bg-amber-100 border border-amber-300 text-[11px] font-semibold text-amber-900 transition cursor-pointer"
+          >
+            查看详情 →
+          </button>
+        </div>`;
+          })
+          .join('\n')
+      : '';
 
     return `
     <div id="clause-node-${c.clauseIndex}" class="clause-node relative pt-1 group" data-clause-index="${c.clauseIndex}">
@@ -142,14 +165,14 @@ export class ContractReviewHtmlDocumentRenderer {
               : ''
           }
           ${
-            c.comments && c.comments.length > 0
-              ? `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300" title="包含 ${c.comments.length} 条 Word 批注">💬 ${c.comments.length}</span>`
+            hasComments
+              ? `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300" title="包含 ${c.comments!.length} 条 Word 批注">💬 ${c.comments!.length}</span>`
               : ''
           }
           <button
             type="button"
             onclick="openClauseCommentModal(${c.clauseIndex}, '${this.escapeHtml(headingZh)}', event)"
-            class="hidden group-hover:inline-flex items-center text-[10px] text-[#2E5882] hover:text-[#1A2D42] px-1.5 py-0.5 rounded border border-[#D9E1EC] bg-white hover:bg-slate-50 transition cursor-pointer font-medium"
+            class="inline-flex items-center text-[11px] text-[#2E5882] hover:text-[#1A2D42] px-2 py-0.5 rounded border border-[#CBD5E1] bg-white hover:bg-slate-100 transition cursor-pointer font-semibold shadow-2xs"
             title="针对该条款追加批注"
           >
             + 批注
@@ -157,6 +180,9 @@ export class ContractReviewHtmlDocumentRenderer {
           <span class="text-[10px] font-mono text-[#667085]">#${c.clauseIndex}</span>
         </div>
       </div>
+
+      <!-- Clause Comment Banners (if any) -->
+      ${commentBannersHtml}
 
       <!-- Clause Body Text / Blocks -->
       <div class="clause-content pl-0 text-sm leading-relaxed text-[#202833] space-y-2.5">

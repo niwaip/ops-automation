@@ -1,4 +1,4 @@
-import type { DocxCommentItem } from './contract-review.types';
+import type { DocxCommentItem, ClauseReviewItem } from './contract-review.types';
 
 export class ContractReviewHtmlCommentRenderer {
   /**
@@ -111,9 +111,20 @@ export class ContractReviewHtmlCommentRenderer {
   /**
    * Render the floating modal dialog for appending new comments back into Word OpenXML.
    */
-  renderAppendCommentModal(params: { canComment?: boolean; commentApiUrl?: string }): string {
-    const { canComment = true, commentApiUrl = '' } = params;
+  renderAppendCommentModal(params: {
+    canComment?: boolean;
+    commentApiUrl?: string;
+    clauses?: ClauseReviewItem[];
+  }): string {
+    const { canComment = true, commentApiUrl = '', clauses = [] } = params;
     if (!canComment) return '';
+
+    const clauseOptionsHtml = clauses
+      .map((c) => {
+        const title = c.title ? `${c.clauseNumber || ''} ${c.title}`.trim() : c.clauseNumber || `条款 #${c.clauseIndex}`;
+        return `<option value="${c.clauseIndex}">#${c.clauseIndex} ${this.escapeHtml(title)}</option>`;
+      })
+      .join('\n');
 
     return `
     <!-- 追加 Word 批注弹窗 (Append Word Comment Modal) -->
@@ -129,7 +140,7 @@ export class ContractReviewHtmlCommentRenderer {
         <!-- Modal Top Bar (Style A Deep Navy) -->
         <div class="bg-[#1A2D42] px-5 py-3.5 text-white flex items-center justify-between border-b border-[#243B53]">
           <div class="flex items-center gap-2">
-            <span class="text-base">💬</span>
+            <span class="text-base">✍️</span>
             <div>
               <h3 class="text-sm font-bold leading-tight">追加 Word 批注（回写后台文档）</h3>
               <p class="text-[10px] text-slate-300">通过业务控制面 API 回写至 Word OpenXML 批注流</p>
@@ -150,17 +161,29 @@ export class ContractReviewHtmlCommentRenderer {
           <!-- Quoted Context / Clause (Optional reference) -->
           <div>
             <label class="block text-[11px] font-semibold text-[#334155] mb-1">
-              关联条款与选中文本
+              关联条款 <span class="text-red-500">*</span>
+            </label>
+            <select
+              id="comment-modal-clause-select"
+              class="w-full px-3 py-1.5 rounded-md border border-[#D9E1EC] bg-[#F8FAFC] text-[#1E293B] text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#2E5882] cursor-pointer"
+            >
+              <option value="0">【通用】全合同通用批注 / 未限定特定段落</option>
+              ${clauseOptionsHtml}
+            </select>
+            <input type="hidden" id="comment-modal-target-id" value="" />
+          </div>
+
+          <!-- Quoted Text Field -->
+          <div>
+            <label class="block text-[11px] font-semibold text-[#334155] mb-1">
+              引用的原文字句（可选）
             </label>
             <input
               type="text"
-              id="comment-modal-clause-ref"
-              readonly
-              class="w-full px-3 py-1.5 rounded-md border border-[#D9E1EC] bg-[#F8FAFC] text-[#475569] font-mono text-xs focus:outline-none cursor-default"
-              value="全文通识 / 未限定特定段落"
+              id="comment-modal-quote"
+              placeholder="可手动输入或通过在正文中划选文字自动填入"
+              class="w-full px-3 py-1.5 rounded-md border border-[#D9E1EC] focus:border-[#2E5882] focus:ring-1 focus:ring-[#2E5882] text-xs text-[#1E293B]"
             />
-            <input type="hidden" id="comment-modal-target-id" value="" />
-            <input type="hidden" id="comment-modal-clause-idx" value="0" />
           </div>
 
           <!-- Author Field -->

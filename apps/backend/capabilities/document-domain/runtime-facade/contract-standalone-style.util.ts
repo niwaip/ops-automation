@@ -6,6 +6,8 @@
 export const CONTRACT_REPORT_STANDALONE_CSS = `
 /* Reset & Base */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+button { font-family: inherit; font-size: inherit; line-height: inherit; color: inherit; background: transparent; border: none; cursor: pointer; }
+input, select, textarea { font-family: inherit; font-size: inherit; line-height: inherit; }
 body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; }
 
 /* Display & Layout */
@@ -386,4 +388,159 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 .active-comment-card { border-color: #f59e0b !important; background-color: #fffdf5 !important; box-shadow: 0 4px 16px -2px rgba(245, 158, 11, 0.3) !important; }
 .docx-comment-highlight { background-color: rgba(254, 243, 199, 0.85); border-bottom: 2px solid #f59e0b; border-radius: 2px; }
 .docx-comment-highlight-active { background-color: #fde68a !important; outline: 2px solid #d97706 !important; }
+
+/* Topbar Segmented Pill Controls */
+.topbar-tabs-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background-color: #101E2E;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid #2B4663;
+}
+.topbar-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #94A3B8;
+  background-color: transparent;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+.topbar-tab-btn:hover {
+  color: #FFFFFF;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+.topbar-tab-btn.active-tab {
+  background-color: #2E5882 !important;
+  color: #FFFFFF !important;
+  font-weight: 600 !important;
+  border-color: #4B79A6 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+.badge-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0px 5px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.badge-count-all { background-color: rgba(255, 255, 255, 0.15); color: #E2E8F0; }
+.badge-count-high { background-color: #991B1B; color: #FEE2E2; }
+.badge-count-missing { background-color: #9A6700; color: #FEF3C7; }
+.badge-count-verify { background-color: #334E68; color: #BAE6FD; }
+.badge-count-comment { background-color: #D97706; color: #FFFFFF; }
+
+/* Primary Action Button */
+.btn-append-comment-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  background-color: #D97706;
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #F59E0B;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+.btn-append-comment-primary:hover {
+  background-color: #B45309;
+  border-color: #D97706;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.35);
+}
+
+/* Workbench Tab Buttons */
+.workbench-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748B;
+  background-color: #F1F5F9;
+  border: 1px solid #D9E1EC;
+  transition: all 0.15s;
+  user-select: none;
+}
+.workbench-tab-btn:hover {
+  color: #1E293B;
+  background-color: #E2E8F0;
+}
+.workbench-tab-btn.active {
+  background-color: #FFFFFF !important;
+  color: #1A2D42 !important;
+  border-color: #2E5882 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Clause Comment Callout Banner */
+.clause-comment-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 6px 0 10px 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background-color: #FFFBEB;
+  border: 1px solid #FCD34D;
+  color: #78350F;
+  font-size: 12px;
+}
+
+/* Floating Text Selection Comment Bubble */
+#text-selection-comment-bubble {
+  position: absolute;
+  z-index: 100;
+  display: none;
+  transform: translate(-50%, -100%);
+  margin-top: -8px;
+  background-color: #1A2D42;
+  color: #FFFFFF;
+  padding: 5px 11px;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+  border: 1px solid #386A9E;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  align-items: center;
+  gap: 5px;
+}
+#text-selection-comment-bubble:hover {
+  background-color: #2E5882;
+  border-color: #4B79A6;
+}
+#text-selection-comment-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px 5px 0;
+  border-style: solid;
+  border-color: #1A2D42 transparent;
+  display: block;
+  width: 0;
+}
 `;

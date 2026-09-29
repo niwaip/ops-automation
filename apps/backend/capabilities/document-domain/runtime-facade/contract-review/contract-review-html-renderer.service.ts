@@ -106,6 +106,7 @@ export class ContractReviewHtmlRendererService {
     const appendCommentModalHtml = this.commentRenderer.renderAppendCommentModal({
       canComment,
       commentApiUrl,
+      clauses,
     });
 
     // Truncation banner for partial review
@@ -250,113 +251,109 @@ export class ContractReviewHtmlRendererService {
 
   <!-- 1. Rigidly Fixed Unified Top Bar (Header + Executive Controls Combined 一览) -->
   <header id="unified-top-bar" class="sticky top-0 z-30 bg-[#1A2D42] text-white border-b border-[#2B4663] px-3 sm:px-4 py-2 shadow-md">
-    <div class="max-w-[1680px] mx-auto flex flex-wrap items-center justify-between gap-2.5 sm:gap-4">
+    <div class="max-w-[1680px] mx-auto flex items-center justify-between flex-nowrap gap-3">
       
       <!-- Brand & Document Title & Metadata -->
-      <div class="flex items-center gap-2.5 min-w-0">
+      <div class="flex items-center gap-2.5 min-w-0 shrink-0">
         <div class="w-7 h-7 rounded bg-[#2E5882] flex items-center justify-center text-white shrink-0 shadow-xs border border-[#386A9E]">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path></svg>
         </div>
-        <div class="min-w-0 flex items-center gap-2">
+        <div class="flex items-center gap-2 truncate">
           <h1 class="text-xs sm:text-sm font-bold text-white tracking-tight truncate shrink-0" title="合同智能审查与合规诊断报告 · 工作底稿">
-            合同智能审查与合规诊断报告
+            合同智能审查与合规诊断
           </h1>
           <span class="hidden md:inline-block px-1.5 py-0.5 rounded bg-[#243B53] text-[#93C5FD] text-[11px] font-semibold truncate max-w-[120px] shrink-0 border border-[#334E68]">
             ${this.escapeHtml(contractTypeName)}
           </span>
-          <span class="hidden xl:inline-block text-[11px] text-slate-300 truncate max-w-[220px] font-mono shrink-0" title="${this.escapeHtml(fileName)}">
-            ${this.escapeHtml(fileName)}
-          </span>
         </div>
       </div>
 
-      <!-- Center: Filter Tabs -->
-      <div class="flex items-center gap-1 shrink-0" id="filter-tabs">
-        <button onclick="applyFilter('all', this)" class="active-filter-tab px-2.5 py-1 rounded text-xs font-semibold border border-[#334E68] bg-[#243B53]/80 hover:bg-[#2B4663] text-slate-200 transition cursor-pointer">
-          全部 <span class="text-[10px] font-mono opacity-80">(${findings.length})</span>
-        </button>
-        <button onclick="applyFilter('high', this)" class="px-2.5 py-1 rounded text-xs font-medium border border-red-900/60 bg-red-950/40 text-red-200 hover:bg-red-900/50 transition cursor-pointer">
-          高风险 <span class="text-[10px] font-mono font-bold">(${highCount})</span>
-        </button>
-        <button onclick="applyFilter('missing', this)" class="px-2.5 py-1 rounded text-xs font-medium border border-amber-900/60 bg-amber-950/40 text-amber-200 hover:bg-amber-900/50 transition cursor-pointer">
-          待补充 <span class="text-[10px] font-mono font-bold">(${missingCount})</span>
-        </button>
-        <button onclick="applyFilter('verify', this)" class="px-2.5 py-1 rounded text-xs font-medium border border-[#334E68] bg-[#243B53]/80 text-slate-300 hover:bg-[#2B4663] transition cursor-pointer">
-          待核实 <span class="text-[10px] font-mono font-bold">(${verifyCount})</span>
-        </button>
-        ${
-          comments.length > 0
-            ? `
-        <button onclick="applyFilter('comments', this)" class="px-2.5 py-1 rounded text-xs font-medium border border-amber-500/50 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition cursor-pointer flex items-center gap-1" title="查看 Word 原文批注清单">
-          <span>💬 批注</span> <span class="text-[10px] font-mono font-bold">(${comments.length})</span>
-        </button>`
-            : ''
-        }
+      <!-- Center: Filter Tabs Track (Dark pill track, crisp high-contrast, segmented control) -->
+      <div class="flex items-center justify-center shrink-0">
+        <div class="topbar-tabs-track" id="filter-tabs">
+          <button type="button" onclick="applyFilter('all', this)" class="topbar-tab-btn active-tab">
+            <span>全部</span>
+            <span class="badge-count badge-count-all">${findings.length}</span>
+          </button>
+          <button type="button" onclick="applyFilter('high', this)" class="topbar-tab-btn">
+            <span>高风险</span>
+            <span class="badge-count badge-count-high">${highCount}</span>
+          </button>
+          <button type="button" onclick="applyFilter('missing', this)" class="topbar-tab-btn">
+            <span>待补充</span>
+            <span class="badge-count badge-count-missing">${missingCount}</span>
+          </button>
+          <button type="button" onclick="applyFilter('verify', this)" class="topbar-tab-btn">
+            <span>待核实</span>
+            <span class="badge-count badge-count-verify">${verifyCount}</span>
+          </button>
+          ${
+            comments.length > 0
+              ? `
+          <button type="button" onclick="applyFilter('comments', this)" class="topbar-tab-btn" title="查看 Word 原文批注清单">
+            <span>💬 批注</span>
+            <span class="badge-count badge-count-comment">${comments.length}</span>
+          </button>`
+              : ''
+          }
+        </div>
       </div>
 
-      <!-- Right: Language Toggle, Navigation Stepper, Outline, Health Score -->
-      <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+      <!-- Right: Action Button + Bilingual + Stepper + TOC + Score (ALL STRICTLY ON THE RIGHT, NO WRAP) -->
+      <div class="flex items-center gap-2 sm:gap-2.5 shrink-0 ml-auto">
+        ${
+          canComment
+            ? `
+        <!-- Prominent "+ 追加批注" Action Button -->
+        <button
+          type="button"
+          onclick="openGlobalCommentModal()"
+          class="btn-append-comment-primary"
+          title="针对合同追加新批注"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+          <span>追加批注</span>
+        </button>
+        <div class="h-4 w-px bg-[#334E68] hidden sm:block"></div>`
+            : ''
+        }
+
         <!-- Language Switcher -->
-        <div class="inline-flex rounded border border-[#334E68] bg-[#142334] p-0.5 text-xs select-none">
-          <button id="lang-btn-both" onclick="setLanguageMode('both')" class="px-2 py-0.5 rounded bg-[#243B53] text-white font-semibold shadow-2xs cursor-pointer">
+        <div class="inline-flex rounded border border-[#334E68] bg-[#101E2E] p-0.5 text-xs select-none shrink-0">
+          <button type="button" id="lang-btn-both" onclick="setLanguageMode('both')" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#2E5882] text-white transition cursor-pointer">
             双语
           </button>
-          <button id="lang-btn-zh" onclick="setLanguageMode('zh')" class="px-2 py-0.5 rounded text-slate-400 hover:text-white cursor-pointer">
+          <button type="button" id="lang-btn-zh" onclick="setLanguageMode('zh')" class="px-2 py-0.5 rounded text-[11px] text-slate-300 hover:text-white transition cursor-pointer">
             中文
           </button>
-          <button id="lang-btn-ja" onclick="setLanguageMode('ja')" class="px-2 py-0.5 rounded text-slate-400 hover:text-white cursor-pointer">
+          <button type="button" id="lang-btn-ja" onclick="setLanguageMode('ja')" class="px-2 py-0.5 rounded text-[11px] text-slate-300 hover:text-white transition cursor-pointer">
             日文
           </button>
         </div>
 
         <div class="h-4 w-px bg-[#334E68] hidden sm:block"></div>
 
-        <!-- Problem Navigation Stepper -->
-        <div class="flex items-center gap-1 text-xs text-slate-300 select-none">
-          <button onclick="stepFinding(-1)" class="px-2 py-1 rounded border border-[#334E68] bg-[#243B53]/80 hover:bg-[#2B4663] text-slate-200 flex items-center gap-1 cursor-pointer" title="上一项 (快捷键 P)">
+        <!-- Problem / Comment Navigation Stepper -->
+        <div class="flex items-center gap-1 text-xs text-slate-300 select-none shrink-0">
+          <button type="button" onclick="stepFinding(-1)" class="px-2 py-1 rounded border border-[#334E68] bg-[#101E2E] hover:bg-[#243B53] text-slate-200 flex items-center gap-1 cursor-pointer" title="上一项 (快捷键 P)">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-            <span class="hidden lg:inline text-[11px]">上一问题</span>
           </button>
           <span id="nav-indicator" class="font-mono text-[11px] px-1 text-slate-200 font-medium min-w-[36px] text-center">1 / ${findings.length || 1}</span>
-          <button onclick="stepFinding(1)" class="px-2 py-1 rounded border border-[#334E68] bg-[#243B53]/80 hover:bg-[#2B4663] text-slate-200 flex items-center gap-1 cursor-pointer" title="下一项 (快捷键 N)">
-            <span class="hidden lg:inline text-[11px]">下一问题</span>
+          <button type="button" onclick="stepFinding(1)" class="px-2 py-1 rounded border border-[#334E68] bg-[#101E2E] hover:bg-[#243B53] text-slate-200 flex items-center gap-1 cursor-pointer" title="下一项 (快捷键 N)">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
           </button>
         </div>
 
         <!-- TOC Drawer Toggle -->
-        <button onclick="toggleTocDrawer(true)" class="px-2 py-1 rounded text-xs font-medium border border-[#4B79A6] bg-[#2E5882] hover:bg-[#386A9E] text-white transition flex items-center gap-1 cursor-pointer shadow-2xs" title="大纲目录 (快捷键 T)">
+        <button type="button" onclick="toggleTocDrawer(true)" class="px-2 py-1 rounded text-xs font-medium border border-[#4B79A6] bg-[#2E5882] hover:bg-[#386A9E] text-white transition flex items-center gap-1 cursor-pointer shadow-2xs shrink-0" title="大纲目录 (快捷键 T)">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
           <span class="hidden sm:inline text-[11px]">目录</span>
         </button>
 
-        ${
-          canComment
-            ? `
-        <!-- Append Word Comment Button -->
-        <button
-          type="button"
-          onclick="openClauseCommentModal(0, '合同全文', event)"
-          class="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold text-white bg-[#2E5882] hover:bg-[#386A9E] border border-[#4B79A6] transition cursor-pointer shadow-xs"
-          title="追加 Word 批注（通过业务控制面回写文档）"
-        >
-          <span class="text-xs">💬</span>
-          <span>追加批注</span>
-        </button>`
-            : ''
-        }
-
-        <div class="h-4 w-px bg-[#334E68] hidden sm:block"></div>
-
         <!-- Compliance Score Pill -->
         <div class="flex items-center gap-2 shrink-0">
-          <div class="text-right hidden xl:block">
-            <div class="text-[10px] text-slate-400 uppercase tracking-wider">综合合规评级</div>
-            <div class="text-xs font-bold" style="color: ${scoreColor}">${scoreText}</div>
-          </div>
-          <div class="px-2.5 py-1 rounded text-xs font-bold text-white flex items-center gap-1 shadow-2xs" style="background-color: ${scoreColor}" title="综合合规评级：${metrics.healthScore} 分 · ${scoreText}">
+          <div class="px-2.5 py-1 rounded text-xs font-bold text-white flex items-center gap-1 shadow-2xs font-mono" style="background-color: ${scoreColor}" title="综合合规评级：${metrics.healthScore} 分 · ${scoreText}">
             <span>${metrics.healthScore} 分</span>
-            <span class="text-[10px] opacity-90 sm:hidden">· ${scoreText}</span>
           </div>
         </div>
       </div>
@@ -381,6 +378,12 @@ export class ContractReviewHtmlRendererService {
 
     </div>
   </main>
+
+  <!-- Floating Text Selection Comment Bubble -->
+  <div id="text-selection-comment-bubble" onclick="openCommentFromSelection(event)">
+    <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path></svg>
+    <span>添加批注</span>
+  </div>
 
   <!-- Client-side Interaction Script -->
   <script>
@@ -504,11 +507,55 @@ export class ContractReviewHtmlRendererService {
       }
     }
 
+    let currentWorkbenchMode = 'findings';
+    let visibleCommentIds = ${JSON.stringify(comments.map((c) => c.id))};
+    let activeCommentIndex = 0;
+
+    function switchWorkbenchMode(mode) {
+      currentWorkbenchMode = mode;
+      const findingsTab = document.getElementById('tab-btn-findings');
+      const commentsTab = document.getElementById('tab-btn-comments');
+      const findingsContainer = document.getElementById('findings-cards-container');
+      const commentsContainer = document.getElementById('comments-stream-container');
+      const execSummary = document.getElementById('executive-summary-card');
+
+      if (mode === 'comments') {
+        if (findingsTab) findingsTab.classList.remove('active');
+        if (commentsTab) commentsTab.classList.add('active');
+        if (findingsContainer) findingsContainer.classList.add('hidden');
+        if (commentsContainer) commentsContainer.classList.remove('hidden');
+        if (execSummary) execSummary.classList.add('hidden');
+
+        document.querySelectorAll('#filter-tabs button').forEach(b => {
+          if (b.innerText.includes('批注')) b.classList.add('active-tab');
+          else b.classList.remove('active-tab');
+        });
+
+        if (visibleCommentIds.length > 0) {
+          selectComment(visibleCommentIds[activeCommentIndex], false);
+        }
+      } else {
+        if (commentsTab) commentsTab.classList.remove('active');
+        if (findingsTab) findingsTab.classList.add('active');
+        if (commentsContainer) commentsContainer.classList.add('hidden');
+        if (findingsContainer) findingsContainer.classList.remove('hidden');
+        if (execSummary) execSummary.classList.remove('hidden');
+      }
+      updateNavIndicator();
+    }
+
     function applyFilter(filterType, btn) {
       document.querySelectorAll('#filter-tabs button').forEach(b => {
-        b.classList.remove('active-filter-tab');
+        b.classList.remove('active-tab');
       });
-      btn.classList.add('active-filter-tab');
+      if (btn) btn.classList.add('active-tab');
+
+      if (filterType === 'comments') {
+        switchWorkbenchMode('comments');
+        return;
+      }
+
+      switchWorkbenchMode('findings');
 
       const cards = document.querySelectorAll('.finding-card');
       visibleFindingIds = [];
@@ -523,7 +570,6 @@ export class ContractReviewHtmlRendererService {
         else if (filterType === 'high' && sev === 'high') show = true;
         else if (filterType === 'missing' && type === '信息缺失') show = true;
         else if (filterType === 'verify' && (type === '表述歧义' || type === '待核实附件')) show = true;
-        else if (filterType === 'comments') show = false;
 
         if (show) {
           card.classList.remove('hidden-by-filter');
@@ -532,23 +578,6 @@ export class ContractReviewHtmlRendererService {
           card.classList.add('hidden-by-filter');
         }
       });
-
-      const commentCards = document.querySelectorAll('.comment-card');
-      commentCards.forEach(c => {
-        if (filterType === 'all' || filterType === 'comments') {
-          c.classList.remove('hidden-by-filter');
-        } else {
-          c.classList.add('hidden-by-filter');
-        }
-      });
-
-      if (filterType === 'comments') {
-        const firstComment = document.querySelector('.comment-card:not(.hidden-by-filter)');
-        if (firstComment) {
-          const cid = firstComment.getAttribute('data-comment-id');
-          if (cid) selectComment(cid, false);
-        }
-      }
 
       activeFindingIndex = 0;
       updateNavIndicator();
@@ -619,6 +648,12 @@ export class ContractReviewHtmlRendererService {
     }
 
     function stepFinding(direction) {
+      if (currentWorkbenchMode === 'comments') {
+        if (visibleCommentIds.length === 0) return;
+        activeCommentIndex = (activeCommentIndex + direction + visibleCommentIds.length) % visibleCommentIds.length;
+        selectComment(visibleCommentIds[activeCommentIndex], true);
+        return;
+      }
       if (visibleFindingIds.length === 0) return;
       activeFindingIndex = (activeFindingIndex + direction + visibleFindingIds.length) % visibleFindingIds.length;
       selectFinding(visibleFindingIds[activeFindingIndex], true);
@@ -627,9 +662,15 @@ export class ContractReviewHtmlRendererService {
     function updateNavIndicator() {
       const ind = document.getElementById('nav-indicator');
       if (!ind) return;
-      const total = visibleFindingIds.length;
-      const curr = total > 0 ? activeFindingIndex + 1 : 0;
-      ind.textContent = curr + ' / ' + total;
+      if (currentWorkbenchMode === 'comments') {
+        const total = visibleCommentIds.length;
+        const curr = total > 0 ? activeCommentIndex + 1 : 0;
+        ind.textContent = curr + ' / ' + total;
+      } else {
+        const total = visibleFindingIds.length;
+        const curr = total > 0 ? activeFindingIndex + 1 : 0;
+        ind.textContent = curr + ' / ' + total;
+      }
     }
 
     function toggleExecutiveSummary(btn) {
@@ -778,6 +819,7 @@ export class ContractReviewHtmlRendererService {
     }
 
     function selectComment(commentId, doScroll) {
+      switchWorkbenchMode('comments');
       document.querySelectorAll('.comment-card').forEach(c => c.classList.remove('active-comment-card'));
       document.querySelectorAll('.docx-comment-highlight').forEach(m => m.classList.remove('docx-comment-highlight-active'));
 
@@ -789,28 +831,39 @@ export class ContractReviewHtmlRendererService {
         }
       }
 
+      const idx = visibleCommentIds.indexOf(commentId);
+      if (idx >= 0) {
+        activeCommentIndex = idx;
+        updateNavIndicator();
+      }
+
       const mark = document.getElementById('comment-target-' + commentId);
       if (mark) {
         mark.classList.add('docx-comment-highlight-active');
         if (doScroll !== false) {
           scrollTargetToUpperMiddle(mark);
         }
+      } else if (card) {
+        const clauseIdx = card.getAttribute('data-clause-index');
+        if (clauseIdx && clauseIdx >= 0) {
+          const node = document.getElementById('clause-node-' + clauseIdx);
+          if (node && doScroll !== false) scrollTargetToUpperMiddle(node);
+        }
       }
     }
 
-    function openClauseCommentModal(clauseIndex, clauseHeading, event) {
-      if (event) event.stopPropagation();
+    function openGlobalCommentModal() {
       const modal = document.getElementById('append-comment-modal');
       const box = document.getElementById('append-comment-modal-box');
       if (!modal || !box) return;
 
-      const clauseRef = document.getElementById('comment-modal-clause-ref');
-      const clauseIdxInput = document.getElementById('comment-modal-clause-idx');
+      const clauseSelect = document.getElementById('comment-modal-clause-select');
+      const quoteInput = document.getElementById('comment-modal-quote');
       const targetIdInput = document.getElementById('comment-modal-target-id');
       const textInput = document.getElementById('comment-modal-text');
 
-      if (clauseRef) clauseRef.value = clauseIndex > 0 ? '#' + clauseIndex + ' ' + (clauseHeading || '') : '全文通识';
-      if (clauseIdxInput) clauseIdxInput.value = clauseIndex;
+      if (clauseSelect) clauseSelect.value = '0';
+      if (quoteInput) quoteInput.value = '';
       if (targetIdInput) targetIdInput.value = '';
       if (textInput) {
         textInput.value = '';
@@ -823,30 +876,49 @@ export class ContractReviewHtmlRendererService {
       box.classList.add('scale-100');
     }
 
+    function openClauseCommentModal(clauseIndex, clauseHeading, event) {
+      if (event) event.stopPropagation();
+      openGlobalCommentModal();
+      const clauseSelect = document.getElementById('comment-modal-clause-select');
+      if (clauseSelect) clauseSelect.value = String(clauseIndex);
+    }
+
     function openCommentReplyModal(commentId, author, quoteText, clauseIndex, event) {
       if (event) event.stopPropagation();
-      const modal = document.getElementById('append-comment-modal');
-      const box = document.getElementById('append-comment-modal-box');
-      if (!modal || !box) return;
-
-      const clauseRef = document.getElementById('comment-modal-clause-ref');
+      openGlobalCommentModal();
+      const clauseSelect = document.getElementById('comment-modal-clause-select');
+      const quoteInput = document.getElementById('comment-modal-quote');
       const targetIdInput = document.getElementById('comment-modal-target-id');
-      const clauseIdxInput = document.getElementById('comment-modal-clause-idx');
-      const textInput = document.getElementById('comment-modal-text');
 
-      const shortQuote = quoteText ? (quoteText.length > 20 ? quoteText.slice(0, 18) + '...' : quoteText) : '原条款';
-      if (clauseRef) clauseRef.value = '回复批注 #' + commentId + '（' + author + '）："' + shortQuote + '"';
+      if (clauseSelect) clauseSelect.value = String(clauseIndex);
+      if (quoteInput) quoteInput.value = quoteText || '';
       if (targetIdInput) targetIdInput.value = commentId;
-      if (clauseIdxInput) clauseIdxInput.value = clauseIndex;
-      if (textInput) {
-        textInput.value = '';
-        setTimeout(() => textInput.focus(), 150);
-      }
+    }
 
-      modal.classList.remove('opacity-0', 'pointer-events-none');
-      modal.classList.add('opacity-100', 'pointer-events-auto');
-      box.classList.remove('scale-95');
-      box.classList.add('scale-100');
+    function openCommentFromSelection(event) {
+      if (event) event.stopPropagation();
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed) return;
+      const text = sel.toString().trim();
+      const range = sel.getRangeAt(0);
+
+      let node = range.commonAncestorContainer;
+      while (node && node !== document.body) {
+        if (node.nodeType === 1 && node.classList && node.classList.contains('clause-node')) {
+          break;
+        }
+        node = node.parentNode;
+      }
+      const clauseIdx = (node && node.getAttribute) ? node.getAttribute('data-clause-index') : '0';
+
+      openGlobalCommentModal();
+      const clauseSelect = document.getElementById('comment-modal-clause-select');
+      const quoteInput = document.getElementById('comment-modal-quote');
+      if (clauseSelect) clauseSelect.value = String(clauseIdx || '0');
+      if (quoteInput) quoteInput.value = text;
+
+      const bubble = document.getElementById('text-selection-comment-bubble');
+      if (bubble) bubble.style.display = 'none';
     }
 
     function closeCommentModal() {
@@ -862,15 +934,15 @@ export class ContractReviewHtmlRendererService {
     function submitAppendComment() {
       const authorInput = document.getElementById('comment-modal-author');
       const textInput = document.getElementById('comment-modal-text');
-      const clauseRefInput = document.getElementById('comment-modal-clause-ref');
+      const clauseSelect = document.getElementById('comment-modal-clause-select');
+      const quoteInput = document.getElementById('comment-modal-quote');
       const targetIdInput = document.getElementById('comment-modal-target-id');
-      const clauseIdxInput = document.getElementById('comment-modal-clause-idx');
 
       const author = authorInput ? authorInput.value.trim() : '审阅人';
       const text = textInput ? textInput.value.trim() : '';
-      const clauseRef = clauseRefInput ? clauseRefInput.value : '';
+      const clauseIndex = clauseSelect ? parseInt(clauseSelect.value, 10) : 0;
+      const selectedText = quoteInput ? quoteInput.value.trim() : '';
       const targetId = targetIdInput ? targetIdInput.value : '';
-      const clauseIndex = clauseIdxInput ? parseInt(clauseIdxInput.value, 10) : 0;
 
       if (!text) {
         alert('请输入批注意见与修改建议');
@@ -883,7 +955,7 @@ export class ContractReviewHtmlRendererService {
         author,
         text,
         clauseIndex,
-        clauseRef,
+        selectedText,
         replyToCommentId: targetId || undefined,
         timestamp: new Date().toISOString(),
       };
@@ -915,6 +987,42 @@ export class ContractReviewHtmlRendererService {
         closeCommentModal();
       }
     }
+
+    // Floating Selection Comment Bubble Listeners
+    document.addEventListener('mouseup', function(e) {
+      const bubble = document.getElementById('text-selection-comment-bubble');
+      if (!bubble) return;
+      if (bubble.contains(e.target)) return;
+
+      setTimeout(() => {
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed) {
+          bubble.style.display = 'none';
+          return;
+        }
+        const text = sel.toString().trim();
+        if (text.length < 2) {
+          bubble.style.display = 'none';
+          return;
+        }
+        const range = sel.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        if (rect.width === 0 && rect.height === 0) {
+          bubble.style.display = 'none';
+          return;
+        }
+        bubble.style.display = 'inline-flex';
+        bubble.style.left = (rect.left + rect.width / 2 + window.scrollX) + 'px';
+        bubble.style.top = (rect.top + window.scrollY) + 'px';
+      }, 60);
+    });
+
+    document.addEventListener('mousedown', function(e) {
+      const bubble = document.getElementById('text-selection-comment-bubble');
+      if (bubble && !bubble.contains(e.target)) {
+        bubble.style.display = 'none';
+      }
+    });
 
     document.addEventListener('DOMContentLoaded', initFindingsList);
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
