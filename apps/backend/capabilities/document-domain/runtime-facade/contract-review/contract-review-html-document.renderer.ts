@@ -147,14 +147,6 @@ export class ContractReviewHtmlDocumentRenderer {
               ? `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300" title="包含 ${c.comments!.length} 条 Word 批注">💬 ${c.comments!.length}</span>`
               : ''
           }
-          <button
-            type="button"
-            onclick="openClauseCommentModal(${c.clauseIndex}, '${this.escapeHtml(headingZh)}', event)"
-            class="inline-flex items-center text-[11px] text-[#2E5882] hover:text-[#1A2D42] px-2 py-0.5 rounded border border-[#CBD5E1] bg-white hover:bg-slate-100 transition cursor-pointer font-semibold shadow-2xs"
-            title="针对该条款追加批注"
-          >
-            + 批注
-          </button>
           <span class="text-[10px] font-mono text-[#667085]">#${c.clauseIndex}</span>
         </div>
       </div>
@@ -360,8 +352,7 @@ export class ContractReviewHtmlDocumentRenderer {
         if (comment.selectedText && comment.selectedText.trim().length >= 2) {
           const commentEscaped = this.escapeHtml(comment.selectedText.trim());
           if (formatted.includes(commentEscaped)) {
-            const commentTitle = `【Word 原生批注】${this.escapeHtml(comment.author || '审阅人')}：${this.escapeHtml(comment.text || '')}（点击在右侧查看详情与回复）`;
-            const commentMarkHtml = `<mark id="comment-target-${comment.id}" class="docx-comment-highlight rounded-xs px-0.5 transition-all cursor-pointer hover:bg-amber-200 select-text" data-comment-id="${comment.id}" onclick="handleCommentClick('${comment.id}', ${clause.clauseIndex}, event)" title="${commentTitle}">${commentEscaped}<span class="docx-comment-badge" onclick="handleCommentClick('${comment.id}', ${clause.clauseIndex}, event)">💬 批注 #${comment.id}</span></mark>`;
+            const commentMarkHtml = `<mark id="comment-target-${comment.id}" class="docx-comment-highlight rounded-xs px-0.5 transition-all cursor-pointer select-text" data-comment-id="${comment.id}" onclick="handleCommentClick('${comment.id}', ${clause.clauseIndex}, event)">${commentEscaped}<span class="docx-comment-badge" data-comment-id="${comment.id}" onclick="handleCommentClick('${comment.id}', ${clause.clauseIndex}, event)">💬 批注 #${comment.id}</span></mark>`;
             formatted = formatted.replace(commentEscaped, commentMarkHtml);
           }
         }

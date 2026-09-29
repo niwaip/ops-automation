@@ -546,27 +546,70 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   width: 0;
 }
 
-/* Executive KPI Metric Tile Styles */
+/* Executive KPI Metric Tile Styles (Refined & Modern) */
 .kpi-metric-tile {
-  background-color: #FFFFFF;
-  border: 1px solid #E2E8F0;
-  border-radius: 8px;
-  padding: 8px 10px;
+  border-radius: 10px;
+  padding: 10px 12px;
   text-align: left;
-  transition: all 0.15s ease;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 .kpi-metric-tile:hover {
-  border-color: #CBD5E1;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
 }
-.kpi-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  margin-right: 4px;
-  vertical-align: middle;
+.kpi-metric-tile:active {
+  transform: translateY(0);
+}
+
+.kpi-card-high {
+  background: linear-gradient(135deg, #FEF2F2 0%, #FFFFFF 100%);
+  border: 1px solid #FECACA;
+  border-top: 3px solid #DC2626;
+}
+.kpi-card-high:hover {
+  border-color: #F87171;
+}
+
+.kpi-card-missing {
+  background: linear-gradient(135deg, #FFFBEB 0%, #FFFFFF 100%);
+  border: 1px solid #FDE68A;
+  border-top: 3px solid #D97706;
+}
+.kpi-card-missing:hover {
+  border-color: #FBBF24;
+}
+
+.kpi-card-verify {
+  background: linear-gradient(135deg, #EFF6FF 0%, #FFFFFF 100%);
+  border: 1px solid #BFDBFE;
+  border-top: 3px solid #2563EB;
+}
+.kpi-card-verify:hover {
+  border-color: #60A5FA;
+}
+
+.kpi-card-pass {
+  background: linear-gradient(135deg, #F0FDF4 0%, #FFFFFF 100%);
+  border: 1px solid #BBF7D0;
+  border-top: 3px solid #16A34A;
+}
+.kpi-card-pass:hover {
+  border-color: #4ADE80;
+}
+
+.kpi-icon-pill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  letter-spacing: 0.02em;
 }
 
 /* Risk Finding Evidence Marks (Distinct from Docx Comments) */
@@ -609,20 +652,92 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   color: #9A3412;
   border: 1px solid #FDBA74;
 }
+
+/* Word Comment Highlights & Rich Badges */
+.docx-comment-highlight {
+  background-color: #FEF3C7;
+  border-bottom: 2px solid #F59E0B;
+  padding: 1px 2px;
+  border-radius: 2px;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+.docx-comment-highlight:hover,
+.docx-comment-highlight-active {
+  background-color: #FDE68A !important;
+  border-bottom-color: #D97706 !important;
+}
+
 .docx-comment-badge {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  padding: 1px 5px;
-  border-radius: 4px;
+  padding: 2px 7px;
+  border-radius: 5px;
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   vertical-align: middle;
-  margin-left: 4px;
-  background-color: #FDE68A;
+  margin-left: 5px;
+  background: linear-gradient(180deg, #FEF3C7 0%, #FDE68A 100%);
   color: #78350F;
   border: 1px solid #FCD34D;
+  box-shadow: 0 1px 2px rgba(180, 83, 9, 0.15);
   cursor: pointer;
   user-select: none;
+  transition: all 0.15s ease;
+}
+.docx-comment-badge:hover {
+  background: #FCD34D;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(180, 83, 9, 0.25);
+}
+.docx-comment-badge:active {
+  transform: translateY(0);
+}
+
+/* Fast Rich Hover Popover for Docx Comments (Snappy, Beautiful, Large Font) */
+#comment-hover-popover {
+  position: absolute;
+  z-index: 60;
+  background-color: #FFFFFF;
+  border: 1px solid #FCD34D;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.12), 0 4px 8px -2px rgba(0, 0, 0, 0.06);
+  padding: 12px 14px;
+  width: 320px;
+  max-width: 90vw;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  pointer-events: auto;
+  opacity: 0;
+  transform: scale(0.96) translateY(4px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  visibility: hidden;
+}
+#comment-hover-popover.popover-visible {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  visibility: visible;
+}
+#comment-hover-popover::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #FFFFFF;
+  border-left: 1px solid #FCD34D;
+  border-bottom: 1px solid #FCD34D;
+  transform: rotate(-45deg);
+}
+#comment-hover-popover.arrow-top::after {
+  top: -6px;
+  left: 24px;
+  border-left: none;
+  border-bottom: none;
+  border-top: 1px solid #FCD34D;
+  border-right: 1px solid #FCD34D;
+}
+#comment-hover-popover.arrow-bottom::after {
+  bottom: -6px;
+  left: 24px;
 }
 `;

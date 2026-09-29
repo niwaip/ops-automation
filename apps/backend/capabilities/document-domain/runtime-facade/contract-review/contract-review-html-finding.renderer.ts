@@ -220,7 +220,8 @@ export class ContractReviewHtmlFindingRenderer {
     metrics?: ContractReviewMetrics,
     commentCardsHtml?: string,
     commentsCount = 0,
-    commentDetailWorkspaceHtml?: string
+    commentDetailWorkspaceHtml?: string,
+    commentCreateWorkspaceHtml?: string
   ): string {
     const findingCardsHtml = findings.map((f, idx) => this.renderFindingCard(f, idx)).join('\n');
     const executiveSummaryHtml = this.renderExecutiveSummary(findings, metrics);
@@ -259,14 +260,6 @@ export class ContractReviewHtmlFindingRenderer {
           }
         </div>
         <div class="flex items-center gap-1.5">
-          <button
-            type="button"
-            onclick="openGlobalCommentModal()"
-            class="text-[11px] text-amber-900 hover:text-amber-950 font-bold px-2.5 py-1 rounded border border-amber-400 bg-amber-100 hover:bg-amber-200 transition cursor-pointer flex items-center gap-1 shadow-2xs"
-            title="追加新批注"
-          >
-            <span>+ 写批注</span>
-          </button>
           <button
             type="button"
             id="toggle-all-details-btn"
@@ -308,6 +301,9 @@ export class ContractReviewHtmlFindingRenderer {
 
       <!-- Dedicated Comment Detail & In-Place Reply Workspace (Active on Comment Click) -->
       ${commentDetailWorkspaceHtml || ''}
+
+      <!-- Dedicated Comment Create Workspace (Active on Text Selection Add Comment) -->
+      ${commentCreateWorkspaceHtml || ''}
 
     </section>
     `;
@@ -362,33 +358,44 @@ export class ContractReviewHtmlFindingRenderer {
       <div id="executive-summary-content" class="space-y-2.5 text-xs">
         <!-- Metric Distribution Bar (Executive 4-Column KPI Cards) -->
         <div class="grid grid-cols-4 gap-2 text-left select-none font-sans">
-          <div class="kpi-metric-tile" style="border-left: 3px solid #DC2626;">
-            <div class="text-[10px] text-[#64748B] font-semibold flex items-center">
-              <span class="kpi-dot" style="background-color: #DC2626;"></span>
-              <span>高风险项</span>
+          <div class="kpi-metric-tile kpi-card-high" onclick="applyFilter('high')" title="点击筛选高风险审查项">
+            <div class="flex items-center justify-between">
+              <span class="kpi-icon-pill bg-red-100 text-red-700">🔴 高风险项</span>
             </div>
-            <div class="text-base font-bold text-[#991B1B] font-mono mt-1">${highFindings.length}</div>
+            <div class="flex items-baseline gap-1 mt-1.5">
+              <span class="text-2xl font-black text-[#991B1B] font-mono leading-none">${highFindings.length}</span>
+              <span class="text-[10px] text-red-600/80 font-sans font-medium">项</span>
+            </div>
           </div>
-          <div class="kpi-metric-tile" style="border-left: 3px solid #D97706;">
-            <div class="text-[10px] text-[#64748B] font-semibold flex items-center">
-              <span class="kpi-dot" style="background-color: #D97706;"></span>
-              <span>必备缺失</span>
+
+          <div class="kpi-metric-tile kpi-card-missing" onclick="applyFilter('missing')" title="点击筛选必备条款缺失项">
+            <div class="flex items-center justify-between">
+              <span class="kpi-icon-pill bg-amber-100 text-amber-800">⚠️ 必备缺失</span>
             </div>
-            <div class="text-base font-bold text-[#92400E] font-mono mt-1">${missingFindings.length}</div>
+            <div class="flex items-baseline gap-1 mt-1.5">
+              <span class="text-2xl font-black text-[#92400E] font-mono leading-none">${missingFindings.length}</span>
+              <span class="text-[10px] text-amber-700/80 font-sans font-medium">项</span>
+            </div>
           </div>
-          <div class="kpi-metric-tile" style="border-left: 3px solid #2563EB;">
-            <div class="text-[10px] text-[#64748B] font-semibold flex items-center">
-              <span class="kpi-dot" style="background-color: #2563EB;"></span>
-              <span>偏颇待核实</span>
+
+          <div class="kpi-metric-tile kpi-card-verify" onclick="applyFilter('verify')" title="点击筛选偏颇待核实项">
+            <div class="flex items-center justify-between">
+              <span class="kpi-icon-pill bg-blue-100 text-blue-800">🔍 偏颇待核</span>
             </div>
-            <div class="text-base font-bold text-[#1E40AF] font-mono mt-1">${verifyFindings.length}</div>
+            <div class="flex items-baseline gap-1 mt-1.5">
+              <span class="text-2xl font-black text-[#1E40AF] font-mono leading-none">${verifyFindings.length}</span>
+              <span class="text-[10px] text-blue-700/80 font-sans font-medium">项</span>
+            </div>
           </div>
-          <div class="kpi-metric-tile" style="border-left: 3px solid #16A34A;">
-            <div class="text-[10px] text-[#64748B] font-semibold flex items-center">
-              <span class="kpi-dot" style="background-color: #16A34A;"></span>
-              <span>合规通过</span>
+
+          <div class="kpi-metric-tile kpi-card-pass" onclick="applyFilter('all')" title="查看全部合规条款">
+            <div class="flex items-center justify-between">
+              <span class="kpi-icon-pill bg-emerald-100 text-emerald-800">✓ 合规通过</span>
             </div>
-            <div class="text-base font-bold text-[#166534] font-mono mt-1">${metrics?.passCount ?? 0}</div>
+            <div class="flex items-baseline gap-1 mt-1.5">
+              <span class="text-2xl font-black text-[#166534] font-mono leading-none">${metrics?.passCount ?? 0}</span>
+              <span class="text-[10px] text-emerald-700/80 font-sans font-medium">款</span>
+            </div>
           </div>
         </div>
 

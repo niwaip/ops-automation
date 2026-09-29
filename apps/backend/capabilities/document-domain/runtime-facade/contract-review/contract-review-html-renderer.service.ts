@@ -100,20 +100,15 @@ export class ContractReviewHtmlRendererService {
       canComment,
       commentApiUrl,
     });
+    const commentCreateWorkspaceHtml = this.commentRenderer.renderCommentCreateWorkspace();
     const findingsWorkbenchHtml = this.findingRenderer.renderFindingsWorkbench(
       findings,
       metrics,
       commentCardsHtml,
       comments.length,
-      commentDetailWorkspaceHtml
+      commentDetailWorkspaceHtml,
+      commentCreateWorkspaceHtml
     );
-
-    // 6. Render Append Comment Modal Dialog
-    const appendCommentModalHtml = this.commentRenderer.renderAppendCommentModal({
-      canComment,
-      commentApiUrl,
-      clauses,
-    });
 
     // Truncation banner for partial review
     const truncationBannerHtml = metrics.isTruncated
@@ -305,25 +300,8 @@ export class ContractReviewHtmlRendererService {
         </div>
       </div>
 
-      <!-- Right: Action Button + Bilingual + Stepper + TOC + Score (ALL STRICTLY ON THE RIGHT, NO WRAP) -->
+      <!-- Right: Bilingual + Stepper + TOC + Score (ALL STRICTLY ON THE RIGHT, NO WRAP) -->
       <div class="flex items-center gap-2 sm:gap-2.5 shrink-0 ml-auto">
-        ${
-          canComment
-            ? `
-        <!-- Prominent "+ 追加批注" Action Button -->
-        <button
-          type="button"
-          onclick="openGlobalCommentModal()"
-          class="btn-append-comment-primary"
-          title="针对合同追加新批注"
-        >
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-          <span>追加批注</span>
-        </button>
-        <div class="h-4 w-px bg-[#334E68] hidden sm:block"></div>`
-            : ''
-        }
-
         <!-- Language Switcher -->
         <div class="inline-flex rounded border border-[#334E68] bg-[#101E2E] p-0.5 text-xs select-none shrink-0">
           <button type="button" id="lang-btn-both" onclick="setLanguageMode('both')" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#2E5882] text-white transition cursor-pointer">
@@ -391,10 +369,11 @@ export class ContractReviewHtmlRendererService {
     <span>添加批注</span>
   </div>
 
+  <!-- Fast Rich Hover Popover for Word Comments -->
+  <div id="comment-hover-popover"></div>
+
   <!-- Client-side Interaction Script -->
   ${buildContractReviewClientScript({ findings, comments, commentApiUrl })}
-
-  ${appendCommentModalHtml}
 </body>
 </html>`;
   }

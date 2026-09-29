@@ -303,12 +303,15 @@ describe('Word OpenXML Comments End-to-End Extraction & Rendering', () => {
     expect(html).toContain('💬 批注');
     expect(html).toContain('applyFilter(\'comments\', this)');
 
-    // Check Append Comment modal
-    expect(html).toContain('id="append-comment-modal"');
-    expect(html).toContain('追加 Word 批注（回写后台文档）');
-    expect(html).toContain('id="comment-modal-author"');
-    expect(html).toContain('id="comment-modal-text"');
-    expect(html).toContain('submitAppendComment()');
+    // Check Sidebar Comment Creation Workspace
+    expect(html).toContain('id="comment-create-workspace"');
+    expect(html).toContain('拟定新批注');
+    expect(html).toContain('id="comment-create-author"');
+    expect(html).toContain('id="comment-create-text"');
+    expect(html).toContain('submitCommentCreateFromSidebar()');
+
+    // Check Comment Hover Popover
+    expect(html).toContain('id="comment-hover-popover"');
 
     // Save test docx and generated preview HTML for browser verification
     const { WORKSPACE_ROOT } = await import('../document-payload-resolver.helper');

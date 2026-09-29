@@ -105,7 +105,7 @@ export class ContractReviewHtmlCommentRenderer {
 
   /**
    * Render the dedicated right-hand Comment Detail & In-Place Reply Workspace.
-   * When any comment is selected, this workspace replaces the overview list.
+   * Structured as a formal corporate Approval / Review Log Card with collapsible content.
    */
   renderCommentDetailWorkspace(params: { canComment?: boolean; commentApiUrl?: string }): string {
     const { canComment = true } = params;
@@ -123,11 +123,8 @@ export class ContractReviewHtmlCommentRenderer {
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
             <span>返回清单</span>
           </button>
-          <span id="comment-detail-badge" class="px-2 py-0.5 text-[11px] font-bold rounded bg-amber-100 text-amber-900 border border-amber-300">
-            Word 批注
-          </span>
-          <span id="comment-detail-status-badge" class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-            待处理
+          <span class="text-xs font-bold text-[#1E293B]">
+            📋 审阅批注底稿
           </span>
         </div>
 
@@ -154,83 +151,111 @@ export class ContractReviewHtmlCommentRenderer {
         </div>
       </div>
 
-      <!-- Detail Content Card -->
-      <div class="bg-white rounded-lg border border-[#D9E1EC] p-4 shadow-card space-y-3.5">
-        <!-- Comment Author & Meta -->
-        <div class="flex items-start justify-between gap-2 pb-2.5 border-b border-[#E2E8F0]">
-          <div class="flex items-center gap-2.5">
-            <div id="comment-detail-avatar" class="w-8 h-8 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-xs font-bold text-amber-900 shrink-0 select-none">
-              审
-            </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <span id="comment-detail-author" class="text-sm font-bold text-[#1E293B]">审阅人</span>
-                <span id="comment-detail-clause-tag" class="text-xs font-semibold text-[#2E5882]"></span>
+      <!-- Formal Approval / Review Log Card Body -->
+      <div class="bg-white rounded-lg border border-[#D9E1EC] p-3.5 shadow-card space-y-3">
+        
+        <!-- 1. Reviewer & Audit Trail Node Card -->
+        <div class="bg-[#F8FAFC] rounded-lg border border-[#E2E8F0] p-3 space-y-2.5">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-2.5">
+              <div id="comment-detail-avatar" class="w-9 h-9 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-sm font-bold text-amber-900 shrink-0 select-none shadow-2xs">
+                王
               </div>
-              <div id="comment-detail-date" class="text-[10px] text-[#64748B] font-mono mt-0.5"></div>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span id="comment-detail-author-name" class="text-sm font-bold text-[#1E293B]">审阅人</span>
+                  <span id="comment-detail-author-title" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">法务顾问</span>
+                  <span id="comment-detail-badge" class="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-amber-50 text-amber-900 border border-amber-200">Word 原生批注 #1</span>
+                </div>
+                <div id="comment-detail-date" class="text-[10px] text-[#64748B] font-mono mt-0.5 flex items-center gap-1">
+                  <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  <span>2026-09-29 10:15</span>
+                </div>
+              </div>
             </div>
+            <span id="comment-detail-status-badge" class="px-2 py-0.5 text-[10px] font-medium rounded bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+              待处理
+            </span>
+          </div>
+
+          <!-- Clause affiliation -->
+          <div class="pt-2 border-t border-[#EEF2F6] flex items-center gap-1.5 text-xs text-[#2E5882]">
+            <svg class="w-3.5 h-3.5 text-[#2E5882] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            <span class="text-[#64748B] text-[11px]">归属条款：</span>
+            <span id="comment-detail-clause-tag" class="font-semibold text-xs text-[#1E293B]">第二条 合同价款与支付结算周期</span>
           </div>
         </div>
 
-        <!-- Quoted Text Section -->
-        <div id="comment-detail-quote-container" class="bg-[#FFFBEB] rounded-md border border-amber-200/90 p-2.5">
-          <div class="flex items-center justify-between text-[11px] font-semibold text-amber-900 mb-1 select-none">
-            <span class="flex items-center gap-1">
+        <!-- 2. Quoted Original Text Section -->
+        <div id="comment-detail-quote-container" class="bg-[#FFFBEB] rounded-lg border border-amber-200/90 p-3">
+          <div class="flex items-center justify-between text-[11px] font-semibold text-amber-900 mb-1.5 select-none">
+            <span class="flex items-center gap-1.5">
               <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path></svg>
-              <span>原文锚定引句</span>
+              <span>📑 关联引用合同原文</span>
             </span>
             <button
               type="button"
               id="comment-detail-locate-btn"
               onclick="locateCurrentDetailCommentInDoc()"
-              class="text-[11px] text-amber-900 hover:text-amber-950 hover:underline flex items-center gap-0.5 font-semibold cursor-pointer"
+              class="text-[11px] text-amber-900 hover:text-amber-950 hover:underline flex items-center gap-0.5 font-bold cursor-pointer"
             >
-              <span>定位正文</span>
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+              <span>定位正文 ↗</span>
             </button>
           </div>
-          <blockquote id="comment-detail-quote" class="text-[#1E293B] text-xs font-normal italic select-text border-l-2 border-amber-400 pl-2.5 my-1 leading-relaxed">
+          <blockquote id="comment-detail-quote" class="text-[#1E293B] text-xs font-normal italic select-text border-l-3 border-amber-400 pl-2.5 my-1 leading-relaxed">
           </blockquote>
         </div>
 
-        <!-- Original Comment Body -->
-        <div class="p-3 rounded-md bg-[#F4F6F9] border-l-3 border-l-[#2E5882]">
-          <div class="text-[10px] font-bold text-[#2E5882] mb-1 flex items-center gap-1 uppercase tracking-wider select-none">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
-            <span>批注意见与修改要求</span>
+        <!-- 3. Review / Approval Finding Content (Collapsible) -->
+        <div class="rounded-lg border border-[#D9E1EC] bg-white overflow-hidden shadow-2xs">
+          <div class="px-3.5 py-2 bg-[#F8FAFC] border-b border-[#E2E8F0] flex items-center justify-between select-none">
+            <div class="flex items-center gap-1.5 text-xs font-bold text-[#1E293B]">
+              <svg class="w-3.5 h-3.5 text-[#2E5882]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+              <span>💬 审阅审批意见与风险要求</span>
+            </div>
+            <button
+              type="button"
+              id="btn-toggle-comment-body"
+              onclick="toggleCommentDetailBodyCollapse()"
+              class="text-[11px] text-[#2E5882] hover:text-[#1A2D42] font-semibold flex items-center gap-0.5 cursor-pointer"
+            >
+              <span id="btn-toggle-comment-body-text">收起意见 ▲</span>
+            </button>
           </div>
-          <p id="comment-detail-body" class="text-xs text-[#1E293B] leading-relaxed select-text whitespace-pre-wrap font-normal"></p>
+          <div id="comment-detail-body-wrapper" class="p-3 transition-all duration-200">
+            <p id="comment-detail-body" class="text-xs text-[#1E293B] leading-relaxed select-text whitespace-pre-wrap font-normal"></p>
+          </div>
         </div>
 
-        <!-- Inline Reply & Word Write-Back Desk -->
+        <!-- 4. In-place Reply & Word Write-Back Desk -->
         ${
           canComment
             ? `
-        <div class="pt-3 border-t border-[#E2E8F0] space-y-2.5">
+        <div class="p-3.5 rounded-lg border border-[#D9E1EC] bg-[#F8FAFC] space-y-2.5">
           <div class="flex items-center justify-between select-none">
             <span class="text-xs font-bold text-[#1E293B] flex items-center gap-1">
-              <span>✍️ 追加答复 / 新批注（回写 Word）</span>
+              <span>✍️ 追加审批答复 / 修改要求（回写 Word）</span>
             </span>
             <span class="text-[10px] text-[#64748B]">受控回写至后台 OpenXML</span>
           </div>
 
-          <div class="grid grid-cols-1 gap-2">
+          <div class="space-y-2">
             <div>
               <label class="block text-[11px] font-semibold text-[#334155] mb-0.5">答复人 / 审阅者</label>
               <input
                 type="text"
                 id="comment-detail-reply-author"
-                class="w-full px-2.5 py-1.5 rounded-md border border-[#D9E1EC] focus:border-[#2E5882] focus:ring-1 focus:ring-[#2E5882] text-xs text-[#1E293B]"
+                class="w-full px-2.5 py-1.5 rounded-md border border-[#D9E1EC] bg-white focus:border-[#2E5882] focus:ring-1 focus:ring-[#2E5882] text-xs text-[#1E293B]"
                 value="法务审阅人"
               />
             </div>
             <div>
-              <label class="block text-[11px] font-semibold text-[#334155] mb-0.5">答复意见 / 补充修改批注</label>
+              <label class="block text-[11px] font-semibold text-[#334155] mb-0.5">答复意见 / 补充修改要求</label>
               <textarea
                 id="comment-detail-reply-text"
                 rows="3"
-                class="w-full px-2.5 py-1.5 rounded-md border border-[#D9E1EC] focus:border-[#2E5882] focus:ring-1 focus:ring-[#2E5882] text-xs text-[#1E293B] leading-relaxed resize-none"
-                placeholder="请输入针对此条批注的答复说明、修改方案或进一步风控指引..."
+                class="w-full px-2.5 py-1.5 rounded-md border border-[#D9E1EC] bg-white focus:border-[#2E5882] focus:ring-1 focus:ring-[#2E5882] text-xs text-[#1E293B] leading-relaxed resize-none"
+                placeholder="请输入针对此条审批批注的答复说明、修改方案或进一步风控指引..."
               ></textarea>
             </div>
           </div>
@@ -249,8 +274,7 @@ export class ContractReviewHtmlCommentRenderer {
               onclick="submitCommentDetailReply()"
               class="px-3.5 py-1.5 rounded-md bg-[#1A2D42] text-xs font-semibold text-white hover:bg-[#243B53] shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
             >
-              <span>提交回写 Word</span>
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+              <span>提交回写 Word →</span>
             </button>
           </div>
         </div>`
@@ -262,141 +286,108 @@ export class ContractReviewHtmlCommentRenderer {
   }
 
   /**
-   * Render the floating modal dialog for appending new comments back into Word OpenXML.
+   * Render the dedicated Sidebar Workspace for adding a new comment (No modal popups!).
    */
-  renderAppendCommentModal(params: {
-    canComment?: boolean;
-    commentApiUrl?: string;
-    clauses?: ClauseReviewItem[];
-  }): string {
-    const { canComment = true, commentApiUrl = '', clauses = [] } = params;
-    if (!canComment) return '';
-
-    const clauseOptionsHtml = clauses
-      .map((c) => {
-        const title = c.title ? `${c.clauseNumber || ''} ${c.title}`.trim() : c.clauseNumber || `条款 #${c.clauseIndex}`;
-        return `<option value="${c.clauseIndex}">#${c.clauseIndex} ${this.escapeHtml(title)}</option>`;
-      })
-      .join('\n');
-
+  renderCommentCreateWorkspace(): string {
     return `
-    <!-- 追加 Word 批注弹窗 (Append Word Comment Modal) -->
-    <div
-      id="append-comment-modal"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs opacity-0 pointer-events-none transition-all duration-200"
-      aria-hidden="true"
-    >
-      <div
-        id="append-comment-modal-box"
-        class="bg-white w-full max-w-lg rounded-xl shadow-2xl border border-[#D9E1EC] overflow-hidden transform scale-95 transition-all duration-200"
-      >
-        <!-- Modal Top Bar (Style A Deep Navy) -->
-        <div class="bg-[#1A2D42] px-5 py-3.5 text-white flex items-center justify-between border-b border-[#243B53]">
-          <div class="flex items-center gap-2">
-            <span class="text-base">✍️</span>
-            <div>
-              <h3 class="text-sm font-bold leading-tight">追加 Word 批注（回写后台文档）</h3>
-              <p class="text-[10px] text-slate-300">通过业务控制面 API 回写至 Word OpenXML 批注流</p>
-            </div>
-          </div>
+    <div id="comment-create-workspace" class="hidden flex flex-col space-y-3 font-sans">
+      <!-- Top Action Bar -->
+      <div class="flex items-center justify-between py-2 px-3 border border-[#D9E1EC] bg-slate-50 rounded-lg select-none">
+        <div class="flex items-center gap-2">
           <button
             type="button"
-            onclick="closeCommentModal()"
-            class="text-slate-400 hover:text-white p-1 rounded hover:bg-white/10 transition cursor-pointer"
-            title="关闭 (Esc)"
+            onclick="exitCommentCreateMode()"
+            class="px-2.5 py-1 text-xs font-semibold rounded border border-[#CBD5E1] bg-white text-[#2E5882] hover:bg-[#2E5882] hover:text-white transition flex items-center gap-1 cursor-pointer shadow-2xs"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            <span>返回清单</span>
           </button>
+          <span class="px-2 py-0.5 text-[11px] font-bold rounded bg-amber-100 text-amber-900 border border-amber-300">
+            ✍️ 拟定新批注
+          </span>
+        </div>
+        <span class="text-[10px] text-[#64748B]">侧边栏就地操作</span>
+      </div>
+
+      <!-- Creation Card -->
+      <div class="bg-white rounded-lg border border-[#D9E1EC] p-4 shadow-card space-y-3.5">
+        <!-- Quoted Context Card -->
+        <div id="comment-create-quote-container" class="bg-[#FFFBEB] rounded-lg border border-amber-200/90 p-3">
+          <div class="flex items-center justify-between text-[11px] font-semibold text-amber-900 mb-1 select-none">
+            <span class="flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path></svg>
+              <span>📑 选中的原文字句</span>
+            </span>
+            <span id="comment-create-clause-label" class="text-[10px] font-medium text-[#2E5882]"></span>
+          </div>
+          <blockquote id="comment-create-quote-text" class="text-[#1E293B] text-xs font-normal italic select-text border-l-3 border-amber-400 pl-2.5 my-1 leading-relaxed">
+          </blockquote>
+          <input type="hidden" id="comment-create-clause-index" value="0" />
         </div>
 
-        <!-- Modal Form Content -->
-        <div class="p-5 space-y-3.5 text-xs">
-          <!-- Quoted Context / Clause (Optional reference) -->
-          <div>
-            <label class="block text-[11px] font-semibold text-[#334155] mb-1">
-              关联条款 <span class="text-red-500">*</span>
-            </label>
-            <select
-              id="comment-modal-clause-select"
-              class="w-full px-3 py-1.5 rounded-md border border-[#D9E1EC] bg-[#F8FAFC] text-[#1E293B] text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#2E5882] cursor-pointer"
-            >
-              <option value="0">【通用】全合同通用批注 / 未限定特定段落</option>
-              ${clauseOptionsHtml}
-            </select>
-            <input type="hidden" id="comment-modal-target-id" value="" />
-          </div>
-
-          <!-- Quoted Text Field -->
-          <div>
-            <label class="block text-[11px] font-semibold text-[#334155] mb-1">
-              引用的原文字句（可选）
-            </label>
-            <input
-              type="text"
-              id="comment-modal-quote"
-              placeholder="可手动输入或通过在正文中划选文字自动填入"
-              class="w-full px-3 py-1.5 rounded-md border border-[#D9E1EC] focus:border-[#2E5882] focus:ring-1 focus:ring-[#2E5882] text-xs text-[#1E293B]"
-            />
-          </div>
-
-          <!-- Author Field -->
+        <!-- Form fields -->
+        <div class="space-y-3">
           <div>
             <label class="block text-[11px] font-semibold text-[#334155] mb-1">
               批注人 / 审阅者姓名 <span class="text-red-500">*</span>
             </label>
             <input
               type="text"
-              id="comment-modal-author"
+              id="comment-create-author"
               class="w-full px-3 py-1.5 rounded-md border border-[#D9E1EC] focus:border-[#2E5882] focus:ring-1 focus:ring-[#2E5882] text-xs text-[#1E293B]"
-              placeholder="例如：张律师 (法务部)"
               value="法务审阅人"
+              placeholder="例如：张律师 (法务部)"
             />
           </div>
 
-          <!-- Comment Textarea -->
           <div>
             <label class="block text-[11px] font-semibold text-[#334155] mb-1">
-              批注意见与修改建议 <span class="text-red-500">*</span>
+              批注意见与修改要求 <span class="text-red-500">*</span>
             </label>
             <textarea
-              id="comment-modal-text"
-              rows="4"
+              id="comment-create-text"
+              rows="5"
               class="w-full px-3 py-2 rounded-md border border-[#D9E1EC] focus:border-[#2E5882] focus:ring-1 focus:ring-[#2E5882] text-xs text-[#1E293B] leading-relaxed resize-none"
-              placeholder="请输入针对该条款的具体风控修改意见、增删要求或商业提示..."
+              placeholder="请输入针对选中文字的具体风控修改意见、增删要求或商务提示..."
             ></textarea>
           </div>
 
-          <!-- Architecture & Security Note -->
           <div class="p-2.5 rounded-md bg-[#EDF1F5] text-[10px] text-[#475569] leading-relaxed flex items-start gap-1.5">
             <span class="text-xs shrink-0">🛡️</span>
             <div>
-              <strong>无状态安全回写</strong>：页面端不直接修改文件，提交后将携带当前操作人身份向后台业务控制面发起受控回写请求，自动派生新版 Word 文档并同步 OpenXML 批注流。
+              <strong>无状态安全回写</strong>：页面端不直接修改文件，提交后携带操作人身份向后台发起受控回写请求，自动在 Word OpenXML 中注入批注并派生新版本。
             </div>
           </div>
         </div>
 
-        <!-- Modal Footer Actions -->
-        <div class="px-5 py-3 bg-[#F8FAFC] border-t border-[#E2E8F0] flex items-center justify-end gap-2.5">
+        <!-- Action Footer -->
+        <div class="pt-3 border-t border-[#E2E8F0] flex items-center justify-end gap-2.5">
           <button
             type="button"
-            onclick="closeCommentModal()"
+            onclick="exitCommentCreateMode()"
             class="px-3 py-1.5 rounded-md border border-[#D9E1EC] bg-white text-xs font-medium text-[#475569] hover:bg-slate-50 transition cursor-pointer"
           >
             取消
           </button>
           <button
             type="button"
-            id="comment-modal-submit-btn"
-            onclick="submitAppendComment()"
+            id="comment-create-submit-btn"
+            onclick="submitCommentCreateFromSidebar()"
             class="px-4 py-1.5 rounded-md bg-[#1A2D42] text-xs font-semibold text-white hover:bg-[#243B53] shadow-xs transition flex items-center gap-1.5 cursor-pointer"
           >
-            <span>提交回写 Word</span>
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            <span>提交回写 Word →</span>
           </button>
         </div>
       </div>
     </div>
     `;
+  }
+
+  /**
+   * Stub for backward compatibility. Modals are now deprecated in favor of sidebar workspace.
+   */
+  renderAppendCommentModal(params?: unknown): string {
+    return '';
   }
 
   private formatDate(isoDate: string): string {

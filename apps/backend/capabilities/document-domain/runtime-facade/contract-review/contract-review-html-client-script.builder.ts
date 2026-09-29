@@ -472,35 +472,58 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       const listHeader = document.getElementById('workbench-list-header');
       const findingsStream = document.getElementById('findings-stream');
       const detailWorkspace = document.getElementById('comment-detail-workspace');
+      const createWorkspace = document.getElementById('comment-create-workspace');
 
       if (execSummary) execSummary.classList.add('hidden');
       if (listHeader) listHeader.classList.add('hidden');
       if (findingsStream) findingsStream.classList.add('hidden');
+      if (createWorkspace) createWorkspace.classList.add('hidden');
       if (detailWorkspace) detailWorkspace.classList.remove('hidden');
 
-      // Populate Comment Data
-      const badge = document.getElementById('comment-detail-badge');
-      if (badge) badge.textContent = 'Word 批注 · #' + comment.id;
+      // Parse Author Name and Title (e.g. "王建国 (法务合规总监)")
+      let rawAuthor = comment.author || '审阅人';
+      let authorName = rawAuthor;
+      let authorTitle = '法务合规';
+      const titleMatch = rawAuthor.match(/^([^(（]+)[(（]([^)）]+)[)）]$/);
+      if (titleMatch) {
+        authorName = titleMatch[1].trim();
+        authorTitle = titleMatch[2].trim();
+      }
+
+      const authorNameEl = document.getElementById('comment-detail-author-name');
+      if (authorNameEl) authorNameEl.textContent = authorName;
+
+      const authorTitleEl = document.getElementById('comment-detail-author-title');
+      if (authorTitleEl) authorTitleEl.textContent = authorTitle;
+
+      const avatarEl = document.getElementById('comment-detail-avatar');
+      if (avatarEl) avatarEl.textContent = authorName.slice(0, 1);
+
+      const badgeEl = document.getElementById('comment-detail-badge');
+      if (badgeEl) badgeEl.textContent = 'Word 原生批注 #' + comment.id;
 
       const statusBadge = document.getElementById('comment-detail-status-badge');
       if (statusBadge) {
         statusBadge.textContent = comment.isResolved ? '已解决' : '待处理';
         statusBadge.className = comment.isResolved
-          ? 'px-1.5 py-0.5 text-[10px] font-medium rounded bg-slate-100 text-slate-600 border border-slate-200'
-          : 'px-1.5 py-0.5 text-[10px] font-medium rounded bg-emerald-50 text-emerald-700 border border-emerald-200';
+          ? 'px-2 py-0.5 text-[10px] font-medium rounded bg-slate-100 text-slate-600 border border-slate-200 shrink-0'
+          : 'px-2 py-0.5 text-[10px] font-medium rounded bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0';
       }
 
-      const authorEl = document.getElementById('comment-detail-author');
-      if (authorEl) authorEl.textContent = comment.author || '审阅人';
-
-      const avatarEl = document.getElementById('comment-detail-avatar');
-      if (avatarEl) avatarEl.textContent = (comment.author || '阅').trim().slice(0, 1);
-
       const clauseTag = document.getElementById('comment-detail-clause-tag');
-      if (clauseTag) clauseTag.textContent = comment.clauseNumber ? '条款 ' + comment.clauseNumber : '';
+      if (clauseTag) {
+        clauseTag.textContent = comment.clauseNumber
+          ? comment.clauseNumber + ' ' + (comment.clauseTitle || '')
+          : '全合同通用审查';
+      }
 
       const dateEl = document.getElementById('comment-detail-date');
-      if (dateEl) dateEl.textContent = comment.date ? comment.date.replace('T', ' ').slice(0, 16) : '';
+      if (dateEl) {
+        const dateStr = comment.date ? comment.date.replace('T', ' ').slice(0, 16) : '审阅流转中';
+        const span = dateEl.querySelector('span');
+        if (span) span.textContent = dateStr;
+        else dateEl.textContent = dateStr;
+      }
 
       const quoteContainer = document.getElementById('comment-detail-quote-container');
       const quoteEl = document.getElementById('comment-detail-quote');
@@ -513,6 +536,13 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
 
       const bodyEl = document.getElementById('comment-detail-body');
       if (bodyEl) bodyEl.textContent = comment.text || '';
+
+      // Reset collapse state
+      const bodyWrapper = document.getElementById('comment-detail-body-wrapper');
+      const toggleBtnText = document.getElementById('btn-toggle-comment-body-text');
+      if (bodyWrapper) bodyWrapper.style.display = 'block';
+      if (toggleBtnText) toggleBtnText.textContent = '收起意见 ▲';
+      isCommentDetailBodyCollapsed = false;
 
       const currId = document.getElementById('comment-detail-current-id');
       if (currId) currId.value = comment.id;
@@ -542,6 +572,21 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       } else if (comment.clauseIndex !== undefined && comment.clauseIndex >= 0) {
         const node = document.getElementById('clause-node-' + comment.clauseIndex);
         if (node && doScroll !== false) scrollTargetToUpperMiddle(node);
+      }
+    }
+
+    let isCommentDetailBodyCollapsed = false;
+    function toggleCommentDetailBodyCollapse() {
+      isCommentDetailBodyCollapsed = !isCommentDetailBodyCollapsed;
+      const wrapper = document.getElementById('comment-detail-body-wrapper');
+      const btnText = document.getElementById('btn-toggle-comment-body-text');
+      if (!wrapper || !btnText) return;
+      if (isCommentDetailBodyCollapsed) {
+        wrapper.style.display = 'none';
+        btnText.textContent = '展开意见 ▼';
+      } else {
+        wrapper.style.display = 'block';
+        btnText.textContent = '收起意见 ▲';
       }
     }
 
@@ -622,60 +667,105 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       if (textInput) textInput.value = '';
     }
 
-    function scrollToCommentAnchor(commentId, clauseIndex, event) {
-      if (event) event.stopPropagation();
-      const mark = document.getElementById('comment-target-' + commentId);
-      if (mark) {
-        scrollTargetToUpperMiddle(mark);
-        mark.classList.add('docx-comment-highlight-active');
-        setTimeout(() => mark.classList.remove('docx-comment-highlight-active'), 2500);
-      } else if (clauseIndex >= 0) {
-        const node = document.getElementById('clause-node-' + clauseIndex);
-        if (node) scrollTargetToUpperMiddle(node);
+    // Sidebar Comment Creation Mode (No Modal Popups!)
+    function enterCommentCreateMode(selectedText, clauseIndex) {
+      const execSummary = document.getElementById('executive-summary-card');
+      const listHeader = document.getElementById('workbench-list-header');
+      const findingsStream = document.getElementById('findings-stream');
+      const detailWorkspace = document.getElementById('comment-detail-workspace');
+      const createWorkspace = document.getElementById('comment-create-workspace');
+
+      if (execSummary) execSummary.classList.add('hidden');
+      if (listHeader) listHeader.classList.add('hidden');
+      if (findingsStream) findingsStream.classList.add('hidden');
+      if (detailWorkspace) detailWorkspace.classList.add('hidden');
+      if (createWorkspace) createWorkspace.classList.remove('hidden');
+
+      const quoteTextEl = document.getElementById('comment-create-quote-text');
+      if (quoteTextEl) quoteTextEl.textContent = selectedText ? '"' + selectedText + '"' : '未圈选特定文字（通用批注）';
+
+      const clauseIdxInput = document.getElementById('comment-create-clause-index');
+      if (clauseIdxInput) clauseIdxInput.value = String(clauseIndex || 0);
+
+      const clauseLabel = document.getElementById('comment-create-clause-label');
+      if (clauseLabel) {
+        clauseLabel.textContent = clauseIndex ? '关联条款 #' + clauseIndex : '全合同通用';
       }
-    }
 
-    function openGlobalCommentModal() {
-      const modal = document.getElementById('append-comment-modal');
-      const box = document.getElementById('append-comment-modal-box');
-      if (!modal || !box) return;
-
-      const clauseSelect = document.getElementById('comment-modal-clause-select');
-      const quoteInput = document.getElementById('comment-modal-quote');
-      const targetIdInput = document.getElementById('comment-modal-target-id');
-      const textInput = document.getElementById('comment-modal-text');
-
-      if (clauseSelect) clauseSelect.value = '0';
-      if (quoteInput) quoteInput.value = '';
-      if (targetIdInput) targetIdInput.value = '';
+      const textInput = document.getElementById('comment-create-text');
       if (textInput) {
         textInput.value = '';
-        setTimeout(() => textInput.focus(), 150);
+        setTimeout(() => textInput.focus(), 120);
+      }
+    }
+
+    function exitCommentCreateMode() {
+      const createWorkspace = document.getElementById('comment-create-workspace');
+      const listHeader = document.getElementById('workbench-list-header');
+      const findingsStream = document.getElementById('findings-stream');
+
+      if (createWorkspace) createWorkspace.classList.add('hidden');
+      if (listHeader) listHeader.classList.remove('hidden');
+      if (findingsStream) findingsStream.classList.remove('hidden');
+      switchWorkbenchMode(currentWorkbenchMode || 'findings');
+    }
+
+    function submitCommentCreateFromSidebar() {
+      const authorInput = document.getElementById('comment-create-author');
+      const textInput = document.getElementById('comment-create-text');
+      const clauseIdxInput = document.getElementById('comment-create-clause-index');
+      const quoteTextEl = document.getElementById('comment-create-quote-text');
+
+      const author = authorInput ? authorInput.value.trim() : '法务审阅人';
+      const text = textInput ? textInput.value.trim() : '';
+      const clauseIndex = clauseIdxInput ? parseInt(clauseIdxInput.value, 10) : 0;
+      const selectedText = quoteTextEl ? quoteTextEl.textContent.replace(/^"|"$/g, '').trim() : '';
+
+      if (!text) {
+        alert('请输入批注意见与修改要求');
+        if (textInput) textInput.focus();
+        return;
       }
 
-      modal.classList.remove('opacity-0', 'pointer-events-none');
-      modal.classList.add('opacity-100', 'pointer-events-auto');
-      box.classList.remove('scale-95');
-      box.classList.add('scale-100');
-    }
+      const payload = {
+        action: 'append_comment',
+        clauseIndex,
+        selectedText,
+        author,
+        text,
+        timestamp: new Date().toISOString(),
+      };
 
-    function openClauseCommentModal(clauseIndex, clauseHeading, event) {
-      if (event) event.stopPropagation();
-      openGlobalCommentModal();
-      const clauseSelect = document.getElementById('comment-modal-clause-select');
-      if (clauseSelect) clauseSelect.value = String(clauseIndex);
-    }
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'DOCX_COMMENT_APPEND', payload }, '*');
+      }
 
-    function openCommentReplyModal(commentId, author, quoteText, clauseIndex, event) {
-      if (event) event.stopPropagation();
-      openGlobalCommentModal();
-      const clauseSelect = document.getElementById('comment-modal-clause-select');
-      const quoteInput = document.getElementById('comment-modal-quote');
-      const targetIdInput = document.getElementById('comment-modal-target-id');
-
-      if (clauseSelect) clauseSelect.value = String(clauseIndex);
-      if (quoteInput) quoteInput.value = quoteText || '';
-      if (targetIdInput) targetIdInput.value = commentId;
+      const apiUrl = "${commentApiUrl || ''}";
+      if (apiUrl) {
+        const btn = document.getElementById('comment-create-submit-btn');
+        if (btn) btn.disabled = true;
+        fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+          .then(res => res.json())
+          .then(data => {
+            showToast('批注已成功提交并回写 Word！');
+            exitCommentCreateMode();
+          })
+          .catch(err => {
+            console.error('Failed to append comment:', err);
+            showToast('批注已提交业务控制面处理');
+            exitCommentCreateMode();
+          })
+          .finally(() => {
+            if (btn) btn.disabled = false;
+          });
+      } else {
+        showToast('批注请求已派发（后台受控回写）');
+        exitCommentCreateMode();
+      }
     }
 
     function openCommentFromSelection(event) {
@@ -692,88 +782,113 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
         }
         node = node.parentNode;
       }
-      const clauseIdx = (node && node.getAttribute) ? node.getAttribute('data-clause-index') : '0';
+      const clauseIdx = (node && node.getAttribute) ? parseInt(node.getAttribute('data-clause-index') || '0', 10) : 0;
 
-      openGlobalCommentModal();
-      const clauseSelect = document.getElementById('comment-modal-clause-select');
-      const quoteInput = document.getElementById('comment-modal-quote');
-      if (clauseSelect) clauseSelect.value = String(clauseIdx || '0');
-      if (quoteInput) quoteInput.value = text;
+      enterCommentCreateMode(text, clauseIdx);
 
       const bubble = document.getElementById('text-selection-comment-bubble');
       if (bubble) bubble.style.display = 'none';
     }
 
-    function closeCommentModal() {
-      const modal = document.getElementById('append-comment-modal');
-      const box = document.getElementById('append-comment-modal-box');
-      if (!modal || !box) return;
-      modal.classList.add('opacity-0', 'pointer-events-none');
-      modal.classList.remove('opacity-100', 'pointer-events-auto');
-      box.classList.add('scale-95');
-      box.classList.remove('scale-100');
+    // Fast Rich Hover Popover for Word Comments (Instant & Readable)
+    let popoverHideTimer = null;
+    const popoverEl = document.getElementById('comment-hover-popover');
+
+    function showCommentHoverPopover(targetEl, commentId) {
+      if (!popoverEl) return;
+      clearTimeout(popoverHideTimer);
+      const c = docxCommentsData.find(item => String(item.id) === String(commentId));
+      if (!c) return;
+
+      let rawAuthor = c.author || '审阅人';
+      let authorName = rawAuthor;
+      let authorTitle = '法务合规';
+      const titleMatch = rawAuthor.match(/^([^(（]+)[(（]([^)）]+)[)）]$/);
+      if (titleMatch) {
+        authorName = titleMatch[1].trim();
+        authorTitle = titleMatch[2].trim();
+      }
+
+      const dateStr = c.date ? c.date.replace('T', ' ').slice(0, 16) : '';
+      const initials = authorName.slice(0, 1);
+
+      popoverEl.innerHTML = \`
+        <div class="flex items-start justify-between gap-2 pb-1.5 mb-1.5 border-b border-amber-200 select-none">
+          <div class="flex items-center gap-2">
+            <div class="w-6 h-6 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-[11px] font-bold text-amber-900 shrink-0 shadow-2xs">
+              \${initials}
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs font-bold text-slate-900">\${authorName}</span>
+                <span class="text-[10px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-800 border border-blue-200 font-medium">\${authorTitle}</span>
+              </div>
+              \${dateStr ? '<div class="text-[10px] text-slate-500 font-mono">' + dateStr + '</div>' : ''}
+            </div>
+          </div>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-mono font-semibold shrink-0">
+            批注 #\${c.id}
+          </span>
+        </div>
+        <div class="text-xs text-slate-800 leading-relaxed font-normal select-text">
+          \${c.text || ''}
+        </div>
+        <div class="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-amber-800 select-none">
+          <span class="font-medium">👉 点击可在侧边栏查看与回复</span>
+          <span class="font-mono text-[9px] text-slate-400">点击进入</span>
+        </div>
+      \`;
+
+      const rect = targetEl.getBoundingClientRect();
+      const popoverWidth = 320;
+      let left = rect.left + rect.width / 2 - 30 + window.scrollX;
+      if (left + popoverWidth > window.innerWidth - 20) {
+        left = window.innerWidth - popoverWidth - 20 + window.scrollX;
+      }
+      if (left < 10) left = 10;
+
+      let top = rect.top + window.scrollY - 10;
+      popoverEl.classList.remove('arrow-top', 'arrow-bottom');
+
+      if (rect.top > 160) {
+        popoverEl.classList.add('arrow-bottom');
+        popoverEl.style.left = left + 'px';
+        popoverEl.style.top = (top - 120) + 'px';
+      } else {
+        popoverEl.classList.add('arrow-top');
+        popoverEl.style.left = left + 'px';
+        popoverEl.style.top = (rect.bottom + window.scrollY + 10) + 'px';
+      }
+
+      popoverEl.classList.add('popover-visible');
+      popoverEl.onclick = () => {
+        handleCommentClick(c.id, c.clauseIndex);
+        hideCommentHoverPopover(0);
+      };
     }
 
-    function submitAppendComment() {
-      const authorInput = document.getElementById('comment-modal-author');
-      const textInput = document.getElementById('comment-modal-text');
-      const clauseSelect = document.getElementById('comment-modal-clause-select');
-      const quoteInput = document.getElementById('comment-modal-quote');
-      const targetIdInput = document.getElementById('comment-modal-target-id');
+    function hideCommentHoverPopover(delay = 180) {
+      clearTimeout(popoverHideTimer);
+      popoverHideTimer = setTimeout(() => {
+        if (popoverEl) {
+          popoverEl.classList.remove('popover-visible');
+        }
+      }, delay);
+    }
 
-      const author = authorInput ? authorInput.value.trim() : '审阅人';
-      const text = textInput ? textInput.value.trim() : '';
-      const clauseIndex = clauseSelect ? parseInt(clauseSelect.value, 10) : 0;
-      const selectedText = quoteInput ? quoteInput.value.trim() : '';
-      const targetId = targetIdInput ? targetIdInput.value : '';
-
-      if (!text) {
-        alert('请输入批注意见与修改建议');
-        if (textInput) textInput.focus();
+    document.addEventListener('mouseover', function(e) {
+      const commentTarget = e.target.closest('[data-comment-id]');
+      if (commentTarget) {
+        const cid = commentTarget.getAttribute('data-comment-id');
+        if (cid) showCommentHoverPopover(commentTarget, cid);
         return;
       }
-
-      const payload = {
-        action: 'append_comment',
-        clauseIndex,
-        selectedText,
-        parentCommentId: targetId || undefined,
-        author,
-        text,
-        timestamp: new Date().toISOString(),
-      };
-
-      if (window.parent && window.parent !== window) {
-        window.parent.postMessage({ type: 'DOCX_COMMENT_APPEND', payload }, '*');
+      if (popoverEl && popoverEl.contains(e.target)) {
+        clearTimeout(popoverHideTimer);
+        return;
       }
-
-      const apiUrl = "${commentApiUrl || ''}";
-      if (apiUrl) {
-        const btn = document.getElementById('comment-modal-submit-btn');
-        if (btn) btn.disabled = true;
-        fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        })
-          .then(res => res.json())
-          .then(data => {
-            showToast('批注已回写至 Word 文档，文档版本已更新！');
-            closeCommentModal();
-          })
-          .catch(err => {
-            console.error('Failed to append comment:', err);
-            showToast('批注请求已发送（将在控制面处理）');
-            closeCommentModal();
-          })
-          .finally(() => {
-            if (btn) btn.disabled = false;
-          });
-      } else {
-        showToast('批注请求已派发（业务控制面已接收）');
-        closeCommentModal();
-      }
-    }
+      hideCommentHoverPopover(120);
+    });
 
     // Floating Selection Comment Bubble Listeners
     document.addEventListener('mouseup', function(e) {
