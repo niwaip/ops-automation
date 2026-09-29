@@ -26,16 +26,16 @@ export class ContractReviewHtmlDocumentRenderer {
         : clauses.map((c) => this.renderClause(c)).join('\n');
 
     return `
-    <article id="document-paper-container" class="bg-white border border-[#E2E5EA] shadow-xs rounded-sm p-6 sm:p-10 md:p-14 text-[#202833] font-sans selection:bg-slate-200 transition-colors">
+    <article id="document-paper-container" class="bg-white border border-[#D9E1EC] shadow-paper rounded-md p-6 sm:p-10 md:p-14 text-[#1E293B] font-sans selection:bg-slate-200 transition-colors">
       <!-- Document Title & Header Area -->
-      <header class="border-b border-[#E2E5EA] pb-6 mb-8 text-center">
-        <div class="inline-block px-2.5 py-0.5 mb-2 rounded bg-slate-100 text-[#667085] text-[11px] font-mono tracking-wider">
+      <header class="border-b border-[#E2E8F0] pb-6 mb-8 text-center">
+        <div class="inline-block px-3 py-1 mb-2 rounded bg-slate-100 text-[#475569] text-[11px] font-mono tracking-wider border border-slate-200">
           合同原文底稿 · ${this.escapeHtml(fileName)}
         </div>
-        <h1 class="text-xl sm:text-2xl font-bold text-[#202833] tracking-tight">
+        <h1 class="text-xl sm:text-2xl font-bold text-[#1E293B] tracking-tight">
           ${this.escapeHtml(fileName.replace(/\.(docx|pdf|doc|txt)$/i, ''))}
         </h1>
-        <p class="text-xs text-[#667085] mt-2 font-mono">
+        <p class="text-xs text-[#64748B] mt-2 font-mono">
           全合同共 ${clauses.length} 条款 · 经结构化解析与合规锚点定位
         </p>
       </header>
@@ -46,7 +46,7 @@ export class ContractReviewHtmlDocumentRenderer {
       </div>
 
       <!-- Document Sign-off / Footer -->
-      <footer class="mt-14 pt-8 border-t border-[#E2E5EA] text-center text-xs text-[#667085] font-mono">
+      <footer class="mt-14 pt-8 border-t border-[#E2E8F0] text-center text-xs text-[#64748B] font-mono">
         —— 合同文本结束 ——
       </footer>
     </article>
@@ -74,18 +74,18 @@ export class ContractReviewHtmlDocumentRenderer {
     return `
     <section id="chapter-${ch.chapterIndex || chIdx}" class="chapter-block pt-2">
       <!-- Chapter Section Header -->
-      <div class="chapter-header mb-4 pb-2 border-b border-[#E2E5EA] flex flex-wrap items-baseline justify-between gap-2">
+      <div class="chapter-header mb-4 pb-2 border-b-2 border-[#CBD5E1] flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <h2 class="text-base sm:text-lg font-bold text-[#202833] tracking-tight chapter-title-zh">
+          <h2 class="text-base sm:text-lg font-bold text-[#1E293B] tracking-tight chapter-title-zh">
             ${this.escapeHtml(chapterTitleZh)}
           </h2>
           ${
             chapterTitleJa
-              ? `<div class="text-[12px] text-[#667085] font-normal mt-0.5 chapter-title-ja">${this.escapeHtml(chapterTitleJa)}</div>`
+              ? `<div class="text-[12px] text-[#64748B] font-normal mt-0.5 chapter-title-ja">${this.escapeHtml(chapterTitleJa)}</div>`
               : ''
           }
         </div>
-        <span class="text-[11px] font-mono text-[#667085]">共 ${ch.clauses.length} 条</span>
+        <span class="text-[11px] font-mono text-[#64748B]">共 ${ch.clauses.length} 条</span>
       </div>
 
       <!-- Clauses in this Chapter -->
@@ -122,14 +122,14 @@ export class ContractReviewHtmlDocumentRenderer {
     return `
     <div id="clause-node-${c.clauseIndex}" class="clause-node relative pt-1 group" data-clause-index="${c.clauseIndex}">
       <!-- Clause Title Row -->
-      <div id="clause-heading-${c.clauseIndex}" class="clause-heading flex items-baseline justify-between gap-2 pb-1.5 mb-2 border-b border-[#F0F2F5]">
+      <div id="clause-heading-${c.clauseIndex}" class="clause-heading flex items-baseline justify-between gap-2 pb-1.5 mb-2 border-b border-[#E2E8F0]">
         <div class="flex items-baseline gap-2 truncate">
-          <span class="font-bold text-sm text-[#202833] select-text heading-zh">
+          <span class="font-bold text-sm text-[#1E293B] select-text heading-zh">
             ${this.escapeHtml(headingZh)}
           </span>
           ${
             headingJa
-              ? `<span class="text-xs text-[#667085] select-text heading-ja truncate">${this.escapeHtml(headingJa)}</span>`
+              ? `<span class="text-xs text-[#64748B] select-text heading-ja truncate">${this.escapeHtml(headingJa)}</span>`
               : ''
           }
         </div>

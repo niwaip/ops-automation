@@ -291,11 +291,11 @@ export class ContractReviewHtmlFindingRenderer {
       .join('');
 
     return `
-    <div id="executive-summary-card" class="bg-white rounded-lg border border-[#E2E5EA] p-3.5 shadow-2xs">
-      <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#F0F2F5] select-none">
+    <div id="executive-summary-card" class="bg-white rounded-lg border border-[#D9E1EC] p-3.5 shadow-card">
+      <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#E2E8F0] select-none">
         <div class="flex items-center gap-2">
-          <div class="w-2 h-2 rounded-full bg-[#294766]"></div>
-          <h2 class="text-xs font-bold text-[#202833] uppercase tracking-wider">总体合规审查分析与风控备忘</h2>
+          <div class="w-2 h-2 rounded-full bg-[#2E5882]"></div>
+          <h2 class="text-xs font-bold text-[#1E293B] uppercase tracking-wider">总体合规审查分析与风控备忘</h2>
         </div>
         <div class="flex items-center gap-1.5">
           <span class="px-2 py-0.5 rounded text-[11px] font-bold text-white shadow-2xs" style="background-color: ${scoreColor}">
@@ -304,7 +304,7 @@ export class ContractReviewHtmlFindingRenderer {
           <button
             type="button"
             onclick="toggleExecutiveSummary(this)"
-            class="text-[10px] text-[#667085] hover:text-[#202833] px-1.5 py-0.5 rounded border border-[#E2E5EA] bg-[#F9FAFB] transition cursor-pointer"
+            class="text-[10px] text-[#64748B] hover:text-[#1E293B] px-1.5 py-0.5 rounded border border-[#D9E1EC] bg-[#F4F6F9] transition cursor-pointer"
           >
             收起备忘 ▲
           </button>
@@ -314,21 +314,21 @@ export class ContractReviewHtmlFindingRenderer {
       <div id="executive-summary-content" class="space-y-2.5 text-xs">
         <!-- Metric Distribution Bar -->
         <div class="grid grid-cols-4 gap-1.5 text-center select-none font-sans">
-          <div class="p-1.5 rounded bg-red-50/70 border border-red-100">
+          <div class="p-1.5 rounded bg-red-50 border border-red-200">
             <div class="text-[10px] text-[#B42318] font-medium">高风险项</div>
             <div class="text-sm font-bold text-[#B42318] font-mono leading-tight">${highFindings.length}</div>
           </div>
-          <div class="p-1.5 rounded bg-amber-50/70 border border-amber-100">
+          <div class="p-1.5 rounded bg-amber-50 border border-amber-200">
             <div class="text-[10px] text-[#9A6700] font-medium">必备缺失</div>
             <div class="text-sm font-bold text-[#9A6700] font-mono leading-tight">${missingFindings.length}</div>
           </div>
-          <div class="p-1.5 rounded bg-slate-50 border border-slate-200">
-            <div class="text-[10px] text-[#475467] font-medium">偏颇/待核实</div>
-            <div class="text-sm font-bold text-[#475467] font-mono leading-tight">${verifyFindings.length}</div>
+          <div class="p-1.5 rounded bg-slate-100 border border-slate-200">
+            <div class="text-[10px] text-[#334155] font-medium">偏颇/待核实</div>
+            <div class="text-sm font-bold text-[#334155] font-mono leading-tight">${verifyFindings.length}</div>
           </div>
-          <div class="p-1.5 rounded bg-emerald-50/70 border border-emerald-100">
-            <div class="text-[10px] text-emerald-700 font-medium">合规通过</div>
-            <div class="text-sm font-bold text-emerald-700 font-mono leading-tight">${metrics?.passCount ?? 0}</div>
+          <div class="p-1.5 rounded bg-emerald-50 border border-emerald-200">
+            <div class="text-[10px] text-emerald-800 font-medium">合规通过</div>
+            <div class="text-sm font-bold text-emerald-800 font-mono leading-tight">${metrics?.passCount ?? 0}</div>
           </div>
         </div>
 
@@ -336,7 +336,7 @@ export class ContractReviewHtmlFindingRenderer {
           missingHighlightsHtml || highRiskHighlightsHtml
             ? `
         <!-- Top Vulnerabilities Takeaway -->
-        <div class="p-2.5 rounded bg-[#F9FAFB] border border-[#E2E5EA] text-[11px] leading-relaxed space-y-2">
+        <div class="p-2.5 rounded bg-[#F8FAFC] border border-[#E2E8F0] text-[11px] leading-relaxed space-y-2">
           ${
             missingHighlightsHtml
               ? `<div>
@@ -344,7 +344,7 @@ export class ContractReviewHtmlFindingRenderer {
               <svg class="w-3.5 h-3.5 text-[#9A6700]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
               <span>关键必备条款缺失预警：</span>
             </div>
-            <ul class="space-y-1 text-[#202833] list-disc list-inside">
+            <ul class="space-y-1 text-[#1E293B] list-disc list-inside">
               ${missingHighlightsHtml}
             </ul>
           </div>`
@@ -357,7 +357,7 @@ export class ContractReviewHtmlFindingRenderer {
               <svg class="w-3.5 h-3.5 text-[#B42318]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               <span>核心高风险条款诊断：</span>
             </div>
-            <ul class="space-y-1 text-[#202833] list-disc list-inside">
+            <ul class="space-y-1 text-[#1E293B] list-disc list-inside">
               ${highRiskHighlightsHtml}
             </ul>
           </div>`
@@ -416,7 +416,7 @@ export class ContractReviewHtmlFindingRenderer {
     return `
     <article
       id="${f.id}"
-      class="finding-card bg-white rounded-lg border border-[#E2E5EA] p-3.5 shadow-xs transition-all hover:border-[#294766]/50 ${leftAccentClass}"
+      class="finding-card bg-white rounded-lg border border-[#D9E1EC] p-3.5 shadow-card transition-all hover:border-[#2E5882]/70 hover:shadow-card-hover ${leftAccentClass}"
       data-finding-id="${f.id}"
       data-clause-index="${f.clauseIndex ?? -1}"
       data-severity="${f.severity.toLowerCase()}"
@@ -424,13 +424,13 @@ export class ContractReviewHtmlFindingRenderer {
       onclick="handleFindingClick('${f.id}', ${f.clauseIndex ?? -1}, event)"
     >
       <!-- Card Header: Title & Tags -->
-      <header class="flex items-start justify-between gap-2 pb-2 mb-2 border-b border-[#F0F2F5]">
+      <header class="flex items-start justify-between gap-2 pb-2 mb-2 border-b border-[#E2E8F0]">
         <div class="flex-1 min-w-0 pr-2">
           <div class="flex items-center gap-1.5 mb-1 select-none">
-            <span class="text-[10px] font-mono text-[#667085]">#${f.findingIndex}</span>
-            ${f.clauseNumber ? `<span class="text-[11px] font-semibold text-[#294766]">${this.escapeHtml(f.clauseNumber)}</span>` : ''}
+            <span class="text-[10px] font-mono text-[#64748B]">#${f.findingIndex}</span>
+            ${f.clauseNumber ? `<span class="text-[11px] font-semibold text-[#2E5882]">${this.escapeHtml(f.clauseNumber)}</span>` : ''}
           </div>
-          <h3 class="text-sm font-bold text-[#202833] leading-snug">
+          <h3 class="text-sm font-bold text-[#1E293B] leading-snug">
             ${this.escapeHtml(f.title)}
           </h3>
         </div>
@@ -440,29 +440,29 @@ export class ContractReviewHtmlFindingRenderer {
         </div>
       </header>
 
-      <div class="space-y-2 text-xs leading-relaxed text-[#202833]">
+      <div class="space-y-2 text-xs leading-relaxed text-[#1E293B]">
         
         <!-- 【核心诊断重点】: Prominent takeaway so reviewer immediately grasps the core issue -->
-        <div class="key-takeaway p-2.5 rounded bg-[#F8F9FA] border-l-2 ${isHigh ? 'border-l-[#B42318]' : 'border-l-[#D97706]'}">
+        <div class="key-takeaway p-2.5 rounded-md bg-[#F4F6F9] border-l-3 ${isHigh ? 'border-l-[#B42318]' : 'border-l-[#D97706]'}">
           <div class="text-[10px] font-bold ${isHigh ? 'text-[#B42318]' : 'text-[#D97706]'} mb-0.5 flex items-center gap-1 uppercase tracking-wider select-none">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
             <span>核心风险判断</span>
           </div>
-          <p class="text-xs font-normal text-[#202833] leading-relaxed select-text">
+          <p class="text-xs font-normal text-[#1E293B] leading-relaxed select-text">
             ${this.escapeHtml(f.impact)}
           </p>
         </div>
 
         <!-- 原文事实与证据 -->
-        <div class="fact-section bg-[#F9FAFB] rounded border border-[#E2E5EA] p-2">
-          <div class="flex items-center justify-between text-[11px] font-semibold text-[#667085] mb-1 select-none">
+        <div class="fact-section bg-[#F8FAFC] rounded-md border border-[#E2E8F0] p-2">
+          <div class="flex items-center justify-between text-[11px] font-semibold text-[#64748B] mb-1 select-none">
             <span class="flex items-center gap-1">
-              <svg class="w-3.5 h-3.5 text-[#667085]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path></svg>
+              <svg class="w-3.5 h-3.5 text-[#64748B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path></svg>
               原文事实依据
             </span>
             ${
               f.clauseIndex !== undefined && f.clauseIndex >= 0
-                ? `<button type="button" onclick="scrollToClause(${f.clauseIndex}, '${f.id}', event)" class="text-[11px] text-[#294766] hover:underline flex items-center gap-0.5 cursor-pointer font-medium">
+                ? `<button type="button" onclick="scrollToClause(${f.clauseIndex}, '${f.id}', event)" class="text-[11px] text-[#2E5882] hover:underline flex items-center gap-0.5 cursor-pointer font-medium">
                     <span>定位原文</span>
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                   </button>`
@@ -471,27 +471,27 @@ export class ContractReviewHtmlFindingRenderer {
           </div>
           ${
             isPendingLocalization
-              ? `<div class="text-[#667085] text-[11px] font-normal italic pl-2 border-l-2 border-slate-300 my-0.5 leading-relaxed flex items-center justify-between gap-2">
+              ? `<div class="text-[#64748B] text-[11px] font-normal italic pl-2 border-l-2 border-slate-300 my-0.5 leading-relaxed flex items-center justify-between gap-2">
                   <span>源于本条款整体约定研判（无单一特征句）</span>
-                  <span class="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-[#667085] border border-slate-200 shrink-0 font-sans not-italic">整体研判</span>
+                  <span class="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-[#64748B] border border-slate-200 shrink-0 font-sans not-italic">整体研判</span>
                 </div>`
-              : `<blockquote class="text-[#202833] text-[11px] font-normal italic select-text border-l-2 border-[#294766]/40 pl-2 my-0.5 leading-relaxed">
+              : `<blockquote class="text-[#1E293B] text-[11px] font-normal italic select-text border-l-2 border-[#2E5882]/60 pl-2 my-0.5 leading-relaxed">
                   "${this.escapeHtml(f.factQuote || '未明确约定')}"
                 </blockquote>`
           }
         </div>
 
         <!-- Collapsible Details: Suggestion, Basis & Revision Text (Default Collapsed for Focus) -->
-        <div class="finding-actions-accordion pt-2 border-t border-[#F0F2F5]">
+        <div class="finding-actions-accordion pt-2 border-t border-[#E2E8F0]">
           <div class="flex items-center justify-between">
-            <span class="text-[11px] text-[#667085] flex items-center gap-1 font-medium select-none">
-              <svg class="w-3.5 h-3.5 text-[#294766]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+            <span class="text-[11px] text-[#64748B] flex items-center gap-1 font-medium select-none">
+              <svg class="w-3.5 h-3.5 text-[#2E5882]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
               <span>修改建议与推荐文本</span>
             </span>
             <button
               type="button"
               onclick="toggleFindingDetails('${detailsId}', this, event)"
-              class="text-[11px] text-[#294766] hover:underline flex items-center gap-0.5 font-medium cursor-pointer select-none"
+              class="text-[11px] text-[#2E5882] hover:underline flex items-center gap-0.5 font-medium cursor-pointer select-none"
             >
               <span class="toggle-text">展开建议与条款 ▼</span>
             </button>
@@ -504,12 +504,12 @@ export class ContractReviewHtmlFindingRenderer {
             ${
               f.suggestion
                 ? `
-            <div class="suggestion-section bg-[#F8F9FA] rounded border border-[#E2E5EA] p-2.5">
-              <div class="text-[11px] font-semibold text-[#202833] mb-1 flex items-center gap-1 select-none">
-                <svg class="w-3.5 h-3.5 text-[#294766]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <div class="suggestion-section bg-[#F8FAFC] rounded-md border border-[#E2E8F0] p-2.5">
+              <div class="text-[11px] font-semibold text-[#1E293B] mb-1 flex items-center gap-1 select-none">
+                <svg class="w-3.5 h-3.5 text-[#2E5882]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 修改建议与谈判对策
               </div>
-              <p class="text-xs text-[#202833] leading-relaxed select-text">
+              <p class="text-xs text-[#1E293B] leading-relaxed select-text">
                 ${this.escapeHtml(f.suggestion)}
               </p>
             </div>`
@@ -522,14 +522,14 @@ export class ContractReviewHtmlFindingRenderer {
                 ? `
             <div class="basis-section">
               <details class="group cursor-pointer select-none">
-                <summary class="text-[11px] text-[#667085] hover:text-[#202833] font-medium flex items-center justify-between list-none p-1 rounded hover:bg-slate-50">
+                <summary class="text-[11px] text-[#64748B] hover:text-[#1E293B] font-medium flex items-center justify-between list-none p-1 rounded hover:bg-slate-50">
                   <span class="flex items-center gap-1">
-                    <svg class="w-3.5 h-3.5 text-[#667085]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <svg class="w-3.5 h-3.5 text-[#64748B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     查看法律依据与要件标准
                   </span>
-                  <span class="text-[10px] text-[#294766] group-open:rotate-180 transition-transform font-mono">▼</span>
+                  <span class="text-[10px] text-[#2E5882] group-open:rotate-180 transition-transform font-mono">▼</span>
                 </summary>
-                <div class="mt-1 p-2 bg-[#F9FAFB] rounded border border-[#E2E5EA] text-[11px] text-[#667085] font-mono leading-relaxed select-text">
+                <div class="mt-1 p-2 bg-[#F8FAFC] rounded border border-[#E2E8F0] text-[11px] text-[#64748B] font-mono leading-relaxed select-text">
                   ${this.escapeHtml(f.basis)}
                 </div>
               </details>
@@ -541,17 +541,17 @@ export class ContractReviewHtmlFindingRenderer {
             ${
               f.suggestedRevision
                 ? `
-            <div class="revision-container rounded border border-[#E2E5EA] bg-white overflow-hidden shadow-2xs">
-              <div class="px-3 py-1.5 bg-[#F9FAFB] border-b border-[#E2E5EA] flex items-center justify-between gap-2 select-none">
+            <div class="revision-container rounded-md border border-[#CBD5E1] bg-white overflow-hidden shadow-2xs">
+              <div class="px-3 py-1.5 bg-[#F8FAFC] border-b border-[#CBD5E1] flex items-center justify-between gap-2 select-none">
                 <div class="flex items-center gap-1.5 truncate">
-                  <span class="text-[11px] font-bold text-[#202833]">建议修改文本</span>
+                  <span class="text-[11px] font-bold text-[#1E293B]">建议修改文本</span>
                 </div>
                 
                 <div class="flex items-center gap-1.5 shrink-0">
                   <button
                     type="button"
                     onclick="toggleRevisionExpand('${toggleId}', this, event)"
-                    class="text-[10px] text-[#667085] hover:text-[#202833] px-1.5 py-0.5 rounded border border-[#E2E5EA] bg-white transition cursor-pointer"
+                    class="text-[10px] text-[#64748B] hover:text-[#1E293B] px-1.5 py-0.5 rounded border border-[#CBD5E1] bg-white transition cursor-pointer"
                   >
                     展开全文
                   </button>

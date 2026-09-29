@@ -154,18 +154,19 @@ export class ContractReviewHtmlRendererService {
     ${CONTRACT_REPORT_STANDALONE_CSS}
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background-color: #F5F6F8;
-      color: #202833;
+      background-color: #EDF1F5;
+      color: #1E293B;
     }
     .hidden-by-filter { display: none !important; }
     .active-filter-tab {
-      background-color: #294766 !important;
+      background-color: #2E5882 !important;
       color: #ffffff !important;
-      border-color: #294766 !important;
+      border-color: #4B79A6 !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
     }
     .active-finding-card {
-      border-color: #294766 !important;
-      box-shadow: 0 0 0 2px rgba(41, 71, 102, 0.25) !important;
+      border-color: #2E5882 !important;
+      box-shadow: 0 0 0 2px rgba(46, 88, 130, 0.25) !important;
     }
     .evidence-highlight-active {
       background-color: #FEF3C7 !important;
@@ -203,19 +204,19 @@ export class ContractReviewHtmlRendererService {
   </div>
 
   <!-- TOC Slide-over Drawer Backdrop -->
-  <div id="toc-backdrop" onclick="toggleTocDrawer(false)" class="fixed inset-0 bg-slate-900/30 backdrop-blur-xs z-40 transition-opacity duration-200 opacity-0 pointer-events-none"></div>
+  <div id="toc-backdrop" onclick="toggleTocDrawer(false)" class="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-40 transition-opacity duration-200 opacity-0 pointer-events-none"></div>
 
   <!-- TOC Slide-over Drawer -->
-  <aside id="toc-drawer" class="fixed inset-y-0 left-0 z-50 w-80 bg-white shadow-xl border-r border-[#E2E5EA] transform -translate-x-full transition-transform duration-200 ease-in-out flex flex-col">
-    <div class="px-4 py-3 bg-[#F9FAFB] border-b border-[#E2E5EA] flex items-center justify-between">
+  <aside id="toc-drawer" class="fixed inset-y-0 left-0 z-50 w-80 bg-white shadow-xl border-r border-[#D9E1EC] transform -translate-x-full transition-transform duration-200 ease-in-out flex flex-col">
+    <div class="px-4 py-3 bg-[#F4F6F9] border-b border-[#D9E1EC] flex items-center justify-between">
       <div class="truncate">
-        <h2 class="text-xs font-bold text-[#202833] uppercase tracking-wider">合同条款目录大纲</h2>
-        <div class="text-[10px] text-[#667085] font-mono">共 ${clauses.length} 条款 · 快捷键 T</div>
+        <h2 class="text-xs font-bold text-[#1E293B] uppercase tracking-wider">合同条款目录大纲</h2>
+        <div class="text-[10px] text-[#64748B] font-mono">共 ${clauses.length} 条款 · 快捷键 T</div>
       </div>
-      <button onclick="toggleTocDrawer(false)" class="w-6 h-6 rounded hover:bg-slate-200 text-[#667085] flex items-center justify-center text-xs transition cursor-pointer" title="关闭大纲 (Esc)">✕</button>
+      <button onclick="toggleTocDrawer(false)" class="w-6 h-6 rounded hover:bg-slate-200 text-[#64748B] flex items-center justify-center text-xs transition cursor-pointer" title="关闭大纲 (Esc)">✕</button>
     </div>
-    <div class="p-2 border-b border-[#E2E5EA] bg-white">
-      <input id="toc-search" type="text" oninput="filterTocOutline(this.value)" placeholder="搜索章节或条号..." class="w-full text-xs px-2.5 py-1.5 rounded border border-[#E2E5EA] bg-[#F9FAFB] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#294766]" />
+    <div class="p-2 border-b border-[#D9E1EC] bg-white">
+      <input id="toc-search" type="text" oninput="filterTocOutline(this.value)" placeholder="搜索章节或条号..." class="w-full text-xs px-2.5 py-1.5 rounded border border-[#D9E1EC] bg-[#F8FAFC] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#2E5882]" />
     </div>
     <div id="toc-list" class="flex-1 overflow-y-auto p-2.5 space-y-1">
       ${outlineItemsHtml}
@@ -223,22 +224,22 @@ export class ContractReviewHtmlRendererService {
   </aside>
 
   <!-- 1. Rigidly Fixed Unified Top Bar (Header + Executive Controls Combined 一览) -->
-  <header id="unified-top-bar" class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#E2E5EA] px-3 sm:px-4 py-2 shadow-2xs">
+  <header id="unified-top-bar" class="sticky top-0 z-30 bg-[#1A2D42] text-white border-b border-[#2B4663] px-3 sm:px-4 py-2 shadow-md">
     <div class="max-w-[1680px] mx-auto flex flex-wrap items-center justify-between gap-2.5 sm:gap-4">
       
       <!-- Brand & Document Title & Metadata -->
       <div class="flex items-center gap-2.5 min-w-0">
-        <div class="w-7 h-7 rounded bg-[#294766] flex items-center justify-center text-white shrink-0 shadow-2xs">
+        <div class="w-7 h-7 rounded bg-[#2E5882] flex items-center justify-center text-white shrink-0 shadow-xs border border-[#386A9E]">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path></svg>
         </div>
         <div class="min-w-0 flex items-center gap-2">
-          <h1 class="text-xs sm:text-sm font-bold text-[#202833] tracking-tight truncate shrink-0" title="合同智能审查与合规诊断报告 · 工作底稿">
+          <h1 class="text-xs sm:text-sm font-bold text-white tracking-tight truncate shrink-0" title="合同智能审查与合规诊断报告 · 工作底稿">
             合同智能审查与合规诊断报告
           </h1>
-          <span class="hidden md:inline-block px-1.5 py-0.5 rounded bg-slate-100 text-[#294766] text-[11px] font-semibold truncate max-w-[120px] shrink-0">
+          <span class="hidden md:inline-block px-1.5 py-0.5 rounded bg-[#243B53] text-[#93C5FD] text-[11px] font-semibold truncate max-w-[120px] shrink-0 border border-[#334E68]">
             ${this.escapeHtml(contractTypeName)}
           </span>
-          <span class="hidden xl:inline-block text-[11px] text-[#667085] truncate max-w-[220px] font-mono shrink-0" title="${this.escapeHtml(fileName)}">
+          <span class="hidden xl:inline-block text-[11px] text-slate-300 truncate max-w-[220px] font-mono shrink-0" title="${this.escapeHtml(fileName)}">
             ${this.escapeHtml(fileName)}
           </span>
         </div>
@@ -246,16 +247,16 @@ export class ContractReviewHtmlRendererService {
 
       <!-- Center: Filter Tabs -->
       <div class="flex items-center gap-1 shrink-0" id="filter-tabs">
-        <button onclick="applyFilter('all', this)" class="active-filter-tab px-2.5 py-1 rounded text-xs font-semibold border border-[#E2E5EA] bg-white text-[#202833] hover:bg-slate-50 transition cursor-pointer">
+        <button onclick="applyFilter('all', this)" class="active-filter-tab px-2.5 py-1 rounded text-xs font-semibold border border-[#334E68] bg-[#243B53]/80 hover:bg-[#2B4663] text-slate-200 transition cursor-pointer">
           全部 <span class="text-[10px] font-mono opacity-80">(${findings.length})</span>
         </button>
-        <button onclick="applyFilter('high', this)" class="px-2.5 py-1 rounded text-xs font-medium border border-[#E2E5EA] bg-white text-[#B42318] hover:bg-red-50 transition cursor-pointer">
+        <button onclick="applyFilter('high', this)" class="px-2.5 py-1 rounded text-xs font-medium border border-red-900/60 bg-red-950/40 text-red-200 hover:bg-red-900/50 transition cursor-pointer">
           高风险 <span class="text-[10px] font-mono font-bold">(${highCount})</span>
         </button>
-        <button onclick="applyFilter('missing', this)" class="px-2.5 py-1 rounded text-xs font-medium border border-[#E2E5EA] bg-white text-[#9A6700] hover:bg-amber-50 transition cursor-pointer">
+        <button onclick="applyFilter('missing', this)" class="px-2.5 py-1 rounded text-xs font-medium border border-amber-900/60 bg-amber-950/40 text-amber-200 hover:bg-amber-900/50 transition cursor-pointer">
           待补充 <span class="text-[10px] font-mono font-bold">(${missingCount})</span>
         </button>
-        <button onclick="applyFilter('verify', this)" class="px-2.5 py-1 rounded text-xs font-medium border border-[#E2E5EA] bg-white text-slate-700 hover:bg-slate-50 transition cursor-pointer">
+        <button onclick="applyFilter('verify', this)" class="px-2.5 py-1 rounded text-xs font-medium border border-[#334E68] bg-[#243B53]/80 text-slate-300 hover:bg-[#2B4663] transition cursor-pointer">
           待核实 <span class="text-[10px] font-mono font-bold">(${verifyCount})</span>
         </button>
       </div>
@@ -263,45 +264,45 @@ export class ContractReviewHtmlRendererService {
       <!-- Right: Language Toggle, Navigation Stepper, Outline, Health Score -->
       <div class="flex items-center gap-2 sm:gap-3 shrink-0">
         <!-- Language Switcher -->
-        <div class="inline-flex rounded border border-[#E2E5EA] bg-slate-50 p-0.5 text-xs select-none">
-          <button id="lang-btn-both" onclick="setLanguageMode('both')" class="px-2 py-0.5 rounded bg-white text-[#294766] font-semibold shadow-2xs cursor-pointer">
+        <div class="inline-flex rounded border border-[#334E68] bg-[#142334] p-0.5 text-xs select-none">
+          <button id="lang-btn-both" onclick="setLanguageMode('both')" class="px-2 py-0.5 rounded bg-[#243B53] text-white font-semibold shadow-2xs cursor-pointer">
             双语
           </button>
-          <button id="lang-btn-zh" onclick="setLanguageMode('zh')" class="px-2 py-0.5 rounded text-[#667085] hover:text-[#202833] cursor-pointer">
+          <button id="lang-btn-zh" onclick="setLanguageMode('zh')" class="px-2 py-0.5 rounded text-slate-400 hover:text-white cursor-pointer">
             中文
           </button>
-          <button id="lang-btn-ja" onclick="setLanguageMode('ja')" class="px-2 py-0.5 rounded text-[#667085] hover:text-[#202833] cursor-pointer">
+          <button id="lang-btn-ja" onclick="setLanguageMode('ja')" class="px-2 py-0.5 rounded text-slate-400 hover:text-white cursor-pointer">
             日文
           </button>
         </div>
 
-        <div class="h-4 w-px bg-slate-200 hidden sm:block"></div>
+        <div class="h-4 w-px bg-[#334E68] hidden sm:block"></div>
 
         <!-- Problem Navigation Stepper -->
-        <div class="flex items-center gap-1 text-xs text-[#667085] select-none">
-          <button onclick="stepFinding(-1)" class="px-2 py-1 rounded border border-[#E2E5EA] bg-white hover:bg-slate-50 text-[#202833] flex items-center gap-1 cursor-pointer" title="上一项 (快捷键 P)">
+        <div class="flex items-center gap-1 text-xs text-slate-300 select-none">
+          <button onclick="stepFinding(-1)" class="px-2 py-1 rounded border border-[#334E68] bg-[#243B53]/80 hover:bg-[#2B4663] text-slate-200 flex items-center gap-1 cursor-pointer" title="上一项 (快捷键 P)">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
             <span class="hidden lg:inline text-[11px]">上一问题</span>
           </button>
-          <span id="nav-indicator" class="font-mono text-[11px] px-1 text-[#202833] font-medium min-w-[36px] text-center">1 / ${findings.length || 1}</span>
-          <button onclick="stepFinding(1)" class="px-2 py-1 rounded border border-[#E2E5EA] bg-white hover:bg-slate-50 text-[#202833] flex items-center gap-1 cursor-pointer" title="下一项 (快捷键 N)">
+          <span id="nav-indicator" class="font-mono text-[11px] px-1 text-slate-200 font-medium min-w-[36px] text-center">1 / ${findings.length || 1}</span>
+          <button onclick="stepFinding(1)" class="px-2 py-1 rounded border border-[#334E68] bg-[#243B53]/80 hover:bg-[#2B4663] text-slate-200 flex items-center gap-1 cursor-pointer" title="下一项 (快捷键 N)">
             <span class="hidden lg:inline text-[11px]">下一问题</span>
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
           </button>
         </div>
 
         <!-- TOC Drawer Toggle -->
-        <button onclick="toggleTocDrawer(true)" class="px-2 py-1 rounded text-xs font-medium border border-[#294766] text-[#294766] hover:bg-[#294766] hover:text-white transition flex items-center gap-1 cursor-pointer" title="大纲目录 (快捷键 T)">
+        <button onclick="toggleTocDrawer(true)" class="px-2 py-1 rounded text-xs font-medium border border-[#4B79A6] bg-[#2E5882] hover:bg-[#386A9E] text-white transition flex items-center gap-1 cursor-pointer shadow-2xs" title="大纲目录 (快捷键 T)">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
           <span class="hidden sm:inline text-[11px]">目录</span>
         </button>
 
-        <div class="h-4 w-px bg-slate-200 hidden sm:block"></div>
+        <div class="h-4 w-px bg-[#334E68] hidden sm:block"></div>
 
         <!-- Compliance Score Pill -->
         <div class="flex items-center gap-2 shrink-0">
           <div class="text-right hidden xl:block">
-            <div class="text-[10px] text-[#667085] uppercase tracking-wider">综合合规评级</div>
+            <div class="text-[10px] text-slate-400 uppercase tracking-wider">综合合规评级</div>
             <div class="text-xs font-bold" style="color: ${scoreColor}">${scoreText}</div>
           </div>
           <div class="px-2.5 py-1 rounded text-xs font-bold text-white flex items-center gap-1 shadow-2xs" style="background-color: ${scoreColor}" title="综合合规评级：${metrics.healthScore} 分 · ${scoreText}">
@@ -374,12 +375,14 @@ export class ContractReviewHtmlRendererService {
       const target = typeof open === 'boolean' ? open : !isOpen;
       if (target) {
         drawer.classList.remove('-translate-x-full');
+        drawer.classList.add('translate-x-0');
         backdrop.classList.remove('opacity-0', 'pointer-events-none');
         backdrop.classList.add('opacity-100', 'pointer-events-auto');
         const searchInput = document.getElementById('toc-search');
         if (searchInput) setTimeout(() => searchInput.focus(), 150);
       } else {
         drawer.classList.add('-translate-x-full');
+        drawer.classList.remove('translate-x-0');
         backdrop.classList.add('opacity-0', 'pointer-events-none');
         backdrop.classList.remove('opacity-100', 'pointer-events-auto');
       }
@@ -433,19 +436,22 @@ export class ContractReviewHtmlRendererService {
       const btnJa = document.getElementById('lang-btn-ja');
 
       [btnBoth, btnZh, btnJa].forEach(btn => {
-        btn.classList.remove('bg-white', 'text-[#294766]', 'font-semibold', 'shadow-2xs');
-        btn.classList.add('text-[#667085]');
+        btn.classList.remove('bg-[#243B53]', 'text-white', 'font-semibold', 'shadow-2xs');
+        btn.classList.add('text-slate-400');
       });
 
       if (mode === 'zh') {
         container.classList.add('lang-zh-only');
-        btnZh.classList.add('bg-white', 'text-[#294766]', 'font-semibold', 'shadow-2xs');
+        btnZh.classList.add('bg-[#243B53]', 'text-white', 'font-semibold', 'shadow-2xs');
+        btnZh.classList.remove('text-slate-400');
       } else if (mode === 'ja') {
         container.classList.add('lang-ja-only');
-        btnJa.classList.add('bg-white', 'text-[#294766]', 'font-semibold', 'shadow-2xs');
+        btnJa.classList.add('bg-[#243B53]', 'text-white', 'font-semibold', 'shadow-2xs');
+        btnJa.classList.remove('text-slate-400');
       } else {
         container.classList.add('lang-bilingual');
-        btnBoth.classList.add('bg-white', 'text-[#294766]', 'font-semibold', 'shadow-2xs');
+        btnBoth.classList.add('bg-[#243B53]', 'text-white', 'font-semibold', 'shadow-2xs');
+        btnBoth.classList.remove('text-slate-400');
       }
     }
 
@@ -667,6 +673,13 @@ export class ContractReviewHtmlRendererService {
 
     // Keyboard Shortcuts (N: Next, P: Prev, T: TOC, Esc: Close)
     document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        toggleTocDrawer(false);
+        if (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+          document.activeElement.blur();
+        }
+        return;
+      }
       if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
       if (e.key === 'n' || e.key === 'N') {
         stepFinding(1);
@@ -674,8 +687,6 @@ export class ContractReviewHtmlRendererService {
         stepFinding(-1);
       } else if (e.key === 't' || e.key === 'T') {
         toggleTocDrawer();
-      } else if (e.key === 'Escape') {
-        toggleTocDrawer(false);
       }
     });
 
