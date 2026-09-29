@@ -45,10 +45,10 @@ export interface CustomCheckpointDto {
   recommendedRevision?: string;
 }
 
-import type { DocumentBlock } from '../contract-compare/contract-compare.types';
+import type { DocumentBlock, DocxCommentItem } from '../contract-compare/contract-compare.types';
 import type { ClauseLegalFinding, ExtractedLegalFacts } from '../contract-elements';
 
-export type { DocumentBlock, ClauseLegalFinding, ExtractedLegalFacts };
+export type { DocumentBlock, DocxCommentItem, ClauseLegalFinding, ExtractedLegalFacts };
 
 export interface FormIntegrityCheckResult {
   status: 'PASS' | 'WARNING' | 'ERROR';
@@ -74,6 +74,7 @@ export interface ClauseReviewItem {
   chapterNumber?: string;
   chapterTitle?: string;
   blocks?: DocumentBlock[];
+  comments?: DocxCommentItem[];
   formIntegrity?: FormIntegrityCheckResult;
   llmReviewed?: boolean;
   facts?: ExtractedLegalFacts;
@@ -127,6 +128,7 @@ export interface ContractReviewOutput {
   clauses: ClauseReviewItem[];
   chapters?: ReviewChapterGroup[];
   missingClauses: MissingClauseAlert[];
+  comments?: DocxCommentItem[];
   htmlReport: string;
   artifact?: {
     type?: string;
@@ -167,6 +169,7 @@ export interface ParsedClauseItem {
   chapterNumber?: string;
   chapterTitle?: string;
   blocks?: DocumentBlock[];
+  comments?: DocxCommentItem[];
   formIntegrity: FormIntegrityCheckResult;
   facts: ExtractedLegalFacts;
   matchedRules: Array<{
@@ -192,6 +195,7 @@ export interface ContractParseOutput {
   fullText: string;
   parsedClauses: ParsedClauseItem[];
   missingClauses: MissingClauseAlert[];
+  comments?: DocxCommentItem[];
   formIntegrityStats: {
     totalUnfilledVariables: number;
     totalUnfilledBlanks: number;
@@ -210,6 +214,9 @@ export interface ContractRenderReportInput {
   clauses: ClauseReviewItem[];
   chapters?: ReviewChapterGroup[];
   missingClauses: MissingClauseAlert[];
+  comments?: DocxCommentItem[];
+  canComment?: boolean;
+  commentApiUrl?: string;
   idempotencyKey?: string;
 }
 

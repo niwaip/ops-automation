@@ -358,4 +358,32 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   .xl\\:block { display: block; }
   .xl\\:inline-block { display: inline-block; }
 }
+
+/* Word Comments & Interaction Modal Styles */
+.bg-amber-100 { background-color: #fef3c7; }
+.bg-amber-100\\/80 { background-color: rgba(254, 243, 199, 0.8); }
+.bg-amber-100\\/90 { background-color: rgba(254, 243, 199, 0.9); }
+.bg-amber-200 { background-color: #fde68a; }
+.bg-amber-500 { background-color: #f59e0b; }
+.bg-amber-500\\/10 { background-color: rgba(245, 158, 11, 0.1); }
+.bg-amber-500\\/20 { background-color: rgba(245, 158, 11, 0.2); }
+.bg-slate-950\\/50 { background-color: rgba(2, 6, 23, 0.5); }
+.text-amber-300 { color: #fcd34d; }
+.text-amber-600 { color: #d97706; }
+.text-amber-700 { color: #b45309; }
+.text-amber-800 { color: #92400e; }
+.text-amber-900 { color: #78350f; }
+.border-amber-200\\/80 { border-color: rgba(253, 230, 138, 0.8); }
+.border-amber-300 { border-color: #fcd34d; }
+.border-amber-400 { border-color: #fbbf24; }
+.border-amber-500 { border-color: #f59e0b; }
+.border-amber-500\\/30 { border-color: rgba(245, 158, 11, 0.3); }
+.border-amber-500\\/50 { border-color: rgba(245, 158, 11, 0.5); }
+.border-l-amber-500 { border-left-color: #f59e0b; border-left-width: 4px; border-left-style: solid; }
+.scale-95 { transform: scale(0.95); }
+.scale-100 { transform: scale(1); }
+.max-w-lg { max-width: 32rem; }
+.active-comment-card { border-color: #f59e0b !important; background-color: #fffdf5 !important; box-shadow: 0 4px 16px -2px rgba(245, 158, 11, 0.3) !important; }
+.docx-comment-highlight { background-color: rgba(254, 243, 199, 0.85); border-bottom: 2px solid #f59e0b; border-radius: 2px; }
+.docx-comment-highlight-active { background-color: #fde68a !important; outline: 2px solid #d97706 !important; }
 `;

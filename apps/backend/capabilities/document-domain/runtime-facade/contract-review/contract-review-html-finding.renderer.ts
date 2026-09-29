@@ -215,7 +215,12 @@ export class ContractReviewHtmlFindingRenderer {
   /**
    * Render the complete right-hand inspection desk (40% right column).
    */
-  renderFindingsWorkbench(findings: FindingItemViewModel[], metrics?: ContractReviewMetrics): string {
+  renderFindingsWorkbench(
+    findings: FindingItemViewModel[],
+    metrics?: ContractReviewMetrics,
+    commentCardsHtml?: string,
+    commentsCount = 0
+  ): string {
     const findingCardsHtml = findings.map((f, idx) => this.renderFindingCard(f, idx)).join('\n');
     const executiveSummaryHtml = this.renderExecutiveSummary(findings, metrics);
 
@@ -226,11 +231,11 @@ export class ContractReviewHtmlFindingRenderer {
       ${executiveSummaryHtml}
 
       <!-- Workbench Subheader & Operations Bar -->
-      <div class="flex items-center justify-between py-1.5 px-1 border-b border-[#E2E5EA] select-none">
+      <div class="flex items-center justify-between py-1.5 px-1 border-b border-[#E2E8F0] select-none">
         <div class="flex items-center gap-2">
-          <span class="text-xs font-bold text-[#202833] uppercase tracking-wider">审查要点清单</span>
-          <span id="workbench-count-badge" class="px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-[#294766]/10 text-[#294766]">
-            共 ${findings.length} 项
+          <span class="text-xs font-bold text-[#1E293B] uppercase tracking-wider">审查与批注清单</span>
+          <span id="workbench-count-badge" class="px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-[#2E5882]/10 text-[#2E5882]">
+            ${commentsCount > 0 ? `共 ${findings.length} 风险 · ${commentsCount} 批注` : `共 ${findings.length} 项`}
           </span>
         </div>
         <div class="flex items-center gap-2">
@@ -238,22 +243,23 @@ export class ContractReviewHtmlFindingRenderer {
             type="button"
             id="toggle-all-details-btn"
             onclick="toggleAllFindingDetails()"
-            class="text-[11px] text-[#294766] hover:text-[#1a3047] font-medium px-2 py-0.5 rounded border border-[#E2E5EA] bg-white transition cursor-pointer"
+            class="text-[11px] text-[#2E5882] hover:text-[#1A2D42] font-medium px-2 py-0.5 rounded border border-[#D9E1EC] bg-white transition cursor-pointer"
           >
             展开全部建议
           </button>
-          <div class="text-[10px] text-[#667085] hidden sm:inline">
-            快捷键 <kbd class="px-1 py-0.5 bg-white border border-[#E2E5EA] rounded font-mono text-[9px]">P</kbd> 上一项 · <kbd class="px-1 py-0.5 bg-white border border-[#E2E5EA] rounded font-mono text-[9px]">N</kbd> 下一项
+          <div class="text-[10px] text-[#64748B] hidden sm:inline">
+            快捷键 <kbd class="px-1 py-0.5 bg-white border border-[#D9E1EC] rounded font-mono text-[9px]">P</kbd> 上一项 · <kbd class="px-1 py-0.5 bg-white border border-[#D9E1EC] rounded font-mono text-[9px]">N</kbd> 下一项
           </div>
         </div>
       </div>
 
-      <!-- Scrollable Findings Cards Stream -->
+      <!-- Scrollable Findings & Comments Cards Stream -->
       <div id="findings-stream" class="space-y-3">
+        ${commentCardsHtml ? `<div id="comments-stream-container" class="space-y-3">${commentCardsHtml}</div>` : ''}
         ${
-          findings.length === 0
+          findings.length === 0 && !commentCardsHtml
             ? `
-          <div class="p-8 text-center bg-white rounded-lg border border-[#E2E5EA] text-sm text-[#667085]">
+          <div class="p-8 text-center bg-white rounded-lg border border-[#D9E1EC] text-sm text-[#64748B]">
             <svg class="w-8 h-8 mx-auto text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             合同未检出实质性法律风险或必备要件缺失，条款形式与实质合规规范。
           </div>

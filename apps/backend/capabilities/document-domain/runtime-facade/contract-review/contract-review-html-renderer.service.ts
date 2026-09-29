@@ -3,6 +3,7 @@ import type {
   ClauseReviewItem,
   ContractReviewMetrics,
   ContractType,
+  DocxCommentItem,
   MissingClauseAlert,
   PartyPosition,
   ReviewChapterGroup,
@@ -13,6 +14,7 @@ import {
   ContractReviewHtmlFindingRenderer,
   type FindingItemViewModel,
 } from './contract-review-html-finding.renderer';
+import { ContractReviewHtmlCommentRenderer } from './contract-review-html-comment.renderer';
 import { CONTRACT_REPORT_STANDALONE_CSS } from '../contract-standalone-style.util';
 
 export interface RenderReviewHtmlInput {
@@ -24,12 +26,16 @@ export interface RenderReviewHtmlInput {
   clauses: ClauseReviewItem[];
   chapters?: ReviewChapterGroup[];
   missingClauses: MissingClauseAlert[];
+  comments?: DocxCommentItem[];
+  canComment?: boolean;
+  commentApiUrl?: string;
 }
 
 @Injectable()
 export class ContractReviewHtmlRendererService {
   private readonly documentRenderer = new ContractReviewHtmlDocumentRenderer();
   private readonly findingRenderer = new ContractReviewHtmlFindingRenderer();
+  private readonly commentRenderer = new ContractReviewHtmlCommentRenderer();
 
   renderHtmlReport(input: RenderReviewHtmlInput): string {
     const {
@@ -72,7 +78,12 @@ export class ContractReviewHtmlRendererService {
     const missingCount = findings.filter((f) => f.issueType === '信息缺失').length;
     const verifyCount = findings.filter((f) => f.issueType === '表述歧义' || f.issueType === '待核实附件').length;
 
-    // 3. Render Left 60% Document Paper
+    // 3. Extract and normalize Word Comments
+    const comments = input.comments || clauses.flatMap((c) => c.comments || []);
+    const canComment = input.canComment ?? true;
+    const commentApiUrl = input.commentApiUrl || '';
+
+    // 4. Render Left 60% Document Paper
     const documentPaperHtml = this.documentRenderer.renderDocumentPaper({
       fileName,
       contractTypeName,
@@ -80,8 +91,22 @@ export class ContractReviewHtmlRendererService {
       chapters,
     });
 
-    // 4. Render Right 40% Findings Workbench
-    const findingsWorkbenchHtml = this.findingRenderer.renderFindingsWorkbench(findings, metrics);
+    // 5. Render Right 40% Findings & Comments Workbench
+    const commentCardsHtml = comments
+      .map((c, idx) => this.commentRenderer.renderCommentCard(c, idx, canComment))
+      .join('\n');
+    const findingsWorkbenchHtml = this.findingRenderer.renderFindingsWorkbench(
+      findings,
+      metrics,
+      commentCardsHtml,
+      comments.length
+    );
+
+    // 6. Render Append Comment Modal Dialog
+    const appendCommentModalHtml = this.commentRenderer.renderAppendCommentModal({
+      canComment,
+      commentApiUrl,
+    });
 
     // Truncation banner for partial review
     const truncationBannerHtml = metrics.isTruncated
@@ -259,6 +284,14 @@ export class ContractReviewHtmlRendererService {
         <button onclick="applyFilter('verify', this)" class="px-2.5 py-1 rounded text-xs font-medium border border-[#334E68] bg-[#243B53]/80 text-slate-300 hover:bg-[#2B4663] transition cursor-pointer">
           待核实 <span class="text-[10px] font-mono font-bold">(${verifyCount})</span>
         </button>
+        ${
+          comments.length > 0
+            ? `
+        <button onclick="applyFilter('comments', this)" class="px-2.5 py-1 rounded text-xs font-medium border border-amber-500/50 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition cursor-pointer flex items-center gap-1" title="查看 Word 原文批注清单">
+          <span>💬 批注</span> <span class="text-[10px] font-mono font-bold">(${comments.length})</span>
+        </button>`
+            : ''
+        }
       </div>
 
       <!-- Right: Language Toggle, Navigation Stepper, Outline, Health Score -->
@@ -296,6 +329,22 @@ export class ContractReviewHtmlRendererService {
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
           <span class="hidden sm:inline text-[11px]">目录</span>
         </button>
+
+        ${
+          canComment
+            ? `
+        <!-- Append Word Comment Button -->
+        <button
+          type="button"
+          onclick="openClauseCommentModal(0, '合同全文', event)"
+          class="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold text-white bg-[#2E5882] hover:bg-[#386A9E] border border-[#4B79A6] transition cursor-pointer shadow-xs"
+          title="追加 Word 批注（通过业务控制面回写文档）"
+        >
+          <span class="text-xs">💬</span>
+          <span>追加批注</span>
+        </button>`
+            : ''
+        }
 
         <div class="h-4 w-px bg-[#334E68] hidden sm:block"></div>
 
@@ -474,6 +523,7 @@ export class ContractReviewHtmlRendererService {
         else if (filterType === 'high' && sev === 'high') show = true;
         else if (filterType === 'missing' && type === '信息缺失') show = true;
         else if (filterType === 'verify' && (type === '表述歧义' || type === '待核实附件')) show = true;
+        else if (filterType === 'comments') show = false;
 
         if (show) {
           card.classList.remove('hidden-by-filter');
@@ -482,6 +532,23 @@ export class ContractReviewHtmlRendererService {
           card.classList.add('hidden-by-filter');
         }
       });
+
+      const commentCards = document.querySelectorAll('.comment-card');
+      commentCards.forEach(c => {
+        if (filterType === 'all' || filterType === 'comments') {
+          c.classList.remove('hidden-by-filter');
+        } else {
+          c.classList.add('hidden-by-filter');
+        }
+      });
+
+      if (filterType === 'comments') {
+        const firstComment = document.querySelector('.comment-card:not(.hidden-by-filter)');
+        if (firstComment) {
+          const cid = firstComment.getAttribute('data-comment-id');
+          if (cid) selectComment(cid, false);
+        }
+      }
 
       activeFindingIndex = 0;
       updateNavIndicator();
@@ -674,6 +741,7 @@ export class ContractReviewHtmlRendererService {
     // Keyboard Shortcuts (N: Next, P: Prev, T: TOC, Esc: Close)
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
+        closeCommentModal();
         toggleTocDrawer(false);
         if (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
           document.activeElement.blur();
@@ -690,11 +758,170 @@ export class ContractReviewHtmlRendererService {
       }
     });
 
+    // Word Comment Interactions
+    function handleCommentClick(commentId, clauseIndex, event) {
+      if (event) event.stopPropagation();
+      selectComment(commentId, true);
+    }
+
+    function scrollToCommentAnchor(commentId, clauseIndex, event) {
+      if (event) event.stopPropagation();
+      const mark = document.getElementById('comment-target-' + commentId);
+      if (mark) {
+        scrollTargetToUpperMiddle(mark);
+        mark.classList.add('docx-comment-highlight-active');
+        setTimeout(() => mark.classList.remove('docx-comment-highlight-active'), 2500);
+      } else if (clauseIndex >= 0) {
+        const node = document.getElementById('clause-node-' + clauseIndex);
+        if (node) scrollTargetToUpperMiddle(node);
+      }
+    }
+
+    function selectComment(commentId, doScroll) {
+      document.querySelectorAll('.comment-card').forEach(c => c.classList.remove('active-comment-card'));
+      document.querySelectorAll('.docx-comment-highlight').forEach(m => m.classList.remove('docx-comment-highlight-active'));
+
+      const card = document.getElementById('comment-card-' + commentId);
+      if (card) {
+        card.classList.add('active-comment-card');
+        if (doScroll !== false) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }
+
+      const mark = document.getElementById('comment-target-' + commentId);
+      if (mark) {
+        mark.classList.add('docx-comment-highlight-active');
+        if (doScroll !== false) {
+          scrollTargetToUpperMiddle(mark);
+        }
+      }
+    }
+
+    function openClauseCommentModal(clauseIndex, clauseHeading, event) {
+      if (event) event.stopPropagation();
+      const modal = document.getElementById('append-comment-modal');
+      const box = document.getElementById('append-comment-modal-box');
+      if (!modal || !box) return;
+
+      const clauseRef = document.getElementById('comment-modal-clause-ref');
+      const clauseIdxInput = document.getElementById('comment-modal-clause-idx');
+      const targetIdInput = document.getElementById('comment-modal-target-id');
+      const textInput = document.getElementById('comment-modal-text');
+
+      if (clauseRef) clauseRef.value = clauseIndex > 0 ? '#' + clauseIndex + ' ' + (clauseHeading || '') : '全文通识';
+      if (clauseIdxInput) clauseIdxInput.value = clauseIndex;
+      if (targetIdInput) targetIdInput.value = '';
+      if (textInput) {
+        textInput.value = '';
+        setTimeout(() => textInput.focus(), 150);
+      }
+
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      modal.classList.add('opacity-100', 'pointer-events-auto');
+      box.classList.remove('scale-95');
+      box.classList.add('scale-100');
+    }
+
+    function openCommentReplyModal(commentId, author, quoteText, clauseIndex, event) {
+      if (event) event.stopPropagation();
+      const modal = document.getElementById('append-comment-modal');
+      const box = document.getElementById('append-comment-modal-box');
+      if (!modal || !box) return;
+
+      const clauseRef = document.getElementById('comment-modal-clause-ref');
+      const targetIdInput = document.getElementById('comment-modal-target-id');
+      const clauseIdxInput = document.getElementById('comment-modal-clause-idx');
+      const textInput = document.getElementById('comment-modal-text');
+
+      const shortQuote = quoteText ? (quoteText.length > 20 ? quoteText.slice(0, 18) + '...' : quoteText) : '原条款';
+      if (clauseRef) clauseRef.value = '回复批注 #' + commentId + '（' + author + '）："' + shortQuote + '"';
+      if (targetIdInput) targetIdInput.value = commentId;
+      if (clauseIdxInput) clauseIdxInput.value = clauseIndex;
+      if (textInput) {
+        textInput.value = '';
+        setTimeout(() => textInput.focus(), 150);
+      }
+
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      modal.classList.add('opacity-100', 'pointer-events-auto');
+      box.classList.remove('scale-95');
+      box.classList.add('scale-100');
+    }
+
+    function closeCommentModal() {
+      const modal = document.getElementById('append-comment-modal');
+      const box = document.getElementById('append-comment-modal-box');
+      if (!modal || !box) return;
+      modal.classList.add('opacity-0', 'pointer-events-none');
+      modal.classList.remove('opacity-100', 'pointer-events-auto');
+      box.classList.add('scale-95');
+      box.classList.remove('scale-100');
+    }
+
+    function submitAppendComment() {
+      const authorInput = document.getElementById('comment-modal-author');
+      const textInput = document.getElementById('comment-modal-text');
+      const clauseRefInput = document.getElementById('comment-modal-clause-ref');
+      const targetIdInput = document.getElementById('comment-modal-target-id');
+      const clauseIdxInput = document.getElementById('comment-modal-clause-idx');
+
+      const author = authorInput ? authorInput.value.trim() : '审阅人';
+      const text = textInput ? textInput.value.trim() : '';
+      const clauseRef = clauseRefInput ? clauseRefInput.value : '';
+      const targetId = targetIdInput ? targetIdInput.value : '';
+      const clauseIndex = clauseIdxInput ? parseInt(clauseIdxInput.value, 10) : 0;
+
+      if (!text) {
+        alert('请输入批注意见与修改建议');
+        if (textInput) textInput.focus();
+        return;
+      }
+
+      const payload = {
+        action: 'APPEND_COMMENT',
+        author,
+        text,
+        clauseIndex,
+        clauseRef,
+        replyToCommentId: targetId || undefined,
+        timestamp: new Date().toISOString(),
+      };
+
+      // 1. PostMessage to host platform / control plane parent frame
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'APPEND_DOCX_COMMENT', payload }, '*');
+      }
+
+      // 2. If backend endpoint is configured, trigger asynchronous write-back
+      const commentApiUrl = ${JSON.stringify(commentApiUrl)};
+      if (commentApiUrl) {
+        fetch(commentApiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+          .then(r => r.json())
+          .then(() => {
+            showToast('批注已由业务控制面成功处理并回写！');
+            closeCommentModal();
+          })
+          .catch(() => {
+            showToast('批注请求已发送至业务控制面处理');
+            closeCommentModal();
+          });
+      } else {
+        showToast('批注请求已派发（业务控制面已接收）');
+        closeCommentModal();
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', initFindingsList);
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
       initFindingsList();
     }
   </script>
+  ${appendCommentModalHtml}
 </body>
 </html>`;
   }

@@ -141,6 +141,19 @@ export class ContractReviewHtmlDocumentRenderer {
               ? `<span class="inline-block w-2 h-2 rounded-full bg-[#D97706]" title="存在中风险项"></span>`
               : ''
           }
+          ${
+            c.comments && c.comments.length > 0
+              ? `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300" title="包含 ${c.comments.length} 条 Word 批注">💬 ${c.comments.length}</span>`
+              : ''
+          }
+          <button
+            type="button"
+            onclick="openClauseCommentModal(${c.clauseIndex}, '${this.escapeHtml(headingZh)}', event)"
+            class="hidden group-hover:inline-flex items-center text-[10px] text-[#2E5882] hover:text-[#1A2D42] px-1.5 py-0.5 rounded border border-[#D9E1EC] bg-white hover:bg-slate-50 transition cursor-pointer font-medium"
+            title="针对该条款追加批注"
+          >
+            + 批注
+          </button>
           <span class="text-[10px] font-mono text-[#667085]">#${c.clauseIndex}</span>
         </div>
       </div>
@@ -159,8 +172,10 @@ export class ContractReviewHtmlDocumentRenderer {
         // 1. Bilingual Pair Block
         if (b.type === 'bilingual_pair') {
           const indent = getLegalHierarchyIndentEm(b.prefix || b.primaryText || '');
-          const primaryText = b.primaryHtml || this.formatInlineBlanks(this.escapeHtml(b.primaryText || ''), clause);
-          const secondaryText = b.secondaryHtml || this.formatInlineBlanks(this.escapeHtml(b.secondaryText || ''), clause);
+          const primaryText = this.formatInlineBlanks(b.primaryHtml || this.escapeHtml(b.primaryText || ''), clause);
+          const secondaryText = b.secondaryHtml || b.secondaryText
+            ? this.formatInlineBlanks(b.secondaryHtml || this.escapeHtml(b.secondaryText || ''), clause)
+            : '';
 
           return `
           <div class="bilingual-pair mb-2.5" data-block-id="${b.id || blockIdx}" style="${indent > 0 ? `padding-left: ${indent}em; ` : ''}line-height: 1.7;">
@@ -169,7 +184,7 @@ export class ContractReviewHtmlDocumentRenderer {
               <div class="flex-1 select-text">${primaryText}</div>
             </div>
             ${
-              b.secondaryText || b.secondaryHtml
+              secondaryText
                 ? `
             <div class="lang-secondary text-[12px] leading-normal text-[#667085] mt-1 pl-4 border-l border-slate-200 select-text">
               ${secondaryText}
@@ -240,7 +255,7 @@ export class ContractReviewHtmlDocumentRenderer {
         // 5. List Item Block
         if (b.type === 'list_item') {
           const indent = getLegalHierarchyIndentEm(b.prefix || b.primaryText || '');
-          const content = b.primaryHtml || this.formatInlineBlanks(this.escapeHtml(b.primaryText || ''), clause);
+          const content = this.formatInlineBlanks(b.primaryHtml || this.escapeHtml(b.primaryText || ''), clause);
           return `
           <div class="list-item flex items-start gap-2 mb-2" style="padding-left: ${Math.max(0.5, indent)}em; line-height: 1.7;">
             ${
@@ -257,7 +272,7 @@ export class ContractReviewHtmlDocumentRenderer {
 
         // 6. Standard Paragraph Block
         const indent = getLegalHierarchyIndentEm(b.prefix || b.primaryText || '');
-        const pContent = b.primaryHtml || this.formatInlineBlanks(this.escapeHtml(b.primaryText || ''), clause);
+        const pContent = this.formatInlineBlanks(b.primaryHtml || this.escapeHtml(b.primaryText || ''), clause);
         return `
         <p class="paragraph mb-2 text-sm leading-relaxed text-[#202833] select-text ${b.alignment === 'center' ? 'text-center font-bold' : ''} ${b.isBold ? 'font-semibold' : ''}" style="${indent > 0 ? `padding-left: ${indent}em; ` : ''}line-height: 1.7;">
           ${b.prefix ? `<span class="font-mono text-xs font-semibold text-[#667085] mr-1.5 select-none">${this.escapeHtml(b.prefix)}</span>` : ''}${pContent}
@@ -329,6 +344,19 @@ export class ContractReviewHtmlDocumentRenderer {
             const findingId = f.id || `clause-${clause.clauseIndex}`;
             const markHtml = `<mark id="evidence-target-${findingId}" class="evidence-mark bg-transparent border-b border-dashed border-[#294766] transition-all cursor-pointer hover:bg-amber-50" data-finding-id="${findingId}" onclick="selectFinding('${findingId}')">${quoteEscaped}</mark>`;
             formatted = formatted.replace(quoteEscaped, markHtml);
+          }
+        }
+      }
+    }
+
+    // 3. Inject Word comment highlights and badge markers
+    if (clause.comments && clause.comments.length > 0) {
+      for (const comment of clause.comments) {
+        if (comment.selectedText && comment.selectedText.trim().length >= 2) {
+          const commentEscaped = this.escapeHtml(comment.selectedText.trim());
+          if (formatted.includes(commentEscaped)) {
+            const commentMarkHtml = `<mark id="comment-target-${comment.id}" class="docx-comment-highlight bg-amber-100/90 border-b-2 border-amber-500 text-slate-900 rounded-xs px-0.5 transition-all cursor-pointer hover:bg-amber-200 select-text" data-comment-id="${comment.id}" onclick="handleCommentClick('${comment.id}', ${clause.clauseIndex}, event)">${commentEscaped}<span class="inline-flex items-center justify-center ml-1 px-1 py-0.2 rounded text-[10px] font-bold bg-amber-500 text-white shadow-2xs select-none align-middle font-mono" title="Word 批注 [${this.escapeHtml(comment.author || '审阅人')}]：${this.escapeHtml(comment.text || '')}">💬 ${comment.id}</span></mark>`;
+            formatted = formatted.replace(commentEscaped, commentMarkHtml);
           }
         }
       }

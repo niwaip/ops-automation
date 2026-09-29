@@ -65,6 +65,9 @@ export class ContractReviewService {
       clauses,
       chapters,
       missingClauses,
+      comments,
+      canComment,
+      commentApiUrl,
     } = input;
 
     // 1. Render Interactive HTML Report
@@ -77,6 +80,9 @@ export class ContractReviewService {
       clauses,
       chapters,
       missingClauses,
+      comments,
+      canComment,
+      commentApiUrl,
     });
 
     // 2. Save HTML Artifact
@@ -146,6 +152,7 @@ export class ContractReviewService {
       clauses,
       chapters,
       missingClauses,
+      comments,
       htmlReport,
       artifact,
       artifacts: [artifact],
@@ -158,6 +165,9 @@ export class ContractReviewService {
       skipLlmReview: input.skipLlmReview,
     });
 
+    const allComments =
+      engineResult.comments || parsedDoc.comments || engineResult.clauses.flatMap((c) => c.comments || []);
+
     return this.renderReport(
       {
         fileName: parsedDoc.fileName,
@@ -168,6 +178,7 @@ export class ContractReviewService {
         clauses: engineResult.clauses,
         chapters: engineResult.chapters,
         missingClauses: engineResult.missingClauses,
+        comments: allComments.length > 0 ? allComments : undefined,
         idempotencyKey: input.idempotencyKey,
       },
       input.idempotencyKey

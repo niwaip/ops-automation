@@ -18,15 +18,16 @@ ContractLlmReviewService,
 type ClauseLlmReviewResult,
 } from './contract-llm-review.service';
 import type {
-ClauseReviewItem,
-ContractParseOutput,
-ContractReviewMetrics,
-ContractType,
-CustomCheckpointDto,
-ParsedClauseItem,
-PartyPosition,
-PartyPositionInput,
-ReviewChapterGroup
+  ClauseReviewItem,
+  ContractParseOutput,
+  ContractReviewMetrics,
+  ContractType,
+  CustomCheckpointDto,
+  DocxCommentItem,
+  ParsedClauseItem,
+  PartyPosition,
+  PartyPositionInput,
+  ReviewChapterGroup
 } from './contract-review.types';
 import { ContractTypeClassifierService } from './contract-type-classifier.service';
 
@@ -51,6 +52,7 @@ export interface ReviewEngineResult {
   clauses: ClauseReviewItem[];
   chapters: ReviewChapterGroup[];
   missingClauses: ReturnType<ContractChecklistMatrixService['detectMissingClauses']>;
+  comments?: DocxCommentItem[];
 }
 
 @Injectable()
@@ -70,6 +72,7 @@ export class ContractReviewEngineService {
 
     // 1. Parse AST clauses from base64 or text
     let astClauses: ContractClauseNode[] = [];
+    let astComments: DocxCommentItem[] = [];
     let isTruncated = false;
     let warnings: string[] = [];
 
@@ -80,6 +83,7 @@ export class ContractReviewEngineService {
         text: input.text,
       });
       astClauses = astResult.clauses || [];
+      astComments = astResult.comments || [];
       isTruncated = Boolean(astResult.metadata?.isTruncated);
       warnings = astResult.metadata?.warnings || [];
     } else {
@@ -187,6 +191,7 @@ export class ContractReviewEngineService {
         chapterNumber: clause.chapterNumber,
         chapterTitle: clause.chapterTitle,
         blocks: clause.blocks,
+        comments: clause.comments,
         formIntegrity,
         facts: clauseFacts,
         matchedRules,
@@ -208,6 +213,7 @@ export class ContractReviewEngineService {
       fullText,
       parsedClauses,
       missingClauses,
+      comments: astComments.length > 0 ? astComments : parsedClauses.flatMap((c) => c.comments || []),
       formIntegrityStats: {
         totalUnfilledVariables,
         totalUnfilledBlanks,
@@ -341,6 +347,7 @@ export class ContractReviewEngineService {
           chapterNumber: clause.chapterNumber,
           chapterTitle: clause.chapterTitle,
           blocks: clause.blocks,
+          comments: clause.comments,
           formIntegrity,
           llmReviewed: semantic.llmReviewed ?? false,
           facts: clauseFacts,
@@ -429,6 +436,7 @@ export class ContractReviewEngineService {
       clauses: reviewedClauses,
       chapters,
       missingClauses,
+      comments: parsedDoc.comments || reviewedClauses.flatMap((c) => c.comments || []),
     };
   }
 
