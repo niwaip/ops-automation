@@ -119,28 +119,6 @@ export class ContractReviewHtmlDocumentRenderer {
     const hasHighRisk = c.riskLevel === 'HIGH';
     const hasMediumRisk = c.riskLevel === 'MEDIUM';
     const hasComments = c.comments && c.comments.length > 0;
-    const commentBannersHtml = hasComments
-      ? c.comments!
-          .map((cm) => {
-            const shortText = cm.text ? (cm.text.length > 60 ? cm.text.slice(0, 58) + '...' : cm.text) : '';
-            return `
-        <div class="clause-comment-banner">
-          <div class="flex items-center gap-2 truncate">
-            <span class="badge-count badge-count-comment shrink-0">💬 批注 #${cm.id}</span>
-            <span class="font-bold text-[#78350F] shrink-0">${this.escapeHtml(cm.author || '审阅人')}：</span>
-            <span class="text-[#92400E] truncate italic">"${this.escapeHtml(shortText)}"</span>
-          </div>
-          <button
-            type="button"
-            onclick="handleCommentClick('${cm.id}', ${c.clauseIndex}, event)"
-            class="shrink-0 px-2 py-0.5 rounded bg-white hover:bg-amber-100 border border-amber-300 text-[11px] font-semibold text-amber-900 transition cursor-pointer"
-          >
-            查看详情 →
-          </button>
-        </div>`;
-          })
-          .join('\n')
-      : '';
 
     return `
     <div id="clause-node-${c.clauseIndex}" class="clause-node relative pt-1 group" data-clause-index="${c.clauseIndex}">
@@ -181,10 +159,7 @@ export class ContractReviewHtmlDocumentRenderer {
         </div>
       </div>
 
-      <!-- Clause Comment Banners (if any) -->
-      ${commentBannersHtml}
-
-      <!-- Clause Body Text / Blocks -->
+      <!-- Clause Body Text / Blocks (Clean document body without interrupting banners) -->
       <div class="clause-content pl-0 text-sm leading-relaxed text-[#202833] space-y-2.5">
         ${contentHtml}
       </div>
@@ -361,27 +336,32 @@ export class ContractReviewHtmlDocumentRenderer {
       '<span class="inline-blank px-1 py-0.2 bg-[#FEF3C7] text-[#9A6700] border-b border-[#F59E0B] rounded-xs font-mono text-xs font-semibold select-all" title="待填报要素/空白">$1</span>'
     );
 
-    // 2. Inject evidence marks if findings quote specific phrases
+    // 2. Inject evidence marks if findings quote specific phrases (Distinct legal risk markings)
     if (clause.findings && clause.findings.length > 0) {
       for (const f of clause.findings) {
         if (f.evidenceQuote && f.evidenceQuote.trim().length >= 4) {
           const quoteEscaped = this.escapeHtml(f.evidenceQuote.trim());
           if (formatted.includes(quoteEscaped)) {
             const findingId = f.id || `clause-${clause.clauseIndex}`;
-            const markHtml = `<mark id="evidence-target-${findingId}" class="evidence-mark bg-transparent border-b border-dashed border-[#294766] transition-all cursor-pointer hover:bg-amber-50" data-finding-id="${findingId}" onclick="selectFinding('${findingId}')">${quoteEscaped}</mark>`;
+            const isHigh = f.severity === 'HIGH' || clause.riskLevel === 'HIGH';
+            const riskBadgeClass = isHigh ? 'evidence-risk-badge-high' : 'evidence-risk-badge-medium';
+            const markClass = isHigh ? 'evidence-mark-high' : 'evidence-mark-medium';
+            const markTitle = `【审查检出风险】${this.escapeHtml(f.title || '条款合规预警')}（点击在右侧查看审查意见）`;
+            const markHtml = `<mark id="evidence-target-${findingId}" class="evidence-mark ${markClass} transition-all cursor-pointer select-text" data-finding-id="${findingId}" onclick="selectFinding('${findingId}')" title="${markTitle}">${quoteEscaped}<span class="evidence-risk-badge ${riskBadgeClass}" onclick="selectFinding('${findingId}', true)">⚠️ 审查风险</span></mark>`;
             formatted = formatted.replace(quoteEscaped, markHtml);
           }
         }
       }
     }
 
-    // 3. Inject Word comment highlights and badge markers
+    // 3. Inject Word comment highlights and badge markers (Distinct Word comment markings)
     if (clause.comments && clause.comments.length > 0) {
       for (const comment of clause.comments) {
         if (comment.selectedText && comment.selectedText.trim().length >= 2) {
           const commentEscaped = this.escapeHtml(comment.selectedText.trim());
           if (formatted.includes(commentEscaped)) {
-            const commentMarkHtml = `<mark id="comment-target-${comment.id}" class="docx-comment-highlight bg-amber-100/90 border-b-2 border-amber-500 text-slate-900 rounded-xs px-0.5 transition-all cursor-pointer hover:bg-amber-200 select-text" data-comment-id="${comment.id}" onclick="handleCommentClick('${comment.id}', ${clause.clauseIndex}, event)">${commentEscaped}<span class="inline-flex items-center justify-center ml-1 px-1 py-0.2 rounded text-[10px] font-bold bg-amber-500 text-white shadow-2xs select-none align-middle font-mono" title="Word 批注 [${this.escapeHtml(comment.author || '审阅人')}]：${this.escapeHtml(comment.text || '')}">💬 ${comment.id}</span></mark>`;
+            const commentTitle = `【Word 原生批注】${this.escapeHtml(comment.author || '审阅人')}：${this.escapeHtml(comment.text || '')}（点击在右侧查看详情与回复）`;
+            const commentMarkHtml = `<mark id="comment-target-${comment.id}" class="docx-comment-highlight rounded-xs px-0.5 transition-all cursor-pointer hover:bg-amber-200 select-text" data-comment-id="${comment.id}" onclick="handleCommentClick('${comment.id}', ${clause.clauseIndex}, event)" title="${commentTitle}">${commentEscaped}<span class="docx-comment-badge" onclick="handleCommentClick('${comment.id}', ${clause.clauseIndex}, event)">💬 批注 #${comment.id}</span></mark>`;
             formatted = formatted.replace(commentEscaped, commentMarkHtml);
           }
         }

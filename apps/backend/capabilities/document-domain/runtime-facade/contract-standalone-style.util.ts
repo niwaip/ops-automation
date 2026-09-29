@@ -50,6 +50,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 /* Grid columns & gaps */
 .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
 .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .gap-1 { gap: 0.25rem; }
 .gap-2 { gap: 0.5rem; }
 .gap-2\\.5 { gap: 0.625rem; }
@@ -542,5 +544,85 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   border-color: #1A2D42 transparent;
   display: block;
   width: 0;
+}
+
+/* Executive KPI Metric Tile Styles */
+.kpi-metric-tile {
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  text-align: left;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+.kpi-metric-tile:hover {
+  border-color: #CBD5E1;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.06);
+}
+.kpi-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* Risk Finding Evidence Marks (Distinct from Docx Comments) */
+.evidence-mark-high {
+  background-color: rgba(254, 226, 226, 0.75) !important;
+  border-bottom: 2px solid #EF4444 !important;
+  color: #991B1B !important;
+  padding: 1px 3px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.evidence-mark-medium {
+  background-color: rgba(255, 237, 213, 0.75) !important;
+  border-bottom: 2px solid #F97316 !important;
+  color: #9A3412 !important;
+  padding: 1px 3px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.evidence-risk-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  vertical-align: middle;
+  margin-left: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+.evidence-risk-badge-high {
+  background-color: #FEE2E2;
+  color: #991B1B;
+  border: 1px solid #FCA5A5;
+}
+.evidence-risk-badge-medium {
+  background-color: #FFEDD5;
+  color: #9A3412;
+  border: 1px solid #FDBA74;
+}
+.docx-comment-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  vertical-align: middle;
+  margin-left: 4px;
+  background-color: #FDE68A;
+  color: #78350F;
+  border: 1px solid #FCD34D;
+  cursor: pointer;
+  user-select: none;
 }
 `;

@@ -219,7 +219,8 @@ export class ContractReviewHtmlFindingRenderer {
     findings: FindingItemViewModel[],
     metrics?: ContractReviewMetrics,
     commentCardsHtml?: string,
-    commentsCount = 0
+    commentsCount = 0,
+    commentDetailWorkspaceHtml?: string
   ): string {
     const findingCardsHtml = findings.map((f, idx) => this.renderFindingCard(f, idx)).join('\n');
     const executiveSummaryHtml = this.renderExecutiveSummary(findings, metrics);
@@ -231,7 +232,7 @@ export class ContractReviewHtmlFindingRenderer {
       ${executiveSummaryHtml}
 
       <!-- Workbench Subheader & Operations Bar -->
-      <div class="flex items-center justify-between py-1.5 px-1 border-b border-[#E2E8F0] select-none">
+      <div id="workbench-list-header" class="flex items-center justify-between py-1.5 px-1 border-b border-[#E2E8F0] select-none">
         <div class="flex items-center gap-1.5" id="workbench-tabs">
           <button
             type="button"
@@ -285,7 +286,7 @@ export class ContractReviewHtmlFindingRenderer {
         <div id="comments-stream-container" class="space-y-3 hidden">
           <div class="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-between">
             <span class="font-medium">📌 当前为 Word 原生批注清单（共 ${commentsCount} 条批注）</span>
-            <span class="text-[11px] text-amber-700">点击卡片可高亮正文对应句段</span>
+            <span class="text-[11px] text-amber-700">点击卡片可查看详情并在右侧直接回复</span>
           </div>
           ${commentCardsHtml}
         </div>`
@@ -304,6 +305,10 @@ export class ContractReviewHtmlFindingRenderer {
           }
         </div>
       </div>
+
+      <!-- Dedicated Comment Detail & In-Place Reply Workspace (Active on Comment Click) -->
+      ${commentDetailWorkspaceHtml || ''}
+
     </section>
     `;
   }
@@ -355,23 +360,35 @@ export class ContractReviewHtmlFindingRenderer {
       </div>
 
       <div id="executive-summary-content" class="space-y-2.5 text-xs">
-        <!-- Metric Distribution Bar -->
-        <div class="grid grid-cols-4 gap-1.5 text-center select-none font-sans">
-          <div class="p-1.5 rounded bg-red-50 border border-red-200">
-            <div class="text-[10px] text-[#B42318] font-medium">高风险项</div>
-            <div class="text-sm font-bold text-[#B42318] font-mono leading-tight">${highFindings.length}</div>
+        <!-- Metric Distribution Bar (Executive 4-Column KPI Cards) -->
+        <div class="grid grid-cols-4 gap-2 text-left select-none font-sans">
+          <div class="kpi-metric-tile" style="border-left: 3px solid #DC2626;">
+            <div class="text-[10px] text-[#64748B] font-semibold flex items-center">
+              <span class="kpi-dot" style="background-color: #DC2626;"></span>
+              <span>高风险项</span>
+            </div>
+            <div class="text-base font-bold text-[#991B1B] font-mono mt-1">${highFindings.length}</div>
           </div>
-          <div class="p-1.5 rounded bg-amber-50 border border-amber-200">
-            <div class="text-[10px] text-[#9A6700] font-medium">必备缺失</div>
-            <div class="text-sm font-bold text-[#9A6700] font-mono leading-tight">${missingFindings.length}</div>
+          <div class="kpi-metric-tile" style="border-left: 3px solid #D97706;">
+            <div class="text-[10px] text-[#64748B] font-semibold flex items-center">
+              <span class="kpi-dot" style="background-color: #D97706;"></span>
+              <span>必备缺失</span>
+            </div>
+            <div class="text-base font-bold text-[#92400E] font-mono mt-1">${missingFindings.length}</div>
           </div>
-          <div class="p-1.5 rounded bg-slate-100 border border-slate-200">
-            <div class="text-[10px] text-[#334155] font-medium">偏颇/待核实</div>
-            <div class="text-sm font-bold text-[#334155] font-mono leading-tight">${verifyFindings.length}</div>
+          <div class="kpi-metric-tile" style="border-left: 3px solid #2563EB;">
+            <div class="text-[10px] text-[#64748B] font-semibold flex items-center">
+              <span class="kpi-dot" style="background-color: #2563EB;"></span>
+              <span>偏颇待核实</span>
+            </div>
+            <div class="text-base font-bold text-[#1E40AF] font-mono mt-1">${verifyFindings.length}</div>
           </div>
-          <div class="p-1.5 rounded bg-emerald-50 border border-emerald-200">
-            <div class="text-[10px] text-emerald-800 font-medium">合规通过</div>
-            <div class="text-sm font-bold text-emerald-800 font-mono leading-tight">${metrics?.passCount ?? 0}</div>
+          <div class="kpi-metric-tile" style="border-left: 3px solid #16A34A;">
+            <div class="text-[10px] text-[#64748B] font-semibold flex items-center">
+              <span class="kpi-dot" style="background-color: #16A34A;"></span>
+              <span>合规通过</span>
+            </div>
+            <div class="text-base font-bold text-[#166534] font-mono mt-1">${metrics?.passCount ?? 0}</div>
           </div>
         </div>
 

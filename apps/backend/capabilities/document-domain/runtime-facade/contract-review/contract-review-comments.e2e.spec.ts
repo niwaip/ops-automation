@@ -284,9 +284,9 @@ describe('Word OpenXML Comments End-to-End Extraction & Rendering', () => {
     expect(html).toContain('id="comment-target-2"');
     expect(html).toContain('id="comment-target-3"');
     expect(html).toContain('docx-comment-highlight');
-    expect(html).toContain('💬 1');
-    expect(html).toContain('💬 2');
-    expect(html).toContain('💬 3');
+    expect(html).toContain('💬 批注 #1');
+    expect(html).toContain('💬 批注 #2');
+    expect(html).toContain('💬 批注 #3');
 
     // Check Workbench comment cards
     expect(html).toContain('id="comment-card-1"');

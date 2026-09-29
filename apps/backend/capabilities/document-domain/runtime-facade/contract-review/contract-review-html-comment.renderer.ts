@@ -88,23 +88,176 @@ export class ContractReviewHtmlCommentRenderer {
         <div class="pt-2 border-t border-[#E2E8F0] flex items-center justify-between">
           <div class="text-[10px] text-[#64748B] flex items-center gap-1">
             <span class="inline-block w-1.5 h-1.5 rounded-full ${isResolved ? 'bg-slate-400' : 'bg-emerald-500'}"></span>
-            <span>${isResolved ? '该批注已由审阅人标记解决' : '审阅流转中待处理'}</span>
+            <span>${isResolved ? '已解决' : '待处理'}</span>
           </div>
-          ${
-            canComment
-              ? `
           <button
             type="button"
-            onclick="openCommentReplyModal('${comment.id}', '${author}', '${this.escapeQuote(comment.selectedText || '')}', ${comment.clauseIndex ?? 0}, event)"
+            onclick="handleCommentClick('${comment.id}', ${comment.clauseIndex ?? 0}, event)"
             class="text-[11px] text-[#2E5882] hover:text-[#1A2D42] font-semibold px-2 py-0.5 rounded border border-[#D9E1EC] bg-white hover:bg-slate-50 transition flex items-center gap-1 cursor-pointer"
           >
-            <span>💬 追加回复/新批注</span>
-          </button>`
-              : ''
-          }
+            <span>💬 查看详情与回复 →</span>
+          </button>
         </div>
       </div>
     </article>
+    `;
+  }
+
+  /**
+   * Render the dedicated right-hand Comment Detail & In-Place Reply Workspace.
+   * When any comment is selected, this workspace replaces the overview list.
+   */
+  renderCommentDetailWorkspace(params: { canComment?: boolean; commentApiUrl?: string }): string {
+    const { canComment = true } = params;
+
+    return `
+    <div id="comment-detail-workspace" class="hidden flex flex-col space-y-3 font-sans">
+      <!-- Top Navigation & Action Bar -->
+      <div class="flex items-center justify-between py-2 px-3 border border-[#D9E1EC] bg-slate-50 rounded-lg select-none">
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            onclick="exitCommentDetailMode()"
+            class="px-2.5 py-1 text-xs font-semibold rounded border border-[#CBD5E1] bg-white text-[#2E5882] hover:bg-[#2E5882] hover:text-white transition flex items-center gap-1 cursor-pointer shadow-2xs"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            <span>返回清单</span>
+          </button>
+          <span id="comment-detail-badge" class="px-2 py-0.5 text-[11px] font-bold rounded bg-amber-100 text-amber-900 border border-amber-300">
+            Word 批注
+          </span>
+          <span id="comment-detail-status-badge" class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+            待处理
+          </span>
+        </div>
+
+        <div class="flex items-center gap-2 text-xs text-[#64748B]">
+          <span id="comment-detail-stepper-label" class="font-mono text-[11px] font-semibold text-slate-700">1 / 1</span>
+          <div class="flex items-center gap-1">
+            <button
+              type="button"
+              onclick="stepCommentInDetail(-1)"
+              class="p-1 rounded border border-[#CBD5E1] bg-white hover:bg-slate-100 text-slate-700 transition cursor-pointer"
+              title="上一条批注"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+            <button
+              type="button"
+              onclick="stepCommentInDetail(1)"
+              class="p-1 rounded border border-[#CBD5E1] bg-white hover:bg-slate-100 text-slate-700 transition cursor-pointer"
+              title="下一条批注"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detail Content Card -->
+      <div class="bg-white rounded-lg border border-[#D9E1EC] p-4 shadow-card space-y-3.5">
+        <!-- Comment Author & Meta -->
+        <div class="flex items-start justify-between gap-2 pb-2.5 border-b border-[#E2E8F0]">
+          <div class="flex items-center gap-2.5">
+            <div id="comment-detail-avatar" class="w-8 h-8 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-xs font-bold text-amber-900 shrink-0 select-none">
+              审
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span id="comment-detail-author" class="text-sm font-bold text-[#1E293B]">审阅人</span>
+                <span id="comment-detail-clause-tag" class="text-xs font-semibold text-[#2E5882]"></span>
+              </div>
+              <div id="comment-detail-date" class="text-[10px] text-[#64748B] font-mono mt-0.5"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quoted Text Section -->
+        <div id="comment-detail-quote-container" class="bg-[#FFFBEB] rounded-md border border-amber-200/90 p-2.5">
+          <div class="flex items-center justify-between text-[11px] font-semibold text-amber-900 mb-1 select-none">
+            <span class="flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path></svg>
+              <span>原文锚定引句</span>
+            </span>
+            <button
+              type="button"
+              id="comment-detail-locate-btn"
+              onclick="locateCurrentDetailCommentInDoc()"
+              class="text-[11px] text-amber-900 hover:text-amber-950 hover:underline flex items-center gap-0.5 font-semibold cursor-pointer"
+            >
+              <span>定位正文</span>
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </button>
+          </div>
+          <blockquote id="comment-detail-quote" class="text-[#1E293B] text-xs font-normal italic select-text border-l-2 border-amber-400 pl-2.5 my-1 leading-relaxed">
+          </blockquote>
+        </div>
+
+        <!-- Original Comment Body -->
+        <div class="p-3 rounded-md bg-[#F4F6F9] border-l-3 border-l-[#2E5882]">
+          <div class="text-[10px] font-bold text-[#2E5882] mb-1 flex items-center gap-1 uppercase tracking-wider select-none">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+            <span>批注意见与修改要求</span>
+          </div>
+          <p id="comment-detail-body" class="text-xs text-[#1E293B] leading-relaxed select-text whitespace-pre-wrap font-normal"></p>
+        </div>
+
+        <!-- Inline Reply & Word Write-Back Desk -->
+        ${
+          canComment
+            ? `
+        <div class="pt-3 border-t border-[#E2E8F0] space-y-2.5">
+          <div class="flex items-center justify-between select-none">
+            <span class="text-xs font-bold text-[#1E293B] flex items-center gap-1">
+              <span>✍️ 追加答复 / 新批注（回写 Word）</span>
+            </span>
+            <span class="text-[10px] text-[#64748B]">受控回写至后台 OpenXML</span>
+          </div>
+
+          <div class="grid grid-cols-1 gap-2">
+            <div>
+              <label class="block text-[11px] font-semibold text-[#334155] mb-0.5">答复人 / 审阅者</label>
+              <input
+                type="text"
+                id="comment-detail-reply-author"
+                class="w-full px-2.5 py-1.5 rounded-md border border-[#D9E1EC] focus:border-[#2E5882] focus:ring-1 focus:ring-[#2E5882] text-xs text-[#1E293B]"
+                value="法务审阅人"
+              />
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-[#334155] mb-0.5">答复意见 / 补充修改批注</label>
+              <textarea
+                id="comment-detail-reply-text"
+                rows="3"
+                class="w-full px-2.5 py-1.5 rounded-md border border-[#D9E1EC] focus:border-[#2E5882] focus:ring-1 focus:ring-[#2E5882] text-xs text-[#1E293B] leading-relaxed resize-none"
+                placeholder="请输入针对此条批注的答复说明、修改方案或进一步风控指引..."
+              ></textarea>
+            </div>
+          </div>
+
+          <input type="hidden" id="comment-detail-current-id" value="" />
+          <input type="hidden" id="comment-detail-current-clause" value="0" />
+
+          <div class="flex items-center justify-between pt-1">
+            <div class="text-[10px] text-[#64748B] flex items-center gap-1">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <span>提交将派生新版 Word 文档</span>
+            </div>
+            <button
+              type="button"
+              id="comment-detail-submit-btn"
+              onclick="submitCommentDetailReply()"
+              class="px-3.5 py-1.5 rounded-md bg-[#1A2D42] text-xs font-semibold text-white hover:bg-[#243B53] shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>提交回写 Word</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </button>
+          </div>
+        </div>`
+            : ''
+        }
+      </div>
+    </div>
     `;
   }
 
