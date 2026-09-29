@@ -130,8 +130,9 @@ export interface ReActConfig {
   thinking?: boolean; // 是否显示/保留思维链
   reasoning?: boolean; // 是否启用模型原生推理模式（若支持）
   reasoningEffort?: 'low' | 'medium' | 'high'; // 推理思考强度
-  reasoning_effort?: 'low' | 'medium' | 'high';
   webSearch?: boolean;
+  workspaceSearch?: boolean;
+  workspaceSearchEnabled?: boolean;
 }
 
 export interface CapabilityVisibleTool {
@@ -323,6 +324,7 @@ export interface ApiEndpoint {
 
 export interface SkillRuntimeMetadata {
   routingAliases?: string[];
+  negativeKeywords?: string[];
   matchSummary?: string;
   paramCollectionGuidance?: string;
   validationRules?: string;

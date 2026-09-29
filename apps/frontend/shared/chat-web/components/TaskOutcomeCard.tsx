@@ -3,6 +3,8 @@ import {
   CheckOutlined,
   CloseOutlined,
   DownloadOutlined,
+  GlobalOutlined,
+  LinkOutlined,
   LoadingOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
@@ -30,6 +32,8 @@ export interface TaskOutcomeArtifactItem {
   downloadUrl?: string;
   mimeType?: string;
   sizeBytes?: number | string;
+  type?: string;
+  artifactType?: string;
 }
 
 interface TaskOutcomeCardProps {
@@ -298,10 +302,51 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
     );
   }, [artifacts]);
 
+  const urlArtifacts = React.useMemo(() => {
+    if (!artifacts || !Array.isArray(artifacts) || artifacts.length === 0) return [];
+    return artifacts.filter((art) => {
+      const type = (art.type || art.artifactType || '').toLowerCase();
+      const url = art.url || art.downloadUrl;
+      return (
+        (type === 'url' || type === 'link' || type === 'search_result') &&
+        typeof url === 'string' &&
+        /^https?:\/\//i.test(url)
+      );
+    });
+  }, [artifacts]);
+
   const showDownloadButton = Boolean(downloadUrl && !browserExecutionMode);
   const showDetailButton = Boolean(executionDetailLink || temporalLink);
   const normalizedSkillName = skillName?.trim();
-  const displaySuccessResult = finalResult?.trim() || getStructuredResultPreview(structuredResultText);
+
+  const isUuid = React.useCallback((val?: string) => {
+    return (
+      typeof val === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val.trim())
+    );
+  }, []);
+
+  const sanitizeInlineDownloadLines = React.useCallback((text?: string): string => {
+    if (!text) return '';
+    const lines = text.split('\n');
+    const filtered = lines.filter((line) => {
+      const trimmed = line.trim();
+      return (
+        !/^[•\*\-\s]*\*{0,2}(?:下载链接|文件下载|结果下载|产物下载)\*{0,2}[:：]/i.test(trimmed) &&
+        !/^[•\*\-\s]*\[(?:点击下载|下载文件|下载文档|下载产物).*\]\(.+\)\s*$/i.test(trimmed)
+      );
+    });
+    return filtered.join('\n');
+  }, []);
+
+  const rawSuccessResult = finalResult?.trim() || getStructuredResultPreview(structuredResultText);
+  const displaySuccessResult = React.useMemo(() => {
+    if (!rawSuccessResult) return '';
+    if (showDownloadButton || downloadUrl) {
+      return sanitizeInlineDownloadLines(rawSuccessResult);
+    }
+    return rawSuccessResult;
+  }, [rawSuccessResult, showDownloadButton, downloadUrl, sanitizeInlineDownloadLines]);
 
   const hasInlineHtmlFence = React.useMemo(() => {
     if (!displaySuccessResult) return false;
@@ -466,7 +511,9 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
     return (
       <div className="chat-outcome-card success">
         <div className="chat-outcome-header">
-          <div className="chat-outcome-title">{hasBusinessResult ? '任务结果' : '任务完成'}</div>
+          <div className="chat-outcome-title" style={{ marginBottom: 0 }}>
+            {hasBusinessResult ? '任务结果' : '任务完成'}
+          </div>
           {showDetailButton ? (
             <Button
               type="primary"
@@ -477,6 +524,13 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
               target="_blank"
               rel="noopener noreferrer"
               className="chat-outcome-detail-button"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 4,
+                lineHeight: 1,
+              }}
             >
               详细
             </Button>
@@ -484,6 +538,7 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
         </div>
         {renderMeta()}
         {normalizedSkillName &&
+        !isUuid(normalizedSkillName) &&
         !['result', 'results', 'generic', 'tool_execution', 'flow_execute', 'skill-match'].includes(
           normalizedSkillName.toLowerCase()
         ) ? (
@@ -563,7 +618,7 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
             srcUrl={htmlArtifact.url || htmlArtifact.downloadUrl}
             defaultTitle={htmlArtifact.name || htmlArtifact.label}
             sizeBytes={htmlArtifact.sizeBytes}
-            defaultExpanded={true}
+            defaultExpanded={false}
             isStreaming={showRunningState}
           />
         ) : null}
@@ -574,9 +629,66 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
             srcUrl={mdArtifact.url || mdArtifact.downloadUrl}
             fileName={mdArtifact.name || mdArtifact.label}
             sizeBytes={mdArtifact.sizeBytes}
-            defaultExpanded={true}
+            defaultExpanded={false}
             isStreaming={showRunningState}
           />
+        ) : null}
+        {/* Web 搜索参考来源卡片 */}
+        {urlArtifacts.length > 0 ? (
+          <div className="chat-outcome-references" style={{ marginTop: 12 }}>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--text-secondary, #64748b)',
+                marginBottom: 6,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <GlobalOutlined />
+              <span>参考来源 ({urlArtifacts.length})：</span>
+            </div>
+            <Space wrap size={[6, 6]}>
+              {urlArtifacts.map((art, idx) => {
+                const targetUrl = art.url || art.downloadUrl || '#';
+                const label =
+                  art.name ||
+                  art.label ||
+                  (() => {
+                    try {
+                      return new URL(targetUrl).hostname;
+                    } catch {
+                      return `来源 ${idx + 1}`;
+                    }
+                  })();
+                return (
+                  <Button
+                    key={idx}
+                    size="small"
+                    type="default"
+                    icon={<LinkOutlined />}
+                    href={targetUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="chat-outcome-ref-link"
+                    style={{
+                      fontSize: 12,
+                      borderRadius: 6,
+                      maxWidth: 320,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                    title={label}
+                  >
+                    {label}
+                  </Button>
+                );
+              })}
+            </Space>
+          </div>
         ) : null}
 
         {showDownloadButton ? renderResourceLinks({ showDetailAction: false }) : null}

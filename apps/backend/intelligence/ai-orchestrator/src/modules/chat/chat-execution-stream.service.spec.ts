@@ -641,4 +641,172 @@ describe('ChatExecutionStreamService', () => {
     expect(reasoningChatCompletion).toHaveBeenCalled();
     expect(event?.content).toBe('已获取到 Item 1 数据结果。');
   });
+
+  it('retries once on transient SSL/TLS error and succeeds on second attempt', async () => {
+    const controlPlaneClient = {
+      getExecution: jest
+        .fn()
+        .mockResolvedValueOnce({
+          id: 'execution-retry-success',
+          status: CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED,
+        })
+        .mockResolvedValueOnce({
+          id: 'execution-retry-success',
+          status: CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED,
+          normalizedInput: { objective: '总结数据' },
+          resultJson: {
+            execution: { status: 'success' },
+            result: {
+              title: 'generic_workflow',
+              businessData: { results: [{ title: 'Item 1' }] },
+            },
+            presentation: { preferAiSummary: true },
+          },
+        }),
+      streamExecutionEvents: jest.fn(),
+      updateExecutionResultSummary: jest.fn(),
+    };
+    const waitingInputService = {
+      buildControlPlaneRequestOptions: jest.fn(() => ({})),
+      loadWaitingInputDetails: jest.fn(),
+      extractExecutionSemantic: jest.fn(),
+      formatWaitingInputMessage: jest.fn(),
+    };
+    const chatCompletion = jest
+      .fn()
+      .mockRejectedValueOnce(new Error("Hostname/IP does not match certificate's altnames"))
+      .mockResolvedValueOnce({
+        content: '重试成功：已总结数据。',
+      });
+    const modelService = {
+      getPreferredDefaultModel: jest.fn(() => ({ id: 'model-1', name: 'model-1' })),
+      getClient: jest.fn(() => ({ chatCompletion })),
+      stripThinkingTags: jest.fn((content: string) => content.trim()),
+    };
+    const service = new ChatExecutionStreamService(
+      controlPlaneClient as any,
+      waitingInputService as any,
+      new ChatResultNormalizerService(),
+      modelService as any
+    );
+
+    const event = await service.buildLatestExecutionStateEvent('execution-retry-success');
+
+    expect(chatCompletion).toHaveBeenCalledTimes(2);
+    expect(event?.content).toBe('重试成功：已总结数据。');
+  });
+
+  it('returns friendly error message without leaking TLS/altnames technical details when LLM fails', async () => {
+    const controlPlaneClient = {
+      getExecution: jest
+        .fn()
+        .mockResolvedValueOnce({
+          id: 'execution-tls-fail',
+          status: CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED,
+        })
+        .mockResolvedValueOnce({
+          id: 'execution-tls-fail',
+          status: CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED,
+          normalizedInput: { objective: '总结数据' },
+          resultJson: {
+            execution: { status: 'success' },
+            result: {
+              title: 'generic_workflow',
+              businessData: { data: 'test' },
+            },
+            presentation: { preferAiSummary: true },
+          },
+        }),
+      streamExecutionEvents: jest.fn(),
+      updateExecutionResultSummary: jest.fn(),
+    };
+    const waitingInputService = {
+      buildControlPlaneRequestOptions: jest.fn(() => ({})),
+      loadWaitingInputDetails: jest.fn(),
+      extractExecutionSemantic: jest.fn(),
+      formatWaitingInputMessage: jest.fn(),
+    };
+    const chatCompletion = jest.fn().mockRejectedValue(
+      new Error("Hostname/IP does not match certificate's altnames: Host: sword.trycloudflare.com is not in cert altnames")
+    );
+    const modelService = {
+      getPreferredDefaultModel: jest.fn(() => ({ id: 'model-1', name: 'model-1' })),
+      getClient: jest.fn(() => ({ chatCompletion })),
+      stripThinkingTags: jest.fn((content: string) => content.trim()),
+    };
+    const service = new ChatExecutionStreamService(
+      controlPlaneClient as any,
+      waitingInputService as any,
+      new ChatResultNormalizerService(),
+      modelService as any
+    );
+
+    const event = await service.buildLatestExecutionStateEvent('execution-tls-fail');
+
+    expect(chatCompletion).toHaveBeenCalledTimes(2); // Retried once
+    expect(event?.content).toContain('⚠️ AI 自动总结未生成：大模型服务链路握手异常，已展示原始执行结果');
+    expect(event?.content).not.toContain('trycloudflare.com');
+    expect(event?.content).not.toContain('altnames');
+  });
+
+  it('strips false action confirmations (like setting reminders) from search capability summaries', async () => {
+    const controlPlaneClient = {
+      getExecution: jest
+        .fn()
+        .mockResolvedValueOnce({
+          id: 'execution-web-search-hallucination',
+          status: CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED,
+        })
+        .mockResolvedValueOnce({
+          id: 'execution-web-search-hallucination',
+          status: CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED,
+          skillId: 'platform.search.web',
+          normalizedInput: { objective: '提醒今天晚上 9点钟 看电视' },
+          resultJson: {
+            execution: { status: 'success' },
+            result: {
+              resultType: 'tavily_search',
+              title: 'search_workflow',
+              businessData: {
+                searchResults: [{ title: '电视节目表', content: '新闻联播19:00播出' }],
+              },
+            },
+          },
+        }),
+      streamExecutionEvents: jest.fn(),
+      updateExecutionResultSummary: jest.fn(),
+    };
+    const waitingInputService = {
+      buildControlPlaneRequestOptions: jest.fn(() => ({})),
+      loadWaitingInputDetails: jest.fn(),
+      extractExecutionSemantic: jest.fn(),
+      formatWaitingInputMessage: jest.fn(),
+    };
+    const chatCompletion = jest.fn().mockResolvedValue({
+      content:
+        '已为您设置提醒：今天晚上 9:00 看电视。\n\n此外，检索到以下相关信息供您参考：\n- 新闻联播：19:00播出。',
+    });
+    const modelService = {
+      getPreferredDefaultModel: jest.fn(() => ({ id: 'model-1', name: 'model-1' })),
+      getClient: jest.fn(() => ({ chatCompletion })),
+      stripThinkingTags: jest.fn((content: string) => content.trim()),
+    };
+    const service = new ChatExecutionStreamService(
+      controlPlaneClient as any,
+      waitingInputService as any,
+      new ChatResultNormalizerService(),
+      modelService as any
+    );
+
+    const event = await service.buildLatestExecutionStateEvent('execution-web-search-hallucination');
+
+    expect(chatCompletion).toHaveBeenCalled();
+    // Verify system/user prompt received anti-hallucination constraint
+    const messages = chatCompletion.mock.calls[0][0].messages;
+    expect(messages[0].content).toContain('只读检索工具');
+    expect(messages[1].content).toContain('特别约束（极其重要）');
+    // Verify the false confirmation line is stripped
+    expect(event?.content).not.toContain('已为您设置提醒');
+    expect(event?.content).toContain('检索到以下相关信息供您参考');
+  });
 });

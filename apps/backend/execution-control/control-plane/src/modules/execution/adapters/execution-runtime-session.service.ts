@@ -26,6 +26,10 @@ export class ExecutionRuntimeSessionService {
   }
 
   async closeQuietly(runtimeSessionId: string, executionId: string, reason: string): Promise<void> {
+    if (!runtimeSessionId || runtimeSessionId === executionId) {
+      return;
+    }
+
     try {
       await axios.post(`${this.sessionBrokerUrl}/runtime-sessions/${runtimeSessionId}/close`, {});
       this.logger.log(
@@ -44,7 +48,7 @@ export class ExecutionRuntimeSessionService {
     executionId: string,
     reason: string
   ): Promise<void> {
-    if (!runtimeSessionId) {
+    if (!runtimeSessionId || runtimeSessionId === executionId) {
       return;
     }
 
@@ -65,7 +69,7 @@ export class ExecutionRuntimeSessionService {
     executionId: string,
     stepId?: string
   ): Promise<void> {
-    if (!runtimeSessionId) {
+    if (!runtimeSessionId || runtimeSessionId === executionId) {
       return;
     }
 

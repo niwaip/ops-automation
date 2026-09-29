@@ -103,16 +103,17 @@ export class ChatResultNormalizerService {
     );
     const rawRecord = this.asRecord(rawResult);
     const textCandidate = this.firstNonEmptyString(
-      this.readStringField(rawResult, ['text', 'content', 'mainContent', 'extractedText']),
-      this.readStringField(rawRecord?.output, ['text', 'mainContent', 'content', 'summary', 'extractedText']),
-      this.readStringField(rawRecord?.data, ['text', 'mainContent', 'content', 'summary']),
-      this.readStringField(rawRecord?.postProcessing, ['summary', 'text', 'result']),
-      this.readStringField(rawRecord?.result, ['text', 'summary', 'content'])
+      this.readStringField(rawResult, ['answer', 'text', 'content', 'mainContent', 'extractedText']),
+      this.readStringField(rawRecord?.output, ['answer', 'text', 'mainContent', 'content', 'summary', 'extractedText']),
+      this.readStringField(rawRecord?.data, ['answer', 'text', 'mainContent', 'content', 'summary']),
+      this.readStringField(rawRecord?.postProcessing, ['summary', 'answer', 'text', 'result']),
+      this.readStringField(rawRecord?.result, ['answer', 'text', 'summary', 'content'])
     );
     const summary = this.firstNonEmptyString(
       envelope.presentation?.chatSummary,
       envelope.result?.summary,
       this.readStringField(rawResult, [
+        'answer',
         'chatSummary',
         'finalAnswer',
         'formatted_output',
@@ -127,12 +128,17 @@ export class ChatResultNormalizerService {
       envelope.presentation?.chatSummary,
       envelope.result?.summary,
       textCandidate,
-      this.readStringField(rawResult, ['result', 'text', 'content']),
+      this.readStringField(rawResult, ['answer', 'result', 'text', 'content']),
       typeof rawResult === 'string' ? rawResult : undefined
     );
-    const summaryFormat = envelope.presentation?.summaryFormat || 'plain_text';
+    const summaryFormat =
+      envelope.presentation?.summaryFormat ||
+      (this.readStringField(rawResult, ['answer']) ? 'markdown' : 'plain_text');
     const detailText = this.firstNonEmptyString(envelope.presentation?.detailText, body);
-    const detailFormat = envelope.presentation?.detailFormat || summaryFormat || 'plain_text';
+    const detailFormat =
+      envelope.presentation?.detailFormat ||
+      summaryFormat ||
+      (this.readStringField(rawResult, ['answer']) ? 'markdown' : 'plain_text');
     const structuredData = this.pickStructuredData(envelope, rawResult);
     const hasBusinessResult = Boolean(
       summary ||
@@ -523,6 +529,7 @@ export class ChatResultNormalizerService {
         ),
         title: this.readStringField(rawResult, ['title', 'name']),
         summary: this.readStringField(rawResult, [
+          'answer',
           'chatSummary',
           'finalAnswer',
           'formatted_output',
@@ -541,6 +548,7 @@ export class ChatResultNormalizerService {
         preferAiSummary: Boolean(
           businessData &&
           !this.readStringField(rawResult, [
+            'answer',
             'chatSummary',
             'finalAnswer',
             'formatted_output',
@@ -550,16 +558,18 @@ export class ChatResultNormalizerService {
           ])
         ),
         preferStructuredView: false,
-        chatSummary: this.readStringField(rawResult, ['chatSummary']),
+        chatSummary: this.readStringField(rawResult, ['answer', 'chatSummary']),
         notificationSummary: this.readStringField(rawResult, [
           'notificationSummary',
           'chatSummary',
         ]),
         summaryFormat:
-          this.readStringField(rawResult, ['summaryFormat']) === 'markdown'
+          this.readStringField(rawResult, ['summaryFormat']) === 'markdown' ||
+          Boolean(this.readStringField(rawResult, ['answer']))
             ? 'markdown'
             : 'plain_text',
         detailText: this.readStringField(rawResult, [
+          'answer',
           'detailText',
           'formatted_output',
           'result',
@@ -567,7 +577,8 @@ export class ChatResultNormalizerService {
           'content',
         ]),
         detailFormat:
-          this.readStringField(rawResult, ['detailFormat']) === 'markdown'
+          this.readStringField(rawResult, ['detailFormat']) === 'markdown' ||
+          Boolean(this.readStringField(rawResult, ['answer']))
             ? 'markdown'
             : 'plain_text',
       },
@@ -733,6 +744,7 @@ export class ChatResultNormalizerService {
       );
       const name = this.firstNonEmptyString(
         this.asString(record.name),
+        this.asString(record.title),
         this.asString(record.fileName),
         this.asString(record.label)
       );

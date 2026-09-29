@@ -4,7 +4,6 @@ import type { CompactCapabilityCardV1 } from '@ops/backend-deterministic-plan';
 import type { RecognizeParamsResponseDTO } from '../../../interfaces';
 import type { ParamsSchema } from '../../react-engine/interfaces';
 import {
-  containsRoutingAlias,
   createBuiltinRoutingPolicySnapshot,
   matchesCapabilityRole,
 } from '../routing/routing-policy.matcher';
@@ -137,6 +136,16 @@ export class DeterministicParamResolverService {
     // 1. Strip leading slash commands like /doc, /workspace, /rag, /search, /web
     subject = subject.replace(/^\s*[/、][a-zA-Z0-9_-]+\s*/u, '');
 
+    // 2. Local/attached document inspect intent disambiguation:
+    // If the request is an inspection of a local attachment, document, or file (e.g. 查看附件内容, 查看文档),
+    // it must not be treated as a web or knowledge search query.
+    if (
+      /^(?:查看|查阅|阅读|读取|浏览|看下|看一下|看看|检查|打开)\s*(?:附件|文档|文件|合同|协议|正文|内容)?$/iu.test(subject) ||
+      /(?:附件|本地|已上传|刚刚|历史文件)/i.test(subject) && /^(?:查看|查阅|阅读|读取|浏览|看下|看一下|看看)/i.test(subject)
+    ) {
+      return undefined;
+    }
+
     const sequentialAliases = [...policy.signals.sequential].sort((a, b) => b.length - a.length);
     const separatorPositions = sequentialAliases
       .map((alias) => ({ alias, index: subject.indexOf(alias) }))
@@ -146,14 +155,16 @@ export class DeterministicParamResolverService {
     if (separator) subject = subject.slice(0, separator.index);
 
     subject = subject.replace(/^[\s，,。.!！?？:：;；]+|[\s，,。.!！?？:：;；]+$/gu, '');
-    subject = subject.replace(/^(?:请(?:帮我)?|帮我|麻烦(?:帮我)?|给我|查一下|查找|查阅|搜索)\s*/u, '');
 
-    const searchAliases = [...policy.signals.search].sort((a, b) => b.length - a.length);
-    const leadingAlias = searchAliases.find((alias) =>
-      containsRoutingAlias(subject, alias) &&
-      subject.toLocaleLowerCase().startsWith(alias.toLocaleLowerCase()),
+    // Strip polite prefixes and search action verbs (aligned with personal-sandbox-runner normalize_search_query)
+    subject = subject.replace(
+      /^(?:帮我|请|给我|带我|麻烦|协助)?\s*(?:查一下|查下|查询|搜索|查找|看下|看一下|看看|检索|了解一下|获取|调研|调查|分析一下|分析|评测一下|评测|研究一下|调用|查看|search|find|lookup|research|investigate)\s*/iu,
+      ''
     );
-    if (leadingAlias) subject = subject.slice(leadingAlias.length).trim();
+    subject = subject.replace(
+      /^(?:关于他|关于她|关于它|关于其|关于这个|关于该|关于|有关|针对其|针对这个|针对|对于|对于这个)[的]?\s*/iu,
+      ''
+    );
 
     // Strip trailing processing verbs (e.g. 进行总结, 来总结, 给出总结, 并分析)
     subject = subject.replace(/\s*(?:来?进行|并|然后|接着|帮我|给出)?\s*(?:总结|分析|概括|归纳|汇总|整理|提炼|呈现).*$/u, '').trim();
@@ -162,6 +173,13 @@ export class DeterministicParamResolverService {
     // “X 的新闻/资讯” declares a source category, while “AI新闻” remains the query itself.
     subject = subject.replace(/\s*的(?:相关)?(?:新闻|资讯|最新消息)\s*$/u, '').trim();
     subject = subject.replace(/^[\s，,。.!！?？:：;；]+|[\s，,。.!！?？:：;；]+$/gu, '');
+
+    // Discard bare generic document nouns that lack a concrete query topic
+    if (
+      /^(?:附件|附件内容|文档|文档内容|文件|文件内容|合同|合同内容|内容|正文)$/i.test(subject)
+    ) {
+      return undefined;
+    }
 
     if (
       !subject ||

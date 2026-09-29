@@ -98,6 +98,21 @@ export function canonicalizeIntentWithPolicy(
   return normalized.replace(/[^\p{L}\p{N}]+/gu, '');
 }
 
+/**
+ * Strips appended system context sections (e.g. uploaded file metadata, previews, etc.)
+ * from the request string to expose only the user's pure intent/utterance.
+ */
+export function stripSystemContext(value: string): string {
+  if (!value) return '';
+  const idx = value.indexOf('[系统上下文：');
+  if (idx !== -1) {
+    const userPart = value.substring(0, idx).trim();
+    if (userPart) return userPart;
+    return value.replace(/\[系统上下文：[^\]]*\]/g, '').trim();
+  }
+  return value.trim();
+}
+
 function flattenTextValues(value: unknown): string[] {
   if (typeof value === 'string') return [value];
   if (Array.isArray(value)) return value.flatMap(flattenTextValues);

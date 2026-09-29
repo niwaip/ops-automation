@@ -8,6 +8,7 @@ RecognizeParamsResponseDTO,
 } from '../../interfaces';
 import { ModelService } from '../model/model.service';
 import { buildPromptAssembly } from './prompt-assembly';
+import { extractJsonCandidate } from './recognizer-json-repair';
 import { inferValueBySemanticSignal } from './semantic-role.registry';
 
 import {
@@ -208,11 +209,59 @@ export class RecognizerService {
           responseText: response.content,
         },
       ];
+
+      let responseContent = response.content;
+      let jsonCandidate = this.extractJsonCandidate(responseContent);
+
+      // Layer 3: If candidate cannot be found or repaired, and model is available, perform 1 reflection retry
+      if (!jsonCandidate && dto.fallbackMode !== 'none') {
+        try {
+          this.logger.warn(
+            `大模型 [${runtime.modelId}] 初次输出未生成可解析 JSON，触发 1 次格式纠错重试 (Reflection Retry)...`
+          );
+          const reflectionAssembly = {
+            ...promptAssembly,
+            dynamicUser: `${promptAssembly.dynamicUser}\n\n[格式纠错重试要求]\n你上一次的输出不是合法的 JSON 格式。请严格只输出标准紧凑的 JSON 对象（例如 {"partyA.name":"..."}），禁止输出任何多余的开头花括号（如 {{）或 markdown 解释文本。`,
+          };
+          const retryResponse = await runtime.client.chatCompletion({
+            assembly: reflectionAssembly,
+            responseFormat: 'json_object',
+            promptCaching: this.modelService.getPromptCachingConfig(runtime.modelId),
+          });
+          const retryCandidate = this.extractJsonCandidate(retryResponse.content);
+          if (retryCandidate) {
+            responseContent = retryResponse.content;
+            jsonCandidate = retryCandidate;
+            llmCalls.push({
+              stage: 'recognizer',
+              label: '参数识别 (格式纠错重试)',
+              modelId: runtime.modelId,
+              requestMessages: [
+                {
+                  role: 'system',
+                  content: [reflectionAssembly.staticSystem, reflectionAssembly.skillContext]
+                    .filter(Boolean)
+                    .join('\n\n'),
+                },
+                {
+                  role: 'user',
+                  content: reflectionAssembly.dynamicUser,
+                },
+              ],
+              responseText: retryResponse.content,
+            });
+          }
+        } catch (retryError) {
+          this.logger.warn(`格式纠错重试调用失败，将直接使用确定性规则兜底: ${retryError}`);
+        }
+      }
+
       const result = this.parseAIResponse(
-        response.content,
+        responseContent,
         propertiesWithRequired,
         dto.user_input,
-        dto.postProcessMode !== 'schema_only'
+        dto.postProcessMode !== 'schema_only',
+        dto.fallbackMode || 'basic'
       );
       return {
         ...result,
@@ -269,11 +318,26 @@ export class RecognizerService {
     response: string,
     properties: Record<string, ParamSchemaProperty>,
     userInput: string,
-    enableSemanticAugmentation: boolean
+    enableSemanticAugmentation: boolean,
+    fallbackMode: 'none' | 'basic' = 'basic'
   ): RecognizeParamsResponseDTO {
     try {
       const jsonCandidate = this.extractJsonCandidate(response);
       if (!jsonCandidate) {
+        if (fallbackMode !== 'none') {
+          this.logger.warn('AI 响应未提取到可解析 JSON，触发确定性/显式规则兜底');
+          const fallback = this.basicPatternMatching(userInput, properties);
+          return {
+            ...fallback,
+            confidence: Math.max(fallback.confidence, 0.5),
+            debug: {
+              notes: [
+                'AI 响应未提取到可解析 JSON，已触发基础模式匹配与显式规则兜底',
+                ...(fallback.debug?.notes || []),
+              ],
+            },
+          };
+        }
         return this.buildPostProcessedEmptyResponse(
           properties,
           userInput,
@@ -322,7 +386,23 @@ export class RecognizerService {
           this.hasRecognizedFieldValue(field, postProcessed.params[field])
         ),
       };
-    } catch {
+    } catch (parseErr) {
+      if (fallbackMode !== 'none') {
+        this.logger.warn(
+          `AI 响应 JSON 解析异常 (${parseErr instanceof Error ? parseErr.message : String(parseErr)})，触发确定性/显式规则兜底`
+        );
+        const fallback = this.basicPatternMatching(userInput, properties);
+        return {
+          ...fallback,
+          confidence: Math.max(fallback.confidence, 0.5),
+          debug: {
+            notes: [
+              `AI 响应 JSON 解析异常，已触发基础模式匹配与显式规则兜底: ${parseErr instanceof Error ? parseErr.message : String(parseErr)}`,
+              ...(fallback.debug?.notes || []),
+            ],
+          },
+        };
+      }
       return this.buildPostProcessedEmptyResponse(
         properties,
         userInput,
@@ -464,57 +544,7 @@ export class RecognizerService {
   }
 
   private extractJsonCandidate(response: string): string | undefined {
-    const fencedMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/i);
-    if (fencedMatch?.[1]?.trim()) {
-      const fenced = fencedMatch[1].trim();
-      try {
-        JSON.parse(fenced);
-        return fenced;
-      } catch {
-        // Continue with balanced-object scanning. Some providers include
-        // reasoning or multiple objects around an otherwise valid JSON body.
-      }
-    }
-
-    const candidates: string[] = [];
-    let start = -1;
-    let depth = 0;
-    let inString = false;
-    let escaped = false;
-
-    for (let index = 0; index < response.length; index += 1) {
-      const char = response[index]!;
-      if (inString) {
-        if (escaped) escaped = false;
-        else if (char === '\\') escaped = true;
-        else if (char === '"') inString = false;
-        continue;
-      }
-      if (char === '"') {
-        inString = true;
-        continue;
-      }
-      if (char === '{') {
-        if (depth === 0) start = index;
-        depth += 1;
-        continue;
-      }
-      if (char === '}' && depth > 0) {
-        depth -= 1;
-        if (depth === 0 && start >= 0) {
-          const candidate = response.slice(start, index + 1);
-          try {
-            JSON.parse(candidate);
-            candidates.push(candidate);
-          } catch {
-            // Ignore malformed candidates and continue scanning later objects.
-          }
-          start = -1;
-        }
-      }
-    }
-
-    return candidates.at(-1);
+    return extractJsonCandidate(response);
   }
 
   private buildPostProcessedEmptyResponse(

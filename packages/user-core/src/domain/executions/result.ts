@@ -429,6 +429,7 @@ const buildEnvelope = (
       ),
       title: readStringField(rawResult, ['title', 'name']),
       summary: readStringField(rawResult, [
+        'answer',
         'chatSummary',
         'finalAnswer',
         'formatted_output',
@@ -447,6 +448,7 @@ const buildEnvelope = (
       preferAiSummary: Boolean(
         businessData &&
         !readStringField(rawResult, [
+          'answer',
           'chatSummary',
           'finalAnswer',
           'formatted_output',
@@ -456,11 +458,15 @@ const buildEnvelope = (
         ])
       ),
       preferStructuredView: false,
-      chatSummary: readStringField(rawResult, ['chatSummary']),
+      chatSummary: readStringField(rawResult, ['answer', 'chatSummary']),
       notificationSummary: readStringField(rawResult, ['notificationSummary', 'chatSummary']),
       summaryFormat:
-        readStringField(rawResult, ['summaryFormat']) === 'markdown' ? 'markdown' : 'plain_text',
+        readStringField(rawResult, ['summaryFormat']) === 'markdown' ||
+        Boolean(readStringField(rawResult, ['answer']))
+          ? 'markdown'
+          : 'plain_text',
       detailText: readStringField(rawResult, [
+        'answer',
         'detailText',
         'formatted_output',
         'result',
@@ -468,7 +474,10 @@ const buildEnvelope = (
         'content',
       ]),
       detailFormat:
-        readStringField(rawResult, ['detailFormat']) === 'markdown' ? 'markdown' : 'plain_text',
+        readStringField(rawResult, ['detailFormat']) === 'markdown' ||
+        Boolean(readStringField(rawResult, ['answer']))
+          ? 'markdown'
+          : 'plain_text',
     },
   };
 };
@@ -493,6 +502,7 @@ export const normalizeWorkflowExecutionResult = (
     envelope.presentation?.chatSummary,
     envelope.result?.summary,
     readStringField(rawResult, [
+      'answer',
       'chatSummary',
       'finalAnswer',
       'formatted_output',
@@ -502,14 +512,20 @@ export const normalizeWorkflowExecutionResult = (
     ])
   );
   const body = firstNonEmptyString(
+    envelope.presentation?.detailText,
     envelope.presentation?.chatSummary,
     envelope.result?.summary,
-    readStringField(rawResult, ['result', 'text', 'content']),
+    readStringField(rawResult, ['answer', 'result', 'text', 'content']),
     typeof rawResult === 'string' ? rawResult : undefined
   );
-  const summaryFormat = envelope.presentation?.summaryFormat || 'plain_text';
+  const summaryFormat =
+    envelope.presentation?.summaryFormat ||
+    (readStringField(rawResult, ['answer']) ? 'markdown' : 'plain_text');
   const detailText = firstNonEmptyString(envelope.presentation?.detailText, body);
-  const detailFormat = envelope.presentation?.detailFormat || summaryFormat || 'plain_text';
+  const detailFormat =
+    envelope.presentation?.detailFormat ||
+    summaryFormat ||
+    (readStringField(rawResult, ['answer']) ? 'markdown' : 'plain_text');
   const structuredData =
     envelope.result?.businessData !== undefined
       ? envelope.result.businessData

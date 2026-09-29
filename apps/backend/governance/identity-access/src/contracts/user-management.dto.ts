@@ -34,3 +34,8 @@ export class UpdateUserDepartmentDto {
   title?: string | null;
 }
 
+export class ResetUserPasswordDto {
+  @IsString()
+  password: string;
+}
+

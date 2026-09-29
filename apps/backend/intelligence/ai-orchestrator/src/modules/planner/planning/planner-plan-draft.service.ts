@@ -181,10 +181,72 @@ export class PlannerPlanDraftService {
       schemaFields.length > 0 &&
       schemaFields.every((fieldName) => authoritativeFieldSet.has(fieldName));
 
+    if (fullyResolvedByAuthoritativeSources) {
+      return [];
+    }
+
+    const declaredRequiredFields = Array.isArray(matchedSkill.paramsSchema?.required)
+      ? matchedSkill.paramsSchema.required
+      : Object.entries(matchedSkill.paramsSchema?.properties || {})
+          .filter(([, prop]) => (prop as any)?.required === true)
+          .map(([name]) => name);
+
+    const allRequiredSatisfied =
+      declaredRequiredFields.length > 0 &&
+      declaredRequiredFields.every((name) => authoritativeFieldSet.has(name));
+
+    if (allRequiredSatisfied) {
+      const unresolvedFields = schemaFields.filter((f) => !authoritativeFieldSet.has(f));
+      if (unresolvedFields.length === 0) {
+        return [];
+      }
+      if (!this.hasOptionalParameterSignals(objective, contractResolvedFields)) {
+        return [];
+      }
+      return unresolvedFields;
+    }
+
     // Only declared contract aliases and explicit previous-result projections are
     // authoritative enough to suppress semantic extraction. Collected/default
     // values must not hide optional fields present in the current user request.
-    return fullyResolvedByAuthoritativeSources ? [] : schemaFields;
+    return schemaFields;
+  }
+
+  private hasOptionalParameterSignals(
+    objective?: string,
+    _contractResolvedFields: string[] = []
+  ): boolean {
+    if (!objective || typeof objective !== 'string') {
+      return false;
+    }
+
+    let text = objective.normalize('NFKC').trim();
+    if (!text) {
+      return false;
+    }
+
+    // 1. Strip leading commands and intent action verbs
+    text = text.replace(/^\s*[/、][a-zA-Z0-9_-]+\s*/u, '');
+    text = text.replace(
+      /^(?:请(?:帮我)?|帮我|麻烦(?:帮我)?|给我|查一下|查找|查阅|搜索|查看|查询|想看|看下|看看|检索|获取|浏览)\s*/u,
+      ''
+    );
+    text = text.replace(/\s*(?:一下|看看|吧|呢|呀|呗|谢|谢谢)[\s，,。.!！?？]*$/u, '');
+    text = text.replace(/^[\s，,。.!！?？:：;；]+|[\s，,。.!！?？:：;；]+$/gu, '');
+
+    // 2. Check for explicit numerical, filtering or configuration tokens
+    if (/\d+/.test(text)) {
+      return true;
+    }
+    if (
+      /(?:新闻|news|深度|详细|高级|advanced|排除|过滤|限定|只看|包含|指定|site:|domain|\.com|\.cn|\.net|\.org)/i.test(
+        text
+      )
+    ) {
+      return true;
+    }
+
+    return false;
   }
 
   private async recognizeUnresolvedFields(input: {
@@ -214,7 +276,7 @@ export class PlannerPlanDraftService {
       user_input: input.objective,
       modelId: input.modelId,
       fallbackMode: 'basic',
-      postProcessMode: input.isDocumentSkill ? 'semantic_augmentation' : 'schema_only',
+      postProcessMode: 'semantic_augmentation',
       context: input.recognizerContext,
       guide_context: buildDocumentGuideContext({
         enabled: input.isDocumentSkill,

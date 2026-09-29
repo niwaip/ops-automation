@@ -9,7 +9,7 @@ metadata:
     category: notification
     domain: platform
 spec:
-  definitionVersion: 1.1.0
+  definitionVersion: 1.2.0
   lifecycle: stable
   userConfigurable: true
   defaultAccess:
@@ -20,6 +20,26 @@ spec:
       - 定期提醒
       - 运维点检提醒
       - 每天提醒我
+      - 提醒我
+      - 设置提醒
+      - 提醒
+      - 定时提醒
+      - 创建提醒
+      - 到点提醒
+      - 消息提醒
+      - 提醒事项
+    negativeKeywords:
+      - 查看提醒
+      - 查看消息提醒
+      - 查看现在的消息提醒
+      - 查询提醒
+      - 查询消息提醒
+      - 列出提醒
+      - 有哪些提醒
+      - 现在的提醒
+      - 现有的提醒
+      - 提醒列表
+      - 提醒日程
     matchSummary: 创建个人一次性或定期消息提醒
     runtimeType: workflow
     supportsArtifact: false

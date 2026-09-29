@@ -93,6 +93,8 @@ export interface UploadedFile {
   size: number;
   file?: File;
   content?: string; // base64编码的文件内容
+  previewUrl?: string;
+  url?: string;
 }
 
 /**

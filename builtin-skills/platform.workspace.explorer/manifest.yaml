@@ -30,7 +30,6 @@ spec:
       - 内部资料
       - 研读文档
       - 搜索文件
-      - 查看文件
       - 空间检索
       - 文档探查
       - 知识检索
@@ -38,9 +37,12 @@ spec:
       - /doc
       - /workspace
       - /rag
-      - doc
-      - workspace
-      - rag
+    negativeKeywords:
+      - 附件
+      - 已上传
+      - 上传的
+      - 本地文件
+      - 当前文件
     matchSummary: 自主探查工作空间中的知识文档、规范与资料，并返回可溯源的结构化解答
     runtimeType: workflow
     supportsArtifact: false

@@ -2,8 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { ModelService } from '../../model/model.service';
 import { BrowserCommand } from '../intent';
-import { buildBrowserRecordingExecutionPlan } from './browser-recording-execution-plan';
-import type { BrowserRecordingExecutionPlanLike } from './browser-recording-execution-plan';
+import {
+  buildBrowserRecordingExecutionPlan,
+  type BrowserRecordingExecutionPlanLike,
+} from '@ops/browser-recorder';
 import { RecorderExportService } from './recorder-export.service';
 import {
   RecorderLoopDraftState,

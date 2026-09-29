@@ -9,20 +9,13 @@ metadata:
     category: communication
     domain: email
 spec:
-  definitionVersion: 1.0.1
+  definitionVersion: 1.0.2
   lifecycle: experimental
   defaultAccess:
     mode: authenticated
   planner:
     enabled: true
     triggerKeywords:
-      - 查 邮件
-      - 查看 邮件
-      - 读取 邮件
-      - 搜索 邮件
-      - 未读 邮件
-      - 最近 邮件
-      - 最新 邮件
       - 查邮件
       - 读邮件
       - 查看邮件

@@ -255,6 +255,10 @@
   margin-bottom: 6px;
 }
 
+.chat-outcome-header .chat-outcome-title {
+  margin-bottom: 0;
+}
+
 .chat-outcome-overview-skill {
   display: grid;
   gap: 6px;
@@ -282,12 +286,24 @@
 }
 
 .chat-outcome-detail-button.ant-btn {
-  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 32px;
   padding-inline: 14px;
   border-radius: 999px;
   border-color: rgba(59, 130, 246, 0.24);
   background: rgba(255, 255, 255, 0.82);
   box-shadow: 0 6px 18px rgba(37, 99, 235, 0.08);
+}
+
+.chat-outcome-detail-button.ant-btn .ant-btn-icon,
+.chat-outcome-detail-button.ant-btn > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .chat-outcome-detail-button.ant-btn:hover,

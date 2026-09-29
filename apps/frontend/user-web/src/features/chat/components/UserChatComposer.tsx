@@ -1,6 +1,7 @@
 import {
   AudioOutlined,
   BulbOutlined,
+  CloseCircleFilled,
   CloudSyncOutlined,
   CompassOutlined,
   DownOutlined,
@@ -16,7 +17,7 @@ import {
   ThunderboltOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Button, Dropdown, Input, Select, Segmented, Space, Switch, Tag, Tooltip, Upload, message as antdMessage } from 'antd';
+import { Button, Dropdown, Image, Input, Select, Segmented, Space, Switch, Tag, Tooltip, Upload, message as antdMessage } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
 import type { AIModel, UploadedFileDescriptor } from '@ops/user-core';
@@ -32,7 +33,7 @@ import { isWorkSlashCommand, isPersonalSlashCommand, type SlashCommandDefinition
 import type { WorkspaceNode } from '../../../api/workspace';
 import { supportsNativeReasoning } from '@/shared/lib/aiModelReasoning';
 import { shouldSubmitChatComposerOnEnter } from '../lib/chatComposerKeyboard';
-import { uploadChatFile } from '../lib/chatComposerMedia';
+import { isImageFile, resolveChatFilePreviewUrl, uploadChatFile } from '../lib/chatComposerMedia';
 import { useChatStore } from '../chatStore';
 
 import styles from '../pages/ChatPage.module.css';
@@ -60,6 +61,8 @@ interface UserChatComposerProps {
   onReasoningEffortChange?: (effort: 'low' | 'medium' | 'high') => void;
   enableWebSearch?: boolean;
   onEnableWebSearchChange?: (enabled: boolean) => void;
+  enableWorkspaceSearch?: boolean;
+  onEnableWorkspaceSearchChange?: (enabled: boolean) => void;
   enableResearch?: boolean;
   onEnableResearchChange?: (enabled: boolean) => void;
   thinkingLabel: string;
@@ -92,6 +95,8 @@ export function UserChatComposer(props: UserChatComposerProps) {
     onReasoningEffortChange,
     enableWebSearch = false,
     onEnableWebSearchChange,
+    enableWorkspaceSearch = false,
+    onEnableWorkspaceSearchChange,
     enableResearch = false,
     onEnableResearchChange,
     thinkingLabel,
@@ -120,7 +125,20 @@ export function UserChatComposer(props: UserChatComposerProps) {
   });
 
   // 工作空间全局检索状态（状态按钮，默认关闭）
-  const [workspaceSearchEnabled, setWorkspaceSearchEnabled] = useState(false);
+  const [localWorkspaceSearchEnabled, setLocalWorkspaceSearchEnabled] = useState(false);
+  const workspaceSearchEnabled = props.enableWorkspaceSearch !== undefined
+    ? enableWorkspaceSearch
+    : localWorkspaceSearchEnabled;
+  const setWorkspaceSearchEnabled = useCallback(
+    (enabled: boolean) => {
+      if (onEnableWorkspaceSearchChange) {
+        onEnableWorkspaceSearchChange(enabled);
+      } else {
+        setLocalWorkspaceSearchEnabled(enabled);
+      }
+    },
+    [onEnableWorkspaceSearchChange]
+  );
 
   const inputRef = useRef<TextAreaRef | null>(null);
   const compositionActiveRef = useRef(false);
@@ -402,6 +420,75 @@ export function UserChatComposer(props: UserChatComposerProps) {
     return false;
   }, []);
 
+  const handlePaste = useCallback(
+    (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const clipboardData = event.clipboardData;
+      if (!clipboardData) return;
+
+      const items = clipboardData.items;
+      const files = clipboardData.files;
+      const imageFiles: File[] = [];
+
+      if (items && items.length > 0) {
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          if (item.kind === 'file' && item.type.startsWith('image/')) {
+            const file = item.getAsFile();
+            if (file) {
+              const extension = file.type.split('/')[1]?.replace('jpeg', 'jpg') || 'png';
+              const namedFile = new File(
+                [file],
+                file.name && file.name !== 'image.png'
+                  ? file.name
+                  : `screenshot_${Date.now()}.${extension}`,
+                { type: file.type }
+              );
+              imageFiles.push(namedFile);
+            }
+          }
+        }
+      } else if (files && files.length > 0) {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          if (file.type.startsWith('image/')) {
+            imageFiles.push(file);
+          }
+        }
+      }
+
+      if (imageFiles.length > 0) {
+        const textData = clipboardData.getData('text');
+        if (!textData || !textData.trim()) {
+          event.preventDefault();
+        }
+        for (const imgFile of imageFiles) {
+          void handleFileUpload(imgFile);
+        }
+      }
+    },
+    [handleFileUpload]
+  );
+
+  const handleDrop = useCallback(
+    (event: React.DragEvent<HTMLDivElement | HTMLTextAreaElement>) => {
+      const droppedFiles = event.dataTransfer?.files;
+      if (!droppedFiles || droppedFiles.length === 0) return;
+
+      event.preventDefault();
+      for (let i = 0; i < droppedFiles.length; i++) {
+        const file = droppedFiles[i];
+        void handleFileUpload(file);
+      }
+    },
+    [handleFileUpload]
+  );
+
+  const handleDragOver = useCallback((event: React.DragEvent) => {
+    if (event.dataTransfer?.types?.includes('Files')) {
+      event.preventDefault();
+    }
+  }, []);
+
   const handleRemoveFile = useCallback((fileId?: string, fileName?: string) => {
     setUploadedFiles((prev) => prev.filter((f) => f.fileId !== fileId || f.fileName !== fileName));
   }, []);
@@ -458,10 +545,6 @@ export function UserChatComposer(props: UserChatComposerProps) {
       setTaskContext(null);
     }
 
-    if (chatMode === 'task' && workspaceSearchEnabled && trimmed && !trimmed.startsWith('/')) {
-      onSend(filesToSend, `/doc ${finalMessage}`);
-      return;
-    }
     onSend(filesToSend, finalMessage !== trimmed ? finalMessage : undefined);
   }, [chatMode, draft, lastMentionedUser, onSend, setTaskContext, taskContext, uploadedFiles, workspaceSearchEnabled]);
 
@@ -522,7 +605,11 @@ export function UserChatComposer(props: UserChatComposerProps) {
           }
         }}
       />
-      <div className={styles['user-chat-input-shell']}>
+      <div
+        className={styles['user-chat-input-shell']}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+      >
         {chatMode === 'task' && detectedWorkflowIntent && !workflowSelectionOpen ? (
           <div
             style={{
@@ -571,22 +658,57 @@ export function UserChatComposer(props: UserChatComposerProps) {
 
         {uploadedFiles.length > 0 && (
           <div className={styles['user-chat-input-attachments-bar']}>
-            {uploadedFiles.map((file, idx) => (
-              <Tag
-                key={file.fileId || `${file.fileName}-${idx}`}
-                closable
-                onClose={() => handleRemoveFile(file.fileId, file.fileName)}
-                icon={file.source === 'workspace' ? <FolderOutlined /> : <PaperClipOutlined />}
-                className={styles['user-chat-input-file-tag']}
-              >
-                {file.source === 'workspace' && (
-                  <span style={{ color: 'var(--primary-color)', marginRight: 4, fontWeight: 600 }}>
-                    [{file.workspaceType === 'personal' ? '我的' : file.workspaceType === 'department' ? '部门' : '公共'}]
-                  </span>
-                )}
-                {file.fileName}
-              </Tag>
-            ))}
+            {uploadedFiles.map((file, idx) => {
+              const key = file.fileId || `${file.fileName}-${idx}`;
+              const isImg = isImageFile(file.fileName, file.mimeType);
+              const previewUrl = isImg ? resolveChatFilePreviewUrl(file) : undefined;
+
+              if (isImg && previewUrl) {
+                return (
+                  <Tooltip
+                    key={key}
+                    title={`${file.fileName}${file.size ? ` (${Math.round(file.size / 1024)} KB)` : ''} · 点击放大预览`}
+                  >
+                    <div className={styles['user-chat-input-image-thumb-card']}>
+                      <Image
+                        src={previewUrl}
+                        alt={file.fileName}
+                        preview={{
+                          mask: null,
+                        }}
+                      />
+                      <span
+                        className={styles['user-chat-input-thumb-remove']}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveFile(file.fileId, file.fileName);
+                        }}
+                        title="移除图片"
+                      >
+                        <CloseCircleFilled />
+                      </span>
+                    </div>
+                  </Tooltip>
+                );
+              }
+
+              return (
+                <Tag
+                  key={key}
+                  closable
+                  onClose={() => handleRemoveFile(file.fileId, file.fileName)}
+                  icon={file.source === 'workspace' ? <FolderOutlined /> : <PaperClipOutlined />}
+                  className={styles['user-chat-input-file-tag']}
+                >
+                  {file.source === 'workspace' && (
+                    <span style={{ color: 'var(--primary-color)', marginRight: 4, fontWeight: 600 }}>
+                      [{file.workspaceType === 'personal' ? '我的' : file.workspaceType === 'department' ? '部门' : '公共'}]
+                    </span>
+                  )}
+                  {file.fileName}
+                </Tag>
+              );
+            })}
           </div>
         )}
         <div className={styles['user-chat-input-editor']}>
@@ -594,6 +716,9 @@ export function UserChatComposer(props: UserChatComposerProps) {
             ref={inputRef}
             autoSize={{ minRows: 2, maxRows: 6 }}
             value={draft}
+            onPaste={handlePaste}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
             onChange={(event) => {
               resetHistoryIndex();
               const text = event.target.value;

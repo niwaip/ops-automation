@@ -30,6 +30,7 @@ interface UseChatPageActionsOptions {
   enableThinking: boolean;
   reasoningEffort?: 'low' | 'medium' | 'high';
   enableWebSearch?: boolean;
+  enableWorkspaceSearch?: boolean;
   enableResearch?: boolean;
   ensureSession: (now: string) => ChatSession;
   isStreaming: boolean;
@@ -62,6 +63,7 @@ export function useChatPageActions({
   enableThinking,
   reasoningEffort = 'medium',
   enableWebSearch = false,
+  enableWorkspaceSearch = false,
   enableResearch = false,
   ensureSession,
   isStreaming,
@@ -225,6 +227,7 @@ export function useChatPageActions({
         reasoning: nativeReasoningEnabled,
         reasoningEffort: nativeReasoningEnabled ? reasoningEffort : undefined,
         webSearch: enableWebSearch,
+        workspaceSearch: enableWorkspaceSearch,
       });
 
       if (pendingExecutionId) {
@@ -344,6 +347,7 @@ export function useChatPageActions({
       reasoning: nativeReasoningEnabled,
       reasoningEffort: nativeReasoningEnabled ? reasoningEffort : undefined,
       webSearch: chatMode === 'task' ? enableWebSearch : true,
+      workspaceSearch: chatMode === 'task' ? Boolean(enableWorkspaceSearch) : false,
       research: chatMode === 'chat' ? Boolean(enableResearch) : false,
     });
 
@@ -361,6 +365,7 @@ export function useChatPageActions({
     enableThinking,
     reasoningEffort,
     enableWebSearch,
+    enableWorkspaceSearch,
     ensureSession,
     isStreaming,
     nativeReasoningEnabled,

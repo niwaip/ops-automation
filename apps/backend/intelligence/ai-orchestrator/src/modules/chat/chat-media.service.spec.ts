@@ -161,4 +161,112 @@ describe('ChatMediaService', () => {
     );
     expect(resolved).toEqual([]);
   });
+
+  it('extracts Office document text when OfficeDocumentReaderService is provided', async () => {
+    const modelService = {
+      getPreferredDefaultModel: jest.fn(),
+      getModel: jest.fn(),
+      getClient: jest.fn(),
+    };
+    const officeReader = {
+      supports: jest.fn().mockReturnValue(true),
+      extractText: jest.fn().mockResolvedValue({
+        format: 'docx',
+        text: '保密协议条款内容：第一条...',
+        characterCount: 15,
+        truncated: false,
+      }),
+    };
+    const service = new ChatMediaService(
+      modelService as any,
+      undefined,
+      undefined,
+      officeReader as any
+    );
+
+    const uploadResult = service.uploadChatFile(
+      {
+        originalname: '1234 (1).docx',
+        mimetype: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        size: 8,
+        buffer: Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x00, 0x00, 0x00, 0x00]),
+      } as Express.Multer.File,
+      testUser
+    );
+
+    const content = await service.buildMessageContent(
+      '查看文档内容',
+      [uploadResult],
+      testUser
+    );
+
+    expect(officeReader.supports).toHaveBeenCalledWith(
+      '1234 (1).docx',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    );
+    expect(officeReader.extractText).toHaveBeenCalled();
+    expect(content).toEqual([
+      { type: 'text', text: '查看文档内容' },
+      {
+        type: 'text',
+        text: '\n【文件: 1234 (1).docx（DOCX 文档提取内容，共 15 字）】\n保密协议条款内容：第一条...',
+      },
+    ]);
+  });
+
+  it('injects extracted page images into contentBlocks for scanned PDFs', async () => {
+    const modelService = {
+      getPreferredDefaultModel: jest.fn(),
+      getModel: jest.fn(),
+      getClient: jest.fn(),
+    };
+    const officeReader = {
+      supports: jest.fn().mockReturnValue(true),
+      extractText: jest.fn().mockResolvedValue({
+        format: 'pdf',
+        text: '',
+        characterCount: 0,
+        truncated: false,
+        isScannedOrImagePdf: true,
+        images: [{ mimeType: 'image/jpeg', base64: 'fake-jpeg-base64' }],
+      }),
+    };
+    const service = new ChatMediaService(
+      modelService as any,
+      undefined,
+      undefined,
+      officeReader as any
+    );
+
+    const uploadResult = service.uploadChatFile(
+      {
+        originalname: '1.pdf',
+        mimetype: 'application/pdf',
+        size: 4,
+        buffer: Buffer.from([0x25, 0x50, 0x44, 0x46]),
+      } as Express.Multer.File,
+      testUser
+    );
+
+    const content = await service.buildMessageContent(
+      '查看附件的内容',
+      [uploadResult],
+      testUser
+    );
+
+    expect(content).toEqual([
+      { type: 'text', text: '查看附件的内容' },
+      {
+        type: 'image_url',
+        image_url: {
+          url: 'data:image/jpeg;base64,fake-jpeg-base64',
+          detail: 'auto',
+        },
+      },
+      {
+        type: 'text',
+        text: '\n【文件: 1.pdf（扫描版/图片型 PDF，已提取 1 页图片送入多模态视觉模型进行图文解析）】',
+      },
+    ]);
+  });
 });

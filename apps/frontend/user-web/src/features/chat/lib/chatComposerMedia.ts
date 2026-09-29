@@ -36,9 +36,45 @@ export const mergeSpeechText = (baseText: string, speechText: string): string =>
   return `${baseText.replace(/\s+$/, '')}\n${normalizedSpeechText}`;
 };
 
+export function isImageFile(fileName?: string, mimeType?: string): boolean {
+  if (mimeType && mimeType.startsWith('image/')) {
+    return true;
+  }
+  if (!fileName) return false;
+  return /\.(jpe?g|png|gif|webp|svg|bmp|ico)$/i.test(fileName);
+}
+
+export function resolveChatFilePreviewUrl(file: UploadedFileDescriptor | Record<string, any>): string | undefined {
+  if (!file) return undefined;
+  if (file.previewUrl) return file.previewUrl;
+  if (typeof file.url === 'string' && (file.url.startsWith('blob:') || file.url.startsWith('data:') || file.url.startsWith('http://') || file.url.startsWith('https://'))) {
+    return file.url;
+  }
+  if (typeof file.fileUrl === 'string' && (file.fileUrl.startsWith('blob:') || file.fileUrl.startsWith('data:') || file.fileUrl.startsWith('http://') || file.fileUrl.startsWith('https://'))) {
+    return file.fileUrl;
+  }
+  if (file.fileId) {
+    const base = resolveAiPath(`/chat/files/${file.fileId}`);
+    return file.ticket ? `${base}?ticket=${encodeURIComponent(file.ticket)}` : base;
+  }
+  if (file.url && typeof file.url === 'string') {
+    return file.url;
+  }
+  return undefined;
+}
+
 export async function uploadChatFile(file: File): Promise<UploadedFileDescriptor> {
   const formData = new FormData();
   formData.append('file', file);
+
+  let localPreviewUrl: string | undefined;
+  if (file.type?.startsWith('image/')) {
+    try {
+      localPreviewUrl = URL.createObjectURL(file);
+    } catch {
+      // ignore
+    }
+  }
 
   const token = (await apiClient.ensureFreshAccessToken()) || authStore.getState().accessToken;
   const response = await fetch(resolveAiPath('/chat/upload'), {
@@ -61,7 +97,7 @@ export async function uploadChatFile(file: File): Promise<UploadedFileDescriptor
     throw new Error(errMsg);
   }
 
-  const payload = (await response.json()) as { fileId?: string };
+  const payload = (await response.json()) as { fileId?: string; url?: string; ticket?: string };
   if (!payload?.fileId) {
     throw new Error('Invalid upload response');
   }
@@ -71,6 +107,9 @@ export async function uploadChatFile(file: File): Promise<UploadedFileDescriptor
     fileName: file.name,
     mimeType: file.type,
     size: file.size,
+    previewUrl: localPreviewUrl,
+    url: payload.url,
+    ticket: payload.ticket,
   };
 }
 

@@ -32,6 +32,7 @@ import { SkillValidationModal } from '../components/SkillValidationModal';
 import { SkillAccessRequestReviewTab } from '../components/SkillAccessRequestReviewTab';
 import { SkillListTable } from '../components/SkillListTable';
 import { SkillPageHeader } from '../components/SkillPageHeader';
+import { SkillRoutingCompileModal } from '../components/SkillRoutingCompileModal';
 import type { SkillAdminPageProps } from '../types';
 
 export const SkillAdminPage: React.FC<SkillAdminPageProps> = ({
@@ -51,6 +52,7 @@ export const SkillAdminPage: React.FC<SkillAdminPageProps> = ({
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [permissionModalVisible, setPermissionModalVisible] = useState(false);
+  const [compileRoutingModalVisible, setCompileRoutingModalVisible] = useState(false);
   const [editingSkill, setEditingSkill] = useState<SkillConfigDTO | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<SkillConfigDTO | null>(null);
   const [configuringBuiltinSkill, setConfiguringBuiltinSkill] =
@@ -376,6 +378,7 @@ export const SkillAdminPage: React.FC<SkillAdminPageProps> = ({
               builtinSkillsQuery.refetch();
             }}
             onCreate={handleCreate}
+            onCompileRouting={() => setCompileRoutingModalVisible(true)}
           />
         )}
 
@@ -587,6 +590,14 @@ export const SkillAdminPage: React.FC<SkillAdminPageProps> = ({
         onClose={handleCloseValidationModal}
         onApplySuggestion={() => handleApplySuggestion(selectedSkill)}
         applyLoading={applyAdjustmentMutation.isLoading}
+      />
+
+      <SkillRoutingCompileModal
+        open={compileRoutingModalVisible}
+        onClose={() => setCompileRoutingModalVisible(false)}
+        onSuccess={() => {
+          skillsQuery.refetch();
+        }}
       />
     </div>
   );

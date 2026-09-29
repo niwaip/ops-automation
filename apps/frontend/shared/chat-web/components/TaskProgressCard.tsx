@@ -1,7 +1,6 @@
 import React from 'react';
 import { LoadingOutlined } from '@ant-design/icons';
 import { Tag, Typography } from 'antd';
-import StreamingActivityCard from './StreamingActivityCard';
 
 export interface SharedChatProgressLog {
   stage: 'thought' | 'action' | 'observation';
@@ -62,11 +61,6 @@ const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ currentProgressLog,
         </div>
         <div className="chat-progress-current-text running">
           <Typography.Text>{displayText}</Typography.Text>
-          {isRunning && !isFailureProgress ? (
-            <div style={{ marginTop: '8px' }}>
-              <StreamingActivityCard isStreaming={isRunning} currentProgressText={displayText} compact />
-            </div>
-          ) : null}
         </div>
       </div>
     </div>

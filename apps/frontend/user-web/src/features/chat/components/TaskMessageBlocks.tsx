@@ -1,3 +1,4 @@
+import React from 'react';
 import { Button, Space } from 'antd';
 import { DownloadOutlined, EyeOutlined, FolderOutlined, LinkOutlined } from '@ant-design/icons';
 import type { ChatMessage, ChatProgressLog } from '@ops/user-core';
@@ -40,9 +41,43 @@ export const hasTaskOutcomeContent = (message: ChatMessage): boolean => {
     return false;
   }
 
-  const taskParts = resolveTaskParts(message.contentParts);
-  const status = resolveMessageTaskStatus(message);
+  // 原生大模型对话/问答任务、纯知识检索问答，无执行单号且无产物时，直接按标准 Markdown 气泡呈现，不渲染“任务结果卡片”
+  if (
+    message.metadata?.executionMode === 'native_llm' ||
+    (message.metadata as any)?.code === 'NATIVE_TASK_COMPLETED'
+  ) {
+    return false;
+  }
+
   const executionId = resolveMessageExecutionId(message);
+  const taskParts = resolveTaskParts(message.contentParts);
+  const artifacts =
+    message.metadata?.artifacts || message.metadata?.normalizedResult?.artifacts || [];
+  const missingInputs = (message.metadata?.missingInputs || []) as {
+    name?: string;
+    description?: string;
+    group_label?: string;
+    display_name?: string;
+    missing?: boolean;
+  }[];
+  const partDownloadUrl =
+    findDeeplinkByLabel(taskParts.deeplinks, /下载|download/i) || taskParts.deeplinks[0]?.url;
+  const partDetailUrl = findDeeplinkByLabel(taskParts.deeplinks, /详情|detail|执行/i);
+
+  // 若无 executionId、且无具体文件产物、无审批待补字段、无深度链接，说明仅为纯文本问答，不应作为任务卡片展示
+  if (
+    !executionId &&
+    artifacts.length === 0 &&
+    missingInputs.length === 0 &&
+    !message.metadata?.downloadUrl &&
+    !partDownloadUrl &&
+    !message.metadata?.temporalLink &&
+    !partDetailUrl
+  ) {
+    return false;
+  }
+
+  const status = resolveMessageTaskStatus(message);
   const finalResult = message.metadata?.finalResult?.trim();
   const finalSummary = message.metadata?.finalSummary?.trim();
   const errorMessage = message.metadata?.errorMessage?.trim();
@@ -57,18 +92,6 @@ export const hasTaskOutcomeContent = (message: ChatMessage): boolean => {
   const normalizedSummary = presentation.normalizedResult?.summary?.trim();
   const normalizedDetail = presentation.normalizedResult?.detailText?.trim();
   const structuredResult = presentation.structuredText;
-  const partDownloadUrl =
-    findDeeplinkByLabel(taskParts.deeplinks, /下载|download/i) || taskParts.deeplinks[0]?.url;
-  const partDetailUrl = findDeeplinkByLabel(taskParts.deeplinks, /详情|detail|执行/i);
-  const missingInputs = (message.metadata?.missingInputs || []) as {
-    name?: string;
-    description?: string;
-    group_label?: string;
-    display_name?: string;
-    missing?: boolean;
-  }[];
-  const artifacts =
-    message.metadata?.artifacts || message.metadata?.normalizedResult?.artifacts || [];
 
   return Boolean(
     status ||
@@ -195,6 +218,28 @@ export function TaskOutcomeBlock({
   }));
   const artifacts =
     message.metadata?.artifacts || message.metadata?.normalizedResult?.artifacts || [];
+  const rawResults = Array.isArray((message.metadata?.finalResultData as any)?.results)
+    ? (message.metadata?.finalResultData as any).results
+    : Array.isArray((taskParts.structuredResultData as any)?.results)
+    ? (taskParts.structuredResultData as any).results
+    : [];
+  const effectiveArtifacts = React.useMemo(() => {
+    const list = [...(Array.isArray(artifacts) ? artifacts : [])];
+    if (rawResults.length > 0 && !list.some((a) => (a as any).type === 'url' || (a as any).artifactType === 'url')) {
+      for (const res of rawResults) {
+        if (res && typeof res.url === 'string') {
+          list.push({
+            type: 'url',
+            artifactType: 'url',
+            name: res.title || res.name,
+            url: res.url,
+            downloadUrl: res.url,
+          } as any);
+        }
+      }
+    }
+    return list;
+  }, [artifacts, rawResults]);
   const citations = Array.isArray((message.metadata?.finalResultData as any)?.citations)
     ? (message.metadata?.finalResultData as any).citations
     : Array.isArray((taskParts.structuredResultData as any)?.citations)
@@ -208,21 +253,44 @@ export function TaskOutcomeBlock({
 
   const shouldShowArtifactActions = status === 'completed' || status === 'failed';
 
+  const isUuid = (val?: unknown): val is string =>
+    typeof val === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val.trim());
+
+  const rawSkillName =
+    (message.metadata as any)?.skillName ||
+    (message.metadata as any)?.displayName ||
+    (!isUuid(message.metadata?.resultTitle) ? message.metadata?.resultTitle : undefined) ||
+    (!isUuid(message.metadata?.skillUsed) ? message.metadata?.skillUsed : undefined);
+
+  const displaySkillName = isUuid(rawSkillName) ? undefined : rawSkillName;
+
+  const effectiveDownloadUrl = replaceLocalhostWithCurrentHost(
+    message.metadata?.downloadUrl ||
+      partDownloadUrl ||
+      (effectiveArtifacts && effectiveArtifacts[0] && isDownloadableArtifact(effectiveArtifacts[0])
+        ? effectiveArtifacts[0].downloadUrl || effectiveArtifacts[0].url
+        : undefined)
+  );
+
+  const extraArtifacts = React.useMemo(() => {
+    if (!artifacts || artifacts.length === 0) return [];
+    if (!effectiveDownloadUrl) return artifacts;
+    const normDownload = effectiveDownloadUrl.toLowerCase().trim();
+    return artifacts.filter((art) => {
+      const rawHref = art.downloadUrl || art.url;
+      const href = (replaceLocalhostWithCurrentHost(rawHref) || rawHref || '').toLowerCase().trim();
+      return href && href !== normDownload;
+    });
+  }, [artifacts, effectiveDownloadUrl]);
+
   return (
     <>
       <SharedTaskOutcomeCard
         executionStatus={getMessageStatusLabel(status) || null}
         executionId={executionId}
-        skillName={message.metadata?.skillUsed}
-        downloadUrl={
-          replaceLocalhostWithCurrentHost(
-            message.metadata?.downloadUrl ||
-              partDownloadUrl ||
-              (artifacts && artifacts[0] && isDownloadableArtifact(artifacts[0])
-                ? artifacts[0].downloadUrl || artifacts[0].url
-                : undefined)
-          )
-        }
+        skillName={displaySkillName}
+        downloadUrl={effectiveDownloadUrl}
         temporalLink={message.metadata?.temporalLink || partDetailUrl}
         executionDetailLink={executionId ? `/executions/${executionId}` : undefined}
         browserExecutionMode={false}
@@ -265,20 +333,20 @@ export function TaskOutcomeBlock({
             onRejectExecution(message.id, executionId, effectId);
           }
         }}
-        artifacts={artifacts}
+        artifacts={effectiveArtifacts}
       />
 
-      {/* 结果/产物列表 — 默认收起 */}
-      {shouldShowArtifactActions && artifacts.length > 0 ? (
+      {/* 结果/产物列表 — 默认收起 (若仅有已被卡片主下载按钮承载的单一产物，则不重复展示产物折叠区) */}
+      {shouldShowArtifactActions && extraArtifacts.length > 0 ? (
         <details
           className={styles['user-chat-outcome-details']}
           style={{ marginTop: 8 }}
         >
           <summary style={{ cursor: 'pointer', userSelect: 'none' }}>
-            {`查看相关结果与产物链接 (${artifacts.length} 项)`}
+            {`查看相关结果与产物链接 (${extraArtifacts.length} 项)`}
           </summary>
           <Space wrap className={styles['user-chat-outcome-actions']} style={{ marginTop: 8 }}>
-            {artifacts.map((artifact, index) => {
+            {extraArtifacts.map((artifact, index) => {
               const rawHref = artifact.downloadUrl || artifact.url;
               const href = replaceLocalhostWithCurrentHost(rawHref) || rawHref;
               if (!href) {

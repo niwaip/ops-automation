@@ -168,12 +168,23 @@ export async function uploadFile(file: File): Promise<UploadedFile> {
       throw new Error('Invalid upload response');
     }
 
+    let previewUrl: string | undefined;
+    if (file.type?.startsWith('image/')) {
+      try {
+        previewUrl = URL.createObjectURL(file);
+      } catch {
+        // ignore
+      }
+    }
+
     return {
       fileId,
       fileName: file.name,
       mimeType: file.type,
       size: file.size,
       file,
+      previewUrl,
+      url: asString(payload?.url),
     };
   } catch (error) {
     if (import.meta.env.DEV) {

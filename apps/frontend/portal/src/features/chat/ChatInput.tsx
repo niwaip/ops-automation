@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Input, Button, Upload, Tag, Switch, Select, message as antdMessage } from 'antd';
+import { Input, Button, Upload, Tag, Switch, Select, Image, Tooltip, message as antdMessage } from 'antd';
 import {
   SendOutlined,
   PaperClipOutlined,
@@ -13,6 +13,7 @@ import {
   MessageOutlined,
   RobotOutlined,
   AudioOutlined,
+  CloseCircleFilled,
 } from '@ant-design/icons';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
 import type { RcFile } from 'antd/es/upload';
@@ -278,7 +279,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   const activeUploadsCountRef = useRef(0);
   // 处理文件上传
-  const handleFileUpload = async (file: RcFile) => {
+  const handleFileUpload = async (file: RcFile | File) => {
     activeUploadsCountRef.current += 1;
     setUploading(true);
     try {
@@ -294,6 +295,69 @@ const ChatInput: React.FC<ChatInputProps> = ({
       }
     }
     return false; // 阻止默认上传行为
+  };
+
+  const handlePaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const clipboardData = event.clipboardData;
+    if (!clipboardData) return;
+
+    const items = clipboardData.items;
+    const files = clipboardData.files;
+    const imageFiles: File[] = [];
+
+    if (items && items.length > 0) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            const extension = file.type.split('/')[1]?.replace('jpeg', 'jpg') || 'png';
+            const namedFile = new File(
+              [file],
+              file.name && file.name !== 'image.png'
+                ? file.name
+                : `screenshot_${Date.now()}.${extension}`,
+              { type: file.type }
+            );
+            imageFiles.push(namedFile);
+          }
+        }
+      }
+    } else if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.type.startsWith('image/')) {
+          imageFiles.push(file);
+        }
+      }
+    }
+
+    if (imageFiles.length > 0) {
+      const textData = clipboardData.getData('text');
+      if (!textData || !textData.trim()) {
+        event.preventDefault();
+      }
+      for (const imgFile of imageFiles) {
+        void handleFileUpload(imgFile);
+      }
+    }
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement | HTMLTextAreaElement>) => {
+    const droppedFiles = event.dataTransfer?.files;
+    if (!droppedFiles || droppedFiles.length === 0) return;
+
+    event.preventDefault();
+    for (let i = 0; i < droppedFiles.length; i++) {
+      const file = droppedFiles[i];
+      void handleFileUpload(file);
+    }
+  };
+
+  const handleDragOver = (event: React.DragEvent) => {
+    if (event.dataTransfer?.types?.includes('Files')) {
+      event.preventDefault();
+    }
   };
 
   // 键盘事件
@@ -371,22 +435,60 @@ const ChatInput: React.FC<ChatInputProps> = ({
             <span className="chat-uploaded-files-count">{uploadedFiles.length}</span>
           </div>
           <div className="chat-uploaded-files-list">
-            {uploadedFiles.map((file) => (
-              <Tag
-                key={file.fileId}
-                closable
-                onClose={() => removeUploadedFile(file.fileId)}
-                icon={<PaperClipOutlined />}
-                className="chat-uploaded-file-tag"
-              >
-                {file.fileName}
-              </Tag>
-            ))}
+            {uploadedFiles.map((file) => {
+              const isImg =
+                file.mimeType?.startsWith('image/') ||
+                /\.(jpe?g|png|gif|webp|svg|bmp)$/i.test(file.fileName);
+              const previewUrl = file.previewUrl || file.url;
+
+              if (isImg && previewUrl) {
+                return (
+                  <Tooltip
+                    key={file.fileId}
+                    title={`${file.fileName}${file.size ? ` (${Math.round(file.size / 1024)} KB)` : ''} · 点击放大预览`}
+                  >
+                    <div className="chat-uploaded-file-thumb-card">
+                      <Image
+                        src={previewUrl}
+                        alt={file.fileName}
+                        preview={{ mask: null }}
+                      />
+                      <span
+                        className="chat-uploaded-thumb-remove"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeUploadedFile(file.fileId);
+                        }}
+                        title="移除图片"
+                      >
+                        <CloseCircleFilled />
+                      </span>
+                    </div>
+                  </Tooltip>
+                );
+              }
+
+              return (
+                <Tag
+                  key={file.fileId}
+                  closable
+                  onClose={() => removeUploadedFile(file.fileId)}
+                  icon={<PaperClipOutlined />}
+                  className="chat-uploaded-file-tag"
+                >
+                  {file.fileName}
+                </Tag>
+              );
+            })}
           </div>
         </div>
       )}
 
-      <div className="chat-input-shell">
+      <div
+        className="chat-input-shell"
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+      >
         <div className="chat-input-editor">
           <Input.TextArea
             ref={inputRef}
@@ -399,7 +501,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
               setMessage(e.target.value);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="输入消息，按 Enter 发送，按 ↑/↓ 导航历史消息..."
+            onPaste={handlePaste}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            placeholder="输入消息，可直接粘贴截图或拖拽文件，按 Enter 发送..."
             autoSize={{ minRows: 4, maxRows: 8 }}
             disabled={disabled || uploading}
             className="chat-input-textarea"

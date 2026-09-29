@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Injectable, Logger, Optional } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import axios from 'axios';
 import type { ContentBlock } from '../../interfaces';
 import { ModelService } from '../model/model.service';
@@ -8,6 +9,7 @@ import { StorageConfigService } from '../storage/storage-config.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { inspectBinaryMimeType } from '../../common/utils/mime-inspector.util';
 import { fixFilenameEncoding } from '../../common/utils/filename-encoding.util';
+import { OfficeDocumentReaderService } from './office-document-reader.service';
 import type {
   ChatAudioTranscriptionResponseDTO,
   ChatUploadedFileDTO,
@@ -41,7 +43,8 @@ export class ChatMediaService {
   constructor(
     private readonly modelService: ModelService,
     @Optional() private readonly storageConfigService?: StorageConfigService,
-    @Optional() private readonly prisma?: PrismaService
+    @Optional() private readonly prisma?: PrismaService,
+    @Optional() private readonly officeReader?: OfficeDocumentReaderService
   ) {}
 
   /**
@@ -224,6 +227,8 @@ export class ChatMediaService {
               }
             }
 
+            const extractedText: string | undefined = meta.extractedText;
+
             const item: ChatUploadedFileDTO = {
               ...file,
               fileId: file.fileId,
@@ -232,6 +237,7 @@ export class ChatMediaService {
               size: meta.size || file.size || (buf ? buf.length : 0),
               content,
               filePath: meta.filePath,
+              extractedText,
             };
             this.fileStore.set(file.fileId, {
               fileName: item.fileName,
@@ -239,6 +245,7 @@ export class ChatMediaService {
               size: item.size,
               content: content || '',
               filePath: meta.filePath,
+              extractedText,
               ownerUserId: meta.ownerUserId,
               organizationId: meta.organizationId,
             });
@@ -550,7 +557,7 @@ export class ChatMediaService {
 
     for (const file of resolvedFiles) {
       const storedFile = this.fileStore.get(file.fileId);
-      const content = file.content || storedFile?.content;
+      let content = file.content || storedFile?.content;
       const extractedText = file.extractedText || storedFile?.extractedText;
       const mimeType = file.mimeType || storedFile?.mimeType || '';
 
@@ -561,6 +568,18 @@ export class ChatMediaService {
           text: `\n【文件: ${file.fileName}（文档文本提取内容）】\n${extractedText}`,
         });
         continue;
+      }
+
+      // 如果 content 为空但有 filePath，尝试从磁盘读取
+      if (!content && (file.filePath || storedFile?.filePath)) {
+        const targetPath = file.filePath || storedFile?.filePath;
+        if (targetPath && fs.existsSync(targetPath)) {
+          try {
+            content = fs.readFileSync(targetPath).toString('base64');
+          } catch {
+            // ignore
+          }
+        }
       }
 
       if (!content) {
@@ -584,7 +603,60 @@ export class ChatMediaService {
         continue;
       }
 
-      // 3. 文本类文件解码（严格限定为文本类型，绝不将 PDF、Office、压缩包等二进制文件当作文本解码）
+      // 3. Office & PDF 格式只读解析（迁移自个人沙箱只读套件，无写副作用）
+      if (this.officeReader?.supports(file.fileName, mimeType)) {
+        try {
+          const rawBuffer = Buffer.from(content, 'base64');
+          const extracted = await this.officeReader.extractText(rawBuffer, file.fileName, mimeType, 30000);
+          let handled = false;
+
+          // 3a. 提取到文档正文
+          if (extracted?.text && extracted.text.trim()) {
+            contentBlocks.push({
+              type: 'text',
+              text: `\n【文件: ${file.fileName}（${extracted.format.toUpperCase()} 文档提取内容，共 ${extracted.characterCount} 字）】\n${extracted.text}`,
+            });
+            handled = true;
+          }
+
+          // 3b. 提取到图片（如扫描版/纯图片 PDF）
+          if (extracted?.images && extracted.images.length > 0) {
+            for (const img of extracted.images) {
+              contentBlocks.push({
+                type: 'image_url',
+                image_url: {
+                  url: `data:${img.mimeType};base64,${img.base64}`,
+                  detail: 'auto',
+                },
+              });
+            }
+            if (!extracted.text || !extracted.text.trim()) {
+              contentBlocks.push({
+                type: 'text',
+                text: `\n【文件: ${file.fileName}（扫描版/图片型 PDF，已提取 ${extracted.images.length} 页图片送入多模态视觉模型进行图文解析）】`,
+              });
+            }
+            handled = true;
+          }
+
+          // 3c. 既无文本也无图片（纯空文档或未检测到可提取对象）
+          if (!handled && extracted?.pageOrSheetCount) {
+            contentBlocks.push({
+              type: 'text',
+              text: `\n【文件: ${file.fileName}（${extracted.format.toUpperCase()} 文档共 ${extracted.pageOrSheetCount} 页/表，未检测到可提取的文本或图片对象）】`,
+            });
+            handled = true;
+          }
+
+          if (handled) {
+            continue;
+          }
+        } catch (err: any) {
+          this.logger.warn(`Failed to extract text from Office document ${file.fileName}: ${err?.message || err}`);
+        }
+      }
+
+      // 4. 文本类文件解码（严格限定为文本类型，绝不将 PDF、Office、压缩包等二进制文件当作文本解码）
       const ext = path.extname(file.fileName || '').toLowerCase();
       const textExtensions = new Set([
         '.txt', '.md', '.markdown', '.json', '.csv', '.tsv', '.log',
@@ -721,13 +793,176 @@ export class ChatMediaService {
         .catch((err) => this.logger.warn(`StorageConfigService saveFile warning: ${err.message}`));
     }
 
+    const ticket = user?.userId ? this.createPreviewTicket(fileId, user.userId) : undefined;
+
     return {
       fileId,
       fileName: rawOriginalName,
       mimeType: verifiedMime,
       size: file.size,
       filePath,
+      url: `/api/ai/chat/files/${fileId}${ticket ? `?ticket=${encodeURIComponent(ticket)}` : ''}`,
+      ticket,
     };
+  }
+
+  async getUploadedFile(
+    fileId: string,
+    contextUser?: AuthenticatedUserContext
+  ): Promise<{
+    buffer: Buffer;
+    mimeType: string;
+    fileName: string;
+    size: number;
+  } | null> {
+    if (!fileId || typeof fileId !== 'string') {
+      return null;
+    }
+    const sanitizedId = path.basename(fileId).trim();
+    if (!/^[a-zA-Z0-9_-]{1,128}$/.test(sanitizedId)) {
+      return null;
+    }
+
+    const isAdmin =
+      contextUser?.role === 'super_admin' ||
+      contextUser?.role === 'system_admin' ||
+      contextUser?.role === 'internal_service';
+
+    // 1. 优先从内存缓存中获取
+    const cached = this.fileStore.get(sanitizedId);
+    if (cached) {
+      const hasOwnerMatch = Boolean(
+        cached.ownerUserId &&
+        contextUser?.userId &&
+        cached.ownerUserId === contextUser.userId
+      );
+      const hasOrgMatch = Boolean(
+        cached.organizationId &&
+        contextUser?.organizationId &&
+        cached.organizationId === contextUser.organizationId
+      );
+      if (!cached.ownerUserId || isAdmin || hasOwnerMatch || hasOrgMatch) {
+        if (cached.filePath && fs.existsSync(cached.filePath)) {
+          try {
+            const buf = fs.readFileSync(cached.filePath);
+            return {
+              buffer: buf,
+              mimeType: cached.mimeType || 'application/octet-stream',
+              fileName: cached.fileName,
+              size: cached.size || buf.length,
+            };
+          } catch (err: any) {
+            this.logger.warn(`Failed to read file from disk for cached ${sanitizedId}: ${err.message}`);
+          }
+        }
+        if (cached.content) {
+          const buf = Buffer.from(cached.content, 'base64');
+          return {
+            buffer: buf,
+            mimeType: cached.mimeType || 'application/octet-stream',
+            fileName: cached.fileName,
+            size: cached.size || buf.length,
+          };
+        }
+      }
+    }
+
+    // 2. 从持久化 uploadStorage 目录查找 meta.json
+    try {
+      const uploadDir = path.resolve(this.getUploadStorageDir());
+      const metaPath = path.resolve(uploadDir, `${sanitizedId}.meta.json`);
+      if (fs.existsSync(metaPath)) {
+        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+        const hasOwnerMatch = Boolean(
+          meta.ownerUserId &&
+          contextUser?.userId &&
+          meta.ownerUserId === contextUser.userId
+        );
+        const hasOrgMatch = Boolean(
+          meta.organizationId &&
+          contextUser?.organizationId &&
+          meta.organizationId === contextUser.organizationId
+        );
+        if (!meta.ownerUserId || isAdmin || hasOwnerMatch || hasOrgMatch) {
+          if (meta.filePath && fs.existsSync(meta.filePath)) {
+            const buf = fs.readFileSync(meta.filePath);
+            return {
+              buffer: buf,
+              mimeType: meta.mimeType || 'application/octet-stream',
+              fileName: meta.fileName || 'file',
+              size: meta.size || buf.length,
+            };
+          }
+        }
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to read upload metadata for ${sanitizedId}: ${err.message}`);
+    }
+
+    // 3. StorageConfigService 兜底
+    if (this.storageConfigService) {
+      try {
+        const fileStream = await this.storageConfigService.getFile(sanitizedId);
+        if (fileStream) {
+          const chunks: Buffer[] = [];
+          for await (const chunk of fileStream) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          }
+          const buf = Buffer.concat(chunks);
+          return {
+            buffer: buf,
+            mimeType: 'application/octet-stream',
+            fileName: `${sanitizedId}`,
+            size: buf.length,
+          };
+        }
+      } catch (err: any) {
+        this.logger.warn(`StorageConfigService.getFile failed for ${sanitizedId}: ${err.message}`);
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Generates a short-lived HMAC signed ticket specifically bound to fileId and userId.
+   */
+  createPreviewTicket(fileId: string, userId: string, ttlSeconds = 1800): string {
+    const secret = process.env.INTERNAL_API_SHARED_SECRET || process.env.JWT_SECRET || 'ops_preview_ticket_secret';
+    const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
+    const sanitizedUserId = encodeURIComponent(userId);
+    const payload = `${fileId}:${sanitizedUserId}:${expiresAt}`;
+    const sig = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+    return `${sanitizedUserId}.${expiresAt}.${sig}`;
+  }
+
+  /**
+   * Verifies the short-lived signed preview ticket for a specific fileId.
+   */
+  verifyPreviewTicket(fileId: string, ticket: string): { valid: boolean; userId?: string } {
+    if (!ticket || typeof ticket !== 'string') return { valid: false };
+    const parts = ticket.split('.');
+    if (parts.length !== 3) return { valid: false };
+    const [sanitizedUserId, expiresAtStr, providedSig] = parts;
+    if (!sanitizedUserId || !expiresAtStr || !providedSig) return { valid: false };
+    const expiresAt = parseInt(expiresAtStr, 10);
+    if (isNaN(expiresAt) || expiresAt < Math.floor(Date.now() / 1000)) {
+      return { valid: false };
+    }
+    const secret = process.env.INTERNAL_API_SHARED_SECRET || process.env.JWT_SECRET || 'ops_preview_ticket_secret';
+    const payload = `${fileId}:${sanitizedUserId}:${expiresAtStr}`;
+    const expectedSig = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+    try {
+      if (
+        providedSig.length === expectedSig.length &&
+        crypto.timingSafeEqual(Buffer.from(providedSig), Buffer.from(expectedSig))
+      ) {
+        return { valid: true, userId: decodeURIComponent(sanitizedUserId) };
+      }
+    } catch {
+      // fallback
+    }
+    return { valid: false };
   }
 
   async transcribeAudio(

@@ -187,4 +187,35 @@ describe('UserService', () => {
       expect(result.isActive).toBe(true);
     });
   });
+
+  describe('resetPassword', () => {
+    it('should reset user password successfully', async () => {
+      prisma.user.findUnique.mockResolvedValue(mockUser);
+      prisma.user.update.mockResolvedValue(mockUser);
+
+      const result = await service.resetPassword('test-uuid', 'new-password-123');
+
+      expect(result.success).toBe(true);
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'test-uuid' },
+        data: { passwordHash: expect.any(String) },
+      });
+    });
+
+    it('should throw NotFoundException when user not found for resetPassword', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(service.resetPassword('nonexistent', 'new-password-123')).rejects.toThrow(
+        NotFoundException
+      );
+    });
+
+    it('should throw BadRequestException when password is too short', async () => {
+      prisma.user.findUnique.mockResolvedValue(mockUser);
+
+      await expect(service.resetPassword('test-uuid', '123')).rejects.toThrow(
+        BadRequestException
+      );
+    });
+  });
 });

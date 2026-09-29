@@ -14,6 +14,7 @@ export interface ApiEndpoint {
 
 export interface SkillRuntimeMetadata {
   routingAliases?: string[];
+  negativeKeywords?: string[];
   matchSummary?: string;
   paramCollectionGuidance?: string;
   validationRules?: string;

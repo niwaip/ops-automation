@@ -12,6 +12,7 @@ import { UserStatCards } from '../components/UserStatCards';
 import { UserTable } from '../components/UserTable';
 import { UserEditModal } from '../components/UserEditModal';
 import { UserCreateModal } from '../components/UserCreateModal';
+import { UserResetPasswordModal } from '../components/UserResetPasswordModal';
 
 const UserAdminPage: React.FC = () => {
   const { t } = useTranslation(['common', 'admin']);
@@ -23,7 +24,9 @@ const UserAdminPage: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [resetPasswordModalVisible, setResetPasswordModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<UserDto | null>(null);
+  const [resetPasswordTargetUser, setResetPasswordTargetUser] = useState<UserDto | null>(null);
 
   // 1. 获取用户列表
   const usersQuery = useQuery(['users', { page, pageSize }], () =>
@@ -148,6 +151,29 @@ const UserAdminPage: React.FC = () => {
     setEditModalVisible(true);
   };
 
+  const resetPasswordMutation = useMutation(
+    async ({ userId, password }: { userId: string; password: string }) => {
+      return userApi.resetPassword(userId, password);
+    },
+    {
+      onSuccess: () => {
+        message.success('用户密码已成功重置');
+        setResetPasswordModalVisible(false);
+        setResetPasswordTargetUser(null);
+      },
+      onError: (err: any) => {
+        const errorMsg =
+          err?.response?.data?.message || err?.message || '密码重置失败，请检查后重试';
+        message.error(errorMsg);
+      },
+    }
+  );
+
+  const handleOpenResetPassword = (user: UserDto) => {
+    setResetPasswordTargetUser(user);
+    setResetPasswordModalVisible(true);
+  };
+
   const handleSaveUser = (values: {
     roles: string[];
     departmentId?: string | null;
@@ -228,6 +254,7 @@ const UserAdminPage: React.FC = () => {
         onEditUser={handleEditUser}
         onActivateUser={(id) => activateMutation.mutate(id)}
         onDeactivateUser={(id) => deactivateMutation.mutate(id)}
+        onResetPassword={handleOpenResetPassword}
       />
 
       <UserEditModal
@@ -239,6 +266,23 @@ const UserAdminPage: React.FC = () => {
         loading={updateMutation.isLoading}
         onCancel={() => setEditModalVisible(false)}
         onSave={handleSaveUser}
+        onOpenResetPassword={(u) => {
+          setEditModalVisible(false);
+          handleOpenResetPassword(u);
+        }}
+      />
+
+      <UserResetPasswordModal
+        open={resetPasswordModalVisible}
+        user={resetPasswordTargetUser}
+        loading={resetPasswordMutation.isLoading}
+        onCancel={() => {
+          setResetPasswordModalVisible(false);
+          setResetPasswordTargetUser(null);
+        }}
+        onReset={(userId, newPassword) =>
+          resetPasswordMutation.mutateAsync({ userId, password: newPassword })
+        }
       />
 
       <UserCreateModal

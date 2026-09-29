@@ -15,6 +15,7 @@ export type {
 } from './skill-validation.service';
 export { ToolCatalogController } from './tool-catalog.controller';
 export { ToolCatalogService } from './tool-catalog.service';
+export { SkillContrastiveCompilerService } from './skill-contrastive-compiler.service';
 
 import type { SkillConfigDto } from './interfaces';
 

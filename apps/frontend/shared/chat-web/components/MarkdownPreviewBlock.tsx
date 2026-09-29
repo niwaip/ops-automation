@@ -47,7 +47,7 @@ export const MarkdownPreviewBlock: React.FC<MarkdownPreviewBlockProps> = React.m
     srcUrl,
     fileName,
     sizeBytes,
-    defaultExpanded = true,
+    defaultExpanded = false,
     isStreaming = false,
   }) {
     const [isExpanded, setIsExpanded] = useState<boolean>(defaultExpanded);

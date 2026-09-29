@@ -41,19 +41,37 @@ const UsageSummary: React.FC<{ usage?: SharedLLMUsage }> = ({ usage }) => {
     Boolean(reasoningTokens) && total_tokens === prompt_tokens + completion_tokens;
   const reasoningPrefix = isReasoningIncluded ? '含推理' : '+推理';
 
-  return (
-    <div className="chat-message-usage">
-      <Space size={4} split={<span className="chat-usage-divider">/</span>}>
-        <span className="chat-usage-item">
-          <span className="chat-usage-label">Tokens:</span>
-          <span className="chat-usage-value">{total_tokens}</span>
-        </span>
-        <span className="chat-usage-detail">
-          输入:{prompt_tokens} 输出:{completion_tokens}
-          {reasoningTokens ? ` (${reasoningPrefix}:${reasoningTokens})` : ''}
-        </span>
-      </Space>
+  const tooltipTitle = (
+    <div style={{ fontSize: 12, lineHeight: 1.6 }}>
+      <div style={{ fontWeight: 600, marginBottom: 4 }}>Token 消耗统计（模型上游官方返回）</div>
+      <div>• 输入（Prompt）: {prompt_tokens}</div>
+      <div>• 输出（Completion）: {completion_tokens}</div>
+      {reasoningTokens ? (
+        <div>
+          • 思考推理（Reasoning）: {reasoningTokens} ({isReasoningIncluded ? '已计入输出' : '未计入输出，单独累加'})
+        </div>
+      ) : null}
+      <div style={{ marginTop: 4, paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+        总计: {total_tokens} {reasoningTokens && !isReasoningIncluded ? `(${prompt_tokens} + ${completion_tokens} + ${reasoningTokens} = ${total_tokens})` : `(${prompt_tokens} + ${completion_tokens} = ${total_tokens})`}
+      </div>
     </div>
+  );
+
+  return (
+    <Tooltip title={tooltipTitle} placement="top">
+      <div className="chat-message-usage" style={{ cursor: 'pointer' }}>
+        <Space size={4} split={<span className="chat-usage-divider">/</span>}>
+          <span className="chat-usage-item">
+            <span className="chat-usage-label">Tokens:</span>
+            <span className="chat-usage-value">{total_tokens}</span>
+          </span>
+          <span className="chat-usage-detail">
+            输入:{prompt_tokens} 输出:{completion_tokens}
+            {reasoningTokens ? ` (${reasoningPrefix}:${reasoningTokens})` : ''}
+          </span>
+        </Space>
+      </div>
+    </Tooltip>
   );
 };
 

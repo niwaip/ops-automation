@@ -3,6 +3,7 @@ import type { DeterministicPlanNodeV1 } from '@ops/backend-deterministic-plan';
 import type { PlanDraftDTO } from '../../interfaces';
 import type { ExecutionContext } from '../react-engine/interfaces';
 import { PromptDebugSettingsService } from '../debug-settings/prompt-debug-settings.service';
+import type { DocumentProbeResult } from './document-prober.service';
 
 @Injectable()
 export class ChatPlanningPresentationService {
@@ -101,10 +102,43 @@ export class ChatPlanningPresentationService {
 
   buildPlanningRequest(
     message: string,
-    files?: Array<{ fileName?: string; mimeType: string }>
+    files?: Array<{ fileName?: string; mimeType: string }>,
+    probedDocs?: DocumentProbeResult[]
   ): string {
-    if (!files || files.length === 0) return message;
-    const pdfFiles = files.filter(
+    if ((!files || files.length === 0) && (!probedDocs || probedDocs.length === 0)) return message;
+
+    if (probedDocs && probedDocs.length > 0) {
+      const docBlocks: string[] = ['[系统上下文：已完成用户附件文档轻量元数据探测]'];
+      for (const doc of probedDocs) {
+        docBlocks.push(`- 附件文档：${doc.fileName}`);
+        docBlocks.push(`  - 识别类型：${doc.docTypeName} (${doc.docType})`);
+        if (doc.docTitle) {
+          docBlocks.push(`  - 文档标题：《${doc.docTitle}》`);
+        }
+        if (doc.parties && (doc.parties.partyA || doc.parties.partyB)) {
+          const partyInfo = [
+            doc.parties.partyA ? `甲方: ${doc.parties.partyA}` : '',
+            doc.parties.partyB ? `乙方: ${doc.parties.partyB}` : '',
+          ]
+            .filter(Boolean)
+            .join('；');
+          docBlocks.push(`  - 识别签约主体：${partyInfo}`);
+        }
+        if (doc.summaryPreview) {
+          const preview =
+            doc.summaryPreview.length > 1200
+              ? `${doc.summaryPreview.slice(0, 1200)}...[更多内容已截断]`
+              : doc.summaryPreview;
+          docBlocks.push('  - 文档前序内容预览：');
+          docBlocks.push('  """');
+          docBlocks.push(`  ${preview.replace(/\n+/g, '\n  ')}`);
+          docBlocks.push('  """');
+        }
+      }
+      return `${message}\n\n${docBlocks.join('\n')}`;
+    }
+
+    const pdfFiles = (files || []).filter(
       (file) => file.mimeType === 'application/pdf' || file.fileName?.toLowerCase().endsWith('.pdf')
     );
     if (pdfFiles.length > 0) {
@@ -113,7 +147,7 @@ export class ChatPlanningPresentationService {
         ? `${message}\n[系统上下文：用户已上传 PDF 附件 (${names})]`
         : `${message}\n[系统上下文：用户已上传 PDF 附件]`;
     }
-    const names = files.map((f) => f.fileName).filter(Boolean).join(', ');
+    const names = (files || []).map((f) => f.fileName).filter(Boolean).join(', ');
     return names
       ? `${message}\n[系统上下文：用户已上传附件 (${names})]`
       : `${message}\n[系统上下文：用户已上传附件]`;

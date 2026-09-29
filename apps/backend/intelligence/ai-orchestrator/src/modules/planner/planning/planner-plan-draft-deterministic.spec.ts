@@ -67,6 +67,80 @@ describe('PlannerPlanDraftService deterministic contract path', () => {
     ]);
   });
 
+  it('skips parameter model recognition for search skills when required query is resolved and no optional parameters are requested', async () => {
+    const recognizerService = { recognizeParams: jest.fn() };
+    const paramRecognizerService = {
+      mergeRecognizedWithCollectedContext: jest.fn((recognized) => recognized),
+      applyBilingualCompletionToRecognized: jest.fn(async (recognized) => recognized),
+      buildRequiredInputs: jest.fn((_skill, recognized) => [
+        {
+          name: 'query',
+          display_name: '搜索关键词',
+          type: 'string',
+          required: true,
+          missing: !recognized.params.query,
+          value: recognized.params.query,
+          source: recognized.params.query ? 'user_input' : 'unresolved',
+          confidence: recognized.field_confidences?.query,
+        },
+      ]),
+    };
+    const planSemanticService = {
+      isDocumentTask: jest.fn().mockReturnValue(false),
+      buildDocumentSemanticContext: jest.fn(({ requiredInputs }) => ({ requiredInputs })),
+    };
+    const service = new PlannerPlanDraftService(
+      recognizerService as any,
+      planSemanticService as any,
+      new PlanGeneratorService(),
+      paramRecognizerService as any,
+      new DeterministicParamResolverService()
+    );
+
+    const result = await service.completePlanFromMatchPhase({
+      request: { user_input: '查看上海的天气' },
+      matchPhase: {
+        objective: '查看上海的天气',
+        hasVisibleSkills: true,
+        matchedSkill: {
+          skillId: 'platform.search.web',
+          skillName: '内置联网搜索',
+          matchedKeywords: ['天气', '搜索'],
+          confidence: 0.95,
+          collectedParams: {},
+          missingParams: ['query'],
+          paramsSchema: {
+            properties: {
+              query: {
+                type: 'string',
+                description: '搜索词',
+                required: true,
+                ...({ 'x-ops-input-role': 'search_query' } as any),
+              },
+              days: {
+                type: 'number',
+                description: '时间跨度天数',
+                required: false,
+              },
+              topic: {
+                type: 'string',
+                description: '主题',
+                enum: ['general', 'news'],
+                required: false,
+              },
+            },
+            required: ['query'],
+          },
+        },
+      },
+    });
+
+    expect(recognizerService.recognizeParams).not.toHaveBeenCalled();
+    expect(result.required_inputs).toEqual([
+      expect.objectContaining({ name: 'query', value: '上海的天气', missing: false }),
+    ]);
+  });
+
   it('lets the latest waiting-input answer replace a stale collected array value', async () => {
     const content = [{ type: 'paragraph', text: '端到端验证' }];
     const recognizerService = {

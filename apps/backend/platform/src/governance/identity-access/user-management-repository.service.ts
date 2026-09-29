@@ -120,6 +120,13 @@ export class PlatformIdentityAccessUserManagementRepository
     return this.mapUserWithOrg(updated);
   }
 
+  async updateUserPassword(userId: string, passwordHash: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+  }
+
   private mapUserWithOrg(user: any): IdentityAccessUserSummaryRecord {
     const primaryMembership = user.orgMemberships?.find((m: any) => m.status === 'active') || user.orgMemberships?.[0];
     return {

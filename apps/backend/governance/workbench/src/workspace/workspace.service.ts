@@ -534,31 +534,128 @@ export class WorkspaceService implements OnModuleInit {
       targetWorkspaceIds = [workspaceId];
     }
 
-    // 获取有权访问的所有文件节点
-    const nodes = await this.prisma.workspaceNode.findMany({
+    const stopWords = new Set(['请问', '请帮我', '查找', '查阅', '搜索', '关于', '有什么', '介绍一下', '解释一下', '总结', '具体', '方法', '教程', '指南', '怎么', '如何', '的', '了', '中', '在', '与', '及', '和']);
+    const rawTokens = q
+      .split(/[\s，,。的关于中与及和/、-]+/)
+      .map((t) => t.trim())
+      .filter((t) => t.length >= 2 && !stopWords.has(t.toLowerCase()));
+    const tokens = rawTokens.length > 0 ? rawTokens : [q];
+
+    // 优先检索匹配完整短语或核心关键词的文件节点，突破更新时间倒序 take: 100 截断
+    const matchedNodes = await this.prisma.workspaceNode.findMany({
+      where: {
+        workspaceId: { in: targetWorkspaceIds },
+        type: 'file',
+        storagePath: { not: null },
+        OR: [
+          { name: { contains: q, mode: 'insensitive' } },
+          ...tokens.map((token) => ({ name: { contains: token, mode: 'insensitive' as const } })),
+        ],
+      },
+      include: { workspace: true },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+    });
+
+    const recentNodes = await this.prisma.workspaceNode.findMany({
       where: {
         workspaceId: { in: targetWorkspaceIds },
         type: 'file',
         storagePath: { not: null },
       },
-      include: {
-        workspace: true,
-      },
+      include: { workspace: true },
       orderBy: { updatedAt: 'desc' },
-      take: 100,
+      take: 80,
     });
+
+    const IGNORED_BINARY_EXTS = new Set([
+      '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.svg', '.ico',
+      '.zip', '.tar', '.gz', '.7z', '.rar', '.bz2',
+      '.mp4', '.avi', '.mov', '.wmv', '.mkv', '.mp3', '.wav', '.flac',
+      '.exe', '.dll', '.bin', '.iso', '.dmg', '.pkg', '.apk',
+      '.woff', '.woff2', '.ttf', '.eot',
+    ]);
+
+    const candidateMap = new Map<string, typeof recentNodes[0]>();
+    for (const node of matchedNodes) candidateMap.set(node.id, node);
+    for (const node of recentNodes) {
+      if (!candidateMap.has(node.id)) candidateMap.set(node.id, node);
+    }
+
+    const scoreNode = (node: typeof recentNodes[0]): number => {
+      let score = 0;
+      const lowerName = node.name.toLowerCase();
+      if (lowerName.includes(q.toLowerCase())) score += 100;
+      for (const token of tokens) {
+        if (lowerName.includes(token.toLowerCase())) score += 30;
+      }
+      const digest = (node as any).digestJson as { summary?: string; cleanedContent?: string } | undefined;
+      if (digest?.summary) {
+        const lowerSummary = digest.summary.toLowerCase();
+        if (lowerSummary.includes(q.toLowerCase())) score += 50;
+        for (const token of tokens) {
+          if (lowerSummary.includes(token.toLowerCase())) score += 15;
+        }
+      }
+      const ext = lowerName.slice(lowerName.lastIndexOf('.'));
+      if (['.md', '.txt', '.docx', '.pdf'].includes(ext)) {
+        score += 10;
+      }
+      return score;
+    };
+
+    const nodes = Array.from(candidateMap.values())
+      .filter((node) => {
+        const ext = node.name.toLowerCase().slice(node.name.lastIndexOf('.'));
+        if (IGNORED_BINARY_EXTS.has(ext)) {
+          const digest = (node as any).digestJson as { summary?: string; cleanedContent?: string } | undefined;
+          return Boolean(digest?.summary || digest?.cleanedContent);
+        }
+        return true;
+      })
+      .sort((a, b) => scoreNode(b) - scoreNode(a));
 
     const results: ContentSearchResultDto[] = [];
     for (const node of nodes) {
       if (!node.storagePath) continue;
-      let matches = await this.contentIndexer.grepFile(
+      let matches: Array<{ line: number; snippet: string }> = await this.contentIndexer.grepFile(
         node.storagePath,
         node.name,
         node.mimeType,
         q,
         3
       );
-      if (matches.length === 0 && node.name.toLowerCase().includes(q.toLowerCase())) {
+
+      if (matches.length === 0 && tokens.length > 0) {
+        for (const token of tokens) {
+          const subMatches = await this.contentIndexer.grepFile(
+            node.storagePath,
+            node.name,
+            node.mimeType,
+            token,
+            2
+          );
+          if (subMatches.length > 0) {
+            matches.push(...subMatches);
+            if (matches.length >= 3) break;
+          }
+        }
+      }
+
+      if (matches.length === 0) {
+        const digest = (node as any).digestJson as { summary?: string; cleanedContent?: string } | undefined;
+        if (digest?.summary && (tokens.some((t) => digest.summary!.toLowerCase().includes(t.toLowerCase())) || digest.summary.includes(q))) {
+          matches.push({ line: 1, snippet: digest.summary.slice(0, 200) });
+        } else if (digest?.cleanedContent && tokens.some((t) => digest.cleanedContent!.toLowerCase().includes(t.toLowerCase()))) {
+          const matchingLines = digest.cleanedContent
+            .split('\n')
+            .filter((l) => tokens.some((t) => l.toLowerCase().includes(t.toLowerCase())))
+            .slice(0, 3);
+          matches = matchingLines.map((l, idx) => ({ line: idx + 1, snippet: l.slice(0, 200) }));
+        }
+      }
+
+      if (matches.length === 0 && tokens.some((t) => node.name.toLowerCase().includes(t.toLowerCase()))) {
         try {
           const preview = await this.getFileContent(
             node.workspaceId,
@@ -580,6 +677,7 @@ export class WorkspaceService implements OnModuleInit {
           // ignore preview error
         }
       }
+
       if (matches.length > 0) {
         results.push({
           ...this.toNodeDto(node),

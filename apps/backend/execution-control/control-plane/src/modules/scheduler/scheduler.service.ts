@@ -174,10 +174,10 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
       await this.executionService.create(schedule.createdBy, {
         skillId: schedule.skillId,
         skillVersion: schedule.skillVersion,
-        input: schedule.inputJson || {},
+        input: (schedule.inputJson as Record<string, unknown>) || {},
         triggerType: 'schedule',
         scheduleId: schedule.id,
-      } as any); // cast to any temporarily until CreateExecutionDto is updated
+      });
     });
 
     this.logger.log(

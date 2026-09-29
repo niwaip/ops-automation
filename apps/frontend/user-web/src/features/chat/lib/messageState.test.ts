@@ -333,6 +333,29 @@ describe('areMessagesEquivalent', () => {
     expect(merged[0].role).toBe('user');
     expect(merged[1].role).toBe('assistant');
   });
+
+  it('correctly sorts remote messages where assistant timestamp is slightly earlier than user timestamp due to clock skew', () => {
+    const remoteUser: ChatMessage = {
+      id: 'u1',
+      sessionId: 's1',
+      role: 'user',
+      content: '查看上海的天气',
+      timestamp: '2026-09-28T13:45:40.779Z',
+    };
+    const remoteAssistant: ChatMessage = {
+      id: 'a1',
+      sessionId: 's1',
+      role: 'assistant',
+      content: '上海当前天气晴',
+      timestamp: '2026-09-28T13:45:40.778Z', // 1ms earlier!
+    };
+
+    const merged = mergeHistoryMessages([remoteUser, remoteAssistant], []);
+    expect(merged[0].id).toBe('u1');
+    expect(merged[0].role).toBe('user');
+    expect(merged[1].id).toBe('a1');
+    expect(merged[1].role).toBe('assistant');
+  });
 });
 
 describe('resolveMessageExecutionId', () => {

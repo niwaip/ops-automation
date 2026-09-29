@@ -79,19 +79,42 @@ export class PlanSemanticService {
       return [name, description].some((value) => /\{#.+\}|\{\/.+\}/.test(value));
     });
 
-    if (typeof sourceType === 'string' && sourceType.trim()) {
-      return sourceType === 'document' || hasTemplateLoopMarkers;
-    }
-
-    if (matchedSkill.executionType === 'document') {
+    if (sourceType === 'document' || hasTemplateLoopMarkers) {
       return true;
     }
 
-    return (
+    if (
       matchedSkill.executionFlow?.includes('document_render') ||
-      Boolean(matchedSkill.carboneTemplateId) ||
-      hasTemplateLoopMarkers
-    );
+      Boolean(matchedSkill.carboneTemplateId)
+    ) {
+      return true;
+    }
+
+    const skillIdentifiers = [
+      matchedSkill.skillId,
+      matchedSkill.skillName,
+      matchedSkill.matchReason,
+    ]
+      .filter((s): s is string => typeof s === 'string')
+      .join(' ')
+      .toLowerCase();
+
+    if (
+      skillIdentifiers.includes('contract') ||
+      skillIdentifiers.includes('document') ||
+      skillIdentifiers.includes('agreement') ||
+      skillIdentifiers.includes('confidentiality') ||
+      skillIdentifiers.includes('保密协议') ||
+      skillIdentifiers.includes('合同')
+    ) {
+      return true;
+    }
+
+    if (sourceType !== 'temporal_workflow' && matchedSkill.executionType === 'document') {
+      return true;
+    }
+
+    return false;
   }
 
   analyzeDocumentComplexity(requiredInputs: RequiredInputDTO[]): PlanSemanticDTO['complexity'] {

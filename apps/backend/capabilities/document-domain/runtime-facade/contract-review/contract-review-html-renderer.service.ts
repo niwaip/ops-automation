@@ -13,6 +13,7 @@ import {
   ContractReviewHtmlFindingRenderer,
   type FindingItemViewModel,
 } from './contract-review-html-finding.renderer';
+import { CONTRACT_REPORT_STANDALONE_CSS } from '../contract-standalone-style.util';
 
 export interface RenderReviewHtmlInput {
   fileName: string;
@@ -149,8 +150,8 @@ export class ContractReviewHtmlRendererService {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>合同智能审查与合规诊断报告 · 工作底稿 - ${this.escapeHtml(fileName)}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    ${CONTRACT_REPORT_STANDALONE_CSS}
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       background-color: #F5F6F8;

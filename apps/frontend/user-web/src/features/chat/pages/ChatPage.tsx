@@ -87,6 +87,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   const [enableThinking, setEnableThinking] = useState(true);
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>('medium');
   const [enableWebSearch, setEnableWebSearch] = useState(false);
+  const [enableWorkspaceSearch, setEnableWorkspaceSearch] = useState(false);
   const [enableResearch, setEnableResearch] = useState(false);
   const [expandedThoughtMessageId, setExpandedThoughtMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -249,6 +250,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     enableThinking,
     reasoningEffort,
     enableWebSearch,
+    enableWorkspaceSearch,
     enableResearch,
     ensureSession,
     isStreaming,
@@ -648,6 +650,8 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             onReasoningEffortChange={setReasoningEffort}
             enableWebSearch={enableWebSearch}
             onEnableWebSearchChange={setEnableWebSearch}
+            enableWorkspaceSearch={enableWorkspaceSearch}
+            onEnableWorkspaceSearchChange={setEnableWorkspaceSearch}
             enableResearch={enableResearch}
             onEnableResearchChange={setEnableResearch}
             thinkingLabel={thinkingToggleLabel}

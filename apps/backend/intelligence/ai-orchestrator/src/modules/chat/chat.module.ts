@@ -24,6 +24,9 @@ import { UserSandboxDispatcherService } from './user-sandbox-dispatcher.service'
 import { WorkspaceArtifactService } from './workspace-artifact.service';
 import { PersonalReminderBridgeService } from './personal-reminder-bridge.service';
 import { StorageConfigModule } from '../storage/storage-config.module';
+import { ChatKnowledgeRetrievalService } from './chat-knowledge-retrieval.service';
+import { DocumentProberService } from './document-prober.service';
+import { OfficeDocumentReaderService } from './office-document-reader.service';
 
 @Module({
   imports: [
@@ -38,6 +41,7 @@ import { StorageConfigModule } from '../storage/storage-config.module';
   ],
   controllers: [ChatController],
   providers: [
+    OfficeDocumentReaderService,
     ChatWaitingInputService,
     ChatResultNormalizerService,
     ChatExecutionStreamService,
@@ -54,7 +58,9 @@ import { StorageConfigModule } from '../storage/storage-config.module';
     UserSandboxDispatcherService,
     WorkspaceArtifactService,
     PersonalReminderBridgeService,
+    ChatKnowledgeRetrievalService,
+    DocumentProberService,
   ],
-  exports: [WorkspaceArtifactService],
+  exports: [WorkspaceArtifactService, DocumentProberService, OfficeDocumentReaderService],
 })
 export class ChatModule {}

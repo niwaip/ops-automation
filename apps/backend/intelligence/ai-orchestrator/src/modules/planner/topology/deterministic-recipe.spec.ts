@@ -693,4 +693,42 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
     // Should NOT match single-skill contract_review on nonexistent file
     expect(matched?.recipeName).not.toBe('contract_review');
   });
+
+  it('matches document_extract recipe for "查看文档内容" with injected probed contract context', () => {
+    const userRequest = `查看文档内容
+
+[系统上下文：已完成用户附件文档轻量元数据探测]
+- 附件文档：1234 (1).docx
+  - 识别类型：软件技术开发合同 (contract.software_development)
+  - 文档标题：《技术服务合同》
+  - 识别签约主体：甲方: {d.contract.partyA_cn}；乙方: 富士通（中国）信息系统有限公司
+  - 文档前序内容预览：
+  """
+  技术服务合同
+  双方经过平等协商，在真实、充分地表达各自意愿的基础上，达成如下协议，并由双方共同恪守。
+  """`;
+    const matched = matcher.matchRecipe(userRequest);
+
+    expect(matched).not.toBeNull();
+    expect(matched?.recipeName).toBe('document_extract');
+    expect(matched?.steps).toHaveLength(1);
+    expect(matched?.steps[0]?.role).toBe('document_extract');
+
+    const topology = topologyBuilder.buildTopologyFromRecipe(
+      matched!,
+      mockSkillCards,
+      mockLlmOpCards
+    );
+    expect(topology).not.toBeNull();
+    expect(topology?.nodes[0]?.capabilityKey).toBe('platform.document.pdf-content-extractor');
+  });
+
+  it('matches document_extract recipe for "查看合同内容" without triggering contract_review', () => {
+    const userRequest = '查看合同内容\n[系统上下文：用户已上传附件 (contract.docx)]';
+    const matched = matcher.matchRecipe(userRequest);
+
+    expect(matched).not.toBeNull();
+    expect(matched?.recipeName).toBe('document_extract');
+    expect(matched?.steps[0]?.role).toBe('document_extract');
+  });
 });
