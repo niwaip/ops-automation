@@ -338,8 +338,7 @@ export class ContractReviewHtmlDocumentRenderer {
             const isHigh = f.severity === 'HIGH' || clause.riskLevel === 'HIGH';
             const riskBadgeClass = isHigh ? 'evidence-risk-badge-high' : 'evidence-risk-badge-medium';
             const markClass = isHigh ? 'evidence-mark-high' : 'evidence-mark-medium';
-            const markTitle = `【审查检出风险】${this.escapeHtml(f.title || '条款合规预警')}（点击在右侧查看审查意见）`;
-            const markHtml = `<mark id="evidence-target-${findingId}" class="evidence-mark ${markClass} transition-all cursor-pointer select-text" data-finding-id="${findingId}" onclick="selectFinding('${findingId}')" title="${markTitle}">${quoteEscaped}<span class="evidence-risk-badge ${riskBadgeClass}" onclick="selectFinding('${findingId}', true)">⚠️ 审查风险</span></mark>`;
+            const markHtml = `<mark id="evidence-target-${findingId}" class="evidence-mark ${markClass} transition-all cursor-pointer select-text" data-finding-id="${findingId}" onclick="selectFinding('${findingId}')">${quoteEscaped}<span class="evidence-risk-badge ${riskBadgeClass}" data-finding-id="${findingId}" onclick="selectFinding('${findingId}', true)">⚠️ 审查风险</span></mark>`;
             formatted = formatted.replace(quoteEscaped, markHtml);
           }
         }

@@ -152,127 +152,129 @@ export class ContractReviewHtmlCommentRenderer {
       </div>
 
       <!-- Formal Approval / Review Log Card Body -->
-      <div class="bg-white rounded-lg border border-[#D9E1EC] p-3.5 shadow-card space-y-3">
+      <div class="bg-white rounded-lg border border-[#D9E1EC] p-3 shadow-card space-y-2.5">
         
-        <!-- 1. Reviewer & Audit Trail Node Card -->
-        <div class="bg-[#F8FAFC] rounded-lg border border-[#E2E8F0] p-3 space-y-2.5">
-          <div class="flex items-start justify-between gap-2">
-            <div class="flex items-center gap-2.5">
-              <div id="comment-detail-avatar" class="w-9 h-9 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-sm font-bold text-amber-900 shrink-0 select-none shadow-2xs">
-                王
-              </div>
-              <div>
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span id="comment-detail-author-name" class="text-sm font-bold text-[#1E293B]">审阅人</span>
-                  <span id="comment-detail-author-title" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">法务顾问</span>
-                  <span id="comment-detail-badge" class="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-amber-50 text-amber-900 border border-amber-200">Word 原生批注 #1</span>
-                </div>
-                <div id="comment-detail-date" class="text-[10px] text-[#64748B] font-mono mt-0.5 flex items-center gap-1">
-                  <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                  <span>2026-09-29 10:15</span>
-                </div>
-              </div>
+        <!-- 1. Compact Clause & Quoted Text Context Bar -->
+        <div id="comment-detail-quote-container" class="bg-amber-50/80 rounded-lg border border-amber-200/90 p-2.5 space-y-1.5 shadow-2xs">
+          <div class="flex items-center justify-between text-xs">
+            <div class="flex items-center gap-1.5 text-slate-700 min-w-0">
+              <span class="text-amber-800 font-bold shrink-0">📄 条款：</span>
+              <span id="comment-detail-clause-tag" class="font-bold text-slate-900 truncate">第二条 合同价款与支付结算周期</span>
             </div>
-            <span id="comment-detail-status-badge" class="px-2 py-0.5 text-[10px] font-medium rounded bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-              待处理
-            </span>
-          </div>
-
-          <!-- Clause affiliation -->
-          <div class="pt-2 border-t border-[#EEF2F6] flex items-center gap-1.5 text-xs text-[#2E5882]">
-            <svg class="w-3.5 h-3.5 text-[#2E5882] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-            <span class="text-[#64748B] text-[11px]">归属条款：</span>
-            <span id="comment-detail-clause-tag" class="font-semibold text-xs text-[#1E293B]">第二条 合同价款与支付结算周期</span>
-          </div>
-        </div>
-
-        <!-- 2. Quoted Original Text Section -->
-        <div id="comment-detail-quote-container" class="bg-[#FFFBEB] rounded-lg border border-amber-200/90 p-3">
-          <div class="flex items-center justify-between text-[11px] font-semibold text-amber-900 mb-1.5 select-none">
-            <span class="flex items-center gap-1.5">
-              <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path></svg>
-              <span>📑 关联引用合同原文</span>
-            </span>
             <button
               type="button"
               id="comment-detail-locate-btn"
               onclick="locateCurrentDetailCommentInDoc()"
-              class="text-[11px] text-amber-900 hover:text-amber-950 hover:underline flex items-center gap-0.5 font-bold cursor-pointer"
+              class="text-[11px] text-amber-800 hover:text-amber-950 hover:underline flex items-center gap-0.5 font-bold cursor-pointer shrink-0 ml-2"
+              title="在正文中定位并高亮此句"
             >
               <span>定位正文 ↗</span>
             </button>
           </div>
-          <blockquote id="comment-detail-quote" class="text-[#1E293B] text-xs font-normal italic select-text border-l-3 border-amber-400 pl-2.5 my-1 leading-relaxed">
+          <blockquote id="comment-detail-quote" class="text-xs text-slate-700 italic border-l-2 border-amber-400 pl-2 py-0.5 leading-relaxed bg-white/70 rounded-r px-1 select-text">
           </blockquote>
         </div>
 
-        <!-- 3. Review / Approval Finding Content (Collapsible) -->
-        <div class="rounded-lg border border-[#D9E1EC] bg-white overflow-hidden shadow-2xs">
-          <div class="px-3.5 py-2 bg-[#F8FAFC] border-b border-[#E2E8F0] flex items-center justify-between select-none">
-            <div class="flex items-center gap-1.5 text-xs font-bold text-[#1E293B]">
-              <svg class="w-3.5 h-3.5 text-[#2E5882]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
-              <span>💬 审阅审批意见与风险要求</span>
+        <!-- 2. Integrated Approval Log Card (Reviewer Header + Opinion Body) -->
+        <div class="rounded-lg border border-[#D9E1EC] bg-white overflow-hidden shadow-card">
+          <!-- Card Header: Reviewer identity + status + collapse toggle -->
+          <div class="px-3 py-2 bg-[#F8FAFC] border-b border-[#E2E8F0] flex items-center justify-between gap-2 select-none">
+            <div class="flex items-center gap-2 min-w-0">
+              <div id="comment-detail-avatar" class="w-7 h-7 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-xs font-bold text-amber-900 shrink-0 shadow-2xs">
+                王
+              </div>
+              <div class="flex items-center gap-1.5 flex-wrap min-w-0">
+                <span id="comment-detail-author-name" class="text-xs font-bold text-[#1E293B]">审阅人</span>
+                <span id="comment-detail-author-title" class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">法务顾问</span>
+                <span id="comment-detail-badge" class="px-1.5 py-0.2 rounded text-[10px] font-mono font-medium bg-amber-50 text-amber-900 border border-amber-200">Word 原生批注 #1</span>
+                <span id="comment-detail-status-badge" class="px-1.5 py-0.2 text-[10px] font-medium rounded bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">待处理</span>
+              </div>
             </div>
-            <button
-              type="button"
-              id="btn-toggle-comment-body"
-              onclick="toggleCommentDetailBodyCollapse()"
-              class="text-[11px] text-[#2E5882] hover:text-[#1A2D42] font-semibold flex items-center gap-0.5 cursor-pointer"
-            >
-              <span id="btn-toggle-comment-body-text">收起意见 ▲</span>
-            </button>
+            
+            <div class="flex items-center gap-2 shrink-0">
+              <div id="comment-detail-date" class="text-[10px] text-[#64748B] font-mono hidden sm:flex items-center gap-0.5">
+                <span>2026-09-29 10:15</span>
+              </div>
+              <button
+                type="button"
+                id="btn-toggle-comment-body"
+                onclick="toggleCommentDetailBodyCollapse()"
+                class="text-[11px] text-[#2E5882] hover:text-[#1A2D42] font-semibold flex items-center gap-0.5 cursor-pointer px-1 py-0.5 rounded hover:bg-slate-200/50"
+              >
+                <span id="btn-toggle-comment-body-text">收起意见 ▲</span>
+              </button>
+            </div>
           </div>
+
+          <!-- Card Body: Approval opinion -->
           <div id="comment-detail-body-wrapper" class="p-3 transition-all duration-200">
             <p id="comment-detail-body" class="text-xs text-[#1E293B] leading-relaxed select-text whitespace-pre-wrap font-normal"></p>
           </div>
         </div>
 
+        <!-- 3. Threaded Subsequent Comments Container (For 2号, 3号 comments on this clause) -->
+        <div id="comment-detail-thread-container" class="space-y-2 hidden"></div>
+
         <!-- 4. In-place Reply & Word Write-Back Desk -->
         ${
           canComment
             ? `
-        <div class="p-3.5 rounded-lg border border-[#D9E1EC] bg-[#F8FAFC] space-y-2.5">
-          <div class="flex items-center justify-between select-none">
-            <span class="text-xs font-bold text-[#1E293B] flex items-center gap-1">
+        <div class="p-3 rounded-lg border border-[#D9E1EC] bg-[#F8FAFC] space-y-2">
+          <div class="flex items-center justify-between text-xs select-none">
+            <span class="font-bold text-[#1E293B] flex items-center gap-1">
               <span>✍️ 追加审批答复 / 修改要求（回写 Word）</span>
             </span>
-            <span class="text-[10px] text-[#64748B]">受控回写至后台 OpenXML</span>
+            <!-- Default identity row: click to expand & modify -->
+            <div class="flex items-center gap-1 text-[11px] text-[#64748B]">
+              <span>审阅人:</span>
+              <span id="comment-reply-author-label" class="font-semibold text-slate-800">法务审阅人</span>
+              <button
+                type="button"
+                id="btn-toggle-reply-author-edit"
+                onclick="toggleReplyAuthorEdit()"
+                class="text-[10px] text-[#2E5882] hover:underline cursor-pointer ml-0.5"
+                title="点击展开修改审阅人姓名"
+              >
+                [修改 ✎]
+              </button>
+            </div>
           </div>
 
-          <div class="space-y-2">
-            <div>
-              <label class="block text-[11px] font-semibold text-[#334155] mb-0.5">答复人 / 审阅者</label>
-              <input
-                type="text"
-                id="comment-detail-reply-author"
-                class="w-full px-2.5 py-1.5 rounded-md border border-[#D9E1EC] bg-white focus:border-[#2E5882] focus:ring-1 focus:ring-[#2E5882] text-xs text-[#1E293B]"
-                value="法务审阅人"
-              />
-            </div>
-            <div>
-              <label class="block text-[11px] font-semibold text-[#334155] mb-0.5">答复意见 / 补充修改要求</label>
-              <textarea
-                id="comment-detail-reply-text"
-                rows="3"
-                class="w-full px-2.5 py-1.5 rounded-md border border-[#D9E1EC] bg-white focus:border-[#2E5882] focus:ring-1 focus:ring-[#2E5882] text-xs text-[#1E293B] leading-relaxed resize-none"
-                placeholder="请输入针对此条审批批注的答复说明、修改方案或进一步风控指引..."
-              ></textarea>
-            </div>
+          <!-- Hidden by default: author input that expands on click -->
+          <div id="comment-reply-author-container" class="hidden">
+            <label class="block text-[10px] font-semibold text-slate-600 mb-0.5">修改审阅人姓名 / 职务：</label>
+            <input
+              type="text"
+              id="comment-detail-reply-author"
+              class="w-full px-2 py-1 rounded border border-[#CBD5E1] bg-white text-xs text-slate-800 focus:border-[#2E5882] focus:ring-1 focus:ring-[#2E5882]"
+              value="法务审阅人"
+              oninput="document.getElementById('comment-reply-author-label').textContent = this.value || '法务审阅人'"
+            />
+          </div>
+
+          <!-- Textarea is primary and immediately visible -->
+          <div>
+            <textarea
+              id="comment-detail-reply-text"
+              rows="2"
+              class="w-full px-2.5 py-1.5 rounded-md border border-[#D9E1EC] bg-white focus:border-[#2E5882] focus:ring-1 focus:ring-[#2E5882] text-xs text-[#1E293B] leading-relaxed resize-none"
+              placeholder="输入针对此条审批批注的答复说明、修改方案或进一步风控指引..."
+            ></textarea>
           </div>
 
           <input type="hidden" id="comment-detail-current-id" value="" />
           <input type="hidden" id="comment-detail-current-clause" value="0" />
 
-          <div class="flex items-center justify-between pt-1">
+          <div class="flex items-center justify-between pt-0.5">
             <div class="text-[10px] text-[#64748B] flex items-center gap-1">
               <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              <span>提交将派生新版 Word 文档</span>
+              <span>受控回写至后台 OpenXML</span>
             </div>
             <button
               type="button"
               id="comment-detail-submit-btn"
               onclick="submitCommentDetailReply()"
-              class="px-3.5 py-1.5 rounded-md bg-[#1A2D42] text-xs font-semibold text-white hover:bg-[#243B53] shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+              class="px-3 py-1 rounded-md bg-[#1A2D42] text-xs font-semibold text-white hover:bg-[#243B53] shadow-2xs transition flex items-center gap-1 cursor-pointer"
             >
               <span>提交回写 Word →</span>
             </button>
@@ -326,17 +328,36 @@ export class ContractReviewHtmlCommentRenderer {
         </div>
 
         <!-- Form fields -->
-        <div class="space-y-3">
-          <div>
-            <label class="block text-[11px] font-semibold text-[#334155] mb-1">
-              批注人 / 审阅者姓名 <span class="text-red-500">*</span>
+        <div class="space-y-2.5">
+          <!-- Collapsible identity: default to logged-in user, click to expand & modify -->
+          <div class="flex items-center justify-between text-xs select-none">
+            <label class="block text-[11px] font-semibold text-[#334155]">
+              批注意见与修改要求 <span class="text-red-500">*</span>
             </label>
+            <div class="flex items-center gap-1 text-[11px] text-[#64748B]">
+              <span>批注人:</span>
+              <span id="comment-create-author-label" class="font-semibold text-slate-800">法务审阅人</span>
+              <button
+                type="button"
+                onclick="toggleCreateAuthorEdit()"
+                class="text-[10px] text-[#2E5882] hover:underline cursor-pointer ml-0.5"
+                title="点击展开修改批注人姓名"
+              >
+                [修改 ✎]
+              </button>
+            </div>
+          </div>
+
+          <!-- Hidden by default: author input that expands on click -->
+          <div id="comment-create-author-container" class="hidden">
+            <label class="block text-[10px] font-semibold text-slate-600 mb-0.5">修改批注人姓名 / 职务：</label>
             <input
               type="text"
               id="comment-create-author"
-              class="w-full px-3 py-1.5 rounded-md border border-[#D9E1EC] focus:border-[#2E5882] focus:ring-1 focus:ring-[#2E5882] text-xs text-[#1E293B]"
+              class="w-full px-2.5 py-1 rounded-md border border-[#CBD5E1] bg-white text-xs text-slate-800 focus:border-[#2E5882] focus:ring-1 focus:ring-[#2E5882]"
               value="法务审阅人"
               placeholder="例如：张律师 (法务部)"
+              oninput="document.getElementById('comment-create-author-label').textContent = this.value || '法务审阅人'"
             />
           </div>
 

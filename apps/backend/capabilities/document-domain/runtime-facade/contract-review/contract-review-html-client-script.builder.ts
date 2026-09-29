@@ -29,6 +29,8 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
         clauseIndex: f.clauseIndex ?? -1,
         severity: f.severity.toLowerCase(),
         issueType: f.issueType,
+        title: f.title,
+        impact: f.impact || f.suggestion || '',
       }))
     )};
 
@@ -553,6 +555,47 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       const replyText = document.getElementById('comment-detail-reply-text');
       if (replyText) replyText.value = '';
 
+      // Reset author edit container to collapsed (hidden)
+      const authorEditContainer = document.getElementById('comment-reply-author-container');
+      if (authorEditContainer) authorEditContainer.classList.add('hidden');
+
+      // Populate threaded comments on the same clause (e.g. 2号, 3号 批注)
+      const clauseComments = docxCommentsData.filter(x => x.clauseIndex === comment.clauseIndex && String(x.id) !== String(comment.id));
+      const threadContainer = document.getElementById('comment-detail-thread-container');
+      if (threadContainer) {
+        if (clauseComments.length > 0) {
+          threadContainer.classList.remove('hidden');
+          let threadHtml = '<div class="pt-1 text-[11px] font-bold text-slate-500 flex items-center gap-1"><span>💬 该条款其他审阅批注 (' + clauseComments.length + ')</span></div>';
+          clauseComments.forEach(otherC => {
+            let oRaw = otherC.author || '审阅人';
+            let oName = oRaw;
+            let oTitle = '法务合规';
+            const tm = oRaw.match(/^([^(（]+)[(（]([^)）]+)[)）]$/);
+            if (tm) { oName = tm[1].trim(); oTitle = tm[2].trim(); }
+            const oInitial = oName.slice(0, 1);
+            const oDate = otherC.date ? otherC.date.replace('T', ' ').slice(0, 16) : '';
+            threadHtml += \`
+              <div class="rounded-lg border border-slate-200 bg-white p-2.5 space-y-1 shadow-2xs hover:border-amber-300 transition cursor-pointer" onclick="enterCommentDetailMode('\${otherC.id}', true)">
+                <div class="flex items-center justify-between gap-1 text-[11px]">
+                  <div class="flex items-center gap-1.5 min-w-0">
+                    <div class="w-5 h-5 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-[10px] font-bold text-amber-900 shrink-0">\${oInitial}</div>
+                    <span class="font-bold text-slate-800 truncate">\${escapeHtml(oName)}</span>
+                    <span class="px-1 py-0.2 rounded text-[9px] bg-blue-50 text-blue-800 border border-blue-100 shrink-0">\${oTitle}</span>
+                    <span class="px-1 py-0.2 rounded text-[9px] bg-amber-50 text-amber-900 font-mono font-medium shrink-0">#\${otherC.id}</span>
+                  </div>
+                  <span class="text-[10px] text-slate-400 font-mono shrink-0">\${oDate}</span>
+                </div>
+                <div class="text-xs text-slate-700 line-clamp-2 leading-relaxed pl-6.5">\${escapeHtml(otherC.text || '')}</div>
+              </div>
+            \`;
+          });
+          threadContainer.innerHTML = threadHtml;
+        } else {
+          threadContainer.classList.add('hidden');
+          threadContainer.innerHTML = '';
+        }
+      }
+
       // Stepper index
       const idx = visibleCommentIds.indexOf(comment.id);
       if (idx >= 0) {
@@ -587,6 +630,42 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       } else {
         wrapper.style.display = 'block';
         btnText.textContent = '收起意见 ▲';
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function toggleReplyAuthorEdit() {
+      const container = document.getElementById('comment-reply-author-container');
+      if (!container) return;
+      const isHidden = container.classList.contains('hidden');
+      if (isHidden) {
+        container.classList.remove('hidden');
+        const input = document.getElementById('comment-detail-reply-author');
+        if (input) input.focus();
+      } else {
+        container.classList.add('hidden');
+      }
+    }
+
+    function toggleCreateAuthorEdit() {
+      const container = document.getElementById('comment-create-author-container');
+      if (!container) return;
+      const isHidden = container.classList.contains('hidden');
+      if (isHidden) {
+        container.classList.remove('hidden');
+        const input = document.getElementById('comment-create-author');
+        if (input) input.focus();
+      } else {
+        container.classList.add('hidden');
       }
     }
 
@@ -790,9 +869,36 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       if (bubble) bubble.style.display = 'none';
     }
 
-    // Fast Rich Hover Popover for Word Comments (Instant & Readable)
+    // Fast Rich Hover Popover for Word Comments and Audit Risk Findings (Debounced & Readable)
+    let popoverShowTimer = null;
     let popoverHideTimer = null;
+    let currentHoverTarget = null;
+    const HOVER_SHOW_DELAY = 220; // 220ms debounce: fixes "太快了", avoids accidental flickering on sweep
+    const HOVER_HIDE_DELAY = 160;
     const popoverEl = document.getElementById('comment-hover-popover');
+
+    function positionPopover(targetEl) {
+      const rect = targetEl.getBoundingClientRect();
+      const popoverWidth = 330;
+      let left = rect.left + rect.width / 2 - 30 + window.scrollX;
+      if (left + popoverWidth > window.innerWidth - 20) {
+        left = window.innerWidth - popoverWidth - 20 + window.scrollX;
+      }
+      if (left < 10) left = 10;
+
+      let top = rect.top + window.scrollY - 10;
+      popoverEl.classList.remove('arrow-top', 'arrow-bottom');
+
+      if (rect.top > 160) {
+        popoverEl.classList.add('arrow-bottom');
+        popoverEl.style.left = left + 'px';
+        popoverEl.style.top = (top - 125) + 'px';
+      } else {
+        popoverEl.classList.add('arrow-top');
+        popoverEl.style.left = left + 'px';
+        popoverEl.style.top = (rect.bottom + window.scrollY + 10) + 'px';
+      }
+    }
 
     function showCommentHoverPopover(targetEl, commentId) {
       if (!popoverEl) return;
@@ -812,16 +918,17 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       const dateStr = c.date ? c.date.replace('T', ' ').slice(0, 16) : '';
       const initials = authorName.slice(0, 1);
 
+      popoverEl.classList.remove('popover-risk');
       popoverEl.innerHTML = \`
         <div class="flex items-start justify-between gap-2 pb-1.5 mb-1.5 border-b border-amber-200 select-none">
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 min-w-0">
             <div class="w-6 h-6 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-[11px] font-bold text-amber-900 shrink-0 shadow-2xs">
               \${initials}
             </div>
-            <div>
-              <div class="flex items-center gap-1.5">
-                <span class="text-xs font-bold text-slate-900">\${authorName}</span>
-                <span class="text-[10px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-800 border border-blue-200 font-medium">\${authorTitle}</span>
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-xs font-bold text-slate-900">\${escapeHtml(authorName)}</span>
+                <span class="text-[10px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-800 border border-blue-200 font-medium">\${escapeHtml(authorTitle)}</span>
               </div>
               \${dateStr ? '<div class="text-[10px] text-slate-500 font-mono">' + dateStr + '</div>' : ''}
             </div>
@@ -831,7 +938,7 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
           </span>
         </div>
         <div class="text-xs text-slate-800 leading-relaxed font-normal select-text">
-          \${c.text || ''}
+          \${escapeHtml(c.text || '')}
         </div>
         <div class="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-amber-800 select-none">
           <span class="font-medium">👉 点击可在侧边栏查看与回复</span>
@@ -839,27 +946,7 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
         </div>
       \`;
 
-      const rect = targetEl.getBoundingClientRect();
-      const popoverWidth = 320;
-      let left = rect.left + rect.width / 2 - 30 + window.scrollX;
-      if (left + popoverWidth > window.innerWidth - 20) {
-        left = window.innerWidth - popoverWidth - 20 + window.scrollX;
-      }
-      if (left < 10) left = 10;
-
-      let top = rect.top + window.scrollY - 10;
-      popoverEl.classList.remove('arrow-top', 'arrow-bottom');
-
-      if (rect.top > 160) {
-        popoverEl.classList.add('arrow-bottom');
-        popoverEl.style.left = left + 'px';
-        popoverEl.style.top = (top - 120) + 'px';
-      } else {
-        popoverEl.classList.add('arrow-top');
-        popoverEl.style.left = left + 'px';
-        popoverEl.style.top = (rect.bottom + window.scrollY + 10) + 'px';
-      }
-
+      positionPopover(targetEl);
       popoverEl.classList.add('popover-visible');
       popoverEl.onclick = () => {
         handleCommentClick(c.id, c.clauseIndex);
@@ -867,27 +954,99 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       };
     }
 
-    function hideCommentHoverPopover(delay = 180) {
+    function showFindingHoverPopover(targetEl, findingId) {
+      if (!popoverEl) return;
       clearTimeout(popoverHideTimer);
+      const f = allFindings.find(item => String(item.id) === String(findingId));
+      if (!f) return;
+
+      const isHigh = f.severity === 'high';
+      const severityText = isHigh ? '高风险' : '中风险';
+      const severityBadgeClass = isHigh
+        ? 'bg-red-50 text-red-700 border-red-200'
+        : 'bg-amber-50 text-amber-700 border-amber-200';
+
+      popoverEl.classList.add('popover-risk');
+      popoverEl.innerHTML = \`
+        <div class="flex items-start justify-between gap-2 pb-1.5 mb-1.5 border-b border-red-100 select-none">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span class="text-xs font-bold text-red-700 shrink-0">⚠️ 审查风险</span>
+            <span class="text-xs font-bold text-slate-900 truncate">\${escapeHtml(f.title || '条款合规预警')}</span>
+          </div>
+          <div class="flex items-center gap-1 shrink-0">
+            <span class="text-[10px] px-1.5 py-0.2 rounded border font-semibold \${severityBadgeClass}">
+              \${severityText}
+            </span>
+            <span class="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-medium">
+              \${escapeHtml(f.issueType || '合规项')}
+            </span>
+          </div>
+        </div>
+        <div class="text-xs text-slate-700 leading-relaxed font-normal select-text line-clamp-4">
+          \${escapeHtml(f.impact || '该条款可能存在合规偏颇或履行隐患，建议核对法务风控要求。')}
+        </div>
+        <div class="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-red-700 select-none">
+          <span class="font-medium">👉 点击进入侧边栏查看修改建议</span>
+          <span class="font-mono text-[9px] text-slate-400">点击进入</span>
+        </div>
+      \`;
+
+      positionPopover(targetEl);
+      popoverEl.classList.add('popover-visible');
+      popoverEl.onclick = () => {
+        selectFinding(f.id, true);
+        hideCommentHoverPopover(0);
+      };
+    }
+
+    function hideCommentHoverPopover(delay = 160) {
+      clearTimeout(popoverShowTimer);
+      clearTimeout(popoverHideTimer);
+      if (delay === 0) {
+        if (popoverEl) popoverEl.classList.remove('popover-visible');
+        currentHoverTarget = null;
+        return;
+      }
       popoverHideTimer = setTimeout(() => {
         if (popoverEl) {
           popoverEl.classList.remove('popover-visible');
         }
+        currentHoverTarget = null;
       }, delay);
     }
 
     document.addEventListener('mouseover', function(e) {
       const commentTarget = e.target.closest('[data-comment-id]');
-      if (commentTarget) {
-        const cid = commentTarget.getAttribute('data-comment-id');
-        if (cid) showCommentHoverPopover(commentTarget, cid);
+      const findingTarget = e.target.closest('[data-finding-id]');
+      const target = commentTarget || findingTarget;
+
+      if (target) {
+        clearTimeout(popoverHideTimer);
+        if (currentHoverTarget === target) {
+          return;
+        }
+        currentHoverTarget = target;
+        clearTimeout(popoverShowTimer);
+        popoverShowTimer = setTimeout(() => {
+          if (commentTarget) {
+            const cid = commentTarget.getAttribute('data-comment-id');
+            if (cid) showCommentHoverPopover(commentTarget, cid);
+          } else if (findingTarget) {
+            const fid = findingTarget.getAttribute('data-finding-id');
+            if (fid) showFindingHoverPopover(findingTarget, fid);
+          }
+        }, HOVER_SHOW_DELAY);
         return;
       }
+
       if (popoverEl && popoverEl.contains(e.target)) {
         clearTimeout(popoverHideTimer);
         return;
       }
-      hideCommentHoverPopover(120);
+
+      clearTimeout(popoverShowTimer);
+      currentHoverTarget = null;
+      hideCommentHoverPopover(HOVER_HIDE_DELAY);
     });
 
     // Floating Selection Comment Bubble Listeners

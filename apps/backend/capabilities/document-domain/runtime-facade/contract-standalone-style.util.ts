@@ -740,4 +740,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   bottom: -6px;
   left: 24px;
 }
+#comment-hover-popover.popover-risk {
+  border-color: #F87171;
+  box-shadow: 0 10px 25px -3px rgba(239, 68, 68, 0.15), 0 4px 8px -2px rgba(0, 0, 0, 0.06);
+}
+#comment-hover-popover.popover-risk::after {
+  border-left-color: #F87171;
+  border-bottom-color: #F87171;
+}
+#comment-hover-popover.popover-risk.arrow-top::after {
+  border-top-color: #F87171;
+  border-right-color: #F87171;
+}
 `;

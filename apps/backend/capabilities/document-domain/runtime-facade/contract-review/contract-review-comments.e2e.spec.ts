@@ -310,8 +310,17 @@ describe('Word OpenXML Comments End-to-End Extraction & Rendering', () => {
     expect(html).toContain('id="comment-create-text"');
     expect(html).toContain('submitCommentCreateFromSidebar()');
 
-    // Check Comment Hover Popover
+    // Check Comment & Finding Hover Popover with debouncing
     expect(html).toContain('id="comment-hover-popover"');
+    expect(html).toContain('showFindingHoverPopover');
+    expect(html).toContain('HOVER_SHOW_DELAY = 220');
+
+    // Check Collapsible Author Input & Threaded comments
+    expect(html).toContain('id="comment-reply-author-container"');
+    expect(html).toContain('id="comment-create-author-container"');
+    expect(html).toContain('toggleReplyAuthorEdit');
+    expect(html).toContain('toggleCreateAuthorEdit');
+    expect(html).toContain('id="comment-detail-thread-container"');
 
     // Save test docx and generated preview HTML for browser verification
     const { WORKSPACE_ROOT } = await import('../document-payload-resolver.helper');
