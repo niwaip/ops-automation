@@ -346,14 +346,30 @@ export class ContractReviewHtmlDocumentRenderer {
     }
 
     // 3. Inject Word comment highlights and badge markers (Distinct Word comment markings)
+    // Group comments by their selectedText to gracefully support multiple comments on the exact same phrase
     if (clause.comments && clause.comments.length > 0) {
+      const commentsByText = new Map<string, typeof clause.comments>();
       for (const comment of clause.comments) {
         if (comment.selectedText && comment.selectedText.trim().length >= 2) {
-          const commentEscaped = this.escapeHtml(comment.selectedText.trim());
-          if (formatted.includes(commentEscaped)) {
-            const commentMarkHtml = `<mark id="comment-target-${comment.id}" class="docx-comment-highlight rounded-xs px-0.5 transition-all cursor-pointer select-text" data-comment-id="${comment.id}" onclick="handleCommentClick('${comment.id}', ${clause.clauseIndex}, event)">${commentEscaped}<span class="docx-comment-badge" data-comment-id="${comment.id}" onclick="handleCommentClick('${comment.id}', ${clause.clauseIndex}, event)">💬 批注 #${comment.id}</span></mark>`;
-            formatted = formatted.replace(commentEscaped, commentMarkHtml);
-          }
+          const textKey = comment.selectedText.trim();
+          const existing = commentsByText.get(textKey) || [];
+          existing.push(comment);
+          commentsByText.set(textKey, existing);
+        }
+      }
+
+      for (const [textKey, commentGroup] of commentsByText.entries()) {
+        const commentEscaped = this.escapeHtml(textKey);
+        if (formatted.includes(commentEscaped)) {
+          const primaryComment = commentGroup[0];
+          const allIds = commentGroup.map((c) => c.id).join(',');
+          const badgeText =
+            commentGroup.length > 1
+              ? `💬 批注 (${commentGroup.length}条) #${commentGroup.map((c) => c.id).join('/')}`
+              : `💬 批注 #${primaryComment.id}`;
+
+          const commentMarkHtml = `<mark id="comment-target-${primaryComment.id}" class="docx-comment-highlight rounded-xs px-0.5 transition-all cursor-pointer select-text" data-comment-id="${primaryComment.id}" data-comment-ids="${allIds}" onclick="handleCommentClick('${primaryComment.id}', ${clause.clauseIndex}, event)">${commentEscaped}<span class="docx-comment-badge" data-comment-id="${primaryComment.id}" data-comment-ids="${allIds}" onclick="handleCommentClick('${primaryComment.id}', ${clause.clauseIndex}, event)">${badgeText}</span></mark>`;
+          formatted = formatted.replace(commentEscaped, commentMarkHtml);
         }
       }
     }

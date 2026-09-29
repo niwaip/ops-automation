@@ -80,14 +80,14 @@ export async function parseDocxComments(zip: any, docXml?: string): Promise<Docx
 
   // If docXml is provided, match comment ranges to extract the highlighted contract text
   if (docXml) {
-    // 1. Range comments: <w:commentRangeStart w:id="1"/> ... <w:commentRangeEnd w:id="1"/>
-    const rangeRegex = /<w:commentRangeStart\s+[^>]*w:id="([^"]+)"[^>]*\/>([\s\S]*?)<w:commentRangeEnd\s+[^>]*w:id="\1"[^>]*\/>/g;
-    let rm: RegExpExecArray | null;
-    while ((rm = rangeRegex.exec(docXml)) !== null) {
-      const id = rm[1];
-      const rangeInner = rm[2];
-      const comment = commentsMap.get(id);
-      if (comment) {
+    // 1. Range comments: accurately extract selected text for each comment (supports multiple/nested comments on same text)
+    for (const [id, comment] of commentsMap.entries()) {
+      const startTagRegex = new RegExp(`<w:commentRangeStart\\s+[^>]*w:id="${id}"[^>]*\\/>`);
+      const endTagRegex = new RegExp(`<w:commentRangeEnd\\s+[^>]*w:id="${id}"[^>]*\\/>`);
+      const startMatch = docXml.match(startTagRegex);
+      const endMatch = docXml.match(endTagRegex);
+      if (startMatch && endMatch && startMatch.index !== undefined && endMatch.index !== undefined && endMatch.index > startMatch.index) {
+        const rangeInner = docXml.substring(startMatch.index + startMatch[0].length, endMatch.index);
         const tRegex = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g;
         let tm: RegExpExecArray | null;
         let selectedText = '';

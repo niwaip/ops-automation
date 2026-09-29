@@ -903,53 +903,107 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
     function showCommentHoverPopover(targetEl, commentId) {
       if (!popoverEl) return;
       clearTimeout(popoverHideTimer);
-      const c = docxCommentsData.find(item => String(item.id) === String(commentId));
-      if (!c) return;
 
-      let rawAuthor = c.author || '审阅人';
-      let authorName = rawAuthor;
-      let authorTitle = '法务合规';
-      const titleMatch = rawAuthor.match(/^([^(（]+)[(（]([^)）]+)[)）]$/);
-      if (titleMatch) {
-        authorName = titleMatch[1].trim();
-        authorTitle = titleMatch[2].trim();
-      }
+      const rawIds = targetEl.getAttribute('data-comment-ids');
+      const commentIds = rawIds ? rawIds.split(',') : [String(commentId)];
+      const matchedComments = commentIds
+        .map((id) => docxCommentsData.find((item) => String(item.id) === String(id)))
+        .filter(Boolean);
 
-      const dateStr = c.date ? c.date.replace('T', ' ').slice(0, 16) : '';
-      const initials = authorName.slice(0, 1);
+      if (matchedComments.length === 0) return;
 
       popoverEl.classList.remove('popover-risk');
-      popoverEl.innerHTML = \`
-        <div class="flex items-start justify-between gap-2 pb-1.5 mb-1.5 border-b border-amber-200 select-none">
-          <div class="flex items-center gap-2 min-w-0">
-            <div class="w-6 h-6 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-[11px] font-bold text-amber-900 shrink-0 shadow-2xs">
-              \${initials}
-            </div>
-            <div class="min-w-0">
-              <div class="flex items-center gap-1.5 flex-wrap">
-                <span class="text-xs font-bold text-slate-900">\${escapeHtml(authorName)}</span>
-                <span class="text-[10px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-800 border border-blue-200 font-medium">\${escapeHtml(authorTitle)}</span>
+
+      if (matchedComments.length === 1) {
+        const c = matchedComments[0];
+        let rawAuthor = c.author || '审阅人';
+        let authorName = rawAuthor;
+        let authorTitle = '法务合规';
+        const titleMatch = rawAuthor.match(/^([^(（]+)[(（]([^)）]+)[)）]$/);
+        if (titleMatch) {
+          authorName = titleMatch[1].trim();
+          authorTitle = titleMatch[2].trim();
+        }
+
+        const dateStr = c.date ? c.date.replace('T', ' ').slice(0, 16) : '';
+        const initials = authorName.slice(0, 1);
+
+        popoverEl.innerHTML = \`
+          <div class="flex items-start justify-between gap-2 pb-1.5 mb-1.5 border-b border-amber-200 select-none">
+            <div class="flex items-center gap-2 min-w-0">
+              <div class="w-6 h-6 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-[11px] font-bold text-amber-900 shrink-0 shadow-2xs">
+                \${initials}
               </div>
-              \${dateStr ? '<div class="text-[10px] text-slate-500 font-mono">' + dateStr + '</div>' : ''}
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="text-xs font-bold text-slate-900">\${escapeHtml(authorName)}</span>
+                  <span class="text-[10px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-800 border border-blue-200 font-medium">\${escapeHtml(authorTitle)}</span>
+                </div>
+                \${dateStr ? '<div class="text-[10px] text-slate-500 font-mono">' + dateStr + '</div>' : ''}
+              </div>
             </div>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-mono font-semibold shrink-0">
+              批注 #\${c.id}
+            </span>
           </div>
-          <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-mono font-semibold shrink-0">
-            批注 #\${c.id}
-          </span>
-        </div>
-        <div class="text-xs text-slate-800 leading-relaxed font-normal select-text">
-          \${escapeHtml(c.text || '')}
-        </div>
-        <div class="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-amber-800 select-none">
-          <span class="font-medium">👉 点击可在侧边栏查看与回复</span>
-          <span class="font-mono text-[9px] text-slate-400">点击进入</span>
-        </div>
-      \`;
+          <div class="text-xs text-slate-800 leading-relaxed font-normal select-text">
+            \${escapeHtml(c.text || '')}
+          </div>
+          <div class="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-amber-800 select-none">
+            <span class="font-medium">👉 点击可在侧边栏查看与回复</span>
+            <span class="font-mono text-[9px] text-slate-400">点击进入</span>
+          </div>
+        \`;
+      } else {
+        // Multi-comment collection for the exact same text anchor
+        let listHtml = '';
+        matchedComments.forEach((c, idx) => {
+          let rawAuthor = c.author || '审阅人';
+          let authorName = rawAuthor;
+          let authorTitle = '法务合规';
+          const titleMatch = rawAuthor.match(/^([^(（]+)[(（]([^)）]+)[)）]$/);
+          if (titleMatch) {
+            authorName = titleMatch[1].trim();
+            authorTitle = titleMatch[2].trim();
+          }
+          const initials = authorName.slice(0, 1);
+          listHtml += \`
+            <div class="pb-1.5 \${idx < matchedComments.length - 1 ? 'border-b border-amber-100 mb-1.5' : ''}">
+              <div class="flex items-center justify-between gap-1 text-[11px] mb-0.5">
+                <div class="flex items-center gap-1 min-w-0">
+                  <span class="w-4 h-4 rounded-full bg-amber-100 text-[9px] font-bold text-amber-900 flex items-center justify-center shrink-0">\${initials}</span>
+                  <span class="font-bold text-slate-800 truncate">\${escapeHtml(authorName)}</span>
+                  <span class="text-[9px] px-1 rounded bg-blue-50 text-blue-700 shrink-0">\${escapeHtml(authorTitle)}</span>
+                </div>
+                <span class="text-[9px] font-mono text-amber-800">#\${c.id}</span>
+              </div>
+              <div class="text-xs text-slate-700 line-clamp-2 leading-relaxed">\${escapeHtml(c.text || '')}</div>
+            </div>
+          \`;
+        });
+
+        popoverEl.innerHTML = \`
+          <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-amber-200 select-none">
+            <div class="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+              <span>💬 同一锚点批注合集</span>
+              <span class="px-1.5 py-0.2 rounded-full bg-amber-200 text-amber-950 font-mono text-[10px]">\${matchedComments.length} 条</span>
+            </div>
+            <span class="text-[10px] text-slate-400 font-mono">#\${matchedComments[0].id}~#\${matchedComments[matchedComments.length - 1].id}</span>
+          </div>
+          <div class="space-y-1 max-h-52 overflow-y-auto">
+            \${listHtml}
+          </div>
+          <div class="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-amber-800 select-none">
+            <span class="font-medium">👉 点击进入侧边栏展开完整审批讨论</span>
+            <span class="font-mono text-[9px] text-slate-400">点击进入</span>
+          </div>
+        \`;
+      }
 
       positionPopover(targetEl);
       popoverEl.classList.add('popover-visible');
       popoverEl.onclick = () => {
-        handleCommentClick(c.id, c.clauseIndex);
+        handleCommentClick(matchedComments[0].id, matchedComments[0].clauseIndex);
         hideCommentHoverPopover(0);
       };
     }
