@@ -90,6 +90,22 @@ describe('DocumentProberService', () => {
     expect(formatted).toContain('保密协议 (contract.nda)');
     expect(formatted).toContain('甲方: 北京阿尔法智算科技有限公司');
     expect(formatted).toContain('乙方: 上海贝塔数字技术有限公司');
-    expect(formatted).toContain('第一条 保密范围');
+    expect(formatted).toContain('文档特征摘要：字符数');
+    expect(formatted).toContain('正文哈希 sha256:');
+    expect(formatted).not.toContain('第一条 保密范围');
+  });
+
+  it('correctly handles tab-separated party A and party B on the same line', async () => {
+    const file: ChatUploadedFileDTO = {
+      fileId: 'f5',
+      fileName: '保密协议_测试.docx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      size: 1024,
+      extractedText: '保密协议\n甲方：豆包网络科技有限公司\t乙方：富士通智能系统开发有限公司\n双方达成一致...',
+    };
+
+    const result = await service.probeSingleFile(file);
+    expect(result?.parties?.partyA).toBe('豆包网络科技有限公司');
+    expect(result?.parties?.partyB).toBe('富士通智能系统开发有限公司');
   });
 });

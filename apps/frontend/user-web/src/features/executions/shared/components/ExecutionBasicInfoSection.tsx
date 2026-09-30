@@ -72,10 +72,25 @@ const ExecutionBasicInfoSection: React.FC<ExecutionBasicInfoSectionProps> = ({
         <Descriptions.Item label="风险">{execution.riskLevel || '-'}</Descriptions.Item>
         <Descriptions.Item label="技能">
           <Space direction="vertical" size={0}>
-            <Text>{getSkillDisplayName(execution.skillId)}</Text>
-            {execution.skillId ? (
-              <Text type="secondary" copyable={{ text: execution.skillId }}>
-                ID: {execution.skillId}
+            <Text>
+              {getSkillDisplayName(
+                execution.skillId ||
+                  (execution as any).capabilityId ||
+                  (execution as any).capabilitiesUsed?.[0]?.name ||
+                  (execution as any).capabilitiesUsed?.[0]?.id
+              )}
+            </Text>
+            {execution.skillId || (execution as any).capabilityId || (execution as any).capabilitiesUsed?.[0]?.id ? (
+              <Text
+                type="secondary"
+                copyable={{
+                  text:
+                    execution.skillId ||
+                    (execution as any).capabilityId ||
+                    (execution as any).capabilitiesUsed?.[0]?.id,
+                }}
+              >
+                ID: {execution.skillId || (execution as any).capabilityId || (execution as any).capabilitiesUsed?.[0]?.id}
               </Text>
             ) : null}
           </Space>

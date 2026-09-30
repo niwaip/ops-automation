@@ -189,6 +189,13 @@ export const mapExecutionToDto = (execution: Record<string, unknown>): Execution
       ? execution.executionPhases
       : [];
 
+  const rawSteps = Array.isArray((execution as any).steps)
+    ? (execution as any).steps
+    : Array.isArray((execution as any).executionSteps)
+      ? (execution as any).executionSteps
+      : [];
+  const firstStep = rawSteps[0];
+
   const effectiveCapabilityId = (
     execution.capabilityId ||
     execution.skillId ||
@@ -197,18 +204,36 @@ export const mapExecutionToDto = (execution: Record<string, unknown>): Execution
     (normalizedInput as any)?.capabilityId ||
     (normalizedInput as any)?.skillId ||
     (result as any)?.capabilityKey ||
+    (result as any)?.output?.capabilityKey ||
+    (result as any)?.result?.capabilityKey ||
+    (result as any)?.capabilitiesUsed?.[0]?.id ||
+    (result as any)?.result?.capabilitiesUsed?.[0]?.id ||
+    firstStep?.capabilityId ||
+    firstStep?.capability_id ||
     null
   ) as string | null;
 
+  const capabilitiesUsed = (
+    (result as any)?.capabilitiesUsed ||
+    (result as any)?.result?.capabilitiesUsed ||
+    (result as any)?.presentation?.capabilitiesUsed ||
+    (result as any)?.result?.businessData?.capabilitiesUsed ||
+    (effectiveCapabilityId
+      ? [{ id: effectiveCapabilityId, version: (execution.skillVersion || execution.skill_version || '1.0.0') as string }]
+      : [])
+  ) as Array<{ id: string; version?: string; name?: string }>;
+
   return {
     id: execution.id as string,
-    skillId: (execution.skillId || effectiveCapabilityId) as string,
-    capabilityId: effectiveCapabilityId,
-    skillVersion: (execution.skillVersion || execution.skill_version) as string | null,
+    skillId: (execution.skillId || effectiveCapabilityId || capabilitiesUsed?.[0]?.id) as string,
+    capabilityId: effectiveCapabilityId || capabilitiesUsed?.[0]?.id || null,
+    capabilitiesUsed,
+    skillVersion: (execution.skillVersion || execution.skill_version || capabilitiesUsed?.[0]?.version || null) as string | null,
     capabilityVersion: (execution.capabilityVersion ||
       execution.skillVersion ||
       execution.capability_version ||
-      execution.skill_version) as string | null,
+      capabilitiesUsed?.[0]?.version ||
+      null) as string | null,
     status: execution.status as ExecutionStatus,
     runtimeType: execution.runtimeType as string | null,
     riskLevel: execution.riskLevel as 'L0' | 'L1' | 'L2' | 'L3' | null,

@@ -123,9 +123,9 @@ export class CoordinationAutomationRunnerService {
       params.reviewPrompt ||
       params.prompt;
     const contractType =
-      stageConfig.contractType || params.contractType || 'nda';
+      params.contractType || stageConfig.contractType || 'nda';
     const myPosition =
-      stageConfig.myPosition || params.myPosition || 'buyer';
+      params.myPosition || stageConfig.myPosition || (contractType === 'nda' ? 'seller' : 'buyer');
     const customChecklistRules =
       stageConfig.customChecklistRules || stageConfig.customCheckpoints;
 
@@ -418,8 +418,11 @@ export class CoordinationAutomationRunnerService {
       ].join('\n');
     }
 
-    const contractType = stageConfig.contractType || params.contractType || 'nda';
-    const myPosition = stageConfig.myPosition || params.myPosition || 'buyer';
+    const contractType = params.contractType || stageConfig.contractType || 'nda';
+    const userExplicitPosition = params.myPosition || params.position;
+    const stageConfigPosition = stageConfig.myPosition || stageConfig.position;
+    const myPosition = userExplicitPosition || stageConfigPosition || (contractType === 'nda' ? 'seller' : 'buyer');
+    const positionSource = userExplicitPosition ? 'user_confirmed' : stageConfigPosition ? 'inferred' : 'default';
     const reviewPrompt = stageConfig.reviewPrompt || stageConfig.prompt || params.reviewPrompt || params.prompt;
     const customChecklistRules = stageConfig.customChecklistRules || stageConfig.customCheckpoints;
 
@@ -432,7 +435,7 @@ export class CoordinationAutomationRunnerService {
 
     try {
       this.logger.log(
-        `Invoking contract review runtime at ${carboneUrl} for "${fileName}" (position: ${myPosition}, prompt: ${Boolean(reviewPrompt)})`
+        `Invoking contract review runtime at ${carboneUrl} for "${fileName}" (position: ${myPosition}, source: ${positionSource}, prompt: ${Boolean(reviewPrompt)})`
       );
       const response = await axios.post<any>(
         `${carboneUrl}/internal/document/contract-review/invoke`,
@@ -446,6 +449,7 @@ export class CoordinationAutomationRunnerService {
             text,
             contractType,
             myPosition,
+            positionSource,
             prompt: reviewPrompt,
             reviewPrompt,
             customChecklistRules,

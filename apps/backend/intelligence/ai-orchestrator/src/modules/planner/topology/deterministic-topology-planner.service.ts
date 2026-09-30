@@ -3,6 +3,7 @@ import { ModelService } from '../../model/model.service';
 import type { RoutingCapabilityCardV1 } from '../candidate-selection/routing-capability-card.projector';
 import type { DeterministicTopologyDraftV1 } from './deterministic-topology.types';
 import { getSkillMatchMinConfidence } from '../skill/skill-match-policy';
+import { stripSystemContext } from '../routing/routing-policy.matcher';
 
 @Injectable()
 export class DeterministicTopologyPlannerService {
@@ -96,8 +97,9 @@ export class DeterministicTopologyPlannerService {
       : '';
     const fullPrompt = `${systemPrompt}${exemplarSection}\n\n${userPrompt}`;
 
+    const cleanRequest = stripSystemContext(userRequest) || userRequest;
     this.logger.log(
-      `Planning multi-step topology using model '${activeModel.name}' for request: "${userRequest}" (${routingCards.length} cards): ${routingCards.map((c) => `${c.key}:${c.displayName}`).join(', ')}`
+      `Planning multi-step topology using model '${activeModel.name}' for request: "${cleanRequest}" (${routingCards.length} cards): ${routingCards.map((c) => `${c.key}:${c.displayName}`).join(', ')}`
     );
 
     try {

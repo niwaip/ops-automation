@@ -28,24 +28,44 @@ export function buildDeterministicExecutionResult(input: {
   );
   const format = isMarkdown ? 'markdown' : 'plain_text';
 
+  const capabilitiesUsed: Array<{ id: string; version?: string; name?: string }> = [];
+  if (Array.isArray(input.plan?.nodes)) {
+    for (const node of input.plan.nodes) {
+      if (node.kind === 'skill') {
+        const skillId = (node as any).skillId || (node as any).capabilityId;
+        if (skillId) {
+          capabilitiesUsed.push({
+            id: skillId,
+            version: (node as any).skillVersion || (node as any).capabilityVersion || '1.0.0',
+            name: node.title || (node as any).capabilityName,
+          });
+        }
+      }
+    }
+  }
+
   return {
     execution: {
       executionId: input.executionId,
       status: 'success',
       finishedAt,
     },
+    capabilitiesUsed,
     result: {
       resultType: 'deterministic_plan',
       ...(title ? { title } : {}),
       ...(body ? { summary: body } : {}),
+      capabilitiesUsed,
       businessData: {
         finalOutputs: input.finalOutputs,
+        capabilitiesUsed,
       },
     },
     artifacts: input.artifacts,
     presentation: {
       preferAiSummary: false,
       preferStructuredView: false,
+      capabilitiesUsed,
       ...(body
         ? {
             chatSummary: body,

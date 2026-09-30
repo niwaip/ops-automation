@@ -133,7 +133,7 @@ export class DeterministicRecipeMatcherService {
     // 搜索/查询 + 总结 + 输出 Markdown 文件
     if (effectiveHasSearch && hasSummarize && hasMarkdown) {
       this.logger.log(
-        `Matched Recipe: search_summarize_write_markdown for request: "${userRequest}"`
+        `Matched Recipe: search_summarize_write_markdown for request: "${userUtterance}"`
       );
       return {
         recipeName: 'search_summarize_write_markdown',
@@ -156,7 +156,7 @@ export class DeterministicRecipeMatcherService {
 
     // 搜索/查询 + 总结 + 通知/推送
     if (effectiveHasSearch && hasSummarize && hasNotifyAction) {
-      this.logger.log(`Matched Recipe: search_summarize_notify for request: "${userRequest}"`);
+      this.logger.log(`Matched Recipe: search_summarize_notify for request: "${userUtterance}"`);
       return {
         recipeName: 'search_summarize_notify',
         objective: userRequest,
@@ -178,7 +178,7 @@ export class DeterministicRecipeMatcherService {
 
     // 搜索/查询 + 通知/推送 (如 天气查询 -> Bark推送)
     if (effectiveHasSearch && hasNotifyAction && !hasSummarize) {
-      this.logger.log(`Matched Recipe: search_then_notify for request: "${userRequest}"`);
+      this.logger.log(`Matched Recipe: search_then_notify for request: "${userUtterance}"`);
       return {
         recipeName: 'search_then_notify',
         objective: userRequest,
@@ -193,7 +193,7 @@ export class DeterministicRecipeMatcherService {
 
     // 网页抓取 + 总结 + 通知/推送
     if (hasWeb && hasSummarize && hasNotifyAction) {
-      this.logger.log(`Matched Recipe: web_extract_summarize_notify for request: "${userRequest}"`);
+      this.logger.log(`Matched Recipe: web_extract_summarize_notify for request: "${userUtterance}"`);
       return {
         recipeName: 'web_extract_summarize_notify',
         objective: userRequest,
@@ -215,7 +215,7 @@ export class DeterministicRecipeMatcherService {
 
     // 网页抓取 + 通知/推送
     if (hasWeb && hasNotifyAction && !hasSummarize) {
-      this.logger.log(`Matched Recipe: web_extract_then_notify for request: "${userRequest}"`);
+      this.logger.log(`Matched Recipe: web_extract_then_notify for request: "${userUtterance}"`);
       return {
         recipeName: 'web_extract_then_notify',
         objective: userRequest,
@@ -232,7 +232,7 @@ export class DeterministicRecipeMatcherService {
     // 保留 Skill 执行的稳定性，同时避免单 Skill 只覆盖“打开”就宣告整体完成。
     if (hasWeb && hasSummarize) {
       this.logger.log(
-        `Matched Recipe: web_extract_then_summarize for request: "${userRequest}"`
+        `Matched Recipe: web_extract_then_summarize for request: "${userUtterance}"`
       );
       return {
         recipeName: 'web_extract_then_summarize',
@@ -268,7 +268,7 @@ export class DeterministicRecipeMatcherService {
       !hasUncoveredAction &&
       !/(?:https?:\/\/|www\.)[^\s]+/i.test(userUtterance)
     ) {
-      this.logger.log(`Matched Recipe: grounded_text_transform for request: "${userRequest}"`);
+      this.logger.log(`Matched Recipe: grounded_text_transform for request: "${userUtterance}"`);
       return {
         recipeName: 'grounded_text_transform',
         objective: userRequest,
@@ -290,7 +290,7 @@ export class DeterministicRecipeMatcherService {
     // 独立能力，支持 PDF/Word/PPTX/TXT 等文档提取器复用同一编排形态。
     if (hasSummarize && hasDocumentExtract) {
       this.logger.log(
-        `Matched Recipe: document_extract_then_summarize for request: "${userRequest}"`
+        `Matched Recipe: document_extract_then_summarize for request: "${userUtterance}"`
       );
       return {
         recipeName: 'document_extract_then_summarize',
@@ -311,7 +311,7 @@ export class DeterministicRecipeMatcherService {
     }
 
     if (hasContractCompare) {
-      this.logger.log(`Matched Recipe: contract_compare for request: "${userRequest}"`);
+      this.logger.log(`Matched Recipe: contract_compare for request: "${userUtterance}"`);
       return {
         recipeName: 'contract_compare',
         objective: userRequest,
@@ -322,7 +322,7 @@ export class DeterministicRecipeMatcherService {
     }
 
     if (hasContractReview) {
-      this.logger.log(`Matched Recipe: contract_review for request: "${userRequest}"`);
+      this.logger.log(`Matched Recipe: contract_review for request: "${userUtterance}"`);
       return {
         recipeName: 'contract_review',
         objective: userRequest,
@@ -333,7 +333,7 @@ export class DeterministicRecipeMatcherService {
     }
 
     if (hasDocumentExtract) {
-      this.logger.log(`Matched Recipe: document_extract for request: "${userRequest}"`);
+      this.logger.log(`Matched Recipe: document_extract for request: "${userUtterance}"`);
       return {
         recipeName: 'document_extract',
         objective: userRequest,
@@ -345,7 +345,7 @@ export class DeterministicRecipeMatcherService {
 
     // 模式 2：搜索 + 总结
     if (effectiveHasSearch && hasSummarize) {
-      this.logger.log(`Matched Recipe: search_then_summarize for request: "${userRequest}"`);
+      this.logger.log(`Matched Recipe: search_then_summarize for request: "${userUtterance}"`);
       return {
         recipeName: 'search_then_summarize',
         objective: userRequest,
@@ -367,7 +367,7 @@ export class DeterministicRecipeMatcherService {
     // 模式 3：总结 + 输出 Markdown 文件
     if (hasSummarize && hasMarkdownFile && !effectiveHasSearch) {
       this.logger.log(
-        `Matched Recipe: summarize_then_write_markdown for request: "${userRequest}"`
+        `Matched Recipe: summarize_then_write_markdown for request: "${userUtterance}"`
       );
       return {
         recipeName: 'summarize_then_write_markdown',
@@ -400,7 +400,7 @@ export class DeterministicRecipeMatcherService {
       !hasUncoveredAction &&
       !/(?:https?:\/\/|www\.)[^\s]+/i.test(userUtterance)
     ) {
-      this.logger.log(`Matched Recipe: standard_text_generation for request: "${userRequest}"`);
+      this.logger.log(`Matched Recipe: standard_text_generation for request: "${userUtterance}"`);
       return {
         recipeName: 'standard_text_generation',
         objective: userRequest,

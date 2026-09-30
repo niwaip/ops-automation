@@ -23,6 +23,7 @@ import type {
   CreateModelDTO,
   CreateProviderConfigDTO,
   LLMUsage,
+  ModelPricing,
   UpdateProviderConfigDTO,
 } from '../../interfaces';
 import { ModelService } from './model.service';
@@ -172,12 +173,27 @@ export class ModelController {
   @Post('model/call')
   @ApiOperation({ summary: 'Call AI model with a prompt (for skill matching)' })
   async callModel(
-    @Body() body: { modelId: string; prompt: string; includeDebug?: boolean }
+    @Body()
+    body: {
+      modelId: string;
+      prompt: string;
+      temperature?: number;
+      seed?: number;
+      responseFormat?: string;
+      includeDebug?: boolean;
+    }
   ): Promise<{
     result: string;
     usage?: LLMUsage;
+    actualModel?: string;
+    actualModelId?: string;
+    provider?: string;
+    pricing?: ModelPricing;
     debug?: {
       modelId: string;
+      actualModel?: string;
+      actualModelId?: string;
+      provider?: string;
       requestMessages: Array<{ role: 'user'; content: string }>;
       responseText: string;
     };
@@ -185,14 +201,22 @@ export class ModelController {
     const modelId = body.modelId || 'default';
 
     try {
+      const model = this.modelService.resolveModelEntity(modelId);
       const response = await this.modelService.callModel(modelId, body.prompt);
       return {
         result: response.content,
         usage: response.usage,
+        actualModel: model?.name,
+        actualModelId: model?.id,
+        provider: model?.provider,
+        pricing: model?.pricing,
         ...(body.includeDebug
           ? {
               debug: {
                 modelId,
+                actualModel: model?.name,
+                actualModelId: model?.id,
+                provider: model?.provider,
                 requestMessages: [{ role: 'user', content: body.prompt }],
                 responseText: response.content,
               },

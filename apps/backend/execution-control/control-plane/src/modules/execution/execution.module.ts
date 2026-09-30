@@ -62,6 +62,7 @@ import { BackfillModule } from './backfill/backfill.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { ReminderModule } from '../reminders/reminder.module';
 import { SavedSkillModule } from '../saved-skill/saved-skill.module';
+import { ExperienceLearningModule } from '../experience-learning/experience-learning.module';
 import { ExecutionOutboxService } from './outbox/execution-outbox.service';
 import { OutboundEffectLedgerService } from './outbox/outbound-effect-ledger.service';
 import { ExecutionDispatcherService } from './dispatcher/execution-dispatcher.service';
@@ -77,7 +78,14 @@ import { CompletionClaimSynthesizerService } from './plan-runtime/completion-cla
 import { SearchWebController } from './adapters/search-web.controller';
 
 @Module({
-  imports: [DiscoveryModule, PrismaModule, BackfillModule, SavedSkillModule, ReminderModule],
+  imports: [
+    DiscoveryModule,
+    PrismaModule,
+    BackfillModule,
+    SavedSkillModule,
+    ReminderModule,
+    ExperienceLearningModule,
+  ],
   controllers: [ExecutionController, ResultRefController, SearchWebController],
   providers: [
     BrowserPhaseRecoveryPlanner,

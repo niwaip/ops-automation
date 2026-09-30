@@ -14,7 +14,7 @@ export class ContractTypeClassifierService {
     nda: {
       type: 'nda',
       displayName: '商业保密协议 (NDA)',
-      defaultPosition: 'buyer',
+      defaultPosition: 'seller',
       description: '针对商业机密保护、保密期限、除外披露及违约责任的专项合规审查',
     },
     software_development: {

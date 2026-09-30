@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   DownloadOutlined,
   ExportOutlined,
@@ -9,12 +9,48 @@ import {
 import { Button, Modal, Space, Tag } from 'antd';
 import { replaceLocalhostWithCurrentHost } from '@/shared/utils/publicUrl';
 
+export interface ReviewDraftPayload {
+  executionId?: string;
+  artifactId?: string;
+  ruleSetId?: string;
+  ruleSetVersion?: string;
+  summaryText: string;
+  stagedComments: any[];
+  findingStates: Record<string, any>;
+  approvalOpinions?: any[];
+  sourceDocumentVersion?: string;
+  action?: 'finish' | 'stage';
+  stats?: {
+    totalFindings: number;
+    viewedCount: number;
+    stagedCommentsCount: number;
+    totalCommentsCount: number;
+  };
+}
+
+export interface ContractReviewResultPayload {
+  type?: 'CONTRACT_REVIEW_RESULT';
+  action: 'finish' | 'stage';
+  summaryText: string;
+  stats?: {
+    totalFindings: number;
+    viewedCount: number;
+    stagedCommentsCount: number;
+    totalCommentsCount: number;
+  };
+  stagedComments?: any[];
+  findingStates?: Record<string, any>;
+  approvalOpinions?: any[];
+  reviewDraft?: ReviewDraftPayload;
+}
+
 interface HtmlReportPreviewModalProps {
   open: boolean;
   fileUrl?: string;
   fileName?: string;
   title?: string;
   onClose: () => void;
+  onReviewResult?: (result: ContractReviewResultPayload) => void;
 }
 
 export function HtmlReportPreviewModal({
@@ -23,9 +59,65 @@ export function HtmlReportPreviewModal({
   fileName = '合同合规审查报告.html',
   title = '合同合规审查报告预览',
   onClose,
+  onReviewResult,
 }: HtmlReportPreviewModalProps) {
   const [isFullscreen, setIsFullscreen] = useState(true);
   const resolvedUrl = replaceLocalhostWithCurrentHost(fileUrl);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleMessage = (event: MessageEvent) => {
+      // 安全校验：允许同源或者与报告资源 URL 同源的消息
+      let fileOrigin = '';
+      try {
+        if (resolvedUrl) {
+          fileOrigin = new URL(resolvedUrl, window.location.origin).origin;
+        }
+      } catch (e) {}
+
+      if (event.origin !== window.location.origin && (!fileOrigin || event.origin !== fileOrigin)) {
+        return;
+      }
+
+      if (event.data?.type === 'CONTRACT_REVIEW_RESULT') {
+        onReviewResult?.(event.data);
+      } else if (event.data?.type === 'CONTRACT_REVIEW_CLOSE') {
+        onClose();
+      }
+    };
+
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        bc = new BroadcastChannel('CONTRACT_REVIEW_CHANNEL');
+        bc.onmessage = (event) => {
+          if (event.data?.type === 'CONTRACT_REVIEW_RESULT') {
+            onReviewResult?.(event.data);
+            onClose();
+          }
+        };
+      }
+    } catch (e) {}
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'CONTRACT_REVIEW_LAST_RESULT' && event.newValue) {
+        try {
+          const payload = JSON.parse(event.newValue);
+          onReviewResult?.(payload);
+          onClose();
+        } catch (e) {}
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('storage', handleStorage);
+      if (bc) bc.close();
+    };
+  }, [open, onReviewResult, onClose]);
 
   return (
     <Modal

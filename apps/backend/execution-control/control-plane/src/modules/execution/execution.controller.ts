@@ -50,7 +50,16 @@ export class ExecutionController {
     @Req() req: AuthenticatedRequest
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
-    this.logger.log(`Creating execution for user ${userId}, skill ${dto.skillId}`);
+    const planNodes = Array.isArray((dto.deterministicPlan as any)?.nodes)
+      ? (dto.deterministicPlan as any).nodes
+      : [];
+    const firstSkill =
+      dto.skillId ||
+      (dto as any).publishedSkillId ||
+      planNodes.find((n: any) => n.kind === 'skill' && (n.capabilityId || n.skillId))?.skillId ||
+      planNodes.find((n: any) => n.kind === 'skill' && (n.capabilityId || n.skillId))?.capabilityId ||
+      (dto.executionMode === 'deterministic_plan' ? 'deterministic_plan' : 'none');
+    this.logger.log(`Creating execution for user ${userId}, skill ${firstSkill}`);
     const traceContext = (req as any).traceContext || {
       traceparent: (req as any).traceparent || (req.headers['traceparent'] as string),
       traceId: (req as any).traceId || (req.headers['x-trace-id'] as string),

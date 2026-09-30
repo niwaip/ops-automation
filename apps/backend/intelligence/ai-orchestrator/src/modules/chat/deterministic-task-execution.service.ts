@@ -1,6 +1,7 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { createHash } from 'crypto';
 import { PlanRouteClassifierService } from '../planner/routing/plan-route-classifier.service';
+import { stripSystemContext } from '../planner/routing/routing-policy.matcher';
 import { DeterministicPlanGeneratorService } from '../planner/deterministic/deterministic-plan-generator.service';
 import { ControlPlaneClient } from '../../client/control-plane.client';
 import { RoutingPolicyService } from '../planner/routing/routing-policy.service';
@@ -194,7 +195,8 @@ export class DeterministicTaskExecutionService {
     errorCode?: string;
     errorMessage?: string;
   }> {
-    this.logger.log(`Executing deterministic multi-step task for user ${userId}: "${userRequest}"`);
+    const cleanRequest = stripSystemContext(userRequest) || userRequest;
+    this.logger.log(`Executing deterministic multi-step task for user ${userId}: "${cleanRequest}"`);
 
     let planDraft: any;
     try {

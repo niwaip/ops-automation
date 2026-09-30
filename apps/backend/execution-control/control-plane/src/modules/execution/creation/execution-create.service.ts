@@ -614,6 +614,11 @@ export class ExecutionCreateService {
       : (dto.input as Record<string, unknown>) || {};
 
     let createdExecutionId = '';
+    const firstSkillNode = Array.isArray(planDraft.nodes)
+      ? planDraft.nodes.find((n: any) => n.kind === 'skill')
+      : undefined;
+    const effectiveSkillVersion =
+      dto.skillVersion || dto.capabilityVersion || (firstSkillNode as any)?.skillVersion || null;
 
     await this.prisma.$transaction(async (tx) => {
       const created = await tx.execution.create({
@@ -622,7 +627,7 @@ export class ExecutionCreateService {
           skillId: isUuid(dto.skillId || dto.capabilityId || '')
             ? dto.skillId || dto.capabilityId
             : null,
-          skillVersion: dto.skillVersion || dto.capabilityVersion || null,
+          skillVersion: effectiveSkillVersion,
           executionMode: 'deterministic_plan',
           status: waitsForInput
             ? EXECUTION_STATUS.WAITING_INPUT

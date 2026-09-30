@@ -56,6 +56,7 @@ export function InboxTaskDetailModal({
   const [replacementFile, setReplacementFile] = useState<CoordinationAttachment | null>(null);
   const [appendedFiles, setAppendedFiles] = useState<CoordinationAttachment[]>([]);
   const [comment, setComment] = useState('');
+  const [stagedReviewDraft, setStagedReviewDraft] = useState<any | null>(null);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [initialParams, setInitialParams] = useState<Record<string, any>>({});
@@ -72,6 +73,7 @@ export function InboxTaskDetailModal({
         setReplacementFile(null);
         setAppendedFiles([]);
         setComment('');
+        setStagedReviewDraft(null);
         setFileList([]);
         setIsSubmitting(false);
         setIsHistoryCollapsed(true);
@@ -83,6 +85,81 @@ export function InboxTaskDetailModal({
       loadedItemIdRef.current = null;
     }
   }, [open, item?.id, item?.sourceRefId, user?.username, user?.id]);
+
+  const handleReviewResult = (result: any) => {
+    const draft = result.reviewDraft || {
+      executionId: result.executionId,
+      artifactId: result.artifactId,
+      sourceDocumentVersion: result.sourceDocumentVersion,
+      ruleSetId: result.ruleSetId,
+      ruleSetVersion: result.ruleSetVersion,
+      ruleSetDigest: result.ruleSetDigest,
+      action: result.action,
+      summaryText: result.summaryText,
+      stagedComments: result.stagedComments || [],
+      findingStates: result.findingStates || {},
+      approvalOpinions: result.approvalOpinions || [],
+      stats: result.stats,
+      _timestamp: Date.now(),
+    };
+
+    // 四维一致性防串单/防换版/防漂移校验
+    const currentExecutionId =
+      (item as any)?.executionId ||
+      (item?.unifiedPayload as any)?.executionId ||
+      (item?.unifiedPayload as any)?.parameters?.executionId;
+    if (currentExecutionId && draft.executionId && currentExecutionId !== draft.executionId) {
+      message.error(
+        `审阅草稿关联任务(${draft.executionId.slice(0, 8)}...)与当前待办任务(${currentExecutionId.slice(0, 8)}...)不一致，已拦截防止串单！`
+      );
+      return;
+    }
+
+    const currentArtifactId =
+      (item as any)?.artifactId ||
+      (item?.unifiedPayload as any)?.artifactId ||
+      (item?.unifiedPayload as any)?.parameters?.artifactId;
+    if (currentArtifactId && draft.artifactId && currentArtifactId !== draft.artifactId) {
+      message.error(
+        `审阅草稿关联产物(${draft.artifactId.slice(0, 8)}...)与当前任务产物(${currentArtifactId.slice(0, 8)}...)不一致，已拦截防止产物漂移！`
+      );
+      return;
+    }
+
+    const currentDocVersion =
+      (item as any)?.sourceDocumentVersion ||
+      (item?.unifiedPayload as any)?.sourceDocumentVersion ||
+      (item?.unifiedPayload as any)?.parameters?.sourceDocumentVersion;
+    if (currentDocVersion && draft.sourceDocumentVersion && currentDocVersion !== draft.sourceDocumentVersion) {
+      message.error(
+        `审阅草稿关联文档版本(${draft.sourceDocumentVersion.slice(0, 16)}...)与任务原文档版本(${currentDocVersion.slice(0, 16)}...)不一致，已拦截防止文档换版！`
+      );
+      return;
+    }
+
+    const currentRuleSetDigest =
+      (item as any)?.ruleSetDigest ||
+      (item?.unifiedPayload as any)?.ruleSetDigest ||
+      (item?.unifiedPayload as any)?.parameters?.ruleSetDigest;
+    if (currentRuleSetDigest && draft.ruleSetDigest && currentRuleSetDigest !== draft.ruleSetDigest) {
+      message.error(
+        `审阅草稿关联审查要件快照(${draft.ruleSetDigest.slice(0, 16)}...)与任务规则快照(${currentRuleSetDigest.slice(0, 16)}...)不一致，已拦截防止规则快照漂移！`
+      );
+      return;
+    }
+
+    setStagedReviewDraft(draft);
+
+    if (result.summaryText) {
+      setComment((prev) => (prev && prev.trim() ? `${prev}\n\n${result.summaryText}` : result.summaryText));
+      const commentCount = draft.stagedComments?.length || 0;
+      message.success(
+        result.action === 'finish'
+          ? `已将合同审阅结论与批注意见填入审批意见栏${commentCount > 0 ? `（包含 ${commentCount} 条暂存批注）` : ''}`
+          : `审阅草稿已暂存${commentCount > 0 ? `（包含 ${commentCount} 条批注）` : ''}`
+      );
+    }
+  };
 
   const payload = (item?.unifiedPayload || {}) as Record<string, any>;
   const params = editedParams;
@@ -326,6 +403,41 @@ export function InboxTaskDetailModal({
         return;
       }
 
+      if (stagedReviewDraft) {
+        const currentExecutionId =
+          (item as any)?.executionId ||
+          (item?.unifiedPayload as any)?.executionId ||
+          (item?.unifiedPayload as any)?.parameters?.executionId;
+        if (currentExecutionId && stagedReviewDraft.executionId && currentExecutionId !== stagedReviewDraft.executionId) {
+          message.error('暂存草稿与当前任务执行单不匹配，已阻止提交！');
+          return;
+        }
+        const currentArtifactId =
+          (item as any)?.artifactId ||
+          (item?.unifiedPayload as any)?.artifactId ||
+          (item?.unifiedPayload as any)?.parameters?.artifactId;
+        if (currentArtifactId && stagedReviewDraft.artifactId && currentArtifactId !== stagedReviewDraft.artifactId) {
+          message.error('暂存草稿与当前任务产物不匹配，已阻止提交！');
+          return;
+        }
+        const currentDocVersion =
+          (item as any)?.sourceDocumentVersion ||
+          (item?.unifiedPayload as any)?.sourceDocumentVersion ||
+          (item?.unifiedPayload as any)?.parameters?.sourceDocumentVersion;
+        if (currentDocVersion && stagedReviewDraft.sourceDocumentVersion && currentDocVersion !== stagedReviewDraft.sourceDocumentVersion) {
+          message.error('暂存草稿与原文档版本不匹配，已阻止提交！');
+          return;
+        }
+        const currentRuleSetDigest =
+          (item as any)?.ruleSetDigest ||
+          (item?.unifiedPayload as any)?.ruleSetDigest ||
+          (item?.unifiedPayload as any)?.parameters?.ruleSetDigest;
+        if (currentRuleSetDigest && stagedReviewDraft.ruleSetDigest && currentRuleSetDigest !== stagedReviewDraft.ruleSetDigest) {
+          message.error('暂存草稿与规则快照不匹配，已阻止提交！');
+          return;
+        }
+      }
+
       if (nodeSemantics.cardActionType === 'send' || action === 'approve' || action === 'complete') {
         applyOptimisticCoordinationSend(queryClient, item, user);
       }
@@ -334,7 +446,10 @@ export function InboxTaskDetailModal({
         action,
         comment: finalComment,
         attachments: finalAttachments,
-        parameters: editedParams,
+        parameters: {
+          ...editedParams,
+          ...(stagedReviewDraft ? { reviewDraft: stagedReviewDraft } : {}),
+        },
       });
 
       if (nodeSemantics.isRevisionRequired) {
@@ -761,6 +876,7 @@ export function InboxTaskDetailModal({
                     reportData={auditReport}
                     htmlAttachment={htmlAttachment}
                     defaultCardCollapsed={true}
+                    onReviewResult={handleReviewResult}
                   />
                 ) : null}
               </>
@@ -810,6 +926,7 @@ export function InboxTaskDetailModal({
                     reportData={auditReport}
                     htmlAttachment={htmlAttachment}
                     defaultCardCollapsed={!(auditReport?.overallRisk === 'HIGH' || (auditReport?.score !== undefined && auditReport.score < 60))}
+                    onReviewResult={handleReviewResult}
                   />
                 ) : null}
 
@@ -845,6 +962,11 @@ export function InboxTaskDetailModal({
                           + 补充佐证材料 (可选)
                         </Button>
                       </Upload>
+                      {stagedReviewDraft && (
+                        <Tag color="cyan" style={{ fontSize: 11, marginLeft: 8 }}>
+                          ✓ 已暂存审阅草稿 ({stagedReviewDraft.stagedComments?.length || 0} 条批注 / {Object.keys(stagedReviewDraft.findingStates || {}).length} 项处置)
+                        </Tag>
+                      )}
                     </div>
                     <Input.TextArea
                       rows={3}
@@ -852,7 +974,7 @@ export function InboxTaskDetailModal({
                       onChange={(e) => setComment(e.target.value)}
                       placeholder="请输入初稿提交流转留言或商务说明..."
                       disabled={isSubmitting}
-                      maxLength={500}
+                      maxLength={3000}
                       showCount
                     />
                   </div>
@@ -867,6 +989,7 @@ export function InboxTaskDetailModal({
                     reportData={auditReport}
                     htmlAttachment={htmlAttachment}
                     defaultCardCollapsed={false}
+                    onReviewResult={handleReviewResult}
                   />
                 ) : null}
 
@@ -939,6 +1062,11 @@ export function InboxTaskDetailModal({
                           + 补充佐证材料 (可选)
                         </Button>
                       </Upload>
+                      {stagedReviewDraft && (
+                        <Tag color="cyan" style={{ fontSize: 11, marginLeft: 8 }}>
+                          ✓ 已暂存审阅草稿 ({stagedReviewDraft.stagedComments?.length || 0} 条批注 / {Object.keys(stagedReviewDraft.findingStates || {}).length} 项处置)
+                        </Tag>
+                      )}
                     </div>
                     <Input.TextArea
                       rows={3}
@@ -946,7 +1074,7 @@ export function InboxTaskDetailModal({
                       onChange={(e) => setComment(e.target.value)}
                       placeholder="请输入审批流转意见；若驳回请务必在此填写详细修改原因与要求..."
                       disabled={isSubmitting}
-                      maxLength={500}
+                      maxLength={3000}
                       showCount
                     />
                   </div>
@@ -1024,6 +1152,7 @@ export function InboxTaskDetailModal({
                     reportData={auditReport}
                     htmlAttachment={htmlAttachment}
                     defaultCardCollapsed={true}
+                    onReviewResult={handleReviewResult}
                   />
                 ) : null}
               </>

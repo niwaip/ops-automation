@@ -1,5 +1,6 @@
 import { Injectable, Optional } from '@nestjs/common';
 import type {
+  CandidateRuleItem,
   ContractType,
   CustomCheckpointDto,
   MissingClauseAlert,
@@ -10,6 +11,7 @@ import type {
 import {
   REVIEW_ELEMENTS_CATALOG,
   ReviewFactExtractorService,
+  type ExtractedLegalFacts,
   type ReviewElement,
 } from '../contract-elements';
 
@@ -22,6 +24,7 @@ export interface CheckpointRule {
   riskSummary: string;
   legalAdvice: string;
   recommendRevision: (original: string) => string;
+  recommendedRevision?: string;
   elementId?: string;
   elementCode?: string;
   criteria?: any;
@@ -221,6 +224,108 @@ export class ContractChecklistMatrixService {
         },
       };
     });
+  }
+
+  /**
+   * Recall the most relevant 1-3 candidate review rules for a clause based on
+   * clause title keywords, text semantics, extracted facts, and category matching.
+   * This decouples candidate rules (given to LLM for substantive evaluation)
+   * from matchedRules (deterministic regex/hard violations).
+   */
+  recallCandidateRulesForClause(
+    clauseText: string,
+    clauseTitle: string,
+    rules: CheckpointRule[],
+    facts?: ExtractedLegalFacts
+  ): CandidateRuleItem[] {
+    if (!rules || rules.length === 0) return [];
+
+    const normTitle = (clauseTitle || '').toLowerCase();
+    const normText = (clauseText || '').slice(0, 800).toLowerCase();
+
+    const scored = rules.map((r) => {
+      let score = 0;
+      const rCode = (r.elementCode || '').toUpperCase();
+      const rTitle = (r.title || '').toLowerCase();
+      const rCat = (r.category || '').toUpperCase();
+
+      // 1. Topic & Element Specific Associations (Highest priority for NDA and standard contracts)
+      if (rCode === 'NDA-01' || r.id === 'nda_perpetual_duration') {
+        if (/期限|有效期|终止|生效|存续|年限|期间/.test(normTitle)) score += 12;
+        if (/期限|有效期|终止|永久|无期限|存续|长期有效/.test(normText)) score += 5;
+      } else if (rCode === 'NDA-02' || r.id === 'nda_overbroad_scope') {
+        if (/范围|定义|界定|保密信息|秘密|材料|载体/.test(normTitle)) score += 12;
+        if (/保密信息|机密信息|定义|范围|任何信息|一切信息|书面标记/.test(normText)) score += 5;
+      } else if (rCode === 'NDA-03' || r.id === 'nda_strict_duty_of_care') {
+        if (/义务|责任|措施|安全|保管|注意|使用|防范/.test(normTitle)) score += 12;
+        if (/保密义务|保护措施|审慎|合理注意|保管|绝对安全|同等重要/.test(normText)) score += 5;
+      } else if (rCode === 'NDA-06' || r.id === 'nda_excessive_liquidated_damages') {
+        if (/违约|违约金|赔偿|损失|追偿|救济|责任/.test(normTitle)) score += 12;
+        if (/违约金|损害赔偿|赔偿损失|惩罚性|违约责任|直接经济损失/.test(normText)) score += 5;
+      } else {
+        // Generic Category-based matching
+        if (rCat === 'PAYMENT' && /付款|支付|费用|报酬|价格|发票|结算/.test(normTitle)) score += 10;
+        if (rCat === 'DELIVERY_AND_ACCEPTANCE' && /交付|验收|工期|标准|成果/.test(normTitle)) score += 10;
+        if (rCat === 'INTELLECTUAL_PROPERTY' && /知识产权|著作权|专利|版权|归属|授权/.test(normTitle)) score += 10;
+        if (rCat === 'LIABILITY_AND_REMEDY' && /违约|赔偿|责任|免责|追偿|救济/.test(normTitle)) score += 10;
+        if (rCat === 'TERMINATION' && /解除|终止|中止/.test(normTitle)) score += 10;
+        if (rCat === 'DISPUTE_RESOLUTION' && /争议|管辖|诉讼|仲裁|法律适用/.test(normTitle)) score += 10;
+        if (rCat === 'CONFIDENTIALITY' && /保密|机密|商业秘密/.test(normTitle)) score += 6;
+      }
+
+      // 2. Rule title keywords matching in clause title
+      const titleTokens = rTitle
+        .split(/[\s,，、;；|:：/\\_\-()（）[\]【】\d+%]+|是否|不得|应当|必须|约定|排查|检查|过严|不切实际|过于|且未|及/g)
+        .filter((t) => t.length >= 2);
+      for (const tok of titleTokens) {
+        if (normTitle.includes(tok)) score += 4;
+        else if (normText.includes(tok)) score += 1;
+      }
+
+      // 3. Extracted facts matching
+      if (r.criteria?.factField && facts && (facts as any)[r.criteria.factField]) {
+        score += 8;
+      }
+
+      // 4. Deterministic pattern partial match
+      if (r.criteria?.patterns && Array.isArray(r.criteria.patterns)) {
+        for (const p of r.criteria.patterns) {
+          try {
+            if (new RegExp(p, 'i').test(`${normTitle} ${normText}`)) {
+              score += 6;
+              break;
+            }
+          } catch {}
+        }
+      }
+
+      // 5. Deterministic rule matcher match
+      try {
+        if (r.matcher(clauseText, clauseTitle)) {
+          score += 15;
+        }
+      } catch {}
+
+      return { rule: r, score };
+    });
+
+    return scored
+      .filter((s) => s.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map(({ rule: r }) => ({
+        id: r.id,
+        elementId: r.elementId,
+        elementCode: r.elementCode,
+        title: r.title,
+        category: r.category,
+        severity: r.severity,
+        riskSummary: r.riskSummary,
+        legalAdvice: r.legalAdvice,
+        recommendRevision: r.recommendRevision,
+        recommendedRevision: typeof r.recommendRevision === 'function' ? r.recommendRevision(clauseText) : undefined,
+        criterion: r.title,
+      }));
   }
 
   /**

@@ -1,4 +1,5 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
+import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { ChatUploadedFileDTO } from './chat.dto';
@@ -114,15 +115,13 @@ export class DocumentProberService {
           .join('；');
         lines.push(`  - 识别签约主体：${partyInfo}`);
       }
-      if (doc.summaryPreview) {
-        const preview = doc.summaryPreview.length > 1200
-          ? `${doc.summaryPreview.slice(0, 1200)}...[更多内容已截断]`
-          : doc.summaryPreview;
-        lines.push('  - 文档前序内容预览：');
-        lines.push('  """');
-        lines.push(`  ${preview.replace(/\n+/g, '\n  ')}`);
-        lines.push('  """');
-      }
+      const digest = crypto
+        .createHash('sha256')
+        .update(doc.summaryPreview || '')
+        .digest('hex');
+      lines.push(
+        `  - 文档特征摘要：字符数 ${doc.characterCount}，正文哈希 sha256:${digest.slice(0, 16)}`
+      );
     }
     return lines.join('\n');
   }
@@ -291,15 +290,25 @@ export class DocumentProberService {
   private extractParties(snippet: string): { partyA?: string; partyB?: string } {
     if (!snippet) return {};
 
-    const partyARegex = /(?:甲方(?:（[^）]+）)?|发包方|委托方|采购方|出租方|雇主|披露方)[：:\s]+([^\n\r,，。；;]{2,40})/;
-    const partyBRegex = /(?:乙方(?:（[^）]+）)?|承包方|受托方|供货方|承租方|员工|劳动者|接收方)[：:\s]+([^\n\r,，。；;]{2,40})/;
+    const partyARegex = /(?:甲方(?:（[^）]+）)?|发包方|委托方|采购方|出租方|雇主|披露方)[：:\s]+([^\n\r\t,，。；;]{2,40})/;
+    const partyBRegex = /(?:乙方(?:（[^）]+）)?|承包方|受托方|供货方|承租方|员工|劳动者|接收方)[：:\s]+([^\n\r\t,，。；;]{2,40})/;
 
     const matchA = snippet.match(partyARegex);
     const matchB = snippet.match(partyBRegex);
 
+    let rawA = matchA && matchA[1] ? matchA[1].trim() : undefined;
+    let rawB = matchB && matchB[1] ? matchB[1].trim() : undefined;
+
+    if (rawA) {
+      rawA = rawA.split(/(?:\t|\s{2,}|(?:乙方|承包方|受托方|供货方|承租方|员工|劳动者|接收方)[：:\s])/)[0].trim();
+    }
+    if (rawB) {
+      rawB = rawB.split(/(?:\t|\s{2,}|(?:甲方|发包方|委托方|采购方|出租方|雇主|披露方)[：:\s])/)[0].trim();
+    }
+
     return {
-      partyA: matchA && matchA[1] ? matchA[1].trim() : undefined,
-      partyB: matchB && matchB[1] ? matchB[1].trim() : undefined,
+      partyA: rawA || undefined,
+      partyB: rawB || undefined,
     };
   }
 

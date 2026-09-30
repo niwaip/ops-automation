@@ -408,7 +408,7 @@ describe('Word OpenXML Comments End-to-End Extraction & Rendering', () => {
     // Check Document Paper Multi-Comment Anchor: Single highlight with 3-comment badge
     expect(html).toContain('id="comment-target-1"');
     expect(html).toContain('data-comment-ids="1,2,3"');
-    expect(html).toContain('💬 批注 (3条) #1/2/3');
+    expect(html).toContain('批注 (3条) #1/2/3');
 
     // Check Other Document Highlights
     expect(html).toContain('id="comment-target-4"');
@@ -429,28 +429,64 @@ describe('Word OpenXML Comments End-to-End Extraction & Rendering', () => {
     expect(html).toContain('张朝阳 (交付负责人 / 架构专家)');
     expect(html).toContain('陈思齐 (法务合规顾问)');
 
-    // Check Top Bar Filter Tab for comments count (6 comments)
-    expect(html).toContain('💬 批注');
-    expect(html).toContain('applyFilter(\'comments\', this)');
+    // Check Workbench Mode Switch Tabs (Word批注) & Return Action Handlers
+    expect(html).toContain('Word批注');
+    expect(html).toContain('id="tab-btn-comments"');
+    expect(html).toContain('handleFinishAndReturn()');
+    expect(html).toContain('handleStageAndReturn()');
+    expect(html).toContain('convertFindingToComment');
 
-    // Check Sidebar Comment Creation Workspace
+    // Check Sidebar Comment Creation Workspace & Floating Selection Bubble
     expect(html).toContain('id="comment-create-workspace"');
     expect(html).toContain('拟定新批注');
     expect(html).toContain('id="comment-create-author"');
     expect(html).toContain('id="comment-create-text"');
     expect(html).toContain('submitCommentCreateFromSidebar()');
+    expect(html).toContain('id="text-selection-bubble"');
+    expect(html).toContain('openCommentFromSelection(event)');
+    expect(html).toContain('openReviewFromSelection(event)');
+    expect(html).toContain('写入审批');
+    expect(html).toContain('标记核实');
+    expect(html).toContain('待处理');
+    expect(html).toContain('dispatchReviewResult');
+    expect(html).toContain('showSyncCompleteModal');
+    expect(html).toContain('confirmApprovalOpinion');
+    expect(html).toContain('toggleApprovalOpinionBox');
+    expect(html).toContain('copyPureText');
+    expect(html).toContain('toggleRevisionExpand');
+    expect(html).toContain('id="mode-btn-view"');
+    expect(html).toContain('id="mode-btn-review"');
+    expect(html).toContain('setInteractionMode');
+    expect(html).toContain('initInteractionMode');
+    expect(html).toContain('mode-review-only');
 
-    // Check Comment & Finding Hover Popover with debouncing
+    // Check Comment & Finding Hover Popover with debouncing & robust finding ID matching
     expect(html).toContain('id="comment-hover-popover"');
     expect(html).toContain('showFindingHoverPopover');
+    expect(html).toContain('findFindingObject');
     expect(html).toContain('HOVER_SHOW_DELAY = 220');
+    expect(html).toContain('data-finding-id="finding-nda_perpetual_duration"');
 
-    // Check Collapsible Author Input & Threaded comments
+    // Check Collapsible Author Input & Chronological Threaded comments
     expect(html).toContain('id="comment-reply-author-container"');
     expect(html).toContain('id="comment-create-author-container"');
     expect(html).toContain('toggleReplyAuthorEdit');
     expect(html).toContain('toggleCreateAuthorEdit');
     expect(html).toContain('id="comment-detail-thread-container"');
+    expect(html).toContain('renderTimelineComments');
+    expect(html).toContain('toggleSingleCommentCollapse');
+    expect(html).toContain('历史批注默认收起，最新批注默认展开');
+
+    // Verify linkage scroll and anchor finder
+    expect(html).toContain('function scrollTargetToUpperMiddle(el)');
+    expect(html).toContain('function findCommentMark(commentId)');
+
+    // Verify right workbench stream order: findings-cards-container is placed before comments-stream-container
+    const findingsPos = html.indexOf('id="findings-cards-container"');
+    const commentsPos = html.indexOf('id="comments-stream-container"');
+    expect(findingsPos).toBeGreaterThan(0);
+    expect(commentsPos).toBeGreaterThan(0);
+    expect(findingsPos).toBeLessThan(commentsPos);
 
     // Save test docx and generated preview HTML for browser verification
     const { WORKSPACE_ROOT } = await import('../document-payload-resolver.helper');

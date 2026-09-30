@@ -267,7 +267,7 @@ export class DeterministicPlanGeneratorService {
 
           if (validation.valid) {
             this.logger.log(
-              `Deterministic ${topologySource} topology succeeded for request: "${dto.userRequest}"`
+              `Deterministic ${topologySource} topology succeeded for request: "${cleanUserRequest}"`
             );
 
             const hasLlmOperation = topologyDraft.nodes.some(
@@ -376,7 +376,7 @@ export class DeterministicPlanGeneratorService {
     }
 
     this.logger.log(
-      `Generating deterministic plan using model '${activeModel.name}' for request: "${dto.userRequest}"`
+      `Generating deterministic plan using model '${activeModel.name}' for request: "${cleanUserRequest}"`
     );
 
     let response = await this.modelService.callModel(

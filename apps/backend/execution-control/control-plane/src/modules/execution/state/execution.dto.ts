@@ -297,6 +297,10 @@ export class ExecutionDto {
   @IsOptional()
   capabilityVersion?: string | null;
 
+  @ApiProperty({ required: false })
+  @IsOptional()
+  capabilitiesUsed?: Array<{ id: string; version?: string; name?: string }> | null;
+
   @ApiProperty({ enum: EXECUTION_STATUS_VALUES })
   status: ExecutionStatus;
 

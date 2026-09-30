@@ -1,10 +1,23 @@
 import type { DocxCommentItem } from './contract-review.types';
 import type { FindingItemViewModel } from './contract-review-html-finding.renderer';
+import { buildSplitterScript } from './contract-review-html-client-splitter.script';
+import { buildActionsScript } from './contract-review-html-client-actions.script';
+import { buildFilterScript } from './contract-review-html-client-filter.script';
+import { buildTocAndLangScript } from './contract-review-html-client-toc.script';
 
 export interface BuildClientScriptInput {
   findings: FindingItemViewModel[];
   comments: DocxCommentItem[];
   commentApiUrl?: string;
+  ruleSetInfo?: {
+    ruleSetId: string;
+    ruleSetVersion: string;
+    ruleSetDigest?: string;
+    ruleSetName?: string;
+  };
+  executionId?: string;
+  artifactId?: string;
+  sourceDocumentVersion?: string;
 }
 
 /**
@@ -17,12 +30,20 @@ export interface BuildClientScriptInput {
  * - Text selection comment bubble
  */
 export function buildContractReviewClientScript(input: BuildClientScriptInput): string {
-  const { findings, comments, commentApiUrl = '' } = input;
+  const { findings, comments, commentApiUrl = '', ruleSetInfo } = input;
 
   return `
   <script>
+    const currentRuleSetId = ${JSON.stringify(ruleSetInfo?.ruleSetId || 'contract-review/nda')};
+    const currentRuleSetVersion = ${JSON.stringify(ruleSetInfo?.ruleSetVersion || '1.0.0')};
+    const currentRuleSetDigest = ${JSON.stringify(ruleSetInfo?.ruleSetDigest || '')};
+    const currentExecutionId = ${JSON.stringify(input.executionId || '')};
+    const currentArtifactId = ${JSON.stringify(input.artifactId || '')};
+    const currentSourceDocumentVersion = ${JSON.stringify(input.sourceDocumentVersion || '')};
     let activeFindingIndex = 0;
     let visibleFindingIds = [];
+    const viewedFindingIds = new Set();
+    const stagedComments = [];
     const allFindings = ${JSON.stringify(
       findings.map((f) => ({
         id: f.id,
@@ -36,7 +57,9 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
 
     function initFindingsList() {
       visibleFindingIds = allFindings.map(f => f.id);
+      if (visibleFindingIds.length > 0) viewedFindingIds.add(visibleFindingIds[0]);
       updateNavIndicator();
+      if (typeof updateProgressIndicator === 'function') updateProgressIndicator();
       const hash = window.location.hash;
       if (hash && hash.startsWith('#comment-')) {
         const cid = hash.replace('#comment-', '');
@@ -59,107 +82,8 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       }, 2000);
     }
 
-    function toggleTocDrawer(open) {
-      const drawer = document.getElementById('toc-drawer');
-      const backdrop = document.getElementById('toc-backdrop');
-      if (!drawer || !backdrop) return;
-      const isOpen = !drawer.classList.contains('-translate-x-full');
-      const target = typeof open === 'boolean' ? open : !isOpen;
-      if (target) {
-        drawer.classList.remove('-translate-x-full');
-        drawer.classList.add('translate-x-0');
-        backdrop.classList.remove('opacity-0', 'pointer-events-none');
-        backdrop.classList.add('opacity-100', 'pointer-events-auto');
-        const searchInput = document.getElementById('toc-search');
-        if (searchInput) setTimeout(() => searchInput.focus(), 150);
-      } else {
-        drawer.classList.add('-translate-x-full');
-        drawer.classList.remove('translate-x-0');
-        backdrop.classList.add('opacity-0', 'pointer-events-none');
-        backdrop.classList.remove('opacity-100', 'pointer-events-auto');
-      }
-    }
-
-    function toggleTocGroup(headerEl) {
-      const group = headerEl.parentElement;
-      const sub = group.querySelector('.toc-sub-list');
-      if (!sub) return;
-      if (sub.classList.contains('hidden')) {
-        sub.classList.remove('hidden');
-      } else {
-        sub.classList.add('hidden');
-      }
-    }
-
-    function filterTocItems(query) {
-      const q = query.trim().toLowerCase();
-      document.querySelectorAll('.toc-link').forEach(link => {
-        const text = link.textContent.toLowerCase();
-        if (!q || text.includes(q)) {
-          link.classList.remove('hidden');
-        } else {
-          link.classList.add('hidden');
-        }
-      });
-      document.querySelectorAll('.toc-chapter-group').forEach(grp => {
-        const visibleSub = grp.querySelectorAll('.toc-link:not(.hidden)');
-        if (visibleSub.length === 0 && q) {
-          grp.classList.add('hidden');
-        } else {
-          grp.classList.remove('hidden');
-        }
-      });
-    }
-
-    function jumpToClauseNode(clauseIndex, event) {
-      if (event) event.preventDefault();
-      const node = document.getElementById('clause-node-' + clauseIndex);
-      if (node) {
-        scrollTargetToUpperMiddle(node);
-        node.classList.add('evidence-highlight-active');
-        setTimeout(() => node.classList.remove('evidence-highlight-active'), 2000);
-      }
-      toggleTocDrawer(false);
-    }
-
-    function scrollTargetToUpperMiddle(el) {
-      const rect = el.getBoundingClientRect();
-      const absoluteTop = window.scrollY + rect.top;
-      const targetScroll = absoluteTop - (window.innerHeight * 0.28);
-      window.scrollTo({
-        top: Math.max(0, targetScroll),
-        behavior: 'smooth'
-      });
-    }
-
-    function setBilingualMode(mode) {
-      const container = document.getElementById('document-paper-container');
-      const btnBoth = document.getElementById('btn-lang-both');
-      const btnZh = document.getElementById('btn-lang-zh');
-      const btnJa = document.getElementById('btn-lang-ja');
-
-      if (!container || !btnBoth || !btnZh || !btnJa) return;
-
-      container.classList.remove('lang-bilingual', 'lang-zh-only', 'lang-ja-only');
-      [btnBoth, btnZh, btnJa].forEach(b => {
-        b.classList.remove('bg-[#243B53]', 'text-white', 'font-semibold', 'shadow-2xs');
-        b.classList.add('text-slate-400');
-      });
-
-      if (mode === 'zh') {
-        container.classList.add('lang-zh-only');
-        btnZh.classList.add('bg-[#243B53]', 'text-white', 'font-semibold', 'shadow-2xs');
-        btnZh.classList.remove('text-slate-400');
-      } else if (mode === 'ja') {
-        container.classList.add('lang-ja-only');
-        btnJa.classList.add('bg-[#243B53]', 'text-white', 'font-semibold', 'shadow-2xs');
-        btnJa.classList.remove('text-slate-400');
-      } else {
-        container.classList.add('lang-bilingual');
-        btnBoth.classList.add('bg-[#243B53]', 'text-white', 'font-semibold', 'shadow-2xs');
-        btnBoth.classList.remove('text-slate-400');
-      }
-    }
+    ${buildTocAndLangScript()}
+    const setLanguageMode = setBilingualMode;
 
     const docxCommentsData = ${JSON.stringify(comments)};
     let currentWorkbenchMode = 'findings';
@@ -167,87 +91,53 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
     let activeCommentIndex = 0;
 
     function switchWorkbenchMode(mode) {
-      currentWorkbenchMode = mode;
-      const findingsTab = document.getElementById('tab-btn-findings');
-      const commentsTab = document.getElementById('tab-btn-comments');
-      const findingsContainer = document.getElementById('findings-cards-container');
-      const commentsContainer = document.getElementById('comments-stream-container');
-      const execSummary = document.getElementById('executive-summary-card');
-      const listHeader = document.getElementById('workbench-list-header');
-      const detailWorkspace = document.getElementById('comment-detail-workspace');
-
-      if (detailWorkspace) detailWorkspace.classList.add('hidden');
-      if (listHeader) listHeader.classList.remove('hidden');
-
-      if (mode === 'comments') {
-        if (findingsTab) findingsTab.classList.remove('active');
-        if (commentsTab) commentsTab.classList.add('active');
-        if (findingsContainer) findingsContainer.classList.add('hidden');
-        if (commentsContainer) commentsContainer.classList.remove('hidden');
-        if (execSummary) execSummary.classList.add('hidden');
-
-        document.querySelectorAll('#filter-tabs button').forEach(b => {
-          if (b.innerText.includes('批注')) b.classList.add('active-tab');
-          else b.classList.remove('active-tab');
-        });
-      } else {
-        if (commentsTab) commentsTab.classList.remove('active');
-        if (findingsTab) findingsTab.classList.add('active');
-        if (commentsContainer) commentsContainer.classList.add('hidden');
-        if (findingsContainer) findingsContainer.classList.remove('hidden');
-        if (execSummary) execSummary.classList.remove('hidden');
+      if (typeof setPrimaryTab === 'function') {
+        setPrimaryTab(mode);
+        return;
       }
+      currentWorkbenchMode = mode;
       updateNavIndicator();
     }
 
     function applyFilter(filterType, btn) {
-      document.querySelectorAll('#filter-tabs button').forEach(b => {
-        b.classList.remove('active-tab');
-      });
-      if (btn) btn.classList.add('active-tab');
-
-      if (filterType === 'comments') {
-        switchWorkbenchMode('comments');
+      if (typeof setPrimaryTab === 'function') {
+        if (filterType === 'all') resetAllFilters();
+        else if (filterType === 'high') setSeverityFilter('high');
+        else if (filterType === 'missing') setIssueTypeFilter('缺失');
+        else if (filterType === 'verify') setIssueTypeFilter('歧义');
+        else if (filterType === 'comments') setPrimaryTab('comments');
         return;
-      }
-
-      switchWorkbenchMode('findings');
-
-      const cards = document.querySelectorAll('.finding-card');
-      visibleFindingIds = [];
-
-      cards.forEach(card => {
-        const sev = card.getAttribute('data-severity');
-        const type = card.getAttribute('data-issue-type');
-        const id = card.getAttribute('data-finding-id');
-
-        let show = false;
-        if (filterType === 'all') show = true;
-        else if (filterType === 'high' && sev === 'high') show = true;
-        else if (filterType === 'missing' && type === '信息缺失') show = true;
-        else if (filterType === 'verify' && (type === '表述歧义' || type === '待核实附件')) show = true;
-
-        if (show) {
-          card.classList.remove('hidden-by-filter');
-          visibleFindingIds.push(id);
-        } else {
-          card.classList.add('hidden-by-filter');
-        }
-      });
-
-      activeFindingIndex = 0;
-      updateNavIndicator();
-      if (visibleFindingIds.length > 0) {
-        selectFinding(visibleFindingIds[0], false);
       }
     }
 
+    function findFindingObject(rawId) {
+      if (!rawId) return null;
+      const idStr = String(rawId);
+      const cleanId = idStr.replace(/^finding-/, '');
+      return allFindings.find(f => {
+        const fid = String(f.id);
+        return fid === idStr ||
+               fid === 'finding-' + idStr ||
+               fid.replace(/^finding-/, '') === cleanId;
+      });
+    }
+
     function selectFinding(findingId, doScroll) {
+      const f = findFindingObject(findingId);
+      const normalizedFindingId = f ? f.id : findingId;
+      const cleanId = String(findingId).replace(/^finding-/, '');
+
+      viewedFindingIds.add(normalizedFindingId);
+      if (typeof updateProgressIndicator === 'function') updateProgressIndicator();
+
       // 1. Highlight Right Finding Card
       document.querySelectorAll('.finding-card').forEach(c => {
         c.classList.remove('active-finding-card');
       });
-      const card = document.getElementById(findingId);
+      const card = document.getElementById(normalizedFindingId) ||
+                   document.getElementById(findingId) ||
+                   document.getElementById('finding-' + cleanId) ||
+                   document.getElementById(cleanId);
       if (card) {
         card.classList.add('active-finding-card');
         if (doScroll !== false) {
@@ -256,7 +146,9 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       }
 
       // Update Nav Stepper
-      const idx = visibleFindingIds.indexOf(findingId);
+      const idx = visibleFindingIds.indexOf(normalizedFindingId) >= 0
+        ? visibleFindingIds.indexOf(normalizedFindingId)
+        : visibleFindingIds.indexOf(findingId);
       if (idx >= 0) {
         activeFindingIndex = idx;
         updateNavIndicator();
@@ -267,7 +159,10 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
         m.classList.remove('evidence-highlight-active');
       });
 
-      const mark = document.getElementById('evidence-target-' + findingId);
+      const mark = document.getElementById('evidence-target-' + normalizedFindingId) ||
+                   document.getElementById('evidence-target-' + findingId) ||
+                   document.getElementById('evidence-target-finding-' + cleanId) ||
+                   document.getElementById('evidence-target-' + cleanId);
       if (mark) {
         mark.classList.add('evidence-highlight-active');
         if (doScroll !== false) {
@@ -291,14 +186,24 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
 
     function scrollToClause(clauseIndex, findingId, event) {
       if (event) event.stopPropagation();
-      const mark = document.getElementById('evidence-target-' + findingId);
+      const f = findFindingObject(findingId);
+      const normalizedFindingId = f ? f.id : findingId;
+      const cleanId = String(findingId).replace(/^finding-/, '');
+      const mark = document.getElementById('evidence-target-' + normalizedFindingId) ||
+                   document.getElementById('evidence-target-' + findingId) ||
+                   document.getElementById('evidence-target-finding-' + cleanId) ||
+                   document.getElementById('evidence-target-' + cleanId);
       if (mark) {
         scrollTargetToUpperMiddle(mark);
+        document.querySelectorAll('.evidence-mark').forEach(m => m.classList.remove('evidence-highlight-active'));
         mark.classList.add('evidence-highlight-active');
+        setTimeout(() => mark.classList.remove('evidence-highlight-active'), 2500);
       } else if (clauseIndex >= 0) {
         const node = document.getElementById('clause-node-' + clauseIndex);
         if (node) {
           scrollTargetToUpperMiddle(node);
+          node.classList.add('evidence-highlight-active');
+          setTimeout(() => node.classList.remove('evidence-highlight-active'), 2500);
         }
       }
     }
@@ -335,10 +240,10 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       const isHidden = content.classList.contains('hidden');
       if (isHidden) {
         content.classList.remove('hidden');
-        btn.textContent = '收起备忘 ▲';
+        btn.textContent = '收起概览 ▲';
       } else {
         content.classList.add('hidden');
-        btn.textContent = '展开备忘 ▼';
+        btn.textContent = '展开概览 ▼';
       }
     }
 
@@ -376,65 +281,6 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       });
     }
 
-    function toggleRevisionExpand(bodyId, btn, event) {
-      if (event) event.stopPropagation();
-      const body = document.getElementById(bodyId);
-      if (!body) return;
-      if (body.classList.contains('max-h-24')) {
-        body.classList.remove('max-h-24');
-        body.classList.add('max-h-none');
-        btn.textContent = '收起';
-      } else {
-        body.classList.remove('max-h-none');
-        body.classList.add('max-h-24');
-        btn.textContent = '展开全文';
-      }
-    }
-
-    function copyPureText(preId, btn, event) {
-      if (event) event.stopPropagation();
-      const el = document.getElementById(preId);
-      if (!el) return;
-      const text = (el.textContent || el.innerText || '').trim();
-      if (!text) return;
-
-      function onSuccess() {
-        const origHtml = btn.dataset.origHtml || btn.innerHTML;
-        btn.dataset.origHtml = origHtml;
-        btn.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>已复制</span>';
-        btn.classList.add('bg-[#294766]', 'text-white');
-        showToast('建议修改文本已复制到剪贴板');
-        setTimeout(() => {
-          btn.innerHTML = origHtml;
-          btn.classList.remove('bg-[#294766]', 'text-white');
-        }, 2000);
-      }
-
-      if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(onSuccess).catch(() => {
-          fallbackCopy(text, onSuccess);
-        });
-      } else {
-        fallbackCopy(text, onSuccess);
-      }
-    }
-
-    function fallbackCopy(text, cb) {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      try {
-        document.execCommand('copy');
-        if (cb) cb();
-      } catch (e) {
-        window.prompt('请手动按 Ctrl+C / Cmd+C 复制以下建议条款文本：', text);
-      }
-      document.body.removeChild(ta);
-    }
-
     // Keyboard Shortcuts (N: Next, P: Prev, T: TOC, Esc: Close)
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
@@ -457,6 +303,111 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
     });
 
     // Word Comment Interactions
+    function renderTimelineComments(clauseIndex, targetCommentId) {
+      const threadContainer = document.getElementById('comment-detail-thread-container');
+      if (!threadContainer) return;
+
+      // 1. 获取该条款下的所有批注（按条款聚合）
+      let clauseComments = docxCommentsData.filter(x => x.clauseIndex === clauseIndex);
+      if (clauseComments.length === 0) {
+        const target = docxCommentsData.find(x => String(x.id) === String(targetCommentId));
+        if (target) clauseComments = [target];
+      }
+
+      // 2. 严格按时间顺序（从早到晚，序号递增）正序排列，物理位置绝对不可改变！
+      clauseComments.sort((a, b) => {
+        if (a.date && b.date) {
+          const tA = new Date(a.date).getTime();
+          const tB = new Date(b.date).getTime();
+          if (!isNaN(tA) && !isNaN(tB)) return tA - tB;
+        }
+        return Number(a.id) - Number(b.id);
+      });
+
+      const totalCount = clauseComments.length;
+      let html = '';
+
+      if (totalCount > 1) {
+        html += '<div class="flex items-center justify-between text-[11px] text-slate-500 font-semibold pb-1 border-b border-slate-100 select-none">' +
+          '<span>💬 该条款审阅批注流转（共 ' + totalCount + ' 条，按时间顺序排列）</span>' +
+          '<span class="text-[10px] text-slate-400">历史批注默认收起，最新批注默认展开</span>' +
+          '</div>';
+      }
+
+      clauseComments.forEach((c, idx) => {
+        const isLast = idx === totalCount - 1;
+        const isTarget = String(c.id) === String(targetCommentId);
+
+        // 核心规则：默认展开最后面的批注（最新的一条），关闭前面的批注。
+        // 早于最新批注的历史批注默认必须收起
+        const shouldExpand = isLast;
+
+        let rawAuthor = c.author || '审阅人';
+        let authorName = rawAuthor;
+        let authorTitle = '法务合规';
+        const titleMatch = rawAuthor.match(/^([^(（]+)[(（]([^)）]+)[)）]$/);
+        if (titleMatch) {
+          authorName = titleMatch[1].trim();
+          authorTitle = titleMatch[2].trim();
+        }
+        const initials = authorName.slice(0, 1);
+        const dateStr = c.date ? c.date.replace('T', ' ').slice(0, 16) : '审阅流转中';
+
+        html += '<div id="timeline-comment-card-' + c.id + '" class="timeline-comment-card rounded-lg border ' +
+          (isTarget ? 'border-[#2E5882] ring-2 ring-[#2E5882]/25 shadow-md' : 'border-[#D9E1EC] shadow-card') +
+          ' bg-white overflow-hidden transition-all duration-150" data-comment-id="' + c.id + '">';
+
+        // Header: 矮化标题行高度，单行紧凑排列
+        html += '<div class="px-2.5 py-1.5 ' + (isTarget ? 'bg-blue-50/40' : 'bg-[#F8FAFC]') +
+          ' border-b border-[#E2E8F0] flex items-center justify-between gap-1.5 select-none cursor-pointer" onclick="toggleSingleCommentCard(this)">';
+        html += '<div class="flex items-center gap-1.5 min-w-0">';
+        html += '<div class="w-6 h-6 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-[10px] font-bold text-amber-900 shrink-0 shadow-2xs">' + escapeHtml(initials) + '</div>';
+        html += '<div class="flex items-center gap-1 flex-nowrap min-w-0">';
+        html += '<span class="text-xs font-bold text-[#1E293B] truncate max-w-[85px]">' + escapeHtml(authorName) + '</span>';
+        html += '<span class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-blue-50 text-blue-800 border border-blue-200 shrink-0 leading-tight">' + escapeHtml(authorTitle) + '</span>';
+        html += '<span class="px-1.5 py-0.2 rounded text-[10px] font-mono font-medium bg-amber-50 text-amber-900 border border-amber-200 shrink-0 leading-tight">#' + c.id + '</span>';
+        if (isLast) {
+          html += '<span class="px-1.5 py-0.2 text-[10px] font-medium rounded ' + (c.isResolved ? 'bg-slate-100 text-slate-600 border border-slate-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200') + ' shrink-0 leading-tight">' + (c.isResolved ? '已解决' : '待处理') + '</span>';
+        }
+        html += '</div></div>';
+
+        // Right side: date + collapse button
+        html += '<div class="flex items-center gap-1.5 shrink-0">';
+        html += '<div class="text-[11px] text-[#64748B] font-mono hidden sm:flex items-center gap-1"><svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span>' + dateStr + '</span></div>';
+        html += '<button type="button" id="btn-toggle-comment-' + c.id + '" onclick="event.stopPropagation(); toggleSingleCommentCard(this)" class="text-xs text-[#2E5882] hover:text-[#1A2D42] font-semibold flex items-center gap-0.5 cursor-pointer px-1.5 py-0.5 rounded hover:bg-slate-200/50"><span id="btn-toggle-comment-text-' + c.id + '">' + (shouldExpand ? '收起意见 ▲' : '展开意见 ▼') + '</span></button>';
+        html += '</div></div>';
+
+        // Body
+        html += '<div id="comment-body-wrapper-' + c.id + '" class="p-3 transition-all duration-200 ' + (shouldExpand ? '' : 'hidden') + '">';
+        html += '<p class="text-sm text-[#1E293B] leading-relaxed select-text whitespace-pre-wrap font-normal">' + escapeHtml(c.text || '') + '</p>';
+        html += '</div></div>';
+      });
+
+      threadContainer.innerHTML = html;
+      threadContainer.classList.remove('hidden');
+    }
+
+    function toggleSingleCommentCard(targetEl) {
+      const card = targetEl ? targetEl.closest('.timeline-comment-card') : null;
+      if (!card) return;
+      const cid = card.getAttribute('data-comment-id');
+      if (cid) toggleSingleCommentCollapse(cid);
+    }
+
+    function toggleSingleCommentCollapse(commentId) {
+      const wrapper = document.getElementById('comment-body-wrapper-' + commentId);
+      const btnText = document.getElementById('btn-toggle-comment-text-' + commentId);
+      if (!wrapper || !btnText) return;
+      if (wrapper.classList.contains('hidden')) {
+        wrapper.classList.remove('hidden');
+        btnText.textContent = '收起意见 ▲';
+        hideCommentHoverPopover(0);
+      } else {
+        wrapper.classList.add('hidden');
+        btnText.textContent = '展开意见 ▼';
+      }
+    }
+
     function handleCommentClick(commentId, clauseIndex, event) {
       if (event) event.stopPropagation();
       enterCommentDetailMode(commentId, true);
@@ -466,7 +417,23 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       enterCommentDetailMode(commentId, doScroll);
     }
 
+    function findCommentMark(commentId) {
+      if (!commentId && commentId !== 0) return null;
+      const cid = String(commentId);
+      let mark = document.getElementById('comment-target-' + cid);
+      if (mark) return mark;
+      const marks = document.querySelectorAll('.docx-comment-highlight');
+      for (let i = 0; i < marks.length; i++) {
+        const m = marks[i];
+        if (m.getAttribute('data-comment-id') === cid) return m;
+        const ids = (m.getAttribute('data-comment-ids') || '').split(',');
+        if (ids.includes(cid)) return m;
+      }
+      return null;
+    }
+
     function enterCommentDetailMode(commentId, doScroll) {
+      hideCommentHoverPopover(0);
       const comment = docxCommentsData.find(c => String(c.id) === String(commentId));
       if (!comment) return;
 
@@ -482,51 +449,6 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       if (createWorkspace) createWorkspace.classList.add('hidden');
       if (detailWorkspace) detailWorkspace.classList.remove('hidden');
 
-      // Parse Author Name and Title (e.g. "王建国 (法务合规总监)")
-      let rawAuthor = comment.author || '审阅人';
-      let authorName = rawAuthor;
-      let authorTitle = '法务合规';
-      const titleMatch = rawAuthor.match(/^([^(（]+)[(（]([^)）]+)[)）]$/);
-      if (titleMatch) {
-        authorName = titleMatch[1].trim();
-        authorTitle = titleMatch[2].trim();
-      }
-
-      const authorNameEl = document.getElementById('comment-detail-author-name');
-      if (authorNameEl) authorNameEl.textContent = authorName;
-
-      const authorTitleEl = document.getElementById('comment-detail-author-title');
-      if (authorTitleEl) authorTitleEl.textContent = authorTitle;
-
-      const avatarEl = document.getElementById('comment-detail-avatar');
-      if (avatarEl) avatarEl.textContent = authorName.slice(0, 1);
-
-      const badgeEl = document.getElementById('comment-detail-badge');
-      if (badgeEl) badgeEl.textContent = 'Word 原生批注 #' + comment.id;
-
-      const statusBadge = document.getElementById('comment-detail-status-badge');
-      if (statusBadge) {
-        statusBadge.textContent = comment.isResolved ? '已解决' : '待处理';
-        statusBadge.className = comment.isResolved
-          ? 'px-2 py-0.5 text-[10px] font-medium rounded bg-slate-100 text-slate-600 border border-slate-200 shrink-0'
-          : 'px-2 py-0.5 text-[10px] font-medium rounded bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0';
-      }
-
-      const clauseTag = document.getElementById('comment-detail-clause-tag');
-      if (clauseTag) {
-        clauseTag.textContent = comment.clauseNumber
-          ? comment.clauseNumber + ' ' + (comment.clauseTitle || '')
-          : '全合同通用审查';
-      }
-
-      const dateEl = document.getElementById('comment-detail-date');
-      if (dateEl) {
-        const dateStr = comment.date ? comment.date.replace('T', ' ').slice(0, 16) : '审阅流转中';
-        const span = dateEl.querySelector('span');
-        if (span) span.textContent = dateStr;
-        else dateEl.textContent = dateStr;
-      }
-
       const quoteContainer = document.getElementById('comment-detail-quote-container');
       const quoteEl = document.getElementById('comment-detail-quote');
       if (comment.selectedText && comment.selectedText.trim()) {
@@ -535,16 +457,6 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       } else {
         if (quoteContainer) quoteContainer.classList.add('hidden');
       }
-
-      const bodyEl = document.getElementById('comment-detail-body');
-      if (bodyEl) bodyEl.textContent = comment.text || '';
-
-      // Reset collapse state
-      const bodyWrapper = document.getElementById('comment-detail-body-wrapper');
-      const toggleBtnText = document.getElementById('btn-toggle-comment-body-text');
-      if (bodyWrapper) bodyWrapper.style.display = 'block';
-      if (toggleBtnText) toggleBtnText.textContent = '收起意见 ▲';
-      isCommentDetailBodyCollapsed = false;
 
       const currId = document.getElementById('comment-detail-current-id');
       if (currId) currId.value = comment.id;
@@ -559,41 +471,13 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       const authorEditContainer = document.getElementById('comment-reply-author-container');
       if (authorEditContainer) authorEditContainer.classList.add('hidden');
 
-      // Populate threaded comments on the same clause (e.g. 2号, 3号 批注)
-      const clauseComments = docxCommentsData.filter(x => x.clauseIndex === comment.clauseIndex && String(x.id) !== String(comment.id));
-      const threadContainer = document.getElementById('comment-detail-thread-container');
-      if (threadContainer) {
-        if (clauseComments.length > 0) {
-          threadContainer.classList.remove('hidden');
-          let threadHtml = '<div class="pt-1 text-[11px] font-bold text-slate-500 flex items-center gap-1"><span>💬 该条款其他审阅批注 (' + clauseComments.length + ')</span></div>';
-          clauseComments.forEach(otherC => {
-            let oRaw = otherC.author || '审阅人';
-            let oName = oRaw;
-            let oTitle = '法务合规';
-            const tm = oRaw.match(/^([^(（]+)[(（]([^)）]+)[)）]$/);
-            if (tm) { oName = tm[1].trim(); oTitle = tm[2].trim(); }
-            const oInitial = oName.slice(0, 1);
-            const oDate = otherC.date ? otherC.date.replace('T', ' ').slice(0, 16) : '';
-            threadHtml += \`
-              <div class="rounded-lg border border-slate-200 bg-white p-2.5 space-y-1 shadow-2xs hover:border-amber-300 transition cursor-pointer" onclick="enterCommentDetailMode('\${otherC.id}', true)">
-                <div class="flex items-center justify-between gap-1 text-[11px]">
-                  <div class="flex items-center gap-1.5 min-w-0">
-                    <div class="w-5 h-5 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-[10px] font-bold text-amber-900 shrink-0">\${oInitial}</div>
-                    <span class="font-bold text-slate-800 truncate">\${escapeHtml(oName)}</span>
-                    <span class="px-1 py-0.2 rounded text-[9px] bg-blue-50 text-blue-800 border border-blue-100 shrink-0">\${oTitle}</span>
-                    <span class="px-1 py-0.2 rounded text-[9px] bg-amber-50 text-amber-900 font-mono font-medium shrink-0">#\${otherC.id}</span>
-                  </div>
-                  <span class="text-[10px] text-slate-400 font-mono shrink-0">\${oDate}</span>
-                </div>
-                <div class="text-xs text-slate-700 line-clamp-2 leading-relaxed pl-6.5">\${escapeHtml(otherC.text || '')}</div>
-              </div>
-            \`;
-          });
-          threadContainer.innerHTML = threadHtml;
-        } else {
-          threadContainer.classList.add('hidden');
-          threadContainer.innerHTML = '';
-        }
+      // 动态渲染时间正序的批注列表，默认展开最后一条，关闭前面的批注
+      renderTimelineComments(comment.clauseIndex, comment.id);
+
+      // 平滑滚动定位到当前激活卡片
+      const activeCard = document.getElementById('timeline-comment-card-' + comment.id);
+      if (activeCard && doScroll !== false) {
+        activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
 
       // Stepper index
@@ -606,7 +490,7 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
 
       // Highlight in Left Document Paper
       document.querySelectorAll('.docx-comment-highlight').forEach(m => m.classList.remove('docx-comment-highlight-active'));
-      const mark = document.getElementById('comment-target-' + comment.id);
+      const mark = findCommentMark(comment.id);
       if (mark) {
         mark.classList.add('docx-comment-highlight-active');
         if (doScroll !== false) {
@@ -620,16 +504,11 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
 
     let isCommentDetailBodyCollapsed = false;
     function toggleCommentDetailBodyCollapse() {
-      isCommentDetailBodyCollapsed = !isCommentDetailBodyCollapsed;
-      const wrapper = document.getElementById('comment-detail-body-wrapper');
-      const btnText = document.getElementById('btn-toggle-comment-body-text');
-      if (!wrapper || !btnText) return;
-      if (isCommentDetailBodyCollapsed) {
-        wrapper.style.display = 'none';
-        btnText.textContent = '展开意见 ▼';
-      } else {
-        wrapper.style.display = 'block';
-        btnText.textContent = '收起意见 ▲';
+      const cards = document.querySelectorAll('.timeline-comment-card');
+      if (cards.length > 0) {
+        const lastCard = cards[cards.length - 1];
+        const cid = lastCard.getAttribute('data-comment-id');
+        if (cid) toggleSingleCommentCollapse(cid);
       }
     }
 
@@ -688,16 +567,39 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
     function locateCurrentDetailCommentInDoc() {
       const currId = document.getElementById('comment-detail-current-id');
       if (!currId || !currId.value) return;
-      const mark = document.getElementById('comment-target-' + currId.value);
+      const mark = findCommentMark(currId.value);
       if (mark) {
         scrollTargetToUpperMiddle(mark);
+        document.querySelectorAll('.docx-comment-highlight').forEach(m => m.classList.remove('docx-comment-highlight-active'));
         mark.classList.add('docx-comment-highlight-active');
         setTimeout(() => mark.classList.remove('docx-comment-highlight-active'), 2500);
       } else {
         const currClause = document.getElementById('comment-detail-current-clause');
         const clauseIdx = currClause ? parseInt(currClause.value, 10) : 0;
         const node = document.getElementById('clause-node-' + clauseIdx);
-        if (node) scrollTargetToUpperMiddle(node);
+        if (node) {
+          scrollTargetToUpperMiddle(node);
+          node.classList.add('evidence-highlight-active');
+          setTimeout(() => node.classList.remove('evidence-highlight-active'), 2500);
+        }
+      }
+    }
+
+    function scrollToCommentAnchor(commentId, clauseIndex, event) {
+      if (event) event.stopPropagation();
+      const mark = findCommentMark(commentId);
+      if (mark) {
+        scrollTargetToUpperMiddle(mark);
+        document.querySelectorAll('.docx-comment-highlight').forEach(m => m.classList.remove('docx-comment-highlight-active'));
+        mark.classList.add('docx-comment-highlight-active');
+        setTimeout(() => mark.classList.remove('docx-comment-highlight-active'), 2500);
+      } else if (typeof clauseIndex === 'number' && clauseIndex >= 0) {
+        const node = document.getElementById('clause-node-' + clauseIndex);
+        if (node) {
+          scrollTargetToUpperMiddle(node);
+          node.classList.add('evidence-highlight-active');
+          setTimeout(() => node.classList.remove('evidence-highlight-active'), 2500);
+        }
       }
     }
 
@@ -729,6 +631,21 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
         timestamp: new Date().toISOString(),
       };
 
+      const newCommentItem = {
+        id: 'reply-' + Date.now(),
+        clauseIndex,
+        author,
+        text,
+        date: new Date().toISOString(),
+        selectedText: comment ? comment.selectedText : '',
+        isResolved: false,
+      };
+      docxCommentsData.push(newCommentItem);
+      stagedComments.push(newCommentItem);
+      renderTimelineComments(clauseIndex, targetCommentId);
+      if (typeof updateProgressIndicator === 'function') updateProgressIndicator();
+      if (typeof updateSaveStatus === 'function') updateSaveStatus('有新批注已暂存', 'staged');
+
       if (window.parent && window.parent !== window) {
         window.parent.postMessage({ type: 'DOCX_COMMENT_APPEND', payload }, '*');
       }
@@ -742,12 +659,13 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
         }).catch(e => console.warn('Comment writeback API error:', e));
       }
 
-      showToast('批注答复已提交，后台业务控制面正在受控回写 Word OpenXML...');
+      showToast('批注已暂存并返回清单');
       if (textInput) textInput.value = '';
+      exitCommentDetailMode();
     }
 
     // Sidebar Comment Creation Mode (No Modal Popups!)
-    function enterCommentCreateMode(selectedText, clauseIndex) {
+    function enterCommentCreateMode(selectedText, clauseIndex, initialText) {
       const execSummary = document.getElementById('executive-summary-card');
       const listHeader = document.getElementById('workbench-list-header');
       const findingsStream = document.getElementById('findings-stream');
@@ -773,7 +691,7 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
 
       const textInput = document.getElementById('comment-create-text');
       if (textInput) {
-        textInput.value = '';
+        textInput.value = initialText || '';
         setTimeout(() => textInput.focus(), 120);
       }
     }
@@ -795,7 +713,7 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       const clauseIdxInput = document.getElementById('comment-create-clause-index');
       const quoteTextEl = document.getElementById('comment-create-quote-text');
 
-      const author = authorInput ? authorInput.value.trim() : '法务审阅人';
+      const author = authorInput ? authorInput.value.trim() : '法务批注人';
       const text = textInput ? textInput.value.trim() : '';
       const clauseIndex = clauseIdxInput ? parseInt(clauseIdxInput.value, 10) : 0;
       const selectedText = quoteTextEl ? quoteTextEl.textContent.replace(/^"|"$/g, '').trim() : '';
@@ -815,6 +733,20 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
         timestamp: new Date().toISOString(),
       };
 
+      const newCommentItem = {
+        id: 'user-' + Date.now(),
+        clauseIndex,
+        selectedText,
+        author,
+        text,
+        date: new Date().toISOString(),
+        isResolved: false,
+      };
+      docxCommentsData.push(newCommentItem);
+      stagedComments.push(newCommentItem);
+      if (typeof updateProgressIndicator === 'function') updateProgressIndicator();
+      if (typeof updateSaveStatus === 'function') updateSaveStatus('有新批注已暂存', 'staged');
+
       if (window.parent && window.parent !== window) {
         window.parent.postMessage({ type: 'DOCX_COMMENT_APPEND', payload }, '*');
       }
@@ -830,19 +762,19 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
         })
           .then(res => res.json())
           .then(data => {
-            showToast('批注已成功提交并回写 Word！');
+            showToast('批注已成功暂存并通知业务控制面');
             exitCommentCreateMode();
           })
           .catch(err => {
             console.error('Failed to append comment:', err);
-            showToast('批注已提交业务控制面处理');
+            showToast('批注已暂存并提交业务控制面处理');
             exitCommentCreateMode();
           })
           .finally(() => {
             if (btn) btn.disabled = false;
           });
       } else {
-        showToast('批注请求已派发（后台受控回写）');
+        showToast('批注已成功暂存');
         exitCommentCreateMode();
       }
     }
@@ -852,7 +784,15 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed) return;
       const text = sel.toString().trim();
+      if (!text) return;
       const range = sel.getRangeAt(0);
+
+      const docCol = document.getElementById('document-column');
+      if (docCol && !docCol.contains(range.commonAncestorContainer)) {
+        const bubble = document.getElementById('text-selection-bubble') || document.getElementById('text-selection-comment-bubble');
+        if (bubble) bubble.style.display = 'none';
+        return;
+      }
 
       let node = range.commonAncestorContainer;
       while (node && node !== document.body) {
@@ -865,7 +805,7 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
 
       enterCommentCreateMode(text, clauseIdx);
 
-      const bubble = document.getElementById('text-selection-comment-bubble');
+      const bubble = document.getElementById('text-selection-bubble') || document.getElementById('text-selection-comment-bubble');
       if (bubble) bubble.style.display = 'none';
     }
 
@@ -889,10 +829,11 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       let top = rect.top + window.scrollY - 10;
       popoverEl.classList.remove('arrow-top', 'arrow-bottom');
 
-      if (rect.top > 160) {
+      const popoverHeight = popoverEl.offsetHeight || 135;
+      if (rect.top > popoverHeight + 25) {
         popoverEl.classList.add('arrow-bottom');
         popoverEl.style.left = left + 'px';
-        popoverEl.style.top = (top - 125) + 'px';
+        popoverEl.style.top = (rect.top + window.scrollY - popoverHeight - 10) + 'px';
       } else {
         popoverEl.classList.add('arrow-top');
         popoverEl.style.left = left + 'px';
@@ -902,6 +843,27 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
 
     function showCommentHoverPopover(targetEl, commentId) {
       if (!popoverEl) return;
+
+      const timelineCard = targetEl.closest('.timeline-comment-card');
+      if (timelineCard) {
+        const cid = timelineCard.getAttribute('data-comment-id');
+        const bodyWrapper = document.getElementById('comment-body-wrapper-' + cid);
+        const isCollapsed = bodyWrapper && bodyWrapper.classList.contains('hidden');
+        if (!isCollapsed) {
+          // 已经展开的批注卡片，无需弹出重复 popup
+          return;
+        }
+      } else {
+        // 位于左侧文档区：如果右侧抽屉处于打开状态，且该批注已经在右侧展开可见，则无需弹出 popup
+        const detailWorkspace = document.getElementById('comment-detail-workspace');
+        if (detailWorkspace && !detailWorkspace.classList.contains('hidden')) {
+          const bodyWrapper = document.getElementById('comment-body-wrapper-' + commentId);
+          if (bodyWrapper && !bodyWrapper.classList.contains('hidden')) {
+            return;
+          }
+        }
+      }
+
       clearTimeout(popoverHideTimer);
 
       const rawIds = targetEl.getAttribute('data-comment-ids');
@@ -1010,11 +972,10 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
 
     function showFindingHoverPopover(targetEl, findingId) {
       if (!popoverEl) return;
-      clearTimeout(popoverHideTimer);
-      const f = allFindings.find(item => String(item.id) === String(findingId));
+      const f = findFindingObject(findingId);
       if (!f) return;
 
-      const isHigh = f.severity === 'high';
+      const isHigh = f.severity && String(f.severity).toLowerCase() === 'high';
       const severityText = isHigh ? '高风险' : '中风险';
       const severityBadgeClass = isHigh
         ? 'bg-red-50 text-red-700 border-red-200'
@@ -1071,10 +1032,37 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
 
     document.addEventListener('mouseover', function(e) {
       const commentTarget = e.target.closest('[data-comment-id]');
-      const findingTarget = e.target.closest('[data-finding-id]');
+      const findingTarget = e.target.closest('[data-finding-id]') || e.target.closest('.evidence-mark');
       const target = commentTarget || findingTarget;
 
       if (target) {
+        const timelineCard = commentTarget ? commentTarget.closest('.timeline-comment-card') : null;
+        if (timelineCard) {
+          const cid = timelineCard.getAttribute('data-comment-id');
+          const bodyWrapper = document.getElementById('comment-body-wrapper-' + cid);
+          const isCollapsed = bodyWrapper && bodyWrapper.classList.contains('hidden');
+          // 仅收起状态下的批注卡片在鼠标悬停时显示批注内容浮层；已经展开的则不弹出重复浮层
+          if (!isCollapsed) {
+            hideCommentHoverPopover(0);
+            return;
+          }
+        } else if (target.closest('#workbench-column')) {
+          // 右侧工作台其他区域不显示浮层
+          hideCommentHoverPopover(0);
+          return;
+        } else if (commentTarget) {
+          // 左侧正文批注锚点：如果右侧抽屉处于展开状态且该批注内容已展开可见，则无需弹出浮层
+          const detailWorkspace = document.getElementById('comment-detail-workspace');
+          if (detailWorkspace && !detailWorkspace.classList.contains('hidden')) {
+            const cid = commentTarget.getAttribute('data-comment-id');
+            const bodyWrapper = document.getElementById('comment-body-wrapper-' + cid);
+            if (bodyWrapper && !bodyWrapper.classList.contains('hidden')) {
+              hideCommentHoverPopover(0);
+              return;
+            }
+          }
+        }
+
         clearTimeout(popoverHideTimer);
         if (currentHoverTarget === target) {
           return;
@@ -1086,7 +1074,8 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
             const cid = commentTarget.getAttribute('data-comment-id');
             if (cid) showCommentHoverPopover(commentTarget, cid);
           } else if (findingTarget) {
-            const fid = findingTarget.getAttribute('data-finding-id');
+            const fid = findingTarget.getAttribute('data-finding-id') ||
+                        findingTarget.querySelector('[data-finding-id]')?.getAttribute('data-finding-id');
             if (fid) showFindingHoverPopover(findingTarget, fid);
           }
         }, HOVER_SHOW_DELAY);
@@ -1103,29 +1092,63 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       hideCommentHoverPopover(HOVER_HIDE_DELAY);
     });
 
-    // Floating Selection Comment Bubble Listeners
+    // Floating Selection Dual Action Bubble Listeners (底稿区划词添加批注/写入审批，右侧风险/批注显示区严格不弹出)
     document.addEventListener('mouseup', function(e) {
-      const bubble = document.getElementById('text-selection-comment-bubble');
+      const bubble = document.getElementById('text-selection-bubble') || document.getElementById('text-selection-comment-bubble');
       if (!bubble) return;
       if (bubble.contains(e.target)) return;
 
       setTimeout(() => {
+        if (typeof currentInteractionMode !== 'undefined' && currentInteractionMode === 'view') {
+          bubble.style.display = 'none';
+          return;
+        }
+
         const sel = window.getSelection();
         if (!sel || sel.isCollapsed) {
           bubble.style.display = 'none';
           return;
         }
+
         const text = sel.toString().trim();
         if (text.length < 2) {
           bubble.style.display = 'none';
           return;
         }
-        const range = sel.getRangeAt(0);
+
+        const range = sel.rangeCount > 0 ? sel.getRangeAt(0) : null;
+        if (!range) {
+          bubble.style.display = 'none';
+          return;
+        }
+
+        // 仅在左侧底稿区 (#document-column) 选中文本才出现操作气泡
+        const docCol = document.getElementById('document-column');
+        if (!docCol) {
+          bubble.style.display = 'none';
+          return;
+        }
+
+        const container = range.commonAncestorContainer;
+        const targetNode = container.nodeType === 1 ? container : container.parentNode;
+        if (!docCol.contains(targetNode)) {
+          bubble.style.display = 'none';
+          return;
+        }
+
+        // 右侧审查检查台/风险/批注卡片区严格禁用添加气泡
+        const workbenchCol = document.getElementById('workbench-column');
+        if (workbenchCol && (workbenchCol.contains(e.target) || workbenchCol.contains(targetNode))) {
+          bubble.style.display = 'none';
+          return;
+        }
+
         const rect = range.getBoundingClientRect();
         if (rect.width === 0 && rect.height === 0) {
           bubble.style.display = 'none';
           return;
         }
+
         bubble.style.display = 'inline-flex';
         bubble.style.left = (rect.left + rect.width / 2 + window.scrollX) + 'px';
         bubble.style.top = (rect.top + window.scrollY) + 'px';
@@ -1133,15 +1156,28 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
     });
 
     document.addEventListener('mousedown', function(e) {
-      const bubble = document.getElementById('text-selection-comment-bubble');
+      const bubble = document.getElementById('text-selection-bubble') || document.getElementById('text-selection-comment-bubble');
       if (bubble && !bubble.contains(e.target)) {
         bubble.style.display = 'none';
       }
     });
 
-    document.addEventListener('DOMContentLoaded', initFindingsList);
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    ${buildSplitterScript()}
+    ${buildActionsScript()}
+    ${buildFilterScript()}
+
+    function bootstrapContractWorkbench() {
       initFindingsList();
+      if (typeof initSplitter === 'function') initSplitter();
+      if (typeof initKeyboardShortcuts === 'function') initKeyboardShortcuts();
+      if (typeof setPrimaryTab === 'function') setPrimaryTab('all');
+      if (typeof updateProgressIndicator === 'function') updateProgressIndicator();
+      if (typeof initInteractionMode === 'function') initInteractionMode();
+    }
+
+    document.addEventListener('DOMContentLoaded', bootstrapContractWorkbench);
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      bootstrapContractWorkbench();
     }
   </script>
   `;

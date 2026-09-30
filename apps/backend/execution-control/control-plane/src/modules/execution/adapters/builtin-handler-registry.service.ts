@@ -10,6 +10,7 @@ import { executeEmailUpdate } from './email/email-update.handler';
 import { executeWorkspaceExplorer } from './workspace/workspace-explorer.handler';
 import { ReminderService } from '../../reminders/reminder.service';
 import { OutboundEffectLedgerService } from '../outbox/outbound-effect-ledger.service';
+import { ModelInvocationLedgerService } from '../../experience-learning/model-invocation-ledger.service';
 import { executeContractReviewOrchestration } from './contract/contract-review-orchestrator';
 import { executeContractCompareOrchestration } from './contract/contract-compare-orchestrator';
 import {
@@ -55,7 +56,8 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
 
   constructor(
     private readonly ledger: OutboundEffectLedgerService,
-    @Optional() private readonly reminders?: ReminderService
+    @Optional() private readonly reminders?: ReminderService,
+    @Optional() private readonly modelLedger?: ModelInvocationLedgerService
   ) {}
 
   onModuleInit() {
@@ -99,7 +101,7 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
     this.registerHandler('document.contract.compare', contractCompareHandler);
     this.registerHandler('platform.document.contract-comparator', contractCompareHandler);
     const contractReviewHandler: BuiltinHandlerFn = (req, idempotencyKey) =>
-      executeContractReviewOrchestration(req, idempotencyKey, this.logger);
+      executeContractReviewOrchestration(req, idempotencyKey, this.logger, this.modelLedger);
     this.registerHandler('document.contract.review', contractReviewHandler);
     this.registerHandler('platform.document.contract-reviewer', contractReviewHandler);
 

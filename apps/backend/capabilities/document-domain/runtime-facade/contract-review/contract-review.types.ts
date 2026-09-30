@@ -32,6 +32,7 @@ export interface BuiltinContractReviewInput {
   prompt?: string;
   reviewPrompt?: string;
   skipLlmReview?: boolean;
+  positionSource?: 'default' | 'inferred' | 'user_confirmed';
 }
 
 export interface CustomCheckpointDto {
@@ -117,19 +118,49 @@ export interface ContractReviewMetrics {
   warnings?: string[];
 }
 
+export interface ReviewRuleSetSnapshot {
+  ruleSetId: string;
+  ruleSetVersion: string;
+  ruleSetDigest?: string;
+  ruleSetName?: string;
+}
+
+export interface ReviewDraftPayload {
+  executionId?: string;
+  artifactId?: string;
+  ruleSetId?: string;
+  ruleSetVersion?: string;
+  ruleSetDigest?: string;
+  summaryText: string;
+  stagedComments: any[];
+  findingStates: Record<string, any>;
+  approvalOpinions?: any[];
+  sourceDocumentVersion?: string;
+  action?: 'finish' | 'stage';
+  stats?: {
+    totalFindings: number;
+    viewedCount: number;
+    stagedCommentsCount: number;
+    totalCommentsCount: number;
+  };
+}
+
 export interface ContractReviewOutput {
   summary: string;
-  /** 仅供聊天界面渲染 HtmlPreviewBlock 的扩展摘要（含内联 HTML 代码块），不持久化到 result.summary */
+  /** 结构化摘要，与 summary 保持一致，不内嵌 HTML 源码以防数据膨胀 */
   chatSummary?: string;
   contractType: ContractType;
   contractTypeName: string;
   myPosition: PartyPosition;
+  positionSource?: 'default' | 'inferred' | 'user_confirmed';
   metrics: ContractReviewMetrics;
   clauses: ClauseReviewItem[];
   chapters?: ReviewChapterGroup[];
   missingClauses: MissingClauseAlert[];
   comments?: DocxCommentItem[];
   htmlReport: string;
+  ruleSetInfo?: ReviewRuleSetSnapshot;
+  sourceDocumentVersion?: string;
   artifact?: {
     type?: string;
     id: string;
@@ -161,6 +192,20 @@ export interface BuiltinContractReviewInvokeDto {
   input?: BuiltinContractReviewInput;
 }
 
+export interface CandidateRuleItem {
+  id: string;
+  elementId?: string;
+  elementCode?: string;
+  title: string;
+  category: string;
+  severity: ReviewRiskLevel;
+  riskSummary: string;
+  legalAdvice: string;
+  recommendRevision?: (original: string) => string;
+  recommendedRevision?: string;
+  criterion?: string;
+}
+
 export interface ParsedClauseItem {
   clauseIndex: number;
   clauseNumber: string;
@@ -184,16 +229,19 @@ export interface ParsedClauseItem {
     recommendRevision?: (text: string) => string;
     recommendedRevision?: string;
   }>;
+  candidateRules?: CandidateRuleItem[];
 }
-
 
 export interface ContractParseOutput {
   contractType: ContractType;
   contractTypeName: string;
   myPosition: PartyPosition;
+  positionSource?: 'default' | 'inferred' | 'user_confirmed';
   fileName: string;
   fullText: string;
+  sourceDocumentVersion?: string;
   parsedClauses: ParsedClauseItem[];
+  availableRules?: CandidateRuleItem[];
   missingClauses: MissingClauseAlert[];
   comments?: DocxCommentItem[];
   formIntegrityStats: {
@@ -203,6 +251,7 @@ export interface ContractParseOutput {
   isTruncated: boolean;
   warnings: string[];
   rawPrompt?: string;
+  ruleSetInfo?: ReviewRuleSetSnapshot;
 }
 
 export interface ContractRenderReportInput {
@@ -210,6 +259,7 @@ export interface ContractRenderReportInput {
   contractType: ContractType;
   contractTypeName: string;
   myPosition: PartyPosition;
+  positionSource?: 'default' | 'inferred' | 'user_confirmed';
   metrics: ContractReviewMetrics;
   clauses: ClauseReviewItem[];
   chapters?: ReviewChapterGroup[];
@@ -218,6 +268,9 @@ export interface ContractRenderReportInput {
   canComment?: boolean;
   commentApiUrl?: string;
   idempotencyKey?: string;
+  ruleSetInfo?: ReviewRuleSetSnapshot;
+  executionId?: string;
+  sourceDocumentVersion?: string;
 }
 
 export interface BuiltinContractReviewParseDto extends BuiltinContractReviewInvokeDto {}

@@ -1,4 +1,5 @@
-import { BadRequestException,Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { ContractAstParserService } from '../contract-compare/contract-ast-parser.service';
 import type { ContractClauseNode } from '../contract-compare/contract-compare.types';
 import {
@@ -37,6 +38,7 @@ export interface ReviewEngineInput {
   text?: string;
   contractType?: string;
   myPosition?: PartyPositionInput;
+  positionSource?: 'default' | 'inferred' | 'user_confirmed';
   customCheckpoints?: CustomCheckpointDto[];
   customChecklistRules?: CustomCheckpointDto[];
   prompt?: string;
@@ -102,10 +104,11 @@ export class ContractReviewEngineService {
 
     // 2. Classify contract type & determine party position
     const typeInfo = this.classifier.classify(fileName, fullText, input.contractType);
-    const resolvedPosition: PartyPosition = this.resolvePartyPosition(
+    const { position: resolvedPosition, positionSource } = this.resolvePartyPositionWithSource(
       input.myPosition,
       fullText,
-      typeInfo.defaultPosition
+      typeInfo.defaultPosition,
+      input.positionSource
     );
 
     const rawPrompt = (input.reviewPrompt || input.prompt || '').trim();
@@ -166,6 +169,13 @@ export class ContractReviewEngineService {
 
       const clauseFacts = this.factExtractor.extractClauseFacts(clauseText, clauseTitle);
 
+      const candidateRules = this.checklistMatrix.recallCandidateRulesForClause(
+        clauseText,
+        clauseTitle,
+        rules,
+        clauseFacts
+      );
+
       const matchedRules = rules
         .filter((rule) => rule.matcher(clauseText, clauseTitle))
         .map((r) => ({
@@ -182,7 +192,6 @@ export class ContractReviewEngineService {
           recommendedRevision: r.recommendRevision ? r.recommendRevision(clauseText) : undefined,
         }));
 
-
       return {
         clauseIndex: index,
         clauseNumber: clause.clauseNumber || `第 ${index + 1} 条`,
@@ -195,8 +204,23 @@ export class ContractReviewEngineService {
         formIntegrity,
         facts: clauseFacts,
         matchedRules,
+        candidateRules,
       };
     });
+
+    const availableRules = rules.map((r) => ({
+      id: r.id,
+      elementId: r.elementId,
+      elementCode: r.elementCode,
+      title: r.title,
+      category: r.category,
+      severity: r.severity,
+      riskSummary: r.riskSummary,
+      legalAdvice: r.legalAdvice,
+      recommendRevision: r.recommendRevision,
+      recommendedRevision: typeof r.recommendRevision === 'function' ? r.recommendRevision('') : undefined,
+      criterion: r.title,
+    }));
 
     const missingClauses = this.checklistMatrix.detectMissingClauses(
       typeInfo.type,
@@ -205,13 +229,43 @@ export class ContractReviewEngineService {
       parsedClauses as any
     );
 
+    const canonicalRulesDigestPayload = rules
+      .map((r) => ({
+        id: r.id,
+        elementCode: r.elementCode,
+        category: r.category,
+        severity: r.severity,
+        title: r.title,
+        riskSummary: r.riskSummary,
+      }))
+      .sort((a, b) => (a.elementCode || a.id).localeCompare(b.elementCode || b.id));
+
+    const ruleSetId = `contract-review/${typeInfo.type}`;
+    const ruleSetVersion = '1.0.0';
+    const ruleSetDigest =
+      'sha256:' +
+      crypto.createHash('sha256').update(JSON.stringify(canonicalRulesDigestPayload)).digest('hex');
+    const sourceDocumentVersion =
+      'sha256:' +
+      crypto.createHash('sha256').update(fullText || '', 'utf8').digest('hex');
+
+    const ruleSetInfo = {
+      ruleSetId,
+      ruleSetVersion,
+      ruleSetDigest,
+      ruleSetName: `${typeInfo.displayName}标准审查规则库`,
+    };
+
     return {
       contractType: typeInfo.type,
       contractTypeName: typeInfo.displayName,
       myPosition: resolvedPosition,
+      positionSource,
       fileName,
       fullText,
+      sourceDocumentVersion,
       parsedClauses,
+      availableRules,
       missingClauses,
       comments: astComments.length > 0 ? astComments : parsedClauses.flatMap((c) => c.comments || []),
       formIntegrityStats: {
@@ -221,6 +275,7 @@ export class ContractReviewEngineService {
       isTruncated,
       warnings,
       rawPrompt,
+      ruleSetInfo,
     };
   }
 
@@ -496,16 +551,42 @@ export class ContractReviewEngineService {
     contractText: string = '',
     defaultPosition: PartyPosition = 'buyer'
   ): PartyPosition {
-    if (!positionInput || positionInput === 'both') {
-      return positionInput === 'both' ? 'neutral' : defaultPosition;
-    }
+    return this.resolvePartyPositionWithSource(positionInput, contractText, defaultPosition).position;
+  }
 
-    if (positionInput === 'buyer' || positionInput === 'seller' || positionInput === 'neutral') {
-      return positionInput;
+  public resolvePartyPositionWithSource(
+    positionInput?: PartyPositionInput,
+    contractText: string = '',
+    defaultPosition: PartyPosition = 'buyer',
+    explicitSource?: 'default' | 'inferred' | 'user_confirmed'
+  ): { position: PartyPosition; positionSource: 'default' | 'inferred' | 'user_confirmed' } {
+    if (explicitSource) {
+      const pos =
+        positionInput === 'seller' || positionInput === 'buyer' || positionInput === 'neutral'
+          ? positionInput
+          : defaultPosition;
+      return { position: pos, positionSource: explicitSource };
     }
 
     // Inspect preamble where parties are typically defined
     const preamble = contractText.slice(0, 3000);
+
+    // Mutual disclosure detection: if parties mutually disclose/receive, resolve to neutral
+    if (/双方互为(?:披露方|透露方|接收方)|双向保密|互为透露方|共同承担保密|各自披露/i.test(preamble)) {
+      return { position: 'neutral', positionSource: 'inferred' };
+    }
+
+    const posStr = String(positionInput || '');
+    if (!positionInput || positionInput === 'both' || posStr === 'auto') {
+      return {
+        position: positionInput === 'both' ? 'neutral' : defaultPosition,
+        positionSource: 'default',
+      };
+    }
+
+    if (positionInput === 'buyer' || positionInput === 'seller' || positionInput === 'neutral') {
+      return { position: positionInput, positionSource: 'user_confirmed' };
+    }
 
     const isPartyA = positionInput === 'party_a';
     const isPartyB = positionInput === 'party_b';
@@ -513,28 +594,28 @@ export class ContractReviewEngineService {
     if (isPartyA) {
       // Check if Party A is explicitly defined as seller/provider
       if (/甲方\s*[（(][^）)]*(?:受托|卖方|供货|供方|出卖|开发|服务|承揽|接收方|劳动者|承租人)[^）)]*[）)]/i.test(preamble)) {
-        return 'seller';
+        return { position: 'seller', positionSource: 'inferred' };
       }
       // Check if Party A is explicitly defined as buyer/client
       if (/甲方\s*[（(][^）)]*(?:委托|买方|采购|发包|客户|需方|透露方|披露方|用人单位|出租人)[^）)]*[）)]/i.test(preamble)) {
-        return 'buyer';
+        return { position: 'buyer', positionSource: 'inferred' };
       }
-      return 'buyer';
+      return { position: 'buyer', positionSource: 'default' };
     }
 
     if (isPartyB) {
       // Check if Party B is explicitly defined as buyer/client
       if (/乙方\s*[（(][^）)]*(?:委托|买方|采购|发包|客户|需方|透露方|披露方|用人单位|出租人)[^）)]*[）)]/i.test(preamble)) {
-        return 'buyer';
+        return { position: 'buyer', positionSource: 'inferred' };
       }
       // Check if Party B is explicitly defined as seller/provider
       if (/乙方\s*[（(][^）)]*(?:受托|卖方|供货|供方|出卖|开发|服务|承揽|接收方|劳动者|承租人)[^）)]*[）)]/i.test(preamble)) {
-        return 'seller';
+        return { position: 'seller', positionSource: 'inferred' };
       }
-      return 'seller';
+      return { position: 'seller', positionSource: 'default' };
     }
 
-    return defaultPosition;
+    return { position: defaultPosition, positionSource: 'default' };
   }
 }
 

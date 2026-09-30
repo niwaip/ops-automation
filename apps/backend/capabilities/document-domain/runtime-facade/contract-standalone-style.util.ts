@@ -8,7 +8,7 @@ export const CONTRACT_REPORT_STANDALONE_CSS = `
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 button { font-family: inherit; font-size: inherit; line-height: inherit; color: inherit; background: transparent; border: none; cursor: pointer; }
 input, select, textarea { font-family: inherit; font-size: inherit; line-height: inherit; }
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.65; -webkit-font-smoothing: antialiased; background-color: #EEF2F6; color: #1E293B; }
 
 /* Display & Layout */
 .hidden { display: none !important; }
@@ -19,6 +19,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 .inline-flex { display: inline-flex; }
 .grid { display: grid; }
 .flex-1 { flex: 1 1 0%; }
+.flex-row { flex-direction: row; }
 .flex-col { flex-direction: column; }
 .flex-wrap { flex-wrap: wrap; }
 .items-center { align-items: center; }
@@ -38,6 +39,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 .w-7 { width: 1.75rem; }
 .w-8 { width: 2rem; }
 .w-64 { width: 16rem; }
+.w-72 { width: 18rem; }
 .w-80 { width: 20rem; }
 .h-1\\.5 { height: 0.375rem; }
 .h-3 { height: 0.75rem; }
@@ -52,7 +54,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.gap-0\\.5 { gap: 0.125rem; }
 .gap-1 { gap: 0.25rem; }
+.gap-1\\.5 { gap: 0.375rem; }
 .gap-2 { gap: 0.5rem; }
 .gap-2\\.5 { gap: 0.625rem; }
 .gap-3 { gap: 0.75rem; }
@@ -166,7 +170,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 .leading-tight { line-height: 1.25; }
 .leading-snug { line-height: 1.375; }
 .leading-normal { line-height: 1.5; }
-.leading-relaxed { line-height: 1.625; }
+.leading-relaxed { line-height: 1.65; }
+.leading-loose { line-height: 2; }
+.leading-\\[1\\.5\\] { line-height: 1.5; }
+.leading-\\[1\\.6\\] { line-height: 1.6; }
+.leading-\\[1\\.65\\] { line-height: 1.65; }
+.leading-\\[1\\.7\\] { line-height: 1.7; }
+.leading-\\[1\\.75\\] { line-height: 1.75; }
+.leading-\\[1\\.8\\] { line-height: 1.8; }
 .tracking-tight { letter-spacing: -0.025em; }
 .tracking-wider { letter-spacing: 0.05em; }
 
@@ -285,6 +296,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 .rounded { border-radius: 0.25rem; }
 .rounded-md { border-radius: 0.375rem; }
 .rounded-lg { border-radius: 0.5rem; }
+.rounded-xl { border-radius: 0.75rem; }
 .rounded-full { border-radius: 9999px; }
 .rounded-r-md { border-top-right-radius: 0.375rem; border-bottom-right-radius: 0.375rem; }
 
@@ -292,13 +304,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 .sticky { position: sticky; }
 .fixed { position: fixed; }
 .relative { position: relative; }
+.absolute { position: absolute; }
 .top-0 { top: 0px; }
 .top-4 { top: 1rem; }
+.top-full { top: 100%; }
 .top-\\[56px\\] { top: 56px; }
 .top-\\[72px\\] { top: 72px; }
 .inset-0 { inset: 0px; }
 .inset-y-0 { top: 0px; bottom: 0px; }
 .left-0 { left: 0px; }
+.right-0 { right: 0px; }
 .right-6 { right: 1.5rem; }
 .z-20 { z-index: 20; }
 .z-30 { z-index: 30; }
@@ -312,6 +327,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 .shadow-md { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); }
 .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1); }
 .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
+.shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
 .shadow-paper { box-shadow: 0 4px 24px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04); }
 .shadow-card { box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04); }
 .shadow-card-hover { box-shadow: 0 4px 14px -2px rgba(15, 23, 42, 0.1), 0 2px 4px -1px rgba(15, 23, 42, 0.05); }
@@ -386,7 +402,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 .border-l-amber-500 { border-left-color: #f59e0b; border-left-width: 4px; border-left-style: solid; }
 .scale-95 { transform: scale(0.95); }
 .scale-100 { transform: scale(1); }
+.max-w-md { max-width: 28rem; }
 .max-w-lg { max-width: 32rem; }
+.max-w-xl { max-width: 36rem; }
 .active-comment-card { border-color: #f59e0b !important; background-color: #fffdf5 !important; box-shadow: 0 4px 16px -2px rgba(245, 158, 11, 0.3) !important; }
 .docx-comment-highlight { background-color: rgba(254, 243, 199, 0.85); border-bottom: 2px solid #f59e0b; border-radius: 2px; }
 .docx-comment-highlight-active { background-color: #fde68a !important; outline: 2px solid #d97706 !important; }
@@ -508,7 +526,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   font-size: 12px;
 }
 
-/* Floating Text Selection Comment Bubble */
+/* Floating Text Selection Dual Bubble (添加批注 + 写入审批) */
+#text-selection-bubble,
 #text-selection-comment-bubble {
   position: absolute;
   z-index: 100;
@@ -517,22 +536,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   margin-top: -8px;
   background-color: #1A2D42;
   color: #FFFFFF;
-  padding: 5px 11px;
+  padding: 3px 4px;
   border-radius: 6px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
   border: 1px solid #386A9E;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  cursor: pointer;
   white-space: nowrap;
   user-select: none;
   align-items: center;
-  gap: 5px;
+  gap: 3px;
 }
-#text-selection-comment-bubble:hover {
-  background-color: #2E5882;
-  border-color: #4B79A6;
-}
+#text-selection-bubble::after,
 #text-selection-comment-bubble::after {
   content: '';
   position: absolute;
@@ -544,6 +559,30 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   border-color: #1A2D42 transparent;
   display: block;
   width: 0;
+}
+.bubble-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: #FFFFFF;
+  background: transparent;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.bubble-action-btn:hover {
+  background-color: #2E5882;
+  color: #FFFFFF;
+}
+.bubble-divider {
+  width: 1px;
+  height: 14px;
+  background-color: #386A9E;
+  margin: 0 2px;
 }
 
 /* Executive KPI Metric Tile Styles (Refined & Modern) */
@@ -661,11 +700,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   border-radius: 2px;
   transition: all 0.15s ease;
   cursor: pointer;
+  scroll-margin-top: 130px;
 }
-.docx-comment-highlight:hover,
-.docx-comment-highlight-active {
+.docx-comment-highlight:hover {
   background-color: #FDE68A !important;
   border-bottom-color: #D97706 !important;
+}
+.docx-comment-highlight-active {
+  background-color: #FDE68A !important;
+  border-bottom: 2px solid #D97706 !important;
+  outline: 2px solid #D97706 !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.35) !important;
+  animation: commentHighlightPulse 2s ease-in-out;
+}
+@keyframes commentHighlightPulse {
+  0% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.6); }
+  50% { box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2); }
+  100% { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.35); }
 }
 
 .docx-comment-badge {
@@ -751,5 +803,227 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 #comment-hover-popover.popover-risk.arrow-top::after {
   border-top-color: #F87171;
   border-right-color: #F87171;
+}
+
+/* Resizable Dual-Column Workspace Layout */
+#main-workspace-container {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  position: relative;
+  width: 100%;
+}
+#document-column {
+  min-width: 0;
+  flex-shrink: 0;
+}
+#workbench-column {
+  min-width: 0;
+  position: sticky;
+  top: 56px;
+  max-height: calc(100vh - 4.5rem);
+  overflow-y: auto;
+  flex: 1 1 0%;
+}
+@media (max-width: 1024px) {
+  #main-workspace-container {
+    flex-direction: column;
+  }
+  #layout-resizer {
+    display: none !important;
+  }
+  #document-column, #workbench-column {
+    width: 100% !important;
+    position: static;
+    max-height: none;
+  }
+}
+
+/* Draggable Splitter */
+#layout-resizer {
+  width: 12px;
+  min-width: 12px;
+  margin: 0 -6px;
+  z-index: 40;
+  cursor: col-resize;
+  background: transparent;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+#layout-resizer:hover, #layout-resizer.resizer-active {
+  background-color: #E2E8F0;
+}
+#layout-resizer::after {
+  content: "";
+  width: 2px;
+  height: 48px;
+  background-color: #94A3B8;
+  border-radius: 9999px;
+  position: sticky;
+  top: 50vh;
+  transition: background-color 0.15s ease;
+}
+#layout-resizer:hover::after, #layout-resizer.resizer-active::after {
+  background-color: #2563EB;
+}
+
+/* View Mode Toggles & Primary Tabs */
+.view-btn-active {
+  background-color: #1E293B !important;
+  color: #FFFFFF !important;
+  border-color: #1E293B !important;
+}
+
+.primary-tab-active {
+  background-color: #0F172A !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25) !important;
+}
+
+.sev-filter-active {
+  background-color: #1E293B !important;
+  color: #FFFFFF !important;
+  border-color: #1E293B !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.15) !important;
+  font-weight: 700 !important;
+}
+
+/* Actionable Item Card Styling */
+.finding-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px solid #F1F5F9;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.action-btn-primary {
+  background-color: #0F172A;
+  color: #FFFFFF;
+  border: 1px solid #0F172A;
+}
+.action-btn-primary:hover {
+  background-color: #1E293B;
+  border-color: #1E293B;
+}
+
+.action-btn-secondary {
+  background-color: #FFFFFF;
+  color: #334155;
+  border: 1px solid #CBD5E1;
+}
+.action-btn-secondary:hover {
+  background-color: #F8FAFC;
+  color: #0F172A;
+  border-color: #94A3B8;
+}
+
+/* Status States */
+.status-accepted {
+  background-color: #F0FDF4 !important;
+  border-color: #86EFAC !important;
+}
+.status-resolved {
+  opacity: 0.65;
+  background-color: #F8FAFC !important;
+}
+.status-resolved:hover {
+  opacity: 1;
+}
+.status-ignored {
+  opacity: 0.55;
+  background-color: #FFFBEB !important;
+  border-color: #FDE68A !important;
+}
+.status-ignored:hover {
+  opacity: 0.9;
+}
+
+/* Mode Switching: View vs Review */
+.mode-view .mode-review-only {
+  display: none !important;
+}
+.mode-view .mode-view-only {
+  display: flex !important;
+}
+.mode-review .mode-view-only {
+  display: none !important;
+}
+
+/* Document Paper Comfort Reading & Anti-Glare */
+#document-paper-container {
+  background-color: #FAFAFA !important;
+  border: 1px solid #D9E1EC !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), 0 6px 24px rgba(15, 23, 42, 0.04) !important;
+}
+#document-body {
+  line-height: 1.8;
+}
+#document-body .paragraph {
+  margin-bottom: 0.85rem;
+  line-height: 1.8;
+}
+#document-body .clause-hierarchical-line {
+  margin-bottom: 0.45rem;
+  line-height: 1.8;
+}
+.clause-content {
+  line-height: 1.8 !important;
+}
+
+/* Modern Refined Finding Cards */
+.finding-card {
+  border-radius: 10px;
+  background-color: #FFFFFF;
+  border: 1px solid #D9E1EC;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+.finding-card:hover {
+  border-color: #94A3B8;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.07);
+}
+.finding-card.active-finding-card {
+  border-color: #2E5882 !important;
+  box-shadow: 0 0 0 2px rgba(46, 88, 130, 0.25), 0 4px 16px rgba(15, 23, 42, 0.08) !important;
+}
+.finding-card.finding-card-high {
+  border-left: 3.5px solid #EF4444 !important;
+}
+.finding-card.finding-card-medium {
+  border-left: 3.5px solid #F59E0B !important;
+}
+.finding-card.finding-card-low {
+  border-left: 3.5px solid #3B82F6 !important;
+}
+.finding-card p {
+  line-height: 1.7;
+}
+
+/* Filter controls button safety spacing */
+#findings-filter-controls button, #findings-filter-controls select {
+  margin: 0 2px;
 }
 `;
