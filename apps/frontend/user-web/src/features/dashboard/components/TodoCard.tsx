@@ -3,7 +3,6 @@ import {
   CheckCircleFilled,
   CheckCircleOutlined,
   CloseCircleOutlined,
-  CloseCircleFilled,
   DownloadOutlined,
   EditOutlined,
   EyeOutlined,
@@ -51,7 +50,10 @@ import { useAuthStore } from "@/shared/store/authStore";
 import { useChatStore } from "../../chat/chatStore";
 import { isItemInitiatedByMe } from "../hooks/useWorkbenchTodos";
 import { classifyWorkflowNode, extractRollbackReason, extractApprovalComment } from "../lib/coordinationNodeClassifier";
+import { RejectionNoticeCard } from "./RejectionNoticeCard";
 import { applyOptimisticCoordinationSend } from "../lib/coordinationOptimistic";
+import { isUserFacingBusinessParam } from "../constants/ignoredBusinessParams";
+import { CollapsibleContractVersionList } from "./CollapsibleContractVersionList";
 import styles from "../pages/DashboardPage.module.css";
 import type { TodoCardProps } from "./TodoCard.types";
 import { renderDueDateTag, renderPriorityTag, renderSourceTag } from "./TodoCardTags";
@@ -644,7 +646,8 @@ export function TodoCard({
                                 <>
                                   <Popconfirm
                                     title="确定撤回此发起事项？"
-                                    description="撤回后将终止后续流转，并将事项退回至您的「待办」，您可重新编辑并再次发送。"
+                                    description="撤回后事项将退回待办，您可重新编辑。"
+                                    overlayStyle={{ maxWidth: 280 }}
                                     onConfirm={() => onRecallTodo?.(item)}
                                     okText="确认撤回"
                                     cancelText="取消"
@@ -689,18 +692,19 @@ export function TodoCard({
                                     <Popconfirm
                                       title={
                                         nodeSemantics.cardActionType === 'send'
-                                          ? "确认提交合同并送审？"
+                                          ? "确认提交送审？"
                                           : nodeSemantics.isApprovalNode
-                                          ? "确认审批通过并流转？"
-                                          : "确认办理完成并提交流转？"
+                                          ? "确认审批通过？"
+                                          : "确认办理完成？"
                                       }
                                       description={
                                         nodeSemantics.cardActionType === 'send'
-                                          ? "提交后系统将开展智能合规审查与风险诊断，并通过后自动流转至法务专员/下一环节审批。您可在「已发事项」中跟踪最新流转进度。"
+                                          ? "提交后将流转至智能审查与后续审批。"
                                           : nodeSemantics.isApprovalNode
-                                          ? "审批通过后将自动流转至下一节点继续流转，审批意见与协同记录将同步归档。"
-                                          : "办理完成后将提交流转至后续处理或归档节点。"
+                                          ? "审批记录将同步归档并流转至下一环节。"
+                                          : "办理完成后将提交流转至后续节点。"
                                       }
+                                      overlayStyle={{ maxWidth: 280 }}
                                       okText={nodeSemantics.cardActionText}
                                       cancelText="取消"
                                       onConfirm={() => handleQuickAction(item)}
@@ -772,8 +776,9 @@ export function TodoCard({
                               {/* 不能删除，只能归档 */}
                               {onArchiveTodo && !isCompleted ? (
                                 <Popconfirm
-                                  title="确定将此事项归档？"
-                                  description="归档后此事项将被标记为已结束，可在「已结束」标签中查阅。"
+                                  title="确定归档此事项？"
+                                  description="归档后可在「已结束」列表中查阅。"
+                                  overlayStyle={{ maxWidth: 280 }}
                                   onConfirm={() => onArchiveTodo(item.id)}
                                   okText="归档"
                                   cancelText="取消"
@@ -793,26 +798,11 @@ export function TodoCard({
 
                       {/* 需重修 / 驳回理由提示 */}
                       {nodeSemantics.isRevisionRequired && rollbackReason ? (
-                        <div
-                          style={{
-                            margin: "2px 0 6px 24px",
-                            padding: "6px 10px",
-                            borderRadius: 6,
-                            background: "rgba(255, 77, 79, 0.08)",
-                            border: "1px solid rgba(255, 77, 79, 0.28)",
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: 8,
-                          }}
-                        >
-                          <CloseCircleFilled style={{ color: "#ff4d4f", fontSize: 13, marginTop: 3, flexShrink: 0 }} />
-                          <div style={{ fontSize: 12, lineHeight: 1.5, minWidth: 0, flex: 1 }}>
-                            <span style={{ color: "#cf1322", fontWeight: 600 }}>驳回批注与修改意见：</span>
-                            <span style={{ color: "var(--text-primary, #1f1f1f)", fontWeight: 500, wordBreak: "break-word" }}>
-                              {rollbackReason}
-                            </span>
-                          </div>
-                        </div>
+                        <RejectionNoticeCard
+                          reason={rollbackReason}
+                          attachments={coordPayload.attachments}
+                          style={{ margin: "4px 0 6px 24px" }}
+                        />
                       ) : null}
 
                       {/* 审批通过 / 办结批注提示 */}
@@ -915,14 +905,7 @@ export function TodoCard({
                                 </div>
                               ) : null}
                               {Object.entries(coordParams)
-                                .filter(([k]) => ![
-                                  'downloadUrl', 'fileUrl', 'contractUrl', 'fileName', 'contractFileName',
-                                  'executionId', 'remarks', 'contractTitle', 'contractType', 'currentStage',
-                                  'myPosition', 'durationYears', 'counterpartyName', 'counterpartyAddress',
-                                  'counterpartyRole', 'ourParty', 'ourRole', 'cooperationSubject',
-                                  'signDate', 'penaltyAmount', 'contractAmount', 'amount', 'isDraftReplaced',
-                                  'originalDraftUrl', 'originalDraftFileName', 'originalDraftSize', 'rawContent', 'text'
-                                ].includes(k))
+                                .filter(([k, v]) => isUserFacingBusinessParam(k, v))
                                 .map(([k, v]) => (
                                   <div key={k} style={{ display: 'flex', gap: 6 }}>
                                     <span style={{ color: 'var(--text-secondary)' }}>{PARAM_LABEL_MAP[k] || k}：</span>
@@ -934,70 +917,9 @@ export function TodoCard({
 
                           {(() => {
                             const formattedVersions = getFormattedContractVersions(coordPayload.attachments, undefined, coordParams);
-                            if (formattedVersions.length > 1) {
+                            if (formattedVersions.length > 0) {
                               return (
-                                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                  {formattedVersions.map((ver) => {
-                                    const downloadUrl = ver.url ? replaceLocalhostWithCurrentHost(ver.url) : undefined;
-                                    return (
-                                      <div
-                                        key={ver.name + ver.versionNumber}
-                                        style={{
-                                          padding: '6px 10px',
-                                          background: ver.isLatest
-                                            ? 'linear-gradient(135deg, rgba(22, 119, 255, 0.08) 0%, rgba(99, 102, 241, 0.05) 100%)'
-                                            : 'var(--bg-secondary, rgba(148, 163, 184, 0.06))',
-                                          borderRadius: 6,
-                                          border: ver.isLatest
-                                            ? '1px solid rgba(22, 119, 255, 0.22)'
-                                            : '1px solid var(--border-color, rgba(148, 163, 184, 0.2))',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'space-between',
-                                          gap: 8,
-                                        }}
-                                      >
-                                        <Space size={6} style={{ minWidth: 0, flex: 1 }}>
-                                          <FileWordOutlined style={{ color: ver.isLatest ? '#1677ff' : '#8c8c8c', fontSize: 14 }} />
-                                          <Tag
-                                            color={ver.isLatest ? 'processing' : 'default'}
-                                            bordered={false}
-                                            style={{ fontSize: 11, lineHeight: '18px', padding: '0 5px', margin: 0 }}
-                                          >
-                                            {ver.versionLabel}
-                                          </Tag>
-                                          <span
-                                            style={{
-                                              fontWeight: ver.isLatest ? 600 : 400,
-                                              fontSize: 12,
-                                              color: 'var(--text-primary, #1e293b)',
-                                              overflow: 'hidden',
-                                              textOverflow: 'ellipsis',
-                                              whiteSpace: 'nowrap',
-                                            }}
-                                            title={ver.name}
-                                          >
-                                            {ver.name}
-                                          </span>
-                                        </Space>
-                                        {downloadUrl ? (
-                                          <Button
-                                            size="small"
-                                            type={ver.isLatest ? 'primary' : 'default'}
-                                            icon={<DownloadOutlined style={{ fontSize: 11 }} />}
-                                            href={downloadUrl}
-                                            target="_blank"
-                                            download={ver.name}
-                                            onClick={(e) => e.stopPropagation()}
-                                            style={{ fontSize: 11, height: 24, padding: '0 8px' }}
-                                          >
-                                            下载
-                                          </Button>
-                                        ) : null}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
+                                <CollapsibleContractVersionList formattedVersions={formattedVersions} />
                               );
                             }
 
@@ -1029,9 +951,22 @@ export function TodoCard({
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
                                   gap: 10,
+                                  minWidth: 0,
+                                  overflow: 'hidden',
+                                  width: '100%',
+                                  boxSizing: 'border-box',
                                 }}
                               >
-                                <Space size={8} style={{ minWidth: 0, flex: 1 }}>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    minWidth: 0,
+                                    flex: 1,
+                                    overflow: 'hidden',
+                                  }}
+                                >
                                   <div
                                     style={{
                                       width: 24,
@@ -1054,11 +989,13 @@ export function TodoCard({
                                       overflow: 'hidden',
                                       textOverflow: 'ellipsis',
                                       whiteSpace: 'nowrap',
+                                      minWidth: 0,
+                                      flex: 1,
                                     }}
                                   >
                                     {effectiveDocName}
                                   </span>
-                                </Space>
+                                </div>
                                 <Button
                                   size="small"
                                   type="primary"
@@ -1068,6 +1005,7 @@ export function TodoCard({
                                   download={effectiveDocName}
                                   onClick={(e) => e.stopPropagation()}
                                   className={styles['workbench-todo-download-btn']}
+                                  style={{ flexShrink: 0 }}
                                 >
                                   下载
                                 </Button>

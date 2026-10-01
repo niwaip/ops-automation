@@ -200,7 +200,9 @@ export class WorkspaceService implements OnModuleInit {
     parentId: string | null | undefined,
     userId: string,
     userRoles: string[] = [],
-    departmentId?: string
+    departmentId?: string,
+    sortBy?: string,
+    order?: 'asc' | 'desc'
   ): Promise<WorkspaceNodeDto[]> {
     await this.assertAccess(workspaceId, userId, departmentId, 'read', userRoles);
 
@@ -223,12 +225,23 @@ export class WorkspaceService implements OnModuleInit {
       }
     }
 
+    let orderByClause: any[] = [{ type: 'desc' }, { updatedAt: 'desc' }, { createdAt: 'desc' }];
+    if (sortBy === 'name') {
+      orderByClause = [{ type: 'desc' }, { name: order === 'desc' ? 'desc' : 'asc' }];
+    } else if (sortBy === 'fileSize') {
+      orderByClause = [{ type: 'desc' }, { fileSize: order === 'asc' ? 'asc' : 'desc' }];
+    } else if (sortBy === 'createdAt') {
+      orderByClause = [{ type: 'desc' }, { createdAt: order === 'asc' ? 'asc' : 'desc' }];
+    } else if (sortBy === 'updatedAt') {
+      orderByClause = [{ type: 'desc' }, { updatedAt: order === 'asc' ? 'asc' : 'desc' }];
+    }
+
     const nodes = await this.prisma.workspaceNode.findMany({
       where: {
         workspaceId,
         parentId: parentId || null,
       },
-      orderBy: [{ type: 'desc' }, { name: 'asc' }],
+      orderBy: orderByClause,
     });
 
     return nodes.map((node) => this.toNodeDto(node));

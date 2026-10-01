@@ -1,6 +1,7 @@
 import {
   CheckCircleFilled,
   DownloadOutlined,
+  DownOutlined,
   FilePdfOutlined,
   FileWordOutlined,
   HistoryOutlined,
@@ -9,6 +10,7 @@ import {
   ReloadOutlined,
   SwapOutlined,
   UploadOutlined,
+  UpOutlined,
 } from '@ant-design/icons';
 import { Button, Space, Tag, Upload, message } from 'antd';
 import { useState } from 'react';
@@ -61,6 +63,7 @@ export function CoordinationFileReplacer({
   const [isDropzoneOpen, setIsDropzoneOpen] = useState(
     Boolean(isRevisionMode || (!isFirstTimeMode && !originalAttachments?.length))
   );
+  const [isHistoryOriginalsExpanded, setIsHistoryOriginalsExpanded] = useState(false);
 
   // 严格过滤掉无名称也无下载地址的幽灵空附件
   const validOriginals = (originalAttachments || []).filter(
@@ -122,6 +125,152 @@ export function CoordinationFileReplacer({
     }
   };
 
+  const renderOriginalItem = (att: any, idx: number) => {
+    const directUrl =
+      att.url ||
+      ((att as any).attachmentId
+        ? `/api/workbench-coordination/attachments/${encodeURIComponent((att as any).attachmentId)}/download?fileName=${encodeURIComponent(att.name || 'document.docx')}`
+        : undefined);
+    const resolvedUrl = replaceLocalhostWithCurrentHost(directUrl);
+    const isWord = att.name?.endsWith('.docx') || att.name?.endsWith('.doc');
+    const isPdf = att.name?.endsWith('.pdf');
+
+    // validOriginals[0] 为最新版本（V_N），后续索引为早先历史版本（V_N-1, V_N-2...）
+    const totalOriginals = validOriginals.length;
+    const currentVersionNumber = totalOriginals - idx;
+    const isSupersededByAppended = effectiveAppended.length > 0;
+    const isHistorical = isSupersededByAppended || idx > 0;
+
+    const versionLabel =
+      currentVersionNumber === 1
+        ? 'V1 · 初始初稿'
+        : `V${currentVersionNumber} · 经办人送审版`;
+
+    return (
+      <div
+        key={`orig_${idx}`}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '9px 12px',
+          background: isHistorical
+            ? 'var(--bg-secondary, rgba(148, 163, 184, 0.04))'
+            : isRevisionMode
+            ? 'rgba(217, 119, 6, 0.03)'
+            : 'rgba(22, 119, 255, 0.03)',
+          border: isHistorical
+            ? '1px solid var(--border-color, rgba(148, 163, 184, 0.18))'
+            : isRevisionMode
+            ? '1px solid rgba(217, 119, 6, 0.25)'
+            : '1px solid rgba(22, 119, 255, 0.25)',
+          borderRadius: 7,
+          transition: 'all 0.2s ease',
+        }}
+      >
+        <Space size={10} align="center" style={{ flex: 1, minWidth: 0 }}>
+          {isWord ? (
+            <FileWordOutlined
+              style={{
+                color: isHistorical ? '#8c8c8c' : '#1677ff',
+                fontSize: 20,
+              }}
+            />
+          ) : isPdf ? (
+            <FilePdfOutlined style={{ color: isHistorical ? '#8c8c8c' : '#d97706', fontSize: 20 }} />
+          ) : (
+            <PaperClipOutlined style={{ color: isHistorical ? '#8c8c8c' : '#1677ff', fontSize: 18 }} />
+          )}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                flexWrap: 'wrap',
+              }}
+            >
+              <span
+                style={{
+                  fontWeight: isHistorical ? 500 : 600,
+                  fontSize: 13,
+                  color: isHistorical ? 'var(--text-secondary)' : 'var(--text-primary)',
+                  wordBreak: 'break-all',
+                }}
+              >
+                {att.name || '系统生成文档.docx'}
+              </span>
+              <Tag
+                color={isHistorical ? 'default' : 'blue'}
+                bordered={false}
+                style={{ margin: 0, fontSize: 11, fontWeight: 500 }}
+              >
+                {versionLabel}
+              </Tag>
+              {isHistorical ? (
+                <Tag color="default" bordered={false} style={{ margin: 0, fontSize: 11 }}>
+                  历史留存原稿
+                </Tag>
+              ) : isRevisionMode ? (
+                <Tag color="warning" bordered={false} style={{ margin: 0, fontSize: 11, fontWeight: 500 }}>
+                  待按审查意见修订
+                </Tag>
+              ) : isApprovalMode ? (
+                <Tag color="processing" bordered={false} style={{ margin: 0, fontSize: 11, fontWeight: 600 }}>
+                  当前送审最新版本
+                </Tag>
+              ) : (
+                <Tag color="processing" bordered={false} style={{ margin: 0, fontSize: 11 }}>
+                  当前生效版本
+                </Tag>
+              )}
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                color: isHistorical ? 'var(--text-tertiary)' : 'var(--text-secondary)',
+                marginTop: 2,
+              }}
+            >
+              {att.size ? `${(att.size / 1024).toFixed(1)} KB · ` : ''}
+              {isHistorical
+                ? `历史留存版本 (V${currentVersionNumber}) · 供法务与协同成员查验对比留痕，不作为当前送审版本`
+                : isRevisionMode
+                ? `审核人员已提出修改要求 · 请下载查验并在下方上传修订后的最新版本（将追加为 V${totalOriginals + effectiveAppended.length + 1}）`
+                : isApprovalMode
+                ? `经办人最新送审生效文档 · 法务合规审查以此版本为准`
+                : '系统当前生效文档 · 支持下载查验或本地修订'}
+            </div>
+          </div>
+        </Space>
+
+        <Space size={8}>
+          {resolvedUrl ? (
+            <Button
+              type={isHistorical ? 'default' : 'primary'}
+              ghost={!isHistorical}
+              size="small"
+              icon={<DownloadOutlined />}
+              href={resolvedUrl}
+              target="_blank"
+              download={att.name}
+              style={{
+                borderRadius: 6,
+                height: 28,
+                fontSize: 12,
+                fontWeight: 500,
+              }}
+            >
+              {isHistorical ? '下载历史原稿' : '下载查验'}
+            </Button>
+          ) : (
+            <Tag color="default">无下载链接</Tag>
+          )}
+        </Space>
+      </div>
+    );
+  };
+
   return (
     <div style={{ marginBottom: 14 }}>
       {/* 标题栏 */}
@@ -146,8 +295,8 @@ export function CoordinationFileReplacer({
               已追加最新版本 (共 {totalVersionCount} 个版本)
             </Tag>
           ) : isRevisionMode ? (
-            <Tag color="error" bordered={false} style={{ fontSize: 11, margin: 0, fontWeight: 500 }}>
-              需上传修订版本
+            <Tag color="warning" bordered={false} style={{ fontSize: 11, margin: 0, fontWeight: 500 }}>
+              待上传修订版本
             </Tag>
           ) : isApprovalMode ? (
             <Tag color="blue" bordered={false} style={{ fontSize: 11, margin: 0 }}>
@@ -195,157 +344,50 @@ export function CoordinationFileReplacer({
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {/* 1. 历史与初始原稿履历列表（按真实版本序列倒序展示：Index 0 为最新版本，后续为历史归档原稿） */}
-        {validOriginals.map((att, idx) => {
-          const directUrl =
-            att.url ||
-            ((att as any).attachmentId
-              ? `/api/workbench-coordination/attachments/${encodeURIComponent((att as any).attachmentId)}/download?fileName=${encodeURIComponent(att.name || 'document.docx')}`
-              : undefined);
-          const resolvedUrl = replaceLocalhostWithCurrentHost(directUrl);
-          const isWord = att.name?.endsWith('.docx') || att.name?.endsWith('.doc');
-          const isPdf = att.name?.endsWith('.pdf');
+        {/* 1. 当前最新原稿始终置顶展示 */}
+        {validOriginals.slice(0, 1).map((att) => renderOriginalItem(att, 0))}
 
-          // validOriginals[0] 为最新版本（V_N），后续索引为早先历史版本（V_N-1, V_N-2...）
-          const totalOriginals = validOriginals.length;
-          const currentVersionNumber = totalOriginals - idx;
-          const isSupersededByAppended = effectiveAppended.length > 0;
-          const isHistorical = isSupersededByAppended || idx > 0;
-
-          const versionLabel =
-            currentVersionNumber === 1
-              ? 'V1 · 初始初稿'
-              : `V${currentVersionNumber} · 经办人修订版`;
-
-          return (
+        {/* 2. 历史留存原稿默认收起 */}
+        {validOriginals.length > 1 ? (
+          <div style={{ marginTop: 2 }}>
             <div
-              key={`orig_${idx}`}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '9px 12px',
-                background: isHistorical
-                  ? 'var(--bg-secondary, rgba(148, 163, 184, 0.04))'
-                  : isRevisionMode
-                  ? 'rgba(255, 77, 79, 0.03)'
-                  : 'rgba(22, 119, 255, 0.03)',
-                border: isHistorical
-                  ? '1px solid var(--border-color, rgba(148, 163, 184, 0.18))'
-                  : isRevisionMode
-                  ? '1px solid rgba(255, 77, 79, 0.3)'
-                  : '1px solid rgba(22, 119, 255, 0.25)',
-                borderRadius: 7,
-                transition: 'all 0.2s ease',
+                padding: '2px 4px',
               }}
             >
-              <Space size={10} align="center" style={{ flex: 1, minWidth: 0 }}>
-                {isWord ? (
-                  <FileWordOutlined
-                    style={{
-                      color: isHistorical ? '#8c8c8c' : isRevisionMode ? '#ff4d4f' : '#1677ff',
-                      fontSize: 20,
-                    }}
-                  />
-                ) : isPdf ? (
-                  <FilePdfOutlined style={{ color: isHistorical ? '#8c8c8c' : '#ff4d4f', fontSize: 20 }} />
-                ) : (
-                  <PaperClipOutlined style={{ color: isHistorical ? '#8c8c8c' : '#1677ff', fontSize: 18 }} />
-                )}
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontWeight: isHistorical ? 500 : 600,
-                        fontSize: 13,
-                        color: isHistorical ? 'var(--text-secondary)' : 'var(--text-primary)',
-                        wordBreak: 'break-all',
-                      }}
-                    >
-                      {att.name || '系统生成文档.docx'}
-                    </span>
-                    <Tag
-                      color={isHistorical ? 'default' : isRevisionMode ? 'error' : 'blue'}
-                      bordered={false}
-                      style={{ margin: 0, fontSize: 11, fontWeight: 500 }}
-                    >
-                      {versionLabel}
-                    </Tag>
-                    {isHistorical ? (
-                      <Tag color="default" bordered={false} style={{ margin: 0, fontSize: 11 }}>
-                        历史留存原稿
-                      </Tag>
-                    ) : isRevisionMode ? (
-                      <Tag color="error" bordered={false} style={{ margin: 0, fontSize: 11, fontWeight: 500 }}>
-                        原版本已被驳回退回
-                      </Tag>
-                    ) : isApprovalMode ? (
-                      <Tag color="processing" bordered={false} style={{ margin: 0, fontSize: 11, fontWeight: 600 }}>
-                        当前送审最新版本
-                      </Tag>
-                    ) : (
-                      <Tag color="processing" bordered={false} style={{ margin: 0, fontSize: 11 }}>
-                        当前生效版本
-                      </Tag>
-                    )}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color:
-                        isRevisionMode && !isHistorical
-                          ? '#cf1322'
-                          : isHistorical
-                          ? 'var(--text-tertiary)'
-                          : 'var(--text-secondary)',
-                      marginTop: 2,
-                    }}
-                  >
-                    {att.size ? `${(att.size / 1024).toFixed(1)} KB · ` : ''}
-                    {isHistorical
-                      ? `历史留存版本 (V${currentVersionNumber}) · 供法务与协同成员查验对比留痕，不作为当前送审版本`
-                      : isRevisionMode
-                      ? `审核人员已提出修改要求 · 请下载查验并在下方上传修订后的最新版本（将追加为 V${totalOriginals + effectiveAppended.length + 1}）`
-                      : isApprovalMode
-                      ? `经办人最新送审生效文档 · 法务合规审查以此版本为准`
-                      : '系统当前生效文档 · 支持下载查验或本地修订'}
-                  </div>
-                </div>
-              </Space>
-
-              <Space size={8}>
-                {resolvedUrl ? (
-                  <Button
-                    type={isHistorical ? 'default' : 'primary'}
-                    ghost={!isHistorical}
-                    size="small"
-                    icon={<DownloadOutlined />}
-                    href={resolvedUrl}
-                    target="_blank"
-                    download={att.name}
-                    style={{
-                      borderRadius: 6,
-                      height: 28,
-                      fontSize: 12,
-                      fontWeight: 500,
-                    }}
-                  >
-                    {isHistorical ? '下载历史原稿' : '下载查验'}
-                  </Button>
-                ) : (
-                  <Tag color="default">无下载链接</Tag>
-                )}
-              </Space>
+              <Button
+                type="link"
+                size="small"
+                onClick={() => setIsHistoryOriginalsExpanded(!isHistoryOriginalsExpanded)}
+                icon={
+                  isHistoryOriginalsExpanded ? (
+                    <UpOutlined style={{ fontSize: 10 }} />
+                  ) : (
+                    <DownOutlined style={{ fontSize: 10 }} />
+                  )
+                }
+                style={{ fontSize: 12, padding: 0, color: 'var(--text-secondary)', height: 'auto' }}
+              >
+                {isHistoryOriginalsExpanded
+                  ? '收起历史版本原稿'
+                  : `查看历史留存原稿 (${validOriginals.length - 1})`}
+              </Button>
+              {!isHistoryOriginalsExpanded ? (
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                  已归档历史对比底稿
+                </span>
+              ) : null}
             </div>
-          );
-        })}
+            {isHistoryOriginalsExpanded ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 6 }}>
+                {validOriginals.slice(1).map((att, sliceIdx) => renderOriginalItem(att, sliceIdx + 1))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {/* 2. 追加的最新修订版本列表（履历呈现） */}
         {effectiveAppended.map((appFile, idx) => {
@@ -462,8 +504,8 @@ export function CoordinationFileReplacer({
               accept=".docx,.doc,.pdf"
               disabled={disabled || isUploading}
               style={{
-                background: isRevisionMode ? 'rgba(255, 77, 79, 0.03)' : 'var(--bg-secondary, rgba(148, 163, 184, 0.03))',
-                border: isRevisionMode ? '1px dashed #ff4d4f' : '1px dashed var(--border-color, rgba(148, 163, 184, 0.35))',
+                background: isRevisionMode ? 'rgba(22, 119, 255, 0.03)' : 'var(--bg-secondary, rgba(148, 163, 184, 0.03))',
+                border: isRevisionMode ? '1px dashed rgba(22, 119, 255, 0.45)' : '1px dashed var(--border-color, rgba(148, 163, 184, 0.35))',
                 borderRadius: 6,
                 cursor: isUploading ? 'not-allowed' : 'pointer',
               }}
@@ -474,7 +516,7 @@ export function CoordinationFileReplacer({
                     width: 26,
                     height: 26,
                     borderRadius: '50%',
-                    background: isRevisionMode ? 'rgba(255, 77, 79, 0.1)' : 'rgba(22, 119, 255, 0.08)',
+                    background: 'rgba(22, 119, 255, 0.08)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -482,13 +524,13 @@ export function CoordinationFileReplacer({
                   }}
                 >
                   {isUploading ? (
-                    <LoadingOutlined style={{ fontSize: 14, color: isRevisionMode ? '#ff4d4f' : '#1677ff' }} />
+                    <LoadingOutlined style={{ fontSize: 14, color: '#1677ff' }} />
                   ) : (
-                    <UploadOutlined style={{ fontSize: 14, color: isRevisionMode ? '#ff4d4f' : '#1677ff' }} />
+                    <UploadOutlined style={{ fontSize: 14, color: '#1677ff' }} />
                   )}
                 </div>
                 <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: isRevisionMode ? '#cf1322' : 'var(--text-primary)', lineHeight: 1.3 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3 }}>
                     {isUploading
                       ? '正在上传追加新版本...'
                       : isRevisionMode

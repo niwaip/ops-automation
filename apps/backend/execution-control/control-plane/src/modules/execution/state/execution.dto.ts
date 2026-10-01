@@ -276,11 +276,20 @@ export class CreateExecutionDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, unknown>;
+
+  @ApiProperty({ description: 'Organization ID for tenancy isolation', required: false })
+  @IsOptional()
+  @IsString()
+  orgId?: string;
 }
 
 export class ExecutionDto {
   @ApiProperty()
   id: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  orgId?: string | null;
 
   @ApiProperty()
   skillId: string;

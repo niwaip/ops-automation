@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Button, Space, Typography } from 'antd';
+import { Button, Collapse, Space, Typography } from 'antd';
 import { DownOutlined, DownloadOutlined, EyeOutlined, UpOutlined } from '@ant-design/icons';
 import { JsonPreview } from '@/features/executions/shared/components/JsonPreview';
 import { tryParseJsonValue } from '@/features/executions/shared/lib/common';
@@ -586,6 +586,18 @@ const renderArtifactActions = (artifacts: ExtractedArtifact[]) => {
   );
 };
 
+export const cleanResultMarkdown = (text: string): string => {
+  if (!text) return '';
+  return text
+    // Remove the full screen report link if buttons are provided
+    .replace(/🔗\s*\*\*\[👉\s*点击在新窗口打开[^\]]+\]\([^)]+\)\*\*/g, '')
+    // Remove hints like *(下方产物卡片...)* or (下方产物卡片...)
+    .replace(/\*\s*\(\s*下方产物卡片[^)]+\)\s*\*/g, '')
+    .replace(/\(\s*下方产物卡片[^)]+\)/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+};
+
 const ExecutionNonBrowserResultCard: React.FC<ExecutionNonBrowserResultCardProps> = ({
   normalizedResult,
   primaryResultText,
@@ -598,14 +610,18 @@ const ExecutionNonBrowserResultCard: React.FC<ExecutionNonBrowserResultCardProps
     primaryResultText ||
     extractDisplayText(parsedData) ||
     formatStructuredDataToMarkdown(parsedData);
-  const displayText = rawDisplayText ? autoFormatLegalMarkdown(rawDisplayText) : undefined;
+  const cleanedText = rawDisplayText ? cleanResultMarkdown(rawDisplayText) : undefined;
+  const displayText = cleanedText ? autoFormatLegalMarkdown(cleanedText) : undefined;
   const hasMarkdown = displayText ? MARKDOWN_SYNTAX.test(displayText) : false;
 
+  const cardTitle = labels.result || labels.title || '执行成果与交付物';
+
+  // 1. Text conclusion exists
   if (displayText) {
     return (
       <div className="chat-outcome-card success">
         <div className="chat-outcome-header">
-          <div className="chat-outcome-title">任务结果</div>
+          <div className="chat-outcome-title">{cardTitle}</div>
         </div>
         <div className="chat-outcome-body">
           {hasMarkdown ? (
@@ -619,58 +635,93 @@ const ExecutionNonBrowserResultCard: React.FC<ExecutionNonBrowserResultCardProps
     );
   }
 
-  // 2. No extractable text — render the raw JSON prettily in the same card style
+  // 2. Deliverables/Artifacts exist, even if there is no explicit summary text
   const parsedFallback = tryParseJsonValue(effectiveResultJson);
-  if (parsedFallback !== undefined && parsedFallback !== null && parsedFallback !== '') {
-    // If fallback is purely finalOutputs/artifact payload, do not print raw JSON dump
-    const hasFinalOutputs =
-      typeof parsedFallback === 'object' &&
-      parsedFallback !== null &&
-      ('finalOutputs' in (parsedFallback as Record<string, unknown>) ||
-        'artifact' in (parsedFallback as Record<string, unknown>));
-
-    if (hasFinalOutputs) {
-      return (
-        <div className="chat-outcome-card success">
-          <div className="chat-outcome-header">
-            <div className="chat-outcome-title">任务结果</div>
-          </div>
-          <div className="chat-outcome-body">
-            <Text style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
-              任务已成功完成，已为您生成结果文档。您可以直接点击下方按钮进行查看与下载。
-            </Text>
-            {renderArtifactActions(artifacts)}
-          </div>
-        </div>
-      );
-    }
-
-    // Try to render as formatted JSON inside the styled card
-    const jsonString =
-      typeof parsedFallback === 'string'
-        ? parsedFallback
-        : JSON.stringify(parsedFallback, null, 2);
+  if (artifacts.length > 0) {
     return (
       <div className="chat-outcome-card success">
         <div className="chat-outcome-header">
-          <div className="chat-outcome-title">任务结果</div>
+          <div className="chat-outcome-title">{cardTitle}</div>
         </div>
         <div className="chat-outcome-body">
-          {typeof parsedFallback === 'object' ? (
-            <JsonPreview value={parsedFallback} />
-          ) : (
-            <pre
-              style={{
-                margin: 0,
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-                fontSize: 13,
-              }}
-            >
-              {jsonString}
-            </pre>
-          )}
+          <Text style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+            任务已成功完成，已为您生成相关成果与文件。您可以直接点击下方按钮进行查看或下载。
+          </Text>
           {renderArtifactActions(artifacts)}
+          {parsedFallback !== undefined && parsedFallback !== null && parsedFallback !== '' ? (
+            <div style={{ marginTop: 12 }}>
+              <Collapse
+                ghost
+                size="small"
+                items={[
+                  {
+                    key: 'raw-result-json',
+                    label: (
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                        查看技术数据 (JSON)
+                      </span>
+                    ),
+                    children:
+                      typeof parsedFallback === 'object' ? (
+                        <JsonPreview value={parsedFallback} />
+                      ) : (
+                        <pre
+                          style={{
+                            margin: 0,
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                            fontSize: 12,
+                          }}
+                        >
+                          {String(parsedFallback)}
+                        </pre>
+                      ),
+                  },
+                ]}
+              />
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Fallback when neither text nor artifacts exist
+  if (parsedFallback !== undefined && parsedFallback !== null && parsedFallback !== '') {
+    const isStringFallback = typeof parsedFallback === 'string';
+
+    return (
+      <div className="chat-outcome-card success">
+        <div className="chat-outcome-header">
+          <div className="chat-outcome-title">{cardTitle}</div>
+        </div>
+        <div className="chat-outcome-body">
+          {isStringFallback ? (
+            <ExpandablePlainText text={parsedFallback} />
+          ) : (
+            <div>
+              <Text style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
+                任务已执行完成，暂无面向用户的直接文字结论。
+              </Text>
+              <div style={{ marginTop: 8 }}>
+                <Collapse
+                  ghost
+                  size="small"
+                  items={[
+                    {
+                      key: 'raw-result-json',
+                      label: (
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                          查看技术数据 (JSON)
+                        </span>
+                      ),
+                      children: <JsonPreview value={parsedFallback} />,
+                    },
+                  ]}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );

@@ -61,7 +61,7 @@ const ExecutionBasicInfoSection: React.FC<ExecutionBasicInfoSectionProps> = ({
   return (
     <Space direction="vertical" size={10} style={{ width: '100%' }}>
       <Descriptions column={1} size="small" bordered>
-        <Descriptions.Item label="ID">
+        <Descriptions.Item label="执行单号">
           <Text copyable={{ text: execution.id }}>{execution.id}</Text>
         </Descriptions.Item>
         <Descriptions.Item label="状态">
@@ -69,31 +69,18 @@ const ExecutionBasicInfoSection: React.FC<ExecutionBasicInfoSectionProps> = ({
             {statusLabels[execution.status]}
           </ExecutionStatusTag>
         </Descriptions.Item>
-        <Descriptions.Item label="风险">{execution.riskLevel || '-'}</Descriptions.Item>
-        <Descriptions.Item label="技能">
-          <Space direction="vertical" size={0}>
-            <Text>
-              {getSkillDisplayName(
-                execution.skillId ||
-                  (execution as any).capabilityId ||
-                  (execution as any).capabilitiesUsed?.[0]?.name ||
-                  (execution as any).capabilitiesUsed?.[0]?.id
-              )}
-            </Text>
-            {execution.skillId || (execution as any).capabilityId || (execution as any).capabilitiesUsed?.[0]?.id ? (
-              <Text
-                type="secondary"
-                copyable={{
-                  text:
-                    execution.skillId ||
-                    (execution as any).capabilityId ||
-                    (execution as any).capabilitiesUsed?.[0]?.id,
-                }}
-              >
-                ID: {execution.skillId || (execution as any).capabilityId || (execution as any).capabilitiesUsed?.[0]?.id}
-              </Text>
-            ) : null}
-          </Space>
+        {execution.riskLevel ? (
+          <Descriptions.Item label="风险">{execution.riskLevel}</Descriptions.Item>
+        ) : null}
+        <Descriptions.Item label="运行技能">
+          <Text strong>
+            {getSkillDisplayName(
+              execution.skillId ||
+                (execution as any).capabilityId ||
+                (execution as any).capabilitiesUsed?.[0]?.name ||
+                (execution as any).capabilitiesUsed?.[0]?.id
+            )}
+          </Text>
         </Descriptions.Item>
         <Descriptions.Item label="开始时间">
           {formatDateTime(execution.startedAt || execution.createdAt)}
@@ -106,54 +93,56 @@ const ExecutionBasicInfoSection: React.FC<ExecutionBasicInfoSectionProps> = ({
             </Space>
           </Descriptions.Item>
         ) : null}
-        <Descriptions.Item label="浏览器会话">
-          {runtimeSessionId ? (
-            <Space wrap>
-              <Text copyable={{ text: runtimeSessionId }}>{runtimeSessionId}</Text>
-              {runtimePreviewUrl ? (
-                <Button
-                  type="link"
-                  style={{ paddingInline: 0 }}
-                  onClick={() =>
-                    window.open(
-                      buildNovncAutoConnectUrl(
-                        replaceLocalhostWithCurrentHost(runtimePreviewUrl)
-                      ),
-                      '_blank',
-                      'noopener,noreferrer'
-                    )
-                  }
-                >
-                  打开实时画面
-                </Button>
-              ) : (
-                <Button type="link" style={{ paddingInline: 0 }} onClick={onOpenDetailPage}>
-                  打开详情页
-                </Button>
-              )}
-            </Space>
-          ) : (
-            '-'
-          )}
-        </Descriptions.Item>
-        <Descriptions.Item label="结束时间">
-          {formatDateTime(execution.endedAt || undefined)}
-        </Descriptions.Item>
-        <Descriptions.Item label="失败原因">{execution.failureReason || '-'}</Descriptions.Item>
-        {!isBrowserExecution ? (
-          <Descriptions.Item label="下载地址">
-            {downloadUrl ? (
-              <Button
-                type="link"
-                icon={<DownloadOutlined />}
-                style={{ paddingInline: 0 }}
-                onClick={() => window.open(downloadUrl, '_blank', 'noopener,noreferrer')}
-              >
-                下载结果
-              </Button>
+        {isBrowserExecution || runtimeSessionId ? (
+          <Descriptions.Item label="浏览器会话">
+            {runtimeSessionId ? (
+              <Space wrap>
+                <Text copyable={{ text: runtimeSessionId }}>{runtimeSessionId}</Text>
+                {runtimePreviewUrl ? (
+                  <Button
+                    type="link"
+                    style={{ paddingInline: 0 }}
+                    onClick={() =>
+                      window.open(
+                        buildNovncAutoConnectUrl(
+                          replaceLocalhostWithCurrentHost(runtimePreviewUrl)
+                        ),
+                        '_blank',
+                        'noopener,noreferrer'
+                      )
+                    }
+                  >
+                    打开实时画面
+                  </Button>
+                ) : (
+                  <Button type="link" style={{ paddingInline: 0 }} onClick={onOpenDetailPage}>
+                    打开详情页
+                  </Button>
+                )}
+              </Space>
             ) : (
               '-'
             )}
+          </Descriptions.Item>
+        ) : null}
+        <Descriptions.Item label="结束时间">
+          {formatDateTime(execution.endedAt || undefined)}
+        </Descriptions.Item>
+        {execution.failureReason ? (
+          <Descriptions.Item label="失败原因">
+            <Text type="danger">{execution.failureReason}</Text>
+          </Descriptions.Item>
+        ) : null}
+        {!isBrowserExecution && downloadUrl ? (
+          <Descriptions.Item label="成果文件">
+            <Button
+              type="link"
+              icon={<DownloadOutlined />}
+              style={{ paddingInline: 0 }}
+              onClick={() => window.open(downloadUrl, '_blank', 'noopener,noreferrer')}
+            >
+              点击下载结果文档
+            </Button>
           </Descriptions.Item>
         ) : null}
       </Descriptions>

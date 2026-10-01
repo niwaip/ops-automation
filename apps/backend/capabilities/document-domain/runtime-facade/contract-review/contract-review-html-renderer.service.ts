@@ -37,6 +37,8 @@ export interface RenderReviewHtmlInput {
   executionId?: string;
   artifactId?: string;
   sourceDocumentVersion?: string;
+  sourceAttachmentId?: string;
+  sourceDocumentHash?: string;
 }
 
 @Injectable()
@@ -513,6 +515,13 @@ export class ContractReviewHtmlRendererService {
     executionId: input.executionId,
     artifactId: input.artifactId,
     sourceDocumentVersion: input.sourceDocumentVersion,
+    sourceAttachmentId: input.sourceAttachmentId,
+    sourceDocumentHash: input.sourceDocumentHash,
+    clauses: (clauses || []).map((c) => ({
+      index: c.clauseIndex,
+      title: c.title,
+      clauseNumber: c.clauseNumber,
+    })),
   })}
 </body>
 </html>`;

@@ -740,6 +740,12 @@ export class DeterministicPlanSchedulerService {
           'downloadUrlB',
           'fileUrlB',
           'files',
+          'sourceDocxBase64',
+          'sourceDocxUrl',
+          'sourceDocxName',
+          'sourceDocxSha256',
+          'auditCertificateBlocks',
+          'auditMetadata',
         ].includes(k)
       ) {
         continue;

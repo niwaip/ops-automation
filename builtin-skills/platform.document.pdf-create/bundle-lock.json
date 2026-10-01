@@ -1,10 +1,10 @@
 {
   "capabilityKey": "platform.document.pdf-create",
   "definitionVersion": "1.0.1",
-  "definitionDigest": "sha256:adaa7329e70271f14ed57cf6a26ef3046aa91e3346c35372ac22cb78e98d7c93",
+  "definitionDigest": "sha256:d7a8860796809256c85a41aa913ae8864689b91dcadcbe95c6149b655f09bc89",
   "fileHashes": {
-    "manifest.yaml": "sha256:b2dae5f07c8cc14cb007e500f053323cec0036a69ebc93148fea333b81c88159",
-    "workflow.json": "sha256:79063931d87dc36e3786d038c88a0a9c787dcbf904878fba159e43ccf69b6af2",
+    "manifest.yaml": "sha256:c4826b4b2d29cb514f7280c6b32ebe5287deb640a29c13fff7a605c06b4d892b",
+    "workflow.json": "sha256:c6cae656a431fb179f5cce9adeadd76740e742994760e7700a3ad2c0a8a4b8ae",
     "fixtures/smoke-input.json": "sha256:ab536f771fe44c5697c4dbf8a843ac5be585b1c43df3b36a4c977bb40e22beac"
   },
   "createdAt": "2026-08-29T20:00:00.000+08:00"

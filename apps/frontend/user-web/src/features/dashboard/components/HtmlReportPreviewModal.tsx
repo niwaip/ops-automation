@@ -67,6 +67,21 @@ export function HtmlReportPreviewModal({
   useEffect(() => {
     if (!open) return;
 
+    let lastHandledTime = 0;
+    let lastHandledDigest = '';
+
+    const dispatchReviewResult = (payload: any) => {
+      if (!payload || !onReviewResult) return;
+      const now = Date.now();
+      const digest = `${payload.action || ''}_${payload.summaryText || ''}_${payload.reviewDraft?.summaryText || ''}`;
+      if (now - lastHandledTime < 1200 && digest === lastHandledDigest) {
+        return;
+      }
+      lastHandledTime = now;
+      lastHandledDigest = digest;
+      onReviewResult(payload);
+    };
+
     const handleMessage = (event: MessageEvent) => {
       // 安全校验：允许同源或者与报告资源 URL 同源的消息
       let fileOrigin = '';
@@ -81,7 +96,10 @@ export function HtmlReportPreviewModal({
       }
 
       if (event.data?.type === 'CONTRACT_REVIEW_RESULT') {
-        onReviewResult?.(event.data);
+        dispatchReviewResult(event.data);
+        if (event.data?.action === 'finish') {
+          onClose();
+        }
       } else if (event.data?.type === 'CONTRACT_REVIEW_CLOSE') {
         onClose();
       }
@@ -93,7 +111,7 @@ export function HtmlReportPreviewModal({
         bc = new BroadcastChannel('CONTRACT_REVIEW_CHANNEL');
         bc.onmessage = (event) => {
           if (event.data?.type === 'CONTRACT_REVIEW_RESULT') {
-            onReviewResult?.(event.data);
+            dispatchReviewResult(event.data);
             onClose();
           }
         };
@@ -104,7 +122,7 @@ export function HtmlReportPreviewModal({
       if (event.key === 'CONTRACT_REVIEW_LAST_RESULT' && event.newValue) {
         try {
           const payload = JSON.parse(event.newValue);
-          onReviewResult?.(payload);
+          dispatchReviewResult(payload);
           onClose();
         } catch (e) {}
       }

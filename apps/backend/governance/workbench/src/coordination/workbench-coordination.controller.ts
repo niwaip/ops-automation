@@ -66,6 +66,25 @@ export class WorkbenchCoordinationController {
     return this.coordinationService.getWorkflowTemplates();
   }
 
+  @Public()
+  @Get('workflows/:workflowId/stage-binding')
+  @ApiOperation({ summary: '解析组织工作流特定阶段绑定的执行能力' })
+  async resolveStageBinding(
+    @Param('workflowId') workflowId: string,
+    @Query('stageId') stageId?: string,
+    @Query('stageType') stageType?: string,
+    @Query('orgId') orgId?: string,
+    @Query('version') version?: string
+  ) {
+    return await this.orgWorkflowService.resolveStageBinding({
+      workflowId,
+      stageId,
+      stageType,
+      orgId,
+      version,
+    });
+  }
+
   @Post('workflow-templates/:id/request-access')
   @ApiOperation({ summary: '员工申请开通企业工作流权限' })
   async requestWorkflowAccess(

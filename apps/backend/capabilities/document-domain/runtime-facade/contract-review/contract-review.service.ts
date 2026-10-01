@@ -49,6 +49,9 @@ export class ContractReviewService {
       customChecklistRules: effectiveCustomRules,
       prompt: input.prompt,
       reviewPrompt: input.reviewPrompt,
+      sourceAttachmentId: input.sourceAttachmentId,
+      sourceDocumentHash: input.sourceDocumentHash,
+      sourceDocumentVersion: input.sourceDocumentVersion,
     });
   }
 
@@ -107,6 +110,8 @@ export class ContractReviewService {
       executionId: input.executionId,
       artifactId: fileId,
       sourceDocumentVersion: input.sourceDocumentVersion,
+      sourceAttachmentId: input.sourceAttachmentId,
+      sourceDocumentHash: input.sourceDocumentHash,
     });
 
     // 2. Save HTML Artifact
@@ -188,6 +193,8 @@ export class ContractReviewService {
       htmlReport,
       ruleSetInfo: input.ruleSetInfo,
       sourceDocumentVersion: input.sourceDocumentVersion,
+      sourceAttachmentId: input.sourceAttachmentId,
+      sourceDocumentHash: input.sourceDocumentHash,
       artifact,
       artifacts: [artifact],
     };
@@ -216,6 +223,8 @@ export class ContractReviewService {
         comments: allComments.length > 0 ? allComments : undefined,
         ruleSetInfo: parsedDoc.ruleSetInfo,
         sourceDocumentVersion: parsedDoc.sourceDocumentVersion,
+        sourceAttachmentId: parsedDoc.sourceAttachmentId || input.sourceAttachmentId,
+        sourceDocumentHash: parsedDoc.sourceDocumentHash || input.sourceDocumentHash,
         idempotencyKey: input.idempotencyKey,
       },
       input.idempotencyKey

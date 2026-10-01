@@ -63,13 +63,20 @@ export class ExecutionDispatcherService implements OnModuleInit, OnModuleDestroy
     const maxAttempts = Number(process.env.EXECUTION_OUTBOX_MAX_ATTEMPTS || 10);
     try {
       const items = await this.outbox.claimBatch(this.owner, {
-        eventTypes: ['execution.ready'],
+        eventTypes: ['execution.ready', 'notification.internal_message.delivered'],
         limit: Number(process.env.EXECUTION_DISPATCHER_BATCH_SIZE || 20),
         leaseMs: Number(process.env.EXECUTION_DISPATCHER_LEASE_MS || 30_000),
         maxAttempts,
       });
       let completed = 0;
       for (const item of items) {
+        if (item.eventType === 'notification.internal_message.delivered') {
+          this.logger.log(
+            `Published notification outbox event ${item.id} for aggregate ${item.aggregateId}`
+          );
+          if (await this.outbox.markPublished(item.id, this.owner)) completed += 1;
+          continue;
+        }
         const executionId =
           typeof item.payload.executionId === 'string'
             ? item.payload.executionId

@@ -4,6 +4,12 @@ import { summarizeExecutionListResult } from '@ops/user-core';
 import { getExecutionTime } from '@/features/executions/list/lib/executionListView';
 import { summarizeExecutionListInput } from '@/features/executions/list/lib/listHelpers';
 
+import {
+  extractRecordBusinessTitle,
+  extractRecordDeliverables,
+  formatCustomerFacingResult,
+} from '@/features/executions/list/lib/executionListHelpers';
+
 interface UseExecutionListFiltersOptions {
   executions?: ExecutionDto[];
   getSkillDisplayName: (skillId?: string) => string;
@@ -43,12 +49,21 @@ export function useExecutionListFilters({
         return true;
       }
 
+      const businessTitle = extractRecordBusinessTitle(record, getSkillDisplayName(record.skillId));
+      const deliverables = extractRecordDeliverables(record);
+      const deliverableNames = deliverables.map((d) => d.name).join(' ');
+      const resultDisplay = formatCustomerFacingResult(record);
+
       return [
         record.id,
         record.skillId,
         getSkillDisplayName(record.skillId),
+        businessTitle,
+        deliverableNames,
         record.riskLevel,
         record.status,
+        resultDisplay.headline,
+        resultDisplay.subline,
         summarizeExecutionListInput(record),
         summarizeExecutionListResult(record),
       ]
@@ -86,6 +101,12 @@ export function useExecutionListFilters({
     [filteredAndSortedData]
   );
 
+  const deliverablesCount = useMemo(
+    () =>
+      filteredAndSortedData.filter((record) => extractRecordDeliverables(record).length > 0).length,
+    [filteredAndSortedData]
+  );
+
   const hasActiveFilters = Boolean(searchText.trim() || statusFilter);
 
   const emptyStateDescription = hasActiveFilters
@@ -102,6 +123,7 @@ export function useExecutionListFilters({
       attentionCount,
       completedCount,
       skillCoverageCount,
+      deliverablesCount,
     },
   };
 }

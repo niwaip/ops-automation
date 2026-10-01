@@ -101,9 +101,18 @@ export const workspaceApi = {
     return await apiClient.post('/workspaces/my/notes', dto);
   },
 
-  getNodes: async (workspaceId: string, parentId?: string | null): Promise<WorkspaceNode[]> => {
-    const params = parentId ? `?parentId=${encodeURIComponent(parentId)}` : '';
-    return await apiClient.get(`/workspaces/${workspaceId}/nodes${params}`);
+  getNodes: async (
+    workspaceId: string,
+    parentId?: string | null,
+    params?: { sortBy?: string; order?: 'asc' | 'desc' }
+  ): Promise<WorkspaceNode[]> => {
+    const searchParams = new URLSearchParams();
+    if (parentId) searchParams.set('parentId', parentId);
+    if (params?.sortBy) searchParams.set('sortBy', params.sortBy);
+    if (params?.order) searchParams.set('order', params.order);
+    const qs = searchParams.toString();
+    const query = qs ? `?${qs}` : '';
+    return await apiClient.get(`/workspaces/${workspaceId}/nodes${query}`);
   },
 
   createFolder: async (

@@ -633,11 +633,12 @@ export function CoordinationActionModal({
           {isEditingParams ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {Object.entries(params)
-                .filter(([key]) => ![
+                .filter(([key, val]) => ![
                   'downloadUrl', 'fileUrl', 'contractUrl', 'fileName', 'contractFileName',
                   'executionId', 'remarks', 'isDraftReplaced', 'originalDraftUrl',
-                  'originalDraftFileName', 'originalDraftSize', 'rawContent', 'text'
-                ].includes(key))
+                  'originalDraftFileName', 'originalDraftSize', 'rawContent', 'text',
+                  'clauses', 'reviewReport', 'artifacts', 'metrics', 'checkedRules', 'summaryItems'
+                ].includes(key) && typeof val !== 'object')
                 .map(([key, val]) => (
                   <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ width: 110, fontSize: 12, color: 'var(--text-secondary)', flexShrink: 0 }}>
@@ -685,11 +686,12 @@ export function CoordinationActionModal({
           ) : (
             <Descriptions size="small" column={1}>
               {Object.entries(params)
-                .filter(([key]) => ![
+                .filter(([key, val]) => ![
                   'downloadUrl', 'fileUrl', 'contractUrl', 'fileName', 'contractFileName',
                   'executionId', 'remarks', 'isDraftReplaced', 'originalDraftUrl',
-                  'originalDraftFileName', 'originalDraftSize', 'rawContent', 'text'
-                ].includes(key))
+                  'originalDraftFileName', 'originalDraftSize', 'rawContent', 'text',
+                  'clauses', 'reviewReport', 'artifacts', 'metrics', 'checkedRules', 'summaryItems'
+                ].includes(key) && typeof val !== 'object')
                 .map(([key, val]) => (
                   <Descriptions.Item key={key} label={PARAM_LABEL_MAP[key] || key}>
                     {formatParamValue(key, val)}

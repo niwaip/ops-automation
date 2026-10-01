@@ -10,6 +10,8 @@ import { CoordinationStageEngineService } from './coordination-stage-engine.serv
 import { CoordinationAutomationRunnerService } from './coordination-automation-runner.service';
 import { CoordinationCollaboratorService } from './coordination-collaborator.service';
 
+import { DocxClauseLocatorService } from './docx-clause-locator.service';
+import { DocxCommentInjectorService } from './docx-comment-injector.service';
 import { WorkspaceModule } from '../workspace/workspace.module';
 
 @Module({
@@ -23,6 +25,8 @@ import { WorkspaceModule } from '../workspace/workspace.module';
     CoordinationStageEngineService,
     CoordinationAutomationRunnerService,
     CoordinationCollaboratorService,
+    DocxClauseLocatorService,
+    DocxCommentInjectorService,
   ],
   exports: [
     WorkbenchCoordinationService,
@@ -32,6 +36,8 @@ import { WorkspaceModule } from '../workspace/workspace.module';
     CoordinationStageEngineService,
     CoordinationAutomationRunnerService,
     CoordinationCollaboratorService,
+    DocxClauseLocatorService,
+    DocxCommentInjectorService,
   ],
 })
 export class WorkbenchCoordinationModule {}

@@ -1,9 +1,11 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
+import axios from 'axios';
 import { createHash } from 'crypto';
 import { PlanRouteClassifierService } from '../planner/routing/plan-route-classifier.service';
 import { stripSystemContext } from '../planner/routing/routing-policy.matcher';
 import { DeterministicPlanGeneratorService } from '../planner/deterministic/deterministic-plan-generator.service';
 import { ControlPlaneClient } from '../../client/control-plane.client';
+import { getAuthServiceUrl } from '../../config/service-endpoints';
 import { RoutingPolicyService } from '../planner/routing/routing-policy.service';
 import {
   matchSavedWorkflow,
@@ -224,6 +226,42 @@ export class DeterministicTaskExecutionService {
         planDraft.objective = userRequest;
         planDraft.originalRequest = userRequest;
       }
+      const taskCtx = (options?.systemInputs as any)?.taskContext;
+      if (taskCtx?.workflowId && Array.isArray(planDraft?.nodes)) {
+        let resolvedSkill: any = null;
+        try {
+          const url = `${getAuthServiceUrl()}/api/workbench-coordination/workflows/${encodeURIComponent(taskCtx.workflowId)}/stage-binding`;
+          const query = new URLSearchParams();
+          if (taskCtx.stageId) query.set('stageId', taskCtx.stageId);
+          if (taskCtx.stageType) query.set('stageType', taskCtx.stageType);
+          if (options?.user?.organizationId) query.set('orgId', options.user.organizationId);
+          const res = await axios.get<any>(`${url}?${query.toString()}`, {
+            headers: options?.authToken ? { Authorization: options.authToken } : undefined,
+            timeout: 5000,
+          });
+          if (res.data?.found && res.data?.skillId) {
+            resolvedSkill = res.data;
+          }
+        } catch (e: any) {
+          this.logger.warn(`Failed to dynamically resolve stage binding in deterministic task: ${e.message}`);
+        }
+        if (resolvedSkill?.skillId) {
+          for (const node of planDraft.nodes) {
+            if (
+              node.kind === 'skill' &&
+              (node.skillId === resolvedSkill.refId ||
+                node.skillId === resolvedSkill.skillId ||
+                /confidentiality|保密/i.test(node.title || node.skillName || ''))
+            ) {
+              node.skillId = resolvedSkill.skillId;
+              node.capabilityId = resolvedSkill.skillId;
+              if (resolvedSkill.skillVersion) {
+                node.skillVersion = resolvedSkill.skillVersion;
+              }
+            }
+          }
+        }
+      }
     } catch (planErr: any) {
       const errorCode = planErr.code || planErr.response?.data?.code || 'PLANNER_OUTPUT_INVALID';
       this.logger.error(`Deterministic planning failed [${errorCode}]: ${planErr.message}`);
@@ -239,8 +277,11 @@ export class DeterministicTaskExecutionService {
       const executionResult = await this.controlPlaneClient.createExecution(
         {
           executionMode: 'deterministic_plan',
+          orgId: options?.user?.organizationId,
+          triggerType: (options?.systemInputs as any)?.triggerType || ((options?.systemInputs as any)?.taskContext ? 'on_submit' : undefined),
           input: {
             prompt: userRequest,
+            ...(options?.user?.organizationId ? { orgId: options.user.organizationId } : {}),
             ...(options?.systemInputs || {}),
             ...(promptDebug ? { __promptDebug: promptDebug } : {}),
           },

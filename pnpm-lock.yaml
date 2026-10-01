@@ -868,6 +868,9 @@ importers:
       class-validator:
         specifier: ^0.14.0
         version: 0.14.4
+      jszip:
+        specifier: ^3.10.1
+        version: 3.10.1
       reflect-metadata:
         specifier: ^0.2.1
         version: 0.2.2
@@ -881,6 +884,9 @@ importers:
       '@types/express':
         specifier: ^4.17.21
         version: 4.17.25
+      '@types/jszip':
+        specifier: ^3.4.1
+        version: 3.4.1
       '@types/node':
         specifier: ^20.10.0
         version: 20.19.37

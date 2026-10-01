@@ -63,6 +63,45 @@ export interface WorkflowNodeSemantics {
   approvalComment?: string;
 }
 
+export function deduplicateRejectionText(raw?: string): string {
+  if (!raw || typeof raw !== 'string') return '';
+  let text = raw.trim();
+
+  // 1. 若整段内容被重复追加了一遍（前一半与后一半完全一致）
+  const half = Math.floor(text.length / 2);
+  const part1 = text.slice(0, half).trim();
+  const part2 = text.slice(half).trim();
+  if (part1 && part1 === part2) {
+    text = part1;
+  }
+
+  // 2. 若存在重复的大标题标记（如【合同智能审阅结论与审批意见】出现了两次）
+  const marker = '【合同智能审阅结论与审批意见】';
+  const firstIdx = text.indexOf(marker);
+  if (firstIdx !== -1) {
+    const secondIdx = text.indexOf(marker, firstIdx + marker.length);
+    if (secondIdx !== -1) {
+      const firstSection = text.slice(firstIdx, secondIdx).trim();
+      const secondSection = text.slice(secondIdx).trim();
+      if (firstSection === secondSection || secondSection.startsWith(firstSection.slice(0, 40))) {
+        text = text.slice(0, secondIdx).trim();
+      }
+    }
+  }
+
+  // 3. 若存在重复的【法务审查处理意见与修改要求】
+  const opinionMarker = '【法务审查处理意见与修改要求】';
+  const fOpIdx = text.indexOf(opinionMarker);
+  if (fOpIdx !== -1) {
+    const sOpIdx = text.indexOf(opinionMarker, fOpIdx + opinionMarker.length);
+    if (sOpIdx !== -1) {
+      text = text.slice(0, sOpIdx).trim();
+    }
+  }
+
+  return text;
+}
+
 export function extractRollbackReason(
   item: any,
   payload?: Record<string, any>
@@ -92,42 +131,47 @@ export function extractRollbackReason(
     return undefined;
   }
 
-  if (p.metadata?.rollbackReason) return p.metadata.rollbackReason;
-  if (p.rollbackReason) return p.rollbackReason;
-  if (p.rejectReason) return p.rejectReason;
-  if (item?.rollbackReason) return item.rollbackReason;
-  if (p.receiptAction === 'reject' && p.receiptComment) return p.receiptComment;
+  let result: string | undefined = undefined;
+
+  if (p.metadata?.rollbackReason) result = p.metadata.rollbackReason;
+  else if (p.rollbackReason) result = p.rollbackReason;
+  else if (p.rejectReason) result = p.rejectReason;
+  else if (item?.rollbackReason) result = item.rollbackReason;
+  else if (p.receiptAction === 'reject' && p.receiptComment) result = p.receiptComment;
 
   // 从 actions 列表中查找最近一次驳回记录
-  if (Array.isArray(p.actions)) {
+  if (!result && Array.isArray(p.actions)) {
     const lastReject = [...p.actions].reverse().find((a: any) => a.action === 'reject');
-    if (lastReject?.comment?.trim()) return lastReject.comment.trim();
+    if (lastReject?.comment?.trim()) result = lastReject.comment.trim();
   }
 
   // 从 rawContent 或 description 中提取明确的驳回原因/修改意见
-  const textToSearch = `${item?.rawContent || ''}\n${item?.description || ''}`;
-  const auditMatch = textToSearch.match(/(?:审核人员批注|驳回批注|驳回原因|退回原因|修改意见)[：:]\s*([^\n\r]+)/);
-  if (auditMatch && auditMatch[1]?.trim()) {
-    return auditMatch[1].trim();
-  }
-  const quoteMatch = textToSearch.match(/(?:驳回|退回)[^\n\r]*[\r\n]+>\s*([^\n\r]+)/);
-  if (quoteMatch && quoteMatch[1]?.trim()) {
-    return quoteMatch[1].trim();
-  }
-
-  // 仅在明确处于驳回或需重修语境下，才允许将通用的“处理意见”作为驳回意见兜底
-  if (isRejectContext) {
-    const commentMatch = textToSearch.match(/处理意见[：:]\s*([^\n\r]+)/);
-    if (commentMatch && commentMatch[1]?.trim()) {
-      return commentMatch[1].trim();
+  if (!result) {
+    const textToSearch = `${item?.rawContent || ''}\n${item?.description || ''}`;
+    const auditMatch = textToSearch.match(/(?:审核人员批注|驳回批注|驳回原因|退回原因|修改意见)[：:]\s*([^\n\r]+)/);
+    if (auditMatch && auditMatch[1]?.trim()) {
+      result = auditMatch[1].trim();
+    } else {
+      const quoteMatch = textToSearch.match(/(?:驳回|退回)[^\n\r]*[\r\n]+>\s*([^\n\r]+)/);
+      if (quoteMatch && quoteMatch[1]?.trim()) {
+        result = quoteMatch[1].trim();
+      } else if (isRejectContext) {
+        // 仅在明确处于驳回或需重修语境下，才允许将通用的“处理意见”作为驳回意见兜底
+        const commentMatch = textToSearch.match(/处理意见[：:]\s*([^\n\r]+)/);
+        if (commentMatch && commentMatch[1]?.trim()) {
+          result = commentMatch[1].trim();
+        }
+      }
     }
   }
 
-  if (p.externalSyncResult?.message && isRejectContext) return p.externalSyncResult.message;
-  if (p.lastFailure?.error) return p.lastFailure.error;
-  if (p.asyncExecution?.error) return p.asyncExecution.error;
+  if (!result && isRejectContext) {
+    if (p.externalSyncResult?.message) result = p.externalSyncResult.message;
+    else if (p.lastFailure?.error) result = p.lastFailure.error;
+    else if (p.asyncExecution?.error) result = p.asyncExecution.error;
+  }
 
-  return undefined;
+  return result ? deduplicateRejectionText(result) : undefined;
 }
 
 export function extractApprovalComment(
@@ -470,7 +514,7 @@ export function classifyWorkflowNode(
       .trim();
 
     const displayTitle = isRevisionRequired
-      ? `[需重修] ${cleanCoreTitle}`
+      ? `[待修订] ${cleanCoreTitle}`
       : isRecalled
       ? `[已撤回] ${cleanCoreTitle}`
       : `[待发送] ${cleanCoreTitle}`;
@@ -479,7 +523,7 @@ export function classifyWorkflowNode(
     const isFirstTimeInitiation = !isRevisionRequired && !isRecalled && !hasPriorRejection;
 
     const modalTitle = isRevisionRequired
-      ? (hasDocumentWorkflow ? '重修核验与重新发送' : '修改申请与重新提交')
+      ? (hasDocumentWorkflow ? '修订核验与重新发送' : '修改要件与重新提交')
       : isRecalled
       ? (hasDocumentWorkflow ? '撤回核验与重新发送' : '撤回调整与重新提交')
       : (hasDocumentWorkflow ? '初稿核对与提交送审' : '申请要件核对与提交');
@@ -512,7 +556,7 @@ export function classifyWorkflowNode(
       currentAssigneeName,
       currentStageName,
       statusTagText: isRevisionRequired
-        ? '需重修'
+        ? '待修订'
         : isRecalled
         ? '已撤回'
         : item.status === 'unprocessed'
@@ -521,18 +565,18 @@ export function classifyWorkflowNode(
         ? '已转待办'
         : '已确认',
       statusTagColor: isRevisionRequired
-        ? 'error'
+        ? 'warning'
         : isRecalled
         ? 'warning'
         : item.status === 'unprocessed'
         ? 'gold'
         : 'processing',
       categoryTagText: isRevisionRequired
-        ? '流程任务 · 需重修'
+        ? '流程任务 · 待修订'
         : isRecalled
         ? '流程任务 · 已撤回待发'
         : '流程任务 · 待发送',
-      categoryTagColor: isRevisionRequired ? 'error' : isRecalled ? 'orange' : 'geekblue',
+      categoryTagColor: isRevisionRequired ? 'warning' : isRecalled ? 'orange' : 'geekblue',
       operatorDisplayText: isAssigneeMe || isInitiatorMe ? '经办: 我' : (assigneeUsername ? `经办: @${assigneeUsername}` : undefined),
       operatorIsMe: isAssigneeMe || isInitiatorMe,
       displayTitle,

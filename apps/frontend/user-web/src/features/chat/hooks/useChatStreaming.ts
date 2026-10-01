@@ -14,6 +14,7 @@ import { browserStreamingTransport } from '../../../adapters/streaming/browserSt
 import { buildPatchedMessage } from '../lib/messageState';
 import { notifyTaskTerminalState } from '../lib/taskNotifications';
 import { backgroundTaskManager } from '../lib/backgroundTaskManager';
+import { handleWorkflowNaturalLanguage } from '../lib/workflowNaturalLanguageRouter';
 
 const isStreamAbortError = (error: unknown): boolean => {
   if (!error) return false;
@@ -181,7 +182,10 @@ export function useChatStreaming({
   const runAssistantRequest = useCallback(async (
     session: ChatSession,
     request: ChatRequest,
-    assistantMessageId: string
+    assistantMessageId: string,
+    options?: {
+      workflowCommandContent?: string;
+    }
   ) => {
     setError(null);
     // 多流并发：计数 +1，保持 isStreaming = true
@@ -196,6 +200,34 @@ export function useChatStreaming({
       snapshotMessageThoughts(session.id, assistantMessageId);
       updateMessage(session.id, assistantMessageId, { isStreaming: false });
       await syncRelatedQueries(session.id);
+
+      // 工作流自然语言连接器：当底层执行单完成初稿产物生成后，将真实的 executionId 与 artifacts 交付给协同阶段
+      if (options?.workflowCommandContent) {
+        const currentMessage = (sessionMessagesRef.current[session.id] || []).find(
+          (message) => message.id === assistantMessageId
+        );
+        const metadata = currentMessage?.metadata;
+        const executionId = metadata?.executionId || activeExecutionIdRef.current || undefined;
+        const artifacts = (metadata?.artifacts || metadata?.normalizedResult?.artifacts || []) as any;
+        const downloadUrl = metadata?.downloadUrl || metadata?.normalizedResult?.downloadUrl || metadata?.fileUrl;
+        const fileName = artifacts?.[0]?.name || (metadata?.files?.[0] as any)?.fileName;
+
+        try {
+          const result = await handleWorkflowNaturalLanguage(options.workflowCommandContent, {
+            executionId,
+            artifacts,
+            downloadUrl,
+            fileName,
+          });
+          if (result?.coordinationTask) {
+            void queryClient.invalidateQueries(['user-web-notifications']);
+            void queryClient.invalidateQueries(['workbench-inbox-items']);
+            void queryClient.invalidateQueries(['coordinationTasks']);
+          }
+        } catch (err: any) {
+          console.warn('[WorkflowRouter] Post-stream coordination registration error:', err);
+        }
+      }
 
       // 旧会话流完成提示：若用户当前浏览的不是该 session.id，弹出轻量 toast 提示
       const currentSelectedId = getCurrentSelectedSessionId?.();
@@ -290,6 +322,7 @@ export function useChatStreaming({
     syncRelatedQueries,
     toast,
     updateMessage,
+    queryClient,
   ]);
 
   const handleStopStreaming = useCallback((targetSessionId?: string) => {

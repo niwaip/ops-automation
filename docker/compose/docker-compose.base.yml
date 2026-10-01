@@ -317,6 +317,7 @@ services:
     command: >
       sh -c "corepack enable && if [ \"${BROWSER_WORKER_RUN_MODE:-prod}\" = \"dev\" ]; then pnpm --filter @ops/browser-worker run dev; else pnpm --filter @ops/browser-worker run build && node --enable-source-maps /workspace/apps/backend/runtimes/browser-worker/dist/main.js; fi"
     environment:
+      <<: *common-env
       NODE_ENV: ${BROWSER_WORKER_NODE_ENV:-development}
       DOCKER_ENV: true
       PORT: ${BROWSER_WORKER_PORT:-3004}

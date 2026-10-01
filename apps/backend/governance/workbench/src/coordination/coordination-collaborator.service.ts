@@ -92,7 +92,13 @@ export class CoordinationCollaboratorService {
   /**
    * 安全解析用户：支持 UUID、username、email、服务主体 system，未知或 anonymous 用户返回 null
    */
-  async resolveUser(idOrUsername?: string) {
+  async resolveUser(idOrUsername?: string): Promise<{
+    id: string;
+    username: string;
+    email?: string | null;
+    role?: string | null;
+    orgId?: string | null;
+  } | null> {
     if (!idOrUsername || idOrUsername === 'anonymous') {
       return null;
     }
@@ -106,16 +112,38 @@ export class CoordinationCollaboratorService {
         id: SYSTEM_SERVICE_PRINCIPAL.id,
         username: SYSTEM_SERVICE_PRINCIPAL.username,
         email: SYSTEM_SERVICE_PRINCIPAL.email,
+        role: 'admin',
+        orgId: null,
       };
     }
+
+    const selectFields = {
+      id: true,
+      username: true,
+      email: true,
+      role: true,
+      orgMemberships: {
+        where: { status: 'active' },
+        select: { orgId: true },
+        take: 1,
+      },
+    };
+
+    const mapUser = (u: any) => ({
+      id: u.id,
+      username: u.username,
+      email: u.email,
+      role: u.role || 'employee',
+      orgId: u.orgMemberships?.[0]?.orgId || null,
+    });
 
     if (UUID_REGEX.test(idOrUsername)) {
       try {
         const user = await this.prisma.user.findUnique({
           where: { id: idOrUsername },
-          select: { id: true, username: true, email: true },
+          select: selectFields as any,
         });
-        if (user) return user;
+        if (user) return mapUser(user);
       } catch {
         // ignore uuid syntax error
       }
@@ -127,9 +155,9 @@ export class CoordinationCollaboratorService {
           username: { equals: idOrUsername, mode: 'insensitive' },
           isActive: true,
         },
-        select: { id: true, username: true, email: true },
+        select: selectFields as any,
       });
-      if (userByUsername) return userByUsername;
+      if (userByUsername) return mapUser(userByUsername);
     } catch {
       // ignore error
     }
@@ -140,9 +168,9 @@ export class CoordinationCollaboratorService {
           email: { equals: idOrUsername, mode: 'insensitive' },
           isActive: true,
         },
-        select: { id: true, username: true, email: true },
+        select: selectFields as any,
       });
-      if (userByEmail) return userByEmail;
+      if (userByEmail) return mapUser(userByEmail);
     } catch {
       // ignore error
     }
@@ -151,9 +179,9 @@ export class CoordinationCollaboratorService {
     try {
       const userById = await this.prisma.user.findUnique({
         where: { id: idOrUsername },
-        select: { id: true, username: true, email: true },
+        select: selectFields as any,
       });
-      if (userById) return userById;
+      if (userById) return mapUser(userById);
     } catch {
       // 捕获真实 PostgreSQL 的 invalid input syntax for type uuid，安全忽略
     }
@@ -171,6 +199,19 @@ export class CoordinationCollaboratorService {
     stageId: string,
     initiatorUserId: string
   ): Promise<{ id: string; username: string; email?: string | null }> {
+    let initiatorOrgId: string | undefined = undefined;
+    if (initiatorUserId) {
+      try {
+        const initMembership = await (this.prisma as any).orgMembership?.findFirst?.({
+          where: { userId: initiatorUserId, status: 'active' },
+          select: { orgId: true },
+        });
+        initiatorOrgId = initMembership?.orgId;
+      } catch {
+        // ignore
+      }
+    }
+
     const workflow: any =
       this.orgWorkflowService?.getWorkflowById(workflowId) ||
       BUILT_IN_WORKFLOW_TEMPLATES.find(
@@ -274,13 +315,21 @@ export class CoordinationCollaboratorService {
 
       if (deptId || deptName) {
         try {
-          // 从组织成员关系 (org_memberships) 中查询属于该部门的有效用户
+          // 从组织成员关系 (org_memberships) 中查询属于该部门的有效用户（严格基于发起人所属 orgId 隔离）
           const membership = await (this.prisma as any).orgMembership?.findFirst?.({
             where: {
               status: 'active',
+              ...(initiatorOrgId ? { orgId: initiatorOrgId } : {}),
               OR: [
                 deptId ? { departmentId: deptId } : undefined,
-                deptName ? { department: { name: deptName } } : undefined,
+                deptName
+                  ? {
+                      department: {
+                        name: deptName,
+                        ...(initiatorOrgId ? { orgId: initiatorOrgId } : {}),
+                      },
+                    }
+                  : undefined,
               ].filter(Boolean),
               user: { isActive: true },
             },
@@ -296,6 +345,7 @@ export class CoordinationCollaboratorService {
 
           const dept = await (this.prisma as any).department?.findFirst?.({
             where: {
+              ...(initiatorOrgId ? { orgId: initiatorOrgId } : {}),
               OR: [
                 deptId ? { id: deptId } : undefined,
                 deptName ? { name: deptName } : undefined,
@@ -303,7 +353,11 @@ export class CoordinationCollaboratorService {
             },
             include: {
               members: {
-                where: { status: 'active', user: { isActive: true } },
+                where: {
+                  status: 'active',
+                  ...(initiatorOrgId ? { orgId: initiatorOrgId } : {}),
+                  user: { isActive: true },
+                },
                 include: {
                   user: { select: { id: true, username: true, email: true } },
                 },

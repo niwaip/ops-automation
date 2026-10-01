@@ -18,16 +18,13 @@ export interface BuildClientScriptInput {
   executionId?: string;
   artifactId?: string;
   sourceDocumentVersion?: string;
+  sourceAttachmentId?: string;
+  sourceDocumentHash?: string;
+  clauses?: Array<{ index: number; title: string; clauseNumber?: string }>;
 }
 
 /**
  * Builds the client-side JavaScript for the interactive contract review report.
- * Responsibilities:
- * - Findings / Comments stream switching & dual navigation
- * - In-place Comment Detail Workspace & reply submission
- * - Bilingual / translation toggle
- * - Outline drawer & TOC jump
- * - Text selection comment bubble
  */
 export function buildContractReviewClientScript(input: BuildClientScriptInput): string {
   const { findings, comments, commentApiUrl = '', ruleSetInfo } = input;
@@ -40,6 +37,15 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
     const currentExecutionId = ${JSON.stringify(input.executionId || '')};
     const currentArtifactId = ${JSON.stringify(input.artifactId || '')};
     const currentSourceDocumentVersion = ${JSON.stringify(input.sourceDocumentVersion || '')};
+    const currentSourceAttachmentId = ${JSON.stringify(input.sourceAttachmentId || '')};
+    const currentSourceDocumentHash = ${JSON.stringify(input.sourceDocumentHash || '')};
+    const allClauses = ${JSON.stringify(
+      (input.clauses || []).map((c) => ({
+        clauseIndex: c.index,
+        title: c.title,
+        clauseNumber: c.clauseNumber || '',
+      }))
+    )};
     let activeFindingIndex = 0;
     let visibleFindingIds = [];
     const viewedFindingIds = new Set();
@@ -621,10 +627,14 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       }
 
       const comment = docxCommentsData.find(c => String(c.id) === String(targetCommentId));
+      const clauseHeadingEl = document.getElementById('clause-heading-' + clauseIndex);
+      const clauseTitle = clauseHeadingEl ? (clauseHeadingEl.querySelector('.heading-zh')?.textContent || clauseHeadingEl.textContent || '').trim() : '';
+
       const payload = {
         action: 'append_comment',
         parentCommentId: targetCommentId,
         clauseIndex,
+        clauseTitle,
         author,
         text,
         selectedText: comment ? comment.selectedText : '',
@@ -633,7 +643,9 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
 
       const newCommentItem = {
         id: 'reply-' + Date.now(),
+        parentCommentId: targetCommentId,
         clauseIndex,
+        clauseTitle,
         author,
         text,
         date: new Date().toISOString(),
@@ -724,9 +736,13 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
         return;
       }
 
+      const clauseHeadingEl = document.getElementById('clause-heading-' + clauseIndex);
+      const clauseTitle = clauseHeadingEl ? (clauseHeadingEl.querySelector('.heading-zh')?.textContent || clauseHeadingEl.textContent || '').trim() : '';
+
       const payload = {
         action: 'append_comment',
         clauseIndex,
+        clauseTitle,
         selectedText,
         author,
         text,
@@ -736,6 +752,7 @@ export function buildContractReviewClientScript(input: BuildClientScriptInput): 
       const newCommentItem = {
         id: 'user-' + Date.now(),
         clauseIndex,
+        clauseTitle,
         selectedText,
         author,
         text,

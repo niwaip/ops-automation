@@ -33,6 +33,9 @@ export interface BuiltinContractReviewInput {
   reviewPrompt?: string;
   skipLlmReview?: boolean;
   positionSource?: 'default' | 'inferred' | 'user_confirmed';
+  sourceDocumentVersion?: string;
+  sourceAttachmentId?: string;
+  sourceDocumentHash?: string;
 }
 
 export interface CustomCheckpointDto {
@@ -136,6 +139,8 @@ export interface ReviewDraftPayload {
   findingStates: Record<string, any>;
   approvalOpinions?: any[];
   sourceDocumentVersion?: string;
+  sourceAttachmentId?: string;
+  sourceDocumentHash?: string;
   action?: 'finish' | 'stage';
   stats?: {
     totalFindings: number;
@@ -161,6 +166,8 @@ export interface ContractReviewOutput {
   htmlReport: string;
   ruleSetInfo?: ReviewRuleSetSnapshot;
   sourceDocumentVersion?: string;
+  sourceAttachmentId?: string;
+  sourceDocumentHash?: string;
   artifact?: {
     type?: string;
     id: string;
@@ -240,6 +247,8 @@ export interface ContractParseOutput {
   fileName: string;
   fullText: string;
   sourceDocumentVersion?: string;
+  sourceAttachmentId?: string;
+  sourceDocumentHash?: string;
   parsedClauses: ParsedClauseItem[];
   availableRules?: CandidateRuleItem[];
   missingClauses: MissingClauseAlert[];
@@ -271,6 +280,8 @@ export interface ContractRenderReportInput {
   ruleSetInfo?: ReviewRuleSetSnapshot;
   executionId?: string;
   sourceDocumentVersion?: string;
+  sourceAttachmentId?: string;
+  sourceDocumentHash?: string;
 }
 
 export interface BuiltinContractReviewParseDto extends BuiltinContractReviewInvokeDto {}

@@ -225,6 +225,7 @@ export const mapExecutionToDto = (execution: Record<string, unknown>): Execution
 
   return {
     id: execution.id as string,
+    orgId: (execution.orgId || execution.org_id || null) as string | null,
     skillId: (execution.skillId || effectiveCapabilityId || capabilitiesUsed?.[0]?.id) as string,
     capabilityId: effectiveCapabilityId || capabilitiesUsed?.[0]?.id || null,
     capabilitiesUsed,

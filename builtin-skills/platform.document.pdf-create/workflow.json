@@ -10,7 +10,13 @@
         "fileName": "$.input.fileName",
         "title": "$.input.title",
         "pageNumbers": "$.input.pageNumbers",
-        "content": "$.input.content"
+        "content": "$.input.content",
+        "sourceDocxBase64": "$.input.sourceDocxBase64",
+        "sourceDocxUrl": "$.input.sourceDocxUrl",
+        "sourceDocxName": "$.input.sourceDocxName",
+        "sourceDocxSha256": "$.input.sourceDocxSha256",
+        "auditCertificateBlocks": "$.input.auditCertificateBlocks",
+        "auditMetadata": "$.input.auditMetadata"
       }
     }
   ]

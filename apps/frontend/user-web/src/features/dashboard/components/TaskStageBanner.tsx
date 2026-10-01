@@ -1,9 +1,9 @@
 import {
-  AlertOutlined,
   CheckCircleFilled,
   CheckCircleOutlined,
   ClockCircleOutlined,
   FileTextOutlined,
+  FormOutlined,
   InfoCircleOutlined,
   SafetyCertificateOutlined,
   UserOutlined,
@@ -76,7 +76,7 @@ export function TaskStageBanner({ nodeSemantics, isArchived }: TaskStageBannerPr
     );
   }
 
-  // 2. 驳回后重新提交（需重修）专属高亮诊断卡
+  // 2. 审查退回后重新提交（需修订）专属专业指导卡
   if (isRevisionRequired) {
     const reasonText =
       rejectRecord?.comment ||
@@ -90,17 +90,17 @@ export function TaskStageBanner({ nodeSemantics, isArchived }: TaskStageBannerPr
     return (
       <div
         style={{
-          background: 'linear-gradient(135deg, rgba(255, 77, 79, 0.08) 0%, rgba(255, 120, 117, 0.03) 100%)',
-          border: '1px solid rgba(255, 77, 79, 0.3)',
+          background: 'linear-gradient(135deg, rgba(217, 119, 6, 0.07) 0%, rgba(180, 83, 9, 0.02) 100%)',
+          border: '1px solid rgba(217, 119, 6, 0.25)',
           borderRadius: 8,
           padding: '12px 16px',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <Space size={6}>
-            <AlertOutlined style={{ color: '#cf1322', fontSize: 15 }} />
-            <span style={{ color: '#cf1322', fontWeight: 600, fontSize: 14 }}>
-              【任务已被驳回，需修改后重新提交】
+            <FormOutlined style={{ color: '#d97706', fontSize: 15 }} />
+            <span style={{ color: 'var(--text-amber, #d97706)', fontWeight: 600, fontSize: 14 }}>
+              【审查意见已退回 · 待修订后重新提交】
             </span>
             <Tooltip
               title={
@@ -109,12 +109,21 @@ export function TaskStageBanner({ nodeSemantics, isArchived }: TaskStageBannerPr
                   : '修改指引：请直接在下方【业务表单要件详情】中编辑修正被驳回的参数项目，或上传补充佐证凭证，在说明栏中简要备注修改内容后点击「重新提交申请」。'
               }
             >
-              <InfoCircleOutlined style={{ color: '#fa8c16', fontSize: 14, cursor: 'pointer' }} />
+              <InfoCircleOutlined style={{ color: '#d97706', fontSize: 14, cursor: 'pointer', opacity: 0.8 }} />
             </Tooltip>
           </Space>
           <Space size={6}>
-            <Tag color="error" icon={<UserOutlined />} style={{ margin: 0 }}>
-              驳回人: @{rejectOperator}
+            <Tag
+              style={{
+                margin: 0,
+                backgroundColor: 'rgba(217, 119, 6, 0.1)',
+                borderColor: 'rgba(217, 119, 6, 0.28)',
+                color: '#d97706',
+                fontWeight: 500,
+              }}
+              icon={<UserOutlined />}
+            >
+              审查人: @{rejectOperator}
             </Tag>
             {rejectTime ? (
               <Tag color="default" icon={<ClockCircleOutlined />} style={{ margin: 0 }}>
@@ -130,14 +139,14 @@ export function TaskStageBanner({ nodeSemantics, isArchived }: TaskStageBannerPr
             background: 'var(--bg-card, #ffffff)',
             borderRadius: 6,
             padding: '10px 14px',
-            borderLeft: '4px solid #ff4d4f',
+            borderLeft: '3px solid #d97706',
             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
             marginTop: 8,
             marginBottom: 0,
           }}
         >
-          <div style={{ color: '#cf1322', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
-            📌 驳回批注与修改建议：
+          <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12, fontWeight: 600, marginBottom: 5 }}>
+            📝 审查批注与修改建议：
           </div>
           <div
             style={{

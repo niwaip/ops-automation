@@ -1,4 +1,5 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
+import axios from 'axios';
 import { ControlPlaneClient } from '../../client/control-plane.client';
 import {
 CONTROL_PLANE_APPROVAL_STATUS,
@@ -323,6 +324,77 @@ export class ChatOrchestratorService {
       ...(primaryContract?.parties?.partyB ? { partyB: primaryContract.parties.partyB } : {}),
     };
 
+    let taskCtx = (body.config as any)?.taskContext;
+    const isNdaWorkflowRequest =
+      taskCtx?.workflowId === 'legal.nda.generation_and_review_flow' ||
+      /^[!！]\s*(?:保密|nda|legal\.nda\.generation_and_review_flow)/i.test(body.message);
+
+    if (isNdaWorkflowRequest) {
+      if (!taskCtx) {
+        taskCtx = {
+          workflowId: 'legal.nda.generation_and_review_flow',
+          workflowName: '保密合同起草与法务审查闭环流',
+          stageId: 'draft_submission',
+          stageType: 'submission',
+          triggerType: 'on_submit',
+          orgId: user.organizationId,
+        };
+      } else {
+        taskCtx.workflowId = taskCtx.workflowId || 'legal.nda.generation_and_review_flow';
+        taskCtx.stageId = taskCtx.stageId || 'draft_submission';
+        taskCtx.stageType = taskCtx.stageType || 'submission';
+        taskCtx.triggerType = taskCtx.triggerType || 'on_submit';
+        if (user.organizationId && !taskCtx.orgId) {
+          taskCtx.orgId = user.organizationId;
+        }
+      }
+    }
+
+    const isWorkflowExecution = Boolean(taskCtx?.workflowId || isNdaWorkflowRequest);
+    const clientProvidedSkillId = taskCtx?.skillId || (body.config as any)?.targetSkillId;
+    let targetSkillId = clientProvidedSkillId;
+    let targetSkillName = taskCtx?.skillName;
+    let targetSkillVersion = taskCtx?.skillVersion;
+
+    if (isWorkflowExecution) {
+      const workflowId = taskCtx?.workflowId || 'legal.nda.generation_and_review_flow';
+      const stageId = taskCtx?.stageId || 'draft_submission';
+      const stageType = taskCtx?.stageType || 'submission';
+      const version = taskCtx?.workflowVersion || taskCtx?.version;
+
+      const resolved = await this.resolveWorkflowStageBinding({
+        workflowId,
+        stageId,
+        stageType,
+        orgId: user.organizationId,
+        version,
+        authToken: context.authToken,
+      });
+      if (resolved?.skillId) {
+        if (clientProvidedSkillId && clientProvidedSkillId !== resolved.skillId) {
+          this.logger.warn(
+            `[WorkflowGovernance] Client provided skillId (${clientProvidedSkillId}) overridden by authoritative workflow stage binding (${resolved.skillId}) for workflow ${workflowId}`
+          );
+        }
+        targetSkillId = resolved.skillId;
+        targetSkillName = resolved.skillName;
+        targetSkillVersion = resolved.skillVersion;
+        if (taskCtx) {
+          taskCtx.skillId = resolved.skillId;
+          taskCtx.skillName = resolved.skillName;
+          taskCtx.skillVersion = resolved.skillVersion;
+          taskCtx.workflowId = workflowId;
+        }
+      } else if (taskCtx?.workflowId) {
+        this.logger.warn(
+          `[WorkflowGovernance] Workflow stage binding could not be resolved for workflow ${workflowId} (org: ${user.organizationId}, version: ${version}); rejecting unverified client skillId ${clientProvidedSkillId}`
+        );
+        targetSkillId = undefined;
+        targetSkillName = undefined;
+        targetSkillVersion = undefined;
+      }
+    }
+
     const plannerInput = {
       request: {
         user_input: body.message,
@@ -338,6 +410,8 @@ export class ChatOrchestratorService {
           webSearch: isExplicitWebSearch,
           workspace_search_enabled: isExplicitWorkspaceSearch,
           workspaceSearch: isExplicitWorkspaceSearch,
+          ...(targetSkillId ? { target_skill_id: targetSkillId } : {}),
+          ...(taskCtx ? { taskContext: taskCtx } : {}),
         },
       },
       userId: context.userId,
@@ -447,7 +521,14 @@ export class ChatOrchestratorService {
           availableSkills,
           systemInputs: {
             ...uploadedFileParams,
-            ...(hasPreviousResult
+            ...(user.organizationId ? { orgId: user.organizationId } : {}),
+            ...(taskCtx
+              ? {
+                  taskContext: taskCtx,
+                  triggerType: taskCtx?.triggerType || 'on_submit',
+                }
+              : {}),
+            ...(hasPreviousResult && !taskCtx
               ? {
                   taskContext: {
                     schemaVersion: 'task-context/v1',
@@ -676,6 +757,15 @@ export class ChatOrchestratorService {
       }));
 
     if (planDraft && planDraft.planner_mode === 'skill' && planDraft.skill_match) {
+      if (targetSkillId) {
+        planDraft.skill_match.skill_id = targetSkillId;
+        if (targetSkillName) {
+          planDraft.skill_match.skill_name = targetSkillName;
+        }
+        if (targetSkillVersion) {
+          planDraft.skill_match.skill_version = targetSkillVersion;
+        }
+      }
       const plannerPromptDebug = this.planningPresentation.canExposePromptDebug(context)
         ? this.planningPresentation.buildPlannerPromptDebug(body.message, planDraft)
         : undefined;
@@ -691,7 +781,13 @@ export class ChatOrchestratorService {
           content: `已识别到技能: ${planDraft.skill_match.skill_name}，正在创建可恢复的执行单...`,
         };
 
+        const triggerType = taskCtx?.triggerType || (taskCtx ? 'on_submit' : undefined);
+
         try {
+          const effectiveSkillId = targetSkillId || planDraft.skill_match.skill_id;
+          const effectiveSkillVersion =
+            targetSkillVersion || planDraft.skill_match.skill_version || '1.0.0';
+
           const execution = await this.controlPlaneClient.createExecution<{
             id: string;
             status?: string;
@@ -701,12 +797,18 @@ export class ChatOrchestratorService {
             normalizedInput?: Record<string, unknown>;
           }>(
             {
-              skillId: planDraft.skill_match.skill_id,
-              skillVersion: planDraft.skill_match.skill_version,
+              orgId: user.organizationId,
+              skillId: effectiveSkillId,
+              skillVersion: effectiveSkillVersion,
               ...(body.idempotencyKey ? { idempotencyKey: body.idempotencyKey } : {}),
+              ...(triggerType ? { triggerType } : {}),
+              ...(taskCtx ? { metadata: { taskContext: taskCtx } } : {}),
               input: {
                 prompt: body.message,
+                ...(user.organizationId ? { orgId: user.organizationId } : {}),
                 ...(executionPromptDebug ? { __promptDebug: executionPromptDebug } : {}),
+                ...(taskCtx ? { taskContext: taskCtx } : {}),
+                ...(triggerType ? { triggerType } : {}),
                 ...Object.fromEntries(
                   planDraft.required_inputs
                     .filter((input) => !input.missing)
@@ -839,15 +941,27 @@ export class ChatOrchestratorService {
         content: `已匹配到技能: ${planDraft.skill_match.skill_name}，正在创建执行单...`,
       };
 
+      const triggerType = taskCtx?.triggerType || (taskCtx ? 'on_submit' : undefined);
+
       try {
+        const effectiveSkillId = targetSkillId || planDraft.skill_match.skill_id;
+        const effectiveSkillVersion =
+          targetSkillVersion || planDraft.skill_match.skill_version || '1.0.0';
+
         const execution = await this.controlPlaneClient.createExecution<{ id: string }>(
           {
-            skillId: planDraft.skill_match.skill_id,
-            skillVersion: planDraft.skill_match.skill_version,
+            orgId: user.organizationId,
+            skillId: effectiveSkillId,
+            skillVersion: effectiveSkillVersion,
             ...(body.idempotencyKey ? { idempotencyKey: body.idempotencyKey } : {}),
+            ...(triggerType ? { triggerType } : {}),
+            ...(taskCtx ? { metadata: { taskContext: taskCtx } } : {}),
             input: {
               prompt: body.message,
+              ...(user.organizationId ? { orgId: user.organizationId } : {}),
               ...(executionPromptDebug ? { __promptDebug: executionPromptDebug } : {}),
+              ...(taskCtx ? { taskContext: taskCtx } : {}),
+              ...(triggerType ? { triggerType } : {}),
               ...Object.fromEntries(
                 planDraft.required_inputs
                   .filter((input) => !input.missing)
@@ -1236,5 +1350,38 @@ export class ChatOrchestratorService {
         usage: responseUsage,
       },
     };
+  }
+
+  private async resolveWorkflowStageBinding(params: {
+    workflowId: string;
+    stageId?: string;
+    stageType?: string;
+    orgId?: string;
+    version?: string;
+    authToken?: string;
+  }): Promise<{ skillId?: string; skillName?: string; skillVersion?: string } | null> {
+    try {
+      const url = `${getAuthServiceUrl()}/api/workbench-coordination/workflows/${encodeURIComponent(params.workflowId)}/stage-binding`;
+      const query = new URLSearchParams();
+      if (params.stageId) query.set('stageId', params.stageId);
+      if (params.stageType) query.set('stageType', params.stageType);
+      if (params.orgId) query.set('orgId', params.orgId);
+      if (params.version) query.set('version', params.version);
+
+      const res = await axios.get<any>(`${url}?${query.toString()}`, {
+        headers: params.authToken ? { Authorization: params.authToken } : undefined,
+        timeout: 5000,
+      });
+      if (res.data?.found && res.data?.skillId) {
+        return {
+          skillId: res.data.skillId,
+          skillName: res.data.skillName,
+          skillVersion: res.data.skillVersion,
+        };
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to resolve dynamic workflow stage binding: ${err.message}`);
+    }
+    return null;
   }
 }

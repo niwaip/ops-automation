@@ -11,4 +11,8 @@ export * from './coordination-attachment-storage.service';
 export * from './coordination-stage-engine.service';
 export * from './coordination-automation-runner.service';
 export * from './coordination-collaborator.service';
+export * from './docx-comment.types';
+export * from './docx-xml.util';
+export * from './docx-clause-locator.service';
+export * from './docx-comment-injector.service';
 export * from './dto/workbench-coordination.dto';

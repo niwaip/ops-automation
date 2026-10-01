@@ -624,41 +624,27 @@ export function buildActionsScript(): string {
       }
 
       if (stagedList.length > 0) {
-        summary += '\\n本次草拟Word批注：\\n' + stagedList.map((c, i) => (i + 1) + '. [条款 #' + (c.clauseIndex || '通用') + '] ' + (c.text || '')).join('\\n') + '\\n';
+        summary += '\\n本次草拟Word批注：\\n' + stagedList.map((c, i) => {
+          let cTitle = c.clauseTitle || '';
+          if (!cTitle && typeof document !== 'undefined' && c.clauseIndex !== undefined) {
+            const h = document.getElementById('clause-heading-' + c.clauseIndex);
+            cTitle = h ? (h.querySelector('.heading-zh')?.textContent || h.textContent || '').trim() : '';
+          }
+          const cIndexStr = c.clauseIndex !== undefined && c.clauseIndex !== null ? c.clauseIndex : '通用';
+          const tag = cTitle ? ('[条款 #' + cIndexStr + ' ' + cTitle + ']') : ('[条款 #' + cIndexStr + ']');
+          const replyTag = c.parentCommentId ? (' [回复批注 #' + c.parentCommentId + ']') : '';
+          return (i + 1) + '. ' + tag + replyTag + ' ' + (c.text || '');
+        }).join('\\n') + '\\n';
       }
 
       return summary;
     }
 
     // 4. Staging and Completion Handlers with Main Approval Linkage
-    function showSyncCompleteModal(summaryText, isFinish) {
-      var modal = document.getElementById('sync-return-modal');
-      if (modal) modal.remove();
-
-      modal = document.createElement('div');
-      modal.id = 'sync-return-modal';
-      modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 font-sans select-none';
-      var escapedSummary = (summaryText || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      modal.innerHTML = 
-        '<div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 text-center space-y-4 animate-in fade-in zoom-in duration-200">' +
-          '<div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">✓</div>' +
-          '<div>' +
-            '<h3 class="text-base font-bold text-slate-800">' + (isFinish ? '合同审阅已完成并同步！' : '审阅草稿已暂存并同步！') + '</h3>' +
-            '<p class="text-xs text-slate-500 mt-1">审批意见与批注已同步至主工作台，并已自动复制到系统剪贴板。</p>' +
-          '</div>' +
-          '<div class="text-left bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs text-slate-700 max-h-48 overflow-y-auto whitespace-pre-wrap select-text font-mono leading-relaxed">' +
-            escapedSummary +
-          '</div>' +
-          '<div class="flex items-center justify-center gap-3 pt-2">' +
-            '<button type="button" onclick="window.close()" class="px-5 py-2 bg-[#2E5882] text-white rounded-lg text-xs font-semibold hover:bg-[#1E3A5F] transition cursor-pointer shadow-sm">' +
-              '关闭当前窗口' +
-            '</button>' +
-            '<button type="button" onclick="document.getElementById(\\'sync-return-modal\\').remove()" class="px-3 py-2 border border-slate-300 text-slate-600 rounded-lg text-xs hover:bg-slate-50 transition cursor-pointer">' +
-              '留在本页查阅' +
-            '</button>' +
-          '</div>' +
-        '</div>';
-      document.body.appendChild(modal);
+    function showSyncNotice(isFinish) {
+      if (typeof showToast === 'function') {
+        showToast(isFinish ? '审阅已完成，结论已同步' : '审阅草稿已暂存');
+      }
     }
 
     function dispatchReviewResult(payload, isFinish) {
@@ -711,16 +697,16 @@ export function buildActionsScript(): string {
         } catch (e) {}
       }
 
-      // 6. Standalone tab closing or sync modal fallback
+      // 6. Standalone tab closing or quiet notice fallback
       if (!isEmbedded) {
         try {
           window.close();
         } catch (e) {}
         setTimeout(function() {
           if (!window.closed) {
-            showSyncCompleteModal(payload.summaryText, isFinish);
+            showSyncNotice(isFinish);
           }
-        }, 250);
+        }, 150);
       }
     }
 
@@ -755,6 +741,8 @@ export function buildActionsScript(): string {
         executionId: typeof currentExecutionId !== 'undefined' ? currentExecutionId : '',
         artifactId: typeof currentArtifactId !== 'undefined' ? currentArtifactId : '',
         sourceDocumentVersion: typeof currentSourceDocumentVersion !== 'undefined' ? currentSourceDocumentVersion : '',
+        sourceAttachmentId: typeof currentSourceAttachmentId !== 'undefined' ? currentSourceAttachmentId : '',
+        sourceDocumentHash: typeof currentSourceDocumentHash !== 'undefined' ? currentSourceDocumentHash : '',
         ruleSetId: typeof currentRuleSetId !== 'undefined' ? currentRuleSetId : 'contract-review/nda',
         ruleSetVersion: typeof currentRuleSetVersion !== 'undefined' ? currentRuleSetVersion : '1.0.0',
         ruleSetDigest: typeof currentRuleSetDigest !== 'undefined' ? currentRuleSetDigest : '',
@@ -764,6 +752,7 @@ export function buildActionsScript(): string {
         findingStates: Object.fromEntries(findingStates.entries()),
         approvalOpinions: rawApprovalOpinions,
         stats,
+        clauses: typeof allClauses !== 'undefined' ? allClauses : [],
         _timestamp: Date.now(),
       };
 
@@ -773,6 +762,8 @@ export function buildActionsScript(): string {
         executionId: reviewDraft.executionId,
         artifactId: reviewDraft.artifactId,
         sourceDocumentVersion: reviewDraft.sourceDocumentVersion,
+        sourceAttachmentId: reviewDraft.sourceAttachmentId,
+        sourceDocumentHash: reviewDraft.sourceDocumentHash,
         ruleSetDigest: reviewDraft.ruleSetDigest,
         summaryText,
         stats,
@@ -813,6 +804,8 @@ export function buildActionsScript(): string {
         executionId: typeof currentExecutionId !== 'undefined' ? currentExecutionId : '',
         artifactId: typeof currentArtifactId !== 'undefined' ? currentArtifactId : '',
         sourceDocumentVersion: typeof currentSourceDocumentVersion !== 'undefined' ? currentSourceDocumentVersion : '',
+        sourceAttachmentId: typeof currentSourceAttachmentId !== 'undefined' ? currentSourceAttachmentId : '',
+        sourceDocumentHash: typeof currentSourceDocumentHash !== 'undefined' ? currentSourceDocumentHash : '',
         ruleSetId: typeof currentRuleSetId !== 'undefined' ? currentRuleSetId : 'contract-review/nda',
         ruleSetVersion: typeof currentRuleSetVersion !== 'undefined' ? currentRuleSetVersion : '1.0.0',
         ruleSetDigest: typeof currentRuleSetDigest !== 'undefined' ? currentRuleSetDigest : '',
@@ -822,6 +815,7 @@ export function buildActionsScript(): string {
         findingStates: Object.fromEntries(findingStates.entries()),
         approvalOpinions: rawApprovalOpinions,
         stats,
+        clauses: typeof allClauses !== 'undefined' ? allClauses : [],
         _timestamp: Date.now(),
       };
 
@@ -831,6 +825,8 @@ export function buildActionsScript(): string {
         executionId: reviewDraft.executionId,
         artifactId: reviewDraft.artifactId,
         sourceDocumentVersion: reviewDraft.sourceDocumentVersion,
+        sourceAttachmentId: reviewDraft.sourceAttachmentId,
+        sourceDocumentHash: reviewDraft.sourceDocumentHash,
         ruleSetDigest: reviewDraft.ruleSetDigest,
         summaryText,
         stats,

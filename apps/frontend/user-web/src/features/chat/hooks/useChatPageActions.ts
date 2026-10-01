@@ -12,7 +12,7 @@ import {
   buildChatRequest,
   buildResumeExecutionRequest,
 } from '@chat-web/controller/chatRequestController';
-import { isWorkflowCommand, handleWorkflowNaturalLanguage } from '../lib/workflowNaturalLanguageRouter';
+import { isWorkflowCommand } from '../lib/workflowNaturalLanguageRouter';
 import { upsertMessage } from '../lib/messageState';
 import { summarizeSessionTitle } from '../lib/sessionView';
 import { getLatestWaitingInputExecutionId } from '../lib/taskStatus';
@@ -39,7 +39,10 @@ interface UseChatPageActionsOptions {
   runAssistantRequest: (
     session: ChatSession,
     request: ChatRequest,
-    assistantMessageId: string
+    assistantMessageId: string,
+    options?: {
+      workflowCommandContent?: string;
+    }
   ) => Promise<void>;
   selectedModel: string;
   selectedSession: ChatSession | null;
@@ -201,18 +204,14 @@ export function useChatPageActions({
         orchestratorMessage = taskBody ? `${rawWorkflow} ${taskBody}` : rawWorkflow;
       }
 
-      // 企业流程作为连接器：在后台预建组织工作流协同流转工单（如法务部合规把关审查），异步推进不阻塞真实技能执行流
-      void (async () => {
-        try {
-          const result = await handleWorkflowNaturalLanguage(content);
-          if (result?.coordinationTask) {
-            void queryClient.invalidateQueries(['user-web-notifications']);
-            void queryClient.invalidateQueries(['workbench-inbox-items']);
-          }
-        } catch (err: any) {
-          console.warn('[WorkflowRouter] Background coordination registration error:', err);
+      let workflowId = 'legal.nda.generation_and_review_flow';
+      if (/比对|对比|差异|红线/i.test(rawWorkflow)) {
+        workflowId = 'legal.contract.compare_flow';
+      } else if (!/保密|nda|生成保密合同/i.test(rawWorkflow) && !/保密|nda/i.test(taskBody)) {
+        if (/起草|生成|填报|合同|协议/i.test(rawWorkflow)) {
+          workflowId = 'legal.contract.review_flow';
         }
-      })();
+      }
 
       const request: ChatRequest = buildChatRequest({
         message: orchestratorMessage,
@@ -230,11 +229,25 @@ export function useChatPageActions({
         workspaceSearch: enableWorkspaceSearch,
       });
 
+      // 绑定组织工作流结构化上下文 (F1 驱动首阶段技能执行)
+      (request.config as any) = {
+        ...(request.config || {}),
+        taskContext: {
+          schemaVersion: 'task-context/v1',
+          workflowId,
+          stageId: 'draft_submission',
+          stageName: '业务初稿起草生成',
+          triggerType: 'workbench_coordination',
+        },
+      };
+
       if (pendingExecutionId) {
         setPendingExecutionId(null);
       }
 
-      void runAssistantRequest(session, request, assistantMessageId);
+      void runAssistantRequest(session, request, assistantMessageId, {
+        workflowCommandContent: content,
+      });
       return;
     }
 

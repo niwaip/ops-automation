@@ -17,6 +17,9 @@ import {
   DEFAULT_REMINDER_TIMEZONE,
   REMINDER_CAPABILITY_KEY,
 } from '../../reminders/reminder.constants';
+import { PrismaService } from '../../prisma/prisma.service';
+import { ExecutionOutboxService } from '../outbox/execution-outbox.service';
+import { randomUUID } from 'node:crypto';
 
 export function formatDocumentDomainError(err: any, serviceName = 'carbone-engine'): Error {
   const code = err.code || err.cause?.code;
@@ -57,7 +60,9 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
   constructor(
     private readonly ledger: OutboundEffectLedgerService,
     @Optional() private readonly reminders?: ReminderService,
-    @Optional() private readonly modelLedger?: ModelInvocationLedgerService
+    @Optional() private readonly modelLedger?: ModelInvocationLedgerService,
+    @Optional() private readonly prisma?: PrismaService,
+    @Optional() private readonly outbox?: ExecutionOutboxService
   ) {}
 
   onModuleInit() {
@@ -119,16 +124,202 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
 
     // 4. Platform Internal Notification Handler
     this.registerHandler('platform.notification.internal-message', async (req) => {
-      const recipientId = String(req.input?.recipientId || 'system');
-      const title = String(req.input?.title || 'Notification');
-      this.logger.log(`[BuiltinHandlerRegistryService] Sent notification to ${recipientId}: ${title}`);
+      const input = (req.input || {}) as Record<string, any>;
+      const metadata = (input.metadata || {}) as Record<string, any>;
+      const taskContext = (input.taskContext || {}) as Record<string, any>;
+
+      const rawRecipientId = String(input.recipientId || input.recipient || metadata.recipientId || '').trim();
+      const rawRecipientUsername = String(input.recipientUsername || metadata.recipientUsername || '').trim();
+      const title = String(input.title || metadata.title || '通知消息').trim();
+      const message = String(input.message || input.content || title).trim();
+
+      // Resolve attachments from all potential sources
+      let attachments: any[] = [];
+      if (Array.isArray(input.attachments) && input.attachments.length > 0) {
+        attachments = [...input.attachments];
+      } else if (Array.isArray(taskContext.attachments) && taskContext.attachments.length > 0) {
+        attachments = [...taskContext.attachments];
+      } else if (Array.isArray(metadata.attachments) && metadata.attachments.length > 0) {
+        attachments = [...metadata.attachments];
+      }
+
+      // If downloadUrl (e.g. generated PDF) is present and not yet in attachments, ensure it's included
+      const downloadUrl = input.downloadUrl || metadata.downloadUrl || taskContext.downloadUrl;
+      if (downloadUrl && !attachments.some((a: any) => (a?.url || a?.downloadUrl) === downloadUrl)) {
+        attachments.unshift({
+          name: `${input.contractTitle || metadata.contractTitle || '终审合同'}.pdf`,
+          url: downloadUrl,
+          downloadUrl,
+          sha256: input.sha256 || metadata.sha256,
+          mimeType: 'application/pdf',
+        });
+      }
+
+      const trackingNumber =
+        input.trackingNumber || metadata.trackingNumber || taskContext.trackingNumber;
+      const canonicalTaskId =
+        input.taskId || taskContext.taskId || metadata.taskId || req.executionId;
+      const workflowId =
+        input.workflowId || taskContext.workflowId || metadata.workflowId;
+      const stageId =
+        input.stageId || taskContext.stageId || metadata.stageId || 'final_receipt';
+      const reviewSummary =
+        input.reviewSummary || metadata.reviewSummary || taskContext.reviewSummary;
+
+      this.logger.log(
+        `[BuiltinHandlerRegistryService] Delivering internal notification: "${title}" (recipientId: "${rawRecipientId}", recipientUser: "${rawRecipientUsername}", taskId: "${canonicalTaskId}")`
+      );
+
+      let targetUser: any = null;
+      if (this.prisma) {
+        if (
+          rawRecipientId &&
+          /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+            rawRecipientId
+          )
+        ) {
+          targetUser = await this.prisma.user.findUnique({
+            where: { id: rawRecipientId },
+          });
+        }
+        if (!targetUser && rawRecipientUsername) {
+          targetUser = await this.prisma.user.findFirst({
+            where: { username: rawRecipientUsername },
+          });
+        }
+        if (!targetUser && rawRecipientId && rawRecipientId !== 'system') {
+          targetUser = await this.prisma.user.findFirst({
+            where: { username: rawRecipientId },
+          });
+        }
+      }
+
+      if (!targetUser) {
+        this.logger.error(
+          `[BuiltinHandlerRegistryService] Target recipient user not found (id: "${rawRecipientId}", username: "${rawRecipientUsername}")`
+        );
+        throw new Error(
+          `内部消息投递失败：未在组织用户库中检索到接收人 [${
+            rawRecipientUsername || rawRecipientId || '未知'
+          }]，流转阻断`
+        );
+      }
+
+      const orgId =
+        input.orgId || taskContext.orgId || metadata.orgId || (req as any).orgId || targetUser.organizationId;
+
+      const effectiveSha256 =
+        input.sha256 ||
+        metadata.sha256 ||
+        attachments.find((a: any) => a.sha256 || a.metadata?.sha256)?.sha256 ||
+        attachments.find((a: any) => a.metadata?.sha256)?.metadata?.sha256;
+      const effectiveDownloadUrl =
+        downloadUrl ||
+        input.downloadUrl ||
+        metadata.downloadUrl ||
+        attachments.find((a: any) => a.downloadUrl || a.url)?.downloadUrl ||
+        attachments.find((a: any) => a.url)?.url;
+
+      const receiptPayload = {
+        taskId: canonicalTaskId,
+        taskType: 'receipt',
+        isReceipt: true,
+        workflowId,
+        orgId,
+        currentStage: stageId,
+        status: 'completed',
+        attachments,
+        trackingNumber,
+        reviewSummary,
+        externalSyncResult: {
+          success: true,
+          trackingNumber,
+          sha256: effectiveSha256,
+          downloadUrl: effectiveDownloadUrl,
+          externalSystem: '法务电子合同库 & 存证归档中心',
+          digitalProof: input.digitalProof || {
+            trackingNumber,
+            sha256: effectiveSha256,
+            downloadUrl: effectiveDownloadUrl,
+          },
+          attachments,
+        },
+        metadata: {
+          ...metadata,
+          ...taskContext,
+          orgId,
+          workflowId,
+          taskId: canonicalTaskId,
+          trackingNumber,
+          reviewSummary,
+          sha256: effectiveSha256,
+          downloadUrl: effectiveDownloadUrl,
+        },
+      };
+
+      let persistentId: string = randomUUID();
+      const deliveryStatus = 'delivered';
+
+      if (this.prisma) {
+        // 在同一事务中同时创建收件箱项与 Outbox 事件
+        await this.prisma.$transaction(async (tx) => {
+          const inboxItem = await tx.workbenchInboxItem.create({
+            data: {
+              id: persistentId,
+              userId: targetUser.id,
+              title,
+              rawContent: message,
+              sourceType: 'chat' as any,
+              sourceRefId: canonicalTaskId,
+              sourceTitle: metadata.contractTitle || input.contractTitle || title,
+              sourceSender: metadata.operator?.username || input.recipientUsername || '协同中心',
+              unifiedPayload: receiptPayload as any,
+              status: 'unprocessed' as any,
+              confidence: 1.0,
+            },
+          });
+          persistentId = inboxItem.id;
+
+          if (this.outbox) {
+            await this.outbox.enqueue(
+              {
+                aggregateType: 'notification',
+                aggregateId: persistentId,
+                eventType: 'notification.internal_message.delivered',
+                payload: {
+                  notificationId: persistentId,
+                  recipientId: targetUser.id,
+                  recipientUsername: targetUser.username,
+                  title,
+                  deliveryStatus: 'delivered',
+                  deliveredAt: new Date().toISOString(),
+                  taskId: canonicalTaskId,
+                  workflowId,
+                  orgId,
+                  executionId: req.executionId,
+                  attachments,
+                  trackingNumber,
+                },
+              },
+              tx as any
+            );
+          }
+        });
+      }
+
       return {
         success: true,
         output: {
-          notificationId: `notif_${Date.now()}`,
+          notificationId: persistentId,
+          deliveryStatus,
           deliveredAt: new Date().toISOString(),
-          recipientId,
+          recipientId: targetUser.id,
+          recipientUsername: targetUser.username,
           title,
+          taskId: canonicalTaskId,
+          workflowId,
+          orgId,
+          attachments,
         },
       };
     });

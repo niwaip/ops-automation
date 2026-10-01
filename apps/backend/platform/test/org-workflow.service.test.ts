@@ -69,6 +69,8 @@ describe('OrgWorkflowService', () => {
         { id: 'skill-1', name: '邮件通知派发器', category: 'notification', description: '邮件通知' },
       ]),
     },
+    $executeRawUnsafe: jest.fn().mockResolvedValue(1),
+    $queryRawUnsafe: jest.fn().mockResolvedValue([]),
   };
 
   beforeEach(async () => {
@@ -299,5 +301,32 @@ describe('OrgWorkflowService', () => {
     expect(browserDraft.browserConfig?.paramMappings.length).toBeGreaterThan(0);
     expect(browserDraft.workflowDsl).toBeDefined();
     expect(browserDraft.generatedCode).toContain('@workflow.defn');
+  });
+
+  it('should delete workflow and not re-seed when listAdminWorkflows is called', async () => {
+    // 初始有 2 个工作流
+    const initial = await service.listAdminWorkflows();
+    expect(initial.workflows.some((w) => w.id === 'legal.contract.review_flow')).toBe(true);
+    expect(initial.stats.total).toBe(2);
+
+    // 删除 legal.contract.review_flow
+    await service.deleteWorkflow('legal.contract.review_flow');
+
+    // 验证 getWorkflowById 返回 null
+    expect(service.getWorkflowById('legal.contract.review_flow')).toBeNull();
+
+    // 验证 listAdminWorkflows 不再包含，且统计正确
+    const afterDelete = await service.listAdminWorkflows();
+    expect(afterDelete.workflows.some((w) => w.id === 'legal.contract.review_flow')).toBe(false);
+    expect(afterDelete.stats.total).toBe(1);
+    expect(afterDelete.stats.publishedCount).toBe(1);
+
+    // 再次调用 listAdminWorkflows 和 listCatalogForUser，验证绝不复活
+    const secondCheck = await service.listAdminWorkflows();
+    expect(secondCheck.workflows.some((w) => w.id === 'legal.contract.review_flow')).toBe(false);
+    expect(secondCheck.stats.total).toBe(1);
+
+    const userCatalog = await service.listCatalogForUser('user-admin');
+    expect(userCatalog.some((w) => w.id === 'legal.contract.review_flow')).toBe(false);
   });
 });

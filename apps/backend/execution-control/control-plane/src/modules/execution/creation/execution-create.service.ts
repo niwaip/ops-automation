@@ -179,8 +179,17 @@ export class ExecutionCreateService {
       }
     );
 
+    const resolvedTriggerType =
+      dto.triggerType ||
+      (dto.input as any)?.triggerType ||
+      (dto.metadata as any)?.triggerType ||
+      (dto.metadata as any)?.taskContext?.triggerType ||
+      (dto.input as any)?.taskContext?.triggerType ||
+      undefined;
+
     const resolvedDto: CreateExecutionDto = {
       ...dto,
+      triggerType: resolvedTriggerType,
       skillId: resolvedSkillId,
       capabilityId: dto.capabilityId || resolvedSkillId,
       skillVersion: resolvedSkillVersion,
@@ -319,8 +328,10 @@ export class ExecutionCreateService {
     const requiresApproval = enforceRiskV2
       ? riskEvaluation?.requiresApproval || false
       : planDraft?.risk_summary.requires_human_review || false;
+    const effectiveOrgId = await this.resolveEffectiveOrgId(userId, resolvedDto);
     const execution = await this.prisma.execution.create({
       data: {
+        orgId: effectiveOrgId,
         createdBy: isUuid(userId) ? userId : '00000000-0000-0000-0000-000000000000',
         // executions.skill_id is a legacy FK-shaped UUID column. Built-in
         // capabilities use stable string keys (for example
@@ -620,9 +631,19 @@ export class ExecutionCreateService {
     const effectiveSkillVersion =
       dto.skillVersion || dto.capabilityVersion || (firstSkillNode as any)?.skillVersion || null;
 
+    const effectiveOrgId = await this.resolveEffectiveOrgId(userId, dto);
+    const resolvedTriggerType =
+      dto.triggerType ||
+      (dto.input as any)?.triggerType ||
+      (dto.metadata as any)?.triggerType ||
+      (dto.metadata as any)?.taskContext?.triggerType ||
+      (dto.input as any)?.taskContext?.triggerType ||
+      null;
+
     await this.prisma.$transaction(async (tx) => {
       const created = await tx.execution.create({
         data: {
+          orgId: effectiveOrgId,
           createdBy: isUuid(userId) ? userId : '00000000-0000-0000-0000-000000000000',
           skillId: isUuid(dto.skillId || dto.capabilityId || '')
             ? dto.skillId || dto.capabilityId
@@ -640,7 +661,7 @@ export class ExecutionCreateService {
           riskLevel: enforceRiskV2 && riskEvaluation ? riskEvaluation.riskLevel : 'L0',
           requiresApproval,
           approvalStatus: requiresApproval ? APPROVAL_STATUS.PENDING : APPROVAL_STATUS.NOT_REQUIRED,
-          triggerType: dto.triggerType,
+          triggerType: resolvedTriggerType,
           scheduleId: dto.scheduleId,
         },
       });
@@ -720,5 +741,52 @@ export class ExecutionCreateService {
     }
 
     return hooks.getExecutionDto(createdExecutionId);
+  }
+
+  private async resolveEffectiveOrgId(
+    userId: string,
+    dto: CreateExecutionDto
+  ): Promise<string | null> {
+    const candidate =
+      dto.orgId ||
+      (dto as any)?.organizationId ||
+      (dto.input as any)?.orgId ||
+      (dto.input as any)?.organizationId ||
+      (dto.input as any)?.metadata?.orgId ||
+      (dto.metadata as any)?.orgId ||
+      (dto.metadata as any)?.taskContext?.orgId;
+
+    if (isUuid(userId) && userId !== 'system') {
+      try {
+        if (candidate && isUuid(String(candidate))) {
+          const verified = await this.prisma.orgMembership.findFirst({
+            where: { userId, orgId: String(candidate) },
+            select: { orgId: true },
+          });
+          if (verified?.orgId) {
+            return verified.orgId;
+          }
+          this.logger.warn(
+            `User ${userId} requested unauthorized orgId ${candidate}. Falling back to user membership.`
+          );
+        }
+
+        const membership = await this.prisma.orgMembership.findFirst({
+          where: { userId },
+          select: { orgId: true },
+        });
+        if (membership?.orgId) {
+          return membership.orgId;
+        }
+      } catch (err: any) {
+        this.logger.warn(`Failed to verify org membership for user ${userId}: ${err.message}`);
+      }
+    }
+
+    if (candidate && isUuid(String(candidate))) {
+      return String(candidate);
+    }
+
+    return null;
   }
 }

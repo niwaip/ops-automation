@@ -44,6 +44,9 @@ export interface ReviewEngineInput {
   prompt?: string;
   reviewPrompt?: string;
   skipLlmReview?: boolean;
+  sourceAttachmentId?: string;
+  sourceDocumentHash?: string;
+  sourceDocumentVersion?: string;
 }
 
 export interface ReviewEngineResult {
@@ -264,6 +267,10 @@ export class ContractReviewEngineService {
       fileName,
       fullText,
       sourceDocumentVersion,
+      sourceAttachmentId: (input as any)?.sourceAttachmentId,
+      sourceDocumentHash:
+        (input as any)?.sourceDocumentHash ||
+        (sourceDocumentVersion ? sourceDocumentVersion.replace(/^sha256:/, '') : undefined),
       parsedClauses,
       availableRules,
       missingClauses,

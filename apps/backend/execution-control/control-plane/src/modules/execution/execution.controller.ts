@@ -50,6 +50,9 @@ export class ExecutionController {
     @Req() req: AuthenticatedRequest
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
+    if (!dto.orgId && req.user?.organizationId) {
+      dto.orgId = req.user.organizationId;
+    }
     const planNodes = Array.isArray((dto.deterministicPlan as any)?.nodes)
       ? (dto.deterministicPlan as any).nodes
       : [];

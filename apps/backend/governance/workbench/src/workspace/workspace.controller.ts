@@ -148,7 +148,9 @@ export class WorkspaceController {
   async getNodes(
     @Request() req: any,
     @Param('workspaceId') workspaceId: string,
-    @Query('parentId') parentId?: string
+    @Query('parentId') parentId?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('order') order?: 'asc' | 'desc'
   ) {
     const { userId, departmentId, userRoles } = this.extractAuth(req);
     return await this.workspaceService.getNodes(
@@ -156,7 +158,9 @@ export class WorkspaceController {
       parentId,
       userId,
       userRoles,
-      departmentId
+      departmentId,
+      sortBy,
+      order
     );
   }
 
