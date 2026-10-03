@@ -41,11 +41,41 @@ export async function collectEnrichedActivities(
     enrichedActivities.push(activity);
   };
 
+  const globalVariableReaders: Record<string, { selector: string; method?: string }> = {};
+  for (const act of activityDsl.activities) {
+    const steps = Array.isArray(act.config?.steps) ? act.config.steps : [];
+    for (const s of steps) {
+      const cfg = s.config || {};
+      const outputVar = s.output_var || cfg.output_var || cfg.outputVar;
+      const selector = cfg.selector || cfg.target || cfg.locator?.value;
+      if (outputVar && selector) {
+        globalVariableReaders[String(outputVar).trim()] = {
+          selector: String(selector).trim(),
+          method: cfg.method || 'textContent',
+        };
+      }
+    }
+  }
+
   for (const activity of activityDsl.activities) {
+    if (
+      Object.keys(globalVariableReaders).length > 0 &&
+      activity.config &&
+      !activity.config.variableReaders
+    ) {
+      activity.config.variableReaders = globalVariableReaders;
+    }
     const enriched = await activityResolutionService.enrichActivityDefinition(
       activity,
       createActivityResolutionSupport()
     );
+    if (
+      Object.keys(globalVariableReaders).length > 0 &&
+      enriched.config &&
+      !enriched.config.variableReaders
+    ) {
+      enriched.config.variableReaders = globalVariableReaders;
+    }
     if (enriched.handler === 'browser') {
       enriched.generatedCode =
         buildDeterministicActivityCode(enriched) || enriched.generatedCode || undefined;

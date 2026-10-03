@@ -144,7 +144,7 @@ export class SkillController {
    */
   @Get()
   async listSkills(@Request() req: any): Promise<{ skills: SkillConfigDto[] }> {
-    const userId = req.user.id;
+    const userId = req.user?.id || (req.headers?.['x-user-id'] as string);
     // 只返回用户有权限访问的 Skills
     const skills = await this.skillService.listSkillsForUser(userId);
     return { skills };
@@ -152,7 +152,7 @@ export class SkillController {
 
   @Get('catalog')
   async listPublishedSkillCatalog(@Request() req: any) {
-    const userId = req.user.id;
+    const userId = req.user?.id || (req.headers?.['x-user-id'] as string);
     const skills = await this.skillService.listPublishedSkillCatalogForUser(userId);
 
     if (this.builtinSkillRegistryService) {
@@ -270,6 +270,15 @@ export class SkillController {
       body?.responseNote
     );
     return { request };
+  }
+
+  @Post('compile-routing')
+  @Roles('admin')
+  async compileSkillRouting(
+    @Body() body?: { userId?: string; useAi?: boolean; modelId?: string }
+  ) {
+    const compiled = await this.skillService.compileSkillRouting(body);
+    return { compiled };
   }
 
   /**

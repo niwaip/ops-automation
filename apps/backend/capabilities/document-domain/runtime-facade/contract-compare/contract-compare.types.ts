@@ -26,6 +26,18 @@ export interface DocumentBlock {
   html?: string;
 }
 
+export interface DocxCommentItem {
+  id: string; // OpenXML w:id
+  author: string; // w:author
+  date?: string; // w:date ISO timestamp
+  initials?: string; // w:initials
+  text: string; // comment content
+  selectedText?: string; // the contract text highlighted by commentRange
+  clauseIndex?: number; // matched clause index
+  clauseNumber?: string;
+  isResolved?: boolean; // w15:done="1"
+}
+
 export interface ContractClauseNode {
   id: string;
   clauseNumber: string;
@@ -36,6 +48,7 @@ export interface ContractClauseNode {
   chapterNumber?: string;
   chapterTitle?: string;
   blocks?: DocumentBlock[];
+  comments?: DocxCommentItem[];
 }
 
 export interface ClauseAiInsight {
@@ -87,6 +100,7 @@ export interface DocumentAstMetadata {
 export interface ContractAstParseResult {
   clauses: ContractClauseNode[];
   metadata: DocumentAstMetadata;
+  comments?: DocxCommentItem[];
 }
 
 export interface ContractCompareMetrics {
@@ -120,3 +134,32 @@ export interface BuiltinContractCompareInvokeDto {
   idempotencyKey?: string;
   input: ContractCompareInput;
 }
+
+export interface ContractDiffOutput {
+  fileNameA: string;
+  fileNameB: string;
+  alignedClauses: AlignedClausePair[];
+  metrics: ContractCompareMetrics;
+  sourceClauseCount: number;
+  targetClauseCount: number;
+  isTruncated: boolean;
+  warnings?: string[];
+}
+
+export interface ContractRenderCompareReportInput {
+  fileNameA?: string;
+  fileNameB?: string;
+  metrics?: ContractCompareMetrics;
+  alignedClauses: AlignedClausePair[];
+  idempotencyKey?: string;
+}
+
+export interface BuiltinContractCompareDiffDto extends BuiltinContractCompareInvokeDto {}
+
+export interface BuiltinContractCompareRenderDto {
+  executionId?: string;
+  stepId?: string;
+  idempotencyKey?: string;
+  input: ContractRenderCompareReportInput;
+}
+

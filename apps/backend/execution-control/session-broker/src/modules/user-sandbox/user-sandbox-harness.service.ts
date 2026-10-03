@@ -22,7 +22,7 @@ const MAX_SANDBOX_OUTPUT_BYTES = 1024 * 1024; // 1MB 硬上限，防止进程大
 export type SandboxExecutorFn = (
   userId: string,
   cmd: string | string[],
-  options?: { timeoutMs?: number; workDir?: string; onStdoutChunk?: (chunk: string) => void }
+  options?: { timeoutMs?: number; workDir?: string; env?: string[]; onStdoutChunk?: (chunk: string) => void }
 ) => Promise<UserSandboxExecResult>;
 
 @Injectable()
@@ -41,7 +41,7 @@ export class UserSandboxHarnessService {
   async executeInSandbox(
     userId: string,
     cmd: string | string[],
-    options?: { timeoutMs?: number; workDir?: string; onStdoutChunk?: (chunk: string) => void }
+    options?: { timeoutMs?: number; workDir?: string; env?: string[]; onStdoutChunk?: (chunk: string) => void }
   ): Promise<UserSandboxExecResult> {
     const sanitizedUserId = this.storageService.sanitizeUserId(userId);
     const startTime = Date.now();
@@ -57,12 +57,19 @@ export class UserSandboxHarnessService {
     const commandArray = Array.isArray(cmd) ? cmd : ['bash', '-c', cmd];
     this.logger.log(`Executing in sandbox [${containerName}]: ${JSON.stringify(commandArray)}`);
 
+    // 动态生成并注入最新有效的虚拟凭证，彻底杜绝长周期容器因 Token 过期报 401
+    const runtimeEnv = this.containerService.getExecutionEnvironment(sanitizedUserId);
+    const mergedEnv = options?.env && options.env.length > 0
+      ? [...runtimeEnv, ...options.env]
+      : runtimeEnv;
+
     const exec = await container.exec({
       Cmd: commandArray,
       AttachStdout: true,
       AttachStderr: true,
       User: 'sandbox',
       WorkingDir: options?.workDir || '/workspace',
+      Env: mergedEnv,
     });
 
     const timeoutMs = options?.timeoutMs || 300000;

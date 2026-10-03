@@ -80,6 +80,9 @@ mock_temporalio.activity.info = mock_activity.info
 mock_temporalio.exceptions.ApplicationError = MockApplicationError
 
 class MockWorkflow:
+    def __init__(self):
+        self.active_instance = None
+        self.input_data = {}
     def defn(self, *args, **kwargs):
         if len(args) == 1 and (callable(args[0]) or isinstance(args[0], type)): return args[0]
         return lambda x: x
@@ -117,7 +120,34 @@ class MockWorkflow:
                 print(f"[Sandbox] Activity {act_name} failed: {str(e)}", flush=True)
                 raise e
         return {"status": "success", "mocked": True}
-    async def wait_condition(self, *args, **kwargs): return True
+    def info(self): return MockWorkflowInfo()
+    async def wait_condition(self, *args, **kwargs):
+        condition_fn = args[0] if args else kwargs.get('condition')
+        if callable(condition_fn) and condition_fn():
+            return True
+        simulated = self.input_data.get('simulatedTakeover') or self.input_data.get('simulated_takeover')
+        if simulated and self.active_instance and hasattr(self.active_instance, 'resume_takeover'):
+            payload = {}
+            if isinstance(simulated, list) and len(simulated) > 0:
+                payload = simulated.pop(0)
+            elif isinstance(simulated, dict):
+                payload = simulated
+            res = self.active_instance.resume_takeover(payload)
+            if asyncio.iscoroutine(res):
+                await res
+            if callable(condition_fn):
+                return bool(condition_fn())
+            return True
+        return False
+
+class MockWorkflowInfo:
+    def __init__(self):
+        self.workflow_id = 'sandbox-workflow-id'
+        self.run_id = 'sandbox-workflow-run-id'
+        self.workflow_type = 'AgentSessionWorkflow'
+        self.task_queue = 'sandbox-worker-task-queue'
+        self.namespace = 'default'
+        self.attempt = 1
 
 mock_workflow = MockWorkflow()
 mock_temporalio.workflow.defn = mock_workflow.defn
@@ -127,6 +157,7 @@ mock_temporalio.workflow.query = mock_workflow.query
 mock_temporalio.workflow.logger = mock_workflow.logger
 mock_temporalio.workflow.execute_activity = mock_workflow.execute_activity
 mock_temporalio.workflow.wait_condition = mock_workflow.wait_condition
+mock_temporalio.workflow.info = mock_workflow.info
 _retry_policy_class = lambda **kw: type('RetryPolicy', (), {k: v for k, v in kw.items()})()
 mock_temporalio.workflow.RetryPolicy = _retry_policy_class
 mock_temporalio.common.RetryPolicy = _retry_policy_class
@@ -172,6 +203,8 @@ class MockResponse:
         self.reason = reason or ''
         self.exceptions_source = exceptions_source
     def json(self): return json.loads(self.text)
+    @property
+    def ok(self): return 400 > self.status >= 200
     def raise_for_status(self):
         if self.status >= 400:
             body_preview = (self.text or '').strip().replace('\n', ' ')[:300]
@@ -329,8 +362,10 @@ try:
         sys.exit(1)
 
     result = None
+    mock_workflow.input_data = input_data if isinstance(input_data, dict) else {}
     if isinstance(target, type):
         instance = target()
+        mock_workflow.active_instance = instance
         result = instance.run(input_data) if hasattr(instance, 'run') else None
     else:
         try: result = target(input_data)

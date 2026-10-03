@@ -48,6 +48,8 @@ export interface StageTransitionResult {
   rollbackStageId?: string;
   failedStageName?: string;
   failureReason?: string;
+  error?: string;
+  isTerminal?: boolean;
 }
 
 @Injectable()
@@ -274,7 +276,7 @@ export class CoordinationStageEngineService {
             workflowId: workflow.workflowId,
             currentStage: rollbackStageId,
             previousStage: currentStageId,
-            parameters: params,
+            parameters: { ...(params || {}), currentStage: rollbackStageId },
             taskType: CoordinationTaskType.approval,
             status: CoordinationTaskStatus.pending,
             priority: payload.priority || CoordinationTaskPriority.medium,
@@ -319,6 +321,12 @@ export class CoordinationStageEngineService {
             success: false,
             rollbackTarget: rollbackStageId,
             rollbackAssignee: rollbackAssigneeName,
+            rollbackAssigneeId: rollbackAssigneeId,
+            rollbackAssigneeObject: {
+              id: rollbackAssigneeId,
+              username: rollbackAssigneeName,
+              email: rollbackAssignee.email,
+            },
             message: `${currentStageDef.name}提出修订意见，流程已回退至「${rollbackStage?.name || rollbackStageId}」(@${rollbackAssigneeName})，请根据批注调整后重新提交。`,
           },
           nextInboxItemData,
@@ -334,6 +342,12 @@ export class CoordinationStageEngineService {
             success: false,
             rollbackTarget: 'draft_submission',
             rollbackAssignee: rollbackAssigneeName,
+            rollbackAssigneeId: initiator.id,
+            rollbackAssigneeObject: {
+              id: initiator.id,
+              username: rollbackAssigneeName,
+              email: initiator.email,
+            },
             message: `${currentStageDef.name}提出修订意见，流程已退回至发起人(@${rollbackAssigneeName})，请根据批注修改后重新提单。`,
           },
         };
@@ -477,24 +491,30 @@ export class CoordinationStageEngineService {
           .filter(Boolean)
           .join('\n');
 
+        const inheritedOrgId = payload.orgId || (initiator as any)?.orgId || (nextAssignee as any)?.orgId || null;
         const nextTaskId = `coord_${randomUUID()}`;
         const nextPayload = {
           kind: 'coordination',
           taskId: nextTaskId,
           workflowId: workflow.workflowId,
+          orgId: inheritedOrgId,
           currentStage: nextHumanStage.id,
           previousStage: currentStageId,
-          parameters: params,
+          parameters: { ...(params || {}), currentStage: nextHumanStage.id },
           reviewReport: latestAuto || undefined,
           executionId: latestAuto?.executionId || undefined,
           taskType: CoordinationTaskType.approval,
           status: CoordinationTaskStatus.pending,
           priority: payload.priority || CoordinationTaskPriority.medium,
-          initiator,
+          initiator: {
+            ...initiator,
+            orgId: (initiator as any)?.orgId || inheritedOrgId,
+          },
           assignee: {
             id: nextAssigneeId,
             username: nextAssigneeName,
             email: nextAssignee.email,
+            orgId: (nextAssignee as any)?.orgId || inheritedOrgId,
           },
           attachments: activeAttachments,
           isCardTemplate: Boolean(payload.isCardTemplate),
@@ -508,6 +528,7 @@ export class CoordinationStageEngineService {
             replacedFileName,
             replacedFileUrl,
             executionId: latestAuto?.executionId,
+            orgId: inheritedOrgId,
           },
           createdAt: new Date().toISOString(),
         };
@@ -558,14 +579,81 @@ export class CoordinationStageEngineService {
 
       // 情况 B: 已到达归档/办结阶段 (Reached Archive Stage or End)
       const trackingNumber = `${(workflow.category || 'LEGAL').toUpperCase()}-ARC-${Date.now().toString().slice(-6)}`;
+      const latestAuto =
+        automationReports.length > 0
+          ? automationReports[automationReports.length - 1]
+          : null;
+      const pdfArtifact = latestAuto?.artifacts?.[0];
+      const effectiveAttachment = pdfArtifact || activeAttachments[0];
+
+      // 核心闭环：若工作流配置了归档/回执通知阶段 (Stage 6: final_receipt)，执行真实通知技能并固化凭证
+      const targetArchiveStage = archiveStage || stages.find((s) => s.type === 'archive' || s.id === 'final_receipt');
+      let receiptReport: any = null;
+      if (targetArchiveStage) {
+        const receiptParams = {
+          ...params,
+          trackingNumber,
+          archiveId: `ARC_${Date.now()}`,
+          downloadUrl: pdfArtifact?.downloadUrl || pdfArtifact?.url || latestAuto?.downloadUrl,
+          sha256: pdfArtifact?.sha256 || latestAuto?.sha256,
+          pdfArtifact: effectiveAttachment,
+          recipientId: initiator?.id || operator?.id,
+          recipientUsername: initiator?.username || operator?.username,
+          title: `[协同回执] ${sourceTitle} 已终审通过并归档`,
+          contractTitle: params.contractTitle || targetItem.sourceTitle || sourceTitle,
+        };
+
+        const receiptAutoRes = await this.evaluateAutomationStageWithRetry(
+          targetArchiveStage,
+          receiptParams,
+          {
+            prisma,
+            operator,
+            initiator,
+            targetItem,
+            workflow,
+            payload,
+            activeAttachments: effectiveAttachment ? [effectiveAttachment, ...activeAttachments] : activeAttachments,
+          },
+          3
+        );
+        if (receiptAutoRes.success && receiptAutoRes.report) {
+          receiptReport = receiptAutoRes.report;
+          automationReports.push(receiptReport);
+        } else {
+          this.logger.error(
+            `Receipt notification stage (${targetArchiveStage.id}) failed after retries: ${receiptAutoRes.error}`
+          );
+          return {
+            handled: false,
+            nextStatus: CoordinationTaskStatus.in_progress,
+            actionText: '办结回执通知阶段执行失败',
+            externalSyncResult: {
+              success: false,
+              error: receiptAutoRes.error || '办结回执通知阶段执行失败，已阻断终审办结',
+            },
+            failureReason: receiptAutoRes.error || '办结回执通知阶段执行失败，已阻断终审办结',
+            error: receiptAutoRes.error || '办结回执通知阶段执行失败，已阻断终审办结',
+            isTerminal: false,
+          };
+        }
+      }
+
       return {
         handled: true,
-        nextStatus,
+        nextStatus: CoordinationTaskStatus.completed,
+        isTerminal: true,
         actionText: '终审通过并归档',
         externalSyncResult: {
           success: true,
-          currentStage: archiveStage?.id || 'archive',
+          currentStage: 'final_receipt',
+          isTerminal: true,
           trackingNumber,
+          pdfArtifact,
+          artifacts: latestAuto?.artifacts || activeAttachments,
+          receiptExecutionId: receiptReport?.executionId,
+          downloadUrl: pdfArtifact?.downloadUrl || pdfArtifact?.url || latestAuto?.downloadUrl,
+          sha256: pdfArtifact?.sha256 || latestAuto?.sha256,
           externalSystem: isLegal
             ? '法务电子合同库 & 存证归档中心'
             : '统一电子文档存证与归档中心',
@@ -579,7 +667,12 @@ export class CoordinationStageEngineService {
             contractTitle: params.contractTitle || targetItem.sourceTitle || sourceTitle,
             contractType: params.contractType || 'nda',
             counterpartyName: params.counterpartyName,
-            activeAttachment: activeAttachments[0],
+            activeAttachment: effectiveAttachment,
+            pdfArtifact: pdfArtifact || undefined,
+            downloadUrl: pdfArtifact?.downloadUrl || pdfArtifact?.url || latestAuto?.downloadUrl,
+            sha256: pdfArtifact?.sha256 || latestAuto?.sha256,
+            artifacts: latestAuto?.artifacts || activeAttachments,
+            receiptExecutionId: receiptReport?.executionId,
             archivedAt: new Date().toISOString(),
           },
         },
@@ -667,7 +760,9 @@ export class CoordinationStageEngineService {
       stage.capabilityId ||
       stage.workflowId ||
       matchedAssembled?.refId ||
-      (stageId.includes('archive') || stageId.includes('pdf') || stageName.includes('归档')
+      (stageId.includes('receipt') || stageName.includes('回执') || stageName.includes('通知') || stage.type === 'archive'
+        ? 'platform.notification.internal-message'
+        : stageId.includes('archive') || stageId.includes('pdf') || stageName.includes('归档')
         ? 'platform.document.pdf-create'
         : stageId.includes('compare') || stageName.includes('比对')
         ? 'platform.document.contract-comparator'
@@ -676,7 +771,9 @@ export class CoordinationStageEngineService {
     const capabilityName =
       matchedAssembled?.name ||
       stageName ||
-      (capabilityRefId.includes('reviewer') || capabilityRefId.includes('review')
+      (capabilityRefId.includes('notification') || capabilityRefId.includes('message')
+        ? '流转凭证与回执通知'
+        : capabilityRefId.includes('reviewer') || capabilityRefId.includes('review')
         ? '合同文档智能审查与合规诊断'
         : capabilityRefId.includes('comparator') || capabilityRefId.includes('compare')
         ? '合同版本智能比对与差异分析'

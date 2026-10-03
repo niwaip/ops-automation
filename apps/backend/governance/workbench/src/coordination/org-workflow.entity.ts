@@ -55,6 +55,7 @@ export interface WorkflowParamsSchema {
 export interface OrganizationWorkflowDefinition {
   id: string;
   workflowId: string;
+  orgId?: string;
   name: string;
   description: string;
   category: string;
@@ -94,6 +95,7 @@ export interface OrgWorkflowCatalogItemDto extends OrganizationWorkflowDefinitio
 
 export interface CreateOrgWorkflowDto {
   workflowId: string;
+  orgId?: string;
   name: string;
   description: string;
   category?: string;
@@ -110,6 +112,7 @@ export interface CreateOrgWorkflowDto {
 }
 
 export interface UpdateOrgWorkflowDto {
+  orgId?: string;
   name?: string;
   description?: string;
   category?: string;

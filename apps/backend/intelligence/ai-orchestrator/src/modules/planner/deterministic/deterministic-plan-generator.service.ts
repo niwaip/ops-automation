@@ -23,6 +23,7 @@ import {
   createBuiltinRoutingPolicySnapshot,
   hasRoutingSignal,
   matchesCapabilityRole,
+  stripSystemContext,
 } from '../routing/routing-policy.matcher';
 import { RoutingPolicyService } from '../routing/routing-policy.service';
 import type {
@@ -72,11 +73,12 @@ export class DeterministicPlanGeneratorService {
   public async generatePlan(
     dto: GenerateDeterministicPlanRequestDto
   ): Promise<DeterministicPlanDraftV1> {
+    const cleanUserRequest = stripSystemContext(dto.userRequest) || dto.userRequest;
     let availableSkills = dto.availableSkills;
     if ((!availableSkills || availableSkills.length === 0) && this.skillCacheService) {
       const webSearchEnabled =
-        hasRoutingSignal(dto.userRequest, 'search', createBuiltinRoutingPolicySnapshot()) ||
-        /(?:^|[^a-zA-Z0-9])(?:请?帮我)?(?:搜索|联网搜索|全网搜索|检索|搜一下|查一下|查找|查询|搜搜|查查)/i.test(dto.userRequest);
+        hasRoutingSignal(cleanUserRequest, 'search', createBuiltinRoutingPolicySnapshot()) ||
+        /(?:^|[^a-zA-Z0-9])(?:请?帮我)?(?:搜索|联网搜索|全网搜索|检索|搜一下|查一下|查找|查询|搜搜|查查)/i.test(cleanUserRequest);
       const loaded = await this.skillCacheService.loadAvailableSkills(
         dto.telemetry?.authToken,
         dto.telemetry?.traceId,
@@ -90,7 +92,7 @@ export class DeterministicPlanGeneratorService {
       }));
     }
     const { skillCards, llmOperationCards } = await this.candidateSelector.selectCandidates(
-      dto.userRequest,
+      cleanUserRequest,
       availableSkills || []
     );
 
@@ -104,7 +106,7 @@ export class DeterministicPlanGeneratorService {
     }
 
     const explicitlyRequestedSkills =
-      this.explicitSkillIntent?.findExplicitlyRequestedSkills(dto.userRequest, skillCards) || [];
+      this.explicitSkillIntent?.findExplicitlyRequestedSkills(cleanUserRequest, skillCards) || [];
 
     // Stage 1: LLM intent recognition and minimal topology planning.
     if (
@@ -131,7 +133,7 @@ export class DeterministicPlanGeneratorService {
         let habitExemplar: string | undefined;
 
         if (this.userHabitRouter && userId) {
-          const habitDecision = await this.userHabitRouter.evaluateHabit(userId, dto.userRequest);
+          const habitDecision = await this.userHabitRouter.evaluateHabit(userId, cleanUserRequest);
           if (habitDecision.type === 'exact_topology' && habitDecision.topology) {
             habitTopology = habitDecision.topology;
           } else if (habitDecision.type === 'exemplar') {
@@ -140,7 +142,7 @@ export class DeterministicPlanGeneratorService {
         }
 
         const policyRecipe = this.taskCommandResolver?.matchRecipe(
-          dto.userRequest,
+          cleanUserRequest,
           dto.taskPolicySnapshot,
           { hasPreviousResult }
         );
@@ -182,7 +184,7 @@ export class DeterministicPlanGeneratorService {
         }
         const policy = this.routingPolicy?.getSnapshot() || createBuiltinRoutingPolicySnapshot();
         const hasUncoveredActionKeyword = hasRoutingSignal(
-          dto.userRequest,
+          cleanUserRequest,
           'uncoveredAction',
           policy
         );
@@ -265,7 +267,7 @@ export class DeterministicPlanGeneratorService {
 
           if (validation.valid) {
             this.logger.log(
-              `Deterministic ${topologySource} topology succeeded for request: "${dto.userRequest}"`
+              `Deterministic ${topologySource} topology succeeded for request: "${cleanUserRequest}"`
             );
 
             const hasLlmOperation = topologyDraft.nodes.some(
@@ -374,7 +376,7 @@ export class DeterministicPlanGeneratorService {
     }
 
     this.logger.log(
-      `Generating deterministic plan using model '${activeModel.name}' for request: "${dto.userRequest}"`
+      `Generating deterministic plan using model '${activeModel.name}' for request: "${cleanUserRequest}"`
     );
 
     let response = await this.modelService.callModel(

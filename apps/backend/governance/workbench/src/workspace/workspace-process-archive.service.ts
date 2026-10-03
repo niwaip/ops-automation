@@ -275,7 +275,13 @@ export class WorkspaceProcessArchiveService {
     }
 
     // 解析所有候选成果物的二进制数据流
-    const resolvedContractDocs: Array<{
+    const resolvedWordDocs: Array<{
+      buffer: Buffer;
+      fileName: string;
+      mimeType: string;
+    }> = [];
+
+    const resolvedPdfDocs: Array<{
       buffer: Buffer;
       fileName: string;
       mimeType: string;
@@ -301,8 +307,10 @@ export class WorkspaceProcessArchiveService {
         const lower = resolved.fileName.toLowerCase();
         if (lower.endsWith('.html') || lower.endsWith('.htm') || resolved.mimeType.includes('html')) {
           resolvedHtmlReports.push(resolved);
-        } else if (lower.endsWith('.docx') || lower.endsWith('.doc') || lower.endsWith('.pdf')) {
-          resolvedContractDocs.push(resolved);
+        } else if (lower.endsWith('.pdf') || resolved.mimeType.includes('pdf')) {
+          resolvedPdfDocs.push(resolved);
+        } else if (lower.endsWith('.docx') || lower.endsWith('.doc')) {
+          resolvedWordDocs.push(resolved);
         } else {
           resolvedOtherDeliverables.push(resolved);
         }
@@ -311,15 +319,37 @@ export class WorkspaceProcessArchiveService {
       }
     }
 
-    // 去重合同文档（避免由于别名或冗余引用导致的重复）
-    const uniqueContractDocs: typeof resolvedContractDocs = [];
-    const seenHashes = new Set<string>();
-    for (const doc of resolvedContractDocs) {
+    // 去重 PDF 与 Word 成果物
+    const uniquePdfDocs: typeof resolvedPdfDocs = [];
+    const seenPdfHashes = new Set<string>();
+    for (const doc of resolvedPdfDocs) {
       const hash = `${doc.buffer.length}_${doc.buffer.subarray(0, 64).toString('hex')}`;
-      if (!seenHashes.has(hash)) {
-        seenHashes.add(hash);
-        uniqueContractDocs.push(doc);
+      if (!seenPdfHashes.has(hash)) {
+        seenPdfHashes.add(hash);
+        uniquePdfDocs.push(doc);
       }
+    }
+
+    const uniqueWordDocs: typeof resolvedWordDocs = [];
+    const seenWordHashes = new Set<string>();
+    for (const doc of resolvedWordDocs) {
+      const hash = `${doc.buffer.length}_${doc.buffer.subarray(0, 64).toString('hex')}`;
+      if (!seenWordHashes.has(hash)) {
+        seenWordHashes.add(hash);
+        uniqueWordDocs.push(doc);
+      }
+    }
+
+    // 门禁校验：针对合同类工作流，若缺失生效 PDF 或获批 Word 文档，阻断伪完成
+    if (
+      (opts.workflowId?.includes('contract') || opts.workflowId?.includes('nda') || opts.taskTitle?.includes('合同')) &&
+      uniqueWordDocs.length === 0 &&
+      uniquePdfDocs.length === 0
+    ) {
+      this.logger.error(`Archive failed: missing required deliverables for workflow "${opts.workflowId}"`);
+      throw new Error(
+        `归档存证校验未通过：流程「${opts.workflowName || opts.workflowId}」缺少生效 PDF 或原版 DOCX 成果物，禁止空壳归档。`
+      );
     }
 
     const archivedDeliverablesForCert: Array<{
@@ -328,21 +358,36 @@ export class WorkspaceProcessArchiveService {
       size: number;
     }> = [];
 
-    // 4. 归档成果物 A：多版本合同文档正本（依版本演进序列归档，支持多版本标识）
-    const totalContractDocs = uniqueContractDocs.length;
-    for (let i = 0; i < totalContractDocs; i++) {
-      const doc = uniqueContractDocs[i];
+    // 4.1 归档成果物 A1：终审生效归档 PDF
+    for (const pdf of uniquePdfDocs) {
+      try {
+        await saveOrUpdateFile(pdf.fileName, pdf.mimeType, pdf.buffer, {
+          overwriteContent: true,
+          originalUnprefixedName: pdf.fileName,
+        });
+        archivedDeliverablesForCert.push({
+          fileName: pdf.fileName,
+          mimeType: pdf.mimeType,
+          size: pdf.buffer.length,
+        });
+      } catch (pdfErr) {
+        this.logger.warn(`Failed to archive PDF deliverable "${pdf.fileName}":`, pdfErr);
+      }
+    }
+
+    // 4.2 归档成果物 A2：获批源文档 (DOCX/DOC)
+    const totalWordDocs = uniqueWordDocs.length;
+    for (let i = 0; i < totalWordDocs; i++) {
+      const doc = uniqueWordDocs[i];
       let finalName = doc.fileName;
 
-      if (totalContractDocs > 1) {
+      if (totalWordDocs > 1) {
         const cleanName = doc.fileName.replace(/^\[V\d+[^\]]*\]\s*/, '').trim();
         if (i === 0) {
-          finalName = `[V${totalContractDocs}_最新生效版] ${cleanName}`;
+          finalName = `[V${totalWordDocs}_最新修改稿] ${cleanName}`;
         } else {
-          const vNum = totalContractDocs - i;
-          finalName = vNum === 1
-            ? `[V1_历史留存稿] ${cleanName}`
-            : `[V${vNum}_历史留存稿] ${cleanName}`;
+          const vNum = totalWordDocs - i;
+          finalName = `[V${vNum}_历史留存稿] ${cleanName}`;
         }
       }
 
@@ -357,7 +402,7 @@ export class WorkspaceProcessArchiveService {
           size: doc.buffer.length,
         });
       } catch (docErr) {
-        this.logger.warn(`Failed to archive contract document "${finalName}":`, docErr);
+        this.logger.warn(`Failed to archive Word document "${finalName}":`, docErr);
       }
     }
 
@@ -425,9 +470,23 @@ export class WorkspaceProcessArchiveService {
       }
     }
 
-    this.logger.log(
-      `Successfully archived workflow deliverables for "${instanceFolderName}" (${savedFiles.length} files in folder ${instanceFolderId})`
+    const hasSourceDoc = savedFiles.some(
+      (f) => f.name.endsWith('.docx') || f.name.endsWith('.doc')
     );
+    const hasFinalPdf = savedFiles.some((f) => f.name.endsWith('.pdf'));
+    const hasReviewReport = savedFiles.some(
+      (f) => f.name.endsWith('.html') || f.name.endsWith('.md')
+    );
+
+    this.logger.log(
+      `Successfully archived workflow deliverables for "${instanceFolderName}" (${savedFiles.length} files in folder ${instanceFolderId}, hasSourceDoc=${hasSourceDoc}, hasFinalPdf=${hasFinalPdf}, hasReviewReport=${hasReviewReport})`
+    );
+
+    if (!hasSourceDoc || !hasFinalPdf || !hasReviewReport) {
+      this.logger.warn(
+        `[ProcessArchive] Workflow deliverable archiving incomplete for [${trackingNumber}]: hasSourceDoc=${hasSourceDoc}, hasFinalPdf=${hasFinalPdf}, hasReviewReport=${hasReviewReport}`
+      );
+    }
 
     return {
       folderId: instanceFolderId,
@@ -502,15 +561,18 @@ export class WorkspaceProcessArchiveService {
       }
     }
 
-    // 3. 如果包含 URL，提取 UUID 并排查常见输出路径
+    // 3. 如果包含 URL，提取 UUID 或 32 位 Hex 哈希并排查常见输出路径
     const urlStr = typeof att.url === 'string' ? att.url : '';
     const uuidMatch = urlStr.match(
-      /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/
+      /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[0-9a-fA-F]{32}/
     );
     const docUuid = uuidMatch ? uuidMatch[0] : null;
 
     if (docUuid) {
-      const ext = path.extname(targetFileName) || (lowerName.includes('html') ? '.html' : '.docx');
+      const ext =
+        path.extname(targetFileName) ||
+        path.extname(urlStr) ||
+        (lowerName.includes('pdf') ? '.pdf' : lowerName.includes('html') ? '.html' : '.docx');
       const candUuidPaths = [
         path.resolve(process.cwd(), 'apps/backend/var/outputs/document-engine', `${docUuid}${ext}`),
         path.resolve(process.cwd(), 'apps/backend/var/outputs/document-engine/renders', `${docUuid}${ext}`),
@@ -551,22 +613,28 @@ export class WorkspaceProcessArchiveService {
       }
     }
 
-    // 4. 若 URL 为 http/https 地址，尝试网络请求兜底获取
+    // 4. 若 URL 为 http/https 地址，尝试网络请求获取（包含容器内主机名重写支持）
     if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) {
-      try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 3000);
-        const resp = await fetch(urlStr, { signal: controller.signal });
-        clearTimeout(timer);
-        if (resp.ok) {
-          const arrayBuf = await resp.arrayBuffer();
-          const buffer = Buffer.from(arrayBuf);
-          if (buffer.length > 0) {
-            return { buffer, fileName: targetFileName, mimeType: defaultMime };
+      const urlsToTry = [urlStr];
+      if (urlStr.includes(':3009')) {
+        urlsToTry.push(urlStr.replace(/http:\/\/[^/]+:3009/, 'http://carbone-engine:3009'));
+      }
+      for (const u of urlsToTry) {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 4000);
+          const resp = await fetch(u, { signal: controller.signal });
+          clearTimeout(timer);
+          if (resp.ok) {
+            const arrayBuf = await resp.arrayBuffer();
+            const buffer = Buffer.from(arrayBuf);
+            if (buffer.length > 0) {
+              return { buffer, fileName: targetFileName, mimeType: defaultMime };
+            }
           }
+        } catch {
+          // 网络请求失败继续尝试下一个候选地址
         }
-      } catch {
-        // 网络请求失败不中断
       }
     }
 

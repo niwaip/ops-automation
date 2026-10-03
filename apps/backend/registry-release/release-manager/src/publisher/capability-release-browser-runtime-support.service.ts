@@ -160,7 +160,12 @@ export class CapabilityReleaseBrowserRuntimeSupportService {
           backend,
           reason,
         },
-        { timeout: 30000 }
+        {
+          timeout: 30000,
+          headers: {
+            'x-internal-auth': process.env.INTERNAL_API_SHARED_SECRET || 'ops_internal_shared_secret_change_me',
+          },
+        }
       )
       .catch(() => undefined);
   }

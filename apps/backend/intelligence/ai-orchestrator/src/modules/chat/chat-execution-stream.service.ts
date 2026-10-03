@@ -278,6 +278,11 @@ export class ChatExecutionStreamService {
       const execution = await this.controlPlaneClient.getExecution<{
         id: string;
         status: string;
+        skillId?: string;
+        skillName?: string;
+        skill_id?: string;
+        skill_name?: string;
+        capabilityId?: string;
         executionMode?: string;
         runtimeType?: string;
         runtime_type?: string;
@@ -353,18 +358,39 @@ export class ChatExecutionStreamService {
             Array.isArray(businessData?.items)
           );
 
+          const isWorkspaceExplorerResult =
+            execution.skillId === 'platform.workspace.explorer' ||
+            execution.skill_id === 'platform.workspace.explorer' ||
+            execution.capabilityId === 'platform.workspace.explorer' ||
+            Boolean(rawRecord.citations && Array.isArray(rawRecord.citations)) ||
+            Boolean(businessData?.citations && Array.isArray(businessData?.citations));
+
+          const isWebSearchResult =
+            execution.skillId === 'platform.search.web' ||
+            execution.skill_id === 'platform.search.web' ||
+            execution.capabilityId === 'platform.search.web' ||
+            normalizedResult.resultType === 'tavily_search' ||
+            Boolean(businessData?.searchResults) ||
+            Boolean(rawRecord.results && (rawRecord.provider || rawRecord.query));
+
           const shouldGeneratePresentationSummary = isEmailResult
             ? hasSummarizationIntent
-            : (!alreadyHasPresentationText &&
-                (requestsAiSummary || hasSummarizationIntent || isSearchOrDataResult)) ||
-              (requestsAiSummary && (hasSummarizationIntent || isSearchOrDataResult));
+            : isWorkspaceExplorerResult || isWebSearchResult
+              ? true
+              : (!alreadyHasPresentationText &&
+                  (requestsAiSummary || hasSummarizationIntent || isSearchOrDataResult)) ||
+                (requestsAiSummary && (hasSummarizationIntent || isSearchOrDataResult));
 
           if (shouldGeneratePresentationSummary) {
             const aiResult = await this.generateAiSummary(
               objective || '对工具执行结果进行总结',
               normalizedResult.structuredData ?? rawResult,
               executionId,
-              modelId
+              modelId,
+              {
+                isSearchResult: isWebSearchResult || isWorkspaceExplorerResult,
+                skillId: execution.skillId || execution.skill_id || execution.capabilityId,
+              }
             );
             if (aiResult?.summary) {
               chatContent = aiResult.summary;
@@ -438,6 +464,22 @@ export class ChatExecutionStreamService {
               temporalLink: normalizedResult.temporalLink,
               hasBusinessResult: normalizedResult.hasBusinessResult,
               usage: execution.usage,
+              skillId: execution.skillId || execution.skill_id || execution.capabilityId,
+              skillName:
+                execution.skillName ||
+                execution.skill_name ||
+                (normalizedResult.title && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(normalizedResult.title.trim())
+                  ? normalizedResult.title.trim()
+                  : undefined),
+              skillUsed:
+                execution.skillName ||
+                execution.skill_name ||
+                (normalizedResult.title && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(normalizedResult.title.trim())
+                  ? normalizedResult.title.trim()
+                  : undefined) ||
+                execution.skillId ||
+                execution.skill_id ||
+                execution.capabilityId,
             },
           };
         }
@@ -796,7 +838,11 @@ export class ChatExecutionStreamService {
     objective: string,
     rawResult: unknown,
     executionId: string,
-    modelId?: string
+    modelId?: string,
+    options?: {
+      isSearchResult?: boolean;
+      skillId?: string;
+    }
   ): Promise<{ summary?: string; warning?: string }> {
     if (!this.modelService) {
       reportChatExecutionStreamDebug(
@@ -851,10 +897,22 @@ export class ChatExecutionStreamService {
         { executionId, objective, modelId: preferredModel.id, modelName: preferredModel.name }
       );
 
+      const rawRecord =
+        typeof rawResult === 'object' && rawResult !== null
+          ? (rawResult as Record<string, unknown>)
+          : null;
+      const isSearchCapability =
+        options?.isSearchResult === true ||
+        Boolean(
+          rawRecord?.searchResults ||
+            (rawRecord?.results && (rawRecord?.provider || rawRecord?.query)) ||
+            rawRecord?.citations
+        );
+
       const payloadStr =
         typeof rawResult === 'string' ? rawResult : JSON.stringify(rawResult, null, 2);
 
-      const prompt = `用户需求：${objective}
+      let prompt = `用户需求：${objective}
 
 工具/技能实际执行返回的数据内容：
 ${payloadStr.length > 10000 ? payloadStr.slice(0, 10000) + '\n... (输出已截断)' : payloadStr}
@@ -866,37 +924,70 @@ ${payloadStr.length > 10000 ? payloadStr.slice(0, 10000) + '\n... (输出已截�
 4. 保留对用户有意义的数值、单位、日期和状态，省略内部字段与调试信息。
 5. 使用清晰的 Markdown，避免输出原始 JSON。`;
 
-      const timeoutMs = parseInt(process.env.AI_SUMMARY_TIMEOUT_MS || '35000', 10) || 35000;
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(
-          () =>
-            reject(
-              new Error(
-                `AI summary LLM call timed out after ${Math.round(timeoutMs / 1000)}s`
-              )
-            ),
-          timeoutMs
-        )
-      );
+      if (isSearchCapability) {
+        prompt += `\n\n特别约束（极其重要）：
+- 当前工具为只读信息检索（联网搜索/知识库检索），系统并未执行任何写入或创建操作。
+- 严禁声称或伪造任何已完成的写操作，严禁出现类似“已为您设置提醒”、“已为您创建待办”、“已发送邮件”、“已修改状态”等虚假确认语句。
+- 请直接总结检索到的客观事实或答案本身。`;
+      }
 
-      const response = await Promise.race([
-        client.chatCompletion({
-          messages: [
-            {
-              role: 'system',
-              content:
-                '你是业务结果呈现助手。请把已验证的结构化执行结果转换成忠于原始数据、简洁易读的中文 Markdown；不要改变结果含义。请直接输出最终呈现内容，不要输出多余的思考过程。',
-            },
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          maxOutputTokens: 2000,
-          reasoning: { enabled: false },
-        }),
-        timeoutPromise,
-      ]);
+      const timeoutMs = parseInt(process.env.AI_SUMMARY_TIMEOUT_MS || '35000', 10) || 35000;
+      const executeWithRetry = async (maxAttempts = 2) => {
+        let lastError: unknown;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            const timeoutPromise = new Promise<never>((_, reject) =>
+              setTimeout(
+                () =>
+                  reject(
+                    new Error(
+                      `AI summary LLM call timed out after ${Math.round(timeoutMs / 1000)}s`
+                    )
+                  ),
+                timeoutMs
+              )
+            );
+
+            return await Promise.race([
+              client.chatCompletion({
+                messages: [
+                  {
+                    role: 'system',
+                    content: isSearchCapability
+                      ? '你是业务结果呈现助手。当前执行的是只读检索工具，未执行任何写入或创建操作。请客观总结检索到的内容，严禁声称已创建提醒、已发送通知或已执行写操作。不要输出多余的思考过程。'
+                      : '你是业务结果呈现助手。请把已验证的结构化执行结果转换成忠于原始数据、简洁易读的中文 Markdown；不要改变结果含义。请直接输出最终呈现内容，不要输出多余的思考过程。',
+                  },
+                  {
+                    role: 'user',
+                    content: prompt,
+                  },
+                ],
+                maxOutputTokens: 2000,
+                reasoning: { enabled: false },
+              }),
+              timeoutPromise,
+            ]);
+          } catch (err) {
+            lastError = err;
+            const errMsg = err instanceof Error ? err.message : String(err);
+            const isRetryable =
+              /certificate|altnames|handshake|tls|ssl|econnreset|econnrefused|etimedout|socket|network error|failed to fetch|502|503|504/i.test(
+                errMsg
+              );
+            if (attempt < maxAttempts && isRetryable) {
+              this.logger.warn(
+                `AI summary call attempt ${attempt} failed with transient error: ${errMsg}. Retrying in 500ms...`
+              );
+              await new Promise((resolve) => setTimeout(resolve, 500));
+              continue;
+            }
+            throw err;
+          }
+        }
+        throw lastError;
+      };
+
+      const response = await executeWithRetry(2);
 
       const rawSummaryText =
         typeof response?.content === 'string' ? response.content.trim() : undefined;
@@ -913,6 +1004,13 @@ ${payloadStr.length > 10000 ? payloadStr.slice(0, 10000) + '\n... (输出已截�
         if (strippedReasoning) {
           summaryText = strippedReasoning;
         }
+      }
+
+      if (summaryText && isSearchCapability) {
+        summaryText = summaryText
+          .replace(/^(?:(?:[#*\s>]*已(?:成功)?(?:为您)?(?:设置|创建|添加|开启)(?:了)?(?:提醒|闹钟|待办|日程|任务)[^。\n]*[。\n]+)+)/gi, '')
+          .replace(/^(?:(?:[#*\s>]*已(?:成功)?(?:为您)?(?:发送|投递)(?:了)?(?:邮件|消息|通知)[^。\n]*[。\n]+)+)/gi, '')
+          .trim();
       }
 
       if (summaryText) {
@@ -951,11 +1049,17 @@ ${payloadStr.length > 10000 ? payloadStr.slice(0, 10000) + '\n... (输出已截�
         );
         return { summary: fallbackSummary };
       }
-      let friendlyReason = rawReason;
+      let friendlyReason = '大模型服务暂时繁忙，已展示原始执行结果';
       if (/timed out/i.test(rawReason)) {
         friendlyReason = '大模型响应超时，已展示原始执行结果';
-      } else if (/econnrefused|failed to fetch|network error/i.test(rawReason)) {
-        friendlyReason = '大模型服务连接异常，已展示原始执行结果';
+      } else if (/econnrefused|econnreset|failed to fetch|network error|socket/i.test(rawReason)) {
+        friendlyReason = '大模型服务网络连接异常，已展示原始执行结果';
+      } else if (/certificate|altnames|handshake|tls|ssl/i.test(rawReason)) {
+        friendlyReason = '大模型服务链路握手异常，已展示原始执行结果';
+      } else if (/502|503|504|bad gateway|gateway timeout|service unavailable/i.test(rawReason)) {
+        friendlyReason = '大模型服务暂时繁忙，已展示原始执行结果';
+      } else if (/rate limit|429/i.test(rawReason)) {
+        friendlyReason = '大模型调用频次受限，已展示原始执行结果';
       }
       return { warning: `AI 自动总结未生成：${friendlyReason}` };
     }
@@ -967,6 +1071,16 @@ ${payloadStr.length > 10000 ? payloadStr.slice(0, 10000) + '\n... (输出已截�
 
     const nestedRecord = this.asRecord(rawRecord.result);
     const data = nestedRecord || rawRecord;
+
+    const directAnswer = this.firstNonEmptyString(
+      this.readString(data.answer),
+      this.readString(rawRecord.answer),
+      this.readString(data.summary),
+      this.readString(rawRecord.summary)
+    );
+    if (directAnswer) {
+      return directAnswer;
+    }
 
     const fileName = this.firstNonEmptyString(
       this.readString(data.fileName),

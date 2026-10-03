@@ -243,4 +243,31 @@ describe('ChatResultNormalizerService', () => {
       '文档已生成。\n- 文件名：保密合同_豆包有限公司_v1_20260920.docx\n- 格式：DOCX\n- 可直接下载查看。'
     );
   });
+
+  it('normalizes tool result containing answer field directly into presentation text without raw JSON dump', () => {
+    const rawResult = {
+      query: 'deepseek harness的安装方法',
+      answer: '### 🔍 工作空间文档探查结果\n\n针对 "deepseek harness的安装方法"，在工作空间中检索到 2 个相关文档：\n\n### 📄 03-spell-unique.md',
+      citations: [
+        {
+          fileName: '03-spell-unique.md',
+          snippet: 'source tests/harness.sh',
+        },
+      ],
+    };
+
+    const normalized = service.normalize(rawResult, {
+      executionId: 'exec-answer-1',
+      status: 'success',
+    });
+
+    expect(normalized.summary).toContain('### 🔍 工作空间文档探查结果');
+    expect(normalized.detailText).toContain('### 🔍 工作空间文档探查结果');
+    expect(normalized.summaryFormat).toBe('markdown');
+    expect(normalized.envelope.presentation?.preferAiSummary).toBe(false);
+
+    const formatted = service.formatForChat(normalized, 'exec-answer-1');
+    expect(formatted).toContain('### 🔍 工作空间文档探查结果');
+    expect(formatted).not.toContain('任务已完成，返回结果如下：\n\n{');
+  });
 });

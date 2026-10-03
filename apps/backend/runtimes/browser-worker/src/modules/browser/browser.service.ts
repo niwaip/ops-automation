@@ -83,7 +83,14 @@ export class BrowserService implements OnModuleDestroy {
 
     while (attempt < maxAttempts) {
       attempt += 1;
-      const attemptDto = { ...dto, attempt: (dto.attempt || 1) + attempt - 1 };
+      const stepStartedAt =
+        (dto as any).startedAt || (dto as any).attemptedAt || new Date().toISOString();
+      const attemptDto = {
+        ...dto,
+        attempt: (dto.attempt || 1) + attempt - 1,
+        startedAt: stepStartedAt,
+        attemptedAt: stepStartedAt,
+      };
       const rawResult = await this.browserCommandService.executeStep(attemptDto);
       // Content extraction is intentionally independent from P0 artifact
       // normalization. A recorder may opt into a capture profile without

@@ -3,6 +3,7 @@ import { ERROR_CODES } from '@ops/backend-error-codes';
 import { ContractViolationError } from './contract-violation.error';
 import { LegacyOutputAdapterService } from './legacy-output-adapter.service';
 import { OutputNormalizerService } from './output-normalizer.service';
+import { formatSchemaViolation } from './schema-violation-humanizer';
 
 export function projectLlmOperationInput(
   step: any,
@@ -72,13 +73,16 @@ export function validateInputContract(
   }
   const validation = jsonSchemaValidator.validateInput(contractInput || {}, inputSchema);
   if (!validation.valid) {
+    const formatted = formatSchemaViolation({
+      errors: validation.errors || [],
+      schema: inputSchema,
+      step,
+      kind: 'input',
+    });
     const firstError = validation.errors?.[0] as any;
-    const errMsgs = validation.errors
-      ?.map((e: any) => `${e.path}${e.keyword ? ` (${e.keyword})` : ''}: ${e.message}`)
-      .join('; ');
     throw new ContractViolationError(
       ERROR_CODES.INPUT_SCHEMA_VIOLATION,
-      `INPUT_SCHEMA_VIOLATION for node '${step.planNodeId || step.id}': ${errMsgs}`,
+      formatted.technicalMessage,
       {
         executionId,
         nodeId: step.planNodeId || step.id,
@@ -87,7 +91,10 @@ export function validateInputContract(
         contractCheckMode: 'schema',
         instancePath: firstError?.path,
         keyword: firstError?.keyword,
-      }
+        friendlyMessage: formatted.friendlyMessage,
+        violations: formatted.violations,
+      },
+      formatted.friendlyMessage
     );
   }
 }
@@ -158,13 +165,16 @@ export function validateOutputContract(
     }
     const schemaValidation = jsonSchemaValidator.validate(schemaTarget, outputSchema);
     if (!schemaValidation.valid) {
-      const errMsgs = schemaValidation.errors
-        ?.map((e: any) => `${e.path}${e.keyword ? ` (${e.keyword})` : ''}: ${e.message}`)
-        .join('; ');
+      const formatted = formatSchemaViolation({
+        errors: schemaValidation.errors || [],
+        schema: outputSchema,
+        step,
+        kind: 'output',
+      });
       const firstError = schemaValidation.errors?.[0] as any;
       throw new ContractViolationError(
         ERROR_CODES.OUTPUT_SCHEMA_VIOLATION,
-        `OUTPUT_SCHEMA_VIOLATION for node '${nodeId}': ${errMsgs}`,
+        formatted.technicalMessage,
         {
           executionId,
           nodeId,
@@ -174,7 +184,10 @@ export function validateOutputContract(
           contractCheckMode: 'schema',
           instancePath: firstError?.path,
           keyword: firstError?.keyword,
-        }
+          friendlyMessage: formatted.friendlyMessage,
+          violations: formatted.violations,
+        },
+        formatted.friendlyMessage
       );
     }
     // Persist the normalized output for downstream node_output resolution.

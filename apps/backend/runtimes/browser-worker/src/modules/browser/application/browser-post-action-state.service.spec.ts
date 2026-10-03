@@ -28,4 +28,28 @@ describe('BrowserPostActionStateService', () => {
     expect(output.executionState).toBe('failed');
     expect(output.postCheck?.targetReached).toBe(false);
   });
+
+  it('reuses existing result.pageState without re-invoking inspect', async () => {
+    const inspectMock = jest.fn();
+    const existingPageState = {
+      runtimeSessionId: 'session-1',
+      pageUrl: 'https://example.com/report',
+      readyState: 'complete',
+    };
+    const output = await service.observe({
+      dto: {
+        executionId: 'execution-1', runtimeSessionId: 'session-1', stepId: 'step-1', action: 'goto', target: 'https://example.com/report',
+      },
+      result: {
+        success: true,
+        shouldTakeover: false,
+        pageState: existingPageState,
+      },
+      inspect: inspectMock,
+    });
+
+    expect(inspectMock).not.toHaveBeenCalled();
+    expect(output.pageState).toBe(existingPageState);
+    expect(output.executionState).toBe('completed');
+  });
 });

@@ -12,7 +12,7 @@ import {
   buildChatRequest,
   buildResumeExecutionRequest,
 } from '@chat-web/controller/chatRequestController';
-import { isWorkflowCommand, handleWorkflowNaturalLanguage } from '../lib/workflowNaturalLanguageRouter';
+import { isWorkflowCommand } from '../lib/workflowNaturalLanguageRouter';
 import { upsertMessage } from '../lib/messageState';
 import { summarizeSessionTitle } from '../lib/sessionView';
 import { getLatestWaitingInputExecutionId } from '../lib/taskStatus';
@@ -30,6 +30,7 @@ interface UseChatPageActionsOptions {
   enableThinking: boolean;
   reasoningEffort?: 'low' | 'medium' | 'high';
   enableWebSearch?: boolean;
+  enableWorkspaceSearch?: boolean;
   enableResearch?: boolean;
   ensureSession: (now: string) => ChatSession;
   isStreaming: boolean;
@@ -38,7 +39,10 @@ interface UseChatPageActionsOptions {
   runAssistantRequest: (
     session: ChatSession,
     request: ChatRequest,
-    assistantMessageId: string
+    assistantMessageId: string,
+    options?: {
+      workflowCommandContent?: string;
+    }
   ) => Promise<void>;
   selectedModel: string;
   selectedSession: ChatSession | null;
@@ -62,6 +66,7 @@ export function useChatPageActions({
   enableThinking,
   reasoningEffort = 'medium',
   enableWebSearch = false,
+  enableWorkspaceSearch = false,
   enableResearch = false,
   ensureSession,
   isStreaming,
@@ -127,7 +132,7 @@ export function useChatPageActions({
       timestamp: now,
       metadata: {
         clientMessageId: userMessageId,
-        files: filesToSend?.map((f) => f.fileName),
+        files: filesToSend && filesToSend.length > 0 ? (filesToSend as any) : undefined,
       },
     };
     const assistantMessageId = buildMessageId();
@@ -151,7 +156,9 @@ export function useChatPageActions({
       updatedAt: now,
       modelId: resolvedModelId,
     });
-    setDraft('');
+    if (contentOverride === undefined) {
+      setDraft('');
+    }
     // 探测是否为规范协同卡片已生成的业务单据（制定/既定操作，已持久化，无需走 AI 能力匹配与模型规划）
     if (
       content.startsWith('### 📋') ||
@@ -197,18 +204,14 @@ export function useChatPageActions({
         orchestratorMessage = taskBody ? `${rawWorkflow} ${taskBody}` : rawWorkflow;
       }
 
-      // 企业流程作为连接器：在后台预建组织工作流协同流转工单（如法务部合规把关审查），异步推进不阻塞真实技能执行流
-      void (async () => {
-        try {
-          const result = await handleWorkflowNaturalLanguage(content);
-          if (result?.coordinationTask) {
-            void queryClient.invalidateQueries(['user-web-notifications']);
-            void queryClient.invalidateQueries(['workbench-inbox-items']);
-          }
-        } catch (err: any) {
-          console.warn('[WorkflowRouter] Background coordination registration error:', err);
+      let workflowId = 'legal.nda.generation_and_review_flow';
+      if (/比对|对比|差异|红线/i.test(rawWorkflow)) {
+        workflowId = 'legal.contract.compare_flow';
+      } else if (!/保密|nda|生成保密合同/i.test(rawWorkflow) && !/保密|nda/i.test(taskBody)) {
+        if (/起草|生成|填报|合同|协议/i.test(rawWorkflow)) {
+          workflowId = 'legal.contract.review_flow';
         }
-      })();
+      }
 
       const request: ChatRequest = buildChatRequest({
         message: orchestratorMessage,
@@ -223,13 +226,28 @@ export function useChatPageActions({
         reasoning: nativeReasoningEnabled,
         reasoningEffort: nativeReasoningEnabled ? reasoningEffort : undefined,
         webSearch: enableWebSearch,
+        workspaceSearch: enableWorkspaceSearch,
       });
+
+      // 绑定组织工作流结构化上下文 (F1 驱动首阶段技能执行)
+      (request.config as any) = {
+        ...(request.config || {}),
+        taskContext: {
+          schemaVersion: 'task-context/v1',
+          workflowId,
+          stageId: 'draft_submission',
+          stageName: '业务初稿起草生成',
+          triggerType: 'workbench_coordination',
+        },
+      };
 
       if (pendingExecutionId) {
         setPendingExecutionId(null);
       }
 
-      void runAssistantRequest(session, request, assistantMessageId);
+      void runAssistantRequest(session, request, assistantMessageId, {
+        workflowCommandContent: content,
+      });
       return;
     }
 
@@ -342,6 +360,7 @@ export function useChatPageActions({
       reasoning: nativeReasoningEnabled,
       reasoningEffort: nativeReasoningEnabled ? reasoningEffort : undefined,
       webSearch: chatMode === 'task' ? enableWebSearch : true,
+      workspaceSearch: chatMode === 'task' ? Boolean(enableWorkspaceSearch) : false,
       research: chatMode === 'chat' ? Boolean(enableResearch) : false,
     });
 
@@ -359,6 +378,7 @@ export function useChatPageActions({
     enableThinking,
     reasoningEffort,
     enableWebSearch,
+    enableWorkspaceSearch,
     ensureSession,
     isStreaming,
     nativeReasoningEnabled,
@@ -481,70 +501,56 @@ export function useChatPageActions({
       if (isStreaming || !selectedSession) return;
 
       let userContent = '';
+      let targetUserMessage: ChatMessage | undefined;
+      const targetIndex = activeMessages.findIndex((m) => m.id === targetMessage.id);
       if (targetMessage.role === 'user') {
+        targetUserMessage = targetMessage;
         userContent = targetMessage.content;
       } else {
-        const idx = activeMessages.findIndex((m) => m.id === targetMessage.id);
-        if (idx > 0 && activeMessages[idx - 1]?.role === 'user') {
-          userContent = activeMessages[idx - 1].content;
+        if (targetIndex > 0 && activeMessages[targetIndex - 1]?.role === 'user') {
+          targetUserMessage = activeMessages[targetIndex - 1];
+          userContent = activeMessages[targetIndex - 1].content;
         } else {
           const lastUser = [...activeMessages].reverse().find((m) => m.role === 'user');
-          if (lastUser) userContent = lastUser.content;
+          if (lastUser) {
+            targetUserMessage = lastUser;
+            userContent = lastUser.content;
+          }
         }
       }
 
       if (!userContent.trim()) return;
 
-      const resolvedModelId =
-        selectedModel && selectedModel !== 'default' ? selectedModel : undefined;
-      const now = toChatTimestamp();
-      const assistantMessageId = buildMessageId();
-      const assistantMessage: ChatMessage = {
-        id: assistantMessageId,
-        sessionId: selectedSession.id,
-        role: 'assistant',
-        content: '',
-        timestamp: now,
-        isStreaming: true,
-        metadata: {
-          mode: chatMode,
-          showThinking: enableThinking,
-        },
-      };
+      // 提取待重试轮次的附件信息；若直接前序消息缺少 files，向前回溯最近一条包含文件的用户消息
+      let rawFiles = targetUserMessage?.metadata?.files;
+      if (!rawFiles || (Array.isArray(rawFiles) && rawFiles.length === 0)) {
+        const searchPool = targetIndex > 0 ? activeMessages.slice(0, targetIndex) : activeMessages;
+        const messageWithFiles = [...searchPool]
+          .reverse()
+          .find(
+            (m) =>
+              m.role === 'user' &&
+              m.metadata?.files &&
+              Array.isArray(m.metadata.files) &&
+              m.metadata.files.length > 0
+          );
+        if (messageWithFiles?.metadata?.files) {
+          rawFiles = messageWithFiles.metadata.files;
+        }
+      }
 
-      updateSessionMessages(selectedSession.id, (current) => [...current, assistantMessage]);
-      clearError();
+      const retryFiles: UploadedFileDescriptor[] | undefined =
+        Array.isArray(rawFiles) && rawFiles.length > 0
+          ? rawFiles.map((f) =>
+              typeof f === 'string'
+                ? { fileName: f }
+                : (f as UploadedFileDescriptor)
+            )
+          : undefined;
 
-      const request: ChatRequest = buildChatRequest({
-        message: userContent,
-        clientAssistantMessageId: assistantMessageId,
-        sessionId: selectedSession.id,
-        modelId: resolvedModelId,
-        mode: chatMode,
-        thinking: enableThinking,
-        reasoning: nativeReasoningEnabled,
-        reasoningEffort: nativeReasoningEnabled ? reasoningEffort : undefined,
-        webSearch: chatMode === 'task' ? enableWebSearch : true,
-        research: chatMode === 'chat' ? Boolean(enableResearch) : false,
-      });
-
-      void runAssistantRequest(selectedSession, request, assistantMessageId);
+      handleSend(retryFiles, userContent);
     },
-    [
-      activeMessages,
-      chatMode,
-      clearError,
-      enableResearch,
-      enableThinking,
-      reasoningEffort,
-      enableWebSearch,
-      isStreaming,
-      nativeReasoningEnabled,
-      runAssistantRequest,
-      selectedModel,
-      selectedSession,
-      updateSessionMessages,
-    ]
+    [activeMessages, handleSend, isStreaming, selectedSession]
   );
 
   return {

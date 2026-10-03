@@ -14,6 +14,12 @@ describe('PlanRouteClassifierService document routing', () => {
     expect(service.classifyRoute('提取PDF内容')).toBe('deterministic_plan');
   });
 
+  it('keeps plain document view request on the single-skill path even with injected document context', () => {
+    const requestWithContext = `查看文档内容\n\n[系统上下文：已完成用户附件文档轻量元数据探测]\n- 附件文档：1234 (1).docx\n  - 识别类型：软件技术开发合同 (contract.software_development)\n  - 文档标题：《技术服务合同》\n  - 文档前序内容预览："""技术服务合同 ... 双方协商达成协议，并由双方共同恪守..."""`;
+    expect(service.classifyRoute('查看文档内容')).toBe('single_skill');
+    expect(service.classifyRoute(requestWithContext)).toBe('single_skill');
+  });
+
   it('routes a processing follow-up through deterministic planning when a prior result exists', () => {
     expect(service.classifyRoute('进行总结', { hasPreviousResult: true })).toBe(
       'deterministic_plan'

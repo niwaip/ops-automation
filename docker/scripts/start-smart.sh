@@ -101,7 +101,7 @@ warn_if_running_stack_mismatch() {
     local running_signatures
 
     running_signatures="$(docker ps --format '{{.Names}}\t{{.Label "com.docker.compose.project.config_files"}}' 2>/dev/null \
-        | awk -F'\t' '/^ops-/{print $2}' \
+        | awk -F'\t' '/^(ops-|carbone-engine)/{print $2}' \
         | sed '/^$/d' \
         | sort -u || true)"
 
@@ -256,8 +256,30 @@ ensure_env_file
 
 export PROJECT_ROOT="$project_root"
 
+validate_bind_security() {
+    local bind_ip="${HOST_BIND_IP:-127.0.0.1}"
+    if [ "$bind_ip" = "0.0.0.0" ]; then
+        local jwt_secret="${JWT_SECRET:-ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa}"
+        local internal_secret="${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}"
+        if [ "$jwt_secret" = "ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa" ] || [ "$internal_secret" = "ops_internal_shared_secret_change_me" ]; then
+            echo "==========================================================================" >&2
+            echo "[SECURITY ERROR] HOST_BIND_IP is set to 0.0.0.0 (externally accessible)," >&2
+            echo "but default hardcoded JWT_SECRET or INTERNAL_API_SHARED_SECRET is in use!" >&2
+            echo "Exposing internal management endpoints to the local network with default" >&2
+            echo "credentials is strictly forbidden." >&2
+            echo "Please either:" >&2
+            echo "  1) Bind to localhost: HOST_BIND_IP=127.0.0.1 (default for local dev)" >&2
+            echo "  2) Set strong, random JWT_SECRET and INTERNAL_API_SHARED_SECRET in .env" >&2
+            echo "==========================================================================" >&2
+            exit 1
+        fi
+    fi
+}
+validate_bind_security
+
 echo "Environment configured:"
 echo "  PROJECT_ROOT: $PROJECT_ROOT"
+echo "  HOST_BIND_IP: ${HOST_BIND_IP:-127.0.0.1}"
 echo ""
 
 if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ] || [ "${1:-}" = "help" ]; then

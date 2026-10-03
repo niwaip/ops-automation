@@ -1,10 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
-import { matchDeterministicRoutingCapability } from '@ops/backend-runtime-capability-contract';
+import {
+  matchDeterministicRoutingCapability,
+  isGuideOrInquiryRequest,
+} from '@ops/backend-runtime-capability-contract';
+import { createBuiltinRoutingPolicySnapshot, hasRoutingSignal } from '../routing/routing-policy.matcher';
 import { getAuthServiceUrl } from '../../../config/service-endpoints';
 import { TRACE_ID_HEADER } from '../../../common/trace.util';
 import { AvailableSkillDefinition, SkillMatchResult } from '../../react-engine/interfaces';
-import { SkillCacheService } from './skill-cache.service';
+import { SkillCacheService, isWorkspaceSearchSkill } from './skill-cache.service';
 import { getSkillMatchMinConfidence, isAcceptedSkillMatch } from './skill-match-policy';
 
 export type SkillMatchAttempt =
@@ -47,6 +51,29 @@ export class SkillMatcherService {
     context?: Record<string, unknown>;
     modelId?: string;
   }): Promise<SkillMatchAttempt> {
+    const trimmedInput = input.userInput.trim();
+    const isExplicitWorkspaceCommand =
+      /^(?:\/doc\s*)?(?:探查工作空间|查看工作空间文件|浏览知识库|列出空间文件|工作空间概览)$/i.test(
+        trimmedInput
+      ) || /^\/doc\b/i.test(trimmedInput);
+
+    const isWorkspaceSearchExplicitlyDisabled =
+      input.context?.workspace_search_enabled === false ||
+      input.context?.workspaceSearch === false;
+
+    const isWorkspaceSearchEnabled =
+      (input.context?.workspace_search_enabled === true ||
+        input.context?.workspaceSearch === true ||
+        isExplicitWorkspaceCommand) &&
+      !isWorkspaceSearchExplicitlyDisabled;
+
+    const availableSkills = input.availableSkills.filter((skill) => {
+      if (isWorkspaceSearchSkill(skill) && !isWorkspaceSearchEnabled) {
+        return false;
+      }
+      return true;
+    });
+
     const rawTargetSkillId =
       input.context?.target_skill_id ||
       input.context?.skillId ||
@@ -54,7 +81,7 @@ export class SkillMatcherService {
     const targetSkillId =
       typeof rawTargetSkillId === 'string' ? rawTargetSkillId.trim() : '';
     if (targetSkillId) {
-      const targetedSkill = input.availableSkills.find((skill) => skill.skillId === targetSkillId);
+      const targetedSkill = availableSkills.find((skill) => skill.skillId === targetSkillId);
       if (targetedSkill) {
         return {
           status: 'matched',
@@ -91,7 +118,7 @@ export class SkillMatcherService {
 
     // Contract-declared and safely-derived routing signals are resolved before
     // model routing. This is the normal fast path for reproducible requests.
-    const explicitMatch = this.matchExplicitSkillName(input.userInput, input.availableSkills);
+    const explicitMatch = this.matchExplicitSkillName(input.userInput, availableSkills);
     if (explicitMatch) {
       return {
         status: 'matched',
@@ -102,6 +129,25 @@ export class SkillMatcherService {
           'deterministic_routing_signal'
         ),
       };
+    }
+
+    // Guide / installation / inquiry questions must not be forced into execution skills.
+    // If workspace search is requested, it acts as a native RAG data source, not an execution ticket.
+    if (isGuideOrInquiryRequest(input.userInput)) {
+      this.logger.log(
+        `User input '${input.userInput}' classified as guide/inquiry request; skipping model skill matching.`
+      );
+      if (input.context?.workspace_search_enabled === true || input.context?.workspaceSearch === true) {
+        return { status: 'not_found', match: null };
+      }
+      const fallbackSearch = await this.acceptFallbackMatch(
+        input.userInput,
+        availableSkills,
+        input.context,
+        input.authToken,
+        input.traceId
+      );
+      return this.toMatchAttempt(fallbackSearch);
     }
 
     if (input.userId) {
@@ -129,15 +175,14 @@ export class SkillMatcherService {
           .map((f) => f?.fileName)
           .filter(Boolean)
           .join(', ');
-        const effectiveUserInput =
-          fileNames && !input.userInput.includes(fileNames)
-            ? `${input.userInput} (附件: ${fileNames})`
-            : input.userInput;
+        if (sanitizedContext && fileNames && !sanitizedContext.attachmentNames) {
+          sanitizedContext.attachmentNames = fileNames;
+        }
 
         const response = await axios.post<{ match: SkillMatchResult | null }>(
           `${this.authServiceUrl}/skills/match`,
           {
-            userInput: effectiveUserInput,
+            userInput: input.userInput,
             userId: input.userId,
             context: sanitizedContext,
             modelId: input.modelId,
@@ -153,8 +198,8 @@ export class SkillMatcherService {
         if (!response.data.match) {
           return this.toMatchAttempt(
             await this.acceptFallbackMatch(
-              effectiveUserInput,
-              input.availableSkills,
+              input.userInput,
+              availableSkills,
               sanitizedContext,
               input.authToken,
               input.traceId
@@ -162,7 +207,7 @@ export class SkillMatcherService {
           );
         }
 
-        const matchedSkill = this.hydrateMatchedSkill(response.data.match, input.availableSkills);
+        const matchedSkill = this.hydrateMatchedSkill(response.data.match, availableSkills);
         if (matchedSkill && isAcceptedSkillMatch(matchedSkill.confidence)) {
           if (
             matchedSkill.apiEndpoints?.runtimeMetadata?.sourceType === 'document' &&
@@ -178,7 +223,7 @@ export class SkillMatcherService {
         return this.toMatchAttempt(
           await this.acceptFallbackMatch(
             input.userInput,
-            input.availableSkills,
+            availableSkills,
             sanitizedContext,
             input.authToken,
             input.traceId
@@ -189,7 +234,7 @@ export class SkillMatcherService {
         this.logger.warn(`Planner skill match API failed: ${message}`);
         const deterministic = await this.acceptFallbackMatch(
           input.userInput,
-          input.availableSkills,
+          availableSkills,
           input.context,
           input.authToken,
           input.traceId
@@ -213,7 +258,7 @@ export class SkillMatcherService {
     return this.toMatchAttempt(
       await this.acceptFallbackMatch(
         input.userInput,
-        input.availableSkills,
+        availableSkills,
         input.context,
         input.authToken,
         input.traceId
@@ -221,13 +266,23 @@ export class SkillMatcherService {
     );
   }
 
+  private escapeRegex(text: string): string {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
   fallbackSkillMatch(
     userInput: string,
-    availableSkills: AvailableSkillDefinition[]
+    availableSkills: AvailableSkillDefinition[],
+    _context?: Record<string, unknown>
   ): SkillMatchResult | null {
+    if (isGuideOrInquiryRequest(userInput)) {
+      return null;
+    }
+
     const cleanInput = userInput
+      .replace(/\n*\[系统上下文：[\s\S]*$/i, '')
       .replace(/\[系统上下文：[^\]]*\]/g, '')
-      .replace(/\(附件:[^)]*\)/g, '')
+      .replace(/\(附件:[\s\S]*?\)(?=\s|$)/g, '')
       .trim();
     const normalizedInput = (cleanInput || userInput).toLowerCase();
 
@@ -236,13 +291,38 @@ export class SkillMatcherService {
     let bestMatchedKeywords: string[] = [];
 
     for (const skill of availableSkills) {
+      const negativeKeywords =
+        (skill.apiEndpoints?.runtimeMetadata?.negativeKeywords as string[]) ||
+        (skill as any).negativeKeywords;
+      if (Array.isArray(negativeKeywords)) {
+        const hasNegativeHit = negativeKeywords.some((neg) => {
+          const normNeg = String(neg).toLowerCase().trim();
+          return normNeg && normalizedInput.includes(normNeg);
+        });
+        if (hasNegativeHit) {
+          continue;
+        }
+      }
+
       const keywordHits = (skill.triggerKeywords || []).filter((keyword) => {
         if (!keyword) return false;
         const normKw = keyword.toLowerCase().trim();
         if (!normKw) return false;
         if (normKw.includes(' ')) {
           const tokens = normKw.split(/\s+/).filter(Boolean);
-          return tokens.every((token) => normalizedInput.includes(token));
+          return tokens.every((token) => {
+            if (/^[a-z0-9_-]+$/i.test(token)) {
+              return new RegExp(`(^|[^a-z0-9_-])${this.escapeRegex(token)}($|[^a-z0-9_-])`, 'i').test(
+                normalizedInput
+              );
+            }
+            return normalizedInput.includes(token);
+          });
+        }
+        if (/^[a-z0-9_-]+$/i.test(normKw)) {
+          return new RegExp(`(^|[^a-z0-9_-])${this.escapeRegex(normKw)}($|[^a-z0-9_-])`, 'i').test(
+            normalizedInput
+          );
         }
         return normalizedInput.includes(normKw);
       });
@@ -252,8 +332,13 @@ export class SkillMatcherService {
         : false;
 
       const score =
-        keywordHits.reduce((acc, kw) => acc + (kw.includes(' ') ? 3 : 2), 0) +
-        (descriptionHit ? 0.5 : 0);
+        keywordHits.reduce((acc, kw) => {
+          const trimmed = kw.trim();
+          if (trimmed.toLowerCase() === normalizedInput) return acc + 5;
+          if (trimmed.includes(' ') || trimmed.length >= 4) return acc + 3;
+          if (trimmed.length >= 2) return acc + 1.2;
+          return acc + 0.3;
+        }, 0) + (descriptionHit ? 0.5 : 0);
 
       if (score > bestScore) {
         bestScore = score;
@@ -266,10 +351,19 @@ export class SkillMatcherService {
       return null;
     }
 
+    const isExactHit = bestMatchedKeywords.some(
+      (kw) => kw.toLowerCase().trim() === normalizedInput
+    );
+    let confidence = 0.65 + bestScore * 0.07;
+    if (isExactHit) {
+      confidence = Math.max(confidence, 0.95);
+    }
+    confidence = Math.min(0.99, Number(confidence.toFixed(2)));
+
     return this.buildMatchResult(
       bestSkill,
       bestMatchedKeywords,
-      Math.min(0.99, 0.8 + bestScore * 0.05),
+      confidence,
       'keyword_fallback_match'
     );
   }
@@ -279,6 +373,7 @@ export class SkillMatcherService {
     availableSkills: AvailableSkillDefinition[]
   ): { skill: AvailableSkillDefinition; matchedKeywords: string[] } | null {
     const cleanInput = userInput
+      .replace(/\n*\[系统上下文：[\s\S]*$/i, '')
       .replace(/\[系统上下文：[^\]]*\]/g, '')
       .replace(/\(附件:[^)]*\)/g, '')
       .trim();
@@ -316,6 +411,9 @@ export class SkillMatcherService {
         name: skill.skillName,
         aliases: skill.apiEndpoints?.runtimeMetadata?.routingAliases,
         triggerKeywords: skill.triggerKeywords,
+        negativeKeywords:
+          (skill.apiEndpoints?.runtimeMetadata?.negativeKeywords as string[]) ||
+          (skill as any).negativeKeywords,
         skill,
       }))
     );
@@ -363,15 +461,84 @@ export class SkillMatcherService {
     authToken?: string,
     traceId?: string
   ): Promise<SkillMatchResult | null> {
-    const fallback = this.fallbackSkillMatch(userInput, availableSkills);
+    const fallback = this.fallbackSkillMatch(userInput, availableSkills, context);
     if (fallback && isAcceptedSkillMatch(fallback.confidence)) {
       return fallback;
     }
 
+    const trimmedInput = userInput.trim();
+    const isExplicitExploreSkillCommand =
+      /^(?:\/doc\s*)?(?:探查工作空间|查看工作空间文件|浏览知识库|列出空间文件|工作空间概览)$/i.test(
+        trimmedInput
+      );
+
+    const isWorkspaceSearchAllowed =
+      context?.workspace_search_enabled === true ||
+      context?.workspaceSearch === true ||
+      (/^\/doc\b/i.test(trimmedInput) &&
+        context?.workspace_search_enabled !== false &&
+        context?.workspaceSearch !== false);
+
+    if (isExplicitExploreSkillCommand && isWorkspaceSearchAllowed) {
+      let workspaceSkill = availableSkills.find(
+        (s) =>
+          ['platform.workspace.explorer', 'workspace_explorer', 'workspace.explorer'].includes(
+            s.skillId.toLowerCase()
+          ) || (s as any).category === 'workspace'
+      );
+      if (!workspaceSkill && this.skillCacheService?.loadSkillById) {
+        try {
+          workspaceSkill =
+            (await this.skillCacheService.loadSkillById(
+              'platform.workspace.explorer',
+              authToken,
+              traceId
+            )) || undefined;
+        } catch {
+          // best-effort lookup
+        }
+      }
+      if (workspaceSkill) {
+        return this.buildMatchResult(
+          workspaceSkill,
+          ['workspace_knowledge'],
+          0.95,
+          'workspace_knowledge_intent'
+        );
+      }
+    }
+
+    const hasLocalAttachmentContext =
+      (Array.isArray(context?.files) && (context.files as any[]).length > 0) ||
+      (Array.isArray(context?.uploadedFiles) && (context.uploadedFiles as any[]).length > 0) ||
+      Boolean(context?.attachmentNames) ||
+      /(?:附件|本地|已上传|当前|刚刚|历史文件)/i.test(userInput);
+
+    const isWebSearchExplicitlyRequested =
+      !hasLocalAttachmentContext &&
+      /(?:^|[^a-zA-Z0-9])(?:请?帮我)?(?:搜索|联网搜索|全网搜索|检索|搜一下|搜搜|网上搜|谷歌搜索|百度搜索|必应搜索|搜一下外网)/i.test(
+        userInput
+      );
+
+    const isNonSearchActionIntent =
+      /(?:提醒|闹钟|待办|日程|remind|邮件|email|收件箱|发信|发邮件)/i.test(userInput);
+
+    const isGuideRequest = isGuideOrInquiryRequest(userInput);
+
+    const hasSearchCues =
+      !hasLocalAttachmentContext &&
+      (hasRoutingSignal(userInput, 'search', createBuiltinRoutingPolicySnapshot()) ||
+        hasRoutingSignal(userInput, 'externalSearch', createBuiltinRoutingPolicySnapshot()) ||
+        isGuideRequest);
+
+    const isWebSearchAllowed =
+      context?.web_search_enabled !== false && context?.webSearch !== false;
+
     const isWebSearchEnabled =
-      context?.web_search_enabled === true ||
-      context?.webSearch === true ||
-      /(?:^|[^a-zA-Z0-9])(?:请?帮我)?(?:搜索|联网搜索|全网搜索|检索|搜一下|查一下|查找|查询|搜搜|查查)/i.test(userInput);
+      isWebSearchAllowed &&
+      !isNonSearchActionIntent &&
+      (isWebSearchExplicitlyRequested ||
+        ((context?.web_search_enabled === true || context?.webSearch === true) && hasSearchCues));
 
     if (isWebSearchEnabled) {
       let searchSkill = availableSkills.find(

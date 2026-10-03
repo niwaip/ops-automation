@@ -84,5 +84,14 @@ export const userApi = {
   deactivate: async (id: string): Promise<UserDto> => {
     return apiClient.put<UserDto>(`/users/${id}/deactivate`);
   },
+
+  resetPassword: async (
+    id: string,
+    password: string
+  ): Promise<{ success: boolean; message: string }> => {
+    return apiClient.put<{ success: boolean; message: string }>(`/users/${id}/reset-password`, {
+      password,
+    });
+  },
 };
 

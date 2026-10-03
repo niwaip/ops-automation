@@ -122,7 +122,7 @@ export interface ChatMessage {
     rateLimit?: LLMRateLimit;
     skillUsed?: string;
     params?: Record<string, unknown>;
-    files?: string[];
+    files?: Array<string | UploadedFileDescriptor>;
     fileUrl?: string;
     downloadUrl?: string;
     temporalLink?: string;
@@ -148,6 +148,7 @@ export interface ChatMessage {
     normalizedResult?: NormalizedChatExecutionResult;
     promptDebug?: PromptDebugPayload;
     isQueued?: boolean;
+    executionMode?: string;
   };
   isStreaming?: boolean;
 }
@@ -178,6 +179,8 @@ export interface UploadedFileDescriptor {
   url?: string;
   downloadUrl?: string;
   fileUrl?: string;
+  previewUrl?: string;
+  ticket?: string;
 }
 
 export interface ChatRequest {
@@ -196,6 +199,7 @@ export interface ChatRequest {
     thinking?: boolean;
     reasoning?: boolean;
     webSearch?: boolean;
+    workspaceSearch?: boolean;
     research?: boolean;
   };
 }

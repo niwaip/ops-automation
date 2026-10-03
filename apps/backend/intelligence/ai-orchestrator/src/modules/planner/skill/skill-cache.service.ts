@@ -1,6 +1,7 @@
 import { createHash } from 'crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
+import { ContrastiveSkillCompiler } from '@ops/backend-runtime-capability-contract';
 import { getAuthServiceUrl } from '../../../config/service-endpoints';
 import { TRACE_ID_HEADER } from '../../../common/trace.util';
 import { AvailableSkillDefinition } from '../../react-engine/interfaces';
@@ -21,6 +22,16 @@ const WEB_SEARCH_SKILL_IDS = new Set([
   'tavily_search',
   'web_search',
 ]);
+export const WORKSPACE_SEARCH_SKILL_IDS = new Set([
+  'platform.workspace.explorer',
+  'workspace_explorer',
+  'workspace.explorer',
+]);
+
+export function isWorkspaceSearchSkill(skill: { skillId?: string; category?: string }): boolean {
+  const id = String(skill?.skillId || '').toLowerCase();
+  return WORKSPACE_SEARCH_SKILL_IDS.has(id) || skill?.category === 'workspace';
+}
 
 @Injectable()
 export class SkillCacheService {
@@ -39,13 +50,18 @@ export class SkillCacheService {
     authToken?: string,
     traceId?: string,
     targetSkillId?: string,
-    webSearchEnabled = false
+    webSearchEnabled = false,
+    userId?: string,
+    workspaceSearchEnabled = false
   ): Promise<AvailableSkillDefinition[]> {
     if (targetSkillId && this.isWebSearchSkillId(targetSkillId) && !webSearchEnabled) {
       return [];
     }
+    if (targetSkillId && this.isWorkspaceSearchSkillId(targetSkillId) && !workspaceSearchEnabled) {
+      return [];
+    }
     if (targetSkillId) {
-      const skill = await this.loadSkillById(targetSkillId, authToken, traceId);
+      const skill = await this.loadSkillById(targetSkillId, authToken, traceId, userId);
       if (skill) {
         return [skill];
       }
@@ -54,7 +70,7 @@ export class SkillCacheService {
       );
     }
 
-    const cacheKey = `${this.buildAuthCacheKey(authToken)}:web-search:${webSearchEnabled ? 'on' : 'off'}`;
+    const cacheKey = `${this.buildAuthCacheKey(authToken, userId)}:web-search:${webSearchEnabled ? 'on' : 'off'}:workspace-search:${workspaceSearchEnabled ? 'on' : 'off'}`;
     const cachedSkills = this.getCacheValue(this.availableSkillsCache, cacheKey);
     if (cachedSkills) {
       return cachedSkills;
@@ -67,7 +83,7 @@ export class SkillCacheService {
         const catalogRes = await axios.get(
           `${this.authServiceUrl}/internal/builtin-skills/catalog`,
           {
-            headers: this.buildRequestHeaders(authToken, traceId),
+            headers: this.buildRequestHeaders(authToken, traceId, userId),
           }
         );
         const catalogData = catalogRes.data as any;
@@ -121,7 +137,7 @@ export class SkillCacheService {
       let legacySkills: any[] = [];
       try {
         const response = await axios.get<SkillListResponse>(`${this.authServiceUrl}/skills`, {
-          headers: this.buildRequestHeaders(authToken, traceId),
+          headers: this.buildRequestHeaders(authToken, traceId, userId),
         });
         legacySkills = Array.isArray(response.data.skills) ? response.data.skills : [];
       } catch (err: any) {
@@ -140,16 +156,18 @@ export class SkillCacheService {
       const normalizedSkills = rawSkills
         .map((item) => this.mapRawSkillDefinition(item))
         .filter((item) => item.skillId && item.skillName)
-        .filter((item) => webSearchEnabled || !this.isWebSearchSkill(item));
-      this.setCacheValue(this.availableSkillsCache, cacheKey, normalizedSkills);
-      normalizedSkills.forEach((skill) => {
+        .filter((item) => webSearchEnabled || !this.isWebSearchSkill(item))
+        .filter((item) => workspaceSearchEnabled || !this.isWorkspaceSearchSkill(item));
+      const compiledSkills = this.applyContrastiveSkillCompilation(normalizedSkills);
+      this.setCacheValue(this.availableSkillsCache, cacheKey, compiledSkills);
+      compiledSkills.forEach((skill) => {
         this.setCacheValue(
           this.skillByIdCache,
           this.buildSkillCacheKey(cacheKey, skill.skillId),
           skill
         );
       });
-      return normalizedSkills;
+      return compiledSkills;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown';
       this.logger.warn(`Failed to load available skills for planner: ${message}`);
@@ -165,17 +183,35 @@ export class SkillCacheService {
     return WEB_SEARCH_SKILL_IDS.has(value.trim().toLowerCase());
   }
 
+  private isWorkspaceSearchSkill(skill: AvailableSkillDefinition): boolean {
+    const id = (skill.skillId || '').trim().toLowerCase();
+    const name = (skill.skillName || '').trim().toLowerCase();
+    const category = ((skill as any).category || '').trim().toLowerCase();
+    const domain = ((skill as any).domain || '').trim().toLowerCase();
+    return (
+      this.isWorkspaceSearchSkillId(id) ||
+      this.isWorkspaceSearchSkillId(name) ||
+      domain === 'workspace' ||
+      category === 'workspace'
+    );
+  }
+
+  private isWorkspaceSearchSkillId(value: string): boolean {
+    return WORKSPACE_SEARCH_SKILL_IDS.has(value.trim().toLowerCase());
+  }
+
   async loadSkillById(
     skillId: string,
     authToken?: string,
-    traceId?: string
+    traceId?: string,
+    userId?: string
   ): Promise<AvailableSkillDefinition | null> {
     const trimmedSkillId = skillId.trim();
     if (!trimmedSkillId) {
       return null;
     }
 
-    const authCacheKey = this.buildAuthCacheKey(authToken);
+    const authCacheKey = this.buildAuthCacheKey(authToken, userId);
     const cachedSkill = this.getCacheValue(
       this.skillByIdCache,
       this.buildSkillCacheKey(authCacheKey, trimmedSkillId)
@@ -193,7 +229,7 @@ export class SkillCacheService {
             action: 'discover',
           },
           {
-            headers: this.buildRequestHeaders(authToken, traceId),
+            headers: this.buildRequestHeaders(authToken, traceId, userId),
           }
         );
         const data = resolveRes.data as any;
@@ -240,7 +276,7 @@ export class SkillCacheService {
       const response = await axios.get<Record<string, unknown>>(
         `${this.authServiceUrl}/skills/${trimmedSkillId}`,
         {
-          headers: this.buildRequestHeaders(authToken, traceId),
+          headers: this.buildRequestHeaders(authToken, traceId, userId),
         }
       );
       const mappedSkill = this.mapRawSkillDefinition(response.data);
@@ -602,19 +638,43 @@ export class SkillCacheService {
     return trimmed.replace(/^data\./, '').trim() || undefined;
   }
 
-  private buildRequestHeaders(authToken?: string, traceId?: string): Record<string, string> {
+  private buildRequestHeaders(
+    authToken?: string,
+    traceId?: string,
+    userId?: string
+  ): Record<string, string> {
     const internalSecret = process.env.INTERNAL_API_SHARED_SECRET;
     return {
       ...(authToken ? { Authorization: authToken } : {}),
       ...(internalSecret ? { 'X-Internal-Auth': internalSecret } : {}),
       ...(traceId ? { [TRACE_ID_HEADER]: traceId } : {}),
+      ...(userId ? { 'x-user-id': userId } : {}),
     };
   }
 
-  private buildAuthCacheKey(authToken?: string): string {
+  private buildAuthCacheKey(authToken?: string, userId?: string): string {
     return createHash('sha1')
-      .update(authToken || 'anonymous')
+      .update(`${authToken || 'anonymous'}:${userId || 'anonymous'}`)
       .digest('hex');
+  }
+
+  invalidateCache(authToken?: string, userId?: string): void {
+    if (authToken || userId) {
+      const prefix = this.buildAuthCacheKey(authToken, userId);
+      for (const key of this.availableSkillsCache.keys()) {
+        if (key.startsWith(prefix)) {
+          this.availableSkillsCache.delete(key);
+        }
+      }
+      for (const key of this.skillByIdCache.keys()) {
+        if (key.startsWith(prefix)) {
+          this.skillByIdCache.delete(key);
+        }
+      }
+    } else {
+      this.availableSkillsCache.clear();
+      this.skillByIdCache.clear();
+    }
   }
 
   private buildSkillCacheKey(authCacheKey: string, skillId: string): string {
@@ -637,6 +697,59 @@ export class SkillCacheService {
     cache.set(key, {
       value,
       expiresAt: Date.now() + PLANNER_SKILL_CACHE_TTL_MS,
+    });
+  }
+
+  private applyContrastiveSkillCompilation(
+    skills: AvailableSkillDefinition[]
+  ): AvailableSkillDefinition[] {
+    if (!skills || skills.length === 0) {
+      return skills;
+    }
+
+    const compilationInputs = skills.map((skill) => {
+      const runtimeMetadata = (skill.apiEndpoints?.runtimeMetadata || {}) as Record<string, unknown>;
+      return {
+        id: skill.skillId,
+        name: skill.skillName,
+        description: skill.description,
+        triggerKeywords: skill.triggerKeywords,
+        aliases: (runtimeMetadata.routingAliases as string[]) || [],
+        negativeKeywords: (runtimeMetadata.negativeKeywords as string[]) || [],
+        runtimeType: skill.executionType,
+      };
+    });
+
+    const compiledMap = ContrastiveSkillCompiler.compile(compilationInputs);
+
+    return skills.map((skill) => {
+      const compiled = compiledMap.get(skill.skillId);
+      if (!compiled) {
+        return skill;
+      }
+
+      const currentMetadata = (skill.apiEndpoints?.runtimeMetadata as Record<string, unknown>) || {};
+      const existingAliases = (currentMetadata.routingAliases as string[]) || [];
+      const existingNegatives = (currentMetadata.negativeKeywords as string[]) || [];
+
+      const mergedAliases = Array.from(
+        new Set([...existingAliases, ...compiled.positiveSignals])
+      );
+      const mergedNegatives = Array.from(
+        new Set([...existingNegatives, ...compiled.negativeSignals])
+      );
+
+      return {
+        ...skill,
+        apiEndpoints: {
+          ...skill.apiEndpoints,
+          runtimeMetadata: {
+            ...currentMetadata,
+            routingAliases: mergedAliases,
+            negativeKeywords: mergedNegatives,
+          },
+        },
+      };
     });
   }
 }

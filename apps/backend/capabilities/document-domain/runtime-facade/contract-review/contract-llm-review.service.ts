@@ -288,7 +288,10 @@ ${standardsDesc}${formIntegrityDesc}${customPromptDesc}
       const hasMed = matchedRules.some((r) => r.severity === 'MEDIUM');
       const finalRiskLevel: ReviewRiskLevel = hasHigh ? 'HIGH' : hasMed ? 'MEDIUM' : 'LOW';
       const primaryRule = matchedRules.find((r) => r.severity === finalRiskLevel) || matchedRules[0];
-      const recommended = primaryRule.recommendRevision(clauseText);
+      const recommended = typeof primaryRule.recommendRevision === 'function'
+        ? primaryRule.recommendRevision(clauseText)
+        : ((primaryRule as any).recommendedRevision || clauseText);
+
 
       let tailoredAdvice = primaryRule.legalAdvice;
       if (myPosition === 'buyer') {

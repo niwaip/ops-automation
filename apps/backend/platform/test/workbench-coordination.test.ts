@@ -15,15 +15,42 @@ import {
   WORKBENCH_PRISMA,
 } from '@ops/workbench';
 
-jest.mock('axios', () => ({
-  __esModule: true,
-  default: {
-    post: jest.fn().mockRejectedValue(new Error('Mock network offline')),
-    get: jest.fn().mockRejectedValue(new Error('Mock network offline')),
-  },
-  post: jest.fn().mockRejectedValue(new Error('Mock network offline')),
-  get: jest.fn().mockRejectedValue(new Error('Mock network offline')),
-}));
+jest.mock('axios', () => {
+  const defaultReviewResponse = {
+    data: {
+      success: true,
+      output: {
+        title: '合同合规智能审查',
+        overallRisk: 'LOW',
+        riskScore: 92,
+        metrics: { healthScore: 92, highRiskCount: 0, mediumRiskCount: 0, lowRiskCount: 0 },
+        summary: '合同合规审查通过',
+        checkedRules: [{ rule: 'rule1', passed: true }],
+        clauses: [{ clauseNumber: '第1条', text: '保密条款' }],
+        htmlReportUrl: 'http://test/report.html',
+        artifacts: [{ name: 'report.html', url: 'http://test/report.html', mimeType: 'text/html' }],
+        report: {
+          title: '合同合规智能审查',
+          overallRisk: 'LOW',
+          riskScore: 92,
+          metrics: { healthScore: 92, highRiskCount: 0, mediumRiskCount: 0, lowRiskCount: 0 },
+          checkedRules: [{ rule: 'rule1', passed: true }],
+          clauses: [{ clauseNumber: '第1条', text: '保密条款' }],
+          htmlReportUrl: 'http://test/report.html',
+        },
+      },
+    },
+  };
+  return {
+    __esModule: true,
+    default: {
+      post: jest.fn().mockResolvedValue(defaultReviewResponse),
+      get: jest.fn().mockResolvedValue({ data: {} }),
+    },
+    post: jest.fn().mockResolvedValue(defaultReviewResponse),
+    get: jest.fn().mockResolvedValue({ data: {} }),
+  };
+});
 
 describe('WorkbenchCoordinationService', () => {
   let service: WorkbenchCoordinationService;
@@ -66,6 +93,10 @@ describe('WorkbenchCoordinationService', () => {
     department: {
       findFirst: jest.fn(),
     },
+    $executeRaw: jest.fn().mockResolvedValue(1),
+    $transaction: jest.fn().mockImplementation((fn: any) =>
+      typeof fn === 'function' ? fn(mockPrisma) : Promise.all(fn)
+    ),
   };
 
   const mockInboxService = {
@@ -983,6 +1014,12 @@ describe('WorkbenchCoordinationService', () => {
             counterpartyName: '豆包有限公司',
             durationYears: 3,
           },
+          attachments: [
+            {
+              name: '保密协议.docx',
+              url: 'http://test/sample.docx',
+            },
+          ],
           initiator: { id: 'u-initiator-1', username: 'admin' },
           assignee: { id: 'u-initiator-1', username: 'admin' },
           actions: [],

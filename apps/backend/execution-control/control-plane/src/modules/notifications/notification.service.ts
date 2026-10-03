@@ -146,10 +146,15 @@ export class NotificationService {
 
       return (inboxItems || []).map((item: any) => {
         const payload = (item.unifiedPayload as any) || {};
-        const isApproval = payload.taskType === 'approval';
+        const isReceipt = Boolean(
+          payload.isReceipt ||
+          payload.taskType === 'receipt' ||
+          item.title?.startsWith('[协同回执]')
+        );
+        const isApproval = !isReceipt && payload.taskType === 'approval';
         const sender = item.sourceSender || payload.initiator?.username || '团队成员';
-        const category = isApproval ? 'pending_approval' : 'status_update';
-        const severity = isApproval ? 'warning' : 'info';
+        const category = isReceipt ? 'completed' : isApproval ? 'pending_approval' : 'status_update';
+        const severity = isReceipt ? 'success' : isApproval ? 'warning' : 'info';
         const timestamp = (item.createdAt || new Date()).toISOString();
 
         return {
@@ -169,12 +174,14 @@ export class NotificationService {
           metadata: {
             inboxItemId: item.id,
             taskId: item.sourceRefId || item.id,
-            title: `收到来自 @${sender} 的协同${isApproval ? '审批承认' : '任务'}`,
+            title: isReceipt
+              ? `【协同回执】@${sender} 已终审通过并归档: ${item.sourceTitle || item.title}`
+              : `收到来自 @${sender} 的协同${isApproval ? '审批承认' : '任务'}`,
             resultTitle: item.title,
             resultSummary: item.rawContent,
-            approvalStatus: isApproval ? '待承认' : '待处理',
+            approvalStatus: isReceipt ? '已办结' : isApproval ? '待承认' : '待处理',
             sender,
-            taskType: payload.taskType || (isApproval ? 'approval' : 'assignment'),
+            taskType: payload.taskType || (isReceipt ? 'receipt' : isApproval ? 'approval' : 'assignment'),
             priority: payload.priority || 'medium',
             attachments: payload.attachments || [],
           },

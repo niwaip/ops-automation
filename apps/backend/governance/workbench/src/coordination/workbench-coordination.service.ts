@@ -1,7 +1,10 @@
 import {
   BadRequestException,
+  ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
   OnModuleInit,
@@ -40,6 +43,9 @@ import {
 } from './coordination-attachment-helper';
 import { CoordinationActionProcessor } from './coordination-action.processor';
 
+import { CoordinationAttachmentStorageService } from './coordination-attachment-storage.service';
+import { DocxCommentInjectorService } from './docx-comment-injector.service';
+
 export {
   CollaboratorUserDto,
   sanitizeCoordinationAttachments,
@@ -66,7 +72,11 @@ export class WorkbenchCoordinationService implements OnModuleInit {
     private readonly collaboratorService: CoordinationCollaboratorService = new CoordinationCollaboratorService(
       prisma,
       orgWorkflowService
-    )
+    ),
+    @Optional()
+    private readonly attachmentStorage?: CoordinationAttachmentStorageService,
+    @Optional()
+    private readonly commentInjector: DocxCommentInjectorService = new DocxCommentInjectorService()
   ) {
     this.lifecycleService = new CoordinationLifecycleService(
       this.prisma,
@@ -81,7 +91,9 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       (...args) => (this.resolveStageApprover as any)(...args),
       this.stageEngine,
       this.orgWorkflowService,
-      this.workspaceService
+      this.workspaceService,
+      this.attachmentStorage,
+      this.commentInjector
     );
   }
 
@@ -191,6 +203,41 @@ export class WorkbenchCoordinationService implements OnModuleInit {
     const parameters = dto.parameters || {};
     const taskType = dto.taskType || CoordinationTaskType.approval;
 
+    // 核心幂等保证：若已存在相同 executionId 的协同工单，直接返回已有工单，杜绝重复创建
+    const executionId = (parameters as any).executionId || (dto.metadata as any)?.executionId;
+    if (executionId) {
+      try {
+        const existingItem = await this.prisma.workbenchInboxItem.findFirst({
+          where: {
+            userId: assignee.id,
+            unifiedPayload: {
+              path: ['parameters', 'executionId'],
+              equals: executionId,
+            },
+          },
+        });
+        if (existingItem) {
+          const payload = (existingItem.unifiedPayload || {}) as any;
+          const stage = payload.currentStage;
+          if (!stage || stage === 'initiator_confirm' || stage === 'draft_submission') {
+            this.logger.log(`[CreateTask] Returning existing coordination task for executionId ${executionId}: ${existingItem.sourceRefId}`);
+            return {
+              taskId: existingItem.sourceRefId || payload.taskId || existingItem.id,
+              inboxItemId: existingItem.id,
+              taskType: payload.taskType || CoordinationTaskType.approval,
+              status: payload.status || CoordinationTaskStatus.pending,
+              title: existingItem.sourceTitle || existingItem.title,
+              initiator: payload.initiator,
+              assignee: payload.assignee,
+              unifiedPayload: payload,
+            };
+          }
+        }
+      } catch (e) {
+        // ignore JSON path error on older sqlite if any
+      }
+    }
+
     let typePrefix = '[待我处理]';
     if (taskType === CoordinationTaskType.approval) {
       typePrefix = '[待我承认]';
@@ -275,60 +322,64 @@ export class WorkbenchCoordinationService implements OnModuleInit {
         try {
           const executionId = (parameters as any).executionId || (dto.metadata as any)?.executionId;
 
-          const configuredSkillIds = (
-            process.env.DOCUMENT_STAGE_SKILL_IDS ||
-            '16fb88e9-ba9c-4ab7-b508-f23adb1a821a,773bd4a6-8327-4610-8fb2-826314133335'
-          )
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean);
+          // 核心安全准则：必须使用精确的 executionId 绑定，严禁模糊查询全库“最近一次成功执行”
+          if (executionId) {
+            const docExecution = await this.prisma.execution.findUnique({
+              where: { id: executionId },
+              include: { artifacts: true },
+            });
 
-          const queryWhere: any = executionId
-            ? { id: executionId }
-            : {
-                status: 'succeeded',
-                OR: [...configuredSkillIds.map((skillId) => ({ skillId }))],
-              };
-
-          const latestDocExecution = await this.prisma.execution.findFirst({
-            where: queryWhere,
-            orderBy: { createdAt: 'desc' },
-            select: { id: true, resultJson: true },
-          });
-
-          if (latestDocExecution?.resultJson) {
-            const rJson = latestDocExecution.resultJson as any;
-            const downloadUrl =
-              rJson.downloadUrl || rJson.result?.businessData?.result?.downloadUrl;
-            const fileName =
-              rJson.fileName ||
-              rJson.result?.businessData?.result?.fileName ||
-              `${dto.title.trim()}.docx`;
-            if (downloadUrl) {
+            if (docExecution) {
+              const rJson = (docExecution.resultJson || {}) as any;
+              const artifactRecord = docExecution.artifacts?.[0];
+              const downloadUrl =
+                artifactRecord?.url ||
+                rJson.downloadUrl ||
+                rJson.result?.businessData?.result?.downloadUrl;
+              const fileName =
+                artifactRecord?.name ||
+                rJson.fileName ||
+                rJson.result?.businessData?.result?.fileName ||
+                `${dto.title.trim()}.docx`;
               const docSize =
-                Number(rJson.size) || Number(rJson.result?.businessData?.result?.size) || undefined;
-              attachments.push({
-                name: fileName,
-                url: downloadUrl,
-                ...(docSize ? { size: docSize } : {}),
-                mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-              });
-              (parameters as any).downloadUrl = downloadUrl;
-              (parameters as any).fileName = fileName;
+                artifactRecord?.sizeBytes ||
+                Number(rJson.size) ||
+                Number(rJson.result?.businessData?.result?.size) ||
+                undefined;
+
+              if (downloadUrl) {
+                attachments.push({
+                  id: artifactRecord?.id,
+                  name: fileName,
+                  url: downloadUrl,
+                  downloadUrl,
+                  ...(docSize ? { size: docSize } : {}),
+                  sha256: artifactRecord?.sha256,
+                  mimeType: artifactRecord?.mimeType || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                });
+                (parameters as any).downloadUrl = downloadUrl;
+                (parameters as any).fileName = fileName;
+                (parameters as any).artifactId = artifactRecord?.id;
+              }
             }
           }
         } catch (queryErr) {
-          this.logger.warn('Failed to query latest document execution:', queryErr);
+          this.logger.warn('Failed to query precise execution artifact:', queryErr);
         }
       }
     }
+
+    const effectiveParameters = {
+      ...(parameters || {}),
+      currentStage,
+    };
 
     const unifiedPayload = {
       kind: 'coordination',
       taskId,
       workflowId,
       currentStage,
-      parameters,
+      parameters: effectiveParameters,
       taskType,
       status: CoordinationTaskStatus.pending,
       priority: dto.priority || CoordinationTaskPriority.medium,
@@ -337,15 +388,18 @@ export class WorkbenchCoordinationService implements OnModuleInit {
         id: initiator.id,
         username: initiator.username,
         email: initiator.email,
+        orgId: initiator.orgId || null,
       },
       assignee: {
         id: assignee.id,
         username: assignee.username,
         email: assignee.email,
+        orgId: assignee.orgId || null,
       },
       attachments,
       isCardTemplate: Boolean(dto.isCardTemplate),
       actions: [],
+      orgId: initiator.orgId || assignee.orgId || null,
       metadata: dto.metadata || {},
       createdAt: new Date().toISOString(),
     };
@@ -405,6 +459,36 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    if (rawTarget && rawTarget.id !== taskId && (rawTarget.title?.startsWith('[协同回执]') || (rawTarget.unifiedPayload as any)?.isReceipt)) {
+      const isRevision =
+        (rawTarget.unifiedPayload as any)?.status === 'revision_required' ||
+        (rawTarget.unifiedPayload as any)?.receiptAction === 'reject' ||
+        rawTarget.title?.includes('[需重修]') ||
+        rawTarget.title?.includes('已驳回');
+      if (!isRevision) {
+        try {
+          const realTaskItem = await this.prisma.workbenchInboxItem.findFirst({
+            where: {
+              OR: [
+                { sourceRefId: taskId },
+                { sourceRefId: `coord_${cleanId}` },
+                { sourceRefId: cleanId },
+              ],
+              NOT: {
+                title: { startsWith: '[协同回执]' },
+              },
+            },
+            orderBy: { createdAt: 'desc' },
+          });
+          if (realTaskItem) {
+            rawTarget = realTaskItem;
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
 
     if (!rawTarget) {
       // 尝试通过 workbenchTodo 关联反查
@@ -569,6 +653,52 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       targetItem.title?.includes('[需重修]') ||
       targetItem.title?.includes('需重修') ||
       targetItem.title?.includes('已驳回');
+
+    // 1. 权限强校验：必须为指定承办人或系统管理员（基于角色的 RBAC），严禁未授权代办
+    const operator = await this.resolveUser(operatorUserId);
+    const isAssignee =
+      payload.assignee?.id === operatorUserId ||
+      payload.assigneeId === operatorUserId ||
+      targetItem.userId === operatorUserId ||
+      payload.assignee?.username === operatorUserId ||
+      Boolean(operator?.username && payload.assignee?.username === operator.username) ||
+      (isRevisionRequired &&
+        (payload.initiator?.id === operatorUserId ||
+          payload.initiator?.username === operator?.username ||
+          targetItem.userId === operatorUserId));
+    const isAdmin = operator?.role === 'admin';
+
+    if (!isAssignee && !isAdmin) {
+      throw new ForbiddenException(
+        `无权处理当前协同任务：当前操作人 [${operator?.username || operatorUserId}] 不是本阶段的指定承办人 [${payload.assignee?.username || payload.assigneeId || '未指定'}]`
+      );
+    }
+
+    // 2. 组织租户隔离安全校验：禁止跨组织越权流转
+    const taskOrgId = payload.orgId || (targetItem as any).orgId;
+    if (taskOrgId && operator?.orgId && taskOrgId !== operator.orgId && !isAdmin) {
+      throw new ForbiddenException('无权跨组织处理协同任务');
+    }
+
+    // 3. 初稿确认送审门禁：必须存在真实合同附件或条款，严禁无产物送审
+    const isConfirmOrSendStage =
+      payload.currentStage === 'initiator_confirm' ||
+      payload.currentStage === 'draft_submission' ||
+      targetItem.title?.includes('[待发送]') ||
+      targetItem.title?.includes('初稿确认');
+
+    if (isConfirmOrSendStage && (dto.action === 'approve' || dto.action === 'complete')) {
+      const hasAttachment =
+        (Array.isArray(payload.attachments) &&
+          payload.attachments.some((a: any) => Boolean(a && (a.url || a.downloadUrl)))) ||
+        (Array.isArray(dto.attachments) &&
+          dto.attachments.some((a: any) => Boolean(a && (a.url || a.downloadUrl)))) ||
+        Boolean(payload.parameters?.downloadUrl || payload.parameters?.fileUrl || dto.parameters?.downloadUrl);
+
+      if (!hasAttachment && !payload.parameters?.text && !dto.parameters?.text) {
+        throw new BadRequestException('无法提交送审：当前协同任务未包含有效的合同文件或条款产物');
+      }
+    }
 
     // 核心约束：已驳回的内容，重新提交时不能无修改直接提交（必须修改业务要件参数或上传/替换附件）
     if (isRevisionRequired && (dto.action === 'approve' || dto.action === 'complete')) {
@@ -799,6 +929,41 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       };
     }
 
+    // 4. 并发幂等与原子 CAS 防护：所有门禁校验通过后，在此加原子行级锁
+    if (payload.asyncExecution?.status === 'running' || payload.inTransit === true) {
+      throw new ConflictException('该协同任务正在后台自动流转中，请勿重复操作');
+    }
+
+    try {
+      const lockRows = await this.prisma.$executeRaw`
+        UPDATE workbench_inbox_items
+        SET unified_payload = jsonb_set(
+          COALESCE(unified_payload, '{}'::jsonb),
+          '{inTransit}',
+          'true'::jsonb,
+          true
+        ),
+        updated_at = NOW()
+        WHERE id = ${targetItem.id}::uuid
+          AND (
+            unified_payload->>'inTransit' IS NULL
+            OR unified_payload->>'inTransit' = 'false'
+          )
+          AND (
+            unified_payload->'asyncExecution'->>'status' IS NULL
+            OR unified_payload->'asyncExecution'->>'status' != 'running'
+          )
+      `;
+
+      if (lockRows === 0) {
+        throw new ConflictException('该协同任务正在后台自动流转中，请勿重复操作');
+      }
+    } catch (lockErr) {
+      if (lockErr instanceof ConflictException) throw lockErr;
+      this.logger.error(`Failed to acquire CAS lock for task ${targetItem.id}:`, lockErr);
+      throw new InternalServerErrorException('协同任务加锁失败，请重试');
+    }
+
     // 检查后续流转是否包含自动化执行阶段
     const workflow: any = payload.workflowId
       ? this.orgWorkflowService?.getWorkflowById(payload.workflowId) ||
@@ -886,6 +1051,30 @@ export class WorkbenchCoordinationService implements OnModuleInit {
           await this.executeActionProcess(operatorUserId, taskId, dto, targetItem);
         } catch (asyncErr) {
           this.logger.error(`[AsyncRunner] Task ${taskId} async execution error:`, asyncErr);
+          try {
+            await this.prisma.$executeRaw`
+              UPDATE workbench_inbox_items
+              SET unified_payload = jsonb_set(
+                jsonb_set(
+                  COALESCE(unified_payload, '{}'::jsonb),
+                  '{inTransit}',
+                  'false'::jsonb,
+                  true
+                ),
+                '{asyncExecution}',
+                jsonb_build_object(
+                  'status', 'failed',
+                  'error', ${String((asyncErr as any)?.message || asyncErr)},
+                  'failedAt', NOW()
+                ),
+                true
+              ),
+              updated_at = NOW()
+              WHERE id = ${targetItem.id}::uuid
+            `;
+          } catch (unlockErr) {
+            this.logger.error(`Failed to release CAS lock on async error for task ${taskId}:`, unlockErr);
+          }
         }
       });
 
@@ -899,7 +1088,26 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       };
     }
 
-    return await this.executeActionProcess(operatorUserId, taskId, dto, targetItem);
+    try {
+      return await this.executeActionProcess(operatorUserId, taskId, dto, targetItem);
+    } catch (syncErr) {
+      try {
+        await this.prisma.$executeRaw`
+          UPDATE workbench_inbox_items
+          SET unified_payload = jsonb_set(
+            COALESCE(unified_payload, '{}'::jsonb),
+            '{inTransit}',
+            'false'::jsonb,
+            true
+          ),
+          updated_at = NOW()
+          WHERE id = ${targetItem.id}::uuid
+        `;
+      } catch (unlockErr) {
+        this.logger.error(`Failed to release CAS lock on sync error for task ${taskId}:`, unlockErr);
+      }
+      throw syncErr;
+    }
   }
 
   /**
@@ -931,6 +1139,8 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       title: item.sourceTitle || item.title,
       rawContent: item.rawContent,
       workflowId: payload.workflowId,
+      currentStage: payload.currentStage,
+      reviewReport: payload.reviewReport,
       parameters: payload.parameters,
       status: payload.status || 'pending',
       taskType: payload.taskType || 'approval',
@@ -941,6 +1151,7 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       attachments: payload.attachments || [],
       actions: payload.actions || [],
       externalSyncResult: payload.externalSyncResult,
+      unifiedPayload: payload,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
     };

@@ -58,7 +58,7 @@ function routeVerifier(
     return { verifier: 'observation-answer', routeReason: 'fallback' };
   }
   if (
-    commands.some((command) => ['search', 'smart_search'].includes(command.tool)) &&
+    commands.some((command) => ['search', 'smart_search'].includes(command.tool)) ||
     commands.some((command) => command.tool === 'click_result')
   ) {
     return { verifier: 'search-result-open', routeReason: 'goal-pattern' };
@@ -166,35 +166,93 @@ function buildChecks(
     const hasSearchCommand = input.commands.some((command) =>
       ['search', 'smart_search'].includes(command.tool)
     );
-    const initialUrl = input.commands.find((command) => command.tool === 'navigate')?.params.url;
+    const hasClickResultCommand = input.commands.some((command) =>
+      command.tool === 'click_result'
+    );
+    const initialUrl =
+      input.commands.find((command) => command.tool === 'navigate')?.params.url ||
+      input.beforeObservation?.currentPageUrl;
     const observedUrl = input.observation?.currentPageUrl;
-    const openedResult = Boolean(
+    const executionOpenedNewPage = Boolean(
+      input.execution?.results?.some(
+        (r) => r?.data?.openedNewPage === true || r?.openedNewPage === true
+      )
+    );
+    const urlChanged = Boolean(
       input.diff?.urlChanged ||
-        input.diff?.titleChanged ||
-        (typeof observedUrl === 'string' &&
+        (typeof initialUrl === 'string' &&
+          typeof observedUrl === 'string' &&
+          initialUrl.trim() &&
           observedUrl.trim() &&
           !urlsRepresentSamePage(initialUrl, observedUrl))
     );
-    checks.push({
-      code: 'search_submitted',
-      level: 'page',
-      passed: hasSearchCommand && Boolean(input.execution?.success),
-      message: hasSearchCommand ? '搜索动作已成功执行。' : '未找到可验证的搜索动作。',
-      required: true,
-      weight: 2,
-      evidencePath: 'evidence.toolExecution.commands',
-    });
-    checks.push({
-      code: 'result_opened',
-      level: 'goal',
-      passed: openedResult ? true : input.execution?.success ? 'unknown' : false,
-      message: openedResult
-        ? '已观察到搜索结果页面或目标详情页。'
-        : '搜索执行成功，但尚未取得足够页面证据确认结果已打开。',
-      required: false,
-      weight: 3,
-      evidencePath: 'evidence.after.currentPageUrl',
-    });
+    const landedResultUrl = (input.execution?.results?.map(
+      (r) => (r?.data?.landedUrl || r?.landedUrl) as string | undefined
+    ).find((u) => typeof u === 'string' && u.trim())) || undefined;
+
+    const landedResultTitle = (input.execution?.results?.map(
+      (r) => (r?.data?.title || r?.title) as string | undefined
+    ).find((t) => typeof t === 'string' && t.trim())) || undefined;
+
+    const isLandedOnTarget = Boolean(
+      (landedResultUrl && observedUrl && urlsRepresentSamePage(landedResultUrl, observedUrl)) ||
+      (landedResultTitle && input.observation?.pageTitle && input.observation.pageTitle.includes(landedResultTitle))
+    );
+
+    const observationConfirmedNewPage = Boolean(
+      landedResultUrl
+        ? isLandedOnTarget
+        : (urlChanged || input.diff?.titleChanged) && (!initialUrl || !observedUrl || !urlsRepresentSamePage(initialUrl, observedUrl))
+    );
+
+    const openedResult = Boolean(
+      isLandedOnTarget ||
+      (executionOpenedNewPage ? observationConfirmedNewPage : (urlChanged || input.diff?.titleChanged))
+    );
+
+    if (hasSearchCommand) {
+      checks.push({
+        code: 'search_submitted',
+        level: 'page',
+        passed: Boolean(input.execution?.success),
+        message: input.execution?.success ? '搜索动作已成功执行。' : '搜索动作未成功执行。',
+        required: true,
+        weight: 2,
+        evidencePath: 'evidence.toolExecution.commands',
+      });
+    }
+
+    if (hasClickResultCommand) {
+      const observationMismatched = Boolean(
+        (executionOpenedNewPage && !urlChanged && !input.diff?.titleChanged) ||
+        (landedResultUrl && !isLandedOnTarget)
+      );
+      checks.push({
+        code: 'result_opened',
+        level: 'goal',
+        passed: openedResult ? true : false,
+        message: openedResult
+          ? '已观察到搜索结果页面或目标详情页，且执行与观察一致。'
+          : observationMismatched
+            ? '工具已执行点击，但当前观察视图未到达目标页面（执行与观察不一致，未观察到目标页面）。'
+            : '点击结果后未观察到页面变化或新标签页（未达到目标页面）。',
+        required: true,
+        weight: 3,
+        evidencePath: 'evidence.after.currentPageUrl',
+      });
+    } else {
+      checks.push({
+        code: 'result_opened',
+        level: 'goal',
+        passed: openedResult ? true : input.execution?.success ? 'unknown' : false,
+        message: openedResult
+          ? '已观察到搜索结果页面或目标详情页。'
+          : '搜索执行成功，但尚未取得足够页面证据确认结果已打开。',
+        required: false,
+        weight: 3,
+        evidencePath: 'evidence.after.currentPageUrl',
+      });
+    }
     return checks;
   }
 

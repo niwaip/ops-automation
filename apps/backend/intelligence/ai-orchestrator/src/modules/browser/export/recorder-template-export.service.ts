@@ -562,7 +562,9 @@ export class RecorderTemplateExportService {
     }
 
     const locator = this.toTemplateLocator(command, session);
-    const params = this.toTemplateParams(command.params, ['selector', 'text', 'target']);
+    const omitKeys =
+      action === 'type_text' ? ['selector', 'target'] : ['selector', 'text', 'target'];
+    const params = this.toTemplateParams(command.params, omitKeys);
     const description =
       typeof command.description === 'string' && command.description.trim()
         ? command.description.trim()

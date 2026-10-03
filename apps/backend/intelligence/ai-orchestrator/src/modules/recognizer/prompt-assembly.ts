@@ -120,12 +120,23 @@ function buildDynamicUserContextSection(
 ): string {
   const sections: string[] = [];
   const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
-  const currentDay = now.getDate();
+  const formatter = new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+  });
+  const parts = formatter.formatToParts(now);
+  const partMap: Record<string, string> = {};
+  for (const part of parts) {
+    partMap[part.type] = part.value;
+  }
+  const currentYear = parseInt(partMap.year || String(now.getFullYear()), 10);
+  const currentMonth = parseInt(partMap.month || String(now.getMonth() + 1), 10);
+  const currentDay = parseInt(partMap.day || String(now.getDate()), 10);
   const currentDateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`;
   sections.push(
-    `[当前系统基准时间]\n当前日期：${currentDateStr}（年份: ${currentYear}，月份: ${currentMonth}，日号: ${currentDay}）`
+    `[当前系统基准时间]\n当前日期（北京时间 Asia/Shanghai）：${currentDateStr}（年份: ${currentYear}，月份: ${currentMonth}，日号: ${currentDay}）`
   );
 
   const context =

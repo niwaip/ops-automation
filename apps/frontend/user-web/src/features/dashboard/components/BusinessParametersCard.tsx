@@ -37,6 +37,35 @@ const EXCLUDED_KEYS = new Set([
   'originalDraftSize',
   'rawContent',
   'text',
+  'clauses',
+  'reviewReport',
+  'artifacts',
+  'metrics',
+  'checkedRules',
+  'summaryItems',
+  // Coordination internal / runtime metadata keys (never display in business parameters)
+  'hasAnnotatedDocx',
+  'annotatedDocxUrl',
+  'commentInjectionError',
+  'commentInjectionStats',
+  'sourceAttachmentId',
+  'sourceDocumentHash',
+  'sourceDocumentVersion',
+  'ruleSetDigest',
+  'ruleSetId',
+  'ruleSetVersion',
+  'reviewDraft',
+  'approvalOpinions',
+  'stagedComments',
+  'findingStates',
+  'isReceipt',
+  'receiptAction',
+  'originalTaskType',
+  'taskId',
+  'taskType',
+  'stage',
+  'currentStage',
+  'isAsync',
 ]);
 
 // 默认核心主要关键字段定义（折叠状态下优先展示）
@@ -81,7 +110,7 @@ export function BusinessParametersCard({
   const validEntries = useMemo(() => {
     const safeParams = parameters && typeof parameters === 'object' ? parameters : {};
     return Object.entries(safeParams).filter(
-      ([key, val]) => !EXCLUDED_KEYS.has(key) && val !== undefined && val !== null && val !== ''
+      ([key, val]) => !EXCLUDED_KEYS.has(key) && typeof val !== 'object' && val !== undefined && val !== null && val !== ''
     );
   }, [parameters]);
 

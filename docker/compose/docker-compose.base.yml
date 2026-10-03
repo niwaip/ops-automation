@@ -4,6 +4,7 @@
 # Equivalent explicit entry: ./docker/start-smart.sh docker-compose.base.yml up -d
 
 x-common-env: &common-env
+  TZ: ${TZ:-Asia/Shanghai}
   NODE_ENV: development
   DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?connection_limit=${PRISMA_CONNECTION_LIMIT:-5}
   REDIS_HOST: redis
@@ -122,7 +123,7 @@ services:
       && cp -R /workspace/apps/backend/platform/src/generated/prisma /workspace/apps/backend/platform/dist/src/generated/prisma
       && pnpm --filter @ops/platform run start"
     ports:
-      - '${HOST_BIND_IP:-0.0.0.0}:${PLATFORM_PORT:-3001}:${PLATFORM_PORT:-3001}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${PLATFORM_PORT:-3001}:${PLATFORM_PORT:-3001}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -133,7 +134,7 @@ services:
       redis:
         condition: service_healthy
       carbone-engine:
-        condition: service_started
+        condition: service_healthy
 
   xiaozhi-connector:
     <<: *common-node-service
@@ -171,6 +172,7 @@ services:
       PORT: ${SESSION_BROKER_PORT:-3002}
       DOCKER_ENV: true
       PROJECT_ROOT: ${PROJECT_ROOT}
+      INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
       BROWSER_WORKER_URL: http://${BROWSER_WORKER_HOST:-browser-worker}:${BROWSER_WORKER_PORT:-3004}
     ports:
       - '${SESSION_BROKER_BIND_IP:-127.0.0.1}:${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}'
@@ -228,7 +230,7 @@ services:
       PROXY_TIMEOUT_AI_MS: ${PROXY_TIMEOUT_AI_MS:-60000}
       PROXY_TIMEOUT_WORKER_MS: ${PROXY_TIMEOUT_WORKER_MS:-60000}
     ports:
-      - '${HOST_BIND_IP:-0.0.0.0}:${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -277,7 +279,7 @@ services:
       redis:
         condition: service_healthy
       carbone-engine:
-        condition: service_started
+        condition: service_healthy
 
   schedule-trigger:
     <<: *common-node-service
@@ -316,6 +318,7 @@ services:
     command: >
       sh -c "corepack enable && if [ \"${BROWSER_WORKER_RUN_MODE:-prod}\" = \"dev\" ]; then pnpm --filter @ops/browser-worker run dev; else pnpm --filter @ops/browser-worker run build && node --enable-source-maps /workspace/apps/backend/runtimes/browser-worker/dist/main.js; fi"
     environment:
+      <<: *common-env
       NODE_ENV: ${BROWSER_WORKER_NODE_ENV:-development}
       DOCKER_ENV: true
       PORT: ${BROWSER_WORKER_PORT:-3004}
@@ -343,7 +346,7 @@ services:
       NETWORK_NAME: ${NETWORK_NAME:-ops-network}
       EXTERNAL_HOST: ${HOST_IP:-localhost}
     ports:
-      - '${HOST_BIND_IP:-0.0.0.0}:${BROWSER_WORKER_PORT:-3004}:${BROWSER_WORKER_PORT:-3004}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${BROWSER_WORKER_PORT:-3004}:${BROWSER_WORKER_PORT:-3004}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/browser-profiles:/backend-var/browser-profiles
@@ -377,7 +380,7 @@ services:
       DB_DATABASE: ${POSTGRES_DB:-ops}
       PORT: ${BROWSER_TEMPLATE_PORT:-3005}
     ports:
-      - '${HOST_BIND_IP:-0.0.0.0}:${BROWSER_TEMPLATE_PORT:-3005}:${BROWSER_TEMPLATE_PORT:-3005}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${BROWSER_TEMPLATE_PORT:-3005}:${BROWSER_TEMPLATE_PORT:-3005}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -410,7 +413,7 @@ services:
       BROWSER_SEMANTICS_AUTO_SEED: ${BROWSER_SEMANTICS_AUTO_SEED:-true}
       BROWSER_SEMANTICS_RUN_DEFAULT_SEED: ${BROWSER_SEMANTICS_RUN_DEFAULT_SEED:-false}
     ports:
-      - '${HOST_BIND_IP:-0.0.0.0}:${BROWSER_SEMANTICS_PORT:-3006}:${BROWSER_SEMANTICS_PORT:-3006}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${BROWSER_SEMANTICS_PORT:-3006}:${BROWSER_SEMANTICS_PORT:-3006}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -496,7 +499,7 @@ services:
       SESSION_BROKER_URL: http://${SESSION_BROKER_HOST:-session-broker}:${SESSION_BROKER_PORT:-3002}
       FILES_DIR: /workspace/apps/backend/capabilities/document-report/files
     ports:
-      - '${HOST_BIND_IP:-0.0.0.0}:${REPORT_PORT:-3008}:${REPORT_PORT:-3008}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${REPORT_PORT:-3008}:${REPORT_PORT:-3008}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
       - report_files:/workspace/apps/backend/capabilities/document-report/files
@@ -522,6 +525,7 @@ services:
       dockerfile: docker/carbone-engine/Dockerfile
     image: ops-carbone-engine:dev
     container_name: carbone-engine
+    restart: unless-stopped
     command: >
       sh -c "corepack enable
       && pnpm --filter carbone-engine run dev"
@@ -535,7 +539,7 @@ services:
       STORAGE_RENDER_DIR: /workspace/apps/backend/var/outputs/document-engine/renders
       CARBONE_EXTERNAL_URL: http://${HOST_IP:-localhost}:${CARBONE_ENGINE_PORT:-3009}
     ports:
-      - '${HOST_BIND_IP:-0.0.0.0}:${CARBONE_ENGINE_PORT:-3009}:${CARBONE_ENGINE_PORT:-3009}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${CARBONE_ENGINE_PORT:-3009}:${CARBONE_ENGINE_PORT:-3009}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -543,6 +547,12 @@ services:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -f http://localhost:${CARBONE_ENGINE_PORT:-3009}/api || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   # ============================================
   # Frontend
@@ -566,7 +576,7 @@ services:
       COREPACK_NPM_REGISTRY: ${COREPACK_NPM_REGISTRY:-https://registry.npmmirror.com}
       INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
     ports:
-      - '${HOST_BIND_IP:-0.0.0.0}:${PORTAL_PORT:-5173}:${PORTAL_PORT:-5173}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${PORTAL_PORT:-5173}:${PORTAL_PORT:-5173}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -590,7 +600,7 @@ services:
       COREPACK_NPM_REGISTRY: ${COREPACK_NPM_REGISTRY:-https://registry.npmmirror.com}
       INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
     ports:
-      - '${HOST_BIND_IP:-0.0.0.0}:${USER_WEB_PORT:-5174}:${USER_WEB_PORT:-5174}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${USER_WEB_PORT:-5174}:${USER_WEB_PORT:-5174}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -614,10 +624,10 @@ services:
     image: ${SESSION_BROWSER_IMAGE:-ops-browser-chrome:local}
     container_name: ops-browser-chrome
     ports:
-      - '${HOST_BIND_IP:-0.0.0.0}:${NOVNC_PORT:-6080}:8080'
-      - '${HOST_BIND_IP:-0.0.0.0}:${CDP_PORT:-9222}:9222'
-      - '${HOST_BIND_IP:-0.0.0.0}:${VNC_PORT:-5900}:5900'
-      - '${HOST_BIND_IP:-0.0.0.0}:${CODEGEN_API_PORT:-3011}:${CODEGEN_API_PORT:-3011}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${NOVNC_PORT:-6080}:8080'
+      - '${HOST_BIND_IP:-127.0.0.1}:${CDP_PORT:-9222}:9222'
+      - '${HOST_BIND_IP:-127.0.0.1}:${VNC_PORT:-5900}:5900'
+      - '${HOST_BIND_IP:-127.0.0.1}:${CODEGEN_API_PORT:-3011}:${CODEGEN_API_PORT:-3011}'
     environment:
       SCREEN_WIDTH: 1920
       SCREEN_HEIGHT: 1080
@@ -647,10 +657,10 @@ services:
     image: ${DOCKER_REGISTRY:-}temporalio/auto-setup:1.22.0
     container_name: ops-temporal
     ports:
-      - '${HOST_BIND_IP:-0.0.0.0}:7233:7233'
-      - '${HOST_BIND_IP:-0.0.0.0}:7234:7234'
-      - '${HOST_BIND_IP:-0.0.0.0}:7235:7235'
-      - '${HOST_BIND_IP:-0.0.0.0}:7236:7236'
+      - '${HOST_BIND_IP:-127.0.0.1}:7233:7233'
+      - '${HOST_BIND_IP:-127.0.0.1}:7234:7234'
+      - '${HOST_BIND_IP:-127.0.0.1}:7235:7235'
+      - '${HOST_BIND_IP:-127.0.0.1}:7236:7236'
     environment:
       - DB=postgresql
       - POSTGRES_SEEDS=postgres
@@ -674,7 +684,7 @@ services:
     image: ${DOCKER_REGISTRY:-}temporalio/ui:2.20.0
     container_name: ops-temporal-ui
     ports:
-      - '${HOST_BIND_IP:-0.0.0.0}:8088:8080'
+      - '${HOST_BIND_IP:-127.0.0.1}:8088:8080'
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CORS_ORIGINS=http://${HOST_IP:-localhost}:8088,http://${HOST_IP:-localhost}:${PORTAL_PORT:-5173}
@@ -698,13 +708,15 @@ services:
       - TEMPORAL_NAMESPACE=default
       - AUTH_SERVICE_URL=http://${PLATFORM_SERVICE_HOST:-platform}:${PLATFORM_PORT:-3001}
       - AI_ORCHESTRATOR_URL=http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
+      - BROWSER_WORKER_URL=http://${BROWSER_WORKER_HOST:-browser-worker}:${BROWSER_WORKER_PORT:-3004}
+      - INTERNAL_API_SHARED_SECRET=${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
       - SANDBOX_WORKER_TASK_QUEUE=sandbox-worker-task-queue
       - ACTIVITY_VALIDATION_TASK_QUEUE=activity-validation-task-queue
       - SANDBOX_HTTP_PORT=8090
       - CARBONE_SERVICE_URL=http://${CARBONE_ENGINE_HOST:-carbone-engine}:${CARBONE_ENGINE_PORT:-3009}
       - CARBONE_EXTERNAL_URL=http://${HOST_IP:-localhost}:${CARBONE_ENGINE_PORT:-3009}
     ports:
-      - '${HOST_BIND_IP:-0.0.0.0}:8090:8090'
+      - '${HOST_BIND_IP:-127.0.0.1}:8090:8090'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
@@ -728,6 +740,8 @@ services:
       - TEMPORAL_NAMESPACE=default
       - AUTH_SERVICE_URL=http://${PLATFORM_SERVICE_HOST:-platform}:${PLATFORM_PORT:-3001}
       - AI_ORCHESTRATOR_URL=http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
+      - BROWSER_WORKER_URL=http://${BROWSER_WORKER_HOST:-browser-worker}:${BROWSER_WORKER_PORT:-3004}
+      - INTERNAL_API_SHARED_SECRET=${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
       - SANDBOX_WORKER_TASK_QUEUE=sandbox-worker-task-queue
       - ACTIVITY_VALIDATION_TASK_QUEUE=activity-validation-task-queue
       - CARBONE_SERVICE_URL=http://${CARBONE_ENGINE_HOST:-carbone-engine}:${CARBONE_ENGINE_PORT:-3009}

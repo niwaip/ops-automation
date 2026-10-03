@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   Modal,
   Form,
@@ -11,19 +11,30 @@ import {
   Col,
   message,
 } from 'antd';
-import { ExperimentOutlined, ReloadOutlined } from '@ant-design/icons';
+import {
+  ExperimentOutlined,
+  RobotOutlined,
+} from '@ant-design/icons';
 import {
   AIModel,
   AIProviderConfig,
   ModelProvider,
 } from '@/api/ai';
 import {
-  PROVIDER_NAMES,
   DEFAULT_SCOPE_OPTIONS,
   ROUTING_TAG_OPTIONS,
+  getProviderAccent,
+  getProviderMonogram,
   mapConfigToFormValues,
   buildConfigFromValues,
 } from '../types';
+import {
+  recognizeModelProfile,
+  RecognizedModelProfile,
+} from '../utils/modelProfileRecognizer';
+import { ModelIdentitySection } from './ModelIdentitySection';
+import { ModelCapabilitiesSection } from './ModelCapabilitiesSection';
+import './ModelFormModal.css';
 
 interface ModelFormModalProps {
   open: boolean;
@@ -63,32 +74,46 @@ export const ModelFormModal: React.FC<ModelFormModalProps> = ({
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const [modalities, setModalities] = useState<string[]>(['text']);
 
   const selectedProviderConfigId = Form.useWatch('providerConfigId', form);
   const selectedProviderConfig = selectedProviderConfigId
     ? providerConfigMap.get(selectedProviderConfigId)
     : null;
+
+  const currentModelName = Form.useWatch('name', form);
   const supportsReasoningWatch = Form.useWatch('supports_reasoning', form);
 
   const isEditing = Boolean(editingModel);
   const canReuseCredential = Boolean(selectedProviderConfig?.hasCredential);
 
+  const detectedProfile = useMemo(() => {
+    if (!currentModelName) return null;
+    return recognizeModelProfile(currentModelName, selectedProviderConfig?.provider);
+  }, [currentModelName, selectedProviderConfig?.provider]);
+
   useEffect(() => {
     if (open) {
       if (editingModel) {
+        const formValues = mapConfigToFormValues(editingModel.config);
+        const initModalities = formValues.input && formValues.input.length > 0 ? formValues.input : ['text'];
+        setModalities(initModalities);
         form.setFieldsValue({
           name: editingModel.name,
           providerConfigId: editingModel.providerConfigId,
           apiKey: '',
-          ...mapConfigToFormValues(editingModel.config),
+          ...formValues,
+          input: initModalities,
         });
       } else {
         form.resetFields();
+        setModalities(['text']);
         form.setFieldsValue({
           providerConfigId: defaultProviderConfigId || (providers[0]?.id),
           capability_tier: 'standard',
+          input: ['text'],
           defaultScopes: [],
-          routing_tags: [],
+          routing_tags: ['chat'],
           prefer_for_code: false,
           supports_reasoning: false,
           reasoning_effort: 'medium',
@@ -97,6 +122,35 @@ export const ModelFormModal: React.FC<ModelFormModalProps> = ({
       setAvailableModels([]);
     }
   }, [open, editingModel, defaultProviderConfigId, form, providers]);
+
+  const handleApplyAutoProfile = (
+    profileToApply: RecognizedModelProfile | null = detectedProfile,
+    showToast = true
+  ) => {
+    if (!profileToApply) {
+      message.warning('请先输入或选择模型标识');
+      return;
+    }
+
+    const nextModalities = profileToApply.input && profileToApply.input.length > 0 ? profileToApply.input : ['text'];
+    setModalities(nextModalities);
+
+    form.setFieldsValue({
+      display_name: profileToApply.display_name || form.getFieldValue('display_name'),
+      capability_tier: profileToApply.capability_tier || 'standard',
+      supports_reasoning: Boolean(profileToApply.supports_reasoning),
+      reasoning_effort: profileToApply.reasoning_effort || 'medium',
+      input: nextModalities,
+      routing_tags: profileToApply.routing_tags || form.getFieldValue('routing_tags'),
+      defaultScopes: profileToApply.defaultScopes || form.getFieldValue('defaultScopes'),
+      prefer_for_code: Boolean(profileToApply.prefer_for_code),
+      description: profileToApply.description || form.getFieldValue('description'),
+    });
+
+    if (showToast) {
+      message.success(`已智能识别模型特性，自动填充思考模式、模态与推荐策略！`);
+    }
+  };
 
   const handleFetchRemoteModels = async () => {
     const providerId = form.getFieldValue('providerConfigId');
@@ -108,11 +162,20 @@ export const ModelFormModal: React.FC<ModelFormModalProps> = ({
     try {
       const res = await onLoadProviderModels(providerId);
       setAvailableModels(res.models);
-      message.success(`成功加载 ${res.models.length} 个模型`);
+      message.success(`成功拉取 ${res.models.length} 个模型`);
     } catch {
       setAvailableModels([]);
     } finally {
       setIsLoadingModels(false);
+    }
+  };
+
+  const handleSelectModelName = (val: string) => {
+    form.setFieldsValue({ name: val });
+    const profile = recognizeModelProfile(val, selectedProviderConfig?.provider);
+    if (profile) {
+      handleApplyAutoProfile(profile, false);
+      message.info(`已识别模型 [${val}] 并匹配预设属性`);
     }
   };
 
@@ -172,22 +235,55 @@ export const ModelFormModal: React.FC<ModelFormModalProps> = ({
         api_endpoint: providerConfig.api_endpoint,
         providerConfigId: providerConfig.id,
         api_key: values.apiKey?.trim() || undefined,
-        config: buildConfigFromValues(values),
+        config: buildConfigFromValues({
+          ...values,
+          input: modalities,
+        }),
       });
     } catch {
       // Form validation failed
     }
   };
 
+  const providerAccent = getProviderAccent(selectedProviderConfig?.provider || '');
+  const providerMonogram = getProviderMonogram(selectedProviderConfig?.name || selectedProviderConfig?.provider);
+
   return (
     <Modal
-      title={isEditing ? '编辑模型' : '接入新模型'}
+      title={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 0' }}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 6,
+              background: providerAccent.soft,
+              color: providerAccent.solid,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 700,
+              fontSize: 14,
+            }}
+          >
+            {providerMonogram || <RobotOutlined />}
+          </div>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>
+              {isEditing ? '编辑模型属性与能力' : '接入新大模型'}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)', fontWeight: 400 }}>
+              支持智能识别、多模态自由多选与原生思考推理配置
+            </div>
+          </div>
+        </div>
+      }
       open={open}
       onOk={handleOk}
       onCancel={onCancel}
       confirmLoading={confirmLoading}
-      width={680}
-      okText={isEditing ? '保存修改' : '确认添加'}
+      width={700}
+      okText={isEditing ? '保存修改' : '确认接入'}
       cancelText="取消"
       footer={[
         <div
@@ -198,164 +294,140 @@ export const ModelFormModal: React.FC<ModelFormModalProps> = ({
             icon={<ExperimentOutlined />}
             loading={isTesting}
             onClick={handleRunTest}
+            size="middle"
           >
-            测试模型连通性
+            测试连通性
           </Button>
           <Space>
-            <Button onClick={onCancel}>取消</Button>
-            <Button type="primary" loading={confirmLoading} onClick={handleOk}>
+            <Button onClick={onCancel} size="middle">取消</Button>
+            <Button type="primary" loading={confirmLoading} onClick={handleOk} size="middle">
               {isEditing ? '保存修改' : '确认添加'}
             </Button>
           </Space>
         </div>,
       ]}
     >
-      <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
-        {/* Section 1: Provider and Model */}
-        <Row gutter={16}>
-          <Col span={12}>
+      <Form
+        form={form}
+        layout="vertical"
+        size="middle"
+        className="model-form-modal-form"
+        style={{ marginTop: 6 }}
+      >
+        {/* Section 1: 模型标识与智能探测 (高度严格对齐) */}
+        <ModelIdentitySection
+          isEditing={isEditing}
+          providers={providers}
+          availableModels={availableModels}
+          isLoadingModels={isLoadingModels}
+          detectedProfile={detectedProfile}
+          onFetchRemoteModels={handleFetchRemoteModels}
+          onSelectModelName={handleSelectModelName}
+          onApplyAutoProfile={handleApplyAutoProfile}
+        />
+
+        {/* Section 2: 模态多选与原生思考模式 (支持问题/文本+视觉等自由多选) */}
+        <ModelCapabilitiesSection
+          selectedModalities={modalities}
+          supportsReasoning={Boolean(supportsReasoningWatch)}
+          onModalitiesChange={(next) => {
+            setModalities(next);
+            form.setFieldsValue({ input: next });
+          }}
+        />
+
+        {/* Section 3: 接口凭据与凭据状态 (左右严格等高对齐) */}
+        <Row gutter={12}>
+          <Col span={13}>
             <Form.Item
-              name="providerConfigId"
-              label="服务商配置 (Provider)"
-              rules={[{ required: true, message: '请选择服务商配置' }]}
+              name="apiKey"
+              label="API Key (凭据覆盖)"
+              rules={!canReuseCredential && !isEditing ? [{ required: true, message: '请输入 API Key' }] : []}
             >
-              <Select
-                placeholder="选择服务商"
-                disabled={isEditing}
-                options={providers.map((p) => ({
-                  value: p.id,
-                  label: `${p.name || PROVIDER_NAMES[p.provider] || p.provider} (${p.hasCredential ? '已存凭据' : '未配凭据'})`,
-                }))}
+              <Input.Password
+                placeholder={canReuseCredential ? '可留空（自动复用服务商凭据）' : '请输入该模型专属 API Key'}
               />
             </Form.Item>
           </Col>
+          <Col span={11}>
+            <Form.Item label="服务商凭据状态">
+              <div
+                style={{
+                  height: 36,
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '0 10px',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  background: canReuseCredential ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)',
+                  border: `1px solid ${canReuseCredential ? 'rgba(16, 185, 129, 0.25)' : 'rgba(245, 158, 11, 0.25)'}`,
+                  color: canReuseCredential ? '#10b981' : '#f59e0b',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {canReuseCredential ? '✅ 已存服务商凭据，留空自动继承' : '⚠️ 服务商未存凭据，需在此填写'}
+              </div>
+            </Form.Item>
+          </Col>
+        </Row>
+
+        {/* Section 4: 默认场景策略与业务路由 (左右严格等高对齐) */}
+        <Row gutter={12}>
           <Col span={12}>
             <Form.Item
-              name="name"
-              label={
-                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                  <span>模型标识 (Name/ID)</span>
-                  <Button
-                    type="link"
-                    size="small"
-                    icon={<ReloadOutlined />}
-                    loading={isLoadingModels}
-                    onClick={handleFetchRemoteModels}
-                    style={{ padding: 0, height: 'auto', fontSize: 12 }}
-                  >
-                    拉取列表
-                  </Button>
-                </div>
-              }
-              rules={[{ required: true, message: '请输入或选择模型名称' }]}
-              extra={availableModels.length > 0 ? `已拉取 ${availableModels.length} 个模型` : undefined}
+              name="defaultScopes"
+              label="默认场景策略 (可选)"
             >
-              {availableModels.length > 0 ? (
-                <Select
-                  showSearch
-                  placeholder="从拉取的列表中选择或直接输入"
-                  options={availableModels.map((m) => ({ value: m, label: m }))}
-                  onChange={(val) => form.setFieldsValue({ name: val })}
-                />
-              ) : (
-                <Input placeholder="例如：gemini-3.7-flash / gpt-4o / deepseek-chat" />
-              )}
-            </Form.Item>
-          </Col>
-        </Row>
-
-        {/* Section 2: Display & Capability */}
-        <Row gutter={16}>
-          <Col span={12}>
-            <Form.Item name="display_name" label="显示别名 (可选)">
-              <Input placeholder="例如：Gemini 3.7 Flash 主力" />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item name="capability_tier" label="能力层级" initialValue="standard">
-              <Select
-                options={[
-                  { label: '标准模型 (Standard)', value: 'standard' },
-                  { label: '高级深度模型 (Advanced)', value: 'advanced' },
-                ]}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
-
-        {/* Section 2.5: Reasoning & Thinking Capability */}
-        <Row gutter={16} align="middle">
-          <Col span={supportsReasoningWatch ? 12 : 24}>
-            <Form.Item name="supports_reasoning" valuePropName="checked" style={{ marginBottom: 16 }}>
-              <Checkbox>支持思维链 / 原生推理 (Reasoning / Thinking)</Checkbox>
-            </Form.Item>
-          </Col>
-          {supportsReasoningWatch ? (
-            <Col span={12}>
-              <Form.Item name="reasoning_effort" label="默认推理思考强度" initialValue="medium" style={{ marginBottom: 16 }}>
-                <Select
-                  options={[
-                    { label: '浅度思考 (Low) · 快速响应', value: 'low' },
-                    { label: '适中思考 (Medium) · 平衡深度', value: 'medium' },
-                    { label: '深度思考 (High) · 最大推理深度', value: 'high' },
-                  ]}
-                />
-              </Form.Item>
-            </Col>
-          ) : null}
-        </Row>
-
-        {/* Section 3: Credentials */}
-        <Form.Item
-          name="apiKey"
-          label="API Key (凭据覆盖)"
-          rules={!canReuseCredential && !isEditing ? [{ required: true, message: '请输入 API Key' }] : []}
-          extra={
-            canReuseCredential
-              ? '服务商已配置凭据，留空则自动复用服务商凭据；也可在此单独覆盖'
-              : '当前服务商未保存凭据，需在此填入该模型的专属 API Key'
-          }
-        >
-          <Input.Password
-            placeholder={canReuseCredential ? '可留空（自动复用服务商凭据）' : '输入 API Key'}
-          />
-        </Form.Item>
-
-        {/* Section 4: Routing Strategy */}
-        <Row gutter={16}>
-          <Col span={12}>
-            <Form.Item name="defaultScopes" label="默认场景策略 (可多选)">
               <Select
                 mode="multiple"
                 allowClear
-                placeholder="设置该模型作为特定场景的默认模型"
+                placeholder="设置该模型作为特定业务默认模型"
                 options={DEFAULT_SCOPE_OPTIONS}
               />
             </Form.Item>
           </Col>
           <Col span={12}>
-            <Form.Item name="routing_tags" label="业务路由标签">
+            <Form.Item
+              name="routing_tags"
+              label="业务路由标签"
+            >
               <Select
                 mode="multiple"
                 allowClear
-                placeholder="选择匹配标签"
+                placeholder="匹配标签 (如 chat, code, multimodal)"
                 options={ROUTING_TAG_OPTIONS}
               />
             </Form.Item>
           </Col>
         </Row>
 
-        {/* Section 5: Description & Preference */}
-        <Form.Item name="description" label="模型说明">
-          <Input.TextArea
-            rows={2}
-            placeholder="说明模型的定位、推荐调用场景或上下文长度等"
-          />
-        </Form.Item>
-
-        <Form.Item name="prefer_for_code" valuePropName="checked">
-          <Checkbox>代码生成任务优先调度该模型</Checkbox>
-        </Form.Item>
+        {/* Section 5: 代码优先偏好与说明 (左右严格等高对齐) */}
+        <Row gutter={12}>
+          <Col span={15}>
+            <Form.Item name="description" label="模型说明 (可选)">
+              <Input placeholder="说明模型特性、优势场景或上下文长度" />
+            </Form.Item>
+          </Col>
+          <Col span={9}>
+            <Form.Item label="代码任务偏好">
+              <div
+                style={{
+                  height: 36,
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <Form.Item name="prefer_for_code" valuePropName="checked" noStyle>
+                  <Checkbox>
+                    <span style={{ fontSize: 13 }}>💻 代码生成任务优先调度</span>
+                  </Checkbox>
+                </Form.Item>
+              </div>
+            </Form.Item>
+          </Col>
+        </Row>
       </Form>
     </Modal>
   );

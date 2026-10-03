@@ -505,5 +505,31 @@ describe('CdpExecutor execution policy', () => {
       global.fetch = originalFetch;
     }
   });
+
+  it('resolves parameter aliases in stepRunner replaceParams', () => {
+    const stepRunner = (executor as any).stepRunner;
+    const substituted = stepRunner.substituteStep(
+      {
+        step_id: 'step_1',
+        action: 'smart_search',
+        params: {
+          url: '${startUrl}',
+          query: '${searchQuery}',
+          index: '${resultIndex}',
+        },
+      },
+      {
+        url: 'https://www.baidu.com',
+        query: 'mcp-test',
+        index: 5,
+      }
+    );
+
+    expect(substituted.params).toEqual({
+      url: 'https://www.baidu.com',
+      query: 'mcp-test',
+      index: '5',
+    });
+  });
 });
 

@@ -23,7 +23,16 @@ export function unwrapStoredStepOutput(value: unknown): Record<string, any> {
       : [];
 
   for (let i = stepResults.length - 1; i >= 0; i--) {
-    const stepOut = stepResults[i]?.output;
+    const step = stepResults[i];
+    const stepId = String(step?.stepId || '');
+    if (
+      stepId.startsWith('loop_stop') ||
+      stepId.startsWith('loop_condition') ||
+      stepId.startsWith('loop_target')
+    ) {
+      continue;
+    }
+    const stepOut = step?.output;
     if (stepOut && typeof stepOut === 'object' && !Array.isArray(stepOut)) {
       for (const [k, v] of Object.entries(stepOut)) {
         if (res[k] === undefined && v !== undefined) {

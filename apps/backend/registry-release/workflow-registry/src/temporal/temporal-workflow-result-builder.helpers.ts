@@ -111,6 +111,8 @@ export function buildV2OutputResultBuilderLines(args: {
     '',
     '    @classmethod',
     '    def _assert_required_path(cls, step_result: Any, path: str, field_name: str) -> None:',
+    '        if step_result is None:',
+    '            return',
     '        extracted = cls._extract_v2_path(step_result, path)',
     '        if extracted is None or extracted == "" or extracted == [] or extracted == {}:',
     '            raise ApplicationError(f"缺少必填输出字段 \'{field_name}\'（路径 {path}）", non_retryable=True)',

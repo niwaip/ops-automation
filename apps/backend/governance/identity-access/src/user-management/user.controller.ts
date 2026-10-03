@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Put, Query, Request } from '@nestjs/common';
 import { RequireAdmin, SkipRbac } from '../decorators';
-import { UpdateUserDepartmentDto, UpdateUserRolesDto, UserQueryDto } from '../contracts';
+import { ResetUserPasswordDto, UpdateUserDepartmentDto, UpdateUserRolesDto, UserQueryDto } from '../contracts';
 import { IdentityAccessUserService } from './identity-access-user.service';
 
 @Controller('users')
@@ -52,6 +52,15 @@ export class UserController {
   @Put(':id/activate')
   async activate(@Param('id') id: string) {
     return this.userService.activate(id);
+  }
+
+  @RequireAdmin()
+  @Put(':id/reset-password')
+  async resetPassword(
+    @Param('id') id: string,
+    @Body() resetDto: ResetUserPasswordDto
+  ) {
+    return this.userService.resetPassword(id, resetDto.password);
   }
 }
 

@@ -129,6 +129,7 @@ export async function executeWorkspaceExplorer(
         .map((t) => t.trim())
         .filter((t) => t.length >= 2 && !['主要', '核心', '具体', '内容', '介绍', '详细'].includes(t));
 
+      const accumulated = new Map<string, ContentSearchResult>();
       for (const term of subTerms) {
         try {
           const fallbackUrl = `${authUrl}/workspaces/search-content?q=${encodeURIComponent(term)}`;
@@ -136,13 +137,27 @@ export async function executeWorkspaceExplorer(
             headers,
             timeout: 5000,
           });
-          if (Array.isArray(fallbackRes.data) && fallbackRes.data.length > 0) {
-            searchResults = fallbackRes.data;
-            break;
+          if (Array.isArray(fallbackRes.data)) {
+            for (const item of fallbackRes.data) {
+              const existing = accumulated.get(item.id);
+              if (!existing) {
+                accumulated.set(item.id, { ...item, matches: [...(item.matches || [])] });
+              } else if (Array.isArray(item.matches)) {
+                const existingLines = new Set((existing.matches || []).map((m) => m.line));
+                for (const m of item.matches) {
+                  if (!existingLines.has(m.line)) {
+                    existing.matches.push(m);
+                  }
+                }
+              }
+            }
           }
         } catch {
           // ignore fallback error
         }
+      }
+      if (accumulated.size > 0) {
+        searchResults = Array.from(accumulated.values());
       }
     }
 
@@ -224,6 +239,7 @@ export async function executeWorkspaceExplorer(
         query: rawQuery,
         answer,
         citations,
+        results: searchResults,
         scannedFiles,
         searchedFilesCount: scannedFiles.length,
       },

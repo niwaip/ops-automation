@@ -24,6 +24,7 @@ import {
   RobotOutlined,
   ApartmentOutlined,
   IdcardOutlined,
+  KeyOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { ColumnsType } from 'antd/es/table';
@@ -44,6 +45,7 @@ interface UserTableProps {
   onEditUser: (user: UserDto) => void;
   onActivateUser: (id: string) => void;
   onDeactivateUser: (id: string) => void;
+  onResetPassword: (user: UserDto) => void;
 }
 
 const getAvatarColor = (name: string) => {
@@ -66,6 +68,7 @@ export const UserTable: React.FC<UserTableProps> = ({
   onEditUser,
   onActivateUser,
   onDeactivateUser,
+  onResetPassword,
 }) => {
   const { t } = useTranslation(['common', 'admin']);
   const [searchText, setSearchText] = useState('');
@@ -235,7 +238,7 @@ export const UserTable: React.FC<UserTableProps> = ({
     {
       title: t('common:actions'),
       key: 'actions',
-      width: 170,
+      width: 240,
       fixed: 'right',
       render: (_, record) => (
         <Space size={4}>
@@ -247,6 +250,16 @@ export const UserTable: React.FC<UserTableProps> = ({
               onClick={() => onEditUser(record)}
             >
               配置
+            </Button>
+          </Tooltip>
+          <Tooltip title="重置登录密码">
+            <Button
+              type="link"
+              size="small"
+              icon={<KeyOutlined style={{ color: '#fa8c16' }} />}
+              onClick={() => onResetPassword(record)}
+            >
+              重置密码
             </Button>
           </Tooltip>
           {record.isActive ? (

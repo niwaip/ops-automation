@@ -1,6 +1,9 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import axios from 'axios';
-import { matchDeterministicRoutingCapability } from '@ops/backend-runtime-capability-contract';
+import {
+  matchDeterministicRoutingCapability,
+  isGuideOrInquiryRequest,
+} from '@ops/backend-runtime-capability-contract';
 import { getAiOrchestratorUrl } from './skill-registry.ports';
 import { AIMatchResponse, LLMUsage, SkillConfigDto, SkillMatchResult } from './interfaces';
 import { getSkillMatchMinConfidence, isAcceptedSkillMatch } from './skill-match-policy';
@@ -45,10 +48,21 @@ export class SkillMatcherService {
       );
     }
 
+    // Guide / installation / inquiry questions must not be forced into execution skills
+    if (isGuideOrInquiryRequest(userInput)) {
+      this.logger.log(
+        `User input '${userInput}' classified as guide/inquiry request; bypassing execution skill matching.`
+      );
+      return null;
+    }
+
     // Progressive disclosure: the model sees only short cards for the most
     // relevant candidates. Full schemas and runtime metadata stay outside the
     // prompt and are hydrated only after a candidate has been selected.
     const candidateSkills = this.selectTopCandidates(userInput, availableSkills);
+    if (candidateSkills.length === 0) {
+      return null;
+    }
     const skillsXml = this.buildSkillsPromptXml(candidateSkills);
     const prompt = `你是一个技能匹配助手。根据用户输入，从可用技能中选择最匹配的一个。
 
@@ -177,6 +191,17 @@ ${skillsXml}
     return skills
       .map((skill, index) => {
         const runtimeMetadata = skill.apiEndpoints?.runtimeMetadata;
+        const negativeKeywords =
+          (runtimeMetadata?.negativeKeywords as string[]) || (skill as any).negativeKeywords;
+        if (Array.isArray(negativeKeywords)) {
+          for (const neg of negativeKeywords) {
+            const normalizedNeg = this.normalizeRouteText(neg);
+            if (normalizedNeg && normalizedInput.includes(normalizedNeg)) {
+              return { skill, score: -1, index };
+            }
+          }
+        }
+
         const searchable = this.normalizeRouteText(
           [
             skill.name,
@@ -203,6 +228,7 @@ ${skillsXml}
         }
         return { skill, score, index };
       })
+      .filter((candidate) => candidate.score >= 0)
       .sort((left, right) => right.score - left.score || left.index - right.index)
       .slice(0, this.candidateLimit)
       .map(({ skill }) => skill);
@@ -246,6 +272,9 @@ ${skillsXml}
         name: skill.name,
         aliases: skill.apiEndpoints?.runtimeMetadata?.routingAliases,
         triggerKeywords: skill.triggerKeywords,
+        negativeKeywords:
+          (skill.apiEndpoints?.runtimeMetadata?.negativeKeywords as string[]) ||
+          (skill as any).negativeKeywords,
         skill,
       }))
     );

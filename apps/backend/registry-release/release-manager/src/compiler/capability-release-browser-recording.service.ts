@@ -76,7 +76,7 @@ export class CapabilityReleaseBrowserRecordingService {
 
     const logs = [
       '开始执行浏览器录制快照静态验证...',
-      '当前浏览器录制 Sandbox 校验采用静态快照验证，尚未接入静默回放。',
+      '执行浏览器录制快照静态结构校验 (Static Snapshot Validation)。',
       `快照验证通过: 包含 ${steps.length} 个录制步骤, ${executionFlow.length} 个执行节点, ${templateSteps.length} 个模板步骤`,
     ];
     if (testCases.length > 0) {

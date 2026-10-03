@@ -118,6 +118,8 @@ export function WorkspacePage() {
 
   const [activeTab, setActiveTab] = useState<'personal' | 'department' | 'company' | 'process'>('personal');
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([{ id: null, name: '根目录' }]);
+  const [sortField, setSortField] = useState<string>('updatedAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [searchMode, setSearchMode] = useState<'name' | 'content'>('name');
   const [previewNode, setPreviewNode] = useState<WorkspaceNode | null>(null);
@@ -152,16 +154,19 @@ export function WorkspacePage() {
     setSearchKeyword('');
   }, []);
 
-  // 2. 获取当前目录下节点列表
+  // 2. 获取当前目录下节点列表（支持按修改时间倒序等排序）
   const {
     data: nodesData,
     isLoading: isNodesLoading,
     refetch: refetchNodes,
   } = useQuery(
-    ['workspace-nodes', currentWorkspace?.id, currentFolderId],
+    ['workspace-nodes', currentWorkspace?.id, currentFolderId, sortField, sortOrder],
     () => {
       if (!currentWorkspace?.id) return Promise.resolve([]);
-      return workspaceApi.getNodes(currentWorkspace.id, currentFolderId);
+      return workspaceApi.getNodes(currentWorkspace.id, currentFolderId, {
+        sortBy: sortField,
+        order: sortOrder,
+      });
     },
     {
       enabled: Boolean(currentWorkspace?.id) && searchMode === 'name',
@@ -189,17 +194,40 @@ export function WorkspacePage() {
     }
   );
 
-  // 过滤展示节点（根据搜索框关键词或全文匹配）
+  // 过滤展示节点（根据搜索框关键词或全文匹配，并保证文件夹置顶与用户指定排序，默认时间倒序）
   const displayNodes = useMemo(() => {
+    let list: (WorkspaceNode & { matches?: ContentMatchSnippet[] })[] = [];
     if (searchMode === 'content') {
       if (searchKeyword.trim().length < 2) return [];
-      return (contentSearchResults || []) as (WorkspaceNode & { matches?: ContentMatchSnippet[] })[];
+      list = [...((contentSearchResults || []) as (WorkspaceNode & { matches?: ContentMatchSnippet[] })[])];
+    } else {
+      list = [...(nodesData || [])];
+      if (searchKeyword.trim()) {
+        const q = searchKeyword.trim().toLowerCase();
+        list = list.filter((item) => item.name.toLowerCase().includes(q));
+      }
     }
-    const list = nodesData || [];
-    if (!searchKeyword.trim()) return list;
-    const q = searchKeyword.trim().toLowerCase();
-    return list.filter((item) => item.name.toLowerCase().includes(q));
-  }, [nodesData, searchKeyword, searchMode, contentSearchResults]);
+
+    return list.sort((a, b) => {
+      // 文件夹置顶展示
+      if (a.type !== b.type) {
+        return a.type === 'folder' ? -1 : 1;
+      }
+      if (sortField === 'name') {
+        const comp = a.name.localeCompare(b.name, 'zh-CN');
+        return sortOrder === 'desc' ? -comp : comp;
+      }
+      if (sortField === 'fileSize') {
+        const sA = Number(a.fileSize) || 0;
+        const sB = Number(b.fileSize) || 0;
+        return sortOrder === 'desc' ? sB - sA : sA - sB;
+      }
+      // 默认按修改时间排序 (updatedAt)，最新排前面 (desc)
+      const tA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const tB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return sortOrder === 'desc' ? tB - tA : tA - tB;
+    });
+  }, [nodesData, searchKeyword, searchMode, contentSearchResults, sortField, sortOrder]);
 
   // 快速预览文件
   const handlePreviewNode = useCallback(async (node: WorkspaceNode) => {
@@ -317,6 +345,8 @@ export function WorkspacePage() {
       title: '名称',
       dataIndex: 'name',
       key: 'name',
+      sorter: true,
+      sortOrder: sortField === 'name' ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
       render: (name: string, record) => {
         const matches = (record as any).matches as ContentMatchSnippet[] | undefined;
         const keyTopics = record.digest?.keyTopics;
@@ -369,6 +399,8 @@ export function WorkspacePage() {
       dataIndex: 'fileSize',
       key: 'fileSize',
       width: 140,
+      sorter: true,
+      sortOrder: sortField === 'fileSize' ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
       render: (size: string, record) => (record.type === 'folder' ? '-' : formatBytes(size)),
     },
     {
@@ -397,6 +429,8 @@ export function WorkspacePage() {
       dataIndex: 'updatedAt',
       key: 'updatedAt',
       width: 180,
+      sorter: true,
+      sortOrder: sortField === 'updatedAt' ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
       render: (val: string) => (val ? new Date(val).toLocaleString() : '-'),
     },
     {
@@ -449,6 +483,7 @@ export function WorkspacePage() {
             <Popconfirm
               title={`确定要删除 "${record.name}" 吗？`}
               description={record.type === 'folder' ? '文件夹内的所有子文件也将被永久删除！' : undefined}
+              overlayStyle={{ maxWidth: 280 }}
               okText="确定"
               cancelText="取消"
               okButtonProps={{ danger: true }}
@@ -644,6 +679,24 @@ export function WorkspacePage() {
               />
             </div>
 
+            <Select
+              value={`${sortField}_${sortOrder}`}
+              onChange={(val) => {
+                const [f, o] = val.split('_');
+                setSortField(f);
+                setSortOrder(o as 'asc' | 'desc');
+              }}
+              style={{ width: 145 }}
+              options={[
+                { value: 'updatedAt_desc', label: '最新修改优先' },
+                { value: 'updatedAt_asc', label: '最早修改优先' },
+                { value: 'name_asc', label: '文件名 (A → Z)' },
+                { value: 'name_desc', label: '文件名 (Z → A)' },
+                { value: 'fileSize_desc', label: '大小 (大到小)' },
+                { value: 'fileSize_asc', label: '大小 (小到大)' },
+              ]}
+            />
+
             {!isReadOnly && (
               <>
                 <Button
@@ -691,6 +744,18 @@ export function WorkspacePage() {
             dataSource={displayNodes}
             rowKey="id"
             loading={isWsLoading || (searchMode === 'name' ? isNodesLoading : isContentSearching)}
+            onChange={(_, __, sorter: any) => {
+              if (!Array.isArray(sorter) && sorter.field) {
+                const field = String(sorter.field);
+                if (sorter.order) {
+                  setSortField(field);
+                  setSortOrder(sorter.order === 'ascend' ? 'asc' : 'desc');
+                } else {
+                  setSortField('updatedAt');
+                  setSortOrder('desc');
+                }
+              }
+            }}
             pagination={{
               pageSize: 15,
               showSizeChanger: false,

@@ -13,23 +13,20 @@ import {
   Tooltip,
   Alert,
   Dropdown,
+  Select,
   theme,
 } from 'antd';
 import type { MenuProps } from 'antd';
 import {
-  ApartmentOutlined,
   ApiOutlined,
   DeleteOutlined,
   DownOutlined,
   EditOutlined,
   KeyOutlined,
+  NodeIndexOutlined,
   PlusOutlined,
   ReloadOutlined,
-  RightOutlined,
-  SafetyCertificateOutlined,
   SearchOutlined,
-  SendOutlined,
-  StopOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
@@ -100,6 +97,8 @@ const OrgWorkflowAdminContent: React.FC = () => {
   const { token } = theme.useToken();
   const queryClient = useQueryClient();
   const [searchText, setSearchText] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [selectedWorkflow, setSelectedWorkflow] = useState<OrganizationWorkflowDTO | null>(null);
   const [initialTemplateId, setInitialTemplateId] = useState<string | null>(null);
@@ -158,182 +157,181 @@ const OrgWorkflowAdminContent: React.FC = () => {
   };
 
   const filteredWorkflows = useMemo(() => {
-    if (!searchText.trim()) return workflows;
-    const q = searchText.trim().toLowerCase();
-    return workflows.filter(
-      (w) =>
-        (w.name || '').toLowerCase().includes(q) ||
-        (w.workflowId || '').toLowerCase().includes(q) ||
-        (w.category || '').toLowerCase().includes(q) ||
-        (w.description || '').toLowerCase().includes(q)
-    );
-  }, [workflows, searchText]);
+    return workflows.filter((w) => {
+      // 文本搜索
+      if (searchText.trim()) {
+        const q = searchText.trim().toLowerCase();
+        const matchText =
+          (w.name || '').toLowerCase().includes(q) ||
+          (w.description || '').toLowerCase().includes(q);
+        if (!matchText) return false;
+      }
+      // 分类筛选
+      if (categoryFilter !== 'all' && w.category !== categoryFilter) {
+        return false;
+      }
+      // 状态筛选
+      if (statusFilter === 'published' && !w.isPublished) return false;
+      if (statusFilter === 'draft' && w.isPublished) return false;
+
+      return true;
+    });
+  }, [workflows, searchText, categoryFilter, statusFilter]);
+
+  const openDrawer = (wf: OrganizationWorkflowDTO) => {
+    setSelectedWorkflow(wf);
+    setInitialTemplateId(null);
+    setDrawerVisible(true);
+  };
 
   const columns: ColumnsType<OrganizationWorkflowDTO> = [
     {
-      title: '工作流名称 / 唯一标识',
+      title: '工作流名称',
+      dataIndex: 'name',
       key: 'name',
-      render: (_, record) => {
-        const isLegal = record.category === 'legal' || record.icon === 'SafetyCertificateOutlined';
-        return (
-          <div>
-            <Space>
-              {isLegal ? (
-                <SafetyCertificateOutlined style={{ color: '#2f54eb', fontSize: 16 }} />
-              ) : (
-                <ApartmentOutlined style={{ color: '#1677ff', fontSize: 16 }} />
-              )}
-              <strong style={{ fontSize: 15 }}>{record.name || '未命名工作流'}</strong>
-              {isLegal && (
-                <Tag color="geekblue" style={{ fontSize: 10, lineHeight: '18px' }}>
-                  保密协议/合同审查闭环
-                </Tag>
-              )}
-            </Space>
-            <div style={{ fontSize: 12, color: token.colorTextSecondary, marginTop: 2 }}>
-              代号：<code>{record.workflowId || '-'}</code>
-            </div>
-          </div>
-        );
-      },
+      ellipsis: true,
+      render: (name: string, record) => (
+        <Tooltip title={record.description || name} placement="topLeft">
+          <Typography.Link
+            strong
+            style={{ fontSize: 14, color: token.colorTextHeading }}
+            onClick={() => openDrawer(record)}
+          >
+            {name || '未命名工作流'}
+          </Typography.Link>
+        </Tooltip>
+      ),
     },
     {
-      title: '分类 & 任务类型',
+      title: '业务分类',
+      dataIndex: 'category',
       key: 'category',
-      width: 140,
-      render: (_, record) => {
-        const catColor =
-          record.category === 'legal'
-            ? 'geekblue'
-            : record.category === 'hr'
-            ? 'green'
-            : record.category === 'oa'
-            ? 'gold'
-            : 'blue';
+      width: 120,
+      render: (category: string) => {
+        const catMap: Record<string, { label: string; color: string }> = {
+          legal: { label: '法务风控', color: 'geekblue' },
+          hr: { label: '人事行政', color: 'green' },
+          finance: { label: '财务资产', color: 'gold' },
+          it: { label: 'IT 运维', color: 'purple' },
+        };
+        const cat = catMap[category || ''] || {
+          label: (category || '通用').toUpperCase(),
+          color: 'default',
+        };
         return (
-          <Space direction="vertical" size={2}>
-            <Tag color={catColor}>{record.category?.toUpperCase() || 'GENERAL'}</Tag>
-            <span style={{ fontSize: 12, color: token.colorTextSecondary }}>
-              {record.taskType === 'approval'
-                ? '审批流转'
-                : record.taskType === 'assignment'
-                ? '任务指派'
-                : '审阅复核'}
-            </span>
-          </Space>
+          <Tag color={cat.color} style={{ margin: 0, whiteSpace: 'nowrap' }}>
+            {cat.label}
+          </Tag>
         );
       },
     },
     {
-      title: '组装的底层能力',
-      key: 'assembled',
+      title: '流程节点',
+      key: 'stagesCount',
+      width: 120,
+      render: (_, record) => {
+        const stages = Array.isArray(record.processDefinition?.stages)
+          ? record.processDefinition.stages
+          : [];
+        const stageNames = stages.map((s, idx) => `${idx + 1}. ${s.name}`).join(' → ');
+        return (
+          <Tooltip title={stageNames || '无节点定义'}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+              onClick={() => openDrawer(record)}
+            >
+              <NodeIndexOutlined style={{ color: '#1677ff' }} />
+              <span>{stages.length} 个节点</span>
+            </span>
+          </Tooltip>
+        );
+      },
+    },
+    {
+      title: '底层能力',
+      key: 'assembledCount',
+      width: 120,
       render: (_, record) => {
         const assembled = Array.isArray(record.assembledWorkflows)
           ? record.assembledWorkflows
           : [];
         if (assembled.length === 0) {
-          return <Text type="secondary">纯流程 (未组装底层流)</Text>;
+          return <span style={{ color: token.colorTextTertiary, whiteSpace: 'nowrap' }}>-</span>;
         }
+        const assembledNames = assembled.map((a) => a.name).join('、');
         return (
-          <Space wrap size={4}>
-            {assembled.map((item) => (
-              <Tooltip
-                key={item.refId}
-                title={`已组装资产: ${item.refId} | 触发时机: ${
-                  item.triggerEvent === 'on_submit' ? '提单时' : '审批通过时'
-                }`}
-              >
-                <Tag color="purple" icon={<ApiOutlined />}>
-                  {item.name}
-                </Tag>
-              </Tooltip>
-            ))}
-          </Space>
+          <Tooltip title={assembledNames}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                color: token.colorTextSecondary,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <ApiOutlined style={{ color: '#722ed1' }} />
+              <span>{assembled.length} 项能力</span>
+            </span>
+          </Tooltip>
         );
       },
     },
     {
-      title: '流程定义节点 (Stages)',
-      key: 'stages',
-      width: 230,
-      render: (_, record) => {
-        const stages = Array.isArray(record.processDefinition?.stages)
-          ? record.processDefinition.stages
-          : [];
-        if (stages.length === 0) {
-          return <Text type="secondary">无节点定义</Text>;
-        }
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-            {stages.map((s, idx) => (
-              <React.Fragment key={s.id || idx}>
-                <Tag
-                  color={
-                    s.type === 'approval'
-                      ? 'orange'
-                      : s.type === 'automation'
-                      ? 'purple'
-                      : s.type === 'archive'
-                      ? 'green'
-                      : 'blue'
-                  }
-                  style={{ margin: 0, fontSize: 11 }}
-                >
-                  {idx + 1}.{s.name}
-                </Tag>
-                {idx < stages.length - 1 && (
-                  <RightOutlined style={{ fontSize: 9, color: '#bfbfbf' }} />
-                )}
-              </React.Fragment>
-            ))}
-          </div>
-        );
-      },
-    },
-    {
-      title: '授权使用角色',
+      title: '适用角色',
+      dataIndex: 'grantedRoleIds',
       key: 'roles',
-      width: 150,
-      render: (_, record) => {
-        const roles = Array.isArray(record.grantedRoleIds) ? record.grantedRoleIds : [];
+      width: 130,
+      render: (roles: string[]) => {
+        const roleList = Array.isArray(roles) ? roles : [];
+        if (roleList.length === 0 || (roleList.includes('employee') && roleList.includes('admin'))) {
+          return <span style={{ color: token.colorTextSecondary, whiteSpace: 'nowrap' }}>全员可用</span>;
+        }
         return (
-          <Space wrap size={2}>
-            {roles.map((r) => (
-              <Tag key={r} color="geekblue">
-                {r}
-              </Tag>
-            ))}
-          </Space>
+          <Tooltip title={`授权角色：${roleList.join(', ')}`}>
+            <span style={{ color: token.colorTextSecondary, whiteSpace: 'nowrap' }}>
+              指定角色 ({roleList.length})
+            </span>
+          </Tooltip>
         );
       },
     },
     {
-      title: '发布状态',
+      title: '状态',
+      dataIndex: 'isPublished',
       key: 'status',
-      width: 130,
-      render: (_, record) =>
-        record.isPublished ? (
-          <Badge status="success" text="已发布 (工作台可见)" />
-        ) : (
-          <Badge status="default" text="草稿 (Draft)" />
-        ),
+      width: 100,
+      render: (isPublished: boolean) => (
+        <span style={{ whiteSpace: 'nowrap' }}>
+          {isPublished ? (
+            <Badge status="success" text="已发布" />
+          ) : (
+            <Badge status="default" text="草稿" />
+          )}
+        </span>
+      ),
     },
     {
       title: '操作',
       key: 'actions',
-      width: 220,
+      width: 260,
+      align: 'right',
       render: (_, record) => (
-        <Space size={4}>
+        <Space size={4} style={{ whiteSpace: 'nowrap' }}>
           <Button
             type="link"
             size="small"
             icon={<EditOutlined />}
-            onClick={() => {
-              setSelectedWorkflow(record);
-              setDrawerVisible(true);
-            }}
+            onClick={() => openDrawer(record)}
+            style={{ padding: '0 4px' }}
           >
-            组装编排
+            详情与编排
           </Button>
 
           <Button
@@ -344,6 +342,7 @@ const OrgWorkflowAdminContent: React.FC = () => {
               setSelectedWorkflow(record);
               setPermissionModalVisible(true);
             }}
+            style={{ padding: '0 4px' }}
           >
             授权
           </Button>
@@ -353,10 +352,10 @@ const OrgWorkflowAdminContent: React.FC = () => {
               type="link"
               size="small"
               danger
-              icon={<StopOutlined />}
               onClick={() =>
                 togglePublishMutation.mutate({ id: record.id, publish: false })
               }
+              style={{ padding: '0 4px' }}
             >
               下架
             </Button>
@@ -364,8 +363,7 @@ const OrgWorkflowAdminContent: React.FC = () => {
             <Button
               type="link"
               size="small"
-              style={{ color: '#52c41a' }}
-              icon={<SendOutlined />}
+              style={{ color: '#52c41a', padding: '0 4px' }}
               onClick={() =>
                 togglePublishMutation.mutate({ id: record.id, publish: true })
               }
@@ -375,13 +373,22 @@ const OrgWorkflowAdminContent: React.FC = () => {
           )}
 
           <Popconfirm
-            title={`确定删除工作流 ${record.name}？`}
+            title={`确定删除工作流 "${record.name}"？`}
+            description="删除后无法恢复，相关业务将不再展示此流程模版。"
             onConfirm={() => deleteMutation.mutate(record.id)}
             okText="删除"
             cancelText="取消"
             okButtonProps={{ danger: true }}
           >
-            <Button type="link" size="small" danger icon={<DeleteOutlined />} />
+            <Button
+              type="link"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              style={{ padding: '0 4px' }}
+            >
+              删除
+            </Button>
           </Popconfirm>
         </Space>
       ),
@@ -407,25 +414,16 @@ const OrgWorkflowAdminContent: React.FC = () => {
             {t.categoryName}
           </Tag>
           <strong>{t.name}</strong>
-          {t.id === 'legal.nda.generation_and_review_flow' && (
-            <Tag color="volcano" style={{ fontSize: 10, margin: 0 }}>
-              首推: 专属保密合同
-            </Tag>
-          )}
-          {t.id === 'legal.contract.review_flow' && (
-            <Tag color="blue" style={{ fontSize: 10, margin: 0 }}>
-              通用商业合同
-            </Tag>
-          )}
         </Space>
         <div
           style={{
             fontSize: 11,
             color: token.colorTextSecondary,
-            maxWidth: 360,
+            maxWidth: 320,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
+            marginTop: 2,
           }}
         >
           {t.description}
@@ -440,7 +438,7 @@ const OrgWorkflowAdminContent: React.FC = () => {
   }));
 
   return (
-    <div style={{ padding: '0 0 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ padding: '0 0 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* 错误提示 */}
       {isError && (
         <Alert
@@ -456,53 +454,43 @@ const OrgWorkflowAdminContent: React.FC = () => {
         />
       )}
 
-      {/* 1. 顶部统计卡片 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-        <Card size="small" style={{ borderRadius: 8 }}>
-          <div style={{ fontSize: 13, color: token.colorTextSecondary }}>企业工作流总数</div>
-          <div style={{ fontSize: 24, fontWeight: 'bold', marginTop: 4 }}>{stats.total}</div>
-        </Card>
-        <Card size="small" style={{ borderRadius: 8 }}>
-          <div style={{ fontSize: 13, color: token.colorTextSecondary }}>已公开就绪 (工作台可见)</div>
-          <div style={{ fontSize: 24, fontWeight: 'bold', color: '#52c41a', marginTop: 4 }}>
-            {stats.publishedCount}
+      {/* 紧凑型页头与工具栏：数据统计与全局操作一体化 */}
+      <Card size="small" style={{ borderRadius: 8 }} bodyStyle={{ padding: '12px 16px' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 12,
+          }}
+        >
+          {/* 左侧：标题与统计徽章 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 16, fontWeight: 600, color: token.colorTextHeading }}>
+              企业工作流管理
+            </span>
+            <Space size={6}>
+              <Tag style={{ borderRadius: 12, padding: '1px 8px', fontSize: 12, margin: 0 }}>
+                全部 <strong>{stats.total}</strong>
+              </Tag>
+              <Tag color="success" style={{ borderRadius: 12, padding: '1px 8px', fontSize: 12, margin: 0 }}>
+                已发布 <strong>{stats.publishedCount}</strong>
+              </Tag>
+              <Tag color="warning" style={{ borderRadius: 12, padding: '1px 8px', fontSize: 12, margin: 0 }}>
+                草稿 <strong>{stats.draftCount}</strong>
+              </Tag>
+            </Space>
           </div>
-        </Card>
-        <Card size="small" style={{ borderRadius: 8 }}>
-          <div style={{ fontSize: 13, color: token.colorTextSecondary }}>草稿设计态</div>
-          <div style={{ fontSize: 24, fontWeight: 'bold', color: '#fa8c16', marginTop: 4 }}>
-            {stats.draftCount}
-          </div>
-        </Card>
-        <Card size="small" style={{ borderRadius: 8 }}>
-          <div style={{ fontSize: 13, color: token.colorTextSecondary }}>已组装流程工作流</div>
-          <div style={{ fontSize: 24, fontWeight: 'bold', color: '#722ed1', marginTop: 4 }}>
-            {stats.assembledBaseCount}
-          </div>
-        </Card>
-      </div>
 
-      {/* 2. 操作与筛选工具栏 */}
-      <Card size="small" style={{ borderRadius: 8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Space>
-            <Input
-              prefix={<SearchOutlined />}
-              placeholder="搜索工作流名称、代号或分类..."
-              style={{ width: 280 }}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              allowClear
-            />
+          {/* 右侧：全局操作按钮 */}
+          <Space size={8}>
             <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
               刷新
             </Button>
-          </Space>
-
-          <Space size={10}>
             <Dropdown menu={{ items: templateMenuItems }} placement="bottomRight">
-              <Button icon={<ThunderboltOutlined style={{ color: '#2f54eb' }} />}>
-                从官方模版新建 <DownOutlined style={{ fontSize: 10 }} />
+              <Button icon={<ThunderboltOutlined style={{ color: '#fa8c16' }} />}>
+                从模版新建 <DownOutlined style={{ fontSize: 10 }} />
               </Button>
             </Dropdown>
             <Button
@@ -514,24 +502,74 @@ const OrgWorkflowAdminContent: React.FC = () => {
                 setDrawerVisible(true);
               }}
             >
-              新建企业工作流
+              新建工作流
             </Button>
           </Space>
         </div>
+
+        {/* 搜索与多维度筛选栏 */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            marginTop: 12,
+            paddingTop: 12,
+            borderTop: `1px solid ${token.colorBorderSecondary}`,
+          }}
+        >
+          <Input
+            prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
+            placeholder="按名称或说明检索..."
+            style={{ width: 260 }}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            allowClear
+          />
+
+          <Select
+            value={categoryFilter}
+            onChange={setCategoryFilter}
+            style={{ width: 130 }}
+            options={[
+              { label: '全部分类', value: 'all' },
+              { label: '法务风控', value: 'legal' },
+              { label: '人事行政', value: 'hr' },
+              { label: '财务资产', value: 'finance' },
+              { label: 'IT 运维', value: 'it' },
+            ]}
+          />
+
+          <Select
+            value={statusFilter}
+            onChange={setStatusFilter}
+            style={{ width: 120 }}
+            options={[
+              { label: '全部状态', value: 'all' },
+              { label: '已发布', value: 'published' },
+              { label: '草稿态', value: 'draft' },
+            ]}
+          />
+
+          <div style={{ flex: 1 }} />
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            共 {filteredWorkflows.length} 条工作流
+          </Text>
+        </div>
       </Card>
 
-      {/* 3. 工作流列表 Table */}
+      {/* 主工作流表格：清爽无冗余，严格单行对齐，去除多余展开项 */}
       <Card size="small" style={{ borderRadius: 8 }} bodyStyle={{ padding: 0 }}>
         <Table
           columns={columns}
           dataSource={filteredWorkflows}
           rowKey="id"
           loading={isLoading}
-          pagination={{ pageSize: 10 }}
+          pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (t) => `共 ${t} 个工作流` }}
         />
       </Card>
 
-      {/* 4. 编辑抽屉与权限弹窗 */}
+      {/* 完整设计与编排抽屉：包含唯一代号、版本号、详细描述、各阶段流转定义与底层能力组装 */}
       <OrgWorkflowEditDrawer
         visible={drawerVisible}
         workflow={selectedWorkflow}
@@ -544,6 +582,7 @@ const OrgWorkflowAdminContent: React.FC = () => {
         onSuccess={() => refetch()}
       />
 
+      {/* 权限设置弹窗 */}
       <OrgWorkflowPermissionModal
         visible={permissionModalVisible}
         workflow={selectedWorkflow}

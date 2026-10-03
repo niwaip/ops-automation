@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import * as bcrypt from 'bcryptjs';
 import type {
   IdentityAccessUserManagementRepository,
   IdentityAccessUserSummaryRecord,
@@ -107,6 +108,26 @@ export class IdentityAccessUserService {
   async activate(userId: string): Promise<UserDto> {
     const user = await this.userManagementRepository.setUserActive(userId, true);
     return this.toUserDto(user);
+  }
+
+  async resetPassword(
+    userId: string,
+    password: string
+  ): Promise<{ success: boolean; message: string }> {
+    const user = await this.userManagementRepository.findUserById(userId);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!password || password.length < 6) {
+      throw new BadRequestException('Password must be at least 6 characters long');
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    await this.userManagementRepository.updateUserPassword(userId, passwordHash);
+
+    return { success: true, message: 'Password has been reset successfully' };
   }
 
   private toUserDto(user: IdentityAccessUserSummaryRecord): UserDto {

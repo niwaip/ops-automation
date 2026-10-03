@@ -53,7 +53,10 @@ import {
   RecorderDebugService,
   RecorderDebugSessionFacade,
 } from './execute';
-import { RecorderHistoryCompressionService } from './execute/recorder';
+import {
+  RecorderHistoryCompressionService,
+  RecorderSessionLockService,
+} from './execute/recorder';
 import {
   RecorderConditionalBranchService,
   RecorderLoopExportService,
@@ -130,12 +133,14 @@ import { RecorderDebugRollbackService } from './execute/recorder';
     RecorderHistoryCompressionService,
     RecorderStateStoreService,
     RecorderDebugRollbackService,
+    RecorderSessionLockService,
   ],
   exports: [
     BrowserCommandService,
     RecorderDebugService,
     RecorderLoopService,
     ExecutionReconcileService,
+    RecorderSessionLockService,
   ],
 })
 export class BrowserModule {}

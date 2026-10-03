@@ -49,5 +49,6 @@ export interface IdentityAccessUserManagementRepository {
     title?: string | null;
   }): Promise<void>;
   setUserActive(userId: string, isActive: boolean): Promise<IdentityAccessUserSummaryRecord>;
+  updateUserPassword(userId: string, passwordHash: string): Promise<void>;
 }
 

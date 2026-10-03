@@ -1,8 +1,22 @@
 import { Injectable } from '@nestjs/common';
+import * as crypto from 'crypto';
 import type { DeterministicPlanNodeV1 } from '@ops/backend-deterministic-plan';
 import type { PlanDraftDTO } from '../../interfaces';
 import type { ExecutionContext } from '../react-engine/interfaces';
 import { PromptDebugSettingsService } from '../debug-settings/prompt-debug-settings.service';
+import type { DocumentProbeResult } from './document-prober.service';
+
+function isPseudoFileUrl(url?: string): boolean {
+  if (!url || typeof url !== 'string') return true;
+  const clean = url.trim().toLowerCase();
+  return (
+    clean === 'https://contract.nda' ||
+    clean.startsWith('https://contract.') ||
+    clean.startsWith('http://contract.') ||
+    clean.includes('example.com/fake') ||
+    clean.includes('localhost/fake')
+  );
+}
 
 @Injectable()
 export class ChatPlanningPresentationService {
@@ -28,31 +42,41 @@ export class ChatPlanningPresentationService {
     if (first) {
       if (first.content) {
         params.fileBase64 = first.content;
-        params.fileBase64A = first.content;
       }
       if (first.fileName) {
         params.fileName = first.fileName;
-        params.fileNameA = first.fileName;
       }
-      const urlA = (first as any).url || (first as any).downloadUrl || (first as any).fileUrl || (first as any).storagePath;
-      if (urlA) {
-        params.fileUrl = urlA;
-        params.fileUrlA = urlA;
-        params.downloadUrl = urlA;
-        params.downloadUrlA = urlA;
+      const rawUrlA = (first as any).url || (first as any).downloadUrl || (first as any).fileUrl || (first as any).storagePath;
+      if (rawUrlA && !isPseudoFileUrl(rawUrlA)) {
+        params.fileUrl = rawUrlA;
+        params.downloadUrl = rawUrlA;
       }
     }
+    // Only populate dual-file (A and B) slot keys if a second file actually exists
     if (second) {
+      if (first) {
+        if (first.content) {
+          params.fileBase64A = first.content;
+        }
+        if (first.fileName) {
+          params.fileNameA = first.fileName;
+        }
+        const rawUrlA = (first as any).url || (first as any).downloadUrl || (first as any).fileUrl || (first as any).storagePath;
+        if (rawUrlA && !isPseudoFileUrl(rawUrlA)) {
+          params.fileUrlA = rawUrlA;
+          params.downloadUrlA = rawUrlA;
+        }
+      }
       if (second.content) {
         params.fileBase64B = second.content;
       }
       if (second.fileName) {
         params.fileNameB = second.fileName;
       }
-      const urlB = (second as any).url || (second as any).downloadUrl || (second as any).fileUrl || (second as any).storagePath;
-      if (urlB) {
-        params.fileUrlB = urlB;
-        params.downloadUrlB = urlB;
+      const rawUrlB = (second as any).url || (second as any).downloadUrl || (second as any).fileUrl || (second as any).storagePath;
+      if (rawUrlB && !isPseudoFileUrl(rawUrlB)) {
+        params.fileUrlB = rawUrlB;
+        params.downloadUrlB = rawUrlB;
       }
     }
 
@@ -61,7 +85,7 @@ export class ChatPlanningPresentationService {
       const mdMatches: Array<{ title: string; url: string }> = [];
       let m: RegExpExecArray | null;
       while ((m = mdRegex.exec(message)) !== null) {
-        if (m[1] && m[2]) {
+        if (m[1] && m[2] && !isPseudoFileUrl(m[2])) {
           mdMatches.push({ title: m[1].trim(), url: m[2].trim() });
         }
       }
@@ -69,15 +93,19 @@ export class ChatPlanningPresentationService {
       if (mdMatches.length > 0) {
         if (!params.downloadUrl && mdMatches[0]) {
           params.fileUrl = mdMatches[0].url;
-          params.fileUrlA = mdMatches[0].url;
           params.downloadUrl = mdMatches[0].url;
-          params.downloadUrlA = mdMatches[0].url;
+          if (second) {
+            params.fileUrlA = mdMatches[0].url;
+            params.downloadUrlA = mdMatches[0].url;
+          }
           if (!params.fileName) {
             params.fileName = mdMatches[0].title;
-            params.fileNameA = mdMatches[0].title;
+            if (second) {
+              params.fileNameA = mdMatches[0].title;
+            }
           }
         }
-        if (!params.downloadUrlB && mdMatches[1]) {
+        if (second && !params.downloadUrlB && mdMatches[1]) {
           params.fileUrlB = mdMatches[1].url;
           params.downloadUrlB = mdMatches[1].url;
           if (!params.fileNameB) {
@@ -86,12 +114,14 @@ export class ChatPlanningPresentationService {
         }
       } else if (!params.downloadUrl) {
         const urlMatch = message.match(/https?:\/\/[^\s)"'<>]+/);
-        if (urlMatch) {
+        if (urlMatch && !isPseudoFileUrl(urlMatch[0])) {
           const matchedUrl = urlMatch[0];
           params.fileUrl = matchedUrl;
-          params.fileUrlA = matchedUrl;
           params.downloadUrl = matchedUrl;
-          params.downloadUrlA = matchedUrl;
+          if (second) {
+            params.fileUrlA = matchedUrl;
+            params.downloadUrlA = matchedUrl;
+          }
         }
       }
     }
@@ -101,10 +131,40 @@ export class ChatPlanningPresentationService {
 
   buildPlanningRequest(
     message: string,
-    files?: Array<{ fileName?: string; mimeType: string }>
+    files?: Array<{ fileName?: string; mimeType: string }>,
+    probedDocs?: DocumentProbeResult[]
   ): string {
-    if (!files || files.length === 0) return message;
-    const pdfFiles = files.filter(
+    if ((!files || files.length === 0) && (!probedDocs || probedDocs.length === 0)) return message;
+
+    if (probedDocs && probedDocs.length > 0) {
+      const docBlocks: string[] = ['[系统上下文：已完成用户附件文档轻量元数据探测]'];
+      for (const doc of probedDocs) {
+        docBlocks.push(`- 附件文档：${doc.fileName}`);
+        docBlocks.push(`  - 识别类型：${doc.docTypeName} (${doc.docType})`);
+        if (doc.docTitle) {
+          docBlocks.push(`  - 文档标题：《${doc.docTitle}》`);
+        }
+        if (doc.parties && (doc.parties.partyA || doc.parties.partyB)) {
+          const partyInfo = [
+            doc.parties.partyA ? `甲方: ${doc.parties.partyA}` : '',
+            doc.parties.partyB ? `乙方: ${doc.parties.partyB}` : '',
+          ]
+            .filter(Boolean)
+            .join('；');
+          docBlocks.push(`  - 识别签约主体：${partyInfo}`);
+        }
+        const digest = crypto
+          .createHash('sha256')
+          .update(doc.summaryPreview || '')
+          .digest('hex');
+        docBlocks.push(
+          `  - 文档特征摘要：字符数 ${doc.characterCount}，正文哈希 sha256:${digest.slice(0, 16)}`
+        );
+      }
+      return `${message}\n\n${docBlocks.join('\n')}`;
+    }
+
+    const pdfFiles = (files || []).filter(
       (file) => file.mimeType === 'application/pdf' || file.fileName?.toLowerCase().endsWith('.pdf')
     );
     if (pdfFiles.length > 0) {
@@ -113,7 +173,7 @@ export class ChatPlanningPresentationService {
         ? `${message}\n[系统上下文：用户已上传 PDF 附件 (${names})]`
         : `${message}\n[系统上下文：用户已上传 PDF 附件]`;
     }
-    const names = files.map((f) => f.fileName).filter(Boolean).join(', ');
+    const names = (files || []).map((f) => f.fileName).filter(Boolean).join(', ');
     return names
       ? `${message}\n[系统上下文：用户已上传附件 (${names})]`
       : `${message}\n[系统上下文：用户已上传附件]`;

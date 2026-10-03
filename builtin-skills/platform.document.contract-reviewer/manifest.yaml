@@ -10,7 +10,7 @@ metadata:
     domain: contract
     format: multi-format
 spec:
-  definitionVersion: 1.0.1
+  definitionVersion: 1.0.2
   lifecycle: experimental
   defaultAccess:
     mode: authenticated
@@ -29,6 +29,11 @@ spec:
       - 合规审查
       - 审查协议
       - 合同诊断
+      - 查看合同
+      - 阅读合同
+      - 分析合同
+      - 合同分析
+      - 评估合同
     matchSummary: 智能审查合同协议，诊断合规风险、缺漏条款与不对等责任，并生成交互式单页 HTML 审查报告
     runtimeType: workflow
     supportsArtifact: true

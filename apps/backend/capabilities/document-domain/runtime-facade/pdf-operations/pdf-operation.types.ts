@@ -27,8 +27,15 @@ export interface PdfContentBlock {
 export interface PdfCreateInput {
   fileName?: string;
   title?: string;
-  content: PdfContentBlock[];
+  content?: PdfContentBlock[];
   pageNumbers?: boolean;
+  sourceDocxBase64?: string;
+  sourceDocxUrl?: string;
+  sourceDocxName?: string;
+  sourceDocxSha256?: string;
+  fileBase64?: string;
+  auditCertificateBlocks?: PdfContentBlock[];
+  auditMetadata?: Record<string, any>;
 }
 
 export interface PdfOperationOutput {

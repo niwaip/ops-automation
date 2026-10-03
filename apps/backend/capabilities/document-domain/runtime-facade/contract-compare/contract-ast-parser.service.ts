@@ -117,7 +117,12 @@ export class ContractAstParserService {
             (openXmlClauses.length > 1 ||
               (openXmlClauses.length === 1 && openXmlClauses[0].content.length < 200))
           ) {
-            return { clauses: openXmlClauses, metadata: { isTruncated: false, format: 'docx' } };
+            const docxComments = (openXmlClauses as any).comments || openXmlClauses.flatMap((c) => c.comments || []);
+            return {
+              clauses: openXmlClauses,
+              metadata: { isTruncated: false, format: 'docx' },
+              comments: docxComments,
+            };
           }
           if (openXmlClauses && openXmlClauses.length === 1) {
             this.logger.warn(

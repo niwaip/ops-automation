@@ -1,5 +1,5 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import { hasRoutingSignal } from './routing-policy.matcher';
+import { hasRoutingSignal, stripSystemContext } from './routing-policy.matcher';
 import { RoutingPolicyService } from './routing-policy.service';
 
 export type PlanRouteType = 'single_skill' | 'deterministic_plan';
@@ -23,13 +23,16 @@ export class PlanRouteClassifierService {
 
     const text = userRequest.trim();
     const policy = this.routingPolicy.getSnapshot();
+    const cleanUserText = stripSystemContext(text) || text;
 
-    // Check for explicit multi-step compound signals
-    const hasSequentialKeyword = hasRoutingSignal(text, 'sequential', policy);
-    const hasProcessingKeyword = hasRoutingSignal(text, 'processing', policy);
-    const hasGenerationKeyword = hasRoutingSignal(text, 'generation', policy);
-    const hasArtifactKeyword = hasRoutingSignal(text, 'artifact', policy);
-    const hasDocumentSourceKeyword = hasRoutingSignal(text, 'documentSource', policy);
+    // Check for explicit multi-step compound signals on clean user text
+    const hasSequentialKeyword = hasRoutingSignal(cleanUserText, 'sequential', policy);
+    const hasProcessingKeyword = hasRoutingSignal(cleanUserText, 'processing', policy);
+    const hasGenerationKeyword = hasRoutingSignal(cleanUserText, 'generation', policy);
+    const hasArtifactKeyword = hasRoutingSignal(cleanUserText, 'artifact', policy);
+    const hasDocumentSourceKeyword =
+      hasRoutingSignal(cleanUserText, 'documentSource', policy) ||
+      /\[系统上下文：.*(?:附件|文档|文件|pdf|docx?|pptx?)/i.test(text);
 
     if (hasArtifactKeyword || hasProcessingKeyword || hasGenerationKeyword) {
       this.logger.log(
@@ -49,18 +52,21 @@ export class PlanRouteClassifierService {
     if (context?.hasPreviousResult !== true || !userRequest?.trim()) return false;
     const text = userRequest.trim();
     const policy = this.routingPolicy.getSnapshot();
-    const hasSummarizeIntent = hasRoutingSignal(text, 'summarize', policy);
-    const hasSequentialIntent = hasRoutingSignal(text, 'sequential', policy);
-    const hasDocumentSource = hasRoutingSignal(text, 'documentSource', policy);
-    const hasSearchIntent = hasRoutingSignal(text, 'search', policy);
-    const hasProcessingIntent = hasRoutingSignal(text, 'processing', policy);
+    const cleanUserText = stripSystemContext(text) || text;
+    const hasSummarizeIntent = hasRoutingSignal(cleanUserText, 'summarize', policy);
+    const hasSequentialIntent = hasRoutingSignal(cleanUserText, 'sequential', policy);
+    const hasDocumentSource =
+      hasRoutingSignal(cleanUserText, 'documentSource', policy) ||
+      /\[系统上下文：.*(?:附件|文档|文件|pdf|docx?|pptx?)/i.test(text);
+    const hasSearchIntent = hasRoutingSignal(cleanUserText, 'search', policy);
+    const hasProcessingIntent = hasRoutingSignal(cleanUserText, 'processing', policy);
 
     // If user specifically requests summarization, route to DeterministicPlan (LLM Operation: summarize_text)
     if (hasSummarizeIntent) return false;
 
     // Single-step continuation is for non-summarize processing / integration skills (e.g. bark push)
     return (
-      (hasProcessingIntent || hasRoutingSignal(text, 'artifact', policy)) &&
+      (hasProcessingIntent || hasRoutingSignal(cleanUserText, 'artifact', policy)) &&
       !hasSequentialIntent &&
       !hasDocumentSource &&
       !hasSearchIntent

@@ -10,11 +10,13 @@ import { fixFilenameEncoding } from '../filename-encoding.util';
 import { CharDiffEngineService } from './char-diff-engine.service';
 import { ContractAstParserService } from './contract-ast-parser.service';
 import type {
-AlignedClausePair,
-ClauseAiInsight,
-ContractCompareInput,
-ContractCompareMetrics,
-ContractCompareOutput
+  AlignedClausePair,
+  ClauseAiInsight,
+  ContractCompareInput,
+  ContractCompareMetrics,
+  ContractCompareOutput,
+  ContractDiffOutput,
+  ContractRenderCompareReportInput,
 } from './contract-compare.types';
 import { ContractHtmlRendererService } from './contract-html-renderer.service';
 import { SectionAlignerService } from './section-aligner.service';
@@ -62,9 +64,9 @@ export class ContractCompareService {
   }
 
   /**
-   * Main execution: compare two contracts and generate a side-by-side interactive HTML report
+   * Stage 1: Parse, align sections, compute diffs and initial rule-based risk evaluation (0 LLM calls)
    */
-  public async compareContracts(input: ContractCompareInput): Promise<ContractCompareOutput> {
+  public async diffContracts(input: ContractCompareInput): Promise<ContractDiffOutput> {
     await resolveCompareDocumentPayloads(input, undefined, undefined, this.logger);
 
     const fileNameA = fixFilenameEncoding(input.fileNameA || '基准合同_A');
@@ -164,7 +166,45 @@ export class ContractCompareService {
       warnings: combinedWarnings.length > 0 ? combinedWarnings : undefined,
     };
 
-    // 5. Render Interactive HTML Report
+    return {
+      fileNameA,
+      fileNameB,
+      alignedClauses: alignedPairs,
+      metrics,
+      sourceClauseCount: sourceClauses.length,
+      targetClauseCount: targetClauses.length,
+      isTruncated,
+      warnings: combinedWarnings.length > 0 ? combinedWarnings : undefined,
+    };
+  }
+
+  /**
+   * Stage 3: Render Interactive HTML Report and save artifact (0 LLM calls)
+   */
+  public async renderCompareReport(
+    input: ContractRenderCompareReportInput,
+    idempotencyKey?: string
+  ): Promise<ContractCompareOutput> {
+    const fileNameA = fixFilenameEncoding(input.fileNameA || '基准合同_A');
+    const fileNameB = fixFilenameEncoding(input.fileNameB || '比对合同_B');
+    const alignedPairs = input.alignedClauses || [];
+
+    // Recalculate metrics based on current alignedPairs (which may have been enriched by LLM audit)
+    const metrics: ContractCompareMetrics = {
+      totalClauses: alignedPairs.length,
+      unchangedCount: alignedPairs.filter((p) => p.status === 'UNCHANGED').length,
+      modifiedCount: alignedPairs.filter((p) => p.status === 'MODIFIED').length,
+      addedCount: alignedPairs.filter((p) => p.status === 'ADDED').length,
+      deletedCount: alignedPairs.filter((p) => p.status === 'DELETED').length,
+      highRiskCount: alignedPairs.filter((p) => p.aiInsight?.riskLevel === 'HIGH').length,
+      mediumRiskCount: alignedPairs.filter((p) => p.aiInsight?.riskLevel === 'MEDIUM').length,
+      sourceClauseCount: input.metrics?.sourceClauseCount,
+      targetClauseCount: input.metrics?.targetClauseCount,
+      isTruncated: input.metrics?.isTruncated,
+      warnings: input.metrics?.warnings,
+    };
+
+    // 1. Render Interactive HTML Report
     const htmlReport = this.htmlRenderer.renderHtmlReport({
       fileNameA,
       fileNameB,
@@ -172,8 +212,9 @@ export class ContractCompareService {
       alignedPairs,
     });
 
-    // 6. Persist HTML Report as an ArtifactRef
-    const artifact = await this.saveHtmlArtifact(htmlReport, input.idempotencyKey, fileNameA, fileNameB);
+    // 2. Persist HTML Report as an ArtifactRef
+    const effectiveIdempotencyKey = idempotencyKey || input.idempotencyKey;
+    const artifact = await this.saveHtmlArtifact(htmlReport, effectiveIdempotencyKey, fileNameA, fileNameB);
 
     const highRiskPairs = alignedPairs.filter((p) => p.aiInsight?.riskLevel === 'HIGH');
     const mediumRiskPairs = alignedPairs.filter((p) => p.aiInsight?.riskLevel === 'MEDIUM');
@@ -188,16 +229,19 @@ export class ContractCompareService {
       ``,
     ];
 
-    if (isTruncated) {
+    if (metrics.isTruncated) {
       summaryLines.push(
         `> ⚠️ **部分审查警示**：比对文档因篇幅限制已执行截断，仅覆盖已提取前序章节，请留意后续未覆盖风险。`,
         ``
       );
     }
 
+    const srcCount = metrics.sourceClauseCount !== undefined ? `基准版 ${metrics.sourceClauseCount} 条 / ` : '';
+    const tgtCount = metrics.targetClauseCount !== undefined ? `修订版 ${metrics.targetClauseCount} 条 ｜ ` : '';
+
     summaryLines.push(
       `#### 📊 比对结果概览`,
-      `- **条款变更统计**：对齐后共比对 **${metrics.totalClauses}** 项条款（基准版 ${sourceClauses.length} 条 / 修订版 ${targetClauses.length} 条 ｜ 文本修改 **${metrics.modifiedCount}** 项，新增 **${metrics.addedCount}** 项，删除 **${metrics.deletedCount}** 项，未变更 **${metrics.unchangedCount}** 项）`,
+      `- **条款变更统计**：对齐后共比对 **${metrics.totalClauses}** 项条款（${srcCount}${tgtCount}文本修改 **${metrics.modifiedCount}** 项，新增 **${metrics.addedCount}** 项，删除 **${metrics.deletedCount}** 项，未变更 **${metrics.unchangedCount}** 项）`,
       `- **审查风险评级**：${metrics.highRiskCount > 0 ? `⚠️ **${metrics.highRiskCount} 项高风险变更，建议重点复核**${mediumRiskPairs.length > 0 ? `，${mediumRiskPairs.length} 项中风险条款` : ''}` : '✅ 未发现高风险变更'}`,
     );
 
@@ -229,6 +273,23 @@ export class ContractCompareService {
       artifact,
       artifacts: [artifact],
     };
+  }
+
+  /**
+   * Main execution: compare two contracts and generate a side-by-side interactive HTML report
+   */
+  public async compareContracts(input: ContractCompareInput): Promise<ContractCompareOutput> {
+    const diffResult = await this.diffContracts(input);
+    return this.renderCompareReport(
+      {
+        fileNameA: diffResult.fileNameA,
+        fileNameB: diffResult.fileNameB,
+        metrics: diffResult.metrics,
+        alignedClauses: diffResult.alignedClauses,
+        idempotencyKey: input.idempotencyKey,
+      },
+      input.idempotencyKey
+    );
   }
 
   /**

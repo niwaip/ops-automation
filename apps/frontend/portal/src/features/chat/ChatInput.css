@@ -54,12 +54,71 @@
 
 .chat-uploaded-files-list {
   display: flex;
-  gap: 6px;
+  gap: 8px;
+  align-items: center;
   overflow-x: auto;
   overflow-y: hidden;
   white-space: nowrap;
-  padding-bottom: 2px;
+  padding-bottom: 4px;
+  padding-top: 4px;
   scrollbar-width: thin;
+}
+
+.chat-uploaded-file-thumb-card {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  background: #f8fafc;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  flex: 0 0 auto;
+  transition: all 0.2s ease;
+}
+
+.chat-uploaded-file-thumb-card:hover {
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+}
+
+.chat-uploaded-file-thumb-card .ant-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.chat-uploaded-file-thumb-card .ant-image-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 7px;
+  display: block;
+}
+
+.chat-uploaded-thumb-remove {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(30, 41, 59, 0.75);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 10px;
+  z-index: 10;
+  transition: all 0.18s ease;
+}
+
+.chat-uploaded-thumb-remove:hover {
+  background: #ef4444;
+  transform: scale(1.15);
 }
 
 .chat-uploaded-file-tag {

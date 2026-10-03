@@ -2,15 +2,15 @@ import { memo, useMemo } from 'react';
 import {
   ClockCircleOutlined,
   CloseCircleFilled,
-  FileImageOutlined,
   FolderOutlined,
   PaperClipOutlined,
   ReloadOutlined,
   RobotOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { App, Avatar, Button, Typography } from 'antd';
+import { App, Avatar, Button, Image, Typography } from 'antd';
 import { resolveChatOutcomePresentation, type ChatMessage } from '@ops/user-core';
+import { isImageFile, resolveChatFilePreviewUrl } from '../lib/chatComposerMedia';
 import SharedChatMessageActions from '@chat-web/components/ChatMessageActions';
 import SharedContentPartsRenderer from '@chat-web/components/ContentPartsRenderer';
 import SharedMessageContentRenderer from '@chat-web/components/MessageContentRenderer';
@@ -139,8 +139,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
     showThoughtLogs && !message.isStreaming && !expandedThought && hasTaskCard;
   const shouldPinFinishedTaskThoughts =
     showThoughtLogs && !message.isStreaming && hasTaskCard && message.metadata?.mode === 'task';
-  const isStreamingThought = Boolean(message.isStreaming) && !plainContent;
-  const isThoughtExpanded = expandedThought || isStreamingThought;
+  const isThoughtExpanded = Boolean(expandedThought);
   const thoughtPanel = showThoughtLogs ? (
     <SharedThoughtProcessPanel
       thoughts={thoughtLogs}
@@ -329,64 +328,103 @@ export const ChatMessageItem = memo(function ChatMessageItem({
           {message.metadata?.files &&
           Array.isArray(message.metadata.files) &&
           message.metadata.files.length > 0 ? (
-            <div className={styles['user-chat-attachment-list']}>
-              {message.metadata.files.map((file, idx) => {
-                const fileName =
-                  typeof file === 'string'
-                    ? file
-                    : (file as { fileName?: string })?.fileName || '附件';
-                const isWs = typeof file === 'object' && (file as any)?.source === 'workspace';
-                const wsType = (file as any)?.workspaceType;
-                const wsBadge =
-                  wsType === 'personal'
-                    ? '我的'
-                    : wsType === 'department'
-                    ? '部门'
-                    : wsType === 'company'
-                    ? '公共'
-                    : null;
-                const fileId =
-                  typeof file === 'object'
-                    ? (file as any)?.fileId || (file as any)?.id || (file as any)?.nodeId
-                    : null;
-                const workspaceId = typeof file === 'object' ? (file as any)?.workspaceId : null;
-                const canPreview = Boolean(isWs && fileId);
-                const isImage =
-                  /\.(jpe?g|png|gif|webp|svg|bmp)$/i.test(fileName) ||
-                  (typeof file === 'object' && Boolean((file as any)?.mimeType?.startsWith('image/')));
+            <>
+              {(() => {
+                const imageItems: Array<{ file: any; fileName: string; previewUrl: string; idx: number }> = [];
+                const otherItems: Array<{ file: any; fileName: string; idx: number }> = [];
+
+                message.metadata.files.forEach((file, idx) => {
+                  const fileName =
+                    typeof file === 'string'
+                      ? file
+                      : (file as { fileName?: string })?.fileName || '附件';
+                  const mimeType = typeof file === 'object' ? (file as any)?.mimeType : undefined;
+                  const isImg = isImageFile(fileName, mimeType);
+                  const previewUrl = isImg ? resolveChatFilePreviewUrl(file as any) : undefined;
+
+                  if (isImg && previewUrl) {
+                    imageItems.push({ file, fileName, previewUrl, idx });
+                  } else {
+                    otherItems.push({ file, fileName, idx });
+                  }
+                });
+
                 return (
-                  <div
-                    key={idx}
-                    className={styles['user-chat-attachment-chip']}
-                    style={{ cursor: canPreview ? 'pointer' : undefined }}
-                    title={canPreview ? '点击在线预览此文档' : undefined}
-                    onClick={() => {
-                      if (canPreview && typeof window !== 'undefined') {
-                        window.dispatchEvent(
-                          new CustomEvent('open-workspace-preview', {
-                            detail: { fileId, workspaceId, fileName },
-                          })
-                        );
-                      }
-                    }}
-                  >
-                    {isWs ? (
-                      <FolderOutlined className={styles['user-chat-attachment-icon']} style={{ color: 'var(--primary-color)' }} />
-                    ) : isImage ? (
-                      <FileImageOutlined className={styles['user-chat-attachment-icon']} style={{ color: 'var(--primary-color, #1890ff)' }} />
-                    ) : (
-                      <PaperClipOutlined className={styles['user-chat-attachment-icon']} />
+                  <>
+                    {imageItems.length > 0 && (
+                      <div className={styles['user-chat-image-grid']}>
+                        <Image.PreviewGroup>
+                          {imageItems.map(({ file, fileName, previewUrl, idx }) => (
+                            <div
+                              key={file?.fileId || `${fileName}-${idx}`}
+                              className={styles['user-chat-image-thumb-box']}
+                              title={`${fileName} · 点击查看全尺寸大图`}
+                            >
+                              <Image
+                                src={previewUrl}
+                                alt={fileName}
+                              />
+                            </div>
+                          ))}
+                        </Image.PreviewGroup>
+                      </div>
                     )}
-                    {wsBadge && (
-                      <span style={{ fontSize: 11, color: 'var(--primary-color)', fontWeight: 600, marginRight: 2 }}>
-                        [{wsBadge}]
-                      </span>
+                    {otherItems.length > 0 && (
+                      <div className={styles['user-chat-attachment-list']}>
+                        {otherItems.map(({ file, fileName, idx }) => {
+                          const isWs = typeof file === 'object' && (file as any)?.source === 'workspace';
+                          const wsType = (file as any)?.workspaceType;
+                          const wsBadge =
+                            wsType === 'personal'
+                              ? '我的'
+                              : wsType === 'department'
+                              ? '部门'
+                              : wsType === 'company'
+                              ? '公共'
+                              : null;
+                          const fileId =
+                            typeof file === 'object'
+                              ? (file as any)?.fileId || (file as any)?.id || (file as any)?.nodeId
+                              : null;
+                          const workspaceId = typeof file === 'object' ? (file as any)?.workspaceId : null;
+                          const canPreview = Boolean(isWs && fileId);
+
+                          return (
+                            <div
+                              key={idx}
+                              className={styles['user-chat-attachment-chip']}
+                              style={{ cursor: canPreview ? 'pointer' : undefined }}
+                              title={canPreview ? '点击在线预览此文档' : undefined}
+                              onClick={() => {
+                                if (canPreview && typeof window !== 'undefined') {
+                                  window.dispatchEvent(
+                                    new CustomEvent('open-workspace-preview', {
+                                      detail: { fileId, workspaceId, fileName },
+                                    })
+                                  );
+                                }
+                              }}
+                            >
+                              {isWs ? (
+                                <FolderOutlined className={styles['user-chat-attachment-icon']} style={{ color: 'var(--primary-color)' }} />
+                              ) : (
+                                <PaperClipOutlined className={styles['user-chat-attachment-icon']} />
+                              )}
+                              {wsBadge && (
+                                <span style={{ fontSize: 11, color: 'var(--primary-color)', fontWeight: 600, marginRight: 2 }}>
+                                  [{wsBadge}]
+                                </span>
+                              )}
+                              <span className={styles['user-chat-attachment-name']}>{fileName}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
-                    <span className={styles['user-chat-attachment-name']}>{fileName}</span>
-                  </div>
+                  </>
                 );
-              })}
-            </div>
+              })()}
+            </>
           ) : null}
           {shouldShowMessageContent ? (
             <div className={styles['user-chat-message-content']}>
@@ -420,7 +458,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
                 <span>{formatMessageTimestamp(message.timestamp)}</span>
               </span>
             </span>
-            {message.isStreaming ? (
+            {message.isStreaming && !(message.metadata?.mode === 'task' && hasProgressLogs) ? (
               <span className={`${styles['user-chat-message-meta-item']} ${styles['user-chat-message-meta-status']} ${styles['status-processing']}`}>
                 {message.metadata?.isQueued || resolvedTaskStatus === 'queued' ? (
                   <>

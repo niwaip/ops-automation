@@ -33,10 +33,13 @@ export enum CoordinationTaskPriority {
 export interface CoordinationAttachment {
   name: string;
   url?: string;
+  downloadUrl?: string;
   size?: number;
   mimeType?: string;
   storagePath?: string;
   attachmentId?: string;
+  id?: string;
+  sha256?: string;
 }
 
 export class CoordinationAttachmentDto implements CoordinationAttachment {
@@ -48,6 +51,10 @@ export class CoordinationAttachmentDto implements CoordinationAttachment {
   @IsOptional()
   url?: string;
 
+  @IsString()
+  @IsOptional()
+  downloadUrl?: string;
+
   @IsOptional()
   size?: number;
 
@@ -62,6 +69,14 @@ export class CoordinationAttachmentDto implements CoordinationAttachment {
   @IsString()
   @IsOptional()
   attachmentId?: string;
+
+  @IsString()
+  @IsOptional()
+  id?: string;
+
+  @IsString()
+  @IsOptional()
+  sha256?: string;
 }
 
 export interface CoordinationActionRecord {

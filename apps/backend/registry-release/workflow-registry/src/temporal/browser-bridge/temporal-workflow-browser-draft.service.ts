@@ -229,8 +229,30 @@ export class TemporalWorkflowBrowserDraftService {
         startToCloseTimeout: phase.timeout,
       };
     });
+    const lastPreLoopIndex = browserPhases
+      .map((p) => p.steps[0]?.config?.loopSegment)
+      .lastIndexOf('pre_loop');
+    const lastIterationIndex = browserPhases
+      .map((p) => p.steps[0]?.config?.loopSegment)
+      .lastIndexOf('iteration');
+    const variableReaders: Record<string, { selector: string; method?: string }> = {};
+    for (const step of activitySteps) {
+      const cfg = (step.config || {}) as Record<string, any>;
+      const outputVar = (step as any).output_var || cfg.output_var || cfg.outputVar;
+      const selector = cfg.selector || cfg.target || (cfg.locator as any)?.value;
+      if (outputVar && selector) {
+        variableReaders[String(outputVar).trim()] = {
+          selector: String(selector).trim(),
+          method: typeof cfg.method === 'string' ? cfg.method : 'textContent',
+        };
+      }
+    }
     const activityDefinitions = browserPhases.map((phase, index) => {
       const phaseActivityFn = `${activityFnBase}_${String(index + 1).padStart(2, '0')}`;
+      const isStopCheckPhase =
+        lastIterationIndex >= 0 || lastPreLoopIndex >= 0
+          ? index === lastPreLoopIndex || index === lastIterationIndex
+          : index === browserPhases.length - 1;
       return {
         id: phaseActivityFn,
         activityRef: `custom:${phaseActivityFn}`,
@@ -261,7 +283,9 @@ export class TemporalWorkflowBrowserDraftService {
             initializeSession: phase.initializeSession,
             cleanupSession: phase.cleanupSession,
           },
+          stopWhen: isStopCheckPhase ? loopDraft?.stopWhen : undefined,
           steps: phase.steps,
+          ...(Object.keys(variableReaders).length > 0 ? { variableReaders } : {}),
         },
       };
     });
@@ -519,10 +543,15 @@ export class TemporalWorkflowBrowserDraftService {
       return [];
     }
 
-    return phases.map((phase, index) => ({
-      ...phase,
-      initializeSession: index === 0,
-      cleanupSession: index === phases.length - 1,
-    }));
+    return phases.map((phase, index) => {
+      const isLoopPhase = phase.steps.some(
+        (step) => step.config?.loopSegment === 'iteration' || Boolean(step.config?.loopTemplate)
+      );
+      return {
+        ...phase,
+        initializeSession: index === 0,
+        cleanupSession: !isLoopPhase && index === phases.length - 1,
+      };
+    });
   }
 }

@@ -501,5 +501,17 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
     }
   });
 
+  // Extract Word comments if available and bind to clauses
+  try {
+    const { parseDocxComments, bindCommentsToClauses } = await import('./docx-comment-parser.util');
+    const comments = await parseDocxComments(zip, docXml);
+    if (comments && comments.length > 0) {
+      bindCommentsToClauses(comments, clauses);
+      (clauses as any).comments = comments;
+    }
+  } catch {
+    // Non-blocking: graceful fallback if comments extraction fails
+  }
+
   return clauses;
 }

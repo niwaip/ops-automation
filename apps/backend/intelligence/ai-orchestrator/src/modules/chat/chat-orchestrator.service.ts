@@ -1,4 +1,5 @@
-import { Injectable,Logger,Optional } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import axios from 'axios';
 import { ControlPlaneClient } from '../../client/control-plane.client';
 import {
 CONTROL_PLANE_APPROVAL_STATUS,
@@ -17,9 +18,11 @@ import {
   createBuiltinRoutingPolicySnapshot,
   hasRoutingSignal,
 } from '../planner/routing/routing-policy.matcher';
+import { isGuideOrInquiryRequest } from '@ops/backend-runtime-capability-contract';
 import type { ExecutionContext,StreamEvent } from '../react-engine/interfaces';
 import { StreamEventType } from '../react-engine/interfaces';
 import { ReActEngineService } from '../react-engine/react-engine.service';
+import { parseAndVerifyToken } from '../../common/guards/ai-auth.guard';
 import { ChatConversationService } from './chat-conversation.service';
 import { formatFriendlyExecutionError } from './chat-error-formatter';
 import { ChatExecutionStreamService } from './chat-execution-stream.service';
@@ -34,12 +37,17 @@ import { DeterministicTaskExecutionService } from './deterministic-task-executio
 import { PlanningDecisionShadowService } from './planning-decision-shadow.service';
 import { ScopedPlannerMemoryService } from './scoped-planner-memory.service';
 import { TaskFallbackPolicyService } from './task-fallback-policy.service';
+import { ChatKnowledgeRetrievalService } from './chat-knowledge-retrieval.service';
+import { DocumentProberService } from './document-prober.service';
+import { PersonalReminderBridgeService } from './personal-reminder-bridge.service';
 
 @Injectable()
 export class ChatOrchestratorService {
   private readonly logger = new Logger(ChatOrchestratorService.name);
   private readonly taskResumeService: ChatTaskResumeService;
   private readonly planningPresentation: ChatPlanningPresentationService;
+  private readonly knowledgeRetrievalService: ChatKnowledgeRetrievalService;
+  private readonly documentProberService: DocumentProberService;
 
   constructor(
     private readonly controlPlaneClient: ControlPlaneClient,
@@ -57,13 +65,20 @@ export class ChatOrchestratorService {
     planningPresentation?: ChatPlanningPresentationService,
     private readonly scopedPlannerMemoryService?: ScopedPlannerMemoryService,
     @Optional() private readonly modelService?: ModelService,
-    @Optional() private readonly chatMediaService?: ChatMediaService
+    @Optional() private readonly chatMediaService?: ChatMediaService,
+    @Optional() knowledgeRetrievalService?: ChatKnowledgeRetrievalService,
+    @Optional() documentProberService?: DocumentProberService,
+    @Optional() private readonly reminderBridge?: PersonalReminderBridgeService
   ) {
     this.taskResumeService =
       taskResumeService ||
       new ChatTaskResumeService(controlPlaneClient, waitingInputService, executionStreamService);
     this.planningPresentation =
       planningPresentation || new ChatPlanningPresentationService(promptDebugSettingsService);
+    this.knowledgeRetrievalService =
+      knowledgeRetrievalService || new ChatKnowledgeRetrievalService();
+    this.documentProberService =
+      documentProberService || new DocumentProberService();
   }
 
   async buildTaskModeContext(
@@ -201,19 +216,30 @@ export class ChatOrchestratorService {
         confidence: 1,
         reasonCodes: ['native_multimodal_input'],
       });
-      yield* this.executeLlmNativeTask(body, context, resolvedModelId);
+      yield* this.executeLlmNativeTask(body, context, resolvedModelId, authToken);
       return;
     }
 
-    yield {
-      type: StreamEventType.THOUGHT,
-      content: '正在规划任务...',
-    };
+    const probedDocs = await this.documentProberService.probeFiles(body.files);
 
     const planningRequest = this.planningPresentation.buildPlanningRequest(
       body.message,
-      body.files
+      body.files,
+      probedDocs
     );
+
+    const isExplicitWorkspaceSearch =
+      Boolean(
+        body.config?.workspaceSearch === true ||
+        (body.config as any)?.workspace_search_enabled === true ||
+        (context as any)?.workspaceSearch === true ||
+        (context as any)?.workspace_search_enabled === true ||
+        /^\/doc\b/i.test(planningRequest) ||
+        /^\/doc\b/i.test(body.message)
+      );
+    const hasLocalAttachmentContext =
+      (Array.isArray(body.files) && body.files.length > 0) ||
+      /(?:附件|本地|已上传|当前|刚刚|历史文件)/i.test(body.message);
 
     const isExplicitWebSearch =
       Boolean(
@@ -221,9 +247,153 @@ export class ChatOrchestratorService {
         (body.config as any)?.web_search_enabled === true ||
         (context as any)?.webSearch === true ||
         (context as any)?.web_search_enabled === true ||
-        hasRoutingSignal(planningRequest, 'search', createBuiltinRoutingPolicySnapshot()) ||
-        /(?:^|[^a-zA-Z0-9])(?:请?帮我)?(?:搜索|联网搜索|全网搜索|检索|搜一下|查一下|查找|查询|搜搜|查查)/i.test(planningRequest)
+        (!hasLocalAttachmentContext && (
+          hasRoutingSignal(planningRequest, 'search', createBuiltinRoutingPolicySnapshot()) ||
+          /(?:^|[^a-zA-Z0-9])(?:请?帮我)?(?:搜索|联网搜索|全网搜索|检索|搜一下|查一下|查找|查询|搜搜|查查)/i.test(planningRequest)
+        ))
       ) && !/邮件|email|收件箱/i.test(planningRequest);
+
+    // 知识查询与使用指引类请求，且开启了工作空间检索时，直接作为多源 RAG 知识进入原生问答，不调用任务规划模型与工单生成
+    if (isExplicitWorkspaceSearch && isGuideOrInquiryRequest(body.message)) {
+      yield* this.executeLlmNativeTask(body, context, resolvedModelId, authToken);
+      return;
+    }
+
+    const isReminderQuery =
+      /(?:查看|查询|列出|当前|现在|我的|有哪些).*?(?:提醒|日程|闹钟|待办|通知)/i.test(body.message) ||
+      /(?:提醒|日程|闹钟|待办|通知).*?(?:列表|清单|记录|明细|状态)/i.test(body.message);
+
+    if (isReminderQuery && this.reminderBridge) {
+      try {
+        const userId = user.userId || context.userId || 'admin';
+        const list = await this.reminderBridge.listReminders(userId);
+        const lines =
+          list && list.length > 0
+            ? list
+                .slice(0, 10)
+                .map((r: any, idx: number) => {
+                  const timeDesc = r.runAt || r.cronExpression || '未指定时间';
+                  const ch = r.sendWechat ? '微信+站内' : '站内';
+                  const st = r.isActive ? '运行中' : '已停用';
+                  const nextRun = r.nextRunAt
+                    ? ` | 下次触发: ${new Date(r.nextRunAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })}`
+                    : '';
+                  return `${idx + 1}. 【${r.title}】内容: ${r.message} | 时间: ${timeDesc}${nextRun} | 推送渠道: ${ch} | 状态: ${st}`;
+                })
+                .join('\n')
+            : '当前系统内暂无任何已生效的消息提醒日程。';
+
+        const nowStr = new Date().toLocaleString('zh-CN', {
+          timeZone: 'Asia/Shanghai',
+          hour12: false,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+        const reminderContextMessage = `【系统真实消息提醒日程列表 (来自数据库已生效数据，请直接据此回答)】:\n${lines}\n\n当前系统时间 (北京时间 Asia/Shanghai): ${nowStr}\n用户需求: ${body.message}`;
+        yield* this.executeLlmNativeTask(
+          { ...body, message: reminderContextMessage },
+          context,
+          resolvedModelId,
+          authToken
+        );
+        return;
+      } catch (err: any) {
+        this.logger.warn(`Failed to process reminder query in work mode: ${err.message}`);
+      }
+    }
+
+    yield {
+      type: StreamEventType.THOUGHT,
+      content: '正在规划任务...',
+    };
+
+    const primaryContract = probedDocs.find((d) => d.docType.startsWith('contract.'));
+    const inferredContractType =
+      primaryContract && primaryContract.docType !== 'contract.general'
+        ? primaryContract.docType.replace('contract.', '')
+        : undefined;
+
+    const uploadedFileParams: Record<string, unknown> = {
+      ...this.planningPresentation.buildUploadedFileParams(body.files, body.message),
+      ...(inferredContractType ? { contractType: inferredContractType } : {}),
+      ...(primaryContract?.docTitle ? { contractTitle: primaryContract.docTitle } : {}),
+      ...(primaryContract?.parties?.partyA ? { partyA: primaryContract.parties.partyA } : {}),
+      ...(primaryContract?.parties?.partyB ? { partyB: primaryContract.parties.partyB } : {}),
+    };
+
+    let taskCtx = (body.config as any)?.taskContext;
+    const isNdaWorkflowRequest =
+      taskCtx?.workflowId === 'legal.nda.generation_and_review_flow' ||
+      /^[!！]\s*(?:保密|nda|legal\.nda\.generation_and_review_flow)/i.test(body.message);
+
+    if (isNdaWorkflowRequest) {
+      if (!taskCtx) {
+        taskCtx = {
+          workflowId: 'legal.nda.generation_and_review_flow',
+          workflowName: '保密合同起草与法务审查闭环流',
+          stageId: 'draft_submission',
+          stageType: 'submission',
+          triggerType: 'on_submit',
+          orgId: user.organizationId,
+        };
+      } else {
+        taskCtx.workflowId = taskCtx.workflowId || 'legal.nda.generation_and_review_flow';
+        taskCtx.stageId = taskCtx.stageId || 'draft_submission';
+        taskCtx.stageType = taskCtx.stageType || 'submission';
+        taskCtx.triggerType = taskCtx.triggerType || 'on_submit';
+        if (user.organizationId && !taskCtx.orgId) {
+          taskCtx.orgId = user.organizationId;
+        }
+      }
+    }
+
+    const isWorkflowExecution = Boolean(taskCtx?.workflowId || isNdaWorkflowRequest);
+    const clientProvidedSkillId = taskCtx?.skillId || (body.config as any)?.targetSkillId;
+    let targetSkillId = clientProvidedSkillId;
+    let targetSkillName = taskCtx?.skillName;
+    let targetSkillVersion = taskCtx?.skillVersion;
+
+    if (isWorkflowExecution) {
+      const workflowId = taskCtx?.workflowId || 'legal.nda.generation_and_review_flow';
+      const stageId = taskCtx?.stageId || 'draft_submission';
+      const stageType = taskCtx?.stageType || 'submission';
+      const version = taskCtx?.workflowVersion || taskCtx?.version;
+
+      const resolved = await this.resolveWorkflowStageBinding({
+        workflowId,
+        stageId,
+        stageType,
+        orgId: user.organizationId,
+        version,
+        authToken: context.authToken,
+      });
+      if (resolved?.skillId) {
+        if (clientProvidedSkillId && clientProvidedSkillId !== resolved.skillId) {
+          this.logger.warn(
+            `[WorkflowGovernance] Client provided skillId (${clientProvidedSkillId}) overridden by authoritative workflow stage binding (${resolved.skillId}) for workflow ${workflowId}`
+          );
+        }
+        targetSkillId = resolved.skillId;
+        targetSkillName = resolved.skillName;
+        targetSkillVersion = resolved.skillVersion;
+        if (taskCtx) {
+          taskCtx.skillId = resolved.skillId;
+          taskCtx.skillName = resolved.skillName;
+          taskCtx.skillVersion = resolved.skillVersion;
+          taskCtx.workflowId = workflowId;
+        }
+      } else if (taskCtx?.workflowId) {
+        this.logger.warn(
+          `[WorkflowGovernance] Workflow stage binding could not be resolved for workflow ${workflowId} (org: ${user.organizationId}, version: ${version}); rejecting unverified client skillId ${clientProvidedSkillId}`
+        );
+        targetSkillId = undefined;
+        targetSkillName = undefined;
+        targetSkillVersion = undefined;
+      }
+    }
 
     const plannerInput = {
       request: {
@@ -233,10 +403,15 @@ export class ChatOrchestratorService {
         context: {
           sessionId: body.sessionId,
           uploadedFiles: body.files,
-          system_collected: this.planningPresentation.buildUploadedFileParams(body.files, body.message),
+          probedDocuments: probedDocs,
+          system_collected: uploadedFileParams,
           history: context.history,
           web_search_enabled: isExplicitWebSearch,
           webSearch: isExplicitWebSearch,
+          workspace_search_enabled: isExplicitWorkspaceSearch,
+          workspaceSearch: isExplicitWorkspaceSearch,
+          ...(targetSkillId ? { target_skill_id: targetSkillId } : {}),
+          ...(taskCtx ? { taskContext: taskCtx } : {}),
         },
       },
       userId: context.userId,
@@ -328,7 +503,9 @@ export class ChatOrchestratorService {
           authToken,
           traceId,
           undefined,
-          isExplicitWebSearch
+          isExplicitWebSearch,
+          context.userId,
+          isExplicitWorkspaceSearch
         )) || [];
       const scopedMemory = await this.scopedPlannerMemoryService?.resolveForPlanning({
         authToken,
@@ -343,8 +520,15 @@ export class ChatOrchestratorService {
           user,
           availableSkills,
           systemInputs: {
-            ...this.planningPresentation.buildUploadedFileParams(body.files, body.message),
-            ...(hasPreviousResult
+            ...uploadedFileParams,
+            ...(user.organizationId ? { orgId: user.organizationId } : {}),
+            ...(taskCtx
+              ? {
+                  taskContext: taskCtx,
+                  triggerType: taskCtx?.triggerType || 'on_submit',
+                }
+              : {}),
+            ...(hasPreviousResult && !taskCtx
               ? {
                   taskContext: {
                     schemaVersion: 'task-context/v1',
@@ -514,7 +698,7 @@ export class ChatOrchestratorService {
           reasonCodes: ['llm_native_execution'],
         });
 
-        yield* this.executeLlmNativeTask(body, context, resolvedModelId);
+        yield* this.executeLlmNativeTask(body, context, resolvedModelId, authToken);
         return;
       }
 
@@ -573,6 +757,15 @@ export class ChatOrchestratorService {
       }));
 
     if (planDraft && planDraft.planner_mode === 'skill' && planDraft.skill_match) {
+      if (targetSkillId) {
+        planDraft.skill_match.skill_id = targetSkillId;
+        if (targetSkillName) {
+          planDraft.skill_match.skill_name = targetSkillName;
+        }
+        if (targetSkillVersion) {
+          planDraft.skill_match.skill_version = targetSkillVersion;
+        }
+      }
       const plannerPromptDebug = this.planningPresentation.canExposePromptDebug(context)
         ? this.planningPresentation.buildPlannerPromptDebug(body.message, planDraft)
         : undefined;
@@ -588,7 +781,13 @@ export class ChatOrchestratorService {
           content: `已识别到技能: ${planDraft.skill_match.skill_name}，正在创建可恢复的执行单...`,
         };
 
+        const triggerType = taskCtx?.triggerType || (taskCtx ? 'on_submit' : undefined);
+
         try {
+          const effectiveSkillId = targetSkillId || planDraft.skill_match.skill_id;
+          const effectiveSkillVersion =
+            targetSkillVersion || planDraft.skill_match.skill_version || '1.0.0';
+
           const execution = await this.controlPlaneClient.createExecution<{
             id: string;
             status?: string;
@@ -598,12 +797,18 @@ export class ChatOrchestratorService {
             normalizedInput?: Record<string, unknown>;
           }>(
             {
-              skillId: planDraft.skill_match.skill_id,
-              skillVersion: planDraft.skill_match.skill_version,
+              orgId: user.organizationId,
+              skillId: effectiveSkillId,
+              skillVersion: effectiveSkillVersion,
               ...(body.idempotencyKey ? { idempotencyKey: body.idempotencyKey } : {}),
+              ...(triggerType ? { triggerType } : {}),
+              ...(taskCtx ? { metadata: { taskContext: taskCtx } } : {}),
               input: {
                 prompt: body.message,
+                ...(user.organizationId ? { orgId: user.organizationId } : {}),
                 ...(executionPromptDebug ? { __promptDebug: executionPromptDebug } : {}),
+                ...(taskCtx ? { taskContext: taskCtx } : {}),
+                ...(triggerType ? { triggerType } : {}),
                 ...Object.fromEntries(
                   planDraft.required_inputs
                     .filter((input) => !input.missing)
@@ -736,15 +941,27 @@ export class ChatOrchestratorService {
         content: `已匹配到技能: ${planDraft.skill_match.skill_name}，正在创建执行单...`,
       };
 
+      const triggerType = taskCtx?.triggerType || (taskCtx ? 'on_submit' : undefined);
+
       try {
+        const effectiveSkillId = targetSkillId || planDraft.skill_match.skill_id;
+        const effectiveSkillVersion =
+          targetSkillVersion || planDraft.skill_match.skill_version || '1.0.0';
+
         const execution = await this.controlPlaneClient.createExecution<{ id: string }>(
           {
-            skillId: planDraft.skill_match.skill_id,
-            skillVersion: planDraft.skill_match.skill_version,
+            orgId: user.organizationId,
+            skillId: effectiveSkillId,
+            skillVersion: effectiveSkillVersion,
             ...(body.idempotencyKey ? { idempotencyKey: body.idempotencyKey } : {}),
+            ...(triggerType ? { triggerType } : {}),
+            ...(taskCtx ? { metadata: { taskContext: taskCtx } } : {}),
             input: {
               prompt: body.message,
+              ...(user.organizationId ? { orgId: user.organizationId } : {}),
               ...(executionPromptDebug ? { __promptDebug: executionPromptDebug } : {}),
+              ...(taskCtx ? { taskContext: taskCtx } : {}),
+              ...(triggerType ? { triggerType } : {}),
               ...Object.fromEntries(
                 planDraft.required_inputs
                   .filter((input) => !input.missing)
@@ -842,34 +1059,44 @@ export class ChatOrchestratorService {
         },
       });
 
-      if (!response.ok) {
-        return {};
-      }
+      if (response.ok) {
+        const payload = (await response.json()) as {
+          user?: { id?: string; role?: string };
+          roles?: Array<{ name?: string }>;
+          activeOrgId?: string | null;
+        };
 
-      const payload = (await response.json()) as {
-        user?: { id?: string; role?: string };
-        roles?: Array<{ name?: string }>;
-        activeOrgId?: string | null;
-      };
-
-      const roleSet = new Set<string>();
-      if (payload.user?.role) {
-        roleSet.add(payload.user.role);
-      }
-      for (const role of payload.roles || []) {
-        if (role?.name) {
-          roleSet.add(role.name);
+        const roleSet = new Set<string>();
+        if (payload.user?.role) {
+          roleSet.add(payload.user.role);
         }
-      }
+        for (const role of payload.roles || []) {
+          if (role?.name) {
+            roleSet.add(role.name);
+          }
+        }
 
-      return {
-        userId: payload.user?.id,
-        userRoles: Array.from(roleSet),
-        ...(typeof payload.activeOrgId === 'string' ? { organizationId: payload.activeOrgId } : {}),
-      };
+        return {
+          userId: payload.user?.id,
+          userRoles: Array.from(roleSet),
+          ...(typeof payload.activeOrgId === 'string' ? { organizationId: payload.activeOrgId } : {}),
+        };
+      }
     } catch {
-      return {};
+      // ignore auth-service fetch failure and fallback to local token verification
     }
+
+    const rawToken = authorization.replace(/^Bearer\s+/i, '');
+    const localUser = parseAndVerifyToken(rawToken);
+    if (localUser) {
+      return {
+        userId: localUser.id,
+        userRoles: localUser.role ? [localUser.role] : [],
+        ...(localUser.organizationId ? { organizationId: localUser.organizationId } : {}),
+      };
+    }
+
+    return {};
   }
 
   private buildTaskModeAuthRequiredEvent(): StreamEvent {
@@ -898,7 +1125,8 @@ export class ChatOrchestratorService {
   private async *executeLlmNativeTask(
     body: ChatRequestDTO,
     context: ExecutionContext,
-    resolvedModelId?: string
+    resolvedModelId?: string,
+    authToken?: string
   ): AsyncGenerator<StreamEvent> {
     yield {
       type: StreamEventType.THOUGHT,
@@ -921,10 +1149,73 @@ export class ChatOrchestratorService {
       return;
     }
 
+    const isExplicitWorkspaceSearch = Boolean(
+      body.config?.workspaceSearch === true ||
+      (body.config as any)?.workspace_search_enabled === true ||
+      (context as any)?.workspaceSearch === true ||
+      (context as any)?.workspace_search_enabled === true ||
+      /^\/doc\b/i.test(body.message)
+    );
+
+    const isExplicitWebSearch = Boolean(
+      body.config?.webSearch === true ||
+      (body.config as any)?.web_search_enabled === true ||
+      (context as any)?.webSearch === true ||
+      (context as any)?.web_search_enabled === true
+    );
+
+    let knowledgeContextAddition = '';
+    if (isExplicitWorkspaceSearch || isExplicitWebSearch) {
+      if (isExplicitWorkspaceSearch && isExplicitWebSearch) {
+        yield {
+          type: StreamEventType.THOUGHT,
+          content: '正在同时检索工作空间内部知识库与全网实时信息...',
+        };
+      } else if (isExplicitWorkspaceSearch) {
+        yield {
+          type: StreamEventType.THOUGHT,
+          content: '正在检索工作空间内部知识库相关文档...',
+        };
+      } else {
+        yield {
+          type: StreamEventType.THOUGHT,
+          content: '正在进行全网实时检索相关资料...',
+        };
+      }
+
+      const retrieval = await this.knowledgeRetrievalService.retrieveMultiSourceContext({
+        query: body.message,
+        workspaceSearch: isExplicitWorkspaceSearch,
+        webSearch: isExplicitWebSearch,
+        userId: context.userId,
+        userRole: context.userRoles?.includes('admin')
+          ? 'admin'
+          : context.userRoles?.includes('manager')
+          ? 'manager'
+          : 'employee',
+        authToken,
+      });
+
+      if (retrieval.completionThought) {
+        yield {
+          type: StreamEventType.THOUGHT,
+          content: retrieval.completionThought,
+        };
+      }
+      knowledgeContextAddition = retrieval.combinedSystemPromptAddition;
+    }
+
+    const messageContent = this.chatMediaService
+      ? await this.chatMediaService.buildMessageContent(body.message, body.files, { userId: context.userId })
+      : body.message;
+
+    const hasImagesInContent =
+      Array.isArray(messageContent) && messageContent.some((block) => block.type === 'image_url');
+
     let modelId =
       resolvedModelId ||
       this.chatConversationService.resolvePreferredChatModelId(body);
-    if (hasImageAttachment(body.files)) {
+    if (hasImageAttachment(body.files) || hasImagesInContent) {
       const selected = this.modelService.resolveModelEntity(modelId);
       if (!selected || !this.modelService.isVisionCapableModel(selected)) {
         const visionModel = this.modelService.getPreferredVisionModel({
@@ -947,9 +1238,6 @@ export class ChatOrchestratorService {
       modelId
     );
 
-    const messageContent = this.chatMediaService
-      ? await this.chatMediaService.buildMessageContent(body.message, body.files, { userId: context.userId })
-      : body.message;
     if (
       hasImageAttachment(body.files) &&
       (!Array.isArray(messageContent) || !messageContent.some((block) => block.type === 'image_url'))
@@ -962,7 +1250,8 @@ export class ChatOrchestratorService {
     }
 
     const systemPrompt =
-      '你是一个专业的高级AI助手。当前运行在工作模式（受控生产模式）。针对无需调用外部工具的任务，请直接给出严谨、准确、结构清晰且高质量的完整回答或成果。';
+      '你是一个专业的高级AI助手。当前运行在工作模式（受控生产模式）。针对无需调用外部工具的任务，请直接给出严谨、准确、结构清晰且高质量的完整回答或成果。' +
+      knowledgeContextAddition;
 
     const messages = await this.chatConversationService.buildConversationMessages(
       body.sessionId || context.sessionId || 'default',
@@ -1061,5 +1350,38 @@ export class ChatOrchestratorService {
         usage: responseUsage,
       },
     };
+  }
+
+  private async resolveWorkflowStageBinding(params: {
+    workflowId: string;
+    stageId?: string;
+    stageType?: string;
+    orgId?: string;
+    version?: string;
+    authToken?: string;
+  }): Promise<{ skillId?: string; skillName?: string; skillVersion?: string } | null> {
+    try {
+      const url = `${getAuthServiceUrl()}/api/workbench-coordination/workflows/${encodeURIComponent(params.workflowId)}/stage-binding`;
+      const query = new URLSearchParams();
+      if (params.stageId) query.set('stageId', params.stageId);
+      if (params.stageType) query.set('stageType', params.stageType);
+      if (params.orgId) query.set('orgId', params.orgId);
+      if (params.version) query.set('version', params.version);
+
+      const res = await axios.get<any>(`${url}?${query.toString()}`, {
+        headers: params.authToken ? { Authorization: params.authToken } : undefined,
+        timeout: 5000,
+      });
+      if (res.data?.found && res.data?.skillId) {
+        return {
+          skillId: res.data.skillId,
+          skillName: res.data.skillName,
+          skillVersion: res.data.skillVersion,
+        };
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to resolve dynamic workflow stage binding: ${err.message}`);
+    }
+    return null;
   }
 }

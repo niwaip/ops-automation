@@ -880,4 +880,96 @@ export class ChatController {
       res,
     });
   }
+
+  @Public()
+  @Get('chat/files/:fileId')
+  @ApiOperation({ summary: 'Serve uploaded chat file or image preview by fileId' })
+  async serveUploadedFile(
+    @Param('fileId') fileId: string,
+    @Req() req: Request,
+    @Res() res: Response
+  ): Promise<void> {
+    const authHeader = req.headers.authorization;
+    const cookieHeader = req.headers.cookie;
+    let cookieToken: string | undefined;
+    if (cookieHeader) {
+      const match = cookieHeader.match(/(?:^|;\s*)(?:access_token|auth_token)=([^;]+)/);
+      if (match?.[1]) {
+        cookieToken = `Bearer ${decodeURIComponent(match[1])}`;
+      }
+    }
+
+    let identity: { userId?: string; userRoles?: string[]; organizationId?: string } | null = null;
+
+    if (authHeader || cookieToken) {
+      try {
+        identity = await this.chatOrchestratorService.resolveAuthenticatedUser(
+          authHeader || cookieToken
+        );
+      } catch {
+        // invalid token
+      }
+    }
+
+    const ticket = typeof req.query?.ticket === 'string' ? req.query.ticket : undefined;
+    if (!identity?.userId && ticket) {
+      const ticketResult = this.chatMediaService.verifyPreviewTicket(fileId, ticket);
+      if (ticketResult.valid && ticketResult.userId) {
+        identity = {
+          userId: ticketResult.userId,
+          userRoles: ['employee'],
+        };
+      }
+    }
+
+    if (!identity || !identity.userId) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
+    const userId = this.resolveUserIdFromRequest(req, identity.userId);
+    const contextUser = {
+      userId,
+      organizationId:
+        identity.organizationId ||
+        (typeof req.headers['x-organization-id'] === 'string'
+          ? req.headers['x-organization-id']
+          : undefined),
+      role: identity.userRoles?.[0] || 'employee',
+    };
+
+    const fileResult = await this.chatMediaService.getUploadedFile(fileId, contextUser);
+    if (!fileResult) {
+      res.status(404).json({ message: 'File not found or access denied' });
+      return;
+    }
+
+    const isSvg =
+      fileResult.mimeType === 'image/svg+xml' ||
+      fileResult.fileName.toLowerCase().endsWith('.svg');
+
+    res.setHeader('Content-Type', fileResult.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Length', fileResult.size);
+    res.setHeader('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+
+    const safeFilename = encodeURIComponent(fileResult.fileName);
+
+    if (isSvg) {
+      res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${safeFilename}"; filename*=UTF-8''${safeFilename}`
+      );
+    } else {
+      res.setHeader(
+        'Content-Disposition',
+        `inline; filename="${safeFilename}"; filename*=UTF-8''${safeFilename}`
+      );
+    }
+
+    res.end(fileResult.buffer);
+  }
 }

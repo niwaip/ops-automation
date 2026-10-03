@@ -140,8 +140,9 @@ const ExecutionListPage: React.FC = () => {
         getSkillDisplayName,
         statusColors,
         statusLabels,
+        onOpenDetailPage: (id) => navigate(`/executions/${id}`),
       }),
-    [getSkillDisplayName]
+    [getSkillDisplayName, navigate]
   );
   const tableProps = useExecutionListTableProps({
     columns,

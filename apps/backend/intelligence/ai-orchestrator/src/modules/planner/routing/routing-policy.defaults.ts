@@ -133,7 +133,6 @@ export const BUILTIN_ROUTING_POLICY: Omit<RoutingPolicySnapshotV1, 'digest'> = {
       '查看',
       '新闻',
       '最新',
-      '查',
       'news',
       'latest',
       '检索',

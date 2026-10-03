@@ -191,5 +191,39 @@ describe('UserSandboxService', () => {
       expect(freezeSpy).toHaveBeenCalledWith('idle_user');
       expect((service as any).lastActiveMap.has('idle_user')).toBe(false);
     });
+
+    it('should generate dynamic execution environment with fresh virtual token and proxy URL', () => {
+      const containerService = (service as any).containerService;
+      const env = containerService.getExecutionEnvironment('test_user_dynamic');
+      expect(env).toBeDefined();
+      expect(env.some((e: string) => e.startsWith('DEEPSEEK_BASE_URL='))).toBe(true);
+      expect(env.some((e: string) => e.startsWith('OPENAI_BASE_URL='))).toBe(true);
+      expect(
+        env.some((e: string) =>
+          /^DEEPSEEK_API_KEY=sandbox-user-token-test_user_dynamic\.[0-9]+\.[A-Za-z0-9_.-]+$/u.test(e)
+        )
+      ).toBe(true);
+    });
+
+    it('should accurately detect expired or expiring container tokens', () => {
+      const containerService = (service as any).containerService;
+      const expiredExp = Math.floor(Date.now() / 1000) - 3600;
+      const validExp = Math.floor(Date.now() / 1000) + 7 * 86400;
+
+      const expiredInspect = {
+        Config: {
+          Env: [`DEEPSEEK_API_KEY=sandbox-user-token-u1.${expiredExp}.dummySig`],
+        },
+      } as any;
+      const validInspect = {
+        Config: {
+          Env: [`DEEPSEEK_API_KEY=sandbox-user-token-u1.${validExp}.dummySig`],
+        },
+      } as any;
+
+      expect(containerService.isContainerTokenExpiring(expiredInspect)).toBe(true);
+      expect(containerService.isContainerTokenExpiring(validInspect)).toBe(false);
+    });
   });
 });
+

@@ -9,29 +9,34 @@ import {
   Radio,
   Select,
   Space,
-  Tooltip,
+  Tag,
   Typography,
   message,
 } from 'antd';
-import { InfoCircleOutlined, PlayCircleOutlined, StopOutlined } from '@ant-design/icons';
+import {
+  CheckCircleOutlined,
+  RedoOutlined,
+  ReloadOutlined,
+  StopOutlined,
+} from '@ant-design/icons';
 import { useMutation, useQueryClient } from 'react-query';
 import { executionApi, ExecutionPhaseDto } from '@/api/execution';
 import {
   RECOVERY_COPY,
   RECOVERY_RESUME_OPTIONS,
+  RECOVERY_ACTION_BUTTON_LABELS,
+  RECOVERY_CONFIRM_DETAILS,
   RecoveryResumeAction,
 } from '@/features/executions/shared/recoveryOptions';
 
 const { Text } = Typography;
 
 const isRecoveryResumeAction = (value: unknown): value is RecoveryResumeAction =>
-  value === 'retry' || value === 'resolve_by_human' || value === 'resume_from_step';
-
-const RECOVERY_ACTION_DESCRIPTIONS: Record<RecoveryResumeAction, string> = {
-  resume_from_step: '从当前异常点继续，优先用于人工确认后继续后续流程。',
-  resolve_by_human: '标记该步骤已由人工处理，跳过当前阶段并继续执行。',
-  retry: '重新运行当前阶段，适用于页面或条件判断需要再次验证的场景。',
-};
+  value === 'resolve_by_human' ||
+  value === 'retry_step' ||
+  value === 'retry_phase' ||
+  value === 'retry' ||
+  value === 'resume_from_step';
 
 const getPhaseSteps = (phase?: ExecutionPhaseDto) =>
   (Array.isArray(phase?.steps) ? phase.steps : []) as NonNullable<ExecutionPhaseDto['steps']>;
@@ -60,7 +65,7 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
   onAfterSuccess,
 }) => {
   const queryClient = useQueryClient();
-  const [resumeAction, setResumeAction] = React.useState<RecoveryResumeAction>('resume_from_step');
+  const [resumeAction, setResumeAction] = React.useState<RecoveryResumeAction>('resolve_by_human');
   const [resumeFromStepId, setResumeFromStepId] = React.useState<string | undefined>(undefined);
   const [showAdvancedStepSelect, setShowAdvancedStepSelect] = React.useState(false);
   const [showResumeConfirm, setShowResumeConfirm] = React.useState(false);
@@ -74,7 +79,7 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
       phaseSteps.find((step) => step.status !== 'completed') ||
       phaseSteps[phaseSteps.length - 1]
     );
-  }, [currentStepId, phaseSteps]);
+  }, [phaseSteps]);
 
   const failedPhaseStepId = React.useMemo(() => {
     if (failedPhaseStep?.stepId || failedPhaseStep?.id) {
@@ -83,18 +88,35 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
     return currentStepId;
   }, [currentStepId, failedPhaseStep]);
 
-  const defaultResumeFromStepId = React.useMemo(() => {
+  const nextStepAfterFailedId = React.useMemo(() => {
     if (!failedPhaseStepId) {
       return undefined;
     }
-    const failedIndex = phaseSteps.findIndex(
-      (step) => (step.stepId || step.id) === failedPhaseStepId
-    );
+    const failedIndex = phaseSteps.lastIndexOf(failedPhaseStep as any);
     if (failedIndex >= 0 && phaseSteps[failedIndex + 1]) {
       return phaseSteps[failedIndex + 1].stepId || phaseSteps[failedIndex + 1].id;
     }
-    return failedPhaseStepId;
-  }, [failedPhaseStepId, phaseSteps]);
+    // When execution pauses/fails at runtime, failedPhaseStep is the last step recorded in phaseSteps.
+    // In a loop execution, look backwards for an earlier iteration of the same stepId that had a successor.
+    for (let i = failedIndex - 1; i >= 0; i--) {
+      const prevStep = phaseSteps[i];
+      if ((prevStep.stepId || prevStep.id) === failedPhaseStepId && phaseSteps[i + 1]) {
+        const candidateNext = phaseSteps[i + 1].stepId || phaseSteps[i + 1].id;
+        if (candidateNext && candidateNext !== failedPhaseStepId) {
+          return candidateNext;
+        }
+      }
+    }
+    // Fallback for sequential steps like step_9 -> step_10
+    if (/^step_\d+$/.test(failedPhaseStepId)) {
+      const num = parseInt(failedPhaseStepId.replace('step_', ''), 10);
+      if (!Number.isNaN(num)) {
+        return `step_${num + 1}`;
+      }
+    }
+    return undefined;
+  }, [failedPhaseStep, failedPhaseStepId, phaseSteps]);
+
   const phaseLoopIteration = React.useMemo(() => {
     const value = phase?.input?.loopIteration;
     if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
@@ -109,7 +131,18 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
     return undefined;
   }, [phase?.input]);
 
-  const activeStepId = resumeFromStepId || defaultResumeFromStepId || failedPhaseStepId;
+  const activeStepId = React.useMemo(() => {
+    if (resumeFromStepId) {
+      return resumeFromStepId;
+    }
+    if (resumeAction === 'retry_step') {
+      return failedPhaseStepId;
+    }
+    if (resumeAction === 'resolve_by_human' || resumeAction === 'resume_from_step') {
+      return nextStepAfterFailedId || failedPhaseStepId;
+    }
+    return undefined;
+  }, [resumeFromStepId, resumeAction, failedPhaseStepId, nextStepAfterFailedId]);
 
   const invalidateExecutionQueries = React.useCallback(async () => {
     await Promise.all([
@@ -122,32 +155,49 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
   }, [executionId, onAfterSuccess, queryClient]);
 
   const buildPatch = React.useCallback(() => {
-    if (resumeAction === 'resume_from_step' && activeStepId) {
+    if (resumeAction === 'resolve_by_human' || resumeAction === 'resume_from_step') {
+      const effectiveResumeStepId =
+        activeStepId ||
+        nextStepAfterFailedId ||
+        (failedPhaseStepId && /^step_\d+$/.test(failedPhaseStepId)
+          ? `step_${parseInt(failedPhaseStepId.replace('step_', ''), 10) + 1}`
+          : undefined);
       return {
         type: 'resolve_by_human',
         failedStepId: failedPhaseStepId || '',
         ...(phaseLoopIteration ? { loopIteration: phaseLoopIteration } : {}),
-        resumeFromStepId: activeStepId,
-        note: reviewComment.trim() || RECOVERY_COPY.retryNote,
-      };
-    }
-
-    if (resumeAction === 'resolve_by_human') {
-      return {
-        type: 'resolve_by_human',
-        failedStepId: failedPhaseStepId || '',
-        ...(phaseLoopIteration ? { loopIteration: phaseLoopIteration } : {}),
+        ...(effectiveResumeStepId ? { resumeFromStepId: effectiveResumeStepId } : {}),
         note: reviewComment.trim() || RECOVERY_COPY.resolveByHumanNote,
       };
     }
 
+    if (resumeAction === 'retry_step') {
+      return {
+        type: 'retry_step',
+        failedStepId: failedPhaseStepId || '',
+        ...(phaseLoopIteration ? { loopIteration: phaseLoopIteration } : {}),
+        resumeFromStepId: failedPhaseStepId,
+        note: reviewComment.trim() || RECOVERY_COPY.retryNote,
+      };
+    }
+
     return null;
-  }, [failedPhaseStepId, phaseLoopIteration, resumeAction, activeStepId, reviewComment]);
+  }, [activeStepId, failedPhaseStepId, phaseLoopIteration, resumeAction, reviewComment]);
 
   const applyRecoveryMutation = useMutation(
     async () => {
+      let targetStepId: string | undefined;
+      if (resumeAction === 'resolve_by_human' || resumeAction === 'resume_from_step') {
+        targetStepId = activeStepId;
+      } else if (resumeAction === 'retry_step') {
+        targetStepId = failedPhaseStepId;
+      } else {
+        targetStepId = undefined;
+      }
+
       const resumePayload = {
-        ...(resumeAction === 'resume_from_step' && activeStepId ? { stepId: activeStepId } : {}),
+        ...(targetStepId ? { stepId: targetStepId } : {}),
+        comment: reviewComment.trim() || undefined,
       };
 
       if (phase) {
@@ -158,17 +208,11 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
           });
         }
 
-        return executionApi.resumePhaseTakeover(executionId, phase.phaseKey, {
-          ...resumePayload,
-          comment: reviewComment.trim() || undefined,
-        });
+        return executionApi.resumePhaseTakeover(executionId, phase.phaseKey, resumePayload);
       }
 
       if (executionStatus === 'human_control') {
-        return executionApi.releaseHumanControl(executionId, {
-          ...resumePayload,
-          comment: reviewComment.trim() || undefined,
-        });
+        return executionApi.releaseHumanControl(executionId, resumePayload);
       }
 
       throw new Error(RECOVERY_COPY.noRecoverablePhase);
@@ -205,12 +249,36 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
     return null;
   }
 
+  const actionButtonLabel =
+    RECOVERY_ACTION_BUTTON_LABELS[resumeAction] || RECOVERY_COPY.applyAndResume;
+  const actionButtonIcon =
+    resumeAction === 'retry_step' ? (
+      <RedoOutlined />
+    ) : resumeAction === 'retry_phase' || resumeAction === 'retry' ? (
+      <ReloadOutlined />
+    ) : (
+      <CheckCircleOutlined />
+    );
+  const confirmModalDetails =
+    RECOVERY_CONFIRM_DETAILS[resumeAction] || {
+      title: RECOVERY_COPY.resumeConfirmTitle,
+      desc: RECOVERY_COPY.resumeConfirmDesc,
+      hint: RECOVERY_COPY.resumeConfirmHint,
+      okText: RECOVERY_COPY.resumeConfirmOk,
+    };
+
   return (
     <>
       <Card
         title={title || RECOVERY_COPY.panelTitle}
         size="small"
-        styles={{ body: { padding: 16 } }}
+        style={{
+          marginBottom: 16,
+          borderRadius: 8,
+          borderColor: 'var(--border-color-split)',
+          background: 'var(--bg-card)',
+        }}
+        bodyStyle={{ padding: 16 }}
       >
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
           {!hideStatusAlert ? (
@@ -226,26 +294,26 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
                 <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {phase ? (
                     <Space wrap size={16} style={{ rowGap: 0 }}>
-                      <Text
-                        type="secondary"
-                        style={{ fontSize: 13 }}
-                      >{`${RECOVERY_COPY.phaseStatus}：${phase.status}`}</Text>
-                      <Text
-                        type="secondary"
-                        style={{ fontSize: 13 }}
-                      >{`${RECOVERY_COPY.phaseKey}：${phase.phaseKey}`}</Text>
+                      <Text type="secondary" style={{ fontSize: 13 }}>
+                        {`${RECOVERY_COPY.phaseStatus}：${phase.status}`}
+                      </Text>
+                      <Text type="secondary" style={{ fontSize: 13 }}>
+                        {`${RECOVERY_COPY.phaseKey}：${phase.phaseKey}`}
+                      </Text>
                     </Space>
                   ) : null}
                   {phase && activeStepId ? (
                     <Space wrap size={8}>
                       <Text strong style={{ fontSize: 13 }}>
-                        错误步骤：
+                        {isTakeoverPhase ? '介入步骤：' : '异常步骤：'}
                       </Text>
                       {!showAdvancedStepSelect ? (
                         <>
                           <Text style={{ fontSize: 13 }}>
                             {(() => {
-                              const step = phaseSteps.find((s) => (s.stepId || s.id) === activeStepId);
+                              const step = phaseSteps.find(
+                                (s) => (s.stepId || s.id) === activeStepId
+                              );
                               if (step) {
                                 return `${step.stepIndex}. ${step.action}`;
                               }
@@ -268,10 +336,14 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
                           size="small"
                           style={{ minWidth: 200 }}
                           value={activeStepId}
-                          onChange={setResumeFromStepId}
+                          onChange={(value) => setResumeFromStepId(value)}
                           options={phaseSteps.map((step) => ({
                             value: step.stepId || step.id,
-                            label: `${step.stepIndex}. ${step.action} ${['failed', 'takeover_required', 'blocked'].includes(step.status) ? '(发生分歧/错误的步骤)' : ''}`,
+                            label: `${step.stepIndex}. ${step.action} ${
+                              ['failed', 'takeover_required', 'blocked'].includes(step.status)
+                                ? '(待介入/异常步骤)'
+                                : ''
+                            }`,
                           }))}
                         />
                       )}
@@ -304,9 +376,9 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
             <div
               style={{
                 padding: 12,
-                borderRadius: 10,
-                border: '1px solid var(--bg-secondary)',
+                borderRadius: 8,
                 background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-color-split)',
               }}
             >
               {auxiliaryContent}
@@ -317,8 +389,8 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'minmax(0, 7fr) minmax(0, 3fr)',
-                gap: 12,
+                gridTemplateColumns: 'minmax(0, 5fr) minmax(0, 5fr)',
+                gap: 16,
                 alignItems: 'stretch',
               }}
             >
@@ -328,17 +400,17 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
                   flexDirection: 'column',
                   height: '100%',
                   padding: 12,
-                  borderRadius: 10,
-                  border: '1px solid var(--bg-secondary)',
+                  borderRadius: 8,
+                  border: '1px solid var(--border-color-split)',
                   background: 'var(--bg-card)',
                 }}
               >
-                <Form.Item label="人工审查记录" style={{ marginBottom: 0 }}>
+                <Form.Item label={RECOVERY_COPY.note} style={{ marginBottom: 0 }}>
                   <Input.TextArea
-                    rows={4}
+                    rows={5}
                     value={reviewComment}
                     onChange={(event) => setReviewComment(event.target.value)}
-                    placeholder="记录人工审查结论，例如：已人工核实该案件可继续承认，允许跳过条件分支并继续后续步骤"
+                    placeholder={RECOVERY_COPY.notePlaceholder}
                   />
                 </Form.Item>
               </div>
@@ -349,8 +421,8 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
                   width: '100%',
                   height: '100%',
                   padding: 12,
-                  borderRadius: 10,
-                  border: '1px solid var(--bg-secondary)',
+                  borderRadius: 8,
+                  border: '1px solid var(--border-color-split)',
                   background: 'var(--bg-card)',
                 }}
               >
@@ -364,27 +436,56 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
                       setResumeAction(e.target.value);
                     }
                   }}
-                  style={{ display: 'grid', gap: 8 }}
+                  style={{ display: 'grid', gap: 8, width: '100%' }}
                 >
-                  {RECOVERY_RESUME_OPTIONS.map((option) => (
-                    <Radio key={option.value} value={option.value} style={{ marginInlineEnd: 0 }}>
-                      <div
+                  {RECOVERY_RESUME_OPTIONS.map((option) => {
+                    const isSelected = resumeAction === option.value;
+                    return (
+                      <Radio
+                        key={option.value}
+                        value={option.value}
                         style={{
+                          marginInlineEnd: 0,
+                          padding: '8px 12px',
+                          borderRadius: 6,
+                          border: isSelected
+                            ? '1px solid var(--ant-primary-color, #1890ff)'
+                            : '1px solid var(--border-color-split, rgba(255, 255, 255, 0.08))',
+                          background: isSelected
+                            ? 'rgba(24, 144, 255, 0.08)'
+                            : 'transparent',
+                          transition: 'all 0.2s',
                           display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          padding: '2px 0',
+                          alignItems: 'flex-start',
                         }}
                       >
-                        <Text strong={resumeAction === option.value}>{option.label}</Text>
-                        <Tooltip title={RECOVERY_ACTION_DESCRIPTIONS[option.value]}>
-                          <InfoCircleOutlined
-                            style={{ fontSize: 14, color: 'var(--text-secondary)', cursor: 'help' }}
-                          />
-                        </Tooltip>
-                      </div>
-                    </Radio>
-                  ))}
+                        <div style={{ marginLeft: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Text strong={isSelected}>{option.label}</Text>
+                            {option.badge ? (
+                              <Tag
+                                color="cyan"
+                                style={{ margin: 0, fontSize: 11, lineHeight: '18px', padding: '0 6px' }}
+                              >
+                                {option.badge}
+                              </Tag>
+                            ) : null}
+                          </div>
+                          <Text
+                            type="secondary"
+                            style={{
+                              fontSize: 12,
+                              display: 'block',
+                              marginTop: 3,
+                              lineHeight: '18px',
+                            }}
+                          >
+                            {option.description}
+                          </Text>
+                        </div>
+                      </Radio>
+                    );
+                  })}
                 </Radio.Group>
               </div>
             </div>
@@ -398,17 +499,17 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
               flexWrap: 'wrap',
               gap: 12,
               paddingTop: 12,
-              borderTop: '1px solid var(--bg-secondary)',
+              borderTop: '1px solid var(--border-color-split)',
             }}
           >
-            <Space wrap size={[8, 8]}>
+            <Space wrap size={[10, 8]}>
               <Button
                 type="primary"
-                icon={<PlayCircleOutlined />}
+                icon={actionButtonIcon}
                 onClick={() => setShowResumeConfirm(true)}
                 loading={applyRecoveryMutation.isLoading}
               >
-                {RECOVERY_COPY.applyAndResume}
+                {actionButtonLabel}
               </Button>
               {extraActions}
               <Button
@@ -426,18 +527,18 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
       </Card>
 
       <Modal
-        title={RECOVERY_COPY.resumeConfirmTitle}
+        title={confirmModalDetails.title}
         open={showResumeConfirm}
         onOk={() => {
           setShowResumeConfirm(false);
           applyRecoveryMutation.mutate();
         }}
         onCancel={() => setShowResumeConfirm(false)}
-        okText={RECOVERY_COPY.resumeConfirmOk}
+        okText={confirmModalDetails.okText}
         cancelText={RECOVERY_COPY.resumeConfirmCancel}
       >
-        <p>{RECOVERY_COPY.resumeConfirmDesc}</p>
-        <p>{RECOVERY_COPY.resumeConfirmHint}</p>
+        <p style={{ fontSize: 14 }}>{confirmModalDetails.desc}</p>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{confirmModalDetails.hint}</p>
       </Modal>
 
       <Modal

@@ -9,27 +9,31 @@ interface InlineRecoveryActionsProps {
   onCancel: () => void;
   isApplyLoading: boolean;
   isCancelLoading: boolean;
+  actionButtonLabel?: string;
+  actionButtonIcon?: React.ReactNode;
   extraActions?: React.ReactNode;
 }
 
-/** 操作按钮组：恢复 + 取消 + 外部 extraActions。 */
+/** 操作按钮组：确认处置恢复 + 结束执行 (+ 可选外部扩展)。 */
 export function InlineRecoveryActions({
   onApplyResume,
   onCancel,
   isApplyLoading,
   isCancelLoading,
+  actionButtonLabel,
+  actionButtonIcon,
   extraActions,
 }: InlineRecoveryActionsProps) {
   return (
     <ExecutionDetailActionBar>
-      <Space wrap size={[8, 8]}>
+      <Space wrap size={[10, 8]}>
         <Button
           type="primary"
-          icon={<PlayCircleOutlined />}
+          icon={actionButtonIcon || <PlayCircleOutlined />}
           onClick={onApplyResume}
           loading={isApplyLoading}
         >
-          {RECOVERY_COPY.applyAndResume}
+          {actionButtonLabel || RECOVERY_COPY.applyAndResume}
         </Button>
         {extraActions}
         <Button

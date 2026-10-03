@@ -13,7 +13,7 @@ import { Button, Card, Space, Tag } from 'antd';
 import { useState, useMemo } from 'react';
 import type { CoordinationAttachment } from '../../../api/workbenchCoordination';
 import { replaceLocalhostWithCurrentHost } from '@/shared/utils/publicUrl';
-import { HtmlReportPreviewModal } from './HtmlReportPreviewModal';
+import { HtmlReportPreviewModal, type ContractReviewResultPayload } from './HtmlReportPreviewModal';
 
 export interface AuditReportData {
   title: string;
@@ -31,6 +31,7 @@ interface ComplianceAuditCardProps {
   htmlAttachment?: CoordinationAttachment | null;
   defaultExpanded?: boolean;
   defaultCardCollapsed?: boolean;
+  onReviewResult?: (result: ContractReviewResultPayload) => void;
 }
 
 export function ComplianceAuditCard({
@@ -38,6 +39,7 @@ export function ComplianceAuditCard({
   htmlAttachment: propHtmlAttachment,
   defaultExpanded = false,
   defaultCardCollapsed = true,
+  onReviewResult,
 }: ComplianceAuditCardProps) {
   const [isCardCollapsed, setIsCardCollapsed] = useState(defaultCardCollapsed);
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
@@ -241,7 +243,7 @@ export function ComplianceAuditCard({
               <Button
                 type="primary"
                 size="small"
-                icon={<FullscreenOutlined />}
+                icon={onReviewResult ? <SafetyCertificateOutlined /> : <FullscreenOutlined />}
                 onClick={() => setIsPreviewOpen(true)}
                 style={{
                   borderRadius: 6,
@@ -250,7 +252,7 @@ export function ComplianceAuditCard({
                   fontWeight: 500,
                 }}
               >
-                全屏预览
+                {onReviewResult ? '在线审阅' : '全屏查阅'}
               </Button>
               {resolvedHtmlUrl ? (
                 <Button
@@ -346,10 +348,17 @@ export function ComplianceAuditCard({
       {/* 在线直接预览弹窗 */}
       <HtmlReportPreviewModal
         open={isPreviewOpen}
-        fileUrl={activeHtml?.url}
+        fileUrl={
+          activeHtml?.url
+            ? activeHtml.url.includes('?')
+              ? `${activeHtml.url}&mode=${onReviewResult ? 'review' : 'view'}`
+              : `${activeHtml.url}?mode=${onReviewResult ? 'review' : 'view'}`
+            : undefined
+        }
         fileName={activeHtml?.name || '合同合规审查报告.html'}
         title={cardTitle}
         onClose={() => setIsPreviewOpen(false)}
+        onReviewResult={onReviewResult}
       />
     </Card>
   );

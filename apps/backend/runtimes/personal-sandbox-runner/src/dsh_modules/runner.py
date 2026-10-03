@@ -782,10 +782,19 @@ def _emit_search_evidence_fallback(
         if snippet:
             lines.append(f"   {snippet}")
     if not items:
-        lines.extend(["检索已完成，但未能提取可引用链接。请重试本次查询。"])
+        if search_context and search_context.strip():
+            lines.append(search_context.strip())
+        else:
+            lines.extend(["检索已完成，但未能提取可引用链接。请重试本次查询。"])
+
+    disclaimer = (
+        "社区目录或 Discussions 中的内容不代表官方背书。"
+        if is_harness_query
+        else "请以各平台实时来源页面为准。"
+    )
     lines.extend([
         "",
-        "> 说明：以上是检索证据的直接交付，不包含模型记忆补写；社区目录或 Discussions 中的内容不代表官方背书。",
+        f"> 说明：以上是检索证据的直接交付，不包含模型记忆补写；{disclaimer}",
     ])
     final_text = "\n".join(lines).strip()
 

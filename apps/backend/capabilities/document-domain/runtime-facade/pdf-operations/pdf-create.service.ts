@@ -1,5 +1,12 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import PDFDocument from 'pdfkit';
+import { PDFDocument as LibPDFDocument } from 'pdf-lib';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import { exec } from 'child_process';
+import { randomUUID } from 'crypto';
+import axios from 'axios';
 import { PdfArtifactStorageService } from './pdf-artifact-storage.service';
 import { containsCjkText, resolveCjkPdfFont, type ResolvedPdfFont } from './pdf-font-resolver';
 import type { PdfContentBlock, PdfCreateInput, PdfOperationOutput } from './pdf-operation.types';
@@ -17,9 +24,19 @@ interface GeneratedPdf {
 
 @Injectable()
 export class PdfCreateService {
+  private readonly logger = new Logger(PdfCreateService.name);
+
   constructor(private readonly storage: PdfArtifactStorageService) {}
 
   async create(input: PdfCreateInput, idempotencyKey: string): Promise<PdfOperationOutput> {
+    const hasSourceDocx = Boolean(
+      input.sourceDocxBase64 || input.sourceDocxUrl || (input as any).fileBase64
+    );
+
+    if (hasSourceDocx) {
+      return await this.createFromSourceDocx(input, idempotencyKey);
+    }
+
     const normalized = this.validateAndNormalize(input);
     const generated = await this.generate(normalized);
     const requestDigest = computePdfRequestDigest([
@@ -42,6 +59,158 @@ export class PdfCreateService {
       artifact: stored.artifact,
       artifacts: [stored.artifact],
       pageCount: generated.pageCount,
+    };
+  }
+
+  private async createFromSourceDocx(
+    input: PdfCreateInput,
+    idempotencyKey: string
+  ): Promise<PdfOperationOutput> {
+    let docxBuffer: Buffer | null = null;
+    if (input.sourceDocxBase64) {
+      docxBuffer = Buffer.from(input.sourceDocxBase64, 'base64');
+    } else if ((input as any).fileBase64) {
+      docxBuffer = Buffer.from((input as any).fileBase64, 'base64');
+    } else if (input.sourceDocxUrl) {
+      try {
+        const res = await axios.get<ArrayBuffer>(input.sourceDocxUrl, {
+          responseType: 'arraybuffer',
+          timeout: 15000,
+        });
+        if (res.data) {
+          docxBuffer = Buffer.from(res.data as ArrayBuffer);
+        }
+      } catch (err: any) {
+        this.logger.error(`Failed to fetch sourceDocxUrl: ${err.message}`);
+        throw new BadRequestException(`无法下载获批原稿 DOCX: ${err.message}`);
+      }
+    }
+
+    if (!docxBuffer || docxBuffer.length === 0) {
+      throw new BadRequestException('获批 DOCX 文件内容为空，无法进行原样 PDF 转换');
+    }
+
+    // 1. 获批 DOCX 二进制原样忠实转换（保留全部表格、样式、格式、签署区域）
+    this.logger.log(
+      `Performing 1:1 faithful DOCX-to-PDF conversion for ${input.fileName || 'document.docx'} (${docxBuffer.length} bytes)`
+    );
+    const mainPdf = await this.convertDocxToPdf(docxBuffer, input.fileName);
+
+    let finalBytes = mainPdf.bytes;
+    let finalPageCount = mainPdf.pageCount;
+
+    // 2. 独立追加法务电子存证与审计凭证页（与合同主体正文彻底解耦）
+    const certBlocks =
+      Array.isArray(input.auditCertificateBlocks) && input.auditCertificateBlocks.length > 0
+        ? input.auditCertificateBlocks
+        : Array.isArray(input.content) && input.content.length > 0
+        ? input.content
+        : null;
+
+    if (certBlocks && certBlocks.length > 0) {
+      try {
+        this.logger.log(
+          `Appending independent legal audit certificate page to faithful PDF (${certBlocks.length} cert blocks)`
+        );
+        const certNormalized = this.validateAndNormalize({
+          title: '【法务电子存证归档与合规审计凭单】',
+          content: certBlocks,
+          pageNumbers: false,
+        });
+        const certPdf = await this.generate(certNormalized);
+        const merged = await this.appendCertificatePage(mainPdf.bytes, certPdf.bytes);
+        finalBytes = merged.bytes;
+        finalPageCount = merged.pageCount;
+      } catch (certErr: any) {
+        this.logger.warn(`Failed to append certificate page: ${certErr.message}; using original converted PDF`);
+      }
+    }
+
+    const requestDigest = computePdfRequestDigest([
+      'pdf-faithful-convert-v1',
+      idempotencyKey,
+      input.fileName || 'document.pdf',
+    ]);
+
+    const stored = await this.storage.store({
+      bytes: finalBytes,
+      fileName: input.fileName || 'document.pdf',
+      idempotencyKey,
+      requestDigest,
+      metadata: {
+        operation: 'create',
+        conversionSource: 'docx',
+        faithfulConversion: true,
+        originalDocxSha256: input.sourceDocxSha256,
+        pageCount: finalPageCount,
+        hasAuditCertificate: Boolean(certBlocks),
+      },
+    });
+
+    return {
+      operation: 'create',
+      artifact: stored.artifact,
+      artifacts: [stored.artifact],
+      pageCount: finalPageCount,
+    };
+  }
+
+  private async convertDocxToPdf(
+    docxBuffer: Buffer,
+    fileName?: string
+  ): Promise<{ bytes: Buffer; pageCount: number }> {
+    const libreOfficePath = process.env.LIBREOFFICE_PATH || '/usr/bin/soffice';
+    const tmpDir = path.join(os.tmpdir(), `pdf_conv_${Date.now()}_${randomUUID().slice(0, 8)}`);
+    await fs.promises.mkdir(tmpDir, { recursive: true });
+
+    const profileDir = path.join(tmpDir, 'profile');
+    const inputDocxPath = path.join(tmpDir, 'source.docx');
+    await fs.promises.writeFile(inputDocxPath, docxBuffer);
+
+    try {
+      const cmd = `"${libreOfficePath}" -env:UserInstallation="file://${profileDir}" --headless --convert-to pdf:writer_pdf_Export --outdir "${tmpDir}" "${inputDocxPath}"`;
+      await new Promise<void>((resolve, reject) => {
+        exec(cmd, { timeout: 60000, env: { ...process.env, LANG: 'zh_CN.UTF-8' } }, (error, stdout, stderr) => {
+          if (error) {
+            reject(new Error(`LibreOffice conversion failed: ${error.message} (stdout: ${stdout}, stderr: ${stderr})`));
+          } else {
+            resolve();
+          }
+        });
+      });
+
+      const files = await fs.promises.readdir(tmpDir);
+      const pdfFile = files.find((f) => f.endsWith('.pdf'));
+      if (!pdfFile) {
+        throw new Error('LibreOffice converted without creating a PDF file');
+      }
+
+      const pdfBytes = await fs.promises.readFile(path.join(tmpDir, pdfFile));
+      const doc = await LibPDFDocument.load(pdfBytes, { updateMetadata: false });
+      const pageCount = doc.getPageCount();
+
+      return { bytes: pdfBytes, pageCount };
+    } finally {
+      await fs.promises.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+
+  private async appendCertificatePage(
+    mainPdfBytes: Buffer,
+    certPdfBytes: Buffer
+  ): Promise<{ bytes: Buffer; pageCount: number }> {
+    const mainDoc = await LibPDFDocument.load(mainPdfBytes, { updateMetadata: false });
+    const certDoc = await LibPDFDocument.load(certPdfBytes, { updateMetadata: false });
+
+    const certPages = await mainDoc.copyPages(certDoc, certDoc.getPageIndices());
+    for (const page of certPages) {
+      mainDoc.addPage(page);
+    }
+
+    const mergedBytes = Buffer.from(await mainDoc.save());
+    return {
+      bytes: mergedBytes,
+      pageCount: mainDoc.getPageCount(),
     };
   }
 

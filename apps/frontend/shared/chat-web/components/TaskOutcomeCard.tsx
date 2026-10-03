@@ -3,6 +3,9 @@ import {
   CheckOutlined,
   CloseOutlined,
   DownloadOutlined,
+  GlobalOutlined,
+  InfoCircleOutlined,
+  LinkOutlined,
   LoadingOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
@@ -30,6 +33,8 @@ export interface TaskOutcomeArtifactItem {
   downloadUrl?: string;
   mimeType?: string;
   sizeBytes?: number | string;
+  type?: string;
+  artifactType?: string;
 }
 
 interface TaskOutcomeCardProps {
@@ -87,6 +92,44 @@ const isHtmlPreviewBlock = (className?: string, codeText?: string) => {
   );
 };
 
+/**
+ * Generic schema violation message humanizer for raw technical error strings.
+ * Translates standard Ajv keywords and technical prefixes into friendly descriptions
+ * without any domain-specific hardcoding.
+ */
+export const humanizeRawSchemaError = (raw?: string): string | null => {
+  if (!raw) return null;
+  const match = /(?:Node\s+'(?<nodeId>[^']+)'\s+failed:\s+)?(?<codeType>INPUT_SCHEMA_VIOLATION|OUTPUT_SCHEMA_VIOLATION)(?:\s+for\s+node\s+'(?<nodeId2>[^']+)')?:\s*(?<details>.*)$/s.exec(raw);
+  if (!match || !match.groups) {
+    return null;
+  }
+  const isInput = match.groups.codeType === 'INPUT_SCHEMA_VIOLATION';
+  const nodeName = match.groups.nodeId || match.groups.nodeId2;
+  const rawDetails = match.groups.details || '';
+
+  // Extract common Ajv violations generically
+  // e.g. "/ (required): must have required property 'fieldName'"
+  const requiredMatch = /\/?\s*\(?required\)?:\s*must have required property\s*'([^']+)'/i.exec(rawDetails);
+  if (requiredMatch) {
+    const field = requiredMatch[1];
+    return `${isInput ? '输入参数校验未通过' : '输出结果校验未通过'}：缺少必填参数【${field}】。`;
+  }
+
+  // e.g. "/fieldName (type): must be string"
+  const typeMatch = /\/?([a-zA-Z0-9_.-]+)\s*\(?type\)?:\s*must be\s*([a-zA-Z0-9_]+)/i.exec(rawDetails);
+  if (typeMatch) {
+    return `${isInput ? '输入参数' : '输出结果'}【${typeMatch[1]}】类型错误，期望类型为 ${typeMatch[2]}。`;
+  }
+
+  // e.g. "/fieldName (enum): must be equal to one of the allowed values"
+  const enumMatch = /\/?([a-zA-Z0-9_.-]+)\s*\(?enum\)?:\s*must be equal to one of the allowed values/i.exec(rawDetails);
+  if (enumMatch) {
+    return `${isInput ? '输入参数' : '输出结果'}【${enumMatch[1]}】取值不在允许范围内。`;
+  }
+
+  return `${isInput ? '输入契约校验未通过' : '输出契约校验未通过'}${nodeName ? `（节点 ${nodeName}）` : ''}。`;
+};
+
 export const getErrorPreview = (value?: string): string => {
   if (!value) {
     return '任务执行失败，请展开查看具体错误信息。';
@@ -98,18 +141,26 @@ export const getErrorPreview = (value?: string): string => {
     .filter(Boolean);
 
   const reasonLine = lines.find((line) => /^原因[:：]\s*\S/.test(line));
-  if (reasonLine) {
-    return reasonLine.replace(/^原因[:：]\s*/, '');
+  const rawCandidate = reasonLine
+    ? reasonLine.replace(/^原因[:：]\s*/, '')
+    : lines.find(
+        (line) =>
+          !/^(?:❌\s*)?任务执行失败[。！!]?$/.test(line) &&
+          !/^状态[:：]/.test(line) &&
+          !/^执行单\s*ID[:：]/i.test(line)
+      ) || lines[0] || '任务执行失败，请展开查看具体错误信息。';
+
+  // If candidate contains technical prefix or separator, strip [技术细节] suffix for preview
+  const techDetailIdx = rawCandidate.indexOf('[技术细节]');
+  const cleanCandidate = techDetailIdx > 0 ? rawCandidate.slice(0, techDetailIdx).trim() : rawCandidate;
+
+  // Generic schema violation humanizer fallback for unformatted raw strings
+  const humanized = humanizeRawSchemaError(cleanCandidate);
+  if (humanized) {
+    return humanized;
   }
 
-  const preview = lines.find(
-    (line) =>
-      !/^(?:❌\s*)?任务执行失败[。！!]?$/.test(line) &&
-      !/^状态[:：]/.test(line) &&
-      !/^执行单\s*ID[:：]/i.test(line)
-  );
-
-  return preview || lines[0] || '任务执行失败，请展开查看具体错误信息。';
+  return cleanCandidate;
 };
 
 const getStructuredResultPreview = (value?: string | null): string | undefined => {
@@ -298,10 +349,51 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
     );
   }, [artifacts]);
 
+  const urlArtifacts = React.useMemo(() => {
+    if (!artifacts || !Array.isArray(artifacts) || artifacts.length === 0) return [];
+    return artifacts.filter((art) => {
+      const type = (art.type || art.artifactType || '').toLowerCase();
+      const url = art.url || art.downloadUrl;
+      return (
+        (type === 'url' || type === 'link' || type === 'search_result') &&
+        typeof url === 'string' &&
+        /^https?:\/\//i.test(url)
+      );
+    });
+  }, [artifacts]);
+
   const showDownloadButton = Boolean(downloadUrl && !browserExecutionMode);
   const showDetailButton = Boolean(executionDetailLink || temporalLink);
   const normalizedSkillName = skillName?.trim();
-  const displaySuccessResult = finalResult?.trim() || getStructuredResultPreview(structuredResultText);
+
+  const isUuid = React.useCallback((val?: string) => {
+    return (
+      typeof val === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val.trim())
+    );
+  }, []);
+
+  const sanitizeInlineDownloadLines = React.useCallback((text?: string): string => {
+    if (!text) return '';
+    const lines = text.split('\n');
+    const filtered = lines.filter((line) => {
+      const trimmed = line.trim();
+      return (
+        !/^[•\*\-\s]*\*{0,2}(?:下载链接|文件下载|结果下载|产物下载)\*{0,2}[:：]/i.test(trimmed) &&
+        !/^[•\*\-\s]*\[(?:点击下载|下载文件|下载文档|下载产物).*\]\(.+\)\s*$/i.test(trimmed)
+      );
+    });
+    return filtered.join('\n');
+  }, []);
+
+  const rawSuccessResult = finalResult?.trim() || getStructuredResultPreview(structuredResultText);
+  const displaySuccessResult = React.useMemo(() => {
+    if (!rawSuccessResult) return '';
+    if (showDownloadButton || downloadUrl) {
+      return sanitizeInlineDownloadLines(rawSuccessResult);
+    }
+    return rawSuccessResult;
+  }, [rawSuccessResult, showDownloadButton, downloadUrl, sanitizeInlineDownloadLines]);
 
   const hasInlineHtmlFence = React.useMemo(() => {
     if (!displaySuccessResult) return false;
@@ -425,12 +517,35 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
     const isPermissionError =
       /权限|申请授权|permission|forbidden/i.test(detailError) ||
       /权限|申请授权|permission|forbidden/i.test(previewError);
+    const isInputViolation =
+      /INPUT_SCHEMA_VIOLATION|输入参数校验未通过|缺少必填参数/i.test(detailError) ||
+      /INPUT_SCHEMA_VIOLATION|输入参数校验未通过|缺少必填参数/i.test(previewError);
 
     return (
       <div className="chat-outcome-card error">
         <div className="chat-outcome-title">任务失败</div>
         {renderMeta()}
         <div className="chat-outcome-body">{previewError}</div>
+        {isInputViolation ? (
+          <div
+            className="chat-outcome-input-violation-tip"
+            style={{
+              marginTop: 10,
+              padding: '8px 12px',
+              borderRadius: 6,
+              background: 'rgba(250, 173, 20, 0.08)',
+              border: '1px solid rgba(250, 173, 20, 0.25)',
+              fontSize: 12,
+              color: 'var(--text-secondary, #64748b)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            <InfoCircleOutlined style={{ color: '#faad14', flexShrink: 0 }} />
+            <span>提示：任务执行缺少必要的前置输入参数，请检查输入配置或补充所需参数。</span>
+          </div>
+        ) : null}
         {isPermissionError ? (
           <div className="chat-outcome-actions" style={{ marginTop: 12 }}>
             <Button
@@ -446,7 +561,7 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
         {downloadUrl || temporalLink || executionDetailLink ? renderResourceLinks() : null}
         {previewError !== detailError ? (
           <details className="chat-outcome-details">
-            <summary>查看详细错误</summary>
+            <summary>查看详细错误与技术追踪</summary>
             <pre className="chat-structured-result chat-error-details">{detailError}</pre>
           </details>
         ) : null}
@@ -466,7 +581,9 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
     return (
       <div className="chat-outcome-card success">
         <div className="chat-outcome-header">
-          <div className="chat-outcome-title">{hasBusinessResult ? '任务结果' : '任务完成'}</div>
+          <div className="chat-outcome-title" style={{ marginBottom: 0 }}>
+            {hasBusinessResult ? '任务结果' : '任务完成'}
+          </div>
           {showDetailButton ? (
             <Button
               type="primary"
@@ -477,6 +594,13 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
               target="_blank"
               rel="noopener noreferrer"
               className="chat-outcome-detail-button"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 4,
+                lineHeight: 1,
+              }}
             >
               详细
             </Button>
@@ -484,6 +608,7 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
         </div>
         {renderMeta()}
         {normalizedSkillName &&
+        !isUuid(normalizedSkillName) &&
         !['result', 'results', 'generic', 'tool_execution', 'flow_execute', 'skill-match'].includes(
           normalizedSkillName.toLowerCase()
         ) ? (
@@ -563,7 +688,7 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
             srcUrl={htmlArtifact.url || htmlArtifact.downloadUrl}
             defaultTitle={htmlArtifact.name || htmlArtifact.label}
             sizeBytes={htmlArtifact.sizeBytes}
-            defaultExpanded={true}
+            defaultExpanded={false}
             isStreaming={showRunningState}
           />
         ) : null}
@@ -574,9 +699,66 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
             srcUrl={mdArtifact.url || mdArtifact.downloadUrl}
             fileName={mdArtifact.name || mdArtifact.label}
             sizeBytes={mdArtifact.sizeBytes}
-            defaultExpanded={true}
+            defaultExpanded={false}
             isStreaming={showRunningState}
           />
+        ) : null}
+        {/* Web 搜索参考来源卡片 */}
+        {urlArtifacts.length > 0 ? (
+          <div className="chat-outcome-references" style={{ marginTop: 12 }}>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--text-secondary, #64748b)',
+                marginBottom: 6,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <GlobalOutlined />
+              <span>参考来源 ({urlArtifacts.length})：</span>
+            </div>
+            <Space wrap size={[6, 6]}>
+              {urlArtifacts.map((art, idx) => {
+                const targetUrl = art.url || art.downloadUrl || '#';
+                const label =
+                  art.name ||
+                  art.label ||
+                  (() => {
+                    try {
+                      return new URL(targetUrl).hostname;
+                    } catch {
+                      return `来源 ${idx + 1}`;
+                    }
+                  })();
+                return (
+                  <Button
+                    key={idx}
+                    size="small"
+                    type="default"
+                    icon={<LinkOutlined />}
+                    href={targetUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="chat-outcome-ref-link"
+                    style={{
+                      fontSize: 12,
+                      borderRadius: 6,
+                      maxWidth: 320,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                    title={label}
+                  >
+                    {label}
+                  </Button>
+                );
+              })}
+            </Space>
+          </div>
         ) : null}
 
         {showDownloadButton ? renderResourceLinks({ showDetailAction: false }) : null}

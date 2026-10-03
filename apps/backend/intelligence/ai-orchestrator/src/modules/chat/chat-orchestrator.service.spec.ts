@@ -1,5 +1,5 @@
 import { ControlPlaneClient } from '../../client/control-plane.client';
-import { StreamEventType } from '../react-engine/interfaces';
+import { StreamEvent, StreamEventType } from '../react-engine/interfaces';
 import { ChatOrchestratorService } from './chat-orchestrator.service';
 import { shouldRouteImageToNativeModel } from './chat-multimodal-routing';
 
@@ -1192,5 +1192,168 @@ describe('ChatOrchestratorService', () => {
     expect(resultEvent).toBeDefined();
     expect(resultEvent.data.code).toBe('CAPABILITY_NOT_FOUND');
     expect(resultEvent.data.executed).toBe(false);
+  });
+
+  it('retrieves and merges both workspace and web knowledge when both flags are enabled for guide inquiry in task mode', async () => {
+    const { plannerService, controlPlaneClient, reactEngineService } = createService();
+    const mockModelService = {
+      callModelStreamWithMessages: jest.fn().mockImplementation(
+        async (_modelId: string, _messages: any[], onChunk: (chunk: string) => void) => {
+          onChunk('DeepSeek Harness 安装方法总结如下');
+          return { content: 'DeepSeek Harness 安装方法总结如下', usage: { total_tokens: 20 } };
+        }
+      ),
+    };
+
+    const mockChatConversation = {
+      getLatestCompletedTaskResult: jest.fn().mockResolvedValue(null),
+      resolvePreferredChatModelId: jest.fn().mockReturnValue('default'),
+      isThinkingEnabled: jest.fn().mockReturnValue(false),
+      resolveReasoningConfig: jest.fn().mockResolvedValue({ enabled: false }),
+      buildConversationMessages: jest.fn().mockImplementation(async (_session, systemPrompt, content) => [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content },
+      ]),
+      getVisibleChatContent: jest.fn((c) => c),
+    };
+
+    const mockKnowledgeService = {
+      retrieveMultiSourceContext: jest.fn().mockResolvedValue({
+        workspacePrompt: '\n\n【工作空间内部知识库检索结果】：doc1',
+        webPrompt: '\n\n【全网实时检索结果】：web1',
+        combinedSystemPromptAddition:
+          '\n\n【工作空间内部知识库检索结果】：doc1\n\n【全网实时检索结果】：web1\n\n【回答指导】：综合回答',
+        workspaceDocsCount: 1,
+        webResultsCount: 1,
+        completionThought: '已检索到 1 篇工作空间文档及 1 条全网实时资料，正在融合多源知识生成解答...',
+      }),
+    };
+
+    const service = new ChatOrchestratorService(
+      controlPlaneClient as any,
+      reactEngineService as any,
+      plannerService as any,
+      { isPromptDebugEnabled: () => false } as any,
+      {} as any,
+      {} as any,
+      mockChatConversation as any,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mockModelService as any,
+      undefined,
+      mockKnowledgeService as any
+    );
+
+    const events: any[] = [];
+    for await (const event of service.handleTaskMode(
+      {
+        message: '查看deepseek harness的安装方法',
+        sessionId: 'session-dsh-1',
+        config: { workspaceSearch: true, webSearch: true },
+      },
+      {
+        sessionId: 'session-dsh-1',
+        userId: 'user-dsh-1',
+        userRoles: ['employee'],
+        traceId: 'trace-dsh-1',
+        history: [],
+      },
+      'Bearer token-dsh-1'
+    )) {
+      events.push(event);
+    }
+
+    expect(mockKnowledgeService.retrieveMultiSourceContext).toHaveBeenCalledWith({
+      query: '查看deepseek harness的安装方法',
+      workspaceSearch: true,
+      webSearch: true,
+      userId: 'user-dsh-1',
+      userRole: 'employee',
+      authToken: 'Bearer token-dsh-1',
+    });
+
+    expect(mockChatConversation.buildConversationMessages).toHaveBeenCalledWith(
+      'session-dsh-1',
+      expect.stringContaining('【工作空间内部知识库检索结果】：doc1'),
+      '查看deepseek harness的安装方法',
+      'user-dsh-1'
+    );
+    expect(mockChatConversation.buildConversationMessages).toHaveBeenCalledWith(
+      'session-dsh-1',
+      expect.stringContaining('【全网实时检索结果】：web1'),
+      '查看deepseek harness的安装方法',
+      'user-dsh-1'
+    );
+
+    const thoughtEvents = events.filter((e) => e.type === StreamEventType.THOUGHT);
+    expect(
+      thoughtEvents.some((e) => e.content.includes('正在同时检索工作空间内部知识库与全网实时信息'))
+    ).toBe(true);
+    expect(thoughtEvents.some((e) => e.content.includes('正在融合多源知识生成解答'))).toBe(true);
+  });
+
+  it('preprocesses uploaded contract document, sniffs contract type and title, and passes intelligence to planner', async () => {
+    const { service, plannerService } = createService();
+    plannerService.matchSkillPhase.mockResolvedValue({
+      objective: '查看合同内容',
+      matchedSkill: null,
+      hasVisibleSkills: false,
+    });
+
+    const file = {
+      fileId: 'f-contract-1',
+      fileName: '1234 (1).docx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      size: 1024,
+      extractedText: '保密协议\n甲方：北京某某科技有限公司\n乙方：上海某某科技有限公司\n第一条 商业秘密定义...',
+    };
+
+    const events: StreamEvent[] = [];
+    for await (const event of service.handleTaskMode(
+      {
+        message: '查看合同内容',
+        sessionId: 'session-contract-1',
+        files: [file],
+      },
+      {
+        sessionId: 'session-contract-1',
+        userId: 'user-contract-1',
+        userRoles: ['employee'],
+        traceId: 'trace-contract-1',
+        history: [],
+      },
+      'Bearer token-1'
+    )) {
+      events.push(event);
+    }
+
+    // Verify planner input received probed intelligence
+    expect(plannerService.matchSkillPhase).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request: expect.objectContaining({
+          user_input: '查看合同内容',
+          context: expect.objectContaining({
+            probedDocuments: expect.arrayContaining([
+              expect.objectContaining({
+                fileName: '1234 (1).docx',
+                docCategory: 'contract',
+                docType: 'contract.nda',
+                docTypeName: '保密协议',
+              }),
+            ]),
+            system_collected: expect.objectContaining({
+              contractType: 'nda',
+              partyA: '北京某某科技有限公司',
+              partyB: '上海某某科技有限公司',
+            }),
+          }),
+        }),
+      })
+    );
   });
 });

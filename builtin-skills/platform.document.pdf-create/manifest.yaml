@@ -31,8 +31,7 @@ spec:
       schemaRef: inline
       schema:
         type: object
-        additionalProperties: false
-        required: [content]
+        additionalProperties: true
         properties:
           fileName:
             type: string
@@ -44,6 +43,20 @@ spec:
           pageNumbers:
             type: boolean
             default: true
+          sourceDocxBase64:
+            type: string
+          sourceDocxUrl:
+            type: string
+          sourceDocxName:
+            type: string
+          sourceDocxSha256:
+            type: string
+          auditCertificateBlocks:
+            type: array
+            items:
+              type: object
+          auditMetadata:
+            type: object
           content:
             oneOf:
               - type: array

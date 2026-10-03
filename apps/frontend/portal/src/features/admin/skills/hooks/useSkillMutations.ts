@@ -8,6 +8,7 @@ import {
   CreateSkillDTO,
   SkillConfigDTO,
   SkillAccessRequestReviewDTO,
+  CompileRoutingOptions,
 } from '@/api/skill';
 
 interface UseSkillMutationsOptions {
@@ -176,6 +177,21 @@ export function useSkillMutations(options: UseSkillMutationsOptions = {}) {
     }
   );
 
+  const compileRoutingMutation = useMutation(
+    (compileOptions?: CompileRoutingOptions) => skillApi.compileRouting(compileOptions),
+    {
+      onSuccess: () => {
+        message.success('技能路由特征编译已完成');
+        queryClient.invalidateQueries(['skills']);
+      },
+      onError: (error: any) => {
+        const errorMessage =
+          error?.response?.data?.message || error?.message || '技能路由特征编译失败';
+        message.error(typeof errorMessage === 'string' ? errorMessage : '技能路由特征编译失败');
+      },
+    }
+  );
+
   const confirmDeleteSkill = (id: string, name?: string) => {
     Modal.confirm({
       title: `确认删除 Skill${name ? `「${name}」` : ''}？`,
@@ -211,6 +227,7 @@ export function useSkillMutations(options: UseSkillMutationsOptions = {}) {
     approveAccessRequestMutation,
     rejectAccessRequestMutation,
     applyAdjustmentMutation,
+    compileRoutingMutation,
     processingAccessRequestId,
     processingAccessRequestAction,
     confirmDeleteSkill,

@@ -139,6 +139,34 @@ export const SkillDetailContent: React.FC<SkillDetailContentProps> = ({
               ))}
             </Space>
           </Descriptions.Item>
+          <Descriptions.Item label="编译正向锚点" span={embedded ? 1 : 2}>
+            {skill.apiEndpoints?.runtimeMetadata?.routingAliases &&
+            skill.apiEndpoints.runtimeMetadata.routingAliases.length > 0 ? (
+              <Space wrap>
+                {skill.apiEndpoints.runtimeMetadata.routingAliases.map((alias) => (
+                  <Tag key={alias} color="green">
+                    {alias}
+                  </Tag>
+                ))}
+              </Space>
+            ) : (
+              <Text type="secondary">未编译 / 无额外特征锚点</Text>
+            )}
+          </Descriptions.Item>
+          <Descriptions.Item label="负向防误触边界" span={embedded ? 1 : 2}>
+            {skill.apiEndpoints?.runtimeMetadata?.negativeKeywords &&
+            skill.apiEndpoints.runtimeMetadata.negativeKeywords.length > 0 ? (
+              <Space wrap>
+                {skill.apiEndpoints.runtimeMetadata.negativeKeywords.map((neg) => (
+                  <Tag key={neg} color="volcano">
+                    {neg}
+                  </Tag>
+                ))}
+              </Space>
+            ) : (
+              <Text type="secondary">未编译 / 无负向排斥边界</Text>
+            )}
+          </Descriptions.Item>
         </Descriptions>
       </Panel>
 

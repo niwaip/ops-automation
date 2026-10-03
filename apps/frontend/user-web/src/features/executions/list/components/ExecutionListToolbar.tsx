@@ -71,7 +71,7 @@ const ExecutionListToolbar: React.FC<ExecutionListToolbarProps> = ({
             <Input
               className={`${styles['execution-search-input']} ${styles['execution-list-filter-control']}`}
               size="middle"
-              placeholder="搜索员工名称、任务单号、输入目标或交付成果..."
+              placeholder="搜索任务名称、业务对象、执行结果或产物文件名..."
               prefix={<SearchOutlined style={{ color: 'var(--text-secondary)' }} />}
               value={searchText}
               onChange={(e) => onSearchTextChange(e.target.value)}

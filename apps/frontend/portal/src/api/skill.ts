@@ -64,6 +64,8 @@ export interface SkillConfigDTO {
         type?: string;
         activityName?: string;
       }>;
+      routingAliases?: string[];
+      negativeKeywords?: string[];
     };
   };
   isActive: boolean;
@@ -262,6 +264,19 @@ export interface SkillValidationStreamEvent {
   };
 }
 
+export interface CompiledRoutingProfileDTO {
+  skillId: string;
+  skillName: string;
+  positiveSignals: string[];
+  negativeSignals: string[];
+}
+
+export interface CompileRoutingOptions {
+  userId?: string;
+  useAi?: boolean;
+  modelId?: string;
+}
+
 const baseSkillApi = createSkillApi(apiClient);
 
 // Skill API
@@ -280,6 +295,15 @@ export const skillApi = {
 
   delete: async (id: string): Promise<{ success: boolean }> => {
     return apiClient.delete<{ success: boolean }>(`/skills/${id}`);
+  },
+
+  compileRouting: async (
+    options?: CompileRoutingOptions
+  ): Promise<{ compiled: CompiledRoutingProfileDTO[] }> => {
+    return apiClient.post<{ compiled: CompiledRoutingProfileDTO[] }>(
+      '/skills/compile-routing',
+      options || {}
+    );
   },
 
   // Validate skill with AI simulation

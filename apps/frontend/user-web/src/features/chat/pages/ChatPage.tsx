@@ -87,6 +87,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   const [enableThinking, setEnableThinking] = useState(true);
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>('medium');
   const [enableWebSearch, setEnableWebSearch] = useState(false);
+  const [enableWorkspaceSearch, setEnableWorkspaceSearch] = useState(false);
   const [enableResearch, setEnableResearch] = useState(false);
   const [expandedThoughtMessageId, setExpandedThoughtMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -249,6 +250,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     enableThinking,
     reasoningEffort,
     enableWebSearch,
+    enableWorkspaceSearch,
     enableResearch,
     ensureSession,
     isStreaming,
@@ -475,7 +477,8 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
           />
           <Popconfirm
             title="清理全部会话"
-            description="确定要清空所有会话历史记录吗？此操作不可恢复。"
+            description="清空后所有会话记录无法恢复。"
+            overlayStyle={{ maxWidth: 280 }}
             okText="清空"
             cancelText="取消"
             okButtonProps={{ danger: true, size: 'small' }}
@@ -588,7 +591,8 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
                 </Tooltip>
                 <Popconfirm
                   title="删除当前会话"
-                  description="确定要删除当前会话及其所有历史记录吗？"
+                  description="删除后当前会话记录无法恢复。"
+                  overlayStyle={{ maxWidth: 280 }}
                   okText="删除"
                   cancelText="取消"
                   okButtonProps={{ danger: true, size: 'small' }}
@@ -648,6 +652,8 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             onReasoningEffortChange={setReasoningEffort}
             enableWebSearch={enableWebSearch}
             onEnableWebSearchChange={setEnableWebSearch}
+            enableWorkspaceSearch={enableWorkspaceSearch}
+            onEnableWorkspaceSearchChange={setEnableWorkspaceSearch}
             enableResearch={enableResearch}
             onEnableResearchChange={setEnableResearch}
             thinkingLabel={thinkingToggleLabel}

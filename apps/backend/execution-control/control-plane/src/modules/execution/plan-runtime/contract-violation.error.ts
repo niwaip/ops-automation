@@ -12,6 +12,14 @@ export interface ContractViolationContext {
   contractCheckMode?: 'schema' | 'heuristic';
   instancePath?: string;
   keyword?: string;
+  friendlyMessage?: string;
+  violations?: Array<{
+    field?: string;
+    fieldLabel?: string;
+    description?: string;
+    message: string;
+    keyword?: string;
+  }>;
 }
 
 /**
@@ -22,11 +30,18 @@ export interface ContractViolationContext {
 export class ContractViolationError extends Error {
   public readonly code: string;
   public readonly context: ContractViolationContext;
+  public readonly friendlyMessage?: string;
 
-  constructor(code: string, message: string, context: ContractViolationContext) {
+  constructor(
+    code: string,
+    message: string,
+    context: ContractViolationContext,
+    friendlyMessage?: string
+  ) {
     super(message);
     this.name = 'ContractViolationError';
     this.code = code || ERROR_CODES.OUTPUT_SCHEMA_VIOLATION;
     this.context = context;
+    this.friendlyMessage = friendlyMessage || context?.friendlyMessage;
   }
 }

@@ -14,7 +14,7 @@ const ACTIONABLE_STATUSES: ExecutionStatus[] = [
   'failed',
 ];
 
-const PRIORITY_PANEL_STATUSES: ExecutionStatus[] = [...ACTIONABLE_STATUSES, 'running'];
+const PRIORITY_PANEL_STATUSES: ExecutionStatus[] = [...ACTIONABLE_STATUSES];
 
 const getExecutionDisplayTime = (execution: ExecutionDto): string =>
   execution.endedAt || execution.updatedAt || execution.startedAt || execution.createdAt;

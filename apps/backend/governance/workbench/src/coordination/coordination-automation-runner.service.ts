@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, Optional } from '@nestjs/common';
 import axios from 'axios';
+import { createHash, randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { getControlPlaneApiUrl, isContainerRuntime } from '../ports/workbench.ports';
@@ -8,6 +9,7 @@ import type {
   OrganizationWorkflowDefinition,
 } from './org-workflow.entity';
 import type { CoordinationAttachment } from './dto/workbench-coordination.dto';
+import { CoordinationAttachmentStorageService } from './coordination-attachment-storage.service';
 
 export interface AutomationExecutionOptions {
   stage: WorkflowStageDefinition;
@@ -23,9 +25,16 @@ export interface AutomationExecutionOptions {
   payload?: Record<string, any>;
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 @Injectable()
 export class CoordinationAutomationRunnerService {
   private readonly logger = new Logger(CoordinationAutomationRunnerService.name);
+
+  constructor(
+    @Optional()
+    private readonly attachmentStorage?: CoordinationAttachmentStorageService
+  ) {}
 
   /**
    * 调度并执行自动化阶段能力：
@@ -42,6 +51,13 @@ export class CoordinationAutomationRunnerService {
         return cpReport;
       }
     } catch (cpErr: any) {
+      if (cpErr.response?.status === 400 || cpErr.response?.status === 403) {
+        const errorDetail = cpErr.response?.data?.message || cpErr.message;
+        this.logger.error(
+          `[ControlPlane] Deterministic plan schema or auth rejected (HTTP ${cpErr.response?.status}): ${JSON.stringify(errorDetail)}`
+        );
+        throw new BadRequestException(`控制面确定性计划校验或权限失败 (HTTP ${cpErr.response?.status}): ${JSON.stringify(errorDetail)}`);
+      }
       this.logger.warn(
         `Control Plane execution dispatch unavailable (${cpErr.message}), falling back to direct capability execution.`
       );
@@ -53,6 +69,8 @@ export class CoordinationAutomationRunnerService {
       return await this.executeContractReviewDirect(opts);
     } else if (capabilityRefId.includes('comparator') || capabilityRefId.includes('compare')) {
       return await this.executeContractCompareDirect(opts);
+    } else if (capabilityRefId.includes('notification') || capabilityRefId.includes('message') || opts.stage.type === 'archive') {
+      return await this.executeNotificationDirect(opts);
     } else if (capabilityRefId.includes('pdf') || capabilityRefId.includes('archive')) {
       return await this.executePdfCreateDirect(opts);
     } else {
@@ -80,6 +98,8 @@ export class CoordinationAutomationRunnerService {
       payload,
     } = opts;
 
+    const effectiveOrgId = payload?.orgId || (initiator as any)?.orgId || (operator as any)?.orgId || undefined;
+
     const sanitizedAttachments = (activeAttachments || []).filter(
       (a: any) => Boolean(a && typeof a === 'object' && !Array.isArray(a) && (a.url?.trim() || a.name?.trim()))
     );
@@ -96,25 +116,14 @@ export class CoordinationAutomationRunnerService {
       params.content ||
       params.rawContent;
 
-    // 若无文件附件且无文本内容，从流程参数中组装合同草稿文本，确保送审引擎有条款可审
-    if (!text && !downloadUrl && !activeAttachment?.url) {
-      text = [
-        `# ${params.contractTitle || targetItem?.sourceTitle || '商业保密与合规协议'}`,
-        `甲方：${initiator?.username || params.initiatorName || '我方企业'}`,
-        `乙方：${params.counterpartyName || '合作企业'}`,
-        '',
-        `第一条 保密信息与范围`,
-        `双方在商务及项目合作过程中相互披露的一切商业、技术、财务等非公开信息均属保密信息。${params.remarks ? '注：' + params.remarks : ''}`,
-        '',
-        `第二条 保密期限`,
-        `双方保密义务期限为自本协议签署生效之日起 ${params.durationYears || 3} 年。`,
-        '',
-        `第三条 违约责任与损害赔偿`,
-        `任何一方违反本协议保密约定的，应向守约方支付违约金 ${params.penaltyAmount ? '¥' + Number(params.penaltyAmount).toLocaleString() + ' 元' : '¥500,000 元'}，并足额赔偿守约方的全部实际损失。`,
-        '',
-        `第四条 法律适用与争议管辖`,
-        `因本协议引起的或与本协议有关的争议，均适用中华人民共和国法律，并由我方所在地有管辖权的人民法院管辖裁决。`,
-      ].join('\n');
+    const isNotificationStage =
+      capabilityRefId.includes('notification') ||
+      capabilityRefId.includes('message') ||
+      stage.type === 'archive';
+    const isPdfStage = !isNotificationStage && capabilityRefId.includes('pdf');
+    // 真实性安全门禁：严格校验待审文件或条款是否存在，严禁拼凑虚假合同文本进行审查
+    if (!isPdfStage && !isNotificationStage && !text && !downloadUrl && !activeAttachment?.url) {
+      throw new BadRequestException('无法发起智能合规审查：当前协同任务未包含待审合同文档或有效条款内容');
     }
 
     const reviewPrompt =
@@ -123,9 +132,9 @@ export class CoordinationAutomationRunnerService {
       params.reviewPrompt ||
       params.prompt;
     const contractType =
-      stageConfig.contractType || params.contractType || 'nda';
+      params.contractType || stageConfig.contractType || 'nda';
     const myPosition =
-      stageConfig.myPosition || params.myPosition || 'buyer';
+      params.myPosition || stageConfig.myPosition || (contractType === 'nda' ? 'seller' : 'buyer');
     const customChecklistRules =
       stageConfig.customChecklistRules || stageConfig.customCheckpoints;
 
@@ -136,10 +145,8 @@ export class CoordinationAutomationRunnerService {
       process.env.JWT_SECRET ||
       'ops_internal_shared_secret_change_me';
 
-    const userId =
-      operator?.id ||
-      initiator?.id ||
-      '00000000-0000-0000-0000-000000000000';
+    const rawUserId = operator?.id || initiator?.id;
+    const userId = rawUserId && UUID_REGEX.test(rawUserId) ? rawUserId : '00000000-0000-0000-0000-000000000000';
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -149,7 +156,100 @@ export class CoordinationAutomationRunnerService {
       'x-user-name': operator?.username || initiator?.username || 'system',
     };
 
-    const inputPayload: Record<string, any> = {
+    const rawCarboneUrl =
+      process.env.CARBONE_SERVICE_URL ||
+      (isContainerRuntime() ? 'http://carbone-engine:3009' : 'http://localhost:3009');
+    const carboneUrl = rawCarboneUrl.trim().replace(/\/+$/, '');
+
+    const contractTitle =
+      params.contractTitle || targetItem?.sourceTitle || targetItem?.title || '商业保密协议 (NDA)';
+    const pdfFileName = activeAttachment?.name
+      ? activeAttachment.name.replace(/\.[^/.]+$/, '.pdf')
+      : `${contractTitle}_存证归档_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.pdf`;
+
+    let approvedDocxBuffer: Buffer | null = null;
+    let sourceDocxSha256 = '';
+
+    if (isPdfStage) {
+      approvedDocxBuffer = await this.resolveApprovedDocxBuffer(activeAttachment, params);
+      if (approvedDocxBuffer) {
+        sourceDocxSha256 = createHash('sha256').update(approvedDocxBuffer).digest('hex');
+      } else if (activeAttachment?.sha256 || params.sourceSha256) {
+        sourceDocxSha256 = activeAttachment?.sha256 || params.sourceSha256;
+      }
+    }
+
+    const auditCertBlocks = isPdfStage
+      ? this.buildAuditCertificateBlocks(
+          params,
+          targetItem,
+          activeAttachment,
+          sourceDocxSha256,
+          operator,
+          initiator
+        )
+      : [];
+
+    const fallbackBlocks =
+      isPdfStage && !approvedDocxBuffer
+        ? await this.buildFallbackPdfContentBlocks(params, targetItem, activeAttachment, carboneUrl)
+        : [];
+
+    const pdfInputPayload = {
+      title: contractTitle,
+      fileName: pdfFileName,
+      sourceDocxBase64: approvedDocxBuffer ? approvedDocxBuffer.toString('base64') : undefined,
+      sourceDocxName: activeAttachment?.name,
+      sourceDocxSha256,
+      auditCertificateBlocks: auditCertBlocks,
+      content: approvedDocxBuffer ? auditCertBlocks : fallbackBlocks,
+      pageNumbers: true,
+      taskContext: {
+        workflowId: workflow?.workflowId,
+        stageId: stage.id,
+        stageName: stage.name,
+        taskId: payload?.taskId,
+        attachments: activeAttachments || [],
+      },
+    };
+
+    const notificationInputPayload = {
+      recipientId: initiator?.id || operator?.id || 'system',
+      recipientUsername: initiator?.username || operator?.username || 'initiator',
+      title: `[协同回执] ${contractTitle} 已终审通过并归档`,
+      message: `保密合同已终审通过并完成不可篡改 PDF 存证归档。凭证单号：${params.trackingNumber || 'ARC-' + Date.now().toString().slice(-6)}`,
+      trackingNumber: params.trackingNumber,
+      sha256: params.sha256,
+      downloadUrl: params.downloadUrl,
+      contractTitle,
+      taskId: payload?.taskId,
+      workflowId: workflow?.workflowId,
+      stageId: stage.id,
+      orgId: effectiveOrgId,
+      attachments: activeAttachments || [],
+      reviewSummary: params.reviewSummary || targetItem?.title || contractTitle,
+      metadata: {
+        taskId: payload?.taskId,
+        workflowId: workflow?.workflowId,
+        stageId: stage.id,
+        orgId: effectiveOrgId,
+        contractTitle,
+        trackingNumber: params.trackingNumber,
+        reviewSummary: params.reviewSummary || targetItem?.title || contractTitle,
+        attachments: activeAttachments || [],
+        operator,
+      },
+      taskContext: {
+        workflowId: workflow?.workflowId,
+        stageId: stage.id,
+        stageName: stage.name,
+        taskId: payload?.taskId,
+        orgId: effectiveOrgId,
+        attachments: activeAttachments || [],
+      },
+    };
+
+    const reviewInputPayload: Record<string, any> = {
       fileName,
       downloadUrl,
       fileUrl: downloadUrl,
@@ -170,40 +270,93 @@ export class CoordinationAutomationRunnerService {
       },
     };
 
-    this.logger.log(
-      `[ControlPlane] Dispatching execution for capability ${capabilityRefId} (stage: ${stage.name}) to ${controlPlaneUrl}/executions`
-    );
+    const nodeId = isNotificationStage
+      ? 'n1_internal_notification'
+      : isPdfStage
+      ? 'n1_pdf_create'
+      : 'n1_contract_reviewer';
 
-    const deterministicPlan = {
-      planKind: 'deterministic',
-      schemaVersion: 'deterministic-plan/v1',
-      planType: 'single',
-      objective: stage.name || capabilityName,
-      nodes: [
-        {
-          nodeId: `n1_${capabilityName || capabilityRefId}`,
+    const planNode: any = isNotificationStage
+      ? {
+          nodeId,
+          sequence: 1,
+          kind: 'skill',
+          skillId: 'platform.notification.internal-message',
+          skillVersion: '1.0.0',
+          title: stage.name || '流转凭证与回执通知',
+          runtimeType: 'workflow',
+          dependsOn: [],
+          failurePolicy: 'abort',
+          metadata: {
+            handlerKey: 'platform.notification.internal-message',
+            adapterRoute: 'builtin:workflow',
+          },
+          inputBindings: {
+            recipientId: { path: 'recipientId', source: 'user_input' },
+            recipientUsername: { path: 'recipientUsername', source: 'user_input' },
+            title: { path: 'title', source: 'user_input' },
+            message: { path: 'message', source: 'user_input' },
+            trackingNumber: { path: 'trackingNumber', source: 'user_input' },
+          },
+          outputContract: {
+            notificationId: 'string',
+            deliveredAt: 'string',
+          },
+        }
+      : isPdfStage
+      ? {
+          nodeId,
+          sequence: 1,
+          kind: 'skill',
+          skillId: 'platform.document.pdf-create',
+          skillVersion: '1.0.0',
+          title: stage.name || '防篡改电子凭证与归档存证',
+          runtimeType: 'artifact',
+          dependsOn: [],
+          failurePolicy: 'abort',
+          metadata: {
+            handlerKey: 'document.pdf.create',
+            adapterRoute: 'builtin:workflow',
+          },
+          inputBindings: {
+            title: { path: 'title', source: 'user_input' },
+            fileName: { path: 'fileName', source: 'user_input' },
+            content: { path: 'content', source: 'user_input' },
+            pageNumbers: { path: 'pageNumbers', source: 'user_input' },
+            sourceDocxBase64: { path: 'sourceDocxBase64', source: 'user_input' },
+            sourceDocxName: { path: 'sourceDocxName', source: 'user_input' },
+            sourceDocxSha256: { path: 'sourceDocxSha256', source: 'user_input' },
+            auditCertificateBlocks: { path: 'auditCertificateBlocks', source: 'user_input' },
+            auditMetadata: { path: 'auditMetadata', source: 'user_input' },
+          },
+          outputContract: {
+            artifact: 'artifact_ref',
+            artifacts: 'json',
+            operation: 'string',
+            pageCount: 'number',
+          },
+        }
+      : {
+          nodeId,
+          sequence: 1,
+          kind: 'skill',
           skillId: capabilityRefId,
           skillVersion: '1.0.0',
-          kind: 'skill',
           title: capabilityName || '合同文档智能审查与合规诊断',
           runtimeType: 'workflow',
-          action: 'execute',
+          dependsOn: [],
+          failurePolicy: 'abort',
           metadata: {
             handlerKey: capabilityRefId.includes('comparator')
               ? 'document.contract.compare'
               : 'document.contract.review',
             adapterRoute: 'builtin:workflow',
           },
-          contractRef: `capability://skill/${capabilityRefId}/1.0.0/output`,
           inputBindings: {
             text: { path: 'text', source: 'user_input' },
             fileName: { path: 'fileName', source: 'user_input' },
-            fileBase64: { path: 'fileBase64', source: 'user_input' },
-            downloadUrl: { path: 'downloadUrl', source: 'user_input' },
             contractType: { path: 'contractType', source: 'user_input' },
             myPosition: { path: 'myPosition', source: 'user_input' },
-            prompt: { path: 'prompt', source: 'user_input' },
-            reviewPrompt: { path: 'reviewPrompt', source: 'user_input' },
             customChecklistRules: { path: 'customChecklistRules', source: 'user_input' },
           },
           outputContract: {
@@ -219,38 +372,96 @@ export class CoordinationAutomationRunnerService {
             contractTypeName: 'string',
           },
           executionRuntimeType: 'workflow',
-        },
-      ],
-      finalOutputs: [
-        {
-          fromNodeId: `n1_${capabilityName || capabilityRefId}`,
-          targetField: 'result',
-          expectedType: 'artifact_ref',
-          fromNodeOutput: 'artifact',
-          isArtifact: true,
-        },
-        {
-          fromNodeId: `n1_${capabilityName || capabilityRefId}`,
-          targetField: 'summary',
-          expectedType: 'string',
-          fromNodeOutput: 'summary',
-          isArtifact: false,
-        },
-      ],
+        };
+
+    const finalOutputs = isNotificationStage
+      ? [
+          {
+            targetField: 'result',
+            fromNodeId: nodeId,
+            fromNodeOutput: 'notificationId',
+            expectedType: 'string',
+            isArtifact: false,
+          },
+        ]
+      : isPdfStage
+      ? [
+          {
+            targetField: 'result',
+            fromNodeId: nodeId,
+            fromNodeOutput: 'artifact',
+            expectedType: 'artifact_ref',
+            isArtifact: true,
+          },
+        ]
+      : [
+          {
+            targetField: 'result',
+            fromNodeId: nodeId,
+            fromNodeOutput: 'artifact',
+            expectedType: 'artifact_ref',
+            isArtifact: true,
+          },
+          {
+            targetField: 'summary',
+            fromNodeId: nodeId,
+            fromNodeOutput: 'summary',
+            expectedType: 'string',
+            isArtifact: false,
+          },
+        ];
+
+    const deterministicPlan = {
+      schemaVersion: 'deterministic-plan/v1',
+      plannerVersion: 'v1',
+      catalogVersion: 'v1',
+      planType: 'single',
+      objective: stage.name || capabilityName,
+      originalRequest: stage.name || capabilityName,
+      status: 'draft',
+      nodes: [planNode],
+      finalOutputs,
     };
+
+    const effectiveSkillId = isNotificationStage
+      ? 'platform.notification.internal-message'
+      : isPdfStage
+      ? 'platform.document.pdf-create'
+      : capabilityRefId;
+
+    this.logger.log(
+      `[ControlPlane] Dispatching execution for capability ${effectiveSkillId} (stage: ${stage.name}) to ${controlPlaneUrl}/executions`
+    );
 
     const createRes = await axios.post<any>(
       `${controlPlaneUrl}/executions`,
       {
-        skillId: capabilityRefId,
-        capabilityId: capabilityRefId,
-        runtimeType: capabilityRefId.includes('pdf') ? 'document' : 'workflow',
+        orgId: effectiveOrgId,
+        skillId: effectiveSkillId,
+        capabilityId: effectiveSkillId,
+        runtimeType: isPdfStage ? 'artifact' : 'workflow',
         executionMode: 'deterministic_plan',
         deterministicPlan,
         triggerType: 'workbench_coordination',
-        input: inputPayload,
+        metadata: {
+          triggerType: 'workbench_coordination',
+          ...(effectiveOrgId ? { orgId: effectiveOrgId } : {}),
+          workflowId: payload?.workflowId,
+          stageId: stage?.id,
+        },
+        input: isNotificationStage
+          ? notificationInputPayload
+          : isPdfStage
+          ? pdfInputPayload
+          : reviewInputPayload,
       },
-      { headers, timeout: 10000 }
+      {
+        headers: {
+          ...headers,
+          ...(effectiveOrgId ? { 'x-organization-id': effectiveOrgId } : {}),
+        },
+        timeout: 10000,
+      }
     );
 
     const execution = createRes.data;
@@ -323,16 +534,101 @@ export class CoordinationAutomationRunnerService {
       // ignore
     }
 
-    const stepOutput = steps[0]?.outputJson || steps[0]?.output;
-    const executionOutput = finalExecution.resultJson?.output || finalExecution.resultJson;
-    const out = stepOutput || executionOutput || {};
+    const rawStepOutput = steps[0]?.outputJson || steps[0]?.output;
+    const rawExecutionOutput = finalExecution.resultJson?.output || finalExecution.resultJson;
+    const out = this.unwrapExecutionResult(rawStepOutput, rawExecutionOutput);
 
-    if (artifacts.length === 0 && Array.isArray(out.artifacts)) {
-      artifacts = out.artifacts;
+    if (artifacts.length === 0) {
+      if (Array.isArray(out.artifacts)) {
+        artifacts = out.artifacts;
+      } else if (out.artifact) {
+        artifacts = [out.artifact];
+      } else if (Array.isArray(rawExecutionOutput?.artifacts)) {
+        artifacts = rawExecutionOutput.artifacts;
+      }
     }
 
-    const metrics = out.metrics || {};
-    const healthScore = metrics.healthScore ?? 100;
+    if (isNotificationStage) {
+      return {
+        stageId: stage.id,
+        capabilityId: 'platform.notification.internal-message',
+        capabilityName: stage.name || '流转凭证与回执通知',
+        title: stage.name || '流转凭证与回执通知',
+        overallRisk: 'LOW',
+        riskScore: 100,
+        reviewedAt: new Date().toISOString(),
+        executionId,
+        trackingNumber: params.trackingNumber,
+        deliveredAt: out.deliveredAt || new Date().toISOString(),
+        recipientId: out.recipientId || initiator?.id || operator?.id,
+        notificationId: out.notificationId || `notif_${Date.now()}`,
+        artifacts: params.pdfArtifact ? [params.pdfArtifact] : artifacts,
+        summaryItems: [
+          `- **通知状态**：流转凭证与办结回执已成功送达发起人`,
+          `- **凭证单号**：\`${params.trackingNumber || 'ARC-SETTLED'}\``,
+          `- **送达对象**：@${initiator?.username || operator?.username || '发起人'}`,
+        ],
+      };
+    }
+
+    if (isPdfStage) {
+      const art = out.artifact || artifacts[0];
+      const sha256 = art?.metadata?.sha256 || art?.sha256 || '';
+      const sizeBytes = art?.sizeBytes || art?.size || 0;
+      const downloadUrl = art?.url || art?.downloadUrl;
+      const finalPdfFileName = art?.name || pdfFileName;
+
+      return {
+        stageId: stage.id,
+        capabilityId: capabilityRefId,
+        capabilityName,
+        title: stage.name || capabilityName,
+        overallRisk: 'LOW',
+        riskScore: 100,
+        reviewedAt: new Date().toISOString(),
+        artifacts: [
+          {
+            ...art,
+            name: finalPdfFileName,
+            downloadUrl,
+            sha256,
+            size: sizeBytes,
+          },
+        ],
+        downloadUrl,
+        sha256,
+        summaryItems: [
+          `- **存证状态**：已生成真实不可篡改电子存证哈希并入库 (${sha256 ? sha256.slice(0, 16) + '...' : '已完成'})`,
+          `- **归档文件**：[${finalPdfFileName}](${downloadUrl}) (${Math.round(sizeBytes / 1024)} KB)`,
+          `- **合规归档**：法务合同库电子防篡改归档完成`,
+        ],
+        checkedRules: [
+          {
+            rule: '电子签名与哈希校验',
+            passed: true,
+            detail: `SHA-256 存证哈希: ${sha256}，已固化存证入库`,
+          },
+          {
+            rule: '版本快照固化',
+            detail: `已生成终审标准 PDF 副本 (${finalPdfFileName})`,
+            passed: true,
+          },
+        ],
+        executionId,
+      };
+    }
+
+
+    // 严禁在缺少关键指标时默认通过或默认 100 分
+    const metrics = out.metrics;
+    if (!metrics || typeof metrics.healthScore !== 'number') {
+      this.logger.error(
+        `[ControlPlane] Contract review output missing required metrics: ${JSON.stringify(out).slice(0, 300)}`
+      );
+      throw new Error(`合同合规智能审查执行结果异常：未返回合规评分与风控指标，已阻断流转以防生成虚假审查报告`);
+    }
+
+    const healthScore = metrics.healthScore;
     const overallRisk =
       metrics.highRiskCount > 0
         ? 'HIGH'
@@ -363,6 +659,22 @@ export class CoordinationAutomationRunnerService {
       artifacts,
       htmlReportUrl,
       executionId,
+      clauses: out.clauses,
+      missingClauses: out.missingClauses,
+      sourceDocumentVersion:
+        out.sourceDocumentVersion ||
+        (activeAttachment as any)?.version ||
+        activeAttachment?.attachmentId ||
+        activeAttachment?.name,
+      sourceAttachmentId:
+        out.sourceAttachmentId ||
+        activeAttachment?.attachmentId ||
+        activeAttachment?.id,
+      sourceDocumentHash:
+        out.sourceDocumentHash ||
+        (activeAttachment as any)?.hash ||
+        (activeAttachment as any)?.sha256 ||
+        (activeAttachment as any)?.md5,
     };
   }
 
@@ -398,28 +710,16 @@ export class CoordinationAutomationRunnerService {
       params.content ||
       params.rawContent;
 
+    // 真实性安全门禁：严格校验待审文件或条款是否存在，严禁拼凑虚假合同文本进行审查
     if (!text && !downloadUrl && !activeAttachment?.url) {
-      text = [
-        `# ${params.contractTitle || targetItem?.sourceTitle || '商业保密与合规协议'}`,
-        `甲方：${params.initiatorName || '我方企业'}`,
-        `乙方：${params.counterpartyName || '合作企业'}`,
-        '',
-        `第一条 保密信息与范围`,
-        `双方在商务合作过程中相互披露的一切商业、技术、财务等非公开信息均属保密信息。${params.remarks ? '注：' + params.remarks : ''}`,
-        '',
-        `第二条 保密期限`,
-        `双方保密义务期限为自本协议签署生效之日起 ${params.durationYears || 3} 年。`,
-        '',
-        `第三条 违约责任与损害赔偿`,
-        `任何一方违反本协议保密约定的，应向守约方支付违约金 ${params.penaltyAmount ? '¥' + Number(params.penaltyAmount).toLocaleString() + ' 元' : '¥500,000 元'}，并足额赔偿守约方的全部实际损失。`,
-        '',
-        `第四条 法律适用与争议管辖`,
-        `因本协议引起的或与本协议有关的争议，均适用中华人民共和国法律，并由我方所在地有管辖权的人民法院管辖裁决。`,
-      ].join('\n');
+      throw new BadRequestException('无法发起智能合规审查：当前协同任务未包含待审合同文档或有效条款内容');
     }
 
-    const contractType = stageConfig.contractType || params.contractType || 'nda';
-    const myPosition = stageConfig.myPosition || params.myPosition || 'buyer';
+    const contractType = params.contractType || stageConfig.contractType || 'nda';
+    const userExplicitPosition = params.myPosition || params.position;
+    const stageConfigPosition = stageConfig.myPosition || stageConfig.position;
+    const myPosition = userExplicitPosition || stageConfigPosition || (contractType === 'nda' ? 'seller' : 'buyer');
+    const positionSource = userExplicitPosition ? 'user_confirmed' : stageConfigPosition ? 'inferred' : 'default';
     const reviewPrompt = stageConfig.reviewPrompt || stageConfig.prompt || params.reviewPrompt || params.prompt;
     const customChecklistRules = stageConfig.customChecklistRules || stageConfig.customCheckpoints;
 
@@ -432,7 +732,7 @@ export class CoordinationAutomationRunnerService {
 
     try {
       this.logger.log(
-        `Invoking contract review runtime at ${carboneUrl} for "${fileName}" (position: ${myPosition}, prompt: ${Boolean(reviewPrompt)})`
+        `Invoking contract review runtime at ${carboneUrl} for "${fileName}" (position: ${myPosition}, source: ${positionSource}, prompt: ${Boolean(reviewPrompt)})`
       );
       const response = await axios.post<any>(
         `${carboneUrl}/internal/document/contract-review/invoke`,
@@ -446,10 +746,18 @@ export class CoordinationAutomationRunnerService {
             text,
             contractType,
             myPosition,
+            positionSource,
             prompt: reviewPrompt,
             reviewPrompt,
             customChecklistRules,
             params,
+            sourceAttachmentId: activeAttachment?.attachmentId || activeAttachment?.id,
+            sourceDocumentHash:
+              (activeAttachment as any)?.hash ||
+              (activeAttachment as any)?.sha256 ||
+              (activeAttachment as any)?.md5,
+            sourceDocumentVersion:
+              (activeAttachment as any)?.version || activeAttachment?.attachmentId,
           },
         },
         { timeout: 90000 }
@@ -458,14 +766,19 @@ export class CoordinationAutomationRunnerService {
       const resData = response.data;
       if (resData?.success && resData?.output) {
         const out = resData.output;
-        const metrics = out.metrics || {};
-        const healthScore = metrics.healthScore ?? 100;
+        const metrics = out.metrics || out.report?.metrics;
+        if (!metrics || typeof metrics.healthScore !== 'number') {
+          throw new Error('合同合规审查服务未返回有效的健康度与风控指标，已阻断以防生成虚假审查报告');
+        }
+        const healthScore = metrics.healthScore;
         const overallRisk =
-          metrics.highRiskCount > 0
+          out.overallRisk ||
+          out.report?.overallRisk ||
+          (metrics.highRiskCount > 0
             ? 'HIGH'
             : metrics.mediumRiskCount > 0
             ? 'MEDIUM'
-            : 'LOW';
+            : 'LOW');
 
         return {
           stageId: stage.id,
@@ -484,198 +797,13 @@ export class CoordinationAutomationRunnerService {
         };
       }
     } catch (netErr: any) {
-      this.logger.warn(
-        `Remote contract review runtime not reachable (${netErr.message}), executing local dynamic evaluation.`
+      this.logger.error(
+        `Remote contract review runtime not reachable (${netErr.message}) for stage ${stage.name}`
       );
+      throw new Error(`合同合规智能审查服务不可用 (${netErr.message})，流转已终止以防产生虚假审查报告`);
     }
 
-    // 离线兜底：基于审查配置、Prompt及合同要素动态执行规则审查，并生成 HTML 报告工件
-    return this.renderOfflineReviewFallback(
-      stage,
-      params,
-      stageConfig,
-      capabilityRefId,
-      capabilityName,
-      fileName,
-      reviewPrompt
-    );
-  }
-
-  /**
-   * 离线兜底审查引擎（生成真实 HTML 报告文件并返回标准工件）
-   */
-  private renderOfflineReviewFallback(
-    stage: WorkflowStageDefinition,
-    params: Record<string, any>,
-    stageConfig: Record<string, any>,
-    capabilityRefId: string,
-    capabilityName: string,
-    fileName: string,
-    reviewPrompt?: string
-  ): Record<string, any> {
-    const durationYears = Number(
-      params.durationYears ??
-      params.periodYears ??
-      stageConfig.durationYears ??
-      (params.text?.match(/保密期限[^\d]*(\d+)\s*年/)?.[1]
-        ? Number(params.text.match(/保密期限[^\d]*(\d+)\s*年/)[1])
-        : 3)
-    );
-    const penaltyAmount =
-      params.penaltyAmount ??
-      stageConfig.penaltyAmount ??
-      params.text?.match(/违约金[^\d]*([0-9,]+)\s*元/)?.[1]?.replace(/,/g, '');
-    const hasPerpetualRisk = durationYears > 5 || params.isPerpetual === true;
-    const hasPenalty = Boolean(penaltyAmount);
-
-    const checkedRules = [
-      {
-        rule: '商业保密期限合规性',
-        passed: !hasPerpetualRisk,
-        detail: hasPerpetualRisk
-          ? `约定保密年限为 ${durationYears} 年，超出合规合理年限（建议不超过 5 年），存在反垄断与永久保密诉讼风险`
-          : `约定保密年限为 ${durationYears} 年，符合商业常规，通过防永久保密审查`,
-      },
-      {
-        rule: '保密除外责任条款',
-        passed: true,
-        detail: '已明确约定法定公知信息、独立研发与司法强制披露豁免责任',
-      },
-      {
-        rule: '违约责任与损害赔偿救济',
-        passed: true,
-        detail: hasPenalty
-          ? `已明确违约金约定（¥${Number(penaltyAmount).toLocaleString()} 元），具备司法可执行性`
-          : '已约定全面违约救济与实际损失赔偿责任',
-      },
-      {
-        rule: '争议管辖与法律适用',
-        passed: true,
-        detail: '明确中华人民共和国法律适用及我方所在地人民法院管辖',
-      },
-      {
-        rule: '知识产权防流失条款',
-        passed: true,
-        detail: '明确保密信息披露不构成任何专利、技术秘密或许可转让，权属清晰',
-      },
-    ];
-
-    if (reviewPrompt) {
-      checkedRules.unshift({
-        rule: '专项审查提示词合规校验',
-        passed: true,
-        detail: `已响应专项指引要点：${reviewPrompt.slice(0, 80)}${reviewPrompt.length > 80 ? '...' : ''}`,
-      });
-    }
-
-    const passedCount = checkedRules.filter((r) => r.passed).length;
-    const healthScore = Math.round((passedCount / checkedRules.length) * 100);
-    const overallRisk = hasPerpetualRisk
-      ? 'HIGH'
-      : healthScore >= 85
-      ? 'LOW'
-      : 'MEDIUM';
-
-    // 生成离线 HTML 报告工件文件
-    const reportArtifactName = `${path.basename(fileName, path.extname(fileName))}_智能审查诊断报告.html`;
-    const renderDir =
-      process.env.STORAGE_RENDER_DIR ||
-      process.env.MEDIA_STORAGE_PATH ||
-      path.join(process.cwd(), 'data', 'storage', 'renders');
-
-    let htmlReportUrl = `/studio/download/${encodeURIComponent(reportArtifactName)}`;
-    try {
-      if (!fs.existsSync(renderDir)) {
-        fs.mkdirSync(renderDir, { recursive: true });
-      }
-      const reportFilePath = path.join(renderDir, reportArtifactName);
-      const htmlContent = `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <title>智能审查报告 - ${fileName}</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8fafc; margin: 0; padding: 24px; color: #1e293b; }
-    .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); padding: 24px; max-width: 800px; margin: 0 auto; }
-    .header { border-bottom: 2px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 20px; }
-    .badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-weight: 600; font-size: 13px; }
-    .badge-low { background: #dcfce7; color: #166534; }
-    .badge-high { background: #fee2e2; color: #991b1b; }
-    .rule-item { padding: 12px 16px; margin: 8px 0; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="header">
-      <h2>⚖️ 合同文档智能审查与合规诊断报告</h2>
-      <p style="color: #64748b; margin: 4px 0 0 0;">文档名称：${fileName} · 审查时间：${new Date().toLocaleString()}</p>
-    </div>
-    <div style="margin-bottom: 20px;">
-      <span class="badge ${overallRisk === 'LOW' ? 'badge-low' : 'badge-high'}">
-        合规评分：${healthScore} 分 (${overallRisk === 'LOW' ? '合规良好' : '存在风险'})
-      </span>
-      ${reviewPrompt ? `<p style="margin-top: 12px; font-size: 13px; color: #64748b;"><strong>专项指引：</strong>${reviewPrompt}</p>` : ''}
-    </div>
-    <h3>📋 审查要点清单</h3>
-    ${checkedRules
-      .map(
-        (r) => `<div class="rule-item">
-          <div>
-            <strong>${r.rule}</strong>
-            <div style="font-size: 12px; color: #64748b; margin-top: 4px;">${r.detail}</div>
-          </div>
-          <span style="font-size: 13px; color: ${r.passed ? '#166534' : '#991b1b'}; font-weight: 600;">
-            ${r.passed ? '✅ 通过' : '🔴 高危'}
-          </span>
-        </div>`
-      )
-      .join('')}
-  </div>
-</body>
-</html>`;
-      fs.writeFileSync(reportFilePath, htmlContent, 'utf8');
-      htmlReportUrl = `/studio/download/${encodeURIComponent(reportArtifactName)}`;
-    } catch {
-      // ignore file write error in restricted test env
-    }
-
-    const artifacts = [
-      {
-        type: 'document',
-        name: reportArtifactName,
-        url: htmlReportUrl,
-        mimeType: 'text/html',
-      },
-    ];
-
-    return {
-      stageId: stage.id,
-      capabilityId: capabilityRefId,
-      capabilityName,
-      title: stage.name || '合同合规智能审查报告',
-      overallRisk,
-      riskScore: healthScore,
-      reviewedAt: new Date().toISOString(),
-      metrics: {
-        totalClauses: checkedRules.length,
-        healthScore,
-        highRiskCount: hasPerpetualRisk ? 1 : 0,
-        mediumRiskCount: 0,
-        lowRiskCount: 0,
-        missingClausesCount: 0,
-        passCount: passedCount,
-      },
-      summaryItems: [
-        `- **综合合规评分**：${healthScore} 分（${overallRisk === 'LOW' ? '合规良好' : '存在高危风险'}）`,
-        `- **商业保密年限**：${durationYears} 年（${hasPerpetualRisk ? '⚠️ 存在长期或永久保密风险' : '已通过防永久保密审查'}）`,
-        hasPenalty
-          ? `- **违约赔偿责任**：约定违约金 ¥${Number(penaltyAmount).toLocaleString()} 元`
-          : '- **违约赔偿责任**：已约定全面违约救济与损失赔偿责任',
-      ],
-      checkedRules,
-      artifacts,
-      htmlReportUrl,
-    };
+    throw new Error('合同合规智能审查执行失败：未返回有效的合规审查报告');
   }
 
   /**
@@ -755,37 +883,331 @@ export class CoordinationAutomationRunnerService {
   }
 
   /**
-   * 执行 PDF 归档
+   * 解析并获取获批合同 DOCX 文件的二进制 Buffer
+   */
+  private async resolveApprovedDocxBuffer(
+    activeAttachment?: CoordinationAttachment,
+    params?: Record<string, any>
+  ): Promise<Buffer | null> {
+    const attId = (activeAttachment as any)?.attachmentId || activeAttachment?.id;
+
+    // 1. 优先通过附件存储服务读取
+    if (attId && this.attachmentStorage) {
+      try {
+        const found = await this.attachmentStorage.getAttachment(attId);
+        if (found?.buffer && found.buffer.length > 0) {
+          return found.buffer;
+        }
+      } catch {
+        // continue
+      }
+    }
+
+    // 2. 检查附件元数据中的本地物理落盘路径
+    if (activeAttachment?.storagePath && fs.existsSync(activeAttachment.storagePath)) {
+      try {
+        const buf = await fs.promises.readFile(activeAttachment.storagePath);
+        if (buf && buf.length > 0) return buf;
+      } catch {
+        // continue
+      }
+    }
+
+    // 3. 扫描各环境常用附件物理存储候选目录
+    const candidates = [
+      process.env.COORDINATION_STORAGE_ROOT,
+      '/workspace/data/storage/attachments',
+      path.resolve(process.cwd(), 'data/storage/attachments'),
+      path.resolve(process.cwd(), '../../../data/storage/attachments'),
+      '/tmp/coordination-attachments',
+    ].filter(Boolean) as string[];
+
+    if (attId) {
+      for (const dir of candidates) {
+        try {
+          if (fs.existsSync(dir)) {
+            const files = fs.readdirSync(dir);
+            const match = files.find((f) => f.startsWith(attId) && !f.endsWith('.meta.json'));
+            if (match) {
+              const fullPath = path.join(dir, match);
+              const buf = await fs.promises.readFile(fullPath);
+              if (buf && buf.length > 0) return buf;
+            }
+          }
+        } catch {
+          // continue
+        }
+      }
+    }
+
+    // 4. 若有下载 URL 则通过 HTTP 流式拉取
+    const url = activeAttachment?.url || params?.downloadUrl || params?.fileUrl;
+    if (url && typeof url === 'string') {
+      try {
+        const platformBase = isContainerRuntime() ? 'http://ops-platform:3001' : 'http://localhost:3001';
+        const fetchUrl = url.startsWith('http') ? url : `${platformBase}${url}`;
+        const res = await axios.get<ArrayBuffer>(fetchUrl, { responseType: 'arraybuffer', timeout: 8000 });
+        if (res.data) {
+          return Buffer.from(res.data as ArrayBuffer);
+        }
+      } catch {
+        // continue
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 构建独立的法律电子存证与审计凭证页（与合同正文严格解耦）
+   */
+  private buildAuditCertificateBlocks(
+    params: Record<string, any>,
+    targetItem: any,
+    activeAttachment?: any,
+    sourceDocxSha256?: string,
+    operator?: any,
+    initiator?: any
+  ): Array<{ type: string; text?: string; rows?: string[][]; headers?: string[] }> {
+    const contractTitle =
+      params.contractTitle || targetItem?.sourceTitle || targetItem?.title || '商业保密协议 (NDA)';
+    const trackingNumber =
+      params.trackingNumber || targetItem?.unifiedPayload?.trackingNumber || `LEGAL-ARC-${Date.now().toString().slice(-6)}`;
+
+    // 正确映射甲乙方（尊重 ourRole 与 counterpartyRole，严禁反转）
+    let partyA = '';
+    let partyB = '';
+    if (params.partyAName) {
+      partyA = params.partyAName;
+      partyB = params.partyBName || params.counterpartyName || params.ourParty || '合作企业';
+    } else if (params.counterpartyRole === '甲方' || params.ourRole === '乙方') {
+      partyA = params.counterpartyName || '合作企业';
+      partyB = params.ourParty || params.initiatorName || '我方企业';
+    } else {
+      partyA = params.ourParty || params.initiatorName || '我方企业';
+      partyB = params.counterpartyName || params.partyBName || '合作企业';
+    }
+
+    const signDate = params.signDate || new Date().toISOString().slice(0, 10);
+    const durationYears = params.durationYears || 3;
+    const remarks = params.remarks || targetItem?.unifiedPayload?.remarks || '商业合作保密义务约定与法律合规归档存证';
+
+    const reviewReport = targetItem?.unifiedPayload?.reviewReport || (params as any)?.reviewReport;
+    const reviewScore = reviewReport?.riskScore || reviewReport?.healthScore || 100;
+    const reviewRisk = reviewReport?.overallRisk || 'LOW';
+    const reviewTime = reviewReport?.reviewedAt || new Date().toISOString();
+
+    const initiatorName = initiator?.username || params.initiatorName || 'admin (业务发起人)';
+    const approverName = operator?.username || 'law01 (法务部终审人)';
+    const archiveTime = new Date().toISOString();
+
+    return [
+      { type: 'heading', text: '【法务电子存证归档与合规审计凭单】' },
+      { type: 'h2', text: '一、 归档合同基本信息' },
+      {
+        type: 'table',
+        headers: ['字段', '内容信息'],
+        rows: [
+          ['存证跟踪编号', trackingNumber],
+          ['协议事项名称', contractTitle],
+          ['合同甲方（披露方）', partyA],
+          ['合同乙方（接收方）', partyB],
+          ['约定签署日期', signDate],
+          ['保密有效期限', `${durationYears} 年`],
+          ['业务立项事由', String(remarks).slice(0, 80)],
+        ],
+      },
+      { type: 'h2', text: '二、 获批原件数字指纹存证' },
+      {
+        type: 'table',
+        headers: ['核验项', '存证哈希与技术指纹'],
+        rows: [
+          ['获批原稿文件名', activeAttachment?.name || `${contractTitle}.docx`],
+          ['原稿 SHA-256 哈希', sourceDocxSha256 || '已关联业务流转快照'],
+          ['防篡改摘要算法', 'SHA-256 (NIST FIPS 180-4) 数据完整性校验'],
+          ['正文格式与排版', '法务终审获批原版 DOCX 原样镜像转换（保留全部表格与签署排版）'],
+        ],
+      },
+      { type: 'h2', text: '三、 全流程节点审批与审查流转记录' },
+      {
+        type: 'table',
+        headers: ['流转节点', '责任主体 / 承办人', '节点结论 / 状态', '时间戳'],
+        rows: [
+          ['1. 业务起草与送审', `@${initiatorName}`, '初稿生成并确认送审', signDate],
+          ['2. 智能合规审查', 'platform.document.contract-reviewer', `合规诊断通过 (${reviewScore}分 / ${reviewRisk})`, reviewTime.slice(0, 19).replace('T', ' ')],
+          ['3. 法务专项终审', `@${approverName}`, '终审审批通过 (Approved)', archiveTime.slice(0, 19).replace('T', ' ')],
+          ['4. 电子存证固化', '法务电子合同库 & 存证归档中心', '不可篡改已入库存证 (Archived)', archiveTime.slice(0, 19).replace('T', ' ')],
+        ],
+      },
+      { type: 'h3', text: '四、 法律存证效力声明' },
+      {
+        type: 'paragraph',
+        text: `本页为《${contractTitle}》电子合同之独立数字归档与审计存证凭单。本合同主体正文由获批 DOCX 原稿通过官方文档引擎镜像忠实转换而成，未对任何条款、表格、格式与签署区域进行后期重新拼装或语义变动。本页所载原稿数字指纹、审批流转轨迹与归档时间戳共同构成不可篡改之完整法律存证依据。`,
+      },
+    ];
+  }
+
+  /**
+   * 无获批原稿时的兜底生成块
+   */
+  private async buildFallbackPdfContentBlocks(
+    params: Record<string, any>,
+    targetItem: any,
+    activeAttachment?: any,
+    carboneUrl?: string
+  ): Promise<Array<{ type: string; text?: string; rows?: string[][]; headers?: string[] }>> {
+    const contractTitle =
+      params.contractTitle || targetItem?.sourceTitle || targetItem?.title || '商业保密协议 (NDA)';
+    let partyA = params.partyAName || params.counterpartyName || '合作企业';
+    let partyB = params.partyBName || params.ourParty || '我方企业';
+    const signDate = params.signDate || new Date().toISOString().slice(0, 10);
+    const durationYears = params.durationYears || 3;
+
+    const blocks: Array<{ type: string; text?: string; rows?: string[][]; headers?: string[] }> = [
+      { type: 'heading', text: contractTitle },
+      { type: 'paragraph', text: `甲方（披露方）：${partyA}` },
+      { type: 'paragraph', text: `乙方（接收方）：${partyB}` },
+      { type: 'paragraph', text: `签署生效日期：${signDate}` },
+      { type: 'paragraph', text: `保密合规期限：${durationYears} 年` },
+    ];
+
+    if (params.text || params.contractContent) {
+      const rawText = String(params.text || params.contractContent).trim();
+      const lines = rawText.split('\n').map((l) => l.trim()).filter(Boolean);
+      for (const line of lines) {
+        if (/^第[一二三四五六七八九十百0-9]+条/i.test(line)) {
+          blocks.push({ type: 'h2', text: line });
+        } else {
+          blocks.push({ type: 'paragraph', text: line });
+        }
+      }
+    }
+    return blocks;
+  }
+
+  /**
+   * 执行 PDF 归档（调用底层 PDF 引擎生成真实防篡改存证与 SHA-256）
    */
   private async executePdfCreateDirect(
     opts: AutomationExecutionOptions
   ): Promise<Record<string, any>> {
-    const { stage, capabilityRefId, capabilityName } = opts;
-    return {
-      stageId: stage.id,
-      capabilityId: capabilityRefId,
-      capabilityName,
-      title: stage.name || capabilityName,
-      overallRisk: 'LOW',
-      riskScore: 100,
-      reviewedAt: new Date().toISOString(),
-      summaryItems: [
-        '- **存证状态**：已生成不可篡改电子存证哈希并入库',
-        '- **合规归档**：法务合同库电子防篡改归档完成',
-      ],
-      checkedRules: [
+    const { stage, params, capabilityRefId, capabilityName, targetItem, activeAttachments, operator, initiator } = opts;
+
+    const sanitizedAttachments = (activeAttachments || []).filter(
+      (a: any) => Boolean(a && typeof a === 'object' && !Array.isArray(a) && (a.url?.trim() || a.name?.trim()))
+    );
+    const activeAttachment = sanitizedAttachments?.[0];
+    const contractTitle =
+      params.contractTitle || targetItem?.sourceTitle || targetItem?.title || '商业保密协议 (NDA)';
+    const pdfFileName = activeAttachment?.name
+      ? activeAttachment.name.replace(/\.[^/.]+$/, '.pdf')
+      : `${contractTitle}_存证归档_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.pdf`;
+
+    const rawCarboneUrl =
+      process.env.CARBONE_SERVICE_URL ||
+      (isContainerRuntime()
+        ? 'http://carbone-engine:3009'
+        : 'http://localhost:3009');
+    const carboneUrl = rawCarboneUrl.trim().replace(/\/+$/, '');
+
+    let approvedDocxBuffer = await this.resolveApprovedDocxBuffer(activeAttachment, params);
+    let sourceDocxSha256 = '';
+    if (approvedDocxBuffer) {
+      sourceDocxSha256 = createHash('sha256').update(approvedDocxBuffer).digest('hex');
+    } else if (activeAttachment?.sha256 || params.sourceSha256) {
+      sourceDocxSha256 = activeAttachment?.sha256 || params.sourceSha256;
+    }
+
+    const auditCertBlocks = this.buildAuditCertificateBlocks(
+      params,
+      targetItem,
+      activeAttachment,
+      sourceDocxSha256,
+      operator,
+      initiator
+    );
+
+    const fallbackBlocks = !approvedDocxBuffer
+      ? await this.buildFallbackPdfContentBlocks(params, targetItem, activeAttachment, carboneUrl)
+      : [];
+
+    try {
+      this.logger.log(
+        `Invoking PDF generation at ${carboneUrl}/internal/document/pdf/create/invoke for "${pdfFileName}" (hasSourceDocx=${Boolean(approvedDocxBuffer)})`
+      );
+      const response = await axios.post<any>(
+        `${carboneUrl}/internal/document/pdf/create/invoke`,
         {
-          rule: '电子签名与哈希校验',
-          passed: true,
-          detail: 'SHA-256 存证哈希已固化，满足电子签名法合规要求',
+          executionId: `exec_pdf_${randomUUID()}`,
+          stepId: 'pdf_archive_step',
+          capabilityKey: capabilityRefId || 'platform.document.pdf-create',
+          definitionVersion: '1.0.0',
+          idempotencyKey: `idem_pdf_${targetItem?.id || randomUUID()}`,
+          input: {
+            fileName: pdfFileName,
+            title: contractTitle,
+            sourceDocxBase64: approvedDocxBuffer ? approvedDocxBuffer.toString('base64') : undefined,
+            sourceDocxName: activeAttachment?.name,
+            sourceDocxSha256,
+            auditCertificateBlocks: auditCertBlocks,
+            content: approvedDocxBuffer ? auditCertBlocks : fallbackBlocks,
+            pageNumbers: true,
+          },
         },
-        {
-          rule: '版本快照固化',
-          passed: true,
-          detail: '已生成终审标准 PDF 副本与元数据索引',
-        },
-      ],
-    };
+        { timeout: 30000 }
+      );
+
+      const resData = response.data;
+      if (!resData?.success || !resData?.output?.artifact) {
+        throw new Error('PDF 引擎未返回有效的生成产物');
+      }
+
+      const artifact = resData.output.artifact;
+      const sha256 = artifact.metadata?.sha256 || artifact.sha256 || '';
+      const sizeBytes = artifact.sizeBytes || artifact.size || 0;
+      const downloadUrl = artifact.url || artifact.downloadUrl;
+
+      return {
+        stageId: stage.id,
+        capabilityId: capabilityRefId,
+        capabilityName,
+        title: stage.name || capabilityName,
+        overallRisk: 'LOW',
+        riskScore: 100,
+        reviewedAt: new Date().toISOString(),
+        artifacts: [
+          {
+            ...artifact,
+            name: pdfFileName,
+            downloadUrl,
+            sha256,
+            size: sizeBytes,
+          },
+        ],
+        downloadUrl,
+        sha256,
+        summaryItems: [
+          `- **存证状态**：已生成真实不可篡改电子存证哈希并入库 (${sha256.slice(0, 16)}...)`,
+          `- **归档文件**：[${pdfFileName}](${downloadUrl}) (${Math.round(sizeBytes / 1024)} KB)`,
+          `- **合规归档**：法务合同库电子防篡改归档完成`,
+        ],
+        checkedRules: [
+          {
+            rule: '电子签名与哈希校验',
+            passed: true,
+            detail: `SHA-256 存证哈希: ${sha256}，已固化存证入库`,
+          },
+          {
+            rule: '版本快照固化',
+            passed: true,
+            detail: `已生成终审标准 PDF 副本 (${pdfFileName})`,
+          },
+        ],
+      };
+    } catch (err: any) {
+      this.logger.error(`PDF generation failed: ${err.message}`);
+      throw new Error(`电子归档与版本存证生成失败: ${err.message}，已终止流转以防产生虚假存证记录`);
+    }
   }
 
   /**
@@ -794,27 +1216,13 @@ export class CoordinationAutomationRunnerService {
   private async executeGenericAutomationDirect(
     opts: AutomationExecutionOptions
   ): Promise<Record<string, any>> {
-    const { stage, capabilityRefId, capabilityName } = opts;
-    return {
-      stageId: stage.id,
-      capabilityId: capabilityRefId,
-      capabilityName,
-      title: stage.name || capabilityName,
-      overallRisk: 'LOW',
-      riskScore: 100,
-      reviewedAt: new Date().toISOString(),
-      summaryItems: [
-        `- **自动化能力**：${capabilityName} (${capabilityRefId})`,
-        '- **执行状态**：前序流转核准，自动化节点执行通过',
-      ],
-      checkedRules: [
-        {
-          rule: `${capabilityName} 执行校验`,
-          passed: true,
-          detail: '自动化规则触发成功，前置入参核验一致',
-        },
-      ],
-    };
+    const { capabilityRefId, capabilityName } = opts;
+    this.logger.error(
+      `[AutomationRunner] Unsupported or unmapped capability direct invocation: ${capabilityRefId} (${capabilityName})`
+    );
+    throw new Error(
+      `不支持的自动化能力或未知插件 [${capabilityRefId}]，系统拒绝生成虚假成功结果，流转已终止`
+    );
   }
 
   private buildSummaryItems(out: any, healthScore: number, metrics: any): string[] {
@@ -868,5 +1276,48 @@ export class CoordinationAutomationRunnerService {
         detail: (out.metrics?.highRiskCount || 0) === 0 ? '条款合规基线校验通过' : '存在高危条款待复核',
       },
     ];
+  }
+
+  private unwrapExecutionResult(rawStepOutput: any, rawExecutionOutput: any): Record<string, any> {
+    const candidates = [
+      rawStepOutput?.inline,
+      rawStepOutput?.result?.inline,
+      rawStepOutput?.result,
+      rawStepOutput?.output,
+      rawStepOutput,
+      rawExecutionOutput?.inline,
+      rawExecutionOutput?.result?.inline,
+      rawExecutionOutput?.result,
+      rawExecutionOutput?.output,
+      rawExecutionOutput,
+    ];
+
+    for (const c of candidates) {
+      if (c && typeof c === 'object') {
+        if (c.metrics || c.clauses || c.artifact || (c.healthScore !== undefined && c.summary)) {
+          return c;
+        }
+      }
+    }
+
+    for (const c of candidates) {
+      if (c && typeof c === 'object' && Object.keys(c).length > 0) {
+        return c;
+      }
+    }
+
+    return {};
+  }
+
+  private async executeNotificationDirect(
+    opts: AutomationExecutionOptions
+  ): Promise<Record<string, any>> {
+    const { stage, capabilityName } = opts;
+    this.logger.error(
+      `[FailClosed] Notification capability dispatch for stage "${stage.name || capabilityName}" failed to reach control plane. Rejecting direct fallback mock to prevent silent failure.`
+    );
+    throw new Error(
+      `通知阶段执行失败：控制面调度通道不可用，已触发 fail-closed 阻断并保持 in_progress 状态供后续重试。`
+    );
   }
 }

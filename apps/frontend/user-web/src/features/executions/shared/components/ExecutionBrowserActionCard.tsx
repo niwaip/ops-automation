@@ -63,13 +63,13 @@ const ExecutionBrowserActionCard: React.FC<ExecutionBrowserActionCardProps> = ({
   waitingInputSummary,
   requiredInputs,
   requiredInputGroups,
-  approveAndContinueLoading,
+  approveAndContinueLoading: _approveAndContinueLoading,
   approveLoading,
   rejectLoading,
   submitInputLoading,
   confirmTagLabel,
   labels,
-  onApproveAndContinue,
+  onApproveAndContinue: _onApproveAndContinue,
   onApprove,
   onReject,
   onSubmitInput,
@@ -100,16 +100,6 @@ const ExecutionBrowserActionCard: React.FC<ExecutionBrowserActionCardProps> = ({
               ) : null}
             </Space>
           ) : undefined
-        }
-        extraActions={
-          <Button
-            type="default"
-            icon={<CheckCircleOutlined />}
-            loading={approveAndContinueLoading}
-            onClick={onApproveAndContinue}
-          >
-            {labels.takeoverApproveAndContinue}
-          </Button>
         }
       />
     );

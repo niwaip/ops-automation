@@ -5,7 +5,12 @@ import { Button, Collapse, Descriptions, Tag, Typography } from 'antd';
 import {
   CommentOutlined,
   DownOutlined,
+  DownloadOutlined,
+  FileExcelFilled,
+  FilePdfFilled,
+  FileTextFilled,
   FileTextOutlined,
+  FileWordFilled,
   PaperClipOutlined,
   UpOutlined,
 } from '@ant-design/icons';
@@ -14,6 +19,8 @@ import { tryParseJsonValue } from '@/features/executions/shared/lib/common';
 import { beautifyText } from '@/features/executions/detail/lib/detailView';
 import { normalizeTabSeparatedTable } from '@chat-web/lib/tableNormalizer';
 import { HtmlPreviewBlock } from '@chat-web/components/HtmlPreviewBlock';
+import { parseCustomerFacingPayload, INTERNAL_NOISE_KEYS } from '@/features/executions/shared/lib/customerFacingPayload';
+import styles from '../../pages/ExecutionListPage.module.css';
 
 const { Text } = Typography;
 
@@ -38,10 +45,6 @@ const contentBlockStyle = {
   overflowWrap: 'anywhere',
 } as const;
 
-const MARKDOWN_FIELD_KEY =
-  /^(markdown_content|markdown|content|body|summary|result|text|prompt|description|query|input|output|.*(?:Markdown|Content|Body|Summary|Result|Text))$/i;
-const MARKDOWN_SYNTAX = /(^|\n)\s{0,3}(#{1,6}\s|[-*+]\s|\d+\.\s|>\s|```|\|.+\|)|\*\*[^*]+\*\*/m;
-
 const isHtmlPreviewBlock = (className?: string, codeText?: string) => {
   const match = /language-(\w+)/.exec(className || '');
   if (!match || match[1] !== 'html' || !codeText) return false;
@@ -55,63 +58,6 @@ const isHtmlPreviewBlock = (className?: string, codeText?: string) => {
     codeText.includes('diff-del')
   );
 };
-
-const INTERNAL_NOISE_KEYS = new Set([
-  'trace',
-  'backend',
-  'variables',
-  'stepResults',
-  'browserRunOutput',
-  'runtimeEvidence',
-  'executionPlanVersion',
-  'runtimeSessionId',
-  'requiresTakeover',
-  'capabilityId',
-  'publishedSkillId',
-  'capabilityVersion',
-  'releaseId',
-  'runtime',
-  'stepId',
-  'snapshot',
-  'rawResult',
-  'action',
-  'status',
-  'failedStepId',
-  'failedAction',
-  'takeoverReason',
-  'success',
-  'artifacts',
-  'degradedMode',
-  'degradeReason',
-  'pageFingerprint',
-  'readiness',
-  'phaseVariables',
-  'contentCandidate',
-  'contentQuality',
-  'errorCode',
-  'errorMessage',
-  'retryable',
-  'skillDraftId',
-  'exportArtifactId',
-  'recorderSessionId',
-  'runtimeExecutionId',
-  'previousResultRef',
-  'previousResultData',
-  'upstreamResult',
-  'upstreamContext',
-  'orchestrationContext',
-  'workflowContext',
-  'parentExecutionId',
-  'sourceExecutionId',
-  'fileBase64',
-  'fileBase64A',
-  'fileBase64B',
-  'base64',
-  'fileContent',
-  'fileData',
-  'rawFile',
-  'rawBase64',
-]);
 
 const isBase64String = (val: unknown): boolean =>
   typeof val === 'string' &&
@@ -144,8 +90,6 @@ const sanitizeTechnicalValue = (val: unknown): unknown => {
   return val;
 };
 
-const shouldRenderFieldAsMarkdown = (key: string, value: string): boolean =>
-  MARKDOWN_FIELD_KEY.test(key) || MARKDOWN_SYNTAX.test(value);
 
 export const ExpandableMarkdownContent: React.FC<{
   text: string;
@@ -621,6 +565,20 @@ const unwrapPayload = (raw: unknown): unknown => {
   return current;
 };
 
+const resolvePayloadDocIcon = (name?: string) => {
+  const ext = (name || '').split('.').pop()?.toLowerCase();
+  if (ext === 'doc' || ext === 'docx') {
+    return <FileWordFilled style={{ color: '#2563eb', fontSize: 20 }} />;
+  }
+  if (ext === 'pdf') {
+    return <FilePdfFilled style={{ color: '#ef4444', fontSize: 20 }} />;
+  }
+  if (ext === 'xls' || ext === 'xlsx' || ext === 'csv') {
+    return <FileExcelFilled style={{ color: '#16a34a', fontSize: 20 }} />;
+  }
+  return <FileTextFilled style={{ color: '#6366f1', fontSize: 20 }} />;
+};
+
 const ExecutionPayloadContent: React.FC<ExecutionPayloadContentProps> = ({
   value,
   emptyText = '暂无内容。',
@@ -641,7 +599,32 @@ const ExecutionPayloadContent: React.FC<ExecutionPayloadContentProps> = ({
     if (parsedValue.length > 0 && parsedValue.every(isArticleItem)) {
       return <ArticleList articles={parsedValue} />;
     }
-    return <JsonPreview value={parsedValue} />;
+    if (parsedValue.every((item) => typeof item === 'string' || typeof item === 'number')) {
+      return (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {parsedValue.map((item, idx) => (
+            <Tag key={idx}>{String(item)}</Tag>
+          ))}
+        </div>
+      );
+    }
+    return (
+      <Collapse
+        ghost
+        size="small"
+        items={[
+          {
+            key: 'array-data',
+            label: (
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                查看数据列表 ({parsedValue.length} 项)
+              </Text>
+            ),
+            children: <JsonPreview value={parsedValue} />,
+          },
+        ]}
+      />
+    );
   }
 
   const resultRecord =
@@ -650,7 +633,7 @@ const ExecutionPayloadContent: React.FC<ExecutionPayloadContentProps> = ({
       : undefined;
 
   if (!resultRecord) {
-    return <JsonPreview value={parsedValue} />;
+    return <Text type="secondary">{emptyText}</Text>;
   }
 
   // 1. Check if it's a single result field
@@ -666,148 +649,202 @@ const ExecutionPayloadContent: React.FC<ExecutionPayloadContentProps> = ({
 
   // 2. Check for deep extracted content (articles / text in stepResults or data.text)
   const deepContent = findDeepContent(resultRecord);
+  if (deepContent.articles && deepContent.articles.length > 0) {
+    return <ArticleList articles={deepContent.articles} />;
+  }
+  if (deepContent.text) {
+    return <ExpandableMarkdownContent text={deepContent.text} />;
+  }
 
-  // 3. Separate business entries and technical noise entries
-  const businessEntries: Array<[string, unknown]> = [];
-  const technicalEntries: Array<[string, unknown]> = [];
-
-  Object.entries(resultRecord).forEach(([key, val]) => {
-    if (key === 'articles' || key === 'items') {
-      return;
-    }
-    if (isBinaryOrNoiseKey(key, val)) {
-      technicalEntries.push([key, sanitizeTechnicalValue(val)]);
-    } else {
-      businessEntries.push([key, val]);
-    }
-  });
-
-  // Deduplicate redundant fileName when fileNameA/fileNameB are present
-  const filteredBusinessEntries = businessEntries.filter(([key, val]) => {
-    if (
-      key === 'fileName' &&
-      (resultRecord.fileNameA !== undefined || resultRecord.fileNameB !== undefined) &&
-      (val === resultRecord.fileNameA || val === resultRecord.fileNameB)
-    ) {
-      return false;
-    }
-    return true;
-  });
-
-  const markdownEntries = filteredBusinessEntries.filter(
-    (entry): entry is [string, string] =>
-      typeof entry[1] === 'string' &&
-      Boolean(entry[1].trim()) &&
-      shouldRenderFieldAsMarkdown(entry[0], entry[1])
-  );
-
-  const markdownKeys = new Set(markdownEntries.map(([k]) => k));
-  const remainingBusinessEntries = filteredBusinessEntries.filter(([k]) => !markdownKeys.has(k));
-
-  const hasPrimaryArticles = Boolean(deepContent.articles && deepContent.articles.length > 0);
-  const hasDeepText = Boolean(deepContent.text && markdownEntries.length === 0);
-  const hasMarkdownEntries = markdownEntries.length > 0;
-  const hasRemainingBusiness = remainingBusinessEntries.length > 0;
-
-  const hasPrimaryContent =
-    hasPrimaryArticles || hasDeepText || hasMarkdownEntries || hasRemainingBusiness;
-
-  if (hasPrimaryContent) {
-    const technicalRecord = Object.fromEntries(technicalEntries);
-    const hasTechnicalData = Object.keys(technicalRecord).length > 0;
-    const remainingBusinessRecord = Object.fromEntries(remainingBusinessEntries);
-
+  // 3. Customer-Facing Structured Business Presentation
+  const payloadModel = parseCustomerFacingPayload(resultRecord);
+  if (payloadModel.hasBusinessContent) {
     return (
-      <div style={{ display: 'grid', gap: 12 }}>
-        {hasPrimaryArticles && deepContent.articles ? (
-          <ArticleList articles={deepContent.articles} />
-        ) : null}
-
-        {hasDeepText && deepContent.text ? (
-          <ExpandableMarkdownContent text={deepContent.text} />
-        ) : null}
-
-        {markdownEntries.map(([key, text]) => (
-          <div key={key}>
-            {markdownEntries.length > 1 || hasRemainingBusiness ? (
-              <Text type="secondary" code style={{ display: 'inline-block', marginBottom: 6 }}>
-                {key}
-              </Text>
-            ) : null}
-            <ExpandableMarkdownContent text={text} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+        {/* Documents & Files */}
+        {payloadModel.documents.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {payloadModel.documents.map((doc, idx) => (
+              <div key={idx} className={styles['execution-input-doc-card']}>
+                <div className={styles['execution-input-doc-left']}>
+                  <span className={styles['execution-input-doc-icon']}>
+                    {resolvePayloadDocIcon(doc.name)}
+                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 2 }}>
+                    {doc.role && (
+                      <Text type="secondary" style={{ fontSize: 11, fontWeight: 500 }}>
+                        {doc.role}
+                      </Text>
+                    )}
+                    <Text strong className={styles['execution-input-doc-name']}>
+                      {doc.name}
+                    </Text>
+                  </div>
+                </div>
+                {doc.url && (
+                  <Button
+                    type="link"
+                    size="small"
+                    icon={<DownloadOutlined />}
+                    onClick={() => window.open(doc.url, '_blank')}
+                    style={{ flexShrink: 0 }}
+                  >
+                    下载原文件
+                  </Button>
+                )}
+              </div>
+            ))}
           </div>
-        ))}
+        )}
 
-        {hasRemainingBusiness ? (
-          isSimpleKeyValueObject(remainingBusinessRecord) ? (
-            renderSimpleKeyValueObject(remainingBusinessRecord)
-          ) : (
-            <JsonPreview value={remainingBusinessRecord} />
-          )
-        ) : null}
+        {/* Business Settings (立场、比对模式、单号等) */}
+        {payloadModel.settings.length > 0 && (
+          <div className={styles['execution-input-settings-row']}>
+            {payloadModel.settings.map((st, idx) => (
+              <div key={idx} className={styles['execution-input-setting-item']}>
+                <span className={styles['execution-input-setting-label']}>{st.label}：</span>
+                {st.color ? (
+                  <Tag color={st.color} bordered={false} style={{ margin: 0, fontSize: 12 }}>
+                    {st.value}
+                  </Tag>
+                ) : (
+                  <Text strong style={{ fontSize: 12 }}>
+                    {st.value}
+                  </Text>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
-        {hasTechnicalData ? (
+        {/* Review Comments (拟定批注意见) */}
+        {payloadModel.reviewComments.length > 0 && (
+          <div className={styles['execution-input-comments-card']}>
+            <div className={styles['execution-input-comments-header']}>
+              <CommentOutlined style={{ color: '#6366f1' }} />
+              <span>预置审查批注与修改要求 ({payloadModel.reviewComments.length} 条)</span>
+            </div>
+            <div className={styles['execution-input-comments-list']}>
+              {payloadModel.reviewComments.map((comm, idx) => (
+                <div key={idx} className={styles['execution-input-comment-item']}>
+                  <span className={styles['execution-input-comment-badge']}>#{idx + 1}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
+                    {comm.clauseTitle && (
+                      <Text type="secondary" style={{ fontSize: 11, fontWeight: 600 }}>
+                        {comm.clauseTitle}
+                      </Text>
+                    )}
+                    <Text style={{ fontSize: 12.5, lineHeight: 1.6, wordBreak: 'break-word' }}>
+                      {comm.text}
+                    </Text>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Primary text / user prompt */}
+        {payloadModel.primaryText && (
+          <div className={styles['execution-input-prompt-card']}>
+            <div className={styles['execution-input-prompt-header']}>
+              <Text strong style={{ fontSize: 13 }}>
+                用户诉求与指令要求
+              </Text>
+            </div>
+            <ExpandableMarkdownContent text={payloadModel.primaryText} />
+          </div>
+        )}
+
+        {/* Remaining business fields - collapsed by default */}
+        {payloadModel.remainingEntries.length > 0 && (
           <Collapse
             ghost
             size="small"
-            defaultActiveKey={[]}
             items={[
               {
-                key: 'technical-data',
+                key: 'other-params',
                 label: (
                   <Text type="secondary" style={{ fontSize: 12 }}>
-                    查看技术元数据与上游数据 ({Object.keys(technicalRecord).length} 项)
+                    查看其他配置与业务参数 ({payloadModel.remainingEntries.length} 项)
                   </Text>
                 ),
-                children: <JsonPreview value={technicalRecord} />,
+                children: (
+                  <div
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: 8,
+                      background: 'var(--bg-secondary)',
+                      border: '1px solid var(--border-color)',
+                    }}
+                  >
+                    <Descriptions size="small" column={{ xs: 1, sm: 1, md: 2 }}>
+                      {payloadModel.remainingEntries.map(({ key, label, value: entryVal }) => {
+                        const isBool = typeof entryVal === 'boolean';
+                        const isUrl =
+                          typeof entryVal === 'string' &&
+                          (entryVal.startsWith('http://') || entryVal.startsWith('https://'));
+                        const strVal =
+                          typeof entryVal === 'object' ? JSON.stringify(entryVal) : String(entryVal);
+
+                        return (
+                          <Descriptions.Item key={key} label={<Text strong>{label}</Text>}>
+                            {isBool ? (
+                              <Tag color={entryVal ? 'green' : 'default'}>{entryVal ? '是' : '否'}</Tag>
+                            ) : isUrl ? (
+                              <a href={entryVal as string} target="_blank" rel="noopener noreferrer">
+                                打开链接
+                              </a>
+                            ) : (
+                              <Text style={{ wordBreak: 'break-all', fontSize: 12.5 }}>{strVal}</Text>
+                            )}
+                          </Descriptions.Item>
+                        );
+                      })}
+                    </Descriptions>
+                  </div>
+                ),
               },
             ]}
           />
-        ) : null}
+        )}
+
+        {/* Technical debug payload - collapsed by default */}
+        <Collapse
+          ghost
+          size="small"
+          items={[
+            {
+              key: 'raw-debug',
+              label: (
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  查看技术调试参数 (JSON)
+                </Text>
+              ),
+              children: <JsonPreview value={parsedValue} />,
+            },
+          ]}
+        />
       </div>
     );
   }
 
-  // 4. If technical/upstream entries exist without primary business content
-  if (technicalEntries.length > 0) {
-    const technicalRecord = Object.fromEntries(technicalEntries);
-    return (
-      <Collapse
-        ghost
-        size="small"
-        defaultActiveKey={[]}
-        items={[
-          {
-            key: 'technical-data',
-            label: (
-              <Text type="secondary" style={{ fontSize: 13 }}>
-                查看上游输入与技术元数据 ({Object.keys(technicalRecord).length} 项)
-              </Text>
-            ),
-            children: <JsonPreview value={technicalRecord} />,
-          },
-        ]}
-      />
-    );
-  }
-
-  // 5. Fallback: if it's a simple key-value object (like { startUrl: '...' })
+  // 4. Fallback: if it's a simple key-value object
   if (isSimpleKeyValueObject(resultRecord)) {
     const rendered = renderSimpleKeyValueObject(resultRecord);
     if (rendered) return rendered;
   }
 
-  // 6. Complex JSON fallback - collapse by default
+  // 5. Complex JSON fallback - collapsed by default
   return (
     <Collapse
       ghost
       size="small"
-      defaultActiveKey={[]}
       items={[
         {
           key: 'raw-json',
           label: (
-            <Text type="secondary" style={{ fontSize: 13 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>
               查看原始数据
             </Text>
           ),

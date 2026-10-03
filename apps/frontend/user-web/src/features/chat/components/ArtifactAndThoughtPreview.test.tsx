@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { HtmlPreviewBlock } from '@chat-web/components/HtmlPreviewBlock';
+import { MarkdownPreviewBlock } from '@chat-web/components/MarkdownPreviewBlock';
 import ThoughtProcessPanel from '@chat-web/components/ThoughtProcessPanel';
 
 describe('HtmlPreviewBlock - Collapsed by Default', () => {
@@ -61,6 +62,34 @@ describe('HtmlPreviewBlock - Collapsed by Default', () => {
     );
     // 生成完成后才展示文件规格大小
     expect(finishedHtml).toContain('KB');
+  });
+});
+
+describe('MarkdownPreviewBlock - Collapsed by Default', () => {
+  it('does NOT render markdown body content by default', () => {
+    const html = renderToStaticMarkup(
+      <MarkdownPreviewBlock
+        content="# 详细安装教程\n\n这是正文内容，绝不能默认泄露在聊天区！"
+        fileName="DeepSeek-Harness-Guide.md"
+      />
+    );
+    // 默认折叠：不显示正文
+    expect(html).not.toContain('这是正文内容');
+    // 默认展示展开操作按钮与文件名
+    expect(html).toContain('展开在线预览');
+    expect(html).toContain('DeepSeek-Harness-Guide.md');
+  });
+
+  it('renders markdown body content when defaultExpanded is explicitly true', () => {
+    const html = renderToStaticMarkup(
+      <MarkdownPreviewBlock
+        content="# 详细安装教程\n\n这是正文内容"
+        fileName="DeepSeek-Harness-Guide.md"
+        defaultExpanded={true}
+      />
+    );
+    expect(html).toContain('这是正文内容');
+    expect(html).toContain('收起预览');
   });
 });
 

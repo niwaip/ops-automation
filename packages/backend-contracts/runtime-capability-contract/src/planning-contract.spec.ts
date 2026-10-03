@@ -74,4 +74,29 @@ describe('planning capability contract', () => {
       }).params
     ).toEqual({ location: 'Shanghai' });
   });
+
+  it('does not allow generic action verbs like 查看 to hijack unrelated requests', () => {
+    const emailCapability = {
+      id: 'platform.email.messages',
+      name: '内置邮件读取与搜索',
+      aliases: ['查看 邮件', '读取 邮件'],
+      triggerKeywords: ['查邮件', '读邮件', '查看邮件', '搜索邮件'],
+    };
+    const docExtractorCapability = {
+      id: 'platform.document.pdf-content-extractor',
+      name: '内置文档内容提取',
+      triggerKeywords: ['提取文档内容', '查看合同内容', '读取文档'],
+    };
+
+    // '查看合同内容' should NEVER match email skill even if email had aliases with '查看'
+    const emailMatch = matchDeterministicRoutingCapability('查看合同内容', [emailCapability]);
+    expect(emailMatch).toBeNull();
+
+    // '查看合同内容' should match document extractor capability
+    const docMatch = matchDeterministicRoutingCapability('查看合同内容', [
+      emailCapability,
+      docExtractorCapability,
+    ]);
+    expect(docMatch?.capability.id).toBe('platform.document.pdf-content-extractor');
+  });
 });

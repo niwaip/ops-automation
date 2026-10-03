@@ -3,6 +3,7 @@ import {
   createBuiltinRoutingPolicySnapshot,
   extractTerminalActions,
   hasRoutingSignal,
+  stripSystemContext,
 } from '../routing/routing-policy.matcher';
 import { RoutingPolicyService } from '../routing/routing-policy.service';
 
@@ -45,40 +46,71 @@ export class DeterministicRecipeMatcherService {
     context?: { hasPreviousResult?: boolean }
   ): MatchedRecipe | null {
     const policy = this.routingPolicy?.getSnapshot() || createBuiltinRoutingPolicySnapshot();
-    const hasSearch = hasRoutingSignal(userRequest, 'search', policy);
-    const hasSummarize = hasRoutingSignal(userRequest, 'summarize', policy);
-    const hasProcessing = hasRoutingSignal(userRequest, 'processing', policy);
-    const hasGeneration = hasRoutingSignal(userRequest, 'generation', policy);
+    const userUtterance = stripSystemContext(userRequest) || userRequest;
+    const hasSystemContext = /\[系统上下文：/i.test(userRequest);
+    const hasAttachedDocument =
+      hasSystemContext && /(?:附件|文档|文件|pdf|docx?|pptx?|contract)/i.test(userRequest);
+    const hasAttachedContract =
+      hasSystemContext && /(?:contract|合同|协议)/i.test(userRequest);
+
+    const hasSearch = hasRoutingSignal(userUtterance, 'search', policy);
+    const hasSummarize = hasRoutingSignal(userUtterance, 'summarize', policy);
+    const hasProcessing = hasRoutingSignal(userUtterance, 'processing', policy);
+    const hasGeneration = hasRoutingSignal(userUtterance, 'generation', policy);
     const isExplicitFileExport =
       /(?:生成|输出|导出|保存|写入|创建)\s*(?:为|成)?\s*(?:markdown|md|文档|文件|.*\.md)|\b(?:markdown|md)\s*(?:文件|交付件|文档)|\.md\b/i.test(
-        userRequest
+        userUtterance
       );
     const isJustFormatConstraint =
-      /(?:用|以|按|按照)?\s*markdown\s*格式(?:总结|回复|输出|回答|提炼|概括)?/i.test(userRequest) &&
-      !/(?:生成|导出|保存|写入)\s*(?:为|成)?\s*.*\.md|\.md\b/i.test(userRequest);
+      /(?:用|以|按|按照)?\s*markdown\s*格式(?:总结|回复|输出|回答|提炼|概括)?/i.test(userUtterance) &&
+      !/(?:生成|导出|保存|写入)\s*(?:为|成)?\s*.*\.md|\.md\b/i.test(userUtterance);
     const hasMarkdownFile = isExplicitFileExport && !isJustFormatConstraint;
     const hasMarkdown = hasMarkdownFile;
     const hasPdfExport =
-      (hasRoutingSignal(userRequest, 'artifact', policy) || /pdf/i.test(userRequest)) &&
-      /生成\s*pdf|输出\s*pdf|导出\s*pdf|create\s*pdf|制作\s*pdf/i.test(userRequest);
-    const hasPdfSplit = /拆分|拆页|分割|抽页|split/i.test(userRequest);
-    const hasPdfMerge = /合并|拼接|merge/i.test(userRequest);
+      (hasRoutingSignal(userUtterance, 'artifact', policy) || /pdf/i.test(userUtterance)) &&
+      /生成\s*pdf|输出\s*pdf|导出\s*pdf|create\s*pdf|制作\s*pdf/i.test(userUtterance);
+    const hasPdfSplit = /拆分|拆页|分割|抽页|split/i.test(userUtterance);
+    const hasPdfMerge = /合并|拼接|merge/i.test(userUtterance);
     const hasContractCompare =
-      /(?:比对|对比|比较|diff|差异|变更点|红线)/i.test(userRequest) &&
-      /(?:合同|协议|文档|文件|条款|原版|修改版|附件|材料|版本|pdf|docx?)/i.test(userRequest);
+      /(?:比对|对比|比较|diff|差异|变更点|红线)/i.test(userUtterance) &&
+      (/(?:合同|协议|条款|文档|文件|附件|材料|版本|pdf|docx?)/i.test(userUtterance) ||
+        hasAttachedDocument);
     const isNdaDraftIntent =
-      /(?:保密|nda)/i.test(userRequest) &&
-      /(?:签订|起草|生成|撰写|制作|拟定|我们是(?:甲方|乙方))/i.test(userRequest);
+      /(?:保密|nda)/i.test(userUtterance) &&
+      /(?:签订|起草|生成|撰写|制作|拟定|我们是(?:甲方|乙方))/i.test(userUtterance);
+
+    // 合同审查判定：必须包含明确的审查/审核/风控/合规诊断意图，不能单凭泛化的“分析”或“查看”触发重型审查
+    const hasExplicitReviewVerb =
+      /(?:审查|审核|排查|风控|合规|诊断|法务|风险评估|风险排查|合规分析|风险分析)/i.test(
+        userUtterance
+      );
+    const isExplicitViewOrExtract =
+      /(?:查看|查阅|读取|提取|显示|浏览|阅读|正文)/i.test(userUtterance) &&
+      !/(?:审查|审核|风控|合规|诊断|风险|法务)/i.test(userUtterance);
+    const hasContractTarget =
+      /(?:合同|协议|条款)/i.test(userUtterance) ||
+      (hasAttachedContract && /(?:审查|审核|排查|风控|合规|诊断)/i.test(userUtterance));
     const hasContractReview =
       !hasContractCompare &&
       !isNdaDraftIntent &&
-      /(?:审查|审核|排查|风控|合规|诊断|风险|评估|分析)/i.test(userRequest) &&
-      /(?:合同|协议|条款|文档|文件|附件|材料|版本|pdf|docx?)/i.test(userRequest);
-    const hasWeb = hasRoutingSignal(userRequest, 'webSource', policy);
-    const requestWithoutFileExport = userRequest.replace(
+      !isExplicitViewOrExtract &&
+      hasExplicitReviewVerb &&
+      hasContractTarget;
+
+    const hasWeb = hasRoutingSignal(userUtterance, 'webSource', policy);
+    const requestWithoutFileExport = userUtterance.replace(
       /(?:生成|输出|导出|保存|写入|创建)\s*(?:为|成)?\s*(?:markdown|md|文档|文件|.*\.md)|\b(?:markdown|md)\s*(?:文件|交付件|文档)|\.md\b/gi,
       ''
     );
+    const isDocumentView =
+      /(?:查看|查阅|读取|提取|浏览|阅读)\s*(?:文档|文件|合同|协议|附件|内容|正文)/i.test(
+        userUtterance
+      ) ||
+      ((hasAttachedDocument ||
+        /\.(?:pdf|docx?|pptx?|txt)\b/i.test(requestWithoutFileExport)) &&
+        /(?:查看|查阅|读取|提取|浏览|阅读)/i.test(userUtterance));
+    const effectiveHasSearch = hasSearch && !isDocumentView;
+
     const hasDocumentExtract =
       !hasPdfExport &&
       !hasPdfSplit &&
@@ -86,19 +118,22 @@ export class DeterministicRecipeMatcherService {
       !hasContractCompare &&
       !hasContractReview &&
       !hasWeb &&
-      !hasSearch &&
-      hasRoutingSignal(requestWithoutFileExport, 'documentSource', policy);
-    const hasUncoveredAction = hasRoutingSignal(userRequest, 'uncoveredAction', policy);
-    const terminalActions = extractTerminalActions(userRequest, policy);
+      !effectiveHasSearch &&
+      (hasRoutingSignal(requestWithoutFileExport, 'documentSource', policy) ||
+        hasAttachedDocument ||
+        isDocumentView ||
+        /\.(?:pdf|docx?|pptx?|txt)\b/i.test(requestWithoutFileExport));
+    const hasUncoveredAction = hasRoutingSignal(userUtterance, 'uncoveredAction', policy);
+    const terminalActions = extractTerminalActions(userUtterance, policy);
     const hasTerminalNotify = terminalActions.some((a) => ['bark', 'email', 'sms'].includes(a));
     const hasNotifyAction =
       hasTerminalNotify ||
-      (hasUncoveredAction && /(?:推送|通知|发送|发给|发信|bark)/i.test(userRequest));
+      (hasUncoveredAction && /(?:推送|通知|发送|发给|发信|bark)/i.test(userUtterance));
 
     // 搜索/查询 + 总结 + 输出 Markdown 文件
-    if (hasSearch && hasSummarize && hasMarkdown) {
+    if (effectiveHasSearch && hasSummarize && hasMarkdown) {
       this.logger.log(
-        `Matched Recipe: search_summarize_write_markdown for request: "${userRequest}"`
+        `Matched Recipe: search_summarize_write_markdown for request: "${userUtterance}"`
       );
       return {
         recipeName: 'search_summarize_write_markdown',
@@ -120,8 +155,8 @@ export class DeterministicRecipeMatcherService {
     }
 
     // 搜索/查询 + 总结 + 通知/推送
-    if (hasSearch && hasSummarize && hasNotifyAction) {
-      this.logger.log(`Matched Recipe: search_summarize_notify for request: "${userRequest}"`);
+    if (effectiveHasSearch && hasSummarize && hasNotifyAction) {
+      this.logger.log(`Matched Recipe: search_summarize_notify for request: "${userUtterance}"`);
       return {
         recipeName: 'search_summarize_notify',
         objective: userRequest,
@@ -142,8 +177,8 @@ export class DeterministicRecipeMatcherService {
     }
 
     // 搜索/查询 + 通知/推送 (如 天气查询 -> Bark推送)
-    if (hasSearch && hasNotifyAction && !hasSummarize) {
-      this.logger.log(`Matched Recipe: search_then_notify for request: "${userRequest}"`);
+    if (effectiveHasSearch && hasNotifyAction && !hasSummarize) {
+      this.logger.log(`Matched Recipe: search_then_notify for request: "${userUtterance}"`);
       return {
         recipeName: 'search_then_notify',
         objective: userRequest,
@@ -158,7 +193,7 @@ export class DeterministicRecipeMatcherService {
 
     // 网页抓取 + 总结 + 通知/推送
     if (hasWeb && hasSummarize && hasNotifyAction) {
-      this.logger.log(`Matched Recipe: web_extract_summarize_notify for request: "${userRequest}"`);
+      this.logger.log(`Matched Recipe: web_extract_summarize_notify for request: "${userUtterance}"`);
       return {
         recipeName: 'web_extract_summarize_notify',
         objective: userRequest,
@@ -180,7 +215,7 @@ export class DeterministicRecipeMatcherService {
 
     // 网页抓取 + 通知/推送
     if (hasWeb && hasNotifyAction && !hasSummarize) {
-      this.logger.log(`Matched Recipe: web_extract_then_notify for request: "${userRequest}"`);
+      this.logger.log(`Matched Recipe: web_extract_then_notify for request: "${userUtterance}"`);
       return {
         recipeName: 'web_extract_then_notify',
         objective: userRequest,
@@ -197,7 +232,7 @@ export class DeterministicRecipeMatcherService {
     // 保留 Skill 执行的稳定性，同时避免单 Skill 只覆盖“打开”就宣告整体完成。
     if (hasWeb && hasSummarize) {
       this.logger.log(
-        `Matched Recipe: web_extract_then_summarize for request: "${userRequest}"`
+        `Matched Recipe: web_extract_then_summarize for request: "${userUtterance}"`
       );
       return {
         recipeName: 'web_extract_then_summarize',
@@ -223,7 +258,7 @@ export class DeterministicRecipeMatcherService {
       context?.hasPreviousResult === true &&
       (hasGeneration || hasProcessing || hasSummarize) &&
       !hasWeb &&
-      !hasSearch &&
+      !effectiveHasSearch &&
       !hasMarkdownFile &&
       !hasDocumentExtract &&
       !hasContractCompare &&
@@ -231,9 +266,9 @@ export class DeterministicRecipeMatcherService {
       !hasPdfMerge &&
       !hasPdfExport &&
       !hasUncoveredAction &&
-      !/(?:https?:\/\/|www\.)[^\s]+/i.test(userRequest)
+      !/(?:https?:\/\/|www\.)[^\s]+/i.test(userUtterance)
     ) {
-      this.logger.log(`Matched Recipe: grounded_text_transform for request: "${userRequest}"`);
+      this.logger.log(`Matched Recipe: grounded_text_transform for request: "${userUtterance}"`);
       return {
         recipeName: 'grounded_text_transform',
         objective: userRequest,
@@ -255,7 +290,7 @@ export class DeterministicRecipeMatcherService {
     // 独立能力，支持 PDF/Word/PPTX/TXT 等文档提取器复用同一编排形态。
     if (hasSummarize && hasDocumentExtract) {
       this.logger.log(
-        `Matched Recipe: document_extract_then_summarize for request: "${userRequest}"`
+        `Matched Recipe: document_extract_then_summarize for request: "${userUtterance}"`
       );
       return {
         recipeName: 'document_extract_then_summarize',
@@ -276,7 +311,7 @@ export class DeterministicRecipeMatcherService {
     }
 
     if (hasContractCompare) {
-      this.logger.log(`Matched Recipe: contract_compare for request: "${userRequest}"`);
+      this.logger.log(`Matched Recipe: contract_compare for request: "${userUtterance}"`);
       return {
         recipeName: 'contract_compare',
         objective: userRequest,
@@ -287,7 +322,7 @@ export class DeterministicRecipeMatcherService {
     }
 
     if (hasContractReview) {
-      this.logger.log(`Matched Recipe: contract_review for request: "${userRequest}"`);
+      this.logger.log(`Matched Recipe: contract_review for request: "${userUtterance}"`);
       return {
         recipeName: 'contract_review',
         objective: userRequest,
@@ -298,7 +333,7 @@ export class DeterministicRecipeMatcherService {
     }
 
     if (hasDocumentExtract) {
-      this.logger.log(`Matched Recipe: document_extract for request: "${userRequest}"`);
+      this.logger.log(`Matched Recipe: document_extract for request: "${userUtterance}"`);
       return {
         recipeName: 'document_extract',
         objective: userRequest,
@@ -309,8 +344,8 @@ export class DeterministicRecipeMatcherService {
     }
 
     // 模式 2：搜索 + 总结
-    if (hasSearch && hasSummarize) {
-      this.logger.log(`Matched Recipe: search_then_summarize for request: "${userRequest}"`);
+    if (effectiveHasSearch && hasSummarize) {
+      this.logger.log(`Matched Recipe: search_then_summarize for request: "${userUtterance}"`);
       return {
         recipeName: 'search_then_summarize',
         objective: userRequest,
@@ -330,9 +365,9 @@ export class DeterministicRecipeMatcherService {
     }
 
     // 模式 3：总结 + 输出 Markdown 文件
-    if (hasSummarize && hasMarkdownFile && !hasSearch) {
+    if (hasSummarize && hasMarkdownFile && !effectiveHasSearch) {
       this.logger.log(
-        `Matched Recipe: summarize_then_write_markdown for request: "${userRequest}"`
+        `Matched Recipe: summarize_then_write_markdown for request: "${userUtterance}"`
       );
       return {
         recipeName: 'summarize_then_write_markdown',
@@ -356,16 +391,16 @@ export class DeterministicRecipeMatcherService {
     if (
       hasGeneration &&
       !hasWeb &&
-      !hasSearch &&
+      !effectiveHasSearch &&
       !hasMarkdownFile &&
       !hasDocumentExtract &&
       !hasPdfSplit &&
       !hasPdfMerge &&
       !hasPdfExport &&
       !hasUncoveredAction &&
-      !/(?:https?:\/\/|www\.)[^\s]+/i.test(userRequest)
+      !/(?:https?:\/\/|www\.)[^\s]+/i.test(userUtterance)
     ) {
-      this.logger.log(`Matched Recipe: standard_text_generation for request: "${userRequest}"`);
+      this.logger.log(`Matched Recipe: standard_text_generation for request: "${userUtterance}"`);
       return {
         recipeName: 'standard_text_generation',
         objective: userRequest,

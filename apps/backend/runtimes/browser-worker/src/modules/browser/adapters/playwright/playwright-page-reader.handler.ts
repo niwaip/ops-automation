@@ -83,61 +83,17 @@ export class PlaywrightPageReader {
 
   async readCurrentPageHtml(sessionId: string): Promise<string> {
     await this.sessionManager.ensureSessionReady(sessionId);
+    const session = this.sessionManager.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
     const script = `async page => {
-      const activePage = (page.context().pages().find(p => p.url() && !p.url().startsWith('about:')) || page.context().pages()[page.context().pages().length - 1] || page);
-      await activePage.bringToFront().catch(() => {});
+      const activePage = ${activePageExpr};
       await activePage.waitForLoadState('domcontentloaded').catch(() => {});
-
-      // Wait briefly for SPA hydration before capturing HTML
-      let articles = await activePage.evaluate(() => document.querySelectorAll('article').length).catch(() => 0);
-      if (articles === 0) {
-        const waitStart = Date.now();
-        while (Date.now() - waitStart < 4000) {
-          articles = await activePage.evaluate(() => document.querySelectorAll('article').length).catch(() => 0);
-          if (articles > 0) break;
-          await activePage.waitForTimeout(500).catch(() => {});
-        }
-      }
-
-      // Self-heal: if articles still 0 and transient error visible (e.g. 列表加载失败), click retry button
-      if (articles === 0) {
-        const isError = await activePage.evaluate(() => {
-          const text = document.body ? document.body.innerText || '' : '';
-          return text.includes('列表加载失败') || text.includes('加载失败，请重试') || text.includes('加载失败');
-        }).catch(() => false);
-
-        if (isError) {
-          await activePage.evaluate(() => {
-            const b = document.querySelector('[data-slot=empty-content] button') ||
-                      Array.from(document.querySelectorAll('button')).find(el => (el.innerText || el.textContent || '').includes('重试') || (el.innerText || el.textContent || '').toLowerCase().includes('retry'));
-            if (b) {
-              b.scrollIntoView();
-              b.focus();
-              ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(type => {
-                b.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
-              });
-              b.click();
-            }
-          }).catch(() => {});
-
-          const retryStart = Date.now();
-          while (Date.now() - retryStart < 8000) {
-            articles = await activePage.evaluate(() => document.querySelectorAll('article').length).catch(() => 0);
-            if (articles > 0) break;
-            await activePage.waitForTimeout(500).catch(() => {});
-          }
-
-          if (articles === 0) {
-            await activePage.reload({ waitUntil: 'domcontentloaded' }).catch(() => {});
-            const reloadStart = Date.now();
-            while (Date.now() - reloadStart < 8000) {
-              articles = await activePage.evaluate(() => document.querySelectorAll('article').length).catch(() => 0);
-              if (articles > 0) break;
-              await activePage.waitForTimeout(500).catch(() => {});
-            }
-          }
-        }
-      }
+      await Promise.race([
+        activePage.waitForLoadState('networkidle'),
+        activePage.waitForTimeout(500)
+      ]).catch(() => {});
 
       return await activePage.evaluate((maxChars) => {
         if (!document.documentElement) return '';
@@ -217,8 +173,22 @@ export class PlaywrightPageReader {
             const text = await locator.textContent().catch(() => null);
             return typeof text === 'string' ? text.slice(0, maxLength) : '';
           };
+          const resolveLocator = (scope, sel) => {
+            let expr = (sel || '').trim();
+            if (expr.startsWith('page.')) {
+              expr = expr.slice(5).trim();
+            }
+            if (/^getBy[A-Za-z]+[(]/.test(expr)) {
+              try {
+                return new Function('scope', 'return scope.' + expr)(scope);
+              } catch (e) {
+                // fall through to scope.locator
+              }
+            }
+            return scope.locator(expr);
+          };
           const readLocatorText = async (scope) => {
-            const locator = scope.locator(${JSON.stringify(selector)}).first();
+            const locator = resolveLocator(scope, ${JSON.stringify(selector)}).first();
             const count = await locator.count().catch(() => 0);
             if (!count) {
               return null;
@@ -236,6 +206,12 @@ export class PlaywrightPageReader {
                 break;
               }
             }
+          }
+          if (text === null) {
+            if (method === 'visible') {
+              return 'false';
+            }
+            return '';
           }
           return text || '';
         }`

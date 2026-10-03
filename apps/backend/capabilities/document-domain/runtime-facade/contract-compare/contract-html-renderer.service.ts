@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { AlignedClausePair, ContractCompareMetrics } from './contract-compare.types';
 import { ICONS } from './contract-report-icons.util';
 import { formatContractDiffHtml } from './contract-markdown-formatter.util';
+import { CONTRACT_REPORT_STANDALONE_CSS } from '../contract-standalone-style.util';
 
 export interface RenderReportInput {
   fileNameA: string;
@@ -350,8 +351,8 @@ export class ContractHtmlRendererService {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>合同智能比对与红线审查报告 - ${safeFileNameA} vs ${safeFileNameB}</title>
-  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
   <style>
+    ${CONTRACT_REPORT_STANDALONE_CSS}
     @media print {
       .no-print { display: none !important; }
       .clause-content { display: block !important; }

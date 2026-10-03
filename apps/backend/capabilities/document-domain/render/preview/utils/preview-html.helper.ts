@@ -1,11 +1,31 @@
 export type PreviewImage = { id: string; data: string; contentType: string };
 
 export function createPdfViewerHtml(pdfBase64: string): string {
+  const pdfjsLibUrl = process.env.PDFJS_LIB_URL || 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  const pdfjsWorkerUrl = process.env.PDFJS_WORKER_URL || 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const pdfjsCmapUrl = process.env.PDFJS_CMAP_URL || 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/';
+
+  const defaultLibUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  const defaultIntegrity = 'sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e';
+  const integrityAttr = pdfjsLibUrl === defaultLibUrl ? ` integrity="${defaultIntegrity}" crossorigin="anonymous"` : '';
+
+  const origins = new Set<string>(["'self'", 'https://cdnjs.cloudflare.com']);
+  for (const u of [pdfjsLibUrl, pdfjsWorkerUrl, pdfjsCmapUrl]) {
+    try {
+      const parsed = new URL(u);
+      origins.add(parsed.origin);
+    } catch {
+      // relative or invalid URL
+    }
+  }
+  const allowedOrigins = Array.from(origins).join(' ');
+
   return `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' ${allowedOrigins}; worker-src blob: ${allowedOrigins}; connect-src blob: data: ${allowedOrigins}; style-src 'unsafe-inline'; font-src 'self' data: ${allowedOrigins};">
   <title>PDF Preview</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -101,7 +121,7 @@ export function createPdfViewerHtml(pdfBase64: string): string {
       border-radius: 2px;
     }
   </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="${pdfjsLibUrl}"${integrityAttr}></script>
 </head>
 <body>
   <div id="toolbar">
@@ -116,7 +136,7 @@ export function createPdfViewerHtml(pdfBase64: string): string {
     <div class="loading">Loading PDF...</div>
   </div>
   <script>
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '${pdfjsWorkerUrl}';
 
     const pdfData = '${pdfBase64}';
     let pdfDoc = null;
@@ -230,7 +250,7 @@ export function createPdfViewerHtml(pdfBase64: string): string {
 
     pdfjsLib.getDocument({
       data: bytes,
-      cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+      cMapUrl: '${pdfjsCmapUrl}',
       cMapPacked: true,
       disableFontFace: false,
       fontExtraMaxSize: 1024 * 1024 * 10,
@@ -271,6 +291,7 @@ export function wrapPreviewHtml(
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:;">
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

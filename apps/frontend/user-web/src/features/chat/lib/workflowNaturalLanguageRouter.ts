@@ -3,11 +3,19 @@ import {
   workbenchCoordinationApi,
   type CoordinationTask,
 } from '../../../api/workbenchCoordination';
+import { authStore } from '../../../adapters/auth/authStore';
 
 export interface WorkflowRoutingResult {
   handled: boolean;
   content: string;
   coordinationTask?: CoordinationTask;
+}
+
+export interface WorkflowExecutionArtifactContext {
+  executionId?: string;
+  artifacts?: any[];
+  downloadUrl?: string;
+  fileName?: string;
 }
 
 export function isWorkflowCommand(content: string): boolean {
@@ -17,6 +25,10 @@ export function isWorkflowCommand(content: string): boolean {
 async function resolveAssignee(
   preferRoleOrDept?: string
 ): Promise<{ id: string; username: string }> {
+  const currentUser = authStore.getState().user;
+  if (!preferRoleOrDept && currentUser?.id && currentUser?.username) {
+    return { id: currentUser.id, username: currentUser.username };
+  }
   try {
     const list = await workbenchCoordinationApi.searchCollaborators();
     if (list && list.length > 0) {
@@ -31,10 +43,16 @@ async function resolveAssignee(
         );
         if (found) return { id: found.id, username: found.username };
       }
+      if (currentUser?.id && currentUser?.username) {
+        return { id: currentUser.id, username: currentUser.username };
+      }
       return { id: list[0].id, username: list[0].username };
     }
   } catch (err) {
-    console.warn('Failed to resolve assignee, fallback to admin:', err);
+    console.warn('Failed to resolve assignee, fallback to current user or admin:', err);
+  }
+  if (currentUser?.id && currentUser?.username) {
+    return { id: currentUser.id, username: currentUser.username };
   }
   return { id: 'admin', username: 'admin' };
 }
@@ -43,10 +61,11 @@ async function resolveAssignee(
  * 组织工作流自然语言连接器：
  * 解析 !工作流 后的自然语言输入，执行槽位提取与参数识别。
  * 若关键参数不足，通过会话向用户直接追问；
- * 若参数齐备，调用阶段底层流并派发至下一阶段（如法务部审查）。
+ * 若参数齐备且产物生成完成，调用阶段底层流并派发至下一阶段（如法务部审查）。
  */
 export async function handleWorkflowNaturalLanguage(
-  content: string
+  content: string,
+  artifactContext?: WorkflowExecutionArtifactContext
 ): Promise<WorkflowRoutingResult | null> {
   const match = content.trim().match(/^[!！]([^\s!！]+)\s*(.*)$/s);
   if (!match) return null;
@@ -321,13 +340,41 @@ function extractContractEntities(taskBody: string): ExtractedContractEntities {
     const docFileName = `保密合同_${finalCounterparty}_v1_${dayjs().format('YYYYMMDD')}.docx`;
 
     const attachments: any[] = [];
+    if (artifactContext?.artifacts && Array.isArray(artifactContext.artifacts)) {
+      for (const art of artifactContext.artifacts) {
+        if (art && (art.url || art.downloadUrl)) {
+          attachments.push({
+            id: art.id,
+            name: art.name || art.fileName || docFileName,
+            url: art.url || art.downloadUrl,
+            downloadUrl: art.downloadUrl || art.url,
+            mimeType: art.mimeType || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            size: art.size || art.sizeBytes,
+            sha256: art.metadata?.sha256 || art.sha256,
+          });
+        }
+      }
+    } else if (artifactContext?.downloadUrl) {
+      attachments.push({
+        name: artifactContext.fileName || docFileName,
+        url: artifactContext.downloadUrl,
+        downloadUrl: artifactContext.downloadUrl,
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+    }
+
+    const effectiveDownloadUrl = attachments[0]?.url || artifactContext?.downloadUrl;
+    const effectiveFileName = attachments[0]?.name || artifactContext?.fileName || docFileName;
 
     const parameters: Record<string, any> = {
       contractTitle,
       contractType: 'nda',
       counterpartyName: finalCounterparty,
       remarks: taskBody,
-      fileName: docFileName,
+      fileName: effectiveFileName,
+      executionId: artifactContext?.executionId,
+      downloadUrl: effectiveDownloadUrl,
+      artifactId: attachments[0]?.id,
     };
     if (entities.counterpartyAddress) parameters.counterpartyAddress = entities.counterpartyAddress;
     if (entities.counterpartyRole) parameters.counterpartyRole = entities.counterpartyRole;
@@ -358,20 +405,24 @@ function extractContractEntities(taskBody: string): ExtractedContractEntities {
       // ignore
     }
 
-    const created = await workbenchCoordinationApi.createTask({
-      assigneeId: initiatorAssignee.id,
-      assigneeName: initiatorAssignee.username,
-      workflowId,
-      title: contractTitle,
-      content: taskBody || `发起【${contractTitle}】法务合规审查流程`,
-      taskType: 'approval',
-      parameters: {
-        ...parameters,
-        currentStage: 'initiator_confirm',
-      },
-      attachments,
-      priority: /紧急|加急|急/i.test(taskBody) ? 'high' : 'medium',
-    });
+    let created: CoordinationTask | undefined = undefined;
+    // 真实因果约束：仅当真实产物生成完毕，或者包含有效产物上下文时才正式创建 GTD 初稿待办
+    if (artifactContext || attachments.length > 0) {
+      created = await workbenchCoordinationApi.createTask({
+        assigneeId: initiatorAssignee.id,
+        assigneeName: initiatorAssignee.username,
+        workflowId,
+        title: contractTitle,
+        content: taskBody || `发起【${contractTitle}】法务合规审查流程`,
+        taskType: 'approval',
+        parameters: {
+          ...parameters,
+          currentStage: 'initiator_confirm',
+        },
+        attachments,
+        priority: /紧急|加急|急/i.test(taskBody) ? 'high' : 'medium',
+      });
+    }
 
     const myPositionText =
       entities.myPosition === 'buyer'

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { getBrowserWorkerUrl } from '../../config/service-endpoints';
+import { getInternalServiceHeaders } from '../../config/internal-service-auth';
 import { ModelService } from '../model/model.service';
 import {
   AnalyzeBranchConditionDto,
@@ -131,22 +132,30 @@ export class BranchAnalysisService {
     let readResponse;
     try {
       [inspectResponse, readResponse] = await Promise.all([
-        axios.post<BrowserInspectStateResponse>(`${this.browserWorkerUrl}/browser/inspect-state`, {
-          runtimeSessionId: input.runtimeSessionId,
-          backend: 'cli',
-        }),
-        axios.post<BrowserExecuteResponse>(`${this.browserWorkerUrl}/browser/execute`, {
-          runtimeSessionId: input.runtimeSessionId,
-          backend: 'cli',
-          commands: [
-            {
-              tool: 'read_page',
-              params: {
-                max_length: 4000,
+        axios.post<BrowserInspectStateResponse>(
+          `${this.browserWorkerUrl}/browser/inspect-state`,
+          {
+            runtimeSessionId: input.runtimeSessionId,
+            backend: 'cli',
+          },
+          { headers: getInternalServiceHeaders() }
+        ),
+        axios.post<BrowserExecuteResponse>(
+          `${this.browserWorkerUrl}/browser/execute`,
+          {
+            runtimeSessionId: input.runtimeSessionId,
+            backend: 'cli',
+            commands: [
+              {
+                tool: 'read_page',
+                params: {
+                  max_length: 4000,
+                },
               },
-            },
-          ],
-        }),
+            ],
+          },
+          { headers: getInternalServiceHeaders() }
+        ),
       ]);
     } catch (error) {
       if (hasFallbackPageContext) {
@@ -612,7 +621,8 @@ export class BranchAnalysisService {
               max_length: /^(body|html)$/i.test(selector) ? 12000 : 2000,
             },
           })),
-        }
+        },
+        { headers: getInternalServiceHeaders() }
       );
       const results = response.data.results || [];
       return new Map(

@@ -8,6 +8,7 @@ import {
   Injectable,
   Logger,
   OnModuleInit,
+  OnModuleDestroy,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
@@ -30,6 +31,7 @@ import { SkillEnrichmentService } from './skill-enrichment.service';
 import { SkillAccessService } from './skill-access.service';
 import { SkillMatcherService } from './skill-matcher.service';
 import { SkillValidationEmitter, SkillValidationService } from './skill-validation.service';
+import { SkillContrastiveCompilerService } from './skill-contrastive-compiler.service';
 
 const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
@@ -40,8 +42,9 @@ function isValidUUID(str: string): boolean {
 const DEFAULT_SKILLS: CreateSkillDTO[] = [];
 
 @Injectable()
-export class SkillService implements OnModuleInit {
+export class SkillService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(SkillService.name);
+  private autoCompileRoutingTimer: NodeJS.Timeout | null = null;
 
   constructor(
     @Inject(SKILL_REGISTRY_PRISMA)
@@ -51,8 +54,38 @@ export class SkillService implements OnModuleInit {
     private readonly skillEnrichmentService: SkillEnrichmentService,
     private readonly skillAccessService: SkillAccessService,
     private readonly skillMatcherService: SkillMatcherService,
-    private readonly skillValidationService: SkillValidationService
+    private readonly skillValidationService: SkillValidationService,
+    private readonly skillContrastiveCompilerService: SkillContrastiveCompilerService
   ) {}
+
+  onModuleDestroy() {
+    if (this.autoCompileRoutingTimer) {
+      clearTimeout(this.autoCompileRoutingTimer);
+      this.autoCompileRoutingTimer = null;
+    }
+  }
+
+  scheduleAutoCompileRouting(delayMs = 1500): void {
+    if (this.autoCompileRoutingTimer) {
+      clearTimeout(this.autoCompileRoutingTimer);
+    }
+    this.autoCompileRoutingTimer = setTimeout(async () => {
+      this.autoCompileRoutingTimer = null;
+      try {
+        this.logStructured('log', 'skill_auto_compile_routing_triggered', {
+          reason: 'debounced_auto_recompile',
+        });
+        const compiled = await this.compileSkillRouting({ useAi: false });
+        this.logStructured('log', 'skill_auto_compile_routing_completed', {
+          compiledCount: compiled.length,
+        });
+      } catch (error) {
+        this.logStructured('error', 'skill_auto_compile_routing_failed', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }, delayMs);
+  }
 
   private logStructured(
     level: 'log' | 'warn' | 'error',
@@ -85,6 +118,7 @@ export class SkillService implements OnModuleInit {
     await this.toolCatalogService.seedSystemCatalog();
     await this.validateDefaultSkillsStartupConsistency();
     await this.loadDefaultSkills();
+    this.scheduleAutoCompileRouting(2000);
     this.logStructured('log', 'skill_service_init_completed', {
       defaultSkillCount: DEFAULT_SKILLS.length,
     });
@@ -250,6 +284,7 @@ export class SkillService implements OnModuleInit {
     await this.skillToolBindingService.syncSkillToolBindings(skill.id, dto);
 
     const [enriched] = await this.skillEnrichmentService.enrichSkillsWithPublication([skill]);
+    this.scheduleAutoCompileRouting();
     return enriched!;
   }
 
@@ -338,6 +373,7 @@ export class SkillService implements OnModuleInit {
       await this.skillToolBindingService.syncSkillToolBindings(id, mergedPayload);
 
       const [enriched] = await this.skillEnrichmentService.enrichSkillsWithPublication([skill]);
+      this.scheduleAutoCompileRouting();
       return enriched || null;
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
@@ -391,6 +427,7 @@ export class SkillService implements OnModuleInit {
       this.logger.warn(
         `Skill ${id} has runtime references (executions=${executionCount}, releases=${releaseRefCount}), archived instead of hard delete`
       );
+      this.scheduleAutoCompileRouting();
       return true;
     }
 
@@ -398,6 +435,7 @@ export class SkillService implements OnModuleInit {
       where: { id },
     });
 
+    this.scheduleAutoCompileRouting();
     return true;
   }
 
@@ -432,7 +470,9 @@ export class SkillService implements OnModuleInit {
     roleId: string,
     grantedBy: string
   ): Promise<SkillPermissionDTO> {
-    return this.skillAccessService.grantSkillToRole(skillId, roleId, grantedBy);
+    const res = await this.skillAccessService.grantSkillToRole(skillId, roleId, grantedBy);
+    this.scheduleAutoCompileRouting();
+    return res;
   }
 
   async createSkillAccessRequest(
@@ -461,7 +501,13 @@ export class SkillService implements OnModuleInit {
     if (!isValidUUID(requestId) || !isValidUUID(processedBy)) {
       throw new BadRequestException('Invalid skill access request approval input');
     }
-    return this.skillAccessService.approveSkillAccessRequest(requestId, processedBy, responseNote);
+    const res = await this.skillAccessService.approveSkillAccessRequest(
+      requestId,
+      processedBy,
+      responseNote
+    );
+    this.scheduleAutoCompileRouting();
+    return res;
   }
 
   async rejectSkillAccessRequest(
@@ -476,7 +522,9 @@ export class SkillService implements OnModuleInit {
   }
 
   async revokeSkillFromRole(skillId: string, roleId: string): Promise<boolean> {
-    return this.skillAccessService.revokeSkillFromRole(skillId, roleId);
+    const res = await this.skillAccessService.revokeSkillFromRole(skillId, roleId);
+    this.scheduleAutoCompileRouting();
+    return res;
   }
 
   async getSkillPermissions(skillId: string): Promise<SkillPermissionDTO[]> {
@@ -552,6 +600,7 @@ export class SkillService implements OnModuleInit {
     await this.skillToolBindingService.syncSkillToolBindings(skillId, mergedPayload);
 
     const bindingsMap = await this.skillToolBindingService.getSkillToolBindingMap([skillId]);
+    this.scheduleAutoCompileRouting();
     return {
       bindings: bindingsMap.get(skillId) || [],
       validation,
@@ -637,4 +686,28 @@ export class SkillService implements OnModuleInit {
     );
   }
 
+  async compileSkillRouting(options?: {
+    userId?: string;
+    useAi?: boolean;
+    modelId?: string;
+  }): Promise<
+    Array<{
+      skillId: string;
+      skillName: string;
+      positiveSignals: string[];
+      negativeSignals: string[];
+    }>
+  > {
+    const skills = options?.userId
+      ? await this.listSkillsForUser(options.userId)
+      : await this.listSkills();
+
+    const compiledMap =
+      await this.skillContrastiveCompilerService.syncCompiledProfilesForSkills(
+        skills,
+        options
+      );
+
+    return Array.from(compiledMap.values());
+  }
 }

@@ -276,11 +276,20 @@ export class CreateExecutionDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, unknown>;
+
+  @ApiProperty({ description: 'Organization ID for tenancy isolation', required: false })
+  @IsOptional()
+  @IsString()
+  orgId?: string;
 }
 
 export class ExecutionDto {
   @ApiProperty()
   id: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  orgId?: string | null;
 
   @ApiProperty()
   skillId: string;
@@ -296,6 +305,10 @@ export class ExecutionDto {
   @ApiProperty({ required: false })
   @IsOptional()
   capabilityVersion?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  capabilitiesUsed?: Array<{ id: string; version?: string; name?: string }> | null;
 
   @ApiProperty({ enum: EXECUTION_STATUS_VALUES })
   status: ExecutionStatus;

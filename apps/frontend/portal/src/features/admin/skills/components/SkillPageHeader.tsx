@@ -8,6 +8,7 @@ import {
   OrderedListOutlined,
   AppstoreOutlined,
   UnorderedListOutlined,
+  DeploymentUnitOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { ListSectionHeader } from '@/components/page/PageScaffold';
@@ -24,6 +25,7 @@ interface SkillPageHeaderProps {
   onBuiltinViewModeChange: (mode: 'grouped' | 'flat') => void;
   onRefresh: () => void;
   onCreate: () => void;
+  onCompileRouting?: () => void;
 }
 
 export const SkillPageHeader: React.FC<SkillPageHeaderProps> = ({
@@ -35,6 +37,7 @@ export const SkillPageHeader: React.FC<SkillPageHeaderProps> = ({
   onBuiltinViewModeChange,
   onRefresh,
   onCreate,
+  onCompileRouting,
 }) => {
   const { t } = useTranslation(['common', 'admin']);
 
@@ -91,6 +94,16 @@ export const SkillPageHeader: React.FC<SkillPageHeaderProps> = ({
           >
             流程模板
           </Button>
+          {onCompileRouting && (
+            <Button
+              size="large"
+              icon={<DeploymentUnitOutlined />}
+              onClick={onCompileRouting}
+              className="btn-pill"
+            >
+              编译路由特征
+            </Button>
+          )}
           <Button
             size="large"
             icon={<ReloadOutlined />}

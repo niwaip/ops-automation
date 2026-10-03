@@ -374,6 +374,283 @@ describe('DeterministicPlanSchedulerService', () => {
     );
   });
 
+  it('handles takeover_required from skill step: sets execution to human_control and tags takeoverTriggered', async () => {
+    const prisma = {
+      executionStep: {
+        update: jest.fn().mockResolvedValue({}),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      execution: { update: jest.fn().mockResolvedValue({}) },
+    };
+    const orchestrator = {
+      executeStep: jest.fn().mockResolvedValue({
+        success: false,
+        status: 'takeover_required',
+        requiresTakeover: true,
+        takeoverReason: '运行时动作需要人工接管: 包含审批语义',
+        errorCode: 'TAKEOVER_REQUIRED',
+      }),
+    };
+    const events = { createEvent: jest.fn().mockResolvedValue(undefined) };
+    const service = new DeterministicPlanSchedulerService(
+      prisma as any,
+      { resolveInputs: jest.fn().mockResolvedValue({}) } as any,
+      { assertSatisfied: jest.fn() } as any,
+      {} as any,
+      orchestrator as any,
+      events as any,
+      {} as any,
+      {} as any,
+      { normalize: (output: any) => output } as any,
+      {} as any
+    ) as any;
+
+    const plan = {
+      planJson: {
+        nodes: [{ nodeId: 'approve_node', capabilityId: 'custom.approve.action' }],
+      },
+    };
+    const execution = {
+      id: 'exec-takeover-1',
+      status: 'running',
+      executionMode: 'deterministic_plan',
+      plan,
+    };
+    const step = {
+      id: 'step-takeover-1',
+      planNodeId: 'approve_node',
+      capabilityId: 'custom.approve.action',
+      nodeKind: 'skill',
+    };
+
+    await service.executeStep(execution, step, false);
+
+    expect(prisma.executionStep.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'step-takeover-1' },
+        data: expect.objectContaining({
+          status: 'failed',
+          takeoverTriggered: true,
+          errorMessage: '运行时动作需要人工接管: 包含审批语义',
+        }),
+      })
+    );
+
+    expect(prisma.execution.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'exec-takeover-1' },
+        data: expect.objectContaining({
+          status: 'human_control',
+          takeoverRequired: true,
+          takeoverReason: '运行时动作需要人工接管: 包含审批语义',
+        }),
+      })
+    );
+
+    expect(events.createEvent).toHaveBeenCalledWith(
+      'exec-takeover-1',
+      'execution.status_changed',
+      expect.objectContaining({
+        newStatus: 'human_control',
+        takeoverRequired: true,
+      }),
+      expect.anything()
+    );
+  });
+
+  it('forwards allowHighRiskActions in metadata when authorized on plan node', async () => {
+    const prisma = {
+      executionStep: {
+        update: jest.fn().mockResolvedValue({}),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      execution: { update: jest.fn().mockResolvedValue({}) },
+    };
+    const orchestrator = {
+      executeStep: jest.fn().mockResolvedValue({
+        success: true,
+        status: 'completed',
+        output: { result: 'approved' },
+      }),
+    };
+    const service = new DeterministicPlanSchedulerService(
+      prisma as any,
+      { resolveInputs: jest.fn().mockResolvedValue({}) } as any,
+      { assertSatisfied: jest.fn() } as any,
+      {} as any,
+      orchestrator as any,
+      { createEvent: jest.fn().mockResolvedValue(undefined) } as any,
+      {} as any,
+      {} as any,
+      { normalize: (output: any) => output } as any,
+      {} as any
+    ) as any;
+
+    const plan = {
+      planJson: {
+        nodes: [
+          {
+            nodeId: 'approve_node',
+            capabilityId: 'custom.approve.action',
+            metadata: { allowHighRiskActions: true },
+          },
+        ],
+      },
+    };
+    const execution = {
+      id: 'exec-auth-1',
+      status: 'running',
+      executionMode: 'deterministic_plan',
+      plan,
+    };
+    const step = {
+      id: 'step-auth-1',
+      planNodeId: 'approve_node',
+      capabilityId: 'custom.approve.action',
+      nodeKind: 'skill',
+    };
+
+    await service.executeStep(execution, step, false);
+
+    expect(orchestrator.executeStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          allowHighRiskActions: true,
+        }),
+      })
+    );
+  });
+
+  it('forwards allowHighRiskActions in metadata when executionMode is deterministic_plan and not requiring approval', async () => {
+    const prisma = {
+      executionStep: {
+        update: jest.fn().mockResolvedValue({}),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      execution: { update: jest.fn().mockResolvedValue({}) },
+    };
+    const orchestrator = {
+      executeStep: jest.fn().mockResolvedValue({
+        success: true,
+        status: 'completed',
+        output: { result: 'approved' },
+      }),
+    };
+    const service = new DeterministicPlanSchedulerService(
+      prisma as any,
+      { resolveInputs: jest.fn().mockResolvedValue({}) } as any,
+      { assertSatisfied: jest.fn() } as any,
+      {} as any,
+      orchestrator as any,
+      { createEvent: jest.fn().mockResolvedValue(undefined) } as any,
+      {} as any,
+      {} as any,
+      { normalize: (output: any) => output } as any,
+      {} as any
+    ) as any;
+
+    const plan = {
+      planJson: {
+        nodes: [
+          {
+            nodeId: 'approve_node',
+            capabilityId: 'custom.approve.action',
+          },
+        ],
+      },
+    };
+    const execution = {
+      id: 'exec-auth-2',
+      status: 'running',
+      executionMode: 'deterministic_plan',
+      approvalStatus: 'not_required',
+      requiresApproval: false,
+      plan,
+    };
+    const step = {
+      id: 'step-auth-2',
+      planNodeId: 'approve_node',
+      capabilityId: 'custom.approve.action',
+      nodeKind: 'skill',
+    };
+
+    await service.executeStep(execution, step, false);
+
+    expect(orchestrator.executeStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          allowHighRiskActions: true,
+          authorizedRiskLevel: 'confirm',
+          executionMode: 'deterministic_plan',
+        }),
+      })
+    );
+  });
+
+  it('does not advance or fail execution when step enters human_control', async () => {
+    const prisma = {
+      executionStep: {
+        update: jest.fn().mockResolvedValue({}),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      execution: {
+        update: jest.fn().mockResolvedValue({}),
+        findUnique: jest.fn().mockResolvedValue({ status: 'human_control', takeoverRequired: true }),
+      },
+    };
+    const orchestrator = {
+      executeStep: jest.fn().mockResolvedValue({
+        success: false,
+        status: 'takeover_required',
+        requiresTakeover: true,
+        takeoverReason: '需要人工介入',
+        errorCode: 'TAKEOVER_REQUIRED',
+      }),
+    };
+    const finalOutputService = { assertSatisfied: jest.fn() };
+    const service = new DeterministicPlanSchedulerService(
+      prisma as any,
+      { resolveInputs: jest.fn().mockResolvedValue({}) } as any,
+      finalOutputService as any,
+      {} as any,
+      orchestrator as any,
+      { createEvent: jest.fn().mockResolvedValue(undefined) } as any,
+      {} as any,
+      {} as any,
+      { normalize: (output: any) => output } as any,
+      {} as any
+    ) as any;
+
+    const plan = {
+      planJson: {
+        nodes: [{ nodeId: 'node_1', capabilityId: 'custom.skill' }],
+      },
+    };
+    const execution = {
+      id: 'exec-takeover-advance',
+      status: 'running',
+      executionMode: 'deterministic_plan',
+      plan,
+      steps: [{ id: 'step-1', status: 'running' }],
+    };
+    const step = {
+      id: 'step-1',
+      planNodeId: 'node_1',
+      capabilityId: 'custom.skill',
+      nodeKind: 'skill',
+    };
+
+    // Execute with autoAdvance = true
+    await service.executeStep(execution, step, true);
+
+    // Final output service must NOT be called to complete/fail the execution
+    expect(finalOutputService.assertSatisfied).not.toHaveBeenCalled();
+  });
+
   it('suspends execution to pending_approval when step returns status prepared', async () => {
     const prisma = {
       executionStep: {
@@ -536,4 +813,144 @@ describe('DeterministicPlanSchedulerService', () => {
       )
     ).toThrow('UNAUTHORIZED_EFFECT_COMMIT');
   });
+
+  describe('runtime credential resolution in deterministic plan execution', () => {
+    it('injects bound credentials via RuntimeCredentialResolverService before validating input schema', async () => {
+      const mockOrchestrator = {
+        executeStep: jest.fn().mockResolvedValue({
+          success: true,
+          status: 'completed',
+          output: { ok: true },
+        }),
+      };
+      const mockCredentialResolver = {
+        resolveInputForRuntime: jest.fn().mockImplementation(async (userId, skillId, input) => {
+          return {
+            ...input,
+            loginCredential: 'resolved-secret-password',
+          };
+        }),
+      };
+      const mockPrisma = {
+        executionStep: {
+          update: jest.fn().mockResolvedValue({}),
+        },
+      };
+
+      const scheduler = new DeterministicPlanSchedulerService(
+        mockPrisma as any,
+        {} as any,
+        {} as any,
+        {} as any,
+        mockOrchestrator as any,
+        { createEvent: jest.fn().mockResolvedValue({}) } as any,
+        { validateV1Contract: jest.fn().mockReturnValue({ ok: true }) } as any,
+        {} as any,
+        { normalize: jest.fn().mockReturnValue({ ok: true }) } as any,
+        {} as any,
+        {} as any,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        mockCredentialResolver as any
+      ) as any;
+
+      const execution = {
+        id: 'exec-cred-1',
+        createdBy: 'user-uuid-123',
+        status: 'running',
+        metadata: {},
+      };
+      const step = {
+        id: 'step-cred-1',
+        planNodeId: 'node-skill-1',
+        capabilityId: 'skill-uuid-456',
+        capabilityVersion: '1.0.0',
+        inputSchemaJson: {
+          type: 'object',
+          properties: {
+            username: { type: 'string' },
+            loginCredential: { type: 'string' },
+          },
+          required: ['username', 'loginCredential'],
+        },
+        outputContractJson: {},
+      };
+      const initialResolvedInput = {
+        username: 'admin',
+      };
+
+      await scheduler.runSkillStep(execution, step, initialResolvedInput);
+
+      expect(mockCredentialResolver.resolveInputForRuntime).toHaveBeenCalledWith(
+        'user-uuid-123',
+        'skill-uuid-456',
+        initialResolvedInput
+      );
+      expect(mockOrchestrator.executeStep).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            username: 'admin',
+            loginCredential: 'resolved-secret-password',
+          }),
+        })
+      );
+    });
+
+    it('throws INPUT_SCHEMA_VIOLATION when required credential is not configured and resolver cannot inject it', async () => {
+      const mockOrchestrator = { executeStep: jest.fn() };
+      const mockCredentialResolver = {
+        resolveInputForRuntime: jest.fn().mockResolvedValue({
+          username: 'admin',
+        }),
+      };
+
+      const scheduler = new DeterministicPlanSchedulerService(
+        {} as any,
+        {} as any,
+        {} as any,
+        {} as any,
+        mockOrchestrator as any,
+        {} as any,
+        {} as any,
+        {} as any,
+        {} as any,
+        {} as any,
+        {} as any,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        mockCredentialResolver as any
+      ) as any;
+
+      const execution = {
+        id: 'exec-cred-2',
+        createdBy: 'user-uuid-123',
+        status: 'running',
+      };
+      const step = {
+        id: 'step-cred-2',
+        planNodeId: 'node-skill-2',
+        capabilityId: 'skill-uuid-456',
+        inputSchemaJson: {
+          type: 'object',
+          properties: {
+            username: { type: 'string' },
+            loginCredential: { type: 'string' },
+          },
+          required: ['username', 'loginCredential'],
+        },
+      };
+
+      await expect(
+        scheduler.runSkillStep(execution, step, { username: 'admin' })
+      ).rejects.toMatchObject({
+        code: 'INPUT_SCHEMA_VIOLATION',
+      });
+      expect(mockOrchestrator.executeStep).not.toHaveBeenCalled();
+    });
+  });
 });
+

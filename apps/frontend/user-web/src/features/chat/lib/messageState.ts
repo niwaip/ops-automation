@@ -372,16 +372,21 @@ export const mergeHistoryMessages = (
     });
   });
 
-  // Fix local messages timestamps to ensure they are monotonically increasing.
-  // This prevents ephemeral assistant messages from being sorted BEFORE their
-  // corresponding user messages due to server clock skew.
+  // Fix message timestamps to ensure they are monotonically increasing along the canonical turn sequence.
+  // This prevents assistant messages from being sorted BEFORE their corresponding user messages
+  // due to server clock skew or microsecond discrepancies.
   let maxTimestamp = 0;
-  localMessages.forEach((localMsg) => {
-    const mergedMsg = merged.get(localMsg.id);
+  const sequenceToNormalize = [
+    ...remoteMessages,
+    ...localMessages.filter((lm) => !matchedLocalIds.has(lm.id)),
+  ];
+  sequenceToNormalize.forEach((seqMsg) => {
+    const targetId = seqMsg.id;
+    const mergedMsg = merged.get(targetId);
     if (mergedMsg) {
       const currentTs = new Date(mergedMsg.timestamp).getTime();
       if (currentTs < maxTimestamp) {
-        merged.set(localMsg.id, {
+        merged.set(targetId, {
           ...mergedMsg,
           timestamp: new Date(maxTimestamp).toISOString(),
         });
@@ -391,7 +396,17 @@ export const mergeHistoryMessages = (
     }
   });
 
-  return [...merged.values()].sort(
-    (left, right) => new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime()
-  );
+  return [...merged.values()].sort((left, right) => {
+    const timeDiff = new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime();
+    if (timeDiff !== 0) {
+      return timeDiff;
+    }
+    if (left.role === 'user' && right.role === 'assistant') {
+      return -1;
+    }
+    if (left.role === 'assistant' && right.role === 'user') {
+      return 1;
+    }
+    return 0;
+  });
 };

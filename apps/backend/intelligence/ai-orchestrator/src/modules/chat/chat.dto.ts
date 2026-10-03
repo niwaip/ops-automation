@@ -80,6 +80,8 @@ export interface ChatUploadFileResponseDTO {
   mimeType: string;
   size: number;
   filePath?: string;
+  url?: string;
+  ticket?: string;
 }
 
 export interface ChatAudioTranscriptionResponseDTO {

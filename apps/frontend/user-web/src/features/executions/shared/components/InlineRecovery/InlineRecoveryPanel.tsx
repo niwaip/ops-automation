@@ -1,6 +1,10 @@
 import React from 'react';
-import { Form, Input, Modal, Radio, Space, Tooltip, Typography } from 'antd';
-import { InfoCircleOutlined } from '@ant-design/icons';
+import { Form, Input, Modal, Radio, Space, Tag, Typography } from 'antd';
+import {
+  CheckCircleOutlined,
+  RedoOutlined,
+  ReloadOutlined,
+} from '@ant-design/icons';
 import ExecutionDetailInfoBlock from '@/features/executions/detail/components/ExecutionDetailInfoBlock';
 import ExecutionDetailPanelBlock from '@/features/executions/detail/components/ExecutionDetailPanelBlock';
 import ExecutionDetailSectionCard from '@/features/executions/detail/components/ExecutionDetailSectionCard';
@@ -8,10 +12,7 @@ import {
   RECOVERY_COPY,
   RECOVERY_RESUME_OPTIONS,
 } from '../recoveryOptions';
-import {
-  RECOVERY_ACTION_DESCRIPTIONS,
-  useInlineRecovery,
-} from './hooks/useInlineRecovery';
+import { useInlineRecovery } from './hooks/useInlineRecovery';
 import { InlineRecoveryActions } from './InlineRecoveryActions';
 import { InlineRecoveryStatusContent } from './InlineRecoveryStatusContent';
 
@@ -44,6 +45,16 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
   if (!r.canResume) {
     return null;
   }
+
+  const actionIcon =
+    r.resumeAction === 'retry_step' ? (
+      <RedoOutlined />
+    ) : r.resumeAction === 'retry_phase' || r.resumeAction === 'retry' ? (
+      <ReloadOutlined />
+    ) : (
+      <CheckCircleOutlined />
+    );
+
   return (
     <>
       <ExecutionDetailSectionCard
@@ -70,20 +81,20 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'minmax(0, 7fr) minmax(0, 3fr)',
-                gap: 12,
+                gridTemplateColumns: 'minmax(0, 5fr) minmax(0, 5fr)',
+                gap: 16,
                 alignItems: 'stretch',
               }}
             >
               <ExecutionDetailPanelBlock
                 style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
               >
-                <Form.Item label="人工审查记录" style={{ marginBottom: 0 }}>
+                <Form.Item label={RECOVERY_COPY.note} style={{ marginBottom: 0 }}>
                   <Input.TextArea
-                    rows={4}
+                    rows={5}
                     value={r.reviewComment}
                     onChange={(event) => r.setReviewComment(event.target.value)}
-                    placeholder="记录人工审查结论，例如：已人工核实该案件可继续承认，允许跳过条件分支并继续后续步骤"
+                    placeholder={RECOVERY_COPY.notePlaceholder}
                   />
                 </Form.Item>
               </ExecutionDetailPanelBlock>
@@ -100,27 +111,58 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
                       r.setResumeAction(e.target.value);
                     }
                   }}
-                  style={{ display: 'grid', gap: 8 }}
+                  style={{ display: 'grid', gap: 8, width: '100%' }}
                 >
-                  {RECOVERY_RESUME_OPTIONS.map((option) => (
-                    <Radio key={option.value} value={option.value} style={{ marginInlineEnd: 0 }}>
-                      <div
+                  {RECOVERY_RESUME_OPTIONS.map((option) => {
+                    const isSelected = r.resumeAction === option.value;
+                    return (
+                      <Radio
+                        key={option.value}
+                        value={option.value}
                         style={{
+                          marginInlineEnd: 0,
+                          padding: '8px 12px',
+                          borderRadius: 6,
+                          border: isSelected
+                            ? '1px solid var(--ant-primary-color, #1890ff)'
+                            : '1px solid var(--border-color-split, rgba(255, 255, 255, 0.08))',
+                          background: isSelected
+                            ? 'rgba(24, 144, 255, 0.08)'
+                            : 'transparent',
+                          transition: 'all 0.2s',
                           display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          padding: '2px 0',
+                          alignItems: 'flex-start',
                         }}
                       >
-                        <Text strong={r.resumeAction === option.value}>{option.label}</Text>
-                        <Tooltip title={RECOVERY_ACTION_DESCRIPTIONS[option.value]}>
-                          <InfoCircleOutlined
-                            style={{ fontSize: 14, color: 'var(--text-secondary)', cursor: 'help' }}
-                          />
-                        </Tooltip>
-                      </div>
-                    </Radio>
-                  ))}
+                        <div style={{ marginLeft: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Text strong={isSelected}>
+                              {option.label}
+                            </Text>
+                            {option.badge ? (
+                              <Tag
+                                color="cyan"
+                                style={{ margin: 0, fontSize: 11, lineHeight: '18px', padding: '0 6px' }}
+                              >
+                                {option.badge}
+                              </Tag>
+                            ) : null}
+                          </div>
+                          <Text
+                            type="secondary"
+                            style={{
+                              fontSize: 12,
+                              display: 'block',
+                              marginTop: 3,
+                              lineHeight: '18px',
+                            }}
+                          >
+                            {option.description}
+                          </Text>
+                        </div>
+                      </Radio>
+                    );
+                  })}
                 </Radio.Group>
               </ExecutionDetailPanelBlock>
             </div>
@@ -130,23 +172,25 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
             onCancel={() => r.setShowCancelConfirm(true)}
             isApplyLoading={r.applyRecoveryMutation.isLoading}
             isCancelLoading={r.cancelMutation.isLoading}
+            actionButtonLabel={r.actionButtonLabel}
+            actionButtonIcon={actionIcon}
             extraActions={extraActions}
           />
         </Space>
       </ExecutionDetailSectionCard>
       <Modal
-        title={RECOVERY_COPY.resumeConfirmTitle}
+        title={r.confirmModalDetails.title}
         open={r.showResumeConfirm}
         onOk={() => {
           r.setShowResumeConfirm(false);
           r.applyRecoveryMutation.mutate();
         }}
         onCancel={() => r.setShowResumeConfirm(false)}
-        okText={RECOVERY_COPY.resumeConfirmOk}
+        okText={r.confirmModalDetails.okText}
         cancelText={RECOVERY_COPY.resumeConfirmCancel}
       >
-        <p>{RECOVERY_COPY.resumeConfirmDesc}</p>
-        <p>{RECOVERY_COPY.resumeConfirmHint}</p>
+        <p style={{ fontSize: 14 }}>{r.confirmModalDetails.desc}</p>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{r.confirmModalDetails.hint}</p>
       </Modal>
       <Modal
         title={RECOVERY_COPY.cancelConfirmTitle}

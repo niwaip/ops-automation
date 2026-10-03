@@ -15,6 +15,7 @@ import { SkillEnrichmentService } from './skill-enrichment.service';
 import { SkillValidationService } from './skill-validation.service';
 import { SkillAccessService } from './skill-access.service';
 import { SkillMatcherService } from './skill-matcher.service';
+import { SkillContrastiveCompilerService } from './skill-contrastive-compiler.service';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { SkillMatcherService } from './skill-matcher.service';
     SkillAccessService,
     SkillMatcherService,
     SkillValidationService,
+    SkillContrastiveCompilerService,
   ],
   exports: [
     SkillService,
@@ -43,6 +45,7 @@ import { SkillMatcherService } from './skill-matcher.service';
     SkillAccessService,
     SkillMatcherService,
     SkillValidationService,
+    SkillContrastiveCompilerService,
   ],
 })
 export class SkillModule {}

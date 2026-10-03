@@ -111,6 +111,12 @@ export const resolveChatOutcomePresentation = (
     !isWorkflowName(normalizedResult?.summary) ? normalizedResult?.summary : undefined,
     normalizedResult?.body,
     typeof presentation?.chatSummary === 'string' ? presentation.chatSummary : undefined,
+    typeof asRecord(structuredData)?.answer === 'string'
+      ? (asRecord(structuredData)?.answer as string)
+      : undefined,
+    typeof asRecord(input.rawResult)?.answer === 'string'
+      ? (asRecord(input.rawResult)?.answer as string)
+      : undefined,
     input.finalResult,
     input.finalSummary,
   ]

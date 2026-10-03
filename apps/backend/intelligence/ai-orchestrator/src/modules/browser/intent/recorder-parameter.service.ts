@@ -163,6 +163,45 @@ export class RecorderParameterService {
       if (step.action === 'fill' && typeof step.params?.value === 'string') {
         registerParameter(this.inferTemplateFillParameter(step, index));
       }
+      if (
+        (step.action === 'search' || step.action === 'smart_search') &&
+        typeof step.params?.query === 'string' &&
+        !step.params.query.includes('${')
+      ) {
+        registerParameter({
+          name: 'searchQuery',
+          description: '搜索关键词',
+          required: true,
+          exampleValue: step.params.query,
+          source: `template.${step.step_id}.params.query`,
+        });
+      }
+      if (
+        step.action === 'click_result' &&
+        step.params?.index !== undefined &&
+        !String(step.params.index).includes('${')
+      ) {
+        registerParameter({
+          name: 'resultIndex',
+          description: '搜索结果序号，从 1 开始',
+          required: false,
+          exampleValue: String(step.params.index),
+          source: `template.${step.step_id}.params.index`,
+        });
+      }
+      if (
+        step.action === 'type_text' &&
+        typeof step.params?.text === 'string' &&
+        !step.params.text.includes('${')
+      ) {
+        registerParameter({
+          name: `typedText${index + 1}`,
+          description: '键盘输入文本',
+          required: true,
+          exampleValue: step.params.text,
+          source: `template.${step.step_id}.params.text`,
+        });
+      }
       if (step.action === 'branch' && step.branch?.condition_fn) {
         const branchParameter = this.inferBranchThresholdParameter(step, index);
         if (branchParameter) {

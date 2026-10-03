@@ -47,8 +47,191 @@ export class OrgWorkflowService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    if (this.workflows.size === 0) {
-      this.seedDefaultWorkflows();
+    await this.ensureTableExists();
+    const seeded = await this.isSystemSeeded();
+    if (!seeded) {
+      if (this.workflows.size === 0) {
+        this.seedDefaultWorkflows();
+      }
+      for (const wf of this.workflows.values()) {
+        await this.saveWorkflowToDb(wf);
+      }
+      await this.markSystemSeeded();
+      this.logger.log('Initial default workflows seeded and marked.');
+    } else {
+      await this.loadWorkflowsFromDb();
+    }
+  }
+
+  private async ensureTableExists(): Promise<void> {
+    try {
+      await this.prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS org_workflows (
+          id VARCHAR(128) PRIMARY KEY,
+          workflow_id VARCHAR(128) NOT NULL,
+          org_id VARCHAR(128),
+          version VARCHAR(64) NOT NULL DEFAULT '1.0.0',
+          name VARCHAR(255) NOT NULL,
+          description TEXT,
+          category VARCHAR(64) DEFAULT 'general',
+          icon VARCHAR(64),
+          task_type VARCHAR(64) DEFAULT 'approval',
+          status VARCHAR(32) DEFAULT 'published',
+          is_published BOOLEAN DEFAULT true,
+          definition_json JSONB NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+      await this.prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS idx_org_workflows_wf_id ON org_workflows(workflow_id)
+      `);
+      await this.prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS idx_org_workflows_org_id ON org_workflows(org_id)
+      `);
+      await this.prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS idx_org_workflows_version ON org_workflows(version)
+      `);
+      await this.prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS org_workflow_system_meta (
+          key VARCHAR(64) PRIMARY KEY,
+          value TEXT NOT NULL,
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+    } catch (err: any) {
+      this.logger.warn(`Failed to verify or create org_workflows table: ${err.message}`);
+    }
+  }
+
+  private async isSystemSeeded(): Promise<boolean> {
+    try {
+      const rows: any[] = await this.prisma.$queryRawUnsafe(
+        `SELECT value FROM org_workflow_system_meta WHERE key = 'seeded'`
+      );
+      if (Array.isArray(rows) && rows.length > 0 && rows[0].value === 'true') {
+        return true;
+      }
+      const wfCountRows: any[] = await this.prisma.$queryRawUnsafe(
+        `SELECT COUNT(*)::int AS count FROM org_workflows`
+      );
+      if (Array.isArray(wfCountRows) && wfCountRows[0]?.count > 0) {
+        await this.markSystemSeeded();
+        return true;
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to check isSystemSeeded: ${err.message}`);
+    }
+    return false;
+  }
+
+  private async markSystemSeeded(): Promise<void> {
+    try {
+      await this.prisma.$executeRawUnsafe(`
+        INSERT INTO org_workflow_system_meta (key, value, updated_at)
+        VALUES ('seeded', 'true', NOW())
+        ON CONFLICT (key) DO UPDATE SET value = 'true', updated_at = NOW();
+      `);
+    } catch (err: any) {
+      this.logger.warn(`Failed to markSystemSeeded: ${err.message}`);
+    }
+  }
+
+  private async loadWorkflowsFromDb(): Promise<boolean> {
+    try {
+      const rows: any[] = await this.prisma.$queryRawUnsafe(`
+        SELECT id, workflow_id, org_id, version, name, description, category, icon, task_type, status, is_published, definition_json, created_at, updated_at
+        FROM org_workflows
+      `);
+      if (Array.isArray(rows)) {
+        this.workflows.clear();
+        for (const row of rows) {
+          const rawDef = typeof row.definition_json === 'string'
+            ? JSON.parse(row.definition_json)
+            : row.definition_json;
+          const wf: OrganizationWorkflowDefinition = {
+            ...rawDef,
+            id: row.id,
+            workflowId: row.workflow_id,
+            orgId: row.org_id || rawDef.orgId,
+            version: row.version || rawDef.version || '1.0.0',
+            name: row.name || rawDef.name,
+            description: row.description || rawDef.description || '',
+            category: row.category || rawDef.category || 'general',
+            icon: row.icon || rawDef.icon,
+            taskType: row.task_type || rawDef.taskType,
+            status: row.status || rawDef.status,
+            isPublished: Boolean(row.is_published),
+            createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+            updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
+          };
+          this.workflows.set(wf.id, wf);
+        }
+        this.logger.log(`Loaded ${rows.length} enterprise workflows from database.`);
+        return true;
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to load org_workflows from db: ${err.message}`);
+    }
+    return false;
+  }
+
+  public async saveWorkflowToDb(wf: OrganizationWorkflowDefinition): Promise<void> {
+    try {
+      await this.ensureTableExists();
+      const defJson = JSON.stringify(wf);
+      await this.prisma.$executeRawUnsafe(
+        `
+        INSERT INTO org_workflows (id, workflow_id, org_id, version, name, description, category, icon, task_type, status, is_published, definition_json, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, NOW())
+        ON CONFLICT (id) DO UPDATE SET
+          workflow_id = EXCLUDED.workflow_id,
+          org_id = EXCLUDED.org_id,
+          version = EXCLUDED.version,
+          name = EXCLUDED.name,
+          description = EXCLUDED.description,
+          category = EXCLUDED.category,
+          icon = EXCLUDED.icon,
+          task_type = EXCLUDED.task_type,
+          status = EXCLUDED.status,
+          is_published = EXCLUDED.is_published,
+          definition_json = EXCLUDED.definition_json,
+          updated_at = NOW();
+        `,
+        wf.id,
+        wf.workflowId,
+        wf.orgId || null,
+        wf.version || '1.0.0',
+        wf.name,
+        wf.description || '',
+        wf.category || 'general',
+        wf.icon || null,
+        wf.taskType || 'approval',
+        wf.status || 'published',
+        Boolean(wf.isPublished),
+        defJson
+      );
+    } catch (err: any) {
+      this.logger.error(`Failed to persist workflow ${wf.id} to db: ${err.message}`);
+    }
+  }
+
+  public async deleteWorkflowFromDb(id: string, workflowId?: string): Promise<void> {
+    try {
+      if (workflowId && workflowId !== id) {
+        await this.prisma.$executeRawUnsafe(
+          `DELETE FROM org_workflows WHERE id = $1 OR workflow_id = $1 OR id = $2 OR workflow_id = $2`,
+          id,
+          workflowId
+        );
+      } else {
+        await this.prisma.$executeRawUnsafe(
+          `DELETE FROM org_workflows WHERE id = $1 OR workflow_id = $1`,
+          id
+        );
+      }
+    } catch (err: any) {
+      this.logger.error(`Failed to delete workflow ${id} from db: ${err.message}`);
     }
   }
 
@@ -100,6 +283,7 @@ export class OrgWorkflowService implements OnModuleInit {
               id: 'final_receipt',
               name: '回执通知与办结',
               type: 'archive',
+              capabilityId: 'platform.notification.internal-message',
               description: '向发起员工推送归档结项回执并闭环流转',
               isLocked: false,
             },
@@ -180,6 +364,7 @@ export class OrgWorkflowService implements OnModuleInit {
               id: 'final_receipt',
               name: '回执通知与办结',
               type: 'archive',
+              capabilityId: 'platform.notification.internal-message',
               description: '向业务担当与法务专员推送归档结项回执并闭环流转',
               isLocked: false,
             },
@@ -462,13 +647,6 @@ export class OrgWorkflowService implements OnModuleInit {
       assembledBaseCount: number;
     };
   }> {
-    if (
-      !this.workflows.has('legal.contract.review_flow') ||
-      !this.workflows.has('legal.nda.generation_and_review_flow')
-    ) {
-      this.seedDefaultWorkflows();
-    }
-
     const all = Array.from(this.workflows.values()).sort((a, b) =>
       a.name.localeCompare(b.name)
     );
@@ -525,13 +703,6 @@ export class OrgWorkflowService implements OnModuleInit {
 
     const isAdmin = userRoleNames.has('admin') || user?.role === 'admin';
 
-    if (
-      !this.workflows.has('legal.contract.review_flow') ||
-      !this.workflows.has('legal.nda.generation_and_review_flow')
-    ) {
-      this.seedDefaultWorkflows();
-    }
-
     // 仅返回已发布的工作流
     const publishedWorkflows = Array.from(this.workflows.values()).filter(
       (w) => w.isPublished
@@ -580,13 +751,195 @@ export class OrgWorkflowService implements OnModuleInit {
   }
 
   /**
+   * 按 id 或 workflowId 检索工作流定义
+   */
+  public findWorkflow(id: string): OrganizationWorkflowDefinition | null {
+    if (!id) return null;
+    const direct = this.workflows.get(id);
+    if (direct) return direct;
+    for (const wf of this.workflows.values()) {
+      if (wf.id === id || wf.workflowId === id) {
+        return wf;
+      }
+    }
+    return null;
+  }
+
+  /**
    * 获取单个工作流详情
    */
   getWorkflowById(id: string): OrganizationWorkflowDefinition | null {
-    if (this.workflows.size === 0) {
-      this.seedDefaultWorkflows();
+    return this.findWorkflow(id);
+  }
+
+  /**
+   * 动态解析组织工作流特定阶段绑定的执行能力 (Skill / Temporal / Automation)
+   * 依据 orgId + workflowId + definitionVersion + stageId，杜绝在外部写死技能 UUID
+   */
+  async resolveStageBinding(params: {
+    workflowId: string;
+    stageId?: string;
+    stageType?: string;
+    orgId?: string;
+    version?: string;
+  }): Promise<{
+    found: boolean;
+    workflowId: string;
+    stageId?: string;
+    stageType?: string;
+    refId?: string;
+    capabilityType?: string;
+    skillId?: string;
+    skillName?: string;
+    skillVersion?: string;
+  }> {
+    // 1. 组织租户隔离与真实性校验：若指定了组织（非 default/global），严格校验组织合法性
+    if (params.orgId && params.orgId !== 'default' && params.orgId !== 'global') {
+      try {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.orgId);
+        const org = await this.prisma.organization?.findFirst?.({
+          where: isUuid
+            ? { OR: [{ id: params.orgId }, { code: params.orgId }, { name: params.orgId }] }
+            : { OR: [{ code: params.orgId }, { name: params.orgId }] },
+          select: { id: true, isActive: true },
+        });
+        if (!org || org.isActive === false) {
+          this.logger.warn(
+            `[resolveStageBinding] Target organization not found or inactive: ${params.orgId}`
+          );
+          return { found: false, workflowId: params.workflowId };
+        }
+      } catch (err: any) {
+        this.logger.warn(`Failed to validate organization ${params.orgId}: ${err.message}`);
+        return { found: false, workflowId: params.workflowId };
+      }
     }
-    return this.workflows.get(id) || null;
+
+    // 2. 优先匹配指定组织专属定制的工作流定义，次之匹配全局已发布工作流
+    let wf: OrganizationWorkflowDefinition | null = null;
+    if (params.orgId) {
+      wf =
+        Array.from(this.workflows.values()).find(
+          (w) =>
+            (w.workflowId === params.workflowId || w.id === params.workflowId) &&
+            w.orgId === params.orgId
+        ) || null;
+    }
+
+    if (!wf) {
+      wf = this.getWorkflowById(params.workflowId);
+    }
+
+    if (!wf) {
+      return { found: false, workflowId: params.workflowId };
+    }
+
+    // 3. 组织专属工作流隔离检查：若工作流专属于某组织，禁止跨组织越权解析
+    if (wf.orgId && params.orgId && wf.orgId !== params.orgId && params.orgId !== 'default') {
+      this.logger.warn(
+        `[resolveStageBinding] Workflow ${params.workflowId} belongs to org ${wf.orgId}, cross-tenant access from ${params.orgId} denied.`
+      );
+      return { found: false, workflowId: params.workflowId };
+    }
+
+    // 4. 版本精确匹配强校验：如果传入了指定版本（非 latest），且与工作流当前版本不一致，返回未找到
+    if (params.version && params.version !== 'latest' && params.version !== wf.version) {
+      this.logger.warn(
+        `[resolveStageBinding] Version mismatch for workflow ${params.workflowId}: requested ${params.version}, available ${wf.version}`
+      );
+      return { found: false, workflowId: params.workflowId };
+    }
+
+    const assembledList = wf.assembledWorkflows || [];
+    let matchedStep: any = null;
+
+    if (params.stageId) {
+      matchedStep = assembledList.find(
+        (s: any) => s.stageId === params.stageId || s.id === params.stageId || s.refId === params.stageId
+      );
+    }
+
+    if (!matchedStep && params.stageType) {
+      matchedStep = assembledList.find((s: any) => s.stageType === params.stageType);
+    }
+
+    if (
+      !matchedStep &&
+      (!params.stageId || params.stageId === 'draft_submission' || params.stageType === 'submission')
+    ) {
+      matchedStep =
+        assembledList.find(
+          (s: any) => s.triggerEvent === 'on_submit' || s.stageType === 'submission'
+        ) || assembledList[0];
+    }
+
+    if (!matchedStep) {
+      matchedStep = assembledList[0];
+    }
+
+    if (!matchedStep) {
+      return { found: false, workflowId: params.workflowId };
+    }
+
+    const refId = matchedStep.refId || matchedStep.capabilityId || matchedStep.id;
+    let skillId = refId;
+    let skillName = matchedStep.name;
+    let skillVersion = '1.0.0';
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(refId);
+
+    try {
+      if (isUuid) {
+        const sc = await this.prisma.skillConfig.findUnique({ where: { id: refId } });
+        if (sc) {
+          skillId = sc.id;
+          skillName = sc.name;
+        }
+      } else {
+        const sc = await this.prisma.skillConfig.findFirst({
+          where: { name: refId, isActive: true },
+        });
+        if (sc) {
+          skillId = sc.id;
+          skillName = sc.name;
+        } else {
+          const rel = await this.prisma.capabilityRelease.findFirst({
+            where: { sourceName: refId, status: 'published' },
+            orderBy: { releaseVersion: 'desc' },
+          });
+          if (rel?.publishedSkillId) {
+            skillId = rel.publishedSkillId;
+            skillName = rel.sourceName || refId;
+            skillVersion = String(rel.releaseVersion || '1.0.0');
+          }
+        }
+      }
+
+      // Check capability release for version
+      if (skillId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(skillId)) {
+        const rel = await this.prisma.capabilityRelease.findFirst({
+          where: { publishedSkillId: skillId, status: 'published' },
+          orderBy: { releaseVersion: 'desc' },
+        });
+        if (rel?.releaseVersion) {
+          skillVersion = String(rel.releaseVersion);
+        }
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to query skillConfig/capabilityRelease for refId ${refId}: ${err.message}`);
+    }
+
+    return {
+      found: true,
+      workflowId: wf.workflowId,
+      stageId: matchedStep.stageId || params.stageId || 'draft_submission',
+      stageType: matchedStep.stageType || params.stageType || 'submission',
+      refId,
+      capabilityType: matchedStep.type || 'skill',
+      skillId,
+      skillName,
+      skillVersion,
+    };
   }
 
   /**
@@ -637,6 +990,7 @@ export class OrgWorkflowService implements OnModuleInit {
     const workflow: OrganizationWorkflowDefinition = {
       id,
       workflowId: dto.workflowId.trim(),
+      orgId: dto.orgId,
       name: dto.name.trim(),
       description: dto.description?.trim() || '',
       category: dto.category || 'general',
@@ -661,6 +1015,7 @@ export class OrgWorkflowService implements OnModuleInit {
     };
 
     this.workflows.set(id, workflow);
+    await this.saveWorkflowToDb(workflow);
     this.logger.log(`Created enterprise workflow: ${workflow.name} (${workflow.id})`);
     return workflow;
   }
@@ -672,7 +1027,7 @@ export class OrgWorkflowService implements OnModuleInit {
     id: string,
     dto: UpdateOrgWorkflowDto
   ): Promise<OrganizationWorkflowDefinition> {
-    const existing = this.workflows.get(id);
+    const existing = this.findWorkflow(id);
     if (!existing) {
       throw new NotFoundException(`企业工作流不存在: ${id}`);
     }
@@ -682,6 +1037,7 @@ export class OrgWorkflowService implements OnModuleInit {
 
     const updated: OrganizationWorkflowDefinition = {
       ...existing,
+      orgId: dto.orgId !== undefined ? dto.orgId : existing.orgId,
       name: dto.name?.trim() ?? existing.name,
       description: dto.description?.trim() ?? existing.description,
       category: dto.category ?? existing.category,
@@ -697,8 +1053,9 @@ export class OrgWorkflowService implements OnModuleInit {
       updatedAt: new Date().toISOString(),
     };
 
-    this.workflows.set(id, updated);
-    this.logger.log(`Updated enterprise workflow: ${updated.name} (${id})`);
+    this.workflows.set(updated.id, updated);
+    await this.saveWorkflowToDb(updated);
+    this.logger.log(`Updated enterprise workflow: ${updated.name} (${updated.id})`);
     return updated;
   }
 
@@ -706,7 +1063,7 @@ export class OrgWorkflowService implements OnModuleInit {
    * 管理员一键发布 / 下架
    */
   async togglePublish(id: string, publish?: boolean): Promise<OrganizationWorkflowDefinition> {
-    const existing = this.workflows.get(id);
+    const existing = this.findWorkflow(id);
     if (!existing) {
       throw new NotFoundException(`企业工作流不存在: ${id}`);
     }
@@ -716,7 +1073,8 @@ export class OrgWorkflowService implements OnModuleInit {
     existing.status = nextPublished ? 'published' : 'draft';
     existing.updatedAt = new Date().toISOString();
 
-    this.workflows.set(id, existing);
+    this.workflows.set(existing.id, existing);
+    await this.saveWorkflowToDb(existing);
     this.logger.log(`Workflow [${existing.name}] published status set to ${nextPublished}`);
     return existing;
   }
@@ -725,24 +1083,30 @@ export class OrgWorkflowService implements OnModuleInit {
    * 删除工作流
    */
   async deleteWorkflow(id: string): Promise<void> {
-    if (!this.workflows.has(id)) {
+    const target = this.findWorkflow(id);
+    if (!target) {
       throw new NotFoundException(`企业工作流不存在: ${id}`);
     }
-    this.workflows.delete(id);
-    this.logger.log(`Deleted enterprise workflow: ${id}`);
+    this.workflows.delete(target.id);
+    if (target.workflowId) {
+      this.workflows.delete(target.workflowId);
+    }
+    await this.deleteWorkflowFromDb(target.id, target.workflowId);
+    this.logger.log(`Deleted enterprise workflow: ${target.name} (${target.id})`);
   }
 
   /**
    * 授权管理：修改角色列表
    */
   async updatePermissions(id: string, roleIds: string[]): Promise<OrganizationWorkflowDefinition> {
-    const existing = this.workflows.get(id);
+    const existing = this.findWorkflow(id);
     if (!existing) {
       throw new NotFoundException(`企业工作流不存在: ${id}`);
     }
     existing.grantedRoleIds = Array.from(new Set(roleIds));
     existing.updatedAt = new Date().toISOString();
-    this.workflows.set(id, existing);
+    this.workflows.set(existing.id, existing);
+    await this.saveWorkflowToDb(existing);
     return existing;
   }
 
@@ -754,7 +1118,7 @@ export class OrgWorkflowService implements OnModuleInit {
     userId: string,
     reason?: string
   ): Promise<OrgWorkflowAccessRequest> {
-    const workflow = this.workflows.get(workflowId);
+    const workflow = this.findWorkflow(workflowId);
     if (!workflow) {
       throw new NotFoundException(`企业工作流不存在: ${workflowId}`);
     }
@@ -809,10 +1173,11 @@ export class OrgWorkflowService implements OnModuleInit {
 
     if (status === 'approved') {
       // 自动将员工角色或该工作流授权名单更新
-      const workflow = this.workflows.get(request.workflowId);
+      const workflow = this.findWorkflow(request.workflowId);
       if (workflow && !workflow.grantedRoleIds.includes('employee')) {
         workflow.grantedRoleIds.push('employee');
-        this.workflows.set(request.workflowId, workflow);
+        this.workflows.set(workflow.id, workflow);
+        await this.saveWorkflowToDb(workflow);
       }
     }
 

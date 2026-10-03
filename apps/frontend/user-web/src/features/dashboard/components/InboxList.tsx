@@ -4,7 +4,6 @@ import {
   CheckCircleFilled,
   CheckCircleOutlined,
   ClockCircleOutlined,
-  CloseCircleFilled,
   DeleteOutlined,
   DownloadOutlined,
   DownOutlined,
@@ -57,12 +56,15 @@ import type { WorkbenchInboxItem } from "../../../api/workbenchInbox";
 import type { WorkbenchInboxFilter } from "../hooks/useWorkbenchInbox";
 import { InterventionList } from "./InterventionList";
 import { InboxTaskDetailModal } from "./InboxTaskDetailModal";
+import { RejectionNoticeCard } from "./RejectionNoticeCard";
 import { classifyWorkflowNode, extractRollbackReason, extractApprovalComment } from "../lib/coordinationNodeClassifier";
 import { formatMonthDayTime } from "../../../shared/utils/dateText";
 import styles from "../pages/DashboardPage.module.css";
 import inboxStyles from "./InboxList.module.css";
 import { useInboxCoordinationActions } from "../hooks/useInboxCoordinationActions";
 import { renderConfidenceTag, renderPriorityTag, renderSourceTag, renderStatusTag } from "./InboxTags";
+import { isUserFacingBusinessParam } from "../constants/ignoredBusinessParams";
+import { CollapsibleContractVersionList } from "./CollapsibleContractVersionList";
 
 interface InboxListProps {
   inboxItems: WorkbenchInboxItem[];
@@ -270,26 +272,7 @@ export function InboxList({
       <div className={inboxStyles["inbox-content-container"]}>
         {/* 需重修 / 驳回理由卡片提示 */}
         {nodeSemantics.isRevisionRequired && rollbackReason ? (
-          <div
-            style={{
-              marginBottom: 8,
-              padding: '8px 12px',
-              borderRadius: 6,
-              background: 'rgba(255, 77, 79, 0.08)',
-              border: '1px solid rgba(255, 77, 79, 0.28)',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: 8,
-            }}
-          >
-            <CloseCircleFilled style={{ color: '#ff4d4f', fontSize: 14, marginTop: 3, flexShrink: 0 }} />
-            <div style={{ fontSize: 12.5, lineHeight: 1.5, minWidth: 0, flex: 1 }}>
-              <span style={{ color: '#cf1322', fontWeight: 600 }}>驳回批注与修改意见：</span>
-              <span style={{ color: 'var(--text-primary, #1f1f1f)', fontWeight: 500, wordBreak: 'break-word' }}>
-                {rollbackReason}
-              </span>
-            </div>
-          </div>
+          <RejectionNoticeCard reason={rollbackReason} attachments={attachments} />
         ) : null}
 
         {/* 审批通过 / 办结批注提示 */}
@@ -403,14 +386,7 @@ export function InboxList({
 
                 {/* 其它非合同特定自定义参数（如果存在且非内部冗余字段） */}
                 {Object.entries(params)
-                  .filter(([k]) => ![
-                    'downloadUrl', 'fileUrl', 'contractUrl', 'fileName', 'contractFileName',
-                    'executionId', 'remarks', 'contractTitle', 'contractType', 'currentStage',
-                    'myPosition', 'durationYears', 'counterpartyName', 'counterpartyAddress',
-                    'counterpartyRole', 'ourParty', 'ourRole', 'cooperationSubject',
-                    'signDate', 'penaltyAmount', 'contractAmount', 'amount', 'isDraftReplaced',
-                    'originalDraftUrl', 'originalDraftFileName', 'originalDraftSize', 'rawContent', 'text'
-                  ].includes(k))
+                  .filter(([k, v]) => isUserFacingBusinessParam(k, v))
                   .map(([k, v]) => (
                     <div key={k} style={{ display: 'flex', gap: 6 }}>
                       <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{PARAM_LABEL_MAP[k] || k}：</span>
@@ -437,70 +413,9 @@ export function InboxList({
 
             {(() => {
               const formattedVersions = getFormattedContractVersions(payload.attachments, undefined, params);
-              if (formattedVersions.length > 1) {
+              if (formattedVersions.length > 0) {
                 return (
-                  <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {formattedVersions.map((ver) => {
-                      const downloadUrl = ver.url ? replaceLocalhostWithCurrentHost(ver.url) : undefined;
-                      return (
-                        <div
-                          key={ver.name + ver.versionNumber}
-                          style={{
-                            padding: '6px 10px',
-                            background: ver.isLatest
-                              ? 'rgba(22, 119, 255, 0.08)'
-                              : 'var(--bg-secondary, rgba(148, 163, 184, 0.06))',
-                            borderRadius: 6,
-                            border: ver.isLatest
-                              ? '1px solid rgba(22, 119, 255, 0.22)'
-                              : '1px solid var(--border-color, rgba(148, 163, 184, 0.2))',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: 8,
-                          }}
-                        >
-                          <Space size={6} style={{ minWidth: 0, flex: 1 }}>
-                            <FileWordOutlined style={{ color: ver.isLatest ? '#1677ff' : '#8c8c8c', fontSize: 15 }} />
-                            <Tag
-                              color={ver.isLatest ? 'processing' : 'default'}
-                              bordered={false}
-                              style={{ fontSize: 11, lineHeight: '18px', padding: '0 5px', margin: 0 }}
-                            >
-                              {ver.versionLabel}
-                            </Tag>
-                            <span
-                              style={{
-                                fontWeight: ver.isLatest ? 600 : 400,
-                                fontSize: 12,
-                                color: 'var(--text-primary)',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                              title={ver.name}
-                            >
-                              {ver.name}
-                            </span>
-                          </Space>
-                          {downloadUrl ? (
-                            <Button
-                              size="small"
-                              type={ver.isLatest ? 'primary' : 'default'}
-                              icon={<DownloadOutlined />}
-                              href={downloadUrl}
-                              target="_blank"
-                              download={ver.name}
-                              onClick={(e) => e.stopPropagation()}
-                              style={{ fontSize: 11, height: 24, padding: '0 8px' }}
-                            >
-                              下载
-                            </Button>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <CollapsibleContractVersionList formattedVersions={formattedVersions} />
                 );
               }
 
@@ -516,14 +431,40 @@ export function InboxList({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
+                      gap: 8,
+                      minWidth: 0,
+                      overflow: 'hidden',
+                      width: '100%',
+                      boxSizing: 'border-box',
                     }}
                   >
-                    <Space size={6}>
-                      <FileWordOutlined style={{ color: '#1677ff', fontSize: 16 }} />
-                      <span style={{ fontWeight: 600, fontSize: 12, color: 'var(--text-primary)' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        minWidth: 0,
+                        flex: 1,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <FileWordOutlined style={{ color: '#1677ff', fontSize: 16, flexShrink: 0 }} />
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          fontSize: 12,
+                          color: 'var(--text-primary)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          minWidth: 0,
+                          flex: 1,
+                        }}
+                        title={effectiveDocName}
+                      >
                         {effectiveDocName}
                       </span>
-                    </Space>
+                    </div>
                     <Button
                       size="small"
                       type="primary"
@@ -532,6 +473,7 @@ export function InboxList({
                       target="_blank"
                       download={effectiveDocName}
                       onClick={(e) => e.stopPropagation()}
+                      style={{ flexShrink: 0 }}
                     >
                       下载
                     </Button>
@@ -932,7 +874,8 @@ export function InboxList({
                                 {nodeSemantics.canRecall ? (
                                   <Popconfirm
                                     title="确定撤回此发起事项？"
-                                    description="撤回后将终止后续流转，并将事项退回至您的「待办」，您可重新编辑并再次发送。"
+                                    description="撤回后事项将退回待办，您可重新编辑。"
+                                    overlayStyle={{ maxWidth: 280 }}
                                     onConfirm={() => handleRecallItem(item)}
                                     okText="确认撤回"
                                     cancelText="取消"
@@ -978,18 +921,19 @@ export function InboxList({
                                   <Popconfirm
                                     title={
                                       nodeSemantics.cardActionType === "send"
-                                        ? "确认提交合同并送审？"
+                                        ? "确认提交送审？"
                                         : nodeSemantics.isApprovalNode
-                                        ? "确认审批通过并流转？"
-                                        : "确认办理完成并提交流转？"
+                                        ? "确认审批通过？"
+                                        : "确认办理完成？"
                                     }
                                     description={
                                       nodeSemantics.cardActionType === "send"
-                                        ? "提交后系统将开展智能合规审查与风险诊断，并通过后自动流转至法务专员/下一环节审批。您可在「已发事项」中跟踪最新流转进度。"
+                                        ? "提交后将流转至智能审查与后续审批。"
                                         : nodeSemantics.isApprovalNode
-                                        ? "审批通过后将自动流转至下一节点继续流转，审批意见与协同记录将同步归档。"
-                                        : "办理完成后将提交流转至后续处理或归档节点。"
+                                        ? "审批记录将同步归档并流转至下一环节。"
+                                        : "办理完成后将提交流转至后续节点。"
                                     }
+                                    overlayStyle={{ maxWidth: 280 }}
                                     okText={nodeSemantics.cardActionText}
                                     cancelText="取消"
                                     onConfirm={() => handleQuickCoordAction(item)}
@@ -1089,6 +1033,7 @@ export function InboxList({
                             {!isWorkflowItem ? (
                               <Popconfirm
                                 title="确定删除此条目吗？"
+                                overlayStyle={{ maxWidth: 280 }}
                                 onConfirm={() => onDeleteItem(item.id)}
                                 okText="删除"
                                 cancelText="取消"

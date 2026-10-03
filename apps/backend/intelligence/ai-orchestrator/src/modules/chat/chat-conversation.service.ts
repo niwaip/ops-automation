@@ -373,6 +373,9 @@ export class ChatConversationService {
     }
 
     const fileMetadata = this.formatFileMetadata(params.files);
+    const now = Date.now();
+    const userTimestamp = new Date(now).toISOString();
+    const assistantTimestamp = new Date(now + 1).toISOString();
 
     const nextSession = await this.sessionService.appendChatMessages(
       params.sessionId,
@@ -381,14 +384,17 @@ export class ChatConversationService {
           ...(params.clientMessageId ? { id: params.clientMessageId } : {}),
           role: 'user',
           content: normalizedUserContent,
-          timestamp: new Date().toISOString(),
+          timestamp: userTimestamp,
           metadata: {
             mode: 'task',
             ...(params.clientMessageId ? { clientMessageId: params.clientMessageId } : {}),
             ...(fileMetadata.length > 0 ? { files: fileMetadata } : {}),
           },
         },
-        assistantMessage,
+        {
+          ...assistantMessage,
+          timestamp: assistantTimestamp,
+        },
       ],
       {
         modelId: params.modelId && params.modelId !== 'default' ? params.modelId : undefined,
@@ -445,6 +451,9 @@ export class ChatConversationService {
       clientMessageId: params.clientAssistantMessageId,
     });
     const fileMetadata = this.formatFileMetadata(params.files);
+    const now = Date.now();
+    const userTimestamp = new Date(now).toISOString();
+    const assistantTimestamp = new Date(now + 1).toISOString();
     const nextSession = await this.sessionService.appendChatMessages(
       params.sessionId,
       [
@@ -452,7 +461,7 @@ export class ChatConversationService {
           ...(params.clientMessageId ? { id: params.clientMessageId } : {}),
           role: 'user',
           content: params.userContent,
-          timestamp: new Date().toISOString(),
+          timestamp: userTimestamp,
           metadata: {
             mode: 'chat',
             ...(params.clientMessageId ? { clientMessageId: params.clientMessageId } : {}),
@@ -463,7 +472,7 @@ export class ChatConversationService {
           ...(params.clientAssistantMessageId ? { id: params.clientAssistantMessageId } : {}),
           role: 'assistant',
           content: params.assistantContent,
-          timestamp: new Date().toISOString(),
+          timestamp: assistantTimestamp,
           metadata: assistantMetadata,
         },
       ],
@@ -614,6 +623,15 @@ export class ChatConversationService {
 
     if (executionId) {
       metadata.executionId = executionId;
+    }
+    const skillUsed =
+      this.asString(data?.skillUsed) ||
+      this.asString(data?.skillName) ||
+      this.asString((data?.plan as any)?.skill_match?.skill_name) ||
+      this.asString((data?.plan as any)?.matched_skill) ||
+      this.asString(data?.skillId);
+    if (skillUsed) {
+      metadata.skillUsed = skillUsed;
     }
     const runtimeType = this.asString(data?.runtimeType) || this.asString(data?.runtime_type);
     if (runtimeType) {

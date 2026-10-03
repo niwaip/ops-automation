@@ -641,7 +641,7 @@ describe('CapabilityReleaseRuntimeService', () => {
         backend: 'cli',
         runtimeSessionId: '11111111-1111-4111-8111-111111111111',
       }),
-      { timeout: 60000 }
+      expect.objectContaining({ timeout: 60000 })
     );
     expect(mockedAxios.post).toHaveBeenNthCalledWith(
       2,
@@ -655,7 +655,7 @@ describe('CapabilityReleaseRuntimeService', () => {
           method: 'innerText',
         },
       }),
-      { timeout: 120000 }
+      expect.objectContaining({ timeout: 120000 })
     );
     expect(browserSessionBroker.freeze).toHaveBeenCalledWith(
       '11111111-1111-4111-8111-111111111111',
@@ -761,7 +761,7 @@ describe('CapabilityReleaseRuntimeService', () => {
         backend: 'cli',
         runtimeSessionId: '11111111-1111-4111-8111-111111111111',
       }),
-      { timeout: 60000 }
+      expect.objectContaining({ timeout: 60000 })
     );
     expect(browserSessionBroker.freeze).toHaveBeenCalledWith(
       '11111111-1111-4111-8111-111111111111',
@@ -862,7 +862,7 @@ describe('CapabilityReleaseRuntimeService', () => {
         backend: 'cli',
         runtimeSessionId: '11111111-1111-4111-8111-111111111111',
       }),
-      { timeout: 60000 }
+      expect.objectContaining({ timeout: 60000 })
     );
     expect(mockedAxios.post).not.toHaveBeenCalledWith(
       'http://localhost:3004/browser/execute-step',
@@ -1105,7 +1105,7 @@ describe('CapabilityReleaseRuntimeService', () => {
         action: 'get_text',
         target: '.pending-count',
       }),
-      { timeout: 120000 }
+      expect.objectContaining({ timeout: 120000 })
     );
     expect(mockedAxios.post).not.toHaveBeenCalledWith(
       'http://localhost:3004/browser/freeze',

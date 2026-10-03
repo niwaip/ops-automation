@@ -229,4 +229,57 @@ describe('Confidentiality Agreement Workflow End-to-End Resolution', () => {
     const missingInputs = inputs.filter((i) => i.missing);
     expect(missingInputs).toHaveLength(0);
   });
+
+  it('end-to-end resolves parameters when AI model returns malformed JSON with leading double braces for temporal workflow skill', async () => {
+    const service = buildParamRecognizerService();
+    const malformedModelOutput =
+      '{{"partyA.name":"豆包有限公司", "partyA.address":"北京王府井大街1000号", "cooperation.subject":"AI模型开发", "agreement.signDate.year":2026, "agreement.signDate.month":9, "agreement.signDate.day":29}';
+
+    const mockClient = {
+      chatCompletion: jest.fn().mockResolvedValue({
+        content: malformedModelOutput,
+        usage: { promptTokens: 50, completionTokens: 50, totalTokens: 100 },
+      }),
+    };
+    const recognizer = new RecognizerService({
+      resolveModelId: jest.fn().mockResolvedValue('qwen36-35b-a3b'),
+      getClient: jest.fn().mockReturnValue(mockClient),
+      getDefaultModel: jest.fn().mockReturnValue(null),
+      getPromptCachingConfig: jest.fn().mockReturnValue(undefined),
+    } as unknown as ModelService);
+
+    const temporalSkill = {
+      ...confidentialitySkill,
+      apiEndpoints: {
+        ...confidentialitySkill.apiEndpoints,
+        runtimeMetadata: {
+          ...confidentialitySkill.apiEndpoints?.runtimeMetadata,
+          sourceType: 'temporal_workflow',
+        },
+      },
+    };
+
+    const realInput =
+      '合同审查 我需要的北京王府井大街1000号的 豆包有限公司，签订关于 ai模型开发的 保密协议，签订日期是今天，我们是乙方 富士通';
+
+    const recognized = await recognizer.recognizeParams({
+      template_id: temporalSkill.skillId,
+      user_input: realInput,
+      modelId: 'qwen36-35b-a3b',
+      fallbackMode: 'basic',
+      postProcessMode: 'semantic_augmentation',
+      params_schema: temporalSkill.paramsSchema,
+    });
+
+    expect(recognized.params['partyA.name']).toBe('豆包有限公司');
+    expect(recognized.params['partyA.address']).toBe('北京王府井大街1000号');
+    expect(recognized.params['cooperation.subject']).toBe('ai模型开发');
+    expect(recognized.params['agreement.signDate.year']).toBe(new Date().getFullYear());
+    expect(recognized.params['agreement.signDate.month']).toBe(new Date().getMonth() + 1);
+    expect(recognized.params['agreement.signDate.day']).toBe(new Date().getDate());
+
+    const inputs = service.buildRequiredInputs(temporalSkill, recognized);
+    const missingInputs = inputs.filter((i) => i.missing);
+    expect(missingInputs).toHaveLength(0);
+  });
 });

@@ -41,6 +41,17 @@ export function isVisionCapableModel(model: AIModelDTO | null | undefined): bool
   ) {
     return true;
   }
+  const inputs = (model.config?.input || []).map((i) => String(i).toLowerCase());
+  if (
+    inputs.some(
+      (i) =>
+        i.includes('vision') ||
+        i.includes('image') ||
+        i.includes('multimodal')
+    )
+  ) {
+    return true;
+  }
   const name = (model.name || '').toLowerCase();
   const provider = (model.provider || '').toLowerCase();
   if (provider === 'gemini' || name.includes('gemini')) {

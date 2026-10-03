@@ -23,7 +23,16 @@ export interface WorkflowValidationContractResult {
   errors: string[];
 }
 
-const SYSTEM_CONTEXT_KEYS = new Set(['userId', 'runtimeSessionId', 'workflowId']);
+const SYSTEM_CONTEXT_KEYS = new Set([
+  'userId',
+  'runtimeSessionId',
+  'workflowId',
+  'simulatedTakeover',
+  'simulated_takeover',
+  'skip_offset',
+  '_is_recheck',
+  'is_recheck',
+]);
 
 @Injectable()
 export class TemporalWorkflowValidationContractService {
@@ -116,6 +125,37 @@ export class TemporalWorkflowValidationContractService {
     rawResult: unknown,
     scenario?: WorkflowValidationScenario
   ): WorkflowValidationContractResult {
+    if (rawResult && typeof rawResult === 'object') {
+      const execObj = (rawResult as any).execution;
+      const execStatus = String(execObj?.status || '').trim().toLowerCase();
+      if (execStatus && execStatus !== 'success') {
+        const msg =
+          (rawResult as any).result?.businessData?.errorMessage ||
+          (rawResult as any).businessData?.errorMessage ||
+          (rawResult as any).errorMessage ||
+          `工作流执行状态为 "${execStatus}"，非成功状态。`;
+        return {
+          success: false,
+          errors: [msg],
+        };
+      }
+      const errCode =
+        (rawResult as any).result?.businessData?.errorCode ||
+        (rawResult as any).businessData?.errorCode ||
+        (rawResult as any).errorCode;
+      if (errCode) {
+        const errMsg =
+          (rawResult as any).result?.businessData?.errorMessage ||
+          (rawResult as any).businessData?.errorMessage ||
+          (rawResult as any).errorMessage ||
+          errCode;
+        return {
+          success: false,
+          errors: [`工作流执行返回业务错误码 "${errCode}": ${errMsg}`],
+        };
+      }
+    }
+
     const assertions = (workflowDsl?.validation?.assertions || []).filter(
       (assertion) =>
         !assertion.scenarioIds?.length ||
@@ -373,7 +413,8 @@ export class TemporalWorkflowValidationContractService {
     if (typeof value === 'number') return Number.isFinite(value);
     if (Array.isArray(value)) return value.length > 0;
     if (typeof value !== 'object') return false;
-    const metadataKeys = /^(type|mode|status|code|id|count|total|snapshot_time)$/i;
+    const metadataKeys =
+      /^(type|mode|status|code|id|count|total|snapshot_time|errorCode|errorMessage|error|requiresTakeover|takeoverReason|retryable|runtimeSessionId|backend|phaseResults)$/i;
     return Object.entries(value as Record<string, unknown>).some(
       ([childKey, childValue]) =>
         !metadataKeys.test(childKey) && this.hasMeaningfulBusinessValue(childValue, childKey || key)

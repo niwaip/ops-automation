@@ -10,7 +10,7 @@ metadata:
     domain: document
     format: multi-format
 spec:
-  definitionVersion: 1.0.1
+  definitionVersion: 1.0.2
   lifecycle: experimental
   defaultAccess:
     mode: authenticated
@@ -27,6 +27,20 @@ spec:
       - 提取PPT
       - 解析PPT
       - 解析Word
+      - 查看文档
+      - 查看文档内容
+      - 查看文件内容
+      - 读取文件内容
+      - 提取文件内容
+      - 查看合同内容
+      - 读取合同
+      - 提取合同
+      - 查看附件
+      - 查看附件内容
+      - 读取附件
+      - 读取附件内容
+      - 提取附件
+      - 提取附件内容
     matchSummary: 从 PDF、PPTX、Word 或文本文件中提取全文、分页文本和文档元数据
     runtimeType: workflow
     supportsArtifact: false

@@ -145,6 +145,7 @@ describe('TemporalWorkflowCodegenService', () => {
 
     expect(result.code).toContain('/browser/init');
     expect(result.code).toContain('/browser/execute');
+    expect(result.code).toContain('browser_headers = {"x-internal-auth": internal_api_secret}');
     expect(result.code).toContain('initialize_session = True');
     expect(result.code).toContain('initialize_session = False');
     expect(result.code).toContain('cleanup_session = False');
@@ -155,7 +156,7 @@ describe('TemporalWorkflowCodegenService', () => {
     expect(result.code).toContain('缺少必需参数');
     expect(result.code).toContain('first_failed_command=');
     expect(result.code).toContain('shared_activity_input["runtimeSessionId"] = runtime_session_id');
-    expect(result.code).not.toContain('workflow.info()');
+    expect(result.code).toContain('workflow.info()');
     expect(result.code).toContain('artifact_refs = []');
     expect(result.code).toContain('snapshot = item.get("snapshot")');
     expect(result.code).toContain('artifact_path = data.get("path") or data.get("screenshotPath")');
@@ -281,7 +282,8 @@ describe('TemporalWorkflowCodegenService', () => {
     );
 
     expect(result.success).toBe(true);
-    expect(result.code).toContain('BROWSER_LOOP_DRAFT = {"mode":"repeat_until"');
+    expect(result.code).toContain('BROWSER_LOOP_DRAFT =');
+    expect(result.code).toContain('"mode": "repeat_until"');
     expect(result.code).toContain('while current_iteration <= max_iterations:');
     expect(result.code).toContain('iteration_phase_results = phase_results[iteration_start_index:]');
     expect(result.code).toContain('last_loop_value = self._extract_loop_value(iteration_phase_results)');

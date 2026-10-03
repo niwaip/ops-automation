@@ -116,3 +116,4 @@ export interface RuntimePhaseInvokeResult {
 export * from './capability-contract-v2';
 export * from './json-schema-validator';
 export * from './planning-contract';
+export * from './contrastive-skill-compiler';

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { buildBrowserCapabilityOutputSchema } from '@ops/backend-browser-execution-contract';
+import { GUIDE_INQUIRY_PATTERNS } from '@ops/backend-runtime-capability-contract';
 import { CapabilityReleaseBrowserRecordingService } from './compiler/capability-release-browser-recording.service';
 import { CapabilityReleaseTemporalSchemaService } from './compiler/capability-release-temporal-schema.service';
 import {
@@ -96,6 +97,12 @@ export class CapabilityReleaseSkillDraftService {
     const paramCollectionGuidance = this.buildParamCollectionGuidance(paramsSchema || {});
     const validationRules = this.buildValidationRules(payload);
     const preservedRuntimeMetadata = this.extractRuntimeMetadataFromDraftPayload(payload);
+    const negativeKeywords = collectDistinctStrings(
+      asRecord(payload.apiEndpoints)?.runtimeMetadata &&
+        asRecord(asRecord(payload.apiEndpoints)?.runtimeMetadata)?.negativeKeywords,
+      preservedRuntimeMetadata.negativeKeywords,
+      GUIDE_INQUIRY_PATTERNS
+    );
     const temporalRuntimeMetadata =
       release.sourceType === 'temporal_workflow'
         ? this.hydrateTemporalRuntimeMetadata(preservedRuntimeMetadata, workflowDsl)
@@ -133,6 +140,7 @@ export class CapabilityReleaseSkillDraftService {
                 ...(asRecord((payload.apiEndpoints as Record<string, unknown>).runtimeMetadata) ||
                   {}),
                 routingAliases,
+                negativeKeywords,
                 ...(preservedComposition ? { composition: preservedComposition } : {}),
               },
             }
@@ -144,6 +152,7 @@ export class CapabilityReleaseSkillDraftService {
                 paramCollectionGuidance,
                 validationRules,
                 routingAliases,
+                negativeKeywords,
                 goal: typeof payload.goal === 'string' ? payload.goal : undefined,
                 expectedResult,
                 ...(preservedComposition ? { composition: preservedComposition } : {}),
@@ -178,6 +187,7 @@ export class CapabilityReleaseSkillDraftService {
           runtimeMetadata: {
             ...preservedRuntimeMetadata,
             sourceType: 'execution_flow_template',
+            negativeKeywords,
             sourceTemplate:
               asRecord(preservedRuntimeMetadata.sourceTemplate) ||
               this.extractExecutionFlowSourceTemplate(payload),
@@ -217,6 +227,7 @@ export class CapabilityReleaseSkillDraftService {
       apiEndpoints: {
         runtimeMetadata: {
           ...temporalRuntimeMetadata,
+          negativeKeywords,
           matchSummary: this.pickFirstNonEmptyString(
             temporalRuntimeMetadata.matchSummary,
             matchSummary

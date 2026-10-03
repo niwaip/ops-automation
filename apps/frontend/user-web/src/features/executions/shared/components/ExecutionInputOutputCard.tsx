@@ -1,11 +1,9 @@
 import React from 'react';
-import { Space, Typography } from 'antd';
+import { Space } from 'antd';
 import ExecutionDetailSectionCard from '@/features/executions/detail/components/ExecutionDetailSectionCard';
 import type { ExecutionDto } from '@/api/execution';
 import ExecutionPayloadContent from '@/features/executions/shared/components/ExecutionPayloadContent';
 import ExecutionNonBrowserResultCard from '@/features/executions/shared/components/ExecutionNonBrowserResultCard';
-
-const { Text } = Typography;
 
 interface ResultArtifact {
   type?: string;
@@ -51,32 +49,36 @@ const ExecutionInputOutputCard: React.FC<ExecutionInputOutputCardProps> = ({
     executionNormalizedResult?.summary || executionNormalizedResult?.body;
 
   return (
-    <ExecutionDetailSectionCard title="输入与输出">
+    <ExecutionDetailSectionCard title="输入与执行成果">
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
         <div>
-          <Text strong>输入：</Text>
-          <div style={{ marginTop: 8 }}>
+          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: 'var(--text-primary)' }}>
+            📌 任务输入要件
+          </div>
+          <div>
             <ExecutionPayloadContent value={executionInput} emptyText="该执行暂无输入内容。" />
           </div>
         </div>
         <div>
-          <Text strong>结果：</Text>
-          <div style={{ marginTop: 8 }}>
+          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: 'var(--text-primary)' }}>
+            🎯 执行成果与交付物
+          </div>
+          <div>
             <ExecutionNonBrowserResultCard
               executionInput={executionInput}
               normalizedResult={executionNormalizedResult}
               primaryResultText={primaryResultText}
               effectiveResultJson={effectiveResultJson}
               labels={{
-                title: '结果',
-                input: '输入',
-                result: '结果',
-                resultArtifacts: '结果文件',
+                title: '执行成果',
+                input: '任务输入',
+                result: '执行成果',
+                resultArtifacts: '交付成果文件',
                 sourceLinks: '来源链接',
                 temporalExecutionLink: '打开 Temporal 执行链路',
                 noInput: '暂无输入内容',
                 noStructuredResult: '暂无结构化结果',
-                noResultOutput: '暂无结果输出',
+                noResultOutput: '暂无执行结果输出',
               }}
             />
           </div>

@@ -1076,3 +1076,91 @@ td.ant-table-cell-align-center {
   border-color: #334155 !important;
 }
 
+/* ==========================================================================
+   全局统一气泡确认框 (Popconfirm) 优雅精致规范
+   约束气泡宽度、字体层级、操作按钮排版，防止长横条拉伸
+   ========================================================================== */
+.ant-popconfirm,
+.ant-popover.ant-popconfirm,
+.ant-popover:has(.ant-popconfirm-inner-content) {
+  width: max-content;
+  max-width: 280px !important;
+  min-width: 180px;
+}
+
+.ant-popover.ant-popconfirm .ant-popover-inner,
+.ant-popover:has(.ant-popconfirm-inner-content) .ant-popover-inner {
+  padding: 12px 14px !important;
+  border-radius: var(--radius-md, 10px) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.18), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid var(--border-color, #e2e8f0);
+}
+
+[data-theme='dark'] .ant-popover.ant-popconfirm .ant-popover-inner,
+[data-theme='dark'] .ant-popover:has(.ant-popconfirm-inner-content) .ant-popover-inner {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  box-shadow: 0 16px 32px -6px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+}
+
+.ant-popover.ant-popconfirm .ant-popconfirm-message,
+.ant-popover:has(.ant-popconfirm-inner-content) .ant-popconfirm-message {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
+  margin-bottom: 0 !important;
+}
+
+.ant-popover.ant-popconfirm .ant-popconfirm-message-icon,
+.ant-popover:has(.ant-popconfirm-inner-content) .ant-popconfirm-message-icon {
+  margin-inline-end: 0 !important;
+  margin-top: 2px !important;
+  font-size: 15px !important;
+  flex-shrink: 0 !important;
+}
+
+.ant-popover.ant-popconfirm .ant-popconfirm-title,
+.ant-popover:has(.ant-popconfirm-inner-content) .ant-popconfirm-title {
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  line-height: 1.45 !important;
+  color: var(--text-primary, #1e293b) !important;
+}
+
+[data-theme='dark'] .ant-popover.ant-popconfirm .ant-popconfirm-title,
+[data-theme='dark'] .ant-popover:has(.ant-popconfirm-inner-content) .ant-popconfirm-title {
+  color: #f8fafc !important;
+}
+
+.ant-popover.ant-popconfirm .ant-popconfirm-description,
+.ant-popover:has(.ant-popconfirm-inner-content) .ant-popconfirm-description {
+  margin-top: 4px !important;
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+  color: var(--text-secondary, #64748b) !important;
+  word-break: break-word !important;
+}
+
+[data-theme='dark'] .ant-popover.ant-popconfirm .ant-popconfirm-description,
+[data-theme='dark'] .ant-popover:has(.ant-popconfirm-inner-content) .ant-popconfirm-description {
+  color: #94a3b8 !important;
+}
+
+.ant-popover.ant-popconfirm .ant-popconfirm-buttons,
+.ant-popover:has(.ant-popconfirm-inner-content) .ant-popconfirm-buttons {
+  margin-top: 10px !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.ant-popover.ant-popconfirm .ant-popconfirm-buttons .ant-btn,
+.ant-popover:has(.ant-popconfirm-inner-content) .ant-popconfirm-buttons .ant-btn {
+  height: 26px !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+  border-radius: var(--radius-sm, 6px) !important;
+  font-weight: 400 !important;
+}
+

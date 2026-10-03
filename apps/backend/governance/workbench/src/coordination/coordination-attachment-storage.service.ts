@@ -4,7 +4,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { CoordinationAttachment } from './dto/workbench-coordination.dto';
@@ -17,6 +17,8 @@ export interface StoredAttachmentMeta {
   storagePath: string;
   uploadedBy?: string;
   createdAt: string;
+  sha256?: string;
+  md5?: string;
 }
 
 export interface MulterLikeFile {
@@ -97,6 +99,9 @@ export class CoordinationAttachmentStorageService {
 
     await fs.promises.writeFile(fullPath, file.buffer);
 
+    const sha256 = createHash('sha256').update(file.buffer).digest('hex').toLowerCase();
+    const md5 = createHash('md5').update(file.buffer).digest('hex').toLowerCase();
+
     const meta: StoredAttachmentMeta = {
       attachmentId,
       fileName: safeOriginalName,
@@ -105,6 +110,8 @@ export class CoordinationAttachmentStorageService {
       storagePath: fullPath,
       uploadedBy: userId,
       createdAt: new Date().toISOString(),
+      sha256,
+      md5,
     };
 
     await fs.promises.writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
@@ -118,6 +125,7 @@ export class CoordinationAttachmentStorageService {
       mimeType: meta.mimeType,
       url: downloadUrl,
       storagePath: fullPath,
+      sha256,
     };
   }
 

@@ -31,16 +31,38 @@ export class PlannerMatchPhaseService {
       input.request.context?.targetSkillId;
     const targetSkillId =
       typeof rawTargetSkillId === 'string' ? rawTargetSkillId.trim() : '';
+    const isLocalContext =
+      (Array.isArray((input.request.context as any)?.uploadedFiles) &&
+        (input.request.context as any).uploadedFiles.length > 0) ||
+      (Array.isArray((input.request.context as any)?.files) &&
+        (input.request.context as any).files.length > 0) ||
+      /(?:附件|本地|已上传|当前|刚刚|历史文件)/i.test(objective);
+
     const webSearchEnabled =
-      input.request.context?.web_search_enabled === true ||
-      input.request.context?.webSearch === true ||
-      hasRoutingSignal(objective, 'search', createBuiltinRoutingPolicySnapshot()) ||
-      /(?:^|[^a-zA-Z0-9])(?:请?帮我)?(?:搜索|联网搜索|全网搜索|检索|搜一下|查一下|查找|查询|搜搜|查查)/i.test(objective);
+      Boolean(
+        input.request.context?.web_search_enabled === true ||
+        input.request.context?.webSearch === true ||
+        (!isLocalContext && (
+          hasRoutingSignal(objective, 'search', createBuiltinRoutingPolicySnapshot()) ||
+          /(?:^|[^a-zA-Z0-9])(?:请?帮我)?(?:搜索|联网搜索|全网搜索|检索|搜一下|查一下|查找|查询|搜搜|查查)/i.test(objective)
+        ))
+      );
+
+    const workspaceSearchEnabled =
+      Boolean(
+        input.request.context?.workspace_search_enabled === true ||
+        input.request.context?.workspaceSearch === true ||
+        /^\/doc\b/i.test(objective)
+      );
+
+    const userId = input.userId || input.request.user_id;
     const availableSkills = await this.loadAvailableSkills(
       input.authToken,
       input.traceId,
       targetSkillId || undefined,
-      webSearchEnabled
+      webSearchEnabled,
+      userId,
+      workspaceSearchEnabled
     );
     let matchedSkill: SkillMatchResult | null = null;
     let failure: SkillMatchFailure | undefined;
@@ -73,13 +95,17 @@ export class PlannerMatchPhaseService {
     authToken?: string,
     traceId?: string,
     targetSkillId?: string,
-    webSearchEnabled = false
+    webSearchEnabled = false,
+    userId?: string,
+    workspaceSearchEnabled = false
   ): Promise<AvailableSkillDefinition[]> {
     return this.skillCacheService.loadAvailableSkills(
       authToken,
       traceId,
       targetSkillId,
-      webSearchEnabled
+      webSearchEnabled,
+      userId,
+      workspaceSearchEnabled
     );
   }
 

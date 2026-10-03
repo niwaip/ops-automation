@@ -13,7 +13,7 @@ import {
   UserSandboxLaunchOptions,
 } from './user-sandbox.interface';
 import { UserSandboxStorageService } from './user-sandbox-storage.service';
-import { IContainerDriver, ContainerHandle, CONTAINER_DRIVER } from './container-driver.interface';
+import { IContainerDriver, ContainerHandle, ContainerInspectData, CONTAINER_DRIVER } from './container-driver.interface';
 import { DockerodeContainerDriver } from './dockerode-container.driver';
 
 const DEFAULT_DOCKER_SOCKET = '/var/run/docker.sock';
@@ -101,13 +101,16 @@ export class UserSandboxContainerService {
     }
   }
 
+  getProxyBaseUrl(): string {
+    return `http://${this.aiOrchestratorHost}:${this.aiOrchestratorPort}/ai/proxy/v1`;
+  }
+
   /**
-   * 环境变量安全过滤与内部模型代理注入
-   * 严禁将管理员真实 API Key 注入容器，强制使用内部代理路由与虚拟用户 Token
+   * 针对指定用户生成安全的带有效期的虚拟 Token
+   * 采用与网关一致的 HMAC-SHA256 签名，支持多租户隔离与过期校验
    */
-  sanitizeEnvironment(userId: string, options: UserSandboxLaunchOptions): string[] {
+  generateVirtualUserToken(userId: string, ttlSeconds: number = 7 * 86400): string {
     const sanitized = this.storageService.sanitizeUserId(userId);
-    const proxyBaseUrl = `http://${this.aiOrchestratorHost}:${this.aiOrchestratorPort}/ai/proxy/v1`;
     const sharedSecret =
       process.env.INTERNAL_API_SHARED_SECRET ||
       process.env.INTERNAL_API_SECRET ||
@@ -118,13 +121,56 @@ export class UserSandboxContainerService {
       throw new BadRequestException('FATAL: Insecure or default INTERNAL_API_SHARED_SECRET in production environment');
     }
 
-    // 虚拟用户 Token 绑定有效期 (7天) 与时间戳，防止无期限重放与跨租户伪造
-    const exp = Math.floor(Date.now() / 1000) + 7 * 86400;
+    const exp = Math.floor(Date.now() / 1000) + ttlSeconds;
     const signature = crypto
       .createHmac('sha256', sharedSecret)
       .update(`${sanitized}:${exp}`)
       .digest('base64url');
-    const virtualUserToken = `sandbox-user-token-${sanitized}.${exp}.${signature}`;
+    return `sandbox-user-token-${sanitized}.${exp}.${signature}`;
+  }
+
+  /**
+   * 获取针对每次命令执行动态注入的环境变量，确保即便容器长生命周期运行，每次执行也具备最新有效 Token
+   */
+  getExecutionEnvironment(userId: string, ttlSeconds?: number): string[] {
+    const proxyBaseUrl = this.getProxyBaseUrl();
+    const virtualUserToken = this.generateVirtualUserToken(userId, ttlSeconds);
+
+    return [
+      `DEEPSEEK_BASE_URL=${proxyBaseUrl}`,
+      `DEEPSEEK_API_KEY=${virtualUserToken}`,
+      `OPENAI_BASE_URL=${proxyBaseUrl}`,
+      `OPENAI_API_KEY=${virtualUserToken}`,
+    ];
+  }
+
+  /**
+   * 检查容器静态配置中的 Token 是否已经过期或即将过期（默认阈值 1 小时）
+   */
+  isContainerTokenExpiring(inspect: ContainerInspectData, thresholdSeconds: number = 3600): boolean {
+    const envList = ((inspect as any)?.Config?.Env || []) as string[];
+    for (const e of envList) {
+      if (typeof e === 'string' && e.startsWith('DEEPSEEK_API_KEY=sandbox-user-token-')) {
+        const token = e.slice('DEEPSEEK_API_KEY=sandbox-user-token-'.length);
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const exp = parseInt(parts[1], 10);
+          if (exp && !isNaN(exp) && exp < Math.floor(Date.now() / 1000) + thresholdSeconds) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * 环境变量安全过滤与内部模型代理注入
+   * 严禁将管理员真实 API Key 注入容器，强制使用内部代理路由与虚拟用户 Token
+   */
+  sanitizeEnvironment(userId: string, options: UserSandboxLaunchOptions): string[] {
+    const proxyBaseUrl = this.getProxyBaseUrl();
+    const virtualUserToken = this.generateVirtualUserToken(userId);
 
     const envList: string[] = [
       'USER_MODE=personal',
@@ -221,19 +267,31 @@ export class UserSandboxContainerService {
         return this.mapInspectToStatus(userId, containerName, paths, inspect);
       }
 
-      if (state.Paused) {
-        this.logger.log(`Unpausing container ${containerName}...`);
-        if (existing.unpause) {
-          await existing.unpause();
+      // 若非运行中的容器其静态凭据已过期或即将过期，直接清理旧容器并重建，避免使用过期静态环境
+      if (this.isContainerTokenExpiring(inspect)) {
+        this.logger.log(
+          `Container ${containerName} is not running and its static credentials have expired or are expiring. Removing to create fresh container...`
+        );
+        try {
+          await existing.remove({ force: true });
+        } catch (rmErr: any) {
+          this.logger.warn(`Failed to remove stale container ${containerName}: ${rmErr.message}`);
         }
+      } else {
+        if (state.Paused) {
+          this.logger.log(`Unpausing container ${containerName}...`);
+          if (existing.unpause) {
+            await existing.unpause();
+          }
+          const freshInspect = await existing.inspect();
+          return this.mapInspectToStatus(userId, containerName, paths, freshInspect);
+        }
+
+        this.logger.log(`Starting stopped container ${containerName}...`);
+        await existing.start();
         const freshInspect = await existing.inspect();
         return this.mapInspectToStatus(userId, containerName, paths, freshInspect);
       }
-
-      this.logger.log(`Starting stopped container ${containerName}...`);
-      await existing.start();
-      const freshInspect = await existing.inspect();
-      return this.mapInspectToStatus(userId, containerName, paths, freshInspect);
     }
 
     this.logger.log(`Creating fresh immutable sandbox container ${containerName} from image ${this.sandboxImage}`);

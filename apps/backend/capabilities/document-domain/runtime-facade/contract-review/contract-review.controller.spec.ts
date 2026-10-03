@@ -96,4 +96,71 @@ describe('ContractReviewController', () => {
       skipLlmReview: true,
     });
   });
+
+  it('handles parse endpoint invocation', async () => {
+    const mockParseOutput = {
+      contractType: 'nda',
+      contractTypeName: '商业保密协议 (NDA)',
+      myPosition: 'buyer',
+      fileName: '保密协议.docx',
+      fullText: '第一条 保密信息',
+      parsedClauses: [],
+      missingClauses: [],
+      formIntegrityStats: { totalUnfilledVariables: 0, totalUnfilledBlanks: 0 },
+      isTruncated: false,
+      warnings: [],
+    };
+    const mockService = {
+      parseContract: jest.fn<any>().mockResolvedValue(mockParseOutput),
+    };
+    const controller = new ContractReviewController(mockService as any);
+
+    const result = await controller.parse(dto);
+    expect(result.success).toBe(true);
+    expect(result.output).toEqual(mockParseOutput);
+    expect(mockService.parseContract).toHaveBeenCalledWith({
+      ...dto.input,
+      idempotencyKey: 'exec-review-1',
+    });
+  });
+
+  it('handles renderReport endpoint invocation', async () => {
+    const mockRenderOutput = {
+      summary: '报告摘要',
+      contractType: 'nda',
+      contractTypeName: '商业保密协议 (NDA)',
+      myPosition: 'buyer',
+      metrics: { totalClauses: 1, healthScore: 90, highRiskCount: 0, mediumRiskCount: 0, lowRiskCount: 0, missingClausesCount: 0, passCount: 1 },
+      clauses: [],
+      missingClauses: [],
+      artifact: { id: 'art-1', name: 'report.html', url: '/renders/art-1.html', downloadUrl: '/renders/art-1.html' },
+      artifacts: [{ id: 'art-1', name: 'report.html', url: '/renders/art-1.html', downloadUrl: '/renders/art-1.html' }],
+      htmlReport: '<html></html>',
+    };
+    const mockService = {
+      renderReport: jest.fn<any>().mockResolvedValue(mockRenderOutput),
+    };
+    const controller = new ContractReviewController(mockService as any);
+
+    const renderDto = {
+      executionId: 'exec-review-1',
+      idempotencyKey: 'key-123',
+      input: {
+        fileName: 'contract.docx',
+        contractType: 'nda' as const,
+        contractTypeName: '商业保密协议 (NDA)',
+        myPosition: 'buyer' as const,
+        metrics: mockRenderOutput.metrics,
+        clauses: [],
+        missingClauses: [],
+      },
+    };
+
+    const result = await controller.renderReport(renderDto);
+    expect(result.success).toBe(true);
+    expect(result.output).toEqual(mockRenderOutput);
+    expect(result.artifacts).toEqual(mockRenderOutput.artifacts);
+    expect(mockService.renderReport).toHaveBeenCalledWith(renderDto.input, 'key-123');
+  });
 });
+

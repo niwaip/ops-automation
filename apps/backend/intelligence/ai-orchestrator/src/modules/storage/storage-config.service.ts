@@ -337,6 +337,142 @@ export class StorageConfigService implements OnModuleInit {
     }
   }
 
+  /**
+   * Retrieve file as readable stream by key or fileId.
+   */
+  async getFile(keyOrFileId: string): Promise<NodeJS.ReadableStream | null> {
+    if (!keyOrFileId || typeof keyOrFileId !== 'string') {
+      return null;
+    }
+    const sanitizedInput = path.basename(keyOrFileId).trim();
+    if (!sanitizedInput) {
+      return null;
+    }
+
+    const protocol = this.currentConfig.protocol || 'local';
+
+    // 1. Local disk search
+    if (protocol === 'local') {
+      const candidateDirs = [
+        this.currentConfig.localRoot,
+        path.join(process.cwd(), 'data/storage/uploads'),
+        path.resolve(__dirname, '../../../../../../../data/storage/uploads'),
+      ].filter(Boolean) as string[];
+
+      for (const dir of candidateDirs) {
+        if (!fs.existsSync(dir)) continue;
+
+        const directPath = path.join(dir, sanitizedInput);
+        if (fs.existsSync(directPath) && fs.statSync(directPath).isFile()) {
+          return fs.createReadStream(directPath);
+        }
+
+        try {
+          const files = fs.readdirSync(dir);
+          const matched = files.find(
+            (f) => f === sanitizedInput || f.startsWith(`${sanitizedInput}-`) || f.startsWith(`${sanitizedInput}.`)
+          );
+          if (matched) {
+            const matchedPath = path.join(dir, matched);
+            if (fs.existsSync(matchedPath) && fs.statSync(matchedPath).isFile()) {
+              return fs.createReadStream(matchedPath);
+            }
+          }
+        } catch {
+          // ignore directory read error
+        }
+      }
+      return null;
+    }
+
+    // 2. S3 / MinIO / OSS remote retrieval
+    try {
+      if (!this.currentConfig.endpoint || !this.currentConfig.bucket) {
+        return null;
+      }
+
+      let endpointUrl = this.currentConfig.endpoint.trim();
+      if (!endpointUrl.startsWith('http://') && !endpointUrl.startsWith('https://')) {
+        endpointUrl = `${this.currentConfig.useSSL ? 'https://' : 'http://'}${endpointUrl}`;
+      }
+
+      const pathPrefix = this.currentConfig.pathPrefix || 'uploads/';
+      const candidateKeys = [
+        sanitizedInput.startsWith(pathPrefix) ? sanitizedInput : `${pathPrefix}${sanitizedInput}`,
+        sanitizedInput,
+      ];
+
+      let resolvedKey: string | null = null;
+      try {
+        const prefixToSearch = candidateKeys[0] || '';
+        const listUrl = `${endpointUrl}/${this.currentConfig.bucket}?list-type=2&prefix=${encodeURIComponent(prefixToSearch)}`;
+        const listHeaders: Record<string, string> = { Host: new URL(listUrl).host };
+        const emptyHash = crypto.createHash('sha256').update('').digest('hex');
+
+        if (this.currentConfig.accessKey && this.currentConfig.secretKey) {
+          const sig = this.generateAwsV4Headers({
+            method: 'GET',
+            url: listUrl,
+            region: this.currentConfig.region || 'us-east-1',
+            accessKey: this.currentConfig.accessKey,
+            secretKey: this.currentConfig.secretKey,
+            payloadHash: emptyHash,
+          });
+          Object.assign(listHeaders, sig);
+        }
+
+        const listRes = await axios.get(listUrl, { headers: listHeaders, timeout: 5000, validateStatus: () => true });
+        if (listRes.status === 200 && typeof listRes.data === 'string') {
+          const keyMatches = listRes.data.match(/<Key>(.*?)<\/Key>/);
+          if (keyMatches?.[1]) {
+            resolvedKey = keyMatches[1];
+          }
+        }
+      } catch {
+        // Fall back to candidate keys
+      }
+
+      const keysToTry = resolvedKey ? [resolvedKey, ...candidateKeys] : candidateKeys;
+      const emptyHash = crypto.createHash('sha256').update('').digest('hex');
+
+      for (const key of keysToTry) {
+        const cleanKey = key.startsWith('/') ? key.slice(1) : key;
+        const objectUrl = `${endpointUrl}/${this.currentConfig.bucket}/${cleanKey}`;
+        const headers: Record<string, string> = { Host: new URL(objectUrl).host };
+
+        if (this.currentConfig.accessKey && this.currentConfig.secretKey) {
+          const sig = this.generateAwsV4Headers({
+            method: 'GET',
+            url: objectUrl,
+            region: this.currentConfig.region || 'us-east-1',
+            accessKey: this.currentConfig.accessKey,
+            secretKey: this.currentConfig.secretKey,
+            payloadHash: emptyHash,
+          });
+          Object.assign(headers, sig);
+        }
+
+        try {
+          const response = await axios.get(objectUrl, {
+            headers,
+            responseType: 'stream',
+            timeout: 30000,
+            validateStatus: (status) => status === 200,
+          });
+          if (response.data) {
+            return response.data as NodeJS.ReadableStream;
+          }
+        } catch {
+          // try next candidate key
+        }
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to fetch file from S3-compatible storage: ${err.message}`);
+    }
+
+    return null;
+  }
+
   private async uploadToS3Compatible(
     key: string,
     buffer: Buffer,

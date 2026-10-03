@@ -1,9 +1,9 @@
 {
   "capabilityKey": "platform.email.messages",
-  "definitionVersion": "1.0.1",
-  "definitionDigest": "sha256:76bba0a460a019dfd0fd65f7eda321cbf88097c32d7d8ab2acddf0dd2202414c",
+  "definitionVersion": "1.0.2",
+  "definitionDigest": "sha256:682ea2197b4e560b338d79bdf014f33cd6d8614887498820a7e1d4fc02f030b4",
   "fileHashes": {
-    "manifest.yaml": "sha256:5d492494c96862b6a4a97c13cf6f903b124100fd58ee38519fe9bf4de9c72fdf",
+    "manifest.yaml": "sha256:fee696fa79f684e34861fdec0a29e7a9681552483951e05d817e71fd94cbebdd",
     "workflow.json": "sha256:10cf1ca2baf2955fd1f9840aa33d83045da176b97d5dad5ed87455ecf18a97d4",
     "fixtures/smoke-input.json": "sha256:c092b81c89f56cbbf824f9fd50c6319d5129f5af85e776b28d08ada9254f4e95"
   },

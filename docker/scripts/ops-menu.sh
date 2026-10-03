@@ -224,30 +224,71 @@ probe_http_service() {
 
 show_service_status() {
   local host_ip="localhost"
+  local cp_port="3003"
+  local platform_port="3001"
+  local session_port="3002"
+  local ai_port="3007"
+  local carbone_port="3009"
+  local novnc_port="6080"
+  local temporal_ui_port="8088"
+  local portal_port="5173"
+  local user_web_port="5174"
+
   if [[ -f "$DOCKER_ENV_FILE" ]]; then
-    host_ip="$(grep -E '^HOST_IP=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
-    host_ip="${host_ip:-localhost}"
+    local read_val
+    read_val="$(grep -E '^HOST_IP=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    [ -n "$read_val" ] && host_ip="$read_val"
+    read_val="$(grep -E '^CONTROL_PLANE_PORT=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    [ -n "$read_val" ] && cp_port="$read_val"
+    read_val="$(grep -E '^PLATFORM_PORT=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    [ -n "$read_val" ] && platform_port="$read_val"
+    read_val="$(grep -E '^SESSION_BROKER_PORT=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    [ -n "$read_val" ] && session_port="$read_val"
+    read_val="$(grep -E '^AI_ORCHESTRATOR_PORT=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    [ -n "$read_val" ] && ai_port="$read_val"
+    read_val="$(grep -E '^CARBONE_ENGINE_PORT=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    [ -n "$read_val" ] && carbone_port="$read_val"
+    read_val="$(grep -E '^NOVNC_PORT=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    [ -n "$read_val" ] && novnc_port="$read_val"
+    read_val="$(grep -E '^TEMPORAL_UI_PORT=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    [ -n "$read_val" ] && temporal_ui_port="$read_val"
+    read_val="$(grep -E '^PORTAL_PORT=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    [ -n "$read_val" ] && portal_port="$read_val"
+    read_val="$(grep -E '^USER_WEB_PORT=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    [ -n "$read_val" ] && user_web_port="$read_val"
   fi
+
+  # Environment overrides take priority
+  cp_port="${CONTROL_PLANE_PORT:-$cp_port}"
+  platform_port="${PLATFORM_PORT:-$platform_port}"
+  session_port="${SESSION_BROKER_PORT:-$session_port}"
+  ai_port="${AI_ORCHESTRATOR_PORT:-$ai_port}"
+  carbone_port="${CARBONE_ENGINE_PORT:-$carbone_port}"
+  novnc_port="${NOVNC_PORT:-$novnc_port}"
+  temporal_ui_port="${TEMPORAL_UI_PORT:-$temporal_ui_port}"
+  portal_port="${PORTAL_PORT:-$portal_port}"
+  user_web_port="${USER_WEB_PORT:-$user_web_port}"
 
   printf '\n\033[1m=== Running Containers ===\033[0m\n'
   docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep -E '^ops-|^NAMES' || true
 
   printf '\n\033[1m=== HTTP Health Probes ===\033[0m\n'
-  probe_http_service "Control Plane" "http://127.0.0.1:3003/api/health" "healthy"
-  probe_http_service "Platform" "http://127.0.0.1:3001/auth/login" ""
-  probe_http_service "Session Broker" "http://127.0.0.1:3002/api" ""
-  probe_http_service "AI Orchestrator" "http://127.0.0.1:3007/api" ""
+  probe_http_service "Control Plane" "http://127.0.0.1:${cp_port}/api/health" "healthy"
+  probe_http_service "Platform" "http://127.0.0.1:${platform_port}/auth/login" ""
+  probe_http_service "Session Broker" "http://127.0.0.1:${session_port}/api" ""
+  probe_http_service "AI Orchestrator" "http://127.0.0.1:${ai_port}/api" ""
+  probe_http_service "Carbone Engine" "http://127.0.0.1:${carbone_port}/health" ""
 
   printf '\n\033[1m=== Common Endpoints ===\033[0m\n'
-  printf '  - Platform API:      http://%s:3001\n' "$host_ip"
-  printf '  - Session Broker:    http://%s:3002\n' "$host_ip"
-  printf '  - Control Plane:     http://%s:3003\n' "$host_ip"
-  printf '  - AI Orchestrator:   http://%s:3007\n' "$host_ip"
-  printf '  - Carbone Engine:    http://%s:3030\n' "$host_ip"
-  printf '  - Browser noVNC:     http://%s:6080/vnc.html\n' "$host_ip"
-  printf '  - Temporal UI:       http://%s:8088\n' "$host_ip"
-  printf '  - Portal Web:        http://%s:5173\n' "$host_ip"
-  printf '  - User Web:          http://%s:5174\n' "$host_ip"
+  printf '  - Platform API:      http://%s:%s\n' "$host_ip" "$platform_port"
+  printf '  - Session Broker:    http://%s:%s\n' "$host_ip" "$session_port"
+  printf '  - Control Plane:     http://%s:%s\n' "$host_ip" "$cp_port"
+  printf '  - AI Orchestrator:   http://%s:%s\n' "$host_ip" "$ai_port"
+  printf '  - Carbone Engine:    http://%s:%s\n' "$host_ip" "$carbone_port"
+  printf '  - Browser noVNC:     http://%s:%s/vnc.html\n' "$host_ip" "$novnc_port"
+  printf '  - Temporal UI:       http://%s:%s\n' "$host_ip" "$temporal_ui_port"
+  printf '  - Portal Web:        http://%s:%s\n' "$host_ip" "$portal_port"
+  printf '  - User Web:          http://%s:%s\n' "$host_ip" "$user_web_port"
   printf '\n'
 }
 

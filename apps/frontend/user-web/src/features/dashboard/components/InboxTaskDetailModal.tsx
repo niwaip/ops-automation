@@ -56,6 +56,7 @@ export function InboxTaskDetailModal({
   const [replacementFile, setReplacementFile] = useState<CoordinationAttachment | null>(null);
   const [appendedFiles, setAppendedFiles] = useState<CoordinationAttachment[]>([]);
   const [comment, setComment] = useState('');
+  const [stagedReviewDraft, setStagedReviewDraft] = useState<any | null>(null);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [initialParams, setInitialParams] = useState<Record<string, any>>({});
@@ -72,6 +73,7 @@ export function InboxTaskDetailModal({
         setReplacementFile(null);
         setAppendedFiles([]);
         setComment('');
+        setStagedReviewDraft(null);
         setFileList([]);
         setIsSubmitting(false);
         setIsHistoryCollapsed(true);
@@ -83,6 +85,98 @@ export function InboxTaskDetailModal({
       loadedItemIdRef.current = null;
     }
   }, [open, item?.id, item?.sourceRefId, user?.username, user?.id]);
+
+  const handleReviewResult = (result: any) => {
+    const draft = result.reviewDraft || {
+      executionId: result.executionId,
+      artifactId: result.artifactId,
+      sourceDocumentVersion: result.sourceDocumentVersion,
+      ruleSetId: result.ruleSetId,
+      ruleSetVersion: result.ruleSetVersion,
+      ruleSetDigest: result.ruleSetDigest,
+      action: result.action,
+      summaryText: result.summaryText,
+      stagedComments: result.stagedComments || [],
+      findingStates: result.findingStates || {},
+      approvalOpinions: result.approvalOpinions || [],
+      stats: result.stats,
+      _timestamp: Date.now(),
+    };
+
+    // 四维一致性防串单/防换版/防漂移校验
+    const currentExecutionId =
+      (item as any)?.executionId ||
+      (item?.unifiedPayload as any)?.executionId ||
+      (item?.unifiedPayload as any)?.parameters?.executionId;
+    if (currentExecutionId && draft.executionId && currentExecutionId !== draft.executionId) {
+      message.error(
+        `审阅草稿关联任务(${draft.executionId.slice(0, 8)}...)与当前待办任务(${currentExecutionId.slice(0, 8)}...)不一致，已拦截防止串单！`
+      );
+      return;
+    }
+
+    const currentArtifactId =
+      (item as any)?.artifactId ||
+      (item?.unifiedPayload as any)?.artifactId ||
+      (item?.unifiedPayload as any)?.reviewReport?.artifactId ||
+      (item?.unifiedPayload as any)?.parameters?.artifactId;
+    if (currentArtifactId && draft.artifactId && currentArtifactId !== draft.artifactId) {
+      message.error(
+        `审阅草稿关联产物(${draft.artifactId.slice(0, 8)}...)与当前任务产物(${currentArtifactId.slice(0, 8)}...)不一致，已拦截防止产物漂移！`
+      );
+      return;
+    }
+
+    const currentDocVersion =
+      (item as any)?.sourceDocumentVersion ||
+      (item?.unifiedPayload as any)?.sourceDocumentVersion ||
+      (item?.unifiedPayload as any)?.reviewReport?.sourceDocumentVersion ||
+      (item?.unifiedPayload as any)?.parameters?.sourceDocumentVersion;
+    if (currentDocVersion && draft.sourceDocumentVersion && currentDocVersion !== draft.sourceDocumentVersion) {
+      message.error(
+        `审阅草稿关联文档版本(${draft.sourceDocumentVersion.slice(0, 16)}...)与任务原文档版本(${currentDocVersion.slice(0, 16)}...)不一致，已拦截防止文档换版！`
+      );
+      return;
+    }
+
+    const currentAttachmentId =
+      (item as any)?.sourceAttachmentId ||
+      (item?.unifiedPayload as any)?.sourceAttachmentId ||
+      (item?.unifiedPayload as any)?.reviewReport?.sourceAttachmentId ||
+      (item?.unifiedPayload as any)?.parameters?.sourceAttachmentId;
+    if (currentAttachmentId && draft.sourceAttachmentId && currentAttachmentId !== draft.sourceAttachmentId) {
+      message.error(
+        `审阅草稿关联附件(${draft.sourceAttachmentId})与任务原附件(${currentAttachmentId})不一致，已拦截防止附件漂移！`
+      );
+      return;
+    }
+
+    const currentRuleSetDigest =
+      (item as any)?.ruleSetDigest ||
+      (item?.unifiedPayload as any)?.ruleSetDigest ||
+      (item?.unifiedPayload as any)?.parameters?.ruleSetDigest;
+    if (currentRuleSetDigest && draft.ruleSetDigest && currentRuleSetDigest !== draft.ruleSetDigest) {
+      message.error(
+        `审阅草稿关联审查要件快照(${draft.ruleSetDigest.slice(0, 16)}...)与任务规则快照(${currentRuleSetDigest.slice(0, 16)}...)不一致，已拦截防止规则快照漂移！`
+      );
+      return;
+    }
+
+    setStagedReviewDraft(draft);
+
+    if (result.summaryText) {
+      const cleanSummary = result.summaryText.trim();
+      setComment((prev) => {
+        if (!prev || !prev.trim()) {
+          return cleanSummary;
+        }
+        if (prev.includes(cleanSummary)) {
+          return prev;
+        }
+        return `${prev.trim()}\n\n${cleanSummary}`;
+      });
+    }
+  };
 
   const payload = (item?.unifiedPayload || {}) as Record<string, any>;
   const params = editedParams;
@@ -326,43 +420,95 @@ export function InboxTaskDetailModal({
         return;
       }
 
+      if (stagedReviewDraft) {
+        const currentExecutionId =
+          (item as any)?.executionId ||
+          (item?.unifiedPayload as any)?.executionId ||
+          (item?.unifiedPayload as any)?.reviewReport?.executionId ||
+          (item?.unifiedPayload as any)?.parameters?.executionId;
+        if (currentExecutionId && stagedReviewDraft.executionId && currentExecutionId !== stagedReviewDraft.executionId) {
+          message.error('暂存草稿与当前任务执行单不匹配，已阻止提交！');
+          return;
+        }
+        const currentArtifactId =
+          (item as any)?.artifactId ||
+          (item?.unifiedPayload as any)?.artifactId ||
+          (item?.unifiedPayload as any)?.reviewReport?.artifactId ||
+          (item?.unifiedPayload as any)?.parameters?.artifactId;
+        if (currentArtifactId && stagedReviewDraft.artifactId && currentArtifactId !== stagedReviewDraft.artifactId) {
+          message.error('暂存草稿与当前任务产物不匹配，已阻止提交！');
+          return;
+        }
+        const currentDocVersion =
+          (item as any)?.sourceDocumentVersion ||
+          (item?.unifiedPayload as any)?.sourceDocumentVersion ||
+          (item?.unifiedPayload as any)?.reviewReport?.sourceDocumentVersion ||
+          (item?.unifiedPayload as any)?.parameters?.sourceDocumentVersion;
+        if (currentDocVersion && stagedReviewDraft.sourceDocumentVersion && currentDocVersion !== stagedReviewDraft.sourceDocumentVersion) {
+          message.error('暂存草稿与原文档版本不匹配，已阻止提交！');
+          return;
+        }
+        const currentAttachmentId =
+          (item as any)?.sourceAttachmentId ||
+          (item?.unifiedPayload as any)?.sourceAttachmentId ||
+          (item?.unifiedPayload as any)?.reviewReport?.sourceAttachmentId ||
+          (item?.unifiedPayload as any)?.parameters?.sourceAttachmentId;
+        if (currentAttachmentId && stagedReviewDraft.sourceAttachmentId && currentAttachmentId !== stagedReviewDraft.sourceAttachmentId) {
+          message.error('暂存草稿与原附件不匹配，已阻止提交！');
+          return;
+        }
+        const currentRuleSetDigest =
+          (item as any)?.ruleSetDigest ||
+          (item?.unifiedPayload as any)?.ruleSetDigest ||
+          (item?.unifiedPayload as any)?.parameters?.ruleSetDigest;
+        if (currentRuleSetDigest && stagedReviewDraft.ruleSetDigest && currentRuleSetDigest !== stagedReviewDraft.ruleSetDigest) {
+          message.error('暂存草稿与规则快照不匹配，已阻止提交！');
+          return;
+        }
+      }
+
       if (nodeSemantics.cardActionType === 'send' || action === 'approve' || action === 'complete') {
         applyOptimisticCoordinationSend(queryClient, item, user);
       }
 
-      await workbenchCoordinationApi.submitAction(taskId, {
+      const submitRes = await workbenchCoordinationApi.submitAction(taskId, {
         action,
         comment: finalComment,
         attachments: finalAttachments,
-        parameters: editedParams,
+        parameters: {
+          ...editedParams,
+          ...(stagedReviewDraft ? { reviewDraft: stagedReviewDraft } : {}),
+        },
       });
 
-      if (nodeSemantics.isRevisionRequired) {
-        message.success(
-          latestAppendedFile
-            ? `已成功提交重修材料「${item.title}」，已附带最新追加版本提交流程！`
-            : `已成功重新提交「${item.title}」！系统正在进行智能审查与合规诊断，已自动迁移至「已发事项」。`
-        );
-      } else if (nodeSemantics.cardActionType === 'send') {
-        message.success(
-          latestAppendedFile
-            ? `已成功提交合同送审「${item.title}」，已附带最新追加文件提交流程！`
-            : `已成功提交送审！系统正在进行智能合规诊断与风险复核，已自动迁移至「已发事项」。`
-        );
-      } else if (action === 'approve') {
-        message.success(
-          latestAppendedFile
-            ? `已成功确认流转「${item.title}」，已附带最新追加文件提交流程！`
-            : `已成功确认流转「${item.title}」，流程已推进至下一阶段！`
-        );
-      } else if (action === 'reject') {
-        message.success(`已驳回「${item.title}」，修改要求已同步上一节点承办人`);
+      const injectionStats = (submitRes as any)?.unifiedPayload?.parameters?.commentInjectionStats;
+      const injectionError = (submitRes as any)?.unifiedPayload?.parameters?.commentInjectionError;
+      const hasAnnotatedDocx = (submitRes as any)?.unifiedPayload?.parameters?.hasAnnotatedDocx;
+
+      if ((submitRes as any)?.isAsync) {
+        message.info('已提交处理，批注版 Word 文档正在后台生成');
+      } else if (injectionStats?.unresolvedCount > 0) {
+        message.warning(`操作已完成；批注版 Word 有 ${injectionStats.unresolvedCount} 条批注未精准定位`);
+      } else if (injectionError && !hasAnnotatedDocx) {
+        const cleanErr = injectionError
+          .replace(/\s*\(期望:[\s\S]*?\)/g, '')
+          .replace(/，文档内容可能已被篡改.*/g, '')
+          .replace(/^合同源文档内容哈希校验失败/g, '合同源文档版本与审阅报告不一致');
+        message.warning(`操作已流转；${cleanErr || 'Word 批注未自动回写'}`);
       } else {
-        message.success(
-          latestAppendedFile
-            ? `已成功完成协同任务「${item.title}」，已附带最新追加文档同步流转！`
-            : `已成功完成协同任务「${item.title}」，执行结果已同步发起人！`
-        );
+        if (action === 'reject') {
+          message.success(hasAnnotatedDocx ? '已驳回（已附法务批注版 Word）' : '已驳回');
+        } else if (nodeSemantics.isRevisionRequired) {
+          message.success('已重新提交重修材料');
+        } else if (nodeSemantics.cardActionType === 'send') {
+          message.success('已提交送审');
+        } else if (action === 'approve') {
+          message.success(hasAnnotatedDocx ? '已审批通过（已附法务批注版 Word）' : '已审批通过');
+        } else if (action === 'complete') {
+          message.success('已提交处理');
+        } else {
+          message.success('已处理完成');
+        }
       }
 
       onClose();
@@ -496,7 +642,8 @@ export function InboxTaskDetailModal({
           <Popconfirm
             key="recall-popconfirm"
             title="确定撤回此发起事项？"
-            description="撤回后将终止后续流转，并将事项退回至您的「待办」，您可重新编辑并再次发送。"
+            description="撤回后事项将退回待办，您可重新编辑。"
+            overlayStyle={{ maxWidth: 280 }}
             onConfirm={handleRecall}
             okText="确认撤回"
             cancelText="取消"
@@ -697,7 +844,7 @@ export function InboxTaskDetailModal({
                       style={{
                         fontSize: 13,
                         fontWeight: 600,
-                        color: '#cf1322',
+                        color: 'var(--text-primary)',
                         marginBottom: 6,
                         display: 'flex',
                         alignItems: 'center',
@@ -705,7 +852,7 @@ export function InboxTaskDetailModal({
                       }}
                     >
                       <Space size={6}>
-                        <span>💬 针对驳回意见的修改说明 / 重发理由</span>
+                        <span>💬 修订说明与重发理由</span>
                       </Space>
                       <Upload
                         fileList={fileList}
@@ -761,6 +908,7 @@ export function InboxTaskDetailModal({
                     reportData={auditReport}
                     htmlAttachment={htmlAttachment}
                     defaultCardCollapsed={true}
+                    onReviewResult={handleReviewResult}
                   />
                 ) : null}
               </>
@@ -810,6 +958,7 @@ export function InboxTaskDetailModal({
                     reportData={auditReport}
                     htmlAttachment={htmlAttachment}
                     defaultCardCollapsed={!(auditReport?.overallRisk === 'HIGH' || (auditReport?.score !== undefined && auditReport.score < 60))}
+                    onReviewResult={handleReviewResult}
                   />
                 ) : null}
 
@@ -845,6 +994,11 @@ export function InboxTaskDetailModal({
                           + 补充佐证材料 (可选)
                         </Button>
                       </Upload>
+                      {stagedReviewDraft && (
+                        <Tag color="cyan" style={{ fontSize: 11, marginLeft: 8 }}>
+                          ✓ 已暂存审阅草稿 ({stagedReviewDraft.stagedComments?.length || 0} 条批注 / {Object.keys(stagedReviewDraft.findingStates || {}).length} 项处置)
+                        </Tag>
+                      )}
                     </div>
                     <Input.TextArea
                       rows={3}
@@ -852,7 +1006,7 @@ export function InboxTaskDetailModal({
                       onChange={(e) => setComment(e.target.value)}
                       placeholder="请输入初稿提交流转留言或商务说明..."
                       disabled={isSubmitting}
-                      maxLength={500}
+                      maxLength={3000}
                       showCount
                     />
                   </div>
@@ -867,6 +1021,7 @@ export function InboxTaskDetailModal({
                     reportData={auditReport}
                     htmlAttachment={htmlAttachment}
                     defaultCardCollapsed={false}
+                    onReviewResult={handleReviewResult}
                   />
                 ) : null}
 
@@ -939,6 +1094,11 @@ export function InboxTaskDetailModal({
                           + 补充佐证材料 (可选)
                         </Button>
                       </Upload>
+                      {stagedReviewDraft && (
+                        <Tag color="cyan" style={{ fontSize: 11, marginLeft: 8 }}>
+                          ✓ 已暂存审阅草稿 ({stagedReviewDraft.stagedComments?.length || 0} 条批注 / {Object.keys(stagedReviewDraft.findingStates || {}).length} 项处置)
+                        </Tag>
+                      )}
                     </div>
                     <Input.TextArea
                       rows={3}
@@ -946,7 +1106,7 @@ export function InboxTaskDetailModal({
                       onChange={(e) => setComment(e.target.value)}
                       placeholder="请输入审批流转意见；若驳回请务必在此填写详细修改原因与要求..."
                       disabled={isSubmitting}
-                      maxLength={500}
+                      maxLength={3000}
                       showCount
                     />
                   </div>
@@ -1024,6 +1184,7 @@ export function InboxTaskDetailModal({
                     reportData={auditReport}
                     htmlAttachment={htmlAttachment}
                     defaultCardCollapsed={true}
+                    onReviewResult={handleReviewResult}
                   />
                 ) : null}
               </>

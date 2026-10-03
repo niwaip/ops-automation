@@ -22,6 +22,7 @@ import type {
   PromptDebugRecord,
   PromptDebugPayload,
   StreamEvent,
+  UploadedFile,
 } from './types';
 import { StreamEventType } from './types';
 import {
@@ -211,14 +212,12 @@ const ChatWindow: React.FC = () => {
   }, [messages, localStreamingContent]);
 
   // 发送消息
-  const handleSendMessage = (content: string) => {
+  const handleSendMessage = (content: string, customFiles?: UploadedFile[]) => {
     const currentSessionId = currentSession?.id;
     // 获取当前的uploadedFiles（从store实时获取）
     const currentUploadedFiles = useChatStore.getState().uploadedFiles;
-    if (!content.trim() && currentUploadedFiles.length === 0) return;
-
-    // 保存文件副本用于发送
-    const filesToSend = [...currentUploadedFiles];
+    const filesToSend = customFiles !== undefined ? customFiles : [...currentUploadedFiles];
+    if (!content.trim() && filesToSend.length === 0) return;
 
     // 添加用户消息
     const userMessage = {
@@ -228,7 +227,7 @@ const ChatWindow: React.FC = () => {
       content,
       timestamp: new Date(),
       metadata: {
-        files: filesToSend.map((f) => f.fileName),
+        files: filesToSend.length > 0 ? (filesToSend as any) : undefined,
       },
     };
     addMessage(userMessage);
@@ -580,7 +579,30 @@ const ChatWindow: React.FC = () => {
       .reverse()
       .find((m) => m.role === 'user');
     if (previousUserMessage?.content) {
-      handleSendMessage(previousUserMessage.content);
+      let rawFiles = previousUserMessage.metadata?.files;
+      if (!rawFiles || (Array.isArray(rawFiles) && rawFiles.length === 0)) {
+        const messageWithFiles = [...messages.slice(0, targetIndex)]
+          .reverse()
+          .find(
+            (m) =>
+              m.role === 'user' &&
+              m.metadata?.files &&
+              Array.isArray(m.metadata.files) &&
+              m.metadata.files.length > 0
+          );
+        if (messageWithFiles?.metadata?.files) {
+          rawFiles = messageWithFiles.metadata.files;
+        }
+      }
+      const retryFiles =
+        Array.isArray(rawFiles) && rawFiles.length > 0
+          ? rawFiles.map((f) =>
+              typeof f === 'string'
+                ? ({ fileId: '', fileName: f, size: 0 } as UploadedFile)
+                : (f as UploadedFile)
+            )
+          : undefined;
+      handleSendMessage(previousUserMessage.content, retryFiles);
     }
   };
 

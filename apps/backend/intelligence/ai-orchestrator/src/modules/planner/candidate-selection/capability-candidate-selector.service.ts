@@ -14,6 +14,7 @@ import {
   calculateCapabilityIntentScore,
   selectIntentRankedCandidates,
 } from './capability-intent-match.util';
+import { stripSystemContext } from '../routing/routing-policy.matcher';
 
 @Injectable()
 export class CapabilityCandidateSelectorService {
@@ -131,15 +132,17 @@ export class CapabilityCandidateSelectorService {
       validSkills.push(skill);
     }
 
+    const cleanUserRequest = stripSystemContext(userRequest) || userRequest;
+
     this.logger.log(
-      `Valid skills (${validSkills.length}): ${validSkills.map((s) => `${s.skillName || s.name}:${calculateCapabilityIntentScore(userRequest, [s.skillName, s.name, s.skillId, s.id, s.description, s.triggerKeywords, s.goal])}`).join(', ')}`
+      `Valid skills (${validSkills.length}): ${validSkills.map((s) => `${s.skillName || s.name}:${calculateCapabilityIntentScore(cleanUserRequest, [s.skillName, s.name, s.skillId, s.id, s.description, s.triggerKeywords, s.goal])}`).join(', ')}`
     );
 
     // Keep catalog order for small sets. When the token cap is active, rank first
     // so an explicitly requested user capability cannot be dropped merely because
     // built-ins or older entries appeared earlier in the merged catalog.
     const cappedSkills = selectIntentRankedCandidates(
-      userRequest,
+      cleanUserRequest,
       validSkills,
       this.candidateLimit,
       (skill) => [

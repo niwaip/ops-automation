@@ -1325,4 +1325,87 @@ describe('RecognizerService model routing', () => {
       })
     );
   });
+
+  it('self-heals malformed JSON with leading double braces (incident case: {{"partyA.name":"豆包有限公司"...})', async () => {
+    const requestedModelId = 'requested-model-id';
+    const requestedClient = {
+      chatCompletion: jest.fn().mockResolvedValue({
+        content:
+          '{{"partyA.name":"豆包有限公司", "partyA.address":"北京王府井大街1000号", "cooperation.subject":"AI模型开发"}',
+        usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
+      }),
+    };
+    const modelService = {
+      resolveModelId: jest.fn().mockResolvedValue(requestedModelId),
+      getClient: jest.fn().mockReturnValue(requestedClient),
+      getDefaultModel: jest.fn().mockReturnValue(null),
+      getPromptCachingConfig: jest.fn().mockReturnValue(undefined),
+    } as unknown as ModelService;
+    const service = new RecognizerService(modelService);
+
+    const result = await service.recognizeParams({
+      template_id: 'contract-template',
+      user_input:
+        '合同审查 我需要的北京王府井大街1000号的 豆包有限公司，签订关于 ai模型开发的 保密协议',
+      params_schema: {
+        properties: {
+          'partyA.name': { type: 'string', description: '甲方公司名称' },
+          'partyA.address': { type: 'string', description: '甲方地址' },
+          'cooperation.subject': { type: 'string', description: '合作主题' },
+        },
+      },
+    });
+
+    expect(result.params['partyA.name']).toBe('豆包有限公司');
+    expect(result.params['partyA.address']).toBe('北京王府井大街1000号');
+    expect(result.params['cooperation.subject']).toBe('ai模型开发');
+  });
+
+  it('triggers deterministic rule fallback when AI output is completely unparseable', async () => {
+    const requestedModelId = 'requested-model-id';
+    const requestedClient = {
+      chatCompletion: jest.fn().mockResolvedValue({
+        content: '抱歉，我无法识别相关参数，请稍后再试。',
+        usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
+      }),
+    };
+    const modelService = {
+      resolveModelId: jest.fn().mockResolvedValue(requestedModelId),
+      getClient: jest.fn().mockReturnValue(requestedClient),
+      getDefaultModel: jest.fn().mockReturnValue(null),
+      getPromptCachingConfig: jest.fn().mockReturnValue(undefined),
+    } as unknown as ModelService;
+    const service = new RecognizerService(modelService);
+
+    const result = await service.recognizeParams({
+      template_id: 'contract-template',
+      user_input:
+        '生成保密合同 我需要的北京王府井大街1000号的 豆包有限公司，签订关于 ai模型开发的 保密协议，我们是乙方 富士通',
+      fallbackMode: 'basic',
+      params_schema: {
+        properties: {
+          'partyA.name': {
+            type: 'string',
+            description: '协议首部甲方法律主体名称',
+            displayName: '甲方公司法定全称',
+          },
+          'partyA.address': {
+            type: 'string',
+            description: '协议首部甲方注册或联系地址',
+            displayName: '甲方注册或经营地址',
+          },
+          'cooperation.subject': {
+            type: 'string',
+            description: '保密协议所覆盖的合作项目/业务范围主题',
+            displayName: '双方合作的具体业务主题',
+          },
+        },
+      },
+    });
+
+    // Should be recovered from explicit rule extraction!
+    expect(result.params['partyA.name']).toBe('豆包有限公司');
+    expect(result.params['partyA.address']).toBe('北京王府井大街1000号');
+    expect(result.params['cooperation.subject']).toBe('ai模型开发');
+  });
 });

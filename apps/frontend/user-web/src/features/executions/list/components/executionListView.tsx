@@ -2,10 +2,19 @@ import React from 'react';
 import {
   CheckCircleFilled,
   CheckCircleOutlined,
+  ClockCircleOutlined,
   CloseCircleFilled,
   CopyOutlined,
+  DownloadOutlined,
   FileDoneOutlined,
+  FileExcelFilled,
+  FileImageFilled,
+  FilePdfFilled,
+  FileProtectOutlined,
+  FileTextFilled,
   FileTextOutlined,
+  FileWordFilled,
+  FileZipFilled,
   HourglassOutlined,
   LoadingOutlined,
   RightOutlined,
@@ -13,19 +22,20 @@ import {
   SafetyCertificateFilled,
   StopOutlined,
   TeamOutlined,
-  WarningOutlined,
 } from '@ant-design/icons';
-import { message as antdMessage, Tooltip, Typography } from 'antd';
+import { Button, message as antdMessage, Popover, Tag, Tooltip, Typography } from 'antd';
 import type { TableProps } from 'antd';
 import type { ExecutionDto, ExecutionStatus } from '@/api/execution';
 import {
-  formatCompactExecutionTime,
   getExecutionTime,
   listStatusLabels,
 } from '@/features/executions/list/lib/executionListView';
-import { summarizeExecutionListInput } from '@/features/executions/list/lib/listHelpers';
-import { formatDuration } from '@/features/executions/list/lib/listView';
-import { summarizeExecutionListResult } from '@ops/user-core';
+import {
+  extractRecordBusinessTitle,
+  extractRecordDeliverables,
+  formatCustomerFacingResult,
+  formatExecutionTimeDisplay,
+} from '@/features/executions/list/lib/executionListHelpers';
 import styles from '../../pages/ExecutionListPage.module.css';
 
 const { Text } = Typography;
@@ -36,6 +46,7 @@ export interface ExecutionListSummaryStats {
   attentionCount: number;
   completedCount: number;
   skillCoverageCount: number;
+  deliverablesCount?: number;
 }
 
 export interface ExecutionListSummaryItem {
@@ -51,6 +62,7 @@ interface BuildExecutionListColumnsOptions {
   getSkillDisplayName: (skillId?: string) => string;
   statusColors: Record<string, string>;
   statusLabels: Record<string, string>;
+  onOpenDetailPage?: (executionId: string) => void;
 }
 
 export const buildExecutionListOverviewItems = (
@@ -77,7 +89,7 @@ export const buildExecutionListOverviewItems = (
     label: '异常 / 需关注',
     value: summaryStats.attentionCount,
     accentClassName: 'is-danger',
-    icon: <WarningOutlined />,
+    icon: <HourglassOutlined />,
     statusFilterValue: 'failed',
   },
   {
@@ -89,11 +101,11 @@ export const buildExecutionListOverviewItems = (
     statusFilterValue: 'succeeded',
   },
   {
-    key: 'skills',
-    label: '涉及员工数',
-    value: summaryStats.skillCoverageCount,
+    key: 'deliverables',
+    label: '产物已交付',
+    value: summaryStats.deliverablesCount ?? summaryStats.skillCoverageCount,
     accentClassName: 'is-neutral',
-    icon: <RobotOutlined />,
+    icon: <FileDoneOutlined />,
   },
 ];
 
@@ -160,18 +172,72 @@ const renderStatusBadge = (status: ExecutionStatus | string, statusLabels: Recor
   }
 };
 
+const resolveDeliverableIcon = (extension?: string) => {
+  const ext = (extension || '').toLowerCase().replace(/^\./, '');
+  if (ext === 'doc' || ext === 'docx') {
+    return <FileWordFilled style={{ color: '#2563eb', fontSize: 16 }} />;
+  }
+  if (ext === 'pdf') {
+    return <FilePdfFilled style={{ color: '#ef4444', fontSize: 16 }} />;
+  }
+  if (ext === 'html' || ext === 'htm') {
+    return <FileProtectOutlined style={{ color: '#0284c7', fontSize: 16 }} />;
+  }
+  if (ext === 'xls' || ext === 'xlsx' || ext === 'csv') {
+    return <FileExcelFilled style={{ color: '#16a34a', fontSize: 16 }} />;
+  }
+  if (['zip', 'rar', 'tar', 'gz', '7z'].includes(ext)) {
+    return <FileZipFilled style={{ color: '#d97706', fontSize: 16 }} />;
+  }
+  if (['png', 'jpg', 'jpeg', 'svg', 'webp'].includes(ext)) {
+    return <FileImageFilled style={{ color: '#8b5cf6', fontSize: 16 }} />;
+  }
+  return <FileTextFilled style={{ color: '#6366f1', fontSize: 16 }} />;
+};
+
 export const buildExecutionListColumns = ({
   getSkillDisplayName,
   statusLabels,
+  onOpenDetailPage,
 }: BuildExecutionListColumnsOptions): TableProps<ExecutionDto>['columns'] => [
   {
-    title: '任务 / 执行单号',
+    title: '执行时间',
+    key: 'time',
+    width: 145,
+    align: 'left',
+    defaultSortOrder: 'descend',
+    sorter: (a: ExecutionDto, b: ExecutionDto) => getExecutionTime(a) - getExecutionTime(b),
+    render: (_: unknown, record: ExecutionDto) => {
+      const timeInfo = formatExecutionTimeDisplay(record);
+      return (
+        <Tooltip
+          title={<div style={{ whiteSpace: 'pre-line' }}>{timeInfo.tooltip}</div>}
+          placement="topLeft"
+        >
+          <div className={styles['execution-list-time-cell']}>
+            <span className={styles['execution-list-time-value']}>{timeInfo.compactTime}</span>
+            <span
+              className={`${styles['execution-list-duration-pill']} ${
+                timeInfo.isRunning ? styles['is-running'] : ''
+              }`}
+            >
+              <ClockCircleOutlined style={{ fontSize: 10, marginRight: 3 }} />
+              {timeInfo.durationLabel}
+            </span>
+          </div>
+        </Tooltip>
+      );
+    },
+  },
+  {
+    title: '运行任务',
     key: 'task',
-    width: 210,
+    width: 230,
     align: 'left',
     render: (_: unknown, record: ExecutionDto) => {
       const skillName = getSkillDisplayName(record.skillId);
       const shortId = record.id.slice(0, 8);
+      const businessTitle = extractRecordBusinessTitle(record, skillName);
       const runtimeLabel = record.runtimeType
         ? record.runtimeType.charAt(0).toUpperCase() + record.runtimeType.slice(1)
         : null;
@@ -179,16 +245,19 @@ export const buildExecutionListColumns = ({
       return (
         <div className={styles['execution-list-task-cell']}>
           <div className={styles['execution-list-task-name-row']}>
-            <RobotOutlined className={styles['execution-list-task-icon']} />
             <Text
               strong
-              ellipsis={{ tooltip: skillName }}
+              ellipsis={{ tooltip: businessTitle }}
               className={styles['execution-list-task-name']}
             >
-              {skillName}
+              {businessTitle}
             </Text>
           </div>
           <div className={styles['execution-list-task-sub-row']}>
+            <Tag className={styles['execution-list-skill-tag']} bordered={false}>
+              <RobotOutlined style={{ marginRight: 3, fontSize: 11 }} />
+              {skillName}
+            </Tag>
             <Tooltip title={`执行单完整 ID: ${record.id} (点击复制)`}>
               <span
                 className={styles['execution-list-id-tag']}
@@ -202,9 +271,6 @@ export const buildExecutionListColumns = ({
                 <CopyOutlined className={styles['execution-list-id-copy-icon']} />
               </span>
             </Tooltip>
-            {runtimeLabel && (
-              <span className={styles['execution-list-runtime-tag']}>{runtimeLabel}</span>
-            )}
             {record.riskLevel && record.riskLevel !== 'L0' && (
               <span
                 className={`${styles['execution-list-risk-tag']} ${
@@ -214,125 +280,154 @@ export const buildExecutionListColumns = ({
                 {record.riskLevel}
               </span>
             )}
+            {runtimeLabel && (
+              <span className={styles['execution-list-runtime-tag']}>{runtimeLabel}</span>
+            )}
           </div>
         </div>
       );
     },
   },
   {
-    title: '状态',
-    key: 'status',
-    width: 105,
-    align: 'center',
-    render: (_: unknown, record: ExecutionDto) => renderStatusBadge(record.status, statusLabels),
+    title: '运行结果',
+    key: 'result',
+    minWidth: 260,
+    align: 'left',
+    render: (_: unknown, record: ExecutionDto) => {
+      const resultInfo = formatCustomerFacingResult(record);
+      return (
+        <div className={styles['execution-list-result-cell']}>
+          <div className={styles['execution-list-result-top-row']}>
+            {renderStatusBadge(record.status, statusLabels)}
+            {resultInfo.subline && (
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                {resultInfo.subline}
+              </Text>
+            )}
+          </div>
+          <Tooltip
+            title={
+              <div style={{ whiteSpace: 'pre-wrap', maxHeight: 280, overflowY: 'auto' }}>
+                {resultInfo.tooltipText}
+              </div>
+            }
+            placement="topLeft"
+            mouseEnterDelay={0.2}
+          >
+            <div
+              className={`${styles['execution-list-result-text']} ${
+                styles[`result-${resultInfo.status}`] || ''
+              }`}
+            >
+              {resultInfo.headline}
+            </div>
+          </Tooltip>
+        </div>
+      );
+    },
   },
   {
-    title: '输入目标',
-    key: 'input',
+    title: '交付物 / 产物',
+    key: 'deliverables',
     width: 220,
     align: 'left',
-    ellipsis: true,
     render: (_: unknown, record: ExecutionDto) => {
-      const inputText = summarizeExecutionListInput(record);
-      return (
-        <div className={styles['execution-list-summary-cell']}>
-          <Text className={styles['execution-list-summary-text']} ellipsis={{ tooltip: inputText }}>
-            {inputText || '-'}
-          </Text>
-        </div>
-      );
-    },
-  },
-  {
-    title: '交付成果 / 异常排查',
-    key: 'result',
-    align: 'left',
-    ellipsis: true,
-    render: (_: unknown, record: ExecutionDto) => {
-      const isFailed = record.status === 'failed';
-      const isRunning = ['running', 'waiting_input', 'pending_approval'].includes(record.status);
-      const resultText = summarizeExecutionListResult(record);
-      const failureReason =
-        record.failureReason?.trim() || record.failureCode?.trim() || record.takeoverReason?.trim();
-      const artifactsCount = record.normalizedResult?.artifacts?.length || 0;
-      const hasDownload = Boolean(
-        record.normalizedResult?.downloadUrl || (record.normalizedResult as any)?.fileUrl
-      );
-
-      if (isFailed) {
+      const deliverables = extractRecordDeliverables(record);
+      if (deliverables.length === 0) {
         return (
-          <div className={`${styles['execution-list-summary-cell']} ${styles['is-failed']}`}>
-            <div className={styles['execution-failure-badge']}>
-              <WarningOutlined style={{ color: '#ef4444', flexShrink: 0, marginTop: 1 }} />
-              <Text
-                className={styles['execution-failure-text']}
-                ellipsis={{ tooltip: failureReason || resultText || '执行异常中断' }}
-              >
-                {failureReason || resultText || '执行异常中断，请查看任务详情'}
-              </Text>
-            </div>
+          <div className={styles['execution-list-deliverable-cell']}>
+            <span className={styles['execution-no-deliverable']}>无文件产物 (纯数据)</span>
           </div>
         );
       }
 
-      if (isRunning) {
-        return (
-          <div className={`${styles['execution-list-summary-cell']} ${styles['is-running']}`}>
-            <div className={styles['execution-running-badge']}>
-              <LoadingOutlined style={{ color: '#3b82f6', flexShrink: 0 }} />
-              <Text className={styles['execution-running-text']}>
-                {record.currentPhaseStatus || '流程正在执行中...'}
+      const primaryItem = deliverables[0];
+      const moreCount = deliverables.length - 1;
+
+      const popoverContent = (
+        <div className={styles['execution-deliverables-popover-list']}>
+          {deliverables.map((item, idx) => (
+            <div key={item.id || idx} className={styles['execution-deliverable-popover-item']}>
+              <span className={styles['execution-deliverable-icon']}>
+                {resolveDeliverableIcon(item.extension)}
+              </span>
+              <Text ellipsis={{ tooltip: item.name }} className={styles['execution-deliverable-name']}>
+                {item.name}
               </Text>
+              {item.url && (
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<DownloadOutlined />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(item.url, '_blank');
+                  }}
+                >
+                  下载
+                </Button>
+              )}
             </div>
-          </div>
-        );
-      }
+          ))}
+        </div>
+      );
 
       return (
-        <div className={`${styles['execution-list-summary-cell']} ${styles['is-result']}`}>
-          <Text className={styles['execution-list-summary-text']} ellipsis={{ tooltip: resultText }}>
-            {resultText || '任务执行成功完成'}
-          </Text>
-          {artifactsCount > 0 || hasDownload ? (
-            <div className={styles['execution-artifact-chip']}>
-              <FileDoneOutlined style={{ fontSize: 11, color: '#10b981' }} />
-              <span>{artifactsCount > 0 ? `生成 ${artifactsCount} 个产物` : '产物文件已就绪'}</span>
-            </div>
-          ) : null}
+        <div className={styles['execution-list-deliverable-cell']}>
+          <div className={styles['execution-deliverable-primary']}>
+            <span className={styles['execution-deliverable-icon']}>
+              {resolveDeliverableIcon(primaryItem.extension)}
+            </span>
+            <Tooltip title={primaryItem.name} placement="top">
+              <span className={styles['execution-deliverable-name']}>{primaryItem.name}</span>
+            </Tooltip>
+            {primaryItem.url && (
+              <Tooltip title="直接下载或在新窗口打开预览">
+                <Button
+                  type="link"
+                  size="small"
+                  className={styles['execution-deliverable-download-btn']}
+                  icon={<DownloadOutlined />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(primaryItem.url, '_blank');
+                  }}
+                >
+                  下载
+                </Button>
+              </Tooltip>
+            )}
+          </div>
+          {moreCount > 0 && (
+            <Popover content={popoverContent} title="全部交付成果产物" trigger="hover">
+              <Tag className={styles['execution-deliverable-more-tag']}>+ {moreCount} 份产物</Tag>
+            </Popover>
+          )}
         </div>
       );
     },
-  },
-  {
-    title: '开始时间 / 耗时',
-    dataIndex: 'startedAt',
-    key: 'startedAt',
-    width: 130,
-    align: 'center',
-    defaultSortOrder: 'descend',
-    sorter: (a: ExecutionDto, b: ExecutionDto) => getExecutionTime(a) - getExecutionTime(b),
-    render: (_: string | undefined, record: ExecutionDto) => (
-      <div className={styles['execution-list-time-cell']}>
-        <span className={styles['execution-list-time-value']}>
-          {formatCompactExecutionTime(record.startedAt || record.createdAt)}
-        </span>
-        <span className={styles['execution-list-duration-pill']}>
-          {formatDuration(record)}
-        </span>
-      </div>
-    ),
   },
   {
     title: '详情',
     key: 'action',
-    width: 75,
+    width: 85,
     align: 'center',
-    render: () => (
-      <div className={styles['execution-list-action-cell']}>
-        <span className={styles['execution-list-view-link']}>
-          查看 <RightOutlined style={{ fontSize: 10, marginLeft: 2 }} />
-        </span>
-      </div>
+    render: (_: unknown, record: ExecutionDto) => (
+      <Tooltip title="进入完整执行详情页面">
+        <div className={styles['execution-list-action-cell']}>
+          <span
+            className={styles['execution-list-view-link']}
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDetailPage?.(record.id);
+            }}
+          >
+            详情 <RightOutlined style={{ fontSize: 10, marginLeft: 2 }} />
+          </span>
+        </div>
+      </Tooltip>
     ),
   },
 ];

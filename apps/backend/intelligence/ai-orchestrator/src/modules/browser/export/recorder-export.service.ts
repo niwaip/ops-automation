@@ -4,7 +4,7 @@ import { BrowserCommand } from '../intent';
 import {
   BROWSER_RECORDING_EXECUTION_PLAN_VERSION,
   buildBrowserRecordingExecutionPlan,
-} from './browser-recording-execution-plan';
+} from '@ops/browser-recorder';
 import { RecorderLoopDraftState, TemplateStepLike } from '../loop';
 
 type ExportBackendLike = 'cli' | 'chrome-devtools' | 'mcp';
