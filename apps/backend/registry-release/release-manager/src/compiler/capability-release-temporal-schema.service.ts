@@ -300,9 +300,29 @@ export class CapabilityReleaseTemporalSchemaService {
   } {
     const workflowDsl = (this.parseJson(payload.workflowDsl) as Record<string, unknown>) || {};
     const activityDsl = (this.parseJson(payload.activityDsl) as Record<string, unknown>) || {};
+    const sourceContext = this.parseJson<Record<string, unknown>>(workflowDsl.sourceContext) || {};
+
+    const isBrowserSource =
+      sourceContext.sourceType === 'browser_template' ||
+      sourceContext.sourceType === 'browser_recording' ||
+      payload.sourceType === 'browser_template' ||
+      payload.sourceType === 'browser_recording' ||
+      Boolean(sourceContext.browserLogicalPlan) ||
+      Boolean(sourceContext.browserWorkflowComposition) ||
+      Boolean(workflowDsl.browserWorkflowComposition) ||
+      Boolean(workflowDsl.browserLogicalPlan);
+
+    if (isBrowserSource) {
+      return {
+        applicable: false,
+        mappedInputCount: 0,
+        renderPathParamCount: 0,
+        templateBindingParamCount: 0,
+      };
+    }
+
     const declaredPayloadSourceTemplate =
       this.parseJson<Record<string, unknown>>(payload.sourceTemplate) || {};
-    const sourceContext = this.parseJson<Record<string, unknown>>(workflowDsl.sourceContext) || {};
     const sourceContextTemplate =
       this.parseJson<Record<string, unknown>>(sourceContext.sourceTemplate) || {};
     const extractedSourceTemplate =

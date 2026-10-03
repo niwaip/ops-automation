@@ -29,7 +29,7 @@ export interface CapabilitiesPageProps {
 }
 
 export const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' }) => {
-  const [, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isStudioMode = mode === 'studio';
   const state = useCapabilitiesState();
   const [createForm] = Form.useForm();
@@ -159,13 +159,50 @@ export const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'mana
       });
     }
 
+    // 3. If navigated with a sourceId, ensure it's in the options even if otherwise excluded
+    const paramSourceId = searchParams.get('sourceId');
+    if (paramSourceId && !options.some((o) => o.value === paramSourceId)) {
+      const wf = temporalWorkflowOptions.find((w) => w.id === paramSourceId);
+      if (wf) {
+        options.unshift({
+          label: `[编排型] ${wf.name || `Workflow ${wf.id.slice(0, 8)}`}`,
+          value: wf.id,
+          sourceType: 'temporal_workflow',
+          sourceName: wf.name || `Workflow ${wf.id.slice(0, 8)}`,
+          description: wf.description || undefined,
+        });
+      }
+    }
+
     return options;
-  }, [releases, flowOptions, temporalWorkflowOptions]);
+  }, [releases, flowOptions, temporalWorkflowOptions, searchParams]);
 
   const temporalWorkflowMap = useMemo(
     () => new Map(temporalWorkflowOptions.map((wf) => [wf.id, wf])),
     [temporalWorkflowOptions]
   );
+
+  React.useEffect(() => {
+    const create = searchParams.get('create');
+    const sourceId = searchParams.get('sourceId');
+    const sourceType =
+      (searchParams.get('sourceType') as CapabilitySourceType) || 'temporal_workflow';
+    if (create === 'true' || sourceId) {
+      state.setCreateVisible(true);
+      state.setCreateWizardStep(0);
+      if (sourceId) {
+        const wf = temporalWorkflowMap.get(sourceId);
+        createForm.setFieldsValue({
+          sourceId,
+          sourceType:
+            wf?.sourceContext?.sourceType === 'browser_template'
+              ? 'temporal_workflow'
+              : sourceType,
+          sourceName: wf?.name,
+        });
+      }
+    }
+  }, [searchParams, temporalWorkflowMap, createForm]);
 
   const handleSelectRelease = (id: string, drawerMode: 'view' | 'edit') => {
     state.setSelectedReleaseId(id);
@@ -252,6 +289,13 @@ export const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'mana
           state.setCreateVisible(false);
           state.setWizardReleaseId(null);
           state.setCreateWizardStep(0);
+          if (searchParams.get('create') || searchParams.get('sourceId')) {
+            const nextParams = new URLSearchParams(searchParams);
+            nextParams.delete('create');
+            nextParams.delete('sourceId');
+            nextParams.delete('sourceType');
+            setSearchParams(nextParams, { replace: true });
+          }
         }}
         createWizardStep={state.createWizardStep}
         wizardReleaseId={state.wizardReleaseId}

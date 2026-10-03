@@ -260,7 +260,8 @@ export class ExecutionPlanningService {
         skillVersion || null,
       );
       const row = rows[0];
-      if (!row || this.readNonEmptyString(row.source_type) !== 'browser_recording') return undefined;
+      const sourceType = this.readNonEmptyString(row?.source_type);
+      if (!row || !['browser_recording', 'temporal_workflow'].includes(sourceType || '')) return undefined;
       const sourcePayload = this.parseJsonRecord(row.source_payload_json);
       const apiEndpoints = this.parseJsonRecord(sourcePayload?.apiEndpoints);
       // Browser recorder bridge stores runtime metadata on the immutable source
@@ -269,17 +270,26 @@ export class ExecutionPlanningService {
       const runtimeMetadata =
         this.parseJsonRecord(sourcePayload?.runtimeMetadata) ||
         this.parseJsonRecord(apiEndpoints?.runtimeMetadata);
+      const workflowDsl = this.parseJsonRecord(sourcePayload?.workflowDsl);
+      const sourceContext = this.parseJsonRecord(workflowDsl?.sourceContext);
       const composition =
         this.parseJsonRecord(runtimeMetadata?.composition) ||
         this.parseJsonRecord(sourcePayload?.workflowComposition) ||
-        this.parseJsonRecord(sourcePayload?.composition);
+        this.parseJsonRecord(sourcePayload?.composition) ||
+        this.parseJsonRecord(sourceContext?.browserWorkflowComposition) ||
+        this.parseJsonRecord(sourceContext?.composition);
       if (!composition || !Array.isArray(composition.postProcessingSteps) || composition.postProcessingSteps.length === 0) {
         return undefined;
       }
       const executionPlan = this.parseJsonRecord(runtimeMetadata?.executionPlan);
-      const outputNames = this.readRecordArray(executionPlan?.outputs)
+      let outputNames = this.readRecordArray(executionPlan?.outputs)
         .map((output) => this.readNonEmptyString(output.name))
         .filter((name): name is string => Boolean(name));
+      if (outputNames.length === 0 && Array.isArray(composition.outputDeclarations)) {
+        outputNames = this.readRecordArray(composition.outputDeclarations)
+          .map((output) => this.readNonEmptyString(output.name))
+          .filter((name): name is string => Boolean(name));
+      }
       const version = this.normalizePublishedVersion(row.release_version);
       if (!version) return undefined;
       return { composition, outputNames, skillVersion: version };

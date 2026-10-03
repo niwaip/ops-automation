@@ -155,37 +155,39 @@ export class ExecutionHumanControlService {
       );
     }
 
+    let didFinishTargetStep = false;
     const currentPhase = await this.getCurrentPhaseRecord(
       id,
       (execution as unknown as Record<string, unknown>).currentPhaseKey as string | null | undefined
     );
     if (currentPhase?.id) {
-      await this.resolvePhaseTakeoverAndMarkRunning(id, currentPhase, userId, dto.comment);
+      didFinishTargetStep = await this.resolvePhaseTakeoverAndMarkRunning(id, currentPhase, userId, dto.comment);
     } else {
       const waitingPhase = await this.findWaitingPhase(id);
       if (waitingPhase) {
-        await this.resolvePhaseTakeoverAndMarkRunning(id, waitingPhase, userId, dto.comment);
+        didFinishTargetStep = await this.resolvePhaseTakeoverAndMarkRunning(id, waitingPhase, userId, dto.comment);
       } else {
         await this.resolveOrRequeueStepWithoutPhase(id, userId, dto.comment);
       }
     }
 
+    const effectiveStepId = didFinishTargetStep ? undefined : dto.stepId;
     const runtimeSessionId = await this.exitHumanControlAndResume(
       id,
       hooks,
-      dto.stepId,
+      effectiveStepId,
       currentPhase?.runtime_session_id
     );
     await hooks.emitEvent(id, EXECUTION_EVENT_TYPE.EXECUTION_RESUMED, {
       userId,
-      stepId: dto.stepId,
+      stepId: effectiveStepId,
       comment: dto.comment,
       ...(currentPhase?.phase_key ? { phaseKey: currentPhase.phase_key } : {}),
     });
 
     if (execution.executionMode === 'deterministic_plan') {
       if (this.planSchedulerService) {
-        await this.advanceDeterministicExecution(id, userId, requester, dto.stepId);
+        await this.advanceDeterministicExecution(id, userId, requester, effectiveStepId);
       }
     } else if (runtimeSessionId) {
       this.runAdvanceExecutionFlow(id, runtimeSessionId, hooks);
@@ -340,23 +342,27 @@ export class ExecutionHumanControlService {
     }
 
     const phase = await this.requirePhaseRecord(executionId, phaseKey);
-    await this.resolvePhaseTakeoverAndMarkRunning(executionId, phase, userId, dto.comment);
+    const sessionId = await this.resolveExecutionRuntimeSessionId(executionId, phase.runtime_session_id);
+    await hooks.resumeRuntimeSessionQuietly(sessionId, executionId, dto.stepId);
+    const didFinishTargetStep = await this.resolvePhaseTakeoverAndMarkRunning(executionId, phase, userId, dto.comment);
+    const effectiveStepId = didFinishTargetStep ? undefined : dto.stepId;
     const runtimeSessionId = await this.exitHumanControlAndResume(
       executionId,
       hooks,
-      dto.stepId,
-      phase.runtime_session_id
+      effectiveStepId,
+      phase.runtime_session_id,
+      false
     );
     await hooks.emitEvent(executionId, EXECUTION_EVENT_TYPE.EXECUTION_RESUMED, {
       userId,
-      stepId: dto.stepId,
+      stepId: effectiveStepId,
       comment: dto.comment,
       phaseKey,
     });
 
     if (execution.executionMode === 'deterministic_plan') {
       if (this.planSchedulerService) {
-        await this.advanceDeterministicExecution(executionId, userId, requester, dto.stepId);
+        await this.advanceDeterministicExecution(executionId, userId, requester, effectiveStepId);
       }
     } else if (runtimeSessionId) {
       this.runAdvanceExecutionFlow(executionId, runtimeSessionId, hooks);
@@ -446,6 +452,13 @@ export class ExecutionHumanControlService {
     preferredRuntimeSessionId?: string | null,
     resumeRuntimeSession = true
   ): Promise<string | null> {
+    const runtimeSessionId = await this.resolveExecutionRuntimeSessionId(
+      executionId,
+      preferredRuntimeSessionId
+    );
+    if (resumeRuntimeSession) {
+      await hooks.resumeRuntimeSessionQuietly(runtimeSessionId, executionId, stepId);
+    }
     await hooks.updateStatus(executionId, EXECUTION_STATUS.RUNNING);
     await this.prisma.execution.update({
       where: { id: executionId },
@@ -456,13 +469,6 @@ export class ExecutionHumanControlService {
       },
     });
 
-    const runtimeSessionId = await this.resolveExecutionRuntimeSessionId(
-      executionId,
-      preferredRuntimeSessionId
-    );
-    if (resumeRuntimeSession) {
-      await hooks.resumeRuntimeSessionQuietly(runtimeSessionId, executionId, stepId);
-    }
     return runtimeSessionId;
   }
 
@@ -471,7 +477,7 @@ export class ExecutionHumanControlService {
     phase: ExecutionPhaseRecord,
     userId: string,
     resolutionNote?: string
-  ): Promise<void> {
+  ): Promise<boolean> {
     const recoveryDecision = this.readJsonRecord(phase.recovery_decision_json);
     const recoveryPatch = this.readJsonRecord(recoveryDecision?.patch);
     const hasResumeFromStepId =
@@ -485,12 +491,27 @@ export class ExecutionHumanControlService {
       select: { currentStepId: true, executionMode: true },
     });
     const isDeterministicPlan = execution?.executionMode === 'deterministic_plan';
-    const shouldFinishTargetStep =
-      (recoveryPatch?.type === 'resolve_by_human' ||
-        recoveryDecision?.type === 'resolve_by_human') &&
-      (!isDeterministicPlan || (!hasResumeFromStepId && !hasFailedStepId));
 
     const targetStep = await this.findFailedStepForPhase(executionId, phase);
+    const targetStepId = targetStep?.id;
+
+    const failedStepIdStr = hasFailedStepId ? String(recoveryPatch!.failedStepId).trim() : '';
+    const resumeStepIdStr = hasResumeFromStepId ? String(recoveryPatch!.resumeFromStepId).trim() : '';
+    const isSequentialSubStep = (val?: string | null) => Boolean(val && /^step_\d+$/.test(val));
+
+    const isDistinctSubStepResume = Boolean(
+      isDeterministicPlan &&
+      (isSequentialSubStep(failedStepIdStr) || isSequentialSubStep(resumeStepIdStr)) &&
+      failedStepIdStr !== targetStepId &&
+      resumeStepIdStr !== targetStepId &&
+      (!hasResumeFromStepId || resumeStepIdStr !== failedStepIdStr)
+    );
+
+    const isResolveByHuman =
+      recoveryPatch?.type === 'resolve_by_human' ||
+      recoveryDecision?.type === 'resolve_by_human';
+
+    const shouldFinishTargetStep = isResolveByHuman && (!isDeterministicPlan || !isDistinctSubStepResume);
 
     if (targetStep) {
       if (shouldFinishTargetStep) {
@@ -509,6 +530,9 @@ export class ExecutionHumanControlService {
             '人工接管处理完成';
           const resolvedOutput = {
             ...existingOutput,
+            status: 'completed',
+            requiresTakeover: false,
+            takeoverReason: null,
             ...(Object.keys(mergedVariables).length > 0 ? { variables: mergedVariables } : {}),
             text:
               typeof existingOutput.text === 'string' && existingOutput.text.trim().length > 0
@@ -536,7 +560,6 @@ export class ExecutionHumanControlService {
         }
         const patchVariables = this.readJsonRecord(recoveryPatch?.variables) || {};
         const existingInput = this.readJsonRecord(targetStep.inputJson) || {};
-        const failedStepIdStr = hasFailedStepId ? String(recoveryPatch!.failedStepId).trim() : '';
         const resolvedResumeStepId =
           (hasResumeFromStepId ? String(recoveryPatch?.resumeFromStepId).trim() : null) ||
           (hasFailedStepId && /^step_\d+$/.test(failedStepIdStr)
@@ -579,7 +602,7 @@ export class ExecutionHumanControlService {
       phaseKey: phase.phase_key!,
       phaseName: phase.phase_name || phase.phase_key!,
       phaseType: phase.phase_type || 'workflow_execution',
-      status: 'running',
+      status: isDeterministicPlan && shouldFinishTargetStep ? 'completed' : 'running',
       attempt: phase.attempt || 1,
       runtimeSessionId: phase.runtime_session_id || null,
       input: phase.input_json || null,
@@ -587,10 +610,12 @@ export class ExecutionHumanControlService {
       postcheck: phase.postcheck_json || null,
       recoveryDecision: phase.recovery_decision_json || null,
       startedAt: phase.started_at ? new Date(phase.started_at) : new Date(),
-      completedAt: null,
+      completedAt: isDeterministicPlan && shouldFinishTargetStep ? new Date() : null,
       errorCode: null,
       errorMessage: null,
     });
+
+    return shouldFinishTargetStep;
   }
 
   private async findFailedStepForPhase(
@@ -742,6 +767,9 @@ export class ExecutionHumanControlService {
           const note = resolutionNote || '人工接管处理完成';
           const resolvedOutput = {
             ...existingOutput,
+            status: 'completed',
+            requiresTakeover: false,
+            takeoverReason: null,
             text:
               typeof existingOutput.text === 'string' && existingOutput.text.trim().length > 0
                 ? existingOutput.text

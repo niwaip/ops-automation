@@ -351,4 +351,113 @@ describe('DeterministicNodeInputResolverService', () => {
       expect(resolved.topic).toBe('general');
     });
   });
+
+  describe('resolve_text_content transform', () => {
+    it('resolves multiple declared paths from upstream output into structured step sections', async () => {
+      prismaMock.executionStep.findMany.mockResolvedValueOnce([
+        {
+          planNodeId: 'browser_recording',
+          status: 'succeeded',
+          outputJson: {
+            step_5_clean_content: '第5步网页正文内容',
+            step_6_clean_content: '第6步毛利率审批列表',
+          },
+        },
+      ]);
+
+      const resolved = await resolver.resolveInputs(
+        'exec-test-1',
+        {
+          content: {
+            source: 'node_output',
+            nodeId: 'browser_recording',
+            path: 'step_5_clean_content,step_6_clean_content',
+            paths: ['step_5_clean_content', 'step_6_clean_content'],
+            transform: 'resolve_text_content',
+          } as any,
+        },
+        {},
+      );
+
+      expect(resolved.content).toContain('### 步骤【step_5】提取正文：\n\n第5步网页正文内容');
+      expect(resolved.content).toContain('### 步骤【step_6】提取正文：\n\n第6步毛利率审批列表');
+    });
+
+    it('falls back to presentation.detailText or result.summary when declared paths yield no text', async () => {
+      prismaMock.executionStep.findMany.mockResolvedValueOnce([
+        {
+          planNodeId: 'browser_recording',
+          status: 'succeeded',
+          outputJson: {
+            result: {
+              summary: '这是上游流程执行的业务总结信息',
+            },
+          },
+        },
+      ]);
+
+      const resolved = await resolver.resolveInputs(
+        'exec-test-2',
+        {
+          content: {
+            source: 'node_output',
+            nodeId: 'browser_recording',
+            path: 'step_5_clean_content,step_6_clean_content',
+            paths: ['step_5_clean_content', 'step_6_clean_content'],
+            transform: 'resolve_text_content',
+          } as any,
+        },
+        {},
+      );
+
+      expect(resolved.content).toBe('这是上游流程执行的业务总结信息');
+    });
+
+    it('synthesizes structured execution summary from businessData when declared paths are missing and text fields empty', async () => {
+      prismaMock.executionStep.findMany.mockResolvedValueOnce([
+        {
+          planNodeId: 'browser_recording',
+          status: 'succeeded',
+          outputJson: {
+            result: {
+              title: '审批流程自动化',
+              businessData: {
+                result: {
+                  status: 'completed',
+                  commandCount: 3,
+                  variables: {
+                    grossProfitRate: '25.5%',
+                  },
+                  results: [
+                    { command: 'navigate', status: 'success', pageTitle: '审批列表' },
+                    { command: 'click', status: 'success', message: '审批通过' },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      ]);
+
+      const resolved = await resolver.resolveInputs(
+        'exec-test-3',
+        {
+          content: {
+            source: 'node_output',
+            nodeId: 'browser_recording',
+            path: 'step_5_clean_content,step_6_clean_content',
+            paths: ['step_5_clean_content', 'step_6_clean_content'],
+            transform: 'resolve_text_content',
+          } as any,
+        },
+        {},
+      );
+
+      expect(resolved.content).toContain('### 【审批流程自动化】执行结果与数据');
+      expect(resolved.content).toContain('- **执行状态**: completed');
+      expect(resolved.content).toContain('`grossProfitRate`: 25.5%');
+      expect(resolved.content).toContain('动作: `navigate`');
+      expect(resolved.content).toContain('动作: `click`');
+    });
+  });
 });

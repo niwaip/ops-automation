@@ -10,6 +10,7 @@ import {
   resolveWorkflowDisplayName,
 } from './temporal-workflow-fixed-workflow-result.helpers';
 import { toPythonLiteral } from './temporal-workflow-python.utils';
+import { buildBrowserCheckpointRestoreLines, buildBrowserCheckpointResultLines } from './temporal-workflow-browser-checkpoint-code.helpers';
 
 type DurationToTimedeltaCodeFn = (duration: string) => string;
 type BuildExecuteActivityTimeoutLinesFn = (
@@ -111,7 +112,8 @@ export function buildFixedBrowserPhaseWorkflowCode(args: {
           `${activityDef.name} ${step.name} ${(activityDef as any).description || ''} ${JSON.stringify(activityDef.config || {})}`
         ) || pairIndex === input.pairs.length - 1);
       return [
-        `${indent}if (not skip_iteration or ${isTeardownPhase ? 'True' : 'False'}) and not loop_exhausted:`,
+        `${indent}if (not resume_pending or resume_step_id == ${JSON.stringify(step.id)}) and (not skip_iteration or ${isTeardownPhase ? 'True' : 'False'}) and not loop_exhausted:`,
+        `${childIndent}resume_pending = False`,
         `${childIndent}while True:`,
         `${grandIndent}workflow.logger.info(${JSON.stringify(`执行浏览器 Phase Activity: ${activityDef.name}`)})`,
         `${grandIndent}current_activity_input = dict(workflow_context)`,
@@ -123,7 +125,12 @@ export function buildFixedBrowserPhaseWorkflowCode(args: {
         `${grandIndent}if isinstance(phase_result, dict):`,
         `${grandIndent}    phase_vars = phase_result.get("variables")`,
         `${grandIndent}    if isinstance(phase_vars, dict):`,
-        `${grandIndent}        workflow_context.update(phase_vars)`,
+        `${grandIndent}        for var_key, var_value in phase_vars.items():`,
+        `${grandIndent}            previous_value = workflow_context.get(var_key)`,
+        `${grandIndent}            if var_key.endswith("_clean_content") and previous_value and previous_value != var_value:`,
+        `${grandIndent}                workflow_context[var_key] = str(previous_value) + "\\n\\n" + str(var_value)`,
+        `${grandIndent}            else:`,
+        `${grandIndent}                workflow_context[var_key] = var_value`,
         `${grandIndent}phase_entry = {`,
         `${grandIndent}    "stepId": ${JSON.stringify(step.id)},`,
         `${grandIndent}    "stepName": ${JSON.stringify(step.name)},`,
@@ -155,6 +162,9 @@ export function buildFixedBrowserPhaseWorkflowCode(args: {
         `${grandIndent}    if not self._takeover_resumed:`,
         `${grandIndent}        workflow.logger.warning("人工接管未收到恢复信号，工作流保持挂起/受控退出")`,
         `${grandIndent}        return {`,
+        `${grandIndent}            "status": "takeover_required",`,
+        `${grandIndent}            "requiresTakeover": True,`,
+        `${grandIndent}            "takeoverReason": takeover_reason,`,
         `${grandIndent}            "execution": {"status": "waiting_takeover"},`,
         `${grandIndent}            "trigger": {"type": "manual"},`,
         `${grandIndent}            "result": {`,
@@ -162,6 +172,7 @@ export function buildFixedBrowserPhaseWorkflowCode(args: {
         `${grandIndent}                "title": ${JSON.stringify(workflowDisplayName)},`,
         `${grandIndent}                "summary": f"等待人工接管: {takeover_reason}",`,
         `${grandIndent}                "businessData": {`,
+        `${grandIndent}                    "result": phase_result if isinstance(phase_result, dict) else {"status": "takeover_required"},`,
         `${grandIndent}                    "runtimeSessionId": runtime_session_id,`,
         `${grandIndent}                    "backend": backend,`,
         `${grandIndent}                    "phaseResults": phase_results,`,
@@ -235,7 +246,7 @@ export function buildFixedBrowserPhaseWorkflowCode(args: {
           '        loop_stop_condition = self._normalize_stop_condition(self.BROWSER_LOOP_DRAFT)',
           '        on_no_progress = str((self.BROWSER_LOOP_DRAFT or {}).get("onNoProgress") or "takeover").strip().lower()',
           `        max_iterations = ${Math.max(1, Number(browserLoopDraft.maxIterations || 100))}`,
-          '        current_iteration = 1',
+          '        current_iteration = max(1, int(checkpoint.get("loopIteration") or 1))',
           '        last_loop_value = None',
           '        consecutive_no_progress = 0',
           '        loop_exhausted = False',
@@ -245,7 +256,7 @@ export function buildFixedBrowserPhaseWorkflowCode(args: {
           }),
           '        initial_loop_value = self._extract_loop_value(phase_results)',
           '        loop_stopped_early = False',
-          '        if initial_loop_value is not None:',
+          '        if not resume_pending and not resume_step_id and initial_loop_value is not None:',
           '            loop_stopped_early = self._evaluate_loop_stop(loop_stop_condition, initial_loop_value)',
           '            if loop_stopped_early:',
           '                workflow.logger.info(f"初始列表中已无待处理项 (终止值: {initial_loop_value})，跳过循环")',
@@ -292,6 +303,9 @@ export function buildFixedBrowserPhaseWorkflowCode(args: {
           '                    if not self._takeover_resumed:',
           '                        workflow.logger.warning("循环无进展人工接管未收到恢复信号，工作流保持挂起/受控退出")',
           '                        return {',
+          '                            "status": "takeover_required",',
+          '                            "requiresTakeover": True,',
+          '                            "takeoverReason": no_prog_msg,',
           '                            "execution": {"status": "waiting_takeover"},',
           '                            "trigger": {"type": "manual"},',
           '                            "result": {',
@@ -299,6 +313,7 @@ export function buildFixedBrowserPhaseWorkflowCode(args: {
           `                                "title": ${JSON.stringify(workflowDisplayName)},`,
           '                                "summary": f"等待人工接管: {no_prog_msg}",',
           '                                "businessData": {',
+          '                                    "result": {"status": "takeover_required", "message": no_prog_msg},',
           '                                    "runtimeSessionId": runtime_session_id,',
           '                                    "backend": backend,',
           '                                    "phaseResults": phase_results,',
@@ -459,7 +474,8 @@ export function buildFixedBrowserPhaseWorkflowCode(args: {
         ]
       : []),
     ...workflowResultSupportLines,
-    '    async def run(self, params: dict) -> Dict[str, Any]:',
+    ...buildBrowserCheckpointResultLines(),
+    '    async def _run_browser(self, params: dict) -> Dict[str, Any]:',
     `        workflow.logger.info(${JSON.stringify(`启动工作流: ${workflowDisplayName}`)})`,
     '        try:',
     '            wf_info = workflow.info()',
@@ -477,12 +493,14 @@ export function buildFixedBrowserPhaseWorkflowCode(args: {
     '        shared_activity_input = dict(activity_input)',
     '        shared_activity_input["runtimeSessionId"] = runtime_session_id',
     '        shared_activity_input["backend"] = backend',
+    '        shared_activity_input["executionId"] = normalized_params.get("executionId") or runtime_session_id',
     '        if "initialUrl" in normalized_params:',
     '            shared_activity_input["initialUrl"] = self._normalize(normalized_params.get("initialUrl"))',
     '        workflow_context = dict(shared_activity_input)',
     '        skip_iteration = False',
     '        loop_exhausted = False',
     '        phase_results: List[Dict[str, Any]] = []',
+    ...buildBrowserCheckpointRestoreLines(browserActivityPairs.map(pair => pair.step.id)),
     ...(browserLoopExecutionLines || phaseExecutionLines),
     ...(browserLoopDraft
       ? [

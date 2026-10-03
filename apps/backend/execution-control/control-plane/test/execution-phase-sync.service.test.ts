@@ -1,6 +1,18 @@
 import { ExecutionPhaseSyncService } from '../src/modules/execution/state/execution-phase-sync.service';
 
 describe('ExecutionPhaseSyncService', () => {
+  it('retains workflow phase IDs, iteration and snapshot when flattening captured browser commands', () => {
+    const { service } = createService();
+    const steps = (service as any).extractPhaseStepsFromRuntimeResult({ output: { phaseResults: [{
+      stepId: 'step_5', loopIteration: 2, result: { results: [{
+        status: 'success', command: 'read_page', templateStepId: 'step_8',
+        data: { text: '17.8', mainContent: 'Approval #2' },
+        snapshot: { id: 'shot-2', path: '/tmp/shot-2.png' }, pageTitle: 'Approval detail',
+      }] },
+    }] } });
+    expect(steps[0]).toMatchObject({ stepId: 'step_5', input: { loopIteration: 2 }, snapshotId: 'shot-2',
+      output: { text: '17.8', mainContent: 'Approval #2', snapshot: { id: 'shot-2' }, pageTitle: 'Approval detail' } });
+  });
   const createService = () => {
     const prisma = {
       executionStep: { findMany: jest.fn().mockResolvedValue([]) },

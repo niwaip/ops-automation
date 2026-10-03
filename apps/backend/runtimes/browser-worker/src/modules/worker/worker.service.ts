@@ -508,12 +508,25 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
 
     const requestedMode = options.mode;
     if (requestedMode && worker.mode !== requestedMode) {
-      return true;
+      // If the worker is already running in interactive mode, it has Xvfb/Fluxbox/VNC/noVNC running.
+      // It can safely execute automated agent tasks without needing recreation.
+      // Preserving it maintains the active noVNC stream and host port bindings for live viewing/takeover.
+      if (worker.mode === 'interactive' && requestedMode === 'agent') {
+        // preserve running interactive worker
+      } else {
+        return true;
+      }
     }
 
     const requestedHeadless = options.headless;
     if (typeof requestedHeadless === 'boolean' && worker.headless !== requestedHeadless) {
-      return true;
+      // If the worker is already running with a GUI (headless === false), do not recreate/downgrade
+      // to headless, because that disables Xvfb and noVNC, breaking live monitoring and takeover.
+      if (!worker.headless && requestedHeadless) {
+        // preserve running GUI worker
+      } else {
+        return true;
+      }
     }
 
     const effectiveRequestedCodegen =

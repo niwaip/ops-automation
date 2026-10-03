@@ -442,9 +442,9 @@ describe('ExecutionService phase sync during system execution', () => {
           input: {
             url: 'https://example.com',
           },
-          output: {
+          output: expect.objectContaining({
             pageUrl: 'https://example.com',
-          },
+          }),
         }),
         expect.objectContaining({
           stepIndex: 2,

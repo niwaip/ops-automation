@@ -144,4 +144,61 @@ describe('WorkerService', () => {
       },
     });
   });
+
+  describe('requiresWorkerRecreation', () => {
+    it('preserves running interactive GUI worker when mode is agent or headless is true', () => {
+      const { service } = createService();
+      const runningGuiWorker = {
+        worker_id: 'w1',
+        mode: 'interactive',
+        headless: false,
+        enable_codegen: false,
+        status: 'running',
+      } as any;
+
+      // Requesting agent mode should NOT trigger recreation
+      expect(
+        (service as any).requiresWorkerRecreation(runningGuiWorker, { mode: 'agent' })
+      ).toBe(false);
+
+      // Requesting headless should NOT trigger recreation for running GUI worker
+      expect(
+        (service as any).requiresWorkerRecreation(runningGuiWorker, { headless: true })
+      ).toBe(false);
+
+      // Requesting both agent mode and headless should NOT trigger recreation
+      expect(
+        (service as any).requiresWorkerRecreation(runningGuiWorker, {
+          mode: 'agent',
+          headless: true,
+        })
+      ).toBe(false);
+
+      // But requesting codegen when not enabled SHOULD trigger recreation
+      expect(
+        (service as any).requiresWorkerRecreation(runningGuiWorker, { enableCodegen: true })
+      ).toBe(true);
+    });
+
+    it('triggers recreation if a headless worker is asked for interactive or codegen', () => {
+      const { service } = createService();
+      const headlessWorker = {
+        worker_id: 'w2',
+        mode: 'agent',
+        headless: true,
+        enable_codegen: false,
+        status: 'running',
+      } as any;
+
+      // Asking for headless: false on a headless worker SHOULD recreate to provide GUI
+      expect(
+        (service as any).requiresWorkerRecreation(headlessWorker, { headless: false })
+      ).toBe(true);
+
+      // Asking for interactive mode on a headless agent worker SHOULD recreate
+      expect(
+        (service as any).requiresWorkerRecreation(headlessWorker, { mode: 'interactive' })
+      ).toBe(true);
+    });
+  });
 });

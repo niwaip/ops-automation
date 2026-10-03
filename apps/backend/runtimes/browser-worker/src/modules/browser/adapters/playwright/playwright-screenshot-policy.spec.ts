@@ -327,4 +327,71 @@ describe('PlaywrightInspectionHandler smart screenshot policy', () => {
     });
     expect(disabledResult).toEqual({ capture: false, reason: 'capture_profile_disabled' });
   });
+
+  describe('enrichResultArtifacts main content extraction policy', () => {
+    it('does NOT extract main text for navigation/click/read_value when mainContent is not enabled', async () => {
+      const pageReader = {
+        readCurrentPageHtml: jest.fn().mockResolvedValue('<html><body><h1>Some content</h1></body></html>'),
+        extractMainTextFromHtml: jest.fn().mockReturnValue('Extracted text'),
+      };
+      const customHandler = new PlaywrightInspectionHandler({} as any, sessionManager, pageReader as any);
+
+      const rawResult = {
+        status: 'success' as const,
+        command: 'click',
+      };
+
+      const enriched = await customHandler.enrichResultArtifacts(sessionId, rawResult, {
+        captureProfile: {
+          capture: { screenshot: true, html: true, mainContent: false },
+        },
+      });
+
+      expect(enriched.html).toBe('<html><body><h1>Some content</h1></body></html>');
+      expect(enriched.text).toBeUndefined();
+      expect(enriched.data?.text).toBeUndefined();
+      expect(pageReader.extractMainTextFromHtml).not.toHaveBeenCalled();
+    });
+
+    it('extracts main text when mainContent is explicitly enabled', async () => {
+      const pageReader = {
+        readCurrentPageHtml: jest.fn().mockResolvedValue('<html><body><h1>Some content</h1></body></html>'),
+        extractMainTextFromHtml: jest.fn().mockReturnValue('Extracted text'),
+      };
+      const customHandler = new PlaywrightInspectionHandler({} as any, sessionManager, pageReader as any);
+
+      const rawResult = {
+        status: 'success' as const,
+        command: 'click',
+      };
+
+      const enriched = await customHandler.enrichResultArtifacts(sessionId, rawResult, {
+        captureProfile: {
+          capture: { screenshot: true, html: true, mainContent: true },
+        },
+      });
+
+      expect(enriched.text).toBe('Extracted text');
+      expect(enriched.data?.text).toBe('Extracted text');
+      expect(pageReader.extractMainTextFromHtml).toHaveBeenCalled();
+    });
+
+    it('extracts main text for explicit read_page command even without captureProfile', async () => {
+      const pageReader = {
+        readCurrentPageHtml: jest.fn().mockResolvedValue('<html><body><h1>Article</h1></body></html>'),
+        extractMainTextFromHtml: jest.fn().mockReturnValue('Article text'),
+      };
+      const customHandler = new PlaywrightInspectionHandler({} as any, sessionManager, pageReader as any);
+
+      const rawResult = {
+        status: 'success' as const,
+        command: 'read_page',
+      };
+
+      const enriched = await customHandler.enrichResultArtifacts(sessionId, rawResult);
+
+      expect(enriched.text).toBe('Article text');
+      expect(pageReader.extractMainTextFromHtml).toHaveBeenCalled();
+    });
+  });
 });

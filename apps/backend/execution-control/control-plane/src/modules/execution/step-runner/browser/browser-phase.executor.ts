@@ -343,11 +343,38 @@ export class BrowserPhaseExecutor {
     phaseKey: string,
     result: RuntimePhaseInvokeResult
   ): Promise<void> {
-    const artifacts = Array.isArray(result.artifacts) ? result.artifacts : [];
+    const rawArtifacts = Array.isArray(result.artifacts) ? [...result.artifacts] : [];
+
+    const stepResults = Array.isArray(result.stepResults) ? result.stepResults : [];
+    for (const step of stepResults) {
+      const stepRecord = step as unknown as Record<string, unknown>;
+      const stepOutput = (step.output && typeof step.output === 'object' ? step.output : {}) as Record<string, unknown>;
+      const rawResult = (step.rawResult && typeof step.rawResult === 'object' ? step.rawResult : {}) as Record<string, unknown>;
+      const rawResultOutput = (rawResult.output && typeof rawResult.output === 'object'
+        ? rawResult.output
+        : {}) as Record<string, unknown>;
+      const snapshotRecord = (step.snapshot || stepOutput.snapshot || rawResultOutput.snapshot || {}) as Record<string, unknown>;
+      const snapshotId = (stepRecord.snapshotId || snapshotRecord.id || stepOutput.snapshotId || rawResultOutput.snapshotId) as string | undefined;
+      const screenshotPath = (snapshotRecord.path || stepOutput.screenshotPath || rawResultOutput.screenshotPath || stepOutput.screenshot) as string | undefined;
+      const pageUrl = (stepOutput.pageUrl || rawResultOutput.pageUrl) as string | undefined;
+
+      if (snapshotId && !rawArtifacts.some((a) => a.snapshotId === snapshotId)) {
+        rawArtifacts.push({
+          artifactType: 'screenshot',
+          snapshotId,
+          pageUrl: typeof pageUrl === 'string' ? pageUrl : null,
+          payload: {
+            path: screenshotPath,
+            stepId: (rawResult.stepId as string) || (stepRecord.stepId as string) || null,
+          },
+        });
+      }
+    }
+
     await this.executionPhaseService.appendArtifacts(
       executionId,
       phaseKey,
-      artifacts.map((artifact) => ({
+      rawArtifacts.map((artifact) => ({
         artifactType: artifact.artifactType,
         snapshotId: artifact.snapshotId || null,
         pageUrl: artifact.pageUrl || null,

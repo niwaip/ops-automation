@@ -8,6 +8,7 @@ import ExecutionStatusTag from '@/features/executions/shared/components/Executio
 import { extractPhaseStepImageSources, extractPhaseStepUrl } from '@/features/executions/shared/lib/artifacts';
 import { formatDateTime } from '@/features/executions/list/lib/listView';
 import { getPhaseStatusColor } from '@/features/executions/shared/lib/phase';
+import ExecutionStepSnapshotViewer from '@/features/executions/shared/components/ExecutionStepSnapshotViewer';
 
 const { Text } = Typography;
 
@@ -93,6 +94,7 @@ const ExecutionPhaseStepsTimeline: React.FC<ExecutionPhaseStepsTimelineProps> = 
                 {isNavigateStep ? (
                   <Text copyable={stepUrl ? { text: stepUrl } : undefined}>{stepUrl || '-'}</Text>
                 ) : null}
+                <ExecutionStepSnapshotViewer step={step} />
                 {step.errorMessage ? (
                   <ExecutionErrorAlert message="步骤执行失败" description={step.errorMessage} />
                 ) : null}

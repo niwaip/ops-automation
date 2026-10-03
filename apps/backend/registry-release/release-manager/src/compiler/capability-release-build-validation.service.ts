@@ -665,7 +665,9 @@ export class CapabilityReleaseBuildValidationService {
           const result = await this.temporalWorkflowService.validateWorkflowReal(
             build.generatedCode,
             fn,
-            effectiveInput
+            effectiveInput,
+            undefined,
+            dto.timeout || '180s'
           );
           success = result.success;
           score = result.score;
@@ -697,7 +699,9 @@ export class CapabilityReleaseBuildValidationService {
           const result = await this.temporalWorkflowService.validateWorkflowReal(
             build.generatedCode!,
             fn,
-            effectiveInput
+            effectiveInput,
+            undefined,
+            dto.timeout || '180s'
           );
           success = result.success;
           score = result.score;
@@ -910,7 +914,7 @@ export class CapabilityReleaseBuildValidationService {
           fn,
           effectiveInput as Record<string, any> | undefined,
           undefined,
-          undefined,
+          dto.timeout || '180s',
           (log: string) => {
             streamedLogs.push(log);
             onEvent('log', { message: log });
@@ -949,7 +953,7 @@ export class CapabilityReleaseBuildValidationService {
             fn,
             effectiveInput as Record<string, any> | undefined,
             undefined,
-            undefined,
+            dto.timeout || '180s',
             (log: string) => {
               streamedLogs.push(log);
               onEvent('log', { message: log });

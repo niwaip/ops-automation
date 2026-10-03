@@ -403,28 +403,49 @@ export class DeterministicPlanValidatorService {
           });
         } else {
           const outPath = binding.path || binding.outputPath || '';
-          const upstreamOutputType = fromNode.outputContract?.[outPath];
-          if (!upstreamOutputType) {
+          const rawPaths = Array.isArray((binding as any).paths)
+            ? ((binding as any).paths as string[]).filter(Boolean)
+            : outPath.includes(',')
+              ? outPath.split(',').map((p) => p.trim()).filter(Boolean)
+              : [outPath].filter(Boolean);
+
+          if (rawPaths.length === 0) {
             errors.push({
               code: ERROR_CODES.INPUT_TYPE_MISMATCH,
-              message: `Node '${node.nodeId}' field '${fieldName}' binds output path '${outPath}' which is not declared in node '${fromNode.nodeId}' output contract`,
+              message: `Node '${node.nodeId}' field '${fieldName}' specifies empty output path`,
               nodeId: node.nodeId,
               field: fieldName,
             });
-          } else if (!binding.expectedType) {
-            // Backward-compatible: planners may omit expectedType. Type
-            // compatibility is then unenforced at planner level (the freeze
-            // service's catalog-level pass may still assert it from schemas).
-            warnings.push(
-              `Node '${node.nodeId}' field '${fieldName}' binds upstream output '${outPath}' without expectedType — edge type compatibility is not enforced`
-            );
-          } else if (!this.isTypeCompatible(upstreamOutputType, binding.expectedType)) {
-            errors.push({
-              code: ERROR_CODES.EDGE_TYPE_INCOMPATIBLE,
-              message: `Node '${node.nodeId}' field '${fieldName}' expects type '${binding.expectedType}', but producer node '${fromNode.nodeId}' output path '${outPath}' provides '${upstreamOutputType}'`,
-              nodeId: node.nodeId,
-              field: fieldName,
-            });
+          } else {
+            for (const singlePath of rawPaths) {
+              const upstreamOutputType = fromNode.outputContract?.[singlePath];
+              if (!upstreamOutputType) {
+                errors.push({
+                  code: ERROR_CODES.INPUT_TYPE_MISMATCH,
+                  message: `Node '${node.nodeId}' field '${fieldName}' binds output path '${singlePath}' which is not declared in node '${fromNode.nodeId}' output contract`,
+                  nodeId: node.nodeId,
+                  field: fieldName,
+                });
+              } else if (!binding.expectedType) {
+                // Backward-compatible: planners may omit expectedType. Type
+                // compatibility is then unenforced at planner level (the freeze
+                // service's catalog-level pass may still assert it from schemas).
+                warnings.push(
+                  `Node '${node.nodeId}' field '${fieldName}' binds upstream output '${singlePath}' without expectedType — edge type compatibility is not enforced`
+                );
+              } else if (
+                binding.transform === 'resolve_text_content'
+                  ? !['string', 'json', 'object', 'markdown_content'].includes(upstreamOutputType)
+                  : !this.isTypeCompatible(upstreamOutputType, binding.expectedType)
+              ) {
+                errors.push({
+                  code: ERROR_CODES.EDGE_TYPE_INCOMPATIBLE,
+                  message: `Node '${node.nodeId}' field '${fieldName}' expects type '${binding.expectedType}', but producer node '${fromNode.nodeId}' output path '${singlePath}' provides '${upstreamOutputType}'`,
+                  nodeId: node.nodeId,
+                  field: fieldName,
+                });
+              }
+            }
           }
         }
       } else if (binding.source === 'literal') {

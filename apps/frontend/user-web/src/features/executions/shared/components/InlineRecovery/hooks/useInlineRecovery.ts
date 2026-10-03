@@ -10,6 +10,7 @@ import {
 } from '../../recoveryOptions';
 
 interface PhaseStep {
+  input?: Record<string, unknown>;
   stepId?: string;
   id?: string;
   stepIndex?: number;
@@ -159,7 +160,8 @@ export function useInlineRecovery({
   }, [resumeFromStepId, resumeAction, failedPhaseStepId, nextStepAfterFailedId]);
 
   const phaseLoopIteration = React.useMemo(() => {
-    const value = (phase?.input as { loopIteration?: number | string } | undefined)?.loopIteration;
+    const value = (failedPhaseStep?.input as { loopIteration?: number | string } | undefined)?.loopIteration
+      ?? (phase?.input as { loopIteration?: number | string } | undefined)?.loopIteration;
     if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
       return value;
     }
@@ -170,7 +172,7 @@ export function useInlineRecovery({
       }
     }
     return undefined;
-  }, [phase?.input]);
+  }, [failedPhaseStep?.input, phase?.input]);
 
   const invalidateExecutionQueries = React.useCallback(async () => {
     await Promise.all([

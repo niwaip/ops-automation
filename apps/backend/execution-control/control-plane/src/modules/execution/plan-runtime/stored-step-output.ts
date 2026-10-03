@@ -15,6 +15,26 @@ export function unwrapStoredStepOutput(value: unknown): Record<string, any> {
 
   const res: Record<string, any> = { ...base };
 
+  const resultObj =
+    base.result && typeof base.result === 'object' && !Array.isArray(base.result)
+      ? (base.result as Record<string, any>)
+      : undefined;
+  const presentationObj =
+    base.presentation && typeof base.presentation === 'object' && !Array.isArray(base.presentation)
+      ? (base.presentation as Record<string, any>)
+      : undefined;
+
+  // Surface top-level metadata from result and presentation if not already set
+  if (resultObj) {
+    if (res.title === undefined && resultObj.title) res.title = resultObj.title;
+    if (res.summary === undefined && resultObj.summary) res.summary = resultObj.summary;
+    if (res.businessData === undefined && resultObj.businessData) res.businessData = resultObj.businessData;
+  }
+  if (presentationObj) {
+    if (res.detailText === undefined && presentationObj.detailText) res.detailText = presentationObj.detailText;
+    if (res.chatSummary === undefined && presentationObj.chatSummary) res.chatSummary = presentationObj.chatSummary;
+  }
+
   // If this is a browser run / composite output container, surface step output fields (e.g. text, title, pageUrl, summary, screenshot)
   const stepResults = Array.isArray(base.stepResults)
     ? base.stepResults
@@ -39,6 +59,38 @@ export function unwrapStoredStepOutput(value: unknown): Record<string, any> {
           res[k] = v;
         }
       }
+    }
+  }
+
+  // Extract from phaseResults (Temporal browser workflow)
+  const bData = res.businessData || base.businessData;
+  const phaseResults = Array.isArray(base.phaseResults)
+    ? base.phaseResults
+    : Array.isArray(bData?.phaseResults)
+      ? bData.phaseResults
+      : [];
+
+  for (const item of phaseResults) {
+    const stepId = String(item?.stepId || '');
+    if (stepId) {
+      if (res[stepId] === undefined) res[stepId] = item.result;
+      const dataText = item.result?.data?.text || item.result?.text || item.result?.content;
+      if (dataText) {
+        if (res[`${stepId}_clean_content`] === undefined) res[`${stepId}_clean_content`] = dataText;
+        if (res[`${stepId}_text`] === undefined) res[`${stepId}_text`] = dataText;
+      }
+      if (item.result?.variables && typeof item.result.variables === 'object') {
+        for (const [vk, vv] of Object.entries(item.result.variables)) {
+          if (res[vk] === undefined) res[vk] = vv;
+        }
+      }
+    }
+  }
+
+  const vars = bData?.result?.variables || bData?.variables || base.variables;
+  if (vars && typeof vars === 'object') {
+    for (const [vk, vv] of Object.entries(vars)) {
+      if (res[vk] === undefined) res[vk] = vv;
     }
   }
 

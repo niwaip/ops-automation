@@ -81,6 +81,7 @@ export interface CreateCapabilityBuildDTO {
 }
 
 export interface ValidateCapabilityDTO {
+  timeout?: string;
   buildId?: string;
   input?: Record<string, unknown>;
   testUserInput?: string;

@@ -5,6 +5,22 @@ import {
 } from '../src/modules/execution/plan-runtime/recovery-checkpoint.mapper';
 
 describe('recovery-checkpoint.mapper', () => {
+  it('restores a published workflow checkpoint from an inline result envelope', () => {
+    const content = 'first and second approval pages';
+    const checkpoint = extractRecoveryCheckpoint({ inline: {
+      variables: { step_8_clean_content: content },
+      phaseResults: [
+        { stepId: 'step_5', loopIteration: 1, result: { status: 'completed', variables: { grossProfitRate: '25.5' } } },
+        { stepId: 'step_6', loopIteration: 2, result: { status: 'takeover_required', requiresTakeover: true,
+          variables: { grossProfitRate: '17.8' }, results: [{ snapshot: { id: 'shot-2', path: '/tmp/shot-2.png' }, screenshot: 'large-base64' }] } },
+      ],
+    }, resultRef: { id: 'ref' } });
+    expect(checkpoint.loopIteration).toBe(2);
+    expect(checkpoint.variables).toMatchObject({ grossProfitRate: '17.8', step_8_clean_content: content });
+    expect(checkpoint.previousPhaseResults?.[1]).toMatchObject({ stepId: 'step_6', loopIteration: 2,
+      result: { results: [{ snapshot: { id: 'shot-2', path: '/tmp/shot-2.png' } }] } });
+    expect(JSON.stringify(checkpoint)).not.toContain('large-base64');
+  });
   it('should strip screenshotBase64 and rawHtml from step output', () => {
     const rawOutput = {
       userField: 'value1',

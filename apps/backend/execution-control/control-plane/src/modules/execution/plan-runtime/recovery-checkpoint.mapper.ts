@@ -3,6 +3,7 @@
  * 负责从历史执行输出中提取轻量恢复 Checkpoint，
  * 剔除内联 Base64 截图、巨型 HTML 快照等非必要重型数据，避免恢复请求突破 2 MiB 上限。
  */
+import { unwrapStoredStepOutput } from './stored-step-output';
 
 export interface SanitizedStepArtifact {
   id: string;
@@ -53,6 +54,8 @@ export interface RecoveryCheckpointOutput {
   runtimeEvidence?: Record<string, unknown>;
   previousStepResults?: SanitizedRecoveryStepResult[];
   attemptByStepId?: Record<string, number>;
+  previousPhaseResults?: Record<string, unknown>[];
+  loopIteration?: number;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -218,9 +221,27 @@ export function extractRecoveryCheckpoint(nestedPhaseOutput: unknown): RecoveryC
   }
 
   const checkpoint: RecoveryCheckpointOutput = {};
+  const normalized = unwrapStoredStepOutput(nestedPhaseOutput);
+  const businessData = isRecord(normalized.businessData) ? normalized.businessData : {};
+  const phases = normalized.phaseResults || businessData.phaseResults;
+  if (Array.isArray(phases)) {
+    checkpoint.previousPhaseResults = phases.filter(isRecord).map(phase => ({
+      ...phase,
+      result: sanitizeStepOutput(phase.result),
+    }));
+    checkpoint.loopIteration = Number([...phases].reverse().find(phase => phase?.loopIteration)?.loopIteration) || 1;
+    checkpoint.variables = { ...(businessData.variables as object || {}), ...(normalized.variables as object || {}) };
+    for (const phase of phases) {
+      if (isRecord(phase?.result?.variables)) Object.assign(checkpoint.variables, phase.result.variables);
+    }
+    // Keep all captured iterations surfaced by the workflow, rather than only the last activity's variables.
+    for (const [key, value] of Object.entries(normalized)) {
+      if (key.endsWith('_clean_content')) checkpoint.variables[key] = value;
+    }
+  }
 
   if (isRecord(nestedPhaseOutput.variables)) {
-    checkpoint.variables = { ...nestedPhaseOutput.variables };
+    checkpoint.variables = { ...checkpoint.variables, ...nestedPhaseOutput.variables };
   }
 
   if (isRecord(nestedPhaseOutput.runtimeEvidence)) {

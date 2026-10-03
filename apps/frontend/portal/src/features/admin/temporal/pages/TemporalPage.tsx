@@ -13,6 +13,7 @@ import {
   Badge,
   Upload,
   Tabs,
+  Radio,
 } from 'antd';
 import {
   SearchOutlined,
@@ -28,11 +29,13 @@ import {
   DownloadOutlined,
   UploadOutlined,
   ApartmentOutlined,
+  ClockCircleOutlined,
+  RocketOutlined,
 } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   temporalWorkflowApi,
   TemporalWorkflowDTO,
@@ -89,8 +92,9 @@ const TemporalPage: React.FC = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'process_stage';
+  const activeTab = searchParams.get('tab') || 'temporal';
 
   const [contractModalVisible, setContractModalVisible] = useState(false);
   const [selectedContractWorkflow, setSelectedContractWorkflow] =
@@ -112,6 +116,8 @@ const TemporalPage: React.FC = () => {
 
   const workflowsQuery = useQuery(['temporal'], () => temporalWorkflowApi.list());
   const executionsQuery = useQuery(['executions'], () => executionApi.list());
+
+  const [statusFilter, setStatusFilter] = useState<'all' | 'unreleased' | 'published'>('all');
 
   const deleteMutation = useMutation(temporalWorkflowApi.delete, {
     onSuccess: () => {
@@ -163,32 +169,51 @@ const TemporalPage: React.FC = () => {
     },
   });
 
+  const totalCount = workflowsQuery.data?.length || 0;
+  const publishedCount = workflowsQuery.data?.filter((w) => Boolean(w.deployedAt)).length || 0;
+  const unreleasedCount = workflowsQuery.data?.filter((w) => !w.deployedAt).length || 0;
+
   const filteredWorkflows = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
-    if (!keyword) return workflowsQuery.data || [];
-
     return (workflowsQuery.data || []).filter((workflow) => {
+      if (statusFilter === 'unreleased' && Boolean(workflow.deployedAt)) return false;
+      if (statusFilter === 'published' && !workflow.deployedAt) return false;
+
+      if (!keyword) return true;
       const name = workflow.name?.toLowerCase() || '';
       const description = workflow.description?.toLowerCase() || '';
       const taskQueue = workflow.taskQueue?.toLowerCase() || '';
       return name.includes(keyword) || description.includes(keyword) || taskQueue.includes(keyword);
     });
-  }, [searchText, workflowsQuery.data]);
+  }, [searchText, statusFilter, workflowsQuery.data]);
 
   const workflowOverviewStats = [
     {
       key: 'total',
       label: '工作流总数',
-      value: workflowsQuery.data?.length || 0,
+      value: totalCount,
       icon: <CodeOutlined style={{ color: 'var(--primary-color)' }} />,
       color: 'var(--primary-color)',
+      onClick: () => setStatusFilter('all'),
+      active: statusFilter === 'all',
+    },
+    {
+      key: 'unreleased',
+      label: '未发布',
+      value: unreleasedCount,
+      icon: <ClockCircleOutlined style={{ color: '#fa8c16' }} />,
+      color: '#fa8c16',
+      onClick: () => setStatusFilter('unreleased'),
+      active: statusFilter === 'unreleased',
     },
     {
       key: 'active',
       label: '已发布',
-      value: workflowsQuery.data?.filter((w) => Boolean(w.deployedAt)).length || 0,
+      value: publishedCount,
       icon: <CheckCircleOutlined style={{ color: 'var(--success-color)' }} />,
       color: 'var(--success-color)',
+      onClick: () => setStatusFilter('published'),
+      active: statusFilter === 'published',
     },
     {
       key: 'queues',
@@ -397,10 +422,26 @@ const TemporalPage: React.FC = () => {
     {
       title: centerTitle(t('common:actions')),
       key: 'actions',
-      width: 260,
+      width: 320,
       align: 'center',
       render: (_, r) => (
         <Space size="small">
+          {!r.deployedAt && (
+            <Button
+              type="primary"
+              size="small"
+              icon={<RocketOutlined />}
+              onClick={() =>
+                navigate(
+                  `/admin/capabilities?create=true&sourceId=${r.id}&sourceType=temporal_workflow`
+                )
+              }
+              style={{ borderRadius: 6, fontSize: 12, padding: '0 8px' }}
+              title="前往流程发布中心完成发布向导"
+            >
+              流程发布
+            </Button>
+          )}
           <Button
             type="text"
             size="small"
@@ -443,62 +484,6 @@ const TemporalPage: React.FC = () => {
         style={{ marginBottom: 16 }}
         items={[
           {
-            key: 'process_stage',
-            label: (
-              <Space size={6}>
-                <ApartmentOutlined />
-                <span>业务流程专用原子流</span>
-              </Space>
-            ),
-            children: (
-              <ProcessStageWorkflowList
-                onViewContract={(workflow) => {
-                  setSelectedContractWorkflow(workflow);
-                  setContractModalVisible(true);
-                }}
-                onEditWorkflow={(workflow) => {
-                  const matchingTw = workflowsQuery.data?.find((w) => w.id === workflow.id);
-                  if (matchingTw) {
-                    handleEdit(matchingTw);
-                  } else {
-                    const adapted: TemporalWorkflowDTO = {
-                      id: workflow.id,
-                      name: workflow.name,
-                      description: workflow.description || '',
-                      taskQueue: 'STAGE_AUTOMATION_QUEUE',
-                      workflowDsl: workflow.workflowDsl || {
-                        schemaVersion: '2.0.0',
-                        workflowDefnName: workflow.id,
-                        steps: [],
-                      },
-                      activityDsl: workflow.activityDsl || { activities: [] },
-                      generatedCode: workflow.generatedCode || null,
-                      validationStatus: workflow.validationStatus || 'draft',
-                      validationScore: workflow.validationScore || 0,
-                      isActive: true,
-                      deployedAt: null,
-                      createdAt: new Date().toISOString(),
-                      updatedAt: new Date().toISOString(),
-                    };
-                    handleEdit(adapted);
-                  }
-                }}
-                onOpenInFullEditor={(draft) => {
-                  setEditingWorkflow(null);
-                  setDraftWorkflowDsl({
-                    name: draft.name,
-                    description: draft.description,
-                    taskQueue: 'STAGE_AUTOMATION_QUEUE',
-                    workflowDsl: draft.workflowDsl,
-                    activityDsl: draft.activityDsl,
-                  });
-                  setOpenTemplatePickerOnEditOpen(false);
-                  setEditModalVisible(true);
-                }}
-              />
-            ),
-          },
-          {
             key: 'temporal',
             label: (
               <Space size={6}>
@@ -522,7 +507,7 @@ const TemporalPage: React.FC = () => {
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+                    gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
                     gap: 12,
                     marginBottom: 16,
                   }}
@@ -531,7 +516,15 @@ const TemporalPage: React.FC = () => {
                     <Card
                       key={item.key}
                       size="small"
-                      style={{ ...SECTION_CARD_STYLE, borderRadius: 14 }}
+                      onClick={item.onClick}
+                      style={{
+                        ...SECTION_CARD_STYLE,
+                        borderRadius: 14,
+                        cursor: item.onClick ? 'pointer' : 'default',
+                        borderColor: item.active ? item.color : undefined,
+                        boxShadow: item.active ? `0 0 0 1px ${item.color}` : undefined,
+                        transition: 'all 0.2s ease',
+                      }}
                       styles={{ body: { padding: '10px 14px' } }}
                     >
                       <div
@@ -559,10 +552,21 @@ const TemporalPage: React.FC = () => {
                 <Card style={SECTION_CARD_STYLE} styles={{ body: { padding: '12px 16px' } }}>
                   <ListSectionHeader
                     title={
-                      <Space size={16}>
+                      <Space size={12} wrap>
                         <Text strong style={{ fontSize: 16 }}>
                           工作流记录列表
                         </Text>
+                        <Radio.Group
+                          size="small"
+                          value={statusFilter}
+                          onChange={(e) => setStatusFilter(e.target.value)}
+                          optionType="button"
+                          buttonStyle="solid"
+                        >
+                          <Radio.Button value="all">全部 ({totalCount})</Radio.Button>
+                          <Radio.Button value="unreleased">未发布 ({unreleasedCount})</Radio.Button>
+                          <Radio.Button value="published">已发布 ({publishedCount})</Radio.Button>
+                        </Radio.Group>
                         <Input
                           size="small"
                           placeholder="搜索工作流名称、描述或任务队列"
@@ -570,7 +574,7 @@ const TemporalPage: React.FC = () => {
                           value={searchText}
                           onChange={(e) => setSearchText(e.target.value)}
                           style={{
-                            width: 300,
+                            width: 240,
                             background: 'var(--bg-secondary)',
                             borderRadius: 6,
                             fontSize: 12,
@@ -652,6 +656,62 @@ const TemporalPage: React.FC = () => {
                   />
                 </Card>
               </>
+            ),
+          },
+          {
+            key: 'process_stage',
+            label: (
+              <Space size={6}>
+                <ApartmentOutlined />
+                <span>业务流程专用原子流</span>
+              </Space>
+            ),
+            children: (
+              <ProcessStageWorkflowList
+                onViewContract={(workflow) => {
+                  setSelectedContractWorkflow(workflow);
+                  setContractModalVisible(true);
+                }}
+                onEditWorkflow={(workflow) => {
+                  const matchingTw = workflowsQuery.data?.find((w) => w.id === workflow.id);
+                  if (matchingTw) {
+                    handleEdit(matchingTw);
+                  } else {
+                    const adapted: TemporalWorkflowDTO = {
+                      id: workflow.id,
+                      name: workflow.name,
+                      description: workflow.description || '',
+                      taskQueue: 'STAGE_AUTOMATION_QUEUE',
+                      workflowDsl: workflow.workflowDsl || {
+                        schemaVersion: '2.0.0',
+                        workflowDefnName: workflow.id,
+                        steps: [],
+                      },
+                      activityDsl: workflow.activityDsl || { activities: [] },
+                      generatedCode: workflow.generatedCode || null,
+                      validationStatus: workflow.validationStatus || 'draft',
+                      validationScore: workflow.validationScore || 0,
+                      isActive: true,
+                      deployedAt: null,
+                      createdAt: new Date().toISOString(),
+                      updatedAt: new Date().toISOString(),
+                    };
+                    handleEdit(adapted);
+                  }
+                }}
+                onOpenInFullEditor={(draft) => {
+                  setEditingWorkflow(null);
+                  setDraftWorkflowDsl({
+                    name: draft.name,
+                    description: draft.description,
+                    taskQueue: 'STAGE_AUTOMATION_QUEUE',
+                    workflowDsl: draft.workflowDsl,
+                    activityDsl: draft.activityDsl,
+                  });
+                  setOpenTemplatePickerOnEditOpen(false);
+                  setEditModalVisible(true);
+                }}
+              />
             ),
           },
         ]}

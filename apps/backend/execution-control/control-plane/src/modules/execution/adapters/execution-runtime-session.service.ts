@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { getSessionBrokerUrl } from '../../../config/service-endpoints';
 import { RuntimeSessionSummaryDto } from '../state/execution.dto';
@@ -61,6 +61,7 @@ export class ExecutionRuntimeSessionService {
       this.logger.warn(
         `Failed to freeze runtime session ${runtimeSessionId} for execution ${executionId}: ${errorMessage}`
       );
+      throw new BadRequestException(`浏览器会话冻结失败: ${errorMessage}`);
     }
   }
 
@@ -82,6 +83,7 @@ export class ExecutionRuntimeSessionService {
       this.logger.warn(
         `Failed to resume runtime session ${runtimeSessionId} for execution ${executionId}: ${errorMessage}`
       );
+      throw new BadRequestException(`浏览器会话恢复失败: ${errorMessage}`);
     }
   }
 }

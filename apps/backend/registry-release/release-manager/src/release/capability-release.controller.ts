@@ -291,6 +291,7 @@ export class CapabilityReleaseController {
     @Query('fn') fn: string | undefined,
     @Query('testUserInput') testUserInput: string | undefined,
     @Query('input') input: string | undefined,
+    @Query('timeout') timeout: string | undefined,
     @Request() req: any,
     @Res() res: Response
   ) {
@@ -313,6 +314,7 @@ export class CapabilityReleaseController {
           fn,
           testUserInput,
           input: parsedInput,
+          timeout,
         },
         req.user?.id,
         req.headers?.authorization,

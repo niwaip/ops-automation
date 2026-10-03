@@ -180,6 +180,41 @@ describe('DeterministicPlanValidatorService', () => {
     expect(result.errors.some((e) => e.code === ERROR_CODES.INPUT_TYPE_MISMATCH)).toBe(true);
   });
 
+  it('validates multi-path comma-separated bindings when all outputs exist', () => {
+    const plan: DeterministicPlanDraftV1 = JSON.parse(JSON.stringify(valid3NodePlan));
+    plan.nodes[0].outputContract = {
+      step_1_clean_content: 'string',
+      step_2_clean_content: 'string',
+    };
+    plan.nodes[1].inputBindings.items = {
+      source: 'node_output',
+      nodeId: 'search_ai_news',
+      path: 'step_1_clean_content,step_2_clean_content',
+      transform: 'resolve_text_content',
+      expectedType: 'string',
+    };
+    const result = validator.validatePlan(plan);
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  it('rejects multi-path comma-separated bindings when any output is missing', () => {
+    const plan: DeterministicPlanDraftV1 = JSON.parse(JSON.stringify(valid3NodePlan));
+    plan.nodes[0].outputContract = {
+      step_1_clean_content: 'string',
+    };
+    plan.nodes[1].inputBindings.items = {
+      source: 'node_output',
+      nodeId: 'search_ai_news',
+      path: 'step_1_clean_content,step_missing_clean_content',
+      transform: 'resolve_text_content',
+      expectedType: 'string',
+    };
+    const result = validator.validatePlan(plan);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.code === ERROR_CODES.INPUT_TYPE_MISMATCH && e.message.includes('step_missing_clean_content'))).toBe(true);
+  });
+
   it('should fail validation if finalOutputs refer to unproduced fields', () => {
     const invalidPlan: DeterministicPlanDraftV1 = JSON.parse(JSON.stringify(valid3NodePlan));
     invalidPlan.finalOutputs[0].fromNodeOutput = 'missing_output';

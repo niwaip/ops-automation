@@ -709,6 +709,7 @@ export interface BrowserDraftCommandInput {
 
 export interface BrowserTemplateStepInput {
   step_id?: string;
+  capture_profile?: Record<string, unknown>;
   action?: string;
   params?: Record<string, unknown>;
   output_var?: string;
