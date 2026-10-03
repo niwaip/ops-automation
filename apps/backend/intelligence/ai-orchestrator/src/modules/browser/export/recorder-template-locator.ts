@@ -384,6 +384,16 @@ export function toTemplateLocatorFromDescription(
     }
   }
 
+  const detailMatch = normalized.match(/(?:点击|查看|打开|进入).*?(详情|詳細|detail)/i);
+  if (detailMatch?.[1]) {
+    const rawTarget = detailMatch[1].trim();
+    const escaped = rawTarget.replace(/"/g, '\\"');
+    return {
+      type: 'role',
+      value: `button[name="${escaped}"]`,
+    };
+  }
+
   return undefined;
 }
 
@@ -419,11 +429,12 @@ export function toTemplateLocatorFromTarget(
     return { type: locatorType, value: locatorValue };
   }
 
-  // CSS-style selectors: start with #, ., [, // (xpath), or contain > or :has
+  // CSS-style selectors: start with #, ., [, // (xpath), :, or contain >, :has, or :nth-match
   if (
-    /^(#|\.|\[|\/\/)/.test(trimmed) ||
+    /^(#|\.|\[|\/\/|:)/.test(trimmed) ||
     trimmed.includes('>>') ||
     trimmed.includes(':has') ||
+    trimmed.includes(':nth-match') ||
     trimmed.includes('[data-testid=')
   ) {
     return { type: inferTemplateLocatorType(trimmed), value: trimmed };
@@ -675,6 +686,34 @@ export function buildTemplateStepLocator(
       command.tool
     );
     return withGroundingMetadata(fromLabel, command.locator);
+  }
+
+  if (typeof command.params?.rawTarget === 'string' && command.params.rawTarget.trim()) {
+    const rawTarget = command.params.rawTarget.trim();
+    const roleHint =
+      typeof command.params.roleHint === 'string' ? command.params.roleHint.trim() : '';
+    if (
+      roleHint === 'button' ||
+      isButtonLikeDescription(command.description) ||
+      /^(详情|詳細|detail)$/i.test(rawTarget)
+    ) {
+      const escaped = rawTarget.replace(/"/g, '\\"');
+      return withGroundingMetadata(
+        {
+          type: 'role',
+          value: `button[name="${escaped}"]`,
+        },
+        command.locator
+      );
+    }
+    const fromLabel = buildTemplateLocatorFromLabel(
+      rawTarget,
+      command.description,
+      command.tool
+    );
+    if (fromLabel) {
+      return withGroundingMetadata(fromLabel, command.locator);
+    }
   }
 
   const descriptionLocator = toTemplateLocatorFromDescription(command.description);

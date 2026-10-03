@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import type {
   ReleaseManagerExecutionFlowValidationFacadePort,
@@ -13,12 +13,17 @@ import {
 import type { CapabilityReleaseDeploymentAccessors } from '../publisher/capability-release-deployment.service';
 import { CapabilityReleaseBrowserRecordingService } from '../compiler/capability-release-browser-recording.service';
 import { CapabilityReleaseTemporalSchemaService } from '../compiler/capability-release-temporal-schema.service';
+import { CapabilityReleaseRuntimeService } from './capability-release-runtime.service';
 import { resolveTemporalRuntimeCredentials } from './temporal-runtime-credential.resolver';
 import {
   CapabilityBuildDTO,
   CapabilityReleaseDTO,
   CapabilitySourceSnapshotDTO,
 } from '../interfaces';
+
+const toNullableUuid = (id?: string | null): string | null => {
+  return id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ? id : null;
+};
 
 const SENSITIVE_SMOKE_FIELD =
   /(?:api[_-]?key|device[_-]?key|access[_-]?key|private[_-]?key|access[_-]?token|refresh[_-]?token|authorization|credential|password|secret|token)$/i;
@@ -86,7 +91,10 @@ export class CapabilityReleaseDeploymentSmokeService {
     @Inject(RELEASE_MANAGER_EXECUTION_FLOW_VALIDATION_FACADE)
     private readonly executionFlowValidationFacade: ReleaseManagerExecutionFlowValidationFacadePort,
     private readonly capabilityReleaseBrowserRecordingService: CapabilityReleaseBrowserRecordingService,
-    private readonly capabilityReleaseTemporalSchemaService: CapabilityReleaseTemporalSchemaService
+    private readonly capabilityReleaseTemporalSchemaService: CapabilityReleaseTemporalSchemaService,
+    @Optional()
+    @Inject(CapabilityReleaseRuntimeService)
+    private readonly capabilityReleaseRuntimeService?: CapabilityReleaseRuntimeService
   ) {}
 
   async resolveBuildForDeployment(
@@ -229,17 +237,73 @@ export class CapabilityReleaseDeploymentSmokeService {
         };
         errorSummary = result.error || null;
       } else if (release.sourceType === 'browser_recording') {
-        const result = this.capabilityReleaseBrowserRecordingService.validateSnapshot(snapshot, {
-          environment,
-          deploymentId,
-          input: smokeInput,
-          testCases: [`smoke test for ${environment}`],
-        });
-        success = result.success;
-        score = result.score;
-        logs = result.logs;
-        resultSnapshot = result.resultSnapshot;
-        errorSummary = result.errorSummary;
+        const hasExecutablePlan =
+          snapshot.sourcePayload &&
+          typeof snapshot.sourcePayload === 'object' &&
+          (Array.isArray((snapshot.sourcePayload as any).steps) ||
+            (snapshot.sourcePayload as any).executionPlan);
+
+        if (build.generatedCode) {
+          const fn = accessors.resolveWorkflowFnOrThrow(snapshot.sourcePayload);
+          const result = await this.temporalWorkflowService.validateWorkflowReal(
+            build.generatedCode,
+            fn,
+            smokeInput
+          );
+          success = result.success;
+          score = result.score;
+          logs = result.logs;
+          resultSnapshot = {
+            result: result.result ?? null,
+            error: result.error ?? null,
+            fn,
+            environment,
+            deploymentId,
+            input: smokeInput,
+          };
+          errorSummary = result.error || null;
+        } else if (hasExecutablePlan && this.capabilityReleaseRuntimeService) {
+          const runtimeResult = await this.capabilityReleaseRuntimeService.executePublishedSkill(
+            release.publishedSkillId || release.id,
+            smokeInput,
+            userId,
+            { executionId: `smoke-deploy-${deploymentId}` },
+            accessors
+          );
+          const isVerified = runtimeResult.success || runtimeResult.status === 'takeover_required';
+          success = isVerified;
+          score = isVerified ? 100 : 0;
+          logs = runtimeResult.logs || [];
+          if (runtimeResult.status === 'takeover_required') {
+            logs.push('[BrowserRuntime][Smoke] 冒烟验证成功：流程已执行至人工接管/确认门禁节点');
+          }
+          resultSnapshot = {
+            mode: 'browser_recording_smoke_execution',
+            runtime: 'browser_recording',
+            status: runtimeResult.status,
+            result: runtimeResult.result || null,
+            output: runtimeResult.output || null,
+            error: runtimeResult.error || null,
+            environment,
+            deploymentId,
+            input: smokeInput,
+          };
+          errorSummary = isVerified
+            ? null
+            : (runtimeResult.error || '浏览器录制部署后冒烟执行未成功');
+        } else {
+          const result = this.capabilityReleaseBrowserRecordingService.validateSnapshot(snapshot, {
+            environment,
+            deploymentId,
+            input: smokeInput,
+            testCases: [`smoke test for ${environment}`],
+          });
+          success = result.success;
+          score = result.score;
+          logs = result.logs;
+          resultSnapshot = result.resultSnapshot;
+          errorSummary = result.errorSummary;
+        }
       } else if (templateId) {
         const validation = await this.executionFlowValidationFacade.validateTemplate(
           templateId,
@@ -345,7 +409,7 @@ export class CapabilityReleaseDeploymentSmokeService {
       releaseId,
       buildId,
       JSON.stringify(input || null),
-      userId || null
+      toNullableUuid(userId)
     );
     return validationId;
   }

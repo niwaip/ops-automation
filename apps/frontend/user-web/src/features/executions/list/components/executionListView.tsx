@@ -62,6 +62,7 @@ interface BuildExecutionListColumnsOptions {
   getSkillDisplayName: (skillId?: string) => string;
   statusColors: Record<string, string>;
   statusLabels: Record<string, string>;
+  onOpenDetailPage?: (executionId: string) => void;
 }
 
 export const buildExecutionListOverviewItems = (
@@ -197,6 +198,7 @@ const resolveDeliverableIcon = (extension?: string) => {
 export const buildExecutionListColumns = ({
   getSkillDisplayName,
   statusLabels,
+  onOpenDetailPage,
 }: BuildExecutionListColumnsOptions): TableProps<ExecutionDto>['columns'] => [
   {
     title: '执行时间',
@@ -410,10 +412,18 @@ export const buildExecutionListColumns = ({
     key: 'action',
     width: 85,
     align: 'center',
-    render: () => (
-      <Tooltip title="查看完整输入要件、详细日志与全部步骤">
+    render: (_: unknown, record: ExecutionDto) => (
+      <Tooltip title="进入完整执行详情页面">
         <div className={styles['execution-list-action-cell']}>
-          <span className={styles['execution-list-view-link']}>
+          <span
+            className={styles['execution-list-view-link']}
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDetailPage?.(record.id);
+            }}
+          >
             详情 <RightOutlined style={{ fontSize: 10, marginLeft: 2 }} />
           </span>
         </div>

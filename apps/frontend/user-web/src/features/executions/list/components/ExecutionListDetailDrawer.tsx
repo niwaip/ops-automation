@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button, Collapse, Drawer, Empty, Space, Spin, Tooltip, message } from 'antd';
-import { CopyOutlined, RobotOutlined } from '@ant-design/icons';
+import { CopyOutlined, ExportOutlined, RobotOutlined } from '@ant-design/icons';
 import {
   buildExecutionDetailCollapseItem,
   executionDetailPanelStyle,
@@ -65,6 +65,19 @@ const ExecutionListDetailDrawer: React.FC<ExecutionListDetailDrawerProps> = ({
       open={open}
       onClose={onClose}
       styles={{ body: { background: 'var(--bg-primary)' } }}
+      extra={
+        selectedExecution ? (
+          <Button
+            type="primary"
+            ghost
+            size="small"
+            icon={<ExportOutlined />}
+            onClick={() => onOpenExecutionDetailPage(selectedExecution.id)}
+          >
+            打开独立详情页
+          </Button>
+        ) : null
+      }
     >
       {isDetailLoading ? (
         <div className={styles['execution-detail-loading']}>

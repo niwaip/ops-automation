@@ -143,13 +143,17 @@ export class CapabilityRuntimeAdapter implements RuntimeAdapter {
         err?.message ||
         'Capability runtime call failed';
       const status = err?.response?.status;
-      this.logger.error(`Capability runtime call failed (status=${status}): ${errMsg}`);
+      const isPayloadTooLarge =
+        status === 413 ||
+        err?.type === 'entity.too.large' ||
+        String(errMsg).toLowerCase().includes('request entity too large');
+
       return {
         success: false,
         status: 'failed',
-        errorCode: 'CAPABILITY_RUNTIME_FAILED',
+        errorCode: isPayloadTooLarge ? 'CAPABILITY_PAYLOAD_TOO_LARGE' : 'CAPABILITY_RUNTIME_FAILED',
         errorMessage: errMsg,
-        retryable: status ? status >= 500 : false,
+        retryable: isPayloadTooLarge ? false : (status ? status >= 500 : false),
       };
     }
 

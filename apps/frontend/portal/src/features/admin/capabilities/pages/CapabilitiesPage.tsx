@@ -132,7 +132,7 @@ export const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'mana
         options.push({
           label: `[浏览器录制] ${wf.name || `Browser Workflow ${wf.id.slice(0, 8)}`}`,
           value: wf.id,
-          sourceType: 'browser_recording',
+          sourceType: 'temporal_workflow',
           sourceName: wf.name || `Browser Workflow ${wf.id.slice(0, 8)}`,
           description: wf.description || undefined,
         });

@@ -46,21 +46,43 @@ export class TemporalWorkflowValidationService {
       logs.push(`Workflow validation response: ${JSON.stringify(response.data)}`);
 
       const executionResult = response.data?.result;
+      const rawResult = executionResult?.result;
+      const executionStatus = String(rawResult?.execution?.status || '').trim().toLowerCase();
+      const hasFailedExecutionStatus =
+        Boolean(executionStatus) && executionStatus !== 'success';
+      const executionErrorCode =
+        rawResult?.result?.businessData?.errorCode ||
+        rawResult?.businessData?.errorCode ||
+        rawResult?.errorCode;
+      const executionErrorMessage =
+        rawResult?.result?.businessData?.errorMessage ||
+        rawResult?.businessData?.errorMessage ||
+        rawResult?.errorMessage ||
+        (hasFailedExecutionStatus ? `工作流执行状态为 "${executionStatus}"` : undefined);
+
+      const resolvedError =
+        executionResult?.error ||
+        (hasFailedExecutionStatus || executionErrorCode
+          ? executionErrorMessage || `执行错误: ${executionErrorCode || executionStatus}`
+          : undefined);
+
       const resultSuccess =
         response.data?.success === true &&
         executionResult?.success === true &&
-        !executionResult?.error;
+        !executionResult?.error &&
+        !hasFailedExecutionStatus &&
+        !executionErrorCode;
 
-      if (executionResult?.error) {
-        logs.push(`执行错误: ${executionResult.error}`);
+      if (resolvedError) {
+        logs.push(`执行错误: ${resolvedError}`);
       }
 
       return {
         success: resultSuccess,
         logs,
         result: executionResult,
-        error: executionResult?.error,
-        score: resultSuccess ? 100 : 50,
+        error: resolvedError,
+        score: resultSuccess ? 100 : 0,
       };
     } catch (error: any) {
       this.logger.error(`Workflow real validation failed: ${error.message}`);
@@ -185,17 +207,41 @@ export class TemporalWorkflowValidationService {
         });
       });
 
-      const resultSuccess = finalEvent.success === true && !finalEvent.error;
+      const finalResult = finalEvent.result;
+      const executionStatus = String(finalResult?.execution?.status || '').trim().toLowerCase();
+      const hasFailedExecutionStatus =
+        Boolean(executionStatus) && executionStatus !== 'success';
+      const executionErrorCode =
+        finalResult?.result?.businessData?.errorCode ||
+        finalResult?.businessData?.errorCode ||
+        finalResult?.errorCode;
+      const executionErrorMessage =
+        finalResult?.result?.businessData?.errorMessage ||
+        finalResult?.businessData?.errorMessage ||
+        finalResult?.errorMessage ||
+        (hasFailedExecutionStatus ? `工作流执行状态为 "${executionStatus}"` : undefined);
+
+      const resolvedError =
+        finalEvent.error ||
+        (hasFailedExecutionStatus || executionErrorCode
+          ? executionErrorMessage || `执行错误: ${executionErrorCode || executionStatus}`
+          : undefined);
+
+      const resultSuccess =
+        finalEvent.success === true &&
+        !finalEvent.error &&
+        !hasFailedExecutionStatus &&
+        !executionErrorCode;
+
       pushLog(`[${new Date().toISOString()}] 响应状态: ${resultSuccess ? '成功' : '失败'}`);
 
-      if (finalEvent.error) {
-        pushLog(`[${new Date().toISOString()}] 执行错误: ${finalEvent.error}`);
+      if (resolvedError) {
+        pushLog(`[${new Date().toISOString()}] 执行错误: ${resolvedError}`);
         if (finalEvent.traceback) {
           pushLog(`[${new Date().toISOString()}] 详细堆栈:\n${finalEvent.traceback}`);
         }
       }
 
-      const finalResult = finalEvent.result;
       if (resultSuccess) {
         pushLog(
           `[${new Date().toISOString()}] 执行成功，返回结果: ${JSON.stringify(finalResult, null, 2)}`
@@ -206,7 +252,7 @@ export class TemporalWorkflowValidationService {
         success: resultSuccess,
         result: finalResult,
         logs: streamedLogs,
-        error: finalEvent.error,
+        error: resolvedError,
         traceback: finalEvent.traceback,
         score: resultSuccess ? 100 : 0,
       };

@@ -79,7 +79,7 @@ describe('CapabilityReleaseBrowserRuntimeService browser bootstrap', () => {
       1,
       expect.stringContaining('/browser/init'),
       expect.not.objectContaining({ initialUrl: expect.anything() }),
-      { timeout: 60000 }
+      expect.objectContaining({ timeout: 60000 })
     );
     expect(post.mock.calls[0][1]).toEqual(
       expect.objectContaining({
@@ -184,5 +184,103 @@ describe('CapabilityReleaseBrowserRuntimeService browser bootstrap', () => {
       expect.objectContaining({ ownedByRuntime: false }),
       'published_browser_template_completed'
     );
+  });
+
+  it('enriches runtimeEvidence.resolutions with takeoverId, resolvedBy, authoritative resolvedAt, failedStepId, occurrence, and note', async () => {
+    const executor = {
+      execute: jest.fn().mockResolvedValue({
+        releaseId: 'release-1',
+        capabilityId: 'skill-1',
+        publishedSkillId: 'skill-1',
+        runtime: 'browser_recording',
+        success: true,
+        output: null,
+        result: null,
+        logs: [],
+      }),
+    };
+    const browserSessionBroker = {
+      acquire: jest.fn().mockResolvedValue({
+        runtimeSessionId: '22222222-2222-4222-8222-222222222222',
+        ownedByRuntime: false,
+      }),
+      closeOwnedQuietly: jest.fn().mockResolvedValue(undefined),
+    };
+    const service = new CapabilityReleaseBrowserRuntimeService(
+      {
+        validateForRuntime: jest.fn().mockReturnValue({
+          valid: true,
+          errors: [],
+          trace: {},
+          degradedMode: false,
+          executionPlanVersion: 'browser-recording-ir/v1',
+        }),
+      } as any,
+      {
+        buildRuntimePlan: jest.fn().mockReturnValue({
+          backend: 'cli',
+          runtimeStepsToExecute: [],
+          targetRuntimeStep: null,
+          loopPlan: null,
+          initialUrl: 'https://example.com',
+          sessionPreferences: { mode: 'agent' },
+        }),
+      } as any,
+      executor as any,
+      {
+        insertSuccessAudit: jest.fn().mockResolvedValue(undefined),
+        buildRuntimePayload: jest.fn().mockReturnValue({}),
+      } as any,
+      { reportApproveThresholdDebug: jest.fn() } as any,
+      browserSessionBroker as any
+    );
+
+    const authoritativeResolvedAt = '2026-10-02T22:32:35.734Z';
+    await service.executePublishedSkill(
+      { id: 'release-1' } as any,
+      'skill-1',
+      {},
+      'user-1',
+      {
+        executionId: 'execution-1',
+        runtimeSessionId: '22222222-2222-4222-8222-222222222222',
+        metadata: {
+          recoveryType: 'resolve_by_human',
+          takeoverId: 'takeover-uuid-123',
+          resolvedBy: 'user-approver-456',
+          resolvedAt: authoritativeResolvedAt,
+          resumeFromStepId: 'step_10',
+          failedStepId: 'step_9',
+          recoveryPatch: {
+            type: 'resolve_by_human',
+            note: '人工已处理 / 特批放行',
+            occurrence: 2,
+          },
+          runtimeEvidence: {
+            takeoverReason: 'Gross margin < 20%',
+            lastBranchDecision: { stepId: 'step_9', result: 'takeover' },
+          },
+        },
+      } as any,
+      {
+        getCurrentSnapshotOrThrow: jest.fn().mockResolvedValue({
+          sourcePayload: { apiEndpoints: {} },
+        }),
+      } as any
+    );
+
+    const executedState = executor.execute.mock.calls[0][0].state;
+    expect(executedState.runtimeEvidence.takeoverReason).toBeUndefined();
+    expect(executedState.runtimeEvidence.resolutions).toHaveLength(1);
+    expect(executedState.runtimeEvidence.resolutions[0]).toEqual({
+      type: 'resolve_by_human',
+      takeoverId: 'takeover-uuid-123',
+      resolvedBy: 'user-approver-456',
+      resumedFromStepId: 'step_10',
+      failedStepId: 'step_9',
+      occurrence: 2,
+      resolvedAt: authoritativeResolvedAt,
+      note: '人工已处理 / 特批放行',
+    });
   });
 });

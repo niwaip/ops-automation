@@ -706,7 +706,7 @@ describe('CapabilityReleaseService', () => {
         target: 'https://www.bing.com',
         args: { url: 'https://www.bing.com' },
       }),
-      { timeout: 120000 }
+      expect.objectContaining({ timeout: 120000 })
     );
     expect(mockedAxios.post).toHaveBeenNthCalledWith(
       2,
@@ -717,7 +717,7 @@ describe('CapabilityReleaseService', () => {
         action: 'smart_search',
         args: { query: 'mcp' },
       }),
-      { timeout: 120000 }
+      expect.objectContaining({ timeout: 120000 })
     );
     expect(result).toEqual(
       expect.objectContaining({
@@ -804,7 +804,7 @@ describe('CapabilityReleaseService', () => {
         action: 'click',
         target: '#login-button',
       }),
-      { timeout: 120000 }
+      expect.objectContaining({ timeout: 120000 })
     );
     expect(mockedAxios.post).not.toHaveBeenCalledWith(
       'http://localhost:3004/browser/init',
@@ -882,7 +882,7 @@ describe('CapabilityReleaseService', () => {
           selector: 'textbox[name="Enter username"]',
         },
       }),
-      { timeout: 120000 }
+      expect.objectContaining({ timeout: 120000 })
     );
     expect(result).toEqual(
       expect.objectContaining({

@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { extractRecoveryCheckpoint } from './recovery-checkpoint.mapper';
 
 /**
  * Pure helper functions extracted from DeterministicPlanSchedulerService
@@ -328,3 +329,295 @@ export async function materializeContentRefs(
   }
   return next;
 }
+
+export function resolveEffectiveUserId(
+  execution: any,
+  options?: { traceContext?: any }
+): string | undefined {
+  return (
+    execution?.createdBy ||
+    options?.traceContext?.userId ||
+    (execution?.metadata as any)?.traceContext?.userId ||
+    undefined
+  );
+}
+
+export function sanitizeStepInput(
+  input: Record<string, any>,
+  inputSchema?: any
+): Record<string, any> {
+  const sanitizedInput: Record<string, any> = {};
+  for (const [k, v] of Object.entries(input || {})) {
+    if (
+      inputSchema?.additionalProperties === false &&
+      inputSchema?.properties &&
+      typeof inputSchema.properties === 'object' &&
+      !Object.prototype.hasOwnProperty.call(inputSchema.properties, k) &&
+      k !== 'idempotencyKey' &&
+      k !== 'taskContext' &&
+      k !== 'phase' &&
+      k !== 'payloadHash' &&
+      ![
+        'downloadUrl',
+        'fileUrl',
+        'url',
+        'downloadUrlA',
+        'fileUrlA',
+        'downloadUrlB',
+        'fileUrlB',
+        'files',
+        'sourceDocxBase64',
+        'sourceDocxUrl',
+        'sourceDocxName',
+        'sourceDocxSha256',
+        'auditCertificateBlocks',
+        'auditMetadata',
+      ].includes(k)
+    ) {
+      continue;
+    }
+    sanitizedInput[k] = v;
+  }
+  return sanitizedInput;
+}
+
+export async function handleTakeoverRequiredStep(
+  prisma: any,
+  eventPublisher: any,
+  execution: any,
+  step: any,
+  planNodeId: string,
+  result: any,
+  outputJson?: any
+): Promise<void> {
+  const takeoverReason =
+    result?.takeoverReason ||
+    result?.errorMessage ||
+    `Step '${step.id}' requires human takeover`;
+
+  await prisma.executionStep.update({
+    where: { id: step.id },
+    data: {
+      status: 'failed',
+      takeoverTriggered: true,
+      errorMessage: takeoverReason,
+      errorCode: result?.errorCode || 'TAKEOVER_REQUIRED',
+      endedAt: new Date(),
+      leaseExpiresAt: null,
+      ...(outputJson ? { outputJson: outputJson as any } : {}),
+    },
+  });
+
+  let preUpdateStatus = execution.status;
+  if (typeof prisma.execution?.findUnique === 'function') {
+    try {
+      const freshExec = await prisma.execution.findUnique({
+        where: { id: execution.id },
+        select: { status: true },
+      });
+      if (freshExec?.status) {
+        preUpdateStatus = freshExec.status;
+      }
+    } catch {
+      // 容错
+    }
+  }
+  if (preUpdateStatus === 'queued') {
+    preUpdateStatus = 'running';
+  }
+
+  await prisma.execution.update({
+    where: { id: execution.id },
+    data: {
+      status: 'human_control',
+      takeoverRequired: true,
+      takeoverReason,
+      currentStepId: step.id,
+      currentPhaseStatus: 'waiting_takeover',
+    },
+  });
+
+  try {
+    if (typeof prisma.executionTakeover?.create === 'function') {
+      let phaseId = step.phaseId;
+      let sessionFromPhase: string | null = null;
+      if (typeof prisma.executionPhase?.findFirst === 'function') {
+        const waitingPhase = await prisma.executionPhase.findFirst({
+          where: { executionId: execution.id },
+          orderBy: { updatedAt: 'desc' },
+          select: { id: true, runtimeSessionId: true },
+        });
+        if (!phaseId) {
+          phaseId = waitingPhase?.id;
+        }
+        sessionFromPhase = waitingPhase?.runtimeSessionId || null;
+      }
+      if (phaseId) {
+        const resolvedSessionId =
+          step.runtimeSessionId ||
+          sessionFromPhase ||
+          execution.runtimeSessionId ||
+          null;
+
+        await prisma.executionTakeover.create({
+          data: {
+            executionId: execution.id,
+            phaseId,
+            runtimeSessionId: resolvedSessionId,
+            status: 'requested',
+            reason: takeoverReason,
+          },
+        });
+      }
+    }
+  } catch {
+    // 审计记录创建异常不阻断主流程
+  }
+
+  await eventPublisher.createEvent(
+    execution.id,
+    'step.failed',
+    {
+      stepId: step.id,
+      planNodeId,
+      shouldTakeover: true,
+      takeoverRequired: true,
+      takeoverReason,
+      error: takeoverReason,
+      errorMessage: takeoverReason,
+      errorCode: result?.errorCode || 'TAKEOVER_REQUIRED',
+      phaseStatus: 'waiting_takeover',
+    },
+    { stepId: step.id }
+  );
+
+  await eventPublisher.createEvent(
+    execution.id,
+    'execution.status_changed',
+    {
+      oldStatus: preUpdateStatus,
+      newStatus: 'human_control',
+      takeoverRequired: true,
+      takeoverReason,
+    },
+    { stepId: step.id }
+  );
+}
+
+export function resolvePhaseRecoveryMetadata(
+  existingPhase: any,
+  options?: any,
+  stepInput?: any
+): Record<string, any> {
+  const metadata: Record<string, any> = {};
+  if (!existingPhase && !options && !stepInput) return metadata;
+
+  const rawDecision =
+    existingPhase?.recoveryDecisionJson ??
+    existingPhase?.recovery_decision_json ??
+    existingPhase?.recoveryDecision;
+  const recoveryDecision =
+    rawDecision && typeof rawDecision === 'object' && !Array.isArray(rawDecision)
+      ? (rawDecision as Record<string, unknown>)
+      : undefined;
+
+  const rawPatch =
+    recoveryDecision?.patch ??
+    stepInput?.__recoveryPatch ??
+    options?.recoveryPatch;
+  const patch =
+    rawPatch && typeof rawPatch === 'object' && !Array.isArray(rawPatch)
+      ? (rawPatch as Record<string, unknown>)
+      : undefined;
+
+  if (recoveryDecision) {
+    metadata.recoveryDecision = recoveryDecision;
+    if (recoveryDecision.takeoverId) {
+      metadata.takeoverId = recoveryDecision.takeoverId;
+    }
+    if (recoveryDecision.resolvedBy || recoveryDecision.reconciledBy) {
+      metadata.resolvedBy = recoveryDecision.resolvedBy || recoveryDecision.reconciledBy;
+    }
+    if (recoveryDecision.resolvedAt) {
+      metadata.resolvedAt = recoveryDecision.resolvedAt;
+    }
+    if (recoveryDecision.resolutionNote || recoveryDecision.comment) {
+      metadata.resolutionNote = recoveryDecision.resolutionNote || recoveryDecision.comment;
+    }
+  }
+
+  if (patch) {
+    metadata.recoveryDecision = metadata.recoveryDecision || recoveryDecision || { patch };
+    metadata.recoveryPatch = patch;
+    if (typeof patch.resumeFromStepId === 'string' && patch.resumeFromStepId.trim()) {
+      metadata.resumeFromStepId = patch.resumeFromStepId.trim();
+    } else if (
+      patch.type === 'resolve_by_human' &&
+      typeof patch.failedStepId === 'string' &&
+      /^step_\d+$/.test(patch.failedStepId.trim())
+    ) {
+      const nextNum = parseInt(patch.failedStepId.trim().replace('step_', ''), 10) + 1;
+      metadata.resumeFromStepId = `step_${nextNum}`;
+    }
+    if (typeof patch.failedStepId === 'string' && patch.failedStepId.trim()) {
+      metadata.failedStepId = patch.failedStepId.trim();
+    }
+    if (patch.type) {
+      metadata.recoveryType = patch.type;
+    }
+    if (patch.variables && typeof patch.variables === 'object') {
+      metadata.variables = { ...patch.variables };
+      metadata.browserPhaseVariables = { ...patch.variables };
+    }
+  }
+
+  const rawOutput =
+    existingPhase?.outputJson ??
+    existingPhase?.output_json ??
+    existingPhase?.output;
+  const previousPhaseOutput =
+    rawOutput && typeof rawOutput === 'object' && !Array.isArray(rawOutput)
+      ? (rawOutput as Record<string, unknown>)
+      : undefined;
+  const nestedPhaseOutput =
+    previousPhaseOutput?.output &&
+    typeof previousPhaseOutput.output === 'object' &&
+    !Array.isArray(previousPhaseOutput.output)
+      ? (previousPhaseOutput.output as Record<string, unknown>)
+      : previousPhaseOutput;
+
+  if (nestedPhaseOutput) {
+    const checkpoint = extractRecoveryCheckpoint(nestedPhaseOutput);
+    if (checkpoint.variables && typeof checkpoint.variables === 'object') {
+      metadata.variables = {
+        ...checkpoint.variables,
+        ...(metadata.variables || {}),
+      };
+    }
+    if (checkpoint.runtimeEvidence && typeof checkpoint.runtimeEvidence === 'object') {
+      metadata.runtimeEvidence = checkpoint.runtimeEvidence;
+    }
+    if (Array.isArray(checkpoint.previousStepResults)) {
+      metadata.previousStepResults = checkpoint.previousStepResults;
+    }
+  }
+
+  // 回退机制：若阶段输出因异常被冲掉，从 stepInput 中恢复业务变量与证据
+  if (!metadata.variables && stepInput?.variables && typeof stepInput.variables === 'object') {
+    metadata.variables = { ...stepInput.variables };
+  }
+  if (!metadata.runtimeEvidence && stepInput?.runtimeEvidence && typeof stepInput.runtimeEvidence === 'object') {
+    metadata.runtimeEvidence = { ...stepInput.runtimeEvidence };
+  }
+
+  const explicitResumeStepId =
+    (typeof options?.resumeFromStepId === 'string' && options.resumeFromStepId.trim()) ||
+    (typeof stepInput?.__resumeFromStepId === 'string' && stepInput.__resumeFromStepId.trim());
+  if (explicitResumeStepId) {
+    metadata.resumeFromStepId = explicitResumeStepId;
+  }
+
+  return metadata;
+}
+
+

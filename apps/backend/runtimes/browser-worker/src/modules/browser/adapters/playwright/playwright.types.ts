@@ -115,6 +115,8 @@ export interface CliSessionState {
   controlMode: 'AGENT_RUNNING' | 'HUMAN_CONTROL';
   frozenReason?: string;
   preferLatestTab?: boolean;
+  activeTabIndex?: number;
+  lastKnownPageCount?: number;
   lastUrl?: string;
   lastSnapshotState?: BrowserSnapshotState;
   lastSearchResults?: Array<{
@@ -147,7 +149,7 @@ export interface CliExecResult {
 }
 
 export interface CliActionResult {
-  status: 'success';
+  status: 'success' | 'failed' | 'error';
   command: string;
   stdout?: string;
   stderr?: string;

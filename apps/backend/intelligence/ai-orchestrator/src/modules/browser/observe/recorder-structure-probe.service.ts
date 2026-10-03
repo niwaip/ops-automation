@@ -81,7 +81,14 @@ export class RecorderStructureProbeService {
       currentPageUrl: input.structure.url,
       title: input.structure.title,
       text:
-        input.textResult?.data?.text || input.textResult?.text || input.textResult?.stdout || '',
+        typeof input.textResult?.data?.text === 'string'
+          ? input.textResult.data.text
+          : typeof input.textResult?.text === 'string'
+            ? input.textResult.text
+            : typeof input.textResult?.stdout === 'string' &&
+                !input.textResult.stdout.includes('### Ran Playwright code')
+              ? input.textResult.stdout
+              : '',
       inputs,
       buttons,
       rows: this.mergeObservedRecords(

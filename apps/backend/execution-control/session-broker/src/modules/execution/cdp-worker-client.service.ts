@@ -75,17 +75,33 @@ export class CdpWorkerClientService {
   async captureFinalState(
     sessionId?: string,
     backend: string = 'cli',
-    extractedPage?: Pick<ExecutionResult, 'text' | 'html'>,
+    extractedPage?: Pick<ExecutionResult, 'text' | 'html' | 'screenshot'>,
     extractHtmlFn?: (raw?: unknown) => string | undefined
   ): Promise<ExecutionResult> {
     try {
       const reuseExtractedPage = Boolean(extractedPage?.text || extractedPage?.html);
-      const commands = reuseExtractedPage
-        ? [{ tool: 'screenshot', params: {} }]
-        : [
-            { tool: 'read_page', params: { max_length: 30000 } },
-            { tool: 'screenshot', params: {} },
-          ];
+      const reuseScreenshot = Boolean(extractedPage?.screenshot);
+
+      if (reuseExtractedPage && reuseScreenshot) {
+        return {
+          success: true,
+          step_id: 'final_state',
+          action: 'final_state',
+          message: '最终状态捕获成功',
+          screenshot: extractedPage?.screenshot,
+          text: extractedPage?.text,
+          html: extractedPage?.html,
+        };
+      }
+
+      const commands: Array<{ tool: string; params: Record<string, unknown> }> = [];
+      if (!reuseExtractedPage) {
+        commands.push({ tool: 'read_page', params: { max_length: 30000 } });
+      }
+      if (!reuseScreenshot) {
+        commands.push({ tool: 'screenshot', params: {} });
+      }
+
       const result = await this.postJson<{
         success: boolean;
         results: Array<Record<string, unknown>>;
@@ -96,11 +112,21 @@ export class CdpWorkerClientService {
         commands,
       });
 
-      const rawPage: any = reuseExtractedPage ? {} : result.results?.[0] || {};
+      let pageIndex = -1;
+      let screenshotIndex = -1;
+      let currentIndex = 0;
+      if (!reuseExtractedPage) {
+        pageIndex = currentIndex++;
+      }
+      if (!reuseScreenshot) {
+        screenshotIndex = currentIndex++;
+      }
+
+      const rawPage: any = pageIndex >= 0 ? result.results?.[pageIndex] || {} : {};
       const rawPageData: any = rawPage.data || {};
-      const rawScreenshot: any = result.results?.[reuseExtractedPage ? 0 : 1] || {};
+      const rawScreenshot: any = screenshotIndex >= 0 ? result.results?.[screenshotIndex] || {} : {};
       const pageSuccess = reuseExtractedPage || rawPage.status !== 'error';
-      const screenshotSuccess = !rawScreenshot?.status || rawScreenshot.status !== 'error';
+      const screenshotSuccess = reuseScreenshot || (!rawScreenshot?.status || rawScreenshot.status !== 'error');
       return {
         success: pageSuccess,
         step_id: 'final_state',
@@ -124,11 +150,13 @@ export class CdpWorkerClientService {
               ? result.message
               : '最终状态捕获成功',
         screenshot:
-          screenshotSuccess && typeof rawScreenshot.screenshot === 'string'
-            ? rawScreenshot.screenshot
-            : typeof rawPage.screenshot === 'string'
-              ? rawPage.screenshot
-              : undefined,
+          reuseScreenshot && typeof extractedPage?.screenshot === 'string'
+            ? extractedPage.screenshot
+            : screenshotSuccess && typeof rawScreenshot.screenshot === 'string'
+              ? rawScreenshot.screenshot
+              : typeof rawPage.screenshot === 'string'
+                ? rawPage.screenshot
+                : undefined,
         text:
           typeof extractedPage?.text === 'string'
             ? extractedPage.text

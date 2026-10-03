@@ -128,6 +128,7 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
       PORT: ${SESSION_BROKER_PORT:-3002}
       EXTERNAL_HOST: ${HOST_IP:-localhost}
+      INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
     ports:
       - '${SESSION_BROKER_BIND_IP:-127.0.0.1}:${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}'
     volumes:

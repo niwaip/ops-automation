@@ -78,11 +78,17 @@ export class SessionService {
     const properties = paramsSchema?.properties || {};
 
     for (const [paramName, schema] of Object.entries(properties)) {
-      if (requestParams[paramName] === undefined || schema.default === undefined) {
+      const candidateValue =
+        schema.default !== undefined
+          ? schema.default
+          : (schema as any).example !== undefined
+            ? (schema as any).example
+            : (schema as any).exampleValue;
+      if (requestParams[paramName] === undefined || candidateValue === undefined) {
         continue;
       }
 
-      for (const bindingKey of this.toBindingKeys(schema.default)) {
+      for (const bindingKey of this.toBindingKeys(candidateValue)) {
         const paramNames = candidates.get(bindingKey) || [];
         paramNames.push(paramName);
         candidates.set(bindingKey, paramNames);
@@ -156,16 +162,32 @@ export class SessionService {
     requestParams: Record<string, unknown> = {}
   ): TemplateStep[] {
     const bindingMap = this.buildParamDefaultBindingMap(paramsSchema, requestParams);
-    if (bindingMap.size === 0) {
-      return steps;
-    }
+    const userTargetUrl =
+      typeof requestParams.startUrl === 'string' && requestParams.startUrl.trim()
+        ? requestParams.startUrl.trim()
+        : typeof requestParams.url === 'string' && requestParams.url.trim()
+          ? requestParams.url.trim()
+          : typeof requestParams.targetUrl === 'string' && requestParams.targetUrl.trim()
+            ? requestParams.targetUrl.trim()
+            : undefined;
 
-    return steps.map((step) => ({
-      ...step,
-      params: step.params
+    return steps.map((step, index) => {
+      let currentParams = step.params
         ? (this.rewriteLegacyTemplateValue(step.params, bindingMap) as Record<string, unknown>)
-        : step.params,
-    }));
+        : step.params;
+
+      if (index === 0 && (step.action === 'navigate' || step.action === 'goto') && userTargetUrl) {
+        currentParams = {
+          ...(currentParams || {}),
+          url: userTargetUrl,
+        };
+      }
+
+      return {
+        ...step,
+        ...(currentParams ? { params: currentParams } : {}),
+      };
+    });
   }
 
   private truncateField(
@@ -433,10 +455,18 @@ export class SessionService {
       const extractedPageResult = [...results]
         .reverse()
         .find((result) => Boolean(result.text || result.html));
+      const lastResultWithScreenshot = [...results]
+        .reverse()
+        .find((result) => Boolean(result.screenshot));
+      const finalStateCandidate = {
+        text: extractedPageResult?.text,
+        html: extractedPageResult?.html,
+        screenshot: lastResultWithScreenshot?.screenshot,
+      };
       const finalStateResult = await this.cdpExecutor.captureFinalState(
         sessionId,
         executionBackend,
-        extractedPageResult
+        finalStateCandidate
       );
       if (
         finalStateResult.success ||

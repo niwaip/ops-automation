@@ -82,6 +82,58 @@ function durationToSeconds(duration: string | undefined, fallbackSeconds = 300):
   }
 }
 
+export function resolveStepActivityDefinition(
+  step: WorkflowStep,
+  activities: ActivityDefinition[],
+  builtinRegistry: BuiltinActivityRegistry
+): ActivityDefinition | null {
+  if (!step) {
+    return null;
+  }
+
+  // 1. Prioritize unique activityRef to prevent collisions with identical step names
+  if (step.activityRef) {
+    const ref = step.activityRef.trim();
+    const strippedRef = ref.replace(/^custom:/, '').trim();
+
+    // 1a. Direct activityRef match
+    const byRef = activities.find(
+      (a) => a.activityRef === ref || a.activityRef === strippedRef
+    );
+    if (byRef) return byRef;
+
+    // 1b. Match by fn or id using stripped custom ref or direct ref
+    const byFnOrId = activities.find(
+      (a) => a.fn === strippedRef || a.id === strippedRef || a.fn === ref || a.id === ref
+    );
+    if (byFnOrId) return byFnOrId;
+
+    // 1c. Builtin registry match
+    const builtin = builtinRegistry.getByRef(ref);
+    if (builtin) {
+      const byBuiltin = activities.find(
+        (a) =>
+          a.fn === builtin.fn ||
+          a.activityRef === builtin.ref ||
+          a.name === builtin.name
+      );
+      if (byBuiltin) return byBuiltin;
+    }
+  }
+
+  // 2. Fall back to step.activityName only if activityRef was absent or did not resolve
+  const name = step.activityName?.trim() || step.name?.trim();
+  if (name) {
+    const byFnOrId = activities.find((a) => a.fn === name || a.id === name);
+    if (byFnOrId) return byFnOrId;
+
+    const byName = activities.find((a) => a.name === name);
+    if (byName) return byName;
+  }
+
+  return null;
+}
+
 /**
  * P1-C-B: 通用线性构建器（design doc §15.2 item 4 的确定性兜底）。
  *
@@ -136,15 +188,10 @@ export function buildUniversalLinearWorkflowCode(
 
   const stepPlans: UniversalStepPlan[] = [];
   for (const step of activitySteps) {
-    const stepActivityIdentifier =
-      step?.activityName ||
-      (step.activityRef ? builtinActivityRegistry.getByRef(step.activityRef)?.name : undefined);
-    if (!stepActivityIdentifier) {
-      return null;
-    }
-    const activityDef = activityDsl.activities.find(
-      (activity) =>
-        activity.name === stepActivityIdentifier || activity.fn === stepActivityIdentifier
+    const activityDef = resolveStepActivityDefinition(
+      step,
+      activityDsl.activities,
+      builtinActivityRegistry
     );
     if (!activityDef?.generatedCode) {
       return null;
@@ -495,25 +542,8 @@ export function buildDeterministicWorkflowCodeForWorkflow(
     return null;
   }
 
-  const extractActivityNameFromRef = (activityRef?: string): string | undefined => {
-    const builtin = activityRef ? builtinActivityRegistry.getByRef(activityRef) : null;
-    return builtin?.name;
-  };
-
   const resolveStepActivityDef = (step: WorkflowStep): ActivityDefinition | null => {
-    const stepActivityIdentifier =
-      step?.activityName || extractActivityNameFromRef(step?.activityRef);
-    if (!stepActivityIdentifier) {
-      return null;
-    }
-    const activityDef = activityDsl.activities.find(
-      (activity) =>
-        activity.name === stepActivityIdentifier || activity.fn === stepActivityIdentifier
-    );
-    if (!activityDef?.generatedCode) {
-      return null;
-    }
-    return activityDef;
+    return resolveStepActivityDefinition(step, activityDsl.activities, builtinActivityRegistry);
   };
 
   const browserActivityPairs = activitySteps.map((step) => ({

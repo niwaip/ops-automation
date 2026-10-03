@@ -169,7 +169,12 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter, Playwright
         sessionId
       );
       const readiness = await this.waitForStandardPageReadiness(dto, sessionId);
-      const pageState = await this.inspectPageState(sessionId).catch(
+      const needArtifacts =
+        this.normalizedArtifactsEnabled() ||
+        (process.env.BROWSER_CONTENT_EXTRACTION_ENABLED !== 'false' && Boolean(dto.captureProfile));
+      const shouldIncludeHtml = needArtifacts && dto.action !== 'wait' && dto.action !== 'screenshot';
+
+      const pageState = await this.inspectPageState(sessionId, { includeHtml: shouldIncludeHtml }).catch(
         () =>
           ({
             runtimeSessionId: sessionId,
@@ -178,8 +183,16 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter, Playwright
           }) as BrowserPageStateDto
       );
 
+      if (pageState.html && !rawResult.html) {
+        rawResult.html = pageState.html;
+      }
+
+      const actionFailed = rawResult.status === 'failed' || rawResult.status === 'error';
       const requiredReadinessFailed = !readiness.ready && readiness.required;
-      const isStepSuccess = !requiredReadinessFailed;
+      const navigationBlankFailed =
+        (dto.action === 'goto' || dto.action === 'navigate') &&
+        (!pageState.pageUrl || pageState.pageUrl.startsWith('about:blank'));
+      const isStepSuccess = !actionFailed && !requiredReadinessFailed && !navigationBlankFailed;
 
       const decision = this.inspectionHandler.shouldCaptureScreenshot({
         action: dto.action,
@@ -208,7 +221,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter, Playwright
         });
       }
       return {
-        success: !requiredReadinessFailed,
+        success: isStepSuccess,
         snapshotId: result.snapshot?.id,
         output: {
           ...(result as unknown as Record<string, unknown>),
@@ -245,12 +258,20 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter, Playwright
           : undefined,
         pageState,
         shouldTakeover: false,
-        ...(!readiness.ready && readiness.required
+        ...(!isStepSuccess
           ? {
               executionState: 'failed' as const,
-              errorCode: 'PAGE_NOT_READY',
-              errorMessage: '页面未达到模板声明的就绪条件',
-              warningCodes: ['PAGE_READINESS_TIMEOUT'],
+              errorCode: navigationBlankFailed
+                ? 'NAVIGATION_BLANK_PAGE'
+                : actionFailed
+                  ? 'ACTION_FAILED'
+                  : 'PAGE_NOT_READY',
+              errorMessage: navigationBlankFailed
+                ? '导航后页面为空白页 (about:blank)'
+                : actionFailed
+                  ? rawResult.stderr || '浏览器操作执行失败'
+                  : '页面未达到模板声明的就绪条件',
+              ...(requiredReadinessFailed ? { warningCodes: ['PAGE_READINESS_TIMEOUT'] } : {}),
             }
           : !readiness.ready
             ? { warningCodes: ['PAGE_READINESS_TIMEOUT'] }
@@ -566,8 +587,11 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter, Playwright
     return this.navigationHandler.settlePageAfterAction(sessionId);
   }
 
-  async inspectPageState(sessionId: string): Promise<BrowserPageStateDto> {
-    return this.inspectionHandler.inspectPageState(sessionId);
+  async inspectPageState(
+    sessionId: string,
+    options?: { includeHtml?: boolean }
+  ): Promise<BrowserPageStateDto> {
+    return this.inspectionHandler.inspectPageState(sessionId, options);
   }
 
   async waitForStandardPageReadiness(

@@ -190,7 +190,7 @@ export class UserSandboxService implements OnModuleInit, OnModuleDestroy {
   async executeInSandbox(
     userId: string,
     cmd: string | string[],
-    options?: { timeoutMs?: number; workDir?: string }
+    options?: { timeoutMs?: number; workDir?: string; env?: string[]; onStdoutChunk?: (chunk: string) => void }
   ): Promise<UserSandboxExecResult> {
     return this.harnessService.executeInSandbox(userId, cmd, options);
   }

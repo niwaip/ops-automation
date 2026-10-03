@@ -4,9 +4,32 @@ import urllib.error
 import urllib.request
 
 
+from pathlib import Path
+
+
 AI_BASE = os.environ.get("AI_BASE", "http://localhost:3007")
-HOST_IP = os.environ.get("HOST_IP", "127.0.0.1")
+
+
+def read_host_ip():
+    explicit = os.environ.get("HOST_IP")
+    if explicit:
+        return explicit
+    env_path = Path(__file__).resolve().parents[2] / "docker" / ".env"
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("HOST_IP="):
+                value = line.split("=", 1)[1].strip().strip('"').strip("'")
+                if value:
+                    return value
+    return "127.0.0.1"
+
+
+HOST_IP = read_host_ip()
 MOCK_ERP_URL = os.environ.get("MOCK_ERP_URL", f"http://{HOST_IP}/?force_mfa=true")
+INTERNAL_API_SHARED_SECRET = os.environ.get(
+    "INTERNAL_API_SHARED_SECRET", "ops_internal_shared_secret_change_me"
+)
+AUTH_TOKEN = os.environ.get("AUTH_TOKEN")
 TOKEN = (
     "[人工介入:MFA认证|behavior=optional_takeover_if_present|selector=body|method=attribute|"
     "attribute=data-auth-stage|expect=mfa|precheck=true|fallbackPattern="
@@ -20,6 +43,10 @@ def request(method, path, data=None):
     req = urllib.request.Request(f"{AI_BASE}{path}", data=body, method=method)
     req.add_header("Content-Type", "application/json")
     req.add_header("Accept", "application/json")
+    if INTERNAL_API_SHARED_SECRET:
+        req.add_header("x-internal-auth", INTERNAL_API_SHARED_SECRET)
+    if AUTH_TOKEN:
+        req.add_header("Authorization", f"Bearer {AUTH_TOKEN}")
     try:
         with urllib.request.urlopen(req, timeout=180) as resp:
             raw = resp.read().decode("utf-8")

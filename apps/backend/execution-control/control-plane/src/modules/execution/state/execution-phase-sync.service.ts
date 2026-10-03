@@ -297,10 +297,18 @@ export class ExecutionPhaseSyncService {
     const phaseSteps = this.extractPhaseStepsFromRuntimeResult(result, step);
 
     if (result.success) {
+      const existingPhase =
+        typeof this.executionPhaseService?.getByExecutionIdAndPhaseKey === 'function'
+          ? await this.executionPhaseService.getByExecutionIdAndPhaseKey(
+              executionId,
+              phaseRecordKey
+            )
+          : null;
+      const currentAttempt = Math.max(Number((existingPhase as any)?.attempt) || 1, 1);
       await this.executionPhaseService.markCompleted(executionId, phaseRecordKey, {
         phaseName: phaseMetadata.phaseName,
         phaseType: phaseMetadata.phaseType,
-        attempt: 1,
+        attempt: currentAttempt,
         runtimeSessionId,
         output: phaseOutput,
         postcheck: null,
@@ -329,6 +337,10 @@ export class ExecutionPhaseSyncService {
           ? 'resumable'
           : 'failed';
 
+    const hasSubstantiveOutput =
+      result.output != null ||
+      (Array.isArray(phaseLikeResult.stepResults) && phaseLikeResult.stepResults.length > 0);
+
     await this.executionPhaseService.createOrUpdatePhase({
       executionId,
       phaseKey: phaseRecordKey,
@@ -337,7 +349,7 @@ export class ExecutionPhaseSyncService {
       status: mappedStatus,
       attempt: 1,
       runtimeSessionId,
-      output: phaseOutput,
+      output: hasSubstantiveOutput ? phaseOutput : null,
       recoveryDecision: null,
       errorCode: result.errorCode || null,
       errorMessage: result.errorMessage || null,
@@ -475,7 +487,8 @@ export class ExecutionPhaseSyncService {
       return activityPhases[0] || null;
     }
 
-    const existingPhases = await this.executionPhaseService.listByExecutionId(executionId);
+    const rawExistingPhases = await this.executionPhaseService.listByExecutionId(executionId);
+    const existingPhases = Array.isArray(rawExistingPhases) ? rawExistingPhases : [];
     const candidatePhases = existingPhases
       .filter((phase) => {
         const phaseType = this.readNonEmptyString(phase.phaseType, phase.phase_type);
@@ -849,14 +862,27 @@ export class ExecutionPhaseSyncService {
         this.readNonEmptyString(
           stepRecord.errorMessage,
           stepRecord.error_message,
-          stepRecord.message
+          typeof stepRecord.error === 'string' ? stepRecord.error : undefined
         ) || null,
       errorCode: this.readNonEmptyString(stepRecord.errorCode, stepRecord.error_code) || null,
       snapshotId:
         this.readNonEmptyString(stepRecord.snapshotId, stepRecord.snapshot_id, snapshot?.id) ||
         null,
-      startedAt: null,
-      endedAt: null,
+      startedAt:
+        this.readDateValue(
+          stepRecord.startedAt,
+          stepRecord.started_at,
+          stepRecord.attemptedAt,
+          stepRecord.attempted_at,
+          stepRecord.timestamp
+        ) || null,
+      endedAt:
+        this.readDateValue(
+          stepRecord.endedAt,
+          stepRecord.ended_at,
+          stepRecord.completedAt,
+          stepRecord.observedAt
+        ) || null,
     };
   }
 
@@ -870,10 +896,14 @@ export class ExecutionPhaseSyncService {
       if (normalized === 'error') {
         return 'failed';
       }
-      if (normalized === 'takeover_required') {
+      if (normalized === 'takeover_required' || normalized === 'takeover') {
         return 'waiting_takeover';
       }
       return normalized;
+    }
+
+    if (stepRecord.takeover === true || stepRecord.outcome === 'takeover') {
+      return 'waiting_takeover';
     }
 
     if (stepRecord.success === true) {
@@ -883,7 +913,11 @@ export class ExecutionPhaseSyncService {
       return 'failed';
     }
     if (
-      this.readNonEmptyString(stepRecord.errorMessage, stepRecord.error_message, stepRecord.message)
+      this.readNonEmptyString(
+        stepRecord.errorMessage,
+        stepRecord.error_message,
+        typeof stepRecord.error === 'string' ? stepRecord.error : undefined
+      )
     ) {
       return 'failed';
     }

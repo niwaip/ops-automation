@@ -170,7 +170,7 @@ export class CdpExecutor implements OnModuleDestroy {
   async captureFinalState(
     sessionId?: string,
     backend: string = 'cli',
-    extractedPage?: Pick<ExecutionResult, 'text' | 'html'>
+    extractedPage?: Pick<ExecutionResult, 'text' | 'html' | 'screenshot'>
   ): Promise<ExecutionResult> {
     return this.workerClient.captureFinalState(
       sessionId,

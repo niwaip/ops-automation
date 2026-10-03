@@ -23,54 +23,87 @@ export class PlaywrightSearchHandler {
   async handleSearch(sessionId: string, query: string): Promise<CliActionResult> {
     await this.sessionManager.ensureSessionReady(sessionId);
 
-    let fillResult: CliExecResult;
     try {
-      fillResult = await this.cliRunner.execCli(sessionId, [
+      const atomicResult = await this.cliRunner.execCli(sessionId, [
         'run-code',
-        this.buildSearchScript(sessionId, query, false),
+        this.buildAtomicSearchScript(sessionId, query, false),
       ]);
-      this.cliRunner.assertNoCliError(fillResult, 'Search input detection failed');
+      this.cliRunner.assertNoCliError(atomicResult, 'Search failed');
+      return {
+        status: 'success',
+        command: 'search',
+        stdout: atomicResult.stdout,
+        stderr: atomicResult.stderr,
+        data: { query },
+      };
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Search input detection failed';
-      throw new Error(
-        message.includes('No explicit search entry found')
-          ? '未识别到明确的搜索入口，请改用“智搜”或指定搜索框'
-          : message
-      );
+      const message = error instanceof Error ? error.message : 'Search failed';
+      if (
+        message.includes('No explicit search entry found') ||
+        message.includes('Search input detection failed')
+      ) {
+        return this.handleSmartSearch(sessionId, query);
+      }
+      return this.handleTwoStepSearch(sessionId, query, false);
     }
-    const submitResult = await this.submitSearch(sessionId, 'Search submit failed');
-
-    return {
-      status: 'success',
-      command: 'search',
-      stdout: [fillResult.stdout, submitResult.stdout].filter(Boolean).join('\n'),
-      stderr: [fillResult.stderr, submitResult.stderr].filter(Boolean).join('\n'),
-      data: { query },
-    };
   }
 
   async handleSmartSearch(sessionId: string, query: string): Promise<CliActionResult> {
     await this.sessionManager.ensureSessionReady(sessionId);
 
+    try {
+      const atomicResult = await this.cliRunner.execCli(sessionId, [
+        'run-code',
+        this.buildAtomicSearchScript(sessionId, query, true),
+      ]);
+      this.cliRunner.assertNoCliError(atomicResult, 'Smart search failed');
+      return {
+        status: 'success',
+        command: 'smart_search',
+        stdout: atomicResult.stdout,
+        stderr: atomicResult.stderr,
+        data: { query },
+      };
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Smart search failed';
+      if (message.includes('No searchable input found')) {
+        throw new Error('当前页面未找到可搜索的输入框');
+      }
+      return this.handleTwoStepSearch(sessionId, query, true);
+    }
+  }
+
+  private async handleTwoStepSearch(
+    sessionId: string,
+    query: string,
+    allowLooseFallback: boolean
+  ): Promise<CliActionResult> {
     let fillResult: CliExecResult;
     try {
       fillResult = await this.cliRunner.execCli(sessionId, [
         'run-code',
-        this.buildSearchScript(sessionId, query, true),
+        this.buildSearchScript(sessionId, query, allowLooseFallback),
       ]);
-      this.cliRunner.assertNoCliError(fillResult, 'Smart search input detection failed');
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : 'Smart search input detection failed';
-      throw new Error(
-        message.includes('No searchable input found') ? '当前页面未找到可搜索的输入框' : message
+      this.cliRunner.assertNoCliError(
+        fillResult,
+        allowLooseFallback ? 'Smart search input detection failed' : 'Search input detection failed'
       );
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Search input detection failed';
+      if (allowLooseFallback && message.includes('No searchable input found')) {
+        throw new Error('当前页面未找到可搜索的输入框');
+      }
+      throw error;
     }
-    const submitResult = await this.submitSearch(sessionId, 'Smart search submit failed');
+    const submitResult = await this.submitSearch(
+      sessionId,
+      allowLooseFallback ? 'Smart search submit failed' : 'Search submit failed'
+    );
 
     return {
       status: 'success',
-      command: 'smart_search',
+      command: allowLooseFallback ? 'smart_search' : 'search',
       stdout: [fillResult.stdout, submitResult.stdout].filter(Boolean).join('\n'),
       stderr: [fillResult.stderr, submitResult.stderr].filter(Boolean).join('\n'),
       data: { query },
@@ -316,6 +349,182 @@ export class PlaywrightSearchHandler {
     }`;
   }
 
+  buildAtomicSearchScript(
+    sessionId: string,
+    query: string,
+    allowLooseFallback: boolean
+  ): string {
+    const minScore = allowLooseFallback ? 25 : 60;
+    const errorMessage = allowLooseFallback
+      ? 'No searchable input found on current page'
+      : 'No explicit search entry found on current page';
+    const session = this.sessionManager.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
+    const settleTimeout = this.config.cliPageSettleTimeoutMs;
+
+    return `async page => {
+      const activePage = ${activePageExpr};
+      await activePage.bringToFront().catch(() => {});
+      const originalUrl = activePage.url();
+      const originalTitle = await activePage.title().catch(() => '');
+
+      const searchMeta = await activePage.evaluate(({ query, minScore, errorMessage, allowLooseFallback }) => {
+        const isVisible = element => {
+          if (!(element instanceof HTMLElement)) return false;
+          const style = window.getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+        };
+
+        const editableCandidates = [
+          ...document.querySelectorAll('input:not([type="hidden"]):not([disabled])'),
+          ...document.querySelectorAll('textarea:not([disabled])'),
+          ...document.querySelectorAll('[contenteditable="true"]'),
+          ...document.querySelectorAll('[role="textbox"]'),
+          ...document.querySelectorAll('[role="searchbox"]'),
+          ...document.querySelectorAll('[role="combobox"]'),
+        ].filter(isVisible);
+
+        const keywordPattern = /(search|query|keyword|find|搜|查询|检索)/i;
+        const buttonKeywordPattern = /(search|go|submit|搜|查询)/i;
+
+        const scoreCandidate = element => {
+          let score = 0;
+          const tagName = element.tagName.toLowerCase();
+          const type = tagName === 'input' ? (element.getAttribute('type') || 'text').toLowerCase() : tagName;
+          const attributes = [
+            element.getAttribute('name'),
+            element.getAttribute('id'),
+            element.getAttribute('placeholder'),
+            element.getAttribute('aria-label'),
+            element.getAttribute('role'),
+            element.getAttribute('enterkeyhint'),
+            element.getAttribute('autocomplete'),
+            element.getAttribute('title'),
+          ].filter(Boolean).join(' ');
+
+          if (type === 'search') score += 80;
+          if (type === 'text' || type === 'search') score += 20;
+          if (tagName === 'textarea') score -= 15;
+          if (keywordPattern.test(attributes)) score += 45;
+
+          const form = element.closest('form');
+          if (form) {
+            score += 10;
+            if ((form.getAttribute('role') || '').toLowerCase() === 'search') score += 40;
+            const submitControls = [...form.querySelectorAll('button, input[type="submit"], input[type="button"]')];
+            if (submitControls.some(control => buttonKeywordPattern.test(
+              [control.textContent, control.getAttribute('value'), control.getAttribute('aria-label')].filter(Boolean).join(' ')
+            ))) {
+              score += 25;
+            }
+          }
+
+          if (element === document.activeElement) score += 20;
+          const parent = element.parentElement;
+          if (parent) {
+            const nearbyControls = [...parent.querySelectorAll('button, [role="button"]')];
+            if (nearbyControls.length > 0) score += 15;
+          }
+          return { element, score, tagName, type, attributes };
+        };
+
+        const rankedCandidates = editableCandidates.map(scoreCandidate).sort((a, b) => b.score - a.score);
+        let target = rankedCandidates.find(c => c.score >= minScore);
+        if (!target && allowLooseFallback) {
+          const activeCandidate = rankedCandidates.find(c => c.element === document.activeElement);
+          if (activeCandidate) target = activeCandidate;
+        }
+        if (!target && allowLooseFallback) {
+          const focusedEditable = document.activeElement;
+          if (focusedEditable && editableCandidates.includes(focusedEditable)) {
+            target = rankedCandidates.find(c => c.element === focusedEditable);
+          }
+        }
+        if (!target && allowLooseFallback) {
+          const likely = rankedCandidates.find(c => c.tagName === 'input' || c.type === 'search' || c.type === 'text');
+          if (likely) target = likely;
+        }
+        if (!target) throw new Error(errorMessage);
+
+        const el = target.element;
+        el.focus();
+        if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+          const prototype = el instanceof HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
+          const valueSetter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
+          valueSetter?.call(el, query);
+        } else {
+          el.textContent = query;
+        }
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+
+        const pickSubmitControl = root => {
+          if (!(root instanceof Element)) return null;
+          const controls = [...root.querySelectorAll('button, input[type="submit"], input[type="button"]')];
+          return controls.find(control => {
+            if (!(control instanceof HTMLElement) || !isVisible(control)) return false;
+            const label = [control.textContent, control.getAttribute('value'), control.getAttribute('aria-label'), control.getAttribute('title')].filter(Boolean).join(' ');
+            return buttonKeywordPattern.test(label);
+          }) || controls.find(control => control instanceof HTMLElement && isVisible(control)) || null;
+        };
+
+        const form = el.closest('form');
+        const submitControl = pickSubmitControl(form || el.parentElement || document.body);
+        let submitMethod = 'keyboard';
+        if (submitControl instanceof HTMLElement) {
+          submitControl.click();
+          submitMethod = 'button-click';
+        } else if (form instanceof HTMLFormElement) {
+          if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+            submitMethod = 'requestSubmit';
+          } else {
+            form.submit();
+            submitMethod = 'submit';
+          }
+        } else {
+          ['keydown', 'keypress', 'keyup'].forEach(type => {
+            el.dispatchEvent(new KeyboardEvent(type, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }));
+          });
+          submitMethod = 'keyboard-event';
+        }
+
+        return {
+          score: target.score,
+          tagName: target.tagName,
+          submitMethod,
+        };
+      }, {
+        query: ${JSON.stringify(query)},
+        minScore: ${minScore},
+        errorMessage: ${JSON.stringify(errorMessage)},
+        allowLooseFallback: ${allowLooseFallback ? 'true' : 'false'},
+      });
+
+      await activePage.keyboard.press('Enter').catch(() => {});
+      await activePage.waitForTimeout(150).catch(() => {});
+      await activePage.waitForLoadState('domcontentloaded', { timeout: ${settleTimeout} }).catch(() => {});
+      await Promise.race([
+        activePage.waitForLoadState('networkidle', { timeout: 1000 }).catch(() => {}),
+        activePage.waitForTimeout(500),
+      ]);
+
+      const landedUrl = activePage.url();
+      const landedTitle = await activePage.title().catch(() => '');
+      return JSON.stringify({
+        status: 'search-completed',
+        ...searchMeta,
+        originalUrl,
+        landedUrl,
+        landedTitle,
+        navigationConfirmed: landedUrl !== originalUrl || landedTitle !== originalTitle,
+      });
+    }`;
+  }
+
   buildSearchSubmitScript(sessionId: string): string {
     const session = this.sessionManager.getOrCreateSession(sessionId);
     const activePageExpr = session.preferLatestTab
@@ -429,8 +638,10 @@ export class PlaywrightSearchHandler {
 
       await activePage.waitForTimeout(150).catch(() => {});
       await activePage.waitForLoadState('domcontentloaded', { timeout: settleTimeout }).catch(() => {});
-      await activePage.waitForLoadState('networkidle', { timeout: settleTimeout }).catch(() => {});
-      await activePage.waitForTimeout(300).catch(() => {});
+      await Promise.race([
+        activePage.waitForLoadState('networkidle', { timeout: 1000 }).catch(() => {}),
+        activePage.waitForTimeout(500),
+      ]);
 
       const landedUrl = activePage.url();
       const landedTitle = await activePage.title().catch(() => '');
@@ -447,10 +658,6 @@ export class PlaywrightSearchHandler {
   async handleClickResult(sessionId: string, index: number): Promise<CliActionResult> {
     await this.sessionManager.ensureSessionReady(sessionId);
     const session = this.sessionManager.getOrCreateSession(sessionId);
-
-    if (!session.lastSearchResults || session.lastSearchResults.length < index) {
-      await this.handleListSearchResults(sessionId, { limit: Math.max(index, 8) });
-    }
 
     const script = this.buildClickSearchResultScript(sessionId, index);
 
@@ -472,6 +679,14 @@ export class PlaywrightSearchHandler {
       session.lastUrl = clickMeta.landedUrl.trim();
     }
     session.preferLatestTab = clickMeta?.openedNewPage === true;
+    if (typeof clickMeta?.pageCount === 'number') {
+      session.lastKnownPageCount = clickMeta.pageCount;
+      if (clickMeta.openedNewPage && clickMeta.pageCount > 1) {
+        const newIndex = clickMeta.pageCount - 1;
+        await this.cliRunner.execCli(sessionId, ['tab-select', String(newIndex)]).catch(() => {});
+        session.activeTabIndex = newIndex;
+      }
+    }
 
     return {
       status: 'success',
@@ -614,9 +829,10 @@ export class PlaywrightSearchHandler {
       const settleTimeout = ${this.config.cliPageSettleTimeoutMs};
       await activePage.waitForLoadState('domcontentloaded', { timeout: settleTimeout }).catch(() => {});
       const originalUrl = await activePage.url();
-      const originalTitle = await activePage.title().catch(() => '');
-      await activePage.waitForLoadState('networkidle', { timeout: settleTimeout }).catch(() => {});
-      await activePage.waitForTimeout(300).catch(() => {});
+      await Promise.race([
+        activePage.waitForLoadState('networkidle', { timeout: 1000 }).catch(() => {}),
+        activePage.waitForTimeout(500),
+      ]);
 
       let selected = await activePage.evaluate(({ targetIndex }) => {
         const target = document.querySelector(\`[data-ops-search-result-rank="\${targetIndex}"]\`);
@@ -631,7 +847,7 @@ export class PlaywrightSearchHandler {
       }, { targetIndex: ${normalizedIndex} });
 
       if (!selected) {
-        selected = JSON.parse(await activePage.evaluate(${JSON.stringify(`({ targetIndex }) => {
+        selected = await activePage.evaluate(({ targetIndex }) => {
           const FLAG_ATTR = 'data-ops-search-result-rank';
           document.querySelectorAll(\`[\${FLAG_ATTR}]\`).forEach((node) => {
             node.removeAttribute(FLAG_ATTR);
@@ -681,14 +897,14 @@ export class PlaywrightSearchHandler {
           }
           ranked.forEach((item, idx) => item.element.setAttribute(FLAG_ATTR, String(idx + 1)));
           const chosen = ranked[targetIndex - 1];
-          return JSON.stringify({
+          return {
             selectedText: chosen.text,
             selectedHref: chosen.href,
             candidateCount: ranked.length,
             score: chosen.score,
             host: location.hostname,
-          });
-        }`)})( { targetIndex: ${normalizedIndex} } ));
+          };
+        }, { targetIndex: ${normalizedIndex} });
       }
 
       const target = activePage.locator('[data-ops-search-result-rank="${normalizedIndex}"]').first();

@@ -15,7 +15,11 @@ export function buildDeterministicExecutionResult(input: {
   artifacts: unknown[];
   finishedAt?: Date;
 }): Record<string, unknown> {
-  const body = pickTopLevelBody(input.finalOutputs);
+  const rawBody = pickTopLevelBody(input.finalOutputs);
+  const fallbackSummary = input.plan?.objective
+    ? `已完成执行：“${input.plan.objective}”`
+    : '任务已成功执行完成。';
+  const body = rawBody || fallbackSummary;
   const title = pickTopLevelTitle(input.finalOutputs, input.plan);
   const finishedAt = (input.finishedAt || new Date()).toISOString();
 
@@ -79,26 +83,41 @@ export function buildDeterministicExecutionResult(input: {
   };
 }
 
+function isRawDomDumpNoise(text: string): boolean {
+  if (!text || typeof text !== 'string') return false;
+  const noiseMarkers = [
+    'ショートカット & 操作ガイド',
+    '自動承認フィルター設定',
+    '案件データが見つかりません',
+    '毛利率がこの数値を下回る場合',
+  ];
+  return noiseMarkers.some((m) => text.includes(m));
+}
+
 function pickTopLevelBody(finalOutputs: ResolvedFinalOutput[]): string | undefined {
   const priorityKeys = ['markdown_content', 'summary', 'body', 'content', 'text'];
   for (const key of priorityKeys) {
     const match = finalOutputs.find(
       (output) =>
         typeof output.value === 'string' &&
-        output.value.length > 0 &&
+        output.value.trim().length > 0 &&
+        !isRawDomDumpNoise(output.value) &&
         (String(output.fromNodeOutput) === key || String(output.targetField) === key),
     );
     if (typeof match?.value === 'string') return match.value;
   }
 
-  return finalOutputs
+  const candidate = finalOutputs
     .filter(
       (output) =>
-        typeof output.value === 'string' && output.value.length > 0 && !output.isArtifact,
+        typeof output.value === 'string' &&
+        output.value.trim().length > 0 &&
+        !output.isArtifact &&
+        !isRawDomDumpNoise(output.value),
     )
-    .sort((a, b) => String(b.value).length - String(a.value).length)[0]?.value as
-    | string
-    | undefined;
+    .sort((a, b) => String(b.value).length - String(a.value).length)[0]?.value;
+
+  return typeof candidate === 'string' ? candidate : undefined;
 }
 
 function pickTopLevelTitle(

@@ -198,4 +198,83 @@ describe('ExecutionPhaseSyncService', () => {
       ]
     );
   });
+
+  it('normalizes condition branch message to completed status and null errorMessage', async () => {
+    const { service, executionPhaseService } = createService();
+
+    await service.syncPhaseAfterStepResult(
+      'execution-1',
+      'runtime-1',
+      {
+        success: true,
+        output: {
+          stepResults: [
+            {
+              stepId: 'step_9',
+              name: '毛利率分支',
+              action: 'branch',
+              message: '条件成立，继续执行',
+            },
+          ],
+        },
+      } as never,
+      {
+        phaseKey: 'phase_01',
+        phaseName: '分支测试',
+        phaseType: 'skill',
+      },
+      {
+        id: 'step-parent',
+        action: 'branch',
+      }
+    );
+
+    expect(executionPhaseService.appendSteps).toHaveBeenCalledWith(
+      'execution-1',
+      'phase_01',
+      expect.arrayContaining([
+        expect.objectContaining({
+          stepId: 'step_9',
+          status: 'completed',
+          errorMessage: null,
+        }),
+      ])
+    );
+  });
+
+  it('preserves existing phase output when terminal failure has no substantive output (e.g. 413)', async () => {
+    const { service, executionPhaseService } = createService();
+
+    await service.syncPhaseAfterStepResult(
+      'execution-1',
+      'runtime-1',
+      {
+        success: false,
+        status: 'failed',
+        errorCode: 'CAPABILITY_PAYLOAD_TOO_LARGE',
+        errorMessage: 'request entity too large',
+        output: null,
+      } as never,
+      {
+        phaseKey: 'phase_01',
+        phaseName: '恢复执行',
+        phaseType: 'skill',
+      },
+      {
+        id: 'step-parent',
+        action: 'resume',
+      }
+    );
+
+    expect(executionPhaseService.createOrUpdatePhase).toHaveBeenCalledWith(
+      expect.objectContaining({
+        executionId: 'execution-1',
+        phaseKey: 'phase_01',
+        status: 'failed',
+        output: null, // output is null so COALESCE keeps previous valid output in DB
+        errorCode: 'CAPABILITY_PAYLOAD_TOO_LARGE',
+        errorMessage: 'request entity too large',
+      })
+    );
+  });
 });

@@ -274,9 +274,9 @@ describe('Confidentiality Agreement Workflow End-to-End Resolution', () => {
     expect(recognized.params['partyA.name']).toBe('豆包有限公司');
     expect(recognized.params['partyA.address']).toBe('北京王府井大街1000号');
     expect(recognized.params['cooperation.subject']).toBe('ai模型开发');
-    expect(recognized.params['agreement.signDate.year']).toBe(2026);
-    expect(recognized.params['agreement.signDate.month']).toBe(9);
-    expect(recognized.params['agreement.signDate.day']).toBe(29);
+    expect(recognized.params['agreement.signDate.year']).toBe(new Date().getFullYear());
+    expect(recognized.params['agreement.signDate.month']).toBe(new Date().getMonth() + 1);
+    expect(recognized.params['agreement.signDate.day']).toBe(new Date().getDate());
 
     const inputs = service.buildRequiredInputs(temporalSkill, recognized);
     const missingInputs = inputs.filter((i) => i.missing);

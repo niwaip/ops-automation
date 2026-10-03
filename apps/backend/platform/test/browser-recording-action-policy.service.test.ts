@@ -28,4 +28,41 @@ describe('BrowserRecordingActionPolicyService', () => {
       reason: '可能修改页面状态或触发表单提交',
     });
   });
+
+  it('allows high-risk approval clicks when allowHighRiskActions is true', () => {
+    expect(
+      service.assessRuntimeStep(
+        {
+          action: 'click',
+          target: 'role=button[name="承認する (Approve)"]',
+          description: '点击承认按钮',
+        },
+        {
+          allowHighRiskActions: true,
+        }
+      )
+    ).toEqual({
+      riskLevel: 'caution',
+      reason: '已授权的高风险运行时动作',
+    });
+  });
+
+  it('allows high-risk actions when authorizedRiskLevel is confirm', () => {
+    expect(
+      service.assessRuntimeStep(
+        {
+          action: 'click',
+          target: 'text=确认提交',
+          description: '提交表单',
+        },
+        {
+          authorizedRiskLevel: 'confirm',
+        }
+      )
+    ).toEqual({
+      riskLevel: 'caution',
+      reason: '已授权的高风险运行时动作',
+    });
+  });
 });
+

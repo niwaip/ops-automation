@@ -478,5 +478,81 @@ describe('SessionService', () => {
         })
       );
     });
+
+    it('overrides step 0 navigate url when request params provide startUrl or url', async () => {
+      const cdpExecutor = (service as any).cdpExecutor as jest.Mocked<CdpExecutor>;
+      const templateClient = (service as any).templateClient as jest.Mocked<TemplateClient>;
+      redisService.hgetall
+        .mockResolvedValueOnce({
+          user_id: mockUserId,
+          state: 'IDLE',
+          control_mode: 'AGENT_RUNNING',
+          frozen: '0',
+          worker_ref: mockWorkerRef,
+          novnc_url: mockEndpoints.novnc,
+          cdp_url: mockEndpoints.cdp,
+          created_at: '1712345678',
+          last_activity: '1712345999',
+        })
+        .mockResolvedValueOnce({
+          user_id: mockUserId,
+          state: 'CLOSED',
+          control_mode: 'AGENT_RUNNING',
+          frozen: '0',
+          worker_ref: mockWorkerRef,
+          novnc_url: mockEndpoints.novnc,
+          cdp_url: mockEndpoints.cdp,
+          created_at: '1712345678',
+          last_activity: '1712346001',
+        });
+      redisService.set.mockResolvedValue('OK');
+      redisService.hdel.mockResolvedValue(1);
+      allocationService.releaseWorker.mockResolvedValue(true);
+      templateClient.getTemplate.mockResolvedValue({
+        id: 'template-nav',
+        name: '导航测试',
+        params_schema: {
+          properties: {
+            startUrl: { type: 'string', description: '起始地址', exampleValue: 'https://example.com' },
+          },
+        },
+        steps: [
+          { step_id: 'step_1', action: 'navigate', params: { url: 'https://example.com' } },
+          { step_id: 'step_2', action: 'click', locator: { type: 'css', value: '#btn' } },
+        ],
+      } as any);
+      cdpExecutor.executeSteps.mockResolvedValue([
+        { success: true, step_id: 'step_1', action: 'navigate' },
+      ]);
+      cdpExecutor.captureFinalState.mockResolvedValue({
+        success: true,
+        step_id: 'final_state',
+        action: 'final_state',
+      });
+
+      await service.startSession(mockSessionId, {
+        template_id: 'template-nav',
+        params: { url: 'https://www.baidu.com' },
+      });
+
+      expect(cdpExecutor.executeSteps).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({
+            step_id: 'step_1',
+            action: 'navigate',
+            params: expect.objectContaining({ url: 'https://www.baidu.com' }),
+          }),
+          expect.objectContaining({
+            step_id: 'step_2',
+            action: 'click',
+          }),
+        ],
+        mockSessionId,
+        { url: 'https://www.baidu.com' },
+        'cli',
+        expect.any(Object)
+      );
+    });
   });
 });
+

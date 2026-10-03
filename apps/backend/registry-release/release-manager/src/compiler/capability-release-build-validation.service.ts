@@ -35,6 +35,10 @@ import {
   ValidateCapabilityDTO,
 } from '../interfaces';
 
+const toNullableUuid = (id?: string | null): string | null => {
+  return id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ? id : null;
+};
+
 export interface CapabilityReleaseBuildValidationAccessors {
   getReleaseOrThrow(id: string): Promise<CapabilityReleaseDTO>;
   getCurrentSnapshotOrThrow(release: CapabilityReleaseDTO): Promise<CapabilitySourceSnapshotDTO>;
@@ -121,7 +125,7 @@ export class CapabilityReleaseBuildValidationService {
       buildType,
       modelId,
       JSON.stringify(inputSnapshot),
-      userId || null
+      toNullableUuid(userId)
     );
 
     await this.prisma.$executeRawUnsafe(
@@ -136,7 +140,7 @@ export class CapabilityReleaseBuildValidationService {
 
     try {
       const logs: string[] = [];
-      const generatedCode: string | null = null;
+      let generatedCode: string | null = null;
       let generatedConfig: Record<string, unknown> | null = null;
       let diffSummary: string | null = null;
 
@@ -157,7 +161,11 @@ export class CapabilityReleaseBuildValidationService {
         );
       }
 
-      if (release.sourceType === 'temporal_workflow') {
+      const hasWorkflowRef =
+        release.sourceType === 'temporal_workflow' ||
+        Boolean((snapshot.sourcePayload as Record<string, unknown>)?.workflowArtifactRef);
+
+      if (hasWorkflowRef) {
         logs.push(
           `[${new Date().toISOString()}] 识别为 Temporal 工作流，开始读取已保存的 Workflow 代码工件`
         );
@@ -166,6 +174,7 @@ export class CapabilityReleaseBuildValidationService {
           snapshot,
           this.temporalWorkflowService
         );
+        generatedCode = artifact.generatedCode;
         generatedConfig = {
           workflowArtifactRef: {
             workflowId: artifact.workflowId,
@@ -278,7 +287,7 @@ export class CapabilityReleaseBuildValidationService {
       buildType,
       modelId,
       JSON.stringify(inputSnapshot),
-      userId || null
+      toNullableUuid(userId)
     );
 
     await this.prisma.$executeRawUnsafe(
@@ -299,7 +308,7 @@ export class CapabilityReleaseBuildValidationService {
     await accessors.insertAuditEvent(id, 'build_started', userId, true, `开始构建 (${buildType})`);
 
     try {
-      const generatedCode: string | null = null;
+      let generatedCode: string | null = null;
       let generatedConfig: Record<string, unknown> | null = null;
       let diffSummary: string | null = null;
 
@@ -323,7 +332,11 @@ export class CapabilityReleaseBuildValidationService {
         throw new Error(`CONTRACT_LINT_FAILED: ${lintErrors}`);
       }
 
-      if (release.sourceType === 'temporal_workflow') {
+      const hasWorkflowRef =
+        release.sourceType === 'temporal_workflow' ||
+        Boolean((snapshot.sourcePayload as Record<string, unknown>)?.workflowArtifactRef);
+
+      if (hasWorkflowRef) {
         onEvent('status', { phase: 'loading_workflow_artifact', buildId });
         pushLog(
           `[${new Date().toISOString()}] 识别为 Temporal 工作流，开始读取已保存的 Workflow 代码工件`
@@ -333,6 +346,7 @@ export class CapabilityReleaseBuildValidationService {
           snapshot,
           this.temporalWorkflowService
         );
+        generatedCode = artifact.generatedCode;
         generatedConfig = {
           workflowArtifactRef: {
             workflowId: artifact.workflowId,
@@ -665,15 +679,83 @@ export class CapabilityReleaseBuildValidationService {
           errorSummary = result.error || null;
         }
       } else if (release.sourceType === 'browser_recording') {
-        const result = this.capabilityReleaseBrowserRecordingService.validateSnapshot(snapshot, {
-          input: dto.input,
-          testCases: naturalLanguageCases,
-        });
-        success = result.success;
-        score = result.score;
-        logs = result.logs;
-        resultSnapshot = result.resultSnapshot;
-        errorSummary = result.errorSummary;
+        const hasExecutionInput = dto.input && Object.keys(dto.input).length > 0;
+        const hasGeneratedWorkflowCode = Boolean(build.generatedCode);
+
+        if (hasGeneratedWorkflowCode) {
+          const fn = dto.fn || accessors.resolveWorkflowFnOrThrow(snapshot.sourcePayload);
+          const baseInput = this.capabilityReleaseTemporalSchemaService.buildSmokeTestInput(
+            release,
+            snapshot,
+            'staging'
+          );
+          const userFlatInput = dto.input ? flattenPayload(dto.input) : {};
+          const effectiveInput = {
+            ...baseInput,
+            ...userFlatInput,
+          };
+          const result = await this.temporalWorkflowService.validateWorkflowReal(
+            build.generatedCode!,
+            fn,
+            effectiveInput
+          );
+          success = result.success;
+          score = result.score;
+          logs = result.logs;
+          resultSnapshot = {
+            result: result.result ?? null,
+            error: result.error ?? null,
+            fn,
+            input: effectiveInput,
+          };
+          errorSummary = result.error || null;
+        } else if (hasExecutionInput) {
+          const baseInput = this.capabilityReleaseTemporalSchemaService.buildSmokeTestInput(
+            release,
+            snapshot,
+            'staging'
+          );
+          const userFlatInput = flattenPayload(dto.input!);
+          const effectiveInput = {
+            ...baseInput,
+            ...userFlatInput,
+          };
+          const runtimeResult = await this.capabilityReleaseRuntimeService.executePublishedSkill(
+            release.publishedSkillId || release.id,
+            effectiveInput,
+            userId,
+            { executionId: `sandbox-validate-${validationId}` },
+            accessors
+          );
+          const isVerified = runtimeResult.success || runtimeResult.status === 'takeover_required';
+          success = isVerified;
+          score = isVerified ? 100 : 0;
+          logs = runtimeResult.logs || [];
+          if (runtimeResult.status === 'takeover_required') {
+            logs.push('[BrowserRuntime][Validation] 校验成功：已验证至人工接管/确认门禁节点');
+          }
+          resultSnapshot = {
+            mode: 'browser_recording_sandbox_execution',
+            runtime: 'browser_recording',
+            status: runtimeResult.status,
+            result: runtimeResult.result || null,
+            output: runtimeResult.output || null,
+            error: runtimeResult.error || null,
+            input: effectiveInput,
+          };
+          errorSummary =
+            isVerified ? null : (runtimeResult.error || '浏览器录制执行未成功');
+        } else {
+          const result = this.capabilityReleaseBrowserRecordingService.validateSnapshot(snapshot, {
+            input: dto.input,
+            testCases: naturalLanguageCases,
+          });
+          success = result.success;
+          score = result.score;
+          logs = result.logs;
+          resultSnapshot = result.resultSnapshot;
+          errorSummary = result.errorSummary;
+        }
       } else if (templateId) {
         const validation = await this.executionFlowValidationFacade.validateTemplate(
           templateId,
@@ -846,23 +928,107 @@ export class CapabilityReleaseBuildValidationService {
         };
         errorSummary = result.error || null;
       } else if (release.sourceType === 'browser_recording') {
-        onEvent('status', {
-          phase: 'executing',
-          runtime: 'browser_recording',
-          note: '当前浏览器录制能力通过静态快照校验回放日志',
-        });
-        const result = this.capabilityReleaseBrowserRecordingService.validateSnapshot(snapshot, {
-          input: dto.input,
-          testCases: naturalLanguageCases,
-        });
-        success = result.success;
-        score = result.score;
-        logs = result.logs;
-        for (const log of logs) {
-          onEvent('log', { message: log });
+        const hasExecutionInput = dto.input && Object.keys(dto.input).length > 0;
+        const hasGeneratedWorkflowCode = Boolean(build.generatedCode);
+
+        if (hasGeneratedWorkflowCode) {
+          onEvent('status', { phase: 'executing', runtime: 'temporal_workflow' });
+          const fn = dto.fn || accessors.resolveWorkflowFnOrThrow(snapshot.sourcePayload);
+          const baseInput = this.capabilityReleaseTemporalSchemaService.buildSmokeTestInput(
+            release,
+            snapshot,
+            'staging'
+          );
+          const userFlatInput = dto.input ? flattenPayload(dto.input) : {};
+          const effectiveInput = {
+            ...baseInput,
+            ...userFlatInput,
+          };
+          const result = await this.temporalWorkflowService.validateWorkflowRealStreaming(
+            build.generatedCode!,
+            fn,
+            effectiveInput as Record<string, any> | undefined,
+            undefined,
+            undefined,
+            (log: string) => {
+              streamedLogs.push(log);
+              onEvent('log', { message: log });
+            }
+          );
+          success = result.success;
+          score = result.score;
+          logs = streamedLogs.length > 0 ? streamedLogs : result.logs || [];
+          resultSnapshot = {
+            result: result.result ?? null,
+            error: result.error ?? null,
+            traceback: result.traceback ?? null,
+            fn,
+            input: effectiveInput,
+          };
+          errorSummary = result.error || null;
+        } else if (hasExecutionInput) {
+          onEvent('status', {
+            phase: 'executing',
+            runtime: 'browser_recording',
+            note: '开始执行浏览器录制沙箱回放',
+          });
+          const baseInput = this.capabilityReleaseTemporalSchemaService.buildSmokeTestInput(
+            release,
+            snapshot,
+            'staging'
+          );
+          const userFlatInput = flattenPayload(dto.input!);
+          const effectiveInput = {
+            ...baseInput,
+            ...userFlatInput,
+          };
+          const runtimeResult = await this.capabilityReleaseRuntimeService.executePublishedSkill(
+            release.publishedSkillId || release.id,
+            effectiveInput,
+            userId,
+            { executionId: `sandbox-validate-${validationId}` },
+            accessors
+          );
+          const isVerified = runtimeResult.success || runtimeResult.status === 'takeover_required';
+          success = isVerified;
+          score = isVerified ? 100 : 0;
+          logs = runtimeResult.logs || [];
+          if (runtimeResult.status === 'takeover_required') {
+            logs.push('[BrowserRuntime][Validation] 校验成功：已验证至人工接管/确认门禁节点');
+          }
+          for (const log of logs) {
+            onEvent('log', { message: log });
+          }
+          resultSnapshot = {
+            mode: 'browser_recording_sandbox_execution',
+            runtime: 'browser_recording',
+            status: runtimeResult.status,
+            result: runtimeResult.result || null,
+            output: runtimeResult.output || null,
+            error: runtimeResult.error || null,
+            input: effectiveInput,
+          };
+          errorSummary =
+            isVerified ? null : (runtimeResult.error || '浏览器录制执行未成功');
+        } else {
+          onEvent('status', {
+            phase: 'executing',
+            runtime: 'browser_recording',
+            note: '当前浏览器录制能力通过静态快照校验回放日志',
+          });
+          const result = this.capabilityReleaseBrowserRecordingService.validateSnapshot(snapshot, {
+            input: dto.input,
+            testCases: naturalLanguageCases,
+          });
+          success = result.success;
+          score = result.score;
+          logs = result.logs;
+          for (const log of logs) {
+            onEvent('log', { message: log });
+          }
+          resultSnapshot = result.resultSnapshot;
+          errorSummary = result.errorSummary;
         }
-        resultSnapshot = result.resultSnapshot;
-        errorSummary = result.errorSummary;
       } else if (templateId) {
         onEvent('status', {
           phase: 'executing',
@@ -1001,7 +1167,7 @@ export class CapabilityReleaseBuildValidationService {
       JSON.stringify(draftPayload.tools),
       JSON.stringify(draftPayload.apiEndpoints || null),
       JSON.stringify(draftPayload),
-      userId || null
+      toNullableUuid(userId)
     );
 
     await this.prisma.$executeRawUnsafe(
@@ -1048,7 +1214,7 @@ export class CapabilityReleaseBuildValidationService {
       buildId,
       validationType,
       JSON.stringify(input || null),
-      userId || null
+      toNullableUuid(userId)
     );
     if (updateReleaseStatus) {
       await this.prisma.$executeRawUnsafe(
@@ -1166,7 +1332,7 @@ export class CapabilityReleaseBuildValidationService {
       snapshot.id,
       JSON.stringify(snapshot.sourcePayload),
       JSON.stringify(snapshot.sourcePayload),
-      userId || null
+      toNullableUuid(userId)
     );
 
     await this.prisma.$executeRawUnsafe(

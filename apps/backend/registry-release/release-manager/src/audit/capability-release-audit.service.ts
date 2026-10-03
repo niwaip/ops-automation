@@ -28,6 +28,10 @@ export class CapabilityReleaseAuditService {
     summary: string,
     details?: Record<string, unknown>
   ): Promise<void> {
+    const safeActorId =
+      actorId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(actorId)
+        ? actorId
+        : null;
     await this.prisma.$executeRawUnsafe(
       `INSERT INTO release_audit_events (
         id, release_id, event_type, actor_id, success, summary, details_json, created_at
@@ -37,7 +41,7 @@ export class CapabilityReleaseAuditService {
       randomUUID(),
       releaseId,
       eventType,
-      actorId || null,
+      safeActorId,
       success,
       summary,
       JSON.stringify(details || null)

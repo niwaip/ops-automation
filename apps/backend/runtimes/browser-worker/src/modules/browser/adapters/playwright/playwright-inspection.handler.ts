@@ -144,11 +144,30 @@ export class PlaywrightInspectionHandler {
     return this.cliRunner.execCli(sessionId, ['run-code', script]);
   }
 
+  async ensureActiveTabSynced(sessionId: string): Promise<void> {
+    const session = this.sessionManager.getOrCreateSession(sessionId);
+    if (!session.preferLatestTab) {
+      return;
+    }
+    const targetIndex =
+      session.activeTabIndex !== undefined
+        ? session.activeTabIndex
+        : session.lastKnownPageCount && session.lastKnownPageCount > 1
+          ? session.lastKnownPageCount - 1
+          : undefined;
+
+    if (targetIndex !== undefined) {
+      await this.cliRunner.execCli(sessionId, ['tab-select', String(targetIndex)]).catch(() => {});
+      session.activeTabIndex = targetIndex;
+    }
+  }
+
   async handleSnapshot(
     sessionId: string,
     params: Record<string, unknown>
   ): Promise<CliActionResult> {
     await this.sessionManager.ensureSessionReady(sessionId);
+    await this.ensureActiveTabSynced(sessionId);
 
     const snapshotPath = path.join(this.config.artifactDir, `${sessionId}-${Date.now()}.yaml`);
     const target = this.cliRunner.readOptionalStringParam(params, ['target', 'selector']);
@@ -178,6 +197,7 @@ export class PlaywrightInspectionHandler {
 
   async handleEvaluate(sessionId: string, script: string): Promise<CliActionResult> {
     await this.sessionManager.ensureSessionReady(sessionId);
+    await this.ensureActiveTabSynced(sessionId);
     const result = await this.cliRunner.execCli(sessionId, ['--raw', 'eval', script]);
     this.cliRunner.assertNoCliError(result, 'Evaluate script failed');
 
@@ -190,12 +210,17 @@ export class PlaywrightInspectionHandler {
     };
   }
 
-  async inspectPageState(sessionId: string): Promise<BrowserPageStateDto> {
+  async inspectPageState(
+    sessionId: string,
+    options?: { includeHtml?: boolean }
+  ): Promise<BrowserPageStateDto> {
     await this.sessionManager.ensureSessionReady(sessionId);
     const session = this.sessionManager.getOrCreateSession(sessionId);
     const activePageExpr = session.preferLatestTab
       ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
       : 'page';
+    const includeHtml = options?.includeHtml === true;
+    const maxHtmlChars = this.config.maxHtmlChars || 1_000_000;
     const script = `async page => {
       const activePage = ${activePageExpr};
       await activePage.bringToFront().catch(() => {});
@@ -212,6 +237,37 @@ export class PlaywrightInspectionHandler {
           hasModal: Boolean(doc.querySelector('[role="dialog"], [role="alertdialog"], .ant-modal, .el-dialog, .modal, [aria-modal="true"]')),
         };
       }).catch(() => ({ scrollX: 0, scrollY: 0, bodyLength: 0, hasModal: false }));
+
+      let html = undefined;
+      if (${includeHtml}) {
+        html = await activePage.evaluate((maxChars) => {
+          if (!document.documentElement) return '';
+          try {
+            const clone = document.documentElement.cloneNode(true);
+            if (clone && typeof clone.querySelectorAll === 'function') {
+              try {
+                const suspenseDivs = clone.querySelectorAll('div[id^="S:"], div[id^="P:"], div[id^="rc_"], div[data-rsc-chunk]');
+                suspenseDivs.forEach(div => {
+                  const id = div.id;
+                  const key = id.includes(':') ? id.split(':')[1] : id;
+                  const template = clone.querySelector('[id="B:' + key + '"], [id="T:' + key + '"], [id="P:' + key + '"], [id="rc_' + key + '"]');
+                  div.removeAttribute('hidden');
+                  if (template && template.parentNode) {
+                    template.parentNode.insertBefore(div, template);
+                    template.remove();
+                  }
+                });
+              } catch {}
+              clone.querySelectorAll('style, script, noscript, template, iframe, svg, canvas').forEach(el => el.remove());
+              clone.querySelectorAll('textarea[style*="display: none"], textarea[style*="display:none"], textarea[id*="css"], [id*="_css"]').forEach(el => el.remove());
+              clone.querySelectorAll('input[type="hidden"]').forEach(el => el.remove());
+              return clone.outerHTML.slice(0, maxChars);
+            }
+          } catch {}
+          return document.documentElement.outerHTML.slice(0, maxChars);
+        }, ${maxHtmlChars}).catch(() => undefined);
+      }
+
       return JSON.stringify({
         pageUrl: url,
         pageTitle: title,
@@ -220,6 +276,7 @@ export class PlaywrightInspectionHandler {
         scrollY: metrics.scrollY,
         bodyLength: metrics.bodyLength,
         hasModal: metrics.hasModal,
+        html,
       });
     }`;
     const result = await this.cliRunner.execCli(sessionId, ['run-code', script]);
@@ -232,6 +289,7 @@ export class PlaywrightInspectionHandler {
     const scrollY = typeof payload?.scrollY === 'number' ? payload.scrollY : undefined;
     const bodyLength = typeof payload?.bodyLength === 'number' ? payload.bodyLength : undefined;
     const hasModal = typeof payload?.hasModal === 'boolean' ? payload.hasModal : undefined;
+    const html = typeof payload?.html === 'string' ? payload.html : undefined;
     if (pageUrl) {
       session.lastUrl = pageUrl;
     }
@@ -246,6 +304,7 @@ export class PlaywrightInspectionHandler {
       scrollY,
       bodyLength,
       hasModal,
+      ...(html ? { html } : {}),
     };
   }
 
@@ -330,7 +389,7 @@ export class PlaywrightInspectionHandler {
       return enriched;
     }
 
-    if (!enriched.html) {
+    if (!enriched.html && enriched.command !== 'screenshot') {
       enriched.html = await this.pageReader.readCurrentPageHtml(sessionId).catch(() => undefined);
     }
 

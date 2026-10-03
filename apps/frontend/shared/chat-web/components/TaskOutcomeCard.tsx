@@ -4,6 +4,7 @@ import {
   CloseOutlined,
   DownloadOutlined,
   GlobalOutlined,
+  InfoCircleOutlined,
   LinkOutlined,
   LoadingOutlined,
   ThunderboltOutlined,
@@ -91,6 +92,44 @@ const isHtmlPreviewBlock = (className?: string, codeText?: string) => {
   );
 };
 
+/**
+ * Generic schema violation message humanizer for raw technical error strings.
+ * Translates standard Ajv keywords and technical prefixes into friendly descriptions
+ * without any domain-specific hardcoding.
+ */
+export const humanizeRawSchemaError = (raw?: string): string | null => {
+  if (!raw) return null;
+  const match = /(?:Node\s+'(?<nodeId>[^']+)'\s+failed:\s+)?(?<codeType>INPUT_SCHEMA_VIOLATION|OUTPUT_SCHEMA_VIOLATION)(?:\s+for\s+node\s+'(?<nodeId2>[^']+)')?:\s*(?<details>.*)$/s.exec(raw);
+  if (!match || !match.groups) {
+    return null;
+  }
+  const isInput = match.groups.codeType === 'INPUT_SCHEMA_VIOLATION';
+  const nodeName = match.groups.nodeId || match.groups.nodeId2;
+  const rawDetails = match.groups.details || '';
+
+  // Extract common Ajv violations generically
+  // e.g. "/ (required): must have required property 'fieldName'"
+  const requiredMatch = /\/?\s*\(?required\)?:\s*must have required property\s*'([^']+)'/i.exec(rawDetails);
+  if (requiredMatch) {
+    const field = requiredMatch[1];
+    return `${isInput ? '输入参数校验未通过' : '输出结果校验未通过'}：缺少必填参数【${field}】。`;
+  }
+
+  // e.g. "/fieldName (type): must be string"
+  const typeMatch = /\/?([a-zA-Z0-9_.-]+)\s*\(?type\)?:\s*must be\s*([a-zA-Z0-9_]+)/i.exec(rawDetails);
+  if (typeMatch) {
+    return `${isInput ? '输入参数' : '输出结果'}【${typeMatch[1]}】类型错误，期望类型为 ${typeMatch[2]}。`;
+  }
+
+  // e.g. "/fieldName (enum): must be equal to one of the allowed values"
+  const enumMatch = /\/?([a-zA-Z0-9_.-]+)\s*\(?enum\)?:\s*must be equal to one of the allowed values/i.exec(rawDetails);
+  if (enumMatch) {
+    return `${isInput ? '输入参数' : '输出结果'}【${enumMatch[1]}】取值不在允许范围内。`;
+  }
+
+  return `${isInput ? '输入契约校验未通过' : '输出契约校验未通过'}${nodeName ? `（节点 ${nodeName}）` : ''}。`;
+};
+
 export const getErrorPreview = (value?: string): string => {
   if (!value) {
     return '任务执行失败，请展开查看具体错误信息。';
@@ -102,18 +141,26 @@ export const getErrorPreview = (value?: string): string => {
     .filter(Boolean);
 
   const reasonLine = lines.find((line) => /^原因[:：]\s*\S/.test(line));
-  if (reasonLine) {
-    return reasonLine.replace(/^原因[:：]\s*/, '');
+  const rawCandidate = reasonLine
+    ? reasonLine.replace(/^原因[:：]\s*/, '')
+    : lines.find(
+        (line) =>
+          !/^(?:❌\s*)?任务执行失败[。！!]?$/.test(line) &&
+          !/^状态[:：]/.test(line) &&
+          !/^执行单\s*ID[:：]/i.test(line)
+      ) || lines[0] || '任务执行失败，请展开查看具体错误信息。';
+
+  // If candidate contains technical prefix or separator, strip [技术细节] suffix for preview
+  const techDetailIdx = rawCandidate.indexOf('[技术细节]');
+  const cleanCandidate = techDetailIdx > 0 ? rawCandidate.slice(0, techDetailIdx).trim() : rawCandidate;
+
+  // Generic schema violation humanizer fallback for unformatted raw strings
+  const humanized = humanizeRawSchemaError(cleanCandidate);
+  if (humanized) {
+    return humanized;
   }
 
-  const preview = lines.find(
-    (line) =>
-      !/^(?:❌\s*)?任务执行失败[。！!]?$/.test(line) &&
-      !/^状态[:：]/.test(line) &&
-      !/^执行单\s*ID[:：]/i.test(line)
-  );
-
-  return preview || lines[0] || '任务执行失败，请展开查看具体错误信息。';
+  return cleanCandidate;
 };
 
 const getStructuredResultPreview = (value?: string | null): string | undefined => {
@@ -470,12 +517,35 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
     const isPermissionError =
       /权限|申请授权|permission|forbidden/i.test(detailError) ||
       /权限|申请授权|permission|forbidden/i.test(previewError);
+    const isInputViolation =
+      /INPUT_SCHEMA_VIOLATION|输入参数校验未通过|缺少必填参数/i.test(detailError) ||
+      /INPUT_SCHEMA_VIOLATION|输入参数校验未通过|缺少必填参数/i.test(previewError);
 
     return (
       <div className="chat-outcome-card error">
         <div className="chat-outcome-title">任务失败</div>
         {renderMeta()}
         <div className="chat-outcome-body">{previewError}</div>
+        {isInputViolation ? (
+          <div
+            className="chat-outcome-input-violation-tip"
+            style={{
+              marginTop: 10,
+              padding: '8px 12px',
+              borderRadius: 6,
+              background: 'rgba(250, 173, 20, 0.08)',
+              border: '1px solid rgba(250, 173, 20, 0.25)',
+              fontSize: 12,
+              color: 'var(--text-secondary, #64748b)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            <InfoCircleOutlined style={{ color: '#faad14', flexShrink: 0 }} />
+            <span>提示：任务执行缺少必要的前置输入参数，请检查输入配置或补充所需参数。</span>
+          </div>
+        ) : null}
         {isPermissionError ? (
           <div className="chat-outcome-actions" style={{ marginTop: 12 }}>
             <Button
@@ -491,7 +561,7 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
         {downloadUrl || temporalLink || executionDetailLink ? renderResourceLinks() : null}
         {previewError !== detailError ? (
           <details className="chat-outcome-details">
-            <summary>查看详细错误</summary>
+            <summary>查看详细错误与技术追踪</summary>
             <pre className="chat-structured-result chat-error-details">{detailError}</pre>
           </details>
         ) : null}

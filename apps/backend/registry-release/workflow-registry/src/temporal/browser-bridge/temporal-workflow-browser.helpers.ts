@@ -617,8 +617,12 @@ export function buildBrowserActivityStepsFromTemplateSteps(
 
     const indexValue = pickFirst(params.index, params.resultIndex);
     if (indexValue !== undefined) {
-      const num = Number(indexValue);
-      config.index = Number.isFinite(num) ? num : 1;
+      if (typeof indexValue === 'string' && (indexValue.includes('${') || indexValue.includes('{'))) {
+        config.index = indexValue.trim();
+      } else {
+        const num = Number(indexValue);
+        config.index = Number.isFinite(num) ? num : 1;
+      }
     }
 
     const timeoutValue = pickFirst(

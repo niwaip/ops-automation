@@ -314,6 +314,17 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertIn("Python Docs", final_text)
         self.assertNotIn("DeepSeek Harness Releases", final_text)
 
+    def test_search_evidence_fallback_preserves_plain_text_context(self):
+        context = "【微博实时热搜榜最新排行】:\n1. 热搜词条一 (热度值: 1000)\n2. 热搜词条二 (热度值: 800)"
+        policy = RuntimePolicy()
+        with patch("dsh_modules.runner.TelemetryStats.emit_final_output") as emit:
+            _emit_search_evidence_fallback("查看今天微博的热点", context, [], None, policy, model_failed=True)
+        final_text = emit.call_args.args[0]
+        self.assertIn("【微博实时热搜榜最新排行】", final_text)
+        self.assertIn("热搜词条一", final_text)
+        self.assertNotIn("未能提取可引用链接", final_text)
+        self.assertIn("请以各平台实时来源页面为准", final_text)
+
     def test_emit_tool_result_recovery_weather(self):
         messages = [
             {"role": "user", "content": "查看上海的天气"},

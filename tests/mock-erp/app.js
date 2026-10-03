@@ -145,8 +145,15 @@ const loadState = () => {
   const savedNotifications = localStorage.getItem('mock_erp_notifications');
   const savedLogin = localStorage.getItem('mock_erp_logged_in');
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const isSkipMfa = urlParams.get('skip_mfa') === 'true';
+
   if (savedProjects) {
     state.projects = JSON.parse(savedProjects);
+    if (!state.projects.some((p) => p.status === 'pending') || isSkipMfa) {
+      state.projects = JSON.parse(JSON.stringify(DEFAULT_PROJECTS));
+      saveProjectsState();
+    }
   } else {
     state.projects = JSON.parse(JSON.stringify(DEFAULT_PROJECTS));
     saveProjectsState();

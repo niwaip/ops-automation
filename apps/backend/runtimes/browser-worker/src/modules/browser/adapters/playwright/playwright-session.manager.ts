@@ -108,6 +108,9 @@ export class PlaywrightSessionManager {
     session.lastUrl = initialUrl;
     session.controlMode = 'AGENT_RUNNING';
     session.frozenReason = undefined;
+    session.activeTabIndex = 0;
+    session.preferLatestTab = false;
+    session.lastKnownPageCount = 1;
 
     this.cliRunner.reportDebugEvent(
       'C',

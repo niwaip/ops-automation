@@ -4,6 +4,8 @@ import { useMutation, useQueryClient } from 'react-query';
 import { executionApi, ExecutionDto, ExecutionPhaseDto } from '@/api/execution';
 import {
   RECOVERY_COPY,
+  RECOVERY_ACTION_BUTTON_LABELS,
+  RECOVERY_CONFIRM_DETAILS,
   RecoveryResumeAction,
 } from '../../recoveryOptions';
 
@@ -19,13 +21,11 @@ const getPhaseSteps = (phase?: ExecutionPhaseDto): PhaseStep[] =>
   (Array.isArray(phase?.steps) ? phase.steps : []) as unknown as PhaseStep[];
 
 const isRecoveryResumeAction = (value: unknown): value is RecoveryResumeAction =>
-  value === 'retry' || value === 'resolve_by_human' || value === 'resume_from_step';
-
-export const RECOVERY_ACTION_DESCRIPTIONS: Record<RecoveryResumeAction, string> = {
-  resume_from_step: '从当前异常点继续，优先用于人工确认后继续后续流程。',
-  resolve_by_human: '标记该步骤已由人工处理，跳过当前阶段并继续执行。',
-  retry: '重新运行当前阶段，适用于页面或条件判断需要再次验证的场景。',
-};
+  value === 'resolve_by_human' ||
+  value === 'retry_step' ||
+  value === 'retry_phase' ||
+  value === 'retry' ||
+  value === 'resume_from_step';
 
 export interface UseInlineRecoveryOptions {
   executionId: string;
@@ -51,8 +51,16 @@ export interface UseInlineRecoveryResult {
   phaseSteps: PhaseStep[];
   failedPhaseStep: PhaseStep | undefined;
   failedPhaseStepId: string | undefined;
+  nextStepAfterFailedId: string | undefined;
   defaultResumeFromStepId: string | undefined;
   activeStepId: string | undefined;
+  actionButtonLabel: string;
+  confirmModalDetails: {
+    title: string;
+    desc: string;
+    hint: string;
+    okText: string;
+  };
   phaseLoopIteration: number | undefined;
   applyRecoveryMutation: ReturnType<typeof useMutation<ExecutionDto, Error, void>>;
   cancelMutation: ReturnType<typeof useMutation<ExecutionDto, Error, void>>;
@@ -69,7 +77,7 @@ export function useInlineRecovery({
   onAfterSuccess,
 }: UseInlineRecoveryOptions): UseInlineRecoveryResult {
   const queryClient = useQueryClient();
-  const [resumeAction, setResumeAction] = React.useState<RecoveryResumeAction>('resume_from_step');
+  const [resumeAction, setResumeAction] = React.useState<RecoveryResumeAction>('resolve_by_human');
   const [resumeFromStepId, setResumeFromStepId] = React.useState<string | undefined>(undefined);
   const [showAdvancedStepSelect, setShowAdvancedStepSelect] = React.useState(false);
   const [showResumeConfirm, setShowResumeConfirm] = React.useState(false);
@@ -77,13 +85,24 @@ export function useInlineRecovery({
   const [reviewComment, setReviewComment] = React.useState('');
   const phaseSteps = React.useMemo(() => getPhaseSteps(phase), [phase]);
 
-  const failedPhaseStep = React.useMemo(
-    () =>
-      phaseSteps.find((step) => ['failed', 'takeover_required', 'blocked'].includes(step.status)) ||
-      phaseSteps.find((step) => step.status !== 'completed') ||
-      phaseSteps[phaseSteps.length - 1],
-    [currentStepId, phaseSteps]
-  );
+  const failedPhaseStep = React.useMemo(() => {
+    if (currentStepId) {
+      const match = [...phaseSteps].reverse().find(
+        (step) => (step.stepId || step.id) === currentStepId
+      );
+      if (match) {
+        return match;
+      }
+    }
+    const reversed = [...phaseSteps].reverse();
+    return (
+      reversed.find((step) =>
+        ['takeover_required', 'waiting_takeover', 'failed', 'blocked'].includes(step.status)
+      ) ||
+      reversed.find((step) => step.status !== 'completed') ||
+      phaseSteps[phaseSteps.length - 1]
+    );
+  }, [currentStepId, phaseSteps]);
 
   const failedPhaseStepId = React.useMemo(() => {
     if (failedPhaseStep?.stepId || failedPhaseStep?.id) {
@@ -92,18 +111,52 @@ export function useInlineRecovery({
     return currentStepId;
   }, [currentStepId, failedPhaseStep]);
 
-  const defaultResumeFromStepId = React.useMemo(() => {
-    if (!failedPhaseStepId) {
+  const nextStepAfterFailedId = React.useMemo(() => {
+    if (!failedPhaseStep) {
       return undefined;
     }
-    const failedIndex = phaseSteps.findIndex(
-      (step) => (step.stepId || step.id) === failedPhaseStepId
-    );
+    const failedId = failedPhaseStep.stepId || failedPhaseStep.id;
+    const failedIndex = phaseSteps.lastIndexOf(failedPhaseStep);
     if (failedIndex >= 0 && phaseSteps[failedIndex + 1]) {
       return phaseSteps[failedIndex + 1].stepId || phaseSteps[failedIndex + 1].id;
     }
-    return failedPhaseStepId;
-  }, [failedPhaseStepId, phaseSteps]);
+    // When execution pauses/fails at runtime, failedPhaseStep is the last step recorded in phaseSteps.
+    // In a loop execution, look backwards for an earlier iteration of the same stepId that had a successor.
+    if (failedId) {
+      for (let i = failedIndex - 1; i >= 0; i--) {
+        const prevStep = phaseSteps[i];
+        if ((prevStep.stepId || prevStep.id) === failedId && phaseSteps[i + 1]) {
+          const candidateNext = phaseSteps[i + 1].stepId || phaseSteps[i + 1].id;
+          if (candidateNext && candidateNext !== failedId) {
+            return candidateNext;
+          }
+        }
+      }
+    }
+    // Fallback for sequential steps like step_9 -> step_10
+    if (failedId && /^step_\d+$/.test(failedId)) {
+      const num = parseInt(failedId.replace('step_', ''), 10);
+      if (!Number.isNaN(num)) {
+        return `step_${num + 1}`;
+      }
+    }
+    return undefined;
+  }, [failedPhaseStep, phaseSteps]);
+
+  const defaultResumeFromStepId = nextStepAfterFailedId || failedPhaseStepId;
+
+  const activeStepId = React.useMemo(() => {
+    if (resumeFromStepId) {
+      return resumeFromStepId;
+    }
+    if (resumeAction === 'retry_step') {
+      return failedPhaseStepId;
+    }
+    if (resumeAction === 'resolve_by_human' || resumeAction === 'resume_from_step') {
+      return nextStepAfterFailedId || failedPhaseStepId;
+    }
+    return undefined;
+  }, [resumeFromStepId, resumeAction, failedPhaseStepId, nextStepAfterFailedId]);
 
   const phaseLoopIteration = React.useMemo(() => {
     const value = (phase?.input as { loopIteration?: number | string } | undefined)?.loopIteration;
@@ -119,8 +172,6 @@ export function useInlineRecovery({
     return undefined;
   }, [phase?.input]);
 
-  const activeStepId = resumeFromStepId || defaultResumeFromStepId || failedPhaseStepId;
-
   const invalidateExecutionQueries = React.useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries(['executions']),
@@ -132,31 +183,49 @@ export function useInlineRecovery({
   }, [executionId, onAfterSuccess, queryClient]);
 
   const buildPatch = React.useCallback(() => {
-    if (resumeAction === 'resume_from_step' && activeStepId) {
+    if (resumeAction === 'resolve_by_human' || resumeAction === 'resume_from_step') {
+      const effectiveResumeStepId =
+        activeStepId ||
+        nextStepAfterFailedId ||
+        (failedPhaseStepId && /^step_\d+$/.test(failedPhaseStepId)
+          ? `step_${parseInt(failedPhaseStepId.replace('step_', ''), 10) + 1}`
+          : undefined);
       return {
         type: 'resolve_by_human',
         failedStepId: failedPhaseStepId || '',
         ...(phaseLoopIteration ? { loopIteration: phaseLoopIteration } : {}),
-        resumeFromStepId: activeStepId,
-        note: reviewComment.trim() || RECOVERY_COPY.retryNote,
-      };
-    }
-    if (resumeAction === 'resolve_by_human') {
-      return {
-        type: 'resolve_by_human',
-        failedStepId: failedPhaseStepId || '',
-        ...(phaseLoopIteration ? { loopIteration: phaseLoopIteration } : {}),
+        ...(effectiveResumeStepId ? { resumeFromStepId: effectiveResumeStepId } : {}),
         note: reviewComment.trim() || RECOVERY_COPY.resolveByHumanNote,
       };
     }
+    if (resumeAction === 'retry_step') {
+      return {
+        type: 'retry_step',
+        failedStepId: failedPhaseStepId || '',
+        ...(phaseLoopIteration ? { loopIteration: phaseLoopIteration } : {}),
+        resumeFromStepId: failedPhaseStepId,
+        note: reviewComment.trim() || RECOVERY_COPY.retryNote,
+      };
+    }
     return null;
-  }, [failedPhaseStepId, phaseLoopIteration, resumeAction, activeStepId, reviewComment]);
+  }, [activeStepId, failedPhaseStepId, nextStepAfterFailedId, phaseLoopIteration, resumeAction, reviewComment]);
 
   const applyRecoveryMutation = useMutation(
     async () => {
+      let targetStepId: string | undefined;
+      if (resumeAction === 'resolve_by_human' || resumeAction === 'resume_from_step') {
+        targetStepId = activeStepId;
+      } else if (resumeAction === 'retry_step') {
+        targetStepId = failedPhaseStepId;
+      } else {
+        targetStepId = undefined;
+      }
+
       const resumePayload = {
-        ...(resumeAction === 'resume_from_step' && activeStepId ? { stepId: activeStepId } : {}),
+        ...(targetStepId ? { stepId: targetStepId } : {}),
+        comment: reviewComment.trim() || undefined,
       };
+
       if (phase) {
         if (phase.status === 'waiting_takeover') {
           await executionApi.reconcilePhaseTakeover(executionId, phase.phaseKey, {
@@ -164,16 +233,10 @@ export function useInlineRecovery({
             comment: reviewComment.trim() || undefined,
           });
         }
-        return executionApi.resumePhaseTakeover(executionId, phase.phaseKey, {
-          ...resumePayload,
-          comment: reviewComment.trim() || undefined,
-        });
+        return executionApi.resumePhaseTakeover(executionId, phase.phaseKey, resumePayload);
       }
       if (executionStatus === 'human_control') {
-        return executionApi.releaseHumanControl(executionId, {
-          ...resumePayload,
-          comment: reviewComment.trim() || undefined,
-        });
+        return executionApi.releaseHumanControl(executionId, resumePayload);
       }
       throw new Error(RECOVERY_COPY.noRecoverablePhase);
     },
@@ -205,6 +268,16 @@ export function useInlineRecovery({
   );
   const isTakeoverPhase = phase?.status === 'waiting_takeover';
 
+  const actionButtonLabel =
+    RECOVERY_ACTION_BUTTON_LABELS[resumeAction] || RECOVERY_COPY.applyAndResume;
+  const confirmModalDetails =
+    RECOVERY_CONFIRM_DETAILS[resumeAction] || {
+      title: RECOVERY_COPY.resumeConfirmTitle,
+      desc: RECOVERY_COPY.resumeConfirmDesc,
+      hint: RECOVERY_COPY.resumeConfirmHint,
+      okText: RECOVERY_COPY.resumeConfirmOk,
+    };
+
   return {
     resumeAction,
     setResumeAction,
@@ -221,8 +294,11 @@ export function useInlineRecovery({
     phaseSteps,
     failedPhaseStep,
     failedPhaseStepId,
+    nextStepAfterFailedId,
     defaultResumeFromStepId,
     activeStepId,
+    actionButtonLabel,
+    confirmModalDetails,
     phaseLoopIteration,
     applyRecoveryMutation,
     cancelMutation,

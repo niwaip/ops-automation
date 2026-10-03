@@ -50,6 +50,8 @@ export class BrowserRecordingActionPolicyService {
     },
     options?: {
       currentPageUrl?: string;
+      allowHighRiskActions?: boolean;
+      authorizedRiskLevel?: BrowserRecordingRuntimeActionRiskLevel;
     }
   ): BrowserRecordingRuntimeActionAssessment {
     if (SAFE_ACTIONS.has(step.action)) {
@@ -59,6 +61,11 @@ export class BrowserRecordingActionPolicyService {
       };
     }
 
+    const allowHighRisk = Boolean(
+      options?.allowHighRiskActions ||
+      options?.authorizedRiskLevel === 'confirm'
+    );
+
     if (step.action === 'goto') {
       const url =
         typeof step.args?.url === 'string'
@@ -67,6 +74,12 @@ export class BrowserRecordingActionPolicyService {
             ? step.target
             : '';
       if (this.isCrossDomainNavigation(url, options?.currentPageUrl)) {
+        if (allowHighRisk) {
+          return {
+            riskLevel: 'caution',
+            reason: '已授权的跨域导航',
+          };
+        }
         return {
           riskLevel: 'confirm',
           reason: '跨域导航需要人工确认或接管',
@@ -80,6 +93,12 @@ export class BrowserRecordingActionPolicyService {
 
     if (CAUTION_ACTIONS.has(step.action)) {
       if (this.containsHighRiskIntent(step)) {
+        if (allowHighRisk) {
+          return {
+            riskLevel: 'caution',
+            reason: '已授权的高风险运行时动作',
+          };
+        }
         return {
           riskLevel: 'confirm',
           reason: '运行时动作包含审批/提交/删除/下载等高风险语义',

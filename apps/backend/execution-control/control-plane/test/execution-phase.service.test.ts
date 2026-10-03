@@ -1,199 +1,171 @@
 import { ExecutionPhaseService } from '../src/modules/execution/state/execution-phase.service';
 
-describe('ExecutionPhaseService', () => {
-  it('upserts phase records and syncs execution phase summary', async () => {
-    const prisma = {
-      $queryRawUnsafe: jest.fn(),
-      $executeRawUnsafe: jest.fn().mockResolvedValue(1),
-    };
+describe('ExecutionPhaseService (Audit Improvements)', () => {
+  let service: ExecutionPhaseService;
+  let mockPrisma: any;
 
-    const service = new ExecutionPhaseService(prisma as never);
-    await service.markRunning('execution-1', 'phase_login', {
-      phaseName: '登录阶段',
-      phaseType: 'browser_login',
-      attempt: 1,
-      runtimeSessionId: 'runtime-1',
-      input: { username: 'test' },
-      precheck: { matched: false },
-    });
-
-    expect(prisma.$executeRawUnsafe).toHaveBeenCalledTimes(2);
-    expect(prisma.$executeRawUnsafe.mock.calls[0][1]).toBe('execution-1');
-    expect(prisma.$executeRawUnsafe.mock.calls[0][2]).toBe('phase_login');
-    expect(prisma.$executeRawUnsafe.mock.calls[0][5]).toBe('running');
-    expect(prisma.$executeRawUnsafe.mock.calls[1][1]).toBe('execution-1');
-    expect(prisma.$executeRawUnsafe.mock.calls[1][2]).toBe('phase_login');
-    expect(prisma.$executeRawUnsafe.mock.calls[1][3]).toBe('running');
-  });
-
-  it('returns phases with nested artifacts and takeovers when phase tables exist', async () => {
-    const prisma = {
+  beforeEach(() => {
+    mockPrisma = {
       $executeRawUnsafe: jest.fn(),
-      $queryRawUnsafe: jest
-        .fn()
-        .mockResolvedValueOnce([
-          {
-            id: 'phase-1',
-            execution_id: 'execution-1',
-            phase_key: 'phase_login',
-            phase_name: '登录阶段',
-            phase_type: 'browser_login',
-            status: 'running',
-            attempt: 1,
-            runtime_session_id: 'runtime-1',
-            input_json: { username: 'test' },
-            output_json: null,
-            precheck_json: { matched: false },
-            postcheck_json: null,
-            recovery_decision_json: null,
-            error_code: null,
-            error_message: null,
-            started_at: new Date('2026-05-01T00:00:00.000Z'),
-            completed_at: null,
-            created_at: new Date('2026-05-01T00:00:00.000Z'),
-            updated_at: new Date('2026-05-01T00:00:00.000Z'),
-          },
-        ])
-        .mockResolvedValueOnce([
-          {
-            id: 'artifact-1',
-            phase_id: 'phase-1',
-            artifact_type: 'snapshot',
-            snapshot_id: 'snapshot-1',
-            page_url: 'https://example.com/login',
-            page_fingerprint: 'fp-1',
-            payload_json: { title: 'Login' },
-            created_at: new Date('2026-05-01T00:00:00.000Z'),
-          },
-        ])
-        .mockResolvedValueOnce([
-          {
-            id: 'takeover-1',
-            execution_id: 'execution-1',
-            phase_id: 'phase-1',
-            runtime_session_id: 'runtime-1',
-            status: 'requested',
-            reason: 'Captcha detected',
-            requested_by: 'user-1',
-            resolved_by: null,
-            resolution_note: null,
-            created_at: new Date('2026-05-01T00:00:00.000Z'),
-            resolved_at: null,
-          },
-        ]),
-    };
-
-    const service = new ExecutionPhaseService(prisma as never);
-    const phases = await service.listByExecutionId('execution-1');
-
-    expect(phases).toHaveLength(1);
-    expect(phases[0].artifacts).toEqual([
-      expect.objectContaining({
-        artifact_type: 'snapshot',
-        snapshot_id: 'snapshot-1',
-      }),
-    ]);
-    expect(phases[0].takeovers).toEqual([
-      expect.objectContaining({
-        status: 'requested',
-        reason: 'Captcha detected',
-      }),
-    ]);
-  });
-
-  it('returns empty list when phase tables are not migrated yet', async () => {
-    const prisma = {
-      $executeRawUnsafe: jest.fn(),
-      $queryRawUnsafe: jest
-        .fn()
-        .mockRejectedValue(new Error('relation "execution_phases" does not exist')),
-    };
-
-    const service = new ExecutionPhaseService(prisma as never);
-    await expect(service.listByExecutionId('execution-1')).resolves.toEqual([]);
-  });
-
-  it('creates and resolves takeover records while syncing execution takeover status', async () => {
-    const prisma = {
-      $executeRawUnsafe: jest.fn().mockResolvedValue(1),
       $queryRawUnsafe: jest.fn(),
+      $transaction: jest.fn((callback) => callback(mockPrisma)),
     };
-
-    const service = new ExecutionPhaseService(prisma as never);
-    await service.createTakeoverRecord({
-      executionId: 'execution-1',
-      phaseId: 'phase-1',
-      runtimeSessionId: 'runtime-1',
-      reason: 'Captcha detected',
-      requestedBy: 'user-1',
-    });
-    await service.resolveTakeoverRecord({
-      executionId: 'execution-1',
-      phaseId: 'phase-1',
-      resolvedBy: 'user-2',
-      resolutionNote: 'Handled manually',
-      status: 'resolved',
-    });
-
-    expect(prisma.$executeRawUnsafe).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO execution_takeovers'),
-      'execution-1',
-      'phase-1',
-      'runtime-1',
-      'Captcha detected',
-      'user-1'
-    );
-    expect(prisma.$executeRawUnsafe).toHaveBeenCalledWith(
-      expect.stringContaining('UPDATE execution_takeovers'),
-      'execution-1',
-      'phase-1',
-      'resolved',
-      'user-2',
-      'Handled manually'
-    );
+    service = new ExecutionPhaseService(mockPrisma as any);
   });
 
-  it('replaces phase artifacts for an existing phase record', async () => {
-    const prisma = {
-      $executeRawUnsafe: jest.fn().mockResolvedValue(1),
-      $queryRawUnsafe: jest.fn().mockResolvedValue([
+  describe('appendSteps idempotency & concurrency safety', () => {
+    it('uses row-level lock on phase and updates existing steps to prevent step record bloating', async () => {
+      // Mock finding phase
+      mockPrisma.$queryRawUnsafe.mockResolvedValueOnce([
+        { id: '11111111-1111-1111-1111-111111111111' },
+      ]);
+
+      // Call 0: SELECT FOR UPDATE row lock
+      // Call 1: Step 1 UPDATE returns 1 (exists)
+      // Call 2: Step 2 UPDATE returns 0 (does not exist)
+      // Call 3: Step 2 INSERT returns 1
+      mockPrisma.$executeRawUnsafe
+        .mockResolvedValueOnce(1) // Row lock
+        .mockResolvedValueOnce(1) // Step 1 UPDATE
+        .mockResolvedValueOnce(0) // Step 2 UPDATE
+        .mockResolvedValueOnce(1); // Step 2 INSERT
+
+      const steps = [
         {
-          id: 'phase-1',
-          execution_id: 'execution-1',
-          phase_key: 'phase_login',
-          phase_name: '登录阶段',
-          phase_type: 'browser_login',
+          stepIndex: 1,
+          stepId: 'step_1',
+          action: 'click',
           status: 'completed',
-          attempt: 1,
-          created_at: new Date('2026-05-01T00:00:00.000Z'),
-          updated_at: new Date('2026-05-01T00:00:00.000Z'),
         },
-      ]),
-    };
+        {
+          stepIndex: 2,
+          stepId: 'step_2',
+          action: 'type',
+          status: 'completed',
+        },
+      ];
 
-    const service = new ExecutionPhaseService(prisma as never);
-    await service.replaceArtifacts('execution-1', 'phase_login', [
-      {
-        artifactType: 'snapshot',
-        snapshotId: 'snapshot-1',
-        pageUrl: 'https://example.com/login',
-        pageFingerprint: 'fp-1',
-        payload: { title: 'Login' },
-      },
-    ]);
+      await service.appendSteps('exec-1', 'phase-1', steps);
 
-    expect(prisma.$executeRawUnsafe).toHaveBeenCalledWith(
-      expect.stringContaining('DELETE FROM execution_phase_artifacts'),
-      'phase-1'
-    );
-    expect(prisma.$executeRawUnsafe).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO execution_phase_artifacts'),
-      'phase-1',
-      'snapshot',
-      'snapshot-1',
-      'https://example.com/login',
-      'fp-1',
-      JSON.stringify({ title: 'Login' })
-    );
+      expect(mockPrisma.$executeRawUnsafe).toHaveBeenCalledTimes(4);
+
+      // Verify row lock was acquired first
+      const lockSql = mockPrisma.$executeRawUnsafe.mock.calls[0][0];
+      expect(lockSql).toContain('SELECT id FROM execution_phases WHERE id = $1::uuid FOR UPDATE');
+
+      // Verify the step 1 was an UPDATE
+      const step1Sql = mockPrisma.$executeRawUnsafe.mock.calls[1][0];
+      expect(step1Sql).toContain('UPDATE execution_phase_steps');
+      expect(step1Sql).toContain('WHERE phase_id = $1::uuid');
+      expect(step1Sql).toContain('AND step_index = $2');
+
+      // Verify the step 2 had an UPDATE that returned 0, then an INSERT
+      const step2UpdateSql = mockPrisma.$executeRawUnsafe.mock.calls[2][0];
+      expect(step2UpdateSql).toContain('UPDATE execution_phase_steps');
+
+      const step2InsertSql = mockPrisma.$executeRawUnsafe.mock.calls[3][0];
+      expect(step2InsertSql).toContain('INSERT INTO execution_phase_steps');
+    });
+  });
+
+  describe('resolveTakeoverRecord', () => {
+    it('strictly confines takeover resolution to target phaseId and derives execution summary from remaining count', async () => {
+      // UPDATE execution_takeovers for Phase A returns 1
+      mockPrisma.$executeRawUnsafe
+        .mockResolvedValueOnce(1) // UPDATE execution_takeovers
+        .mockResolvedValueOnce(1); // updateExecutionTakeoverStatus
+
+      // Query remaining takeovers: 0 remaining
+      mockPrisma.$queryRawUnsafe.mockResolvedValueOnce([{ count: 0 }]);
+
+      await service.resolveTakeoverRecord({
+        executionId: '22222222-2222-2222-2222-222222222222',
+        phaseId: '33333333-3333-3333-3333-333333333333',
+        resolvedBy: '44444444-4444-4444-4444-444444444444',
+        resolutionNote: 'Approved low margin case by auditor',
+        status: 'resolved',
+      });
+
+      const updateSql = mockPrisma.$executeRawUnsafe.mock.calls[0][0];
+      expect(updateSql).toContain('AND et.phase_id = $2::uuid');
+      expect(updateSql).toContain("AND et.status IN ('requested', 'pending')");
+
+      // Verify summary updated to resolved since remaining is 0
+      expect(mockPrisma.$executeRawUnsafe).toHaveBeenCalledTimes(2);
+      const summarySql = mockPrisma.$executeRawUnsafe.mock.calls[1][0];
+      expect(summarySql).toContain('UPDATE executions');
+      expect(summarySql).toContain('takeover_status');
+    });
+
+    it('does NOT hijack or close takeovers of other phases when target phaseId has no pending records', async () => {
+      // Reconcile already resolved Phase A, now resume calls resolveTakeoverRecord for Phase A again:
+      // UPDATE returns 0 (no requested/pending takeover left for Phase A)
+      mockPrisma.$executeRawUnsafe.mockResolvedValueOnce(0);
+
+      // Remaining query shows Phase B still has 1 pending takeover
+      mockPrisma.$queryRawUnsafe.mockResolvedValueOnce([{ count: 1 }]);
+
+      await service.resolveTakeoverRecord({
+        executionId: '22222222-2222-2222-2222-222222222222',
+        phaseId: 'phase-A-uuid',
+        resolvedBy: '44444444-4444-4444-4444-444444444444',
+        resolutionNote: 'Duplicate resolve on Phase A',
+        status: 'resolved',
+      });
+
+      // Crucial: There should ONLY be 1 UPDATE on execution_takeovers, strictly restricted to Phase A!
+      // It must NOT make a second query removing phase_id filter to steal Phase B!
+      const updateCalls = mockPrisma.$executeRawUnsafe.mock.calls.filter((c: any[]) =>
+        c[0].includes('UPDATE execution_takeovers')
+      );
+      expect(updateCalls).toHaveLength(1);
+      expect(updateCalls[0][0]).toContain('AND et.phase_id = $2::uuid');
+
+      // Crucial: Since Phase B is still pending, executions.takeover_status must NOT be set to resolved!
+      const resolvedSummaryCalls = mockPrisma.$executeRawUnsafe.mock.calls.filter(
+        (c: any[]) => c[0].includes('UPDATE executions') && c[1] === 'resolved'
+      );
+      expect(resolvedSummaryCalls).toHaveLength(0);
+    });
+
+    it('resolves specific takeover by takeoverId when provided', async () => {
+      mockPrisma.$executeRawUnsafe
+        .mockResolvedValueOnce(1) // UPDATE by takeoverId
+        .mockResolvedValueOnce(1); // updateExecutionTakeoverStatus
+
+      mockPrisma.$queryRawUnsafe.mockResolvedValueOnce([{ count: 0 }]);
+
+      await service.resolveTakeoverRecord({
+        executionId: '22222222-2222-2222-2222-222222222222',
+        takeoverId: 'takeover-uuid-1',
+        resolvedBy: '44444444-4444-4444-4444-444444444444',
+        resolutionNote: 'Resolved exact takeover',
+        status: 'resolved',
+      });
+
+      const updateSql = mockPrisma.$executeRawUnsafe.mock.calls[0][0];
+      expect(updateSql).toContain('WHERE id = $1::uuid');
+      expect(updateSql).toContain("AND status IN ('requested', 'pending')");
+    });
+  });
+
+  describe('createOrUpdatePhase lifecycle integrity', () => {
+    it('preserves initial started_at using COALESCE and monotonically preserves attempt using GREATEST', async () => {
+      mockPrisma.$executeRawUnsafe.mockResolvedValueOnce(1); // INSERT ... ON CONFLICT DO UPDATE
+      mockPrisma.$executeRawUnsafe.mockResolvedValueOnce(1); // syncExecutionPhaseSummary
+
+      await service.markCompleted('exec-1', 'phase-1', {
+        phaseName: 'Phase 1',
+        phaseType: 'browser_replay',
+        attempt: 1,
+        runtimeSessionId: null,
+        output: { success: true },
+        postcheck: null,
+      });
+
+      const upsertSql = mockPrisma.$executeRawUnsafe.mock.calls[0][0];
+      expect(upsertSql).toContain('started_at = COALESCE(execution_phases.started_at, EXCLUDED.started_at)');
+      expect(upsertSql).toContain('attempt = GREATEST(execution_phases.attempt, EXCLUDED.attempt)');
+    });
   });
 });

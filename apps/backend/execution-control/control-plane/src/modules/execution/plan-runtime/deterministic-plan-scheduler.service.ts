@@ -24,6 +24,7 @@ import { unwrapStoredStepOutput } from './stored-step-output';
 import { DeterministicRuntimeSessionCoordinatorService } from './deterministic-runtime-session-coordinator.service';
 import { ExecutionPhaseSyncService } from '../state/execution-phase-sync.service';
 import { CompletionClaimSynthesizerService } from './completion-claim-synthesizer.service';
+import { RuntimeCredentialResolverService } from '../credentials/runtime-credential-resolver.service';
 import {
   projectLlmOperationInput,
   validateInputContract,
@@ -33,11 +34,15 @@ import {
   extractArtifacts,
   extractFinalOutputsFromSteps,
   handlePreparedOutboundEffectStep,
+  handleTakeoverRequiredStep,
   isLegacyPlan,
   mapPlanRuntimeTypeToExecutionRuntime,
   materializeContentRefs,
   resolveBrowserRunOutputSchemaDigest,
+  resolveEffectiveUserId,
   resolveOutboundEffectMetadata,
+  resolvePhaseRecoveryMetadata,
+  sanitizeStepInput,
 } from './deterministic-plan-scheduler.helpers';
 
 @Injectable()
@@ -88,7 +93,9 @@ export class DeterministicPlanSchedulerService {
     @Optional()
     private readonly executionPhaseSyncService?: ExecutionPhaseSyncService,
     @Optional()
-    private readonly completionClaims?: CompletionClaimSynthesizerService
+    private readonly completionClaims?: CompletionClaimSynthesizerService,
+    @Optional()
+    private readonly credentialResolver?: RuntimeCredentialResolverService
   ) {}
 
   /**
@@ -114,7 +121,9 @@ export class DeterministicPlanSchedulerService {
       execution.status === 'succeeded' ||
       execution.status === 'failed' ||
       execution.status === 'cancelled' ||
-      execution.status === 'pending_approval'
+      execution.status === 'pending_approval' ||
+      execution.status === 'human_control' ||
+      execution.takeoverRequired
     ) {
       return;
     }
@@ -204,6 +213,20 @@ export class DeterministicPlanSchedulerService {
     );
 
     if (ready.length === 0 && !hasClaimableStep) {
+      const current =
+        (typeof this.prisma.execution?.findUnique === 'function'
+          ? await this.prisma.execution.findUnique({
+              where: { id: execution.id },
+              select: { status: true, takeoverRequired: true },
+            })
+          : null) || execution;
+      if (
+        current?.status === 'human_control' ||
+        current?.status === 'pending_approval' ||
+        current?.takeoverRequired
+      ) {
+        return;
+      }
       await this.completeExecutionIfSatisfied(execution);
       return;
     }
@@ -338,14 +361,33 @@ export class DeterministicPlanSchedulerService {
       // freeze, refuse to start the step (design doc §15.3-5 acceptance).
       await this.verifyFrozenContractDigest(execution, step);
 
+      const effectiveStep = {
+        ...step,
+        name: planNode?.name || planNode?.title || step.name,
+        title: planNode?.title || planNode?.name || step.name,
+      };
+
       if (step.nodeKind === 'llm_operation') {
-        await this.runLlmStep(execution, step, resolvedInput);
+        await this.runLlmStep(execution, effectiveStep, resolvedInput, options);
       } else {
-        await this.runSkillStep(execution, step, resolvedInput, options);
+        await this.runSkillStep(execution, effectiveStep, resolvedInput, options);
       }
 
-      // After successful step execution, schedule the next step
-      if (autoAdvance) await this.advanceExecution(execution.id, options);
+      // After step execution, only schedule the next step if execution is still active/running
+      const latestExecution =
+        (typeof this.prisma.execution?.findUnique === 'function'
+          ? await this.prisma.execution.findUnique({
+              where: { id: execution.id },
+              select: { status: true, takeoverRequired: true },
+            })
+          : null) || execution;
+      if (
+        autoAdvance &&
+        latestExecution?.status === 'running' &&
+        !latestExecution.takeoverRequired
+      ) {
+        await this.advanceExecution(execution.id, options);
+      }
     } catch (error: any) {
       const errMsg = error instanceof Error ? error.message : 'Node execution failed';
       const isUnknown = Boolean(
@@ -353,10 +395,71 @@ export class DeterministicPlanSchedulerService {
         error?.code === 'OUTBOUND_EFFECT_UNKNOWN' ||
         error?.status === 'unknown'
       );
+      const isTakeover = Boolean(
+        error?.requiresTakeover ||
+        error?.status === 'takeover_required' ||
+        error?.code === 'TAKEOVER_REQUIRED'
+      );
       // Structured contract-violation context (design doc §12.1) flows into events
       // so downstream consumers get stable codes + machine-readable context.
       const errContext = error instanceof ContractViolationError ? error.context : undefined;
-      this.logger.error(`Step ${planNodeId} failed for execution ${execution.id}: ${errMsg} (isUnknown=${isUnknown})`);
+      this.logger.error(`Step ${planNodeId} failed for execution ${execution.id}: ${errMsg} (isUnknown=${isUnknown}, isTakeover=${isTakeover})`);
+
+      if (isTakeover) {
+        const takeoverReason = error?.takeoverReason || errMsg;
+        await this.prisma.executionStep.update({
+          where: { id: stepId },
+          data: {
+            status: 'failed',
+            errorMessage: takeoverReason,
+            errorCode: error.code || 'TAKEOVER_REQUIRED',
+            endedAt: new Date(),
+            leaseExpiresAt: null,
+            takeoverTriggered: true,
+          },
+        });
+
+        await this.prisma.execution.update({
+          where: { id: execution.id },
+          data: {
+            status: 'human_control',
+            takeoverRequired: true,
+            takeoverReason,
+            currentStepId: stepId,
+            currentPhaseStatus: 'waiting_takeover',
+          },
+        });
+
+        await this.eventPublisher.createEvent(
+          execution.id,
+          'step.failed',
+          {
+            stepId,
+            planNodeId,
+            shouldTakeover: true,
+            takeoverRequired: true,
+            takeoverReason,
+            error: takeoverReason,
+            errorMessage: takeoverReason,
+            errorCode: error.code || 'TAKEOVER_REQUIRED',
+            phaseStatus: 'waiting_takeover',
+          },
+          { stepId }
+        );
+
+        await this.eventPublisher.createEvent(
+          execution.id,
+          'execution.status_changed',
+          {
+            oldStatus: execution.status,
+            newStatus: 'human_control',
+            takeoverRequired: true,
+            takeoverReason,
+          },
+          { stepId }
+        );
+        return;
+      }
 
       if (isUnknown) {
         await this.prisma.executionStep.update({
@@ -421,7 +524,10 @@ export class DeterministicPlanSchedulerService {
       // Most failures abort the execution.  A recorder browser node can
       // explicitly opt into terminal handling: dependent report nodes are
       // then allowed to consume whatever terminal BrowserRunOutput exists.
-      const failureReason = `Node '${planNodeId}' failed: ${errMsg}`;
+      const friendlySummary = error instanceof ContractViolationError ? error.friendlyMessage : undefined;
+      const failureReason = friendlySummary
+        ? `${friendlySummary}\n\n[技术细节] Node '${planNodeId}' failed: ${errMsg}`
+        : `Node '${planNodeId}' failed: ${errMsg}`;
       if (!continueAfterFailure) {
         await this.prisma.execution.update({
           where: { id: execution.id },
@@ -573,6 +679,23 @@ export class DeterministicPlanSchedulerService {
     }
   }
 
+  private async resolveRuntimeInputCredentials(
+    execution: any,
+    step: any,
+    resolvedInput: Record<string, any>,
+    options?: { traceContext?: any }
+  ): Promise<Record<string, any>> {
+    const effectiveUserId = resolveEffectiveUserId(execution, options);
+    if (!this.credentialResolver || !effectiveUserId) {
+      return resolvedInput;
+    }
+    return (await this.credentialResolver.resolveInputForRuntime(
+      effectiveUserId,
+      step.capabilityId,
+      resolvedInput
+    )) as Record<string, any>;
+  }
+
   /**
    * Runtime input validation (design doc §11.1): when an authoritative input
    * schema was frozen with the plan, the resolved input must satisfy it before
@@ -581,9 +704,16 @@ export class DeterministicPlanSchedulerService {
   private async runLlmStep(
     execution: any,
     step: any,
-    resolvedInput: Record<string, any>
+    resolvedInput: Record<string, any>,
+    options?: { traceContext?: any }
   ): Promise<void> {
-    const operationInput = projectLlmOperationInput(step, resolvedInput);
+    const inputForExecution = await this.resolveRuntimeInputCredentials(
+      execution,
+      step,
+      resolvedInput,
+      options
+    );
+    const operationInput = projectLlmOperationInput(step, inputForExecution);
     validateInputContract(step, operationInput, execution.id);
     const contractMeta = step.outputContractJson || {};
     const planJson = (execution.plan?.planJson || {}) as any;
@@ -713,48 +843,22 @@ export class DeterministicPlanSchedulerService {
     resolvedInput: Record<string, any>,
     options?: { traceContext?: any }
   ): Promise<void> {
-    validateInputContract(step, resolvedInput, execution.id);
+    const inputForExecution = await this.resolveRuntimeInputCredentials(
+      execution,
+      step,
+      resolvedInput,
+      options
+    );
+    validateInputContract(step, inputForExecution, execution.id);
     const capabilityId = step.capabilityId;
     const capabilityVersion = step.capabilityVersion;
 
     const stepIdempotencyKey =
       step.idempotencyKey || `${execution.id}:${step.id}:${step.planNodeId || step.capabilityId}`;
-    const sanitizedInput: Record<string, any> = {};
-    const inputSchema = step.inputSchemaJson;
-    for (const [k, v] of Object.entries(resolvedInput || {})) {
-      if (
-        inputSchema?.additionalProperties === false &&
-        inputSchema?.properties &&
-        typeof inputSchema.properties === 'object' &&
-        !Object.prototype.hasOwnProperty.call(inputSchema.properties, k) &&
-        k !== 'idempotencyKey' &&
-        k !== 'taskContext' &&
-        k !== 'phase' &&
-        k !== 'payloadHash' &&
-        ![
-          'downloadUrl',
-          'fileUrl',
-          'url',
-          'downloadUrlA',
-          'fileUrlA',
-          'downloadUrlB',
-          'fileUrlB',
-          'files',
-          'sourceDocxBase64',
-          'sourceDocxUrl',
-          'sourceDocxName',
-          'sourceDocxSha256',
-          'auditCertificateBlocks',
-          'auditMetadata',
-        ].includes(k)
-      ) {
-        continue;
-      }
-      sanitizedInput[k] = v;
-    }
+    const sanitizedInput = sanitizeStepInput(inputForExecution, step.inputSchemaJson);
     const inputWithIdempotency = {
       ...sanitizedInput,
-      idempotencyKey: resolvedInput?.idempotencyKey || stepIdempotencyKey,
+      idempotencyKey: inputForExecution?.idempotencyKey || stepIdempotencyKey,
     };
 
     const planJson = (execution.plan?.planJson || {}) as any;
@@ -794,11 +898,66 @@ export class DeterministicPlanSchedulerService {
       if (frozenMeta.skillVersion) metadata.skillVersion = frozenMeta.skillVersion;
     }
 
+    const planNodeMeta =
+      planNode?.metadata && typeof planNode.metadata === 'object' ? planNode.metadata : {};
+    const executionMeta =
+      execution?.metadataJson && typeof execution.metadataJson === 'object'
+        ? execution.metadataJson
+        : {};
+    const isPlanExecutionAuthorized = Boolean(
+      execution.executionMode === 'deterministic_plan' &&
+        (execution.approvalStatus === 'approved' ||
+          execution.approvalStatus === 'not_required' ||
+          !execution.requiresApproval)
+    );
+    const allowHighRiskActions = Boolean(
+      planNodeMeta.allowHighRiskActions === true ||
+      executionMeta.allowHighRiskActions === true ||
+      (options as any)?.allowHighRiskActions === true ||
+      planNodeMeta.authorizedRiskLevel === 'confirm' ||
+      resolvedInput?.allowHighRiskActions === true ||
+      isPlanExecutionAuthorized
+    );
+    if (allowHighRiskActions) {
+      metadata.allowHighRiskActions = true;
+    }
+    metadata.executionMode = execution.executionMode;
+    if (isPlanExecutionAuthorized) {
+      metadata.authorizedRiskLevel = 'confirm';
+    }
+
     const runtimeType = mapPlanRuntimeTypeToExecutionRuntime(
       step.action || step.outputContractJson?.runtimeType
     );
     const runtimeSessionId =
       runtimeType === 'browser' ? await this.ensureStandardBrowserSession(execution, step) : '';
+
+    const phaseKey =
+      (typeof frozenMeta.phaseKey === 'string' && frozenMeta.phaseKey) ||
+      (typeof planNode?.phaseKey === 'string' && planNode.phaseKey) ||
+      `phase_${String(step.stepIndex || 1).padStart(2, '0')}_${step.planNodeId || step.id}`;
+    const phaseName =
+      (typeof frozenMeta.phaseName === 'string' && frozenMeta.phaseName) ||
+      (typeof planNode?.name === 'string' && planNode.name) ||
+      step.planNodeId ||
+      `Step ${step.stepIndex || 1}`;
+    const phaseType =
+      runtimeType === 'browser' ? 'browser_recording' : isBuiltin ? 'builtin' : 'workflow_activity';
+    const phaseMetadata = { phaseKey, phaseName, phaseType };
+
+    const existingPhase =
+      typeof this.prisma.executionPhase?.findFirst === 'function'
+        ? await this.prisma.executionPhase.findFirst({
+            where: { executionId: execution.id, phaseKey },
+          })
+        : null;
+    const recoveryMeta = resolvePhaseRecoveryMetadata(existingPhase, options, step.inputJson);
+    Object.assign(metadata, recoveryMeta);
+    if (recoveryMeta.resumeFromStepId) {
+      this.logger.log(
+        `[DeterministicPlanScheduler] Resuming phase ${phaseKey} from step ${recoveryMeta.resumeFromStepId}`
+      );
+    }
 
     const request = {
       requestId: `${execution.id}:${step.id}`,
@@ -813,24 +972,11 @@ export class DeterministicPlanSchedulerService {
       input: inputWithIdempotency,
       policyContext: {},
       traceContext: {
-        userId: execution.createdBy || undefined,
+        userId: resolveEffectiveUserId(execution, options),
         ...(options?.traceContext || (execution.metadata as any)?.traceContext || {}),
       },
       metadata,
     };
-
-    const phaseKey =
-      (typeof frozenMeta.phaseKey === 'string' && frozenMeta.phaseKey) ||
-      (typeof planNode?.phaseKey === 'string' && planNode.phaseKey) ||
-      `phase_${String(step.stepIndex || 1).padStart(2, '0')}_${step.planNodeId || step.id}`;
-    const phaseName =
-      (typeof frozenMeta.phaseName === 'string' && frozenMeta.phaseName) ||
-      (typeof planNode?.name === 'string' && planNode.name) ||
-      step.planNodeId ||
-      `Step ${step.stepIndex || 1}`;
-    const phaseType =
-      runtimeType === 'browser' ? 'browser_recording' : isBuiltin ? 'builtin' : 'workflow_activity';
-    const phaseMetadata = { phaseKey, phaseName, phaseType };
 
     await this.executionPhaseSyncService?.markPhaseRunningForStep(
       execution.id,
@@ -875,6 +1021,30 @@ export class DeterministicPlanSchedulerService {
       return;
     }
 
+    const isTakeoverRequired =
+      result?.status === 'takeover_required' || result?.requiresTakeover === true;
+    if (isTakeoverRequired) {
+      const runtimeOutput = await materializeContentRefs(
+        execution.id,
+        step.id,
+        (result.output || {}) as Record<string, any>,
+        this.resultRefs
+      );
+      await handleTakeoverRequiredStep(
+        this.prisma,
+        this.eventPublisher,
+        execution,
+        step,
+        step.planNodeId || step.id,
+        result,
+        runtimeOutput
+      );
+      this.logger.log(
+        `Execution ${execution.id} step ${step.id} requires human takeover; suspended in human_control.`
+      );
+      return;
+    }
+
     const terminalOutputAllowed =
       planNode?.failurePolicy === 'continue' &&
       result?.output &&
@@ -883,9 +1053,17 @@ export class DeterministicPlanSchedulerService {
     if (!result || !result.success) {
       if (!terminalOutputAllowed) {
         const errMsg = result?.errorMessage || `Skill execution '${capabilityId}' failed`;
-        const error = new Error(errMsg) as Error & { code?: string; isUnknown?: boolean; status?: string };
+        const error = new Error(errMsg) as Error & {
+          code?: string;
+          isUnknown?: boolean;
+          status?: string;
+          requiresTakeover?: boolean;
+          takeoverReason?: string;
+        };
         error.code = result?.errorCode || 'NODE_EXECUTION_FAILED';
         error.status = result?.status;
+        error.requiresTakeover = result?.requiresTakeover;
+        error.takeoverReason = result?.takeoverReason;
         throw error;
       }
     }
@@ -1008,6 +1186,24 @@ export class DeterministicPlanSchedulerService {
   }
 
   private async completeExecutionIfSatisfied(execution: any): Promise<void> {
+    const latestExecution =
+      (typeof this.prisma.execution?.findUnique === 'function'
+        ? await this.prisma.execution.findUnique({
+            where: { id: execution.id },
+            select: { status: true, takeoverRequired: true },
+          })
+        : null) || execution;
+    if (
+      latestExecution?.status === 'human_control' ||
+      latestExecution?.status === 'pending_approval' ||
+      latestExecution?.status === 'failed' ||
+      latestExecution?.status === 'succeeded' ||
+      latestExecution?.status === 'cancelled' ||
+      latestExecution?.takeoverRequired
+    ) {
+      return;
+    }
+
     const planDraft = execution.plan?.planJson as DeterministicPlanDraftV1;
 
     if (!planDraft) {

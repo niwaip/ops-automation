@@ -42,6 +42,7 @@ import {
   type RollbackResult,
 } from './recorder/recorder-debug-rollback.service';
 import { RecorderStateStoreService } from './recorder/recorder-state-store.service';
+import { RecorderSessionLockService } from './recorder/recorder-session-lock.service';
 
 export type RecorderDebugBackend = 'cli' | 'chrome-devtools' | 'mcp';
 export type RecorderDebugTurnRole = 'user' | 'assistant' | 'system';
@@ -84,7 +85,9 @@ export class RecorderDebugService {
     private readonly recorderDebugRollbackService: RecorderDebugRollbackService,
     private readonly recorderStateStoreService: RecorderStateStoreService,
     @Optional()
-    private readonly recorderTargetResolutionReuseService?: RecorderTargetResolutionReuseService
+    private readonly recorderTargetResolutionReuseService?: RecorderTargetResolutionReuseService,
+    @Optional()
+    private readonly recorderSessionLockService: RecorderSessionLockService = new RecorderSessionLockService()
   ) {}
 
   async chat(request: RecorderDebugChatRequest): Promise<RecorderDebugChatResponse> {
@@ -92,10 +95,22 @@ export class RecorderDebugService {
     if (!rawMessage) {
       throw new BadRequestException('Message is required');
     }
-    const controlTokenState = this.extractRecorderControlTokens(rawMessage);
-
     const sessionId = request.sessionId || `recorder-debug-${Date.now()}`;
-    const session = await this.loadOrCreateSession(sessionId, request);
+    const runtimeKey =
+      request.runtimeSessionId || (await this.loadSession(sessionId))?.runtimeSessionId || sessionId;
+
+    return this.recorderSessionLockService.acquire(runtimeKey, async () => {
+      const session = await this.loadOrCreateSession(sessionId, request);
+      return this.executeChatTurnWithSession(session, rawMessage, request);
+    });
+  }
+
+  private async executeChatTurnWithSession(
+    session: RecorderDebugSession,
+    rawMessage: string,
+    request: RecorderDebugChatRequest
+  ): Promise<RecorderDebugChatResponse> {
+    const controlTokenState = this.extractRecorderControlTokens(rawMessage);
 
     session.history.push({
       role: 'user',
@@ -480,7 +495,11 @@ export class RecorderDebugService {
   }
 
   private async loadSession(sessionId: string): Promise<RecorderDebugSession | null> {
-    return this.recorderDebugSessionFacade.loadSession<RecorderDebugSession>(sessionId);
+    try {
+      return await this.recorderDebugSessionFacade.loadSession<RecorderDebugSession>(sessionId);
+    } catch {
+      return null;
+    }
   }
 
   private async saveSession(session: RecorderDebugSession): Promise<void> {

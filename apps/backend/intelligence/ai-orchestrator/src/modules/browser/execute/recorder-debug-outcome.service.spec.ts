@@ -699,4 +699,162 @@ describe('RecorderDebugOutcomeService', () => {
       expect(String(chosenTarget.name || chosenTarget.text || '').toLowerCase()).toContain('登录');
     }
   });
+
+  it('verifies standalone click_result as search-result-open when openedNewPage is true', () => {
+    const service = new RecorderDebugOutcomeService();
+    const commands: any[] = [
+      { tool: 'click_result', params: { index: 3 }, description: '打开第三条检索结果' },
+    ];
+    const outcome = service.buildOutcome({
+      status: 'executed',
+      reply: '已打开检索结果。',
+      userGoal: '打开第三条检索结果',
+      beforeObservation: {
+        currentPageUrl: 'https://www.baidu.com/s?wd=mcp',
+        title: 'mcp_百度搜索',
+        text: '百度搜索结果',
+        inputs: [],
+        buttons: [],
+        headings: [],
+        links: [],
+        suggestedParameters: [],
+      },
+      observation: {
+        currentPageUrl: 'https://mcp.pkulaw.com/',
+        title: '北大法宝',
+        text: '法宝详情',
+        inputs: [],
+        buttons: [],
+        headings: [],
+        links: [],
+        suggestedParameters: [],
+      },
+      commands,
+      execution: {
+        success: true,
+        results: [
+          {
+            command: 'click_result',
+            data: { openedNewPage: true, landedUrl: 'https://mcp.pkulaw.com/' },
+          },
+        ],
+        executedCommands: commands,
+      },
+    });
+
+    expect(outcome.verification).toEqual(
+      expect.objectContaining({
+        verifier: 'search-result-open',
+        routeReason: 'goal-pattern',
+        success: true,
+      })
+    );
+    expect(outcome.verification.confidence).toBeGreaterThan(0.8);
+  });
+
+  it('fails verification and penalizes confidence when click_result does not reach target page', () => {
+    const service = new RecorderDebugOutcomeService();
+    const commands: any[] = [
+      { tool: 'click_result', params: { index: 3 }, description: '打开第三条检索结果' },
+    ];
+    const outcome = service.buildOutcome({
+      status: 'executed',
+      reply: '已执行点击。',
+      userGoal: '打开第三条检索结果',
+      beforeObservation: {
+        currentPageUrl: 'https://www.baidu.com/s?wd=mcp',
+        title: 'mcp_百度搜索',
+        text: '百度搜索结果',
+        inputs: [],
+        buttons: [],
+        headings: [],
+        links: [],
+        suggestedParameters: [],
+      },
+      observation: {
+        currentPageUrl: 'https://www.baidu.com/s?wd=mcp',
+        title: 'mcp_百度搜索',
+        text: '百度搜索结果',
+        inputs: [],
+        buttons: [],
+        headings: [],
+        links: [],
+        suggestedParameters: [],
+      },
+      commands,
+      execution: {
+        success: true,
+        results: [
+          {
+            command: 'click_result',
+            data: { openedNewPage: false },
+          },
+        ],
+        executedCommands: commands,
+      },
+    });
+
+    expect(outcome.verification.verifier).toBe('search-result-open');
+    expect(outcome.verification.success).toBe(false);
+    expect(outcome.verification.confidence).toBeLessThan(0.5);
+    expect(outcome.verification.failureReason).toContain('未达到目标页面');
+  });
+
+  it('fails verification when click_result reports openedNewPage but observation remains on initial search page', () => {
+    const service = new RecorderDebugOutcomeService();
+    const commands: BrowserCommand[] = [
+      {
+        tool: 'click_result',
+        params: { index: 3 },
+        description: '点击第 3 条搜索结果',
+      },
+    ];
+
+    const outcome = service.buildOutcome({
+      status: 'executed',
+      reply: '已执行点击。',
+      userGoal: '打开第三条检索结果',
+      beforeObservation: {
+        currentPageUrl: 'https://www.baidu.com/s?wd=mcp',
+        title: 'mcp_百度搜索',
+        text: '百度搜索结果',
+        inputs: [],
+        buttons: [],
+        headings: [],
+        links: [],
+        suggestedParameters: [],
+      },
+      observation: {
+        currentPageUrl: 'https://www.baidu.com/s?wd=mcp',
+        title: 'mcp_百度搜索',
+        text: '百度搜索结果',
+        inputs: [],
+        buttons: [],
+        headings: [],
+        links: [],
+        suggestedParameters: [],
+      },
+      commands,
+      execution: {
+        success: true,
+        results: [
+          {
+            command: 'click_result',
+            data: {
+              openedNewPage: true,
+              landedUrl: 'https://mcp.pkulaw.com/',
+              title: '北大法宝 - MCP智能法律服务平台',
+            },
+          },
+        ],
+        executedCommands: commands,
+      },
+    });
+
+    expect(outcome.verification.verifier).toBe('search-result-open');
+    expect(outcome.verification.success).toBe(false);
+    expect(outcome.verification.confidence).toBeLessThan(0.5);
+    expect(outcome.verification.failureReason).toContain('执行与观察不一致');
+  });
 });
+

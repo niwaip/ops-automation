@@ -18,9 +18,27 @@ export class CapabilityReleaseBrowserRuntimeExecutorService {
     if (loopPlan && !targetRuntimeStep) {
       return this.capabilityReleaseBrowserRuntimeLoopExecutorService.executeLoopPlan(context, state);
     }
+
+    const resumeFromStepId =
+      typeof context.options?.metadata?.resumeFromStepId === 'string' &&
+      context.options.metadata.resumeFromStepId.trim()
+        ? context.options.metadata.resumeFromStepId.trim()
+        : undefined;
+
+    let stepsToRun = runtimeStepsToExecute;
+    if (resumeFromStepId && !targetRuntimeStep) {
+      const resumeIndex = stepsToRun.findIndex((step) => step.id === resumeFromStepId);
+      if (resumeIndex >= 0) {
+        state.logs.push(
+          `[BrowserRuntime][Resume] 从步骤 ${resumeFromStepId} 恢复执行线性计划 (跳过前 ${resumeIndex} 步)`
+        );
+        stepsToRun = stepsToRun.slice(resumeIndex);
+      }
+    }
+
     return this.capabilityReleaseBrowserRuntimeStepExecutorService.executeSequence(
       context,
-      runtimeStepsToExecute,
+      stepsToRun,
       'Linear',
       state
     );

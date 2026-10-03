@@ -54,7 +54,7 @@ describe('PDF built-in skill bundles', () => {
       handlerKey: capability.handlerKey,
     });
 
-    const required = manifest.spec.contracts.input.schema.required as string[];
+    const required = (manifest.spec.contracts.input.schema.required || []) as string[];
     for (const field of required) expect(fixture[field]).toBeDefined();
     expect(lock).toMatchObject({
       capabilityKey: capability.key,

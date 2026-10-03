@@ -163,15 +163,113 @@ export class CapabilityReleaseBrowserRuntimeService {
           ]
         : []),
     ];
+    const metadataVariables =
+      options?.metadata?.variables &&
+      typeof options.metadata.variables === 'object' &&
+      !Array.isArray(options.metadata.variables)
+        ? (options.metadata.variables as Record<string, unknown>)
+        : {};
+    const metadataEvidence =
+      options?.metadata?.runtimeEvidence &&
+      typeof options.metadata.runtimeEvidence === 'object' &&
+      !Array.isArray(options.metadata.runtimeEvidence)
+        ? (options.metadata.runtimeEvidence as Record<string, unknown>)
+        : {};
+    const previousStepResults = Array.isArray(options?.metadata?.previousStepResults)
+      ? (options.metadata.previousStepResults as Array<Record<string, unknown>>)
+      : [];
+
+    if (options?.metadata?.resumeFromStepId) {
+      logs.push(
+        `[BrowserRuntime][Resume] 恢复执行，目标步骤: ${String(options.metadata.resumeFromStepId)}`
+      );
+    }
+
+    const recoveredAttempts: Record<string, number> =
+      (options?.metadata?.attemptByStepId as Record<string, number>) ||
+      ((options?.metadata as any)?.checkpoint?.attemptByStepId as Record<string, number>) ||
+      {};
+    if (Object.keys(recoveredAttempts).length === 0 && previousStepResults.length > 0) {
+      for (const prev of previousStepResults) {
+        const stepId = (prev as any)?.stepId;
+        const attempt = (prev as any)?.attempt;
+        if (typeof stepId === 'string' && typeof attempt === 'number') {
+          recoveredAttempts[stepId] = Math.max(recoveredAttempts[stepId] || 0, attempt);
+        }
+      }
+    }
+
+    const mergedEvidence = { ...runtimeEvidence, ...metadataEvidence };
+    const isHumanResolution =
+      options?.metadata?.recoveryType === 'resolve_by_human' ||
+      (options?.metadata?.recoveryPatch as any)?.type === 'resolve_by_human';
+
+    if (isHumanResolution) {
+      delete (mergedEvidence as Record<string, unknown>).takeoverReason;
+      const existingResolutions = Array.isArray((mergedEvidence as any).resolutions)
+        ? [...(mergedEvidence as any).resolutions]
+        : [];
+      const recDecision = (options?.metadata?.recoveryDecision as any);
+      const recPatch = (options?.metadata?.recoveryPatch as any);
+      const resolutionNote =
+        recPatch?.note ||
+        recPatch?.comment ||
+        options?.metadata?.resolutionNote ||
+        recDecision?.comment ||
+        recDecision?.resolutionNote ||
+        null;
+      const takeoverId =
+        options?.metadata?.takeoverId ||
+        recDecision?.takeoverId ||
+        null;
+      const resolvedBy =
+        options?.metadata?.resolvedBy ||
+        recDecision?.resolvedBy ||
+        recDecision?.reconciledBy ||
+        null;
+      const resolvedAt =
+        options?.metadata?.resolvedAt ||
+        recDecision?.resolvedAt ||
+        new Date().toISOString();
+      const resumedFromStepId =
+        options?.metadata?.resumeFromStepId ||
+        recPatch?.resumeFromStepId ||
+        null;
+      const lastBranch = (mergedEvidence as any)?.lastBranchDecision;
+      const failedStepId =
+        options?.metadata?.failedStepId ||
+        recPatch?.failedStepId ||
+        lastBranch?.stepId ||
+        null;
+      const occurrence =
+        recPatch?.occurrence ??
+        recPatch?.iteration ??
+        lastBranch?.iteration ??
+        lastBranch?.occurrence ??
+        null;
+
+      existingResolutions.push({
+        type: 'resolve_by_human',
+        takeoverId,
+        resolvedBy,
+        resumedFromStepId,
+        failedStepId,
+        occurrence,
+        resolvedAt,
+        note: resolutionNote,
+      });
+      (mergedEvidence as any).resolutions = existingResolutions;
+    }
+
     const state = {
       preserveRuntimeSession: false,
       startedAt: new Date().toISOString(),
       currentPageUrl: initialUrl,
-      captureOrdinal: 0,
-      attemptByStepId: {} as Record<string, number>,
-      stepResults: [] as Array<Record<string, unknown>>,
-      variables: {} as Record<string, unknown>,
-      runtimeEvidence,
+      captureOrdinal: previousStepResults.length,
+      attemptByStepId: recoveredAttempts,
+      stepResults: [...previousStepResults] as Array<Record<string, unknown>>,
+      variables: { ...runtimeInput, ...metadataVariables } as Record<string, unknown>,
+      runtimeEvidence: mergedEvidence,
       warnings: [] as Array<{ code: string; message: string; stepId?: string }>,
       contentCandidates: [] as Array<Record<string, unknown>>,
       logs,
@@ -193,7 +291,12 @@ export class CapabilityReleaseBrowserRuntimeService {
             runtimeSessionId,
             sessionPreferences,
           },
-          { timeout: 60000 }
+          {
+            timeout: 60000,
+            headers: {
+              'x-internal-auth': process.env.INTERNAL_API_SHARED_SECRET || 'ops_internal_shared_secret_change_me',
+            },
+          }
         );
       }
 

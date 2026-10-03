@@ -33,7 +33,8 @@ interface CreateExecutionTakeoverInput {
 
 interface ResolveExecutionTakeoverInput {
   executionId: string;
-  phaseId: string;
+  phaseId?: string | null;
+  takeoverId?: string | null;
   resolvedBy?: string | null;
   resolutionNote?: string | null;
   status?: string;
@@ -111,16 +112,16 @@ export class ExecutionPhaseService {
           phase_name = EXCLUDED.phase_name,
           phase_type = EXCLUDED.phase_type,
           status = EXCLUDED.status,
-          attempt = EXCLUDED.attempt,
+          attempt = GREATEST(execution_phases.attempt, EXCLUDED.attempt),
           runtime_session_id = EXCLUDED.runtime_session_id,
           input_json = EXCLUDED.input_json,
-          output_json = EXCLUDED.output_json,
+          output_json = COALESCE(EXCLUDED.output_json, execution_phases.output_json),
           precheck_json = EXCLUDED.precheck_json,
           postcheck_json = EXCLUDED.postcheck_json,
           recovery_decision_json = COALESCE(EXCLUDED.recovery_decision_json, execution_phases.recovery_decision_json),
           error_code = EXCLUDED.error_code,
           error_message = EXCLUDED.error_message,
-          started_at = EXCLUDED.started_at,
+          started_at = COALESCE(execution_phases.started_at, EXCLUDED.started_at),
           completed_at = EXCLUDED.completed_at,
           updated_at = NOW()
       `,
@@ -456,56 +457,97 @@ export class ExecutionPhaseService {
     try {
       const phase = await this.getByExecutionIdAndPhaseKey(executionId, phaseKey);
       const phaseId = typeof phase?.id === 'string' ? phase.id : String(phase?.id || '').trim();
-      if (!phaseId) {
+      if (!phaseId || steps.length === 0) {
         return;
       }
 
-      for (const step of steps) {
-        await this.prisma.$executeRawUnsafe(
-          `
-            INSERT INTO execution_phase_steps (
-              phase_id,
-              step_index,
-              step_id,
-              action,
-              status,
-              input_json,
-              output_json,
-              error_message,
-              error_code,
-              snapshot_id,
-              started_at,
-              ended_at
-            )
-            VALUES (
-              $1::uuid,
-              $2,
-              $3,
-              $4,
-              $5,
-              CAST($6 AS jsonb),
-              CAST($7 AS jsonb),
-              $8,
-              $9,
-              $10,
-              $11::timestamptz,
-              $12::timestamptz
-            )
-          `,
-          phaseId,
-          step.stepIndex,
-          step.stepId || null,
-          step.action,
-          step.status,
-          this.toJsonString(step.input),
-          this.toJsonString(step.output),
-          step.errorMessage || null,
-          step.errorCode || null,
-          step.snapshotId || null,
-          step.startedAt || null,
-          step.endedAt || null
+      await this.prisma.$transaction(async (tx) => {
+        // 使用行级锁对 phase 进行排他锁定，彻底解决同一 phase 的并发 appendSteps 竞争问题
+        await tx.$executeRawUnsafe(
+          `SELECT id FROM execution_phases WHERE id = $1::uuid FOR UPDATE`,
+          phaseId
         );
-      }
+
+        for (const step of steps) {
+          const updated = await tx.$executeRawUnsafe(
+            `
+              UPDATE execution_phase_steps
+              SET
+                step_id = $3,
+                action = $4,
+                status = $5,
+                input_json = CAST($6 AS jsonb),
+                output_json = CAST($7 AS jsonb),
+                error_message = $8,
+                error_code = $9,
+                snapshot_id = $10,
+                started_at = COALESCE($11::timestamptz, started_at),
+                ended_at = COALESCE($12::timestamptz, ended_at)
+              WHERE phase_id = $1::uuid
+                AND step_index = $2
+            `,
+            phaseId,
+            step.stepIndex,
+            step.stepId || null,
+            step.action,
+            step.status,
+            this.toJsonString(step.input),
+            this.toJsonString(step.output),
+            step.errorMessage || null,
+            step.errorCode || null,
+            step.snapshotId || null,
+            step.startedAt || null,
+            step.endedAt || null
+          );
+
+          if (updated === 0) {
+            await tx.$executeRawUnsafe(
+              `
+                INSERT INTO execution_phase_steps (
+                  phase_id,
+                  step_index,
+                  step_id,
+                  action,
+                  status,
+                  input_json,
+                  output_json,
+                  error_message,
+                  error_code,
+                  snapshot_id,
+                  started_at,
+                  ended_at
+                )
+                VALUES (
+                  $1::uuid,
+                  $2,
+                  $3,
+                  $4,
+                  $5,
+                  CAST($6 AS jsonb),
+                  CAST($7 AS jsonb),
+                  $8,
+                  $9,
+                  $10,
+                  $11::timestamptz,
+                  $12::timestamptz
+                )
+              `,
+              phaseId,
+              step.stepIndex,
+              step.stepId || null,
+              step.action,
+              step.status,
+              this.toJsonString(step.input),
+              this.toJsonString(step.output),
+              step.errorMessage || null,
+              step.errorCode || null,
+              step.snapshotId || null,
+              step.startedAt || null,
+              step.endedAt || null
+            );
+          }
+        }
+      });
     } catch (error) {
       if (this.isMissingPhaseTableError(error)) {
         return;
@@ -619,35 +661,101 @@ export class ExecutionPhaseService {
   }
 
   async resolveTakeoverRecord(input: ResolveExecutionTakeoverInput): Promise<void> {
-    await this.prisma.$executeRawUnsafe(
-      `
-        UPDATE execution_takeovers
-        SET
-          status = $3,
-          resolved_by = $4::uuid,
-          resolution_note = $5,
-          resolved_at = NOW()
-        WHERE id = (
-          SELECT et.id
-          FROM execution_takeovers et
-          WHERE et.execution_id = $1::uuid
-            AND et.phase_id = $2::uuid
-            AND et.status = 'requested'
-          ORDER BY et.created_at DESC
-          LIMIT 1
-        )
-      `,
-      input.executionId,
-      input.phaseId,
-      input.status || 'resolved',
-      input.resolvedBy || null,
-      input.resolutionNote || null
-    );
+    let updated = 0;
 
-    await this.updateExecutionTakeoverStatus(
-      input.executionId,
-      input.status === 'resolved' ? 'resolved' : input.status || 'resolved'
-    );
+    if (input.takeoverId) {
+      // 1. 若提供了具体 takeoverId，精确解决该记录
+      updated = await this.prisma.$executeRawUnsafe(
+        `
+          UPDATE execution_takeovers
+          SET
+            status = $2,
+            resolved_by = $3::uuid,
+            resolution_note = COALESCE($4, resolution_note),
+            resolved_at = NOW()
+          WHERE id = $1::uuid
+            AND status IN ('requested', 'pending')
+        `,
+        input.takeoverId,
+        input.status || 'resolved',
+        input.resolvedBy || null,
+        input.resolutionNote || null
+      );
+    } else if (input.phaseId) {
+      // 2. 若指定了 phaseId，严格限制在该 phaseId 范围内匹配待决记录，严禁跨 phase 误关其他阶段的接管记录
+      updated = await this.prisma.$executeRawUnsafe(
+        `
+          UPDATE execution_takeovers
+          SET
+            status = $3,
+            resolved_by = $4::uuid,
+            resolution_note = COALESCE($5, resolution_note),
+            resolved_at = NOW()
+          WHERE id = (
+            SELECT et.id
+            FROM execution_takeovers et
+            WHERE et.execution_id = $1::uuid
+              AND et.phase_id = $2::uuid
+              AND et.status IN ('requested', 'pending')
+            ORDER BY et.created_at DESC
+            LIMIT 1
+          )
+        `,
+        input.executionId,
+        input.phaseId,
+        input.status || 'resolved',
+        input.resolvedBy || null,
+        input.resolutionNote || null
+      );
+    } else {
+      // 3. 仅当未指定 phaseId 和 takeoverId 时，按 executionId 解决最新的待决记录
+      updated = await this.prisma.$executeRawUnsafe(
+        `
+          UPDATE execution_takeovers
+          SET
+            status = $2,
+            resolved_by = $3::uuid,
+            resolution_note = COALESCE($4, resolution_note),
+            resolved_at = NOW()
+          WHERE id = (
+            SELECT et.id
+            FROM execution_takeovers et
+            WHERE et.execution_id = $1::uuid
+              AND et.status IN ('requested', 'pending')
+            ORDER BY et.created_at DESC
+            LIMIT 1
+          )
+        `,
+        input.executionId,
+        input.status || 'resolved',
+        input.resolvedBy || null,
+        input.resolutionNote || null
+      );
+    }
+
+    // 4. 执行摘要状态从实际剩余待决记录数量推导，杜绝提前宣称全部 resolved
+    try {
+      const remainingRows = await this.prisma.$queryRawUnsafe<Array<{ count: bigint | number }>>(
+        `
+          SELECT count(*)::int as count
+          FROM execution_takeovers
+          WHERE execution_id = $1::uuid
+            AND status IN ('requested', 'pending')
+        `,
+        input.executionId
+      );
+      const remainingCount = Number(remainingRows?.[0]?.count ?? 0);
+
+      if (remainingCount === 0 && updated > 0) {
+        // 当且仅当所有待决接管记录均已处置完毕且本次确实发生处置时，才将摘要标记为 resolved
+        await this.updateExecutionTakeoverStatus(input.executionId, 'resolved');
+      } else if (remainingCount > 0) {
+        // 若仍有其他阶段待决接管，保持为 requested
+        await this.updateExecutionTakeoverStatus(input.executionId, 'requested');
+      }
+    } catch {
+      // 容错处理
+    }
   }
 
   async listByExecutionId(executionId: string): Promise<RawRecord[]> {

@@ -26,10 +26,23 @@ export class CapabilityReleaseBrowserRuntimeStepExecutorService {
     label: string,
     state: BrowserRuntimeMutableState
   ): Promise<ExecuteCapabilityRuntimeResultDTO | null> {
+    const allowHighRiskActions = Boolean(
+      context.options?.metadata?.allowHighRiskActions === true ||
+      context.options?.metadata?.authorizedRiskLevel === 'confirm' ||
+      context.options?.metadata?.bypassActionPolicy === true ||
+      (context.options as any)?.allowHighRiskActions === true ||
+      (context.release as any)?.allowHighRiskActions === true ||
+      (context.release as any)?.metadata?.allowHighRiskActions === true ||
+      (context.runtimeInput as any)?.allowHighRiskActions === true ||
+      (context.release?.status === 'published' &&
+        context.options?.metadata?.executionMode === 'deterministic_plan')
+    );
+
     for (let index = 0; index < steps.length; index += 1) {
       const step = steps[index]!;
       const actionAssessment = this.browserRecordingActionPolicyService.assessRuntimeStep(step, {
         currentPageUrl: state.currentPageUrl,
+        allowHighRiskActions,
       });
       state.runtimeEvidence.currentStepId = step.id;
       state.runtimeEvidence.currentRiskLevel = actionAssessment.riskLevel;
@@ -208,7 +221,12 @@ export class CapabilityReleaseBrowserRuntimeStepExecutorService {
           ...(step.args && Object.keys(step.args).length > 0 ? { args: step.args } : {}),
           ...(captureProfile ? { captureProfile } : {}),
         },
-        { timeout: 120000 }
+        {
+          timeout: 120000,
+          headers: {
+            'x-internal-auth': process.env.INTERNAL_API_SHARED_SECRET || 'ops_internal_shared_secret_change_me',
+          },
+        }
       );
 
       const result = response.data;
@@ -315,7 +333,12 @@ export class CapabilityReleaseBrowserRuntimeStepExecutorService {
         ...(step.target ? { target: step.target } : {}),
         ...(step.args && Object.keys(step.args).length > 0 ? { args: step.args } : {}),
       },
-      { timeout: 120000 }
+      {
+        timeout: 120000,
+        headers: {
+          'x-internal-auth': process.env.INTERNAL_API_SHARED_SECRET || 'ops_internal_shared_secret_change_me',
+        },
+      }
     );
     const result = response.data;
     if (!result.success) {
@@ -383,10 +406,15 @@ export class CapabilityReleaseBrowserRuntimeStepExecutorService {
     riskReason: string,
     state: BrowserRuntimeMutableState
   ): Promise<ExecuteCapabilityRuntimeResultDTO | null> {
+    const branchStartedAt = new Date().toISOString();
     const branchResult = this.capabilityReleaseBrowserRuntimeSupportService.evaluateBrowserBranchStep(
       step,
-      state.variables
+      {
+        ...context.runtimeInput,
+        ...state.variables,
+      }
     );
+    const branchEndedAt = new Date().toISOString();
     state.runtimeEvidence.lastBranchDecision = {
       condition: step.branch?.conditionFn || null,
       result: branchResult.outcome,
@@ -407,6 +435,11 @@ export class CapabilityReleaseBrowserRuntimeStepExecutorService {
         takeoverReason: branchResult.takeoverReason || null,
       }
     );
+    const isTakeover = Boolean(branchResult.takeover || branchResult.outcome === 'takeover');
+    const isError = Boolean(branchResult.error);
+    const status = isTakeover ? 'takeover_required' : isError ? 'failed' : 'completed';
+    const success = !isTakeover && !isError;
+
     state.stepResults.push({
       stepId: step.id,
       name: step.name,
@@ -415,6 +448,13 @@ export class CapabilityReleaseBrowserRuntimeStepExecutorService {
       output: null,
       riskLevel,
       riskReason,
+      status,
+      success,
+      outcome: branchResult.outcome,
+      startedAt: branchStartedAt,
+      attemptedAt: branchStartedAt,
+      endedAt: branchEndedAt,
+      observedAt: branchEndedAt,
       ...(branchResult.message ? { message: branchResult.message } : {}),
       ...(branchResult.error ? { error: branchResult.error } : {}),
       ...(branchResult.takeover

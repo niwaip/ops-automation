@@ -14,18 +14,39 @@ export class CdpStepRunnerService {
 
   replaceParams(value: unknown, params: Record<string, unknown>): unknown {
     if (typeof value === 'string') {
+      const resolveParam = (paramName: string): unknown => {
+        if (params[paramName] !== undefined) {
+          return params[paramName];
+        }
+        if (paramName === 'startUrl' && params.url !== undefined) {
+          return params.url;
+        }
+        if (paramName === 'url' && params.startUrl !== undefined) {
+          return params.startUrl;
+        }
+        if (paramName === 'searchQuery' && params.query !== undefined) {
+          return params.query;
+        }
+        if (paramName === 'query' && params.searchQuery !== undefined) {
+          return params.searchQuery;
+        }
+        if (paramName === 'resultIndex' && params.index !== undefined) {
+          return params.index;
+        }
+        if (paramName === 'index' && params.resultIndex !== undefined) {
+          return params.resultIndex;
+        }
+        return undefined;
+      };
+
       return value
         .replace(/\$\{([a-zA-Z0-9_]+)\}/g, (match, paramName) => {
-          if (params[paramName] !== undefined) {
-            return String(params[paramName]);
-          }
-          return match;
+          const resolved = resolveParam(paramName);
+          return resolved !== undefined ? String(resolved) : match;
         })
         .replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (match, paramName) => {
-          if (params[paramName] !== undefined) {
-            return String(params[paramName]);
-          }
-          return match;
+          const resolved = resolveParam(paramName);
+          return resolved !== undefined ? String(resolved) : match;
         });
     }
     return value;

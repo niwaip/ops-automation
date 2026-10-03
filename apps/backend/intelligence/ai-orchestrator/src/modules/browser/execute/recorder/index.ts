@@ -10,3 +10,4 @@ export * from './recorder-history-compression.service';
 export * from './recorder-replay.service';
 export * from './recorder-state-store.service';
 export * from './recorder-debug-rollback.service';
+export * from './recorder-session-lock.service';

@@ -253,6 +253,11 @@ export class BrowserPageStateDto {
   @IsOptional()
   @IsBoolean()
   hasModal?: boolean;
+
+  @ApiProperty({ description: 'HTML content captured during page state inspection', required: false })
+  @IsOptional()
+  @IsString()
+  html?: string;
 }
 
 export class ArtifactRefDto {

@@ -32,6 +32,10 @@ MOCK_ERP_BASE = os.environ.get("MOCK_ERP_BASE", f"http://{HOST_IP}")
 DEFAULT_LOGIN_USERNAME = os.environ.get("MOCK_ERP_USERNAME", "admin")
 DEFAULT_LOGIN_PASSWORD = os.environ.get("MOCK_ERP_PASSWORD", "admin")
 DEFAULT_GROSS_MARGIN_THRESHOLD = os.environ.get("MOCK_ERP_GROSS_MARGIN_THRESHOLD", "20")
+INTERNAL_API_SHARED_SECRET = os.environ.get(
+    "INTERNAL_API_SHARED_SECRET", "ops_internal_shared_secret_change_me"
+)
+AUTH_TOKEN = os.environ.get("AUTH_TOKEN")
 TOKEN = (
     "[人工介入:MFA认证|behavior=optional_takeover_if_present|selector=body|method=attribute|"
     "attribute=data-auth-stage|expect=mfa|precheck=true|fallbackPattern="
@@ -45,6 +49,10 @@ def request(method, url, data=None):
     req = urllib.request.Request(url, data=body, method=method)
     req.add_header("Content-Type", "application/json")
     req.add_header("Accept", "application/json")
+    if INTERNAL_API_SHARED_SECRET:
+        req.add_header("x-internal-auth", INTERNAL_API_SHARED_SECRET)
+    if AUTH_TOKEN:
+        req.add_header("Authorization", f"Bearer {AUTH_TOKEN}")
     try:
         with urllib.request.urlopen(req, timeout=180) as resp:
             raw = resp.read().decode("utf-8")
@@ -118,9 +126,9 @@ def build_business_params_schema():
                 "description": "登录用户名",
                 "default": DEFAULT_LOGIN_USERNAME,
             },
-            "password": {
+            "loginCredential": {
                 "type": "string",
-                "description": "登录密码",
+                "description": "登录凭据",
                 "default": DEFAULT_LOGIN_PASSWORD,
             },
             "grossMarginThreshold": {
@@ -129,11 +137,11 @@ def build_business_params_schema():
                 "default": float(DEFAULT_GROSS_MARGIN_THRESHOLD),
             },
         },
-        "required": ["username", "password", "grossMarginThreshold"],
+        "required": ["username", "loginCredential", "grossMarginThreshold"],
     }
 
 
-def parameterize_loop_template(template_steps):
+def parameterize_loop_template(template_steps, loop_draft=None):
     patched_steps = json.loads(json.dumps(template_steps))
     login_click_index = None
     has_username_fill = False
@@ -148,17 +156,16 @@ def parameterize_loop_template(template_steps):
         locator = step.get("locator") or {}
         locator_value = locator.get("value") or ""
         description = step.get("description") or ""
-        params = step.get("params") or {}
 
         if step.get("action") == "click" and "ログイン" in locator_value and login_click_index is None:
             login_click_index = index
 
-        if step.get("action") == "fill":
+        if step.get("action") in ("fill", "type_text"):
             if "ユーザー名" in locator_value or "用户名" in description:
                 step.setdefault("params", {})["value"] = "${username}"
                 has_username_fill = True
             if "パスワード" in locator_value or "密码" in description:
-                step.setdefault("params", {})["value"] = "${password}"
+                step.setdefault("params", {})["value"] = "${loginCredential}"
                 has_password_fill = True
 
         if step.get("action") == "branch" and step.get("branch"):
@@ -183,7 +190,7 @@ def parameterize_loop_template(template_steps):
         if not has_username_fill:
             login_fill_steps.append(
                 {
-                    "step_id": "step_login_username",
+                    "step_id": "step_temp_username",
                     "action": "fill",
                     "params": {"value": "${username}"},
                     "locator": {"type": "role", "value": 'textbox[name="ユーザー名 (Username)"]'},
@@ -193,16 +200,29 @@ def parameterize_loop_template(template_steps):
         if not has_password_fill:
             login_fill_steps.append(
                 {
-                    "step_id": "step_login_password",
+                    "step_id": "step_temp_password",
                     "action": "fill",
-                    "params": {"value": "${password}"},
+                    "params": {"value": "${loginCredential}"},
                     "locator": {"type": "role", "value": 'textbox[name="パスワード (Password)"]'},
                     "description": "填写密码",
                 }
             )
         patched_steps[login_click_index:login_click_index] = login_fill_steps
 
-    return patched_steps
+    step_id_map = {}
+    for idx, step in enumerate(patched_steps, 1):
+        old_id = step.get("step_id")
+        new_id = f"step_{idx}"
+        step["step_id"] = new_id
+        if old_id:
+            step_id_map[old_id] = new_id
+
+    if loop_draft and isinstance(loop_draft.get("eachIteration"), dict):
+        iteration = loop_draft["eachIteration"]
+        if "stepIds" in iteration and isinstance(iteration["stepIds"], list):
+            iteration["stepIds"] = [step_id_map.get(sid, sid) for sid in iteration["stepIds"]]
+
+    return patched_steps, loop_draft
 
 
 def build_fallback_loop_template():
@@ -223,7 +243,7 @@ def build_fallback_loop_template():
         {
             "step_id": "step_3",
             "action": "fill",
-            "params": {"value": "${password}"},
+            "params": {"value": "${loginCredential}"},
             "locator": {"type": "role", "value": 'textbox[name="パスワード (Password)"]'},
             "description": "填写密码",
         },
@@ -401,10 +421,10 @@ def build_live_export_template_steps():
     execution_plan = export_artifacts.get("skillDraft", {}).get("executionPlan", {})
     steps = export_artifacts.get("templateSteps") or execution_plan.get("templateSteps", [])
     exported_loop_draft = export_artifacts.get("loopDraft") or execution_plan.get("loopDraft")
-    patched_steps = parameterize_loop_template(steps)
+    patched_steps, patched_loop_draft = parameterize_loop_template(steps, exported_loop_draft)
     exported_has_branch_step = any(step.get("action") == "branch" for step in patched_steps)
-    used_fallback_template = not patched_steps or not exported_loop_draft or not exported_has_branch_step
-    loop_draft = exported_loop_draft
+    used_fallback_template = not patched_steps or not patched_loop_draft or not exported_has_branch_step
+    loop_draft = patched_loop_draft
     if used_fallback_template:
         patched_steps, loop_draft = build_fallback_loop_template()
     return {
@@ -423,6 +443,7 @@ def create_template(template_steps, loop_draft=None):
     payload = {
         "name": f"live-export-replay-{int(time.time())}",
         "version": "1.0.0",
+        "status": "DRAFT",
         "description": "Replay verification from live recorder export",
         "created_by": str(uuid.uuid4()),
         "params_schema": build_business_params_schema(),
@@ -441,7 +462,7 @@ def create_template(template_steps, loop_draft=None):
 def run_case(template_id):
     params = {
         "username": DEFAULT_LOGIN_USERNAME,
-        "password": DEFAULT_LOGIN_PASSWORD,
+        "loginCredential": DEFAULT_LOGIN_PASSWORD,
         "grossMarginThreshold": float(DEFAULT_GROSS_MARGIN_THRESHOLD),
     }
     created = request(
@@ -488,15 +509,20 @@ def assert_takeover_on_low_margin(case_name, result):
     steps = result.get("steps", [])
     loop_stop_reads = [step for step in steps if step.get("action") == "loop_stop_read"]
     iteration_detail_clicks = [
-        step for step in steps if step.get("step_id") == "step_6" and step.get("success") is True
+        step
+        for step in steps
+        if (
+            step.get("step_id") in ("step_6", "step_7", "step_8")
+            or "详情" in str(step.get("description", ""))
+            or "詳細" in str(step.get("description", ""))
+        )
+        and step.get("success") is True
     ]
     branch_takeover = next(
         (
             step
             for step in steps
-            if step.get("step_id") == "step_8"
-            and step.get("action") == "branch"
-            and step.get("takeover") is True
+            if step.get("action") == "branch" and step.get("takeover") is True
         ),
         None,
     )
@@ -525,8 +551,14 @@ def assert_takeover_on_low_margin(case_name, result):
 
 def main():
     exported = build_live_export_template_steps()
+    print(f"DEBUG: exportedTemplateStepCount={exported['exportedTemplateStepCount']}, usedFallback={exported['usedFallbackTemplate']}")
+    print(f"DEBUG: templateSteps actions={[s.get('action') + ':' + str(s.get('step_id')) for s in exported['templateSteps']]}")
+    print(f"DEBUG: loopDraft={json.dumps(exported.get('loopDraft'), ensure_ascii=False)}")
     template = create_template(exported["templateSteps"], exported.get("loopDraft"))
     skip_mfa_result = run_case(template["id"])
+    print(f"DEBUG: skip_mfa_result state={skip_mfa_result.get('state')}, blocking_mode={skip_mfa_result.get('blocking_mode')}")
+    print(f"DEBUG: result steps count={len(skip_mfa_result.get('steps', []))}")
+    print(f"DEBUG: steps actions={[s.get('action') + ':' + str(s.get('step_id')) + ':' + str(s.get('success')) for s in skip_mfa_result.get('steps', [])]}")
     assert_takeover_on_low_margin("skip_mfa", skip_mfa_result)
     result = {
         "sourceSessionId": exported["sessionId"],

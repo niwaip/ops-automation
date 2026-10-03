@@ -103,10 +103,25 @@ export class ExecutionStepWriterService {
       data: {
         status: input.success ? EXECUTION_STEP_STATUS.SUCCEEDED : EXECUTION_STEP_STATUS.FAILED,
         outputJson: this.asJsonValue(input.outputJson),
-        errorCode: input.errorCode,
-        errorMessage: input.errorMessage,
+        errorCode:
+          input.errorCode !== undefined
+            ? input.errorCode
+            : input.success
+              ? null
+              : undefined,
+        errorMessage:
+          input.errorMessage !== undefined
+            ? input.errorMessage
+            : input.success
+              ? null
+              : undefined,
         snapshotId: input.snapshotId,
-        takeoverTriggered: input.takeoverTriggered,
+        takeoverTriggered:
+          input.takeoverTriggered !== undefined
+            ? input.takeoverTriggered
+            : input.success
+              ? false
+              : undefined,
         endedAt: new Date(),
       },
     });
@@ -220,6 +235,7 @@ export class ExecutionStepWriterService {
         status: EXECUTION_STEP_STATUS.PENDING,
         errorCode: null,
         errorMessage: null,
+        takeoverTriggered: false,
         startedAt: null,
         endedAt: null,
       },

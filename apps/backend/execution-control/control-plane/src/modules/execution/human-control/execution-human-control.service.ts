@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EXECUTION_STATUS, ExecutionStatus } from '../contracts/execution-status';
 import { EXECUTION_STEP_STATUS } from '../contracts/execution-step-status';
@@ -17,6 +17,8 @@ import {
   TakeoverExecutionDto,
 } from '../state/execution.dto';
 import { ensureExecutionPermission } from '../shared/execution-permission.util';
+import { DeterministicPlanSchedulerService } from '../plan-runtime/deterministic-plan-scheduler.service';
+import { ExecutionOutboxService } from '../outbox/execution-outbox.service';
 
 interface RequestUserContext {
   id: string;
@@ -37,6 +39,8 @@ interface ExecutionPhaseRecord {
   postcheck_json?: Record<string, unknown> | null;
   error_code?: string | null;
   error_message?: string | null;
+  started_at?: Date | string | null;
+  completed_at?: Date | string | null;
 }
 
 interface ExecutionStepPhaseMetadata {
@@ -74,7 +78,9 @@ export class ExecutionHumanControlService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly executionPhaseService: ExecutionPhaseService,
-    private readonly executionStepService: ExecutionStepService
+    private readonly executionStepService: ExecutionStepService,
+    @Optional() private readonly planSchedulerService?: DeterministicPlanSchedulerService,
+    @Optional() private readonly outbox?: ExecutionOutboxService
   ) {}
 
   async takeover(
@@ -154,7 +160,14 @@ export class ExecutionHumanControlService {
       (execution as unknown as Record<string, unknown>).currentPhaseKey as string | null | undefined
     );
     if (currentPhase?.id) {
-      await this.resolvePhaseTakeoverAndMarkRunning(id, currentPhase, userId);
+      await this.resolvePhaseTakeoverAndMarkRunning(id, currentPhase, userId, dto.comment);
+    } else {
+      const waitingPhase = await this.findWaitingPhase(id);
+      if (waitingPhase) {
+        await this.resolvePhaseTakeoverAndMarkRunning(id, waitingPhase, userId, dto.comment);
+      } else {
+        await this.resolveOrRequeueStepWithoutPhase(id, userId, dto.comment);
+      }
     }
 
     const runtimeSessionId = await this.exitHumanControlAndResume(
@@ -170,7 +183,11 @@ export class ExecutionHumanControlService {
       ...(currentPhase?.phase_key ? { phaseKey: currentPhase.phase_key } : {}),
     });
 
-    if (runtimeSessionId) {
+    if (execution.executionMode === 'deterministic_plan') {
+      if (this.planSchedulerService) {
+        await this.advanceDeterministicExecution(id, userId, requester, dto.stepId);
+      }
+    } else if (runtimeSessionId) {
       this.runAdvanceExecutionFlow(id, runtimeSessionId, hooks);
     }
 
@@ -246,6 +263,34 @@ export class ExecutionHumanControlService {
     }
 
     const phase = await this.requirePhaseRecord(executionId, phaseKey);
+
+    let takeover = await this.prisma.executionTakeover.findFirst({
+      where: {
+        executionId,
+        phaseId: phase.id,
+        status: { in: ['requested', 'pending'] },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!takeover) {
+      takeover = await this.prisma.executionTakeover.findFirst({
+        where: {
+          executionId,
+          phaseId: phase.id,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
+    const patchNote =
+      typeof (dto.patch as any)?.note === 'string'
+        ? (dto.patch as any).note.trim()
+        : typeof (dto.patch as any)?.comment === 'string'
+        ? (dto.patch as any).comment.trim()
+        : null;
+    const effectiveResolutionNote = dto.comment?.trim() || patchNote || null;
+    const authoritativeResolvedAt = new Date().toISOString();
+
     await this.executionPhaseService.markResumable(executionId, phase.phase_key!, {
       phaseName: phase.phase_name || phase.phase_key!,
       phaseType: phase.phase_type || 'workflow_execution',
@@ -254,8 +299,12 @@ export class ExecutionHumanControlService {
       output: phase.output_json || null,
       postcheck: phase.postcheck_json || null,
       recoveryDecision: {
+        takeoverId: takeover?.id || null,
         reconciledBy: dto.resolvedBy || userId,
-        comment: dto.comment || null,
+        resolvedBy: dto.resolvedBy || userId,
+        resolvedAt: authoritativeResolvedAt,
+        comment: effectiveResolutionNote,
+        resolutionNote: effectiveResolutionNote,
         patch: dto.patch || null,
       },
       errorCode: null,
@@ -264,8 +313,9 @@ export class ExecutionHumanControlService {
     await this.executionPhaseService.resolveTakeoverRecord({
       executionId,
       phaseId: phase.id,
+      takeoverId: takeover?.id || undefined,
       resolvedBy: dto.resolvedBy || userId,
-      resolutionNote: dto.comment || null,
+      resolutionNote: effectiveResolutionNote,
       status: 'resolved',
     });
 
@@ -304,7 +354,11 @@ export class ExecutionHumanControlService {
       phaseKey,
     });
 
-    if (runtimeSessionId) {
+    if (execution.executionMode === 'deterministic_plan') {
+      if (this.planSchedulerService) {
+        await this.advanceDeterministicExecution(executionId, userId, requester, dto.stepId);
+      }
+    } else if (runtimeSessionId) {
       this.runAdvanceExecutionFlow(executionId, runtimeSessionId, hooks);
     }
 
@@ -398,6 +452,7 @@ export class ExecutionHumanControlService {
       data: {
         takeoverRequired: false,
         takeoverReason: null,
+        currentPhaseStatus: null,
       },
     });
 
@@ -419,31 +474,104 @@ export class ExecutionHumanControlService {
   ): Promise<void> {
     const recoveryDecision = this.readJsonRecord(phase.recovery_decision_json);
     const recoveryPatch = this.readJsonRecord(recoveryDecision?.patch);
-    const skipFailedStepRequeue = recoveryPatch?.type === 'resolve_by_human';
+    const hasResumeFromStepId =
+      typeof recoveryPatch?.resumeFromStepId === 'string' &&
+      recoveryPatch.resumeFromStepId.trim().length > 0;
+    const hasFailedStepId =
+      typeof recoveryPatch?.failedStepId === 'string' &&
+      recoveryPatch.failedStepId.trim().length > 0;
     const execution = await this.prisma.execution.findUnique({
       where: { id: executionId },
-      select: { currentStepId: true },
+      select: { currentStepId: true, executionMode: true },
     });
-    if (execution?.currentStepId) {
-      const currentStep = await this.executionStepService.getById(execution.currentStepId);
-      const currentStepPhase = this.extractStepPhaseMetadata(
-        currentStep as Record<string, unknown> | null | undefined
-      );
-      if (
-        currentStep &&
-        currentStep.status === EXECUTION_STEP_STATUS.FAILED &&
-        currentStepPhase?.phaseKey === phase.phase_key &&
-        !skipFailedStepRequeue
-      ) {
-        await this.executionStepService.requeueFailedStep(currentStep.id);
+    const isDeterministicPlan = execution?.executionMode === 'deterministic_plan';
+    const shouldFinishTargetStep =
+      (recoveryPatch?.type === 'resolve_by_human' ||
+        recoveryDecision?.type === 'resolve_by_human') &&
+      (!isDeterministicPlan || (!hasResumeFromStepId && !hasFailedStepId));
+
+    const targetStep = await this.findFailedStepForPhase(executionId, phase);
+
+    if (targetStep) {
+      if (shouldFinishTargetStep) {
+        if (typeof this.executionStepService.finishRuntimeStep === 'function') {
+          const existingOutput = this.readJsonRecord(targetStep.outputJson) || {};
+          const existingVariables = this.readJsonRecord(existingOutput.variables) || {};
+          const patchVariables = this.readJsonRecord(recoveryPatch?.variables) || {};
+          const mergedVariables = {
+            ...existingVariables,
+            ...patchVariables,
+          };
+          const note =
+            resolutionNote ||
+            (typeof recoveryPatch?.note === 'string' ? recoveryPatch.note : null) ||
+            (typeof recoveryDecision?.comment === 'string' ? recoveryDecision.comment : null) ||
+            '人工接管处理完成';
+          const resolvedOutput = {
+            ...existingOutput,
+            ...(Object.keys(mergedVariables).length > 0 ? { variables: mergedVariables } : {}),
+            text:
+              typeof existingOutput.text === 'string' && existingOutput.text.trim().length > 0
+                ? existingOutput.text
+                : note,
+            result:
+              existingOutput.result && typeof existingOutput.result === 'object'
+                ? existingOutput.result
+                : { success: true, resolvedByHuman: true },
+            resolvedByHuman: true,
+            resolvedBy: userId,
+            resolutionNote: note,
+          };
+          await this.executionStepService.finishRuntimeStep(targetStep.id, {
+            success: true,
+            outputJson: resolvedOutput,
+            errorCode: null,
+            errorMessage: null,
+            takeoverTriggered: false,
+          });
+        }
+      } else {
+        if (typeof this.executionStepService.requeueFailedStep === 'function') {
+          await this.executionStepService.requeueFailedStep(targetStep.id);
+        }
+        const patchVariables = this.readJsonRecord(recoveryPatch?.variables) || {};
+        const existingInput = this.readJsonRecord(targetStep.inputJson) || {};
+        const failedStepIdStr = hasFailedStepId ? String(recoveryPatch!.failedStepId).trim() : '';
+        const resolvedResumeStepId =
+          (hasResumeFromStepId ? String(recoveryPatch?.resumeFromStepId).trim() : null) ||
+          (hasFailedStepId && /^step_\d+$/.test(failedStepIdStr)
+            ? `step_${parseInt(failedStepIdStr.replace('step_', ''), 10) + 1}`
+            : null);
+        if (typeof this.prisma.executionStep?.update === 'function') {
+          await this.prisma.executionStep.update({
+            where: { id: targetStep.id },
+            data: {
+              inputJson: {
+                ...existingInput,
+                ...patchVariables,
+                ...(recoveryPatch ? { __recoveryPatch: recoveryPatch } : {}),
+                ...(resolvedResumeStepId
+                  ? { __resumeFromStepId: resolvedResumeStepId }
+                  : {}),
+              } as any,
+            },
+          });
+        }
       }
     }
+
+    const effectiveResolutionNote =
+      resolutionNote?.trim() ||
+      (typeof recoveryPatch?.note === 'string' ? recoveryPatch.note.trim() : null) ||
+      (typeof recoveryPatch?.comment === 'string' ? recoveryPatch.comment.trim() : null) ||
+      (typeof recoveryDecision?.comment === 'string' ? recoveryDecision.comment.trim() : null) ||
+      null;
 
     await this.executionPhaseService.resolveTakeoverRecord({
       executionId,
       phaseId: phase.id,
       resolvedBy: userId,
-      resolutionNote: resolutionNote || null,
+      resolutionNote: effectiveResolutionNote,
       status: 'resolved',
     });
     await this.executionPhaseService.createOrUpdatePhase({
@@ -458,11 +586,229 @@ export class ExecutionHumanControlService {
       output: phase.output_json || null,
       postcheck: phase.postcheck_json || null,
       recoveryDecision: phase.recovery_decision_json || null,
-      startedAt: new Date(),
+      startedAt: phase.started_at ? new Date(phase.started_at) : new Date(),
       completedAt: null,
       errorCode: null,
       errorMessage: null,
     });
+  }
+
+  private async findFailedStepForPhase(
+    executionId: string,
+    phase?: ExecutionPhaseRecord | null
+  ): Promise<any | null> {
+    const recoveryDecision = this.readJsonRecord(phase?.recovery_decision_json);
+    const recoveryPatch = this.readJsonRecord(recoveryDecision?.patch);
+    const inputJson = this.readJsonRecord(phase?.input_json);
+    const candidateStepId =
+      (typeof recoveryPatch?.failedStepId === 'string' && recoveryPatch.failedStepId) ||
+      (typeof inputJson?.stepId === 'string' && inputJson.stepId) ||
+      (typeof inputJson?.parentStepId === 'string' && inputJson.parentStepId) ||
+      null;
+
+    if (candidateStepId) {
+      try {
+        const step = await this.executionStepService.getById(candidateStepId);
+        if (
+          step &&
+          (step.executionId === executionId || !step.executionId) &&
+          (step.status === EXECUTION_STEP_STATUS.FAILED ||
+            step.status === EXECUTION_STEP_STATUS.RUNNING)
+        ) {
+          return step;
+        }
+      } catch {
+        // Step not found by candidate ID, proceed with next strategies
+      }
+    }
+
+    const execution = await this.prisma.execution.findUnique({
+      where: { id: executionId },
+      select: { currentStepId: true, currentPhaseKey: true },
+    });
+
+    if (execution?.currentStepId) {
+      try {
+        const currentStep = await this.executionStepService.getById(execution.currentStepId);
+        if (
+          currentStep &&
+          (currentStep.executionId === executionId || !currentStep.executionId) &&
+          (currentStep.status === EXECUTION_STEP_STATUS.FAILED ||
+            currentStep.status === EXECUTION_STEP_STATUS.RUNNING)
+        ) {
+          if (!phase || this.doesStepMatchPhase(currentStep, phase, execution.currentPhaseKey)) {
+            return currentStep;
+          }
+        }
+      } catch {
+        // Step not found by currentStepId
+      }
+    }
+
+    let allSteps: any[] = [];
+    if (typeof this.executionStepService.listByExecutionId === 'function') {
+      try {
+        allSteps = (await this.executionStepService.listByExecutionId(executionId)) || [];
+      } catch {
+        allSteps = [];
+      }
+    } else if (typeof this.prisma.executionStep?.findMany === 'function') {
+      try {
+        allSteps =
+          (await this.prisma.executionStep.findMany({
+            where: { executionId },
+            orderBy: { stepIndex: 'desc' },
+          })) || [];
+      } catch {
+        allSteps = [];
+      }
+    }
+
+    const failedSteps = allSteps.filter(
+      (s: any) =>
+        s &&
+        (s.status === EXECUTION_STEP_STATUS.FAILED || s.status === EXECUTION_STEP_STATUS.RUNNING)
+    );
+
+    if (failedSteps.length === 0) {
+      return null;
+    }
+
+    if (!phase) {
+      return failedSteps[0];
+    }
+
+    const matched = failedSteps.find((step) =>
+      this.doesStepMatchPhase(step, phase, execution?.currentPhaseKey)
+    );
+    return matched || failedSteps[0];
+  }
+
+  private doesStepMatchPhase(
+    step: any,
+    phase: ExecutionPhaseRecord,
+    currentPhaseKey?: string | null
+  ): boolean {
+    if (!step || !phase?.phase_key) {
+      return false;
+    }
+    const stepPhase = this.extractStepPhaseMetadata(step as Record<string, unknown>);
+    if (stepPhase?.phaseKey === phase.phase_key) {
+      return true;
+    }
+    if (currentPhaseKey && currentPhaseKey === phase.phase_key) {
+      return true;
+    }
+    if (step.planNodeId && phase.phase_key.includes(step.planNodeId)) {
+      return true;
+    }
+    if (step.name && phase.phase_key.includes(step.name)) {
+      return true;
+    }
+    if (step.id && phase.phase_key.includes(step.id)) {
+      return true;
+    }
+    const inputJson = this.readJsonRecord(phase.input_json);
+    if (inputJson?.stepId === step.id || inputJson?.parentStepId === step.id) {
+      return true;
+    }
+    return false;
+  }
+
+  private async findWaitingPhase(executionId: string): Promise<ExecutionPhaseRecord | null> {
+    if (typeof this.prisma.executionPhase?.findFirst !== 'function') {
+      return null;
+    }
+    const phase = await this.prisma.executionPhase.findFirst({
+      where: {
+        executionId,
+        status: 'waiting_takeover',
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+    return (phase as unknown as ExecutionPhaseRecord) || null;
+  }
+
+  private async resolveOrRequeueStepWithoutPhase(
+    executionId: string,
+    userId: string,
+    resolutionNote?: string
+  ): Promise<void> {
+    const targetStep = await this.findFailedStepForPhase(executionId);
+    if (targetStep) {
+      if (targetStep.takeoverTriggered) {
+        if (typeof this.executionStepService.finishRuntimeStep === 'function') {
+          const existingOutput = this.readJsonRecord(targetStep.outputJson) || {};
+          const note = resolutionNote || '人工接管处理完成';
+          const resolvedOutput = {
+            ...existingOutput,
+            text:
+              typeof existingOutput.text === 'string' && existingOutput.text.trim().length > 0
+                ? existingOutput.text
+                : note,
+            result:
+              existingOutput.result && typeof existingOutput.result === 'object'
+                ? existingOutput.result
+                : { success: true, resolvedByHuman: true },
+            resolvedByHuman: true,
+            resolvedBy: userId,
+            resolutionNote: note,
+          };
+          await this.executionStepService.finishRuntimeStep(targetStep.id, {
+            success: true,
+            outputJson: resolvedOutput,
+            errorCode: null,
+            errorMessage: null,
+            takeoverTriggered: false,
+          });
+        }
+      } else {
+        if (typeof this.executionStepService.requeueFailedStep === 'function') {
+          await this.executionStepService.requeueFailedStep(targetStep.id);
+        }
+      }
+    }
+  }
+
+  private async advanceDeterministicExecution(
+    executionId: string,
+    userId: string,
+    requester?: RequestUserContext,
+    stepId?: string
+  ): Promise<void> {
+    const inputTrace = (requester as any)?.traceContext;
+    if (process.env.EXECUTION_OUTBOX_ENABLED === 'true' && this.outbox) {
+      await this.outbox.enqueue({
+        aggregateType: 'execution',
+        aggregateId: executionId,
+        eventType: 'execution.ready',
+        payload: {
+          executionId,
+          reason: 'takeover_resumed',
+          dispatcherVersion: 'v2',
+          ...(stepId ? { resumeFromStepId: stepId } : {}),
+          ...(inputTrace ? { traceContext: inputTrace } : {}),
+        },
+        traceContext: inputTrace,
+      });
+    } else {
+      setTimeout(() => {
+        const advanceOptions = {
+          ...(stepId ? { resumeFromStepId: stepId } : {}),
+          ...(inputTrace ? { traceContext: inputTrace } : {}),
+        };
+        const hasOptions = Object.keys(advanceOptions).length > 0;
+        const advancePromise = hasOptions
+          ? this.planSchedulerService?.advanceExecution(executionId, advanceOptions)
+          : this.planSchedulerService?.advanceExecution(executionId);
+        advancePromise?.catch((err) => {
+          const message = err instanceof Error ? err.message : String(err);
+          this.logger.error(
+            `Failed to advance deterministic execution ${executionId}: ${message}`
+          );
+        });
+      }, 0);
+    }
   }
 
   private extractStepPhaseMetadata(

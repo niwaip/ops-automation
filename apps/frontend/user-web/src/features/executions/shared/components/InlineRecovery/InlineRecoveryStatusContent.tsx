@@ -58,7 +58,7 @@ export function InlineRecoveryStatusContent({
           {phase && activeStepId ? (
             <Space wrap size={8}>
               <Text strong style={{ fontSize: 13 }}>
-                错误步骤：
+                {isTakeoverPhase ? '介入步骤：' : '异常步骤：'}
               </Text>
               {!showAdvancedStepSelect ? (
                 <>
@@ -92,7 +92,7 @@ export function InlineRecoveryStatusContent({
                     value: step.stepId || step.id,
                     label: `${step.stepIndex}. ${step.action} ${
                       ['failed', 'takeover_required', 'blocked'].includes(step.status)
-                        ? '(发生分歧/错误的步骤)'
+                        ? '(待介入/异常步骤)'
                         : ''
                     }`,
                   }))}

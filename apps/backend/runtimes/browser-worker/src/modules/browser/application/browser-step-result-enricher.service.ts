@@ -73,7 +73,18 @@ export class BrowserStepResultEnricherService {
         }
         output.contentQuality = contentQuality;
         if (extracted.text && postAction.pageState?.pageUrl) {
-          output.text = extracted.text;
+          const mainContentRequested =
+            Boolean((input.dto.captureProfile as any)?.capture?.mainContent === true);
+          if (
+            mainContentRequested ||
+            input.dto.action === 'read_page' ||
+            input.dto.action === 'extract' ||
+            input.dto.action === 'get_text'
+          ) {
+            output.text = extracted.text;
+          } else if (!output.text) {
+            output.pageText = extracted.text;
+          }
           output.contentCandidate = {
             sourceStepId: input.dto.stepId,
             sourceUrl: postAction.pageState.pageUrl,

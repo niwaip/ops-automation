@@ -26,6 +26,7 @@ run_services() {
     /^Ops Automation - Docker Compose Launcher$/ { next }
     /^Environment configured:$/ { next }
     /^  PROJECT_ROOT:/ { next }
+    /^  HOST_BIND_IP:/ { next }
     /^Using env file:/ { next }
     /^Running: docker compose / { next }
     /^\[WARN\]/ { next }

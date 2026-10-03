@@ -12,9 +12,9 @@ export interface StartStepInput {
 export interface FinishRuntimeStepInput {
   success: boolean;
   outputJson?: Record<string, unknown> | null;
-  errorCode?: string;
+  errorCode?: string | null;
   errorMessage?: string | null;
-  snapshotId?: string;
+  snapshotId?: string | null;
   takeoverTriggered?: boolean;
 }
 

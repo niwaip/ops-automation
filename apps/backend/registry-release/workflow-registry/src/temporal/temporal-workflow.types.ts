@@ -390,6 +390,12 @@ export interface TemporalWorkflowSourceTemplate {
 }
 
 export interface BrowserLoopStopWhenDraftLike {
+  read?: {
+    type?: string;
+    locator?: unknown;
+    key?: string;
+    [key: string]: unknown;
+  };
   conditionFn?: string;
   condition_fn?: string;
   description?: string;

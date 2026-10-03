@@ -510,70 +510,207 @@ export class RecorderExportAssemblyService {
       }
 
       const source = parameter.source?.trim();
-      if (!source?.startsWith('template.')) {
-        return;
-      }
-      const sourceMatch = source.match(/^template\.([^.]+)\.(.+)$/);
-      if (!sourceMatch) {
-        return;
-      }
-      const [, stepId, relativePath] = sourceMatch;
-      const step = clonedSteps.find((item) => item.step_id === stepId);
-      if (!step) {
+      if (!source) {
         return;
       }
 
-      if (relativePath === 'params.value') {
-        if (step.params?.value !== placeholder) {
-          step.params = {
-            ...(step.params || {}),
-            value: placeholder,
-          };
-          changed = true;
+      if (source.startsWith('template.')) {
+        const sourceMatch = source.match(/^template\.([^.]+)\.(.+)$/);
+        if (!sourceMatch) {
+          return;
+        }
+        const [, stepId, relativePath] = sourceMatch;
+        const step = clonedSteps.find((item) => item.step_id === stepId);
+        if (!step) {
+          return;
+        }
+
+        if (relativePath === 'params.value') {
+          if (step.params?.value !== placeholder) {
+            step.params = {
+              ...(step.params || {}),
+              value: placeholder,
+            };
+            changed = true;
+          }
+          return;
+        }
+
+        if (relativePath === 'params.query') {
+          if (step.params?.query !== placeholder) {
+            step.params = {
+              ...(step.params || {}),
+              query: placeholder,
+            };
+            changed = true;
+          }
+          return;
+        }
+
+        if (relativePath === 'params.index') {
+          if (step.params?.index !== placeholder) {
+            step.params = {
+              ...(step.params || {}),
+              index: placeholder,
+            };
+            changed = true;
+          }
+          return;
+        }
+
+        if (relativePath === 'params.text') {
+          if (step.params?.text !== placeholder) {
+            step.params = {
+              ...(step.params || {}),
+              text: placeholder,
+            };
+            changed = true;
+          }
+          return;
+        }
+
+        if (relativePath === 'params.url') {
+          if (step.params?.url !== placeholder) {
+            step.params = {
+              ...(step.params || {}),
+              url: placeholder,
+            };
+            changed = true;
+          }
+          return;
+        }
+
+        if (relativePath === 'branch.condition_fn' && step.branch?.condition_fn) {
+          const nextConditionFn = this.parameterizeBranchConditionFn(
+            step.branch.condition_fn,
+            parameter.exampleValue,
+            parameter.name
+          );
+          const nextTakeoverReason = step.branch?.takeover_reason
+            ? this.parameterizeBranchTakeoverReason(
+                step.branch.takeover_reason,
+                parameter.exampleValue,
+                parameter.name
+              )
+            : step.branch?.takeover_reason;
+          if (nextConditionFn !== step.branch.condition_fn) {
+            step.branch = {
+              ...step.branch,
+              condition_fn: nextConditionFn,
+              ...(nextTakeoverReason !== undefined ? { takeover_reason: nextTakeoverReason } : {}),
+            };
+            changed = true;
+          } else if (
+            nextTakeoverReason !== undefined &&
+            nextTakeoverReason !== step.branch.takeover_reason
+          ) {
+            step.branch = {
+              ...step.branch,
+              takeover_reason: nextTakeoverReason,
+            };
+            changed = true;
+          }
         }
         return;
       }
 
-      if (relativePath === 'params.url') {
-        if (step.params?.url !== placeholder) {
-          step.params = {
-            ...(step.params || {}),
-            url: placeholder,
-          };
-          changed = true;
+      if (source.startsWith('command.')) {
+        const commandMatch = source.match(/^command\.(\d+)\.(.+)$/);
+        if (!commandMatch) {
+          return;
         }
-        return;
-      }
+        const [, , field] = commandMatch;
 
-      if (relativePath === 'branch.condition_fn' && step.branch?.condition_fn) {
-        const nextConditionFn = this.parameterizeBranchConditionFn(
-          step.branch.condition_fn,
-          parameter.exampleValue,
-          parameter.name
-        );
-        const nextTakeoverReason = step.branch?.takeover_reason
-          ? this.parameterizeBranchTakeoverReason(
-              step.branch.takeover_reason,
-              parameter.exampleValue,
-              parameter.name
-            )
-          : step.branch?.takeover_reason;
-        if (nextConditionFn !== step.branch.condition_fn) {
-          step.branch = {
-            ...step.branch,
-            condition_fn: nextConditionFn,
-            ...(nextTakeoverReason !== undefined ? { takeover_reason: nextTakeoverReason } : {}),
-          };
-          changed = true;
-        } else if (
-          nextTakeoverReason !== undefined &&
-          nextTakeoverReason !== step.branch.takeover_reason
-        ) {
-          step.branch = {
-            ...step.branch,
-            takeover_reason: nextTakeoverReason,
-          };
-          changed = true;
+        if (field === 'query' || parameter.name === 'searchQuery') {
+          const targetStep =
+            clonedSteps.find(
+              (item) =>
+                (item.action === 'search' || item.action === 'smart_search') &&
+                parameter.exampleValue !== undefined &&
+                item.params?.query === parameter.exampleValue
+            ) ||
+            clonedSteps.find(
+              (item) =>
+                (item.action === 'search' || item.action === 'smart_search') &&
+                (!item.params?.query || !String(item.params.query).includes('${'))
+            );
+          if (targetStep && targetStep.params?.query !== placeholder) {
+            targetStep.params = {
+              ...(targetStep.params || {}),
+              query: placeholder,
+            };
+            changed = true;
+          }
+          return;
+        }
+
+        if (field === 'index' || parameter.name === 'resultIndex') {
+          const targetStep =
+            clonedSteps.find(
+              (item) =>
+                item.action === 'click_result' &&
+                parameter.exampleValue !== undefined &&
+                String(item.params?.index) === String(parameter.exampleValue)
+            ) ||
+            clonedSteps.find(
+              (item) =>
+                item.action === 'click_result' &&
+                (!item.params?.index || !String(item.params.index).includes('${'))
+            );
+          if (targetStep && targetStep.params?.index !== placeholder) {
+            targetStep.params = {
+              ...(targetStep.params || {}),
+              index: placeholder,
+            };
+            changed = true;
+          }
+          return;
+        }
+
+        if (field === 'text' || parameter.name.startsWith('typedText')) {
+          const targetStep =
+            clonedSteps.find(
+              (item) =>
+                item.action === 'type_text' &&
+                parameter.exampleValue !== undefined &&
+                item.params?.text === parameter.exampleValue
+            ) ||
+            clonedSteps.find(
+              (item) =>
+                item.action === 'type_text' &&
+                (!item.params?.text || !String(item.params.text).includes('${'))
+            );
+          if (targetStep && targetStep.params?.text !== placeholder) {
+            targetStep.params = {
+              ...(targetStep.params || {}),
+              text: placeholder,
+            };
+            changed = true;
+          }
+          return;
+        }
+
+        if (field === 'value') {
+          const targetStep =
+            clonedSteps.find(
+              (item) =>
+                item.action === 'fill' &&
+                parameter.exampleValue !== undefined &&
+                item.params?.value === parameter.exampleValue
+            ) ||
+            clonedSteps.find(
+              (item) =>
+                item.action === 'fill' &&
+                (!item.params?.value || !String(item.params.value).includes('${'))
+            );
+          if (targetStep && targetStep.params?.value !== placeholder) {
+            targetStep.params = {
+              ...(targetStep.params || {}),
+              value: placeholder,
+            };
+            changed = true;
+          }
+          return;
         }
       }
     });

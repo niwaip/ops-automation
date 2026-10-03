@@ -26,98 +26,74 @@ export class PlaywrightNavigationHandler {
     this.config = { ...getDefaultPlaywrightConfig(), ...config };
   }
 
-  async handleNavigate(sessionId: string, url: string): Promise<CliActionResult> {
+  normalizeUrl(rawUrl: string): string {
+    const trimmed = (rawUrl || '').trim();
+    if (!trimmed) {
+      return trimmed;
+    }
+    if (
+      /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed) ||
+      trimmed.startsWith('about:') ||
+      trimmed.startsWith('data:') ||
+      trimmed.startsWith('javascript:')
+    ) {
+      return trimmed;
+    }
+    return `https://${trimmed}`;
+  }
+
+  async handleNavigate(sessionId: string, rawUrl: string): Promise<CliActionResult> {
+    const url = this.normalizeUrl(rawUrl);
     const session = this.sessionManager.getOrCreateSession(sessionId);
 
     if (!session.initialized) {
       await this.sessionManager.openSession(sessionId, url);
     }
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
     const script = `async page => {
-        const activePage = (page.context().pages().find(p => p.url() && !p.url().startsWith('about:')) || page.context().pages()[page.context().pages().length - 1] || page);
+        const activePage = ${activePageExpr};
         const currentUrl = activePage.url();
         const normalize = u => (typeof u === 'string' && u.endsWith('/') ? u.slice(0, -1) : (u || ''));
+        let navError = null;
         if (normalize(currentUrl) !== normalize(${JSON.stringify(url)})) {
-          await activePage.goto(${JSON.stringify(url)}).catch(() => {});
+          try {
+            await activePage.goto(${JSON.stringify(url)}, { timeout: 30000 });
+          } catch (e) {
+            navError = e && e.message ? e.message : String(e);
+          }
+        }
+        if (navError) {
+          return JSON.stringify({ url: activePage.url(), status: 'failed', error: navError });
         }
         await activePage.waitForLoadState('domcontentloaded').catch(() => {});
         await Promise.race([
           activePage.waitForLoadState('networkidle'),
-          activePage.waitForTimeout(1000)
+          activePage.waitForTimeout(500)
         ]).catch(() => {});
 
-        // Wait up to 2.5s for SPA data hydration or content readiness
-        const spaStart = Date.now();
-        let articles = 0;
-        while (Date.now() - spaStart < 2500) {
-          const status = await activePage.evaluate(() => {
-            const count = document.querySelectorAll('article').length;
-            const hasMainContent = Boolean(
-              document.querySelector('main, #root, #app, [role="main"], form, table') ||
-              (document.body && document.body.innerText && document.body.innerText.trim().length > 30)
-            );
-            return { count, hasMainContent };
-          }).catch(() => ({ count: 0, hasMainContent: false }));
-          articles = status.count;
-          if (articles > 0) break;
-          if (status.hasMainContent && (Date.now() - spaStart > 600)) {
-            break;
-          }
-          await activePage.waitForTimeout(200).catch(() => {});
-        }
-
-        // Self-heal: if articles still 0 and transient error visible, click retry button
-        if (articles === 0) {
-          const isError = await activePage.evaluate(() => {
-            const text = document.body ? document.body.innerText || '' : '';
-            return text.includes('列表加载失败') || text.includes('加载失败，请重试') || text.includes('加载失败');
-          }).catch(() => false);
-
-          if (isError) {
-            await activePage.evaluate(() => {
-              const b = document.querySelector('[data-slot=empty-content] button') ||
-                        Array.from(document.querySelectorAll('button')).find(el => (el.innerText || el.textContent || '').includes('重试') || (el.innerText || el.textContent || '').toLowerCase().includes('retry'));
-              if (b) {
-                b.scrollIntoView();
-                b.focus();
-                ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(type => {
-                  b.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
-                });
-                b.click();
-              }
-            }).catch(() => {});
-
-            const retryStart = Date.now();
-            while (Date.now() - retryStart < 10000) {
-              articles = await activePage.evaluate(() => document.querySelectorAll('article').length).catch(() => 0);
-              if (articles > 0) break;
-              await activePage.waitForTimeout(500).catch(() => {});
-            }
-
-            // Last resort: full page reload
-            if (articles === 0) {
-              await activePage.reload({ waitUntil: 'domcontentloaded' }).catch(() => {});
-              const reloadStart = Date.now();
-              while (Date.now() - reloadStart < 10000) {
-                articles = await activePage.evaluate(() => document.querySelectorAll('article').length).catch(() => 0);
-                if (articles > 0) break;
-                await activePage.waitForTimeout(500).catch(() => {});
-              }
-            }
-          }
-        }
-
         await activePage.bringToFront().catch(() => {});
-        // Return only minimal JSON (not HTML) to avoid stdout size/parsing issues.
-        // HTML is fetched separately by readCurrentPageHtml which also waits for SPA hydration.
-      return JSON.stringify({ url: activePage.url(), status: 'navigated', articles });
+        return JSON.stringify({ url: activePage.url(), status: 'navigated' });
     }`;
     const result = await this.cliRunner.execCli(sessionId, ['run-code', script]);
-    session.lastUrl = url;
     this.cliRunner.assertNoCliError(result, 'Navigation failed');
+
+    const parsed = this.cliRunner.parseJsonStdout<Record<string, unknown>>(result.stdout);
+    if (parsed?.status === 'failed') {
+      const navError = (parsed.error as string) || 'Navigation failed';
+      throw new Error(`Navigation failed: ${navError}`);
+    }
+
+    const currentActualUrl = typeof parsed?.url === 'string' ? parsed.url : '';
+    if (url !== 'about:blank' && (!currentActualUrl || currentActualUrl.startsWith('about:blank'))) {
+      throw new Error(`Navigation failed: page remained on blank page (${currentActualUrl || 'empty'})`);
+    }
+
+    session.lastUrl = currentActualUrl || url;
 
     let navigateHtml: string | undefined;
     let navigateArticles: number | undefined;
-    const parsed = this.cliRunner.parseJsonStdout<Record<string, unknown>>(result.stdout);
     if (parsed?.html) {
       navigateHtml = parsed.html as string;
     }
@@ -132,7 +108,7 @@ export class PlaywrightNavigationHandler {
       stderr: result.stderr,
       html: navigateHtml,
       data: {
-        pageUrl: session.lastUrl || url,
+        pageUrl: session.lastUrl,
         ...(navigateArticles !== undefined ? { articles: navigateArticles } : {}),
       },
     };
@@ -167,7 +143,9 @@ export class PlaywrightNavigationHandler {
         ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
         : 'page';
       const settleTimeout = this.config.cliPageSettleTimeoutMs;
+      const lastKnownCount = session.lastKnownPageCount ?? 1;
       const script = `async page => {
+        const pages = page.context().pages();
         const activePage = ${activePageExpr};
         await activePage.waitForLoadState('domcontentloaded', { timeout: Math.min(${settleTimeout}, 2500) }).catch(() => {});
         await Promise.race([
@@ -181,9 +159,34 @@ export class PlaywrightNavigationHandler {
             setTimeout(resolve, 60);
           }
         })).catch(() => {});
-        return 'settled';
+        const isNewTab = pages.length > ${lastKnownCount};
+        const latestPage = isNewTab && pages.length > 1 ? pages[pages.length - 1] : null;
+        if (latestPage && latestPage !== activePage) {
+          await latestPage.bringToFront().catch(() => {});
+        }
+        return JSON.stringify({
+          pageCount: pages.length,
+          isNewTab,
+          activeUrl: (latestPage || activePage).url(),
+        });
       }`;
-      await this.cliRunner.execCli(sessionId, ['run-code', script]);
+      const result = await this.cliRunner.execCli(sessionId, ['run-code', script]);
+      const parsed = this.cliRunner.parseJsonStdout<{ pageCount?: number; isNewTab?: boolean; activeUrl?: string }>(result.stdout);
+      if (parsed && typeof parsed.pageCount === 'number') {
+        if (parsed.isNewTab) {
+          session.preferLatestTab = true;
+          const newIndex = parsed.pageCount - 1;
+          await this.cliRunner.execCli(sessionId, ['tab-select', String(newIndex)]).catch(() => {});
+          session.activeTabIndex = newIndex;
+          if (typeof parsed.activeUrl === 'string' && parsed.activeUrl.trim() && !parsed.activeUrl.startsWith('about:blank')) {
+            session.lastUrl = parsed.activeUrl.trim();
+          }
+        } else if (parsed.pageCount <= 1) {
+          session.preferLatestTab = false;
+          session.activeTabIndex = 0;
+        }
+        session.lastKnownPageCount = parsed.pageCount;
+      }
     } catch {
       // settle is best-effort — never fail the step
     }
@@ -224,7 +227,11 @@ export class PlaywrightNavigationHandler {
     if (typeof switchMeta?.landedUrl === 'string' && switchMeta.landedUrl.trim()) {
       session.lastUrl = switchMeta.landedUrl.trim();
     }
-    session.preferLatestTab = true;
+    const switchIndex = Math.max(0, (switchMeta?.pageCount || 1) - 1);
+    await this.cliRunner.execCli(sessionId, ['tab-select', String(switchIndex)]).catch(() => {});
+    session.activeTabIndex = switchIndex;
+    session.preferLatestTab = (switchMeta?.pageCount || 1) > 1;
+    session.lastKnownPageCount = switchMeta?.pageCount || 1;
 
     return {
       status: 'success',
@@ -279,7 +286,12 @@ export class PlaywrightNavigationHandler {
     if (typeof closeMeta?.landedUrl === 'string' && closeMeta.landedUrl.trim()) {
       session.lastUrl = closeMeta.landedUrl.trim();
     }
-    session.preferLatestTab = true;
+    const remainingCount = closeMeta?.pageCount || 1;
+    const closeIndex = Math.max(0, remainingCount - 1);
+    await this.cliRunner.execCli(sessionId, ['tab-select', String(closeIndex)]).catch(() => {});
+    session.activeTabIndex = closeIndex;
+    session.preferLatestTab = remainingCount > 1;
+    session.lastKnownPageCount = remainingCount;
 
     return {
       status: 'success',

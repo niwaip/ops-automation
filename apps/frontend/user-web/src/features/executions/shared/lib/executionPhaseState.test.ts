@@ -99,4 +99,59 @@ describe('resolveDefaultResumeStepId', () => {
       })
     ).toBe('s2');
   });
+
+  it('should pick the next step following the latest occurrence in a loop with duplicate step IDs', () => {
+    const phase: Partial<ExecutionPhaseDto> = {
+      id: 'p1',
+      steps: [
+        { id: 's1', stepId: 'step_8', stepIndex: 1 },
+        { id: 's2', stepId: 'step_9', stepIndex: 2 }, // round 1
+        { id: 's3', stepId: 'step_10', stepIndex: 3 },
+        { id: 's4', stepId: 'step_8', stepIndex: 4 },
+        { id: 's5', stepId: 'step_9', stepIndex: 5 }, // round 2 (e.g. takeover here)
+        { id: 's6', stepId: 'step_10', stepIndex: 6 },
+      ] as any,
+    };
+    expect(
+      resolveDefaultResumeStepId({
+        currentPhase: phase as any,
+        failedCurrentPhaseStepId: 'step_9',
+      })
+    ).toBe('step_10');
+  });
+
+  it('should pick next step from earlier loop iteration when takeover step is the last recorded step', () => {
+    const phase: Partial<ExecutionPhaseDto> = {
+      id: 'p1',
+      steps: [
+        { id: 's1', stepId: 'step_8', stepIndex: 1 },
+        { id: 's2', stepId: 'step_9', stepIndex: 2 }, // round 1
+        { id: 's3', stepId: 'step_10', stepIndex: 3 },
+        { id: 's4', stepId: 'step_8', stepIndex: 4 },
+        { id: 's5', stepId: 'step_9', stepIndex: 5 }, // round 2: execution paused at step_9 (last element)
+      ] as any,
+    };
+    expect(
+      resolveDefaultResumeStepId({
+        currentPhase: phase as any,
+        failedCurrentPhaseStepId: 'step_9',
+      })
+    ).toBe('step_10');
+  });
+
+  it('should fallback to sequential step_N+1 when step_N is the last step without earlier iterations', () => {
+    const phase: Partial<ExecutionPhaseDto> = {
+      id: 'p1',
+      steps: [
+        { id: 's1', stepId: 'step_8', stepIndex: 1 },
+        { id: 's2', stepId: 'step_9', stepIndex: 2 }, // paused at step_9 on round 1
+      ] as any,
+    };
+    expect(
+      resolveDefaultResumeStepId({
+        currentPhase: phase as any,
+        failedCurrentPhaseStepId: 'step_9',
+      })
+    ).toBe('step_10');
+  });
 });

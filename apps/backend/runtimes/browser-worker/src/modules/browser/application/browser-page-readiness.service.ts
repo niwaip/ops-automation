@@ -59,14 +59,14 @@ export class BrowserPageReadinessService {
     return {
       waitUntil: readiness?.waitUntil === 'domcontentloaded' ? 'domcontentloaded' : 'networkidle',
       timeoutMs: boundedInteger(readiness?.timeoutMs, 8_000, 500, 60_000),
-      stableMs: boundedInteger(readiness?.stableMs, 750, 0, 10_000),
+      stableMs: boundedInteger(readiness?.stableMs, 250, 0, 10_000),
       minCount: boundedInteger(readiness?.minCount, 1, 1, 10_000),
       ...(selector ? { selector } : {}),
     };
   }
 
   private buildScript(policy: ReturnType<BrowserPageReadinessService['resolvePolicy']>): string {
-    const sampleIntervalMs = Math.min(250, Math.max(100, policy.stableMs || 100));
+    const sampleIntervalMs = Math.min(100, Math.max(50, policy.stableMs || 50));
     return `async page => {
       const activePage = page.context().pages().length
         ? page.context().pages()[page.context().pages().length - 1]
@@ -79,7 +79,10 @@ export class BrowserPageReadinessService {
       await activePage.bringToFront().catch(() => {});
       await activePage.waitForLoadState('domcontentloaded', { timeout: timeoutMs }).catch(() => {});
       if (${JSON.stringify(policy.waitUntil)} === 'networkidle') {
-        await activePage.waitForLoadState('networkidle', { timeout: Math.min(timeoutMs, 5000) }).catch(() => {});
+        await Promise.race([
+          activePage.waitForLoadState('networkidle', { timeout: Math.min(timeoutMs, 1000) }).catch(() => {}),
+          activePage.waitForTimeout(1000),
+        ]);
       }
 
       let previousSignature = '';
@@ -87,6 +90,18 @@ export class BrowserPageReadinessService {
       let selectorCount = 0;
       let observedContentChars = 0;
       while (Date.now() - startedAt <= timeoutMs) {
+        if (selector) {
+          selectorCount = await activePage.locator(selector).count().catch(() => 0);
+          if (selectorCount >= minCount) {
+            return JSON.stringify({
+              ready: true,
+              reason: 'stable',
+              selectorCount,
+              observedContentChars,
+              elapsedMs: Date.now() - startedAt,
+            });
+          }
+        }
         const sample = await activePage.evaluate(() => {
           const bodyText = document.body ? (document.body.innerText || '') : '';
           const html = document.documentElement ? document.documentElement.innerHTML : '';
@@ -97,9 +112,6 @@ export class BrowserPageReadinessService {
             elementCount: document.body ? document.body.getElementsByTagName('*').length : 0,
           };
         }).catch(() => ({ readyState: '', contentChars: 0, htmlChars: 0, elementCount: 0 }));
-        selectorCount = selector
-          ? await activePage.locator(selector).count().catch(() => 0)
-          : 0;
         observedContentChars = sample.contentChars;
         const selectorReady = !selector || selectorCount >= minCount;
         const documentReady = sample.readyState === 'interactive' || sample.readyState === 'complete';

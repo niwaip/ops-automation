@@ -350,4 +350,35 @@ describe('CapabilityRuntimeAdapter', () => {
     expect(config.headers['x-trace-id']).toBe('4bf92f3577b34da6a3ce929d0e0e4736');
     expect(config.headers['tracestate']).toBe('rojo=1');
   });
+
+  it('maps 413 request entity too large error to CAPABILITY_PAYLOAD_TOO_LARGE without retryable', async () => {
+    mockedAxios.post.mockRejectedValue({
+      response: {
+        status: 413,
+        data: {
+          statusCode: 413,
+          message: 'request entity too large',
+          error: 'Payload Too Large',
+        },
+      },
+    });
+
+    const adapter = new CapabilityRuntimeAdapter(new OutputNormalizerService());
+    const result = await adapter.invokeStep({
+      requestId: 'req-413',
+      executionId: 'exec-413',
+      stepId: 'step-413',
+      runtimeType: 'custom',
+      publishedSkillId: 'skill-413',
+      capabilityType: 'skill.runtime',
+      action: 'execute',
+      input: {},
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.status).toBe('failed');
+    expect(result.errorCode).toBe('CAPABILITY_PAYLOAD_TOO_LARGE');
+    expect(result.errorMessage).toBe('request entity too large');
+    expect(result.retryable).toBe(false);
+  });
 });

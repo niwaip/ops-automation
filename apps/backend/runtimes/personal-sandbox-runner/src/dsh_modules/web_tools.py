@@ -871,7 +871,9 @@ def perform_web_search(
                 num = item.get("num", 0)
                 tag = item.get("label_name", "") or item.get("icon_desc", "")
                 tag_str = f"[{tag}] " if tag else ""
-                results.append(f"{i+1}. {tag_str}{word} (热度值: {num})")
+                word_encoded = urllib.parse.quote(word)
+                weibo_url = f"https://s.weibo.com/weibo?q={word_encoded}"
+                results.append(f"{i+1}. {tag_str}[{word}]({weibo_url}) (热度值: {num})")
             if len(results) > 1:
                 return "\n".join(results)
         except TimeoutError:

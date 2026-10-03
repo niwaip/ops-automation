@@ -281,12 +281,29 @@ export const resolveDefaultResumeStepId = ({
     return undefined;
   }
 
-  const failedIndex = phaseSteps.findIndex(
-    (step) => getExecutionPhaseStepId(step) === failedCurrentPhaseStepId
-  );
+  const stepIds = phaseSteps.map((step) => getExecutionPhaseStepId(step));
+  const failedIndex = stepIds.lastIndexOf(failedCurrentPhaseStepId);
 
   if (failedIndex >= 0 && phaseSteps[failedIndex + 1]) {
     return getExecutionPhaseStepId(phaseSteps[failedIndex + 1]);
+  }
+
+  // Look backwards for earlier loop iteration of the same step
+  for (let i = failedIndex - 1; i >= 0; i--) {
+    if (stepIds[i] === failedCurrentPhaseStepId && phaseSteps[i + 1]) {
+      const nextId = getExecutionPhaseStepId(phaseSteps[i + 1]);
+      if (nextId && nextId !== failedCurrentPhaseStepId) {
+        return nextId;
+      }
+    }
+  }
+
+  // Fallback for sequential steps like step_9 -> step_10
+  if (/^step_\d+$/.test(failedCurrentPhaseStepId)) {
+    const num = parseInt(failedCurrentPhaseStepId.replace('step_', ''), 10);
+    if (!Number.isNaN(num)) {
+      return `step_${num + 1}`;
+    }
   }
 
   return failedCurrentPhaseStepId;

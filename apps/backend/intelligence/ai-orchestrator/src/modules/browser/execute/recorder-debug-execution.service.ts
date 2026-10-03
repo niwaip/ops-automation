@@ -88,10 +88,14 @@ export class RecorderDebugExecutionService {
         (item) => item.command === 'get_text' || item.command === 'read_page'
       ) || {};
 
+    const evaluatePayload =
+      evaluateResult?.data?.result !== undefined
+        ? evaluateResult.data.result
+        : evaluateResult?.result !== undefined
+          ? evaluateResult.result
+          : evaluateResult?.stdout;
     const structure =
-      this.recorderStructureProbeService.parseJsonResult(
-        evaluateResult?.data?.result || evaluateResult?.result || evaluateResult?.stdout
-      ) || {};
+      this.recorderStructureProbeService.parseJsonResult(evaluatePayload) || {};
     const snapshotState = await this.loadSnapshotResolutionState(response);
     const snapshotObservation = snapshotState
       ? this.buildObservationFromSnapshotState(snapshotState)

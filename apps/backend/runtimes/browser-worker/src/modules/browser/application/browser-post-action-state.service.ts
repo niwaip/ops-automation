@@ -8,13 +8,19 @@ export class BrowserPostActionStateService {
     result: ExecuteStepResultDto;
     inspect: () => Promise<BrowserPageStateDto>;
   }): Promise<Pick<ExecuteStepResultDto, 'pageState' | 'executionState' | 'attemptedAt' | 'observedAt' | 'postCheck' | 'warningCodes'>> {
-    const attemptedAt = new Date().toISOString();
+    const attemptedAt =
+      (input.dto as any).startedAt ||
+      (input.dto as any).attemptedAt ||
+      input.result.attemptedAt ||
+      new Date().toISOString();
     let pageState = input.result.pageState;
     let observationFailed = false;
-    try {
-      pageState = await input.inspect();
-    } catch {
-      observationFailed = true;
+    if (!pageState) {
+      try {
+        pageState = await input.inspect();
+      } catch {
+        observationFailed = true;
+      }
     }
     const target = navigationTarget(input.dto);
     const targetReached = target && pageState?.pageUrl ? urlsEquivalent(target, pageState.pageUrl) : undefined;
