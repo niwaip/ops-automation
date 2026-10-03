@@ -1,5 +1,6 @@
 import React from 'react';
 import { Image, Space, Typography } from 'antd';
+import { EyeOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -28,6 +29,15 @@ const ExecutionImageGallery: React.FC<ExecutionImageGalleryProps> = ({
     return emptyText ? <Text type="secondary">{emptyText}</Text> : null;
   }
 
+  const previewConfig = {
+    mask: (
+      <Space size={4} style={{ fontSize: 12 }}>
+        <EyeOutlined />
+        <span>查看高清原图</span>
+      </Space>
+    ),
+  };
+
   return (
     <div>
       {title ? (
@@ -42,6 +52,7 @@ const ExecutionImageGallery: React.FC<ExecutionImageGalleryProps> = ({
                     src={item.src}
                     alt={item.alt}
                     style={imageStyle}
+                    preview={previewConfig}
                   />
                 ))}
               </Space>
@@ -52,7 +63,13 @@ const ExecutionImageGallery: React.FC<ExecutionImageGalleryProps> = ({
         <Image.PreviewGroup>
           <Space wrap size={12}>
             {items.map((item) => (
-              <Image key={item.key} src={item.src} alt={item.alt} style={imageStyle} />
+              <Image
+                key={item.key}
+                src={item.src}
+                alt={item.alt}
+                style={imageStyle}
+                preview={previewConfig}
+              />
             ))}
           </Space>
         </Image.PreviewGroup>

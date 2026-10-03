@@ -80,6 +80,14 @@ export class DeterministicRuntimeSessionCoordinatorService {
     );
   }
 
+  async freezeForTakeover(executionId: string, reason: string): Promise<void> {
+    const session = await this.prisma.runtimeSession.findFirst({
+      where: { executionId, runtimeType: 'browser', state: { in: [...ACTIVE_BROWSER_SESSION_STATES] } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (session) await this.runtimeSessions.freezeQuietly(session.id, executionId, reason);
+  }
+
   private async allocateBrowserSession(input: {
     executionId: string;
     userId: string;

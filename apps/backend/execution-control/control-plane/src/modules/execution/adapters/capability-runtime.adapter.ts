@@ -163,8 +163,21 @@ export class CapabilityRuntimeAdapter implements RuntimeAdapter {
     );
     const artifacts = this.extractArtifacts(runtimeResult);
     const snapshot = this.extractSnapshot(artifacts);
+    const rawOutput = (runtimeResult.output || runtimeResult.result) as Record<string, unknown> | undefined;
+    const businessData = (rawOutput?.businessData || (runtimeResult as any)?.businessData) as Record<string, unknown> | undefined;
+    const executionRecord = (rawOutput?.execution || (runtimeResult as any)?.execution) as Record<string, unknown> | undefined;
+
     const requiresTakeover =
-      runtimeResult.requiresTakeover === true || runtimeResult.status === 'takeover_required';
+      runtimeResult.requiresTakeover === true ||
+      runtimeResult.status === 'takeover_required' ||
+      executionRecord?.status === 'waiting_takeover' ||
+      businessData?.requiresTakeover === true ||
+      businessData?.status === 'takeover_required';
+    const takeoverReason =
+      runtimeResult.takeoverReason ||
+      (typeof businessData?.takeoverReason === 'string' ? businessData.takeoverReason : undefined) ||
+      (typeof rawOutput?.takeoverReason === 'string' ? rawOutput.takeoverReason : undefined) ||
+      undefined;
     const status = requiresTakeover
       ? 'takeover_required'
       : runtimeResult.status === 'waiting'
@@ -209,22 +222,41 @@ export class CapabilityRuntimeAdapter implements RuntimeAdapter {
       browserRunOutput && typeof browserRunOutput === 'object' && !Array.isArray(browserRunOutput)
         ? (browserRunOutput as Record<string, unknown>).artifacts
         : undefined;
+    const resultRecord =
+      outputRecord.result && typeof outputRecord.result === 'object' && !Array.isArray(outputRecord.result)
+        ? (outputRecord.result as Record<string, unknown>)
+        : undefined;
+    const businessDataRecord =
+      resultRecord?.businessData && typeof resultRecord.businessData === 'object' && !Array.isArray(resultRecord.businessData)
+        ? (resultRecord.businessData as Record<string, unknown>)
+        : outputRecord.businessData && typeof outputRecord.businessData === 'object' && !Array.isArray(outputRecord.businessData)
+          ? (outputRecord.businessData as Record<string, unknown>)
+          : undefined;
+
     const directArtifacts = Array.isArray(outputRecord.artifacts)
       ? (outputRecord.artifacts as ArtifactRef[])
       : Array.isArray(browserArtifacts)
         ? (browserArtifacts as ArtifactRef[])
-        : outputRecord.artifact
-          ? [outputRecord.artifact as ArtifactRef]
-          : [];
+        : Array.isArray(resultRecord?.artifacts)
+          ? (resultRecord.artifacts as ArtifactRef[])
+          : Array.isArray(businessDataRecord?.artifacts)
+            ? (businessDataRecord.artifacts as ArtifactRef[])
+            : outputRecord.artifact
+              ? [outputRecord.artifact as ArtifactRef]
+              : [];
 
     for (const art of directArtifacts) {
-      if (art && (art.url || art.id)) {
+      if (art && (art.url || art.id || (art as any).path)) {
         artifacts.push(art);
       }
     }
     const phaseResults = Array.isArray((output as Record<string, unknown>).phaseResults)
       ? ((output as Record<string, unknown>).phaseResults as Array<Record<string, unknown>>)
-      : [];
+      : Array.isArray(businessDataRecord?.phaseResults)
+        ? (businessDataRecord.phaseResults as Array<Record<string, unknown>>)
+        : Array.isArray(resultRecord?.phaseResults)
+          ? (resultRecord.phaseResults as Array<Record<string, unknown>>)
+          : [];
 
     for (const phaseResult of phaseResults) {
       const phaseOutput = phaseResult?.result;

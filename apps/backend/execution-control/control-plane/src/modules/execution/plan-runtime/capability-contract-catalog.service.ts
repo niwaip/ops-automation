@@ -200,19 +200,27 @@ export class CapabilityContractCatalogService {
             }
           }
           const runtimeType = this.resolvePublishedRuntimeType(releasedPayload);
-          if (runtimeType === 'browser_template') {
-            const apiEndpoints = this.asRecord(releasedPayload.apiEndpoints);
-            const runtimeMetadata =
-              this.asRecord(releasedPayload.runtimeMetadata) ||
-              this.asRecord(apiEndpoints?.runtimeMetadata);
+          const apiEndpoints = this.asRecord(releasedPayload.apiEndpoints);
+          const runtimeMetadata =
+            this.asRecord(releasedPayload.runtimeMetadata) ||
+            this.asRecord(apiEndpoints?.runtimeMetadata);
+          const workflowDsl = this.asRecord(releasedPayload.workflowDsl);
+          const sourceContext =
+            this.asRecord(workflowDsl?.sourceContext) ||
+            this.asRecord(releasedPayload.sourceContext);
+          const composition =
+            runtimeMetadata?.composition ||
+            releasedPayload.workflowComposition ||
+            releasedPayload.composition ||
+            sourceContext?.browserWorkflowComposition ||
+            sourceContext?.composition;
+
+          if (runtimeType === 'browser_template' || composition) {
             releasedOutput = buildBrowserCapabilityOutputSchema({
               declaredOutputSchema: releasedOutput,
               runtimeMetadata,
               executionPlan: releasedPayload.executionPlan,
-              composition:
-                runtimeMetadata?.composition ||
-                releasedPayload.workflowComposition ||
-                releasedPayload.composition,
+              composition,
             });
           }
           return {
@@ -354,6 +362,10 @@ const inputSchema = this.paramsSchemaToJsonSchema(skillConfig.paramsSchema);
         ? { ...(payload as Record<string, unknown>) }
         : {};
 
+    if (!recordPayload.sourceType && release.sourceType) {
+      recordPayload.sourceType = release.sourceType;
+    }
+
     // Fallback: If outputSchema is missing in source snapshot, load from current skill draft or live config
     if (!recordPayload.outputSchema && release.currentSkillDraftId) {
       const draft = await client.skillDraft
@@ -438,9 +450,15 @@ const inputSchema = this.paramsSchemaToJsonSchema(skillConfig.paramsSchema);
     }
 
     // Support browser recording composition outputDeclarations
+    const sourceContext =
+      (workflowDsl?.sourceContext as Record<string, unknown> | undefined) ??
+      (payload.sourceContext as Record<string, unknown> | undefined);
     const composition =
       (runtimeMetadata?.composition as Record<string, unknown> | undefined) ??
-      (payload.composition as Record<string, unknown> | undefined);
+      (payload.workflowComposition as Record<string, unknown> | undefined) ??
+      (payload.composition as Record<string, unknown> | undefined) ??
+      (sourceContext?.browserWorkflowComposition as Record<string, unknown> | undefined) ??
+      (sourceContext?.composition as Record<string, unknown> | undefined);
     const outputDeclarations = Array.isArray(composition?.outputDeclarations)
       ? (composition.outputDeclarations as Array<Record<string, unknown>>)
       : [];
@@ -478,7 +496,8 @@ const inputSchema = this.paramsSchemaToJsonSchema(skillConfig.paramsSchema);
     if (
       payload.sourceType === 'browser_recording' ||
       runtimeMetadata?.sourceType === 'browser_recording' ||
-      Boolean(executionPlan)
+      Boolean(executionPlan) ||
+      Boolean(composition)
     ) {
       const projected = buildBrowserCapabilityOutputSchema({
         runtimeMetadata,

@@ -595,6 +595,7 @@ export class DeterministicPlanSchedulerService {
     if (planNode.runWhen !== 'browser_succeeded') return true;
     if (['failed', 'cancelled', 'skipped'].includes(browserStep.status)) return true;
     const output = unwrapStoredStepOutput(browserStep.outputJson);
+    if (output?.resolvedByHuman) return false;
     const browser =
       output && typeof output === 'object' ? (output as any).browserRunOutput : undefined;
     const status = browser?.run?.status || browser?.status || output?.status;
@@ -1024,6 +1025,10 @@ export class DeterministicPlanSchedulerService {
     const isTakeoverRequired =
       result?.status === 'takeover_required' || result?.requiresTakeover === true;
     if (isTakeoverRequired) {
+      await this.runtimeSessionCoordinator?.freezeForTakeover(
+        execution.id,
+        result?.takeoverReason || result?.errorMessage || '浏览器步骤等待人工接管'
+      );
       const runtimeOutput = await materializeContentRefs(
         execution.id,
         step.id,
@@ -1396,4 +1401,3 @@ export class DeterministicPlanSchedulerService {
     return summary;
   }
 }
-

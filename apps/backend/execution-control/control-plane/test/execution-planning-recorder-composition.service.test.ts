@@ -57,4 +57,30 @@ describe('ExecutionPlanningService recorder composition lookup', () => {
       composition: expect.objectContaining({ postProcessingSteps: [{ id: 'report' }] }),
     });
   });
+
+  it('reads composition from a published temporal workflow snapshot', async () => {
+    const prisma = {
+      $queryRawUnsafe: jest.fn().mockResolvedValue([{
+        source_type: 'temporal_workflow',
+        release_version: 1,
+        source_payload_json: {
+          workflowDsl: {
+            sourceContext: {
+              browserWorkflowComposition: {
+                outputDeclarations: [{ name: 'step_5_clean_content' }],
+                postProcessingSteps: [{ id: 'post_process_1', type: 'llm_operation' }],
+              },
+            },
+          },
+        },
+      }]),
+    };
+    const service = new ExecutionPlanningService(prisma as any, {} as any);
+
+    await expect(service.loadPublishedRecorderComposition('temporal-browser-skill', '1')).resolves.toEqual({
+      skillVersion: '1',
+      outputNames: ['step_5_clean_content'],
+      composition: expect.objectContaining({ postProcessingSteps: [{ id: 'post_process_1', type: 'llm_operation' }] }),
+    });
+  });
 });

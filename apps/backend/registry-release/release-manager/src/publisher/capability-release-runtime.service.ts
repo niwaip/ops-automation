@@ -183,6 +183,21 @@ export class CapabilityReleaseRuntimeService {
         );
       }
       const normalizedInput: Record<string, any> = credentialResolution.input;
+      if (options?.executionId) normalizedInput.executionId = options.executionId;
+      const recoveryMetadata = options?.metadata;
+      if (recoveryMetadata?.resumeFromStepId) {
+        normalizedInput.__browserCheckpoint = {
+          resumeFromStepId: recoveryMetadata.resumeFromStepId,
+          recoveryType: recoveryMetadata.recoveryType,
+          loopIteration: recoveryMetadata.loopIteration,
+          variables: recoveryMetadata.variables || {},
+          previousPhaseResults: recoveryMetadata.previousPhaseResults || [],
+          resolutionNote: recoveryMetadata.resolutionNote,
+          resolvedBy: recoveryMetadata.resolvedBy,
+          resolvedAt: recoveryMetadata.resolvedAt,
+          takeoverId: recoveryMetadata.takeoverId,
+        };
+      }
       if (!normalizedInput.runtimeSessionId) {
         normalizedInput.runtimeSessionId = runtimeSessionId;
       }
@@ -240,22 +255,69 @@ export class CapabilityReleaseRuntimeService {
         rawResult && typeof rawResult === 'object' && !Array.isArray(rawResult)
           ? (rawResult as Record<string, unknown>)
           : null;
-      const runtimeStatus =
+
+      const nestedResult =
+        rawResultRecord?.result && typeof rawResultRecord.result === 'object' && !Array.isArray(rawResultRecord.result)
+          ? (rawResultRecord.result as Record<string, unknown>)
+          : null;
+      const businessData =
+        (nestedResult?.businessData && typeof nestedResult.businessData === 'object' && !Array.isArray(nestedResult.businessData)
+          ? (nestedResult.businessData as Record<string, unknown>)
+          : null) ||
+        (rawResultRecord?.businessData && typeof rawResultRecord.businessData === 'object' && !Array.isArray(rawResultRecord.businessData)
+          ? (rawResultRecord.businessData as Record<string, unknown>)
+          : null);
+      const executionRecord =
+        rawResultRecord?.execution && typeof rawResultRecord.execution === 'object' && !Array.isArray(rawResultRecord.execution)
+          ? (rawResultRecord.execution as Record<string, unknown>)
+          : null;
+
+      const executionStatus =
+        typeof executionRecord?.status === 'string' ? executionRecord.status.trim().toLowerCase() : undefined;
+      const businessStatus =
+        typeof businessData?.status === 'string' ? businessData.status.trim().toLowerCase() : undefined;
+      const nestedStatus =
+        typeof nestedResult?.status === 'string' ? nestedResult.status.trim().toLowerCase() : undefined;
+
+      const rawStatus =
         typeof rawResultRecord?.status === 'string' ? rawResultRecord.status : undefined;
-      const normalizedRuntimeStatus =
-        typeof runtimeStatus === 'string' ? runtimeStatus.trim().toLowerCase() : undefined;
-      const runtimeRequiresTakeover = rawResultRecord?.requiresTakeover === true;
-      const runtimeRetryable = rawResultRecord?.retryable === true;
+      const rawNormalizedStatus =
+        typeof rawStatus === 'string' ? rawStatus.trim().toLowerCase() : undefined;
+
+      const isTakeoverDetected =
+        rawResultRecord?.requiresTakeover === true ||
+        businessData?.requiresTakeover === true ||
+        nestedResult?.requiresTakeover === true ||
+        rawNormalizedStatus === 'takeover_required' ||
+        rawNormalizedStatus === 'waiting_takeover' ||
+        executionStatus === 'waiting_takeover' ||
+        executionStatus === 'takeover_required' ||
+        businessStatus === 'takeover_required' ||
+        businessStatus === 'waiting_takeover' ||
+        nestedStatus === 'takeover_required';
+
+      const runtimeRequiresTakeover = isTakeoverDetected;
+      const normalizedRuntimeStatus = isTakeoverDetected
+        ? 'takeover_required'
+        : rawNormalizedStatus || executionStatus || businessStatus || nestedStatus;
+      const runtimeRetryable = rawResultRecord?.retryable === true || businessData?.retryable === true;
       const runtimeTakeoverReason =
-        typeof rawResultRecord?.takeoverReason === 'string' ? rawResultRecord.takeoverReason : null;
+        (typeof rawResultRecord?.takeoverReason === 'string' && rawResultRecord.takeoverReason) ||
+        (typeof businessData?.takeoverReason === 'string' && businessData.takeoverReason) ||
+        (typeof nestedResult?.takeoverReason === 'string' && nestedResult.takeoverReason) ||
+        (typeof nestedResult?.summary === 'string' && nestedResult.summary.startsWith('等待人工接管') ? nestedResult.summary : null) ||
+        null;
+
       const runtimeSuccess =
-        rawResultRecord?.success === false
+        runtimeRequiresTakeover
           ? false
-          : rawResultRecord?.success === true
-            ? true
-            : !normalizedRuntimeStatus ||
-              ['completed', 'succeeded', 'success', 'rendered'].includes(normalizedRuntimeStatus);
-      const effectiveSuccess = result.success && runtimeSuccess && !runtimeRequiresTakeover;
+          : rawResultRecord?.success === false
+            ? false
+            : rawResultRecord?.success === true
+              ? true
+              : !normalizedRuntimeStatus ||
+                ['completed', 'succeeded', 'success', 'rendered'].includes(normalizedRuntimeStatus);
+      const effectiveSuccess = !runtimeRequiresTakeover && result.success && runtimeSuccess;
       const downloadUrl = extractDownloadUrl(rawResult);
       const temporalWorkflowId = result.workflowId;
       const temporalLink = temporalWorkflowId
@@ -331,7 +393,7 @@ export class CapabilityReleaseRuntimeService {
         output: normalizedResult,
         result: normalizedResult,
         retryable: runtimeRetryable,
-        requiresTakeover: runtimeRequiresTakeover || runtimeStatus === 'takeover_required',
+        requiresTakeover: runtimeRequiresTakeover || normalizedRuntimeStatus === 'takeover_required',
         takeoverReason: runtimeTakeoverReason,
         logs,
         error: runtimeError,

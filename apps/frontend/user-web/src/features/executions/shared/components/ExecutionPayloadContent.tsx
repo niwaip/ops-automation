@@ -524,21 +524,34 @@ const findDeepContent = (
     if (fromOutput.articles || fromOutput.text) return fromOutput;
   }
 
-  // 4. Inside stepResults array (scan all steps from end to start)
+  // 4. Direct text/summary/content
+  for (const k of ['text', 'summary', 'content', 'markdown', 'notificationSummary']) {
+    if (typeof rec[k] === 'string' && (rec[k] as string).trim()) {
+      return { text: (rec[k] as string).trim() };
+    }
+  }
+
+  // 5. Inside stepResults array: ONLY inspect steps explicitly marked as output steps
+  // (Prevents accidental text promotion from interactive steps like click, navigate, or loop_stop_read)
   if (Array.isArray(rec.stepResults) && rec.stepResults.length > 0) {
     for (let i = rec.stepResults.length - 1; i >= 0; i--) {
       const step = rec.stepResults[i];
       if (step && typeof step === 'object') {
-        const fromStep = findDeepContent((step as Record<string, unknown>).output || step);
-        if (fromStep.articles || fromStep.text) return fromStep;
-      }
-    }
-  }
+        const stepRec = step as Record<string, unknown>;
+        const action = String(stepRec.action || '').trim().toLowerCase();
+        const isExplicitOutputStep =
+          stepRec.isOutput === true ||
+          stepRec.isTerminalOutput === true ||
+          action === 'extract' ||
+          action === 'extract_content' ||
+          action === 'llm_operation' ||
+          action === 'read_page';
 
-  // 5. Direct text/summary/content
-  for (const k of ['text', 'summary', 'content', 'markdown', 'notificationSummary']) {
-    if (typeof rec[k] === 'string' && (rec[k] as string).trim()) {
-      return { text: (rec[k] as string).trim() };
+        if (isExplicitOutputStep) {
+          const fromStep = findDeepContent((stepRec.output as Record<string, unknown>) || stepRec);
+          if (fromStep.articles || fromStep.text) return fromStep;
+        }
+      }
     }
   }
 

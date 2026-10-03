@@ -96,7 +96,9 @@ export interface ReleaseManagerTemporalWorkflowPort {
   validateWorkflowReal(
     code: string,
     fn: string,
-    input?: unknown
+    input?: unknown,
+    taskQueue?: string,
+    timeout?: string
   ): Promise<{
     success: boolean;
     score: number;

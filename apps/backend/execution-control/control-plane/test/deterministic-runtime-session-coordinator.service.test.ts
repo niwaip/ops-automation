@@ -11,6 +11,7 @@ describe('DeterministicRuntimeSessionCoordinatorService', () => {
     const runtimeSessions = {
       allocateRuntimeSession: jest.fn(),
       closeQuietly: jest.fn().mockResolvedValue(undefined),
+      freezeQuietly: jest.fn().mockResolvedValue(undefined),
     };
     const events = { createEvent: jest.fn().mockResolvedValue(undefined) };
     return {
@@ -36,6 +37,14 @@ describe('DeterministicRuntimeSessionCoordinatorService', () => {
         stepId: 'browser-step-2',
       })
     ).resolves.toBe('session-standard');
+    expect(harness.runtimeSessions.allocateRuntimeSession).not.toHaveBeenCalled();
+  });
+
+  it('freezes the existing browser session before automatic takeover', async () => {
+    const harness = createHarness();
+    harness.prisma.runtimeSession.findFirst.mockResolvedValue({ id: 'session-standard' });
+    await harness.service.freezeForTakeover('execution-1', 'margin below threshold');
+    expect(harness.runtimeSessions.freezeQuietly).toHaveBeenCalledWith('session-standard', 'execution-1', 'margin below threshold');
     expect(harness.runtimeSessions.allocateRuntimeSession).not.toHaveBeenCalled();
   });
 

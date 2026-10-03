@@ -184,7 +184,10 @@ export interface PlaywrightCliContext {
   enrichResultArtifacts(
     sessionId: string,
     result: CliActionResult,
-    options?: { captureScreenshot?: boolean }
+    options?: {
+      captureScreenshot?: boolean;
+      captureProfile?: Record<string, unknown>;
+    }
   ): Promise<CliActionResult>;
   resolveStateFilePath(sessionId: string, executionIndex: number): Promise<string>;
 }

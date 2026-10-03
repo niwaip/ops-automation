@@ -137,10 +137,18 @@ export function applyGate2OutputSchemaValidation(
     typeof outputContract?.dataPath === 'string' && outputContract.dataPath.trim()
       ? outputContract.dataPath.trim()
       : undefined;
-  const workflowResult =
+  let workflowResult =
     resultSnapshot && typeof resultSnapshot === 'object' ? resultSnapshot.result : undefined;
+  // The validation worker wraps the workflow envelope in { success, logs, result }.
+  // Validate business output, not this transport wrapper.
+  const workerResult = workflowResult as Record<string, unknown> | undefined;
+  const hasWorkerEnvelope = workerResult && typeof workerResult.success === 'boolean'
+    && Array.isArray(workerResult.logs) && workerResult.result !== undefined;
+  if (hasWorkerEnvelope) workflowResult = workerResult.result;
   const extractedBusinessData = contractDataPath
     ? jsonSchemaValidator.extractDataByPath(workflowResult, contractDataPath)
+    : hasWorkerEnvelope
+      ? jsonSchemaValidator.extractDataByPath(workflowResult, '$.result.businessData')
     : jsonSchemaValidator.extractDataByPath(resultSnapshot, '$.result.businessData');
   const businessData = extractedBusinessData === undefined ? resultSnapshot : extractedBusinessData;
   const validationResult = jsonSchemaValidator.validate(
