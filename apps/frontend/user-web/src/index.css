@@ -17,6 +17,7 @@
   --bg-primary: #f8fafc;
   --bg-secondary: #f1f5f9;
   --bg-card: #ffffff;
+  --bg-card-secondary: #f8fafc;
   --bg-sidebar: linear-gradient(180deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
   --bg-header: rgba(255, 255, 255, 0.95);
   --bg-hover: #e2e8f0;
@@ -49,6 +50,7 @@
   --bg-primary: #0f172a;
   --bg-secondary: #334155;
   --bg-card: #1e293b;
+  --bg-card-secondary: #0f172a;
   --bg-header: rgba(30, 41, 59, 0.95);
   --bg-hover: #243244;
   --border-color: #334155;

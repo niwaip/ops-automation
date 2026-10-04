@@ -26,6 +26,15 @@ export const AntdProvider: React.FC<{ children: React.ReactNode }> = ({ children
         borderRadius: BORDER_RADIUS,
         borderRadiusLG: 24, // --radius-xl
         borderRadiusSM: 6,  // --radius-sm
+        ...(theme === 'dark'
+          ? {
+              colorBgContainer: '#1e293b',
+              colorBgElevated: '#1e293b',
+              colorBgLayout: '#0f172a',
+              colorBorder: '#334155',
+              colorBorderSecondary: '#334155',
+            }
+          : {}),
       },
       components: {
         Layout: {
@@ -35,6 +44,16 @@ export const AntdProvider: React.FC<{ children: React.ReactNode }> = ({ children
         Card: {
           colorBgContainer: theme === 'dark' ? '#1e293b' : '#ffffff',
           colorBorderSecondary: theme === 'dark' ? '#334155' : '#e2e8f0',
+        },
+        Table: {
+          colorBgContainer: theme === 'dark' ? '#1e293b' : '#ffffff',
+          headerBg: theme === 'dark' ? '#334155' : '#f1f5f9',
+          headerColor: theme === 'dark' ? '#cbd5e1' : '#64748b',
+          headerSortBg: theme === 'dark' ? '#334155' : '#f1f5f9',
+          headerSortHoverBg: theme === 'dark' ? '#243244' : '#e2e8f0',
+          bodySortBg: 'transparent',
+          rowHoverBg: theme === 'dark' ? '#243244' : '#f1f5f9',
+          borderColor: theme === 'dark' ? '#334155' : '#e2e8f0',
         },
         Menu: {
           colorBgContainer: 'transparent',

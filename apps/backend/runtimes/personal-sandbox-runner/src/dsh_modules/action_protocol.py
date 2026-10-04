@@ -407,3 +407,21 @@ def recover_text_tool_calls(
             }
         )
     return recovered
+
+
+def detect_retrieval_mismatch_disclaimer(text: str) -> bool:
+    """
+    Detects if the model passively gave up claiming search results only contained
+    unrelated content or failed to find facts, instead of autonomously using web_search.
+    """
+    if not text:
+        return False
+    disclaimer_patterns = [
+        r"(?:当前|本次)?检索(?:到的)?(?:有效)?(?:信息|内容|结果)?(?:中)?仅包含.{1,40}(?:未检索到|未能找到|无法确认)",
+        r"(?:未检索到|未能找到|未找到|未包含).{0,30}(?:的相关内容|的最新动态|的相关信息|的榜单|的热点|数据|内容|信息).{0,30}(?:无法确认|无法提供|不能确认)",
+        r"当前检索未能确认.{0,40}(?:无法|未能)",
+        r"(?:当前|本次)检索结果与.{1,30}(?:不符|无关|脱节)",
+        r"未检索到有效信息.{0,30}无法(?:提供|确认|回答)",
+    ]
+    return any(re.search(p, text) for p in disclaimer_patterns)
+

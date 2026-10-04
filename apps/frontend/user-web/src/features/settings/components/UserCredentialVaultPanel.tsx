@@ -307,12 +307,13 @@ export const UserCredentialVaultPanel: React.FC = () => {
 
                     <div
                       style={{
-                        background: 'var(--bg-card-secondary, #f8fafc)',
+                        background: token.colorFillAlter,
+                        border: `1px solid ${token.colorBorderSecondary}`,
                         padding: '8px 12px',
                         borderRadius: 8,
                         fontSize: 12,
                         fontFamily: 'monospace',
-                        color: 'var(--text-secondary, #64748b)',
+                        color: token.colorTextSecondary,
                         marginBottom: 12,
                         wordBreak: 'break-all',
                       }}
@@ -326,7 +327,7 @@ export const UserCredentialVaultPanel: React.FC = () => {
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      borderTop: '1px solid var(--border-color, #f1f5f9)',
+                      borderTop: `1px solid ${token.colorBorderSecondary}`,
                       paddingTop: 10,
                     }}
                   >

@@ -215,6 +215,14 @@
   padding: 12px 16px !important;
 }
 
+.workspace-table :global(.ant-table-thead > tr > th.ant-table-column-sort) {
+  background: var(--bg-secondary) !important;
+}
+
+.workspace-table :global(.ant-table-thead > tr > th.ant-table-column-has-sorters:hover) {
+  background: var(--bg-hover) !important;
+}
+
 .workspace-table :global(.ant-table-tbody > tr > td) {
   border-bottom: 1px solid var(--border-color) !important;
   padding: 12px 16px !important;
@@ -223,7 +231,15 @@
   transition: background var(--transition-fast, 150ms ease) !important;
 }
 
+.workspace-table :global(.ant-table-tbody > tr > td.ant-table-column-sort) {
+  background: transparent !important;
+}
+
 .workspace-table :global(.ant-table-tbody > tr:hover > td) {
+  background: var(--bg-hover) !important;
+}
+
+.workspace-table :global(.ant-table-tbody > tr:hover > td.ant-table-column-sort) {
   background: var(--bg-hover) !important;
 }
 
@@ -287,6 +303,108 @@
   margin: auto;
   padding: 48px 0;
   text-align: center;
+}
+
+/* ==================== 侧边栏引导卡片 ==================== */
+.workspace-sidebar-tip-card {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md, 10px);
+  background: color-mix(in srgb, var(--primary-color) 6%, var(--bg-card));
+  border: 1px solid color-mix(in srgb, var(--primary-color) 15%, transparent);
+}
+
+.workspace-sidebar-tip-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.workspace-sidebar-tip-desc {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* ==================== 拖拽与空闲区域引导 ==================== */
+.workspace-content-body.is-drag-over {
+  background: color-mix(in srgb, var(--primary-color) 6%, var(--bg-card));
+  outline: 2px dashed var(--primary-color);
+  outline-offset: -4px;
+}
+
+.workspace-drop-hint-area {
+  margin-top: 16px;
+  padding: 20px 24px;
+  border: 1.5px dashed var(--border-color);
+  border-radius: var(--radius-md, 10px);
+  background: color-mix(in srgb, var(--bg-primary) 40%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: all var(--transition-fast, 150ms ease);
+}
+
+.workspace-drop-hint-area:hover {
+  border-color: var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 4%, var(--bg-card));
+}
+
+.workspace-drop-hint-icon {
+  font-size: 26px;
+  color: var(--primary-color);
+  flex-shrink: 0;
+}
+
+.workspace-drop-hint-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.workspace-drop-hint-sub {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+/* ==================== 底部状态栏 ==================== */
+.workspace-footer {
+  height: 40px;
+  min-height: 40px;
+  padding: 0 24px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-card);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.workspace-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.workspace-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--text-light);
+  font-size: 12px;
 }
 
 @media (max-width: 900px) {
