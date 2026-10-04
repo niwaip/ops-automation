@@ -847,7 +847,7 @@ export class ExecutionPhaseSyncService {
 
     return {
       stepIndex,
-      stepId: this.readNonEmptyString(stepRecord.stepId, stepRecord.step_id, stepRecord.id) || null,
+      stepId: this.readNonEmptyString(options?.phaseResult?.stepId, stepRecord.stepId, stepRecord.step_id, stepRecord.id) || null,
       action:
         this.readNonEmptyString(
           stepRecord.action,
@@ -856,8 +856,16 @@ export class ExecutionPhaseSyncService {
           options?.fallbackAction
         ) || 'execute',
       status: this.normalizeRuntimePhaseStepStatus(stepRecord),
-      input,
-      output,
+      input: {
+        ...input,
+        ...(options?.phaseResult?.loopIteration ? { loopIteration: options.phaseResult.loopIteration } : {}),
+      },
+      output: {
+        ...output,
+        ...(snapshot ? { snapshot } : {}),
+        ...(stepRecord.pageUrl ? { pageUrl: stepRecord.pageUrl } : {}),
+        ...(stepRecord.pageTitle ? { pageTitle: stepRecord.pageTitle } : {}),
+      },
       errorMessage:
         this.readNonEmptyString(
           stepRecord.errorMessage,

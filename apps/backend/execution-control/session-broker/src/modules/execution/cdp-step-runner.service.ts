@@ -287,7 +287,7 @@ export class CdpStepRunnerService {
   }
 
   shouldExtractMainContent(step: TemplateStep): boolean {
-    if (step.action === 'read_page' || step.action === 'get_text' || step.action === 'read_value') {
+    if (step.action === 'read_page') {
       return true;
     }
     const captureProfile =

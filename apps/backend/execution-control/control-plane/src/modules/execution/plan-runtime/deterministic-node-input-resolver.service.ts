@@ -145,7 +145,10 @@ export class DeterministicNodeInputResolverService {
               if (rawPaths.length > 1) {
                 const texts: string[] = [];
                 for (const p of rawPaths) {
-                  const stepVal = this.getValueByPath(upstreamOutput, p);
+                  let stepVal = this.getValueByPath(upstreamOutput, p);
+                  if (stepVal === undefined) stepVal = this.getValueByPath(upstreamOutput, `result.businessData.${p}`);
+                  if (stepVal === undefined) stepVal = this.getValueByPath(upstreamOutput, `businessData.${p}`);
+                  if (stepVal === undefined) stepVal = this.getValueByPath(upstreamOutput, `result.${p}`);
                   if (stepVal !== undefined && stepVal !== null) {
                     const stepText = await resolveSingle(stepVal);
                     if (stepText.trim()) {
@@ -154,9 +157,30 @@ export class DeterministicNodeInputResolverService {
                     }
                   }
                 }
-                resolvedInput[field] = texts.length > 0 ? texts.join('\n\n---\n\n') : await resolveSingle(upstreamValue);
+                if (texts.length > 0) {
+                  resolvedInput[field] = texts.join('\n\n---\n\n');
+                } else {
+                  resolvedInput[field] = await this.resolveFallbackTextContent(
+                    upstreamOutput,
+                    upstreamValue,
+                    executionId,
+                    resolveSingle,
+                  );
+                }
               } else {
-                resolvedInput[field] = await resolveSingle(upstreamValue);
+                let singleText =
+                  upstreamValue !== undefined && upstreamValue !== null
+                    ? await resolveSingle(upstreamValue)
+                    : '';
+                if (!singleText || !singleText.trim()) {
+                  singleText = await this.resolveFallbackTextContent(
+                    upstreamOutput,
+                    upstreamValue,
+                    executionId,
+                    resolveSingle,
+                  );
+                }
+                resolvedInput[field] = singleText;
               }
             } else {
               resolvedInput[field] = upstreamValue;
@@ -584,8 +608,120 @@ export class DeterministicNodeInputResolverService {
           return stepOut[path];
         }
       }
+
+      const phaseResults = Array.isArray(obj.phaseResults)
+        ? obj.phaseResults
+        : Array.isArray(obj.businessData?.phaseResults)
+          ? obj.businessData.phaseResults
+          : Array.isArray(obj.result?.businessData?.phaseResults)
+            ? obj.result.businessData.phaseResults
+            : [];
+      for (let i = phaseResults.length - 1; i >= 0; i--) {
+        const pItem = phaseResults[i];
+        if (pItem?.stepId === path) return pItem.result;
+        if (`${pItem?.stepId}_clean_content` === path) {
+          const t = pItem.result?.data?.text || pItem.result?.text || pItem.result?.content;
+          if (t !== undefined) return t;
+        }
+        if (pItem?.result?.variables && pItem.result.variables[path] !== undefined) {
+          return pItem.result.variables[path];
+        }
+      }
     }
 
     return undefined;
+  }
+
+  private async resolveFallbackTextContent(
+    upstreamOutput: Record<string, any>,
+    upstreamValue: unknown,
+    executionId: string,
+    resolveSingle: (val: unknown) => Promise<string>,
+  ): Promise<string> {
+    if (upstreamValue !== undefined && upstreamValue !== null) {
+      const text = await resolveSingle(upstreamValue);
+      if (text && text.trim()) return text.trim();
+    }
+
+    const fallbackPaths = [
+      'content',
+      'text',
+      'markdown',
+      'summary',
+      'result.summary',
+      'detailText',
+      'presentation.detailText',
+      'presentation.chatSummary',
+      'businessData.message',
+      'result.businessData.message',
+      'result.businessData.result.message',
+    ];
+    for (const fp of fallbackPaths) {
+      const val = this.getValueByPath(upstreamOutput, fp);
+      if (val !== undefined && val !== null) {
+        const text = await resolveSingle(val);
+        if (text && text.trim()) return text.trim();
+      }
+    }
+
+    const bData =
+      this.getValueByPath(upstreamOutput, 'result.businessData') ||
+      this.getValueByPath(upstreamOutput, 'businessData');
+    const title =
+      this.getValueByPath(upstreamOutput, 'result.title') ||
+      this.getValueByPath(upstreamOutput, 'title') ||
+      '自动化流程';
+
+    if (bData && typeof bData === 'object') {
+      const bResult = (bData as any).result || bData;
+      const lines: string[] = [`### 【${title}】执行结果与数据\n`];
+      if (bResult.status) lines.push(`- **执行状态**: ${bResult.status}`);
+      if (bResult.commandCount !== undefined) lines.push(`- **执行步骤数**: ${bResult.commandCount}`);
+      if (bResult.message) lines.push(`- **提示信息**: ${bResult.message}`);
+
+      const vars = bResult.variables || (bData as any).variables;
+      if (vars && typeof vars === 'object' && Object.keys(vars).length > 0) {
+        lines.push('- **页面提取变量**:');
+        for (const [k, v] of Object.entries(vars)) {
+          lines.push(`  - \`${k}\`: ${v}`);
+        }
+      }
+
+      const phaseResults =
+        (bData as any).phaseResults ||
+        (upstreamOutput as any).phaseResults ||
+        (upstreamOutput as any).result?.phaseResults;
+      if (Array.isArray(phaseResults) && phaseResults.length > 0) {
+        lines.push('- **分阶段执行记录**:');
+        for (const p of phaseResults) {
+          const sName = p.stepName || p.activityName || p.stepId || '阶段';
+          const sStatus = p.result?.status || (p.result?.results ? 'completed' : 'done');
+          lines.push(`  - 步骤【${sName}】: 状态 \`${sStatus}\``);
+          if (p.result?.variables && typeof p.result.variables === 'object') {
+            for (const [vk, vv] of Object.entries(p.result.variables)) {
+              lines.push(`    - 变量 \`${vk}\`: ${vv}`);
+            }
+          }
+        }
+      }
+
+      if (Array.isArray(bResult.results) && bResult.results.length > 0) {
+        lines.push('- **执行操作详情**:');
+        for (const r of bResult.results) {
+          const cmd = r.command || 'action';
+          const st = r.status || 'unknown';
+          const pageTitle = r.pageTitle ? ` (页面: ${r.pageTitle})` : '';
+          const pageUrl = r.pageUrl ? ` (URL: ${r.pageUrl})` : '';
+          const msg = r.message ? ` - ${r.message}` : '';
+          lines.push(`  - 动作: \`${cmd}\`, 状态: \`${st}\`${pageTitle}${pageUrl}${msg}`);
+        }
+      }
+
+      if (lines.length > 1) {
+        return lines.join('\n');
+      }
+    }
+
+    return '';
   }
 }

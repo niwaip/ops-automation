@@ -111,8 +111,12 @@ export class SchemaCompatibilityService {
   public resolveCompatibility(
     sourcePayload?: Record<string, unknown> | null
   ): ContractCompatibilityMode {
+    if (!sourcePayload || typeof sourcePayload !== 'object') return 'backward';
     const manifest = (sourcePayload as any)?.manifest as any;
-    const mode = manifest?.spec?.migration?.contractCompatibility;
+    const mode =
+      (sourcePayload as any)?.contractCompatibility ||
+      (sourcePayload as any)?.migration?.contractCompatibility ||
+      manifest?.spec?.migration?.contractCompatibility;
     return mode === 'none' ? 'none' : 'backward';
   }
 

@@ -134,7 +134,7 @@ const ExecutionPhasesCollapse: React.FC<ExecutionPhasesCollapseProps> = ({
                 ) : null}
 
                 {phaseDisplayOutput ? (
-                  <ExecutionDetailSectionCard title={isBrowserActivityPhase ? '阶段输出 / 提取正文' : '阶段输出'}>
+                  <ExecutionDetailSectionCard title="阶段输出">
                     <ExecutionPayloadContent
                       value={phaseDisplayOutput}
                       emptyText="该阶段暂无输出内容。"

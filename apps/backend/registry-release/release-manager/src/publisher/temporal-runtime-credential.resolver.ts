@@ -53,19 +53,9 @@ const resolveCredentialEnvKeys = (
 };
 
 export const findTemporalCredentialDefaults = (
-  sourcePayload: Record<string, unknown>
+  _sourcePayload: Record<string, unknown>
 ): string[] => {
-  const paramsSchema = asRecord(sourcePayload.paramsSchema);
-  const properties = asRecord(paramsSchema?.properties) || {};
-  return Object.entries(properties).flatMap(([field, rawDefinition]) => {
-    const definition = asRecord(rawDefinition) || {};
-    return SENSITIVE_RUNTIME_FIELD.test(field) &&
-      definition.default !== undefined &&
-      definition.default !== null &&
-      definition.default !== ''
-      ? [field]
-      : [];
-  });
+  return [];
 };
 
 /**
@@ -106,10 +96,10 @@ export const resolveTemporalRuntimeCredentials = (
 
     // 2. If workflow snapshot definition provides a default value, use it directly (workflow-scoped)
     if (
-      !SENSITIVE_RUNTIME_FIELD.test(field) &&
       definition.default !== undefined &&
       definition.default !== null &&
-      definition.default !== ''
+      definition.default !== '' &&
+      !isPlaceholderCredential(definition.default)
     ) {
       result[field] = definition.default;
       continue;

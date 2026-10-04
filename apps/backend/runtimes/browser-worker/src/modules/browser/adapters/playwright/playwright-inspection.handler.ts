@@ -381,6 +381,7 @@ export class PlaywrightInspectionHandler {
     result: CliActionResult,
     options?: {
       captureScreenshot?: boolean;
+      captureProfile?: Record<string, unknown>;
     }
   ): Promise<CliActionResult> {
     const enriched: CliActionResult = { ...result };
@@ -389,27 +390,34 @@ export class PlaywrightInspectionHandler {
       return enriched;
     }
 
-    if (!enriched.html && enriched.command !== 'screenshot') {
+    const profile = options?.captureProfile;
+    const capture =
+      profile && typeof profile === 'object' && 'capture' in profile
+        ? (profile.capture as Record<string, unknown> | undefined)
+        : undefined;
+
+    const shouldCaptureHtml = capture?.html !== false;
+    if (shouldCaptureHtml && !enriched.html && enriched.command !== 'screenshot') {
       enriched.html = await this.pageReader.readCurrentPageHtml(sessionId).catch(() => undefined);
     }
 
+    const isExplicitReadPageCommand = enriched.command === 'read_page';
+    const isMainContentExplicitlyEnabled = capture?.mainContent === true;
+
     if (
       enriched.html &&
-      !enriched.text &&
-      !enriched.data?.text &&
-      (enriched.command === 'read_page' ||
-        enriched.command === 'get_text' ||
-        enriched.command === 'read_value' ||
-        enriched.command === 'navigate' ||
-        enriched.command === 'click' ||
-        enriched.command === 'press_key')
+      (isMainContentExplicitlyEnabled || (isExplicitReadPageCommand && capture?.mainContent !== false))
     ) {
       const extractedText = this.pageReader.extractMainTextFromHtml(enriched.html);
       if (extractedText) {
-        enriched.text = extractedText;
+        const limits = profile?.limits as Record<string, unknown> | undefined;
+        const limit = Math.max(1, Math.min(30000, Number(limits?.contentChars) || 30000));
+        const mainContent = extractedText.slice(0, limit);
+        if (!enriched.text && !enriched.data?.text) enriched.text = mainContent;
         enriched.data = {
           ...(enriched.data || {}),
-          text: extractedText,
+          ...(!enriched.data?.text ? { text: mainContent } : {}),
+          mainContent,
         };
       }
     }

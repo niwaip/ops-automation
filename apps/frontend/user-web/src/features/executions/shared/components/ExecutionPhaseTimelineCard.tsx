@@ -17,6 +17,7 @@ import {
 import { getPhaseStatusColor, getPhaseStatusLabel } from '@/features/executions/shared/lib/phase';
 import { formatPhaseDisplayName } from '@/features/executions/shared/lib/phaseText';
 import { formatLocalizedDateTime } from '@/shared/utils/dateText';
+import ExecutionStepSnapshotViewer from '@/features/executions/shared/components/ExecutionStepSnapshotViewer';
 
 const { Text } = Typography;
 
@@ -89,6 +90,14 @@ const ExecutionPhaseTimelineCard: React.FC<ExecutionPhaseTimelineCardProps> = ({
                     const phaseSteps = getPhaseSteps(phase);
                     const phaseSnapshotSources = extractWorkflowActivitySnapshotSources(phase);
                     const phaseArtifacts = getPhaseArtifacts(phase);
+                    const totalArtifactCount = Math.max(
+                      phaseArtifacts.length,
+                      phaseSteps.reduce(
+                        (acc, step) =>
+                          acc + extractPhaseStepImageSources(step, phaseArtifacts).length,
+                        0
+                      )
+                    );
                     return {
                       color: getPhaseStatusColor(phase.status),
                       children: (
@@ -111,7 +120,7 @@ const ExecutionPhaseTimelineCard: React.FC<ExecutionPhaseTimelineCardProps> = ({
                               items={[
                                 `${labels.phaseAttempt}: ${phase.attempt}`,
                                 `${labels.phaseSteps}: ${phaseSteps.length}`,
-                                `${labels.phaseArtifactCount}: ${phaseArtifacts.length}`,
+                                `${labels.phaseArtifactCount}: ${totalArtifactCount}`,
                               ]}
                             />
 
@@ -158,6 +167,7 @@ const ExecutionPhaseTimelineCard: React.FC<ExecutionPhaseTimelineCardProps> = ({
                                             </Text>
                                           </Space>
                                           {stepUrl ? <Text copyable={{ text: stepUrl }}>{stepUrl}</Text> : null}
+                                          <ExecutionStepSnapshotViewer step={step} />
                                           {step.errorMessage ? (
                                             <ExecutionErrorAlert
                                               message={labels.phaseActionFailed}
@@ -183,7 +193,7 @@ const ExecutionPhaseTimelineCard: React.FC<ExecutionPhaseTimelineCardProps> = ({
                             ) : null}
 
                             {phase.output ? (
-                              <ExecutionDetailSectionCard title={isEnglish ? 'Phase Output' : '阶段输出 / 提取正文'}>
+                              <ExecutionDetailSectionCard title={isEnglish ? 'Phase Output' : '阶段输出'}>
                                 <ExecutionPayloadContent
                                   value={
                                     phase.output &&

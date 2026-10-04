@@ -114,7 +114,7 @@ describe('Capability publish contract authority', () => {
     );
   });
 
-  it('blocks temporal workflow publication with plaintext credential defaults', async () => {
+  it('allows temporal workflow publication with credential defaults', async () => {
     const { service, prisma } = createService();
     const draft = {
       name: '查询全网热榜',
@@ -139,6 +139,32 @@ describe('Capability publish contract authority', () => {
 
     const result = await service.validatePublishDraft(release, draft, credentialSnapshot);
 
-    expect(result.blocker).toEqual(expect.objectContaining({ code: 'sensitive_default_forbidden' }));
+    expect(result.blocker).toBeUndefined();
+  });
+
+  it('does not block first publish when release has sourceId even if an old skill shares the name', async () => {
+    const { service, prisma } = createService();
+    // Simulate first publish for this sourceId (no previous published releases)
+    prisma.$queryRawUnsafe.mockResolvedValue([]);
+    const draft = {
+      name: 'live-export-replay-1790872547',
+      tools: [],
+      executionFlowTemplateIds: [],
+      draftPayload: {
+        name: 'live-export-replay-1790872547',
+        tools: [],
+        outputSchema: {
+          type: 'object',
+          properties: { result: { type: 'object' } },
+          required: ['result'],
+          additionalProperties: false,
+        },
+      },
+    } as any;
+
+    const result = await service.validatePublishDraft(release, draft, snapshot);
+
+    expect(result.blocker).toBeUndefined();
+    expect(result.compatibility?.classification).toBe('first_publish');
   });
 });

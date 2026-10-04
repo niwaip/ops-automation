@@ -560,6 +560,63 @@ describe('CapabilityReleaseService', () => {
     });
   });
 
+  it('extracts nested takeover status when temporal workflow output requires takeover', async () => {
+    const { service, activityService, releaseRuntimeBindingService, releaseFacadeContextService } =
+      createService();
+
+    jest
+      .spyOn(releaseRuntimeBindingService, 'getReleaseByPublishedSkillOrThrow')
+      .mockResolvedValue({
+        id: 'release-1',
+        sourceType: 'temporal_workflow',
+      } as any);
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+      id: 'snapshot-1',
+      sourcePayload: {
+        workflowDsl: {
+          workflowClassName: 'TakeoverWorkflow',
+        },
+      },
+    });
+    jest
+      .spyOn(releaseFacadeContextService as any, 'resolveTemporalExecutableBuildOrThrow')
+      .mockResolvedValue({
+        id: 'build-1',
+        generatedCode: 'PYTHON_CODE',
+      });
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
+
+    jest.spyOn(activityService, 'executeCodeStreaming').mockResolvedValue({
+      success: true,
+      result: {
+        execution: { status: 'waiting_takeover' },
+        trigger: { type: 'manual' },
+        result: {
+          resultType: 'generic',
+          title: 'TakeoverWorkflow',
+          summary: '等待人工接管: 案件粗利率未达到20%以上',
+          businessData: {
+            requiresTakeover: true,
+            takeoverReason: '案件粗利率未达到20%以上',
+            status: 'takeover_required',
+          },
+        },
+      },
+      workflowId: 'workflow-takeover-1',
+    });
+
+    const result = await service.executePublishedSkill(
+      'skill-temporal-takeover',
+      {},
+      'user-1'
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.status).toBe('takeover_required');
+    expect(result.requiresTakeover).toBe(true);
+    expect(result.takeoverReason).toBe('案件粗利率未达到20%以上');
+  });
+
   it('pushes workflow activity progress to control-plane while executing temporal workflow', async () => {
     const { service, activityService, releaseRuntimeBindingService, releaseFacadeContextService } =
       createService();

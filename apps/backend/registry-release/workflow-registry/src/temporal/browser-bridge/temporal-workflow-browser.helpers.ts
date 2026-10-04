@@ -567,6 +567,9 @@ export function buildBrowserActivityStepsFromTemplateSteps(
     if (step?.branch && typeof step.branch === 'object') {
       config.branch = step.branch;
     }
+    if (step?.capture_profile && typeof step.capture_profile === 'object') {
+      config.captureProfile = step.capture_profile;
+    }
 
     if (selector) {
       config.selector = selector;

@@ -798,4 +798,84 @@ describe('BrowserPhaseExecutor', () => {
       note: 'approved from string payload',
     });
   });
+
+  it('persists step screenshot artifacts into execution_phase_artifacts table', async () => {
+    const browserPhaseRecoveryPlanner = {
+      plan: jest.fn(),
+    };
+    const browserRuntimeAdapter = {
+      inspectState: jest.fn(),
+      assertState: jest.fn(),
+    };
+    const executionPhaseService = {
+      getByExecutionIdAndPhaseKey: jest.fn().mockResolvedValue(null),
+      markRunning: jest.fn().mockResolvedValue(undefined),
+      markCompleted: jest.fn().mockResolvedValue(undefined),
+      markFailed: jest.fn().mockResolvedValue(undefined),
+      markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
+      appendSteps: jest.fn().mockResolvedValue(undefined),
+      appendArtifacts: jest.fn().mockResolvedValue(undefined),
+    };
+    const runtimeExecutionOrchestrator = {
+      executePhase: jest.fn().mockResolvedValue({
+        success: true,
+        status: 'completed',
+        stepResults: [
+          {
+            success: true,
+            status: 'completed',
+            snapshot: { id: 'snap-1', path: '/snapshots/snap-1.png' },
+            output: {
+              pageUrl: 'https://example.com/step1',
+              snapshot: { id: 'snap-1', path: '/snapshots/snap-1.png' },
+            },
+            rawResult: { stepId: 'step-1' },
+          },
+        ],
+        output: { ok: true },
+      }),
+    };
+
+    const executor = new BrowserPhaseExecutor(
+      browserPhaseRecoveryPlanner as never,
+      browserRuntimeAdapter as never,
+      executionPhaseService as never,
+      runtimeExecutionOrchestrator as never
+    );
+
+    const result = await executor.execute({
+      executionId: 'execution-1',
+      phaseKey: 'phase_action',
+      phaseName: '操作阶段',
+      phaseType: 'browser_action',
+      runtimeSessionId: 'runtime-1',
+      commands: [
+        {
+          stepId: 'step-1',
+          capabilityType: 'browser_step',
+          action: 'click',
+          input: {},
+        },
+      ],
+      input: {},
+    });
+
+    expect(result.success).toBe(true);
+    expect(executionPhaseService.appendArtifacts).toHaveBeenCalledWith(
+      'execution-1',
+      'phase_action',
+      [
+        {
+          artifactType: 'screenshot',
+          snapshotId: 'snap-1',
+          pageUrl: 'https://example.com/step1',
+          pageFingerprint: null,
+          payload: {
+            path: '/snapshots/snap-1.png',
+            stepId: 'step-1',
+          },
+        },
+      ]
+    );
+  });
 });

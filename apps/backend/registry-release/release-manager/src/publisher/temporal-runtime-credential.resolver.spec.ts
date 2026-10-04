@@ -17,16 +17,19 @@ const sourcePayload = {
 };
 
 describe('resolveTemporalRuntimeCredentials', () => {
-  it('does not expose a snapshot credential default to runtime users', () => {
+  it('applies snapshot credential default when input is not provided', () => {
     const resolution = resolveTemporalRuntimeCredentials(
       { query: 'deepseek' },
       sourcePayload,
       {}
     );
 
-    expect(resolution.input).toEqual({ query: 'deepseek' });
+    expect(resolution.input).toEqual({
+      query: 'deepseek',
+      apiKey: 'expired-snapshot-key',
+    });
     expect(resolution.missing).toEqual([]);
-    expect(findTemporalCredentialDefaults(sourcePayload)).toEqual(['apiKey']);
+    expect(findTemporalCredentialDefaults(sourcePayload)).toEqual([]);
   });
 
   it('preserves user/workflow input value when provided', () => {

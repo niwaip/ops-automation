@@ -600,6 +600,10 @@ export function resolvePhaseRecoveryMetadata(
     if (Array.isArray(checkpoint.previousStepResults)) {
       metadata.previousStepResults = checkpoint.previousStepResults;
     }
+    if (checkpoint.previousPhaseResults?.length) {
+      metadata.previousPhaseResults = checkpoint.previousPhaseResults;
+      metadata.loopIteration = patch?.loopIteration || checkpoint.loopIteration;
+    }
   }
 
   // 回退机制：若阶段输出因异常被冲掉，从 stepInput 中恢复业务变量与证据
@@ -619,5 +623,4 @@ export function resolvePhaseRecoveryMetadata(
 
   return metadata;
 }
-
 

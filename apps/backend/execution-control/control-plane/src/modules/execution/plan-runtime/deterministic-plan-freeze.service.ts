@@ -258,64 +258,78 @@ export class DeterministicPlanFreezeService {
         if (!fromNode) continue; // structural validation already reports this
         if (contractCompatMap.get(targetNodeId) === 'none') continue;
         const outPath = binding.path || binding.outputPath || '';
-        if (!outPath) continue;
+        const rawPaths = Array.isArray((binding as any).paths)
+          ? ((binding as any).paths as string[]).filter(Boolean)
+          : outPath.includes(',')
+            ? outPath.split(',').map((p) => p.trim()).filter(Boolean)
+            : [outPath].filter(Boolean);
+        if (rawPaths.length === 0) continue;
 
         const upstreamSchema = resolvedOutputSchemas[targetNodeId] as any;
         const upstreamProperties = upstreamSchema?.properties;
-        const propertySchema = upstreamProperties?.[outPath];
 
-        // Fix ⑧ — a binding outputPath must be declared by the producer's
-        // authoritative catalog schema. When the producer schema declares a
-        // non-empty property set and the bound path is absent from it, the
-        // plan binds a field the producer never emits — a definite conflict,
-        // so reject. Only a producer schema with NO declared properties
-        // (open/unknown shape) stays fail-open.
-        if (!propertySchema) {
+        for (const singlePath of rawPaths) {
+          const propertySchema = upstreamProperties?.[singlePath];
+
+          // Fix ⑧ — a binding outputPath must be declared by the producer's
+          // authoritative catalog schema. When the producer schema declares a
+          // non-empty property set and the bound path is absent from it, the
+          // plan binds a field the producer never emits — a definite conflict,
+          // so reject. Only a producer schema with NO declared properties
+          // (open/unknown shape) stays fail-open.
+          if (!propertySchema) {
+            if (
+              upstreamProperties &&
+              typeof upstreamProperties === 'object' &&
+              Object.keys(upstreamProperties).length > 0
+            ) {
+              errors.push({
+                code: ERROR_CODES.EDGE_TYPE_INCOMPATIBLE,
+                message:
+                  `Node '${node.nodeId}' field '${fieldName}' binds outputPath '${singlePath}' from node ` +
+                  `'${fromNode.nodeId}', but the catalog output schema of '${fromNode.nodeId}' declares no such ` +
+                  `property (declared: ${Object.keys(upstreamProperties).join(', ')})`,
+                nodeId: node.nodeId,
+                field: fieldName,
+              });
+            }
+            continue;
+          }
+
+          // 1. Primitive type compatibility.
+          const schemaType = this.jsonSchemaTypeToValueType(propertySchema.type);
+          const fieldSchema = (resolvedInputSchemas[node.nodeId] as any)?.properties?.[fieldName];
+          let expectedType: ValueTypeV1 | null = binding.expectedType || null;
+          if (!expectedType) {
+            // Infer from the downstream node's authoritative input schema.
+            expectedType = fieldSchema ? this.jsonSchemaTypeToValueType(fieldSchema.type) : null;
+          }
           if (
-            upstreamProperties &&
-            typeof upstreamProperties === 'object' &&
-            Object.keys(upstreamProperties).length > 0
+            schemaType &&
+            expectedType &&
+            (binding.transform === 'resolve_text_content'
+              ? !['string', 'json', 'object', 'markdown_content'].includes(schemaType)
+              : !this.validator.isTypeCompatible(schemaType, expectedType))
           ) {
             errors.push({
               code: ERROR_CODES.EDGE_TYPE_INCOMPATIBLE,
               message:
-                `Node '${node.nodeId}' field '${fieldName}' binds outputPath '${outPath}' from node ` +
-                `'${fromNode.nodeId}', but the catalog output schema of '${fromNode.nodeId}' declares no such ` +
-                `property (declared: ${Object.keys(upstreamProperties).join(', ')})`,
+                `Node '${node.nodeId}' field '${fieldName}' expects type '${expectedType}', but catalog schema for node ` +
+                `'${fromNode.nodeId}' output '${singlePath}' declares JSON Schema type '${propertySchema.type}' (mapped to '${schemaType}')`,
               nodeId: node.nodeId,
               field: fieldName,
             });
           }
-          continue;
-        }
 
-        // 1. Primitive type compatibility.
-        const schemaType = this.jsonSchemaTypeToValueType(propertySchema.type);
-        const fieldSchema = (resolvedInputSchemas[node.nodeId] as any)?.properties?.[fieldName];
-        let expectedType: ValueTypeV1 | null = binding.expectedType || null;
-        if (!expectedType) {
-          // Infer from the downstream node's authoritative input schema.
-          expectedType = fieldSchema ? this.jsonSchemaTypeToValueType(fieldSchema.type) : null;
-        }
-        if (schemaType && expectedType && !this.validator.isTypeCompatible(schemaType, expectedType)) {
-          errors.push({
-            code: ERROR_CODES.EDGE_TYPE_INCOMPATIBLE,
-            message:
-              `Node '${node.nodeId}' field '${fieldName}' expects type '${expectedType}', but catalog schema for node ` +
-              `'${fromNode.nodeId}' output '${outPath}' declares JSON Schema type '${propertySchema.type}' (mapped to '${schemaType}')`,
-            nodeId: node.nodeId,
-            field: fieldName,
-          });
-        }
-
-        // 2–6. Deep composition checks against the downstream field's
-        // authoritative input schema.
-        if (fieldSchema) {
-          this.validateEnumSetCompatibility(node, fieldName, fromNode.nodeId, outPath, propertySchema, fieldSchema, errors);
-          this.validateNullableCompatibility(node, fieldName, fromNode.nodeId, outPath, propertySchema, fieldSchema, errors);
-          this.validateArrayItemsCompatibility(node, fieldName, fromNode.nodeId, outPath, propertySchema, fieldSchema, errors);
-          this.validateRequiredFieldsCompatibility(node, fieldName, fromNode.nodeId, outPath, propertySchema, fieldSchema, errors);
-          this.validateArtifactCompatibility(node, fieldName, fromNode.nodeId, outPath, propertySchema, fieldSchema, binding, errors);
+          // 2–6. Deep composition checks against the downstream field's
+          // authoritative input schema.
+          if (fieldSchema && binding.transform !== 'resolve_text_content') {
+            this.validateEnumSetCompatibility(node, fieldName, fromNode.nodeId, singlePath, propertySchema, fieldSchema, errors);
+            this.validateNullableCompatibility(node, fieldName, fromNode.nodeId, singlePath, propertySchema, fieldSchema, errors);
+            this.validateArrayItemsCompatibility(node, fieldName, fromNode.nodeId, singlePath, propertySchema, fieldSchema, errors);
+            this.validateRequiredFieldsCompatibility(node, fieldName, fromNode.nodeId, singlePath, propertySchema, fieldSchema, errors);
+            this.validateArtifactCompatibility(node, fieldName, fromNode.nodeId, singlePath, propertySchema, fieldSchema, binding, errors);
+          }
         }
 
         // §10.4 — an open producer schema (additionalProperties: true) means

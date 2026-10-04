@@ -207,6 +207,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter, Playwright
         (process.env.BROWSER_CONTENT_EXTRACTION_ENABLED !== 'false' && Boolean(dto.captureProfile))
           ? await this.enrichResultArtifacts(sessionId, rawResult, {
               captureScreenshot: decision.capture,
+              captureProfile: dto.captureProfile as Record<string, unknown> | undefined,
             }).catch(() => rawResult)
           : rawResult;
 
@@ -281,11 +282,17 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter, Playwright
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`CLI step execution failed: ${errorMessage}`);
       const failedResult = this.normalizedArtifactsEnabled()
-        ? await this.enrichResultArtifacts(sessionId, {
-            status: 'success',
-            command: dto.action,
-            stderr: errorMessage,
-          }).catch(() => undefined)
+        ? await this.enrichResultArtifacts(
+            sessionId,
+            {
+              status: 'success',
+              command: dto.action,
+              stderr: errorMessage,
+            },
+            {
+              captureProfile: dto.captureProfile as Record<string, unknown> | undefined,
+            }
+          ).catch(() => undefined)
         : undefined;
       const pageState = await this.inspectPageState(sessionId).catch(
         () =>
@@ -578,7 +585,10 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter, Playwright
   async enrichResultArtifacts(
     sessionId: string,
     result: CliActionResult,
-    options?: { captureScreenshot?: boolean }
+    options?: {
+      captureScreenshot?: boolean;
+      captureProfile?: Record<string, unknown>;
+    }
   ): Promise<CliActionResult> {
     return this.inspectionHandler.enrichResultArtifacts(sessionId, result, options);
   }

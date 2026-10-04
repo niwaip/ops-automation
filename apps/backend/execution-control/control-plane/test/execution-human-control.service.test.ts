@@ -506,4 +506,145 @@ describe('ExecutionHumanControlService - Deterministic Plan & Human Takeover Res
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(planSchedulerService.advanceExecution).toHaveBeenCalledWith(executionId);
   });
+
+  it('finishes step as succeeded and advances scheduler when resolve_by_human has resumeFromStepId equal to targetStep.id or failedStepId', async () => {
+    const executionId = 'exec-uuid-resolve-1';
+    const stepId = 'c6fd5967-b875-44e6-b21e-9dcf96428be1';
+    const phaseKey = 'phase_01_browser_recording';
+
+    const executionRecord = {
+      id: executionId,
+      createdBy: 'user-1',
+      status: EXECUTION_STATUS.HUMAN_CONTROL,
+      executionMode: 'deterministic_plan',
+      currentStepId: stepId,
+      currentPhaseKey: phaseKey,
+      takeoverRequired: true,
+      takeoverReason: '案件粗利率（毛利率）未达到20%以上或未能正确识别，需要人工介入判断',
+    };
+
+    const phaseRecord = {
+      id: 'phase-uuid-1',
+      phase_key: phaseKey,
+      phase_name: 'browser_recording',
+      phase_type: 'browser_recording',
+      status: 'waiting_takeover',
+      runtime_session_id: 'session-uuid-1',
+      output_json: {
+        variables: { grossProfitRate: '17.8%' },
+      },
+      recovery_decision_json: {
+        patch: {
+          type: 'resolve_by_human',
+          failedStepId: stepId,
+          resumeFromStepId: stepId,
+          note: '人工已处理 / 特批放行',
+        },
+        comment: '人工已处理 / 特批放行',
+        reconciledBy: 'user-1',
+      },
+    };
+
+    const failedStepRecord = {
+      id: stepId,
+      executionId,
+      stepIndex: 1,
+      name: '浏览器录制执行',
+      planNodeId: 'browser_recording',
+      status: EXECUTION_STEP_STATUS.FAILED,
+      inputJson: { grossMarginThreshold: 20 },
+      outputJson: {
+        variables: { grossProfitRate: '17.8%' },
+      },
+      errorCode: 'CAPABILITY_RUNTIME_FAILED',
+      errorMessage: '毛利率低于20%',
+      takeoverTriggered: true,
+    };
+
+    const prisma = {
+      execution: {
+        findUnique: jest.fn().mockResolvedValue(executionRecord),
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+      executionPhase: {
+        findFirst: jest.fn().mockResolvedValue(phaseRecord),
+      },
+      executionStep: {
+        findMany: jest.fn().mockResolvedValue([failedStepRecord]),
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+      runtimeSession: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'session-uuid-1' }),
+      },
+    };
+
+    const executionPhaseService = {
+      getByExecutionIdAndPhaseKey: jest.fn().mockResolvedValue(phaseRecord),
+      resolveTakeoverRecord: jest.fn().mockResolvedValue(undefined),
+      createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const executionStepService = {
+      getById: jest.fn().mockResolvedValue(failedStepRecord),
+      finishRuntimeStep: jest.fn().mockResolvedValue(undefined),
+      requeueFailedStep: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const planSchedulerService = {
+      advanceExecution: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const hooks = {
+      getExecutionDto: jest.fn().mockResolvedValue({ id: executionId } as any),
+      emitEvent: jest.fn().mockResolvedValue(undefined),
+      updateStatus: jest.fn().mockResolvedValue(undefined),
+      freezeRuntimeSessionQuietly: jest.fn().mockResolvedValue(undefined),
+      resumeRuntimeSessionQuietly: jest.fn().mockResolvedValue(undefined),
+      advanceExecutionFlow: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new ExecutionHumanControlService(
+      prisma as any,
+      executionPhaseService as any,
+      executionStepService as any,
+      planSchedulerService as any
+    );
+
+    await service.resumePhaseTakeover(
+      executionId,
+      phaseKey,
+      'user-1',
+      { stepId, comment: '人工已处理 / 特批放行' },
+      hooks as any,
+      { id: 'user-1' }
+    );
+
+    // 1. MUST finish target step as succeeded (NOT requeue!)
+    expect(executionStepService.finishRuntimeStep).toHaveBeenCalledWith(
+      stepId,
+      expect.objectContaining({
+        success: true,
+        takeoverTriggered: false,
+        outputJson: expect.objectContaining({
+          resolvedByHuman: true,
+          resolvedBy: 'user-1',
+          resolutionNote: '人工已处理 / 特批放行',
+        }),
+      })
+    );
+    expect(executionStepService.requeueFailedStep).not.toHaveBeenCalled();
+
+    // 2. MUST mark phase as completed
+    expect(executionPhaseService.createOrUpdatePhase).toHaveBeenCalledWith(
+      expect.objectContaining({
+        executionId,
+        phaseKey,
+        status: 'completed',
+      })
+    );
+
+    // 3. MUST advance deterministic plan scheduler without stale resumeFromStepId
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(planSchedulerService.advanceExecution).toHaveBeenCalledWith(executionId);
+  });
 });

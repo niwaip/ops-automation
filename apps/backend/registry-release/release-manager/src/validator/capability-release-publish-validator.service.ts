@@ -13,7 +13,6 @@ import {
   CapabilitySourceSnapshotDTO,
   SkillDraftDTO,
 } from '../interfaces';
-import { findTemporalCredentialDefaults } from '../publisher/temporal-runtime-credential.resolver';
 
 type ToolValidationResult = Awaited<
   ReturnType<ReleaseManagerSkillServicePort['validateSkillToolsPayload']>
@@ -72,27 +71,7 @@ export class CapabilityReleasePublishValidatorService {
       normalizedDraftTools
     );
 
-    if (release.sourceType === 'temporal_workflow') {
-      const credentialDefaultFields = Array.from(
-        new Set([
-          ...findTemporalCredentialDefaults(normalizedDraftPayload),
-          ...findTemporalCredentialDefaults(snapshot?.sourcePayload || {}),
-        ])
-      );
-      if (credentialDefaultFields.length > 0) {
-        return {
-          normalizedDraftTools,
-          normalizedDraftPayload,
-          blocker: {
-            code: CAPABILITY_RELEASE_ERROR_CODE.SENSITIVE_DEFAULT_FORBIDDEN,
-            message: '运行凭证不能作为参数默认值发布，请改用 credentialEnvKey 环境变量绑定',
-            auditEventType: 'skill_publish_blocked_by_sensitive_default',
-            auditSummary: '发布前阻断：参数 Schema 包含明文运行凭证默认值',
-            details: { fields: credentialDefaultFields },
-          },
-        };
-      }
-    }
+
 
     // Gate 0 — Contract Lint (§10.1): static schema/subset/ref checks. Failure
     // blocks the publish BEFORE any code generation happens. A payload with NO
@@ -411,6 +390,8 @@ export class CapabilityReleasePublishValidatorService {
               WHERE cr.source_type = $1
                 AND cr.source_id = $2::uuid
                 AND cr.published_skill_id IS NOT NULL
+                AND cr.archived_at IS NULL
+                AND sc.is_active = true
               ORDER BY CASE WHEN cr.id = $3::uuid THEN 0 ELSE 1 END,
                        cr.updated_at DESC
               LIMIT 1`,
@@ -425,13 +406,14 @@ export class CapabilityReleasePublishValidatorService {
     // fallback only; deterministic ordering avoids selecting an arbitrary row.
     const skillName = draft.name || release.sourceName;
     const legacyRows =
-      rows.length === 0 && skillName
+      !release.sourceId && skillName
         ? await this.prisma
       .$queryRawUnsafe<Array<{ output_schema: unknown }>>(
             `SELECT output_schema
                FROM skill_configs
               WHERE name = $1
-              ORDER BY is_active DESC, updated_at DESC
+                AND is_active = true
+              ORDER BY updated_at DESC
               LIMIT 1`,
             skillName
           )
