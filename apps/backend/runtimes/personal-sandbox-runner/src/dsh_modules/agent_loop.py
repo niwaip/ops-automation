@@ -29,6 +29,7 @@ from .action_protocol import (
     recover_text_tool_calls,
     has_explicit_reminder_intent,
     has_explicit_reminder_time,
+    detect_retrieval_mismatch_disclaimer,
 )
 from .deliverable_contract import (
     materialize_requested_markdown,
@@ -439,7 +440,8 @@ def _check_no_tool_assertion_guard(
     is_inspect_intent: bool,
     executed_calls_history: Optional[List[str]] = None,
     guard_nudges_count: int = 0,
-    script_execution_error: Optional[str] = None
+    script_execution_error: Optional[str] = None,
+    tools: Optional[List[Dict[str, Any]]] = None
 ) -> Tuple[str, Optional[str], int]:
     """
     Evaluates assertion guards when model returns text without tool calls.
@@ -560,6 +562,22 @@ def _check_no_tool_assertion_guard(
         msg = (
             "【系统提醒检查】：检测到口头声称已创建提醒，但沙箱中未调用 `create_reminders` 工具。"
             "口头文字回复无法写入系统数据库与推送通知，请通过 Function Calling 协议调用 `create_reminders` 工具创建真实的系统提醒。"
+        )
+        return "continue", msg, bumped_max_rounds
+
+    # 8. 检索不匹配与消极放弃拦截 (Retrieval Mismatch Guard)
+    has_web_search = bool(
+        tools and any(
+            (isinstance(t, dict) and (t.get("name") in ["web_search", "search_web"] or t.get("function", {}).get("name") in ["web_search", "search_web"]))
+            for t in tools
+        )
+    )
+    if has_web_search and not is_guide_intent and detect_retrieval_mismatch_disclaimer(reply_text):
+        print("⚡ [Harness Retrieval Mismatch Guard] 检测到模型因检索结果不匹配声称无法确认，正在拦截引导重新检索...", flush=True)
+        msg = (
+            "【系统检索纠错提示】：你当前的回复表明现有检索材料与用户问题不匹配，或未能找到关键有效信息。"
+            "请不要直接放弃或回复无法确认！请根据用户问题的核心主体，提炼更精准的搜索词，"
+            "直接调用 `web_search` 工具发起再次检索。"
         )
         return "continue", msg, bumped_max_rounds
 
@@ -1051,7 +1069,8 @@ def run_agent_loop(
                 is_inspect_intent=is_inspect_intent,
                 executed_calls_history=executed_calls_history,
                 guard_nudges_count=guard_nudges_count,
-                script_execution_error=script_execution_error
+                script_execution_error=script_execution_error,
+                tools=tools
             )
             if action == "continue":
                 guard_nudges_count += 1

@@ -3,6 +3,7 @@ import {
   AuditOutlined,
   BankOutlined,
   CloudServerOutlined,
+  CloudUploadOutlined,
   DeleteOutlined,
   DesktopOutlined,
   DownloadOutlined,
@@ -290,6 +291,32 @@ export function WorkspacePage() {
     return false;
   };
 
+  // 4.1 拖拽上传支持
+  const [isDragOver, setIsDragOver] = useState(false);
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      for (const file of files) {
+        void handleUploadFile(file);
+      }
+    }
+  }, [handleUploadFile]);
+
   // 5. 删除文件/文件夹
   const handleDeleteNode = async (node: WorkspaceNode) => {
     if (!currentWorkspace?.id) return;
@@ -567,6 +594,16 @@ export function WorkspacePage() {
               <Tag color="cyan" bordered={false}>协同归档</Tag>
             </div>
           </nav>
+
+          <div className={styles['workspace-sidebar-tip-card']}>
+            <div className={styles['workspace-sidebar-tip-title']}>
+              <FolderOpenOutlined style={{ marginRight: 6, color: 'var(--primary-color)' }} />
+              业务与沙盒资产沉淀
+            </div>
+            <p className={styles['workspace-sidebar-tip-desc']}>
+              数字员工任务成果与沙盒临时工作区文件自动归档，支持全文检索与一键智能摘要。
+            </p>
+          </div>
         </div>
 
         {/* 底部容量指示 */}
@@ -737,7 +774,12 @@ export function WorkspacePage() {
         </header>
 
         {/* 内容表格区 */}
-        <div className={styles['workspace-content-body']}>
+        <div
+          className={`${styles['workspace-content-body']}${isDragOver ? ` ${styles['is-drag-over']}` : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           <Table<WorkspaceNode>
             className={styles['workspace-table']}
             columns={columns}
@@ -781,7 +823,42 @@ export function WorkspacePage() {
               ),
             }}
           />
+
+          {!isReadOnly && !searchKeyword && displayNodes.length > 0 && displayNodes.length <= 6 && (
+            <Upload
+              beforeUpload={(file) => {
+                void handleUploadFile(file);
+                return false;
+              }}
+              showUploadList={false}
+              disabled={isUploading}
+              style={{ width: '100%' }}
+            >
+              <div className={styles['workspace-drop-hint-area']}>
+                <CloudUploadOutlined className={styles['workspace-drop-hint-icon']} />
+                <div className={styles['workspace-drop-hint-text']}>
+                  <span>点击此处或拖拽本地文件至此区域，快速上传到当前目录</span>
+                  <span className={styles['workspace-drop-hint-sub']}>
+                    支持文档、表格、幻灯片、代码与音视频等多格式安全存管
+                  </span>
+                </div>
+              </div>
+            </Upload>
+          )}
         </div>
+
+        {/* 底部状态栏 */}
+        <footer className={styles['workspace-footer']}>
+          <div className={styles['workspace-footer-left']}>
+            <span>共 {displayNodes.length} 个项目</span>
+            {searchKeyword && <span>（当前条件筛选结果）</span>}
+          </div>
+          <div className={styles['workspace-footer-right']}>
+            {currentWorkspace && (
+              <span>已用容量：{formatBytes(currentWorkspace.usedBytes)} / {formatBytes(currentWorkspace.quotaBytes)}</span>
+            )}
+          </div>
+        </footer>
       </main>
 
       {/* 新建文件夹弹窗 */}

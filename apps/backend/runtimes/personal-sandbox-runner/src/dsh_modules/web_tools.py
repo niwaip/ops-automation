@@ -562,18 +562,32 @@ def decompose_search_queries(query: str, max_queries: int = 3) -> list[str]:
     subject = re.sub(r'\s+', ' ', subject).strip(' 的') or clean
 
     queries = [clean]
+    is_tech = bool(re.search(
+        r'(插件|扩展|plugin|extension|生态|marketplace|registry|'
+        r'安装方法|安装教程|如何安装|怎么安装|安装指南|install(?:ation)?|setup|quickstart|'
+        r'版本|发布|更新|release|changelog|升级|源码|开源|github|repo|库|sdk|api|框架)',
+        clean,
+        re.I,
+    ))
+    is_trending = bool(re.search(r'(热点|热搜|榜单|排行|趋势|trending|ranking|热门)', clean, re.I))
+
     if re.search(r'(插件|扩展|plugin|extension|生态|marketplace|registry)', clean, re.I):
         queries.append(f'{subject} plugins extensions registry GitHub')
     elif re.search(r'(安装方法|安装教程|如何安装|怎么安装|安装指南|install(?:ation)?|setup|quickstart)', clean, re.I):
         queries.append(f'{subject} official installation setup quickstart GitHub')
     elif re.search(r'(版本|发布|更新|release|changelog|升级)', clean, re.I):
         queries.append(f'{subject} releases changelog GitHub')
-    elif re.search(r'(热点|热搜|榜单|排行|趋势|trending|ranking)', clean, re.I):
-        queries.append(f'{subject} live trending ranking')
+    elif is_trending:
+        queries.append(f'{subject} 实时热点 热门榜单')
     else:
         queries.append(f'{subject} latest updates')
 
-    queries.append(f'{subject} official documentation GitHub releases')
+    if is_tech:
+        queries.append(f'{subject} official documentation GitHub releases')
+    elif is_trending:
+        queries.append(f'{subject} 热门动态 讨论')
+    else:
+        queries.append(f'{subject} latest news')
 
     unique = []
     seen = set()
@@ -613,6 +627,11 @@ def perform_multi_web_search(
         r'|(?:热搜|热点|热榜|榜单|排行|热门).*?(?:微博|weibo)',
         query,
         re.I,
+    ) or re.search(
+        r'(?:b站|bilibili|哔哩哔哩).*?(?:热搜|热点|热榜|榜单|排行|热门|热度)'
+        r'|(?:热搜|热点|热榜|榜单|排行|热门|热度).*?(?:b站|bilibili|哔哩哔哩)',
+        query,
+        re.I,
     ):
         vertical_result = perform_web_search(
             query,
@@ -626,12 +645,14 @@ def perform_multi_web_search(
 
     query_plan = decompose_search_queries(query, max_queries=max_queries)
     freshness = extract_query_freshness(query)
+    is_tech = bool(re.search(r'(插件|生态|库|sdk|开源|源码|报错|版本|release|github|install|api|框架)', query, re.I))
+    source_policy = 'official-first' if is_tech else 'balanced'
     platform_result = perform_platform_web_search(
         query_plan[0],
         extra_queries=query_plan[1:],
         max_results=min(10, max_results_per_query * 2),
         freshness=freshness,
-        source_policy='official-first',
+        source_policy=source_policy,
         deadline=deadline,
     )
     if platform_result:
@@ -880,6 +901,60 @@ def perform_web_search(
             raise
         except Exception:
             assert_not_timed_out(deadline, "weibo search")
+            pass
+
+    # 2.1 针对 B站 (bilibili) 实时热门/热搜榜的垂直高频接口
+    if re.search(
+        r'(?:b站|bilibili|哔哩哔哩).*?(?:热搜|热点|热榜|榜单|排行|热门|热度)'
+        r'|(?:热搜|热点|热榜|榜单|排行|热门|热度).*?(?:b站|bilibili|哔哩哔哩)',
+        clean_q,
+        re.I,
+    ):
+        to_bili = check_deadline(deadline, default_timeout=10.0)
+        try:
+            bili_headers = {
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                "Referer": "https://www.bilibili.com",
+            }
+            results = ["【B站 (Bilibili) 实时热点与热门视频排行】:"]
+            hot_url = "https://api.bilibili.com/x/web-interface/search/square?limit=10"
+            req_hot = urllib.request.Request(hot_url, headers=bili_headers)
+            with urllib.request.urlopen(req_hot, timeout=min(to_bili, 5.0)) as resp:
+                square_data = json.loads(resp.read().decode("utf-8"))
+            trending_list = square_data.get("data", {}).get("trending", {}).get("list", [])
+            if trending_list:
+                results.append("\n### 实时热搜榜:")
+                for i, it in enumerate(trending_list[:8], 1):
+                    kw = str(it.get("keyword") or it.get("show_name") or "").strip()
+                    if kw:
+                        link = f"https://search.bilibili.com/all?keyword={urllib.parse.quote(kw)}"
+                        results.append(f"{i}. [{kw}]({link})")
+
+            pop_url = "https://api.bilibili.com/x/web-interface/popular?ps=8"
+            req_pop = urllib.request.Request(pop_url, headers=bili_headers)
+            with urllib.request.urlopen(req_pop, timeout=min(to_bili, 5.0)) as resp:
+                pop_data = json.loads(resp.read().decode("utf-8"))
+            video_list = pop_data.get("data", {}).get("list", [])
+            if video_list:
+                results.append("\n### 热门视频精选:")
+                for i, v in enumerate(video_list[:8], 1):
+                    title = str(v.get("title") or "").strip()
+                    bvid = str(v.get("bvid") or "").strip()
+                    owner = str(v.get("owner", {}).get("name") or "").strip()
+                    stat = v.get("stat") or {}
+                    view = stat.get("view", 0)
+                    view_str = f"{view // 10000}万" if isinstance(view, int) and view >= 10000 else str(view)
+                    v_url = f"https://www.bilibili.com/video/{bvid}" if bvid else ""
+                    if title and v_url:
+                        author_str = f" (UP主: {owner}, 播放量: {view_str})" if owner else ""
+                        results.append(f"{i}. [{title}]({v_url}){author_str}")
+
+            if len(results) > 1:
+                return "\n".join(results)
+        except TimeoutError:
+            raise
+        except Exception:
+            assert_not_timed_out(deadline, "bilibili search")
             pass
 
     # 3. 优先使用平台统一搜索网关；真实供应商凭据不会进入个人沙箱。
