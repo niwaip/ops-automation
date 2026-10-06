@@ -4,7 +4,7 @@
 
 services:
   ai-orchestrator:
-    image: ${DOCKER_REGISTRY:-}node:20-bullseye
+    image: ${NODE_IMAGE:-${DOCKER_REGISTRY:-}node:22-bookworm}
     container_name: ops-ai-orchestrator
     working_dir: /app
     command: sh -c "corepack enable && pnpm run start"

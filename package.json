@@ -30,7 +30,7 @@
     "verify:production-release-db-roles": "bash ./docker/scripts/run-production-release-job.sh verify-db-roles",
     "verify:production-db-roles": "node database/scripts/verify-application-roles.mjs",
     "build": "pnpm --workspace-concurrency=1 run --filter @ops/* build",
-    "clean": "rm -rf node_modules dist .turbo",
+    "clean": "rm -rf node_modules dist .turbo .playwright-cli .dbg .tmp .docker-workspace-bootstrap.lock",
     "ops": "bash ./docker/scripts/ops-menu.sh",
     "ops:menu": "bash ./docker/scripts/ops-menu.sh",
     "docker:up": "bash ./docker/start-smart.sh dev up -d",

@@ -12,9 +12,11 @@ export interface MaskedPreview {
 export class UserCredentialCrypto {
   private readonly logger = new Logger(UserCredentialCrypto.name);
   private readonly key: Buffer;
+  private readonly fallbackKeys: Buffer[];
 
   constructor() {
     this.key = this.loadKey();
+    this.fallbackKeys = this.loadFallbackKeys();
   }
 
   encrypt(payload: CredentialPayload): string {
@@ -40,11 +42,21 @@ export class UserCredentialCrypto {
     const tag = Buffer.from(tagStr, 'base64');
     const ciphertext = Buffer.from(cipherStr, 'base64');
 
-    const decipher = createDecipheriv('aes-256-gcm', this.key, iv);
-    decipher.setAuthTag(tag);
-    const decryptedJson = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
+    const allKeys = [this.key, ...this.fallbackKeys];
+    let lastError: Error | null = null;
 
-    return JSON.parse(decryptedJson);
+    for (const key of allKeys) {
+      try {
+        const decipher = createDecipheriv('aes-256-gcm', key, iv);
+        decipher.setAuthTag(tag);
+        const decryptedJson = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
+        return JSON.parse(decryptedJson);
+      } catch (err) {
+        lastError = err as Error;
+      }
+    }
+
+    throw lastError || new Error('Invalid encrypted credential format or failed to decrypt with available keys');
   }
 
   buildMaskedPreview(category: string, payload: CredentialPayload): MaskedPreview {
@@ -113,6 +125,7 @@ export class UserCredentialCrypto {
 
     const isProduction = process.env.NODE_ENV === 'production';
     const insecureFallbackKeys = new Set([
+      '7fd6414a543574effddb645132638c2357ba2f12a57c09216bc45880f5271757',
       'ops_dev_credential_vault_secret_2026',
       'ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa',
       'ops-automation-jwt-secret-key-change-in-production',
@@ -146,5 +159,55 @@ export class UserCredentialCrypto {
     // Default stable derived key for development/staging environments
     this.logger.warn('USER_CREDENTIAL_ENCRYPTION_KEY not explicitly set; using deterministic dev fallback key');
     return createHash('sha256').update(process.env.JWT_SECRET || 'ops_dev_credential_vault_secret_2026').digest();
+  }
+
+  private parseRawKey(raw: string): Buffer | null {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    if (/^[0-9a-f]{64}$/i.test(trimmed)) {
+      return Buffer.from(trimmed, 'hex');
+    }
+    try {
+      const buf = Buffer.from(trimmed, 'base64');
+      if (buf.length === 32) return buf;
+    } catch {
+      // fallthrough
+    }
+    if (trimmed.length >= 32) {
+      return createHash('sha256').update(trimmed).digest();
+    }
+    return null;
+  }
+
+  private loadFallbackKeys(): Buffer[] {
+    const fallbackBuffers: Buffer[] = [];
+    const isProduction = process.env.NODE_ENV === 'production';
+    const rawFallback = process.env.USER_CREDENTIAL_ENCRYPTION_KEY_FALLBACK?.trim();
+
+    const candidates: string[] = [];
+
+    if (rawFallback) {
+      const parts = rawFallback.split(',').map((p) => p.trim()).filter(Boolean);
+      candidates.push(...parts);
+    }
+
+    if (!isProduction) {
+      candidates.push(
+        '7fd6414a543574effddb645132638c2357ba2f12a57c09216bc45880f5271757',
+        'ops_dev_credential_vault_secret_2026'
+      );
+    }
+
+    for (const raw of candidates) {
+      if (!raw) continue;
+      const parsed = this.parseRawKey(raw);
+      if (parsed && !parsed.equals(this.key)) {
+        if (!fallbackBuffers.some((b) => b.equals(parsed))) {
+          fallbackBuffers.push(parsed);
+        }
+      }
+    }
+
+    return fallbackBuffers;
   }
 }

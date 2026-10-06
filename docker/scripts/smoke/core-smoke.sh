@@ -106,15 +106,15 @@ exec_in_container() {
 }
 
 platform_prisma_generate() {
-  exec_in_container "$PLATFORM_CONTAINER" "cd /app && pnpm exec prisma generate"
+  exec_in_container "$PLATFORM_CONTAINER" "cd /workspace/apps/backend/platform && pnpm exec prisma generate"
 }
 
 platform_db_push() {
-  exec_in_container "$PLATFORM_CONTAINER" "cd /app && pnpm exec prisma db push --accept-data-loss"
+  exec_in_container "$PLATFORM_CONTAINER" "cd /workspace/apps/backend/platform && pnpm exec prisma db push --accept-data-loss"
 }
 
 platform_seed() {
-  exec_in_container "$PLATFORM_CONTAINER" "cd /app && npm run seed"
+  exec_in_container "$PLATFORM_CONTAINER" "cd /workspace/apps/backend/platform && pnpm run seed"
 }
 
 platform_login() {
@@ -198,7 +198,9 @@ main() {
 
   log "Starting V4 core layer"
   ensure_network
-  run_core_compose up -d
+  if [ "${CORE_SMOKE_SKIP_UP:-0}" != "1" ]; then
+    run_core_compose up -d
+  fi
 
   retry "platform container running" 36 5 container_running "$PLATFORM_CONTAINER" || fail "platform container did not become ready"
   retry "control-plane container running" 36 5 container_running "$CONTROL_PLANE_CONTAINER" || fail "control-plane container did not become ready"

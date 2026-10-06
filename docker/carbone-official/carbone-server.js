@@ -241,16 +241,9 @@ app.post('/render-file', upload.single('template'), async (req, res) => {
  * Body: { name: string, code: string }
  */
 app.post('/formatter', (req, res) => {
-  try {
-    const { name, code } = req.body;
-
-    // 使用官方 carbone 添加格式化器
-    carbone.addFormatter(name, new Function('return ' + code)());
-
-    res.json({ success: true, message: `Formatter '${name}' added` });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  return res.status(403).json({
+    error: 'Dynamic code execution via /formatter is disabled for security reasons.'
+  });
 });
 
 /**

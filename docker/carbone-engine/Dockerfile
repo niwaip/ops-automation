@@ -1,7 +1,7 @@
 # Carbone Engine Dockerfile
 # Optimized with LibreOffice pre-installed to avoid runtime installation overhead
 
-FROM node:20-bookworm
+FROM node:22-bookworm
 
 ARG APT_MIRROR=mirrors.aliyun.com
 

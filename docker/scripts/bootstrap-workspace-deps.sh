@@ -28,7 +28,10 @@ compute_fingerprint() {
   (
     cd "$WORKSPACE_ROOT"
     {
-      sha256sum pnpm-lock.yaml
+      node -v
+      pnpm -v 2>/dev/null || echo "pnpm:$PNPM_VERSION"
+      uname -m
+      sha256sum pnpm-lock.yaml pnpm-workspace.yaml package.json
       find . \
         -name 'node_modules' -prune -o \
         -name '.pnpm-store' -prune -o \
@@ -78,8 +81,9 @@ install_workspace_deps() {
 
 build_shared_packages() {
   log "Building shared workspace packages (@ops/browser-recorder, @ops/browser-runtime-facade, backend modules)"
-  CI=true pnpm --dir "$WORKSPACE_ROOT" --filter @ops/browser-recorder --filter @ops/browser-runtime-facade run build || true
-  CI=true pnpm --dir "$WORKSPACE_ROOT" --filter @ops/platform exec prisma generate --schema ./prisma/schema.prisma || true
+  CI=true pnpm --dir "$WORKSPACE_ROOT" --filter @ops/browser-recorder --filter @ops/browser-runtime-facade run build
+  CI=true pnpm --dir "$WORKSPACE_ROOT" --filter @ops/platform exec prisma generate --schema ./prisma/schema.prisma
+  CI=true pnpm --dir "$WORKSPACE_ROOT" --filter @ops/control-plane exec prisma generate --schema ./prisma/schema.prisma
   CI=true pnpm --dir "$WORKSPACE_ROOT" \
     --filter @ops/identity-access \
     --filter @ops/organization \
@@ -88,7 +92,7 @@ build_shared_packages() {
     --filter @ops/release-manager \
     --filter @ops/workbench \
     --filter @ops/im-gateway \
-    --filter @ops/system-backup run build || true
+    --filter @ops/system-backup run build
 }
 
 main() {

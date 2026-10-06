@@ -197,8 +197,17 @@ echo "  DevTools: http://localhost:${CHROME_DEBUG_PORT}"
 
 if [ "$HEADLESS" != "true" ]; then
     echo "[4/5] Starting VNC server on port ${VNC_PORT}..."
-    x11vnc -display :${DISPLAY_NUM} -rfbport ${VNC_PORT} -forever -shared \
-        -nopw -noxdamage -noxkb &
+    if [ -n "${VNC_PASSWORD:-}" ]; then
+        mkdir -p ~/.vnc
+        x11vnc -storepasswd "$VNC_PASSWORD" ~/.vnc/passwd
+        x11vnc -display :${DISPLAY_NUM} -rfbport ${VNC_PORT} -forever -shared \
+            -rfbauth ~/.vnc/passwd -noxdamage -noxkb &
+        echo "✓ VNC server started with password protection"
+    else
+        x11vnc -display :${DISPLAY_NUM} -rfbport ${VNC_PORT} -forever -shared \
+            -nopw -noxdamage -noxkb &
+        echo "✓ VNC server started (no password - INSECURE!)"
+    fi
     VNC_PID=$!
     sleep 0.2
     if ! kill -0 $VNC_PID 2>/dev/null; then

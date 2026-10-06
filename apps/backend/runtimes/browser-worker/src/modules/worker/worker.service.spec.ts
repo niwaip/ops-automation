@@ -75,8 +75,8 @@ describe('WorkerService', () => {
         },
         HostConfig: expect.objectContaining({
           PortBindings: {
-            '8080/tcp': [{ HostPort: '39000' }],
-            '9222/tcp': [{ HostPort: '40000' }],
+            '8080/tcp': [{ HostIp: '127.0.0.1', HostPort: '39000' }],
+            '9222/tcp': [{ HostIp: '127.0.0.1', HostPort: '40000' }],
           },
         }),
       })
@@ -88,6 +88,75 @@ describe('WorkerService', () => {
         novnc: 'http://127.0.0.1:55034/vnc.html',
       },
     });
+  });
+
+  it('binds novnc to NOVNC_BIND_IP while keeping cdp bound to 127.0.0.1', async () => {
+    const originalNovncBind = process.env.NOVNC_BIND_IP;
+    try {
+      process.env.NOVNC_BIND_IP = '0.0.0.0';
+      const { service, createContainer } = createService();
+      const inspect = createInspect({
+        '8080/tcp': [{ HostPort: '55034' }],
+        '9222/tcp': [{ HostPort: '55033' }],
+      });
+      const container = {
+        start: jest.fn().mockResolvedValue(undefined),
+        inspect: jest.fn().mockResolvedValue(inspect),
+        remove: jest.fn().mockResolvedValue(undefined),
+      };
+      createContainer.mockResolvedValue(container);
+
+      await service.createWorker({
+        user_id: 'lan-user',
+      });
+
+      expect(createContainer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          HostConfig: expect.objectContaining({
+            PortBindings: {
+              '8080/tcp': [{ HostIp: '0.0.0.0', HostPort: '39000' }],
+              '9222/tcp': [{ HostIp: '127.0.0.1', HostPort: '40000' }],
+            },
+          }),
+        })
+      );
+    } finally {
+      if (originalNovncBind !== undefined) {
+        process.env.NOVNC_BIND_IP = originalNovncBind;
+      } else {
+        delete process.env.NOVNC_BIND_IP;
+      }
+    }
+  });
+
+  it('appends password query param to novnc URL when VNC_PASSWORD is set', async () => {
+    const originalVncPassword = process.env.VNC_PASSWORD;
+    try {
+      process.env.VNC_PASSWORD = 'test_vnc_pass_123';
+      const { service, createContainer } = createService();
+      const inspect = createInspect({
+        '8080/tcp': [{ HostPort: '55034' }],
+        '9222/tcp': [{ HostPort: '55033' }],
+      });
+      const container = {
+        start: jest.fn().mockResolvedValue(undefined),
+        inspect: jest.fn().mockResolvedValue(inspect),
+        remove: jest.fn().mockResolvedValue(undefined),
+      };
+      createContainer.mockResolvedValue(container);
+
+      const result = await service.createWorker({
+        user_id: 'pw-user',
+      });
+
+      expect(result.endpoints.novnc).toBe('http://127.0.0.1:55034/vnc.html?password=test_vnc_pass_123');
+    } finally {
+      if (originalVncPassword !== undefined) {
+        process.env.VNC_PASSWORD = originalVncPassword;
+      } else {
+        delete process.env.VNC_PASSWORD;
+      }
+    }
   });
 
   it('retries worker creation when docker reports host port conflict', async () => {
@@ -119,8 +188,8 @@ describe('WorkerService', () => {
       expect.objectContaining({
         HostConfig: expect.objectContaining({
           PortBindings: {
-            '8080/tcp': [{ HostPort: '39000' }],
-            '9222/tcp': [{ HostPort: '40000' }],
+            '8080/tcp': [{ HostIp: '127.0.0.1', HostPort: '39000' }],
+            '9222/tcp': [{ HostIp: '127.0.0.1', HostPort: '40000' }],
           },
         }),
       })
@@ -130,8 +199,8 @@ describe('WorkerService', () => {
       expect.objectContaining({
         HostConfig: expect.objectContaining({
           PortBindings: {
-            '8080/tcp': [{ HostPort: '39001' }],
-            '9222/tcp': [{ HostPort: '40001' }],
+            '8080/tcp': [{ HostIp: '127.0.0.1', HostPort: '39001' }],
+            '9222/tcp': [{ HostIp: '127.0.0.1', HostPort: '40001' }],
           },
         }),
       })

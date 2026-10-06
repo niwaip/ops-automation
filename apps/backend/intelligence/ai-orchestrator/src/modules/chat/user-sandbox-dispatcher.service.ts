@@ -47,6 +47,16 @@ const isTransientSandboxModelFailure = (message: string): boolean =>
     String(message || '')
   );
 
+const isSandboxModelAuthFailure = (message: string): boolean =>
+  /(?:鉴权失败|鉴权异常|invalid token|check your api key|api key|unauthorized|forbidden|401|403|authentication_error)/i.test(
+    String(message || '')
+  );
+
+const isSandboxModelUnavailable = (message: string): boolean =>
+  /(?:\[DeepSeek Harness (?:鉴权失败|超时|异常)\]|大模型代理调用失败|模型不可用|上游大模型|上游模型|no client initialized for model)/i.test(
+    String(message || '')
+  );
+
 @Injectable()
 export class UserSandboxDispatcherService {
   private readonly logger = new Logger(UserSandboxDispatcherService.name);
@@ -895,6 +905,50 @@ export class UserSandboxDispatcherService {
           content: friendlyError,
           data: {
             code: 'SANDBOX_COMMAND_ERROR',
+            retryable: true,
+          },
+        });
+        await this.persistFriendlyErrorToSession(
+          sessionId,
+          body,
+          effectiveUserId,
+          friendlyError,
+          errMsg,
+          emit
+        );
+        return true;
+      }
+
+      // 4. 上游大模型鉴权失败 / API Key 错误
+      if (isSandboxModelAuthFailure(errMsg)) {
+        const friendlyError = `❌ 上游大模型服务鉴权失败 (${errMsg})。请检查 API Key 或模型凭据配置。`;
+        emit({
+          type: StreamEventType.ERROR,
+          content: friendlyError,
+          data: {
+            code: 'SANDBOX_MODEL_AUTH_ERROR',
+            retryable: false,
+          },
+        });
+        await this.persistFriendlyErrorToSession(
+          sessionId,
+          body,
+          effectiveUserId,
+          friendlyError,
+          errMsg,
+          emit
+        );
+        return true;
+      }
+
+      // 5. 大模型超时 / 响应中断 / 上游大模型服务不可用（严禁默认降级为无依据的普通问答）
+      if (isSandboxModelUnavailable(errMsg)) {
+        const friendlyError = `⏱️ 上游大模型服务暂时不可用或响应超时 (${errMsg})。本次任务未完成，请检查模型服务状态或稍后重试。`;
+        emit({
+          type: StreamEventType.ERROR,
+          content: friendlyError,
+          data: {
+            code: 'SANDBOX_MODEL_UNAVAILABLE',
             retryable: true,
           },
         });

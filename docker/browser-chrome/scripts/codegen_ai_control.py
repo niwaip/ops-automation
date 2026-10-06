@@ -889,14 +889,29 @@ def ai_scroll(direction='down', amount=300):
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-def ai_get_text():
-    """Get all text content from page"""
+def ai_get_text(selector=None):
+    """Get all text content from page or specific selector"""
     global ai_page, ai_mode_active
 
     if not ai_mode_active or not ai_page:
         return {"status": "error", "message": "AI browser not initialized"}
 
     try:
+        if selector:
+            element = ai_page.query_selector(selector)
+            if not element:
+                return {"status": "error", "message": f"Element not found for selector: {selector}"}
+            text = element.inner_text()
+            return {
+                "status": "success",
+                "text": text,
+                "template_info": {
+                    "tool": "get_text",
+                    "params": {"selector": selector},
+                    "description": f"Get text from {selector}"
+                }
+            }
+
         text = ai_page.evaluate("""
             () => {
                 // Get visible text from body

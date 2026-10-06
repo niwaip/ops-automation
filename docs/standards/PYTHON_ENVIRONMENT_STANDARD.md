@@ -17,7 +17,7 @@
 | **`ops-sandbox-worker`** | `python:3.11-slim` | **Python 3.11** | 工作流沙箱验证代理，原生 3.11 运行时 |
 | **`ops-user-sandbox`** | `node:22-bookworm-slim` | **Python 3.11.2** | 用户动态代码沙箱，Debian 12 原生 3.11 运行时 |
 | **`ops-browser-chrome`** | Ubuntu 22.04 LTS | **Python 3.10 / 3.11** | 浏览器自动化与 Playwright 录制/执行环境 |
-| **`ops-platform`** | `node:20` | **Python 3.9+ (向后兼容)** | 降级执行器（Fallback Runner），由系统注入注解垫片保证 3.11 语法安全 |
+| **`ops-platform`** | `node:22-bookworm` | **Python 3.11.2** | 平台服务执行环境，Debian 12 原生 3.11 运行时 |
 
 ---
 
@@ -39,4 +39,4 @@
 
 ## 4. 后续基线演进路径
 
-在完成全部业务模块构建与 OpenSSL 3.0 兼容升级后，Compose 基础镜像 `x-common-node-service` 将整体迁移至 `node:20-bookworm`（Debian 12），系统底层将全量实现原生 Python 3.11.2 单一版本统一。
+在完成全部业务模块构建与 OpenSSL 3.0 兼容升级后，Compose 核心 Node 后端与沙箱服务已整体迁移至 `node:22-bookworm`（Debian 12，系统自带 Python 3.11.2）及 `python:3.11-slim`。而 `ops-browser-chrome` 容器基于 Ubuntu 22.04 LTS，仍运行系统预装的 Python 3.10.12（通过 `from __future__ import annotations` 保证语法兼容），后续视基础镜像规划逐步推进版本统一。
