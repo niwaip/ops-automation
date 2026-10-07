@@ -10,7 +10,7 @@
     "dev": "prisma generate && nest start --watch",
     "start": "node dist/main.js",
     "start:prod": "node dist/main.js",
-    "seed": "ts-node prisma/seed.ts",
+    "seed": "pnpm exec prisma generate --schema ./prisma/schema.prisma && ts-node prisma/seed.ts",
     "test": "jest",
     "test:unit": "jest --passWithNoTests",
     "test:integration": "jest --passWithNoTests --config jest.integration.config.js",
