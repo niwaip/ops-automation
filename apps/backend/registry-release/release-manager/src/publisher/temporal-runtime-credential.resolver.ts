@@ -52,11 +52,6 @@ const resolveCredentialEnvKeys = (
   return /tavily/i.test(schemaText) ? ['TAVILY_API_KEY', 'SEARCH_API_KEY'] : [];
 };
 
-export const findTemporalCredentialDefaults = (
-  _sourcePayload: Record<string, unknown>
-): string[] => {
-  return [];
-};
 
 /**
  * Resolves workflow credentials and parameters. Credentials (such as apiKey)

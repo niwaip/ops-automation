@@ -1,5 +1,4 @@
 import {
-  findTemporalCredentialDefaults,
   resolveTemporalRuntimeCredentials,
 } from './temporal-runtime-credential.resolver';
 
@@ -29,7 +28,6 @@ describe('resolveTemporalRuntimeCredentials', () => {
       apiKey: 'expired-snapshot-key',
     });
     expect(resolution.missing).toEqual([]);
-    expect(findTemporalCredentialDefaults(sourcePayload)).toEqual([]);
   });
 
   it('preserves user/workflow input value when provided', () => {

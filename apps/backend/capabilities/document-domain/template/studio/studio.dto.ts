@@ -12,13 +12,6 @@ import {
   WorkflowUnderstandResult,
 } from '../workflow-authoring/template-workflow.service';
 
-export class UploadTemplateDto {
-  fileName!: string;
-}
-
-export class ParseTemplateDto {
-  templateId!: string;
-}
 
 export class AIIdentifyDto {
   templateId!: string;

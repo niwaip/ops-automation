@@ -63,6 +63,7 @@ describe('TemporalWorkflowAiDraftService', () => {
     mockedAxios.post.mockResolvedValue({
       data: {
         result: JSON.stringify({
+          version: 'v1.0.0',
           workflowName: 'weather-query-ai-chain',
           workflowDescription: '查询天气后先做 AI 归纳，再格式化最终文本',
           workflowClassName: 'WeatherQueryAiChainWorkflow',

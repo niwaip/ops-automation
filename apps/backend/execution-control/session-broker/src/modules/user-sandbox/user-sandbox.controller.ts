@@ -184,6 +184,7 @@ export class UserSandboxController {
 
     let buffer = '';
     let isFinished = false;
+    let hasAcquiredLock = false;
     const sendEvent = (event: string, data: any) => {
       if (!res.writableEnded) {
         res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
@@ -191,8 +192,8 @@ export class UserSandboxController {
     };
 
     const onClose = () => {
-      if (!isFinished) {
-        this.userSandboxService.stopSandboxExecution(dto.userId).catch(() => {});
+      if (!isFinished && hasAcquiredLock) {
+        this.userSandboxService.stopSandboxExecution(dto.userId, dto.sessionId).catch(() => {});
       }
     };
     res.on('close', onClose);
@@ -210,6 +211,9 @@ export class UserSandboxController {
         waitTimeoutSeconds: dto.waitTimeoutSeconds,
         thinking: dto.thinking,
         reasoningEffort: dto.reasoningEffort,
+        onLockAcquired: () => {
+          hasAcquiredLock = true;
+        },
         onWaiting: (waitedMs: number) => {
           sendEvent('observation', {
             content: '⏳ 任务已排队，等待前序任务完成后自动开始...',
@@ -272,11 +276,14 @@ export class UserSandboxController {
   @Post(':userId/stop-exec')
   @ApiOperation({ summary: '强制停止用户沙箱中正在执行的任务进程' })
   @ApiResponse({ status: 200, description: '已停止' })
-  async stopRunningExecution(@Param('userId') userId: string): Promise<{ success: boolean }> {
+  async stopRunningExecution(
+    @Param('userId') userId: string,
+    @Body() body?: { sessionId?: string; executionId?: string }
+  ): Promise<{ success: boolean }> {
     if (!userId) {
       throw new BadRequestException('userId 不能为空');
     }
-    const success = await this.userSandboxService.stopSandboxExecution(userId);
+    const success = await this.userSandboxService.stopSandboxExecution(userId, body?.sessionId);
     return { success };
   }
 

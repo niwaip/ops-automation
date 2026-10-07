@@ -166,6 +166,9 @@ print("OK")
           text: '百度搜索结果',
           inputs: [],
           buttons: [],
+          headings: [],
+          links: [],
+          suggestedParameters: [],
         },
         observation: {
           currentPageUrl: 'https://www.baidu.com/s?wd=mcp',
@@ -173,6 +176,9 @@ print("OK")
           text: '百度搜索结果',
           inputs: [],
           buttons: [],
+          headings: [],
+          links: [],
+          suggestedParameters: [],
         },
         diff: {
           urlChanged: false,
@@ -220,6 +226,9 @@ print("OK")
           text: '百度搜索结果',
           inputs: [],
           buttons: [],
+          headings: [],
+          links: [],
+          suggestedParameters: [],
         },
         observation: {
           currentPageUrl: 'https://mcp.pkulaw.com/',
@@ -227,6 +236,9 @@ print("OK")
           text: '法宝详情',
           inputs: [],
           buttons: [],
+          headings: [],
+          links: [],
+          suggestedParameters: [],
         },
         diff: {
           urlChanged: true,

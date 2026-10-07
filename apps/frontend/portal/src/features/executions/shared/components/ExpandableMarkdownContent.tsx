@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from 'antd';
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
-import { beautifyText } from '@/features/executions/detail/detailView';
+import { beautifyText } from '@/features/executions/shared/common';
 import { HtmlPreviewBlock } from '@chat-web/components/HtmlPreviewBlock';
 
 export interface ExpandableMarkdownContentProps {

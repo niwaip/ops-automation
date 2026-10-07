@@ -31,12 +31,12 @@ def parse_timeout_seconds(timeout_value: Any) -> int:
     if isinstance(timeout_value, int):
         return max(timeout_value, 1)
     if not isinstance(timeout_value, str) or not timeout_value:
-        return 60
+        return 180
 
     unit = timeout_value[-1]
     raw_number = timeout_value[:-1]
     if not raw_number.isdigit():
-        return 60
+        return 180
 
     value = int(raw_number)
     if unit == 's':
@@ -45,4 +45,4 @@ def parse_timeout_seconds(timeout_value: Any) -> int:
         return max(value * 60, 1)
     if unit == 'h':
         return max(value * 3600, 1)
-    return 60
+    return 180

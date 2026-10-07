@@ -200,7 +200,7 @@ const AIControls: React.FC<AIControlsProps> = ({
     onBrowserReady?.(false);
     onBrowserEndpoints?.({});
     setCurrentPageUrl(undefined);
-  }, [browserRuntimeSessionId]);
+  }, [browserRuntimeSessionId, onBrowserReady, onBrowserEndpoints]);
 
   useEffect(() => {
     setRecorderDebugSessionId(undefined);
@@ -208,10 +208,6 @@ const AIControls: React.FC<AIControlsProps> = ({
     setBrowserRuntimeSessionId(createRuntimeSessionId());
     resetTakeoverState();
   }, [executionBackend, resetTakeoverState]);
-
-  useEffect(() => {
-    setIsTemplatePanelExpanded(!isReactChatMode);
-  }, [isReactChatMode]);
 
   useEffect(() => {
     return () => {
@@ -327,9 +323,6 @@ const AIControls: React.FC<AIControlsProps> = ({
   const executeCommandMutation = useMutation(
     async (commands: MCPCommand[]): Promise<BrowserCommandExecutionResponse> => {
       const commandsWithWait = appendDefaultWaitCommands(commands);
-      if (import.meta.env.DEV) {
-        console.log('[AIControls] Executing commands:', commands, 'backend:', executionBackend);
-      }
       return apiClient.post('/browser-runtime/execute', {
         commands: commandsWithWait,
         backend: executionBackend,
@@ -340,9 +333,6 @@ const AIControls: React.FC<AIControlsProps> = ({
       onSuccess: (data, commands) => {
         const executionFailed = isExecutionFailed(data);
         const resultMessage = getFailedExecutionMessage(data);
-        if (import.meta.env.DEV) {
-          console.log('[AIControls] Commands executed:', data);
-        }
         if (executionFailed) {
           markTakeoverRequired({
             runtimeSessionId: browserRuntimeSessionId,
@@ -393,16 +383,6 @@ const AIControls: React.FC<AIControlsProps> = ({
   // Parse natural language to MCP commands
   const parseCommandMutation = useMutation(
     async ({ userInput, commandType }: { userInput: string; commandType: string }) => {
-      if (import.meta.env.DEV) {
-        console.log(
-          '[AIControls] Parsing command:',
-          userInput,
-          'commandType:',
-          commandType,
-          'currentPageUrl:',
-          currentPageUrl
-        );
-      }
       const payload: ParseBrowserCommandPayload = {
         input: userInput,
         context: {
@@ -415,9 +395,6 @@ const AIControls: React.FC<AIControlsProps> = ({
     },
     {
       onSuccess: (data) => {
-        if (import.meta.env.DEV) {
-          console.log('[AIControls] Parse result:', data);
-        }
         if (data.success && data.commands.length > 0) {
           // Get replaceable info from the last user entry
           setHistory((prev) => {
@@ -489,9 +466,6 @@ const AIControls: React.FC<AIControlsProps> = ({
   // Initialize browser session
   const initBrowserMutation = useMutation(
     async (): Promise<BrowserInitResponse> => {
-      if (import.meta.env.DEV) {
-        console.log('[AIControls] Initializing browser with backend:', executionBackend);
-      }
       return apiClient.post('/browser-runtime/init', {
         backend: executionBackend,
         runtimeSessionId: browserRuntimeSessionId,
@@ -718,6 +692,9 @@ const AIControls: React.FC<AIControlsProps> = ({
     );
   };
 
+  const handleSendRef = useRef(handleSend);
+  handleSendRef.current = handleSend;
+
   const handleInputKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key !== 'Enter' || e.shiftKey) {
@@ -729,9 +706,9 @@ const AIControls: React.FC<AIControlsProps> = ({
       }
 
       e.preventDefault();
-      void handleSend();
+      void handleSendRef.current();
     },
-    [handleSend]
+    []
   );
 
   const handleExecuteCommands = async (commands: MCPCommand[]) => {
@@ -871,6 +848,10 @@ const AIControls: React.FC<AIControlsProps> = ({
     getScreenshotModeLabel,
     navigate,
   });
+
+  useEffect(() => {
+    setIsTemplatePanelExpanded(!isReactChatMode);
+  }, [isReactChatMode, setIsTemplatePanelExpanded]);
 
   // Handle manual recording start
   const handleManualStart = () => {

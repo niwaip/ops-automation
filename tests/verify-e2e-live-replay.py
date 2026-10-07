@@ -26,7 +26,7 @@ def main():
     params = {
         "username": "admin",
         "loginCredential": "admin",
-        "grossMarginThreshold": 20,
+        "grossMarginThreshold": 10,
     }
     
     user_id = str(uuid.uuid4())

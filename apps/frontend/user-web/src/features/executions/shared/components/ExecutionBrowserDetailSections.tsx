@@ -1,5 +1,5 @@
 import React from 'react';
-import LiveSessionPreviewCard from '../../../../components/runtime/LiveSessionPreviewCard';
+import LiveSessionPreviewCard from './LiveSessionPreviewCard';
 import ExecutionActivityOverviewCard from '@/features/executions/shared/components/ExecutionActivityOverviewCard';
 import ExecutionBrowserActionCard from '@/features/executions/shared/components/ExecutionBrowserActionCard';
 import ExecutionBrowserAuditEvidenceCard from '@/features/executions/shared/components/ExecutionBrowserAuditEvidenceCard';

@@ -210,6 +210,7 @@ export class UserSandboxService implements OnModuleInit, OnModuleDestroy {
       waitTimeoutSeconds?: number;
       thinking?: boolean;
       reasoningEffort?: string;
+      onLockAcquired?: () => void;
       onWaiting?: (waitedMs: number) => void;
       onStdoutChunk?: (chunk: string) => void;
     }
@@ -222,8 +223,8 @@ export class UserSandboxService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  async stopSandboxExecution(userId: string): Promise<boolean> {
-    return this.harnessService.stopSandboxExecution(userId);
+  async stopSandboxExecution(userId: string, sessionId?: string): Promise<boolean> {
+    return this.harnessService.stopSandboxExecution(userId, sessionId);
   }
 
   async destroyUserSandbox(userId: string): Promise<boolean> {

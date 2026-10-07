@@ -140,6 +140,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     error,
     handleStopStreaming,
     handleRunInBackground,
+    isSessionStreaming,
     isStreaming,
     runAssistantRequest,
   } = useChatStreaming({
@@ -152,6 +153,11 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     updateSessionMeta,
     getCurrentSelectedSessionId: () => selectedSessionIdRef.current,
   });
+
+  const isCurrentSessionStreaming = Boolean(
+    selectedSessionId && isSessionStreaming(selectedSessionId)
+  );
+
   const selectedSessionNeedsRefresh = useMemo(
     () =>
       activeMessages.some(
@@ -184,7 +190,8 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
       // full payload for every previously visited session in React Query.
       cacheTime: 0,
       refetchOnWindowFocus: false,
-      refetchInterval: selectedSessionNeedsRefresh && !isStreaming ? CHAT_SESSION_STREAMING_POLL_INTERVAL : false,
+      refetchInterval:
+        selectedSessionNeedsRefresh && !isCurrentSessionStreaming ? CHAT_SESSION_STREAMING_POLL_INTERVAL : false,
     }
   );
   const availableModels = useMemo(() => ((modelsQuery.data || []) as AIModel[]) || [], [modelsQuery.data]);
@@ -271,14 +278,14 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   const [isChatBackgroundUnlocked, setIsChatBackgroundUnlocked] = useState(false);
 
   useEffect(() => {
-    if (!isStreaming) {
+    if (!isCurrentSessionStreaming) {
       setIsChatBackgroundUnlocked(false);
     }
-  }, [isStreaming]);
+  }, [isCurrentSessionStreaming]);
 
   const handleRunInBackgroundModeAware = useCallback(() => {
     if (chatMode === 'task') {
-      handleRunInBackground();
+      handleRunInBackground(selectedSessionId || undefined);
       return;
     }
 
@@ -289,7 +296,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     // 4. 输入框立刻解锁，允许用户在当前页面继续输入新问题！
     setIsChatBackgroundUnlocked(true);
     toast.info('当前回答已转入后台生成，您可在当前页面继续提问');
-  }, [chatMode, handleRunInBackground, toast]);
+  }, [chatMode, handleRunInBackground, selectedSessionId, toast]);
 
   // Wrap handleSend to push draft into sent history before clearing it
   const handleSendWithHistory = useCallback((files?: UploadedFileDescriptor[], contentOverride?: string) => {
@@ -662,7 +669,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             selectedModel={selectedModel}
             availableModels={availableModels}
             onModelChange={handleModelChange}
-            isStreaming={isChatBackgroundUnlocked ? false : isStreaming}
+            isStreaming={isChatBackgroundUnlocked ? false : isCurrentSessionStreaming}
             modelsLoading={modelsQuery.isLoading}
             disabled={false}
             placeholder={placeholder}

@@ -138,9 +138,18 @@ export function useAdminDashboardData() {
   };
 
   // Computed data
-  const pendingRequests = pendingRequestsQuery.data?.requests || [];
-  const approvedRequests = approvedRequestsQuery.data?.requests || [];
-  const rejectedRequests = rejectedRequestsQuery.data?.requests || [];
+  const pendingRequests = useMemo(
+    () => pendingRequestsQuery.data?.requests || [],
+    [pendingRequestsQuery.data?.requests]
+  );
+  const approvedRequests = useMemo(
+    () => approvedRequestsQuery.data?.requests || [],
+    [approvedRequestsQuery.data?.requests]
+  );
+  const rejectedRequests = useMemo(
+    () => rejectedRequestsQuery.data?.requests || [],
+    [rejectedRequestsQuery.data?.requests]
+  );
   const allRequests = useMemo(() => {
     return [...pendingRequests, ...approvedRequests, ...rejectedRequests].sort((a, b) => {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();

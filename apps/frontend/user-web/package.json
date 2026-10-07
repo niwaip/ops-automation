@@ -9,7 +9,6 @@
     "preview": "vite preview",
     "lint": "eslint src --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "check:sprint5": "node ./scripts/check-sprint5-regression.mjs",
     "test": "vitest run"
   },
   "dependencies": {

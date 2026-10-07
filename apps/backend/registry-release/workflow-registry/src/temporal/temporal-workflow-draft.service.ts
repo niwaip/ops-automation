@@ -17,6 +17,8 @@ import {
 } from './temporal-workflow-draft.helpers';
 import {
   buildAiDraftResolutionSampleInputs,
+  extractWorkflowVersion,
+  isLegacyWorkflowVersion,
   projectHttpPreviewToStepOutput,
   repairCommonDraftPlanIssues,
   simulateAiStructuredTransformOutputSample,
@@ -652,6 +654,19 @@ export class TemporalWorkflowAiDraftService {
       return plan;
     }
 
+    // Phase 3-γ / R1: Distinguish fatal capability boundary violations from user-fixable step config issues
+    const fatalCapabilityIssues = finalIssues.filter(
+      (item) =>
+        item.includes('模型能力必须作为独立 llm_operation') ||
+        item.includes('使用了已弃用的 builtin:aiStructuredTransform') ||
+        item.includes('必须至少生成一个步骤')
+    );
+    if (fatalCapabilityIssues.length > 0) {
+      throw new BadRequestException(
+        `AI 草稿包含禁止的 Activity 能力定义: ${fatalCapabilityIssues.join('；')}`
+      );
+    }
+
     return {
       ...plan,
       warnings: [
@@ -756,6 +771,19 @@ export class TemporalWorkflowAiDraftService {
       const activityRef = support.pickFirstNonEmptyString(step.activityRef);
       if (!activityRef || !activityResourceMap.has(activityRef)) {
         throw new BadRequestException(`AI 生成了未注册的 activityRef: ${activityRef || '空'}`);
+      }
+      if (activityRef === 'llmOperationActivity' || activityRef === 'builtin:llmOperation') {
+        throw new BadRequestException(
+          `AI 草稿包含禁止的 Activity 能力定义: 把 LLM Operation 声明成了 Activity`
+        );
+      }
+      if (
+        activityRef === 'builtin:aiStructuredTransform' &&
+        !isLegacyWorkflowVersion(extractWorkflowVersion(plan))
+      ) {
+        throw new BadRequestException(
+          `AI 草稿包含已弃用的 Activity 能力定义: 新版本禁止使用 builtin:aiStructuredTransform`
+        );
       }
       const activity = activityResourceMap.get(activityRef)!;
       const previousStep = index > 0 ? rawSteps[index - 1] : undefined;

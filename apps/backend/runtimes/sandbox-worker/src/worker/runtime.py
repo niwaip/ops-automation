@@ -13,6 +13,7 @@ async def main():
     logger.info('Starting sandbox-worker HTTP API gateway')
     logger.info(f'Temporal Address: {config.temporal_address}')
     logger.info(f'Namespace: {config.temporal_namespace}')
+    logger.info(f'Execution Task Queue: {config.task_queue}')
     logger.info(f'Validation Task Queue: {config.validation_task_queue}')
     logger.info(f'HTTP Port: {config.http_port}')
 
@@ -33,7 +34,12 @@ async def main():
     if not client:
         raise RuntimeError('Could not connect to Temporal after 20 attempts')
 
-    runner = await run_http_server(client, config.validation_task_queue, config.http_port)
+    runner = await run_http_server(
+        client,
+        config.validation_task_queue,
+        config.http_port,
+        task_queue=config.task_queue,
+    )
     logger.info('Sandbox HTTP server is ready to accept requests...')
 
     try:

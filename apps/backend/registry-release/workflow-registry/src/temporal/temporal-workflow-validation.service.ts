@@ -36,7 +36,7 @@ export class TemporalWorkflowValidationService {
           workflow_id: workflowId,
           input_data: validationInput,
           task_queue: taskQueue,
-          timeout,
+          timeout: timeout || '180s',
         },
         {
           timeout: Number(process.env.WORKFLOW_VALIDATION_TIMEOUT_MS || 300000),
@@ -141,7 +141,7 @@ export class TemporalWorkflowValidationService {
           workflow_id: workflowId,
           input_data: validationInput,
           task_queue: taskQueue,
-          timeout,
+          timeout: timeout || '180s',
         },
         {
           responseType: 'stream',

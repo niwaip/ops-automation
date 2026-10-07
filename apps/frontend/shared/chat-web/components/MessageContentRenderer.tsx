@@ -10,9 +10,19 @@ interface MessageContentRendererProps {
   isStreaming?: boolean;
 }
 
-const safeUrlTransform = (url?: string): string => {
+export const safeUrlTransform = (url?: string): string => {
   if (!url) return '';
   const trimmed = url.trim();
+  if (trimmed.startsWith('//')) {
+    try {
+      const parsed = new URL(`http:${trimmed}`);
+      if (['http:', 'https:'].includes(parsed.protocol)) {
+        return trimmed;
+      }
+    } catch {
+      return '';
+    }
+  }
   if (
     trimmed.startsWith('/') ||
     trimmed.startsWith('./') ||
@@ -33,7 +43,7 @@ const safeUrlTransform = (url?: string): string => {
   return '';
 };
 
-const extractLocalAuthToken = (): string | null => {
+export const extractLocalAuthToken = (): string | null => {
   if (typeof window === 'undefined') return null;
   try {
     // 1. Direct keys
@@ -68,14 +78,29 @@ const extractLocalAuthToken = (): string | null => {
   return null;
 };
 
-const appendAuthToken = (url: string): string => {
-  if (typeof window === 'undefined' || !url.includes('/api/ai/chat/workspace-files/')) return url;
-  if (url.includes('token=') || url.includes('access_token=')) return url;
+export const appendAuthToken = (url: string): string => {
+  if (typeof window === 'undefined' || !url || !window.location?.origin) return url;
+  const trimmed = url.trim();
+  if (trimmed.startsWith('//')) return url;
   try {
+    const parsed = new URL(trimmed, window.location.origin);
+    // Must strictly match current window origin to prevent external credential exfiltration
+    if (parsed.origin !== window.location.origin) {
+      return url;
+    }
+    // Must strictly match workspace files API route
+    if (!parsed.pathname.startsWith('/api/ai/chat/workspace-files/')) {
+      return url;
+    }
+    if (parsed.searchParams.has('token') || parsed.searchParams.has('access_token')) {
+      return url;
+    }
     const token = extractLocalAuthToken();
     if (!token) return url;
-    const sep = url.includes('?') ? '&' : '?';
-    return `${url}${sep}token=${encodeURIComponent(token)}`;
+    parsed.searchParams.set('token', token);
+    return trimmed.startsWith('http://') || trimmed.startsWith('https://')
+      ? parsed.toString()
+      : `${parsed.pathname}${parsed.search}${parsed.hash}`;
   } catch {
     return url;
   }
@@ -236,15 +261,25 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
                   onClick={() => {
                     if (finalSrc && typeof window !== 'undefined') {
                       if (finalSrc.startsWith('data:image/')) {
-                        const w = window.open('');
+                        const w = window.open('', '_blank', 'noopener,noreferrer');
                         if (w) {
-                          w.document.write(
-                            `<!DOCTYPE html><html><head><title>${alt || '图片查看器'}</title><style>body{margin:0;background:#0f172a;display:flex;justify-content:center;align-items:center;min-height:100vh;}</style></head><body><img src="${finalSrc}" style="max-width:96vw;max-height:96vh;object-fit:contain;box-shadow:0 8px 32px rgba(0,0,0,0.6);border-radius:8px;" /></body></html>`
-                          );
-                          w.document.close();
+                          w.document.title = alt || '图片查看器';
+                          const style = w.document.createElement('style');
+                          style.textContent =
+                            'body{margin:0;background:#0f172a;display:flex;justify-content:center;align-items:center;min-height:100vh;}';
+                          w.document.head.appendChild(style);
+                          const img = w.document.createElement('img');
+                          img.src = finalSrc;
+                          img.alt = alt || '图片查看器';
+                          img.style.maxWidth = '96vw';
+                          img.style.maxHeight = '96vh';
+                          img.style.objectFit = 'contain';
+                          img.style.boxShadow = '0 8px 32px rgba(0,0,0,0.6)';
+                          img.style.borderRadius = '8px';
+                          w.document.body.appendChild(img);
                         }
                       } else {
-                        window.open(finalSrc, '_blank');
+                        window.open(finalSrc, '_blank', 'noopener,noreferrer');
                       }
                     }
                   }}

@@ -449,14 +449,14 @@ export class ChatController {
   @Post('chat/stop')
   @ApiOperation({ summary: '显式停止正在执行的个人沙箱与会话任务' })
   async stopChat(
-    @Body() body: { sessionId?: string },
+    @Body() body: { sessionId?: string; executionId?: string },
     @Req() req: Request
   ): Promise<{ success: boolean; message: string }> {
     const resolvedUser = await this.chatOrchestratorService.resolveAuthenticatedUser(
       req.headers.authorization
     );
     const userId = resolvedUser.userId || 'admin';
-    await this.userSandboxDispatcherService.stopPersonalSandbox(userId);
+    await this.userSandboxDispatcherService.stopPersonalSandbox(userId, body?.sessionId, body?.executionId);
     return { success: true, message: 'Chat execution stopped successfully' };
   }
 

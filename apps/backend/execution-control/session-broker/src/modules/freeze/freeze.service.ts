@@ -49,7 +49,7 @@ export class FreezeService {
     await this.syncRuntimeControlState(sessionId, 'frozen', 'HUMAN_CONTROL', reason);
     this.logger.log(`Runtime control frozen: session=${sessionId}`);
 
-    // TODO: Send signal to worker to freeze CDP input
+    // Notify browser worker via HTTP to freeze CDP input
     await this.sendFreezeSignal(sessionId);
 
     return {
@@ -74,7 +74,7 @@ export class FreezeService {
 
     this.logger.log(`Runtime control unfrozen: session=${sessionId}`);
 
-    // TODO: Send signal to worker to unfreeze CDP input
+    // Notify browser worker via HTTP to unfreeze CDP input
     await this.sendUnfreezeSignal(sessionId);
 
     return {
@@ -120,8 +120,7 @@ export class FreezeService {
   }
 
   /**
-   * Send freeze signal to worker (placeholder for actual implementation)
-   * In production, this would call browser-worker API to disable CDP input
+   * Send freeze signal to browser worker via /browser/freeze HTTP endpoint
    */
   private async sendFreezeSignal(sessionId: string): Promise<void> {
     await this.postToBrowserWorker('/browser/freeze', {
@@ -132,8 +131,7 @@ export class FreezeService {
   }
 
   /**
-   * Send unfreeze signal to worker (placeholder for actual implementation)
-   * In production, this would call browser-worker API to enable CDP input
+   * Send unfreeze signal to browser worker via /browser/resume HTTP endpoint
    */
   private async sendUnfreezeSignal(sessionId: string): Promise<void> {
     await this.postToBrowserWorker('/browser/resume', {

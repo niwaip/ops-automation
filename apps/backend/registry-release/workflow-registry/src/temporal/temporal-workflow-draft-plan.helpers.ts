@@ -85,6 +85,8 @@ export function validateAiWorkflowDraftPlan(
     issues.push(...compiledValidation.issues);
   }
 
+  const workflowVersion = extractWorkflowVersion(plan);
+
   steps.forEach((step, index) => {
     const stepName = deps.pickFirstNonEmptyString(step?.name) || `步骤 ${index + 1}`;
     const activityRef = deps.pickFirstNonEmptyString(step?.activityRef);
@@ -97,9 +99,25 @@ export function validateAiWorkflowDraftPlan(
       issues.push(`${stepName} 缺少 activityRef。`);
       return;
     }
+    if (activityRef === 'llmOperationActivity' || activityRef === 'builtin:llmOperation') {
+      issues.push(
+        `${stepName} 把 LLM Operation 声明成了 Temporal Activity。模型能力必须作为独立 llm_operation 计划节点由控制面直接执行，不能嵌入 Workflow。`
+      );
+      return;
+    }
     if (!knownActivityRefs.has(activityRef)) {
       issues.push(`${stepName} 使用了未注册的 activityRef: ${activityRef}。`);
       return;
+    }
+
+    if (activityRef === 'builtin:aiStructuredTransform') {
+      const allowLegacy = isLegacyWorkflowVersion(workflowVersion);
+      if (!allowLegacy) {
+        issues.push(
+          `${stepName} 使用了已弃用的 builtin:aiStructuredTransform。新任务必须由控制面使用独立 llm_operation 计划节点，不能迁移为另一种 Activity。参见 three-capability-types-and-llm-operation-implementation-plan.md §10.3。`
+        );
+        return;
+      }
     }
 
     if (activityRef === 'builtin:httpRequest') {
@@ -789,4 +807,69 @@ function hasUsableContextTemplate(value: unknown): boolean {
     return Object.keys(value as Record<string, unknown>).length > 0;
   }
   return false;
+}
+
+export function extractWorkflowVersion(plan: AiWorkflowDraftPlan): string {
+  const anyPlan = plan as any;
+  return (
+    anyPlan?.version ||
+    anyPlan?.workflowVersion ||
+    anyPlan?.skillVersion ||
+    anyPlan?.planVersion ||
+    'unknown'
+  );
+}
+
+export interface ParsedWorkflowVersion {
+  major: number;
+  minor?: number;
+  patch?: number;
+  prerelease?: string;
+}
+
+export function parseWorkflowVersion(version: string): ParsedWorkflowVersion | null {
+  const match = String(version || '').trim().match(
+    /^v?(\d+)(?:\.(\d+)(?:\.(\d+))?)?(?:-([0-9a-z.-]+))?(?:\+[0-9a-z.-]+)?$/i
+  );
+  if (!match) {
+    return null;
+  }
+  return {
+    major: parseInt(match[1], 10),
+    minor: match[2] !== undefined ? parseInt(match[2], 10) : undefined,
+    patch: match[3] !== undefined ? parseInt(match[3], 10) : undefined,
+    prerelease: match[4],
+  };
+}
+
+export function isLegacyWorkflowVersion(version: string): boolean {
+  // Phase 3-γ / R3: Strict semver validation gate - only explicitly valid legacy versions allow aiStructuredTransform
+  // Any undefined / unknown / empty string / malformed version (e.g. v1.garbage, v1..0, v2.foo, v3.) → treat as new version
+  // Legacy versions can be specified via OPS_LEGACY_WORKFLOW_VERSIONS env var (comma-separated, e.g. "v1,v2,v3")
+  const parsedVersion = parseWorkflowVersion(version);
+  if (!parsedVersion) {
+    return false;
+  }
+
+  const legacyVersionsFromEnv = (process.env.OPS_LEGACY_WORKFLOW_VERSIONS ?? 'v1,v2,v3')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  return legacyVersionsFromEnv.some((spec) => {
+    const parsedSpec = parseWorkflowVersion(spec);
+    if (!parsedSpec) {
+      return false;
+    }
+    if (parsedVersion.major !== parsedSpec.major) {
+      return false;
+    }
+    if (parsedSpec.minor !== undefined && parsedVersion.minor !== parsedSpec.minor) {
+      return false;
+    }
+    if (parsedSpec.patch !== undefined && parsedVersion.patch !== parsedSpec.patch) {
+      return false;
+    }
+    return true;
+  });
 }

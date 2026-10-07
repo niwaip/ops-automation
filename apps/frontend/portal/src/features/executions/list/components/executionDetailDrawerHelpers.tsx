@@ -3,7 +3,6 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ExecutionPhaseDto } from "@/api/execution";
 import { renderJsonValue } from "@/features/executions/shared/json";
-import { beautifyText } from "@/features/executions/detail/detailView";
 import {
   extractPhaseStepImageSources,
   extractWorkflowActivitySnapshotSources,
@@ -11,7 +10,7 @@ import {
   sortExecutionPhaseStepsByTime,
 } from "@/features/executions/shared/artifacts";
 import { extractBrowserExecutionResult } from "@/features/executions/shared/browser";
-import { tryParseJsonValue } from "@/features/executions/shared/common";
+import { beautifyText, tryParseJsonValue } from "@/features/executions/shared/common";
 
 const { Text } = Typography;
 

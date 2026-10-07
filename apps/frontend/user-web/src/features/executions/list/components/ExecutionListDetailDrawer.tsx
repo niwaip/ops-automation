@@ -7,7 +7,7 @@ import {
 } from '@/features/executions/detail/components/executionDetailCollapse';
 import type { ExecutionListDetailDrawerProps } from '@/features/executions/list/lib/executionListDrawerProps';
 import styles from '../../pages/ExecutionListPage.module.css';
-import LiveSessionPreviewCard from '@/components/runtime/LiveSessionPreviewCard';
+import LiveSessionPreviewCard from '@/features/executions/shared/components/LiveSessionPreviewCard';
 import ExecutionBasicInfoSection from '@/features/executions/shared/components/ExecutionBasicInfoSection';
 import ExecutionBrowserProgressCard from '@/features/executions/shared/components/ExecutionBrowserProgressCard';
 import ExecutionInputOutputCard from '@/features/executions/shared/components/ExecutionInputOutputCard';

@@ -208,12 +208,14 @@ export class CapabilityReleaseService implements OnModuleInit {
     id: string,
     dto: ValidateCapabilityDTO,
     userId: string | undefined,
+    authToken: string | undefined,
     onEvent: (event: string, payload: Record<string, unknown>) => void
   ) {
     return this.capabilityReleaseBuildValidationService.validateSandboxStream(
       id,
       dto,
       userId,
+      authToken,
       onEvent,
       this.createBuildValidationAccessors()
     );
@@ -452,10 +454,10 @@ export class CapabilityReleaseService implements OnModuleInit {
     id: string,
     dto: ValidateCapabilityDTO,
     userId: string | undefined,
-    _authToken: string | undefined,
+    authToken: string | undefined,
     onEvent: (event: string, payload: Record<string, unknown>) => void
   ): Promise<void> {
-    return this.validateCapabilityReleaseSandboxStream(id, dto, userId, onEvent);
+    return this.validateCapabilityReleaseSandboxStream(id, dto, userId, authToken, onEvent);
   }
 
   async generateSkillDraft(

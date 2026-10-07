@@ -182,7 +182,7 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
     }
 
     return null;
-  }, [activeStepId, failedPhaseStepId, phaseLoopIteration, resumeAction, reviewComment]);
+  }, [activeStepId, failedPhaseStepId, nextStepAfterFailedId, phaseLoopIteration, resumeAction, reviewComment]);
 
   const applyRecoveryMutation = useMutation(
     async () => {

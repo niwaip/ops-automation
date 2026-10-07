@@ -143,15 +143,6 @@ export function getSampleValue(varName: string): string {
   return samples[varName] || '示例值';
 }
 
-/**
- * 推断图片数组路径
- */
-export function inferImageArrayPath(templateType: string): string {
-  if (templateType === '运维自动化报告') {
-    return 'd.screenshots';
-  }
-  return 'd.images';
-}
 
 /**
  * 计算表格置信度

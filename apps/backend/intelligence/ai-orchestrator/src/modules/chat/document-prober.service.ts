@@ -300,10 +300,10 @@ export class DocumentProberService {
     let rawB = matchB && matchB[1] ? matchB[1].trim() : undefined;
 
     if (rawA) {
-      rawA = rawA.split(/(?:\t|\s{2,}|(?:乙方|承包方|受托方|供货方|承租方|员工|劳动者|接收方)[：:\s])/)[0].trim();
+      rawA = rawA.split(/(?:\t|\s{2,}|(?:乙方|承包方|受托方|供货方|承租方|员工|劳动者|接收方)[：:\s])/)[0]?.trim();
     }
     if (rawB) {
-      rawB = rawB.split(/(?:\t|\s{2,}|(?:甲方|发包方|委托方|采购方|出租方|雇主|披露方)[：:\s])/)[0].trim();
+      rawB = rawB.split(/(?:\t|\s{2,}|(?:甲方|发包方|委托方|采购方|出租方|雇主|披露方)[：:\s])/)[0]?.trim();
     }
 
     return {
