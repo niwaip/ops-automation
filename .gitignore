@@ -19,6 +19,7 @@ out/
 # IDE
 .idea/
 .vscode/
+.trae/
 *.swp
 *.swo
 *~
@@ -71,9 +72,6 @@ docker-compose.override.yml
 .docker-state/control-plane-runtime-build.*
 docker/office-addin/runtime-certs/*
 !docker/office-addin/runtime-certs/.gitkeep
-
-# Generated files
-*.generated.ts
 .generated/
 generated/
 *.node
@@ -83,13 +81,8 @@ libquery_engine*
 vite.config.js
 vite.config.d.ts
 
-# AI Orchestrator data (persisted models and API keys)
-services/ai-orchestrator/data/
-# Carbone Engine uploaded templates (runtime data)
-services/carbone-engine/templates/
+# Carbone Engine templates & outputs (runtime data)
 /templates/
-# Carbone Engine outputs (generated documents)
-services/carbone-engine/outputs/
 /outputs/
 # Generated test files in root
 保密协议*.docx

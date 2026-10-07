@@ -16,9 +16,12 @@ x-common-env: &common-env
   # Shared by the credential-writing platform service and every runtime that
   # decrypts credentials immediately before invoking a capability.
   USER_CREDENTIAL_ENCRYPTION_KEY: ${USER_CREDENTIAL_ENCRYPTION_KEY:-7fd6414a543574effddb645132638c2357ba2f12a57c09216bc45880f5271757}
+  USER_CREDENTIAL_ENCRYPTION_KEY_FALLBACK: ${USER_CREDENTIAL_ENCRYPTION_KEY_FALLBACK:-}
+  JWT_SECRET: ${JWT_SECRET:-ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa}
+  INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
 
 x-common-node-service: &common-node-service
-  image: ${DOCKER_REGISTRY:-}node:20-bullseye
+  image: ${NODE_IMAGE:-${DOCKER_REGISTRY:-}node:22-bookworm}
   working_dir: /workspace
   networks:
     - ops-network
@@ -28,7 +31,7 @@ services:
   # Workspace Dependencies Init (must complete before other services)
   # ============================================
   workspace-deps-init:
-    image: ${DOCKER_REGISTRY:-}node:20-bullseye
+    image: ${NODE_IMAGE:-${DOCKER_REGISTRY:-}node:22-bookworm}
     container_name: ops-workspace-init
     working_dir: /workspace
     command: >
@@ -50,7 +53,7 @@ services:
   # Infrastructure Services
   # ============================================
   postgres:
-    image: ${DOCKER_REGISTRY:-}postgres:15-alpine
+    image: ${POSTGRES_IMAGE:-${DOCKER_REGISTRY:-}postgres:15-alpine}
     container_name: ops-postgres
     restart: unless-stopped
     environment:
@@ -71,7 +74,7 @@ services:
       - ops-network
 
   redis:
-    image: ${DOCKER_REGISTRY:-}redis:7-alpine
+    image: ${REDIS_IMAGE:-${DOCKER_REGISTRY:-}redis:7-alpine}
     container_name: ops-redis
     restart: unless-stopped
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secret}
@@ -345,6 +348,9 @@ services:
       SESSION_BROWSER_IMAGE: ${SESSION_BROWSER_IMAGE:-ops-browser-chrome:local}
       NETWORK_NAME: ${NETWORK_NAME:-ops-network}
       EXTERNAL_HOST: ${HOST_IP:-localhost}
+      NOVNC_BIND_IP: ${NOVNC_BIND_IP:-${HOST_BIND_IP:-127.0.0.1}}
+      CDP_BIND_IP: ${CDP_BIND_IP:-127.0.0.1}
+      VNC_PASSWORD: ${VNC_PASSWORD:-}
     ports:
       - '${HOST_BIND_IP:-127.0.0.1}:${BROWSER_WORKER_PORT:-3004}:${BROWSER_WORKER_PORT:-3004}'
     volumes:
@@ -624,24 +630,23 @@ services:
     image: ${SESSION_BROWSER_IMAGE:-ops-browser-chrome:local}
     container_name: ops-browser-chrome
     ports:
-      - '${HOST_BIND_IP:-127.0.0.1}:${NOVNC_PORT:-6080}:8080'
-      - '${HOST_BIND_IP:-127.0.0.1}:${CDP_PORT:-9222}:9222'
-      - '${HOST_BIND_IP:-127.0.0.1}:${VNC_PORT:-5900}:5900'
-      - '${HOST_BIND_IP:-127.0.0.1}:${CODEGEN_API_PORT:-3011}:${CODEGEN_API_PORT:-3011}'
+      - '${NOVNC_BIND_IP:-${HOST_BIND_IP:-127.0.0.1}}:${NOVNC_PORT:-6080}:8080'
+      - '${CDP_BIND_IP:-127.0.0.1}:${CDP_PORT:-9222}:9222'
+      - '${VNC_BIND_IP:-127.0.0.1}:${VNC_PORT:-5900}:5900'
+      - '${CODEGEN_BIND_IP:-127.0.0.1}:${CODEGEN_API_PORT:-3011}:${CODEGEN_API_PORT:-3011}'
     environment:
       SCREEN_WIDTH: 1920
       SCREEN_HEIGHT: 1080
       CODEGEN_API_PORT: ${CODEGEN_API_PORT:-3011}
+      ENABLE_CODEGEN: ${ENABLE_CODEGEN:-true}
+      VNC_PASSWORD: ${VNC_PASSWORD:-}
     command: ['/start-recorder.sh']
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/docker/browser-chrome/scripts/entrypoint.sh:/entrypoint.sh
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/docker/browser-chrome/scripts/start-recorder.sh:/start-recorder.sh
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/docker/browser-chrome/scripts/healthcheck.sh:/healthcheck.sh
     healthcheck:
-      test:
-        [
-          'CMD-SHELL',
-          'curl -fsS http://localhost:8080/vnc.html >/dev/null && curl -fsS http://localhost:${CODEGEN_API_PORT:-3011}/status >/dev/null',
-        ]
+      test: ['CMD', '/healthcheck.sh']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -656,6 +661,7 @@ services:
     profiles: ['temporal', 'workflow', 'full']
     image: ${DOCKER_REGISTRY:-}temporalio/auto-setup:1.22.0
     container_name: ops-temporal
+    restart: unless-stopped
     ports:
       - '${HOST_BIND_IP:-127.0.0.1}:7233:7233'
       - '${HOST_BIND_IP:-127.0.0.1}:7234:7234'
@@ -669,10 +675,17 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ops_secret}
       - POSTGRES_PWD=${POSTGRES_PASSWORD:-ops_secret}
       - POSTGRES_DB=temporal
+      - BIND_ON_IP=0.0.0.0
+      - TEMPORAL_BROADCAST_ADDRESS=127.0.0.1
       - DYNAMIC_CONFIG_FILE_PATH=/etc/temporal/dynamic_config.yaml
     volumes:
-      - temporal_data:/var/lib/postgresql/data
       - ../temporal/dynamic_config.yaml:/etc/temporal/dynamic_config.yaml:ro
+    healthcheck:
+      test: ['CMD', 'temporal', 'operator', 'cluster', 'health', '--address', '127.0.0.1:7233']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
@@ -689,7 +702,8 @@ services:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CORS_ORIGINS=http://${HOST_IP:-localhost}:8088,http://${HOST_IP:-localhost}:${PORTAL_PORT:-5173}
     depends_on:
-      - temporal
+      temporal:
+        condition: service_healthy
     networks:
       - ops-network
 
@@ -721,7 +735,8 @@ services:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
-      - temporal
+      temporal:
+        condition: service_healthy
     networks:
       - ops-network
 

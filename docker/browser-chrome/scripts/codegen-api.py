@@ -295,8 +295,9 @@ class CodegenHandler(BaseHTTPRequestHandler):
                     'error': str(e)
                 })
 
+        has_failure = any(not r.get('success') for r in results)
         return {
-            'status': 'completed',
+            'status': 'error' if has_failure else 'completed',
             'session': session,
             'results': results
         }

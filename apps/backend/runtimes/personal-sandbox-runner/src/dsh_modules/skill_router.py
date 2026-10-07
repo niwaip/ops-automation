@@ -266,6 +266,19 @@ def extract_entity_from_history(history: Optional[List[Dict[str, Any]]]) -> Opti
     return None
 
 
+INDEPENDENT_DOMAIN_OR_PLATFORM_PATTERN = re.compile(
+    r'(?:微博|weibo|热搜|热点|热榜|榜单|排行|热门|知乎|贴吧|抖音|快手|头条|小红书|b站|bilibili|推特|twitter|reddit|hacker\s*news|天气|气象|预报|气温|下雨|温度|股票|股价|汇率|基金|黄金|金价|新闻|赛事|票房|电影)',
+    re.I
+)
+
+ELLIPTICAL_FOLLOWUP_PATTERN = re.compile(
+    r'^(?:怎么|怎样|如何|为什么|为何|啥时候|什么时候|哪儿|哪里|多少|几时|能不能|可不可以|可以吗|行吗)'
+    r'|^(?:安装|部署|使用|用法|教程|原理|架构|设计|评价|口碑|对比|优缺点|源码|代码|实现|官网|下载|文档|配置|参数|价格|收费|成本|作者|团队|背景|历史|版本|更新日志|changelog|license|开源协议|简介|介绍|特点|优势|劣势|细节|总结|后续|进展|报错|bug|issue|release)[呢吗呀啊\?？]?'
+    r'|.*(?:呢|吗|呀|怎么样|如何|怎么用|好不好|行不行|值不值得|怎么装|怎么配|哪里买|多少钱)[?？]?$',
+    re.I
+)
+
+
 def resolve_contextual_query(q: str, history: Optional[List[Dict[str, Any]]]) -> str:
     """Resolves pronouns or incomplete queries using conversation history entity."""
     if not history:
@@ -287,9 +300,20 @@ def resolve_contextual_query(q: str, history: Optional[List[Dict[str, Any]]]) ->
         cleaned,
         flags=re.I
     ).strip()
-    if has_pronoun or len(clean_topic) <= 6:
+
+    # 1. 若包含明确指代代词（如“关于他”、“它的评价”），判定为上下文依存查询
+    # 2. 若未包含代词，必须同时满足：属于省略主语的追问模式，且不包含独立的平台/领域词（如微博、热搜、天气等独立话题）
+    is_elliptical = (
+        ELLIPTICAL_FOLLOWUP_PATTERN.search(clean_topic) is not None
+        and INDEPENDENT_DOMAIN_OR_PLATFORM_PATTERN.search(clean_topic) is None
+    )
+
+    if has_pronoun or is_elliptical:
         ent = extract_entity_from_history(history)
         if ent:
+            # 避免重复追加历史实体
+            if clean_topic and (clean_topic in ent or ent in clean_topic):
+                return ent
             return f"{ent} {clean_topic}".strip() if clean_topic else ent
     return q
 

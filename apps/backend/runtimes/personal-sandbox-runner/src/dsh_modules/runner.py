@@ -579,11 +579,6 @@ def cmd_run(args):
         TelemetryStats.emit_final_output(final_text)
 
     except TimeoutError as e:
-        if search_context:
-            _emit_search_evidence_fallback(prompt, search_context, existing_history, history_file, policy)
-            return
-        if _emit_html_report_recovery(prompt, skill_res, existing_history, history_file, policy):
-            return
         print(f"\n❌ [DeepSeek Harness 超时]: 任务执行超时: {e}", file=sys.stderr)
         sys.exit(124)
     except urllib.error.HTTPError as e:
@@ -600,27 +595,71 @@ def cmd_run(args):
             err_detail = err_json.get("message", err_msg)
         except Exception:
             err_detail = err_msg
-        if search_context:
-            _emit_search_evidence_fallback(prompt, search_context, existing_history, history_file, policy)
-            return
-        if _emit_tool_result_recovery(messages, prompt, existing_history, history_file, policy):
-            return
-        print(f"\n❌ [DeepSeek Harness 异常]: 大模型代理调用失败 ({e.code}): {err_detail}")
+
+        is_auth_error = e.code in (401, 403) or any(
+            k in str(err_detail).lower() for k in ("invalid token", "api key", "unauthorized", "authentication", "forbidden")
+        )
+
+        if is_auth_error:
+            print(f"\n❌ [DeepSeek Harness 鉴权失败]: 上游大模型鉴权失败 ({e.code}): {err_detail}", file=sys.stderr)
+            sys.exit(1)
+
+        print(f"\n❌ [DeepSeek Harness 异常]: 大模型代理调用失败 ({e.code}): {err_detail}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
         raw_error = str(e)
-        if search_context:
-            _emit_search_evidence_fallback(prompt, search_context, existing_history, history_file, policy)
-            return
-        if _emit_html_report_recovery(prompt, skill_res, existing_history, history_file, policy):
-            return
-        if _emit_tool_result_recovery(messages, prompt, existing_history, history_file, policy):
-            return
+        is_auth = any(
+            k in raw_error.lower() for k in ("invalid token", "check your api key", "unauthorized", "forbidden")
+        )
+        if is_auth:
+            print(f"\n❌ [DeepSeek Harness 鉴权失败]: 上游大模型鉴权异常: {raw_error}", file=sys.stderr)
+            sys.exit(1)
+
         if re.search(r'(?:\baborted\b|timeout|timed out|socket hang up|econnreset)', raw_error, re.I):
-            print("\n❌ [DeepSeek Harness 超时]: 模型响应超时或连接中断，本次任务未完成且未生成可用产物。请重试。")
+            print(f"\n❌ [DeepSeek Harness 超时]: 模型响应超时或连接中断: {raw_error}", file=sys.stderr)
+            sys.exit(124)
         else:
-            print(f"\n❌ [DeepSeek Harness 异常]: 执行异常: {e}")
+            print(f"\n❌ [DeepSeek Harness 异常]: 执行异常: {e}", file=sys.stderr)
         sys.exit(1)
+
+
+def is_context_relevant_to_query(query: str, context: str) -> bool:
+    """Verifies whether the retrieved search context actually corresponds to the user's prompt."""
+    if not query or not context:
+        return False
+    cleaned = re.sub(
+        r'^(帮我|请|给我|带我|麻烦|协助)?\s*(查一下|查下|查询|搜索|查找|看下|看一下|看看|检索|了解一下|获取|调研|调查|分析一下|分析|评测一下|评测|研究一下|调用|查看|search|find|lookup|research)\s*',
+        '',
+        query,
+        flags=re.I
+    ).strip()
+    cleaned = re.sub(r'[，。！？\?!\.,;；\s]+', '', cleaned)
+    if not cleaned:
+        return True
+
+    # 1. 英文与数字词提取
+    en_words = [w.lower() for w in re.findall(r'[a-zA-Z0-9_\-\.]{3,}', query)]
+    context_lower = context.lower()
+    for w in en_words:
+        if w in context_lower:
+            return True
+
+    # 2. 中文 2-gram / 3-gram 关键词提取
+    cjk_blocks = re.findall(r'[\u4e00-\u9fff]+', cleaned)
+    cjk_grams = []
+    for b in cjk_blocks:
+        if len(b) <= 3:
+            cjk_grams.append(b)
+        else:
+            for i in range(len(b) - 1):
+                cjk_grams.append(b[i:i+2])
+
+    if not cjk_grams:
+        return True
+
+    # 计算命中率
+    matches = sum(1 for g in cjk_grams if g in context)
+    return matches > 0 and (matches / len(cjk_grams)) >= 0.25
 
 
 def _emit_tool_result_recovery(messages, prompt, existing_history, history_file, policy):
@@ -631,12 +670,12 @@ def _emit_tool_result_recovery(messages, prompt, existing_history, history_file,
     if not tool_messages:
         return False
 
-    # 1. 优先挽救天气执行结果
+    # 1. 优先挽救天气执行结果（仅当用户查询属于气象意图时挽救，防止错配回复）
     weather_tools = [
         m for m in tool_messages
         if "气象" in str(m.get("content", "")) or "weather" in str(m.get("name", "")).lower()
     ]
-    if weather_tools:
+    if weather_tools and re.search(r'(天气|气象|预报|气温|下雨|晴天|温度|降雨|weather)', prompt, re.I):
         weather_content = str(weather_tools[-1].get("content", "")).strip()
         final_text = (
             "## 实时天气与气象预报\n\n"
@@ -654,15 +693,16 @@ def _emit_tool_result_recovery(messages, prompt, existing_history, history_file,
         TelemetryStats.emit_final_output(final_text)
         return True
 
-    # 2. 挽救网页检索结果
+    # 2. 挽救网页检索结果（校验与当前查询相关性）
     search_tools = [
         m for m in tool_messages
         if "web_search" in str(m.get("name", "")).lower() or "【多查询联网检索" in str(m.get("content", ""))
     ]
     if search_tools:
         search_content = str(search_tools[-1].get("content", "")).strip()
-        _emit_search_evidence_fallback(prompt, search_content, existing_history, history_file, policy, model_failed=True)
-        return True
+        if is_context_relevant_to_query(prompt, search_content):
+            _emit_search_evidence_fallback(prompt, search_content, existing_history, history_file, policy, model_failed=True)
+            return True
 
     return False
 
@@ -710,6 +750,8 @@ def _emit_search_evidence_fallback(
     history_file,
     policy,
     model_failed=True,
+    failure_reason="network_disconnect",
+    error_detail=None,
 ):
     """Deliver verified links when model synthesis fails after a successful search."""
     link_pattern = re.compile(r'(?:^|\n)(?:\d+\.\s*)?\[([^\]]+)\]\((https?://[^)]+)\)(?:[^\n]*)\n?\s*([^\n]*)')
@@ -754,14 +796,23 @@ def _emit_search_evidence_fallback(
 
     items = sorted(items, key=evidence_priority)[:8]
 
-    explanation = (
-        "联网检索已经完成，但指定模型在整理结果时连接中断。为避免脱离证据编造，下面直接返回检索到的来源："
-        if model_failed
-        else "这是强时效的插件/生态查询。为避免小模型补写未经证实的插件名、版本或安装命令，直接返回可核验来源："
-    )
+    if failure_reason == "auth_failed":
+        detail_txt = f"（{error_detail}）" if error_detail else ""
+        explanation = f"⚠️ 联网检索已成功完成，但上游模型鉴权失败{detail_txt}，未能调用模型生成总结。系统直接为您提取并呈现检索内容："
+    elif failure_reason == "timeout":
+        explanation = "⚠️ 联网检索已经完成，但指定模型响应超时。系统已直接为您提取并呈现检索内容："
+    elif failure_reason == "upstream_error":
+        detail_txt = f"（{error_detail}）" if error_detail else ""
+        explanation = f"⚠️ 联网检索已经完成，但上游模型调用异常{detail_txt}。系统已直接为您提取并呈现检索内容："
+    elif model_failed:
+        explanation = "联网检索已经完成，但指定模型在整理结果时连接中断。为避免脱离证据编造，下面直接返回检索到的内容："
+    else:
+        explanation = "这是强时效的插件/生态查询。为避免小模型补写未经证实的插件名、版本或安装命令，直接返回可核验来源："
+
+    header_title = "## 联网检索结果（可核验来源）" if items else "## 联网检索数据记录"
 
     lines = [
-        "## 联网检索结果（可核验来源）",
+        header_title,
         "",
         explanation,
         "",
@@ -783,6 +834,7 @@ def _emit_search_evidence_fallback(
             lines.append(f"   {snippet}")
     if not items:
         if search_context and search_context.strip():
+            lines.append("（检索已完成，未提取到结构化网页跳转链接，以下为检索获取的原始数据）\n")
             lines.append(search_context.strip())
         else:
             lines.extend(["检索已完成，但未能提取可引用链接。请重试本次查询。"])

@@ -147,11 +147,12 @@ RUN useradd -m -s /bin/bash chrome \
 COPY docker/browser-chrome/scripts/start.sh /start.sh
 COPY docker/browser-chrome/scripts/start-recorder.sh /start-recorder.sh
 COPY docker/browser-chrome/scripts/entrypoint.sh /entrypoint.sh
+COPY docker/browser-chrome/scripts/healthcheck.sh /healthcheck.sh
 COPY docker/browser-chrome/scripts/codegen-api.py /scripts/codegen-api.py
 COPY docker/browser-chrome/scripts/codegen_runtime.py /scripts/codegen_runtime.py
 COPY docker/browser-chrome/scripts/codegen_ai_control.py /scripts/codegen_ai_control.py
 COPY docker/browser-chrome/scripts/execute-actions.js /scripts/execute-actions.js
-RUN chmod +x /start.sh /start-recorder.sh /entrypoint.sh /scripts/codegen-api.py /scripts/execute-actions.js
+RUN chmod +x /start.sh /start-recorder.sh /entrypoint.sh /healthcheck.sh /scripts/codegen-api.py /scripts/execute-actions.js
 
 # Create necessary directories
 RUN mkdir -p /tmp/.X11-unix /tmp/codegen /scripts && chmod 1777 /tmp/.X11-unix
@@ -163,9 +164,9 @@ RUN mkdir -p /tmp/.X11-unix /tmp/codegen /scripts && chmod 1777 /tmp/.X11-unix
 # 3011 - Codegen API
 EXPOSE 8080 5900 9222 3011
 
-# Health check
+# Health check (mode-aware: checks CDP and conditional noVNC / Codegen)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -fsS http://localhost:8080/vnc.html && curl -fsS http://localhost:3011/status || exit 1
+    CMD /healthcheck.sh || exit 1
 
 # Set working directory
 WORKDIR /home/chrome

@@ -207,6 +207,43 @@ describe('ModelProxyController', () => {
         )
       ).rejects.toThrow('Sandbox model execution error: Explicit model upstream timeout');
     });
+
+    it('does NOT fallback to resilient client when primary model authentication fails with Invalid Token (streaming)', async () => {
+      const defaultChatModel = { id: 'uuid-default-chat-1234', name: 'gemini-3.7-flash-high' };
+      modelService.getPreferredDefaultModel.mockReturnValue(defaultChatModel as any);
+      modelService.getDefaultModel.mockReturnValue(defaultChatModel as any);
+
+      const authFailingClient = {
+        chatCompletionStream: jest.fn().mockRejectedValue(new Error('Invalid token. Please check your API key.')),
+      };
+      const fallbackClient = {
+        chatCompletionStream: jest.fn().mockImplementation(async (_opts: any, cb: any) => {
+          cb('Fallback chunk that should NOT be reached');
+        }),
+      };
+
+      modelService.getClient.mockImplementation((id: string) => {
+        if (id === defaultChatModel.id) return authFailingClient as any;
+        return null;
+      });
+
+      (controller as any).getResilientFallbackClients = jest.fn().mockReturnValue([
+        { id: 'backup-model', client: fallbackClient },
+      ]);
+
+      const res = createMockResponse();
+      await expect(
+        controller.chatCompletions(
+          validAuthHeader,
+          { model: 'uuid-default-chat-1234', stream: true },
+          {} as any,
+          res
+        )
+      ).rejects.toThrow('Sandbox model execution error: Invalid token. Please check your API key.');
+
+      expect(authFailingClient.chatCompletionStream).toHaveBeenCalled();
+      expect(fallbackClient.chatCompletionStream).not.toHaveBeenCalled();
+    });
   });
 
   describe('hardening retry mechanism with strict upper bound', () => {

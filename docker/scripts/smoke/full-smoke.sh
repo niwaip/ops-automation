@@ -327,9 +327,9 @@ main() {
   local task_succeeded=0
   local wait_status
 
-  log "Starting full V4-compatible development stack (without optional report profile)"
+  log "Starting full V4-compatible development stack (full profile)"
   ensure_network
-  ./docker/start-smart.sh dev up -d
+  ./docker/start-smart.sh full up -d
 
   retry "platform container running" 36 5 container_running "ops-platform" || fail "platform container not ready"
   retry "control-plane container running" 36 5 container_running "ops-control-plane" || fail "control-plane container not ready"
@@ -411,7 +411,7 @@ main() {
   log "Idempotent replay kept execution total at ${repeat_total}"
   log "Full smoke passed"
   log "Stop full stack with:"
-  log "  ./docker/start-smart.sh dev down"
+  log "  ./docker/start-smart.sh full down"
 }
 
 main "$@"

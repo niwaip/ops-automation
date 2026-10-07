@@ -92,6 +92,14 @@ set_env_value() {
   fi
 }
 
+read_env_key() {
+  local key="$1"
+  local file="${2:-$DOCKER_ENV_FILE}"
+  if [[ -f "$file" ]]; then
+    (grep -E "^${key}=" "$file" 2>/dev/null || true) | tail -1 | cut -d'=' -f2- | tr -d '\r"' || true
+  fi
+}
+
 get_db_params() {
   POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-ops-postgres}"
   POSTGRES_USER="${POSTGRES_USER:-ops}"
@@ -99,14 +107,8 @@ get_db_params() {
 
   if [[ -f "$DOCKER_ENV_FILE" ]]; then
     local pg_user pg_db
-    pg_user="$(grep -E '^POSTGRES_USER=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
-    pg_db="$(grep -E '^POSTGRES_DB=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
-    pg_user="${pg_user%$'\r'}"
-    pg_db="${pg_db%$'\r'}"
-    pg_user="${pg_user%\"}"
-    pg_user="${pg_user#\"}"
-    pg_db="${pg_db%\"}"
-    pg_db="${pg_db#\"}"
+    pg_user="$(read_env_key 'POSTGRES_USER')"
+    pg_db="$(read_env_key 'POSTGRES_DB')"
     [[ -n "$pg_user" ]] && POSTGRES_USER="$pg_user"
     [[ -n "$pg_db" ]] && POSTGRES_DB="$pg_db"
   fi
@@ -236,25 +238,26 @@ show_service_status() {
 
   if [[ -f "$DOCKER_ENV_FILE" ]]; then
     local read_val
-    read_val="$(grep -E '^HOST_IP=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    read_val="$(read_env_key 'HOST_IP')"
     [ -n "$read_val" ] && host_ip="$read_val"
-    read_val="$(grep -E '^CONTROL_PLANE_PORT=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    read_val="$(read_env_key 'CONTROL_PLANE_PORT')"
     [ -n "$read_val" ] && cp_port="$read_val"
-    read_val="$(grep -E '^PLATFORM_PORT=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    read_val="$(read_env_key 'PLATFORM_PORT')"
+    [[ -z "$read_val" ]] && read_val="$(read_env_key 'AUTH_PORT')"
     [ -n "$read_val" ] && platform_port="$read_val"
-    read_val="$(grep -E '^SESSION_BROKER_PORT=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    read_val="$(read_env_key 'SESSION_BROKER_PORT')"
     [ -n "$read_val" ] && session_port="$read_val"
-    read_val="$(grep -E '^AI_ORCHESTRATOR_PORT=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    read_val="$(read_env_key 'AI_ORCHESTRATOR_PORT')"
     [ -n "$read_val" ] && ai_port="$read_val"
-    read_val="$(grep -E '^CARBONE_ENGINE_PORT=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    read_val="$(read_env_key 'CARBONE_ENGINE_PORT')"
     [ -n "$read_val" ] && carbone_port="$read_val"
-    read_val="$(grep -E '^NOVNC_PORT=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    read_val="$(read_env_key 'NOVNC_PORT')"
     [ -n "$read_val" ] && novnc_port="$read_val"
-    read_val="$(grep -E '^TEMPORAL_UI_PORT=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    read_val="$(read_env_key 'TEMPORAL_UI_PORT')"
     [ -n "$read_val" ] && temporal_ui_port="$read_val"
-    read_val="$(grep -E '^PORTAL_PORT=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    read_val="$(read_env_key 'PORTAL_PORT')"
     [ -n "$read_val" ] && portal_port="$read_val"
-    read_val="$(grep -E '^USER_WEB_PORT=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    read_val="$(read_env_key 'USER_WEB_PORT')"
     [ -n "$read_val" ] && user_web_port="$read_val"
   fi
 
@@ -270,7 +273,7 @@ show_service_status() {
   user_web_port="${USER_WEB_PORT:-$user_web_port}"
 
   printf '\n\033[1m=== Running Containers ===\033[0m\n'
-  docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep -E '^ops-|^NAMES' || true
+  docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep -E '^ops-|^carbone-|^office-addin|^NAMES' || true
 
   printf '\n\033[1m=== HTTP Health Probes ===\033[0m\n'
   probe_http_service "Control Plane" "http://127.0.0.1:${cp_port}/api/health" "healthy"
@@ -334,10 +337,10 @@ database_status_check() {
     fi
   done
 
-  printf '\n[3. 88-Table Schema Ownership Verification]\n'
+  printf '\n[3. 95-Table Schema Ownership Verification]\n'
   if [[ -f "$REPO_ROOT/database/scripts/validate-schema-ownership.mjs" ]]; then
     if node "$REPO_ROOT/database/scripts/validate-schema-ownership.mjs" >/dev/null 2>&1; then
-      log_ok "All 88 tables match authoritative schema ownership definitions."
+      log_ok "All 95 tables match authoritative schema ownership definitions."
     else
       log_warn "Schema ownership drift detected. Run 'pnpm run validate:schema-ownership' for details."
     fi
@@ -625,7 +628,7 @@ database_menu() {
     printf '\n============================================================\n'
     printf '                  Database Operations Menu\n'
     printf '============================================================\n'
-    printf ' 1) Database Status & 88-Table Authority Check\n'
+    printf ' 1) Database Status & 95-Table Authority Check\n'
     printf ' 2) Apply Latest Database Schema & Migrations\n'
     printf ' 3) Seed Platform Default Accounts (Admin/Employee/Agent)\n'
     printf ' 4) Seed All Built-in Skills (14 declarative bundles)\n'
@@ -654,7 +657,7 @@ print_header() {
   printf '\n============================================================\n'
   printf '              Ops Automation Management Menu\n'
   printf '  Repo: %s\n' "$REPO_ROOT"
-  printf '  Stack: Lightweight Core (6 containers) + On-Demand Profiles\n'
+  printf '  Stack: Lightweight Core (10 containers) + On-Demand Profiles\n'
   printf '============================================================\n'
 }
 
@@ -663,27 +666,29 @@ interactive_main_menu() {
   while true; do
     print_header
     printf ' [Service Management]\n'
-    printf '  1) Start Core Stack (dev - 6 containers, recommended)\n'
+    printf '  1) Start Core Stack (dev - 10 containers, recommended)\n'
     printf '  2) Start with Browser Extension (dev:browser)\n'
     printf '  3) Start with Temporal Workflow (dev:workflow)\n'
     printf '  4) Start with Document Engine (dev:doc)\n'
     printf '  5) Start with Frontend Web (dev:fe)\n'
-    printf '  6) Start Full Stack (full - 19 containers)\n'
-    printf '  7) Start Infra Only (postgres + redis)\n'
-    printf '  8) Restart Core Services\n'
-    printf '  9) Stop All Services (full down)\n\n'
+    printf '  6) Start with Xiaozhi Connector (dev:xiaozhi)\n'
+    printf '  7) Start with Office Add-in (addin)\n'
+    printf '  8) Start Full Stack (full - 20 containers)\n'
+    printf '  9) Start Infra Only (postgres + redis)\n'
+    printf ' 10) Restart Core Services\n'
+    printf ' 11) Stop All Services (full down)\n\n'
     printf ' [Status & Diagnostics]\n'
-    printf ' 10) Check Service Status & Health Probes\n'
-    printf ' 11) Run Core Smoke Test (4s fast check)\n\n'
+    printf ' 12) Check Service Status & Health Probes\n'
+    printf ' 13) Run Core Smoke Test (fast check)\n\n'
     printf ' [Database Operations]\n'
-    printf ' 12) Database Menu (Status, Migrations, Seed, Reset)\n\n'
+    printf ' 14) Database Menu (Status, Migrations, Seed, Reset)\n\n'
     printf ' [Configuration & Tooling]\n'
-    printf ' 13) Generate / Refresh docker/.env\n'
-    printf ' 14) Install Global "ops" Command to ~/.local/bin\n'
-    printf ' 15) Uninstall Global "ops" Command\n\n'
+    printf ' 15) Generate / Refresh docker/.env\n'
+    printf ' 16) Install Global "ops" Command to ~/.local/bin\n'
+    printf ' 17) Uninstall Global "ops" Command\n\n'
     printf '  0) Exit\n'
     printf '============================================================\n'
-    read -r -p "Select option [0-15]: " choice
+    read -r -p "Select option [0-17]: " choice
 
     case "$choice" in
       1)  start_stack "dev"; prompt_enter ;;
@@ -691,16 +696,18 @@ interactive_main_menu() {
       3)  start_stack "dev:workflow"; prompt_enter ;;
       4)  start_stack "dev:doc"; prompt_enter ;;
       5)  start_stack "dev:fe"; prompt_enter ;;
-      6)  start_stack "full"; prompt_enter ;;
-      7)  start_stack "infra"; prompt_enter ;;
-      8)  restart_core_services; prompt_enter ;;
-      9)  stop_services; prompt_enter ;;
-      10) show_service_status; prompt_enter ;;
-      11) run_core_smoke; prompt_enter ;;
-      12) database_menu ;;
-      13) generate_default_env; prompt_enter ;;
-      14) install_global_cli; prompt_enter ;;
-      15) uninstall_global_cli; prompt_enter ;;
+      6)  start_stack "dev:xiaozhi"; prompt_enter ;;
+      7)  start_stack "addin"; prompt_enter ;;
+      8)  start_stack "full"; prompt_enter ;;
+      9)  start_stack "infra"; prompt_enter ;;
+      10) restart_core_services; prompt_enter ;;
+      11) stop_services; prompt_enter ;;
+      12) show_service_status; prompt_enter ;;
+      13) run_core_smoke; prompt_enter ;;
+      14) database_menu ;;
+      15) generate_default_env; prompt_enter ;;
+      16) install_global_cli; prompt_enter ;;
+      17) uninstall_global_cli; prompt_enter ;;
       0)  log "Bye!"; exit 0 ;;
       *)  log_warn "Invalid selection: $choice" ;;
     esac
@@ -716,12 +723,14 @@ print_help() {
 Usage: ops [command]
 
 Service Lifecycle:
-  ops dev | up          Start lightweight core stack (6 containers, recommended)
-  ops full              Start full stack (all 19 containers)
+  ops dev | up          Start lightweight core stack (10 containers, recommended)
+  ops full              Start full stack (all 20 containers)
   ops browser           Start core + browser automation
   ops workflow          Start core + temporal workflow
   ops doc               Start core + carbone document engine
   ops fe                Start core + frontend apps
+  ops xiaozhi           Start core + xiaozhi voice connector
+  ops addin             Start office add-in services
   ops infra             Start postgres + redis only
   ops restart           Restart core backend services
   ops stop | down       Gracefully stop all running containers
@@ -731,7 +740,7 @@ Diagnostics & Testing:
   ops smoke             Run live core smoke test (platform + control-plane)
 
 Database:
-  ops db check          Verify database migrations and 88-table schema ownership
+  ops db check          Verify database migrations and 95-table schema ownership
   ops db apply          Apply latest migrations and shared domain repairs
   ops db seed           Seed default roles and admin account
   ops db seed-skills    Seed & activate all 14 built-in skill bundles
@@ -769,6 +778,12 @@ dispatch_cli() {
       ;;
     fe)
       start_stack "dev:fe"
+      ;;
+    xiaozhi)
+      start_stack "dev:xiaozhi"
+      ;;
+    addin)
+      start_stack "addin"
       ;;
     infra)
       start_stack "infra"

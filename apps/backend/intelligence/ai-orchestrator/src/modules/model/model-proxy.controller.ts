@@ -279,6 +279,14 @@ export class ModelProxyController {
               throw finalStreamErr;
             }
 
+            // 鉴权失败/密钥错误绝不静默 fallback，直接抛出真实鉴权错误
+            if (this.isAuthError(finalStreamErr)) {
+              this.logger.error(
+                `Primary model [${resolvedModelName}] authentication failed (${finalStreamErr.message}). Fallback is strictly disabled for auth errors.`
+              );
+              throw finalStreamErr;
+            }
+
             this.logger.warn(
               `Default model stream failed (${finalStreamErr.message}). Attempting fallback to platform resilient model...`
             );
@@ -370,6 +378,14 @@ export class ModelProxyController {
             if (body.model && !isGenericOrPlaceholder) {
               this.logger.error(
                 `Primary model [${body.model}] failed (${finalNonStreamErr.message}). Explicit model requested; fallback is strictly disabled.`
+              );
+              throw finalNonStreamErr;
+            }
+
+            // 鉴权失败/密钥错误绝不静默 fallback，直接抛出真实鉴权错误
+            if (this.isAuthError(finalNonStreamErr)) {
+              this.logger.error(
+                `Primary model [${resolvedModelName}] authentication failed (${finalNonStreamErr.message}). Fallback is strictly disabled for auth errors.`
               );
               throw finalNonStreamErr;
             }
@@ -757,12 +773,31 @@ export class ModelProxyController {
   }
 
   /**
+   * 判断模型调用错误是否为凭据/鉴权失败（401/403/Invalid Token/API Key错误等）
+   */
+  isAuthError(err: any): boolean {
+    if (!err) return false;
+    const status = Number(err?.status || err?.statusCode || err?.response?.status);
+    if (status === 401 || status === 403) {
+      return true;
+    }
+    const msg = String(err?.message || err || '').toLowerCase();
+    return /invalid token|check your api key|api key|unauthorized|forbidden|authentication|bad api key|invalid_api_key/i.test(
+      msg
+    );
+  }
+
+  /**
    * 判断模型调用错误是否为可重试的临时网络/通道故障
    */
   isTransientError(err: any): boolean {
     if (!err) return false;
 
-    // 显式客户端业务或鉴权错误不予重试
+    // 鉴权错误与客户端错误绝不重试，直接抛出
+    if (this.isAuthError(err)) {
+      return false;
+    }
+
     const status = Number(err?.status || err?.statusCode || err?.response?.status);
     if ([400, 401, 403, 404, 422].includes(status)) {
       return false;

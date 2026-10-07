@@ -3,7 +3,7 @@
 
 services:
   postgres:
-    image: ${DOCKER_REGISTRY:-}postgres:15-alpine
+    image: ${POSTGRES_IMAGE:-${DOCKER_REGISTRY:-}postgres:15-alpine}
     container_name: ops-postgres
     restart: unless-stopped
     environment:
@@ -24,7 +24,7 @@ services:
       - ops-network
 
   redis:
-    image: ${DOCKER_REGISTRY:-}redis:7-alpine
+    image: ${REDIS_IMAGE:-${DOCKER_REGISTRY:-}redis:7-alpine}
     container_name: ops-redis
     restart: unless-stopped
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secret}

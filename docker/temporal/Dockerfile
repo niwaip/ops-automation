@@ -1,4 +1,5 @@
-# Temporal Sandbox Agent Dockerfile
+# Temporal Sandbox Worker Dockerfile (builds ops-sandbox-worker, NOT Temporal Server)
+# Note: Temporal Server uses the official temporalio/auto-setup image configured in Compose.
 FROM python:3.11-slim
 
 WORKDIR /app

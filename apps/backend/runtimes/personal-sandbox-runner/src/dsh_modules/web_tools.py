@@ -9,6 +9,7 @@ import json
 import re
 import html
 import time
+import datetime
 import urllib.request
 import urllib.parse
 import urllib.error
@@ -135,13 +136,27 @@ def fetch_weather(query_or_city: str, deadline: Optional[float] = None) -> str:
                 codes = daily.get("weathercode", [])
                 if dates and len(dates) >= 7:
                     lines.append(f"【未来 7 天 (一周) 趋势预报】:")
-                    day_labels = ["今天", "明天", "后天", "周四/第4天", "周五/第5天", "周六/第6天", "周日/第7天"]
+                    weekday_names = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
                     for idx in range(min(7, len(dates))):
-                        lbl = day_labels[idx] if idx < len(day_labels) else f"第{idx+1}天"
+                        date_str = str(dates[idx]).strip()
+                        weekday_lbl = ""
+                        try:
+                            dt = datetime.date.fromisoformat(date_str)
+                            weekday_lbl = weekday_names[dt.weekday()]
+                        except Exception:
+                            pass
+                        if idx == 0:
+                            lbl = f"今天 ({weekday_lbl})" if weekday_lbl else "今天"
+                        elif idx == 1:
+                            lbl = f"明天 ({weekday_lbl})" if weekday_lbl else "明天"
+                        elif idx == 2:
+                            lbl = f"后天 ({weekday_lbl})" if weekday_lbl else "后天"
+                        else:
+                            lbl = f"{weekday_lbl}/第{idx+1}天" if weekday_lbl else f"第{idx+1}天"
                         cond = WMO_WEATHER_CODES.get(codes[idx], "多云") if idx < len(codes) else "多云"
                         rain_pct = rain[idx] if idx < len(rain) and rain[idx] is not None else 0
                         lines.append(
-                            f"- {lbl} ({dates[idx]}): 最低 {min_t[idx]}°C ~ 最高 {max_t[idx]}°C, "
+                            f"- {lbl} ({date_str}): 最低 {min_t[idx]}°C ~ 最高 {max_t[idx]}°C, "
                             f"天气状况: {cond}, 降水概率: {rain_pct}%"
                         )
                     has_7day = True
@@ -150,13 +165,26 @@ def fetch_weather(query_or_city: str, deadline: Optional[float] = None) -> str:
 
     # 3. 若 7 天预报不可用，回退至 wttr.in 3 天预报
     if not has_7day and wttr_weather:
+        weekday_names = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
         for i, w in enumerate(wttr_weather[:3]):
-            label = "今天" if i == 0 else ("明天" if i == 1 else "后天")
+            date_str = str(w.get('date', '')).strip()
+            weekday_lbl = ""
+            try:
+                dt = datetime.date.fromisoformat(date_str)
+                weekday_lbl = weekday_names[dt.weekday()]
+            except Exception:
+                pass
+            if i == 0:
+                label = f"今天 ({weekday_lbl})" if weekday_lbl else "今天"
+            elif i == 1:
+                label = f"明天 ({weekday_lbl})" if weekday_lbl else "明天"
+            else:
+                label = f"后天 ({weekday_lbl})" if weekday_lbl else "后天"
             hourly = w.get("hourly", [])
             noon_desc = hourly[4].get("weatherDesc", [{}])[0].get("value", "多云") if len(hourly) > 4 else "晴间多云"
             rain_chance = max([int(h.get("chanceofrain", "0")) for h in hourly]) if hourly else 0
             lines.append(
-                f"- {label} ({w.get('date')}): 最低 {w.get('mintempC')}°C ~ 最高 {w.get('maxtempC')}°C, "
+                f"- {label} ({date_str}): 最低 {w.get('mintempC')}°C ~ 最高 {w.get('maxtempC')}°C, "
                 f"天气状况: {noon_desc}, 降水概率: {rain_chance}%"
             )
 
@@ -612,19 +640,11 @@ def perform_multi_web_search(
     """Runs bounded diversified searches and returns a deduplicated evidence bundle."""
     clean_q = normalize_search_query(query)
 
-    # 1. 针对天气意图优先调用高精度结构化气象源
-    if re.search(r'(天气|预报|气温|下雨|晴天|降雨|温度|weather|forecast)', clean_q, re.I):
-        weather_res = fetch_weather(clean_q, deadline=deadline)
-        if "实时权威气象与多日预报" in weather_res:
-            return weather_res[:max_chars]
-
-    # Vertical real-time rankings must run before generic web search.  A generic
-    # provider can return topically related pages while still missing the actual
-    # live chart; treating that as success used to prevent Weibo/modsearch from
-    # ever running.
+    # 1. 垂直社交与实时榜单优先于通用搜索和气象源
     if re.search(
         r'(?:微博|weibo).*?(?:热搜|热点|热榜|榜单|排行|热门)'
-        r'|(?:热搜|热点|热榜|榜单|排行|热门).*?(?:微博|weibo)',
+        r'|(?:热搜|热点|热榜|榜单|排行|热门).*?(?:微博|weibo)'
+        r'|^(?:微博热点|微博热搜|热搜榜|今日热搜|热搜|全网热点)$',
         query,
         re.I,
     ) or re.search(
@@ -642,6 +662,15 @@ def perform_multi_web_search(
         )
         if vertical_result:
             return vertical_result[:max_chars]
+
+    # 2. 针对纯气象意图调用高精度结构化气象源（排除社交热搜/榜单等非气象查询）
+    if (
+        re.search(r'(天气|预报|气温|下雨|晴天|降雨|温度|weather|forecast)', clean_q, re.I)
+        and not re.search(r'(?:微博|weibo|热搜|热点|热榜|榜单|排行|热门|b站|bilibili)', clean_q, re.I)
+    ):
+        weather_res = fetch_weather(clean_q, deadline=deadline)
+        if "实时权威气象与多日预报" in weather_res:
+            return weather_res[:max_chars]
 
     query_plan = decompose_search_queries(query, max_queries=max_queries)
     freshness = extract_query_freshness(query)

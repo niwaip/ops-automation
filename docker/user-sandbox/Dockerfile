@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. 全局安装 pnpm、modsearch 与核心办公文档依赖库
-RUN npm install -g pnpm @liustack/modsearch || npm install -g --registry=https://registry.npmmirror.com pnpm @liustack/modsearch
+RUN npm install -g pnpm@8.12.0 @liustack/modsearch@5.10.5 || npm install -g --registry=https://registry.npmmirror.com pnpm@8.12.0 @liustack/modsearch@5.10.5
 COPY apps/backend/runtimes/personal-sandbox-runner/requirements.txt /tmp/requirements.txt
 RUN pip3 install --no-cache-dir --break-system-packages -r /tmp/requirements.txt && rm -f /tmp/requirements.txt
 

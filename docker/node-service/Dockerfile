@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM node:20-bookworm-slim AS build
+FROM node:22-bookworm-slim AS build
 WORKDIR /workspace
 RUN corepack enable
 
@@ -18,7 +18,7 @@ ARG PACKAGE_FILTER
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter "${PACKAGE_FILTER}" run build
 
-FROM node:20-bookworm-slim AS runtime
+FROM node:22-bookworm-slim AS runtime
 WORKDIR /workspace
 ENV NODE_ENV=production
 RUN corepack enable && groupadd --system ops && useradd --system --gid ops ops

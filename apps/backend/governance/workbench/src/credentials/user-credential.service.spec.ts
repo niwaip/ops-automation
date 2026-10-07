@@ -23,6 +23,21 @@ describe('User Credential Vault & Digital Employee Binding', () => {
       expect(decrypted.deviceKey).toBe(cleartextKey);
     });
 
+    it('should decrypt legacy payload encrypted with fallback dev key when rotated to new key', () => {
+      // Create an instance with the legacy dev key to encrypt
+      process.env.USER_CREDENTIAL_ENCRYPTION_KEY = '7fd6414a543574effddb645132638c2357ba2f12a57c09216bc45880f5271757';
+      const legacyCrypto = new UserCredentialCrypto();
+      const legacyEncrypted = legacyCrypto.encrypt({ apiKey: 'legacy-secret-api-key' });
+
+      // Create new instance with rotated key
+      process.env.USER_CREDENTIAL_ENCRYPTION_KEY = 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2';
+      const rotatedCrypto = new UserCredentialCrypto();
+      const decrypted = rotatedCrypto.decrypt(legacyEncrypted);
+
+      expect(decrypted).toEqual({ apiKey: 'legacy-secret-api-key' });
+      delete process.env.USER_CREDENTIAL_ENCRYPTION_KEY;
+    });
+
     it('should generate safe masked previews for various credential categories', () => {
       // 1. Device Key
       const devicePreview = crypto.buildMaskedPreview('device_key', { deviceKey: 'test-device-key-9999' });

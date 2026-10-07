@@ -827,4 +827,63 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     expect(resultEvt.content).toContain('# 2026年9月最新AI行业重大新闻与趋势总结');
     expect(resultEvt.content).toContain('🚀 一、 阿里千问战略级升级');
   });
+
+  it('returns a direct auth error without falling back to cloud chat when upstream model authentication fails', async () => {
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        'event: observation\ndata: {"content":"⚡ 正在启动个人沙箱环境..."}\n\n',
+        'event: done\ndata: {"success":false,"output":"❌ [DeepSeek Harness 鉴权失败]: 上游大模型鉴权失败 (401): Invalid token. Please check your API key.","exitCode":1}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const handled = await service.dispatchPersonalSandbox(
+      { message: '微博热点', userId: 'test_user', modelId: 'gemini-3.7-flash-high' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    // Must return true (handled, no degradation)
+    expect(handled).toBe(true);
+
+    // Must emit ERROR event with code SANDBOX_MODEL_AUTH_ERROR
+    const errorEvent = emittedEvents.find((e) => e.type === StreamEventType.ERROR);
+    expect(errorEvent).toBeDefined();
+    expect(errorEvent?.data?.code).toBe('SANDBOX_MODEL_AUTH_ERROR');
+    expect(errorEvent?.content).toContain('上游大模型服务鉴权失败');
+    expect(errorEvent?.content).toContain('Invalid token. Please check your API key.');
+
+    // Must NOT emit observation switching to cloud chat
+    const switchObs = emittedEvents.find((e) => e.content?.includes('切换到云端模型直连模式'));
+    expect(switchObs).toBeUndefined();
+  });
+
+  it('returns a direct model unavailable error without falling back to cloud chat when upstream model service fails', async () => {
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        'event: observation\ndata: {"content":"⚡ 正在启动个人沙箱环境..."}\n\n',
+        'event: done\ndata: {"success":false,"output":"❌ [DeepSeek Harness 异常]: 大模型代理调用失败 (502): Bad Gateway","exitCode":1}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const handled = await service.dispatchPersonalSandbox(
+      { message: '写一段代码', userId: 'test_user', modelId: 'gemini-3.7-flash-high' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    // Must return true (handled, no degradation)
+    expect(handled).toBe(true);
+
+    // Must emit ERROR event with code SANDBOX_MODEL_UNAVAILABLE
+    const errorEvent = emittedEvents.find((e) => e.type === StreamEventType.ERROR);
+    expect(errorEvent).toBeDefined();
+    expect(errorEvent?.data?.code).toBe('SANDBOX_MODEL_UNAVAILABLE');
+    expect(errorEvent?.content).toContain('上游大模型服务暂时不可用或响应超时');
+
+    // Must NOT emit observation switching to cloud chat
+    const switchObs = emittedEvents.find((e) => e.content?.includes('切换到云端模型直连模式'));
+    expect(switchObs).toBeUndefined();
+  });
 });

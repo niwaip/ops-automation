@@ -74,6 +74,32 @@ for (const [serviceName, expectedNetworks] of Object.entries(requiredServices)) 
       `${serviceName} networks must be ${expected.join(', ')}; received ${actualNetworks.join(', ') || 'none'}`
     );
   }
+
+  const requiredSecrets = [];
+  if (['control-plane-api', 'execution-dispatcher', 'schedule-trigger', 'ai-orchestrator'].includes(serviceName)) {
+    requiredSecrets.push('JWT_SECRET', 'INTERNAL_API_SHARED_SECRET', 'USER_CREDENTIAL_ENCRYPTION_KEY');
+  } else if (serviceName === 'runtime-worker') {
+    requiredSecrets.push('INTERNAL_API_SHARED_SECRET');
+  }
+
+  const knownInsecureDefaults = new Set([
+    'ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa',
+    'ops_internal_shared_secret_change_me',
+    '7fd6414a543574effddb645132638c2357ba2f12a57c09216bc45880f5271757',
+    'ops_dev_credential_vault_secret_2026',
+    'ops-automation-jwt-secret-key-change-in-production',
+    'jwt_secret_key_change_in_production',
+  ]);
+
+  const environment = service.environment || {};
+  for (const secretName of requiredSecrets) {
+    const val = environment[secretName];
+    if (typeof val !== 'string' || val.trim() === '' || /^REPLACE_/i.test(val.trim())) {
+      failures.push(`${serviceName} must declare a non-empty, non-placeholder ${secretName} in production`);
+    } else if (knownInsecureDefaults.has(val.trim())) {
+      failures.push(`${serviceName} must not use known development fallback key for ${secretName} in production`);
+    }
+  }
 }
 
 for (const [serviceName, expected] of Object.entries(releaseServices)) {

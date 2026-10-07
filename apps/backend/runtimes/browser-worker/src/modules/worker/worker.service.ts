@@ -64,6 +64,13 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
   private readonly sessionBrowserImage =
     process.env.SESSION_BROWSER_IMAGE || 'ops-browser-chrome:local';
   private readonly externalHost = getPublicHost();
+  private readonly novncBindIp =
+    process.env.NOVNC_BIND_IP ||
+    process.env.HOST_BIND_IP ||
+    process.env.BROWSER_BIND_IP ||
+    '127.0.0.1';
+  private readonly cdpBindIp = process.env.CDP_BIND_IP || '127.0.0.1';
+  private readonly vncPassword = process.env.VNC_PASSWORD || '';
   private readonly defaultSessionMode =
     process.env.SESSION_DEFAULT_MODE === 'agent' ? 'agent' : 'interactive';
   private readonly defaultEnableCodegen =
@@ -238,6 +245,7 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
           `HEADLESS=${headless ? 'true' : 'false'}`,
           `ENABLE_CODEGEN=${effectiveEnableCodegen ? 'true' : 'false'}`,
           `CHROME_PROFILE_PATH=${profilePath}`,
+          `VNC_PASSWORD=${this.vncPassword}`,
         ],
         ExposedPorts: {
           [`${this.novncPort}/tcp`]: {},
@@ -246,8 +254,12 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
         HostConfig: {
           AutoRemove: true,
           PortBindings: {
-            [`${this.novncPort}/tcp`]: [{ HostPort: requestedHostPorts.novncHostPort }],
-            [`${this.chromeDebugPort}/tcp`]: [{ HostPort: requestedHostPorts.cdpHostPort }],
+            [`${this.novncPort}/tcp`]: [
+              { HostIp: this.novncBindIp, HostPort: requestedHostPorts.novncHostPort },
+            ],
+            [`${this.chromeDebugPort}/tcp`]: [
+              { HostIp: this.cdpBindIp, HostPort: requestedHostPorts.cdpHostPort },
+            ],
           },
         },
         NetworkingConfig: {
@@ -560,9 +572,15 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
       throw new Error('CDP host port was not published for worker container');
     }
 
+    const novncBase = novncHostPort ? `http://${this.externalHost}:${novncHostPort}/vnc.html` : undefined;
+    const novncUrl =
+      novncBase && this.vncPassword
+        ? `${novncBase}?password=${encodeURIComponent(this.vncPassword)}`
+        : novncBase;
+
     return {
       cdp: `ws://${this.externalHost}:${cdpHostPort}`,
-      novnc: novncHostPort ? `http://${this.externalHost}:${novncHostPort}/vnc.html` : undefined,
+      novnc: novncUrl,
     };
   }
 
