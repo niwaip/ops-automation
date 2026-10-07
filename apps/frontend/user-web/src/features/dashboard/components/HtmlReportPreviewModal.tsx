@@ -89,7 +89,9 @@ export function HtmlReportPreviewModal({
         if (resolvedUrl) {
           fileOrigin = new URL(resolvedUrl, window.location.origin).origin;
         }
-      } catch (e) {}
+      } catch {
+        // 忽略非有效 URL 的解析错误
+      }
 
       if (event.origin !== window.location.origin && (!fileOrigin || event.origin !== fileOrigin)) {
         return;
@@ -116,7 +118,9 @@ export function HtmlReportPreviewModal({
           }
         };
       }
-    } catch (e) {}
+    } catch {
+      // 忽略部分受限环境下 BroadcastChannel 实例创建异常
+    }
 
     const handleStorage = (event: StorageEvent) => {
       if (event.key === 'CONTRACT_REVIEW_LAST_RESULT' && event.newValue) {
@@ -124,7 +128,9 @@ export function HtmlReportPreviewModal({
           const payload = JSON.parse(event.newValue);
           dispatchReviewResult(payload);
           onClose();
-        } catch (e) {}
+        } catch {
+          // 忽略非 JSON 结构存储事件
+        }
       }
     };
 

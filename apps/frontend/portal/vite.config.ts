@@ -363,5 +363,18 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-antd': ['antd'],
+          'vendor-antd-icons': ['@ant-design/icons'],
+          'vendor-query': ['react-query'],
+          'vendor-markdown': ['react-markdown', 'remark-gfm', 'rehype-raw'],
+          'vendor-i18n': ['i18next', 'react-i18next'],
+        },
+      },
+    },
   },
 });
+

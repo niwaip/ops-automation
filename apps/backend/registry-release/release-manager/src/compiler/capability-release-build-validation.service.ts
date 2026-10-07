@@ -596,13 +596,31 @@ export class CapabilityReleaseBuildValidationService {
       const templateId = resolveExecutionTemplateIdForRuntime(release, snapshot);
 
       if (release.sourceType === 'temporal_workflow') {
-        if (
-          naturalLanguageCases.length > 0 &&
-          (!dto.input || Object.keys(dto.input).length === 0)
-        ) {
+        const isSkillPublished = Boolean(release.publishedSkillId);
+        if (isSkillPublished || naturalLanguageCases.length > 0) {
           if (!release.publishedSkillId) {
             throw new Error('请先发布 Skill，再使用自然语言进行真实验证');
           }
+          const baseInput = this.capabilityReleaseTemporalSchemaService.buildSmokeTestInput(
+            release,
+            snapshot,
+            'staging'
+          );
+          const userFlatInput = dto.input ? flattenPayload(dto.input) : {};
+          const effectiveInput = {
+            ...baseInput,
+            ...userFlatInput,
+          };
+          const effectivePromptCases =
+            naturalLanguageCases.length > 0
+              ? naturalLanguageCases
+              : [
+                  dto.testUserInput?.trim() ||
+                    (typeof snapshot.sourcePayload?.userGoal === 'string' &&
+                      snapshot.sourcePayload.userGoal.trim()) ||
+                    `执行技能 ${release.sourceName || release.id}`,
+                ];
+
           const caseResults: Array<{
             caseIndex: number;
             testUserInput: string;
@@ -613,13 +631,14 @@ export class CapabilityReleaseBuildValidationService {
             result?: Record<string, unknown> | null;
           }> = [];
 
-          for (let i = 0; i < naturalLanguageCases.length; i += 1) {
-            const currentCase = naturalLanguageCases[i] as string;
+          for (let i = 0; i < effectivePromptCases.length; i += 1) {
+            const currentCase = effectivePromptCases[i] as string;
             const runtimeResult =
               await this.capabilityReleaseRuntimeService.executePublishedSkillByPromptForValidation(
                 release.publishedSkillId,
                 currentCase,
-                authToken
+                authToken,
+                effectiveInput
               );
             caseResults.push({
               caseIndex: i + 1,
@@ -841,6 +860,7 @@ export class CapabilityReleaseBuildValidationService {
     id: string,
     dto: ValidateCapabilityDTO,
     userId: string | undefined,
+    authToken: string | undefined,
     onEvent: (event: string, payload: Record<string, unknown>) => void,
     accessors: CapabilityReleaseBuildValidationAccessors
   ): Promise<void> {
@@ -890,47 +910,131 @@ export class CapabilityReleaseBuildValidationService {
       const templateId = resolveExecutionTemplateIdForRuntime(release, snapshot);
 
       if (release.sourceType === 'temporal_workflow') {
-        if (!build.generatedCode) {
-          throw new Error('当前构建没有可执行代码，请先完成代码生成');
-        }
-        const fn = dto.fn || accessors.resolveWorkflowFnOrThrow(snapshot.sourcePayload);
-        onEvent('status', {
-          phase: 'executing',
-          runtime: 'temporal_workflow',
-          fn,
-        });
-        const baseInput = this.capabilityReleaseTemporalSchemaService.buildSmokeTestInput(
-          release,
-          snapshot,
-          'staging'
-        );
-        const userFlatInput = dto.input ? flattenPayload(dto.input) : {};
-        const effectiveInput = {
-          ...baseInput,
-          ...userFlatInput,
-        };
-        const result = await this.temporalWorkflowService.validateWorkflowRealStreaming(
-          build.generatedCode,
-          fn,
-          effectiveInput as Record<string, any> | undefined,
-          undefined,
-          dto.timeout || '180s',
-          (log: string) => {
-            streamedLogs.push(log);
-            onEvent('log', { message: log });
+        const isSkillPublished = Boolean(release.publishedSkillId);
+        if (isSkillPublished || naturalLanguageCases.length > 0) {
+          if (!release.publishedSkillId) {
+            throw new Error('请先发布 Skill，再使用自然语言进行真实验证');
           }
-        );
-        success = result.success;
-        score = result.score;
-        logs = streamedLogs.length > 0 ? streamedLogs : result.logs || [];
-        resultSnapshot = {
-          result: result.result ?? null,
-          error: result.error ?? null,
-          traceback: result.traceback ?? null,
-          fn,
-          input: effectiveInput,
-        };
-        errorSummary = result.error || null;
+          const baseInput = this.capabilityReleaseTemporalSchemaService.buildSmokeTestInput(
+            release,
+            snapshot,
+            'staging'
+          );
+          const userFlatInput = dto.input ? flattenPayload(dto.input) : {};
+          const effectiveInput = {
+            ...baseInput,
+            ...userFlatInput,
+          };
+          const effectivePromptCases =
+            naturalLanguageCases.length > 0
+              ? naturalLanguageCases
+              : [
+                  dto.testUserInput?.trim() ||
+                    (typeof snapshot.sourcePayload?.userGoal === 'string' &&
+                      snapshot.sourcePayload.userGoal.trim()) ||
+                    `执行技能 ${release.sourceName || release.id}`,
+                ];
+
+          onEvent('status', {
+            phase: 'executing',
+            runtime: 'skill_nl_prompt',
+            skillId: release.publishedSkillId,
+          });
+
+          const caseResults: Array<{
+            caseIndex: number;
+            testUserInput: string;
+            success: boolean;
+            score: number;
+            error?: string;
+            logs: string[];
+            result?: Record<string, unknown> | null;
+          }> = [];
+
+          for (let i = 0; i < effectivePromptCases.length; i += 1) {
+            const currentCase = effectivePromptCases[i] as string;
+            const prefix = `[Case ${i + 1}]`;
+            onEvent('log', { message: `${prefix} 开始自然语言验证已发布 Skill: "${currentCase}"` });
+            const runtimeResult =
+              await this.capabilityReleaseRuntimeService.executePublishedSkillByPromptForValidation(
+                release.publishedSkillId,
+                currentCase,
+                authToken,
+                effectiveInput,
+                (log: string) => {
+                  streamedLogs.push(`${prefix} ${log}`);
+                  onEvent('log', { message: `${prefix} ${log}` });
+                }
+              );
+            caseResults.push({
+              caseIndex: i + 1,
+              testUserInput: currentCase,
+              success: runtimeResult.success,
+              score: runtimeResult.success ? 100 : 50,
+              ...(runtimeResult.error ? { error: runtimeResult.error } : {}),
+              logs: runtimeResult.logs,
+              result: runtimeResult.result ?? null,
+            });
+          }
+
+          const passedCases = caseResults.filter((item) => item.success).length;
+          success = passedCases === caseResults.length;
+          score = caseResults.length > 0 ? Math.round((passedCases / caseResults.length) * 100) : 0;
+          logs = streamedLogs.length > 0 ? streamedLogs : caseResults.flatMap((item) => [
+            `[Case ${item.caseIndex}] ${item.testUserInput}`,
+            ...item.logs.map((line) => `[Case ${item.caseIndex}] ${line}`),
+          ]);
+          resultSnapshot = {
+            mode: 'nl_task_runtime_batch',
+            totalCases: caseResults.length,
+            passedCases,
+            caseResults,
+          };
+          const firstError = caseResults.find((item) => !item.success)?.error;
+          errorSummary = firstError || null;
+        } else {
+          if (!build.generatedCode) {
+            throw new Error('当前构建没有可执行代码，请先完成代码生成');
+          }
+          const fn = dto.fn || accessors.resolveWorkflowFnOrThrow(snapshot.sourcePayload);
+          onEvent('status', {
+            phase: 'executing',
+            runtime: 'temporal_workflow',
+            fn,
+          });
+          const baseInput = this.capabilityReleaseTemporalSchemaService.buildSmokeTestInput(
+            release,
+            snapshot,
+            'staging'
+          );
+          const userFlatInput = dto.input ? flattenPayload(dto.input) : {};
+          const effectiveInput = {
+            ...baseInput,
+            ...userFlatInput,
+          };
+          const result = await this.temporalWorkflowService.validateWorkflowRealStreaming(
+            build.generatedCode,
+            fn,
+            effectiveInput as Record<string, any> | undefined,
+            undefined,
+            dto.timeout || '180s',
+            (log: string) => {
+              streamedLogs.push(log);
+              onEvent('log', { message: log });
+            }
+          );
+          success = result.success;
+          score = result.score;
+          logs = streamedLogs.length > 0 ? streamedLogs : result.logs || [];
+          resultSnapshot = {
+            result: result.result ?? null,
+            error: result.error ?? null,
+            traceback: result.traceback ?? null,
+            fn,
+            input: effectiveInput,
+          };
+          errorSummary = result.error || null;
+        }
       } else if (release.sourceType === 'browser_recording') {
         const hasExecutionInput = dto.input && Object.keys(dto.input).length > 0;
         const hasGeneratedWorkflowCode = Boolean(build.generatedCode);

@@ -7,7 +7,7 @@ import {
   executionApi,
   ExecutionPhaseDto,
 } from "@/api/execution";
-import LiveSessionPreviewCard from "@/components/runtime/LiveSessionPreviewCard";
+import LiveSessionPreviewCard from "@/features/executions/shared/components/LiveSessionPreviewCard";
 import InlineRecoveryPanel from "@/features/executions/shared/InlineRecoveryPanel";
 import { ExecutionTraceTab } from "../../detail/components/ExecutionTraceTab";
 import { RECOVERY_COPY } from "@/features/executions/shared/recoveryOptions";

@@ -9,33 +9,30 @@ target architecture described in `docs/project_architecture_redesign.md` and
 
 ## Top-level Layers
 
-- `core/`: legacy aggregate kept only during migration; `core/platform` is a compatibility shell, not a long-term target boundary.
-- `governance/`: identity, access, organization, audit, and policy boundaries.
-- `intelligence/`: planner and specialized AI services.
-- `registry-release/`: design-time registries and release-manager responsibilities.
-- `execution-control/`: control-plane and session broker responsibilities.
+- `platform/`: platform compatibility entry and bridge aggregation layer.
+- `governance/`: identity, access, organization, workbench (inbox/todo/coordination/workspace), audit, and policy boundaries.
+- `intelligence/`: planner and specialized AI services (ai-orchestrator, master-planner).
+- `registry-release/`: design-time registries (workflow-registry, skill-registry, template-registry, agent-catalog) and release-manager.
+- `execution-control/`: control-plane and session-broker execution coordination services.
 - `capabilities/`: browser and document capability domains.
-- `runtimes/`: executors and workers.
-- `orchestration/`: legacy orchestration shell retained only where compatibility still requires it.
-- `shared/`: controlled shared backend contracts and infrastructure.
+- `runtimes/`: executors and workers (sandbox-worker, temporal-worker, replay-worker, personal-sandbox-runner).
 - `var/`: runtime data and generated artifacts.
 
 ## Current Migration Status
 
 - `governance/*` and `execution-control/*` already carry real implementation ownership.
+- `governance/workbench` now houses collaborative workbench capabilities (`workbench-inbox`, `workbench-todo`, `workbench-coordination`, and `workspace`), which have been completely migrated out of legacy paths.
 - `registry-release/*` and `capabilities/*` exist as target planes and must be preferred as the logical home for new design-time and capability-domain work.
-- `core/platform` is intentionally kept only as a transition shell and will be retired after governance and registry-release modules move out.
-- Top-level `apps/backend/index.ts` aggregation shell is gone; the backend plane is now documented by directory boundaries and local package/README ownership instead of a root barrel.
-- Plane-level aggregation shells under `governance/`, `intelligence/`, `execution-control/`, and `runtimes/` are also gone; these top-level directories are now documented by directory boundaries and local package/README ownership instead of root barrels.
-- `governance/identity-access` now owns auth metadata, decorators, `RolesGuard`, `JwtAuthGuard`, `RbacGuard`, `jwt.strategy`, `ldap.strategy`, auth service/controller/module entrypoints, auth request/response contracts, and the user identity-management slice for query, role assignment, activation state, and module/controller entrypoints; the old `core/platform/src/modules/{auth,user}` and `core/platform/src/dto/*` compatibility wrappers are gone, and `core/platform` now only retains bridge bindings for runtime repositories and reader tokens.
-- `governance/organization` now owns the main organization service/controller/module entrypoints, organization request DTOs, explicit organization response contracts, and repository token contracts; the old `core/platform/src/modules/organization` and shared DTO wrappers are gone, and `core/platform` now only retains the bridge binding for organization repository access.
-- Legacy `sessions/` and `runtime/` directories are kept only as migration shells where needed.
-- Runtime data should be written under `apps/backend/var/` rather than service source trees.
+- `platform/` serves as the runtime integration gateway and compatibility bridge; core business logic is kept in respective domain modules.
+- Top-level `apps/backend/index.ts` aggregation shell has been removed; backend services operate via distinct package boundaries and local READMEs.
+- `governance/identity-access` owns auth metadata, decorators, `RolesGuard`, `JwtAuthGuard`, `RbacGuard`, `jwt.strategy`, `ldap.strategy`, auth service/controller/module entrypoints, auth request/response contracts, and user identity management.
+- `governance/organization` owns organization services, controllers, DTOs, and contracts.
+- Runtime data is isolated under `apps/backend/var/` rather than polluting service source trees.
 
 ## Freeze Rules
 
-- `core/platform` compatibility shells may forward, assemble, or expose stable facades, but must not absorb new core business implementation.
-- `workbench-*`（包括 `workbench-inbox`、`workbench-todo`、`workbench-coordination`）及 `workspace` 模块当前作为协同工作台能力暂存挂载于 `core/platform` 下，其中长期目标归属为 `governance/` 域。严禁继续向 `core/platform` 中注入新的业务实现。
+- `platform` compatibility layer may forward, assemble, or expose stable facades, but must not absorb new core business implementation.
+- `governance/workbench` is the authoritative home for collaborative workbench and workspace operations; do not backport implementations into `platform`.
 - `intelligence/ai-orchestrator/src/modules/planner/*` must remain focused on generic planning and delegation; new browser-domain internals must not be added there.
 - `execution-control/*` must not receive release compilation, template authoring, or capability-domain design-time logic.
 - New cross-service DTOs, manifests, and protocol types must not be added back into legacy paths when a `packages/backend-contracts/*` package is the logical target.

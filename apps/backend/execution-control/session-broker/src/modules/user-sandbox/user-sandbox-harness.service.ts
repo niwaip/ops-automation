@@ -209,6 +209,7 @@ export class UserSandboxHarnessService {
       waitTimeoutSeconds?: number;
       thinking?: boolean;
       reasoningEffort?: string;
+      onLockAcquired?: () => void;
       onWaiting?: (waitedMs: number) => void;
       onStdoutChunk?: (chunk: string) => void;
     },
@@ -287,6 +288,9 @@ export class UserSandboxHarnessService {
         );
       }
       lockToken = lockResult.token;
+      options?.onLockAcquired?.();
+    } else {
+      options?.onLockAcquired?.();
     }
 
     try {
@@ -321,7 +325,7 @@ export class UserSandboxHarnessService {
   /**
    * 强制终止用户沙箱中正在执行的 DeepSeek Harness 或前台任务进程
    */
-  async stopSandboxExecution(userId: string): Promise<boolean> {
+  async stopSandboxExecution(userId: string, sessionId?: string): Promise<boolean> {
     const sanitizedUserId = this.storageService.sanitizeUserId(userId);
     if (this.lockService) {
       await this.lockService.forceReleaseSandboxLock(sanitizedUserId).catch(() => {});
@@ -332,9 +336,14 @@ export class UserSandboxHarnessService {
     if (!container) return false;
 
     try {
-      this.logger.log(`Forcibly stopping executing processes in sandbox [${containerName}]...`);
+      this.logger.log(
+        `Forcibly stopping executing processes in sandbox [${containerName}]${sessionId ? ` (session: ${sessionId})` : ''}...`
+      );
+      const cmd = sessionId
+        ? ['pkill', '-9', '-f', `dsh.*${sessionId.replace(/[^a-zA-Z0-9_-]/g, '_')}`]
+        : ['pkill', '-9', '-f', 'dsh'];
       const exec = await container.exec({
-        Cmd: ['pkill', '-9', '-f', 'dsh'],
+        Cmd: cmd,
         User: 'root',
       });
       await exec.start({ hijack: true, stdin: false });

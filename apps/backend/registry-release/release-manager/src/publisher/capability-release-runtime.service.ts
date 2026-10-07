@@ -428,7 +428,9 @@ export class CapabilityReleaseRuntimeService {
   async executePublishedSkillByPromptForValidation(
     skillId: string,
     prompt: string,
-    authToken?: string
+    authToken?: string,
+    executionInput?: Record<string, unknown>,
+    onLog?: (log: string) => void
   ): Promise<{
     success: boolean;
     logs: string[];
@@ -437,10 +439,19 @@ export class CapabilityReleaseRuntimeService {
   }> {
     const runtimeContext = await this.getPublishedSkillRuntimeContext(skillId);
     const controlPlaneUrl = getControlPlaneApiUrl();
-    const logs: string[] = [
-      `[NL-Validation] 使用自然语言调用已发布 Skill: ${skillId}`,
-      `[NL-Validation] runtimeType=${runtimeContext.runtimeType}, runtimeSource=${runtimeContext.runtimeSource}`,
-    ];
+    const logs: string[] = [];
+    const pushLog = (msg: string) => {
+      logs.push(msg);
+      if (onLog) {
+        onLog(msg);
+      }
+    };
+
+    pushLog(`[NL-Validation] 使用自然语言调用已发布 Skill: ${skillId}`);
+    pushLog(`[NL-Validation] 指令 Prompt: "${prompt}"`);
+    pushLog(
+      `[NL-Validation] runtimeType=${runtimeContext.runtimeType}, runtimeSource=${runtimeContext.runtimeSource}`
+    );
 
     const createRes = await axios.post<{ id: string }>(
       `${controlPlaneUrl}/executions`,
@@ -449,6 +460,7 @@ export class CapabilityReleaseRuntimeService {
         runtimeType: runtimeContext.runtimeType,
         input: {
           prompt,
+          ...(executionInput || {}),
         },
       },
       {
@@ -456,9 +468,10 @@ export class CapabilityReleaseRuntimeService {
       }
     );
     const executionId = createRes.data.id;
-    logs.push(`[NL-Validation] 已创建执行单: ${executionId}`);
+    pushLog(`[NL-Validation] 已创建执行单: ${executionId}`);
 
-    const maxAttempts = 60;
+    const maxAttempts = 120;
+    let lastStatus = '';
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       const detailRes = await axios.get<Record<string, unknown>>(
         `${controlPlaneUrl}/executions/${executionId}`,
@@ -467,9 +480,13 @@ export class CapabilityReleaseRuntimeService {
         }
       );
       const status = String(detailRes.data?.status || '');
-      logs.push(`[NL-Validation] 执行状态: ${status}`);
+      if (status !== lastStatus) {
+        lastStatus = status;
+        pushLog(`[NL-Validation] 执行状态更新: ${status}`);
+      }
 
       if (status === 'succeeded') {
+        pushLog(`[NL-Validation] 执行成功完成`);
         return {
           success: true,
           logs,
@@ -482,6 +499,7 @@ export class CapabilityReleaseRuntimeService {
 
       if (status === 'failed' || status === 'cancelled' || status === 'rolled_back') {
         const failureReason = String(detailRes.data?.failureReason || '执行失败');
+        pushLog(`[NL-Validation] 执行异常结束: ${failureReason}`);
         return {
           success: false,
           logs,
@@ -494,6 +512,7 @@ export class CapabilityReleaseRuntimeService {
       }
 
       if (status === 'waiting_input' || status === 'pending_approval') {
+        pushLog(`[NL-Validation] 执行进入等待阶段: ${status}`);
         return {
           success: false,
           logs,
@@ -504,6 +523,7 @@ export class CapabilityReleaseRuntimeService {
       await new Promise((resolve) => setTimeout(resolve, 1500));
     }
 
+    pushLog(`[NL-Validation] 自然语言验证超时（超过 180s）`);
     return {
       success: false,
       logs,

@@ -25,6 +25,7 @@ export interface BrowserExecuteResponse {
 export interface RecorderDebugObservation {
   currentPageUrl?: string;
   title?: string;
+  pageTitle?: string;
   text?: string;
   inputs: Array<Record<string, unknown>>;
   buttons: Array<Record<string, unknown>>;

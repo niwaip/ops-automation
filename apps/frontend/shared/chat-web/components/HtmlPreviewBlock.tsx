@@ -52,22 +52,62 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
   const [isFullscreenModal, setIsFullscreenModal] = useState<boolean>(false);
   const [fetchedCode, setFetchedCode] = useState<string>('');
   const [isFetchingCode, setIsFetchingCode] = useState<boolean>(false);
+  const [fetchCodeError, setFetchCodeError] = useState<string | null>(null);
+  const [fetchTrigger, setFetchTrigger] = useState(0);
 
   const normalizedSrcUrl = React.useMemo(() => normalizeArtifactUrl(srcUrl), [srcUrl]);
 
+  const lastFetchedUrlRef = useRef<string>('');
+
+  // Reset fetched code and error if normalizedSrcUrl changes
   useEffect(() => {
-    if (activeTab === 'code' && !code && normalizedSrcUrl && !fetchedCode && !isFetchingCode) {
-      setIsFetchingCode(true);
-      fetch(normalizedSrcUrl)
-        .then((res) => {
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          return res.text();
-        })
-        .then((text) => setFetchedCode(text))
-        .catch((err) => console.error('Failed to fetch html source for code view:', err))
-        .finally(() => setIsFetchingCode(false));
+    setFetchedCode('');
+    setFetchCodeError(null);
+    setFetchTrigger(0);
+  }, [normalizedSrcUrl]);
+
+  useEffect(() => {
+    if (activeTab !== 'code' || code || !normalizedSrcUrl) {
+      return;
     }
-  }, [activeTab, code, normalizedSrcUrl, fetchedCode, isFetchingCode]);
+    if (lastFetchedUrlRef.current === normalizedSrcUrl && fetchTrigger === 0) {
+      return;
+    }
+
+    lastFetchedUrlRef.current = normalizedSrcUrl;
+    let isSubscribed = true;
+    const controller = new AbortController();
+    setIsFetchingCode(true);
+
+    fetch(normalizedSrcUrl, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.text();
+      })
+      .then((text) => {
+        if (isSubscribed) {
+          setFetchedCode(text);
+          setFetchCodeError(null);
+        }
+      })
+      .catch((err) => {
+        if (err.name === 'AbortError') return;
+        console.error('Failed to fetch html source for code view:', err);
+        if (isSubscribed) {
+          setFetchCodeError(err instanceof Error ? err.message : '加载源码失败');
+        }
+      })
+      .finally(() => {
+        if (isSubscribed) {
+          setIsFetchingCode(false);
+        }
+      });
+
+    return () => {
+      isSubscribed = false;
+      controller.abort();
+    };
+  }, [activeTab, code, normalizedSrcUrl, fetchTrigger]);
 
   const targetForDetection = `${code} ${defaultTitle || ''} ${srcUrl || ''}`;
 
@@ -300,26 +340,59 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
     }
   }, [repairedHtml, normalizedSrcUrl, effectiveExpanded, activeTab]);
 
-  // Open full HTML document in new tab reliably using document.write instead of ephemeral Blob URLs
+  // Open full HTML document in new tab reliably inside a sandboxed container to prevent origin inheritance
   const handleOpenNewWindow = useCallback(() => {
-    if (normalizedSrcUrl) {
-      window.open(normalizedSrcUrl, '_blank');
-      return;
-    }
+    if (!repairedHtml && !normalizedSrcUrl) return;
     try {
-      const newWin = window.open('', '_blank');
-      if (newWin) {
-        newWin.document.open();
-        newWin.document.write(repairedHtml);
-        newWin.document.close();
-      } else {
+      const escapedTitle = (displayTitle || 'HTML 演示文稿 / 原型')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+      let frameSetupScript = '';
+      if (repairedHtml) {
+        // Encode < and > in JSON to prevent </script> tag breakout from terminating outer script
+        const safeJsonHtml = JSON.stringify(repairedHtml)
+          .replace(/</g, '\\u003c')
+          .replace(/>/g, '\\u003e');
+        frameSetupScript = `frame.srcdoc = ${safeJsonHtml};`;
+      } else if (normalizedSrcUrl) {
+        const safeJsonUrl = JSON.stringify(normalizedSrcUrl)
+          .replace(/</g, '\\u003c')
+          .replace(/>/g, '\\u003e');
+        frameSetupScript = `frame.src = ${safeJsonUrl};`;
+      }
+      const safeContainerHtml = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapedTitle}</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0f172a; }
+    iframe { border: none; width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <iframe id="preview-sandbox" sandbox="allow-scripts allow-forms allow-popups allow-modals" allowfullscreen></iframe>
+  <script>
+    const frame = document.getElementById('preview-sandbox');
+    ${frameSetupScript}
+  </script>
+</body>
+</html>`;
+      const blob = new Blob([safeContainerHtml], { type: 'text/html;charset=utf-8' });
+      const blobUrl = URL.createObjectURL(blob);
+      const newWin = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+      if (!newWin) {
         setIsFullscreenModal(true);
       }
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
     } catch (err) {
-      console.error('Failed to open window, opening modal instead:', err);
+      console.error('Failed to open sandboxed window, opening modal instead:', err);
       setIsFullscreenModal(true);
     }
-  }, [normalizedSrcUrl, repairedHtml]);
+  }, [normalizedSrcUrl, repairedHtml, displayTitle]);
 
   const handleDownload = useCallback(() => {
     if (normalizedSrcUrl) {
@@ -515,7 +588,7 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
         <div>
           <iframe
             ref={iframeRef}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+            sandbox="allow-scripts allow-forms allow-popups allow-modals"
             allowFullScreen
             style={{
               width: '100%',
@@ -550,20 +623,45 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
           </div>
         </div>
       ) : (
-        <pre
-          className={className || 'code-block language-html'}
-          style={{
-            margin: 0,
-            maxHeight: '460px',
-            overflow: 'auto',
-            padding: '12px',
-            fontSize: '12px',
-          }}
-        >
-          <code>
-            {isFetchingCode ? '正在加载 HTML 源码...' : (code || fetchedCode || '// 无源代码')}
-          </code>
-        </pre>
+        <div style={{ position: 'relative' }}>
+          <pre
+            className={className || 'code-block language-html'}
+            style={{
+              margin: 0,
+              maxHeight: '460px',
+              overflow: 'auto',
+              padding: '12px',
+              fontSize: '12px',
+            }}
+          >
+            <code>
+              {isFetchingCode ? (
+                '正在加载 HTML 源码...'
+              ) : fetchCodeError ? (
+                `⚠️ 加载 HTML 源码失败 (${fetchCodeError})`
+              ) : (
+                code || fetchedCode || '// 无源代码'
+              )}
+            </code>
+          </pre>
+          {fetchCodeError && (
+            <div
+              style={{
+                padding: '8px 12px',
+                background: 'rgba(239, 68, 68, 0.06)',
+                borderTop: '1px solid rgba(239, 68, 68, 0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <span style={{ fontSize: '12px', color: '#ef4444' }}>网络请求异常或资源不存在</span>
+              <Button size="small" onClick={() => { setFetchCodeError(null); setFetchTrigger((v) => v + 1); }}>
+                重试加载
+              </Button>
+            </div>
+          )}
+        </div>
       ))}
 
       {/* In-page Fullscreen Modal */}
@@ -593,7 +691,7 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
       >
         <iframe
           {...(repairedHtml ? { srcDoc: repairedHtml } : { src: normalizedSrcUrl })}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+          sandbox="allow-scripts allow-forms allow-popups allow-modals"
           allowFullScreen
           style={{
             width: '100%',

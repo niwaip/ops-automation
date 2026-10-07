@@ -19,9 +19,15 @@ logger = logging.getLogger(__name__)
 class TemporalSandboxServer:
     """HTTP server for triggering sandbox executions."""
 
-    def __init__(self, client: Client, validation_task_queue: str):
+    def __init__(
+        self,
+        client: Client,
+        validation_task_queue: str,
+        task_queue: str = 'sandbox-worker-task-queue',
+    ):
         self.client = client
         self.validation_task_queue = validation_task_queue
+        self.task_queue = task_queue
         self._app = web.Application()
         self._setup_routes()
 
@@ -59,12 +65,12 @@ class TemporalSandboxServer:
                 await handle.query(AgentSessionWorkflow.get_state)
                 logger.info('Using existing workflow: %s', workflow_id)
             except Exception:
-                logger.info('Starting new workflow: %s', workflow_id)
+                logger.info('Starting new workflow: %s on task queue: %s', workflow_id, self.task_queue)
                 handle = await self.client.start_workflow(
                     AgentSessionWorkflow.run,
                     session_id,
                     id=workflow_id,
-                    task_queue='sandbox-worker-task-queue',
+                    task_queue=self.task_queue,
                 )
 
             signal = ExecutionSignalInput(
@@ -420,8 +426,17 @@ class TemporalSandboxServer:
         return response
 
 
-async def run_http_server(client: Client, validation_task_queue: str, port: int = 8090):
-    server = TemporalSandboxServer(client, validation_task_queue)
+async def run_http_server(
+    client: Client,
+    validation_task_queue: str,
+    port: int = 8090,
+    task_queue: str = 'sandbox-worker-task-queue',
+):
+    server = TemporalSandboxServer(
+        client,
+        validation_task_queue=validation_task_queue,
+        task_queue=task_queue,
+    )
     runner = web.AppRunner(server._app)
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', port)

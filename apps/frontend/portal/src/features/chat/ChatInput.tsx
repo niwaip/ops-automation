@@ -248,12 +248,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
   }, [speechLanguage]);
 
   useEffect(() => {
+    const recognition = recognitionRef.current;
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.onstart = null;
-        recognitionRef.current.onresult = null;
-        recognitionRef.current.onerror = null;
-        recognitionRef.current.onend = null;
+      if (recognition) {
+        recognition.onstart = null;
+        recognition.onresult = null;
+        recognition.onerror = null;
+        recognition.onend = null;
       }
       stopRecognition(true);
     };

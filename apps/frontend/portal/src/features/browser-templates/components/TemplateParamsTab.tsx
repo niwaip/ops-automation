@@ -106,16 +106,23 @@ const TemplateParamsTab: React.FC<TemplateParamsTabProps> = ({
   const [editingParamKey, setEditingParamKey] = useState<string | null>(null);
   const [form] = Form.useForm();
 
-  const properties = (paramsSchema?.properties || {}) as Record<
-    string,
-    {
-      type?: string;
-      description?: string;
-      default?: string | number | boolean;
-      enum?: Array<string | number>;
-    }
-  >;
-  const requiredList = Array.isArray(paramsSchema?.required) ? paramsSchema.required : [];
+  const properties = useMemo(
+    () =>
+      (paramsSchema?.properties || {}) as Record<
+        string,
+        {
+          type?: string;
+          description?: string;
+          default?: string | number | boolean;
+          enum?: Array<string | number>;
+        }
+      >,
+    [paramsSchema?.properties]
+  );
+  const requiredList = useMemo(
+    () => (Array.isArray(paramsSchema?.required) ? paramsSchema.required : []),
+    [paramsSchema?.required]
+  );
 
   const tableData: ParamRowItem[] = useMemo(() => {
     return Object.entries(properties).map(([key, prop]) => ({

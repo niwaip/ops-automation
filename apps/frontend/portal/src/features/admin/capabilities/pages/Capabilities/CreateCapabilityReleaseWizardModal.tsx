@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Modal, Space, Alert, Steps, Card, Form, Select, Button, Descriptions, Input, Collapse, Typography } from 'antd';
+import { Modal, Space, Alert, Steps, Card, Form, Select, Button, Descriptions, Input, Collapse, Typography, Tag } from 'antd';
 import { CapabilityReleaseDetail } from '@/api/capabilities';
 import { DeploymentSmokeInputEditor } from './components/DeploymentSmokeInputEditor';
 
@@ -99,6 +99,26 @@ export const CreateCapabilityReleaseWizardModal: React.FC<CreateCapabilityReleas
     return [];
   }, [latestValidation]);
 
+  const recommendedPrompts = useMemo(() => {
+    const list: string[] = [];
+    const sourcePayload = wizardDetail?.currentSourceSnapshot?.sourcePayload;
+    if (typeof sourcePayload?.userGoal === 'string' && sourcePayload.userGoal.trim()) {
+      list.push(sourcePayload.userGoal.trim());
+    }
+    const skillName = wizardRelease?.sourceName || '';
+    if (
+      skillName.includes('replay') ||
+      skillName.includes('approval') ||
+      skillName.includes('1790872547')
+    ) {
+      list.push('审批案件，毛利率阈值设为10');
+    }
+    if (list.length === 0 && skillName) {
+      list.push(`执行技能：${skillName}`);
+    }
+    return Array.from(new Set(list));
+  }, [wizardDetail?.currentSourceSnapshot?.sourcePayload, wizardRelease?.sourceName]);
+
   return (
     <Modal title="创建流程发布向导" open={visible} onCancel={onCancel} footer={null} width={960}>
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -131,7 +151,7 @@ export const CreateCapabilityReleaseWizardModal: React.FC<CreateCapabilityReleas
             },
             {
               title: '真实校验',
-              description: '输入真实参数执行',
+              description: '自然语言调用 Skill 验证',
             },
           ]}
         />
@@ -321,31 +341,69 @@ export const CreateCapabilityReleaseWizardModal: React.FC<CreateCapabilityReleas
               />
             )}
 
-            <Card size="small" title="端到端真实校验参数" style={{ borderRadius: 12 }}>
+            <Card
+              size="small"
+              title={
+                <Space>
+                  <span>自然语言技能调用验证 (Prompt Driven)</span>
+                  {wizardRelease?.publishedSkillId && (
+                    <Tag color="cyan">
+                      已发布 Skill #{wizardRelease.publishedSkillId.slice(0, 8)}
+                    </Tag>
+                  )}
+                </Space>
+              }
+              style={{ borderRadius: 12 }}
+            >
               <Paragraph type="secondary" style={{ fontSize: 13, marginBottom: 12 }}>
-                系统将使用已配置的业务输入参数向运行环境发起真实调用，检验完整业务逻辑并渲染目标结果。
+                技能已发布上线。真实校验通过自然语言 Prompt 驱动已发布的 Skill，验证意图理解、参数抽取与端到端自动化执行闭环。
               </Paragraph>
-              <DeploymentSmokeInputEditor
-                sourcePayload={wizardDetail?.currentSourceSnapshot?.sourcePayload}
-                environment={deployEnvironment}
-                draft={deploySmokeInputDraft}
-                onChange={setDeploySmokeInputDraft}
-              />
+              <Form.Item
+                label={<Text strong>自然语言测试指令 (User Prompt)</Text>}
+                style={{ marginBottom: 8 }}
+              >
+                <TextArea
+                  rows={3}
+                  value={wizardValidationCasesDraft}
+                  onChange={(e) => setWizardValidationCasesDraft(e.target.value)}
+                  placeholder="请输入自然语言指令，例如：审批案件，毛利率阈值设为10"
+                />
+              </Form.Item>
+              {recommendedPrompts.length > 0 && (
+                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <Text type="secondary" style={{ fontSize: 12 }}>推荐指令快速填入：</Text>
+                  {recommendedPrompts.map((p, idx) => (
+                    <Button
+                      key={idx}
+                      size="small"
+                      type="dashed"
+                      onClick={() => setWizardValidationCasesDraft(p)}
+                    >
+                      {p}
+                    </Button>
+                  ))}
+                </div>
+              )}
             </Card>
 
             <Collapse
               ghost
               items={[
                 {
-                  key: 'nl',
-                  label: '可选：通过自然语言用例驱动智能体验证 (Prompt Driven)',
+                  key: 'smokeInput',
+                  label: '高级选项：底层执行凭证与环境参数覆盖 (可选)',
                   children: (
-                    <TextArea
-                      rows={3}
-                      value={wizardValidationCasesDraft}
-                      onChange={(e) => setWizardValidationCasesDraft(e.target.value)}
-                      placeholder="例如：为甲方公司生成一份保密期限为3年的保密协议（每行一条）"
-                    />
+                    <div>
+                      <Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 8 }}>
+                        自然语言调用已发布 Skill 时，将默认携带以下配置的环境参数与一次性验证凭证。
+                      </Paragraph>
+                      <DeploymentSmokeInputEditor
+                        sourcePayload={wizardDetail?.currentSourceSnapshot?.sourcePayload}
+                        environment={deployEnvironment}
+                        draft={deploySmokeInputDraft}
+                        onChange={setDeploySmokeInputDraft}
+                      />
+                    </div>
                   ),
                 },
               ]}

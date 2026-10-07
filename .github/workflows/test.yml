@@ -29,6 +29,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma clients
+        run: pnpm prisma:generate
+
       - name: Run unit tests
         run: pnpm --filter "@ops/*" run test:unit --coverage || exit 0
         continue-on-error: true
@@ -86,6 +89,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma clients
+        run: pnpm prisma:generate
 
       - name: Run integration tests
         run: pnpm --filter "@ops/*" run test:integration || exit 0

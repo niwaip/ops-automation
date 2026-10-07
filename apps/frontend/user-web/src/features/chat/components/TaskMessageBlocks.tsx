@@ -133,16 +133,25 @@ const isDownloadableArtifact = (art?: {
   );
 };
 
-export function TaskOutcomeBlock({
+export function TaskOutcomeBlock(props: TaskOutcomeBlockProps) {
+  const { message } = props;
+  if (message.role !== 'assistant' || message.metadata?.mode !== 'task') {
+    return null;
+  }
+
+  if (!hasTaskOutcomeContent(message)) {
+    return null;
+  }
+
+  return <TaskOutcomeBlockContent {...props} />;
+}
+
+function TaskOutcomeBlockContent({
   message,
   actionLoadingByMessage,
   onApproveExecution,
   onRejectExecution,
 }: TaskOutcomeBlockProps) {
-  if (message.role !== 'assistant' || message.metadata?.mode !== 'task') {
-    return null;
-  }
-
   const taskParts = resolveTaskParts(message.contentParts);
   const status = resolveMessageTaskStatus(message);
   const executionId = resolveMessageExecutionId(message);
@@ -245,11 +254,6 @@ export function TaskOutcomeBlock({
     : Array.isArray((taskParts.structuredResultData as any)?.citations)
     ? (taskParts.structuredResultData as any).citations
     : [];
-  const hasTaskCard = hasTaskOutcomeContent(message);
-
-  if (!hasTaskCard) {
-    return null;
-  }
 
   const shouldShowArtifactActions = status === 'completed' || status === 'failed';
 

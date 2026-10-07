@@ -73,23 +73,6 @@ const isBinaryOrNoiseKey = (key: string, val: unknown): boolean =>
   key === 'rawFile' ||
   isBase64String(val);
 
-const sanitizeTechnicalValue = (val: unknown): unknown => {
-  if (typeof val === 'string' && isBase64String(val)) {
-    return `[二进制/Base64 数据，约 ${(val.length / 1024).toFixed(1)} KB]`;
-  }
-  if (val && typeof val === 'object') {
-    if (Array.isArray(val)) {
-      return val.map(sanitizeTechnicalValue);
-    }
-    const cleanObj: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(val as Record<string, unknown>)) {
-      cleanObj[k] = sanitizeTechnicalValue(v);
-    }
-    return cleanObj;
-  }
-  return val;
-};
-
 
 export const ExpandableMarkdownContent: React.FC<{
   text: string;

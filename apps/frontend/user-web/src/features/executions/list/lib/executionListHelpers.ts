@@ -331,7 +331,7 @@ const cleanMarkdownSyntax = (raw: string): string => {
     .replace(/!\[[^\]]*\]\([^)]+\)/g, '')
     // remove prompt guidance/links
     .replace(/\*?\*?\(下方产物卡片支持[^)]*\)\*?\*?/g, '')
-    .replace(/[🔗👉\s]*点击[^\n\r]*/g, '')
+    .replace(/[🔗👉\s]*点击[^\n\r]*/gu, '')
     // remove markdown headers
     .replace(/^#+\s+/gm, '')
     // remove bullet points

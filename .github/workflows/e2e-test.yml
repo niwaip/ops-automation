@@ -55,6 +55,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma clients
+        run: pnpm prisma:generate
+
       - name: Setup database schema
         run: |
           pnpm --filter @ops/platform exec prisma migrate deploy
@@ -80,8 +83,15 @@ jobs:
           node apps/backend/intelligence/ai-orchestrator/dist/main.js &
           node apps/backend/runtimes/replay-worker/dist/main.js &
 
-          # Wait for services to start
-          sleep 10
+          # Wait for services to start with active probe
+          for i in {1..15}; do
+            if nc -z localhost 3001 2>/dev/null && nc -z localhost 3002 2>/dev/null; then
+              echo "Core services are up!"
+              break
+            fi
+            echo "Waiting for background services... ($i/15)"
+            sleep 2
+          done
         env:
           DATABASE_URL: postgresql://ops:ops_secret@localhost:5432/ops
           REDIS_URL: redis://localhost:6379

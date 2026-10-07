@@ -618,7 +618,7 @@ export const useWorkflowSaveAndValidate = ({
 
       const persistedValidation = await temporalWorkflowApi.validateSavedArtifact(
         persistedWorkflow.id,
-        { input: inputParams }
+        { input: inputParams, timeout: '180s' }
       );
       persistedValidation.validation.logs.forEach(appendRealValidationLog);
       dispatchRealValidation({

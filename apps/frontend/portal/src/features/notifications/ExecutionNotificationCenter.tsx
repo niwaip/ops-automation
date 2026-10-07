@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { App, Badge, Button, Empty, List, Popover, Segmented, Space, Tag, Typography } from 'antd';
 import { BellOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -181,6 +181,15 @@ const ExecutionNotificationCenter: React.FC = () => {
     }
   }, [data?.items, syncNotifications]);
 
+  const handleOpenNotification = useCallback(
+    (notificationItem: AppNotification) => {
+      markAsRead(notificationItem.id);
+      setPopoverOpen(false);
+      navigate(notificationItem.actionUrl);
+    },
+    [markAsRead, navigate]
+  );
+
   useEffect(() => {
     items
       .filter((item) => item.unread)
@@ -203,7 +212,7 @@ const ExecutionNotificationCenter: React.FC = () => {
           onClick: () => handleOpenNotification(item),
         });
       });
-  }, [items, language, notification]);
+  }, [handleOpenNotification, items, language, notification]);
 
   const unreadCount = useMemo(() => items.filter((item) => item.unread).length, [items]);
 
@@ -211,12 +220,6 @@ const ExecutionNotificationCenter: React.FC = () => {
     () => (viewMode === 'action_required' ? items.filter((item) => item.requiresAction) : items),
     [items, viewMode]
   );
-
-  const handleOpenNotification = (notificationItem: AppNotification) => {
-    markAsRead(notificationItem.id);
-    setPopoverOpen(false);
-    navigate(notificationItem.actionUrl);
-  };
 
   const statusLabels =
     language === 'en-US' ? EXECUTION_STATUS_LABELS_EN : EXECUTION_STATUS_LABELS_ZH;

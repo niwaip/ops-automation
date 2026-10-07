@@ -105,11 +105,17 @@ export function WorkspaceAdminPage() {
     () => organizationApi.getOrganizationStructure(activeOrgId!),
     { enabled: !!activeOrgId }
   );
-  const departments = structureQuery.data?.departments || [];
+  const departments = useMemo(
+    () => structureQuery.data?.departments || [],
+    [structureQuery.data?.departments]
+  );
 
   // 2. 获取全量用户列表（供个人工作台穿透切换）
   const usersQuery = useQuery('admin-workspace-users', () => userApi.list({ page: 1 }));
-  const userList = usersQuery.data?.users || [];
+  const userList = useMemo(
+    () => usersQuery.data?.users || [],
+    [usersQuery.data?.users]
+  );
 
   // 选中的部门 ID 与用户 ID
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);

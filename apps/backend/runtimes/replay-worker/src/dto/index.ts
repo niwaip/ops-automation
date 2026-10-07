@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsUUID, IsObject, IsString } from 'class-validator';
+import { IsUUID, IsObject } from 'class-validator';
 
 /**
  * Replay Engine DTOs
@@ -128,18 +128,4 @@ export class CDPConnectionStatusDto {
 
   @ApiPropertyOptional({ example: '2024-01-01T00:00:00Z', description: 'Connected at timestamp' })
   connected_at?: Date;
-}
-
-export class TakeoverRequestDto {
-  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000', description: 'Session ID' })
-  @IsUUID()
-  session_id!: string;
-
-  @ApiProperty({ example: 'step_001', description: 'Step ID' })
-  @IsString()
-  step_id!: string;
-
-  @ApiProperty({ example: 'Captcha detected', description: 'Reason for takeover' })
-  @IsString()
-  reason!: string;
 }

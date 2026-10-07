@@ -219,6 +219,9 @@ export const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'mana
     if (targetStep === 1) {
       state.setDeploySmokeInputDraft('{}');
     }
+    if (targetStep === 3 && !state.wizardValidationCasesDraft) {
+      state.setWizardValidationCasesDraft('审批案件，毛利率阈值设为10');
+    }
     state.setCreateVisible(true);
   };
 
@@ -404,10 +407,17 @@ export const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'mana
               .map((c) => c.trim())
               .filter(Boolean);
 
+            const promptToUse =
+              naturalCases && naturalCases.length > 0
+                ? naturalCases
+                : typeof wizardSourcePayload?.userGoal === 'string' && wizardSourcePayload.userGoal.trim()
+                  ? [wizardSourcePayload.userGoal.trim()]
+                  : ['审批案件，毛利率阈值设为10'];
+
             mutations.realValidateMutation.mutate({
               id: state.wizardReleaseId,
               input: effectiveSmokeInput,
-              testCases: naturalCases && naturalCases.length > 0 ? naturalCases : undefined,
+              testCases: promptToUse,
             });
           }
         }}

@@ -96,8 +96,10 @@ export function useExecutionDetailDrawerData({
     }
   );
 
-  const selectedExecutionPhases =
-    selectedPhasesData || selectedExecution?.phases || [];
+  const selectedExecutionPhases = useMemo(
+    () => selectedPhasesData || selectedExecution?.phases || [],
+    [selectedPhasesData, selectedExecution?.phases]
+  );
   const sortedSelectedExecutionPhases = useMemo(
     () => [...selectedExecutionPhases].sort(compareExecutionPhases),
     [selectedExecutionPhases]
@@ -274,12 +276,13 @@ export function useExecutionDetailDrawerData({
     false
   );
 
-  const requiredInputs = Array.isArray(
-    waitingInputStep?.inputJson?.requiredInputs
-  )
-    ? (waitingInputStep?.inputJson
-        ?.requiredInputs as unknown as RequiredInputField[])
-    : [];
+  const requiredInputs = useMemo(
+    () =>
+      Array.isArray(waitingInputStep?.inputJson?.requiredInputs)
+        ? (waitingInputStep?.inputJson?.requiredInputs as unknown as RequiredInputField[])
+        : [],
+    [waitingInputStep?.inputJson?.requiredInputs]
+  );
 
   const requiredInputGroups = useMemo(
     () => buildWaitingInputDisplayGroups(requiredInputs),

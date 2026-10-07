@@ -6,6 +6,7 @@ jest.mock(
   { virtual: true }
 );
 
+import type { BrowserCommand } from '../intent';
 import { RecorderDebugOutcomeService } from './recorder-debug-outcome.service';
 
 describe('RecorderDebugOutcomeService', () => {

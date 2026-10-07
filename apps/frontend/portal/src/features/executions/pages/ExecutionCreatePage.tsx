@@ -9,28 +9,20 @@ import {
   Descriptions,
   Empty,
   Form,
-  Input,
-  List,
-  Popconfirm,
   Radio,
   Select,
   Space,
   Spin,
-  Statistic,
   Tag,
   Typography,
 } from 'antd';
 import {
   ArrowLeftOutlined,
-  ClockCircleOutlined,
-  DeleteOutlined,
   LoadingOutlined,
-  PauseCircleOutlined,
   PlayCircleOutlined,
   ReloadOutlined,
   RobotOutlined,
   SettingOutlined,
-  UploadOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { useTranslation } from 'react-i18next';
@@ -38,11 +30,10 @@ import { executionApi } from '@/api/execution';
 import { scheduleApi } from '@/api/schedules';
 import { capabilityReleaseApi } from '@/api/capabilities';
 import { skillApi, SkillConfigDTO } from '@/api/skill';
-import { aiApi } from '@/api/ai';
-import type { UploadProps } from 'antd';
-import { Modal, Upload } from 'antd';
 import { useAuthStore } from '@/shared/store/authStore';
 import { ScheduleConfigurationCard } from '@/features/executions/components/ScheduleConfigurationCard';
+import { SkillSchedulesCard } from '@/features/executions/components/SkillSchedulesCard';
+import { AiParamRecognitionModal } from '@/features/executions/components/AiParamRecognitionModal';
 import {
   getInitialInputValues,
   getSchemaFields,
@@ -111,10 +102,6 @@ const ExecutionCreatePage: React.FC = () => {
     (Form.useWatch('schedulePattern', form) as SchedulePattern | undefined) || 'workdays';
   const initializedSkillIdRef = useRef<string | undefined>();
   const [aiModalOpen, setAiModalOpen] = useState(false);
-  const [aiTextInput, setAiTextInput] = useState('');
-  const [aiGenerating, setAiGenerating] = useState(false);
-  const [uploadedText, setUploadedText] = useState<string>('');
-  const [uploadedFileName, setUploadedFileName] = useState<string>('');
   const { user } = useAuthStore();
 
   // 为页面容器增加一个最大高度和溢出处理，确保在大屏幕下不出现全局滚动条
@@ -218,17 +205,15 @@ const ExecutionCreatePage: React.FC = () => {
   const schedulesQuery = useQuery(['execution-create-schedules'], () => scheduleApi.list(), {
     staleTime: 15000,
   });
-  const scheduleItems = Array.isArray(schedulesQuery.data) ? schedulesQuery.data : [];
 
-  const skillSchedules = useMemo(
-    () =>
-      scheduleItems
-        .filter((schedule) => schedule.skillId === selectedSkillId)
-        .sort((left, right) => {
-          return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
-        }),
-    [scheduleItems, selectedSkillId]
-  );
+  const skillSchedules = useMemo(() => {
+    const items = Array.isArray(schedulesQuery.data) ? schedulesQuery.data : [];
+    return items
+      .filter((schedule) => schedule.skillId === selectedSkillId)
+      .sort((left, right) => {
+        return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+      });
+  }, [schedulesQuery.data, selectedSkillId]);
   const activeScheduleCount = skillSchedules.filter((schedule) => schedule.isActive).length;
 
   useEffect(() => {
@@ -364,51 +349,6 @@ const ExecutionCreatePage: React.FC = () => {
     }
   );
 
-  const toggleScheduleMutation = useMutation(
-    async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      return scheduleApi.update(id, { isActive });
-    },
-    {
-      onSuccess: async (schedule) => {
-        void message.success(`${schedule.name} 已${schedule.isActive ? '启用' : '停用'}`);
-        await queryClient.invalidateQueries(['execution-create-schedules']);
-      },
-      onError: (error: Error) => {
-        void message.error(`更新定时任务状态失败：${error.message}`);
-      },
-    }
-  );
-
-  const triggerScheduleMutation = useMutation(
-    async (id: string) => scheduleApi.trigger(id),
-    {
-      onSuccess: async () => {
-        void message.success('已触发一次立即执行');
-        await Promise.all([
-          queryClient.invalidateQueries(['executions']),
-          queryClient.invalidateQueries(['dashboard-executions-recent']),
-          queryClient.invalidateQueries(['execution-create-schedules']),
-        ]);
-      },
-      onError: (error: Error) => {
-        void message.error(`触发定时任务失败：${error.message}`);
-      },
-    }
-  );
-
-  const deleteScheduleMutation = useMutation(
-    async (id: string) => scheduleApi.delete(id),
-    {
-      onSuccess: async () => {
-        void message.success('定时任务已删除');
-        await queryClient.invalidateQueries(['execution-create-schedules']);
-      },
-      onError: (error: Error) => {
-        void message.error(`删除定时任务失败：${error.message}`);
-      },
-    }
-  );
-
   const handleSubmit = (values: ExecutionCreateFormValues) => {
     try {
       if (values.executionMode === 'schedule') {
@@ -449,82 +389,6 @@ const ExecutionCreatePage: React.FC = () => {
       return;
     }
     setAiModalOpen(true);
-  };
-
-  const handleCloseAiModal = () => {
-    setAiModalOpen(false);
-    setAiTextInput('');
-    setUploadedText('');
-    setUploadedFileName('');
-    setAiGenerating(false);
-  };
-
-  const uploadProps: UploadProps = {
-    beforeUpload: (file) => {
-      const isText =
-        file.type.startsWith('text/') ||
-        file.type === 'application/json' ||
-        /\.txt$|\.md$|\.csv$|\.json$/i.test(file.name);
-      if (!isText) {
-        void message.error('目前仅支持文本文件（.txt/.md/.csv/.json）用于参数识别');
-        return Upload.LIST_IGNORE;
-      }
-      try {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const content = String(reader.result || '');
-          setUploadedText(content);
-          setUploadedFileName(file.name);
-          void message.success(`已读取文本文件：${file.name}`);
-        };
-        reader.onerror = () => {
-          void message.error('读取文件失败');
-        };
-        reader.readAsText(file);
-      } catch {
-        void message.error('读取文件失败');
-        return Upload.LIST_IGNORE;
-      }
-      return Upload.LIST_IGNORE;
-    },
-    multiple: false,
-    maxCount: 1,
-    showUploadList: false,
-  };
-
-  const handleAiGenerate = async () => {
-    if (!selectedSkill) {
-      void message.error('请先选择技能');
-      return;
-    }
-    const userInput = (aiTextInput || uploadedText || '').trim();
-    if (!userInput) {
-      void message.warning('请输入文字或上传文本文件');
-      return;
-    }
-    setAiGenerating(true);
-    try {
-      const templateId = selectedSkill.carboneTemplateId || selectedSkill.templateId || '';
-      const paramsSchema = selectedSkill.paramsSchema;
-      const result = await aiApi.recognizeParams({
-        template_id: templateId || 'unknown',
-        user_input: uploadedFileName ? `【文件：${uploadedFileName}】\n${userInput}` : userInput,
-        params_schema: paramsSchema,
-        context: {
-          skillId: selectedSkill.id,
-          skillName: selectedSkillDisplayName,
-          skillDescription: selectedSkill.description,
-          triggerKeywords: selectedSkill.triggerKeywords,
-          tools: selectedSkill.tools,
-        },
-      });
-      applyGeneratedParamsToForm(result.params || {});
-      handleCloseAiModal();
-    } catch (error) {
-      void message.error(error instanceof Error ? error.message : '参数识别失败');
-    } finally {
-      setAiGenerating(false);
-    }
   };
 
   return (
@@ -968,229 +832,29 @@ const ExecutionCreatePage: React.FC = () => {
             </Collapse>
           </Card>
 
-          <Card
-            title={
-              <Space size={8}>
-                <ClockCircleOutlined style={{ color: 'var(--text-secondary)' }} />
-                <Text strong>当前定时配置</Text>
-              </Space>
-            }
-            extra={
-              <Button
-                size="small"
-                type="link"
-                disabled={!selectedSkillId}
-                onClick={() => form.setFieldValue('executionMode', 'schedule')}
-              >
-                新建
-              </Button>
-            }
-            style={panelCardStyle}
-          >
-            {!selectedSkillId ? (
-              <Empty description="选择技能后查看当前定时任务配置" />
-            ) : schedulesQuery.isLoading ? (
-              <div style={{ padding: '24px 0', textAlign: 'center' }}>
-                <Spin tip="正在加载定时任务..." />
-              </div>
-            ) : skillSchedules.length === 0 ? (
-              <Empty description="当前技能还没有定时任务配置" />
-            ) : (
-              <>
-                <div
-                  style={{
-                    marginBottom: 16,
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                    gap: 14,
-                  }}
-                >
-                  <Card
-                    size="small"
-                    style={subtleCardStyle}
-                  >
-                    <Statistic title="总数" value={skillSchedules.length} />
-                  </Card>
-                  <Card
-                    size="small"
-                    style={subtleCardStyle}
-                  >
-                    <Statistic title="启用中" value={activeScheduleCount} valueStyle={{ color: '#1677ff' }} />
-                  </Card>
-                </div>
-                <List
-                  dataSource={skillSchedules}
-                  renderItem={(schedule) => {
-                    const updatingThisSchedule =
-                      toggleScheduleMutation.isLoading &&
-                      toggleScheduleMutation.variables?.id === schedule.id;
-                    const deletingThisSchedule =
-                      deleteScheduleMutation.isLoading &&
-                      deleteScheduleMutation.variables === schedule.id;
-                    const triggeringThisSchedule =
-                      triggerScheduleMutation.isLoading &&
-                      triggerScheduleMutation.variables === schedule.id;
-
-                    return (
-                      <List.Item style={{ paddingInline: 0 }}>
-                        <Card
-                          size="small"
-                          style={{
-                            width: '100%',
-                            ...subtleCardStyle,
-                            borderRadius: 16,
-                          }}
-                        >
-                          <Collapse ghost defaultActiveKey={[]} style={{ margin: -8 }}>
-                            <Panel
-                              key={schedule.id}
-                              header={
-                                <div
-                                  style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    gap: 12,
-                                    alignItems: 'center',
-                                    flexWrap: 'wrap',
-                                  }}
-                                >
-                                  <Space wrap size={8}>
-                                    <Text strong>{schedule.name}</Text>
-                                    <Tag style={pillTagStyle}>
-                                      {schedule.isActive ? '启用中' : '已停用'}
-                                    </Tag>
-                                    <Tag icon={<ClockCircleOutlined />} style={pillTagStyle}>
-                                      {summarizeCronExpression(schedule.cronExpression)}
-                                    </Tag>
-                                  </Space>
-                                  <Space wrap size={8}>
-                                    <Text type="secondary" style={{ fontSize: 12 }}>
-                                      下次执行：{formatDateTime(schedule.nextRunAt)}
-                                    </Text>
-                                    <Tag style={pillTagStyle}>{schedule.timezone}</Tag>
-                                  </Space>
-                                </div>
-                              }
-                            >
-                              <Space
-                                direction="vertical"
-                                size={10}
-                                style={{ width: '100%' }}
-                              >
-                                <Text type="secondary" style={{ fontSize: 12 }}>
-                                  更新时间：{formatDateTime(schedule.updatedAt)}
-                                </Text>
-
-                                {schedule.description ? (
-                                  <Text type="secondary">{schedule.description}</Text>
-                                ) : null}
-
-                                <div
-                                  style={{
-                                    padding: 10,
-                                    borderRadius: 12,
-                                    background: 'var(--bg-secondary)',
-                                  }}
-                                >
-                                  <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>
-                                    输入参数预览
-                                  </Text>
-                                  <pre
-                                    style={{
-                                      margin: 0,
-                                      fontSize: 12,
-                                      whiteSpace: 'pre-wrap',
-                                      wordBreak: 'break-word',
-                                      maxHeight: 120,
-                                      overflow: 'auto',
-                                    }}
-                                  >
-                                    {stringifyPreview(schedule.input)}
-                                  </pre>
-                                </div>
-
-                                <Space wrap size={8}>
-                                  <Text type="secondary">上次执行：{formatDateTime(schedule.lastRunAt)}</Text>
-                                </Space>
-
-                                <Space wrap>
-                                  <Button
-                                    size="small"
-                                    icon={<PlayCircleOutlined />}
-                                    loading={triggeringThisSchedule}
-                                    onClick={() => triggerScheduleMutation.mutate(schedule.id)}
-                                  >
-                                    立即触发
-                                  </Button>
-                                  <Button
-                                    size="small"
-                                    icon={schedule.isActive ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
-                                    loading={updatingThisSchedule}
-                                    onClick={() =>
-                                      toggleScheduleMutation.mutate({
-                                        id: schedule.id,
-                                        isActive: !schedule.isActive,
-                                      })
-                                    }
-                                  >
-                                    {schedule.isActive ? '停用' : '启用'}
-                                  </Button>
-                                  <Popconfirm
-                                    title="确认删除这个定时任务吗？"
-                                    onConfirm={() => deleteScheduleMutation.mutate(schedule.id)}
-                                  >
-                                    <Button
-                                      size="small"
-                                      danger
-                                      icon={<DeleteOutlined />}
-                                      loading={deletingThisSchedule}
-                                    >
-                                      删除
-                                    </Button>
-                                  </Popconfirm>
-                                </Space>
-                              </Space>
-                            </Panel>
-                          </Collapse>
-                        </Card>
-                      </List.Item>
-                    );
-                  }}
-                />
-              </>
-            )}
-          </Card>
+          <SkillSchedulesCard
+            selectedSkillId={selectedSkillId}
+            isLoading={schedulesQuery.isLoading}
+            skillSchedules={skillSchedules}
+            activeScheduleCount={activeScheduleCount}
+            onNewSchedule={() => form.setFieldValue('executionMode', 'schedule')}
+            panelCardStyle={panelCardStyle}
+            subtleCardStyle={subtleCardStyle}
+            pillTagStyle={pillTagStyle}
+            formatDateTime={formatDateTime}
+            stringifyPreview={stringifyPreview}
+            message={message}
+          />
         </Space>
       </div>
-      <Modal
-        title="智能识别参数"
+      <AiParamRecognitionModal
         open={aiModalOpen}
-        onCancel={handleCloseAiModal}
-        onOk={() => void handleAiGenerate()}
-        okText={aiGenerating ? '正在识别...' : '识别并填充'}
-        confirmLoading={aiGenerating}
-      >
-        <Space direction="vertical" style={{ width: '100%' }}>
-          <Input.TextArea
-            rows={4}
-            placeholder="请输入你的需求描述，系统将基于技能参数 schema 自动识别并填充"
-            value={aiTextInput}
-            onChange={(e) => setAiTextInput(e.target.value)}
-          />
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <Upload.Dragger {...uploadProps} style={{ padding: 8 }}>
-              <p className="ant-upload-drag-icon">
-                <UploadOutlined />
-              </p>
-              <p className="ant-upload-text">拖拽或点击上传文本文件（.txt/.md/.csv/.json）</p>
-              <p className="ant-upload-hint">
-                将读取文件文本用于参数识别；暂不支持直接解析PDF/Word。
-              </p>
-            </Upload.Dragger>
-            {uploadedFileName ? <Text type="secondary">已选择文件：{uploadedFileName}</Text> : null}
-          </Space>
-        </Space>
-      </Modal>
+        onClose={() => setAiModalOpen(false)}
+        selectedSkill={selectedSkill}
+        selectedSkillDisplayName={selectedSkillDisplayName}
+        onGeneratedParams={applyGeneratedParamsToForm}
+        message={message}
+      />
     </div>
   );
 };

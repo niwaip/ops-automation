@@ -1,19 +1,11 @@
 import {
-  BellOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
-  CloseCircleOutlined,
-  DownOutlined,
   EyeOutlined,
-  RobotOutlined,
-  RollbackOutlined,
-  SendOutlined,
-  SwapOutlined,
-  UpOutlined,
   UploadOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Button, Card, Input, Modal, Popconfirm, Space, Tag, Tooltip, Typography, Upload, message } from 'antd';
+import { Button, Input, Modal, Space, Tag, Typography, Upload, message } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQueryClient } from 'react-query';
@@ -38,6 +30,9 @@ import { ComplianceAuditCard, extractAuditReportFromTask } from './ComplianceAud
 import { BusinessParametersCard } from './BusinessParametersCard';
 import { TaskStageBanner } from './TaskStageBanner';
 import { VoucherAttachmentsCard } from './VoucherAttachmentsCard';
+import { TaskHistoryTimelineCard } from './TaskHistoryTimelineCard';
+import { buildInboxTaskDetailFooter } from './inboxTaskDetailFooter';
+import { validateDraftConsistency, looksLikeAddress } from './inboxTaskDetailValidation';
 import type { InboxTaskDetailModalProps } from './InboxTaskDetailModal.types';
 import { findCompanyCandidate } from './inboxTaskDetailText';
 
@@ -104,61 +99,7 @@ export function InboxTaskDetailModal({
     };
 
     // 四维一致性防串单/防换版/防漂移校验
-    const currentExecutionId =
-      (item as any)?.executionId ||
-      (item?.unifiedPayload as any)?.executionId ||
-      (item?.unifiedPayload as any)?.parameters?.executionId;
-    if (currentExecutionId && draft.executionId && currentExecutionId !== draft.executionId) {
-      message.error(
-        `审阅草稿关联任务(${draft.executionId.slice(0, 8)}...)与当前待办任务(${currentExecutionId.slice(0, 8)}...)不一致，已拦截防止串单！`
-      );
-      return;
-    }
-
-    const currentArtifactId =
-      (item as any)?.artifactId ||
-      (item?.unifiedPayload as any)?.artifactId ||
-      (item?.unifiedPayload as any)?.reviewReport?.artifactId ||
-      (item?.unifiedPayload as any)?.parameters?.artifactId;
-    if (currentArtifactId && draft.artifactId && currentArtifactId !== draft.artifactId) {
-      message.error(
-        `审阅草稿关联产物(${draft.artifactId.slice(0, 8)}...)与当前任务产物(${currentArtifactId.slice(0, 8)}...)不一致，已拦截防止产物漂移！`
-      );
-      return;
-    }
-
-    const currentDocVersion =
-      (item as any)?.sourceDocumentVersion ||
-      (item?.unifiedPayload as any)?.sourceDocumentVersion ||
-      (item?.unifiedPayload as any)?.reviewReport?.sourceDocumentVersion ||
-      (item?.unifiedPayload as any)?.parameters?.sourceDocumentVersion;
-    if (currentDocVersion && draft.sourceDocumentVersion && currentDocVersion !== draft.sourceDocumentVersion) {
-      message.error(
-        `审阅草稿关联文档版本(${draft.sourceDocumentVersion.slice(0, 16)}...)与任务原文档版本(${currentDocVersion.slice(0, 16)}...)不一致，已拦截防止文档换版！`
-      );
-      return;
-    }
-
-    const currentAttachmentId =
-      (item as any)?.sourceAttachmentId ||
-      (item?.unifiedPayload as any)?.sourceAttachmentId ||
-      (item?.unifiedPayload as any)?.reviewReport?.sourceAttachmentId ||
-      (item?.unifiedPayload as any)?.parameters?.sourceAttachmentId;
-    if (currentAttachmentId && draft.sourceAttachmentId && currentAttachmentId !== draft.sourceAttachmentId) {
-      message.error(
-        `审阅草稿关联附件(${draft.sourceAttachmentId})与任务原附件(${currentAttachmentId})不一致，已拦截防止附件漂移！`
-      );
-      return;
-    }
-
-    const currentRuleSetDigest =
-      (item as any)?.ruleSetDigest ||
-      (item?.unifiedPayload as any)?.ruleSetDigest ||
-      (item?.unifiedPayload as any)?.parameters?.ruleSetDigest;
-    if (currentRuleSetDigest && draft.ruleSetDigest && currentRuleSetDigest !== draft.ruleSetDigest) {
-      message.error(
-        `审阅草稿关联审查要件快照(${draft.ruleSetDigest.slice(0, 16)}...)与任务规则快照(${currentRuleSetDigest.slice(0, 16)}...)不一致，已拦截防止规则快照漂移！`
-      );
+    if (!validateDraftConsistency({ item, draft })) {
       return;
     }
 
@@ -202,17 +143,6 @@ export function InboxTaskDetailModal({
       nodeSemantics.isRevisionRequired);
   const isAssignment = isCoordination && payload.taskType !== 'approval';
   const hasParams = Boolean(item) && (isCoordination || nodeSemantics.isProcessTask) && Object.keys(params).length > 0;
-
-  // 识别企业主体是否误识别为地址
-  const looksLikeAddress = (name?: string): boolean => {
-    if (!name || typeof name !== 'string') return false;
-    const trimmed = name.trim();
-    if (/(?:公司|集团|厂|局|行|事务所|有限责任|有限合伙)$/.test(trimmed)) return false;
-    return (
-      /(?:路|街|号|弄|区|道|巷|大厦|中心|大楼|\d+号)$/.test(trimmed) ||
-      /(?:省|市|区|县|街|路|大道).*(?:号|室|层)/.test(trimmed)
-    );
-  };
 
   const candidateCompany = looksLikeAddress(params.counterpartyName)
     ? findCompanyCandidate(params.remarks || item?.rawContent)
@@ -596,109 +526,22 @@ export function InboxTaskDetailModal({
       onCancel={onClose}
       width={880}
       style={{ top: 20, maxWidth: '96vw' }}
-      footer={[
-        <Button key="close" onClick={onClose} disabled={isSubmitting}>
-          关闭
-        </Button>,
-        onOpenInAi ? (
-          <Button
-            key="ai"
-            icon={<RobotOutlined style={{ color: '#722ed1' }} />}
-            onClick={() => {
-              onOpenInAi(item);
-              onClose();
-            }}
-            disabled={isSubmitting}
-          >
-            在 AI 窗口中处理
-          </Button>
-        ) : null,
-        comparisonPair ? (
-          <Button
-            key="compare"
-            icon={<SwapOutlined style={{ color: '#722ed1' }} />}
-            onClick={handleCompareContractVersions}
-            disabled={isSubmitting}
-            style={{ borderColor: '#722ed1', color: '#722ed1' }}
-            title="将新旧版本合同载入 AI 窗口进行智能比对与红线审查"
-          >
-            比较合同版本 (AI)
-          </Button>
-        ) : null,
-        nodeSemantics.isWaitingForOther && nodeSemantics.canRemind ? (
-          <Tooltip key="remind-tip" title={`向当前处理担当 @${nodeSemantics.currentAssigneeName || '处理担当'} 发送催办提醒`}>
-            <Button
-              key="remind"
-              icon={<BellOutlined style={{ color: '#fa8c16' }} />}
-              disabled={isSubmitting}
-              onClick={handleRemind}
-              style={{ borderColor: '#fa8c16', color: '#fa8c16' }}
-            >
-              催办
-            </Button>
-          </Tooltip>
-        ) : null,
-        nodeSemantics.isWaitingForOther && nodeSemantics.canRecall ? (
-          <Popconfirm
-            key="recall-popconfirm"
-            title="确定撤回此发起事项？"
-            description="撤回后事项将退回待办，您可重新编辑。"
-            overlayStyle={{ maxWidth: 280 }}
-            onConfirm={handleRecall}
-            okText="确认撤回"
-            cancelText="取消"
-            disabled={isSubmitting}
-          >
-            <Button
-              key="recall"
-              danger
-              icon={<RollbackOutlined />}
-              loading={isSubmitting}
-            >
-              撤回
-            </Button>
-          </Popconfirm>
-        ) : null,
-        isActionable && nodeSemantics.canReject && nodeSemantics.allowReject ? (
-          <Button
-            key="reject"
-            danger
-            icon={<CloseCircleOutlined />}
-            loading={isSubmitting}
-            onClick={() => handleSubmit('reject')}
-          >
-            驳回修改
-          </Button>
-        ) : null,
-        isActionable && (!nodeSemantics.isApprovalNode || nodeSemantics.canApprove) ? (
-          <Button
-            key="submit"
-            type="primary"
-            icon={
-              nodeSemantics.cardActionType === 'send' ? (
-                <SendOutlined />
-              ) : (
-                <CheckCircleOutlined />
-              )
-            }
-            loading={isSubmitting}
-            style={
-              nodeSemantics.isRevisionRequired
-                ? { backgroundColor: '#fa541c', borderColor: '#fa541c' }
-                : nodeSemantics.cardActionType === 'send'
-                ? { backgroundColor: '#1677ff', borderColor: '#1677ff' }
-                : isAssignment
-                ? { backgroundColor: '#722ed1', borderColor: '#722ed1' }
-                : { backgroundColor: '#1677ff', borderColor: '#1677ff' }
-            }
-            onClick={() => handleSubmit(isAssignment ? 'complete' : 'approve')}
-          >
-            {nodeSemantics.isRevisionRequired
-              ? (nodeSemantics.hasDocumentWorkflow ? '修改完成，重新提交' : '修改完成，重新提交申请')
-              : nodeSemantics.modalSubmitText}
-          </Button>
-        ) : null,
-      ].filter(Boolean)}
+      footer={buildInboxTaskDetailFooter({
+        isSubmitting,
+        onClose,
+        onOpenInAi: onOpenInAi ? () => {
+          onOpenInAi(item);
+          onClose();
+        } : undefined,
+        hasComparisonPair: Boolean(comparisonPair),
+        onCompareContractVersions: handleCompareContractVersions,
+        nodeSemantics,
+        onRemind: handleRemind,
+        onRecall: handleRecall,
+        isActionable,
+        isAssignment,
+        onSubmit: handleSubmit,
+      })}
       destroyOnClose
     >
       <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -1193,145 +1036,17 @@ export function InboxTaskDetailModal({
         )}
 
         {/* 历史流转历程与留言记录（整合初始发起说明与各环节操作记录，支持展开折叠、默认折叠） */}
-        {(() => {
-          const hasInitialNote = Boolean(
-            cleanedRawContent &&
-            cleanedRawContent !== item.title &&
-            (!hasParams || !Object.values(params).some((val) => typeof val === 'string' && val.trim() === cleanedRawContent?.trim()))
-          );
-          const actionList = Array.isArray(payload.actions) ? payload.actions : [];
-          const totalHistoryCount = (hasInitialNote ? 1 : 0) + actionList.length;
-
-          if (totalHistoryCount === 0) return null;
-
-          return (
-            <Card
-              size="small"
-              title={
-                <div
-                  style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
-                  onClick={() => setIsHistoryCollapsed(!isHistoryCollapsed)}
-                >
-                  <Space size={6}>
-                    {isHistoryCollapsed ? (
-                      <DownOutlined style={{ fontSize: 11, color: 'var(--text-tertiary)' }} />
-                    ) : (
-                      <UpOutlined style={{ fontSize: 11, color: 'var(--text-tertiary)' }} />
-                    )}
-                    <span style={{ fontSize: 12, fontWeight: 600 }}>🕒 历史流转历程与留言记录</span>
-                    <Tag color="default" bordered={false} style={{ fontSize: 11, margin: 0 }}>
-                      {totalHistoryCount} 条记录
-                    </Tag>
-                  </Space>
-                </div>
-              }
-              extra={
-                <Button
-                  type="link"
-                  size="small"
-                  icon={isHistoryCollapsed ? <DownOutlined /> : <UpOutlined />}
-                  onClick={() => setIsHistoryCollapsed(!isHistoryCollapsed)}
-                  style={{ fontSize: 12, padding: 0 }}
-                >
-                  {isHistoryCollapsed ? '展开记录' : '收起记录'}
-                </Button>
-              }
-              styles={{
-                body: isHistoryCollapsed
-                  ? { display: 'none' }
-                  : { padding: '10px 14px' },
-              }}
-              style={{
-                background: 'var(--bg-secondary, rgba(148, 163, 184, 0.05))',
-                borderColor: 'var(--border-color, rgba(148, 163, 184, 0.14))',
-                borderRadius: 8,
-              }}
-            >
-              <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                {/* 1. 初始发起附言 */}
-                {hasInitialNote ? (
-                  <div style={{ fontSize: 12, lineHeight: 1.5 }}>
-                    <Space size={6} wrap align="center">
-                      <strong style={{ color: 'var(--text-primary)' }}>
-                        @{item.sourceSender || payload.initiator?.username || '经办发起人'}
-                      </strong>
-                      <Tag color="cyan" style={{ fontSize: 11, margin: 0 }}>
-                        初始发起需求
-                      </Tag>
-                      <span style={{ color: 'var(--text-tertiary)' }}>
-                        {formatMonthDayTime(item.createdAt)}
-                      </span>
-                    </Space>
-                    <div
-                      style={{
-                        marginTop: 4,
-                        color: 'var(--text-secondary)',
-                        paddingLeft: 8,
-                        borderLeft: '2px solid rgba(22, 119, 255, 0.4)',
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                      }}
-                      dangerouslySetInnerHTML={{
-                        __html: (cleanedRawContent || '')
-                          .replace(/&/g, '&amp;')
-                          .replace(/</g, '&lt;')
-                          .replace(/>/g, '&gt;')
-                          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                          .replace(/\n/g, '<br />'),
-                      }}
-                    />
-                  </div>
-                ) : null}
-
-                {/* 2. 各节点审批与流转记录 */}
-                {actionList.map((act: any, idx: number) => (
-                  <div key={idx} style={{ fontSize: 12, lineHeight: 1.5 }}>
-                    <Space size={6} wrap align="center">
-                      <strong style={{ color: 'var(--text-primary)' }}>
-                        @{act.operatorName || '协同成员'}
-                      </strong>
-                      <Tag
-                        color={
-                          act.action === 'reject'
-                            ? 'error'
-                            : act.action === 'complete'
-                            ? 'purple'
-                            : 'blue'
-                        }
-                        style={{ fontSize: 11, margin: 0 }}
-                      >
-                        {act.action === 'reject'
-                          ? '驳回修改'
-                          : act.action === 'complete'
-                          ? '办结提交'
-                          : '确认流转'}
-                      </Tag>
-                      <span style={{ color: 'var(--text-tertiary)' }}>
-                        {formatMonthDayTime(act.timestamp)}
-                      </span>
-                    </Space>
-                    {act.comment ? (
-                      <div
-                        style={{
-                          marginTop: 4,
-                          color: 'var(--text-secondary)',
-                          paddingLeft: 8,
-                          borderLeft: `2px solid ${
-                            act.action === 'reject'
-                              ? 'rgba(255, 77, 79, 0.5)'
-                              : 'rgba(148, 163, 184, 0.3)'
-                          }`,
-                        }}
-                      >
-                        {act.comment}
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
-              </Space>
-            </Card>
-          );
-        })()}
+        <TaskHistoryTimelineCard
+          cleanedRawContent={cleanedRawContent}
+          itemTitle={item.title}
+          hasParams={hasParams}
+          params={params}
+          initiatorName={item.sourceSender || payload.initiator?.username}
+          createdAt={item.createdAt}
+          actions={payload.actions}
+          isHistoryCollapsed={isHistoryCollapsed}
+          onToggleCollapse={() => setIsHistoryCollapsed(!isHistoryCollapsed)}
+        />
       </div>
     </Modal>
   );

@@ -154,11 +154,64 @@ export class UserSandboxDispatcherService {
     }
   }
 
+  private readonly activeUserExecutions = new Map<
+    string,
+    { sessionId: string; executionId?: string; startedAt: number; abortController?: AbortController }
+  >();
+
   /**
    * 显式停止用户个人沙箱中正在执行的 Harness 任务
    */
-  async stopPersonalSandbox(userId?: string): Promise<boolean> {
+  async stopPersonalSandbox(
+    userId?: string,
+    sessionId?: string,
+    executionId?: string
+  ): Promise<boolean> {
     const effectiveUserId = (userId || 'admin').trim();
+    const execKey = sessionId ? `${effectiveUserId}:${sessionId}` : effectiveUserId;
+    if (sessionId) {
+      const activeExec = this.activeUserExecutions.get(execKey);
+      if (!activeExec || activeExec.sessionId !== sessionId) {
+        this.logger.log(
+          `Skip stopping sandbox for user [${effectiveUserId}]: no active execution for session [${sessionId}]`
+        );
+        return false;
+      }
+      const targetStartedAt = activeExec.startedAt;
+      try {
+        this.logger.log(`Stopping personal sandbox execution for user [${effectiveUserId}] session [${sessionId}]...`);
+        if (activeExec.abortController) {
+          activeExec.abortController.abort();
+        }
+        const res = await fetch(`${this.sessionBrokerUrl}/user-sandboxes/${effectiveUserId}/stop-exec`, {
+          method: 'POST',
+          headers: getInternalServiceHeaders(),
+          body: JSON.stringify({ sessionId, executionId }),
+        });
+        return res.ok;
+      } catch (err: any) {
+        this.logger.warn(`Failed to stop sandbox for user [${effectiveUserId}]: ${err.message}`);
+        return false;
+      } finally {
+        const current = this.activeUserExecutions.get(execKey);
+        if (current && current.startedAt === targetStartedAt) {
+          this.activeUserExecutions.delete(execKey);
+        }
+      }
+    }
+
+    const userExecKeys = Array.from(this.activeUserExecutions.keys()).filter((k) =>
+      k === effectiveUserId || k.startsWith(`${effectiveUserId}:`)
+    );
+    if (userExecKeys.length === 0) {
+      this.logger.log(`Skip stopping sandbox for user [${effectiveUserId}]: no active execution recorded`);
+      return false;
+    }
+    for (const k of userExecKeys) {
+      const exec = this.activeUserExecutions.get(k);
+      exec?.abortController?.abort();
+      this.activeUserExecutions.delete(k);
+    }
     try {
       this.logger.log(`Stopping personal sandbox execution for user [${effectiveUserId}]...`);
       const res = await fetch(`${this.sessionBrokerUrl}/user-sandboxes/${effectiveUserId}/stop-exec`, {
@@ -202,6 +255,7 @@ export class UserSandboxDispatcherService {
     let recentHistory: Array<{ role: string; content: string }> = [];
     const sessionAttachedFiles: string[] = [];
     const currentTurnFiles: string[] = [];
+    let turnStartTime: number | undefined;
     try {
       // 1. 获取当前会话上下文历史并收集属于当前会话的全部有效附件（会话作用域隔离）
       const addSessionFile = (name?: string) => {
@@ -317,7 +371,7 @@ export class UserSandboxDispatcherService {
       const controller = new AbortController();
       const onAbort = () => {
         controller.abort();
-        void this.stopPersonalSandbox(effectiveUserId);
+        void this.stopPersonalSandbox(effectiveUserId, sessionId);
       };
       if (abortSignal?.aborted) {
         onAbort();
@@ -328,7 +382,14 @@ export class UserSandboxDispatcherService {
       }
 
       // 记录当前轮次任务启动时间戳，用于准确区分新产物与历史遗留文件
-      const turnStartTime = Date.now();
+      turnStartTime = Date.now();
+      const execKey = sessionId ? `${effectiveUserId}:${sessionId}` : effectiveUserId;
+      this.activeUserExecutions.set(execKey, {
+        sessionId,
+        executionId: (body as any).executionId,
+        startedAt: turnStartTime,
+        abortController: controller,
+      });
 
       // 尝试向 Session Broker 发起 run-harness 请求
       const timeoutMs =
@@ -969,6 +1030,14 @@ export class UserSandboxDispatcherService {
         content: `⚠️ 沙箱连接遇到异常 (${errMsg})，正在自动无缝切换到云端模型直连模式...`,
       });
       return false;
+    } finally {
+      const execKey = sessionId ? `${effectiveUserId}:${sessionId}` : effectiveUserId;
+      if (
+        turnStartTime &&
+        this.activeUserExecutions.get(execKey)?.startedAt === turnStartTime
+      ) {
+        this.activeUserExecutions.delete(execKey);
+      }
     }
   }
 

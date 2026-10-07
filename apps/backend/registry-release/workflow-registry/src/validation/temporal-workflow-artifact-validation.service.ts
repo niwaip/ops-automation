@@ -94,7 +94,7 @@ export class TemporalWorkflowArtifactValidationService {
       workflowClassName,
       validationInput,
       existing.taskQueue,
-      timeout
+      timeout || '180s'
     );
     const contractValidation = runtimeValidation.success
       ? this.validationContractService.validateResult(
