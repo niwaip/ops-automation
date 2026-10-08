@@ -1,8 +1,11 @@
 {
-  "lockVersion": 1,
-  "manifestHash": "sha256:f92c7823748fdd10b114e64684c686e9f3bb18b13c269ed3159c491170976d16",
-  "workflowHash": "sha256:workspace-explorer-wf-v1",
-  "createdAt": "2026-09-03T14:00:00.000Z",
-  "bundleKey": "platform.workspace.explorer",
-  "definitionDigest": "sha256:f92c7823748fdd10b114e64684c686e9f3bb18b13c269ed3159c491170976d16"
+  "capabilityKey": "platform.workspace.explorer",
+  "definitionVersion": "1.0.1",
+  "definitionDigest": "sha256:8978b8233074eede04f5a9715d7e799aabc8769686575824172c5245a334ca47",
+  "fileHashes": {
+    "manifest.yaml": "sha256:7f818f03702bedc602ce23fa937932f447b3753ca0125df51e409039f029769d",
+    "workflow.json": "sha256:a1fe594a4aad8b8febb0243c50c419bc3a213715159610a653b8995b09394154",
+    "fixtures/smoke-input.json": "sha256:4606184b4be5849f0ada60fe9497f8d3b28d3527fe4ccbed2a7c94a9aa52210a"
+  },
+  "createdAt": "2026-10-08T03:33:56.840Z"
 }
