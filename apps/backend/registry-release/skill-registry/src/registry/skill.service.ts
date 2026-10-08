@@ -299,12 +299,10 @@ export class SkillService implements OnModuleInit, OnModuleDestroy {
   }
 
   async getSkill(id: string): Promise<SkillConfigDto | null> {
-    if (!isValidUUID(id)) {
+    if (!id?.trim()) {
       return null;
     }
-    const skill = await this.prisma.skillConfig.findUnique({
-      where: { id },
-    });
+    const skill = await this.skillAccessService.resolveSkillConfig(id);
     if (!skill) {
       return null;
     }
