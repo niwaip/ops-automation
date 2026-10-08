@@ -59,10 +59,10 @@ default_rounds: 5
 
 ```bash
 # 步骤 1: 运行 Python openpyxl 脚本生成 xlsx 文件
-python generate_sheet.py
+python3 generate_sheet.py
 
 # 步骤 2: 驱动无头 LibreOffice 重算公式并固化缓存值 (强制执行)
-python /opt/dsh/skills/xlsx/scripts/recalc.py /workspace/业务度量统计报表.xlsx
+python3 /opt/dsh/skills/xlsx/scripts/recalc.py /workspace/业务度量统计报表.xlsx
 ```
 
 运行 `recalc.py` 会返回 JSON 诊断：

@@ -317,7 +317,7 @@ def build_user_turn(
         user_parts.append(
             "【Word/合同审阅与批注硬性执行要求】:\n"
             "- 沙箱预置了高精度 Word 批注与修订脚本 `/opt/dsh/skills/docx/scripts/add_comment.py`（基于原生 OpenXML 注入，支持自动拆分 text run 与精准锚定）。\n"
-            "- 当用户要求审阅/审查文档、提出修改建议或添加批注时，【你必须调用 bash 工具在 Linux 终端执行相应的脚本命令（如 `python /opt/dsh/skills/docx/scripts/add_comment.py <输入文件> --target \"定位词\" --comment \"批注内容\" -o <输出文件>`）实际完成文件批注并落盘保存新文件（例如 `/workspace/xxx_批注版.docx`）】！\n"
+            "- 当用户要求审阅/审查文档、提出修改建议或添加批注时，【你必须调用 bash 工具在 Linux 终端执行相应的脚本命令（如 `python3 /opt/dsh/skills/docx/scripts/add_comment.py <输入文件> --target \"定位词\" --comment \"批注内容\" -o <输出文件>`）实际完成文件批注并落盘保存新文件（例如 `/workspace/xxx_批注版.docx`）】！\n"
             "- 若需保存至个人空间或知识库，请在生成后执行命令复制到 `/knowledge/`（如 `cp <新文件> /knowledge/`）。\n"
             "- 【严禁只在最终文字回复中口头声称已修改/已保存，但实际未调用任何工具执行落盘！】系统与用户需要看到真实生成落盘的文件。"
         )

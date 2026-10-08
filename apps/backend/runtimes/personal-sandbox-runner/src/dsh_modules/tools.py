@@ -10,6 +10,7 @@ import json
 import time
 import subprocess
 import copy
+import shutil
 from typing import Optional, Dict, Any
 from pathlib import Path
 
@@ -539,6 +540,9 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
         cmd = params.get("cmd") or params.get("command") or ""
         if not cmd and params:
             cmd = str(list(params.values())[0])
+        # 兼容性自愈垫片：若环境未配置 python 别名但存在 python3，将命令中的 python 安全映射为 python3
+        if shutil.which("python") is None and shutil.which("python3") is not None:
+            cmd = re.sub(r'(^|[;&|]\s*)python\b', r'\1python3', cmd)
         bash_max = float(os.getenv("DSH_BASH_TIMEOUT", "60.0"))
         bash_to = max(0.5, min(bash_max, remaining)) if remaining is not None else bash_max
         try:
@@ -555,7 +559,9 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
             if proc.returncode != 0:
                 combined_err = f"{err}\n{out}"
                 diag = ""
-                if "ModuleNotFoundError" in combined_err or "No module named" in combined_err:
+                if "python: not found" in combined_err or "python: command not found" in combined_err:
+                    diag = "[系统自愈提示]: 检测到系统未找到 `python` 指令，当前沙箱默认 Python 解释器为 `python3`。请在 bash 指令中使用 `python3` 执行脚本。"
+                elif "ModuleNotFoundError" in combined_err or "No module named" in combined_err:
                     diag = "[系统自愈提示]: 检测到 Python 缺少依赖模块，请调用 bash 执行 `pip install <模块名>` 安装依赖后再重试。"
                 elif "AttributeError" in combined_err and ("rFonts" in combined_err or "rPr" in combined_err):
                     diag = (
