@@ -91,6 +91,25 @@ export interface XiaozhiVoiceTask {
   detail_path?: string;
 }
 
+export interface DingtalkChannelStatus {
+  channel: 'dingtalk';
+  configured: boolean;
+  enabled: boolean;
+  status: 'unconfigured' | 'disabled' | 'connecting' | 'online' | 'error';
+  alias?: string;
+  webhookUrl?: string;
+  hasSecret?: boolean;
+  lastConnectedAt?: string;
+  lastMessageAt?: string;
+  lastError?: string;
+}
+
+export interface SaveDingtalkInput {
+  webhookUrl: string;
+  secret?: string;
+  alias?: string;
+}
+
 export const imChannelApi = {
   getWechat: (): Promise<WechatChannelStatus> => apiClient.get('/im-channels/wechat'),
   beginWechatProvisioning: (): Promise<WechatChannelStatus> =>
@@ -108,6 +127,11 @@ export const imChannelApi = {
   testXiaozhi: (): Promise<{ endpointValid: boolean; toolDiscovery: boolean; internalTaskService: boolean }> => apiClient.post('/im-channels/xiaozhi/test'),
   getXiaozhiTasks: (): Promise<XiaozhiVoiceTask[]> => apiClient.get('/im-channels/xiaozhi/tasks?limit=20'),
   removeXiaozhi: (): Promise<{ success: boolean }> => apiClient.delete('/im-channels/xiaozhi'),
+  getDingtalk: (): Promise<DingtalkChannelStatus> => apiClient.get('/im-channels/dingtalk'),
+  saveDingtalk: (input: SaveDingtalkInput): Promise<DingtalkChannelStatus> => apiClient.put('/im-channels/dingtalk', input),
+  setDingtalkEnabled: (enabled: boolean): Promise<DingtalkChannelStatus> => apiClient.put('/im-channels/dingtalk/enabled', { enabled }),
+  testDingtalk: (message?: string): Promise<{ success: boolean; message?: string; error?: string }> => apiClient.post('/im-channels/dingtalk/test', { message }),
+  removeDingtalk: (): Promise<{ success: boolean }> => apiClient.delete('/im-channels/dingtalk'),
 };
 const baseSkillApi = createSkillApi(apiClient);
 export const skillApi = {

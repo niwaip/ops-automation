@@ -45,6 +45,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { imChannelApi, type WechatChannelStatus } from '@/api';
 import XiaozhiChannelCard from '../components/XiaozhiChannelCard';
+import DingtalkChannelCard from '../components/DingtalkChannelCard';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -262,11 +263,21 @@ export default function ImChannelsPage() {
                   boxShadow: '0 4px 12px rgba(7, 193, 96, 0.25)',
                 }}
               >
-                  {activeChannel === 'xiaozhi' ? <ApiOutlined style={{ color: '#fff', fontSize: 22 }} /> : <WechatOutlined style={{ color: '#fff', fontSize: 22 }} />}
+                  {activeChannel === 'xiaozhi' ? (
+                    <ApiOutlined style={{ color: '#fff', fontSize: 22 }} />
+                  ) : activeChannel === 'dingtalk' ? (
+                    <AppstoreAddOutlined style={{ color: '#fff', fontSize: 22 }} />
+                  ) : (
+                    <WechatOutlined style={{ color: '#fff', fontSize: 22 }} />
+                  )}
               </div>
               <div>
                 <Title level={4} style={{ margin: 0, fontWeight: 600, color: token.colorText }}>
-                  {activeChannel === 'xiaozhi' ? '小智语音 / AI Passport' : 'IM 即时通讯集成中心'}
+                  {activeChannel === 'xiaozhi'
+                    ? '小智语音 / AI Passport'
+                    : activeChannel === 'dingtalk'
+                    ? '钉钉 (DingTalk) 即时通讯集成'
+                    : 'IM 即时通讯集成中心'}
                 </Title>
               </div>
             </Space>
@@ -274,7 +285,11 @@ export default function ImChannelsPage() {
               type="secondary"
               style={{ margin: 0, fontSize: 13, color: token.colorTextSecondary, maxWidth: 660 }}
             >
-              {activeChannel === 'xiaozhi' ? '连接小智智能体，让语音任务进入 OpsPilot 并在网页查看真实执行状态。' : '将 OpsPilot 自动化助手连接至你的即时通讯工具。支持微信自聊双向收发、原生打字状态反馈、多步骤自动化任务触发，并预留飞书、钉钉、Slack 等多渠道扩展。'}
+              {activeChannel === 'xiaozhi'
+                ? '连接小智智能体，让语音任务进入 OpsPilot 并在网页查看真实执行状态。'
+                : activeChannel === 'dingtalk'
+                ? '连接钉钉自定义机器人 Webhook 与加签安全密钥，实时接收自动化执行汇报、巡检报告与关键事件提醒。'
+                : '将 OpsPilot 自动化助手连接至你的即时通讯工具。支持微信自聊双向收发、原生打字状态反馈、多步骤自动化任务触发，并支持钉钉、飞书等企业渠道扩展。'}
             </Paragraph>
           </Col>
           {activeChannel === 'wechat' && <Col xs={24} md={8} style={{ textAlign: 'right' }}>
@@ -345,10 +360,11 @@ export default function ImChannelsPage() {
                   <AppstoreAddOutlined style={{ color: '#007fff', fontSize: 16 }} />
                   <span>钉钉 (DingTalk)</span>
                   <Tag
+                    color="blue"
                     bordered={false}
                     style={{ margin: 0, borderRadius: 10, fontSize: 11, lineHeight: '18px' }}
                   >
-                    规划中
+                    企业机器人
                   </Tag>
                 </Space>
               ),
@@ -372,8 +388,9 @@ export default function ImChannelsPage() {
         />
       </div>
 
-      {/* 微信渠道主界面 */}
+      {/* 各渠道主界面 */}
       {activeChannel === 'xiaozhi' && <XiaozhiChannelCard />}
+      {activeChannel === 'dingtalk' && <DingtalkChannelCard />}
       {activeChannel === 'wechat' ? (
         <Row gutter={[20, 20]}>
           {/* 左侧：微信通道状态与操作 */}
@@ -892,8 +909,8 @@ export default function ImChannelsPage() {
         </Card>
       ) : null}
 
-      {/* 钉钉 / Slack 规划中面板 */}
-      {activeChannel === 'dingtalk' || activeChannel === 'slack' ? (
+      {/* Slack 规划中面板 */}
+      {activeChannel === 'slack' ? (
         <Card
           bordered
           style={{
@@ -906,9 +923,9 @@ export default function ImChannelsPage() {
           }}
         >
           <Space direction="vertical" size={14} align="center">
-            <AppstoreAddOutlined style={{ fontSize: 48, color: token.colorTextTertiary }} />
+            <ApiOutlined style={{ fontSize: 48, color: '#e01e5a' }} />
             <Title level={4} style={{ margin: 0, color: token.colorText }}>
-              {activeChannel === 'dingtalk' ? '钉钉 (DingTalk)' : 'Slack'} 渠道接入规划中
+              Slack 渠道接入规划中
             </Title>
             <Paragraph
               type="secondary"

@@ -10,9 +10,11 @@ import { XiaozhiChannelController } from './xiaozhi-channel.controller';
 import { XiaozhiChannelService } from './xiaozhi-channel.service';
 import { XiaozhiTaskService } from './xiaozhi-task.service';
 import { ChannelTaskGatewayService } from './channel-task-gateway.service';
+import { DingtalkChannelController } from './dingtalk-channel.controller';
+import { DingtalkChannelService } from './dingtalk-channel.service';
 
 @Module({
-  controllers: [ImChannelController, XiaozhiChannelController],
+  controllers: [ImChannelController, XiaozhiChannelController, DingtalkChannelController],
   providers: [
     ImChannelService,
     ImCredentialCipher,
@@ -23,6 +25,7 @@ import { ChannelTaskGatewayService } from './channel-task-gateway.service';
     XiaozhiChannelService,
     XiaozhiTaskService,
     ChannelTaskGatewayService,
+    DingtalkChannelService,
   ],
   exports: [
     ImChannelService,
@@ -31,6 +34,7 @@ import { ChannelTaskGatewayService } from './channel-task-gateway.service';
     WechatMediaAdapter,
     WechatOutboundQueueService,
     PassportMqttGatewayService,
+    DingtalkChannelService,
   ],
 })
 export class ImChannelModule {}
