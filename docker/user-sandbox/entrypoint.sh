@@ -30,6 +30,13 @@ if [ -d "${DSH_PLUGIN_DIR:-/opt/dsh/plugins}" ]; then
   echo "Managed plugins: ${PLUGIN_COUNT} certified plugins active."
 fi
 
+# 确保 python 符号链接可用（兼容模型生成以 python 开头的指令）
+if ! command -v python >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+  mkdir -p "${HOME:-/home/sandbox}/.local/bin"
+  ln -sf "$(command -v python3)" "${HOME:-/home/sandbox}/.local/bin/python" 2>/dev/null || true
+  export PATH="${HOME:-/home/sandbox}/.local/bin:$PATH"
+fi
+
 # 检查环境底座版本
 echo "Node version: $(node -v 2>/dev/null || echo 'not installed')"
 echo "Python version: $(python3 --version 2>/dev/null || echo 'not installed')"

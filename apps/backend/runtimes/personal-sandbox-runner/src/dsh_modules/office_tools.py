@@ -6,9 +6,22 @@ and PDF (.pdf) page text & image structure parsing.
 
 import os
 import zipfile
+import re
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 from xml.etree import ElementTree as ET
+
+# ----------------- Excel 解析与格式化下沉至 excel_tools 模块 -----------------
+from .excel_tools import (
+    extract_xlsx_text,
+    _format_excel_cell,
+    _format_float_lossless,
+    _has_uncalculated_formulas,
+    _is_catalog_query,
+    _get_or_create_recalculated_xlsx,
+    RECALC_CACHE_VERSION,
+    EXCEL_ERRORS,
+)
 
 
 def extract_docx_text(
@@ -51,61 +64,6 @@ def extract_docx_text(
         return f"【Word 文档 ({p.name}) 内容提取，共 {len(texts)} 个段落】:\n" + content
     except Exception as e:
         return f"Word 文档提取失败 ({p.name}): {e}"
-
-
-def extract_xlsx_text(
-    p: Path,
-    max_chars: int = 30000,
-    start_line: Optional[int] = None,
-    end_line: Optional[int] = None
-) -> str:
-    """Extracts text from Excel spreadsheets (.xlsx) using standard library zipfile + xml"""
-    try:
-        with zipfile.ZipFile(p) as z:
-            shared_strings = []
-            if "xl/sharedStrings.xml" in z.namelist():
-                ss_root = ET.fromstring(z.read("xl/sharedStrings.xml"))
-                for si in ss_root.iter("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}si"):
-                    shared_strings.append("".join(t.text or "" for t in si.iter("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}t")))
-            rows = []
-            sheet_files = sorted([n for n in z.namelist() if n.startswith("xl/worksheets/sheet") and n.endswith(".xml")])
-            for sheet_name in sheet_files[:3]:
-                sheet_root = ET.fromstring(z.read(sheet_name))
-                for row in sheet_root.iter("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}row"):
-                    row_vals = []
-                    for c in row.iter("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}c"):
-                        v = c.find("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}v")
-                        t = c.get("t")
-                        val = v.text if v is not None and v.text else ""
-                        if t == "s" and val.isdigit() and int(val) < len(shared_strings):
-                            val = shared_strings[int(val)]
-                        if val:
-                            row_vals.append(val)
-                    if row_vals:
-                        rows.append(" | ".join(row_vals))
-        content = "\n".join(rows)
-        for txt_name in [f"{p.stem}.txt", f"{p.name}.txt"]:
-            tp = p.parent / txt_name
-            if not tp.exists():
-                try:
-                    tp.write_text(content, encoding="utf-8")
-                except Exception:
-                    pass
-        if start_line is not None or end_line is not None:
-            total_r = len(rows)
-            s_idx = max(0, (start_line or 1) - 1)
-            e_idx = min(total_r, end_line if end_line is not None else total_r)
-            sliced = [f"Row {s_idx + 1 + i}: {r}" for i, r in enumerate(rows[s_idx:e_idx])]
-            return f"【Excel 表格 ({p.name}) 切片数据（第 {s_idx + 1} 至 {e_idx} 行，共 {total_r} 行）】:\n" + "\n".join(sliced)[:max_chars]
-        if len(content) > max_chars:
-            hint = (
-                f"\n\n[⚠️ Excel 表格截断提醒]: 表格提取总长 {len(content)} 字符 / {len(rows)} 行，已展示前 {max_chars} 字符。"
-                f"\n💡 [通用建议]: 可指定 start_line 与 end_line 分页切片读取表格行，或使用 python 工具加载指定单元格区域]"
-            )
-            return f"【Excel 表格 ({p.name}) 数据提取，共 {len(rows)} 行】:\n" + content[:max_chars] + hint
-        return f"【Excel 表格 ({p.name}) 数据提取，共 {len(rows)} 行】:\n" + content
-    except Exception as e:
-        return f"Excel 表格提取失败 ({p.name}): {e}"
 
 
 def extract_pdf_text(
@@ -229,7 +187,6 @@ def extract_pptx_text(
 
     # 2. 兜底方案：使用标准库 zipfile + xml 直接解析（零外部依赖，100% 稳妥）
     try:
-        import re
         with zipfile.ZipFile(p) as z:
             slide_files = [f for f in z.namelist() if f.startswith("ppt/slides/slide") and f.endswith(".xml")]
             def slide_num(f):

@@ -2,6 +2,7 @@ import {
   ClearOutlined,
   DeleteOutlined,
   DesktopOutlined,
+  FontSizeOutlined,
   MenuUnfoldOutlined,
   PlusOutlined,
   ReloadOutlined,
@@ -10,6 +11,8 @@ import {
 import {
   App,
   Button,
+  Dropdown,
+  type MenuProps,
   Popconfirm,
   Space,
   Tag,
@@ -30,7 +33,11 @@ import { UserChatComposer } from '../components/UserChatComposer';
 import { useChatPageActions } from '../hooks/useChatPageActions';
 import { useChatSessions } from '../hooks/useChatSessions';
 import { useChatStreaming } from '../hooks/useChatStreaming';
-import { useChatStore } from '../chatStore';
+import {
+  useChatStore,
+  CHAT_FONT_SIZE_OPTIONS,
+  type ChatFontSize,
+} from '../chatStore';
 import {
   supportsNativeReasoning,
   getModelDefaultReasoningEffort,
@@ -43,6 +50,7 @@ import {
 import {
   formatRelativeTime,
   getSessionPreview,
+  resolveModelDisplayInfo,
   resolveSessionChannel,
 } from '../lib/sessionView';
 import {
@@ -79,6 +87,8 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   const prefetchedAutoSend = useChatStore((state) => state.autoSend);
   const clearDraftContext = useChatStore((state) => state.clearDraftContext);
   const setCurrentSession = useChatStore((state) => state.setCurrentSession);
+  const fontSize = useChatStore((state) => state.fontSize);
+  const setFontSize = useChatStore((state) => state.setFontSize);
   const [draft, setDraft] = useState('');
   const [sentHistory, setSentHistory] = useState<string[]>([]);
   const [pendingExecutionId, setPendingExecutionId] = useState<string | null>(null);
@@ -465,7 +475,10 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   );
 
   return (
-    <div className={`${styles['user-chat-page']}${embedded ? ` ${styles.embedded}` : ''}`}>
+    <div
+      className={`${styles['user-chat-page']}${embedded ? ` ${styles.embedded}` : ''}`}
+      data-chat-font-size={fontSize}
+    >
       {!embedded && isSessionListCollapsed ? (
         <div className={styles['user-chat-sidebar-rail']}>
           <Button
@@ -510,6 +523,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
       {showSessionSidebar ? (
         <ChatSessionSidebar
           sessions={sessions}
+          availableModels={availableModels}
           selectedSessionId={selectedSessionId}
           isLoading={sessionsQuery.isLoading}
           onSelectSession={setSelectedSessionId}
@@ -542,7 +556,10 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
           pageError={error}
         />
 
-        <div className={`${styles['user-chat-window-shell']}${embedded ? ` ${styles.embedded}` : ''}`}>
+        <div
+          className={`${styles['user-chat-window-shell']}${embedded ? ` ${styles.embedded}` : ''}`}
+          data-chat-font-size={fontSize}
+        >
           {selectedSession ? (
             <div className={styles['user-chat-header-bar']}>
               <div className={styles['user-chat-header-info']}>
@@ -570,11 +587,52 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
                 >
                   {selectedSession.title || '新对话'}
                 </Typography.Text>
-                {selectedSession.modelId && selectedSession.modelId !== 'default' ? (
-                  <Tag className={styles['session-model-tag']}>{selectedSession.modelId}</Tag>
-                ) : null}
+                {(() => {
+                  const modelInfo = resolveModelDisplayInfo(selectedSession.modelId, availableModels);
+                  if (!modelInfo) return null;
+                  return (
+                    <Tooltip title={modelInfo.tooltip}>
+                      <Tag className={styles['session-model-tag']}>{modelInfo.name}</Tag>
+                    </Tooltip>
+                  );
+                })()}
               </div>
               <Space size={4} className={styles['user-chat-header-actions']}>
+                <Dropdown
+                  menu={{
+                    items: CHAT_FONT_SIZE_OPTIONS.map((opt) => ({
+                      key: opt.key,
+                      label: (
+                        <Space style={{ minWidth: 130, justifyContent: 'space-between' }}>
+                          <span style={{ fontWeight: fontSize === opt.key ? 600 : 400 }}>
+                            {opt.label}
+                          </span>
+                          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                            {opt.description}
+                          </Typography.Text>
+                        </Space>
+                      ),
+                    })),
+                    selectedKeys: [fontSize],
+                    onClick: ({ key }) => setFontSize(key as ChatFontSize),
+                  }}
+                  trigger={['click']}
+                  placement="bottomRight"
+                >
+                  <Tooltip
+                    title={`阅读字体大小 (当前: ${
+                      CHAT_FONT_SIZE_OPTIONS.find((o) => o.key === fontSize)?.label || '舒适'
+                    })`}
+                  >
+                    <Button
+                      type="text"
+                      shape="circle"
+                      icon={<FontSizeOutlined />}
+                      className={styles['user-chat-header-btn']}
+                      aria-label="调整阅读字体大小"
+                    />
+                  </Tooltip>
+                </Dropdown>
                 <Tooltip title="新建会话">
                   <Button
                     type="text"

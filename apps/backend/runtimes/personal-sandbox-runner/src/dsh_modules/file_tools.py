@@ -102,6 +102,45 @@ def _locate_readable_candidate(raw: str, ws: str, kn: str) -> Optional[Path]:
     return None
 
 
+def is_protected_session_file(target: Path) -> bool:
+    """Checks whether the file is an original input attachment in the current session."""
+    try:
+        # 1. 检查环境变量 DSH_SESSION_ATTACHMENTS
+        env_atts = os.environ.get("DSH_SESSION_ATTACHMENTS", "")
+        if env_atts:
+            for fname in env_atts.split(","):
+                if fname.strip() and target.name == fname.strip():
+                    return True
+
+        import dsh_modules.config as cfg
+        ws = Path(getattr(cfg, "WORKSPACE_DIR", "/workspace"))
+
+        # 2. 检查 .dsh/inputs_backup/
+        for base in [ws, Path.cwd(), target.parent]:
+            backup = base / ".dsh" / "inputs_backup" / target.name
+            if backup.exists():
+                return True
+
+        # 3. 检查 .dsh/sessions/*.attachments.json
+        for base in [ws, Path.cwd(), target.parent]:
+            sessions_dir = base / ".dsh" / "sessions"
+            if sessions_dir.exists():
+                for att_file in sessions_dir.glob("*.attachments.json"):
+                    try:
+                        with open(att_file, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                            if isinstance(data, list):
+                                for item in data:
+                                    fname = item if isinstance(item, str) else item.get("fileName", "")
+                                    if fname and target.name == fname:
+                                        return True
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+    return False
+
+
 def resolve_sandboxed_path(
     file_path: str,
     for_write: bool = False,
@@ -140,6 +179,9 @@ def resolve_sandboxed_path(
         action_type = "写入与修改" if for_write else ("交付物外发" if for_outbound else "读取与访问")
         allowed_str = "/workspace, /knowledge" if (for_write or for_outbound) else "/workspace, /knowledge, /opt/dsh"
         return None, f"【安全拦截】路径越界访问拒绝: 目标文件 ({raw}) 位于沙箱指定边界 ({allowed_str}) 之外，禁止{action_type}系统目录。"
+
+    if for_write and is_protected_session_file(resolved):
+        return None, f"【安全拦截】原始输入附件 ({resolved.name}) 属于只读保护资源，禁止直接原地覆写或篡改。请将修改结果另存为新文件。"
 
     return resolved, None
 
@@ -348,7 +390,10 @@ def read_workspace_file(
     start_line: Optional[int] = None,
     end_line: Optional[int] = None,
     deadline: Optional[float] = None,
-    model_name: Optional[str] = None
+    model_name: Optional[str] = None,
+    prompt: Optional[str] = None,
+    sheet_name: Optional[str] = None,
+    cell_range: Optional[str] = None
 ) -> str:
     """Reads and extracts text from workspace or knowledge files, with native support for .docx, .xlsx, .txt, .md, .json, .py, .pdf, .jpg, .png"""
     p, err = resolve_sandboxed_path(file_path, for_write=False, for_outbound=False)
@@ -367,7 +412,15 @@ def read_workspace_file(
 
     # 2. Excel 工作簿 (.xlsx) 原生提取
     elif suffix == ".xlsx":
-        return extract_xlsx_text(p, max_chars=max_chars, start_line=start_line, end_line=end_line)
+        return extract_xlsx_text(
+            p,
+            max_chars=max_chars,
+            start_line=start_line,
+            end_line=end_line,
+            prompt=prompt,
+            sheet_name=sheet_name,
+            cell_range=cell_range
+        )
 
     # 3. PDF 文档 (.pdf) 原生提取与扫描版自动视觉下沉
     elif suffix == ".pdf":

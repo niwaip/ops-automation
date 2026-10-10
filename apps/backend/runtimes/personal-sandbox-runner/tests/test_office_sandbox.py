@@ -267,6 +267,47 @@ class TestOfficeSandbox(unittest.TestCase):
         self.assertIsNotNone(err)
         self.assertIn("Custom Test Error", err)
 
+    def test_extract_xlsx_text_all_sheets_and_formulas(self):
+        """Verify extract_xlsx_text parses all 10+ sheets in authentic order and handles formula definitions without cache."""
+        from dsh_modules.office_tools import extract_xlsx_text
+
+        wb_path = self.work_dir / "financial_test.xlsx"
+        wb = openpyxl.Workbook()
+        default_sheet = wb.active
+        default_sheet.title = "使用说明"
+        default_sheet["A1"] = "说明事项"
+        default_sheet["B1"] = "2026年财务模型"
+
+        # Create 10 sheets to test beyond sheet10 ordering
+        for i in range(2, 11):
+            name = f"Sheet{i}"
+            if i == 3:
+                name = "月度经营"
+            elif i == 4:
+                name = "利润表"
+            elif i == 10:
+                name = "管理驾驶舱"
+            ws = wb.create_sheet(title=name)
+            ws["A1"] = f"{name}表头"
+            ws["B1"] = 100 * i
+            if i == 4:
+                # Add formula referencing other sheet without evaluating
+                ws["C1"] = "=月度经营!B1*2"
+
+        wb.save(wb_path)
+
+        res = extract_xlsx_text(wb_path)
+        self.assertIn("【Excel 工作簿概览 (financial_test.xlsx)，共 10 个工作表】", res)
+        # Verify all sheets are present in overview
+        self.assertIn("使用说明", res)
+        self.assertIn("月度经营", res)
+        self.assertIn("利润表", res)
+        self.assertIn("管理驾驶舱", res)
+        # Verify formula indicator is captured even when openpyxl saved without cached value
+        self.assertIn("[公式: =月度经营!B1*2]", res)
+        # Verify Sheet10 is extracted, not skipped or misordered
+        self.assertIn("--- [工作表: 管理驾驶舱", res)
+
 
 if __name__ == "__main__":
     unittest.main()

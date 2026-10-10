@@ -260,7 +260,7 @@ class TestDshSkillsAndArtifacts(unittest.TestCase):
             final_text4, exported4 = ArtifactExporter.export_html(truncated_output, is_ppt_intent=False, workspace_dir=tmpdir)
             self.assertEqual(len(exported4), 1)
             self.assertTrue(exported4[0].endswith("index.html"))
-            self.assertIn("⚠️ **页面生成中断（已启动安全保护）**", final_text4)
+            self.assertIn("⚠️ **HTML 未完整生成（已保存局部残稿）**", final_text4)
             self.assertIn("```html\n", final_text4)
             self.assertTrue(final_text4.strip().endswith("```"))
 

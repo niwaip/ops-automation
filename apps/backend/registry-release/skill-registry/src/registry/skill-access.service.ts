@@ -204,8 +204,28 @@ export class SkillAccessService {
       });
   }
 
+  async resolveSkillConfig(identifier: string) {
+    if (!identifier?.trim()) return null;
+    const trimmed = identifier.trim();
+    if (isValidUUID(trimmed)) {
+      return this.prisma.skillConfig.findUnique({ where: { id: trimmed } });
+    }
+    const aliases = [
+      trimmed,
+      trimmed === 'ConfidentialityAgreementGenerationWorkflow' ? '保密合同生成' : null,
+      trimmed === 'ConfidentialityAgreementGenerationWorkflow' ? '商业保密协议(NDA)智能生成技能' : null,
+      trimmed === '商业保密协议(NDA)智能生成技能' ? '保密合同生成' : null,
+    ].filter(Boolean) as string[];
+
+    return this.prisma.skillConfig.findFirst({
+      where: {
+        OR: aliases.map((name) => ({ name })),
+      },
+    });
+  }
+
   async checkUserSkillPermission(userId: string, skillId: string): Promise<boolean> {
-    if (!isValidUUID(userId) || !isValidUUID(skillId)) {
+    if (!isValidUUID(userId) || !skillId?.trim()) {
       return false;
     }
 
@@ -231,15 +251,14 @@ export class SkillAccessService {
       return true;
     }
 
-    const skill = await this.prisma.skillConfig.findUnique({
-      where: { id: skillId },
-    });
+    const skill = await this.resolveSkillConfig(skillId);
     if (!skill || !skill.isActive) {
       return false;
     }
+    const realSkillId = skill.id;
 
-    const publication = await this.skillEnrichmentService.getPublishedReleaseMap([skillId]);
-    if (!publication.has(skillId)) {
+    const publication = await this.skillEnrichmentService.getPublishedReleaseMap([realSkillId]);
+    if (!publication.has(realSkillId)) {
       return false;
     }
 
@@ -258,7 +277,7 @@ export class SkillAccessService {
 
     const permission = await this.prisma.skillPermission.findFirst({
       where: {
-        skillId,
+        skillId: realSkillId,
         roleId: { in: roleIds },
       },
     });

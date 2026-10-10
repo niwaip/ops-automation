@@ -19,7 +19,7 @@ from dsh_modules.action_protocol import (
     recover_text_tool_calls,
     has_explicit_reminder_intent,
 )
-from dsh_modules.llm import extract_bare_json_tool_calls, clean_output
+from dsh_modules.llm import extract_bare_json_tool_calls, clean_output, normalize_messages_for_llm
 from dsh_modules.agent_loop import run_agent_loop
 from dsh_modules.deliverable_contract import (
     materialize_requested_markdown,
@@ -163,6 +163,61 @@ class TestSmallModelProtocol(unittest.TestCase):
         )
         self.assertEqual(action, "continue")
         self.assertIn("不要要求用户再次确认", message)
+
+    def test_metric_alignment_guard_intercepts_sheet_listing_parroting(self):
+        from dsh_modules.agent_loop import _check_no_tool_assertion_guard
+
+        repeated_reply = (
+            "在工作簿 **《AI能力测试_财务报表.xlsx》** 中，共包含 **10 个工作表（Sheet）**。\n"
+            "| 序号 | Sheet 名称 | 主要用途与内容说明 |\n"
+            "| 1 | 使用说明 | 数据集说明 |\n"
+            "| 3 | 月度经营 | 经营指标明细 |"
+        )
+        action, message, _ = _check_no_tool_assertion_guard(
+            reply_text=repeated_reply,
+            last_user_prompt="总结2026年收入、毛利率、营业利润和净利润。",
+            round_idx=1,
+            max_rounds=3,
+            start_ts=time.time(),
+            is_guide_intent=False,
+            expected_deliverables=[],
+            is_generate_intent=False,
+            is_inspect_intent=True,
+            messages=[{"role": "assistant", "content": repeated_reply}],
+            guard_nudges_count=0
+        )
+        self.assertEqual(action, "continue")
+        self.assertIn("系统问答对齐与指标核算拦截", message)
+        self.assertIn("未回答具体指标数据", message)
+
+    def test_guard_handles_assistant_messages_with_none_content(self):
+        from dsh_modules.agent_loop import _check_no_tool_assertion_guard
+
+        reply = (
+            "工作簿 **`AI能力测试_财务报表.xlsx`** 中共包含 **10 个工作表（Sheet）**，各工作表的具体用途如下：\n"
+            "| 序号 | 工作表名称 | 主要内容与用途说明 |\n"
+            "| 1 | 使用说明 | 背景介绍与任务指引 |"
+        )
+        messages_with_none_content = [
+            {"role": "user", "content": "列出工作簿中的Sheet，并说明每个Sheet用途。"},
+            {"role": "assistant", "content": None, "tool_calls": [{"id": "call_1", "function": {"name": "read_file"}}]},
+            {"role": "tool", "tool_call_id": "call_1", "content": "sheet1, sheet2"}
+        ]
+        action, message, _ = _check_no_tool_assertion_guard(
+            reply_text=reply,
+            last_user_prompt="列出工作簿中的Sheet，并说明每个Sheet用途。",
+            round_idx=2,
+            max_rounds=5,
+            start_ts=time.time(),
+            is_guide_intent=False,
+            expected_deliverables=[],
+            is_generate_intent=False,
+            is_inspect_intent=True,
+            messages=messages_with_none_content,
+            guard_nudges_count=0
+        )
+        self.assertEqual(action, "pass")
+        self.assertIsNone(message)
 
     def test_weather_is_single_use_but_web_tools_remain_available(self):
         tools = get_sandbox_tools(allowed_names={"weather", "web_search", "fetch_page"})
@@ -645,6 +700,41 @@ class TestSmallModelProtocol(unittest.TestCase):
                 # 最终输出必须为自然语言汇报，且不含有任何裸露 JSON
                 self.assertIn("上海今天天气晴朗", res.final_text)
                 self.assertNotIn("tool_name", res.final_text)
+
+    def test_normalize_messages_for_llm_downgrades_mid_system_messages(self):
+        """验证多轮调用中非首位的 system 消息自动降级为 user，且合并开头的多个 system 消息"""
+        # 测试 1：中间出现的 system 消息降级为 user 角色
+        messages = [
+            {"role": "system", "content": "base system prompt"},
+            {"role": "user", "content": "用户指令"},
+            {"role": "assistant", "content": "中间思考"},
+            {"role": "tool", "content": "工具执行结果"},
+            {"role": "system", "content": "中间轮次质检反馈"},
+        ]
+        normalized = normalize_messages_for_llm(messages)
+        self.assertEqual(len(normalized), 5)
+        self.assertEqual(normalized[0]["role"], "system")
+        self.assertEqual(normalized[0]["content"], "base system prompt")
+        self.assertEqual(normalized[1]["role"], "user")
+        self.assertEqual(normalized[2]["role"], "assistant")
+        self.assertEqual(normalized[3]["role"], "tool")
+        self.assertEqual(normalized[4]["role"], "user")
+        self.assertEqual(normalized[4]["content"], "中间轮次质检反馈")
+
+        # 测试 2：开头的多个 system 消息合并为单个首位 system 消息
+        messages_with_multiple_system = [
+            {"role": "system", "content": "sys_part1"},
+            {"role": "system", "content": "sys_part2"},
+            {"role": "user", "content": "hi"},
+        ]
+        norm_multiple = normalize_messages_for_llm(messages_with_multiple_system)
+        self.assertEqual(len(norm_multiple), 2)
+        self.assertEqual(norm_multiple[0]["role"], "system")
+        self.assertEqual(norm_multiple[0]["content"], "sys_part1\n\nsys_part2")
+        self.assertEqual(norm_multiple[1]["role"], "user")
+
+        # 测试 3：空列表与非字典类型安全保护
+        self.assertEqual(normalize_messages_for_llm([]), [])
 
 
 if __name__ == "__main__":

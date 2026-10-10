@@ -5,7 +5,7 @@ Extracts deliverables (HTML prototypes, presentations, reports) from model outpu
 
 import re
 from pathlib import Path
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
 
 class ArtifactExporter:
@@ -15,39 +15,48 @@ class ArtifactExporter:
     def repair_truncated_html(html_str: str) -> str:
         """
         Repairs truncated/unclosed HTML code:
-        1. Closes unclosed <style> / <script> / <head> tags.
-        2. Injects a clear, elegant alert body card if <body> is missing (truncated in CSS),
-           preventing blank white screen in browser iframe.
-        3. Closes unclosed <body> and </html>.
+        1. Checks and closes unclosed tag definitions and attribute quotes (e.g. <path ... d="M17).
+        2. Closes unclosed <style> / <script> / <head> / <svg> / <button> / <table> tags.
+        3. Injects a clear alert body card if <body> is missing (truncated in CSS/head).
+        4. Closes unclosed <body> and </html>.
         """
         if not html_str:
             return ""
         repaired = html_str.rstrip()
 
-        # 1. 闭合未闭合的 <style>
-        style_open = len(re.findall(r'<style(?:\s+[^>]*)?>', repaired, re.I))
-        style_close = len(re.findall(r'</style>', repaired, re.I))
-        if style_open > style_close:
-            repaired += "\n</style>\n"
+        # 1. 检查是否在 HTML 标签属性内部被截断（例如 <path ... d="M17 17... 未闭合引号或 >）
+        last_open_angle = repaired.rfind("<")
+        last_close_angle = repaired.rfind(">")
+        if last_open_angle > last_close_angle:
+            tag_fragment = repaired[last_open_angle:]
+            double_quotes = tag_fragment.count('"')
+            single_quotes = tag_fragment.count("'")
+            suffix = ""
+            if double_quotes % 2 == 1:
+                suffix += '"'
+            if single_quotes % 2 == 1:
+                suffix += "'"
+            suffix += ">"
+            repaired += suffix
 
-        # 2. 闭合未闭合的 <script>
-        script_open = len(re.findall(r'<script(?:\s+[^>]*)?>', repaired, re.I))
-        script_close = len(re.findall(r'</script>', repaired, re.I))
-        if script_open > script_close:
-            repaired += "\n</script>\n"
+        # 2. 闭合未闭合的内联与容器标签
+        for tag in ["style", "script", "head", "svg", "button", "table", "tbody", "tr", "td"]:
+            open_count = len(re.findall(rf"<{tag}(?:\s+[^>]*)?>", repaired, re.I))
+            close_count = len(re.findall(rf"</{tag}>", repaired, re.I))
+            if open_count > close_count:
+                for _ in range(open_count - close_count):
+                    repaired += f"\n</{tag}>"
 
-        # 3. 闭合未闭合的 <head>
-        head_open = len(re.findall(r'<head(?:\s+[^>]*)?>', repaired, re.I))
-        head_close = len(re.findall(r'</head>', repaired, re.I))
-        if head_open > head_close:
-            repaired += "\n</head>\n"
+        div_open = len(re.findall(r"<div(?:\s+[^>]*)?>", repaired, re.I))
+        div_close = len(re.findall(r"</div>", repaired, re.I))
+        if div_open > div_close:
+            repaired += "\n" + ("</div>\n" * min(div_open - div_close, 10))
 
-        # 4. 检查 <body>
+        # 3. 检查 <body>
         has_body_open = bool(re.search(r'<body(?:\s+[^>]*)?>', repaired, re.I))
         has_body_close = bool(re.search(r'</body>', repaired, re.I))
 
         if not has_body_open:
-            # 严重截断：在 head/style 阶段即中断，完全未生成 body。注入深色自愈提示卡片，绝不呈现全白屏
             fallback_body = (
                 '<body style="margin:0; padding:24px; background:#0f172a; color:#f8fafc; '
                 'font-family:-apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif; '
@@ -56,19 +65,15 @@ class ArtifactExporter:
                 'border:1px solid rgba(148,163,184,0.25); border-radius:14px; padding:32px; '
                 'box-shadow:0 16px 36px rgba(0,0,0,0.4); text-align:center; box-sizing:border-box;">\n'
                 '    <div style="font-size:36px; margin-bottom:12px; line-height:1;">⚠️</div>\n'
-                '    <h3 style="margin:0 0 10px 0; font-size:18px; font-weight:600; color:#f8fafc;">页面内容未完全生成（Token 上限中断）</h3>\n'
+                '    <h3 style="margin:0 0 10px 0; font-size:18px; font-weight:600; color:#f8fafc;">页面内容未完全生成</h3>\n'
                 '    <p style="margin:0 0 18px 0; font-size:13px; line-height:1.6; color:#94a3b8;">\n'
-                '      该 HTML 文件在生成样式定义阶段因达到模型单次 Token 输出上限中断，未包含正文（Body）内容。系统已执行安全拦截，避免死循环。\n'
+                '      该 HTML 文件在生成样式定义或头部阶段中断，未包含正文（Body）内容。系统已执行基础标签闭合以防崩溃。\n'
                 '    </p>\n'
                 '    <div style="background:rgba(15,23,42,0.65); border:1px solid rgba(51,65,85,0.6); '
                 'padding:14px 18px; border-radius:8px; font-size:12px; color:#cbd5e1; text-align:left; margin-bottom:16px; line-height:1.7;">\n'
-                '      💡 <b>通用最佳恢复与解决建议：</b><br>\n'
-                '      1. <b>直接接力续写</b>：在对话框发送 <code>“继续”</code> 或 <code>“续写正文与脚本”</code>，AI 将自动在工作区接力完善；<br>\n'
-                '      2. <b>模块化分步生成</b>：若页面逻辑复杂（如小游戏、富交互大屏），可提示 <i>“先写 HTML/CSS，脚本逻辑分开放到单独的 JS 文件”</i>；<br>\n'
-                '      3. <b>调大 Token 限制</b>：在后台模型设置中适当调大 Max Output Tokens。<br>\n'
-                '    </div>\n'
-                '    <div style="font-size:11px; color:#64748b;">\n'
-                '      已自动对未闭合的代码结构进行安全自愈，点击右上角“查看源码”可检查已生成的 CSS 样式定义。\n'
+                '      💡 <b>恢复与优化建议：</b><br>\n'
+                '      1. <b>接力续写</b>：在对话框发送 <code>“继续”</code> 或 <code>“续写正文”</code>；<br>\n'
+                '      2. <b>精简样式</b>：可提示 <i>“以轻量表格与核心结论优先输出，减少复杂 SVG 与重型样式”</i>。<br>\n'
                 '    </div>\n'
                 '  </div>\n'
                 '</body>\n'
@@ -79,14 +84,14 @@ class ArtifactExporter:
                 '\n<div style="margin:28px auto; max-width:640px; padding:14px 20px; '
                 'background:rgba(234,179,8,0.12); border:1px dashed rgba(234,179,8,0.45); '
                 'border-radius:8px; font-size:12px; color:#eab308; text-align:center; line-height:1.7;">\n'
-                '  ⚠️ <b>内容截断提醒</b>：页面代码在此处达到模型单次 Token 上限意外中断，上方为已生成部分（已自动自愈闭合标签）。<br>\n'
-                '  💡 <b>通用建议</b>：可在对话框中直接发送 <code>“继续”</code> 或 <code>“续写剩余 JavaScript 逻辑”</code> 补全完整功能。\n'
+                '  ⚠️ <b>内容未完整生成提醒</b>：页面代码在生成中途中断，上方为已生成的局部内容（已尝试闭合未完结标签）。<br>\n'
+                '  💡 <b>建议</b>：可在对话框中直接发送 <code>“继续”</code> 或提示 <code>“优先输出表格数据与结论，避免复杂装饰”</code>。\n'
                 '</div>\n'
                 '</body>\n'
             )
             repaired += partial_notice
 
-        # 5. 闭合 </html>
+        # 4. 闭合 </html>
         if not re.search(r'</html>', repaired, re.I):
             repaired += "</html>\n"
 
@@ -170,13 +175,12 @@ class ArtifactExporter:
                     if not cleaned_text.startswith("✨") and not cleaned_text.startswith("⚠️"):
                         if is_truncated:
                             banner = (
-                                "⚠️ **页面生成中断（已启动安全保护）**\n"
+                                "⚠️ **HTML 未完整生成（已保存局部残稿）**\n"
                                 f"- **已保存文件**：`/workspace/{out_name}`\n"
-                                "- **状态说明**：上游模型在生成过程中因单次 Token 输出上限或网络中断提前结束，系统已对未闭合的代码结构进行安全自愈，确保不会出现白屏。\n"
-                                "- **💡 通用最佳恢复与优化建议**：\n"
-                                "  1. **输入「继续」接力**：直接在对话框回复「继续」或「续写剩余功能逻辑」，AI 将自动读取当前已保存文件并接力完成。\n"
-                                "  2. **分步模块化生成**：如为复杂应用或小游戏，可提示「请先生成 HTML 页面结构，JavaScript 交互逻辑分开放入单独文件编写」。\n"
-                                "  3. **调大 Token 配置**：若使用的是自建或第三方模型（如 vLLM/Ollama），可在后台模型管理中检查并调大 Max Output Tokens（如 8192 或 16384）。\n\n"
+                                "- **状态说明**：页面代码在生成中途中断，系统已尝试对未闭合的代码结构进行基础闭合并保存残稿。注意：因关键正文/财务数据可能尚未完全生成，预览可能存在排版异常或内容缺失。\n"
+                                "- **💡 建议**：\n"
+                                "  1. **输入「继续」接力**：直接在对话框回复「继续」或「续写剩余内容」，AI 将尝试读取已保存文件继续完成。\n"
+                                "  2. **轻量表格优先**：可提示「请优先输出核心指标表格与业务结论，避免复杂的 SVG 矢量图与冗余样式」。\n\n"
                             )
                         elif is_ppt_intent:
                             banner = (
@@ -327,15 +331,18 @@ class ArtifactExporter:
     def export_deliverables(
         workspace_dir: str,
         final_text: str,
-        turn_start_time: float = None
+        turn_start_time: float = None,
+        session_files: Optional[List[str]] = None
     ) -> List[dict]:
         """
         Scans workspace for newly created or mentioned document deliverables (docx, xlsx, pptx, pdf, md, zip, etc.)
         and returns list of {filePath, fileName}.
+        Strictly excludes user input attachments (session_files) from being claimed as generated deliverables.
         """
         deliverables = []
         seen_names = set()
         doc_exts = {".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt", ".pdf", ".md", ".zip", ".csv"}
+        excluded_names = set(Path(f).name.lower().strip() for f in (session_files or []))
 
         ws_path = Path(workspace_dir)
         if not ws_path.exists():
@@ -345,6 +352,8 @@ class ArtifactExporter:
         min_mtime = (turn_start_time - 2.0) if turn_start_time is not None else 0.0
         for item in ws_path.iterdir():
             if item.is_file() and item.suffix.lower() in doc_exts:
+                if item.name.lower() in excluded_names:
+                    continue
                 if item.stat().st_size > 0 and item.stat().st_mtime >= min_mtime:
                     # 过滤未在最终正文中作为交付物明确提及的临时/测试文件（如 test.pdf）
                     if ArtifactExporter.is_temporary_file(item.name) and (item.name not in final_text):
@@ -359,7 +368,7 @@ class ArtifactExporter:
             re.I
         )
         for fn in mentioned:
-            if fn in seen_names:
+            if fn in seen_names or fn.lower() in excluded_names:
                 continue
             cand = ws_path / fn
             if cand.exists() and cand.is_file() and cand.stat().st_size > 0:

@@ -52,6 +52,16 @@ const isSandboxModelAuthFailure = (message: string): boolean =>
     String(message || '')
   );
 
+const isSandboxModelDnsFailure = (message: string): boolean =>
+  /(?:getaddrinfo\s+ENOTFOUND|ENOTFOUND|EAI_AGAIN|name resolution)/i.test(
+    String(message || '')
+  );
+
+const isSandboxModelConnectionRefused = (message: string): boolean =>
+  /(?:ECONNREFUSED|connect\s+ECONNREFUSED)/i.test(
+    String(message || '')
+  );
+
 const isSandboxModelUnavailable = (message: string): boolean =>
   /(?:\[DeepSeek Harness (?:鉴权失败|超时|异常)\]|大模型代理调用失败|模型不可用|上游大模型|上游模型|no client initialized for model)/i.test(
     String(message || '')
@@ -405,6 +415,7 @@ export class UserSandboxDispatcherService {
         containerName: string;
         durationMs: number;
         exitCode: number;
+        metrics?: Record<string, unknown>;
       } | null = null;
       let thoughtAccumulator = '';
       let isThinkingRequested: boolean | undefined = undefined;
@@ -674,12 +685,12 @@ export class UserSandboxDispatcherService {
       }
 
       // 解析并提取结构化性能遥测指标（支持长度前缀与内容容错）
-      let executionMetrics: Record<string, unknown> | undefined;
+      let executionMetrics: Record<string, unknown> | undefined = harnessResult.metrics;
       const extractedMetrics = extractDshMarkers(rawOutput, 'METRICS');
       const firstMetric = extractedMetrics[0];
       if (firstMetric && firstMetric.payload) {
         try {
-          executionMetrics = JSON.parse(firstMetric.payload.trim());
+          executionMetrics = { ...executionMetrics, ...JSON.parse(firstMetric.payload.trim()) };
         } catch {
           // 忽略非法格式指标
         }
@@ -793,6 +804,14 @@ export class UserSandboxDispatcherService {
         content: telemetrySummary,
       });
 
+      // 过滤用户上传的原始输入附件，严防将其作为 AI 生成外发交付物
+      const inputFileNameSet = new Set(
+        sessionAttachedFiles.map((f) => path.basename(f).toLowerCase().trim())
+      );
+      const filteredOutboundFiles = outboundFiles.filter(
+        (f) => !inputFileNameSet.has(path.basename(f.fileName || f.filePath).toLowerCase().trim())
+      );
+
       const thoughtLogsSnapshot = thoughtAccumulator ? [thoughtAccumulator.trim()] : undefined;
       const rawWithThoughts = thoughtAccumulator
         ? `<think>${thoughtAccumulator.trim()}</think>\n\n${rawOutput}`
@@ -812,7 +831,7 @@ export class UserSandboxDispatcherService {
             exitCode: harnessResult.exitCode,
             metrics: executionMetrics,
           },
-          outboundFiles: outboundFiles.length > 0 ? outboundFiles : undefined,
+          outboundFiles: filteredOutboundFiles.length > 0 ? filteredOutboundFiles : undefined,
           reminders: createdReminders.length > 0 ? createdReminders : undefined,
         },
       });
@@ -829,6 +848,15 @@ export class UserSandboxDispatcherService {
         clientMessageId: body.clientMessageId,
         clientAssistantMessageId: body.clientAssistantMessageId,
         files: body.files,
+        executionTrace: {
+          containerName: harnessResult.containerName,
+          harness: 'deepseek-harness',
+          executed: true,
+          durationMs: harnessResult.durationMs,
+          exitCode: harnessResult.exitCode,
+          metrics: executionMetrics,
+          outboundFiles: filteredOutboundFiles.length > 0 ? filteredOutboundFiles : undefined,
+        },
       });
 
       emit(this.chatConversationService.buildSessionPatchEvent(sessionId, session));
@@ -997,7 +1025,57 @@ export class UserSandboxDispatcherService {
           effectiveUserId,
           friendlyError,
           errMsg,
-          emit
+          emit,
+          { executed: false, errorType: 'AUTH_ERROR', rawError: errMsg }
+        );
+        return true;
+      }
+
+      // 4.1. 上游大模型域名解析失败 (DNS ENOTFOUND)
+      if (isSandboxModelDnsFailure(errMsg)) {
+        const dnsMatch = errMsg.match(/(?:getaddrinfo\s+ENOTFOUND|ENOTFOUND)\s+([^\s,;:\)]+)/i);
+        const dnsHost = dnsMatch ? dnsMatch[1] : '';
+        const hostTip = dnsHost ? ` (域名: ${dnsHost})` : '';
+        const friendlyError = `🌐 上游模型服务地址域名解析失败${hostTip}。请检查模型网关配置地址是否正确，或内网穿透/代理隧道是否已断开 (${errMsg})。`;
+        emit({
+          type: StreamEventType.ERROR,
+          content: friendlyError,
+          data: {
+            code: 'SANDBOX_MODEL_DNS_ERROR',
+            retryable: true,
+          },
+        });
+        await this.persistFriendlyErrorToSession(
+          sessionId,
+          body,
+          effectiveUserId,
+          friendlyError,
+          errMsg,
+          emit,
+          { executed: false, errorType: 'DNS_ERROR', rawError: errMsg }
+        );
+        return true;
+      }
+
+      // 4.2. 上游大模型服务连接被拒绝 (Connection Refused)
+      if (isSandboxModelConnectionRefused(errMsg)) {
+        const friendlyError = `🔌 上游模型服务连接被拒绝 (Connection Refused)。请检查模型服务端口或反向代理是否正常运行 (${errMsg})。`;
+        emit({
+          type: StreamEventType.ERROR,
+          content: friendlyError,
+          data: {
+            code: 'SANDBOX_MODEL_CONNECTION_REFUSED',
+            retryable: true,
+          },
+        });
+        await this.persistFriendlyErrorToSession(
+          sessionId,
+          body,
+          effectiveUserId,
+          friendlyError,
+          errMsg,
+          emit,
+          { executed: false, errorType: 'CONNECTION_REFUSED', rawError: errMsg }
         );
         return true;
       }
@@ -1019,7 +1097,8 @@ export class UserSandboxDispatcherService {
           effectiveUserId,
           friendlyError,
           errMsg,
-          emit
+          emit,
+          { executed: false, errorType: 'MODEL_UNAVAILABLE', rawError: errMsg }
         );
         return true;
       }
@@ -1047,7 +1126,8 @@ export class UserSandboxDispatcherService {
     effectiveUserId: string,
     friendlyError: string,
     rawError: string,
-    emit: (event: StreamEvent) => void
+    emit: (event: StreamEvent) => void,
+    executionTrace?: Record<string, unknown>
   ): Promise<void> {
     try {
       const failedSession = await this.chatConversationService.persistConversation({
@@ -1061,6 +1141,10 @@ export class UserSandboxDispatcherService {
         clientMessageId: body.clientMessageId,
         clientAssistantMessageId: body.clientAssistantMessageId,
         files: body.files,
+        executionTrace: executionTrace || {
+          executed: false,
+          rawError,
+        },
       });
       if (failedSession) {
         emit(this.chatConversationService.buildSessionPatchEvent(sessionId, failedSession));

@@ -27,12 +27,17 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import type { ChatSession } from '@ops/user-core';
-import { resolveSessionChannel, type SessionChannelMeta } from '../lib/sessionView';
+import type { AIModel, ChatSession } from '@ops/user-core';
+import {
+  resolveModelDisplayInfo,
+  resolveSessionChannel,
+  type SessionChannelMeta,
+} from '../lib/sessionView';
 import styles from '../pages/ChatPage.module.css';
 
 interface ChatSessionSidebarProps {
   sessions: ChatSession[];
+  availableModels?: AIModel[];
   selectedSessionId: string | null;
   isLoading: boolean;
   onSelectSession: (sessionId: string) => void;
@@ -49,6 +54,7 @@ type ChannelFilter = 'all' | 'local' | 'wechat';
 
 export function ChatSessionSidebar({
   sessions,
+  availableModels,
   selectedSessionId,
   isLoading,
   onSelectSession,
@@ -96,15 +102,16 @@ export function ChatSessionSidebar({
       }
       const title = (session.title || '').toLowerCase();
       const preview = getPreview(session.id).toLowerCase();
-      const modelId = (session.modelId || '').toLowerCase();
+      const modelInfo = resolveModelDisplayInfo(session.modelId, availableModels);
+      const modelText = (modelInfo ? `${modelInfo.name} ${session.modelId || ''}` : session.modelId || '').toLowerCase();
       return (
         title.includes(keyword) ||
         preview.includes(keyword) ||
-        modelId.includes(keyword) ||
+        modelText.includes(keyword) ||
         channelMeta.label.toLowerCase().includes(keyword)
       );
     });
-  }, [sessions, searchKeyword, channelFilter, getPreview]);
+  }, [sessions, searchKeyword, channelFilter, getPreview, availableModels]);
 
   const renderChannelTag = (meta: SessionChannelMeta) => {
     const channelClass =
@@ -358,11 +365,17 @@ export function ChatSessionSidebar({
                     {/* 第三行：元数据（模型 Tag、时间） */}
                     <div className={styles['session-footer-row']}>
                       <Space size={6} wrap className={styles['session-meta-tags']}>
-                        {session.modelId && session.modelId !== 'default' ? (
-                          <Tag className={styles['session-model-tag']}>
-                            {session.modelId}
-                          </Tag>
-                        ) : null}
+                        {(() => {
+                          const modelInfo = resolveModelDisplayInfo(session.modelId, availableModels);
+                          if (!modelInfo) return null;
+                          return (
+                            <Tooltip title={modelInfo.tooltip}>
+                              <Tag className={styles['session-model-tag']}>
+                                {modelInfo.name}
+                              </Tag>
+                            </Tooltip>
+                          );
+                        })()}
                       </Space>
                       <Space size={4} className={styles['session-time-text']}>
                         <ClockCircleOutlined style={{ fontSize: 11, opacity: 0.6 }} />

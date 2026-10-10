@@ -10,6 +10,7 @@ import json
 import time
 import subprocess
 import copy
+import shutil
 from typing import Optional, Dict, Any
 from pathlib import Path
 
@@ -51,8 +52,15 @@ from .reminder_tools import (
     update_personal_reminder,
 )
 from .deliverable_contract import write_markdown_artifact
+from .comparison_tool_schema import COMPARISON_TOOL
+from .spreadsheet_analysis_schema import ANALYSIS_TOOL, ANALYSIS_CAPABILITIES, ANALYSIS_TOOL_NAMES
+from .spreadsheet_context import STRUCTURE_TOOL, STRUCTURE_TOOL_NAME
 
 SANDBOX_TOOLS = [
+    STRUCTURE_TOOL,
+    COMPARISON_TOOL,
+    ANALYSIS_TOOL,
+    *ANALYSIS_CAPABILITIES,
     {
         "type": "function",
         "function": {
@@ -128,6 +136,14 @@ SANDBOX_TOOLS = [
                     "end_line": {
                         "type": "integer",
                         "description": "结束行号（可选，包含该行，用于分片读取长文件）"
+                    },
+                    "sheet": {
+                        "type": "string",
+                        "description": "工作表名称（可选，用于直接定位 Excel 工作表，如 '交易明细'）"
+                    },
+                    "range": {
+                        "type": "string",
+                        "description": "单元格区域（可选，用于直接切片读取 Excel 区域，如 'A4:K50' 或 '交易明细!A4:K50'）"
                     }
                 },
                 "required": ["file_path"]
@@ -478,6 +494,20 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
         )
         res = fetch_page(str(url), deadline=deadline)
 
+    elif name_clean == "compare_spreadsheet_columns":
+        from .table_comparison import execute_column_comparison
+        res = execute_column_comparison(params, deadline=deadline)
+
+    elif name_clean == STRUCTURE_TOOL_NAME:
+        from .spreadsheet_context import execute_spreadsheet_structure
+        res = execute_spreadsheet_structure(params, deadline=deadline)
+
+    elif name_clean == "analyze_spreadsheet" or name_clean in ANALYSIS_TOOL_NAMES:
+        from .spreadsheet_analysis import execute_spreadsheet_analysis
+        if name_clean == "validate_spreadsheet_rows":
+            params = {**params,"profile_tables":True}
+        res = execute_spreadsheet_analysis(params, deadline=deadline)
+
     elif name_clean in ["read_file", "cat", "view_file", "read_doc", "parse_file", "open_file", "read"]:
         fpath = (
             params.get("file_path") or
@@ -497,8 +527,20 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
             e_val = int(e_line) if e_line is not None else None
         except (ValueError, TypeError):
             e_val = None
+        prompt_val = params.get("prompt") or params.get("query") or params.get("instruction") or None
+        sheet_val = params.get("sheet") or params.get("sheet_name") or None
+        range_val = params.get("range") or params.get("cell_range") or None
         current_model = os.environ.get("DSH_MODEL") or None
-        res = read_workspace_file(str(fpath), start_line=s_val, end_line=e_val, deadline=deadline, model_name=current_model)
+        res = read_workspace_file(
+            str(fpath),
+            start_line=s_val,
+            end_line=e_val,
+            deadline=deadline,
+            model_name=current_model,
+            prompt=prompt_val,
+            sheet_name=sheet_val,
+            cell_range=range_val
+        )
 
     elif name_clean in ["patch_file", "replace_content", "patch", "edit_file", "replace_in_file"]:
         fpath = (
@@ -539,6 +581,9 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
         cmd = params.get("cmd") or params.get("command") or ""
         if not cmd and params:
             cmd = str(list(params.values())[0])
+        # 兼容性自愈垫片：若环境未配置 python 别名但存在 python3，将命令中的 python 安全映射为 python3
+        if shutil.which("python") is None and shutil.which("python3") is not None:
+            cmd = re.sub(r'(^|[;&|]\s*)python\b', r'\1python3', cmd)
         bash_max = float(os.getenv("DSH_BASH_TIMEOUT", "60.0"))
         bash_to = max(0.5, min(bash_max, remaining)) if remaining is not None else bash_max
         try:
@@ -555,7 +600,9 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
             if proc.returncode != 0:
                 combined_err = f"{err}\n{out}"
                 diag = ""
-                if "ModuleNotFoundError" in combined_err or "No module named" in combined_err:
+                if "python: not found" in combined_err or "python: command not found" in combined_err:
+                    diag = "[系统自愈提示]: 检测到系统未找到 `python` 指令，当前沙箱默认 Python 解释器为 `python3`。请在 bash 指令中使用 `python3` 执行脚本。"
+                elif "ModuleNotFoundError" in combined_err or "No module named" in combined_err:
                     diag = "[系统自愈提示]: 检测到 Python 缺少依赖模块，请调用 bash 执行 `pip install <模块名>` 安装依赖后再重试。"
                 elif "AttributeError" in combined_err and ("rFonts" in combined_err or "rPr" in combined_err):
                     diag = (

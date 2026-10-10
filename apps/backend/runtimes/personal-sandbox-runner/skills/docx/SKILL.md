@@ -49,7 +49,7 @@ default_rounds: 5
 ### 方式一：一键快速添加批注 (推荐日常高频使用)
 无需手动解包与重打包，直接指定目标文字与批注内容：
 ```bash
-python /opt/dsh/skills/docx/scripts/add_comment.py /workspace/contract.docx \
+python3 /opt/dsh/skills/docx/scripts/add_comment.py /workspace/contract.docx \
   --target "全额预付100%款项" \
   --comment "【法务风险提示】：全额预付款风险极高，建议调整为按里程碑3:4:3分期支付" \
   --author "AI法务合规官" \
@@ -64,10 +64,10 @@ unzip -q /workspace/original.docx -d /workspace/unpacked/
 find /workspace/unpacked -type l -delete   # 剥离软链接安全风险
 
 # 2. 合并 XML 中被拼写检查打碎的文本 Runs (使文字在 XML 中可直接被检索和替换)
-python /opt/dsh/skills/docx/scripts/merge_runs.py /workspace/unpacked/
+python3 /opt/dsh/skills/docx/scripts/merge_runs.py /workspace/unpacked/
 
 # 3. 注入侧边批注定义 (自动维护 comments.xml、people.xml 等 6 个关联文件)
-python /opt/dsh/skills/docx/scripts/comment.py /workspace/unpacked/ "合规风险：违约金比例过高，建议下调至 20%" --author "AI法务审查员"
+python3 /opt/dsh/skills/docx/scripts/comment.py /workspace/unpacked/ "合规风险：违约金比例过高，建议下调至 20%" --author "AI法务审查员"
 
 # 4. 在 document.xml 中加入修订留痕 (Tracked Changes)
 #    - 插入文本: 使用 <w:ins w:id="1" w:author="AI法务审查员" w:date="2026-09-19T00:00:00Z"><w:r><w:t>新增文本</w:t></w:r></w:ins>
@@ -78,12 +78,12 @@ python /opt/dsh/skills/docx/scripts/comment.py /workspace/unpacked/ "合规风�
 ```
 
 # 6. (可选) 验证生成的 docx 结构完整性
-python /opt/dsh/skills/docx/scripts/office/validate.py /workspace/reviewed.docx --original /workspace/original.docx
+python3 /opt/dsh/skills/docx/scripts/office/validate.py /workspace/reviewed.docx --original /workspace/original.docx
 ```
 
 ### 产出纯净版 (接受所有修订)：
 ```bash
-python /opt/dsh/skills/docx/scripts/accept_changes.py /workspace/reviewed.docx /workspace/clean_contract.docx
+python3 /opt/dsh/skills/docx/scripts/accept_changes.py /workspace/reviewed.docx /workspace/clean_contract.docx
 ```
 
 ---

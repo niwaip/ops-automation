@@ -465,7 +465,10 @@ class TestDshCoreModules(unittest.TestCase):
     def test_sandbox_tools_schema_completeness(self):
         """AC-1: 验证 SANDBOX_TOOLS 包含完整工具集及受控 Markdown 写入能力"""
         tool_names = [t["function"]["name"] for t in SANDBOX_TOOLS]
-        self.assertEqual(len(tool_names), 15)
+        self.assertEqual(len(tool_names), 21)
+        self.assertIn("inspect_spreadsheet_structure", tool_names)
+        self.assertIn("analyze_spreadsheet", tool_names)
+        self.assertIn("compare_spreadsheet_columns", tool_names)
         self.assertIn("vision_inspect", tool_names)
         self.assertIn("image_gen", tool_names)
         self.assertIn("patch_file", tool_names)
@@ -1016,9 +1019,10 @@ class TestDshCoreModules(unittest.TestCase):
 
     def test_image_gen_no_hardcoded_model_identity(self):
         """验证生图降级提示中去除了硬编码的 Gemini 身份，使用中立能力提示"""
-        out = execute_tool("image_gen", {"prompt": "绘制一幅画"})
-        self.assertNotIn("Gemini", out)
-        self.assertIn("多模态视觉理解能力", out)
+        with patch("pathlib.Path.exists", return_value=False):
+            out = execute_tool("image_gen", {"prompt": "绘制一幅画"})
+            self.assertNotIn("Gemini", out)
+            self.assertIn("多模态视觉理解能力", out)
 
     def test_resolve_model_display_name_from_proxy(self):
         """验证传递 UUID 时能从模型代理中动态解析出友好模型名称"""

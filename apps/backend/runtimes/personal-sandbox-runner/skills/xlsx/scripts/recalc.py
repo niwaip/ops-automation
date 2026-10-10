@@ -16,6 +16,15 @@ import time
 import zipfile
 from pathlib import Path
 
+# Ensure dsh_modules is importable across container and repo environments
+for _cand in [
+    Path("/usr/local/bin"),
+    Path(__file__).resolve().parent.parent.parent.parent / "src",
+    Path("/workspace/src"),
+]:
+    if _cand.exists() and str(_cand) not in sys.path:
+        sys.path.insert(0, str(_cand))
+
 from office.soffice import get_soffice_env, run_soffice
 
 from openpyxl import load_workbook
@@ -121,14 +130,72 @@ def external_links_at_risk(filename):
         return at_risk
 
 
-def recalc(filename, timeout=30, force=False):
-    if not Path(filename).exists():
-        return {"error": f"File {filename} does not exist"}
+def is_protected_input_file(filepath) -> bool:
+    """Checks whether the file is an original input attachment in the current session."""
+    try:
+        p = Path(filepath).resolve()
+        # 1. 检查环境变量 DSH_SESSION_ATTACHMENTS (逗号分隔文件名)
+        env_atts = os.environ.get("DSH_SESSION_ATTACHMENTS", "")
+        if env_atts:
+            for fname in env_atts.split(","):
+                if fname.strip() and p.name == fname.strip():
+                    return True
 
-    abs_path = str(Path(filename).absolute())
+        # 2. 检查 .dsh/inputs_backup/
+        for base in [Path.cwd(), p.parent, p.parent.parent]:
+            backup_candidate = base / ".dsh" / "inputs_backup" / p.name
+            if backup_candidate.exists():
+                return True
+
+        # 3. 检查 .dsh/sessions/*.attachments.json
+        for base in [Path.cwd(), p.parent, p.parent.parent]:
+            sessions_dir = base / ".dsh" / "sessions"
+            if sessions_dir.exists():
+                for att_json in sessions_dir.glob("*.attachments.json"):
+                    try:
+                        with open(att_json, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                            if isinstance(data, list):
+                                for item in data:
+                                    fname = item if isinstance(item, str) else item.get("fileName", "")
+                                    if fname and p.name == fname:
+                                        return True
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+    return False
+
+
+def recalc(filename, timeout=30, force=False, output=None):
+    if not Path(filename).exists():
+        return {"error": f"File {filename} does not exist", "status": "failed"}
+
+    src_path = Path(filename).resolve()
+
+    if output:
+        out_path = Path(output).resolve()
+        if is_protected_input_file(out_path):
+            return {
+                "error": f"Refusing to overwrite protected input attachment '{out_path.name}'. Protected session attachments cannot be target of output.",
+                "status": "failed",
+            }
+        if src_path != out_path:
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src_path, out_path)
+        target_path = out_path
+    else:
+        if is_protected_input_file(src_path):
+            return {
+                "error": f"Refusing to overwrite protected input attachment '{src_path.name}' in-place. Please specify an output path via -o / --output.",
+                "status": "failed",
+            }
+        target_path = src_path
+
+    abs_path = str(target_path)
 
     if not os.access(abs_path, os.W_OK):
-        return {"error": f"{filename} is not writable; recalculation rewrites the file in place"}
+        return {"error": f"{abs_path} is not writable; recalculation rewrites the file in place", "status": "failed"}
 
     try:
         get_soffice_env()
@@ -137,9 +204,9 @@ def recalc(filename, timeout=30, force=False):
 
     if not force:
         try:
-            at_risk = external_links_at_risk(filename)
+            at_risk = external_links_at_risk(abs_path)
         except Exception as e:  
-            return {"error": f"Could not inspect {filename} for external links: {e}"}
+            return {"error": f"Could not inspect {abs_path} for external links: {e}"}
         if at_risk:
             shown = at_risk[:MAX_LOCATIONS]
             return {
@@ -158,76 +225,50 @@ def recalc(filename, timeout=30, force=False):
     with tempfile.TemporaryDirectory(
         prefix="recalc-lo-profile-", ignore_cleanup_errors=True
     ) as profile_dir:
-        return _recalc_with_profile(filename, abs_path, timeout, Path(profile_dir))
+        res = _recalc_with_profile(abs_path, abs_path, timeout, Path(profile_dir))
+        if isinstance(res, dict) and output:
+            res["output_file"] = str(target_path)
+        return res
 
 
 def _check_calculated_workbook(filename):
     try:
-        wb = load_workbook(filename, data_only=True)
+        from dsh_modules.workbook_calculation import check_workbook_formulas
+        chk = check_workbook_formulas(filename, is_post_recalc=True)
 
-        excel_errors = [
-            "#VALUE!",
-            "#DIV/0!",
-            "#REF!",
-            "#NAME?",
-            "#NULL!",
-            "#NUM!",
-            "#N/A",
-        ]
-        error_details = {err: [] for err in excel_errors}
-        total_errors = 0
+        formula_count = chk.get("total_formulas", 0)
+        uncalc_count = chk.get("uncalculated_formulas", 0)
+        total_errors = chk.get("total_errors", 0)
 
-        for sheet_name in wb.sheetnames:
-            ws = wb[sheet_name]
-            if not hasattr(ws, "iter_rows"):  
-                continue
-            for row in ws.iter_rows():
-                for cell in row:
-                    if cell.value is not None and isinstance(cell.value, str):
-                        for err in excel_errors:
-                            if err in cell.value:
-                                location = f"{sheet_name}!{cell.coordinate}"
-                                error_details[err].append(location)
-                                total_errors += 1
-                                break
+        if total_errors > 0:
+            status = "failed" if (uncalc_count == formula_count and formula_count > 0) else "partial"
+        elif uncalc_count == 0:
+            status = "verified"
+        elif uncalc_count == formula_count and formula_count > 0:
+            status = "failed"
+        else:
+            status = "partial"
 
-        result = {
-            "status": "success" if total_errors == 0 else "errors_found",
-            "total_errors": total_errors,
-            "error_summary": {},
-        }
-
+        error_details = chk.get("error_summary", {})
+        error_summary = {}
         for err_type, locations in error_details.items():
             if locations:
                 entry = {"count": len(locations), "locations": locations[:MAX_LOCATIONS]}
                 if len(locations) > MAX_LOCATIONS:
                     entry["locations_truncated"] = len(locations) - MAX_LOCATIONS
-                result["error_summary"][err_type] = entry
+                error_summary[err_type] = entry
 
-        wb.close()
-
-        wb_formulas = load_workbook(filename, data_only=False)
-        formula_count = 0
-        for sheet_name in wb_formulas.sheetnames:
-            ws = wb_formulas[sheet_name]
-            if not hasattr(ws, "iter_rows"):  
-                continue
-            for row in ws.iter_rows():
-                for cell in row:
-                    if (
-                        cell.value
-                        and isinstance(cell.value, str)
-                        and cell.value.startswith("=")
-                    ):
-                        formula_count += 1
-        wb_formulas.close()
-
-        result["total_formulas"] = formula_count
-
-        return result
-
+        return {
+            "status": status,
+            "total_formulas": formula_count,
+            "cached_formulas": chk.get("cached_formulas", 0),
+            "uncalculated_formulas": uncalc_count,
+            "uncalculated_locations": chk.get("uncalculated_locations", [])[:MAX_LOCATIONS],
+            "total_errors": total_errors,
+            "error_summary": error_summary,
+        }
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": str(e), "status": "failed"}
 
 
 def _recalc_with_profile(filename, abs_path, timeout, profile_dir: Path):
@@ -248,7 +289,7 @@ def _recalc_with_profile(filename, abs_path, timeout, profile_dir: Path):
 
     profile_url, err = setup_libreoffice_macro(profile_dir, timeout=timeout)
     if err:
-        return {"error": err}
+        return {"error": err, "status": "failed"}
 
     timeout = max(5, int(timeout - (time.monotonic() - started)))
 
@@ -273,34 +314,33 @@ def _recalc_with_profile(filename, abs_path, timeout, profile_dir: Path):
             cmd, capture_output=True, text=True, env=get_soffice_env(), timeout=timeout + 15
         )
     except subprocess.TimeoutExpired:
-        return {"error": timed_out}
+        return {"error": timed_out, "status": "failed"}
     except FileNotFoundError:
-        return {"error": SOFFICE_MISSING}
+        return {"error": SOFFICE_MISSING, "status": "unavailable"}
 
     if result.returncode == 124:
-        return {"error": timed_out}
+        return {"error": timed_out, "status": "failed"}
 
     if result.returncode != 0:
         detail = (result.stderr or "").strip() or f"soffice exited {result.returncode}"
-        return {"error": f"LibreOffice failed to recalculate: {detail}"}
+        return {"error": f"LibreOffice failed to recalculate: {detail}", "status": "failed"}
 
     if _stamp(abs_path) == before:
         return {
             "error": (
                 "LibreOffice exited cleanly but never rewrote the file, so nothing was "
                 "recalculated. Check that no other LibreOffice instance is running, then retry."
-            )
+            ),
+            "status": "failed",
         }
 
     return _check_calculated_workbook(filename)
 
 
 def main():
-    args = [a for a in sys.argv[1:] if a != "--force"]
-    force = "--force" in sys.argv[1:]
-
-    if not args:
-        print("Usage: python recalc.py <excel_file> [timeout_seconds] [--force]")
+    parser_args = sys.argv[1:]
+    if "-h" in parser_args or "--help" in parser_args:
+        print("Usage: python recalc.py <excel_file> [-o <output_file>] [timeout_seconds] [--force]")
         print("\nRecalculates all formulas in an Excel file using LibreOffice")
         print("\nReturns JSON with error details:")
         print("  - status: 'success' or 'errors_found'")
@@ -308,16 +348,47 @@ def main():
         print("  - total_formulas: Number of formulas in the file")
         print("  - error_summary: Breakdown by error type with locations")
         print("    - #VALUE!, #DIV/0!, #REF!, #NAME?, #NULL!, #NUM!, #N/A")
+        print("\nOptions:")
+        print("  -h, --help           Show this help message and exit")
+        print("  -o, --output <path>  Write recalculated workbook to output file, preserving original")
+        print("  --force              Recalculate even when external links would be lost")
         print("\nOn any failure the JSON has an 'error' key and no 'status'.")
-        print("--force recalculates even when it would destroy external links.")
+        sys.exit(0)
+
+    force = "--force" in parser_args
+    output_path = None
+    filtered_args = []
+    i = 0
+    while i < len(parser_args):
+        arg = parser_args[i]
+        if arg == "--force":
+            i += 1
+            continue
+        if arg in ("-o", "--output"):
+            if i + 1 < len(parser_args):
+                output_path = parser_args[i + 1]
+                i += 2
+                continue
+            else:
+                print("Error: -o / --output requires an argument", file=sys.stderr)
+                sys.exit(1)
+        elif arg.startswith("--output="):
+            output_path = arg.split("=", 1)[1]
+            i += 1
+            continue
+        filtered_args.append(arg)
+        i += 1
+
+    if not filtered_args:
+        print("Usage: python recalc.py <excel_file> [-o <output_file>] [timeout_seconds] [--force]")
         sys.exit(1)
 
-    filename = args[0]
-    timeout = int(args[1]) if len(args) > 1 else 30
+    filename = filtered_args[0]
+    timeout = int(filtered_args[1]) if len(filtered_args) > 1 else 30
 
-    result = recalc(filename, timeout, force=force)
+    result = recalc(filename, timeout, force=force, output=output_path)
     print(json.dumps(result, indent=2))
-    sys.exit(1 if "error" in result else 0)
+    sys.exit(0 if (result.get("status") in ("verified", "success") and "error" not in result) else 1)
 
 
 if __name__ == "__main__":

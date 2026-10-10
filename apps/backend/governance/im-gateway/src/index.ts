@@ -13,4 +13,6 @@ export * from './xiaozhi-connector.service';
 export * from './xiaozhi-task.service';
 export * from './channel-task-gateway.service';
 export * from './runtime-retry-scheduler';
+export * from './dingtalk-channel.controller';
+export * from './dingtalk-channel.service';
 export * from './im-channel.module';

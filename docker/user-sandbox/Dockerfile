@@ -15,12 +15,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     python3-venv \
+    python-is-python3 \
     zsh \
     bash \
     build-essential \
     poppler-utils \
     libreoffice-calc-nogui \
     libreoffice-writer-nogui \
+    && ln -sf /usr/bin/python3 /usr/bin/python \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. 全局安装 pnpm、modsearch 与核心办公文档依赖库

@@ -21,13 +21,16 @@ class ContextBudget:
         return text_str[:max_chars] + suffix
 
     @classmethod
-    def clip_attachment(cls, content: str, max_chars: int = 12000) -> str:
-        """Clips file attachment text."""
-        return cls.clip_text(
-            content,
-            max_chars,
-            suffix="\n...[⚠️ 附件文本超过限制已截断。💡 建议：如需深入分析长文档，可明确指定章节范围或调用 read_file 工具分页读取]"
+    def clip_attachment(cls, content: str, max_chars: int = 24000) -> str:
+        """Clips file attachment text with explicit coverage truncation warning."""
+        if not content or len(content) <= max_chars:
+            return content
+        suffix = (
+            f"\n\n[⚠️ 附件文本超过预算限制 ({max_chars} 字符) 已截断]\n"
+            "⚠️ [工作表覆盖度提醒: 抽样/截断 (当前展示仅保留部分数据，未覆盖全表！)]\n"
+            "💡 [审计与全量统计硬性约束]: 严禁仅凭此截断片段断言全表查重、勾稽或极值结论，必须使用确定性核算工具加载原件处理完整业务范围；不能把抽样当作已核算结果！"
         )
+        return content[:max_chars] + suffix
 
     @classmethod
     def clip_skill(cls, skill_content: str, max_chars: int = 12000) -> str:
@@ -93,7 +96,17 @@ class ContextBudget:
                 content = h.get("content") or ""
                 content_str = str(content)
                 if len(content_str) > max_item_chars:
-                    content_str = content_str[:max_item_chars] + "...[内容已截断]"
+                    # 双端保留策略：保留头部前情 (约 30%) 与尾部最终结论/修正 (约 60%)，中间插入省略标记
+                    head_chars = min(1200, int(max_item_chars * 0.3))
+                    tail_chars = min(2500, max_item_chars - head_chars - 100)
+                    if tail_chars > 0 and len(content_str) > head_chars + tail_chars:
+                        content_str = (
+                            content_str[:head_chars]
+                            + "\n\n...[因历史消息长度预算超出，中间部分已自动省略]...\n\n"
+                            + content_str[-tail_chars:]
+                        )
+                    else:
+                        content_str = content_str[:max_item_chars] + "...[内容已截断]"
                 block_chars += len(content_str)
 
                 item: Dict[str, Any] = {"role": role, "content": content_str}
