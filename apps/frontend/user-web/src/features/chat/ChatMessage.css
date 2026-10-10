@@ -106,9 +106,17 @@
   box-sizing: border-box;
 }
 
+.chat-message-content.user,
+.chat-message-content.user *,
+.chat-message.user .chat-message-plain,
+[data-theme='dark'] .chat-message-content.user,
+[data-theme='dark'] .chat-message-content.user *,
+[data-theme='dark'] .chat-message.user .chat-message-plain {
+  color: #ffffff !important;
+}
+
 .chat-message-content.user {
   background: linear-gradient(135deg, #6d7cff 0%, #5b67f5 100%);
-  color: #ffffff;
   box-shadow: 0 14px 32px rgba(99, 102, 241, 0.2);
   border-bottom-right-radius: 8px;
 }
@@ -125,7 +133,7 @@
 
 [data-theme='dark'] .chat-message-content.assistant {
   background: rgba(30, 41, 59, 0.88);
-  color: #94a3b8; /* 柔和防疲劳哑光灰 (Slate 400)，降低整体发光刺激 */
+  color: #e2e8f0; /* 透亮清晰的 Slate-200，不再灰暗 */
   border-color: rgba(148, 163, 184, 0.18);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
@@ -1010,13 +1018,14 @@
 [data-theme='dark'] .chat-message-markdown h6,
 [data-theme='dark'] .chat-message-markdown strong,
 [data-theme='dark'] .chat-message-markdown b {
-  color: #cbd5e1; /* 标题与加粗使用柔和灰白，杜绝刺眼纯白光斑 */
+  color: #f8fafc; /* 标题与加粗清晰醒目 */
 }
 
 [data-theme='dark'] .chat-message-markdown p,
 [data-theme='dark'] .chat-message-markdown li,
-[data-theme='dark'] .chat-message-plain {
-  color: #94a3b8; /* 柔和暗色护眼正文，无眩光 */
+[data-theme='dark'] .chat-message.assistant .chat-message-plain,
+[data-theme='dark'] .chat-message-content.assistant .chat-message-plain {
+  color: #e2e8f0; /* 助手正文透亮易读，消除灰暗感 */
 }
 
 .chat-message-markdown strong,
@@ -1218,12 +1227,12 @@
 [data-theme='dark'] .chat-message-markdown th,
 [data-theme='dark'] .markdown-table-wrapper th {
   background: rgba(51, 65, 85, 0.55);
-  color: #cbd5e1;
+  color: #f8fafc;
 }
 
 [data-theme='dark'] .chat-message-markdown td,
 [data-theme='dark'] .markdown-table-wrapper td {
-  color: #94a3b8;
+  color: #e2e8f0;
   border-color: rgba(148, 163, 184, 0.2);
 }
 
