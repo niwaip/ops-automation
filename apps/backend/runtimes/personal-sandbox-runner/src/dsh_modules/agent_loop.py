@@ -37,6 +37,17 @@ from .deliverable_contract import (
     requests_markdown_artifact,
     unwrap_outer_markdown_fence,
 )
+from .analysis_contract import build_analysis_contract, build_analysis_plan_context, supports_column_comparison
+from .comparison_delivery import compile_comparison_response, COMPARISON_DELIVERY_INSTRUCTIONS
+from .analysis_semantics import domain_plan_context
+from .analysis_validation import validate_reply_against_contract, build_contract_termination_warning
+from .tool_result import ToolResult
+from .comparison_evidence import validate_execution_output
+from .tool_dispatch import dispatch_tool_calls
+from .sampling_guard import sampling_feedback, _is_meaningful_computational_command
+from .spreadsheet_analysis_schema import ANALYSIS_INSTRUCTIONS, select_analysis_tools
+from .analysis_turn import AnalysisTurn
+
 
 
 CLAIM_PATTERNS = [
@@ -381,6 +392,7 @@ class AgentLoopResult:
     outbound_reminders: List[str] = field(default_factory=list)
     telemetry: TelemetryStats = field(default_factory=TelemetryStats)
     messages: List[Dict[str, Any]] = field(default_factory=list)
+    execution_evidence: List[ToolResult] = field(default_factory=list)
 
 
 # 常见模型过渡性前导垫话特征词
@@ -441,7 +453,10 @@ def _check_no_tool_assertion_guard(
     executed_calls_history: Optional[List[str]] = None,
     guard_nudges_count: int = 0,
     script_execution_error: Optional[str] = None,
-    tools: Optional[List[Dict[str, Any]]] = None
+    tools: Optional[List[Dict[str, Any]]] = None,
+    messages: Optional[List[Dict[str, Any]]] = None,
+    telemetry: Optional[TelemetryStats] = None,
+    execution_evidence: Optional[List[ToolResult]] = None
 ) -> Tuple[str, Optional[str], int]:
     """
     Evaluates assertion guards when model returns text without tool calls.
@@ -452,6 +467,13 @@ def _check_no_tool_assertion_guard(
     # 仍受全局硬轮次上限约束，避免小模型持续规划而不执行。
     max_guard_nudges = 2 if is_generate_intent else 1
     if guard_nudges_count >= max_guard_nudges or round_idx >= MAX_AGENT_ROUNDS_HARD_CEILING - 1:
+        # Verification is independent of the generic filler-recovery budget.
+        # A failed candidate can use a remaining normal round to repair its tool plan.
+        if execution_evidence is not None and round_idx < MAX_AGENT_ROUNDS_HARD_CEILING - 1:
+            validation = validate_reply_against_contract(build_analysis_contract(last_user_prompt),
+                reply_text, round_idx, max_rounds, execution_evidence=execution_evidence)
+            if validation.comparison_error:
+                return "continue", validation.feedback_message, min(MAX_AGENT_ROUNDS_HARD_CEILING, max_rounds+1)
         return "pass", None, max_rounds
 
     bumped_max_rounds = min(MAX_AGENT_ROUNDS_HARD_CEILING, max_rounds + 1)
@@ -581,156 +603,71 @@ def _check_no_tool_assertion_guard(
         )
         return "continue", msg, bumped_max_rounds
 
+    # 9. 任务契约与指标逐项验收拦截 (Analysis Contract & Metric Alignment Guard)
+    if not is_guide_intent:
+        contract = build_analysis_contract(last_user_prompt or "")
+        if contract.has_metrics:
+            is_sheet_listing_reply = bool(re.search(
+                r'(?:工作表清单|Sheet\s*名称|主要用途与内容说明|包含\s*\d+\s*个工作表|共包含.*工作表)',
+                reply_text or ""
+            ))
+            is_parroting_history = False
+            if messages:
+                for m in messages:
+                    if isinstance(m, dict) and m.get("role") == "assistant":
+                        c_val = m.get("content")
+                        prev_text = c_val if isinstance(c_val, str) else ""
+                        if is_sheet_listing_reply and ("主要用途与内容说明" in prev_text or "工作表清单" in prev_text):
+                            is_parroting_history = True
+                            break
+
+            val_result = validate_reply_against_contract(
+                contract=contract,
+                reply_text=reply_text or "",
+                round_idx=round_idx,
+                max_rounds=max_rounds,
+                messages=messages,
+                execution_evidence=execution_evidence
+            )
+
+            if is_sheet_listing_reply or is_parroting_history or not val_result.is_pass:
+                feedback = val_result.feedback_message
+                if is_sheet_listing_reply or is_parroting_history:
+                    all_metrics_str = "、".join(contract.get_metric_names())
+                    feedback = (
+                        f"【系统问答对齐与指标核算拦截】：用户明确要求核算具体指标（『{last_user_prompt}』，目标指标：{all_metrics_str}）。\n"
+                        "当前回复重复罗列工作表目录或说明，未回答具体指标数据，未给出核心指标数值，严禁向用户复读目录或反问是否继续！\n"
+                        "请立即调用 `read_file` 读取真实对应的数据源工作表，"
+                        "或调用 `bash` 运行 Python 脚本对数据进行求值，直接给出全部各项指标的具体数值结论及数据来源。"
+                    )
+                print(f"⚡ [Harness Contract Guard] 拦截未完成指标核算回复 (status={val_result.status}, satisfied={val_result.satisfied_metrics}, missing={val_result.missing_metrics})", flush=True)
+                return "continue", feedback, bumped_max_rounds
+
+    feedback = sampling_feedback(reply_text,last_user_prompt,messages,telemetry,execution_evidence,is_guide_intent)
+    if feedback:
+        return "continue", feedback, bumped_max_rounds
+
     return "pass", None, max_rounds
 
 
-def _dispatch_tool_calls(
-    structured_calls: List[Dict[str, Any]],
-    round_idx: int,
-    messages: List[Dict[str, Any]],
-    telemetry: TelemetryStats,
-    policy: RuntimePolicy,
-    executed_calls_history: List[str],
-    outbound_files: List[str],
-    deadline: Optional[float],
-    is_guide_intent: bool,
-    outbound_reminders: Optional[List[str]] = None,
-    last_user_prompt: Optional[str] = None
-) -> bool:
-    """
-    Executes a round of structured tool calls with safety checks and appends tool responses to messages.
-    Returns True if a send_file tool was executed, False otherwise.
-    """
-    is_file_sent = False
-    for tc in structured_calls:
-        telemetry.record_tool_call()
-        t_id = tc.get("id") or f"call_{round_idx}_{telemetry.tool_invocations}"
-        fn = tc.get("function", {})
-        t_name = fn.get("name", "unknown")
-        t_args_raw = fn.get("arguments", "{}")
+def _is_tool_error(tool_res: Any) -> bool:
+    """Checks whether tool output represents an execution error or failure via ToolResult contract."""
+    from dsh_modules.tool_result import is_tool_error
+    return is_tool_error(tool_res)
 
-        if isinstance(t_args_raw, str):
-            try:
-                t_params = json.loads(t_args_raw)
-            except Exception:
-                t_params = {}
-        elif isinstance(t_args_raw, dict):
-            t_params = t_args_raw
-        else:
-            t_params = {}
 
-        raw_preview = (
-            t_params.get("__search_query") or
-            t_params.get("query") or
-            t_params.get("cmd") or
-            t_params.get("city") or
-            str(t_params)
-        )
-        clean_param = sanitize_preview(raw_preview, max_chars=policy.param_preview_chars)
-        print(f"⚡ [Harness Tool Call] 正在调用工具: {t_name}({clean_param})...", flush=True)
-
-        if is_guide_intent and t_name == "bash":
-            cmd_str = str(t_params.get("cmd", "")).strip().lower()
-            is_mutative_install = (
-                cmd_str.startswith("pip install") or
-                cmd_str.startswith("pip3 install") or
-                cmd_str.startswith("python -m pip install") or
-                cmd_str.startswith("python3 -m pip install") or
-                "apt-get install" in cmd_str or
-                "apt install" in cmd_str or
-                "-m venv" in cmd_str
-            )
-            if is_mutative_install:
-                print(f"⚠️ [Harness Safety Intercept] 拦截在技术咨询模式下私自执行安装命令: {cmd_str}", flush=True)
-                tool_res = (
-                    "【系统安全拦截】：当前任务为技术咨询与安装/配置方法说明，用户并未授权在沙箱环境中实际执行安装变更。"
-                    "请立即停止在终端运行安装命令，直接根据已知技术规范与标准流程向用户输出完整详尽的安装方法说明与示例代码！"
-                )
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": t_id,
-                    "name": t_name,
-                    "content": tool_res
-                })
-                continue
-
-        mutating_reminder_tools = {
-            "create_reminders", "create_reminder", "set_reminder", "set_reminders",
-            "add_reminder", "add_reminders", "remind", "reminder",
-            "update_reminder", "update_reminders", "delete_reminder", "delete_reminders"
-        }
-        if t_name in mutating_reminder_tools:
-            if not has_explicit_reminder_intent(last_user_prompt):
-                print(f"🛡️ [Harness Safety Guard] 绝对阻断未授权的副作用提醒工具调用: {t_name}", flush=True)
-                tool_res = (
-                    "【系统安全拦截】：用户当前提问并非设置或管理提醒的明确意图。沙箱严禁在未获明确授权时执行副作用提醒工具！"
-                    "请直接向用户回复正文内容，不要调用提醒工具。"
-                )
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": t_id,
-                    "name": t_name,
-                    "content": tool_res
-                })
-                continue
-            create_reminder_tools = {
-                "create_reminders", "create_reminder", "set_reminder", "set_reminders",
-                "add_reminder", "add_reminders", "remind", "reminder",
-            }
-            if t_name in create_reminder_tools and not has_explicit_reminder_time(last_user_prompt):
-                print(f"🛡️ [Harness Safety Guard] 阻断缺少用户时间依据的提醒创建: {t_name}", flush=True)
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": t_id,
-                    "name": t_name,
-                    "content": "【系统安全拦截】：用户没有提供提醒时间或周期。请只追问必要时间，不得猜测并创建提醒。"
-                })
-                continue
-
-        call_sig = f"{t_name}:{json.dumps(t_params, sort_keys=True, ensure_ascii=False)}"
-        is_idempotent_read = t_name in (
-            "read_skill", "read_workspace_file", "weather",
-            "web_search", "fetch_page", "scan_knowledge", "read_file"
-        )
-        threshold = 1 if is_idempotent_read else 2
-        if executed_calls_history.count(call_sig) >= threshold:
-            print(f"⚠️ [Harness Loop Intercept] 工具 [{t_name}] 已重复调用，主动阻断死循环", flush=True)
-            tool_res = f"【系统提示】检测到该工具 ({t_name}) 已调用过且参数完全一致。结果已在上方历史中，请立即停止重复调用，直接根据现有信息继续执行或给出最终回答。"
-        else:
-            executed_calls_history.append(call_sig)
-            tool_res = execute_tool(t_name, t_params, deadline=deadline)
-
-        print(f"✓ 工具 [{t_name}] 执行完成", flush=True)
-
-        for m, _, _ in extract_dsh_markers(tool_res, "OUTBOUND_FILE"):
-            outbound_files.append(m.strip())
-
-        if outbound_reminders is not None:
-            for tag in ("REMINDER_CREATE", "REMINDER_UPDATE", "REMINDER_DELETE"):
-                for m, _, _ in extract_dsh_markers(tool_res, tag):
-                    outbound_reminders.append(m.strip())
-
-        if t_name.lower() in ["send_file", "send_workspace_file", "send_to_user", "send_to_wechat"]:
-            is_file_sent = True
-
-        clipped_tool_res = ContextBudget.clip_tool_result(tool_res, max_chars=policy.max_tool_result_chars)
-        clean_tool_res = strip_dsh_markers(clipped_tool_res, ["REMINDER_CREATE", "REMINDER_UPDATE", "REMINDER_DELETE"]).strip()
-        if not clean_tool_res:
-            clean_tool_res = "（工具执行完成，无控制台输出）"
-        messages.append({
-            "role": "tool",
-            "tool_call_id": t_id,
-            "name": t_name,
-            "content": clean_tool_res
-        })
-
-    return is_file_sent
+def _dispatch_tool_calls(*args, **kwargs):
+    return dispatch_tool_calls(*args, **kwargs, execute_fn=execute_tool,
+                               error_fn=_is_tool_error, preview_fn=sanitize_preview)
 
 
 def _build_fallback_report(messages: List[Dict[str, Any]], executed_calls_history: List[str]) -> str:
     """Builds a diagnostic recovery report when model returns empty response or unexecuted filler."""
     if executed_calls_history:
-        tool_names = ", ".join(sorted(set(executed_calls_history)))
+        tool_names = ", ".join(sorted(set(
+            c.split(":", 1)[0] if ":" in c else c
+            for c in executed_calls_history
+        )))
         data_clues = []
         for msg in reversed(messages):
             if msg.get("role") == "tool" and msg.get("content"):
@@ -789,7 +726,8 @@ def _finalize_agent_text(
     was_token_truncated: bool,
     telemetry: TelemetryStats,
     last_user_prompt: str = "",
-    expected_deliverables: Optional[List[str]] = None
+    expected_deliverables: Optional[List[str]] = None,
+    execution_evidence: Optional[List[ToolResult]] = None
 ) -> Tuple[str, List[str]]:
     """Finalizes agent text, requesting forced summary if needed and applying fallback reports."""
     has_pending_tool_calls = bool(parse_tool_calls(reply_text, is_guide=is_guide_intent))
@@ -912,6 +850,36 @@ def _finalize_agent_text(
             print("⚠️ [Harness Script Leak Guard] 检测到模型输出了未执行的脚本回显且未能自愈，触发安全兜底...", flush=True)
             final_text = _build_fallback_report(messages, executed_calls_history)
 
+    feedback = sampling_feedback(final_text,last_user_prompt,messages,telemetry,execution_evidence,is_guide_intent)
+    if feedback:
+        final_text += "\n\n⚠️ **【数据覆盖度与真实性提示】**\n当前分析基于局部切片或抽样数据。\n" + feedback
+
+    # 指标契约未完成阻碍声明（防模型在轮次耗尽时静默放行未完成的指标分析）
+    if not is_guide_intent and last_user_prompt:
+        contract = build_analysis_contract(last_user_prompt)
+        if contract.has_metrics:
+            val_result = validate_reply_against_contract(
+                contract=contract,
+                reply_text=final_text or "",
+                round_idx=MAX_AGENT_ROUNDS_HARD_CEILING,
+                max_rounds=MAX_AGENT_ROUNDS_HARD_CEILING,
+                messages=messages,
+                execution_evidence=execution_evidence
+            )
+            if not val_result.is_pass:
+                contract_warning = build_contract_termination_warning(
+                    contract=contract,
+                    val_result=val_result,
+                    messages=messages,
+                    telemetry=telemetry
+                )
+                if val_result.comparison_error and execution_evidence is not None:
+                    # Do not publish an unsupported extreme and then disclaim it.
+                    # This is a failed verification, not an alternate computed answer.
+                    final_text = "本次比较结论尚未通过执行证据核验。"
+                if "【指标核算未完成声明】" not in final_text:
+                    final_text += contract_warning
+
     return final_text, healed_files
 
 
@@ -926,11 +894,14 @@ def run_agent_loop(
     turn_start_time: Optional[float] = None,
     expected_deliverables: Optional[List[str]] = None,
     is_generate_intent: bool = False,
-    is_inspect_intent: bool = False
+    is_inspect_intent: bool = False,
+    telemetry: Optional[TelemetryStats] = None,
+    spreadsheet_analysis_required: bool = False,
 ) -> AgentLoopResult:
     """Executes the multi-turn ReAct tool calling loop up to max_rounds."""
     active_tools = tools if tools is not None else get_sandbox_tools()
-    telemetry = TelemetryStats()
+    if telemetry is None:
+        telemetry = TelemetryStats()
     outbound_files: List[str] = []
     outbound_reminders: List[str] = []
     executed_calls_history: List[str] = []
@@ -938,6 +909,31 @@ def run_agent_loop(
     was_token_truncated = False
     start_ts = turn_start_time if turn_start_time is not None else time.time()
     last_user_prompt = _extract_last_user_prompt(messages)
+    analysis_turn=AnalysisTurn(last_user_prompt) if spreadsheet_analysis_required else None
+    comparison_contract = build_analysis_contract(last_user_prompt)
+    comparison_required = (not is_generate_intent and not is_guide_intent
+        and supports_column_comparison(comparison_contract)
+        and any(t.get('function', {}).get('name') == 'compare_spreadsheet_columns' for t in active_tools))
+    if comparison_required:
+        messages.insert(0, {"role": "system", "content": COMPARISON_DELIVERY_INSTRUCTIONS})
+    if comparison_contract.is_advisory_intent and not comparison_contract.is_explicit_calc:
+        from .analysis_contract import build_advisory_guidance
+        advisory_guidance = build_advisory_guidance(comparison_contract)
+        if messages and messages[0].get("role") == "system":
+            messages[0]["content"] = str(messages[0].get("content") or "") + advisory_guidance
+        else:
+            messages.insert(0, {"role": "system", "content": advisory_guidance})
+    if spreadsheet_analysis_required:
+        active_tools=select_analysis_tools(active_tools,last_user_prompt)
+    if spreadsheet_analysis_required:
+        messages[0]["content"] = str(messages[0].get("content") or "") + ANALYSIS_INSTRUCTIONS + domain_plan_context(last_user_prompt)
+    requirements = build_analysis_plan_context(last_user_prompt) if is_inspect_intent and not is_guide_intent else ""
+    if requirements:
+        if messages and messages[0].get("role") == "system":
+            messages[0]["content"] = str(messages[0].get("content") or "") + requirements
+        else:
+            messages.insert(0, {"role": "system", "content": requirements})
+    execution_evidence: List[ToolResult] = []
     guard_nudges_count = 0
     max_rounds = min(max_rounds, MAX_AGENT_ROUNDS_HARD_CEILING)
 
@@ -959,10 +955,14 @@ def run_agent_loop(
             tools=active_tools,
             timeout=policy.single_request_timeout,
             deadline=deadline,
-            policy=policy
+            policy=policy,
+            stream_deltas=False if spreadsheet_analysis_required or comparison_required else None,
+            tool_choice="required" if active_tools and (
+                (spreadsheet_analysis_required and analysis_turn.response(execution_evidence) is None)
+                or (comparison_required and compile_comparison_response(comparison_contract,execution_evidence)[0] is None)) else None
         )
-        reply_text = llm_res.get("content", "") if isinstance(llm_res, dict) else str(llm_res)
-        structured_calls = list(llm_res.get("tool_calls", [])) if isinstance(llm_res, dict) else []
+        reply_text = (llm_res.get("content") or "") if isinstance(llm_res, dict) else str(llm_res or "")
+        structured_calls = list(llm_res.get("tool_calls") or []) if isinstance(llm_res, dict) else []
 
         telemetry.record_llm_response(llm_res, is_first_round=(round_idx == 0))
         if isinstance(llm_res, dict) and llm_res.get("finish_reason") == "length":
@@ -1011,6 +1011,27 @@ def run_agent_loop(
 
         # 若当轮无任何工具调用
         if not structured_calls:
+            if comparison_required:
+                compiled, error = compile_comparison_response(comparison_contract, execution_evidence)
+                telemetry.record_guard('comparison_evidence', 'reject' if error else 'accept', error)
+                if error and round_idx < MAX_AGENT_ROUNDS_HARD_CEILING - 1:
+                    max_rounds = min(MAX_AGENT_ROUNDS_HARD_CEILING, max_rounds+1)
+                    messages.append({'role':'assistant', 'content':reply_text})
+                    messages.append({'role':'user', 'content':'【系统比较证据验收】：'+error+COMPARISON_DELIVERY_INSTRUCTIONS})
+                    round_idx += 1
+                    continue
+                break
+            if spreadsheet_analysis_required:
+                response=analysis_turn.response(execution_evidence,reply_text)
+                error=None if response else analysis_turn.feedback(execution_evidence)
+                telemetry.record_guard("spreadsheet_evidence", "reject" if error else "accept", error)
+                if error and round_idx < MAX_AGENT_ROUNDS_HARD_CEILING - 1:
+                    max_rounds = min(MAX_AGENT_ROUNDS_HARD_CEILING, max_rounds+1)
+                    messages.append({"role":"assistant","content":reply_text})
+                    messages.append({"role":"user","content":error})
+                    round_idx += 1
+                    continue
+                break
             # Markdown 是声明式产物：当模型已经给出完整正文时，由运行时安全编译落盘，
             # 不再要求小模型拼接 bash/heredoc 命令。
             markdown_path, created_now = materialize_requested_markdown(
@@ -1070,7 +1091,10 @@ def run_agent_loop(
                 executed_calls_history=executed_calls_history,
                 guard_nudges_count=guard_nudges_count,
                 script_execution_error=script_execution_error,
-                tools=tools
+                tools=tools,
+                messages=messages,
+                telemetry=telemetry,
+                execution_evidence=execution_evidence
             )
             if action == "continue":
                 guard_nudges_count += 1
@@ -1107,8 +1131,21 @@ def run_agent_loop(
             deadline=deadline,
             is_guide_intent=is_guide_intent,
             outbound_reminders=outbound_reminders,
-            last_user_prompt=last_user_prompt
+            last_user_prompt=last_user_prompt,
+            execution_evidence=execution_evidence,
+            allowed_tool_names=[t.get("function", {}).get("name", t.get("name", ""))
+                                for t in active_tools]
         )
+
+        if analysis_turn:
+            completed=analysis_turn.complete(execution_evidence,telemetry,
+                [t.get('function',{}).get('name') for t in active_tools],deadline)
+            if analysis_turn.may_finish(execution_evidence):
+                break
+            messages.append({'role':'user','content':analysis_turn.feedback(execution_evidence)})
+            if completed:
+                messages.append({'role':'user','content':'【程序注册关系补算回执】\n'+
+                    '\n'.join(r.render_text() for r in completed)})
 
         # A weather lookup already returns current conditions plus forecast, and a successful
         # reminder mutation may not be repeated. Remove only these single-use capabilities
@@ -1135,6 +1172,9 @@ def run_agent_loop(
                 if tool.get("function", {}).get("name") not in exhausted
             ]
 
+        if spreadsheet_analysis_required and execution_evidence and execution_evidence[-1].is_error:
+            max_rounds=min(MAX_AGENT_ROUNDS_HARD_CEILING,max(max_rounds,round_idx+2))
+
         # 当前轮次已执行工具，重置 reply_text，防止内部工具前置垫话或执行脚本残留进入最终回复
         reply_text = ""
 
@@ -1150,12 +1190,17 @@ def run_agent_loop(
                 deadline=deadline
             )
             telemetry.record_llm_response(final_step, is_first_round=False)
-            reply_text = final_step.get("content", "") if isinstance(final_step, dict) else str(final_step)
+            reply_text = (final_step.get("content") or "") if isinstance(final_step, dict) else str(final_step or "")
             break
 
         round_idx += 1
 
-    final_text, healed_files = _finalize_agent_text(
+    if comparison_required:
+        compiled, error = compile_comparison_response(comparison_contract, execution_evidence)
+        telemetry.record_guard('comparison_evidence', 'reject' if error else 'accept', error)
+    final_text, healed_files = ((compiled or '本次比较结论尚未通过执行证据核验。\n\n'+error, [])
+        if comparison_required else (analysis_turn.render(execution_evidence,reply_text,telemetry,policy=policy,model=model,deadline=deadline), [])
+        if spreadsheet_analysis_required else _finalize_agent_text(
         reply_text=reply_text,
         messages=messages,
         model=model,
@@ -1166,8 +1211,9 @@ def run_agent_loop(
         was_token_truncated=was_token_truncated,
         telemetry=telemetry,
         last_user_prompt=last_user_prompt,
-        expected_deliverables=expected_deliverables
-    )
+        expected_deliverables=expected_deliverables,
+        execution_evidence=execution_evidence
+    ))
     if requests_markdown_artifact(last_user_prompt):
         final_text = unwrap_outer_markdown_fence(final_text)
     for hf in healed_files:
@@ -1199,5 +1245,6 @@ def run_agent_loop(
         outbound_files=outbound_files,
         outbound_reminders=outbound_reminders,
         telemetry=telemetry,
-        messages=messages
+        messages=messages,
+        execution_evidence=execution_evidence
     )

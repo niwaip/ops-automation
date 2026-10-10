@@ -52,8 +52,15 @@ from .reminder_tools import (
     update_personal_reminder,
 )
 from .deliverable_contract import write_markdown_artifact
+from .comparison_tool_schema import COMPARISON_TOOL
+from .spreadsheet_analysis_schema import ANALYSIS_TOOL, ANALYSIS_CAPABILITIES, ANALYSIS_TOOL_NAMES
+from .spreadsheet_context import STRUCTURE_TOOL, STRUCTURE_TOOL_NAME
 
 SANDBOX_TOOLS = [
+    STRUCTURE_TOOL,
+    COMPARISON_TOOL,
+    ANALYSIS_TOOL,
+    *ANALYSIS_CAPABILITIES,
     {
         "type": "function",
         "function": {
@@ -129,6 +136,14 @@ SANDBOX_TOOLS = [
                     "end_line": {
                         "type": "integer",
                         "description": "结束行号（可选，包含该行，用于分片读取长文件）"
+                    },
+                    "sheet": {
+                        "type": "string",
+                        "description": "工作表名称（可选，用于直接定位 Excel 工作表，如 '交易明细'）"
+                    },
+                    "range": {
+                        "type": "string",
+                        "description": "单元格区域（可选，用于直接切片读取 Excel 区域，如 'A4:K50' 或 '交易明细!A4:K50'）"
                     }
                 },
                 "required": ["file_path"]
@@ -479,6 +494,20 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
         )
         res = fetch_page(str(url), deadline=deadline)
 
+    elif name_clean == "compare_spreadsheet_columns":
+        from .table_comparison import execute_column_comparison
+        res = execute_column_comparison(params, deadline=deadline)
+
+    elif name_clean == STRUCTURE_TOOL_NAME:
+        from .spreadsheet_context import execute_spreadsheet_structure
+        res = execute_spreadsheet_structure(params, deadline=deadline)
+
+    elif name_clean == "analyze_spreadsheet" or name_clean in ANALYSIS_TOOL_NAMES:
+        from .spreadsheet_analysis import execute_spreadsheet_analysis
+        if name_clean == "validate_spreadsheet_rows":
+            params = {**params,"profile_tables":True}
+        res = execute_spreadsheet_analysis(params, deadline=deadline)
+
     elif name_clean in ["read_file", "cat", "view_file", "read_doc", "parse_file", "open_file", "read"]:
         fpath = (
             params.get("file_path") or
@@ -498,8 +527,20 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
             e_val = int(e_line) if e_line is not None else None
         except (ValueError, TypeError):
             e_val = None
+        prompt_val = params.get("prompt") or params.get("query") or params.get("instruction") or None
+        sheet_val = params.get("sheet") or params.get("sheet_name") or None
+        range_val = params.get("range") or params.get("cell_range") or None
         current_model = os.environ.get("DSH_MODEL") or None
-        res = read_workspace_file(str(fpath), start_line=s_val, end_line=e_val, deadline=deadline, model_name=current_model)
+        res = read_workspace_file(
+            str(fpath),
+            start_line=s_val,
+            end_line=e_val,
+            deadline=deadline,
+            model_name=current_model,
+            prompt=prompt_val,
+            sheet_name=sheet_val,
+            cell_range=range_val
+        )
 
     elif name_clean in ["patch_file", "replace_content", "patch", "edit_file", "replace_in_file"]:
         fpath = (

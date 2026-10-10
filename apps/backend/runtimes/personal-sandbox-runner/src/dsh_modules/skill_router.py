@@ -73,11 +73,20 @@ GENERATE_ACTION_PATTERNS = [
 INSPECT_ACTION_PATTERNS = [
     "查看", "阅读", "查阅", "读取", "看下", "看一下", "看看", "检查", "分析", "审阅", "浏览",
     "排查", "检索", "探查", "诊断", "查下", "查一下", "搜索", "搜下", "搜一下", "提取内容", "问答",
-    "帮我看", "看代码", "查代码", "read", "view", "inspect", "check", "examine", "analyze", "cat", "show"
+    "帮我看", "看代码", "查代码", "解释", "说明", "对比", "比较", "排序", "核对", "校验", "为什么",
+    "检验", "稽核", "对账", "核查", "核验", "验算", "勾稽",
+    "评估", "测算", "测一下", "变化", "原因", "read", "view", "inspect", "check", "examine", "analyze", "cat", "show", "explain", "compare"
+]
+
+READONLY_SUMMARY_PATTERNS = [
+    "总结", "归纳", "汇总", "统计", "计算", "核算", "盘点", "梳理", "提炼", "列出", "列举", "概括",
+    "找下", "找一下", "找出", "找到", "定位", "查出", "求出", "计算出", "算下", "算一下", "算一算",
+    "求和", "占比", "达成率", "偏差", "最大", "最小"
 ]
 
 CONTENT_QUERY_PATTERNS = [
-    "内容是什么", "有什么内容", "写了什么", "讲了什么", "包含什么", "里面有", "里面写了", "里写了"
+    "内容是什么", "有什么内容", "写了什么", "讲了什么", "包含什么", "里面有", "里面写了", "里写了",
+    "有哪些表", "有哪些工作表", "有什么表", "有哪些sheet", "什么sheet", "列出sheet", "清单", "用途"
 ]
 
 GENERATIVE_SLASH_COMMANDS = {
@@ -142,11 +151,12 @@ def resolve_file_action_intent(query: str, history: Optional[List[Dict[str, Any]
 
     # 2. 基础谓词模式检测
     has_inspect = any(k in lower_q for k in INSPECT_ACTION_PATTERNS) or any(k in lower_q for k in CONTENT_QUERY_PATTERNS)
+    has_summary = any(k in lower_q for k in READONLY_SUMMARY_PATTERNS)
     has_generate = any(k in lower_q for k in GENERATE_ACTION_PATTERNS)
 
     # 3. 语法结构与消歧分析
-    if has_inspect and not has_generate:
-        # 纯查看/查阅/分析意图（如：“查看文件内容”、“查看 sample.pdf”、“分析销售数据”）
+    if (has_inspect or has_summary) and not has_generate:
+        # 纯查看/查阅/分析/归纳意图（如：“查看文件内容”、“总结2026年收入”、“分析销售数据”）
         return False, True
 
     if has_generate and not has_inspect:
@@ -436,21 +446,23 @@ class SkillRouter:
         prompt: str,
         existing_history: Optional[List[Dict[str, Any]]] = None,
         available_skills: Optional[List[Dict[str, Any]]] = None,
-        allow_research: bool = False
+        allow_research: bool = False,
+        files: Optional[List[str]] = None
     ) -> SkillRoutingResult:
         """
         Determines skill and intent for a given prompt via semantic affinity matching.
         """
         effective_query = prompt
         # 提取上传附件或有效附件信息，用于指代消歧与多模态文件亲和度解析
-        attached_files: List[str] = []
+        attached_files: List[str] = list(dict.fromkeys(f.strip() for f in (files or []) if isinstance(f, str) and f.strip()))
         att_match = re.search(r'【(?:当前轮次用户上传附件|当前会话有效附件清单)】:\s*([^（\n]+)', prompt)
         if att_match:
             raw_files = att_match.group(1).split(",")
             for rf in raw_files:
                 clean_f = rf.strip()
                 if clean_f and "." in clean_f:
-                    attached_files.append(clean_f)
+                    if clean_f not in attached_files:
+                        attached_files.append(clean_f)
 
         if "用户指令：" in prompt:
             effective_query = prompt.split("用户指令：")[-1].strip()

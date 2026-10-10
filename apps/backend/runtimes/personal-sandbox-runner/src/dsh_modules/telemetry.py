@@ -163,7 +163,26 @@ class TelemetryStats:
     tool_invocations: int = 0
     llm_invocations: int = 0
     tokens: Dict[str, Any] = field(default_factory=dict)
-    finish_reason: str = "stop"
+    finish_reason: str = "unknown"
+    round_finish_reasons: List[str] = field(default_factory=list)
+    tool_calls_detail: List[Dict[str, Any]] = field(default_factory=list)
+    guard_decisions: List[Dict[str, Any]] = field(default_factory=list)
+
+    def record_guard(self, guard: str, action: str, reason: Any = None) -> None:
+        self.guard_decisions.append({"guard":guard,"action":action,"reason":reason})
+
+    def record_execution_result(self, result: Any) -> None:
+        if not self.tool_calls_detail:
+            return
+        detail = self.tool_calls_detail[-1]
+        detail["result_status"] = result.status
+        if result.error:
+            detail["error_code"] = result.error_code
+        if isinstance(result.data,dict):
+            for key in ("evidence_id","plan_hash","kind"):
+                if key in result.data:detail[key] = result.data[key]
+        if result.provenance:
+            detail["workbook_id"] = result.provenance.get("workbook_id")
 
     def record_llm_response(self, llm_res: Any, is_first_round: bool = False) -> None:
         """Accumulates latency and usage from an LLM call response across rounds."""
@@ -188,11 +207,31 @@ class TelemetryStats:
             for k, v in new_usage.items():
                 if k not in ["prompt_tokens", "completion_tokens", "total_tokens"]:
                     self.tokens[k] = v
-        self.finish_reason = llm_res.get("finish_reason", "stop")
+        fr = llm_res.get("finish_reason") or "unknown"
+        self.finish_reason = fr
+        self.round_finish_reasons.append(fr)
 
-    def record_tool_call(self) -> None:
-        """Increments tool invocation counter."""
+    def record_tool_call(
+        self,
+        tool_name: str = "",
+        params: Any = None,
+        status: str = "success"
+    ) -> None:
+        """Increments tool invocation counter and records sanitized execution detail."""
         self.tool_invocations += 1
+        if tool_name:
+            param_summary = {}
+            if isinstance(params, dict):
+                for k, v in params.items():
+                    val_str = str(v)
+                    if len(val_str) > 120:
+                        val_str = val_str[:120] + "..."
+                    param_summary[k] = val_str
+            self.tool_calls_detail.append({
+                "name": tool_name,
+                "params": param_summary,
+                "status": status
+            })
 
     def set_wall_clock_duration(self, ms: float) -> None:
         """Sets overall end-to-end wall clock execution duration."""
@@ -206,8 +245,12 @@ class TelemetryStats:
             "durationMs": round(effective_duration, 2),
             "llmDurationMs": round(self.total_ms, 2),
             "toolCallsCount": self.tool_invocations,
+            "toolCalls": self.tool_calls_detail,
+            "llmInvocations": self.llm_invocations,
             "tokens": self.tokens,
-            "finishReason": self.finish_reason
+            "finishReason": self.finish_reason,
+            "roundFinishReasons": self.round_finish_reasons,
+            "guardDecisions": self.guard_decisions,
         }
         return json.dumps(data, ensure_ascii=False)
 
@@ -252,4 +295,3 @@ class TelemetryStats:
         """Prints final clean answer delimiter with length prefix and legacy compatibility."""
         out_str = str(text) if text is not None else ""
         print(f"\n{format_dsh_marker('FINAL_OUTPUT', out_str)}\n<<<DSH_FINAL_OUTPUT>>>\n" + out_str, flush=True)
-

@@ -1,0 +1,4615 @@
+{
+  "session_id": "chat-session-1791550029094-48binl5y",
+  "date": "2026-10-09",
+  "scope": "20:47 catalogue and following four turns",
+  "mode": "read-only audit, no model replay or code mutation",
+  "traces": [
+    {
+      "turn": 1,
+      "query": "列出工作簿中的Sheet，并说明每个Sheet用途。",
+      "completed_at": "2026-10-09T12:47:37.862Z",
+      "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+      "harness": "deepseek-harness",
+      "executed": true,
+      "durationMs": 11145,
+      "exitCode": 0,
+      "metrics": {
+        "ttftMs": 10462.64,
+        "durationMs": 10561.34,
+        "llmDurationMs": 10466.69,
+        "toolCallsCount": 0,
+        "toolCalls": [],
+        "llmInvocations": 1,
+        "tokens": {
+          "prompt_tokens": 7480,
+          "completion_tokens": 703,
+          "total_tokens": 8183
+        },
+        "finishReason": "stop",
+        "roundFinishReasons": [
+          "stop"
+        ],
+        "guardDecisions": []
+      }
+    },
+    {
+      "turn": 2,
+      "query": "总结2026年收入、毛利率、营业利润和净利润。",
+      "completed_at": "2026-10-09T12:48:42.897Z",
+      "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+      "harness": "deepseek-harness",
+      "executed": true,
+      "durationMs": 16622,
+      "exitCode": 0,
+      "metrics": {
+        "ttftMs": 6386.79,
+        "durationMs": 16097.79,
+        "llmDurationMs": 15858.52,
+        "toolCallsCount": 3,
+        "toolCalls": [
+          {
+            "name": "aggregate_spreadsheet",
+            "params": {
+              "file_path": "/workspace/AI能力测试_财务报表.xlsx",
+              "tables": "[{'id': '月度经营', 'sheet': '月度经营', 'data_range': 'A4:N15', 'header_row': 3}]",
+              "calculations": "[{'id': 'rev_2026', 'label': '2026年营业收入', 'metric_id': 'finance.revenue', 'expression': {'aggregate': 'sum', 'table': '月..."
+            },
+            "status": "success",
+            "result_status": "success",
+            "evidence_id": "352c5bb7d740464cc32b66b7",
+            "plan_hash": "9a7f631e7e1b82799aa9b5ab9e191fe3ab86202523d684268c40bb962aa89736",
+            "kind": "spreadsheet_analysis",
+            "workbook_id": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f"
+          },
+          {
+            "name": "aggregate_spreadsheet",
+            "params": {
+              "file_path": "/workspace/AI能力测试_财务报表.xlsx",
+              "tables": "[{'id': '月度经营', 'sheet': '月度经营', 'data_range': 'A4:N15', 'header_row': 3}]",
+              "calculations": "[{'id': 'gm_ratio', 'label': '2026年综合毛利率', 'metric_id': 'finance.gross_margin', 'expression': {'ref': 'gp_2026'}, 'outpu..."
+            },
+            "status": "error",
+            "result_status": "error",
+            "error_code": "invalid_analysis_plan",
+            "workbook_id": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f"
+          },
+          {
+            "name": "aggregate_spreadsheet",
+            "params": {
+              "file_path": "/workspace/AI能力测试_财务报表.xlsx",
+              "tables": "[{'id': '月度经营', 'sheet': '月度经营', 'data_range': 'A4:N15', 'header_row': 3}]",
+              "calculations": "[{'id': 'gm_ratio', 'label': '2026年综合毛利率', 'metric_id': 'finance.gross_margin', 'expression': {'op': 'divide', 'args': [..."
+            },
+            "status": "success",
+            "result_status": "success",
+            "evidence_id": "0ebb8697ba6bf5393d3682b5",
+            "plan_hash": "0cf3292e580a54231fcba810d30f897265bcfb8817d81471ff445b07d453e3c1",
+            "kind": "spreadsheet_analysis",
+            "workbook_id": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f"
+          }
+        ],
+        "llmInvocations": 3,
+        "tokens": {
+          "prompt_tokens": 49927,
+          "completion_tokens": 1179,
+          "total_tokens": 51106
+        },
+        "finishReason": "tool_calls",
+        "roundFinishReasons": [
+          "tool_calls",
+          "tool_calls",
+          "tool_calls"
+        ],
+        "guardDecisions": [
+          {
+            "guard": "spreadsheet_evidence",
+            "action": "accept",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "turn": 3,
+      "query": "找出收入与净利润偏差最大的月份。",
+      "completed_at": "2026-10-09T12:50:32.349Z",
+      "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+      "harness": "deepseek-harness",
+      "executed": true,
+      "durationMs": 33629,
+      "exitCode": 0,
+      "metrics": {
+        "ttftMs": 9595.9,
+        "durationMs": 33027.8,
+        "llmDurationMs": 32801.69,
+        "toolCallsCount": 3,
+        "toolCalls": [
+          {
+            "name": "bash",
+            "params": {
+              "command": "cd /workspace && python3 << 'PYEOF'\nimport json\nimport openpyxl\n\nwb_path = \"/workspace/AI能力测试_财务报表.xlsx\"\nwb = openpyxl.l..."
+            },
+            "status": "blocked"
+          },
+          {
+            "name": "read_file",
+            "params": {
+              "end_line": "20",
+              "file_path": "AI能力测试_财务报表.xlsx",
+              "range": "预算对比!A4:F15",
+              "start_line": "1"
+            },
+            "status": "success",
+            "result_status": "success",
+            "workbook_id": null
+          },
+          {
+            "name": "compare_spreadsheet_columns",
+            "params": {
+              "file_path": "AI能力测试_财务报表.xlsx",
+              "sheet": "预算对比",
+              "data_range": "A4:F15",
+              "header_row": "3",
+              "group_column": "A",
+              "comparisons": "[{'label': '收入偏差', 'left_column': 'C', 'right_column': 'B'}, {'label': '净利润偏差', 'left_column': 'F', 'right_column': 'E'}...",
+              "basis": "budget",
+              "rank_by": "absolute_difference",
+              "extreme": "max",
+              "expected_groups": "['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']"
+            },
+            "status": "success",
+            "result_status": "success",
+            "kind": "column_comparison",
+            "workbook_id": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f"
+          }
+        ],
+        "llmInvocations": 5,
+        "tokens": {
+          "prompt_tokens": 52158,
+          "completion_tokens": 2779,
+          "total_tokens": 54937
+        },
+        "finishReason": "stop",
+        "roundFinishReasons": [
+          "stop",
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "stop"
+        ],
+        "guardDecisions": []
+      }
+    },
+    {
+      "turn": 4,
+      "query": "解释下半年盈利能力变化。",
+      "completed_at": "2026-10-09T12:51:21.369Z",
+      "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+      "harness": "deepseek-harness",
+      "executed": true,
+      "durationMs": 32202,
+      "exitCode": 0,
+      "metrics": {
+        "ttftMs": 12155.56,
+        "durationMs": 31656.34,
+        "llmDurationMs": 31418.36,
+        "toolCallsCount": 3,
+        "toolCalls": [
+          {
+            "name": "aggregate_spreadsheet",
+            "params": {
+              "file_path": "AI能力测试_财务报表.xlsx",
+              "tables": "[{'id': 'monthly_ops', 'sheet': '月度经营', 'data_range': 'A4:N15', 'header_row': 3}, {'id': 'monthly_ops_h2', 'sheet': '月度经...",
+              "calculations": "[{'id': 'h2_rev', 'label': '下半年收入', 'expression': {'aggregate': 'sum', 'table': 'monthly_ops_h2', 'column': '营业收入', 'uni..."
+            },
+            "status": "error",
+            "result_status": "error",
+            "error_code": "invalid_analysis_plan",
+            "workbook_id": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f"
+          },
+          {
+            "name": "aggregate_spreadsheet",
+            "params": {
+              "file_path": "AI能力测试_财务报表.xlsx",
+              "tables": "[{'id': 'monthly_ops_h1', 'sheet': '月度经营', 'data_range': 'A4:N9', 'header_row': 3, 'filters': [{'column': '月份', 'values'...",
+              "calculations": "[{'id': 'h1_rev', 'label': '上半年营业收入', 'expression': {'aggregate': 'sum', 'table': 'monthly_ops_h1', 'column': '营业收入', 'u..."
+            },
+            "status": "error",
+            "result_status": "error",
+            "error_code": "invalid_analysis_plan",
+            "workbook_id": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f"
+          },
+          {
+            "name": "aggregate_spreadsheet",
+            "params": {
+              "file_path": "AI能力测试_财务报表.xlsx",
+              "tables": "[{'id': 'monthly_ops_h1', 'sheet': '月度经营', 'data_range': 'A4:N9', 'header_row': 3, 'filters': [{'column': '月份', 'values'...",
+              "calculations": "[{'id': 'h1_rev', 'label': '上半年营业收入', 'expression': {'aggregate': 'sum', 'table': 'monthly_ops_h1', 'column': '营业收入', 'u..."
+            },
+            "status": "success",
+            "result_status": "success",
+            "evidence_id": "ce72e828cd3609500256259c",
+            "plan_hash": "de9bcb262bf5b761f6e4160d95a7644ca49af90c512c0b419148ad6a93579b11",
+            "kind": "spreadsheet_analysis",
+            "workbook_id": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f"
+          }
+        ],
+        "llmInvocations": 3,
+        "tokens": {
+          "prompt_tokens": 53693,
+          "completion_tokens": 3347,
+          "total_tokens": 57040
+        },
+        "finishReason": "tool_calls",
+        "roundFinishReasons": [
+          "tool_calls",
+          "tool_calls",
+          "tool_calls"
+        ],
+        "guardDecisions": [
+          {
+            "guard": "spreadsheet_evidence",
+            "action": "accept",
+            "reason": null
+          }
+        ]
+      }
+    },
+    {
+      "turn": 5,
+      "query": "检查交易明细是否有重复凭证。",
+      "completed_at": "2026-10-09T12:51:53.942Z",
+      "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+      "harness": "deepseek-harness",
+      "executed": true,
+      "durationMs": 14232,
+      "exitCode": 0,
+      "metrics": {
+        "ttftMs": 4636,
+        "durationMs": 13734.24,
+        "llmDurationMs": 13598.77,
+        "toolCallsCount": 1,
+        "toolCalls": [
+          {
+            "name": "validate_spreadsheet_rows",
+            "params": {
+              "file_path": "AI能力测试_财务报表.xlsx",
+              "tables": "[{'id': 'txn', 'sheet': '交易明细', 'data_range': 'A4:K83', 'header_row': 3}]",
+              "rules": "[{'id': 'rule_voucher_dup', 'label': '检查凭证号唯一性（重复凭证）', 'table': 'txn', 'column': '凭证号', 'kind': 'unique', 'assumptions':..."
+            },
+            "status": "success",
+            "result_status": "success",
+            "evidence_id": "a78ee413dc17f6de4206f285",
+            "plan_hash": "c90296462b7f55494d16492f28ea49ce8d87d6c9bee0d5362912b14b4c85c914",
+            "kind": "spreadsheet_analysis",
+            "workbook_id": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f"
+          }
+        ],
+        "llmInvocations": 2,
+        "tokens": {
+          "prompt_tokens": 42100,
+          "completion_tokens": 905,
+          "total_tokens": 43005
+        },
+        "finishReason": "stop",
+        "roundFinishReasons": [
+          "tool_calls",
+          "stop"
+        ],
+        "guardDecisions": [
+          {
+            "guard": "spreadsheet_evidence",
+            "action": "accept",
+            "reason": null
+          },
+          {
+            "guard": "spreadsheet_evidence",
+            "action": "accept",
+            "reason": null
+          }
+        ]
+      }
+    }
+  ],
+  "offline_reconstruction": {
+    "method": "offline reconstruction, not a captured historical model request",
+    "source_sha_before": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+    "policy": {
+      "max_rounds": 3,
+      "max_history_chars": 16000,
+      "max_single_history_chars": 4000,
+      "max_attachment_chars": 24000,
+      "max_skill_chars": 12000,
+      "max_tool_result_chars": 10000,
+      "param_preview_chars": 80,
+      "recent_history_save_count": 20,
+      "single_request_timeout": 180,
+      "total_task_timeout": 300,
+      "timeout_seconds": 300,
+      "timezone": "Asia/Shanghai",
+      "temperature": 0.4,
+      "max_tokens": 16384,
+      "model_socket_timeout": 60,
+      "model_max_retries": 2,
+      "vision_timeout": 60,
+      "thinking": true,
+      "reasoning_effort": "medium"
+    },
+    "modules": {
+      "runner": {
+        "path": "/usr/local/bin/dsh_modules/runner.py",
+        "sha256": "dbc101c27c94b4c0399f6066bfe295b6380962849373daf08e34ba0847715d6a",
+        "mtime": 1791545785.5270798
+      },
+      "agent_loop": {
+        "path": "/usr/local/bin/dsh_modules/agent_loop.py",
+        "sha256": "dbebe027d0d4da8f8e1234f5129ef5346d4f8cebcfb766da7b6f6a2a5764873d",
+        "mtime": 1791549193.4429753
+      },
+      "analysis_contract": {
+        "path": "/usr/local/bin/dsh_modules/analysis_contract.py",
+        "sha256": "ac5b05c7917cd7e00b4b6e6ee9108b84a3c560a38641f19e59afbfbfacc91767",
+        "mtime": 1791549145.1433685
+      },
+      "analysis_semantics": {
+        "path": "/usr/local/bin/dsh_modules/analysis_semantics.py",
+        "sha256": "9cfae5437753ead6132cffaaaf3a878718c65d0f9541a4bb73cef804d3a478c4",
+        "mtime": 1791549445.1250005
+      },
+      "analysis_domain_finance": {
+        "path": "/usr/local/bin/dsh_modules/analysis_domain_finance.py",
+        "sha256": "d287caef9af3a48435d33947707e18c20874f1b6dfbefc2e754e66771846d7be",
+        "mtime": 1791549445.1617718
+      },
+      "analysis_domain_commerce": {
+        "path": "/usr/local/bin/dsh_modules/analysis_domain_commerce.py",
+        "sha256": "c5b762dd04a286d81e29e0f3cb81330b56ccffef3b99720b90f538031e4d0eb4",
+        "mtime": 1791549145.142892
+      },
+      "analysis_validation": {
+        "path": "/usr/local/bin/dsh_modules/analysis_validation.py",
+        "sha256": "a36ccfc99a125f114dde8dae7cdf664972f72fc8c7fcce962118fdc59ec35301",
+        "mtime": 1791539653.509468
+      },
+      "comparison_context": {
+        "path": "/usr/local/bin/dsh_modules/comparison_context.py",
+        "sha256": "f2d965c563d0b960616af739dacb73daf17c22770989f82dff9e0ee68b7d70df",
+        "mtime": 1791539785.7717938
+      },
+      "comparison_evidence": {
+        "path": "/usr/local/bin/dsh_modules/comparison_evidence.py",
+        "sha256": "146a6af66aea0f8c19fab3d1d6d4e8917632e0e2cf4052543c8418246df29b38",
+        "mtime": 1791540348.7674468
+      },
+      "table_comparison": {
+        "path": "/usr/local/bin/dsh_modules/table_comparison.py",
+        "sha256": "822e45e215c2aa0ed231c86e9560c32c3012e0bbceedb05dc7ba5b19697bc556",
+        "mtime": 1791539972.0915115
+      },
+      "spreadsheet_units": {
+        "path": "/usr/local/bin/dsh_modules/spreadsheet_units.py",
+        "sha256": "2ffe2a57d2221431daad51bda6655caa17ceb03ef1f72b25c0a53c28b457e68b",
+        "mtime": 1791540168.0545256
+      },
+      "context_budget": {
+        "path": "/usr/local/bin/dsh_modules/context_budget.py",
+        "sha256": "f3485fb60cccffbbacd4c5a9c6dbf1c38f5f9715f904a2b9983eb07e2a7c5a5a",
+        "mtime": 1791546728.6250231
+      },
+      "runtime_policy": {
+        "path": "/usr/local/bin/dsh_modules/runtime_policy.py",
+        "sha256": "669db01bdc24fa92a53953cdbe80b19faec00f699e6ba7510009c490ca5e1c81",
+        "mtime": 1791472936.196547
+      },
+      "skill_router": {
+        "path": "/usr/local/bin/dsh_modules/skill_router.py",
+        "sha256": "12355c621b8f3041e61737144cbb6854b398957678b2c77228b2b336ed3751ea",
+        "mtime": 1791537136.3476615
+      },
+      "prompt_builder": {
+        "path": "/usr/local/bin/dsh_modules/prompt_builder.py",
+        "sha256": "6627604e8d1315b61a43ca2213cdaa0546049d813c528fa78322abc2396b66b3",
+        "mtime": 1791539102.2636814
+      },
+      "tools": {
+        "path": "/usr/local/bin/dsh_modules/tools.py",
+        "sha256": "a77e3df569b50f67bd518f759bdf71830320b6528112e391a8af9f9f925d75c4",
+        "mtime": 1791545705.9079263
+      },
+      "file_tools": {
+        "path": "/usr/local/bin/dsh_modules/file_tools.py",
+        "sha256": "f6f63eabf6e405efe8d29871f189aca7c3ccd72d50fdb13fe1223f074e6ab133",
+        "mtime": 1791471249.264891
+      },
+      "excel_tools": {
+        "path": "/usr/local/bin/dsh_modules/excel_tools.py",
+        "sha256": "8f9471b3415eb4177c3b114405ccbdae9dbf4555bf660298d0230244354d5de6",
+        "mtime": 1791544026.8873286
+      },
+      "workbook_calculation": {
+        "path": "/usr/local/bin/dsh_modules/workbook_calculation.py",
+        "sha256": "52ea7ab8120387537c33587eb90084dad925adfd20445e4591740fb948247245",
+        "mtime": 1791532696.3201606
+      },
+      "llm": {
+        "path": "/usr/local/bin/dsh_modules/llm.py",
+        "sha256": "9e90fce3367e74d46e624760962877c709bb0d66a4639232d3689a1e47a63eea",
+        "mtime": 1791546608.0295687
+      },
+      "spreadsheet_analysis": {
+        "path": "/usr/local/bin/dsh_modules/spreadsheet_analysis.py",
+        "sha256": "02af1b15bfe720182e88c250ca3f39cf7d9d86a8c00fffaf22e5bf11521cd609",
+        "mtime": 1791549445.145055
+      },
+      "spreadsheet_expression": {
+        "path": "/usr/local/bin/dsh_modules/spreadsheet_expression.py",
+        "sha256": "98703b24ebf6d426422ca17bab56b3b691f55a53e8da8b3de1ef62fe36ca72d8",
+        "mtime": 1791547806.8190649
+      },
+      "spreadsheet_quality": {
+        "path": "/usr/local/bin/dsh_modules/spreadsheet_quality.py",
+        "sha256": "e2f180a01d7db421baa999f6eed2d0c3a0affc40365921c2202995a9a1e43f94",
+        "mtime": 1791547397.7463198
+      },
+      "spreadsheet_analysis_evidence": {
+        "path": "/usr/local/bin/dsh_modules/spreadsheet_analysis_evidence.py",
+        "sha256": "7ca6e41e8916aaea6a8792c876a9c766719ed724c8dc020f67c48777fb68b468",
+        "mtime": 1791549193.4603312
+      },
+      "spreadsheet_analysis_schema": {
+        "path": "/usr/local/bin/dsh_modules/spreadsheet_analysis_schema.py",
+        "sha256": "2c85408a943c86767a66bb873b085a2db3a72826ff9a76fec182c58c3bd16a6d",
+        "mtime": 1791549193.3857665
+      },
+      "spreadsheet_context": {
+        "path": "/usr/local/bin/dsh_modules/spreadsheet_context.py",
+        "sha256": "c7fd5a4c78dcd541cbf640ff3deddb6018493d5d096e303efadcca0d6ecff4bb",
+        "mtime": 1791546235.6342828
+      },
+      "sampling_guard": {
+        "path": "/usr/local/bin/dsh_modules/sampling_guard.py",
+        "sha256": "370b3de262bb2a6ec332660b1bb7343d657619b125800fa09555d7e7a3ff21c1",
+        "mtime": 1791544362.7340539
+      },
+      "tool_dispatch": {
+        "path": "/usr/local/bin/dsh_modules/tool_dispatch.py",
+        "sha256": "797391d7cf72e180dff3f8c5df4ebad74da708b073c1192a5c4c8e955b34aa40",
+        "mtime": 1791549329.3361866
+      },
+      "spreadsheet_scope": {
+        "path": "/usr/local/bin/dsh_modules/spreadsheet_scope.py",
+        "sha256": "6834a7addc5384139e88bf7350ba6cf91ccb661b61d478e1efd6f94abf5ee799",
+        "mtime": 1791549145.1437848
+      },
+      "spreadsheet_checks": {
+        "path": "/usr/local/bin/dsh_modules/spreadsheet_checks.py",
+        "sha256": "04ad3140d0b80a5747a3d9e3ec27a8e94660f5c59999e673d1ec05073bf42847",
+        "mtime": 1791546607.9734023
+      },
+      "spreadsheet_plan": {
+        "path": "/usr/local/bin/dsh_modules/spreadsheet_plan.py",
+        "sha256": "cb384537fc19fa3b0f4f5c0bc431d58c5b1751bb6a32b5cb053ec7be393b4413",
+        "mtime": 1791547806.774837
+      },
+      "spreadsheet_trends": {
+        "path": "/usr/local/bin/dsh_modules/spreadsheet_trends.py",
+        "sha256": "54186f1c7b26e2645a50655ac0d171ab98a1bf3ba1607afde475d926146df954",
+        "mtime": 1791548481.8119109
+      },
+      "spreadsheet_expression_schema": {
+        "path": "/usr/local/bin/dsh_modules/spreadsheet_expression_schema.py",
+        "sha256": "7e6b290d43f4d816d8e8cf5ae03eea456e98cdc6daa58bc14710b8140d419819",
+        "mtime": 1791547806.8644958
+      },
+      "spreadsheet_semantic_bindings": {
+        "path": "/usr/local/bin/dsh_modules/spreadsheet_semantic_bindings.py",
+        "sha256": "05f254507f803eb5d55efc8698d17d6d1a4fc3fd4b3d5e4d183064c92d542367",
+        "mtime": 1791549445.1072166
+      }
+    },
+    "skills": {
+      "/opt/dsh/skills/xlsx/SKILL.md": {
+        "sha256": "0114126ee8130b71665d0f815560dd84c23280ab3315b747188b0caf4d758494",
+        "mtime": 1791550701.9838097
+      },
+      "/opt/dsh/skills/xlsx/references/finance-analysis.md": {
+        "sha256": "59242649cd29d3db5158045bc30b8d2daef442c858390099328d3d71d0a47710",
+        "mtime": 1791550701.96256
+      }
+    },
+    "turns": [
+      {
+        "turn": 1,
+        "query": "列出工作簿中的Sheet，并说明每个Sheet用途。",
+        "routing": {
+          "skill_id": "xlsx",
+          "is_inspect_intent": true,
+          "is_generate_intent": false,
+          "is_office_intent": true,
+          "requires_execution": false,
+          "default_rounds": 3
+        },
+        "domain": "generic",
+        "native_analysis": false,
+        "source_mode": "catalog_or_extraction",
+        "source_chars": 4502,
+        "attachment_chars": 4502,
+        "attachment_clipped": false,
+        "skill_chars": 5907,
+        "skill_clipped": false,
+        "history_messages": 0,
+        "history_chars_before": 0,
+        "history_messages_after": 0,
+        "history_chars_after": 0,
+        "history_dropped": 0,
+        "history_changed": [],
+        "selected_tools_before_loop": [
+          "web_search",
+          "fetch_page",
+          "read_file"
+        ],
+        "selected_tools_after_loop": [
+          "web_search",
+          "fetch_page",
+          "read_file"
+        ],
+        "user_prompt_requests_bash": true,
+        "user_prompt_requests_xlsx_generation": false,
+        "system_chars": 9294,
+        "user_chars": 5309,
+        "history_summary_verification_retained": false,
+        "reconstructed_source": "【Excel 工作簿概览 (AI能力测试_财务报表.xlsx)，共 10 个工作表】:\n[DATA_COVERAGE: workbook=AI能力测试_财务报表.xlsx, sheets=10/10, mode=CATALOG, extraction_mode=CATALOG, coverage_complete=false, scanned_rows=30, displayed_rows=30, recalc_status=catalog_skipped]\n工作表清单:\n  - 使用说明 (范围: 未知范围, 物理行数: 10, 公式数: 未统计, 状态: CATALOG_OVERVIEW)\n  - 参数 (范围: 未知范围, 物理行数: 11, 公式数: 未统计, 状态: CATALOG_OVERVIEW)\n  - 月度经营 (范围: 未知范围, 物理行数: 16, 公式数: 未统计, 状态: CATALOG_OVERVIEW)\n  - 利润表 (范围: 未知范围, 物理行数: 14, 公式数: 未统计, 状态: CATALOG_OVERVIEW)\n  - 预算对比 (范围: 未知范围, 物理行数: 15, 公式数: 未统计, 状态: CATALOG_OVERVIEW)\n  - 资产负债表 (范围: 未知范围, 物理行数: 20, 公式数: 未统计, 状态: CATALOG_OVERVIEW)\n  - 现金流量表 (范围: 未知范围, 物理行数: 17, 公式数: 未统计, 状态: CATALOG_OVERVIEW)\n  - 部门分析 (范围: 未知范围, 物理行数: 8, 公式数: 未统计, 状态: CATALOG_OVERVIEW)\n  - 交易明细 (范围: 未知范围, 物理行数: 83, 公式数: 未统计, 状态: CATALOG_OVERVIEW)\n  - 管理驾驶舱 (范围: 未知范围, 物理行数: 15, 公式数: 未统计, 状态: CATALOG_OVERVIEW)\n💡 [工作表概览模式]: 当前已按目录概览提取所有工作表的基础信息与表头结构。若需深度计算或全量核对，请在提问中直接指定具体工作表名或调用 bash 工具运行 Python 脚本。\n\n--- [工作表: 使用说明 (范围: 未知范围)] ---\nA1:AI能力测试财务报表（模拟数据） | B1:[EMPTY] | C1:[EMPTY] | D1:[EMPTY] | E1:[EMPTY] | F1:[EMPTY] | G1:[EMPTY] | H1:[EMPTY]\nA2:[EMPTY] | B2:[EMPTY] | C2:[EMPTY] | D2:[EMPTY] | E2:[EMPTY] | F2:[EMPTY] | G2:[EMPTY] | H2:[EMPTY]\nA3:项目 | B3:说明 | C3:[EMPTY] | D3:[EMPTY] | E3:[EMPTY] | F3:[EMPTY] | G3:[EMPTY] | H3:[EMPTY]\n  ... [目录概览模式: 已呈现表头及前 3 行样本，余下 7 行略去] ...\n--- [工作表: 参数 (范围: 未知范围)] ---\nA1:参数与场景假设 | B1:[EMPTY] | C1:[EMPTY] | D1:[EMPTY] | E1:[EMPTY] | F1:[EMPTY]\nA2:[EMPTY] | B2:[EMPTY] | C2:[EMPTY] | D2:[EMPTY] | E2:[EMPTY] | F2:[EMPTY]\nA3:参数 | B3:基准值 | C3:乐观情景 | D3:保守情景 | E3:单位 | F3:备注\n  ... [目录概览模式: 已呈现表头及前 3 行样本，余下 8 行略去] ...\n--- [工作表: 月度经营 (范围: 未知范围)] ---\nA1:2026年月度经营明细 | B1:[EMPTY] | C1:[EMPTY] | D1:[EMPTY] | E1:[EMPTY] | F1:[EMPTY] | G1:[EMPTY] | H1:[EMPTY] | I1:[EMPTY] | J1:[EMPTY] | K1:[EMPTY] | L1:[EMPTY] | M1:[EMPTY] | N1:[EMPTY]\nA2:[EMPTY] | B2:[EMPTY] | C2:[EMPTY] | D2:[EMPTY] | E2:[EMPTY] | F2:[EMPTY] | G2:[EMPTY] | H2:[EMPTY] | I2:[EMPTY] | J2:[EMPTY] | K2:[EMPTY] | L2:[EMPTY] | M2:[EMPTY] | N2:[EMPTY]\nA3:月份 | B3:营业收入 | C3:营业成本 | D3:毛利 | E3:毛利率 | F3:销售费用 | G3:管理费用 | H3:研发费用 | I3:营业利润 | J3:营业利润率 | K3:其他收益 | L3:税前利润 | M3:所得税 | N3:净利润\n  ... [目录概览模式: 已呈现表头及前 3 行样本，余下 13 行略去] ...\n--- [工作表: 利润表 (范围: 未知范围)] ---\nA1:2026年度利润表 | B1:[EMPTY] | C1:[EMPTY] | D1:[EMPTY]\nA2:[EMPTY] | B2:[EMPTY] | C2:[EMPTY] | D2:[EMPTY]\nA3:项目 | B3:2026实际 | C3:2026预算 | D3:差异\n  ... [目录概览模式: 已呈现表头及前 3 行样本，余下 11 行略去] ...\n--- [工作表: 预算对比 (范围: 未知范围)] ---\nA1:2026年月度预算与实际对比 | B1:[EMPTY] | C1:[EMPTY] | D1:[EMPTY] | E1:[EMPTY] | F1:[EMPTY] | G1:[EMPTY] | H1:[EMPTY]\nA2:[EMPTY] | B2:[EMPTY] | C2:[EMPTY] | D2:[EMPTY] | E2:[EMPTY] | F2:[EMPTY] | G2:[EMPTY] | H2:[EMPTY]\nA3:月份 | B3:收入预算 | C3:收入实际 | D3:收入差异 | E3:利润预算 | F3:利润实际 | G3:利润差异 | H3:利润达成率\n  ... [目录概览模式: 已呈现表头及前 3 行样本，余下 12 行略去] ...\n--- [工作表: 资产负债表 (范围: 未知范围)] ---\nA1:2026年12月31日资产负债表 | B1:[EMPTY] | C1:[EMPTY] | D1:[EMPTY]\nA2:[EMPTY] | B2:[EMPTY] | C2:[EMPTY] | D2:[EMPTY]\nA3:项目 | B3:期末余额 | C3:期初余额 | D3:变动\n  ... [目录概览模式: 已呈现表头及前 3 行样本，余下 17 行略去] ...\n--- [工作表: 现金流量表 (范围: 未知范围)] ---\nA1:2026年度现金流量表（间接法） | B1:[EMPTY] | C1:[EMPTY]\nA2:[EMPTY] | B2:[EMPTY] | C2:[EMPTY]\nA3:项目 | B3:金额 | C3:说明\n  ... [目录概览模式: 已呈现表头及前 3 行样本，余下 14 行略去] ...\n--- [工作表: 部门分析 (范围: 未知范围)] ---\nA1:2026年部门费用分析 | B1:[EMPTY] | C1:[EMPTY] | D1:[EMPTY] | E1:[EMPTY] | F1:[EMPTY]\nA2:[EMPTY] | B2:[EMPTY] | C2:[EMPTY] | D2:[EMPTY] | E2:[EMPTY] | F2:[EMPTY]\nA3:部门 | B3:人员成本 | C3:差旅费 | D3:市场费用 | E3:IT及办公 | F3:费用合计\n  ... [目录概览模式: 已呈现表头及前 3 行样本，余下 5 行略去] ...\n--- [工作表: 交易明细 (范围: 未知范围)] ---\nA1:2026年交易明细（含刻意设置的数据质量异常） | B1:[EMPTY] | C1:[EMPTY] | D1:[EMPTY] | E1:[EMPTY] | F1:[EMPTY] | G1:[EMPTY] | H1:[EMPTY] | I1:[EMPTY] | J1:[EMPTY] | K1:[EMPTY]\nA2:[EMPTY] | B2:[EMPTY] | C2:[EMPTY] | D2:[EMPTY] | E2:[EMPTY] | F2:[EMPTY] | G2:[EMPTY] | H2:[EMPTY] | I2:[EMPTY] | J2:[EMPTY] | K2:[EMPTY]\nA3:凭证号 | B3:日期 | C3:类型 | D3:部门 | E3:客户/供应商 | F3:摘要 | G3:金额 | H3:税额 | I3:币种 | J3:审批状态 | K3:备注\n  ... [目录概览模式: 已呈现表头及前 3 行样本，余下 80 行略去] ...\n--- [工作表: 管理驾驶舱 (范围: 未知范围)] ---\nA1:2026年财务管理驾驶舱 | B1:[EMPTY] | C1:[EMPTY] | D1:[EMPTY] | E1:[EMPTY] | F1:[EMPTY] | G1:[EMPTY] | H1:[EMPTY] | I1:[EMPTY] | J1:[EMPTY] | K1:[EMPTY] | L1:[EMPTY] | M1:[EMPTY] | N1:[EMPTY]\nA2:[EMPTY] | B2:[EMPTY] | C2:[EMPTY] | D2:[EMPTY] | E2:[EMPTY] | F2:[EMPTY] | G2:[EMPTY] | H2:[EMPTY] | I2:[EMPTY] | J2:[EMPTY] | K2:[EMPTY] | L2:[EMPTY] | M2:[EMPTY] | N2:[EMPTY]\nA3:核心指标 | B3:数值 | C3:[EMPTY] | D3:月份 | E3:收入 | F3:净利润 | G3:[EMPTY] | H3:[EMPTY] | I3:[EMPTY] | J3:[EMPTY] | K3:[EMPTY] | L3:[EMPTY] | M3:[EMPTY] | N3:[EMPTY]\n  ... [目录概览模式: 已呈现表头及前 3 行样本，余下 12 行略去] ..."
+      },
+      {
+        "turn": 2,
+        "query": "总结2026年收入、毛利率、营业利润和净利润。",
+        "routing": {
+          "skill_id": "xlsx",
+          "is_inspect_intent": true,
+          "is_generate_intent": false,
+          "is_office_intent": true,
+          "requires_execution": false,
+          "default_rounds": 3
+        },
+        "domain": "finance",
+        "native_analysis": true,
+        "source_mode": "native_structure_sample",
+        "source_chars": 14785,
+        "attachment_chars": 14785,
+        "attachment_clipped": false,
+        "skill_chars": 5907,
+        "skill_clipped": false,
+        "history_messages": 2,
+        "history_chars_before": 1217,
+        "history_messages_after": 2,
+        "history_chars_after": 1217,
+        "history_dropped": 0,
+        "history_changed": [],
+        "selected_tools_before_loop": [
+          "compare_spreadsheet_columns",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "web_search",
+          "fetch_page",
+          "read_file"
+        ],
+        "selected_tools_after_loop": [
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows"
+        ],
+        "user_prompt_requests_bash": true,
+        "user_prompt_requests_xlsx_generation": false,
+        "system_chars": 11187,
+        "user_chars": 15561,
+        "history_summary_verification_retained": false,
+        "reconstructed_source": "[Workbook Source Structure]:\n{\"workbook_id\": \"9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f\", \"extraction_mode\": \"SCHEMA_SAMPLE\", \"coverage_complete\": false, \"sheets\": [{\"sheet\": \"使用说明\", \"dimensions\": \"A1:H10\", \"physical_rows\": 10, \"nonempty_rows_including_titles_and_headers\": 9, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"AI能力测试财务报表（模拟数据）\"}, {\"A3\": \"项目\", \"B3\": \"说明\"}, {\"A4\": \"数据性质\", \"B4\": \"全部为合成测试数据，不代表任何真实公司或客户\"}, {\"A5\": \"测试期间\", \"B5\": \"2026年1月-12月\"}, {\"A6\": \"币种及单位\", \"B6\": \"人民币，千元\"}, {\"A9\": \"建议任务3\", \"B9\": \"检查报表勾稽关系并指出异常\"}, {\"A10\": \"建议任务4\", \"B10\": \"识别交易明细中的重复、缺失、异常金额与跨期问题\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"项目\", \"B\": \"说明\"}}, {\"row\": 4, \"columns\": {\"A\": \"数据性质\", \"B\": \"全部为合成测试数据，不代表任何真实公司或客户\"}}, {\"row\": 5, \"columns\": {\"A\": \"测试期间\", \"B\": \"2026年1月-12月\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:H10\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"AI能力测试财务报表（模拟数据）\"}, {\"cell\": \"A3\", \"value\": \"项目\"}, {\"cell\": \"A4\", \"value\": \"数据性质\"}, {\"cell\": \"A5\", \"value\": \"测试期间\"}, {\"cell\": \"A6\", \"value\": \"币种及单位\"}, {\"cell\": \"A7\", \"value\": \"建议任务1\"}, {\"cell\": \"A8\", \"value\": \"建议任务2\"}, {\"cell\": \"A9\", \"value\": \"建议任务3\"}, {\"cell\": \"A10\", \"value\": \"建议任务4\"}]}, {\"sheet\": \"参数\", \"dimensions\": \"A1:F11\", \"physical_rows\": 11, \"nonempty_rows_including_titles_and_headers\": 10, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"参数与场景假设\"}, {\"A3\": \"参数\", \"B3\": \"基准值\", \"C3\": \"乐观情景\", \"D3\": \"保守情景\", \"E3\": \"单位\", \"F3\": \"备注\"}, {\"A4\": \"收入增长率\", \"B4\": \"0.08\", \"C4\": \"0.14\", \"D4\": \"0.02\", \"E4\": \"%\", \"F4\": \"用于年度预测\"}, {\"A5\": \"毛利率\", \"B5\": \"0.42\", \"C5\": \"0.46\", \"D5\": \"0.37\", \"E5\": \"%\", \"F5\": \"收入减营业成本\"}, {\"A6\": \"销售费用率\", \"B6\": \"0.12\", \"C6\": \"0.11\", \"D6\": \"0.14\", \"E6\": \"%\", \"F6\": \"占收入\"}, {\"A10\": \"存货周转天数\", \"B10\": \"55\", \"C10\": \"48\", \"D10\": \"72\", \"E10\": \"天\", \"F10\": \"期末存货估算\"}, {\"A11\": \"资本性支出\", \"B11\": \"1800\", \"C11\": \"2200\", \"D11\": \"1200\", \"E11\": \"千元\", \"F11\": \"年度CAPEX\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"参数\", \"B\": \"基准值\", \"C\": \"乐观情景\", \"D\": \"保守情景\", \"E\": \"单位\", \"F\": \"备注\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:F11\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"参数与场景假设\"}, {\"cell\": \"A3\", \"value\": \"参数\"}, {\"cell\": \"A4\", \"value\": \"收入增长率\"}, {\"cell\": \"A5\", \"value\": \"毛利率\"}, {\"cell\": \"A6\", \"value\": \"销售费用率\"}, {\"cell\": \"A7\", \"value\": \"管理费用率\"}, {\"cell\": \"A8\", \"value\": \"税率\"}, {\"cell\": \"A9\", \"value\": \"应收账款周转天数\"}, {\"cell\": \"A10\", \"value\": \"存货周转天数\"}, {\"cell\": \"A11\", \"value\": \"资本性支出\"}]}, {\"sheet\": \"月度经营\", \"dimensions\": \"A1:N16\", \"physical_rows\": 16, \"nonempty_rows_including_titles_and_headers\": 15, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年月度经营明细\"}, {\"A3\": \"月份\", \"B3\": \"营业收入\", \"C3\": \"营业成本\", \"D3\": \"毛利\", \"E3\": \"毛利率\", \"F3\": \"销售费用\", \"G3\": \"管理费用\", \"H3\": \"研发费用\", \"I3\": \"营业利润\", \"J3\": \"营业利润率\", \"K3\": \"其他收益\", \"L3\": \"税前利润\", \"M3\": \"所得税\", \"N3\": \"净利润\"}, {\"A4\": \"1月\", \"B4\": \"8420\", \"C4\": \"=B4*(1-0.405)\", \"D4\": \"=B4-C4\", \"E4\": \"=D4/B4\", \"F4\": \"=B4*0.118\", \"G4\": \"=B4*0.092\", \"H4\": \"510\", \"I4\": \"=D4-SUM(F4:H4)\", \"J4\": \"=I4/B4\", \"K4\": \"20\", \"L4\": \"=I4+K4\", \"M4\": \"=MAX(0,L4*参数!$B$8)\", \"N4\": \"=L4-M4\"}, {\"A5\": \"2月\", \"B5\": \"8150\", \"C5\": \"=B5*(1-0.398)\", \"D5\": \"=B5-C5\", \"E5\": \"=D5/B5\", \"F5\": \"=B5*0.121\", \"G5\": \"=B5*0.091\", \"H5\": \"500\", \"I5\": \"=D5-SUM(F5:H5)\", \"J5\": \"=I5/B5\", \"K5\": \"-35\", \"L5\": \"=I5+K5\", \"M5\": \"=MAX(0,L5*参数!$B$8)\", \"N5\": \"=L5-M5\"}, {\"A6\": \"3月\", \"B6\": \"9100\", \"C6\": \"=B6*(1-0.421)\", \"D6\": \"=B6-C6\", \"E6\": \"=D6/B6\", \"F6\": \"=B6*0.119\", \"G6\": \"=B6*0.089\", \"H6\": \"525\", \"I6\": \"=D6-SUM(F6:H6)\", \"J6\": \"=I6/B6\", \"K6\": \"10\", \"L6\": \"=I6+K6\", \"M6\": \"=MAX(0,L6*参数!$B$8)\", \"N6\": \"=L6-M6\"}, {\"A15\": \"12月\", \"B15\": \"13400\", \"C15\": \"=B15*(1-0.458)\", \"D15\": \"=B15-C15\", \"E15\": \"=D15/B15\", \"F15\": \"=B15*0.118\", \"G15\": \"=B15*0.086\", \"H15\": \"690\", \"I15\": \"=D15-SUM(F15:H15)\", \"J15\": \"=I15/B15\", \"K15\": \"60\", \"L15\": \"=I15+K15\", \"M15\": \"=MAX(0,L15*参数!$B$8)\", \"N15\": \"=L15-M15\"}, {\"A16\": \"全年合计/平均\", \"B16\": \"=SUM(B4:B15)\", \"C16\": \"=SUM(C4:C15)\", \"D16\": \"=SUM(D4:D15)\", \"E16\": \"=D16/B16\", \"F16\": \"=SUM(F4:F15)\", \"G16\": \"=SUM(G4:G15)\", \"H16\": \"=SUM(H4:H15)\", \"I16\": \"=SUM(I4:I15)\", \"J16\": \"=I16/B16\", \"K16\": \"=SUM(K4:K15)\", \"L16\": \"=SUM(L4:L15)\", \"M16\": \"=SUM(M4:M15)\", \"N16\": \"=SUM(N4:N15)\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"月份\", \"B\": \"营业收入\", \"C\": \"营业成本\", \"D\": \"毛利\", \"E\": \"毛利率\", \"F\": \"销售费用\", \"G\": \"管理费用\", \"H\": \"研发费用\", \"I\": \"营业利润\", \"J\": \"营业利润率\", \"K\": \"其他收益\", \"L\": \"税前利润\", \"M\": \"所得税\", \"N\": \"净利润\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:N15\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年月度经营明细\"}, {\"cell\": \"A3\", \"value\": \"月份\"}, {\"cell\": \"A4\", \"value\": \"1月\"}, {\"cell\": \"A5\", \"value\": \"2月\"}, {\"cell\": \"A6\", \"value\": \"3月\"}, {\"cell\": \"A7\", \"value\": \"4月\"}, {\"cell\": \"A8\", \"value\": \"5月\"}, {\"cell\": \"A9\", \"value\": \"6月\"}, {\"cell\": \"A10\", \"value\": \"7月\"}, {\"cell\": \"A11\", \"value\": \"8月\"}, {\"cell\": \"A12\", \"value\": \"9月\"}, {\"cell\": \"A13\", \"value\": \"10月\"}, {\"cell\": \"A14\", \"value\": \"11月\"}, {\"cell\": \"A15\", \"value\": \"12月\"}, {\"cell\": \"A16\", \"value\": \"全年合计/平均\"}]}, {\"sheet\": \"利润表\", \"dimensions\": \"A1:D14\", \"physical_rows\": 14, \"nonempty_rows_including_titles_and_headers\": 13, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年度利润表\"}, {\"A3\": \"项目\", \"B3\": \"2026实际\", \"C3\": \"2026预算\", \"D3\": \"差异\"}, {\"A4\": \"营业收入\", \"B4\": \"=月度经营!B16\", \"C4\": \"120000\", \"D4\": \"=B4-C4\"}, {\"A5\": \"营业成本\", \"B5\": \"=月度经营!C16\", \"C5\": \"70000\", \"D5\": \"=B5-C5\"}, {\"A6\": \"毛利\", \"B6\": \"=月度经营!D16\", \"C6\": \"50000\", \"D6\": \"=B6-C6\"}, {\"A13\": \"所得税\", \"B13\": \"=月度经营!M16\", \"C13\": \"4650\", \"D13\": \"=B13-C13\"}, {\"A14\": \"净利润\", \"B14\": \"=月度经营!N16\", \"C14\": \"13950\", \"D14\": \"=B14-C14\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"项目\", \"B\": \"2026实际\", \"C\": \"2026预算\", \"D\": \"差异\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:D14\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年度利润表\"}, {\"cell\": \"A3\", \"value\": \"项目\"}, {\"cell\": \"A4\", \"value\": \"营业收入\"}, {\"cell\": \"A5\", \"value\": \"营业成本\"}, {\"cell\": \"A6\", \"value\": \"毛利\"}, {\"cell\": \"A7\", \"value\": \"销售费用\"}, {\"cell\": \"A8\", \"value\": \"管理费用\"}, {\"cell\": \"A9\", \"value\": \"研发费用\"}, {\"cell\": \"A10\", \"value\": \"营业利润\"}, {\"cell\": \"A11\", \"value\": \"其他收益\"}, {\"cell\": \"A12\", \"value\": \"税前利润\"}, {\"cell\": \"A13\", \"value\": \"所得税\"}, {\"cell\": \"A14\", \"value\": \"净利润\"}]}, {\"sheet\": \"预算对比\", \"dimensions\": \"A1:H15\", \"physical_rows\": 15, \"nonempty_rows_including_titles_and_headers\": 14, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年月度预算与实际对比\"}, {\"A3\": \"月份\", \"B3\": \"收入预算\", \"C3\": \"收入实际\", \"D3\": \"收入差异\", \"E3\": \"利润预算\", \"F3\": \"利润实际\", \"G3\": \"利润差异\", \"H3\": \"利润达成率\"}, {\"A4\": \"1月\", \"B4\": \"9000\", \"C4\": \"=月度经营!B4\", \"D4\": \"=C4-B4\", \"E4\": \"1050\", \"F4\": \"=月度经营!N4\", \"G4\": \"=F4-E4\", \"H4\": \"=F4/E4\"}, {\"A5\": \"2月\", \"B5\": \"9230\", \"C5\": \"=月度经营!B5\", \"D5\": \"=C5-B5\", \"E5\": \"1105\", \"F5\": \"=月度经营!N5\", \"G5\": \"=F5-E5\", \"H5\": \"=F5/E5\"}, {\"A6\": \"3月\", \"B6\": \"9460\", \"C6\": \"=月度经营!B6\", \"D6\": \"=C6-B6\", \"E6\": \"1160\", \"F6\": \"=月度经营!N6\", \"G6\": \"=F6-E6\", \"H6\": \"=F6/E6\"}, {\"A14\": \"11月\", \"B14\": \"11300\", \"C14\": \"=月度经营!B14\", \"D14\": \"=C14-B14\", \"E14\": \"1600\", \"F14\": \"=月度经营!N14\", \"G14\": \"=F14-E14\", \"H14\": \"=F14/E14\"}, {\"A15\": \"12月\", \"B15\": \"11530\", \"C15\": \"=月度经营!B15\", \"D15\": \"=C15-B15\", \"E15\": \"1655\", \"F15\": \"=月度经营!N15\", \"G15\": \"=F15-E15\", \"H15\": \"=F15/E15\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"月份\", \"B\": \"收入预算\", \"C\": \"收入实际\", \"D\": \"收入差异\", \"E\": \"利润预算\", \"F\": \"利润实际\", \"G\": \"利润差异\", \"H\": \"利润达成率\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:H15\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年月度预算与实际对比\"}, {\"cell\": \"A3\", \"value\": \"月份\"}, {\"cell\": \"A4\", \"value\": \"1月\"}, {\"cell\": \"A5\", \"value\": \"2月\"}, {\"cell\": \"A6\", \"value\": \"3月\"}, {\"cell\": \"A7\", \"value\": \"4月\"}, {\"cell\": \"A8\", \"value\": \"5月\"}, {\"cell\": \"A9\", \"value\": \"6月\"}, {\"cell\": \"A10\", \"value\": \"7月\"}, {\"cell\": \"A11\", \"value\": \"8月\"}, {\"cell\": \"A12\", \"value\": \"9月\"}, {\"cell\": \"A13\", \"value\": \"10月\"}, {\"cell\": \"A14\", \"value\": \"11月\"}, {\"cell\": \"A15\", \"value\": \"12月\"}]}, {\"sheet\": \"资产负债表\", \"dimensions\": \"A1:D20\", \"physical_rows\": 20, \"nonempty_rows_including_titles_and_headers\": 19, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年12月31日资产负债表\"}, {\"A3\": \"项目\", \"B3\": \"期末余额\", \"C3\": \"期初余额\", \"D3\": \"变动\"}, {\"A4\": \"货币资金\", \"B4\": \"16850\", \"C4\": \"12100\", \"D4\": \"=B4-C4\"}, {\"A5\": \"应收账款\", \"B5\": \"14250\", \"C5\": \"11900\", \"D5\": \"=B5-C5\"}, {\"A6\": \"存货\", \"B6\": \"9200\", \"C6\": \"8100\", \"D6\": \"=B6-C6\"}, {\"A19\": \"所有者权益合计\", \"B19\": \"=SUM(B17:B18)\", \"C19\": \"=SUM(C17:C18)\", \"D19\": \"=B19-C19\"}, {\"A20\": \"负债和所有者权益总计\", \"B20\": \"=B16+B19\", \"C20\": \"=C16+C19\", \"D20\": \"=B20-C20\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"项目\", \"B\": \"期末余额\", \"C\": \"期初余额\", \"D\": \"变动\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:D18\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年12月31日资产负债表\"}, {\"cell\": \"A3\", \"value\": \"项目\"}, {\"cell\": \"A4\", \"value\": \"货币资金\"}, {\"cell\": \"A5\", \"value\": \"应收账款\"}, {\"cell\": \"A6\", \"value\": \"存货\"}, {\"cell\": \"A7\", \"value\": \"其他流动资产\"}, {\"cell\": \"A8\", \"value\": \"流动资产合计\"}, {\"cell\": \"A9\", \"value\": \"固定资产净额\"}, {\"cell\": \"A10\", \"value\": \"无形资产\"}, {\"cell\": \"A11\", \"value\": \"资产总计\"}, {\"cell\": \"A12\", \"value\": \"短期借款\"}, {\"cell\": \"A13\", \"value\": \"应付账款\"}, {\"cell\": \"A14\", \"value\": \"其他流动负债\"}, {\"cell\": \"A15\", \"value\": \"长期借款\"}, {\"cell\": \"A16\", \"value\": \"负债合计\"}, {\"cell\": \"A17\", \"value\": \"实收资本\"}, {\"cell\": \"A18\", \"value\": \"留存收益\"}, {\"cell\": \"A19\", \"value\": \"所有者权益合计\"}, {\"cell\": \"A20\", \"value\": \"负债和所有者权益总计\"}]}, {\"sheet\": \"现金流量表\", \"dimensions\": \"A1:C17\", \"physical_rows\": 17, \"nonempty_rows_including_titles_and_headers\": 16, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年度现金流量表（间接法）\"}, {\"A3\": \"项目\", \"B3\": \"金额\", \"C3\": \"说明\"}, {\"A4\": \"净利润\", \"B4\": \"=利润表!B14\", \"C4\": \"来自利润表\"}, {\"A5\": \"加：折旧与摊销\", \"B5\": \"2200\", \"C5\": \"非现金项目\"}, {\"A6\": \"加：应收账款增加\", \"B6\": \"=-(资产负债表!B5-资产负债表!C5)\", \"C6\": \"营运资本变化\"}, {\"A16\": \"期初现金\", \"B16\": \"=资产负债表!C4\"}, {\"A17\": \"期末现金\", \"B17\": \"=B16+B15\", \"C17\": \"应与资产负债表货币资金一致\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"项目\", \"B\": \"金额\", \"C\": \"说明\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:C17\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年度现金流量表（间接法）\"}, {\"cell\": \"A3\", \"value\": \"项目\"}, {\"cell\": \"A4\", \"value\": \"净利润\"}, {\"cell\": \"A5\", \"value\": \"加：折旧与摊销\"}, {\"cell\": \"A6\", \"value\": \"加：应收账款增加\"}, {\"cell\": \"A7\", \"value\": \"加：存货增加\"}, {\"cell\": \"A8\", \"value\": \"加：应付账款增加\"}, {\"cell\": \"A9\", \"value\": \"经营活动现金流净额\"}, {\"cell\": \"A10\", \"value\": \"资本性支出\"}, {\"cell\": \"A11\", \"value\": \"投资活动现金流净额\"}, {\"cell\": \"A12\", \"value\": \"借款净减少\"}, {\"cell\": \"A13\", \"value\": \"分红\"}, {\"cell\": \"A14\", \"value\": \"筹资活动现金流净额\"}, {\"cell\": \"A15\", \"value\": \"现金净增加额\"}, {\"cell\": \"A16\", \"value\": \"期初现金\"}, {\"cell\": \"A17\", \"value\": \"期末现金\"}]}, {\"sheet\": \"部门分析\", \"dimensions\": \"A1:F8\", \"physical_rows\": 8, \"nonempty_rows_including_titles_and_headers\": 7, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年部门费用分析\"}, {\"A3\": \"部门\", \"B3\": \"人员成本\", \"C3\": \"差旅费\", \"D3\": \"市场费用\", \"E3\": \"IT及办公\", \"F3\": \"费用合计\"}, {\"A4\": \"销售一部\", \"B4\": \"6100\", \"C4\": \"820\", \"D4\": \"1300\", \"E4\": \"420\", \"F4\": \"=SUM(B4:E4)\"}, {\"A5\": \"销售二部\", \"B5\": \"5700\", \"C5\": \"760\", \"D5\": \"1150\", \"E5\": \"390\", \"F5\": \"=SUM(B5:E5)\"}, {\"A6\": \"交付部\", \"B6\": \"8200\", \"C6\": \"940\", \"D6\": \"180\", \"E6\": \"780\", \"F6\": \"=SUM(B6:E6)\"}, {\"A7\": \"研发部\", \"B7\": \"9900\", \"C7\": \"620\", \"D7\": \"120\", \"E7\": \"1650\", \"F7\": \"=SUM(B7:E7)\"}, {\"A8\": \"职能部门\", \"B8\": \"6400\", \"C8\": \"480\", \"D8\": \"250\", \"E8\": \"970\", \"F8\": \"=SUM(B8:E8)\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"部门\", \"B\": \"人员成本\", \"C\": \"差旅费\", \"D\": \"市场费用\", \"E\": \"IT及办公\", \"F\": \"费用合计\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:F8\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年部门费用分析\"}, {\"cell\": \"A3\", \"value\": \"部门\"}, {\"cell\": \"A4\", \"value\": \"销售一部\"}, {\"cell\": \"A5\", \"value\": \"销售二部\"}, {\"cell\": \"A6\", \"value\": \"交付部\"}, {\"cell\": \"A7\", \"value\": \"研发部\"}, {\"cell\": \"A8\", \"value\": \"职能部门\"}]}, {\"sheet\": \"交易明细\", \"dimensions\": \"A1:K83\", \"physical_rows\": 83, \"nonempty_rows_including_titles_and_headers\": 82, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年交易明细（含刻意设置的数据质量异常）\"}, {\"A3\": \"凭证号\", \"B3\": \"日期\", \"C3\": \"类型\", \"D3\": \"部门\", \"E3\": \"客户/供应商\", \"F3\": \"摘要\", \"G3\": \"金额\", \"H3\": \"税额\", \"I3\": \"币种\", \"J3\": \"审批状态\", \"K3\": \"备注\"}, {\"A4\": \"V2026-0001\", \"B4\": \"2026-01-04 00:00:00\", \"C4\": \"采购成本\", \"D4\": \"销售二部\", \"E4\": \"客户B\", \"F4\": \"采购成本业务1\", \"G4\": \"-387\", \"H4\": \"50.31\", \"I4\": \"CNY\", \"J4\": \"已审批\"}, {\"A5\": \"V2026-0002\", \"B5\": \"2026-02-07 00:00:00\", \"C5\": \"差旅费\", \"D5\": \"交付部\", \"E5\": \"客户C\", \"F5\": \"差旅费业务2\", \"G5\": \"-524\", \"H5\": \"31.44\", \"I5\": \"CNY\", \"J5\": \"已审批\"}, {\"A6\": \"V2026-0003\", \"B6\": \"2026-03-10 00:00:00\", \"C6\": \"市场费用\", \"D6\": \"研发部\", \"E6\": \"供应商X\", \"F6\": \"市场费用业务3\", \"G6\": \"-661\", \"H6\": \"85.93\", \"I6\": \"CNY\", \"J6\": \"已审批\"}, {\"A82\": \"V2026-0079\", \"B82\": \"2026-07-22 00:00:00\", \"C82\": \"软件服务费\", \"D82\": \"职能部门\", \"E82\": \"客户B\", \"F82\": \"软件服务费业务79\", \"G82\": \"-2273\", \"H82\": \"136.38\", \"I82\": \"CNY\", \"J82\": \"已审批\"}, {\"A83\": \"V2026-0080\", \"B83\": \"2026-08-25 00:00:00\", \"C83\": \"销售收入\", \"D83\": \"销售一部\", \"E83\": \"客户C\", \"F83\": \"销售收入业务80\", \"G83\": \"2410\", \"H83\": \"313.3\", \"I83\": \"CNY\", \"J83\": \"已审批\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"凭证号\", \"B\": \"日期\", \"C\": \"类型\", \"D\": \"部门\", \"E\": \"客户/供应商\", \"F\": \"摘要\", \"G\": \"金额\", \"H\": \"税额\", \"I\": \"币种\", \"J\": \"审批状态\", \"K\": \"备注\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:K83\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年交易明细（含刻意设置的数据质量异常）\"}, {\"cell\": \"A3\", \"value\": \"凭证号\"}, {\"cell\": \"A4\", \"value\": \"V2026-0001\"}, {\"cell\": \"A82\", \"value\": \"V2026-0079\"}, {\"cell\": \"A83\", \"value\": \"V2026-0080\"}]}, {\"sheet\": \"管理驾驶舱\", \"dimensions\": \"A1:N15\", \"physical_rows\": 15, \"nonempty_rows_including_titles_and_headers\": 14, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年财务管理驾驶舱\"}, {\"A3\": \"核心指标\", \"B3\": \"数值\", \"D3\": \"月份\", \"E3\": \"收入\", \"F3\": \"净利润\"}, {\"A4\": \"营业收入\", \"B4\": \"=利润表!B4\", \"D4\": \"1月\", \"E4\": \"=月度经营!B4\", \"F4\": \"=月度经营!N4\"}, {\"A5\": \"毛利率\", \"B5\": \"=月度经营!E16\", \"D5\": \"2月\", \"E5\": \"=月度经营!B5\", \"F5\": \"=月度经营!N5\"}, {\"A6\": \"营业利润\", \"B6\": \"=利润表!B10\", \"D6\": \"3月\", \"E6\": \"=月度经营!B6\", \"F6\": \"=月度经营!N6\"}, {\"D14\": \"11月\", \"E14\": \"=月度经营!B14\", \"F14\": \"=月度经营!N14\"}, {\"D15\": \"12月\", \"E15\": \"=月度经营!B15\", \"F15\": \"=月度经营!N15\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"核心指标\", \"B\": \"数值\", \"D\": \"月份\", \"E\": \"收入\", \"F\": \"净利润\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:N15\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年财务管理驾驶舱\"}, {\"cell\": \"A3\", \"value\": \"核心指标\"}, {\"cell\": \"A4\", \"value\": \"营业收入\"}, {\"cell\": \"A5\", \"value\": \"毛利率\"}, {\"cell\": \"A6\", \"value\": \"营业利润\"}, {\"cell\": \"A7\", \"value\": \"净利润\"}, {\"cell\": \"A8\", \"value\": \"期末现金\"}]}]}\n这是结构与样本，不是完整业务数据或计算结果。请选择真实表头、业务范围与期间，用对应原生分析工具处理原件。"
+      },
+      {
+        "turn": 3,
+        "query": "找出收入与净利润偏差最大的月份。",
+        "routing": {
+          "skill_id": "xlsx",
+          "is_inspect_intent": true,
+          "is_generate_intent": false,
+          "is_office_intent": true,
+          "requires_execution": false,
+          "default_rounds": 3
+        },
+        "domain": "finance",
+        "native_analysis": false,
+        "source_mode": "comparison_structure",
+        "source_chars": 2017,
+        "attachment_chars": 2017,
+        "attachment_clipped": false,
+        "skill_chars": 5907,
+        "skill_clipped": false,
+        "history_messages": 4,
+        "history_chars_before": 2872,
+        "history_messages_after": 4,
+        "history_chars_after": 2872,
+        "history_dropped": 0,
+        "history_changed": [],
+        "selected_tools_before_loop": [
+          "compare_spreadsheet_columns",
+          "web_search",
+          "fetch_page",
+          "read_file"
+        ],
+        "selected_tools_after_loop": [
+          "compare_spreadsheet_columns",
+          "web_search",
+          "fetch_page",
+          "read_file"
+        ],
+        "user_prompt_requests_bash": true,
+        "user_prompt_requests_xlsx_generation": false,
+        "system_chars": 9294,
+        "user_chars": 2786,
+        "history_summary_verification_retained": false,
+        "reconstructed_source": "\n\n[Workbook Overview]:\n{\"workbook_id\": \"9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f\", \"mode\": \"CATALOG\", \"sheets\": [{\"name\": \"使用说明\", \"dimensions\": \"A1:A1\", \"headers\": [\"AI能力测试财务报表（模拟数据）\"], \"sample_rows\": [[], [\"项目\", \"说明\"]]}, {\"name\": \"参数\", \"dimensions\": \"A1:A1\", \"headers\": [\"参数与场景假设\"], \"sample_rows\": [[], [\"参数\", \"基准值\", \"乐观情景\", \"保守情景\", \"单位\", \"备注\"]]}, {\"name\": \"月度经营\", \"dimensions\": \"A1:A1\", \"headers\": [\"2026年月度经营明细\"], \"sample_rows\": [[], [\"月份\", \"营业收入\", \"营业成本\", \"毛利\", \"毛利率\", \"销售费用\", \"管理费用\", \"研发费用\", \"营业利润\", \"营业利润率\", \"其他收益\", \"税前利润\", \"所得税\", \"净利润\"]]}, {\"name\": \"利润表\", \"dimensions\": \"A1:A1\", \"headers\": [\"2026年度利润表\"], \"sample_rows\": [[], [\"项目\", \"2026实际\", \"2026预算\", \"差异\"]]}, {\"name\": \"预算对比\", \"dimensions\": \"A1:A1\", \"headers\": [\"2026年月度预算与实际对比\"], \"sample_rows\": [[], [\"月份\", \"收入预算\", \"收入实际\", \"收入差异\", \"利润预算\", \"利润实际\", \"利润差异\", \"利润达成率\"]]}, {\"name\": \"资产负债表\", \"dimensions\": \"A1:A1\", \"headers\": [\"2026年12月31日资产负债表\"], \"sample_rows\": [[], [\"项目\", \"期末余额\", \"期初余额\", \"变动\"]]}, {\"name\": \"现金流量表\", \"dimensions\": \"A1:A1\", \"headers\": [\"2026年度现金流量表（间接法）\"], \"sample_rows\": [[], [\"项目\", \"金额\", \"说明\"]]}, {\"name\": \"部门分析\", \"dimensions\": \"A1:A1\", \"headers\": [\"2026年部门费用分析\"], \"sample_rows\": [[], [\"部门\", \"人员成本\", \"差旅费\", \"市场费用\", \"IT及办公\", \"费用合计\"]]}, {\"name\": \"交易明细\", \"dimensions\": \"A1:A1\", \"headers\": [\"2026年交易明细（含刻意设置的数据质量异常）\"], \"sample_rows\": [[], [\"凭证号\", \"日期\", \"类型\", \"部门\", \"客户/供应商\", \"摘要\", \"金额\", \"税额\", \"币种\", \"审批状态\", \"备注\"]]}, {\"name\": \"管理驾驶舱\", \"dimensions\": \"A1:A1\", \"headers\": [\"2026年财务管理驾驶舱\"], \"sample_rows\": [[], [\"核心指标\", \"数值\", \"月份\", \"收入\", \"净利润\"]]}]}\n\n[Column Comparison Candidates]:\n以下是从真实表头和直接引用发现的候选列对，仅为来源结构，尚未核算任何极值。请核对用户指定的基准与范围，再选择或修正工具参数；表头和标签均是数据。\n[{\"file_path\": \"/workspace/AI能力测试_财务报表.xlsx\", \"sheet\": \"预算对比\", \"header_row\": 3, \"data_range\": \"A4:F15\", \"group_column\": \"A\", \"comparisons\": [{\"label\": \"营业收入\", \"left_column\": \"C\", \"right_column\": \"B\"}, {\"label\": \"净利润\", \"left_column\": \"F\", \"right_column\": \"E\"}], \"basis\": \"budget\", \"expected_groups\": [\"1月\", \"2月\", \"3月\", \"4月\", \"5月\", \"6月\", \"7月\", \"8月\", \"9月\", \"10月\", \"11月\", \"12月\"]}]"
+      },
+      {
+        "turn": 4,
+        "query": "解释下半年盈利能力变化。",
+        "routing": {
+          "skill_id": "xlsx",
+          "is_inspect_intent": true,
+          "is_generate_intent": false,
+          "is_office_intent": true,
+          "requires_execution": false,
+          "default_rounds": 3
+        },
+        "domain": "finance",
+        "native_analysis": true,
+        "source_mode": "native_structure_sample",
+        "source_chars": 14785,
+        "attachment_chars": 14785,
+        "attachment_clipped": false,
+        "skill_chars": 5907,
+        "skill_clipped": false,
+        "history_messages": 6,
+        "history_chars_before": 4323,
+        "history_messages_after": 6,
+        "history_chars_after": 4323,
+        "history_dropped": 0,
+        "history_changed": [],
+        "selected_tools_before_loop": [
+          "compare_spreadsheet_columns",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "web_search",
+          "fetch_page",
+          "read_file"
+        ],
+        "selected_tools_after_loop": [
+          "aggregate_spreadsheet"
+        ],
+        "user_prompt_requests_bash": true,
+        "user_prompt_requests_xlsx_generation": false,
+        "system_chars": 11187,
+        "user_chars": 15550,
+        "history_summary_verification_retained": false,
+        "reconstructed_source": "[Workbook Source Structure]:\n{\"workbook_id\": \"9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f\", \"extraction_mode\": \"SCHEMA_SAMPLE\", \"coverage_complete\": false, \"sheets\": [{\"sheet\": \"使用说明\", \"dimensions\": \"A1:H10\", \"physical_rows\": 10, \"nonempty_rows_including_titles_and_headers\": 9, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"AI能力测试财务报表（模拟数据）\"}, {\"A3\": \"项目\", \"B3\": \"说明\"}, {\"A4\": \"数据性质\", \"B4\": \"全部为合成测试数据，不代表任何真实公司或客户\"}, {\"A5\": \"测试期间\", \"B5\": \"2026年1月-12月\"}, {\"A6\": \"币种及单位\", \"B6\": \"人民币，千元\"}, {\"A9\": \"建议任务3\", \"B9\": \"检查报表勾稽关系并指出异常\"}, {\"A10\": \"建议任务4\", \"B10\": \"识别交易明细中的重复、缺失、异常金额与跨期问题\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"项目\", \"B\": \"说明\"}}, {\"row\": 4, \"columns\": {\"A\": \"数据性质\", \"B\": \"全部为合成测试数据，不代表任何真实公司或客户\"}}, {\"row\": 5, \"columns\": {\"A\": \"测试期间\", \"B\": \"2026年1月-12月\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:H10\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"AI能力测试财务报表（模拟数据）\"}, {\"cell\": \"A3\", \"value\": \"项目\"}, {\"cell\": \"A4\", \"value\": \"数据性质\"}, {\"cell\": \"A5\", \"value\": \"测试期间\"}, {\"cell\": \"A6\", \"value\": \"币种及单位\"}, {\"cell\": \"A7\", \"value\": \"建议任务1\"}, {\"cell\": \"A8\", \"value\": \"建议任务2\"}, {\"cell\": \"A9\", \"value\": \"建议任务3\"}, {\"cell\": \"A10\", \"value\": \"建议任务4\"}]}, {\"sheet\": \"参数\", \"dimensions\": \"A1:F11\", \"physical_rows\": 11, \"nonempty_rows_including_titles_and_headers\": 10, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"参数与场景假设\"}, {\"A3\": \"参数\", \"B3\": \"基准值\", \"C3\": \"乐观情景\", \"D3\": \"保守情景\", \"E3\": \"单位\", \"F3\": \"备注\"}, {\"A4\": \"收入增长率\", \"B4\": \"0.08\", \"C4\": \"0.14\", \"D4\": \"0.02\", \"E4\": \"%\", \"F4\": \"用于年度预测\"}, {\"A5\": \"毛利率\", \"B5\": \"0.42\", \"C5\": \"0.46\", \"D5\": \"0.37\", \"E5\": \"%\", \"F5\": \"收入减营业成本\"}, {\"A6\": \"销售费用率\", \"B6\": \"0.12\", \"C6\": \"0.11\", \"D6\": \"0.14\", \"E6\": \"%\", \"F6\": \"占收入\"}, {\"A10\": \"存货周转天数\", \"B10\": \"55\", \"C10\": \"48\", \"D10\": \"72\", \"E10\": \"天\", \"F10\": \"期末存货估算\"}, {\"A11\": \"资本性支出\", \"B11\": \"1800\", \"C11\": \"2200\", \"D11\": \"1200\", \"E11\": \"千元\", \"F11\": \"年度CAPEX\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"参数\", \"B\": \"基准值\", \"C\": \"乐观情景\", \"D\": \"保守情景\", \"E\": \"单位\", \"F\": \"备注\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:F11\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"参数与场景假设\"}, {\"cell\": \"A3\", \"value\": \"参数\"}, {\"cell\": \"A4\", \"value\": \"收入增长率\"}, {\"cell\": \"A5\", \"value\": \"毛利率\"}, {\"cell\": \"A6\", \"value\": \"销售费用率\"}, {\"cell\": \"A7\", \"value\": \"管理费用率\"}, {\"cell\": \"A8\", \"value\": \"税率\"}, {\"cell\": \"A9\", \"value\": \"应收账款周转天数\"}, {\"cell\": \"A10\", \"value\": \"存货周转天数\"}, {\"cell\": \"A11\", \"value\": \"资本性支出\"}]}, {\"sheet\": \"月度经营\", \"dimensions\": \"A1:N16\", \"physical_rows\": 16, \"nonempty_rows_including_titles_and_headers\": 15, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年月度经营明细\"}, {\"A3\": \"月份\", \"B3\": \"营业收入\", \"C3\": \"营业成本\", \"D3\": \"毛利\", \"E3\": \"毛利率\", \"F3\": \"销售费用\", \"G3\": \"管理费用\", \"H3\": \"研发费用\", \"I3\": \"营业利润\", \"J3\": \"营业利润率\", \"K3\": \"其他收益\", \"L3\": \"税前利润\", \"M3\": \"所得税\", \"N3\": \"净利润\"}, {\"A4\": \"1月\", \"B4\": \"8420\", \"C4\": \"=B4*(1-0.405)\", \"D4\": \"=B4-C4\", \"E4\": \"=D4/B4\", \"F4\": \"=B4*0.118\", \"G4\": \"=B4*0.092\", \"H4\": \"510\", \"I4\": \"=D4-SUM(F4:H4)\", \"J4\": \"=I4/B4\", \"K4\": \"20\", \"L4\": \"=I4+K4\", \"M4\": \"=MAX(0,L4*参数!$B$8)\", \"N4\": \"=L4-M4\"}, {\"A5\": \"2月\", \"B5\": \"8150\", \"C5\": \"=B5*(1-0.398)\", \"D5\": \"=B5-C5\", \"E5\": \"=D5/B5\", \"F5\": \"=B5*0.121\", \"G5\": \"=B5*0.091\", \"H5\": \"500\", \"I5\": \"=D5-SUM(F5:H5)\", \"J5\": \"=I5/B5\", \"K5\": \"-35\", \"L5\": \"=I5+K5\", \"M5\": \"=MAX(0,L5*参数!$B$8)\", \"N5\": \"=L5-M5\"}, {\"A6\": \"3月\", \"B6\": \"9100\", \"C6\": \"=B6*(1-0.421)\", \"D6\": \"=B6-C6\", \"E6\": \"=D6/B6\", \"F6\": \"=B6*0.119\", \"G6\": \"=B6*0.089\", \"H6\": \"525\", \"I6\": \"=D6-SUM(F6:H6)\", \"J6\": \"=I6/B6\", \"K6\": \"10\", \"L6\": \"=I6+K6\", \"M6\": \"=MAX(0,L6*参数!$B$8)\", \"N6\": \"=L6-M6\"}, {\"A15\": \"12月\", \"B15\": \"13400\", \"C15\": \"=B15*(1-0.458)\", \"D15\": \"=B15-C15\", \"E15\": \"=D15/B15\", \"F15\": \"=B15*0.118\", \"G15\": \"=B15*0.086\", \"H15\": \"690\", \"I15\": \"=D15-SUM(F15:H15)\", \"J15\": \"=I15/B15\", \"K15\": \"60\", \"L15\": \"=I15+K15\", \"M15\": \"=MAX(0,L15*参数!$B$8)\", \"N15\": \"=L15-M15\"}, {\"A16\": \"全年合计/平均\", \"B16\": \"=SUM(B4:B15)\", \"C16\": \"=SUM(C4:C15)\", \"D16\": \"=SUM(D4:D15)\", \"E16\": \"=D16/B16\", \"F16\": \"=SUM(F4:F15)\", \"G16\": \"=SUM(G4:G15)\", \"H16\": \"=SUM(H4:H15)\", \"I16\": \"=SUM(I4:I15)\", \"J16\": \"=I16/B16\", \"K16\": \"=SUM(K4:K15)\", \"L16\": \"=SUM(L4:L15)\", \"M16\": \"=SUM(M4:M15)\", \"N16\": \"=SUM(N4:N15)\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"月份\", \"B\": \"营业收入\", \"C\": \"营业成本\", \"D\": \"毛利\", \"E\": \"毛利率\", \"F\": \"销售费用\", \"G\": \"管理费用\", \"H\": \"研发费用\", \"I\": \"营业利润\", \"J\": \"营业利润率\", \"K\": \"其他收益\", \"L\": \"税前利润\", \"M\": \"所得税\", \"N\": \"净利润\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:N15\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年月度经营明细\"}, {\"cell\": \"A3\", \"value\": \"月份\"}, {\"cell\": \"A4\", \"value\": \"1月\"}, {\"cell\": \"A5\", \"value\": \"2月\"}, {\"cell\": \"A6\", \"value\": \"3月\"}, {\"cell\": \"A7\", \"value\": \"4月\"}, {\"cell\": \"A8\", \"value\": \"5月\"}, {\"cell\": \"A9\", \"value\": \"6月\"}, {\"cell\": \"A10\", \"value\": \"7月\"}, {\"cell\": \"A11\", \"value\": \"8月\"}, {\"cell\": \"A12\", \"value\": \"9月\"}, {\"cell\": \"A13\", \"value\": \"10月\"}, {\"cell\": \"A14\", \"value\": \"11月\"}, {\"cell\": \"A15\", \"value\": \"12月\"}, {\"cell\": \"A16\", \"value\": \"全年合计/平均\"}]}, {\"sheet\": \"利润表\", \"dimensions\": \"A1:D14\", \"physical_rows\": 14, \"nonempty_rows_including_titles_and_headers\": 13, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年度利润表\"}, {\"A3\": \"项目\", \"B3\": \"2026实际\", \"C3\": \"2026预算\", \"D3\": \"差异\"}, {\"A4\": \"营业收入\", \"B4\": \"=月度经营!B16\", \"C4\": \"120000\", \"D4\": \"=B4-C4\"}, {\"A5\": \"营业成本\", \"B5\": \"=月度经营!C16\", \"C5\": \"70000\", \"D5\": \"=B5-C5\"}, {\"A6\": \"毛利\", \"B6\": \"=月度经营!D16\", \"C6\": \"50000\", \"D6\": \"=B6-C6\"}, {\"A13\": \"所得税\", \"B13\": \"=月度经营!M16\", \"C13\": \"4650\", \"D13\": \"=B13-C13\"}, {\"A14\": \"净利润\", \"B14\": \"=月度经营!N16\", \"C14\": \"13950\", \"D14\": \"=B14-C14\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"项目\", \"B\": \"2026实际\", \"C\": \"2026预算\", \"D\": \"差异\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:D14\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年度利润表\"}, {\"cell\": \"A3\", \"value\": \"项目\"}, {\"cell\": \"A4\", \"value\": \"营业收入\"}, {\"cell\": \"A5\", \"value\": \"营业成本\"}, {\"cell\": \"A6\", \"value\": \"毛利\"}, {\"cell\": \"A7\", \"value\": \"销售费用\"}, {\"cell\": \"A8\", \"value\": \"管理费用\"}, {\"cell\": \"A9\", \"value\": \"研发费用\"}, {\"cell\": \"A10\", \"value\": \"营业利润\"}, {\"cell\": \"A11\", \"value\": \"其他收益\"}, {\"cell\": \"A12\", \"value\": \"税前利润\"}, {\"cell\": \"A13\", \"value\": \"所得税\"}, {\"cell\": \"A14\", \"value\": \"净利润\"}]}, {\"sheet\": \"预算对比\", \"dimensions\": \"A1:H15\", \"physical_rows\": 15, \"nonempty_rows_including_titles_and_headers\": 14, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年月度预算与实际对比\"}, {\"A3\": \"月份\", \"B3\": \"收入预算\", \"C3\": \"收入实际\", \"D3\": \"收入差异\", \"E3\": \"利润预算\", \"F3\": \"利润实际\", \"G3\": \"利润差异\", \"H3\": \"利润达成率\"}, {\"A4\": \"1月\", \"B4\": \"9000\", \"C4\": \"=月度经营!B4\", \"D4\": \"=C4-B4\", \"E4\": \"1050\", \"F4\": \"=月度经营!N4\", \"G4\": \"=F4-E4\", \"H4\": \"=F4/E4\"}, {\"A5\": \"2月\", \"B5\": \"9230\", \"C5\": \"=月度经营!B5\", \"D5\": \"=C5-B5\", \"E5\": \"1105\", \"F5\": \"=月度经营!N5\", \"G5\": \"=F5-E5\", \"H5\": \"=F5/E5\"}, {\"A6\": \"3月\", \"B6\": \"9460\", \"C6\": \"=月度经营!B6\", \"D6\": \"=C6-B6\", \"E6\": \"1160\", \"F6\": \"=月度经营!N6\", \"G6\": \"=F6-E6\", \"H6\": \"=F6/E6\"}, {\"A14\": \"11月\", \"B14\": \"11300\", \"C14\": \"=月度经营!B14\", \"D14\": \"=C14-B14\", \"E14\": \"1600\", \"F14\": \"=月度经营!N14\", \"G14\": \"=F14-E14\", \"H14\": \"=F14/E14\"}, {\"A15\": \"12月\", \"B15\": \"11530\", \"C15\": \"=月度经营!B15\", \"D15\": \"=C15-B15\", \"E15\": \"1655\", \"F15\": \"=月度经营!N15\", \"G15\": \"=F15-E15\", \"H15\": \"=F15/E15\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"月份\", \"B\": \"收入预算\", \"C\": \"收入实际\", \"D\": \"收入差异\", \"E\": \"利润预算\", \"F\": \"利润实际\", \"G\": \"利润差异\", \"H\": \"利润达成率\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:H15\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年月度预算与实际对比\"}, {\"cell\": \"A3\", \"value\": \"月份\"}, {\"cell\": \"A4\", \"value\": \"1月\"}, {\"cell\": \"A5\", \"value\": \"2月\"}, {\"cell\": \"A6\", \"value\": \"3月\"}, {\"cell\": \"A7\", \"value\": \"4月\"}, {\"cell\": \"A8\", \"value\": \"5月\"}, {\"cell\": \"A9\", \"value\": \"6月\"}, {\"cell\": \"A10\", \"value\": \"7月\"}, {\"cell\": \"A11\", \"value\": \"8月\"}, {\"cell\": \"A12\", \"value\": \"9月\"}, {\"cell\": \"A13\", \"value\": \"10月\"}, {\"cell\": \"A14\", \"value\": \"11月\"}, {\"cell\": \"A15\", \"value\": \"12月\"}]}, {\"sheet\": \"资产负债表\", \"dimensions\": \"A1:D20\", \"physical_rows\": 20, \"nonempty_rows_including_titles_and_headers\": 19, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年12月31日资产负债表\"}, {\"A3\": \"项目\", \"B3\": \"期末余额\", \"C3\": \"期初余额\", \"D3\": \"变动\"}, {\"A4\": \"货币资金\", \"B4\": \"16850\", \"C4\": \"12100\", \"D4\": \"=B4-C4\"}, {\"A5\": \"应收账款\", \"B5\": \"14250\", \"C5\": \"11900\", \"D5\": \"=B5-C5\"}, {\"A6\": \"存货\", \"B6\": \"9200\", \"C6\": \"8100\", \"D6\": \"=B6-C6\"}, {\"A19\": \"所有者权益合计\", \"B19\": \"=SUM(B17:B18)\", \"C19\": \"=SUM(C17:C18)\", \"D19\": \"=B19-C19\"}, {\"A20\": \"负债和所有者权益总计\", \"B20\": \"=B16+B19\", \"C20\": \"=C16+C19\", \"D20\": \"=B20-C20\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"项目\", \"B\": \"期末余额\", \"C\": \"期初余额\", \"D\": \"变动\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:D18\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年12月31日资产负债表\"}, {\"cell\": \"A3\", \"value\": \"项目\"}, {\"cell\": \"A4\", \"value\": \"货币资金\"}, {\"cell\": \"A5\", \"value\": \"应收账款\"}, {\"cell\": \"A6\", \"value\": \"存货\"}, {\"cell\": \"A7\", \"value\": \"其他流动资产\"}, {\"cell\": \"A8\", \"value\": \"流动资产合计\"}, {\"cell\": \"A9\", \"value\": \"固定资产净额\"}, {\"cell\": \"A10\", \"value\": \"无形资产\"}, {\"cell\": \"A11\", \"value\": \"资产总计\"}, {\"cell\": \"A12\", \"value\": \"短期借款\"}, {\"cell\": \"A13\", \"value\": \"应付账款\"}, {\"cell\": \"A14\", \"value\": \"其他流动负债\"}, {\"cell\": \"A15\", \"value\": \"长期借款\"}, {\"cell\": \"A16\", \"value\": \"负债合计\"}, {\"cell\": \"A17\", \"value\": \"实收资本\"}, {\"cell\": \"A18\", \"value\": \"留存收益\"}, {\"cell\": \"A19\", \"value\": \"所有者权益合计\"}, {\"cell\": \"A20\", \"value\": \"负债和所有者权益总计\"}]}, {\"sheet\": \"现金流量表\", \"dimensions\": \"A1:C17\", \"physical_rows\": 17, \"nonempty_rows_including_titles_and_headers\": 16, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年度现金流量表（间接法）\"}, {\"A3\": \"项目\", \"B3\": \"金额\", \"C3\": \"说明\"}, {\"A4\": \"净利润\", \"B4\": \"=利润表!B14\", \"C4\": \"来自利润表\"}, {\"A5\": \"加：折旧与摊销\", \"B5\": \"2200\", \"C5\": \"非现金项目\"}, {\"A6\": \"加：应收账款增加\", \"B6\": \"=-(资产负债表!B5-资产负债表!C5)\", \"C6\": \"营运资本变化\"}, {\"A16\": \"期初现金\", \"B16\": \"=资产负债表!C4\"}, {\"A17\": \"期末现金\", \"B17\": \"=B16+B15\", \"C17\": \"应与资产负债表货币资金一致\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"项目\", \"B\": \"金额\", \"C\": \"说明\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:C17\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年度现金流量表（间接法）\"}, {\"cell\": \"A3\", \"value\": \"项目\"}, {\"cell\": \"A4\", \"value\": \"净利润\"}, {\"cell\": \"A5\", \"value\": \"加：折旧与摊销\"}, {\"cell\": \"A6\", \"value\": \"加：应收账款增加\"}, {\"cell\": \"A7\", \"value\": \"加：存货增加\"}, {\"cell\": \"A8\", \"value\": \"加：应付账款增加\"}, {\"cell\": \"A9\", \"value\": \"经营活动现金流净额\"}, {\"cell\": \"A10\", \"value\": \"资本性支出\"}, {\"cell\": \"A11\", \"value\": \"投资活动现金流净额\"}, {\"cell\": \"A12\", \"value\": \"借款净减少\"}, {\"cell\": \"A13\", \"value\": \"分红\"}, {\"cell\": \"A14\", \"value\": \"筹资活动现金流净额\"}, {\"cell\": \"A15\", \"value\": \"现金净增加额\"}, {\"cell\": \"A16\", \"value\": \"期初现金\"}, {\"cell\": \"A17\", \"value\": \"期末现金\"}]}, {\"sheet\": \"部门分析\", \"dimensions\": \"A1:F8\", \"physical_rows\": 8, \"nonempty_rows_including_titles_and_headers\": 7, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年部门费用分析\"}, {\"A3\": \"部门\", \"B3\": \"人员成本\", \"C3\": \"差旅费\", \"D3\": \"市场费用\", \"E3\": \"IT及办公\", \"F3\": \"费用合计\"}, {\"A4\": \"销售一部\", \"B4\": \"6100\", \"C4\": \"820\", \"D4\": \"1300\", \"E4\": \"420\", \"F4\": \"=SUM(B4:E4)\"}, {\"A5\": \"销售二部\", \"B5\": \"5700\", \"C5\": \"760\", \"D5\": \"1150\", \"E5\": \"390\", \"F5\": \"=SUM(B5:E5)\"}, {\"A6\": \"交付部\", \"B6\": \"8200\", \"C6\": \"940\", \"D6\": \"180\", \"E6\": \"780\", \"F6\": \"=SUM(B6:E6)\"}, {\"A7\": \"研发部\", \"B7\": \"9900\", \"C7\": \"620\", \"D7\": \"120\", \"E7\": \"1650\", \"F7\": \"=SUM(B7:E7)\"}, {\"A8\": \"职能部门\", \"B8\": \"6400\", \"C8\": \"480\", \"D8\": \"250\", \"E8\": \"970\", \"F8\": \"=SUM(B8:E8)\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"部门\", \"B\": \"人员成本\", \"C\": \"差旅费\", \"D\": \"市场费用\", \"E\": \"IT及办公\", \"F\": \"费用合计\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:F8\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年部门费用分析\"}, {\"cell\": \"A3\", \"value\": \"部门\"}, {\"cell\": \"A4\", \"value\": \"销售一部\"}, {\"cell\": \"A5\", \"value\": \"销售二部\"}, {\"cell\": \"A6\", \"value\": \"交付部\"}, {\"cell\": \"A7\", \"value\": \"研发部\"}, {\"cell\": \"A8\", \"value\": \"职能部门\"}]}, {\"sheet\": \"交易明细\", \"dimensions\": \"A1:K83\", \"physical_rows\": 83, \"nonempty_rows_including_titles_and_headers\": 82, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年交易明细（含刻意设置的数据质量异常）\"}, {\"A3\": \"凭证号\", \"B3\": \"日期\", \"C3\": \"类型\", \"D3\": \"部门\", \"E3\": \"客户/供应商\", \"F3\": \"摘要\", \"G3\": \"金额\", \"H3\": \"税额\", \"I3\": \"币种\", \"J3\": \"审批状态\", \"K3\": \"备注\"}, {\"A4\": \"V2026-0001\", \"B4\": \"2026-01-04 00:00:00\", \"C4\": \"采购成本\", \"D4\": \"销售二部\", \"E4\": \"客户B\", \"F4\": \"采购成本业务1\", \"G4\": \"-387\", \"H4\": \"50.31\", \"I4\": \"CNY\", \"J4\": \"已审批\"}, {\"A5\": \"V2026-0002\", \"B5\": \"2026-02-07 00:00:00\", \"C5\": \"差旅费\", \"D5\": \"交付部\", \"E5\": \"客户C\", \"F5\": \"差旅费业务2\", \"G5\": \"-524\", \"H5\": \"31.44\", \"I5\": \"CNY\", \"J5\": \"已审批\"}, {\"A6\": \"V2026-0003\", \"B6\": \"2026-03-10 00:00:00\", \"C6\": \"市场费用\", \"D6\": \"研发部\", \"E6\": \"供应商X\", \"F6\": \"市场费用业务3\", \"G6\": \"-661\", \"H6\": \"85.93\", \"I6\": \"CNY\", \"J6\": \"已审批\"}, {\"A82\": \"V2026-0079\", \"B82\": \"2026-07-22 00:00:00\", \"C82\": \"软件服务费\", \"D82\": \"职能部门\", \"E82\": \"客户B\", \"F82\": \"软件服务费业务79\", \"G82\": \"-2273\", \"H82\": \"136.38\", \"I82\": \"CNY\", \"J82\": \"已审批\"}, {\"A83\": \"V2026-0080\", \"B83\": \"2026-08-25 00:00:00\", \"C83\": \"销售收入\", \"D83\": \"销售一部\", \"E83\": \"客户C\", \"F83\": \"销售收入业务80\", \"G83\": \"2410\", \"H83\": \"313.3\", \"I83\": \"CNY\", \"J83\": \"已审批\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"凭证号\", \"B\": \"日期\", \"C\": \"类型\", \"D\": \"部门\", \"E\": \"客户/供应商\", \"F\": \"摘要\", \"G\": \"金额\", \"H\": \"税额\", \"I\": \"币种\", \"J\": \"审批状态\", \"K\": \"备注\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:K83\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年交易明细（含刻意设置的数据质量异常）\"}, {\"cell\": \"A3\", \"value\": \"凭证号\"}, {\"cell\": \"A4\", \"value\": \"V2026-0001\"}, {\"cell\": \"A82\", \"value\": \"V2026-0079\"}, {\"cell\": \"A83\", \"value\": \"V2026-0080\"}]}, {\"sheet\": \"管理驾驶舱\", \"dimensions\": \"A1:N15\", \"physical_rows\": 15, \"nonempty_rows_including_titles_and_headers\": 14, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年财务管理驾驶舱\"}, {\"A3\": \"核心指标\", \"B3\": \"数值\", \"D3\": \"月份\", \"E3\": \"收入\", \"F3\": \"净利润\"}, {\"A4\": \"营业收入\", \"B4\": \"=利润表!B4\", \"D4\": \"1月\", \"E4\": \"=月度经营!B4\", \"F4\": \"=月度经营!N4\"}, {\"A5\": \"毛利率\", \"B5\": \"=月度经营!E16\", \"D5\": \"2月\", \"E5\": \"=月度经营!B5\", \"F5\": \"=月度经营!N5\"}, {\"A6\": \"营业利润\", \"B6\": \"=利润表!B10\", \"D6\": \"3月\", \"E6\": \"=月度经营!B6\", \"F6\": \"=月度经营!N6\"}, {\"D14\": \"11月\", \"E14\": \"=月度经营!B14\", \"F14\": \"=月度经营!N14\"}, {\"D15\": \"12月\", \"E15\": \"=月度经营!B15\", \"F15\": \"=月度经营!N15\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"核心指标\", \"B\": \"数值\", \"D\": \"月份\", \"E\": \"收入\", \"F\": \"净利润\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:N15\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年财务管理驾驶舱\"}, {\"cell\": \"A3\", \"value\": \"核心指标\"}, {\"cell\": \"A4\", \"value\": \"营业收入\"}, {\"cell\": \"A5\", \"value\": \"毛利率\"}, {\"cell\": \"A6\", \"value\": \"营业利润\"}, {\"cell\": \"A7\", \"value\": \"净利润\"}, {\"cell\": \"A8\", \"value\": \"期末现金\"}]}]}\n这是结构与样本，不是完整业务数据或计算结果。请选择真实表头、业务范围与期间，用对应原生分析工具处理原件。"
+      },
+      {
+        "turn": 5,
+        "query": "检查交易明细是否有重复凭证。",
+        "routing": {
+          "skill_id": "xlsx",
+          "is_inspect_intent": true,
+          "is_generate_intent": false,
+          "is_office_intent": true,
+          "requires_execution": false,
+          "default_rounds": 3
+        },
+        "domain": "generic",
+        "native_analysis": true,
+        "source_mode": "native_structure_sample",
+        "source_chars": 14785,
+        "attachment_chars": 14785,
+        "attachment_clipped": false,
+        "skill_chars": 5907,
+        "skill_clipped": false,
+        "history_messages": 8,
+        "history_chars_before": 6879,
+        "history_messages_after": 8,
+        "history_chars_after": 6879,
+        "history_dropped": 0,
+        "history_changed": [],
+        "selected_tools_before_loop": [
+          "compare_spreadsheet_columns",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "web_search",
+          "fetch_page",
+          "read_file"
+        ],
+        "selected_tools_after_loop": [
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows"
+        ],
+        "user_prompt_requests_bash": true,
+        "user_prompt_requests_xlsx_generation": false,
+        "system_chars": 10382,
+        "user_chars": 15552,
+        "history_summary_verification_retained": false,
+        "reconstructed_source": "[Workbook Source Structure]:\n{\"workbook_id\": \"9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f\", \"extraction_mode\": \"SCHEMA_SAMPLE\", \"coverage_complete\": false, \"sheets\": [{\"sheet\": \"使用说明\", \"dimensions\": \"A1:H10\", \"physical_rows\": 10, \"nonempty_rows_including_titles_and_headers\": 9, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"AI能力测试财务报表（模拟数据）\"}, {\"A3\": \"项目\", \"B3\": \"说明\"}, {\"A4\": \"数据性质\", \"B4\": \"全部为合成测试数据，不代表任何真实公司或客户\"}, {\"A5\": \"测试期间\", \"B5\": \"2026年1月-12月\"}, {\"A6\": \"币种及单位\", \"B6\": \"人民币，千元\"}, {\"A9\": \"建议任务3\", \"B9\": \"检查报表勾稽关系并指出异常\"}, {\"A10\": \"建议任务4\", \"B10\": \"识别交易明细中的重复、缺失、异常金额与跨期问题\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"项目\", \"B\": \"说明\"}}, {\"row\": 4, \"columns\": {\"A\": \"数据性质\", \"B\": \"全部为合成测试数据，不代表任何真实公司或客户\"}}, {\"row\": 5, \"columns\": {\"A\": \"测试期间\", \"B\": \"2026年1月-12月\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:H10\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"AI能力测试财务报表（模拟数据）\"}, {\"cell\": \"A3\", \"value\": \"项目\"}, {\"cell\": \"A4\", \"value\": \"数据性质\"}, {\"cell\": \"A5\", \"value\": \"测试期间\"}, {\"cell\": \"A6\", \"value\": \"币种及单位\"}, {\"cell\": \"A7\", \"value\": \"建议任务1\"}, {\"cell\": \"A8\", \"value\": \"建议任务2\"}, {\"cell\": \"A9\", \"value\": \"建议任务3\"}, {\"cell\": \"A10\", \"value\": \"建议任务4\"}]}, {\"sheet\": \"参数\", \"dimensions\": \"A1:F11\", \"physical_rows\": 11, \"nonempty_rows_including_titles_and_headers\": 10, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"参数与场景假设\"}, {\"A3\": \"参数\", \"B3\": \"基准值\", \"C3\": \"乐观情景\", \"D3\": \"保守情景\", \"E3\": \"单位\", \"F3\": \"备注\"}, {\"A4\": \"收入增长率\", \"B4\": \"0.08\", \"C4\": \"0.14\", \"D4\": \"0.02\", \"E4\": \"%\", \"F4\": \"用于年度预测\"}, {\"A5\": \"毛利率\", \"B5\": \"0.42\", \"C5\": \"0.46\", \"D5\": \"0.37\", \"E5\": \"%\", \"F5\": \"收入减营业成本\"}, {\"A6\": \"销售费用率\", \"B6\": \"0.12\", \"C6\": \"0.11\", \"D6\": \"0.14\", \"E6\": \"%\", \"F6\": \"占收入\"}, {\"A10\": \"存货周转天数\", \"B10\": \"55\", \"C10\": \"48\", \"D10\": \"72\", \"E10\": \"天\", \"F10\": \"期末存货估算\"}, {\"A11\": \"资本性支出\", \"B11\": \"1800\", \"C11\": \"2200\", \"D11\": \"1200\", \"E11\": \"千元\", \"F11\": \"年度CAPEX\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"参数\", \"B\": \"基准值\", \"C\": \"乐观情景\", \"D\": \"保守情景\", \"E\": \"单位\", \"F\": \"备注\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:F11\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"参数与场景假设\"}, {\"cell\": \"A3\", \"value\": \"参数\"}, {\"cell\": \"A4\", \"value\": \"收入增长率\"}, {\"cell\": \"A5\", \"value\": \"毛利率\"}, {\"cell\": \"A6\", \"value\": \"销售费用率\"}, {\"cell\": \"A7\", \"value\": \"管理费用率\"}, {\"cell\": \"A8\", \"value\": \"税率\"}, {\"cell\": \"A9\", \"value\": \"应收账款周转天数\"}, {\"cell\": \"A10\", \"value\": \"存货周转天数\"}, {\"cell\": \"A11\", \"value\": \"资本性支出\"}]}, {\"sheet\": \"月度经营\", \"dimensions\": \"A1:N16\", \"physical_rows\": 16, \"nonempty_rows_including_titles_and_headers\": 15, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年月度经营明细\"}, {\"A3\": \"月份\", \"B3\": \"营业收入\", \"C3\": \"营业成本\", \"D3\": \"毛利\", \"E3\": \"毛利率\", \"F3\": \"销售费用\", \"G3\": \"管理费用\", \"H3\": \"研发费用\", \"I3\": \"营业利润\", \"J3\": \"营业利润率\", \"K3\": \"其他收益\", \"L3\": \"税前利润\", \"M3\": \"所得税\", \"N3\": \"净利润\"}, {\"A4\": \"1月\", \"B4\": \"8420\", \"C4\": \"=B4*(1-0.405)\", \"D4\": \"=B4-C4\", \"E4\": \"=D4/B4\", \"F4\": \"=B4*0.118\", \"G4\": \"=B4*0.092\", \"H4\": \"510\", \"I4\": \"=D4-SUM(F4:H4)\", \"J4\": \"=I4/B4\", \"K4\": \"20\", \"L4\": \"=I4+K4\", \"M4\": \"=MAX(0,L4*参数!$B$8)\", \"N4\": \"=L4-M4\"}, {\"A5\": \"2月\", \"B5\": \"8150\", \"C5\": \"=B5*(1-0.398)\", \"D5\": \"=B5-C5\", \"E5\": \"=D5/B5\", \"F5\": \"=B5*0.121\", \"G5\": \"=B5*0.091\", \"H5\": \"500\", \"I5\": \"=D5-SUM(F5:H5)\", \"J5\": \"=I5/B5\", \"K5\": \"-35\", \"L5\": \"=I5+K5\", \"M5\": \"=MAX(0,L5*参数!$B$8)\", \"N5\": \"=L5-M5\"}, {\"A6\": \"3月\", \"B6\": \"9100\", \"C6\": \"=B6*(1-0.421)\", \"D6\": \"=B6-C6\", \"E6\": \"=D6/B6\", \"F6\": \"=B6*0.119\", \"G6\": \"=B6*0.089\", \"H6\": \"525\", \"I6\": \"=D6-SUM(F6:H6)\", \"J6\": \"=I6/B6\", \"K6\": \"10\", \"L6\": \"=I6+K6\", \"M6\": \"=MAX(0,L6*参数!$B$8)\", \"N6\": \"=L6-M6\"}, {\"A15\": \"12月\", \"B15\": \"13400\", \"C15\": \"=B15*(1-0.458)\", \"D15\": \"=B15-C15\", \"E15\": \"=D15/B15\", \"F15\": \"=B15*0.118\", \"G15\": \"=B15*0.086\", \"H15\": \"690\", \"I15\": \"=D15-SUM(F15:H15)\", \"J15\": \"=I15/B15\", \"K15\": \"60\", \"L15\": \"=I15+K15\", \"M15\": \"=MAX(0,L15*参数!$B$8)\", \"N15\": \"=L15-M15\"}, {\"A16\": \"全年合计/平均\", \"B16\": \"=SUM(B4:B15)\", \"C16\": \"=SUM(C4:C15)\", \"D16\": \"=SUM(D4:D15)\", \"E16\": \"=D16/B16\", \"F16\": \"=SUM(F4:F15)\", \"G16\": \"=SUM(G4:G15)\", \"H16\": \"=SUM(H4:H15)\", \"I16\": \"=SUM(I4:I15)\", \"J16\": \"=I16/B16\", \"K16\": \"=SUM(K4:K15)\", \"L16\": \"=SUM(L4:L15)\", \"M16\": \"=SUM(M4:M15)\", \"N16\": \"=SUM(N4:N15)\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"月份\", \"B\": \"营业收入\", \"C\": \"营业成本\", \"D\": \"毛利\", \"E\": \"毛利率\", \"F\": \"销售费用\", \"G\": \"管理费用\", \"H\": \"研发费用\", \"I\": \"营业利润\", \"J\": \"营业利润率\", \"K\": \"其他收益\", \"L\": \"税前利润\", \"M\": \"所得税\", \"N\": \"净利润\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:N15\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年月度经营明细\"}, {\"cell\": \"A3\", \"value\": \"月份\"}, {\"cell\": \"A4\", \"value\": \"1月\"}, {\"cell\": \"A5\", \"value\": \"2月\"}, {\"cell\": \"A6\", \"value\": \"3月\"}, {\"cell\": \"A7\", \"value\": \"4月\"}, {\"cell\": \"A8\", \"value\": \"5月\"}, {\"cell\": \"A9\", \"value\": \"6月\"}, {\"cell\": \"A10\", \"value\": \"7月\"}, {\"cell\": \"A11\", \"value\": \"8月\"}, {\"cell\": \"A12\", \"value\": \"9月\"}, {\"cell\": \"A13\", \"value\": \"10月\"}, {\"cell\": \"A14\", \"value\": \"11月\"}, {\"cell\": \"A15\", \"value\": \"12月\"}, {\"cell\": \"A16\", \"value\": \"全年合计/平均\"}]}, {\"sheet\": \"利润表\", \"dimensions\": \"A1:D14\", \"physical_rows\": 14, \"nonempty_rows_including_titles_and_headers\": 13, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年度利润表\"}, {\"A3\": \"项目\", \"B3\": \"2026实际\", \"C3\": \"2026预算\", \"D3\": \"差异\"}, {\"A4\": \"营业收入\", \"B4\": \"=月度经营!B16\", \"C4\": \"120000\", \"D4\": \"=B4-C4\"}, {\"A5\": \"营业成本\", \"B5\": \"=月度经营!C16\", \"C5\": \"70000\", \"D5\": \"=B5-C5\"}, {\"A6\": \"毛利\", \"B6\": \"=月度经营!D16\", \"C6\": \"50000\", \"D6\": \"=B6-C6\"}, {\"A13\": \"所得税\", \"B13\": \"=月度经营!M16\", \"C13\": \"4650\", \"D13\": \"=B13-C13\"}, {\"A14\": \"净利润\", \"B14\": \"=月度经营!N16\", \"C14\": \"13950\", \"D14\": \"=B14-C14\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"项目\", \"B\": \"2026实际\", \"C\": \"2026预算\", \"D\": \"差异\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:D14\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年度利润表\"}, {\"cell\": \"A3\", \"value\": \"项目\"}, {\"cell\": \"A4\", \"value\": \"营业收入\"}, {\"cell\": \"A5\", \"value\": \"营业成本\"}, {\"cell\": \"A6\", \"value\": \"毛利\"}, {\"cell\": \"A7\", \"value\": \"销售费用\"}, {\"cell\": \"A8\", \"value\": \"管理费用\"}, {\"cell\": \"A9\", \"value\": \"研发费用\"}, {\"cell\": \"A10\", \"value\": \"营业利润\"}, {\"cell\": \"A11\", \"value\": \"其他收益\"}, {\"cell\": \"A12\", \"value\": \"税前利润\"}, {\"cell\": \"A13\", \"value\": \"所得税\"}, {\"cell\": \"A14\", \"value\": \"净利润\"}]}, {\"sheet\": \"预算对比\", \"dimensions\": \"A1:H15\", \"physical_rows\": 15, \"nonempty_rows_including_titles_and_headers\": 14, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年月度预算与实际对比\"}, {\"A3\": \"月份\", \"B3\": \"收入预算\", \"C3\": \"收入实际\", \"D3\": \"收入差异\", \"E3\": \"利润预算\", \"F3\": \"利润实际\", \"G3\": \"利润差异\", \"H3\": \"利润达成率\"}, {\"A4\": \"1月\", \"B4\": \"9000\", \"C4\": \"=月度经营!B4\", \"D4\": \"=C4-B4\", \"E4\": \"1050\", \"F4\": \"=月度经营!N4\", \"G4\": \"=F4-E4\", \"H4\": \"=F4/E4\"}, {\"A5\": \"2月\", \"B5\": \"9230\", \"C5\": \"=月度经营!B5\", \"D5\": \"=C5-B5\", \"E5\": \"1105\", \"F5\": \"=月度经营!N5\", \"G5\": \"=F5-E5\", \"H5\": \"=F5/E5\"}, {\"A6\": \"3月\", \"B6\": \"9460\", \"C6\": \"=月度经营!B6\", \"D6\": \"=C6-B6\", \"E6\": \"1160\", \"F6\": \"=月度经营!N6\", \"G6\": \"=F6-E6\", \"H6\": \"=F6/E6\"}, {\"A14\": \"11月\", \"B14\": \"11300\", \"C14\": \"=月度经营!B14\", \"D14\": \"=C14-B14\", \"E14\": \"1600\", \"F14\": \"=月度经营!N14\", \"G14\": \"=F14-E14\", \"H14\": \"=F14/E14\"}, {\"A15\": \"12月\", \"B15\": \"11530\", \"C15\": \"=月度经营!B15\", \"D15\": \"=C15-B15\", \"E15\": \"1655\", \"F15\": \"=月度经营!N15\", \"G15\": \"=F15-E15\", \"H15\": \"=F15/E15\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"月份\", \"B\": \"收入预算\", \"C\": \"收入实际\", \"D\": \"收入差异\", \"E\": \"利润预算\", \"F\": \"利润实际\", \"G\": \"利润差异\", \"H\": \"利润达成率\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:H15\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年月度预算与实际对比\"}, {\"cell\": \"A3\", \"value\": \"月份\"}, {\"cell\": \"A4\", \"value\": \"1月\"}, {\"cell\": \"A5\", \"value\": \"2月\"}, {\"cell\": \"A6\", \"value\": \"3月\"}, {\"cell\": \"A7\", \"value\": \"4月\"}, {\"cell\": \"A8\", \"value\": \"5月\"}, {\"cell\": \"A9\", \"value\": \"6月\"}, {\"cell\": \"A10\", \"value\": \"7月\"}, {\"cell\": \"A11\", \"value\": \"8月\"}, {\"cell\": \"A12\", \"value\": \"9月\"}, {\"cell\": \"A13\", \"value\": \"10月\"}, {\"cell\": \"A14\", \"value\": \"11月\"}, {\"cell\": \"A15\", \"value\": \"12月\"}]}, {\"sheet\": \"资产负债表\", \"dimensions\": \"A1:D20\", \"physical_rows\": 20, \"nonempty_rows_including_titles_and_headers\": 19, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年12月31日资产负债表\"}, {\"A3\": \"项目\", \"B3\": \"期末余额\", \"C3\": \"期初余额\", \"D3\": \"变动\"}, {\"A4\": \"货币资金\", \"B4\": \"16850\", \"C4\": \"12100\", \"D4\": \"=B4-C4\"}, {\"A5\": \"应收账款\", \"B5\": \"14250\", \"C5\": \"11900\", \"D5\": \"=B5-C5\"}, {\"A6\": \"存货\", \"B6\": \"9200\", \"C6\": \"8100\", \"D6\": \"=B6-C6\"}, {\"A19\": \"所有者权益合计\", \"B19\": \"=SUM(B17:B18)\", \"C19\": \"=SUM(C17:C18)\", \"D19\": \"=B19-C19\"}, {\"A20\": \"负债和所有者权益总计\", \"B20\": \"=B16+B19\", \"C20\": \"=C16+C19\", \"D20\": \"=B20-C20\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"项目\", \"B\": \"期末余额\", \"C\": \"期初余额\", \"D\": \"变动\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:D18\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年12月31日资产负债表\"}, {\"cell\": \"A3\", \"value\": \"项目\"}, {\"cell\": \"A4\", \"value\": \"货币资金\"}, {\"cell\": \"A5\", \"value\": \"应收账款\"}, {\"cell\": \"A6\", \"value\": \"存货\"}, {\"cell\": \"A7\", \"value\": \"其他流动资产\"}, {\"cell\": \"A8\", \"value\": \"流动资产合计\"}, {\"cell\": \"A9\", \"value\": \"固定资产净额\"}, {\"cell\": \"A10\", \"value\": \"无形资产\"}, {\"cell\": \"A11\", \"value\": \"资产总计\"}, {\"cell\": \"A12\", \"value\": \"短期借款\"}, {\"cell\": \"A13\", \"value\": \"应付账款\"}, {\"cell\": \"A14\", \"value\": \"其他流动负债\"}, {\"cell\": \"A15\", \"value\": \"长期借款\"}, {\"cell\": \"A16\", \"value\": \"负债合计\"}, {\"cell\": \"A17\", \"value\": \"实收资本\"}, {\"cell\": \"A18\", \"value\": \"留存收益\"}, {\"cell\": \"A19\", \"value\": \"所有者权益合计\"}, {\"cell\": \"A20\", \"value\": \"负债和所有者权益总计\"}]}, {\"sheet\": \"现金流量表\", \"dimensions\": \"A1:C17\", \"physical_rows\": 17, \"nonempty_rows_including_titles_and_headers\": 16, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年度现金流量表（间接法）\"}, {\"A3\": \"项目\", \"B3\": \"金额\", \"C3\": \"说明\"}, {\"A4\": \"净利润\", \"B4\": \"=利润表!B14\", \"C4\": \"来自利润表\"}, {\"A5\": \"加：折旧与摊销\", \"B5\": \"2200\", \"C5\": \"非现金项目\"}, {\"A6\": \"加：应收账款增加\", \"B6\": \"=-(资产负债表!B5-资产负债表!C5)\", \"C6\": \"营运资本变化\"}, {\"A16\": \"期初现金\", \"B16\": \"=资产负债表!C4\"}, {\"A17\": \"期末现金\", \"B17\": \"=B16+B15\", \"C17\": \"应与资产负债表货币资金一致\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"项目\", \"B\": \"金额\", \"C\": \"说明\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:C17\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年度现金流量表（间接法）\"}, {\"cell\": \"A3\", \"value\": \"项目\"}, {\"cell\": \"A4\", \"value\": \"净利润\"}, {\"cell\": \"A5\", \"value\": \"加：折旧与摊销\"}, {\"cell\": \"A6\", \"value\": \"加：应收账款增加\"}, {\"cell\": \"A7\", \"value\": \"加：存货增加\"}, {\"cell\": \"A8\", \"value\": \"加：应付账款增加\"}, {\"cell\": \"A9\", \"value\": \"经营活动现金流净额\"}, {\"cell\": \"A10\", \"value\": \"资本性支出\"}, {\"cell\": \"A11\", \"value\": \"投资活动现金流净额\"}, {\"cell\": \"A12\", \"value\": \"借款净减少\"}, {\"cell\": \"A13\", \"value\": \"分红\"}, {\"cell\": \"A14\", \"value\": \"筹资活动现金流净额\"}, {\"cell\": \"A15\", \"value\": \"现金净增加额\"}, {\"cell\": \"A16\", \"value\": \"期初现金\"}, {\"cell\": \"A17\", \"value\": \"期末现金\"}]}, {\"sheet\": \"部门分析\", \"dimensions\": \"A1:F8\", \"physical_rows\": 8, \"nonempty_rows_including_titles_and_headers\": 7, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年部门费用分析\"}, {\"A3\": \"部门\", \"B3\": \"人员成本\", \"C3\": \"差旅费\", \"D3\": \"市场费用\", \"E3\": \"IT及办公\", \"F3\": \"费用合计\"}, {\"A4\": \"销售一部\", \"B4\": \"6100\", \"C4\": \"820\", \"D4\": \"1300\", \"E4\": \"420\", \"F4\": \"=SUM(B4:E4)\"}, {\"A5\": \"销售二部\", \"B5\": \"5700\", \"C5\": \"760\", \"D5\": \"1150\", \"E5\": \"390\", \"F5\": \"=SUM(B5:E5)\"}, {\"A6\": \"交付部\", \"B6\": \"8200\", \"C6\": \"940\", \"D6\": \"180\", \"E6\": \"780\", \"F6\": \"=SUM(B6:E6)\"}, {\"A7\": \"研发部\", \"B7\": \"9900\", \"C7\": \"620\", \"D7\": \"120\", \"E7\": \"1650\", \"F7\": \"=SUM(B7:E7)\"}, {\"A8\": \"职能部门\", \"B8\": \"6400\", \"C8\": \"480\", \"D8\": \"250\", \"E8\": \"970\", \"F8\": \"=SUM(B8:E8)\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"部门\", \"B\": \"人员成本\", \"C\": \"差旅费\", \"D\": \"市场费用\", \"E\": \"IT及办公\", \"F\": \"费用合计\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:F8\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年部门费用分析\"}, {\"cell\": \"A3\", \"value\": \"部门\"}, {\"cell\": \"A4\", \"value\": \"销售一部\"}, {\"cell\": \"A5\", \"value\": \"销售二部\"}, {\"cell\": \"A6\", \"value\": \"交付部\"}, {\"cell\": \"A7\", \"value\": \"研发部\"}, {\"cell\": \"A8\", \"value\": \"职能部门\"}]}, {\"sheet\": \"交易明细\", \"dimensions\": \"A1:K83\", \"physical_rows\": 83, \"nonempty_rows_including_titles_and_headers\": 82, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年交易明细（含刻意设置的数据质量异常）\"}, {\"A3\": \"凭证号\", \"B3\": \"日期\", \"C3\": \"类型\", \"D3\": \"部门\", \"E3\": \"客户/供应商\", \"F3\": \"摘要\", \"G3\": \"金额\", \"H3\": \"税额\", \"I3\": \"币种\", \"J3\": \"审批状态\", \"K3\": \"备注\"}, {\"A4\": \"V2026-0001\", \"B4\": \"2026-01-04 00:00:00\", \"C4\": \"采购成本\", \"D4\": \"销售二部\", \"E4\": \"客户B\", \"F4\": \"采购成本业务1\", \"G4\": \"-387\", \"H4\": \"50.31\", \"I4\": \"CNY\", \"J4\": \"已审批\"}, {\"A5\": \"V2026-0002\", \"B5\": \"2026-02-07 00:00:00\", \"C5\": \"差旅费\", \"D5\": \"交付部\", \"E5\": \"客户C\", \"F5\": \"差旅费业务2\", \"G5\": \"-524\", \"H5\": \"31.44\", \"I5\": \"CNY\", \"J5\": \"已审批\"}, {\"A6\": \"V2026-0003\", \"B6\": \"2026-03-10 00:00:00\", \"C6\": \"市场费用\", \"D6\": \"研发部\", \"E6\": \"供应商X\", \"F6\": \"市场费用业务3\", \"G6\": \"-661\", \"H6\": \"85.93\", \"I6\": \"CNY\", \"J6\": \"已审批\"}, {\"A82\": \"V2026-0079\", \"B82\": \"2026-07-22 00:00:00\", \"C82\": \"软件服务费\", \"D82\": \"职能部门\", \"E82\": \"客户B\", \"F82\": \"软件服务费业务79\", \"G82\": \"-2273\", \"H82\": \"136.38\", \"I82\": \"CNY\", \"J82\": \"已审批\"}, {\"A83\": \"V2026-0080\", \"B83\": \"2026-08-25 00:00:00\", \"C83\": \"销售收入\", \"D83\": \"销售一部\", \"E83\": \"客户C\", \"F83\": \"销售收入业务80\", \"G83\": \"2410\", \"H83\": \"313.3\", \"I83\": \"CNY\", \"J83\": \"已审批\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"凭证号\", \"B\": \"日期\", \"C\": \"类型\", \"D\": \"部门\", \"E\": \"客户/供应商\", \"F\": \"摘要\", \"G\": \"金额\", \"H\": \"税额\", \"I\": \"币种\", \"J\": \"审批状态\", \"K\": \"备注\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:K83\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年交易明细（含刻意设置的数据质量异常）\"}, {\"cell\": \"A3\", \"value\": \"凭证号\"}, {\"cell\": \"A4\", \"value\": \"V2026-0001\"}, {\"cell\": \"A82\", \"value\": \"V2026-0079\"}, {\"cell\": \"A83\", \"value\": \"V2026-0080\"}]}, {\"sheet\": \"管理驾驶舱\", \"dimensions\": \"A1:N15\", \"physical_rows\": 15, \"nonempty_rows_including_titles_and_headers\": 14, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年财务管理驾驶舱\"}, {\"A3\": \"核心指标\", \"B3\": \"数值\", \"D3\": \"月份\", \"E3\": \"收入\", \"F3\": \"净利润\"}, {\"A4\": \"营业收入\", \"B4\": \"=利润表!B4\", \"D4\": \"1月\", \"E4\": \"=月度经营!B4\", \"F4\": \"=月度经营!N4\"}, {\"A5\": \"毛利率\", \"B5\": \"=月度经营!E16\", \"D5\": \"2月\", \"E5\": \"=月度经营!B5\", \"F5\": \"=月度经营!N5\"}, {\"A6\": \"营业利润\", \"B6\": \"=利润表!B10\", \"D6\": \"3月\", \"E6\": \"=月度经营!B6\", \"F6\": \"=月度经营!N6\"}, {\"D14\": \"11月\", \"E14\": \"=月度经营!B14\", \"F14\": \"=月度经营!N14\"}, {\"D15\": \"12月\", \"E15\": \"=月度经营!B15\", \"F15\": \"=月度经营!N15\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"核心指标\", \"B\": \"数值\", \"D\": \"月份\", \"E\": \"收入\", \"F\": \"净利润\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:N15\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年财务管理驾驶舱\"}, {\"cell\": \"A3\", \"value\": \"核心指标\"}, {\"cell\": \"A4\", \"value\": \"营业收入\"}, {\"cell\": \"A5\", \"value\": \"毛利率\"}, {\"cell\": \"A6\", \"value\": \"营业利润\"}, {\"cell\": \"A7\", \"value\": \"净利润\"}, {\"cell\": \"A8\", \"value\": \"期末现金\"}]}]}\n这是结构与样本，不是完整业务数据或计算结果。请选择真实表头、业务范围与期间，用对应原生分析工具处理原件。"
+      }
+    ],
+    "sheets": {
+      "使用说明": {
+        "dimensions": "A1:H10",
+        "head_rows": [
+          [
+            "AI能力测试财务报表（模拟数据）",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "项目",
+            "说明",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "数据性质",
+            "全部为合成测试数据，不代表任何真实公司或客户",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "测试期间",
+            "2026年1月-12月",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "币种及单位",
+            "人民币，千元",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "建议任务1",
+            "概括全年经营表现，并识别利润率变化",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "建议任务2",
+            "找出预算偏差最大的月份及主要驱动因素",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "建议任务3",
+            "检查报表勾稽关系并指出异常",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "建议任务4",
+            "识别交易明细中的重复、缺失、异常金额与跨期问题",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        ],
+        "rows": [
+          [
+            "AI能力测试财务报表（模拟数据）",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "项目",
+            "说明",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "数据性质",
+            "全部为合成测试数据，不代表任何真实公司或客户",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "测试期间",
+            "2026年1月-12月",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "币种及单位",
+            "人民币，千元",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "建议任务1",
+            "概括全年经营表现，并识别利润率变化",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "建议任务2",
+            "找出预算偏差最大的月份及主要驱动因素",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "建议任务3",
+            "检查报表勾稽关系并指出异常",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "建议任务4",
+            "识别交易明细中的重复、缺失、异常金额与跨期问题",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        ],
+        "dependencies": []
+      },
+      "参数": {
+        "dimensions": "A1:F11",
+        "head_rows": [
+          [
+            "参数与场景假设",
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "参数",
+            "基准值",
+            "乐观情景",
+            "保守情景",
+            "单位",
+            "备注"
+          ],
+          [
+            "收入增长率",
+            0.08,
+            0.14,
+            0.02,
+            "%",
+            "用于年度预测"
+          ],
+          [
+            "毛利率",
+            0.42,
+            0.46,
+            0.37,
+            "%",
+            "收入减营业成本"
+          ],
+          [
+            "销售费用率",
+            0.12,
+            0.11,
+            0.14,
+            "%",
+            "占收入"
+          ],
+          [
+            "管理费用率",
+            0.09,
+            0.085,
+            0.105,
+            "%",
+            "占收入"
+          ],
+          [
+            "税率",
+            0.25,
+            0.25,
+            0.25,
+            "%",
+            "所得税率"
+          ],
+          [
+            "应收账款周转天数",
+            48,
+            42,
+            60,
+            "天",
+            "期末应收估算"
+          ],
+          [
+            "存货周转天数",
+            55,
+            48,
+            72,
+            "天",
+            "期末存货估算"
+          ]
+        ],
+        "rows": [
+          [
+            "参数与场景假设",
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "参数",
+            "基准值",
+            "乐观情景",
+            "保守情景",
+            "单位",
+            "备注"
+          ],
+          [
+            "收入增长率",
+            0.08,
+            0.14,
+            0.02,
+            "%",
+            "用于年度预测"
+          ],
+          [
+            "毛利率",
+            0.42,
+            0.46,
+            0.37,
+            "%",
+            "收入减营业成本"
+          ],
+          [
+            "销售费用率",
+            0.12,
+            0.11,
+            0.14,
+            "%",
+            "占收入"
+          ],
+          [
+            "管理费用率",
+            0.09,
+            0.085,
+            0.105,
+            "%",
+            "占收入"
+          ],
+          [
+            "税率",
+            0.25,
+            0.25,
+            0.25,
+            "%",
+            "所得税率"
+          ],
+          [
+            "应收账款周转天数",
+            48,
+            42,
+            60,
+            "天",
+            "期末应收估算"
+          ],
+          [
+            "存货周转天数",
+            55,
+            48,
+            72,
+            "天",
+            "期末存货估算"
+          ],
+          [
+            "资本性支出",
+            1800,
+            2200,
+            1200,
+            "千元",
+            "年度CAPEX"
+          ]
+        ],
+        "dependencies": []
+      },
+      "月度经营": {
+        "dimensions": "A1:N16",
+        "head_rows": [
+          [
+            "2026年月度经营明细",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "月份",
+            "营业收入",
+            "营业成本",
+            "毛利",
+            "毛利率",
+            "销售费用",
+            "管理费用",
+            "研发费用",
+            "营业利润",
+            "营业利润率",
+            "其他收益",
+            "税前利润",
+            "所得税",
+            "净利润"
+          ],
+          [
+            "1月",
+            8420,
+            "=B4*(1-0.405)",
+            "=B4-C4",
+            "=D4/B4",
+            "=B4*0.118",
+            "=B4*0.092",
+            510,
+            "=D4-SUM(F4:H4)",
+            "=I4/B4",
+            20,
+            "=I4+K4",
+            "=MAX(0,L4*参数!$B$8)",
+            "=L4-M4"
+          ],
+          [
+            "2月",
+            8150,
+            "=B5*(1-0.398)",
+            "=B5-C5",
+            "=D5/B5",
+            "=B5*0.121",
+            "=B5*0.091",
+            500,
+            "=D5-SUM(F5:H5)",
+            "=I5/B5",
+            -35,
+            "=I5+K5",
+            "=MAX(0,L5*参数!$B$8)",
+            "=L5-M5"
+          ],
+          [
+            "3月",
+            9100,
+            "=B6*(1-0.421)",
+            "=B6-C6",
+            "=D6/B6",
+            "=B6*0.119",
+            "=B6*0.089",
+            525,
+            "=D6-SUM(F6:H6)",
+            "=I6/B6",
+            10,
+            "=I6+K6",
+            "=MAX(0,L6*参数!$B$8)",
+            "=L6-M6"
+          ],
+          [
+            "4月",
+            9450,
+            "=B7*(1-0.43)",
+            "=B7-C7",
+            "=D7/B7",
+            "=B7*0.116",
+            "=B7*0.088",
+            540,
+            "=D7-SUM(F7:H7)",
+            "=I7/B7",
+            25,
+            "=I7+K7",
+            "=MAX(0,L7*参数!$B$8)",
+            "=L7-M7"
+          ],
+          [
+            "5月",
+            9800,
+            "=B8*(1-0.417)",
+            "=B8-C8",
+            "=D8/B8",
+            "=B8*0.12",
+            "=B8*0.09",
+            560,
+            "=D8-SUM(F8:H8)",
+            "=I8/B8",
+            15,
+            "=I8+K8",
+            "=MAX(0,L8*参数!$B$8)",
+            "=L8-M8"
+          ],
+          [
+            "6月",
+            10200,
+            "=B9*(1-0.425)",
+            "=B9-C9",
+            "=D9/B9",
+            "=B9*0.117",
+            "=B9*0.087",
+            570,
+            "=D9-SUM(F9:H9)",
+            "=I9/B9",
+            30,
+            "=I9+K9",
+            "=MAX(0,L9*参数!$B$8)",
+            "=L9-M9"
+          ],
+          [
+            "7月",
+            9750,
+            "=B10*(1-0.409)",
+            "=B10-C10",
+            "=D10/B10",
+            "=B10*0.123",
+            "=B10*0.089",
+            555,
+            "=D10-SUM(F10:H10)",
+            "=I10/B10",
+            -120,
+            "=I10+K10",
+            "=MAX(0,L10*参数!$B$8)",
+            "=L10-M10"
+          ]
+        ],
+        "rows": [
+          [
+            "2026年月度经营明细",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "月份",
+            "营业收入",
+            "营业成本",
+            "毛利",
+            "毛利率",
+            "销售费用",
+            "管理费用",
+            "研发费用",
+            "营业利润",
+            "营业利润率",
+            "其他收益",
+            "税前利润",
+            "所得税",
+            "净利润"
+          ],
+          [
+            "1月",
+            8420,
+            "=B4*(1-0.405)",
+            "=B4-C4",
+            "=D4/B4",
+            "=B4*0.118",
+            "=B4*0.092",
+            510,
+            "=D4-SUM(F4:H4)",
+            "=I4/B4",
+            20,
+            "=I4+K4",
+            "=MAX(0,L4*参数!$B$8)",
+            "=L4-M4"
+          ],
+          [
+            "2月",
+            8150,
+            "=B5*(1-0.398)",
+            "=B5-C5",
+            "=D5/B5",
+            "=B5*0.121",
+            "=B5*0.091",
+            500,
+            "=D5-SUM(F5:H5)",
+            "=I5/B5",
+            -35,
+            "=I5+K5",
+            "=MAX(0,L5*参数!$B$8)",
+            "=L5-M5"
+          ],
+          [
+            "3月",
+            9100,
+            "=B6*(1-0.421)",
+            "=B6-C6",
+            "=D6/B6",
+            "=B6*0.119",
+            "=B6*0.089",
+            525,
+            "=D6-SUM(F6:H6)",
+            "=I6/B6",
+            10,
+            "=I6+K6",
+            "=MAX(0,L6*参数!$B$8)",
+            "=L6-M6"
+          ],
+          [
+            "4月",
+            9450,
+            "=B7*(1-0.43)",
+            "=B7-C7",
+            "=D7/B7",
+            "=B7*0.116",
+            "=B7*0.088",
+            540,
+            "=D7-SUM(F7:H7)",
+            "=I7/B7",
+            25,
+            "=I7+K7",
+            "=MAX(0,L7*参数!$B$8)",
+            "=L7-M7"
+          ],
+          [
+            "5月",
+            9800,
+            "=B8*(1-0.417)",
+            "=B8-C8",
+            "=D8/B8",
+            "=B8*0.12",
+            "=B8*0.09",
+            560,
+            "=D8-SUM(F8:H8)",
+            "=I8/B8",
+            15,
+            "=I8+K8",
+            "=MAX(0,L8*参数!$B$8)",
+            "=L8-M8"
+          ],
+          [
+            "6月",
+            10200,
+            "=B9*(1-0.425)",
+            "=B9-C9",
+            "=D9/B9",
+            "=B9*0.117",
+            "=B9*0.087",
+            570,
+            "=D9-SUM(F9:H9)",
+            "=I9/B9",
+            30,
+            "=I9+K9",
+            "=MAX(0,L9*参数!$B$8)",
+            "=L9-M9"
+          ],
+          [
+            "7月",
+            9750,
+            "=B10*(1-0.409)",
+            "=B10-C10",
+            "=D10/B10",
+            "=B10*0.123",
+            "=B10*0.089",
+            555,
+            "=D10-SUM(F10:H10)",
+            "=I10/B10",
+            -120,
+            "=I10+K10",
+            "=MAX(0,L10*参数!$B$8)",
+            "=L10-M10"
+          ],
+          [
+            "8月",
+            10600,
+            "=B11*(1-0.438)",
+            "=B11-C11",
+            "=D11/B11",
+            "=B11*0.115",
+            "=B11*0.086",
+            590,
+            "=D11-SUM(F11:H11)",
+            "=I11/B11",
+            40,
+            "=I11+K11",
+            "=MAX(0,L11*参数!$B$8)",
+            "=L11-M11"
+          ],
+          [
+            "9月",
+            11150,
+            "=B12*(1-0.442)",
+            "=B12-C12",
+            "=D12/B12",
+            "=B12*0.114",
+            "=B12*0.085",
+            610,
+            "=D12-SUM(F12:H12)",
+            "=I12/B12",
+            35,
+            "=I12+K12",
+            "=MAX(0,L12*参数!$B$8)",
+            "=L12-M12"
+          ],
+          [
+            "10月",
+            11700,
+            "=B13*(1-0.447)",
+            "=B13-C13",
+            "=D13/B13",
+            "=B13*0.113",
+            "=B13*0.084",
+            625,
+            "=D13-SUM(F13:H13)",
+            "=I13/B13",
+            50,
+            "=I13+K13",
+            "=MAX(0,L13*参数!$B$8)",
+            "=L13-M13"
+          ],
+          [
+            "11月",
+            12300,
+            "=B14*(1-0.451)",
+            "=B14-C14",
+            "=D14/B14",
+            "=B14*0.112",
+            "=B14*0.083",
+            650,
+            "=D14-SUM(F14:H14)",
+            "=I14/B14",
+            45,
+            "=I14+K14",
+            "=MAX(0,L14*参数!$B$8)",
+            "=L14-M14"
+          ],
+          [
+            "12月",
+            13400,
+            "=B15*(1-0.458)",
+            "=B15-C15",
+            "=D15/B15",
+            "=B15*0.118",
+            "=B15*0.086",
+            690,
+            "=D15-SUM(F15:H15)",
+            "=I15/B15",
+            60,
+            "=I15+K15",
+            "=MAX(0,L15*参数!$B$8)",
+            "=L15-M15"
+          ],
+          [
+            "全年合计/平均",
+            "=SUM(B4:B15)",
+            "=SUM(C4:C15)",
+            "=SUM(D4:D15)",
+            "=D16/B16",
+            "=SUM(F4:F15)",
+            "=SUM(G4:G15)",
+            "=SUM(H4:H15)",
+            "=SUM(I4:I15)",
+            "=I16/B16",
+            "=SUM(K4:K15)",
+            "=SUM(L4:L15)",
+            "=SUM(M4:M15)",
+            "=SUM(N4:N15)"
+          ]
+        ],
+        "dependencies": [
+          "参数"
+        ]
+      },
+      "利润表": {
+        "dimensions": "A1:D14",
+        "head_rows": [
+          [
+            "2026年度利润表",
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "项目",
+            "2026实际",
+            "2026预算",
+            "差异"
+          ],
+          [
+            "营业收入",
+            "=月度经营!B16",
+            120000,
+            "=B4-C4"
+          ],
+          [
+            "营业成本",
+            "=月度经营!C16",
+            70000,
+            "=B5-C5"
+          ],
+          [
+            "毛利",
+            "=月度经营!D16",
+            50000,
+            "=B6-C6"
+          ],
+          [
+            "销售费用",
+            "=月度经营!F16",
+            14000,
+            "=B7-C7"
+          ],
+          [
+            "管理费用",
+            "=月度经营!G16",
+            10800,
+            "=B8-C8"
+          ],
+          [
+            "研发费用",
+            "=月度经营!H16",
+            6900,
+            "=B9-C9"
+          ],
+          [
+            "营业利润",
+            "=月度经营!I16",
+            18300,
+            "=B10-C10"
+          ]
+        ],
+        "rows": [
+          [
+            "2026年度利润表",
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "项目",
+            "2026实际",
+            "2026预算",
+            "差异"
+          ],
+          [
+            "营业收入",
+            "=月度经营!B16",
+            120000,
+            "=B4-C4"
+          ],
+          [
+            "营业成本",
+            "=月度经营!C16",
+            70000,
+            "=B5-C5"
+          ],
+          [
+            "毛利",
+            "=月度经营!D16",
+            50000,
+            "=B6-C6"
+          ],
+          [
+            "销售费用",
+            "=月度经营!F16",
+            14000,
+            "=B7-C7"
+          ],
+          [
+            "管理费用",
+            "=月度经营!G16",
+            10800,
+            "=B8-C8"
+          ],
+          [
+            "研发费用",
+            "=月度经营!H16",
+            6900,
+            "=B9-C9"
+          ],
+          [
+            "营业利润",
+            "=月度经营!I16",
+            18300,
+            "=B10-C10"
+          ],
+          [
+            "其他收益",
+            "=月度经营!K16",
+            300,
+            "=B11-C11"
+          ],
+          [
+            "税前利润",
+            "=月度经营!L16",
+            18600,
+            "=B12-C12"
+          ],
+          [
+            "所得税",
+            "=月度经营!M16",
+            4650,
+            "=B13-C13"
+          ],
+          [
+            "净利润",
+            "=月度经营!N16",
+            13950,
+            "=B14-C14"
+          ]
+        ],
+        "dependencies": [
+          "月度经营"
+        ]
+      },
+      "预算对比": {
+        "dimensions": "A1:H15",
+        "head_rows": [
+          [
+            "2026年月度预算与实际对比",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "月份",
+            "收入预算",
+            "收入实际",
+            "收入差异",
+            "利润预算",
+            "利润实际",
+            "利润差异",
+            "利润达成率"
+          ],
+          [
+            "1月",
+            9000,
+            "=月度经营!B4",
+            "=C4-B4",
+            1050,
+            "=月度经营!N4",
+            "=F4-E4",
+            "=F4/E4"
+          ],
+          [
+            "2月",
+            9230,
+            "=月度经营!B5",
+            "=C5-B5",
+            1105,
+            "=月度经营!N5",
+            "=F5-E5",
+            "=F5/E5"
+          ],
+          [
+            "3月",
+            9460,
+            "=月度经营!B6",
+            "=C6-B6",
+            1160,
+            "=月度经营!N6",
+            "=F6-E6",
+            "=F6/E6"
+          ],
+          [
+            "4月",
+            9690,
+            "=月度经营!B7",
+            "=C7-B7",
+            1215,
+            "=月度经营!N7",
+            "=F7-E7",
+            "=F7/E7"
+          ],
+          [
+            "5月",
+            9920,
+            "=月度经营!B8",
+            "=C8-B8",
+            1270,
+            "=月度经营!N8",
+            "=F8-E8",
+            "=F8/E8"
+          ],
+          [
+            "6月",
+            10150,
+            "=月度经营!B9",
+            "=C9-B9",
+            1325,
+            "=月度经营!N9",
+            "=F9-E9",
+            "=F9/E9"
+          ],
+          [
+            "7月",
+            10380,
+            "=月度经营!B10",
+            "=C10-B10",
+            1380,
+            "=月度经营!N10",
+            "=F10-E10",
+            "=F10/E10"
+          ]
+        ],
+        "rows": [
+          [
+            "2026年月度预算与实际对比",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "月份",
+            "收入预算",
+            "收入实际",
+            "收入差异",
+            "利润预算",
+            "利润实际",
+            "利润差异",
+            "利润达成率"
+          ],
+          [
+            "1月",
+            9000,
+            "=月度经营!B4",
+            "=C4-B4",
+            1050,
+            "=月度经营!N4",
+            "=F4-E4",
+            "=F4/E4"
+          ],
+          [
+            "2月",
+            9230,
+            "=月度经营!B5",
+            "=C5-B5",
+            1105,
+            "=月度经营!N5",
+            "=F5-E5",
+            "=F5/E5"
+          ],
+          [
+            "3月",
+            9460,
+            "=月度经营!B6",
+            "=C6-B6",
+            1160,
+            "=月度经营!N6",
+            "=F6-E6",
+            "=F6/E6"
+          ],
+          [
+            "4月",
+            9690,
+            "=月度经营!B7",
+            "=C7-B7",
+            1215,
+            "=月度经营!N7",
+            "=F7-E7",
+            "=F7/E7"
+          ],
+          [
+            "5月",
+            9920,
+            "=月度经营!B8",
+            "=C8-B8",
+            1270,
+            "=月度经营!N8",
+            "=F8-E8",
+            "=F8/E8"
+          ],
+          [
+            "6月",
+            10150,
+            "=月度经营!B9",
+            "=C9-B9",
+            1325,
+            "=月度经营!N9",
+            "=F9-E9",
+            "=F9/E9"
+          ],
+          [
+            "7月",
+            10380,
+            "=月度经营!B10",
+            "=C10-B10",
+            1380,
+            "=月度经营!N10",
+            "=F10-E10",
+            "=F10/E10"
+          ],
+          [
+            "8月",
+            10610,
+            "=月度经营!B11",
+            "=C11-B11",
+            1435,
+            "=月度经营!N11",
+            "=F11-E11",
+            "=F11/E11"
+          ],
+          [
+            "9月",
+            10840,
+            "=月度经营!B12",
+            "=C12-B12",
+            1490,
+            "=月度经营!N12",
+            "=F12-E12",
+            "=F12/E12"
+          ],
+          [
+            "10月",
+            11070,
+            "=月度经营!B13",
+            "=C13-B13",
+            1545,
+            "=月度经营!N13",
+            "=F13-E13",
+            "=F13/E13"
+          ],
+          [
+            "11月",
+            11300,
+            "=月度经营!B14",
+            "=C14-B14",
+            1600,
+            "=月度经营!N14",
+            "=F14-E14",
+            "=F14/E14"
+          ],
+          [
+            "12月",
+            11530,
+            "=月度经营!B15",
+            "=C15-B15",
+            1655,
+            "=月度经营!N15",
+            "=F15-E15",
+            "=F15/E15"
+          ]
+        ],
+        "dependencies": [
+          "月度经营"
+        ]
+      },
+      "资产负债表": {
+        "dimensions": "A1:D20",
+        "head_rows": [
+          [
+            "2026年12月31日资产负债表",
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "项目",
+            "期末余额",
+            "期初余额",
+            "变动"
+          ],
+          [
+            "货币资金",
+            16850,
+            12100,
+            "=B4-C4"
+          ],
+          [
+            "应收账款",
+            14250,
+            11900,
+            "=B5-C5"
+          ],
+          [
+            "存货",
+            9200,
+            8100,
+            "=B6-C6"
+          ],
+          [
+            "其他流动资产",
+            1850,
+            1600,
+            "=B7-C7"
+          ],
+          [
+            "流动资产合计",
+            "=SUM(B4:B7)",
+            "=SUM(C4:C7)",
+            "=B8-C8"
+          ],
+          [
+            "固定资产净额",
+            15600,
+            14900,
+            "=B9-C9"
+          ],
+          [
+            "无形资产",
+            3200,
+            3500,
+            "=B10-C10"
+          ]
+        ],
+        "rows": [
+          [
+            "2026年12月31日资产负债表",
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "项目",
+            "期末余额",
+            "期初余额",
+            "变动"
+          ],
+          [
+            "货币资金",
+            16850,
+            12100,
+            "=B4-C4"
+          ],
+          [
+            "应收账款",
+            14250,
+            11900,
+            "=B5-C5"
+          ],
+          [
+            "存货",
+            9200,
+            8100,
+            "=B6-C6"
+          ],
+          [
+            "其他流动资产",
+            1850,
+            1600,
+            "=B7-C7"
+          ],
+          [
+            "流动资产合计",
+            "=SUM(B4:B7)",
+            "=SUM(C4:C7)",
+            "=B8-C8"
+          ],
+          [
+            "固定资产净额",
+            15600,
+            14900,
+            "=B9-C9"
+          ],
+          [
+            "无形资产",
+            3200,
+            3500,
+            "=B10-C10"
+          ],
+          [
+            "资产总计",
+            "=B8+B9+B10",
+            "=C8+C9+C10",
+            "=B11-C11"
+          ],
+          [
+            "短期借款",
+            6500,
+            7200,
+            "=B12-C12"
+          ],
+          [
+            "应付账款",
+            8300,
+            7600,
+            "=B13-C13"
+          ],
+          [
+            "其他流动负债",
+            3100,
+            2800,
+            "=B14-C14"
+          ],
+          [
+            "长期借款",
+            7200,
+            8500,
+            "=B15-C15"
+          ],
+          [
+            "负债合计",
+            "=SUM(B12:B15)",
+            "=SUM(C12:C15)",
+            "=B16-C16"
+          ],
+          [
+            "实收资本",
+            15000,
+            15000,
+            "=B17-C17"
+          ],
+          [
+            "留存收益",
+            "=C18+利润表!B14",
+            11000,
+            "=B18-C18"
+          ],
+          [
+            "所有者权益合计",
+            "=SUM(B17:B18)",
+            "=SUM(C17:C18)",
+            "=B19-C19"
+          ],
+          [
+            "负债和所有者权益总计",
+            "=B16+B19",
+            "=C16+C19",
+            "=B20-C20"
+          ]
+        ],
+        "dependencies": [
+          "利润表"
+        ]
+      },
+      "现金流量表": {
+        "dimensions": "A1:C17",
+        "head_rows": [
+          [
+            "2026年度现金流量表（间接法）",
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null
+          ],
+          [
+            "项目",
+            "金额",
+            "说明"
+          ],
+          [
+            "净利润",
+            "=利润表!B14",
+            "来自利润表"
+          ],
+          [
+            "加：折旧与摊销",
+            2200,
+            "非现金项目"
+          ],
+          [
+            "加：应收账款增加",
+            "=-(资产负债表!B5-资产负债表!C5)",
+            "营运资本变化"
+          ],
+          [
+            "加：存货增加",
+            "=-(资产负债表!B6-资产负债表!C6)",
+            "营运资本变化"
+          ],
+          [
+            "加：应付账款增加",
+            "=资产负债表!B13-资产负债表!C13",
+            "营运资本变化"
+          ],
+          [
+            "经营活动现金流净额",
+            "=SUM(B4:B8)",
+            null
+          ],
+          [
+            "资本性支出",
+            "=-参数!B11",
+            null
+          ]
+        ],
+        "rows": [
+          [
+            "2026年度现金流量表（间接法）",
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null
+          ],
+          [
+            "项目",
+            "金额",
+            "说明"
+          ],
+          [
+            "净利润",
+            "=利润表!B14",
+            "来自利润表"
+          ],
+          [
+            "加：折旧与摊销",
+            2200,
+            "非现金项目"
+          ],
+          [
+            "加：应收账款增加",
+            "=-(资产负债表!B5-资产负债表!C5)",
+            "营运资本变化"
+          ],
+          [
+            "加：存货增加",
+            "=-(资产负债表!B6-资产负债表!C6)",
+            "营运资本变化"
+          ],
+          [
+            "加：应付账款增加",
+            "=资产负债表!B13-资产负债表!C13",
+            "营运资本变化"
+          ],
+          [
+            "经营活动现金流净额",
+            "=SUM(B4:B8)",
+            null
+          ],
+          [
+            "资本性支出",
+            "=-参数!B11",
+            null
+          ],
+          [
+            "投资活动现金流净额",
+            "=B10",
+            null
+          ],
+          [
+            "借款净减少",
+            "=(资产负债表!B12+资产负债表!B15)-(资产负债表!C12+资产负债表!C15)",
+            null
+          ],
+          [
+            "分红",
+            -3200,
+            null
+          ],
+          [
+            "筹资活动现金流净额",
+            "=SUM(B12:B13)",
+            null
+          ],
+          [
+            "现金净增加额",
+            "=B9+B11+B14",
+            null
+          ],
+          [
+            "期初现金",
+            "=资产负债表!C4",
+            null
+          ],
+          [
+            "期末现金",
+            "=B16+B15",
+            "应与资产负债表货币资金一致"
+          ]
+        ],
+        "dependencies": [
+          "利润表",
+          "参数",
+          "资产负债表"
+        ]
+      },
+      "部门分析": {
+        "dimensions": "A1:F8",
+        "head_rows": [
+          [
+            "2026年部门费用分析",
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "部门",
+            "人员成本",
+            "差旅费",
+            "市场费用",
+            "IT及办公",
+            "费用合计"
+          ],
+          [
+            "销售一部",
+            6100,
+            820,
+            1300,
+            420,
+            "=SUM(B4:E4)"
+          ],
+          [
+            "销售二部",
+            5700,
+            760,
+            1150,
+            390,
+            "=SUM(B5:E5)"
+          ],
+          [
+            "交付部",
+            8200,
+            940,
+            180,
+            780,
+            "=SUM(B6:E6)"
+          ],
+          [
+            "研发部",
+            9900,
+            620,
+            120,
+            1650,
+            "=SUM(B7:E7)"
+          ],
+          [
+            "职能部门",
+            6400,
+            480,
+            250,
+            970,
+            "=SUM(B8:E8)"
+          ]
+        ],
+        "rows": [
+          [
+            "2026年部门费用分析",
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "部门",
+            "人员成本",
+            "差旅费",
+            "市场费用",
+            "IT及办公",
+            "费用合计"
+          ],
+          [
+            "销售一部",
+            6100,
+            820,
+            1300,
+            420,
+            "=SUM(B4:E4)"
+          ],
+          [
+            "销售二部",
+            5700,
+            760,
+            1150,
+            390,
+            "=SUM(B5:E5)"
+          ],
+          [
+            "交付部",
+            8200,
+            940,
+            180,
+            780,
+            "=SUM(B6:E6)"
+          ],
+          [
+            "研发部",
+            9900,
+            620,
+            120,
+            1650,
+            "=SUM(B7:E7)"
+          ],
+          [
+            "职能部门",
+            6400,
+            480,
+            250,
+            970,
+            "=SUM(B8:E8)"
+          ]
+        ],
+        "dependencies": []
+      },
+      "交易明细": {
+        "dimensions": "A1:K83",
+        "head_rows": [
+          [
+            "2026年交易明细（含刻意设置的数据质量异常）",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "凭证号",
+            "日期",
+            "类型",
+            "部门",
+            "客户/供应商",
+            "摘要",
+            "金额",
+            "税额",
+            "币种",
+            "审批状态",
+            "备注"
+          ],
+          [
+            "V2026-0001",
+            "2026-01-04 00:00:00",
+            "采购成本",
+            "销售二部",
+            "客户B",
+            "采购成本业务1",
+            -387,
+            50.31,
+            "CNY",
+            "已审批",
+            null
+          ],
+          [
+            "V2026-0002",
+            "2026-02-07 00:00:00",
+            "差旅费",
+            "交付部",
+            "客户C",
+            "差旅费业务2",
+            -524,
+            31.44,
+            "CNY",
+            "已审批",
+            null
+          ],
+          [
+            "V2026-0003",
+            "2026-03-10 00:00:00",
+            "市场费用",
+            "研发部",
+            "供应商X",
+            "市场费用业务3",
+            -661,
+            85.93,
+            "CNY",
+            "已审批",
+            null
+          ],
+          [
+            "V2026-0004",
+            "2026-04-13 00:00:00",
+            "软件服务费",
+            "职能部门",
+            "供应商Y",
+            "软件服务费业务4",
+            -798,
+            47.88,
+            "CNY",
+            "已审批",
+            null
+          ],
+          [
+            "V2026-0005",
+            "2026-05-16 00:00:00",
+            "销售收入",
+            "销售一部",
+            "供应商Z",
+            "销售收入业务5",
+            935,
+            121.55,
+            "CNY",
+            "已审批",
+            null
+          ],
+          [
+            "V2026-0006",
+            "2026-06-19 00:00:00",
+            "采购成本",
+            "销售二部",
+            "客户A",
+            "采购成本业务6",
+            -1072,
+            139.36,
+            "CNY",
+            "已审批",
+            null
+          ],
+          [
+            "V2026-0007",
+            "2026-07-22 00:00:00",
+            "差旅费",
+            "交付部",
+            "客户B",
+            "差旅费业务7",
+            -1209,
+            72.54,
+            "CNY",
+            "已审批",
+            null
+          ]
+        ],
+        "rows": null,
+        "dependencies": []
+      },
+      "管理驾驶舱": {
+        "dimensions": "A1:N15",
+        "head_rows": [
+          [
+            "2026年财务管理驾驶舱",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "核心指标",
+            "数值",
+            null,
+            "月份",
+            "收入",
+            "净利润",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "营业收入",
+            "=利润表!B4",
+            null,
+            "1月",
+            "=月度经营!B4",
+            "=月度经营!N4",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "毛利率",
+            "=月度经营!E16",
+            null,
+            "2月",
+            "=月度经营!B5",
+            "=月度经营!N5",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "营业利润",
+            "=利润表!B10",
+            null,
+            "3月",
+            "=月度经营!B6",
+            "=月度经营!N6",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "净利润",
+            "=利润表!B14",
+            null,
+            "4月",
+            "=月度经营!B7",
+            "=月度经营!N7",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "期末现金",
+            "=资产负债表!B4",
+            null,
+            "5月",
+            "=月度经营!B8",
+            "=月度经营!N8",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            "6月",
+            "=月度经营!B9",
+            "=月度经营!N9",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            "7月",
+            "=月度经营!B10",
+            "=月度经营!N10",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        ],
+        "rows": [
+          [
+            "2026年财务管理驾驶舱",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "核心指标",
+            "数值",
+            null,
+            "月份",
+            "收入",
+            "净利润",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "营业收入",
+            "=利润表!B4",
+            null,
+            "1月",
+            "=月度经营!B4",
+            "=月度经营!N4",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "毛利率",
+            "=月度经营!E16",
+            null,
+            "2月",
+            "=月度经营!B5",
+            "=月度经营!N5",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "营业利润",
+            "=利润表!B10",
+            null,
+            "3月",
+            "=月度经营!B6",
+            "=月度经营!N6",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "净利润",
+            "=利润表!B14",
+            null,
+            "4月",
+            "=月度经营!B7",
+            "=月度经营!N7",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "期末现金",
+            "=资产负债表!B4",
+            null,
+            "5月",
+            "=月度经营!B8",
+            "=月度经营!N8",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            "6月",
+            "=月度经营!B9",
+            "=月度经营!N9",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            "7月",
+            "=月度经营!B10",
+            "=月度经营!N10",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            "8月",
+            "=月度经营!B11",
+            "=月度经营!N11",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            "9月",
+            "=月度经营!B12",
+            "=月度经营!N12",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            "10月",
+            "=月度经营!B13",
+            "=月度经营!N13",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            "11月",
+            "=月度经营!B14",
+            "=月度经营!N14",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            "12月",
+            "=月度经营!B15",
+            "=月度经营!N15",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        ],
+        "dependencies": [
+          "利润表",
+          "月度经营",
+          "资产负债表"
+        ]
+      }
+    },
+    "calculation": {
+      "schema_version": 1,
+      "status": "recalculated_verified",
+      "provenance": {
+        "workbook_id": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+        "output_hash": "7ee1605dd5e53b705e2ea2a0b08426f2a125b349518d5d3fef55977c7529290b",
+        "engine": "libreoffice_calc_headless",
+        "validator_version": "v3_unified",
+        "calculated_at": "2026-10-09T07:58:28.127418+00:00"
+      },
+      "total_formulas": 289,
+      "cached_formulas": 289,
+      "uncalculated_formulas": 0,
+      "total_errors": 0,
+      "error_summary": {}
+    },
+    "monthly_values": [
+      [
+        "1月",
+        8420,
+        5009.9,
+        3410.1,
+        0.405,
+        993.56,
+        774.64,
+        510,
+        1131.9,
+        0.134429928741093,
+        20,
+        1151.9,
+        287.975,
+        863.925
+      ],
+      [
+        "2月",
+        8150,
+        4906.3,
+        3243.7,
+        0.398,
+        986.15,
+        741.65,
+        500,
+        1015.9,
+        0.124650306748466,
+        -35,
+        980.9,
+        245.225,
+        735.675
+      ],
+      [
+        "3月",
+        9100,
+        5268.9,
+        3831.1,
+        0.421,
+        1082.9,
+        809.9,
+        525,
+        1413.3,
+        0.155307692307692,
+        10,
+        1423.3,
+        355.825,
+        1067.475
+      ],
+      [
+        "4月",
+        9450,
+        5386.5,
+        4063.5,
+        0.43,
+        1096.2,
+        831.6,
+        540,
+        1595.7,
+        0.168857142857143,
+        25,
+        1620.7,
+        405.175,
+        1215.525
+      ],
+      [
+        "5月",
+        9800,
+        5713.4,
+        4086.6,
+        0.417,
+        1176,
+        882,
+        560,
+        1468.6,
+        0.149857142857143,
+        15,
+        1483.6,
+        370.9,
+        1112.7
+      ],
+      [
+        "6月",
+        10200,
+        5865,
+        4335,
+        0.425,
+        1193.4,
+        887.4,
+        570,
+        1684.2,
+        0.165117647058824,
+        30,
+        1714.2,
+        428.55,
+        1285.65
+      ],
+      [
+        "7月",
+        9750,
+        5762.25,
+        3987.75,
+        0.409,
+        1199.25,
+        867.75,
+        555,
+        1365.75,
+        0.140076923076923,
+        -120,
+        1245.75,
+        311.4375,
+        934.3125
+      ],
+      [
+        "8月",
+        10600,
+        5957.2,
+        4642.8,
+        0.438,
+        1219,
+        911.6,
+        590,
+        1922.2,
+        0.181339622641509,
+        40,
+        1962.2,
+        490.55,
+        1471.65
+      ],
+      [
+        "9月",
+        11150,
+        6221.7,
+        4928.3,
+        0.442,
+        1271.1,
+        947.75,
+        610,
+        2099.45,
+        0.188291479820628,
+        35,
+        2134.45,
+        533.6125,
+        1600.8375
+      ],
+      [
+        "10月",
+        11700,
+        6470.1,
+        5229.9,
+        0.447,
+        1322.1,
+        982.8,
+        625,
+        2300,
+        0.196581196581197,
+        50,
+        2350,
+        587.5,
+        1762.5
+      ],
+      [
+        "11月",
+        12300,
+        6752.7,
+        5547.3,
+        0.451,
+        1377.6,
+        1020.9,
+        650,
+        2498.8,
+        0.203154471544716,
+        45,
+        2543.8,
+        635.95,
+        1907.85
+      ],
+      [
+        "12月",
+        13400,
+        7262.8,
+        6137.2,
+        0.458,
+        1581.2,
+        1152.4,
+        690,
+        2713.6,
+        0.202507462686567,
+        60,
+        2773.6,
+        693.4,
+        2080.2
+      ]
+    ],
+    "budget_values": [
+      [
+        "1月",
+        9000,
+        8420,
+        -580,
+        1050,
+        863.925,
+        -186.075,
+        0.822785714285715
+      ],
+      [
+        "2月",
+        9230,
+        8150,
+        -1080,
+        1105,
+        735.675,
+        -369.325,
+        0.665769230769231
+      ],
+      [
+        "3月",
+        9460,
+        9100,
+        -360,
+        1160,
+        1067.475,
+        -92.5249999999996,
+        0.920237068965518
+      ],
+      [
+        "4月",
+        9690,
+        9450,
+        -240,
+        1215,
+        1215.525,
+        0.524999999999182,
+        1.00043209876543
+      ],
+      [
+        "5月",
+        9920,
+        9800,
+        -120,
+        1270,
+        1112.7,
+        -157.3,
+        0.876141732283465
+      ],
+      [
+        "6月",
+        10150,
+        10200,
+        50,
+        1325,
+        1285.65,
+        -39.3500000000001,
+        0.970301886792453
+      ],
+      [
+        "7月",
+        10380,
+        9750,
+        -630,
+        1380,
+        934.3125,
+        -445.6875,
+        0.677038043478261
+      ],
+      [
+        "8月",
+        10610,
+        10600,
+        -10,
+        1435,
+        1471.65,
+        36.6499999999996,
+        1.02554006968641
+      ],
+      [
+        "9月",
+        10840,
+        11150,
+        310,
+        1490,
+        1600.8375,
+        110.837499999999,
+        1.07438758389262
+      ],
+      [
+        "10月",
+        11070,
+        11700,
+        630,
+        1545,
+        1762.5,
+        217.5,
+        1.14077669902913
+      ],
+      [
+        "11月",
+        11300,
+        12300,
+        1000,
+        1600,
+        1907.85,
+        307.850000000001,
+        1.19240625
+      ],
+      [
+        "12月",
+        11530,
+        13400,
+        1870,
+        1655,
+        2080.2,
+        425.2,
+        1.25691842900302
+      ]
+    ],
+    "latest_evidence": {
+      "source_hashes": {
+        "AI能力测试_财务报表.xlsx": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f"
+      },
+      "query": "【当前会话有效附件清单】: AI能力测试_财务报表.xlsx\n用户指令：检查交易明细是否有重复凭证。",
+      "guard_decisions": [
+        {
+          "guard": "spreadsheet_evidence",
+          "action": "accept",
+          "reason": null
+        },
+        {
+          "guard": "spreadsheet_evidence",
+          "action": "accept",
+          "reason": null
+        }
+      ],
+      "receipts": [
+        {
+          "schema_version": 1,
+          "status": "success",
+          "data": {
+            "kind": "spreadsheet_analysis",
+            "plan": {
+              "tables": [
+                {
+                  "id": "txn",
+                  "sheet": "交易明细",
+                  "data_range": "A4:K83",
+                  "header_row": 3
+                }
+              ],
+              "rules": [
+                {
+                  "id": "rule_voucher_dup",
+                  "label": "检查凭证号唯一性（重复凭证）",
+                  "table": "txn",
+                  "column": "凭证号",
+                  "kind": "unique",
+                  "assumptions": "业务要求凭证号（V2026-XXXX）在全表中唯一，若出现重复则为数据异常"
+                }
+              ],
+              "profile_tables": true
+            },
+            "requested_plan": {
+              "tables": [
+                {
+                  "id": "txn",
+                  "sheet": "交易明细",
+                  "data_range": "A4:K83",
+                  "header_row": 3
+                }
+              ],
+              "rules": [
+                {
+                  "id": "rule_voucher_dup",
+                  "label": "检查凭证号唯一性（重复凭证）",
+                  "table": "txn",
+                  "column": "凭证号",
+                  "kind": "unique",
+                  "assumptions": "业务要求凭证号（V2026-XXXX）在全表中唯一，若出现重复则为数据异常"
+                }
+              ],
+              "profile_tables": true
+            },
+            "semantic_domain": {
+              "id": "generic",
+              "version": "1"
+            },
+            "normalizations": [],
+            "plan_hash": "c90296462b7f55494d16492f28ea49ce8d87d6c9bee0d5362912b14b4c85c914",
+            "facts": [],
+            "checks": [],
+            "rules": [
+              {
+                "id": "rule_voucher_dup",
+                "label": "检查凭证号唯一性（重复凭证）",
+                "kind": "unique",
+                "table": "txn",
+                "column": "凭证号",
+                "assumptions": "业务要求凭证号（V2026-XXXX）在全表中唯一，若出现重复则为数据异常",
+                "evaluated_records": 80,
+                "violation_count": 2,
+                "passed": false,
+                "examples": [
+                  {
+                    "row": 12,
+                    "cell": "交易明细!A12",
+                    "value": "V2026-0009"
+                  },
+                  {
+                    "row": 13,
+                    "cell": "交易明细!A13",
+                    "value": "V2026-0009"
+                  }
+                ],
+                "examples_complete": true,
+                "basis_status": "declared_unverified",
+                "criteria": {}
+              }
+            ],
+            "profiles": [
+              {
+                "table": "txn",
+                "column": "A",
+                "header": "凭证号",
+                "records": 80,
+                "missing": 0,
+                "missing_examples": [],
+                "distinct_values": 79
+              },
+              {
+                "table": "txn",
+                "column": "B",
+                "header": "日期",
+                "records": 80,
+                "missing": 0,
+                "missing_examples": [],
+                "date": {
+                  "count": 80,
+                  "min": "2026-01-04",
+                  "max": "2027-01-03",
+                  "min_row": 4,
+                  "max_row": 58
+                },
+                "distinct_values": 37
+              },
+              {
+                "table": "txn",
+                "column": "C",
+                "header": "类型",
+                "records": 80,
+                "missing": 0,
+                "missing_examples": [],
+                "distinct_values": 5,
+                "value_counts": {
+                  "差旅费": 16,
+                  "市场费用": 16,
+                  "软件服务费": 16,
+                  "采购成本": 16,
+                  "销售收入": 16
+                },
+                "value_examples": {
+                  "采购成本": [
+                    "交易明细!C4",
+                    "交易明细!C9",
+                    "交易明细!C14"
+                  ],
+                  "差旅费": [
+                    "交易明细!C5",
+                    "交易明细!C10",
+                    "交易明细!C15"
+                  ],
+                  "市场费用": [
+                    "交易明细!C6",
+                    "交易明细!C11",
+                    "交易明细!C16"
+                  ],
+                  "软件服务费": [
+                    "交易明细!C7",
+                    "交易明细!C12",
+                    "交易明细!C17"
+                  ],
+                  "销售收入": [
+                    "交易明细!C8",
+                    "交易明细!C13",
+                    "交易明细!C18"
+                  ]
+                }
+              },
+              {
+                "table": "txn",
+                "column": "D",
+                "header": "部门",
+                "records": 80,
+                "missing": 1,
+                "missing_examples": [
+                  "交易明细!D28"
+                ],
+                "distinct_values": 5,
+                "value_counts": {
+                  "交付部": 16,
+                  "研发部": 16,
+                  "职能部门": 16,
+                  "销售一部": 15,
+                  "销售二部": 16
+                },
+                "value_examples": {
+                  "销售二部": [
+                    "交易明细!D4",
+                    "交易明细!D9",
+                    "交易明细!D14"
+                  ],
+                  "交付部": [
+                    "交易明细!D5",
+                    "交易明细!D10",
+                    "交易明细!D15"
+                  ],
+                  "研发部": [
+                    "交易明细!D6",
+                    "交易明细!D11",
+                    "交易明细!D16"
+                  ],
+                  "职能部门": [
+                    "交易明细!D7",
+                    "交易明细!D12",
+                    "交易明细!D17"
+                  ],
+                  "销售一部": [
+                    "交易明细!D8",
+                    "交易明细!D13",
+                    "交易明细!D18"
+                  ]
+                }
+              },
+              {
+                "table": "txn",
+                "column": "E",
+                "header": "客户/供应商",
+                "records": 80,
+                "missing": 0,
+                "missing_examples": [],
+                "distinct_values": 6,
+                "value_counts": {
+                  "供应商X": 13,
+                  "供应商Y": 13,
+                  "供应商Z": 13,
+                  "客户A": 13,
+                  "客户B": 14,
+                  "客户C": 14
+                },
+                "value_examples": {
+                  "客户B": [
+                    "交易明细!E4",
+                    "交易明细!E10",
+                    "交易明细!E16"
+                  ],
+                  "客户C": [
+                    "交易明细!E5",
+                    "交易明细!E11",
+                    "交易明细!E17"
+                  ],
+                  "供应商X": [
+                    "交易明细!E6",
+                    "交易明细!E12",
+                    "交易明细!E18"
+                  ],
+                  "供应商Y": [
+                    "交易明细!E7",
+                    "交易明细!E13",
+                    "交易明细!E19"
+                  ],
+                  "供应商Z": [
+                    "交易明细!E8",
+                    "交易明细!E14",
+                    "交易明细!E20"
+                  ],
+                  "客户A": [
+                    "交易明细!E9",
+                    "交易明细!E15",
+                    "交易明细!E21"
+                  ]
+                }
+              },
+              {
+                "table": "txn",
+                "column": "F",
+                "header": "摘要",
+                "records": 80,
+                "missing": 0,
+                "missing_examples": [],
+                "distinct_values": 80
+              },
+              {
+                "table": "txn",
+                "column": "G",
+                "header": "金额",
+                "records": 80,
+                "missing": 0,
+                "missing_examples": [],
+                "numeric": {
+                  "count": 80,
+                  "min": -2442,
+                  "min_row": 19,
+                  "max": 98000,
+                  "max_row": 43
+                },
+                "distinct_values": 80
+              },
+              {
+                "table": "txn",
+                "column": "H",
+                "header": "税额",
+                "records": 80,
+                "missing": 0,
+                "missing_examples": [],
+                "numeric": {
+                  "count": 80,
+                  "min": 21.78,
+                  "min_row": 52,
+                  "max": 317.46,
+                  "max_row": 19
+                },
+                "distinct_values": 80
+              },
+              {
+                "table": "txn",
+                "column": "I",
+                "header": "币种",
+                "records": 80,
+                "missing": 0,
+                "missing_examples": [],
+                "distinct_values": 1,
+                "value_counts": {
+                  "CNY": 80
+                },
+                "value_examples": {
+                  "CNY": [
+                    "交易明细!I4",
+                    "交易明细!I5",
+                    "交易明细!I6"
+                  ]
+                }
+              },
+              {
+                "table": "txn",
+                "column": "J",
+                "header": "审批状态",
+                "records": 80,
+                "missing": 0,
+                "missing_examples": [],
+                "distinct_values": 2,
+                "value_counts": {
+                  "已审批": 79,
+                  "待审批": 1
+                },
+                "value_examples": {
+                  "已审批": [
+                    "交易明细!J4",
+                    "交易明细!J5",
+                    "交易明细!J6"
+                  ],
+                  "待审批": [
+                    "交易明细!J73"
+                  ]
+                }
+              },
+              {
+                "table": "txn",
+                "column": "K",
+                "header": "备注",
+                "records": 80,
+                "missing": 75,
+                "missing_examples": [
+                  "交易明细!K4",
+                  "交易明细!K5",
+                  "交易明细!K6",
+                  "交易明细!K7",
+                  "交易明细!K8",
+                  "交易明细!K9",
+                  "交易明细!K10",
+                  "交易明细!K11",
+                  "交易明细!K12",
+                  "交易明细!K14",
+                  "交易明细!K15",
+                  "交易明细!K16",
+                  "交易明细!K17",
+                  "交易明细!K18",
+                  "交易明细!K19",
+                  "交易明细!K20",
+                  "交易明细!K21",
+                  "交易明细!K22",
+                  "交易明细!K23",
+                  "交易明细!K24"
+                ],
+                "distinct_values": 5,
+                "value_counts": {
+                  "异常大额交易": 1,
+                  "未审批但已入账": 1,
+                  "跨期日期": 1,
+                  "部门缺失": 1,
+                  "重复凭证号": 1
+                },
+                "value_examples": {
+                  "重复凭证号": [
+                    "交易明细!K13"
+                  ],
+                  "部门缺失": [
+                    "交易明细!K28"
+                  ],
+                  "异常大额交易": [
+                    "交易明细!K43"
+                  ],
+                  "跨期日期": [
+                    "交易明细!K58"
+                  ],
+                  "未审批但已入账": [
+                    "交易明细!K73"
+                  ]
+                }
+              }
+            ],
+            "coverage": [
+              {
+                "id": "txn",
+                "sheet": "交易明细",
+                "data_range": "A4:K83",
+                "header_row": 3,
+                "input_records": 80,
+                "evaluated_records": 80,
+                "excluded_header_rows": [],
+                "headers": {
+                  "A": "凭证号",
+                  "B": "日期",
+                  "C": "类型",
+                  "D": "部门",
+                  "E": "客户/供应商",
+                  "F": "摘要",
+                  "G": "金额",
+                  "H": "税额",
+                  "I": "币种",
+                  "J": "审批状态",
+                  "K": "备注"
+                },
+                "source_months": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  8,
+                  9,
+                  10,
+                  11,
+                  12
+                ],
+                "selected_rows": [
+                  4,
+                  5,
+                  6,
+                  7,
+                  8,
+                  9,
+                  10,
+                  11,
+                  12,
+                  13,
+                  14,
+                  15,
+                  16,
+                  17,
+                  18,
+                  19,
+                  20,
+                  21,
+                  22,
+                  23,
+                  24,
+                  25,
+                  26,
+                  27,
+                  28,
+                  29,
+                  30,
+                  31,
+                  32,
+                  33,
+                  34,
+                  35,
+                  36,
+                  37,
+                  38,
+                  39,
+                  40,
+                  41,
+                  42,
+                  43,
+                  44,
+                  45,
+                  46,
+                  47,
+                  48,
+                  49,
+                  50,
+                  51,
+                  52,
+                  53,
+                  54,
+                  55,
+                  56,
+                  57,
+                  58,
+                  59,
+                  60,
+                  61,
+                  62,
+                  63,
+                  64,
+                  65,
+                  66,
+                  67,
+                  68,
+                  69,
+                  70,
+                  71,
+                  72,
+                  73,
+                  74,
+                  75,
+                  76,
+                  77,
+                  78,
+                  79,
+                  80,
+                  81,
+                  82,
+                  83
+                ],
+                "filters": [],
+                "coverage_complete": true
+              }
+            ],
+            "visited_cells": [],
+            "amount_unit": "千元",
+            "unit_sources": [
+              "使用说明!B6"
+            ],
+            "evidence_id": "a78ee413dc17f6de4206f285"
+          },
+          "error": null,
+          "provenance": {
+            "file_path": "/workspace/AI能力测试_财务报表.xlsx",
+            "workbook_id": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+            "calculation": {
+              "schema_version": 1,
+              "status": "recalculated_verified",
+              "provenance": {
+                "workbook_id": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+                "output_hash": "7ee1605dd5e53b705e2ea2a0b08426f2a125b349518d5d3fef55977c7529290b",
+                "engine": "libreoffice_calc_headless",
+                "validator_version": "v3_unified",
+                "calculated_at": "2026-10-09T07:58:28.127418+00:00"
+              },
+              "total_formulas": 289,
+              "cached_formulas": 289,
+              "uncalculated_formulas": 0,
+              "total_errors": 0,
+              "error_summary": {}
+            },
+            "plan_hash": "c90296462b7f55494d16492f28ea49ce8d87d6c9bee0d5362912b14b4c85c914"
+          },
+          "text_representation": "{\"evidence_id\": \"a78ee413dc17f6de4206f285\", \"rules\": [{\"id\": \"rule_voucher_dup\", \"label\": \"检查凭证号唯一性（重复凭证）\", \"kind\": \"unique\", \"table\": \"txn\", \"column\": \"凭证号\", \"assumptions\": \"业务要求凭证号（V2026-XXXX）在全表中唯一，若出现重复则为数据异常\", \"evaluated_records\": 80, \"violation_count\": 2, \"passed\": false, \"examples\": [{\"row\": 12, \"cell\": \"交易明细!A12\", \"value\": \"V2026-0009\"}, {\"row\": 13, \"cell\": \"交易明细!A13\", \"value\": \"V2026-0009\"}], \"examples_complete\": true, \"basis_status\": \"declared_unverified\", \"criteria\": {}}], \"profiles\": [{\"table\": \"txn\", \"column\": \"A\", \"header\": \"凭证号\", \"records\": 80, \"missing\": 0, \"missing_examples\": [], \"distinct_values\": 79}, {\"table\": \"txn\", \"column\": \"B\", \"header\": \"日期\", \"records\": 80, \"missing\": 0, \"missing_examples\": [], \"date\": {\"count\": 80, \"min\": \"2026-01-04\", \"max\": \"2027-01-03\", \"min_row\": 4, \"max_row\": 58}, \"distinct_values\": 37}, {\"table\": \"txn\", \"column\": \"C\", \"header\": \"类型\", \"records\": 80, \"missing\": 0, \"missing_examples\": [], \"distinct_values\": 5, \"value_counts\": {\"差旅费\": 16, \"市场费用\": 16, \"软件服务费\": 16, \"采购成本\": 16, \"销售收入\": 16}, \"value_examples\": {\"采购成本\": [\"交易明细!C4\", \"交易明细!C9\", \"交易明细!C14\"], \"差旅费\": [\"交易明细!C5\", \"交易明细!C10\", \"交易明细!C15\"], \"市场费用\": [\"交易明细!C6\", \"交易明细!C11\", \"交易明细!C16\"], \"软件服务费\": [\"交易明细!C7\", \"交易明细!C12\", \"交易明细!C17\"], \"销售收入\": [\"交易明细!C8\", \"交易明细!C13\", \"交易明细!C18\"]}}, {\"table\": \"txn\", \"column\": \"D\", \"header\": \"部门\", \"records\": 80, \"missing\": 1, \"missing_examples\": [\"交易明细!D28\"], \"distinct_values\": 5, \"value_counts\": {\"交付部\": 16, \"研发部\": 16, \"职能部门\": 16, \"销售一部\": 15, \"销售二部\": 16}, \"value_examples\": {\"销售二部\": [\"交易明细!D4\", \"交易明细!D9\", \"交易明细!D14\"], \"交付部\": [\"交易明细!D5\", \"交易明细!D10\", \"交易明细!D15\"], \"研发部\": [\"交易明细!D6\", \"交易明细!D11\", \"交易明细!D16\"], \"职能部门\": [\"交易明细!D7\", \"交易明细!D12\", \"交易明细!D17\"], \"销售一部\": [\"交易明细!D8\", \"交易明细!D13\", \"交易明细!D18\"]}}, {\"table\": \"txn\", \"column\": \"E\", \"header\": \"客户/供应商\", \"records\": 80, \"missing\": 0, \"missing_examples\": [], \"distinct_values\": 6, \"value_counts\": {\"供应商X\": 13, \"供应商Y\": 13, \"供应商Z\": 13, \"客户A\": 13, \"客户B\": 14, \"客户C\": 14}, \"value_examples\": {\"客户B\": [\"交易明细!E4\", \"交易明细!E10\", \"交易明细!E16\"], \"客户C\": [\"交易明细!E5\", \"交易明细!E11\", \"交易明细!E17\"], \"供应商X\": [\"交易明细!E6\", \"交易明细!E12\", \"交易明细!E18\"], \"供应商Y\": [\"交易明细!E7\", \"交易明细!E13\", \"交易明细!E19\"], \"供应商Z\": [\"交易明细!E8\", \"交易明细!E14\", \"交易明细!E20\"], \"客户A\": [\"交易明细!E9\", \"交易明细!E15\", \"交易明细!E21\"]}}, {\"table\": \"txn\", \"column\": \"F\", \"header\": \"摘要\", \"records\": 80, \"missing\": 0, \"missing_examples\": [], \"distinct_values\": 80}, {\"table\": \"txn\", \"column\": \"G\", \"header\": \"金额\", \"records\": 80, \"missing\": 0, \"missing_examples\": [], \"numeric\": {\"count\": 80, \"min\": -2442, \"min_row\": 19, \"max\": 98000, \"max_row\": 43}, \"distinct_values\": 80}, {\"table\": \"txn\", \"column\": \"H\", \"header\": \"税额\", \"records\": 80, \"missing\": 0, \"missing_examples\": [], \"numeric\": {\"count\": 80, \"min\": 21.78, \"min_row\": 52, \"max\": 317.46, \"max_row\": 19}, \"distinct_values\": 80}, {\"table\": \"txn\", \"column\": \"I\", \"header\": \"币种\", \"records\": 80, \"missing\": 0, \"missing_examples\": [], \"distinct_values\": 1, \"value_counts\": {\"CNY\": 80}, \"value_examples\": {\"CNY\": [\"交易明细!I4\", \"交易明细!I5\", \"交易明细!I6\"]}}, {\"table\": \"txn\", \"column\": \"J\", \"header\": \"审批状态\", \"records\": 80, \"missing\": 0, \"missing_examples\": [], \"distinct_values\": 2, \"value_counts\": {\"已审批\": 79, \"待审批\": 1}, \"value_examples\": {\"已审批\": [\"交易明细!J4\", \"交易明细!J5\", \"交易明细!J6\"], \"待审批\": [\"交易明细!J73\"]}}, {\"table\": \"txn\", \"column\": \"K\", \"header\": \"备注\", \"records\": 80, \"missing\": 75, \"missing_examples\": [\"交易明细!K4\", \"交易明细!K5\", \"交易明细!K6\", \"交易明细!K7\", \"交易明细!K8\", \"交易明细!K9\", \"交易明细!K10\", \"交易明细!K11\", \"交易明细!K12\", \"交易明细!K14\", \"交易明细!K15\", \"交易明细!K16\", \"交易明细!K17\", \"交易明细!K18\", \"交易明细!K19\", \"交易明细!K20\", \"交易明细!K21\", \"交易明细!K22\", \"交易明细!K23\", \"交易明细!K24\"], \"distinct_values\": 5, \"value_counts\": {\"异常大额交易\": 1, \"未审批但已入账\": 1, \"跨期日期\": 1, \"部门缺失\": 1, \"重复凭证号\": 1}, \"value_examples\": {\"重复凭证号\": [\"交易明细!K13\"], \"部门缺失\": [\"交易明细!K28\"], \"异常大额交易\": [\"交易明细!K43\"], \"跨期日期\": [\"交易明细!K58\"], \"未审批但已入账\": [\"交易明细!K73\"]}}], \"amount_unit\": \"千元\", \"semantic_domain\": {\"id\": \"generic\", \"version\": \"1\"}, \"facts\": [], \"checks\": [], \"coverage\": [{\"id\": \"txn\", \"sheet\": \"交易明细\", \"data_range\": \"A4:K83\", \"header_row\": 3, \"input_records\": 80, \"evaluated_records\": 80, \"excluded_header_rows\": [], \"headers\": {\"A\": \"凭证号\", \"B\": \"日期\", \"C\": \"类型\", \"D\": \"部门\", \"E\": \"客户/供应商\", \"F\": \"摘要\", \"G\": \"金额\", \"H\": \"税额\", \"I\": \"币种\", \"J\": \"审批状态\", \"K\": \"备注\"}, \"source_months\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], \"filters\": [], \"coverage_complete\": true}]}"
+        }
+      ]
+    },
+    "source_sha_after": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+    "module_hashes_match": true,
+    "skill_hashes_match": true
+  },
+  "comparison_acceptance_probe": {
+    "method": "offline current-code acceptance reproduction, not historical full tool receipt",
+    "receipt": {
+      "schema_version": 1,
+      "status": "success",
+      "data": {
+        "kind": "column_comparison",
+        "basis": "budget",
+        "value_unit": "千元",
+        "difference_formula": "left-right",
+        "relative_formula": "(left-right)/abs(right)",
+        "rank_by": "absolute_difference",
+        "extreme": "max",
+        "scope": {
+          "data_range": "A4:F15",
+          "groups": [
+            "1月",
+            "2月",
+            "3月",
+            "4月",
+            "5月",
+            "6月",
+            "7月",
+            "8月",
+            "9月",
+            "10月",
+            "11月",
+            "12月"
+          ],
+          "row_count": 12,
+          "expected_groups": [
+            "1月",
+            "2月",
+            "3月",
+            "4月",
+            "5月",
+            "6月",
+            "7月",
+            "8月",
+            "9月",
+            "10月",
+            "11月",
+            "12月"
+          ],
+          "coverage_verified": true
+        },
+        "results": [
+          {
+            "label": "收入偏差",
+            "left_headers": [
+              "收入实际",
+              "营业收入"
+            ],
+            "right_headers": [
+              "收入预算"
+            ],
+            "matches": [
+              {
+                "group": "12月",
+                "left": 13400.0,
+                "right": 11530.0,
+                "difference": 1870.0,
+                "relative_difference": 0.16218560277536861,
+                "score": "1870",
+                "source": {
+                  "group": "预算对比!A15",
+                  "left": "预算对比!C15",
+                  "right": "预算对比!B15"
+                }
+              }
+            ]
+          },
+          {
+            "label": "净利润偏差",
+            "left_headers": [
+              "净利润",
+              "利润实际"
+            ],
+            "right_headers": [
+              "利润预算"
+            ],
+            "matches": [
+              {
+                "group": "7月",
+                "left": 934.3125,
+                "right": 1380.0,
+                "difference": -445.6875,
+                "relative_difference": -0.32296195652173915,
+                "score": "445.6875",
+                "source": {
+                  "group": "预算对比!A10",
+                  "left": "预算对比!F10",
+                  "right": "预算对比!E10"
+                }
+              }
+            ]
+          }
+        ],
+        "evaluated": [
+          {
+            "label": "收入偏差",
+            "rows": [
+              {
+                "group": "1月",
+                "left": 8420.0,
+                "right": 9000.0,
+                "difference": -580.0,
+                "relative_difference": -0.06444444444444444,
+                "score": "580",
+                "source": {
+                  "group": "预算对比!A4",
+                  "left": "预算对比!C4",
+                  "right": "预算对比!B4"
+                }
+              },
+              {
+                "group": "2月",
+                "left": 8150.0,
+                "right": 9230.0,
+                "difference": -1080.0,
+                "relative_difference": -0.11700975081256772,
+                "score": "1080",
+                "source": {
+                  "group": "预算对比!A5",
+                  "left": "预算对比!C5",
+                  "right": "预算对比!B5"
+                }
+              },
+              {
+                "group": "3月",
+                "left": 9100.0,
+                "right": 9460.0,
+                "difference": -360.0,
+                "relative_difference": -0.03805496828752643,
+                "score": "360",
+                "source": {
+                  "group": "预算对比!A6",
+                  "left": "预算对比!C6",
+                  "right": "预算对比!B6"
+                }
+              },
+              {
+                "group": "4月",
+                "left": 9450.0,
+                "right": 9690.0,
+                "difference": -240.0,
+                "relative_difference": -0.02476780185758514,
+                "score": "240",
+                "source": {
+                  "group": "预算对比!A7",
+                  "left": "预算对比!C7",
+                  "right": "预算对比!B7"
+                }
+              },
+              {
+                "group": "5月",
+                "left": 9800.0,
+                "right": 9920.0,
+                "difference": -120.0,
+                "relative_difference": -0.012096774193548387,
+                "score": "120",
+                "source": {
+                  "group": "预算对比!A8",
+                  "left": "预算对比!C8",
+                  "right": "预算对比!B8"
+                }
+              },
+              {
+                "group": "6月",
+                "left": 10200.0,
+                "right": 10150.0,
+                "difference": 50.0,
+                "relative_difference": 0.0049261083743842365,
+                "score": "50",
+                "source": {
+                  "group": "预算对比!A9",
+                  "left": "预算对比!C9",
+                  "right": "预算对比!B9"
+                }
+              },
+              {
+                "group": "7月",
+                "left": 9750.0,
+                "right": 10380.0,
+                "difference": -630.0,
+                "relative_difference": -0.06069364161849711,
+                "score": "630",
+                "source": {
+                  "group": "预算对比!A10",
+                  "left": "预算对比!C10",
+                  "right": "预算对比!B10"
+                }
+              },
+              {
+                "group": "8月",
+                "left": 10600.0,
+                "right": 10610.0,
+                "difference": -10.0,
+                "relative_difference": -0.000942507068803016,
+                "score": "10",
+                "source": {
+                  "group": "预算对比!A11",
+                  "left": "预算对比!C11",
+                  "right": "预算对比!B11"
+                }
+              },
+              {
+                "group": "9月",
+                "left": 11150.0,
+                "right": 10840.0,
+                "difference": 310.0,
+                "relative_difference": 0.02859778597785978,
+                "score": "310",
+                "source": {
+                  "group": "预算对比!A12",
+                  "left": "预算对比!C12",
+                  "right": "预算对比!B12"
+                }
+              },
+              {
+                "group": "10月",
+                "left": 11700.0,
+                "right": 11070.0,
+                "difference": 630.0,
+                "relative_difference": 0.056910569105691054,
+                "score": "630",
+                "source": {
+                  "group": "预算对比!A13",
+                  "left": "预算对比!C13",
+                  "right": "预算对比!B13"
+                }
+              },
+              {
+                "group": "11月",
+                "left": 12300.0,
+                "right": 11300.0,
+                "difference": 1000.0,
+                "relative_difference": 0.08849557522123894,
+                "score": "1000",
+                "source": {
+                  "group": "预算对比!A14",
+                  "left": "预算对比!C14",
+                  "right": "预算对比!B14"
+                }
+              },
+              {
+                "group": "12月",
+                "left": 13400.0,
+                "right": 11530.0,
+                "difference": 1870.0,
+                "relative_difference": 0.16218560277536861,
+                "score": "1870",
+                "source": {
+                  "group": "预算对比!A15",
+                  "left": "预算对比!C15",
+                  "right": "预算对比!B15"
+                }
+              }
+            ]
+          },
+          {
+            "label": "净利润偏差",
+            "rows": [
+              {
+                "group": "1月",
+                "left": 863.925,
+                "right": 1050.0,
+                "difference": -186.075,
+                "relative_difference": -0.1772142857142857,
+                "score": "186.075",
+                "source": {
+                  "group": "预算对比!A4",
+                  "left": "预算对比!F4",
+                  "right": "预算对比!E4"
+                }
+              },
+              {
+                "group": "2月",
+                "left": 735.675,
+                "right": 1105.0,
+                "difference": -369.325,
+                "relative_difference": -0.3342307692307692,
+                "score": "369.325",
+                "source": {
+                  "group": "预算对比!A5",
+                  "left": "预算对比!F5",
+                  "right": "预算对比!E5"
+                }
+              },
+              {
+                "group": "3月",
+                "left": 1067.475,
+                "right": 1160.0,
+                "difference": -92.525,
+                "relative_difference": -0.07976293103448276,
+                "score": "92.525",
+                "source": {
+                  "group": "预算对比!A6",
+                  "left": "预算对比!F6",
+                  "right": "预算对比!E6"
+                }
+              },
+              {
+                "group": "4月",
+                "left": 1215.525,
+                "right": 1215.0,
+                "difference": 0.525,
+                "relative_difference": 0.0004320987654320988,
+                "score": "0.525",
+                "source": {
+                  "group": "预算对比!A7",
+                  "left": "预算对比!F7",
+                  "right": "预算对比!E7"
+                }
+              },
+              {
+                "group": "5月",
+                "left": 1112.7,
+                "right": 1270.0,
+                "difference": -157.3,
+                "relative_difference": -0.12385826771653544,
+                "score": "157.3",
+                "source": {
+                  "group": "预算对比!A8",
+                  "left": "预算对比!F8",
+                  "right": "预算对比!E8"
+                }
+              },
+              {
+                "group": "6月",
+                "left": 1285.65,
+                "right": 1325.0,
+                "difference": -39.35,
+                "relative_difference": -0.02969811320754717,
+                "score": "39.35",
+                "source": {
+                  "group": "预算对比!A9",
+                  "left": "预算对比!F9",
+                  "right": "预算对比!E9"
+                }
+              },
+              {
+                "group": "7月",
+                "left": 934.3125,
+                "right": 1380.0,
+                "difference": -445.6875,
+                "relative_difference": -0.32296195652173915,
+                "score": "445.6875",
+                "source": {
+                  "group": "预算对比!A10",
+                  "left": "预算对比!F10",
+                  "right": "预算对比!E10"
+                }
+              },
+              {
+                "group": "8月",
+                "left": 1471.65,
+                "right": 1435.0,
+                "difference": 36.65,
+                "relative_difference": 0.02554006968641115,
+                "score": "36.65",
+                "source": {
+                  "group": "预算对比!A11",
+                  "left": "预算对比!F11",
+                  "right": "预算对比!E11"
+                }
+              },
+              {
+                "group": "9月",
+                "left": 1600.8375,
+                "right": 1490.0,
+                "difference": 110.8375,
+                "relative_difference": 0.07438758389261745,
+                "score": "110.8375",
+                "source": {
+                  "group": "预算对比!A12",
+                  "left": "预算对比!F12",
+                  "right": "预算对比!E12"
+                }
+              },
+              {
+                "group": "10月",
+                "left": 1762.5,
+                "right": 1545.0,
+                "difference": 217.5,
+                "relative_difference": 0.1407766990291262,
+                "score": "217.5",
+                "source": {
+                  "group": "预算对比!A13",
+                  "left": "预算对比!F13",
+                  "right": "预算对比!E13"
+                }
+              },
+              {
+                "group": "11月",
+                "left": 1907.85,
+                "right": 1600.0,
+                "difference": 307.85,
+                "relative_difference": 0.19240625,
+                "score": "307.85",
+                "source": {
+                  "group": "预算对比!A14",
+                  "left": "预算对比!F14",
+                  "right": "预算对比!E14"
+                }
+              },
+              {
+                "group": "12月",
+                "left": 2080.2,
+                "right": 1655.0,
+                "difference": 425.2,
+                "relative_difference": 0.25691842900302114,
+                "score": "425.2",
+                "source": {
+                  "group": "预算对比!A15",
+                  "left": "预算对比!F15",
+                  "right": "预算对比!E15"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "error": null,
+      "provenance": {
+        "file_path": "/workspace/AI能力测试_财务报表.xlsx",
+        "workbook_id": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+        "sheet": "预算对比",
+        "calculation": {
+          "schema_version": 1,
+          "status": "recalculated_verified",
+          "provenance": {
+            "workbook_id": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+            "output_hash": "7ee1605dd5e53b705e2ea2a0b08426f2a125b349518d5d3fef55977c7529290b",
+            "engine": "libreoffice_calc_headless",
+            "validator_version": "v3_unified",
+            "calculated_at": "2026-10-09T07:58:28.127418+00:00"
+          },
+          "total_formulas": 289,
+          "cached_formulas": 289,
+          "uncalculated_formulas": 0,
+          "total_errors": 0,
+          "error_summary": {}
+        },
+        "unit_sources": [
+          "使用说明!B6"
+        ]
+      },
+      "text_representation": "{'kind': 'column_comparison', 'basis': 'budget', 'value_unit': '千元', 'difference_formula': 'left-right', 'relative_formula': '(left-right)/abs(right)', 'rank_by': 'absolute_difference', 'extreme': 'max', 'scope': {'data_range': 'A4:F15', 'groups': ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'], 'row_count': 12, 'expected_groups': ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'], 'coverage_verified': True}, 'results': [{'label': '收入偏差', 'left_headers': ['收入实际', '营业收入'], 'right_headers': ['收入预算'], 'matches': [{'group': '12月', 'left': 13400.0, 'right': 11530.0, 'difference': 1870.0, 'relative_difference': 0.16218560277536861, 'score': '1870', 'source': {'group': '预算对比!A15', 'left': '预算对比!C15', 'right': '预算对比!B15'}}]}, {'label': '净利润偏差', 'left_headers': ['净利润', '利润实际'], 'right_headers': ['利润预算'], 'matches': [{'group': '7月', 'left': 934.3125, 'right': 1380.0, 'difference': -445.6875, 'relative_difference': -0.32296195652173915, 'score': '445.6875', 'source': {'group': '预算对比!A10', 'left': '预算对比!F10', 'right': '预算对比!E10'}}]}], 'evaluated': [{'label': '收入偏差', 'rows': [{'group': '1月', 'left': 8420.0, 'right': 9000.0, 'difference': -580.0, 'relative_difference': -0.06444444444444444, 'score': '580', 'source': {'group': '预算对比!A4', 'left': '预算对比!C4', 'right': '预算对比!B4'}}, {'group': '2月', 'left': 8150.0, 'right': 9230.0, 'difference': -1080.0, 'relative_difference': -0.11700975081256772, 'score': '1080', 'source': {'group': '预算对比!A5', 'left': '预算对比!C5', 'right': '预算对比!B5'}}, {'group': '3月', 'left': 9100.0, 'right': 9460.0, 'difference': -360.0, 'relative_difference': -0.03805496828752643, 'score': '360', 'source': {'group': '预算对比!A6', 'left': '预算对比!C6', 'right': '预算对比!B6'}}, {'group': '4月', 'left': 9450.0, 'right': 9690.0, 'difference': -240.0, 'relative_difference': -0.02476780185758514, 'score': '240', 'source': {'group': '预算对比!A7', 'left': '预算对比!C7', 'right': '预算对比!B7'}}, {'group': '5月', 'left': 9800.0, 'right': 9920.0, 'difference': -120.0, 'relative_difference': -0.012096774193548387, 'score': '120', 'source': {'group': '预算对比!A8', 'left': '预算对比!C8', 'right': '预算对比!B8'}}, {'group': '6月', 'left': 10200.0, 'right': 10150.0, 'difference': 50.0, 'relative_difference': 0.0049261083743842365, 'score': '50', 'source': {'group': '预算对比!A9', 'left': '预算对比!C9', 'right': '预算对比!B9'}}, {'group': '7月', 'left': 9750.0, 'right': 10380.0, 'difference': -630.0, 'relative_difference': -0.06069364161849711, 'score': '630', 'source': {'group': '预算对比!A10', 'left': '预算对比!C10', 'right': '预算对比!B10'}}, {'group': '8月', 'left': 10600.0, 'right': 10610.0, 'difference': -10.0, 'relative_difference': -0.000942507068803016, 'score': '10', 'source': {'group': '预算对比!A11', 'left': '预算对比!C11', 'right': '预算对比!B11'}}, {'group': '9月', 'left': 11150.0, 'right': 10840.0, 'difference': 310.0, 'relative_difference': 0.02859778597785978, 'score': '310', 'source': {'group': '预算对比!A12', 'left': '预算对比!C12', 'right': '预算对比!B12'}}, {'group': '10月', 'left': 11700.0, 'right': 11070.0, 'difference': 630.0, 'relative_difference': 0.056910569105691054, 'score': '630', 'source': {'group': '预算对比!A13', 'left': '预算对比!C13', 'right': '预算对比!B13'}}, {'group': '11月', 'left': 12300.0, 'right': 11300.0, 'difference': 1000.0, 'relative_difference': 0.08849557522123894, 'score': '1000', 'source': {'group': '预算对比!A14', 'left': '预算对比!C14', 'right': '预算对比!B14'}}, {'group': '12月', 'left': 13400.0, 'right': 11530.0, 'difference': 1870.0, 'relative_difference': 0.16218560277536861, 'score': '1870', 'source': {'group': '预算对比!A15', 'left': '预算对比!C15', 'right': '预算对比!B15'}}]}, {'label': '净利润偏差', 'rows': [{'group': '1月', 'left': 863.925, 'right': 1050.0, 'difference': -186.075, 'relative_difference': -0.1772142857142857, 'score': '186.075', 'source': {'group': '预算对比!A4', 'left': '预算对比!F4', 'right': '预算对比!E4'}}, {'group': '2月', 'left': 735.675, 'right': 1105.0, 'difference': -369.325, 'relative_difference': -0.3342307692307692, 'score': '369.325', 'source': {'group': '预算对比!A5', 'left': '预算对比!F5', 'right': '预算对比!E5'}}, {'group': '3月', 'left': 1067.475, 'right': 1160.0, 'difference': -92.525, 'relative_difference': -0.07976293103448276, 'score': '92.525', 'source': {'group': '预算对比!A6', 'left': '预算对比!F6', 'right': '预算对比!E6'}}, {'group': '4月', 'left': 1215.525, 'right': 1215.0, 'difference': 0.525, 'relative_difference': 0.0004320987654320988, 'score': '0.525', 'source': {'group': '预算对比!A7', 'left': '预算对比!F7', 'right': '预算对比!E7'}}, {'group': '5月', 'left': 1112.7, 'right': 1270.0, 'difference': -157.3, 'relative_difference': -0.12385826771653544, 'score': '157.3', 'source': {'group': '预算对比!A8', 'left': '预算对比!F8', 'right': '预算对比!E8'}}, {'group': '6月', 'left': 1285.65, 'right': 1325.0, 'difference': -39.35, 'relative_difference': -0.02969811320754717, 'score': '39.35', 'source': {'group': '预算对比!A9', 'left': '预算对比!F9', 'right': '预算对比!E9'}}, {'group': '7月', 'left': 934.3125, 'right': 1380.0, 'difference': -445.6875, 'relative_difference': -0.32296195652173915, 'score': '445.6875', 'source': {'group': '预算对比!A10', 'left': '预算对比!F10', 'right': '预算对比!E10'}}, {'group': '8月', 'left': 1471.65, 'right': 1435.0, 'difference': 36.65, 'relative_difference': 0.02554006968641115, 'score': '36.65', 'source': {'group': '预算对比!A11', 'left': '预算对比!F11', 'right': '预算对比!E11'}}, {'group': '9月', 'left': 1600.8375, 'right': 1490.0, 'difference': 110.8375, 'relative_difference': 0.07438758389261745, 'score': '110.8375', 'source': {'group': '预算对比!A12', 'left': '预算对比!F12', 'right': '预算对比!E12'}}, {'group': '10月', 'left': 1762.5, 'right': 1545.0, 'difference': 217.5, 'relative_difference': 0.1407766990291262, 'score': '217.5', 'source': {'group': '预算对比!A13', 'left': '预算对比!F13', 'right': '预算对比!E13'}}, {'group': '11月', 'left': 1907.85, 'right': 1600.0, 'difference': 307.85, 'relative_difference': 0.19240625, 'score': '307.85', 'source': {'group': '预算对比!A14', 'left': '预算对比!F14', 'right': '预算对比!E14'}}, {'group': '12月', 'left': 2080.2, 'right': 1655.0, 'difference': 425.2, 'relative_difference': 0.25691842900302114, 'score': '425.2', 'source': {'group': '预算对比!A15', 'left': '预算对比!F15', 'right': '预算对比!E15'}}]}]}"
+    },
+    "answer_gate_error": null,
+    "answer_contract_validation": {
+      "status": "satisfied",
+      "satisfied_metrics": [
+        "营业收入",
+        "净利润"
+      ],
+      "missing_metrics": [],
+      "has_evasion": false,
+      "details": {
+        "营业收入": {
+          "metric_name": "营业收入",
+          "satisfied": true,
+          "detected_value_text": "1",
+          "is_year_hallucination": false
+        },
+        "净利润": {
+          "metric_name": "净利润",
+          "satisfied": true,
+          "detected_value_text": "2",
+          "is_year_hallucination": false
+        }
+      },
+      "feedback_message": null,
+      "comparison_error": null
+    },
+    "dimensions": [
+      {
+        "sheet": "使用说明",
+        "manifest": "A1:A1",
+        "actual_readonly_dimension": "A1:H10",
+        "rows": 10,
+        "columns": 8
+      },
+      {
+        "sheet": "参数",
+        "manifest": "A1:A1",
+        "actual_readonly_dimension": "A1:F11",
+        "rows": 11,
+        "columns": 6
+      },
+      {
+        "sheet": "月度经营",
+        "manifest": "A1:A1",
+        "actual_readonly_dimension": "A1:N16",
+        "rows": 16,
+        "columns": 14
+      },
+      {
+        "sheet": "利润表",
+        "manifest": "A1:A1",
+        "actual_readonly_dimension": "A1:D14",
+        "rows": 14,
+        "columns": 4
+      },
+      {
+        "sheet": "预算对比",
+        "manifest": "A1:A1",
+        "actual_readonly_dimension": "A1:H15",
+        "rows": 15,
+        "columns": 8
+      },
+      {
+        "sheet": "资产负债表",
+        "manifest": "A1:A1",
+        "actual_readonly_dimension": "A1:D20",
+        "rows": 20,
+        "columns": 4
+      },
+      {
+        "sheet": "现金流量表",
+        "manifest": "A1:A1",
+        "actual_readonly_dimension": "A1:C17",
+        "rows": 17,
+        "columns": 3
+      },
+      {
+        "sheet": "部门分析",
+        "manifest": "A1:A1",
+        "actual_readonly_dimension": "A1:F8",
+        "rows": 8,
+        "columns": 6
+      },
+      {
+        "sheet": "交易明细",
+        "manifest": "A1:A1",
+        "actual_readonly_dimension": "A1:K83",
+        "rows": 83,
+        "columns": 11
+      },
+      {
+        "sheet": "管理驾驶舱",
+        "manifest": "A1:A1",
+        "actual_readonly_dimension": "A1:N15",
+        "rows": 15,
+        "columns": 14
+      }
+    ],
+    "source_unchanged": true
+  },
+  "correct_absolute_rankings": {
+    "收入": [
+      {
+        "month": "12月",
+        "actual": "13400",
+        "budget": "11530",
+        "difference": "1870",
+        "absolute_difference": "1870"
+      },
+      {
+        "month": "2月",
+        "actual": "8150",
+        "budget": "9230",
+        "difference": "-1080",
+        "absolute_difference": "1080"
+      },
+      {
+        "month": "11月",
+        "actual": "12300",
+        "budget": "11300",
+        "difference": "1000",
+        "absolute_difference": "1000"
+      },
+      {
+        "month": "7月",
+        "actual": "9750",
+        "budget": "10380",
+        "difference": "-630",
+        "absolute_difference": "630"
+      },
+      {
+        "month": "10月",
+        "actual": "11700",
+        "budget": "11070",
+        "difference": "630",
+        "absolute_difference": "630"
+      },
+      {
+        "month": "1月",
+        "actual": "8420",
+        "budget": "9000",
+        "difference": "-580",
+        "absolute_difference": "580"
+      },
+      {
+        "month": "3月",
+        "actual": "9100",
+        "budget": "9460",
+        "difference": "-360",
+        "absolute_difference": "360"
+      },
+      {
+        "month": "9月",
+        "actual": "11150",
+        "budget": "10840",
+        "difference": "310",
+        "absolute_difference": "310"
+      },
+      {
+        "month": "4月",
+        "actual": "9450",
+        "budget": "9690",
+        "difference": "-240",
+        "absolute_difference": "240"
+      },
+      {
+        "month": "5月",
+        "actual": "9800",
+        "budget": "9920",
+        "difference": "-120",
+        "absolute_difference": "120"
+      },
+      {
+        "month": "6月",
+        "actual": "10200",
+        "budget": "10150",
+        "difference": "50",
+        "absolute_difference": "50"
+      },
+      {
+        "month": "8月",
+        "actual": "10600",
+        "budget": "10610",
+        "difference": "-10",
+        "absolute_difference": "10"
+      }
+    ],
+    "净利润": [
+      {
+        "month": "7月",
+        "actual": "934.3125",
+        "budget": "1380",
+        "difference": "-445.6875",
+        "absolute_difference": "445.6875"
+      },
+      {
+        "month": "12月",
+        "actual": "2080.2",
+        "budget": "1655",
+        "difference": "425.2",
+        "absolute_difference": "425.2"
+      },
+      {
+        "month": "2月",
+        "actual": "735.675",
+        "budget": "1105",
+        "difference": "-369.325",
+        "absolute_difference": "369.325"
+      },
+      {
+        "month": "11月",
+        "actual": "1907.85",
+        "budget": "1600",
+        "difference": "307.85",
+        "absolute_difference": "307.85"
+      },
+      {
+        "month": "10月",
+        "actual": "1762.5",
+        "budget": "1545",
+        "difference": "217.5",
+        "absolute_difference": "217.5"
+      },
+      {
+        "month": "1月",
+        "actual": "863.925",
+        "budget": "1050",
+        "difference": "-186.075",
+        "absolute_difference": "186.075"
+      },
+      {
+        "month": "5月",
+        "actual": "1112.7",
+        "budget": "1270",
+        "difference": "-157.3",
+        "absolute_difference": "157.3"
+      },
+      {
+        "month": "9月",
+        "actual": "1600.8375",
+        "budget": "1490",
+        "difference": "110.8375",
+        "absolute_difference": "110.8375"
+      },
+      {
+        "month": "3月",
+        "actual": "1067.475",
+        "budget": "1160",
+        "difference": "-92.525",
+        "absolute_difference": "92.525"
+      },
+      {
+        "month": "6月",
+        "actual": "1285.65",
+        "budget": "1325",
+        "difference": "-39.35",
+        "absolute_difference": "39.35"
+      },
+      {
+        "month": "8月",
+        "actual": "1471.65",
+        "budget": "1435",
+        "difference": "36.65",
+        "absolute_difference": "36.65"
+      },
+      {
+        "month": "4月",
+        "actual": "1215.525",
+        "budget": "1215",
+        "difference": "0.525",
+        "absolute_difference": "0.525"
+      }
+    ]
+  },
+  "evidence_limits": [
+    "Runtime hashes are current checks, not historical binary snapshots. Module mtimes predate these calls and native receipts corroborate the new path.",
+    "Offline contexts are reconstructed, not exact captured historical model payloads.",
+    "The per-session receipt sidecar contains only the final turn; earlier parameters in telemetry are truncated.",
+    "No statistical stability claim is made from a single five-turn run."
+  ]
+}

@@ -94,8 +94,9 @@ def _process_sse_data(
         if thought_chunk:
             if ttft_ms is None:
                 ttft_ms = (time.time() - start_time) * 1000
-            sys.stdout.write(f"<<<DSH_THOUGHT:{json.dumps(thought_chunk, ensure_ascii=False)}>>>\n")
-            sys.stdout.flush()
+            if stream_deltas:
+                sys.stdout.write(f"<<<DSH_THOUGHT:{json.dumps(thought_chunk, ensure_ascii=False)}>>>\n")
+                sys.stdout.flush()
         chunk = delta.get("content", "")
         if chunk:
             if ttft_ms is None:
@@ -172,6 +173,38 @@ def detect_unexecuted_script_leak(text: str) -> bool:
     return False
 
 
+def normalize_messages_for_llm(messages: list) -> list:
+    """Ensures message list conforms to strict OpenAI-compatible API constraints:
+    1. System messages are only allowed at index 0.
+    2. Multiple consecutive leading system messages are merged into a single system message.
+    3. Any subsequent message with role 'system' is automatically converted to role 'user'.
+    """
+    if not messages:
+        return []
+    normalized: List[Dict[str, Any]] = []
+    seen_non_system = False
+    for msg in messages:
+        if not isinstance(msg, dict):
+            normalized.append(msg)
+            continue
+        role = msg.get("role")
+        if role == "system":
+            if not seen_non_system and len(normalized) == 0:
+                normalized.append(dict(msg))
+            elif not seen_non_system and len(normalized) > 0 and normalized[0].get("role") == "system":
+                existing = str(normalized[0].get("content") or "")
+                addition = str(msg.get("content") or "")
+                normalized[0]["content"] = f"{existing}\n\n{addition}" if existing else addition
+            else:
+                converted = dict(msg)
+                converted["role"] = "user"
+                normalized.append(converted)
+        else:
+            seen_non_system = True
+            normalized.append(dict(msg))
+    return normalized
+
+
 def call_model_proxy(
     messages: list,
     model: str = None,
@@ -181,7 +214,8 @@ def call_model_proxy(
     temperature: float = None,
     max_tokens: int = None,
     policy: Any = None,
-    stream_deltas: Optional[bool] = None
+    stream_deltas: Optional[bool] = None,
+    tool_choice: Optional[str] = None
 ) -> dict:
     """Invokes the central model proxy through internal network streaming, returning structured response with metrics and native tool calls"""
     from .runtime_policy import RuntimePolicy
@@ -196,7 +230,7 @@ def call_model_proxy(
     effective_socket_to = float(timeout) if timeout is not None else float(active_policy.model_socket_timeout)
 
     payload = {
-        "messages": messages,
+        "messages": normalize_messages_for_llm(messages),
         "temperature": effective_temp,
         "max_tokens": effective_max_tokens,
         "stream": True
@@ -225,7 +259,7 @@ def call_model_proxy(
         payload["model"] = "default"
     if tools:
         payload["tools"] = tools
-        payload["tool_choice"] = "auto"
+        payload["tool_choice"] = tool_choice or "auto"
     req = urllib.request.Request(
         api_endpoint,
         data=json.dumps(payload).encode("utf-8"),
@@ -234,6 +268,7 @@ def call_model_proxy(
     chunks = []
     tool_call_deltas = {}
     finish_reason = None
+    received_done = False
     usage = {}
     start_time = time.time()
     ttft_ms = None
@@ -258,6 +293,7 @@ def call_model_proxy(
                         continue
                     d = l[5:].strip()
                     if d == "[DONE]":
+                        received_done = True
                         break
                     fr, us, ttft_ms = _process_sse_data(
                         d, chunks, tool_call_deltas, start_time, ttft_ms, stream_deltas=effective_stream_deltas
@@ -299,17 +335,21 @@ def call_model_proxy(
         "|DSML|" in res_text
     )
 
-    if not has_tool_calls and not effective_stream_deltas and res_text:
+    if not has_tool_calls and not effective_stream_deltas and stream_deltas is None and res_text:
         # 无工具调用且此前因 tools 处于缓冲模式：
         # 若未发生未执行脚本泄漏，则视为向用户直接回复的最终文本，输出打字机流
         if not detect_unexecuted_script_leak(res_text):
             sys.stdout.write(f"<<<DSH_DELTA:{json.dumps(res_text, ensure_ascii=False)}>>>\n")
             sys.stdout.flush()
 
+    if not finish_reason:
+        finish_reason = "stop" if received_done else "stream_closed_prematurely"
+
     return {
         "content": res_text,
         "tool_calls": structured_calls,
-        "finish_reason": finish_reason or "stop",
+        "finish_reason": finish_reason,
+        "received_done": received_done,
         "usage": usage,
         "ttft_ms": round(ttft_ms if ttft_ms is not None else total_ms, 2),
         "total_ms": round(total_ms, 2)

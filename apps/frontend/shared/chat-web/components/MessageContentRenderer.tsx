@@ -2,6 +2,7 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { normalizeTabSeparatedTable } from '../lib/tableNormalizer';
+import { splitReportDetails } from '../lib/reportDetails';
 import { HtmlPreviewBlock } from './HtmlPreviewBlock';
 
 interface MessageContentRendererProps {
@@ -163,6 +164,26 @@ export const StreamingIndicator: React.FC = () => (
   </span>
 );
 
+export const renderWithLineBreaks = (node: React.ReactNode): React.ReactNode => {
+  if (typeof node === 'string') {
+    if (!/<br\s*\/?>/i.test(node)) return node;
+    const parts = node.split(/(<br\s*\/?>)/gi);
+    return parts.map((part, idx) =>
+      /<br\s*\/?>/i.test(part) ? <br key={idx} /> : part
+    );
+  }
+  if (Array.isArray(node)) {
+    return React.Children.map(node, renderWithLineBreaks);
+  }
+  if (React.isValidElement(node) && (node.props as any)?.children) {
+    return React.cloneElement(node, {
+      ...(node.props as any),
+      children: renderWithLineBreaks((node.props as any).children),
+    });
+  }
+  return node;
+};
+
 const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
   content,
   mode,
@@ -182,7 +203,31 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
   if (mode === 'plain') {
     return (
       <div className="chat-message-plain">
-        {content}
+        {splitReportDetails(content).map((part) => part.kind === 'details'
+          ? `${part.title}\n\n${part.content.trim()}` : part.content).join('\n\n')}
+        {isStreaming ? <StreamingIndicator /> : null}
+      </div>
+    );
+  }
+
+  const reportParts = splitReportDetails(unwrapOuterMarkdownFence(content));
+  if (reportParts.some((part) => part.kind === 'details')) {
+    return (
+      <div className="chat-message-markdown">
+        {reportParts.map((part, index) => part.kind === 'details' ? (
+          <details key={index} className="chat-report-details" style={{
+            marginTop: 16, borderTop: '1px solid var(--border-color, #e5e7eb)', paddingTop: 12,
+          }}>
+            <summary style={{ cursor: 'pointer', color: 'var(--text-secondary, #64748b)', fontSize: 14 }}>
+              {part.title}
+            </summary>
+            <div style={{ marginTop: 12 }}>
+              <MessageContentRenderer content={part.content} mode="markdown" />
+            </div>
+          </details>
+        ) : (
+          <MessageContentRenderer key={index} content={part.content} mode="markdown" />
+        ))}
         {isStreaming ? <StreamingIndicator /> : null}
       </div>
     );
@@ -374,6 +419,15 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
             <div className="markdown-table-wrapper">
               <table>{children}</table>
             </div>
+          ),
+          td: ({ children, ...props }: React.ComponentPropsWithoutRef<'td'>) => (
+            <td {...props}>{renderWithLineBreaks(children)}</td>
+          ),
+          th: ({ children, ...props }: React.ComponentPropsWithoutRef<'th'>) => (
+            <th {...props}>{renderWithLineBreaks(children)}</th>
+          ),
+          p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => (
+            <p {...props}>{renderWithLineBreaks(children)}</p>
           ),
         }}
       >

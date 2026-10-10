@@ -16,7 +16,7 @@ class RuntimePolicy:
     max_rounds: int = 3
     max_history_chars: int = 16000
     max_single_history_chars: int = 4000
-    max_attachment_chars: int = 12000
+    max_attachment_chars: int = 24000
     max_skill_chars: int = 12000
     max_tool_result_chars: int = 10000
     param_preview_chars: int = 80
@@ -28,8 +28,8 @@ class RuntimePolicy:
     temperature: float = 0.4
     max_tokens: int = 16384
     model_socket_timeout: int = 60
-    # The central model proxy owns upstream retries. Avoid multiplying retries here.
-    model_max_retries: int = 0
+    # Upstream proxy may transiently return 500/502/reset. Allow 2 retries by default.
+    model_max_retries: int = 2
     vision_timeout: int = 60
     thinking: bool = False
     reasoning_effort: Optional[str] = None
@@ -45,7 +45,7 @@ class RuntimePolicy:
             max_rounds=int(os.getenv("DSH_MAX_ROUNDS", "3")),
             max_history_chars=int(os.getenv("DSH_MAX_HISTORY_CHARS", "16000")),
             max_single_history_chars=int(os.getenv("DSH_MAX_SINGLE_HISTORY_CHARS", "4000")),
-            max_attachment_chars=int(os.getenv("DSH_MAX_ATTACHMENT_CHARS", "12000")),
+            max_attachment_chars=int(os.getenv("DSH_MAX_ATTACHMENT_CHARS", "24000")),
             max_skill_chars=int(os.getenv("DSH_MAX_SKILL_CHARS", "12000")),
             max_tool_result_chars=int(os.getenv("DSH_MAX_TOOL_RESULT_CHARS", "10000")),
             param_preview_chars=int(os.getenv("DSH_PARAM_PREVIEW_CHARS", "80")),
@@ -57,7 +57,7 @@ class RuntimePolicy:
             temperature=float(os.getenv("DSH_TEMPERATURE", "0.4")),
             max_tokens=int(os.getenv("DSH_MAX_TOKENS", "16384")),
             model_socket_timeout=int(os.getenv("DSH_MODEL_SOCKET_TIMEOUT", "60")),
-            model_max_retries=int(os.getenv("DSH_MODEL_MAX_RETRIES", "0")),
+            model_max_retries=int(os.getenv("DSH_MODEL_MAX_RETRIES", "2")),
             vision_timeout=int(os.getenv("DSH_VISION_TIMEOUT", "60")),
             thinking=thinking_env,
             reasoning_effort=reasoning_effort_env

@@ -1,0 +1,251 @@
+{
+  "module_hashes": {
+    "runner": {
+      "path": "/usr/local/bin/dsh_modules/runner.py",
+      "sha256": "588c6625b87fa1ddd1a5ebe10a31ee1df662a5f1463dbc3c1d64f5c1b9db2df9"
+    },
+    "agent_loop": {
+      "path": "/usr/local/bin/dsh_modules/agent_loop.py",
+      "sha256": "aa9677abd205e2324f8ca67324bd64ce1ab9ec8b0d22f41d66340697e2c75a6b"
+    },
+    "analysis_contract": {
+      "path": "/usr/local/bin/dsh_modules/analysis_contract.py",
+      "sha256": "ac5b05c7917cd7e00b4b6e6ee9108b84a3c560a38641f19e59afbfbfacc91767"
+    },
+    "analysis_validation": {
+      "path": "/usr/local/bin/dsh_modules/analysis_validation.py",
+      "sha256": "a36ccfc99a125f114dde8dae7cdf664972f72fc8c7fcce962118fdc59ec35301"
+    },
+    "comparison_context": {
+      "path": "/usr/local/bin/dsh_modules/comparison_context.py",
+      "sha256": "f2d965c563d0b960616af739dacb73daf17c22770989f82dff9e0ee68b7d70df"
+    },
+    "comparison_evidence": {
+      "path": "/usr/local/bin/dsh_modules/comparison_evidence.py",
+      "sha256": "b74acc98e0964a5dfb4dfbb0aa6b7dbfc19a567e36deaacd21b9358ff3171044"
+    },
+    "table_comparison": {
+      "path": "/usr/local/bin/dsh_modules/table_comparison.py",
+      "sha256": "4d4df48cd95f61365623368c1ab96b31b7fe2628a1adf6d3c6665e068048c582"
+    },
+    "spreadsheet_units": {
+      "path": "/usr/local/bin/dsh_modules/spreadsheet_units.py",
+      "sha256": "2ffe2a57d2221431daad51bda6655caa17ceb03ef1f72b25c0a53c28b457e68b"
+    },
+    "context_budget": {
+      "path": "/usr/local/bin/dsh_modules/context_budget.py",
+      "sha256": "f3485fb60cccffbbacd4c5a9c6dbf1c38f5f9715f904a2b9983eb07e2a7c5a5a"
+    },
+    "runtime_policy": {
+      "path": "/usr/local/bin/dsh_modules/runtime_policy.py",
+      "sha256": "669db01bdc24fa92a53953cdbe80b19faec00f699e6ba7510009c490ca5e1c81"
+    },
+    "skill_router": {
+      "path": "/usr/local/bin/dsh_modules/skill_router.py",
+      "sha256": "12355c621b8f3041e61737144cbb6854b398957678b2c77228b2b336ed3751ea"
+    },
+    "prompt_builder": {
+      "path": "/usr/local/bin/dsh_modules/prompt_builder.py",
+      "sha256": "66f91dd83d2fded81dc7fb4ec987265ce22468a7afce462cec721540fa4ca6d9"
+    },
+    "tools": {
+      "path": "/usr/local/bin/dsh_modules/tools.py",
+      "sha256": "18cbae18c004fb0c5bb938a9a60ccc5eb9e9532d5d325a3606f3206d990a9c4d"
+    },
+    "file_tools": {
+      "path": "/usr/local/bin/dsh_modules/file_tools.py",
+      "sha256": "f6f63eabf6e405efe8d29871f189aca7c3ccd72d50fdb13fe1223f074e6ab133"
+    },
+    "excel_tools": {
+      "path": "/usr/local/bin/dsh_modules/excel_tools.py",
+      "sha256": "5002bd4617385166c6781589fc47183882bc95fe6ff30ad4792284d8ffbb1cdf"
+    },
+    "workbook_calculation": {
+      "path": "/usr/local/bin/dsh_modules/workbook_calculation.py",
+      "sha256": "52ea7ab8120387537c33587eb90084dad925adfd20445e4591740fb948247245"
+    },
+    "llm": {
+      "path": "/usr/local/bin/dsh_modules/llm.py",
+      "sha256": "a8a71b3a65a68bda9669f236ba44d511760b4a5dcc2e798d46d69df582f4896a"
+    },
+    "spreadsheet_analysis": {
+      "path": "/usr/local/bin/dsh_modules/spreadsheet_analysis.py",
+      "sha256": "d3dded8c439d8c57990f0802dd3e2369df0a1121af13bc6b802f2035d855dcdd"
+    },
+    "spreadsheet_expression": {
+      "path": "/usr/local/bin/dsh_modules/spreadsheet_expression.py",
+      "sha256": "98703b24ebf6d426422ca17bab56b3b691f55a53e8da8b3de1ef62fe36ca72d8"
+    },
+    "spreadsheet_quality": {
+      "path": "/usr/local/bin/dsh_modules/spreadsheet_quality.py",
+      "sha256": "e2f180a01d7db421baa999f6eed2d0c3a0affc40365921c2202995a9a1e43f94"
+    },
+    "spreadsheet_analysis_evidence": {
+      "path": "/usr/local/bin/dsh_modules/spreadsheet_analysis_evidence.py",
+      "sha256": "2b18040fabbc919a8fe08e75c2ecb75c3cffff26924154134e80e126336c7676"
+    },
+    "spreadsheet_analysis_schema": {
+      "path": "/usr/local/bin/dsh_modules/spreadsheet_analysis_schema.py",
+      "sha256": "cc3c2cd51922f89238d93069f98fe2dc44c94c3d8904525c1c380382e43fdbe5"
+    },
+    "spreadsheet_context": {
+      "path": "/usr/local/bin/dsh_modules/spreadsheet_context.py",
+      "sha256": "85d3bc0a742080837a6022bab60b3728d293fff815a72271484f6144c2a5b131"
+    },
+    "sampling_guard": {
+      "path": "/usr/local/bin/dsh_modules/sampling_guard.py",
+      "sha256": "370b3de262bb2a6ec332660b1bb7343d657619b125800fa09555d7e7a3ff21c1"
+    },
+    "tool_dispatch": {
+      "path": "/usr/local/bin/dsh_modules/tool_dispatch.py",
+      "sha256": "4050a7cbaabb98028c151e0d4f7363decd99c29f6a9c1a0fe1f965a39af09326"
+    },
+    "spreadsheet_scope": {
+      "path": "/usr/local/bin/dsh_modules/spreadsheet_scope.py",
+      "sha256": "6834a7addc5384139e88bf7350ba6cf91ccb661b61d478e1efd6f94abf5ee799"
+    },
+    "spreadsheet_checks": {
+      "path": "/usr/local/bin/dsh_modules/spreadsheet_checks.py",
+      "sha256": "04ad3140d0b80a5747a3d9e3ec27a8e94660f5c59999e673d1ec05073bf42847"
+    },
+    "spreadsheet_plan": {
+      "path": "/usr/local/bin/dsh_modules/spreadsheet_plan.py",
+      "sha256": "cb384537fc19fa3b0f4f5c0bc431d58c5b1751bb6a32b5cb053ec7be393b4413"
+    },
+    "spreadsheet_trends": {
+      "path": "/usr/local/bin/dsh_modules/spreadsheet_trends.py",
+      "sha256": "54186f1c7b26e2645a50655ac0d171ab98a1bf3ba1607afde475d926146df954"
+    },
+    "spreadsheet_expression_schema": {
+      "path": "/usr/local/bin/dsh_modules/spreadsheet_expression_schema.py",
+      "sha256": "7e6b290d43f4d816d8e8cf5ae03eea456e98cdc6daa58bc14710b8140d419819"
+    },
+    "analysis_semantics": {
+      "path": "/usr/local/bin/dsh_modules/analysis_semantics.py",
+      "sha256": "b308218a18dcdf522763adadfe4e2d3615548dbbd0e0c887abd5f77ebad87f40"
+    },
+    "analysis_domain_finance": {
+      "path": "/usr/local/bin/dsh_modules/analysis_domain_finance.py",
+      "sha256": "d287caef9af3a48435d33947707e18c20874f1b6dfbefc2e754e66771846d7be"
+    },
+    "analysis_domain_commerce": {
+      "path": "/usr/local/bin/dsh_modules/analysis_domain_commerce.py",
+      "sha256": "c5b762dd04a286d81e29e0f3cb81330b56ccffef3b99720b90f538031e4d0eb4"
+    },
+    "spreadsheet_semantic_bindings": {
+      "path": "/usr/local/bin/dsh_modules/spreadsheet_semantic_bindings.py",
+      "sha256": "05f254507f803eb5d55efc8698d17d6d1a4fc3fd4b3d5e4d183064c92d542367"
+    },
+    "worksheet_metadata": {
+      "path": "/usr/local/bin/dsh_modules/worksheet_metadata.py",
+      "sha256": "df70fe4dadbf7365d170a2ef62e4fbbb9a81cff429fa41f82475dfe284561150"
+    },
+    "comparison_delivery": {
+      "path": "/usr/local/bin/dsh_modules/comparison_delivery.py",
+      "sha256": "45a070464aafce602899ad935460e5d7380cfc6e9fed4d4e9bcbe6e49122e851"
+    },
+    "evidence_store": {
+      "path": "/usr/local/bin/dsh_modules/evidence_store.py",
+      "sha256": "fdf6fdf735bbad8042085df7b5d6c652f71ae7b9a2a975fc3cfbd66d9febd163"
+    },
+    "spreadsheet_fact_identity": {
+      "path": "/usr/local/bin/dsh_modules/spreadsheet_fact_identity.py",
+      "sha256": "7691fd4d0aeccbc78000ee5f40474ed5274ec8faef1e32cd9a1d7c9652e1f4dc"
+    },
+    "analysis_task_state": {
+      "path": "/usr/local/bin/dsh_modules/analysis_task_state.py",
+      "sha256": "8104279d7ba9e08ec199892aba97f4ba0e891e2080d3c4cd5b086a36907a41a2"
+    },
+    "registered_metric_completion": {
+      "path": "/usr/local/bin/dsh_modules/registered_metric_completion.py",
+      "sha256": "59314fabff9644a349583158db044eddaa1843b77f97618ddac7497054cb4d7c"
+    },
+    "analysis_turn": {
+      "path": "/usr/local/bin/dsh_modules/analysis_turn.py",
+      "sha256": "3d7145be708ac0cf72dde2fadeb56c93670d7f3b428e6d064ad436a3520b72e7"
+    }
+  },
+  "skill_hashes": {
+    "/opt/dsh/skills/xlsx/SKILL.md": "7ca77069ab4474a99fec625d0f7ed6e5eb7d296017742ecc83eaae1d64b3e69a",
+    "/opt/dsh/skills/xlsx/references/finance-analysis.md": "59242649cd29d3db5158045bc30b8d2daef442c858390099328d3d71d0a47710"
+  },
+  "source_hash_before": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+  "source_hash_after": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+  "actual_failure_replay": {
+    "missing_before": "【程序任务状态】\n{\"complete\": false, \"domain\": \"finance\", \"evidence_ids\": [\"1531f9ebe34d2ddbf59d6333\", \"71b8a3df08f4aa5b604c7dcd\"], \"missing_metrics\": [{\"metric_id\": \"finance.gross_margin\", \"name\": \"毛利率\", \"expected_type\": \"percentage\"}], \"issues\": [{\"code\": \"required_metrics_missing\", \"metrics\": [{\"metric_id\": \"finance.gross_margin\", \"name\": \"毛利率\", \"expected_type\": \"percentage\"}], \"message\": \"分析计划遗漏所需指标或类型：毛利率。\"}]}\n只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。",
+    "completion_count": 1,
+    "derived_facts": [
+      {
+        "id": "derive_m0",
+        "label": "毛利率（注册关系补算）",
+        "source_cells": [
+          "月度经营!B10",
+          "月度经营!B11",
+          "月度经营!B12",
+          "月度经营!B13",
+          "月度经营!B14",
+          "月度经营!B15",
+          "月度经营!B4",
+          "月度经营!B5",
+          "月度经营!B6",
+          "月度经营!B7",
+          "月度经营!B8",
+          "月度经营!B9",
+          "月度经营!D10",
+          "月度经营!D11",
+          "月度经营!D12",
+          "月度经营!D13",
+          "月度经营!D14",
+          "月度经营!D15",
+          "月度经营!D4",
+          "月度经营!D5",
+          "月度经营!D6",
+          "月度经营!D7",
+          "月度经营!D8",
+          "月度经营!D9"
+        ],
+        "metric_id": "finance.gross_margin",
+        "value": "43.09244476697306885986131269",
+        "unit": "%"
+      }
+    ],
+    "complete": true,
+    "final_report": "来源：AI能力测试_财务报表.xlsx；证据 `1531f9ebe34d2ddbf59d6333`。\n语义领域：finance，定义版本1；实际来源绑定和业务假设见下文。\n原件金额单位：千元；换算单位见各指标。数值最多显示四位小数；核验使用未舍入值。\n范围：月度经营!A4:N15；业务行12条，实际处理12条。覆盖声明范围，不含表头。\n\n| 计划指标 | 数值 | 单位 | 核算口径 |\n|---|---:|---|---|\n| 2026年全年营业收入 | 124020 | 千元 | 月度经营：营业收入，第4至15行，月份[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]，求和 |\n| 2026年全年毛利润 | 53443.25 | 千元 | 月度经营：毛利，第4至15行，月份[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]，求和 |\n| 2026年全年营业利润 | 21209.4 | 千元 | 月度经营：营业利润，第4至15行，月份[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]，求和 |\n| 2026年全年净利润 | 16038.3 | 千元 | 月度经营：净利润，第4至15行，月份[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]，求和 |\n来源：AI能力测试_财务报表.xlsx；证据 `71b8a3df08f4aa5b604c7dcd`。\n语义领域：finance，定义版本1；实际来源绑定和业务假设见下文。\n原件金额单位：千元；换算单位见各指标。数值最多显示四位小数；核验使用未舍入值。\n范围：月度经营!A4:N15；业务行12条，实际处理12条。覆盖声明范围，不含表头。\n来源：AI能力测试_财务报表.xlsx；证据 `cf6ecf5d1c545a4333060a14`。\n语义领域：finance，定义版本1；实际来源绑定和业务假设见下文。\n本项由程序按注册关系补算：重新执行已绑定的同源同范围表达式；未采用模型口算或历史数值。\n原件金额单位：千元；换算单位见各指标。数值最多显示四位小数；核验使用未舍入值。\n范围：月度经营!A4:N15；业务行12条，实际处理12条。覆盖声明范围，不含表头。\n\n| 计划指标 | 数值 | 单位 | 核算口径 |\n|---|---:|---|---|\n| 毛利率（注册关系补算） | 43.0924 | % | (月度经营：毛利，第4至15行，月份[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]，求和÷月度经营：营业收入，第4至15行，月份[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]，求和) |",
+    "receipt_ids": [
+      "1531f9ebe34d2ddbf59d6333",
+      "71b8a3df08f4aa5b604c7dcd",
+      "cf6ecf5d1c545a4333060a14"
+    ],
+    "guard_decisions": [
+      {
+        "guard": "analysis_presentation",
+        "action": "runtime_owned",
+        "reason": {
+          "format": "json",
+          "model_text_hash": "8da78dabf726c406d9417b4a2586a8628dd53453771fa5e4ee86326893835ecf",
+          "matched_id_count": 0,
+          "runtime_id_count": 3,
+          "unknown_id_count": 1,
+          "missing_id_count": 3
+        }
+      },
+      {
+        "guard": "spreadsheet_evidence",
+        "action": "accept",
+        "reason": null
+      }
+    ]
+  },
+  "actual_pipeline_replay": {
+    "model_calls": 1,
+    "tool_calls": 2,
+    "report": "来源：AI能力测试_财务报表.xlsx；证据 `1531f9ebe34d2ddbf59d6333`。\n语义领域：finance，定义版本1；实际来源绑定和业务假设见下文。\n原件金额单位：千元；换算单位见各指标。数值最多显示四位小数；核验使用未舍入值。\n范围：月度经营!A4:N15；业务行12条，实际处理12条。覆盖声明范围，不含表头。\n\n| 计划指标 | 数值 | 单位 | 核算口径 |\n|---|---:|---|---|\n| 2026年全年营业收入 | 124020 | 千元 | 月度经营：营业收入，第4至15行，月份[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]，求和 |\n| 2026年全年毛利润 | 53443.25 | 千元 | 月度经营：毛利，第4至15行，月份[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]，求和 |\n| 2026年全年营业利润 | 21209.4 | 千元 | 月度经营：营业利润，第4至15行，月份[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]，求和 |\n| 2026年全年净利润 | 16038.3 | 千元 | 月度经营：净利润，第4至15行，月份[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]，求和 |\n来源：AI能力测试_财务报表.xlsx；证据 `cf6ecf5d1c545a4333060a14`。\n语义领域：finance，定义版本1；实际来源绑定和业务假设见下文。\n本项由程序按注册关系补算：重新执行已绑定的同源同范围表达式；未采用模型口算或历史数值。\n原件金额单位：千元；换算单位见各指标。数值最多显示四位小数；核验使用未舍入值。\n范围：月度经营!A4:N15；业务行12条，实际处理12条。覆盖声明范围，不含表头。\n\n| 计划指标 | 数值 | 单位 | 核算口径 |\n|---|---:|---|---|\n| 毛利率（注册关系补算） | 43.0924 | % | (月度经营：毛利，第4至15行，月份[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]，求和÷月度经营：营业收入，第4至15行，月份[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]，求和) |",
+    "accepted": true,
+    "draft_leaked": false
+  },
+  "tests": {
+    "passed": 308,
+    "suite": "test_analysis_completion and nine related regression suites"
+  },
+  "verification_mode": "deterministic archived-receipt replay and mocked-plan pipeline in actual sandbox; no external model requests"
+}

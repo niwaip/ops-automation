@@ -19,9 +19,38 @@ from .runtime_policy import RuntimePolicy
 from .context_budget import ContextBudget
 from .prompt_builder import build_system_prompt, build_user_turn
 from .skill_router import SkillRouter
-from .agent_loop import run_agent_loop
+from .agent_loop import run_agent_loop, _is_tool_error
 from .artifact_exporter import ArtifactExporter
 from .telemetry import TelemetryStats
+from .comparison_context import build_comparison_source_context
+from .spreadsheet_analysis_evidence import requires_spreadsheet_analysis
+from .spreadsheet_context import build_spreadsheet_source_context, STRUCTURE_TOOL_NAME
+from .evidence_store import persist_turn_evidence, load_task_context
+
+
+def _verify_and_restore_input_attachments(
+    original_hashes: Dict[str, str],
+    inputs_backup_dir: Path,
+    workspace_dir: str
+) -> None:
+    """Verifies SHA-256 integrity of input attachments and automatically restores from backup if modified."""
+    if not original_hashes or not inputs_backup_dir or not inputs_backup_dir.exists():
+        return
+    for fname, orig_h in original_hashes.items():
+        fpath = Path(workspace_dir) / fname
+        backup_p = inputs_backup_dir / fname
+        if not backup_p.exists():
+            continue
+        try:
+            import hashlib
+            import shutil
+            cur_bytes = fpath.read_bytes() if fpath.exists() else b""
+            cur_h = hashlib.sha256(cur_bytes).hexdigest() if fpath.exists() else ""
+            if cur_h != orig_h:
+                shutil.copy2(backup_p, fpath)
+                print(f"🛡️ [Harness Input Protection] 输入附件 ({fname}) 被工具或脚本篡改，已自动从只读备份恢复原件！", flush=True)
+        except Exception as e:
+            print(f"⚠️ [Harness Input Protection] 恢复输入附件异常 ({fname}): {e}", flush=True)
 from .deliverable_contract import requests_markdown_artifact
 from .html_report_fallback import materialize_html_report_fallback
 from .llm import call_model_proxy, clean_output, parse_tool_calls
@@ -43,6 +72,7 @@ def _run_planning_phase(
     policy: RuntimePolicy,
     deadline: Optional[float] = None,
     has_web_search_permission: bool = True,
+    telemetry: Optional[TelemetryStats] = None,
 ) -> Optional[str]:
     """Execute the thinking model in the planning phase to reason, architect, and outline.
     Only allows read-only web retrieval tools (web_search, fetch_page) to ground external facts,
@@ -92,6 +122,8 @@ def _run_planning_phase(
                 deadline=deadline,
                 policy=planning_policy,
             )
+            if telemetry:
+                telemetry.record_llm_response(res, is_first_round=False)
 
             res_text = res.get("content", "") if isinstance(res, dict) else str(res or "")
             raw_tool_calls = res.get("tool_calls", []) if isinstance(res, dict) else []
@@ -150,6 +182,10 @@ def _run_planning_phase(
 
                 print(f"-> 规划期检索调用: {t_name}({t_params})", flush=True)
                 t_res = execute_tool(t_name, t_params, deadline=deadline)
+                if telemetry:
+                    is_err = _is_tool_error(t_res)
+                    status = "error" if is_err else "success"
+                    telemetry.record_tool_call(tool_name=t_name, params=t_params, status=status)
                 clipped_res = ContextBudget.clip_tool_result(t_res, max_chars=4000)
                 planning_messages.append({
                     "role": "tool",
@@ -181,6 +217,26 @@ def select_active_tools(
     detection may eagerly fetch obvious live information, but it must never be
     the capability gate: new sites and unfamiliar wording should still work.
     """
+    if (skill_res.skill_id == "xlsx" and not skill_res.is_generate_intent
+            and not skill_res.requires_execution and not getattr(skill_res,"is_guide_intent",False)):
+        # A missing inspect keyword must not expose all mutative tools. The
+        # attachment/skill selects a native read-only capability surface.
+        from .spreadsheet_analysis_schema import ANALYSIS_TOOL_NAMES
+        allowed = {"read_file", "compare_spreadsheet_columns",STRUCTURE_TOOL_NAME,*ANALYSIS_TOOL_NAMES}
+        from .analysis_contract import build_analysis_contract, supports_column_comparison
+        contract=build_analysis_contract(prompt)
+        if supports_column_comparison(contract):
+            allowed={'read_file','compare_spreadsheet_columns',STRUCTURE_TOOL_NAME}
+        elif contract.is_catalog_only:
+            allowed={'read_file'}
+        elif contract.is_advisory_intent and not contract.is_explicit_calc:
+            allowed={'read_file'}
+        if has_web_search_permission:
+            allowed.update({"web_search", "fetch_page"})
+        if skill_res.is_send_intent:
+            allowed.add("send_file")
+        return get_sandbox_tools(allowed_names=allowed)
+
     if requests_markdown_artifact(prompt) and not skill_res.skill_id:
         allowed = {"write_markdown"}
         if has_web_search_permission:
@@ -189,9 +245,24 @@ def select_active_tools(
             allowed.update({"scan_knowledge", "read_file"})
         return get_sandbox_tools(allowed_names=allowed)
 
-    # 1. 纯查看/审阅/归纳意图：无论是否匹配技能，均限制在只读工具面，严禁开放 bash、write_file、patch_file 等写盘工具
+    # 1. 纯查看/审阅/归纳/数据分析意图：限制在只读分析工具面，阻断 patch_file、write_markdown、create_reminders 等副作用写盘工具
     if skill_res.is_inspect_intent and not (skill_res.is_generate_intent or skill_res.requires_execution):
         allowed = {"read_file", "scan_knowledge", "vision_inspect"}
+        # 对于表格/数据计算类技能（xlsx, python）或涉及表格审计/财务核算的提问，开放受控的 bash 计算验证环境（供运行 Python 统计与公式计算），但严禁落盘工具
+        is_table_or_calc_context = (
+            skill_res.skill_id in {"xlsx", "python"}
+            or any(k in (prompt or "").lower() for k in [
+                "excel", "xlsx", "csv", "表格", "工作表", "工作簿", "sheet", "单元格",
+                "凭证", "明细", "财务", "核算", "勾稽", "试算", "查重", "对账", "报表"
+            ])
+        )
+        if is_table_or_calc_context:
+            allowed.update({"bash", "compare_spreadsheet_columns"})
+            from .analysis_contract import build_analysis_contract, supports_column_comparison
+            if supports_column_comparison(build_analysis_contract(prompt)):
+                # Native comparison results have verifiable input scope and provenance;
+                # arbitrary shell output cannot satisfy this capability's contract.
+                allowed.discard("bash")
         if has_web_search_permission:
             allowed.update({"web_search", "fetch_page"})
         if skill_res.is_send_intent:
@@ -328,7 +399,8 @@ def cmd_run(args):
 
     # 1. 意图与技能解析 (精确规则 + Slash 命令)
     allow_research = bool(getattr(args, "research", False))
-    skill_res = SkillRouter.route(prompt, existing_history, allow_research=allow_research)
+    session_files = resolve_session_attachments(args, session_id)
+    skill_res = SkillRouter.route(prompt, existing_history, allow_research=allow_research, files=session_files)
     knowledge_context = scan_personal_knowledge() if skill_res.is_knowledge_intent else ""
 
 
@@ -376,25 +448,65 @@ def cmd_run(args):
     raw_display_name = getattr(args, "model_display_name", None) or os.environ.get("DSH_MODEL_DISPLAY_NAME") or None
     model_display_name = resolve_model_display_name(model_name, raw_display_name)
 
-    # 3. 提取当前会话附件内容
-    session_files = resolve_session_attachments(args, session_id)
+    # 3. 提取当前会话附件内容并建立只读保护快照
+    if session_files:
+        os.environ["DSH_SESSION_ATTACHMENTS"] = ",".join(session_files)
+
+    original_hashes: Dict[str, str] = {}
+    inputs_backup_dir = Path(WORKSPACE_DIR) / ".dsh" / "inputs_backup"
+    try:
+        inputs_backup_dir.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
+
     file_context = ""
     for fname in session_files:
         if task_deadline is not None and time.monotonic() >= task_deadline:
             raise TimeoutError("Task total execution deadline exceeded before attachment extraction")
         fpath = Path(WORKSPACE_DIR) / fname
         if fpath.exists() and fpath.is_file():
-            extracted = read_workspace_file(fname, deadline=task_deadline, model_name=model_name)
+            try:
+                import hashlib
+                import shutil
+                f_bytes = fpath.read_bytes()
+                curr_h = hashlib.sha256(f_bytes).hexdigest()
+                original_hashes[fname] = curr_h
+                backup_p = inputs_backup_dir / fname
+                need_backup = True
+                if backup_p.exists():
+                    try:
+                        backup_h = hashlib.sha256(backup_p.read_bytes()).hexdigest()
+                        if backup_h == curr_h:
+                            need_backup = False
+                    except Exception:
+                        pass
+                if need_backup:
+                    shutil.copy2(fpath, backup_p)
+            except Exception:
+                pass
+            comparison_context = build_comparison_source_context(fpath, prompt, deadline=task_deadline)
+            # A usable schema keeps full numeric rows on the tool path. No
+            # eager all-sheet extraction/recalculation is needed for planning.
+            analysis_context = (build_spreadsheet_source_context(fpath,deadline=task_deadline)
+                if requires_spreadsheet_analysis(prompt, skill_res) and fpath.suffix.lower() in (".xlsx", ".xlsm") else "")
+            extracted = comparison_context or analysis_context or read_workspace_file(
+                fname, deadline=task_deadline, model_name=model_name, prompt=prompt)
             if extracted and not extracted.startswith("文件未找到"):
                 clipped = ContextBudget.clip_attachment(extracted, policy.max_attachment_chars)
                 file_context += f"\n\n[Attached File Content - {fname}]:\n{clipped}"
 
+    active_tools = select_active_tools(prompt, skill_res, is_search_intent, has_web_search_permission)
+    if requires_spreadsheet_analysis(prompt, skill_res):
+        from .spreadsheet_analysis_schema import select_analysis_tools
+        active_tools = select_analysis_tools(active_tools, prompt)
+    task_context = load_task_context(history_file, original_hashes)
     # 4. 组装 System Prompt 与 User Turn (保持前缀稳定以命中 Prompt Caching)
     system_prompt = build_system_prompt(
         WORKSPACE_DIR,
         KNOWLEDGE_DIR,
         model_name=model_name,
-        model_display_name=model_display_name
+        model_display_name=model_display_name,
+        skill_context=ContextBudget.clip_skill(skill_res.skill_context, max_chars=policy.max_skill_chars)
     )
     messages = [{"role": "system", "content": system_prompt}]
 
@@ -402,8 +514,10 @@ def cmd_run(args):
         existing_history, policy.max_history_chars, policy.max_single_history_chars
     )
     if dropped_count > 0:
-        messages.append({"role": "system", "content": f"[系统提示：为确保高效响应，早期 {dropped_count} 条历史交互已自动精简归档]"})
+        messages.append({"role": "system", "content": f"[系统提示：为确保高效响应，早期 {dropped_count} 条历史交互因长度预算超出自动省略]"})
     messages.extend(budgeted_history)
+    if task_context:
+        messages.append({'role': 'system', 'content': task_context})
 
     from .prompt_builder import get_current_timestamp_str
     user_turn_text = build_user_turn(
@@ -411,7 +525,7 @@ def cmd_run(args):
         session_files=session_files,
         file_context=file_context,
         knowledge_context=knowledge_context,
-        skill_context=skill_res.skill_context,
+        skill_context="",
         search_context=search_context,
         is_send_intent=skill_res.is_send_intent,
         is_search_intent=is_search_intent,
@@ -425,7 +539,8 @@ def cmd_run(args):
         is_guide_intent=skill_res.is_guide_intent,
         existing_history=existing_history,
         max_skill_chars=policy.max_skill_chars,
-        timestamp_str=get_current_timestamp_str(policy.timezone)
+        timestamp_str=get_current_timestamp_str(policy.timezone),
+        available_tool_names=[t['function']['name'] for t in active_tools]
     )
     messages.append({"role": "user", "content": user_turn_text})
 
@@ -444,14 +559,8 @@ def cmd_run(args):
         is_inspect_intent=skill_res.is_inspect_intent
     )
 
-    active_tools = select_active_tools(
-        prompt,
-        skill_res,
-        is_search_intent,
-        has_web_search_permission,
-    )
-
     # 5. 思考模式调度：规划阶段（开启思考与架构设计） -> 执行与工具调用阶段（关闭思考）
+    telemetry = TelemetryStats()
     is_deliverable_task = skill_res.is_generate_intent or skill_res.requires_execution
     if policy.thinking and is_deliverable_task:
         plan_text = _run_planning_phase(
@@ -461,6 +570,7 @@ def cmd_run(args):
             policy,
             deadline=task_deadline,
             has_web_search_permission=has_web_search_permission,
+            telemetry=telemetry,
         )
         if plan_text:
             messages.append({"role": "assistant", "content": f"【方案规划】\n{plan_text}"})
@@ -530,7 +640,9 @@ def cmd_run(args):
             turn_start_time=overall_start_time,
             expected_deliverables=skill_res.deliverables,
             is_generate_intent=skill_res.is_generate_intent,
-            is_inspect_intent=skill_res.is_inspect_intent
+            is_inspect_intent=skill_res.is_inspect_intent,
+            telemetry=telemetry,
+            spreadsheet_analysis_required=requires_spreadsheet_analysis(prompt, skill_res),
         )
 
         # 6. 产物导出与落盘 (HTML/PPT 及各种文档交付物)
@@ -547,7 +659,8 @@ def cmd_run(args):
         detected_deliverables = ArtifactExporter.export_deliverables(
             WORKSPACE_DIR,
             final_text,
-            turn_start_time=overall_start_time
+            turn_start_time=overall_start_time,
+            session_files=session_files
         )
 
         # 7. 会话历史持久化
@@ -555,10 +668,13 @@ def cmd_run(args):
             try:
                 existing_history.append({"role": "user", "content": prompt})
                 existing_history.append({"role": "assistant", "content": final_text})
+                if loop_res.execution_evidence:
+                    existing_history[-1]['verification'] = persist_turn_evidence(
+                        history_file, original_hashes, prompt, loop_res.execution_evidence, telemetry.guard_decisions)
                 with open(history_file, "w", encoding="utf-8") as f:
                     json.dump(existing_history[-policy.recent_history_save_count:], f, ensure_ascii=False, indent=2, default=str)
-            except Exception:
-                pass
+            except Exception as exc:
+                print(f'⚠️ [Harness Evidence Persistence] 会话或证据保存失败：{type(exc).__name__}', file=sys.stderr)
 
         # 8. 协议标记与结果序列化
         elapsed_ms = (time.time() - overall_start_time) * 1000
@@ -621,6 +737,8 @@ def cmd_run(args):
         else:
             print(f"\n❌ [DeepSeek Harness 异常]: 执行异常: {e}", file=sys.stderr)
         sys.exit(1)
+    finally:
+        _verify_and_restore_input_attachments(original_hashes, inputs_backup_dir, WORKSPACE_DIR)
 
 
 def is_context_relevant_to_query(query: str, context: str) -> bool:
