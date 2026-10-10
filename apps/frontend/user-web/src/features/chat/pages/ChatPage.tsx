@@ -50,6 +50,7 @@ import {
 import {
   formatRelativeTime,
   getSessionPreview,
+  resolveModelDisplayInfo,
   resolveSessionChannel,
 } from '../lib/sessionView';
 import {
@@ -522,6 +523,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
       {showSessionSidebar ? (
         <ChatSessionSidebar
           sessions={sessions}
+          availableModels={availableModels}
           selectedSessionId={selectedSessionId}
           isLoading={sessionsQuery.isLoading}
           onSelectSession={setSelectedSessionId}
@@ -585,9 +587,15 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
                 >
                   {selectedSession.title || '新对话'}
                 </Typography.Text>
-                {selectedSession.modelId && selectedSession.modelId !== 'default' ? (
-                  <Tag className={styles['session-model-tag']}>{selectedSession.modelId}</Tag>
-                ) : null}
+                {(() => {
+                  const modelInfo = resolveModelDisplayInfo(selectedSession.modelId, availableModels);
+                  if (!modelInfo) return null;
+                  return (
+                    <Tooltip title={modelInfo.tooltip}>
+                      <Tag className={styles['session-model-tag']}>{modelInfo.name}</Tag>
+                    </Tooltip>
+                  );
+                })()}
               </div>
               <Space size={4} className={styles['user-chat-header-actions']}>
                 <Dropdown
