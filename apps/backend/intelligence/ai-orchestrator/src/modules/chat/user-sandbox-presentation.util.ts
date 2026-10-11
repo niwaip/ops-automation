@@ -91,6 +91,40 @@ export function unwrapOuterMarkdownFence(content: string): string {
   return cleaned;
 }
 
+/**
+ * 格式化日程/提醒时间为指定时区（默认 Asia/Shanghai，北京时间）的标准可读格式：YYYY-MM-DD HH:mm:ss
+ */
+export function formatReminderDisplayTime(val: any, defaultTimeZone = 'Asia/Shanghai'): string {
+  if (!val) return '';
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (trimmed.includes('*') || trimmed === '已生效' || trimmed === '未指定时间') {
+      return trimmed;
+    }
+  }
+
+  const date = val instanceof Date ? val : new Date(val);
+  if (isNaN(date.getTime())) {
+    return String(val);
+  }
+
+  try {
+    const formatter = new Intl.DateTimeFormat('zh-CN', {
+      timeZone: defaultTimeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+    return formatter.format(date).replace(/\//g, '-');
+  } catch {
+    return String(val);
+  }
+}
+
 export interface EmbedWorkspaceDeliverablesOptions {
   userId: string;
   text: string;

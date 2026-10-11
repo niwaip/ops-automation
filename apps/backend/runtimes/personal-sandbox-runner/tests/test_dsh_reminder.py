@@ -11,6 +11,7 @@ from dsh_modules.reminder_tools import (
     create_personal_reminders,
     update_personal_reminder,
     delete_personal_reminders,
+    _format_display_time,
 )
 from dsh_modules.telemetry import extract_dsh_markers, strip_dsh_markers
 from dsh_modules.tools import execute_tool, SANDBOX_TOOLS
@@ -253,6 +254,24 @@ class TestDshReminderTool(unittest.TestCase):
             "title": "会议提醒"
         })
         self.assertIn("<<<DSH_REMINDER_DELETE:", res_del)
+
+    def test_format_display_time_shanghai_timezone(self):
+        # 验证 UTC ISO 字符串准确转换为上海时区 (UTC+8)
+        self.assertEqual(_format_display_time("2026-10-11T06:40:00.000Z"), "2026-10-11 14:40:00")
+        self.assertEqual(_format_display_time("2026-10-11T14:40:00+08:00"), "2026-10-11 14:40:00")
+        self.assertEqual(_format_display_time("0 9 * * 1-5"), "0 9 * * 1-5")
+        self.assertEqual(_format_display_time("已生效"), "已生效")
+        self.assertEqual(_format_display_time(""), "")
+
+    def test_create_personal_reminders_summary_time_shanghai(self):
+        # 验证工具返回的概览文本中时间呈现为北京时间 (Asia/Shanghai)
+        res = create_personal_reminders(
+            title="休息提醒",
+            message="14:40 提醒用户休息",
+            run_at="2026-10-11T14:40:00+08:00"
+        )
+        self.assertIn("时间: 2026-10-11 14:40:00", res)
+        self.assertIn("休息提醒", res)
 
 
 if __name__ == "__main__":

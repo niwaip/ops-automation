@@ -705,7 +705,7 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     expect(resultEvent).toBeDefined();
     expect(resultEvent.content).toContain('控制面已确认');
     expect(resultEvent.content).toContain('客户拜访');
-    expect(resultEvent.content).toContain('2026-09-26T14:00:00.000Z');
+    expect(resultEvent.content).toContain('2026-09-26 22:00:00');
   });
 
   it('[P2] should parse outbound file markers containing >>> in comments and embed them into deliverable cards', async () => {
