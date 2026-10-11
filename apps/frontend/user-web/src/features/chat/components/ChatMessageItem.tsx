@@ -82,6 +82,17 @@ export const ChatMessageItem = memo(function ChatMessageItem({
   const hasTaskCard = hasTaskOutcomeContent(message);
   const parsedContent = parseMessageContent(message.content);
   const plainContent = (message.role === 'assistant' ? parsedContent.answer : message.content).trim();
+  const isIntermediaryProgressText = Boolean(
+    plainContent &&
+    (plainContent.startsWith('【观察】') ||
+     plainContent.startsWith('⚡') ||
+     plainContent.startsWith('🔍') ||
+     plainContent.startsWith('⏳') ||
+     plainContent.startsWith('🧠') ||
+     plainContent.startsWith('✓'))
+  );
+  const realGeneratedLength =
+    plainContent && !isIntermediaryProgressText ? plainContent.length : 0;
   const taskParts = resolveTaskParts(message.contentParts);
   const executionId = resolveMessageExecutionId(message);
   const structuredResult = toStructuredResultText(
@@ -426,7 +437,17 @@ export const ChatMessageItem = memo(function ChatMessageItem({
               })()}
             </>
           ) : null}
-          {shouldShowMessageContent ? (
+          {message.role === 'assistant' && message.isStreaming && !hasTaskCard && realGeneratedLength === 0 ? (
+            <div style={{ margin: '4px 0 6px 0' }}>
+              <StreamingActivityCard
+                isStreaming={true}
+                userQuery={userQuery}
+                currentProgressText={plainContent}
+                realContentLength={0}
+              />
+            </div>
+          ) : null}
+          {shouldShowMessageContent && (!message.isStreaming || realGeneratedLength > 0) ? (
             <div className={styles['user-chat-message-content']}>
               {hasRenderableContentParts ? (
                 <SharedContentPartsRenderer
@@ -468,12 +489,9 @@ export const ChatMessageItem = memo(function ChatMessageItem({
                 ) : (
                   <StreamingActivityCard
                     isStreaming={Boolean(message.isStreaming)}
+                    userQuery={userQuery}
                     currentProgressText={plainContent}
-                    realContentLength={
-                      plainContent && !plainContent.startsWith('【观察】') && !plainContent.startsWith('⚡') && !plainContent.startsWith('✓')
-                        ? plainContent.length
-                        : 0
-                    }
+                    realContentLength={realGeneratedLength}
                     compact
                   />
                 )}

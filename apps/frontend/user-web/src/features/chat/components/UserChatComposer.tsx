@@ -499,32 +499,67 @@ export function UserChatComposer(props: UserChatComposerProps) {
 
     let finalMessage = trimmed;
     if (taskContext && trimmed) {
-      const contextLines: string[] = [
-        '',
-        '---',
-        '📋 **【关联协同任务上下文】**',
-        `- **任务标题**：${taskContext.taskTitle}`,
-      ];
-      if (taskContext.workflowId) {
-        contextLines.push(`- **业务流程**：${taskContext.workflowId}`);
-      }
-      if (taskContext.taskContent && taskContext.taskContent !== taskContext.taskTitle) {
-        contextLines.push(`- **任务要求**：${taskContext.taskContent}`);
-      }
-      if (taskContext.parameters && Object.keys(taskContext.parameters).length > 0) {
-        const paramStrs = Object.entries(taskContext.parameters)
-          .filter(([k]) => !IGNORED_TASK_CONTEXT_PARAM_KEYS.has(k))
-          .map(([k, v]) => `${PARAM_LABEL_MAP[k] || k}: ${v}`);
-        if (paramStrs.length > 0) {
-          contextLines.push(`- **业务要件**：${paramStrs.join('； ')}`);
+      const contextLines: string[] = [];
+      const isNoteQuote = !taskContext.workflowId;
+
+      if (isNoteQuote) {
+        // 便签引用场景：将便签作为补充引用块附加在用户提问下方
+        contextLines.push(
+          '',
+          '---',
+          `> 📌 **【引用便签】** ${taskContext.taskTitle}`
+        );
+        if (
+          taskContext.taskContent &&
+          taskContext.taskContent !== taskContext.taskTitle
+        ) {
+          const contentLines = taskContext.taskContent
+            .split('\n')
+            .map((l) => `> ${l}`)
+            .join('\n');
+          contextLines.push(contentLines);
+        }
+        if (taskContext.attachments && taskContext.attachments.length > 0) {
+          contextLines.push(
+            `> **关联文档**：${taskContext.attachments.map((a) => (a.url ? `[${a.name}](${a.url})` : a.name)).join(', ')}`
+          );
+        }
+      } else {
+        // 工作流协同任务场景
+        contextLines.push(
+          '',
+          '---',
+          '📋 **【关联协同任务上下文】**',
+          `- **任务标题**：${taskContext.taskTitle}`
+        );
+        if (taskContext.workflowId) {
+          contextLines.push(`- **业务流程**：${taskContext.workflowId}`);
+        }
+        if (
+          taskContext.taskContent &&
+          taskContext.taskContent !== taskContext.taskTitle &&
+          !trimmed.includes(taskContext.taskContent)
+        ) {
+          contextLines.push(`- **任务要求**：${taskContext.taskContent}`);
+        }
+        if (taskContext.parameters && Object.keys(taskContext.parameters).length > 0) {
+          const paramStrs = Object.entries(taskContext.parameters)
+            .filter(([k]) => !IGNORED_TASK_CONTEXT_PARAM_KEYS.has(k))
+            .map(([k, v]) => `${PARAM_LABEL_MAP[k] || k}: ${v}`);
+          if (paramStrs.length > 0) {
+            contextLines.push(`- **业务要件**：${paramStrs.join('； ')}`);
+          }
+        }
+        if (taskContext.attachments && taskContext.attachments.length > 0) {
+          contextLines.push(
+            `- **关联文档**：${taskContext.attachments.map((a) => (a.url ? `[${a.name}](${a.url})` : a.name)).join(', ')}`
+          );
         }
       }
-      if (taskContext.attachments && taskContext.attachments.length > 0) {
-        contextLines.push(
-          `- **关联文档**：${taskContext.attachments.map((a) => (a.url ? `[${a.name}](${a.url})` : a.name)).join(', ')}`
-        );
+
+      if (contextLines.length > 0) {
+        finalMessage = `${trimmed}\n${contextLines.join('\n')}`;
       }
-      finalMessage = `${trimmed}\n${contextLines.join('\n')}`;
       setTaskContext(null);
     }
 
@@ -725,15 +760,19 @@ export function UserChatComposer(props: UserChatComposerProps) {
               }
             }}
             placeholder={
-              workspaceSearchEnabled && enableWebSearch
-                ? '已开启联网与知识库检索，输入问题直接提问...（输入 ! 唤起工作流，/ 唤起技能，# 关联文件，@ 协同成员）'
-                : workspaceSearchEnabled
-                  ? '已开启知识库检索，输入问题直接研读空间文档...（输入 ! 唤起工作流，/ 唤起技能，# 关联文件，@ 协同成员）'
-                  : enableWebSearch
-                    ? '已开启全网实时搜索，输入问题直接检索...（输入 ! 唤起工作流，/ 唤起技能，# 关联文件，@ 协同成员）'
-                    : placeholder || (chatMode === 'chat'
-                      ? '输入消息，Enter 发送（输入 / 唤起 /ppt, /research 等沙箱生产力工具）'
-                      : '输入消息，Enter 发送（输入 / 唤起工作模式企业技能，! 唤起工作流）')
+              taskContext
+                ? !taskContext.workflowId
+                  ? '已引用便签，输入你的问题或处理指令（如：帮我梳理要点、转为待办方案等）...'
+                  : '已带入协同任务上下文，输入你的处理要求...'
+                : workspaceSearchEnabled && enableWebSearch
+                  ? '已开启联网与知识库检索，输入问题直接提问...（输入 ! 唤起工作流，/ 唤起技能，# 关联文件，@ 协同成员）'
+                  : workspaceSearchEnabled
+                    ? '已开启知识库检索，输入问题直接研读空间文档...（输入 ! 唤起工作流，/ 唤起技能，# 关联文件，@ 协同成员）'
+                    : enableWebSearch
+                      ? '已开启全网实时搜索，输入问题直接检索...（输入 ! 唤起工作流，/ 唤起技能，# 关联文件，@ 协同成员）'
+                      : placeholder || (chatMode === 'chat'
+                        ? '输入消息，Enter 发送（输入 / 唤起 /ppt, /research 等沙箱生产力工具）'
+                        : '输入消息，Enter 发送（输入 / 唤起工作模式企业技能，! 唤起工作流）')
             }
             className={styles['user-chat-input-textarea']}
             disabled={disabled || isTranscribing || isUploadingFile}

@@ -3,7 +3,6 @@ import type { AIModel } from '@ops/user-core';
 import {
   resolveModelDisplayInfo,
   resolveSessionChannel,
-  formatRelativeTime,
   summarizeSessionTitle,
 } from './sessionView';
 

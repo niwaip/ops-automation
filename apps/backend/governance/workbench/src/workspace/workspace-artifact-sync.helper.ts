@@ -53,14 +53,20 @@ export class WorkspaceArtifactSyncHelper {
         foundFiles.add(inlineName);
       }
 
-      // 1. 匹配 Markdown 引用（图片与超链接）
+      // 1. 从当前会话的 rawResultData 中精准提取显式交付物与工具生成物
+      this.extractFilesFromRawResultData(dto.rawResultData, foundFiles, fileUrlMap);
+
+      // 2. 从当前会话专属附件索引读取本轮关联附件（精准会话作用域隔离）
+      this.extractSessionAttachments(userId, dto.sessionId, foundFiles);
+
+      // 3. 匹配 Markdown 引用（图片与超链接）
       const linkRegex = /(?:!\[.*?\]\((.*?)\)|\[.*?\]\((.*?)\))/g;
       let match: RegExpExecArray | null;
       while ((match = linkRegex.exec(combinedText)) !== null) {
         const src = match[1] || match[2];
         if (src) {
           const fileMatch = src.match(
-            /(?:workspace-files\/[^/]+\/|\/workspace\/|^)([a-zA-Z0-9_\-.\u4e00-\u9fa5]+\.(?:png|jpg|jpeg|webp|gif|svg|html|htm|pdf|docx|pptx|xlsx|csv|json|py|txt))/i
+            /(?:workspace-files\/[^/]+\/|\/workspace\/|^)([a-zA-Z0-9_\-.\u4e00-\u9fa5]+\.(?:png|jpg|jpeg|webp|gif|svg|html|htm|pdf|docx|pptx|xlsx|csv|json|py|txt|md))/i
           );
           if (fileMatch && fileMatch[1]) {
             foundFiles.add(fileMatch[1]);
@@ -75,9 +81,9 @@ export class WorkspaceArtifactSyncHelper {
         }
       }
 
-      // 2. 匹配沙箱路径如 /workspace/xxx.html 或文档渲染路径 /renders/xxx
+      // 4. 匹配沙箱路径如 /workspace/xxx.html 或文档渲染路径 /renders/xxx
       const directMatches = combinedText.match(
-        /(?:\/workspace\/|\/api\/renders\/|\/renders\/)([a-zA-Z0-9_\-.\u4e00-\u9fa5]+\.(?:png|jpg|jpeg|webp|gif|svg|html|htm|pdf|docx|pptx|xlsx|csv|json|py|txt))/gi
+        /(?:\/workspace\/|\/api\/renders\/|\/renders\/)([a-zA-Z0-9_\-.\u4e00-\u9fa5]+\.(?:png|jpg|jpeg|webp|gif|svg|html|htm|pdf|docx|pptx|xlsx|csv|json|py|txt|md))/gi
       );
       if (directMatches) {
         for (const dm of directMatches) {
@@ -85,17 +91,17 @@ export class WorkspaceArtifactSyncHelper {
         }
       }
 
-      // 3. 匹配正文中独立出现的产物文件名（如 index.html, report.docx 等）
+      // 5. 匹配正文中独立出现的完整产物文件名（支持中英文且文件名长度 >= 2，避免单字符误匹配）
       const artifactWordRegex =
-        /\b([a-zA-Z0-9_\-.\u4e00-\u9fa5]+\.(?:html|htm|pdf|docx|pptx|xlsx))\b/gi;
+        /(?:^|[^\w/])([a-zA-Z0-9_\-.\u4e00-\u9fa5]{2,}\.(?:png|jpg|jpeg|webp|gif|svg|html|htm|pdf|docx|pptx|xlsx|csv|json|py|txt|md))(?=[^\w/]|$)/gi;
       let wordMatch: RegExpExecArray | null;
       while ((wordMatch = artifactWordRegex.exec(combinedText)) !== null) {
         if (wordMatch[1]) {
-          foundFiles.add(wordMatch[1]);
+          foundFiles.add(wordMatch[1].trim());
         }
       }
 
-      // 4. 工作模式关联查询：若携带 executionId，读取 execution_artifacts 表中登记的所有任务交付物
+      // 6. 工作模式关联查询：若携带 executionId，读取 execution_artifacts 表中登记的所有任务交付物
       if (dto.executionId) {
         try {
           let rawArtifacts: any[] = [];
@@ -127,39 +133,55 @@ export class WorkspaceArtifactSyncHelper {
         }
       }
 
-      // 5. 自动扫描沙箱 workspace 中最近 2 小时生成的交付产物（个人模式）
-      const candDirs = [
-        path.join('/workspace/data/users', userId, 'workspace'),
-        path.join(process.cwd(), 'data/users', userId, 'workspace'),
-      ];
-      for (const cDir of candDirs) {
-        if (fs.existsSync(cDir)) {
-          try {
-            const dirents = fs.readdirSync(cDir, { withFileTypes: true });
-            const now = Date.now();
-            for (const d of dirents) {
-              if (
-                d.isFile() &&
-                /\.(?:html|htm|pdf|pptx|docx)$/i.test(d.name) &&
-                !d.name.startsWith('.')
-              ) {
-                try {
-                  const stat = fs.statSync(path.join(cDir, d.name));
-                  if (
-                    now - stat.mtimeMs < 2 * 3600 * 1000 ||
-                    combinedText.includes(d.name.split('.')[0])
-                  ) {
-                    foundFiles.add(d.name);
-                  }
-                } catch {
-                  // Best-effort cleanup must not interrupt artifact sync.
-                }
+      // 严格会话边界过滤：若指定了 sessionId，任何只通过正文模糊正则匹配命中、
+      // 但既不在本轮会话附件列表、也不在工具输出、也不在 .sessions 目录中的历史无关文件予以剔除
+      if (dto.sessionId) {
+        const cleanSid = dto.sessionId.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const sessionWhitelist = new Set<string>();
+        // 1) 内联 HTML
+        for (const k of inlineHtmlBlocks.keys()) sessionWhitelist.add(k);
+        // 2) 显式交付物与工具生成物
+        if (dto.rawResultData) {
+          const rFiles = new Set<string>();
+          this.extractFilesFromRawResultData(dto.rawResultData, rFiles, new Map());
+          for (const rf of rFiles) sessionWhitelist.add(rf);
+        }
+        // 3) 会话附件清单与 .sessions 目录文件
+        const sAtts = new Set<string>();
+        this.extractSessionAttachments(userId, dto.sessionId, sAtts);
+        for (const sa of sAtts) sessionWhitelist.add(sa);
+        // 4) 正文中显式以 /workspace/ 或 workspace-files/ 链接的有效交付物
+        let lMatch: RegExpExecArray | null;
+        const linkFilterRegex =
+          /(?:workspace-files\/[^/]+\/|\/workspace\/)([a-zA-Z0-9_\-.\u4e00-\u9fa5]+\.[a-zA-Z0-9]+)/gi;
+        while ((lMatch = linkFilterRegex.exec(combinedText)) !== null) {
+          if (lMatch[1]) sessionWhitelist.add(lMatch[1]);
+        }
+        // 5) 物理存在于当前会话 Scratchpad .sessions/<cleanSid>/ 中的文件
+        const candSessionDirs = [
+          path.join(process.cwd(), 'data/users', userId, 'workspace', '.sessions', cleanSid),
+          path.join('/workspace/data/users', userId, 'workspace', '.sessions', cleanSid),
+        ];
+        for (const sDir of candSessionDirs) {
+          if (fs.existsSync(sDir)) {
+            try {
+              for (const f of fs.readdirSync(sDir)) {
+                if (!f.startsWith('.')) sessionWhitelist.add(f);
               }
+            } catch {
+              // ignore
             }
-          } catch {
-            // Best-effort cleanup must not interrupt artifact sync.
           }
-          break;
+        }
+
+        // 剔除所有不在白名单中的历史无关杂质文件
+        for (const f of Array.from(foundFiles)) {
+          if (!sessionWhitelist.has(f)) {
+            this.logger.log(
+              `Filtered out cross-session historical file: "${f}" for session ${dto.sessionId}`
+            );
+            foundFiles.delete(f);
+          }
         }
       }
 
@@ -229,7 +251,14 @@ export class WorkspaceArtifactSyncHelper {
 
         // 优先级 2: 本地沙箱磁盘扫描
         if (!fileBuffer) {
+          const cleanSid = dto.sessionId ? dto.sessionId.replace(/[^a-zA-Z0-9_-]/g, '_') : null;
           const candidateRoots = [
+            ...(cleanSid
+              ? [
+                  path.join('/workspace/data/users', userId, 'workspace', '.sessions', cleanSid, fileName),
+                  path.join(process.cwd(), 'data/users', userId, 'workspace', '.sessions', cleanSid, fileName),
+                ]
+              : []),
             path.join('/workspace/data/users', userId, 'workspace', fileName),
             path.join(process.cwd(), 'data/users', userId, 'workspace', fileName),
             path.join('/workspace/data/users', userId, 'knowledge', fileName),
@@ -246,26 +275,6 @@ export class WorkspaceArtifactSyncHelper {
 
           if (physicalPath) {
             fileBuffer = fs.readFileSync(physicalPath);
-          } else {
-            const globalRoots = ['/workspace/data/users', path.join(process.cwd(), 'data/users')];
-            for (const gRoot of globalRoots) {
-              if (fs.existsSync(gRoot)) {
-                try {
-                  const uDirs = fs.readdirSync(gRoot);
-                  for (const u of uDirs) {
-                    const cand = path.join(gRoot, u, 'workspace', fileName);
-                    if (fs.existsSync(cand)) {
-                      physicalPath = cand;
-                      fileBuffer = fs.readFileSync(cand);
-                      break;
-                    }
-                  }
-                } catch {
-                  // Best-effort cleanup must not interrupt artifact sync.
-                }
-              }
-              if (fileBuffer) break;
-            }
           }
         }
 
@@ -501,6 +510,159 @@ export class WorkspaceArtifactSyncHelper {
         return 'text/x-python';
       default:
         return 'application/octet-stream';
+    }
+  }
+
+  /**
+   * 从当前会话的原始执行数据中精准提取显式交付物与工具调用的产物文件
+   */
+  private extractFilesFromRawResultData(
+    rawResultData: any,
+    foundFiles: Set<string>,
+    fileUrlMap: Map<string, string>
+  ): void {
+    if (!rawResultData) return;
+    let dataObj: any = rawResultData;
+    if (typeof rawResultData === 'string') {
+      try {
+        dataObj = JSON.parse(rawResultData);
+      } catch {
+        return;
+      }
+    }
+    if (!dataObj || typeof dataObj !== 'object') return;
+
+    // 1) 显式分发的交付产物清单（如 deepseek-harness 的 outboundFiles）
+    if (Array.isArray(dataObj.outboundFiles)) {
+      for (const item of dataObj.outboundFiles) {
+        const name = item?.fileName || (item?.filePath ? path.basename(item.filePath) : null);
+        if (name) {
+          foundFiles.add(name);
+          if (item?.url) fileUrlMap.set(name, item.url);
+        }
+      }
+    }
+
+    // 2) 调用的工具产生的目标文件（如 send_file, write_file, write_markdown）
+    const toolCalls =
+      dataObj.sandbox?.metrics?.toolCalls ||
+      dataObj.sandbox?.toolCalls ||
+      dataObj.toolCalls;
+    if (Array.isArray(toolCalls)) {
+      for (const tc of toolCalls) {
+        if (!tc || !tc.params) continue;
+        if (tc.name === 'send_file' && tc.params.file_path) {
+          foundFiles.add(path.basename(tc.params.file_path));
+        } else if (
+          (tc.name === 'write_file' || tc.name === 'write_markdown') &&
+          tc.params.path
+        ) {
+          foundFiles.add(path.basename(tc.params.path));
+        }
+      }
+    }
+
+    // 3) 显式 artifacts / files 列表
+    const artifacts = dataObj.artifacts || dataObj.files;
+    if (Array.isArray(artifacts)) {
+      for (const art of artifacts) {
+        const name =
+          typeof art === 'string'
+            ? path.basename(art)
+            : art?.name || (art?.filePath ? path.basename(art.filePath) : null);
+        if (name) {
+          foundFiles.add(name);
+          if (art?.url || art?.downloadUrl) {
+            fileUrlMap.set(name, art.url || art.downloadUrl);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * 从当前会话持久化的专属附件索引读取本轮绑定的有效附件
+   */
+  private extractSessionAttachments(
+    userId: string,
+    sessionId: string | undefined,
+    foundFiles: Set<string>
+  ): void {
+    if (!sessionId) return;
+    const cleanSid = sessionId.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const candSessionPaths = [
+      path.join(
+        '/workspace/data/users',
+        userId,
+        'workspace',
+        '.sessions',
+        cleanSid,
+        'attachments.json'
+      ),
+      path.join(
+        process.cwd(),
+        'data/users',
+        userId,
+        'workspace',
+        '.sessions',
+        cleanSid,
+        'attachments.json'
+      ),
+      path.join(
+        '/workspace/data/users',
+        userId,
+        'workspace',
+        '.dsh',
+        'sessions',
+        `${cleanSid}.attachments.json`
+      ),
+      path.join(
+        process.cwd(),
+        'data/users',
+        userId,
+        'workspace',
+        '.dsh',
+        'sessions',
+        `${cleanSid}.attachments.json`
+      ),
+    ];
+    for (const p of candSessionPaths) {
+      if (fs.existsSync(p)) {
+        try {
+          const list = JSON.parse(fs.readFileSync(p, 'utf-8'));
+          if (Array.isArray(list)) {
+            for (const item of list) {
+              if (typeof item === 'string' && item.trim()) {
+                foundFiles.add(path.basename(item.trim()));
+              }
+            }
+          }
+        } catch {
+          // ignore parse errors
+        }
+        break;
+      }
+    }
+
+    // 扫描 .sessions/<cleanSid>/ 会话暂存区中的真实文件（排除隐藏文件与 attachments.json）
+    const sessionDirs = [
+      path.join('/workspace/data/users', userId, 'workspace', '.sessions', cleanSid),
+      path.join(process.cwd(), 'data/users', userId, 'workspace', '.sessions', cleanSid),
+    ];
+    for (const sDir of sessionDirs) {
+      if (fs.existsSync(sDir)) {
+        try {
+          const entries = fs.readdirSync(sDir);
+          for (const entry of entries) {
+            if (!entry.startsWith('.') && entry !== 'attachments.json') {
+              foundFiles.add(entry);
+            }
+          }
+        } catch {
+          // ignore
+        }
+        break;
+      }
     }
   }
 }

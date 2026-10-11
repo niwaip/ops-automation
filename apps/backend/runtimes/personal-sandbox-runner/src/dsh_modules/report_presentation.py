@@ -81,15 +81,36 @@ def analysis_overview(receipts, prompt):
         parts.extend(['', '| 数据检查 | 检查记录 | 需核查记录 |', '|---|---:|---:|'])
         for rule in rules:
             parts.append(f"| {text(rule['label'])} | {rule['evaluated_records']} | {rule['violation_count']} |")
-        has_violations = any(r.get('violation_count', 0) > 0 for r in rules)
-        if has_violations:
+        shown_cells = set()
+        bullet_lines = []
+        for rule in rules:
+            if rule.get('violation_count', 0) > 0:
+                examples = rule.get('examples', [])
+                sample_strs = []
+                for x in examples[:3]:
+                    if x.get('cell'):
+                        shown_cells.add(x['cell'])
+                        sample_strs.append(f"`{x.get('cell', '')}` (值: `{x.get('value', '')}`)")
+                more_str = f" 等共 {rule['violation_count']} 处" if rule['violation_count'] > len(sample_strs) else ""
+                bullet_lines.append(f"- **{text(rule['label'])}**（{rule['violation_count']} 条）：{'、'.join(sample_strs)}{more_str}")
+        for r in receipts:
+            d = r.data
+            req_fields = set()
+            for rule in d.get('rules', []):
+                cov = next((c for c in d.get('coverage', []) if c.get('id') == rule.get('table')), None)
+                col = rule.get('column', '')
+                bound = next((k for k, v in (cov or {}).get('headers', {}).items() if v == col), col.upper())
+                req_fields.add((rule.get('table'), bound))
+            for p in d.get('profiles', []):
+                if req_fields and (p.get('table'), p.get('column')) not in req_fields:
+                    continue
+                outliers = [o for o in p.get('numeric', {}).get('outliers', []) if o.get('cell') not in shown_cells]
+                if outliers:
+                    o_strs = [f"`{o.get('cell', '')}` (值: `{o.get('value', '')}`)" for o in outliers[:3]]
+                    bullet_lines.append(f"- **{text(p.get('header') or p.get('column'))}统计极值/离群值（3×IQR）**（{len(outliers)} 条）：{'、'.join(o_strs)}")
+        if bullet_lines:
             parts.append('\n需核查记录具体位置与异常值：')
-            for rule in rules:
-                if rule.get('violation_count', 0) > 0:
-                    examples = rule.get('examples', [])
-                    sample_strs = [f"`{x.get('cell', '')}` (值: `{x.get('value', '')}`)" for x in examples[:3] if x.get('cell')]
-                    more_str = f" 等共 {rule['violation_count']} 处" if rule['violation_count'] > len(sample_strs) else ""
-                    parts.append(f"- **{text(rule['label'])}**（{rule['violation_count']} 条）：{'、'.join(sample_strs)}{more_str}")
+            parts.extend(bullet_lines)
         parts.append('\n以上按声明规则筛查，规则适用性尚需确认；不代表业务合规结论。')
     if not parts:
         parts.append('已完成所选范围的字段概况检查；缺失值、取值分布和位置见下方明细。')

@@ -28,6 +28,7 @@ export type SandboxExecutorFn = (
 @Injectable()
 export class UserSandboxHarnessService {
   private readonly logger = new Logger(UserSandboxHarnessService.name);
+  private readonly activeLockOwners = new Map<string, { sessionId: string; token: string }>();
 
   constructor(
     private readonly storageService: UserSandboxStorageService,
@@ -164,19 +165,25 @@ export class UserSandboxHarnessService {
           try {
             const inspect = await exec.inspect();
             this.containerService.recordActivity(sanitizedUserId);
+            const hasValidExitCode = typeof inspect?.ExitCode === 'number';
             resolve({
-              exitCode: inspect.ExitCode ?? 0,
+              exitCode: hasValidExitCode ? inspect.ExitCode : -1,
               stdout: stdout.trim(),
-              stderr: stderr.trim(),
+              stderr: hasValidExitCode
+                ? stderr.trim()
+                : [stderr.trim(), '[警告: 沙箱进程退出码缺失]'].filter(Boolean).join('\n'),
               durationMs: Date.now() - startTime,
               containerName,
             });
-          } catch {
+          } catch (inspectErr: any) {
             this.containerService.recordActivity(sanitizedUserId);
+            const errMsg = inspectErr?.message
+              ? `[警告: 无法读取沙箱进程退出状态: ${inspectErr.message}]`
+              : '[警告: 无法读取沙箱进程退出状态]';
             resolve({
-              exitCode: 0,
+              exitCode: -1,
               stdout: stdout.trim(),
-              stderr: stderr.trim(),
+              stderr: [stderr.trim(), errMsg].filter(Boolean).join('\n'),
               durationMs: Date.now() - startTime,
               containerName,
             });
@@ -209,6 +216,7 @@ export class UserSandboxHarnessService {
       waitTimeoutSeconds?: number;
       thinking?: boolean;
       reasoningEffort?: string;
+      signal?: AbortSignal;
       onLockAcquired?: () => void;
       onWaiting?: (waitedMs: number) => void;
       onStdoutChunk?: (chunk: string) => void;
@@ -217,16 +225,6 @@ export class UserSandboxHarnessService {
   ): Promise<UserSandboxHarnessResult> {
     const sanitizedUserId = this.storageService.sanitizeUserId(userId);
     const sanitizedSessionId = (options?.sessionId || 'default').replace(/[^a-zA-Z0-9_-]/g, '_');
-
-    // 若传入了多轮会话历史记录，委托 storageService 写入工作区 session 存储目录
-    if (options?.history && Array.isArray(options.history) && options.history.length > 0) {
-      this.storageService.writeSessionHistory(sanitizedUserId, sanitizedSessionId, options.history);
-    }
-
-    // 若传入了会话关联附件列表，委托 storageService 写入 session 附件索引
-    if (options?.files && Array.isArray(options.files) && options.files.length > 0) {
-      this.storageService.writeSessionAttachments(sanitizedUserId, sanitizedSessionId, options.files);
-    }
 
     const dshCmd = ['dsh', 'run', prompt, '--session-id', sanitizedSessionId];
     if (options?.files && options.files.length > 0) {
@@ -280,20 +278,38 @@ export class UserSandboxHarnessService {
         sanitizedUserId,
         ttlSeconds,
         waitTimeoutSeconds,
-        options?.onWaiting
+        options?.onWaiting,
+        options?.signal
       );
       if (!lockResult.success) {
+        if ((lockResult as any).aborted || options?.signal?.aborted) {
+          throw new ConflictException('沙箱排队请求已取消。');
+        }
         throw new ConflictException(
           `个人沙箱正在执行前序任务，排队等待超时（${waitTimeoutSeconds}秒）。请稍候再试，或在前一会话中点击“停止”后再试。`
         );
       }
       lockToken = lockResult.token;
-      options?.onLockAcquired?.();
-    } else {
-      options?.onLockAcquired?.();
+      this.activeLockOwners.set(sanitizedUserId, {
+        sessionId: sanitizedSessionId,
+        token: lockToken,
+      });
     }
 
     try {
+      options?.onLockAcquired?.();
+      if (options?.signal?.aborted) {
+        throw new ConflictException('沙箱请求在执行开始前已取消。');
+      }
+
+      // 获得用户执行锁之后再落盘当前轮次的会话历史与附件索引，防止排队请求覆写正在执行轮次的输入状态
+      if (options?.history && Array.isArray(options.history) && options.history.length > 0) {
+        this.storageService.writeSessionHistory(sanitizedUserId, sanitizedSessionId, options.history);
+      }
+      if (options?.files && Array.isArray(options.files) && options.files.length > 0) {
+        this.storageService.writeSessionAttachments(sanitizedUserId, sanitizedSessionId, options.files);
+      }
+
       const execResult = await executor(sanitizedUserId, dshCmd, {
         timeoutMs,
         workDir: '/workspace',
@@ -316,6 +332,10 @@ export class UserSandboxHarnessService {
         exitCode: execResult.exitCode,
       };
     } finally {
+      const currentOwner = this.activeLockOwners.get(sanitizedUserId);
+      if (currentOwner && currentOwner.token === lockToken) {
+        this.activeLockOwners.delete(sanitizedUserId);
+      }
       if (this.lockService && lockToken) {
         await this.lockService.releaseSandboxLock(sanitizedUserId, lockToken);
       }
@@ -327,29 +347,50 @@ export class UserSandboxHarnessService {
    */
   async stopSandboxExecution(userId: string, sessionId?: string): Promise<boolean> {
     const sanitizedUserId = this.storageService.sanitizeUserId(userId);
-    if (this.lockService) {
-      await this.lockService.forceReleaseSandboxLock(sanitizedUserId).catch(() => {});
+    const sanitizedSessionId = sessionId ? sessionId.replace(/[^a-zA-Z0-9_-]/g, '_') : undefined;
+    const activeOwner = this.activeLockOwners.get(sanitizedUserId);
+
+    // 若指定了 sessionId，但当前持有执行锁的是同一用户的另一活跃会话，则不误杀另一会话进程、不释放其锁
+    if (sanitizedSessionId && activeOwner && activeOwner.sessionId !== sanitizedSessionId) {
+      this.logger.log(
+        `Skip stopping sandbox [${sanitizedUserId}] for queued/inactive session [${sanitizedSessionId}]; active lock is owned by session [${activeOwner.sessionId}]`
+      );
+      return false;
     }
+
+    const releaseOwnedOrForceLock = async () => {
+      if (!this.lockService) return;
+      if (activeOwner && typeof this.lockService.releaseSandboxLock === 'function') {
+        await this.lockService.releaseSandboxLock(sanitizedUserId, activeOwner.token).catch(() => {});
+      } else if (typeof this.lockService.forceReleaseSandboxLock === 'function') {
+        await this.lockService.forceReleaseSandboxLock(sanitizedUserId).catch(() => {});
+      }
+    };
 
     const containerName = this.containerService.getContainerName(userId);
     const container = await this.containerService.findContainer(containerName);
-    if (!container) return false;
+    if (!container) {
+      await releaseOwnedOrForceLock();
+      return false;
+    }
 
     try {
       this.logger.log(
         `Forcibly stopping executing processes in sandbox [${containerName}]${sessionId ? ` (session: ${sessionId})` : ''}...`
       );
-      const cmd = sessionId
-        ? ['pkill', '-9', '-f', `dsh.*${sessionId.replace(/[^a-zA-Z0-9_-]/g, '_')}`]
+      const cmd = sanitizedSessionId
+        ? ['pkill', '-9', '-f', `dsh.*${sanitizedSessionId}`]
         : ['pkill', '-9', '-f', 'dsh'];
       const exec = await container.exec({
         Cmd: cmd,
         User: 'root',
       });
       await exec.start({ hijack: true, stdin: false });
+      await releaseOwnedOrForceLock();
       return true;
     } catch (err: any) {
       this.logger.warn(`Failed to stop processes in container ${containerName}: ${err.message}`);
+      await releaseOwnedOrForceLock();
       return false;
     }
   }

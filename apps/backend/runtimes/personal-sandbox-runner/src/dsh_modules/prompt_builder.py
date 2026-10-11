@@ -233,6 +233,14 @@ def build_user_turn(
                 "- 严禁调用 bash 或写文件工具在工作区生成临时报告或 Markdown 文件！用户需要的是在当前对话流中直接阅读分析结果，无需落盘交付物。"
             )
 
+    if is_generate_intent:
+        user_parts.append(
+            "【双通道交付硬性规范 (Dual-Channel Delivery Protocol)】:\n"
+            "- 渠道一（聊天窗口交互通道）：必须在回复中直接呈现完整、自闭环的结构化核心内容（如摘要要点、数据分析/图表说明、核心结论或执行指引），严禁仅输出'已生成/请查看卡片'等空洞推脱话术。\n"
+            "- 渠道二（物理文件交付通道）：严格执行生成工具落盘物理交付物，为用户提供下载与归档。\n"
+            "- 组合任务（如'查询天气并制作PPT'或'分析材料并导出Word'）：必须先在聊天中直接呈现完整的数据详情与分析要点，同时生成高品质的物理文件交付物。"
+        )
+
     if session_files:
         user_parts.append(
             f"[Session Attachments]: 当前会话有效附件为: {', '.join(session_files)}。"
@@ -246,6 +254,21 @@ def build_user_turn(
 
     if file_context.strip():
         user_parts.append(file_context.strip())
+        # 若附件解析结果中包含受保护、损坏或无法解析的系统诊断信息
+        has_file_diag_err = any(k in file_context for k in [
+            "【文件受企业安全加密保护无法解析】",
+            "【图片文件损坏或格式无效无法解析】",
+            "【图片格式异常或损坏】",
+            "【系统提示】附件",
+            "无法解析"
+        ])
+        if has_file_diag_err and any(k in prompt.lower() for k in ["附件", "文件", "上传", "这是什么", "是什么", "这是啥", "是啥", "看下", "分析", "图片", "图", "预览"]):
+            user_parts.append(
+                "【附件解析异常直接如实告知硬性要求 (Attachment Diagnostic Direct Response)】:\n"
+                "- 系统在读取/预检附件时检测到明确的异常（如文件受到企业信息保护 MIP/RMS 加密、文件二进制损坏、或非标准格式）。\n"
+                "- 【直接如实告知】：针对用户的附件询问（如'附件是什么'），你必须在回复中直接、如实向用户解释该附件的真实状态（明确说明附件受微软 MIP 加密保护无法解密，或文件已损坏无法识别，并给出重新导出上传的指引）。\n"
+                "- 【严禁历史惯性与无关搜索】：严禁忽略上述附件异常！严禁受多轮对话历史影响去延续与附件无关的前序历史话题（例如热搜、天气、前序问答等）！严禁调用网络搜索！"
+            )
 
     if knowledge_context.strip():
         user_parts.append(f"[Mounted Personal Knowledge Base]:\n{knowledge_context.strip()}")
@@ -278,6 +301,22 @@ def build_user_turn(
                 "- 【硬性要求】：你必须完全以历史会话中刚刚讨论并给出的实质内容与真实数据为核心主题（将上一轮对话中的具体事实、数据、表格或结论结构化转换为演示文稿/文档内容），严禁脱离历史对话凭空捏造无关的科技/商业/AI主题！\n"
                 "- 【版式转换指引】：若前序内容包含表格或列表数据（如每日天气预报、数值指标），请使用演示文稿中的数据卡片（Stat Cards）、多列栅格（Grid）或时间线流程（Pipeline/Timeline）进行美化呈现，绝不能因为版式美化而丢弃或篡改用户的真实数据主题！"
             )
+
+    # 检查是否为对上一轮简短/空洞回复的重复追问（如上轮仅输出卡片，本轮用户再次询问附件内容）
+    if existing_history:
+        last_u, last_a = extract_recent_history_topic(existing_history)
+        if last_u and last_a:
+            clean_curr = re.sub(r'[\s\W]+', '', prompt.lower())
+            clean_prev = re.sub(r'[\s\W]+', '', last_u.lower())
+            is_repetition = (clean_curr == clean_prev or clean_curr in clean_prev or clean_prev in clean_curr) and len(clean_curr) >= 4
+            is_prev_hollow = bool(re.search(r'(?:已生成|请查看|下载卡片|download-card|保存位置)', last_a)) and len(last_a) < 250
+            if is_repetition and is_prev_hollow:
+                user_parts.append(
+                    "【用户重问纠偏与自愈指引 (Anti-Repetition Self-Healing Directive)】:\n"
+                    "- 检测到用户再次提出了与上一轮相同的问题，这表明上一轮简短的文件生成通知或下载卡片未能满足用户需求（聊天框中缺乏实质正文）。\n"
+                    "- 本轮绝对严禁再次输出'报告已生成，请查看下载卡片'等重复模板！\n"
+                    "- 必须在当前聊天窗口中直接输出全面、详尽、结构完整的 Markdown 正文总结与解答，确保用户直接阅读到完整内容！"
+                )
 
     # 检查是否为上一轮 HTML / 游戏产物的后续迭代修改（如“没有音效”、“加个悔棋”等）
     has_recent_html_in_history = False

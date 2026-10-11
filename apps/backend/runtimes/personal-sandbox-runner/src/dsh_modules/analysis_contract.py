@@ -30,6 +30,7 @@ class AnalysisContract:
     is_audit_intent: bool = False
     is_catalog_only: bool = False
     is_advisory_intent: bool = False
+    is_browse_or_summary: bool = False
     is_explicit_calc: bool = False
     operation: Optional[str] = None  # "argmax" | "argmin" | "summary" | "audit"
     dimension: Optional[str] = None  # "month" | "year" | "category"
@@ -124,12 +125,12 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
         r'\b(?:recommendations?|suggestions?|actionable advice|strategic advice|how to improve|how to reduce)\b',
     ]
     is_advisory = any(bool(re.search(pat, clean_prompt, re.I)) for pat in advisory_patterns)
-    is_explicit_calc = bool(re.search(r'(?:计算|核算|求|统计|算一下|汇总|查重|对账|检验|勾稽|识别.*异常|\b(?:calculate|compute|reconcile|audit)\b)', clean_prompt, re.I))
+    is_explicit_calc = bool(re.search(r'(?:计算|核算|求和|求出|求解|统计|算一下|汇总|查重|对账|检验|勾稽|识别.*异常|\b(?:calculate|compute|reconcile|audit)\b)', clean_prompt, re.I))
 
-    # 3. 识别是否为审计/查重意图
+    # 3. 识别是否为审计/查重/异常筛查意图
     audit_keywords = [
         "查重", "重复", "重复凭证", "重号", "核对", "稽核", "勾稽", "检验", "对账",
-        "最大绝对偏差", "最大偏差", "偏差最大", "绝对偏差", "异常凭证",
+        "最大绝对偏差", "最大偏差", "偏差最大", "绝对偏差", "异常", "筛查", "排查",
         "缺失", "漏填", "空值", "未填", "缺失字段"
     ]
     is_audit = any(k in clean_prompt for k in audit_keywords)
@@ -163,6 +164,8 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
             requested_metrics.append(MetricRequirement(name=name,aliases=metric['patterns'],
                                     expected_type=metric['expected_type'],period=period,semantic_id=metric.get('id')))
             matched_names.add(name)
+    if {'data_quality', 'reconciliation'} & set(concepts):
+        is_audit = True
 
     # 5. 通用后备匹配：检测类似于 "统计X金额" / "计算X总额" 的通用需求
     if not requested_metrics and not is_catalog_only:
@@ -195,6 +198,22 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
             if arithmetic or (between and "预算" not in clean_prompt):
                 comparison_basis, comparison = "cross_metric", "variance"
 
+    # 7. 识别纯查阅/浏览/归纳/总结意图 (非数值指标计算，亦非审计对账)
+    browse_summary_patterns = [
+        r'(?:查看|浏览|阅读|通读|导读|查阅)',
+        r'(?:归纳|总结|概括|简述|介绍|梳理|说明|解读)',
+        r'(?:讲了什么|说了什么|写了什么|包含什么内容|有什么内容|主要内容|核心内容|大概内容|基本内容|基本情况|情况说明)',
+        r'\b(?:overview|summarize|summary|browse|read|brief|inspect content|what is this about)\b',
+    ]
+    is_browse_or_summary = (
+        any(bool(re.search(pat, clean_prompt, re.I)) for pat in browse_summary_patterns)
+        and not is_explicit_calc
+        and not is_audit
+        and not requested_metrics
+        and not comparison
+        and operation not in ("argmax", "argmin")
+    )
+
     return AnalysisContract(
         raw_prompt=clean_prompt,
         period=period,
@@ -202,6 +221,7 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
         is_audit_intent=is_audit,
         is_catalog_only=is_catalog_only,
         is_advisory_intent=is_advisory,
+        is_browse_or_summary=is_browse_or_summary,
         is_explicit_calc=is_explicit_calc,
         operation=operation,
         dimension=dimension,

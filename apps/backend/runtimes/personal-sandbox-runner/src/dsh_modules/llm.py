@@ -235,10 +235,11 @@ def call_model_proxy(
         "max_tokens": effective_max_tokens,
         "stream": True
     }
-    if tools:
-        # Tool-selection rounds are not user-visible. The proxy may buffer and
-        # safely replay them when an upstream stream disconnects mid-response.
+    if not effective_stream_deltas:
+        # Tool-selection and buffered synthesis rounds are not streamed directly
+        # to stdout. The proxy may buffer and safely replay them on mid-stream retry.
         payload["stream_visibility"] = "internal"
+    if tools:
         # 工具调用阶段不要思考，确保参数格式规范与工具调用效率
         payload["thinking"] = False
     elif getattr(active_policy, "thinking", None) is not None:
@@ -796,6 +797,7 @@ def clean_output(text: str, is_guide: bool = False) -> str:
     text = re.sub(rf'</?(?:{known_tool_pats})(?:\s+[^>]*?)?/?>', '', text)
     text = re.sub(r'</?(?:tool_call|tool_calls|[｜|]{1,2}\s*DSML\s*[｜|]{1,2}[^>]*)>', '', text)
     text = re.sub(r'<[｜|]{1,2}[\s\S]*?[｜|]{1,2}>', '', text)
+    text = re.sub(r'<!--\s*\[CONTEXT_BUDGET:[^\]]*\]\s*-->', '', text)
     text = text.replace('<<<DSH_DELTA_RESET>>>', '')
     return re.sub(r'\n{3,}', '\n\n', text).strip()
 

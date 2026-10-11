@@ -16,6 +16,8 @@ def requires_spreadsheet_analysis(prompt, skill_res):
     contract = build_analysis_contract(prompt)
     if contract.is_advisory_intent and not contract.is_explicit_calc:
         return False
+    if contract.is_browse_or_summary:
+        return False
     return (getattr(skill_res,"skill_id",None)=="xlsx"
             and not getattr(skill_res,"is_generate_intent",False)
             and not getattr(skill_res,"requires_execution",False)
@@ -183,7 +185,8 @@ def render_analysis_response(text,evidence,prompt="",model=None,policy=None,dead
             parts.extend(["", "| 字段检查 | 已检记录 | 不符合规则数 | 结果 |","|---|---:|---:|---|"])
             for r in d["rules"]:
                 parts.append(f"| {escape(r['label'])} | {r['evaluated_records']} | {r['violation_count']} | {'符合声明规则' if r['passed'] else '需核查'} |")
-                parts.append(f"\n计划说明（待验证）：{escape(r['assumptions'])}；实际条件：{escape(json.dumps({'kind':r['kind'],**r['criteria']},ensure_ascii=False))}。\n")
+            for r in d["rules"]:
+                parts.append(f"\n计划说明（待验证）[{escape(r['label'])}]：{escape(r['assumptions'])}；实际条件：{escape(json.dumps({'kind':r['kind'],**r['criteria']},ensure_ascii=False))}。")
                 for x in r["examples"]:
                     parts.append(f"- {escape(x['cell'])}：{escape(x['value'])}")
                 if not r["examples_complete"]:
@@ -203,6 +206,9 @@ def render_analysis_response(text,evidence,prompt="",model=None,policy=None,dead
                 if 0<p["missing"]<=3:line+=f"；缺失位置{escape(json.dumps(p['missing_examples'],ensure_ascii=False))}"
                 if "numeric" in p:
                     n=p["numeric"];line+=f"；最小值{n['min']}（原第{n['min_row']}行），最大值{n['max']}（原第{n['max_row']}行）"
+                    if n.get("outliers"):
+                        outlier_desc = "、".join(f"{escape(o['cell'])}={escape(o['value'])}" for o in n["outliers"][:5])
+                        line+=f"；统计离群值（3×IQR）{n.get('outlier_count', len(n['outliers']))}处：{outlier_desc}"
                 if "date" in p:line+=f"；日期范围{p['date']['min']}（原第{p['date']['min_row']}行）至{p['date']['max']}（原第{p['date']['max_row']}行）"
                 if "value_counts" in p:line+=f"；各值计数{escape(json.dumps(p['value_counts'],ensure_ascii=False))}"
                 if "value_examples" in p:

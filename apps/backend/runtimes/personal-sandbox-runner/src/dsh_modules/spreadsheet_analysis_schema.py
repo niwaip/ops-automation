@@ -45,7 +45,11 @@ ANALYSIS_TOOL = {
                     "type": "object", "additionalProperties": False,
                     "properties": {"id": {"type": "string"}, "label": {"type": "string"},
                         "table": {"type": "string"}, "column": {"type": "string"},
-                        "kind": {"type": "string", "enum": ["unique", "not_empty", "date_range", "allowed_values", "number_range"]},
+                        "kind": {
+                            "type": "string",
+                            "enum": ["unique", "not_empty", "date_range", "allowed_values", "number_range", "outlier"],
+                            "description": "规则类型：unique(唯一性), not_empty(非空), date_range(明确业务日期边界，需填min/max), allowed_values(明确业务枚举值，需填allowed), number_range(明确业务上下界，需填min/max), outlier(统计离群值检测，按3×IQR识别极端大额/离群数值异常，无需填min/max；未明确要求非负时严禁臆造min=0)"
+                        },
                         "min": {"type": ["string", "number"]}, "max": {"type": ["string", "number"]},
                         "allowed": {"type": "array", "items": {"type": ["string", "number"]}},
                         "assumptions": {"type": "string", "description": "规则依据；推定规则须明确是待核查线索"}},
@@ -77,12 +81,12 @@ ANALYSIS_INSTRUCTIONS = """
 本轮需要执行证据，历史答案和样本不是计算结果。先从来源结构识别真实表头、业务范围、期间及单位。
 来源包含data_region_candidates、header_candidates和带坐标row_labels。已有明确候选时，首轮直接调用对应原生分析工具；结构不足时用inspect_spreadsheet_structure指定真实Sheet按需读取，不先逐张read_file，也不输出分析过程。
 tables/calculations/checks/rules都使用真正JSON数组。业务范围不得包含header_row，也不得把末尾合计再次计入求和；按真实月份标签用filters筛选期间。
-按任务调用aggregate_spreadsheet（聚合/比率）、check_spreadsheet_equations（等式）、validate_spreadsheet_rows（字段/异常）。它们共用同一个原件计算引擎；只提交本次任务需要的字段，不为字段检查添加无关的数值等式。
+按任务调用aggregate_spreadsheet（聚合/比率）、check_spreadsheet_equations（等式）、validate_spreadsheet_rows（字段/异常）。它们共用同一个原件计算引擎；只提交本次任务需要的字段，不为字段检查添加无关的数值等式。若表格为IT运维日志、配置清单、状态记录等非计算数据，无数值指标可计算时，可调用 report_informational_spreadsheet 声明原因并转入文本归纳。
 提交显式计划，覆盖用户全部要求。不能补造表名或业务规则。指标标签的半年/季度/月期间必须与实际范围一致；错误标签将被拒绝。
 用户要求变化或趋势时，至少定义两个不同期间的同来源表范围（不同table id与filters），或逐月范围，并计算各期间比率及变化；一个期间的合计不构成变化分析。
-需要复用计算可使用{"ref":"calculation id"}，输出单位放在calculation.output_unit，不放在表达式内部。范围规则必须实际填min/max，枚举必须填allowed，未知阈值只用字段概况，不补造规则。
+需要复用计算可使用{"ref":"calculation id"}，输出单位放在calculation.output_unit，不放在表达式内部。范围规则必须实际填min/max，枚举必须填allowed；当未知具体上下界阈值但需识别数值/金额异常时，使用 kind="outlier"（按四分位距IQR统计准则识别极端离群值）或仅用字段概况，不凭空臆造 min=0。
 等式检查用 checks 声明关系及假设；左右表达式必须完整，不能把合计的一个分项当成整个恒等式，不将差额自动归因为来源公式错误。
-质量检查用 rules 扫描业务全范围；列类型由原件决定，范围、枚举、唯一性规则声明依据，不将统计异常直接认定为业务违规。
+质量检查用 rules 扫描业务全范围；列类型由原件决定，范围、枚举、唯一性、统计离群(outlier)规则声明依据，不将统计异常直接认定为业务违规。
 金额按原件单位；派生换算用 output_unit，禁止口算。金额单元格/聚合指定unit=amount，比率单元格指定ratio，计数指定number。
 证据ID由程序维护，不需要复述ID或重写最终数字。可选hypotheses为简短、无数字的待核查线索，格式错误不会阻断已核验事实。
 程序返回结构化任务状态和missing_metrics。只补齐缺项的来源表达式，不重复已有指标；只读注册派生关系由程序在同源同范围条件下补算。
@@ -98,6 +102,25 @@ def capability_tool(name,description,fields,required):
                       **({'$defs':params['$defs']} if {'calculations','checks'}&set(fields) else {})}}}
 
 
+INFORMATIONAL_TOOL = {
+    'type': 'function',
+    'function': {
+        'name': 'report_informational_spreadsheet',
+        'description': '当表格主要为文本记录、配置信息、状态日志等非量化/非财务数据，或当前任务仅需状态解读与内容归纳而无需数值计算时调用此工具确认降级。由模型声明理由并解除计算证据核验。',
+        'parameters': {
+            'type': 'object',
+            'additionalProperties': False,
+            'properties': {
+                'file_path': {'type': 'string', 'description': '工作簿文件路径'},
+                'reason': {'type': 'string', 'description': '判定为信息/状态类表格而非数值计算表格的依据'},
+                'summary_focus': {'type': 'string', 'description': '建议呈现的文本归纳或状态说明重点'},
+            },
+            'required': ['file_path', 'reason'],
+        },
+    },
+}
+
+
 ANALYSIS_CAPABILITIES = [
     capability_tool('aggregate_spreadsheet','只读聚合、加权比率和变化分析。表头/列名来自原件，金额换算由程序完成；最终数字由回执生成。',
                     ['file_path','tables','calculations'],['file_path','calculations']),
@@ -105,6 +128,7 @@ ANALYSIS_CAPABILITIES = [
                     ['file_path','tables','checks'],['file_path','checks']),
     capability_tool('validate_spreadsheet_rows','按声明业务范围全量统计各数值列极值、日期范围、分类值计数及缺失值。可添加明确字段rules；不要添加calculations或checks。',
                     ['file_path','tables','rules'],['file_path','tables']),
+    INFORMATIONAL_TOOL,
 ]
 
 ANALYSIS_TOOL_NAMES={t['function']['name'] for t in ANALYSIS_CAPABILITIES}

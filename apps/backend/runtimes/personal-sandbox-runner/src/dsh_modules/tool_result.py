@@ -215,6 +215,10 @@ def adapt_tool_output(output: Union[ToolResult, str, dict, Any]) -> ToolResult:
             or trimmed.startswith("[错误]")
             or trimmed.startswith("【安全拦截】")
             or trimmed.startswith("[安全拦截]")
+            or trimmed.startswith("发送失败：")
+            or trimmed.startswith("文件不存在，无法发送给用户:")
+            or trimmed.startswith("替换失败：")
+            or trimmed.startswith("读取失败：")
             or "[命令执行失败" in trimmed
             or "命令执行异常" in trimmed
             or "执行超时" in trimmed

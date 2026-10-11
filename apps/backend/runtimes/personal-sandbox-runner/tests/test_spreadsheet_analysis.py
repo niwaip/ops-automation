@@ -427,5 +427,114 @@ class SpreadsheetAnalysisTests(unittest.TestCase):
         self.assertEqual(calls[1]['tool_choice'],'required')
         self.assertIn('尚未通过',result.final_text)
 
+    def test_browse_and_summary_intent_bypasses_spreadsheet_analysis(self):
+        browse_queries = [
+            '查看和归纳内容',
+            '查看表格内容并进行归纳',
+            '请归纳一下表格的主要内容',
+            '总结这个表格讲了什么',
+            '概括表格的主要信息',
+            '浏览表格数据并总结',
+            '梳理一下表格内容',
+            '根据要求查看和归纳内容',
+        ]
+        for q in browse_queries:
+            skill = SkillRouter.route(q, [], files=['NAS Operation Result.xlsx'])
+            self.assertFalse(requires_spreadsheet_analysis(q, skill), f"Should not require spreadsheet analysis for: {q}")
+            tools = select_active_tools(q, skill, False, False)
+            names = {t['function']['name'] for t in tools}
+            self.assertIn('read_file', names)
+            self.assertNotIn('aggregate_spreadsheet', names)
+
+        # 包含显式计算或明确指标时，仍必须强制执行表格分析
+        calc_queries = [
+            '计算2026年毛利率并总结',
+            '汇总营业收入',
+            '求和2026年销售费用',
+            '识别审批状态异常',
+        ]
+        for q in calc_queries:
+            skill = SkillRouter.route(q, [], files=['NAS Operation Result.xlsx'])
+            self.assertTrue(requires_spreadsheet_analysis(q, skill), f"Should require spreadsheet analysis for: {q}")
+
+    def test_report_informational_spreadsheet_tool(self):
+        from dsh_modules.spreadsheet_informational import execute_informational_spreadsheet
+        nas_path = Path(self.tmp.name) / "NAS Operation Result.xlsx"
+        w = openpyxl.Workbook()
+        s = w.active
+        s.title = "SyncResult"
+        s.append(["Host", "IP", "Status", "Timestamp"])
+        s.append(["nas-01", "192.168.1.10", "Synchronization Successful", "2026-10-10 12:00:00"])
+        s.append(["nas-02", "192.168.1.11", "Synchronization Successful", "2026-10-10 12:01:00"])
+        w.save(nas_path)
+
+        with patch('dsh_modules.spreadsheet_informational.resolve_sandboxed_path', return_value=(nas_path, None)):
+            # 1. 正常非计算任务下的降级调用成功
+            os.environ["DSH_LAST_USER_PROMPT"] = "查看和归纳内容"
+            res = execute_informational_spreadsheet({
+                'file_path': str(nas_path),
+                'reason': '表格为运维同步日志，无数值计算指标'
+            })
+            tr = getattr(res, "tool_result", None)
+            self.assertTrue(tr.is_success)
+            self.assertEqual(tr.data.get('kind'), 'informational_spreadsheet')
+            self.assertTrue(tr.data.get('is_informational'))
+
+            # 2. 真实财务/计算任务下调用被严格阻断
+            os.environ["DSH_LAST_USER_PROMPT"] = "计算2026年营业利润"
+            res_calc = execute_informational_spreadsheet({
+                'file_path': str(nas_path),
+                'reason': '试图跳过计算'
+            })
+            tr_calc = getattr(res_calc, "tool_result", None)
+            self.assertTrue(tr_calc.is_error)
+            self.assertEqual(tr_calc.error_code, 'escape_rejected')
+
+    def test_loop_informational_downgrade_delivers_clean_text(self):
+        from dsh_modules.tools import get_sandbox_tools
+        nas_path = Path(self.tmp.name) / "NAS Operation Result.xlsx"
+        w = openpyxl.Workbook()
+        s = w.active
+        s.title = "SyncResult"
+        s.append(["Host", "IP", "Status"])
+        s.append(["nas-01", "192.168.1.10", "Success"])
+        w.save(nas_path)
+
+        tool_params = {
+            'file_path': str(nas_path),
+            'reason': 'NAS 运维结果日志，仅包含文本状态信息，无需数值计算'
+        }
+        tool_reply = {
+            'content': '',
+            'finish_reason': 'tool_calls',
+            'tool_calls': [{
+                'id': 'call_1',
+                'type': 'function',
+                'function': {'name': 'report_informational_spreadsheet', 'arguments': json.dumps(tool_params)}
+            }]
+        }
+        summary_text = '本次 NAS 运维同步共有 1 台节点，状态全部为 Success，同步顺利完成。'
+        calls = []
+        def model(*args, **kwargs):
+            calls.append(kwargs)
+            return tool_reply if len(calls) == 1 else {'content': summary_text, 'finish_reason': 'stop'}
+
+        with patch('dsh_modules.agent_loop.call_model_proxy', side_effect=model), \
+             patch('dsh_modules.spreadsheet_informational.resolve_sandboxed_path', return_value=(nas_path, None)):
+            result = run_agent_loop(
+                [{'role': 'system', 'content': 'test'},
+                 {'role': 'user', 'content': 'NAS Operation Result.xlsx 讲了什么'}],
+                'test',
+                RuntimePolicy(),
+                3,
+                tools=get_sandbox_tools({'report_informational_spreadsheet'}),
+                spreadsheet_analysis_required=True
+            )
+
+        self.assertIn('本次 NAS 运维同步共有 1 台节点', result.final_text)
+        self.assertNotIn('尚未通过执行证据核验', result.final_text)
+        self.assertNotIn('无法计算的原因说明', result.final_text)
+        self.assertEqual(result.telemetry.guard_decisions[-1]['action'], 'accept')
+
 
 if __name__=='__main__':unittest.main()

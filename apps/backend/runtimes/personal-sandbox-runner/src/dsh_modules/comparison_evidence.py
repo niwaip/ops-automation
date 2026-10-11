@@ -84,6 +84,16 @@ def validate_execution_output(prompt, output):
     result = getattr(output, "tool_result", None)
     if not isinstance(result, ToolResult):
         return output
+    if result.is_success and isinstance(result.data, dict) and result.data.get("kind") == "informational_spreadsheet":
+        contract = build_analysis_contract(prompt or "")
+        if contract.is_explicit_calc or (contract.metrics and any(m.semantic_id for m in contract.metrics)):
+            rejected = ToolResult.error(
+                "escape_rejected",
+                "当前任务包含明确的数值计算或指标核算需求，禁止降级为纯文本归纳。必须使用 aggregate_spreadsheet 或 check_spreadsheet_equations 完成计算。",
+                data=result.data,
+                provenance=result.provenance
+            )
+            return TextToolOutput(rejected.render_text(), rejected)
     error = comparison_plan_error(build_analysis_contract(prompt or ""), result)
     if not error:
         return output

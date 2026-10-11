@@ -224,6 +224,8 @@ export interface WorkspaceNodeDto {
   updatedAt: string;
   workspaceType?: 'personal' | 'department' | 'company' | 'process';
   workspaceName?: string;
+  fileCount?: number;
+  latestUpdatedAt?: string;
 }
 
 export interface MulterUploadedFile {

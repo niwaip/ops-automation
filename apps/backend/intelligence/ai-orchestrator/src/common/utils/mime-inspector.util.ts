@@ -41,7 +41,24 @@ export function inspectBinaryMimeType(
     }
   }
 
+  // Shell script (#!)
+  if (buffer.length >= 2 && buffer[0] === 0x23 && buffer[1] === 0x21) {
+    throw new BadRequestException('Executable script files (shebang #!) are strictly forbidden');
+  }
+
   // 2. Magic byte checks for known formats
+  const ALLOWED_IMAGE_EXTS = new Set([
+    '.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.dib',
+    '.tiff', '.tif', '.ico', '.avif', '.heic', '.heif', '.svg',
+    '.emf', '.wmf'
+  ]);
+
+  const validateImageExtension = (formatName: string) => {
+    if (ext && !ALLOWED_IMAGE_EXTS.has(ext)) {
+      throw new BadRequestException(`File content is ${formatName} image, but declared extension is ${ext}`);
+    }
+  };
+
   // PNG: 89 50 4E 47 0D 0A 1A 0A
   if (
     buffer.length >= 8 &&
@@ -54,18 +71,14 @@ export function inspectBinaryMimeType(
     buffer[6] === 0x1a &&
     buffer[7] === 0x0a
   ) {
-    if (ext && !['.png'].includes(ext)) {
-      throw new BadRequestException(`File content is PNG image, but declared extension is ${ext}`);
-    }
-    return { mimeType: 'image/png', category: 'image', extension: '.png' };
+    validateImageExtension('PNG');
+    return { mimeType: 'image/png', category: 'image', extension: ext === '.png' ? '.png' : '.png' };
   }
 
-  // JPEG: FF D8 FF
-  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
-    if (ext && !['.jpg', '.jpeg'].includes(ext)) {
-      throw new BadRequestException(`File content is JPEG image, but declared extension is ${ext}`);
-    }
-    return { mimeType: 'image/jpeg', category: 'image', extension: '.jpg' };
+  // JPEG: FF D8 (SOI marker)
+  if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xd8) {
+    validateImageExtension('JPEG');
+    return { mimeType: 'image/jpeg', category: 'image', extension: ext === '.jpeg' ? '.jpeg' : '.jpg' };
   }
 
   // GIF: GIF87a or GIF89a
@@ -78,9 +91,7 @@ export function inspectBinaryMimeType(
     (buffer[4] === 0x37 || buffer[4] === 0x39) &&
     buffer[5] === 0x61
   ) {
-    if (ext && !['.gif'].includes(ext)) {
-      throw new BadRequestException(`File content is GIF image, but declared extension is ${ext}`);
-    }
+    validateImageExtension('GIF');
     return { mimeType: 'image/gif', category: 'image', extension: '.gif' };
   }
 
@@ -96,10 +107,85 @@ export function inspectBinaryMimeType(
     buffer[10] === 0x42 &&
     buffer[11] === 0x50
   ) {
-    if (ext && !['.webp'].includes(ext)) {
-      throw new BadRequestException(`File content is WebP image, but declared extension is ${ext}`);
-    }
+    validateImageExtension('WebP');
     return { mimeType: 'image/webp', category: 'image', extension: '.webp' };
+  }
+
+  // BMP: BM (0x42 0x4D)
+  if (buffer.length >= 2 && buffer[0] === 0x42 && buffer[1] === 0x4d) {
+    validateImageExtension('BMP');
+    return { mimeType: 'image/bmp', category: 'image', extension: '.bmp' };
+  }
+
+  // TIFF: II*\x00 (little endian) or MM\x00* (big endian)
+  if (
+    buffer.length >= 4 &&
+    ((buffer[0] === 0x49 && buffer[1] === 0x49 && buffer[2] === 0x2a && buffer[3] === 0x00) ||
+     (buffer[0] === 0x4d && buffer[1] === 0x4d && buffer[2] === 0x00 && buffer[3] === 0x2a))
+  ) {
+    validateImageExtension('TIFF');
+    return { mimeType: 'image/tiff', category: 'image', extension: '.tiff' };
+  }
+
+  // ICO: 00 00 01 00
+  if (
+    buffer.length >= 4 &&
+    buffer[0] === 0x00 &&
+    buffer[1] === 0x00 &&
+    buffer[2] === 0x01 &&
+    buffer[3] === 0x00
+  ) {
+    validateImageExtension('ICO');
+    return { mimeType: 'image/x-icon', category: 'image', extension: '.ico' };
+  }
+
+  // ISOBMFF: ....ftyp (AVIF / HEIC)
+  if (
+    buffer.length >= 12 &&
+    buffer[4] === 0x66 &&
+    buffer[5] === 0x74 &&
+    buffer[6] === 0x79 &&
+    buffer[7] === 0x70
+  ) {
+    const brand = buffer.subarray(8, 12).toString('ascii').toLowerCase();
+    if (brand === 'avif' || brand === 'avis') {
+      validateImageExtension('AVIF');
+      return { mimeType: 'image/avif', category: 'image', extension: '.avif' };
+    }
+    if (['heic', 'heix', 'mif1', 'msf1'].includes(brand)) {
+      validateImageExtension('HEIC');
+      return { mimeType: 'image/heic', category: 'image', extension: '.heic' };
+    }
+  }
+
+  // Windows DIB (CF_DIB / BITMAPINFOHEADER): starts with header size 40 (0x28), 108 (0x6C), or 124 (0x7C)
+  if (
+    buffer.length >= 40 &&
+    (buffer.readUInt32LE(0) === 40 || buffer.readUInt32LE(0) === 108 || buffer.readUInt32LE(0) === 124) &&
+    buffer.readUInt16LE(12) === 1
+  ) {
+    validateImageExtension('BMP/DIB');
+    return { mimeType: 'image/bmp', category: 'image', extension: ext === '.bmp' || ext === '.dib' ? ext : '.bmp' };
+  }
+
+  // EMF: recordType=1 (0x00000001) and ' EMF' at offset 40
+  if (
+    buffer.length >= 44 &&
+    buffer.readUInt32LE(0) === 1 &&
+    buffer.subarray(40, 44).toString('ascii') === ' EMF'
+  ) {
+    validateImageExtension('EMF');
+    return { mimeType: 'image/emf', category: 'image', extension: ext || '.emf' };
+  }
+
+  // WMF: Placeable (0x9ac6cdd7) or Standard (0x00090001)
+  if (
+    buffer.length >= 4 &&
+    ((buffer[0] === 0xd7 && buffer[1] === 0xcd && buffer[2] === 0xc6 && buffer[3] === 0x9a) ||
+     (buffer[0] === 0x01 && buffer[1] === 0x00 && buffer[2] === 0x09 && buffer[3] === 0x00))
+  ) {
+    validateImageExtension('WMF');
+    return { mimeType: 'image/wmf', category: 'image', extension: ext || '.wmf' };
   }
 
   // PDF: %PDF (0x25 0x50 0x44 0x46)
@@ -240,19 +326,73 @@ export function inspectBinaryMimeType(
     return { mimeType: textMimes[ext] || 'text/plain', category: 'text', extension: ext };
   }
 
-  // If SVG was claimed:
-  if (ext === '.svg') {
-    const textHead = buffer.subarray(0, Math.min(buffer.length, 2048)).toString('utf-8');
-    if (!/<svg\b[^>]*>/i.test(textHead)) {
+  const previewTextHead = buffer.subarray(0, Math.min(buffer.length, 2048)).toString('utf-8');
+
+  // SVG detection (by extension or by <svg> root tag)
+  if (ext === '.svg' || /<svg\b/i.test(previewTextHead)) {
+    if (!/<svg\b[^>]*>/i.test(previewTextHead)) {
       throw new BadRequestException('Declared SVG does not contain a valid <svg> tag');
     }
-    if (/<script\b[^>]*>/i.test(textHead) || /onload\s*=/i.test(textHead) || /javascript:/i.test(textHead)) {
+    if (/<script\b[^>]*>/i.test(previewTextHead) || /onload\s*=/i.test(previewTextHead) || /javascript:/i.test(previewTextHead)) {
       throw new BadRequestException('SVG files containing executable scripts or onload handlers are prohibited');
     }
-    return { mimeType: 'image/svg+xml', category: 'image', extension: '.svg' };
+    return { mimeType: 'image/svg+xml', category: 'image', extension: ext === '.svg' ? '.svg' : (ext || '.svg') };
+  }
+
+  // Base64 data URL or raw base64 encoded image
+  if (
+    previewTextHead.startsWith('data:image/') ||
+    previewTextHead.startsWith('iVBORw0KGgo') ||
+    previewTextHead.startsWith('/9j/') ||
+    previewTextHead.startsWith('R0lGOD')
+  ) {
+    const isJpeg = previewTextHead.startsWith('/9j/') || ext === '.jpg' || ext === '.jpeg';
+    return {
+      mimeType: isJpeg ? 'image/jpeg' : 'image/png',
+      category: 'image',
+      extension: ext || (isJpeg ? '.jpg' : '.png'),
+    };
+  }
+
+  // 4. Safe image fallback for legitimate image extensions or image/* MIME types
+  if (ALLOWED_IMAGE_EXTS.has(ext) || (_declaredMimeType && _declaredMimeType.toLowerCase().startsWith('image/'))) {
+    if (/<script\b[^>]*>/i.test(previewTextHead) || /javascript:/i.test(previewTextHead)) {
+      throw new BadRequestException(`File ${declaredFilename} contains dangerous active script tags`);
+    }
+
+    const mimeMap: Record<string, string> = {
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp',
+      '.bmp': 'image/bmp',
+      '.dib': 'image/bmp',
+      '.tiff': 'image/tiff',
+      '.tif': 'image/tiff',
+      '.ico': 'image/x-icon',
+      '.avif': 'image/avif',
+      '.heic': 'image/heic',
+      '.heif': 'image/heif',
+      '.svg': 'image/svg+xml',
+      '.emf': 'image/emf',
+      '.wmf': 'image/wmf',
+    };
+    const resolvedMime =
+      _declaredMimeType && _declaredMimeType.toLowerCase().startsWith('image/')
+        ? _declaredMimeType
+        : (ext && mimeMap[ext]) || 'image/png';
+    return {
+      mimeType: resolvedMime,
+      category: 'image',
+      extension: ext || '.png',
+    };
   }
 
   // If unknown/unsupported
+  console.warn(
+    `[mime-inspector] Unsupported or unrecognized file format: ${declaredFilename} (ext: ${ext || 'none'}, declaredMime: ${_declaredMimeType || 'none'}), len: ${buffer.length}, header: ${buffer.subarray(0, 32).toString('hex')}`
+  );
   throw new BadRequestException(
     `Unsupported or unrecognized file format: ${declaredFilename} (extension: ${ext || 'none'})`
   );

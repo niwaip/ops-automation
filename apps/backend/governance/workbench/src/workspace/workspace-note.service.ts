@@ -121,8 +121,8 @@ export class WorkspaceNoteService {
     const safeTitle = dto.title.trim().replace(/[\\/:*?"<>|]/g, '_');
     const baseFolderName = `${dateTag}_${safeTitle}`;
 
-    // 幂等防重：检查是否 5 分钟内已保存过完全相同的成果文件夹与笔记
-    let targetFolderNode = await this.prisma.workspaceNode.findFirst({
+    // 检查是否存在同名基础成果文件夹
+    const existingFolder = await this.prisma.workspaceNode.findFirst({
       where: {
         workspaceId: workspace.id,
         parentId: baseFolderId,
@@ -130,6 +130,37 @@ export class WorkspaceNoteService {
         type: 'folder',
       },
     });
+
+    let targetFolderNode: any = null;
+    let targetFolderName = baseFolderName;
+
+    if (existingFolder) {
+      // 严格会话与时间窗口隔离：仅当该文件夹确实属于当前会话，且在 5 分钟内创建时，才允许幂等复用
+      let isSameSession = false;
+      if (existingFolder.digestJson) {
+        try {
+          const dj =
+            typeof existingFolder.digestJson === 'string'
+              ? JSON.parse(existingFolder.digestJson)
+              : existingFolder.digestJson;
+          if (dj?.sessionId && dto.sessionId && dj.sessionId === dto.sessionId) {
+            isSameSession = true;
+          }
+        } catch {
+          // ignore parse errors
+        }
+      }
+      const folderCreatedRecently =
+        Math.abs(now.getTime() - new Date(existingFolder.createdAt).getTime()) < 300_000;
+
+      if (folderCreatedRecently && isSameSession) {
+        targetFolderNode = existingFolder;
+      } else {
+        // 重名但非同会话/超出 5 分钟，生成带时分秒后缀的唯一专属成果文件夹，坚决避免跨会话污染
+        const timeSuffix = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+        targetFolderName = `${baseFolderName}_${timeSuffix}`;
+      }
+    }
 
     const baseFileName = safeTitle.toLowerCase().endsWith('.md') ? safeTitle : `${safeTitle}.md`;
     const finalFileName = baseFileName;
@@ -157,15 +188,20 @@ export class WorkspaceNoteService {
       }
     }
 
-    // 若无现有专属文件夹或重名不同内容，新建带时间后缀的唯一专属文件夹
+    // 若未复用现有专属文件夹，新建带精准会话元数据的独立专属成果文件夹
     if (!targetFolderNode) {
       targetFolderNode = await this.prisma.workspaceNode.create({
         data: {
           workspaceId: workspace.id,
           parentId: baseFolderId,
-          name: baseFolderName,
+          name: targetFolderName,
           type: 'folder',
           createdBy: userId,
+          digestJson: {
+            sessionId: dto.sessionId || '',
+            messageId: dto.messageId || '',
+            createdAt: now.toISOString(),
+          },
         },
       });
     }

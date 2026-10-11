@@ -11,6 +11,7 @@ import time
 import subprocess
 import copy
 import shutil
+import threading
 from typing import Optional, Dict, Any
 from pathlib import Path
 
@@ -502,6 +503,10 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
         from .spreadsheet_context import execute_spreadsheet_structure
         res = execute_spreadsheet_structure(params, deadline=deadline)
 
+    elif name_clean == "report_informational_spreadsheet":
+        from .spreadsheet_informational import execute_informational_spreadsheet
+        res = execute_informational_spreadsheet(params, deadline=deadline)
+
     elif name_clean == "analyze_spreadsheet" or name_clean in ANALYSIS_TOOL_NAMES:
         from .spreadsheet_analysis import execute_spreadsheet_analysis
         if name_clean == "validate_spreadsheet_rows":
@@ -587,16 +592,63 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
         bash_max = float(os.getenv("DSH_BASH_TIMEOUT", "60.0"))
         bash_to = max(0.5, min(bash_max, remaining)) if remaining is not None else bash_max
         try:
-            proc = subprocess.run(
+            proc = subprocess.Popen(
                 cmd,
                 shell=True,
                 cwd=WORKSPACE_DIR if os.path.exists(WORKSPACE_DIR) else None,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
-                capture_output=True,
-                timeout=bash_to
+                bufsize=1,
+                universal_newlines=True,
             )
-            out = proc.stdout.strip()
-            err = proc.stderr.strip()
+
+            stdout_lines = []
+            stderr_lines = []
+
+            def _read_pipe(pipe, collector, is_stdout=True):
+                try:
+                    for line in iter(pipe.readline, ''):
+                        collector.append(line)
+                        if is_stdout:
+                            trimmed = line.strip()
+                            if trimmed and any(trimmed.startswith(prefix) for prefix in (
+                                "🔍", "✓", "⚡", "✨", "📝", "🌐", "🎯", "⏳", "🧠"
+                            )):
+                                cleaned_lead = re.sub(r'^\s*✓', '✓', trimmed)
+                                print(cleaned_lead, flush=True)
+                except Exception:
+                    pass
+                finally:
+                    try:
+                        pipe.close()
+                    except Exception:
+                        pass
+
+            t_out = threading.Thread(target=_read_pipe, args=(proc.stdout, stdout_lines, True))
+            t_err = threading.Thread(target=_read_pipe, args=(proc.stderr, stderr_lines, False))
+            t_out.daemon = True
+            t_err.daemon = True
+            t_out.start()
+            t_err.start()
+
+            start_t = time.monotonic()
+            while proc.poll() is None:
+                if time.monotonic() - start_t > bash_to:
+                    try:
+                        proc.kill()
+                    except Exception:
+                        pass
+                    t_out.join(timeout=0.5)
+                    t_err.join(timeout=0.5)
+                    raise subprocess.TimeoutExpired(cmd, bash_to)
+                time.sleep(0.05)
+
+            t_out.join(timeout=2.0)
+            t_err.join(timeout=2.0)
+
+            out = "".join(stdout_lines).strip()
+            err = "".join(stderr_lines).strip()
             if proc.returncode != 0:
                 combined_err = f"{err}\n{out}"
                 diag = ""

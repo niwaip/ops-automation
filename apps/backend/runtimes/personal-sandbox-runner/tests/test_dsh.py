@@ -465,9 +465,10 @@ class TestDshCoreModules(unittest.TestCase):
     def test_sandbox_tools_schema_completeness(self):
         """AC-1: 验证 SANDBOX_TOOLS 包含完整工具集及受控 Markdown 写入能力"""
         tool_names = [t["function"]["name"] for t in SANDBOX_TOOLS]
-        self.assertEqual(len(tool_names), 21)
+        self.assertEqual(len(tool_names), 22)
         self.assertIn("inspect_spreadsheet_structure", tool_names)
         self.assertIn("analyze_spreadsheet", tool_names)
+        self.assertIn("report_informational_spreadsheet", tool_names)
         self.assertIn("compare_spreadsheet_columns", tool_names)
         self.assertIn("vision_inspect", tool_names)
         self.assertIn("image_gen", tool_names)

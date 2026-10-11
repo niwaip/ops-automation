@@ -61,12 +61,15 @@ GUIDE_PATTERNS = [
     "使用教程", "使用方法", "使用指南", "使用说明", "怎么使用", "如何使用", "怎么用",
     "配置指南", "配置方法", "配置教程", "怎么配置", "如何配置",
     "实现原理", "工作原理", "架构原理", "架构设计", "系统架构",
-    "命令说明", "参数说明", "写法说明", "语法说明", "是什么", "有什么用"
+    "命令说明", "参数说明", "写法说明", "语法说明", "定义是什么", "概念是什么", "技术原理是什么", "有什么用"
 ]
 
 GENERATE_ACTION_PATTERNS = [
     "生成", "制作", "创建", "导出", "新建", "做个", "做一份", "做一张", "做个表", "做个ppt", "做个幻灯片",
     "写一份", "写个", "写出", "输出", "输出为", "保存为", "转为", "转成", "落盘", "另存为", "写成",
+    "汇总成", "总结成", "整理成", "归纳成", "提炼成", "做成", "制成", "输出成", "排版成", "编成", "改写成",
+    "做张ppt", "做套ppt", "做张表", "做份报告", "出份报告", "一张ppt", "一份ppt", "一套ppt",
+    "一份word", "一份pdf", "一个excel", "一张excel", "一份报表",
     "generate", "create", "export", "build", "make", "produce"
 ]
 
@@ -86,7 +89,9 @@ READONLY_SUMMARY_PATTERNS = [
 
 CONTENT_QUERY_PATTERNS = [
     "内容是什么", "有什么内容", "写了什么", "讲了什么", "包含什么", "里面有", "里面写了", "里写了",
-    "有哪些表", "有哪些工作表", "有什么表", "有哪些sheet", "什么sheet", "列出sheet", "清单", "用途"
+    "有哪些表", "有哪些工作表", "有什么表", "有哪些sheet", "什么sheet", "列出sheet", "清单", "用途",
+    "附件是什么", "文件是什么", "这是什么", "上传的是什么", "上传了什么", "上传的是啥", "传了什么", "这是啥", "是什么文件",
+    "这个文件是啥", "这是什么图", "图里是什么", "图片是什么", "文件内容", "附件内容", "识别图片", "解读图片"
 ]
 
 GENERATIVE_SLASH_COMMANDS = {
@@ -101,9 +106,9 @@ TEXT_ONLY_ACTION_TARGETS = [
 ]
 
 PHYSICAL_DELIVERABLE_TARGETS = [
-    ".pdf", ".docx", ".xlsx", ".pptx", ".html", ".csv", ".json", ".md",
+    ".pdf", ".docx", ".xlsx", ".pptx", ".html", ".csv", ".json", ".md", ".png", ".jpg", ".jpeg",
     "pdf", "word", "excel", "ppt", "html", "markdown", "md文件", "md 文件", "表格", "幻灯片", "演示文稿", "报表",
-    "代码文件", "脚本", "落地文件", "物理文件", "本地文件", "单页", "原型", "看板", "网页", "单页报告"
+    "图片", "海报", "图", "代码文件", "脚本", "落地文件", "物理文件", "本地文件", "单页", "原型", "看板", "网页", "单页报告"
 ]
 
 
@@ -118,8 +123,14 @@ def check_generation_target_is_physical(lower_q: str) -> bool:
     ):
         return True
 
+    # 组合与交付物特征模式：[动词] + 成/为 + [量词] + [物理格式] 或 [量词] + [物理格式]
+    if re.search(r'(?:成|为)\s*(?:一份|一个|一张|一套)?\s*(?:ppt|word|pdf|excel|html|幻灯片|演示文稿|表格|文档|报表)', lower_q):
+        return True
+    if re.search(r'(?:一张|一份|一个|一套)\s*(?:ppt|word|pdf|excel|html|幻灯片|演示文稿|表格|文档|报表)', lower_q):
+        return True
+
     # 查找生成动词后紧随的目标词
-    m = re.search(r'(?:生成|导出|制作|创建|做|写|输出为|保存为|转为|转成|输出)\s*(?:一份|一个|一张|一段|出|成|为)?\s*([a-zA-Z0-9_\-\u4e00-\u9fa5\.]+)', lower_q)
+    m = re.search(r'(?:生成|导出|制作|创建|做|写|输出为|保存为|转为|转成|输出|汇总成|总结成|整理成|归纳成|做成|制成|提炼成|排版成|编成)\s*(?:一份|一个|一张|一套|一段|出|成|为)?\s*([a-zA-Z0-9_\-\u4e00-\u9fa5\.]+)', lower_q)
     if not m:
         return any(p in lower_q for p in [".pdf", ".docx", ".xlsx", ".pptx", ".html", ".md", "word", "excel", "ppt", "html", "markdown", "md 文件", "导出为", "保存为"])
     target = m.group(1).strip()
@@ -494,7 +505,7 @@ class SkillRouter:
         LOCAL_DISAMBIGUATION = [
             "工作区", "当前目录", "本地文件", "已上传", "生成的", "刚才生成", "历史", "附件"
         ]
-        is_asking_local = any(loc in lower_query for loc in LOCAL_DISAMBIGUATION)
+        is_asking_local = any(loc in lower_query for loc in LOCAL_DISAMBIGUATION) or bool(attached_files)
         is_cues_match = any(cue in lower_query for cue in SEARCH_CUES)
 
         # 开放域技术/生态/开源项目组件问答探测（如 "xxx 有哪些插件", "xxx 支持哪些模型", "xxx 生态"）
@@ -505,9 +516,16 @@ class SkillRouter:
 
         result.is_search_intent = (is_cues_match or is_tech_ecosystem_inquiry) and not is_asking_local
 
-        # 仅当不是知识/教程问答且不是开放域最新信息检索时，进行结构化文件动作意图解析
+        # 结构化文件动作意图解析
         is_gen, is_insp = resolve_file_action_intent(effective_query, existing_history)
         result.is_generate_intent = is_gen
+
+        # 若涉及本地附件/文件查看或查阅总结，绝不能被误判为开放域检索或通用安装指南
+        if is_asking_local and (is_insp or any(k in lower_query for k in CONTENT_QUERY_PATTERNS) or any(k in lower_query for k in READONLY_SUMMARY_PATTERNS)):
+            result.is_guide_intent = False
+            result.is_search_intent = False
+            is_insp = True
+
         if result.is_guide_intent or result.is_search_intent:
             result.is_inspect_intent = False
         else:

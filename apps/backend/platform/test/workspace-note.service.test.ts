@@ -425,5 +425,70 @@ describe('WorkspaceNoteService', () => {
     expect(updatedContent).toContain('route_map.html');
     expect(updatedContent).toContain('交互式出行路线积水点分布图');
   });
+
+  it('should create new unique folder when an older folder exists from a different session', async () => {
+    const userId = 'user-qa-isolation';
+    const personalWorkspace = {
+      id: 'ws-personal-iso',
+      name: '我的空间',
+      type: 'personal',
+      ownerUserId: userId,
+      quotaBytes: BigInt(1000000),
+      usedBytes: BigInt(100),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    mockPrisma.workspace.findFirst.mockResolvedValue(personalWorkspace);
+
+    const existingOldFolder = {
+      id: 'old-folder-id',
+      workspaceId: 'ws-personal-iso',
+      parentId: 'base-f-id',
+      name: '20261010_方案设计',
+      type: 'folder',
+      createdAt: new Date(Date.now() - 3600_000), // 1 hour ago
+      digestJson: { sessionId: 'old-session-123' },
+    };
+
+    mockPrisma.workspaceNode.findFirst.mockImplementation((args: any) => {
+      if (
+        args?.where?.type === 'folder' &&
+        args?.where?.name &&
+        args.where.name.startsWith('20261010_方案设计')
+      ) {
+        return Promise.resolve(existingOldFolder);
+      }
+      return Promise.resolve(null);
+    });
+
+    const createdNodes: any[] = [];
+    mockPrisma.workspaceNode.create.mockImplementation((args: any) => {
+      const node = {
+        ...args.data,
+        id: `node-${createdNodes.length + 1}`,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      createdNodes.push(node);
+      return node;
+    });
+
+    await service.saveTextNote(userId, {
+      title: '方案设计',
+      content: '全新会话的独立方案内容...',
+      userQuery: '生成方案',
+      sessionId: 'new-session-456',
+      messageId: 'msg-456',
+    });
+
+    // 验证新专属文件夹被独立创建，且带有时间后缀
+    const createdFolderNames = createdNodes
+      .filter((n) => n.type === 'folder')
+      .map((n) => n.name);
+
+    expect(createdFolderNames).not.toContain('20261010_方案设计');
+    expect(createdFolderNames.some((n) => /^20261010_方案设计_\d{6}$/.test(n))).toBe(true);
+  });
 });
 

@@ -221,14 +221,17 @@ export function InboxList({
       });
     }
 
-    useChatStore.getState().openWithTaskContext({
-      taskId: item.id,
-      taskTitle: item.title,
-      workflowId: payload.workflowId,
-      taskContent: item.rawContent,
-      parameters: params,
-      attachments: effectiveAttachments,
-    });
+    useChatStore.getState().openWithTaskContext(
+      {
+        taskId: item.id,
+        taskTitle: item.title,
+        workflowId: payload.workflowId,
+        taskContent: item.rawContent,
+        parameters: params,
+        attachments: effectiveAttachments,
+      },
+      ''
+    );
   };
 
   const renderMainContent = (item: WorkbenchInboxItem) => {
@@ -843,6 +846,16 @@ export function InboxList({
                                 恢复
                               </Button>
                             </Tooltip>
+                            <Tooltip title="快捷调用 AI 聊天窗口（新建会话并引用导入此内容）">
+                              <Button
+                                size="small"
+                                className={styles['workbench-todo-action-btn']}
+                                icon={<RobotOutlined style={{ fontSize: 12, color: '#722ed1' }} />}
+                                onClick={() => handleOpenTaskInAiChat(item)}
+                              >
+                                AI 对话
+                              </Button>
+                            </Tooltip>
                           </>
                         ) : (
                           /* 未归档条目：根据流程节点与任务类型展示相应动作 */
@@ -996,6 +1009,18 @@ export function InboxList({
                                 前往处理
                               </Button>
                             ) : null}
+
+                            {/* 快捷调用 AI 聊天窗口按钮 */}
+                            <Tooltip title="快捷调用 AI 聊天窗口（新建会话并引用导入此内容）">
+                              <Button
+                                size="small"
+                                className={styles['workbench-todo-action-btn']}
+                                icon={<RobotOutlined style={{ fontSize: 12, color: '#722ed1' }} />}
+                                onClick={() => handleOpenTaskInAiChat(item)}
+                              >
+                                AI 对话
+                              </Button>
+                            </Tooltip>
 
                             {!isConverted && !nodeSemantics.isRevisionRequired ? (
                               <>

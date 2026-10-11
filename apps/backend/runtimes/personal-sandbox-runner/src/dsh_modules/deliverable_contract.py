@@ -251,3 +251,90 @@ def materialize_script_deliverable(
         except Exception:
             pass
 
+
+def materialize_pdf_from_markdown(
+    prompt: str,
+    workspace_dir: str,
+    turn_start_time: Optional[float] = None,
+    expected_deliverables: Optional[List[str]] = None,
+    final_text: str = "",
+) -> Optional[str]:
+    """
+    When a PDF deliverable is requested/expected, automatically compiles an existing
+    or freshly created Markdown file (or substantive text in final_text) into a PDF
+    using the built-in generate_report_pdf.py script.
+    """
+    has_pdf_intent = (
+        (expected_deliverables and any(ext.lower() == ".pdf" for ext in expected_deliverables))
+        or bool(re.search(r"(?:生成|导出|制作|转为|转成|做成)[^，。\n]{0,8}pdf", prompt or "", re.I))
+        or "pdf" in (prompt or "").lower()
+    )
+    if not has_pdf_intent:
+        return None
+
+    workspace = Path(workspace_dir)
+    if not workspace.exists():
+        return None
+
+    cutoff = (turn_start_time - 2.0) if turn_start_time is not None else 0.0
+
+    # 1. 检查当前轮次是否已经生成了有效的目标 PDF 文件
+    for f in workspace.glob("*.pdf"):
+        if f.is_file() and f.stat().st_size > 50 and f.stat().st_mtime >= cutoff:
+            return str(f)
+
+    # 2. 寻找生成报告使用的 generate_report_pdf.py 脚本
+    candidate_scripts = [
+        Path("/opt/dsh/skills/pdf/scripts/generate_report_pdf.py"),
+        Path(__file__).resolve().parent.parent.parent / "skills" / "pdf" / "scripts" / "generate_report_pdf.py",
+        workspace.parent / "data" / "shared" / "dsh-skills" / "pdf" / "scripts" / "generate_report_pdf.py",
+    ]
+    script_path = None
+    for s in candidate_scripts:
+        if s.exists() and s.is_file():
+            script_path = s
+            break
+    if not script_path:
+        return None
+
+    # 3. 寻找当前轮次创建或更新的 Markdown 候选文件
+    md_candidates = []
+    for f in workspace.glob("*.md"):
+        if f.is_file() and f.stat().st_size > 50 and f.stat().st_mtime >= cutoff:
+            md_candidates.append(f)
+
+    md_target = None
+    if md_candidates:
+        md_candidates.sort(key=lambda item: item.stat().st_mtime, reverse=True)
+        md_target = md_candidates[0]
+    elif is_substantive_final_content(final_text):
+        stem = resolve_markdown_filename(prompt, final_text).replace(".md", "")
+        temp_md = workspace / f"{stem}.md"
+        try:
+            temp_md.write_text(unwrap_outer_markdown_fence(final_text), encoding="utf-8")
+            md_target = temp_md
+        except Exception:
+            pass
+
+    if not md_target or not md_target.exists():
+        return None
+
+    pdf_name = f"{md_target.stem}.pdf"
+    target_pdf = workspace / pdf_name
+
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script_path), "--input", str(md_target), "--output", str(target_pdf), "--theme", "blue"],
+            cwd=str(workspace),
+            timeout=30,
+            capture_output=True,
+            text=True
+        )
+        if proc.returncode == 0 and target_pdf.exists() and target_pdf.stat().st_size > 50:
+            print(f"✨ [Harness Deliverable Compiler] 已通过内置脚本自动将 Markdown 编译为目标 PDF: {target_pdf}", flush=True)
+            return str(target_pdf)
+    except Exception as exc:
+        print(f"⚠️ [Harness Deliverable Compiler] 编译 PDF 异常: {exc}", file=sys.stderr)
+
+    return None
+

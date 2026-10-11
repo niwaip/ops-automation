@@ -184,7 +184,9 @@ export class UserSandboxController {
 
     let buffer = '';
     let isFinished = false;
-    let hasAcquiredLock = false;
+    let isClientClosed = false;
+    const abortController =
+      typeof AbortController !== 'undefined' ? new AbortController() : undefined;
     const sendEvent = (event: string, data: any) => {
       if (!res.writableEnded) {
         res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
@@ -192,8 +194,13 @@ export class UserSandboxController {
     };
 
     const onClose = () => {
-      if (!isFinished && hasAcquiredLock) {
-        this.userSandboxService.stopSandboxExecution(dto.userId, dto.sessionId).catch(() => {});
+      isClientClosed = true;
+      abortController?.abort();
+      if (!isFinished) {
+        const stopPromise = dto.sessionId
+          ? this.userSandboxService.stopSandboxExecution(dto.userId, dto.sessionId)
+          : this.userSandboxService.stopSandboxExecution(dto.userId);
+        stopPromise.catch(() => {});
       }
     };
     res.on('close', onClose);
@@ -211,8 +218,11 @@ export class UserSandboxController {
         waitTimeoutSeconds: dto.waitTimeoutSeconds,
         thinking: dto.thinking,
         reasoningEffort: dto.reasoningEffort,
+        signal: abortController?.signal,
         onLockAcquired: () => {
-          hasAcquiredLock = true;
+          if (isClientClosed || abortController?.signal?.aborted) {
+            throw new Error('Client disconnected while queued before sandbox execution started');
+          }
         },
         onWaiting: (waitedMs: number) => {
           sendEvent('observation', {
@@ -249,7 +259,12 @@ export class UserSandboxController {
               trimmed.startsWith('🎯') ||
               trimmed.startsWith('🔍') ||
               trimmed.startsWith('⏳') ||
-              trimmed.startsWith('✨')
+              trimmed.startsWith('✨') ||
+              trimmed.startsWith('🧠') ||
+              trimmed.startsWith('🛡️') ||
+              trimmed.startsWith('⚠️') ||
+              trimmed.startsWith('📝') ||
+              trimmed.startsWith('🌐')
             ) {
               sendEvent('observation', { content: trimmed });
             }

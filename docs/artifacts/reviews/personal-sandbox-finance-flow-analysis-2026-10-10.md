@@ -1,5 +1,7 @@
 # 个人沙箱财务问询全流程分析
 
+视角补充：根据后续要求，通用机制结论以[个人沙箱调用链：通用机制审查](/Users/chain/Documents/MyProject/ops-automation/docs/artifacts/reviews/personal-sandbox-general-call-flow-review-2026-10-10.md)为准。本文保留财务/Excel 验证样本与详细来源，不作为仅针对财务的优化方案。
+
 日期：2026-10-10，时区：Asia/Shanghai。对象：当前工作区源码、正在运行的个人沙箱、已有真实会话证据。此次只做分析与只读复核，未修改业务代码、原始工作簿、会话历史或模型配置，未重启服务，未新增真实模型调用。
 
 ## 1. 结论与证据边界

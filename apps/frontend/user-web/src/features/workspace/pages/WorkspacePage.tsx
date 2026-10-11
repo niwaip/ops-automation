@@ -2,8 +2,8 @@ import {
   ArrowLeftOutlined,
   AuditOutlined,
   BankOutlined,
+  ClearOutlined,
   CloudServerOutlined,
-  CloudUploadOutlined,
   DeleteOutlined,
   DesktopOutlined,
   DownloadOutlined,
@@ -72,18 +72,101 @@ function formatBytes(bytesStr: string | number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
-function getFileIcon(node: WorkspaceNode) {
+interface SystemFolderMeta {
+  isSystem: boolean;
+  key: 'tasks' | 'saved' | 'temp';
+  displayName: string;
+  categoryLabel: string;
+  tagColor: string;
+  iconColor: string;
+}
+
+function getSystemFolderMeta(node: WorkspaceNode, isRoot: boolean): SystemFolderMeta | null {
+  if (node.type !== 'folder' || !isRoot) return null;
+  const lower = node.name.toLowerCase();
+  if (lower.includes('tasks') || lower.includes('工作任务成果')) {
+    return {
+      isSystem: true,
+      key: 'tasks',
+      displayName: '工作模式成果',
+      categoryLabel: '工作模式',
+      tagColor: 'blue',
+      iconColor: '#3b82f6',
+    };
+  }
+  if (lower.includes('saved') || lower.includes('沙盒保存内容')) {
+    return {
+      isSystem: true,
+      key: 'saved',
+      displayName: '个人模式成果',
+      categoryLabel: '个人模式',
+      tagColor: 'green',
+      iconColor: '#10b981',
+    };
+  }
+  if (lower.includes('temp') || lower.includes('临时工作区')) {
+    return {
+      isSystem: true,
+      key: 'temp',
+      displayName: '临时文件',
+      categoryLabel: '临时文件',
+      tagColor: 'gold',
+      iconColor: '#f59e0b',
+    };
+  }
+  return null;
+}
+
+function getNodeDisplayName(node: WorkspaceNode, isRoot: boolean): string {
+  const meta = getSystemFolderMeta(node, isRoot);
+  return meta ? meta.displayName : node.name;
+}
+
+function getFileIcon(node: WorkspaceNode, sysMeta?: SystemFolderMeta | null) {
   if (node.type === 'folder') {
-    if (node.name.includes('tasks') || node.name.includes('工作任务成果')) {
-      return <FolderOutlined style={{ color: '#1677ff' }} className={styles['node-icon-folder']} />;
+    if (sysMeta) {
+      const bgMap = {
+        tasks: 'rgba(59, 130, 246, 0.16)',
+        saved: 'rgba(16, 185, 129, 0.16)',
+        temp: 'rgba(245, 158, 11, 0.16)',
+      };
+      return (
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            background: bgMap[sysMeta.key] || 'rgba(59, 130, 246, 0.16)',
+            color: sysMeta.iconColor,
+            fontSize: 17,
+            flexShrink: 0,
+          }}
+        >
+          <FolderOutlined />
+        </span>
+      );
     }
-    if (node.name.includes('saved') || node.name.includes('沙盒保存内容')) {
-      return <FolderOutlined style={{ color: '#52c41a' }} className={styles['node-icon-folder']} />;
-    }
-    if (node.name.includes('temp') || node.name.includes('临时工作区')) {
-      return <FolderOutlined style={{ color: '#faad14' }} className={styles['node-icon-folder']} />;
-    }
-    return <FolderOutlined className={styles['node-icon-folder']} />;
+    return (
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 30,
+          height: 30,
+          borderRadius: 6,
+          background: 'rgba(250, 173, 20, 0.12)',
+          color: '#faad14',
+          fontSize: 16,
+          flexShrink: 0,
+        }}
+      >
+        <FolderOutlined />
+      </span>
+    );
   }
   const ext = (node.name.split('.').pop() || '').toLowerCase();
   if (ext === 'pdf') return <FilePdfOutlined className={styles['node-icon-pdf']} />;
@@ -128,6 +211,7 @@ export function WorkspacePage() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [digestDrawerNode, setDigestDrawerNode] = useState<WorkspaceNode | null>(null);
+  const [isCleaningTemp, setIsCleaningTemp] = useState(false);
   const currentFolderId = breadcrumbs[breadcrumbs.length - 1].id;
 
   useWorkspaceUrlFilePreview({
@@ -224,8 +308,9 @@ export function WorkspacePage() {
         return sortOrder === 'desc' ? sB - sA : sA - sB;
       }
       // 默认按修改时间排序 (updatedAt)，最新排前面 (desc)
-      const tA = new Date(a.updatedAt || a.createdAt || 0).getTime();
-      const tB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      // 若是文件夹，优先使用内部最新文件更新时间 latestUpdatedAt
+      const tA = new Date(a.latestUpdatedAt || a.updatedAt || a.createdAt || 0).getTime();
+      const tB = new Date(b.latestUpdatedAt || b.updatedAt || b.createdAt || 0).getTime();
       return sortOrder === 'desc' ? tB - tA : tA - tB;
     });
   }, [nodesData, searchKeyword, searchMode, contentSearchResults, sortField, sortOrder]);
@@ -345,7 +430,9 @@ export function WorkspacePage() {
 
   // 7. 进入文件夹
   const handleEnterFolder = (folder: WorkspaceNode) => {
-    setBreadcrumbs((prev) => [...prev, { id: folder.id, name: folder.name }]);
+    const isRoot = breadcrumbs.length === 1;
+    const displayName = getNodeDisplayName(folder, isRoot);
+    setBreadcrumbs((prev) => [...prev, { id: folder.id, name: displayName }]);
     setSearchKeyword('');
   };
 
@@ -363,6 +450,37 @@ export function WorkspacePage() {
     }
   };
 
+  // 9.1 一键清理临时工作区
+  const handleCleanupTemp = async () => {
+    if (!currentWorkspace?.id) return;
+    setIsCleaningTemp(true);
+    void antdMessage.loading({ content: '正在智能整理并清理临时工作区...', key: 'cleanup-temp' });
+    try {
+      const res = await workspaceApi.cleanupTempWorkspace(currentWorkspace.id);
+      if (res.totalCleaned > 0) {
+        void antdMessage.success({
+          content: `清理完成！共清理 ${res.ghostNodesCleaned} 个失效幽灵记录与 ${res.cacheFilesCleaned} 个衍生提取缓存，保留 ${res.remainingFiles} 个有效成果`,
+          key: 'cleanup-temp',
+          duration: 5,
+        });
+      } else {
+        void antdMessage.info({
+          content: '临时工作区很整洁，未发现失效记录或冗余缓存',
+          key: 'cleanup-temp',
+        });
+      }
+      void refetchNodes();
+      void refetchWorkspaces();
+    } catch (err: unknown) {
+      void antdMessage.error({
+        content: err instanceof Error ? err.message : '清理失败',
+        key: 'cleanup-temp',
+      });
+    } finally {
+      setIsCleaningTemp(false);
+    }
+  };
+
   // 是否只读（公司公共盘与流程管理空间默认非管理员只读，确保归档文档安全防篡改）
   const isReadOnly = (activeTab === 'company' || activeTab === 'process') && !isAdmin;
 
@@ -374,46 +492,57 @@ export function WorkspacePage() {
       key: 'name',
       sorter: true,
       sortOrder: sortField === 'name' ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
-      render: (name: string, record) => {
+      render: (_, record) => {
         const matches = (record as any).matches as ContentMatchSnippet[] | undefined;
         const keyTopics = record.digest?.keyTopics;
+        const isRoot = breadcrumbs.length === 1;
+        const sysMeta = getSystemFolderMeta(record, isRoot);
+        const displayName = getNodeDisplayName(record, isRoot);
+
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span
-              className={styles['node-item-name']}
-              onClick={() => {
-                if (record.type === 'folder') {
-                  handleEnterFolder(record);
-                } else {
-                  void handlePreviewNode(record);
-                }
-              }}
-            >
-              {getFileIcon(record)}
-              <span style={{ fontWeight: record.type === 'folder' ? 600 : 400 }}>{name}</span>
-            </span>
-            {keyTopics && keyTopics.length > 0 && (
-              <div style={{ display: 'flex', gap: 4, paddingLeft: 22, marginTop: 1, flexWrap: 'wrap' }}>
-                {keyTopics.slice(0, 3).map((topic, i) => (
-                  <Tag
-                    key={i}
-                    color="blue"
-                    style={{
-                      fontSize: 10,
-                      lineHeight: '16px',
-                      padding: '0 4px',
-                      borderRadius: 4,
-                      margin: 0,
-                    }}
-                  >
-                    #{topic}
-                  </Tag>
-                ))}
-              </div>
-            )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '2px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span
+                className={styles['node-item-name']}
+                onClick={() => {
+                  if (record.type === 'folder') {
+                    handleEnterFolder(record);
+                  } else {
+                    void handlePreviewNode(record);
+                  }
+                }}
+              >
+                {getFileIcon(record, sysMeta)}
+                <span style={{ fontWeight: record.type === 'folder' ? 500 : 400, fontSize: 13.5 }}>
+                  {displayName}
+                </span>
+              </span>
+
+              {keyTopics && keyTopics.length > 0 && (
+                <div style={{ display: 'inline-flex', gap: 4, marginLeft: 4 }}>
+                  {keyTopics.slice(0, 3).map((topic, i) => (
+                    <Tag
+                      key={i}
+                      color="blue"
+                      bordered={false}
+                      style={{
+                        fontSize: 10,
+                        lineHeight: '16px',
+                        padding: '0 4px',
+                        borderRadius: 4,
+                        margin: 0,
+                      }}
+                    >
+                      #{topic}
+                    </Tag>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {matches && matches.length > 0 && (
-              <div style={{ fontSize: 12, color: 'var(--primary-color, #1677ff)', paddingLeft: 22, marginTop: 2 }}>
-                <Tag color="cyan" style={{ marginRight: 6, fontSize: 10 }}>全文命中</Tag>
+              <div style={{ fontSize: 12, color: 'var(--primary-color, #1677ff)', paddingLeft: 42, marginTop: 2 }}>
+                <Tag color="cyan" bordered={false} style={{ marginRight: 6, fontSize: 10 }}>全文命中</Tag>
                 <span>第 {matches[0].line} 行: {matches[0].snippet}</span>
               </div>
             )}
@@ -425,104 +554,137 @@ export function WorkspacePage() {
       title: '大小',
       dataIndex: 'fileSize',
       key: 'fileSize',
-      width: 140,
+      width: 130,
       sorter: true,
       sortOrder: sortField === 'fileSize' ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
-      render: (size: string, record) => (record.type === 'folder' ? '-' : formatBytes(size)),
+      render: (size: string, record) => {
+        if (record.type === 'folder') {
+          const count = record.fileCount ?? 0;
+          return (
+            <span style={{ color: count > 0 ? 'var(--text-primary)' : 'var(--text-secondary)', fontSize: 12.5 }}>
+              {count} 项
+            </span>
+          );
+        }
+        return <span style={{ fontSize: 12.5 }}>{formatBytes(size)}</span>;
+      },
     },
     {
       title: '类型',
       key: 'type',
       width: 140,
       render: (_, record) => {
+        const isRoot = breadcrumbs.length === 1;
+        const sysMeta = getSystemFolderMeta(record, isRoot);
+        if (sysMeta) {
+          return <Tag color={sysMeta.tagColor} bordered={false}>{sysMeta.categoryLabel}</Tag>;
+        }
         if (record.type === 'folder') {
-          if (record.name.includes('tasks') || record.name.includes('工作任务成果')) {
-            return <Tag color="blue">工作模式成果</Tag>;
-          }
-          if (record.name.includes('saved') || record.name.includes('沙盒保存内容')) {
-            return <Tag color="success">沙盒沉淀</Tag>;
-          }
-          if (record.name.includes('temp') || record.name.includes('临时工作区')) {
-            return <Tag color="warning">沙盒临时</Tag>;
-          }
-          return <Tag color="default">文件夹</Tag>;
+          return <Tag bordered={false}>文件夹</Tag>;
         }
         const ext = (record.name.split('.').pop() || '文件').toUpperCase();
-        return <Tag color="processing">{ext}</Tag>;
+        return <Tag color="default" bordered={false}>{ext}</Tag>;
       },
     },
     {
       title: '修改时间',
       dataIndex: 'updatedAt',
       key: 'updatedAt',
-      width: 180,
+      width: 190,
       sorter: true,
       sortOrder: sortField === 'updatedAt' ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
-      render: (val: string) => (val ? new Date(val).toLocaleString() : '-'),
+      render: (val: string, record) => {
+        const targetTime = record.latestUpdatedAt || val;
+        if (!targetTime) return '-';
+        const d = new Date(targetTime);
+        const hasLatestFromChildren = record.type === 'folder' && Boolean(record.latestUpdatedAt);
+        return (
+          <Tooltip title={hasLatestFromChildren ? `最新文件修改时间: ${d.toLocaleString()}` : d.toLocaleString()}>
+            <span style={{ color: hasLatestFromChildren ? 'var(--text-primary)' : 'var(--text-secondary)', fontSize: 12.5 }}>
+              {d.toLocaleString()}
+            </span>
+          </Tooltip>
+        );
+      },
     },
     {
       title: '操作',
       key: 'action',
-      width: 180,
-      render: (_, record) => (
-        <div style={{ display: 'flex', gap: 6 }}>
-          {record.type === 'folder' ? (
-            <Button
-              type="link"
-              size="small"
-              onClick={() => handleEnterFolder(record)}
-            >
-              打开
-            </Button>
-          ) : (
-            <>
-              <Tooltip title="文档摘要卡片">
-                <Button
-                  type="text"
-                  size="small"
-                  icon={
-                    <AuditOutlined
-                      style={{ color: record.digest ? 'var(--primary-color, #1677ff)' : undefined }}
-                    />
-                  }
-                  onClick={() => setDigestDrawerNode(record)}
-                />
-              </Tooltip>
-              <Tooltip title="快速预览">
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<EyeOutlined />}
-                  onClick={() => void handlePreviewNode(record)}
-                />
-              </Tooltip>
-              <Tooltip title="下载">
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<DownloadOutlined />}
-                  onClick={() => handleDownloadNode(record)}
-                />
-              </Tooltip>
-            </>
-          )}
-          {!isReadOnly && (
-            <Popconfirm
-              title={`确定要删除 "${record.name}" 吗？`}
-              description={record.type === 'folder' ? '文件夹内的所有子文件也将被永久删除！' : undefined}
-              overlayStyle={{ maxWidth: 280 }}
-              okText="确定"
-              cancelText="取消"
-              okButtonProps={{ danger: true }}
-              onConfirm={() => handleDeleteNode(record)}
-            >
-              <Tooltip title="删除">
-                <Button type="text" size="small" danger icon={<DeleteOutlined />} />
-              </Tooltip>
-            </Popconfirm>
-          )}
-        </div>
-      ),
+      width: 160,
+      render: (_, record) => {
+        const isRoot = breadcrumbs.length === 1;
+        const sysMeta = getSystemFolderMeta(record, isRoot);
+
+        return (
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            {record.type === 'folder' ? (
+              <Button
+                type="link"
+                size="small"
+                className={styles['btn-open-folder']}
+                onClick={() => handleEnterFolder(record)}
+              >
+                打开
+              </Button>
+            ) : (
+              <>
+                <Tooltip title="文档摘要卡片">
+                  <Button
+                    type="text"
+                    size="small"
+                    className={styles['action-icon-btn']}
+                    icon={
+                      <AuditOutlined
+                        style={{ color: record.digest ? 'var(--primary-color, #1677ff)' : undefined }}
+                      />
+                    }
+                    onClick={() => setDigestDrawerNode(record)}
+                  />
+                </Tooltip>
+                <Tooltip title="快速预览">
+                  <Button
+                    type="text"
+                    size="small"
+                    className={styles['action-icon-btn']}
+                    icon={<EyeOutlined />}
+                    onClick={() => void handlePreviewNode(record)}
+                  />
+                </Tooltip>
+                <Tooltip title="下载">
+                  <Button
+                    type="text"
+                    size="small"
+                    className={styles['action-icon-btn']}
+                    icon={<DownloadOutlined />}
+                    onClick={() => handleDownloadNode(record)}
+                  />
+                </Tooltip>
+              </>
+            )}
+            {/* 系统内置根目录严禁出现删除按钮 */}
+            {!isReadOnly && !sysMeta && (
+              <Popconfirm
+                title={`确定要删除 "${record.name}" 吗？`}
+                description={record.type === 'folder' ? '文件夹内的所有子文件也将被永久删除！' : undefined}
+                overlayStyle={{ maxWidth: 280 }}
+                okText="确定"
+                cancelText="取消"
+                okButtonProps={{ danger: true }}
+                onConfirm={() => handleDeleteNode(record)}
+              >
+                <Tooltip title="删除">
+                  <Button
+                    type="text"
+                    size="small"
+                    className={styles['action-icon-btn-danger']}
+                    icon={<DeleteOutlined />}
+                  />
+                </Tooltip>
+              </Popconfirm>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -736,33 +898,64 @@ export function WorkspacePage() {
 
             {!isReadOnly && (
               <>
-                <Button
-                  icon={<PlusOutlined />}
-                  onClick={() => setIsFolderModalOpen(true)}
-                >
-                  新建文件夹
-                </Button>
-                <Upload
-                  beforeUpload={(file) => {
-                    void handleUploadFile(file);
-                    return false;
-                  }}
-                  showUploadList={false}
-                  disabled={isUploading}
-                >
-                  <Button
-                    type="primary"
-                    icon={<UploadOutlined />}
-                    loading={isUploading}
+                {/* 仅在进入临时文件目录后才展示一键清理按钮，首页绝不显示 */}
+                {activeTab === 'personal' &&
+                  breadcrumbs.length > 1 &&
+                  (breadcrumbs[breadcrumbs.length - 1].name.includes('临时') ||
+                   breadcrumbs[breadcrumbs.length - 1].name.includes('temp')) && (
+                  <Popconfirm
+                    title="清理临时文件"
+                    description="将自动清理已失效的历史记录与系统提取缓存。真实的交付成果、代码及报告不会被删除。是否继续？"
+                    overlayStyle={{ maxWidth: 320 }}
+                    okText="确定清理"
+                    cancelText="取消"
+                    okButtonProps={{ danger: true, loading: isCleaningTemp }}
+                    onConfirm={handleCleanupTemp}
                   >
-                    上传文件
-                  </Button>
-                </Upload>
+                    <Button
+                      className={styles['btn-cleanup-action']}
+                      icon={<ClearOutlined />}
+                      loading={isCleaningTemp}
+                    >
+                      一键清理
+                    </Button>
+                  </Popconfirm>
+                )}
+
+                {/* 仅在非个人空间根目录下才允许新建文件夹与上传文件，保持根目录规范 */}
+                {(breadcrumbs.length > 1 || activeTab !== 'personal') && (
+                  <>
+                    <Button
+                      className={styles['btn-secondary-folder']}
+                      icon={<PlusOutlined />}
+                      onClick={() => setIsFolderModalOpen(true)}
+                    >
+                      新建文件夹
+                    </Button>
+                    <Upload
+                      beforeUpload={(file) => {
+                        void handleUploadFile(file);
+                        return false;
+                      }}
+                      showUploadList={false}
+                      disabled={isUploading}
+                    >
+                      <Button
+                        className={styles['btn-primary-upload']}
+                        icon={<UploadOutlined />}
+                        loading={isUploading}
+                      >
+                        上传文件
+                      </Button>
+                    </Upload>
+                  </>
+                )}
               </>
             )}
 
             <Tooltip title="刷新列表">
               <Button
+                className={styles['btn-reload-action']}
                 icon={<ReloadOutlined />}
                 onClick={() => {
                   void refetchNodes();
@@ -823,28 +1016,6 @@ export function WorkspacePage() {
               ),
             }}
           />
-
-          {!isReadOnly && !searchKeyword && displayNodes.length > 0 && displayNodes.length <= 6 && (
-            <Upload
-              beforeUpload={(file) => {
-                void handleUploadFile(file);
-                return false;
-              }}
-              showUploadList={false}
-              disabled={isUploading}
-              style={{ width: '100%' }}
-            >
-              <div className={styles['workspace-drop-hint-area']}>
-                <CloudUploadOutlined className={styles['workspace-drop-hint-icon']} />
-                <div className={styles['workspace-drop-hint-text']}>
-                  <span>点击此处或拖拽本地文件至此区域，快速上传到当前目录</span>
-                  <span className={styles['workspace-drop-hint-sub']}>
-                    支持文档、表格、幻灯片、代码与音视频等多格式安全存管
-                  </span>
-                </div>
-              </div>
-            </Upload>
-          )}
         </div>
 
         {/* 底部状态栏 */}

@@ -53,6 +53,8 @@ export interface WorkspaceNode {
   updatedAt: string;
   workspaceType?: 'personal' | 'department' | 'company' | 'process';
   workspaceName?: string;
+  fileCount?: number;
+  latestUpdatedAt?: string;
 }
 
 export interface ContentMatchSnippet {
@@ -206,5 +208,17 @@ export const workspaceApi = {
       responseType: 'blob',
     });
     return res as unknown as Blob;
+  },
+
+  cleanupTempWorkspace: async (
+    workspaceId: string
+  ): Promise<{
+    success: boolean;
+    ghostNodesCleaned: number;
+    cacheFilesCleaned: number;
+    totalCleaned: number;
+    remainingFiles: number;
+  }> => {
+    return await apiClient.post(`/workspaces/${workspaceId}/temp-cleanup`);
   },
 };

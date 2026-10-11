@@ -25,6 +25,7 @@ import { STORAGE_DRIVER,type StorageDriver } from './storage/storage-driver.inte
 import { WorkspaceContentIndexerService } from './workspace-content-indexer.service';
 import { WorkspaceDigestService } from './workspace-digest.service';
 import { WorkspaceNoteService } from './workspace-note.service';
+import { WorkspaceTempCleanerService } from './workspace-temp-cleaner.service';
 import {
 WorkspaceProcessArchiveService,
 type ArchiveDeliverablesOptions,
@@ -41,7 +42,8 @@ export class WorkspaceService implements OnModuleInit {
     private readonly contentIndexer: WorkspaceContentIndexerService,
     private readonly digestService: WorkspaceDigestService,
     private readonly noteService: WorkspaceNoteService,
-    private readonly processArchiveService: WorkspaceProcessArchiveService
+    private readonly processArchiveService: WorkspaceProcessArchiveService,
+    private readonly tempCleaner: WorkspaceTempCleanerService
   ) {}
 
   async onModuleInit() {
@@ -244,7 +246,43 @@ export class WorkspaceService implements OnModuleInit {
       orderBy: orderByClause,
     });
 
-    return nodes.map((node) => this.toNodeDto(node));
+    const folderIds = nodes.filter((n) => n.type === 'folder').map((n) => n.id);
+    const folderStatsMap = new Map<string, { count: number; latestUpdatedAt: Date | null }>();
+    if (folderIds.length > 0) {
+      try {
+        const stats = await this.prisma.workspaceNode.groupBy({
+          by: ['parentId'],
+          where: {
+            workspaceId,
+            parentId: { in: folderIds },
+          },
+          _count: { id: true },
+          _max: { updatedAt: true },
+        });
+        for (const s of stats) {
+          if (s.parentId) {
+            folderStatsMap.set(s.parentId, {
+              count: s._count.id,
+              latestUpdatedAt: s._max.updatedAt,
+            });
+          }
+        }
+      } catch (err: any) {
+        this.logger.warn(`Failed to aggregate folder stats: ${err.message}`);
+      }
+    }
+
+    return nodes.map((node) => {
+      const dto = this.toNodeDto(node);
+      if (node.type === 'folder') {
+        const stat = folderStatsMap.get(node.id);
+        dto.fileCount = stat?.count ?? 0;
+        if (stat?.latestUpdatedAt) {
+          dto.latestUpdatedAt = stat.latestUpdatedAt.toISOString();
+        }
+      }
+      return dto;
+    });
   }
 
   /**
@@ -437,6 +475,21 @@ export class WorkspaceService implements OnModuleInit {
       return { success: true, deletedCount: 0 };
     }
 
+    // 根目录系统文件夹保护：个人空间的根目录标准文件夹不可删除
+    if (node.type === 'folder' && !node.parentId) {
+      const lower = node.name.toLowerCase();
+      if (
+        lower.includes('tasks') ||
+        lower.includes('saved') ||
+        lower.includes('temp') ||
+        lower.includes('工作任务成果') ||
+        lower.includes('沙盒保存内容') ||
+        lower.includes('临时工作区')
+      ) {
+        throw new BadRequestException('根目录下的系统内置文件夹（工作任务成果、沙盒保存内容、临时工作区）受系统保护，不可删除');
+      }
+    }
+
     // 收集所有需要清理物理文件的子孙文件节点
     const filesToDelete: { storagePath: string | null; fileSize: bigint }[] = [];
     if (node.type === 'file') {
@@ -476,6 +529,19 @@ export class WorkspaceService implements OnModuleInit {
     }
 
     return { success: true, deletedCount: filesToDelete.length + (node.type === 'folder' ? 1 : 0) };
+  }
+
+  /**
+   * 一键清理临时工作区 (temp)：清理失效幽灵记录与衍生文本缓存
+   */
+  public async cleanupTempWorkspace(
+    workspaceId: string,
+    userId: string,
+    userRoles: string[] = [],
+    departmentId?: string
+  ) {
+    await this.assertAccess(workspaceId, userId, departmentId, 'write', userRoles);
+    return await this.tempCleaner.cleanupTempWorkspace(workspaceId, userId);
   }
 
   /**
@@ -1041,7 +1107,8 @@ export class WorkspaceService implements OnModuleInit {
           entry.name.startsWith('.') ||
           entry.name === 'skills' ||
           entry.name === 'node_modules' ||
-          entry.name.endsWith('.tmp')
+          entry.name.endsWith('.tmp') ||
+          /\.(docx|xlsx|pptx|pdf|jpg|png|jpeg)\.txt$/i.test(entry.name)
         ) {
           continue;
         }

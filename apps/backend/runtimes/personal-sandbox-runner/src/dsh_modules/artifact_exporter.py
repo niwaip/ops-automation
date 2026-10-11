@@ -332,7 +332,9 @@ class ArtifactExporter:
         workspace_dir: str,
         final_text: str,
         turn_start_time: float = None,
-        session_files: Optional[List[str]] = None
+        session_files: Optional[List[str]] = None,
+        expected_deliverables: Optional[List[str]] = None,
+        prompt: Optional[str] = None
     ) -> List[dict]:
         """
         Scans workspace for newly created or mentioned document deliverables (docx, xlsx, pptx, pdf, md, zip, etc.)
@@ -348,6 +350,27 @@ class ArtifactExporter:
         if not ws_path.exists():
             return deliverables
 
+        # 若期望 PDF 且工作区尚无有效 PDF，尝试从当前生成的 Markdown 自动编译为 PDF
+        if (
+            (expected_deliverables and any(ext.lower() == ".pdf" for ext in expected_deliverables))
+            or (prompt and ("pdf" in prompt.lower() or re.search(r"(?:生成|导出|制作|做成|转为|转成)[^，。\n]{0,8}pdf", prompt, re.I)))
+        ):
+            try:
+                from .deliverable_contract import materialize_pdf_from_markdown
+                auto_pdf = materialize_pdf_from_markdown(
+                    prompt=prompt or "",
+                    workspace_dir=workspace_dir,
+                    turn_start_time=turn_start_time,
+                    expected_deliverables=expected_deliverables,
+                    final_text=final_text
+                )
+                if auto_pdf and Path(auto_pdf).exists():
+                    p_auto = Path(auto_pdf)
+                    deliverables.append({"filePath": str(p_auto), "fileName": p_auto.name})
+                    seen_names.add(p_auto.name)
+            except Exception as e:
+                print(f"⚠️ [Harness Deliverable Export] 自动编译 PDF 失败: {e}")
+
         # 1. 扫描本轮次中新增或修改的文件（若未指定时间戳则扫描工作区所有有效交付物）
         min_mtime = (turn_start_time - 2.0) if turn_start_time is not None else 0.0
         for item in ws_path.iterdir():
@@ -358,8 +381,9 @@ class ArtifactExporter:
                     # 过滤未在最终正文中作为交付物明确提及的临时/测试文件（如 test.pdf）
                     if ArtifactExporter.is_temporary_file(item.name) and (item.name not in final_text):
                         continue
-                    deliverables.append({"filePath": str(item), "fileName": item.name})
-                    seen_names.add(item.name)
+                    if item.name not in seen_names:
+                        deliverables.append({"filePath": str(item), "fileName": item.name})
+                        seen_names.add(item.name)
 
         # 2. 扫描文本中明确提及的文件名
         mentioned = re.findall(
@@ -374,5 +398,14 @@ class ArtifactExporter:
             if cand.exists() and cand.is_file() and cand.stat().st_size > 0:
                 deliverables.append({"filePath": str(cand), "fileName": cand.name})
                 seen_names.add(fn)
+
+        # 3. 产物语义净化：当用户明确指定需要特定二进制交付物（如 PDF/Word/Excel）且并未要求输出 md 时，
+        # 排除将中间生成的草稿 Markdown 文件作为最终成果交付（避免挂羊头卖狗肉）
+        target_is_binary_doc = expected_deliverables and any(
+            ext.lower() in [".pdf", ".docx", ".xlsx", ".pptx"] for ext in expected_deliverables
+        )
+        user_wants_md = prompt and bool(re.search(r"(?:\.md\b|\bmarkdown\b|md\s*文件)", prompt, re.I))
+        if target_is_binary_doc and not user_wants_md:
+            deliverables = [d for d in deliverables if not d["fileName"].lower().endswith(".md")]
 
         return deliverables

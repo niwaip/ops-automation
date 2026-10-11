@@ -4,7 +4,7 @@ import ast
 import copy
 import re
 from openpyxl.utils import get_column_letter
-from .spreadsheet_expression import source_column
+from .spreadsheet_expression import source_column, numeric
 
 
 def normalize_plan(requested, workbook=None, source_tables=None):
@@ -63,8 +63,38 @@ def normalize_plan(requested, workbook=None, source_tables=None):
             if isinstance(addr,str) and re.search(r'[+*/()-]',addr):
                 changes.append(f'{path}：编译同表单元格算式')
                 return compile_cell(addr,expr['sheet'],expr.get('unit'))
+        if 'aggregate' in expr:
+            for extra_key in ('label', 'description'):
+                if extra_key in expr:
+                    expr.pop(extra_key)
+                    changes.append(f'{path}：移除聚合表达式冗余{extra_key}')
+            if (
+                expr.get('unit') == 'ratio'
+                and expr.get('aggregate') in ('sum', 'min', 'max')
+                and workbook is not None
+                and source_tables
+                and expr.get('table') in source_tables
+            ):
+                table = source_tables[expr['table']]
+                try:
+                    col = source_column(workbook, table, expr['column'])
+                    ws = workbook[table['sheet']]
+                    header_text = str(ws.cell(table['header_row'], col).value or '')
+                    has_pct_fmt = any(
+                        '%' in str(ws.cell(r, col).number_format or '')
+                        for r in table.get('selected_rows', [])
+                    )
+                    if not has_pct_fmt and not re.search(r'率|占比|比重|margin|rate|ratio', header_text, re.I):
+                        expr['unit'] = 'amount'
+                        changes.append(f'{path}：非百分比金额列聚合维度由ratio修正为amount')
+                except Exception:
+                    pass
         if 'args' in expr:
             if not isinstance(expr['args'],list):raise ValueError(f'{path}.args必须是数组')
+            for extra_key in ('unit', 'label', 'description'):
+                if extra_key in expr:
+                    expr.pop(extra_key)
+                    changes.append(f'{path}：移除二元表达式冗余{extra_key}')
             expr['args']=[compile_expr(v,f'{path}.args[{i}]',stack) for i,v in enumerate(expr['args'])]
         return expr
     for calculation in plan.get('calculations',[]):
@@ -91,6 +121,28 @@ def normalize_plan(requested, workbook=None, source_tables=None):
     errors=[]
     for rule in plan.get('rules',[]):
         kind=rule.get('kind');path=f"rules.{rule.get('id')}({kind})"
+        if kind=='number_range' and rule.get('min') in (0, '0', 0.0) and 'max' not in rule and source_tables and workbook:
+            try:
+                table = source_tables.get(rule.get('table'))
+                if table:
+                    col = source_column(workbook, table, rule['column'])
+                    ws = workbook[table['sheet']]
+                    nums = [numeric(ws.cell(r, col).value) for r in table.get('selected_rows', [])
+                            if ws.cell(r, col).value is not None and not isinstance(ws.cell(r, col).value, bool)]
+                    if nums and (sum(1 for v in nums if v < 0) / len(nums)) >= 0.15:
+                        rule['kind'] = 'outlier'
+                        rule.pop('min', None)
+                        kind = 'outlier'
+                        neg_pct = int(sum(1 for v in nums if v < 0) / len(nums) * 100)
+                        rule['assumptions'] = f"字段实际包含正常负数支出（占比约{neg_pct}%），自动校准为按3×IQR检测极端金额离群值"
+                        changes.append(f"{path}：检测到列含正常负数支出({neg_pct}%)，非负假设校准为统计离群值(outlier)")
+            except Exception:
+                pass
+        if kind in {'outlier','unique','not_empty'}:
+            for extra_key in ('min','max','allowed'):
+                if extra_key in rule:
+                    rule.pop(extra_key, None)
+                    changes.append(f'{path}：移除{kind}规则不适用的{extra_key}')
         if kind in {'date_range','number_range'} and not {'min','max'}&set(rule):
             errors.append(path+'：至少填写min或max；不能仅在assumptions中描述边界')
         if kind=='allowed_values' and not rule.get('allowed'):

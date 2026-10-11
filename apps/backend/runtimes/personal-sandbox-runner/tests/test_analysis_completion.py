@@ -267,7 +267,7 @@ class AnalysisCompletionTests(unittest.TestCase):
         self.assertIn("尚未验证的项目不会被列为完成", guidance)
 
     def test_synthesize_analysis_summary_with_mock_llm(self):
-        """阶段二测试：验证 LLM 总结生效时输出自然语言业务报告并附带折叠明细"""
+        """阶段二测试：验证 LLM 总结生效时输出自然语言业务报告并附带折叠明细，且强制关闭 thinking"""
         from types import SimpleNamespace
         from dsh_modules.analysis_synthesis import synthesize_analysis_summary
         from dsh_modules.tool_result import ToolResult
@@ -282,17 +282,346 @@ class AnalysisCompletionTests(unittest.TestCase):
             mock_proxy.return_value = {
                 "content": "2026年全年营业收入为 124,020 千元，业务规模稳健增长。"
             }
+            orig_policy = SimpleNamespace(single_request_timeout=10, thinking=True, reasoning_effort="medium")
             res = synthesize_analysis_summary(
                 prompt="总结2026年收入",
                 receipts=[receipt],
                 audit="审计明细文本",
                 fallback_text="兜底文本",
                 model="test-model",
-                policy=SimpleNamespace(single_request_timeout=10)
+                policy=orig_policy
             )
             self.assertIn("2026年全年营业收入为 124,020 千元", res)
             self.assertIn("查看来源与核算明细", res)
             self.assertIn("审计明细文本", res)
+            called_policy = mock_proxy.call_args.kwargs.get("policy")
+            self.assertFalse(getattr(called_policy, "thinking", True))
+            self.assertIsNone(getattr(called_policy, "reasoning_effort", "medium"))
+            self.assertTrue(orig_policy.thinking)
+
+    def test_synthesize_analysis_summary_allows_omitting_unrequested_auxiliary_facts(self):
+        """验证当工具顺带算出辅助指标时，LLM 只回答用户提问的核心指标不会被误杀回退"""
+        from types import SimpleNamespace
+        from dsh_modules.analysis_synthesis import synthesize_analysis_summary
+        from dsh_modules.tool_result import ToolResult
+        receipt = ToolResult.success({
+            "kind": "spreadsheet_analysis",
+            "facts": [
+                {"id": "annual_revenue", "metric_id": "finance.revenue", "label": "2026年营业收入合计", "value": "12402", "unit": "万元"},
+                {"id": "annual_gross_profit", "metric_id": "finance.gross_profit", "label": "2026年毛利合计", "value": "5344.325", "unit": "万元"},
+                {"id": "annual_gross_margin", "metric_id": "finance.gross_margin", "label": "2026年综合毛利率", "value": "43.09244476697307", "unit": "%"},
+                {"id": "annual_operating_profit", "metric_id": "finance.operating_profit", "label": "2026年营业利润合计", "value": "2120.94", "unit": "万元"},
+                {"id": "annual_operating_margin", "metric_id": "finance.operating_margin", "label": "2026年营业利润率", "value": "17.1015965", "unit": "%"},
+                {"id": "annual_net_profit", "metric_id": "finance.net_profit", "label": "2026年净利润合计", "value": "1603.8300", "unit": "万元"},
+                {"id": "annual_net_margin", "metric_id": "finance.net_margin", "label": "2026年净利率", "value": "12.932027", "unit": "%"},
+            ],
+            "rules": []
+        }, provenance={"file_path": "/workspace/AI能力测试_财务报表.xlsx"})
+
+        with patch("dsh_modules.analysis_synthesis._can_reach_proxy", return_value=True), \
+             patch("dsh_modules.llm.call_model_proxy") as mock_proxy:
+            mock_proxy.return_value = {
+                "content": (
+                    "2026年全年核心财务指标总结如下：\n\n"
+                    "1. **营业收入合计**：12,402 万元\n"
+                    "2. **综合毛利率**：43.09%\n"
+                    "3. **营业利润合计**：2,120.94 万元\n"
+                    "4. **净利润合计**：1,603.83 万元"
+                )
+            }
+            res = synthesize_analysis_summary(
+                prompt="总结2026年收入、毛利率、营业利润和净利润。",
+                receipts=[receipt],
+                audit="范围：月度经营!A4:N15；业务行12条。",
+                fallback_text="兜底模板文本",
+                model="test-model",
+                policy=SimpleNamespace(single_request_timeout=10, thinking=True)
+            )
+            self.assertNotEqual(res, "兜底模板文本")
+            self.assertIn("2026年全年核心财务指标总结如下", res)
+            self.assertIn("12,402 万元", res)
+            self.assertIn("43.09%", res)
+
+    def test_synthesize_analysis_summary_rejects_hallucinated_extra_numbers(self):
+        """验证双向数值锚定（F5）：若 LLM 包含全部必答数值但额外编造了未核验数值，必须拦截并回退"""
+        from types import SimpleNamespace
+        from dsh_modules.analysis_synthesis import synthesize_analysis_summary
+        from dsh_modules.tool_result import ToolResult
+        receipt = ToolResult.success({
+            "kind": "spreadsheet_analysis",
+            "facts": [
+                {"id": "annual_revenue", "metric_id": "finance.revenue", "label": "2026年营业收入合计", "value": "12402", "unit": "万元"},
+                {"id": "annual_net_profit", "metric_id": "finance.net_profit", "label": "2026年净利润合计", "value": "1603.83", "unit": "万元"},
+            ],
+            "rules": []
+        }, provenance={"file_path": "/workspace/AI能力测试_财务报表.xlsx"})
+
+        with patch("dsh_modules.analysis_synthesis._can_reach_proxy", return_value=True), \
+             patch("dsh_modules.llm.call_model_proxy") as mock_proxy:
+            # 额外编造了未核验的同比增长率 18.5%
+            mock_proxy.return_value = {
+                "content": "2026年营业收入合计为 12,402 万元（同比增长 18.5%），净利润合计为 1,603.83 万元。"
+            }
+            res = synthesize_analysis_summary(
+                prompt="总结2026年收入和净利润。",
+                receipts=[receipt],
+                audit="范围：月度经营!A4:N15；业务行12条。",
+                fallback_text="兜底模板文本",
+                model="test-model",
+                policy=SimpleNamespace(single_request_timeout=10)
+            )
+            self.assertEqual(res, "兜底模板文本")
+
+    def test_synthesize_analysis_summary_allows_exact_pairwise_arithmetic_derivations(self):
+        """验证双向数值锚定允许基于已核验指标的精确二元四则派生（如差额、留存占比），同时拒绝幻觉数字"""
+        from types import SimpleNamespace
+        from dsh_modules.analysis_synthesis import synthesize_analysis_summary
+        from dsh_modules.tool_result import ToolResult
+        receipt = ToolResult.success({
+            "kind": "spreadsheet_analysis",
+            "facts": [
+                {"id": "c_rev", "label": "2026年营业收入合计", "value": "12402", "unit": "万元"},
+                {"id": "c_gm", "label": "2026年综合毛利率（注册关系补算）", "value": "43.09244476697307", "unit": "%"},
+                {"id": "c_op", "label": "2026年营业利润合计", "value": "2120.94", "unit": "万元"},
+                {"id": "c_np", "label": "2026年净利润合计", "value": "1603.83", "unit": "万元"},
+            ],
+            "rules": []
+        }, provenance={"file_path": "/workspace/AI能力测试_财务报表.xlsx"})
+
+        with patch("dsh_modules.analysis_synthesis._can_reach_proxy", return_value=True), \
+             patch("dsh_modules.llm.call_model_proxy") as mock_proxy:
+            # 2120.94 - 1603.83 = 517.11 万元；1603.83 / 2120.94 = 75.62%（约 75.6%）；1603.83 / 12402 = 12.93%
+            mock_proxy.return_value = {
+                "content": (
+                    "2026年全年核心财务指标总结如下：\n\n"
+                    "- **营业收入合计**：12,402 万元\n"
+                    "- **综合毛利率**：43.09%\n"
+                    "- **营业利润合计**：2,120.94 万元\n"
+                    "- **净利润合计**：1,603.83 万元（对应净利率约 12.93%，营业利润向净利润转化率约 75.6%，差额约 517.11 万元）"
+                )
+            }
+            res = synthesize_analysis_summary(
+                prompt="总结2026年收入、毛利率、营业利润和净利润。",
+                receipts=[receipt],
+                audit="范围：月度经营!A4:N15；业务行12条。",
+                fallback_text="兜底模板文本",
+                model="test-model",
+                policy=SimpleNamespace(single_request_timeout=10)
+            )
+            self.assertNotEqual(res, "兜底模板文本")
+            self.assertIn("517.11 万元", res)
+            self.assertIn("75.6%", res)
+            # 确认传给 LLM 的 digest 已经去掉了内部后缀（注册关系补算）
+            sent_messages = mock_proxy.call_args.kwargs.get("messages", [])
+            user_prompt_text = sent_messages[-1]["content"] if sent_messages else ""
+            self.assertNotIn("注册关系补算", user_prompt_text)
+
+    def test_spreadsheet_plan_normalizes_redundant_unit_on_divide_and_amount_sum(self):
+        """验证当模型在二元 divide 节点或金额列的 sum 节点上误加 unit='ratio' 时，normalize_plan 能自动纠正并在第 1 轮一次通过"""
+        from openpyxl import Workbook
+        from dsh_modules.spreadsheet_plan import normalize_plan
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "月度经营"
+        ws["B3"] = "营业收入"
+        ws["D3"] = "毛利"
+        ws["B4"] = 1000.0
+        ws["D4"] = 430.9
+        ws["B4"].number_format = "#,##0.00"
+        ws["D4"].number_format = "#,##0.00"
+        source_tables = {
+            "t_monthly": {
+                "id": "t_monthly",
+                "sheet": "月度经营",
+                "header_row": 3,
+                "bounds": (1, 4, 4, 4),
+                "selected_rows": [4],
+                "headers": {"B": "营业收入", "D": "毛利"},
+            }
+        }
+        requested = {
+            "tables": [{"id": "t_monthly", "sheet": "月度经营", "header_row": 3, "start_row": 4, "end_row": 4}],
+            "calculations": [
+                {
+                    "id": "c_gross_margin",
+                    "label": "2026年综合毛利率",
+                    "output_unit": "%",
+                    "expression": {
+                        "op": "divide",
+                        "unit": "ratio",
+                        "args": [
+                            {"aggregate": "sum", "table": "t_monthly", "column": "毛利", "unit": "ratio"},
+                            {"aggregate": "sum", "table": "t_monthly", "column": "营业收入", "unit": "amount"},
+                        ]
+                    }
+                }
+            ]
+        }
+        plan, changes = normalize_plan(requested, workbook=wb, source_tables=source_tables)
+        compiled = plan["calculations"][0]["expression"]
+        self.assertEqual(compiled["op"], "divide")
+        self.assertNotIn("unit", compiled)
+        self.assertEqual(compiled["args"][0]["unit"], "amount")
+        self.assertEqual(compiled["args"][1]["unit"], "amount")
+        self.assertTrue(any("非百分比金额列聚合维度由ratio修正为amount" in c for c in changes))
+
+    def test_outlier_rule_and_profile_detects_extreme_anomaly_without_flagging_normal_signed_rows(self):
+        """验证标准统计离群值规则 (kind='outlier', 3×IQR) 与全列概况能够精准识别正负混合列中的极端大额异常，不误杀正常负数支出"""
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "交易明细"
+        for r in range(1, 3):
+            ws.cell(r, 1, "说明")
+        headers = ["凭证号", "日期", "类别", "金额", "审批状态"]
+        for idx, h in enumerate(headers, start=1):
+            ws.cell(3, idx, h)
+        # 64 笔正常负数支出 (-380 ~ -2270)，15 笔正常正数收入 (800 ~ 2200)，1 笔极端大额异常 (98000 at row 43)
+        for i in range(80):
+            row_idx = 4 + i
+            ws.cell(row_idx, 1, f"V2026-{i+1:04d}")
+            ws.cell(row_idx, 2, "2027-01-03" if row_idx == 58 else "2026-06-15")
+            if row_idx == 43:
+                ws.cell(row_idx, 3, "设备处置")
+                ws.cell(row_idx, 4, 98000)
+            elif i % 5 == 1:
+                ws.cell(row_idx, 3, "主营业务收入")
+                ws.cell(row_idx, 4, 800 + (i * 15))
+            else:
+                ws.cell(row_idx, 3, "采购成本")
+                ws.cell(row_idx, 4, -(380 + (i * 20)))
+            ws.cell(row_idx, 5, "待审批" if row_idx == 73 else "已审批")
+        wb.save(self.source)
+        wb.close()
+
+        plan = {
+            "tables": [{"id": "t_tx", "sheet": "交易明细", "header_row": 3, "data_range": "A4:E83"}],
+            "rules": [
+                {"id": "r_amt", "label": "金额统计离群值检查", "table": "t_tx", "column": "D", "kind": "outlier", "min": 0, "assumptions": "采用3×IQR识别极端异常金额"},
+                {"id": "r_date", "label": "日期范围检查", "table": "t_tx", "column": "B", "kind": "date_range", "min": "2026-01-01", "max": "2026-12-31", "assumptions": "2026年度内"},
+                {"id": "r_status", "label": "审批状态检查", "table": "t_tx", "column": "E", "kind": "allowed_values", "allowed": ["已审批"], "assumptions": "入账记录应已审批"},
+            ]
+        }
+        receipt = calculate_spreadsheet_analysis(self.source, plan, domain="finance")
+        self.assertTrue(receipt.is_success, receipt.error)
+        rules_by_id = {r["id"]: r for r in receipt.data["rules"]}
+        self.assertEqual(rules_by_id["r_amt"]["violation_count"], 1)
+        self.assertEqual(rules_by_id["r_amt"]["examples"][0]["cell"], "交易明细!D43")
+        self.assertEqual(rules_by_id["r_amt"]["examples"][0]["value"], 98000)
+        self.assertEqual(rules_by_id["r_date"]["violation_count"], 1)
+        self.assertEqual(rules_by_id["r_date"]["examples"][0]["cell"], "交易明细!B58")
+        self.assertEqual(rules_by_id["r_status"]["violation_count"], 1)
+        self.assertEqual(rules_by_id["r_status"]["examples"][0]["cell"], "交易明细!E73")
+
+        d_profile = next(p for p in receipt.data["profiles"] if p["column"] == "D")
+        self.assertEqual(d_profile["numeric"]["outlier_count"], 1)
+        self.assertEqual(d_profile["numeric"]["outliers"][0]["cell"], "交易明细!D43")
+
+        turn = AnalysisTurn("识别金额、日期和审批状态异常。")
+        self.assertTrue(turn.contract.is_audit_intent)
+        self.assertTrue(turn.may_finish([receipt]))
+
+    def test_synthesize_analysis_summary_accepts_rule_violation_rates_and_profile_extremes(self):
+        """验证异常核查场景下，LLM 报告中的规则违规率 (1/80=1.25%, 79/80=98.75%) 与全列极值 (98,000, 第43行) 不会被误判为幻觉"""
+        from types import SimpleNamespace
+        from dsh_modules.analysis_synthesis import build_verified_facts_digest, synthesize_analysis_summary
+        from dsh_modules.tool_result import ToolResult
+        receipt = ToolResult.success({
+            "kind": "spreadsheet_analysis",
+            "coverage": [{
+                "id": "t_detail",
+                "sheet": "交易明细",
+                "data_range": "A4:K83",
+                "input_records": 80,
+                "evaluated_records": 80,
+                "headers": {"B": "日期", "G": "金额", "J": "审批状态"}
+            }],
+            "facts": [],
+            "checks": [],
+            "rules": [
+                {
+                    "id": "r_date",
+                    "label": "日期范围规则",
+                    "table": "t_detail",
+                    "column": "B",
+                    "kind": "date_range",
+                    "assumptions": "交易日期应在2026年度内",
+                    "evaluated_records": 80,
+                    "violation_count": 1,
+                    "passed": False,
+                    "examples": [{"row": 58, "cell": "交易明细!B58", "value": "2027-01-03"}]
+                },
+                {
+                    "id": "r_amt",
+                    "label": "金额离群值规则",
+                    "table": "t_detail",
+                    "column": "G",
+                    "kind": "outlier",
+                    "assumptions": "使用3×IQR检测极端金额",
+                    "evaluated_records": 80,
+                    "violation_count": 1,
+                    "passed": False,
+                    "examples": [{"row": 43, "cell": "交易明细!G43", "value": 98000}]
+                },
+                {
+                    "id": "r_app",
+                    "label": "审批状态规则",
+                    "table": "t_detail",
+                    "column": "J",
+                    "kind": "allowed_values",
+                    "assumptions": "入账交易需为已审批状态",
+                    "evaluated_records": 80,
+                    "violation_count": 1,
+                    "passed": False,
+                    "examples": [{"row": 73, "cell": "交易明细!J73", "value": "待审批"}]
+                }
+            ],
+            "profiles": [
+                {
+                    "table": "t_detail",
+                    "column": "G",
+                    "header": "金额",
+                    "records": 80,
+                    "missing": 0,
+                    "numeric": {
+                        "count": 80,
+                        "min": -2442,
+                        "min_row": 37,
+                        "max": 98000,
+                        "max_row": 43,
+                        "outlier_count": 1,
+                        "outliers": [{"row": 43, "cell": "交易明细!G43", "value": 98000}]
+                    }
+                }
+            ]
+        }, provenance={"file_path": "/workspace/AI能力测试_财务报表.xlsx"})
+
+        digest = build_verified_facts_digest([receipt], "识别金额、日期和审批状态异常。")
+        self.assertIn("【字段全量统计概况与极值分布】", digest)
+        self.assertIn("统计离群极值（3×IQR）：发现 1 处极端值 [交易明细!G43 (值: 98000)]", digest)
+
+        with patch("dsh_modules.analysis_synthesis._can_reach_proxy", return_value=True), \
+             patch("dsh_modules.llm.call_model_proxy") as mock_proxy:
+            mock_proxy.return_value = {
+                "content": (
+                    "经对《AI能力测试_财务报表.xlsx》中 `交易明细!A4:K83` 共 80 条记录进行筛查，共识别出 3 类需核查异常：\n\n"
+                    "### 2.1 异常明细解读\n"
+                    "1. **金额极端离群异常**：检出 1 条异常（占比 1.25%，其余 79 条即 98.75% 位于正常区间），位置为 `交易明细!G43`（原第 43 行），金额高达 **98,000**（全表最小值为第 37 行的 -2,442）。\n"
+                    "2. **跨期日期异常**：检出 1 条异常（占比 1.25%），位置为 `交易明细!B58`，日期为 `2027-01-03`（2027年1月3日），超出 2026 年度范围。\n"
+                    "3. **审批状态异常**：检出 1 条异常（占比 1.25%），位置为 `交易明细!J73`，状态为 `待审批`。"
+                )
+            }
+            res = synthesize_analysis_summary(
+                prompt="识别金额、日期和审批状态异常。",
+                receipts=[receipt],
+                audit="审计明细",
+                fallback_text="兜底模板文本",
+                model="test-model",
+                policy=SimpleNamespace(single_request_timeout=10)
+            )
+            self.assertNotEqual(res, "兜底模板文本")
+            self.assertIn("98,000", res)
+            self.assertIn("1.25%", res)
 
 
 if __name__=='__main__':unittest.main()
+

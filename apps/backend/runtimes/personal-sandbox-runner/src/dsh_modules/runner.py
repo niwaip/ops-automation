@@ -14,6 +14,7 @@ from typing import Optional, Tuple, List, Dict, Any
 
 from .config import WORKSPACE_DIR, KNOWLEDGE_DIR, print_banner
 from .tools import scan_personal_knowledge, perform_multi_web_search, read_workspace_file, get_sandbox_tools, execute_tool
+from .file_tools import IMAGE_EXTENSIONS, prepare_multimodal_image_attachment
 from .web_tools import enrich_search_context_with_pages
 from .runtime_policy import RuntimePolicy
 from .context_budget import ContextBudget
@@ -231,6 +232,8 @@ def select_active_tools(
             allowed={'read_file'}
         elif contract.is_advisory_intent and not contract.is_explicit_calc:
             allowed={'read_file'}
+        elif contract.is_browse_or_summary:
+            allowed={'read_file', STRUCTURE_TOOL_NAME}
         if has_web_search_permission:
             allowed.update({"web_search", "fetch_page"})
         if skill_res.is_send_intent:
@@ -268,7 +271,22 @@ def select_active_tools(
         if skill_res.is_send_intent:
             allowed.add("send_file")
         tools = get_sandbox_tools(allowed_names=allowed)
-    # 2. 复杂生成、明确需要物理落盘产物的技能，提供完整执行环境（bash、文件与技能工具）
+    # 2. 纯查阅/审阅/只读归纳任务：严格遵循最小特权原则，仅开放只读工具，严禁授予 bash
+    elif skill_res.is_inspect_intent and not skill_res.is_generate_intent:
+        allowed = {"web_search", "fetch_page"} if has_web_search_permission else set()
+        if WEATHER_RE.search(prompt):
+            allowed.add("weather")
+        if REMINDER_RE.search(prompt):
+            allowed.update({"create_reminders", "update_reminder", "delete_reminder"})
+        if requests_markdown_artifact(prompt):
+            allowed.add("write_markdown")
+        if skill_res.is_knowledge_intent:
+            allowed.update({"scan_knowledge", "read_file"})
+        allowed.update({"read_file", "scan_knowledge", "vision_inspect"})
+        if skill_res.is_send_intent:
+            allowed.add("send_file")
+        tools = get_sandbox_tools(allowed_names=allowed)
+    # 3. 复杂生成、组合任务或明确需要物理落盘产物的技能，提供完整执行环境（bash、文件与技能工具）
     elif skill_res.is_generate_intent or skill_res.requires_execution or (skill_res.skill_id and not skill_res.is_inspect_intent):
         tools = get_sandbox_tools()
     else:
@@ -292,6 +310,20 @@ def select_active_tools(
             tool for tool in tools
             if tool.get("function", {}).get("name") not in {"web_search", "fetch_page"}
         ]
+    # 附件或本地文件专属保护：若本轮处于本地附件问答且无外网搜索/调研意图，剔除网络搜索工具，彻底阻断历史话题幻觉外逸
+    has_attachment_context = bool(re.search(r'【(?:当前轮次用户上传附件|当前会话有效附件清单)】', prompt or "")) or any(k in (prompt or "").lower() for k in ["附件是什么", "这是什么", "上传的是什么", "附件内容", "这是啥"])
+    if has_attachment_context and not is_search_intent and not getattr(skill_res, "is_research_intent", False):
+        tools = [
+            tool for tool in tools
+            if tool.get("function", {}).get("name") not in {"web_search", "fetch_page"}
+        ]
+        # 确保只读文件工具必定存在
+        existing_names = {tool.get("function", {}).get("name") for tool in tools}
+        needed_inspect = {"read_file", "vision_inspect"} - existing_names
+        if needed_inspect:
+            more_tools = get_sandbox_tools(allowed_names=needed_inspect)
+            tools.extend(more_tools)
+
     if skill_res.skill_id and getattr(skill_res, "skill_context", ""):
         # The router already injected this skill's contract into the prompt.
         # Keeping read_skill available invites small models to spend another
@@ -332,10 +364,11 @@ def resolve_session_attachments(args, session_id: str) -> list[str]:
         return []
 
     clean_sid = re.sub(r'[^a-zA-Z0-9_-]', '_', session_id)
-    att_file = Path(WORKSPACE_DIR) / ".dsh" / "sessions" / f"{clean_sid}.attachments.json"
-    if att_file.exists():
+    # 优先检查新版会话隔离目录 .sessions/<clean_sid>/attachments.json
+    new_att_file = Path(WORKSPACE_DIR) / ".sessions" / clean_sid / "attachments.json"
+    if new_att_file.exists():
         try:
-            with open(att_file, "r", encoding="utf-8") as f:
+            with open(new_att_file, "r", encoding="utf-8") as f:
                 loaded_att = json.load(f)
                 if isinstance(loaded_att, list):
                     for item in loaded_att:
@@ -345,6 +378,21 @@ def resolve_session_attachments(args, session_id: str) -> list[str]:
                             session_files.append(str(item["fileName"]).strip())
         except Exception:
             pass
+
+    if not session_files:
+        att_file = Path(WORKSPACE_DIR) / ".dsh" / "sessions" / f"{clean_sid}.attachments.json"
+        if att_file.exists():
+            try:
+                with open(att_file, "r", encoding="utf-8") as f:
+                    loaded_att = json.load(f)
+                    if isinstance(loaded_att, list):
+                        for item in loaded_att:
+                            if isinstance(item, str) and item.strip():
+                                session_files.append(item.strip())
+                            elif isinstance(item, dict) and "fileName" in item:
+                                session_files.append(str(item["fileName"]).strip())
+            except Exception:
+                pass
     return session_files
 
 
@@ -429,7 +477,7 @@ def cmd_run(args):
         if search_context:
             print("✓ 实时数据检索成功，已注入分析上下文。", flush=True)
             # 若检索到包含高价值外部页面，抓取页面正文以提供真实事实依据
-            page_deadline = min(task_deadline, time.monotonic() + 10.0) if task_deadline is not None else (time.monotonic() + 10.0)
+            page_deadline = min(task_deadline, time.monotonic() + 5.0) if task_deadline is not None else (time.monotonic() + 5.0)
             original_search_context = search_context
             try:
                 enriched = enrich_search_context_with_pages(
@@ -445,6 +493,8 @@ def cmd_run(args):
                 search_context = original_search_context
 
     model_name = getattr(args, "model", None) or os.environ.get("DSH_MODEL") or None
+    if model_name:
+        os.environ["DSH_MODEL"] = str(model_name)
     raw_display_name = getattr(args, "model_display_name", None) or os.environ.get("DSH_MODEL_DISPLAY_NAME") or None
     model_display_name = resolve_model_display_name(model_name, raw_display_name)
 
@@ -460,6 +510,10 @@ def cmd_run(args):
         pass
 
     file_context = ""
+    failed_attachment_diagnostics: Dict[str, str] = {}
+    attachment_diagnostic_evidence = []
+    multimodal_image_parts: List[Dict[str, Any]] = []
+    multimodal_image_names: List[str] = []
     for fname in session_files:
         if task_deadline is not None and time.monotonic() >= task_deadline:
             raise TimeoutError("Task total execution deadline exceeded before attachment extraction")
@@ -484,6 +538,36 @@ def cmd_run(args):
                     shutil.copy2(fpath, backup_p)
             except Exception:
                 pass
+            if fpath.suffix.lower() in IMAGE_EXTENSIONS:
+                # 图片附件不做模型预处理，仅做毫秒级本地完整性/加密预检，通过后直接挂载至多模态消息交由主模型处理
+                img_part, img_diag_err = prepare_multimodal_image_attachment(str(fpath))
+                from .tool_result import ToolResult
+                if img_diag_err:
+                    clipped = ContextBudget.clip_attachment(img_diag_err, policy.max_attachment_chars)
+                    file_context += f"\n\n[Attached File Content - {fname}]:\n{clipped}"
+                    failed_attachment_diagnostics[fname] = img_diag_err.strip()
+                    attachment_diagnostic_evidence.append(
+                        ToolResult.error(
+                            "attachment_unreadable",
+                            img_diag_err.strip(),
+                            provenance={"file_path": str(fpath), "file_name": fname}
+                        )
+                    )
+                elif img_part:
+                    multimodal_image_parts.append(img_part)
+                    multimodal_image_names.append(fname)
+                    file_context += (
+                        f"\n\n[Attached Image - {fname}]:\n"
+                        f"【图片附件 ({fname}) 已作为多模态视觉输入直接挂载至当前消息，请直接观察图片内容回答用户问题，无需再调用 vision_inspect 或 read_file 工具】"
+                    )
+                    attachment_diagnostic_evidence.append(
+                        ToolResult.success(
+                            data={"tool": "multimodal_image_input", "file_name": fname, "evidence_id": f"img:{fname}"},
+                            text=f"Multimodal image attached: {fname}",
+                            provenance={"tool": "multimodal_image_input", "file_path": str(fpath), "file_name": fname}
+                        )
+                    )
+                continue
             comparison_context = build_comparison_source_context(fpath, prompt, deadline=task_deadline)
             # A usable schema keeps full numeric rows on the tool path. No
             # eager all-sheet extraction/recalculation is needed for planning.
@@ -494,8 +578,37 @@ def cmd_run(args):
             if extracted and not extracted.startswith("文件未找到"):
                 clipped = ContextBudget.clip_attachment(extracted, policy.max_attachment_chars)
                 file_context += f"\n\n[Attached File Content - {fname}]:\n{clipped}"
+                if any(k in extracted for k in (
+                    "【文件受企业安全加密保护无法解析】",
+                    "【图片文件损坏或格式无效无法解析】",
+                    "【图片格式异常或损坏】",
+                )):
+                    failed_attachment_diagnostics[fname] = extracted.strip()
+                    from .tool_result import ToolResult
+                    attachment_diagnostic_evidence.append(
+                        ToolResult.error(
+                            "attachment_unreadable",
+                            extracted.strip(),
+                            provenance={"file_path": str(fpath), "file_name": fname}
+                        )
+                    )
 
     active_tools = select_active_tools(prompt, skill_res, is_search_intent, has_web_search_permission)
+    if (
+        multimodal_image_names
+        and set(session_files) == set(multimodal_image_names)
+        and not skill_res.is_generate_intent
+        and not skill_res.requires_execution
+        and not skill_res.is_send_intent
+        and not is_search_intent
+    ):
+        redundant_for_direct_vision = {"vision_inspect", "read_file"}
+        if not skill_res.is_knowledge_intent:
+            redundant_for_direct_vision.add("scan_knowledge")
+        active_tools = [
+            t for t in active_tools
+            if t.get("function", {}).get("name") not in redundant_for_direct_vision
+        ]
     if requires_spreadsheet_analysis(prompt, skill_res):
         from .spreadsheet_analysis_schema import select_analysis_tools
         active_tools = select_analysis_tools(active_tools, prompt)
@@ -542,7 +655,12 @@ def cmd_run(args):
         timestamp_str=get_current_timestamp_str(policy.timezone),
         available_tool_names=[t['function']['name'] for t in active_tools]
     )
-    messages.append({"role": "user", "content": user_turn_text})
+    user_message_content: Any = (
+        [{"type": "text", "text": user_turn_text}, *multimodal_image_parts]
+        if multimodal_image_parts
+        else user_turn_text
+    )
+    messages.append({"role": "user", "content": user_message_content})
 
     # 5. 执行 ReAct 代理循环
     max_rounds = policy.determine_max_rounds(
@@ -643,11 +761,35 @@ def cmd_run(args):
             is_inspect_intent=skill_res.is_inspect_intent,
             telemetry=telemetry,
             spreadsheet_analysis_required=requires_spreadsheet_analysis(prompt, skill_res),
+            is_search_intent=is_search_intent,
         )
+
+        if attachment_diagnostic_evidence:
+            for diag_ev in attachment_diagnostic_evidence:
+                loop_res.execution_evidence.append(diag_ev)
+                telemetry.record_execution_result(diag_ev)
+
+        raw_final_text = loop_res.final_text
+        if (
+            session_files
+            and failed_attachment_diagnostics
+            and len(failed_attachment_diagnostics) == len(session_files)
+            and any(k in prompt.lower() for k in ("附件", "文件", "上传", "这是什么", "是什么", "这是啥", "是啥", "看下", "分析", "图片", "图", "预览"))
+        ):
+            lower_reply = (raw_final_text or "").lower()
+            acknowledges_diag = (
+                any(fn.lower() in lower_reply for fn in failed_attachment_diagnostics)
+                or any(kw in lower_reply for kw in ("加密", "保护", "mip", "rms", "pfile", "损坏", "无法解析", "无法识别", "格式无效", "格式异常", "解密"))
+            )
+            if not acknowledges_diag:
+                raw_final_text = "\n\n".join(failed_attachment_diagnostics.values())
+                telemetry.record_guard("attachment_diagnostic", "reject", "model_ignored_unreadable_attachment")
+            else:
+                telemetry.record_guard("attachment_diagnostic", "accept", "acknowledged_unreadable_attachment")
 
         # 6. 产物导出与落盘 (HTML/PPT 及各种文档交付物)
         final_text, exported_html_files = ArtifactExporter.export_html(
-            loop_res.final_text,
+            raw_final_text,
             skill_res.is_ppt_intent,
             WORKSPACE_DIR,
             turn_start_time=overall_start_time,
@@ -660,7 +802,9 @@ def cmd_run(args):
             WORKSPACE_DIR,
             final_text,
             turn_start_time=overall_start_time,
-            session_files=session_files
+            session_files=session_files,
+            expected_deliverables=skill_res.deliverables if skill_res else None,
+            prompt=prompt
         )
 
         # 7. 会话历史持久化

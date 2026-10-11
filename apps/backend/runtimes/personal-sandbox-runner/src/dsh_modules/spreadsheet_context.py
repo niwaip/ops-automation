@@ -61,7 +61,7 @@ def spreadsheet_structure(source, selected_sheets=None, deadline=None):
                         footers.append(row_index)
             best=max(headers,key=lambda h:len(h["columns"]),default=None)
             sample_indices=(sorted(observed)[:5]+sorted(observed)[-2:] if selected_sheets is not None
-                            else ([best['row']+1] if best else sorted(observed)[:1]))
+                            else ([r for r in sorted(observed) if r > best['row']][:5] if best else sorted(observed)[:1]))
             for index in dict.fromkeys(sample_indices):
                 if index in observed:
                     sample.append({c.coordinate:str(c.value)[:150] for c in observed[index][:20]})

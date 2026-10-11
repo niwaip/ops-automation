@@ -3,9 +3,27 @@
 from collections import Counter
 import datetime as dt
 import re
+import statistics
 from decimal import Decimal
 from openpyxl.utils import get_column_letter
 from .spreadsheet_expression import source_column, numeric
+
+
+def iqr_fences(nums, multiplier=3.0):
+    """Computes standard Tukey outer fences [Q1 - k*IQR, Q3 + k*IQR] when n >= 4 and IQR > 0."""
+    if len(nums) < 4:
+        return None
+    try:
+        vals = [float(numeric(v)) for _, v in nums]
+        q1, _, q3 = statistics.quantiles(vals, n=4, method="inclusive")
+        iqr = q3 - q1
+        if iqr <= 0:
+            return None
+        lower = Decimal(str(round(q1 - multiplier * iqr, 6)))
+        upper = Decimal(str(round(q3 + multiplier * iqr, 6)))
+        return lower, upper
+    except Exception:
+        return None
 
 
 def literal(value):
@@ -35,19 +53,32 @@ def profiles(workbook, tables, check_deadline):
         a, _, b, _ = table["bounds"]
         for col in range(a, b+1):
             check_deadline()
+            col_letter = get_column_letter(col)
             values = [(r, ws.cell(r, col).value) for r in rows]
             nonblank = [(r, v) for r, v in values if v is not None and str(v).strip()]
-            item = {"table": table["id"], "column": get_column_letter(col),
+            item = {"table": table["id"], "column": col_letter,
                     "header": str(ws.cell(table["header_row"], col).value or ""),
                     "records": len(rows), "missing": len(rows)-len(nonblank)}
-            item['missing_examples']=[f"{ws.title}!{get_column_letter(col)}{r}" for r,v in values
+            item['missing_examples']=[f"{ws.title}!{col_letter}{r}" for r,v in values
                                       if v is None or not str(v).strip()][:20]
             nums = [(r, v) for r, v in nonblank if isinstance(v, (int, float, Decimal)) and not isinstance(v, bool)]
             dates = [(r, v) for r, v in nonblank if isinstance(v, (dt.date, dt.datetime))]
             if nums:
                 minimum = min(nums, key=lambda x: numeric(x[1])); maximum = max(nums, key=lambda x: numeric(x[1]))
-                item["numeric"] = {"count": len(nums), "min": literal(minimum[1]), "min_row": minimum[0],
-                                   "max": literal(maximum[1]), "max_row": maximum[0]}
+                num_info = {"count": len(nums), "min": literal(minimum[1]), "min_row": minimum[0],
+                            "max": literal(maximum[1]), "max_row": maximum[0]}
+                fences = iqr_fences(nums)
+                if fences is not None:
+                    low_f, high_f = fences
+                    outliers = [
+                        {"row": r, "cell": f"{ws.title}!{col_letter}{r}", "value": literal(v)}
+                        for r, v in nums
+                        if numeric(v) < low_f or numeric(v) > high_f
+                    ]
+                    if outliers:
+                        num_info["outlier_count"] = len(outliers)
+                        num_info["outliers"] = outliers[:20]
+                item["numeric"] = num_info
             if dates:
                 first=min(dates,key=lambda x:date_value(x[1]));last=max(dates,key=lambda x:date_value(x[1]))
                 item["date"] = {"count": len(dates), "min": str(min(date_value(v) for _, v in dates)),
@@ -61,7 +92,7 @@ def profiles(workbook, tables, check_deadline):
                 for row, value in nonblank:
                     key = str(literal(value))
                     bucket = examples.setdefault(key, [])
-                    if len(bucket) < 3: bucket.append(f"{ws.title}!{get_column_letter(col)}{row}")
+                    if len(bucket) < 3: bucket.append(f"{ws.title}!{col_letter}{row}")
                 item["value_examples"] = examples
             result.append(item)
     return result
@@ -86,18 +117,27 @@ def evaluate_rule(rule, workbook, tables, check_deadline):
     values = [(r, ws.cell(r, col).value) for r in table["selected_rows"]]
     counts = Counter(str(literal(v)) for _, v in values if v is not None)
     kind = rule["kind"]
-    if kind not in {"unique", "not_empty", "date_range", "allowed_values", "number_range"}:
+    if kind not in {"unique", "not_empty", "date_range", "allowed_values", "number_range", "outlier"}:
         raise ValueError("未知字段规则")
     if kind == "allowed_values" and (not isinstance(rule.get("allowed"), list) or not rule["allowed"]):
         raise ValueError("枚举规则需要非空allowed")
     if kind in {"date_range", "number_range"} and not ({"min", "max"} & set(rule)):
         raise ValueError("范围规则至少需要min或max，不会推定未声明的边界")
+    criteria = {k: rule[k] for k in ("min", "max", "allowed") if k in rule}
     if kind == "date_range":
         lower = date_value(rule["min"]) if 'min' in rule else None
         upper = date_value(rule["max"]) if 'max' in rule else None
     elif kind == "number_range":
         lower = numeric_bound(rule["min"]) if 'min' in rule else None
         upper = numeric_bound(rule["max"]) if 'max' in rule else None
+    elif kind == "outlier":
+        nums = [(r, v) for r, v in values if isinstance(v, (int, float, Decimal)) and not isinstance(v, bool)]
+        fences = iqr_fences(nums)
+        lower, upper = fences if fences is not None else (None, None)
+        criteria = {"method": "iqr", "multiplier": 3.0}
+        if lower is not None and upper is not None:
+            criteria["lower_fence"] = str(round(lower, 2))
+            criteria["upper_fence"] = str(round(upper, 2))
     else:
         lower = upper = None
     if lower is not None and upper is not None and lower > upper:
@@ -126,4 +166,4 @@ def evaluate_rule(rule, workbook, tables, check_deadline):
             "passed": not violations, "examples": violations[:20],
             "examples_complete": len(violations) <= 20,
             "basis_status": "declared_unverified",
-            "criteria": {k:rule[k] for k in ("min", "max", "allowed") if k in rule}}
+            "criteria": criteria}

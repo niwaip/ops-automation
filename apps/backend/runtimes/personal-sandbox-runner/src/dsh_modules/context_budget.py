@@ -96,17 +96,21 @@ class ContextBudget:
                 content = h.get("content") or ""
                 content_str = str(content)
                 if len(content_str) > max_item_chars:
-                    # 双端保留策略：保留头部前情 (约 30%) 与尾部最终结论/修正 (约 60%)，中间插入省略标记
+                    # 双端保留策略：保留头部前情 (约 30%) 与尾部最终结论/修正 (约 60%)，中间插入系统注释省略标记
+                    # 严禁使用口语化自然语言省略句，防止模型在多轮对话中将其作为少样本模式产生偷懒截断复读
                     head_chars = min(1200, int(max_item_chars * 0.3))
                     tail_chars = min(2500, max_item_chars - head_chars - 100)
                     if tail_chars > 0 and len(content_str) > head_chars + tail_chars:
                         content_str = (
                             content_str[:head_chars]
-                            + "\n\n...[因历史消息长度预算超出，中间部分已自动省略]...\n\n"
+                            + "\n\n<!-- [CONTEXT_BUDGET: Earlier middle content of this previous message was omitted to fit context window] -->\n\n"
                             + content_str[-tail_chars:]
                         )
                     else:
-                        content_str = content_str[:max_item_chars] + "...[内容已截断]"
+                        content_str = (
+                            content_str[:max_item_chars]
+                            + "\n\n<!-- [CONTEXT_BUDGET: Message tail truncated to fit context window] -->"
+                        )
                 block_chars += len(content_str)
 
                 item: Dict[str, Any] = {"role": role, "content": content_str}

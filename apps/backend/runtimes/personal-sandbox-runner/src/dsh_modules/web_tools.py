@@ -537,19 +537,24 @@ def normalize_search_query(q: str) -> str:
     ).strip()
     cleaned = re.sub(r'^[的得地]\s*', '', cleaned).strip()
 
-    # 搜索只保留信息主题，剥离“总结、输出文件”等后续交付指令。
+    # 搜索只保留信息主题，剥离“总结、输出文件”等下游交付指令。
     # 这些动作由执行计划处理，不应污染搜索引擎关键词。
-    cleaned = re.split(
-        r'\s*(?:[，,；;]|然后|并且|并)\s*(?:请)?(?:总结|汇总|归纳|提炼|输出|生成|创建|导出|保存|写入|制作|做成)\b',
-        cleaned,
-        maxsplit=1,
-        flags=re.I,
-    )[0].strip()
+    # 标准工程解耦：匹配分句标点/连词 + 助动词/量词 + 交付动词短语
+    action_clause_pattern = (
+        r'(?:[，,；;。、\s]+(?:然后|并且|并|以及|同时|再|随之|顺便)?|(?:然后|并且|并|以及|同时|再|随之|顺便))\s*'
+        r'(?:请|帮我|协助|顺手)?\s*'
+        r'(?:进行|做个|做一下|给出|提供|写个|整理出|出)?\s*'
+        r'(?:一份|一个|一些)?\s*'
+        r'(?:简要|简短|结构化|详细|深度)?\s*'
+        r'(?:总结|汇总|归纳|整理|提炼|概括|对比|分析|输出|生成|创建|导出|保存|写入|制作|做成|盘点|梳理)'
+        r'(?:一下|出|成|为)?.*$'
+    )
+    cleaned = re.sub(action_clause_pattern, '', cleaned, flags=re.I).strip()
 
     substance = re.sub(r'(今天|今日|现在|最新|最近|近年|历年|历届|的|热点|热搜|热门|动态|新闻|\s+)', '', cleaned)
     if len(substance) >= 2:
         cleaned = re.sub(
-            r'^(近\s*\d+\s*年[的]?|近年[的]?|近几年[的]?|历年[的]?|往年[的]?|历届[的]?|最近\s*\d+\s*天[的]?|近\s*\d+\s*天[的]?|最近一个月[的]?|近一个月[的]?|最近[的]?|最新[的]?|当前[的]?|今天[的]?|今日[的]?)\s*',
+            r'^(近\s*\d+\s*年[的]?|近年[的]?|近几年[的]?|历年[的]?|往年[的]?|历届[的]?|最近\s*\d+\s*天[的]?|近\s*\d+\s*天[的]?|最近一个月[的]?|近一个月[的]?|最近[的]?|最新[的]?|当前[的]?|今天[的]?|今日[的]?|现在[的]?)\s*',
             '',
             cleaned,
             flags=re.I
@@ -567,7 +572,7 @@ def normalize_search_query(q: str) -> str:
             flags=re.I
         ).strip()
         cleaned = re.sub(
-            r'\s*(近\s*\d+\s*年[的]?|近年[的]?|近几年[的]?|历年[的]?|往年[的]?|历届[的]?|最近\s*\d+\s*天[的]?|近\s*\d+\s*天[的]?|最近一个月[的]?|近一个月[的]?|最近[的]?|最新[的]?|当前[的]?|今天[的]?|今日[的]?)$',
+            r'\s*(近\s*\d+\s*年[的]?|近年[的]?|近几年[的]?|历年[的]?|往年[的]?|历届[的]?|最近\s*\d+\s*天[的]?|近\s*\d+\s*天[的]?|最近一个月[的]?|近一个月[的]?|最近[的]?|最新[的]?|当前[的]?|今天[的]?|今日[的]?|现在[的]?)$',
             '',
             cleaned,
             flags=re.I
@@ -747,6 +752,57 @@ def perform_multi_web_search(
     return bundle[:max_chars]
 
 
+def is_enrichable_content_url(url: str) -> bool:
+    """
+    Standard URL evaluation: Determines whether a URL is an article/content page
+    suitable for deep-fetch enrichment, or an internal search/aggregator/auth endpoint.
+    Follows RFC/Web standards rather than site-specific hardcoding.
+    """
+    try:
+        parsed = urllib.parse.urlparse(url)
+    except Exception:
+        return False
+
+    path = parsed.path.lower()
+    query = parsed.query.lower()
+
+    # 1. 过滤内部检索/聚合/筛选端点 (Search queries & Aggregation feeds)
+    search_query_keys = {"q", "query", "keyword", "kw", "wd", "search", "search_query"}
+    params = urllib.parse.parse_qs(query)
+    if any(k in params for k in search_query_keys):
+        return False
+
+    search_path_patterns = [
+        r"^/(?:search|find|explore|browse|query|tag|tags|category|categories)(?:/.*)?$",
+        r"/(?:search|hotsearch|trending|all|hub)(?:/.*)?$"
+    ]
+    if any(re.search(p, path) for p in search_path_patterns):
+        return False
+
+    # 2. 过滤 API/RPC/AJAX 纯数据接口
+    if re.search(r"/(?:api|ajax|rpc|graphql)/", path):
+        return False
+
+    # 3. 过滤认证、登录、跳转与社交分享端点
+    auth_patterns = [
+        r"/(?:login|signin|auth|oauth|sso|signup|register|checkpoint|captcha)",
+        r"/(?:share|intent|redirect|jump|outlink)"
+    ]
+    if any(re.search(p, path) for p in auth_patterns):
+        return False
+
+    # 4. 过滤二进制非文本静态资源
+    binary_exts = (
+        ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico",
+        ".css", ".js", ".zip", ".tar", ".gz", ".exe", ".bin",
+        ".mp4", ".mp3", ".woff", ".woff2", ".ttf"
+    )
+    if any(path.endswith(ext) for ext in binary_exts):
+        return False
+
+    return True
+
+
 def enrich_search_context_with_pages(
     search_context: str,
     max_pages: int = 3,
@@ -761,7 +817,8 @@ def enrich_search_context_with_pages(
         key = clean_url.rstrip('/').casefold()
         if key not in seen:
             seen.add(key)
-            urls.append(clean_url)
+            if is_enrichable_content_url(clean_url):
+                urls.append(clean_url)
 
     is_harness = bool(re.search(r'(?:harness|deepseek|dsh)', (search_context or '').casefold()))
 
@@ -797,7 +854,7 @@ def enrich_search_context_with_pages(
     }
     fetched = {}
     try:
-        remaining = check_deadline(deadline, default_timeout=20.0)
+        remaining = check_deadline(deadline, default_timeout=5.0)
         for future in concurrent.futures.as_completed(futures, timeout=remaining):
             url = futures[future]
             try:

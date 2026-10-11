@@ -12,7 +12,6 @@ import {
   App,
   Button,
   Dropdown,
-  type MenuProps,
   Popconfirm,
   Space,
   Tag,

@@ -793,6 +793,86 @@ class TestDshSkillsAndArtifacts(unittest.TestCase):
         tool_names_generate = {t["function"]["name"] for t in tools_generate}
         self.assertIn("bash", tool_names_generate)
 
+    def test_composite_tasks_and_dual_channel_protocol(self):
+        """验证组合任务（查看天气/读取附件 + 汇总制作PPT/报表）正确路由并提供双通道工具与指引"""
+        from dsh_modules.runner import select_active_tools
+        from dsh_modules.prompt_builder import build_user_turn
+
+        # 1. 组合任务 1: 查看天气并汇总成一张 PPT
+        q_weather_ppt = "查看上海的天气，然后汇总成一张ppt"
+        res_weather_ppt = SkillRouter.route(q_weather_ppt, [])
+        self.assertTrue(res_weather_ppt.is_generate_intent)
+        self.assertTrue(res_weather_ppt.is_inspect_intent)
+        self.assertEqual(res_weather_ppt.skill_id, "guizang-ppt")
+        self.assertTrue(res_weather_ppt.requires_execution)
+        self.assertIn(".html", res_weather_ppt.deliverables)
+
+        tools_weather = select_active_tools(q_weather_ppt, res_weather_ppt, False, True)
+        tool_names_weather = {t["function"]["name"] for t in tools_weather}
+        self.assertIn("weather", tool_names_weather)
+        self.assertIn("bash", tool_names_weather)
+
+        turn_weather = build_user_turn(
+            prompt=q_weather_ppt,
+            is_inspect_intent=True,
+            is_generate_intent=True,
+            is_ppt_intent=True
+        )
+        self.assertIn("双通道交付硬性规范", turn_weather)
+        self.assertIn("HTML 演示文稿 / 报告生成要求", turn_weather)
+
+        # 2. 组合任务 2: 读取附件 PDF 并制作 PPT 演讲文稿
+        q_pdf_ppt = "读取附件中的pdf，提取要点并制作一份演讲PPT"
+        res_pdf_ppt = SkillRouter.route(q_pdf_ppt, [], files=["paper.pdf"])
+        self.assertTrue(res_pdf_ppt.is_generate_intent)
+        self.assertTrue(res_pdf_ppt.is_inspect_intent)
+        self.assertEqual(res_pdf_ppt.skill_id, "pptx")
+        self.assertTrue(res_pdf_ppt.requires_execution)
+        self.assertIn(".pptx", res_pdf_ppt.deliverables)
+
+        tools_pdf_ppt = select_active_tools(q_pdf_ppt, res_pdf_ppt, False, True)
+        tool_names_pdf_ppt = {t["function"]["name"] for t in tools_pdf_ppt}
+        self.assertIn("read_file", tool_names_pdf_ppt)
+        self.assertIn("bash", tool_names_pdf_ppt)
+
+    def test_attachment_read_only_summary_pdf_no_bash(self):
+        """验证对 PDF 附件进行提问总结时，严格作为只读处理，绝不赋予 bash 且不要求物理文件落盘"""
+        from dsh_modules.runner import select_active_tools
+
+        q_summary = "附件的内容是什么进行总结"
+        res = SkillRouter.route(q_summary, [], files=["A Programming Paradigm for Spatiotemporal Composability.pdf"])
+        self.assertTrue(res.is_inspect_intent)
+        self.assertFalse(res.is_generate_intent)
+        self.assertFalse(res.requires_execution)
+        self.assertEqual(res.deliverables, [])
+
+        tools = select_active_tools(q_summary, res, False, True)
+        tool_names = {t["function"]["name"] for t in tools}
+        self.assertIn("read_file", tool_names)
+        self.assertNotIn("bash", tool_names)
+
+    def test_anti_repetition_self_healing_directive(self):
+        """验证多轮会话中用户重复提问时，触发自愈纠偏指引，严禁再次输出空洞卡片"""
+        from dsh_modules.prompt_builder import build_user_turn
+
+        history = [
+            {"role": "user", "content": "附件的内容是什么进行总结"},
+            {
+                "role": "assistant",
+                "content": "《时空组合编程范式》总结报告已生成。\n文件名称：时空组合编程范式报告.pdf 保存位置：/workspace/报告.pdf\n请查看下方下载卡片。\n<div download-card>"
+            }
+        ]
+        q_repeat = "附件的内容是什么进行总结"
+        turn = build_user_turn(
+            prompt=q_repeat,
+            existing_history=history,
+            is_inspect_intent=True,
+            is_generate_intent=False
+        )
+        self.assertIn("Anti-Repetition Self-Healing Directive", turn)
+        self.assertIn("本轮绝对严禁再次输出'报告已生成，请查看下载卡片'等重复模板", turn)
+        self.assertIn("必须在当前聊天窗口中直接输出全面、详尽、结构完整的 Markdown 正文总结与解答", turn)
+
 
 if __name__ == "__main__":
     unittest.main()

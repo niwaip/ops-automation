@@ -63,4 +63,24 @@ describe('useChatStore - fontSize preferences', () => {
     expect(useChatStore.getState().fontSize).toBe('comfortable');
     expect(document.documentElement.getAttribute('data-chat-font-size')).toBe('comfortable');
   });
+
+  it('openWithTaskContext opens drawer, creates a new session, and keeps draft empty when requested', () => {
+    const initialSession = useChatStore.getState().currentSession;
+
+    const mockTaskContext = {
+      taskId: 'note-123',
+      taskTitle: '测试便签标题',
+      taskContent: '这是便签的具体内容，需要AI整理。',
+      attachments: [{ name: 'file.docx', url: 'http://example.com/file.docx' }],
+    };
+
+    useChatStore.getState().openWithTaskContext(mockTaskContext, '');
+
+    const nextState = useChatStore.getState();
+    expect(nextState.isOpen).toBe(true);
+    expect(nextState.draftMessage).toBe('');
+    expect(nextState.taskContext).toEqual(mockTaskContext);
+    expect(nextState.currentSession).toBeTruthy();
+    expect(nextState.currentSession?.id).not.toBe(initialSession?.id);
+  });
 });

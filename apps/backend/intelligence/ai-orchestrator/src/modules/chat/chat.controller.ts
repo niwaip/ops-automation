@@ -783,7 +783,7 @@ export class ChatController {
       fileFilter: (req: any, file, callback) => {
         const ext = path.extname(file.originalname).toLowerCase();
         const allowedExtensions = new Set([
-          '.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg',
+          '.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg', '.bmp', '.dib', '.tiff', '.tif', '.ico', '.avif', '.heic', '.heif', '.emf', '.wmf',
           '.mp3', '.wav', '.webm', '.ogg', '.m4a',
           '.pdf', '.txt', '.md', '.csv', '.json',
           '.docx', '.xlsx', '.pptx', '.doc', '.xls', '.ppt',

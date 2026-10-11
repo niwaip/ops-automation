@@ -7,7 +7,7 @@ import type { ChatRequestDTO, ChatUploadedFileDTO } from './chat.dto';
 import { ChatConversationService } from './chat-conversation.service';
 import { ChatMediaService } from './chat-media.service';
 import { ModelService } from '../model/model.service';
-import { isWorkSlashCommand, isPersonalSlashCommand } from './chat-slash-command.util';
+import { isWorkSlashCommand } from './chat-slash-command.util';
 import { getInternalServiceHeaders } from '../../config/internal-service-auth';
 import { PersonalReminderBridgeService, extractDshMarkers, stripDshMarkers } from './personal-reminder-bridge.service';
 import {
@@ -15,57 +15,15 @@ import {
   unwrapOuterMarkdownFence,
   embedWorkspaceDeliverablesAndImagesInAnswer,
 } from './user-sandbox-presentation.util';
+import {
+  isArtifactGenerationRequest,
+  isArtifactRegenerationRequest,
+  classifyPersonalSandboxError,
+} from './user-sandbox-error.util';
 
 const SANDBOX_HISTORY_TURNS_LIMIT = Number(process.env.SANDBOX_HISTORY_TURNS_LIMIT || 16);
 const SANDBOX_HISTORY_ITEM_CHAR_LIMIT = Number(process.env.SANDBOX_HISTORY_ITEM_CHAR_LIMIT || 12000);
 const SANDBOX_ATTACHMENT_TEXT_LIMIT = Number(process.env.SANDBOX_ATTACHMENT_TEXT_LIMIT || 16000);
-
-const isArtifactGenerationRequest = (message: string): boolean =>
-  /(?:生成|制作|创建|开发|做个|做一个|导出)[^，。\n]{0,24}(?:网页|页面|游戏|html|ppt|pdf|word|docx|excel|xlsx|文件|报告)/i.test(
-    String(message || '')
-  );
-
-const isArtifactRegenerationRequest = (
-  message: string,
-  history: Array<{ role?: string; content?: unknown }>
-): boolean => {
-  if (!/(?:重新生成|重新制作|重做|再次生成|再生成一次|重新导出|retry|regenerate)/i.test(String(message || ''))) {
-    return false;
-  }
-  return history
-    .slice(-8)
-    .some((item) => item?.role === 'user' && isArtifactGenerationRequest(String(item.content || '')));
-};
-
-const isLiveSearchRequest = (message: string): boolean =>
-  /(?:联网|搜索|搜一下|查一下|查询|查看|检索|最新|实时|热点|热搜|榜单|排行榜|微博|知乎热榜|百度热榜|抖音热榜|新闻|动态|插件|安装方法|安装教程|如何安装|怎么安装|安装指南|installation guide|how to install|releases?|天气|气象|气温|温度|下雨|降雨|暴雨|晴天|预报|几度|转晴|多云)/i.test(
-    String(message || '')
-  );
-
-const isTransientSandboxModelFailure = (message: string): boolean =>
-  /(?:sandbox model execution error|\baborted\b|timeout|timed out|超时|socket hang up|econnreset)/i.test(
-    String(message || '')
-  );
-
-const isSandboxModelAuthFailure = (message: string): boolean =>
-  /(?:鉴权失败|鉴权异常|invalid token|check your api key|api key|unauthorized|forbidden|401|403|authentication_error)/i.test(
-    String(message || '')
-  );
-
-const isSandboxModelDnsFailure = (message: string): boolean =>
-  /(?:getaddrinfo\s+ENOTFOUND|ENOTFOUND|EAI_AGAIN|name resolution)/i.test(
-    String(message || '')
-  );
-
-const isSandboxModelConnectionRefused = (message: string): boolean =>
-  /(?:ECONNREFUSED|connect\s+ECONNREFUSED)/i.test(
-    String(message || '')
-  );
-
-const isSandboxModelUnavailable = (message: string): boolean =>
-  /(?:\[DeepSeek Harness (?:鉴权失败|超时|异常)\]|大模型代理调用失败|模型不可用|上游大模型|上游模型|no client initialized for model)/i.test(
-    String(message || '')
-  );
 
 @Injectable()
 export class UserSandboxDispatcherService {
@@ -111,52 +69,77 @@ export class UserSandboxDispatcherService {
     sessionFiles?: string[]
   ): void {
     const userWorkspaceDir = this.getWorkspaceDir(userId);
+    const cleanSid = sessionId ? sessionId.replace(/[^a-zA-Z0-9_-]/g, '_') : 'default';
+    const sessionDir = path.join(userWorkspaceDir, '.sessions', cleanSid);
+    try {
+      if (!fs.existsSync(sessionDir)) {
+        fs.mkdirSync(sessionDir, { recursive: true });
+        try { fs.chmodSync(sessionDir, 0o777); } catch { /* best-effort */ }
+      }
+    } catch { /* best-effort */ }
+
     if (files && files.length > 0) {
       try {
         for (const file of files as any[]) {
           const fileName = typeof file === 'string' ? path.basename(file) : file?.fileName;
           if (!fileName) continue;
-          const destPath = path.join(userWorkspaceDir, fileName);
+          const sessionDestPath = path.join(sessionDir, fileName);
+          const rootDestPath = path.join(userWorkspaceDir, fileName);
           const filePath = typeof file === 'string' ? file : file?.filePath;
           if (filePath && fs.existsSync(filePath)) {
-            fs.copyFileSync(filePath, destPath);
-            try { fs.chmodSync(destPath, 0o666); } catch { /* best-effort permission setting for container mounts */ }
+            fs.copyFileSync(filePath, sessionDestPath);
+            fs.copyFileSync(filePath, rootDestPath);
+            try { fs.chmodSync(sessionDestPath, 0o666); } catch { /* best-effort */ }
+            try { fs.chmodSync(rootDestPath, 0o666); } catch { /* best-effort */ }
 
             // 如果存在提取的文本文件，也一并同步为 .txt 与 .extracted.txt
             const extractedSrc = `${filePath}.extracted.txt`;
             if (fs.existsSync(extractedSrc)) {
-              const destTxt = path.join(userWorkspaceDir, `${fileName}.txt`);
-              fs.copyFileSync(extractedSrc, destTxt);
-              try { fs.chmodSync(destTxt, 0o666); } catch { /* best-effort permission setting for container mounts */ }
+              const sessionTxt = path.join(sessionDir, `${fileName}.txt`);
+              const rootTxt = path.join(userWorkspaceDir, `${fileName}.txt`);
+              fs.copyFileSync(extractedSrc, sessionTxt);
+              fs.copyFileSync(extractedSrc, rootTxt);
+              try { fs.chmodSync(sessionTxt, 0o666); } catch { /* best-effort */ }
+              try { fs.chmodSync(rootTxt, 0o666); } catch { /* best-effort */ }
             }
           } else if (file?.content) {
-            fs.writeFileSync(destPath, Buffer.from(file.content, 'base64'));
-            try { fs.chmodSync(destPath, 0o666); } catch { /* best-effort permission setting for container mounts */ }
+            const buf = Buffer.from(file.content, 'base64');
+            fs.writeFileSync(sessionDestPath, buf);
+            fs.writeFileSync(rootDestPath, buf);
+            try { fs.chmodSync(sessionDestPath, 0o666); } catch { /* best-effort */ }
+            try { fs.chmodSync(rootDestPath, 0o666); } catch { /* best-effort */ }
 
             if (file.extractedText) {
-              const destTxt = path.join(userWorkspaceDir, `${fileName}.txt`);
-              fs.writeFileSync(destTxt, file.extractedText, 'utf-8');
-              try { fs.chmodSync(destTxt, 0o666); } catch { /* best-effort permission setting for container mounts */ }
+              const sessionTxt = path.join(sessionDir, `${fileName}.txt`);
+              const rootTxt = path.join(userWorkspaceDir, `${fileName}.txt`);
+              fs.writeFileSync(sessionTxt, file.extractedText, 'utf-8');
+              fs.writeFileSync(rootTxt, file.extractedText, 'utf-8');
+              try { fs.chmodSync(sessionTxt, 0o666); } catch { /* best-effort */ }
+              try { fs.chmodSync(rootTxt, 0o666); } catch { /* best-effort */ }
             }
           }
-          this.logger.log(`Synced attached file [${fileName}] to user sandbox workspace: ${destPath}`);
+          this.logger.log(`Synced attached file [${fileName}] to session [${cleanSid}] and workspace: ${sessionDestPath}`);
         }
       } catch (e: any) {
         this.logger.warn(`Failed to sync attached files to sandbox workspace: ${e.message}`);
       }
     }
 
-    // 将会话关联的有效附件清单持久化到工作区 session 目录，保证沙箱环境上下文隔离
+    // 将会话关联的有效附件清单持久化到 .sessions/<cleanSid>/ 与 .dsh/sessions/ 目录
     if (sessionId && sessionFiles && sessionFiles.length > 0) {
       try {
-        const cleanSid = sessionId.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const attPayload = JSON.stringify(sessionFiles, null, 2);
+        const sessionAttFile = path.join(sessionDir, 'attachments.json');
+        fs.writeFileSync(sessionAttFile, attPayload, 'utf-8');
+        try { fs.chmodSync(sessionAttFile, 0o666); } catch { /* best-effort */ }
+
         const sessionsDir = path.join(userWorkspaceDir, '.dsh', 'sessions');
         if (!fs.existsSync(sessionsDir)) {
           fs.mkdirSync(sessionsDir, { recursive: true });
           try { fs.chmodSync(sessionsDir, 0o777); } catch { /* best-effort */ }
         }
         const attFile = path.join(sessionsDir, `${cleanSid}.attachments.json`);
-        fs.writeFileSync(attFile, JSON.stringify(sessionFiles, null, 2), 'utf-8');
+        fs.writeFileSync(attFile, attPayload, 'utf-8');
         try { fs.chmodSync(attFile, 0o666); } catch { /* best-effort */ }
       } catch (e: any) {
         this.logger.warn(`Failed to persist session attachments index: ${e.message}`);
@@ -348,8 +331,36 @@ export class UserSandboxDispatcherService {
         }
         promptForSandbox = `${prefix}用户指令：${body.message}`;
       } else if (sessionAttachedFiles.length > 0) {
-        const prefix = `【当前会话有效附件清单】: ${sessionAttachedFiles.join(', ')}\n`;
-        promptForSandbox = `${prefix}用户指令：${body.message}`;
+        // 多附件会话且本轮无新上传时：智能识别用户是否显式要求“多文件合并/综合”
+        const isMultiFileCombineIntent = /(?:全部|所有|综合|汇总所有|全部附件|合并|综合分析|对照|比对)/.test(body.message);
+        if (isMultiFileCombineIntent || sessionAttachedFiles.length === 1) {
+          const prefix = `【当前会话有效附件清单】: ${sessionAttachedFiles.join(', ')}\n`;
+          promptForSandbox = `${prefix}用户指令：${body.message}`;
+        } else {
+          // 渐进式焦点锚定：从最近历史消息中逆向寻找最近正在讨论的文件
+          let activeFile: string | undefined;
+          for (let i = recentHistory.length - 1; i >= 0; i--) {
+            const hText = recentHistory[i]?.content || '';
+            for (const sf of sessionAttachedFiles) {
+              const stem = sf.replace(/\.[^/.]+$/, '');
+              if (hText.includes(sf) || (stem.length >= 3 && hText.includes(stem))) {
+                activeFile = sf;
+                break;
+              }
+            }
+            if (activeFile) break;
+          }
+          // 若历史未明确提及，则按时间最近原则锚定最后一次上传的附件
+          if (!activeFile) {
+            activeFile = sessionAttachedFiles[sessionAttachedFiles.length - 1];
+          }
+          const otherFiles = sessionAttachedFiles.filter((f) => f !== activeFile);
+          let prefix = `【当前上下文聚焦文档】: ${activeFile}（当前正在讨论的核心文件，为本次指令的主要处理对象）\n`;
+          if (otherFiles.length > 0) {
+            prefix += `【早期历史参考附件】: ${otherFiles.join(', ')}（属于早期对话的历史背景，除非用户显式要求，否则不要把早期无关文件混淆合并进本轮交付物）\n`;
+          }
+          promptForSandbox = `${prefix}用户指令：${body.message}`;
+        }
       }
 
       // 若用户指令涉及提醒/日程/闹钟，注入数据库中真实的提醒规则列表，防止模型幻觉或无法回答当前列表
@@ -381,7 +392,7 @@ export class UserSandboxDispatcherService {
       const controller = new AbortController();
       const onAbort = () => {
         controller.abort();
-        void this.stopPersonalSandbox(effectiveUserId, sessionId);
+        void this.stopPersonalSandbox(effectiveUserId, sessionId, (body as any).executionId);
       };
       if (abortSignal?.aborted) {
         onAbort();
@@ -440,7 +451,7 @@ export class UserSandboxDispatcherService {
           this.logger.warn(`Execution timeout (${timeoutMs / 1000}s) reached for user [${effectiveUserId}], stopping sandbox processes...`);
           controller.abort();
           try {
-            await this.stopPersonalSandbox(effectiveUserId);
+            await this.stopPersonalSandbox(effectiveUserId, sessionId, (body as any).executionId);
           } catch (e: any) {
             this.logger.warn(`Failed to stop personal sandbox on timeout: ${e.message}`);
           }
@@ -567,9 +578,17 @@ export class UserSandboxDispatcherService {
                   },
                 });
               } else if (eventType === 'observation' && parsed?.content) {
-                // 当沙箱开始调用工具或命中技能意图时，说明进入中间行动阶段，清空上一轮的过渡垫话累加器
                 const contentStr = String(parsed.content);
-                if (contentStr.includes('⚡') || contentStr.includes('🎯') || contentStr.includes('🔍') || contentStr.includes('⏳')) {
+                if (
+                  contentStr.includes('⚡') ||
+                  contentStr.includes('🎯') ||
+                  contentStr.includes('🔍') ||
+                  contentStr.includes('⏳') ||
+                  contentStr.includes('🧠') ||
+                  contentStr.includes('✓') ||
+                  contentStr.includes('📝') ||
+                  contentStr.includes('🌐')
+                ) {
                   deltaAccumulator = '';
                 }
                 emit({
@@ -867,238 +886,28 @@ export class UserSandboxDispatcherService {
         `Failed to dispatch to user sandbox (${errMsg}).`
       );
 
-      // 判断是否为排队/并发超时
-      const isConcurrencyConflict =
-        errMsg.includes('正在执行其他任务') ||
-        errMsg.includes('沙箱当前正在执行') ||
-        errMsg.includes('正在执行前序任务') ||
-        errMsg.includes('排队等待超时') ||
-        err.status === 409;
+      const classifiedError = classifyPersonalSandboxError({
+        message: body.message,
+        errMsg,
+        errStatus: err?.status,
+        recentHistory,
+        sessionAttachedFiles,
+      });
 
-      if (isConcurrencyConflict) {
-        const friendlyError =
-          '⏳ 个人专属安全沙箱当前正在执行前序任务，排队等待超时。请稍候片刻再试，或在前一会话中点击“停止”释放沙箱。';
+      if (classifiedError) {
         emit({
           type: StreamEventType.ERROR,
-          content: friendlyError,
-          data: {
-            code: 'SANDBOX_QUEUE_TIMEOUT',
-            retryable: true,
-          },
+          content: classifiedError.friendlyError,
+          data: classifiedError.eventData,
         });
         await this.persistFriendlyErrorToSession(
           sessionId,
           body,
           effectiveUserId,
-          friendlyError,
-          errMsg,
-          emit
-        );
-        return true;
-      }
-
-      // 1. 交付物生成或重新生成时模型超时
-      if (
-        (isArtifactGenerationRequest(body.message) ||
-          isArtifactRegenerationRequest(body.message, recentHistory)) &&
-        isTransientSandboxModelFailure(errMsg)
-      ) {
-        const friendlyError =
-          '⏱️ 模型在执行文件写入前响应超时或连接中断，本次未生成可用文件。深度思考已关闭，可安全重试本次生成。';
-        emit({
-          type: StreamEventType.ERROR,
-          content: friendlyError,
-          data: {
-            code: 'SANDBOX_GENERATION_TIMEOUT',
-            retryable: true,
-            artifactCreated: false,
-          },
-        });
-        await this.persistFriendlyErrorToSession(
-          sessionId,
-          body,
-          effectiveUserId,
-          friendlyError,
-          errMsg,
-          emit
-        );
-        return true;
-      }
-
-      // 2. 联网检索结果整理超时
-      if (
-        isLiveSearchRequest(body.message) &&
-        isTransientSandboxModelFailure(errMsg)
-      ) {
-        const friendlyError =
-          '⏱️ 联网检索已经完成，但指定模型在整理检索结果（或气象数据）时超时或连接中断。为避免丢失检索证据后凭记忆作答，系统已停止无依据的普通聊天降级。请直接重试本次查询。';
-        emit({
-          type: StreamEventType.ERROR,
-          content: friendlyError,
-          data: {
-            code: 'SANDBOX_SEARCH_SYNTHESIS_TIMEOUT',
-            retryable: true,
-            searchCompleted: true,
-          },
-        });
-        await this.persistFriendlyErrorToSession(
-          sessionId,
-          body,
-          effectiveUserId,
-          friendlyError,
-          errMsg,
-          emit
-        );
-        return true;
-      }
-
-      // 3. 增量交付物迭代（如追加音效、修改代码等），或沙箱内部已调用工具/进入 Harness 任务执行时的超时
-      const isIncrementalArtifactTask =
-        errMsg.includes('web-prototype') ||
-        errMsg.includes('/workspace/') ||
-        errMsg.includes('read_file') ||
-        errMsg.includes('write_file') ||
-        errMsg.includes('Harness Tool Call') ||
-        errMsg.includes('❌ [DeepSeek Harness 超时]') ||
-        sessionAttachedFiles.length > 0 ||
-        /(?:追加|添加|加入|修改|调整|优化|更新|完善|修复|重构)/.test(body.message);
-
-      if (isIncrementalArtifactTask && isTransientSandboxModelFailure(errMsg)) {
-        const friendlyError =
-          '⏱️ 模型在分析或生成交付物时响应超时（上游网络连接中断）。当前工作区文件安全保留，您可以直接点击下方重试继续执行。';
-        emit({
-          type: StreamEventType.ERROR,
-          content: friendlyError,
-          data: {
-            code: 'SANDBOX_GENERATION_TIMEOUT',
-            retryable: true,
-            artifactCreated: false,
-          },
-        });
-        await this.persistFriendlyErrorToSession(
-          sessionId,
-          body,
-          effectiveUserId,
-          friendlyError,
-          errMsg,
-          emit
-        );
-        return true;
-      }
-
-      // 斜杠指令或专属配置异常
-      if (isPersonalSlashCommand(body.message) || body.message.trim().startsWith('/')) {
-        const friendlyError = `⚠️ 沙箱指令执行异常 (${errMsg})，未能完成指令执行。请重试或检查模型服务连接。`;
-        emit({
-          type: StreamEventType.ERROR,
-          content: friendlyError,
-          data: {
-            code: 'SANDBOX_COMMAND_ERROR',
-            retryable: true,
-          },
-        });
-        await this.persistFriendlyErrorToSession(
-          sessionId,
-          body,
-          effectiveUserId,
-          friendlyError,
-          errMsg,
-          emit
-        );
-        return true;
-      }
-
-      // 4. 上游大模型鉴权失败 / API Key 错误
-      if (isSandboxModelAuthFailure(errMsg)) {
-        const friendlyError = `❌ 上游大模型服务鉴权失败 (${errMsg})。请检查 API Key 或模型凭据配置。`;
-        emit({
-          type: StreamEventType.ERROR,
-          content: friendlyError,
-          data: {
-            code: 'SANDBOX_MODEL_AUTH_ERROR',
-            retryable: false,
-          },
-        });
-        await this.persistFriendlyErrorToSession(
-          sessionId,
-          body,
-          effectiveUserId,
-          friendlyError,
+          classifiedError.friendlyError,
           errMsg,
           emit,
-          { executed: false, errorType: 'AUTH_ERROR', rawError: errMsg }
-        );
-        return true;
-      }
-
-      // 4.1. 上游大模型域名解析失败 (DNS ENOTFOUND)
-      if (isSandboxModelDnsFailure(errMsg)) {
-        const dnsMatch = errMsg.match(/(?:getaddrinfo\s+ENOTFOUND|ENOTFOUND)\s+([^\s,;:\)]+)/i);
-        const dnsHost = dnsMatch ? dnsMatch[1] : '';
-        const hostTip = dnsHost ? ` (域名: ${dnsHost})` : '';
-        const friendlyError = `🌐 上游模型服务地址域名解析失败${hostTip}。请检查模型网关配置地址是否正确，或内网穿透/代理隧道是否已断开 (${errMsg})。`;
-        emit({
-          type: StreamEventType.ERROR,
-          content: friendlyError,
-          data: {
-            code: 'SANDBOX_MODEL_DNS_ERROR',
-            retryable: true,
-          },
-        });
-        await this.persistFriendlyErrorToSession(
-          sessionId,
-          body,
-          effectiveUserId,
-          friendlyError,
-          errMsg,
-          emit,
-          { executed: false, errorType: 'DNS_ERROR', rawError: errMsg }
-        );
-        return true;
-      }
-
-      // 4.2. 上游大模型服务连接被拒绝 (Connection Refused)
-      if (isSandboxModelConnectionRefused(errMsg)) {
-        const friendlyError = `🔌 上游模型服务连接被拒绝 (Connection Refused)。请检查模型服务端口或反向代理是否正常运行 (${errMsg})。`;
-        emit({
-          type: StreamEventType.ERROR,
-          content: friendlyError,
-          data: {
-            code: 'SANDBOX_MODEL_CONNECTION_REFUSED',
-            retryable: true,
-          },
-        });
-        await this.persistFriendlyErrorToSession(
-          sessionId,
-          body,
-          effectiveUserId,
-          friendlyError,
-          errMsg,
-          emit,
-          { executed: false, errorType: 'CONNECTION_REFUSED', rawError: errMsg }
-        );
-        return true;
-      }
-
-      // 5. 大模型超时 / 响应中断 / 上游大模型服务不可用（严禁默认降级为无依据的普通问答）
-      if (isSandboxModelUnavailable(errMsg)) {
-        const friendlyError = `⏱️ 上游大模型服务暂时不可用或响应超时 (${errMsg})。本次任务未完成，请检查模型服务状态或稍后重试。`;
-        emit({
-          type: StreamEventType.ERROR,
-          content: friendlyError,
-          data: {
-            code: 'SANDBOX_MODEL_UNAVAILABLE',
-            retryable: true,
-          },
-        });
-        await this.persistFriendlyErrorToSession(
-          sessionId,
-          body,
-          effectiveUserId,
-          friendlyError,
-          errMsg,
-          emit,
-          { executed: false, errorType: 'MODEL_UNAVAILABLE', rawError: errMsg }
+          classifiedError.executionTrace
         );
         return true;
       }
