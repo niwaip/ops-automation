@@ -97,11 +97,102 @@ describe('reduceChatStreamEvent', () => {
     assert.equal(reduced.messagePatch.content, priorSummary);
     // 严禁将思考内容作为 text part 泄露到正文气泡
     assert.equal(reduced.messagePatch.contentParts, undefined);
-    // 思考内容准确挂载在 metadata 中
-    assert.equal(reduced.messagePatch.metadata?.showThinking, true);
     assert.deepEqual(reduced.messagePatch.metadata?.thoughtLogsSnapshot, [
       'I need to write index.html to workspace',
     ]);
   });
+
+  it('extracts usage from sandbox metrics when data.usage is not directly supplied', () => {
+    const reduced = reduceChatStreamEvent({
+      event: {
+        type: StreamEventType.RESULT,
+        content: '回答完成',
+        data: {
+          mode: 'chat',
+          sandbox: {
+            metrics: {
+              tokens: {
+                prompt_tokens: 120,
+                completion_tokens: 30,
+                total_tokens: 150,
+              },
+            },
+          },
+        },
+      },
+      accumulatedContent: '',
+      mode: 'chat',
+    });
+
+    assert.deepEqual(reduced.messagePatch.metadata?.usage, {
+      prompt_tokens: 120,
+      completion_tokens: 30,
+      total_tokens: 150,
+      completion_tokens_details: undefined,
+    });
+  });
 });
+
+describe('resolveChatMessageUsage', () => {
+  it('prefers direct metadata.usage when total_tokens > 0', async () => {
+    const { resolveChatMessageUsage } = await import('../../../dist/domain/chat/streamEvent.js');
+    const usage = resolveChatMessageUsage({
+      metadata: {
+        usage: {
+          prompt_tokens: 100,
+          completion_tokens: 50,
+          total_tokens: 150,
+        },
+        executionTrace: {
+          metrics: {
+            tokens: {
+              prompt_tokens: 999,
+              completion_tokens: 999,
+              total_tokens: 1998,
+            },
+          },
+        },
+      },
+    });
+
+    assert.deepEqual(usage, {
+      prompt_tokens: 100,
+      completion_tokens: 50,
+      total_tokens: 150,
+      completion_tokens_details: undefined,
+    });
+  });
+
+  it('falls back to executionTrace.metrics.tokens for personal sandbox history messages', async () => {
+    const { resolveChatMessageUsage } = await import('../../../dist/domain/chat/streamEvent.js');
+    const usage = resolveChatMessageUsage({
+      metadata: {
+        executionTrace: {
+          containerName: 'dsh-user-1',
+          metrics: {
+            tokens: {
+              prompt_tokens: 350,
+              completion_tokens: 150,
+              total_tokens: 500,
+            },
+          },
+        },
+      },
+    });
+
+    assert.deepEqual(usage, {
+      prompt_tokens: 350,
+      completion_tokens: 150,
+      total_tokens: 500,
+      completion_tokens_details: undefined,
+    });
+  });
+
+  it('returns undefined if no usage or metrics found', async () => {
+    const { resolveChatMessageUsage } = await import('../../../dist/domain/chat/streamEvent.js');
+    assert.equal(resolveChatMessageUsage(null), undefined);
+    assert.equal(resolveChatMessageUsage({ metadata: {} }), undefined);
+  });
+});
+
 

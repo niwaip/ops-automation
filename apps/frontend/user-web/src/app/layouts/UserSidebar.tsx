@@ -2,11 +2,12 @@ import {
   CarryOutOutlined,
   DashboardOutlined,
   FolderOutlined,
+  MenuFoldOutlined,
   MessageOutlined,
   SettingOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
-import { Layout, Menu } from 'antd';
+import { Button, Layout, Menu, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from 'zustand';
@@ -57,61 +58,101 @@ export function UserSidebar({ selectedMenuKey }: UserSidebarProps) {
       trigger={null}
     >
       <div
-        className={styles['user-shell-logo']}
-        style={{ padding: sidebarCollapsed ? '0 16px' : '0 24px' }}
+        className={`${styles['user-shell-logo']} ${
+          sidebarCollapsed ? styles['user-shell-logo-collapsed'] : styles['user-shell-logo-expanded']
+        }`}
       >
-        <div className={styles['user-shell-logo-inner']} style={{ gap: sidebarCollapsed ? 0 : 12 }}>
+        <Tooltip
+          title={sidebarCollapsed ? t('sidebar.expand', '展开侧边栏') : undefined}
+          placement="right"
+        >
           <div
+            className={`${styles['user-shell-logo-inner']} ${
+              sidebarCollapsed ? styles['user-shell-logo-inner-clickable'] : ''
+            }`}
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: 'linear-gradient(135deg, #6366f1 0%, #f472b6 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#fff',
-              boxShadow: '0 4px 10px rgba(99, 102, 241, 0.3)',
-              flexShrink: 0,
+              gap: sidebarCollapsed ? 0 : 10,
+              cursor: sidebarCollapsed ? 'pointer' : 'default',
             }}
+            onClick={sidebarCollapsed ? () => setSidebarCollapsed(false) : undefined}
+            role={sidebarCollapsed ? 'button' : undefined}
+            tabIndex={sidebarCollapsed ? 0 : undefined}
+            onKeyDown={
+              sidebarCollapsed
+                ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSidebarCollapsed(false);
+                    }
+                  }
+                : undefined
+            }
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 0C12 6.62742 17.3726 12 24 12C17.3726 12 12 17.3726 12 24C12 17.3726 6.62742 12 0 12C6.62742 12 12 6.62742 12 0Z" />
-            </svg>
-          </div>
-          {!sidebarCollapsed ? (
             <div
-              className={styles['user-shell-logo-text']}
               style={{
-                fontSize: 20,
-                fontWeight: 800,
-                color: 'var(--text-primary)',
-                margin: 0,
-                letterSpacing: '-0.5px',
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, #6366f1 0%, #f472b6 100%)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 6,
+                justifyContent: 'center',
+                color: '#fff',
+                boxShadow: '0 4px 10px rgba(99, 102, 241, 0.3)',
+                flexShrink: 0,
               }}
             >
-              OpsPilot
-              <span
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0C12 6.62742 17.3726 12 24 12C17.3726 12 12 17.3726 12 24C12 17.3726 6.62742 12 0 12C6.62742 12 12 6.62742 12 0Z" />
+              </svg>
+            </div>
+            {!sidebarCollapsed ? (
+              <div
+                className={styles['user-shell-logo-text']}
                 style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  background: 'linear-gradient(135deg, #6366f1 0%, #f472b6 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  padding: '1px 6px',
-                  borderRadius: 8,
-                  border: '1px solid rgba(244, 114, 182, 0.3)',
-                  verticalAlign: 'middle',
+                  fontSize: 18,
+                  fontWeight: 800,
+                  color: 'var(--text-primary)',
+                  margin: 0,
+                  letterSpacing: '-0.5px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  whiteSpace: 'nowrap',
                 }}
               >
-                AI
-              </span>
-            </div>
-          ) : null}
-        </div>
+                OpsPilot
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    background: 'linear-gradient(135deg, #6366f1 0%, #f472b6 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    padding: '1px 5px',
+                    borderRadius: 6,
+                    border: '1px solid rgba(244, 114, 182, 0.3)',
+                    verticalAlign: 'middle',
+                  }}
+                >
+                  AI
+                </span>
+              </div>
+            ) : null}
+          </div>
+        </Tooltip>
+
+        {!sidebarCollapsed && (
+          <Tooltip title={t('sidebar.collapse', '收起侧边栏')} placement="right">
+            <Button
+              type="text"
+              aria-label={t('sidebar.collapse', '收起侧边栏')}
+              icon={<MenuFoldOutlined />}
+              onClick={() => setSidebarCollapsed(true)}
+              className={styles['user-shell-collapse-btn']}
+            />
+          </Tooltip>
+        )}
       </div>
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
         <Menu

@@ -245,9 +245,16 @@ export class CapabilityRuntimeAdapter implements RuntimeAdapter {
               ? [outputRecord.artifact as ArtifactRef]
               : [];
 
-    for (const art of directArtifacts) {
-      if (art && (art.url || art.id || (art as any).path)) {
-        artifacts.push(art);
+    for (const rawArt of directArtifacts) {
+      if (!rawArt || typeof rawArt !== 'object') continue;
+      const art = rawArt as Record<string, any>;
+      const resolvedUrl = art.url || art.downloadUrl || art.storageUri || art.path;
+      if (resolvedUrl || art.id) {
+        artifacts.push({
+          ...art,
+          url: resolvedUrl,
+          name: art.name || art.filename || 'output_artifact',
+        } as ArtifactRef);
       }
     }
     const phaseResults = Array.isArray((output as Record<string, unknown>).phaseResults)
@@ -294,6 +301,30 @@ export class CapabilityRuntimeAdapter implements RuntimeAdapter {
           },
         });
       });
+    }
+
+    if (artifacts.length === 0) {
+      const directUrl =
+        (typeof outputRecord.downloadUrl === 'string' && outputRecord.downloadUrl) ||
+        (typeof outputRecord.url === 'string' && outputRecord.url) ||
+        (typeof resultRecord?.downloadUrl === 'string' && resultRecord.downloadUrl) ||
+        (typeof resultRecord?.url === 'string' && resultRecord.url) ||
+        (typeof businessDataRecord?.downloadUrl === 'string' && businessDataRecord.downloadUrl) ||
+        (typeof businessDataRecord?.url === 'string' && businessDataRecord.url);
+      if (directUrl) {
+        artifacts.push({
+          type: (outputRecord.type || resultRecord?.type || 'file') as string,
+          url: directUrl,
+          name: (outputRecord.filename || outputRecord.name || resultRecord?.filename || resultRecord?.name || 'output_artifact') as string,
+          mimeType: (outputRecord.mimeType || resultRecord?.mimeType) as string,
+          sizeBytes:
+            typeof outputRecord.sizeBytes === 'number'
+              ? outputRecord.sizeBytes
+              : typeof resultRecord?.sizeBytes === 'number'
+                ? resultRecord.sizeBytes
+                : undefined,
+        });
+      }
     }
 
     return artifacts.length > 0 ? artifacts : undefined;

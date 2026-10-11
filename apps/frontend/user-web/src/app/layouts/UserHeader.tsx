@@ -1,5 +1,5 @@
-import { MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
-import { Button, Layout, Space, Tag } from 'antd';
+import { MenuUnfoldOutlined } from '@ant-design/icons';
+import { Button, Layout, Space, Tag, Tooltip } from 'antd';
 import { useStore } from 'zustand';
 import { preferencesStore } from '../../adapters/preferences/preferencesStore';
 import { useTranslation } from 'react-i18next';
@@ -46,18 +46,23 @@ export function UserHeader({ language, selectedMenuKey }: UserHeaderProps) {
   return (
     <Header className={styles['user-shell-header']}>
       <div className={styles['user-shell-header-left']}>
-        <Button
-          type="text"
-          icon={sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-          onClick={toggleSidebar}
-          style={{
-            fontSize: 18,
-            color: 'var(--text-secondary)',
-            width: 40,
-            height: 40,
-            borderRadius: 10,
-          }}
-        />
+        {sidebarCollapsed ? (
+          <Tooltip title={t('sidebar.expand', '展开侧边栏')}>
+            <Button
+              type="text"
+              aria-label={t('sidebar.expand', '展开侧边栏')}
+              icon={<MenuUnfoldOutlined />}
+              onClick={toggleSidebar}
+              style={{
+                fontSize: 18,
+                color: 'var(--text-secondary)',
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+              }}
+            />
+          </Tooltip>
+        ) : null}
         <Space size={8}>
           <Tag color="blue" style={{ marginInlineEnd: 0, borderRadius: 999 }}>
             {currentMenuLabel}

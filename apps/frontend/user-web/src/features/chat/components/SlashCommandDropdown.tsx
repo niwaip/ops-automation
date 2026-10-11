@@ -118,11 +118,11 @@ export function SlashCommandDropdown({
       <div className={styles['slash-header']}>
         <div className={styles['slash-title']}>
           <ThunderboltOutlined style={{ color: 'var(--primary-color)' }} />
-          <span>{chatMode === 'chat' ? '个人沙箱快捷指令' : '工作模式协同指令'} (Slash Commands)</span>
+          <span>{chatMode === 'chat' ? '快捷指令' : '工作协同指令'} (Slash Commands)</span>
           {chatMode === 'chat' ? (
-            <Tag color="orange" style={{ marginLeft: 6, fontSize: 11 }}>个人模式 · 独立沙箱</Tag>
+            <Tag color="orange" style={{ marginLeft: 6, fontSize: 11 }}>个人模式</Tag>
           ) : (
-            <Tag color="blue" style={{ marginLeft: 6, fontSize: 11 }}>工作模式 · 企业协同</Tag>
+            <Tag color="blue" style={{ marginLeft: 6, fontSize: 11 }}>工作模式</Tag>
           )}
         </div>
         <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
@@ -189,7 +189,7 @@ export function SlashCommandDropdown({
       <div className={styles['slash-footer']}>
         {chatMode === 'chat' ? (
           <span style={{ color: '#d97706' }}>
-            💡 个人模式专属：支持 /ppt, /research, /excel 等独立生产力工具链（与工作模式完全解耦）
+            💡 个人模式专属：支持 /ppt, /research, /excel 等快捷指令，助您高效生成专业文档与调研报告
           </span>
         ) : (
           <span>💡 工作模式提示：输入 <code>/doc 你的问题</code> 即可快速启动工作空间自主探查 Agent</span>

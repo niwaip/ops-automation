@@ -77,8 +77,8 @@ export const WORK_SLASH_COMMANDS: SlashCommandDefinition[] = [
 ];
 
 /**
- * 个人模式（个人安全沙箱）独立 Slash 指令注册表
- * 独立工具链：追加 /ppt, /research 以及沙箱核心生产力技能
+ * 个人模式专属 Slash 指令注册表
+ * 包含 /ppt, /research, /excel 等专业生产力与调研技能
  */
 export const PERSONAL_SLASH_COMMANDS: SlashCommandDefinition[] = [
   {
@@ -87,7 +87,7 @@ export const PERSONAL_SLASH_COMMANDS: SlashCommandDefinition[] = [
     title: '演示文稿与交互报告',
     description: '生成高品质商业汇报 PPT、幻灯片或自包含交互式 HTML 演示报告',
     skillId: 'guizang-ppt',
-    badge: '沙箱生产力',
+    badge: '生产力',
     placeholderHint: '输入主题或大纲，如 /ppt 2026年Q3业务增长复盘',
     scope: 'personal',
   },
@@ -97,7 +97,7 @@ export const PERSONAL_SLASH_COMMANDS: SlashCommandDefinition[] = [
     title: '深度多源技术调研',
     description: '全网多源（Web + GitHub + HackerNews）时效动态采集与真实口碑深度调研',
     skillId: 'research',
-    badge: '沙箱调研',
+    badge: '深度调研',
     placeholderHint: '输入调研主题，如 /research Qwen 3.8 27B 最近30天动态与社区评价',
     scope: 'personal',
   },
@@ -107,7 +107,7 @@ export const PERSONAL_SLASH_COMMANDS: SlashCommandDefinition[] = [
     title: 'Excel 电子表格与数据计算',
     description: '创建专业 xlsx 表格、整理数据、编写动态公式并执行无头重算校验',
     skillId: 'xlsx',
-    badge: '沙箱生产力',
+    badge: '生产力',
     placeholderHint: '输入表格需求，如 /excel 制作销售提成核算表并加入计算公式',
     scope: 'personal',
   },
@@ -117,7 +117,7 @@ export const PERSONAL_SLASH_COMMANDS: SlashCommandDefinition[] = [
     title: 'Word 文档起草与合同审阅',
     description: '起草 docx 专业文档、审查合同合规风险、注入原生批注与修订留痕',
     skillId: 'docx',
-    badge: '沙箱生产力',
+    badge: '生产力',
     placeholderHint: '输入文档或合同需求，如 /word 审查保密协议并标注风险条款',
     scope: 'personal',
   },
@@ -127,7 +127,7 @@ export const PERSONAL_SLASH_COMMANDS: SlashCommandDefinition[] = [
     title: 'PDF 报表与交互式表单',
     description: '生成排版精美 PDF 报表、填充并导出交互式 AcroForm 表单',
     skillId: 'pdf',
-    badge: '沙箱生产力',
+    badge: '生产力',
     placeholderHint: '输入 PDF 需求，如 /pdf 导出员工录用审批表单',
     scope: 'personal',
   },
@@ -137,7 +137,7 @@ export const PERSONAL_SLASH_COMMANDS: SlashCommandDefinition[] = [
     title: 'AI 图像创作与海报设计',
     description: '对话式文生图、以图生图、设计海报插画与 Logo 资产',
     skillId: 'image-gen',
-    badge: '沙箱生图',
+    badge: '创意生图',
     placeholderHint: '输入生图画面描述，如 /image 科技感赛博朋克风插画',
     scope: 'personal',
   },
@@ -147,17 +147,17 @@ export const PERSONAL_SLASH_COMMANDS: SlashCommandDefinition[] = [
     title: '前端页面与交互原型',
     description: '设计单页面 Web 原型、数据大屏看板或交互小游戏（自包含单文件）',
     skillId: 'frontend-design',
-    badge: '沙箱原型',
+    badge: '原型设计',
     placeholderHint: '输入原型构想，如 /design 制作一个暗黑风数据监控大屏',
     scope: 'personal',
   },
   {
     command: '/search',
     aliases: ['/web'],
-    title: '沙箱联网检索',
-    description: '调用沙箱实时互联网搜索引擎获取最新公开资讯',
+    title: '联网搜索',
+    description: '实时检索公开互联网获取最新资讯',
     skillId: 'sandbox.search',
-    badge: '沙箱检索',
+    badge: '网络搜索',
     placeholderHint: '输入检索内容，如 /search 最新 AI 大模型发布动向',
     scope: 'personal',
   },
@@ -165,18 +165,18 @@ export const PERSONAL_SLASH_COMMANDS: SlashCommandDefinition[] = [
     command: '/clear',
     aliases: ['/new', '/reset', '/新会话'],
     title: '重置并开启新会话',
-    description: '清空当前沙箱上下文并开启全新独立对话',
+    description: '清空当前上下文并开启全新独立对话',
     badge: '会话管理',
-    placeholderHint: '输入 /clear 开启全新沙箱会话',
+    placeholderHint: '输入 /clear 开启全新会话',
     scope: 'personal',
   },
   {
     command: '/help',
     aliases: ['/?', '/帮助'],
-    title: '沙箱指令帮助',
-    description: '查看个人模式下所有可用的沙箱技能与工具说明',
+    title: '快捷指令帮助',
+    description: '查看个人模式下所有可用的快捷指令与功能说明',
     badge: '指令帮助',
-    placeholderHint: '输入 /help 查看沙箱可用指令',
+    placeholderHint: '输入 /help 查看所有可用指令',
     scope: 'personal',
   },
 ];
@@ -209,7 +209,7 @@ export function isWorkSlashCommand(text: string): boolean {
 }
 
 /**
- * 检测消息是否为个人沙箱模式专属的 Slash 指令
+ * 检测消息是否为个人模式专属的 Slash 指令
  */
 export function isPersonalSlashCommand(text: string): boolean {
   return PERSONAL_SLASH_COMMAND_REGEX.test(text || '');
@@ -227,7 +227,7 @@ export function matchSlashCommands(
   const isAll = !clean || clean === '/' || clean === '、';
   const query = clean.startsWith('/') || clean.startsWith('、') ? clean.slice(1) : clean;
 
-  // 两个模式完全解耦：个人模式走个人沙箱工具链，工作模式走工作协同工具链
+  // 两个模式完全解耦：个人模式走个人专属工具链，工作模式走工作协同工具链
   const commandSource = mode === 'chat' ? PERSONAL_SLASH_COMMANDS : WORK_SLASH_COMMANDS;
 
   return commandSource.filter((cmd) => {

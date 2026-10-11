@@ -480,13 +480,13 @@ export function UserChatComposer(props: UserChatComposerProps) {
     const trimmed = draft.trim();
     if (chatMode === 'chat' && isWorkSlashCommand(trimmed)) {
       void antdMessage.warning(
-        '提示：/doc、/email、/extract 为工作模式专属企业技能。个人模式请使用 /ppt、/research、/excel、/word 等独立沙箱指令，如需企业知识协同请在左下方切换至「工作模式」。'
+        '提示：/doc、/email、/extract 为工作模式专属技能。个人模式请使用 /ppt、/research、/excel、/word 等快捷指令，如需企业知识协同请在左下方切换至「工作模式」。'
       );
       return;
     }
     if (chatMode === 'task' && isPersonalSlashCommand(trimmed)) {
       void antdMessage.warning(
-        '提示：/ppt、/research 等为个人模式沙箱专属工具链。如需体验深度技术调研或PPT生成，请在左下方切换至「个人模式」。'
+        '提示：/ppt、/research 等为个人模式专属指令。如需体验深度技术调研或PPT生成，请在左下方切换至「个人模式」。'
       );
       return;
     }
@@ -771,7 +771,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
                     : enableWebSearch
                       ? '已开启全网实时搜索，输入问题直接检索...（输入 ! 唤起工作流，/ 唤起技能，# 关联文件，@ 协同成员）'
                       : placeholder || (chatMode === 'chat'
-                        ? '输入消息，Enter 发送（输入 / 唤起 /ppt, /research 等沙箱生产力工具）'
+                        ? '输入消息，Enter 发送（输入 / 唤起 /ppt, /research 等快捷指令）'
                         : '输入消息，Enter 发送（输入 / 唤起工作模式企业技能，! 唤起工作流）')
             }
             className={styles['user-chat-input-textarea']}

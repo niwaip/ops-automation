@@ -27,15 +27,61 @@ export function extractArtifacts(
   output: Record<string, any>
 ): Array<Record<string, any>> | undefined {
   const browserRunOutput = output.browserRunOutput;
+  const resultRecord =
+    output.result && typeof output.result === 'object' && !Array.isArray(output.result)
+      ? (output.result as Record<string, unknown>)
+      : undefined;
+  const businessDataRecord =
+    resultRecord?.businessData &&
+    typeof resultRecord.businessData === 'object' &&
+    !Array.isArray(resultRecord.businessData)
+      ? (resultRecord.businessData as Record<string, unknown>)
+      : output.businessData &&
+          typeof output.businessData === 'object' &&
+          !Array.isArray(output.businessData)
+        ? (output.businessData as Record<string, unknown>)
+        : undefined;
+
   const candidates = [
     runtimeArtifacts,
     output.artifacts,
+    resultRecord?.artifacts,
+    businessDataRecord?.artifacts,
     browserRunOutput && typeof browserRunOutput === 'object'
       ? (browserRunOutput as Record<string, unknown>).artifacts
       : undefined,
     output.artifact ? [output.artifact] : undefined,
+    resultRecord?.artifact ? [resultRecord.artifact] : undefined,
   ];
-  const artifacts = candidates.find(Array.isArray);
+  let artifacts = candidates.find(Array.isArray);
+
+  if (!artifacts) {
+    const directUrl =
+      (typeof output.downloadUrl === 'string' && output.downloadUrl) ||
+      (typeof output.url === 'string' && output.url) ||
+      (typeof resultRecord?.downloadUrl === 'string' && resultRecord.downloadUrl) ||
+      (typeof resultRecord?.url === 'string' && resultRecord.url) ||
+      (typeof businessDataRecord?.downloadUrl === 'string' && businessDataRecord.downloadUrl) ||
+      (typeof businessDataRecord?.url === 'string' && businessDataRecord.url);
+
+    if (directUrl) {
+      artifacts = [
+        {
+          type: (output.type || resultRecord?.type || 'file') as string,
+          url: directUrl,
+          name:
+            (output.filename ||
+              output.name ||
+              resultRecord?.filename ||
+              resultRecord?.name ||
+              'output_artifact') as string,
+          mimeType: (output.mimeType || resultRecord?.mimeType) as string,
+          sizeBytes: (output.sizeBytes || resultRecord?.sizeBytes) as number,
+        },
+      ];
+    }
+  }
+
   return Array.isArray(artifacts)
     ? artifacts.filter(
         (artifact): artifact is Record<string, any> =>

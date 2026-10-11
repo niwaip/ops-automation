@@ -381,4 +381,49 @@ describe('CapabilityRuntimeAdapter', () => {
     expect(result.errorMessage).toBe('request entity too large');
     expect(result.retryable).toBe(false);
   });
+
+  it('extracts and normalizes document artifact when runtime returns direct downloadUrl', async () => {
+    mockedAxios.post.mockResolvedValue({
+      data: {
+        success: true,
+        releaseId: 'release-doc-1',
+        capabilityId: 'carbone-skill-1',
+        publishedSkillId: 'carbone-skill-1',
+        runtime: 'carbone_engine',
+        logs: [],
+        output: {
+          success: true,
+          downloadUrl: 'http://carbone:3009/download/sample.docx',
+          filename: 'NDA_Agreement.docx',
+          mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          sizeBytes: 15420,
+        },
+      },
+    } as any);
+
+    const adapter = new CapabilityRuntimeAdapter(new OutputNormalizerService());
+    const result = await adapter.invokeStep({
+      requestId: 'req-doc-1',
+      executionId: 'exec-doc-1',
+      stepId: 'step-doc-1',
+      runtimeType: 'custom',
+      publishedSkillId: 'carbone-skill-1',
+      capabilityType: 'skill.runtime',
+      action: 'execute',
+      input: {},
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.artifacts).toBeDefined();
+    expect(result.artifacts).toHaveLength(1);
+    expect(result.artifacts![0]).toEqual(
+      expect.objectContaining({
+        type: 'file',
+        url: 'http://carbone:3009/download/sample.docx',
+        name: 'NDA_Agreement.docx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        sizeBytes: 15420,
+      })
+    );
+  });
 });

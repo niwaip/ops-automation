@@ -4,9 +4,81 @@ Extracted to keep agent_loop focused on multi-turn ReAct orchestration and asser
 """
 
 import re
+import json
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 from .llm import detect_unexecuted_script_leak
+
+# 常见工具核心参数名集合（用于检测模型是否在文本输出中裸露吐出工具调用参数）
+COMMON_TOOL_ARG_KEYS = {
+    "query", "freshness", "url", "city", "command", "cmd",
+    "file_path", "filename", "filepath", "search_query", "keywords",
+    "keyword", "page_url", "site_url", "time_range", "time_window"
+}
+
+
+def detect_unexecuted_tool_argument_leak(text: str) -> bool:
+    """
+    Detects if the model mistakenly dumped bare tool-call parameters or raw JSON argument fragments
+    (e.g. '"query": "...", "freshness": "month"' or '{"query": "..."}') directly into the text reply,
+    without invoking the tool via native Function Calling protocol.
+    """
+    if not text:
+        return False
+
+    raw = text.strip()
+    if not raw:
+        return False
+
+    # 1. 剥离外层 markdown 代码块
+    m_block = re.match(r"^```(?:json)?\s*([\s\S]*?)\s*```$", raw, re.I)
+    cleaned = m_block.group(1).strip() if m_block else raw
+
+    # 2. 如果文本很长且包含 Markdown 标题或多个自然语言段落，通常不是裸参数碎片
+    if len(cleaned) > 500 and ("\n#" in cleaned or ("\n\n" in cleaned and not cleaned.startswith("{"))):
+        return False
+
+    # 3. 检查模式 A：以常见参数 key 开头的键值对（例如: "query": "xxx", "freshness": "month"）
+    key_prefix_match = re.match(
+        r'^\s*["\']?([a-zA-Z_][a-zA-Z0-9_-]*)["\']?\s*:\s*',
+        cleaned
+    )
+    if key_prefix_match:
+        first_key = key_prefix_match.group(1).lower()
+        if first_key in COMMON_TOOL_ARG_KEYS:
+            cand = cleaned
+            if not cand.startswith("{"):
+                cand = "{" + cand
+            if not cand.endswith("}"):
+                cand = cand + "}"
+            try:
+                parsed = json.loads(cand)
+                if isinstance(parsed, dict) and any(k.lower() in COMMON_TOOL_ARG_KEYS for k in parsed):
+                    return True
+            except Exception:
+                pairs = re.findall(
+                    r'["\']?([a-zA-Z_][a-zA-Z0-9_-]*)["\']?\s*:\s*(?:"[^"]*"|\'[^\']*\'|[0-9]+|true|false|null)',
+                    cleaned,
+                    re.I
+                )
+                if pairs and all(k.lower() in COMMON_TOOL_ARG_KEYS for k in pairs):
+                    return True
+
+    # 4. 检查模式 B：整体为 JSON 对象，但仅包含工具参数键，无工具包装和自然语言解答
+    if cleaned.startswith("{") and cleaned.endswith("}"):
+        try:
+            parsed = json.loads(cleaned)
+            if isinstance(parsed, dict):
+                meta_keys = {"tool", "tool_name", "action", "call", "function", "name"}
+                if not any(k.lower() in meta_keys for k in parsed):
+                    dict_keys = {str(k).lower() for k in parsed.keys()}
+                    if dict_keys and dict_keys.issubset(COMMON_TOOL_ARG_KEYS.union({"limit", "timeout", "depth", "days"})):
+                        if any(k in dict_keys for k in ("query", "url", "city", "command", "cmd", "file_path", "filename")):
+                            return True
+        except Exception:
+            pass
+
+    return False
 
 
 # 常见模型过渡性前导垫话特征词

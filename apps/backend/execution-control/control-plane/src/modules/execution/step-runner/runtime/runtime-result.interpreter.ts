@@ -6,6 +6,7 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { EXECUTION_EVENT_TYPE } from '../../contracts/execution-event-type';
 import { ExecutionStepService } from '../steps/execution-step.service';
 import { RuntimeStepInvokeResult } from '../../adapters/runtime-adapter.interface';
+import { extractArtifacts } from '../../plan-runtime/deterministic-plan-scheduler.helpers';
 
 interface LLMUsage {
   prompt_tokens: number;
@@ -131,6 +132,7 @@ export class RuntimeResultInterpreter {
     }
 
     if (result.success) {
+      await this.saveSkillArtifacts(context, result, result.output || null);
       await context.advanceExecutionFlow();
       return;
     }
@@ -241,6 +243,7 @@ export class RuntimeResultInterpreter {
     }
 
     if (result.success) {
+      await this.saveSkillArtifacts(context, result, output);
       await this.persistSkillRuntimeSuccess(context.executionId, output, rawResult.usage);
       await context.advanceExecutionFlow();
       return;
@@ -322,5 +325,91 @@ export class RuntimeResultInterpreter {
 
   private extractRequiredInputs(output?: Record<string, unknown>): unknown[] {
     return Array.isArray(output?.requiredInputs) ? (output.requiredInputs as unknown[]) : [];
+  }
+
+  private async saveSkillArtifacts(
+    context: RuntimeResultInterpreterContext,
+    result: RuntimeStepInvokeResult,
+    output: Record<string, unknown> | null
+  ): Promise<void> {
+    if (!this.prisma?.executionArtifact) {
+      return;
+    }
+
+    const outputRecord = (output && typeof output === 'object' ? output : {}) as Record<string, any>;
+    const rawArtifacts = extractArtifacts(result.artifacts, outputRecord);
+    if (!Array.isArray(rawArtifacts) || rawArtifacts.length === 0) {
+      return;
+    }
+
+    let planNodeId: string = context.stepId;
+    if (this.prisma.executionStep?.findUnique) {
+      try {
+        const step = await this.prisma.executionStep.findUnique({
+          where: { id: context.stepId },
+          select: { planNodeId: true },
+        });
+        if (step?.planNodeId) {
+          planNodeId = step.planNodeId;
+        }
+      } catch {
+        // Defensive: ignore when step find fails in lightweight unit mocks
+      }
+    }
+
+    for (const art of rawArtifacts) {
+      if (!art || typeof art !== 'object') continue;
+      const artifactUrl = art.url || art.downloadUrl || art.storageUri || art.path;
+      if (!artifactUrl && !art.id) continue;
+
+      const externalArtifactId = art.id || art.externalArtifactId || null;
+      if (externalArtifactId) {
+        const existing = await this.prisma.executionArtifact.findFirst({
+          where: {
+            executionId: context.executionId,
+            producerStepId: context.stepId,
+            externalArtifactId,
+          },
+          select: { id: true },
+        });
+        if (existing) continue;
+      } else if (artifactUrl) {
+        const existing = await this.prisma.executionArtifact.findFirst({
+          where: {
+            executionId: context.executionId,
+            producerStepId: context.stepId,
+            url: artifactUrl,
+          },
+          select: { id: true },
+        });
+        if (existing) continue;
+      }
+
+      const createdArtifact = await this.prisma.executionArtifact.create({
+        data: {
+          executionId: context.executionId,
+          producerStepId: context.stepId,
+          producerNodeId: planNodeId,
+          artifactType: art.type || art.artifactType || 'file',
+          externalArtifactId,
+          name: art.name || art.filename || 'output_artifact',
+          url: artifactUrl || '',
+          mimeType: art.mimeType || 'application/octet-stream',
+          sizeBytes: art.sizeBytes ? BigInt(art.sizeBytes) : null,
+          sha256: art.sha256 || art.metadata?.sha256 || art.metadata_json?.sha256 || null,
+          metadataJson: art.metadata || null,
+        },
+      });
+
+      await context.emitEvent(
+        'execution.artifact.created' as any,
+        {
+          artifactId: createdArtifact.id,
+          name: createdArtifact.name,
+          url: createdArtifact.url,
+          mimeType: createdArtifact.mimeType,
+        }
+      );
+    }
   }
 }

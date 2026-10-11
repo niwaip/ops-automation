@@ -55,6 +55,7 @@ from .agent_loop_helpers import (
     is_explicit_code_request,
     auto_heal_unexecuted_file_writes,
     detect_passive_deflection,
+    detect_unexecuted_tool_argument_leak,
     sanitize_preview,
     _extract_last_user_prompt,
     _build_fallback_report,
@@ -437,7 +438,19 @@ def _check_no_tool_assertion_guard(
         msg = "沙箱配备了完整的联网检索与系统终端工具，请直接调用相关工具探测解决，严禁推诿索取信息。"
         return "continue", msg, bumped_max_rounds
 
-    # 6. 未执行脚本泄漏拦截（若已提供完整合法 HTML 交付物则放行至导出器落盘与挂载）
+    # 6. 未执行工具参数泄漏拦截 (Tool Argument Leakage Guard)
+    if not is_guide_intent and detect_unexecuted_tool_argument_leak(reply_text):
+        print("⚡ [Harness Tool Argument Leak Guard] 检测到模型输出了未执行的工具调用参数片段，正在拦截并引导重新调用...", flush=True)
+        if telemetry:
+            telemetry.record_guard("tool_argument_leak", "reject", "leaked_parameters")
+        msg = (
+            "【系统工具调用规范提示】：检测到你在回复中直接输出了工具参数片段（如 query / freshness 等键值对），"
+            "但未通过标准 Function Calling 协议触发工具调用。口头输出参数无法执行检索或操作。"
+            "若需查询信息或执行任务，请使用规范的 Function Calling 协议调用相应工具；若无需调用工具，请直接用完整自然语言向用户作答。"
+        )
+        return "continue", msg, bumped_max_rounds
+
+    # 7. 未执行脚本泄漏拦截（若已提供完整合法 HTML 交付物则放行至导出器落盘与挂载）
     if not is_guide_intent and not is_explicit_code_request(last_user_prompt) and not has_valid_html and detect_unexecuted_script_leak(reply_text):
         print("⚡ [Harness Code Output Guard] 检测到模型直接输出了未执行的代码脚本或文件写入命令，正在引导执行工具落盘...", flush=True)
         if has_bash:
@@ -687,8 +700,8 @@ def _finalize_agent_text(
             sys.stdout.write("<<<DSH_DELTA_RESET>>>\n")
             sys.stdout.write(f"<<<DSH_DELTA:{json.dumps(final_text, ensure_ascii=False)}>>>\n")
             sys.stdout.flush()
-        elif not has_valid_html_final and detect_unexecuted_script_leak(final_text):
-            print("⚠️ [Harness Script Leak Guard] 检测到模型输出了未执行的脚本回显且未能自愈，触发安全兜底...", flush=True)
+        elif not has_valid_html_final and (detect_unexecuted_script_leak(final_text) or detect_unexecuted_tool_argument_leak(final_text)):
+            print("⚠️ [Harness Script Leak Guard] 检测到模型输出了未执行的脚本或参数回显且未能自愈，触发安全兜底...", flush=True)
             final_text = _build_fallback_report(messages, executed_calls_history)
 
     feedback = sampling_feedback(final_text,last_user_prompt,messages,telemetry,execution_evidence,is_guide_intent)

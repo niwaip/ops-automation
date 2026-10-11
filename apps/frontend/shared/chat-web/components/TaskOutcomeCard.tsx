@@ -76,6 +76,7 @@ interface TaskOutcomeCardProps {
   onRejectExecution: (effectId?: string) => void;
   onResumeExecution?: () => void;
   artifacts?: TaskOutcomeArtifactItem[];
+  showTechnicalMeta?: boolean;
 }
 
 const isHtmlPreviewBlock = (className?: string, codeText?: string) => {
@@ -282,6 +283,7 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
   onApproveExecution,
   onRejectExecution,
   artifacts,
+  showTechnicalMeta = false,
 }) => {
   const [internalEffects, setInternalEffects] = React.useState<TaskOutcomeCardProps['pendingOutboundEffects'] | null>(null);
   const [isLoadingEffects, setIsLoadingEffects] = React.useState<boolean>(false);
@@ -372,6 +374,38 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val.trim())
     );
   }, []);
+
+  const isTechnicalSkillName = React.useCallback(
+    (val?: string) => {
+      if (!val) return true;
+      const trimmed = val.trim();
+      if (isUuid(trimmed)) return true;
+      const lower = trimmed.toLowerCase();
+      if (
+        ['result', 'results', 'generic', 'tool_execution', 'flow_execute', 'skill-match'].includes(
+          lower
+        )
+      ) {
+        return true;
+      }
+      // 纯英文代码标识符 (带有 Workflow, Activity, Service, Handler, Step, Execution, Runner, Template, Runtime)
+      if (/^[A-Za-z0-9_-]+$/.test(trimmed)) {
+        if (
+          /(?:workflow|activity|service|handler|step|execution|runner|template|runtime)$/i.test(
+            trimmed
+          )
+        ) {
+          return true;
+        }
+        // PascalCase 类名格式无空格
+        if (/^[A-Z][a-zA-Z0-9]+[A-Z][a-zA-Z0-9]+$/.test(trimmed) && !trimmed.includes(' ')) {
+          return true;
+        }
+      }
+      return false;
+    },
+    [isUuid]
+  );
 
   const sanitizeInlineDownloadLines = React.useCallback((text?: string): string => {
     if (!text) return '';
@@ -471,13 +505,18 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
     </div>
   );
 
-  const renderMeta = () => (
-    <div className="chat-outcome-meta">
-      {executionStatus ? <span>状态：{executionStatus}</span> : null}
-      {executionId ? <span>执行单 ID：{executionId}</span> : null}
-      {executionStepCount !== undefined ? <span>执行步骤数：{executionStepCount}</span> : null}
-    </div>
-  );
+  const renderMeta = () => {
+    const shouldShowTechnicalId = showTechnicalMeta === true;
+    return (
+      <div className="chat-outcome-meta">
+        {executionStatus ? <span>状态：{executionStatus}</span> : null}
+        {shouldShowTechnicalId && executionId ? <span>执行单 ID：{executionId}</span> : null}
+        {shouldShowTechnicalId && executionStepCount !== undefined ? (
+          <span>执行步骤数：{executionStepCount}</span>
+        ) : null}
+      </div>
+    );
+  };
 
   if (shouldShowTakeoverCard) {
     const detailError = summaryToDisplay || errorMessage || failureReason || '任务正在等待人工处理';
@@ -609,6 +648,7 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
         {renderMeta()}
         {normalizedSkillName &&
         !isUuid(normalizedSkillName) &&
+        (showTechnicalMeta ? true : !isTechnicalSkillName(normalizedSkillName)) &&
         !['result', 'results', 'generic', 'tool_execution', 'flow_execute', 'skill-match'].includes(
           normalizedSkillName.toLowerCase()
         ) ? (

@@ -843,6 +843,7 @@ export class UserSandboxDispatcherService {
         data: {
           mode: 'chat',
           thoughtLogsSnapshot,
+          usage: executionMetrics?.tokens,
           sandbox: {
             containerName: harnessResult.containerName,
             harness: 'deepseek-harness',
@@ -864,6 +865,7 @@ export class UserSandboxDispatcherService {
         rawAssistantContent: rawWithThoughts,
         modelId: effectiveModel || body.modelId || 'default',
         thinkingEnabled: Boolean(body.config?.thinking || isThinkingRequested || thoughtAccumulator),
+        usage: executionMetrics?.tokens,
         ownerUserId: effectiveUserId,
         clientMessageId: body.clientMessageId,
         clientAssistantMessageId: body.clientAssistantMessageId,

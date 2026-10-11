@@ -318,20 +318,20 @@ export const StreamingActivityCard: React.FC<StreamingActivityCardProps> = ({
   return (
     <div
       style={{
-        margin: '8px 0',
-        padding: activeProgress ? '12px 16px' : '10px 14px',
-        borderRadius: '10px',
-        background: 'linear-gradient(135deg, rgba(22, 119, 255, 0.04) 0%, rgba(22, 119, 255, 0.08) 100%)',
-        border: '1px solid rgba(22, 119, 255, 0.22)',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+        margin: '6px 0',
+        padding: '8px 12px',
+        borderRadius: '8px',
+        background: 'linear-gradient(135deg, rgba(22, 119, 255, 0.03) 0%, rgba(22, 119, 255, 0.07) 100%)',
+        border: '1px solid rgba(22, 119, 255, 0.16)',
+        boxShadow: '0 1px 4px rgba(0, 0, 0, 0.03)',
         display: 'flex',
         flexDirection: 'column',
-        gap: activeProgress ? '8px' : '6px',
+        gap: activeProgress ? '6px' : '4px',
         position: 'relative',
         overflow: 'hidden',
       }}
     >
-      {/* 顶部行：真实标题、加载状态与真实字符变化指示 */}
+      {/* 顶部行：标题、旋转状态与状态指示 */}
       <div
         style={{
           display: 'flex',
@@ -342,8 +342,8 @@ export const StreamingActivityCard: React.FC<StreamingActivityCardProps> = ({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <LoadingOutlined spin style={{ color: '#1677ff', fontSize: '14px' }} />
-          <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary, #1e293b)' }}>
+          <LoadingOutlined spin style={{ color: '#1677ff', fontSize: '13px' }} />
+          <span style={{ fontWeight: 600, fontSize: '12.5px', color: 'var(--text-primary, #1e293b)' }}>
             {title}
           </span>
         </div>
@@ -352,11 +352,11 @@ export const StreamingActivityCard: React.FC<StreamingActivityCardProps> = ({
           style={{
             fontSize: '11px',
             fontFamily: 'SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace',
-            padding: '2px 8px',
-            borderRadius: '6px',
-            background: 'rgba(22, 119, 255, 0.12)',
+            padding: '1.5px 7px',
+            borderRadius: '4px',
+            background: 'rgba(22, 119, 255, 0.09)',
             color: '#1677ff',
-            fontWeight: 600,
+            fontWeight: 500,
             letterSpacing: '0.2px',
             display: 'inline-flex',
             alignItems: 'center',
@@ -367,20 +367,17 @@ export const StreamingActivityCard: React.FC<StreamingActivityCardProps> = ({
         </span>
       </div>
 
-      {/* 动态步骤反馈：展示脱敏后的真实活动或平滑流转的阶段 */}
+      {/* 动态步骤反馈：自然流畅的人性化状态行 */}
       {activeProgress ? (
         <div
           style={{
-            fontSize: '11px',
-            color: '#1677ff',
-            background: 'rgba(22, 119, 255, 0.06)',
-            padding: '3px 8px',
-            borderRadius: '4px',
+            fontSize: '11.5px',
+            color: 'var(--text-secondary, #475569)',
             fontFamily: 'system-ui, -apple-system, sans-serif',
             display: 'inline-flex',
             alignItems: 'center',
             gap: '4px',
-            width: 'fit-content',
+            paddingLeft: '2px',
             maxWidth: '100%',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -391,13 +388,13 @@ export const StreamingActivityCard: React.FC<StreamingActivityCardProps> = ({
         </div>
       ) : null}
 
-      {/* 底部微脉冲光流条 (连续动态光流反馈链路活跃状态) */}
+      {/* 底部微脉冲流光条 (细致灵动的 1.5px 光效) */}
       <div
         style={{
-          height: '2px',
+          height: '1.5px',
           width: '100%',
-          background: 'rgba(22, 119, 255, 0.15)',
-          borderRadius: '2px',
+          background: 'rgba(22, 119, 255, 0.12)',
+          borderRadius: '1px',
           overflow: 'hidden',
           position: 'relative',
           marginTop: '2px',
