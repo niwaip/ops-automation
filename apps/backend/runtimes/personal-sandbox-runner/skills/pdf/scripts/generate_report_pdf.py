@@ -13,6 +13,7 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 from fpdf import FPDF
+from fpdf.fonts import FontFace
 
 
 THEMES = {
@@ -141,6 +142,99 @@ def clean_markdown_inline(text: str) -> str:
     return text.strip()
 
 
+# Non-starter punctuation in Chinese typography (避头规则)
+NON_STARTERS = set("，。！？；：、）】》”’」』.,!?;:)]}")
+# Non-ender punctuation in Chinese typography (避尾规则)
+NON_ENDERS = set("（【《“‘「『([{")
+TOKEN_REGEX = re.compile(r'([a-zA-Z0-9_#+./-]+|\s+|[^\s])')
+
+
+def wrap_mixed_text(pdf, text: str, max_w: float) -> list[str]:
+    """
+    Wraps mixed CJK and Latin text to fit within max_w mm.
+    Preserves whole Latin words while allowing CJK characters to break naturally.
+    Enforces Kinsoku Shori (避头尾规则) so punctuation doesn't start lines awkwardly.
+    """
+    if not text:
+        return [""]
+
+    paragraphs = text.split("\n")
+    all_lines = []
+
+    for para in paragraphs:
+        if not para:
+            all_lines.append("")
+            continue
+
+        tokens = TOKEN_REGEX.findall(para)
+        current_tokens = []
+        current_w = 0.0
+
+        for token in tokens:
+            if not current_tokens and token.isspace():
+                continue
+
+            token_w = pdf.get_string_width(token)
+
+            # Single token exceeds max_w (e.g. extremely long word or URL): break character by character
+            if token_w > max_w:
+                for ch in token:
+                    ch_w = pdf.get_string_width(ch)
+                    if current_w + ch_w > max_w and current_tokens:
+                        all_lines.append("".join(current_tokens).rstrip())
+                        current_tokens = [ch]
+                        current_w = ch_w
+                    else:
+                        current_tokens.append(ch)
+                        current_w += ch_w
+                continue
+
+            if current_w + token_w <= max_w:
+                current_tokens.append(token)
+                current_w += token_w
+            else:
+                # Wrap needed.
+                # 1. Non-starter rule: if token is punctuation that cannot start a line,
+                if token in NON_STARTERS and current_tokens:
+                    carried = [token]
+                    while current_tokens and current_tokens[-1].isspace():
+                        current_tokens.pop()
+                    while current_tokens and current_tokens[-1] in NON_STARTERS:
+                        carried.insert(0, current_tokens.pop())
+                    while current_tokens and current_tokens[-1].isspace():
+                        current_tokens.pop()
+                    if current_tokens:
+                        carried.insert(0, current_tokens.pop())
+                        if current_tokens:
+                            all_lines.append("".join(current_tokens).rstrip())
+                        current_tokens = carried
+                        current_w = sum(pdf.get_string_width(t) for t in carried)
+                        continue
+
+                # 2. Non-ender rule: if current_tokens ends with an opening bracket,
+                # move that bracket to start the new line instead.
+                carry_opener = None
+                while current_tokens and current_tokens[-1].isspace():
+                    current_tokens.pop()
+                if current_tokens and current_tokens[-1] in NON_ENDERS and len(current_tokens) > 1:
+                    carry_opener = current_tokens.pop()
+
+                if current_tokens:
+                    all_lines.append("".join(current_tokens).rstrip())
+
+                if token.isspace():
+                    current_tokens = [carry_opener] if carry_opener else []
+                    current_w = pdf.get_string_width(carry_opener) if carry_opener else 0.0
+                else:
+                    current_tokens = [carry_opener, token] if carry_opener else [token]
+                    current_w = (pdf.get_string_width(carry_opener) if carry_opener else 0.0) + token_w
+
+        if current_tokens:
+            all_lines.append("".join(current_tokens).rstrip())
+
+    return all_lines
+
+
 def render_report(
     content_lines: list,
     output_path: str,
@@ -183,6 +277,7 @@ def render_report(
 
     pdf.add_font('Noto', '', reg_font)
     pdf.add_font('Noto', 'B', bold_font)
+    pdf.set_font('Noto', '', 10)
 
     # 1. 必须先调用 add_page() 打开页面
     pdf.add_page()
@@ -250,58 +345,121 @@ def render_report(
                 # 中文字符计 1.5 权值
                 col_lens[ci] = max(col_lens[ci], sum(1.5 if ord(ch) > 127 else 1.0 for ch in c))
         tot_len = sum(col_lens) or 1
-        col_widths = [max(18.0, (l / tot_len) * effective_w) for l in col_lens]
+        col_widths = [max(22.0, (l / tot_len) * effective_w) for l in col_lens]
         # 调整至恰好填满页面宽度
         scale = effective_w / sum(col_widths)
         col_widths = [w * scale for w in col_widths]
 
         # 检查剩余空间是否足够容纳表头，不足则翻页
-        if pdf.get_y() > pdf.h - 35:
+        if pdf.get_y() > pdf.h - pdf.b_margin - 30:
             pdf.add_page()
 
-        # 表头
+        # 表头与数据行样式
         br, bg, bb = colors["border"]
         pdf.set_draw_color(br, bg, bb)
         pdf.set_line_width(0.2)
 
-        header_row = data_rows[0]
-        pdf.set_font('Noto', 'B', 9.5)
-        plr, plg, plb = colors["primary_light"]
-        pdf.set_fill_color(plr, plg, plb)
         pdr, pdg, pdb = colors["primary_dark"]
-        pdf.set_text_color(pdr, pdg, pdb)
-
-        for ci, val in enumerate(header_row):
-            pdf.cell(col_widths[ci], 8, text=val, border=1, fill=True, align="C")
-        pdf.ln()
-
-        # 表格数据行
-        pdf.set_font('Noto', '', 9.0)
+        plr, plg, plb = colors["primary_light"]
         tmr, tmg, tmb = colors["text_main"]
-        pdf.set_text_color(tmr, tmg, tmb)
         zr, zg, zb = colors["zebra"]
 
-        for ri, r in enumerate(data_rows[1:]):
-            if pdf.get_y() > pdf.h - 25:
-                pdf.add_page()
-            # 斑马纹交替底色
-            if ri % 2 == 1:
-                pdf.set_fill_color(zr, zg, zb)
-            else:
-                pdf.set_fill_color(255, 255, 255)
-            for ci, val in enumerate(r):
-                align = "C" if ci == 0 or len(val) <= 6 else "L"
-                pdf.cell(col_widths[ci], 7.5, text=val, border=1, fill=True, align=align)
-            pdf.ln()
+        pdf.set_fill_color(255, 255, 255)
+        pdf.set_text_color(tmr, tmg, tmb)
+
+        header_font = FontFace(
+            family="Noto",
+            emphasis="B",
+            color=(pdr, pdg, pdb),
+            fill_color=(plr, plg, plb),
+            size_pt=9.5
+        )
+        odd_font = FontFace(
+            family="Noto",
+            color=(tmr, tmg, tmb),
+            fill_color=(zr, zg, zb),
+            size_pt=8.5
+        )
+        even_font = FontFace(
+            family="Noto",
+            color=(tmr, tmg, tmb),
+            fill_color=(255, 255, 255),
+            size_pt=8.5
+        )
+
+        with pdf.table(col_widths=tuple(col_widths), line_height=5.5, padding=2.0) as table:
+            # 表头
+            pdf.set_font('Noto', 'B', 9.5)
+            row = table.row(style=header_font)
+            for ci, val in enumerate(data_rows[0]):
+                w_val = "\n".join(wrap_mixed_text(pdf, val, col_widths[ci] - 4.5))
+                row.cell(w_val, style=header_font, align="C")
+
+            # 数据行
+            pdf.set_font('Noto', '', 8.5)
+            for ri, r in enumerate(data_rows[1:]):
+                st = odd_font if ri % 2 == 1 else even_font
+                row = table.row(style=st)
+                for ci, val in enumerate(r):
+                    w_val = "\n".join(wrap_mixed_text(pdf, val, col_widths[ci] - 4.5))
+                    row.cell(w_val, style=st, align="C" if ci == 0 or len(val) <= 6 else "L")
 
         pdf.ln(4)
         table_rows = []
         in_table = False
 
     i = 0
+    in_code_block = False
+    code_block_lines = []
+
     while i < len(cleaned_lines):
         line = cleaned_lines[i]
         line_s = line.strip()
+
+        # 代码块检测 ```
+        if line_s.startswith("```"):
+            if in_table:
+                flush_table()
+            if in_code_block:
+                # 渲染代码块
+                pdf.set_font('Noto', '', 8.5)
+                code_text = "\n".join(code_block_lines)
+                code_block_lines = []
+                in_code_block = False
+
+                code_lines = []
+                for cl in code_text.split("\n"):
+                    code_lines.extend(wrap_mixed_text(pdf, cl, effective_w - 6))
+                box_h = len(code_lines) * 5.0 + 4.0
+                if pdf.get_y() + box_h > pdf.h - pdf.b_margin and pdf.get_y() > pdf.h - pdf.b_margin - 20:
+                    pdf.add_page()
+
+                start_y = pdf.get_y()
+                zr, zg, zb = colors["zebra"]
+                br, bg, bb = colors["border"]
+                pdf.set_fill_color(zr, zg, zb)
+                pdf.set_draw_color(br, bg, bb)
+                pdf.set_line_width(0.3)
+                pdf.rect(pdf.l_margin, start_y, effective_w, box_h, style="DF")
+
+                pdf.set_y(start_y + 2.0)
+                pdf.set_text_color(51, 65, 85)
+                for cl in code_lines:
+                    if pdf.get_y() > pdf.h - pdf.b_margin - 5.0:
+                        pdf.add_page()
+                    pdf.set_x(pdf.l_margin + 3)
+                    pdf.cell(effective_w - 6, 5.0, text=cl, new_x="LMARGIN", new_y="NEXT", align="L")
+                pdf.ln(3)
+            else:
+                in_code_block = True
+                code_block_lines = []
+            i += 1
+            continue
+
+        if in_code_block:
+            code_block_lines.append(line.rstrip("\r\n"))
+            i += 1
+            continue
 
         # 表格行检测
         if line_s.startswith("|") and line_s.endswith("|"):
@@ -332,7 +490,7 @@ def render_report(
         # 二级标题 H2
         if line_s.startswith("## "):
             h2_text = clean_markdown_inline(line_s[3:])
-            if pdf.get_y() > pdf.h - 35:
+            if pdf.get_y() > pdf.h - pdf.b_margin - 30:
                 pdf.add_page()
             pdf.ln(4)
             cur_y = pdf.get_y()
@@ -352,7 +510,7 @@ def render_report(
         # 三级标题 H3
         if line_s.startswith("### "):
             h3_text = clean_markdown_inline(line_s[4:])
-            if pdf.get_y() > pdf.h - 30:
+            if pdf.get_y() > pdf.h - pdf.b_margin - 25:
                 pdf.add_page()
             pdf.ln(2)
             pdf.set_font('Noto', 'B', 11)
@@ -365,24 +523,28 @@ def render_report(
         # 引用块 Blockquote (以 > 开头)
         if line_s.startswith(">"):
             quote_text = clean_markdown_inline(re.sub(r'^>\s*', '', line_s))
-            if pdf.get_y() > pdf.h - 30:
-                pdf.add_page()
-            cur_y = pdf.get_y()
             pdf.set_font('Noto', '', 9.5)
-            # 计算行高并预留边框
             tmr, tmg, tmb = colors["text_main"]
             pdf.set_text_color(tmr, tmg, tmb)
             plr, plg, plb = colors["primary_light"]
+            lines = wrap_mixed_text(pdf, quote_text, effective_w - 8)
+            block_h = len(lines) * 6.0 + 2.0
+            if pdf.get_y() + block_h > pdf.h - pdf.b_margin and pdf.get_y() > pdf.h - pdf.b_margin - 15:
+                pdf.add_page()
+
+            start_y = pdf.get_y()
+            # 绘制淡色背景底块
             pdf.set_fill_color(plr, plg, plb)
-            # 绘制淡色背景
-            pdf.set_x(pdf.l_margin + 2)
-            pdf.set_fill_color(plr, plg, plb)
+            pdf.rect(pdf.l_margin + 2, start_y, effective_w - 2, block_h, style="F")
+            # 引用块左竖条
             pdf.set_draw_color(pr, pg, pb)
             pdf.set_line_width(1.0)
-            # 引用块左竖条
-            pdf.line(pdf.l_margin + 2, cur_y, pdf.l_margin + 2, cur_y + 8)
-            pdf.set_x(pdf.l_margin + 6)
-            pdf.multi_cell(effective_w - 8, 6.5, text=quote_text)
+            pdf.line(pdf.l_margin + 2, start_y, pdf.l_margin + 2, start_y + block_h)
+
+            pdf.set_y(start_y + 1.0)
+            for line_content in lines:
+                pdf.set_x(pdf.l_margin + 6)
+                pdf.cell(effective_w - 8, 6.0, text=line_content, new_x="LMARGIN", new_y="NEXT", align="L")
             pdf.ln(2)
             i += 1
             continue
@@ -393,11 +555,19 @@ def render_report(
             pdf.set_font('Noto', '', 10)
             tmr, tmg, tmb = colors["text_main"]
             pdf.set_text_color(tmr, tmg, tmb)
-            # 绘制小圆点/圆角方块
+            lines = wrap_mixed_text(pdf, bullet_text, effective_w - 7)
+            if pdf.get_y() + len(lines) * 6.5 > pdf.h - pdf.b_margin and pdf.get_y() > pdf.h - pdf.b_margin - 15:
+                pdf.add_page()
+
+            cur_y = pdf.get_y()
             pdf.set_fill_color(pr, pg, pb)
-            pdf.rect(pdf.l_margin + 2, pdf.get_y() + 2.2, 1.8, 1.8, style="F")
-            pdf.set_x(pdf.l_margin + 7)
-            pdf.multi_cell(effective_w - 7, 6.5, text=bullet_text)
+            pdf.rect(pdf.l_margin + 2, cur_y + 2.2, 1.8, 1.8, style="F")
+
+            for li, line_content in enumerate(lines):
+                if pdf.get_y() > pdf.h - pdf.b_margin - 6.5:
+                    pdf.add_page()
+                pdf.set_x(pdf.l_margin + 7)
+                pdf.cell(effective_w - 7, 6.5, text=line_content, new_x="LMARGIN", new_y="NEXT", align="L")
             pdf.ln(1.5)
             i += 1
             continue
@@ -407,13 +577,26 @@ def render_report(
         if m_num:
             num_str = m_num.group(1)
             num_text = clean_markdown_inline(line_s[m_num.end():])
-            pdf.set_font('Noto', 'B', 9.5)
-            pdf.set_text_color(pr, pg, pb)
-            pdf.cell(8, 6.5, text=f"{num_str}.", align="L")
             pdf.set_font('Noto', '', 10)
             tmr, tmg, tmb = colors["text_main"]
             pdf.set_text_color(tmr, tmg, tmb)
-            pdf.multi_cell(effective_w - 8, 6.5, text=num_text)
+            lines = wrap_mixed_text(pdf, num_text, effective_w - 8)
+            if pdf.get_y() + len(lines) * 6.5 > pdf.h - pdf.b_margin and pdf.get_y() > pdf.h - pdf.b_margin - 15:
+                pdf.add_page()
+
+            cur_y = pdf.get_y()
+            pdf.set_font('Noto', 'B', 9.5)
+            pdf.set_text_color(pr, pg, pb)
+            pdf.set_x(pdf.l_margin)
+            pdf.cell(8, 6.5, text=f"{num_str}.", align="L")
+
+            pdf.set_font('Noto', '', 10)
+            pdf.set_text_color(tmr, tmg, tmb)
+            for li, line_content in enumerate(lines):
+                if li > 0 and pdf.get_y() > pdf.h - pdf.b_margin - 6.5:
+                    pdf.add_page()
+                pdf.set_x(pdf.l_margin + 8)
+                pdf.cell(effective_w - 8, 6.5, text=line_content, new_x="LMARGIN", new_y="NEXT", align="L")
             pdf.ln(1.5)
             i += 1
             continue
@@ -423,7 +606,12 @@ def render_report(
         pdf.set_font('Noto', '', 10)
         tmr, tmg, tmb = colors["text_main"]
         pdf.set_text_color(tmr, tmg, tmb)
-        pdf.multi_cell(effective_w, 6.5, text=para_text)
+        lines = wrap_mixed_text(pdf, para_text, effective_w)
+        for line_content in lines:
+            if pdf.get_y() > pdf.h - pdf.b_margin - 6.5:
+                pdf.add_page()
+            pdf.set_x(pdf.l_margin)
+            pdf.cell(effective_w, 6.5, text=line_content, new_x="LMARGIN", new_y="NEXT", align="L")
         pdf.ln(2)
         i += 1
 

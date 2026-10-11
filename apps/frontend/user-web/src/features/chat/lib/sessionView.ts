@@ -1,4 +1,4 @@
-import type { ChatMessage, ChatSession } from '@ops/user-core';
+import type { AIModel, ChatMessage, ChatSession } from '@ops/user-core';
 
 export interface SessionChannelMeta {
   key: 'local' | 'wechat' | 'dingtalk' | 'feishu' | 'channel';
@@ -170,4 +170,77 @@ export const isSameSession = (
     left.createdAt === right.createdAt &&
     left.updatedAt === right.updatedAt
   );
+};
+
+export interface ModelDisplayInfo {
+  name: string;
+  provider?: string;
+  tooltip: string;
+  rawId: string;
+}
+
+const KNOWN_LEGACY_MODEL_IDS: Record<string, { name: string; provider?: string }> = {
+  'd13e0d30-87b9-4e87-b96a-d8b1b3cf78af': { name: 'qwen36-35b-a3b', provider: 'local' },
+};
+
+export const resolveModelDisplayInfo = (
+  modelId: string | null | undefined,
+  availableModels?: AIModel[]
+): ModelDisplayInfo | null => {
+  if (!modelId || modelId === 'default') {
+    return null;
+  }
+
+  // 1. Direct match in availableModels by id or name
+  const matched = availableModels?.find((m) => m.id === modelId || m.name === modelId);
+  if (matched) {
+    const name = matched.config?.display_name || matched.name;
+    const provider = matched.provider;
+    return {
+      name,
+      provider,
+      tooltip: provider ? `${name} (${provider}) · ID: ${matched.id}` : `${name} · ID: ${matched.id}`,
+      rawId: matched.id,
+    };
+  }
+
+  // 2. Legacy known alias / migration IDs
+  const legacy = KNOWN_LEGACY_MODEL_IDS[modelId];
+  if (legacy) {
+    return {
+      name: legacy.name,
+      provider: legacy.provider,
+      tooltip: legacy.provider
+        ? `${legacy.name} (${legacy.provider}) · ID: ${modelId}`
+        : `${legacy.name} · ID: ${modelId}`,
+      rawId: modelId,
+    };
+  }
+
+  // 3. Fallback for UUIDs (cleanly truncated for UI hygiene)
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(modelId);
+  if (isUuid) {
+    if (availableModels?.length === 1) {
+      const single = availableModels[0];
+      const name = single.config?.display_name || single.name;
+      return {
+        name,
+        provider: single.provider,
+        tooltip: `${name} (${single.provider}) · 历史绑定: ${modelId}`,
+        rawId: modelId,
+      };
+    }
+
+    return {
+      name: `模型 ${modelId.slice(0, 8)}`,
+      tooltip: `模型 ID: ${modelId}`,
+      rawId: modelId,
+    };
+  }
+
+  return {
+    name: modelId,
+    tooltip: `模型: ${modelId}`,
+    rawId: modelId,
+  };
 };

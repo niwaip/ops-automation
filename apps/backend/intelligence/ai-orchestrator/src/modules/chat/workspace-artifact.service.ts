@@ -46,6 +46,29 @@ export class WorkspaceArtifactService {
       }
     }
 
+    // 渐进式会话双区隔离：若根目录未命中，安全检索当前用户工作空间 .sessions/*/ 下的同名文件
+    const candidateWorkspaceRoots = [
+      path.join('/workspace/data/users', userId, 'workspace'),
+      path.join(process.cwd(), 'data/users', userId, 'workspace'),
+      path.resolve(__dirname, '../../../../../../../data/users', userId, 'workspace'),
+    ];
+    for (const wsRoot of candidateWorkspaceRoots) {
+      const sessionsDir = path.join(wsRoot, '.sessions');
+      if (fs.existsSync(sessionsDir)) {
+        try {
+          const sessionSubdirs = fs.readdirSync(sessionsDir);
+          for (const sSub of sessionSubdirs) {
+            const candidateInSession = path.join(sessionsDir, sSub, safeFileName);
+            if (this.fileExists(candidateInSession)) {
+              return candidateInSession;
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+
     return null;
   }
 

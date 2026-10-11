@@ -11,7 +11,7 @@ import { UserSandboxDispatcherService } from './user-sandbox-dispatcher.service'
 import { ChatConversationService } from './chat-conversation.service';
 import { ChatMediaService } from './chat-media.service';
 import { ModelService } from '../model/model.service';
-import { StreamEventType } from '../react-engine/interfaces';
+import { StreamEventType, StreamEvent } from '../react-engine/interfaces';
 import { PersonalReminderBridgeService } from './personal-reminder-bridge.service';
 
 describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name', () => {
@@ -885,5 +885,56 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     // Must NOT emit observation switching to cloud chat
     const switchObs = emittedEvents.find((e) => e.content?.includes('切换到云端模型直连模式'));
     expect(switchObs).toBeUndefined();
+  });
+
+  it('returns a direct DNS error when upstream model address fails name resolution (ENOTFOUND)', async () => {
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        'event: observation\ndata: {"content":"⚡ 正在启动个人沙箱环境..."}\n\n',
+        'event: done\ndata: {"success":false,"output":"❌ [DeepSeek Harness 异常]: 大模型代理调用失败 (500): getaddrinfo ENOTFOUND sword-wanted-knit-organ.trycloudflare.com","exitCode":1}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const handled = await service.dispatchPersonalSandbox(
+      { message: '查看报表', userId: 'test_user', modelId: 'qwen36-35b-a3b' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(handled).toBe(true);
+    const errorEvent = emittedEvents.find((e) => e.type === StreamEventType.ERROR);
+    expect(errorEvent).toBeDefined();
+    expect(errorEvent?.data?.code).toBe('SANDBOX_MODEL_DNS_ERROR');
+    expect(errorEvent?.content).toContain('域名解析失败');
+    expect(errorEvent?.content).toContain('sword-wanted-knit-organ.trycloudflare.com');
+  });
+
+  it('persists executionTrace telemetry in session history on successful dispatch', async () => {
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        'event: delta\ndata: {"delta":"分析完成"}\n\n',
+        'event: done\ndata: {"success":true,"containerName":"sandbox-1","durationMs":1200,"exitCode":0,"metrics":{"totalTokens":450}}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    await service.dispatchPersonalSandbox(
+      { message: '总结收入', userId: 'test_user', modelId: 'default' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(mockConversationService.persistConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        executionTrace: expect.objectContaining({
+          containerName: 'sandbox-1',
+          executed: true,
+          durationMs: 1200,
+          exitCode: 0,
+          metrics: { totalTokens: 450 },
+        }),
+      })
+    );
   });
 });

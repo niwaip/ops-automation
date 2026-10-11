@@ -3,6 +3,21 @@ import type { ChatSession } from '@ops/user-core';
 import { createChatSessionId } from './lib/session';
 
 export type ChatMode = 'chat' | 'task';
+export type ChatFontSize = 'compact' | 'comfortable' | 'spacious' | 'extra-large';
+
+export const STORAGE_KEY_CHAT_FONT_SIZE = 'ops_user_chat_font_size';
+
+export const CHAT_FONT_SIZE_OPTIONS: Array<{
+  key: ChatFontSize;
+  label: string;
+  px: number;
+  description: string;
+}> = [
+  { key: 'compact', label: '标准', px: 14, description: '14px (紧凑)' },
+  { key: 'comfortable', label: '舒适', px: 15, description: '15px (推荐)' },
+  { key: 'spacious', label: '大号', px: 16, description: '16px (清晰)' },
+  { key: 'extra-large', label: '特大', px: 18, description: '18px (护眼)' },
+];
 
 export interface ChatTaskAttachment {
   name: string;
@@ -24,6 +39,7 @@ export interface ChatStoreState {
   currentSession: ChatSession | null;
   isOpen: boolean;
   chatMode: ChatMode;
+  fontSize: ChatFontSize;
   draftMessage: string;
   draftExecutionId: string | null;
   taskContext: ChatTaskContext | null;
@@ -32,6 +48,7 @@ export interface ChatStoreState {
   setCurrentSession: (session: ChatSession | null) => void;
   setOpen: (isOpen: boolean) => void;
   setChatMode: (mode: ChatMode) => void;
+  setFontSize: (size: ChatFontSize) => void;
   setDraftMessage: (message: string) => void;
   setDraftExecutionId: (executionId: string | null) => void;
   setTaskContext: (context: ChatTaskContext | null) => void;
@@ -62,10 +79,32 @@ const getStoredChatMode = (): ChatMode => {
   return 'task';
 };
 
+const getStoredChatFontSize = (): ChatFontSize => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_CHAT_FONT_SIZE);
+    if (saved === 'compact' || saved === 'comfortable' || saved === 'spacious' || saved === 'extra-large') {
+      return saved;
+    }
+  } catch {
+    // fallback
+  }
+  return 'comfortable';
+};
+
+const applyDocumentFontSize = (fontSize: ChatFontSize) => {
+  if (typeof document !== 'undefined') {
+    document.documentElement.setAttribute('data-chat-font-size', fontSize);
+  }
+};
+
+const initialFontSize = getStoredChatFontSize();
+applyDocumentFontSize(initialFontSize);
+
 export const useChatStore = create<ChatStoreState>((set, get) => ({
   currentSession: null,
   isOpen: false,
   chatMode: getStoredChatMode(),
+  fontSize: initialFontSize,
   draftMessage: '',
   draftExecutionId: null,
   taskContext: null,
@@ -98,6 +137,15 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
       const nextSession = get().createSession();
       set({ chatMode, currentSession: nextSession, draftExecutionId: null });
     }
+  },
+  setFontSize: (fontSize) => {
+    try {
+      localStorage.setItem(STORAGE_KEY_CHAT_FONT_SIZE, fontSize);
+    } catch {
+      // ignore
+    }
+    applyDocumentFontSize(fontSize);
+    set({ fontSize });
   },
   setDraftMessage: (draftMessage) => set({ draftMessage }),
   setDraftExecutionId: (draftExecutionId) => set({ draftExecutionId }),

@@ -5,6 +5,7 @@ and legacy format fallbacks.
 """
 
 import re
+import os
 import json
 import time
 import sys
@@ -34,8 +35,29 @@ from .action_protocol import (
 from .deliverable_contract import (
     materialize_requested_markdown,
     materialize_script_deliverable,
+    materialize_pdf_from_markdown,
     requests_markdown_artifact,
     unwrap_outer_markdown_fence,
+)
+from .analysis_contract import build_analysis_contract, build_analysis_plan_context, supports_column_comparison
+from .comparison_delivery import compile_comparison_response, COMPARISON_DELIVERY_INSTRUCTIONS
+from .analysis_semantics import domain_plan_context
+from .analysis_validation import validate_reply_against_contract, build_contract_termination_warning
+from .tool_result import ToolResult
+from .comparison_evidence import validate_execution_output
+from .tool_dispatch import dispatch_tool_calls
+from .sampling_guard import sampling_feedback, _is_meaningful_computational_command
+from .spreadsheet_analysis_schema import ANALYSIS_INSTRUCTIONS, select_analysis_tools
+from .analysis_turn import AnalysisTurn
+from .agent_loop_helpers import (
+    ACTION_FILLER_KEYWORDS,
+    is_unclosed_or_truncated_html,
+    is_explicit_code_request,
+    auto_heal_unexecuted_file_writes,
+    detect_passive_deflection,
+    sanitize_preview,
+    _extract_last_user_prompt,
+    _build_fallback_report,
 )
 
 
@@ -43,7 +65,7 @@ CLAIM_PATTERNS = [
     "已生成", "已经生成", "生成了", "输出了", "输出文件", "保存到", "已保存", "已经保存",
     "保存至", "输出为", "保存在", "写入了", "创建了", "落盘至", "生成完毕", "导出为",
     "导出了", "已导出", "保存路径", "文件已生成", "文档已生成",
-    "写入文件", "写入到", "写入至", "写入", "代码写入", "已更新", "更新了", "修复并保存", "修改并保存", "write_file"
+    "写入文件", "写入到", "写入至", "代码写入", "已更新", "更新了", "修复并保存", "修改并保存", "write_file"
 ]
 
 DELIVERABLE_EXTS = {
@@ -51,49 +73,31 @@ DELIVERABLE_EXTS = {
     ".html", ".csv", ".json", ".md", ".py", ".sh", ".txt", ".png", ".jpg"
 }
 
-MAX_AGENT_ROUNDS_HARD_CEILING = 4
-
-
-def is_unclosed_or_truncated_html(text: str) -> bool:
-    """
-    Detects whether text contains an unclosed or truncated ```html code block,
-    e.g. missing closing ``` fence, or opened as full HTML document but abruptly cut off without </html>.
-    """
-    if not text or "```html" not in text:
-        return False
-    last_idx = text.rfind("```html")
-    after_block = text[last_idx + 7:]
-    # If there is no closing ``` fence
-    if "```" not in after_block:
-        return True
-    # If there is a closing ``` fence, check if it was opened as a full HTML document (<!DOCTYPE html or <html)
-    # but abruptly cut off before </html> or </body>
-    lower_block = after_block.lower()
-    if "<!doctype html" in lower_block or "<html" in lower_block:
-        if "</html>" not in lower_block and "</body>" not in lower_block:
-            return True
-    return False
+MAX_AGENT_ROUNDS_HARD_CEILING = int(os.getenv("DSH_MAX_AGENT_ROUNDS_CEILING", "10"))
+MAX_SPREADSHEET_ROUNDS_CEILING = 4
 
 
 def detect_missing_claimed_artifacts(
     text: str,
     is_generate_intent: bool = False,
     is_inspect_intent: bool = False,
+    is_search_intent: bool = False,
     turn_start_time: Optional[float] = None,
 ) -> List[str]:
     """
     Detects if the model claimed in text to have generated or outputted deliverable files
     that do not physically exist on disk in WORKSPACE_DIR or KNOWLEDGE_DIR.
-    Strictly bypassed during read-only inspection turns (is_inspect_intent and not is_generate_intent).
+    Strictly bypassed during read-only inspection turns (is_inspect_intent and not is_generate_intent)
+    or search turns (is_search_intent and not is_generate_intent).
     """
-    if not text or (is_inspect_intent and not is_generate_intent):
+    if not text or (is_inspect_intent and not is_generate_intent) or (is_search_intent and not is_generate_intent):
         return []
 
     has_claim_pattern = any(k in text for k in CLAIM_PATTERNS) or bool(
         re.search(
             r'(?:已.{0,10}(?:生成|创建|保存|导出|写入|完成)|'
-            r'(?:生成|创建|保存|导出|写入|输出).{0,10}(?:完成|完毕|成功|文件|至|到)|'
-            r'文件名|文件路径|下载并在本地|文件信息|/workspace/|/knowledge/)',
+            r'(?:生成|创建|保存|导出|写入|输出).{0,10}(?:完成|完毕|成功|至|到)|'
+            r'下载并在本地|/workspace/|/knowledge/)',
             text,
             re.I
         )
@@ -134,6 +138,26 @@ def detect_missing_claimed_artifacts(
         if has_inline_html and clean_name in ["index.html", "presentation.html"]:
             continue
 
+        # 非生成意图时，必须在该文件名局部存在明确的生成/保存/写入声称，或明确指称 /workspace/，避免提及外部项目文件时误触发断言
+        if not is_generate_intent:
+            escaped_name = re.escape(clean_name)
+            claimed_for_this_file = bool(
+                re.search(
+                    rf'(?:已.{{0,12}}(?:生成|创建|保存|导出|写入|完成)|(?:生成|创建|保存|导出|写入|输出).{{0,12}}(?:完成|完毕|成功|至|到|为)|输出文件(?:为|是|：|:)?|保存(?:路径|在|到|至)|落盘至|保存在|已保存至|代码已写入|文件路径[：:]\s*(?:/workspace/)?)[^\n。]{{0,30}}{escaped_name}',
+                    text,
+                    re.I
+                )
+                or re.search(
+                    rf'{escaped_name}[^\n。]{{0,30}}(?:已(?:生成|创建|保存|导出|写入|落盘)|已保存到工作区|已保存至|已写入)',
+                    text,
+                    re.I
+                )
+                or f"/workspace/{clean_name}" in text
+                or f"./workspace/{clean_name}" in text
+            )
+            if not claimed_for_this_file:
+                continue
+
         ws_file = Path(WORKSPACE_DIR) / clean_name
         kn_file = Path(KNOWLEDGE_DIR) / clean_name
 
@@ -171,6 +195,20 @@ def detect_missing_requested_deliverable(
 
     # 1. 契约驱动优先：若技能已明确声明产物交付契约 (如 ['.pdf'], ['.docx'], ['.xlsx'], ['.html'])
     if expected_deliverables:
+        # 对于包含多选一备选格式的演示文稿类契约（如 guizang-ppt 兼容 .pptx 与 .html）
+        has_presentation_alt = (
+            any(ext.lower() in [".pptx", ".ppt"] for ext in expected_deliverables)
+            and any(ext.lower() in [".html", ".htm"] for ext in expected_deliverables)
+        )
+        if has_presentation_alt and ws_path.exists():
+            try:
+                for p in ws_path.iterdir():
+                    if p.is_file() and p.suffix.lower() in [".pptx", ".ppt", ".html", ".htm"] and p.stat().st_size > 0:
+                        if p.stat().st_mtime >= turn_start_time - 2.0:
+                            return None
+            except Exception:
+                pass
+
         for req_ext in expected_deliverables:
             norm_ext = req_ext if req_ext.startswith(".") else f".{req_ext}"
             found = False
@@ -209,6 +247,11 @@ def detect_missing_requested_deliverable(
     ):
         req_ext = ".docx"
     elif (
+        re.search(r'(?:做成|制作|生成|导出|做个|建个|创建|整理成|汇总成|总结成)[^，。\n]{0,8}(?:ppt|pptx|幻灯片|演示文稿)', lower) or
+        any(k in lower for k in ["生成ppt", "导出ppt", "做成ppt", "制作ppt", "做个ppt", "导出pptx", "生成pptx", "一张ppt", "一份ppt"])
+    ):
+        req_ext = ".html"
+    elif (
         re.search(r'(?:输出|生成|创建|导出|保存|写入|制作|做成)[^，。\n]{0,16}(?:\.md\b|\bmarkdown\b|\bmd\b)', lower, re.I) or
         re.search(r'(?:\.md\b|\bmarkdown\b|\bmd\b)\s*(?:格式)?\s*文件', lower, re.I)
     ):
@@ -237,142 +280,6 @@ def detect_missing_requested_deliverable(
     return req_ext
 
 
-def is_explicit_code_request(prompt: str) -> bool:
-    """
-    Detects whether user prompt explicitly asked to view, display, or explain code/scripts in chat.
-    If the user's intent is to create, run, fix, modify, or save files/deliverables,
-    it returns False even if the word '代码' or '脚本' is mentioned.
-    """
-    if not prompt:
-        return False
-    lower = prompt.lower().strip()
-
-    # 显式查看/展示代码意图词（支持中间夹带修饰词，如“给我看下生成pdf的python代码”）
-    view_code_regex = r'(?:查看|看下|看一下|看看|给我看|显示|展示|输出|给出|提供|写出)\s*(?:一下|下)?\s*(?:[a-zA-Z0-9_\-\u4e00-\u9fa5\s]{0,20}?)(?:代码|源码|源代码|脚本|code)'
-    has_view_code = bool(re.search(view_code_regex, lower, re.I))
-
-    static_view_patterns = [
-        "查看代码", "看下代码", "看一下代码", "显示代码", "展示代码", "输出代码",
-        "给出代码", "提供代码", "写出代码", "给我代码", "给下代码", "给我看代码",
-        "查看源码", "看下源码", "看一下源码", "给出源码", "提供源码", "输出源码",
-        "代码怎么写", "脚本怎么写", "示例代码", "代码示例", "代码结构", "代码长什么样",
-        "show code", "give code", "view code", "display code", "source code",
-        "code snippet", "show me code", "print code"
-    ]
-    if not has_view_code and not any(p in lower for p in static_view_patterns):
-        return False
-
-    # 若包含动作性动词或故障排查（如修改、修复、运行、写入、报错、出错了、停了），则属于操作任务而非单纯展示代码
-    action_override_patterns = [
-        "修改代码", "改一下代码", "把代码改了", "改下代码", "修复代码", "修一下代码",
-        "更新代码", "优化代码", "重构代码", "运行代码", "执行代码", "保存代码",
-        "代码写入", "写入代码", "代码报错", "代码出错了", "代码运行失败", "代码停了"
-    ]
-    if any(a in lower for a in action_override_patterns):
-        if not any(k in lower for k in ["看一下代码", "看下代码", "查看代码", "给我看"]):
-            return False
-
-    return True
-
-
-
-
-def auto_heal_unexecuted_file_writes(text: str, workspace_dir: str) -> Tuple[str, List[str]]:
-    """
-    Self-heals unexecuted file-writing commands (e.g. write_file, cat > << 'EOF')
-    by extracting content and writing directly to the target file in workspace_dir,
-    and stripping the leaked shell command blocks from the user-facing output.
-    Returns: (cleaned_text, list_of_written_file_paths)
-    """
-    if not text:
-        return text, []
-
-    written_files: List[str] = []
-    cleaned_text = text
-
-    heredoc_patterns = [
-        # write_file << 'EOF' /workspace/index.html ... EOF
-        r'(?:write_file|cat)\s*<<\s*[\'"]?([A-Za-z0-9_\-]+)[\'"]?\s+[\'"]?(/workspace/[^\s\'"\n]+|[a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]+)[\'"]?\s*\n([\s\S]*?)(?:\n\1|\Z)',
-        # cat > /workspace/index.html << 'EOF' ... EOF
-        r'(?:write_file|cat)\s+>\s*[\'"]?(/workspace/[^\s\'"\n]+|[a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]+)[\'"]?\s*<<\s*[\'"]?([A-Za-z0-9_\-]+)[\'"]?\s*\n([\s\S]*?)(?:\n\2|\Z)',
-        # cat << 'EOF' > /workspace/index.html ... EOF
-        r'(?:write_file|cat)\s*<<\s*[\'"]?([A-Za-z0-9_\-]+)[\'"]?\s*>\s*[\'"]?(/workspace/[^\s\'"\n]+|[a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]+)[\'"]?\s*\n([\s\S]*?)(?:\n\1|\Z)'
-    ]
-
-    # 1. 优先扫描并自愈代码块中的写入命令
-    block_pattern = r'(```[a-zA-Z0-9_\-]*\s*\n([\s\S]*?)```)'
-    for full_block, block_content in list(re.findall(block_pattern, cleaned_text)):
-        for hp in heredoc_patterns:
-            hm = re.search(hp, block_content)
-            if hm:
-                groups = hm.groups()
-                if len(groups) == 3:
-                    if groups[0].startswith('/workspace/') or '.' in groups[0]:
-                        target_path, eof_marker, content = groups[0], groups[1], groups[2]
-                    elif groups[1].startswith('/workspace/') or '.' in groups[1]:
-                        eof_marker, target_path, content = groups[0], groups[1], groups[2]
-                    else:
-                        target_path, eof_marker, content = groups[1], groups[0], groups[2]
-
-                    clean_filename = Path(target_path).name
-                    dest_file = Path(workspace_dir) / clean_filename
-                    try:
-                        with open(dest_file, "w", encoding="utf-8") as f:
-                            f.write(content.strip())
-                        written_files.append(str(dest_file))
-                        print(f"✨ [Harness Auto-Heal] 成功自愈落盘泄漏命令产物: {dest_file}")
-                        replacement = f"✨ 已成功生成并保存文件：`/workspace/{clean_filename}`"
-                        cleaned_text = cleaned_text.replace(full_block, replacement)
-                    except Exception as e:
-                        print(f"⚠️ [Harness Auto-Heal] 写入自愈产物异常: {e}")
-                    break
-
-    # 2. 检查未被代码块包裹的裸写入命令
-    for hp in heredoc_patterns:
-        for hm in list(re.finditer(hp, cleaned_text)):
-            groups = hm.groups()
-            if len(groups) == 3:
-                if groups[0].startswith('/workspace/') or '.' in groups[0]:
-                    target_path, eof_marker, content = groups[0], groups[1], groups[2]
-                elif groups[1].startswith('/workspace/') or '.' in groups[1]:
-                    eof_marker, target_path, content = groups[0], groups[1], groups[2]
-                else:
-                    target_path, eof_marker, content = groups[1], groups[0], groups[2]
-
-                clean_filename = Path(target_path).name
-                dest_file = Path(workspace_dir) / clean_filename
-                if str(dest_file) not in written_files:
-                    try:
-                        with open(dest_file, "w", encoding="utf-8") as f:
-                            f.write(content.strip())
-                        written_files.append(str(dest_file))
-                        print(f"✨ [Harness Auto-Heal] 成功自愈落盘裸命令产物: {dest_file}")
-                        replacement = f"✨ 已成功生成并保存文件：`/workspace/{clean_filename}`"
-                        cleaned_text = cleaned_text.replace(hm.group(0), replacement)
-                    except Exception as e:
-                        print(f"⚠️ [Harness Auto-Heal] 写入自愈产物异常: {e}")
-
-    return cleaned_text, written_files
-
-
-def detect_passive_deflection(text: str) -> bool:
-    """
-    Detects if the model passively asked the user for URLs/context or made lazy brush-offs
-    instead of autonomously using web_search or bash to investigate.
-    """
-    if not text:
-        return False
-    deflection_patterns = [
-        r"请(?:您)?提供(?:更多|更详细|具体)?(?:的)?(?:链接|说明|上下文|信息)",
-        r"(?:如果|若)(?:你|您)指的是某个具体(?:的)?(?:开源项目|仓库|项目|工具)",
-        r"请(?:给出|发一下|提供)(?:具体)?(?:的)?(?:链接|网址|url)",
-        r"无法确定(?:具体)?指(?:的)?是哪",
-        r"请补充更多(?:的)?(?:上下文|信息|背景)",
-        r"请告知更多上下文",
-    ]
-    return any(re.search(p, text) for p in deflection_patterns)
-
-
 @dataclass
 class AgentLoopResult:
     """Outcome of the multi-turn agent loop."""
@@ -381,51 +288,7 @@ class AgentLoopResult:
     outbound_reminders: List[str] = field(default_factory=list)
     telemetry: TelemetryStats = field(default_factory=TelemetryStats)
     messages: List[Dict[str, Any]] = field(default_factory=list)
-
-
-# 常见模型过渡性前导垫话特征词
-ACTION_FILLER_KEYWORDS = [
-    "让我", "正在", "接下来", "探索", "获取", "抓取", "解析", "稍等", "深入", "克隆", "调用",
-    "换用", "重新搜索", "继续搜索", "我来搜索", "我将搜索", "来搜索", "关键词组合",
-    "我需要获取", "让我尝试", "再次获取", "我需要查询", "还需要获取"
-]
-
-
-def sanitize_preview(param_preview: Any, max_chars: int = 80) -> str:
-    """Sanitizes sensitive tokens/passwords and limits preview string length."""
-    if not param_preview:
-        return ""
-    text = re.sub(r'\s+', ' ', str(param_preview)).strip()
-    text = re.sub(r'(?i)(sk-[a-zA-Z0-9_-]{8})[a-zA-Z0-9_-]+', r'\1****', text)
-    text = re.sub(r'(?i)(bearer\s+)[a-zA-Z0-9_.\-]{8,}', r'\1****', text)
-    text = re.sub(r'(?i)(password|secret|token|api_key|apikey)\s*[:=]\s*["\']?[^"\'\s,]+["\']?', r'\1=****', text)
-    if len(text) > max_chars:
-        text = text[:max_chars] + "..."
-    return text
-
-
-def _extract_last_user_prompt(messages: List[Dict[str, Any]]) -> str:
-    """Extracts the innermost user request prompt from message history."""
-    for msg in reversed(messages):
-        if isinstance(msg, dict) and msg.get("role") == "user":
-            content = msg.get("content")
-            if isinstance(content, str):
-                m_req = re.search(r'\[User Request\]:\s*\n([\s\S]*?)(?:\n\n(?:\[|【|---)|$)', content)
-                if m_req:
-                    return m_req.group(1).strip()
-                # 过滤系统注入的内部过渡或守卫消息，防止污染用户真实意图
-                if (
-                    content.startswith("【执行与代码落盘阶段】")
-                    or content.startswith("【系统产物物理断言拦截】")
-                    or content.startswith("【系统交付物检查】")
-                    or content.startswith("⚠️ 【强制执行守卫")
-                    or content.startswith("工具调用轮次已结束")
-                    or content.startswith("文件已成功标记")
-                ):
-                    continue
-                return content
-            return ""
-    return ""
+    execution_evidence: List[ToolResult] = field(default_factory=list)
 
 
 def _check_no_tool_assertion_guard(
@@ -441,20 +304,45 @@ def _check_no_tool_assertion_guard(
     executed_calls_history: Optional[List[str]] = None,
     guard_nudges_count: int = 0,
     script_execution_error: Optional[str] = None,
-    tools: Optional[List[Dict[str, Any]]] = None
+    tools: Optional[List[Dict[str, Any]]] = None,
+    messages: Optional[List[Dict[str, Any]]] = None,
+    telemetry: Optional[TelemetryStats] = None,
+    execution_evidence: Optional[List[ToolResult]] = None,
+    hard_ceiling: Optional[int] = None,
+    is_search_intent: bool = False,
 ) -> Tuple[str, Optional[str], int]:
     """
     Evaluates assertion guards when model returns text without tool calls.
     Returns: (action, guard_user_message, new_max_rounds)
       action: "continue" (add message and continue loop), "break" (stop loop), or "pass" (allow completion)
     """
+    effective_tools = tools if tools is not None else get_sandbox_tools()
+    has_bash = bool(
+        effective_tools and any(
+            (t.get("function", {}).get("name") or t.get("name", "")).lower() in ("bash", "cmd", "terminal", "sh", "exec")
+            for t in effective_tools
+        )
+    )
+    if hard_ceiling is None:
+        hard_ceiling = (
+            MAX_SPREADSHEET_ROUNDS_CEILING
+            if (is_inspect_intent and not is_generate_intent and not expected_deliverables)
+            else MAX_AGENT_ROUNDS_HARD_CEILING
+        )
     # 普通问答只纠偏一次；明确的文件生成任务允许第二次、更加具体的落盘纠偏。
     # 仍受全局硬轮次上限约束，避免小模型持续规划而不执行。
     max_guard_nudges = 2 if is_generate_intent else 1
-    if guard_nudges_count >= max_guard_nudges or round_idx >= MAX_AGENT_ROUNDS_HARD_CEILING - 1:
+    if guard_nudges_count >= max_guard_nudges or round_idx >= hard_ceiling - 1:
+        # Verification is independent of the generic filler-recovery budget.
+        # A failed candidate can use a remaining normal round to repair its tool plan.
+        if execution_evidence is not None and round_idx < hard_ceiling - 1:
+            validation = validate_reply_against_contract(build_analysis_contract(last_user_prompt),
+                reply_text, round_idx, max_rounds, execution_evidence=execution_evidence)
+            if validation.comparison_error:
+                return "continue", validation.feedback_message, min(hard_ceiling, max_rounds+1)
         return "pass", None, max_rounds
 
-    bumped_max_rounds = min(MAX_AGENT_ROUNDS_HARD_CEILING, max_rounds + 1)
+    bumped_max_rounds = min(hard_ceiling, max_rounds + 1)
 
     # 0. 内部计划与伪工具调用拦截：模型仅输出未执行的计划草稿时引导执行
     if not is_guide_intent and is_internal_plan_output(reply_text):
@@ -466,21 +354,28 @@ def _check_no_tool_assertion_guard(
         return "continue", msg, bumped_max_rounds
 
     # 1. 物理产物声称断言：模型声称生成了文件，但文件物理不存在
-    if is_generate_intent or (not is_inspect_intent and not is_guide_intent):
+    if is_generate_intent or (not is_inspect_intent and not is_guide_intent and not is_search_intent):
         missing = detect_missing_claimed_artifacts(
             reply_text,
             is_generate_intent=is_generate_intent,
             is_inspect_intent=is_inspect_intent,
+            is_search_intent=is_search_intent,
             turn_start_time=start_ts,
         )
         if missing:
             print(f"⚡ [Harness Artifact Assertion Guard] 检测到模型声称生成了文件 {missing}，但物理文件并不存在，正在拦截引导落盘...", flush=True)
             has_html_in_missing = any(f.endswith(".html") or f.endswith(".htm") for f in missing)
             code_block_hint = "，或者直接在回复中以完整的代码块（如 ```html\\n<!DOCTYPE html>...\\n```）输出全部源码" if has_html_in_missing else ""
-            msg = (
-                f"【系统产物物理断言拦截】：你在回复中提及已生成或保存文件 {', '.join(missing)}，但当前沙箱物理文件并不存在{code_block_hint and '，且未在回复中提供完整代码块' or ''}。"
-                f"请立即调用 bash 执行代码将目标文件保存到 /workspace/ 路径下{code_block_hint}。严禁仅做口头汇报！"
-            )
+            if has_bash:
+                msg = (
+                    f"【系统产物物理断言拦截】：你在回复中提及已生成或保存文件 {', '.join(missing)}，但当前沙箱物理文件并不存在{code_block_hint and '，且未在回复中提供完整代码块' or ''}。"
+                    f"请立即调用 bash 执行代码将目标文件保存到 /workspace/ 路径下{code_block_hint}。严禁仅做口头汇报！"
+                )
+            else:
+                msg = (
+                    f"【系统产物物理断言拦截】：你在回复中提及已生成或保存文件 {', '.join(missing)}，但当前沙箱物理文件并不存在。"
+                    "当前任务为只读模式（未提供写盘工具），请直接在当前回复中向用户完整输出 Markdown 格式的回答正文与分析内容，切勿声称已在本地保存文件。"
+                )
             return "continue", msg, bumped_max_rounds
 
     # 2. HTML 代码截断拦截
@@ -490,7 +385,7 @@ def _check_no_tool_assertion_guard(
 
     # 3. 契约交付物缺失断言：用户明确要求生成文件，但工作区尚未生成任何物理文件
     has_valid_html = ("```html" in reply_text.lower()) and not is_unclosed_or_truncated_html(reply_text)
-    if is_generate_intent or (not is_inspect_intent and not is_guide_intent):
+    if (is_generate_intent or bool(expected_deliverables)) and not is_guide_intent and not is_search_intent:
         missing_deliverable = detect_missing_requested_deliverable(
             last_user_prompt,
             start_ts,
@@ -503,7 +398,12 @@ def _check_no_tool_assertion_guard(
                 missing_deliverable = None
             if missing_deliverable:
                 print(f"⚡ [Harness Deliverable Assertion Guard] 检测到用户要求生成 {missing_deliverable} 交付物但沙箱尚未生成，正在引导执行工具落盘...", flush=True)
-                if script_execution_error:
+                if not has_bash:
+                    msg = (
+                        f"【系统交付物提示】：当前环境为只读模式（未提供代码执行工具），"
+                        f"请直接在回复中以完整的 Markdown 格式或代码块输出 {missing_deliverable} 对应的全部正文内容。"
+                    )
+                elif script_execution_error:
                     msg = (
                         f"【系统脚本执行自愈提示】：检测到你在回复中提供了生成 {missing_deliverable} 的脚本代码，"
                         f"但在沙箱尝试运行该脚本生成交付物时出现异常报错：\n```\n{script_execution_error}\n```\n"
@@ -540,7 +440,10 @@ def _check_no_tool_assertion_guard(
     # 6. 未执行脚本泄漏拦截（若已提供完整合法 HTML 交付物则放行至导出器落盘与挂载）
     if not is_guide_intent and not is_explicit_code_request(last_user_prompt) and not has_valid_html and detect_unexecuted_script_leak(reply_text):
         print("⚡ [Harness Code Output Guard] 检测到模型直接输出了未执行的代码脚本或文件写入命令，正在引导执行工具落盘...", flush=True)
-        msg = "检测到你输出了未执行的代码脚本或文件写入命令。请调用 bash 工具在终端实际运行脚本完成落盘，然后再向用户汇报完成。"
+        if has_bash:
+            msg = "检测到你输出了未执行的代码脚本或文件写入命令。请调用 bash 工具在终端实际运行脚本完成落盘，然后再向用户汇报完成。"
+        else:
+            msg = "检测到你输出了代码或文件命令。当前环境为只读模式，请直接输出分析结论与解答内容，无需尝试在本地写入文件。"
         return "continue", msg, bumped_max_rounds
 
     # 7. 提醒虚假创建断言拦截 (Reminder Assertion Guard)
@@ -581,201 +484,71 @@ def _check_no_tool_assertion_guard(
         )
         return "continue", msg, bumped_max_rounds
 
+    # 9. 任务契约与指标逐项验收拦截 (Analysis Contract & Metric Alignment Guard)
+    if not is_guide_intent:
+        contract = build_analysis_contract(last_user_prompt or "")
+        if contract.has_metrics:
+            is_sheet_listing_reply = bool(re.search(
+                r'(?:工作表清单|Sheet\s*名称|主要用途与内容说明|包含\s*\d+\s*个工作表|共包含.*工作表)',
+                reply_text or ""
+            ))
+            is_parroting_history = False
+            if messages:
+                for m in messages:
+                    if isinstance(m, dict) and m.get("role") == "assistant":
+                        c_val = m.get("content")
+                        prev_text = c_val if isinstance(c_val, str) else ""
+                        if is_sheet_listing_reply and ("主要用途与内容说明" in prev_text or "工作表清单" in prev_text):
+                            is_parroting_history = True
+                            break
+
+            val_result = validate_reply_against_contract(
+                contract=contract,
+                reply_text=reply_text or "",
+                round_idx=round_idx,
+                max_rounds=max_rounds,
+                messages=messages,
+                execution_evidence=execution_evidence
+            )
+
+            if is_sheet_listing_reply or is_parroting_history or not val_result.is_pass:
+                feedback = val_result.feedback_message
+                if is_sheet_listing_reply or is_parroting_history:
+                    all_metrics_str = "、".join(contract.get_metric_names())
+                    feedback = (
+                        f"【系统问答对齐与指标核算拦截】：用户明确要求核算具体指标（『{last_user_prompt}』，目标指标：{all_metrics_str}）。\n"
+                        "当前回复重复罗列工作表目录或说明，未回答具体指标数据，未给出核心指标数值，严禁向用户复读目录或反问是否继续！\n"
+                        "请立即调用 `read_file` 读取真实对应的数据源工作表，"
+                        "或调用 `bash` 运行 Python 脚本对数据进行求值，直接给出全部各项指标的具体数值结论及数据来源。"
+                    )
+                print(f"⚡ [Harness Contract Guard] 拦截未完成指标核算回复 (status={val_result.status}, satisfied={val_result.satisfied_metrics}, missing={val_result.missing_metrics})", flush=True)
+                return "continue", feedback, bumped_max_rounds
+
+    # 10. 历史截断标记复读/偷懒拦截 (Truncation Parroting Guard)
+    if re.search(r'(?:因历史消息长度预算超出|中间部分已自动省略|\[内容已截断\]|CONTEXT_BUDGET)', reply_text or ''):
+        print("⚡ [Harness Truncation Parroting Guard] 检测到模型在当前回复中输出截断/省略占位符，正在拦截引导输出完整结果...", flush=True)
+        feedback = (
+            "【系统完整性拦截提示】：检测到你的回复中包含了省略/截断标记（如‘中间部分已自动省略’或‘内容已截断’）导致回答不完整。"
+            "请勿使用任何省略标记，直接向用户完整、详细地输出全部内容和结果！"
+        )
+        return "continue", feedback, bumped_max_rounds
+
+    feedback = sampling_feedback(reply_text,last_user_prompt,messages,telemetry,execution_evidence,is_guide_intent)
+    if feedback:
+        return "continue", feedback, bumped_max_rounds
+
     return "pass", None, max_rounds
 
 
-def _dispatch_tool_calls(
-    structured_calls: List[Dict[str, Any]],
-    round_idx: int,
-    messages: List[Dict[str, Any]],
-    telemetry: TelemetryStats,
-    policy: RuntimePolicy,
-    executed_calls_history: List[str],
-    outbound_files: List[str],
-    deadline: Optional[float],
-    is_guide_intent: bool,
-    outbound_reminders: Optional[List[str]] = None,
-    last_user_prompt: Optional[str] = None
-) -> bool:
-    """
-    Executes a round of structured tool calls with safety checks and appends tool responses to messages.
-    Returns True if a send_file tool was executed, False otherwise.
-    """
-    is_file_sent = False
-    for tc in structured_calls:
-        telemetry.record_tool_call()
-        t_id = tc.get("id") or f"call_{round_idx}_{telemetry.tool_invocations}"
-        fn = tc.get("function", {})
-        t_name = fn.get("name", "unknown")
-        t_args_raw = fn.get("arguments", "{}")
-
-        if isinstance(t_args_raw, str):
-            try:
-                t_params = json.loads(t_args_raw)
-            except Exception:
-                t_params = {}
-        elif isinstance(t_args_raw, dict):
-            t_params = t_args_raw
-        else:
-            t_params = {}
-
-        raw_preview = (
-            t_params.get("__search_query") or
-            t_params.get("query") or
-            t_params.get("cmd") or
-            t_params.get("city") or
-            str(t_params)
-        )
-        clean_param = sanitize_preview(raw_preview, max_chars=policy.param_preview_chars)
-        print(f"⚡ [Harness Tool Call] 正在调用工具: {t_name}({clean_param})...", flush=True)
-
-        if is_guide_intent and t_name == "bash":
-            cmd_str = str(t_params.get("cmd", "")).strip().lower()
-            is_mutative_install = (
-                cmd_str.startswith("pip install") or
-                cmd_str.startswith("pip3 install") or
-                cmd_str.startswith("python -m pip install") or
-                cmd_str.startswith("python3 -m pip install") or
-                "apt-get install" in cmd_str or
-                "apt install" in cmd_str or
-                "-m venv" in cmd_str
-            )
-            if is_mutative_install:
-                print(f"⚠️ [Harness Safety Intercept] 拦截在技术咨询模式下私自执行安装命令: {cmd_str}", flush=True)
-                tool_res = (
-                    "【系统安全拦截】：当前任务为技术咨询与安装/配置方法说明，用户并未授权在沙箱环境中实际执行安装变更。"
-                    "请立即停止在终端运行安装命令，直接根据已知技术规范与标准流程向用户输出完整详尽的安装方法说明与示例代码！"
-                )
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": t_id,
-                    "name": t_name,
-                    "content": tool_res
-                })
-                continue
-
-        mutating_reminder_tools = {
-            "create_reminders", "create_reminder", "set_reminder", "set_reminders",
-            "add_reminder", "add_reminders", "remind", "reminder",
-            "update_reminder", "update_reminders", "delete_reminder", "delete_reminders"
-        }
-        if t_name in mutating_reminder_tools:
-            if not has_explicit_reminder_intent(last_user_prompt):
-                print(f"🛡️ [Harness Safety Guard] 绝对阻断未授权的副作用提醒工具调用: {t_name}", flush=True)
-                tool_res = (
-                    "【系统安全拦截】：用户当前提问并非设置或管理提醒的明确意图。沙箱严禁在未获明确授权时执行副作用提醒工具！"
-                    "请直接向用户回复正文内容，不要调用提醒工具。"
-                )
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": t_id,
-                    "name": t_name,
-                    "content": tool_res
-                })
-                continue
-            create_reminder_tools = {
-                "create_reminders", "create_reminder", "set_reminder", "set_reminders",
-                "add_reminder", "add_reminders", "remind", "reminder",
-            }
-            if t_name in create_reminder_tools and not has_explicit_reminder_time(last_user_prompt):
-                print(f"🛡️ [Harness Safety Guard] 阻断缺少用户时间依据的提醒创建: {t_name}", flush=True)
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": t_id,
-                    "name": t_name,
-                    "content": "【系统安全拦截】：用户没有提供提醒时间或周期。请只追问必要时间，不得猜测并创建提醒。"
-                })
-                continue
-
-        call_sig = f"{t_name}:{json.dumps(t_params, sort_keys=True, ensure_ascii=False)}"
-        is_idempotent_read = t_name in (
-            "read_skill", "read_workspace_file", "weather",
-            "web_search", "fetch_page", "scan_knowledge", "read_file"
-        )
-        threshold = 1 if is_idempotent_read else 2
-        if executed_calls_history.count(call_sig) >= threshold:
-            print(f"⚠️ [Harness Loop Intercept] 工具 [{t_name}] 已重复调用，主动阻断死循环", flush=True)
-            tool_res = f"【系统提示】检测到该工具 ({t_name}) 已调用过且参数完全一致。结果已在上方历史中，请立即停止重复调用，直接根据现有信息继续执行或给出最终回答。"
-        else:
-            executed_calls_history.append(call_sig)
-            tool_res = execute_tool(t_name, t_params, deadline=deadline)
-
-        print(f"✓ 工具 [{t_name}] 执行完成", flush=True)
-
-        for m, _, _ in extract_dsh_markers(tool_res, "OUTBOUND_FILE"):
-            outbound_files.append(m.strip())
-
-        if outbound_reminders is not None:
-            for tag in ("REMINDER_CREATE", "REMINDER_UPDATE", "REMINDER_DELETE"):
-                for m, _, _ in extract_dsh_markers(tool_res, tag):
-                    outbound_reminders.append(m.strip())
-
-        if t_name.lower() in ["send_file", "send_workspace_file", "send_to_user", "send_to_wechat"]:
-            is_file_sent = True
-
-        clipped_tool_res = ContextBudget.clip_tool_result(tool_res, max_chars=policy.max_tool_result_chars)
-        clean_tool_res = strip_dsh_markers(clipped_tool_res, ["REMINDER_CREATE", "REMINDER_UPDATE", "REMINDER_DELETE"]).strip()
-        if not clean_tool_res:
-            clean_tool_res = "（工具执行完成，无控制台输出）"
-        messages.append({
-            "role": "tool",
-            "tool_call_id": t_id,
-            "name": t_name,
-            "content": clean_tool_res
-        })
-
-    return is_file_sent
+def _is_tool_error(tool_res: Any) -> bool:
+    """Checks whether tool output represents an execution error or failure via ToolResult contract."""
+    from dsh_modules.tool_result import is_tool_error
+    return is_tool_error(tool_res)
 
 
-def _build_fallback_report(messages: List[Dict[str, Any]], executed_calls_history: List[str]) -> str:
-    """Builds a diagnostic recovery report when model returns empty response or unexecuted filler."""
-    if executed_calls_history:
-        tool_names = ", ".join(sorted(set(executed_calls_history)))
-        data_clues = []
-        for msg in reversed(messages):
-            if msg.get("role") == "tool" and msg.get("content"):
-                c_str = str(msg["content"]).strip()
-                if c_str and not c_str.startswith("未识别"):
-                    for line in c_str.split("\n"):
-                        clean_l = line.strip()
-                        if clean_l and not clean_l.startswith("【") and len(clean_l) > 6:
-                            data_clues.append(clean_l)
-                            if len(data_clues) >= 6:
-                                break
-                if data_clues:
-                    break
-        clues_block = ("\n\n【沙箱已检索到的参考数据】:\n" + "\n".join(f"- {c}" for c in data_clues)) if data_clues else ""
-        return (
-            f"⚠️ 沙箱已成功调用工具（{tool_names}）采集到相关数据，但在进行智能归纳或生成交付物时，"
-            f"上游推理模型连接中断或未返回最终交付文本。{clues_block}\n\n"
-            "💡 建议：可尝试重新提问，或在设置中切换为更稳定的模型重试。"
-        )
-    # 检查 messages 中是否有有效的方案规划或助手的实质回复（排除未执行脚本泄漏）
-    recent_plan = ""
-    for msg in reversed(messages):
-        if msg.get("role") == "assistant" and msg.get("content"):
-            c = str(msg["content"]).strip()
-            if (
-                c
-                and not c.startswith("⚠️")
-                and not c.startswith("❌")
-                and not detect_unexecuted_script_leak(c)
-                and "chmod" not in c
-                and "```bash" not in c
-                and "```sh" not in c
-            ):
-                recent_plan = c
-                break
-
-    if recent_plan:
-        summary_preview = recent_plan[:350].strip()
-        return (
-            "⚠️ 沙箱已完成方案分析规划，但在自动执行代码生成物理交付物时未成功创建目标文件。\n\n"
-            f"【已规划的方案参考】:\n{summary_preview}...\n\n"
-            "💡 建议：可直接回复「请使用 Python 脚本生成该文档并保存到 /workspace/」重试落盘。"
-        )
-
-    return "⚠️ 沙箱运行正常，但上游模型未返回有效回复内容（可能网络连接超时或上游服务异常）。建议重新发送或切换模型重试。"
+def _dispatch_tool_calls(*args, **kwargs):
+    return dispatch_tool_calls(*args, **kwargs, execute_fn=execute_tool,
+                               error_fn=_is_tool_error, preview_fn=sanitize_preview)
 
 
 def _finalize_agent_text(
@@ -789,7 +562,8 @@ def _finalize_agent_text(
     was_token_truncated: bool,
     telemetry: TelemetryStats,
     last_user_prompt: str = "",
-    expected_deliverables: Optional[List[str]] = None
+    expected_deliverables: Optional[List[str]] = None,
+    execution_evidence: Optional[List[ToolResult]] = None
 ) -> Tuple[str, List[str]]:
     """Finalizes agent text, requesting forced summary if needed and applying fallback reports."""
     has_pending_tool_calls = bool(parse_tool_calls(reply_text, is_guide=is_guide_intent))
@@ -799,9 +573,9 @@ def _finalize_agent_text(
     healed_files: List[str] = []
     has_valid_html = ("```html" in final_text.lower()) and not is_unclosed_or_truncated_html(final_text)
     is_hollow_claim = (
-        len(final_text.strip()) < 120 and
+        len(final_text.strip()) < 220 and
         not has_valid_html and
-        bool(re.search(r'(?:文件|代码|报告)?已成功(?:生成|写入|保存|导出)', final_text))
+        bool(re.search(r'(?:文件|代码|报告|文档|演示文稿|ppt|pdf|表格)?已(?:成功)?(?:生成|写入|保存|导出|落盘)|请查看(?:下方)?(?:下载)?卡片|<div\s+download-card', final_text, re.I))
     )
 
     is_transitional_filler = (
@@ -813,10 +587,15 @@ def _finalize_agent_text(
 
     if has_pending_tool_calls or not final_text or is_transitional_filler or has_raw_dsml or has_raw_tool or has_internal_plan:
         messages.append({"role": "assistant", "content": reply_text or None})
-        messages.append({
-            "role": "user",
-            "content": "工具调用轮次已结束。请根据目前已探索和收集到的所有信息与仓库内容，直接给出深入、结构完整、详尽的最终中文回答（严禁输出中间过渡垫话或未执行的工具标签）。"
-        })
+        if is_hollow_claim:
+            nudge_prompt = (
+                "【双通道完整交付要求】：你已完成交付物生成，但当前聊天回复仅包含简短的文件生成通知/下载卡片提示，缺失核心正文内容。"
+                "根据平台双通道交付原则，聊天对话中必须向用户呈现完整、清晰、结构化的核心成果与总结要点（例如天气明细、报告核心结论与结构化摘要）。"
+                "请直接在当前回复中输出详尽的 Markdown 正文回答，严禁仅回复'已生成/请看卡片'等空话！"
+            )
+        else:
+            nudge_prompt = "工具调用轮次已结束。请根据目前已探索和收集到的所有信息与仓库内容，直接给出深入、结构完整、详尽的最终中文回答（严禁输出中间过渡垫话或未执行的工具标签）。"
+        messages.append({"role": "user", "content": nudge_prompt})
         try:
             forced_res = call_model_proxy(
                 messages,
@@ -912,6 +691,41 @@ def _finalize_agent_text(
             print("⚠️ [Harness Script Leak Guard] 检测到模型输出了未执行的脚本回显且未能自愈，触发安全兜底...", flush=True)
             final_text = _build_fallback_report(messages, executed_calls_history)
 
+    feedback = sampling_feedback(final_text,last_user_prompt,messages,telemetry,execution_evidence,is_guide_intent)
+    if feedback:
+        final_text += "\n\n⚠️ **【数据覆盖度与真实性提示】**\n当前分析基于局部切片或抽样数据。\n" + feedback
+
+    # 指标契约未完成阻碍声明（防模型在轮次耗尽时静默放行未完成的指标分析）
+    if not is_guide_intent and last_user_prompt:
+        contract = build_analysis_contract(last_user_prompt)
+        if contract.has_metrics:
+            audit_ceiling = (
+                MAX_SPREADSHEET_ROUNDS_CEILING
+                if not expected_deliverables
+                else MAX_AGENT_ROUNDS_HARD_CEILING
+            )
+            val_result = validate_reply_against_contract(
+                contract=contract,
+                reply_text=final_text or "",
+                round_idx=audit_ceiling,
+                max_rounds=audit_ceiling,
+                messages=messages,
+                execution_evidence=execution_evidence
+            )
+            if not val_result.is_pass:
+                contract_warning = build_contract_termination_warning(
+                    contract=contract,
+                    val_result=val_result,
+                    messages=messages,
+                    telemetry=telemetry
+                )
+                if val_result.comparison_error and execution_evidence is not None:
+                    # Do not publish an unsupported extreme and then disclaim it.
+                    # This is a failed verification, not an alternate computed answer.
+                    final_text = "本次比较结论尚未通过执行证据核验。"
+                if "【指标核算未完成声明】" not in final_text:
+                    final_text += contract_warning
+
     return final_text, healed_files
 
 
@@ -926,11 +740,15 @@ def run_agent_loop(
     turn_start_time: Optional[float] = None,
     expected_deliverables: Optional[List[str]] = None,
     is_generate_intent: bool = False,
-    is_inspect_intent: bool = False
+    is_inspect_intent: bool = False,
+    telemetry: Optional[TelemetryStats] = None,
+    spreadsheet_analysis_required: bool = False,
+    is_search_intent: bool = False,
 ) -> AgentLoopResult:
     """Executes the multi-turn ReAct tool calling loop up to max_rounds."""
     active_tools = tools if tools is not None else get_sandbox_tools()
-    telemetry = TelemetryStats()
+    if telemetry is None:
+        telemetry = TelemetryStats()
     outbound_files: List[str] = []
     outbound_reminders: List[str] = []
     executed_calls_history: List[str] = []
@@ -938,17 +756,50 @@ def run_agent_loop(
     was_token_truncated = False
     start_ts = turn_start_time if turn_start_time is not None else time.time()
     last_user_prompt = _extract_last_user_prompt(messages)
+    analysis_turn=AnalysisTurn(last_user_prompt) if spreadsheet_analysis_required else None
+    comparison_contract = build_analysis_contract(last_user_prompt)
+    comparison_required = (not is_generate_intent and not is_guide_intent
+        and supports_column_comparison(comparison_contract)
+        and any(t.get('function', {}).get('name') == 'compare_spreadsheet_columns' for t in active_tools))
+    if comparison_required:
+        messages.insert(0, {"role": "system", "content": COMPARISON_DELIVERY_INSTRUCTIONS})
+    if comparison_contract.is_advisory_intent and not comparison_contract.is_explicit_calc:
+        from .analysis_contract import build_advisory_guidance
+        advisory_guidance = build_advisory_guidance(comparison_contract)
+        if messages and messages[0].get("role") == "system":
+            messages[0]["content"] = str(messages[0].get("content") or "") + advisory_guidance
+        else:
+            messages.insert(0, {"role": "system", "content": advisory_guidance})
+    if spreadsheet_analysis_required:
+        active_tools=select_analysis_tools(active_tools,last_user_prompt)
+    if spreadsheet_analysis_required:
+        messages[0]["content"] = str(messages[0].get("content") or "") + ANALYSIS_INSTRUCTIONS + domain_plan_context(last_user_prompt)
+    requirements = build_analysis_plan_context(last_user_prompt) if is_inspect_intent and not is_guide_intent else ""
+    if requirements:
+        if messages and messages[0].get("role") == "system":
+            messages[0]["content"] = str(messages[0].get("content") or "") + requirements
+        else:
+            messages.insert(0, {"role": "system", "content": requirements})
+    execution_evidence: List[ToolResult] = []
     guard_nudges_count = 0
-    max_rounds = min(max_rounds, MAX_AGENT_ROUNDS_HARD_CEILING)
+    is_pure_spreadsheet_or_inspect = (
+        spreadsheet_analysis_required
+        or comparison_required
+        or (is_inspect_intent and not is_generate_intent and not expected_deliverables)
+    )
+    task_ceiling = MAX_SPREADSHEET_ROUNDS_CEILING if is_pure_spreadsheet_or_inspect else MAX_AGENT_ROUNDS_HARD_CEILING
+    max_rounds = min(max_rounds, task_ceiling)
 
     round_idx = 0
     while round_idx < max_rounds:
         if round_idx > 0:
-            print(f"⏳ [Harness Agent] 正在根据执行结果汇总交付物 (第 {round_idx + 1} 轮)...", flush=True)
-            # 用户硬规则：执行阶段不要思考
             if getattr(policy, "thinking", False):
                 policy.thinking = False
                 policy.reasoning_effort = None
+            if active_tools:
+                print(f"⏳ [Harness Agent] 正在结合前序采集证据进行深入推理与规划 (第 {round_idx + 1} 轮)...", flush=True)
+            else:
+                print(f"⏳ [Harness Agent] 正在根据执行结果汇总交付物 (第 {round_idx + 1} 轮)...", flush=True)
         if deadline is not None and deadline - time.monotonic() <= 0:
             print(f"⚠️ [Harness Timeout] 总任务执行已达到硬截止时间 ({policy.total_task_timeout}s)，立即终止", flush=True)
             raise TimeoutError(f"Task total execution deadline ({policy.total_task_timeout}s) exceeded")
@@ -959,10 +810,14 @@ def run_agent_loop(
             tools=active_tools,
             timeout=policy.single_request_timeout,
             deadline=deadline,
-            policy=policy
+            policy=policy,
+            stream_deltas=False if spreadsheet_analysis_required or comparison_required else None,
+            tool_choice="required" if active_tools and (
+                (spreadsheet_analysis_required and analysis_turn.response(execution_evidence) is None)
+                or (comparison_required and compile_comparison_response(comparison_contract,execution_evidence)[0] is None)) else None
         )
-        reply_text = llm_res.get("content", "") if isinstance(llm_res, dict) else str(llm_res)
-        structured_calls = list(llm_res.get("tool_calls", [])) if isinstance(llm_res, dict) else []
+        reply_text = (llm_res.get("content") or "") if isinstance(llm_res, dict) else str(llm_res or "")
+        structured_calls = list(llm_res.get("tool_calls") or []) if isinstance(llm_res, dict) else []
 
         telemetry.record_llm_response(llm_res, is_first_round=(round_idx == 0))
         if isinstance(llm_res, dict) and llm_res.get("finish_reason") == "length":
@@ -1011,6 +866,27 @@ def run_agent_loop(
 
         # 若当轮无任何工具调用
         if not structured_calls:
+            if comparison_required:
+                compiled, error = compile_comparison_response(comparison_contract, execution_evidence)
+                telemetry.record_guard('comparison_evidence', 'reject' if error else 'accept', error)
+                if error and round_idx < task_ceiling - 1:
+                    max_rounds = min(task_ceiling, max_rounds+1)
+                    messages.append({'role':'assistant', 'content':reply_text})
+                    messages.append({'role':'user', 'content':'【系统比较证据验收】：'+error+COMPARISON_DELIVERY_INSTRUCTIONS})
+                    round_idx += 1
+                    continue
+                break
+            if spreadsheet_analysis_required:
+                response=analysis_turn.response(execution_evidence,reply_text)
+                error=None if response else analysis_turn.feedback(execution_evidence)
+                telemetry.record_guard("spreadsheet_evidence", "reject" if error else "accept", error)
+                if error and round_idx < task_ceiling - 1:
+                    max_rounds = min(task_ceiling, max_rounds+1)
+                    messages.append({"role":"assistant","content":reply_text})
+                    messages.append({"role":"user","content":error})
+                    round_idx += 1
+                    continue
+                break
             # Markdown 是声明式产物：当模型已经给出完整正文时，由运行时安全编译落盘，
             # 不再要求小模型拼接 bash/heredoc 命令。
             markdown_path, created_now = materialize_requested_markdown(
@@ -1057,6 +933,23 @@ def run_agent_loop(
                 elif script_err:
                     script_execution_error = script_err
 
+            if expected_deliverables and any(ext.lower() == ".pdf" for ext in expected_deliverables):
+                pdf_artifact_path = materialize_pdf_from_markdown(
+                    prompt=last_user_prompt,
+                    workspace_dir=WORKSPACE_DIR,
+                    turn_start_time=start_ts,
+                    expected_deliverables=expected_deliverables,
+                    final_text=reply_text,
+                )
+                if pdf_artifact_path:
+                    outbound_payload = json.dumps(
+                        {"filePath": pdf_artifact_path, "fileName": Path(pdf_artifact_path).name},
+                        ensure_ascii=False,
+                    )
+                    if outbound_payload not in outbound_files:
+                        outbound_files.append(outbound_payload)
+                    executed_calls_history.append("bash")
+
             action, guard_msg, max_rounds = _check_no_tool_assertion_guard(
                 reply_text=reply_text,
                 last_user_prompt=last_user_prompt,
@@ -1070,7 +963,12 @@ def run_agent_loop(
                 executed_calls_history=executed_calls_history,
                 guard_nudges_count=guard_nudges_count,
                 script_execution_error=script_execution_error,
-                tools=tools
+                tools=active_tools,
+                messages=messages,
+                telemetry=telemetry,
+                execution_evidence=execution_evidence,
+                hard_ceiling=task_ceiling,
+                is_search_intent=is_search_intent,
             )
             if action == "continue":
                 guard_nudges_count += 1
@@ -1107,8 +1005,21 @@ def run_agent_loop(
             deadline=deadline,
             is_guide_intent=is_guide_intent,
             outbound_reminders=outbound_reminders,
-            last_user_prompt=last_user_prompt
+            last_user_prompt=last_user_prompt,
+            execution_evidence=execution_evidence,
+            allowed_tool_names=[t.get("function", {}).get("name", t.get("name", ""))
+                                for t in active_tools]
         )
+
+        if analysis_turn:
+            completed=analysis_turn.complete(execution_evidence,telemetry,
+                [t.get('function',{}).get('name') for t in active_tools],deadline)
+            if analysis_turn.may_finish(execution_evidence):
+                break
+            messages.append({'role':'user','content':analysis_turn.feedback(execution_evidence)})
+            if completed:
+                messages.append({'role':'user','content':'【程序注册关系补算回执】\n'+
+                    '\n'.join(r.render_text() for r in completed)})
 
         # A weather lookup already returns current conditions plus forecast, and a successful
         # reminder mutation may not be repeated. Remove only these single-use capabilities
@@ -1126,7 +1037,7 @@ def run_agent_loop(
         executed_names = {
             call_sig.split(":", 1)[0]
             for call_sig in executed_calls_history
-            if ":" in call_sig
+            if ":" in call_sig and not call_sig.startswith("err:")
         }
         exhausted = single_use_tools.intersection(executed_names)
         if exhausted:
@@ -1134,6 +1045,21 @@ def run_agent_loop(
                 tool for tool in active_tools
                 if tool.get("function", {}).get("name") not in exhausted
             ]
+
+        if spreadsheet_analysis_required and execution_evidence and execution_evidence[-1].is_error:
+            max_rounds=min(task_ceiling,max(max_rounds,round_idx+2))
+
+        # 当任务需要生成物理交付物（如 PDF/Word/Excel）且尚未落盘，但模型仍处于探索/草稿阶段（例如刚调用了搜索或写入了中间文件），
+        # 且轮次临近上限时，动态追加 2 轮预算，避免在最后落盘前被硬截断
+        if (expected_deliverables or is_generate_intent) and round_idx >= max_rounds - 1 and round_idx < task_ceiling - 1:
+            missing_deliv = detect_missing_requested_deliverable(
+                last_user_prompt, start_ts,
+                expected_deliverables=expected_deliverables,
+                is_generate_intent=is_generate_intent,
+                is_inspect_intent=is_inspect_intent
+            )
+            if missing_deliv:
+                max_rounds = min(task_ceiling, max(max_rounds, round_idx + 2))
 
         # 当前轮次已执行工具，重置 reply_text，防止内部工具前置垫话或执行脚本残留进入最终回复
         reply_text = ""
@@ -1150,12 +1076,17 @@ def run_agent_loop(
                 deadline=deadline
             )
             telemetry.record_llm_response(final_step, is_first_round=False)
-            reply_text = final_step.get("content", "") if isinstance(final_step, dict) else str(final_step)
+            reply_text = (final_step.get("content") or "") if isinstance(final_step, dict) else str(final_step or "")
             break
 
         round_idx += 1
 
-    final_text, healed_files = _finalize_agent_text(
+    if comparison_required:
+        compiled, error = compile_comparison_response(comparison_contract, execution_evidence)
+        telemetry.record_guard('comparison_evidence', 'reject' if error else 'accept', error)
+    final_text, healed_files = ((compiled or '本次比较结论尚未通过执行证据核验。\n\n'+error, [])
+        if comparison_required else (analysis_turn.render(execution_evidence,reply_text,telemetry,policy=policy,model=model,deadline=deadline), [])
+        if spreadsheet_analysis_required else _finalize_agent_text(
         reply_text=reply_text,
         messages=messages,
         model=model,
@@ -1166,8 +1097,9 @@ def run_agent_loop(
         was_token_truncated=was_token_truncated,
         telemetry=telemetry,
         last_user_prompt=last_user_prompt,
-        expected_deliverables=expected_deliverables
-    )
+        expected_deliverables=expected_deliverables,
+        execution_evidence=execution_evidence
+    ))
     if requests_markdown_artifact(last_user_prompt):
         final_text = unwrap_outer_markdown_fence(final_text)
     for hf in healed_files:
@@ -1194,10 +1126,41 @@ def run_agent_loop(
                 flush=True,
             )
 
+    # 强制总结分支：若用户期望 PDF，且工作区存在 Markdown 稿件或正文，自动执行编译落盘
+    if expected_deliverables and any(ext.lower() == ".pdf" for ext in expected_deliverables):
+        pdf_path = materialize_pdf_from_markdown(
+            prompt=last_user_prompt,
+            workspace_dir=WORKSPACE_DIR,
+            turn_start_time=start_ts,
+            expected_deliverables=expected_deliverables,
+            final_text=final_text,
+        )
+        if pdf_path:
+            outbound_payload = json.dumps(
+                {"filePath": pdf_path, "fileName": Path(pdf_path).name},
+                ensure_ascii=False,
+            )
+            if outbound_payload not in outbound_files:
+                outbound_files.append(outbound_payload)
+            # 语义净化：用户明确要求 PDF 且已生成 PDF 时，清除中间过渡的同名 md 外发，避免草稿泄露
+            md_stem = Path(pdf_path).stem.lower()
+            filtered_outbounds = []
+            for item_str in outbound_files:
+                try:
+                    obj = json.loads(item_str)
+                    fname = str(obj.get("fileName", "")).lower()
+                    if fname.endswith(".md") and (fname == f"{md_stem}.md" or fname == "result.md" or fname == "report.md"):
+                        continue
+                except Exception:
+                    pass
+                filtered_outbounds.append(item_str)
+            outbound_files = filtered_outbounds
+
     return AgentLoopResult(
         final_text=final_text,
         outbound_files=outbound_files,
         outbound_reminders=outbound_reminders,
         telemetry=telemetry,
-        messages=messages
+        messages=messages,
+        execution_evidence=execution_evidence
     )

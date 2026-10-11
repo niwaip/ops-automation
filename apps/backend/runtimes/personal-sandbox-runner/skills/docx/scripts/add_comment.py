@@ -77,23 +77,32 @@ def add_comment_to_docx(
         marker_start = f'<w:commentRangeStart w:id="{cid}"/>'
         marker_end = f'<w:commentRangeEnd w:id="{cid}"/><w:r><w:rPr><w:rStyle w:val="CommentReference"/></w:rPr><w:commentReference w:id="{cid}"/></w:r>'
 
-        # Pattern: find the <w:t> containing target_text within its <w:r>
-        pattern = re.compile(r"(<w:r\b[^>]*>.*?<w:t\b[^>]*>)(.*?" + re.escape(target_text) + r".*?)(</w:t>.*?</w:r>)", re.DOTALL)
+        # Locate target_text position and enclosing <w:t> and <w:r> tags without catastrophic regex backtracking
+        idx = xml_content.find(target_text)
+        if idx != -1:
+            t_open = xml_content.rfind("<w:t", 0, idx)
+            t_tag_end = xml_content.find(">", t_open) + 1 if t_open != -1 else -1
+            t_close = xml_content.find("</w:t>", idx + len(target_text))
+            r_open = xml_content.rfind("<w:r", 0, t_open) if t_open != -1 else -1
+            r_close = xml_content.find("</w:r>", t_close) + len("</w:r>") if t_close != -1 else -1
 
-        matched = False
-        def replacer(m):
-            nonlocal matched
-            if matched:
-                return m.group(0)  # only replace first occurrence
-            prefix_r, full_text, suffix_r = m.group(1), m.group(2), m.group(3)
-            parts = full_text.split(target_text, 1)
-            new_inner = parts[0] + f"</w:t></w:r>{marker_start}<w:r><w:t>{target_text}</w:t></w:r>{marker_end}<w:r><w:t>" + parts[1]
-            matched = True
-            return prefix_r + new_inner + suffix_r
+            if -1 not in (t_open, t_tag_end, t_close, r_open, r_close) and r_open < t_open < t_close < r_close:
+                full_t = xml_content[t_tag_end:t_close]
+                parts = full_t.split(target_text, 1)
+                r_prefix = xml_content[r_open:t_tag_end]
+                r_suffix = xml_content[t_close:r_close]
 
-        new_xml = pattern.sub(replacer, xml_content)
-        if not matched:
-            # Fallback direct string replacement
+                new_block = (
+                    f"{r_prefix}{parts[0]}</w:t></w:r>"
+                    f"{marker_start}"
+                    f"<w:r><w:t>{target_text}</w:t></w:r>"
+                    f"{marker_end}"
+                    f"<w:r><w:t>{parts[1]}{r_suffix}"
+                )
+                new_xml = xml_content[:r_open] + new_block + xml_content[r_close:]
+            else:
+                new_xml = xml_content.replace(target_text, f"{marker_start}{target_text}{marker_end}", 1)
+        else:
             new_xml = xml_content.replace(target_text, f"{marker_start}{target_text}{marker_end}", 1)
 
         doc_xml_path.write_text(new_xml, encoding="utf-8")

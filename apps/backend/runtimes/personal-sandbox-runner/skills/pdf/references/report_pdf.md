@@ -96,7 +96,18 @@ pdf.ln(2)
 pdf.set_font('Noto', size=11)
 pdf.set_text_color(49, 53, 59)
 pdf.multi_cell(0, 7, text="此处为详细分析与数据总结内容，支持多行文本自适应换行。")
-pdf.ln(4)
+pdf.ln(3)
+
+# 列表项规范排版（★严禁使用 set_y(y0) 还原 Y 坐标导致叠印涂黑★）
+avail_w = pdf.w - pdf.r_margin - pdf.l_margin
+for item in ["关键指标 1：业务增长平稳", "关键指标 2：风控合规全面覆盖"]:
+    pdf.set_x(pdf.l_margin + 4)
+    pdf.cell(6, 6, text="•")
+    pdf.set_x(pdf.l_margin + 12)
+    pdf.multi_cell(avail_w - 12, 6, text=item)
+    pdf.set_x(pdf.l_margin)
+    pdf.ln(1.5)
+pdf.ln(3)
 
 # 绘制规范表格（严禁使用 row.index(row)，直接用 enumerate 遍历）
 pdf.set_font('Noto', size=10, style='B')

@@ -20,6 +20,16 @@ triggers:
   - "csv转excel"
   - "整理数据"
   - "财务模型"
+  - "凭证"
+  - "交易明细"
+  - "工作表"
+  - "工作簿"
+  - "科目"
+  - "资产负债"
+  - "利润表"
+  - "现金流量表"
+  - "勾稽"
+  - "sheet"
 deliverables:
   - ".xlsx"
 requires_execution: true
@@ -35,9 +45,9 @@ default_rounds: 5
 ## 1. 运行环境与依赖约束
 
 - ✅ **预装库**：沙箱已内置 `openpyxl`，直接 `import openpyxl` 即可，**严禁使用 `pip install`**！
-- ❌ **严禁填死计算结果**：计算总计、均值、比率时，**必须写入 Excel 动态公式**（如 `=SUM(B2:B10)`、`=AVERAGE(C2:C10)`），确保用户修改输入后能自动重算。
-- ⚠️ **公式重算强校验（Recalculate Mandatory）**：openpyxl 写入的公式默认**无缓存值**，若不重算，下游工具读取均会显示 `None`。保存后必须执行 `/opt/dsh/skills/xlsx/scripts/recalc.py` 完成静默计算与格式修复。
-- ✅ **输出位置**：文件保存至 `/workspace/<filename>.xlsx`。
+- ❌ **【新建与修改模式约束】**：在**新建表格或编辑/保存工作簿**时，计算总计、均值、比率**必须写入 Excel 动态公式**（如 `=SUM(B2:B10)`、`=AVERAGE(C2:C10)`），确保用户修改输入后能自动重算。**在只读分析、审计核算或问答场景下，严禁改写或覆写原工作簿！**
+- ⚠️ **公式重算强校验（Recalculate Mandatory）**：新建/修改保存的 openpyxl 工作簿默认无公式缓存值。保存后必须执行 `/opt/dsh/skills/xlsx/scripts/recalc.py` 完成无头计算与格式修复。
+- ✅ **输出位置**：生成的新文件保存至 `/workspace/<filename>.xlsx`。
 
 ---
 
@@ -55,140 +65,74 @@ default_rounds: 5
 
 ---
 
-## 3. 标准生成与重算工作流
+## 3. 标准处理工作流（三大规范）
 
+### 规范一：只读解析与数据提取（Inspection Mode）
+- **优先工具**：使用内置 `read_file` 工具读取工作簿。
+- **目录概览查询**：当用户询问工作表清单或用途时，系统自动进入目录概览模式，返回各表实际范围与内容线索，跳过重算。未统计的公式数量不可猜测，物理行数不等于业务记录数。
+- **真实来源定位**：依据当前工作簿的目录、实际表头和字段含义选择数据，不能由业务问题推定某个工作表必然存在。未知来源通过结构读取确认。
+- **错误快速自愈与禁止反问**：若收到 `sheet_not_found` 错误，必须立即对照错误返回的可用工作表清单重新选择真实存在的表名读取，严禁继续猜表或向用户反问“是否需要读取”！
+- **目标区域切片**：`read_file` 支持指定真实 `sheet` 与 `range`，直接获取原件行号的精确切片数据。
+- **类型感知与无损呈现**：
+  - 日期：自动转换为标准 `YYYY-MM-DD` 格式（如 `2026-10-08`，避免序列号歧义）；
+  - 数值：无损保留真实精度（如 `0.000049`、`7.123456789`），根据单元格格式化呈现百分比与货币；
+  - 布尔值：规范输出为 `TRUE` 或 `FALSE`；
+  - 缺失字段：有效列区间内的空单元格保留 `[EMPTY]` 占位（如 `H2:[EMPTY]`），杜绝列位偏移导致字段缺失难以识别；
+  - 共享公式：完整展开所有共享公式及其从属单元格。
+
+### 规范二：审计、查重与全量计算（Audit & Calculation Mode）
+- **比较计划**：根据用户请求和真实表头确定指标、基准、分组、完整数据范围与排序方式。未明确基准时结合工作簿结构说明采用的口径；若仍有多个合理解释，应说明歧义。不能把不同指标直接相减冒充各指标对预算的偏差；用户明确要求跨指标差额、同比、环比或局部范围时遵从该口径。
+- **经营偏差的基准选择**：请求未明示基准且工作簿提供唯一、完整的实际/预算配对时，优先以各指标实际与预算的差额分析，并说明依据。每个被请求的指标应独立提供一个列对，不能用单一利润率替代多个指标的偏差。未指定比率时按绝对差额排序；不得自行改成利润率、达成率或相对全年平均值的偏离。
+- **标准工具调用**：列比较及极值任务优先调用 `compare_spreadsheet_columns`。先用 `read_file` 或完整附件结构确认真实表名、表头行和列字母；传入明确的 `data_range`（排除标题/表头/合计）、`group_column`、各指标的 `left_column`/`right_column`、`basis`、`rank_by`、`extreme`。通过 `expected_groups` 声明应覆盖的全部分组，避免抽样排序；完整年度月度任务应覆盖全部月份。工具不会猜指标、基准或时间范围；成功回执由程序编译成数值报告。
+- **结果解释与证据**：模型选择分析计划，程序从本轮成功回执呈现左值/基准、差额、绝对差额、范围与排序口径，保留来源和并列极值；不要追加未经核验的数字或排名。相对差额公式为 `(左值－基准)/abs(基准)`。不要把绝对差额排序替换成比率排序，不要把历史回答当作本轮计算证据。
+- **禁止抽样断言**：当提取结果包含抽样或切片提醒（`mode=SLICED`、`⚠️ [工作表覆盖度提醒: 抽样...]`）时，**严禁凭此抽样数据断言全表查重、勾稽平齐、最大绝对偏差或字段完整性结论**！
+- **确定性程序验证**：涉及跨表勾稽、异常凭证查重、极值偏差排序等审计任务，使用本轮提供的确定性核算工具处理原件的完整声明范围。只读模式不要求编写脚本；技能中的生成命令仅适用于生成模式。本轮未提供的工具不得调用。
+
+### 通用只读分析计划与交付协议
+- 聚合和比率使用 `aggregate_spreadsheet`，等式使用 `check_spreadsheet_equations`，字段质量使用 `validate_spreadsheet_rows`；目录问题仅需结构读取，偏差极值继续使用 `compare_spreadsheet_columns`。这些工具不强制要求财务字段。初始上下文提供紧凑结构；需要更多信息时用 `inspect_spreadsheet_structure` 按真实表名读取1至4张表，结构回执不是完成计算的证据。
+- 根据真实来源选择 `tables` 的表头、业务范围和过滤值。`calculations` 使用受限表达式，不提交代码：`aggregate`、`cell`、`constant` 或受限 `op`。金额叶子声明 `unit=amount`，比率叶子声明 `ratio`，计数声明 `number`；程序读取原件金额单位。涉及金额换算通过 `output_unit` 执行。
+- 跨表等式通过 `checks` 声明左右表达式、容差和适用假设。字段规则通过 `rules` 声明报告期、允许值、唯一性或缺失要求及规则依据。完整统计只能基于工具实际处理的声明范围，范围之外不得声称已检查。
+- 证据 ID 和完成状态由程序维护，模型不必复述完整 ID 集合或最终数字。可选 `hypotheses` 仅作为无数字的待核查线索；字段格式错误不会阻断已验证事实。程序返回结构化缺项，模型只补缺失来源表达式，不重复已有指标。
+- 失败或部分执行、旧原件哈希、历史回答和调用尝试不构成完成证据。没有可执行计划时必须说明未验证，不得默认通过。
+
+### 规范三：表格生成与严格公式重算校验（Generation Mode）
 ```bash
 # 步骤 1: 运行 Python openpyxl 脚本生成 xlsx 文件
-python generate_sheet.py
+python3 generate_sheet.py
 
 # 步骤 2: 驱动无头 LibreOffice 重算公式并固化缓存值 (强制执行)
-python /opt/dsh/skills/xlsx/scripts/recalc.py /workspace/业务度量统计报表.xlsx
+python3 /opt/dsh/skills/xlsx/scripts/recalc.py /workspace/业务度量统计报表.xlsx
 ```
 
-运行 `recalc.py` 会返回 JSON 诊断：
-- 若返回 `{"status": "success", "total_errors": 0}`，说明所有公式均通过计算并已回填缓存；
-- 若返回 `errors_found`，检查报错单元格坐标（如出现了 `#NAME?`、`#REF!`），修复脚本后重新运行。
+运行 `recalc.py` 会返回 JSON 诊断及四态校验状态：
+- `verified`: 所有公式均有有效计算缓存且 0 错误（通过验收，退出码 0）；
+- `partial`: 重算运行但部分公式未计算或含错误值（未通过，需检查报错单元格并修复）；
+- `failed`: 全部公式未计算或进程失败（未通过）；
+- `unavailable`: 缺少 soffice 环境依赖。
+仅当返回 `status == "verified"` 且 `total_errors == 0` 时，方可判定公式计算生效。
 
 ---
 
-## 4. 标准 Python 生成模板
+## 4. 表格生成最佳实践（仅在新建/编辑模式下生效）
 
-```python
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-import openpyxl
-from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-from openpyxl.utils import get_column_letter
+⚠️ **【只读与数据分析任务禁令】**：若当前任务为查阅、分析、审计、核算已有 Excel 文件，**严禁执行代码创建或覆盖原工作簿**！只需按照规范一与规范二进行只读提取与代码核算即可。
 
-wb = openpyxl.Workbook()
-ws = wb.active
-ws.title = "业务统计报表"
+新建/生成表格时的规范要点：
+1. **数据与标题**：明确表头与单元格数据，冻结首行或首列便于阅读；
+2. **格式化**：按列设置 `number_format`（如货币 `#,##0.00`、百分比 `0.00%`、整数 `#,##0`）；
+3. **动态公式**：求和、均值等汇总项必须使用动态公式（`=SUM(...)`、`=AVERAGE(...)`），严禁硬编码计算结果；
+4. **重算校验**：生成后必须执行 `python3 /opt/dsh/skills/xlsx/scripts/recalc.py <output_file>` 固化缓存并校验 `verified` 状态。
 
-# 1. 颜色与样式预设
-header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
-header_font = Font(name="Microsoft YaHei", size=11, bold=True, color="FFFFFF")
-title_font = Font(name="Microsoft YaHei", size=14, bold=True, color="1F4E79")
-regular_font = Font(name="Microsoft YaHei", size=10)
-bold_font = Font(name="Microsoft YaHei", size=10, bold=True)
-total_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+期间标签中的半年、季度、月份需与原件分组值相符，已知直接指标需与实际字段相符；不符时拒绝整个计划并返回修正原因。字段概况保留低频值的原件坐标。规则判定仅表示符合已声明规则，其业务适用性未经独立证明；无法据此声称业务合规。失败回执保留计划与哈希，最终数值由当前成功回执编译，分析草稿不直接流式发布。
 
-thin_border = Border(
-    left=Side(style="thin", color="D3D3D3"),
-    right=Side(style="thin", color="D3D3D3"),
-    top=Side(style="thin", color="D3D3D3"),
-    bottom=Side(style="thin", color="D3D3D3")
-)
+协议编译支持同一计划中通过 `ref`（兼容单字段 `id`）引用计算表达式，拒绝循环/未知引用；展示单位始终属于计算项。明确同表地址的四则算式可编译成受限 AST，不执行代码或猜引用。字段范围允许单边边界，未声明的边界不会补造；规则缺字段一次返回全部位置。公式检查拒绝将简单加减合计的单个分项冒充恒等式，明确分项比较可声明 `relation_type=component_comparison`。
 
-# 2. 写入主标题
-ws.merge_cells("A1:E1")
-ws["A1"] = "2026年业务运营度量报告"
-ws["A1"].font = title_font
-ws["A1"].alignment = Alignment(horizontal="left", vertical="center")
-ws.row_dimensions[1].height = 30
+### 可选领域语义
 
-# 3. 写入表头
-headers = ["序号", "业务系统 / 模块", "请求量 (QPS)", "成功率", "平均耗时 (ms)"]
-ws.append([]) # 空行
-ws.append(headers)
-ws.row_dimensions[3].height = 24
+通用 Excel 引擎仅负责来源、表结构、表达式、单位、期间、规则执行和证据。运行时可另行启用 `finance` 或 `commerce` 领域注册表，注入指标 ID、别名、分子分母关系和任务契约；`generic` 不附加领域指标。领域由可信运行时配置或请求词汇路由选择，不由模型工具参数切换，也不由工作簿名推定。
 
-for col_idx in range(1, len(headers) + 1):
-    cell = ws.cell(row=3, column=col_idx)
-    cell.fill = header_fill
-    cell.font = header_font
-    cell.alignment = Alignment(horizontal="center", vertical="center")
-    cell.border = thin_border
+模型可用 `calculation.metric_id` 绑定当前已注册指标；绑定仍需要明确、可核验的实际来源字段。未知指标 ID、错列或错期间被拒绝；未注册业务含义只作为计划声明，不代表已经证明其业务适用性。财务方法见独立参考 [finance-analysis.md](references/finance-analysis.md)，只有财务领域启用时应用。
 
-# 4. 写入业务明细数据
-rows_data = [
-    [1, "用户认证网关 (auth-service)", 12500, 0.9998, 12.5],
-    [2, "AI 任务编排引擎 (orchestrator)", 4200, 0.9950, 450.0],
-    [3, "工作流控制面 (control-plane)", 8800, 0.9992, 28.0],
-    [4, "文件与文档渲染引擎 (carbone)", 1600, 0.9985, 120.0],
-    [5, "安全沙箱调度中心 (broker)", 3100, 0.9990, 35.0],
-]
+### 注册关系补算与任务状态
 
-start_row = 4
-for r_idx, r_val in enumerate(rows_data, start=start_row):
-    ws.append(r_val)
-    ws.row_dimensions[r_idx].height = 20
-    for c_idx in range(1, len(r_val) + 1):
-        cell = ws.cell(row=r_idx, column=c_idx)
-        cell.font = regular_font
-        cell.border = thin_border
-        if c_idx == 1:
-            cell.alignment = Alignment(horizontal="center")
-        elif c_idx == 3:
-            cell.number_format = '#,##0'
-            cell.alignment = Alignment(horizontal="right")
-        elif c_idx == 4:
-            cell.number_format = '0.00%'
-            cell.alignment = Alignment(horizontal="right")
-        elif c_idx == 5:
-            cell.number_format = '#,##0.0'
-            cell.alignment = Alignment(horizontal="right")
-
-end_row = start_row + len(rows_data) - 1
-total_row = end_row + 1
-
-# 5. 写入动态公式汇总行
-ws.cell(row=total_row, column=1, value="")
-ws.cell(row=total_row, column=2, value="合计 / 平均值")
-ws.cell(row=total_row, column=3, value=f"=SUM(C{start_row}:C{end_row})")
-ws.cell(row=total_row, column=4, value=f"=AVERAGE(D{start_row}:D{end_row})")
-ws.cell(row=total_row, column=5, value=f"=AVERAGE(E{start_row}:E{end_row})")
-
-ws.row_dimensions[total_row].height = 22
-for c_idx in range(1, len(headers) + 1):
-    cell = ws.cell(row=total_row, column=c_idx)
-    cell.fill = total_fill
-    cell.font = bold_font
-    cell.border = thin_border
-    if c_idx == 2:
-        cell.alignment = Alignment(horizontal="center")
-    elif c_idx == 3:
-        cell.number_format = '#,##0'
-    elif c_idx == 4:
-        cell.number_format = '0.00%'
-    elif c_idx == 5:
-        cell.number_format = '#,##0.0'
-
-# 6. 冻结表头与自动列宽
-ws.freeze_panes = "A4"
-
-for col in ws.columns:
-    col_letter = get_column_letter(col[0].column)
-    max_len = 0
-    for cell in col:
-        if cell.row == 1:
-            continue
-        v_str = str(cell.value or '')
-        l = sum(2 if ord(ch) > 127 else 1 for ch in v_str)
-        if l > max_len:
-            max_len = l
-    ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
-
-out_file = "/workspace/业务度量统计报表.xlsx"
-wb.save(out_file)
-print(f"SUCCESS: {out_file}")
-```
+运行时分开验收执行凭据、任务覆盖与呈现协议。字段缺项通过 `missing_metrics` 返回稳定 ID 和期望类型，格式错误不遮住任务缺项。已有同源、同表头、同选中行范围的唯一分子/分母绑定时，程序可依据当前领域注册关系生成受限表达式并重新执行，保留父证据 ID、领域版本和新回执。来源歧义、跨期间、过期原件、未注册关系或零分母不作为成功补算；没有调用权限的能力不能被内部补算启用。

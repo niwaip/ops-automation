@@ -21,6 +21,7 @@ export const UserChatTaskContextBar: React.FC<UserChatTaskContextBarProps> = ({
 }) => {
   const isContractComparator =
     taskContext.workflowId === 'platform.document.contract-comparator';
+  const isNoteQuote = !taskContext.workflowId;
 
   const suggestions = isContractComparator
     ? [
@@ -28,6 +29,13 @@ export const UserChatTaskContextBar: React.FC<UserChatTaskContextBarProps> = ({
         '比对新旧版本条款差异与红线',
         '重点排查保密期限与违约金变更',
         '生成合同修订前后并排比对报告',
+      ]
+    : isNoteQuote
+    ? [
+        '梳理核心要点与待办事项',
+        '转为正式任务执行方案',
+        '润色并扩写便签内容',
+        '分析可行性并提出优化建议',
       ]
     : [
         '对比审查文档差异与合规风险',
@@ -49,6 +57,8 @@ export const UserChatTaskContextBar: React.FC<UserChatTaskContextBarProps> = ({
           <span style={{ fontWeight: 600, fontSize: 12, color: '#722ed1' }}>
             {isContractComparator
               ? '已载入两份合同版本 · 准备比对与红线审查'
+              : isNoteQuote
+              ? '已引用便签内容 · 作为背景补足'
               : '已带入协同任务上下文'}
           </span>
           {taskContext.workflowId ? (
@@ -72,14 +82,14 @@ export const UserChatTaskContextBar: React.FC<UserChatTaskContextBarProps> = ({
           size="small"
           className={styles['user-chat-task-context-close-btn']}
           onClick={onClear}
-          title="取消关联此任务上下文"
+          title={isNoteQuote ? '取消引用此便签' : '取消关联此任务上下文'}
         >
-          × 取消带入
+          × 取消{isNoteQuote ? '引用' : '带入'}
         </Button>
       </div>
       <div className={styles['user-chat-task-context-body']}>
         <div className={styles['user-chat-task-context-title']}>
-          <strong>任务：</strong>
+          <strong>{isNoteQuote ? '便签：' : '任务：'}</strong>
           {taskContext.taskTitle}
         </div>
         {filteredParams.length > 0 ? (
@@ -88,6 +98,26 @@ export const UserChatTaskContextBar: React.FC<UserChatTaskContextBarProps> = ({
             {filteredParams
               .map(([k, v]) => `${PARAM_LABEL_MAP[k] || k}: ${v}`)
               .join('； ')}
+          </div>
+        ) : null}
+        {isNoteQuote && taskContext.taskContent ? (
+          <div
+            style={{
+              marginTop: 4,
+              padding: '6px 10px',
+              borderRadius: 6,
+              background: 'rgba(114, 46, 209, 0.05)',
+              borderLeft: '3px solid #722ed1',
+              fontSize: 12,
+              lineHeight: '18px',
+              color: 'var(--text-secondary, #475569)',
+              maxHeight: 80,
+              overflowY: 'auto',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+            }}
+          >
+            {taskContext.taskContent}
           </div>
         ) : null}
       </div>

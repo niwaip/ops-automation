@@ -1,0 +1,268 @@
+{
+  "audited_at": "2026-10-10T18:35:01.020526+08:00",
+  "scope": "Current uncommitted workspace; read-only live service inspection, existing histories, mocked probes. No production task executed, no real model call, no outbound operation, no service restart.",
+  "runtime": {
+    "services": [
+      {
+        "Service": "ai-orchestrator",
+        "State": "running",
+        "Health": "",
+        "Status": "Up About an hour"
+      },
+      {
+        "Service": "postgres",
+        "State": "running",
+        "Health": "healthy",
+        "Status": "Up 4 days (healthy)"
+      },
+      {
+        "Service": "redis",
+        "State": "running",
+        "Health": "healthy",
+        "Status": "Up 4 days (healthy)"
+      },
+      {
+        "Service": "session-broker",
+        "State": "running",
+        "Health": "",
+        "Status": "Up 3 days"
+      },
+      {
+        "Service": "user-web",
+        "State": "running",
+        "Health": "",
+        "Status": "Up 9 hours"
+      }
+    ],
+    "python_hashes": {
+      "runner.py": {
+        "sha256": "d4ad3227370ee55ad71c4c3a5432ecfcf28ea0129ee439198a9c3bd563b34119",
+        "matches_live_sandbox": true
+      },
+      "agent_loop.py": {
+        "sha256": "f23b848ce6e9bd51d67a042ad1a7725c5f7d9e63072d785cb8de91ee77fe7555",
+        "matches_live_sandbox": true
+      },
+      "tool_dispatch.py": {
+        "sha256": "fd751cfb9e80d92e2fdcc3f0e12abe06c42249847140ae708e850cbe84b7ed20",
+        "matches_live_sandbox": true
+      },
+      "file_tools.py": {
+        "sha256": "0ea0a90d16bf9be54a3e97ff7d0c18f4bcc52c1c62980b9a1e6b26ac55b0f5b6",
+        "matches_live_sandbox": true
+      },
+      "analysis_synthesis.py": {
+        "sha256": "3ccab8508e39a04eccad7d1579b70dbf8b0de78f8e05a951d626f6f290eff53b",
+        "matches_live_sandbox": true
+      },
+      "analysis_turn.py": {
+        "sha256": "60a3dbe186dfb80484e77d6b0df32384ed50cdd107cbfc2ad94fdf4344c59287",
+        "matches_live_sandbox": true
+      }
+    },
+    "broker_compiled_branches": {
+      "writes_before_lock": true,
+      "force_release_before_container_lookup": true,
+      "has_zero_exit_fallback": true,
+      "checks_hasAcquiredLock": true
+    },
+    "runtime_model": "not changed or queried"
+  },
+  "actual_sample": {
+    "session_id": "chat-session-1791624064077-bqoofxju",
+    "history_path": "data/users/e7fce333-a8f4-4097-9a53-f0a4c729da46/workspace/.dsh/sessions/chat-session-1791624064077-bqoofxju.json",
+    "user_prompt": "【当前轮次用户上传附件】: image001.png（这是用户本轮刚上传的新文件，为本次指令的主要处理对象）\n用户指令：附件是什么？",
+    "answer_prefix": "根据搜索结果，今日微博热搜榜 Top 15 如下：\n\n| 排名 | 热搜标签 | 热搜话题 | 热度值 |\n|:--:|:--|:--|:--:|\n| 1 | 🔥热 | 鼓励灵活就业人员参加职工养老保险 | 1,195,866 |\n| 2 ",
+    "answer_claimed_fetch_time": "2026-10-10 17:31 Asia/Shanghai",
+    "history_saved_at": "2026-10-10T17:27:38.346821+08:00",
+    "attachment_magic": ".pfile",
+    "attachment_has_mip_marker": true,
+    "attachment_size": 101344,
+    "verification_present": false
+  },
+  "python_probes": {
+    "create_reminders": {
+      "executions": [],
+      "statuses": [
+        "blocked"
+      ],
+      "evidence_count": 0,
+      "file_sent": false
+    },
+    "functions.create_reminders": {
+      "executions": [
+        {
+          "name": "functions.create_reminders",
+          "params": {}
+        }
+      ],
+      "statuses": [
+        "success"
+      ],
+      "evidence_count": 0,
+      "file_sent": false
+    },
+    "guide_bash": {
+      "executions": [],
+      "statuses": [
+        "blocked"
+      ],
+      "evidence_count": 0,
+      "file_sent": false
+    },
+    "guide_functions.bash": {
+      "executions": [
+        {
+          "name": "functions.bash",
+          "params": {
+            "cmd": "pip install example-package"
+          }
+        }
+      ],
+      "statuses": [
+        "success"
+      ],
+      "evidence_count": 0,
+      "file_sent": false
+    },
+    "malformed_arguments": {
+      "executions": [
+        {
+          "name": "web_search",
+          "params": {}
+        }
+      ],
+      "statuses": [
+        "success"
+      ],
+      "evidence_count": 0,
+      "file_sent": false
+    },
+    "array_arguments": {
+      "exception": "AttributeError",
+      "message": "'list' object has no attribute 'get'"
+    },
+    "failed_read_retry": {
+      "executions": [
+        {
+          "name": "read_file",
+          "params": {
+            "file_path": "example.txt"
+          }
+        }
+      ],
+      "statuses": [
+        "error",
+        "loop_intercepted"
+      ],
+      "evidence_count": 0,
+      "file_sent": false
+    },
+    "failed_send": {
+      "executions": [
+        {
+          "name": "send_file",
+          "params": {
+            "file_path": "missing.txt"
+          }
+        }
+      ],
+      "statuses": [
+        "error"
+      ],
+      "evidence_count": 0,
+      "file_sent": true
+    },
+    "unverified_synthesis": {
+      "receipt_value": 100,
+      "mock_model_text": "营业收入已核验为 999,999 元，所有检查均已通过，可以直接决策。",
+      "unverified_text_published": true
+    },
+    "protected_attachment_unrelated_response": {
+      "calls": [
+        {
+          "has_diagnostic": true,
+          "tools": [
+            "read_file",
+            "scan_knowledge",
+            "vision_inspect"
+          ]
+        }
+      ],
+      "final_answer": "根据搜索结果，今日微博热搜榜 Top 15 如下：这仍是上一轮的话题。",
+      "persisted_verification": null,
+      "unrelated_response_accepted": true
+    },
+    "source_hashes": {
+      "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/tool_dispatch.py": "fd751cfb9e80d92e2fdcc3f0e12abe06c42249847140ae708e850cbe84b7ed20",
+      "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/analysis_synthesis.py": "3ccab8508e39a04eccad7d1579b70dbf8b0de78f8e05a951d626f6f290eff53b",
+      "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/runner.py": "d4ad3227370ee55ad71c4c3a5432ecfcf28ea0129ee439198a9c3bd563b34119"
+    },
+    "no_evidence_informational_downgrade": {
+      "prompt": "总结服务器配置清单内容",
+      "no_evidence_accepted": true,
+      "guards": [
+        {
+          "guard": "spreadsheet_evidence",
+          "action": "accept",
+          "reason": "informational_downgrade"
+        }
+      ]
+    }
+  },
+  "broker_probes": {
+    "pre_lock_input_overwrite": {
+      "reads": [
+        {
+          "prompt": "first",
+          "history": "second-history",
+          "attachments": [
+            "second.txt"
+          ]
+        },
+        {
+          "prompt": "second",
+          "history": "second-history",
+          "attachments": [
+            "second.txt"
+          ]
+        }
+      ],
+      "first_read_second_history": true
+    },
+    "queued_disconnect": {
+      "executed_after_disconnect": true,
+      "stop_calls": 0
+    },
+    "stop_lock_order": {
+      "events": [
+        "release_lock",
+        "find_container",
+        "create_kill_exec",
+        "start_kill_exec"
+      ]
+    },
+    "inspect_failure": {
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "",
+      "durationMs": 0,
+      "containerName": "mock"
+    }
+  },
+  "tests": {
+    "runner": {
+      "total": 367,
+      "passed": 367,
+      "failed": 0,
+      "command": "python3 -m unittest discover -s apps/backend/runtimes/personal-sandbox-runner/tests"
+    },
+    "broker": {
+      "total": 27,
+      "passed": 26,
+      "failed": 1,
+      "command": "pnpm --filter @ops/session-broker exec jest --runInBand test/user-sandbox.controller.spec.ts test/user-sandbox.service.spec.ts test/lock.service.spec.ts",
+      "failure": "user-sandbox.controller.spec.ts:165 disconnect test expected stopSandboxExecution but observed zero calls; existing test does not model lock acquisition"
+    }
+  }
+}

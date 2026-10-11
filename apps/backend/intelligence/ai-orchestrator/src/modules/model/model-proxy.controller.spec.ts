@@ -458,7 +458,7 @@ describe('ModelProxyController', () => {
       }
     });
 
-    it('uses a longer attempt timeout for generation and web-search synthesis', () => {
+    it('uses a longer attempt timeout for generation, web-search synthesis, and multimodal vision inputs', () => {
       const originalEnv = process.env.SANDBOX_MODEL_ATTEMPT_TIMEOUT_MS;
       try {
         delete process.env.SANDBOX_MODEL_ATTEMPT_TIMEOUT_MS;
@@ -468,6 +468,33 @@ describe('ModelProxyController', () => {
         expect(controller.resolveStreamIdleTimeoutMs({ tools: Array.from({ length: 8 }, () => ({})) })).toBe(60_000);
         expect(controller.resolveAttemptTimeoutMs({ request_context: 'web_search_synthesis' })).toBe(60_000);
         expect(controller.resolveStreamIdleTimeoutMs({ request_context: 'web_search_synthesis' })).toBe(60_000);
+        expect(
+          controller.resolveAttemptTimeoutMs({
+            thinking: false,
+            stream_visibility: 'internal',
+          })
+        ).toBe(15_000);
+        expect(
+          controller.resolveStreamIdleTimeoutMs({
+            thinking: false,
+            stream_visibility: 'internal',
+          })
+        ).toBe(15_000);
+
+        const multimodalBody = {
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: '附件是什么' },
+                { type: 'image_url', image_url: { url: 'data:image/png;base64,AAA=' } },
+              ],
+            },
+          ],
+        };
+        expect(controller.resolveAttemptTimeoutMs(multimodalBody)).toBe(60_000);
+        expect(controller.resolveStreamIdleTimeoutMs(multimodalBody)).toBe(60_000);
+        expect(controller.isTransientError(new Error('AI 模型响应超时，请稍后重试 (当前超时设置: 30秒)'))).toBe(true);
 
         process.env.SANDBOX_MODEL_ATTEMPT_TIMEOUT_MS = '45000';
         expect(controller.resolveAttemptTimeoutMs({ tools: Array.from({ length: 8 }, () => ({})) })).toBe(45_000);

@@ -442,6 +442,7 @@ export class ChatConversationService {
     clientMessageId?: string;
     clientAssistantMessageId?: string;
     files?: Array<ChatUploadedFileDTO | string>;
+    executionTrace?: Record<string, unknown>;
   }): Promise<NonNullable<ChatSessionData['session']> | undefined> {
     const assistantMetadata = this.buildChatAssistantMetadata({
       rawAssistantContent: params.rawAssistantContent,
@@ -449,6 +450,7 @@ export class ChatConversationService {
       usage: params.usage,
       rateLimit: params.rateLimit,
       clientMessageId: params.clientAssistantMessageId,
+      executionTrace: params.executionTrace,
     });
     const fileMetadata = this.formatFileMetadata(params.files);
     const now = Date.now();
@@ -515,6 +517,7 @@ export class ChatConversationService {
     usage?: unknown;
     rateLimit?: unknown;
     clientMessageId?: string;
+    executionTrace?: Record<string, unknown>;
   }): Record<string, unknown> {
     const metadata: Record<string, unknown> = {
       mode: 'chat',
@@ -534,6 +537,9 @@ export class ChatConversationService {
     }
     if (params.rateLimit !== undefined) {
       metadata.rateLimit = params.rateLimit;
+    }
+    if (params.executionTrace !== undefined) {
+      metadata.executionTrace = params.executionTrace;
     }
     return metadata;
   }

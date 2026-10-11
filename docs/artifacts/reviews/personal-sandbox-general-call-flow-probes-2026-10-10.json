@@ -1,0 +1,124 @@
+{
+  "date": "2026-10-10",
+  "scope": "Isolated dispatcher tests using a stub execute_fn; no actual tool, outbound action, network call, file send, or reminder operation was executed. This establishes local branch behavior, not production exploit incidence.",
+  "results": {
+    "unauthorized_reminder_canonical": {
+      "executions": [],
+      "evidence_count": 0,
+      "statuses": [
+        "blocked"
+      ],
+      "file_sent": false
+    },
+    "unauthorized_reminder_namespaced": {
+      "executions": [
+        {
+          "name": "functions.create_reminders",
+          "arguments": {}
+        }
+      ],
+      "evidence_count": 0,
+      "statuses": [
+        "success"
+      ],
+      "file_sent": false
+    },
+    "guide_install_canonical": {
+      "executions": [],
+      "evidence_count": 0,
+      "statuses": [
+        "blocked"
+      ],
+      "file_sent": false
+    },
+    "guide_install_namespaced": {
+      "executions": [
+        {
+          "name": "functions.bash",
+          "arguments": {
+            "cmd": "pip install example-package"
+          }
+        }
+      ],
+      "evidence_count": 0,
+      "statuses": [
+        "success"
+      ],
+      "file_sent": false
+    },
+    "malformed_arguments": {
+      "executions": [
+        {
+          "name": "web_search",
+          "arguments": {}
+        }
+      ],
+      "evidence_count": 0,
+      "statuses": [
+        "success"
+      ],
+      "file_sent": false
+    },
+    "failed_read_same_arguments": {
+      "executions": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "file_path": "example.txt"
+          }
+        }
+      ],
+      "evidence_count": 0,
+      "statuses": [
+        "error",
+        "loop_intercepted"
+      ],
+      "file_sent": false
+    },
+    "legacy_success_receipt": {
+      "executions": [
+        {
+          "name": "web_search",
+          "arguments": {
+            "query": "example"
+          }
+        }
+      ],
+      "evidence_count": 0,
+      "statuses": [
+        "success"
+      ],
+      "file_sent": false
+    },
+    "structured_success_receipt": {
+      "executions": [
+        {
+          "name": "web_search",
+          "arguments": {
+            "query": "example"
+          }
+        }
+      ],
+      "evidence_count": 1,
+      "statuses": [
+        "success"
+      ],
+      "file_sent": false
+    },
+    "failed_send": {
+      "executions": [
+        {
+          "name": "send_file",
+          "arguments": {
+            "file_path": "missing.txt"
+          }
+        }
+      ],
+      "evidence_count": 0,
+      "statuses": [
+        "error"
+      ],
+      "file_sent": true
+    }
+  }
+}

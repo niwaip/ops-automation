@@ -69,9 +69,9 @@ default_rounds: 5
 ### 场景一：交互式表单识别与自动填报 (Interactive Form Filling)
 当用户提供需填写的政府/企业/银行 PDF 表单时，调用预置脚本完成填报（参见 `references/forms.md`）：
 ```bash
-python /opt/dsh/skills/pdf/scripts/check_fillable_fields.py /workspace/input_form.pdf
-python /opt/dsh/skills/pdf/scripts/extract_form_field_info.py /workspace/input_form.pdf /workspace/field_info.json
-python /opt/dsh/skills/pdf/scripts/fill_fillable_fields.py /workspace/input_form.pdf /workspace/field_values.json /workspace/filled_form.pdf
+python3 /opt/dsh/skills/pdf/scripts/check_fillable_fields.py /workspace/input_form.pdf
+python3 /opt/dsh/skills/pdf/scripts/extract_form_field_info.py /workspace/input_form.pdf /workspace/field_info.json
+python3 /opt/dsh/skills/pdf/scripts/fill_fillable_fields.py /workspace/input_form.pdf /workspace/field_values.json /workspace/filled_form.pdf
 ```
 
 ### 场景二：从 Word 合同/文档 (.docx) 生成 PDF
@@ -123,6 +123,17 @@ pdf.ln(4)
 # 正文
 pdf.set_font('Noto', size=11)
 pdf.multi_cell(0, 7, text='核心摘要与详细内容...')
+pdf.ln(3)
+
+# 【排版红线】：严禁在 multi_cell 之后执行 set_y(y0) 将光标还原，否则会导致后续列表项全部在同一行重叠叠印！
+# 正确的列表项渲染方式：自然递增 Y 坐标
+avail_w = pdf.w - pdf.r_margin - pdf.l_margin
+pdf.set_x(pdf.l_margin + 4)
+pdf.cell(6, 6, "•")
+pdf.set_x(pdf.l_margin + 12)
+pdf.multi_cell(avail_w - 12, 6, "列表项内容，自然向下折行")
+pdf.set_x(pdf.l_margin)
+pdf.ln(2)
 
 # 落盘到 /workspace
 out_path = '/workspace/report.pdf'

@@ -99,7 +99,7 @@ export const UserChatComposerToolbar: React.FC<UserChatComposerToolbarProps> = (
 
   return (
     <div className={styles['user-chat-input-toolbar']}>
-      <div className={styles['user-chat-input-tools-left']}>
+      <div className={styles['user-chat-input-left-group']}>
         <Segmented
           size="small"
           value={chatMode}
@@ -108,18 +108,28 @@ export const UserChatComposerToolbar: React.FC<UserChatComposerToolbarProps> = (
             {
               value: 'chat',
               icon: <UserOutlined />,
-              label: '个人助理',
+              label: (
+                <span>
+                  {chatMode === 'chat' && <span className={styles['user-chat-mode-dot']} />}
+                  个人助理
+                </span>
+              ),
             },
             {
               value: 'task',
               icon: <RobotOutlined />,
-              label: '企业协同',
+              label: (
+                <span>
+                  {chatMode === 'task' && <span className={styles['user-chat-mode-dot']} />}
+                  企业协同
+                </span>
+              ),
             },
           ]}
-          className={styles['user-chat-mode-segmented']}
+          className={`${styles['user-chat-mode-switch']} ${styles[`mode-${chatMode}`] || ''}`}
         />
 
-        <div className={styles['user-chat-control-group']}>
+        <div className={styles['user-chat-input-controls']}>
           {nativeReasoningSupported ? (
             <Dropdown
               menu={{

@@ -1,0 +1,63 @@
+{
+  "scope": "current local workspace; synthetic temporary workbooks; no production model replay",
+  "date": "2026-10-09",
+  "source_sha256": {
+    "src/dsh_modules/excel_tools.py": "bef55e05eb35f82dd945664b5bd030e92ede8c2089f2ecfd1ff7141cc72d2937",
+    "src/dsh_modules/agent_loop.py": "396b3a49abfaaae6060fa0cb893744b54ed3fabe0f872c33d4b65d6a9900ca07",
+    "skills/xlsx/scripts/recalc.py": "6c0a570a051fff560666c5dd3a230fbf3526f94723fb2fa8e0ffe66a9be1e9e4"
+  },
+  "selected_regression_tests": {
+    "metric_alignment": "passed",
+    "sheet_not_found_structured": "passed",
+    "formula_str_empty_v": "passed"
+  },
+  "edge_reproductions": [
+    {
+      "case": "one_metric",
+      "guard_action": "pass"
+    },
+    {
+      "case": "year_only",
+      "guard_action": "pass"
+    },
+    {
+      "case": "ceiling_evasion",
+      "guard_action": "pass"
+    },
+    {
+      "case": "nonfinancial_correct",
+      "guard_action": "continue"
+    },
+    {
+      "case": "error_code_in_normal_text",
+      "is_error": true
+    },
+    {
+      "case": "conditional_missing_cache",
+      "formula": "=IF(FALSE,\"\",123)",
+      "cached_value": null,
+      "namespace_prefix": "",
+      "uncalculated": true,
+      "validator_status": "verified",
+      "helper_status": "unavailable"
+    },
+    {
+      "case": "stale_numeric_cache",
+      "formula": "=1+1",
+      "cached_value": "999",
+      "namespace_prefix": "",
+      "uncalculated": false,
+      "validator_status": "verified",
+      "helper_status": "verified_existing"
+    },
+    {
+      "case": "namespace_prefix_missing",
+      "formula": "=1+1",
+      "cached_value": null,
+      "namespace_prefix": "ss",
+      "uncalculated": false,
+      "validator_status": "failed",
+      "helper_status": "verified_existing"
+    }
+  ]
+}

@@ -1,0 +1,139 @@
+{
+  "fixed_typed_shared_slice": [
+    "[DATA_COVERAGE: workbook=typed.xlsx, sheets=1/2, mode=SLICED]",
+    "  - 交易明细 (切片区域: A2:H3, 行数: 2, 状态: SLICED)",
+    "Row 2: A2:2026-10-08 | B2:[EMPTY] | C2:[EMPTY] | D2:TRUE | E2:10 | F2:[公式: =E2*2] | G2:25% | H2:[EMPTY]",
+    "Row 3: A3:2026-10-09 | B3:销售 | C3:正常 | D3:FALSE | E3:20 | F3:[公式: =E3*2] | G3:50% | H3:[EMPTY]"
+  ],
+  "trailing_required_empty_in_full": {
+    "H2_present": false,
+    "H3_present": false,
+    "rows": [
+      "[DATA_COVERAGE: workbook=typed.xlsx, sheets=2/2, mode=TARGETED]",
+      "  - 交易明细 (范围: A1:H3, 有效行数: 3, 公式数: 2, 状态: FULL)",
+      "  - 其他表 (范围: A1:A1, 有效行数: 1, 公式数: 0, 状态: SAMPLED)",
+      "A2:2026-10-08 | B2:[EMPTY] | C2:[EMPTY] | D2:TRUE | E2:10 | F2:[公式: =E2*2] | G2:25%",
+      "A3:2026-10-09 | B3:销售 | C3:正常 | D3:FALSE | E3:20 | F3:[公式: =E3*2] | G3:50%"
+    ]
+  },
+  "catalog": {
+    "recalc_calls": 0,
+    "summary": [
+      "[DATA_COVERAGE: workbook=typed.xlsx, sheets=2/2, mode=CATALOG]",
+      "  - 交易明细 (范围: A1:H3, 有效行数: 3, 公式数: 0, 状态: CATALOG_OVERVIEW)",
+      "  - 其他表 (范围: A1:A1, 有效行数: 1, 公式数: 0, 状态: CATALOG_OVERVIEW)",
+      "A2:2026-10-08 | B2:[EMPTY] | C2:[EMPTY] | D2:TRUE | E2:10 | F2:[EMPTY] | G2:25%",
+      "A3:2026-10-09 | B3:销售 | C3:正常 | D3:FALSE | E3:20 | F3:[EMPTY] | G3:50%"
+    ]
+  },
+  "invalid_sheet": [
+    "[DATA_COVERAGE: workbook=typed.xlsx, sheets=2/2, mode=SLICED]",
+    "  - 交易明细 (范围: A1:H3, 有效行数: 3, 公式数: 2, 状态: FULL)",
+    "  - 其他表 (范围: A1:A1, 有效行数: 1, 公式数: 0, 状态: FULL)",
+    "A2:2026-10-08 | B2:[EMPTY] | C2:[EMPTY] | D2:TRUE | E2:10 | F2:[公式: =E2*2] | G2:25%",
+    "A3:2026-10-09 | B3:销售 | C3:正常 | D3:FALSE | E3:20 | F3:[公式: =E3*2] | G3:50%"
+  ],
+  "invalid_range": [
+    "[DATA_COVERAGE: workbook=typed.xlsx, sheets=1/2, mode=SLICED]",
+    "  - 交易明细 (范围: A1:H3, 有效行数: 3, 公式数: 2, 状态: FULL)",
+    "A2:2026-10-08 | B2:[EMPTY] | C2:[EMPTY] | D2:TRUE | E2:10 | F2:[公式: =E2*2] | G2:25%",
+    "A3:2026-10-09 | B3:销售 | C3:正常 | D3:FALSE | E3:20 | F3:[公式: =E3*2] | G3:50%"
+  ],
+  "range_without_sheet": [
+    "[DATA_COVERAGE: workbook=typed.xlsx, sheets=2/2, mode=SLICED]",
+    "  - 交易明细 (范围: A1:H3, 有效行数: 3, 公式数: 2, 状态: FULL)",
+    "  - 其他表 (范围: A1:A1, 有效行数: 1, 公式数: 0, 状态: FULL)",
+    "A2:2026-10-08 | B2:[EMPTY] | C2:[EMPTY] | D2:TRUE | E2:10 | F2:[公式: =E2*2] | G2:25%",
+    "A3:2026-10-09 | B3:销售 | C3:正常 | D3:FALSE | E3:20 | F3:[公式: =E3*2] | G3:50%"
+  ],
+  "precision": [
+    "[DATA_COVERAGE: workbook=precision.xlsx, sheets=1/1, mode=FULL]",
+    "  - 精度 (范围: A1:C2, 有效行数: 2, 公式数: 0, 状态: FULL)",
+    "A2:0 | B2:7.1235 | C2:12.35%"
+  ],
+  "fixed_uncached_status": {
+    "status": "failed",
+    "total_formulas": 1,
+    "cached_formulas": 0,
+    "uncalculated_formulas": 1,
+    "uncalculated_locations": [
+      "Sheet!A1"
+    ],
+    "total_errors": 0,
+    "error_summary": {}
+  },
+  "legitimate_blank_cache": {
+    "validator": {
+      "status": "failed",
+      "total_formulas": 1,
+      "cached_formulas": 0,
+      "uncalculated_formulas": 1,
+      "uncalculated_locations": [
+        "Sheet!A1"
+      ],
+      "total_errors": 0,
+      "error_summary": {}
+    },
+    "has_uncalculated": true
+  },
+  "static_error_status": {
+    "status": "verified",
+    "total_formulas": 0,
+    "cached_formulas": 0,
+    "uncalculated_formulas": 0,
+    "uncalculated_locations": [],
+    "total_errors": 1,
+    "error_summary": {
+      "#DIV/0!": {
+        "count": 1,
+        "locations": [
+          "Sheet!A1"
+        ]
+      }
+    }
+  },
+  "literal_error_text": {
+    "status": "partial",
+    "total_formulas": 1,
+    "cached_formulas": 1,
+    "uncalculated_formulas": 0,
+    "uncalculated_locations": [],
+    "total_errors": 1,
+    "error_summary": {
+      "#N/A": {
+        "count": 1,
+        "locations": [
+          "Sheet!A1"
+        ]
+      }
+    }
+  },
+  "corrupt_cache_detection": false,
+  "sliced_full_audit_guard": "pass",
+  "fixed_clipped_guard": "continue",
+  "clipped_guard_after_one_nudge": "pass",
+  "tool_error_recognition": {
+    "partial": false,
+    "failed": true,
+    "unavailable": false
+  },
+  "real_libreoffice_smoke": {
+    "status": "partial",
+    "total_formulas": 2,
+    "cached_formulas": 1,
+    "uncalculated_formulas": 1,
+    "uncalculated_locations": [
+      "Sheet!A2"
+    ],
+    "total_errors": 0,
+    "error_summary": {},
+    "output_file": "/private/var/folders/sl/wxt_r0893w313j_k6bpz3_q00000gn/T/excel-reaudit-e_l2e8cv/real_smoke_out.xlsx"
+  },
+  "source_sha256": {
+    "src/dsh_modules/office_tools.py": "a3921c3c2462a02394e2c1e1af3e36406bc3f9007175ba4fc8bd7872b668e296",
+    "src/dsh_modules/context_budget.py": "e59284844fd9abcf58a9ac9ab6aa485d6d29813492e9f330759612a4d5fc58ed",
+    "src/dsh_modules/agent_loop.py": "bdc6221a44cefc0704f2b7f9ca2e77d945db6eaba145e3bb2da6931c56e34cce",
+    "skills/xlsx/scripts/recalc.py": "7c573846aba5c03aca3e5f8c1490adb6d5f6224455754c41db3a026213d94634",
+    "skills/xlsx/SKILL.md": "44f3a81db49051db536cd7340a896176c431ea286e2b2f3515de3bd73e759be1"
+  }
+}

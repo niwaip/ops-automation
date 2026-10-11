@@ -1,0 +1,107 @@
+{
+  "date": "2026-10-09",
+  "request": "移除专项问句直接返回，使用可复用的模型/工具/证据流程",
+  "original_query": "找出收入与净利润偏差最大的月份。",
+  "session_id": "audit-standard-comparison-20261009-complete",
+  "model_binding": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "workbook_sha256": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+  "transport_success": true,
+  "exit_code": 0,
+  "metrics": {
+    "ttftMs": 2667.89,
+    "durationMs": 27354.29,
+    "llmDurationMs": 27156.09,
+    "toolCallsCount": 2,
+    "toolCalls": [
+      {
+        "name": "read_file",
+        "params": {
+          "end_line": "15",
+          "file_path": "AI能力测试_财务报表.xlsx",
+          "sheet": "预算对比",
+          "start_line": "3"
+        },
+        "status": "success"
+      },
+      {
+        "name": "compare_spreadsheet_columns",
+        "params": {
+          "file_path": "AI能力测试_财务报表.xlsx",
+          "sheet": "预算对比",
+          "data_range": "A4:H15",
+          "header_row": "3",
+          "group_column": "A",
+          "comparisons": "[{'label': '营业收入', 'left_column': 'C', 'right_column': 'B'}, {'label': '净利润', 'left_column': 'F', 'right_column': 'E'}]",
+          "basis": "budget",
+          "rank_by": "absolute_difference",
+          "extreme": "max",
+          "expected_groups": "['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']"
+        },
+        "status": "success"
+      }
+    ],
+    "llmInvocations": 4,
+    "tokens": {
+      "prompt_tokens": 34364,
+      "completion_tokens": 2350,
+      "total_tokens": 36714
+    },
+    "finishReason": "stop",
+    "roundFinishReasons": [
+      "tool_calls",
+      "stop",
+      "tool_calls",
+      "stop"
+    ]
+  },
+  "final_output": "根据“预算对比”工作表（范围 A4:H15）的核算结果，以**预算**为基准，对营业收入和净利润的实际值与预算值的**绝对差额**进行排序，极值结果如下：\n\n1.  **营业收入**偏差绝对值最大的月份是 **12月**。\n    *   收入实际：13,400 千元\n    *   收入预算：11,530 千元\n    *   **绝对偏差：1,870 千元**（超预算）\n\n2.  **净利润**偏差绝对值最大的月份是 **7月**。\n    *   净利润实际：934.31 千元\n    *   净利润预算：1,380 千元\n    *   **绝对偏差：445.69 千元**（低于预算）\n\n**结论：**\n*   收入偏差最大的月份为 **12月**（偏差绝对值 1,870 千元）。\n*   净利润偏差最大的月份为 **7月**（偏差绝对值 445.69 千元）。\n\n如果从单指标绝对偏差幅度来看，**12月**的营业收入偏差（1,870）是整个报表中绝对值最大的单一指标偏差。",
+  "verified_scope": "请求的收入/净利润预算差额极值与单位；不等于所有附加文字已完成形式化验证",
+  "tests": [
+    {
+      "file": "test_table_comparison.py",
+      "count": 45,
+      "passed": true
+    },
+    {
+      "file": "test_dsh.py",
+      "count": 82,
+      "passed": true
+    },
+    {
+      "file": "test_financial_workbook_fixes.py",
+      "count": 37,
+      "passed": true
+    },
+    {
+      "file": "test_small_model_protocol.py",
+      "count": 37,
+      "passed": true
+    },
+    {
+      "file": "test_dsh_skills.py",
+      "count": 16,
+      "passed": true
+    },
+    {
+      "file": "test_office_sandbox.py",
+      "count": 8,
+      "passed": true
+    }
+  ],
+  "total_tests": 225,
+  "source_hashes": {
+    "analysis_contract.py": "7d31b9918b2dfa93fe7fb433670120eae163db188484540027014fa549084305",
+    "analysis_validation.py": "a36ccfc99a125f114dde8dae7cdf664972f72fc8c7fcce962118fdc59ec35301",
+    "comparison_context.py": "f2d965c563d0b960616af739dacb73daf17c22770989f82dff9e0ee68b7d70df",
+    "comparison_evidence.py": "146a6af66aea0f8c19fab3d1d6d4e8917632e0e2cf4052543c8418246df29b38",
+    "comparison_tool_schema.py": "fa28a0d8f54e65bf4f2dce535a0f388eeec028fd372588a7c963a9afda1586ed",
+    "spreadsheet_units.py": "2ffe2a57d2221431daad51bda6655caa17ceb03ef1f72b25c0a53c28b457e68b",
+    "table_comparison.py": "822e45e215c2aa0ed231c86e9560c32c3012e0bbceedb05dc7ba5b19697bc556",
+    "agent_loop.py": "af7c58880a252a2201694a3737a230b187aed0bdbbb5beb76ea1cca1b0e4ae13",
+    "runner.py": "9d5681c902c2c9b750ac1e77ebaf1bb52c45adb2b61595a4bd452ea76ca04ee3",
+    "prompt_builder.py": "6627604e8d1315b61a43ca2213cdaa0546049d813c528fa78322abc2396b66b3",
+    "skill_router.py": "12355c621b8f3041e61737144cbb6854b398957678b2c77228b2b336ed3751ea",
+    "tools.py": "0c5d12b7824be40881905c68a35eeac5820f9827760e3c69703bda985e7539de",
+    "tool_result.py": "74d0cd9a5fb2c74254b9f6383136b00d85c3d1588ea528f82ed15d0f469cb859"
+  }
+}

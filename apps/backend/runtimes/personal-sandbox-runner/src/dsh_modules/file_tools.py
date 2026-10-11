@@ -5,6 +5,7 @@ in-place file patching, and file dispatch/delivery.
 """
 
 import os
+import re
 import json
 import socket
 import base64
@@ -14,7 +15,19 @@ import urllib.parse
 import urllib.error
 import tempfile
 from pathlib import Path
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Dict, Any
+
+IMAGE_MIME_MAP = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".bmp": "image/bmp",
+    ".tiff": "image/tiff",
+    ".tif": "image/tiff",
+}
+IMAGE_EXTENSIONS = tuple(IMAGE_MIME_MAP.keys())
 
 from .config import WORKSPACE_DIR, KNOWLEDGE_DIR, DEFAULT_PROXY_URL, VIRTUAL_API_KEY, SKILL_DIR, CUSTOM_SKILL_DIR, PLUGIN_DIR
 from .web_tools import check_deadline, assert_not_timed_out
@@ -91,6 +104,15 @@ def _locate_readable_candidate(raw: str, ws: str, kn: str) -> Optional[Path]:
                 return ws_matches[0]
         except Exception:
             pass
+        # 渐进式会话双区隔离：在 .sessions/ 中检索
+        sessions_path = ws_path / ".sessions"
+        if sessions_path.exists():
+            try:
+                for s_match in sessions_path.glob(f"*/*{raw}*"):
+                    if s_match.is_file():
+                        return s_match
+            except Exception:
+                pass
     kn_path = Path(kn)
     if kn_path.exists():
         try:
@@ -100,6 +122,58 @@ def _locate_readable_candidate(raw: str, ws: str, kn: str) -> Optional[Path]:
         except Exception:
             pass
     return None
+
+
+def is_protected_session_file(target: Path) -> bool:
+    """Checks whether the file is an original input attachment in the current session."""
+    try:
+        # 1. 检查环境变量 DSH_SESSION_ATTACHMENTS
+        env_atts = os.environ.get("DSH_SESSION_ATTACHMENTS", "")
+        if env_atts:
+            for fname in env_atts.split(","):
+                if fname.strip() and target.name == fname.strip():
+                    return True
+
+        import dsh_modules.config as cfg
+        ws = Path(getattr(cfg, "WORKSPACE_DIR", "/workspace"))
+
+        # 2. 检查 .dsh/inputs_backup/
+        for base in [ws, Path.cwd(), target.parent]:
+            backup = base / ".dsh" / "inputs_backup" / target.name
+            if backup.exists():
+                return True
+
+        # 3. 检查 .dsh/sessions/*.attachments.json 与 .sessions/*/attachments.json
+        for base in [ws, Path.cwd(), target.parent]:
+            sessions_dir = base / ".dsh" / "sessions"
+            if sessions_dir.exists():
+                for att_file in sessions_dir.glob("*.attachments.json"):
+                    try:
+                        with open(att_file, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                            if isinstance(data, list):
+                                for item in data:
+                                    fname = item if isinstance(item, str) else item.get("fileName", "")
+                                    if fname and target.name == fname:
+                                        return True
+                    except Exception:
+                        pass
+            sess_dir = base / ".sessions"
+            if sess_dir.exists():
+                for att_file in sess_dir.glob("*/attachments.json"):
+                    try:
+                        with open(att_file, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                            if isinstance(data, list):
+                                for item in data:
+                                    fname = item if isinstance(item, str) else item.get("fileName", "")
+                                    if fname and target.name == fname:
+                                        return True
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+    return False
 
 
 def resolve_sandboxed_path(
@@ -140,6 +214,9 @@ def resolve_sandboxed_path(
         action_type = "写入与修改" if for_write else ("交付物外发" if for_outbound else "读取与访问")
         allowed_str = "/workspace, /knowledge" if (for_write or for_outbound) else "/workspace, /knowledge, /opt/dsh"
         return None, f"【安全拦截】路径越界访问拒绝: 目标文件 ({raw}) 位于沙箱指定边界 ({allowed_str}) 之外，禁止{action_type}系统目录。"
+
+    if for_write and is_protected_session_file(resolved):
+        return None, f"【安全拦截】原始输入附件 ({resolved.name}) 属于只读保护资源，禁止直接原地覆写或篡改。请将修改结果另存为新文件。"
 
     return resolved, None
 
@@ -187,6 +264,136 @@ def scan_personal_knowledge() -> str:
     return "\n".join(summary)
 
 
+def validate_image_bytes(p: Path, image_bytes: bytes, suffix: Optional[str] = None) -> Optional[str]:
+    """Performs pure-local millisecond validation of image bytes (MIP encryption and format integrity)."""
+    ext = (suffix if suffix is not None else p.suffix).lower()
+    if not image_bytes or len(image_bytes) == 0:
+        return f"图片内容为空: {p.name}"
+
+    # 1. 检查是否为 Microsoft Information Protection (MIP/RMS) 企业安全加密容器 (.pfile)
+    if image_bytes.startswith(b'.pfile') or b'Microsoft Information Protection' in image_bytes[:2048]:
+        label_match = re.search(
+            r'<msip:MSIP_Label_[^>]+_Name>([^<]+)</msip:MSIP_Label_',
+            image_bytes[:4096].decode('utf-8', errors='ignore'),
+        )
+        label_str = f"（企业安全密级标签: {label_match.group(1)}）" if label_match else ""
+        return (
+            f"【文件受企业安全加密保护无法解析】\n"
+            f"- 文件名: {p.name}\n"
+            f"- 实际数据类型: 微软企业信息保护 (Microsoft Information Protection / MIP) 加密的 .pfile 容器文件{label_str}\n"
+            f"- 诊断结论: 该文件受企业机密策略与 RMS 权限服务加密保护，内部数据为受保护密文，非原生图片二进制流，无法作为图片解码或识别。\n"
+            f"- 处理指引: 请在拥有企业解密权限的环境中，解除保护或另存为无加密的常规图片后再重新上传。"
+        )
+
+    # 2. 预检常规图片二进制格式完整性，避免损坏图片打崩后端上游模型
+    if ext in [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"]:
+        try:
+            from PIL import Image
+            import io
+            with Image.open(io.BytesIO(image_bytes)) as test_img:
+                test_img.verify()
+        except ImportError:
+            magic_headers = {
+                ".png": b"\x89PNG\r\n\x1a\n",
+                ".jpg": b"\xff\xd8",
+                ".jpeg": b"\xff\xd8",
+                ".gif": (b"GIF87a", b"GIF89a"),
+                ".webp": b"RIFF",
+                ".bmp": b"BM"
+            }
+            exp_magic = magic_headers.get(ext)
+            is_valid_magic = True
+            if isinstance(exp_magic, tuple):
+                is_valid_magic = any(image_bytes.startswith(m) for m in exp_magic)
+            elif exp_magic:
+                is_valid_magic = image_bytes.startswith(exp_magic)
+            if not is_valid_magic:
+                return (
+                    f"【图片文件损坏或格式无效无法解析】\n"
+                    f"- 文件名: {p.name}\n"
+                    f"- 诊断结论: 文件头魔数异常，并非标准 {ext[1:].upper()} 格式。\n"
+                    f"- 处理指引: 请检查原图是否完整，重新导出为有效图片后再行上传。"
+                )
+        except Exception as verify_err:
+            return (
+                f"【图片文件损坏或格式无效无法解析】\n"
+                f"- 文件名: {p.name}\n"
+                f"- 诊断结论: 文件二进制流已损坏或并非标准 {ext[1:].upper()} 格式（底层解码错误: {verify_err}），无法被视觉引擎识别解析。\n"
+                f"- 处理指引: 请检查原图是否完整，重新导出为有效图片后再行上传。"
+            )
+    return None
+
+
+def _optimize_image_bytes_for_vision(
+    image_bytes: bytes,
+    mime: str,
+    max_dimension: int = 1800
+) -> Tuple[bytes, str]:
+    """Downscales oversized high-resolution images locally to reduce ViT visual token latency."""
+    try:
+        from PIL import Image
+        import io
+        with Image.open(io.BytesIO(image_bytes)) as img:
+            w, h = img.size
+            if max(w, h) <= max_dimension:
+                return image_bytes, mime
+            scale = max_dimension / float(max(w, h))
+            new_size = (max(1, int(w * scale)), max(1, int(h * scale)))
+            resample = getattr(getattr(Image, "Resampling", Image), "LANCZOS", Image.BICUBIC)
+            resized = img.resize(new_size, resample=resample)
+            if resized.mode not in ("RGB", "L"):
+                resized = resized.convert("RGB")
+            buf = io.BytesIO()
+            resized.save(buf, format="JPEG", quality=90, optimize=True)
+            return buf.getvalue(), "image/jpeg"
+    except Exception:
+        return image_bytes, mime
+
+
+def prepare_multimodal_image_attachment(
+    file_path: str,
+    max_dimension: int = 1800
+) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+    """
+    Validates an image attachment locally (zero LLM calls) and builds an OpenAI-compatible
+    image_url content block for direct multimodal model invocation.
+    Returns (image_part, None) on success, or (None, diagnostic_error_message) on failure.
+    """
+    p, err = resolve_sandboxed_path(file_path, for_write=False, for_outbound=False)
+    if err:
+        return None, f"无法读取图片：{err}"
+    if not p.exists() or not p.is_file():
+        return None, f"图片文件未找到: {file_path}"
+
+    suffix = p.suffix.lower()
+    if suffix not in IMAGE_MIME_MAP:
+        return None, f"【文件格式不支持】文件 ({p.name}) 并非支持的图片格式。"
+
+    try:
+        image_bytes = p.read_bytes()
+    except Exception as e:
+        return None, f"读取图片文件失败 ({p.name}): {e}"
+
+    diag_err = validate_image_bytes(p, image_bytes, suffix=suffix)
+    if diag_err:
+        return None, diag_err
+
+    opt_bytes, opt_mime = _optimize_image_bytes_for_vision(
+        image_bytes, IMAGE_MIME_MAP[suffix], max_dimension=max_dimension
+    )
+    b64_str = base64.b64encode(opt_bytes).decode("ascii")
+    return (
+        {
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:{opt_mime};base64,{b64_str}",
+                "detail": "auto",
+            },
+        },
+        None,
+    )
+
+
 def inspect_image(
     image_path: str,
     prompt: str = "",
@@ -206,16 +413,7 @@ def inspect_image(
         return f"图片文件未找到: {image_path}"
 
     suffix = p.suffix.lower()
-    mime_map = {
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".png": "image/png",
-        ".webp": "image/webp",
-        ".gif": "image/gif",
-        ".bmp": "image/bmp",
-        ".tiff": "image/tiff",
-        ".tif": "image/tiff",
-    }
+    mime_map = IMAGE_MIME_MAP
 
     image_bytes = None
     mime = "image/jpeg"
@@ -264,8 +462,11 @@ def inspect_image(
     else:
         return f"【文件格式不支持】文件 ({p.name}) 并非支持的图片或扫描文档格式（支持 jpg, png, webp, gif, bmp, pdf）。"
 
-    if not image_bytes or len(image_bytes) == 0:
-        return f"图片内容为空: {p.name}"
+    diag_err = validate_image_bytes(p, image_bytes or b"", suffix=suffix if suffix != ".pdf" else ".jpg")
+    if diag_err:
+        return diag_err
+
+    image_bytes, mime = _optimize_image_bytes_for_vision(image_bytes, mime, max_dimension=1800)
 
     to_vision = check_deadline(deadline, default_timeout=120.0)
     try:
@@ -298,6 +499,7 @@ def inspect_image(
             ],
             "temperature": 0.2,
             "max_tokens": pol.max_tokens,
+            "thinking": False,
             "stream": False
         }
 
@@ -336,10 +538,21 @@ def inspect_image(
         return f"【系统提示】附件 ({p.name}) 图像分析网络请求失败，无法解析: {ue}"
     except urllib.error.HTTPError as he:
         assert_not_timed_out(deadline, "image vision inspection")
-        return f"【系统提示】附件 ({p.name}) 属于扫描件/图片，当前选定模型未能识别解析出有效文字内容，无法解析。"
+        err_msg = ""
+        try:
+            err_body = he.read().decode("utf-8", errors="ignore")
+            err_json = json.loads(err_body)
+            err_msg = err_json.get("message") or err_json.get("error", {}).get("message", "")
+        except Exception:
+            pass
+        if "cannot identify image" in err_msg.lower() or "unidentified" in err_msg.lower():
+            return f"【图片格式异常或损坏】附件 ({p.name}) 二进制流无法被视觉模型解码识别（上游解析失败: {err_msg or he}）。"
+        return f"【系统提示】附件 ({p.name}) 视觉分析请求异常 ({he.code}): {err_msg or he}"
     except Exception as e:
         assert_not_timed_out(deadline, "image vision inspection")
-        return f"【系统提示】附件 ({p.name}) 属于扫描件/图片，当前选定模型未能识别解析出有效文字内容，无法解析: {e}"
+        if "cannot identify image" in str(e).lower():
+            return f"【图片格式异常或损坏】附件 ({p.name}) 二进制流无法被视觉模型识别解析: {e}"
+        return f"【系统提示】附件 ({p.name}) 视觉分析异常: {e}"
 
 
 def read_workspace_file(
@@ -348,9 +561,12 @@ def read_workspace_file(
     start_line: Optional[int] = None,
     end_line: Optional[int] = None,
     deadline: Optional[float] = None,
-    model_name: Optional[str] = None
+    model_name: Optional[str] = None,
+    prompt: Optional[str] = None,
+    sheet_name: Optional[str] = None,
+    cell_range: Optional[str] = None
 ) -> str:
-    """Reads and extracts text from workspace or knowledge files, with native support for .docx, .xlsx, .txt, .md, .json, .py, .pdf, .jpg, .png"""
+    """Reads and extracts text locally from workspace or knowledge files (.docx, .xlsx, .txt, .md, .json, .py, .pdf) without calling any LLM."""
     p, err = resolve_sandboxed_path(file_path, for_write=False, for_outbound=False)
     if err:
         return err
@@ -361,45 +577,67 @@ def read_workspace_file(
 
     suffix = p.suffix.lower()
 
+    # 全局前置检测：若文件被 Microsoft Information Protection (MIP/RMS) 企业安全加密封装
+    try:
+        with open(p, "rb") as check_f:
+            head_bytes = check_f.read(2048)
+            if head_bytes.startswith(b'.pfile') or b'Microsoft Information Protection' in head_bytes:
+                label_match = re.search(r'<msip:MSIP_Label_[^>]+_Name>([^<]+)</msip:MSIP_Label_', head_bytes.decode('utf-8', errors='ignore'))
+                label_str = f"（企业安全密级标签: {label_match.group(1)}）" if label_match else ""
+                return (
+                    f"【文件受企业安全加密保护无法解析】\n"
+                    f"- 文件名: {p.name}\n"
+                    f"- 实际数据类型: 微软企业信息保护 (Microsoft Information Protection / MIP) 加密的 .pfile 容器文件{label_str}\n"
+                    f"- 诊断结论: 该文件受企业机密策略与 RMS 权限服务加密保护，内部数据为受保护密文，非标准文件二进制流，平台及模型无法直接解密。\n"
+                    f"- 处理指引: 请在拥有企业解密权限的环境中解除保护或重新导出为无保护文件后再上传。"
+                )
+    except Exception:
+        pass
+
     # 1. Word 文档 (.docx) 原生提取
     if suffix == ".docx":
         return extract_docx_text(p, max_chars=max_chars, start_line=start_line, end_line=end_line)
 
     # 2. Excel 工作簿 (.xlsx) 原生提取
     elif suffix == ".xlsx":
-        return extract_xlsx_text(p, max_chars=max_chars, start_line=start_line, end_line=end_line)
-
-    # 3. PDF 文档 (.pdf) 原生提取与扫描版自动视觉下沉
-    elif suffix == ".pdf":
-        extracted_pdf = extract_pdf_text(p, max_chars=max_chars, start_line=start_line, end_line=end_line)
-        is_scanned_notice = (
-            not extracted_pdf or
-            "扫描版或图片型 PDF" in extracted_pdf or
-            "未检测到文字内容" in extracted_pdf
+        return extract_xlsx_text(
+            p,
+            max_chars=max_chars,
+            start_line=start_line,
+            end_line=end_line,
+            prompt=prompt,
+            sheet_name=sheet_name,
+            cell_range=cell_range
         )
-        if is_scanned_notice:
-            ocr_text = inspect_image(str(p), max_chars=max_chars, deadline=deadline, model_name=model_name)
-            if ocr_text and not ocr_text.startswith("无法识别图片") and not ocr_text.startswith("图片文件未找到"):
-                return ocr_text
-        return extracted_pdf
+
+    # 3. PDF 文档 (.pdf) 原生本地文本提取（不在此处隐式调用视觉大模型）
+    elif suffix == ".pdf":
+        return extract_pdf_text(p, max_chars=max_chars, start_line=start_line, end_line=end_line)
 
     # 4. PPT 文档 (.pptx) 原生提取
     elif suffix == ".pptx":
         return extract_pptx_text(p, max_chars=max_chars, start_line=start_line, end_line=end_line)
 
-    # 4. 检查是否有已提取的同名 .txt
+    # 5. 检查是否有已提取的同名 .txt 缓存
     txt_sibling = p.parent / f"{p.name}.txt"
     if not txt_sibling.exists():
         txt_sibling = p.parent / f"{p.stem}.txt"
-    if txt_sibling.exists() and suffix in [".docx", ".xlsx", ".pptx", ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".pdf"]:
+    if txt_sibling.exists() and suffix in [".docx", ".xlsx", ".pptx", *IMAGE_EXTENSIONS, ".pdf"]:
         try:
             return f"【文件 ({p.name}) 提取文本/视觉识别结果】:\n" + txt_sibling.read_text(encoding="utf-8", errors="ignore")[:max_chars]
         except Exception:
             pass
 
-    # 5. 图片文件 (.jpg, .jpeg, .png, .webp, .gif, .bmp) 视觉识别与解析
-    if suffix in [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"]:
-        return inspect_image(str(p), max_chars=max_chars, deadline=deadline, model_name=model_name)
+    # 6. 图片文件 (.jpg, .jpeg, .png, .webp, .gif, .bmp) 仅做本地完整性校验，不调用模型预处理
+    if suffix in IMAGE_EXTENSIONS:
+        try:
+            img_bytes = p.read_bytes()
+        except Exception as e:
+            return f"读取图片文件失败 ({p.name}): {e}"
+        diag_err = validate_image_bytes(p, img_bytes, suffix=suffix)
+        if diag_err:
+            return diag_err
+        return f"【图片文件 ({p.name}) 本地预检通过（大小 {len(img_bytes)} 字节），无需文本预处理，直接交由视觉模型分析】"
 
     # 6. 常规纯文本文件读取 (.txt, .md, .json, .py, .csv, .yml, .sql, .sh 等)
     try:

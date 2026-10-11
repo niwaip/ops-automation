@@ -9,11 +9,13 @@ import { WorkspaceNoteService } from './workspace-note.service';
 import { WorkspaceProcessArchiveService } from './workspace-process-archive.service';
 import { WorkspaceArtifactSyncHelper } from './workspace-artifact-sync.helper';
 import { WorkspaceNoteAiHelper } from './workspace-note-ai.helper';
+import { WorkspaceTempCleanerService } from './workspace-temp-cleaner.service';
 
 @Module({
   controllers: [WorkspaceController],
   providers: [
     WorkspaceService,
+    WorkspaceTempCleanerService,
     WorkspaceNoteService,
     WorkspaceArtifactSyncHelper,
     WorkspaceNoteAiHelper,
@@ -28,6 +30,7 @@ import { WorkspaceNoteAiHelper } from './workspace-note-ai.helper';
   ],
   exports: [
     WorkspaceService,
+    WorkspaceTempCleanerService,
     WorkspaceNoteService,
     WorkspaceArtifactSyncHelper,
     WorkspaceNoteAiHelper,

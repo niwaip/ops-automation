@@ -22,6 +22,7 @@ const DEFAULT_DEEPSEEK_ENDPOINT = 'https://api.deepseek.com';
 const DEFAULT_MAX_RETRIES = 1;
 /** 硬上限（绝不允许无限重试） */
 const ABSOLUTE_MAX_RETRIES = 3;
+const FAST_INTERNAL_SYNTHESIS_TIMEOUT_MS = 15_000;
 const DEFAULT_SANDBOX_ATTEMPT_TIMEOUT_MS = 30_000;
 const GENERATION_SANDBOX_ATTEMPT_TIMEOUT_MS = 60_000;
 const LARGE_TOOL_SURFACE_THRESHOLD = 8;
@@ -89,13 +90,27 @@ export class ModelProxyController {
 
     let client = null;
     // 1. 若用户显式选定了具体模型（非 'vision'/'ocr' 虚拟标识，非 generic），优先使用用户选定模型的客户端
+    // 若请求携带多模态图片但用户显式选定的模型不支持视觉，则自动交由平台首选视觉模型处理
     if (body.model && body.model !== 'vision' && body.model !== 'ocr' && !isGenericOrPlaceholder) {
-      client = this.modelService.getClient(body.model);
-      if (!client && !apiKey) {
-        this.logger.error(`Explicitly requested model [${body.model}] not found and no upstream API key configured`);
-        throw new HttpException(
-          `Requested model [${body.model}] is not configured or unavailable on the platform`,
-          HttpStatus.BAD_REQUEST
+      const selectedEntity = (this.modelService as any).resolveModelEntity?.(body.model);
+      const selectedSupportsVision =
+        !hasImageContent ||
+        !selectedEntity ||
+        (typeof (this.modelService as any).isVisionCapableModel === 'function'
+          ? this.modelService.isVisionCapableModel(selectedEntity)
+          : true);
+      if (selectedSupportsVision) {
+        client = this.modelService.getClient(body.model);
+        if (!client && !apiKey) {
+          this.logger.error(`Explicitly requested model [${body.model}] not found and no upstream API key configured`);
+          throw new HttpException(
+            `Requested model [${body.model}] is not configured or unavailable on the platform`,
+            HttpStatus.BAD_REQUEST
+          );
+        }
+      } else {
+        this.logger.warn(
+          `Explicitly requested model [${body.model}] does not support vision; routing image request to preferred vision model.`
         );
       }
     }
@@ -744,19 +759,44 @@ export class ModelProxyController {
     return DEFAULT_MAX_RETRIES;
   }
 
+  private hasMultimodalImageContent(body?: Record<string, any>): boolean {
+    if (!body) return false;
+    if (body.model === 'vision' || body.model === 'ocr') return true;
+    return (
+      Array.isArray(body.messages) &&
+      body.messages.some(
+        (msg: any) =>
+          Array.isArray(msg?.content) &&
+          msg.content.some(
+            (b: any) =>
+              b?.type === 'image_url' ||
+              (typeof b?.image_url === 'object' && Boolean(b.image_url?.url))
+          )
+      )
+    );
+  }
+
   resolveAttemptTimeoutMs(body?: Record<string, any>): number {
     const parsed = Number(process.env.SANDBOX_MODEL_ATTEMPT_TIMEOUT_MS);
     if (Number.isFinite(parsed)) {
       return Math.min(90_000, Math.max(5_000, Math.trunc(parsed)));
     }
-    // Large capability surfaces are used by artifact/code generation turns and
-    // need more decoding time. Small read-only/tool turns keep the short bound
-    // so weather/search failures cannot recreate the former 90-second tail.
+    // Large capability surfaces and multimodal vision inputs need more prefill/decoding time.
+    // Small read-only/tool turns keep the short bound so weather/search failures cannot
+    // recreate the former 90-second tail.
     if (
+      this.hasMultimodalImageContent(body) ||
       body?.request_context === 'web_search_synthesis' ||
       (Array.isArray(body?.tools) && body.tools.length >= LARGE_TOOL_SURFACE_THRESHOLD)
     ) {
       return GENERATION_SANDBOX_ATTEMPT_TIMEOUT_MS;
+    }
+    if (
+      body?.thinking === false &&
+      body?.stream_visibility === 'internal' &&
+      (!Array.isArray(body?.tools) || body.tools.length === 0)
+    ) {
+      return FAST_INTERNAL_SYNTHESIS_TIMEOUT_MS;
     }
     return DEFAULT_SANDBOX_ATTEMPT_TIMEOUT_MS;
   }
@@ -766,10 +806,21 @@ export class ModelProxyController {
     if (Number.isFinite(parsed)) {
       return Math.min(180_000, Math.max(5_000, Math.trunc(parsed)));
     }
-    return body?.request_context === 'web_search_synthesis' ||
+    if (
+      this.hasMultimodalImageContent(body) ||
+      body?.request_context === 'web_search_synthesis' ||
       (Array.isArray(body?.tools) && body.tools.length >= LARGE_TOOL_SURFACE_THRESHOLD)
-      ? 60_000
-      : 30_000;
+    ) {
+      return 60_000;
+    }
+    if (
+      body?.thinking === false &&
+      body?.stream_visibility === 'internal' &&
+      (!Array.isArray(body?.tools) || body.tools.length === 0)
+    ) {
+      return FAST_INTERNAL_SYNTHESIS_TIMEOUT_MS;
+    }
+    return 30_000;
   }
 
   /**
@@ -828,7 +879,7 @@ export class ModelProxyController {
     }
 
     const errMsg = String(err?.message || err || '');
-    return /socket|network|tls|econnreset|econnaborted|timeout|timed out|hang up|disconnected|fetch failed|premature close|\baborted?\b|pipeline ended|overloaded|connection reset|reset by peer|bad gateway|service unavailable|rate limit|too many requests/i.test(
+    return /socket|network|tls|econnreset|econnaborted|timeout|timed out|超时|hang up|disconnected|fetch failed|premature close|\baborted?\b|pipeline ended|overloaded|connection reset|reset by peer|bad gateway|service unavailable|rate limit|too many requests/i.test(
       errMsg
     );
   }

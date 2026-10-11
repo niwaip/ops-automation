@@ -135,8 +135,9 @@ export class LockService {
     userId: string,
     ttlSeconds: number = 180,
     waitTimeoutSeconds: number = 35,
-    onWaiting?: (waitedMs: number) => void
-  ): Promise<{ success: boolean; token: string; waitedMs?: number }> {
+    onWaiting?: (waitedMs: number) => void,
+    signal?: AbortSignal
+  ): Promise<{ success: boolean; token: string; waitedMs?: number; aborted?: boolean }> {
     const canonicalUserId = (userId || '').trim().toLowerCase();
     const lockKey = `lock:sandbox:exec:${canonicalUserId}`;
     const token = uuidv4();
@@ -146,8 +147,20 @@ export class LockService {
     let hasNotifiedWaiting = false;
 
     for (;;) {
+      if (signal?.aborted) {
+        const elapsed = Date.now() - startTime;
+        this.logger.log(
+          `Sandbox execution lock wait aborted for user [${canonicalUserId}] after ${elapsed}ms`
+        );
+        return { success: false, token: '', waitedMs: elapsed, aborted: true };
+      }
+
       const result = await this.redisService.set(lockKey, token, ttlSeconds);
       if (result === 'OK') {
+        if (signal?.aborted) {
+          await this.releaseSandboxLock(canonicalUserId, token).catch(() => {});
+          return { success: false, token: '', waitedMs: Date.now() - startTime, aborted: true };
+        }
         const waitedMs = Date.now() - startTime;
         this.logger.log(
           `Sandbox execution lock acquired for user [${canonicalUserId}], token=${token}, waitedMs=${waitedMs}`

@@ -330,51 +330,11 @@
   color: var(--text-secondary);
 }
 
-/* ==================== 拖拽与空闲区域引导 ==================== */
+/* ==================== 拖拽区域高亮 ==================== */
 .workspace-content-body.is-drag-over {
   background: color-mix(in srgb, var(--primary-color) 6%, var(--bg-card));
   outline: 2px dashed var(--primary-color);
   outline-offset: -4px;
-}
-
-.workspace-drop-hint-area {
-  margin-top: 16px;
-  padding: 20px 24px;
-  border: 1.5px dashed var(--border-color);
-  border-radius: var(--radius-md, 10px);
-  background: color-mix(in srgb, var(--bg-primary) 40%, transparent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  cursor: pointer;
-  transition: all var(--transition-fast, 150ms ease);
-}
-
-.workspace-drop-hint-area:hover {
-  border-color: var(--primary-color);
-  background: color-mix(in srgb, var(--primary-color) 4%, var(--bg-card));
-}
-
-.workspace-drop-hint-icon {
-  font-size: 26px;
-  color: var(--primary-color);
-  flex-shrink: 0;
-}
-
-.workspace-drop-hint-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 13px;
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.workspace-drop-hint-sub {
-  font-size: 11.5px;
-  color: var(--text-secondary);
-  font-weight: 400;
 }
 
 /* ==================== 底部状态栏 ==================== */
@@ -418,3 +378,149 @@
     border-bottom: 1px solid var(--border-color);
   }
 }
+
+/* ==================== 现代统一按钮系统 ==================== */
+.btn-primary-upload {
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+  border-radius: 8px !important;
+  height: 34px !important;
+  padding: 0 16px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35) !important;
+  transition: all 180ms ease !important;
+  cursor: pointer !important;
+}
+
+.btn-primary-upload:hover {
+  background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%) !important;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.5) !important;
+  transform: translateY(-1px);
+}
+
+.btn-secondary-folder {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: var(--text-primary) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+  height: 34px !important;
+  padding: 0 14px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  transition: all 180ms ease !important;
+  cursor: pointer !important;
+}
+
+.btn-secondary-folder:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  color: #ffffff !important;
+}
+
+.btn-cleanup-action {
+  background: rgba(239, 68, 68, 0.12) !important;
+  border: 1px solid rgba(239, 68, 68, 0.28) !important;
+  color: #f87171 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+  height: 34px !important;
+  padding: 0 14px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  transition: all 180ms ease !important;
+  cursor: pointer !important;
+}
+
+.btn-cleanup-action:hover {
+  background: rgba(239, 68, 68, 0.22) !important;
+  border-color: #ef4444 !important;
+  color: #fca5a5 !important;
+}
+
+.btn-reload-action {
+  width: 34px !important;
+  height: 34px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 8px !important;
+  color: var(--text-secondary) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  transition: all 180ms ease !important;
+  cursor: pointer !important;
+}
+
+.btn-reload-action:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  color: var(--text-primary) !important;
+}
+
+.btn-open-folder {
+  color: var(--primary-color, #6366f1) !important;
+  font-weight: 500 !important;
+  padding: 0 4px !important;
+  height: 28px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  transition: all 150ms ease !important;
+}
+
+.btn-open-folder:hover {
+  color: #818cf8 !important;
+  transform: translateX(2px);
+}
+
+.action-icon-btn {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: none !important;
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+  padding: 0 !important;
+  transition: all 150ms ease !important;
+  cursor: pointer !important;
+}
+
+.action-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: var(--text-primary) !important;
+}
+
+.action-icon-btn-danger {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: none !important;
+  background: transparent !important;
+  color: #f87171 !important;
+  padding: 0 !important;
+  transition: all 150ms ease !important;
+  cursor: pointer !important;
+}
+
+.action-icon-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.16) !important;
+  color: #ef4444 !important;
+}
+

@@ -259,4 +259,19 @@ export class WorkspaceController {
       departmentId
     );
   }
+
+  @Post(':workspaceId/temp-cleanup')
+  @ApiOperation({ summary: '一键清理临时工作区（清理失效幽灵记录与衍生文本缓存）' })
+  async cleanupTempWorkspace(
+    @Request() req: any,
+    @Param('workspaceId') workspaceId: string
+  ) {
+    const { userId, departmentId, userRoles } = this.extractAuth(req);
+    return await this.workspaceService.cleanupTempWorkspace(
+      workspaceId,
+      userId,
+      userRoles,
+      departmentId
+    );
+  }
 }

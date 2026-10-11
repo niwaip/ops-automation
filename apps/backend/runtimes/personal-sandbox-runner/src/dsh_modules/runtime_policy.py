@@ -16,7 +16,7 @@ class RuntimePolicy:
     max_rounds: int = 3
     max_history_chars: int = 16000
     max_single_history_chars: int = 4000
-    max_attachment_chars: int = 12000
+    max_attachment_chars: int = 24000
     max_skill_chars: int = 12000
     max_tool_result_chars: int = 10000
     param_preview_chars: int = 80
@@ -28,8 +28,8 @@ class RuntimePolicy:
     temperature: float = 0.4
     max_tokens: int = 16384
     model_socket_timeout: int = 60
-    # The central model proxy owns upstream retries. Avoid multiplying retries here.
-    model_max_retries: int = 0
+    # Upstream proxy may transiently return 500/502/reset. Allow 2 retries by default.
+    model_max_retries: int = 2
     vision_timeout: int = 60
     thinking: bool = False
     reasoning_effort: Optional[str] = None
@@ -45,7 +45,7 @@ class RuntimePolicy:
             max_rounds=int(os.getenv("DSH_MAX_ROUNDS", "3")),
             max_history_chars=int(os.getenv("DSH_MAX_HISTORY_CHARS", "16000")),
             max_single_history_chars=int(os.getenv("DSH_MAX_SINGLE_HISTORY_CHARS", "4000")),
-            max_attachment_chars=int(os.getenv("DSH_MAX_ATTACHMENT_CHARS", "12000")),
+            max_attachment_chars=int(os.getenv("DSH_MAX_ATTACHMENT_CHARS", "24000")),
             max_skill_chars=int(os.getenv("DSH_MAX_SKILL_CHARS", "12000")),
             max_tool_result_chars=int(os.getenv("DSH_MAX_TOOL_RESULT_CHARS", "10000")),
             param_preview_chars=int(os.getenv("DSH_PARAM_PREVIEW_CHARS", "80")),
@@ -57,7 +57,7 @@ class RuntimePolicy:
             temperature=float(os.getenv("DSH_TEMPERATURE", "0.4")),
             max_tokens=int(os.getenv("DSH_MAX_TOKENS", "16384")),
             model_socket_timeout=int(os.getenv("DSH_MODEL_SOCKET_TIMEOUT", "60")),
-            model_max_retries=int(os.getenv("DSH_MODEL_MAX_RETRIES", "0")),
+            model_max_retries=int(os.getenv("DSH_MODEL_MAX_RETRIES", "2")),
             vision_timeout=int(os.getenv("DSH_VISION_TIMEOUT", "60")),
             thinking=thinking_env,
             reasoning_effort=reasoning_effort_env
@@ -96,24 +96,33 @@ class RuntimePolicy:
         if skill_res and getattr(skill_res, "default_rounds", 0) > 0:
             return skill_res.default_rounds
 
-        # 2. 交付物或执行要求：契约驱动 (PDF/Word/Excel/HTML等标准复杂交付物需要 4-5 轮)
+        # 2. 交付物或执行要求：契约驱动 (PDF/Word/Excel/HTML等标准复杂交付物)
         delivs = deliverables or (getattr(skill_res, "deliverables", None) if skill_res else None) or []
         req_exec = requires_execution or (getattr(skill_res, "requires_execution", False) if skill_res else False)
-        if delivs or req_exec or is_office:
-            return 5
-
-        if is_design_or_ppt or (skill_res and (getattr(skill_res, "is_ppt_intent", False) or getattr(skill_res, "is_design_intent", False))):
-            return 4
-
         lower_prompt = prompt.lower()
-        # 兼容无技能上下文时的兜底探测（如用户输入文件生成指令但未匹配技能）
         is_prompt_deliverable = (
             any(w in lower_prompt for w in ["生成文件", "导出文件", "制作文件", "写入文件", "输出文件"]) or
             (any(v in lower_prompt for v in ["生成", "导出", "输出", "制作", "创建", "做个", "做一份", "写一份", "转为", "转成"]) and
              any(ext in lower_prompt for ext in [".pdf", ".docx", ".xlsx", ".csv", ".json", ".md", "pdf", "word", "excel", "ppt", "markdown", "md 文件", "表格", "文档", "报表"]))
         )
-        if is_prompt_deliverable:
-            return 5
+
+        # 检查是否为复合多阶段任务（包含全网调研/多轮搜索/热点探索 + 交付物落地）
+        has_open_search_or_research = (
+            is_search or
+            getattr(skill_res, "is_research_intent", False) or
+            any(k in lower_prompt for k in [
+                "热点", "热搜", "bilibili", "b站", "微博", "知乎", "百度", "联网",
+                "调研", "竞品", "最新动态", "实时动态", "全网", "检索", "搜索引擎"
+            ])
+        )
+
+        if delivs or req_exec or is_office or is_prompt_deliverable:
+            if has_open_search_or_research:
+                return int(os.getenv("DSH_COMPOSITE_MAX_ROUNDS", "8"))
+            return int(os.getenv("DSH_MAX_DELIVERABLE_ROUNDS", "5"))
+
+        if is_design_or_ppt or (skill_res and (getattr(skill_res, "is_ppt_intent", False) or getattr(skill_res, "is_design_intent", False))):
+            return 4
 
         # 纯事实/即时信息查询（无文档生成要求）仅需检索 + 总结 2 轮
         if any(w in lower_prompt for w in ["天气", "气温", "几度", "预报", "几点", "日期", "时间", "汇率"]):

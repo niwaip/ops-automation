@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "analysis_date": "2026-10-10",
+  "timezone": "Asia/Shanghai",
+  "scope": "Current working tree, running personal Python sandbox and existing financial inquiry archives",
+  "business_code_modified": false,
+  "new_live_model_calls": 0,
+  "services_restarted": false,
+  "runtime_verification": {
+    "image": "ops-user-sandbox:local",
+    "user": "sandbox",
+    "python_source_mount": "/usr/local/bin/dsh_modules",
+    "python_source_read_only": true,
+    "module_hashes_match_workspace": true,
+    "module_sha256": {
+      "runner.py": "9daca3d1bb88b10e8adcae2af5418661e57851fe7f89d6e8b255a45b09d830bc",
+      "agent_loop.py": "ed53758f91688a14ae64154407a552e4e7c583edb17fb3b6810af79dd0d2f5ce",
+      "analysis_domain_finance.py": "d287caef9af3a48435d33947707e18c20874f1b6dfbefc2e754e66771846d7be",
+      "analysis_synthesis.py": "d0de90e6494b7c8192dd4bc75c8da38426ccb422963c16edbeb4edf87fe7345c",
+      "analysis_task_state.py": "8104279d7ba9e08ec199892aba97f4ba0e891e2080d3c4cd5b086a36907a41a2",
+      "spreadsheet_analysis.py": "d3dded8c439d8c57990f0802dd3e2369df0a1121af13bc6b802f2035d855dcdd",
+      "registered_metric_completion.py": "59314fabff9644a349583158db044eddaa1843b77f97618ddac7497054cb4d7c"
+    },
+    "shared_skill_files_match": ["SKILL.md", "references/finance-analysis.md", "scripts/recalc.py"],
+    "typescript_live_branches_replayed": false
+  },
+  "runtime_policy": {
+    "default_agent_rounds": 3,
+    "agent_round_hard_ceiling": 4,
+    "registered_completion_plan_limit": 4,
+    "single_request_timeout_seconds": 180,
+    "total_task_timeout_seconds": 300,
+    "model_max_retries": 2,
+    "history_chars": 16000,
+    "single_history_chars": 4000,
+    "attachment_chars": 24000,
+    "skill_chars": 12000,
+    "tool_result_chars": 10000,
+    "output_max_tokens": 16384,
+    "additional_synthesis_call_in_agent_telemetry": false
+  },
+  "ontology": {
+    "implementation": "lightweight domain registry",
+    "domain_version": "1",
+    "metric_count": 7,
+    "registered_ratio_recipes": ["finance.gross_margin", "finance.operating_margin", "finance.net_margin"],
+    "financial_concepts": ["profitability", "reconciliation"],
+    "complete_accounting_policy_inference": false,
+    "xlsx_finance_reference_automatically_expanded_by_read_skill": false
+  },
+  "workbook": {
+    "name": "AI能力测试_财务报表.xlsx",
+    "sha256": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+    "sheet_count": 10,
+    "mutated": false
+  },
+  "isolated_probes": [
+    {
+      "name": "summary_and_advice_contract",
+      "input": "总结2026年收入、毛利率，并给出改善建议。",
+      "observed": {"advisory": true, "explicit_calc": false, "metrics": []}
+    },
+    {
+      "name": "overlapping_metric_aliases",
+      "input": "总结2026年营业利润率。",
+      "observed_metrics": ["营业利润率", "营业利润"]
+    },
+    {
+      "name": "unverified_model_summary",
+      "mock_fact_value": "124020",
+      "mock_summary_wrong_value": "999999",
+      "wrong_value_accepted": true,
+      "unsupported_growth_accepted": true,
+      "live_model_called": false
+    },
+    {
+      "name": "task_period_gate",
+      "receipt_period": "2026",
+      "requested_period": "2027",
+      "task_state_complete": true,
+      "note": "Offline current-gate probe on an archived receipt; not an online reuse of history as current evidence."
+    }
+  ],
+  "existing_archive_samples": [
+    {
+      "session": "chat-session-1791554420515-mktq143g",
+      "request": "找出收入与净利润偏差最大的月份。",
+      "archive_verified": true,
+      "kind": "column_comparison"
+    },
+    {
+      "session": "chat-session-1791558229996-zrfl8agr",
+      "request": "检验利润、现金和资产负债是否勾稽。",
+      "archive_verified": true,
+      "executed_equations": 5,
+      "equations_not_passed": 2
+    },
+    {
+      "session": "chat-session-1791594978313-x575xi13",
+      "archive_time_beijing": "2026-10-10 09:40:24",
+      "request": "识别金额、日期和审批状态异常。",
+      "archive_verified": true,
+      "rules_executed": ["日期范围", "金额非空", "税额非空"],
+      "approval_profile_available": true,
+      "approval_rule_executed": false,
+      "note": "A later one-page-report request does not make this latest sidecar its own execution proof."
+    }
+  ],
+  "priority_findings": [
+    {"priority": "P1", "id": "post_verification_summary_unchecked"},
+    {"priority": "P1", "id": "task_field_and_relation_coverage_incomplete"},
+    {"priority": "P1", "id": "requested_period_not_matched_to_fact_period"},
+    {"priority": "P1", "id": "mixed_advisory_intent_removes_calculation_obligations"},
+    {"priority": "P1", "id": "missing_execution_not_equal_missing_source_data"},
+    {"priority": "P2", "id": "synthesis_calls_missing_from_telemetry"},
+    {"priority": "P2", "id": "domain_alias_binding_and_policy_limits"},
+    {"priority": "P2", "id": "report_generation_needs_evidence_bound_handoff"}
+  ]
+}

@@ -1,0 +1,822 @@
+{
+  "schema_version": 1,
+  "audit_date": "2026-10-09",
+  "timezone": "Asia/Shanghai",
+  "session_id": "chat-session-1791540676236-4n0itkcw",
+  "model_display_name": "qwen36-35b-a3b",
+  "scope": "read-only audit; no new model request or production code change",
+  "limitations": [
+    "Final answers and sanitized executionTrace captured; intermediate raw model/tool messages not retained.",
+    "Exact bash error cannot be determined.",
+    "Offline source/routing/guard reconstruction is not an original captured model payload.",
+    "Failed-call-history probe is a controlled counterexample, not proof of the exact original guard branch."
+  ],
+  "source": {
+    "original_sha256": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+    "original_sha256_after": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+    "calculation": {
+      "schema_version": 1,
+      "status": "recalculated_verified",
+      "provenance": {
+        "workbook_id": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+        "output_hash": "7ee1605dd5e53b705e2ea2a0b08426f2a125b349518d5d3fef55977c7529290b",
+        "engine": "libreoffice_calc_headless",
+        "validator_version": "v3_unified",
+        "calculated_at": "2026-10-09T07:58:28.127418+00:00"
+      },
+      "total_formulas": 289,
+      "cached_formulas": 289,
+      "uncalculated_formulas": 0,
+      "total_errors": 0,
+      "error_summary": {}
+    }
+  },
+  "runtime_modules": {
+    "runner": {
+      "runtime_sha256": "9d5681c902c2c9b750ac1e77ebaf1bb52c45adb2b61595a4bd452ea76ca04ee3",
+      "host_sha256": "9d5681c902c2c9b750ac1e77ebaf1bb52c45adb2b61595a4bd452ea76ca04ee3"
+    },
+    "agent_loop": {
+      "runtime_sha256": "af7c58880a252a2201694a3737a230b187aed0bdbbb5beb76ea1cca1b0e4ae13",
+      "host_sha256": "af7c58880a252a2201694a3737a230b187aed0bdbbb5beb76ea1cca1b0e4ae13"
+    },
+    "analysis_contract": {
+      "runtime_sha256": "7d31b9918b2dfa93fe7fb433670120eae163db188484540027014fa549084305",
+      "host_sha256": "7d31b9918b2dfa93fe7fb433670120eae163db188484540027014fa549084305"
+    },
+    "analysis_validation": {
+      "runtime_sha256": "a36ccfc99a125f114dde8dae7cdf664972f72fc8c7fcce962118fdc59ec35301",
+      "host_sha256": "a36ccfc99a125f114dde8dae7cdf664972f72fc8c7fcce962118fdc59ec35301"
+    },
+    "comparison_context": {
+      "runtime_sha256": "f2d965c563d0b960616af739dacb73daf17c22770989f82dff9e0ee68b7d70df",
+      "host_sha256": "f2d965c563d0b960616af739dacb73daf17c22770989f82dff9e0ee68b7d70df"
+    },
+    "comparison_evidence": {
+      "runtime_sha256": "146a6af66aea0f8c19fab3d1d6d4e8917632e0e2cf4052543c8418246df29b38",
+      "host_sha256": "146a6af66aea0f8c19fab3d1d6d4e8917632e0e2cf4052543c8418246df29b38"
+    },
+    "table_comparison": {
+      "runtime_sha256": "822e45e215c2aa0ed231c86e9560c32c3012e0bbceedb05dc7ba5b19697bc556",
+      "host_sha256": "822e45e215c2aa0ed231c86e9560c32c3012e0bbceedb05dc7ba5b19697bc556"
+    },
+    "spreadsheet_units": {
+      "runtime_sha256": "2ffe2a57d2221431daad51bda6655caa17ceb03ef1f72b25c0a53c28b457e68b",
+      "host_sha256": "2ffe2a57d2221431daad51bda6655caa17ceb03ef1f72b25c0a53c28b457e68b"
+    },
+    "context_budget": {
+      "runtime_sha256": "e59284844fd9abcf58a9ac9ab6aa485d6d29813492e9f330759612a4d5fc58ed",
+      "host_sha256": "e59284844fd9abcf58a9ac9ab6aa485d6d29813492e9f330759612a4d5fc58ed"
+    },
+    "runtime_policy": {
+      "runtime_sha256": "669db01bdc24fa92a53953cdbe80b19faec00f699e6ba7510009c490ca5e1c81",
+      "host_sha256": "669db01bdc24fa92a53953cdbe80b19faec00f699e6ba7510009c490ca5e1c81"
+    },
+    "skill_router": {
+      "runtime_sha256": "12355c621b8f3041e61737144cbb6854b398957678b2c77228b2b336ed3751ea",
+      "host_sha256": "12355c621b8f3041e61737144cbb6854b398957678b2c77228b2b336ed3751ea"
+    },
+    "prompt_builder": {
+      "runtime_sha256": "6627604e8d1315b61a43ca2213cdaa0546049d813c528fa78322abc2396b66b3",
+      "host_sha256": "6627604e8d1315b61a43ca2213cdaa0546049d813c528fa78322abc2396b66b3"
+    },
+    "tools": {
+      "runtime_sha256": "0c5d12b7824be40881905c68a35eeac5820f9827760e3c69703bda985e7539de",
+      "host_sha256": "0c5d12b7824be40881905c68a35eeac5820f9827760e3c69703bda985e7539de"
+    },
+    "file_tools": {
+      "runtime_sha256": "f6f63eabf6e405efe8d29871f189aca7c3ccd72d50fdb13fe1223f074e6ab133",
+      "host_sha256": "f6f63eabf6e405efe8d29871f189aca7c3ccd72d50fdb13fe1223f074e6ab133"
+    },
+    "excel_tools": {
+      "runtime_sha256": "90a4cbf198133a0a09acb01364d6d750d634a3be01129806a9af7719bcec2b05",
+      "host_sha256": "90a4cbf198133a0a09acb01364d6d750d634a3be01129806a9af7719bcec2b05"
+    },
+    "workbook_calculation": {
+      "runtime_sha256": "52ea7ab8120387537c33587eb90084dad925adfd20445e4591740fb948247245",
+      "host_sha256": "52ea7ab8120387537c33587eb90084dad925adfd20445e4591740fb948247245"
+    },
+    "llm": {
+      "runtime_sha256": "12a34d8e679c485bc0fb6fbde6a35d9f24676e49fd59a6918d0dc8147323963f",
+      "host_sha256": "12a34d8e679c485bc0fb6fbde6a35d9f24676e49fd59a6918d0dc8147323963f"
+    }
+  },
+  "turns": [
+    {
+      "turn": 1,
+      "query": "解释下半年盈利能力变化。",
+      "saved_at": "2026-10-09T10:19:26.684Z",
+      "execution_trace": {
+        "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+        "harness": "deepseek-harness",
+        "executed": true,
+        "durationMs": 23525,
+        "exitCode": 0,
+        "metrics": {
+          "ttftMs": 22865.94,
+          "durationMs": 22995.56,
+          "llmDurationMs": 22875.38,
+          "toolCallsCount": 0,
+          "toolCalls": [],
+          "llmInvocations": 1,
+          "tokens": {
+            "prompt_tokens": 18030,
+            "completion_tokens": 1792,
+            "total_tokens": 19822
+          },
+          "finishReason": "stop",
+          "roundFinishReasons": [
+            "stop"
+          ]
+        }
+      }
+    },
+    {
+      "turn": 2,
+      "query": "找出收入与净利润偏差最大的月份。",
+      "saved_at": "2026-10-09T10:20:33.995Z",
+      "execution_trace": {
+        "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+        "harness": "deepseek-harness",
+        "executed": true,
+        "durationMs": 46800,
+        "exitCode": 0,
+        "metrics": {
+          "ttftMs": 36041.9,
+          "durationMs": 46225.9,
+          "llmDurationMs": 46077.29,
+          "toolCallsCount": 1,
+          "toolCalls": [
+            {
+              "name": "compare_spreadsheet_columns",
+              "params": {
+                "file_path": "/workspace/AI能力测试_财务报表.xlsx",
+                "sheet": "预算对比",
+                "data_range": "A4:F15",
+                "header_row": "3",
+                "group_column": "A",
+                "comparisons": "[{'label': '收入差异', 'left_column': 'C', 'right_column': 'B'}, {'label': '净利润差异', 'left_column': 'F', 'right_column': 'E'}...",
+                "basis": "budget",
+                "rank_by": "absolute_difference",
+                "extreme": "max",
+                "expected_groups": "['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']"
+              },
+              "status": "success"
+            }
+          ],
+          "llmInvocations": 3,
+          "tokens": {
+            "prompt_tokens": 26957,
+            "completion_tokens": 1161,
+            "total_tokens": 28118
+          },
+          "finishReason": "stop",
+          "roundFinishReasons": [
+            "tool_calls",
+            "stop",
+            "stop"
+          ]
+        }
+      }
+    },
+    {
+      "turn": 3,
+      "query": "总结2026年收入、毛利率、营业利润和净利润。",
+      "saved_at": "2026-10-09T10:21:43.157Z",
+      "execution_trace": {
+        "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+        "harness": "deepseek-harness",
+        "executed": true,
+        "durationMs": 12282,
+        "exitCode": 0,
+        "metrics": {
+          "ttftMs": 11658.49,
+          "durationMs": 11783.35,
+          "llmDurationMs": 11662.55,
+          "toolCallsCount": 0,
+          "toolCalls": [],
+          "llmInvocations": 1,
+          "tokens": {
+            "prompt_tokens": 20215,
+            "completion_tokens": 807,
+            "total_tokens": 21022
+          },
+          "finishReason": "stop",
+          "roundFinishReasons": [
+            "stop"
+          ]
+        }
+      }
+    },
+    {
+      "turn": 4,
+      "query": "检验利润、现金和资产负债是否勾稽。",
+      "saved_at": "2026-10-09T10:22:53.402Z",
+      "execution_trace": {
+        "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+        "harness": "deepseek-harness",
+        "executed": true,
+        "durationMs": 43560,
+        "exitCode": 0,
+        "metrics": {
+          "ttftMs": 17514.51,
+          "durationMs": 43030.49,
+          "llmDurationMs": 42495.64,
+          "toolCallsCount": 1,
+          "toolCalls": [
+            {
+              "name": "bash",
+              "params": {
+                "cmd": "python3 << 'EOF'\nimport openpyxl\nimport pandas as pd\n\nwb_path = '/workspace/AI能力测试_财务报表.xlsx'\nwb = openpyxl.load_workboo..."
+              },
+              "status": "error"
+            }
+          ],
+          "llmInvocations": 3,
+          "tokens": {
+            "prompt_tokens": 67780,
+            "completion_tokens": 3730,
+            "total_tokens": 71510
+          },
+          "finishReason": "stop",
+          "roundFinishReasons": [
+            "stop",
+            "tool_calls",
+            "stop"
+          ]
+        }
+      }
+    },
+    {
+      "turn": 5,
+      "query": "识别金额、日期和审批状态异常。",
+      "saved_at": "2026-10-09T10:23:49.489Z",
+      "execution_trace": {
+        "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+        "harness": "deepseek-harness",
+        "executed": true,
+        "durationMs": 23854,
+        "exitCode": 0,
+        "metrics": {
+          "ttftMs": 23184.32,
+          "durationMs": 23316.04,
+          "llmDurationMs": 23192.85,
+          "toolCallsCount": 0,
+          "toolCalls": [],
+          "llmInvocations": 1,
+          "tokens": {
+            "prompt_tokens": 23319,
+            "completion_tokens": 1947,
+            "total_tokens": 25266
+          },
+          "finishReason": "stop",
+          "roundFinishReasons": [
+            "stop"
+          ]
+        }
+      }
+    }
+  ],
+  "verified_references": {
+    "h1": {
+      "revenue": "55120",
+      "gross_profit": "22970.0",
+      "operating_profit": "8309.6",
+      "other_income": "65",
+      "net_profit": "6280.950",
+      "gross_profit_margin_pct": "41.67271407837445573294629898",
+      "operating_profit_margin_pct": "15.07547169811320754716981132",
+      "net_profit_margin_pct": "11.39504716981132075471698113"
+    },
+    "h2": {
+      "revenue": "68900",
+      "gross_profit": "30473.25",
+      "operating_profit": "12899.80",
+      "other_income": "110",
+      "net_profit": "9757.3500",
+      "gross_profit_margin_pct": "44.22822931785195936139332366",
+      "operating_profit_margin_pct": "18.72249637155297532656023222",
+      "net_profit_margin_pct": "14.16161103047895500725689405"
+    },
+    "full_year": {
+      "revenue": "124020",
+      "gross_profit": "53443.25",
+      "operating_profit": "21209.40",
+      "other_income": "175",
+      "net_profit": "16038.3000",
+      "gross_profit_margin_pct": "43.09244476697306885986131269",
+      "operating_profit_margin_pct": "17.10159651669085631349782293",
+      "net_profit_margin_pct": "12.93202709240445089501693275"
+    },
+    "h2_budget": {
+      "net_profit": "9105",
+      "difference": "652.35",
+      "attainment_pct": "107.1647446457990115321252059"
+    },
+    "reconciliation": {
+      "assets": "60950",
+      "liabilities_and_equity": "67138.3",
+      "liabilities_and_equity_minus_assets": "6188.3",
+      "cash_flow_closing_cash": "20588.3",
+      "balance_sheet_cash": "16850",
+      "cash_difference": "3738.3",
+      "dividends_to_reconcile_under_same_entity_and_no_other_equity_adjustments": "3200"
+    },
+    "transactions": {
+      "data_range": "A4:K83",
+      "data_records": 80,
+      "nonempty_rows_including_title_and_header": 82,
+      "approval_counts": {
+        "已审批": 79,
+        "待审批": 1
+      },
+      "exceptions": [
+        {
+          "source_row": 19,
+          "voucher": "V2026-0016",
+          "date": "2026-04-22 00:00:00",
+          "amount": -2442,
+          "approval": "已审批"
+        },
+        {
+          "source_row": 43,
+          "voucher": "V2026-0040",
+          "date": "2026-04-13 00:00:00",
+          "amount": 98000,
+          "approval": "已审批"
+        },
+        {
+          "source_row": 58,
+          "voucher": "V2026-0055",
+          "date": "2027-01-03 00:00:00",
+          "amount": 1185,
+          "approval": "已审批"
+        },
+        {
+          "source_row": 73,
+          "voucher": "V2026-0070",
+          "date": "2026-10-22 00:00:00",
+          "amount": 1040,
+          "approval": "待审批"
+        }
+      ]
+    }
+  },
+  "offline_reconstruction": {
+    "method": "offline reconstruction using current verified runtime; not exact captured LLM payload",
+    "turns": [
+      {
+        "turn": 1,
+        "query": "解释下半年盈利能力变化。",
+        "contract": {
+          "raw_prompt": "解释下半年盈利能力变化。",
+          "period": null,
+          "currency": null,
+          "metrics": [],
+          "is_audit_intent": false,
+          "is_catalog_only": false,
+          "operation": null,
+          "dimension": null,
+          "comparison": null,
+          "comparison_basis": null,
+          "ranking": "absolute"
+        },
+        "validation_without_execution_evidence": {
+          "status": "satisfied",
+          "satisfied_metrics": [],
+          "missing_metrics": [],
+          "has_evasion": false,
+          "details": {},
+          "feedback_message": null,
+          "comparison_error": null
+        },
+        "history_messages": 0,
+        "budgeted_history_messages": 0,
+        "history_dropped": 0,
+        "history_item_content_changed": false,
+        "source_mode": "eager_extraction",
+        "source_chars": 17919,
+        "attachment_chars": 17919,
+        "attachment_clipped": false,
+        "coverage_lines": [
+          "[DATA_COVERAGE: workbook=AI能力测试_财务报表.xlsx, sheets=10/10, mode=FULL, scanned_rows=199, displayed_rows=147, recalc_status=recalculated_verified]",
+          "  - 使用说明 (范围: A1:H10, 有效行数: 9, 公式数: 0, 状态: FULL)",
+          "  - 参数 (范围: A1:F11, 有效行数: 10, 公式数: 0, 状态: FULL)",
+          "  - 月度经营 (范围: A1:N16, 有效行数: 15, 公式数: 133, 状态: FULL)",
+          "  - 利润表 (范围: A1:D14, 有效行数: 13, 公式数: 22, 状态: FULL)",
+          "  - 预算对比 (范围: A1:H15, 有效行数: 14, 公式数: 60, 状态: FULL)",
+          "  - 资产负债表 (范围: A1:D20, 有效行数: 19, 公式数: 28, 状态: FULL)",
+          "  - 现金流量表 (范围: A1:C17, 有效行数: 16, 公式数: 12, 状态: FULL)",
+          "  - 部门分析 (范围: A1:F8, 有效行数: 7, 公式数: 5, 状态: FULL)",
+          "  - 交易明细 (范围: A1:K83, 有效行数: 82, 公式数: 0, 状态: SAMPLED)",
+          "  - 管理驾驶舱 (范围: A1:N15, 有效行数: 14, 公式数: 29, 状态: FULL)",
+          "  ⚠️ [工作表覆盖度提醒: 抽样 (已展示 30/82 行)]：当前展示仅为前 30 行样本，未覆盖全表！若需进行查重、全量汇总、极值对比或审计检验，严禁仅凭此抽样断言全表结论，必须调用 bash 运行 Python 脚本加载完整全量数据进行统计！"
+        ],
+        "visible_voucher_count": 27,
+        "special_values_visible": {
+          "V2026-0040": false,
+          "98000": false,
+          "V2026-0055": false,
+          "2027-01-03": false,
+          "V2026-0070": false,
+          "待审批": false
+        },
+        "routing": {
+          "is_inspect_intent": true,
+          "is_generate_intent": false,
+          "is_office_intent": true,
+          "requires_execution": false,
+          "default_rounds": 3
+        },
+        "no_tool_guard_result": [
+          "pass",
+          null,
+          3
+        ]
+      },
+      {
+        "turn": 2,
+        "query": "找出收入与净利润偏差最大的月份。",
+        "contract": {
+          "raw_prompt": "找出收入与净利润偏差最大的月份。",
+          "period": null,
+          "currency": null,
+          "metrics": [
+            {
+              "name": "营业收入",
+              "aliases": [
+                "营业收入",
+                "总收入",
+                "主营业务收入",
+                "营收",
+                "收入"
+              ],
+              "expected_type": "number",
+              "period": null,
+              "required": true
+            },
+            {
+              "name": "净利润",
+              "aliases": [
+                "净利润",
+                "税后净利",
+                "净收益",
+                "纯利润"
+              ],
+              "expected_type": "number",
+              "period": null,
+              "required": true
+            }
+          ],
+          "is_audit_intent": true,
+          "is_catalog_only": false,
+          "operation": "argmax",
+          "dimension": "month",
+          "comparison": "variance",
+          "comparison_basis": null,
+          "ranking": "absolute"
+        },
+        "validation_without_execution_evidence": {
+          "status": "failed",
+          "satisfied_metrics": [],
+          "missing_metrics": [
+            "营业收入",
+            "净利润"
+          ],
+          "has_evasion": false,
+          "details": {
+            "营业收入": {
+              "metric_name": "营业收入",
+              "satisfied": false,
+              "detected_value_text": null,
+              "is_year_hallucination": false
+            },
+            "净利润": {
+              "metric_name": "净利润",
+              "satisfied": false,
+              "detected_value_text": null,
+              "is_year_hallucination": false
+            }
+          },
+          "feedback_message": "【系统比较口径验收未完成】：缺少本轮成功执行、与请求口径及排序一致的列比较证据；历史回复、数字或年份不能替代核算。\n请求的全部指标：营业收入、净利润；极值操作：argmax；排序口径：absolute。\n请根据真实表头和用户请求选择基准、完整数据范围、列对及排序口径，调用 compare_spreadsheet_columns，再根据结构化结果作答；不能把历史回答当成证据。范围或基准有歧义时明确说明，不猜测。",
+          "comparison_error": "缺少本轮成功执行、与请求口径及排序一致的列比较证据；历史回复、数字或年份不能替代核算。"
+        },
+        "history_messages": 2,
+        "budgeted_history_messages": 2,
+        "history_dropped": 0,
+        "history_item_content_changed": false,
+        "source_mode": "comparison_overview",
+        "source_chars": 2017,
+        "attachment_chars": 2017,
+        "attachment_clipped": false,
+        "coverage_lines": [],
+        "visible_voucher_count": 0,
+        "special_values_visible": {
+          "V2026-0040": false,
+          "98000": false,
+          "V2026-0055": false,
+          "2027-01-03": false,
+          "V2026-0070": false,
+          "待审批": false
+        },
+        "routing": {
+          "is_inspect_intent": true,
+          "is_generate_intent": false,
+          "is_office_intent": true,
+          "requires_execution": false,
+          "default_rounds": 3
+        }
+      },
+      {
+        "turn": 3,
+        "query": "总结2026年收入、毛利率、营业利润和净利润。",
+        "contract": {
+          "raw_prompt": "总结2026年收入、毛利率、营业利润和净利润。",
+          "period": "2026年",
+          "currency": null,
+          "metrics": [
+            {
+              "name": "营业收入",
+              "aliases": [
+                "营业收入",
+                "总收入",
+                "主营业务收入",
+                "营收",
+                "收入"
+              ],
+              "expected_type": "number",
+              "period": "2026年",
+              "required": true
+            },
+            {
+              "name": "毛利率",
+              "aliases": [
+                "毛利率",
+                "综合毛利率",
+                "销售毛利率"
+              ],
+              "expected_type": "percentage",
+              "period": "2026年",
+              "required": true
+            },
+            {
+              "name": "营业利润",
+              "aliases": [
+                "营业利润",
+                "核心经营利润",
+                "经营利润"
+              ],
+              "expected_type": "number",
+              "period": "2026年",
+              "required": true
+            },
+            {
+              "name": "净利润",
+              "aliases": [
+                "净利润",
+                "税后净利",
+                "净收益",
+                "纯利润"
+              ],
+              "expected_type": "number",
+              "period": "2026年",
+              "required": true
+            }
+          ],
+          "is_audit_intent": false,
+          "is_catalog_only": false,
+          "operation": null,
+          "dimension": null,
+          "comparison": null,
+          "comparison_basis": null,
+          "ranking": "absolute"
+        },
+        "validation_without_execution_evidence": {
+          "status": "satisfied",
+          "satisfied_metrics": [
+            "营业收入",
+            "毛利率",
+            "营业利润",
+            "净利润"
+          ],
+          "missing_metrics": [],
+          "has_evasion": false,
+          "details": {
+            "营业收入": {
+              "metric_name": "营业收入",
+              "satisfied": true,
+              "detected_value_text": "1",
+              "is_year_hallucination": false
+            },
+            "毛利率": {
+              "metric_name": "毛利率",
+              "satisfied": true,
+              "detected_value_text": "40.5%",
+              "is_year_hallucination": false
+            },
+            "营业利润": {
+              "metric_name": "营业利润",
+              "satisfied": true,
+              "detected_value_text": "3",
+              "is_year_hallucination": false
+            },
+            "净利润": {
+              "metric_name": "净利润",
+              "satisfied": true,
+              "detected_value_text": "4",
+              "is_year_hallucination": false
+            }
+          },
+          "feedback_message": null,
+          "comparison_error": null
+        },
+        "history_messages": 4,
+        "budgeted_history_messages": 4,
+        "history_dropped": 0,
+        "history_item_content_changed": false,
+        "source_mode": "eager_extraction",
+        "source_chars": 17919,
+        "attachment_chars": 17919,
+        "attachment_clipped": false,
+        "coverage_lines": [
+          "[DATA_COVERAGE: workbook=AI能力测试_财务报表.xlsx, sheets=10/10, mode=FULL, scanned_rows=199, displayed_rows=147, recalc_status=recalculated_verified]",
+          "  - 使用说明 (范围: A1:H10, 有效行数: 9, 公式数: 0, 状态: FULL)",
+          "  - 参数 (范围: A1:F11, 有效行数: 10, 公式数: 0, 状态: FULL)",
+          "  - 月度经营 (范围: A1:N16, 有效行数: 15, 公式数: 133, 状态: FULL)",
+          "  - 利润表 (范围: A1:D14, 有效行数: 13, 公式数: 22, 状态: FULL)",
+          "  - 预算对比 (范围: A1:H15, 有效行数: 14, 公式数: 60, 状态: FULL)",
+          "  - 资产负债表 (范围: A1:D20, 有效行数: 19, 公式数: 28, 状态: FULL)",
+          "  - 现金流量表 (范围: A1:C17, 有效行数: 16, 公式数: 12, 状态: FULL)",
+          "  - 部门分析 (范围: A1:F8, 有效行数: 7, 公式数: 5, 状态: FULL)",
+          "  - 交易明细 (范围: A1:K83, 有效行数: 82, 公式数: 0, 状态: SAMPLED)",
+          "  - 管理驾驶舱 (范围: A1:N15, 有效行数: 14, 公式数: 29, 状态: FULL)",
+          "  ⚠️ [工作表覆盖度提醒: 抽样 (已展示 30/82 行)]：当前展示仅为前 30 行样本，未覆盖全表！若需进行查重、全量汇总、极值对比或审计检验，严禁仅凭此抽样断言全表结论，必须调用 bash 运行 Python 脚本加载完整全量数据进行统计！"
+        ],
+        "visible_voucher_count": 27,
+        "special_values_visible": {
+          "V2026-0040": false,
+          "98000": false,
+          "V2026-0055": false,
+          "2027-01-03": false,
+          "V2026-0070": false,
+          "待审批": false
+        },
+        "routing": {
+          "is_inspect_intent": true,
+          "is_generate_intent": false,
+          "is_office_intent": true,
+          "requires_execution": false,
+          "default_rounds": 3
+        }
+      },
+      {
+        "turn": 4,
+        "query": "检验利润、现金和资产负债是否勾稽。",
+        "contract": {
+          "raw_prompt": "检验利润、现金和资产负债是否勾稽。",
+          "period": null,
+          "currency": null,
+          "metrics": [],
+          "is_audit_intent": true,
+          "is_catalog_only": false,
+          "operation": null,
+          "dimension": null,
+          "comparison": null,
+          "comparison_basis": null,
+          "ranking": "absolute"
+        },
+        "validation_without_execution_evidence": {
+          "status": "satisfied",
+          "satisfied_metrics": [],
+          "missing_metrics": [],
+          "has_evasion": false,
+          "details": {},
+          "feedback_message": null,
+          "comparison_error": null
+        },
+        "history_messages": 6,
+        "budgeted_history_messages": 6,
+        "history_dropped": 0,
+        "history_item_content_changed": false,
+        "source_mode": "eager_extraction",
+        "source_chars": 17919,
+        "attachment_chars": 17919,
+        "attachment_clipped": false,
+        "coverage_lines": [
+          "[DATA_COVERAGE: workbook=AI能力测试_财务报表.xlsx, sheets=10/10, mode=FULL, scanned_rows=199, displayed_rows=147, recalc_status=recalculated_verified]",
+          "  - 使用说明 (范围: A1:H10, 有效行数: 9, 公式数: 0, 状态: FULL)",
+          "  - 参数 (范围: A1:F11, 有效行数: 10, 公式数: 0, 状态: FULL)",
+          "  - 月度经营 (范围: A1:N16, 有效行数: 15, 公式数: 133, 状态: FULL)",
+          "  - 利润表 (范围: A1:D14, 有效行数: 13, 公式数: 22, 状态: FULL)",
+          "  - 预算对比 (范围: A1:H15, 有效行数: 14, 公式数: 60, 状态: FULL)",
+          "  - 资产负债表 (范围: A1:D20, 有效行数: 19, 公式数: 28, 状态: FULL)",
+          "  - 现金流量表 (范围: A1:C17, 有效行数: 16, 公式数: 12, 状态: FULL)",
+          "  - 部门分析 (范围: A1:F8, 有效行数: 7, 公式数: 5, 状态: FULL)",
+          "  - 交易明细 (范围: A1:K83, 有效行数: 82, 公式数: 0, 状态: SAMPLED)",
+          "  - 管理驾驶舱 (范围: A1:N15, 有效行数: 14, 公式数: 29, 状态: FULL)",
+          "  ⚠️ [工作表覆盖度提醒: 抽样 (已展示 30/82 行)]：当前展示仅为前 30 行样本，未覆盖全表！若需进行查重、全量汇总、极值对比或审计检验，严禁仅凭此抽样断言全表结论，必须调用 bash 运行 Python 脚本加载完整全量数据进行统计！"
+        ],
+        "visible_voucher_count": 27,
+        "special_values_visible": {
+          "V2026-0040": false,
+          "98000": false,
+          "V2026-0055": false,
+          "2027-01-03": false,
+          "V2026-0070": false,
+          "待审批": false
+        },
+        "routing": {
+          "is_inspect_intent": true,
+          "is_generate_intent": false,
+          "is_office_intent": true,
+          "requires_execution": false,
+          "default_rounds": 3
+        },
+        "no_tool_guard_result": [
+          "pass",
+          null,
+          3
+        ]
+      },
+      {
+        "turn": 5,
+        "query": "识别金额、日期和审批状态异常。",
+        "contract": {
+          "raw_prompt": "识别金额、日期和审批状态异常。",
+          "period": null,
+          "currency": null,
+          "metrics": [],
+          "is_audit_intent": false,
+          "is_catalog_only": false,
+          "operation": null,
+          "dimension": null,
+          "comparison": null,
+          "comparison_basis": null,
+          "ranking": "absolute"
+        },
+        "validation_without_execution_evidence": {
+          "status": "satisfied",
+          "satisfied_metrics": [],
+          "missing_metrics": [],
+          "has_evasion": false,
+          "details": {},
+          "feedback_message": null,
+          "comparison_error": null
+        },
+        "history_messages": 8,
+        "budgeted_history_messages": 8,
+        "history_dropped": 0,
+        "history_item_content_changed": false,
+        "source_mode": "eager_extraction",
+        "source_chars": 17919,
+        "attachment_chars": 17919,
+        "attachment_clipped": false,
+        "coverage_lines": [
+          "[DATA_COVERAGE: workbook=AI能力测试_财务报表.xlsx, sheets=10/10, mode=FULL, scanned_rows=199, displayed_rows=147, recalc_status=recalculated_verified]",
+          "  - 使用说明 (范围: A1:H10, 有效行数: 9, 公式数: 0, 状态: FULL)",
+          "  - 参数 (范围: A1:F11, 有效行数: 10, 公式数: 0, 状态: FULL)",
+          "  - 月度经营 (范围: A1:N16, 有效行数: 15, 公式数: 133, 状态: FULL)",
+          "  - 利润表 (范围: A1:D14, 有效行数: 13, 公式数: 22, 状态: FULL)",
+          "  - 预算对比 (范围: A1:H15, 有效行数: 14, 公式数: 60, 状态: FULL)",
+          "  - 资产负债表 (范围: A1:D20, 有效行数: 19, 公式数: 28, 状态: FULL)",
+          "  - 现金流量表 (范围: A1:C17, 有效行数: 16, 公式数: 12, 状态: FULL)",
+          "  - 部门分析 (范围: A1:F8, 有效行数: 7, 公式数: 5, 状态: FULL)",
+          "  - 交易明细 (范围: A1:K83, 有效行数: 82, 公式数: 0, 状态: SAMPLED)",
+          "  - 管理驾驶舱 (范围: A1:N15, 有效行数: 14, 公式数: 29, 状态: FULL)",
+          "  ⚠️ [工作表覆盖度提醒: 抽样 (已展示 30/82 行)]：当前展示仅为前 30 行样本，未覆盖全表！若需进行查重、全量汇总、极值对比或审计检验，严禁仅凭此抽样断言全表结论，必须调用 bash 运行 Python 脚本加载完整全量数据进行统计！"
+        ],
+        "visible_voucher_count": 27,
+        "special_values_visible": {
+          "V2026-0040": false,
+          "98000": false,
+          "V2026-0055": false,
+          "2027-01-03": false,
+          "V2026-0070": false,
+          "待审批": false
+        },
+        "routing": {
+          "is_inspect_intent": false,
+          "is_generate_intent": false,
+          "is_office_intent": true,
+          "requires_execution": false,
+          "default_rounds": 3
+        },
+        "no_tool_guard_result": [
+          "pass",
+          null,
+          3
+        ]
+      }
+    ],
+    "failed_call_history_probe": {
+      "no_history": {
+        "coverage_warning_added": true
+      },
+      "failed_attempt_in_history": {
+        "coverage_warning_added": false
+      }
+    },
+    "source_sha_before": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+    "source_sha_after": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f"
+  }
+}

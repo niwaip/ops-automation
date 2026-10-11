@@ -1,6 +1,5 @@
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { Button, Checkbox, Form, Input, Space } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
 import { useTranslation } from 'react-i18next';
 import { useLoginForm, type LoginFormValues } from '../hooks/useLoginForm';
 
@@ -15,7 +14,7 @@ interface PasswordLoginFormProps {
  * "记住我" 仅保存用户名（不保存密码），见 `useLoginForm`。
  */
 export function PasswordLoginForm({ ssoPending }: PasswordLoginFormProps) {
-  const [form] = useForm<LoginFormValues>();
+  const [form] = Form.useForm<LoginFormValues>();
   const { loginMutation, handleSubmit, initiateSso } = useLoginForm({ ssoPending, form });
   const { t } = useTranslation('auth');
 
