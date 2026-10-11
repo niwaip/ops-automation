@@ -61,6 +61,31 @@ def _get_current_time(tz: datetime.tzinfo) -> datetime.datetime:
     return datetime.datetime.now(tz)
 
 
+def _format_display_time(val: Any, tz_name: str = "Asia/Shanghai") -> str:
+    """
+    格式化日程/提醒时间为指定时区（默认 Asia/Shanghai，北京时间）的标准可读格式：YYYY-MM-DD HH:mm:ss
+    """
+    if not val:
+        return ""
+    val_str = str(val).strip().strip("\"'")
+    if "*" in val_str or val_str in ("已生效", "未指定时间", "指定时间", "原定时间"):
+        return val_str
+    try:
+        tz = zoneinfo.ZoneInfo(tz_name)
+    except Exception:
+        tz = zoneinfo.ZoneInfo("Asia/Shanghai")
+    try:
+        iso_str = val_str.replace("Z", "+00:00")
+        dt = datetime.datetime.fromisoformat(iso_str)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=tz)
+        else:
+            dt = dt.astimezone(tz)
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return val_str
+
+
 def _validate_and_normalize_run_at(run_at_val: Any, tz_name: str) -> Tuple[Optional[str], Optional[str]]:
     """
     Validates run_at against future time in specified timezone.
@@ -283,7 +308,7 @@ def create_personal_reminders(reminders: Optional[Any] = None, **kwargs) -> str:
 
         normalized.append(entry)
 
-        time_desc = entry.get("runAt") or entry.get("cronExpression") or "指定时间"
+        time_desc = _format_display_time(entry.get("runAt"), timezone) or entry.get("cronExpression") or "指定时间"
         wechat_desc = "微信+站内" if entry.get("sendWechat", True) else "站内"
         summary_lines.append(f"{len(normalized)}. 【{raw_title}】时间: {time_desc} (提醒渠道: {wechat_desc})")
 
@@ -452,7 +477,7 @@ def update_personal_reminder(
     payload = json.dumps(entry, ensure_ascii=False)
     marker = f"<<<DSH_REMINDER_UPDATE:len={len(payload)}:{payload}>>>"
 
-    time_desc = entry.get("runAt") or entry.get("cronExpression") or "原定时间"
+    time_desc = _format_display_time(entry.get("runAt"), tz_name) or entry.get("cronExpression") or "原定时间"
     header = f"已准备提交更新提醒【{target_title or target_id}】至系统调度中心："
     body = f"新调整时间/周期: {time_desc}"
     if "sendWechat" in entry:

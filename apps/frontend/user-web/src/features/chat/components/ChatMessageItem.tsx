@@ -9,7 +9,11 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { App, Avatar, Button, Image, Typography } from 'antd';
-import { resolveChatOutcomePresentation, type ChatMessage } from '@ops/user-core';
+import {
+  resolveChatMessageUsage,
+  resolveChatOutcomePresentation,
+  type ChatMessage,
+} from '@ops/user-core';
 import { isImageFile, resolveChatFilePreviewUrl } from '../lib/chatComposerMedia';
 import SharedChatMessageActions from '@chat-web/components/ChatMessageActions';
 import SharedContentPartsRenderer from '@chat-web/components/ContentPartsRenderer';
@@ -264,7 +268,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
       !(message.metadata?.mode === 'task' && hasProgressLogs && message.isStreaming) &&
       !(isToolExecutionTask && !hasRenderableContentParts)
   );
-  const usage = message.metadata?.usage;
+  const usage = resolveChatMessageUsage(message);
   const rateLimit = message.metadata?.rateLimit;
   const showMessageActions = message.role === 'assistant';
 
@@ -437,7 +441,11 @@ export const ChatMessageItem = memo(function ChatMessageItem({
               })()}
             </>
           ) : null}
-          {message.role === 'assistant' && message.isStreaming && !hasTaskCard && realGeneratedLength === 0 ? (
+          {message.role === 'assistant' &&
+          message.isStreaming &&
+          !hasTaskCard &&
+          !(message.metadata?.mode === 'task' && hasProgressLogs) &&
+          realGeneratedLength === 0 ? (
             <div style={{ margin: '4px 0 6px 0' }}>
               <StreamingActivityCard
                 isStreaming={true}

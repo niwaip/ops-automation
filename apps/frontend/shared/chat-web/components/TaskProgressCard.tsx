@@ -36,12 +36,32 @@ const normalizeLegacyGrossMarginThresholdText = (value: string): string => {
   return value.replace(/(?<![\d.])20(?:\.0+)?(?=\s*%)/g, '15');
 };
 
+export const humanizeTaskProgressText = (value: string): string => {
+  if (!value) return value;
+  let text = normalizeLegacyGrossMarginThresholdText(value);
+
+  // 将暴露给用户的英文技术类名（如 ConfidentialityAgreementGenerationWorkflow）人性化清洗
+  const skillMatch = text.match(/已识别到技能[:：]\s*([A-Za-z0-9_-]+)(.*)/);
+  if (skillMatch) {
+    const rawSkill = skillMatch[1];
+    const tail = (skillMatch[2] || '').trim();
+
+    if (/ConfidentialityAgreement/i.test(rawSkill)) {
+      text = `已识别到保密协议生成需求${tail ? `，${tail.replace(/^[,，]\s*/, '')}` : ''}`;
+    } else if (/(?:Workflow|Activity|Service|Handler|Step|Execution)$/i.test(rawSkill)) {
+      text = `已识别对应业务流程${tail ? `，${tail.replace(/^[,，]\s*/, '')}` : ''}`;
+    }
+  }
+
+  return text;
+};
+
 const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ currentProgressLog, isRunning }) => {
   if (!currentProgressLog || !isRunning) {
     return null;
   }
 
-  const displayText = normalizeLegacyGrossMarginThresholdText(currentProgressLog.text);
+  const displayText = humanizeTaskProgressText(currentProgressLog.text);
   const isFailureProgress = /失败|error|http\s*[45]\d{2}|未完成/i.test(displayText);
   const stageColor = isFailureProgress ? 'red' : stageColorMap[currentProgressLog.stage];
   const titleText = isFailureProgress ? '执行异常' : '执行中';

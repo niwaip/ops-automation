@@ -255,7 +255,7 @@ export class SessionService {
           sessionPatch?.updatedAt ||
           baseSession.updatedAt,
         title: this.buildChatSessionTitle(
-          sessionPatch?.title || existing?.session?.title,
+          existing?.session?.title || sessionPatch?.title,
           cleanedHistory
         ),
       },

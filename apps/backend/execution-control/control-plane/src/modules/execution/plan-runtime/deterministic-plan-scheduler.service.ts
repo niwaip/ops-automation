@@ -1111,13 +1111,22 @@ export class DeterministicPlanSchedulerService {
     if (Array.isArray(rawArtifacts)) {
       for (const art of rawArtifacts) {
         if (!art || typeof art !== 'object') continue;
-        const artifactUrl = art.url || art.storageUri;
+        const artifactUrl = art.url || art.downloadUrl || art.storageUri || art.path;
         if (art && artifactUrl) {
           const externalArtifactId = art.id || art.externalArtifactId || null;
           if (
             externalArtifactId &&
             (await this.prisma.executionArtifact.findFirst({
               where: { executionId: execution.id, producerStepId: step.id, externalArtifactId },
+              select: { id: true },
+            }))
+          ) {
+            continue;
+          }
+          if (
+            !externalArtifactId &&
+            (await this.prisma.executionArtifact.findFirst({
+              where: { executionId: execution.id, producerStepId: step.id, url: artifactUrl },
               select: { id: true },
             }))
           ) {
@@ -1130,7 +1139,7 @@ export class DeterministicPlanSchedulerService {
               producerNodeId: step.planNodeId || step.id,
               artifactType: art.type || art.artifactType || 'file',
               externalArtifactId,
-              name: art.name || 'output_artifact',
+              name: art.name || art.filename || 'output_artifact',
               url: artifactUrl,
               mimeType: art.mimeType || 'application/octet-stream',
               sizeBytes: art.sizeBytes ? BigInt(art.sizeBytes) : null,

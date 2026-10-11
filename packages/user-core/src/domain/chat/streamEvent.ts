@@ -137,6 +137,21 @@ export const normalizeUsage = (value: unknown): LLMUsage | undefined => {
   };
 };
 
+export const resolveChatMessageUsage = (
+  message?: { metadata?: ChatMessage['metadata'] } | null
+): LLMUsage | undefined => {
+  if (!message?.metadata) {
+    return undefined;
+  }
+  const directUsage = normalizeUsage(message.metadata.usage);
+  if (directUsage && directUsage.total_tokens > 0) {
+    return directUsage;
+  }
+  const trace = asRecord(message.metadata.executionTrace);
+  const metrics = asRecord(trace?.metrics);
+  return normalizeUsage(metrics?.tokens);
+};
+
 export const normalizeRateLimit = (value: unknown): LLMRateLimit | undefined => {
   const record = asRecord(value);
   if (!record) {
@@ -560,7 +575,9 @@ export const reduceChatStreamEvent = ({
         executionStatus: asString(data?.status),
         resultType: asString(data?.resultType) || normalizedResult?.resultType,
         resultTitle: asString(data?.resultTitle) || normalizedResult?.title,
-        usage: normalizeUsage(data?.usage),
+        usage:
+          normalizeUsage(data?.usage) ||
+          normalizeUsage((asRecord(data?.sandbox)?.metrics as any)?.tokens),
         rateLimit: normalizeRateLimit(data?.rateLimit),
         finalSummary:
           event.type === StreamEventTypeValue.WAITING_INPUT ||

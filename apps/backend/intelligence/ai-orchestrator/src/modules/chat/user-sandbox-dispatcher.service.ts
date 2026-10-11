@@ -14,6 +14,7 @@ import {
   stripToolCallArtifacts,
   unwrapOuterMarkdownFence,
   embedWorkspaceDeliverablesAndImagesInAnswer,
+  formatReminderDisplayTime,
 } from './user-sandbox-presentation.util';
 import {
   isArtifactGenerationRequest,
@@ -774,13 +775,13 @@ export class UserSandboxDispatcherService {
           }
         } else {
           if (createdReminders.length > 0) {
-            const confirmationBanner = `✓ [控制面已确认] ${createdReminders.length} 条提醒日程已成功落库并挂载后台调度系统：\n${createdReminders.map((r, i) => `${i + 1}. 【${r.title}】下次执行: ${r.nextRunAt} (渠道: ${r.sendWechat ? '微信+站内' : '站内'})`).join('\n')}`;
+            const confirmationBanner = `✓ [控制面已确认] ${createdReminders.length} 条提醒日程已成功落库并挂载后台调度系统：\n${createdReminders.map((r, i) => `${i + 1}. 【${r.title}】下次执行: ${formatReminderDisplayTime(r.nextRunAt, r.timezone || 'Asia/Shanghai')} (渠道: ${r.sendWechat ? '微信+站内' : '站内'})`).join('\n')}`;
             if (!cleanAnswer.includes('控制面已确认')) {
               cleanAnswer = `${cleanAnswer}\n\n${confirmationBanner}`.trim();
             }
           }
           if (updatedReminders.length > 0) {
-            const updateBanner = `✓ [控制面已确认] 成功更新 ${updatedReminders.length} 条提醒日程：\n${updatedReminders.map((r, i) => `${i + 1}. 【${r.title || r.id}】新时间: ${r.runAt || r.cronExpression || '已生效'}`).join('\n')}`;
+            const updateBanner = `✓ [控制面已确认] 成功更新 ${updatedReminders.length} 条提醒日程：\n${updatedReminders.map((r, i) => `${i + 1}. 【${r.title || r.id}】新时间: ${formatReminderDisplayTime(r.runAt, r.timezone || 'Asia/Shanghai') || r.cronExpression || '已生效'}`).join('\n')}`;
             if (!cleanAnswer.includes('成功更新')) {
               cleanAnswer = `${cleanAnswer}\n\n${updateBanner}`.trim();
             }
@@ -842,6 +843,7 @@ export class UserSandboxDispatcherService {
         data: {
           mode: 'chat',
           thoughtLogsSnapshot,
+          usage: executionMetrics?.tokens,
           sandbox: {
             containerName: harnessResult.containerName,
             harness: 'deepseek-harness',
@@ -863,6 +865,7 @@ export class UserSandboxDispatcherService {
         rawAssistantContent: rawWithThoughts,
         modelId: effectiveModel || body.modelId || 'default',
         thinkingEnabled: Boolean(body.config?.thinking || isThinkingRequested || thoughtAccumulator),
+        usage: executionMetrics?.tokens,
         ownerUserId: effectiveUserId,
         clientMessageId: body.clientMessageId,
         clientAssistantMessageId: body.clientAssistantMessageId,

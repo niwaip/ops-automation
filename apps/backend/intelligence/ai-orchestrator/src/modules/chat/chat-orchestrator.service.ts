@@ -40,6 +40,7 @@ import { TaskFallbackPolicyService } from './task-fallback-policy.service';
 import { ChatKnowledgeRetrievalService } from './chat-knowledge-retrieval.service';
 import { DocumentProberService } from './document-prober.service';
 import { PersonalReminderBridgeService } from './personal-reminder-bridge.service';
+import { formatReminderDisplayTime } from './user-sandbox-presentation.util';
 
 @Injectable()
 export class ChatOrchestratorService {
@@ -272,11 +273,14 @@ export class ChatOrchestratorService {
             ? list
                 .slice(0, 10)
                 .map((r: any, idx: number) => {
-                  const timeDesc = r.runAt || r.cronExpression || '未指定时间';
+                  const timeDesc =
+                    formatReminderDisplayTime(r.runAt, r.timezone || 'Asia/Shanghai') ||
+                    r.cronExpression ||
+                    '未指定时间';
                   const ch = r.sendWechat ? '微信+站内' : '站内';
                   const st = r.isActive ? '运行中' : '已停用';
                   const nextRun = r.nextRunAt
-                    ? ` | 下次触发: ${new Date(r.nextRunAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })}`
+                    ? ` | 下次触发: ${formatReminderDisplayTime(r.nextRunAt, r.timezone || 'Asia/Shanghai')}`
                     : '';
                   return `${idx + 1}. 【${r.title}】内容: ${r.message} | 时间: ${timeDesc}${nextRun} | 推送渠道: ${ch} | 状态: ${st}`;
                 })

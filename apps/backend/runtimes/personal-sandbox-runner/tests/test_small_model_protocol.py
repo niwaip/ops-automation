@@ -21,6 +21,7 @@ from dsh_modules.action_protocol import (
 )
 from dsh_modules.llm import extract_bare_json_tool_calls, clean_output, normalize_messages_for_llm
 from dsh_modules.agent_loop import run_agent_loop
+from dsh_modules.agent_loop_helpers import detect_unexecuted_tool_argument_leak
 from dsh_modules.deliverable_contract import (
     materialize_requested_markdown,
     requests_markdown_artifact,
@@ -735,6 +736,77 @@ class TestSmallModelProtocol(unittest.TestCase):
 
         # 测试 3：空列表与非字典类型安全保护
         self.assertEqual(normalize_messages_for_llm([]), [])
+
+
+class TestToolArgumentLeakGuard(unittest.TestCase):
+    """验证未执行工具调用参数泄漏（裸键值对 / 裸 JSON 片段）的精准检出与 ReAct 拦截重试机制"""
+
+    def test_detect_unexecuted_tool_argument_leak(self):
+        # 1. 真实故障案例：Qwen 输出裸 query 和 freshness 键值对
+        real_failure_case = '"query": "Cloudflare Workers 自定义域名 SSL 证书 设置方法 2024 2025 2026", "freshness": "month"'
+        self.assertTrue(detect_unexecuted_tool_argument_leak(real_failure_case))
+
+        # 2. 其他典型工具参数裸露情况
+        self.assertTrue(detect_unexecuted_tool_argument_leak('{"query": "Cloudflare Workers", "freshness": "month"}'))
+        self.assertTrue(detect_unexecuted_tool_argument_leak('```json\n"query": "Cloudflare Workers", "freshness": "month"\n```'))
+        self.assertTrue(detect_unexecuted_tool_argument_leak('"url": "https://developers.cloudflare.com/workers"'))
+        self.assertTrue(detect_unexecuted_tool_argument_leak('"city": "北京"'))
+        self.assertTrue(detect_unexecuted_tool_argument_leak('"command": "ls -la /workspace"'))
+
+        # 3. 正常自然语言不应被误判
+        normal_reply = (
+            "在 Cloudflare 上设置自定义域名和 SSL 证书的方法如下：\n"
+            "1. 登录 Cloudflare Dashboard 进入 Workers 路由。\n"
+            "2. 点击 Custom Domains 绑定自定义域名。\n"
+            "3. 自动生成 Universal SSL 边缘证书。"
+        )
+        self.assertFalse(detect_unexecuted_tool_argument_leak(normal_reply))
+
+        # 4. 自然语言中偶发提到 query 或 url 不应误判
+        prose_with_keywords = "你可以使用如下 SQL 语句进行 query 查询：SELECT * FROM users WHERE status = 'active';"
+        self.assertFalse(detect_unexecuted_tool_argument_leak(prose_with_keywords))
+
+    def test_agent_loop_intercepts_parameter_leak_and_retries(self):
+        """验证当模型第 1 轮发生参数泄漏时，沙箱不会执行参数级工具推断，而是拦截并注入引导提示词触发重试，最终获得合法的自然语言解答"""
+        user_prompt = "如何在cloudflare上设置cfnext"
+        round0_leak = '"query": "Cloudflare Workers 自定义域名 SSL 证书 设置方法 2024 2025 2026", "freshness": "month"'
+        round1_answer = "在 Cloudflare 上设置 cfnext 需要完成以下两步：\n1. 添加自定义域名并配置 DNS CNAME；\n2. 开启 SSL/TLS Full 加密模式。"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch("dsh_modules.agent_loop.WORKSPACE_DIR", tmpdir), \
+                 patch("dsh_modules.agent_loop.call_model_proxy") as mock_llm, \
+                 patch("dsh_modules.agent_loop.execute_tool") as mock_tool:
+                mock_llm.side_effect = [
+                    {"content": round0_leak, "tool_calls": []},
+                    {"content": round1_answer, "tool_calls": []},
+                ]
+                res = run_agent_loop(
+                    messages=[{"role": "user", "content": user_prompt}],
+                    model="qwen36-35b-a3b",
+                    policy=RuntimePolicy(max_rounds=3),
+                    max_rounds=3,
+                )
+                # 严格验证：绝不进行参数级工具推断去猜测执行 web_search 工具
+                mock_tool.assert_not_called()
+                # 验证调用了 2 轮 LLM（第 1 轮拦截，第 2 轮重试）
+                self.assertEqual(mock_llm.call_count, 2)
+                # 验证传递给第 2 轮 LLM 的消息中包含了规范提示
+                retry_messages = mock_llm.call_args_list[1][0][0]
+                has_guard_prompt = any(
+                    "系统工具调用规范提示" in str(m.get("content", ""))
+                    for m in retry_messages
+                )
+                self.assertTrue(has_guard_prompt)
+                # 验证最终输出为自然语言，且不含参数泄漏
+                self.assertIn("在 Cloudflare 上设置 cfnext", res.final_text)
+                self.assertNotIn("freshness", res.final_text)
+                # 验证遥测中记录了该拦截决策
+                guard_records = [
+                    g for g in res.telemetry.guard_decisions
+                    if g.get("guard") == "tool_argument_leak"
+                ]
+                self.assertEqual(len(guard_records), 1)
+                self.assertEqual(guard_records[0].get("action"), "reject")
 
 
 if __name__ == "__main__":

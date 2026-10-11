@@ -7,6 +7,13 @@ describe('RuntimeResultInterpreter', () => {
         findUnique: jest.fn(),
         update: jest.fn(),
       },
+      executionArtifact: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockImplementation((args: any) => Promise.resolve({ id: 'art-generated-1', ...args.data })),
+      },
+      executionStep: {
+        findUnique: jest.fn().mockResolvedValue({ planNodeId: 'node-1' }),
+      },
     };
     const executionStepService = {
       finishBrowserStep: jest.fn(),
@@ -351,5 +358,154 @@ describe('RuntimeResultInterpreter', () => {
     expect(takeover).toHaveBeenCalledWith('browser page drifted after login');
     expect(failExecution).not.toHaveBeenCalled();
     expect(advanceExecutionFlow).not.toHaveBeenCalled();
+  });
+
+  it('registers artifacts to database and emits execution.artifact.created on skill success', async () => {
+    const { interpreter, prisma } = createInterpreter();
+    const emitEvent = jest.fn().mockResolvedValue(undefined);
+    const advanceExecutionFlow = jest.fn().mockResolvedValue(undefined);
+    const failExecution = jest.fn().mockResolvedValue(undefined);
+
+    prisma.execution.findUnique.mockResolvedValue({
+      normalizedInputJson: {},
+    });
+    prisma.execution.update.mockResolvedValue(undefined);
+    prisma.executionStep.findUnique.mockResolvedValue({ planNodeId: 'node-skill-step' });
+
+    await interpreter.handleSkillRuntimeResult(
+      {
+        executionId: 'exec-skill-art-1',
+        runtimeSessionId: 'sess-1',
+        stepId: 'step-skill-1',
+        emitEvent,
+        advanceExecutionFlow,
+        failExecution,
+      },
+      {
+        success: true,
+        status: 'completed',
+        artifacts: [
+          {
+            type: 'document',
+            id: 'art-id-1',
+            name: '保密协议.docx',
+            url: 'http://storage.internal/doc-1.docx',
+            mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            sizeBytes: 2048,
+          },
+        ],
+        output: {
+          success: true,
+          downloadUrl: 'http://storage.internal/doc-1.docx',
+        },
+      }
+    );
+
+    expect(prisma.executionArtifact.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        executionId: 'exec-skill-art-1',
+        producerStepId: 'step-skill-1',
+        producerNodeId: 'node-skill-step',
+        artifactType: 'document',
+        externalArtifactId: 'art-id-1',
+        name: '保密协议.docx',
+        url: 'http://storage.internal/doc-1.docx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        sizeBytes: BigInt(2048),
+      }),
+    });
+
+    expect(emitEvent).toHaveBeenCalledWith('execution.artifact.created', {
+      artifactId: 'art-generated-1',
+      name: '保密协议.docx',
+      url: 'http://storage.internal/doc-1.docx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+
+    expect(advanceExecutionFlow).toHaveBeenCalled();
+  });
+
+  it('registers artifact from output downloadUrl fallback when artifacts list is not given', async () => {
+    const { interpreter, prisma } = createInterpreter();
+    const emitEvent = jest.fn().mockResolvedValue(undefined);
+    const advanceExecutionFlow = jest.fn().mockResolvedValue(undefined);
+    const failExecution = jest.fn().mockResolvedValue(undefined);
+
+    prisma.execution.findUnique.mockResolvedValue({
+      normalizedInputJson: {},
+    });
+    prisma.execution.update.mockResolvedValue(undefined);
+    prisma.executionStep.findUnique.mockResolvedValue(null);
+
+    await interpreter.handleSkillRuntimeResult(
+      {
+        executionId: 'exec-fallback-1',
+        runtimeSessionId: 'sess-2',
+        stepId: 'step-fallback-1',
+        emitEvent,
+        advanceExecutionFlow,
+        failExecution,
+      },
+      {
+        success: true,
+        status: 'completed',
+        output: {
+          success: true,
+          downloadUrl: 'http://192.168.100.143:3009/studio/download/4cec7e20-adcb-48a7-9a03-279ab6ed1966',
+          filename: '保密合同_豆包有限公司_v1_20261011.docx',
+          mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        },
+      }
+    );
+
+    expect(prisma.executionArtifact.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        executionId: 'exec-fallback-1',
+        producerStepId: 'step-fallback-1',
+        producerNodeId: 'step-fallback-1',
+        artifactType: 'file',
+        name: '保密合同_豆包有限公司_v1_20261011.docx',
+        url: 'http://192.168.100.143:3009/studio/download/4cec7e20-adcb-48a7-9a03-279ab6ed1966',
+      }),
+    });
+
+    expect(emitEvent).toHaveBeenCalledWith('execution.artifact.created', expect.objectContaining({
+      name: '保密合同_豆包有限公司_v1_20261011.docx',
+      url: 'http://192.168.100.143:3009/studio/download/4cec7e20-adcb-48a7-9a03-279ab6ed1966',
+    }));
+  });
+
+  it('skips duplicate artifacts if already created in database', async () => {
+    const { interpreter, prisma } = createInterpreter();
+    const emitEvent = jest.fn().mockResolvedValue(undefined);
+    const advanceExecutionFlow = jest.fn().mockResolvedValue(undefined);
+    const failExecution = jest.fn().mockResolvedValue(undefined);
+
+    prisma.execution.findUnique.mockResolvedValue({
+      normalizedInputJson: {},
+    });
+    prisma.executionArtifact.findFirst.mockResolvedValue({ id: 'existing-art-id' });
+
+    await interpreter.handleSkillRuntimeResult(
+      {
+        executionId: 'exec-dup-1',
+        runtimeSessionId: 'sess-3',
+        stepId: 'step-dup-1',
+        emitEvent,
+        advanceExecutionFlow,
+        failExecution,
+      },
+      {
+        success: true,
+        status: 'completed',
+        output: {
+          downloadUrl: 'http://duplicate-url/doc.pdf',
+        },
+      }
+    );
+
+    expect(prisma.executionArtifact.create).not.toHaveBeenCalled();
+    expect(emitEvent).not.toHaveBeenCalledWith('execution.artifact.created', expect.anything());
+    expect(advanceExecutionFlow).toHaveBeenCalled();
   });
 });

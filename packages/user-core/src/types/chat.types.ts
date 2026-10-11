@@ -149,6 +149,7 @@ export interface ChatMessage {
     promptDebug?: PromptDebugPayload;
     isQueued?: boolean;
     executionMode?: string;
+    executionTrace?: Record<string, unknown>;
   };
   isStreaming?: boolean;
 }

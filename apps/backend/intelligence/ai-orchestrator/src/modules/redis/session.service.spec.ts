@@ -69,6 +69,37 @@ describe('SessionService', () => {
     );
   });
 
+  it('preserves existing session title when follow-up messages are appended', async () => {
+    const { service, redisService } = createService();
+    redisService.get.mockResolvedValue(
+      JSON.stringify({
+        session: {
+          id: 'session-1',
+          title: '今天WSBK的比赛时间是几点',
+          status: 'active',
+          channel: 'wechat',
+          createdAt: '2026-10-11T06:56:39.000Z',
+          updatedAt: '2026-10-11T06:56:40.000Z',
+        },
+        history: [
+          { role: 'user', content: '今天WSBK的比赛时间是几点', timestamp: '2026-10-11T06:56:39.000Z' },
+          { role: 'assistant', content: '今天比赛安排如下', timestamp: '2026-10-11T06:56:40.000Z' },
+        ],
+      })
+    );
+
+    const result = await service.appendChatMessages(
+      'session-1',
+      [
+        { role: 'user', content: '今天晚上8:55，提醒我看比赛', timestamp: '2026-10-11T06:58:23.000Z' },
+        { role: 'assistant', content: '已设置提醒', timestamp: '2026-10-11T06:58:24.000Z' },
+      ],
+      { title: '今天晚上8:55，提醒我看比赛' }
+    );
+
+    expect(result.session?.title).toBe('今天WSBK的比赛时间是几点');
+  });
+
   it('lists normalized chat sessions in updated order', async () => {
     const { service, redisService } = createService();
     redisService.keys.mockResolvedValue(['chat_session:session-1', 'chat_session:session-2']);

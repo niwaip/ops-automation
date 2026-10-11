@@ -1,6 +1,6 @@
-import { ReloadOutlined } from '@ant-design/icons';
+import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
 import { Button, Card, Dropdown, Empty, List, Space, Tag, Typography } from 'antd';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useIsFetching, useQueryClient } from 'react-query';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -11,16 +11,19 @@ import {
   getNotificationSeverityTagColor,
   getNotificationSeverityText,
   isExecutionStatusValue,
+  type AppNotification,
 } from '@ops/user-core';
 import { useStore } from 'zustand';
 import { preferencesStore } from '../../../adapters/preferences/preferencesStore';
 import { useNotificationStore } from '../../../adapters/notifications/notificationStore';
 import { resolveNotificationActionPath } from '@/shared/utils/notificationNavigation';
 import { reminderApi } from '@/api';
+import { NotificationDetailModal } from '../../../app/layouts/header/NotificationDetailModal';
 
 export function NotificationsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [selectedNotification, setSelectedNotification] = useState<AppNotification | null>(null);
   const language = useStore(preferencesStore, (state) => state.language);
   const items = useNotificationStore((state) => state.items);
   const initialized = useNotificationStore((state) => state.initialized);
@@ -72,13 +75,6 @@ export function NotificationsPage() {
             const isApproval = item.metadata?.taskType === 'approval';
             const sender = (item.metadata?.sender as string) || item.sourceName;
             const content = buildNotificationContent(item, language);
-            const title = isCoordination
-              ? (item.metadata?.title as string) || content.title
-              : content.title;
-            const description = isCoordination
-              ? (item.metadata?.resultTitle as string) || content.description
-              : content.description;
-
             const refresh = () => void queryClient.invalidateQueries(['user-web-notifications']);
 
             return (
@@ -95,6 +91,16 @@ export function NotificationsPage() {
                     ], onClick: ({ key }) => void reminderApi.snooze(item.sourceId, Number(key) as 10 | 60 | 1440).then(refresh) }}>
                       <Button type="link">稍后提醒</Button>
                     </Dropdown>,
+                  ] : []),
+                  ...(content.fullMarkdown ? [
+                    <Button
+                      key="quick-view"
+                      type="link"
+                      icon={<EyeOutlined />}
+                      onClick={() => setSelectedNotification(item)}
+                    >
+                      快速查看
+                    </Button>,
                   ] : []),
                   ...(resolveDownloadUrl(item)
                     ? [
@@ -127,18 +133,18 @@ export function NotificationsPage() {
               >
                 <Space direction="vertical" size={6} style={{ width: '100%' }}>
                   <Space wrap size={8}>
-                    <Typography.Text strong>{title}</Typography.Text>
+                    <Typography.Text strong>{content.title}</Typography.Text>
                     {isCoordination ? (
-                      <Tag color={isApproval ? 'orange' : 'cyan'}>
-                        {isApproval ? '审批承认' : '协同任务'}
-                      </Tag>
+                      <>
+                        <Tag color={isApproval ? 'orange' : 'cyan'}>
+                          {isApproval ? '审批承认' : '协同任务'}
+                        </Tag>
+                        {sender ? <Tag color="geekblue">@{sender}</Tag> : null}
+                      </>
                     ) : isExecutionStatusValue(item.status) ? (
                       <Tag color={EXECUTION_STATUS_COLORS[item.status]}>
                         {statusLabels[item.status]}
                       </Tag>
-                    ) : null}
-                    {isCoordination && sender ? (
-                      <Tag color="geekblue">@{sender}</Tag>
                     ) : (
                       <Tag color={getNotificationSeverityTagColor(item.severity)}>
                         {getNotificationSeverityText(item.severity, language)}
@@ -147,8 +153,14 @@ export function NotificationsPage() {
                     {item.unread ? <Tag color="blue">未读</Tag> : null}
                     {item.requiresAction && !isCoordination ? <Tag color="warning">待处理</Tag> : null}
                   </Space>
-                  <Typography.Text type="secondary">{description}</Typography.Text>
-                  <Typography.Text type="secondary">
+                  <Typography.Paragraph
+                    type="secondary"
+                    ellipsis={{ rows: 2, tooltip: false }}
+                    style={{ margin: 0, wordBreak: 'break-word', lineHeight: 1.6 }}
+                  >
+                    {content.description}
+                  </Typography.Paragraph>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                     {new Date(item.timestamp).toLocaleString()}
                   </Typography.Text>
                 </Space>
@@ -157,6 +169,17 @@ export function NotificationsPage() {
           }}
         />
       )}
+
+      {/* 完整 Markdown 详情弹窗 */}
+      <NotificationDetailModal
+        open={Boolean(selectedNotification)}
+        notification={selectedNotification}
+        language={language}
+        onClose={() => setSelectedNotification(null)}
+        onNavigate={(actionUrl) => {
+          navigate(actionUrl);
+        }}
+      />
     </Card>
   );
 }

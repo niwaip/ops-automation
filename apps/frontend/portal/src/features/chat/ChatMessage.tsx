@@ -22,7 +22,7 @@ import MessageContentRenderer from '@chat-web/components/MessageContentRenderer'
 import ThoughtProcessPanel from '@chat-web/components/ThoughtProcessPanel';
 import TaskOutcomeCard from '@chat-web/components/TaskOutcomeCard';
 import TaskProgressCard from '@chat-web/components/TaskProgressCard';
-import { resolveChatOutcomePresentation } from '@ops/user-core';
+import { resolveChatMessageUsage, resolveChatOutcomePresentation } from '@ops/user-core';
 import {
   beautifyText,
   buildPromptDebugClipboardText,
@@ -148,7 +148,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       : undefined;
   const executionRuntimeType =
     typeof metadataRecord?.runtimeType === 'string' ? metadataRecord.runtimeType : undefined;
-  const usage = message.metadata?.usage;
+  const usage = resolveChatMessageUsage(message as any);
   const promptDebug = message.metadata?.promptDebug;
   const progressLogs = message.metadata?.progressLogs || [];
   const showThinking = message.metadata?.showThinking !== false;
@@ -568,6 +568,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
               executionStatus={executionStatus}
               executionId={executionId}
               executionStepCount={executionStepCount}
+              showTechnicalMeta={true}
               downloadUrl={downloadUrl}
               temporalLink={temporalLink}
               executionDetailLink={executionDetailLink}

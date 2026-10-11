@@ -48,14 +48,49 @@
   height: 72px;
   display: flex;
   align-items: center;
-  justify-content: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 8px;
+  box-sizing: border-box;
+}
+
+.user-shell-logo-expanded {
+  padding: 0 12px 0 16px;
+  justify-content: space-between;
+}
+
+.user-shell-logo-collapsed {
+  padding: 0 16px;
+  justify-content: center;
 }
 
 .user-shell-logo-inner {
   display: flex;
   align-items: center;
+  transition: transform 0.2s ease;
+}
+
+.user-shell-logo-inner-clickable:hover {
+  transform: scale(1.05);
+}
+
+.user-shell-collapse-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+  font-size: 16px !important;
+  color: rgba(255, 255, 255, 0.65) !important;
+  background: transparent !important;
+  transition: all 0.2s ease !important;
+  flex-shrink: 0;
+}
+
+.user-shell-collapse-btn:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.12) !important;
 }
 
 .user-shell-logo-mark {

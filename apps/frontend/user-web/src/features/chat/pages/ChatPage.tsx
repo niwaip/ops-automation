@@ -468,7 +468,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
       }
       return chatMode === 'task'
         ? '例如：/doc 分析工作空间架构 或 /email 总结今日邮件（输入 / 唤起工作技能，! 唤起工作流）'
-        : '例如：/ppt 制作商业汇报 或 /research 调研开源模型（输入 / 唤起沙箱生产力工具）';
+        : '例如：/ppt 制作商业汇报 或 /research 调研开源模型（输入 / 唤起快捷指令）';
     },
     [activeMessages, chatMode, pendingExecutionId]
   );

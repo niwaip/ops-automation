@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import TaskProgressCard from '@chat-web/components/TaskProgressCard';
+import TaskProgressCard, { humanizeTaskProgressText } from '@chat-web/components/TaskProgressCard';
+import TaskOutcomeCard from '@chat-web/components/TaskOutcomeCard';
 
 describe('TaskProgressCard - Single Running Indicator', () => {
   it('renders exactly one "执行中" running indicator in the header', () => {
@@ -132,6 +133,79 @@ describe('StreamingActivityCard - Progress Humanization & Status Passthrough', (
     expect(searchCardHtml).toContain('正在检索与分析实时信息');
     expect(searchCardHtml).toContain('联网检索中');
     expect(searchCardHtml).not.toContain('深度调研中');
+  });
+});
+
+describe('TaskOutcomeCard & Progress Humanization for End Users', () => {
+  it('humanizes technical workflow names into natural user-friendly text', () => {
+    const rawProgress = '已识别到技能: ConfidentialityAgreementGenerationWorkflow，正在识别参数...';
+    const humanized = humanizeTaskProgressText(rawProgress);
+    expect(humanized).toBe('已识别到保密协议生成需求，正在识别参数...');
+    expect(humanized).not.toContain('ConfidentialityAgreementGenerationWorkflow');
+
+    const genericWorkflow = '已识别到技能: PurchaseContractReviewWorkflow，正在识别参数...';
+    const humanizedGeneric = humanizeTaskProgressText(genericWorkflow);
+    expect(humanizedGeneric).toBe('已识别对应业务流程，正在识别参数...');
+  });
+
+  it('hides executionId and technical workflow skill name when showTechnicalMeta is false (user-facing)', () => {
+    const html = renderToStaticMarkup(
+      <TaskOutcomeCard
+        executionStatus="已完成"
+        executionId="b8a52827-ea97-4a38-b9e3-85c94b4a75d3"
+        skillName="ConfidentialityAgreementGenerationWorkflow"
+        hasBusinessResult={true}
+        showTechnicalMeta={false}
+        finalResult="保密协议已成功生成，具体信息如下："
+        browserExecutionMode={false}
+        shouldShowTakeoverCard={false}
+        shouldShowErrorCard={false}
+        shouldShowStructuredResult={false}
+        isWaitingInput={false}
+        isPendingApproval={false}
+        showRunningState={false}
+        waitingInputGroups={[]}
+        waitingInputItems={[]}
+        approvalAction={null}
+        onApproveExecution={() => {}}
+        onRejectExecution={() => {}}
+      />
+    );
+
+    expect(html).toContain('任务结果');
+    expect(html).toContain('状态：已完成');
+    // 普通用户视角下，技术 executionId 和英文工作流类名被隐藏
+    expect(html).not.toContain('b8a52827-ea97-4a38-b9e3-85c94b4a75d3');
+    expect(html).not.toContain('ConfidentialityAgreementGenerationWorkflow');
+    expect(html).toContain('保密协议已成功生成');
+  });
+
+  it('retains executionId and technical workflow skill name when showTechnicalMeta is true (admin/portal)', () => {
+    const html = renderToStaticMarkup(
+      <TaskOutcomeCard
+        executionStatus="已完成"
+        executionId="b8a52827-ea97-4a38-b9e3-85c94b4a75d3"
+        skillName="ConfidentialityAgreementGenerationWorkflow"
+        hasBusinessResult={true}
+        showTechnicalMeta={true}
+        finalResult="保密协议已成功生成"
+        browserExecutionMode={false}
+        shouldShowTakeoverCard={false}
+        shouldShowErrorCard={false}
+        shouldShowStructuredResult={false}
+        isWaitingInput={false}
+        isPendingApproval={false}
+        showRunningState={false}
+        waitingInputGroups={[]}
+        waitingInputItems={[]}
+        approvalAction={null}
+        onApproveExecution={() => {}}
+        onRejectExecution={() => {}}
+      />
+    );
+
+    expect(html).toContain('执行单 ID：b8a52827-ea97-4a38-b9e3-85c94b4a75d3');
+    expect(html).toContain('ConfidentialityAgreementGenerationWorkflow');
   });
 });
 

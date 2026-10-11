@@ -293,6 +293,7 @@ function TaskOutcomeBlockContent({
       <SharedTaskOutcomeCard
         executionStatus={getMessageStatusLabel(status) || null}
         executionId={executionId}
+        showTechnicalMeta={false}
         skillName={displaySkillName}
         downloadUrl={effectiveDownloadUrl}
         temporalLink={message.metadata?.temporalLink || partDetailUrl}
