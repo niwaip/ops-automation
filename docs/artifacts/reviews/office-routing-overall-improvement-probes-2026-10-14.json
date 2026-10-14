@@ -1,0 +1,94 @@
+[
+  {
+    "id": "M01",
+    "title": "订单交期风险与客户跟进",
+    "deliverables": [
+      ".docx",
+      "订单交期风险.xlsx",
+      "客户跟进计划.docx",
+      ".xlsx"
+    ],
+    "fast_path": false,
+    "should_plan": true,
+    "instruction": "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n落盘方式：调用 `bash` 工具运行 Python 脚本（使用 python-docx 库创建并排版文档，保存至 `/workspace/<文件名>.docx`）。\n⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字而不提供代码或工具调用！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！",
+    "instruction_mentions_xlsx": false,
+    "instruction_mentions_docx": true,
+    "instruction_mentions_pdf": false
+  },
+  {
+    "id": "M03",
+    "title": "质量整改待办",
+    "deliverables": [],
+    "fast_path": true,
+    "should_plan": false,
+    "parsed_contract": [
+      [],
+      [
+        ".md"
+      ],
+      [
+        "质量整改行动清单.md"
+      ]
+    ]
+  },
+  {
+    "id": "M06",
+    "title": "修改客户交期通知",
+    "deliverables": [
+      ".docx",
+      "客户交期通知_v2.docx"
+    ],
+    "fast_path": true,
+    "should_plan": false
+  },
+  {
+    "id": "R01",
+    "title": "门店经营周报与简报",
+    "deliverables": [
+      ".pdf",
+      "门店经营周报.xlsx",
+      "门店经营简报.pdf",
+      ".xlsx"
+    ],
+    "fast_path": false,
+    "should_plan": true,
+    "instruction": "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n落盘方式：调用 `bash` 工具运行 Python 脚本（使用 openpyxl 库创建并排版表格，保存至 `/workspace/<文件名>.xlsx`）。\n⚠️ 严禁仅输出口头文字！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！",
+    "instruction_mentions_xlsx": true,
+    "instruction_mentions_docx": false,
+    "instruction_mentions_pdf": false
+  },
+  {
+    "id": "O01",
+    "title": "采购审批材料",
+    "deliverables": [
+      ".docx",
+      "采购审批说明.docx",
+      "采购费用明细.xlsx",
+      ".xlsx"
+    ],
+    "fast_path": false,
+    "should_plan": true,
+    "instruction": "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n落盘方式：调用 `bash` 工具运行 Python 脚本（使用 python-docx 库创建并排版文档，保存至 `/workspace/<文件名>.docx`）。\n⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字而不提供代码或工具调用！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！",
+    "instruction_mentions_xlsx": false,
+    "instruction_mentions_docx": true,
+    "instruction_mentions_pdf": false
+  },
+  {
+    "id": "O02",
+    "title": "多部门会议行动清单",
+    "deliverables": [
+      "跨部门行动清单.md",
+      ".md"
+    ],
+    "fast_path": false,
+    "should_plan": true,
+    "named_files_only": [
+      "跨部门行动清单.md"
+    ],
+    "fast_path_named_files_only": true,
+    "suffixes": [
+      ".md",
+      ""
+    ]
+  }
+]

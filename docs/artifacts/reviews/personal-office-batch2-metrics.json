@@ -1,0 +1,346 @@
+[
+  {
+    "case": "personal-office-batch2-01-stream",
+    "sessionId": "f591acc1-5c46-4848-9cd5-69e4c3b8ecc9",
+    "traceId": "dee1078c-a7fa-44f9-b0a8-9c506e0070dc",
+    "durationMs": 26756,
+    "exitCode": 0,
+    "tools": [
+      {
+        "name": "write_markdown",
+        "params": {
+          "file_path": "B2_交接清单.md",
+          "content": "# 客户门户改造 - 项目交接待办清单\n\n**项目**：客户门户改造  \n**负责人**：测试员A  \n\n---\n\n### 一、 待办清单\n- [ ] 导出接口开发/测试\n- [ ] 移动端回归\n- [ ] 周五确认回归结果\n- [ ] 保..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      }
+    ],
+    "tokens": 10902,
+    "done": true
+  },
+  {
+    "case": "personal-office-batch2-02-stream",
+    "sessionId": "f591acc1-5c46-4848-9cd5-69e4c3b8ecc9",
+    "traceId": "a7e391cb-fc06-428a-8877-783c4f53f0c9",
+    "durationMs": 26243,
+    "exitCode": 0,
+    "tools": [
+      {
+        "name": "write_markdown",
+        "params": {
+          "content": "# 客户门户改造 - 项目交接待办清单 (v2)\n\n**项目**：客户门户改造  \n**负责人**：测试员A  \n\n## 1. 待办事项 (To-Do)\n- [ ] 导出接口开发/测试\n- [ ] 移动端回归\n- [ ] 下周一确认回归结果...",
+          "file_path": "B2_交接清单_v2.md"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      }
+    ],
+    "tokens": 10383,
+    "done": true
+  },
+  {
+    "case": "personal-office-batch2-03-stream",
+    "sessionId": "e90750be-7425-46f8-89de-a6ac0a3217e5",
+    "traceId": "63f096c1-164c-443a-bfac-92746969743a",
+    "durationMs": 101886,
+    "exitCode": 0,
+    "tools": [
+      {
+        "name": "bash",
+        "params": {
+          "command": "python3 -c \"\nimport openpyxl\nprint('openpyxl version:', openpyxl.__version__)\nimport os\nprint('Files in /workspace:', os..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "cat /workspace/采购明细.csv"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "cat /opt/dsh/skills/xlsx/scripts/recalc.py"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "cat << 'EOF' > /workspace/generate_b2_summary.py\nimport openpyxl\nfrom openpyxl.styles import Font, PatternFill, Alignmen..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "python3 /opt/dsh/skills/xlsx/scripts/recalc.py /workspace/B2_采购汇总.xlsx"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      }
+    ],
+    "tokens": 121089,
+    "done": true
+  },
+  {
+    "case": "personal-office-batch2-04-stream",
+    "sessionId": "b4d00e7c-1286-4907-9121-0749fcf57673",
+    "traceId": "7b195e47-c0f6-4166-afac-da20b3544e87",
+    "durationMs": 138536,
+    "exitCode": 0,
+    "tools": [
+      {
+        "name": "bash",
+        "params": {
+          "command": "cat << 'EOF' > /tmp/generate_doc.py\nimport docx\nfrom docx.shared import Inches, Pt, RGBColor\nfrom docx.enum.text import ..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "which soffice libreoffice pdftoppm"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "soffice --headless --convert-to pdf /workspace/B2_培训计划.docx --outdir /tmp/\npdftoppm -png -r 150 /tmp/B2_培训计划.pdf /tmp/pa..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "vision_inspect",
+        "params": {
+          "file_path": "/tmp/page-2.png",
+          "prompt": "这张图上有什么内容？是否是最后一点点表格或签名溢出？"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "cat << 'EOF' > /tmp/generate_doc.py\nimport docx\nfrom docx.shared import Inches, Pt, RGBColor\nfrom docx.enum.text import ..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      }
+    ],
+    "tokens": 118123,
+    "done": true
+  },
+  {
+    "case": "personal-office-batch2-06-modify-stream",
+    "sessionId": "157d2cea-0c28-43d1-b105-00e6abbd8c7b",
+    "traceId": "fdfa72d1-f255-47b2-a95e-9b30fc2bf1a6",
+    "durationMs": 68353,
+    "exitCode": 0,
+    "tools": [
+      {
+        "name": "bash",
+        "params": {
+          "command": "ls -la /workspace"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "python3 -c \"\nimport docx\n\ndoc = docx.Document('/workspace/B2_培训计划.docx')\nprint('=== PARAGRAPHS ===')\nfor i, p in enumera..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "python3 -c \"\nimport docx\n\ndoc = docx.Document('/workspace/B2_培训计划.docx')\nfor t_idx, table in enumerate(doc.tables):\n    ..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "python3 -c \"\nimport docx\n\ndoc = docx.Document('/workspace/B2_培训计划.docx')\nfor i, p in enumerate(doc.paragraphs):\n    prin..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "python3 -c \"\nimport docx\n\ndoc = docx.Document('/workspace/B2_培训计划.docx')\ndef check_elem(container, name):\n    for i, p i..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "python3 -c \"\nimport docx\n\ndoc = docx.Document('/workspace/B2_培训计划.docx')\ncell1 = doc.tables[1].rows[1].cells[0]\nfor p in..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "python3 -c \"\nimport docx\n\ndoc = docx.Document('/workspace/B2_培训计划.docx')\n\nreplacements = {\n    '周一': '周二',\n    '周三': '周四..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      }
+    ],
+    "tokens": 152377,
+    "done": true
+  },
+  {
+    "case": "personal-office-batch2-06-read-stream",
+    "sessionId": "157d2cea-0c28-43d1-b105-00e6abbd8c7b",
+    "traceId": "38378dce-9f91-4f72-8c10-c87d1724c530",
+    "durationMs": 7614,
+    "exitCode": 0,
+    "tools": [],
+    "tokens": 6229,
+    "done": true
+  },
+  {
+    "case": "personal-office-batch2-07-stream",
+    "sessionId": "d1e487d8-9455-44f4-8a58-3456f7f04048",
+    "traceId": "f2a45ed7-31d9-49e1-8e6b-b4de9f055679",
+    "durationMs": 4336,
+    "exitCode": 0,
+    "tools": [],
+    "tokens": 2109,
+    "done": true
+  },
+  {
+    "case": "personal-office-batch2-08-empty-stream",
+    "sessionId": "d0f038df-ba68-4714-a41c-80af474905e4",
+    "traceId": "6e288537-8925-464f-ba03-21adec96b515",
+    "durationMs": 7302,
+    "exitCode": 0,
+    "tools": [
+      {
+        "name": "read_file",
+        "params": {
+          "file_path": "空材料.txt"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      }
+    ],
+    "tokens": 4439,
+    "done": true
+  },
+  {
+    "case": "personal-office-batch2-08-recovery-stream",
+    "sessionId": "d0f038df-ba68-4714-a41c-80af474905e4",
+    "traceId": "763c05fd-2f2a-4841-b95d-958699f5254f",
+    "durationMs": 4284,
+    "exitCode": 0,
+    "tools": [],
+    "tokens": 1877,
+    "done": true
+  },
+  {
+    "case": "personal-office-batch2-05-history",
+    "sessionId": "bc032139-2647-4db9-852c-b379bbd0ac49",
+    "durationMs": 47686,
+    "exitCode": 0,
+    "tools": [
+      {
+        "name": "bash",
+        "params": {
+          "command": "python3 -c \"\nimport os\nfont_regular = '/opt/dsh/skills/pdf/assets/NotoSansSC-Regular.otf'\nfont_bold = '/opt/dsh/skills/p..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "cat << 'EOF' > /workspace/test_script.py\nimport os\nprint(os.path.exists('/opt/dsh/skills/pdf/scripts/generate_report_pdf..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "python3 /opt/dsh/skills/pdf/scripts/generate_report_pdf.py --help"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "cat << 'EOF' > /workspace/test_doc.md\n# 办公资料说明\n\n## 一、附件一说明：《项目交接.txt》\n- **所属项目**：客户门户改造\n- **已完成事项**：登录页面、角色权限配置\n- **待完成事..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "python3 /opt/dsh/skills/pdf/scripts/convert_pdf_to_images.py --help"
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "legacy_error",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "cat << 'EOF' > /workspace/B2_办公资料说明.md\n# 办公资料说明\n\n## 一、附件一说明：《项目交接.txt》\n该文件为项目的阶段性交接备忘，记录了当前任务进展、未决事项及风险提醒：\n\n- **所属项目**：客..."
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "legacy_error",
+        "workbook_id": null
+      }
+    ],
+    "tokens": 99079
+  }
+]

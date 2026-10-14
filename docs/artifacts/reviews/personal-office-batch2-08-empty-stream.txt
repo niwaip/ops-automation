@@ -1,0 +1,20 @@
+data: {"type": "observation", "content": "⚡ 正在连接个人安全沙箱 [e7fce333-a8f4-4097-9a53-f0a4c729da46]，启动智能分析与执行引擎...", "seq": 1, "protocolVersion": "1", "sessionId": "d0f038df-ba68-4714-a41c-80af474905e4", "traceId": "6e288537-8925-464f-ba03-21adec96b515", "data": {"traceId": "6e288537-8925-464f-ba03-21adec96b515"}}
+
+data: {"type": "observation", "content": "⚡ [DeepSeek Harness v1.3.0-sandbox | Sandbox: 5f63f1fca15a | User: sandbox | Mode: Personal]", "data": {"traceId": "6e288537-8925-464f-ba03-21adec96b515"}, "seq": 2, "protocolVersion": "1", "sessionId": "d0f038df-ba68-4714-a41c-80af474905e4", "traceId": "6e288537-8925-464f-ba03-21adec96b515"}
+
+data: {"type": "observation", "content": "⚡ [Harness Tool Call] 正在调用工具: read_file({'file_path': '空材料.txt'})...", "data": {"traceId": "6e288537-8925-464f-ba03-21adec96b515"}, "seq": 3, "protocolVersion": "1", "sessionId": "d0f038df-ba68-4714-a41c-80af474905e4", "traceId": "6e288537-8925-464f-ba03-21adec96b515"}
+
+data: {"type": "observation", "content": "✓ 工具 [read_file] 执行完成", "data": {"traceId": "6e288537-8925-464f-ba03-21adec96b515"}, "seq": 4, "protocolVersion": "1", "sessionId": "d0f038df-ba68-4714-a41c-80af474905e4", "traceId": "6e288537-8925-464f-ba03-21adec96b515"}
+
+data: {"type": "observation", "content": "⏳ [Harness Agent] 正在结合前序采集证据进行深入推理与规划 (第 2 轮)...", "data": {"traceId": "6e288537-8925-464f-ba03-21adec96b515"}, "seq": 5, "protocolVersion": "1", "sessionId": "d0f038df-ba68-4714-a41c-80af474905e4", "traceId": "6e288537-8925-464f-ba03-21adec96b515"}
+
+data: {"type": "observation", "content": "经核查，您刚上传的附件 **`空材料.txt` 内容为空**（无任何文本或有效数据）。\n\n因此无法提取或总结实质内容，特此明确说明，不作任何补充或臆测填充。", "data": {"mode": "chat", "isDelta": true, "traceId": "6e288537-8925-464f-ba03-21adec96b515"}, "seq": 6, "protocolVersion": "1", "sessionId": "d0f038df-ba68-4714-a41c-80af474905e4", "traceId": "6e288537-8925-464f-ba03-21adec96b515"}
+
+data: {"type": "observation", "content": "⚡ [DeepSeek Harness v1.3.0-sandbox | Sandbox: 5f63f1fca15a | User: sandbox | Mode: Personal]\n\n⚡ [Harness Tool Call] 正在调用工具: read_file({'file_path': '空材料.txt'})...\n✓ 工具 [read_file] 执行完成\n⏳ [Harness Agent] 正在结合前序采集证据进行深入推理与规划 (第 2 轮)...", "seq": 7, "protocolVersion": "1", "sessionId": "d0f038df-ba68-4714-a41c-80af474905e4", "traceId": "6e288537-8925-464f-ba03-21adec96b515", "data": {"traceId": "6e288537-8925-464f-ba03-21adec96b515"}}
+
+data: {"type": "result", "content": "经核查，您刚上传的附件 **`空材料.txt` 内容为空**（无任何文本或有效数据）。\n\n因此无法提取或总结实质内容，特此明确说明，不作任何补充或臆测填充。", "data": {"mode": "chat", "usage": {"prompt_tokens": 4049, "completion_tokens": 71, "total_tokens": 4439, "completion_tokens_details": {"reasoning_tokens": 168}}, "sandbox": {"containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46", "harness": "deepseek-harness", "executed": true, "durationMs": 7302, "exitCode": 0, "metrics": {"ttftMs": 3439.1, "durationMs": 6925.21, "llmDurationMs": 6842.2, "toolCallsCount": 1, "toolCalls": [{"name": "read_file", "params": {"file_path": "空材料.txt"}, "status": "success", "result_status": "success", "workbook_id": null}], "llmInvocations": 2, "tokens": {"prompt_tokens": 4049, "completion_tokens": 71, "total_tokens": 4439, "completion_tokens_details": {"reasoning_tokens": 168}}, "finishReason": "stop", "roundFinishReasons": ["tool_calls", "stop"], "guardDecisions": []}}, "traceId": "6e288537-8925-464f-ba03-21adec96b515"}, "seq": 8, "protocolVersion": "1", "sessionId": "d0f038df-ba68-4714-a41c-80af474905e4", "traceId": "6e288537-8925-464f-ba03-21adec96b515"}
+
+data: {"type": "session_patch", "sessionId": "d0f038df-ba68-4714-a41c-80af474905e4", "content": "", "data": {"title": "B2-08：请总结刚上传的空材料附件；如果为空或", "status": "active", "updatedAt": "2026-10-13T13:01:24.725Z", "traceId": "6e288537-8925-464f-ba03-21adec96b515"}, "seq": 9, "protocolVersion": "1", "traceId": "6e288537-8925-464f-ba03-21adec96b515"}
+
+data: {"type": "done", "content": "Stream completed", "seq": 10, "protocolVersion": "1", "sessionId": "d0f038df-ba68-4714-a41c-80af474905e4", "traceId": "6e288537-8925-464f-ba03-21adec96b515", "data": {"traceId": "6e288537-8925-464f-ba03-21adec96b515"}}
+

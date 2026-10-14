@@ -1,0 +1,14 @@
+data: {"type": "observation", "content": "⚡ 正在连接个人安全沙箱 [e7fce333-a8f4-4097-9a53-f0a4c729da46]，启动智能分析与执行引擎...", "seq": 1, "protocolVersion": "1", "sessionId": "b637bf9b-d7e2-4eb9-8097-5abdc32e6cd6", "traceId": "bd717104-ba78-4d10-af2b-524a865b5f8f", "data": {"traceId": "bd717104-ba78-4d10-af2b-524a865b5f8f"}}
+
+data: {"type": "observation", "content": "⚡ [DeepSeek Harness v1.3.0-sandbox | Sandbox: 5f63f1fca15a | User: sandbox | Mode: Personal]", "data": {"traceId": "bd717104-ba78-4d10-af2b-524a865b5f8f"}, "seq": 2, "protocolVersion": "1", "sessionId": "b637bf9b-d7e2-4eb9-8097-5abdc32e6cd6", "traceId": "bd717104-ba78-4d10-af2b-524a865b5f8f"}
+
+data: {"type": "observation", "content": "本会话中此前没有上一条消息，当前消息是本会话的第一条消息。", "data": {"mode": "chat", "isDelta": true, "traceId": "bd717104-ba78-4d10-af2b-524a865b5f8f"}, "seq": 3, "protocolVersion": "1", "sessionId": "b637bf9b-d7e2-4eb9-8097-5abdc32e6cd6", "traceId": "bd717104-ba78-4d10-af2b-524a865b5f8f"}
+
+data: {"type": "observation", "content": "⚡ [DeepSeek Harness v1.3.0-sandbox | Sandbox: 5f63f1fca15a | User: sandbox | Mode: Personal]", "seq": 4, "protocolVersion": "1", "sessionId": "b637bf9b-d7e2-4eb9-8097-5abdc32e6cd6", "traceId": "bd717104-ba78-4d10-af2b-524a865b5f8f", "data": {"traceId": "bd717104-ba78-4d10-af2b-524a865b5f8f"}}
+
+data: {"type": "result", "content": "本会话中此前没有上一条消息，当前消息是本会话的第一条消息。", "data": {"mode": "chat", "usage": {"prompt_tokens": 1901, "completion_tokens": 20, "total_tokens": 2164, "completion_tokens_details": {"reasoning_tokens": 243}}, "sandbox": {"containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46", "harness": "deepseek-harness", "executed": true, "durationMs": 6032, "exitCode": 0, "metrics": {"ttftMs": 5621.05, "durationMs": 5661.19, "llmDurationMs": 5621.22, "toolCallsCount": 0, "toolCalls": [], "llmInvocations": 1, "tokens": {"prompt_tokens": 1901, "completion_tokens": 20, "total_tokens": 2164, "completion_tokens_details": {"reasoning_tokens": 243}}, "finishReason": "stop", "roundFinishReasons": ["stop"], "guardDecisions": []}}, "traceId": "bd717104-ba78-4d10-af2b-524a865b5f8f"}, "seq": 5, "protocolVersion": "1", "sessionId": "b637bf9b-d7e2-4eb9-8097-5abdc32e6cd6", "traceId": "bd717104-ba78-4d10-af2b-524a865b5f8f"}
+
+data: {"type": "session_patch", "sessionId": "b637bf9b-d7e2-4eb9-8097-5abdc32e6cd6", "content": "", "data": {"title": "E2E-O12：我上一条消息是什么？如果本会话没", "status": "active", "updatedAt": "2026-10-13T11:13:46.145Z", "traceId": "bd717104-ba78-4d10-af2b-524a865b5f8f"}, "seq": 6, "protocolVersion": "1", "traceId": "bd717104-ba78-4d10-af2b-524a865b5f8f"}
+
+data: {"type": "done", "content": "Stream completed", "seq": 7, "protocolVersion": "1", "sessionId": "b637bf9b-d7e2-4eb9-8097-5abdc32e6cd6", "traceId": "bd717104-ba78-4d10-af2b-524a865b5f8f", "data": {"traceId": "bd717104-ba78-4d10-af2b-524a865b5f8f"}}
+

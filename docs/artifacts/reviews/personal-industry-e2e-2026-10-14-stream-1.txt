@@ -1,0 +1,20 @@
+data: {"type":"observation","content":"⚡ 正在连接个人安全沙箱 [e7fce333-a8f4-4097-9a53-f0a4c729da46]，启动智能分析与执行引擎...","seq":1,"protocolVersion":"1","sessionId":"10ed1a82-adcb-4edf-9283-d612be162e3c","traceId":"2995e04a-9c11-4df9-a90b-18c172458fb7","data":{"traceId":"2995e04a-9c11-4df9-a90b-18c172458fb7"}}
+
+data: {"type":"observation","content":"⚡ [DeepSeek Harness v1.3.0-sandbox | Sandbox: 5f63f1fca15a | User: sandbox | Mode: Personal]","data":{"traceId":"2995e04a-9c11-4df9-a90b-18c172458fb7"},"seq":2,"protocolVersion":"1","sessionId":"10ed1a82-adcb-4edf-9283-d612be162e3c","traceId":"2995e04a-9c11-4df9-a90b-18c172458fb7"}
+
+data: {"type":"observation","content":"🎯 [Skill Router] 命中意图规范: xlsx (亲和度得分: 39.1)，正在注入专业规范...","data":{"traceId":"2995e04a-9c11-4df9-a90b-18c172458fb7"},"seq":3,"protocolVersion":"1","sessionId":"10ed1a82-adcb-4edf-9283-d612be162e3c","traceId":"2995e04a-9c11-4df9-a90b-18c172458fb7"}
+
+data: {"type":"observation","content":"⚡ [Harness Tool Call] 正在调用工具: inspect_spreadsheet_structure({'file_path': '制造业_生产日报.csv', 'sheets': ['制造业_生产日报']})...","data":{"traceId":"2995e04a-9c11-4df9-a90b-18c172458fb7"},"seq":4,"protocolVersion":"1","sessionId":"10ed1a82-adcb-4edf-9283-d612be162e3c","traceId":"2995e04a-9c11-4df9-a90b-18c172458fb7"}
+
+data: {"type":"observation","content":"✓ 工具 [inspect_spreadsheet_structure] 执行完成","data":{"traceId":"2995e04a-9c11-4df9-a90b-18c172458fb7"},"seq":5,"protocolVersion":"1","sessionId":"10ed1a82-adcb-4edf-9283-d612be162e3c","traceId":"2995e04a-9c11-4df9-a90b-18c172458fb7"}
+
+data: {"type":"observation","content":"⏳ [Harness Agent] 正在结合前序采集证据进行深入推理与规划 (第 2 轮)...","data":{"traceId":"2995e04a-9c11-4df9-a90b-18c172458fb7"},"seq":6,"protocolVersion":"1","sessionId":"10ed1a82-adcb-4edf-9283-d612be162e3c","traceId":"2995e04a-9c11-4df9-a90b-18c172458fb7"}
+
+data: {"type":"observation","content":"⚡ [Harness Tool Call] 正在调用工具: aggregate_spreadsheet({'tables': [{'header_row': 1, 'data_range': 'A2:F7', 'sheet': 'Sheet1', 'id': 't...)...","data":{"traceId":"2995e04a-9c11-4df9-a90b-18c172458fb7"},"seq":7,"protocolVersion":"1","sessionId":"10ed1a82-adcb-4edf-9283-d612be162e3c","traceId":"2995e04a-9c11-4df9-a90b-18c172458fb7"}
+
+data: {"type":"error","content":"⏱️ 上游大模型服务暂时不可用或响应超时 (⚡ [DeepSeek Harness v1.3.0-sandbox | Sandbox: 5f63f1fca15a | User: sandbox | Mode: Personal]\n🎯 [Skill Router] 命中意图规范: xlsx (亲和度得分: 39.1)，正在注入专业规范...\n<<<DSH_DELTA_RESET>>>\n⚡ [Harness Tool Call] 正在调用工具: inspect_spreadsheet_structure({'file_path': '制造业_生产日报.csv', 'sheets': ['制造业_生产日报']})...\n✓ 工具 [inspect_spreadsheet_structure] 执行完成\n⏳ [Harness Agent] 正在结合前序采集证据进行深入推理与规划 (第 2 轮)...\n<<<DSH_DELTA_RESET>>>\n⚡ [Harness Tool Call] 正在调用工具: aggregate_spreadsheet({'tables': [{'header_row': 1, 'data_range': 'A2:F7', 'sheet': 'Sheet1', 'id': 't...)...\n\n❌ [DeepSeek Harness 异常]: 执行异常: openpyxl does not support .csv file format, please check you can open it with Excel first. Supported formats are: .xlsx,.xlsm,.xltx,.xltm)。本次任务未完成，请检查模型服务状态或稍后重试。","data":{"code":"SANDBOX_MODEL_UNAVAILABLE","retryable":true,"traceId":"2995e04a-9c11-4df9-a90b-18c172458fb7"},"seq":8,"protocolVersion":"1","sessionId":"10ed1a82-adcb-4edf-9283-d612be162e3c","traceId":"2995e04a-9c11-4df9-a90b-18c172458fb7"}
+
+data: {"type":"session_patch","sessionId":"10ed1a82-adcb-4edf-9283-d612be162e3c","content":"","data":{"title":"请读取上传的制造业生产日报，按产线汇总计划数量、","status":"active","updatedAt":"2026-10-14T01:25:55.502Z","traceId":"2995e04a-9c11-4df9-a90b-18c172458fb7"},"seq":9,"protocolVersion":"1","traceId":"2995e04a-9c11-4df9-a90b-18c172458fb7"}
+
+data: {"type":"done","content":"Stream completed","seq":10,"protocolVersion":"1","sessionId":"10ed1a82-adcb-4edf-9283-d612be162e3c","traceId":"2995e04a-9c11-4df9-a90b-18c172458fb7","data":{"traceId":"2995e04a-9c11-4df9-a90b-18c172458fb7"}}
+

@@ -1,0 +1,11 @@
+{
+  "stack_counts": {
+    "CoordinationTaskCardModal": 109101,
+    "WorkflowSelectionDropdown": 0
+  },
+  "log_bytes": 313677021,
+  "samples": [
+    "at CoordinationTaskCardModal (http://localhost:5174/src/features/chat/components/CoordinationTaskCardModal.tsx:48:3)",
+    "at CoordinationTaskCardModal (http://localhost:5174/src/features/chat/components/CoordinationTaskCardModal.tsx:48:3)"
+  ]
+}

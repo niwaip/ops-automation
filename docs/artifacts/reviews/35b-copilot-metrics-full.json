@@ -1,0 +1,78 @@
+[
+  {
+    "case": "35B-COPILOT-CP-01",
+    "durationMs": 4068,
+    "exitCode": 0,
+    "tokens": 3086,
+    "toolsCount": 0,
+    "toolNames": [],
+    "done": true
+  },
+  {
+    "case": "35B-COPILOT-CP-02",
+    "durationMs": 13455,
+    "exitCode": 0,
+    "tokens": 9242,
+    "toolsCount": 2,
+    "toolNames": [
+      "read_file",
+      "write_markdown"
+    ],
+    "done": true
+  },
+  {
+    "case": "35B-COPILOT-CP-03",
+    "durationMs": 152376,
+    "exitCode": 0,
+    "tokens": 105836,
+    "toolsCount": 5,
+    "toolNames": [
+      "read_file",
+      "bash",
+      "bash",
+      "bash",
+      "bash"
+    ],
+    "done": true
+  },
+  {
+    "case": "35B-COPILOT-CP-04",
+    "durationMs": 77771,
+    "exitCode": 0,
+    "tokens": 95603,
+    "toolsCount": 4,
+    "toolNames": [
+      "read_file",
+      "bash",
+      "bash",
+      "bash"
+    ],
+    "done": true
+  },
+  {
+    "case": "35B-COPILOT-CP-05",
+    "durationMs": 29579,
+    "exitCode": 0,
+    "tokens": 43900,
+    "toolsCount": 3,
+    "toolNames": [
+      "read_file",
+      "bash",
+      "send_file"
+    ],
+    "done": true
+  },
+  {
+    "case": "35B-COPILOT-CP-06",
+    "durationMs": 11199,
+    "exitCode": 0,
+    "tokens": 41758,
+    "toolsCount": 3,
+    "toolNames": [
+      "read_file",
+      "bash",
+      "send_file"
+    ],
+    "done": true
+  }
+]

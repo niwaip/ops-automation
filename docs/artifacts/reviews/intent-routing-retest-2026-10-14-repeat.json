@@ -1,0 +1,20 @@
+{
+  "route_calls": 444,
+  "decision_changes": [],
+  "source_unchanged": true,
+  "source_hashes": {
+    "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/skill_router.py": "dfc2e92be00ef2e6a7614225ab4a1315ffb1b937a56fbc0211f6fcd41fb96097",
+    "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/runner.py": "009720cf82fdf3a8623d52bad2a362e19af006058b089734c81d37c6e4c69511",
+    "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/prompt_builder.py": "440f6c6f442d79e5143720b31dec84b47e8853fa39b3160608b1f231254f676e",
+    "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/intent_contract.py": "0b979eef855ba7ac32c8b511d803dccea667e21e21e4080f5091fe16f233340f",
+    "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/planning_phase.py": "c6b868b972bd1aaa239eab074aacc8bfabaa0c72c2c091108007b00d030a8c9a"
+  },
+  "base_assertions": {
+    "total": 140,
+    "passed": 140
+  },
+  "combination_guard_assertions": {
+    "total": 8,
+    "passed": 1
+  }
+}

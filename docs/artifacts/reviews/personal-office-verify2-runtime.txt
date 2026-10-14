@@ -1,0 +1,3 @@
+ops-ai-orchestrator  | [Nest] 219  - 10/13/2026, 8:39:40 PM     LOG [UserSandboxDispatcherService] Personal sandbox task aborted by user for session [0cc8ad82-099f-4c48-891a-de10d7c42212]. Persisting stopped turn to session history.
+ops-ai-orchestrator  | [Nest] 219  - 10/13/2026, 8:39:40 PM   DEBUG [SessionService] Saved chat session 0cc8ad82-099f-4c48-891a-de10d7c42212, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/13/2026, 8:40:18 PM   DEBUG [SessionService] Saved chat session 0cc8ad82-099f-4c48-891a-de10d7c42212, history=4

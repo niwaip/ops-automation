@@ -1,0 +1,521 @@
+{
+  "scope": "additional routing contract combination checks only",
+  "total": 8,
+  "passed": 1,
+  "results": [
+    {
+      "id": "G01",
+      "prompt": "重新生成",
+      "history": [
+        {
+          "role": "user",
+          "content": "将上传的方案.docx转为可下载PDF文件。"
+        }
+      ],
+      "files": [
+        "方案.docx"
+      ],
+      "expected": {
+        "skill_id": "pdf",
+        "format_has": ".pdf",
+        "format_not": ".docx"
+      },
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 30.0,
+        "matched_reasons": [
+          "trigger:docx(+18.0)",
+          "id/alias:docx(+12.0)"
+        ],
+        "deliverables": [
+          ".docx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "presearch": false,
+        "weather": false,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "pass": false,
+      "failed_checks": [
+        "skill_id",
+        "format_has",
+        "format_not"
+      ]
+    },
+    {
+      "id": "G02",
+      "prompt": "确认",
+      "history": [
+        {
+          "role": "user",
+          "content": "只查看上传的报告.docx，不要生成文件。"
+        }
+      ],
+      "files": [
+        "报告.docx"
+      ],
+      "expected": {
+        "is_generate_intent": false,
+        "deliverables_empty": true
+      },
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 30.0,
+        "matched_reasons": [
+          "trigger:docx(+18.0)",
+          "id/alias:docx(+12.0)"
+        ],
+        "deliverables": [
+          ".docx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "presearch": false,
+        "weather": false,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "pass": false,
+      "failed_checks": [
+        "is_generate_intent",
+        "deliverables_empty"
+      ]
+    },
+    {
+      "id": "G03",
+      "prompt": "只根据已有资料生成今日天气PDF报告，不要联网",
+      "files": [
+        "天气资料.txt"
+      ],
+      "expected": {
+        "presearch": false
+      },
+      "actual": {
+        "skill_id": "pdf",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".pdf"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "presearch": true,
+        "weather": true,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "pass": false,
+      "failed_checks": [
+        "presearch"
+      ]
+    },
+    {
+      "id": "G04",
+      "prompt": "不要把文件发送到微信，只生成通知.docx",
+      "expected": {
+        "is_send_intent": false
+      },
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": true,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".docx",
+          "只生成通知.docx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "presearch": false,
+        "weather": false,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "pass": false,
+      "failed_checks": [
+        "is_send_intent"
+      ]
+    },
+    {
+      "id": "G05",
+      "prompt": "生成盘点.xlsx，别联网",
+      "expected": {
+        "tools_not": [
+          "web_search",
+          "fetch_page"
+        ]
+      },
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".xlsx",
+          "盘点.xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "presearch": false,
+        "weather": false,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "pass": false,
+      "failed_checks": [
+        "tools_not"
+      ]
+    },
+    {
+      "id": "G06",
+      "prompt": "读取方案.docx，转为报告.pdf",
+      "files": [
+        "方案.docx"
+      ],
+      "expected": {
+        "deliverables_has": [
+          "报告.pdf"
+        ]
+      },
+      "actual": {
+        "skill_id": "pdf",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".pdf"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "presearch": false,
+        "weather": false,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "pass": false,
+      "failed_checks": [
+        "deliverables_has"
+      ]
+    },
+    {
+      "id": "G07",
+      "prompt": "不要修改文件内容，只阅读预算.docx",
+      "files": [
+        "预算.docx"
+      ],
+      "expected": {
+        "is_generate_intent": false,
+        "tools_not": [
+          "bash",
+          "patch_file",
+          "write_markdown"
+        ]
+      },
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 32.028148247292286,
+        "matched_reasons": [
+          "trigger:docx(+18.0)",
+          "id/alias:docx(+12.0)",
+          "desc_terms(2.0)"
+        ],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 3,
+        "presearch": false,
+        "weather": false,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "pass": false,
+      "failed_checks": [
+        "tools_not"
+      ]
+    },
+    {
+      "id": "G08",
+      "prompt": "读取方案.docx，转为“报告.pdf”",
+      "files": [
+        "方案.docx"
+      ],
+      "expected": {
+        "skill_id": "pdf",
+        "deliverables_has": [
+          "报告.pdf"
+        ]
+      },
+      "actual": {
+        "skill_id": "pdf",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".pdf",
+          "报告.pdf"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "presearch": false,
+        "weather": false,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "pass": true,
+      "failed_checks": []
+    }
+  ]
+}

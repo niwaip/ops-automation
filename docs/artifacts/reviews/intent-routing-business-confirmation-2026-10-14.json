@@ -1,0 +1,4823 @@
+{
+  "scope": "business routing and actual presearch AST decision only; no model/tool execution",
+  "skill_directory": "/Users/chain/Documents/MyProject/ops-automation/data/shared/dsh-skills",
+  "skill_count": 18,
+  "source_hashes": {
+    "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/skill_router.py": "9a6ac49beb8837fda847a4e2a2b870d7e6dfc66635b060f77bb3b0cbe43a974e",
+    "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/intent_contract.py": "d7d9857ddfcedca29820e568dc4c8fbc86a5da23012694474cf45a12195086ab",
+    "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/runner.py": "e92a9b1164056d0942dd53946b1bfd2ab066ee7448b11e721ecb5f8f4a0affc6",
+    "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/skills.py": "3227154ced5105890ca0e030fe500461f98e11723d5f40208409976d93bd1f9b"
+  },
+  "source_unchanged": true,
+  "total": 72,
+  "passed": 71,
+  "failed": 1,
+  "repeat_changed": [],
+  "results": [
+    {
+      "id": "manufacturing-01",
+      "group": "manufacturing",
+      "prompt": "生成可下载Excel文件“生产日报.xlsx”，按产线统计计划、完成、不良数量。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "xlsx"
+        ],
+        "format_has": [
+          ".xlsx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".xlsx",
+          "生产日报.xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 9.524458087980747
+    },
+    {
+      "id": "manufacturing-02",
+      "group": "manufacturing",
+      "prompt": "生成可下载Excel文件“来料检验.xlsx”，记录供应商、批次、抽样数量和不良数。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "xlsx"
+        ],
+        "format_has": [
+          ".xlsx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".xlsx",
+          "来料检验.xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.4235422499477863
+    },
+    {
+      "id": "manufacturing-03",
+      "group": "manufacturing",
+      "prompt": "生成可下载Excel文件“库存盘点.xlsx”，记录物料编号、账面数量、实盘数量和差异。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "xlsx"
+        ],
+        "format_has": [
+          ".xlsx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".xlsx",
+          "库存盘点.xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 8.85658385232091
+    },
+    {
+      "id": "manufacturing-04",
+      "group": "manufacturing",
+      "prompt": "生成可下载Excel文件“采购比价.xlsx”，比较单价、交期和起订量。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "xlsx"
+        ],
+        "format_has": [
+          ".xlsx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".xlsx",
+          "采购比价.xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.291875123977661
+    },
+    {
+      "id": "manufacturing-05",
+      "group": "manufacturing",
+      "prompt": "制作一份设备交接Word文档，保存为“设备交接.docx”。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "docx"
+        ],
+        "format_has": [
+          ".docx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".docx",
+          "设备交接.docx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.5946667194366455
+    },
+    {
+      "id": "manufacturing-06",
+      "group": "manufacturing",
+      "prompt": "制作一份供应商会议纪要Word文档，保存为“供应商会议纪要.docx”。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "docx"
+        ],
+        "format_has": [
+          ".docx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".docx",
+          "供应商会议纪要.docx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.9768749848008156
+    },
+    {
+      "id": "manufacturing-07",
+      "group": "manufacturing",
+      "prompt": "制作一份质量整改通知Word文档，保存为“质量整改通知.docx”。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "docx"
+        ],
+        "format_has": [
+          ".docx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".docx",
+          "质量整改通知.docx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.5825418308377266
+    },
+    {
+      "id": "manufacturing-08",
+      "group": "manufacturing",
+      "prompt": "读取上传记录，整理设备夜班清单并保存为“设备夜班清单.md”，无需HTML/PPT。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "skill_not": [
+          "pptx",
+          "slides",
+          "guizang-ppt",
+          "html-ppt",
+          "frontend-design",
+          "web-prototype"
+        ],
+        "deliverables_has": [
+          "设备夜班清单.md"
+        ],
+        "format_not": [
+          ".pptx",
+          ".html"
+        ]
+      },
+      "files": [
+        "交接记录.txt"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          "设备夜班清单.md",
+          ".md"
+        ],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "write_markdown",
+          "scan_knowledge"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 12.531375046819448
+    },
+    {
+      "id": "manufacturing-09",
+      "group": "manufacturing",
+      "prompt": "制作3页设备夜班清单培训演示文稿，生成原生“设备夜班清单.pptx”，不要HTML。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "pptx"
+        ],
+        "format_has": [
+          ".pptx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "pptx",
+        "is_ppt_intent": true,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".pptx",
+          "设备夜班清单.pptx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2.67754215747118
+    },
+    {
+      "id": "manufacturing-10",
+      "group": "manufacturing",
+      "prompt": "将上传的设备夜班清单.docx转为可下载PDF文件。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "pdf"
+        ],
+        "format_has": [
+          ".pdf"
+        ]
+      },
+      "files": [
+        "设备夜班清单.docx"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "pdf",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".pdf"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2.3978333920240402
+    },
+    {
+      "id": "manufacturing-11",
+      "group": "manufacturing",
+      "prompt": "总结上传的日报，只在聊天中回答，不要生成任何文件。",
+      "expected": {
+        "is_generate_intent": false,
+        "is_inspect_intent": true,
+        "is_search_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "write_markdown",
+          "patch_file",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "files": [
+        "日报.xlsx"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "internal-comms",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 15.0,
+        "matched_reasons": [
+          "trigger:日报(+15.0)"
+        ],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 3,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.638582769781351
+    },
+    {
+      "id": "manufacturing-12",
+      "group": "manufacturing",
+      "prompt": "检查上传的记录并列出异常，不要修改原文件。",
+      "expected": {
+        "is_generate_intent": false,
+        "is_inspect_intent": true,
+        "is_search_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "write_markdown",
+          "patch_file",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "files": [
+        "记录.docx"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 32.028148247292286,
+        "matched_reasons": [
+          "trigger:docx(+18.0)",
+          "id/alias:docx(+12.0)",
+          "desc_terms(2.0)"
+        ],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 3,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 5.021207965910435
+    },
+    {
+      "id": "manufacturing-13",
+      "group": "manufacturing",
+      "prompt": "核对上传库存.xlsx中的账面数量与实盘数量，只给出差异。",
+      "expected": {
+        "is_generate_intent": false,
+        "is_inspect_intent": true,
+        "is_search_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "write_markdown",
+          "patch_file",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "files": [
+        "库存.xlsx"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 30.0,
+        "matched_reasons": [
+          "trigger:xlsx(+18.0)",
+          "id/alias:xlsx(+12.0)"
+        ],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 3,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "web_search",
+          "fetch_page",
+          "read_file"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 6.647000089287758
+    },
+    {
+      "id": "manufacturing-14",
+      "group": "manufacturing",
+      "prompt": "读取上传的采购.csv，统计供应商数量，只在聊天中回答。",
+      "expected": {
+        "is_generate_intent": false,
+        "is_inspect_intent": true,
+        "is_search_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "write_markdown",
+          "patch_file",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "files": [
+        "采购.csv"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "compare_spreadsheet_columns",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "bash",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.161500208079815
+    },
+    {
+      "id": "manufacturing-15",
+      "group": "manufacturing",
+      "prompt": "草拟一封催交货邮件，直接在聊天中输出。",
+      "expected": {
+        "is_generate_intent": false,
+        "deliverables_empty": true,
+        "is_search_intent": false,
+        "skill_not": [
+          "pptx",
+          "slides",
+          "guizang-ppt",
+          "html-ppt",
+          "frontend-design",
+          "web-prototype"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "web_search",
+          "fetch_page"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2.3364578373730183
+    },
+    {
+      "id": "retail-01",
+      "group": "retail",
+      "prompt": "生成可下载Excel文件“门店销售.xlsx”，按门店汇总销售额与订单数。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "xlsx"
+        ],
+        "format_has": [
+          ".xlsx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".xlsx",
+          "门店销售.xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.323167096823454
+    },
+    {
+      "id": "retail-02",
+      "group": "retail",
+      "prompt": "生成可下载Excel文件“退换货.xlsx”，按原因汇总退货与换货数量。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "xlsx"
+        ],
+        "format_has": [
+          ".xlsx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".xlsx",
+          "退换货.xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.2693748362362385
+    },
+    {
+      "id": "retail-03",
+      "group": "retail",
+      "prompt": "生成可下载Excel文件“库存补货.xlsx”，记录现存、安全库存和建议补货量。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "xlsx"
+        ],
+        "format_has": [
+          ".xlsx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".xlsx",
+          "库存补货.xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.4284167923033237
+    },
+    {
+      "id": "retail-04",
+      "group": "retail",
+      "prompt": "生成可下载Excel文件“员工排班.xlsx”，安排早晚班、休息和责任人。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "xlsx"
+        ],
+        "format_has": [
+          ".xlsx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".xlsx",
+          "员工排班.xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.2621249556541443
+    },
+    {
+      "id": "retail-05",
+      "group": "retail",
+      "prompt": "制作一份闭店交接Word文档，保存为“闭店交接.docx”。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "docx"
+        ],
+        "format_has": [
+          ".docx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".docx",
+          "闭店交接.docx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.543958067893982
+    },
+    {
+      "id": "retail-06",
+      "group": "retail",
+      "prompt": "制作一份促销活动通知Word文档，保存为“促销活动通知.docx”。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "docx"
+        ],
+        "format_has": [
+          ".docx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".docx",
+          "促销活动通知.docx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.5000420175492764
+    },
+    {
+      "id": "retail-07",
+      "group": "retail",
+      "prompt": "制作一份收银交接Word文档，保存为“收银交接.docx”。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "docx"
+        ],
+        "format_has": [
+          ".docx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".docx",
+          "收银交接.docx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.6600418388843536
+    },
+    {
+      "id": "retail-08",
+      "group": "retail",
+      "prompt": "读取上传记录，整理门店巡检清单并保存为“门店巡检清单.md”，无需HTML/PPT。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "skill_not": [
+          "pptx",
+          "slides",
+          "guizang-ppt",
+          "html-ppt",
+          "frontend-design",
+          "web-prototype"
+        ],
+        "deliverables_has": [
+          "门店巡检清单.md"
+        ],
+        "format_not": [
+          ".pptx",
+          ".html"
+        ]
+      },
+      "files": [
+        "交接记录.txt"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          "门店巡检清单.md",
+          ".md"
+        ],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "write_markdown",
+          "scan_knowledge"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.3424999564886093
+    },
+    {
+      "id": "retail-09",
+      "group": "retail",
+      "prompt": "制作3页门店巡检清单培训演示文稿，生成原生“门店巡检清单.pptx”，不要HTML。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "pptx"
+        ],
+        "format_has": [
+          ".pptx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "pptx",
+        "is_ppt_intent": true,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".pptx",
+          "门店巡检清单.pptx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 1.4950409531593323
+    },
+    {
+      "id": "retail-10",
+      "group": "retail",
+      "prompt": "将上传的门店巡检清单.docx转为可下载PDF文件。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "pdf"
+        ],
+        "format_has": [
+          ".pdf"
+        ]
+      },
+      "files": [
+        "门店巡检清单.docx"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "pdf",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".pdf"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 1.9116252660751343
+    },
+    {
+      "id": "retail-11",
+      "group": "retail",
+      "prompt": "总结上传的日报，只在聊天中回答，不要生成任何文件。",
+      "expected": {
+        "is_generate_intent": false,
+        "is_inspect_intent": true,
+        "is_search_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "write_markdown",
+          "patch_file",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "files": [
+        "日报.xlsx"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "internal-comms",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 15.0,
+        "matched_reasons": [
+          "trigger:日报(+15.0)"
+        ],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 3,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.256124909967184
+    },
+    {
+      "id": "retail-12",
+      "group": "retail",
+      "prompt": "检查上传的记录并列出异常，不要修改原文件。",
+      "expected": {
+        "is_generate_intent": false,
+        "is_inspect_intent": true,
+        "is_search_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "write_markdown",
+          "patch_file",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "files": [
+        "记录.docx"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 32.028148247292286,
+        "matched_reasons": [
+          "trigger:docx(+18.0)",
+          "id/alias:docx(+12.0)",
+          "desc_terms(2.0)"
+        ],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 3,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 5.112166050821543
+    },
+    {
+      "id": "retail-13",
+      "group": "retail",
+      "prompt": "核对上传库存.xlsx中的账面数量与实盘数量，只给出差异。",
+      "expected": {
+        "is_generate_intent": false,
+        "is_inspect_intent": true,
+        "is_search_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "write_markdown",
+          "patch_file",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "files": [
+        "库存.xlsx"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 30.0,
+        "matched_reasons": [
+          "trigger:xlsx(+18.0)",
+          "id/alias:xlsx(+12.0)"
+        ],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 3,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "web_search",
+          "fetch_page",
+          "read_file"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 4.734499845653772
+    },
+    {
+      "id": "retail-14",
+      "group": "retail",
+      "prompt": "读取上传的采购.csv，统计供应商数量，只在聊天中回答。",
+      "expected": {
+        "is_generate_intent": false,
+        "is_inspect_intent": true,
+        "is_search_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "write_markdown",
+          "patch_file",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "files": [
+        "采购.csv"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "compare_spreadsheet_columns",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "bash",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2.725666854530573
+    },
+    {
+      "id": "retail-15",
+      "group": "retail",
+      "prompt": "草拟一封促销通知邮件，直接在聊天中输出。",
+      "expected": {
+        "is_generate_intent": false,
+        "deliverables_empty": true,
+        "is_search_intent": false,
+        "skill_not": [
+          "pptx",
+          "slides",
+          "guizang-ppt",
+          "html-ppt",
+          "frontend-design",
+          "web-prototype"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "web_search",
+          "fetch_page"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2.411917317658663
+    },
+    {
+      "id": "general-01",
+      "group": "general",
+      "prompt": "生成会议纪要Word文件“会议.docx”",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "docx"
+        ],
+        "format_has": [
+          ".docx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".docx",
+          "会议.docx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.5858331248164177
+    },
+    {
+      "id": "general-02",
+      "group": "general",
+      "prompt": "生成费用报销Excel“费用.xlsx”",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "xlsx"
+        ],
+        "format_has": [
+          ".xlsx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".xlsx",
+          "费用.xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.2621659338474274
+    },
+    {
+      "id": "general-03",
+      "group": "general",
+      "prompt": "生成员工培训PDF手册“培训.pdf”",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "pdf"
+        ],
+        "format_has": [
+          ".pdf"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "pdf",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".pdf",
+          "培训.pdf"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2.8574583120644093
+    },
+    {
+      "id": "general-04",
+      "group": "general",
+      "prompt": "生成项目汇报原生PPTX“项目.pptx”",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "pptx"
+        ],
+        "format_has": [
+          ".pptx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "pptx",
+        "is_ppt_intent": true,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".pptx",
+          "项目.pptx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 1.3239169493317604
+    },
+    {
+      "id": "general-05",
+      "group": "general",
+      "prompt": "/word 制作周报",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "docx"
+        ],
+        "format_has": [
+          ".docx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".docx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.5453750751912594
+    },
+    {
+      "id": "general-06",
+      "group": "general",
+      "prompt": "/excel 制作报销表",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "xlsx"
+        ],
+        "format_has": [
+          ".xlsx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.1802081502974033
+    },
+    {
+      "id": "general-07",
+      "group": "general",
+      "prompt": "/pdf 制作项目说明",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "pdf"
+        ],
+        "format_has": [
+          ".pdf"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "pdf",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".pdf"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 1.82329211384058
+    },
+    {
+      "id": "general-08",
+      "group": "general",
+      "prompt": "将周会整理成“行动清单.md”",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "skill_not": [
+          "pptx",
+          "slides",
+          "guizang-ppt",
+          "html-ppt",
+          "frontend-design",
+          "web-prototype"
+        ],
+        "deliverables_has": [
+          "行动清单.md"
+        ],
+        "format_not": [
+          ".pptx",
+          ".html"
+        ]
+      },
+      "files": [
+        "会议.txt"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          "行动清单.md",
+          ".md"
+        ],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "write_markdown",
+          "scan_knowledge"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2.3210421204566956
+    },
+    {
+      "id": "general-09",
+      "group": "general",
+      "prompt": "把客户反馈保存为“客户反馈.md”",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "skill_not": [
+          "pptx",
+          "slides",
+          "guizang-ppt",
+          "html-ppt",
+          "frontend-design",
+          "web-prototype"
+        ],
+        "deliverables_has": [
+          "客户反馈.md"
+        ],
+        "format_not": [
+          ".pptx",
+          ".html"
+        ]
+      },
+      "files": [
+        "会议.txt"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          "客户反馈.md",
+          ".md"
+        ],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "write_markdown"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2.336250152438879
+    },
+    {
+      "id": "general-10",
+      "group": "general",
+      "prompt": "读取上传会议.txt，生成可下载“会议纪要.md”，不要生成PPT或HTML",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "skill_not": [
+          "pptx",
+          "slides",
+          "guizang-ppt",
+          "html-ppt",
+          "frontend-design",
+          "web-prototype"
+        ],
+        "deliverables_has": [
+          "会议纪要.md"
+        ],
+        "format_not": [
+          ".pptx",
+          ".html"
+        ]
+      },
+      "files": [
+        "会议.txt"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          "会议纪要.md",
+          ".md"
+        ],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "write_markdown",
+          "scan_knowledge"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.6845840513706207
+    },
+    {
+      "id": "general-11",
+      "group": "general",
+      "prompt": "查看上传的合同.docx的内容",
+      "expected": {
+        "is_generate_intent": false,
+        "is_inspect_intent": true,
+        "is_search_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "write_markdown",
+          "patch_file",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "files": [
+        "合同.docx"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 32.538973871058275,
+        "matched_reasons": [
+          "trigger:docx(+18.0)",
+          "id/alias:docx(+12.0)",
+          "desc_terms(2.5)"
+        ],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 3,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 4.619040992110968
+    },
+    {
+      "id": "general-12",
+      "group": "general",
+      "prompt": "阅读刚才生成的报告.pdf",
+      "expected": {
+        "is_generate_intent": false,
+        "is_inspect_intent": true,
+        "is_search_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "write_markdown",
+          "patch_file",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "files": [
+        "报告.pdf"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "pdf",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 12.0,
+        "matched_reasons": [
+          "id/alias:pdf(+12.0)"
+        ],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 3,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2.910749986767769
+    },
+    {
+      "id": "general-13",
+      "group": "general",
+      "prompt": "总结生成的库存.xlsx",
+      "expected": {
+        "is_generate_intent": false,
+        "is_inspect_intent": true,
+        "is_search_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "write_markdown",
+          "patch_file",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "files": [
+        "库存.xlsx"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 30.0,
+        "matched_reasons": [
+          "trigger:xlsx(+18.0)",
+          "id/alias:xlsx(+12.0)"
+        ],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 3,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "web_search",
+          "fetch_page",
+          "read_file"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 4.313125275075436
+    },
+    {
+      "id": "general-14",
+      "group": "general",
+      "prompt": "只在聊天中总结附件，不要生成文件",
+      "expected": {
+        "is_generate_intent": false,
+        "is_inspect_intent": true,
+        "is_search_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "write_markdown",
+          "patch_file",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "files": [
+        "材料.txt"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2.917791251093149
+    },
+    {
+      "id": "general-15",
+      "group": "general",
+      "prompt": "总结这份文档，不用创建任何文件",
+      "expected": {
+        "is_generate_intent": false,
+        "is_inspect_intent": true,
+        "is_search_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "write_markdown",
+          "patch_file",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "files": [
+        "文档.docx"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2.6496662758290768
+    },
+    {
+      "id": "general-16",
+      "group": "general",
+      "prompt": "仅回答上传照片里的商品是什么",
+      "expected": {
+        "is_generate_intent": false,
+        "is_inspect_intent": true,
+        "is_search_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "write_markdown",
+          "patch_file",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "files": [
+        "商品.jpg"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2.3788753896951675
+    },
+    {
+      "id": "general-17",
+      "group": "general",
+      "prompt": "总结这段话：今天已完成三项采购审核。",
+      "expected": {
+        "is_generate_intent": false,
+        "deliverables_empty": true,
+        "is_search_intent": false,
+        "skill_not": [
+          "pptx",
+          "slides",
+          "guizang-ppt",
+          "html-ppt",
+          "frontend-design",
+          "web-prototype"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2.2770841605961323
+    },
+    {
+      "id": "general-18",
+      "group": "general",
+      "prompt": "给出简短的会议开场白。",
+      "expected": {
+        "is_generate_intent": false,
+        "deliverables_empty": true,
+        "is_search_intent": false,
+        "skill_not": [
+          "pptx",
+          "slides",
+          "guizang-ppt",
+          "html-ppt",
+          "frontend-design",
+          "web-prototype"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "web_search",
+          "fetch_page"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2.180457580834627
+    },
+    {
+      "id": "general-19",
+      "group": "general",
+      "prompt": "写一封请假邮件，不需要文件。",
+      "expected": {
+        "is_generate_intent": false,
+        "deliverables_empty": true,
+        "is_search_intent": false,
+        "skill_not": [
+          "pptx",
+          "slides",
+          "guizang-ppt",
+          "html-ppt",
+          "frontend-design",
+          "web-prototype"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "web_search",
+          "fetch_page"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.0087907798588276
+    },
+    {
+      "id": "general-20",
+      "group": "general",
+      "prompt": "用Markdown表格比较早班与晚班职责，只在聊天中输出，不生成文件。",
+      "expected": {
+        "is_generate_intent": false,
+        "deliverables_empty": true,
+        "is_search_intent": false,
+        "skill_not": [
+          "pptx",
+          "slides",
+          "guizang-ppt",
+          "html-ppt",
+          "frontend-design",
+          "web-prototype"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "compare_spreadsheet_columns",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "bash",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.080165944993496
+    },
+    {
+      "id": "regression-01",
+      "group": "regression",
+      "prompt": "请只根据上传的设备交接记录整理一份制造业设备夜班交接清单，生成可下载Markdown文件“制造业_M03夜班交接.md”。包含设备状态、巡检事项、异常处置条件、物料余量、安全事项、交接双方；原文里没有的信息标“未提供”，不要自行编造。无需HTML/PPT。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "skill_not": [
+          "pptx",
+          "slides",
+          "guizang-ppt",
+          "html-ppt",
+          "frontend-design",
+          "web-prototype"
+        ],
+        "deliverables_has": [
+          "制造业_M03夜班交接.md"
+        ],
+        "format_not": [
+          ".pptx",
+          ".html"
+        ]
+      },
+      "files": [
+        "制造业_设备交接记录.txt"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          "制造业_M03夜班交接.md",
+          ".md"
+        ],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "write_markdown",
+          "scan_knowledge"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 5.250417161732912
+    },
+    {
+      "id": "regression-02",
+      "group": "regression",
+      "prompt": "请读取上传的制造业生产日报，按产线汇总计划数量、完成数量和不良数量，并计算完成率=完成数量/计划数量、不良率=不良数量/完成数量。生成可下载的Excel文件“制造业_生产日报汇总.xlsx”，至少包含“产线汇总”和“原始数据”两个工作表。只需要完成表格和必要说明，不要生成PPT或HTML。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "xlsx"
+        ],
+        "format_has": [
+          ".xlsx"
+        ]
+      },
+      "files": [
+        "制造业_生产日报.csv"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".xlsx",
+          "制造业_生产日报汇总.xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.89708299189806
+    },
+    {
+      "id": "regression-03",
+      "group": "regression",
+      "prompt": "请制作一份零售门店闭店交接清单，生成可下载Word文件“零售门店闭店交接清单.docx”。内容至少覆盖：现金与收银、冷藏食品温度、货架补货、退换货暂存、设备断电检查、钥匙交接、异常记录；用勾选表格呈现，包含责任人和备注栏。无需长篇说明。",
+      "expected": {
+        "is_generate_intent": true,
+        "is_search_intent": false,
+        "is_research_intent": false,
+        "skill_in": [
+          "docx"
+        ],
+        "format_has": [
+          ".docx"
+        ]
+      },
+      "files": [],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".docx",
+          "零售门店闭店交接清单.docx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.980832640081644
+    },
+    {
+      "id": "boundary-16",
+      "group": "boundary",
+      "prompt": "把预算从30000改为36000，其他不变",
+      "expected": {
+        "tools_any": [
+          "patch_file",
+          "bash"
+        ]
+      },
+      "files": [
+        "方案.docx"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 30.0,
+        "matched_reasons": [
+          "trigger:docx(+18.0)",
+          "id/alias:docx(+12.0)"
+        ],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 3,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 4.892957862466574
+    },
+    {
+      "id": "boundary-17",
+      "group": "boundary",
+      "prompt": "将明天的早班换成晚班",
+      "expected": {
+        "tools_any": [
+          "patch_file",
+          "bash"
+        ]
+      },
+      "files": [
+        "排班.xlsx"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 30.0,
+        "matched_reasons": [
+          "trigger:xlsx(+18.0)",
+          "id/alias:xlsx(+12.0)"
+        ],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 3,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 4.584124777466059
+    },
+    {
+      "id": "boundary-18",
+      "group": "boundary",
+      "prompt": "把交接人李师傅改为王师傅",
+      "expected": {
+        "tools_any": [
+          "patch_file",
+          "bash"
+        ]
+      },
+      "files": [
+        "交接.md"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "read_skill",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2.310083247721195
+    },
+    {
+      "id": "continuation-01",
+      "group": "continuation",
+      "prompt": "重新生成",
+      "expected": {
+        "is_generate_intent": true,
+        "skill_not": [
+          "pptx",
+          "slides",
+          "guizang-ppt",
+          "html-ppt",
+          "frontend-design",
+          "web-prototype"
+        ],
+        "skill_in": [
+          "docx"
+        ],
+        "format_has": [
+          ".docx"
+        ]
+      },
+      "files": [],
+      "history": [
+        {
+          "role": "user",
+          "content": "生成可下载Word文件“方案.docx”，不要HTML/PPT。"
+        },
+        {
+          "role": "assistant",
+          "content": "本次未完成，请重试。"
+        }
+      ],
+      "research": false,
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".docx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.533709328621626
+    },
+    {
+      "id": "continuation-02",
+      "group": "continuation",
+      "prompt": "确认生成",
+      "expected": {
+        "is_generate_intent": true,
+        "skill_not": [
+          "pptx",
+          "slides",
+          "guizang-ppt",
+          "html-ppt",
+          "frontend-design",
+          "web-prototype"
+        ],
+        "skill_in": [
+          "docx"
+        ],
+        "format_has": [
+          ".docx"
+        ]
+      },
+      "files": [],
+      "history": [
+        {
+          "role": "user",
+          "content": "生成可下载Word文件“方案.docx”，不要HTML/PPT。"
+        },
+        {
+          "role": "assistant",
+          "content": "本次未完成，请重试。"
+        }
+      ],
+      "research": false,
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".docx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.4867916256189346
+    },
+    {
+      "id": "continuation-03",
+      "group": "continuation",
+      "prompt": "重新生成",
+      "expected": {
+        "is_generate_intent": true,
+        "skill_not": [
+          "pptx",
+          "slides",
+          "guizang-ppt",
+          "html-ppt",
+          "frontend-design",
+          "web-prototype"
+        ],
+        "skill_in": [
+          "xlsx"
+        ],
+        "format_has": [
+          ".xlsx"
+        ]
+      },
+      "files": [],
+      "history": [
+        {
+          "role": "user",
+          "content": "生成可下载Excel文件“销售.xlsx”，不要HTML/PPT。"
+        },
+        {
+          "role": "assistant",
+          "content": "本次未完成，请重试。"
+        }
+      ],
+      "research": false,
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.434833139181137
+    },
+    {
+      "id": "continuation-04",
+      "group": "continuation",
+      "prompt": "确认生成",
+      "expected": {
+        "is_generate_intent": true,
+        "skill_not": [
+          "pptx",
+          "slides",
+          "guizang-ppt",
+          "html-ppt",
+          "frontend-design",
+          "web-prototype"
+        ],
+        "skill_in": [
+          "xlsx"
+        ],
+        "format_has": [
+          ".xlsx"
+        ]
+      },
+      "files": [],
+      "history": [
+        {
+          "role": "user",
+          "content": "生成可下载Excel文件“销售.xlsx”，不要HTML/PPT。"
+        },
+        {
+          "role": "assistant",
+          "content": "本次未完成，请重试。"
+        }
+      ],
+      "research": false,
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.0436250381171703
+    },
+    {
+      "id": "continuation-05",
+      "group": "continuation",
+      "prompt": "重新生成",
+      "expected": {
+        "is_generate_intent": true,
+        "skill_not": [
+          "pptx",
+          "slides",
+          "guizang-ppt",
+          "html-ppt",
+          "frontend-design",
+          "web-prototype"
+        ],
+        "skill_in": [
+          "pdf"
+        ],
+        "format_has": [
+          ".pdf"
+        ]
+      },
+      "files": [],
+      "history": [
+        {
+          "role": "user",
+          "content": "生成可下载PDF文件“报告.pdf”，不要HTML/PPT。"
+        },
+        {
+          "role": "assistant",
+          "content": "本次未完成，请重试。"
+        }
+      ],
+      "research": false,
+      "actual": {
+        "skill_id": "pdf",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".pdf"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 1.8243328668177128
+    },
+    {
+      "id": "continuation-06",
+      "group": "continuation",
+      "prompt": "确认生成",
+      "expected": {
+        "is_generate_intent": true,
+        "skill_not": [
+          "pptx",
+          "slides",
+          "guizang-ppt",
+          "html-ppt",
+          "frontend-design",
+          "web-prototype"
+        ],
+        "skill_in": [
+          "pdf"
+        ],
+        "format_has": [
+          ".pdf"
+        ]
+      },
+      "files": [],
+      "history": [
+        {
+          "role": "user",
+          "content": "生成可下载PDF文件“报告.pdf”，不要HTML/PPT。"
+        },
+        {
+          "role": "assistant",
+          "content": "本次未完成，请重试。"
+        }
+      ],
+      "research": false,
+      "actual": {
+        "skill_id": "pdf",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".pdf"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 1.8000002019107342
+    },
+    {
+      "id": "continuation-07",
+      "group": "continuation",
+      "prompt": "重新生成",
+      "expected": {
+        "is_generate_intent": true,
+        "skill_not": [
+          "pptx",
+          "slides",
+          "guizang-ppt",
+          "html-ppt",
+          "frontend-design",
+          "web-prototype"
+        ],
+        "deliverables_has": [
+          "交接.md"
+        ]
+      },
+      "files": [],
+      "history": [
+        {
+          "role": "user",
+          "content": "生成可下载Markdown文件“交接.md”，不要HTML/PPT。"
+        },
+        {
+          "role": "assistant",
+          "content": "本次未完成，请重试。"
+        }
+      ],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          "交接.md"
+        ],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "read_skill",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2.0799580961465836
+    },
+    {
+      "id": "continuation-08",
+      "group": "continuation",
+      "prompt": "确认生成",
+      "expected": {
+        "is_generate_intent": true,
+        "skill_not": [
+          "pptx",
+          "slides",
+          "guizang-ppt",
+          "html-ppt",
+          "frontend-design",
+          "web-prototype"
+        ],
+        "deliverables_has": [
+          "交接.md"
+        ]
+      },
+      "files": [],
+      "history": [
+        {
+          "role": "user",
+          "content": "生成可下载Markdown文件“交接.md”，不要HTML/PPT。"
+        },
+        {
+          "role": "assistant",
+          "content": "本次未完成，请重试。"
+        }
+      ],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          "交接.md"
+        ],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "read_skill",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2.0739580504596233
+    },
+    {
+      "id": "continuation-09",
+      "group": "continuation",
+      "prompt": "继续总结，不要生成文件",
+      "expected": {
+        "is_generate_intent": false,
+        "is_inspect_intent": true,
+        "is_search_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "write_markdown",
+          "patch_file",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ]
+      },
+      "files": [
+        "材料.docx"
+      ],
+      "history": [],
+      "research": false,
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2.707500010728836
+    },
+    {
+      "id": "G01",
+      "prompt": "重新生成",
+      "history": [
+        {
+          "role": "user",
+          "content": "将上传的方案.docx转为可下载PDF文件。"
+        }
+      ],
+      "files": [
+        "方案.docx"
+      ],
+      "expected": {
+        "skill_id": "pdf",
+        "format_has": ".pdf",
+        "format_not": ".docx"
+      },
+      "group": "previous_material_failures",
+      "actual": {
+        "skill_id": "pdf",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".pdf"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 1.9571250304579735
+    },
+    {
+      "id": "G02",
+      "prompt": "确认",
+      "history": [
+        {
+          "role": "user",
+          "content": "只查看上传的报告.docx，不要生成文件。"
+        }
+      ],
+      "files": [
+        "报告.docx"
+      ],
+      "expected": {
+        "is_generate_intent": false,
+        "deliverables_empty": true
+      },
+      "group": "previous_material_failures",
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 30.0,
+        "matched_reasons": [
+          "trigger:docx(+18.0)",
+          "id/alias:docx(+12.0)"
+        ],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 3,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 4.597291816025972
+    },
+    {
+      "id": "G03",
+      "prompt": "只根据已有资料生成今日天气PDF报告，不要联网",
+      "files": [
+        "天气资料.txt"
+      ],
+      "expected": {
+        "presearch": false
+      },
+      "group": "previous_material_failures",
+      "actual": {
+        "skill_id": "pdf",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".pdf"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": true
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 1.957874745130539
+    },
+    {
+      "id": "G04",
+      "prompt": "不要把文件发送到微信，只生成通知.docx",
+      "expected": {
+        "is_send_intent": false
+      },
+      "group": "previous_material_failures",
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".docx",
+          "通知.docx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.830917179584503
+    },
+    {
+      "id": "G05",
+      "prompt": "生成盘点.xlsx，别联网",
+      "expected": {
+        "tools_not": [
+          "web_search",
+          "fetch_page"
+        ]
+      },
+      "group": "previous_material_failures",
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".xlsx",
+          "盘点.xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": true
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3.5266662016510963
+    },
+    {
+      "id": "G07",
+      "prompt": "不要修改文件内容，只阅读预算.docx",
+      "files": [
+        "预算.docx"
+      ],
+      "expected": {
+        "is_generate_intent": false,
+        "tools_not": [
+          "bash",
+          "patch_file",
+          "write_markdown"
+        ]
+      },
+      "group": "previous_material_failures",
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 32.028148247292286,
+        "matched_reasons": [
+          "trigger:docx(+18.0)",
+          "id/alias:docx(+12.0)",
+          "desc_terms(2.0)"
+        ],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 3,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 4.673707764595747
+    },
+    {
+      "id": "PPT-RETRY",
+      "group": "native_ppt_retry",
+      "prompt": "重新生成",
+      "files": [],
+      "history": [
+        {
+          "role": "user",
+          "content": "制作一份产品培训原生PPTX，保存为“产品培训.pptx”，不要HTML。"
+        },
+        {
+          "role": "assistant",
+          "content": "本次生成未完成，请重试。"
+        }
+      ],
+      "expected": {
+        "is_generate_intent": true,
+        "skill_in": [
+          "pptx"
+        ],
+        "format_has": [
+          ".pptx"
+        ],
+        "format_not": [
+          ".html"
+        ]
+      },
+      "actual": {
+        "skill_id": "guizang-ppt",
+        "is_ppt_intent": true,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".html"
+        ],
+        "requires_execution": true,
+        "default_rounds": 4,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "weather": false,
+        "forbidden_network": false
+      },
+      "pass": false,
+      "failures": [
+        {
+          "check": "skill_in",
+          "expected": [
+            "pptx"
+          ]
+        },
+        {
+          "check": "format_has",
+          "expected": [
+            ".pptx"
+          ]
+        },
+        {
+          "check": "format_not",
+          "expected": [
+            ".html"
+          ]
+        }
+      ],
+      "elapsed_ms": 1.650415826588869
+    }
+  ]
+}

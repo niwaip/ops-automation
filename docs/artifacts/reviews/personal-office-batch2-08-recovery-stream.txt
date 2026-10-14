@@ -1,0 +1,14 @@
+data: {"type": "observation", "content": "⚡ 正在连接个人安全沙箱 [e7fce333-a8f4-4097-9a53-f0a4c729da46]，启动智能分析与执行引擎...", "seq": 1, "protocolVersion": "1", "sessionId": "d0f038df-ba68-4714-a41c-80af474905e4", "traceId": "763c05fd-2f2a-4841-b95d-958699f5254f", "data": {"traceId": "763c05fd-2f2a-4841-b95d-958699f5254f"}}
+
+data: {"type": "observation", "content": "⚡ [DeepSeek Harness v1.3.0-sandbox | Sandbox: 5f63f1fca15a | User: sandbox | Mode: Personal]", "data": {"traceId": "763c05fd-2f2a-4841-b95d-958699f5254f"}, "seq": 2, "protocolVersion": "1", "sessionId": "d0f038df-ba68-4714-a41c-80af474905e4", "traceId": "763c05fd-2f2a-4841-b95d-958699f5254f"}
+
+data: {"type": "observation", "content": "空材料测试后仍可聊天", "data": {"mode": "chat", "isDelta": true, "traceId": "763c05fd-2f2a-4841-b95d-958699f5254f"}, "seq": 3, "protocolVersion": "1", "sessionId": "d0f038df-ba68-4714-a41c-80af474905e4", "traceId": "763c05fd-2f2a-4841-b95d-958699f5254f"}
+
+data: {"type": "observation", "content": "⚡ [DeepSeek Harness v1.3.0-sandbox | Sandbox: 5f63f1fca15a | User: sandbox | Mode: Personal]", "seq": 4, "protocolVersion": "1", "sessionId": "d0f038df-ba68-4714-a41c-80af474905e4", "traceId": "763c05fd-2f2a-4841-b95d-958699f5254f", "data": {"traceId": "763c05fd-2f2a-4841-b95d-958699f5254f"}}
+
+data: {"type": "result", "content": "空材料测试后仍可聊天", "data": {"mode": "chat", "usage": {"prompt_tokens": 1638, "completion_tokens": 7, "total_tokens": 1877, "completion_tokens_details": {"reasoning_tokens": 232}}, "sandbox": {"containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46", "harness": "deepseek-harness", "executed": true, "durationMs": 4284, "exitCode": 0, "metrics": {"ttftMs": 3801.36, "durationMs": 3864.19, "llmDurationMs": 3801.75, "toolCallsCount": 0, "toolCalls": [], "llmInvocations": 1, "tokens": {"prompt_tokens": 1638, "completion_tokens": 7, "total_tokens": 1877, "completion_tokens_details": {"reasoning_tokens": 232}}, "finishReason": "stop", "roundFinishReasons": ["stop"], "guardDecisions": []}}, "traceId": "763c05fd-2f2a-4841-b95d-958699f5254f"}, "seq": 5, "protocolVersion": "1", "sessionId": "d0f038df-ba68-4714-a41c-80af474905e4", "traceId": "763c05fd-2f2a-4841-b95d-958699f5254f"}
+
+data: {"type": "session_patch", "sessionId": "d0f038df-ba68-4714-a41c-80af474905e4", "content": "", "data": {"title": "B2-08：请总结刚上传的空材料附件；如果为空或", "status": "active", "updatedAt": "2026-10-13T13:01:52.577Z", "traceId": "763c05fd-2f2a-4841-b95d-958699f5254f"}, "seq": 6, "protocolVersion": "1", "traceId": "763c05fd-2f2a-4841-b95d-958699f5254f"}
+
+data: {"type": "done", "content": "Stream completed", "seq": 7, "protocolVersion": "1", "sessionId": "d0f038df-ba68-4714-a41c-80af474905e4", "traceId": "763c05fd-2f2a-4841-b95d-958699f5254f", "data": {"traceId": "763c05fd-2f2a-4841-b95d-958699f5254f"}}
+

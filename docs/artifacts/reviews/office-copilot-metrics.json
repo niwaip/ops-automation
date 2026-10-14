@@ -1,0 +1,225 @@
+[
+  {
+    "case": "office-copilot-01-stream",
+    "sessionId": "4b25d3c6-2c42-49f3-8eb0-c5809a33302c",
+    "traceId": "e2b68cc1-233c-4ad3-9802-ac90ea1e8bd9",
+    "durationMs": 7699,
+    "exitCode": 0,
+    "tokens": 3126,
+    "finishReason": "stop",
+    "tools": [],
+    "done": true
+  },
+  {
+    "case": "office-copilot-02-stream",
+    "sessionId": "827ae130-0106-4d3a-bee6-b950637b976d",
+    "traceId": "efdb4011-a3a6-4d0c-bdaa-021581000a5c",
+    "durationMs": 135654,
+    "exitCode": 0,
+    "tokens": 77355,
+    "finishReason": "stop",
+    "tools": [
+      {
+        "name": "write_markdown",
+        "params": {
+          "file_path": "CP_会议行动清单.md",
+          "content": "# 客户门户项目周会 · 会议行动清单与决策备忘\n\n**会议基本信息**\n- **会议名称**：客户门户项目周会\n- **会议日期**：2026年10月13日\n- **参会人员**：测试员A、开发员B、项目经理C\n- **记录整理规范**：..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "cat <<'EOF' > /workspace/presentation.html\n<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta n..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      }
+    ],
+    "done": true
+  },
+  {
+    "case": "office-copilot-03-stream",
+    "sessionId": "14c56664-e818-486d-a924-01173b2d08f1",
+    "traceId": "70fb66d8-0406-4bc1-b468-e5f626adbed7",
+    "durationMs": 130010,
+    "exitCode": 0,
+    "tokens": 116619,
+    "finishReason": "stop",
+    "tools": [
+      {
+        "name": "bash",
+        "params": {
+          "command": "ls -la /workspace"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "ls -la /workspace | grep \"季度销售\""
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "cat /workspace/季度销售.csv"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "python3 /opt/dsh/skills/xlsx/scripts/recalc.py --help"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "python3 -c \"\nimport openpyxl\nfrom openpyxl.chart import BarChart, Reference\n\nwb = openpyxl.Workbook()\nws = wb.active\nws...."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      }
+    ],
+    "done": true
+  },
+  {
+    "case": "office-copilot-04-stream",
+    "sessionId": "c5559d87-7362-43a9-aed4-a50de371f329",
+    "traceId": "d7c67395-1e1a-494f-a561-6c3646675e5d",
+    "durationMs": 61638,
+    "exitCode": 0,
+    "tokens": 50776,
+    "finishReason": "stop",
+    "tools": [
+      {
+        "name": "bash",
+        "params": {
+          "command": "cat << 'EOF' > /workspace/generate_doc.py\n#!/usr/bin/env python3\n# -*- coding: utf-8 -*-\n\nimport docx\nfrom docx.shared i..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "python3 -c \"\nimport docx\ndoc = docx.Document('/workspace/CP_实施计划.docx')\nprint('Paragraphs count:', len(doc.paragraphs))\n..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      }
+    ],
+    "done": true
+  },
+  {
+    "case": "office-copilot-05-stream",
+    "sessionId": "e5ed05dd-0c9b-447f-bbe4-155b34c9e634",
+    "traceId": "d98fd2bf-1698-479e-84e0-f78befc32092",
+    "durationMs": 117537,
+    "exitCode": 0,
+    "tokens": 86394,
+    "finishReason": "stop",
+    "tools": [
+      {
+        "name": "bash",
+        "params": {
+          "command": "ls -la /workspace"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "cat << 'EOF' > /workspace/generate_cp_pptx.py\nimport sys\nfrom pptx import Presentation\nfrom pptx.util import Inches, Pt\n..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "send_file",
+        "params": {
+          "file_path": "/workspace/CP_项目汇报.pptx",
+          "comment": "已为您生成原生 PPTX 幻灯片演示文稿《CP_项目汇报.pptx》，共计 3 页，涵盖目标与范围、周期与预算、验收与风险。"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      }
+    ],
+    "done": true
+  },
+  {
+    "case": "office-copilot-06-history",
+    "sessionId": "c5559d87-7362-43a9-aed4-a50de371f329",
+    "durationMs": 120310,
+    "exitCode": 0,
+    "tokens": 139849,
+    "tools": [
+      {
+        "name": "bash",
+        "params": {
+          "command": "cat << 'EOF' > /workspace/generate_v2.py\nimport docx\nfrom docx.shared import Inches, Pt, RGBColor\nfrom docx.enum.text im..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "ls -lh /workspace/CP_实施计划*.docx"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "python3 -c \"\nimport docx\ndoc = docx.Document('/workspace/CP_实施计划_v2.docx')\nprint('=== Paragraphs sample ===')\nfor p in d..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "python3 -c \"\nimport docx\ndoc = docx.Document('/workspace/CP_实施计划_v2.docx')\nfor p in doc.paragraphs[10:]:\n    if p.text.s..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "ls -la /workspace"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      }
+    ]
+  }
+]
