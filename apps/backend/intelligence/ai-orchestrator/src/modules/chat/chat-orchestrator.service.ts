@@ -41,6 +41,7 @@ import { ChatKnowledgeRetrievalService } from './chat-knowledge-retrieval.servic
 import { DocumentProberService } from './document-prober.service';
 import { PersonalReminderBridgeService } from './personal-reminder-bridge.service';
 import { formatReminderDisplayTime } from './user-sandbox-presentation.util';
+import { ChatCapabilityInquiryService } from './chat-capability-inquiry.service';
 
 @Injectable()
 export class ChatOrchestratorService {
@@ -69,7 +70,8 @@ export class ChatOrchestratorService {
     @Optional() private readonly chatMediaService?: ChatMediaService,
     @Optional() knowledgeRetrievalService?: ChatKnowledgeRetrievalService,
     @Optional() documentProberService?: DocumentProberService,
-    @Optional() private readonly reminderBridge?: PersonalReminderBridgeService
+    @Optional() private readonly reminderBridge?: PersonalReminderBridgeService,
+    @Optional() private readonly capabilityInquiryService?: ChatCapabilityInquiryService
   ) {
     this.taskResumeService =
       taskResumeService ||
@@ -266,8 +268,9 @@ export class ChatOrchestratorService {
 
     if (isReminderQuery && this.reminderBridge) {
       try {
-        const userId = user.userId || context.userId || 'admin';
-        const list = await this.reminderBridge.listReminders(userId);
+        const userId = user.userId || context.userId;
+        if (userId) {
+          const list = await this.reminderBridge.listReminders(userId);
         const lines =
           list && list.length > 0
             ? list
@@ -304,9 +307,41 @@ export class ChatOrchestratorService {
           authToken
         );
         return;
+        }
       } catch (err: any) {
         this.logger.warn(`Failed to process reminder query in work mode: ${err.message}`);
       }
+    }
+
+    if (this.capabilityInquiryService?.isCapabilityInquiry(body.message)) {
+      yield {
+        type: StreamEventType.THOUGHT,
+        content: '正在查询平台已启用的技能与能力清单...',
+      };
+
+      const capabilities = await this.capabilityInquiryService.loadEffectiveCapabilities({
+        authToken,
+        traceId,
+        userId: user.userId || context.userId,
+        user,
+      });
+
+      const catalogPrompt = this.capabilityInquiryService.buildSkillsCatalogPrompt(
+        capabilities.builtinSkills,
+        capabilities.savedWorkflows
+      );
+
+      const customSystemPrompt =
+        this.capabilityInquiryService.buildCapabilityInquirySystemPrompt(catalogPrompt);
+
+      yield* this.executeLlmNativeTask(
+        body,
+        context,
+        resolvedModelId,
+        authToken,
+        customSystemPrompt
+      );
+      return;
     }
 
     yield {
@@ -408,7 +443,10 @@ export class ChatOrchestratorService {
           sessionId: body.sessionId,
           uploadedFiles: body.files,
           probedDocuments: probedDocs,
-          system_collected: uploadedFileParams,
+          system_collected: {
+            ...uploadedFileParams,
+            ...(taskCtx?.parameters || {}),
+          },
           history: context.history,
           web_search_enabled: isExplicitWebSearch,
           webSearch: isExplicitWebSearch,
@@ -1130,7 +1168,8 @@ export class ChatOrchestratorService {
     body: ChatRequestDTO,
     context: ExecutionContext,
     resolvedModelId?: string,
-    authToken?: string
+    authToken?: string,
+    customSystemPrompt?: string
   ): AsyncGenerator<StreamEvent> {
     yield {
       type: StreamEventType.THOUGHT,
@@ -1253,9 +1292,10 @@ export class ChatOrchestratorService {
       return;
     }
 
-    const systemPrompt =
-      '你是一个专业的高级AI助手。当前运行在工作模式（受控生产模式）。针对无需调用外部工具的任务，请直接给出严谨、准确、结构清晰且高质量的完整回答或成果。' +
-      knowledgeContextAddition;
+    const baseSystemPrompt =
+      customSystemPrompt ||
+      '你是一个专业的高级AI助手。当前运行在工作模式（受控生产模式）。针对无需调用外部工具的任务，请直接给出严谨、准确、结构清晰且高质量的完整回答或成果。';
+    const systemPrompt = baseSystemPrompt + (knowledgeContextAddition ? `\n\n${knowledgeContextAddition}` : '');
 
     const messages = await this.chatConversationService.buildConversationMessages(
       body.sessionId || context.sessionId || 'default',

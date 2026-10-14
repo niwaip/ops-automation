@@ -209,7 +209,7 @@ export class RecorderExportAssemblyService {
       loopPendingKeyword
     ) as Record<string, unknown> | undefined;
     const loopPlanPreview = this.recorderExportService.buildLoopPlanPreview(exportLoopDraft as any);
-    const parameters = this.recorderParameterService.inferSkillParameters(
+    const baselineParameters = this.recorderParameterService.inferSkillParameters(
       sanitizedCommands,
       {
         includeStartUrl: this.recorderParameterService.shouldExposeStartUrlParameter(
@@ -219,20 +219,21 @@ export class RecorderExportAssemblyService {
         templateSteps: templateSteps as any,
       }
     ) as SkillParameterLike[];
-    const parameterizedTemplateSteps = this.applyParameterPlaceholdersToTemplateSteps(
-      templateSteps,
-      parameters
-    );
     const outputs = this.recorderExportService.inferSkillOutputs(
       sanitizedCommands,
       session.lastObservation
     ) as SkillOutputLike[];
-    const metadata = await this.generateExportMetadata(
+    const { parameters, metadata } = await this.synthesizeExportParametersAndMetadata(
       session,
       userGoal,
-      parameters,
+      templateSteps,
+      baselineParameters,
       outputs,
       enrichedCommands
+    );
+    const parameterizedTemplateSteps = this.applyParameterPlaceholdersToTemplateSteps(
+      templateSteps,
+      parameters
     );
     const publishPayload = this.recorderExportService.buildSkillPublishPayload({
       userGoal,
@@ -391,6 +392,243 @@ export class RecorderExportAssemblyService {
     });
   }
 
+  private async synthesizeExportParametersAndMetadata(
+    session: SessionLike,
+    userGoal: string,
+    templateSteps: TemplateStepLike[] | undefined,
+    baselineParameters: SkillParameterLike[],
+    outputs: SkillOutputLike[],
+    enrichedCommands: BrowserCommand[]
+  ): Promise<{ parameters: SkillParameterLike[]; metadata: ExportMetadataLike }> {
+    const fallbackMetadata = this.recorderExportService.buildFallbackExportMetadata(
+      userGoal,
+      this.recorderTemplateExportService.sanitizeRecordedCommandsForExport(enrichedCommands),
+      baselineParameters
+    );
+
+    const preferredModel = this.modelService.getPreferredDefaultModel({
+      mode: 'chat',
+      userRoles: [],
+    })?.id;
+
+    if (!preferredModel) {
+      return {
+        parameters: baselineParameters,
+        metadata: fallbackMetadata,
+      };
+    }
+
+    const userTurns = session.history
+      .filter((turn) => turn.role === 'user' && typeof turn.content === 'string' && turn.content.trim())
+      .map((turn, index) => ({ turn: index + 1, content: turn.content.trim() }));
+
+    const stepSummary = (templateSteps || []).map((step) => ({
+      stepId: step.step_id,
+      action: step.action,
+      description: step.description,
+      params: step.params,
+      locator: step.locator,
+    }));
+
+    const prompt = [
+      '你是专业浏览器录制与流程泛化助手（基于 Agent-PbD 编程示范与参数抽取设计）。',
+      '请根据用户在多轮录制会话中的指令、录制步骤和基线参数，分析生成：',
+      '1. 业务流程名称（name）与业务描述（description）',
+      '2. 流程中需要参数化的变量列表（parameters）',
+      '',
+      '【核心原则】',
+      '1. 多语言槽位抽取（Multilingual Slot Lifting）：用户在多轮对话中所输入的具体指令内容通常是动态参数（如：搜索关键词、打开第N项/序数、填入文本、过滤阈值等）。支持中文、英文、日文等自然语言（例如：“打开第二条记录”、“open the 2nd record”、“2番目の記事を開く” -> resultIndex=2）。',
+      '2. 起始网址固定：默认起始网址是固定业务入口，不需要作为动态参数输出，除非用户的首要目标明确要求支持任意网址。',
+      '3. 序号定位泛化：如果步骤中存在按序号/位置点击列表项、搜索结果或文章（如 click 或 click_result），应识别为 resultIndex 参数（数字，如 2），并关联到对应的步骤（如 targetStepId 为 "step_2" 或 source 为 "template.step_2.params.index"）。',
+      '4. 命名规范：参数名称采用 camelCase（例如 searchQuery, resultIndex, typedText1 等），说明使用清晰中文。',
+      '5. 业务名称与描述：name 用中文，简洁明确，不要带 browser_recording、URL、IP、端口、test、录制、脚本等技术噪音；description 1-2 句说明任务与所依赖的关键参数。',
+      '',
+      `用户总体目标: ${userGoal}`,
+      `起始/当前页面: ${session.currentPageUrl || 'unknown'}`,
+      `用户多轮对话指令: ${JSON.stringify(userTurns)}`,
+      `录制步骤: ${JSON.stringify(stepSummary)}`,
+      `规则已识别基线参数: ${JSON.stringify(baselineParameters)}`,
+      `输出信息: ${JSON.stringify(outputs)}`,
+      '',
+      '严格只返回 JSON 格式，不要输出任何解释或 markdown：',
+      '{"name":"...","description":"...","parameters":[{"name":"...","description":"...","required":false,"exampleValue":"...","targetStepId":"step_2","source":"template.step_2.params.index"}]}',
+    ].join('\n');
+
+    try {
+      const response = await this.modelService.callModel(preferredModel, prompt);
+      const parsed = this.parseJsonResult(response.content);
+
+      if (!parsed || typeof parsed !== 'object') {
+        const metadata = await this.generateExportMetadata(
+          session,
+          userGoal,
+          baselineParameters,
+          outputs,
+          enrichedCommands
+        );
+        return {
+          parameters: baselineParameters,
+          metadata,
+        };
+      }
+
+      const synthesizedParameters = this.mergeLlmParametersWithBaseline(
+        parsed.parameters,
+        baselineParameters,
+        templateSteps
+      );
+
+      const name = typeof parsed.name === 'string' && parsed.name.trim()
+        ? parsed.name.trim().slice(0, 255)
+        : fallbackMetadata.name;
+
+      const description = typeof parsed.description === 'string' && parsed.description.trim()
+        ? parsed.description.trim().slice(0, 1000)
+        : fallbackMetadata.description;
+
+      return {
+        parameters: synthesizedParameters,
+        metadata: { name, description },
+      };
+    } catch (error) {
+      this.logger.warn(
+        `Failed to synthesize export parameters and metadata: ${error instanceof Error ? error.message : 'unknown error'}`
+      );
+      const metadata = await this.generateExportMetadata(
+        session,
+        userGoal,
+        baselineParameters,
+        outputs,
+        enrichedCommands
+      );
+      return {
+        parameters: baselineParameters,
+        metadata,
+      };
+    }
+  }
+
+  private mergeLlmParametersWithBaseline(
+    llmParams: unknown,
+    baselineParameters: SkillParameterLike[],
+    templateSteps?: TemplateStepLike[]
+  ): SkillParameterLike[] {
+    if (!Array.isArray(llmParams) || llmParams.length === 0) {
+      return baselineParameters;
+    }
+
+    const merged: SkillParameterLike[] = [...baselineParameters];
+    const shouldIncludeStartUrl = this.recorderParameterService.shouldExposeStartUrlParameter(
+      [],
+      templateSteps as any
+    );
+
+    for (const raw of llmParams) {
+      if (!raw || typeof raw !== 'object') {
+        continue;
+      }
+      let name = typeof raw.name === 'string' ? raw.name.trim() : '';
+      if (!name) {
+        continue;
+      }
+
+      // Canonicalize common parameter names
+      if (/^(?:result_?index|ordinal_?index|序号|结果序号)$/i.test(name)) {
+        name = 'resultIndex';
+      } else if (/^(?:search_?query|query|关键词|搜索词)$/i.test(name)) {
+        name = 'searchQuery';
+      } else if (/^(?:start_?url|url|网址)$/i.test(name)) {
+        name = 'startUrl';
+      } else {
+        name = name.replace(/[^a-zA-Z0-9_]/g, '');
+      }
+
+      if (name === 'startUrl' && !shouldIncludeStartUrl) {
+        continue;
+      }
+
+      const description =
+        typeof raw.description === 'string' && raw.description.trim()
+          ? raw.description.trim()
+          : name === 'resultIndex'
+          ? '结果序号，从 1 开始'
+          : name;
+
+      const required = typeof raw.required === 'boolean' ? raw.required : false;
+      const exampleValue =
+        raw.exampleValue !== undefined && raw.exampleValue !== null
+          ? String(raw.exampleValue).trim()
+          : undefined;
+
+      let source = typeof raw.source === 'string' && raw.source.trim() ? raw.source.trim() : undefined;
+      const targetStepId =
+        typeof raw.targetStepId === 'string' && raw.targetStepId.trim()
+          ? raw.targetStepId.trim()
+          : undefined;
+
+      if (!source && targetStepId) {
+        const step = templateSteps?.find((s) => s.step_id === targetStepId);
+        if (step) {
+          if (name === 'resultIndex') {
+            source = `template.${step.step_id}.params.index`;
+          } else if (name === 'searchQuery') {
+            source = `template.${step.step_id}.params.query`;
+          } else if (step.action === 'fill') {
+            source = `template.${step.step_id}.params.value`;
+          } else if (step.action === 'type_text') {
+            source = `template.${step.step_id}.params.text`;
+          }
+        }
+      }
+
+      if (!source && name === 'resultIndex' && templateSteps?.length) {
+        const matchingStep =
+          templateSteps.find((s) => s.action === 'click_result') ||
+          templateSteps.find(
+            (s) =>
+              s.action === 'click' &&
+              (this.recorderParameterService.extractOrdinalIndexFromText(s.description) !== undefined ||
+                s.step_id !== 'step_1')
+          );
+        if (matchingStep) {
+          source = `template.${matchingStep.step_id}.params.index`;
+        }
+      }
+
+      if (!source && name === 'searchQuery' && templateSteps?.length) {
+        const searchStep = templateSteps.find(
+          (s) => s.action === 'search' || s.action === 'smart_search'
+        );
+        if (searchStep) {
+          source = `template.${searchStep.step_id}.params.query`;
+        }
+      }
+
+      const existingIndex = merged.findIndex(
+        (p) => p.name === name || (source && p.source === source)
+      );
+      const existing = existingIndex >= 0 ? merged[existingIndex] : undefined;
+      if (existingIndex >= 0 && existing) {
+        merged[existingIndex] = {
+          ...existing,
+          description: description || existing.description,
+          exampleValue: exampleValue || existing.exampleValue,
+          ...(source && !existing.source ? { source } : {}),
+        };
+      } else {
+        merged.push({
+          name,
+          description,
+          required,
+          ...(exampleValue !== undefined ? { exampleValue } : {}),
+          ...(source ? { source } : {}),
+        });
+      }
+    }
+
+    return merged;
+  }
+
   private async generateExportMetadata(
     session: SessionLike,
     userGoal: string,
@@ -468,9 +706,16 @@ export class RecorderExportAssemblyService {
       return null;
     }
 
-    const trimmed = value.trim();
+    let cleaned = value.trim();
+    if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    }
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      cleaned = jsonMatch[0];
+    }
     try {
-      const parsed = JSON.parse(trimmed) as Record<string, any> | string;
+      const parsed = JSON.parse(cleaned) as Record<string, any> | string;
       if (typeof parsed === 'string') {
         return JSON.parse(parsed) as Record<string, any>;
       }
@@ -555,6 +800,14 @@ export class RecorderExportAssemblyService {
             };
             changed = true;
           }
+          if (step.action === 'click' || step.action === 'click_result') {
+            step.action = 'click_result';
+            delete step.locator;
+            delete (step as any).selector;
+            delete (step as any).target;
+            step.description = '打开详细页';
+            changed = true;
+          }
           return;
         }
 
@@ -614,6 +867,38 @@ export class RecorderExportAssemblyService {
         return;
       }
 
+      if (parameter.name === 'resultIndex' && !source) {
+        const targetStep =
+          clonedSteps.find(
+            (item) =>
+              item.action === 'click_result' &&
+              (!item.params?.index || !String(item.params.index).includes('${'))
+          ) ||
+          clonedSteps.find(
+            (item) =>
+              item.action === 'click' &&
+              (!item.params?.index || !String(item.params.index).includes('${')) &&
+              Boolean(item.description && this.recorderParameterService.extractOrdinalIndexFromText(item.description))
+          );
+        if (targetStep) {
+          if (targetStep.params?.index !== placeholder) {
+            targetStep.params = {
+              ...(targetStep.params || {}),
+              index: placeholder,
+            };
+            changed = true;
+          }
+          if (targetStep.action === 'click') {
+            targetStep.action = 'click_result';
+            delete targetStep.locator;
+            delete (targetStep as any).selector;
+            delete (targetStep as any).target;
+            changed = true;
+          }
+        }
+        return;
+      }
+
       if (source.startsWith('command.')) {
         const commandMatch = source.match(/^command\.(\d+)\.(.+)$/);
         if (!commandMatch) {
@@ -656,13 +941,28 @@ export class RecorderExportAssemblyService {
               (item) =>
                 item.action === 'click_result' &&
                 (!item.params?.index || !String(item.params.index).includes('${'))
+            ) ||
+            clonedSteps.find(
+              (item) =>
+                item.action === 'click' &&
+                (!item.params?.index || !String(item.params.index).includes('${')) &&
+                Boolean(item.description && this.recorderParameterService.extractOrdinalIndexFromText(item.description))
             );
-          if (targetStep && targetStep.params?.index !== placeholder) {
-            targetStep.params = {
-              ...(targetStep.params || {}),
-              index: placeholder,
-            };
-            changed = true;
+          if (targetStep) {
+            if (targetStep.params?.index !== placeholder) {
+              targetStep.params = {
+                ...(targetStep.params || {}),
+                index: placeholder,
+              };
+              changed = true;
+            }
+            if (targetStep.action === 'click') {
+              targetStep.action = 'click_result';
+              delete targetStep.locator;
+              delete (targetStep as any).selector;
+              delete (targetStep as any).target;
+              changed = true;
+            }
           }
           return;
         }

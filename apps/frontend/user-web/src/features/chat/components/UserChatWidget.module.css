@@ -28,14 +28,14 @@
   justify-content: center;
   color: #fff !important;
   border: none !important;
-  box-shadow: 0 8px 24px rgb(99 102 241 / 0.35);
+  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.28);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #f472b6 100%) !important;
 }
 
 .chat-trigger-button:hover {
   transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 12px 28px rgb(99 102 241 / 0.45);
+  box-shadow: 0 10px 24px rgba(99, 102, 241, 0.38);
 }
 
 .chat-backdrop {
@@ -68,10 +68,11 @@
   position: fixed;
   bottom: max(16px, env(safe-area-inset-bottom));
   right: max(16px, env(safe-area-inset-right));
-  z-index: 999;
-  width: min(1080px, calc(100vw - 32px));
+  z-index: 1000;
+  width: min(1080px, calc(100vw - var(--sidebar-width, 80px) - 32px));
+  max-width: calc(100vw - var(--sidebar-width, 80px) - 32px);
   height: min(calc(100vh - 32px), 940px);
-  transition: width 0.2s ease, height 0.2s ease;
+  transition: width 0.2s ease, height 0.2s ease, max-width 0.2s ease;
   animation: windowSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -157,7 +158,8 @@
 
 @media (max-width: 1024px) {
   .chat-window-container {
-    width: min(920px, calc(100vw - 24px));
+    width: min(920px, calc(100vw - var(--sidebar-width, 80px) - 24px));
+    max-width: calc(100vw - var(--sidebar-width, 80px) - 24px);
     height: min(calc(100vh - 24px), 920px);
     right: max(12px, env(safe-area-inset-right));
     bottom: max(12px, env(safe-area-inset-bottom));

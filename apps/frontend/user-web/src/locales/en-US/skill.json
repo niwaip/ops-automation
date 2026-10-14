@@ -1,1 +1,10 @@
-{}
+{
+  "badge": "Enterprise Digital Worker Center",
+  "title": "Digital Employees & Automation Skills",
+  "subtitle": "Orchestrate digital workers, organization workflows, and personal automations for human-AI collaboration.",
+  "tag_instant": "Instant Collaboration",
+  "tag_scheduled": "Scheduled Duty & Alerts",
+  "tab_published": "Digital Workers",
+  "tab_org_workflows": "Org Workflows (Enterprise)",
+  "tab_my_workflows": "Personal Workflows"
+}

@@ -8,6 +8,7 @@ import type { RoutingPolicySnapshotV1 } from '../planner/routing/routing-policy.
 export interface SavedWorkflowCandidate {
   id: string;
   name: string;
+  description?: string;
   version: string;
   status: string;
   stepCount: number;

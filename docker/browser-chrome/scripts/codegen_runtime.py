@@ -152,7 +152,7 @@ def start_codegen(session_id, url, reuse_browser=False):
         "npx", "playwright", "codegen",
         "--target", "javascript",
         "--output", codegen_output,
-        "--viewport-size", "1920,1080",
+        "--viewport-size", f"{os.environ.get('SCREEN_WIDTH', '1280')},{os.environ.get('SCREEN_HEIGHT', '800')}",
     ]
     if codegen_storage_state and os.path.exists(codegen_storage_state):
         cmd.extend(["--load-storage", codegen_storage_state])
@@ -247,7 +247,7 @@ def start_codegen(session_id, url, reuse_browser=False):
                     capture_output=True, text=True
                 )
                 subprocess.run(
-                    ["xdotool", "windowsize", browser_win_id, "1920", "1080"],
+                    ["xdotool", "windowsize", browser_win_id, os.environ.get('SCREEN_WIDTH', '1280'), os.environ.get('SCREEN_HEIGHT', '800')],
                     capture_output=True, text=True
                 )
                 # Activate the window

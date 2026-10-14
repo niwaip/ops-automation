@@ -39,6 +39,7 @@ export interface UseRecorderTemplateParams {
   recorderDebugRuntimeSessionId?: string;
   getScreenshotModeLabel: () => string;
   navigate: (path: string) => void;
+  isExecuting?: boolean;
 }
 
 export const useRecorderTemplate = ({
@@ -53,6 +54,7 @@ export const useRecorderTemplate = ({
   recorderDebugRuntimeSessionId,
   getScreenshotModeLabel,
   navigate,
+  isExecuting,
 }: UseRecorderTemplateParams) => {
   const [templateSteps, setTemplateSteps] = useState<TemplateStep[]>([]);
   const [savedTemplateId, setSavedTemplateId] = useState<string | null>(null);
@@ -386,6 +388,15 @@ export const useRecorderTemplate = ({
   };
 
   const handleExportTemplateFromRecorder = async () => {
+    if (exportTemplateLoading) {
+      return;
+    }
+
+    if (isExecuting) {
+      void message.warning('录制器正在执行中，请等待当前操作完成后再导出');
+      return;
+    }
+
     if (!isReactChatMode) {
       void message.warning('请先切到对话调试模式后再导出');
       return;

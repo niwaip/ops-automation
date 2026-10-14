@@ -1,1 +1,68 @@
-{}
+{
+  "title": "Dashboard",
+  "subtitle": "Unified Task Planning & Collaboration Hub",
+  "refresh": "Refresh",
+  "refresh_success": "Refreshed to latest task status",
+  "refresh_error": "Failed to refresh, please try again later",
+  "clear_test_data": "Clear Test Data",
+  "clear_confirm_title": "Clear Test Data",
+  "clear_confirm_desc": "Are you sure you want to clear all GTD inbox and todo data? This is mainly used for system testing and data reset.",
+  "confirm_clear": "Confirm",
+  "summary": {
+    "inbox_unprocessed": "Inbox Pending",
+    "pending_todos": "Todo Tasks",
+    "completed_today": "Today's Done",
+    "completed_week": "This Week's Done",
+    "scheduled_tasks": "Scheduled",
+    "todo_completed_count": "Todos completed: ",
+    "exec_completed_count": "Executions completed: ",
+    "workflow_duty": "Workflow Duty",
+    "reminders": "Reminders & Schedules",
+    "single_reminder": "Single Reminder",
+    "workdays": "Workdays",
+    "no_scheduled": "No active schedules or reminders"
+  },
+  "inbox": {
+    "title": "GTD Inbox",
+    "clarified_archived": "Clarified / Archived",
+    "all": "All",
+    "pending_intervention": "Needs Attention",
+    "pending_clarification": "To Organize",
+    "placeholder": "Quickly collect notes/points (Enter to save, Shift+Enter for new line)...",
+    "collect_btn": "Capture",
+    "sync_email_btn": "Fetch Email",
+    "refresh_inbox": "Refresh Inbox",
+    "refresh_success": "GTD Inbox refreshed",
+    "empty": "No items in this status (Inbox Zero)"
+  },
+  "todo": {
+    "title": "Action Board",
+    "pending": "Pending",
+    "overdue": "Overdue",
+    "completed": "Completed",
+    "delegated": "Delegated",
+    "finished": "Finished",
+    "all": "All",
+    "refresh_todo": "Refresh Action Board",
+    "refresh_success": "Action Board refreshed",
+    "placeholder": "Add new todo (Enter to create, supports batch paste)...",
+    "add_btn": "Add",
+    "ai_plan": "AI Plan",
+    "new_execution": "New Run",
+    "empty": "No matching todos. Enter above to add, or convert emails/notes from the left GTD Inbox."
+  },
+  "recent_executions": {
+    "title": "Recently Completed",
+    "view_all": "View List",
+    "empty": "No successfully completed executions yet"
+  },
+  "summary_card": {
+    "title": "AI Work Review",
+    "daily": "Today's Summary",
+    "weekly": "This Week's Summary",
+    "generate": "Generate Now",
+    "regenerate": "Regenerate",
+    "generating": "Generating...",
+    "updated_at": "Updated at"
+  }
+}

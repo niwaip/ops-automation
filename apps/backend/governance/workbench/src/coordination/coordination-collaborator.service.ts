@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, Optional, forwardRef } from '@nestjs/common';
 import { WORKBENCH_PRISMA, WorkbenchPrismaPort } from '../ports';
 import { QueryCollaboratorsDto } from './dto/workbench-coordination.dto';
 import { BUILT_IN_WORKFLOW_TEMPLATES } from './workflow-templates.constants';
@@ -31,6 +31,7 @@ export class CoordinationCollaboratorService {
     @Inject(WORKBENCH_PRISMA)
     private readonly prisma: WorkbenchPrismaPort,
     @Optional()
+    @Inject(forwardRef(() => OrgWorkflowService))
     private readonly orgWorkflowService?: OrgWorkflowService
   ) {}
 

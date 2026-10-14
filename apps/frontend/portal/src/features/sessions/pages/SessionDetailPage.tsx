@@ -465,13 +465,15 @@ const SessionDetailPage: React.FC = () => {
               type="link"
               onClick={() =>
                 window.open(
-                  buildNovncAutoConnectUrl(transformLocalhostUrl(session.endpoints!.novnc)),
+                  buildNovncAutoConnectUrl(transformLocalhostUrl(session.endpoints!.novnc), {
+                    resize: 'off',
+                  }),
                   '_blank',
                   'noopener,noreferrer'
                 )
               }
             >
-              新窗口打开
+              新窗口打开 (1:1清晰)
             </Button>
           }
         >

@@ -254,14 +254,33 @@ export function embedWorkspaceDeliverablesAndImagesInAnswer(
 
   const handledFiles = new Set<string>();
 
+  // 2.0 扫描正文中已经存在的 API 下载直链，将其对应文件加入 handledFiles，防止重复挂载下载卡片
+  const existingApiLinkRegex = /\/api\/ai\/chat\/workspace-files\/[^/)]+\/([a-zA-Z0-9_\-%. \u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|zip|tar|gz|csv|md|markdown|html))/gi;
+  let existingApiMatch: RegExpExecArray | null;
+  while ((existingApiMatch = existingApiLinkRegex.exec(result)) !== null) {
+    const rawMatch = existingApiMatch[1]?.trim();
+    if (!rawMatch) continue;
+    try {
+      const decoded = path.basename(decodeURIComponent(rawMatch));
+      handledFiles.add(decoded);
+    } catch {
+      handledFiles.add(path.basename(rawMatch));
+    }
+  }
+
   // 2.1 将正文中现存的 Markdown 链接中的 /workspace/xxx 或本地文件名改写为直链下载地址
   result = result.replace(
-    /\[(.*?)\]\((?:(?:\/workspace\/)?([a-zA-Z0-9_\-\u4e00-\u9fa5 ]+\.(?:docx?|xlsx?|pptx?|pdf|zip|tar|gz|csv|md|markdown|html)))\)/gi,
-    (match, label, fileName) => {
-      const cleanName = path.basename(fileName.trim());
+    /\[(.*?)\]\((?:(?:\/workspace\/|\/api\/ai\/chat\/workspace-files\/[^/)]+\/)?([a-zA-Z0-9_\-%. \u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|zip|tar|gz|csv|md|markdown|html)))\)/gi,
+    (match, label, rawFileName) => {
+      let cleanName: string;
+      try {
+        cleanName = path.basename(decodeURIComponent(rawFileName.trim()));
+      } catch {
+        cleanName = path.basename(rawFileName.trim());
+      }
+      handledFiles.add(cleanName);
       const filePath = getWorkspaceFilePath(userId, cleanName);
       if (filePath && fs.existsSync(filePath)) {
-        handledFiles.add(cleanName);
         const fileUrl = `/api/ai/chat/workspace-files/${encodeURIComponent(userId)}/${encodeURIComponent(cleanName)}`;
         return `[${label || cleanName}](${fileUrl})`;
       }

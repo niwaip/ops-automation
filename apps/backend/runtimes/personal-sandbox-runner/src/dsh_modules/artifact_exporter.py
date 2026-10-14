@@ -114,6 +114,10 @@ class ArtifactExporter:
         exported_files = []
         cleaned_text = final_text
 
+        from .skill_router import is_text_only_request, is_term_negated
+        if prompt and (is_text_only_request(prompt) or is_term_negated(prompt, "html") or is_term_negated(prompt, "ppt") or is_term_negated(prompt, "网页")):
+            return final_text, []
+
         # 情况 A: 模型回复中直接包含了 ```html 代码块
         if "```html" in cleaned_text:
             # 容错处理：若模型在回复中输出了多段完整的 HTML 文档，截取最完整的一段
@@ -343,7 +347,19 @@ class ArtifactExporter:
         """
         deliverables = []
         seen_names = set()
+
+        from .skill_router import is_text_only_request, is_term_negated
+        if prompt and is_text_only_request(prompt):
+            return deliverables
+
         doc_exts = {".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt", ".pdf", ".md", ".zip", ".csv"}
+        tech_exts = {".sh", ".sql", ".py", ".yaml", ".yml"}
+        special_tech_files = {"dockerfile", "docker-compose.yml", "docker-compose.yaml"}
+        has_tech_intent = bool(
+            (expected_deliverables and any(ext.lower() in tech_exts or ext.lower() in special_tech_files for ext in expected_deliverables))
+            or (prompt and re.search(r'(?:脚本|\.sh|\.sql|\.py|dockerfile|docker-compose|配置文件|yaml|yml)', prompt, re.I))
+        )
+        allowed_exts = doc_exts.union(tech_exts) if has_tech_intent else doc_exts
         excluded_names = set(Path(f).name.lower().strip() for f in (session_files or []))
 
         ws_path = Path(workspace_dir)
@@ -371,23 +387,45 @@ class ArtifactExporter:
             except Exception as e:
                 print(f"⚠️ [Harness Deliverable Export] 自动编译 PDF 失败: {e}")
 
+        # 若期望或提及技术脚本/配置文件，尝试自动物化
+        if has_tech_intent:
+            try:
+                from .deliverable_contract import materialize_config_or_code_deliverable
+                auto_tech_files = materialize_config_or_code_deliverable(
+                    prompt=prompt or "",
+                    final_text=final_text,
+                    workspace_dir=workspace_dir,
+                    turn_start_time=turn_start_time
+                )
+                for atf in auto_tech_files:
+                    p_atf = Path(atf)
+                    if p_atf.exists() and p_atf.name not in seen_names:
+                        deliverables.append({"filePath": str(p_atf), "fileName": p_atf.name})
+                        seen_names.add(p_atf.name)
+            except Exception as e:
+                print(f"⚠️ [Harness Deliverable Export] 物化技术配置/脚本失败: {e}")
+
         # 1. 扫描本轮次中新增或修改的文件（若未指定时间戳则扫描工作区所有有效交付物）
         min_mtime = (turn_start_time - 2.0) if turn_start_time is not None else 0.0
         for item in ws_path.iterdir():
-            if item.is_file() and item.suffix.lower() in doc_exts:
-                if item.name.lower() in excluded_names:
+            if not item.is_file():
+                continue
+            is_allowed = (item.suffix.lower() in allowed_exts) or (has_tech_intent and item.name.lower() in special_tech_files)
+            if not is_allowed:
+                continue
+            if item.name.lower() in excluded_names:
+                continue
+            if item.stat().st_size > 0 and item.stat().st_mtime >= min_mtime:
+                # 过滤未在最终正文中作为交付物明确提及的临时/测试文件（如 test.pdf）
+                if ArtifactExporter.is_temporary_file(item.name) and (item.name not in final_text):
                     continue
-                if item.stat().st_size > 0 and item.stat().st_mtime >= min_mtime:
-                    # 过滤未在最终正文中作为交付物明确提及的临时/测试文件（如 test.pdf）
-                    if ArtifactExporter.is_temporary_file(item.name) and (item.name not in final_text):
-                        continue
-                    if item.name not in seen_names:
-                        deliverables.append({"filePath": str(item), "fileName": item.name})
-                        seen_names.add(item.name)
+                if item.name not in seen_names:
+                    deliverables.append({"filePath": str(item), "fileName": item.name})
+                    seen_names.add(item.name)
 
         # 2. 扫描文本中明确提及的文件名
         mentioned = re.findall(
-            r'(?:/workspace/|workspace/|`|《|“|"|\')?([a-zA-Z0-9_\-\u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|md|zip|csv))(?:`|》|”|"|\')?',
+            r'(?:/workspace/|workspace/|`|《|“|"|\')?([a-zA-Z0-9_\-\u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|md|zip|csv|sh|sql|py|ya?ml)|Dockerfile|docker-compose\.ya?ml)(?:`|》|”|"|\')?',
             final_text,
             re.I
         )
@@ -395,17 +433,23 @@ class ArtifactExporter:
             if fn in seen_names or fn.lower() in excluded_names:
                 continue
             cand = ws_path / fn
-            if cand.exists() and cand.is_file() and cand.stat().st_size > 0:
+            if cand.exists() and cand.is_file() and cand.stat().st_size > 0 and cand.stat().st_mtime >= min_mtime:
                 deliverables.append({"filePath": str(cand), "fileName": cand.name})
                 seen_names.add(fn)
 
-        # 3. 产物语义净化：当用户明确指定需要特定二进制交付物（如 PDF/Word/Excel）且并未要求输出 md 时，
+        # 3. 产物语义净化：当用户明确指定需要特定二进制交付物（如 PDF/Word/Excel）或技术脚本/配置（如 .py, .sh, .sql, Dockerfile），且并未要求输出 md 时，
         # 排除将中间生成的草稿 Markdown 文件作为最终成果交付（避免挂羊头卖狗肉）
-        target_is_binary_doc = expected_deliverables and any(
-            ext.lower() in [".pdf", ".docx", ".xlsx", ".pptx"] for ext in expected_deliverables
+        target_is_binary_doc = bool(
+            expected_deliverables and any(ext.lower() in [".pdf", ".docx", ".xlsx", ".pptx"] for ext in expected_deliverables)
+        )
+        target_is_tech_file = bool(
+            (expected_deliverables and any(ext.lower() in [".sh", ".sql", ".py", ".yaml", ".yml", "dockerfile"] for ext in expected_deliverables))
+            or (prompt and re.search(r'(?:脚本|\.sh|\.sql|\.py|dockerfile|docker-compose)', prompt, re.I))
         )
         user_wants_md = prompt and bool(re.search(r"(?:\.md\b|\bmarkdown\b|md\s*文件)", prompt, re.I))
-        if target_is_binary_doc and not user_wants_md:
-            deliverables = [d for d in deliverables if not d["fileName"].lower().endswith(".md")]
+        if (target_is_binary_doc or target_is_tech_file) and not user_wants_md:
+            non_md = [d for d in deliverables if not d["fileName"].lower().endswith(".md")]
+            if non_md:
+                deliverables = non_md
 
         return deliverables

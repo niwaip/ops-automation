@@ -21,28 +21,53 @@ export const replaceLocalhostWithHost = (
   return url.replace(LOCAL_HOST_PATTERN, `$1${targetHost}`);
 };
 
-export const buildNovncAutoConnectUrl = (rawUrl?: string): string => {
+export interface BuildNovncUrlOptions {
+  resize?: 'off' | 'scale' | 'remote';
+  autoconnect?: boolean;
+  reconnect?: boolean;
+  viewClip?: boolean;
+}
+
+export const buildNovncAutoConnectUrl = (
+  rawUrl?: string,
+  options?: BuildNovncUrlOptions
+): string => {
   if (!rawUrl) return '';
   const trimmed = rawUrl.trim();
+  const defaultResize = options?.resize ?? 'scale';
   try {
     const globalLocation =
       typeof globalThis !== 'undefined' && 'location' in globalThis
         ? (globalThis as unknown as { location: { origin: string } }).location.origin
         : 'http://localhost';
     const parsed = new URL(trimmed, globalLocation);
-    if (!parsed.searchParams.has('autoconnect')) {
+
+    if (options?.autoconnect !== undefined) {
+      parsed.searchParams.set('autoconnect', String(options.autoconnect));
+    } else if (!parsed.searchParams.has('autoconnect')) {
       parsed.searchParams.set('autoconnect', 'true');
     }
-    if (!parsed.searchParams.has('resize')) {
-      parsed.searchParams.set('resize', 'scale');
+
+    if (options?.resize) {
+      parsed.searchParams.set('resize', options.resize);
+    } else if (!parsed.searchParams.has('resize')) {
+      parsed.searchParams.set('resize', defaultResize);
     }
-    if (!parsed.searchParams.has('reconnect')) {
+
+    if (options?.reconnect !== undefined) {
+      parsed.searchParams.set('reconnect', String(options.reconnect));
+    } else if (!parsed.searchParams.has('reconnect')) {
       parsed.searchParams.set('reconnect', 'true');
     }
+
+    if (options?.viewClip !== undefined) {
+      parsed.searchParams.set('view_clip', String(options.viewClip));
+    }
+
     return parsed.toString();
   } catch {
     const separator = trimmed.includes('?') ? '&' : '?';
-    return `${trimmed}${separator}autoconnect=true&resize=scale&reconnect=true`;
+    return `${trimmed}${separator}autoconnect=true&resize=${defaultResize}&reconnect=true`;
   }
 };
 

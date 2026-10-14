@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Alert, Button, Card, Empty, Segmented, Space, Typography } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import SharedMessageContentRenderer from '@chat-web/components/MessageContentRenderer';
 import type { WorkbenchSummaryState } from '../lib/workbenchSummaryState';
 import styles from '../pages/DashboardPage.module.css';
@@ -23,11 +24,14 @@ export function SummaryCard({
   summaryState,
   weeklySummaryPrompt,
 }: SummaryCardProps) {
+  const { t } = useTranslation('dashboard');
   const [activePeriod, setActivePeriod] = useState<'daily' | 'weekly'>('daily');
 
   const currentSummary = activePeriod === 'daily' ? summaryState.daily : summaryState.weekly;
   const currentPrompt = activePeriod === 'daily' ? dailySummaryPrompt : weeklySummaryPrompt;
-  const periodLabel = activePeriod === 'daily' ? '今日总结' : '本周总结';
+  const periodLabel = activePeriod === 'daily'
+    ? t('summary_card.daily', '今日总结')
+    : t('summary_card.weekly', '本周总结');
 
   return (
     <Card
@@ -35,7 +39,7 @@ export function SummaryCard({
       title={
         <div className={styles['workbench-summary-head-title']}>
           <Typography.Text strong className={styles['workbench-panel-title']}>
-            AI 工作复盘
+            {t('summary_card.title', 'AI 工作复盘')}
           </Typography.Text>
           <Segmented
             value={activePeriod}
@@ -43,8 +47,8 @@ export function SummaryCard({
             size="small"
             className={styles['workbench-segmented-filter']}
             options={[
-              { label: '今日总结', value: 'daily' },
-              { label: '本周总结', value: 'weekly' },
+              { label: t('summary_card.daily', '今日总结'), value: 'daily' },
+              { label: t('summary_card.weekly', '本周总结'), value: 'weekly' },
             ]}
           />
         </div>
@@ -53,7 +57,7 @@ export function SummaryCard({
         <Space size={12} align="center">
           {currentSummary.generatedAt ? (
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              更新于 {formatSummaryTime(currentSummary.generatedAt)}
+              {t('summary_card.updated_at', '更新于')} {formatSummaryTime(currentSummary.generatedAt)}
             </Typography.Text>
           ) : null}
           <Button
@@ -65,7 +69,11 @@ export function SummaryCard({
             className={styles['workbench-compact-btn-primary']}
             style={{ position: 'static', transform: 'none' }}
           >
-            {currentSummary.status === 'running' ? '生成中...' : currentSummary.content ? '重新生成' : '立即生成'}
+            {currentSummary.status === 'running'
+              ? t('summary_card.generating', '生成中...')
+              : currentSummary.content
+              ? t('summary_card.regenerate', '重新生成')
+              : t('summary_card.generate', '立即生成')}
           </Button>
         </Space>
       }

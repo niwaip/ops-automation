@@ -367,7 +367,7 @@ def extract_bare_json_tool_calls(text: str) -> list:
             break
 
         preview = text[idx:idx + 250]
-        if not any(k in preview for k in ['"name"', '"tool"', '"tool_name"', '"action"', '"function"', '"arguments"', '"parameters"', '"filename"', '"file_path"']):
+        if not any(k in preview for k in ['"name"', '"tool"', '"tool_name"', '"action"', '"function"', '"arguments"', '"parameters"', '"filename"', '"file_path"', '"cmd"', '"command"']):
             pos = idx + 1
             continue
 
@@ -450,6 +450,11 @@ def extract_bare_json_tool_calls(text: str) -> list:
                 }
                 if cand_params:
                     t_params = cand_params
+
+            if not t_name and ("cmd" in parsed or "command" in parsed):
+                t_name = "bash"
+                cmd_val = parsed.get("cmd") or parsed.get("command")
+                t_params = {"cmd": cmd_val} if isinstance(cmd_val, str) else parsed
 
             if not t_name and ("filename" in parsed or "file_path" in parsed) and ("content" in parsed or "markdown" in parsed or "text" in parsed):
                 fname = str(parsed.get("filename") or parsed.get("file_path") or "").strip()

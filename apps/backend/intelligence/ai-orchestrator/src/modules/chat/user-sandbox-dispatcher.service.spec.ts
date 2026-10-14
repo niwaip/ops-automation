@@ -635,6 +635,39 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     expect(resultEvent.content).toContain('点击直接下载');
   });
 
+  it('should NOT append duplicate download card when model output already contains /api/ai/chat/workspace-files link', async () => {
+    jest.spyOn(service, 'getWorkspaceFilePath').mockImplementation((uid, fname) => {
+      if (fname === 'E2E_个人周报_v2.docx') {
+        return '/mock/path/E2E_个人周报_v2.docx';
+      }
+      return null;
+    });
+
+    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    jest.spyOn(fs, 'statSync').mockReturnValue({ size: 38538, mtimeMs: Date.now() + 50 } as any);
+
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        'event: done\ndata: {"success":true,"output":"<<<DSH_OUTBOUND_FILE:{\\"filePath\\":\\"/workspace/E2E_个人周报_v2.docx\\",\\"fileName\\":\\"E2E_个人周报_v2.docx\\"}>>>\\n<<<DSH_FINAL_OUTPUT>>>已为您生成周报。\\n> 📥 **文件下载**：\\n> - 📄 **[《E2E_个人周报_v2.docx》](/api/ai/chat/workspace-files/test_user/E2E_%E4%B8%AA%E4%BA%BA%E5%91%A8%E6%8A%A5_v2.docx)** (点击直接下载 · 38.6 KB)","containerName":"ops-test","durationMs":100,"exitCode":0}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const success = await service.dispatchPersonalSandbox(
+      { message: '更新周报并生成Word', userId: 'test_user' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(success).toBe(true);
+    const resultEvent = emittedEvents.find((e) => e.type === StreamEventType.RESULT);
+    expect(resultEvent).toBeDefined();
+    // 关键断言：因为正文已经有该文件的下载链接，严禁再次追加“生成产物已就绪”
+    expect(resultEvent.content).not.toContain('生成产物已就绪');
+    // 原有的下载链接必须被保留
+    expect(resultEvent.content).toContain('/api/ai/chat/workspace-files/test_user/E2E_%E4%B8%AA%E4%BA%BA%E5%91%A8%E6%8A%A5_v2.docx');
+  });
+
   it('[P1] should correct and replace false reminder success text when control plane rejects persistence', async () => {
     (mockReminderBridge.processSandboxReminders as jest.Mock).mockResolvedValue({
       created: [],
@@ -937,4 +970,111 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
       })
     );
   });
+
+  it('should persist stopped turn and execution trace to session history when user cancels/aborts execution (O11)', async () => {
+    const abortController = new AbortController();
+    global.fetch = jest.fn().mockImplementation(async () => {
+      let index = 0;
+      const chunks = [
+        'event: delta\ndata: {"delta":"已收到指令，正在生成第 1 页 PPT..."}\n\n',
+      ];
+      const stream = new ReadableStream({
+        pull(controller) {
+          if (index < chunks.length) {
+            controller.enqueue(new TextEncoder().encode(chunks[index++]));
+            abortController.abort();
+          } else {
+            controller.error(new Error('This operation was aborted'));
+          }
+        },
+      });
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'text/event-stream' }),
+        body: stream,
+      } as any;
+    });
+
+    const emittedEvents: any[] = [];
+    const handled = await service.dispatchPersonalSandbox(
+      {
+        message: '生成10页个人学习计划PPT',
+        userId: 'test_user',
+        sessionId: 'test_session_o11',
+        modelId: 'default',
+      } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user',
+      abortController.signal
+    );
+
+    expect(handled).toBe(true);
+    expect(mockConversationService.persistConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'test_session_o11',
+        userContent: '生成10页个人学习计划PPT',
+        assistantContent: expect.stringMatching(/任务已由用户手动停止/),
+        executionTrace: expect.objectContaining({
+          cancelled: true,
+          abortedByUser: true,
+        }),
+      })
+    );
+  });
+
+  it('should persist stopped turn and execution trace when stopPersonalSandbox is called directly via stop API without abortSignal (E2)', async () => {
+    global.fetch = jest.fn().mockImplementation(async (url) => {
+      if (typeof url === 'string' && url.includes('/stop-exec')) {
+        return { ok: true, status: 200, json: async () => ({}) } as any;
+      }
+      let index = 0;
+      const chunks = [
+        'event: delta\ndata: {"delta":"已收到指令，正在生成 PPT 幻灯片..."}\n\n',
+      ];
+      const stream = new ReadableStream({
+        pull(controller) {
+          if (index < chunks.length) {
+            controller.enqueue(new TextEncoder().encode(chunks[index++]));
+            void service.stopPersonalSandbox('test_user', 'test_session_stop_api');
+          } else {
+            controller.error(new Error('This operation was aborted'));
+          }
+        },
+      });
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'text/event-stream' }),
+        body: stream,
+      } as any;
+    });
+
+    const emittedEvents: any[] = [];
+    const handled = await service.dispatchPersonalSandbox(
+      {
+        message: '生成10页个人学习计划PPT',
+        userId: 'test_user',
+        sessionId: 'test_session_stop_api',
+        modelId: 'default',
+      } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(handled).toBe(true);
+    expect(mockConversationService.persistConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'test_session_stop_api',
+        userContent: '生成10页个人学习计划PPT',
+        assistantContent: expect.stringMatching(/任务已由用户手动停止/),
+        executionTrace: expect.objectContaining({
+          cancelled: true,
+          abortedByUser: true,
+        }),
+      })
+    );
+  });
 });
+
+

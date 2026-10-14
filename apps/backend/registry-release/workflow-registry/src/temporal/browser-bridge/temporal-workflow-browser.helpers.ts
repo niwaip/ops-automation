@@ -8,6 +8,11 @@ import type {
   BrowserWorkflowActivityStep,
   WorkflowInputParamDefinition,
 } from '../temporal-workflow.types';
+import {
+  cleanSemanticDescription,
+  inferSemanticPhaseName,
+  inferSiteNameFromUrl,
+} from './temporal-workflow-browser-naming.helpers';
 
 export function normalizeBrowserActivitySteps(steps: unknown): Array<{
   name: string;
@@ -79,12 +84,18 @@ export function buildBrowserWorkflowActivityPhases(
 
     const normalizedPhaseType =
       phaseType === 'open' ? 'open' : phaseType === 'transition' ? 'transition' : 'process';
+    const isTabSwitchAfterTransition =
+      currentGroup?.phaseType === 'transition' &&
+      ['switch_latest_tab', 'focus_latest_page'].includes(
+        String(step.config?.action || '').toLowerCase()
+      );
+
     const shouldStartNewGroup =
       !currentGroup ||
       (currentGroup.phaseType !== normalizedPhaseType &&
         !(currentGroup.phaseType === 'open' && normalizedPhaseType === 'process')) ||
       (normalizedPhaseType === 'open' && currentGroup.steps.length > 0) ||
-      normalizedPhaseType === 'transition';
+      (normalizedPhaseType === 'transition' && !isTabSwitchAfterTransition);
 
     if (shouldStartNewGroup) {
       if (currentGroup) {
@@ -132,7 +143,7 @@ export function buildBrowserWorkflowActivityPhases(
   const enrichedGroups = enrichBrowserWorkflowPhaseGroups(groups);
 
   return enrichedGroups.map((group, index) => ({
-    name: buildBrowserWorkflowPhaseName(group.phaseType, index + 1),
+    name: buildBrowserWorkflowPhaseName(group.phaseType, index + 1, group.steps),
     phaseType: group.phaseType,
     timeout: inferBrowserTemplateTimeoutFromSteps(group.steps),
     initializeSession: index === 0,
@@ -441,19 +452,12 @@ function classifyBrowserWorkflowPhaseType(
   return 'process';
 }
 
-function buildBrowserWorkflowPhaseName(
+export function buildBrowserWorkflowPhaseName(
   phaseType: 'open' | 'transition' | 'process',
-  index: number
+  index: number,
+  steps?: BrowserWorkflowActivityStep[]
 ): string {
-  switch (phaseType) {
-    case 'open':
-      return `${index}. 页面打开`;
-    case 'transition':
-      return `${index}. 页面迁移`;
-    case 'process':
-    default:
-      return `${index}. 页面处理`;
-  }
+  return inferSemanticPhaseName(phaseType, index, steps);
 }
 
 export function extractBrowserActivityPlaceholders(
@@ -648,8 +652,15 @@ export function buildBrowserActivityStepsFromTemplateSteps(
       return acc;
     }, {});
 
+    const stepDescription =
+      typeof step?.description === 'string' && step.description.trim()
+        ? step.description.trim()
+        : '';
+    const cleanDescription = cleanSemanticDescription(stepDescription);
+    const displayName = cleanDescription || action || '浏览器操作';
+
     return {
-      name: `${index + 1}. ${action || '浏览器操作'}`,
+      name: `${index + 1}. ${displayName}`,
       type: 'browser',
       timeout: '30s',
       config,

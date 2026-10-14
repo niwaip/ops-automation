@@ -49,12 +49,22 @@ const stripWaitingInputLabelBoilerplate = (label: string): string => {
   );
 };
 
+/**
+ * Normalizes extra whitespace between Chinese characters while preserving English words spacing.
+ * e.g. "保 密 协 议" -> "保密协议", "Hello World" -> "Hello World"
+ */
+export const normalizeChineseSpace = (text?: string): string => {
+  if (!text || typeof text !== 'string') return '';
+  return text.replace(/(?<=[\u4e00-\u9fa5])\s+(?=[\u4e00-\u9fa5])/g, '').trim();
+};
+
 export const normalizeWaitingInputDisplayLabel = (label: string): string =>
-  String(label || '')
-    .trim()
-    .replace(/\s*[（(](?:中文|日文|日语|zh|ja|cn|jp)[）)]\s*$/iu, '')
-    .replace(/[_-](?:zh|ja|cn|jp)$/iu, '')
-    .trim();
+  normalizeChineseSpace(
+    String(label || '')
+      .trim()
+      .replace(/\s*[（(](?:中文|日文|日语|zh|ja|cn|jp)[）)]\s*$/iu, '')
+      .replace(/[_-](?:zh|ja|cn|jp)$/iu, '')
+  );
 
 export const resolveWaitingInputDisplayLabel = (
   field: WaitingInputDisplayField,

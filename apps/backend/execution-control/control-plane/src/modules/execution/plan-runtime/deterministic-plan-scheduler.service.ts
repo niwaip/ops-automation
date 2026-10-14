@@ -38,6 +38,7 @@ import {
   isLegacyPlan,
   mapPlanRuntimeTypeToExecutionRuntime,
   materializeContentRefs,
+  materializeMarkdownReportArtifact,
   resolveBrowserRunOutputSchemaDigest,
   resolveEffectiveUserId,
   resolveOutboundEffectMetadata,
@@ -1111,9 +1112,35 @@ export class DeterministicPlanSchedulerService {
     if (Array.isArray(rawArtifacts)) {
       for (const art of rawArtifacts) {
         if (!art || typeof art !== 'object') continue;
-        const artifactUrl = art.url || art.downloadUrl || art.storageUri || art.path;
-        if (art && artifactUrl) {
-          const externalArtifactId = art.id || art.externalArtifactId || null;
+        const artifactPath =
+          art.path ||
+          art.artifact?.path ||
+          art.snapshot?.path ||
+          art.artifactPath ||
+          art.snapshotPath ||
+          null;
+        const artifactUrl =
+          art.url ||
+          art.downloadUrl ||
+          art.storageUri ||
+          artifactPath;
+        if (art && (artifactUrl || art.id)) {
+          const fileName = artifactPath
+            ? String(artifactPath).split('/').pop()
+            : art.name || art.filename || null;
+          const publicUrl =
+            (typeof artifactUrl === 'string' && (artifactUrl.startsWith('http') || artifactUrl.startsWith('/api/')))
+              ? artifactUrl
+              : fileName
+                ? `/api/browser-runtime/artifacts/${encodeURIComponent(fileName)}`
+                : (artifactUrl || '');
+
+          const externalArtifactId =
+            art.id ||
+            art.externalArtifactId ||
+            art.snapshot?.id ||
+            (fileName ? fileName.replace(/\.[^/.]+$/, '') : null) ||
+            null;
           if (
             externalArtifactId &&
             (await this.prisma.executionArtifact.findFirst({
@@ -1125,26 +1152,48 @@ export class DeterministicPlanSchedulerService {
           }
           if (
             !externalArtifactId &&
+            publicUrl &&
             (await this.prisma.executionArtifact.findFirst({
-              where: { executionId: execution.id, producerStepId: step.id, url: artifactUrl },
+              where: { executionId: execution.id, producerStepId: step.id, url: publicUrl },
               select: { id: true },
             }))
           ) {
             continue;
           }
+          const artifactType =
+            art.type ||
+            art.artifactType ||
+            (art.command || art.snapshot || String(fileName || '').endsWith('.png') ? 'snapshot' : 'file');
+          const name =
+            art.name ||
+            art.filename ||
+            (art.command ? `${art.command}-snapshot` : (fileName || 'output_artifact'));
+          const mimeType =
+            art.mimeType ||
+            (String(fileName || '').endsWith('.png') ? 'image/png' : 'application/octet-stream');
+
+          const metadataJson = {
+            ...(typeof art.metadata === 'object' && art.metadata ? art.metadata : {}),
+            ...(typeof art.artifact === 'object' && art.artifact ? art.artifact : {}),
+            ...(typeof art.snapshot === 'object' && art.snapshot ? art.snapshot : {}),
+            ...(artifactPath ? { path: artifactPath, artifactPath } : {}),
+            ...(art.command ? { command: art.command } : {}),
+            ...(art.status ? { status: art.status } : {}),
+          };
+
           const createdArtifact = await this.prisma.executionArtifact.create({
             data: {
               executionId: execution.id,
               producerStepId: step.id,
               producerNodeId: step.planNodeId || step.id,
-              artifactType: art.type || art.artifactType || 'file',
+              artifactType,
               externalArtifactId,
-              name: art.name || art.filename || 'output_artifact',
-              url: artifactUrl,
-              mimeType: art.mimeType || 'application/octet-stream',
+              name,
+              url: publicUrl,
+              mimeType,
               sizeBytes: art.sizeBytes ? BigInt(art.sizeBytes) : null,
               sha256: art.sha256 || art.metadata?.sha256 || art.metadata_json?.sha256 || null,
-              metadataJson: art.metadata || null,
+              metadataJson: metadataJson as any,
             },
           });
           lastCreatedArtifactId = createdArtifact.id;
@@ -1291,12 +1340,25 @@ export class DeterministicPlanSchedulerService {
       checkResult.artifacts || []
     );
 
+    const materializedReportArtifact = await materializeMarkdownReportArtifact({
+      executionId: execution.id,
+      planDraft,
+      finalOutputs,
+      prisma: this.prisma,
+      eventPublisher: this.eventPublisher,
+      logger: this.logger,
+    });
+
+    const allArtifacts = materializedReportArtifact
+      ? [...(checkResult.artifacts || []), materializedReportArtifact]
+      : (checkResult.artifacts || []);
+
     const endedAt = new Date();
     const resultJson = buildDeterministicExecutionResult({
       executionId: execution.id,
       plan: planDraft,
       finalOutputs,
-      artifacts: checkResult.artifacts || [],
+      artifacts: allArtifacts,
       finishedAt: endedAt,
     });
 

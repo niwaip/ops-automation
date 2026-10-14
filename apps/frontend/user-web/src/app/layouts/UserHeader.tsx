@@ -37,6 +37,8 @@ export function UserHeader({ language, selectedMenuKey }: UserHeaderProps) {
       case '/settings': return t('menu.settings', '系统设置');
       case '/im-channels': return t('menu.im_channels', 'IM 渠道');
       case '/email-settings': return t('menu.email_settings', '邮箱连接');
+      case '/notifications': return t('menu.notifications', '通知中心');
+      case '/reports': return t('menu.reports', '执行报告');
       default: return t('menu.dashboard', '工作台');
     }
   };
@@ -64,7 +66,18 @@ export function UserHeader({ language, selectedMenuKey }: UserHeaderProps) {
           </Tooltip>
         ) : null}
         <Space size={8}>
-          <Tag color="blue" style={{ marginInlineEnd: 0, borderRadius: 999 }}>
+          <Tag
+            bordered={false}
+            style={{
+              marginInlineEnd: 0,
+              borderRadius: 999,
+              background: 'color-mix(in srgb, var(--primary-color) 10%, transparent)',
+              color: 'var(--primary-color)',
+              fontWeight: 600,
+              padding: '2px 10px',
+              fontSize: 12,
+            }}
+          >
             {currentMenuLabel}
           </Tag>
         </Space>

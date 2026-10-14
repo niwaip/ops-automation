@@ -104,6 +104,41 @@
   line-height: 1.4;
 }
 
+.workflow-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--bg-hover, rgba(0, 0, 0, 0.02));
+  border-top: 1px dashed var(--border-color);
+  font-size: 12px;
+}
+
+[data-theme="dark"] .workflow-action-bar {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.workflow-action-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+}
+
+.workflow-action-btn {
+  padding: 0 !important;
+  height: auto !important;
+  font-size: 12px !important;
+  font-weight: 500;
+  color: var(--primary-color, #1677ff) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.workflow-action-btn:hover {
+  text-decoration: underline;
+}
+
 .workflow-footer {
   padding: 8px 14px;
   border-top: 1px solid var(--border-color);

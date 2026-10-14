@@ -23,11 +23,13 @@ from dsh_modules.llm import extract_bare_json_tool_calls, clean_output, normaliz
 from dsh_modules.agent_loop import run_agent_loop
 from dsh_modules.agent_loop_helpers import detect_unexecuted_tool_argument_leak
 from dsh_modules.deliverable_contract import (
+    clean_markdown_filename,
     materialize_requested_markdown,
     requests_markdown_artifact,
     resolve_markdown_filename,
     unwrap_outer_markdown_fence,
     write_markdown_artifact,
+    QUOTED_MARKDOWN_RE,
 )
 from dsh_modules.telemetry import format_dsh_marker, extract_dsh_markers, strip_dsh_markers
 from dsh_modules.runtime_policy import RuntimePolicy
@@ -274,6 +276,34 @@ class TestSmallModelProtocol(unittest.TestCase):
         self.assertTrue(requests_markdown_artifact(prompt))
         self.assertEqual(resolve_markdown_filename(prompt), "latest_ai_news.md")
 
+    def test_clean_markdown_filename_strips_action_prefixes_and_quotes(self):
+        test_cases = [
+            ("生成可下载B2_交接清单_v2.md", "B2_交接清单_v2.md"),
+            ("生成可下载的B2_交接清单_v2.md", "B2_交接清单_v2.md"),
+            ("帮我整理成B2_交接清单.md", "B2_交接清单.md"),
+            ("制作一份B2_交接清单.md", "B2_交接清单.md"),
+            ("名为B2_交接清单.md", "B2_交接清单.md"),
+            ("保存为B2_交接清单.md", "B2_交接清单.md"),
+            ("提供一个B2_交接清单.md", "B2_交接清单.md"),
+            ("输出一个周报.md", "周报.md"),
+            ("名为“B2_交接清单.md”", "B2_交接清单.md"),
+            ("生成.md", "生成.md"),
+            ("B2_交接清单_v2.md", "B2_交接清单_v2.md"),
+        ]
+        for candidate, expected in test_cases:
+            self.assertEqual(clean_markdown_filename(candidate), expected)
+
+    def test_resolve_markdown_filename_cleans_action_prefixes(self):
+        cases = [
+            ("将清单里的“周五确认回归结果”改为“下周一确认回归结果”，生成可下载B2_交接清单_v2.md。", "B2_交接清单_v2.md"),
+            ("接上一轮：将清单里的“周五确认回归结果”改为“下周一确认回归结果”，生成B2_交接清单_v2.md", "B2_交接清单_v2.md"),
+            ("生成一个名为“项目进度.md”的文档", "项目进度.md"),
+            ("帮我把这些个人工作记录整理成简短周报，生成名为 B2_周报.md", "B2_周报.md"),
+        ]
+        for prompt, expected in cases:
+            self.assertEqual(resolve_markdown_filename(prompt), expected)
+
+
     def test_recovers_safe_function_call_from_explicit_plan(self):
         self.assertTrue(is_internal_plan_output(SMALL_MODEL_PLAN))
         recovered = recover_text_tool_calls(SMALL_MODEL_PLAN, round_idx=2)
@@ -416,6 +446,22 @@ class TestSmallModelProtocol(unittest.TestCase):
             self.assertFalse(created)
             self.assertEqual(path, str(custom))
             self.assertFalse((Path(tmp_dir) / "latest_ai_news.md").exists())
+
+    def test_reuses_cleaned_markdown_created_during_turn(self):
+        content = "# 交接清单\n\n- 周五确认回归结果改为下周一\n" * 10
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            turn_start = time.time()
+            clean_file = Path(tmp_dir) / "B2_交接清单_v2.md"
+            clean_file.write_text(content, encoding="utf-8")
+            path, created = materialize_requested_markdown(
+                "将清单里的“周五确认回归结果”改为“下周一确认回归结果”，生成可下载B2_交接清单_v2.md。",
+                content,
+                tmp_dir,
+                turn_start_time=turn_start,
+            )
+            self.assertFalse(created)
+            self.assertEqual(path, str(clean_file))
+            self.assertFalse((Path(tmp_dir) / "生成可下载B2_交接清单_v2.md").exists())
 
     def test_markdown_delivery_gets_extended_runtime_budget(self):
         policy = RuntimePolicy(max_rounds=3)

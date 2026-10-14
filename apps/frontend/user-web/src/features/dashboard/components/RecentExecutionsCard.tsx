@@ -1,5 +1,6 @@
 import { ArrowRightOutlined, CheckCircleFilled, ClockCircleOutlined } from '@ant-design/icons';
 import { Button, Card, Empty, Tooltip, Typography } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { summarizeExecutionListResult, type ExecutionDto } from '@ops/user-core';
 import { formatMonthDayTime } from '@/shared/utils/dateText';
 import styles from '../pages/DashboardPage.module.css';
@@ -36,24 +37,26 @@ export function RecentExecutionsCard({
   onOpenExecution,
   onViewAll,
 }: RecentExecutionsCardProps) {
+  const { t } = useTranslation('dashboard');
+
   return (
     <Card
       className={styles['workbench-panel']}
       title={
         <div className={styles['workbench-panel-header']}>
           <Typography.Text strong className={styles['workbench-panel-title']}>
-            最近完成
+            {t('recent_executions.title', '最近完成')}
           </Typography.Text>
         </div>
       }
       extra={
         <Button type="link" className={styles['workbench-action-button']} onClick={onViewAll}>
-          查看列表
+          {t('recent_executions.view_all', '查看列表')}
         </Button>
       }
     >
       {items.length === 0 ? (
-        <Empty description="最近还没有正常完成的执行" />
+        <Empty description={t('recent_executions.empty', '最近还没有正常完成的执行')} />
       ) : (
         <div className={styles['workbench-history-grid']}>
           {items.map((item) => {

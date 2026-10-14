@@ -38,5 +38,15 @@ describe('public-url helpers', () => {
       assert.equal((url.match(/autoconnect=true/g) || []).length, 1);
       assert.match(url, /resize=scale/);
     });
+
+    it('respects custom options like resize=off and viewClip', () => {
+      const url = buildNovncAutoConnectUrl('http://192.168.100.143:39000/vnc.html', {
+        resize: 'off',
+        viewClip: true,
+      });
+      assert.match(url, /resize=off/);
+      assert.match(url, /view_clip=true/);
+      assert.match(url, /autoconnect=true/);
+    });
   });
 });

@@ -9,6 +9,7 @@ import {
 import { Button, Empty as AntdEmpty, Tabs as AntdTabs } from 'antd';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { PublishedSkillOverview } from '@/features/skills/components/PublishedSkillOverview';
 import { PublishedSkillSectionCard } from '@/features/skills/components/PublishedSkillSectionCard';
 import { RequestAccessModal } from '@/features/skills/components/RequestAccessModal';
@@ -193,6 +194,7 @@ function PublishedSkillsContent() {
 }
 
 export function PublishedSkillListPage() {
+  const { t } = useTranslation('skill');
   const [searchParams, setSearchParams] = useSearchParams();
   const currentTab = searchParams.get('tab');
   const activeTab = currentTab === 'org-workflows' || currentTab === 'my-workflows'
@@ -205,23 +207,23 @@ export function PublishedSkillListPage() {
       <div className={styles['skills-page-hero']}>
         <div className={styles['skills-page-hero-content']}>
           <div className={styles['skills-page-hero-badge']}>
-            <RobotOutlined style={{ marginRight: 6 }} /> 企业级智能数字员工中心
+            <RobotOutlined style={{ marginRight: 6 }} /> {t('badge', '企业级智能数字员工中心')}
           </div>
           <h1 className={styles['skills-page-hero-title']}>
-            数字员工与自动化技能资产
+            {t('title', '数字员工与自动化技能资产')}
           </h1>
           <p className={styles['skills-page-hero-subtitle']}>
-            统一调度在岗数字员工、组织标准业务流与个人沉淀工作流，实现人机智能协同与无人值守定时排班
+            {t('subtitle', '统一调度在岗数字员工、组织标准业务流与个人沉淀工作流，实现人机智能协同与无人值守定时排班')}
           </p>
         </div>
         <div className={styles['skills-page-hero-stats']}>
           <div className={styles['skills-page-hero-pill']}>
             <span className={styles['skills-hero-pill-dot']} style={{ background: '#10b981' }} />
-            <span>在岗即时协同</span>
+            <span>{t('tag_instant', '在岗即时协同')}</span>
           </div>
           <div className={styles['skills-page-hero-pill']}>
             <span className={styles['skills-hero-pill-dot']} style={{ background: '#6366f1' }} />
-            <span>周期执勤与触达</span>
+            <span>{t('tag_scheduled', '周期执勤与触达')}</span>
           </div>
         </div>
       </div>
@@ -245,7 +247,7 @@ export function PublishedSkillListPage() {
             label: (
               <span>
                 <TeamOutlined style={{ marginRight: 6 }} />
-                数字员工阵容
+                {t('tab_published', '数字员工阵容')}
               </span>
             ),
             children: <PublishedSkillsContent />,
@@ -255,7 +257,7 @@ export function PublishedSkillListPage() {
             label: (
               <span>
                 <ApartmentOutlined style={{ marginRight: 6 }} />
-                组织工作流 (企业标准流)
+                {t('tab_org_workflows', '组织工作流 (企业标准流)')}
               </span>
             ),
             children: <OrganizationWorkflowList />,
@@ -265,7 +267,7 @@ export function PublishedSkillListPage() {
             label: (
               <span>
                 <FolderOpenOutlined style={{ marginRight: 6 }} />
-                专属工作流 (个人沉淀)
+                {t('tab_my_workflows', '专属工作流 (个人沉淀)')}
               </span>
             ),
             children: <SavedWorkflowList />,

@@ -1,1 +1,68 @@
-{}
+{
+  "title": "工作台",
+  "subtitle": "统一待办规划与任务协同中心",
+  "refresh": "刷新",
+  "refresh_success": "已刷新至最新待办态势",
+  "refresh_error": "刷新失败，请稍后重试",
+  "clear_test_data": "清空测试数据",
+  "clear_confirm_title": "清空测试数据",
+  "clear_confirm_desc": "确定清空所有 GTD 收件箱与待办任务数据吗？此操作主要用于系统测试与数据重置。",
+  "confirm_clear": "确定清空",
+  "summary": {
+    "inbox_unprocessed": "收集箱待整理",
+    "pending_todos": "待办任务",
+    "completed_today": "今日完成",
+    "completed_week": "本周完成",
+    "scheduled_tasks": "定时任务",
+    "todo_completed_count": "待办任务完成：",
+    "exec_completed_count": "自动化执行完成：",
+    "workflow_duty": "业务流执勤",
+    "reminders": "消息与日程提醒",
+    "single_reminder": "单次提醒",
+    "workdays": "工作日",
+    "no_scheduled": "当前没有启用中的定期任务或消息提醒"
+  },
+  "inbox": {
+    "title": "GTD 收集箱",
+    "clarified_archived": "已厘清/归档",
+    "all": "全部",
+    "pending_intervention": "待介入",
+    "pending_clarification": "待整理",
+    "placeholder": "快速收集便签/要点 (Enter 保存，Shift+Enter 换行) ...",
+    "collect_btn": "收集",
+    "sync_email_btn": "收取邮件",
+    "refresh_inbox": "刷新收集箱",
+    "refresh_success": "已刷新 GTD 收集箱",
+    "empty": "收件箱暂无此状态条目 (Inbox Zero)"
+  },
+  "todo": {
+    "title": "行动待办看板",
+    "pending": "待办",
+    "overdue": "逾期",
+    "completed": "已完成",
+    "delegated": "已发事项",
+    "finished": "已结束",
+    "all": "全部",
+    "refresh_todo": "刷新待办看板",
+    "refresh_success": "已刷新行动待办看板",
+    "placeholder": "添加新待办 (Enter 创建，支持批量粘贴) ...",
+    "add_btn": "添加",
+    "ai_plan": "AI 规划",
+    "new_execution": "新建执行",
+    "empty": "暂无匹配待办，可在上方输入添加，或在左侧「GTD 收集箱」将邮件或便签一键转为待办"
+  },
+  "recent_executions": {
+    "title": "最近完成",
+    "view_all": "查看列表",
+    "empty": "最近还没有正常完成的执行"
+  },
+  "summary_card": {
+    "title": "AI 工作复盘",
+    "daily": "今日总结",
+    "weekly": "本周总结",
+    "generate": "立即生成",
+    "regenerate": "重新生成",
+    "generating": "生成中...",
+    "updated_at": "更新于"
+  }
+}

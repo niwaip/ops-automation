@@ -6,6 +6,7 @@ import {
   InfoCircleOutlined,
   OrderedListOutlined,
   PlayCircleOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import {
   App,
@@ -54,8 +55,10 @@ const sanitizeDisplayName = (value?: string): string => {
 };
 
 import { getExecutionTitle } from '../lib/executionTitle';
+import { useTranslation } from 'react-i18next';
 
 export function DashboardPage() {
+  const { t } = useTranslation('dashboard');
   const { message } = App.useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -65,9 +68,33 @@ export function DashboardPage() {
   const setDraftMessage = useChatStore((state) => state.setDraftMessage);
   const setDraftExecutionId = useChatStore((state) => state.setDraftExecutionId);
   const [isClearingData, setIsClearingData] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [handledExecutions, setHandledExecutions] = useState<WorkbenchHandledExecutionMap>(() =>
     loadWorkbenchHandledExecutions()
   );
+
+  const handleRefreshAll = useCallback(async () => {
+    try {
+      setIsRefreshing(true);
+      await Promise.allSettled([
+        queryClient.invalidateQueries(['workbench-inbox']),
+        queryClient.invalidateQueries(['workbench-inbox-summary']),
+        queryClient.invalidateQueries(['workbench-inbox-summary-for-todos']),
+        queryClient.invalidateQueries(['workbench-todos-summary']),
+        queryClient.invalidateQueries(['workbench-todos']),
+        queryClient.invalidateQueries(['workbench-coordination-sent-tasks']),
+        queryClient.invalidateQueries(['workbench-handled-executions']),
+        queryClient.invalidateQueries(['dashboard-executions']),
+        queryClient.invalidateQueries(['dashboard-schedules']),
+        queryClient.invalidateQueries(['dashboard-reminders']),
+      ]);
+      void message.success(t('refresh_success', '已刷新至最新待办态势'));
+    } catch {
+      void message.error(t('refresh_error', '刷新失败，请稍后重试'));
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [queryClient, message, t]);
 
   // 从云端同步已阅执行单映射（解决换设备或清缓存后已阅失效的问题）
   useQuery(
@@ -238,28 +265,35 @@ export function DashboardPage() {
       <Card className={styles['workbench-hero']} styles={{ body: { padding: '14px 20px' } }}>
         <div className={styles['workbench-hero-content']}>
           <div className={styles['workbench-hero-heading']}>
-            <span className={styles['workbench-hero-title']}>工作台</span>
+            <span className={styles['workbench-hero-title']}>{t('title', '工作台')}</span>
             <span className={styles['workbench-hero-subtitle']}>
-              统一待办规划与任务协同中心
+              {t('subtitle', '统一待办规划与任务协同中心')}
             </span>
-            <div style={{ marginLeft: 'auto' }}>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Button
+                size="small"
+                icon={<ReloadOutlined spin={isRefreshing} />}
+                loading={isRefreshing}
+                onClick={handleRefreshAll}
+              >
+                {t('refresh', '刷新')}
+              </Button>
               <Popconfirm
-                title="清空测试数据"
-                description="确定清空所有 GTD 收件箱与待办任务数据吗？此操作主要用于系统测试与数据重置。"
-                okText="确定清空"
-                cancelText="取消"
+                title={t('clear_confirm_title', '清空测试数据')}
+                description={t('clear_confirm_desc', '确定清空所有 GTD 收件箱与待办任务数据吗？此操作主要用于系统测试与数据重置。')}
+                okText={t('confirm_clear', '确定清空')}
+                cancelText={t('cancel', '取消')}
                 okButtonProps={{ danger: true, loading: isClearingData }}
                 onConfirm={handleClearAllTestData}
               >
                 <Button
                   size="small"
-                  danger
                   type="text"
                   icon={<ClearOutlined />}
                   loading={isClearingData}
-                  style={{ fontSize: 12 }}
+                  className={styles['workbench-clear-btn']}
                 >
-                  清空测试数据
+                  {t('clear_test_data', '清空测试数据')}
                 </Button>
               </Popconfirm>
             </div>
@@ -272,7 +306,7 @@ export function DashboardPage() {
                     <InboxOutlined />
                   </div>
                   <div className={styles['workbench-summary-body']}>
-                    <span className={styles['workbench-summary-key']}>收集箱待整理</span>
+                    <span className={styles['workbench-summary-key']}>{t('summary.inbox_unprocessed', '收集箱待整理')}</span>
                     <span className={styles['workbench-summary-number']}>{inboxUnprocessedCount}</span>
                   </div>
                 </div>
@@ -283,7 +317,7 @@ export function DashboardPage() {
                     <OrderedListOutlined />
                   </div>
                   <div className={styles['workbench-summary-body']}>
-                    <span className={styles['workbench-summary-key']}>待办任务</span>
+                    <span className={styles['workbench-summary-key']}>{t('summary.pending_todos', '待办任务')}</span>
                     <span className={styles['workbench-summary-number']}>{todoSummary.pending}</span>
                   </div>
                 </div>
@@ -295,15 +329,15 @@ export function DashboardPage() {
                   </div>
                   <div className={styles['workbench-summary-body']}>
                     <span className={styles['workbench-summary-key-row']}>
-                      <span className={styles['workbench-summary-key']}>今日完成</span>
+                      <span className={styles['workbench-summary-key']}>{t('summary.completed_today', '今日完成')}</span>
                       <Popover
                         trigger={['hover']}
                         placement="bottomLeft"
                         overlayClassName="workbench-summary-popover"
                         content={
                           <div style={{ fontSize: 12, lineHeight: 1.6 }}>
-                            <div>待办任务完成：<strong>{todoSummary.completedToday ?? 0}</strong> 项</div>
-                            <div>自动化执行完成：<strong>{todayCompletedExecutions.length}</strong> 次</div>
+                            <div>{t('summary.todo_completed_count', '待办任务完成：')}<strong>{todoSummary.completedToday ?? 0}</strong></div>
+                            <div>{t('summary.exec_completed_count', '自动化执行完成：')}<strong>{todayCompletedExecutions.length}</strong></div>
                           </div>
                         }
                       >
@@ -322,7 +356,7 @@ export function DashboardPage() {
                     <ArrowRightOutlined />
                   </div>
                   <div className={styles['workbench-summary-body']}>
-                    <span className={styles['workbench-summary-key']}>本周完成</span>
+                    <span className={styles['workbench-summary-key']}>{t('summary.completed_week', '本周完成')}</span>
                     <span className={styles['workbench-summary-number']}>{weekCompletedExecutions.length}</span>
                   </div>
                 </div>
@@ -334,41 +368,41 @@ export function DashboardPage() {
                   </div>
                   <div className={styles['workbench-summary-body']}>
                     <span className={styles['workbench-summary-key-row']}>
-                      <span className={styles['workbench-summary-key']}>定时任务</span>
+                      <span className={styles['workbench-summary-key']}>{t('summary.scheduled_tasks', '定时任务')}</span>
                       <Popover
                         trigger={['hover']}
                         placement="bottomLeft"
                         overlayClassName="workbench-summary-popover"
                         content={
                           upcomingSchedules.length === 0 && activeReminders.length === 0 ? (
-                            <Typography.Text type="secondary">当前没有启用中的定期任务或消息提醒</Typography.Text>
+                            <Typography.Text type="secondary">{t('summary.no_scheduled', '当前没有启用中的定期任务或消息提醒')}</Typography.Text>
                           ) : (
                             <div className={styles['workbench-summary-popover-list']}>
                               {activeSchedules.length > 0 && (
                                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
-                                  业务流执勤 ({activeSchedules.length})
+                                  {t('summary.workflow_duty', '业务流执勤')} ({activeSchedules.length})
                                 </div>
                               )}
                               {upcomingSchedules.map((item) => (
                                 <div className={styles['workbench-summary-popover-item']} key={item.id}>
                                   <Typography.Text strong>{sanitizeDisplayName(item.name)}</Typography.Text>
                                   <Typography.Text type="secondary">
-                                    {summarizeCronExpression(item.cronExpression, { workdaysLabel: '工作日' })} · {formatMonthDayTime(item.nextRunAt)}
+                                    {summarizeCronExpression(item.cronExpression, { workdaysLabel: t('summary.workdays', '工作日') })} · {formatMonthDayTime(item.nextRunAt)}
                                   </Typography.Text>
                                 </div>
                               ))}
                               {activeReminders.length > 0 && (
                                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginTop: activeSchedules.length > 0 ? 8 : 0, marginBottom: 4 }}>
-                                  消息与日程提醒 ({activeReminders.length})
+                                  {t('summary.reminders', '消息与日程提醒')} ({activeReminders.length})
                                 </div>
                               )}
                               {activeReminders.slice(0, 3).map((item) => (
                                 <div className={styles['workbench-summary-popover-item']} key={item.id}>
-                                  <Typography.Text strong>{item.title || item.message || '定时提醒'}</Typography.Text>
+                                  <Typography.Text strong>{item.title || item.message || t('summary.single_reminder', '定时提醒')}</Typography.Text>
                                   <Typography.Text type="secondary">
                                     {item.cronExpression
-                                      ? summarizeCronExpression(item.cronExpression, { workdaysLabel: '工作日' })
-                                      : '单次提醒'}
+                                      ? summarizeCronExpression(item.cronExpression, { workdaysLabel: t('summary.workdays', '工作日') })
+                                      : t('summary.single_reminder', '单次提醒')}
                                     {item.nextRunAt || item.runAt ? ` · ${formatMonthDayTime(item.nextRunAt || item.runAt)}` : ''}
                                   </Typography.Text>
                                 </div>
@@ -402,6 +436,8 @@ export function DashboardPage() {
             getExecutionDisplayTime={getExecutionDisplayTime}
             getSkillDisplayName={getSkillDisplayName}
             onTodoCreated={() => setActiveTab('pending')}
+            onRefresh={handleRefreshAll}
+            isRefreshing={isRefreshing}
           />
         </Col>
 
@@ -423,6 +459,8 @@ export function DashboardPage() {
             onArchiveTodo={handleArchiveTodo}
             onRecallTodo={handleRecallTodo}
             onRemindTodo={handleRemindTodo}
+            onRefresh={handleRefreshAll}
+            isRefreshing={isRefreshing}
           />
         </Col>
       </Row>

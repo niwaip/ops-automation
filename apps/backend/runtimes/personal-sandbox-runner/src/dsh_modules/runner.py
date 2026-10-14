@@ -57,6 +57,15 @@ from .html_report_fallback import materialize_html_report_fallback
 from .llm import call_model_proxy, clean_output, parse_tool_calls
 
 
+def _extract_filename(item: str) -> str:
+    try:
+        obj = json.loads(item)
+        if isinstance(obj, dict) and "fileName" in obj:
+            return obj["fileName"]
+    except Exception:
+        pass
+    return Path(item).name
+
 
 WEATHER_RE = re.compile(
     r'(天气|气象|气温|温度|下雨|降雨|暴雨|晴天|预报|几度|转晴|多云|'
@@ -64,6 +73,50 @@ WEATHER_RE = re.compile(
     re.IGNORECASE,
 )
 REMINDER_RE = re.compile(r'(提醒|闹钟|待办|日程|remind\s+me|reminder|alarm)', re.I)
+
+
+def is_fast_path_task(prompt: str, skill_res: Any) -> bool:
+    """Determines whether a task has a clear deterministic action path and should skip the separate planning phase.
+    
+    Industry pattern: Intent complexity tiering. For simple single-file modifications, direct
+    extractions from uploaded files, or explicit single-deliverable script requests, skip the
+    two-phase planning roundtrip and execute tools directly in the first turn.
+    """
+    p = (prompt or "").strip()
+    if not p:
+        return True
+
+    # 1. 明确的字段修改/局部替换任务（如将 Word 预算由 30000 改为 36000，保持原版）
+    replace_patterns = [
+        r'(?:把|将|对).*(?:预算|金额|数值|文本|内容|字段|时间|日期|人员).*(?:由|从).*(?:改|替换|变更|更新)为',
+        r'(?:改|替换|更新).*(?:为|成).*保持(?:其余|原)',
+        r'(?:仅|只)(?:修改|替换|改动|变更)',
+    ]
+    if any(re.search(pat, p) for pat in replace_patterns):
+        return True
+
+    # 2. 简单的单一输入文件提取并生成清单（如“只整理我上传的合成会议文字...生成CP_会议行动清单.md”）
+    simple_extract_patterns = [
+        r'^(?:只|仅)?(?:整理|提取|汇总|整理成|汇总成).*(?:清单|待办|记录|备忘)',
+        r'(?:生成|输出).*清单.*(?:只用|严格基于|不补造)',
+    ]
+    if any(re.search(pat, p) for pat in simple_extract_patterns):
+        if not any(kw in p for kw in ["架构", "方案设计", "深度分析", "商业计划", "多阶段规划"]):
+            return True
+
+    # 3. 明确指定了轻量脚本或配置交付物（如 .md, .sh, .py, .sql, Dockerfile, docker-compose）且无探索性要求的任务
+    delivs = getattr(skill_res, "deliverables", None)
+    if delivs and len(delivs) <= 2:
+        exts = [
+            (Path(d).suffix.lower() if "." in d else (d.lower() if d.lower() == "dockerfile" else f".{d.lower()}"))
+            for d in delivs
+        ]
+        lightweight = {".md", ".sh", ".py", ".sql", ".yml", ".yaml", "dockerfile"}
+        if all(e in lightweight for e in exts):
+            if not any(kw in p for kw in ["架构", "系统设计", "深度分析", "商业计划", "多阶段规划"]):
+                return True
+
+    return False
 
 
 def _run_planning_phase(
@@ -680,7 +733,8 @@ def cmd_run(args):
     # 5. 思考模式调度：规划阶段（开启思考与架构设计） -> 执行与工具调用阶段（关闭思考）
     telemetry = TelemetryStats()
     is_deliverable_task = skill_res.is_generate_intent or skill_res.requires_execution
-    if policy.thinking and is_deliverable_task:
+    should_plan = policy.thinking and is_deliverable_task and not is_fast_path_task(prompt, skill_res)
+    if should_plan:
         plan_text = _run_planning_phase(
             prompt,
             messages,
@@ -826,12 +880,27 @@ def cmd_run(args):
         outbound_set = list(loop_res.outbound_files)
         for exp_f in (exported_html_files or []):
             payload = json.dumps({"filePath": exp_f, "fileName": Path(exp_f).name}, ensure_ascii=False)
-            if payload not in outbound_set and not any(Path(exp_f).name in existing for existing in outbound_set):
+            if payload not in outbound_set and not any(_extract_filename(existing).lower() == Path(exp_f).name.lower() for existing in outbound_set):
                 outbound_set.append(payload)
         for item in detected_deliverables:
             payload = json.dumps({"filePath": item["filePath"], "fileName": item["fileName"]}, ensure_ascii=False)
-            if payload not in outbound_set and not any(item["fileName"] in existing for existing in outbound_set):
+            if payload not in outbound_set and not any(_extract_filename(existing).lower() == item["fileName"].lower() for existing in outbound_set):
                 outbound_set.append(payload)
+
+        # 语义净化：若存在二进制文档或技术文件，且用户未显式要求 markdown，排除多余中间草稿 md
+        user_wants_md = prompt and bool(re.search(r"(?:\.md\b|\bmarkdown\b|md\s*文件)", prompt, re.I))
+        has_primary_non_md = any(
+            not _extract_filename(f).lower().endswith(".md") for f in outbound_set
+        )
+        if has_primary_non_md and not user_wants_md:
+            outbound_set = [
+                f for f in outbound_set
+                if not (
+                    _extract_filename(f).lower().endswith((".py.md", ".sh.md", ".sql.md"))
+                    or _extract_filename(f).lower() in ("result.md", "script.md")
+                )
+            ]
+
         TelemetryStats.emit_outbound_files(outbound_set)
         if getattr(loop_res, "outbound_reminders", None):
             TelemetryStats.emit_outbound_reminders(loop_res.outbound_reminders)

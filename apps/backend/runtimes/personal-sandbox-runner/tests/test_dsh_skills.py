@@ -87,6 +87,28 @@ class TestDshSkillsAndArtifacts(unittest.TestCase):
                 missing = detect_missing_requested_deliverable("请输出报告", now, expected_deliverables=[".pdf"])
                 self.assertIsNone(missing)
 
+                # 临时探测文件 (如 test_chart.xlsx) 必须被识别为尚未生成真实交付物
+                test_xlsx = Path(tmp_ws) / "test_chart.xlsx"
+                test_xlsx.write_bytes(b"dummy test chart")
+                missing_xlsx = detect_missing_requested_deliverable(
+                    "按区域汇总销售额与目标，生成Excel文件“CP_季度销售分析.xlsx”",
+                    now,
+                    expected_deliverables=[".xlsx"],
+                    is_generate_intent=True
+                )
+                self.assertEqual(missing_xlsx, ".xlsx")
+
+                # 写入正式目标产物后 -> 断言通过
+                real_xlsx = Path(tmp_ws) / "CP_季度销售分析.xlsx"
+                real_xlsx.write_bytes(b"PK\x03\x04 real excel workbook")
+                missing_xlsx_ok = detect_missing_requested_deliverable(
+                    "按区域汇总销售额与目标，生成Excel文件“CP_季度销售分析.xlsx”",
+                    now,
+                    expected_deliverables=[".xlsx"],
+                    is_generate_intent=True
+                )
+                self.assertIsNone(missing_xlsx_ok)
+
     def test_skill_router_high_precision_and_no_false_positives(self):
         """AC-2: 验证高精度技能路由，彻底杜绝歧义词导致的灾难性误判"""
         # 正向精准触发
@@ -135,6 +157,11 @@ class TestDshSkillsAndArtifacts(unittest.TestCase):
         res_web_rep = SkillRouter.route("帮我做一个交互式报告")
         self.assertTrue(res_web_rep.is_ppt_intent)
         self.assertEqual(res_web_rep.skill_id, "guizang-ppt")
+
+        # 7. CP-02 回归：Markdown 会议行动清单不得误触 html-ppt
+        res_cp02 = SkillRouter.route("只整理我上传的合成会议文字，不访问组织系统。提取决定、行动项、负责人、截止时间及待确认事项，不补造信息。生成可下载文件“CP_会议行动清单.md”。")
+        self.assertIsNone(res_cp02.skill_id)
+        self.assertFalse(res_cp02.is_ppt_intent)
 
     def test_progressive_disclosure_and_dynamic_schema(self):
         """验证渐进式披露：System Prompt 注入 Level 1 目录且 read_skill Schema 动态包含全部技能 ID"""

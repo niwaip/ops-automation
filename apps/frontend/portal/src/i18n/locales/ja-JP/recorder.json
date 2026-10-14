@@ -55,6 +55,7 @@
   "browserPreview": "ブラウザプレビュー",
   "recordingInProgress": "録画中...",
   "startToPreview": "録画を開始してブラウザをプレビュー",
+  "novncHint": "初期化後にブラウザ画面がここに表示されます",
   "intentModal": {
     "title": "コンパイル意図説明",
     "label": "操作意図",
@@ -67,6 +68,7 @@
     "title": "AI ブラウザ制御",
     "ready": "準備完了",
     "notReady": "未初期化",
+    "startToPreview": "ブラウザ初期化後に操作を開始",
     "initBrowser": "ブラウザを初期化",
     "browserReady": "ブラウザの準備ができました",
     "browserInitFailed": "ブラウザの初期化に失敗しました",

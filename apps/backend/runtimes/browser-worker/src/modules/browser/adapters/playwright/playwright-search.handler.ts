@@ -743,8 +743,22 @@ export class PlaywrightSearchHandler {
           document.body,
         ].filter(Boolean);
 
-        const seen = new Set();
-        const candidates = [];
+        const toCanonicalUrl = rawUrl => {
+          try {
+            const u = new URL(rawUrl, location.href);
+            u.hash = '';
+            ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'spm', 'from'].forEach(p => u.searchParams.delete(p));
+            if (u.pathname.length > 1 && u.pathname.endsWith('/')) {
+              u.pathname = u.pathname.slice(0, -1);
+            }
+            return u.href;
+          } catch (_) {
+            return String(rawUrl || '').trim();
+          }
+        };
+
+        const candidateMap = new Map();
+        const candidatesOrder = [];
         const pushCandidate = element => {
           if (!(element instanceof HTMLAnchorElement)) {
             return;
@@ -752,8 +766,12 @@ export class PlaywrightSearchHandler {
           if (!isVisible(element)) {
             return;
           }
-          const href = normalizeText(element.href || element.getAttribute('href'));
-          if (badHref(href)) {
+          const rawHref = normalizeText(element.href || element.getAttribute('href'));
+          if (badHref(rawHref)) {
+            return;
+          }
+          const canonical = toCanonicalUrl(rawHref);
+          if (!canonical || badHref(canonical)) {
             return;
           }
           const text = normalizeText(
@@ -766,38 +784,80 @@ export class PlaywrightSearchHandler {
             return;
           }
 
-          const key = \`\${href}::\${text}\`;
-          if (seen.has(key)) {
-            return;
-          }
-          seen.add(key);
-
           let score = 0;
           if (location.hostname.includes('baidu.com') && element.closest('.c-container h3, h3.t')) score += 300;
           if (location.hostname.includes('google.') && element.closest('.g h3')) score += 300;
           if (location.hostname.includes('bing.com') && element.closest('.b_algo h2')) score += 300;
 
-          if (element.querySelector('h1, h2, h3, h4')) score += 80;
-          if (element.closest('h1, h2, h3, h4')) score += 60;
-          if (element.closest('article, [role="article"]')) score += 35;
+          const hasHeadingInside = Boolean(element.querySelector('h1, h2, h3, h4'));
+          const isInsideHeading = Boolean(element.closest('h1, h2, h3, h4'));
+          if (hasHeadingInside) score += 80;
+          if (isInsideHeading) score += 60;
+          if (element.closest('article, [role="article"], .entry, .item, .card')) score += 35;
           if (element.closest('li')) score += 20;
           if (element.closest('section, main, [role="main"]')) score += 15;
           if (element.closest('header, nav, footer, aside, [role="navigation"], [role="menu"]')) score -= 120;
+
+          // Universally demote metadata/byline links (author, tag, topic, avatar, date)
+          if (element.closest('.author, .byline, .meta, .metadata, [rel="author"], [rel="tag"], .tags, .tag-list, .user-info, .avatar, time')) {
+            score -= 70;
+          }
+          if (/\\/(user|users|author|member|tag|tags|topic|topics|category|categories|label)\\//i.test(canonical)) {
+            score -= 70;
+          }
+
           if (text.length >= 8) score += 10;
           if (text.length >= 16) score += 10;
-          if (href && !href.includes(location.hostname)) score += 10;
+          if (rawHref && !rawHref.includes(location.hostname)) score += 10;
           if (element.target === '_blank') score += 5;
           if (element.querySelector('img') && text.length < 6) score -= 20;
+          if (/^(阅读全文|查看全文|查看详情|更多|详情|read more|view more|learn more|click here)$/i.test(text)) score -= 30;
 
-          candidates.push({ element, href, text, score });
+          if (candidateMap.has(canonical)) {
+            const existing = candidateMap.get(canonical);
+            if (score > existing.score) {
+              existing.element = element;
+              existing.href = rawHref;
+              existing.text = text;
+              existing.score = score;
+            } else if (score === existing.score) {
+              if ((hasHeadingInside || isInsideHeading) && !existing.hasHeading) {
+                existing.element = element;
+                existing.href = rawHref;
+                existing.text = text;
+                existing.hasHeading = true;
+              }
+            }
+            return;
+          }
+
+          const rect = element.getBoundingClientRect();
+          const candidate = {
+            element,
+            href: rawHref,
+            canonical,
+            text,
+            score,
+            order: candidatesOrder.length,
+            top: rect.top + window.scrollY,
+            hasHeading: hasHeadingInside || isInsideHeading,
+          };
+          candidateMap.set(canonical, candidate);
+          candidatesOrder.push(candidate);
         };
 
         roots.forEach((root) => {
           root.querySelectorAll('a[href]').forEach((node) => pushCandidate(node));
         });
 
-        const ranked = candidates
-          .sort((a, b) => b.score - a.score)
+        const validCandidates = candidatesOrder.filter(c => c.score > 0);
+        const pool = validCandidates.length > 0 ? validCandidates : candidatesOrder;
+        const ranked = pool
+          .sort((a, b) => {
+            const scoreDiff = b.score - a.score;
+            if (Math.abs(scoreDiff) >= 50) return scoreDiff;
+            return (a.top - b.top) || (a.order - b.order);
+          })
           .slice(0, limit)
           .map((item, idx) => {
             item.element.setAttribute(FLAG_ATTR, String(idx + 1));
@@ -829,6 +889,7 @@ export class PlaywrightSearchHandler {
       const settleTimeout = ${this.config.cliPageSettleTimeoutMs};
       await activePage.waitForLoadState('domcontentloaded', { timeout: settleTimeout }).catch(() => {});
       const originalUrl = await activePage.url();
+      const originalTitle = await activePage.title().catch(() => '');
       await Promise.race([
         activePage.waitForLoadState('networkidle', { timeout: 1000 }).catch(() => {}),
         activePage.waitForTimeout(500),
@@ -861,37 +922,104 @@ export class PlaywrightSearchHandler {
           const normalizeText = value => String(value || '').replace(/\\s+/g, ' ').trim();
           const badHref = href => !href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('about:blank') || href.startsWith('data:');
           const roots = [document.querySelector('[role="main"]'), document.querySelector('main'), document.body].filter(Boolean);
-          const seen = new Set();
-          const candidates = [];
+          const toCanonicalUrl = rawUrl => {
+            try {
+              const u = new URL(rawUrl, location.href);
+              u.hash = '';
+              ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'spm', 'from'].forEach(p => u.searchParams.delete(p));
+              if (u.pathname.length > 1 && u.pathname.endsWith('/')) {
+                u.pathname = u.pathname.slice(0, -1);
+              }
+              return u.href;
+            } catch (_) {
+              return String(rawUrl || '').trim();
+            }
+          };
+
+          const candidateMap = new Map();
+          const candidatesOrder = [];
           const pushCandidate = element => {
             if (!(element instanceof HTMLAnchorElement) || !isVisible(element)) return;
-            const href = normalizeText(element.href || element.getAttribute('href'));
-            if (badHref(href)) return;
+            const rawHref = normalizeText(element.href || element.getAttribute('href'));
+            if (badHref(rawHref)) return;
+            const canonical = toCanonicalUrl(rawHref);
+            if (!canonical || badHref(canonical)) return;
             const text = normalizeText(element.innerText || element.textContent || element.getAttribute('aria-label') || element.getAttribute('title'));
             if (!text) return;
-            const key = \`\${href}::\${text}\`;
-            if (seen.has(key)) return;
-            seen.add(key);
+
             let score = 0;
             if (location.hostname.includes('baidu.com') && element.closest('.c-container h3, h3.t')) score += 300;
             if (location.hostname.includes('google.') && element.closest('.g h3')) score += 300;
             if (location.hostname.includes('bing.com') && element.closest('.b_algo h2')) score += 300;
 
-            if (element.querySelector('h1, h2, h3, h4')) score += 80;
-            if (element.closest('h1, h2, h3, h4')) score += 60;
-            if (element.closest('article, [role="article"]')) score += 35;
+            const hasHeadingInside = Boolean(element.querySelector('h1, h2, h3, h4'));
+            const isInsideHeading = Boolean(element.closest('h1, h2, h3, h4'));
+            if (hasHeadingInside) score += 80;
+            if (isInsideHeading) score += 60;
+            if (element.closest('article, [role="article"], .entry, .item, .card')) score += 35;
             if (element.closest('li')) score += 20;
             if (element.closest('section, main, [role="main"]')) score += 15;
             if (element.closest('header, nav, footer, aside, [role="navigation"], [role="menu"]')) score -= 120;
+
+            // Universally demote metadata/byline links (author, tag, topic, avatar, date)
+            if (element.closest('.author, .byline, .meta, .metadata, [rel="author"], [rel="tag"], .tags, .tag-list, .user-info, .avatar, time')) {
+              score -= 70;
+            }
+            if (/\\/(user|users|author|member|tag|tags|topic|topics|category|categories|label)\\//i.test(canonical)) {
+              score -= 70;
+            }
+
             if (text.length >= 8) score += 10;
             if (text.length >= 16) score += 10;
-            if (href && !href.includes(location.hostname)) score += 10;
+            if (rawHref && !rawHref.includes(location.hostname)) score += 10;
             if (element.target === '_blank') score += 5;
             if (element.querySelector('img') && text.length < 6) score -= 20;
-            candidates.push({ element, href, text, score });
+            if (/^(阅读全文|查看全文|查看详情|更多|详情|read more|view more|learn more|click here)$/i.test(text)) score -= 30;
+
+            if (candidateMap.has(canonical)) {
+              const existing = candidateMap.get(canonical);
+              if (score > existing.score) {
+                existing.element = element;
+                existing.href = rawHref;
+                existing.text = text;
+                existing.score = score;
+              } else if (score === existing.score) {
+                if ((hasHeadingInside || isInsideHeading) && !existing.hasHeading) {
+                  existing.element = element;
+                  existing.href = rawHref;
+                  existing.text = text;
+                  existing.score = score;
+                  existing.hasHeading = true;
+                }
+              }
+              return;
+            }
+
+            const rect = element.getBoundingClientRect();
+            const candidate = {
+              element,
+              href: rawHref,
+              canonical,
+              text,
+              score,
+              order: candidatesOrder.length,
+              top: rect.top + window.scrollY,
+              hasHeading: hasHeadingInside || isInsideHeading,
+            };
+            candidateMap.set(canonical, candidate);
+            candidatesOrder.push(candidate);
           };
           roots.forEach((root) => root.querySelectorAll('a[href]').forEach((node) => pushCandidate(node)));
-          const ranked = candidates.sort((a, b) => b.score - a.score).slice(0, 20);
+
+          const validCandidates = candidatesOrder.filter(c => c.score > 0);
+          const pool = validCandidates.length > 0 ? validCandidates : candidatesOrder;
+          const ranked = pool
+            .sort((a, b) => {
+              const scoreDiff = b.score - a.score;
+              if (Math.abs(scoreDiff) >= 50) return scoreDiff;
+              return (a.top - b.top) || (a.order - b.order);
+            })
+            .slice(0, 20);
           if (ranked.length < targetIndex) {
             throw new Error(\`Search result index out of range; only found \${ranked.length} ranked candidates\`);
           }

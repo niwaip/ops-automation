@@ -43,10 +43,11 @@ export const DEFAULT_CONTRACT_REVIEW_ASSEMBLED_WORKFLOWS: AssembledBaseWorkflow[
 export const DEFAULT_NDA_ASSEMBLED_WORKFLOWS: AssembledBaseWorkflow[] = [
   {
     type: 'skill',
-    refId: 'ConfidentialityAgreementGenerationWorkflow',
+    refId: '971a94dc-fdf0-4059-92bd-ca1f8d8d667d',
     name: '商业保密协议(NDA)智能生成技能',
     triggerEvent: 'on_submit',
     stageType: 'submission',
+    stageId: 'draft_submission',
     description: '根据双方企业主体、保密期限、商业合作主题等要件生成标准保密合同草案',
   },
   {

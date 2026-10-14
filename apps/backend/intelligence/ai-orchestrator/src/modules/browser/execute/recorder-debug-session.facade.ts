@@ -14,6 +14,10 @@ import type {
 interface BrowserInitResponse {
   success: boolean;
   message: string;
+  endpoints?: {
+    novnc?: string;
+    cdp?: string;
+  };
 }
 
 @Injectable()
@@ -135,6 +139,9 @@ export class RecorderDebugSessionFacade {
       );
 
       input.session.browserInitialized = response.data.success;
+      if (response.data.endpoints) {
+        (input.session as any).endpoints = response.data.endpoints;
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       await input.reportError({

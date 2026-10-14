@@ -3,6 +3,7 @@ import { Avatar, Dropdown, Tag, Typography } from 'antd';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from 'zustand';
+import { useTranslation } from 'react-i18next';
 import { authStore } from '../../../adapters/auth/authStore';
 import styles from '../UserLayout.module.css';
 
@@ -34,6 +35,7 @@ export function UserMenu({ language }: UserMenuProps) {
   const navigate = useNavigate();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const user = useStore(authStore, (state) => state.user);
+  const { t } = useTranslation('common');
 
   const currentRoleLabel = user ? roleLabels[language][user.role] : null;
   const accountStatusLabel =
@@ -124,9 +126,11 @@ export function UserMenu({ language }: UserMenuProps) {
                 <MailOutlined />
               </span>
               <span className={styles['user-shell-user-menu-action-copy']}>
-                <span className={styles['user-shell-user-menu-action-title']}>个人邮箱连接</span>
+                <span className={styles['user-shell-user-menu-action-title']}>
+                  {t('user_menu.email_connection', '个人邮箱连接')}
+                </span>
                 <span className={styles['user-shell-user-menu-action-description']}>
-                  配置专属工作/私人邮箱与发信授权
+                  {t('user_menu.email_connection_desc', '配置专属工作/私人邮箱与发信授权')}
                 </span>
               </span>
             </button>
@@ -139,9 +143,11 @@ export function UserMenu({ language }: UserMenuProps) {
                 <LogoutOutlined />
               </span>
               <span className={styles['user-shell-user-menu-action-copy']}>
-                <span className={styles['user-shell-user-menu-action-title']}>退出登录</span>
+                <span className={styles['user-shell-user-menu-action-title']}>
+                  {t('user_menu.logout', '退出登录')}
+                </span>
                 <span className={styles['user-shell-user-menu-action-description']}>
-                  清除当前会话并返回登录页
+                  {t('user_menu.logout_desc', '清除当前会话并返回登录页')}
                 </span>
               </span>
             </button>

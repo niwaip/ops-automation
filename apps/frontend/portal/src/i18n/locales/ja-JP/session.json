@@ -50,5 +50,6 @@
   "selectTemplate": "レポートテンプレート選択",
   "selectTemplatePlaceholder": "レポートテンプレートを選択",
   "noTemplates": "利用可能なレポートテンプレートがありません",
-  "createTemplate": "テンプレートを作成"
+  "createTemplate": "テンプレートを作成",
+  "openInNewTab": "新しいタブで開く"
 }

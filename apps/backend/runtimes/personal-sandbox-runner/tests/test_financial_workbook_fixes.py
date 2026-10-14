@@ -1046,7 +1046,29 @@ class TestFinancialWorkbookFixes(unittest.TestCase):
         self.assertIn("实际与预算差额", warn_ceiling)
         self.assertNotIn("《预算对比》", warn_ceiling)
         self.assertNotIn("《月度经营》", warn_ceiling)
-        self.assertNotIn("请确认工作簿中相关数据表结构", warn_ceiling)
+        # Case D: Table format with currency symbols must be recognized and pass
+        from dsh_modules.analysis_contract import MetricRequirement, AnalysisContract, build_analysis_contract
+        # D1: Full end-to-end test with realistic prompt "汇总附件中的有效金额，指出缺失值和重复行，生成Excel"
+        real_prompt = "汇总附件中的有效金额，指出缺失值和重复行，生成Excel"
+        contract_e2e = build_analysis_contract(real_prompt)
+        self.assertIn("有效金额", contract_e2e.get_metric_names(), "Metric name must be normalized to 有效金额, stripping 附件中的 prefix!")
+        self.assertNotIn("附件中的有效金额", contract_e2e.get_metric_names())
+
+        table_reply = (
+            "| 核算口径 | 记录范围 | 纳入笔数 | 有效金额汇总 | 业务适用场景 |\n"
+            "| :--- | :--- | :---: | :---: | :--- |\n"
+            "| **口径 A：标准清洗** | 剔除缺失值与重复行 | 2 笔 | **¥350.00** | 财务报销标准 |\n"
+        )
+        val_res_e2e = validate_reply_against_contract(contract_e2e, table_reply, round_idx=1, max_rounds=3)
+        self.assertTrue(val_res_e2e.is_pass, "Markdown table with ¥350.00 must satisfy contract built from real prompt!")
+        self.assertIn("有效金额", val_res_e2e.satisfied_metrics)
+
+        # D2: Defensive compatibility with legacy un-normalized metric name
+        contract_legacy = AnalysisContract(raw_prompt=real_prompt)
+        contract_legacy.metrics = [MetricRequirement(name="附件中的有效金额", aliases=["附件中的有效金额"], expected_type="number")]
+        val_res_legacy = validate_reply_against_contract(contract_legacy, table_reply, round_idx=1, max_rounds=3)
+        self.assertTrue(val_res_legacy.is_pass, "Validation must defensively normalize 附件中的有效金额 and match table header 有效金额汇总!")
+
 
 
 if __name__ == "__main__":

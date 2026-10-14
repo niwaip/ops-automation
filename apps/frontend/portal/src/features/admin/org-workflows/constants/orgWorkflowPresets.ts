@@ -33,7 +33,7 @@ export const PRESET_WORKFLOW_TEMPLATES: PresetWorkflowTemplateItem[] = [
       assembledWorkflows: [
         {
           type: 'skill',
-          refId: 'ConfidentialityAgreementGenerationWorkflow',
+          refId: '971a94dc-fdf0-4059-92bd-ca1f8d8d667d',
           name: '商业保密协议(NDA)智能生成技能',
           triggerEvent: 'on_submit',
           stageType: 'submission',
@@ -78,7 +78,8 @@ export const PRESET_WORKFLOW_TEMPLATES: PresetWorkflowTemplateItem[] = [
             id: 'draft_submission',
             name: '商务填报与初稿生成',
             type: 'submission',
-            description: '调用专属保密合同生成技能 (ConfidentialityAgreementGenerationWorkflow) 提取主体、保密期限等要件输出初稿',
+            capabilityId: '971a94dc-fdf0-4059-92bd-ca1f8d8d667d',
+            description: '调用专属保密合同生成技能 (971a94dc-fdf0-4059-92bd-ca1f8d8d667d) 提取主体、保密期限等要件输出初稿',
             isLocked: false,
           },
           {
@@ -132,41 +133,82 @@ export const PRESET_WORKFLOW_TEMPLATES: PresetWorkflowTemplateItem[] = [
       },
       paramsSchema: {
         properties: {
-          counterpartyName: {
+          'partyA.name': {
             type: 'string',
-            description: '接收方/相对方企业全称 (Party B)',
+            displayName: '甲方公司法定全称',
+            description: '协议首部甲方法律主体名称',
             required: true,
           },
-          cooperationSubject: {
+          'partyA.address': {
             type: 'string',
-            description: '保密合作业务主题/范围',
+            displayName: '甲方注册或经营地址',
+            description: '协议首部甲方注册或联系地址',
             required: true,
           },
-          durationYears: {
+          'partyB.name': {
+            type: 'string',
+            displayName: '乙方（接收方）的公司全称',
+            description: '协议落款及首部乙方法律主体名称',
+            default: '富士通 ( 中国 ) 信息系統有限公司',
+            required: true,
+          },
+          'partyB.address': {
+            type: 'string',
+            displayName: '乙方注册或经营地址',
+            description: '协议首部乙方注册或联系地址',
+            default: '上海浦东新区陆家嘴环路 1000 号',
+            required: true,
+          },
+          'cooperation.subject': {
+            type: 'string',
+            displayName: '双方合作的具体业务主题或项目内容',
+            description: '保密协议所覆盖的合作项目/业务范围主题',
+            required: true,
+          },
+          'confidentiality.durationYears': {
             type: 'number',
-            description: '保密义务年限（年）',
-            required: true,
+            displayName: '保密期限的具体年数',
+            description: '保密义务持续年限（数字）',
             default: 3,
-          },
-          myPosition: {
-            type: 'string',
-            description: '我方立场策略',
             required: true,
-            enum: ['buyer', 'seller', 'neutral'],
-            default: 'buyer',
           },
-          penaltyAmount: {
+          'agreement.signDate.year': {
             type: 'number',
-            description: '违约金约定金额（元）',
-            required: false,
+            displayName: '协议签订年份',
+            description: '协议签订日期的年份（数字）',
+            required: true,
           },
-          remarks: {
+          'agreement.signDate.month': {
+            type: 'number',
+            displayName: '协议签订月份',
+            description: '协议签订日期的月份（数字）',
+            required: true,
+          },
+          'agreement.signDate.day': {
+            type: 'number',
+            displayName: '协议签订日（日号）',
+            description: '协议签订日期的具体日（数字）',
+            required: true,
+          },
+          'attachment.content': {
             type: 'string',
-            description: '特殊商务诉求或保密说明',
+            displayName: '附件一的具体内容或补充说明',
+            description: '附件一内容详情（若无额外内容则填写“无”）',
+            default: '无',
             required: false,
           },
         },
-        required: ['counterpartyName', 'cooperationSubject', 'myPosition'],
+        required: [
+          'partyA.name',
+          'partyA.address',
+          'partyB.name',
+          'partyB.address',
+          'cooperation.subject',
+          'confidentiality.durationYears',
+          'agreement.signDate.year',
+          'agreement.signDate.month',
+          'agreement.signDate.day',
+        ],
       },
       grantedRoleIds: ['employee', 'admin', 'legal'],
     },

@@ -345,28 +345,33 @@ export class RecorderDebugService {
     currentPageUrl?: string;
   }> {
     const sessionId = request.sessionId || `recorder-debug-${Date.now()}`;
-    const session = await this.loadOrCreateSession(sessionId, request);
-    const exportArtifacts =
-      (await this.recorderExportAssemblyService.buildExportArtifacts(
-        session,
-        request.userGoal || '浏览器调试任务',
-      )) as unknown as RecorderDebugExportArtifacts;
-    this.recorderDebugResponseService.pushAssistantTurn(session, {
-      status: 'completed',
-      reply: '已导出 CLI 脚本和内部 skill 草稿。',
-      userGoal: request.userGoal,
-      beforeObservation: session.lastObservation,
-      exportArtifacts,
-      observation: session.lastObservation,
+    const runtimeKey =
+      request.runtimeSessionId || (await this.loadSession(sessionId))?.runtimeSessionId || sessionId;
+
+    return this.recorderSessionLockService.acquire(runtimeKey, async () => {
+      const session = await this.loadOrCreateSession(sessionId, request);
+      const exportArtifacts =
+        (await this.recorderExportAssemblyService.buildExportArtifacts(
+          session,
+          request.userGoal || '浏览器调试任务',
+        )) as unknown as RecorderDebugExportArtifacts;
+      this.recorderDebugResponseService.pushAssistantTurn(session, {
+        status: 'completed',
+        reply: '已导出 CLI 脚本和内部 skill 草稿。',
+        userGoal: request.userGoal,
+        beforeObservation: session.lastObservation,
+        exportArtifacts,
+        observation: session.lastObservation,
+      });
+      this.recorderDebugResponseService.finalizeSession(session, this.maxHistory);
+      await this.saveSession(session);
+      return {
+        sessionId: session.sessionId,
+        runtimeSessionId: session.runtimeSessionId,
+        exportArtifacts,
+        currentPageUrl: session.currentPageUrl,
+      };
     });
-    this.recorderDebugResponseService.finalizeSession(session, this.maxHistory);
-    await this.saveSession(session);
-    return {
-      sessionId: session.sessionId,
-      runtimeSessionId: session.runtimeSessionId,
-      exportArtifacts,
-      currentPageUrl: session.currentPageUrl,
-    };
   }
 
   async resetSession(sessionId: string): Promise<void> {

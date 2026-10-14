@@ -181,27 +181,62 @@ export class WorkbenchCoordinationService implements OnModuleInit {
    * 发起协同任务并推入接收人的 GTD 收集箱
    */
   async createTask(initiatorUserId: string, dto: CreateCoordinationTaskDto) {
-    if (!dto.assigneeId || !dto.title?.trim() || !dto.content?.trim()) {
-      throw new BadRequestException('创建协同任务失败：指派人、标题与内容不能为空');
+    if (!dto.title?.trim() || !dto.content?.trim()) {
+      throw new BadRequestException('创建协同任务失败：标题与内容不能为空');
+    }
+
+    const workflowId = dto.workflowId;
+    const parameters = dto.parameters || {};
+    const taskType = dto.taskType || CoordinationTaskType.approval;
+
+    const workflow: any = workflowId
+      ? this.orgWorkflowService?.getWorkflowById(workflowId) ||
+        BUILT_IN_WORKFLOW_TEMPLATES.find((t) => t.id === workflowId || t.workflowId === workflowId)
+      : undefined;
+
+    const stages: any[] = workflow?.processDefinition?.stages || [];
+    const firstActionableStage = stages.find(
+      (s) => s.type === 'approval' || s.type === 'review' || s.type === 'assignment'
+    );
+    const currentStage =
+      (parameters as any)?.currentStage ||
+      (dto.metadata as any)?.currentStage ||
+      firstActionableStage?.id ||
+      (stages.length > 0 ? stages[0].id : undefined);
+
+    let targetAssigneeId = dto.assigneeId?.trim();
+    if (!targetAssigneeId && workflowId && currentStage) {
+      try {
+        const resolvedApprover = await this.resolveStageApprover(
+          workflowId,
+          currentStage,
+          initiatorUserId
+        );
+        if (resolvedApprover?.id) {
+          targetAssigneeId = resolvedApprover.id;
+        }
+      } catch (err) {
+        this.logger.warn(`Auto resolve stage approver for ${workflowId} fallback:`, err);
+      }
+    }
+    if (!targetAssigneeId) {
+      targetAssigneeId = initiatorUserId;
     }
 
     // 1. 查询发起人与接收人信息（安全解析 UUID、用户名或兜底）
     const [initiator, assignee] = await Promise.all([
       this.resolveUser(initiatorUserId),
-      this.resolveUser(dto.assigneeId),
+      this.resolveUser(targetAssigneeId),
     ]);
 
     if (!initiator) {
       throw new NotFoundException(`发起人用户不存在: ${initiatorUserId}`);
     }
     if (!assignee) {
-      throw new NotFoundException(`被指派协同用户不存在: ${dto.assigneeId}`);
+      throw new NotFoundException(`被指派协同用户不存在: ${targetAssigneeId}`);
     }
 
     const taskId = `coord_${randomUUID()}`;
-    const workflowId = dto.workflowId;
-    const parameters = dto.parameters || {};
-    const taskType = dto.taskType || CoordinationTaskType.approval;
 
     // 核心幂等保证：若已存在相同 executionId 的协同工单，直接返回已有工单，杜绝重复创建
     const executionId = (parameters as any).executionId || (dto.metadata as any)?.executionId;
@@ -246,21 +281,6 @@ export class WorkbenchCoordinationService implements OnModuleInit {
     } else if (taskType === CoordinationTaskType.review) {
       typePrefix = '[待我复核]';
     }
-
-    const workflow: any = workflowId
-      ? this.orgWorkflowService?.getWorkflowById(workflowId) ||
-        BUILT_IN_WORKFLOW_TEMPLATES.find((t) => t.id === workflowId || t.workflowId === workflowId)
-      : undefined;
-
-    const stages: any[] = workflow?.processDefinition?.stages || [];
-    const firstActionableStage = stages.find(
-      (s) => s.type === 'approval' || s.type === 'review' || s.type === 'assignment'
-    );
-    const currentStage =
-      (parameters as any)?.currentStage ||
-      (dto.metadata as any)?.currentStage ||
-      firstActionableStage?.id ||
-      (stages.length > 0 ? stages[0].id : undefined);
 
     const currentStageDef = stages.find((s) => s.id === currentStage);
     if (currentStageDef?.name) {
@@ -1172,6 +1192,8 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
+
+    await Promise.all(items.map((item) => this.inboxService.hydrateItemExecutionArtifacts(item)));
 
     const taskMap = new Map<string, any>();
     const supersededParentTaskIds = new Set<string>();

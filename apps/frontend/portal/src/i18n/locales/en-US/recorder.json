@@ -55,6 +55,7 @@
   "browserPreview": "Browser Preview",
   "recordingInProgress": "Recording...",
   "startToPreview": "Start recording to preview browser",
+  "novncHint": "noVNC will show browser after initialization",
   "intentModal": {
     "title": "Compile Intent Description",
     "label": "Operation Intent",
@@ -67,6 +68,7 @@
     "title": "AI Browser Control",
     "ready": "Ready",
     "notReady": "Not Initialized",
+    "startToPreview": "Start controlling after browser initialization",
     "initBrowser": "Initialize Browser",
     "browserReady": "Browser is ready",
     "browserInitFailed": "Browser initialization failed",

@@ -1,1 +1,14 @@
-{}
+{
+  "preview_title": "通知プレビュー",
+  "unread_count": "未読 {{count}} 件",
+  "no_unread": "未読の通知はありません",
+  "mark_all_read": "すべて既読",
+  "view_all": "すべて表示",
+  "just_now": "たった今",
+  "minutes_ago": "{{count}}分前",
+  "today": "本日",
+  "notification_time": "通知日時：",
+  "page_title": "通知センター",
+  "page_subtitle": "実行通知とリマインダーを統合表示",
+  "refresh": "更新"
+}

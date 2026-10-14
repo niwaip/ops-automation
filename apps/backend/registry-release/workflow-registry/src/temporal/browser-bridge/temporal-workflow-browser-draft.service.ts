@@ -547,8 +547,10 @@ export class TemporalWorkflowBrowserDraftService {
       const isLoopPhase = phase.steps.some(
         (step) => step.config?.loopSegment === 'iteration' || Boolean(step.config?.loopTemplate)
       );
+      const nameWithoutPrefix = phase.name.replace(/^\d+[\.\、\s\-]+/, '').trim();
       return {
         ...phase,
+        name: `${index + 1}. ${nameWithoutPrefix}`,
         initializeSession: index === 0,
         cleanupSession: !isLoopPhase && index === phases.length - 1,
       };

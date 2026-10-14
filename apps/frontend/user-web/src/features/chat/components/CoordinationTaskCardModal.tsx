@@ -20,7 +20,7 @@ import {
 } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
 import dayjs from 'dayjs';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from 'react-query';
 import {
   workbenchCoordinationApi,
@@ -30,6 +30,7 @@ import {
 } from '../../../api/workbenchCoordination';
 import { DynamicWorkflowForm } from './DynamicWorkflowForm';
 import { buildDynamicWorkflowCardPayload } from '../lib/dynamicWorkflowCard';
+import { setPendingWorkflowParameters } from '../lib/workflowNaturalLanguageRouter';
 
 interface CoordinationTaskCardModalProps {
   open: boolean;
@@ -37,8 +38,11 @@ interface CoordinationTaskCardModalProps {
   initialTemplateId?: string;
   initialValues?: Record<string, any>;
   onClose: () => void;
-  onSuccess: (task: CoordinationTask, markdownCard?: string) => void;
+  onSuccess: (task: CoordinationTask | null, markdownCard?: string) => void;
 }
+
+const EMPTY_TEMPLATES: any[] = [];
+const EMPTY_COLLABORATORS: CollaboratorUser[] = [];
 
 export function CoordinationTaskCardModal({
   open,
@@ -54,8 +58,9 @@ export function CoordinationTaskCardModal({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
     initialTemplateId || 'legal.contract.review_flow'
   );
+  const wasOpenRef = useRef(false);
 
-  const { data: templates = [] } = useQuery(
+  const { data: templates = EMPTY_TEMPLATES } = useQuery(
     ['workflow-templates'],
     () => workbenchCoordinationApi.getWorkflowTemplates(),
     {
@@ -63,6 +68,17 @@ export function CoordinationTaskCardModal({
       enabled: open,
     }
   );
+
+  const { data: collaborators = EMPTY_COLLABORATORS } = useQuery(
+    ['collaborators-list'],
+    () => workbenchCoordinationApi.searchCollaborators(),
+    {
+      staleTime: 60000,
+      enabled: open,
+    }
+  );
+
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState<string>('');
 
   const currentTemplate = useMemo(() => {
     return (
@@ -73,17 +89,45 @@ export function CoordinationTaskCardModal({
 
   useEffect(() => {
     if (open) {
+      wasOpenRef.current = true;
       if (initialTemplateId) {
         setSelectedTemplateId(initialTemplateId);
       }
       if (initialValues) {
         form.setFieldsValue(initialValues);
       }
-    } else {
+      if (initialAssignee?.id) {
+        setSelectedAssigneeId(initialAssignee.id);
+      } else if (collaborators.length > 0) {
+        const isLegal =
+          selectedTemplateId?.includes('legal') ||
+          selectedTemplateId?.includes('nda');
+        const legalUser = isLegal
+          ? collaborators.find(
+              (c) =>
+                c.departmentName === '法务部' ||
+                c.username?.toLowerCase().includes('law')
+            )
+          : null;
+        setSelectedAssigneeId(legalUser?.id || collaborators[0].id);
+      }
+    } else if (wasOpenRef.current) {
+      wasOpenRef.current = false;
       form.resetFields();
       setFileList([]);
     }
-  }, [open, initialTemplateId, initialValues, form]);
+  }, [open, initialTemplateId, initialValues, form, initialAssignee, collaborators, selectedTemplateId]);
+
+  const activeAssignee = useMemo<CollaboratorUser | null>(() => {
+    if (selectedAssigneeId) {
+      const found = collaborators.find((c) => c.id === selectedAssigneeId);
+      if (found) return found;
+    }
+    if (initialAssignee?.id) {
+      return initialAssignee;
+    }
+    return collaborators[0] || null;
+  }, [selectedAssigneeId, collaborators, initialAssignee]);
 
   const handleSubmit = async () => {
     try {
@@ -97,6 +141,16 @@ export function CoordinationTaskCardModal({
         mimeType: f.type,
       }));
 
+      const targetAssigneeId =
+        activeAssignee?.id || initialAssignee?.id || values.assigneeId;
+      const targetAssigneeName =
+        activeAssignee?.username || initialAssignee?.username;
+
+      if (!targetAssigneeId) {
+        message.warning('请选择审批/承办人后再提交');
+        return;
+      }
+
       let title = values.title;
       let content = values.content;
       let taskType = values.taskType || currentTemplate?.taskType || 'approval';
@@ -107,7 +161,7 @@ export function CoordinationTaskCardModal({
         const payload = buildDynamicWorkflowCardPayload(
           currentTemplate,
           values,
-          initialAssignee
+          activeAssignee
         );
         title = payload.title;
         content = payload.content;
@@ -116,9 +170,38 @@ export function CoordinationTaskCardModal({
         markdownCard = payload.markdownCard;
       }
 
+      const isNdaWorkflow =
+        currentTemplate?.workflowId === 'legal.nda.generation_and_review_flow' ||
+        selectedTemplateId === 'legal.nda.generation_and_review_flow';
+
+      if (isNdaWorkflow) {
+        const partyA = parameters['partyA.name'] || '相对方企业';
+        const partyAAddr = parameters['partyA.address'] ? `${parameters['partyA.address']}的 ` : '';
+        const partyB = parameters['partyB.name'] || '富士通 ( 中国 ) 信息系統有限公司';
+        const subject = parameters['cooperation.subject'] || '业务合作';
+        const duration = parameters['confidentiality.durationYears'] || 3;
+
+        // 纯净直通：将参数存入专用的 workflowParameters 管道，不触发输入框引用条
+        setPendingWorkflowParameters(parameters);
+
+        const commandMessage = `!保密合同 我需要的${partyAAddr}${partyA}，签订关于 ${subject} 的保密协议，保密期限${duration}年，签订日期是今天，我们是乙方 ${partyB}`;
+
+        message.loading({
+          content: `正在调度专属技能生成「${partyA}」保密合同初稿并进入业务确认流...`,
+          key: 'nda-generating',
+          duration: 3,
+        });
+
+        form.resetFields();
+        setFileList([]);
+        onSuccess(null as any, commandMessage);
+        onClose();
+        return;
+      }
+
       const created = await workbenchCoordinationApi.createTask({
-        assigneeId: initialAssignee?.id || values.assigneeId,
-        assigneeName: initialAssignee?.username,
+        assigneeId: targetAssigneeId,
+        assigneeName: targetAssigneeName,
         workflowId: currentTemplate?.workflowId,
         parameters,
         taskType,
@@ -132,7 +215,7 @@ export function CoordinationTaskCardModal({
 
       message.success(
         `已成功发起业务协同「${created.title}」，已推送至 @${
-          initialAssignee?.username || '担当人'
+          targetAssigneeName || '担当人'
         } 的工作待办`
       );
       form.resetFields();
@@ -186,44 +269,54 @@ export function CoordinationTaskCardModal({
       confirmLoading={isSubmitting}
       okText={currentTemplate ? `发布【${currentTemplate.name}】` : '发布协同任务'}
       cancelText="取消"
-      width={520}
+      width={720}
       destroyOnClose
     >
-      {initialAssignee ? (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '5px 10px',
-            background: 'rgba(22, 119, 255, 0.05)',
-            borderRadius: 6,
-            marginBottom: 12,
-            fontSize: 12,
-          }}
-        >
-          <Space size={6} align="center">
-            <span style={{ color: 'var(--ant-color-text-secondary)' }}>审批 / 承办人:</span>
-            <Tag color="blue" style={{ margin: 0, fontSize: 12, borderRadius: 10, padding: '0 6px' }}>
-              @{initialAssignee.username} ({initialAssignee.email || '协同成员'})
-            </Tag>
-          </Space>
-          {currentTemplate?.description ? (
-            <span
-              style={{
-                color: 'var(--ant-color-text-tertiary)',
-                maxWidth: 240,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-              title={currentTemplate.description}
-            >
-              {currentTemplate.description}
-            </span>
-          ) : null}
-        </div>
-      ) : null}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '7px 12px',
+          background: 'rgba(22, 119, 255, 0.05)',
+          border: '1px solid rgba(22, 119, 255, 0.12)',
+          borderRadius: 6,
+          marginBottom: 12,
+          fontSize: 12,
+        }}
+      >
+        <Space size={8} align="center">
+          <span style={{ color: 'var(--ant-color-text-secondary)', fontWeight: 500 }}>
+            审批 / 承办人:
+          </span>
+          <Select
+            size="small"
+            style={{ minWidth: 200 }}
+            value={activeAssignee?.id}
+            onChange={(val) => setSelectedAssigneeId(val)}
+            placeholder="请选择审批 / 承办人"
+            options={collaborators.map((c) => ({
+              label: `@${c.username}${c.departmentName ? ` (${c.departmentName})` : ''}`,
+              value: c.id,
+            }))}
+          />
+        </Space>
+        {currentTemplate?.description ? (
+          <span
+            style={{
+              color: 'var(--ant-color-text-tertiary)',
+              maxWidth: 360,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              fontSize: 12,
+            }}
+            title={currentTemplate.description}
+          >
+            {currentTemplate.description}
+          </span>
+        ) : null}
+      </div>
 
       <Form
         form={form}

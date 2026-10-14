@@ -238,6 +238,14 @@ export class ChatController {
     @Req() req: Request & { traceId?: string },
     @Res() res: Response
   ): Promise<void> {
+    const resolvedUser = await this.chatOrchestratorService.resolveAuthenticatedUser(
+      req.headers.authorization
+    );
+    const userId = this.resolveUserIdFromRequest(req, resolvedUser.userId);
+    if (!userId) {
+      throw new UnauthorizedException('登录凭证已失效或未提供，请登录后再进行会话交互');
+    }
+
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -272,12 +280,9 @@ export class ChatController {
       return;
     }
 
-    const resolvedUser = await this.chatOrchestratorService.resolveAuthenticatedUser(
-      req.headers.authorization
-    );
     const mode: 'chat' | 'task' = parsed.mode;
     const userCtx = {
-      userId: resolvedUser.userId,
+      userId,
       organizationId: resolvedUser.organizationId,
       role: resolvedUser.userRoles?.includes('admin') ? 'admin' : undefined,
       mode,
@@ -303,11 +308,6 @@ export class ChatController {
 
     try {
       if (mode === 'chat') {
-        const resolvedUser = await this.chatOrchestratorService.resolveAuthenticatedUser(
-          req.headers.authorization
-        );
-        const userId = resolvedUser.userId || 'admin';
-
         const shouldBypassSandbox =
           body.sessionId?.startsWith('office-') ||
           (body.config as any)?.source === 'office-addin' ||
@@ -455,7 +455,10 @@ export class ChatController {
     const resolvedUser = await this.chatOrchestratorService.resolveAuthenticatedUser(
       req.headers.authorization
     );
-    const userId = resolvedUser.userId || 'admin';
+    const userId = this.resolveUserIdFromRequest(req, resolvedUser.userId);
+    if (!userId) {
+      throw new UnauthorizedException('登录凭证已失效或未提供，请登录后操作');
+    }
     await this.userSandboxDispatcherService.stopPersonalSandbox(userId, body?.sessionId, body?.executionId);
     return { success: true, message: 'Chat execution stopped successfully' };
   }
@@ -486,6 +489,14 @@ export class ChatController {
       };
     }
 
+    const resolvedUser = await this.chatOrchestratorService.resolveAuthenticatedUser(
+      req.headers.authorization
+    );
+    const userId = this.resolveUserIdFromRequest(req, resolvedUser.userId);
+    if (!userId) {
+      throw new UnauthorizedException('登录凭证已失效或未提供，请登录后再进行会话交互');
+    }
+
     const mode: 'chat' | 'task' = parsed.mode;
     body = {
       ...body,
@@ -496,11 +507,8 @@ export class ChatController {
       },
     };
 
-    const resolvedUser = await this.chatOrchestratorService.resolveAuthenticatedUser(
-      req.headers.authorization
-    );
     const userCtx = {
-      userId: resolvedUser.userId,
+      userId,
       organizationId: resolvedUser.organizationId,
       role: resolvedUser.userRoles?.includes('admin') ? 'admin' : undefined,
       mode,
@@ -783,12 +791,19 @@ export class ChatController {
       fileFilter: (req: any, file, callback) => {
         const ext = path.extname(file.originalname).toLowerCase();
         const allowedExtensions = new Set([
+          // Images & Icons
           '.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg', '.bmp', '.dib', '.tiff', '.tif', '.ico', '.avif', '.heic', '.heif', '.emf', '.wmf',
+          // Audio
           '.mp3', '.wav', '.webm', '.ogg', '.m4a',
-          '.pdf', '.txt', '.md', '.csv', '.json',
+          // Documents & Data
+          '.pdf', '.txt', '.md', '.csv', '.tsv', '.json', '.jsonl', '.xml',
           '.docx', '.xlsx', '.pptx', '.doc', '.xls', '.ppt',
+          // Code, Scripts, Logs & Configs (DevOps / Tech Assistant)
+          '.log', '.sql', '.sh', '.bash', '.zsh', '.py', '.js', '.ts', '.tsx', '.jsx',
+          '.yaml', '.yml', '.conf', '.ini', '.env', '.toml', '.properties',
         ]);
-        if (!allowedExtensions.has(ext)) {
+        const isDockerfile = file.originalname.toLowerCase() === 'dockerfile' || file.originalname.toLowerCase().startsWith('dockerfile.');
+        if (!allowedExtensions.has(ext) && !isDockerfile) {
           req.fileValidationError = `Unsupported file type extension: ${ext || 'none'}`;
           return callback(null, false);
         }

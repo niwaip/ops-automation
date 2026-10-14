@@ -441,6 +441,10 @@ export interface RecorderDebugSession {
   backend: 'cli' | 'chrome-devtools' | 'mcp';
   browserInitialized: boolean;
   currentPageUrl?: string;
+  endpoints?: {
+    novnc?: string;
+    cdp?: string;
+  };
   lastObservation?: RecorderDebugObservation;
   activeContainer?: RecorderActiveContainerInfo;
   loopDraft?: RecorderLoopDraft;
@@ -515,6 +519,10 @@ export interface RecorderDebugChatResponse {
   execution?: BrowserExecuteResponse;
   outcomeVersion?: 'v1';
   outcome?: RecorderOutcome;
+  endpoints?: {
+    novnc?: string;
+    cdp?: string;
+  };
   exportArtifacts?: RecorderDebugExportArtifacts;
   loopDraft?: RecorderLoopDraft;
   loopState?: RecorderLoopRuntimeStateLike;

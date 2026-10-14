@@ -290,6 +290,10 @@ export interface RecorderDebugChatResponse {
   loopState?: RecorderLoopState;
   outcomeVersion?: 'v1';
   outcome?: RecorderOutcome;
+  endpoints?: {
+    novnc?: string;
+    cdp?: string;
+  };
 }
 
 export interface TemplateInfo {

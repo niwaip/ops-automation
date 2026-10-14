@@ -41,10 +41,12 @@ STOP_WORDS = {
     '帮', '请', '个', '把', '向', '到', '用', '为', '被', '给', '让', '得', '地',
     '一下', '看看', '了解', '分析', '研究', '这篇文章', '这段话', '这个', '那个', '什么', '怎么',
     '如何', '为什么', '有没有', '对比', '以前', '最近', '现在', '今天', '一个', '一份', '一张',
-    '意思', '逻辑', '业务', '语法', '英文', '不同', '解释'
+    '意思', '逻辑', '业务', '语法', '英文', '不同', '解释',
+    '生成', '要生', '要生成', '不要', '不用', '严禁', '禁止', '无需', '切勿', '必须', '需要', '使用',
+    '提供', '支持', '进行', '以及', '或者', '还有', '可以', '能够', '即可', '通过', '完成', '用于'
 }
 
-GENERIC_VERBS = {'生成', '制作', '创建', '做', '写', '导出', '设计', '开发', '处理', '新建'}
+GENERIC_VERBS = {'生成', '制作', '创建', '做', '写', '导出', '设计', '开发', '处理', '新建', '使用', '提供'}
 
 SEND_PATTERNS = [
     "通过微信发送", "发送到微信", "发到微信", "发我微信", "微信发我",
@@ -107,9 +109,47 @@ TEXT_ONLY_ACTION_TARGETS = [
 
 PHYSICAL_DELIVERABLE_TARGETS = [
     ".pdf", ".docx", ".xlsx", ".pptx", ".html", ".csv", ".json", ".md", ".png", ".jpg", ".jpeg",
+    ".sql", ".sh", ".yml", ".yaml", "dockerfile", "docker-compose", "docker-compose.yml",
     "pdf", "word", "excel", "ppt", "html", "markdown", "md文件", "md 文件", "表格", "幻灯片", "演示文稿", "报表",
     "图片", "海报", "图", "代码文件", "脚本", "落地文件", "物理文件", "本地文件", "单页", "原型", "看板", "网页", "单页报告"
 ]
+
+
+def is_text_only_request(query: str) -> bool:
+    """Detects whether user prompt explicitly requests answer strictly within chat/text and forbids physical files or script generation."""
+    if not query:
+        return False
+    lower = query.lower().strip()
+
+    # 明确要求只在聊天/正文解答且不生成文件
+    if re.search(r'(?:只|仅)(?:在|通过)?(?:聊天|对话|正文|窗口)(?:中|里)?(?:输出|解答|回答|呈现|对比)', lower):
+        if re.search(r'(?:不要|严禁|无需|不用|禁止|切勿)\s*(?:生成|制作|下载|导出|创建|落盘)', lower):
+            return True
+        if "不要生成" in lower or "不生成" in lower:
+            return True
+
+    # 明确否定任何文件/脚本落盘
+    if re.search(r'(?:不要|严禁|无需|不用|禁止|切勿)\s*(?:生成|制作|下载|导出|创建|落盘)\s*(?:任何|多余的|其他的)?\s*(?:物理)?(?:文件|脚本|产物)', lower):
+        return True
+
+    return False
+
+
+def is_term_negated(query: str, term: str) -> bool:
+    """Checks whether a deliverable term (e.g. ppt, html, excel) appears inside a negative constraint like '不要生成多余的 HTML 或 PPT'."""
+    if not query or not term:
+        return False
+    lower = query.lower()
+    t_lower = term.lower().strip()
+    if len(t_lower) < 2:
+        return False
+
+    prefix = r'(?:(?:不要|严禁|无需|不用|不需要|禁止|切勿|免于)\s*(?:生成|制作|下载|导出|创建|输出|做|提供|落盘)|(?:不生成|不要生成|不要制作|不要导出|不要做|不提供|不输出|不下载|不用下载|无需下载))\s*(?:任何|多余的|其他的)?\s*[^，。！？；\n]*'
+    neg_pattern = prefix + r'\b' + re.escape(t_lower)
+    if re.search(neg_pattern, lower):
+        return True
+    neg_cjk_pattern = prefix + re.escape(t_lower)
+    return bool(re.search(neg_cjk_pattern, lower))
 
 
 def check_generation_target_is_physical(lower_q: str) -> bool:
@@ -117,6 +157,14 @@ def check_generation_target_is_physical(lower_q: str) -> bool:
     Distinguishes whether a generative action targets a physical file deliverable
     (.pdf, .docx, .xlsx, .pptx, etc.) or pure in-chat textual content (summary, outline, advice).
     """
+    if is_text_only_request(lower_q):
+        return False
+
+    is_markdown_table = (
+        re.search(r'(?:markdown|文本|聊天|对话|正文)?\s*(?:对比表格|表格对比|markdown\s*表格)', lower_q)
+        and not any(ext in lower_q for ext in [".xlsx", ".xls", "excel", "工作簿", "导出表格", "下载表格", "生成表格文件"])
+    )
+
     if (
         re.search(r'(?:一页|单页|single[- ]page)', lower_q, re.I)
         and re.search(r'(?:报告|报表|report)', lower_q, re.I)
@@ -124,21 +172,41 @@ def check_generation_target_is_physical(lower_q: str) -> bool:
         return True
 
     # 组合与交付物特征模式：[动词] + 成/为 + [量词] + [物理格式] 或 [量词] + [物理格式]
-    if re.search(r'(?:成|为)\s*(?:一份|一个|一张|一套)?\s*(?:ppt|word|pdf|excel|html|幻灯片|演示文稿|表格|文档|报表)', lower_q):
-        return True
-    if re.search(r'(?:一张|一份|一个|一套)\s*(?:ppt|word|pdf|excel|html|幻灯片|演示文稿|表格|文档|报表)', lower_q):
-        return True
+    if re.search(r'(?:成|为)\s*(?:一份|一个|一张|一套)?\s*(?:ppt|word|pdf|excel|html|幻灯片|演示文稿|表格|文档|报表|脚本|dockerfile)', lower_q):
+        m_verb = re.search(r'(?:成|为)\s*(?:一份|一个|一张|一套)?\s*([a-zA-Z0-9_\-\u4e00-\u9fa5\.]+)', lower_q)
+        target_verb = m_verb.group(1).strip() if m_verb else ""
+        if target_verb == "表格" and is_markdown_table:
+            pass
+        elif not is_term_negated(lower_q, target_verb):
+            return True
+
+    if re.search(r'(?:一张|一份|一个|一套)\s*(?:ppt|word|pdf|excel|html|幻灯片|演示文稿|表格|文档|报表|脚本|dockerfile)', lower_q):
+        m_quant = re.search(r'(?:一张|一份|一个|一套)\s*([a-zA-Z0-9_\-\u4e00-\u9fa5\.]+)', lower_q)
+        target_quant = m_quant.group(1).strip() if m_quant else ""
+        if target_quant == "表格" and is_markdown_table:
+            pass
+        elif not is_term_negated(lower_q, target_quant):
+            return True
 
     # 查找生成动词后紧随的目标词
     m = re.search(r'(?:生成|导出|制作|创建|做|写|输出为|保存为|转为|转成|输出|汇总成|总结成|整理成|归纳成|做成|制成|提炼成|排版成|编成)\s*(?:一份|一个|一张|一套|一段|出|成|为)?\s*([a-zA-Z0-9_\-\u4e00-\u9fa5\.]+)', lower_q)
+    valid_cues = [".pdf", ".docx", ".xlsx", ".pptx", ".html", ".md", ".sql", ".sh", ".yml", ".yaml", "dockerfile", "docker-compose", "word", "excel", "ppt", "html", "markdown", "md 文件", "导出为", "保存为"]
     if not m:
-        return any(p in lower_q for p in [".pdf", ".docx", ".xlsx", ".pptx", ".html", ".md", "word", "excel", "ppt", "html", "markdown", "md 文件", "导出为", "保存为"])
+        return any(p in lower_q and not is_term_negated(lower_q, p) for p in valid_cues)
+
     target = m.group(1).strip()
-    has_physical = any(p in target for p in PHYSICAL_DELIVERABLE_TARGETS) or any(ext in lower_q for ext in [".pdf", ".docx", ".xlsx", ".pptx", ".html", ".md", "word", "excel", "ppt", "html", "markdown", "md 文件", "导出为", "保存为"])
+    if is_term_negated(lower_q, target):
+        return False
+    if target == "表格" and is_markdown_table:
+        return False
+
+    has_physical = (
+        (any(p in target for p in PHYSICAL_DELIVERABLE_TARGETS) and not is_term_negated(lower_q, target))
+        or any(ext in lower_q and not is_term_negated(lower_q, ext) for ext in valid_cues)
+    )
     has_text_only = any(t in target for t in TEXT_ONLY_ACTION_TARGETS)
     if has_text_only and not any(p in target for p in PHYSICAL_DELIVERABLE_TARGETS):
-        # 即使整句有通用词（如查看文档），若生成部分紧接纯文本目标且无显式物理介质词
-        if not any(ext in lower_q for ext in [".pdf", ".docx", ".xlsx", ".pptx", ".html", ".md", "word", "excel", "ppt", "html", "markdown", "md 文件", "保存为", "导出为", "另存为", "写成文件", "生成文件"]):
+        if not any(ext in lower_q and not is_term_negated(lower_q, ext) for ext in valid_cues + ["保存为", "导出为", "另存为", "写成文件", "生成文件"]):
             return False
     return has_physical
 
@@ -154,6 +222,11 @@ def resolve_file_action_intent(query: str, history: Optional[List[Dict[str, Any]
 
     lower_q = query.lower().strip()
 
+    # 0. 明确纯文本请求或否定生成物理文件指令
+    if is_text_only_request(lower_q):
+        has_inspect = any(k in lower_q for k in INSPECT_ACTION_PATTERNS) or any(k in lower_q for k in CONTENT_QUERY_PATTERNS)
+        return False, has_inspect
+
     # 1. 显式生成类 Slash 命令（确定性 100% 具有产物生成交付意图）
     if lower_q.startswith(("/", "／")):
         cmd = lower_q.split()[0].lstrip("/／")
@@ -163,7 +236,11 @@ def resolve_file_action_intent(query: str, history: Optional[List[Dict[str, Any]
     # 2. 基础谓词模式检测
     has_inspect = any(k in lower_q for k in INSPECT_ACTION_PATTERNS) or any(k in lower_q for k in CONTENT_QUERY_PATTERNS)
     has_summary = any(k in lower_q for k in READONLY_SUMMARY_PATTERNS)
-    has_generate = any(k in lower_q for k in GENERATE_ACTION_PATTERNS)
+    # 过滤掉处于否定从句中的生成动词（如“不要生成”、“无需制作”）
+    has_generate = any(
+        k in lower_q and not re.search(r'(?:不要|严禁|无需|不用|禁止|切勿|免于)\s*(?:生成|制作|下载|导出|创建|做)?\s*' + re.escape(k), lower_q)
+        for k in GENERATE_ACTION_PATTERNS
+    )
 
     # 3. 语法结构与消歧分析
     if (has_inspect or has_summary) and not has_generate:
@@ -374,7 +451,8 @@ class SemanticSkillMatcher:
             triggers = [t.lower() for t in s.get('triggers', []) if len(t) >= 2]
             aliases = [a.lower() for a in s.get('aliases', []) if len(a) >= 2]
             desc_text = s.get('description', '')
-            desc_features = extract_query_features(desc_text)
+            pos_desc = desc_text.split('不要用于', 1)[0].split('not for', 1)[0]
+            desc_features = [f for f in extract_query_features(pos_desc) if f not in GENERIC_VERBS and f not in STOP_WORDS]
             neg_features = []
             if '不要用于' in desc_text:
                 neg_part = desc_text.split('不要用于', 1)[1]
@@ -415,6 +493,8 @@ class SemanticSkillMatcher:
 
             # 1. Exact Trigger Matches (from SKILL.md frontmatter)
             for trig in data['triggers']:
+                if is_term_negated(lower_q, trig):
+                    continue
                 if trig in lower_q or trig in cleaned_q or trig in normalized_q_no_de:
                     t_score = 12.0 + len(trig) * 1.5
                     score += t_score
@@ -422,9 +502,13 @@ class SemanticSkillMatcher:
                     break
 
             # 2. Skill ID or Alias Direct Mention
-            if s_id in lower_q or any(a in lower_q for a in data['aliases']):
-                score += 12.0
-                reasons.append('id/alias(+12.0)')
+            for a in [s_id] + data['aliases']:
+                if is_term_negated(lower_q, a):
+                    continue
+                if a in lower_q:
+                    score += 12.0
+                    reasons.append(f'id/alias:{a}(+12.0)')
+                    break
 
             # 3. Description Semantic Overlap (weighted by IDF)
             matched_desc_terms = [f for f in q_features if f in data['desc_features']]
@@ -439,6 +523,33 @@ class SemanticSkillMatcher:
                 if neg_matches:
                     score *= 0.25
                     reasons.append(f'boundary_penalty({neg_matches})')
+
+            # 5. Text-Only Request Suppression for Physical Document Skills
+            if is_text_only_request(lower_q):
+                physical_skills = {"docx", "xlsx", "pdf", "guizang-ppt", "pptx", "html-ppt", "saas-landing", "frontend-design", "web-prototype"}
+                if s_id in physical_skills:
+                    score = 0.0
+                    reasons = ['text_only_suppressed']
+
+            # 6. Explicit User Negation for Skill (e.g. 不要生成PPT/HTML)
+            is_skill_negated = any(
+                is_term_negated(lower_q, t) for t in data['triggers'] + data['aliases'] + [s_id]
+            )
+            if is_skill_negated:
+                score = 0.0
+                reasons = ['skill_explicitly_negated']
+
+            # 7. Document generation skills require at least one trigger or alias cue in query
+            doc_skills = {"pdf", "xlsx", "docx", "guizang-ppt", "html-ppt"}
+            if s_id in doc_skills:
+                has_doc_cue = (
+                    any(c in lower_q for c in data['triggers'] + data['aliases'] + [s_id])
+                    or any(c in cleaned_q for c in data['triggers'] + data['aliases'] + [s_id])
+                    or any(c in normalized_q_no_de for c in data['triggers'] + data['aliases'] + [s_id])
+                )
+                if not has_doc_cue:
+                    score = 0.0
+                    reasons = ['missing_explicit_doc_cue']
 
             results.append((s_id, score, reasons))
 
@@ -589,7 +700,10 @@ class SkillRouter:
             if all_skills:
                 matcher = SemanticSkillMatcher(all_skills)
                 semantic_query = effective_query
-                EXPLICIT_FORMAT_CUES = [".pdf", ".docx", ".xlsx", ".pptx", ".html", "pdf", "word", "excel", "ppt", "表格", "幻灯片", "演示文稿", "报表", "海报", "图片", "代码"]
+                EXPLICIT_FORMAT_CUES = [
+                    ".pdf", ".docx", ".xlsx", ".pptx", ".html", ".md",
+                    "pdf", "word", "excel", "ppt", "表格", "幻灯片", "演示文稿", "报表", "海报", "图片", "代码", "markdown", "md"
+                ]
                 has_explicit_format = any(fmt in lower_query for fmt in EXPLICIT_FORMAT_CUES)
                 if attached_files and not has_explicit_format:
                     semantic_query = f"{effective_query} {' '.join(attached_files)}"
@@ -618,8 +732,24 @@ class SkillRouter:
                             result.skill_id = top_id
                             result.affinity_score = top_score
                             result.matched_reasons = top_reasons
+                    elif top_id == "html-ppt":
+                        # consulting-deck 技能门禁：必须包含明确的咨询/Deck意图，防止普通会议纪要或行动清单误触
+                        HTML_PPT_INTENT = [
+                            "consulting", "deck", "html deck", "html slides", "咨询", "html ppt", "html-ppt", "consulting-final-deck"
+                        ]
+                        has_html_ppt_intent = any(p in lower_query for p in HTML_PPT_INTENT)
+                        if has_html_ppt_intent and top_score >= cls.AFFINITY_THRESHOLD:
+                            result.skill_id = top_id
+                            result.affinity_score = top_score
+                            result.matched_reasons = top_reasons
                     else:
-                        if top_score >= cls.AFFINITY_THRESHOLD:
+                        from .deliverable_contract import requests_markdown_artifact
+                        is_explicit_markdown = requests_markdown_artifact(effective_query)
+                        is_slide_or_ui = top_id in ("frontend-design", "guizang-ppt")
+                        has_slide_intent = any(k in lower_query for k in ["ppt", "slides", "deck", "幻灯片", "演示文稿", "html", "网页", "交互式", "ui"])
+                        if is_explicit_markdown and is_slide_or_ui and not has_slide_intent:
+                            pass
+                        elif top_score >= cls.AFFINITY_THRESHOLD:
                             result.skill_id = top_id
                             result.affinity_score = top_score
                             result.matched_reasons = top_reasons
@@ -716,9 +846,17 @@ class SkillRouter:
 
                     # 核心解耦规则：仅当用户意图属于产物生成/输出时，才绑定交付物契约与执行强制要求。
                     # 当用户为纯查阅、阅读、分析、检查已有文件时，保留技能参考上下文，但不强制产物物理交付闭环。
-                    if result.is_generate_intent:
-                        result.deliverables = skill_delivs
-                        result.requires_execution = skill_req_exec
+                    if is_text_only_request(lower_query):
+                        result.deliverables = []
+                        result.requires_execution = False
+                        result.default_rounds = min(skill_rounds, 3) if skill_rounds > 0 else 2
+                    elif result.is_generate_intent:
+                        result.deliverables = [
+                            d for d in skill_delivs
+                            if not is_term_negated(lower_query, d)
+                            and not is_term_negated(lower_query, d.lstrip("."))
+                        ]
+                        result.requires_execution = skill_req_exec and bool(result.deliverables)
                         result.default_rounds = skill_rounds
                     elif result.is_inspect_intent:
                         result.deliverables = []
@@ -734,6 +872,28 @@ class SkillRouter:
             reasons_info = f" (亲和度得分: {result.affinity_score:.1f})" if result.affinity_score > 0 else ""
             print(f"🎯 [Skill Router] 命中意图规范: {result.skill_id}{reasons_info}，正在注入专业规范...", flush=True)
             result.skill_context = read_skill(result.skill_id, prompt=effective_query)
+
+        # 8. 探测技术脚本与配置交付物意图 (Dockerfile, docker-compose, *.sh, *.sql, *.py)
+        if not is_text_only_request(lower_query):
+            tech_delivs = []
+            if not is_term_negated(lower_query, "dockerfile") and re.search(r'\bdockerfile\b', lower_query):
+                tech_delivs.append("Dockerfile")
+            if not is_term_negated(lower_query, "docker-compose") and re.search(r'\bdocker-compose(?:\.ya?ml)?\b', lower_query):
+                tech_delivs.append("docker-compose.yml")
+            if not is_term_negated(lower_query, "脚本") and not is_term_negated(lower_query, ".sh"):
+                for sh_m in re.findall(r'[\"“\'‘`「]?([a-zA-Z0-9_\-]+\.sh)[\"”\'’`」]?', effective_query):
+                    tech_delivs.append(sh_m)
+            if not is_term_negated(lower_query, ".sql") and not is_term_negated(lower_query, "sql"):
+                for sql_m in re.findall(r'[\"“\'‘`「]?([a-zA-Z0-9_\-]+\.sql)[\"”\'’`」]?', effective_query):
+                    tech_delivs.append(sql_m)
+            if not is_term_negated(lower_query, ".py") and not is_term_negated(lower_query, "python"):
+                for py_m in re.findall(r'[\"“\'‘`「]?([a-zA-Z0-9_\-]+\.py)[\"”\'’`」]?', effective_query):
+                    tech_delivs.append(py_m)
+            if tech_delivs and any(p in lower_query for p in ["下载", "物理文件", "可下载", "生成", "编写", "创建", "提供"]):
+                for td in tech_delivs:
+                    if td not in result.deliverables:
+                        result.deliverables.append(td)
+                result.is_generate_intent = True
 
         if result.is_research_intent or result.skill_id == "research" or allow_research:
             result.is_inspect_intent = False

@@ -91,8 +91,8 @@ export interface CoordinationActionRecord {
 
 export class CreateCoordinationTaskDto {
   @IsString()
-  @IsNotEmpty()
-  assigneeId!: string;
+  @IsOptional()
+  assigneeId?: string;
 
   @IsString()
   @IsOptional()
@@ -152,6 +152,10 @@ export interface WorkflowTemplateDto {
       {
         type: 'string' | 'number' | 'date' | 'boolean';
         description: string;
+        displayName?: string;
+        groupLabel?: string;
+        renderPath?: string;
+        extractionPrompt?: string;
         required?: boolean;
         default?: any;
         enum?: Array<string | number>;

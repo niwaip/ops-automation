@@ -29,18 +29,38 @@ import { useExecutionListTableProps } from '@/features/executions/list/hooks/use
 import { useExecutionListToolbarProps } from '@/features/executions/list/hooks/useExecutionListToolbarProps';
 import {
   EXECUTION_STATUS_COLORS,
+  EXECUTION_STATUS_LABELS_EN,
   EXECUTION_STATUS_LABELS_ZH,
 } from '@/shared/constants/executionStatusMeta';
 import { usePreferencesStore } from '@/shared/store/preferencesStore';
 import styles from './ExecutionListPage.module.css';
 
 const statusColors = EXECUTION_STATUS_COLORS;
-const statusLabels = EXECUTION_STATUS_LABELS_ZH;
+
+const EXECUTION_STATUS_LABELS_JA: Record<string, string> = {
+  draft: '下書き',
+  queued: '待機中',
+  running: '実行中',
+  waiting_input: '入力待ち',
+  pending_approval: '承認待ち',
+  human_control: '手動介入',
+  paused: '一時停止',
+  succeeded: '完了',
+  failed: '失敗',
+  cancelled: 'キャンセル済',
+  rolled_back: 'ロールバック済',
+};
 
 const ExecutionListPage: React.FC = () => {
   const navigate = useNavigate();
   const theme = usePreferencesStore((state) => state.theme);
+  const language = usePreferencesStore((state) => state.language);
   const isDarkTheme = theme === 'dark';
+  const statusLabels = useMemo(() => {
+    if (language === 'en-US') return EXECUTION_STATUS_LABELS_EN;
+    if (language === 'ja-JP') return EXECUTION_STATUS_LABELS_JA;
+    return EXECUTION_STATUS_LABELS_ZH;
+  }, [language]);
   const {
     page,
     setPage,
@@ -142,7 +162,7 @@ const ExecutionListPage: React.FC = () => {
         statusLabels,
         onOpenDetailPage: (id) => navigate(`/executions/${id}`),
       }),
-    [getSkillDisplayName, navigate]
+    [getSkillDisplayName, navigate, statusLabels]
   );
   const tableProps = useExecutionListTableProps({
     columns,

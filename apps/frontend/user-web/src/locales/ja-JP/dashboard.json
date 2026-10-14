@@ -1,1 +1,68 @@
-{}
+{
+  "title": "ワークベンチ",
+  "subtitle": "タスク計画と業務協同のハブ",
+  "refresh": "更新",
+  "refresh_success": "最新のタスク状況に更新しました",
+  "refresh_error": "更新に失敗しました。後でもう一度お試しください",
+  "clear_test_data": "テストデータをクリア",
+  "clear_confirm_title": "テストデータをクリア",
+  "clear_confirm_desc": "GTD受信トレイとタスクデータをすべてクリアしますか？主にシステムテストとデータリセット用です。",
+  "confirm_clear": "クリア実行",
+  "summary": {
+    "inbox_unprocessed": "未整理受信箱",
+    "pending_todos": "未対応タスク",
+    "completed_today": "本日完了",
+    "completed_week": "今週完了",
+    "scheduled_tasks": "定期タスク",
+    "todo_completed_count": "タスク完了：",
+    "exec_completed_count": "自動実行完了：",
+    "workflow_duty": "業務フロー当番",
+    "reminders": "メッセージ・リマインダー",
+    "single_reminder": "単発リマインダー",
+    "workdays": "平日",
+    "no_scheduled": "有効な定期タスクやリマインダーはありません"
+  },
+  "inbox": {
+    "title": "GTD 収集ボックス",
+    "clarified_archived": "整理済/アーカイブ",
+    "all": "すべて",
+    "pending_intervention": "要対応",
+    "pending_clarification": "要整理",
+    "placeholder": "メモや要点をクイック収集（Enterで保存、Shift+Enterで改行）...",
+    "collect_btn": "収集",
+    "sync_email_btn": "メール受信",
+    "refresh_inbox": "収集ボックスを更新",
+    "refresh_success": "GTD収集ボックスを更新しました",
+    "empty": "このステータスの項目はありません (Inbox Zero)"
+  },
+  "todo": {
+    "title": "アクションカンバン",
+    "pending": "未着手",
+    "overdue": "期限超過",
+    "completed": "完了",
+    "delegated": "送信済",
+    "finished": "終了",
+    "all": "すべて",
+    "refresh_todo": "カンバンを更新",
+    "refresh_success": "アクションカンバンを更新しました",
+    "placeholder": "新規タスクを追加（Enterで作成、複数行貼り付け対応）...",
+    "add_btn": "追加",
+    "ai_plan": "AI 計画",
+    "new_execution": "新規実行",
+    "empty": "一致するタスクはありません。上部から追加するか、左側の「GTD収集ボックス」からタスクに変換できます。"
+  },
+  "recent_executions": {
+    "title": "最近完了",
+    "view_all": "一覧を見る",
+    "empty": "正常に完了した実行はまだありません"
+  },
+  "summary_card": {
+    "title": "AI 業務振り返り",
+    "daily": "本日まとめ",
+    "weekly": "今週まとめ",
+    "generate": "今すぐ生成",
+    "regenerate": "再生成",
+    "generating": "生成中...",
+    "updated_at": "更新："
+  }
+}

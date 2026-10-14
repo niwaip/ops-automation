@@ -1,1 +1,14 @@
-{}
+{
+  "preview_title": "通知预览",
+  "unread_count": "未读 {{count}} 条",
+  "no_unread": "当前没有未读通知",
+  "mark_all_read": "全部已读",
+  "view_all": "查看全部",
+  "just_now": "刚刚",
+  "minutes_ago": "{{count}} 分钟前",
+  "today": "今天",
+  "notification_time": "通知时间：",
+  "page_title": "通知中心",
+  "page_subtitle": "聚合普通用户可见的执行通知与提醒",
+  "refresh": "刷新"
+}

@@ -10,6 +10,7 @@ export const ROUTING_SIGNAL_GROUPS = [
   'summarize',
   'markdown',
   'uncoveredAction',
+  'capabilityInquiry',
 ] as const;
 
 export type RoutingSignalGroup = (typeof ROUTING_SIGNAL_GROUPS)[number];

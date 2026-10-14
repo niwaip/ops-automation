@@ -62,13 +62,16 @@ def ai_start(url="about:blank"):
         os.environ["DISPLAY"] = ":99"
         chrome_executable = resolve_chrome_executable()
 
+        screen_w = os.environ.get("SCREEN_WIDTH", "1280")
+        screen_h = os.environ.get("SCREEN_HEIGHT", "800")
+
         ai_playwright = sync_playwright().start()
         # Use the chromium installed via npm playwright
         ai_browser = ai_playwright.chromium.launch(
             headless=False,
             executable_path=chrome_executable,
             args=[
-                "--window-size=1920,1080",
+                f"--window-size={screen_w},{screen_h}",
                 "--no-sandbox",
                 "--disable-setuid-sandbox",
                 "--ignore-certificate-errors",
@@ -76,11 +79,13 @@ def ai_start(url="about:blank"):
                 "--disable-client-side-phishing-detection",
                 "--test-type",
                 "--safebrowsing-disable-download-protection",
+                "--font-render-hinting=medium",
+                "--enable-font-antialiasing",
                 "--disable-features=TranslateUI,VizDisplayCompositor,HttpsUpgrades,HTTPS-FirstBalancedModeAutoEnable,HTTPS-FirstModeV2ForEngagedSites",
             ]
         )
         ai_context = ai_browser.new_context(
-            viewport={"width": 1920, "height": 1080},
+            viewport={"width": int(screen_w), "height": int(screen_h)},
             ignore_https_errors=True,
         )
         ai_page = ai_context.new_page()
@@ -100,7 +105,7 @@ def ai_start(url="about:blank"):
             if result.returncode == 0 and result.stdout.strip():
                 win_id = result.stdout.strip().split('\n')[0]
                 subprocess.run(["xdotool", "windowmove", win_id, "0", "0"], capture_output=True)
-                subprocess.run(["xdotool", "windowsize", win_id, "1920", "1080"], capture_output=True)
+                subprocess.run(["xdotool", "windowsize", win_id, screen_w, screen_h], capture_output=True)
                 subprocess.run(["xdotool", "windowactivate", win_id], capture_output=True)
                 print(f"[INFO] Positioned AI browser window {win_id}")
         except Exception as e:
@@ -569,16 +574,35 @@ def ai_click_result(index=1):
                     });
                 }
 
+                // Helper to normalize canonical URL
+                function toCanonical(rawHref) {
+                    try {
+                        const u = new URL(rawHref, window.location.href);
+                        u.hash = '';
+                        ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'spm', 'from'].forEach(p => u.searchParams.delete(p));
+                        if (u.pathname.length > 1 && u.pathname.endsWith('/')) {
+                            u.pathname = u.pathname.slice(0, -1);
+                        }
+                        return u.href;
+                    } catch (e) {
+                        return (rawHref || '').trim();
+                    }
+                }
+
                 // Generic: find all visible links that look like results (in main content area)
                 if (results.length === 0) {
                     const mainContent = document.querySelector('main, #content, #main, .content, article');
                     if (mainContent) {
                         const links = mainContent.querySelectorAll('a[href]');
-                        links.forEach((link, i) => {
+                        const seenUrls = new Set();
+                        links.forEach((link) => {
                             if (isVisible(link) && link.textContent.trim().length > 10) {
+                                const canonical = toCanonical(link.href);
+                                if (!canonical || seenUrls.has(canonical)) return;
+                                seenUrls.add(canonical);
                                 results.push({
                                     type: 'generic_result',
-                                    index: i + 1,
+                                    index: results.length + 1,
                                     text: link.textContent.trim().substring(0, 50),
                                     href: link.href,
                                     rect: getRect(link)
@@ -591,14 +615,18 @@ def ai_click_result(index=1):
                 // Fallback: all visible links in page
                 if (results.length === 0) {
                     const allLinks = document.querySelectorAll('a[href]');
-                    allLinks.forEach((link, i) => {
+                    const seenUrls = new Set();
+                    allLinks.forEach((link) => {
                         if (isVisible(link) &&
                             !link.href.includes('javascript:') &&
                             !link.href.startsWith('#') &&
                             link.textContent.trim().length > 5) {
+                            const canonical = toCanonical(link.href);
+                            if (!canonical || seenUrls.has(canonical)) return;
+                            seenUrls.add(canonical);
                             results.push({
                                 type: 'fallback_link',
-                                index: i + 1,
+                                index: results.length + 1,
                                 text: link.textContent.trim().substring(0, 50),
                                 href: link.href,
                                 rect: getRect(link)

@@ -43,6 +43,7 @@ import {
 } from 'antd';
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
+import dayjs from 'dayjs';
 import { imChannelApi, type WechatChannelStatus } from '@/api';
 import XiaozhiChannelCard from '../components/XiaozhiChannelCard';
 import DingtalkChannelCard from '../components/DingtalkChannelCard';
@@ -152,11 +153,16 @@ export default function ImChannelsPage() {
   const queryClient = useQueryClient();
   const [activeChannel, setActiveChannel] = useState<ChannelType>('wechat');
   const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
+  const [isQrDismissed, setIsQrDismissed] = useState(false);
 
   const query = useQuery('wechat-channel', imChannelApi.getWechat, {
     refetchInterval: (data) =>
       data?.status === 'provisioning' || data?.status === 'connecting' ? 2000 : 10000,
   });
+
+  const isExpired = Boolean(
+    query.data?.provisioning?.expiresAt && dayjs().isAfter(dayjs(query.data.provisioning.expiresAt))
+  );
 
   const refresh = (data?: WechatChannelStatus) => {
     queryClient.setQueryData('wechat-channel', data);
@@ -596,7 +602,10 @@ export default function ImChannelsPage() {
                   type={status?.configured ? 'default' : 'primary'}
                   icon={<QrcodeOutlined />}
                   loading={provision.isLoading}
-                  onClick={() => provision.mutate()}
+                  onClick={() => {
+                    setIsQrDismissed(false);
+                    provision.mutate();
+                  }}
                   style={
                     status?.configured
                       ? undefined
@@ -940,7 +949,7 @@ export default function ImChannelsPage() {
 
       {/* 微信扫码授权弹窗 */}
       <Modal
-        open={Boolean(status?.provisioning)}
+        open={Boolean(status?.provisioning) && !isQrDismissed}
         title={
           <Space align="center" size={10}>
             <WechatOutlined style={{ color: '#07c160', fontSize: 20 }} />
@@ -948,18 +957,26 @@ export default function ImChannelsPage() {
           </Space>
         }
         footer={[
-          <Button key="refresh" type="primary" onClick={() => query.refetch()}>
+          <Button key="cancel" onClick={() => setIsQrDismissed(true)}>
+            稍后绑定
+          </Button>,
+          <Button
+            key="refresh"
+            type="primary"
+            loading={query.isFetching}
+            onClick={() => query.refetch()}
+          >
             已完成扫码，刷新状态
           </Button>,
         ]}
-        closable={false}
-        maskClosable={false}
+        closable
+        onCancel={() => setIsQrDismissed(true)}
         centered
         width={440}
         styles={{ body: { padding: '20px 16px' } }}
       >
         <div style={{ textAlign: 'center' }}>
-          {/* 二维码始终保留纯白背景衬底，确保在深色模式下手机依然能精准扫码识别 */}
+          {/* 二维码始终保留纯白背景衬底，显式锁定前景色与背景色，确保在深色模式下手机依然能精准扫码识别 */}
           <div
             style={{
               padding: 16,
@@ -972,10 +989,25 @@ export default function ImChannelsPage() {
             }}
           >
             {status?.provisioning?.qrcodeUrl ? (
-              <QRCode size={240} value={status.provisioning.qrcodeUrl} />
+              <QRCode
+                size={240}
+                value={status.provisioning.qrcodeUrl}
+                color="#000000"
+                bgColor="#ffffff"
+                bordered={false}
+                status={isExpired ? 'expired' : undefined}
+                onRefresh={() => provision.mutate()}
+              />
             ) : (
               <div style={{ width: 240, height: 240, display: 'grid', placeItems: 'center' }}>
-                <Spin size="large" tip="正在生成授权二维码..." />
+                <Spin
+                  size="large"
+                  tip={
+                    <span style={{ color: '#475569', marginTop: 8, display: 'inline-block' }}>
+                      正在生成授权二维码...
+                    </span>
+                  }
+                />
               </div>
             )}
           </div>

@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { extractRecoveryCheckpoint } from './recovery-checkpoint.mapper';
 
 /**
@@ -668,5 +670,107 @@ export function resolvePhaseRecoveryMetadata(
   }
 
   return metadata;
+}
+
+export async function materializeMarkdownReportArtifact(params: {
+  executionId: string;
+  planDraft: any;
+  finalOutputs: Array<Record<string, any>>;
+  prisma: any;
+  eventPublisher: any;
+  logger: { log: (msg: string) => void; error?: (msg: string) => void };
+}): Promise<any | null> {
+  if (!Array.isArray(params.finalOutputs) || params.finalOutputs.length === 0) {
+    return null;
+  }
+
+  const reportOutput = params.finalOutputs.find((out) => {
+    if (!out || typeof out.value !== 'string') return false;
+    const text = out.value.trim();
+    if (text.length < 100) return false;
+    return (
+      /^#\s+/m.test(text) ||
+      /^##\s+/m.test(text) ||
+      out.targetField === 'markdown_content' ||
+      out.targetField === 'report' ||
+      out.targetField === 'final_report' ||
+      out.fromNodeOutput === 'content'
+    );
+  });
+
+  if (!reportOutput || typeof reportOutput.value !== 'string') {
+    return null;
+  }
+
+  const content = reportOutput.value.trim();
+  const titleMatch = content.match(/^#\s+([^\r\n]+)/m);
+  const rawTitle = titleMatch ? titleMatch[1].trim() : (params.planDraft?.objective || '执行生成报告');
+  const cleanTitle = rawTitle.replace(/[\\/\\?%*:|"<>]/g, '_').slice(0, 60).trim();
+  const fileName = `${cleanTitle}-${params.executionId.slice(0, 8)}.md`;
+
+  const rootDir = process.env.PROJECT_ROOT || '/workspace';
+  const artifactDir =
+    process.env.PLAYWRIGHT_CLI_ARTIFACT_DIR ||
+    path.join(rootDir, 'apps/backend/var/tmp/browser-worker/playwright-cli-artifacts');
+
+  try {
+    await fs.promises.mkdir(artifactDir, { recursive: true });
+    await fs.promises.writeFile(path.join(artifactDir, fileName), content, 'utf8');
+  } catch (err: any) {
+    params.logger.error?.(`Failed to write markdown report to disk: ${err.message}`);
+  }
+
+  const publicUrl = `/api/browser-runtime/artifacts/${encodeURIComponent(fileName)}`;
+
+  const existing = await params.prisma.executionArtifact.findFirst({
+    where: {
+      executionId: params.executionId,
+      url: publicUrl,
+    },
+  });
+  if (existing) {
+    return existing;
+  }
+
+  const step = reportOutput.fromNodeId
+    ? await params.prisma.executionStep.findFirst({
+        where: { executionId: params.executionId, planNodeId: reportOutput.fromNodeId, status: 'succeeded' },
+        select: { id: true },
+      })
+    : null;
+
+  const createdArtifact = await params.prisma.executionArtifact.create({
+    data: {
+      executionId: params.executionId,
+      producerStepId: step?.id || null,
+      producerNodeId: reportOutput.fromNodeId || null,
+      artifactType: 'document',
+      externalArtifactId: fileName.replace(/\.[^/.]+$/, ''),
+      name: `${rawTitle}.md`,
+      url: publicUrl,
+      mimeType: 'text/markdown',
+      sizeBytes: BigInt(Buffer.byteLength(content, 'utf8')),
+      sha256: createHash('sha256').update(content).digest('hex'),
+      metadataJson: {
+        source: 'markdown_report',
+        targetField: reportOutput.targetField,
+        title: rawTitle,
+      },
+    },
+  });
+
+  await params.eventPublisher.createEvent(
+    params.executionId,
+    'execution.artifact.created' as any,
+    {
+      artifactId: createdArtifact.id,
+      name: createdArtifact.name,
+      url: createdArtifact.url,
+      mimeType: createdArtifact.mimeType,
+    },
+    { stepId: step?.id }
+  );
+
+  return createdArtifact;
 }
 

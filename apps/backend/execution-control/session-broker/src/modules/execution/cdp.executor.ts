@@ -57,8 +57,12 @@ export class CdpExecutor implements OnModuleDestroy {
     return this.workerClient.navigateToUrl(url, sessionId);
   }
 
-  async executeStep(step: TemplateStep, sessionId?: string): Promise<ExecutionResult> {
-    const results = await this.executeSteps([step], sessionId, {}, 'cli');
+  async executeStep(
+    step: TemplateStep,
+    sessionId?: string,
+    params: Record<string, unknown> = {}
+  ): Promise<ExecutionResult> {
+    const results = await this.executeSteps([step], sessionId, params, 'cli');
     return (
       results[0] || {
         success: false,

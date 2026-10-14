@@ -18,9 +18,25 @@ import { preferencesStore } from '../../../adapters/preferences/preferencesStore
 import { useNotificationStore } from '../../../adapters/notifications/notificationStore';
 import { resolveNotificationActionPath } from '@/shared/utils/notificationNavigation';
 import { reminderApi } from '@/api';
+import { useTranslation } from 'react-i18next';
 import { NotificationDetailModal } from '../../../app/layouts/header/NotificationDetailModal';
 
+const EXECUTION_STATUS_LABELS_JA: Record<string, string> = {
+  draft: '下書き',
+  queued: '待機中',
+  running: '実行中',
+  waiting_input: '入力待ち',
+  pending_approval: '承認待ち',
+  human_control: '手動介入',
+  paused: '一時停止',
+  succeeded: '完了',
+  failed: '失敗',
+  cancelled: 'キャンセル済',
+  rolled_back: 'ロールバック済',
+};
+
 export function NotificationsPage() {
+  const { t } = useTranslation('notification');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedNotification, setSelectedNotification] = useState<AppNotification | null>(null);
@@ -40,7 +56,11 @@ export function NotificationsPage() {
   );
 
   const statusLabels =
-    language === 'en-US' ? EXECUTION_STATUS_LABELS_EN : EXECUTION_STATUS_LABELS_ZH;
+    language === 'en-US'
+      ? EXECUTION_STATUS_LABELS_EN
+      : language === 'ja-JP'
+        ? EXECUTION_STATUS_LABELS_JA
+        : EXECUTION_STATUS_LABELS_ZH;
   const resolveDownloadUrl = (item: (typeof items)[number]): string | undefined =>
     typeof item.metadata?.downloadUrl === 'string' && item.metadata.downloadUrl.trim()
       ? item.metadata.downloadUrl
@@ -50,10 +70,10 @@ export function NotificationsPage() {
       <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
           <Typography.Title level={3} style={{ margin: 0 }}>
-            通知中心
+            {t('page_title', '通知中心')}
           </Typography.Title>
           <Typography.Paragraph type="secondary" style={{ margin: '4px 0 0' }}>
-            当前先提供页面化列表，聚合普通用户可见的执行通知，不引入管理员侧的复杂弹层和调试链路。
+            {t('page_subtitle', '聚合普通用户可见的执行通知与提醒')}
           </Typography.Paragraph>
         </div>
         <Button
@@ -61,7 +81,7 @@ export function NotificationsPage() {
           onClick={() => void queryClient.refetchQueries(['user-web-notifications'])}
           loading={isFetching}
         >
-          刷新
+          {t('refresh', '刷新')}
         </Button>
       </Space>
       {sortedItems.length === 0 && initialized && !isFetching ? (

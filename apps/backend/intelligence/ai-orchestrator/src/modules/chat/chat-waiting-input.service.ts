@@ -3,7 +3,7 @@ import axios from 'axios';
 import { ControlPlaneClient } from '../../client/control-plane.client';
 import { CONTROL_PLANE_EXECUTION_STATUS } from '../../client/control-plane.contracts';
 import { buildDocumentGuideContext } from '../../common/document-guide';
-import { resolveFriendlyInputDisplayName } from '../../common/input-label';
+import { normalizeChineseSpace, resolveFriendlyInputDisplayName } from '../../common/input-label';
 import { getAuthServiceUrl } from '../../config/service-endpoints';
 import { PlannerService } from '../planner';
 import { RecognizerService } from '../recognizer/recognizer.service';
@@ -67,8 +67,8 @@ export class ChatWaitingInputService {
           name: String(item.name).trim(),
           type: typeof item.type === 'string' ? item.type : undefined,
           description: typeof item.description === 'string' ? item.description : undefined,
-          group_label: typeof item.group_label === 'string' ? item.group_label : undefined,
-          display_name: typeof item.display_name === 'string' ? item.display_name : undefined,
+          group_label: typeof item.group_label === 'string' ? normalizeChineseSpace(item.group_label) : undefined,
+          display_name: typeof item.display_name === 'string' ? normalizeChineseSpace(item.display_name) : undefined,
           missing: item.missing === true,
           needs_confirmation: item.needs_confirmation === true,
         }));
@@ -135,7 +135,7 @@ export class ChatWaitingInputService {
     const missingLabels = this.dedupeWaitingInputLabels(input.missingInputs);
     const groupedInputs = input.missingInputs.reduce<Map<string, WaitingInputItem[]>>(
       (acc, item) => {
-        const label = typeof item.group_label === 'string' ? item.group_label.trim() : '';
+        const label = typeof item.group_label === 'string' ? normalizeChineseSpace(item.group_label) : '';
         if (!label) {
           return acc;
         }
@@ -462,10 +462,11 @@ export class ChatWaitingInputService {
       return '';
     }
 
-    return normalized
-      .replace(/\s*[（(](?:中文|日文|日语|zh|ja|cn|jp)[）)]\s*$/iu, '')
-      .replace(/[_-](?:zh|ja|cn|jp)$/iu, '')
-      .trim();
+    return normalizeChineseSpace(
+      normalized
+        .replace(/\s*[（(](?:中文|日文|日语|zh|ja|cn|jp)[）)]\s*$/iu, '')
+        .replace(/[_-](?:zh|ja|cn|jp)$/iu, '')
+    );
   }
 
   private normalizeWaitingInputMatchKey(value: string): string {

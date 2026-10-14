@@ -34,12 +34,23 @@ export const AntdProvider: React.FC<{ children: React.ReactNode }> = ({ children
               colorBorder: '#334155',
               colorBorderSecondary: '#334155',
             }
-          : {}),
+          : {
+              colorBgLayout: '#f1f5f9',
+              colorBgContainer: '#ffffff',
+              colorBorder: '#e2e8f0',
+              colorBorderSecondary: '#f1f5f9',
+              colorText: '#0f172a',
+              colorTextSecondary: '#475569',
+              colorTextTertiary: '#94a3b8',
+            }),
       },
       components: {
         Layout: {
-          colorBgBody: theme === 'dark' ? '#0f172a' : '#f8fafc',
+          colorBgBody: theme === 'dark' ? '#0f172a' : '#f1f5f9',
           colorBgHeader: theme === 'dark' ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+          siderBg: theme === 'dark' ? '#0f172a' : '#ffffff',
+          lightSiderBg: '#ffffff',
+          darkSiderBg: '#0f172a',
         },
         Card: {
           colorBgContainer: theme === 'dark' ? '#1e293b' : '#ffffff',

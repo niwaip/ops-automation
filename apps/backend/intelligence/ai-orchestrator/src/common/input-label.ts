@@ -78,6 +78,15 @@ export const isMachineLikeInputLabel = (label: string, fieldName: string): boole
   return MACHINE_LIKE_LABEL_PATTERN.test(normalized);
 };
 
+/**
+ * Normalizes extra whitespace between Chinese characters while preserving English words spacing.
+ * e.g. "保 密 协 议" -> "保密协议", "Hello World" -> "Hello World"
+ */
+export const normalizeChineseSpace = (text?: string): string => {
+  if (!text || typeof text !== 'string') return '';
+  return text.replace(/(?<=[\u4e00-\u9fa5])\s+(?=[\u4e00-\u9fa5])/g, '').trim();
+};
+
 export const resolveFriendlyInputDisplayName = (input: {
   name: string;
   display_name?: string;
@@ -85,13 +94,13 @@ export const resolveFriendlyInputDisplayName = (input: {
 }): string => {
   const displayName = String(input.display_name || '').trim();
   if (displayName && !isMachineLikeInputLabel(displayName, input.name)) {
-    return displayName;
+    return normalizeChineseSpace(displayName);
   }
 
   const concise = deriveFriendlyInputLabel(input.description);
   if (concise) {
-    return concise;
+    return normalizeChineseSpace(concise);
   }
 
-  return displayName || input.name;
+  return normalizeChineseSpace(displayName || input.name);
 };

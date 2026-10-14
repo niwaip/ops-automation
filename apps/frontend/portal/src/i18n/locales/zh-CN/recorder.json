@@ -55,6 +55,7 @@
   "browserPreview": "浏览器预览",
   "recordingInProgress": "正在录制...",
   "startToPreview": "开始录制以预览浏览器",
+  "novncHint": "初始化后将在此处实时显示浏览器画面",
   "intentModal": {
     "title": "编译意图说明",
     "label": "操作意图",
@@ -67,6 +68,7 @@
     "title": "AI 浏览器控制",
     "ready": "就绪",
     "notReady": "未初始化",
+    "startToPreview": "初始化浏览器后开始控制",
     "initBrowser": "初始化浏览器",
     "reinitBrowser": "重新初始化",
     "browserReady": "浏览器已就绪",

@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { Button, Modal, Tabs, Tag, Typography, Space, Tooltip, message } from 'antd';
-import { CodeOutlined, EyeOutlined, CopyOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import {
+  CodeOutlined,
+  EyeOutlined,
+  CopyOutlined,
+  CheckCircleOutlined,
+  FileTextOutlined,
+} from '@ant-design/icons';
 import type { ExecutionPhaseStepDto } from '@/api/execution';
 
 const { Text } = Typography;
@@ -48,6 +54,65 @@ const extractStepReadValue = (
   return undefined;
 };
 
+const extractStepTextContent = (step: ExecutionPhaseStepDto): string | undefined => {
+  const output =
+    step.output && typeof step.output === 'object'
+      ? (step.output as Record<string, unknown>)
+      : undefined;
+  if (!output) return undefined;
+
+  const data =
+    output.data && typeof output.data === 'object'
+      ? (output.data as Record<string, unknown>)
+      : undefined;
+
+  const candidates = [
+    output.text,
+    output.mainContent,
+    output.content,
+    output.clean_content,
+    output.step_2_clean_content,
+    output.cleanContent,
+    output.pageText,
+    output.extractedText,
+    output.body,
+    data?.text,
+    data?.mainContent,
+    data?.content,
+    data?.clean_content,
+    data?.pageText,
+    data?.extractedText,
+    data?.body,
+  ];
+
+  for (const c of candidates) {
+    if (typeof c === 'string' && c.trim()) {
+      return c.trim();
+    }
+  }
+
+  const resultObj =
+    output.result && typeof output.result === 'object'
+      ? (output.result as Record<string, unknown>)
+      : undefined;
+  if (resultObj) {
+    const nestedCandidates = [
+      resultObj.text,
+      resultObj.mainContent,
+      resultObj.content,
+      resultObj.clean_content,
+      resultObj.pageText,
+    ];
+    for (const c of nestedCandidates) {
+      if (typeof c === 'string' && c.trim()) {
+        return c.trim();
+      }
+    }
+  }
+
+  return undefined;
+};
+
 const formatSize = (chars: number): string => {
   if (chars >= 10000) {
     return `${(chars / 10000).toFixed(1)} 万字`;
@@ -60,10 +125,13 @@ const formatSize = (chars: number): string => {
 
 const ExecutionStepSnapshotViewer: React.FC<ExecutionStepSnapshotViewerProps> = ({ step }) => {
   const [modalOpen, setModalOpen] = useState(false);
+  const [textModalOpen, setTextModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedText, setCopiedText] = useState(false);
 
   const rawHtml = extractStepHtml(step);
   const readValue = extractStepReadValue(step);
+  const textContent = extractStepTextContent(step);
 
   const isPruned = rawHtml ? rawHtml.startsWith('[pruned:') || rawHtml.includes('chars string]') : false;
 
@@ -79,9 +147,23 @@ const ExecutionStepSnapshotViewer: React.FC<ExecutionStepSnapshotViewerProps> = 
     }
   };
 
-  if (!rawHtml && !readValue) {
+  const handleCopyText = async () => {
+    if (!textContent) return;
+    try {
+      await navigator.clipboard.writeText(textContent);
+      setCopiedText(true);
+      void message.success('已复制提取正文到剪贴板');
+      setTimeout(() => setCopiedText(false), 2000);
+    } catch {
+      void message.error('复制失败，请手动选择复制');
+    }
+  };
+
+  if (!rawHtml && !readValue && !textContent) {
     return null;
   }
+
+  const isTextDistinct = textContent && (!readValue || textContent !== readValue.value);
 
   return (
     <div style={{ marginTop: 4 }}>
@@ -93,6 +175,24 @@ const ExecutionStepSnapshotViewer: React.FC<ExecutionStepSnapshotViewerProps> = 
             </Text>
             {readValue.value}
           </Tag>
+        ) : null}
+
+        {isTextDistinct ? (
+          textContent.length > 80 ? (
+            <Button
+              size="small"
+              icon={<FileTextOutlined />}
+              onClick={() => setTextModalOpen(true)}
+              style={{ fontSize: 12 }}
+            >
+              提取正文与要点 ({formatSize(textContent.length)})
+            </Button>
+          ) : !readValue ? (
+            <Tag color="blue" style={{ fontSize: 12 }}>
+              <Text strong style={{ color: 'inherit' }}>提取文本: </Text>
+              {textContent}
+            </Tag>
+          ) : null
         ) : null}
 
         {rawHtml ? (
@@ -114,6 +214,95 @@ const ExecutionStepSnapshotViewer: React.FC<ExecutionStepSnapshotViewerProps> = 
           )
         ) : null}
       </Space>
+
+      {isTextDistinct && textContent.length > 80 ? (
+        <div
+          onClick={() => setTextModalOpen(true)}
+          style={{
+            marginTop: 8,
+            padding: '10px 14px',
+            background: 'var(--bg-secondary, rgba(148, 163, 184, 0.06))',
+            border: '1px solid var(--border-color, rgba(148, 163, 184, 0.2))',
+            borderRadius: 8,
+            fontSize: 12.5,
+            cursor: 'pointer',
+            maxHeight: 88,
+            overflow: 'hidden',
+            position: 'relative',
+            transition: 'border-color 0.2s ease, background 0.2s ease',
+          }}
+          title="点击查看提取正文全文"
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 4,
+            }}
+          >
+            <div style={{ fontWeight: 600, color: 'var(--text-primary, #334155)', fontSize: 12 }}>
+              📄 页面提取正文预览 ({formatSize(textContent.length)})
+            </div>
+            <div style={{ fontSize: 11, color: '#1677ff', fontWeight: 500 }}>
+              点击查看全文 ↗
+            </div>
+          </div>
+          <Text
+            type="secondary"
+            style={{
+              wordBreak: 'break-all',
+              lineHeight: 1.65,
+              fontSize: 12,
+              color: 'var(--text-secondary, #64748b)',
+            }}
+          >
+            {textContent.replace(/\s+/g, ' ').slice(0, 240)}...
+          </Text>
+        </div>
+      ) : null}
+
+      {isTextDistinct && textContent.length > 80 ? (
+        <Modal
+          title={
+            <Space style={{ width: '100%', justifyContent: 'space-between', paddingRight: 32 }}>
+              <span>
+                步骤 {step.stepIndex} ({step.action}) 提取正文 ({formatSize(textContent.length)})
+              </span>
+              <Button
+                size="small"
+                icon={copiedText ? <CheckCircleOutlined /> : <CopyOutlined />}
+                onClick={handleCopyText}
+              >
+                {copiedText ? '已复制' : '复制正文'}
+              </Button>
+            </Space>
+          }
+          open={textModalOpen}
+          onCancel={() => setTextModalOpen(false)}
+          footer={null}
+          width={840}
+          destroyOnHidden
+        >
+          <div
+            style={{
+              maxHeight: '68vh',
+              overflowY: 'auto',
+              padding: '18px 22px',
+              background: 'var(--bg-card, rgba(0, 0, 0, 0.02))',
+              border: '1px solid var(--border-color, rgba(148, 163, 184, 0.18))',
+              borderRadius: 8,
+              fontSize: 13.5,
+              lineHeight: 1.85,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              color: 'var(--text-primary, inherit)',
+            }}
+          >
+            {textContent}
+          </div>
+        </Modal>
+      ) : null}
 
       {rawHtml && !isPruned ? (
         <Modal

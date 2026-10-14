@@ -11,6 +11,7 @@ import {
   LoadingOutlined,
   PlayCircleOutlined,
   PlusOutlined,
+  ReloadOutlined,
   RobotOutlined,
   RollbackOutlined,
   SendOutlined,
@@ -33,6 +34,7 @@ import {
 } from "antd";
 import { useState, useMemo } from "react";
 import { useQueryClient } from "react-query";
+import { useTranslation } from "react-i18next";
 import type { WorkbenchTodoItem } from "../../../api/workbenchTodo";
 import { workbenchCoordinationApi } from "../../../api/workbenchCoordination";
 import {
@@ -74,14 +76,39 @@ export function TodoCard({
   onArchiveTodo,
   onRecallTodo,
   onRemindTodo,
+  onRefresh,
+  isRefreshing = false,
 }: TodoCardProps) {
+  const { t } = useTranslation('dashboard');
   const { user } = useAuthStore();
   const currentUsername = user?.username || "";
   const currentUserId = user?.id;
 
   const queryClient = useQueryClient();
+  const [internalRefreshing, setInternalRefreshing] = useState(false);
   const [quickSendingId, setQuickSendingId] = useState<string | null>(null);
   const [detailModalTodo, setDetailModalTodo] = useState<WorkbenchTodoItem | null>(null);
+
+  const handleRefresh = async () => {
+    if (onRefresh) {
+      onRefresh();
+      return;
+    }
+    try {
+      setInternalRefreshing(true);
+      await Promise.allSettled([
+        queryClient.invalidateQueries(['workbench-todos-summary']),
+        queryClient.invalidateQueries(['workbench-todos']),
+        queryClient.invalidateQueries(['workbench-coordination-sent-tasks']),
+        queryClient.invalidateQueries(['workbench-inbox-summary-for-todos']),
+      ]);
+      void message.success(t('todo.refresh_success', '已刷新行动待办看板'));
+    } catch {
+      // ignore
+    } finally {
+      setInternalRefreshing(false);
+    }
+  };
 
   const detailModalInboxItem = useMemo(() => {
     if (!detailModalTodo) return null;
@@ -288,15 +315,23 @@ export function TodoCard({
       title={
         <div className={styles["workbench-panel-header"]}>
           <Typography.Text strong className={styles["workbench-panel-title"]}>
-            行动待办看板
+            {t('todo.title', '行动待办看板')}
           </Typography.Text>
         </div>
       }
       extra={
         <Space size={6}>
-          <Tag color="blue" bordered={false}>待办 {todoSummary.pending}</Tag>
-          {todoSummary.overdue ? <Tag color="error" bordered={false}>逾期 {todoSummary.overdue}</Tag> : null}
-          <Tag color="success" bordered={false}>已完成 {todoSummary.completed}</Tag>
+          <Tag color="blue" bordered={false}>{t('todo.pending', '待办')} {todoSummary.pending}</Tag>
+          {todoSummary.overdue ? <Tag color="error" bordered={false}>{t('todo.overdue', '逾期')} {todoSummary.overdue}</Tag> : null}
+          <Tag color="success" bordered={false}>{t('todo.completed', '已完成')} {todoSummary.completed}</Tag>
+          <Tooltip title={t('todo.refresh_todo', '刷新待办看板')}>
+            <Button
+              type="text"
+              size="small"
+              icon={<ReloadOutlined spin={isRefreshing || internalRefreshing} />}
+              onClick={handleRefresh}
+            />
+          </Tooltip>
         </Space>
       }
     >
@@ -307,7 +342,7 @@ export function TodoCard({
             <div className={styles["workbench-compact-input-wrap"]}>
               <Input.TextArea
                 value={todoDraft}
-                placeholder="添加新待办（Enter 创建，支持批量粘贴）..."
+                placeholder={t('todo.placeholder', '添加新待办（Enter 创建，支持批量粘贴）...')}
                 onChange={(event) => onDraftChange(event.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey && todoDraft.trim()) {
@@ -325,7 +360,7 @@ export function TodoCard({
                 disabled={!todoDraft.trim()}
                 className={styles["workbench-compact-btn-primary"]}
               >
-                添加
+                {t('todo.add_btn', '添加')}
               </Button>
             </div>
             <div className={styles["workbench-compact-actions"]}>
@@ -349,7 +384,7 @@ export function TodoCard({
                   }
                   className={styles["workbench-compact-btn-subtle"]}
                 >
-                  AI 规划
+                  {t('todo.ai_plan', 'AI 规划')}
                 </Button>
               </Tooltip>
               <Tooltip title="发起新的自动化执行单">
@@ -359,7 +394,7 @@ export function TodoCard({
                   onClick={onOpenNewExecution}
                   className={styles["workbench-compact-btn-subtle"]}
                 >
-                  新建执行
+                  {t('todo.new_execution', '新建执行')}
                 </Button>
               </Tooltip>
             </div>
@@ -373,11 +408,11 @@ export function TodoCard({
               size="small"
               className={styles["workbench-segmented-filter"]}
               options={[
-                { label: `待办 (${todoSummary.pending ?? 0})`, value: "pending" },
-                { label: `已发事项 (${todoSummary.sent ?? 0})`, value: "sent" },
-                ...(todoSummary.overdue ? [{ label: `逾期 (${todoSummary.overdue})`, value: "overdue" }] : []),
-                { label: `已结束 (${todoSummary.ended ?? 0})`, value: "ended" },
-                { label: `全部 (${todoSummary.total ?? 0})`, value: "all" },
+                { label: `${t('todo.pending', '待办')} (${todoSummary.pending ?? 0})`, value: "pending" },
+                { label: `${t('todo.delegated', '已发事项')} (${todoSummary.sent ?? 0})`, value: "sent" },
+                ...(todoSummary.overdue ? [{ label: `${t('todo.overdue', '逾期')} (${todoSummary.overdue})`, value: "overdue" }] : []),
+                { label: `${t('todo.finished', '已结束')} (${todoSummary.ended ?? 0})`, value: "ended" },
+                { label: `${t('todo.all', '全部')} (${todoSummary.total ?? 0})`, value: "all" },
               ]}
             />
           ) : null}
@@ -385,7 +420,14 @@ export function TodoCard({
           {/* 待办列表 (可滚动区域) */}
           <div className={styles["workbench-card-scroll-area"]}>
             {todos.length === 0 ? (
-              <Empty description="暂无匹配待办，可在上方输入添加，或在左侧「GTD 收集箱」将邮件或便签一键转为待办" />
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={
+                  <span style={{ color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500 }}>
+                    {t('todo.empty', '暂无匹配待办，可在上方输入添加，或在左侧「GTD 收集箱」将邮件或便签一键转为待办')}
+                  </span>
+                }
+              />
             ) : (
               <List
                 dataSource={todos}
@@ -786,9 +828,8 @@ export function TodoCard({
                                   <Tooltip title="归档此事项">
                                     <Button
                                       size="small"
-                                      type="text"
                                       className={styles['workbench-todo-archive-btn']}
-                                      icon={<InboxOutlined style={{ fontSize: 14 }} />}
+                                      icon={<InboxOutlined style={{ fontSize: 13 }} />}
                                     />
                                   </Tooltip>
                                 </Popconfirm>

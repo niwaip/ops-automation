@@ -15,6 +15,7 @@ import remarkGfm from 'remark-gfm';
 import { normalizeTabSeparatedTable } from '../lib/tableNormalizer';
 import { HtmlPreviewBlock } from './HtmlPreviewBlock';
 import { MarkdownPreviewBlock } from './MarkdownPreviewBlock';
+import { TaskResultReaderBlock } from './TaskResultReaderBlock';
 
 export interface SharedDisplayGroupItem {
   key: string;
@@ -91,6 +92,15 @@ const isHtmlPreviewBlock = (className?: string, codeText?: string) => {
     codeText.includes('diff-ins') ||
     codeText.includes('diff-del')
   );
+};
+
+/**
+ * Normalizes extra whitespace between Chinese characters while preserving English words spacing.
+ * e.g. "保 密 协 议" -> "保密协议", "Hello World" -> "Hello World"
+ */
+export const normalizeChineseSpace = (text?: string): string => {
+  if (!text || typeof text !== 'string') return '';
+  return text.replace(/(?<=[\u4e00-\u9fa5])\s+(?=[\u4e00-\u9fa5])/g, '').trim();
 };
 
 /**
@@ -251,6 +261,86 @@ const renderMarkdownLink = ({
       {children}
     </a>
   );
+};
+
+export const sanitizeWaitingInputSummary = (
+  summary?: string,
+  groups: SharedDisplayGroup[] = [],
+  items: SharedDisplayGroupItem[] = []
+): string | undefined => {
+  if (!summary) {
+    return undefined;
+  }
+
+  const groupLabelSet = new Set(
+    groups.map((g) => normalizeChineseSpace(g.label).toLowerCase()).filter(Boolean)
+  );
+
+  const filteredLines = summary
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => {
+      // 1. 过滤状态、指令与完成声明
+      if (
+        /^状态[:：]/.test(line) ||
+        /^执行单 ID[:：]/i.test(line) ||
+        /^请补充以下信息[:：]?$/.test(line) ||
+        /^请补充[:：]/.test(line) ||
+        /^补充后(?:我)?就继续处理。?$/.test(line) ||
+        /^把这些内容直接发给我/.test(line) ||
+        /^还需要补充[:：]/.test(line) ||
+        /^缺少业务组[:：]/.test(line) ||
+        /^仍缺少业务组[:：]/.test(line) ||
+        /^字段兜底[:：]/.test(line) ||
+        /^缺少参数[:：]/.test(line) ||
+        /^待补字段[:：]?$/.test(line)
+      ) {
+        return false;
+      }
+
+      // 2. 过滤列表符号行 (- 字段, · 字段, 1. 字段, 1、字段)
+      if (/^[-*·•]\s/.test(line) || /^[一二三四五六七八九十0-9]+[、. ]/.test(line)) {
+        return false;
+      }
+
+      // 3. 过滤包含字段枚举的冒号行 (如 "保 密 协 议：甲方公司法定全称、甲方注册或经营地址..." 或 "附件一：乙方全称")
+      if (/[:：]/.test(line)) {
+        const [rawHeader, ...restParts] = line.split(/[:：]/);
+        const header = normalizeChineseSpace(rawHeader).trim().toLowerCase();
+        const rest = restParts.join(':').trim();
+
+        // 如果冒号左侧与已知分组标签匹配，为待补字段枚举行
+        if (groupLabelSet.has(header)) {
+          return false;
+        }
+
+        // 如果冒号右侧包含顿号/逗号枚举，为字段清单
+        if (/[、，,]/.test(rest)) {
+          return false;
+        }
+
+        // 如果冒号右侧内容包含任一已知待补字段名
+        const normRest = normalizeChineseSpace(rest).toLowerCase();
+        if (
+          items.length > 0 &&
+          items.some((it) => {
+            const label = normalizeChineseSpace(it.label).toLowerCase();
+            return label.length >= 2 && normRest.includes(label);
+          })
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+  if (filteredLines.length === 0) {
+    return undefined;
+  }
+
+  return filteredLines.join('\n\n');
 };
 
 const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
@@ -433,39 +523,13 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
     if (!displaySuccessResult) return false;
     return /```html[\s\S]*?```/i.test(displaySuccessResult);
   }, [displaySuccessResult]);
-  const sanitizeWaitingInputSummary = (summary?: string): string | undefined => {
-    if (!summary) {
-      return undefined;
-    }
-
-    const filteredLines = summary
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .filter(
-        (line) =>
-          !/^状态[:：]/.test(line) &&
-          !/^执行单 ID[:：]/.test(line) &&
-          !/^请补充以下信息[:：]?$/.test(line) &&
-          !/^请补充[:：]/.test(line) &&
-          !/^补充后我就继续处理。?$/.test(line) &&
-          !/^还需要补充[:：]/.test(line) &&
-          !/^缺少业务组[:：]/.test(line) &&
-          !/^仍缺少业务组[:：]/.test(line) &&
-          !/^字段兜底[:：]/.test(line) &&
-          !/^缺少参数[:：]/.test(line) &&
-          !/^待补字段[:：]?$/.test(line)
-      );
-
-    if (filteredLines.length === 0) {
-      return undefined;
-    }
-
-    return filteredLines.join('\n\n');
-  };
   const bodySummary =
     isWaitingInput && waitingInputItems.length > 0
-      ? sanitizeWaitingInputSummary(waitingInputSummary || summaryToDisplay)
+      ? sanitizeWaitingInputSummary(
+          waitingInputSummary || summaryToDisplay,
+          waitingInputGroups,
+          waitingInputItems
+        )
       : waitingInputSummary || summaryToDisplay;
 
   const renderResourceLinks = ({
@@ -659,67 +723,13 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
         ) : null}
 
         {displaySuccessResult ? (
-          <div className="chat-outcome-body">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                table: ({ children }: { children?: React.ReactNode }) => (
-                  <div className="markdown-table-wrapper">
-                    <table>{children}</table>
-                  </div>
-                ),
-                a: renderMarkdownLink,
-                pre: ({ children, className: preClassName, ...props }: React.ComponentPropsWithoutRef<'pre'>) => {
-                  const childElement = React.isValidElement(children) ? children : null;
-                  const childProps = childElement ? (childElement.props as { className?: string; children?: React.ReactNode }) : null;
-                  const codeClassName = childProps?.className || '';
-                  const codeText = Array.isArray(childProps?.children)
-                    ? childProps.children.join('')
-                    : String(childProps?.children || '');
-
-                  if (isHtmlPreviewBlock(codeClassName, codeText)) {
-                    return <>{children}</>;
-                  }
-
-                  const mergedClass = ['code-block', preClassName, codeClassName].filter(Boolean).join(' ');
-                  return (
-                    <pre className={mergedClass} {...props}>
-                      {children}
-                    </pre>
-                  );
-                },
-                code: ({
-                  className,
-                  children,
-                  ...props
-                }: React.ComponentPropsWithoutRef<'code'> & { className?: string }) => {
-                  const codeText = Array.isArray(children) ? children.join('') : String(children || '');
-                  if (isHtmlPreviewBlock(className, codeText)) {
-                    return <HtmlPreviewBlock code={codeText.trim()} className={className} isStreaming={showRunningState} />;
-                  }
-
-                  return (
-                    <code className={className || 'inline-code'} {...props}>
-                      {children}
-                    </code>
-                  );
-                },
-                img: ({ src, alt }: { src?: string; alt?: string }) => (
-                  <img
-                    src={src}
-                    alt={alt || ''}
-                    className="chat-outcome-inline-img"
-                    loading="lazy"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                ),
-              }}
-            >
-              {normalizeTabSeparatedTable(displaySuccessResult || '')}
-            </ReactMarkdown>
-          </div>
+          <TaskResultReaderBlock
+            content={displaySuccessResult}
+            defaultExpanded={false}
+            thresholdChars={450}
+            title={normalizedSkillName || '任务结果报告'}
+            isStreaming={showRunningState}
+          />
         ) : null}
 
         {/* HTML 产物在线交互预览卡片（当 artifacts 中存在 HTML 且正文中未内联 ```html 代码块时） */}
@@ -890,11 +900,11 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
             <div className="chat-outcome-input-groups">
               {waitingInputGroups.map((group: SharedDisplayGroup) => (
                 <div key={group.label} className="chat-outcome-input-group">
-                  <div className="chat-outcome-input-group-title">{group.label}</div>
+                  <div className="chat-outcome-input-group-title">{normalizeChineseSpace(group.label) || group.label}</div>
                   <ul className="chat-outcome-input-list">
                     {group.items.map((item: SharedDisplayGroupItem) => (
                       <li key={item.key}>
-                        {item.label}
+                        {normalizeChineseSpace(item.label) || item.label}
                       </li>
                     ))}
                   </ul>
@@ -905,7 +915,7 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
             <ul className="chat-outcome-input-list">
               {waitingInputItems.map((item: SharedDisplayGroupItem) => (
                 <li key={item.key}>
-                  {item.label}
+                  {normalizeChineseSpace(item.label) || item.label}
                 </li>
               ))}
             </ul>

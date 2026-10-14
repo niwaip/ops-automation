@@ -80,8 +80,8 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
   private readonly sessionBrokerUrl = getSessionBrokerUrl();
   private readonly browserProfileRoot =
     process.env.BROWSER_WORKER_PROFILE_ROOT?.trim() || DEFAULT_BROWSER_PROFILE_ROOT;
-  private readonly screenWidth = process.env.SESSION_SCREEN_WIDTH || '1920';
-  private readonly screenHeight = process.env.SESSION_SCREEN_HEIGHT || '1080';
+  private readonly screenWidth = process.env.SESSION_SCREEN_WIDTH || '1280';
+  private readonly screenHeight = process.env.SESSION_SCREEN_HEIGHT || '800';
   private readonly screenDepth = process.env.SESSION_SCREEN_DEPTH || '24';
   private readonly novncPort = process.env.SESSION_NOVNC_PORT || '8080';
   private readonly vncPort = process.env.SESSION_VNC_PORT || '5900';
