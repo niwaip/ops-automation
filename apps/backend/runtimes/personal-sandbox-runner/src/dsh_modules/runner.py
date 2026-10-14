@@ -19,7 +19,7 @@ from .web_tools import enrich_search_context_with_pages
 from .runtime_policy import RuntimePolicy
 from .context_budget import ContextBudget
 from .prompt_builder import build_system_prompt, build_user_turn
-from .skill_router import SkillRouter
+from .skill_router import SkillRouter, is_text_only_request
 from .agent_loop import run_agent_loop, _is_tool_error
 from .artifact_exporter import ArtifactExporter
 from .telemetry import TelemetryStats
@@ -82,7 +82,7 @@ from .planning_phase import (
     run_planning_phase,
     build_deliverable_execution_instruction,
 )
-from .intent_contract import is_modify_intent_requested
+from .intent_contract import is_modify_intent_requested, is_network_search_forbidden
 
 _run_planning_phase = run_planning_phase
 
@@ -102,6 +102,9 @@ def select_active_tools(
     detection may eagerly fetch obvious live information, but it must never be
     the capability gate: new sites and unfamiliar wording should still work.
     """
+    if is_network_search_forbidden(prompt):
+        has_web_search_permission = False
+
     is_modify = getattr(skill_res, "is_modify_intent", False) or is_modify_intent_requested(prompt)
 
     if not is_modify and (skill_res.skill_id == "xlsx" and not skill_res.is_generate_intent
@@ -140,10 +143,10 @@ def select_active_tools(
         # 对于表格/数据计算类技能（xlsx, python）或涉及表格审计/财务核算的提问，开放受控的 bash 计算验证环境（供运行 Python 统计与公式计算），但严禁落盘工具
         is_table_or_calc_context = (
             skill_res.skill_id in {"xlsx", "python"}
-            or any(k in (prompt or "").lower() for k in [
+            or (skill_res.skill_id not in {"docx", "pdf"} and any(k in (prompt or "").lower() for k in [
                 "excel", "xlsx", "csv", "表格", "工作表", "工作簿", "sheet", "单元格",
                 "凭证", "明细", "财务", "核算", "勾稽", "试算", "查重", "对账", "报表"
-            ])
+            ]))
         )
         if is_table_or_calc_context:
             allowed.update({"bash", "compare_spreadsheet_columns"})
@@ -171,7 +174,7 @@ def select_active_tools(
             allowed.add("send_file")
         tools = get_sandbox_tools(allowed_names=allowed)
     # 3. 复杂生成、组合任务或明确需要物理落盘产物的技能，提供完整执行环境（bash、文件与技能工具）
-    elif is_modify or skill_res.is_generate_intent or skill_res.requires_execution or (skill_res.skill_id and not skill_res.is_inspect_intent):
+    elif not is_text_only_request(prompt) and (is_modify or skill_res.is_generate_intent or skill_res.requires_execution or (skill_res.skill_id and not skill_res.is_inspect_intent)):
         tools = get_sandbox_tools()
     else:
         allowed = {"web_search", "fetch_page"} if has_web_search_permission else set()
@@ -339,12 +342,16 @@ def cmd_run(args):
     # 2. 联网前置检索
     # args.web_search 仅表示沙箱具备联网检索工具能力，绝不能将所有普通对话/生成需求直接断定为纯检索任务！
     # 只有当用户显式要求搜索（如以 /search 起始）或语义路由命中真实外部资讯检索意图（is_search_intent）时，才执行前置联网检索
-    has_web_search_permission = bool(args.web_search)
-    is_weather_intent = bool(WEATHER_RE.search(prompt))
+    forbidden_network = is_network_search_forbidden(prompt)
+    has_web_search_permission = bool(args.web_search) and not forbidden_network
+    is_weather_intent = bool(WEATHER_RE.search(prompt)) and not forbidden_network
     is_search_intent = (
-        prompt.strip().startswith("/search ")
-        or skill_res.is_search_intent
-        or is_weather_intent
+        not forbidden_network
+        and (
+            prompt.strip().startswith("/search ")
+            or skill_res.is_search_intent
+            or is_weather_intent
+        )
     )
     # 严格遵循外部检索谨慎性原则：
     # 物理文档/报表生成任务（如制作 word/excel/ppt/markdown）在未显式要求检索时，绝不执行前置盲搜！

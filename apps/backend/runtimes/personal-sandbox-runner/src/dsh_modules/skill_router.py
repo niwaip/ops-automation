@@ -124,14 +124,14 @@ def is_text_only_request(query: str) -> bool:
     lower = query.lower().strip()
 
     # 明确要求只在聊天/正文解答且不生成文件
-    if re.search(r'(?:只|仅)(?:在|通过)?(?:聊天|对话|正文|窗口)(?:中|里)?(?:输出|解答|回答|呈现|对比)', lower):
-        if re.search(r'(?:不要|严禁|无需|不用|禁止|切勿)\s*(?:生成|制作|下载|导出|创建|落盘)', lower):
+    if re.search(r'(?:只|仅|直接)(?:在|通过)?(?:聊天|对话|正文|窗口)(?:中|里)?(?:输出|解答|回答|呈现|对比)', lower):
+        if re.search(r'(?:不要|严禁|无需|不用|禁止|切勿|不)\s*(?:生成|制作|下载|导出|创建|落盘)', lower):
             return True
         if "不要生成" in lower or "不生成" in lower:
             return True
 
     # 明确否定任何文件/脚本落盘
-    if re.search(r'(?:不要|严禁|无需|不用|禁止|切勿)\s*(?:生成|制作|下载|导出|创建|落盘)\s*(?:任何|多余的|其他的)?\s*(?:物理)?(?:文件|脚本|产物)', lower):
+    if re.search(r'(?:不要|严禁|无需|不用|禁止|切勿|不)\s*(?:生成|制作|下载|导出|创建|落盘)\s*(?:任何|多余的|其他的)?\s*(?:物理)?(?:文件|脚本|产物|附件)', lower):
         return True
 
     return False
@@ -156,6 +156,10 @@ def check_generation_target_is_physical(lower_q: str) -> bool:
     """
     if is_text_only_request(lower_q):
         return False
+
+    _, target_fmts, target_files = extract_source_and_target_artifacts(lower_q)
+    if target_files or target_fmts:
+        return True
 
     is_markdown_table = (
         re.search(r'(?:markdown|文本|聊天|对话|正文)?\s*(?:对比表格|表格对比|markdown\s*表格)', lower_q)
@@ -240,17 +244,26 @@ def resolve_file_action_intent(
     ]
     if history and lower_q in continuation_cues:
         for h in reversed(history[-4:]):
-            if not isinstance(h, dict):
+            if not isinstance(h, dict) or h.get("role") == "assistant":
                 continue
-            c = str(h.get("content", "")).lower()
-            if any(k in c for k in GENERATE_ACTION_PATTERNS) or any(k in c for k in [
-                "pdf", "word", "excel", "ppt", "html", "交接.md", "docx", "xlsx", "pptx"
-            ]):
+            c = str(h.get("content", ""))
+            c_lower = c.lower()
+            if is_term_negated(c_lower, "生成") or is_text_only_request(c_lower):
+                has_inspect = any(k in c_lower for k in INSPECT_ACTION_PATTERNS)
+                return False, has_inspect
+            if has_positive_generate_action(c):
+                return True, False
+            if any(k in c_lower for k in ["pdf", "word", "excel", "ppt", "html", "交接.md", "docx", "xlsx", "pptx"]) and not any(is_term_negated(c_lower, ext) for ext in ["pdf", "word", "excel", "ppt", "html", "docx", "xlsx", "pptx"]):
                 return True, False
 
     # 0b. 明确纯文本请求或否定生成物理文件指令
     if is_text_only_request(lower_q):
-        has_inspect = any(k in lower_q for k in INSPECT_ACTION_PATTERNS) or any(k in lower_q for k in CONTENT_QUERY_PATTERNS)
+        has_inspect = (
+            any(k in lower_q for k in INSPECT_ACTION_PATTERNS)
+            or any(k in lower_q for k in CONTENT_QUERY_PATTERNS)
+            or any(k in lower_q for k in READONLY_SUMMARY_PATTERNS)
+            or bool(attached_files)
+        )
         return False, has_inspect
 
     # 1. 显式生成类 Slash 命令（确定性 100% 具有产物生成交付意图）
@@ -727,7 +740,66 @@ class SkillRouter:
         ):
             result.skill_id = "frontend-design"
 
-        # 4. 语义亲和度路由器（Semantic Router，彻底替代静态白名单）
+        # 4a. 上下文追问/确认/重试继承。基于上一条用户交付要求恢复对应技能与交付物契约
+        continuation_cues = [
+            "1", "1.", "一是", "第一个", "确认", "生成", "导出", "确认生成", "请生成",
+            "重新生成", "重新制作", "重做", "再次生成", "再生成一次", "重新导出", "retry", "regenerate"
+        ]
+        if not result.skill_id and existing_history and lower_query in continuation_cues:
+            for h in reversed(existing_history[-8:]):
+                if not isinstance(h, dict) or h.get("role") != "user":
+                    continue
+                c = str(h.get("content", ""))
+                c_lower = c.lower()
+                if not has_positive_generate_action(c) or is_term_negated(c_lower, "生成") or is_text_only_request(c_lower):
+                    continue
+                h_src, h_tgt_fmts, h_tgt_files = extract_source_and_target_artifacts(c)
+                # 优先根据上一轮解析出的明确目标格式确定技能，避免输入源文件格式污染输出目标
+                if h_tgt_fmts:
+                    if ".pdf" in h_tgt_fmts:
+                        result.skill_id = "pdf"
+                    elif ".docx" in h_tgt_fmts:
+                        result.skill_id = "docx"
+                    elif ".xlsx" in h_tgt_fmts:
+                        result.skill_id = "xlsx"
+                    elif ".pptx" in h_tgt_fmts:
+                        if re.search(r'(?:ppt\s*报告|html\s*报告|网页\s*报告|交互式\s*报告)', c_lower) and not is_term_negated(c_lower, "html"):
+                            result.skill_id = "guizang-ppt"
+                        else:
+                            result.skill_id = "pptx"
+                    elif ".html" in h_tgt_fmts:
+                        result.skill_id = "frontend-design"
+                    elif ".md" in h_tgt_fmts:
+                        result.skill_id = None
+                elif (any(k in c_lower for k in ["word", "docx"])) and not is_term_negated(c_lower, "docx"):
+                    result.skill_id = "docx"
+                elif (any(k in c_lower for k in ["excel", "xlsx", "表格"])) and not is_term_negated(c_lower, "xlsx"):
+                    result.skill_id = "xlsx"
+                elif ("pdf" in c_lower) and not is_term_negated(c_lower, "pdf"):
+                    result.skill_id = "pdf"
+                elif (any(k in c_lower for k in ["ppt", "幻灯片", "演示文稿", "pptx"])) and not is_term_negated(c_lower, "pptx"):
+                    if re.search(r'(?:ppt\s*报告|html\s*报告|网页\s*报告|交互式\s*报告)', c_lower) and not is_term_negated(c_lower, "html"):
+                        result.skill_id = "guizang-ppt"
+                    else:
+                        result.skill_id = "pptx"
+                elif (any(k in c_lower for k in ["html", "网页", "页面", "单页", "一页"])) and not is_term_negated(c_lower, "html"):
+                    result.skill_id = "frontend-design"
+                elif (any(k in c_lower for k in ["markdown", ".md", "md"])) and not is_term_negated(c_lower, "md"):
+                    result.skill_id = None
+
+                result.is_generate_intent = True
+                result.deliverables = []
+                if h_tgt_files:
+                    for tf in h_tgt_files:
+                        if tf not in result.deliverables:
+                            result.deliverables.append(tf)
+                elif h_tgt_fmts:
+                    for fmt in h_tgt_fmts:
+                        if fmt not in result.deliverables:
+                            result.deliverables.append(fmt)
+                break
+
+        # 4b. 语义亲和度路由器（Semantic Router，彻底替代静态白名单）
         if not result.skill_id:
             all_skills = available_skills or get_available_skills()
             if all_skills:
@@ -789,40 +861,6 @@ class SkillRouter:
                             result.skill_id = top_id
                             result.affinity_score = top_score
                             result.matched_reasons = top_reasons
-
-        # 5b. 上下文追问/确认/重试继承。基于上一条用户交付要求恢复对应技能与交付物契约
-        continuation_cues = [
-            "1", "1.", "一是", "第一个", "确认", "生成", "导出", "确认生成", "请生成",
-            "重新生成", "重新制作", "重做", "再次生成", "再生成一次", "重新导出", "retry", "regenerate"
-        ]
-        if not result.skill_id and existing_history and lower_query in continuation_cues:
-            for h in reversed(existing_history[-8:]):
-                if not isinstance(h, dict) or h.get("role") != "user":
-                    continue
-                c = str(h.get("content", ""))
-                c_lower = c.lower()
-                if not any(k in c_lower for k in GENERATE_ACTION_PATTERNS):
-                    continue
-                h_src, h_tgt_fmts, h_tgt_files = extract_source_and_target_artifacts(c)
-                if (any(k in c_lower for k in ["word", "docx"]) or ".docx" in h_tgt_fmts) and not is_term_negated(c_lower, "docx"):
-                    result.skill_id = "docx"
-                elif (any(k in c_lower for k in ["excel", "xlsx", "表格"]) or ".xlsx" in h_tgt_fmts) and not is_term_negated(c_lower, "xlsx"):
-                    result.skill_id = "xlsx"
-                elif ("pdf" in c_lower or ".pdf" in h_tgt_fmts) and not is_term_negated(c_lower, "pdf"):
-                    result.skill_id = "pdf"
-                elif (any(k in c_lower for k in ["ppt", "幻灯片", "演示文稿", "pptx"]) or ".pptx" in h_tgt_fmts) and not is_term_negated(c_lower, "pptx"):
-                    result.skill_id = "guizang-ppt"
-                elif (any(k in c_lower for k in ["html", "网页", "页面", "单页", "一页"]) or ".html" in h_tgt_fmts) and not is_term_negated(c_lower, "html"):
-                    result.skill_id = "frontend-design"
-                elif (any(k in c_lower for k in ["markdown", ".md", "md"]) or ".md" in h_tgt_fmts) and not is_term_negated(c_lower, "md"):
-                    result.skill_id = None
-
-                result.is_generate_intent = True
-                if h_tgt_files:
-                    for tf in h_tgt_files:
-                        if tf not in result.deliverables:
-                            result.deliverables.append(tf)
-                break
 
         # 6. 前端网页/交互原型/游戏迭代上下文探测（如前轮生成了 HTML/游戏，本轮用户反馈 "加个悔棋"、"改一下颜色"）
         if not result.skill_id and existing_history:
@@ -887,11 +925,15 @@ class SkillRouter:
                         result.requires_execution = False
                         result.default_rounds = min(skill_rounds, 3) if skill_rounds > 0 else 2
                     elif result.is_generate_intent:
+                        inherited_delivs = list(result.deliverables) if result.deliverables else []
                         result.deliverables = [
                             d for d in skill_delivs
                             if not is_term_negated(lower_query, d)
                             and not is_term_negated(lower_query, d.lstrip("."))
                         ]
+                        for idf in inherited_delivs:
+                            if idf not in result.deliverables:
+                                result.deliverables.append(idf)
                         for tf in target_files:
                             if tf not in result.deliverables:
                                 result.deliverables.append(tf)

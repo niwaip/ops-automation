@@ -186,6 +186,15 @@ def build_deliverable_execution_instruction(skill_res: Any) -> str:
             "落盘方式：调用 `write_markdown` 或运行脚本生成目标 PDF 文件保存至 `/workspace/`。\n"
             "⚠️ 严禁仅输出口头文字！必须实际调用工具完成物理文件落盘！"
         )
+    elif getattr(skill_res, "skill_id", None) == "pptx" or (
+        getattr(skill_res, "deliverables", None) and any(ext.lower().endswith(".pptx") for ext in skill_res.deliverables)
+    ):
+        target_fn = next((d for d in skill_res.deliverables if d.lower().endswith(".pptx")), "presentation.pptx")
+        return (
+            "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
+            f"落盘方式：调用 `bash` 工具运行 Python 脚本（使用 python-pptx 库生成目标演示文稿并保存至 `/workspace/{target_fn}`）。\n"
+            "⚠️ 严禁仅输出口头文字！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！"
+        )
     elif getattr(skill_res, "is_ppt_intent", False):
         return (
             "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"

@@ -117,10 +117,9 @@ def is_network_search_forbidden(query: str) -> bool:
         return False
     p = query.lower()
     network_neg_patterns = [
-        r'(?:不要|无需|严禁|不用|禁止|切勿)\s*(?:联网|搜索网络|网络搜索|上网|联网查询|调用搜索|发起搜索|查网)',
-        r'(?:不|别)\s*(?:联网|搜索网络)',
+        r'(?:不要|无需|严禁|不用|禁止|切勿|别|不)\s*(?:联网|搜索网络|网络搜索|上网|联网查询|调用搜索|发起搜索|查网|搜索)',
     ]
-    return any(bool(re.search(pat, p)) for pat in network_neg_patterns)
+    return any(bool(re.search(pat, p)) for pat in network_neg_patterns) or is_term_negated(p, "联网") or is_term_negated(p, "搜索")
 
 
 def is_send_intent_requested(query: str, send_patterns: List[str]) -> bool:
@@ -130,8 +129,8 @@ def is_send_intent_requested(query: str, send_patterns: List[str]) -> bool:
     p = query.lower()
     for pat in send_patterns:
         if pat.lower() in p:
-            # 校验该发送模式是否被否定（例如：“不要通过微信发送”）
-            neg_pat = rf'{NEG_PREFIX}\s*(?:通过)?\s*{re.escape(pat.lower())}'
+            # 校验该发送模式是否被否定（例如：“不要通过微信发送” 或 “不要把文件发送到微信”）
+            neg_pat = rf'{NEG_PREFIX}\s*(?:通过|把[^，。！？；;\n]+(?:通过)?|将[^，。！？；;\n]+(?:通过)?)?\s*{re.escape(pat.lower())}'
             if re.search(neg_pat, p):
                 continue
             return True
@@ -143,13 +142,33 @@ def is_modify_intent_requested(query: str, attached_files: Optional[List[str]] =
     if not query:
         return False
     p = query.lower()
+    neg_modify_pattern = rf'(?:{NEG_PREFIX}|(?<![得可并不])不|别)\s*(?:去|对|把|将|在)?\s*[^，。！？；;\n]*(?:修改|改动|改|替换|变更|更新|调整)'
     # 明确的字段修改、换值、局部替换
     modify_patterns = [
-        r'(?:把|将|对).*(?:改|换成|替换|变更|更新|调整)',
-        r'(?:将|把).*(?:早班|晚班|班次|人员|负责人|李师傅|王师傅|预算|金额|数值|内容|字段|时间|日期).*(?:换成|改为|替换为|改成)',
-        r'(?:换成|改为|替换为|更新为|改成).*(?:早班|晚班|班次|人员|负责人|李师傅|王师傅|\d+)',
-        r'(?:仅|只)?(?:修改|替换|改动|变更|调整).*内容',
+        r'(?<![核比校结参相对])(?:把|将|对)[^，。！？；;\n]*(?:改|换成|替换|变更|更新|调整)',
+        r'(?:将|把)[^，。！？；;\n]*(?:早班|晚班|班次|人员|负责人|李师傅|王师傅|预算|金额|数值|内容|字段|时间|日期)[^，。！？；;\n]*(?:换成|改为|替换为|改成)',
+        r'(?:换成|改为|替换为|更新为|改成)[^，。！？；;\n]*(?:早班|晚班|班次|人员|负责人|李师傅|王师傅|\d+)',
+        r'(?:仅|只)?(?:修改|替换|改动|变更|调整)[^，。！？；;\n]*内容',
     ]
+    clauses = re.split(r'[，。！？；;\n]+', p)
+    has_positive = False
+    has_negative = False
+    for c in clauses:
+        c = c.strip()
+        if not c:
+            continue
+        if re.search(neg_modify_pattern, c):
+            has_negative = True
+            continue
+        if any(bool(re.search(pat, c)) for pat in modify_patterns):
+            has_positive = True
+
+    if has_negative and not has_positive:
+        return False
+    if has_positive:
+        return True
+    if has_negative:
+        return False
     return any(bool(re.search(pat, p)) for pat in modify_patterns)
 
 
@@ -243,14 +262,19 @@ def extract_source_and_target_artifacts(
                 bool(re.search(rf'^{INSPECT_SOURCE_PREFIXES}', raw_stem))
                 or any(k in c_clean for k in ["读取", "基于", "输入", "来自", "核对", "阅读", "总结", "分析", "检查", "审阅", "提取", "抽取", "对账", "查看"])
             )
-            # 严格剥离动词与连词前缀
-            clean_stem = re.sub(
-                r'^(?:读取|基于|根据|来自|从|查看|输入|将|把|上传的|附件|生成|制作|创建|导出|另存为|保存为|写成|整理并保存为|整理|编成|输出为|转为|转成|只要|要|和|与|及|核对|阅读|总结|分析|检查|审阅|提取|抽取|对账)+(?:一份|一个|一张|一套)?(?:可下载的|可下载)?(?:Word|Excel|PPT|PDF|Markdown|HTML|原生)?(?:文档|文件|表格|报告|演示文稿|文稿)?',
-                '',
-                raw_stem,
-                flags=re.I
-            ).strip()
+            # 严格剥离动词与量词修饰前缀
+            action_prefix_pat = (
+                r'^(?:只|仅仅|仅|只需|只需生成|只生成|读取|基于|根据|来自|从|查看|输入|将|把|上传的|附件|生成|制作|创建|导出|另存为|保存为|写成|整理并保存为|整理|编成|输出为|转为|转成|只要|要|和|与|及|核对|阅读|总结|分析|检查|审阅|提取|抽取|对账)+'
+                r'(?:一份|一个|一张|一套)?(?:可下载的|可下载)?(?:Word|Excel|PPT|PDF|Markdown|HTML|原生)?'
+            )
+            clean_stem = re.sub(action_prefix_pat, '', raw_stem, flags=re.I).strip()
+            # 只有当剥离完动作后，剩余部分以通用词开头且还有后续具体实体时（如“报告方案” -> “方案”），才进一步剥除通用词
+            if clean_stem and re.match(r'^(?:文档|文件|表格|报告|演示文稿|文稿).+', clean_stem):
+                clean_stem = re.sub(r'^(?:文档|文件|表格|报告|演示文稿|文稿)+', '', clean_stem).strip()
             clean_stem = clean_stem.lstrip('“"\'`')
+            if not clean_stem:
+                # 若完全剥除变为空，则回退为剥离纯动作词后的实体
+                clean_stem = re.sub(r'^(?:只|仅仅|仅|只需|只需生成|只生成|读取|基于|根据|来自|从|查看|输入|将|把|生成|制作|创建|导出|另存为|保存为|输出为|转为|转成)+', '', raw_stem).strip()
             if not clean_stem:
                 continue
             fn = clean_stem + ext
@@ -297,8 +321,17 @@ def extract_source_and_target_artifacts(
     return source_files, target_formats, target_files
 
 
-def has_positive_generate_action(query: str, generate_patterns: List[str]) -> bool:
+DEFAULT_GENERATE_PATTERNS = [
+    "生成", "制作", "创建", "输出", "导出", "写一个", "写一份", "写一篇", "写段", "编写",
+    "写成", "整理成", "整理为", "做成", "做一份", "做个", "排版成", "排版为", "画一个", "画张", "画幅",
+    "转为", "转成", "转换为", "转换成", "另存为", "保存为"
+]
+
+
+def has_positive_generate_action(query: str, generate_patterns: Optional[List[str]] = None) -> bool:
     """Checks whether query contains at least one positive, un-negated generative clause."""
+    if generate_patterns is None:
+        generate_patterns = DEFAULT_GENERATE_PATTERNS
     # 1. 遮罩引号内的文件名与词组，防止“制作说明.docx”等文件名动词干扰
     masked, _ = mask_file_references(query)
     # 2. 剥离“查看/阅读/总结/核对 + [刚才/之前/已] + 生成的”修饰短语
