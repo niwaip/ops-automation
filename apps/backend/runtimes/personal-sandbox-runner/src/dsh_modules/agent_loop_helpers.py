@@ -188,6 +188,36 @@ def auto_heal_unexecuted_file_writes(text: str, workspace_dir: str) -> Tuple[str
                     except Exception as e:
                         print(f"⚠️ [Harness Auto-Heal] 写入自愈产物异常: {e}")
                     break
+            else:
+                py_save_match = re.search(
+                    r'(?:save|\.to_csv|\.to_excel)\s*\(\s*[\'"](?:/workspace/|\./workspace/)?([a-zA-Z0-9_\-\u4e00-\u9fa5]+\.(?:pptx?|docx?|xlsx?|pdf|csv|json|html|png|jpg))[\'"]',
+                    block_content
+                )
+                if py_save_match and ("import " in block_content or "from " in block_content):
+                    clean_filename = py_save_match.group(1).strip()
+                    dest_file = Path(workspace_dir) / clean_filename
+                    if not dest_file.exists() or dest_file.stat().st_size == 0:
+                        tmp_py = Path("/tmp") / f"_auto_heal_{clean_filename}.py"
+                        try:
+                            with open(tmp_py, "w", encoding="utf-8") as f:
+                                f.write(block_content.strip())
+                            import subprocess
+                            proc = subprocess.run(["python3", str(tmp_py)], cwd=workspace_dir, capture_output=True, text=True, timeout=30)
+                            if proc.returncode == 0 and dest_file.exists() and dest_file.stat().st_size > 0:
+                                written_files.append(str(dest_file))
+                                print(f"✨ [Harness Auto-Heal] 成功自愈执行未运行 Python 脚本生成产物: {dest_file}")
+                                replacement = f"✨ 已成功生成并保存文件：`/workspace/{clean_filename}`"
+                                cleaned_text = cleaned_text.replace(full_block, replacement)
+                            else:
+                                print(f"⚠️ [Harness Auto-Heal] Python 脚本自愈执行退出码 {proc.returncode}: {proc.stderr[:200]}")
+                        except Exception as e:
+                            print(f"⚠️ [Harness Auto-Heal] 执行自愈 Python 脚本异常: {e}")
+                        finally:
+                            if tmp_py.exists():
+                                try:
+                                    tmp_py.unlink()
+                                except Exception:
+                                    pass
 
     for hp in heredoc_patterns:
         for hm in list(re.finditer(hp, cleaned_text)):

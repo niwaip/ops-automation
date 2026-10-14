@@ -251,8 +251,8 @@ def build_deliverable_execution_instruction(skill_res: Any) -> str:
         target_fn = next((d for d in skill_res.deliverables if d.lower().endswith(".pptx")), "presentation.pptx")
         return (
             "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
-            f"落盘方式：调用 `bash` 工具运行 Python 脚本（使用 python-pptx 库生成目标演示文稿并保存至 `/workspace/{target_fn}`）。\n"
-            "⚠️ 严禁仅输出口头文字！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！"
+            f"落盘方式：立即调用 `bash` 工具运行 Python 脚本生成目标演示文稿（使用 python-pptx 库排版并保存至 `/workspace/{target_fn}`）。\n"
+            "⚠️ 严禁仅输出‘已规划’、‘已生成’等口头文字或在回复中输出未执行代码！第一步必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！"
         )
     elif getattr(skill_res, "is_ppt_intent", False):
         return (
