@@ -42,8 +42,13 @@ export const isSandboxModelConnectionRefused = (message: string): boolean =>
     String(message || '')
   );
 
+export const isSandboxExecutionError = (message: string): boolean =>
+  /(?:\[DeepSeek Harness 异常\]:\s*执行异常:|执行异常:\s*(?:openpyxl|unsupported_source_format|FileNotFoundError|ValueError|KeyError|TypeError|AttributeError|InvalidFileException))/i.test(
+    String(message || '')
+  );
+
 export const isSandboxModelUnavailable = (message: string): boolean =>
-  /(?:\[DeepSeek Harness (?:鉴权失败|超时|异常)\]|大模型代理调用失败|模型不可用|上游大模型|上游模型|no client initialized for model)/i.test(
+  /(?:\[DeepSeek Harness (?:鉴权失败|超时)\]|\[DeepSeek Harness 异常\]:\s*大模型代理调用失败|大模型代理调用失败|模型不可用|上游大模型|上游模型|no client initialized for model)/i.test(
     String(message || '')
   );
 
@@ -185,6 +190,20 @@ export function classifyPersonalSandboxError(options: {
         retryable: true,
       },
       executionTrace: { executed: false, errorType: 'CONNECTION_REFUSED', rawError: errMsg },
+    };
+  }
+
+  // 4.3. 沙箱代码/工具级执行异常（非大模型服务离线或网络故障）
+  if (isSandboxExecutionError(errMsg)) {
+    const detailMatch = errMsg.match(/执行异常:\s*([^\n\r]+)/);
+    const detail = detailMatch ? detailMatch[1].trim() : errMsg;
+    return {
+      friendlyError: `❌ 沙箱工具执行异常：${detail}。本次任务未能完成，请检查输入文件格式与参数要求。`,
+      eventData: {
+        code: 'SANDBOX_TOOL_EXECUTION_ERROR',
+        retryable: false,
+      },
+      executionTrace: { executed: true, errorType: 'TOOL_EXECUTION_ERROR', rawError: errMsg },
     };
   }
 

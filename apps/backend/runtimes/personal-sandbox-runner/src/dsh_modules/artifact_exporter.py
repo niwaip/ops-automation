@@ -7,6 +7,8 @@ import re
 from pathlib import Path
 from typing import Tuple, List, Optional
 
+from .html_report_fallback import is_plausible_html_file
+
 
 class ArtifactExporter:
     """Extracts and persists deliverable files to workspace."""
@@ -210,7 +212,7 @@ class ArtifactExporter:
         mentioned = re.findall(r'(?:/workspace/|workspace/|`)([a-zA-Z0-9_\-\.]+\.html)', cleaned_text, re.I)
         for fn in mentioned:
             p = Path(workspace_dir) / fn
-            if p.exists() and p.is_file() and p.stat().st_size > 50:
+            if p.exists() and p.is_file() and is_plausible_html_file(p):
                 # 校验文件是否在当前轮次内被生成/修改，严禁将历史其他任务生成的残留同名文件（如 index.html）误判为本轮产物
                 is_current_turn_file = (turn_start_time is None) or (p.stat().st_mtime >= turn_start_time - 2.0)
                 if turn_start_time is not None and not is_current_turn_file:
@@ -222,15 +224,23 @@ class ArtifactExporter:
 
         # 仅当本轮具备明确的 HTML 产物意图，且该文件确系在当前轮次生成时，才执行未提及文件名的全局工作区探测
         prompt_str = (prompt or "").lower()
+        user_cmd = prompt_str
+        if "用户指令：" in user_cmd:
+            user_cmd = user_cmd.split("用户指令：")[-1].strip()
+        elif "用户指令:" in user_cmd:
+            user_cmd = user_cmd.split("用户指令:")[-1].strip()
+        else:
+            user_cmd = re.sub(r'【(?:当前轮次用户上传附件|当前会话有效附件清单)】:[^\n]+\n?', '', user_cmd).strip()
+
         names_non_web_format = bool(
-            re.search(r'(?:pptx?|slides?|幻灯片|演示文稿|pdf|docx?|word|xlsx?|excel)', prompt_str, re.I)
+            re.search(r'(?:pptx?|slides?|幻灯片|演示文稿|pdf|docx?|word|xlsx?|excel)', user_cmd, re.I)
         )
         html_cues = ["html", "网页", "页面", "前端", "看板", "大屏", "原型", "demo", "五子棋", "ppt", "幻灯片", "演示文稿", "单页"]
         has_html_intent = (not names_non_web_format) and (
             is_ppt_intent
             or is_design_intent
-            or any(cue in prompt_str for cue in html_cues)
-            or ("报告" in prompt_str and any(cue in prompt_str for cue in ["单页", "一页", "html", "网页"]))
+            or any(cue in user_cmd for cue in html_cues)
+            or ("报告" in user_cmd and any(cue in user_cmd for cue in ["单页", "一页", "html", "网页"]))
         )
 
         if not target_file and has_html_intent and Path(workspace_dir).exists():
@@ -239,7 +249,7 @@ class ArtifactExporter:
             min_mtime = (turn_start_time - 2.0) if turn_start_time is not None else (now - 30.0)
             recent_htmls = [
                 f for f in Path(workspace_dir).glob("*.html")
-                if f.is_file() and f.stat().st_size > 50 and (f.stat().st_mtime >= min_mtime)
+                if is_plausible_html_file(f) and (f.stat().st_mtime >= min_mtime)
             ]
             if recent_htmls:
                 recent_htmls.sort(key=lambda f: f.stat().st_mtime, reverse=True)
@@ -258,7 +268,7 @@ class ArtifactExporter:
                     is_design_intent=is_design_intent,
                     is_ppt_intent=is_ppt_intent
                 )
-                if mat_path and Path(mat_path).exists():
+                if mat_path and Path(mat_path).exists() and is_plausible_html_file(Path(mat_path)):
                     target_file = Path(mat_path)
             except Exception as e:
                 print(f"⚠️ [Harness Export] 声明式 HTML 产物自愈失败: {e}")
@@ -274,7 +284,7 @@ class ArtifactExporter:
                     workspace_dir=workspace_dir,
                     notice="本单页报告由系统基于会话中有效内容恢复生成，支持交互预览与全屏查看。"
                 )
-                if fallback_path and Path(fallback_path).exists():
+                if fallback_path and Path(fallback_path).exists() and is_plausible_html_file(Path(fallback_path)):
                     target_file = Path(fallback_path)
             except Exception as e:
                 print(f"⚠️ [Harness Export] 会话历史 HTML 产物自愈失败: {e}")
@@ -291,6 +301,12 @@ class ArtifactExporter:
                         len(cleaned_text.strip()) < 80 and
                         bool(re.search(r'(?:文件|代码|报告)?已成功(?:生成|写入|保存)', cleaned_text))
                     )
+                    is_fallback_error_text = (
+                        cleaned_text.startswith("⚠️")
+                        or cleaned_text.startswith("❌")
+                        or "收尾汇总时未输出" in cleaned_text
+                        or "任务未完成最终交付" in cleaned_text
+                    )
 
                     if is_ppt_intent:
                         banner = (
@@ -305,9 +321,17 @@ class ArtifactExporter:
                             "- **操作提示**：您可以在下方直接**展开在线预览**、**全屏查看**，或点击**下载**保存本地使用。\n\n"
                         )
 
-                    if is_hollow_claim_text:
+                    if is_fallback_error_text:
+                        # 错误兜底状态下，若通过历史数据自愈生成了有效 HTML，替换为清晰的自愈恢复说明，绝不呈现前后矛盾文案
+                        cleaned_text = (
+                            "✨ **单页 HTML 报告已由系统基于会话内容自动整理生成！**\n"
+                            f"- **输出文件**：`/workspace/{target_file.name}`\n"
+                            "- **操作提示**：您可以在下方直接**展开在线预览**、**全屏查看**，或点击**下载**保存本地使用。\n\n"
+                            "> 💡 **恢复说明**：上游模型在写入收尾阶段未输出有效正文，系统已自动提取前序会话核心数据并编译为单页报告。"
+                        )
+                    elif is_hollow_claim_text:
                         cleaned_text = banner
-                    elif not cleaned_text.startswith("✨"):
+                    elif not cleaned_text.startswith("✨") and not cleaned_text.startswith("⚠️"):
                         cleaned_text = banner + cleaned_text
 
                     cleaned_text = cleaned_text.rstrip() + f"\n\n```html\n{file_content}\n```\n"

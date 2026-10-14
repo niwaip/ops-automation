@@ -686,8 +686,16 @@ def _finalize_agent_text(
             raise TimeoutError(f"Task total execution deadline ({policy.total_task_timeout}s) exceeded")
 
         p_lower = (last_user_prompt or "").lower()
+        user_cmd = p_lower
+        if "用户指令：" in user_cmd:
+            user_cmd = user_cmd.split("用户指令：")[-1].strip()
+        elif "用户指令:" in user_cmd:
+            user_cmd = user_cmd.split("用户指令:")[-1].strip()
+        else:
+            user_cmd = re.sub(r'【(?:当前轮次用户上传附件|当前会话有效附件清单)】:[^\n]+\n?', '', user_cmd).strip()
+
         names_non_web_format = bool(
-            re.search(r'(?:pptx?|slides?|幻灯片|演示文稿|pdf|docx?|word|xlsx?|excel)', p_lower, re.I)
+            re.search(r'(?:pptx?|slides?|幻灯片|演示文稿|pdf|docx?|word|xlsx?|excel)', user_cmd, re.I)
         )
         has_non_html_deliverable = bool(
             expected_deliverables and any(ext.lower() in [".docx", ".xlsx", ".pdf"] for ext in expected_deliverables)
@@ -697,20 +705,20 @@ def _finalize_agent_text(
             not names_non_web_format
             and not has_non_html_deliverable
             and (
-                any(cue in p_lower for cue in html_cues)
-                or ("报告" in p_lower and any(cue in p_lower for cue in ["单页", "一页", "html", "网页"]))
+                any(cue in user_cmd for cue in html_cues)
+                or ("报告" in user_cmd and any(cue in user_cmd for cue in ["单页", "一页", "html", "网页"]))
             )
         )
         if has_html_req:
             try:
-                from .html_report_fallback import materialize_html_report_fallback
+                from .html_report_fallback import materialize_html_report_fallback, is_plausible_html_file
                 fallback_path = materialize_html_report_fallback(
                     prompt=last_user_prompt,
                     history=messages,
                     workspace_dir=WORKSPACE_DIR,
                     notice="本单页报告由系统基于会话中有效内容恢复生成，支持交互预览与全屏查看。"
                 )
-                if fallback_path and Path(fallback_path).exists():
+                if fallback_path and Path(fallback_path).exists() and is_plausible_html_file(Path(fallback_path)):
                     file_content = Path(fallback_path).read_text(encoding="utf-8")
                     final_text = (
                         "✨ **单页 HTML 报告已由系统基于会话内容自动整理生成！**\n"

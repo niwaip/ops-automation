@@ -462,12 +462,12 @@ describe('ModelProxyController', () => {
       const originalEnv = process.env.SANDBOX_MODEL_ATTEMPT_TIMEOUT_MS;
       try {
         delete process.env.SANDBOX_MODEL_ATTEMPT_TIMEOUT_MS;
-        expect(controller.resolveAttemptTimeoutMs({ tools: [{}, {}, {}] })).toBe(30_000);
-        expect(controller.resolveAttemptTimeoutMs({ tools: Array.from({ length: 8 }, () => ({})) })).toBe(60_000);
-        expect(controller.resolveStreamIdleTimeoutMs({ tools: [{}, {}, {}] })).toBe(30_000);
-        expect(controller.resolveStreamIdleTimeoutMs({ tools: Array.from({ length: 8 }, () => ({})) })).toBe(60_000);
-        expect(controller.resolveAttemptTimeoutMs({ request_context: 'web_search_synthesis' })).toBe(60_000);
-        expect(controller.resolveStreamIdleTimeoutMs({ request_context: 'web_search_synthesis' })).toBe(60_000);
+        expect(controller.resolveAttemptTimeoutMs({ tools: [{}, {}, {}] })).toBe(60_000);
+        expect(controller.resolveAttemptTimeoutMs({ tools: Array.from({ length: 8 }, () => ({})) })).toBe(90_000);
+        expect(controller.resolveStreamIdleTimeoutMs({ tools: [{}, {}, {}] })).toBe(60_000);
+        expect(controller.resolveStreamIdleTimeoutMs({ tools: Array.from({ length: 8 }, () => ({})) })).toBe(90_000);
+        expect(controller.resolveAttemptTimeoutMs({ request_context: 'web_search_synthesis' })).toBe(90_000);
+        expect(controller.resolveStreamIdleTimeoutMs({ request_context: 'web_search_synthesis' })).toBe(90_000);
         expect(
           controller.resolveAttemptTimeoutMs({
             thinking: false,
@@ -492,8 +492,8 @@ describe('ModelProxyController', () => {
             },
           ],
         };
-        expect(controller.resolveAttemptTimeoutMs(multimodalBody)).toBe(60_000);
-        expect(controller.resolveStreamIdleTimeoutMs(multimodalBody)).toBe(60_000);
+        expect(controller.resolveAttemptTimeoutMs(multimodalBody)).toBe(90_000);
+        expect(controller.resolveStreamIdleTimeoutMs(multimodalBody)).toBe(90_000);
         expect(controller.isTransientError(new Error('AI 模型响应超时，请稍后重试 (当前超时设置: 30秒)'))).toBe(true);
 
         process.env.SANDBOX_MODEL_ATTEMPT_TIMEOUT_MS = '45000';

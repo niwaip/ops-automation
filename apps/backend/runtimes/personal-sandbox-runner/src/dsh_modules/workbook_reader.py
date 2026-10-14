@@ -65,9 +65,15 @@ def inspect_workbook(file_path: Union[str, Path]) -> Union[WorkbookManifest, Too
     Reads sheet names, dimensions, headers, and formula distributions in read-only stream mode.
     """
     p = Path(file_path)
-    if not p.exists() or p.suffix.lower() not in [".xlsx", ".xlsm"]:
-        err_msg = f"文件未找到或非合法 Excel 工作簿: {p}"
+    if not p.exists():
+        err_msg = f"文件未找到: {p}"
         return ToolResult.error(code="file_not_found", message=err_msg, text=err_msg)
+    if p.suffix.lower() not in [".xlsx", ".xlsm"]:
+        if p.suffix.lower() == ".csv":
+            err_msg = f"原件 '{p.name}' 为纯文本 CSV 格式，不是 Excel 工作簿。表格结构解析工具仅支持 .xlsx/.xlsm，如需读取或处理 CSV 内容，请调用 read_file 工具或使用 bash 执行 Python 脚本。"
+            return ToolResult.error(code="unsupported_source_format", message=err_msg, text=err_msg)
+        err_msg = f"非合法 Excel 工作簿: {p}"
+        return ToolResult.error(code="unsupported_source_format", message=err_msg, text=err_msg)
 
     try:
         file_bytes = p.read_bytes()

@@ -67,7 +67,8 @@ GUIDE_PATTERNS = [
 ]
 
 GENERATE_ACTION_PATTERNS = [
-    "生成", "制作", "创建", "导出", "新建", "做个", "做一份", "做一张", "做个表", "做个ppt", "做个幻灯片",
+    "生成", "制作", "创建", "导出", "新建", "编写", "写一个", "写一段", "写个脚本", "写一份脚本",
+    "做个", "做一份", "做一张", "做个表", "做个ppt", "做个幻灯片",
     "写一份", "写个", "写出", "输出", "输出为", "保存为", "转为", "转成", "落盘", "另存为", "写成",
     "汇总成", "总结成", "整理成", "归纳成", "提炼成", "做成", "制成", "输出成", "排版成", "编成", "改写成",
     "做张ppt", "做套ppt", "做张表", "做份报告", "出份报告", "一张ppt", "一份ppt", "一套ppt",
@@ -77,8 +78,8 @@ GENERATE_ACTION_PATTERNS = [
 
 INSPECT_ACTION_PATTERNS = [
     "查看", "阅读", "查阅", "读取", "看下", "看一下", "看看", "检查", "分析", "审阅", "浏览",
-    "排查", "检索", "探查", "诊断", "查下", "查一下", "搜索", "搜下", "搜一下", "提取内容", "问答",
-    "帮我看", "看代码", "查代码", "解释", "说明", "对比", "比较", "排序", "核对", "校验", "为什么",
+    "排查", "检索", "探查", "诊断", "查下", "查一下", "搜索", "搜下", "搜一下", "提取内容", "提取", "抽取", "只提取", "仅提取", "问答",
+    "帮我看", "看代码", "查代码", "解释", "说明", "对比", "比较", "排序", "核对", "校验", "识别", "为什么",
     "检验", "稽核", "对账", "核查", "核验", "验算", "勾稽",
     "评估", "测算", "测一下", "变化", "原因", "read", "view", "inspect", "check", "examine", "analyze", "cat", "show", "explain", "compare"
 ]
@@ -93,7 +94,8 @@ CONTENT_QUERY_PATTERNS = [
     "内容是什么", "有什么内容", "写了什么", "讲了什么", "包含什么", "里面有", "里面写了", "里写了",
     "有哪些表", "有哪些工作表", "有什么表", "有哪些sheet", "什么sheet", "列出sheet", "清单", "用途",
     "附件是什么", "文件是什么", "这是什么", "上传的是什么", "上传了什么", "上传的是啥", "传了什么", "这是啥", "是什么文件",
-    "这个文件是啥", "这是什么图", "图里是什么", "图片是什么", "文件内容", "附件内容", "识别图片", "解读图片"
+    "这个文件是啥", "这是什么图", "图里是什么", "图片是什么", "文件内容", "附件内容", "识别图片", "解读图片",
+    "商品是什么", "照片里是什么", "照片是什么", "照片里的", "图片里的", "图中的", "照片中是什么", "图片中是什么"
 ]
 
 GENERATIVE_SLASH_COMMANDS = {
@@ -135,21 +137,16 @@ def is_text_only_request(query: str) -> bool:
     return False
 
 
-def is_term_negated(query: str, term: str) -> bool:
-    """Checks whether a deliverable term (e.g. ppt, html, excel) appears inside a negative constraint like '不要生成多余的 HTML 或 PPT'."""
-    if not query or not term:
-        return False
-    lower = query.lower()
-    t_lower = term.lower().strip()
-    if len(t_lower) < 2:
-        return False
-
-    prefix = r'(?:(?:不要|严禁|无需|不用|不需要|禁止|切勿|免于)\s*(?:生成|制作|下载|导出|创建|输出|做|提供|落盘)|(?:不生成|不要生成|不要制作|不要导出|不要做|不提供|不输出|不下载|不用下载|无需下载))\s*(?:任何|多余的|其他的)?\s*[^，。！？；\n]*'
-    neg_pattern = prefix + r'\b' + re.escape(t_lower)
-    if re.search(neg_pattern, lower):
-        return True
-    neg_cjk_pattern = prefix + re.escape(t_lower)
-    return bool(re.search(neg_cjk_pattern, lower))
+from .intent_contract import (
+    DELIVERABLE_TERM_SYNONYMS,
+    is_term_negated,
+    is_network_search_forbidden,
+    is_send_intent_requested,
+    is_modify_intent_requested,
+    mask_file_references,
+    extract_source_and_target_artifacts,
+    has_positive_generate_action,
+)
 
 
 def check_generation_target_is_physical(lower_q: str) -> bool:
@@ -172,7 +169,7 @@ def check_generation_target_is_physical(lower_q: str) -> bool:
         return True
 
     # 组合与交付物特征模式：[动词] + 成/为 + [量词] + [物理格式] 或 [量词] + [物理格式]
-    if re.search(r'(?:成|为)\s*(?:一份|一个|一张|一套)?\s*(?:ppt|word|pdf|excel|html|幻灯片|演示文稿|表格|文档|报表|脚本|dockerfile)', lower_q):
+    if re.search(r'(?:成|为)\s*(?:一份|一个|一张|一套)?\s*(?:ppt|word|pdf|excel|html|markdown|csv|json|幻灯片|演示文稿|表格|文档|报表|脚本|dockerfile)', lower_q):
         m_verb = re.search(r'(?:成|为)\s*(?:一份|一个|一张|一套)?\s*([a-zA-Z0-9_\-\u4e00-\u9fa5\.]+)', lower_q)
         target_verb = m_verb.group(1).strip() if m_verb else ""
         if target_verb == "表格" and is_markdown_table:
@@ -180,7 +177,7 @@ def check_generation_target_is_physical(lower_q: str) -> bool:
         elif not is_term_negated(lower_q, target_verb):
             return True
 
-    if re.search(r'(?:一张|一份|一个|一套)\s*(?:ppt|word|pdf|excel|html|幻灯片|演示文稿|表格|文档|报表|脚本|dockerfile)', lower_q):
+    if re.search(r'(?:一张|一份|一个|一套)\s*(?:ppt|word|pdf|excel|html|markdown|csv|json|幻灯片|演示文稿|表格|文档|报表|脚本|dockerfile)', lower_q):
         m_quant = re.search(r'(?:一张|一份|一个|一套)\s*([a-zA-Z0-9_\-\u4e00-\u9fa5\.]+)', lower_q)
         target_quant = m_quant.group(1).strip() if m_quant else ""
         if target_quant == "表格" and is_markdown_table:
@@ -189,10 +186,19 @@ def check_generation_target_is_physical(lower_q: str) -> bool:
             return True
 
     # 查找生成动词后紧随的目标词
-    m = re.search(r'(?:生成|导出|制作|创建|做|写|输出为|保存为|转为|转成|输出|汇总成|总结成|整理成|归纳成|做成|制成|提炼成|排版成|编成)\s*(?:一份|一个|一张|一套|一段|出|成|为)?\s*([a-zA-Z0-9_\-\u4e00-\u9fa5\.]+)', lower_q)
-    valid_cues = [".pdf", ".docx", ".xlsx", ".pptx", ".html", ".md", ".sql", ".sh", ".yml", ".yaml", "dockerfile", "docker-compose", "word", "excel", "ppt", "html", "markdown", "md 文件", "导出为", "保存为"]
+    m = re.search(r'(?:生成|导出|制作|创建|做|写|输出为|保存为|转为|转成|输出|汇总成|总结成|整理成|归纳成|做成|制成|提炼成|排版成|编成|另存为)\s*(?:一份|一个|一张|一套|一段|出|成|为)?\s*([a-zA-Z0-9_\-\u4e00-\u9fa5\.]+)', lower_q)
+    valid_cues = [
+        ".pdf", ".docx", ".xlsx", ".pptx", ".html", ".md", ".csv", ".json",
+        ".sql", ".sh", ".yml", ".yaml", "dockerfile", "docker-compose",
+        "word", "excel", "ppt", "html", "markdown", "md 文件", "md文件", "导出为", "保存为",
+        "pdf report", "as a pdf", "word document", "pdf报告", "word文档", "excel文件"
+    ]
+    has_regex_format = bool(
+        re.search(r'\b(?:pdf|docx|xlsx|pptx|csv|json)\b', lower_q)
+        and not is_term_negated(lower_q, "pdf")
+    )
     if not m:
-        return any(p in lower_q and not is_term_negated(lower_q, p) for p in valid_cues)
+        return any(p in lower_q and not is_term_negated(lower_q, p) for p in valid_cues) or has_regex_format
 
     target = m.group(1).strip()
     if is_term_negated(lower_q, target):
@@ -203,6 +209,7 @@ def check_generation_target_is_physical(lower_q: str) -> bool:
     has_physical = (
         (any(p in target for p in PHYSICAL_DELIVERABLE_TARGETS) and not is_term_negated(lower_q, target))
         or any(ext in lower_q and not is_term_negated(lower_q, ext) for ext in valid_cues)
+        or has_regex_format
     )
     has_text_only = any(t in target for t in TEXT_ONLY_ACTION_TARGETS)
     if has_text_only and not any(p in target for p in PHYSICAL_DELIVERABLE_TARGETS):
@@ -211,7 +218,11 @@ def check_generation_target_is_physical(lower_q: str) -> bool:
     return has_physical
 
 
-def resolve_file_action_intent(query: str, history: Optional[List[Dict[str, Any]]] = None) -> Tuple[bool, bool]:
+def resolve_file_action_intent(
+    query: str,
+    history: Optional[List[Dict[str, Any]]] = None,
+    attached_files: Optional[List[str]] = None
+) -> Tuple[bool, bool]:
     """
     Semantically resolves whether user intent is physical file generation (is_generate_intent)
     or read-only inspection/analysis (is_inspect_intent).
@@ -222,7 +233,22 @@ def resolve_file_action_intent(query: str, history: Optional[List[Dict[str, Any]
 
     lower_q = query.lower().strip()
 
-    # 0. 明确纯文本请求或否定生成物理文件指令
+    # 0a. 上下文追问/确认/重试优先判定（短续作指令在历史中有生成意图时直接继承）
+    continuation_cues = [
+        "1", "1.", "一是", "第一个", "确认", "生成", "导出", "确认生成", "请生成",
+        "重新生成", "重新制作", "重做", "再次生成", "再生成一次", "重新导出", "retry", "regenerate"
+    ]
+    if history and lower_q in continuation_cues:
+        for h in reversed(history[-4:]):
+            if not isinstance(h, dict):
+                continue
+            c = str(h.get("content", "")).lower()
+            if any(k in c for k in GENERATE_ACTION_PATTERNS) or any(k in c for k in [
+                "pdf", "word", "excel", "ppt", "html", "交接.md", "docx", "xlsx", "pptx"
+            ]):
+                return True, False
+
+    # 0b. 明确纯文本请求或否定生成物理文件指令
     if is_text_only_request(lower_q):
         has_inspect = any(k in lower_q for k in INSPECT_ACTION_PATTERNS) or any(k in lower_q for k in CONTENT_QUERY_PATTERNS)
         return False, has_inspect
@@ -233,62 +259,43 @@ def resolve_file_action_intent(query: str, history: Optional[List[Dict[str, Any]
         if cmd in GENERATIVE_SLASH_COMMANDS:
             return True, False
 
-    # 2. 基础谓词模式检测
-    has_inspect = any(k in lower_q for k in INSPECT_ACTION_PATTERNS) or any(k in lower_q for k in CONTENT_QUERY_PATTERNS)
-    has_summary = any(k in lower_q for k in READONLY_SUMMARY_PATTERNS)
-    # 过滤掉处于否定从句中的生成动词（如“不要生成”、“无需制作”）
-    has_generate = any(
-        k in lower_q and not re.search(r'(?:不要|严禁|无需|不用|禁止|切勿|免于)\s*(?:生成|制作|下载|导出|创建|做)?\s*' + re.escape(k), lower_q)
-        for k in GENERATE_ACTION_PATTERNS
-    )
+    # 2. 遮罩文件名与附件引用，防止文件名中的动词（如“制作说明.docx”、“生产日报.xlsx”）干扰动作判定
+    masked_q, _ = mask_file_references(lower_q, attached_files)
 
-    # 3. 语法结构与消歧分析
+    # 3. 基础谓词模式检测（基于遮罩后内容）
+    has_inspect = (
+        any(k in masked_q for k in INSPECT_ACTION_PATTERNS)
+        or any(k in masked_q for k in CONTENT_QUERY_PATTERNS)
+        or bool(re.search(r'(?:照片|图片|截图|附件|文件).*(?:是什么|是啥|有什么|包含什么|写了什么|是谁|哪家|哪个)', masked_q))
+        or bool(re.search(r'(?:只|仅)?(?:提取|抽取).*(?:文字|文本|内容)', masked_q))
+    )
+    has_summary = any(k in masked_q for k in READONLY_SUMMARY_PATTERNS)
+    has_generate = has_positive_generate_action(masked_q, GENERATE_ACTION_PATTERNS)
+
+    # 4. 纯查看/分析/归纳意图
     if (has_inspect or has_summary) and not has_generate:
-        # 纯查看/查阅/分析/归纳意图（如：“查看文件内容”、“总结2026年收入”、“分析销售数据”）
         return False, True
 
+    # 5. 纯生成/导出/创建意图
     if has_generate and not has_inspect:
-        # 纯生成/导出/创建意图：进一步区分是物理文件交付还是纯文本创作（如“生成一份总结”）
         is_physical = check_generation_target_is_physical(lower_q)
         if is_physical:
             return True, False
         else:
-            # 纯文本创作（如“生成一份总结”、“写个大纲”）
             return False, False
 
+    # 6. 同时包含查阅与生成动词时的结构分析
     if has_inspect and has_generate:
-        # 同时包含查阅与生成动词时的结构分析：
-        # 情况 A: 主语/谓词为查看，修饰语包含生成（如：“查看生成的文件”、“看看刚才导出的pdf”、“检查已生成的代码”）
-        # 此时核心动作仍是“查看”，绝非要求重新生成文件！
-        if re.search(r'(查看|看下|看一下|看看|检查|阅读|查阅|分析|浏览)\s*(?:刚才|之前|已|历史|沙箱)?\s*(生成|输出|制作|导出|新建)的?', lower_q):
+        # 情况 A: 主语/谓词为查看，修饰语包含生成（如：“查看生成的文件”、“看看刚才导出的pdf”、“检查已生成的代码”、“查看刚才生成的交接.md”）
+        if re.search(r'(查看|看下|看一下|看看|检查|阅读|查阅|分析|浏览)\s*(?:刚才|之前|已|历史|沙箱)?\s*(生成|输出|制作|导出|新建)的?', masked_q):
             return False, True
 
         # 情况 B: 查阅并在其基础上进行后续产出
         is_physical = check_generation_target_is_physical(lower_q)
         if is_physical:
-            # 查阅并在其基础上生成新物理文件（如：“分析数据并生成报告pdf”、“读取文件后输出为Word”）
             return True, True
         else:
-            # 查阅并生成纯文本总结/分析（如：“查看文档的内容，然后生成一份总结”、“分析材料给出建议”）
-            # 此时交付载体为聊天文本，绝不属于物理文件生成！
             return False, True
-
-    # 4. 上下文追问/确认/重试探测。短续作指令必须继承上一轮的
-    # 物理交付意图，否则“重新生成”会退化成普通聊天并重新长篇规划。
-    continuation_cues = [
-        "1", "1.", "一是", "第一个", "确认", "生成", "导出", "确认生成", "请生成",
-        "重新生成", "重新制作", "重做", "再次生成", "再生成一次", "重新导出", "retry", "regenerate"
-    ]
-    if history and lower_q in continuation_cues:
-        for h in reversed(history[-4:]):
-            if not isinstance(h, dict):
-                continue
-            c = str(h.get("content", "")).lower()
-            if any(k in c for k in [
-                "pdf", "word", "excel", "ppt", "html", "网页", "页面", "单页", "一页", "报告",
-                "导出", "生成文档", "fpdf", "docx", "xlsx"
-            ]) and any(k in c for k in GENERATE_ACTION_PATTERNS):
-                return True, False
 
     return False, False
 
@@ -597,13 +604,13 @@ class SkillRouter:
         # 1. 探测知识库检索意图（精确词组）
         result.is_knowledge_intent = any(k in lower_query for k in KNOWLEDGE_PATTERNS)
 
-        # 2. 探测文件外发意图
-        result.is_send_intent = any(k in lower_query for k in SEND_PATTERNS)
+        # 2. 探测文件外发意图（严格过滤否定外发指令，如“不要通过微信发送”）
+        result.is_send_intent = is_send_intent_requested(lower_query, SEND_PATTERNS)
 
         # 3. 探测动作指令与知识/教程问答模态消歧
         result.is_guide_intent = any(k in lower_query for k in GUIDE_PATTERNS)
 
-        # 4. 探测全网实时检索与最新动态意图（开放域外部资讯/开源生态/最新发布/会议展会时间，而非本地工作区）
+        # 4. 探测全网实时检索与最新动态意图（开放域外部资讯/大宗商品原料价格/开源生态/最新发布/会议展会时间，而非本地工作区）
         SEARCH_CUES = [
             "最新的", "最新", "最近", "近期", "当前最", "最热门", "热门", "新出", "最新发布",
             "流行", "最流行", "流行度", "主流", "火爆", "大家都在用", "推荐哪些", "推荐几个", "好用的",
@@ -611,7 +618,9 @@ class SkillRouter:
             "安装方法", "安装教程", "如何安装", "怎么安装", "安装指南", "installation guide", "how to install",
             "外部生态", "开源社区", "社区生态", "网上", "全网", "市场动态",
             "插件", "扩展", "第三方库", "有哪些插件", "有哪些扩展", "有哪些库", "有哪些工具", "插件生态", "生态插件",
-            "近年", "近几年", "历年", "历届", "举办时间", "什么时候举办", "什么时候开", "召开时间"
+            "近年", "近几年", "历年", "历届", "举办时间", "什么时候举办", "什么时候开", "召开时间",
+            "铜价", "金价", "油价", "钢价", "原料价格", "行情", "走势", "汇率", "股价", "今日价格", "最新价格", "今日行情",
+            "联网查询", "联网搜索", "上网查", "网上查", "查一下网络"
         ]
         LOCAL_DISAMBIGUATION = [
             "工作区", "当前目录", "本地文件", "已上传", "生成的", "刚才生成", "历史", "附件"
@@ -627,8 +636,18 @@ class SkillRouter:
 
         result.is_search_intent = (is_cues_match or is_tech_ecosystem_inquiry) and not is_asking_local
 
-        # 结构化文件动作意图解析
-        is_gen, is_insp = resolve_file_action_intent(effective_query, existing_history)
+        if is_network_search_forbidden(lower_query):
+            result.is_search_intent = False
+            result.is_research_intent = False
+
+        # 结构化文件动作与产物目标解析
+        source_files, target_formats, target_files = extract_source_and_target_artifacts(effective_query, attached_files)
+        is_gen, is_insp = resolve_file_action_intent(effective_query, existing_history, attached_files)
+        if not (is_insp and not is_gen) and (target_formats or target_files):
+            is_gen = True
+        elif is_insp and not is_gen:
+            target_formats = []
+            target_files = []
         result.is_generate_intent = is_gen
 
         # 若涉及本地附件/文件查看或查阅总结，绝不能被误判为开放域检索或通用安装指南
@@ -670,6 +689,20 @@ class SkillRouter:
                         result.skill_id = s["id"]
                         break
 
+        # 5a. 目标格式显式指定优先于输入源文件格式推断（例如：“读取采购.xlsx，生成采购说明.docx” 应路由至 docx）
+        if not result.skill_id and target_formats:
+            if ".pdf" in target_formats and not is_term_negated(lower_query, "pdf"):
+                result.skill_id = "pdf"
+            elif ".docx" in target_formats and not is_term_negated(lower_query, "docx"):
+                result.skill_id = "docx"
+            elif ".xlsx" in target_formats and not is_term_negated(lower_query, "xlsx"):
+                result.skill_id = "xlsx"
+            elif ".pptx" in target_formats and not is_term_negated(lower_query, "pptx"):
+                if re.search(r'(?:ppt\s*报告|html\s*报告|网页\s*报告|交互式\s*报告)', lower_query):
+                    result.skill_id = "guizang-ppt"
+                else:
+                    result.skill_id = "pptx"
+
         # A single-page report defaults to a web document unless the user names
         # another physical format. This also makes short contextual follow-ups
         # such as "生成一页的报告" deterministic instead of asking a
@@ -679,7 +712,7 @@ class SkillRouter:
             and re.search(r'(?:报告|报表|report)', lower_query, re.I)
         )
         names_non_web_format = bool(
-            re.search(r'(?:pptx?|slides?|幻灯片|演示文稿|pdf|docx?|word|xlsx?|excel)', lower_query, re.I)
+            re.search(r'(?:pptx?|slides?|幻灯片|演示文稿|pdf|docx?|word|xlsx?|excel|markdown|\.md\b)', lower_query, re.I)
         )
         if (
             not result.skill_id
@@ -711,27 +744,30 @@ class SkillRouter:
                 if matches:
                     top_id, top_score, top_reasons = matches[0]
                     # 门禁控制：深度调研 (research) 技能必须有明确指示才启用
-                    # 1) allow_research 为 True（前端勾选了调研开关）
-                    # 2) 或者包含明确的强调研意图短语（如深度调研、技术调研、竞品调研、技术选型对比等）
-                    # 简单的查看、日常问询、代码检查等严禁触发 research
+                    # 1) 严禁在用户明确禁止联网时启用
+                    # 2) allow_research 为 True（前端勾选了调研开关）且无禁止联网
+                    # 3) 或者包含明确的强调研意图短语（如深度调研、技术调研、竞品调研、架构选型对比等）
                     if top_id == "research":
-                        EXPLICIT_RESEARCH_PATTERNS = [
-                            "深度调研", "技术调研", "竞品调研", "架构选型对比", "选型对比",
-                            "技术选型", "最新动态调研", "背调", "社区口碑调研", "深度调查",
-                            "调研", "调查", "真实评价与争议", "近30天真实评价"
-                        ]
-                        is_research_permitted = (
-                            allow_research or any(p in lower_query for p in EXPLICIT_RESEARCH_PATTERNS)
-                        )
-                        CASUAL_INSPECT_PATTERNS = [
-                            "查看当前", "查看文件", "查看目录", "查看代码", "查看配置", "查看版本", "看下", "看代码",
-                            "检查代码", "检查一下", "检查报错", "查一下用法", "查下报错", "查下用法", "怎么写", "如何实现", "语法"
-                        ]
-                        is_casual = any(p in lower_query for p in CASUAL_INSPECT_PATTERNS)
-                        if is_research_permitted and not is_casual and top_score >= cls.AFFINITY_THRESHOLD:
-                            result.skill_id = top_id
-                            result.affinity_score = top_score
-                            result.matched_reasons = top_reasons
+                        if is_network_search_forbidden(lower_query):
+                            pass
+                        else:
+                            EXPLICIT_RESEARCH_PATTERNS = [
+                                "深度调研", "技术调研", "竞品调研", "架构选型对比", "选型对比",
+                                "技术选型", "最新动态调研", "背调", "社区口碑调研", "深度调查",
+                                "调研", "调查", "真实评价与争议", "近30天真实评价"
+                            ]
+                            is_research_permitted = (
+                                allow_research or any(p in lower_query for p in EXPLICIT_RESEARCH_PATTERNS)
+                            )
+                            CASUAL_INSPECT_PATTERNS = [
+                                "查看当前", "查看文件", "查看目录", "查看代码", "查看配置", "查看版本", "看下", "看代码",
+                                "检查代码", "检查一下", "检查报错", "查一下用法", "查下报错", "查下用法", "怎么写", "如何实现", "语法"
+                            ]
+                            is_casual = any(p in lower_query for p in CASUAL_INSPECT_PATTERNS)
+                            if is_research_permitted and not is_casual and top_score >= cls.AFFINITY_THRESHOLD:
+                                result.skill_id = top_id
+                                result.affinity_score = top_score
+                                result.matched_reasons = top_reasons
                     elif top_id == "html-ppt":
                         # consulting-deck 技能门禁：必须包含明确的咨询/Deck意图，防止普通会议纪要或行动清单误触
                         HTML_PPT_INTENT = [
@@ -754,39 +790,39 @@ class SkillRouter:
                             result.affinity_score = top_score
                             result.matched_reasons = top_reasons
 
-        # 5. 上下文追问/确认探测（如前轮涉及 PDF 制作，本轮用户仅回复 "1" 或 "确认生成"）
-        if not result.skill_id and existing_history and lower_query in ["1", "1.", "一是", "第一个", "确认", "生成", "导出"]:
-            for h in reversed(existing_history[-4:]):
-                if not isinstance(h, dict):
-                    continue
-                c = str(h.get("content", "")).lower()
-                if any(k in c for k in ["pdf", "导出", "生成文档", "fpdf", "notosans"]):
-                    result.skill_id = "pdf"
-                    break
-
-        # 5b. 交付物重试继承。基于上一条用户交付要求恢复对应技能，
-        # 不依赖当前短句再次写出文件格式。
-        retry_cues = ["重新生成", "重新制作", "重做", "再次生成", "再生成一次", "重新导出", "retry", "regenerate"]
-        if not result.skill_id and existing_history and lower_query in retry_cues:
+        # 5b. 上下文追问/确认/重试继承。基于上一条用户交付要求恢复对应技能与交付物契约
+        continuation_cues = [
+            "1", "1.", "一是", "第一个", "确认", "生成", "导出", "确认生成", "请生成",
+            "重新生成", "重新制作", "重做", "再次生成", "再生成一次", "重新导出", "retry", "regenerate"
+        ]
+        if not result.skill_id and existing_history and lower_query in continuation_cues:
             for h in reversed(existing_history[-8:]):
                 if not isinstance(h, dict) or h.get("role") != "user":
                     continue
-                c = str(h.get("content", "")).lower()
-                if not any(k in c for k in GENERATE_ACTION_PATTERNS):
+                c = str(h.get("content", ""))
+                c_lower = c.lower()
+                if not any(k in c_lower for k in GENERATE_ACTION_PATTERNS):
                     continue
-                if any(k in c for k in ["html", "网页", "页面", "单页", "一页"]):
-                    result.skill_id = "frontend-design"
-                elif any(k in c for k in ["ppt", "幻灯片", "演示文稿"]):
-                    result.skill_id = "guizang-ppt"
-                elif "pdf" in c:
-                    result.skill_id = "pdf"
-                elif any(k in c for k in ["word", "docx"]):
+                h_src, h_tgt_fmts, h_tgt_files = extract_source_and_target_artifacts(c)
+                if (any(k in c_lower for k in ["word", "docx"]) or ".docx" in h_tgt_fmts) and not is_term_negated(c_lower, "docx"):
                     result.skill_id = "docx"
-                elif any(k in c for k in ["excel", "xlsx", "表格"]):
+                elif (any(k in c_lower for k in ["excel", "xlsx", "表格"]) or ".xlsx" in h_tgt_fmts) and not is_term_negated(c_lower, "xlsx"):
                     result.skill_id = "xlsx"
-                if result.skill_id:
-                    result.is_generate_intent = True
-                    break
+                elif ("pdf" in c_lower or ".pdf" in h_tgt_fmts) and not is_term_negated(c_lower, "pdf"):
+                    result.skill_id = "pdf"
+                elif (any(k in c_lower for k in ["ppt", "幻灯片", "演示文稿", "pptx"]) or ".pptx" in h_tgt_fmts) and not is_term_negated(c_lower, "pptx"):
+                    result.skill_id = "guizang-ppt"
+                elif (any(k in c_lower for k in ["html", "网页", "页面", "单页", "一页"]) or ".html" in h_tgt_fmts) and not is_term_negated(c_lower, "html"):
+                    result.skill_id = "frontend-design"
+                elif (any(k in c_lower for k in ["markdown", ".md", "md"]) or ".md" in h_tgt_fmts) and not is_term_negated(c_lower, "md"):
+                    result.skill_id = None
+
+                result.is_generate_intent = True
+                if h_tgt_files:
+                    for tf in h_tgt_files:
+                        if tf not in result.deliverables:
+                            result.deliverables.append(tf)
+                break
 
         # 6. 前端网页/交互原型/游戏迭代上下文探测（如前轮生成了 HTML/游戏，本轮用户反馈 "加个悔棋"、"改一下颜色"）
         if not result.skill_id and existing_history:
@@ -805,7 +841,7 @@ class SkillRouter:
                     result.is_design_intent = True
 
         # 6. 调研开关显式优先提权（用户在前端主动勾选了调研开关：只要开启了调研开关，就是优先启用）
-        if allow_research and not result.skill_id:
+        if allow_research and not result.skill_id and not is_network_search_forbidden(lower_query):
             CONFLICT_INTENTS = [
                 "做ppt", "生成ppt", "制作ppt", "做个ppt", "ppt", "slides",
                 "做个表", "生成excel", "导出excel", "xlsx",
@@ -856,6 +892,12 @@ class SkillRouter:
                             if not is_term_negated(lower_query, d)
                             and not is_term_negated(lower_query, d.lstrip("."))
                         ]
+                        for tf in target_files:
+                            if tf not in result.deliverables:
+                                result.deliverables.append(tf)
+                        for tfmt in target_formats:
+                            if tfmt not in result.deliverables:
+                                result.deliverables.append(tfmt)
                         result.requires_execution = skill_req_exec and bool(result.deliverables)
                         result.default_rounds = skill_rounds
                     elif result.is_inspect_intent:
@@ -873,8 +915,16 @@ class SkillRouter:
             print(f"🎯 [Skill Router] 命中意图规范: {result.skill_id}{reasons_info}，正在注入专业规范...", flush=True)
             result.skill_context = read_skill(result.skill_id, prompt=effective_query)
 
-        # 8. 探测技术脚本与配置交付物意图 (Dockerfile, docker-compose, *.sh, *.sql, *.py)
-        if not is_text_only_request(lower_query):
+        # 8. 探测技术脚本与配置交付物意图 (Dockerfile, docker-compose, *.sh, *.sql, *.py, *.md, *.csv, *.json)
+        # 保护原则：若已判定为纯查阅/只读意图，绝不扫描并强行开启生成！
+        if not is_text_only_request(lower_query) and not (result.is_inspect_intent and not result.is_generate_intent):
+            for tf in target_files:
+                if tf not in result.deliverables:
+                    result.deliverables.append(tf)
+            for tfmt in target_formats:
+                if tfmt not in result.deliverables:
+                    result.deliverables.append(tfmt)
+
             tech_delivs = []
             if not is_term_negated(lower_query, "dockerfile") and re.search(r'\bdockerfile\b', lower_query):
                 tech_delivs.append("Dockerfile")
@@ -889,13 +939,24 @@ class SkillRouter:
             if not is_term_negated(lower_query, ".py") and not is_term_negated(lower_query, "python"):
                 for py_m in re.findall(r'[\"“\'‘`「]?([a-zA-Z0-9_\-]+\.py)[\"”\'’`」]?', effective_query):
                     tech_delivs.append(py_m)
-            if tech_delivs and any(p in lower_query for p in ["下载", "物理文件", "可下载", "生成", "编写", "创建", "提供"]):
+            if not is_term_negated(lower_query, ".md") and not is_term_negated(lower_query, "markdown"):
+                for md_m in re.findall(r'[\"“\'‘`「]?([a-zA-Z0-9_\-\u4e00-\u9fa5]+\.md)[\"”\'’`」]?', effective_query, re.I):
+                    clean_md = re.sub(
+                        r'^(?:读取|基于|根据|来自|从|查看|输入|将|把|上传的|附件|生成|制作|创建|导出|另存为|保存为|写成|整理并保存为|整理|编成|输出为|转为|转成|只要|要)+',
+                        '',
+                        md_m,
+                        flags=re.I
+                    ).strip().lstrip('“"\'`')
+                    if clean_md and clean_md not in source_files and clean_md.lower() not in [s.lower() for s in source_files]:
+                        tech_delivs.append(clean_md)
+
+            if tech_delivs and any(p in lower_query for p in ["下载", "物理文件", "可下载", "生成", "编写", "创建", "提供", "保存为", "导出为", "另存为", "写成", "整理"]):
                 for td in tech_delivs:
-                    if td not in result.deliverables:
+                    if td not in result.deliverables and td not in source_files and td.lower() not in [s.lower() for s in source_files]:
                         result.deliverables.append(td)
                 result.is_generate_intent = True
 
-        if result.is_research_intent or result.skill_id == "research" or allow_research:
+        if result.is_research_intent or result.skill_id == "research":
             result.is_inspect_intent = False
 
         return result

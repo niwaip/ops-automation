@@ -920,6 +920,31 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     expect(switchObs).toBeUndefined();
   });
 
+  it('returns a tool execution error instead of model unavailable when sandbox throws tool/runtime exception', async () => {
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        'event: observation\ndata: {"content":"⚡ 正在启动个人沙箱环境..."}\n\n',
+        'event: done\ndata: {"success":false,"output":"❌ [DeepSeek Harness 异常]: 执行异常: openpyxl does not support .csv file format, please check you can open it with Excel first.","exitCode":1}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const handled = await service.dispatchPersonalSandbox(
+      { message: '请汇总CSV报表', userId: 'test_user', modelId: 'gemini-3.7-flash-high' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(handled).toBe(true);
+
+    const errorEvent = emittedEvents.find((e) => e.type === StreamEventType.ERROR);
+    expect(errorEvent).toBeDefined();
+    expect(errorEvent?.data?.code).toBe('SANDBOX_TOOL_EXECUTION_ERROR');
+    expect(errorEvent?.content).toContain('沙箱工具执行异常');
+    expect(errorEvent?.content).toContain('openpyxl does not support .csv file format');
+    expect(errorEvent?.content).not.toContain('上游大模型服务暂时不可用或响应超时');
+  });
+
   it('returns a direct DNS error when upstream model address fails name resolution (ENOTFOUND)', async () => {
     global.fetch = jest.fn().mockImplementation(async () => {
       return createMockSseResponse([
