@@ -67,12 +67,18 @@ def is_fast_path_task(prompt: str, skill_res: Any) -> bool:
     # 3. 明确指定了轻量脚本或配置交付物（如 .md, .sh, .py, .sql, Dockerfile, docker-compose）且无探索性要求的任务
     delivs = getattr(skill_res, "deliverables", None)
     if delivs and len(delivs) <= 2:
-        exts = [
-            (Path(d).suffix.lower() if "." in d else (d.lower() if d.lower() == "dockerfile" else f".{d.lower()}"))
-            for d in delivs
-        ]
+        def _get_ext(d: str) -> str:
+            d_s = str(d).strip().lower()
+            if d_s == "dockerfile":
+                return "dockerfile"
+            if d_s.startswith("."):
+                return d_s
+            ext = Path(d_s).suffix
+            return ext if ext else f".{d_s}"
+
+        exts = [_get_ext(d) for d in delivs if d]
         lightweight = {".md", ".sh", ".py", ".sql", ".yml", ".yaml", "dockerfile"}
-        if all(e in lightweight for e in exts):
+        if exts and all(e in lightweight for e in exts):
             if not any(kw in p for kw in ["架构", "系统设计", "深度分析", "商业计划", "多阶段规划"]):
                 return True
 
@@ -164,6 +170,58 @@ def should_run_planning_phase(
 
 def build_deliverable_execution_instruction(skill_res: Any) -> str:
     """Builds appropriate execution instruction based on skill and deliverables."""
+    delivs = getattr(skill_res, "deliverables", None) or []
+    named_targets = [d for d in delivs if not d.startswith(".") and d.lower() != "dockerfile"]
+
+    has_docx = any(d.lower().endswith(".docx") for d in delivs)
+    has_xlsx = any(d.lower().endswith(".xlsx") for d in delivs)
+    has_pdf = any(d.lower().endswith(".pdf") for d in delivs)
+    has_pptx = getattr(skill_res, "skill_id", None) == "pptx" or any(d.lower().endswith(".pptx") for d in delivs)
+    has_html_ppt = getattr(skill_res, "is_ppt_intent", False) and not has_pptx
+    has_html = (getattr(skill_res, "is_design_intent", False) or any(d.lower().endswith(".html") for d in delivs)) and not has_html_ppt
+    has_md = any(d.lower().endswith(".md") for d in delivs)
+
+    active_formats = [f for f, has in [
+        ("docx", has_docx), ("xlsx", has_xlsx), ("pdf", has_pdf),
+        ("pptx", has_pptx), ("html_ppt", has_html_ppt), ("html", has_html), ("md", has_md)
+    ] if has]
+
+    if len(active_formats) > 1:
+        methods = []
+        if has_xlsx:
+            xlsx_files = [f for f in named_targets if f.lower().endswith(".xlsx")]
+            fn_desc = f"/workspace/{xlsx_files[0]}" if xlsx_files else "/workspace/<文件名>.xlsx"
+            methods.append(f"- Excel 表格：调用 `bash` 工具运行 Python 脚本（使用 openpyxl 库创建并排版，保存至 `{fn_desc}`）")
+        if has_docx:
+            docx_files = [f for f in named_targets if f.lower().endswith(".docx")]
+            fn_desc = f"/workspace/{docx_files[0]}" if docx_files else "/workspace/<文件名>.docx"
+            methods.append(f"- Word 文档：调用 `bash` 工具运行 Python 脚本（使用 python-docx 库创建并排版，保存至 `{fn_desc}`）")
+        if has_pdf:
+            pdf_files = [f for f in named_targets if f.lower().endswith(".pdf")]
+            fn_desc = f"/workspace/{pdf_files[0]}" if pdf_files else "/workspace/<文件名>.pdf"
+            methods.append(f"- PDF 文档：调用 `write_markdown` 或运行脚本生成目标 PDF 保存至 `{fn_desc}`")
+        if has_pptx:
+            pptx_files = [f for f in named_targets if f.lower().endswith(".pptx")]
+            fn_desc = f"/workspace/{pptx_files[0]}" if pptx_files else "/workspace/<文件名>.pptx"
+            methods.append(f"- 原生 PPTX 演示文稿：调用 `bash` 工具运行 Python 脚本（使用 python-pptx 库生成，保存至 `{fn_desc}`）")
+        if has_html_ppt:
+            methods.append("- HTML 交互演示文稿：输出完整的 ```html\n<!DOCTYPE html>...``` 代码块写入 `/workspace/presentation.html`")
+        if has_html:
+            methods.append("- HTML 网页/单页报告：输出完整的 ```html\n<!DOCTYPE html>...``` 代码块写入 `/workspace/index.html`")
+        if has_md:
+            md_files = [f for f in named_targets if f.lower().endswith(".md")]
+            fn_desc = f"/workspace/{md_files[0]}" if md_files else "/workspace/<文件名>.md"
+            methods.append(f"- Markdown 文件：调用 `write_markdown` 工具保存至 `{fn_desc}`")
+
+        targets_str = "、".join(named_targets) if named_targets else "所有指定格式产物"
+        methods_str = "\n".join(methods)
+        return (
+            "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施多目标材料落盘。\n"
+            f"本次任务需完整交付以下材料：{targets_str}\n"
+            f"落盘方式：\n{methods_str}\n"
+            "⚠️ 严禁仅输出口头文字！必须逐项调用工具完成全部目标材料的物理文件落盘！"
+        )
+
     if getattr(skill_res, "is_docx_intent", False) or (
         getattr(skill_res, "deliverables", None) and any(ext.lower() == ".docx" for ext in skill_res.deliverables)
     ):
