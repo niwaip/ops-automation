@@ -151,25 +151,44 @@ def detect_missing_claimed_artifacts(
         if has_inline_html and clean_name in ["index.html", "presentation.html"]:
             continue
 
-        # 非生成意图时，必须在该文件名局部存在明确的生成/保存/写入声称，或明确指称 /workspace/，避免提及外部项目文件时误触发断言
-        if not is_generate_intent:
-            escaped_name = re.escape(clean_name)
-            claimed_for_this_file = bool(
-                re.search(
-                    rf'(?:已.{{0,12}}(?:生成|创建|保存|导出|写入|完成)|(?:生成|创建|保存|导出|写入|输出).{{0,12}}(?:完成|完毕|成功|至|到|为)|输出文件(?:为|是|：|:)?|保存(?:路径|在|到|至)|落盘至|保存在|已保存至|代码已写入|文件路径[：:]\s*(?:/workspace/)?)[^\n。]{{0,30}}{escaped_name}',
-                    text,
-                    re.I
-                )
-                or re.search(
-                    rf'{escaped_name}[^\n。]{{0,30}}(?:已(?:生成|创建|保存|导出|写入|落盘)|已保存到工作区|已保存至|已写入)',
-                    text,
-                    re.I
-                )
-                or f"/workspace/{clean_name}" in text
-                or f"./workspace/{clean_name}" in text
+        escaped_name = re.escape(clean_name)
+
+        # 排除明确作为输入源、引用源或前置资料的文件名（如“基于/根据/参考...《文件名》”）
+        is_source_reference = bool(
+            re.search(
+                rf'(?:基于|根据|参考|依据|结合|来源|原始|上传的?|输入|读取|解析|查看|分析|引用)[^\n。]{{0,25}}(?:《|【|“|"|\'|`|\s)?{escaped_name}',
+                text,
+                re.I
             )
-            if not claimed_for_this_file:
-                continue
+            or re.search(
+                rf'{escaped_name}(?:》|】|”|"|\'|`|\s)?[^\n。]{{0,25}}(?:的内容|的数据|中提到|中记录|作为输入|作为参考|原始数据|附件|中指出)',
+                text,
+                re.I
+            )
+        )
+        if is_source_reference:
+            continue
+
+        # 必须在该文件名局部存在明确的生成/保存/写入声称，或保存至 /workspace/，避免提及外部/参考文件时误触发断言
+        claimed_for_this_file = bool(
+            re.search(
+                rf'(?:已.{{0,12}}(?:生成|创建|保存|导出|写入|完成)|(?:生成|创建|保存|导出|写入|输出).{{0,12}}(?:完成|完毕|成功|至|到|为)|输出文件(?:为|是|：|:)?|保存(?:路径|在|到|至)|落盘至|保存在|已保存至|代码已写入|文件路径[：:]\s*(?:/workspace/)?)[^\n。]{{0,30}}{escaped_name}',
+                text,
+                re.I
+            )
+            or re.search(
+                rf'{escaped_name}[^\n。]{{0,30}}(?:已(?:生成|创建|保存|导出|写入|落盘)|已保存到工作区|已保存至|已写入)',
+                text,
+                re.I
+            )
+            or re.search(
+                rf'(?:保存至|生成至|落盘至|输出至|写入至|保存到)\s*`?/(?:workspace|knowledge)/{escaped_name}',
+                text,
+                re.I
+            )
+        )
+        if not claimed_for_this_file:
+            continue
 
         ws_file = Path(WORKSPACE_DIR) / clean_name
         kn_file = Path(KNOWLEDGE_DIR) / clean_name
