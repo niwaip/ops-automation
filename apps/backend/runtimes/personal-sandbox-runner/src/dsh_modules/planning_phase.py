@@ -225,9 +225,10 @@ def build_deliverable_execution_instruction(skill_res: Any) -> str:
     if getattr(skill_res, "is_docx_intent", False) or (
         getattr(skill_res, "deliverables", None) and any(ext.lower() == ".docx" for ext in skill_res.deliverables)
     ):
+        target_fn = next((d for d in (skill_res.deliverables or []) if d.lower().endswith(".docx")), "<文件名>.docx")
         return (
             "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
-            "落盘方式：调用 `bash` 工具运行 Python 脚本（使用 python-docx 库创建并排版文档，保存至 `/workspace/<文件名>.docx`）。\n"
+            f"落盘方式：调用 `bash` 工具运行 Python 脚本生成 `/workspace/{target_fn}`（使用 python-docx 库创建并排版，表格推荐 `table.style = 'Table Grid'`；若需 XML 操作请 `from docx.oxml import OxmlElement`，切勿调用不存在的 `doc.oxml`）。\n"
             "⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字而不提供代码或工具调用！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！"
         )
     elif getattr(skill_res, "is_office_intent", False) and (
