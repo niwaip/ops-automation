@@ -87,6 +87,21 @@ export const normalizeChineseSpace = (text?: string): string => {
   return text.replace(/(?<=[\u4e00-\u9fa5])\s+(?=[\u4e00-\u9fa5])/g, '').trim();
 };
 
+export const WELL_KNOWN_FRIENDLY_INPUT_LABELS: Record<string, string> = {
+  fileBase64: '待提取的文档附件',
+  file_base64: '待提取的文档附件',
+  fileName: '文档名称',
+  file_name: '文档名称',
+  fileBase64A: '文档 A 附件',
+  fileBase64B: '文档 B 附件',
+  workspaceId: '工作空间 ID',
+  workspace_id: '工作空间 ID',
+  recipientId: '接收人',
+  recipient_id: '接收人',
+  mailboxKey: '邮箱账号',
+  mailbox_key: '邮箱账号',
+};
+
 export const resolveFriendlyInputDisplayName = (input: {
   name: string;
   display_name?: string;
@@ -100,6 +115,11 @@ export const resolveFriendlyInputDisplayName = (input: {
   const concise = deriveFriendlyInputLabel(input.description);
   if (concise) {
     return normalizeChineseSpace(concise);
+  }
+
+  const wellKnown = WELL_KNOWN_FRIENDLY_INPUT_LABELS[input.name];
+  if (wellKnown) {
+    return wellKnown;
   }
 
   return normalizeChineseSpace(displayName || input.name);

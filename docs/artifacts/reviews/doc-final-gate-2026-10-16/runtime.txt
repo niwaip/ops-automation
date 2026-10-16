@@ -1,0 +1,85 @@
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:46 AM     LOG [ChatExecutionStreamService] Starting to observe execution 78b0c37f-f6c0-43ab-9814-5571ebcd19ce via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:46 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 78b0c37f-f6c0-43ab-9814-5571ebcd19ce
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:46 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 78b0c37f-f6c0-43ab-9814-5571ebcd19ce
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:46 AM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 78b0c37f-f6c0-43ab-9814-5571ebcd19ce
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:47 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 78b0c37f-f6c0-43ab-9814-5571ebcd19ce
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:47 AM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 78b0c37f-f6c0-43ab-9814-5571ebcd19ce
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:47 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 78b0c37f-f6c0-43ab-9814-5571ebcd19ce
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:47 AM     LOG [ChatExecutionStreamService] Generating AI summary for execution 78b0c37f-f6c0-43ab-9814-5571ebcd19ce with objective: "/doc 全文精确检索“AD-Q8VN-6173”，给出命中文档、命中原文及行号，不要拆分关键词。"
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:56 AM     LOG [ChatExecutionStreamService] Starting to observe execution 7df68694-b589-4ed5-8fb3-98b4e9a1e7ba via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:56 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 7df68694-b589-4ed5-8fb3-98b4e9a1e7ba
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:56 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 7df68694-b589-4ed5-8fb3-98b4e9a1e7ba
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:56 AM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 7df68694-b589-4ed5-8fb3-98b4e9a1e7ba
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:57 AM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution 78b0c37f-f6c0-43ab-9814-5571ebcd19ce (263 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:57 AM     LOG [ChatExecutionStreamService] Execution 78b0c37f-f6c0-43ab-9814-5571ebcd19ce reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:57 AM     LOG [ChatExecutionStreamService] Starting to observe execution a2f3b988-6ee5-4e22-9bde-363899b46bdc via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:57 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for a2f3b988-6ee5-4e22-9bde-363899b46bdc
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:57 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for a2f3b988-6ee5-4e22-9bde-363899b46bdc
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:58 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 7df68694-b589-4ed5-8fb3-98b4e9a1e7ba
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:58 AM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 7df68694-b589-4ed5-8fb3-98b4e9a1e7ba
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:58 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 7df68694-b589-4ed5-8fb3-98b4e9a1e7ba
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:58 AM     LOG [ChatExecutionStreamService] Generating AI summary for execution 7df68694-b589-4ed5-8fb3-98b4e9a1e7ba with objective: "/doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回其他文档。"
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:58 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for a2f3b988-6ee5-4e22-9bde-363899b46bdc
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:58 AM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for a2f3b988-6ee5-4e22-9bde-363899b46bdc
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:58 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for a2f3b988-6ee5-4e22-9bde-363899b46bdc
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:22:58 AM     LOG [ChatExecutionStreamService] Generating AI summary for execution a2f3b988-6ee5-4e22-9bde-363899b46bdc with objective: "/doc 检索“星桥管理闭环AD1015”，从原文核对预算、负责人、验收口令、交付截止日、验收规则，逐项给出准确值及行号引用。"
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:01 AM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution 7df68694-b589-4ed5-8fb3-98b4e9a1e7ba (326 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:01 AM     LOG [ChatExecutionStreamService] Execution 7df68694-b589-4ed5-8fb3-98b4e9a1e7ba reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:01 AM     LOG [TraceInterceptor] [239b3d0e-92b8-43d2-a1e7-f852456721b6] GET /ai/chat/sessions/chat-session-1792120971671-8nb56avb/messages/1792120976802-oih8a9ys/feedback?executionId=7df68694-b589-4ed5-8fb3-98b4e9a1e7ba 31ms
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:04 AM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution a2f3b988-6ee5-4e22-9bde-363899b46bdc (233 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:04 AM     LOG [ChatExecutionStreamService] Execution a2f3b988-6ee5-4e22-9bde-363899b46bdc reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:04 AM     LOG [ChatExecutionStreamService] Starting to observe execution 5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8 via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:04 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:04 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:04 AM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:05 AM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:05 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:05 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:05 AM     LOG [ChatExecutionStreamService] Generating AI summary for execution 5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8 with objective: "/doc 全文精确检索“UNSEEN1792120966697”，没有命中请明确说明，不要返回其他文件。"
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:10 AM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution 5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8 (78 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:10 AM     LOG [ChatExecutionStreamService] Execution 5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:18 AM     LOG [ChatExecutionStreamService] Starting to observe execution e2a971e8-39ad-4c3e-815a-635a30676a6d via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:18 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for e2a971e8-39ad-4c3e-815a-635a30676a6d
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:18 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for e2a971e8-39ad-4c3e-815a-635a30676a6d
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:18 AM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for e2a971e8-39ad-4c3e-815a-635a30676a6d
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:18 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for e2a971e8-39ad-4c3e-815a-635a30676a6d
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:18 AM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for e2a971e8-39ad-4c3e-815a-635a30676a6d
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:19 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for e2a971e8-39ad-4c3e-815a-635a30676a6d
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:19 AM     LOG [ChatExecutionStreamService] Generating AI summary for execution e2a971e8-39ad-4c3e-815a-635a30676a6d with objective: "/doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回其他文档。"
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:24 AM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution e2a971e8-39ad-4c3e-815a-635a30676a6d (71 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/16/2026, 11:23:24 AM     LOG [ChatExecutionStreamService] Execution e2a971e8-39ad-4c3e-815a-635a30676a6d reached terminal state: succeeded
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:22:46 AM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution 78b0c37f-f6c0-43ab-9814-5571ebcd19ce (planHash: 0e6cb842fee5ef56b82811f0c3321ff97297488dce53c1653aaa6432180d95af)
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:22:46 AM     LOG [TraceInterceptor] [0e2683b4-2380-4ed1-89f1-b11b36f952d4] GET /api/executions/78b0c37f-f6c0-43ab-9814-5571ebcd19ce 1ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:22:46 AM     LOG [TraceInterceptor] [80204587-e03a-471a-8abd-f50093f83491] GET /api/executions/78b0c37f-f6c0-43ab-9814-5571ebcd19ce/events/stream 2ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:22:47 AM     LOG [DeterministicPlanSchedulerService] Execution 78b0c37f-f6c0-43ab-9814-5571ebcd19ce successfully completed all deterministic plan steps.
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:22:47 AM     LOG [TraceInterceptor] [76b67cf1-08ad-4f07-a0c3-476282a583f3] GET /api/executions/78b0c37f-f6c0-43ab-9814-5571ebcd19ce 6ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:22:56 AM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution 7df68694-b589-4ed5-8fb3-98b4e9a1e7ba (planHash: 31ecc80e0a471a1aa5efc903a21be964f818148a764c5daa04d692bf5ca8a29c)
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:22:56 AM     LOG [TraceInterceptor] [113a756d-2aac-4bb5-9200-b7d38395c88a] GET /api/executions/7df68694-b589-4ed5-8fb3-98b4e9a1e7ba 1ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:22:56 AM     LOG [TraceInterceptor] [93576331-833c-4b88-b354-ebb6857045bb] GET /api/executions/7df68694-b589-4ed5-8fb3-98b4e9a1e7ba/events/stream 2ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:22:57 AM     LOG [TraceInterceptor] [d8a89d80-47c5-44b5-aeee-7a14f79ff607] POST /api/executions/78b0c37f-f6c0-43ab-9814-5571ebcd19ce/result-summary 5ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:22:57 AM     LOG [DeterministicPlanSchedulerService] Execution 7df68694-b589-4ed5-8fb3-98b4e9a1e7ba successfully completed all deterministic plan steps.
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:22:57 AM     LOG [TraceInterceptor] [1adb6b21-c0b6-4fa8-90d2-8369f8c57737] GET /api/executions/78b0c37f-f6c0-43ab-9814-5571ebcd19ce 1ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:22:57 AM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution a2f3b988-6ee5-4e22-9bde-363899b46bdc (planHash: fc3fa1420dadb87149068e0a490e806f60fabf6ef15a23f8492e5d8be0407a4e)
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:22:57 AM     LOG [TraceInterceptor] [48a58ed7-1ec6-4813-b407-3faf37b30bf9] GET /api/executions/a2f3b988-6ee5-4e22-9bde-363899b46bdc 2ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:22:57 AM     LOG [TraceInterceptor] [32427b6e-9712-4340-a11c-8e3eaa9d4f91] GET /api/executions/a2f3b988-6ee5-4e22-9bde-363899b46bdc/events/stream 1ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:22:58 AM     LOG [TraceInterceptor] [016a28c5-1e2a-4eb3-a378-a43aab545235] GET /api/executions/7df68694-b589-4ed5-8fb3-98b4e9a1e7ba 2ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:22:58 AM     LOG [DeterministicPlanSchedulerService] Execution a2f3b988-6ee5-4e22-9bde-363899b46bdc successfully completed all deterministic plan steps.
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:22:58 AM     LOG [TraceInterceptor] [e01661d6-da4a-433f-886b-818572c4e32b] GET /api/executions/a2f3b988-6ee5-4e22-9bde-363899b46bdc 2ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:23:01 AM     LOG [TraceInterceptor] [bfd3fcc5-2a24-46e1-837b-199133fffb00] POST /api/executions/7df68694-b589-4ed5-8fb3-98b4e9a1e7ba/result-summary 15ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:23:01 AM     LOG [TraceInterceptor] [d8341852-b51e-4140-a7f6-958f18517f70] GET /api/executions/7df68694-b589-4ed5-8fb3-98b4e9a1e7ba/workflow-save-eligibility 63ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:23:04 AM     LOG [TraceInterceptor] [0bf18b11-2ba0-4ce6-bb8e-efa0e954bc39] POST /api/executions/a2f3b988-6ee5-4e22-9bde-363899b46bdc/result-summary 20ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:23:04 AM     LOG [TraceInterceptor] [0b00222c-d104-4d67-a9d0-6767e6c8b06d] GET /api/executions/a2f3b988-6ee5-4e22-9bde-363899b46bdc 6ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:23:04 AM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution 5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8 (planHash: c52fbc3e86f4c1dae8a3ee4c293825aa7c5cc9330160b8e99a53638c339320a6)
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:23:04 AM     LOG [TraceInterceptor] [29e0277c-1417-427f-8be6-372d856a724f] GET /api/executions/5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8 2ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:23:04 AM     LOG [TraceInterceptor] [62bfbbd9-0940-4f06-91b0-577687cd2560] GET /api/executions/5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8/events/stream 1ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:23:05 AM     LOG [DeterministicPlanSchedulerService] Execution 5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8 successfully completed all deterministic plan steps.
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:23:05 AM     LOG [TraceInterceptor] [f155372a-3ff8-46c2-bfa9-fdeef0485b0b] GET /api/executions/5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8 1ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:23:10 AM     LOG [TraceInterceptor] [318231e2-76fd-4b74-8c84-218623dded76] POST /api/executions/5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8/result-summary 16ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:23:10 AM     LOG [TraceInterceptor] [5f56d49c-d6c5-4871-b563-a298b67b130f] GET /api/executions/5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8 4ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:23:18 AM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution e2a971e8-39ad-4c3e-815a-635a30676a6d (planHash: 31ecc80e0a471a1aa5efc903a21be964f818148a764c5daa04d692bf5ca8a29c)
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:23:18 AM     LOG [TraceInterceptor] [327318e8-62f3-4c5b-9472-09a08e105200] GET /api/executions/e2a971e8-39ad-4c3e-815a-635a30676a6d 1ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:23:18 AM     LOG [TraceInterceptor] [4bafc303-bb0d-4796-8163-bbfbe41eede9] GET /api/executions/e2a971e8-39ad-4c3e-815a-635a30676a6d/events/stream 2ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:23:18 AM     LOG [DeterministicPlanSchedulerService] Execution e2a971e8-39ad-4c3e-815a-635a30676a6d successfully completed all deterministic plan steps.
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:23:19 AM     LOG [TraceInterceptor] [32d994af-05f4-4989-af94-66a3dbd81c50] GET /api/executions/e2a971e8-39ad-4c3e-815a-635a30676a6d 6ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:23:24 AM     LOG [TraceInterceptor] [c42247a8-9da9-4a03-b2b4-f7314ff7a745] POST /api/executions/e2a971e8-39ad-4c3e-815a-635a30676a6d/result-summary 18ms
+ops-control-plane    | [Nest] 132  - 10/16/2026, 11:23:24 AM     LOG [TraceInterceptor] [f7615d00-93f8-427b-a744-a094e54de33c] GET /api/executions/e2a971e8-39ad-4c3e-815a-635a30676a6d 4ms

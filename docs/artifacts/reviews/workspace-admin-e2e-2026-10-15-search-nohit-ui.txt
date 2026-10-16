@@ -1,0 +1,149 @@
+- complementary:
+  - text: OpsPilot
+  - generic: AI
+  - menu:
+    - menuitem "dashboard 仪表盘":
+      - img "dashboard":
+      - generic: 仪表盘
+    - menuitem "appstore 模版与能力":
+      - img "appstore":
+      - generic: 模版与能力
+    - menuitem "apartment 管理与发布":
+      - img "apartment":
+      - generic: 管理与发布
+    - menuitem "global 浏览器自动化":
+      - img "global":
+      - generic: 浏览器自动化
+    - menuitem "deployment-unit 模型规划调用":
+      - img "deployment-unit":
+      - generic: 模型规划调用
+    - menuitem "team 组织管理" [expanded]:
+      - img "team":
+      - generic: 组织管理
+    - menu:
+      - menuitem "apartment 组织架构":
+        - img "apartment":
+        - generic: 组织架构
+      - menuitem "user 用户管理":
+        - img "user":
+        - generic: 用户管理
+      - menuitem "folder-open 企业知识空间":
+        - img "folder-open":
+        - generic: 企业知识空间
+    - menuitem "history 运行与审计":
+      - img "history":
+      - generic: 运行与审计
+    - menuitem "setting 系统管理":
+      - img "setting":
+      - generic: 系统管理
+- banner:
+  - button "menu-fold":
+    - img "menu-fold":
+  - generic: 企业知识空间
+  - button "消息中心":
+    - img "bell":
+  - button "bg-colors 浅色":
+    - img "bg-colors":
+    - generic: 浅色
+  - link "export 用户入口":
+    - /url: http://192.168.100.143:5174/login
+    - img "export":
+    - generic: 用户入口
+  - button "global 简体中文":
+    - img "global":
+    - generic: 简体中文
+  - generic: A
+  - generic: admin
+- main:
+  - heading "folder-open 企业知识空间管理" [level=4]:
+    - img "folder-open":
+    - text: 企业知识空间管理
+  - generic: 企业级统一文档中心：管理员可集中维护公司制度、规程和专业知识资产，并可手动调用大模型对非结构化文档进行深度去噪、关键业务数据结构化萃取及重新清洗。
+  - strong: 公司公共盘
+  - generic: 35.6 KB / 5 GB
+  - progressbar:
+    - generic "0%"
+  - tablist:
+    - tab "bank 公司公共盘 (公司级制度/规程)" [selected]:
+      - img "bank":
+      - text: 公司公共盘 (公司级制度/规程)
+    - tab "team 部门共享盘":
+      - img "team":
+      - text: 部门共享盘
+    - tab "user 用户个人盘":
+      - img "user":
+      - text: 用户个人盘
+  - tabpanel "bank 公司公共盘 (公司级制度/规程)"
+  - navigation:
+    - list:
+      - img "home":
+      - text: 根目录
+  - radio "按文件名"
+  - text: 按文件名
+  - radio "全文检索 (Grep)" [checked]
+  - text: 全文检索 (Grep)
+  - img "search":
+  - textbox "全文搜索文档内容..." [active]: ZZNOHITAD1015Q8VN
+  - button "close-circle":
+    - img "close-circle":
+  - button "robot 一键全量 AI 清洗":
+    - img "robot":
+    - generic: 一键全量 AI 清洗
+  - button "plus 新建目录":
+    - img "plus":
+    - generic: 新建目录
+  - button "cloud-upload 上传文档":
+    - img "cloud-upload":
+    - generic: 上传文档
+  - button "reload":
+    - img "reload":
+  - alert:
+    - img "info-circle":
+    - generic: 公司公共盘中的文档全员默认只读；所有系统 Agent 与工作流均可检索引用此处知识。仅管理员具有上传、删除与调用 AI 深度重清洗的权限。
+  - img "robot":
+  - strong: 知识库 AI 治理与 RAG 就绪度
+  - generic: 覆盖率 0%
+  - text: 共 4 篇文档 · 已 AI 深度提炼
+  - strong: "0"
+  - text: 篇 · 未清洗
+  - strong: "4"
+  - text: 篇
+  - progressbar:
+    - generic "0%"
+  - button "sync 仅清洗未清洗文档 (4)":
+    - img "sync":
+    - generic: 仅清洗未清洗文档 (4)
+  - button "robot 一键全量 AI 清洗":
+    - img "robot":
+    - generic: 一键全量 AI 清洗
+  - img "filter":
+  - generic: 一览视图过滤：
+  - radio "全部文档 (4)" [checked]
+  - generic: 全部文档 (4)
+  - radio "已 AI 提炼 (0)"
+  - generic: 已 AI 提炼 (0)
+  - radio "未清洗 (4)"
+  - generic: 未清洗 (4)
+  - generic: 💡 提示：一览已精简；点击表格左侧 [+] 可展开查看 AI 提炼全文、大纲与提取数据实体
+  - table:
+    - rowgroup:
+      - row "Select all 名称 AI 治理 / 核心提炼一览 大小 更新时间 操作":
+        - columnheader
+        - columnheader "Select all":
+          - checkbox "Select all" [disabled]
+        - columnheader "名称"
+        - columnheader "AI 治理 / 核心提炼一览"
+        - columnheader "大小"
+        - columnheader "更新时间"
+        - columnheader "操作"
+    - rowgroup:
+      - row "暂无数据 当前目录下暂无文件或子目录，点击上方 新建目录 或 上传文档 添加资产":
+        - cell "暂无数据 当前目录下暂无文件或子目录，点击上方 新建目录 或 上传文档 添加资产":
+          - img "暂无数据"
+          - text: 当前目录下暂无文件或子目录，点击上方
+          - strong: 新建目录
+          - text: 或
+          - strong: 上传文档
+          - text: 添加资产
+- button "打开悬浮对话框":
+  - img "悬浮对话框"

@@ -268,6 +268,26 @@ export class ChatController {
     };
 
     if (parsed.isCommandOnly && parsed.systemReply) {
+      if (userId && userId !== 'anonymous') {
+        const savedSession = await this.chatConversationService.persistConversation({
+          sessionId,
+          userContent: body.message,
+          assistantContent: parsed.systemReply,
+          rawAssistantContent: parsed.systemReply,
+          thinkingEnabled: false,
+          ownerUserId: userId,
+          clientMessageId: body.clientMessageId,
+          clientAssistantMessageId: body.clientAssistantMessageId,
+        });
+        if (savedSession) {
+          emit(
+            this.chatConversationService.buildSessionPatchEvent(
+              sessionId,
+              savedSession
+            ) as unknown as SseEventPayload
+          );
+        }
+      }
       emit({
         type: StreamEventType.OBSERVATION,
         content: parsed.systemReply,
@@ -474,7 +494,27 @@ export class ChatController {
     const sessionId = body.sessionId || 'default';
     const parsed = parseChatSlashCommand(body.message, body.config?.mode || 'task');
 
+    const resolvedUser = await this.chatOrchestratorService.resolveAuthenticatedUser(
+      req.headers.authorization
+    );
+    const userId = this.resolveUserIdFromRequest(req, resolvedUser.userId);
+    if (!userId) {
+      throw new UnauthorizedException('登录凭证已失效或未提供，请登录后再进行会话交互');
+    }
+
     if (parsed.isCommandOnly && parsed.systemReply) {
+      if (userId && userId !== 'anonymous') {
+        await this.chatConversationService.persistConversation({
+          sessionId,
+          userContent: body.message,
+          assistantContent: parsed.systemReply,
+          rawAssistantContent: parsed.systemReply,
+          thinkingEnabled: false,
+          ownerUserId: userId,
+          clientMessageId: body.clientMessageId,
+          clientAssistantMessageId: body.clientAssistantMessageId,
+        });
+      }
       return {
         response: parsed.systemReply,
         events: [
@@ -487,14 +527,6 @@ export class ChatController {
           ) as unknown as StreamEvent,
         ],
       };
-    }
-
-    const resolvedUser = await this.chatOrchestratorService.resolveAuthenticatedUser(
-      req.headers.authorization
-    );
-    const userId = this.resolveUserIdFromRequest(req, resolvedUser.userId);
-    if (!userId) {
-      throw new UnauthorizedException('登录凭证已失效或未提供，请登录后再进行会话交互');
     }
 
     const mode: 'chat' | 'task' = parsed.mode;
@@ -645,6 +677,16 @@ export class ChatController {
       };
     }
     if (parsed.isCommandOnly && parsed.systemReply) {
+      await this.chatConversationService.persistConversation({
+        sessionId: body.sessionId || 'default',
+        userContent: body.message,
+        assistantContent: parsed.systemReply,
+        rawAssistantContent: parsed.systemReply,
+        thinkingEnabled: false,
+        ownerUserId: userId,
+        clientMessageId: body.clientMessageId,
+        clientAssistantMessageId: body.clientAssistantMessageId,
+      });
       return {
         response: parsed.systemReply,
         events: [],

@@ -7,6 +7,7 @@ import {
   FileTextOutlined,
   ReloadOutlined,
   RobotOutlined,
+  SyncOutlined,
   TagsOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
@@ -113,10 +114,11 @@ export function WorkspaceFileDigestDrawer({
               size="small"
               type="primary"
               ghost
-              icon={<RobotOutlined />}
+              icon={digest?.cleanedByAi ? <SyncOutlined /> : <RobotOutlined />}
               onClick={() => setIsAiModalOpen(true)}
+              style={digest?.cleanedByAi ? { color: '#52c41a', borderColor: '#b7eb8f' } : undefined}
             >
-              AI 清洗/提炼
+              {digest?.cleanedByAi ? '重新清理' : 'AI 清理/提炼'}
             </Button>
             <Button
               size="small"
@@ -164,15 +166,15 @@ export function WorkspaceFileDigestDrawer({
               <Card
                 size="small"
                 style={{
-                  background: '#f6ffed',
-                  borderColor: '#b7eb8f',
+                  background: 'rgba(82, 196, 26, 0.1)',
+                  borderColor: 'rgba(82, 196, 26, 0.3)',
                   borderRadius: 6,
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Space size="small">
                     <RobotOutlined style={{ color: '#52c41a', fontSize: 16 }} />
-                    <Text strong style={{ color: '#389e0d' }}>
+                    <Text strong style={{ color: '#52c41a' }}>
                       已完成大模型深度清洗与实体萃取
                     </Text>
                     {digest.aiModel && <Tag color="green">{digest.aiModel}</Tag>}
@@ -252,8 +254,9 @@ export function WorkspaceFileDigestDrawer({
               <Card
                 size="small"
                 style={{
-                  background: 'var(--bg-hover, rgba(0, 0, 0, 0.02))',
+                  background: 'var(--bg-subtle, rgba(0, 0, 0, 0.02))',
                   borderLeft: '4px solid #1677ff',
+                  borderColor: 'var(--border-color, #334155)',
                   borderRadius: '4px 8px 8px 4px',
                 }}
               >
@@ -342,8 +345,8 @@ export function WorkspaceFileDigestDrawer({
                 <Card
                   size="small"
                   style={{
-                    background: '#f9f0ff',
-                    borderColor: '#d3adf7',
+                    background: 'rgba(114, 46, 209, 0.1)',
+                    borderColor: 'rgba(114, 46, 209, 0.3)',
                     borderRadius: 6,
                   }}
                 >
@@ -415,11 +418,11 @@ export function WorkspaceFileDigestDrawer({
                             width: 18,
                             height: 18,
                             borderRadius: '50%',
-                            background: '#f0f0f0',
+                            background: 'var(--bg-hover, #334155)',
                             textAlign: 'center',
                             lineHeight: '18px',
                             fontSize: 10,
-                            color: '#8c8c8c',
+                            color: 'var(--text-secondary, #94a3b8)',
                             flexShrink: 0,
                           }}
                         >
@@ -440,7 +443,7 @@ export function WorkspaceFileDigestDrawer({
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 paddingTop: 12,
-                borderTop: '1px solid #f0f0f0',
+                borderTop: '1px solid var(--border-color, #334155)',
               }}
             >
               <Text type="secondary" style={{ fontSize: 11 }}>
@@ -466,6 +469,7 @@ export function WorkspaceFileDigestDrawer({
           open={isAiModalOpen}
           nodes={[node]}
           workspaceId={node.workspaceId}
+          initialScope="selected"
           onClose={() => setIsAiModalOpen(false)}
           onSuccess={(newDigest) => {
             if (newDigest) {

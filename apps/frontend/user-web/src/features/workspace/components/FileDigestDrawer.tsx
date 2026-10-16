@@ -1,10 +1,12 @@
 import {
   ClockCircleOutlined,
   CopyOutlined,
+  DatabaseOutlined,
   DownloadOutlined,
   EyeOutlined,
   FileTextOutlined,
   ReloadOutlined,
+  RobotOutlined,
   TagsOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
@@ -48,28 +50,40 @@ export function FileDigestDrawer({
   onDigestUpdated,
 }: FileDigestDrawerProps) {
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isAiCleaning, setIsAiCleaning] = useState(false);
   const digest = node?.digest;
 
-  const handleRegenerate = async () => {
+  const handleRegenerate = async (useAi = false) => {
     if (!node) return;
-    setIsRegenerating(true);
+    if (useAi) {
+      setIsAiCleaning(true);
+    } else {
+      setIsRegenerating(true);
+    }
+
     try {
-      const res = await workspaceApi.regenerateDigest(node.workspaceId, node.id);
+      const res = await workspaceApi.regenerateDigest(node.workspaceId, node.id, {
+        useAi,
+        extractMode: 'clean_summary',
+      });
       if (res.success && res.digest) {
-        void antdMessage.success('文档结构化摘要已重新生成');
+        void antdMessage.success(
+          useAi ? 'AI 深度清洗与关键实体抽取已完成' : '文档结构化摘要已重新生成'
+        );
         onDigestUpdated?.(node.id, res.digest);
       }
     } catch (err: any) {
-      void antdMessage.error(err.message || '重新生成摘要失败');
+      void antdMessage.error(err.message || '生成摘要失败');
     } finally {
       setIsRegenerating(false);
+      setIsAiCleaning(false);
     }
   };
 
-  const handleCopySummary = () => {
-    if (!digest?.summary) return;
-    void navigator.clipboard.writeText(digest.summary);
-    void antdMessage.success('摘要内容已复制到剪贴板');
+  const handleCopyText = (text: string, label: string) => {
+    if (!text) return;
+    void navigator.clipboard.writeText(text);
+    void antdMessage.success(`${label}已复制到剪贴板`);
   };
 
   return (
@@ -77,16 +91,21 @@ export function FileDigestDrawer({
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15 }}>
           <FileTextOutlined style={{ color: 'var(--primary-color, #1677ff)' }} />
-          <span style={{ maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {node?.name || '文档卡片'}
           </span>
           <Tag color="cyan" style={{ fontSize: 11, marginLeft: 4 }}>
             结构化卡片
           </Tag>
+          {digest?.cleanedByAi && (
+            <Tag color="purple" icon={<RobotOutlined />} style={{ fontSize: 11 }}>
+              AI清洗
+            </Tag>
+          )}
         </div>
       }
       placement="right"
-      width={560}
+      width={580}
       onClose={onClose}
       open={open}
       extra={
@@ -95,9 +114,20 @@ export function FileDigestDrawer({
             size="small"
             icon={<ReloadOutlined spin={isRegenerating} />}
             loading={isRegenerating}
-            onClick={handleRegenerate}
+            disabled={isAiCleaning}
+            onClick={() => handleRegenerate(false)}
           >
-            刷新卡片
+            规则刷新
+          </Button>
+          <Button
+            size="small"
+            icon={<RobotOutlined spin={isAiCleaning} />}
+            loading={isAiCleaning}
+            disabled={isRegenerating}
+            style={{ color: '#722ed1', borderColor: '#d3adf7' }}
+            onClick={() => handleRegenerate(true)}
+          >
+            AI深度清洗
           </Button>
           <Button
             size="small"
@@ -119,21 +149,59 @@ export function FileDigestDrawer({
               <span>
                 该文档尚未生成结构化摘要卡片
                 <br />
-                <Button
-                  type="link"
-                  icon={<ReloadOutlined />}
-                  loading={isRegenerating}
-                  onClick={handleRegenerate}
-                  style={{ marginTop: 8 }}
-                >
-                  立即生成
-                </Button>
+                <Space style={{ marginTop: 12 }}>
+                  <Button
+                    icon={<ReloadOutlined />}
+                    loading={isRegenerating}
+                    disabled={isAiCleaning}
+                    onClick={() => handleRegenerate(false)}
+                  >
+                    规则生成
+                  </Button>
+                  <Button
+                    type="primary"
+                    icon={<RobotOutlined />}
+                    loading={isAiCleaning}
+                    disabled={isRegenerating}
+                    style={{ background: '#722ed1', borderColor: '#722ed1' }}
+                    onClick={() => handleRegenerate(true)}
+                  >
+                    AI 深度提炼
+                  </Button>
+                </Space>
               </span>
             }
           />
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* AI 治理状态条 */}
+          {digest.cleanedByAi && (
+            <Card
+              size="small"
+              style={{
+                background: 'rgba(82, 196, 26, 0.08)',
+                borderColor: 'rgba(82, 196, 26, 0.25)',
+                borderRadius: 6,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Space size="small">
+                  <RobotOutlined style={{ color: '#52c41a', fontSize: 16 }} />
+                  <Text strong style={{ color: '#52c41a' }}>
+                    已完成大模型深度清洗与实体萃取
+                  </Text>
+                  {digest.aiModel && <Tag color="green">{digest.aiModel}</Tag>}
+                </Space>
+              </div>
+              {digest.cleanPrompt && (
+                <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+                  清洗需求：{digest.cleanPrompt}
+                </Text>
+              )}
+            </Card>
+          )}
+
           {/* 指标统计面板 */}
           <Card size="small" style={{ background: 'var(--bg-secondary, #fafafa)' }}>
             <Row gutter={16}>
@@ -176,7 +244,7 @@ export function FileDigestDrawer({
                 type="text"
                 size="small"
                 icon={<CopyOutlined />}
-                onClick={handleCopySummary}
+                onClick={() => handleCopyText(digest.summary, '摘要')}
                 style={{ fontSize: 12 }}
               >
                 复制
@@ -202,6 +270,129 @@ export function FileDigestDrawer({
               </Paragraph>
             </Card>
           </div>
+
+          {/* 特定抽取业务数据 (如有) */}
+          {digest.extractedData && Object.keys(digest.extractedData).length > 0 && (
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 8,
+                }}
+              >
+                <Title level={5} style={{ margin: 0, fontSize: 14 }}>
+                  <DatabaseOutlined style={{ marginRight: 6, color: '#52c41a' }} />
+                  关键业务事实与抽取数据 (Extracted Facts)
+                </Title>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<CopyOutlined />}
+                  onClick={() =>
+                    handleCopyText(JSON.stringify(digest.extractedData, null, 2), '抽取数据')
+                  }
+                  style={{ fontSize: 12 }}
+                >
+                  复制 JSON
+                </Button>
+              </div>
+              <Card
+                size="small"
+                style={{
+                  background: 'var(--bg-card, #fff)',
+                  borderColor: 'rgba(82, 196, 26, 0.3)',
+                  borderRadius: 6,
+                }}
+              >
+                {typeof digest.extractedData === 'object' && !Array.isArray(digest.extractedData) ? (
+                  <Row gutter={[12, 10]}>
+                    {Object.entries(digest.extractedData).map(([key, val]) => (
+                      <Col span={12} key={key}>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{key}</div>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: 'var(--text-primary)',
+                            wordBreak: 'break-all',
+                          }}
+                        >
+                          {typeof val === 'object' ? JSON.stringify(val) : String(val)}
+                        </div>
+                      </Col>
+                    ))}
+                  </Row>
+                ) : (
+                  <pre
+                    style={{
+                      margin: 0,
+                      background: '#1e1e1e',
+                      color: '#a6e22e',
+                      padding: '10px 12px',
+                      borderRadius: 4,
+                      fontSize: 12,
+                      maxHeight: 180,
+                      overflowY: 'auto',
+                      whiteSpace: 'pre-wrap',
+                    }}
+                  >
+                    {JSON.stringify(digest.extractedData, null, 2)}
+                  </pre>
+                )}
+              </Card>
+            </div>
+          )}
+
+          {/* 清洗后核心精要正文 (如有) */}
+          {digest.cleanedContent && (
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 8,
+                }}
+              >
+                <Title level={5} style={{ margin: 0, fontSize: 14 }}>
+                  <RobotOutlined style={{ marginRight: 6, color: '#722ed1' }} />
+                  AI 清洗精炼正文 (Cleaned Content)
+                </Title>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<CopyOutlined />}
+                  onClick={() => handleCopyText(digest.cleanedContent || '', '清洗正文')}
+                  style={{ fontSize: 12 }}
+                >
+                  复制
+                </Button>
+              </div>
+              <Card
+                size="small"
+                style={{
+                  background: 'rgba(114, 46, 209, 0.05)',
+                  borderLeft: '4px solid #722ed1',
+                  borderColor: 'rgba(114, 46, 209, 0.25)',
+                  borderRadius: '4px 8px 8px 4px',
+                }}
+              >
+                <Paragraph
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    lineHeight: 1.7,
+                    whiteSpace: 'pre-wrap',
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  {digest.cleanedContent}
+                </Paragraph>
+              </Card>
+            </div>
+          )}
 
           {/* 核心主题标签 */}
           <div>

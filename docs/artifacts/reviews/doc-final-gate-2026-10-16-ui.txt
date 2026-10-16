@@ -1,0 +1,94 @@
+"
+- button "close":
+  - img "close":
+- img "desktop":
+- text: 网页
+- strong: /doc 全文精确检索“AD-Q8VN-9999
+- generic: qwen36-35b-a3b
+- button "调整阅读字体大小":
+  - img "font-size":
+- button "plus":
+  - img "plus":
+- button "reload":
+  - img "reload":
+- button "delete":
+  - img "delete":
+- generic: 任务结果
+- link "thunderbolt 详细":
+  - /url: /executions/7df68694-b589-4ed5-8fb3-98b4e9a1e7ba
+  - img "thunderbolt":
+  - generic: 详细
+- generic: 状态：已完成
+- generic: 技能
+- generic: /doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回其他文档。
+- paragraph:
+  - text: 在当前工作空间（包含个人盘、部门盘与公司公共盘）的
+  - strong: "20"
+  - text: 个文档中，
+  - strong: 未检索到
+  - text: 包含关键词
+  - strong: "\"AD-Q8VN-9999\""
+  - text: 的内容。
+- paragraph: 已对文档列表执行了精确全文检索，包括但不限于：
+- list:
+  - code: 流程办结与电子存证备案单.md
+  - code: 東京第3データセンター災害復旧運用手順書_DR-JP77.md
+  - code: Project_Apex_Cloud_Migration_Spec_APEX-2026.md
+  - code: generate_doc.py
+  - code: WM_ROUTE_FIXTURE_source.md
+- paragraph:
+  - strong: 建议：
+  - text: 请检查关键词 "AD-Q8VN-9999" 是否输入准确，或尝试更换其他相关业务术语进行检索。
+- generic "查看结构化结果" [active]
+- generic: "{ \"finalOutputs\": [ { \"value\": \"在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \\\"AD-Q8VN-9999\\\" 的内容。\\n\\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`東京第3データセンター災害復旧運用手順書_DR-JP77.md`、`Project_Apex_Cloud_Migration_Spec_APEX-2026.md`、`generate_doc.py`、`WM_ROUTE_FIXTURE_source.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。\", \"fromNodeId\": \"n1_内置工作空间文档探索\", \"isArtifact\": false, \"targetField\": \"result\", \"expectedType\": \"string\", \"fromNodeOutput\": \"answer\" } ], \"capabilitiesUsed\": [ { \"id\": \"platform.workspace.explorer\", \"name\": \"内置工作空间文档探索\", \"version\": \"1.0.1\" } ] }"
+- img "robot":
+- img "clock-circle":
+- generic: 10/16 11:23
+- generic: 已完成
+- generic "评价回答":
+  - button "回答有帮助":
+    - img "like":
+  - button "回答需要改进":
+    - img "dislike":
+- button "保存到个人空间":
+  - img "book":
+- button "收集到 GTD 收件箱":
+  - img "inbox":
+- button "复制":
+  - img "copy":
+- button "重试":
+  - img "redo":
+- textbox "例如：/doc 分析工作空间架构 或 /email 总结今日邮件（输入 / 唤起工作技能，! 唤起工作流）"
+- radiogroup "segmented control":
+  - radio "user 个人助理"
+  - img "user":
+  - generic: 个人助理
+  - radio "robot 企业协同" [checked]
+  - img "robot":
+  - generic: 企业协同
+- 'button "bulb 思考: 中 down"':
+  - img "bulb":
+  - generic: "思考: 中"
+  - img "down":
+- generic "联网搜索：已关闭（可选开启，开启后允许 AI 检索互联网公开资讯）":
+  - img "global":
+  - text: 联网
+  - switch
+- generic "工作空间知识检索：已关闭（可选开启，开启后提问将自动探查并研读空间文档）":
+  - img "folder":
+  - text: 知识
+  - switch
+- combobox
+- generic "qwen36-35b-a3b (local) · 推理"
+- button "thunderbolt":
+  - img "thunderbolt":
+- button "paper-clip":
+  - img "paper-clip":
+- button "audio":
+  - img "audio":
+- button "plus":
+  - img "plus":
+- button "send 发送" [disabled]:
+  - img "send":
+  - generic: 发送
+- tooltip "新建会话"

@@ -121,9 +121,8 @@ export function useChatPageActions({
 
     const resolvedModelId =
       selectedModel && selectedModel !== 'default' ? selectedModel : undefined;
-    const continuedExecutionId = hasFiles
-      ? undefined
-      : (pendingExecutionId || getLatestWaitingInputExecutionId(activeMessages));
+    const continuedExecutionId =
+      pendingExecutionId || getLatestWaitingInputExecutionId(activeMessages);
     const now = toChatTimestamp();
 
     // 留在当前会话页面，不需要切换视窗！

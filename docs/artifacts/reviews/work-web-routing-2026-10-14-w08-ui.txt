@@ -1,0 +1,157 @@
+- complementary:
+  - button:
+  - menu:
+    - menuitem "dashboard 工作台":
+      - img "dashboard":
+      - generic: 工作台
+    - menuitem "message 智能协同":
+      - img "message":
+      - generic: 智能协同
+    - menuitem "carry-out 任务中心":
+      - img "carry-out":
+      - generic: 任务中心
+    - menuitem "team 数字员工":
+      - img "team":
+      - generic: 数字员工
+    - menuitem "folder 资料空间":
+      - img "folder":
+      - generic: 资料空间
+  - menu:
+    - menuitem "setting 系统设置":
+      - img "setting":
+      - generic: 系统设置
+- banner:
+  - button "展开侧边栏":
+    - img "menu-unfold":
+  - generic: 智能协同
+  - button "bell 1 2":
+    - img "bell":
+    - superscript:
+      - generic: "1"
+      - generic: "2"
+  - button "bg-colors 浅色":
+    - img "bg-colors":
+    - generic: 浅色
+  - button "global 中文":
+    - img "global":
+    - generic: 中文
+  - button "A admin admin@example.com down":
+    - generic: A
+    - generic: admin
+    - generic: admin@example.com
+    - img "down":
+- main:
+  - button "menu-unfold":
+    - img "menu-unfold":
+  - button "plus":
+    - img "plus":
+  - button "清理全部会话":
+    - img "clear":
+  - img "desktop":
+  - text: 网页
+  - strong: /search Python 官方最新稳定版本是
+  - button "调整阅读字体大小":
+    - img "font-size":
+  - button "plus":
+    - img "plus":
+  - button "reload":
+    - img "reload":
+  - button "delete":
+    - img "delete":
+  - generic: 任务结果
+  - link "thunderbolt 详细":
+    - /url: /executions/eb736af6-9d71-4b7c-98ff-ee62e8b8127d
+    - img "thunderbolt":
+    - generic: 详细
+  - generic: 状态：已完成
+  - paragraph: 根据检索结果，Python 官方最新稳定版本的相关信息如下：
+  - list:
+    - strong: 版本号
+    - text: ：Python 3.15.0
+    - strong: 发布日期
+    - text: ：2026年10月9日
+    - strong: 来源链接
+    - text: ：
+    - list:
+      - link "Python Insider 官方发布公告":
+        - /url: https://blog.python.org/2026/10/python-3150-final-is-here/
+      - link "Python.org 源码下载页面":
+        - /url: https://www.python.org/getit/source/
+  - img "global":
+  - generic: 参考来源 (5)：
+  - link "link Python 3.15.0 (final) is here! | Python Insider":
+    - /url: https://blog.python.org/2026/10/python-3150-final-is-here/
+    - img "link":
+    - text: Python 3.15.0 (final) is here! | Python Insider
+  - link "link Python Source Releases | Python.org":
+    - /url: https://www.python.org/getit/source/
+    - img "link":
+    - text: Python Source Releases | Python.org
+  - link "link Download Python | Python.org":
+    - /url: https://www.python.org/downloads/?hl=zh-cn
+    - img "link":
+    - text: Download Python | Python.org
+  - link "link Download Python | Python.org":
+    - /url: https://www.python.org/downloads/?keys=latest+stable+python+version
+    - img "link":
+    - text: Download Python | Python.org
+  - link "link Python Releases for macOS | Python.org":
+    - /url: https://www.python.org/downloads/macos/
+    - img "link":
+    - text: Python Releases for macOS | Python.org
+  - generic "查看结构化结果" [active]
+  - generic: "{ \"query\": \"Python 官方最新稳定版本是什么?只检索 python.org,给出版本号、发布日期和来源链接,不创建文件\", \"results\": [ { \"url\": \"https://blog.python.org/2026/10/python-3150-final-is-here/\", \"score\": 0, \"title\": \"Python 3.15.0 (final) is here! | Python Insider\", \"snippet\": \"Python 3.15.0 (final) is here! | Python Insider\\n\\n# Python 3.15.0 (final) is here!\\n\\nHugo van Kemenade/ October 9, 2026\\n\\n## Python 3.15.0 is now available\\n\\npython.org/downloads/release/python-3150/\\n\\n## This is the stable release of Python 3.15.0\\n\\nPython 3.15.0 is the newest major release of the Python\", \"publishedAt\": \"2026-10-09T00:00:00.000Z\" }, { \"url\": \"https://www.python.org/getit/source/\", \"score\": 0, \"title\": \"Python Source Releases | Python.org\", \"snippet\": \"Python Source Releases | Python.org \\n\\n# Python Source Releases\\n\\n- Latest Python 3 Release - Python 3.15.0\\n\\n## Stable Releases\\n\\n- Python 3.15.0 - Oct. 9, 2026\\n\\n- Download Gzipped source tarball\\n- Download XZ compressed source tarball\\n- Python 3.11.17 - Oct. 1, 2026\\n\\n- Download Gzipped source tarball\\n\" }, { \"url\": \"https://www.python.org/downloads/?hl=zh-cn\", \"score\": 0, \"title\": \"Download Python | Python.org\", \"snippet\": \"Download Python | Python.org\\n\\n# Download the latest version of Python\\n\\n Looking for Python with a different OS? Python for Windows, Linux/Unix, macOS, Android, iOS, other \\n\\n## Active Python releases\\n\\n Python version Maintenance status First released End of support Release schedule \\n\\n1. 3.16 pre-rele\" }, { \"url\": \"https://www.python.org/downloads/?keys=latest+stable+python+version\", \"score\": 0, \"title\": \"Download Python | Python.org\", \"snippet\": \"Download Python | Python.org\\n\\n# Download the latest version of Python\\n\\n Looking for Python with a different OS? Python for Windows, Linux/Unix, macOS, Android, iOS, other \\n\\n## Active Python releases\\n\\n Python version Maintenance status First released End of support Release schedule \\n\\n1. 3.16 pre-rele\" }, { \"url\": \"https://www.python.org/downloads/macos/\", \"score\": 0, \"title\": \"Python Releases for macOS | Python.org\", \"snippet\": \"Python Releases for macOS | Python.org \\n\\n# Python Releases for macOS\\n\\n- Latest Python 3 Release - Python 3.15.0\\n\\n## Stable Releases\\n\\n- Python 3.15.0 - Oct. 9, 2026\\n\\n- Download macOS installer\\n- Python 3.14.8 - Sept. 30, 2026\\n\\n- Download macOS installer\\n- Python 3.13.16 - Sept. 30, 2026\\n\\n- Download m\" } ], \"provider\": \"exa\", \"warnings\": [ \"搜索通道 'tavily' 异常 (Client network socket disconnected before secure TLS connection was established)，已自动故障转移至 'firecrawl'\", \"搜索通道 'firecrawl' 异常 (Client network socket disconnected before secure TLS connection was established)，已自动故障转移至 'exa'\" ], \"searchedAt\": \"2026-10-14T14:33:36.323Z\", \"resultCount\": 5 }"
+  - generic "查看相关结果与产物链接 (5 项)"
+  - img "robot":
+  - img "clock-circle":
+  - generic: 10/14 22:33
+  - generic: 已完成
+  - generic: Tokens:2323
+  - generic: /
+  - generic: 输入:1176 输出:33 (+推理:1114)
+  - generic "评价回答":
+    - button "回答有帮助":
+      - img "like":
+    - button "回答需要改进":
+      - img "dislike":
+  - button "保存到个人空间":
+    - img "book":
+  - button "收集到 GTD 收件箱":
+    - img "inbox":
+  - button "复制":
+    - img "copy":
+  - button "重试":
+    - img "redo":
+  - textbox "例如：/doc 分析工作空间架构 或 /email 总结今日邮件（输入 / 唤起工作技能，! 唤起工作流）"
+  - radiogroup "segmented control":
+    - radio "user 个人助理"
+    - img "user":
+    - generic: 个人助理
+    - radio "robot 企业协同" [checked]
+    - img "robot":
+    - generic: 企业协同
+  - 'button "bulb 思考: 中 down"':
+    - img "bulb":
+    - generic: "思考: 中"
+    - img "down":
+  - generic "联网搜索：已关闭（可选开启，开启后允许 AI 检索互联网公开资讯）":
+    - img "global":
+    - text: 联网
+    - switch
+  - generic "工作空间知识检索：已关闭（可选开启，开启后提问将自动探查并研读空间文档）":
+    - img "folder":
+    - text: 知识
+    - switch
+  - combobox
+  - generic "Auto / 系统默认"
+  - button "thunderbolt":
+    - img "thunderbolt":
+  - button "paper-clip":
+    - img "paper-clip":
+  - button "audio":
+    - img "audio":
+  - button "plus":
+    - img "plus":
+  - button "send 发送" [disabled]:
+    - img "send":
+    - generic: 发送

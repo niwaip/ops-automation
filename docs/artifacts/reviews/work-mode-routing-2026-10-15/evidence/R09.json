@@ -1,0 +1,53 @@
+{
+  "caseId": "R09",
+  "variant": "canonical",
+  "status": "passed",
+  "traceIds": [
+    "509fd4ee-9a4b-4e6e-a048-1ba2b63795aa"
+  ],
+  "executionIds": [
+    "b71324be-f059-4680-8b67-62bfad5549bb"
+  ],
+  "requestDigest": "06f09126e8988dee9a83d17964978f2245c8af9b91d6518c53c6aadaf1bbbb65",
+  "fixtureDigest": "9d98c56fef1b97f6b1f0a6a40980fbff971943845ece24ff03b2037dfd671736",
+  "catalogSnapshotDigest": "catalog-v1-snapshot-sha256",
+  "routingPolicyVersion": "routing-policy-v1",
+  "routingPolicyDigest": "routing-policy-sha256",
+  "selectedCapabilityRefs": [
+    "platform.document.pdf-content-extractor",
+    "platform.document.markdown-artifact-writer",
+    "summarize_text"
+  ],
+  "planHash": null,
+  "inputHash": null,
+  "actualInvocations": [
+    "platform.document.pdf-content-extractor",
+    "platform.document.markdown-artifact-writer",
+    "summarize_text"
+  ],
+  "usageByPurpose": {},
+  "logicalEffectCount": 1,
+  "artifactRefs": [],
+  "assertions": [
+    {
+      "assertion": "Executed deterministic multi-step recipe",
+      "passed": true,
+      "actual": [
+        "platform.document.pdf-content-extractor",
+        "platform.document.markdown-artifact-writer",
+        "summarize_text"
+      ]
+    },
+    {
+      "assertion": "Reached terminal status succeeded",
+      "passed": true,
+      "actual": "succeeded"
+    },
+    {
+      "assertion": "Produced executionId",
+      "passed": true,
+      "actual": "b71324be-f059-4680-8b67-62bfad5549bb"
+    }
+  ],
+  "failureCategory": null
+}

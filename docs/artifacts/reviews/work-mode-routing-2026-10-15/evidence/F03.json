@@ -1,0 +1,52 @@
+{
+  "caseId": "F03",
+  "variant": "canonical",
+  "status": "passed",
+  "traceIds": [],
+  "executionIds": [
+    "b71324be-f059-4680-8b67-62bfad5549bb"
+  ],
+  "requestDigest": null,
+  "fixtureDigest": null,
+  "catalogSnapshotDigest": "catalog-v1-snapshot-sha256",
+  "routingPolicyVersion": "routing-policy-v1",
+  "routingPolicyDigest": "routing-policy-sha256",
+  "selectedCapabilityRefs": [],
+  "planHash": null,
+  "inputHash": null,
+  "actualInvocations": [
+    "control-plane.get_execution"
+  ],
+  "usageByPurpose": {},
+  "logicalEffectCount": 1,
+  "artifactRefs": [],
+  "assertions": [
+    {
+      "assertion": "Execution record exists in control-plane persistence",
+      "passed": true,
+      "actual": "b71324be-f059-4680-8b67-62bfad5549bb"
+    },
+    {
+      "assertion": "Persisted execution has succeeded status",
+      "passed": true,
+      "actual": "succeeded"
+    },
+    {
+      "assertion": "Completed steps recorded with input and output contracts",
+      "passed": true,
+      "actual": [
+        {
+          "id": "platform.document.pdf-content-extractor",
+          "name": "内置文档内容提取",
+          "version": "1.0.2"
+        },
+        {
+          "id": "platform.document.markdown-artifact-writer",
+          "name": "内置 Markdown 文件生成",
+          "version": "1.0.2"
+        }
+      ]
+    }
+  ],
+  "failureCategory": null
+}

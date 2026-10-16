@@ -1,0 +1,8 @@
+{
+  "apps/backend/governance/workbench/src/workspace/workspace.service.ts": "830b9dc9ad8a4fc216f6dd93627365e93b957c37b5412473ebd15d140461f9d0",
+  "apps/backend/governance/workbench/src/workspace/workspace.controller.ts": "4ef9f667183ebf71df033e6b86fb3fdaf89e3357dc18b468c35d06254358f564",
+  "apps/backend/governance/workbench/src/workspace/workspace-content-indexer.service.ts": "2fa13ab803ad67597a80316d811d1e6af81b0b1239056d10da6eef32512f978a",
+  "apps/backend/governance/workbench/src/workspace/workspace-digest.service.ts": "986576e154340aff10729ca5e5135f7e8e9764065a5e849173a678bab51feffd",
+  "apps/backend/governance/workbench/src/workspace/workspace-search-relevance.helper.ts": "f1c51e83d5fea474c92f3567afc9780b4ef600c8e49aeed7864a4b73c67e35e9",
+  "apps/backend/execution-control/control-plane/src/modules/execution/adapters/workspace/workspace-explorer.handler.ts": "4a0643af30cf264c825d20bc2d5f757be3764bd95493b2b63c31ac2a6db82ee2"
+}

@@ -1,4 +1,7 @@
-import { projectPreviousResultIntoRecognition } from './previous-result-continuation';
+import {
+  isIndependentQueryOrInquiry,
+  projectPreviousResultIntoRecognition,
+} from './previous-result-continuation';
 
 describe('projectPreviousResultIntoRecognition', () => {
   const schema = {
@@ -159,5 +162,39 @@ describe('projectPreviousResultIntoRecognition', () => {
 
     expect(result.projectedFields).toEqual([]);
     expect(result.recognized.params.startUrl).toBeUndefined();
+  });
+
+  it('detects independent queries and inquiries accurately', () => {
+    expect(isIndependentQueryOrInquiry('查询关于ai能力测试的文件')).toBe(true);
+    expect(isIndependentQueryOrInquiry('请帮我搜索最新的AI框架')).toBe(true);
+    expect(isIndependentQueryOrInquiry('检索知识库')).toBe(true);
+    expect(isIndependentQueryOrInquiry('查看合同内容')).toBe(true);
+    expect(isIndependentQueryOrInquiry('排查关于系统的异常错误')).toBe(true);
+    expect(isIndependentQueryOrInquiry('什么是分布式锁')).toBe(true);
+
+    expect(isIndependentQueryOrInquiry('请生成Markdown文件')).toBe(false);
+    expect(isIndependentQueryOrInquiry('把刚才的内容导出成PDF')).toBe(false);
+    expect(isIndependentQueryOrInquiry('发送到群组')).toBe(false);
+    expect(isIndependentQueryOrInquiry('确认并执行')).toBe(false);
+    expect(isIndependentQueryOrInquiry('')).toBe(false);
+  });
+
+  it('does not project prior execution text when user prompt is an independent query or inquiry', () => {
+    const result = projectPreviousResultIntoRecognition(
+      { params: {}, confidence: 0.9, uncertain_fields: ['content'] },
+      schema,
+      {
+        mode: 'single_step_continuation',
+        previous_result: {
+          executionId: 'prev-doubao-1',
+          structuredData: { summary: '关于豆包的相关内容总结...' },
+          detailText: '根据检索到的信息，关于“豆包”的相关内容总结如下：...',
+        },
+      },
+      '查询关于ai能力测试的文件'
+    );
+
+    expect(result.projectedFields).toEqual([]);
+    expect(result.recognized.params.content).toBeUndefined();
   });
 });

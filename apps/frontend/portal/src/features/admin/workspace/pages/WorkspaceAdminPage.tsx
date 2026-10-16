@@ -17,6 +17,7 @@ import {
   ReloadOutlined,
   RobotOutlined,
   SearchOutlined,
+  SyncOutlined,
   TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons';
@@ -55,9 +56,15 @@ import {
   type WorkspaceNode,
   type WorkspaceSummary,
 } from '@/api/workspace';
-import { WorkspaceAiCleanModal } from '../components/WorkspaceAiCleanModal';
+import { WorkspaceAiCleanModal, type CleanScope } from '../components/WorkspaceAiCleanModal';
 import { WorkspaceDocumentPreviewModal } from '../components/WorkspaceDocumentPreviewModal';
 import { WorkspaceFileDigestDrawer } from '../components/WorkspaceFileDigestDrawer';
+import { WorkspaceDigestOverviewCell } from '../components/WorkspaceDigestOverviewCell';
+import { WorkspaceDigestExpandRow } from '../components/WorkspaceDigestExpandRow';
+import {
+  WorkspaceKnowledgeStatsBar,
+  type DigestFilterType,
+} from '../components/WorkspaceKnowledgeStatsBar';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -90,6 +97,24 @@ function getFileIcon(node: WorkspaceNode) {
   if (['txt', 'md', 'json', 'yaml', 'yml'].includes(ext))
     return <FileTextOutlined style={{ color: '#13c2c2', fontSize: 18 }} />;
   return <FileOutlined style={{ color: '#8c8c8c', fontSize: 18 }} />;
+}
+
+/**
+ * 判断当前节点是否属于个人的临时工作区（沙盒运行临时目录，属于知识库治理对象外）
+ */
+function isPersonalTempFolderOrChild(
+  node: WorkspaceNode,
+  activeTab: 'company' | 'department' | 'personal',
+  breadcrumbs: BreadcrumbItem[]
+): boolean {
+  if (activeTab !== 'personal') return false;
+  const lower = (node.name || '').toLowerCase();
+  if (node.type === 'folder' && (lower.includes('temp') || lower.includes('临时工作区'))) {
+    return true;
+  }
+  return breadcrumbs.some(
+    (b) => b.name && (b.name.toLowerCase().includes('temp') || b.name.includes('临时工作区'))
+  );
 }
 
 export function WorkspaceAdminPage() {
@@ -168,7 +193,10 @@ export function WorkspaceAdminPage() {
   const [digestDrawerNode, setDigestDrawerNode] = useState<WorkspaceNode | null>(null);
 
   const [aiCleanNodes, setAiCleanNodes] = useState<WorkspaceNode[]>([]);
+  const [aiCleanScope, setAiCleanScope] = useState<CleanScope>('all');
   const [isAiCleanModalOpen, setIsAiCleanModalOpen] = useState(false);
+
+  const [digestFilter, setDigestFilter] = useState<DigestFilterType>('all');
 
   const [isNewFolderOpen, setIsNewFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -187,27 +215,57 @@ export function WorkspaceAdminPage() {
     setActiveTab(tab as 'company' | 'department' | 'personal');
     setBreadcrumbs([{ id: null, name: '根目录' }]);
     setSearchKeyword('');
+    setDigestFilter('all');
     setSelectedRowKeys([]);
     setSelectedNodes([]);
   }, []);
 
-  // 2. 加载当前目录下节点
+  // 2. 加载文档节点（根据一览过滤模式加载平铺文档或当前目录）
   const {
     data: nodesData = [],
     isLoading: isNodesLoading,
     refetch: refetchNodes,
   } = useQuery(
-    ['admin-workspace-nodes', currentWorkspace?.id, currentFolderId],
+    ['admin-workspace-nodes', currentWorkspace?.id, currentFolderId, digestFilter],
     () => {
       if (!currentWorkspace?.id) return Promise.resolve([]);
-      return workspaceApi.getNodes(currentWorkspace.id, currentFolderId);
+      const scope =
+        digestFilter === 'ai_cleaned'
+          ? 'ai_cleaned'
+          : digestFilter === 'uncleaned'
+          ? 'uncleaned'
+          : digestFilter === 'all'
+          ? 'all'
+          : 'folder';
+      return workspaceApi.getNodes(
+        currentWorkspace.id,
+        scope === 'folder' ? currentFolderId : null,
+        scope
+      );
     },
     {
       enabled: Boolean(currentWorkspace?.id) && searchMode === 'name',
     }
   );
 
-  // 3. 全文检索 Query
+  // 3. 统计指标 Query (AI 治理与知识就绪度)
+  const {
+    data: digestStats,
+    isLoading: isStatsLoading,
+    refetch: refetchStats,
+  } = useQuery(
+    ['admin-workspace-digest-stats', currentWorkspace?.id],
+    () => {
+      if (!currentWorkspace?.id) return Promise.resolve(null);
+      return workspaceApi.getDigestStats(currentWorkspace.id);
+    },
+    {
+      enabled: Boolean(currentWorkspace?.id),
+      staleTime: 10000,
+    }
+  );
+
+  // 4. 全文检索 Query
   const { data: contentSearchResults = [], isLoading: isContentSearching } = useQuery(
     ['admin-workspace-search-content', currentWorkspace?.id, searchKeyword],
     () => {
@@ -219,14 +277,18 @@ export function WorkspaceAdminPage() {
     }
   );
 
-  // 过滤展示节点
+  // 过滤展示节点（融合文件名搜索/全文检索）
   const displayedNodes: WorkspaceNode[] = useMemo(() => {
+    let list: WorkspaceNode[] = [];
     if (searchMode === 'content') {
-      return contentSearchResults;
+      list = contentSearchResults;
+    } else if (!searchKeyword.trim()) {
+      list = nodesData;
+    } else {
+      const lower = searchKeyword.toLowerCase();
+      list = nodesData.filter((n) => n.name.toLowerCase().includes(lower));
     }
-    if (!searchKeyword.trim()) return nodesData;
-    const lower = searchKeyword.toLowerCase();
-    return nodesData.filter((n) => n.name.toLowerCase().includes(lower));
+    return list;
   }, [searchMode, searchKeyword, nodesData, contentSearchResults]);
 
   // 打开文本预览
@@ -336,48 +398,41 @@ export function WorkspaceAdminPage() {
               {name}
             </Button>
           )}
+          {record.parentName && digestFilter !== 'tree' && (
+            <Tag
+              icon={<FolderOutlined />}
+              style={{
+                fontSize: 11,
+                lineHeight: '18px',
+                padding: '0 6px',
+                borderRadius: 4,
+                color: 'var(--text-secondary, #94a3b8)',
+                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid var(--border-color, #334155)',
+              }}
+            >
+              {record.parentName}
+            </Tag>
+          )}
         </div>
       ),
     },
     {
-      title: 'AI 治理 / 结构化摘要',
+      title: 'AI 治理 / 核心提炼一览',
       key: 'digest',
       render: (_, record) => {
-        if (record.type === 'folder') return <Text type="secondary">-</Text>;
-        const d = record.digest;
-        if (!d) {
-          return (
-            <Tag color="default" style={{ fontSize: 12 }}>
-              未生成卡片
-            </Tag>
-          );
-        }
+        const isOutOfScope = isPersonalTempFolderOrChild(record, activeTab, breadcrumbs);
         return (
-          <Space size="small" direction="vertical" align="start">
-            <Space direction="horizontal" size={4}>
-              {d.cleanedByAi ? (
-                <Tag color="success" icon={<RobotOutlined />}>
-                  AI 深度清洗
-                </Tag>
-              ) : (
-                <Tag color="cyan">规则摘要</Tag>
-              )}
-              {d.extractedData && <Tag color="purple">已抽取特定数据</Tag>}
-            </Space>
-            <Text
-              type="secondary"
-              style={{
-                fontSize: 12,
-                maxWidth: 320,
-                display: '-webkit-box',
-                WebkitLineClamp: 1,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-              }}
-            >
-              {d.summary}
-            </Text>
-          </Space>
+          <WorkspaceDigestOverviewCell
+            node={record}
+            isOutOfScope={isOutOfScope}
+            onOpenAiClean={(n) => {
+              if (isOutOfScope) return;
+              setAiCleanNodes([n]);
+              setAiCleanScope('selected');
+              setIsAiCleanModalOpen(true);
+            }}
+          />
         );
       },
     },
@@ -390,68 +445,123 @@ export function WorkspaceAdminPage() {
         record.type === 'folder' ? <Text type="secondary">-</Text> : formatBytes(size),
     },
     {
-      title: '更新时间',
-      dataIndex: 'updatedAt',
-      key: 'updatedAt',
+      title: '清洗时间',
+      key: 'cleanedAt',
       width: 170,
-      render: (val: string) => (val ? new Date(val).toLocaleString() : '-'),
+      render: (_, record) => {
+        if (record.type === 'folder') {
+          return <Text type="secondary">-</Text>;
+        }
+        if (isPersonalTempFolderOrChild(record, activeTab, breadcrumbs)) {
+          return <Text type="secondary">对象外</Text>;
+        }
+        if (record.digest?.cleanedByAi) {
+          const timeStr = record.digest.extractedAt
+            ? new Date(record.digest.extractedAt).toLocaleString()
+            : new Date(record.updatedAt).toLocaleString();
+          return (
+            <Tooltip title={`文件上传/更新时间: ${new Date(record.updatedAt).toLocaleString()}`}>
+              <span>{timeStr}</span>
+            </Tooltip>
+          );
+        }
+        return (
+          <Tooltip title={`初期上传尚未进行 AI 深度清洗（上传时间：${new Date(record.updatedAt).toLocaleString()}），点击立即快速清洗`}>
+            <Tag
+              color="default"
+              style={{ margin: 0, cursor: 'pointer' }}
+              onClick={() => {
+                setAiCleanNodes([record]);
+                setAiCleanScope('selected');
+                setIsAiCleanModalOpen(true);
+              }}
+            >
+              未清洗
+            </Tag>
+          </Tooltip>
+        );
+      },
     },
     {
       title: '操作',
       key: 'action',
       width: 260,
-      render: (_, record) => (
-        <Space size="small">
-          {record.type === 'file' && (
-            <>
-              <Tooltip title="快速预览正文">
-                <Button
-                  size="small"
-                  icon={<EyeOutlined />}
-                  onClick={() => handleOpenPreview(record)}
-                />
-              </Tooltip>
-              <Tooltip title="结构化卡片与详情">
-                <Button
-                  size="small"
-                  icon={<FileTextOutlined />}
-                  onClick={() => setDigestDrawerNode(record)}
-                />
-              </Tooltip>
-              <Tooltip title="手动调用 AI 深度清洗与提炼">
-                <Button
-                  size="small"
-                  type="primary"
-                  ghost
-                  icon={<RobotOutlined />}
-                  onClick={() => {
-                    setAiCleanNodes([record]);
-                    setIsAiCleanModalOpen(true);
-                  }}
-                >
-                  AI 清洗
-                </Button>
-              </Tooltip>
-              <Tooltip title="下载文件">
-                <Button
-                  size="small"
-                  icon={<DownloadOutlined />}
-                  onClick={() => handleDownload(record)}
-                />
-              </Tooltip>
-            </>
-          )}
-          <Popconfirm
-            title={`确定删除${record.type === 'folder' ? '文件夹及其内容' : '该文件'}吗？`}
-            onConfirm={() => handleDeleteNode(record)}
-            okText="删除"
-            cancelText="取消"
-            okButtonProps={{ danger: true }}
-          >
-            <Button size="small" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
-      ),
+      render: (_, record) => {
+        const isOutOfScope = isPersonalTempFolderOrChild(record, activeTab, breadcrumbs);
+        return (
+          <Space size="small">
+            {record.type === 'file' && (
+              <>
+                <Tooltip title="快速预览正文">
+                  <Button
+                    size="small"
+                    icon={<EyeOutlined />}
+                    onClick={() => handleOpenPreview(record)}
+                  />
+                </Tooltip>
+                <Tooltip title="结构化卡片与详情">
+                  <Button
+                    size="small"
+                    icon={<FileTextOutlined />}
+                    onClick={() => setDigestDrawerNode(record)}
+                  />
+                </Tooltip>
+                {!isOutOfScope && (
+                  record.digest?.cleanedByAi ? (
+                    <Tooltip title="重新调用大模型进行深度清理与提炼此文件（可重新调整提示词或模型）">
+                      <Button
+                        size="small"
+                        type="primary"
+                        ghost
+                        icon={<SyncOutlined />}
+                        onClick={() => {
+                          setAiCleanNodes([record]);
+                          setAiCleanScope('selected');
+                          setIsAiCleanModalOpen(true);
+                        }}
+                        style={{ color: '#52c41a', borderColor: '#b7eb8f' }}
+                      >
+                        重新清理
+                      </Button>
+                    </Tooltip>
+                  ) : (
+                    <Tooltip title="初期上传尚未清洗，点击调用大模型进行深度清理与提炼">
+                      <Button
+                        size="small"
+                        type="primary"
+                        ghost
+                        icon={<RobotOutlined />}
+                        onClick={() => {
+                          setAiCleanNodes([record]);
+                          setAiCleanScope('selected');
+                          setIsAiCleanModalOpen(true);
+                        }}
+                      >
+                        AI 清理
+                      </Button>
+                    </Tooltip>
+                  )
+                )}
+                <Tooltip title="下载文件">
+                  <Button
+                    size="small"
+                    icon={<DownloadOutlined />}
+                    onClick={() => handleDownload(record)}
+                  />
+                </Tooltip>
+              </>
+            )}
+            <Popconfirm
+              title={`确定删除${record.type === 'folder' ? '文件夹及其内容' : '该文件'}吗？`}
+              onConfirm={() => handleDeleteNode(record)}
+              okText="删除"
+              cancelText="取消"
+            >
+              <Button size="small" danger icon={<DeleteOutlined />} />
+            </Popconfirm>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -489,7 +599,7 @@ export function WorkspaceAdminPage() {
         {currentWorkspace && (
           <Card
             size="small"
-            style={{ width: 320, background: '#fafafa', border: '1px solid #f0f0f0' }}
+            style={{ width: 320, background: 'var(--bg-card, #1e293b)', border: '1px solid var(--border-color, #334155)' }}
           >
             <div
               style={{
@@ -628,7 +738,7 @@ export function WorkspaceAdminPage() {
                 <span
                   style={{
                     cursor: idx < breadcrumbs.length - 1 ? 'pointer' : 'default',
-                    color: idx === breadcrumbs.length - 1 ? '#262626' : '#1677ff',
+                    color: idx === breadcrumbs.length - 1 ? 'var(--text-primary, #f8fafc)' : 'var(--primary-color, #1677ff)',
                     fontWeight: idx === breadcrumbs.length - 1 ? 600 : 400,
                   }}
                   onClick={() => {
@@ -670,15 +780,34 @@ export function WorkspaceAdminPage() {
             {selectedNodes.length > 0 && (
               <Button
                 type="primary"
+                ghost
                 icon={<RobotOutlined />}
                 onClick={() => {
                   setAiCleanNodes(selectedNodes.filter((n) => n.type === 'file'));
+                  setAiCleanScope('selected');
                   setIsAiCleanModalOpen(true);
                 }}
               >
                 批量 AI 清洗 ({selectedNodes.filter((n) => n.type === 'file').length})
               </Button>
             )}
+
+            {/* 一键全量 AI 清洗按钮 */}
+            <Button
+              type="primary"
+              icon={<RobotOutlined />}
+              onClick={() => {
+                setAiCleanNodes([]);
+                setAiCleanScope('all');
+                setIsAiCleanModalOpen(true);
+              }}
+              style={{
+                background: 'linear-gradient(90deg, #1677ff 0%, #722ed1 100%)',
+                borderColor: '#1677ff',
+              }}
+            >
+              一键全量 AI 清洗
+            </Button>
 
             <Button icon={<PlusOutlined />} onClick={() => setIsNewFolderOpen(true)}>
               新建目录
@@ -701,6 +830,7 @@ export function WorkspaceAdminPage() {
               onClick={() => {
                 void refetchNodes();
                 void refetchWorkspaces();
+                void refetchStats();
               }}
             />
           </Space>
@@ -732,12 +862,40 @@ export function WorkspaceAdminPage() {
           />
         )}
 
+        {/* 知识库 AI 治理与 RAG 就绪度概况看板 */}
+        <WorkspaceKnowledgeStatsBar
+          stats={digestStats || null}
+          isLoading={isStatsLoading}
+          filterType={digestFilter}
+          onFilterChange={setDigestFilter}
+          onOpenFullCleanModal={(scope) => {
+            setAiCleanNodes([]);
+            setAiCleanScope(scope);
+            setIsAiCleanModalOpen(true);
+          }}
+        />
+
         {/* 文件列表表格 */}
         <Table
           rowKey="id"
-          loading={isNodesLoading || isContentSearching}
+          loading={isNodesLoading || isContentSearching || isStatsLoading}
           dataSource={displayedNodes}
           columns={columns}
+          expandable={{
+            expandedRowRender: (record) => (
+              <WorkspaceDigestExpandRow
+                node={record}
+                isOutOfScope={isPersonalTempFolderOrChild(record, activeTab, breadcrumbs)}
+                onOpenPreview={handleOpenPreview}
+                onOpenAiClean={(n) => {
+                  setAiCleanNodes([n]);
+                  setAiCleanScope('selected');
+                  setIsAiCleanModalOpen(true);
+                }}
+              />
+            ),
+            rowExpandable: (record) => record.type === 'file',
+          }}
           rowSelection={{
             selectedRowKeys,
             onChange: (keys, rows) => {
@@ -754,11 +912,25 @@ export function WorkspaceAdminPage() {
             emptyText: (
               <Empty
                 description={
-                  <span>
-                    当前目录下暂无文件或子目录，点击上方
-                    <Text strong> 新建目录 </Text>或<Text strong> 上传文档 </Text>
-                    添加资产
-                  </span>
+                  searchKeyword.trim() ? (
+                    <span>
+                      未找到与“<Text strong>{searchKeyword.trim()}</Text>”相关的文档资产，建议检查输入或更换关键词
+                    </span>
+                  ) : digestFilter === 'ai_cleaned' ? (
+                    <span>
+                      当前空间暂无已 AI 深度提炼的文档，可点击上方 <Text strong>一键全量 AI 清洗</Text> 或在操作栏点击 <Text strong>AI 清理</Text> 进行结构化治理
+                    </span>
+                  ) : digestFilter === 'uncleaned' ? (
+                    <span>当前空间所有文档均已完成 AI 深度提炼，就绪度 100%！</span>
+                  ) : digestFilter === 'all' ? (
+                    <span>当前空间暂无文档资产，点击上方 <Text strong>上传文档</Text> 开始添加</span>
+                  ) : (
+                    <span>
+                      当前目录下暂无文件或子目录，点击上方
+                      <Text strong> 新建目录 </Text>或<Text strong> 上传文档 </Text>
+                      添加资产
+                    </span>
+                  )
                 }
               />
             ),
@@ -814,6 +986,7 @@ export function WorkspaceAdminPage() {
         onDownload={handleDownload}
         onDigestUpdated={(nodeId, newDigest) => {
           void refetchNodes();
+          void refetchStats();
           setDigestDrawerNode((prev) => (prev?.id === nodeId ? { ...prev, digest: newDigest } : prev));
         }}
       />
@@ -824,12 +997,15 @@ export function WorkspaceAdminPage() {
           open={isAiCleanModalOpen}
           nodes={aiCleanNodes}
           workspaceId={currentWorkspace.id}
+          initialScope={aiCleanScope}
           onClose={() => {
             setIsAiCleanModalOpen(false);
             setAiCleanNodes([]);
           }}
           onSuccess={(newDigest) => {
             void refetchNodes();
+            void refetchStats();
+            void refetchWorkspaces();
             if (newDigest && aiCleanNodes.length === 1) {
               const updatedId = aiCleanNodes[0].id;
               setDigestDrawerNode((prev) =>

@@ -1,0 +1,675 @@
+{
+  "runId": "E2E_VERIFY_MVB0MPUC",
+  "startedAt": "2026-10-16T13:40:50.388Z",
+  "endedAt": "2026-10-16T13:43:05.027Z",
+  "passed": false,
+  "totalChecks": 65,
+  "passedChecks": 63,
+  "failedChecks": 2,
+  "casesExecuted": [
+    {
+      "caseId": "setup",
+      "checkName": "管理凭证获取成功并有效",
+      "passed": true,
+      "details": null
+    },
+    {
+      "caseId": "setup",
+      "checkName": "个人工作空间解析成功",
+      "passed": true,
+      "details": {
+        "personalWorkspaceId": "c8d19632-da7e-4197-8f0d-275d8934750f",
+        "workspaceName": "我的空间"
+      }
+    },
+    {
+      "caseId": "setup",
+      "checkName": "核心归档根目录就绪",
+      "passed": true,
+      "details": {
+        "rootSavedFolderId": "f6730984-2206-4495-84b3-21aebe720b02",
+        "rootTasksFolderId": "19aa460f-932b-4395-b02d-93703c1e4726"
+      }
+    },
+    {
+      "caseId": "personal-pure-content",
+      "checkName": "保存接口返回有效文件节点",
+      "passed": true,
+      "details": {
+        "nodeId": "8c4c9e7a-4980-484e-b660-28dcd1ee9358",
+        "name": "敏捷开发站会规约_E2E_VERIFY_MVB0MPUC.md"
+      }
+    },
+    {
+      "caseId": "personal-pure-content",
+      "checkName": "主文档扩展名为「.md」",
+      "passed": true,
+      "details": {
+        "fileName": "敏捷开发站会规约_E2E_VERIFY_MVB0MPUC.md"
+      }
+    },
+    {
+      "caseId": "personal-pure-content",
+      "checkName": "专属成果文件夹已创建",
+      "passed": true,
+      "details": {
+        "folderName": "20261016_敏捷开发站会规约_E2E_VERIFY_MVB0MPUC",
+        "folderParentId": "f6730984-2206-4495-84b3-21aebe720b02"
+      }
+    },
+    {
+      "caseId": "personal-pure-content",
+      "checkName": "归档至预期的核心分类根目录「沙盒保存内容 (saved)」",
+      "passed": true,
+      "details": {
+        "actualParentId": "f6730984-2206-4495-84b3-21aebe720b02",
+        "expectedRootId": "f6730984-2206-4495-84b3-21aebe720b02"
+      }
+    },
+    {
+      "caseId": "personal-pure-content",
+      "checkName": "专属文件夹命名遵循 YYYYMMDD_ 前缀规范",
+      "passed": true,
+      "details": {
+        "folderName": "20261016_敏捷开发站会规约_E2E_VERIFY_MVB0MPUC"
+      }
+    },
+    {
+      "caseId": "personal-pure-content",
+      "checkName": "主文档已物理落盘至存储盘并有实际体积",
+      "passed": true,
+      "details": {
+        "storagePath": "personal/c8d19632-da7e-4197-8f0d-275d8934750f/8c4c9e7a-4980-484e-b660-28dcd1ee9358_敏捷开发站会规约_E2E_VERIFY_MVB0MPUC.md",
+        "sizeBytes": 960
+      }
+    },
+    {
+      "caseId": "personal-pure-content",
+      "checkName": "文档支持预览且属于文本格式",
+      "passed": true,
+      "details": {
+        "mimeType": "text/markdown",
+        "totalLines": 31
+      }
+    },
+    {
+      "caseId": "personal-pure-content",
+      "checkName": "YAML FrontMatter 元数据字段准确注入",
+      "passed": true,
+      "details": {
+        "previewExcerpt": "---\ntitle: \"敏捷开发站会规约_E2E_VERIFY_MVB0MPUC\"\ntype: \"qa_note\"\nstatus: \"candidate\"\ncreated_at: \"2026-10-16T13:40:51.088Z\"\ntags: [\"敏捷开发\",\"团队规范\",\"日常站会\"]\nsource:\n  channel: \"chat\"\n  session_id: \"sess-personal-pure-1792158051082\"\n  message_id: \"msg-personal-pure-1792158051082\"\n  execution_id: \"\"\n  skill_used"
+      }
+    },
+    {
+      "caseId": "personal-pure-content",
+      "checkName": "AI 知识提炼与摘要卡片生成完成",
+      "passed": true,
+      "details": {
+        "success": true,
+        "timeout": false,
+        "elapsedMs": 21930,
+        "summaryLength": 198,
+        "headingsCount": 12
+      }
+    },
+    {
+      "caseId": "personal-html-generation",
+      "checkName": "保存接口返回有效文件节点",
+      "passed": true,
+      "details": {
+        "nodeId": "9902fd40-1c1f-4ff0-942a-ef529e66ff02",
+        "name": "DevOps发布看板原型_E2E_VERIFY_MVB0MPUC.md"
+      }
+    },
+    {
+      "caseId": "personal-html-generation",
+      "checkName": "专属成果文件夹已创建",
+      "passed": true,
+      "details": {
+        "folderName": "20261016_DevOps发布看板原型_E2E_VERIFY_MVB0MPUC",
+        "folderParentId": "f6730984-2206-4495-84b3-21aebe720b02"
+      }
+    },
+    {
+      "caseId": "personal-html-generation",
+      "checkName": "归档至预期的核心分类根目录「沙盒保存内容 (saved)」",
+      "passed": true,
+      "details": {
+        "actualParentId": "f6730984-2206-4495-84b3-21aebe720b02",
+        "expectedRootId": "f6730984-2206-4495-84b3-21aebe720b02"
+      }
+    },
+    {
+      "caseId": "personal-html-generation",
+      "checkName": "主文档已物理落盘至存储盘并有实际体积",
+      "passed": true,
+      "details": {
+        "storagePath": "personal/c8d19632-da7e-4197-8f0d-275d8934750f/9902fd40-1c1f-4ff0-942a-ef529e66ff02_DevOps发布看板原型_E2E_VERIFY_MVB0MPUC.md",
+        "sizeBytes": 1520
+      }
+    },
+    {
+      "caseId": "personal-html-generation",
+      "checkName": "文档支持预览且属于文本格式",
+      "passed": true,
+      "details": {
+        "mimeType": "text/markdown",
+        "totalLines": 53
+      }
+    },
+    {
+      "caseId": "personal-html-generation",
+      "checkName": "内联提取出的伴生资产「devops-pipeline-dashboard.html」作为独立节点入夹",
+      "passed": true,
+      "details": {
+        "folderChildren": [
+          {
+            "name": "devops-pipeline-dashboard.html",
+            "type": "file",
+            "mime": "text/html"
+          },
+          {
+            "name": "DevOps发布看板原型_E2E_VERIFY_MVB0MPUC.md",
+            "type": "file",
+            "mime": "text/markdown"
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "personal-html-generation",
+      "checkName": "伴生资产 MIME 类型符合预期 (text/html)",
+      "passed": true,
+      "details": {
+        "mimeType": "text/html",
+        "fileSize": "641"
+      }
+    },
+    {
+      "caseId": "personal-html-generation",
+      "checkName": "伴生资产在物理存储介质中完整落盘且包含 HTML 标签",
+      "passed": true,
+      "details": {
+        "storagePath": "personal/c8d19632-da7e-4197-8f0d-275d8934750f/0a6bd4bc-71bc-49e9-b3b7-bca251f82a54_devops-pipeline-dashboard.html",
+        "sizeBytes": 641
+      }
+    },
+    {
+      "caseId": "personal-html-generation",
+      "checkName": "伴生资产支持直接文本/HTML预览获取",
+      "passed": true,
+      "details": {
+        "fileName": "devops-pipeline-dashboard.html"
+      }
+    },
+    {
+      "caseId": "personal-html-generation",
+      "checkName": "AI 知识提炼与摘要卡片生成完成",
+      "passed": true,
+      "details": {
+        "success": true,
+        "timeout": false,
+        "elapsedMs": 19416,
+        "summaryLength": 162,
+        "headingsCount": 12
+      }
+    },
+    {
+      "caseId": "personal-html-generation",
+      "checkName": "提炼后主 Markdown 报告中已自动注入交付资产清单与相对链接",
+      "passed": true,
+      "details": {
+        "hasCatalogHeading": true,
+        "hasRelativeLink": true,
+        "previewSnippet": "## 📁 交付资产与文件清单\n> 本成果文件夹内归集了以下生成的文件资产，可直接点击同级链接查阅：\n\n| 资产文件名 | 文件格式 | 资产内容说明 |\n| :--- | :--- | :--- |\n| [devops-pipeline-dashboard.html](./devops-pipeline-dashboard.html) | `HTML` | 用于集中大屏展示的自包含 DevOps 持续发布监控看板原型页面，展示集群健康度与发布流水线构建指标 |\n\n## 📝 知识核验与批注\n- [ ] 待人工确认准确性\n- 状态：专属文件夹已归档 (Candidate Package)\n"
+      }
+    },
+    {
+      "caseId": "personal-markdown-complex",
+      "checkName": "保存接口返回有效文件节点",
+      "passed": true,
+      "details": {
+        "nodeId": "b01ab595-6149-4df6-9068-e51ea9135b9e",
+        "name": "分布式缓存架构评测报告_E2E_VERIFY_MVB0MPUC.md"
+      }
+    },
+    {
+      "caseId": "personal-markdown-complex",
+      "checkName": "主文档扩展名为「.md」",
+      "passed": true,
+      "details": {
+        "fileName": "分布式缓存架构评测报告_E2E_VERIFY_MVB0MPUC.md"
+      }
+    },
+    {
+      "caseId": "personal-markdown-complex",
+      "checkName": "专属成果文件夹已创建",
+      "passed": true,
+      "details": {
+        "folderName": "20261016_分布式缓存架构评测报告_E2E_VERIFY_MVB0MPUC",
+        "folderParentId": "f6730984-2206-4495-84b3-21aebe720b02"
+      }
+    },
+    {
+      "caseId": "personal-markdown-complex",
+      "checkName": "归档至预期的核心分类根目录「沙盒保存内容 (saved)」",
+      "passed": true,
+      "details": {
+        "actualParentId": "f6730984-2206-4495-84b3-21aebe720b02",
+        "expectedRootId": "f6730984-2206-4495-84b3-21aebe720b02"
+      }
+    },
+    {
+      "caseId": "personal-markdown-complex",
+      "checkName": "主文档已物理落盘至存储盘并有实际体积",
+      "passed": true,
+      "details": {
+        "storagePath": "personal/c8d19632-da7e-4197-8f0d-275d8934750f/b01ab595-6149-4df6-9068-e51ea9135b9e_分布式缓存架构评测报告_E2E_VERIFY_MVB0MPUC.md",
+        "sizeBytes": 1579
+      }
+    },
+    {
+      "caseId": "personal-markdown-complex",
+      "checkName": "文档支持预览且属于文本格式",
+      "passed": true,
+      "details": {
+        "mimeType": "text/markdown",
+        "totalLines": 46
+      }
+    },
+    {
+      "caseId": "personal-markdown-complex",
+      "checkName": "复杂 Markdown 表格结构在正文中完整保留",
+      "passed": true,
+      "details": null
+    },
+    {
+      "caseId": "personal-markdown-complex",
+      "checkName": "AI 知识提炼与摘要卡片生成完成",
+      "passed": true,
+      "details": {
+        "success": true,
+        "timeout": false,
+        "elapsedMs": 23476,
+        "summaryLength": 166,
+        "headingsCount": 12
+      }
+    },
+    {
+      "caseId": "personal-markdown-complex",
+      "checkName": "提炼卡片正确提取出文档多级章节目录 (headings)",
+      "passed": true,
+      "details": {
+        "headings": [
+          "现代主流内存缓存架构技术对比与选型评估报告",
+          "📌 提问背景",
+          "💡 核心结论与 AI 归纳总结",
+          "核心引擎架构特性与多维选型对比",
+          "关键指标对比矩阵",
+          "并发计算与线程模型解析",
+          "存储效率与高可用生态考量",
+          "内存优化与成本管控",
+          "生态兼容与容灾高可用",
+          "压测基准验证与运维决策建议",
+          "基准压测实施规范",
+          "生产落地分级演进策略"
+        ]
+      }
+    },
+    {
+      "caseId": "work-pure-task-result",
+      "checkName": "保存接口返回有效文件节点",
+      "passed": true,
+      "details": {
+        "nodeId": "550eb9aa-0d49-4f45-a238-186527694b27",
+        "name": "线上服务链路健康巡检总结_E2E_VERIFY_MVB0MPUC.md"
+      }
+    },
+    {
+      "caseId": "work-pure-task-result",
+      "checkName": "主文档扩展名为「.md」",
+      "passed": true,
+      "details": {
+        "fileName": "线上服务链路健康巡检总结_E2E_VERIFY_MVB0MPUC.md"
+      }
+    },
+    {
+      "caseId": "work-pure-task-result",
+      "checkName": "专属成果文件夹已创建",
+      "passed": true,
+      "details": {
+        "folderName": "20261016_线上服务链路健康巡检总结_E2E_VERIFY_MVB0MPUC",
+        "folderParentId": "19aa460f-932b-4395-b02d-93703c1e4726"
+      }
+    },
+    {
+      "caseId": "work-pure-task-result",
+      "checkName": "归档至预期的核心分类根目录「工作任务成果 (tasks)」",
+      "passed": true,
+      "details": {
+        "actualParentId": "19aa460f-932b-4395-b02d-93703c1e4726",
+        "expectedRootId": "19aa460f-932b-4395-b02d-93703c1e4726"
+      }
+    },
+    {
+      "caseId": "work-pure-task-result",
+      "checkName": "专属文件夹命名遵循 YYYYMMDD_ 前缀规范",
+      "passed": true,
+      "details": {
+        "folderName": "20261016_线上服务链路健康巡检总结_E2E_VERIFY_MVB0MPUC"
+      }
+    },
+    {
+      "caseId": "work-pure-task-result",
+      "checkName": "主文档已物理落盘至存储盘并有实际体积",
+      "passed": true,
+      "details": {
+        "storagePath": "personal/c8d19632-da7e-4197-8f0d-275d8934750f/550eb9aa-0d49-4f45-a238-186527694b27_线上服务链路健康巡检总结_E2E_VERIFY_MVB0MPUC.md",
+        "sizeBytes": 1043
+      }
+    },
+    {
+      "caseId": "work-pure-task-result",
+      "checkName": "文档支持预览且属于文本格式",
+      "passed": true,
+      "details": {
+        "mimeType": "text/markdown",
+        "totalLines": 33
+      }
+    },
+    {
+      "caseId": "work-pure-task-result",
+      "checkName": "YAML FrontMatter 元数据字段准确注入",
+      "passed": true,
+      "details": {
+        "previewExcerpt": "---\ntitle: \"线上服务链路健康巡检总结_E2E_VERIFY_MVB0MPUC\"\ntype: \"task_result\"\nstatus: \"candidate\"\ncreated_at: \"2026-10-16T13:41:56.081Z\"\ntags: [\"运维巡检\",\"健康检查\",\"任务成果\"]\nsource:\n  channel: \"chat\"\n  session_id: \"sess-work-pure-1792158051082\"\n  message_id: \"msg-work-pure-1792158051082\"\n  execution_id: \"06e9ace5-4ca9-"
+      }
+    },
+    {
+      "caseId": "work-companion-artifacts",
+      "checkName": "保存接口返回有效文件节点",
+      "passed": true,
+      "details": {
+        "nodeId": "4db08acb-b3df-40a8-87ef-b826029fb399",
+        "name": "合规审查及安全报告_E2E_VERIFY_MVB0MPUC.md"
+      }
+    },
+    {
+      "caseId": "work-companion-artifacts",
+      "checkName": "专属成果文件夹已创建",
+      "passed": true,
+      "details": {
+        "folderName": "20261016_合规审查及安全报告_E2E_VERIFY_MVB0MPUC",
+        "folderParentId": "19aa460f-932b-4395-b02d-93703c1e4726"
+      }
+    },
+    {
+      "caseId": "work-companion-artifacts",
+      "checkName": "归档至预期的核心分类根目录「工作任务成果 (tasks)」",
+      "passed": true,
+      "details": {
+        "actualParentId": "19aa460f-932b-4395-b02d-93703c1e4726",
+        "expectedRootId": "19aa460f-932b-4395-b02d-93703c1e4726"
+      }
+    },
+    {
+      "caseId": "work-companion-artifacts",
+      "checkName": "主文档已物理落盘至存储盘并有实际体积",
+      "passed": true,
+      "details": {
+        "storagePath": "personal/c8d19632-da7e-4197-8f0d-275d8934750f/4db08acb-b3df-40a8-87ef-b826029fb399_合规审查及安全报告_E2E_VERIFY_MVB0MPUC.md",
+        "sizeBytes": 1396
+      }
+    },
+    {
+      "caseId": "work-companion-artifacts",
+      "checkName": "文档支持预览且属于文本格式",
+      "passed": true,
+      "details": {
+        "mimeType": "text/markdown",
+        "totalLines": 60
+      }
+    },
+    {
+      "caseId": "work-companion-artifacts",
+      "checkName": "原始结构化数据已作为证据折叠嵌入 Markdown 正文",
+      "passed": true,
+      "details": null
+    },
+    {
+      "caseId": "work-companion-artifacts",
+      "checkName": "内联提取出的伴生资产「compliance_security_audit.html」作为独立节点入夹",
+      "passed": true,
+      "details": {
+        "folderChildren": [
+          {
+            "name": "compliance_security_audit.html",
+            "type": "file",
+            "mime": "text/html"
+          },
+          {
+            "name": "合规审查及安全报告_E2E_VERIFY_MVB0MPUC.md",
+            "type": "file",
+            "mime": "text/markdown"
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "work-companion-artifacts",
+      "checkName": "伴生资产 MIME 类型符合预期 (text/html)",
+      "passed": true,
+      "details": {
+        "mimeType": "text/html",
+        "fileSize": "243"
+      }
+    },
+    {
+      "caseId": "work-companion-artifacts",
+      "checkName": "伴生资产在物理存储介质中完整落盘且包含 HTML 标签",
+      "passed": true,
+      "details": {
+        "storagePath": "personal/c8d19632-da7e-4197-8f0d-275d8934750f/81a44604-6f30-490f-8415-36f3a315ab3b_compliance_security_audit.html",
+        "sizeBytes": 243
+      }
+    },
+    {
+      "caseId": "work-companion-artifacts",
+      "checkName": "伴生资产支持直接文本/HTML预览获取",
+      "passed": true,
+      "details": {
+        "fileName": "compliance_security_audit.html"
+      }
+    },
+    {
+      "caseId": "work-companion-artifacts",
+      "checkName": "AI 知识提炼与摘要卡片生成完成",
+      "passed": true,
+      "details": {
+        "success": true,
+        "timeout": false,
+        "elapsedMs": 21053,
+        "summaryLength": 188,
+        "headingsCount": 12
+      }
+    },
+    {
+      "caseId": "work-companion-artifacts",
+      "checkName": "提炼后主 Markdown 报告中已自动注入交付资产清单与相对链接",
+      "passed": true,
+      "details": {
+        "hasCatalogHeading": true,
+        "hasRelativeLink": true,
+        "previewSnippet": "## 📁 交付资产与文件清单\n> 本成果文件夹内归集了以下生成的文件资产，可直接点击同级链接查阅：\n\n| 资产文件名 | 文件格式 | 资产内容说明 |\n| :--- | :--- | :--- |\n| [compliance_security_audit.html](./compliance_security_audit.html) | `HTML` | 展示 GDPR/PIPL 遵循度与敏感数据脱敏率的可视化企业合规安全审计报告页面 |\n\n## 🔍 原始佐证与执行详情\n<details>\n<summary>展开查看原始结构化数据</summary>\n\n```json\n{\n  \"audi"
+      }
+    },
+    {
+      "caseId": "custom-model-attribution",
+      "checkName": "保存接口返回有效文件节点",
+      "passed": true,
+      "details": {
+        "nodeId": "83b01a24-b850-4a4c-865d-c4a432d632a7",
+        "name": "高并发系统调优纪要_E2E_VERIFY_MVB0MPUC.md"
+      }
+    },
+    {
+      "caseId": "custom-model-attribution",
+      "checkName": "专属成果文件夹已创建",
+      "passed": true,
+      "details": {
+        "folderName": "20261016_高并发系统调优纪要_E2E_VERIFY_MVB0MPUC",
+        "folderParentId": "f6730984-2206-4495-84b3-21aebe720b02"
+      }
+    },
+    {
+      "caseId": "custom-model-attribution",
+      "checkName": "归档至预期的核心分类根目录「沙盒保存内容 (saved)」",
+      "passed": true,
+      "details": {
+        "actualParentId": "f6730984-2206-4495-84b3-21aebe720b02",
+        "expectedRootId": "f6730984-2206-4495-84b3-21aebe720b02"
+      }
+    },
+    {
+      "caseId": "custom-model-attribution",
+      "checkName": "主文档已物理落盘至存储盘并有实际体积",
+      "passed": true,
+      "details": {
+        "storagePath": "personal/c8d19632-da7e-4197-8f0d-275d8934750f/83b01a24-b850-4a4c-865d-c4a432d632a7_高并发系统调优纪要_E2E_VERIFY_MVB0MPUC.md",
+        "sizeBytes": 778
+      }
+    },
+    {
+      "caseId": "custom-model-attribution",
+      "checkName": "文档支持预览且属于文本格式",
+      "passed": true,
+      "details": {
+        "mimeType": "text/markdown",
+        "totalLines": 27
+      }
+    },
+    {
+      "caseId": "custom-model-attribution",
+      "checkName": "YAML FrontMatter 元数据字段准确注入",
+      "passed": false,
+      "details": {
+        "previewExcerpt": "---\ntitle: \"高并发系统调优纪要_E2E_VERIFY_MVB0MPUC\"\ntype: \"qa_note\"\nstatus: \"candidate\"\ncreated_at: \"2026-10-16T13:42:17.204Z\"\ntags: [\"性能调优\",\"架构分析\"]\nsource:\n  channel: \"chat\"\n  session_id: \"sess-custom-model-1792158051082\"\n  message_id: \"msg-custom-model-1792158051082\"\n  execution_id: \"\"\n  skill_used: \"\"\nai_"
+      }
+    },
+    {
+      "caseId": "same-session-idempotency",
+      "checkName": "首次保存返回有效节点",
+      "passed": true,
+      "details": null
+    },
+    {
+      "caseId": "same-session-idempotency",
+      "checkName": "二次保存命中 5 分钟同会话幂等并复用已有节点 ID",
+      "passed": true,
+      "details": {
+        "firstNodeId": "7aa1ceb3-a1eb-4edb-8b9c-a50164b2b997",
+        "secondNodeId": "7aa1ceb3-a1eb-4edb-8b9c-a50164b2b997"
+      }
+    },
+    {
+      "caseId": "same-session-idempotency",
+      "checkName": "同会话幂等保存未在专属文件夹内产生重复文件",
+      "passed": true,
+      "details": {
+        "mdCount": 1,
+        "files": [
+          "幂等性校验测试文档_E2E_VERIFY_MVB0MPUC.md"
+        ]
+      }
+    },
+    {
+      "caseId": "cross-session-isolation",
+      "checkName": "两独立会话保存到各自独立专属文件夹",
+      "passed": true,
+      "details": {
+        "folderAId": "27f620d8-988c-4a2a-856b-feaab8595dd2",
+        "folderBId": "6524d35b-37ff-4f1d-9595-56e0a99c5ae8"
+      }
+    },
+    {
+      "caseId": "cross-session-isolation",
+      "checkName": "跨会话同名主题自动分配时间戳后缀防碰撞",
+      "passed": true,
+      "details": {
+        "folderAName": "20261016_通用系统方案_E2E_VERIFY_MVB0MPUC",
+        "folderBName": "20261016_通用系统方案_E2E_VERIFY_MVB0MPUC_214217"
+      }
+    },
+    {
+      "caseId": "workspace-search",
+      "checkName": "搜索 API 支持按关键词匹配到本次保存的文档",
+      "passed": true,
+      "details": {
+        "matchCount": 4,
+        "sampleMatch": "通用系统方案_E2E_VERIFY_MVB0MPUC.md"
+      }
+    },
+    {
+      "caseId": "async-settle",
+      "checkName": "所有后台 AI 提炼与落盘流水线平稳收敛至终态（无静默超时）",
+      "passed": false,
+      "details": {
+        "elapsedMs": 47241,
+        "unsettledCount": 2,
+        "unsettledIds": [
+          "0a6bd4bc-71bc-49e9-b3b7-bca251f82a54",
+          "81a44604-6f30-490f-8415-36f3a315ab3b"
+        ]
+      }
+    }
+  ],
+  "cleanupRecords": [
+    {
+      "id": "978009a1-b7ec-4d80-bf95-dccba6d84b8e",
+      "type": "folder",
+      "status": "deleted"
+    },
+    {
+      "id": "97baf821-582c-494d-b121-4d44ad2982df",
+      "type": "folder",
+      "status": "deleted"
+    },
+    {
+      "id": "bf070be2-8449-491c-bb76-420705c96726",
+      "type": "folder",
+      "status": "deleted"
+    },
+    {
+      "id": "b1137101-2b90-4b8e-8e6e-81d724406224",
+      "type": "folder",
+      "status": "deleted"
+    },
+    {
+      "id": "9a62e93d-86b2-4729-8219-292e16c91970",
+      "type": "folder",
+      "status": "deleted"
+    },
+    {
+      "id": "94d40c17-0d29-4a09-8de5-ea0ec53a1035",
+      "type": "folder",
+      "status": "deleted"
+    },
+    {
+      "id": "fe4ed6ba-55e2-4c3b-8225-8ded4f81898d",
+      "type": "folder",
+      "status": "deleted"
+    },
+    {
+      "id": "27f620d8-988c-4a2a-856b-feaab8595dd2",
+      "type": "folder",
+      "status": "deleted"
+    },
+    {
+      "id": "6524d35b-37ff-4f1d-9595-56e0a99c5ae8",
+      "type": "folder",
+      "status": "deleted"
+    }
+  ],
+  "cleanupErrors": [],
+  "errors": []
+}

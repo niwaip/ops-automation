@@ -23,6 +23,7 @@ import type { ExecutionContext,StreamEvent } from '../react-engine/interfaces';
 import { StreamEventType } from '../react-engine/interfaces';
 import { ReActEngineService } from '../react-engine/react-engine.service';
 import { parseAndVerifyToken } from '../../common/guards/ai-auth.guard';
+import { resolveFriendlyInputDisplayName } from '../../common/input-label';
 import { ChatConversationService } from './chat-conversation.service';
 import { formatFriendlyExecutionError } from './chat-error-formatter';
 import { ChatExecutionStreamService } from './chat-execution-stream.service';
@@ -33,6 +34,7 @@ import { ChatTaskResumeService } from './chat-task-resume.service';
 import { ChatWaitingInputService } from './chat-waiting-input.service';
 import type { ChatRequestDTO } from './chat.dto';
 import type { WaitingInputSemantic } from './chat.types';
+import { isWorkspaceExploreCommand } from './chat-slash-command.util';
 import { DeterministicTaskExecutionService } from './deterministic-task-execution.service';
 import { PlanningDecisionShadowService } from './planning-decision-shadow.service';
 import { ScopedPlannerMemoryService } from './scoped-planner-memory.service';
@@ -136,6 +138,7 @@ export class ChatOrchestratorService {
     const resume = await this.taskResumeService.prepare({
       executionId,
       message: body.message,
+      files: body.files,
       modelId: resolvedModelId,
       authToken,
       user,
@@ -237,27 +240,37 @@ export class ChatOrchestratorService {
         (body.config as any)?.workspace_search_enabled === true ||
         (context as any)?.workspaceSearch === true ||
         (context as any)?.workspace_search_enabled === true ||
-        /^\/doc\b/i.test(planningRequest) ||
-        /^\/doc\b/i.test(body.message)
+        isWorkspaceExploreCommand(planningRequest) ||
+        isWorkspaceExploreCommand(body.message)
       );
     const hasLocalAttachmentContext =
       (Array.isArray(body.files) && body.files.length > 0) ||
       /(?:附件|本地|已上传|当前|刚刚|历史文件)/i.test(body.message);
 
+    const hasExplicitWebSearchSwitch = Boolean(
+      body.config?.webSearch === true ||
+      (body.config as any)?.web_search_enabled === true ||
+      (context as any)?.webSearch === true ||
+      (context as any)?.web_search_enabled === true
+    );
+    const hasSearchNegation =
+      /(?:不要|切勿|不用|无需|禁止|别|请勿|不得|严禁)(?:进行|去)?\s*(?:联网|搜索|检索|全网|查资料|外网)/i.test(planningRequest) ||
+      /(?:do not|don't|never|without)\s+(?:search|browse|web)/i.test(planningRequest);
+
     const isExplicitWebSearch =
       Boolean(
-        body.config?.webSearch === true ||
-        (body.config as any)?.web_search_enabled === true ||
-        (context as any)?.webSearch === true ||
-        (context as any)?.web_search_enabled === true ||
-        (!hasLocalAttachmentContext && (
+        hasExplicitWebSearchSwitch ||
+        (!hasSearchNegation && !hasLocalAttachmentContext && (
           hasRoutingSignal(planningRequest, 'search', createBuiltinRoutingPolicySnapshot()) ||
+          /^\/search\b/i.test(planningRequest) ||
+          /^\/search\b/i.test(body.message) ||
           /(?:^|[^a-zA-Z0-9])(?:请?帮我)?(?:搜索|联网搜索|全网搜索|检索|搜一下|查一下|查找|查询|搜搜|查查)/i.test(planningRequest)
         ))
       ) && !/邮件|email|收件箱/i.test(planningRequest);
 
-    // 知识查询与使用指引类请求，且开启了工作空间检索时，直接作为多源 RAG 知识进入原生问答，不调用任务规划模型与工单生成
-    if (isExplicitWorkspaceSearch && isGuideOrInquiryRequest(body.message)) {
+    // 知识查询与使用指引类请求，直接进入原生问答（若开启工作空间检索/联网搜索则作为多源 RAG 知识注入），不生成多余任务执行单。
+    // 注意：若用户显式使用 /doc、/workspace、/rag 指令，属于强制调用技能流水线进行可核查的文档探查，绝不能被普通指引截胡！
+    if (!isExplicitWorkspaceSearch && isGuideOrInquiryRequest(body.message)) {
       yield* this.executeLlmNativeTask(body, context, resolvedModelId, authToken);
       return;
     }
@@ -627,9 +640,32 @@ export class ChatOrchestratorService {
           candidateIds: planningRoute?.candidateIds || [],
           selectedCapabilityIds: planningRoute?.selectedCapabilityIds || [],
         });
-        const missingInputs = (result.planDraft?.requiredUserInputs || []).filter(
+        const rawMissingInputs = (result.planDraft?.requiredUserInputs || []).filter(
           (i: any) => i.missing
         );
+        const missingInputs = rawMissingInputs.map((item: any) => {
+          const rawName = item.targetField || item.name || '';
+          const cleanName = rawName.split('.').pop() || rawName;
+          const friendly = resolveFriendlyInputDisplayName({
+            name: cleanName,
+            display_name: item.display_name,
+            description: item.description,
+          });
+          const isFile = /file(?:base64|_base64)?/i.test(cleanName);
+          const friendlyDesc =
+            item.description && !item.description.includes(cleanName)
+              ? item.description
+              : isFile
+                ? '请通过输入框下方的附件图标上传待提取的文档或附件'
+                : `请提供 ${friendly}`;
+          return {
+            ...item,
+            name: cleanName,
+            display_name: friendly,
+            label: friendly,
+            description: friendlyDesc,
+          };
+        });
         if (missingInputs.length > 0) {
           yield {
             type: StreamEventType.WAITING_INPUT,
@@ -1193,14 +1229,18 @@ export class ChatOrchestratorService {
     }
 
     const isExplicitWorkspaceSearch = Boolean(
+      (body as any).workspaceSearch === true ||
+      (body as any).knowledgeBase === true ||
       body.config?.workspaceSearch === true ||
       (body.config as any)?.workspace_search_enabled === true ||
+      (body.config as any)?.knowledgeBase === true ||
       (context as any)?.workspaceSearch === true ||
       (context as any)?.workspace_search_enabled === true ||
-      /^\/doc\b/i.test(body.message)
+      /^\/(?:doc|workspace|rag)\b/i.test(body.message)
     );
 
     const isExplicitWebSearch = Boolean(
+      (body as any).webSearch === true ||
       body.config?.webSearch === true ||
       (body.config as any)?.web_search_enabled === true ||
       (context as any)?.webSearch === true ||

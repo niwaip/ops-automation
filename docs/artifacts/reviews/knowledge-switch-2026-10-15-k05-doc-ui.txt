@@ -1,0 +1,185 @@
+- complementary:
+  - button:
+  - menu:
+    - menuitem "dashboard 工作台":
+      - img "dashboard":
+      - generic: 工作台
+    - menuitem "message 智能协同":
+      - img "message":
+      - generic: 智能协同
+    - menuitem "carry-out 任务中心":
+      - img "carry-out":
+      - generic: 任务中心
+    - menuitem "team 数字员工":
+      - img "team":
+      - generic: 数字员工
+    - menuitem "folder 资料空间":
+      - img "folder":
+      - generic: 资料空间
+  - menu:
+    - menuitem "setting 系统设置":
+      - img "setting":
+      - generic: 系统设置
+- banner:
+  - button "展开侧边栏":
+    - img "menu-unfold":
+  - generic: 智能协同
+  - button "bell 4":
+    - img "bell":
+    - superscript:
+      - generic: "4"
+  - button "bg-colors 浅色":
+    - img "bg-colors":
+    - generic: 浅色
+  - button "global 中文":
+    - img "global":
+    - generic: 中文
+  - button "A admin admin@example.com down":
+    - generic: A
+    - generic: admin
+    - generic: admin@example.com
+    - img "down":
+- main:
+  - button "menu-unfold":
+    - img "menu-unfold":
+  - button "plus":
+    - img "plus":
+  - button "清理全部会话":
+    - img "clear":
+  - img "desktop":
+  - text: 网页
+  - strong: /doc 星桥验收KS1015
+  - button "调整阅读字体大小":
+    - img "font-size":
+  - button "plus":
+    - img "plus":
+  - button "reload":
+    - img "reload":
+  - button "delete":
+    - img "delete":
+  - generic: 任务结果
+  - link "thunderbolt 详细":
+    - /url: /executions/c497d921-6a65-4dcb-a8ea-e75a62168c8b
+    - img "thunderbolt":
+    - generic: 详细
+  - generic: 状态：已完成
+  - paragraph:
+    - text: 关于
+    - strong: “星桥验收KS1015”
+    - text: ，在工作空间中检索到 1 篇相关文档，具体内容如下：
+  - heading "📄 【公司公共盘】knowledge-switch-2026-10-15-fixture.md" [level=3]:
+    - text: 📄
+    - link "【公司公共盘】knowledge-switch-2026-10-15-fixture.md":
+      - /url: /workspaces?tab=company&fileId=4bc2d16a-bc7f-4b56-89b8-b14014047aa5&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384
+  - list:
+    - strong: 文档性质
+    - text: ：端到端测试用虚构资料（不对应真实项目、人员或业务，仅用于验证资料空间全文检索、知识开关与引用溯源）。
+    - strong: 核心内容/验收规则
+    - text: ：
+    - list:
+      - listitem: 项目名称：星桥验收KS1015
+      - listitem: 验收规则：必须完成三台模拟设备的离线自检，并归档两份虚构验收清单。
+    - strong: 查阅链接
+    - text: ：
+    - link "打开文档查看详情":
+      - /url: /workspaces?tab=company&fileId=4bc2d16a-bc7f-4b56-89b8-b14014047aa5&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384
+  - generic "点击展开完整内容"
+  - button "down 展开阅读完整报告（约 497 字）":
+    - img "down":
+    - generic: 展开阅读完整报告（约 497 字）
+  - button "copy 复制全文":
+    - img "copy":
+    - generic: 复制全文
+  - button "fullscreen 全屏沉浸阅读":
+    - img "fullscreen":
+    - generic: 全屏沉浸阅读
+  - img "file-markdown":
+  - generic: 📝 knowledge-switch-2026-10-15-fixture.md
+  - generic: .md
+  - generic: 0.5 KB
+  - generic: 💡 Markdown 文档已就绪（支持在线富文本阅读、全屏预览与正文一键复制）
+  - button "eye 展开在线预览":
+    - img "eye":
+    - generic: 展开在线预览
+  - button "copy 复制正文":
+    - img "copy":
+    - generic: 复制正文
+  - button "fullscreen 全屏":
+    - img "fullscreen":
+    - generic: 全屏
+  - button "export 新窗口":
+    - img "export":
+    - generic: 新窗口
+  - button "download 下载":
+    - img "download":
+    - generic: 下载
+  - generic "查看结构化结果"
+  - generic "查看相关结果与产物链接 (1 项)"
+  - img "folder":
+  - generic: 参考工作空间文档（点击直接就地预览）：
+  - button "eye [公司公共盘] knowledge-switch-2026-10-15-fixture.md :L1":
+    - img "eye":
+    - generic: "[公司公共盘] knowledge-switch-2026-10-15-fixture.md"
+    - generic: :L1
+  - button "eye [公司公共盘] knowledge-switch-2026-10-15-fixture.md :L4":
+    - img "eye":
+    - generic: "[公司公共盘] knowledge-switch-2026-10-15-fixture.md"
+    - generic: :L4
+  - button "eye [公司公共盘] knowledge-switch-2026-10-15-fixture.md :L5":
+    - img "eye":
+    - generic: "[公司公共盘] knowledge-switch-2026-10-15-fixture.md"
+    - generic: :L5
+  - img "robot":
+  - img "clock-circle":
+  - generic: 10/15 10:32
+  - generic: 已完成
+  - generic: Tokens:1473
+  - generic: /
+  - generic: 输入:1063 输出:1 (+推理:409)
+  - generic "评价回答":
+    - button "回答有帮助":
+      - img "like":
+    - button "回答需要改进":
+      - img "dislike":
+  - button "保存到个人空间":
+    - img "book":
+  - button "收集到 GTD 收件箱":
+    - img "inbox":
+  - button "复制":
+    - img "copy":
+  - button "重试":
+    - img "redo":
+  - textbox "例如：/doc 分析工作空间架构 或 /email 总结今日邮件（输入 / 唤起工作技能，! 唤起工作流）"
+  - radiogroup "segmented control":
+    - radio "user 个人助理"
+    - img "user":
+    - generic: 个人助理
+    - radio "robot 企业协同" [checked]
+    - img "robot":
+    - generic: 企业协同
+  - 'button "bulb 思考: 中 down"':
+    - img "bulb":
+    - generic: "思考: 中"
+    - img "down":
+  - generic "联网搜索：已关闭（可选开启，开启后允许 AI 检索互联网公开资讯）":
+    - img "global":
+    - text: 联网
+    - switch
+  - generic "工作空间知识检索：已关闭（可选开启，开启后提问将自动探查并研读空间文档）":
+    - img "folder":
+    - text: 知识
+    - switch
+  - combobox
+  - generic "Auto / 系统默认"
+  - button "thunderbolt":
+    - img "thunderbolt":
+  - button "paper-clip":
+    - img "paper-clip":
+  - button "audio":
+    - img "audio":
+  - button "plus":
+    - img "plus":
+  - button "send 发送" [disabled]:
+    - img "send":
+    - generic: 发送
+- tooltip "请输入内容后发送"

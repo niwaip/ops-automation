@@ -196,7 +196,7 @@ export function classifyPersonalSandboxError(options: {
   // 4.3. 沙箱代码/工具级执行异常（非大模型服务离线或网络故障）
   if (isSandboxExecutionError(errMsg)) {
     const detailMatch = errMsg.match(/执行异常:\s*([^\n\r]+)/);
-    const detail = detailMatch ? detailMatch[1].trim() : errMsg;
+    const detail = detailMatch?.[1] ? detailMatch[1].trim() : errMsg;
     return {
       friendlyError: `❌ 沙箱工具执行异常：${detail}。本次任务未能完成，请检查输入文件格式与参数要求。`,
       eventData: {

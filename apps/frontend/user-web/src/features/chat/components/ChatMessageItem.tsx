@@ -41,6 +41,7 @@ import { SaveWorkflowAction } from './workflow-save/SaveWorkflowAction';
 import { SaveToWorkspaceAction } from './workspace-save/SaveToWorkspaceAction';
 import { SaveToTodoAction } from './todo-save/SaveToTodoAction';
 import { MessageFeedbackActions } from './feedback/MessageFeedbackActions';
+import { CollapsibleMessageContent } from './CollapsibleMessageContent';
 import '../ChatMessage.css';
 import styles from '../pages/ChatPage.module.css';
 
@@ -456,23 +457,29 @@ export const ChatMessageItem = memo(function ChatMessageItem({
             </div>
           ) : null}
           {shouldShowMessageContent && (!message.isStreaming || realGeneratedLength > 0) ? (
-            <div className={styles['user-chat-message-content']}>
-              {hasRenderableContentParts ? (
-                <SharedContentPartsRenderer
-                  parts={filteredContentParts}
-                  isStreaming={Boolean(message.isStreaming)}
-                  renderStructuredResult={message.metadata?.mode !== 'task'}
-                  renderDeeplink={message.metadata?.mode !== 'task'}
-                  textMode={message.role === 'assistant' ? 'markdown' : 'plain'}
-                />
-              ) : (
-                <SharedMessageContentRenderer
-                  content={plainContent}
-                  mode={message.role === 'assistant' ? 'markdown' : 'plain'}
-                  isStreaming={Boolean(message.isStreaming)}
-                />
-              )}
-            </div>
+            <CollapsibleMessageContent
+              role={message.role}
+              isStreaming={Boolean(message.isStreaming)}
+              contentLength={plainContent.length}
+            >
+              <div className={styles['user-chat-message-content']}>
+                {hasRenderableContentParts ? (
+                  <SharedContentPartsRenderer
+                    parts={filteredContentParts}
+                    isStreaming={Boolean(message.isStreaming)}
+                    renderStructuredResult={message.metadata?.mode !== 'task'}
+                    renderDeeplink={message.metadata?.mode !== 'task'}
+                    textMode={message.role === 'assistant' ? 'markdown' : 'plain'}
+                  />
+                ) : (
+                  <SharedMessageContentRenderer
+                    content={plainContent}
+                    mode={message.role === 'assistant' ? 'markdown' : 'plain'}
+                    isStreaming={Boolean(message.isStreaming)}
+                  />
+                )}
+              </div>
+            </CollapsibleMessageContent>
           ) : null}
         </div>
         <div className={`${styles['user-chat-message-footer']} ${styles[`role-${message.role}`] || ''}`}>

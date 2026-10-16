@@ -66,27 +66,82 @@ export const normalizeWaitingInputDisplayLabel = (label: string): string =>
       .replace(/[_-](?:zh|ja|cn|jp)$/iu, '')
   );
 
+export const WELL_KNOWN_FRIENDLY_INPUT_LABELS: Record<string, string> = {
+  fileBase64: '待提取的文档附件',
+  file_base64: '待提取的文档附件',
+  fileName: '文档名称',
+  file_name: '文档名称',
+  fileBase64A: '文档 A 附件',
+  fileBase64B: '文档 B 附件',
+  workspaceId: '工作空间 ID',
+  workspace_id: '工作空间 ID',
+  recipientId: '接收人',
+  recipient_id: '接收人',
+  mailboxKey: '邮箱账号',
+  mailbox_key: '邮箱账号',
+};
+
 export const resolveWaitingInputDisplayLabel = (
   field: WaitingInputDisplayField,
   fallback = '未命名信息'
 ): string => {
-  const displayName = String(field.display_name || '').trim();
-  if (displayName && displayName !== field.name && !MACHINE_LIKE_LABEL_PATTERN.test(displayName)) {
-    return normalizeWaitingInputDisplayLabel(displayName);
+  const rawName = String(field.name || '').trim();
+  const cleanName = rawName.split('.').pop() || rawName;
+  const isFile =
+    /file(?:base64|_base64)?/i.test(cleanName) ||
+    /file(?:base64|_base64)?/i.test(rawName) ||
+    /file(?:base64|_base64)?/i.test(String(field.display_name || ''));
+
+  // 1. Explicit label (e.g. from backend presentation)
+  const explicitLabel = String(field.label || '').trim();
+  if (explicitLabel && !MACHINE_LIKE_LABEL_PATTERN.test(explicitLabel)) {
+    const norm = normalizeWaitingInputDisplayLabel(explicitLabel);
+    return isFile && !norm.includes('上传')
+      ? `${norm}（请通过下方附件图标上传）`
+      : norm;
   }
 
+  // 2. Display name
+  const displayName = String(field.display_name || '').trim();
+  if (displayName && displayName !== field.name && !MACHINE_LIKE_LABEL_PATTERN.test(displayName)) {
+    const norm = normalizeWaitingInputDisplayLabel(displayName);
+    return isFile && !norm.includes('上传')
+      ? `${norm}（请通过下方附件图标上传）`
+      : norm;
+  }
+
+  // 3. Well-known machine field mapping
+  const wellKnown =
+    WELL_KNOWN_FRIENDLY_INPUT_LABELS[cleanName] ||
+    WELL_KNOWN_FRIENDLY_INPUT_LABELS[rawName];
+  if (wellKnown) {
+    const norm = normalizeWaitingInputDisplayLabel(wellKnown);
+    return isFile && !norm.includes('上传')
+      ? `${norm}（请通过下方附件图标上传）`
+      : norm;
+  }
+
+  // 4. Concise from description
   const description = String(field.description || '')
     .replace(/\s+/g, ' ')
     .trim();
   const concise = stripWaitingInputLabelBoilerplate(
     description.split(/[，,；;。:：]/)[0]?.trim() || ''
   );
-  if (concise) {
+  if (concise && !MACHINE_LIKE_LABEL_PATTERN.test(concise)) {
     const normalized = normalizeWaitingInputDisplayLabel(concise);
-    return normalized.length > 32 ? `${normalized.slice(0, 32).trim()}...` : normalized;
+    const base = normalized.length > 32 ? `${normalized.slice(0, 32).trim()}...` : normalized;
+    return isFile && !base.includes('上传')
+      ? `${base}（请通过下方附件图标上传）`
+      : base;
   }
 
-  return normalizeWaitingInputDisplayLabel(displayName || field.name || fallback);
+  const baseFallback = normalizeWaitingInputDisplayLabel(
+    displayName || cleanName || field.name || fallback
+  );
+  return isFile && !baseFallback.includes('上传')
+    ? `${baseFallback}（请通过下方附件图标上传）`
+    : baseFallback;
 };
 
 export const dedupeWaitingInputDisplayFields = <T extends WaitingInputDisplayField>(

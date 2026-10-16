@@ -1,7 +1,12 @@
+import * as path from 'path';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
-import * as path from 'path';
-import { WORKBENCH_PRISMA, WorkbenchPrismaPort, getAiOrchestratorUrl } from '../ports';
+import {
+  WORKBENCH_PRISMA,
+  WorkbenchPrismaPort,
+  getAiOrchestratorUrl,
+  getInternalServiceHeaders,
+} from '../ports';
 import { STORAGE_DRIVER, type StorageDriver } from './storage/storage-driver.interface';
 import { WorkspaceContentIndexerService } from './workspace-content-indexer.service';
 import { WorkspaceDigestService } from './workspace-digest.service';
@@ -102,28 +107,82 @@ export class WorkspaceNoteAiHelper {
         .filter(Boolean)
         .join('\n\n');
 
-      const response = await axios.post<{ response?: string }>(
-        `${aiOrchestratorUrl}/ai/chat`,
-        {
-          message: prompt,
-          modelId: dto.aiModel || 'default',
-          config: { mode: 'chat' },
-        },
-        { timeout: 90000 }
-      );
+      let effectiveModel = dto.aiModel || 'default';
+      let fallbackUsed = false;
+      let response: any;
+      try {
+        response = await axios.post<{ response?: string }>(
+          `${aiOrchestratorUrl}/ai/chat`,
+          {
+            message: prompt,
+            modelId: effectiveModel,
+            config: { mode: 'chat' },
+          },
+          {
+            timeout: 90000,
+            headers: getInternalServiceHeaders(),
+          }
+        );
+      } catch (postErr: any) {
+        this.logger.warn(`AI refinement call with model ${dto.aiModel} failed: ${postErr.message}`);
+      }
 
-      const reply = String(response.data?.response || '').trim();
-      const parsed = this.parseAiJsonResponse(reply);
+      let reply = String(response?.data?.response || '').trim();
+      if (!reply || reply.includes('未初始化')) {
+        this.logger.log(`Model ${dto.aiModel || 'default'} unavailable; falling back to default model for refinement.`);
+        fallbackUsed = true;
+        effectiveModel = 'default';
+        try {
+          const fallbackResp = await axios.post<{ response?: string }>(
+            `${aiOrchestratorUrl}/ai/chat`,
+            {
+              message: prompt,
+              modelId: 'default',
+              config: { mode: 'chat' },
+            },
+            {
+              timeout: 90000,
+              headers: getInternalServiceHeaders(),
+            }
+          );
+          reply = String(fallbackResp.data?.response || '').trim();
+        } catch (fbErr: any) {
+          this.logger.warn(`Fallback to default model also failed: ${fbErr.message}`);
+        }
+      }
+
+      let parsed = this.parseAiJsonResponse(reply);
+      let isAiRefined = true;
       if (!parsed || !parsed.title || !parsed.refinedContent) {
         this.logger.warn(
-          `AI refinement returned invalid JSON structure for folder ${folderNodeId}, keeping baseline naming.`
+          `AI refinement returned incomplete/non-JSON structure for folder ${folderNodeId}; falling back to heuristic structuring.`
         );
-        return;
+        isAiRefined = false;
+        parsed = {
+          folderName: parsed?.folderName || currentFolderName,
+          title: parsed?.title?.trim() || dto.title.trim(),
+          tags: Array.isArray(parsed?.tags) && parsed.tags.length > 0 ? parsed.tags : (dto.tags || ['AI沉淀', '知识候选']),
+          summary: parsed?.summary?.trim() || (dto.content || '').slice(0, 200).replace(/\n+/g, ' '),
+          refinedContent: dto.content, // 绝对保全原始完整正文，严禁截断
+          artifactsDescription: syncedArtifacts.map((a) => ({
+            fileName: a.name,
+            description: this.formatDefaultArtifactDesc(a.name),
+          })),
+        };
       }
 
       // 1. 提炼并重命名专属文件夹（若专属文件夹存在且与笔记区分）
       let finalFolderName = currentFolderName;
       if (folderNodeId && folderNodeId !== noteNodeId) {
+        const folderExists = await this.prisma.workspaceNode.findUnique({
+          where: { id: folderNodeId },
+          select: { id: true },
+        });
+        if (!folderExists) {
+          this.logger.warn(`Folder ${folderNodeId} no longer exists, aborting folder rename.`);
+          return;
+        }
+
         const rawAiFolderName = String(parsed.folderName || '').trim();
         finalFolderName = await this.resolveUniqueFolderName(
           workspace.id,
@@ -134,11 +193,16 @@ export class WorkspaceNoteAiHelper {
           parsed.title
         );
 
-        await this.prisma.workspaceNode.update({
-          where: { id: folderNodeId },
-          data: { name: finalFolderName },
-        });
-        this.logger.log(`Refined folder ${folderNodeId} name to: "${finalFolderName}"`);
+        try {
+          await this.prisma.workspaceNode.update({
+            where: { id: folderNodeId },
+            data: { name: finalFolderName },
+          });
+          this.logger.log(`Refined folder ${folderNodeId} name to: "${finalFolderName}"`);
+        } catch (err: any) {
+          this.logger.warn(`Failed to update folder node ${folderNodeId} (likely deleted concurrently): ${err.message}`);
+          return;
+        }
       }
 
       // 2. 组装提炼后的结构化 Markdown 内容
@@ -168,7 +232,7 @@ export class WorkspaceNoteAiHelper {
         'status: "candidate"',
         `created_at: ${JSON.stringify(now.toISOString())}`,
         `tags: ${JSON.stringify(refinedTags)}`,
-        'ai_refined: true',
+        `ai_refined: ${isAiRefined}`,
         `folder_name: ${JSON.stringify(finalFolderName)}`,
         `assets: ${JSON.stringify(syncedArtifacts.map((a) => a.name))}`,
         'source:',
@@ -177,7 +241,9 @@ export class WorkspaceNoteAiHelper {
         `  message_id: ${JSON.stringify(dto.messageId || '')}`,
         `  execution_id: ${JSON.stringify(dto.executionId || '')}`,
         `  skill_used: ${JSON.stringify(dto.skillUsed || '')}`,
-        `ai_model: ${JSON.stringify(dto.aiModel || 'default')}`,
+        `ai_model: ${JSON.stringify(isAiRefined ? effectiveModel : 'rule_fallback')}`,
+        `requested_model: ${JSON.stringify(dto.aiModel || 'default')}`,
+        `fallback_used: ${fallbackUsed}`,
         '---',
         '',
       ];
@@ -244,6 +310,16 @@ export class WorkspaceNoteAiHelper {
       const newMarkdownText = `${frontMatterLines.join('\n')}\n${bodySections.join('\n')}`;
       const newBuffer = Buffer.from(newMarkdownText, 'utf-8');
 
+      // 更新物理存储文件前必须先检查节点是否依然存活（防止因上层已删除引发异常或写入孤儿文件）
+      const noteExists = await this.prisma.workspaceNode.findUnique({
+        where: { id: noteNodeId },
+        select: { id: true },
+      });
+      if (!noteExists) {
+        this.logger.warn(`Note ${noteNodeId} no longer exists, aborting note refinement.`);
+        return;
+      }
+
       // 更新物理存储文件
       await this.storage.putFile(noteStorageKey, newBuffer);
 
@@ -271,19 +347,23 @@ export class WorkspaceNoteAiHelper {
         extractedAt: now.toISOString(),
         hasExtractedText: true,
         cleanedContent: refinedBody.slice(0, 600),
-        cleanedByAi: true,
-        aiModel: dto.aiModel || 'default',
+        cleanedByAi: isAiRefined,
+        aiModel: isAiRefined ? effectiveModel : 'rule_fallback',
       };
 
-      // 更新数据库记录
-      await this.prisma.workspaceNode.update({
-        where: { id: noteNodeId },
-        data: {
-          name: newFileName,
-          fileSize: BigInt(newBuffer.length),
-          digestJson: digest as any,
-        },
-      });
+      try {
+        await this.prisma.workspaceNode.update({
+          where: { id: noteNodeId },
+          data: {
+            name: newFileName,
+            fileSize: BigInt(newBuffer.length),
+            digestJson: digest as any,
+          },
+        });
+      } catch (err: any) {
+        this.logger.warn(`Failed to update note node ${noteNodeId} (likely deleted concurrently): ${err.message}`);
+        return;
+      }
 
       // 伴生落盘 digest
       try {
@@ -382,12 +462,45 @@ export class WorkspaceNoteAiHelper {
 
   private parseAiJsonResponse(content: string): any {
     if (!content) return null;
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    let text = content.trim();
+    if (text.startsWith('```')) {
+      text = text.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
+    }
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return null;
     try {
       return JSON.parse(jsonMatch[0]);
     } catch {
-      return null;
+      // 容错 1：替换 JSON 字符串中未转义的控制字符与破坏换行
+      try {
+        const cleaned = jsonMatch[0]
+          .replace(/[\u0000-\u001F\u007F-\u009F]/g, (c) => {
+            if (c === '\n') return '\\n';
+            if (c === '\r') return '\\r';
+            if (c === '\t') return '\\t';
+            return '';
+          });
+        return JSON.parse(cleaned);
+      } catch {
+        // 容错 2：正则表达式抽取核心字段（仅在明确匹配到 refinedContent 时才解析，绝对不要用 summary 替代正文）
+        try {
+          const folderMatch = text.match(/"folderName"\s*:\s*"([^"]+)"/);
+          const titleMatch = text.match(/"title"\s*:\s*"([^"]+)"/);
+          const summaryMatch = text.match(/"summary"\s*:\s*"([^"]+)"/);
+          const contentMatch = text.match(/"refinedContent"\s*:\s*"([\s\S]*?)"(?:\s*,\s*"\w+"|\s*\})/);
+          if (titleMatch && titleMatch[1]) {
+            return {
+              folderName: folderMatch ? folderMatch[1] : undefined,
+              title: titleMatch[1],
+              summary: summaryMatch ? summaryMatch[1] : undefined,
+              refinedContent: contentMatch ? contentMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : undefined,
+            };
+          }
+        } catch {
+          // ignore
+        }
+        return null;
+      }
     }
   }
 }

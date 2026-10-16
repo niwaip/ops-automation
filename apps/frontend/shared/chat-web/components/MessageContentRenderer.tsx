@@ -367,15 +367,27 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
                     e.stopPropagation();
                     const fileIdMatch = href?.match(/[?&]fileId=([^&]+)/);
                     const wsMatch = href?.match(/[?&]workspaceId=([^&]+)/);
-                    const fileId = fileIdMatch ? decodeURIComponent(fileIdMatch[1]) : '';
-                    const workspaceId = wsMatch ? decodeURIComponent(wsMatch[1]) : undefined;
-                    if (fileId && typeof window !== 'undefined') {
+                    let fileId = fileIdMatch ? decodeURIComponent(fileIdMatch[1]) : '';
+                    let workspaceId = wsMatch ? decodeURIComponent(wsMatch[1]) : undefined;
+
+                    // 清洗模型幻觉产生的占位符（如 {uuid}、{fileId}、undefined、null 等）
+                    const isPlaceholder = (val?: string) =>
+                      !val || /^[{\[](?:uuid|fileId|workspaceId|id)[}\]]$/i.test(val) || val === 'undefined' || val === 'null';
+                    if (isPlaceholder(workspaceId)) {
+                      workspaceId = undefined;
+                    }
+                    if (isPlaceholder(fileId)) {
+                      fileId = '';
+                    }
+
+                    const fileName = typeof children === 'string' ? children : undefined;
+                    if ((fileId || fileName) && typeof window !== 'undefined') {
                       window.dispatchEvent(
                         new CustomEvent('open-workspace-preview', {
                           detail: {
                             fileId,
                             workspaceId,
-                            fileName: typeof children === 'string' ? children : undefined,
+                            fileName,
                           },
                         })
                       );

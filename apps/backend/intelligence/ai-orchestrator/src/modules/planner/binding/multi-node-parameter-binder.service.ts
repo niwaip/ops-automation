@@ -13,6 +13,7 @@ import {
   resolveLlmOperationInputRole,
 } from './previous-result-input-projector';
 import { DeterministicParamResolverService } from '../params/deterministic-param-resolver.service';
+import { resolveFriendlyInputDisplayName } from '../../../common/input-label';
 
 interface RawInputSchemaSnapshot {
   required?: string[];
@@ -193,6 +194,34 @@ export class MultiNodeParameterBinderService {
           }
         }
 
+        if (
+          node.dependsOn.length === 0 &&
+          CONTENT_PARAM_NAMES.has(paramName) &&
+          typeof systemInputs?.previousResultText === 'string' &&
+          systemInputs.previousResultText.trim()
+        ) {
+          const contentVal = systemInputs.previousResultText.trim();
+          nodeInputs[paramName] = contentVal;
+          bindings[paramName] = { source: 'literal', value: contentVal } as ValueBindingV1;
+          notes.push(
+            `参数 '${node.ref}.${paramName}' 未在请求中提供，已自动使用会话中上一次任务的输出作为输入。`
+          );
+          continue;
+        }
+
+        if (
+          node.dependsOn.length === 0 &&
+          paramName === 'fileName' &&
+          typeof systemInputs?.previousResultTitle === 'string' &&
+          systemInputs.previousResultTitle.trim()
+        ) {
+          const rawTitle = systemInputs.previousResultTitle.trim().replace(/[^\p{L}\p{N}_-]+/gu, '_').slice(0, 50);
+          const nameVal = rawTitle.endsWith('.md') ? rawTitle : `${rawTitle}.md`;
+          nodeInputs[paramName] = nameVal;
+          bindings[paramName] = { source: 'literal', value: nameVal } as ValueBindingV1;
+          continue;
+        }
+
         // Optional content on a standard generation Operation is contextual,
         // not a value that should trigger another model call merely to infer
         // whether it exists. Required content still follows normal recognition
@@ -230,7 +259,16 @@ export class MultiNodeParameterBinderService {
         )
       );
 
-      if (Object.keys(modelRecognizerProperties).length > 0) {
+      const hasMissingRequiredField = unresolvedFields.some(
+        (field) =>
+          requiredFields.has(field) &&
+          !Object.prototype.hasOwnProperty.call(recognizedParams, field)
+      );
+
+      const isSlashCommand = /^[\\/、][a-zA-Z0-9_-]+/u.test(userRequest.trim());
+      const shouldSkipModelRecognizer = !hasMissingRequiredField && isSlashCommand;
+
+      if (Object.keys(modelRecognizerProperties).length > 0 && !shouldSkipModelRecognizer) {
         if (this.recognizerService) {
           const previousResultText =
             card?.kind !== 'llm_operation' && typeof systemInputs?.previousResultText === 'string'
@@ -326,17 +364,27 @@ export class MultiNodeParameterBinderService {
           source: 'user_input',
           path: inputPath,
         } as ValueBindingV1;
+        const friendlyLabel = resolveFriendlyInputDisplayName({
+          name: paramName,
+          description: typeof property.description === 'string' ? property.description : undefined,
+        });
+        const isFileField = /file(?:base64|_base64)?/i.test(paramName);
+        const promptText = isFileField
+          ? '请通过输入框下方的附件图标上传待提取的文档或附件'
+          : `请输入 ${card?.displayName || node.ref} 的 ${friendlyLabel} 参数`;
         requiredUserInputs.push({
           targetField: paramName,
           nodeId,
-          prompt: `请输入 ${card?.displayName || node.ref} 的 ${paramName} 参数`,
+          prompt: promptText,
           name: `${node.ref}.${paramName}`,
+          display_name: friendlyLabel,
+          label: friendlyLabel,
           inputPath,
           type: this.resolveDeclaredType(property, schemaSummary),
           description:
-            typeof property.description === 'string'
+            typeof property.description === 'string' && property.description
               ? property.description
-              : `请输入 ${card?.displayName || node.ref} 的 ${paramName} 参数`,
+              : promptText,
           missing: true,
         });
       }

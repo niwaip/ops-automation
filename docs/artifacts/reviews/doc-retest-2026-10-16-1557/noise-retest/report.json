@@ -1,0 +1,22 @@
+{
+  "batch": 1792137526598,
+  "results": [
+    {
+      "id": "noise",
+      "message": "/doc UNSEEN1792137526598的安装配置方法，请检索工作空间文件，没有该实体请明确未找到，不要用其他软件教程代替。",
+      "elapsedMs": 7076,
+      "routeChecks": {
+        "executionCreated": false,
+        "executionSucceeded": false,
+        "explorerUsed": false
+      },
+      "outputGate": null,
+      "checks": {
+        "completed": true,
+        "noStreamError": true,
+        "finalAnswer": true
+      },
+      "passed": true
+    }
+  ]
+}

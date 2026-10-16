@@ -1,0 +1,10 @@
+{
+  "apps/backend/governance/workbench/src/workspace/workspace.service.ts": "3e437d3e1f26d437fb1b9707b1b5d58949239f57ea3fcec2f515805d6b941704",
+  "apps/backend/governance/workbench/src/workspace/workspace-search-relevance.helper.ts": "1c70b5bfe01b6d0fa1e5e0954d5b630392bb48448464d4006fafd8cfbf20e918",
+  "apps/backend/governance/workbench/src/workspace/workspace-digest.service.ts": "aa9275b1f8ec86e8a9835b04cdd7747adb74cf94adf06e636c37c4e85555981b",
+  "apps/backend/governance/workbench/src/workspace/workspace-content-indexer.service.ts": "41036c59a8e8e18d724c421b71d3a7ee8810ce5d8361db530a2b460a2310edc1",
+  "apps/backend/governance/workbench/src/workspace/workspace.controller.ts": "a1efdbb57e97195666a7550b9001950470c34ad49b1a755553af2e15503ed72e",
+  "apps/backend/platform/prisma/schema.prisma": "10cb6ed2bdc7881022a00be3e64ac6e501d9b82a45c9c1f41184a7a4f71f5f16",
+  "apps/backend/execution-control/control-plane/src/modules/execution/adapters/workspace/workspace-explorer.handler.ts": "d1b570558bcb41d7c579028e5a662f7c1ec77b87c38e7a15e232556be49d261e",
+  "apps/backend/intelligence/ai-orchestrator/src/modules/chat/chat-knowledge-retrieval.service.ts": "28029daea2536aa956a1ebecc4e72f80ee0ab0a6870a9688e3fb4f5c1374132c"
+}

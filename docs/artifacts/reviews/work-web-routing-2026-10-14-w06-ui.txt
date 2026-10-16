@@ -1,0 +1,171 @@
+- complementary:
+  - button:
+  - menu:
+    - menuitem "dashboard 工作台":
+      - img "dashboard":
+      - generic: 工作台
+    - menuitem "message 智能协同":
+      - img "message":
+      - generic: 智能协同
+    - menuitem "carry-out 任务中心":
+      - img "carry-out":
+      - generic: 任务中心
+    - menuitem "team 数字员工":
+      - img "team":
+      - generic: 数字员工
+    - menuitem "folder 资料空间":
+      - img "folder":
+      - generic: 资料空间
+  - menu:
+    - menuitem "setting 系统设置":
+      - img "setting":
+      - generic: 系统设置
+- banner:
+  - button "展开侧边栏":
+    - img "menu-unfold":
+  - generic: 智能协同
+  - button "bell 1 1":
+    - img "bell":
+    - superscript:
+      - generic: "1"
+      - generic: "1"
+  - button "bg-colors 浅色":
+    - img "bg-colors":
+    - generic: 浅色
+  - button "global 中文":
+    - img "global":
+    - generic: 中文
+  - button "A admin admin@example.com down":
+    - generic: A
+    - generic: admin
+    - generic: admin@example.com
+    - img "down":
+- main:
+  - button "menu-unfold":
+    - img "menu-unfold":
+  - button "plus":
+    - img "plus":
+  - button "清理全部会话":
+    - img "clear":
+  - img "desktop":
+  - text: 网页
+  - strong: 今天晚上有什么比赛？请列出北京时间和来源链接。
+  - button "调整阅读字体大小":
+    - img "font-size":
+  - button "plus":
+    - img "plus":
+  - button "reload":
+    - img "reload":
+  - button "delete":
+    - img "delete":
+  - paragraph: 由于当前处于无实时联网搜索的受控生产模式，我无法直接获取**今天（当前实时日期）**的实时比赛排期与动态赛程。
+  - paragraph: 为了帮助您最快、最准确地获取今晚的比赛日程（自动换算为北京时间），建议通过以下几个权威的体育数据与赛程平台直接查询：
+  - separator: ✦
+  - heading "一、 综合赛程快速查询平台（中文 / 自动显示北京时间）" [level=3]
+  - list:
+    - paragraph:
+      - strong: 懂球帝（足球全赛事）
+    - list:
+      - strong: 涵盖赛事
+      - text: ：五大联赛（英超、西甲、意甲、德甲、法甲）、欧冠/欧联、中超、亚冠、各类杯赛及友谊赛。
+      - strong: 特点
+      - text: ：时间全部默认为北京时间，提供即时比分、阵容预测和转播平台指引。
+      - strong: 查询入口
+      - text: ：
+      - link "懂球帝赛程表 (https://www.dongqiudi.com/)":
+        - /url: https://www.dongqiudi.com/
+    - paragraph:
+      - strong: 虎扑体育（篮球 / 足球 / 电竞）
+    - list:
+      - strong: 涵盖赛事
+      - text: ：NBA、CBA、欧洲足球五大联赛、英雄联盟（LPL/LCK/MSI/S赛）、DOTA2、CS2等。
+      - strong: 特点
+      - text: ：赛程更新极为即时，包含详细对阵、文字直播及赛后统计。
+      - strong: 查询入口
+      - text: ：
+      - list:
+        - text: 足球赛程：
+        - link "虎扑足球赛程 (https://soccer.hupu.com/schedule/)":
+          - /url: https://soccer.hupu.com/schedule/
+        - text: NBA/篮球赛程：
+        - link "虎扑NBA赛程 (https://nba.hupu.com/schedule)":
+          - /url: https://nba.hupu.com/schedule
+    - paragraph:
+      - strong: 腾讯体育 / 咪咕视频
+    - list:
+      - strong: 涵盖赛事
+      - text: ：拥有国内各大顶级赛事（NBA、英超、西甲、欧冠、CBA等）官方转播版权。
+      - strong: 特点
+      - text: ：可直接查看当晚有转播信号的详细场次与解说安排。
+      - strong: 查询入口
+      - text: ：
+      - link "腾讯体育赛程中心 (https://sports.qq.com/)":
+        - /url: https://sports.qq.com/
+  - separator: ✦
+  - heading "二、 国际官方赛程来源（权威一手数据）" [level=3]
+  - list:
+    - strong: 英超联赛 (Premier League)
+    - list:
+      - strong: 查询链接
+      - text: ：
+      - link "Premier League Fixtures (https://www.premierleague.com/fixtures)":
+        - /url: https://www.premierleague.com/fixtures
+      - emphasis: 提示：官网会根据您的浏览器时区自动适配为北京时间。
+    - strong: 欧洲冠军联赛 (UEFA Champions League)
+    - list:
+      - strong: 查询链接
+      - text: ：[UEFA Fixtures & Results (
+      - link "https://www.uefa.com/uefachampionsleague/fixtures-results/)](":
+        - /url: https://www.uefa.com/uefachampionsleague/fixtures-results/)%5D(
+      - link "https://www.uefa.com":
+        - /url: https://www.uefa.com
+  - img "robot":
+  - img "clock-circle":
+  - generic: 10/14 22:30
+  - generic: 已完成
+  - generic "评价回答":
+    - button "回答有帮助":
+      - img "like":
+    - button "回答需要改进":
+      - img "dislike":
+  - button "保存到个人空间":
+    - img "book":
+  - button "收集到 GTD 收件箱":
+    - img "inbox":
+  - button "复制":
+    - img "copy":
+  - button "重试":
+    - img "redo":
+  - textbox "例如：/doc 分析工作空间架构 或 /email 总结今日邮件（输入 / 唤起工作技能，! 唤起工作流）"
+  - radiogroup "segmented control":
+    - radio "user 个人助理"
+    - img "user":
+    - generic: 个人助理
+    - radio "robot 企业协同" [checked]
+    - img "robot":
+    - generic: 企业协同
+  - 'button "bulb 思考: 中 down"':
+    - img "bulb":
+    - generic: "思考: 中"
+    - img "down":
+  - generic "联网搜索：已关闭（可选开启，开启后允许 AI 检索互联网公开资讯）":
+    - img "global":
+    - text: 联网
+    - switch
+  - generic "工作空间知识检索：已关闭（可选开启，开启后提问将自动探查并研读空间文档）":
+    - img "folder":
+    - text: 知识
+    - switch
+  - combobox
+  - generic "Auto / 系统默认"
+  - button "thunderbolt":
+    - img "thunderbolt":
+  - button "paper-clip":
+    - img "paper-clip":
+  - button "audio":
+    - img "audio":
+  - button "plus":
+    - img "plus":
+  - button "send 发送" [disabled]:
+    - img "send":
+    - generic: 发送

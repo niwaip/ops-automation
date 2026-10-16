@@ -1,0 +1,124 @@
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:25:35 PM     LOG [ExecutionController] Creating execution for user e7fce333-a8f4-4097-9a53-f0a4c729da46, skill platform.document.pdf-content-extractor
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:25:59 PM     LOG [ExecutionController] Creating execution for user e7fce333-a8f4-4097-9a53-f0a4c729da46, skill platform.search.web
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:25:59 PM    WARN [ExecutionPlanningService] Failed to load runtime defaults for skill platform.search.web: Request failed with status code 404
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:25:59 PM     LOG [ExecutionPlanningService] Browser recording rewrite mode for capability platform.search.web: workflow_activity
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:25:59 PM     LOG [ExecutionStepExecutorService] Executing system skill step 211c4db6-7497-4a9f-aeba-19ee887397d0 for execution 3d1151d2-2f8f-4958-9ae9-e49651af47fa
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:25:59 PM     LOG [ExecutionStepExecutorService] Calling auth runtime for capability platform.search.web (version: 1.0.5); input fields: includeDomains, maxResults, orgId, prompt, query, searchDepth, sourcePolicy, topic
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:25:59 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=platform.search.web, capabilityKey=platform.search.web, version=1.0.5
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:26:07 PM    WARN [SearchOrchestrator] Search provider 'firecrawl' failed: Client network socket disconnected before secure TLS connection was established
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:26:09 PM    WARN [SearchOrchestrator] Search provider 'exa' failed: Client network socket disconnected before secure TLS connection was established
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:26:18 PM    WARN [SearchOrchestrator] Search provider 'duckduckgo' failed: getaddrinfo EAI_AGAIN html.duckduckgo.com
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:27:15 PM     LOG [ExecutionController] Creating execution for user e7fce333-a8f4-4097-9a53-f0a4c729da46, skill platform.search.web
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:27:15 PM    WARN [ExecutionPlanningService] Failed to load runtime defaults for skill platform.search.web: Request failed with status code 404
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:27:15 PM     LOG [ExecutionPlanningService] Browser recording rewrite mode for capability platform.search.web: workflow_activity
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:27:15 PM     LOG [ExecutionStepExecutorService] Executing system skill step c04ad4c4-4ac5-4c66-a190-4b0e582d20c7 for execution ae6b5d86-db1e-419f-bbda-ebc5af82fe58
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:27:15 PM     LOG [ExecutionStepExecutorService] Calling auth runtime for capability platform.search.web (version: 1.0.5); input fields: maxResults, orgId, prompt, query, searchDepth, sourcePolicy, topic
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:27:15 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=platform.search.web, capabilityKey=platform.search.web, version=1.0.5
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:27:17 PM    WARN [SearchOrchestrator] Search provider 'tavily' failed: Client network socket disconnected before secure TLS connection was established
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:28:19 PM     LOG [ExecutionController] Creating execution for user e7fce333-a8f4-4097-9a53-f0a4c729da46, skill platform.search.web
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:28:19 PM    WARN [ExecutionPlanningService] Failed to load runtime defaults for skill platform.search.web: Request failed with status code 404
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:28:19 PM     LOG [ExecutionPlanningService] Browser recording rewrite mode for capability platform.search.web: workflow_activity
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:28:19 PM     LOG [ExecutionStepExecutorService] Executing system skill step 9bcb6326-b0f8-41d4-95cc-883067637bd6 for execution a47c0fa2-76e1-43e8-92a3-fc729d3eb249
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:28:19 PM     LOG [ExecutionStepExecutorService] Calling auth runtime for capability platform.search.web (version: 1.0.5); input fields: maxResults, orgId, prompt, query, searchDepth, sourcePolicy, topic
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:28:19 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=platform.search.web, capabilityKey=platform.search.web, version=1.0.5
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:28:21 PM    WARN [SearchOrchestrator] Search provider 'tavily' failed: Client network socket disconnected before secure TLS connection was established
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:28:24 PM    WARN [SearchOrchestrator] Search provider 'firecrawl' failed: Client network socket disconnected before secure TLS connection was established
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:28:24 PM    WARN [SearchOrchestrator] Search provider 'exa' failed: Client network socket disconnected before secure TLS connection was established
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:28:25 PM    WARN [SearchOrchestrator] Search provider 'duckduckgo' failed: Client network socket disconnected before secure TLS connection was established
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:29:07 PM     LOG [ExecutionController] Creating execution for user e7fce333-a8f4-4097-9a53-f0a4c729da46, skill platform.search.web
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:29:07 PM    WARN [ExecutionPlanningService] Failed to load runtime defaults for skill platform.search.web: Request failed with status code 404
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:29:07 PM     LOG [ExecutionPlanningService] Browser recording rewrite mode for capability platform.search.web: workflow_activity
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:29:07 PM     LOG [ExecutionStepExecutorService] Executing system skill step c037fe69-500d-4c95-9f77-8bd8b6808a78 for execution 6ff3e58c-5616-414a-82f5-b13725af146d
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:29:07 PM     LOG [ExecutionStepExecutorService] Calling auth runtime for capability platform.search.web (version: 1.0.5); input fields: maxResults, orgId, prompt, query, searchDepth, sourcePolicy, topic
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:29:07 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=platform.search.web, capabilityKey=platform.search.web, version=1.0.5
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:29:15 PM    WARN [SearchOrchestrator] Search provider 'tavily' failed: Client network socket disconnected before secure TLS connection was established
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:29:15 PM    WARN [SearchOrchestrator] Search provider 'firecrawl' failed: Client network socket disconnected before secure TLS connection was established
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:29:16 PM    WARN [SearchOrchestrator] Search provider 'exa' failed: Client network socket disconnected before secure TLS connection was established
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:29:16 PM    WARN [SearchOrchestrator] Search provider 'duckduckgo' failed: Client network socket disconnected before secure TLS connection was established
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:31:45 PM    WARN [SearchOrchestrator] Search provider 'tavily' failed: Client network socket disconnected before secure TLS connection was established
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:31:45 PM    WARN [SearchOrchestrator] Search provider 'firecrawl' failed: Client network socket disconnected before secure TLS connection was established
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:31:46 PM    WARN [SearchOrchestrator] Search provider 'exa' failed: Client network socket disconnected before secure TLS connection was established
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:31:46 PM    WARN [SearchOrchestrator] Search provider 'duckduckgo' failed: Client network socket disconnected before secure TLS connection was established
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:31:46 PM     LOG [TraceInterceptor] [1df5f9c7-752e-44e9-960f-b94a970dc0b5] POST /api/internal/search/web 4645ms
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:33:26 PM     LOG [ExecutionController] Creating execution for user e7fce333-a8f4-4097-9a53-f0a4c729da46, skill platform.search.web
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:33:26 PM    WARN [ExecutionPlanningService] Failed to load runtime defaults for skill platform.search.web: Request failed with status code 404
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:33:26 PM     LOG [ExecutionPlanningService] Browser recording rewrite mode for capability platform.search.web: workflow_activity
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:33:26 PM     LOG [ExecutionStepExecutorService] Executing system skill step a8499294-d449-43b8-ab54-b54257da0ec6 for execution eb736af6-9d71-4b7c-98ff-ee62e8b8127d
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:33:26 PM     LOG [ExecutionStepExecutorService] Calling auth runtime for capability platform.search.web (version: 1.0.5); input fields: includeDomains, maxResults, orgId, prompt, query, searchDepth, sourcePolicy, topic
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:33:26 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=platform.search.web, capabilityKey=platform.search.web, version=1.0.5
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:33:28 PM    WARN [SearchOrchestrator] Search provider 'tavily' failed: Client network socket disconnected before secure TLS connection was established
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:33:28 PM    WARN [SearchOrchestrator] Search provider 'firecrawl' failed: Client network socket disconnected before secure TLS connection was established
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:25:26 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=true, generation=false, artifact=false, documentSource=true, previousResult=false)
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:25:35 PM   DEBUG [SessionService] Saved chat session chat-session-1791987919126-v7captyk, history=2
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:25:35 PM     LOG [TraceInterceptor] [4f28c9d6-d3fa-4ec8-bff7-5814d0259dcb] POST /ai/chat/stream 9367ms
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:25:49 PM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:25:59 PM     LOG [ChatExecutionStreamService] Starting to observe execution 3d1151d2-2f8f-4958-9ae9-e49651af47fa via control-plane stream
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:25:59 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 3d1151d2-2f8f-4958-9ae9-e49651af47fa
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:25:59 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.plan.generated for 3d1151d2-2f8f-4958-9ae9-e49651af47fa
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:25:59 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.steps.planned for 3d1151d2-2f8f-4958-9ae9-e49651af47fa
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:25:59 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 3d1151d2-2f8f-4958-9ae9-e49651af47fa
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:25:59 PM   DEBUG [ChatExecutionStreamService] Received execution event: runtime.skipped for 3d1151d2-2f8f-4958-9ae9-e49651af47fa
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:26:00 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 3d1151d2-2f8f-4958-9ae9-e49651af47fa
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:26:18 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.failed for 3d1151d2-2f8f-4958-9ae9-e49651af47fa
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:26:18 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 3d1151d2-2f8f-4958-9ae9-e49651af47fa
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:26:18 PM     LOG [ChatExecutionStreamService] Execution 3d1151d2-2f8f-4958-9ae9-e49651af47fa reached terminal state: failed
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:26:18 PM   DEBUG [SessionService] Saved chat session chat-session-1791987941446-demvulu9, history=2
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:26:18 PM     LOG [TraceInterceptor] [fd522c75-5973-4dda-8db1-5ee34a929305] POST /ai/chat/stream 28566ms
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:26:58 PM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:27:15 PM     LOG [ChatExecutionStreamService] Starting to observe execution ae6b5d86-db1e-419f-bbda-ebc5af82fe58 via control-plane stream
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:27:15 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for ae6b5d86-db1e-419f-bbda-ebc5af82fe58
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:27:15 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.plan.generated for ae6b5d86-db1e-419f-bbda-ebc5af82fe58
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:27:15 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.steps.planned for ae6b5d86-db1e-419f-bbda-ebc5af82fe58
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:27:15 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for ae6b5d86-db1e-419f-bbda-ebc5af82fe58
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:27:15 PM   DEBUG [ChatExecutionStreamService] Received execution event: runtime.skipped for ae6b5d86-db1e-419f-bbda-ebc5af82fe58
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:27:16 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for ae6b5d86-db1e-419f-bbda-ebc5af82fe58
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:27:19 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for ae6b5d86-db1e-419f-bbda-ebc5af82fe58
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:27:19 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for ae6b5d86-db1e-419f-bbda-ebc5af82fe58
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:27:19 PM     LOG [ChatExecutionStreamService] Generating AI summary for execution ae6b5d86-db1e-419f-bbda-ebc5af82fe58 with objective: "Python 官方最新稳定版本是什么？请给出发布日期和官网来源。"
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:27:27 PM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution ae6b5d86-db1e-419f-bbda-ebc5af82fe58 (315 chars)
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:27:27 PM     LOG [ChatExecutionStreamService] Execution ae6b5d86-db1e-419f-bbda-ebc5af82fe58 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:27:27 PM   DEBUG [SessionService] Saved chat session chat-session-1791988009884-fe3o7u85, history=2
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:27:27 PM     LOG [TraceInterceptor] [923dc902-4c96-4b2a-a641-5c57ed8b8b79] POST /ai/chat/stream 28997ms
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:28:14 PM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:28:19 PM     LOG [ChatExecutionStreamService] Starting to observe execution a47c0fa2-76e1-43e8-92a3-fc729d3eb249 via control-plane stream
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:28:19 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for a47c0fa2-76e1-43e8-92a3-fc729d3eb249
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:28:19 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.plan.generated for a47c0fa2-76e1-43e8-92a3-fc729d3eb249
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:28:19 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.steps.planned for a47c0fa2-76e1-43e8-92a3-fc729d3eb249
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:28:19 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for a47c0fa2-76e1-43e8-92a3-fc729d3eb249
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:28:19 PM   DEBUG [ChatExecutionStreamService] Received execution event: runtime.skipped for a47c0fa2-76e1-43e8-92a3-fc729d3eb249
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:28:20 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for a47c0fa2-76e1-43e8-92a3-fc729d3eb249
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:28:25 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.failed for a47c0fa2-76e1-43e8-92a3-fc729d3eb249
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:28:25 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for a47c0fa2-76e1-43e8-92a3-fc729d3eb249
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:28:25 PM     LOG [ChatExecutionStreamService] Execution a47c0fa2-76e1-43e8-92a3-fc729d3eb249 reached terminal state: failed
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:28:25 PM   DEBUG [SessionService] Saved chat session chat-session-1791988079882-t9ngnrij, history=2
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:28:25 PM     LOG [TraceInterceptor] [0ebd3ff3-121d-44b4-9248-ebf71ec04e9c] POST /ai/chat/stream 10939ms
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:29:01 PM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:29:07 PM     LOG [ChatExecutionStreamService] Starting to observe execution 6ff3e58c-5616-414a-82f5-b13725af146d via control-plane stream
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:29:07 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 6ff3e58c-5616-414a-82f5-b13725af146d
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:29:07 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.plan.generated for 6ff3e58c-5616-414a-82f5-b13725af146d
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:29:07 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.steps.planned for 6ff3e58c-5616-414a-82f5-b13725af146d
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:29:07 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 6ff3e58c-5616-414a-82f5-b13725af146d
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:29:07 PM   DEBUG [ChatExecutionStreamService] Received execution event: runtime.skipped for 6ff3e58c-5616-414a-82f5-b13725af146d
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:29:07 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 6ff3e58c-5616-414a-82f5-b13725af146d
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:29:17 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.failed for 6ff3e58c-5616-414a-82f5-b13725af146d
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:29:17 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 6ff3e58c-5616-414a-82f5-b13725af146d
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:29:17 PM     LOG [ChatExecutionStreamService] Execution 6ff3e58c-5616-414a-82f5-b13725af146d reached terminal state: failed
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:29:17 PM   DEBUG [SessionService] Saved chat session chat-session-1791988132245-59shrnr0, history=2
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:29:17 PM     LOG [TraceInterceptor] [fc94a2d6-9604-43cc-bad2-883fdb688df4] POST /ai/chat/stream 15287ms
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:30:05 PM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:30:16 PM   DEBUG [SessionService] Saved chat session chat-session-1791988194396-2evv6f2q, history=2
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:30:16 PM     LOG [TraceInterceptor] [0a3d89e1-043a-4b47-a663-df738614373c] POST /ai/chat/stream 11476ms
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:30:35 PM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:30:56 PM   DEBUG [SessionService] Saved chat session chat-session-1791988229923-izbe3m6n, history=2
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:30:56 PM     LOG [TraceInterceptor] [cbb70eaa-0705-4b13-8e07-d08f14eb67ec] POST /ai/chat/stream 20116ms
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:31:37 PM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:31:54 PM   DEBUG [SessionService] Saved chat session chat-session-1791988285112-vo2pfs09, history=2
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:31:54 PM     LOG [TraceInterceptor] [eb77e09b-a886-4503-ab94-461131dded35] POST /ai/chat/stream 17968ms
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:33:15 PM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:33:26 PM     LOG [ChatExecutionStreamService] Starting to observe execution eb736af6-9d71-4b7c-98ff-ee62e8b8127d via control-plane stream
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:33:26 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for eb736af6-9d71-4b7c-98ff-ee62e8b8127d
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:33:26 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.plan.generated for eb736af6-9d71-4b7c-98ff-ee62e8b8127d
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:33:26 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.steps.planned for eb736af6-9d71-4b7c-98ff-ee62e8b8127d
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:33:26 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for eb736af6-9d71-4b7c-98ff-ee62e8b8127d
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:33:26 PM   DEBUG [ChatExecutionStreamService] Received execution event: runtime.skipped for eb736af6-9d71-4b7c-98ff-ee62e8b8127d
+ops-ai-orchestrator  | [Nest] 218  - 10/14/2026, 10:33:27 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for eb736af6-9d71-4b7c-98ff-ee62e8b8127d

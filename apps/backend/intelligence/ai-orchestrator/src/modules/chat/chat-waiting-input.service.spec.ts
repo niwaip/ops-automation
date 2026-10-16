@@ -105,4 +105,72 @@ describe('ChatWaitingInputService', () => {
     expect(message).not.toContain('保 密 协 议');
     expect(message).not.toContain('甲 方 公 司 全 称');
   });
+
+  it('resolves missing file parameters directly from uploaded files without calling recognizer', async () => {
+    const service = createService();
+
+    const result = await service.buildWaitingInputPayload(
+      '',
+      [
+        { name: 'fileBase64', missing: true },
+        { name: 'fileName', missing: true },
+      ],
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      [
+        {
+          fileId: 'file-1',
+          fileName: 'source.md',
+          mimeType: 'text/markdown',
+          size: 100,
+          content: 'dGVzdCBjb250ZW50',
+        },
+      ]
+    );
+
+    expect(result.input).toEqual({
+      fileBase64: 'dGVzdCBjb250ZW50',
+      fileName: 'source.md',
+    });
+    expect(result.usage).toBeUndefined();
+  });
+
+  it('resolves prefixed missing file parameters like n1.fileBase64 from uploaded files', async () => {
+    const service = createService();
+
+    const result = await service.buildWaitingInputPayload(
+      '这是附件，请继续提取',
+      [
+        { name: 'n1.fileBase64', missing: true },
+        { name: 'n1.fileName', missing: true },
+      ],
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      [
+        {
+          fileId: 'file-1',
+          fileName: 'source.md',
+          mimeType: 'text/markdown',
+          size: 100,
+          content: 'dGVzdCBjb250ZW50',
+        },
+      ]
+    );
+
+    expect(result.input).toEqual({
+      'n1.fileBase64': 'dGVzdCBjb250ZW50',
+      'n1.fileName': 'source.md',
+    });
+    expect(result.usage).toBeUndefined();
+  });
 });

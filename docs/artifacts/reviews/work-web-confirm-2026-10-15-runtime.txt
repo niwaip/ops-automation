@@ -1,0 +1,99 @@
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:43:31 AM     LOG [ExecutionController] Creating execution for user e7fce333-a8f4-4097-9a53-f0a4c729da46, skill platform.search.web
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:43:31 AM    WARN [ExecutionPlanningService] Failed to load runtime defaults for skill platform.search.web: Request failed with status code 404
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:43:31 AM     LOG [ExecutionPlanningService] Browser recording rewrite mode for capability platform.search.web: workflow_activity
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:43:31 AM     LOG [ExecutionStepExecutorService] Executing system skill step c6072f8f-259b-40f7-b61b-24c294617823 for execution c5c60070-4365-4e91-b7f1-ac630f7fd9f6
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:43:31 AM     LOG [ExecutionStepExecutorService] Calling auth runtime for capability platform.search.web (version: 1.0.5); input fields: includeDomains, maxResults, orgId, prompt, query, searchDepth, sourcePolicy, topic
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:43:31 AM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=platform.search.web, capabilityKey=platform.search.web, version=1.0.5
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:44:19 AM     LOG [TraceInterceptor] [1c07c053-c15b-4d61-85ab-b9d9e52f7b09] POST /api/internal/search/web 3193ms
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:45:13 AM     LOG [ExecutionController] Creating execution for user e7fce333-a8f4-4097-9a53-f0a4c729da46, skill platform.search.web
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:45:13 AM    WARN [ExecutionPlanningService] Failed to load runtime defaults for skill platform.search.web: Request failed with status code 404
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:45:13 AM     LOG [ExecutionPlanningService] Browser recording rewrite mode for capability platform.search.web: workflow_activity
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:45:13 AM     LOG [ExecutionStepExecutorService] Executing system skill step 85a05495-45f8-4fb4-b700-bdbe6810fce0 for execution fd2d0050-15c4-41ad-ad9d-5e467ff4b3ee
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:45:13 AM     LOG [ExecutionStepExecutorService] Calling auth runtime for capability platform.search.web (version: 1.0.5); input fields: maxResults, orgId, prompt, query, searchDepth, sourcePolicy, topic
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:45:13 AM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=platform.search.web, capabilityKey=platform.search.web, version=1.0.5
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:46:22 AM     LOG [ExecutionController] Creating execution for user e7fce333-a8f4-4097-9a53-f0a4c729da46, skill platform.search.web
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:46:22 AM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution 07983c79-4c29-4e72-bd54-cf2029d7fae1 (planHash: 230a014bf37a6eb2edb52c42b69a519bb9fe9c9f1768bdb751bef49deaa74033)
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:46:22 AM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=search.web, capabilityKey=platform.search.web, version=1.0.5
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:46:27 AM     LOG [LlmOperationRuntimeAdapter] Invoking LLM Operation 'summarize_list' v1.0.28 at http://ai-orchestrator:3007/ai/operations/v2/execute with timeout 300000ms
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:46:58 AM     LOG [DeterministicPlanSchedulerService] Execution 07983c79-4c29-4e72-bd54-cf2029d7fae1 successfully completed all deterministic plan steps.
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:47:32 AM     LOG [ExecutionController] Creating execution for user e7fce333-a8f4-4097-9a53-f0a4c729da46, skill platform.search.web
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:47:32 AM    WARN [ExecutionPlanningService] Failed to load runtime defaults for skill platform.search.web: Request failed with status code 404
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:47:32 AM     LOG [ExecutionPlanningService] Browser recording rewrite mode for capability platform.search.web: workflow_activity
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:47:32 AM     LOG [ExecutionStepExecutorService] Executing system skill step d29b247c-7b7a-43d7-8b28-b4b90d966a05 for execution ad1398d6-4cfe-4540-98ee-af22f64505ad
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:47:32 AM     LOG [ExecutionStepExecutorService] Calling auth runtime for capability platform.search.web (version: 1.0.5); input fields: includeDomains, maxResults, orgId, prompt, query, searchDepth, sourcePolicy, topic
+ops-control-plane  | [Nest] 136  - 10/15/2026, 9:47:32 AM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=platform.search.web, capabilityKey=platform.search.web, version=1.0.5
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:43:21 AM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:43:31 AM     LOG [ChatExecutionStreamService] Starting to observe execution c5c60070-4365-4e91-b7f1-ac630f7fd9f6 via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:43:31 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for c5c60070-4365-4e91-b7f1-ac630f7fd9f6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:43:31 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.plan.generated for c5c60070-4365-4e91-b7f1-ac630f7fd9f6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:43:31 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.steps.planned for c5c60070-4365-4e91-b7f1-ac630f7fd9f6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:43:31 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for c5c60070-4365-4e91-b7f1-ac630f7fd9f6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:43:31 AM   DEBUG [ChatExecutionStreamService] Received execution event: runtime.skipped for c5c60070-4365-4e91-b7f1-ac630f7fd9f6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:43:31 AM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for c5c60070-4365-4e91-b7f1-ac630f7fd9f6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:43:36 AM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for c5c60070-4365-4e91-b7f1-ac630f7fd9f6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:43:36 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for c5c60070-4365-4e91-b7f1-ac630f7fd9f6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:43:36 AM     LOG [ChatExecutionStreamService] Generating AI summary for execution c5c60070-4365-4e91-b7f1-ac630f7fd9f6 with objective: "/search Python 官方最新稳定版本是什么？只检索 python.org，给出版本号、发布日期和来源链接。"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:43:41 AM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution c5c60070-4365-4e91-b7f1-ac630f7fd9f6 (139 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:43:41 AM     LOG [ChatExecutionStreamService] Execution c5c60070-4365-4e91-b7f1-ac630f7fd9f6 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:43:41 AM   DEBUG [SessionService] Saved chat session chat-session-1792028601191-dfa5e2jx, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:43:41 AM     LOG [TraceInterceptor] [ec320085-0471-46fe-aedd-bdd5e30717d5] POST /ai/chat/stream 20202ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:44:10 AM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:44:30 AM   DEBUG [SessionService] Saved chat session chat-session-1792028645694-a25n8isv, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:44:30 AM     LOG [TraceInterceptor] [2863a1d1-7ed2-4d43-b3d6-df68656f5ac4] POST /ai/chat/stream 20514ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:44:58 AM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:45:13 AM     LOG [ChatExecutionStreamService] Starting to observe execution fd2d0050-15c4-41ad-ad9d-5e467ff4b3ee via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:45:13 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for fd2d0050-15c4-41ad-ad9d-5e467ff4b3ee
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:45:13 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.plan.generated for fd2d0050-15c4-41ad-ad9d-5e467ff4b3ee
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:45:13 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.steps.planned for fd2d0050-15c4-41ad-ad9d-5e467ff4b3ee
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:45:13 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for fd2d0050-15c4-41ad-ad9d-5e467ff4b3ee
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:45:13 AM   DEBUG [ChatExecutionStreamService] Received execution event: runtime.skipped for fd2d0050-15c4-41ad-ad9d-5e467ff4b3ee
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:45:14 AM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for fd2d0050-15c4-41ad-ad9d-5e467ff4b3ee
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:45:17 AM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for fd2d0050-15c4-41ad-ad9d-5e467ff4b3ee
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:45:18 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for fd2d0050-15c4-41ad-ad9d-5e467ff4b3ee
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:45:18 AM     LOG [ChatExecutionStreamService] Generating AI summary for execution fd2d0050-15c4-41ad-ad9d-5e467ff4b3ee with objective: "Python 官方最新稳定版本是什么？请给出发布日期和官网来源。"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:45:23 AM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution fd2d0050-15c4-41ad-ad9d-5e467ff4b3ee (135 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:45:23 AM     LOG [ChatExecutionStreamService] Execution fd2d0050-15c4-41ad-ad9d-5e467ff4b3ee reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:45:23 AM   DEBUG [SessionService] Saved chat session chat-session-1792028691927-c0i17llo, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:45:23 AM     LOG [TraceInterceptor] [bca0e9c1-53e3-4def-b941-0cbecf2295bc] POST /ai/chat/stream 25763ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:45:44 AM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:45:55 AM   DEBUG [SessionService] Saved chat session chat-session-1792028743743-hnq7cdkd, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:45:55 AM     LOG [TraceInterceptor] [6ab3b82c-7a44-44a0-982c-cd724f56dac9] POST /ai/chat/stream 11510ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:46:10 AM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=true, processing=true, generation=true, artifact=false, documentSource=false, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:46:10 AM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "请搜索 Python 3.15 的官方发布说明，基于 python.org 的资料总结三项主要变化，并在每项后附来源链接。"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:46:22 AM     LOG [TraceInterceptor] [a6e9584a-8d32-46c5-87c5-7545480fa57d] GET /ai/internal/operations/catalog/summarize_list 7ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:46:22 AM     LOG [TraceInterceptor] [91540ae0-cba1-4dbe-a636-bcccba190301] GET /ai/internal/operations/attestations/summarize_list/1.0.28 4ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:46:22 AM     LOG [ChatExecutionStreamService] Starting to observe execution 07983c79-4c29-4e72-bd54-cf2029d7fae1 via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:46:22 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 07983c79-4c29-4e72-bd54-cf2029d7fae1
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:46:22 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 07983c79-4c29-4e72-bd54-cf2029d7fae1
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:46:22 AM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 07983c79-4c29-4e72-bd54-cf2029d7fae1
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:46:27 AM     LOG [TraceInterceptor] [2ceee4dc-5bc7-4b3f-b244-7240255f6a4f] GET /ai/internal/operations/catalog/summarize_list 4ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:46:27 AM     LOG Executing V2 LLM operation 'summarize_list' with model 'gemini-3.8-flash-high'
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:46:28 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 07983c79-4c29-4e72-bd54-cf2029d7fae1
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:46:28 AM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 07983c79-4c29-4e72-bd54-cf2029d7fae1
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:46:28 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 07983c79-4c29-4e72-bd54-cf2029d7fae1
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:46:28 AM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 07983c79-4c29-4e72-bd54-cf2029d7fae1
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:46:58 AM    WARN Model output was not JSON; wrapping raw text into primary field markdown_content
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:46:58 AM     LOG [TraceInterceptor] [424fb973-009a-4d38-84f7-78ead6ed9b72] POST /ai/operations/v2/execute 31001ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:46:59 AM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 07983c79-4c29-4e72-bd54-cf2029d7fae1
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:46:59 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 07983c79-4c29-4e72-bd54-cf2029d7fae1
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:46:59 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 07983c79-4c29-4e72-bd54-cf2029d7fae1
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:46:59 AM     LOG [ChatExecutionStreamService] Generating AI summary for execution 07983c79-4c29-4e72-bd54-cf2029d7fae1 with objective: "请搜索 Python 3.15 的官方发布说明，基于 python.org 的资料总结三项主要变化，并在每项后附来源链接。"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:47:06 AM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution 07983c79-4c29-4e72-bd54-cf2029d7fae1 (699 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:47:06 AM     LOG [ChatExecutionStreamService] Execution 07983c79-4c29-4e72-bd54-cf2029d7fae1 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:47:06 AM   DEBUG [SessionService] Saved chat session chat-session-1792028769964-y7wduoyw, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:47:06 AM     LOG [TraceInterceptor] [bc5332b8-24c4-4229-833c-f3c1db3a8402] POST /ai/chat/stream 56147ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:47:25 AM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:47:32 AM     LOG [ChatExecutionStreamService] Starting to observe execution ad1398d6-4cfe-4540-98ee-af22f64505ad via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:47:32 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for ad1398d6-4cfe-4540-98ee-af22f64505ad
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:47:32 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.plan.generated for ad1398d6-4cfe-4540-98ee-af22f64505ad
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:47:32 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.steps.planned for ad1398d6-4cfe-4540-98ee-af22f64505ad
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:47:32 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for ad1398d6-4cfe-4540-98ee-af22f64505ad
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:47:32 AM   DEBUG [ChatExecutionStreamService] Received execution event: runtime.skipped for ad1398d6-4cfe-4540-98ee-af22f64505ad
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:47:32 AM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for ad1398d6-4cfe-4540-98ee-af22f64505ad
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:47:34 AM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for ad1398d6-4cfe-4540-98ee-af22f64505ad
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:47:34 AM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for ad1398d6-4cfe-4540-98ee-af22f64505ad
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:47:34 AM     LOG [ChatExecutionStreamService] Generating AI summary for execution ad1398d6-4cfe-4540-98ee-af22f64505ad with objective: "Python 官方最新稳定版本是什么？只检索 python.org，给出版本号、发布日期和来源链接。"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:47:39 AM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution ad1398d6-4cfe-4540-98ee-af22f64505ad (140 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:47:39 AM     LOG [ChatExecutionStreamService] Execution ad1398d6-4cfe-4540-98ee-af22f64505ad reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:47:39 AM   DEBUG [SessionService] Saved chat session chat-session-1792028845493-c1ux4euq, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:47:39 AM     LOG [TraceInterceptor] [e1748625-3b00-4db2-a4db-885516fc2c15] POST /ai/chat/stream 13843ms

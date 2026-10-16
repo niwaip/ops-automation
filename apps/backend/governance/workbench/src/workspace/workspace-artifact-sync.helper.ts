@@ -476,41 +476,7 @@ export class WorkspaceArtifactSyncHelper {
   }
 
   private guessMimeType(fileName: string): string {
-    const ext = path.extname(fileName).toLowerCase();
-    switch (ext) {
-      case '.png':
-        return 'image/png';
-      case '.jpg':
-      case '.jpeg':
-        return 'image/jpeg';
-      case '.gif':
-        return 'image/gif';
-      case '.webp':
-        return 'image/webp';
-      case '.svg':
-        return 'image/svg+xml';
-      case '.html':
-      case '.htm':
-        return 'text/html';
-      case '.pdf':
-        return 'application/pdf';
-      case '.docx':
-        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      case '.pptx':
-        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
-      case '.xlsx':
-        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-      case '.csv':
-        return 'text/csv';
-      case '.json':
-        return 'application/json';
-      case '.txt':
-        return 'text/plain';
-      case '.py':
-        return 'text/x-python';
-      default:
-        return 'application/octet-stream';
-    }
+    return guessMimeType(fileName);
   }
 
   /**
@@ -664,5 +630,43 @@ export class WorkspaceArtifactSyncHelper {
         break;
       }
     }
+  }
+}
+
+export function guessMimeType(fileName: string): string {
+  const ext = path.extname(fileName).toLowerCase();
+  switch (ext) {
+    case '.png':
+      return 'image/png';
+    case '.jpg':
+    case '.jpeg':
+      return 'image/jpeg';
+    case '.gif':
+      return 'image/gif';
+    case '.webp':
+      return 'image/webp';
+    case '.svg':
+      return 'image/svg+xml';
+    case '.html':
+    case '.htm':
+      return 'text/html';
+    case '.pdf':
+      return 'application/pdf';
+    case '.docx':
+      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case '.pptx':
+      return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    case '.xlsx':
+      return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    case '.csv':
+      return 'text/csv';
+    case '.json':
+      return 'application/json';
+    case '.txt':
+      return 'text/plain';
+    case '.py':
+      return 'text/x-python';
+    default:
+      return 'application/octet-stream';
   }
 }

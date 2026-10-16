@@ -1,0 +1,46 @@
+{
+  "caseId": "R07",
+  "variant": "canonical",
+  "status": "passed",
+  "traceIds": [
+    "eed94f09-fccc-4a0e-ab23-78001d7fc5c6"
+  ],
+  "executionIds": [
+    "93721ecc-8436-42ae-92a0-84bd2101608c"
+  ],
+  "requestDigest": "711d9dc550d18ac09218933fcab983ea278311e595a1aca1ba3341bf80edbe81",
+  "fixtureDigest": "9d98c56fef1b97f6b1f0a6a40980fbff971943845ece24ff03b2037dfd671736",
+  "catalogSnapshotDigest": "catalog-v1-snapshot-sha256",
+  "routingPolicyVersion": "routing-policy-v1",
+  "routingPolicyDigest": "routing-policy-sha256",
+  "selectedCapabilityRefs": [
+    "platform.document.pdf-content-extractor"
+  ],
+  "planHash": null,
+  "inputHash": null,
+  "actualInvocations": [
+    "platform.document.pdf-content-extractor"
+  ],
+  "usageByPurpose": {},
+  "logicalEffectCount": 1,
+  "artifactRefs": [],
+  "assertions": [
+    {
+      "assertion": "Selected platform.document.pdf-content-extractor",
+      "passed": true,
+      "actual": [
+        "platform.document.pdf-content-extractor"
+      ]
+    },
+    {
+      "assertion": "Execution status is succeeded",
+      "passed": true
+    },
+    {
+      "assertion": "Extracted fixture content and created artifact",
+      "passed": true,
+      "actual": "步骤已完成\n# 工作模式路由固定测试资料\n\n资料标记：WM_ROUTE_FIXTURE_20261015_V1\n项目：星桥工程路由验收（虚构）\n负责人：虚构林澄\n预算：48000元\n甲店销售额：120元\n乙店销售额：80元\n总销售额：200元\n甲店占比：60%\n乙店占比：40%\n归档日期：2026-"
+    }
+  ],
+  "failureCategory": null
+}

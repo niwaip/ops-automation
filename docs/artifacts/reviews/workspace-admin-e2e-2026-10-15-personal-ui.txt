@@ -1,0 +1,196 @@
+- complementary:
+  - text: OpsPilot
+  - generic: AI
+  - menu:
+    - menuitem "dashboard 仪表盘":
+      - img "dashboard":
+      - generic: 仪表盘
+    - menuitem "appstore 模版与能力":
+      - img "appstore":
+      - generic: 模版与能力
+    - menuitem "apartment 管理与发布":
+      - img "apartment":
+      - generic: 管理与发布
+    - menuitem "global 浏览器自动化":
+      - img "global":
+      - generic: 浏览器自动化
+    - menuitem "deployment-unit 模型规划调用":
+      - img "deployment-unit":
+      - generic: 模型规划调用
+    - menuitem "team 组织管理" [expanded]:
+      - img "team":
+      - generic: 组织管理
+    - menu:
+      - menuitem "apartment 组织架构":
+        - img "apartment":
+        - generic: 组织架构
+      - menuitem "user 用户管理":
+        - img "user":
+        - generic: 用户管理
+      - menuitem "folder-open 企业知识空间":
+        - img "folder-open":
+        - generic: 企业知识空间
+    - menuitem "history 运行与审计":
+      - img "history":
+      - generic: 运行与审计
+    - menuitem "setting 系统管理":
+      - img "setting":
+      - generic: 系统管理
+- banner:
+  - button "menu-fold":
+    - img "menu-fold":
+  - generic: 企业知识空间
+  - button "消息中心":
+    - img "bell":
+  - button "bg-colors 浅色":
+    - img "bg-colors":
+    - generic: 浅色
+  - link "export 用户入口":
+    - /url: http://192.168.100.143:5174/login
+    - img "export":
+    - generic: 用户入口
+  - button "global 简体中文":
+    - img "global":
+    - generic: 简体中文
+  - generic: A
+  - generic: admin
+- main:
+  - heading "folder-open 企业知识空间管理" [level=4]:
+    - img "folder-open":
+    - text: 企业知识空间管理
+  - generic: 企业级统一文档中心：管理员可集中维护公司制度、规程和专业知识资产，并可手动调用大模型对非结构化文档进行深度去噪、关键业务数据结构化萃取及重新清洗。
+  - strong: admin 个人盘
+  - generic: 44.5 MB / 5 GB
+  - progressbar:
+    - generic "1%"
+  - tablist:
+    - tab "bank 公司公共盘 (公司级制度/规程)":
+      - img "bank":
+      - text: 公司公共盘 (公司级制度/规程)
+    - tab "team 部门共享盘":
+      - img "team":
+      - text: 部门共享盘
+    - tab "user 用户个人盘" [active] [selected]:
+      - img "user":
+      - text: 用户个人盘
+    - generic: "当前用户:"
+    - combobox
+    - generic "admin"
+  - tabpanel "user 用户个人盘"
+  - navigation:
+    - list:
+      - img "home":
+      - text: 根目录
+  - radio "按文件名" [checked]
+  - text: 按文件名
+  - radio "全文检索 (Grep)"
+  - text: 全文检索 (Grep)
+  - img "search":
+  - textbox "过滤当前文件..."
+  - button "robot 一键全量 AI 清洗":
+    - img "robot":
+    - generic: 一键全量 AI 清洗
+  - button "plus 新建目录":
+    - img "plus":
+    - generic: 新建目录
+  - button "cloud-upload 上传文档":
+    - img "cloud-upload":
+    - generic: 上传文档
+  - button "reload":
+    - img "reload":
+  - alert:
+    - img "info-circle":
+    - generic: 当前正在管理员工【admin】个人工作空间。管理员可穿透协助排查、整理或转存私有文档。
+  - img "robot":
+  - strong: 知识库 AI 治理与 RAG 就绪度
+  - generic: 覆盖率 12%
+  - text: 共 118 篇文档 · 已 AI 深度提炼
+  - strong: "14"
+  - text: 篇 · 未清洗
+  - strong: "104"
+  - text: 篇
+  - progressbar:
+    - generic "12%"
+  - button "sync 仅清洗未清洗文档 (104)":
+    - img "sync":
+    - generic: 仅清洗未清洗文档 (104)
+  - button "robot 一键全量 AI 清洗":
+    - img "robot":
+    - generic: 一键全量 AI 清洗
+  - img "filter":
+  - generic: 一览视图过滤：
+  - radio "全部文档 (118)" [checked]
+  - generic: 全部文档 (118)
+  - radio "已 AI 提炼 (14)"
+  - generic: 已 AI 提炼 (14)
+  - radio "未清洗 (104)"
+  - generic: 未清洗 (104)
+  - generic: 💡 提示：一览已精简；点击表格左侧 [+] 可展开查看 AI 提炼全文、大纲与提取数据实体
+  - table:
+    - rowgroup:
+      - row "Select all 名称 AI 治理 / 核心提炼一览 大小 更新时间 操作":
+        - columnheader
+        - columnheader "Select all":
+          - checkbox "Select all" [disabled]
+        - columnheader "名称"
+        - columnheader "AI 治理 / 核心提炼一览"
+        - columnheader "大小"
+        - columnheader "更新时间"
+        - columnheader "操作"
+    - rowgroup:
+      - row "folder 工作任务成果 (tasks) - - 2026/9/19 19:49:58 delete":
+        - cell
+        - cell:
+          - checkbox [disabled]
+        - cell "folder 工作任务成果 (tasks)":
+          - img "folder":
+          - button "工作任务成果 (tasks)":
+            - generic: 工作任务成果 (tasks)
+        - cell "-"
+        - cell "-"
+        - cell "2026/9/19 19:49:58"
+        - cell "delete":
+          - button "delete":
+            - img "delete":
+      - row "folder 沙盒保存内容 (saved) - - 2026/9/19 19:31:24 delete":
+        - cell
+        - cell:
+          - checkbox [disabled]
+        - cell "folder 沙盒保存内容 (saved)":
+          - img "folder":
+          - button "沙盒保存内容 (saved)":
+            - generic: 沙盒保存内容 (saved)
+        - cell "-"
+        - cell "-"
+        - cell "2026/9/19 19:31:24"
+        - cell "delete":
+          - button "delete":
+            - img "delete":
+      - row "folder 临时工作区 (temp) - - 2026/9/19 19:31:24 delete":
+        - cell
+        - cell:
+          - checkbox [disabled]
+        - cell "folder 临时工作区 (temp)":
+          - img "folder":
+          - button "临时工作区 (temp)":
+            - generic: 临时工作区 (temp)
+        - cell "-"
+        - cell "-"
+        - cell "2026/9/19 19:31:24"
+        - cell "delete":
+          - button "delete":
+            - img "delete":
+  - list:
+    - listitem "上一页":
+      - button "left" [disabled]:
+        - img "left":
+    - listitem "1":
+      - generic: "1"
+    - listitem "下一页":
+      - button "right" [disabled]:
+        - img "right":
+    - generic "页码":
+      - combobox "页码"
+      - generic "20 条/页"
+- button "打开悬浮对话框":
+  - img "悬浮对话框"

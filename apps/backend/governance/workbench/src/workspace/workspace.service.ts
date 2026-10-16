@@ -12,14 +12,17 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { WORKBENCH_PRISMA,WorkbenchPrismaPort } from '../ports';
 import type {
-ContentSearchResultDto,
-DepartmentSummaryDto,
-MulterUploadedFile,
-MyWorkspacesResponseDto,
-RegenerateDigestDto,
-SaveTextNoteDto,
-WorkspaceNodeDto,
-WorkspaceSummaryDto
+  BatchRegenerateDigestDto,
+  ContentMatchSnippet,
+  ContentSearchResultDto,
+  DepartmentSummaryDto,
+  MulterUploadedFile,
+  MyWorkspacesResponseDto,
+  RegenerateDigestDto,
+  SaveTextNoteDto,
+  WorkspaceDigestStatsDto,
+  WorkspaceNodeDto,
+  WorkspaceSummaryDto
 } from './dto/workspace.dto';
 import { STORAGE_DRIVER,type StorageDriver } from './storage/storage-driver.interface';
 import { WorkspaceContentIndexerService } from './workspace-content-indexer.service';
@@ -31,6 +34,13 @@ WorkspaceProcessArchiveService,
 type ArchiveDeliverablesOptions,
 type ArchiveResult,
 } from './workspace-process-archive.service';
+import {
+  buildQueryTokenProfile,
+  scoreCandidateNode,
+  evaluateDocumentRelevance,
+  extractMetadataMatchSnippets,
+} from './workspace-search-relevance.helper';
+import { guessMimeType } from './workspace-artifact-sync.helper';
 
 @Injectable()
 export class WorkspaceService implements OnModuleInit {
@@ -73,7 +83,8 @@ export class WorkspaceService implements OnModuleInit {
    */
   public async getMyWorkspaces(
     userId: string,
-    departmentId?: string
+    departmentId?: string,
+    userRoles: string[] = []
   ): Promise<MyWorkspacesResponseDto> {
     // 1. 个人空间 (Personal Workspace)
     let personal = await this.prisma.workspace.findFirst({
@@ -109,48 +120,60 @@ export class WorkspaceService implements OnModuleInit {
     }
 
     // 3. 部门共享空间 (Department Shared)
-    // 自动查找当前用户所属的全部部门关联
-    const memberships = await this.prisma.orgMembership.findMany({
-      where: {
-        userId,
-        status: 'active',
-        departmentId: { not: null },
-      },
-    });
+    // 严格从服务端 orgMembership 查询当前用户所属的部门
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    const memberships = isUuid
+      ? await this.prisma.orgMembership.findMany({
+          where: {
+            userId,
+            status: 'active',
+            departmentId: { not: null },
+          },
+        })
+      : [];
     const userDeptIds = memberships.map((m) => m.departmentId!).filter(Boolean);
+    const isAdmin = userRoles.includes('admin');
 
-    // 获取组织全量部门备选
-    const allDepts = await this.prisma.department.findMany({
-      orderBy: { name: 'asc' },
-    });
+    // 获取组织部门备选（管理员可见全量部门备选，普通成员仅可见其所属部门）
+    const allDepts = isAdmin
+      ? await this.prisma.department.findMany({ orderBy: { name: 'asc' } })
+      : userDeptIds.length > 0
+      ? await this.prisma.department.findMany({
+          where: { id: { in: userDeptIds } },
+          orderBy: { name: 'asc' },
+        })
+      : [];
 
-    // 确定当前请求优先使用的部门 ID
-    if (!departmentId) {
-      if (userDeptIds.length > 0) {
-        departmentId = userDeptIds[0];
-      } else if (allDepts.length > 0) {
-        // 管理员或未归属部门用户兜底使用现有部门
-        departmentId = allDepts[0].id;
-      }
+    // 确定当前请求优先使用的部门 ID：仅允许用户实际所属部门，管理员可切换任意指定部门
+    let effectiveDeptId: string | null = null;
+    if (isAdmin && departmentId) {
+      effectiveDeptId = departmentId;
+    } else if (departmentId && userDeptIds.includes(departmentId)) {
+      effectiveDeptId = departmentId;
+    } else if (userDeptIds.length > 0) {
+      effectiveDeptId = userDeptIds[0];
+    } else if (isAdmin && allDepts.length > 0) {
+      effectiveDeptId = allDepts[0].id;
     }
+    // 未归属任何部门的非管理员用户，严格不授予任何部门空间（保持为 null，杜绝越权访问其他部门）
 
     let department = null;
-    if (departmentId) {
+    if (effectiveDeptId) {
       department = await this.prisma.workspace.findFirst({
-        where: { type: 'department', departmentId },
+        where: { type: 'department', departmentId: effectiveDeptId },
       });
       if (!department) {
         const deptRecord = await this.prisma.department.findUnique({
-          where: { id: departmentId },
+          where: { id: effectiveDeptId },
         });
         department = await this.prisma.workspace.create({
           data: {
             name: deptRecord ? `${deptRecord.name}共享` : '部门共享',
             type: 'department',
-            departmentId,
+            departmentId: effectiveDeptId,
           },
         });
-        this.logger.log(`Created department workspace for departmentId: ${departmentId}`);
+        this.logger.log(`Created department workspace for departmentId: ${effectiveDeptId}`);
       }
     }
 
@@ -168,13 +191,8 @@ export class WorkspaceService implements OnModuleInit {
       this.logger.log(`Initialized process workspace`);
     }
 
-    // 计算当前用户可见的部门列表：
-    // 若用户明确绑定了部门，则展示该用户归属的部门；若为管理员（或未绑定），则支持访问全量部门
-    const visibleDepts = userDeptIds.length > 0
-      ? allDepts.filter((d) => userDeptIds.includes(d.id))
-      : allDepts;
-    const targetDepts = visibleDepts.length > 0 ? visibleDepts : allDepts;
-
+    // 计算当前用户可见的部门列表
+    const targetDepts = allDepts;
     const deptWorkspaces = await this.prisma.workspace.findMany({
       where: { type: 'department', departmentId: { in: targetDepts.map((d) => d.id) } },
     });
@@ -204,9 +222,73 @@ export class WorkspaceService implements OnModuleInit {
     userRoles: string[] = [],
     departmentId?: string,
     sortBy?: string,
-    order?: 'asc' | 'desc'
+    order?: 'asc' | 'desc',
+    scope?: 'folder' | 'all' | 'ai_cleaned' | 'uncleaned'
   ): Promise<WorkspaceNodeDto[]> {
     await this.assertAccess(workspaceId, userId, departmentId, 'read', userRoles);
+
+    // 识别个人临时工作区文件夹，将其下的临时运行文件作为对象外排除
+    const tempFolders = await this.prisma.workspaceNode.findMany({
+      where: {
+        workspaceId,
+        type: 'folder',
+        OR: [
+          { name: { contains: 'temp', mode: 'insensitive' } },
+          { name: { contains: '临时工作区' } },
+        ],
+      },
+      select: { id: true },
+    });
+    const tempFolderIds = new Set(tempFolders.map((f) => f.id));
+
+    let orderByClause: any[] = [{ type: 'desc' }, { updatedAt: 'desc' }, { createdAt: 'desc' }];
+    if (sortBy === 'name') {
+      orderByClause = [{ type: 'desc' }, { name: order === 'desc' ? 'desc' : 'asc' }];
+    } else if (sortBy === 'fileSize') {
+      orderByClause = [{ type: 'desc' }, { fileSize: order === 'asc' ? 'asc' : 'desc' }];
+    } else if (sortBy === 'createdAt') {
+      orderByClause = [{ type: 'desc' }, { createdAt: order === 'asc' ? 'asc' : 'desc' }];
+    } else if (sortBy === 'updatedAt') {
+      orderByClause = [{ type: 'desc' }, { updatedAt: order === 'asc' ? 'asc' : 'desc' }];
+    }
+
+    // 平铺文档一览模式（全量文档、已AI提炼文档、未清洗文档）
+    if (scope && scope !== 'folder') {
+      let files = await this.prisma.workspaceNode.findMany({
+        where: {
+          workspaceId,
+          type: 'file',
+        },
+        orderBy: orderByClause,
+      });
+
+      if (tempFolderIds.size > 0) {
+        files = files.filter((f) => !f.parentId || !tempFolderIds.has(f.parentId));
+      }
+
+      if (scope === 'ai_cleaned') {
+        files = files.filter((f) => Boolean((f.digestJson as any)?.cleanedByAi));
+      } else if (scope === 'uncleaned') {
+        files = files.filter((f) => !(f.digestJson as any)?.cleanedByAi);
+      }
+
+      const parentFolderIds = Array.from(new Set(files.map((f) => f.parentId).filter(Boolean))) as string[];
+      const parentFolders = parentFolderIds.length > 0
+        ? await this.prisma.workspaceNode.findMany({
+            where: { id: { in: parentFolderIds } },
+            select: { id: true, name: true },
+          })
+        : [];
+      const parentMap = new Map<string, string>(parentFolders.map((p) => [p.id, p.name]));
+
+      return files.map((node) => {
+        const dto = this.toNodeDto(node);
+        if (node.parentId) {
+          dto.parentName = parentMap.get(node.parentId);
+        }
+        return dto;
+      });
+    }
 
     // 若访问的是个人空间根目录，自动同步沙箱个人空间目录
     if (!parentId) {
@@ -225,17 +307,6 @@ export class WorkspaceService implements OnModuleInit {
       } catch (err: any) {
         this.logger.warn(`Failed to incremental sync subfolder ${parentId}: ${err.message}`);
       }
-    }
-
-    let orderByClause: any[] = [{ type: 'desc' }, { updatedAt: 'desc' }, { createdAt: 'desc' }];
-    if (sortBy === 'name') {
-      orderByClause = [{ type: 'desc' }, { name: order === 'desc' ? 'desc' : 'asc' }];
-    } else if (sortBy === 'fileSize') {
-      orderByClause = [{ type: 'desc' }, { fileSize: order === 'asc' ? 'asc' : 'desc' }];
-    } else if (sortBy === 'createdAt') {
-      orderByClause = [{ type: 'desc' }, { createdAt: order === 'asc' ? 'asc' : 'desc' }];
-    } else if (sortBy === 'updatedAt') {
-      orderByClause = [{ type: 'desc' }, { updatedAt: order === 'asc' ? 'asc' : 'desc' }];
     }
 
     const nodes = await this.prisma.workspaceNode.findMany({
@@ -597,13 +668,21 @@ export class WorkspaceService implements OnModuleInit {
     }
 
     const isAdmin = userRoles.includes('admin');
-    const spaces = await this.getMyWorkspaces(userId, departmentId);
-    const visibleWorkspaceIds = [
-      spaces.personal.id,
-      spaces.company.id,
-      spaces.department?.id,
-      spaces.process?.id,
-    ].filter(Boolean) as string[];
+    const spaces = await this.getMyWorkspaces(userId, departmentId, userRoles);
+    const additionalDeptWorkspaceIds = ((spaces as any).departments || [])
+      .map((d: any) => d.workspaceId || d.id)
+      .filter(Boolean);
+    const visibleWorkspaceIds = Array.from(
+      new Set(
+        [
+          spaces.personal?.id,
+          spaces.company?.id,
+          spaces.department?.id,
+          spaces.process?.id,
+          ...additionalDeptWorkspaceIds,
+        ].filter(Boolean) as string[]
+      )
+    );
 
     let targetWorkspaceIds = visibleWorkspaceIds;
     if (workspaceId) {
@@ -613,14 +692,10 @@ export class WorkspaceService implements OnModuleInit {
       targetWorkspaceIds = [workspaceId];
     }
 
-    const stopWords = new Set(['请问', '请帮我', '查找', '查阅', '搜索', '关于', '有什么', '介绍一下', '解释一下', '总结', '具体', '方法', '教程', '指南', '怎么', '如何', '的', '了', '中', '在', '与', '及', '和']);
-    const rawTokens = q
-      .split(/[\s，,。的关于中与及和/、-]+/)
-      .map((t) => t.trim())
-      .filter((t) => t.length >= 2 && !stopWords.has(t.toLowerCase()));
-    const tokens = rawTokens.length > 0 ? rawTokens : [q];
+    const tokenProfile = buildQueryTokenProfile(q);
+    const searchTokens = tokenProfile.hasCoreEntities ? tokenProfile.coreEntities : tokenProfile.tokens;
 
-    // 优先检索匹配完整短语或核心关键词的文件节点，突破更新时间倒序 take: 100 截断
+    // 1. 文件名全文与核心关键词检索（覆盖可见空间高频匹配）
     const matchedNodes = await this.prisma.workspaceNode.findMany({
       where: {
         workspaceId: { in: targetWorkspaceIds },
@@ -628,14 +703,45 @@ export class WorkspaceService implements OnModuleInit {
         storagePath: { not: null },
         OR: [
           { name: { contains: q, mode: 'insensitive' } },
-          ...tokens.map((token) => ({ name: { contains: token, mode: 'insensitive' as const } })),
+          ...searchTokens.map((token) => ({ name: { contains: token, mode: 'insensitive' as const } })),
         ],
       },
       include: { workspace: true },
       orderBy: { updatedAt: 'desc' },
-      take: 50,
+      take: 100,
     });
 
+    // 2. 跨全空间通过数据库检索伴生结构化摘要与元数据（解除 80 份滑动窗口截断，盘活沉淀历史文档）
+    let metadataMatchedNodes: typeof matchedNodes = [];
+    try {
+      const searchTerms = Array.from(new Set([q, ...searchTokens])).slice(0, 5);
+      const orConditions = searchTerms.map((_, idx) => `digest_json::text ILIKE $${idx + 2}`).join(' OR ');
+      const rawRows = await this.prisma.$queryRawUnsafe<Array<{ id: string }>>(
+        `SELECT id FROM workspace_nodes WHERE workspace_id = ANY($1::uuid[]) AND type = 'file' AND storage_path IS NOT NULL AND (${orConditions}) ORDER BY updated_at DESC LIMIT 100`,
+        targetWorkspaceIds,
+        ...searchTerms.map((t) => `%${t}%`)
+      );
+      if (rawRows.length > 0) {
+        metadataMatchedNodes = await this.prisma.workspaceNode.findMany({
+          where: { id: { in: rawRows.map((r) => r.id) } },
+          include: { workspace: true },
+        });
+      }
+    } catch (err: any) {
+      this.logger.warn(`Metadata full-text search fallback: ${err.message}`);
+    }
+
+    // 3. 补充最近更新文件候选（确保新上传/无摘要文件可被物理 Grep 扫描到）
+    // 针对包含精确编号或核心实体的查询，自适应放宽候选窗口；若元数据与标题全未命中，深度探测可进一步扩大至 1000 份，消除窗口外正文事实漏检
+    const isDeepExactScan =
+      tokenProfile.exactIdentifiers.length > 0 &&
+      matchedNodes.length === 0 &&
+      metadataMatchedNodes.length === 0;
+    const recentTakeLimit = isDeepExactScan
+      ? 1000
+      : tokenProfile.exactIdentifiers.length > 0 || tokenProfile.hasCoreEntities
+      ? 500
+      : 250;
     const recentNodes = await this.prisma.workspaceNode.findMany({
       where: {
         workspaceId: { in: targetWorkspaceIds },
@@ -644,7 +750,7 @@ export class WorkspaceService implements OnModuleInit {
       },
       include: { workspace: true },
       orderBy: { updatedAt: 'desc' },
-      take: 80,
+      take: recentTakeLimit,
     });
 
     const IGNORED_BINARY_EXTS = new Set([
@@ -653,35 +759,20 @@ export class WorkspaceService implements OnModuleInit {
       '.mp4', '.avi', '.mov', '.wmv', '.mkv', '.mp3', '.wav', '.flac',
       '.exe', '.dll', '.bin', '.iso', '.dmg', '.pkg', '.apk',
       '.woff', '.woff2', '.ttf', '.eot',
+      '.xls', '.doc', '.pptx', '.ppt',
     ]);
 
     const candidateMap = new Map<string, typeof recentNodes[0]>();
     for (const node of matchedNodes) candidateMap.set(node.id, node);
+    for (const node of metadataMatchedNodes) {
+      if (!candidateMap.has(node.id)) candidateMap.set(node.id, node);
+    }
     for (const node of recentNodes) {
       if (!candidateMap.has(node.id)) candidateMap.set(node.id, node);
     }
 
-    const scoreNode = (node: typeof recentNodes[0]): number => {
-      let score = 0;
-      const lowerName = node.name.toLowerCase();
-      if (lowerName.includes(q.toLowerCase())) score += 100;
-      for (const token of tokens) {
-        if (lowerName.includes(token.toLowerCase())) score += 30;
-      }
-      const digest = (node as any).digestJson as { summary?: string; cleanedContent?: string } | undefined;
-      if (digest?.summary) {
-        const lowerSummary = digest.summary.toLowerCase();
-        if (lowerSummary.includes(q.toLowerCase())) score += 50;
-        for (const token of tokens) {
-          if (lowerSummary.includes(token.toLowerCase())) score += 15;
-        }
-      }
-      const ext = lowerName.slice(lowerName.lastIndexOf('.'));
-      if (['.md', '.txt', '.docx', '.pdf'].includes(ext)) {
-        score += 10;
-      }
-      return score;
-    };
+    const scoreNode = (node: typeof recentNodes[0]): number =>
+      scoreCandidateNode(node, tokenProfile);
 
     const nodes = Array.from(candidateMap.values())
       .filter((node) => {
@@ -694,19 +785,31 @@ export class WorkspaceService implements OnModuleInit {
       })
       .sort((a, b) => scoreNode(b) - scoreNode(a));
 
-    const results: ContentSearchResultDto[] = [];
+    const seenNodeIds = new Set<string>();
+    const seenFileIdentities = new Set<string>();
+    const admittedCandidates: Array<{ item: ContentSearchResultDto; relevanceScore: number }> = [];
+
     for (const node of nodes) {
       if (!node.storagePath) continue;
-      let matches: Array<{ line: number; snippet: string }> = await this.contentIndexer.grepFile(
-        node.storagePath,
-        node.name,
-        node.mimeType,
-        q,
-        3
-      );
+      if (seenNodeIds.has(node.id)) continue;
+      const fileIdentity = `${node.workspaceId}:${node.parentId || 'root'}:${node.name.trim().toLowerCase()}`;
+      if (seenFileIdentities.has(fileIdentity)) continue;
+      seenNodeIds.add(node.id);
+      seenFileIdentities.add(fileIdentity);
 
-      if (matches.length === 0 && tokens.length > 0) {
-        for (const token of tokens) {
+      let matches: Array<ContentMatchSnippet> = (
+        await this.contentIndexer.grepFile(
+          node.storagePath,
+          node.name,
+          node.mimeType,
+          q,
+          3
+        )
+      ).map((m) => ({ ...m, sourceKind: 'physical_line' as const }));
+
+      if (matches.length === 0 && searchTokens.length > 0) {
+        const seenLines = new Set<number>();
+        for (const token of searchTokens) {
           const subMatches = await this.contentIndexer.grepFile(
             node.storagePath,
             node.name,
@@ -714,27 +817,25 @@ export class WorkspaceService implements OnModuleInit {
             token,
             2
           );
-          if (subMatches.length > 0) {
-            matches.push(...subMatches);
-            if (matches.length >= 3) break;
+          for (const m of subMatches) {
+            if (!seenLines.has(m.line)) {
+              seenLines.add(m.line);
+              matches.push({ ...m, sourceKind: 'physical_line' as const });
+            }
           }
+          if (matches.length >= 8) break;
         }
       }
 
       if (matches.length === 0) {
-        const digest = (node as any).digestJson as { summary?: string; cleanedContent?: string } | undefined;
-        if (digest?.summary && (tokens.some((t) => digest.summary!.toLowerCase().includes(t.toLowerCase())) || digest.summary.includes(q))) {
-          matches.push({ line: 1, snippet: digest.summary.slice(0, 200) });
-        } else if (digest?.cleanedContent && tokens.some((t) => digest.cleanedContent!.toLowerCase().includes(t.toLowerCase()))) {
-          const matchingLines = digest.cleanedContent
-            .split('\n')
-            .filter((l) => tokens.some((t) => l.toLowerCase().includes(t.toLowerCase())))
-            .slice(0, 3);
-          matches = matchingLines.map((l, idx) => ({ line: idx + 1, snippet: l.slice(0, 200) }));
-        }
+        matches = extractMetadataMatchSnippets({
+          digestJson: (node as any).digestJson,
+          searchTokens,
+          rawQuery: q,
+        });
       }
 
-      if (matches.length === 0 && tokens.some((t) => node.name.toLowerCase().includes(t.toLowerCase()))) {
+      if (matches.length === 0 && searchTokens.some((t) => node.name.toLowerCase().includes(t.toLowerCase()))) {
         try {
           const preview = await this.getFileContent(
             node.workspaceId,
@@ -750,7 +851,11 @@ export class WorkspaceService implements OnModuleInit {
               .split('\n')
               .filter((l) => l.trim().length > 0)
               .slice(0, 3)
-              .map((line, idx) => ({ line: idx + 1, snippet: line }));
+              .map((line, idx) => ({
+                line: idx + 1,
+                snippet: line,
+                sourceKind: 'physical_line' as const,
+              }));
           }
         } catch {
           // ignore preview error
@@ -758,16 +863,55 @@ export class WorkspaceService implements OnModuleInit {
       }
 
       if (matches.length > 0) {
-        results.push({
-          ...this.toNodeDto(node),
-          workspaceType: node.workspace.type,
-          workspaceName: node.workspace.name,
-          matches,
+        // 核心实体联合门禁（Co-occurrence Filter）与综合相关性硬阈值裁剪（充分结合 AI 清洗数据）
+        const relevanceEval = evaluateDocumentRelevance({
+          nodeName: node.name,
+          digestSummary: (node as any).digestJson?.summary,
+          digestJson: (node as any).digestJson,
+          profile: tokenProfile,
+          contentMatches: matches,
+          baseScore: scoreNode(node),
         });
-        if (results.length >= 30) break;
+
+        if (!relevanceEval.admitted) {
+          continue; // 彻底拦截仅凭高频通用泛词（如“安装”）误命中的无关文档
+        }
+
+        // 对于中小型文档（<= 8000 字符），提取纯文本完整内容提供给 RAG 上下文，彻底避免由于片段截断遗漏口令等关键字段
+        let fullTextPreview: string | undefined;
+        try {
+          const extracted = await this.contentIndexer.getExtractedText(
+            node.storagePath,
+            node.name,
+            node.mimeType
+          );
+          if (extracted && extracted.length <= 8000) {
+            fullTextPreview = extracted;
+          }
+        } catch {
+          // 忽略纯文本提取失败，降级依赖 matches
+        }
+
+        admittedCandidates.push({
+          item: {
+            ...this.toNodeDto(node),
+            workspaceType: node.workspace.type,
+            workspaceName: node.workspace.name,
+            matches,
+            fullTextPreview,
+            physicalVerified: relevanceEval.physicalVerified,
+          },
+          relevanceScore: relevanceEval.totalScore,
+        });
       }
     }
 
+    // 全局按最终相关度打分倒序排序，确保交付的相关性最高
+    admittedCandidates.sort((a, b) => b.relevanceScore - a.relevanceScore);
+    const results = admittedCandidates.slice(0, 30).map((c) => c.item);
+    this.logger.log(
+      `[Zero-Vector Retrieval] query="${q}" engine=physical_grep_metadata vector_service_invoked=false candidates=${nodes.length} admitted=${results.length}`
+    );
     return results;
   }
 
@@ -792,6 +936,10 @@ export class WorkspaceService implements OnModuleInit {
     totalLines?: number;
   }> {
     await this.assertAccess(workspaceId, userId, departmentId, 'read', userRoles);
+
+    if (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(nodeId)) {
+      throw new NotFoundException('找不到指定文件');
+    }
 
     const node = await this.prisma.workspaceNode.findUnique({
       where: { id: nodeId },
@@ -872,6 +1020,9 @@ export class WorkspaceService implements OnModuleInit {
     action: 'read' | 'write' | 'delete',
     userRoles: string[] = []
   ) {
+    if (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(workspaceId)) {
+      throw new NotFoundException('指定的工作空间不存在');
+    }
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
     });
@@ -889,8 +1040,9 @@ export class WorkspaceService implements OnModuleInit {
     }
 
     if (workspace.type === 'department') {
-      let belongsToDept = Boolean(departmentId && workspace.departmentId === departmentId);
-      if (!belongsToDept && userId && workspace.departmentId) {
+      if (isAdmin) return workspace;
+      let belongsToDept = false;
+      if (userId && workspace.departmentId) {
         const count = await this.prisma.orgMembership.count({
           where: {
             userId,
@@ -900,7 +1052,7 @@ export class WorkspaceService implements OnModuleInit {
         });
         belongsToDept = count > 0;
       }
-      if (!belongsToDept && !isAdmin) {
+      if (!belongsToDept) {
         throw new ForbiddenException('您不属于该部门，无权访问该部门工作空间');
       }
       return workspace;
@@ -962,15 +1114,28 @@ export class WorkspaceService implements OnModuleInit {
   }
 
   /**
-   * 批量调用重新生成文档结构化摘要卡片 / AI 批量清洗
+   * 获取指定工作空间的文档知识提炼与 AI 治理统计指标
+   */
+  public async getDigestStats(
+    workspaceId: string,
+    userId: string,
+    userRoles: string[] = [],
+    departmentId?: string
+  ): Promise<WorkspaceDigestStatsDto> {
+    await this.assertAccess(workspaceId, userId, departmentId, 'read', userRoles);
+    return await this.digestService.getDigestStats(workspaceId);
+  }
+
+  /**
+   * 批量调用重新生成文档结构化摘要卡片 / AI 批量与全量清洗
    */
   public async batchRegenerateDigest(
     workspaceId: string,
-    nodeIds: string[],
+    nodeIds: string[] | undefined,
     userId: string,
     userRoles: string[] = [],
     departmentId?: string,
-    options?: RegenerateDigestDto
+    options?: BatchRegenerateDigestDto
   ): Promise<{
     total: number;
     successful: number;
@@ -978,47 +1143,7 @@ export class WorkspaceService implements OnModuleInit {
     results: Array<{ nodeId: string; name: string; success: boolean; error?: string }>;
   }> {
     await this.assertAccess(workspaceId, userId, departmentId, 'write', userRoles);
-
-    const nodes = await this.prisma.workspaceNode.findMany({
-      where: {
-        id: { in: nodeIds },
-        workspaceId,
-        type: 'file',
-      },
-    });
-
-    const results: Array<{ nodeId: string; name: string; success: boolean; error?: string }> = [];
-    let successful = 0;
-    let failed = 0;
-
-    for (const node of nodes) {
-      if (!node.storagePath) {
-        results.push({ nodeId: node.id, name: node.name, success: false, error: '无存储路径' });
-        failed++;
-        continue;
-      }
-      try {
-        await this.digestService.generateAndSaveDigest(
-          node.id,
-          node.storagePath,
-          node.name,
-          node.mimeType,
-          options
-        );
-        results.push({ nodeId: node.id, name: node.name, success: true });
-        successful++;
-      } catch (err: any) {
-        results.push({ nodeId: node.id, name: node.name, success: false, error: err.message });
-        failed++;
-      }
-    }
-
-    return {
-      total: nodes.length,
-      successful,
-      failed,
-      results,
-    };
+    return await this.digestService.batchRegenerateDigest(workspaceId, nodeIds, options);
   }
 
   private toWorkspaceSummary(ws: any): WorkspaceSummaryDto {
@@ -1160,7 +1285,7 @@ export class WorkspaceService implements OnModuleInit {
                   },
                 });
 
-                const subMime = this.guessMimeType(subEntry.name);
+                const subMime = guessMimeType(subEntry.name);
                 if (!existingSub) {
                   const buffer = await fs.promises.readFile(subFilePath);
                   const subNodeId = randomUUID();
@@ -1183,6 +1308,16 @@ export class WorkspaceService implements OnModuleInit {
                     where: { id: workspaceId },
                     data: { usedBytes: { increment: BigInt(subStat.size) } },
                   });
+
+                  this.contentIndexer
+                    .extractText(buffer, subEntry.name, subMime)
+                    .then(async (text) => {
+                      if (text) {
+                        await this.contentIndexer.cacheExtractedText(storageKey, text);
+                        await this.digestService.generateAndSaveDigest(subNodeId, storageKey, subEntry.name, subMime);
+                      }
+                    })
+                    .catch(() => {});
                 }
               }
             } catch (subErr: any) {
@@ -1202,7 +1337,7 @@ export class WorkspaceService implements OnModuleInit {
           },
         });
 
-        const mimeType = this.guessMimeType(entry.name);
+        const mimeType = guessMimeType(entry.name);
 
         if (!existing) {
           const buffer = await fs.promises.readFile(filePath);
@@ -1230,32 +1365,53 @@ export class WorkspaceService implements OnModuleInit {
             data: { usedBytes: { increment: BigInt(stat.size) } },
           });
 
-          if (['text/markdown', 'text/plain', 'application/json', 'text/html'].includes(mimeType)) {
-            this.contentIndexer
-              .extractText(buffer, entry.name, mimeType)
-              .then(async (text) => {
-                if (text) {
-                  await this.contentIndexer.cacheExtractedText(storageKey, text);
-                  await this.digestService.generateAndSaveDigest(nodeId, storageKey, entry.name, mimeType);
-                }
-              })
-              .catch(() => {});
+          this.contentIndexer
+            .extractText(buffer, entry.name, mimeType)
+            .then(async (text) => {
+              if (text) {
+                await this.contentIndexer.cacheExtractedText(storageKey, text);
+                await this.digestService.generateAndSaveDigest(nodeId, storageKey, entry.name, mimeType);
+              }
+            })
+            .catch(() => {});
+        } else if (existing.storagePath) {
+          const isSizeDifferent = BigInt(stat.size) !== existing.fileSize;
+          let buffer: Buffer | null = null;
+          let isContentChanged = isSizeDifferent;
+
+          if (!isSizeDifferent) {
+            buffer = await fs.promises.readFile(filePath);
+            const existingBuffer = (await this.storage.exists(existing.storagePath))
+              ? await this.storage.getFile(existing.storagePath)
+              : null;
+            isContentChanged = !existingBuffer || !buffer.equals(existingBuffer);
+          } else {
+            buffer = await fs.promises.readFile(filePath);
           }
-        } else if (existing.storagePath && BigInt(stat.size) !== existing.fileSize) {
-          const buffer = await fs.promises.readFile(filePath);
-          await this.storage.putFile(existing.storagePath, buffer);
-          const sizeDiff = BigInt(stat.size) - existing.fileSize;
-          await this.prisma.workspaceNode.update({
-            where: { id: existing.id },
-            data: {
-              fileSize: BigInt(stat.size),
-              updatedAt: new Date(),
-            },
-          });
-          await this.prisma.workspace.update({
-            where: { id: workspaceId },
-            data: { usedBytes: { increment: sizeDiff } },
-          });
+
+          if (isContentChanged && buffer) {
+            await this.storage.putFile(existing.storagePath, buffer);
+            const sizeDiff = BigInt(stat.size) - existing.fileSize;
+            await this.prisma.workspaceNode.update({
+              where: { id: existing.id },
+              data: {
+                fileSize: BigInt(stat.size),
+                updatedAt: new Date(),
+              },
+            });
+            if (sizeDiff !== 0n) {
+              await this.prisma.workspace.update({
+                where: { id: workspaceId },
+                data: { usedBytes: { increment: sizeDiff } },
+              });
+            }
+            // 关键：源文件发生更新，立即失效旧提取缓存并重建结构化摘要
+            const freshText = await this.contentIndexer.extractText(buffer, entry.name, mimeType);
+            if (freshText) {
+              await this.contentIndexer.cacheExtractedText(existing.storagePath, freshText);
+              await this.digestService.generateAndSaveDigest(existing.id, existing.storagePath, entry.name, mimeType);
+            }
+          }
         }
       }
     } catch (err: any) {
@@ -1324,28 +1480,6 @@ export class WorkspaceService implements OnModuleInit {
       }
     }
     return null;
-  }
-
-  private guessMimeType(filename: string): string {
-    const ext = path.extname(filename).toLowerCase();
-    switch (ext) {
-      case '.md': return 'text/markdown';
-      case '.txt': return 'text/plain';
-      case '.docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      case '.xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-      case '.pptx': return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
-      case '.pdf': return 'application/pdf';
-      case '.html': case '.htm': return 'text/html';
-      case '.json': return 'application/json';
-      case '.csv': return 'text/csv';
-      case '.py': return 'text/x-python';
-      case '.png': return 'image/png';
-      case '.jpg': case '.jpeg': return 'image/jpeg';
-      case '.webp': return 'image/webp';
-      case '.gif': return 'image/gif';
-      case '.svg': return 'image/svg+xml';
-      default: return 'application/octet-stream';
-    }
   }
 
   /**

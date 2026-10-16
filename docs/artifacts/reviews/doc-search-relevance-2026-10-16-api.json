@@ -1,0 +1,2878 @@
+{
+  "run": "GREPE2E1792117407979",
+  "startedAt": "2026-10-16T02:23:27.979Z",
+  "checks": [
+    {
+      "name": "AI cleaned target",
+      "passed": true
+    },
+    {
+      "name": "cleaned facts target",
+      "passed": true,
+      "details": {
+        "missing": []
+      }
+    },
+    {
+      "name": "AI cleaned partial",
+      "passed": true
+    },
+    {
+      "name": "cleaned facts partial",
+      "passed": true,
+      "details": {
+        "missing": []
+      }
+    },
+    {
+      "name": "AI cleaned other",
+      "passed": true
+    },
+    {
+      "name": "cleaned facts other",
+      "passed": true,
+      "details": {
+        "missing": []
+      }
+    },
+    {
+      "name": "AI cleaned noise0",
+      "passed": true
+    },
+    {
+      "name": "cleaned facts noise0",
+      "passed": true,
+      "details": {
+        "missing": []
+      }
+    },
+    {
+      "name": "AI cleaned noise1",
+      "passed": true
+    },
+    {
+      "name": "cleaned facts noise1",
+      "passed": true,
+      "details": {
+        "missing": []
+      }
+    },
+    {
+      "name": "AI cleaned noise2",
+      "passed": true
+    },
+    {
+      "name": "cleaned facts noise2",
+      "passed": true,
+      "details": {
+        "missing": []
+      }
+    },
+    {
+      "name": "AI cleaned noise3",
+      "passed": true
+    },
+    {
+      "name": "cleaned facts noise3",
+      "passed": true,
+      "details": {
+        "missing": []
+      }
+    },
+    {
+      "name": "AI cleaned noise4",
+      "passed": true
+    },
+    {
+      "name": "cleaned facts noise4",
+      "passed": true,
+      "details": {
+        "missing": []
+      }
+    },
+    {
+      "name": "AI cleaned noise5",
+      "passed": true
+    },
+    {
+      "name": "cleaned facts noise5",
+      "passed": true,
+      "details": {
+        "missing": []
+      }
+    },
+    {
+      "name": "AI cleaned noise6",
+      "passed": true
+    },
+    {
+      "name": "cleaned facts noise6",
+      "passed": true,
+      "details": {
+        "missing": []
+      }
+    },
+    {
+      "name": "AI cleaned noise7",
+      "passed": true
+    },
+    {
+      "name": "cleaned facts noise7",
+      "passed": true,
+      "details": {
+        "missing": []
+      }
+    },
+    {
+      "name": "AI cleaned noise8",
+      "passed": true
+    },
+    {
+      "name": "cleaned facts noise8",
+      "passed": true,
+      "details": {
+        "missing": []
+      }
+    },
+    {
+      "name": "AI cleaned noise9",
+      "passed": true
+    },
+    {
+      "name": "cleaned facts noise9",
+      "passed": true,
+      "details": {
+        "missing": []
+      }
+    },
+    {
+      "name": "AI cleaned noise10",
+      "passed": true
+    },
+    {
+      "name": "cleaned facts noise10",
+      "passed": true,
+      "details": {
+        "missing": []
+      }
+    },
+    {
+      "name": "AI cleaned noise11",
+      "passed": true
+    },
+    {
+      "name": "cleaned facts noise11",
+      "passed": true,
+      "details": {
+        "missing": []
+      }
+    },
+    {
+      "name": "top1: DeepSeek Harness 安装配置",
+      "passed": true
+    },
+    {
+      "name": "evidence: DeepSeek Harness 安装配置",
+      "passed": true
+    },
+    {
+      "name": "noise gate: DeepSeek Harness 安装配置",
+      "passed": true
+    },
+    {
+      "name": "top1: deepseek harness的安装方法",
+      "passed": true
+    },
+    {
+      "name": "evidence: deepseek harness的安装方法",
+      "passed": true
+    },
+    {
+      "name": "top1: GREPE2E1792117407979-A17",
+      "passed": true
+    },
+    {
+      "name": "evidence: GREPE2E1792117407979-A17",
+      "passed": true
+    },
+    {
+      "name": "exact isolation: GREPE2E1792117407979-A17",
+      "passed": false
+    },
+    {
+      "name": "top1: KS-7Q4M-9286",
+      "passed": true
+    },
+    {
+      "name": "evidence: KS-7Q4M-9286",
+      "passed": true
+    },
+    {
+      "name": "exact isolation: KS-7Q4M-9286",
+      "passed": true
+    },
+    {
+      "name": "top1: 林晓雨",
+      "passed": true
+    },
+    {
+      "name": "evidence: 林晓雨",
+      "passed": true
+    },
+    {
+      "name": "exact isolation: 林晓雨",
+      "passed": true
+    },
+    {
+      "name": "top1: 52931",
+      "passed": true
+    },
+    {
+      "name": "evidence: 52931",
+      "passed": true
+    },
+    {
+      "name": "exact isolation: 52931",
+      "passed": true
+    },
+    {
+      "name": "top1: Redis 高可用配置",
+      "passed": true
+    },
+    {
+      "name": "evidence: Redis 高可用配置",
+      "passed": true
+    },
+    {
+      "name": "empty: GREPE2E1792117407979-ABSENT 安装配置",
+      "passed": false
+    },
+    {
+      "name": "empty: GREPE2E1792117407979-ABSENT",
+      "passed": false
+    },
+    {
+      "name": "empty: x",
+      "passed": true
+    },
+    {
+      "name": "empty:    ",
+      "passed": true
+    }
+  ],
+  "searches": [
+    {
+      "query": "DeepSeek Harness 安装配置",
+      "elapsedMs": 52,
+      "rank": 1,
+      "reciprocalRank": 1,
+      "precisionAt3": 0.3333333333333333,
+      "results": [
+        {
+          "id": "8207e560-4a4d-41bc-9ef9-7a804d6a7720",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-0.md",
+          "type": "file",
+          "fileSize": "269",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/8207e560-4a4d-41bc-9ef9-7a804d6a7720_GREPE2E1792117407979-0.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本文档定义了项目编号为 GREPE2E1792117407979-A17 的 DeepSeek Harness 安装配置与交付规范。该项目由林晓雨负责推进，总体预算核定为52931元，交付截止日期为2026年11月12日。文档明确了通过 pip 命令进行组件部署的标准路径，并设定了严格的验收标准：必须在四台模拟终端完成联合调试，凭专用验收口令 KS-7Q4M-9286 进行验证，并规范形成三份归档记录，为系统交付与合规验收提供了明确依据。",
+            "headings": [
+              "1. 项目基础信息与资源配置",
+              "2. 系统环境部署指引",
+              "3. 验收标准与联调归档规程"
+            ],
+            "charCount": 159,
+            "keyTopics": [
+              "DeepSeek Harness",
+              "GREPE2E1792117407979-A17",
+              "林晓雨",
+              "KS-7Q4M-9286",
+              "deepseek-harness",
+              "模拟终端联调"
+            ],
+            "wordCount": 13,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:23:47.245Z",
+            "extractedData": {
+              "预算": "52931元",
+              "负责人": "林晓雨",
+              "安装命令": "pip install deepseek-harness",
+              "截止日期": "2026-11-12",
+              "项目代号": "GREPE2E1792117407979-A17",
+              "项目名称": "DeepSeek Harness 安装配置",
+              "项目编号": "GREPE2E1792117407979-A17",
+              "项目预算": "52931元",
+              "验收口令": "KS-7Q4M-9286",
+              "归档记录数量": "3份",
+              "联调终端数量": "4台模拟终端"
+            },
+            "cleanedContent": "项目名称：DeepSeek Harness 安装配置\n项目编号：GREPE2E1792117407979-A17\n项目负责人：林晓雨\n预算总额：52931元\n交付截止时间：2026-11-12\n\n一、部署与安装规范\n系统核心依赖组件采用 Python 包管理工具进行安装，标准执行命令如下：\npip install deepseek-harness\n\n二、联调与验收标准\n1. 终端联调要求：系统必须在四台模拟终端环境下完成全链路联合调试，确保节点间通信与协同功能稳定运行。\n2. 安全核验机制：验收时须输入并校验指定验收口令：KS-7Q4M-9286。\n3. 资料归档规范：验收流程结束后，须按规定形成并归档三份完整的测试与验收记录，以确保交付质量与审计追溯性。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:23:28.109Z",
+          "updatedAt": "2026-10-16T02:27:24.746Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "DeepSeek Harness 安装配置"
+            }
+          ],
+          "fullTextPreview": "DeepSeek Harness 安装配置\n项目编号 GREPE2E1792117407979-A17\n负责人：林晓雨\n预算：52931元\n截止日期：2026-11-12\n验收口令：KS-7Q4M-9286\n安装命令：pip install deepseek-harness\n验收要求：四台模拟终端联调，归档三份记录。"
+        },
+        {
+          "id": "b36bb3e7-cba2-4070-91a3-49b9e0a44401",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-1.md",
+          "type": "file",
+          "fileSize": "93",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/b36bb3e7-cba2-4070-91a3-49b9e0a44401_GREPE2E1792117407979-1.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本指南系针对 DeepSeek API 调用的范围界定与业务边界说明文档。文档核心价值在于明确技术对接中的核心职责与内容范畴，重点聚焦于 DeepSeek API 密钥（API Key）管理及调用计费核算规则。同时，文档作出明确的架构边界约束，申明不包含 Harness 相关的组件安装与系统环境部署内容。该文档为研发与运维人员提供了精准的知识检索分流依据，有效避免接口鉴权、成本管理与底层线束工程部署等不同场景间的操作混淆。",
+            "headings": [
+              "1. 文档定位与业务范围界定",
+              "2. 核心覆盖主题：API 密钥与计费规则",
+              "3. 边界约束与除外事项说明"
+            ],
+            "charCount": 49,
+            "keyTopics": [
+              "DeepSeek API",
+              "API 密钥",
+              "API 计费",
+              "Harness",
+              "GREPE2E1792117407979-1"
+            ],
+            "wordCount": 7,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:24:06.733Z",
+            "extractedData": null,
+            "cleanedContent": "【文档定位与业务边界】\n本指南专注于 DeepSeek API 的调用与运维支持。为保证技术知识库检索的精准性并理顺实施依赖，明确以下核心范围及边界条件：\n\n一、核心覆盖主题\n1. API 密钥管理：专注于 DeepSeek API 鉴权密钥的配置、凭证使用规范及接口访问权限控制。\n2. 计费核算机制：涵盖 API 接口调用的计费方式、调用消耗计量及费用管控等业务规则。\n\n二、实施边界与除外事项\n本文档明确不涉及 Harness（部署线束/测试套件）的安装配置、命令执行与环境联调。如需执行 Harness 相关组件的安装与工程交付，须移步至对应的 Harness 专用部署与验收规程文档进行操作。\n\n三、知识检索与引用指引\n本知识片段适用于 API 调用认证与调用成本评估场景；在进行系统底座或 Harness 运行环境搭建时，应主动排除本文档，遵循专项部署工程规范。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:23:47.265Z",
+          "updatedAt": "2026-10-16T02:27:24.747Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "DeepSeek API 调用指南。本文仅介绍 API 密钥与计费，不涉及 Harness 安装。"
+            }
+          ],
+          "fullTextPreview": "DeepSeek API 调用指南。本文仅介绍 API 密钥与计费，不涉及 Harness 安装。"
+        },
+        {
+          "id": "ea666280-7073-408c-91e4-26d37648d9f1",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "01-spell-words.md",
+          "type": "file",
+          "fileSize": "3502",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/ea666280-7073-408c-91e4-26d37648d9f1_01-spell-words.md",
+          "digest": {
+            "summary": "Parallel batch. May run concurrently with tasks 02, 03, 04, 05, 06, 07. Requires task 00 (Foundation) to be complete before this task begins. This task runs on its own git branch. To prevent merge conflicts, observe the",
+            "headings": [
+              "Task 01 — `wp-spell-words` (Spell Pipeline Stage 1: Tokenizer)",
+              "Execution Order",
+              "⚠️ Branch Isolation Rules",
+              "Objective",
+              "Behavior",
+              "Input",
+              "Output",
+              "Rules",
+              "Examples",
+              "Implementation"
+            ],
+            "charCount": 3484,
+            "keyTopics": [
+              "01",
+              "spell",
+              "words",
+              "READ-ONLY",
+              "TODO",
+              "PASS"
+            ],
+            "wordCount": 556,
+            "extractedAt": "2026-09-09T12:23:26.995Z",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 7
+          },
+          "createdBy": "e7fce333-a8f4-4097-9a53-f0a4c729da46",
+          "createdAt": "2026-09-09T12:23:26.989Z",
+          "updatedAt": "2026-10-15T10:34:07.940Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 15,
+              "snippet": "- `tests/harness.sh` — source it, never modify it"
+            },
+            {
+              "line": 115,
+              "snippet": "Source the harness as read-only:"
+            }
+          ],
+          "fullTextPreview": "# Task 01 — `wp-spell-words` (Spell Pipeline Stage 1: Tokenizer)\n\n## Execution Order\n**Parallel batch.** May run concurrently with tasks 02, 03, 04, 05, 06, 07.\nRequires task 00 (Foundation) to be complete before this task begins.\n\n---\n\n## ⚠️ Branch Isolation Rules\nThis task runs on its own git branch. To prevent merge conflicts, observe the\nfollowing strictly:\n\n**READ-ONLY — do not edit these files (created by task 00):**\n- `lib/wp-common.sh` — source it, never modify it\n- `tests/harness.sh` — source it, never modify it\n- `bin/wp` — do not touch\n\n**Files this task owns (create these, no other task will touch them):**\n- `bin/spell/wp-spell-words`\n- `tests/test-spell-words.sh`\n\nIf you discover that `lib/wp-common.sh` is missing a function you need,\ndo NOT add it yourself. Note it as a TODO comment in your script and flag it\nin your task completion report for task 08 (Integration) to resolve.\n\n---\n\n## Objective\nImplement `bin/spell/wp-spell-words` — the first stage of the spell-check pipeline.\nIt reads raw document text from stdin and emits one word token per line on stdout.\n\n---\n\n## Behavior\n\n### Input\nRaw document text on stdin. May include punctuation, numbers, mixed case, hyphens,\napostrophes, newlines, and blank lines.\n\n### Output\nOne token per line. A token is a contiguous sequence of alphabetic characters `[A-Za-z]`.\nNon-alphabetic characters are treated as delimiters and are **not** emitted.\n\n### Rules\n- Hyphenated words (e.g. `time-sharing`) are split into two tokens: `time`, `sharing`\n- Contractions (e.g. `won't`) are split: `won`, `t`\n- Numbers and tokens that contain only digits are discarded entirely\n- Empty lines in output are not permitted\n- The script must handle empty input gracefully (produces no output, exits 0)\n\n### Examples\n\n```\nInput:  \"The quick-brown fox jumps over the lazy dog.\"\nOutput:\nThe\nquick\nbrown\nfox\njumps\nover\nthe\nlazy\ndog\n```\n\n```\nInput:  \"Chapter 12: Unix time-sharing systems.\"\nOutput:\nChapter\nUnix\ntime\nsharing\nsystems\n```\n\n---\n\n## Implementation\n\n### Backing tools\n`tr`, `grep`\n\n### Recommended approach\n```bash\ntr -cs 'A-Za-z' '\\n'   # replace all non-alpha runs with a single newline\ngrep -v '^$'            # remove any blank lines\n```\n\nThe `-c` flag to `tr` complements the character class (everything except A-Za-z).\nThe `-s` flag squeezes consecutive delimiter characters into one, preventing blank\nlines from runs of punctuation.\n\n### Script skeleton\n```bash\n#!/usr/bin/env bash\nset -euo pipefail\ntr -cs 'A-Za-z' '\\n' | grep -v '^$'\n```\n\nThe implementation should be minimal. Resist the urge to add complexity.\n\n---\n\n## File Location\n`bin/spell/wp-spell-words`\n\nMust be executable (`chmod +x`).\n\n---\n\n## Test File\n`tests/test-spell-words.sh`\n\nSource the harness as read-only:\n```bash\nsource \"$(dirname \"$0\")/harness.sh\"\n```\n\n### Required test cases\n\n| # | Input | Expected output |\n|---|---|---|\n| 1 | `Hello, world!` | `Hello` then `world` |\n| 2 | `time-sharing` | `time` then `sharing` |\n| 3 | `Chapter 12` | `Chapter` only (12 discarded) |\n| 4 | empty string | no output, exit 0 |\n| 5 | `won't stop` | `won`, `t`, `stop` |\n| 6 | `...` | no output |\n\nCall `report` at the end of the test script.\n\n---\n\n## Acceptance Criteria\n- `bash tests/test-spell-words.sh` exits 0, all cases PASS\n- Script produces no output to stderr during normal operation\n- Script is ≤ 10 lines including shebang and set flags\n- This task's branch touches exactly two files: `bin/spell/wp-spell-words` and `tests/test-spell-words.sh`\n"
+        }
+      ]
+    },
+    {
+      "query": "deepseek harness的安装方法",
+      "elapsedMs": 28,
+      "rank": 1,
+      "reciprocalRank": 1,
+      "precisionAt3": 0.3333333333333333,
+      "results": [
+        {
+          "id": "8207e560-4a4d-41bc-9ef9-7a804d6a7720",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-0.md",
+          "type": "file",
+          "fileSize": "269",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/8207e560-4a4d-41bc-9ef9-7a804d6a7720_GREPE2E1792117407979-0.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本文档定义了项目编号为 GREPE2E1792117407979-A17 的 DeepSeek Harness 安装配置与交付规范。该项目由林晓雨负责推进，总体预算核定为52931元，交付截止日期为2026年11月12日。文档明确了通过 pip 命令进行组件部署的标准路径，并设定了严格的验收标准：必须在四台模拟终端完成联合调试，凭专用验收口令 KS-7Q4M-9286 进行验证，并规范形成三份归档记录，为系统交付与合规验收提供了明确依据。",
+            "headings": [
+              "1. 项目基础信息与资源配置",
+              "2. 系统环境部署指引",
+              "3. 验收标准与联调归档规程"
+            ],
+            "charCount": 159,
+            "keyTopics": [
+              "DeepSeek Harness",
+              "GREPE2E1792117407979-A17",
+              "林晓雨",
+              "KS-7Q4M-9286",
+              "deepseek-harness",
+              "模拟终端联调"
+            ],
+            "wordCount": 13,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:23:47.245Z",
+            "extractedData": {
+              "预算": "52931元",
+              "负责人": "林晓雨",
+              "安装命令": "pip install deepseek-harness",
+              "截止日期": "2026-11-12",
+              "项目代号": "GREPE2E1792117407979-A17",
+              "项目名称": "DeepSeek Harness 安装配置",
+              "项目编号": "GREPE2E1792117407979-A17",
+              "项目预算": "52931元",
+              "验收口令": "KS-7Q4M-9286",
+              "归档记录数量": "3份",
+              "联调终端数量": "4台模拟终端"
+            },
+            "cleanedContent": "项目名称：DeepSeek Harness 安装配置\n项目编号：GREPE2E1792117407979-A17\n项目负责人：林晓雨\n预算总额：52931元\n交付截止时间：2026-11-12\n\n一、部署与安装规范\n系统核心依赖组件采用 Python 包管理工具进行安装，标准执行命令如下：\npip install deepseek-harness\n\n二、联调与验收标准\n1. 终端联调要求：系统必须在四台模拟终端环境下完成全链路联合调试，确保节点间通信与协同功能稳定运行。\n2. 安全核验机制：验收时须输入并校验指定验收口令：KS-7Q4M-9286。\n3. 资料归档规范：验收流程结束后，须按规定形成并归档三份完整的测试与验收记录，以确保交付质量与审计追溯性。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:23:28.109Z",
+          "updatedAt": "2026-10-16T02:27:24.746Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "DeepSeek Harness 安装配置"
+            },
+            {
+              "line": 7,
+              "snippet": "安装命令：pip install deepseek-harness"
+            }
+          ],
+          "fullTextPreview": "DeepSeek Harness 安装配置\n项目编号 GREPE2E1792117407979-A17\n负责人：林晓雨\n预算：52931元\n截止日期：2026-11-12\n验收口令：KS-7Q4M-9286\n安装命令：pip install deepseek-harness\n验收要求：四台模拟终端联调，归档三份记录。"
+        },
+        {
+          "id": "b36bb3e7-cba2-4070-91a3-49b9e0a44401",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-1.md",
+          "type": "file",
+          "fileSize": "93",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/b36bb3e7-cba2-4070-91a3-49b9e0a44401_GREPE2E1792117407979-1.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本指南系针对 DeepSeek API 调用的范围界定与业务边界说明文档。文档核心价值在于明确技术对接中的核心职责与内容范畴，重点聚焦于 DeepSeek API 密钥（API Key）管理及调用计费核算规则。同时，文档作出明确的架构边界约束，申明不包含 Harness 相关的组件安装与系统环境部署内容。该文档为研发与运维人员提供了精准的知识检索分流依据，有效避免接口鉴权、成本管理与底层线束工程部署等不同场景间的操作混淆。",
+            "headings": [
+              "1. 文档定位与业务范围界定",
+              "2. 核心覆盖主题：API 密钥与计费规则",
+              "3. 边界约束与除外事项说明"
+            ],
+            "charCount": 49,
+            "keyTopics": [
+              "DeepSeek API",
+              "API 密钥",
+              "API 计费",
+              "Harness",
+              "GREPE2E1792117407979-1"
+            ],
+            "wordCount": 7,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:24:06.733Z",
+            "extractedData": null,
+            "cleanedContent": "【文档定位与业务边界】\n本指南专注于 DeepSeek API 的调用与运维支持。为保证技术知识库检索的精准性并理顺实施依赖，明确以下核心范围及边界条件：\n\n一、核心覆盖主题\n1. API 密钥管理：专注于 DeepSeek API 鉴权密钥的配置、凭证使用规范及接口访问权限控制。\n2. 计费核算机制：涵盖 API 接口调用的计费方式、调用消耗计量及费用管控等业务规则。\n\n二、实施边界与除外事项\n本文档明确不涉及 Harness（部署线束/测试套件）的安装配置、命令执行与环境联调。如需执行 Harness 相关组件的安装与工程交付，须移步至对应的 Harness 专用部署与验收规程文档进行操作。\n\n三、知识检索与引用指引\n本知识片段适用于 API 调用认证与调用成本评估场景；在进行系统底座或 Harness 运行环境搭建时，应主动排除本文档，遵循专项部署工程规范。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:23:47.265Z",
+          "updatedAt": "2026-10-16T02:27:24.747Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "DeepSeek API 调用指南。本文仅介绍 API 密钥与计费，不涉及 Harness 安装。"
+            }
+          ],
+          "fullTextPreview": "DeepSeek API 调用指南。本文仅介绍 API 密钥与计费，不涉及 Harness 安装。"
+        },
+        {
+          "id": "ea666280-7073-408c-91e4-26d37648d9f1",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "01-spell-words.md",
+          "type": "file",
+          "fileSize": "3502",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/ea666280-7073-408c-91e4-26d37648d9f1_01-spell-words.md",
+          "digest": {
+            "summary": "Parallel batch. May run concurrently with tasks 02, 03, 04, 05, 06, 07. Requires task 00 (Foundation) to be complete before this task begins. This task runs on its own git branch. To prevent merge conflicts, observe the",
+            "headings": [
+              "Task 01 — `wp-spell-words` (Spell Pipeline Stage 1: Tokenizer)",
+              "Execution Order",
+              "⚠️ Branch Isolation Rules",
+              "Objective",
+              "Behavior",
+              "Input",
+              "Output",
+              "Rules",
+              "Examples",
+              "Implementation"
+            ],
+            "charCount": 3484,
+            "keyTopics": [
+              "01",
+              "spell",
+              "words",
+              "READ-ONLY",
+              "TODO",
+              "PASS"
+            ],
+            "wordCount": 556,
+            "extractedAt": "2026-09-09T12:23:26.995Z",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 7
+          },
+          "createdBy": "e7fce333-a8f4-4097-9a53-f0a4c729da46",
+          "createdAt": "2026-09-09T12:23:26.989Z",
+          "updatedAt": "2026-10-15T10:34:07.940Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 15,
+              "snippet": "- `tests/harness.sh` — source it, never modify it"
+            },
+            {
+              "line": 115,
+              "snippet": "Source the harness as read-only:"
+            }
+          ],
+          "fullTextPreview": "# Task 01 — `wp-spell-words` (Spell Pipeline Stage 1: Tokenizer)\n\n## Execution Order\n**Parallel batch.** May run concurrently with tasks 02, 03, 04, 05, 06, 07.\nRequires task 00 (Foundation) to be complete before this task begins.\n\n---\n\n## ⚠️ Branch Isolation Rules\nThis task runs on its own git branch. To prevent merge conflicts, observe the\nfollowing strictly:\n\n**READ-ONLY — do not edit these files (created by task 00):**\n- `lib/wp-common.sh` — source it, never modify it\n- `tests/harness.sh` — source it, never modify it\n- `bin/wp` — do not touch\n\n**Files this task owns (create these, no other task will touch them):**\n- `bin/spell/wp-spell-words`\n- `tests/test-spell-words.sh`\n\nIf you discover that `lib/wp-common.sh` is missing a function you need,\ndo NOT add it yourself. Note it as a TODO comment in your script and flag it\nin your task completion report for task 08 (Integration) to resolve.\n\n---\n\n## Objective\nImplement `bin/spell/wp-spell-words` — the first stage of the spell-check pipeline.\nIt reads raw document text from stdin and emits one word token per line on stdout.\n\n---\n\n## Behavior\n\n### Input\nRaw document text on stdin. May include punctuation, numbers, mixed case, hyphens,\napostrophes, newlines, and blank lines.\n\n### Output\nOne token per line. A token is a contiguous sequence of alphabetic characters `[A-Za-z]`.\nNon-alphabetic characters are treated as delimiters and are **not** emitted.\n\n### Rules\n- Hyphenated words (e.g. `time-sharing`) are split into two tokens: `time`, `sharing`\n- Contractions (e.g. `won't`) are split: `won`, `t`\n- Numbers and tokens that contain only digits are discarded entirely\n- Empty lines in output are not permitted\n- The script must handle empty input gracefully (produces no output, exits 0)\n\n### Examples\n\n```\nInput:  \"The quick-brown fox jumps over the lazy dog.\"\nOutput:\nThe\nquick\nbrown\nfox\njumps\nover\nthe\nlazy\ndog\n```\n\n```\nInput:  \"Chapter 12: Unix time-sharing systems.\"\nOutput:\nChapter\nUnix\ntime\nsharing\nsystems\n```\n\n---\n\n## Implementation\n\n### Backing tools\n`tr`, `grep`\n\n### Recommended approach\n```bash\ntr -cs 'A-Za-z' '\\n'   # replace all non-alpha runs with a single newline\ngrep -v '^$'            # remove any blank lines\n```\n\nThe `-c` flag to `tr` complements the character class (everything except A-Za-z).\nThe `-s` flag squeezes consecutive delimiter characters into one, preventing blank\nlines from runs of punctuation.\n\n### Script skeleton\n```bash\n#!/usr/bin/env bash\nset -euo pipefail\ntr -cs 'A-Za-z' '\\n' | grep -v '^$'\n```\n\nThe implementation should be minimal. Resist the urge to add complexity.\n\n---\n\n## File Location\n`bin/spell/wp-spell-words`\n\nMust be executable (`chmod +x`).\n\n---\n\n## Test File\n`tests/test-spell-words.sh`\n\nSource the harness as read-only:\n```bash\nsource \"$(dirname \"$0\")/harness.sh\"\n```\n\n### Required test cases\n\n| # | Input | Expected output |\n|---|---|---|\n| 1 | `Hello, world!` | `Hello` then `world` |\n| 2 | `time-sharing` | `time` then `sharing` |\n| 3 | `Chapter 12` | `Chapter` only (12 discarded) |\n| 4 | empty string | no output, exit 0 |\n| 5 | `won't stop` | `won`, `t`, `stop` |\n| 6 | `...` | no output |\n\nCall `report` at the end of the test script.\n\n---\n\n## Acceptance Criteria\n- `bash tests/test-spell-words.sh` exits 0, all cases PASS\n- Script produces no output to stderr during normal operation\n- Script is ≤ 10 lines including shebang and set flags\n- This task's branch touches exactly two files: `bin/spell/wp-spell-words` and `tests/test-spell-words.sh`\n"
+        }
+      ]
+    },
+    {
+      "query": "GREPE2E1792117407979-A17",
+      "elapsedMs": 24,
+      "rank": 1,
+      "reciprocalRank": 1,
+      "precisionAt3": 0.3333333333333333,
+      "results": [
+        {
+          "id": "8207e560-4a4d-41bc-9ef9-7a804d6a7720",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-0.md",
+          "type": "file",
+          "fileSize": "269",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/8207e560-4a4d-41bc-9ef9-7a804d6a7720_GREPE2E1792117407979-0.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本文档定义了项目编号为 GREPE2E1792117407979-A17 的 DeepSeek Harness 安装配置与交付规范。该项目由林晓雨负责推进，总体预算核定为52931元，交付截止日期为2026年11月12日。文档明确了通过 pip 命令进行组件部署的标准路径，并设定了严格的验收标准：必须在四台模拟终端完成联合调试，凭专用验收口令 KS-7Q4M-9286 进行验证，并规范形成三份归档记录，为系统交付与合规验收提供了明确依据。",
+            "headings": [
+              "1. 项目基础信息与资源配置",
+              "2. 系统环境部署指引",
+              "3. 验收标准与联调归档规程"
+            ],
+            "charCount": 159,
+            "keyTopics": [
+              "DeepSeek Harness",
+              "GREPE2E1792117407979-A17",
+              "林晓雨",
+              "KS-7Q4M-9286",
+              "deepseek-harness",
+              "模拟终端联调"
+            ],
+            "wordCount": 13,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:23:47.245Z",
+            "extractedData": {
+              "预算": "52931元",
+              "负责人": "林晓雨",
+              "安装命令": "pip install deepseek-harness",
+              "截止日期": "2026-11-12",
+              "项目代号": "GREPE2E1792117407979-A17",
+              "项目名称": "DeepSeek Harness 安装配置",
+              "项目编号": "GREPE2E1792117407979-A17",
+              "项目预算": "52931元",
+              "验收口令": "KS-7Q4M-9286",
+              "归档记录数量": "3份",
+              "联调终端数量": "4台模拟终端"
+            },
+            "cleanedContent": "项目名称：DeepSeek Harness 安装配置\n项目编号：GREPE2E1792117407979-A17\n项目负责人：林晓雨\n预算总额：52931元\n交付截止时间：2026-11-12\n\n一、部署与安装规范\n系统核心依赖组件采用 Python 包管理工具进行安装，标准执行命令如下：\npip install deepseek-harness\n\n二、联调与验收标准\n1. 终端联调要求：系统必须在四台模拟终端环境下完成全链路联合调试，确保节点间通信与协同功能稳定运行。\n2. 安全核验机制：验收时须输入并校验指定验收口令：KS-7Q4M-9286。\n3. 资料归档规范：验收流程结束后，须按规定形成并归档三份完整的测试与验收记录，以确保交付质量与审计追溯性。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:23:28.109Z",
+          "updatedAt": "2026-10-16T02:27:24.746Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 2,
+              "snippet": "项目编号 GREPE2E1792117407979-A17"
+            }
+          ],
+          "fullTextPreview": "DeepSeek Harness 安装配置\n项目编号 GREPE2E1792117407979-A17\n负责人：林晓雨\n预算：52931元\n截止日期：2026-11-12\n验收口令：KS-7Q4M-9286\n安装命令：pip install deepseek-harness\n验收要求：四台模拟终端联调，归档三份记录。"
+        },
+        {
+          "id": "4b9a6bbe-6eaf-4396-815b-e2c74169b1ac",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-5.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/4b9a6bbe-6eaf-4396-815b-e2c74169b1ac_GREPE2E1792117407979-5.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-5 实施知识库深度清洗与信息提炼。原始文本仅包含核心标识“MySQL 环境 2”，并充斥大量无业务语义与区分度的“安装 配置 部署 教程 步骤 说明”占位动词重复堆叠。经过专家级深度去噪处理，已全面剔除无意义冗余文本。经事实核验，文档未包含负责人、资金预算、时间节点、验收口令及具体执行命令等关键结构化数据，故结构化事实字段标识为 null。本次清洗将该文档提炼为标准的基础环境存根节点，消除了无效占位符对知识检索系统的干扰，并为后续企业级数据库架构对应节点的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 2",
+              "GREPE2E1792117407979-5",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:25:23.081Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-5）在知识库数据治理流程中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的操作规程、配置参数或技术方案，属于典型的无信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的核心事实为标的实体“MySQL 环境 2”。该实体属于企业关系型数据库架构环境中的第三个序列节点（对应 MySQL 环境 0、MySQL 环境 1），用于后续集群拓扑或多套环境划分的标识映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，文档原文未包含项目负责人、实施预算、交付时间节点、验收测试口令及终端联调数量等业务参数。\n2. 运维技术参数：原文未包含 MySQL 具体版本分支、端口分配、配置文件参数、主从复制拓扑或安全加固脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 2”的基础环境存根节点进行索引维护，避免知识检索系统误判为有效部署指南，后续须根据实际系统建设进展补充详细配置文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:25:10.707Z",
+          "updatedAt": "2026-10-16T02:27:24.748Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 2。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "b6c6f137-58b4-45ae-a6af-261c9aa72f05",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-3.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/b6c6f137-58b4-45ae-a6af-261c9aa72f05_GREPE2E1792117407979-3.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对文档 GREPE2E1792117407979-3 进行知识库深度清洗与信息提炼。原始文本仅包含核心标识“MySQL 环境 0”，并伴有大量无业务语义与区分度的流程占位动词重复堆叠。经过专家级深度去噪处理，已全面清除无意义冗余文本。经核实，文档原文未包含负责人、资金预算、时间节点、安全验收口令及具体执行命令等关键结构化事实。本次清洗将其归档为规范的“MySQL 环境 0”基础知识存根，消除了知识检索干扰，并为后续企业级数据库架构参数的补充录入提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声剥离",
+              "2. 核心标的实体与环境标识",
+              "3. 数据要素完整性评估与维护建议"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 0",
+              "GREPE2E1792117407979-3",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础环境"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:24:51.197Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声剥离】\n本文档（编号：GREPE2E1792117407979-3）在知识库数据治理中完成深度去噪处理。原始文本中大量循环重复出现的“安装 配置 部署 教程 步骤 说明”属于典型的无实际技术参数与业务事实的通用占位词，缺乏有效信息熵，已在清洗规程中全部剔除。\n\n【核心标的实体与环境标识】\n去除噪声后，文档中确立的唯一实体事实为“MySQL 环境 0”。该项标识明确了基础组件属于 MySQL 关系型数据库系统环境范畴。\n\n【数据要素完整性评估与维护建议】\n1. 参数缺失事实：文档原文未提供具体的软件版本号、监听端口、存储路径、集群拓扑、负责人、预算额度及交付验收要求。\n2. 操作规程说明：原文未定义具体的包管理安装指令、配置脚本或运维安全策略。\n3. 知识库检索属性：当前知识片段定义为待完善的基础环境节点存根，用于索引定位，需在后续工程落地中补充详细的配置方案与审计指标。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:24:28.111Z",
+          "updatedAt": "2026-10-16T02:27:24.748Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 0。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "09074f80-9f6b-4dd6-ae6f-eecf184b9853",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-14.md",
+          "type": "file",
+          "fileSize": "919",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/09074f80-9f6b-4dd6-ae6f-eecf184b9853_GREPE2E1792117407979-14.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-14 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 11”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 11 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 393,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 11",
+              "GREPE2E1792117407979-14",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:27:24.709Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-14）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 11”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 10 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 11”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:27:11.686Z",
+          "updatedAt": "2026-10-16T02:27:24.745Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 11。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "60a3a63f-089e-4c26-b47c-3af430e578b1",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-12.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/60a3a63f-089e-4c26-b47c-3af430e578b1_GREPE2E1792117407979-12.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-12 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 9”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 9 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 9",
+              "GREPE2E1792117407979-12",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:26:59.468Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-12）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 9”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 8 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 9”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:26:43.815Z",
+          "updatedAt": "2026-10-16T02:27:24.744Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 9。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "1b7452e0-da2d-40bb-9518-c3fd475ce2e3",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-13.md",
+          "type": "file",
+          "fileSize": "919",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/1b7452e0-da2d-40bb-9518-c3fd475ce2e3_GREPE2E1792117407979-13.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-13 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 10”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 10 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 393,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 10",
+              "GREPE2E1792117407979-13",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:27:11.660Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-13）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 10”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 9 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 10”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:26:59.492Z",
+          "updatedAt": "2026-10-16T02:27:24.744Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 10。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "70bb50bc-5589-445e-8b0c-166cd9db9d4a",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-11.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/70bb50bc-5589-445e-8b0c-166cd9db9d4a_GREPE2E1792117407979-11.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-11 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 8”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 8 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 8",
+              "GREPE2E1792117407979-11",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:26:43.791Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-11）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 8”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 7 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 8”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:26:30.928Z",
+          "updatedAt": "2026-10-16T02:27:24.743Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 8。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "2e785840-0c7e-44a2-9d94-b8929aeff36a",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-10.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/2e785840-0c7e-44a2-9d94-b8929aeff36a_GREPE2E1792117407979-10.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-10 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 7”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 7 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 7",
+              "GREPE2E1792117407979-10",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:26:30.852Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-10）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 7”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 6 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 7”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:26:18.036Z",
+          "updatedAt": "2026-10-16T02:27:24.742Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 7。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "185ef2b9-2300-4660-996e-b68489047ca3",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-8.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/185ef2b9-2300-4660-996e-b68489047ca3_GREPE2E1792117407979-8.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-8 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 5”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 5 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 5",
+              "GREPE2E1792117407979-8",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:26:05.740Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-8）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 5”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 4 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 5”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:25:52.615Z",
+          "updatedAt": "2026-10-16T02:27:24.741Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 5。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "7bc94a0a-6a03-4766-b924-bbddfad8a509",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-9.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/7bc94a0a-6a03-4766-b924-bbddfad8a509_GREPE2E1792117407979-9.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-9 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 6”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 6 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 6",
+              "GREPE2E1792117407979-9",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:26:18.017Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-9）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 6”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 5 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 6”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:26:05.771Z",
+          "updatedAt": "2026-10-16T02:27:24.740Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 6。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "6238e0fe-34a8-4dce-9397-01c604a1253f",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-7.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/6238e0fe-34a8-4dce-9397-01c604a1253f_GREPE2E1792117407979-7.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-7 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 4”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 4 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 4",
+              "GREPE2E1792117407979-7",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:25:52.581Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-7）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 4”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 3 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 4”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:25:37.217Z",
+          "updatedAt": "2026-10-16T02:27:24.739Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 4。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "9e7379a3-f3d8-4f06-8bc4-e82e052ab3bf",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-6.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/9e7379a3-f3d8-4f06-8bc4-e82e052ab3bf_GREPE2E1792117407979-6.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-6 实施企业级知识库深度清洗与信息提炼。原始记录仅包含核心标识“MySQL 环境 3”，并伴随大量循环冗余的“安装 配置 部署 教程 步骤 说明”无业务语义占位词，缺乏有效技术信息熵。经过专业数据治理，已彻底清除全部无意义噪音文本。经核实，文档未提供负责人、预算金额、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 3 的详细配置补全与合规审计建立了明确的锚点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 3",
+              "GREPE2E1792117407979-6",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:25:37.204Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-6）在企业知识库数据清洗流程中实施了深度去噪处理。原始文本主体由多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇组成，缺乏具体的系统拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 3”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 2 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未记载任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等关键业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 3”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:25:23.132Z",
+          "updatedAt": "2026-10-16T02:27:24.738Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 3。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "8d4b17f9-a971-4344-a46f-16fdced5b5a3",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-4.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/8d4b17f9-a971-4344-a46f-16fdced5b5a3_GREPE2E1792117407979-4.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-4 实施深度去噪与数据提炼。原始记录中充斥大量循环冗余的“安装 配置 部署 教程 步骤 说明”无效占位词，缺乏有效技术信息熵，已在清洗规程中予以彻底剔除。经事实核验，文档仅包含“MySQL 环境 1”这一明确的核心标的实体，未包含负责人、资金预算、时间节点、验收口令及部署命令等关键业务数据，故结构化事实数据字段标识为 null。本次清洗将该文档提炼为标准的基础环境存根节点，消除了无效占位符对知识检索系统的干扰，并为后续企业级关系型数据库集群各节点参数的补充维护提供了精准位点。",
+            "headings": [
+              "1. 文档清洗与去噪规程说明",
+              "2. 核心标的实体与环境属性",
+              "3. 关键要素与完备性审计"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 1",
+              "GREPE2E1792117407979-4",
+              "GREPE2E1792117407979",
+              "关系型数据库环境",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:25:10.679Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗与去噪规程说明】\n本文档（编号：GREPE2E1792117407979-4）在知识库数据治理中进行了系统性去噪。原始文档主体由重复堆叠的“安装 配置 部署 教程 步骤 说明”通用词汇构成，未包含具体的操作流程、参数配置或执行脚本，属于典型的无信息熵占位噪声，现已全部剥离净化。\n\n【核心实体与环境属性】\n深度去噪后提炼的核心事实为标的实体“MySQL 环境 1”。该实体属于企业关系型数据库架构中的基础节点/环境标识，用以与序列中的其他环境（如 MySQL 环境 0）进行区分与映射。\n\n【关键要素与完备性审计】\n1. 结构化事实缺失：经核查，原文未提供包括项目负责人、实施预算、交付时间节点、验收测试口令及终端数量在内的任何业务数据。\n2. 运维规程缺失：文档未记载 MySQL 软件版本、配置文件路径、端口分配、主从同步或高可用容灾方案。\n3. 知识检索与引用建议：本知识片段应作为“MySQL 环境 1”的节点状态存根引用，避免知识检索系统误判为完整的部署指南，后续需根据实际系统建设进展补充详细配置文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:24:51.223Z",
+          "updatedAt": "2026-10-16T02:27:24.737Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 1。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "6ec3af64-72cb-4ffa-b4df-94f9e99ee136",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-2.md",
+          "type": "file",
+          "fileSize": "90",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/6ec3af64-72cb-4ffa-b4df-94f9e99ee136_GREPE2E1792117407979-2.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本文档为企业基础架构中关于 Redis 高可用配置项目的核心规范与交付指引。该项目由负责人陈晨统筹推进，核定实施预算总额为83000元人民币。文档明确了该工程的关键商务与技术指标，并设定了以 RD-8821 为专用验收口令的合规准入机制。本执行摘要确立了 Redis 高可用建设的主体责任人、财务预算边界以及交付验证的核心凭据，为后续生产环境容灾保障、运维交接审计及企业知识库精准检索提供了权威的数据依据。",
+            "headings": [
+              "1. 项目基础信息与责任矩阵",
+              "2. 财务预算与成本核算",
+              "3. 交付验收机制与口令核验"
+            ],
+            "charCount": 42,
+            "keyTopics": [
+              "Redis",
+              "Redis 高可用",
+              "陈晨",
+              "RD-8821",
+              "GREPE2E1792117407979-2",
+              "GREPE2E1792117407979"
+            ],
+            "wordCount": 2,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:24:28.081Z",
+            "extractedData": {
+              "预算": "83000元",
+              "负责人": "陈晨",
+              "项目名称": "Redis 高可用配置",
+              "预算金额": "83000元",
+              "验收口令": "RD-8821",
+              "关联文件编号": "GREPE2E1792117407979-2"
+            },
+            "cleanedContent": "【项目定位与责任矩阵】\n本项目专注于企业级 Redis 高可用架构的构建与规范化落地，旨在提升核心数据缓存层的容灾容错能力及服务连续性。项目技术实施与交付管理由负责人陈晨全面主导，负责协调架构资源调配、系统稳定性把控及最终交付流程。\n\n【资金预算与资源投入】\n项目核定执行预算总额为：83000元整。该资金用于覆盖 Redis 高可用架构搭建、性能压测及主备切换联调等阶段的资源成本，项目执行过程须遵循统一的企业预算管理与财务审计标准。\n\n【验收标准与口令验证】\n在完成高可用集群环境搭建与服务连续性验证后，项目进入交付与准入核销阶段。交付过程中严格执行凭证校验机制，项目指定验收口令为：RD-8821。系统核验人员须在生产准入与归档报告中完整校验并记录该口令，以确保交付结果合规有效。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:24:06.765Z",
+          "updatedAt": "2026-10-16T02:27:24.735Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "Redis 高可用配置。负责人：陈晨。预算：83000元。验收口令：RD-8821。"
+        }
+      ]
+    },
+    {
+      "query": "KS-7Q4M-9286",
+      "elapsedMs": 20,
+      "rank": 1,
+      "reciprocalRank": 1,
+      "precisionAt3": 1,
+      "results": [
+        {
+          "id": "8207e560-4a4d-41bc-9ef9-7a804d6a7720",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-0.md",
+          "type": "file",
+          "fileSize": "269",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/8207e560-4a4d-41bc-9ef9-7a804d6a7720_GREPE2E1792117407979-0.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本文档定义了项目编号为 GREPE2E1792117407979-A17 的 DeepSeek Harness 安装配置与交付规范。该项目由林晓雨负责推进，总体预算核定为52931元，交付截止日期为2026年11月12日。文档明确了通过 pip 命令进行组件部署的标准路径，并设定了严格的验收标准：必须在四台模拟终端完成联合调试，凭专用验收口令 KS-7Q4M-9286 进行验证，并规范形成三份归档记录，为系统交付与合规验收提供了明确依据。",
+            "headings": [
+              "1. 项目基础信息与资源配置",
+              "2. 系统环境部署指引",
+              "3. 验收标准与联调归档规程"
+            ],
+            "charCount": 159,
+            "keyTopics": [
+              "DeepSeek Harness",
+              "GREPE2E1792117407979-A17",
+              "林晓雨",
+              "KS-7Q4M-9286",
+              "deepseek-harness",
+              "模拟终端联调"
+            ],
+            "wordCount": 13,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:23:47.245Z",
+            "extractedData": {
+              "预算": "52931元",
+              "负责人": "林晓雨",
+              "安装命令": "pip install deepseek-harness",
+              "截止日期": "2026-11-12",
+              "项目代号": "GREPE2E1792117407979-A17",
+              "项目名称": "DeepSeek Harness 安装配置",
+              "项目编号": "GREPE2E1792117407979-A17",
+              "项目预算": "52931元",
+              "验收口令": "KS-7Q4M-9286",
+              "归档记录数量": "3份",
+              "联调终端数量": "4台模拟终端"
+            },
+            "cleanedContent": "项目名称：DeepSeek Harness 安装配置\n项目编号：GREPE2E1792117407979-A17\n项目负责人：林晓雨\n预算总额：52931元\n交付截止时间：2026-11-12\n\n一、部署与安装规范\n系统核心依赖组件采用 Python 包管理工具进行安装，标准执行命令如下：\npip install deepseek-harness\n\n二、联调与验收标准\n1. 终端联调要求：系统必须在四台模拟终端环境下完成全链路联合调试，确保节点间通信与协同功能稳定运行。\n2. 安全核验机制：验收时须输入并校验指定验收口令：KS-7Q4M-9286。\n3. 资料归档规范：验收流程结束后，须按规定形成并归档三份完整的测试与验收记录，以确保交付质量与审计追溯性。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:23:28.109Z",
+          "updatedAt": "2026-10-16T02:27:24.746Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 6,
+              "snippet": "验收口令：KS-7Q4M-9286"
+            }
+          ],
+          "fullTextPreview": "DeepSeek Harness 安装配置\n项目编号 GREPE2E1792117407979-A17\n负责人：林晓雨\n预算：52931元\n截止日期：2026-11-12\n验收口令：KS-7Q4M-9286\n安装命令：pip install deepseek-harness\n验收要求：四台模拟终端联调，归档三份记录。"
+        }
+      ]
+    },
+    {
+      "query": "林晓雨",
+      "elapsedMs": 21,
+      "rank": 1,
+      "reciprocalRank": 1,
+      "precisionAt3": 1,
+      "results": [
+        {
+          "id": "8207e560-4a4d-41bc-9ef9-7a804d6a7720",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-0.md",
+          "type": "file",
+          "fileSize": "269",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/8207e560-4a4d-41bc-9ef9-7a804d6a7720_GREPE2E1792117407979-0.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本文档定义了项目编号为 GREPE2E1792117407979-A17 的 DeepSeek Harness 安装配置与交付规范。该项目由林晓雨负责推进，总体预算核定为52931元，交付截止日期为2026年11月12日。文档明确了通过 pip 命令进行组件部署的标准路径，并设定了严格的验收标准：必须在四台模拟终端完成联合调试，凭专用验收口令 KS-7Q4M-9286 进行验证，并规范形成三份归档记录，为系统交付与合规验收提供了明确依据。",
+            "headings": [
+              "1. 项目基础信息与资源配置",
+              "2. 系统环境部署指引",
+              "3. 验收标准与联调归档规程"
+            ],
+            "charCount": 159,
+            "keyTopics": [
+              "DeepSeek Harness",
+              "GREPE2E1792117407979-A17",
+              "林晓雨",
+              "KS-7Q4M-9286",
+              "deepseek-harness",
+              "模拟终端联调"
+            ],
+            "wordCount": 13,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:23:47.245Z",
+            "extractedData": {
+              "预算": "52931元",
+              "负责人": "林晓雨",
+              "安装命令": "pip install deepseek-harness",
+              "截止日期": "2026-11-12",
+              "项目代号": "GREPE2E1792117407979-A17",
+              "项目名称": "DeepSeek Harness 安装配置",
+              "项目编号": "GREPE2E1792117407979-A17",
+              "项目预算": "52931元",
+              "验收口令": "KS-7Q4M-9286",
+              "归档记录数量": "3份",
+              "联调终端数量": "4台模拟终端"
+            },
+            "cleanedContent": "项目名称：DeepSeek Harness 安装配置\n项目编号：GREPE2E1792117407979-A17\n项目负责人：林晓雨\n预算总额：52931元\n交付截止时间：2026-11-12\n\n一、部署与安装规范\n系统核心依赖组件采用 Python 包管理工具进行安装，标准执行命令如下：\npip install deepseek-harness\n\n二、联调与验收标准\n1. 终端联调要求：系统必须在四台模拟终端环境下完成全链路联合调试，确保节点间通信与协同功能稳定运行。\n2. 安全核验机制：验收时须输入并校验指定验收口令：KS-7Q4M-9286。\n3. 资料归档规范：验收流程结束后，须按规定形成并归档三份完整的测试与验收记录，以确保交付质量与审计追溯性。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:23:28.109Z",
+          "updatedAt": "2026-10-16T02:27:24.746Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 3,
+              "snippet": "负责人：林晓雨"
+            }
+          ],
+          "fullTextPreview": "DeepSeek Harness 安装配置\n项目编号 GREPE2E1792117407979-A17\n负责人：林晓雨\n预算：52931元\n截止日期：2026-11-12\n验收口令：KS-7Q4M-9286\n安装命令：pip install deepseek-harness\n验收要求：四台模拟终端联调，归档三份记录。"
+        }
+      ]
+    },
+    {
+      "query": "52931",
+      "elapsedMs": 21,
+      "rank": 1,
+      "reciprocalRank": 1,
+      "precisionAt3": 1,
+      "results": [
+        {
+          "id": "8207e560-4a4d-41bc-9ef9-7a804d6a7720",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-0.md",
+          "type": "file",
+          "fileSize": "269",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/8207e560-4a4d-41bc-9ef9-7a804d6a7720_GREPE2E1792117407979-0.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本文档定义了项目编号为 GREPE2E1792117407979-A17 的 DeepSeek Harness 安装配置与交付规范。该项目由林晓雨负责推进，总体预算核定为52931元，交付截止日期为2026年11月12日。文档明确了通过 pip 命令进行组件部署的标准路径，并设定了严格的验收标准：必须在四台模拟终端完成联合调试，凭专用验收口令 KS-7Q4M-9286 进行验证，并规范形成三份归档记录，为系统交付与合规验收提供了明确依据。",
+            "headings": [
+              "1. 项目基础信息与资源配置",
+              "2. 系统环境部署指引",
+              "3. 验收标准与联调归档规程"
+            ],
+            "charCount": 159,
+            "keyTopics": [
+              "DeepSeek Harness",
+              "GREPE2E1792117407979-A17",
+              "林晓雨",
+              "KS-7Q4M-9286",
+              "deepseek-harness",
+              "模拟终端联调"
+            ],
+            "wordCount": 13,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:23:47.245Z",
+            "extractedData": {
+              "预算": "52931元",
+              "负责人": "林晓雨",
+              "安装命令": "pip install deepseek-harness",
+              "截止日期": "2026-11-12",
+              "项目代号": "GREPE2E1792117407979-A17",
+              "项目名称": "DeepSeek Harness 安装配置",
+              "项目编号": "GREPE2E1792117407979-A17",
+              "项目预算": "52931元",
+              "验收口令": "KS-7Q4M-9286",
+              "归档记录数量": "3份",
+              "联调终端数量": "4台模拟终端"
+            },
+            "cleanedContent": "项目名称：DeepSeek Harness 安装配置\n项目编号：GREPE2E1792117407979-A17\n项目负责人：林晓雨\n预算总额：52931元\n交付截止时间：2026-11-12\n\n一、部署与安装规范\n系统核心依赖组件采用 Python 包管理工具进行安装，标准执行命令如下：\npip install deepseek-harness\n\n二、联调与验收标准\n1. 终端联调要求：系统必须在四台模拟终端环境下完成全链路联合调试，确保节点间通信与协同功能稳定运行。\n2. 安全核验机制：验收时须输入并校验指定验收口令：KS-7Q4M-9286。\n3. 资料归档规范：验收流程结束后，须按规定形成并归档三份完整的测试与验收记录，以确保交付质量与审计追溯性。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:23:28.109Z",
+          "updatedAt": "2026-10-16T02:27:24.746Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 4,
+              "snippet": "预算：52931元"
+            }
+          ],
+          "fullTextPreview": "DeepSeek Harness 安装配置\n项目编号 GREPE2E1792117407979-A17\n负责人：林晓雨\n预算：52931元\n截止日期：2026-11-12\n验收口令：KS-7Q4M-9286\n安装命令：pip install deepseek-harness\n验收要求：四台模拟终端联调，归档三份记录。"
+        }
+      ]
+    },
+    {
+      "query": "Redis 高可用配置",
+      "elapsedMs": 24,
+      "rank": 1,
+      "reciprocalRank": 1,
+      "precisionAt3": 1,
+      "results": [
+        {
+          "id": "6ec3af64-72cb-4ffa-b4df-94f9e99ee136",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-2.md",
+          "type": "file",
+          "fileSize": "90",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/6ec3af64-72cb-4ffa-b4df-94f9e99ee136_GREPE2E1792117407979-2.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本文档为企业基础架构中关于 Redis 高可用配置项目的核心规范与交付指引。该项目由负责人陈晨统筹推进，核定实施预算总额为83000元人民币。文档明确了该工程的关键商务与技术指标，并设定了以 RD-8821 为专用验收口令的合规准入机制。本执行摘要确立了 Redis 高可用建设的主体责任人、财务预算边界以及交付验证的核心凭据，为后续生产环境容灾保障、运维交接审计及企业知识库精准检索提供了权威的数据依据。",
+            "headings": [
+              "1. 项目基础信息与责任矩阵",
+              "2. 财务预算与成本核算",
+              "3. 交付验收机制与口令核验"
+            ],
+            "charCount": 42,
+            "keyTopics": [
+              "Redis",
+              "Redis 高可用",
+              "陈晨",
+              "RD-8821",
+              "GREPE2E1792117407979-2",
+              "GREPE2E1792117407979"
+            ],
+            "wordCount": 2,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:24:28.081Z",
+            "extractedData": {
+              "预算": "83000元",
+              "负责人": "陈晨",
+              "项目名称": "Redis 高可用配置",
+              "预算金额": "83000元",
+              "验收口令": "RD-8821",
+              "关联文件编号": "GREPE2E1792117407979-2"
+            },
+            "cleanedContent": "【项目定位与责任矩阵】\n本项目专注于企业级 Redis 高可用架构的构建与规范化落地，旨在提升核心数据缓存层的容灾容错能力及服务连续性。项目技术实施与交付管理由负责人陈晨全面主导，负责协调架构资源调配、系统稳定性把控及最终交付流程。\n\n【资金预算与资源投入】\n项目核定执行预算总额为：83000元整。该资金用于覆盖 Redis 高可用架构搭建、性能压测及主备切换联调等阶段的资源成本，项目执行过程须遵循统一的企业预算管理与财务审计标准。\n\n【验收标准与口令验证】\n在完成高可用集群环境搭建与服务连续性验证后，项目进入交付与准入核销阶段。交付过程中严格执行凭证校验机制，项目指定验收口令为：RD-8821。系统核验人员须在生产准入与归档报告中完整校验并记录该口令，以确保交付结果合规有效。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:24:06.765Z",
+          "updatedAt": "2026-10-16T02:27:24.735Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "Redis 高可用配置。负责人：陈晨。预算：83000元。验收口令：RD-8821。"
+            }
+          ],
+          "fullTextPreview": "Redis 高可用配置。负责人：陈晨。预算：83000元。验收口令：RD-8821。"
+        }
+      ]
+    },
+    {
+      "query": "GREPE2E1792117407979-ABSENT 安装配置",
+      "elapsedMs": 25,
+      "rank": 0,
+      "reciprocalRank": 0,
+      "precisionAt3": 0,
+      "results": [
+        {
+          "id": "4b9a6bbe-6eaf-4396-815b-e2c74169b1ac",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-5.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/4b9a6bbe-6eaf-4396-815b-e2c74169b1ac_GREPE2E1792117407979-5.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-5 实施知识库深度清洗与信息提炼。原始文本仅包含核心标识“MySQL 环境 2”，并充斥大量无业务语义与区分度的“安装 配置 部署 教程 步骤 说明”占位动词重复堆叠。经过专家级深度去噪处理，已全面剔除无意义冗余文本。经事实核验，文档未包含负责人、资金预算、时间节点、验收口令及具体执行命令等关键结构化数据，故结构化事实字段标识为 null。本次清洗将该文档提炼为标准的基础环境存根节点，消除了无效占位符对知识检索系统的干扰，并为后续企业级数据库架构对应节点的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 2",
+              "GREPE2E1792117407979-5",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:25:23.081Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-5）在知识库数据治理流程中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的操作规程、配置参数或技术方案，属于典型的无信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的核心事实为标的实体“MySQL 环境 2”。该实体属于企业关系型数据库架构环境中的第三个序列节点（对应 MySQL 环境 0、MySQL 环境 1），用于后续集群拓扑或多套环境划分的标识映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，文档原文未包含项目负责人、实施预算、交付时间节点、验收测试口令及终端联调数量等业务参数。\n2. 运维技术参数：原文未包含 MySQL 具体版本分支、端口分配、配置文件参数、主从复制拓扑或安全加固脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 2”的基础环境存根节点进行索引维护，避免知识检索系统误判为有效部署指南，后续须根据实际系统建设进展补充详细配置文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:25:10.707Z",
+          "updatedAt": "2026-10-16T02:27:24.748Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 2。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "b6c6f137-58b4-45ae-a6af-261c9aa72f05",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-3.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/b6c6f137-58b4-45ae-a6af-261c9aa72f05_GREPE2E1792117407979-3.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对文档 GREPE2E1792117407979-3 进行知识库深度清洗与信息提炼。原始文本仅包含核心标识“MySQL 环境 0”，并伴有大量无业务语义与区分度的流程占位动词重复堆叠。经过专家级深度去噪处理，已全面清除无意义冗余文本。经核实，文档原文未包含负责人、资金预算、时间节点、安全验收口令及具体执行命令等关键结构化事实。本次清洗将其归档为规范的“MySQL 环境 0”基础知识存根，消除了知识检索干扰，并为后续企业级数据库架构参数的补充录入提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声剥离",
+              "2. 核心标的实体与环境标识",
+              "3. 数据要素完整性评估与维护建议"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 0",
+              "GREPE2E1792117407979-3",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础环境"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:24:51.197Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声剥离】\n本文档（编号：GREPE2E1792117407979-3）在知识库数据治理中完成深度去噪处理。原始文本中大量循环重复出现的“安装 配置 部署 教程 步骤 说明”属于典型的无实际技术参数与业务事实的通用占位词，缺乏有效信息熵，已在清洗规程中全部剔除。\n\n【核心标的实体与环境标识】\n去除噪声后，文档中确立的唯一实体事实为“MySQL 环境 0”。该项标识明确了基础组件属于 MySQL 关系型数据库系统环境范畴。\n\n【数据要素完整性评估与维护建议】\n1. 参数缺失事实：文档原文未提供具体的软件版本号、监听端口、存储路径、集群拓扑、负责人、预算额度及交付验收要求。\n2. 操作规程说明：原文未定义具体的包管理安装指令、配置脚本或运维安全策略。\n3. 知识库检索属性：当前知识片段定义为待完善的基础环境节点存根，用于索引定位，需在后续工程落地中补充详细的配置方案与审计指标。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:24:28.111Z",
+          "updatedAt": "2026-10-16T02:27:24.748Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 0。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "09074f80-9f6b-4dd6-ae6f-eecf184b9853",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-14.md",
+          "type": "file",
+          "fileSize": "919",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/09074f80-9f6b-4dd6-ae6f-eecf184b9853_GREPE2E1792117407979-14.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-14 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 11”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 11 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 393,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 11",
+              "GREPE2E1792117407979-14",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:27:24.709Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-14）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 11”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 10 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 11”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:27:11.686Z",
+          "updatedAt": "2026-10-16T02:27:24.745Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 11。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "60a3a63f-089e-4c26-b47c-3af430e578b1",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-12.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/60a3a63f-089e-4c26-b47c-3af430e578b1_GREPE2E1792117407979-12.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-12 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 9”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 9 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 9",
+              "GREPE2E1792117407979-12",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:26:59.468Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-12）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 9”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 8 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 9”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:26:43.815Z",
+          "updatedAt": "2026-10-16T02:27:24.744Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 9。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "1b7452e0-da2d-40bb-9518-c3fd475ce2e3",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-13.md",
+          "type": "file",
+          "fileSize": "919",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/1b7452e0-da2d-40bb-9518-c3fd475ce2e3_GREPE2E1792117407979-13.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-13 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 10”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 10 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 393,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 10",
+              "GREPE2E1792117407979-13",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:27:11.660Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-13）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 10”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 9 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 10”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:26:59.492Z",
+          "updatedAt": "2026-10-16T02:27:24.744Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 10。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "70bb50bc-5589-445e-8b0c-166cd9db9d4a",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-11.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/70bb50bc-5589-445e-8b0c-166cd9db9d4a_GREPE2E1792117407979-11.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-11 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 8”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 8 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 8",
+              "GREPE2E1792117407979-11",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:26:43.791Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-11）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 8”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 7 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 8”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:26:30.928Z",
+          "updatedAt": "2026-10-16T02:27:24.743Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 8。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "2e785840-0c7e-44a2-9d94-b8929aeff36a",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-10.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/2e785840-0c7e-44a2-9d94-b8929aeff36a_GREPE2E1792117407979-10.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-10 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 7”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 7 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 7",
+              "GREPE2E1792117407979-10",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:26:30.852Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-10）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 7”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 6 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 7”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:26:18.036Z",
+          "updatedAt": "2026-10-16T02:27:24.742Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 7。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "185ef2b9-2300-4660-996e-b68489047ca3",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-8.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/185ef2b9-2300-4660-996e-b68489047ca3_GREPE2E1792117407979-8.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-8 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 5”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 5 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 5",
+              "GREPE2E1792117407979-8",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:26:05.740Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-8）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 5”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 4 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 5”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:25:52.615Z",
+          "updatedAt": "2026-10-16T02:27:24.741Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 5。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "7bc94a0a-6a03-4766-b924-bbddfad8a509",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-9.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/7bc94a0a-6a03-4766-b924-bbddfad8a509_GREPE2E1792117407979-9.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-9 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 6”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 6 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 6",
+              "GREPE2E1792117407979-9",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:26:18.017Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-9）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 6”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 5 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 6”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:26:05.771Z",
+          "updatedAt": "2026-10-16T02:27:24.740Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 6。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "6238e0fe-34a8-4dce-9397-01c604a1253f",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-7.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/6238e0fe-34a8-4dce-9397-01c604a1253f_GREPE2E1792117407979-7.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-7 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 4”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 4 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 4",
+              "GREPE2E1792117407979-7",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:25:52.581Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-7）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 4”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 3 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 4”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:25:37.217Z",
+          "updatedAt": "2026-10-16T02:27:24.739Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 4。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "9e7379a3-f3d8-4f06-8bc4-e82e052ab3bf",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-6.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/9e7379a3-f3d8-4f06-8bc4-e82e052ab3bf_GREPE2E1792117407979-6.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-6 实施企业级知识库深度清洗与信息提炼。原始记录仅包含核心标识“MySQL 环境 3”，并伴随大量循环冗余的“安装 配置 部署 教程 步骤 说明”无业务语义占位词，缺乏有效技术信息熵。经过专业数据治理，已彻底清除全部无意义噪音文本。经核实，文档未提供负责人、预算金额、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 3 的详细配置补全与合规审计建立了明确的锚点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 3",
+              "GREPE2E1792117407979-6",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:25:37.204Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-6）在企业知识库数据清洗流程中实施了深度去噪处理。原始文本主体由多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇组成，缺乏具体的系统拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 3”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 2 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未记载任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等关键业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 3”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:25:23.132Z",
+          "updatedAt": "2026-10-16T02:27:24.738Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 3。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "8d4b17f9-a971-4344-a46f-16fdced5b5a3",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-4.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/8d4b17f9-a971-4344-a46f-16fdced5b5a3_GREPE2E1792117407979-4.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-4 实施深度去噪与数据提炼。原始记录中充斥大量循环冗余的“安装 配置 部署 教程 步骤 说明”无效占位词，缺乏有效技术信息熵，已在清洗规程中予以彻底剔除。经事实核验，文档仅包含“MySQL 环境 1”这一明确的核心标的实体，未包含负责人、资金预算、时间节点、验收口令及部署命令等关键业务数据，故结构化事实数据字段标识为 null。本次清洗将该文档提炼为标准的基础环境存根节点，消除了无效占位符对知识检索系统的干扰，并为后续企业级关系型数据库集群各节点参数的补充维护提供了精准位点。",
+            "headings": [
+              "1. 文档清洗与去噪规程说明",
+              "2. 核心标的实体与环境属性",
+              "3. 关键要素与完备性审计"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 1",
+              "GREPE2E1792117407979-4",
+              "GREPE2E1792117407979",
+              "关系型数据库环境",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:25:10.679Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗与去噪规程说明】\n本文档（编号：GREPE2E1792117407979-4）在知识库数据治理中进行了系统性去噪。原始文档主体由重复堆叠的“安装 配置 部署 教程 步骤 说明”通用词汇构成，未包含具体的操作流程、参数配置或执行脚本，属于典型的无信息熵占位噪声，现已全部剥离净化。\n\n【核心实体与环境属性】\n深度去噪后提炼的核心事实为标的实体“MySQL 环境 1”。该实体属于企业关系型数据库架构中的基础节点/环境标识，用以与序列中的其他环境（如 MySQL 环境 0）进行区分与映射。\n\n【关键要素与完备性审计】\n1. 结构化事实缺失：经核查，原文未提供包括项目负责人、实施预算、交付时间节点、验收测试口令及终端数量在内的任何业务数据。\n2. 运维规程缺失：文档未记载 MySQL 软件版本、配置文件路径、端口分配、主从同步或高可用容灾方案。\n3. 知识检索与引用建议：本知识片段应作为“MySQL 环境 1”的节点状态存根引用，避免知识检索系统误判为完整的部署指南，后续需根据实际系统建设进展补充详细配置文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:24:51.223Z",
+          "updatedAt": "2026-10-16T02:27:24.737Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 1。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "6ec3af64-72cb-4ffa-b4df-94f9e99ee136",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-2.md",
+          "type": "file",
+          "fileSize": "90",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/6ec3af64-72cb-4ffa-b4df-94f9e99ee136_GREPE2E1792117407979-2.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本文档为企业基础架构中关于 Redis 高可用配置项目的核心规范与交付指引。该项目由负责人陈晨统筹推进，核定实施预算总额为83000元人民币。文档明确了该工程的关键商务与技术指标，并设定了以 RD-8821 为专用验收口令的合规准入机制。本执行摘要确立了 Redis 高可用建设的主体责任人、财务预算边界以及交付验证的核心凭据，为后续生产环境容灾保障、运维交接审计及企业知识库精准检索提供了权威的数据依据。",
+            "headings": [
+              "1. 项目基础信息与责任矩阵",
+              "2. 财务预算与成本核算",
+              "3. 交付验收机制与口令核验"
+            ],
+            "charCount": 42,
+            "keyTopics": [
+              "Redis",
+              "Redis 高可用",
+              "陈晨",
+              "RD-8821",
+              "GREPE2E1792117407979-2",
+              "GREPE2E1792117407979"
+            ],
+            "wordCount": 2,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:24:28.081Z",
+            "extractedData": {
+              "预算": "83000元",
+              "负责人": "陈晨",
+              "项目名称": "Redis 高可用配置",
+              "预算金额": "83000元",
+              "验收口令": "RD-8821",
+              "关联文件编号": "GREPE2E1792117407979-2"
+            },
+            "cleanedContent": "【项目定位与责任矩阵】\n本项目专注于企业级 Redis 高可用架构的构建与规范化落地，旨在提升核心数据缓存层的容灾容错能力及服务连续性。项目技术实施与交付管理由负责人陈晨全面主导，负责协调架构资源调配、系统稳定性把控及最终交付流程。\n\n【资金预算与资源投入】\n项目核定执行预算总额为：83000元整。该资金用于覆盖 Redis 高可用架构搭建、性能压测及主备切换联调等阶段的资源成本，项目执行过程须遵循统一的企业预算管理与财务审计标准。\n\n【验收标准与口令验证】\n在完成高可用集群环境搭建与服务连续性验证后，项目进入交付与准入核销阶段。交付过程中严格执行凭证校验机制，项目指定验收口令为：RD-8821。系统核验人员须在生产准入与归档报告中完整校验并记录该口令，以确保交付结果合规有效。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:24:06.765Z",
+          "updatedAt": "2026-10-16T02:27:24.735Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "Redis 高可用配置。负责人：陈晨。预算：83000元。验收口令：RD-8821。"
+        }
+      ]
+    },
+    {
+      "query": "GREPE2E1792117407979-ABSENT",
+      "elapsedMs": 23,
+      "rank": 0,
+      "reciprocalRank": 0,
+      "precisionAt3": 0,
+      "results": [
+        {
+          "id": "4b9a6bbe-6eaf-4396-815b-e2c74169b1ac",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-5.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/4b9a6bbe-6eaf-4396-815b-e2c74169b1ac_GREPE2E1792117407979-5.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-5 实施知识库深度清洗与信息提炼。原始文本仅包含核心标识“MySQL 环境 2”，并充斥大量无业务语义与区分度的“安装 配置 部署 教程 步骤 说明”占位动词重复堆叠。经过专家级深度去噪处理，已全面剔除无意义冗余文本。经事实核验，文档未包含负责人、资金预算、时间节点、验收口令及具体执行命令等关键结构化数据，故结构化事实字段标识为 null。本次清洗将该文档提炼为标准的基础环境存根节点，消除了无效占位符对知识检索系统的干扰，并为后续企业级数据库架构对应节点的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 2",
+              "GREPE2E1792117407979-5",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:25:23.081Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-5）在知识库数据治理流程中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的操作规程、配置参数或技术方案，属于典型的无信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的核心事实为标的实体“MySQL 环境 2”。该实体属于企业关系型数据库架构环境中的第三个序列节点（对应 MySQL 环境 0、MySQL 环境 1），用于后续集群拓扑或多套环境划分的标识映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，文档原文未包含项目负责人、实施预算、交付时间节点、验收测试口令及终端联调数量等业务参数。\n2. 运维技术参数：原文未包含 MySQL 具体版本分支、端口分配、配置文件参数、主从复制拓扑或安全加固脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 2”的基础环境存根节点进行索引维护，避免知识检索系统误判为有效部署指南，后续须根据实际系统建设进展补充详细配置文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:25:10.707Z",
+          "updatedAt": "2026-10-16T02:27:24.748Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 2。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "b6c6f137-58b4-45ae-a6af-261c9aa72f05",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-3.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/b6c6f137-58b4-45ae-a6af-261c9aa72f05_GREPE2E1792117407979-3.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对文档 GREPE2E1792117407979-3 进行知识库深度清洗与信息提炼。原始文本仅包含核心标识“MySQL 环境 0”，并伴有大量无业务语义与区分度的流程占位动词重复堆叠。经过专家级深度去噪处理，已全面清除无意义冗余文本。经核实，文档原文未包含负责人、资金预算、时间节点、安全验收口令及具体执行命令等关键结构化事实。本次清洗将其归档为规范的“MySQL 环境 0”基础知识存根，消除了知识检索干扰，并为后续企业级数据库架构参数的补充录入提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声剥离",
+              "2. 核心标的实体与环境标识",
+              "3. 数据要素完整性评估与维护建议"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 0",
+              "GREPE2E1792117407979-3",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础环境"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:24:51.197Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声剥离】\n本文档（编号：GREPE2E1792117407979-3）在知识库数据治理中完成深度去噪处理。原始文本中大量循环重复出现的“安装 配置 部署 教程 步骤 说明”属于典型的无实际技术参数与业务事实的通用占位词，缺乏有效信息熵，已在清洗规程中全部剔除。\n\n【核心标的实体与环境标识】\n去除噪声后，文档中确立的唯一实体事实为“MySQL 环境 0”。该项标识明确了基础组件属于 MySQL 关系型数据库系统环境范畴。\n\n【数据要素完整性评估与维护建议】\n1. 参数缺失事实：文档原文未提供具体的软件版本号、监听端口、存储路径、集群拓扑、负责人、预算额度及交付验收要求。\n2. 操作规程说明：原文未定义具体的包管理安装指令、配置脚本或运维安全策略。\n3. 知识库检索属性：当前知识片段定义为待完善的基础环境节点存根，用于索引定位，需在后续工程落地中补充详细的配置方案与审计指标。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:24:28.111Z",
+          "updatedAt": "2026-10-16T02:27:24.748Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 0。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "09074f80-9f6b-4dd6-ae6f-eecf184b9853",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-14.md",
+          "type": "file",
+          "fileSize": "919",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/09074f80-9f6b-4dd6-ae6f-eecf184b9853_GREPE2E1792117407979-14.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-14 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 11”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 11 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 393,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 11",
+              "GREPE2E1792117407979-14",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:27:24.709Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-14）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 11”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 10 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 11”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:27:11.686Z",
+          "updatedAt": "2026-10-16T02:27:24.745Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 11。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "60a3a63f-089e-4c26-b47c-3af430e578b1",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-12.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/60a3a63f-089e-4c26-b47c-3af430e578b1_GREPE2E1792117407979-12.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-12 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 9”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 9 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 9",
+              "GREPE2E1792117407979-12",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:26:59.468Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-12）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 9”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 8 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 9”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:26:43.815Z",
+          "updatedAt": "2026-10-16T02:27:24.744Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 9。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "1b7452e0-da2d-40bb-9518-c3fd475ce2e3",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-13.md",
+          "type": "file",
+          "fileSize": "919",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/1b7452e0-da2d-40bb-9518-c3fd475ce2e3_GREPE2E1792117407979-13.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-13 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 10”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 10 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 393,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 10",
+              "GREPE2E1792117407979-13",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:27:11.660Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-13）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 10”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 9 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 10”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:26:59.492Z",
+          "updatedAt": "2026-10-16T02:27:24.744Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 10。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "70bb50bc-5589-445e-8b0c-166cd9db9d4a",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-11.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/70bb50bc-5589-445e-8b0c-166cd9db9d4a_GREPE2E1792117407979-11.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-11 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 8”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 8 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 8",
+              "GREPE2E1792117407979-11",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:26:43.791Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-11）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 8”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 7 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 8”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:26:30.928Z",
+          "updatedAt": "2026-10-16T02:27:24.743Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 8。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "2e785840-0c7e-44a2-9d94-b8929aeff36a",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-10.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/2e785840-0c7e-44a2-9d94-b8929aeff36a_GREPE2E1792117407979-10.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-10 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 7”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 7 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 7",
+              "GREPE2E1792117407979-10",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:26:30.852Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-10）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 7”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 6 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 7”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:26:18.036Z",
+          "updatedAt": "2026-10-16T02:27:24.742Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 7。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "185ef2b9-2300-4660-996e-b68489047ca3",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-8.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/185ef2b9-2300-4660-996e-b68489047ca3_GREPE2E1792117407979-8.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-8 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 5”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 5 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 5",
+              "GREPE2E1792117407979-8",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:26:05.740Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-8）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 5”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 4 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 5”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:25:52.615Z",
+          "updatedAt": "2026-10-16T02:27:24.741Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 5。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "7bc94a0a-6a03-4766-b924-bbddfad8a509",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-9.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/7bc94a0a-6a03-4766-b924-bbddfad8a509_GREPE2E1792117407979-9.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-9 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 6”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 6 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 6",
+              "GREPE2E1792117407979-9",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:26:18.017Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-9）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 6”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 5 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 6”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:26:05.771Z",
+          "updatedAt": "2026-10-16T02:27:24.740Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 6。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "6238e0fe-34a8-4dce-9397-01c604a1253f",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-7.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/6238e0fe-34a8-4dce-9397-01c604a1253f_GREPE2E1792117407979-7.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-7 实施企业知识库深度清洗与核心事实提炼。原始文本主体充斥多轮循环冗余的“安装 配置 部署 教程 步骤 说明”占位动词，缺乏有效技术信息熵，已在清洗规程中彻底剥离净化。文档唯一保留的核心标的实体为“MySQL 环境 4”。经严格事实核验，原文未包含负责人、项目预算、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 4 的参数补全与审计提供了基准位点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 4",
+              "GREPE2E1792117407979-7",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:25:52.581Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-7）在企业知识库数据治理中完成了深度去噪。原始文档主体为多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇，未包含任何具体的实施拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 4”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 3 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未包含任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 4”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:25:37.217Z",
+          "updatedAt": "2026-10-16T02:27:24.739Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 4。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "9e7379a3-f3d8-4f06-8bc4-e82e052ab3bf",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-6.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/9e7379a3-f3d8-4f06-8bc4-e82e052ab3bf_GREPE2E1792117407979-6.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-6 实施企业级知识库深度清洗与信息提炼。原始记录仅包含核心标识“MySQL 环境 3”，并伴随大量循环冗余的“安装 配置 部署 教程 步骤 说明”无业务语义占位词，缺乏有效技术信息熵。经过专业数据治理，已彻底清除全部无意义噪音文本。经核实，文档未提供负责人、预算金额、交付截止时间、验收口令及具体执行命令等关键结构化数据，故结构化事实数据字段设为 null。本次清洗将该文档转化为标准化的基础环境存根节点，消除了知识检索系统的歧义干扰，并为后续关系型数据库集群环境 3 的详细配置补全与合规审计建立了明确的锚点。",
+            "headings": [
+              "1. 文档清洗说明与噪声治理",
+              "2. 标的实体与环境属性界定",
+              "3. 要素完备性核验与维护指引"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 3",
+              "GREPE2E1792117407979-6",
+              "GREPE2E1792117407979",
+              "关系型数据库管理系统",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:25:37.204Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗说明与噪声治理】\n本文档（编号：GREPE2E1792117407979-6）在企业知识库数据清洗流程中实施了深度去噪处理。原始文本主体由多轮循环堆叠的“安装 配置 部署 教程 步骤 说明”通用占位词汇组成，缺乏具体的系统拓扑、操作规程或参数配置，属于典型的低信息熵占位噪声，现已在治理规程中予以彻底剥离。\n\n【标的实体与环境属性界定】\n剔除无意义噪声后，提炼出的唯一核心事实为标的实体“MySQL 环境 3”。在企业级关系型数据库集群架构或多环境管理序列中（对应环境 0 至环境 2 的序列延伸），该实体作为独立的数据库环境节点进行标识，用于系统环境规划与实例归属映射。\n\n【要素完备性核验与维护指引】\n1. 结构化业务事实：经严格核验，原文未记载任何项目负责人、预算金额、交付截止时间、安全验收口令及终端联调数量等关键业务参数。\n2. 技术实现规范：文档未包含具体的 MySQL 版本型号、监听端口号、存储引擎策略、配置文件路径或高可用部署脚本。\n3. 知识检索与引用建议：当前知识片段仅作为“MySQL 环境 3”的基础环境存根节点记录在册，用以确保环境序列标识的完整性，并防止检索系统误将其匹配为有效实施方案；后续须结合实际生产环境规划补充具体的配置规程与参数文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:25:23.132Z",
+          "updatedAt": "2026-10-16T02:27:24.738Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 3。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "8d4b17f9-a971-4344-a46f-16fdced5b5a3",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-4.md",
+          "type": "file",
+          "fileSize": "918",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/8d4b17f9-a971-4344-a46f-16fdced5b5a3_GREPE2E1792117407979-4.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本报告针对技术文档 GREPE2E1792117407979-4 实施深度去噪与数据提炼。原始记录中充斥大量循环冗余的“安装 配置 部署 教程 步骤 说明”无效占位词，缺乏有效技术信息熵，已在清洗规程中予以彻底剔除。经事实核验，文档仅包含“MySQL 环境 1”这一明确的核心标的实体，未包含负责人、资金预算、时间节点、验收口令及部署命令等关键业务数据，故结构化事实数据字段标识为 null。本次清洗将该文档提炼为标准的基础环境存根节点，消除了无效占位符对知识检索系统的干扰，并为后续企业级关系型数据库集群各节点参数的补充维护提供了精准位点。",
+            "headings": [
+              "1. 文档清洗与去噪规程说明",
+              "2. 核心标的实体与环境属性",
+              "3. 关键要素与完备性审计"
+            ],
+            "charCount": 392,
+            "keyTopics": [
+              "MySQL",
+              "MySQL 环境 1",
+              "GREPE2E1792117407979-4",
+              "GREPE2E1792117407979",
+              "关系型数据库环境",
+              "数据库基础节点"
+            ],
+            "wordCount": 123,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:25:10.679Z",
+            "extractedData": null,
+            "cleanedContent": "【文档清洗与去噪规程说明】\n本文档（编号：GREPE2E1792117407979-4）在知识库数据治理中进行了系统性去噪。原始文档主体由重复堆叠的“安装 配置 部署 教程 步骤 说明”通用词汇构成，未包含具体的操作流程、参数配置或执行脚本，属于典型的无信息熵占位噪声，现已全部剥离净化。\n\n【核心实体与环境属性】\n深度去噪后提炼的核心事实为标的实体“MySQL 环境 1”。该实体属于企业关系型数据库架构中的基础节点/环境标识，用以与序列中的其他环境（如 MySQL 环境 0）进行区分与映射。\n\n【关键要素与完备性审计】\n1. 结构化事实缺失：经核查，原文未提供包括项目负责人、实施预算、交付时间节点、验收测试口令及终端数量在内的任何业务数据。\n2. 运维规程缺失：文档未记载 MySQL 软件版本、配置文件路径、端口分配、主从同步或高可用容灾方案。\n3. 知识检索与引用建议：本知识片段应作为“MySQL 环境 1”的节点状态存根引用，避免知识检索系统误判为完整的部署指南，后续需根据实际系统建设进展补充详细配置文档。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:24:51.223Z",
+          "updatedAt": "2026-10-16T02:27:24.737Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "MySQL 环境 1。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n安装 配置 部署 教程 步骤 说明。\n"
+        },
+        {
+          "id": "6ec3af64-72cb-4ffa-b4df-94f9e99ee136",
+          "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+          "parentId": "7670d1ad-54b7-400f-aab3-61a4e95c44fd",
+          "name": "GREPE2E1792117407979-2.md",
+          "type": "file",
+          "fileSize": "90",
+          "mimeType": "text/markdown",
+          "storagePath": "personal/e71d0321-c690-44e5-980d-1c736a803a76/6ec3af64-72cb-4ffa-b4df-94f9e99ee136_GREPE2E1792117407979-2.md",
+          "digest": {
+            "aiModel": "default",
+            "summary": "本文档为企业基础架构中关于 Redis 高可用配置项目的核心规范与交付指引。该项目由负责人陈晨统筹推进，核定实施预算总额为83000元人民币。文档明确了该工程的关键商务与技术指标，并设定了以 RD-8821 为专用验收口令的合规准入机制。本执行摘要确立了 Redis 高可用建设的主体责任人、财务预算边界以及交付验证的核心凭据，为后续生产环境容灾保障、运维交接审计及企业知识库精准检索提供了权威的数据依据。",
+            "headings": [
+              "1. 项目基础信息与责任矩阵",
+              "2. 财务预算与成本核算",
+              "3. 交付验收机制与口令核验"
+            ],
+            "charCount": 42,
+            "keyTopics": [
+              "Redis",
+              "Redis 高可用",
+              "陈晨",
+              "RD-8821",
+              "GREPE2E1792117407979-2",
+              "GREPE2E1792117407979"
+            ],
+            "wordCount": 2,
+            "cleanPrompt": "保留原文所有专有名词、项目编号、负责人、金额、日期、口令、命令及验收数量，不得编造。",
+            "cleanedByAi": true,
+            "extractedAt": "2026-10-16T02:24:28.081Z",
+            "extractedData": {
+              "预算": "83000元",
+              "负责人": "陈晨",
+              "项目名称": "Redis 高可用配置",
+              "预算金额": "83000元",
+              "验收口令": "RD-8821",
+              "关联文件编号": "GREPE2E1792117407979-2"
+            },
+            "cleanedContent": "【项目定位与责任矩阵】\n本项目专注于企业级 Redis 高可用架构的构建与规范化落地，旨在提升核心数据缓存层的容灾容错能力及服务连续性。项目技术实施与交付管理由负责人陈晨全面主导，负责协调架构资源调配、系统稳定性把控及最终交付流程。\n\n【资金预算与资源投入】\n项目核定执行预算总额为：83000元整。该资金用于覆盖 Redis 高可用架构搭建、性能压测及主备切换联调等阶段的资源成本，项目执行过程须遵循统一的企业预算管理与财务审计标准。\n\n【验收标准与口令验证】\n在完成高可用集群环境搭建与服务连续性验证后，项目进入交付与准入核销阶段。交付过程中严格执行凭证校验机制，项目指定验收口令为：RD-8821。系统核验人员须在生产准入与归档报告中完整校验并记录该口令，以确保交付结果合规有效。",
+            "hasExtractedText": true,
+            "readingTimeMinutes": 1
+          },
+          "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+          "createdAt": "2026-10-16T02:24:06.765Z",
+          "updatedAt": "2026-10-16T02:27:24.735Z",
+          "workspaceType": "personal",
+          "workspaceName": "我的空间",
+          "matches": [
+            {
+              "line": 1,
+              "snippet": "[核心主题标签] #GREPE2E1792117407979"
+            }
+          ],
+          "fullTextPreview": "Redis 高可用配置。负责人：陈晨。预算：83000元。验收口令：RD-8821。"
+        }
+      ]
+    },
+    {
+      "query": "x",
+      "elapsedMs": 2,
+      "rank": 0,
+      "reciprocalRank": 0,
+      "precisionAt3": null,
+      "results": []
+    },
+    {
+      "query": "   ",
+      "elapsedMs": 3,
+      "rank": 0,
+      "reciprocalRank": 0,
+      "precisionAt3": null,
+      "results": []
+    }
+  ],
+  "cleanupErrors": [],
+  "passed": false
+}

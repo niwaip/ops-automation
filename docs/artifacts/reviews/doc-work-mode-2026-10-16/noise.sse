@@ -1,0 +1,22 @@
+data: {"type":"thought","content":"任务属于原生模型能力范畴（无需调用外部工具），在工作模式受控环境中执行...","seq":1,"protocolVersion":"1","sessionId":"doc-e2e-1792117757998-noise","traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0","data":{"traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0"}}
+
+data: {"type":"thought","content":"正在检索工作空间内部知识库相关文档...","seq":2,"protocolVersion":"1","sessionId":"doc-e2e-1792117757998-noise","traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0","data":{"traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0"}}
+
+data: {"type":"thought","content":"在工作空间知识库中未检索到与 \"UNSEEN1792117757998的安装配置方法，请检索工作空间文件，没有该实体请明确未找到，不要用其他软件教程代替。\" 直接相关的内容，将基于通用模型知识回答...","seq":3,"protocolVersion":"1","sessionId":"doc-e2e-1792117757998-noise","traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0","data":{"traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0"}}
+
+data: {"type":"observation","content":"","data":{"mode":"task","thinking":true,"reasoning":true,"traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0"},"seq":4,"protocolVersion":"1","sessionId":"doc-e2e-1792117757998-noise","traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0"}
+
+data: {"type":"observation","content":"经检索，**未找到**","data":{"mode":"task","thinking":true,"reasoning":true,"traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0"},"seq":5,"protocolVersion":"1","sessionId":"doc-e2e-1792117757998-noise","traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0"}
+
+data: {"type":"observation","content":"经检索，**未找到**与实体“`UNSEEN1792117757998`”相关的任何","data":{"mode":"task","thinking":true,"reasoning":true,"traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0"},"seq":6,"protocolVersion":"1","sessionId":"doc-e2e-1792117757998-noise","traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0"}
+
+data: {"type":"observation","content":"经检索，**未找到**与实体“`UNSEEN1792117757998`”相关的任何文档、代码或配置记录。\n\n因此无法提供该实体的安装与配置方法。","data":{"mode":"task","thinking":true,"reasoning":true,"traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0"},"seq":7,"protocolVersion":"1","sessionId":"doc-e2e-1792117757998-noise","traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0"}
+
+data: {"type":"observation","content":"经检索，**未找到**与实体“`UNSEEN1792117757998`”相关的任何文档、代码或配置记录。\n\n因此无法提供该实体的安装与配置方法。","data":{"mode":"task","thinking":true,"reasoning":true,"traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0"},"seq":8,"protocolVersion":"1","sessionId":"doc-e2e-1792117757998-noise","traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0"}
+
+data: {"type":"result","content":"经检索，**未找到**与实体“`UNSEEN1792117757998`”相关的任何文档、代码或配置记录。\n\n因此无法提供该实体的安装与配置方法。","data":{"code":"NATIVE_TASK_COMPLETED","status":"completed","executed":true,"hasBusinessResult":true,"executionMode":"native_llm","usage":{"prompt_tokens":131,"completion_tokens":50,"total_tokens":627,"completion_tokens_details":{"reasoning_tokens":446}},"traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0"},"seq":9,"protocolVersion":"1","sessionId":"doc-e2e-1792117757998-noise","traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0"}
+
+data: {"type":"session_patch","sessionId":"doc-e2e-1792117757998-noise","content":"","data":{"title":"/doc UNSEEN1792117757998","status":"active","updatedAt":"2026-10-16T02:29:50.944Z","traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0"},"seq":10,"protocolVersion":"1","traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0"}
+
+data: {"type":"done","content":"Stream completed","seq":11,"protocolVersion":"1","sessionId":"doc-e2e-1792117757998-noise","traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0","data":{"traceId":"8a0ba3fd-1c97-4c87-bc12-e3b54d6888c0"}}
+

@@ -1,0 +1,33 @@
+{
+  "batch": 1792117878786,
+  "results": [
+    {
+      "id": "prefix",
+      "message": "/doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回其他文档。",
+      "elapsedMs": 7990,
+      "executionId": "7978df0d-5e6a-4727-a6e8-0cb741ed6a56",
+      "executionStatus": "succeeded",
+      "checks": {
+        "executionCreated": true,
+        "executionSucceeded": true,
+        "noStreamError": true,
+        "explorerUsed": true,
+        "answer": true
+      },
+      "passed": true
+    },
+    {
+      "id": "install",
+      "message": "/doc deepseek harness的安装方法，请检索空间文件，列出最相关文件及命中原文，排除仅包含安装配置通用词的无关文档。",
+      "elapsedMs": 14160,
+      "checks": {
+        "executionCreated": false,
+        "executionSucceeded": false,
+        "noStreamError": true,
+        "explorerUsed": false,
+        "answer": false
+      },
+      "passed": false
+    }
+  ]
+}

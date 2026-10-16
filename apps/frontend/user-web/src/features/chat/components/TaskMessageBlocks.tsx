@@ -192,6 +192,7 @@ function TaskOutcomeBlockContent({
     description?: string;
     group_label?: string;
     display_name?: string;
+    label?: string;
     missing?: boolean;
   }[];
   const waitingInputItems = missingInputs.map((item, index) => ({
@@ -201,6 +202,7 @@ function TaskOutcomeBlockContent({
       description: item.description,
       group_label: item.group_label,
       display_name: item.display_name,
+      label: item.label,
     }),
   }));
   const waitingInputGroupMap = missingInputs.reduce<Map<string, typeof waitingInputItems>>(
@@ -215,6 +217,7 @@ function TaskOutcomeBlockContent({
           description: item.description,
           group_label: item.group_label,
           display_name: item.display_name,
+          label: item.label,
         }),
       });
       groups.set(label, groupItems);

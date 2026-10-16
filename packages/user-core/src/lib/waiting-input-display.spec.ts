@@ -36,6 +36,18 @@ describe('waiting-input-display helpers', () => {
       }),
       '甲方公司全称'
     );
+    assert.equal(
+      resolveWaitingInputDisplayLabel({
+        name: 'fileBase64',
+      }),
+      '待提取的文档附件（请通过下方附件图标上传）'
+    );
+    assert.equal(
+      resolveWaitingInputDisplayLabel({
+        name: 'n1.fileBase64',
+      }),
+      '待提取的文档附件（请通过下方附件图标上传）'
+    );
   });
 
   it('builds waiting input display groups with cleaned group labels', () => {

@@ -1,15 +1,16 @@
 import {
-Body,
-Controller,
-Delete,
-Get,
-Param,
-Post,
-Query,
-Request,
-Res,
-UploadedFile,
-UseInterceptors,
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+  Request,
+  Res,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes,ApiOperation,ApiTags } from '@nestjs/swagger';
@@ -32,10 +33,11 @@ export class WorkspaceController {
 
   private extractAuth(req: any) {
     const userId = req.user?.id || req.user?.userId || 'anonymous';
+    // 严格从服务端认证上下文中获取，严禁采信未经服务端鉴权的客户端请求头 x-department-id
     const departmentId =
       req.user?.departmentId ||
       req.user?.organizationId ||
-      (typeof req.headers['x-department-id'] === 'string' ? req.headers['x-department-id'] : undefined);
+      undefined;
     const userRoles: string[] = Array.isArray(req.user?.roles)
       ? req.user.roles
       : req.user?.role
@@ -58,11 +60,10 @@ export class WorkspaceController {
     @Query('departmentId') targetDeptId?: string,
     @Query('userId') targetUserId?: string
   ) {
-    const { userId, departmentId, userRoles } = this.extractAuth(req);
+    const { userId, userRoles } = this.extractAuth(req);
     const isAdmin = userRoles.includes('admin');
-    const effectiveDeptId = (isAdmin && targetDeptId) ? targetDeptId : (targetDeptId || departmentId);
     const effectiveUserId = (isAdmin && targetUserId) ? targetUserId : userId;
-    return await this.workspaceService.getMyWorkspaces(effectiveUserId, effectiveDeptId);
+    return await this.workspaceService.getMyWorkspaces(effectiveUserId, targetDeptId, userRoles);
   }
 
   @Get('search')
@@ -94,6 +95,10 @@ export class WorkspaceController {
     @Query('startLine') startLine?: string,
     @Query('endLine') endLine?: string
   ) {
+    const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (!UUID_REGEX.test(workspaceId) || !UUID_REGEX.test(nodeId)) {
+      throw new BadRequestException('无效的工作空间或文档标识（必须为有效 UUID）');
+    }
     const { userId, departmentId, userRoles } = this.extractAuth(req);
     return await this.workspaceService.getFileContent(
       workspaceId,
@@ -143,14 +148,30 @@ export class WorkspaceController {
     );
   }
 
+  @Get(':workspaceId/digest-stats')
+  @ApiOperation({ summary: '获取指定工作空间的文档知识提炼与 AI 治理统计指标' })
+  async getDigestStats(
+    @Request() req: any,
+    @Param('workspaceId') workspaceId: string
+  ) {
+    const { userId, departmentId, userRoles } = this.extractAuth(req);
+    return await this.workspaceService.getDigestStats(
+      workspaceId,
+      userId,
+      userRoles,
+      departmentId
+    );
+  }
+
   @Get(':workspaceId/nodes')
-  @ApiOperation({ summary: '获取指定目录下的文件与文件夹列表' })
+  @ApiOperation({ summary: '获取指定目录下的文件与文件夹列表（支持平铺一览与治理范围过滤）' })
   async getNodes(
     @Request() req: any,
     @Param('workspaceId') workspaceId: string,
     @Query('parentId') parentId?: string,
     @Query('sortBy') sortBy?: string,
-    @Query('order') order?: 'asc' | 'desc'
+    @Query('order') order?: 'asc' | 'desc',
+    @Query('scope') scope?: 'folder' | 'all' | 'ai_cleaned' | 'uncleaned'
   ) {
     const { userId, departmentId, userRoles } = this.extractAuth(req);
     return await this.workspaceService.getNodes(
@@ -160,7 +181,8 @@ export class WorkspaceController {
       userRoles,
       departmentId,
       sortBy,
-      order
+      order,
+      scope
     );
   }
 

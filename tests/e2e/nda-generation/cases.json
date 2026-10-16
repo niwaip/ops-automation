@@ -1,0 +1,130 @@
+[
+  {
+    "caseId": "NDA-01",
+    "title": "自然语言标准生成（我方默认乙方，完整参数单句输入）",
+    "description": "用户用自然语言提出保密协议生成诉求，明确说明我们是乙方，指定合作方公司与地址、合作主题和签署日期。验证是否正确路由至 ConfidentialityAgreementGenerationWorkflow，准确识别各字段参数且乙方保持默认我方主体，并记录各阶段耗时与 Token 指标。",
+    "input": {
+      "message": "生成保密协议 我们是乙方，需要和 北京王府井大街100号 的 豆包公司 ，关于 ai模型开发项目签订保密协议， 签订日是今天",
+      "mode": "task"
+    },
+    "expected": {
+      "route": "ConfidentialityAgreementGenerationWorkflow",
+      "status": "succeeded",
+      "parameters": {
+        "partyA.name": "豆包公司",
+        "partyA.address": "北京王府井大街100号",
+        "partyB.name_contains": "富士通",
+        "cooperation.subject_contains": "ai模型开发",
+        "confidentiality.durationYears": 3,
+        "agreement.signDate.year": 2026,
+        "agreement.signDate.month": 10,
+        "agreement.signDate.day": 15
+      },
+      "performance": {
+        "maxPlanningDurationMs": 15000,
+        "maxTotalDurationMs": 40000
+      }
+    }
+  },
+  {
+    "caseId": "NDA-02",
+    "title": "签约角色显式反转（我方为甲方，对方为乙方）",
+    "description": "用户明确声明我方是甲方、对方是乙方并提供各自注册地址与合作年限。验证参数识别引擎严格遵循用户指定的角色，将我方映射为 partyA，对方映射为 partyB，严禁角色与地址倒置，并记录性能指标。",
+    "input": {
+      "message": "生成保密协议 我方是甲方 豆包有限公司，注册在深圳南山区科技园，对方是乙方 腾讯科技有限公司，地址是深圳南山区深南大道10000号，合作业务是云计算平台建设，期限为5年，签约日期是今天",
+      "mode": "task"
+    },
+    "expected": {
+      "route": "ConfidentialityAgreementGenerationWorkflow",
+      "status": "succeeded",
+      "parameters": {
+        "partyA.name": "豆包有限公司",
+        "partyA.address": "深圳南山区科技园",
+        "partyB.name": "腾讯科技有限公司",
+        "partyB.address": "深圳南山区深南大道10000号",
+        "cooperation.subject": "云计算平台建设",
+        "confidentiality.durationYears": 5,
+        "agreement.signDate.year": 2026,
+        "agreement.signDate.month": 10,
+        "agreement.signDate.day": 15
+      },
+      "performance": {
+        "maxPlanningDurationMs": 15000,
+        "maxTotalDurationMs": 40000
+      }
+    }
+  },
+  {
+    "caseId": "NDA-03",
+    "title": "欠缺关键参数拦截与追问门禁（无主体草率诉求）",
+    "description": "用户仅输入泛化的“帮我生成一份保密协议”，缺乏任何相对方与合作标的信息。验证路由能识别意图，但不会凭空伪造任何实体名称或虚构参数，而是安全挂起进入 waiting_input 状态提示用户补充参数，且具备极低短路时延。",
+    "input": {
+      "message": "帮我生成一份保密协议",
+      "mode": "task"
+    },
+    "expected": {
+      "route": "ConfidentialityAgreementGenerationWorkflow",
+      "status": "waiting_input",
+      "missingInputsInclude": ["partyA.name"],
+      "performance": {
+        "maxGatingDurationMs": 10000
+      }
+    }
+  },
+  {
+    "caseId": "NDA-04",
+    "title": "意图冲突隔离边界（合同审查意图 vs 生成意图）",
+    "description": "用户提出审查保密协议中的风险条款。验证路由严格识别“审查”动词，阻断保密协议生成引擎，正确将请求派发至 contract-reviewer，绝不发生误生成合同新工单的副作用。",
+    "input": {
+      "message": "审查关于豆包公司的保密协议中的排他性条款与风险点",
+      "mode": "task"
+    },
+    "expected": {
+      "blockedRoute": "ConfidentialityAgreementGenerationWorkflow",
+      "routedCapability": "platform.document.contract-reviewer",
+      "performance": {
+        "maxRoutingDecisionMs": 12000
+      }
+    }
+  },
+  {
+    "caseId": "NDA-05",
+    "title": "工作流指令语法快速直达（!保密合同 指令通道）",
+    "description": "用户使用企业协同工作流感叹号语法直接触发专属保密合同流。验证系统通过快速规则通道直达保密协议生成技能，正确绑定各要件参数并生成规范交付物。",
+    "input": {
+      "message": "!保密合同 我需要的北京王府井大街1000号的 豆包有限公司，签订关于 ai模型开发的 保密协议，签订日期是今天，我们是乙方 富士通",
+      "mode": "task"
+    },
+    "expected": {
+      "route": "ConfidentialityAgreementGenerationWorkflow",
+      "status": "succeeded",
+      "parameters": {
+        "partyA.name": "豆包有限公司",
+        "partyA.address": "北京王府井大街1000号",
+        "partyB.name_contains": "富士通",
+        "cooperation.subject_contains": "ai模型开发"
+      },
+      "performance": {
+        "maxTotalDurationMs": 40000
+      }
+    }
+  },
+  {
+    "caseId": "NDA-06",
+    "title": "多轮会话参数补齐续接与全链路性能剖析",
+    "description": "模拟真实业务场景：第一轮欠缺参数触发挂起，第二轮自然语言补充相对方及合作要件。验证 executionId 保持延续，参数准确聚合，最终达成成功终态，并输出两轮全链路耗时与 Token 开销基准。",
+    "input": {
+      "turn1": "帮我生成一份保密协议",
+      "turn2": "甲方公司全称：上海浦东张江高科商汤科技有限公司\n甲方注册地址：上海浦东新区张江高科园区1号楼\n业务合作主题：计算机视觉与多模态AI算法合作\n保密期限：3年\n签订日期：今天",
+      "mode": "task"
+    },
+    "expected": {
+      "turn1Status": "waiting_input",
+      "turn2Status": "succeeded",
+      "route": "ConfidentialityAgreementGenerationWorkflow",
+      "performance": {
+        "maxTotalDurationMs": 60000
+      }
+    }
+  }
+]

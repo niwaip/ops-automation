@@ -3,10 +3,11 @@ import { executeWebSearch } from '../src/modules/execution/adapters/search-web.h
 
 jest.mock('axios', () => ({
   __esModule: true,
-  default: { post: jest.fn() },
+  default: { post: jest.fn(), get: jest.fn() },
 }));
 
 const mockedPost = axios.post as jest.Mock;
+const mockedGet = axios.get as jest.Mock;
 
 describe('executeWebSearch', () => {
   const originalEnv = { ...process.env };
@@ -27,6 +28,7 @@ describe('executeWebSearch', () => {
     delete process.env.EXA_API_KEY;
     delete process.env.FIRECRAWL_KEYLESS_ENABLED;
     process.env.DUCKDUCKGO_ENABLED = 'false';
+    process.env.BING_ENABLED = 'false';
     delete process.env.SEARCH_PROVIDER_ORDER;
 
     const result = await executeWebSearch({ input: { query: 'OpenAI' } } as any);
@@ -225,8 +227,33 @@ describe('executeWebSearch', () => {
     expect(result.output?.warnings).toContain('使用 DuckDuckGo 免凭据公开通道检索');
   });
 
+  it('supports Bing free search fallback when enabled', async () => {
+    delete process.env.TAVILY_API_KEY;
+    delete process.env.FIRECRAWL_API_KEY;
+    delete process.env.EXA_API_KEY;
+    process.env.DUCKDUCKGO_ENABLED = 'false';
+    process.env.BING_ENABLED = 'true';
+
+    const mockHtml = `
+      <li class="b_algo">
+        <h2><a href="https://example.org/bing">Bing Topic Title</a></h2>
+        <p><span class="news_dt">2026-10-15</span>Bing Snippet Content</p>
+      </li>
+    `;
+    mockedGet.mockResolvedValueOnce({ data: mockHtml });
+
+    const result = await executeWebSearch({ input: { query: 'Bing Info' } } as any);
+
+    expect(result.success).toBe(true);
+    expect(result.output?.provider).toBe('bing');
+    expect(result.output?.results[0].url).toBe('https://example.org/bing');
+    expect(result.output?.results[0].title).toBe('Bing Topic Title');
+    expect(result.output?.warnings).toContain('使用 Bing 免凭据公开通道检索');
+  });
+
   it('uses DuckDuckGo by default after Tavily is rejected', async () => {
     process.env.TAVILY_API_KEY = 'test-secret';
+    process.env.BING_ENABLED = 'false';
     delete process.env.DUCKDUCKGO_ENABLED;
     delete process.env.SEARCH_PROVIDER_ORDER;
     mockedPost.mockRejectedValueOnce({ response: { status: 403 } });

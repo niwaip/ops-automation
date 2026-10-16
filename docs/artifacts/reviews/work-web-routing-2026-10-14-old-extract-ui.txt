@@ -1,0 +1,274 @@
+- complementary:
+  - button:
+  - menu:
+    - menuitem "dashboard 工作台":
+      - img "dashboard":
+      - generic: 工作台
+    - menuitem "message 智能协同":
+      - img "message":
+      - generic: 智能协同
+    - menuitem "carry-out 任务中心":
+      - img "carry-out":
+      - generic: 任务中心
+    - menuitem "team 数字员工":
+      - img "team":
+      - generic: 数字员工
+    - menuitem "folder 资料空间":
+      - img "folder":
+      - generic: 资料空间
+  - menu:
+    - menuitem "setting 系统设置":
+      - img "setting":
+      - generic: 系统设置
+- banner:
+  - button "展开侧边栏":
+    - img "menu-unfold":
+  - generic: 智能协同
+  - button "bell 1 1":
+    - img "bell":
+    - superscript:
+      - generic: "1"
+      - generic: "1"
+  - button "bg-colors 浅色":
+    - img "bg-colors":
+    - generic: 浅色
+  - button "global 中文":
+    - img "global":
+    - generic: 中文
+  - button "A admin admin@example.com down":
+    - generic: A
+    - generic: admin
+    - generic: admin@example.com
+    - img "down":
+- main:
+  - button "menu-unfold":
+    - img "menu-unfold":
+  - button "plus":
+    - img "plus":
+  - button "清理全部会话":
+    - img "clear":
+  - img "desktop":
+  - text: 网页
+  - strong: /doc 查找标题包含“E2E_WORK_MOD
+  - button "调整阅读字体大小":
+    - img "font-size":
+  - button "plus":
+    - img "plus":
+  - button "reload":
+    - img "reload":
+  - button "delete":
+    - img "delete":
+  - generic: 任务结果
+  - link "thunderbolt 详细":
+    - /url: /executions/58204936-bb49-40dd-963c-2ea1163ecb2e
+    - img "thunderbolt":
+    - generic: 详细
+  - generic: 状态：已完成
+  - paragraph:
+    - text: 在工作空间中针对
+    - strong: “保密合同”
+    - text: 共检索到
+    - strong: "30"
+    - text: 个相关文档。以下为部分匹配文档：
+  - list:
+    - paragraph:
+      - strong:
+        - link "[流程管理空间] 合同合规审查报告_保密合同_测试验证_1790834878251_v1_法务批注版.html":
+          - /url: /workspaces?tab=process&fileId=da34b960-89f0-418a-8809-f850a3dd6851&workspaceId=d6db0a16-a34e-4e3b-b367-512182e4dfec
+    - list:
+      - strong: 文档类型
+      - text: ：合同智能审查与合规诊断报告 · 工作底稿
+      - strong: 查阅链接
+      - text: ：
+      - link "打开文档":
+        - /url: /workspaces?tab=process&fileId=da34b960-89f0-418a-8809-f850a3dd6851&workspaceId=d6db0a16-a34e-4e3b-b367-512182e4dfec
+    - paragraph:
+      - strong:
+        - link "[流程管理空间] 合同合规审查报告_保密合同_测试验证_1790834487980_v1_法务批注版.html":
+          - /url: /workspaces?tab=process&fileId=f4e70d48-adb0-46f7-b70a-0e7e1266861e&workspaceId=d6db0a16-a34e-4e3b-b367-512182e4dfec
+    - list:
+      - strong: 文档类型
+      - text: ：合同智能审查与合规诊断报告 · 工作底稿
+      - strong: 查阅链接
+      - text: ：
+      - link "打开文档":
+        - /url: /workspaces?tab=process&fileId=f4e70d48-adb0-46f7-b70a-0e7e1266861e&workspaceId=d6db0a16-a34e-4e3b-b367-512182e4dfec
+    - paragraph:
+      - strong:
+        - link "[流程管理空间] 合同合规审查报告_保密合同_测试验证_1790841727728_v1_法务批注版.html":
+          - /url: /workspaces?tab=process&fileId=31e2db21-a769-4980-ba3f-94fb6a017d9d&workspaceId=d6db0a16-a34e-4e3b-b367-512182e4dfec
+    - list:
+      - strong: 文档类型
+      - text: ：合同智能审查与合规诊断报告 · 工作底稿
+      - strong: 查阅链接
+      - text: ：
+      - link "打开文档":
+        - /url: /workspaces?tab=process&fileId=31e2db21-a769-4980-ba3f-94fb6a017d9d&workspaceId=d6db0a16-a34e-4e3b-b367-512182e4dfec
+    - paragraph:
+      - strong:
+        - link "[流程管理空间] 合同合规审查报告_保密合同_测试验证_1790840978220_v1_法务批注版.html":
+          - /url: /workspaces?tab=process&fileId=a319f3d2-304d-41a7-9b59-34febd0cff8c&workspaceId=d6db0a16-a34e-4e3b-b367-512182e4dfec
+    - list:
+      - strong: 文档类型
+      - text: ：合同智能审查与合规诊断报告 · 工作底稿
+      - strong: 查阅链接
+      - text: ：
+      - link "打开文档":
+        - /url: /workspaces?tab=process&fileId=a319f3d2-304d-41a7-9b59-34febd0cff8c&workspaceId=d6db0a16-a34e-4e3b-b367-512182e4dfec
+  - paragraph: 可以通过上述链接直接在线查阅对应文档。
+  - generic "点击展开完整内容"
+  - button "down 展开阅读完整报告（约 1.5k 字）":
+    - img "down":
+    - generic: 展开阅读完整报告（约 1.5k 字）
+  - button "copy 复制全文":
+    - img "copy":
+    - generic: 复制全文
+  - button "fullscreen 全屏沉浸阅读":
+    - img "fullscreen":
+    - generic: 全屏沉浸阅读
+  - img "play-circle":
+  - generic: ⚖️ 合同文档智能审查与合规诊断报告
+  - generic: 合同合规审查报告_保密合同_测试验证_1790834878251_v1_法务批注版.html
+  - generic: 💡 审查报告已就绪：支持审查意见高亮、风险分级与诊断分析（点击展开预览）
+  - button "eye 展开在线预览":
+    - img "eye":
+    - generic: 展开在线预览
+  - button "fullscreen 全屏":
+    - img "fullscreen":
+    - generic: 全屏
+  - button "export 新窗口":
+    - img "export":
+    - generic: 新窗口
+  - button "download 下载":
+    - img "download":
+    - generic: 下载
+  - generic "查看结构化结果"
+  - generic "查看相关结果与产物链接 (4 项)"
+  - img "folder":
+  - generic: 参考工作空间文档（点击直接就地预览）：
+  - button "eye [流程管理空间] 合同合规审查报告_保密合同_测试验证_1790834878251_v1_法务批注版.html :L5":
+    - img "eye":
+    - generic: "[流程管理空间] 合同合规审查报告_保密合同_测试验证_1790834878251_v1_法务批注版.html"
+    - generic: :L5
+  - button "eye [流程管理空间] 合同合规审查报告_保密合同_测试验证_1790834878251_v1_法务批注版.html :L6":
+    - img "eye":
+    - generic: "[流程管理空间] 合同合规审查报告_保密合同_测试验证_1790834878251_v1_法务批注版.html"
+    - generic: :L6
+  - button "eye [流程管理空间] 合同合规审查报告_保密合同_测试验证_1790834878251_v1_法务批注版.html :L1288":
+    - img "eye":
+    - generic: "[流程管理空间] 合同合规审查报告_保密合同_测试验证_1790834878251_v1_法务批注版.html"
+    - generic: :L1288
+  - button "eye [流程管理空间] 合同合规审查报告_保密合同_测试验证_1790834487980_v1_法务批注版.html :L5":
+    - img "eye":
+    - generic: "[流程管理空间] 合同合规审查报告_保密合同_测试验证_1790834487980_v1_法务批注版.html"
+    - generic: :L5
+  - button "eye [流程管理空间] 合同合规审查报告_保密合同_测试验证_1790834487980_v1_法务批注版.html :L6":
+    - img "eye":
+    - generic: "[流程管理空间] 合同合规审查报告_保密合同_测试验证_1790834487980_v1_法务批注版.html"
+    - generic: :L6
+  - button "eye [流程管理空间] 合同合规审查报告_保密合同_测试验证_1790834487980_v1_法务批注版.html :L1288":
+    - img "eye":
+    - generic: "[流程管理空间] 合同合规审查报告_保密合同_测试验证_1790834487980_v1_法务批注版.html"
+    - generic: :L1288
+  - button "eye [流程管理空间] 合同合规审查报告_保密合同_测试验证_1790841727728_v1_法务批注版.html :L5":
+    - img "eye":
+    - generic: "[流程管理空间] 合同合规审查报告_保密合同_测试验证_1790841727728_v1_法务批注版.html"
+    - generic: :L5
+  - button "eye [流程管理空间] 合同合规审查报告_保密合同_测试验证_1790841727728_v1_法务批注版.html :L6":
+    - img "eye":
+    - generic: "[流程管理空间] 合同合规审查报告_保密合同_测试验证_1790841727728_v1_法务批注版.html"
+    - generic: :L6
+  - button "eye [流程管理空间] 合同合规审查报告_保密合同_测试验证_1790841727728_v1_法务批注版.html :L1288":
+    - img "eye":
+    - generic: "[流程管理空间] 合同合规审查报告_保密合同_测试验证_1790841727728_v1_法务批注版.html"
+    - generic: :L1288
+  - button "eye [流程管理空间] 合同合规审查报告_保密合同_测试验证_1790840978220_v1_法务批注版.html :L5":
+    - img "eye":
+    - generic: "[流程管理空间] 合同合规审查报告_保密合同_测试验证_1790840978220_v1_法务批注版.html"
+    - generic: :L5
+  - button "eye [流程管理空间] 合同合规审查报告_保密合同_测试验证_1790840978220_v1_法务批注版.html :L6":
+    - img "eye":
+    - generic: "[流程管理空间] 合同合规审查报告_保密合同_测试验证_1790840978220_v1_法务批注版.html"
+    - generic: :L6
+  - button "eye [流程管理空间] 合同合规审查报告_保密合同_测试验证_1790840978220_v1_法务批注版.html :L1288":
+    - img "eye":
+    - generic: "[流程管理空间] 合同合规审查报告_保密合同_测试验证_1790840978220_v1_法务批注版.html"
+    - generic: :L1288
+  - img "robot":
+  - img "clock-circle":
+  - generic: 10/14 22:04
+  - generic: 已完成
+  - generic "评价回答":
+    - button "回答有帮助":
+      - img "like":
+    - button "回答需要改进":
+      - img "dislike":
+  - button "保存到个人空间":
+    - img "book":
+  - button "收集到 GTD 收件箱":
+    - img "inbox":
+  - button "复制":
+    - img "copy":
+  - button "重试":
+    - img "redo":
+  - generic: /extract 提取文档中的正文。当前没有附件，请指出需要补充的信息，不要编造内容。
+  - img "user":
+  - img "clock-circle":
+  - generic: 10/14 22:04
+  - generic: 等待输入
+  - generic: 状态：待补输入
+  - paragraph: 已规划好任务计划，但还需要补充 1 项必要参数：
+  - generic: 请补充以下信息
+  - generic: 待补字段
+  - list:
+    - listitem: 待提取的文档附件（请通过下方附件图标上传）
+  - img "robot":
+  - img "clock-circle":
+  - generic: 10/14 22:04
+  - generic: 待补输入
+  - generic "评价回答":
+    - button "回答有帮助":
+      - img "like":
+    - button "回答需要改进":
+      - img "dislike":
+  - button "保存到个人空间":
+    - img "book":
+  - button "收集到 GTD 收件箱":
+    - img "inbox":
+  - button "复制":
+    - img "copy":
+  - button "重试":
+    - img "redo":
+  - textbox "请直接在聊天框补充所需信息，Enter 发送后会继续当前任务"
+  - radiogroup "segmented control":
+    - radio "user 个人助理"
+    - img "user":
+    - generic: 个人助理
+    - radio "robot 企业协同" [checked]
+    - img "robot":
+    - generic: 企业协同
+  - 'button "bulb 思考: 中 down"':
+    - img "bulb":
+    - generic: "思考: 中"
+    - img "down":
+  - generic "联网搜索：已关闭（可选开启，开启后允许 AI 检索互联网公开资讯）":
+    - img "global":
+    - text: 联网
+    - switch
+  - generic "工作空间知识检索：已关闭（可选开启，开启后提问将自动探查并研读空间文档）":
+    - img "folder":
+    - text: 知识
+    - switch
+  - combobox
+  - generic "Auto / 系统默认"
+  - button "thunderbolt":
+    - img "thunderbolt":
+  - button "paper-clip":
+    - img "paper-clip":
+  - button "audio":
+    - img "audio":
+  - button "plus":
+    - img "plus":
+  - button "send 发送" [disabled]:
+    - img "send":
+    - generic: 发送

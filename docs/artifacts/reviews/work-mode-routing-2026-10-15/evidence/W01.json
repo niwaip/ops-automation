@@ -1,0 +1,52 @@
+{
+  "caseId": "W01",
+  "variant": "canonical",
+  "status": "passed",
+  "traceIds": [],
+  "executionIds": [
+    "coord_b714fa2c-7854-4d50-b11f-ee7da9c14db6"
+  ],
+  "requestDigest": null,
+  "fixtureDigest": null,
+  "catalogSnapshotDigest": "catalog-v1-snapshot-sha256",
+  "routingPolicyVersion": "routing-policy-v1",
+  "routingPolicyDigest": "routing-policy-sha256",
+  "selectedCapabilityRefs": [],
+  "planHash": null,
+  "inputHash": null,
+  "actualInvocations": [
+    "workbench-coordination.tasks",
+    "workbench-coordination.stage-binding"
+  ],
+  "usageByPurpose": {},
+  "logicalEffectCount": 1,
+  "artifactRefs": [],
+  "assertions": [
+    {
+      "assertion": "Authoritative stage->skill binding resolved for enterprise workflow",
+      "passed": true,
+      "actual": "16fb88e9-ba9c-4ab7-b508-f23adb1a821a"
+    },
+    {
+      "assertion": "Approval coordination task created in pending state",
+      "passed": true,
+      "actual": "pending"
+    },
+    {
+      "assertion": "Unauthorized transition rejected with 403 Forbidden",
+      "passed": true,
+      "actual": "status 403: 无权处理当前协同任务：当前操作人 [test] 不是本阶段的指定承办人 [law01]"
+    },
+    {
+      "assertion": "Approval transition without required artifact blocked with 400 Bad Request",
+      "passed": true,
+      "actual": "status 400"
+    },
+    {
+      "assertion": "Control-plane executions accessible and enforcing transition policies",
+      "passed": true,
+      "actual": "status 200"
+    }
+  ],
+  "failureCategory": null
+}

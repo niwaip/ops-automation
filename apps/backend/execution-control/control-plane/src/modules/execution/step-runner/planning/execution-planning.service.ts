@@ -172,8 +172,36 @@ export class ExecutionPlanningService {
     authToken?: string,
     requester?: { id: string; role?: string }
   ): Promise<{ input: Record<string, unknown>; sources: Record<string, unknown> }> {
+    const headers = this.buildAuthServiceHeaders(authToken, requester);
+
+    if (skillId.startsWith('platform.')) {
+      try {
+        const resolveRes = await axios.post(
+          `${this.authServiceUrl}/internal/builtin-skills/resolve`,
+          {
+            capabilityKey: skillId,
+            action: 'execute',
+            userId: requester?.id,
+            roleIds: requester?.role ? [requester.role] : undefined,
+          },
+          { headers, timeout: 10000 }
+        );
+        const data = resolveRes.data as any;
+        const properties =
+          data?.manifest?.spec?.contracts?.input?.schema?.properties ||
+          data?.capabilityView?.inputSchema?.properties ||
+          {};
+        return this.executionPlanNormalizationService.buildRuntimeDefaultResolution({
+          paramsSchema: { properties },
+        }) as { input: Record<string, unknown>; sources: Record<string, unknown> };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'unknown error';
+        this.logger.warn(`Failed to load runtime defaults for builtin skill ${skillId}: ${message}`);
+        return { input: {}, sources: {} };
+      }
+    }
+
     try {
-      const headers = this.buildAuthServiceHeaders(authToken, requester);
       const response = await axios.get<{
         paramsSchema?: {
           properties?: Record<

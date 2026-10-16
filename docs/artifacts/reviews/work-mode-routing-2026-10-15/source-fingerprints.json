@@ -1,0 +1,22 @@
+[
+  {
+    "path": "apps/backend/intelligence/ai-orchestrator/src/modules/chat/chat-orchestrator.service.ts",
+    "sha256": "4c8fb5007893253c28ccf9b983ec477b23d0f03effdbcd3e0253acaeb84275d5"
+  },
+  {
+    "path": "apps/backend/intelligence/ai-orchestrator/src/modules/planner/topology/deterministic-recipe-matcher.service.ts",
+    "sha256": "b353911cbe1f6adfda220dba6271cecb0cfcaf91c4e565c6ceeb1b7668fed5ff"
+  },
+  {
+    "path": "apps/backend/execution-control/control-plane/src/modules/execution/adapters/workspace/workspace-explorer.handler.ts",
+    "sha256": "6263eb135cac43f7c271ef866f9d37af0601ce099fdf3ec3fd4b3f0db8d92fc0"
+  },
+  {
+    "path": "apps/frontend/user-web/src/features/chat/hooks/useChatPageActions.ts",
+    "sha256": "6c1e570701041b380805c40d4f75f190be8af171c15640e588ca894f8006056a"
+  },
+  {
+    "path": "tests/e2e/work-mode-routing/fixtures/source.md",
+    "sha256": "9d98c56fef1b97f6b1f0a6a40980fbff971943845ece24ff03b2037dfd671736"
+  }
+]

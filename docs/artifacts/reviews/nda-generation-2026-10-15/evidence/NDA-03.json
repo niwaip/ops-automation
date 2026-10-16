@@ -1,0 +1,65 @@
+{
+  "caseId": "NDA-03",
+  "variant": "canonical",
+  "status": "passed",
+  "traceIds": [
+    "35f669c2-b4a0-4b74-baa4-dbfd367680d6"
+  ],
+  "executionIds": [
+    "1b78fe18-2e56-4bf8-a008-c6a90f4f21b8"
+  ],
+  "requestDigest": "197270d050f2a4f602b56290007f38dcc40c564ed7e62e0a301f4cc8362e3372",
+  "selectedCapabilityRefs": [
+    "ConfidentialityAgreementGenerationWorkflow"
+  ],
+  "actualInvocations": [],
+  "resolvedParameters": {},
+  "performance": {
+    "ttftMs": 6487,
+    "planningDurationMs": 6487,
+    "executionDurationMs": 0,
+    "totalDurationMs": 6487,
+    "tokens": {
+      "promptTokens": 3780,
+      "completionTokens": 1,
+      "reasoningTokens": 655,
+      "totalTokens": 4436
+    }
+  },
+  "assertions": [
+    {
+      "assertion": "识别保密协议生成意图，路由至 ConfidentialityAgreementGenerationWorkflow",
+      "passed": true,
+      "actual": [
+        "ConfidentialityAgreementGenerationWorkflow"
+      ],
+      "expected": "ConfidentialityAgreementGenerationWorkflow"
+    },
+    {
+      "assertion": "状态挂起进入 waiting_input，不虚构草率执行",
+      "passed": true,
+      "actual": "waiting_input",
+      "expected": "waiting_input"
+    },
+    {
+      "assertion": "缺失参数列表明确要求补充甲方主体 (partyA.name)",
+      "passed": true,
+      "actual": [
+        "partyA.name",
+        "partyA.address",
+        "cooperation.subject",
+        "agreement.signDate.day",
+        "agreement.signDate.year",
+        "agreement.signDate.month"
+      ],
+      "expected": "包含 partyA.name 或 甲方"
+    },
+    {
+      "assertion": "快速门控判定时延低于 10s",
+      "passed": true,
+      "actual": "6487ms",
+      "expected": "< 10000ms"
+    }
+  ],
+  "failureCategory": null
+}

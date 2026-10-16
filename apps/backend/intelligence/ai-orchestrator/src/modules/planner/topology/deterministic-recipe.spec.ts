@@ -731,4 +731,94 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
     expect(matched?.recipeName).toBe('document_extract');
     expect(matched?.steps[0]?.role).toBe('document_extract');
   });
+
+  it('matches document_extract recipe for standalone "/extract" slash command without attachments', () => {
+    const matched = matcher.matchRecipe('/extract');
+
+    expect(matched).not.toBeNull();
+    expect(matched?.recipeName).toBe('document_extract');
+    expect(matched?.steps[0]?.role).toBe('document_extract');
+
+    const topology = topologyBuilder.buildTopologyFromRecipe(
+      matched!,
+      mockSkillCards,
+      mockLlmOpCards
+    );
+    expect(topology).not.toBeNull();
+    expect(topology?.nodes[0]?.capabilityKey).toBe('platform.document.pdf-content-extractor');
+  });
+
+  it('matches document_extract_then_summarize recipe for "/extract 附件并总结"', () => {
+    const matched = matcher.matchRecipe('/extract 附件并总结');
+
+    expect(matched).not.toBeNull();
+    expect(matched?.recipeName).toBe('document_extract_then_summarize');
+    expect(matched?.steps[0]?.role).toBe('document_extract');
+    expect(matched?.steps[1]?.role).toBe('summarize');
+  });
+
+  it('matches document_extract_summarize_write_markdown recipe for R09 (提取附件->整理->生成Markdown文件)', () => {
+    const matched = matcher.matchRecipe('提取此附件正文，整理项目、负责人、预算及销售额，生成一个可下载的 Markdown 文件。');
+
+    expect(matched).not.toBeNull();
+    expect(matched?.recipeName).toBe('document_extract_summarize_write_markdown');
+    expect(matched?.steps[0]?.role).toBe('document_extract');
+    expect(matched?.steps[1]?.role).toBe('summarize');
+    expect(matched?.steps[2]?.role).toBe('markdown_writer');
+
+    const topology = topologyBuilder.buildTopologyFromRecipe(
+      matched!,
+      mockSkillCards,
+      mockLlmOpCards
+    );
+    expect(topology).not.toBeNull();
+    expect(topology?.nodes[0]?.capabilityKey).toBe('platform.document.pdf-content-extractor');
+    expect(topology?.nodes[2]?.capabilityKey).toBe('platform.markdown_writer');
+  });
+
+  it('matches write_markdown_from_previous_result recipe for R10 continuation', () => {
+    const matched = matcher.matchRecipe('将刚才提取的结果保存为 Markdown 文件', {
+      hasPreviousResult: true,
+    });
+
+    expect(matched).not.toBeNull();
+    expect(matched?.recipeName).toBe('write_markdown_from_previous_result');
+    expect(matched?.steps).toHaveLength(1);
+    expect(matched?.steps[0]?.role).toBe('markdown_writer');
+
+    const topology = topologyBuilder.buildTopologyFromRecipe(
+      matched!,
+      mockSkillCards,
+      mockLlmOpCards
+    );
+    expect(topology).not.toBeNull();
+    expect(topology?.nodes[0]?.capabilityKey).toBe('platform.markdown_writer');
+  });
+
+  it('matches workspace_explore recipe for /doc, /workspace, and /rag (R05 / R06)', () => {
+    for (const cmd of [
+      '/doc WM_ROUTE_FIXTURE_20261015_V1',
+      '/workspace WM_ROUTE_FIXTURE_20261015_V1',
+      '/rag WM_ROUTE_FIXTURE_20261015_V1',
+      '/doc UNSEEN1792117757998的安装配置方法，请检索工作空间文件，没有该实体请明确未找到，不要用其他软件教程代替。',
+      '/doc deepseek harness的安装方法，请检索空间文件，列出最相关文件及命中原文，排除仅包含安装配置通用词的无关文档。',
+    ]) {
+      const matched = matcher.matchRecipe(cmd);
+      expect(matched).not.toBeNull();
+      expect(matched?.recipeName).toBe('workspace_explore');
+      expect(matched?.steps[0]?.role).toBe('workspace_explore');
+    }
+  });
+
+  it('matches web_search recipe for standalone search (R03 / R04)', () => {
+    const matchedSlash = matcher.matchRecipe('/search 检索 Python 3.12.0 官方发布页面');
+    expect(matchedSlash).not.toBeNull();
+    expect(matchedSlash?.recipeName).toBe('web_search');
+    expect(matchedSlash?.steps[0]?.role).toBe('search');
+
+    const matchedNatural = matcher.matchRecipe('检索 Python 3.12.0 的官方发布页面，只使用 python.org');
+    expect(matchedNatural).not.toBeNull();
+    expect(matchedNatural?.recipeName).toBe('web_search');
+    expect(matchedNatural?.steps[0]?.role).toBe('search');
+  });
 });

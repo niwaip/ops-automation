@@ -1,0 +1,150 @@
+{
+  "runId": "REAL_CHAT_E2E_MVB18035",
+  "startedAt": "2026-10-16T13:57:23.441Z",
+  "endedAt": "2026-10-16T14:02:28.789Z",
+  "passed": false,
+  "totalChecks": 17,
+  "passedChecks": 16,
+  "failedChecks": 1,
+  "checks": [
+    {
+      "scenario": "setup",
+      "checkName": "管理凭证就绪",
+      "passed": true,
+      "details": null
+    },
+    {
+      "scenario": "setup",
+      "checkName": "个人工作空间就绪",
+      "passed": true,
+      "details": null
+    },
+    {
+      "scenario": "setup",
+      "checkName": "沙盒内容与任务成果根目录双就绪",
+      "passed": true,
+      "details": null
+    },
+    {
+      "scenario": "real-personal-pure",
+      "checkName": "真实大模型流式对话成功响应",
+      "passed": true,
+      "details": {
+        "contentLength": 725,
+        "sampleSnippet": "在代码评审（Code Review）中，提升团队整体工程质量最关键的3条核心原则如下：\n\n### 1. 机器保障底线，人工聚焦设计与逻辑\n将代码格式、命名规范、类型检查及基础单元测试覆盖率等机械化工作"
+      }
+    },
+    {
+      "scenario": "real-personal-pure",
+      "checkName": "真实对话成果成功持久化至资料空间",
+      "passed": true,
+      "details": null
+    },
+    {
+      "scenario": "real-personal-pure",
+      "checkName": "成果归档于沙盒保存内容目录树下",
+      "passed": true,
+      "details": null
+    },
+    {
+      "scenario": "real-personal-pure",
+      "checkName": "FrontMatter 携带用户真实提问背景与会话 ID",
+      "passed": true,
+      "details": null
+    },
+    {
+      "scenario": "real-personal-html",
+      "checkName": "真实模型成功生成包含 HTML 代码块的交付内容",
+      "passed": true,
+      "details": {
+        "contentLength": 43929
+      }
+    },
+    {
+      "scenario": "real-personal-html",
+      "checkName": "包含 HTML 内容的对话笔记保存成功",
+      "passed": true,
+      "details": null
+    },
+    {
+      "scenario": "real-personal-html",
+      "checkName": "系统自动将真实生成的 HTML 代码块提取为同级独立文件",
+      "passed": true,
+      "details": {
+        "filesInFolder": [
+          "service_status.html",
+          "服务可用性监控看板.md"
+        ]
+      }
+    },
+    {
+      "scenario": "real-personal-html",
+      "checkName": "提取的 HTML 资产在存储介质中完整落盘",
+      "passed": true,
+      "details": null
+    },
+    {
+      "scenario": "real-work-task",
+      "checkName": "工作模式流式任务交互正常完成",
+      "passed": true,
+      "details": null
+    },
+    {
+      "scenario": "real-work-task",
+      "checkName": "任务协同真实规划并返回全新 executionId（严格禁止历史 ID 兜底）",
+      "passed": true,
+      "details": {
+        "executionId": "80ac0717-a58b-471a-9394-78a262f7e04b"
+      }
+    },
+    {
+      "scenario": "real-work-task",
+      "checkName": "工作任务成果成功归档",
+      "passed": true,
+      "details": null
+    },
+    {
+      "scenario": "real-work-task",
+      "checkName": "工作任务成果精准归档至「工作任务成果 (tasks)」根目录",
+      "passed": true,
+      "details": null
+    },
+    {
+      "scenario": "real-work-task",
+      "checkName": "FrontMatter 正确绑定真实 execution_id 与任务元数据",
+      "passed": true,
+      "details": null
+    },
+    {
+      "scenario": "async-settle",
+      "checkName": "所有后台 AI 提炼与落盘流水线平稳收敛至终态（无静默超时）",
+      "passed": false,
+      "details": {
+        "elapsedMs": 47891,
+        "unsettledCount": 1,
+        "unsettledIds": [
+          "af7e5de9-7a1a-405e-809b-0bbec7d67eba"
+        ]
+      }
+    }
+  ],
+  "cleanupRecords": [
+    {
+      "id": "80fa50b4-eab0-4995-8339-f99225540c6d",
+      "type": "folder",
+      "status": "deleted"
+    },
+    {
+      "id": "fda3abd4-23c0-4778-b367-c1cd9bf8efee",
+      "type": "folder",
+      "status": "deleted"
+    },
+    {
+      "id": "976e6c4f-a324-4243-b5da-b086ba18058b",
+      "type": "folder",
+      "status": "deleted"
+    }
+  ],
+  "cleanupErrors": [],
+  "errors": []
+}

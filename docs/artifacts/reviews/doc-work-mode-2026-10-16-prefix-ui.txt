@@ -1,0 +1,96 @@
+"
+- button "close":
+  - img "close":
+- img "desktop":
+- text: 网页
+- strong: /doc 全文精确检索“AD-Q8VN-9999
+- generic: qwen36-35b-a3b
+- button "调整阅读字体大小":
+  - img "font-size":
+- button "plus":
+  - img "plus":
+- button "reload":
+  - img "reload":
+- button "delete":
+  - img "delete":
+- generic: /doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回AD-Q8VN-6173等仅前缀相同的文件。
+- img "user":
+- img "clock-circle":
+- generic: 10/16 10:29
+- generic: 任务结果
+- link "thunderbolt 详细":
+  - /url: /executions/44ccf8b2-5130-4ef8-a252-c8cb33a59589
+  - img "thunderbolt":
+  - generic: 详细
+- generic: 状态：已完成
+- generic: 技能
+- generic: /doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回AD-Q8VN-6173等仅前缀相同的文件。
+- paragraph:
+  - text: 在工作空间中检索到
+  - strong: "1"
+  - text: 个包含关键词 “AD-Q8VN-9999” 的文档：
+- paragraph:
+  - strong:
+    - link "[我的空间] 今日个人工作总结_20261015.md":
+      - /url: /workspaces?tab=personal&fileId=64680472-dd51-474c-aaa3-4921bc82ca19&workspaceId=c8d19632-da7e-4197-8f0d-275d8934750f
+- list:
+  - strong: 命中上下文
+  - text: ：文档第 1 行包含
+  - code: "[核心主题标签] #AD-Q8VN"
+  - text: 。
+  - strong: 快速查阅
+  - text: ：
+  - link "打开文档":
+    - /url: /workspaces?tab=personal&fileId=64680472-dd51-474c-aaa3-4921bc82ca19&workspaceId=c8d19632-da7e-4197-8f0d-275d8934750f
+- generic "查看结构化结果"
+- img "robot":
+- img "clock-circle":
+- generic: 10/16 10:29
+- generic: 已完成
+- generic "评价回答":
+  - button "回答有帮助":
+    - img "like":
+  - button "回答需要改进":
+    - img "dislike":
+- button "保存到个人空间":
+  - img "book":
+- button "收集到 GTD 收件箱":
+  - img "inbox":
+- button "复制":
+  - img "copy":
+- button "重试":
+  - img "redo":
+- textbox "例如：/doc 分析工作空间架构 或 /email 总结今日邮件（输入 / 唤起工作技能，! 唤起工作流）" [active]
+- radiogroup "segmented control":
+  - radio "user 个人助理"
+  - img "user":
+  - generic: 个人助理
+  - radio "robot 企业协同" [checked]
+  - img "robot":
+  - generic: 企业协同
+- 'button "bulb 思考: 中 down"':
+  - img "bulb":
+  - generic: "思考: 中"
+  - img "down":
+- generic "联网搜索：已关闭（可选开启，开启后允许 AI 检索互联网公开资讯）":
+  - img "global":
+  - text: 联网
+  - switch
+- generic "工作空间知识检索：已关闭（可选开启，开启后提问将自动探查并研读空间文档）":
+  - img "folder":
+  - text: 知识
+  - switch
+- combobox
+- generic "qwen36-35b-a3b (local) · 推理"
+- button "thunderbolt":
+  - img "thunderbolt":
+- button "paper-clip":
+  - img "paper-clip":
+- button "audio":
+  - img "audio":
+- button "plus":
+  - img "plus":
+- button "send 发送" [disabled]:
+  - img "send":
+  - generic: 发送
+- tooltip "新建会话"

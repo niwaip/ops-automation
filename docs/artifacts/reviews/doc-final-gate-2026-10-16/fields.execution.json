@@ -1,0 +1,517 @@
+{
+  "id": "a2f3b988-6ee5-4e22-9bde-363899b46bdc",
+  "orgId": "e2bc525b-7b3e-499d-ba3d-e2a45ed9a71c",
+  "skillId": "platform.workspace.explorer",
+  "capabilityId": "platform.workspace.explorer",
+  "capabilitiesUsed": [
+    {
+      "id": "platform.workspace.explorer",
+      "name": "内置工作空间文档探索",
+      "version": "1.0.1"
+    }
+  ],
+  "skillVersion": "1.0.1",
+  "capabilityVersion": "1.0.1",
+  "status": "succeeded",
+  "runtimeType": "plan",
+  "riskLevel": "L0",
+  "executionMode": "deterministic_plan",
+  "currentStepId": null,
+  "currentPhaseKey": "phase_01_n1_内置工作空间文档探索",
+  "currentPhaseStatus": "completed",
+  "takeoverStatus": "resolved",
+  "requiresApproval": false,
+  "approvalStatus": "not_required",
+  "takeoverRequired": false,
+  "takeoverReason": null,
+  "resultJson": {
+    "result": {
+      "title": "/doc 检索“星桥管理闭环AD1015”，从原文核对预算、负责人、验收口令、交付截止日、验收规则，逐项给出准确值及行号引用。",
+      "summary": "### 🔍 工作空间文档探查结果\n\n针对 **\"“星桥管理闭环AD1015”,从原文核对预算、负责人、验收口令、交付截止日、验收规则,逐项给出准确值及行号引用\"**，在工作空间中检索到 **2** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n**命中原文行（原文查证依据）**：\n- 第 1 行: `# 星桥管理闭环AD1015`\n- 第 5 行: `项目名称：星桥管理闭环AD1015。`\n- 第 6 行: `项目预算：52931元。`\n- 第 7 行: `负责人：测试员丁。`\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 第 9 行: `交付截止日：2026年11月12日。`\n- 第 10 行: `验收规则：完成四台模拟终端的联调，并归档三份虚构记录。`\n> 💡 **AI提炼摘要（供对照参考）**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n### 📄 [[我的空间] 01-spell-words.md](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n**命中原文行（原文查证依据）**：\n- 第 0 行: `[核心主题标签] #01`\n> 💡 **AI提炼摘要（供对照参考）**：Parallel batch. May run concurrently with tasks 02, 03, 04, 05, 06, 07. Requires task 00 (Foundation) to be complete before this task begins. This task runs on its own git branch. To prevent merge conflicts, observe the\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+      "resultType": "deterministic_plan",
+      "businessData": {
+        "finalOutputs": [
+          {
+            "value": "### 🔍 工作空间文档探查结果\n\n针对 **\"“星桥管理闭环AD1015”,从原文核对预算、负责人、验收口令、交付截止日、验收规则,逐项给出准确值及行号引用\"**，在工作空间中检索到 **2** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n**命中原文行（原文查证依据）**：\n- 第 1 行: `# 星桥管理闭环AD1015`\n- 第 5 行: `项目名称：星桥管理闭环AD1015。`\n- 第 6 行: `项目预算：52931元。`\n- 第 7 行: `负责人：测试员丁。`\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 第 9 行: `交付截止日：2026年11月12日。`\n- 第 10 行: `验收规则：完成四台模拟终端的联调，并归档三份虚构记录。`\n> 💡 **AI提炼摘要（供对照参考）**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n### 📄 [[我的空间] 01-spell-words.md](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n**命中原文行（原文查证依据）**：\n- 第 0 行: `[核心主题标签] #01`\n> 💡 **AI提炼摘要（供对照参考）**：Parallel batch. May run concurrently with tasks 02, 03, 04, 05, 06, 07. Requires task 00 (Foundation) to be complete before this task begins. This task runs on its own git branch. To prevent merge conflicts, observe the\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+            "fromNodeId": "n1_内置工作空间文档探索",
+            "isArtifact": false,
+            "targetField": "result",
+            "expectedType": "string",
+            "fromNodeOutput": "answer"
+          }
+        ],
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ]
+      },
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ]
+    },
+    "artifacts": [],
+    "execution": {
+      "status": "success",
+      "finishedAt": "2026-10-16T03:22:58.194Z",
+      "executionId": "a2f3b988-6ee5-4e22-9bde-363899b46bdc"
+    },
+    "detailText": "基于文档 `[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md` 原文，核对结果如下：\n\n* **预算**：52931元（引用：第 6 行）\n* **负责人**：测试员丁（引用：第 7 行）\n* **验收口令**：AD-Q8VN-6173（引用：第 8 行）\n* **交付截止日**：2026年11月12日（引用：第 9 行）\n* **验收规则**：完成四台模拟终端的联调，并归档三份虚构记录。（引用：第 10 行）",
+    "chatSummary": "基于文档 `[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md` 原文，核对结果如下：\n\n* **预算**：52931元（引用：第 6 行）\n* **负责人**：测试员丁（引用：第 7 行）\n* **验收口令**：AD-Q8VN-6173（引用：第 8 行）\n* **交付截止日**：2026年11月12日（引用：第 9 行）\n* **验收规则**：完成四台模拟终端的联调，并归档三份虚构记录。（引用：第 10 行）",
+    "presentation": {
+      "detailText": "基于文档 `[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md` 原文，核对结果如下：\n\n* **预算**：52931元（引用：第 6 行）\n* **负责人**：测试员丁（引用：第 7 行）\n* **验收口令**：AD-Q8VN-6173（引用：第 8 行）\n* **交付截止日**：2026年11月12日（引用：第 9 行）\n* **验收规则**：完成四台模拟终端的联调，并归档三份虚构记录。（引用：第 10 行）",
+      "chatSummary": "基于文档 `[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md` 原文，核对结果如下：\n\n* **预算**：52931元（引用：第 6 行）\n* **负责人**：测试员丁（引用：第 7 行）\n* **验收口令**：AD-Q8VN-6173（引用：第 8 行）\n* **交付截止日**：2026年11月12日（引用：第 9 行）\n* **验收规则**：完成四台模拟终端的联调，并归档三份虚构记录。（引用：第 10 行）",
+      "detailFormat": "markdown",
+      "summaryFormat": "markdown",
+      "preferAiSummary": false,
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ],
+      "notificationSummary": "### 🔍 工作空间文档探查结果\n\n针对 **\"“星桥管理闭环AD1015”,从原文核对预算、负责人、验收口令、交付截止日、验收规则,逐项给出准确值及行号引用\"**，在工作空间中检索到 **2** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n**命中原文行（原文查证依据）**：\n- 第 1 行: `# 星桥管理闭环AD1015`\n- 第 5 行: `项目名称：星桥管理闭环AD1015。`\n- 第 6 行: `项目预算：52931元。`\n- 第 7 行: `负责人：测试员丁。`\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 第 9 行: `交付截止日：2026年11月12日。`\n- 第 10 行: `验收规则：完成四台模拟终端的联调，并归档三份虚构记录。`\n> 💡 **AI提炼摘要（供对照参考）**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n### 📄 [[我的空间] 01-spell-words.md](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n**命中原文行（原文查证依据）**：\n- 第 0 行: `[核心主题标签] #01`\n> 💡 **AI提炼摘要（供对照参考）**：Parallel batch. May run concurrently with tasks 02, 03, 04, 05, 06, 07. Requires task 00 (Foundation) to be complete before this task begins. This task runs on its own git branch. To prevent merge conflicts, observe the\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+      "preferStructuredView": false
+    },
+    "capabilitiesUsed": [
+      {
+        "id": "platform.workspace.explorer",
+        "name": "内置工作空间文档探索",
+        "version": "1.0.1"
+      }
+    ]
+  },
+  "inputJson": {
+    "prompt": "/doc 检索“星桥管理闭环AD1015”，从原文核对预算、负责人、验收口令、交付截止日、验收规则，逐项给出准确值及行号引用。",
+    "__promptDebug": {
+      "notes": [
+        "Generated via deterministic recipe 'workspace_explore' followed by selected-capability parameter recognition.",
+        "参数 'query' 已依据能力语义角色和路由策略确定性解析，未调用参数识别模型。"
+      ],
+      "llmCalls": [],
+      "userPrompt": "/doc 检索“星桥管理闭环AD1015”，从原文核对预算、负责人、验收口令、交付截止日、验收规则，逐项给出准确值及行号引用。",
+      "debugSource": "planner",
+      "systemPrompt": "Deterministic Recipe Topology",
+      "userPromptSectionKeys": [
+        "user_request"
+      ],
+      "systemPromptSectionKeys": [
+        "routing_cards",
+        "topology_dag"
+      ]
+    }
+  },
+  "normalizedInputJson": {
+    "prompt": "/doc 检索“星桥管理闭环AD1015”，从原文核对预算、负责人、验收口令、交付截止日、验收规则，逐项给出准确值及行号引用。",
+    "__promptDebug": {
+      "notes": [
+        "Generated via deterministic recipe 'workspace_explore' followed by selected-capability parameter recognition.",
+        "参数 'query' 已依据能力语义角色和路由策略确定性解析，未调用参数识别模型。"
+      ],
+      "llmCalls": [],
+      "userPrompt": "/doc 检索“星桥管理闭环AD1015”，从原文核对预算、负责人、验收口令、交付截止日、验收规则，逐项给出准确值及行号引用。",
+      "debugSource": "planner",
+      "systemPrompt": "Deterministic Recipe Topology",
+      "userPromptSectionKeys": [
+        "user_request"
+      ],
+      "systemPromptSectionKeys": [
+        "routing_cards",
+        "topology_dag"
+      ]
+    }
+  },
+  "input": {
+    "prompt": "/doc 检索“星桥管理闭环AD1015”，从原文核对预算、负责人、验收口令、交付截止日、验收规则，逐项给出准确值及行号引用。",
+    "__promptDebug": {
+      "notes": [
+        "Generated via deterministic recipe 'workspace_explore' followed by selected-capability parameter recognition.",
+        "参数 'query' 已依据能力语义角色和路由策略确定性解析，未调用参数识别模型。"
+      ],
+      "llmCalls": [],
+      "userPrompt": "/doc 检索“星桥管理闭环AD1015”，从原文核对预算、负责人、验收口令、交付截止日、验收规则，逐项给出准确值及行号引用。",
+      "debugSource": "planner",
+      "systemPrompt": "Deterministic Recipe Topology",
+      "userPromptSectionKeys": [
+        "user_request"
+      ],
+      "systemPromptSectionKeys": [
+        "routing_cards",
+        "topology_dag"
+      ]
+    }
+  },
+  "normalizedInput": {
+    "prompt": "/doc 检索“星桥管理闭环AD1015”，从原文核对预算、负责人、验收口令、交付截止日、验收规则，逐项给出准确值及行号引用。",
+    "__promptDebug": {
+      "notes": [
+        "Generated via deterministic recipe 'workspace_explore' followed by selected-capability parameter recognition.",
+        "参数 'query' 已依据能力语义角色和路由策略确定性解析，未调用参数识别模型。"
+      ],
+      "llmCalls": [],
+      "userPrompt": "/doc 检索“星桥管理闭环AD1015”，从原文核对预算、负责人、验收口令、交付截止日、验收规则，逐项给出准确值及行号引用。",
+      "debugSource": "planner",
+      "systemPrompt": "Deterministic Recipe Topology",
+      "userPromptSectionKeys": [
+        "user_request"
+      ],
+      "systemPromptSectionKeys": [
+        "routing_cards",
+        "topology_dag"
+      ]
+    }
+  },
+  "semantic": null,
+  "result": {
+    "result": {
+      "title": "/doc 检索“星桥管理闭环AD1015”，从原文核对预算、负责人、验收口令、交付截止日、验收规则，逐项给出准确值及行号引用。",
+      "summary": "### 🔍 工作空间文档探查结果\n\n针对 **\"“星桥管理闭环AD1015”,从原文核对预算、负责人、验收口令、交付截止日、验收规则,逐项给出准确值及行号引用\"**，在工作空间中检索到 **2** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n**命中原文行（原文查证依据）**：\n- 第 1 行: `# 星桥管理闭环AD1015`\n- 第 5 行: `项目名称：星桥管理闭环AD1015。`\n- 第 6 行: `项目预算：52931元。`\n- 第 7 行: `负责人：测试员丁。`\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 第 9 行: `交付截止日：2026年11月12日。`\n- 第 10 行: `验收规则：完成四台模拟终端的联调，并归档三份虚构记录。`\n> 💡 **AI提炼摘要（供对照参考）**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n### 📄 [[我的空间] 01-spell-words.md](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n**命中原文行（原文查证依据）**：\n- 第 0 行: `[核心主题标签] #01`\n> 💡 **AI提炼摘要（供对照参考）**：Parallel batch. May run concurrently with tasks 02, 03, 04, 05, 06, 07. Requires task 00 (Foundation) to be complete before this task begins. This task runs on its own git branch. To prevent merge conflicts, observe the\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+      "resultType": "deterministic_plan",
+      "businessData": {
+        "finalOutputs": [
+          {
+            "value": "### 🔍 工作空间文档探查结果\n\n针对 **\"“星桥管理闭环AD1015”,从原文核对预算、负责人、验收口令、交付截止日、验收规则,逐项给出准确值及行号引用\"**，在工作空间中检索到 **2** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n**命中原文行（原文查证依据）**：\n- 第 1 行: `# 星桥管理闭环AD1015`\n- 第 5 行: `项目名称：星桥管理闭环AD1015。`\n- 第 6 行: `项目预算：52931元。`\n- 第 7 行: `负责人：测试员丁。`\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 第 9 行: `交付截止日：2026年11月12日。`\n- 第 10 行: `验收规则：完成四台模拟终端的联调，并归档三份虚构记录。`\n> 💡 **AI提炼摘要（供对照参考）**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n### 📄 [[我的空间] 01-spell-words.md](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n**命中原文行（原文查证依据）**：\n- 第 0 行: `[核心主题标签] #01`\n> 💡 **AI提炼摘要（供对照参考）**：Parallel batch. May run concurrently with tasks 02, 03, 04, 05, 06, 07. Requires task 00 (Foundation) to be complete before this task begins. This task runs on its own git branch. To prevent merge conflicts, observe the\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+            "fromNodeId": "n1_内置工作空间文档探索",
+            "isArtifact": false,
+            "targetField": "result",
+            "expectedType": "string",
+            "fromNodeOutput": "answer"
+          }
+        ],
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ]
+      },
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ]
+    },
+    "artifacts": [],
+    "execution": {
+      "status": "success",
+      "finishedAt": "2026-10-16T03:22:58.194Z",
+      "executionId": "a2f3b988-6ee5-4e22-9bde-363899b46bdc"
+    },
+    "detailText": "基于文档 `[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md` 原文，核对结果如下：\n\n* **预算**：52931元（引用：第 6 行）\n* **负责人**：测试员丁（引用：第 7 行）\n* **验收口令**：AD-Q8VN-6173（引用：第 8 行）\n* **交付截止日**：2026年11月12日（引用：第 9 行）\n* **验收规则**：完成四台模拟终端的联调，并归档三份虚构记录。（引用：第 10 行）",
+    "chatSummary": "基于文档 `[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md` 原文，核对结果如下：\n\n* **预算**：52931元（引用：第 6 行）\n* **负责人**：测试员丁（引用：第 7 行）\n* **验收口令**：AD-Q8VN-6173（引用：第 8 行）\n* **交付截止日**：2026年11月12日（引用：第 9 行）\n* **验收规则**：完成四台模拟终端的联调，并归档三份虚构记录。（引用：第 10 行）",
+    "presentation": {
+      "detailText": "基于文档 `[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md` 原文，核对结果如下：\n\n* **预算**：52931元（引用：第 6 行）\n* **负责人**：测试员丁（引用：第 7 行）\n* **验收口令**：AD-Q8VN-6173（引用：第 8 行）\n* **交付截止日**：2026年11月12日（引用：第 9 行）\n* **验收规则**：完成四台模拟终端的联调，并归档三份虚构记录。（引用：第 10 行）",
+      "chatSummary": "基于文档 `[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md` 原文，核对结果如下：\n\n* **预算**：52931元（引用：第 6 行）\n* **负责人**：测试员丁（引用：第 7 行）\n* **验收口令**：AD-Q8VN-6173（引用：第 8 行）\n* **交付截止日**：2026年11月12日（引用：第 9 行）\n* **验收规则**：完成四台模拟终端的联调，并归档三份虚构记录。（引用：第 10 行）",
+      "detailFormat": "markdown",
+      "summaryFormat": "markdown",
+      "preferAiSummary": false,
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ],
+      "notificationSummary": "### 🔍 工作空间文档探查结果\n\n针对 **\"“星桥管理闭环AD1015”,从原文核对预算、负责人、验收口令、交付截止日、验收规则,逐项给出准确值及行号引用\"**，在工作空间中检索到 **2** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n**命中原文行（原文查证依据）**：\n- 第 1 行: `# 星桥管理闭环AD1015`\n- 第 5 行: `项目名称：星桥管理闭环AD1015。`\n- 第 6 行: `项目预算：52931元。`\n- 第 7 行: `负责人：测试员丁。`\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 第 9 行: `交付截止日：2026年11月12日。`\n- 第 10 行: `验收规则：完成四台模拟终端的联调，并归档三份虚构记录。`\n> 💡 **AI提炼摘要（供对照参考）**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n### 📄 [[我的空间] 01-spell-words.md](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n**命中原文行（原文查证依据）**：\n- 第 0 行: `[核心主题标签] #01`\n> 💡 **AI提炼摘要（供对照参考）**：Parallel batch. May run concurrently with tasks 02, 03, 04, 05, 06, 07. Requires task 00 (Foundation) to be complete before this task begins. This task runs on its own git branch. To prevent merge conflicts, observe the\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+      "preferStructuredView": false
+    },
+    "capabilitiesUsed": [
+      {
+        "id": "platform.workspace.explorer",
+        "name": "内置工作空间文档探索",
+        "version": "1.0.1"
+      }
+    ]
+  },
+  "normalizedResult": {
+    "envelope": {
+      "result": {
+        "title": "/doc 检索“星桥管理闭环AD1015”，从原文核对预算、负责人、验收口令、交付截止日、验收规则，逐项给出准确值及行号引用。",
+        "summary": "### 🔍 工作空间文档探查结果\n\n针对 **\"“星桥管理闭环AD1015”,从原文核对预算、负责人、验收口令、交付截止日、验收规则,逐项给出准确值及行号引用\"**，在工作空间中检索到 **2** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n**命中原文行（原文查证依据）**：\n- 第 1 行: `# 星桥管理闭环AD1015`\n- 第 5 行: `项目名称：星桥管理闭环AD1015。`\n- 第 6 行: `项目预算：52931元。`\n- 第 7 行: `负责人：测试员丁。`\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 第 9 行: `交付截止日：2026年11月12日。`\n- 第 10 行: `验收规则：完成四台模拟终端的联调，并归档三份虚构记录。`\n> 💡 **AI提炼摘要（供对照参考）**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n### 📄 [[我的空间] 01-spell-words.md](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n**命中原文行（原文查证依据）**：\n- 第 0 行: `[核心主题标签] #01`\n> 💡 **AI提炼摘要（供对照参考）**：Parallel batch. May run concurrently with tasks 02, 03, 04, 05, 06, 07. Requires task 00 (Foundation) to be complete before this task begins. This task runs on its own git branch. To prevent merge conflicts, observe the\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+        "resultType": "deterministic_plan",
+        "businessData": {
+          "finalOutputs": [
+            {
+              "value": "### 🔍 工作空间文档探查结果\n\n针对 **\"“星桥管理闭环AD1015”,从原文核对预算、负责人、验收口令、交付截止日、验收规则,逐项给出准确值及行号引用\"**，在工作空间中检索到 **2** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n**命中原文行（原文查证依据）**：\n- 第 1 行: `# 星桥管理闭环AD1015`\n- 第 5 行: `项目名称：星桥管理闭环AD1015。`\n- 第 6 行: `项目预算：52931元。`\n- 第 7 行: `负责人：测试员丁。`\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 第 9 行: `交付截止日：2026年11月12日。`\n- 第 10 行: `验收规则：完成四台模拟终端的联调，并归档三份虚构记录。`\n> 💡 **AI提炼摘要（供对照参考）**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n### 📄 [[我的空间] 01-spell-words.md](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n**命中原文行（原文查证依据）**：\n- 第 0 行: `[核心主题标签] #01`\n> 💡 **AI提炼摘要（供对照参考）**：Parallel batch. May run concurrently with tasks 02, 03, 04, 05, 06, 07. Requires task 00 (Foundation) to be complete before this task begins. This task runs on its own git branch. To prevent merge conflicts, observe the\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+              "fromNodeId": "n1_内置工作空间文档探索",
+              "isArtifact": false,
+              "targetField": "result",
+              "expectedType": "string",
+              "fromNodeOutput": "answer"
+            }
+          ],
+          "capabilitiesUsed": [
+            {
+              "id": "platform.workspace.explorer",
+              "name": "内置工作空间文档探索",
+              "version": "1.0.1"
+            }
+          ]
+        },
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ]
+      },
+      "artifacts": [],
+      "execution": {
+        "status": "success",
+        "finishedAt": "2026-10-16T03:22:58.194Z",
+        "executionId": "a2f3b988-6ee5-4e22-9bde-363899b46bdc"
+      },
+      "detailText": "基于文档 `[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md` 原文，核对结果如下：\n\n* **预算**：52931元（引用：第 6 行）\n* **负责人**：测试员丁（引用：第 7 行）\n* **验收口令**：AD-Q8VN-6173（引用：第 8 行）\n* **交付截止日**：2026年11月12日（引用：第 9 行）\n* **验收规则**：完成四台模拟终端的联调，并归档三份虚构记录。（引用：第 10 行）",
+      "chatSummary": "基于文档 `[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md` 原文，核对结果如下：\n\n* **预算**：52931元（引用：第 6 行）\n* **负责人**：测试员丁（引用：第 7 行）\n* **验收口令**：AD-Q8VN-6173（引用：第 8 行）\n* **交付截止日**：2026年11月12日（引用：第 9 行）\n* **验收规则**：完成四台模拟终端的联调，并归档三份虚构记录。（引用：第 10 行）",
+      "presentation": {
+        "detailText": "基于文档 `[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md` 原文，核对结果如下：\n\n* **预算**：52931元（引用：第 6 行）\n* **负责人**：测试员丁（引用：第 7 行）\n* **验收口令**：AD-Q8VN-6173（引用：第 8 行）\n* **交付截止日**：2026年11月12日（引用：第 9 行）\n* **验收规则**：完成四台模拟终端的联调，并归档三份虚构记录。（引用：第 10 行）",
+        "chatSummary": "基于文档 `[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md` 原文，核对结果如下：\n\n* **预算**：52931元（引用：第 6 行）\n* **负责人**：测试员丁（引用：第 7 行）\n* **验收口令**：AD-Q8VN-6173（引用：第 8 行）\n* **交付截止日**：2026年11月12日（引用：第 9 行）\n* **验收规则**：完成四台模拟终端的联调，并归档三份虚构记录。（引用：第 10 行）",
+        "detailFormat": "markdown",
+        "summaryFormat": "markdown",
+        "preferAiSummary": false,
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ],
+        "notificationSummary": "### 🔍 工作空间文档探查结果\n\n针对 **\"“星桥管理闭环AD1015”,从原文核对预算、负责人、验收口令、交付截止日、验收规则,逐项给出准确值及行号引用\"**，在工作空间中检索到 **2** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n**命中原文行（原文查证依据）**：\n- 第 1 行: `# 星桥管理闭环AD1015`\n- 第 5 行: `项目名称：星桥管理闭环AD1015。`\n- 第 6 行: `项目预算：52931元。`\n- 第 7 行: `负责人：测试员丁。`\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 第 9 行: `交付截止日：2026年11月12日。`\n- 第 10 行: `验收规则：完成四台模拟终端的联调，并归档三份虚构记录。`\n> 💡 **AI提炼摘要（供对照参考）**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n### 📄 [[我的空间] 01-spell-words.md](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n**命中原文行（原文查证依据）**：\n- 第 0 行: `[核心主题标签] #01`\n> 💡 **AI提炼摘要（供对照参考）**：Parallel batch. May run concurrently with tasks 02, 03, 04, 05, 06, 07. Requires task 00 (Foundation) to be complete before this task begins. This task runs on its own git branch. To prevent merge conflicts, observe the\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+        "preferStructuredView": false
+      },
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ]
+    },
+    "resultType": "deterministic_plan",
+    "title": "/doc 检索“星桥管理闭环AD1015”，从原文核对预算、负责人、验收口令、交付截止日、验收规则，逐项给出准确值及行号引用。",
+    "summary": "基于文档 `[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md` 原文，核对结果如下：\n\n* **预算**：52931元（引用：第 6 行）\n* **负责人**：测试员丁（引用：第 7 行）\n* **验收口令**：AD-Q8VN-6173（引用：第 8 行）\n* **交付截止日**：2026年11月12日（引用：第 9 行）\n* **验收规则**：完成四台模拟终端的联调，并归档三份虚构记录。（引用：第 10 行）",
+    "body": "基于文档 `[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md` 原文，核对结果如下：\n\n* **预算**：52931元（引用：第 6 行）\n* **负责人**：测试员丁（引用：第 7 行）\n* **验收口令**：AD-Q8VN-6173（引用：第 8 行）\n* **交付截止日**：2026年11月12日（引用：第 9 行）\n* **验收规则**：完成四台模拟终端的联调，并归档三份虚构记录。（引用：第 10 行）",
+    "summaryFormat": "markdown",
+    "detailText": "基于文档 `[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md` 原文，核对结果如下：\n\n* **预算**：52931元（引用：第 6 行）\n* **负责人**：测试员丁（引用：第 7 行）\n* **验收口令**：AD-Q8VN-6173（引用：第 8 行）\n* **交付截止日**：2026年11月12日（引用：第 9 行）\n* **验收规则**：完成四台模拟终端的联调，并归档三份虚构记录。（引用：第 10 行）",
+    "detailFormat": "markdown",
+    "structuredData": {
+      "finalOutputs": [
+        {
+          "value": "### 🔍 工作空间文档探查结果\n\n针对 **\"“星桥管理闭环AD1015”,从原文核对预算、负责人、验收口令、交付截止日、验收规则,逐项给出准确值及行号引用\"**，在工作空间中检索到 **2** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n**命中原文行（原文查证依据）**：\n- 第 1 行: `# 星桥管理闭环AD1015`\n- 第 5 行: `项目名称：星桥管理闭环AD1015。`\n- 第 6 行: `项目预算：52931元。`\n- 第 7 行: `负责人：测试员丁。`\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 第 9 行: `交付截止日：2026年11月12日。`\n- 第 10 行: `验收规则：完成四台模拟终端的联调，并归档三份虚构记录。`\n> 💡 **AI提炼摘要（供对照参考）**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n### 📄 [[我的空间] 01-spell-words.md](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n**命中原文行（原文查证依据）**：\n- 第 0 行: `[核心主题标签] #01`\n> 💡 **AI提炼摘要（供对照参考）**：Parallel batch. May run concurrently with tasks 02, 03, 04, 05, 06, 07. Requires task 00 (Foundation) to be complete before this task begins. This task runs on its own git branch. To prevent merge conflicts, observe the\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+          "fromNodeId": "n1_内置工作空间文档探索",
+          "isArtifact": false,
+          "targetField": "result",
+          "expectedType": "string",
+          "fromNodeOutput": "answer"
+        }
+      ],
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ]
+    },
+    "artifacts": [],
+    "hasBusinessResult": true,
+    "rawResult": {
+      "result": {
+        "title": "/doc 检索“星桥管理闭环AD1015”，从原文核对预算、负责人、验收口令、交付截止日、验收规则，逐项给出准确值及行号引用。",
+        "summary": "### 🔍 工作空间文档探查结果\n\n针对 **\"“星桥管理闭环AD1015”,从原文核对预算、负责人、验收口令、交付截止日、验收规则,逐项给出准确值及行号引用\"**，在工作空间中检索到 **2** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n**命中原文行（原文查证依据）**：\n- 第 1 行: `# 星桥管理闭环AD1015`\n- 第 5 行: `项目名称：星桥管理闭环AD1015。`\n- 第 6 行: `项目预算：52931元。`\n- 第 7 行: `负责人：测试员丁。`\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 第 9 行: `交付截止日：2026年11月12日。`\n- 第 10 行: `验收规则：完成四台模拟终端的联调，并归档三份虚构记录。`\n> 💡 **AI提炼摘要（供对照参考）**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n### 📄 [[我的空间] 01-spell-words.md](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n**命中原文行（原文查证依据）**：\n- 第 0 行: `[核心主题标签] #01`\n> 💡 **AI提炼摘要（供对照参考）**：Parallel batch. May run concurrently with tasks 02, 03, 04, 05, 06, 07. Requires task 00 (Foundation) to be complete before this task begins. This task runs on its own git branch. To prevent merge conflicts, observe the\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+        "resultType": "deterministic_plan",
+        "businessData": {
+          "finalOutputs": [
+            {
+              "value": "### 🔍 工作空间文档探查结果\n\n针对 **\"“星桥管理闭环AD1015”,从原文核对预算、负责人、验收口令、交付截止日、验收规则,逐项给出准确值及行号引用\"**，在工作空间中检索到 **2** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n**命中原文行（原文查证依据）**：\n- 第 1 行: `# 星桥管理闭环AD1015`\n- 第 5 行: `项目名称：星桥管理闭环AD1015。`\n- 第 6 行: `项目预算：52931元。`\n- 第 7 行: `负责人：测试员丁。`\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 第 9 行: `交付截止日：2026年11月12日。`\n- 第 10 行: `验收规则：完成四台模拟终端的联调，并归档三份虚构记录。`\n> 💡 **AI提炼摘要（供对照参考）**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n### 📄 [[我的空间] 01-spell-words.md](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n**命中原文行（原文查证依据）**：\n- 第 0 行: `[核心主题标签] #01`\n> 💡 **AI提炼摘要（供对照参考）**：Parallel batch. May run concurrently with tasks 02, 03, 04, 05, 06, 07. Requires task 00 (Foundation) to be complete before this task begins. This task runs on its own git branch. To prevent merge conflicts, observe the\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+              "fromNodeId": "n1_内置工作空间文档探索",
+              "isArtifact": false,
+              "targetField": "result",
+              "expectedType": "string",
+              "fromNodeOutput": "answer"
+            }
+          ],
+          "capabilitiesUsed": [
+            {
+              "id": "platform.workspace.explorer",
+              "name": "内置工作空间文档探索",
+              "version": "1.0.1"
+            }
+          ]
+        },
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ]
+      },
+      "artifacts": [],
+      "execution": {
+        "status": "success",
+        "finishedAt": "2026-10-16T03:22:58.194Z",
+        "executionId": "a2f3b988-6ee5-4e22-9bde-363899b46bdc"
+      },
+      "detailText": "基于文档 `[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md` 原文，核对结果如下：\n\n* **预算**：52931元（引用：第 6 行）\n* **负责人**：测试员丁（引用：第 7 行）\n* **验收口令**：AD-Q8VN-6173（引用：第 8 行）\n* **交付截止日**：2026年11月12日（引用：第 9 行）\n* **验收规则**：完成四台模拟终端的联调，并归档三份虚构记录。（引用：第 10 行）",
+      "chatSummary": "基于文档 `[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md` 原文，核对结果如下：\n\n* **预算**：52931元（引用：第 6 行）\n* **负责人**：测试员丁（引用：第 7 行）\n* **验收口令**：AD-Q8VN-6173（引用：第 8 行）\n* **交付截止日**：2026年11月12日（引用：第 9 行）\n* **验收规则**：完成四台模拟终端的联调，并归档三份虚构记录。（引用：第 10 行）",
+      "presentation": {
+        "detailText": "基于文档 `[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md` 原文，核对结果如下：\n\n* **预算**：52931元（引用：第 6 行）\n* **负责人**：测试员丁（引用：第 7 行）\n* **验收口令**：AD-Q8VN-6173（引用：第 8 行）\n* **交付截止日**：2026年11月12日（引用：第 9 行）\n* **验收规则**：完成四台模拟终端的联调，并归档三份虚构记录。（引用：第 10 行）",
+        "chatSummary": "基于文档 `[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md` 原文，核对结果如下：\n\n* **预算**：52931元（引用：第 6 行）\n* **负责人**：测试员丁（引用：第 7 行）\n* **验收口令**：AD-Q8VN-6173（引用：第 8 行）\n* **交付截止日**：2026年11月12日（引用：第 9 行）\n* **验收规则**：完成四台模拟终端的联调，并归档三份虚构记录。（引用：第 10 行）",
+        "detailFormat": "markdown",
+        "summaryFormat": "markdown",
+        "preferAiSummary": false,
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ],
+        "notificationSummary": "### 🔍 工作空间文档探查结果\n\n针对 **\"“星桥管理闭环AD1015”,从原文核对预算、负责人、验收口令、交付截止日、验收规则,逐项给出准确值及行号引用\"**，在工作空间中检索到 **2** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n**命中原文行（原文查证依据）**：\n- 第 1 行: `# 星桥管理闭环AD1015`\n- 第 5 行: `项目名称：星桥管理闭环AD1015。`\n- 第 6 行: `项目预算：52931元。`\n- 第 7 行: `负责人：测试员丁。`\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 第 9 行: `交付截止日：2026年11月12日。`\n- 第 10 行: `验收规则：完成四台模拟终端的联调，并归档三份虚构记录。`\n> 💡 **AI提炼摘要（供对照参考）**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n### 📄 [[我的空间] 01-spell-words.md](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n**命中原文行（原文查证依据）**：\n- 第 0 行: `[核心主题标签] #01`\n> 💡 **AI提炼摘要（供对照参考）**：Parallel batch. May run concurrently with tasks 02, 03, 04, 05, 06, 07. Requires task 00 (Foundation) to be complete before this task begins. This task runs on its own git branch. To prevent merge conflicts, observe the\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+        "preferStructuredView": false
+      },
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ]
+    }
+  },
+  "usage": null,
+  "failureCode": null,
+  "failureReason": null,
+  "startedAt": "2026-10-16T03:22:57.734Z",
+  "endedAt": "2026-10-16T03:22:58.194Z",
+  "createdAt": "2026-10-16T03:22:57.726Z",
+  "updatedAt": "2026-10-16T03:23:04.660Z",
+  "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+  "phases": [
+    {
+      "id": "14853c46-fa78-4e33-9680-ce204f36861c",
+      "executionId": "a2f3b988-6ee5-4e22-9bde-363899b46bdc",
+      "phaseKey": "phase_01_n1_内置工作空间文档探索",
+      "phaseName": "n1_内置工作空间文档探索",
+      "phaseType": "builtin",
+      "status": "completed",
+      "attempt": 1,
+      "runtimeSessionId": null,
+      "input": null,
+      "output": {
+        "action": "workflow",
+        "output": {
+          "query": "“星桥管理闭环AD1015”,从原文核对预算、负责人、验收口令、交付截止日、验收规则,逐项给出准确值及行号引用",
+          "answer": "### 🔍 工作空间文档探查结果\n\n针对 **\"“星桥管理闭环AD1015”,从原文核对预算、负责人、验收口令、交付截止日、验收规则,逐项给出准确值及行号引用\"**，在工作空间中检索到 **2** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n**命中原文行（原文查证依据）**：\n- 第 1 行: `# 星桥管理闭环AD1015`\n- 第 5 行: `项目名称：星桥管理闭环AD1015。`\n- 第 6 行: `项目预算：52931元。`\n- 第 7 行: `负责人：测试员丁。`\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 第 9 行: `交付截止日：2026年11月12日。`\n- 第 10 行: `验收规则：完成四台模拟终端的联调，并归档三份虚构记录。`\n> 💡 **AI提炼摘要（供对照参考）**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n### 📄 [[我的空间] 01-spell-words.md](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n**命中原文行（原文查证依据）**：\n- 第 0 行: `[核心主题标签] #01`\n> 💡 **AI提炼摘要（供对照参考）**：Parallel batch. May run concurrently with tasks 02, 03, 04, 05, 06, 07. Requires task 00 (Foundation) to be complete before this task begins. This task runs on its own git branch. To prevent merge conflicts, observe the\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+          "citations": [
+            {
+              "url": "/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384",
+              "line": 1,
+              "fileId": "8b921afe-c4b9-417d-9d18-ebadb2c8f78c",
+              "snippet": "# 星桥管理闭环AD1015",
+              "fileName": "workspace-admin-loop-2026-10-15-fixture.md",
+              "workspaceId": "40ef4cf8-4205-4aaa-80a4-cbf3b165e384",
+              "workspaceName": "公司公共盘"
+            },
+            {
+              "url": "/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384",
+              "line": 5,
+              "fileId": "8b921afe-c4b9-417d-9d18-ebadb2c8f78c",
+              "snippet": "项目名称：星桥管理闭环AD1015。",
+              "fileName": "workspace-admin-loop-2026-10-15-fixture.md",
+              "workspaceId": "40ef4cf8-4205-4aaa-80a4-cbf3b165e384",
+              "workspaceName": "公司公共盘"
+            },
+            {
+              "url": "/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384",
+              "line": 6,
+              "fileId": "8b921afe-c4b9-417d-9d18-ebadb2c8f78c",
+              "snippet": "项目预算：52931元。",
+              "fileName": "workspace-admin-loop-2026-10-15-fixture.md",
+              "workspaceId": "40ef4cf8-4205-4aaa-80a4-cbf3b165e384",
+              "workspaceName": "公司公共盘"
+            },
+            {
+              "url": "/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384",
+              "line": 7,
+              "fileId": "8b921afe-c4b9-417d-9d18-ebadb2c8f78c",
+              "snippet": "负责人：测试员丁。",
+              "fileName": "workspace-admin-loop-2026-10-15-fixture.md",
+              "workspaceId": "40ef4cf8-4205-4aaa-80a4-cbf3b165e384",
+              "workspaceName": "公司公共盘"
+            },
+            {
+              "url": "/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384",
+              "line": 8,
+              "fileId": "8b921afe-c4b9-417d-9d18-ebadb2c8f78c",
+              "snippet": "验收口令：AD-Q8VN-6173。",
+              "fileName": "workspace-admin-loop-2026-10-15-fixture.md",
+              "workspaceId": "40ef4cf8-4205-4aaa-80a4-cbf3b165e384",
+              "workspaceName": "公司公共盘"
+            },
+            {
+              "url": "/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384",
+              "line": 9,
+              "fileId": "8b921afe-c4b9-417d-9d18-ebadb2c8f78c",
+              "snippet": "交付截止日：2026年11月12日。",
+              "fileName": "workspace-admin-loop-2026-10-15-fixture.md",
+              "workspaceId": "40ef4cf8-4205-4aaa-80a4-cbf3b165e384",
+              "workspaceName": "公司公共盘"
+            },
+            {
+              "url": "/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384",
+              "line": 10,
+              "fileId": "8b921afe-c4b9-417d-9d18-ebadb2c8f78c",
+              "snippet": "验收规则：完成四台模拟终端的联调，并归档三份虚构记录。",
+              "fileName": "workspace-admin-loop-2026-10-15-fixture.md",
+              "workspaceId": "40ef4cf8-4205-4aaa-80a4-cbf3b165e384",
+              "workspaceName": "公司公共盘"
+            },
+            {
+              "url": "/workspaces?tab=personal&fileId=ea666280-7073-408c-91e4-26d37648d9f1&workspaceId=e71d0321-c690-44e5-980d-1c736a803a76",
+              "line": 0,
+              "fileId": "ea666280-7073-408c-91e4-26d37648d9f1",
+              "snippet": "[核心主题标签] #01",
+              "fileName": "01-spell-words.md",
+              "workspaceId": "e71d0321-c690-44e5-980d-1c736a803a76",
+              "workspaceName": "我的空间"
+            }
+          ],
+          "scannedFiles": [
+            "workspace-admin-loop-2026-10-15-fixture.md",
+            "01-spell-words.md"
+          ],
+          "searchedFilesCount": 2
+        },
+        "status": "completed",
+        "stepId": "b3b0566f-6d6f-4283-909e-0190cf714fc9",
+        "snapshot": null,
+        "rawResult": null
+      },
+      "precheck": null,
+      "postcheck": null,
+      "errorCode": null,
+      "errorMessage": null,
+      "recoveryDecision": null,
+      "startedAt": "2026-10-16T03:22:57.742Z",
+      "completedAt": "2026-10-16T03:22:58.178Z",
+      "createdAt": "2026-10-16T03:22:57.742Z",
+      "updatedAt": "2026-10-16T03:22:58.178Z",
+      "artifacts": [],
+      "steps": [],
+      "takeovers": []
+    }
+  ]
+}

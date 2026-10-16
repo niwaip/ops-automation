@@ -1,0 +1,13 @@
+{
+  "regression": {
+    "total": 33,
+    "passed": 33,
+    "failed": 0
+  },
+  "boundaries": {
+    "total": 4,
+    "passed": 4,
+    "failed": 0
+  },
+  "scope": "Current source + isolated behavior tests, not live HTTP E2E"
+}

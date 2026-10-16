@@ -1,0 +1,49 @@
+{
+  "caseId": "R08",
+  "variant": "canonical",
+  "status": "passed",
+  "traceIds": [
+    "b99e9405-ef4e-4be2-96f4-6dd97610136b"
+  ],
+  "executionIds": [
+    "e361a4c4-5323-4890-aede-882acaa430d3"
+  ],
+  "requestDigest": "97ac23c591fa3a45f170c638af7e4783f8a83b0dbdf1cc3c3e5053e9826ffaa9",
+  "fixtureDigest": null,
+  "catalogSnapshotDigest": "catalog-v1-snapshot-sha256",
+  "routingPolicyVersion": "routing-policy-v1",
+  "routingPolicyDigest": "routing-policy-sha256",
+  "selectedCapabilityRefs": [
+    "platform.document.pdf-content-extractor"
+  ],
+  "planHash": null,
+  "inputHash": null,
+  "actualInvocations": [
+    "control-plane.create_plan"
+  ],
+  "usageByPurpose": {},
+  "logicalEffectCount": 1,
+  "artifactRefs": [],
+  "assertions": [
+    {
+      "assertion": "Emitted waiting_input event",
+      "passed": true,
+      "actual": "waiting_input"
+    },
+    {
+      "assertion": "Generated executionId for resumption",
+      "passed": true,
+      "actual": "e361a4c4-5323-4890-aede-882acaa430d3"
+    },
+    {
+      "assertion": "Clear prompt guiding user to upload document",
+      "passed": true,
+      "actual": "已规划好任务计划，但还需要补充 1 项必要参数：\n\n请补充：请通过输入框下方的附件图标上传待提取的文档或附件\n\n执行单 ID: e361a4c4-5323-4890-aede-882acaa430d3"
+    },
+    {
+      "assertion": "Did not invent fake content",
+      "passed": true
+    }
+  ],
+  "failureCategory": null
+}
