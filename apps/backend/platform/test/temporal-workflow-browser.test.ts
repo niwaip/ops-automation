@@ -892,4 +892,54 @@ describe('TemporalWorkflowBrowserDraftService', () => {
     expect(validation.isValid).toBe(true);
     expect(validation.errors).toEqual([]);
   });
+
+  it('generates semantic phase and step names for business websites (e.g. juejin forum and detail page)', async () => {
+    const { service } = createService();
+
+    const draft = await service.generateBrowserWorkflowDraft({
+      templateId: 'tpl-juejin-search-detail',
+      name: '掘金文章检索与详情查看',
+      templateSteps: [
+        {
+          step_id: 'step_1',
+          action: 'navigate',
+          params: { url: 'https://juejin.cn' },
+          description: '打开掘金论坛',
+        },
+        {
+          step_id: 'step_2',
+          action: 'fill',
+          locator: { type: 'css', value: 'input[type=search]' },
+          params: { value: '${searchQuery}' },
+          description: '输入搜索关键词',
+        },
+        {
+          step_id: 'step_3',
+          action: 'click_result',
+          params: { index: '${resultIndex}' },
+          description: '打开详细页',
+        },
+        {
+          step_id: 'step_4',
+          action: 'switch_latest_tab',
+          params: {},
+          description: '切换到新标签页',
+        },
+      ],
+      paramsSchema: {
+        type: 'object',
+        properties: {
+          searchQuery: { type: 'string' },
+          resultIndex: { type: 'number' },
+        },
+        required: ['searchQuery', 'resultIndex'],
+      },
+    });
+
+    expect(draft.workflowDsl.steps).toHaveLength(2);
+    expect(draft.workflowDsl.steps).toEqual([
+      expect.objectContaining({ name: '1. 打开掘金论坛', activityName: '1. 打开掘金论坛' }),
+      expect.objectContaining({ name: '2. 打开详细页', activityName: '2. 打开详细页' }),
+    ]);
+  });
 });

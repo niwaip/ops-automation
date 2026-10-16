@@ -116,6 +116,39 @@ describe('CdpExecutor execution policy', () => {
     );
   });
 
+  it('promotes click with index parameter to click_result and strips rigid recorded selector', async () => {
+    postJsonSpy.mockResolvedValueOnce({ success: true }).mockResolvedValueOnce({
+      success: true,
+      output: { command: 'click_result', status: 'success', data: { index: 1 } },
+    });
+
+    const step: TemplateStep = {
+      step_id: 'step_click_result',
+      action: 'click',
+      params: { index: '${resultIndex}' },
+      locator: { type: 'role', value: 'link[name="Hardcoded Recorded Title"]' },
+    };
+
+    const result = await executor.executeStep(step, 'test-session', { resultIndex: '1' });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        success: true,
+        step_id: 'step_click_result',
+        action: 'click_result',
+      })
+    );
+    expect(postJsonSpy).toHaveBeenNthCalledWith(
+      2,
+      '/browser/execute-step',
+      expect.objectContaining({
+        stepId: 'step_click_result',
+        action: 'click_result',
+        args: { index: 1 },
+      })
+    );
+  });
+
   it('forwards attribute-based read_value params to browser worker', async () => {
     postJsonSpy.mockResolvedValueOnce({ success: true }).mockResolvedValueOnce({
       success: true,

@@ -1,0 +1,14 @@
+data: {"type": "observation", "content": "⚡ 正在连接个人安全沙箱 [e7fce333-a8f4-4097-9a53-f0a4c729da46]，启动智能分析与执行引擎...", "seq": 1, "protocolVersion": "1", "sessionId": "22d5591b-2d6d-4e93-b195-459a7ea974d4", "traceId": "7dad9d35-fffa-459b-bd52-c01278f90ab3", "data": {"traceId": "7dad9d35-fffa-459b-bd52-c01278f90ab3"}}
+
+data: {"type": "observation", "content": "⚡ [DeepSeek Harness v1.3.0-sandbox | Sandbox: 5f63f1fca15a | User: sandbox | Mode: Personal]", "data": {"traceId": "7dad9d35-fffa-459b-bd52-c01278f90ab3"}, "seq": 2, "protocolVersion": "1", "sessionId": "22d5591b-2d6d-4e93-b195-459a7ea974d4", "traceId": "7dad9d35-fffa-459b-bd52-c01278f90ab3"}
+
+data: {"type": "observation", "content": "当前会话中未检测到您上传的任何附件。\n\n请重新上传需要总结的文件，或直接将相关内容发送到对话中，我将为您进行详细分析与总结。", "data": {"mode": "chat", "isDelta": true, "traceId": "7dad9d35-fffa-459b-bd52-c01278f90ab3"}, "seq": 3, "protocolVersion": "1", "sessionId": "22d5591b-2d6d-4e93-b195-459a7ea974d4", "traceId": "7dad9d35-fffa-459b-bd52-c01278f90ab3"}
+
+data: {"type": "observation", "content": "⚡ [DeepSeek Harness v1.3.0-sandbox | Sandbox: 5f63f1fca15a | User: sandbox | Mode: Personal]", "seq": 4, "protocolVersion": "1", "sessionId": "22d5591b-2d6d-4e93-b195-459a7ea974d4", "traceId": "7dad9d35-fffa-459b-bd52-c01278f90ab3", "data": {"traceId": "7dad9d35-fffa-459b-bd52-c01278f90ab3"}}
+
+data: {"type": "result", "content": "当前会话中未检测到您上传的任何附件。\n\n请重新上传需要总结的文件，或直接将相关内容发送到对话中，我将为您进行详细分析与总结。", "data": {"mode": "chat", "usage": {"prompt_tokens": 1939, "completion_tokens": 40, "total_tokens": 2330, "completion_tokens_details": {"reasoning_tokens": 351}}, "sandbox": {"containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46", "harness": "deepseek-harness", "executed": true, "durationMs": 6750, "exitCode": 0, "metrics": {"ttftMs": 6311.14, "durationMs": 6353.38, "llmDurationMs": 6311.33, "toolCallsCount": 0, "toolCalls": [], "llmInvocations": 1, "tokens": {"prompt_tokens": 1939, "completion_tokens": 40, "total_tokens": 2330, "completion_tokens_details": {"reasoning_tokens": 351}}, "finishReason": "stop", "roundFinishReasons": ["stop"], "guardDecisions": []}}, "traceId": "7dad9d35-fffa-459b-bd52-c01278f90ab3"}, "seq": 5, "protocolVersion": "1", "sessionId": "22d5591b-2d6d-4e93-b195-459a7ea974d4", "traceId": "7dad9d35-fffa-459b-bd52-c01278f90ab3"}
+
+data: {"type": "session_patch", "sessionId": "22d5591b-2d6d-4e93-b195-459a7ea974d4", "content": "", "data": {"title": "E2E-O10：请总结附件。", "status": "active", "updatedAt": "2026-10-13T11:11:21.168Z", "traceId": "7dad9d35-fffa-459b-bd52-c01278f90ab3"}, "seq": 6, "protocolVersion": "1", "traceId": "7dad9d35-fffa-459b-bd52-c01278f90ab3"}
+
+data: {"type": "done", "content": "Stream completed", "seq": 7, "protocolVersion": "1", "sessionId": "22d5591b-2d6d-4e93-b195-459a7ea974d4", "traceId": "7dad9d35-fffa-459b-bd52-c01278f90ab3", "data": {"traceId": "7dad9d35-fffa-459b-bd52-c01278f90ab3"}}
+

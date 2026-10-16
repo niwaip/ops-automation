@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "category": "technical_query_and_scripts",
+  "tested_platform": "OpsPilot Personal Assistant",
+  "cases": [
+    {
+      "id": "TECH-01",
+      "category": "架构与技术方案咨询",
+      "inputs": [],
+      "prompt": "请对比 Redis Cluster 与 Redis Sentinel 在集群架构、主从切换时延、高可用方案及客户端寻址路由机制上的核心差异与适用场景。只在聊天中输出结构化 Markdown 对比表格与决策建议，不要生成或下载任何物理文件。",
+      "assertions": [
+        "正常终态退出码0",
+        "包含架构/时延/路由等核心对比维度",
+        "无物理文件生成",
+        "不生成未请求的下载卡片"
+      ]
+    },
+    {
+      "id": "TECH-02",
+      "category": "Bash 运维分析脚本",
+      "inputs": [
+        "nginx_access_sample.log"
+      ],
+      "prompt": "根据我上传的 Nginx 访问日志，编写一个 Bash 运维分析脚本，文件名命名为“analyze_nginx_logs.sh”。脚本需满足：1. 使用 /usr/bin/env bash 并开启 set -eo pipefail；2. 统计独立访问 IP Top 5 及频次；3. 统计各 HTTP 状态码分布；4. 过滤并输出所有 5xx 错误的请求 URL。提供物理脚本文件下载，不要生成多余的 HTML 或 PPT。",
+      "assertions": [
+        "脚本文件 analyze_nginx_logs.sh 可下载",
+        "头部包含 #!/usr/bin/env bash 与 set -eo pipefail",
+        "bash -n 语法检查通过",
+        "包含独立IP统计与5xx过滤逻辑",
+        "无额外未请求文件"
+      ]
+    },
+    {
+      "id": "TECH-03",
+      "category": "Python 自动化数据处理脚本",
+      "inputs": [
+        "telemetry_sample.json"
+      ],
+      "prompt": "针对上传的微服务埋点 JSON 数据，编写一个 Python 3 自动化清洗脚本“process_telemetry.py”。要求：仅使用 Python 标准库（json、csv、datetime 等），清洗过滤掉 trace_id 为空或耗时<=0 的脏数据；计算合法请求的 P50 与 P95 耗时及错误率；将清洗后的有效数据导出为 clean_telemetry.csv。提供可下载的脚本文件。",
+      "assertions": [
+        "脚本文件 process_telemetry.py 可下载",
+        "python3 -m py_compile 语法检查通过",
+        "仅使用标准库无额外依赖",
+        "包含脏数据过滤与分位数统计逻辑",
+        "无额外未请求文件"
+      ]
+    },
+    {
+      "id": "TECH-04",
+      "category": "SQL 报表与性能优化脚本",
+      "inputs": [
+        "ecommerce_schema.sql"
+      ],
+      "prompt": "参考上传的电商 DDL 结构，编写用于月度复购分析的 SQL 脚本“monthly_repurchase_analysis.sql”。要求：1. 计算各自然月、各商品品类的支付总金额、下单用户数；2. 使用窗口函数计算用户次月复购率；3. 针对大数据量场景，给出合理的复合索引创建语句（CREATE INDEX）和查询优化建议。提供物理 SQL 文件下载。",
+      "assertions": [
+        "SQL文件 monthly_repurchase_analysis.sql 可下载",
+        "SQL 语法规范且表/字段与 DDL 一致",
+        "包含窗口函数与复购率计算",
+        "包含 CREATE INDEX 索引优化语句",
+        "无多余未请求文件"
+      ]
+    },
+    {
+      "id": "TECH-05",
+      "category": "生产级容器化与编排配置",
+      "inputs": [],
+      "prompt": "请为一个基于 Node.js/TypeScript 的 Web 服务编写生产级容器化配置文件：1. “Dockerfile”，采用多阶段构建（build 阶段编译、production 阶段运行），使用非 root 用户（node），包含 HEALTHCHECK 指令；2. 配套的“docker-compose.yml”，配置资源配额（mem_limit/cpus）与健康检查探针。提供可下载的 Dockerfile 与 docker-compose.yml 物理文件。",
+      "assertions": [
+        "Dockerfile 与 docker-compose.yml 均可下载",
+        "Dockerfile 包含多阶段构建与 HEALTHCHECK",
+        "使用非 root 用户运行",
+        "docker-compose.yml 结构合规",
+        "无多余脚本生成"
+      ]
+    },
+    {
+      "id": "TECH-06",
+      "category": "故障诊断与巡检监控脚本",
+      "inputs": [
+        "pool_exhaustion_crash.log"
+      ],
+      "prompt": "根据上传的系统崩溃日志，诊断系统故障根因，并在正文中清晰说明。同时，编写一个独立的 Python 数据库连接池健康巡检脚本“check_db_pool_health.py”，要求能够模拟定时检查活跃连接占比、发现超时未释放连接并打印告警。提供该巡检脚本文件下载。",
+      "assertions": [
+        "正文诊断准确命中连接未释放/连接池耗尽",
+        "check_db_pool_health.py 文件可下载",
+        "python3 -m py_compile 语法检查通过",
+        "包含超时连接告警判断逻辑",
+        "无额外未请求文件"
+      ]
+    },
+    {
+      "id": "TECH-07",
+      "category": "多轮脚本增量迭代与重构",
+      "inputs": [
+        "analyze_nginx_logs.sh"
+      ],
+      "prompt": "将上一轮的 analyze_nginx_logs.sh 脚本升级为支持命令行选项，生成新文件“analyze_nginx_logs_v2.sh”并提供下载：支持 -f 指定日志文件路径，-n 指定 Top 排名数量，-h 打印帮助说明。保持原有分析能力，不要覆盖或破坏原始 analyze_nginx_logs.sh 文件。",
+      "assertions": [
+        "生成新文件 analyze_nginx_logs_v2.sh 且可下载",
+        "原 analyze_nginx_logs.sh 文件哈希保持不变",
+        "包含 getopts 或参数解析分支",
+        "bash -n 语法检查通过",
+        "刷新会话后新旧产物均可访问且一致"
+      ]
+    },
+    {
+      "id": "TECH-08",
+      "category": "高并发内核调优咨询（纯正文）",
+      "inputs": [],
+      "prompt": "请针对 Linux 服务器在承载 50,000+ 并发长连接时可能出现的常见系统瓶颈（如 TIME_WAIT 过多、文件句柄耗尽、SYN 队列溢出），给出详细的内核参数调优方案（/etc/sysctl.conf 与 limits.conf）与排查命令。只在正文中解答，不要生成或下载任何脚本或文件。",
+      "assertions": [
+        "正常终态退出码0",
+        "包含 file-max, nofile, tcp_tw_reuse, somaxconn 等关键参数说明",
+        "无物理文件生成",
+        "不生成未请求的下载卡片"
+      ]
+    }
+  ]
+}

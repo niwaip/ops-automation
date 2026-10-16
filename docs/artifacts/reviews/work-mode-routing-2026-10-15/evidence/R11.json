@@ -1,0 +1,41 @@
+{
+  "caseId": "R11",
+  "variant": "canonical",
+  "status": "passed",
+  "traceIds": [
+    "31ee991e-a88a-4c15-a732-899189b87438"
+  ],
+  "executionIds": [
+    "b5bf04f7-4d2c-42ea-8edc-90ef4095c7c1"
+  ],
+  "requestDigest": "e7d9cd82c37bdf0a15611286466c961fbd5c19156dced35fd42b7b0eaadd26b7",
+  "fixtureDigest": "9d98c56fef1b97f6b1f0a6a40980fbff971943845ece24ff03b2037dfd671736",
+  "catalogSnapshotDigest": "catalog-v1-snapshot-sha256",
+  "routingPolicyVersion": "routing-policy-v1",
+  "routingPolicyDigest": "routing-policy-sha256",
+  "selectedCapabilityRefs": [
+    "内置工作空间文档探索",
+    "execute_skill"
+  ],
+  "planHash": null,
+  "inputHash": null,
+  "actualInvocations": [
+    "内置工作空间文档探索",
+    "execute_skill"
+  ],
+  "usageByPurpose": {},
+  "logicalEffectCount": 1,
+  "artifactRefs": [],
+  "assertions": [
+    {
+      "assertion": "Searched internal workspace documents",
+      "passed": true
+    },
+    {
+      "assertion": "Answer contains fixture business details (林澄, 48000)",
+      "passed": true,
+      "actual": "任务已启动。执行单 ID: b5bf04f7-4d2c-42ea-8edc-90ef4095c7c1\n\n已识别技能 内置工作空间文档探索，可以按计划进入执行。\n步骤已完成\n根据内部空间中检索到的文档 **《工作模式路由固定测试资料》**（文件名：`WM_ROUTE_FIXTURE_source.md"
+    }
+  ],
+  "failureCategory": null
+}

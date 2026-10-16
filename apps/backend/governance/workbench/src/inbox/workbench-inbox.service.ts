@@ -105,6 +105,8 @@ export class WorkbenchInboxService {
       }),
     ]);
 
+    await Promise.all(items.map((item) => this.hydrateItemExecutionArtifacts(item)));
+
     return {
       items,
       total,
@@ -126,7 +128,95 @@ export class WorkbenchInboxService {
       throw new NotFoundException(`收件箱条目不存在: ${id}`);
     }
 
+    await this.hydrateItemExecutionArtifacts(item);
+
     return item;
+  }
+
+  /**
+   * 自动水合底层执行产物至协同任务附件（修复执行完成前创建任务导致产物未挂载的竞态问题）
+   */
+  async hydrateItemExecutionArtifacts(item: any): Promise<void> {
+    if (!item?.unifiedPayload) return;
+    const payload = item.unifiedPayload as Record<string, any>;
+    const params = (payload.parameters || {}) as Record<string, any>;
+    const executionId = params.executionId || payload.metadata?.executionId;
+    const attachments = (payload.attachments || []) as any[];
+
+    if (executionId && (attachments.length === 0 || !attachments[0]?.url)) {
+      try {
+        const docExecution = await this.prisma.execution?.findUnique({
+          where: { id: executionId },
+          include: { artifacts: true },
+        });
+
+        if (docExecution) {
+          const rJson = (docExecution.resultJson || {}) as any;
+          const artifactRecord = docExecution.artifacts?.[0];
+          const downloadUrl =
+            artifactRecord?.url ||
+            rJson.downloadUrl ||
+            rJson.result?.businessData?.result?.downloadUrl ||
+            rJson.artifacts?.[0]?.downloadUrl;
+          const fileName =
+            artifactRecord?.name ||
+            rJson.fileName ||
+            rJson.result?.businessData?.result?.fileName ||
+            rJson.artifacts?.[0]?.name ||
+            (params.contractTitle ? `${params.contractTitle}.docx` : '保密合同初稿.docx');
+          const docSize =
+            artifactRecord?.sizeBytes ||
+            Number(rJson.size) ||
+            Number(rJson.result?.businessData?.result?.size) ||
+            undefined;
+
+          if (downloadUrl) {
+            const hydratedAttachment = {
+              id: artifactRecord?.id,
+              name: fileName,
+              url: downloadUrl,
+              downloadUrl,
+              ...(docSize ? { size: docSize } : {}),
+              mimeType:
+                artifactRecord?.mimeType ||
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              sha256: artifactRecord?.sha256,
+            };
+
+            payload.attachments = [hydratedAttachment];
+            params.downloadUrl = downloadUrl;
+            params.fileName = fileName;
+            if (artifactRecord?.id) params.artifactId = artifactRecord.id;
+
+            // 自动修正企业相对方名称与标题（避免因前置执行未落库导致误识别成乙方名称）
+            const normInput = (docExecution.normalizedInputJson || docExecution.inputJson || {}) as any;
+            const partyAName = normInput['partyA.name'] || normInput.partyA?.name;
+            if (
+              partyAName &&
+              (params.counterpartyName === '信息系統有限公司' ||
+                params.counterpartyName === '相对方企业主体（待明确）' ||
+                !params.counterpartyName)
+            ) {
+              params.counterpartyName = partyAName;
+              params.contractTitle = `${partyAName} - 商业保密协议 (NDA)`;
+              item.title = `[待发送] ${partyAName} - 商业保密协议 (NDA)`;
+            }
+
+            item.unifiedPayload = payload;
+
+            await this.prisma.workbenchInboxItem.update({
+              where: { id: item.id },
+              data: {
+                title: item.title,
+                unifiedPayload: payload,
+              },
+            });
+          }
+        }
+      } catch (err) {
+        this.logger.warn(`Failed to hydrate execution artifacts for inbox item ${item.id}: ${err}`);
+      }
+    }
   }
 
   /**

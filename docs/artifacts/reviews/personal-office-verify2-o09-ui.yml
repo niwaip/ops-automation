@@ -1,0 +1,188 @@
+- generic [ref=f7e4]:
+  - complementary [ref=f7e5]:
+    - generic [ref=f7e6]:
+      - generic [ref=f7e7]:
+        - generic [ref=f7e12]:
+          - text: OpsPilot
+          - generic [ref=f7e13]: AI
+        - button "收起侧边栏" [ref=f7e14] [cursor=pointer]:
+          - img "menu-fold" [ref=f7e16]
+      - menu [ref=f7e20]:
+        - menuitem "dashboard 工作台" [ref=f7e21] [cursor=pointer]:
+          - img "dashboard" [ref=f7e22]
+          - generic [ref=f7e25]: 工作台
+        - menuitem "message 智能协同" [ref=f7e26] [cursor=pointer]:
+          - img "message" [ref=f7e27]
+          - generic [ref=f7e30]: 智能协同
+        - menuitem "carry-out 任务中心" [ref=f7e31] [cursor=pointer]:
+          - img "carry-out" [ref=f7e32]
+          - generic [ref=f7e35]: 任务中心
+        - menuitem "team 数字员工" [ref=f7e36] [cursor=pointer]:
+          - img "team" [ref=f7e37]
+          - generic [ref=f7e40]: 数字员工
+        - menuitem "folder 资料空间" [ref=f7e41] [cursor=pointer]:
+          - img "folder" [ref=f7e42]
+          - generic [ref=f7e45]: 资料空间
+      - menu [ref=f7e47]:
+        - menuitem "setting 系统设置" [ref=f7e48] [cursor=pointer]:
+          - img "setting" [ref=f7e49]
+          - generic [ref=f7e52]: 系统设置
+  - generic [ref=f7e53]:
+    - banner [ref=f7e54]:
+      - generic [ref=f7e55]: 智能协同
+      - generic [ref=f7e59]:
+        - button "bell 8" [ref=f7e60] [cursor=pointer]:
+          - generic [ref=f7e62]:
+            - img "bell" [ref=f7e63]
+            - superscript [ref=f7e66]:
+              - generic [ref=f7e67]: "8"
+        - button "bg-colors 浅色" [ref=f7e69] [cursor=pointer]:
+          - img "bg-colors" [ref=f7e71]
+          - generic [ref=f7e74]: 浅色
+        - button "global 中文" [ref=f7e75] [cursor=pointer]:
+          - img "global" [ref=f7e77]
+          - generic [ref=f7e80]: 中文
+        - button "A admin admin@example.com down" [ref=f7e81] [cursor=pointer]:
+          - generic [ref=f7e82]: A
+          - generic [ref=f7e84]:
+            - generic [ref=f7e85]: admin
+            - generic [ref=f7e86]: admin@example.com
+          - img "down" [ref=f7e87]
+    - main [ref=f7e90]:
+      - generic [ref=f7e91]:
+        - generic [ref=f7e92]:
+          - button [ref=f7e93] [cursor=pointer]:
+            - img "menu-unfold" [ref=f7e95]
+          - button [ref=f7e98] [cursor=pointer]:
+            - img "plus" [ref=f7e100]
+          - button "清理全部会话" [ref=f7e104] [cursor=pointer]:
+            - img "clear" [ref=f7e106]
+        - generic [ref=f7e110]:
+          - generic [ref=f7e111]:
+            - generic [ref=f7e112]:
+              - generic [ref=f7e113]:
+                - img "desktop" [ref=f7e114]
+                - text: 网页
+              - strong [ref=f7e118]: VERIFY2-O09：汇总附件中的有效金额，指
+            - generic [ref=f7e119]:
+              - button "调整阅读字体大小" [ref=f7e121] [cursor=pointer]:
+                - img "font-size" [ref=f7e123]
+              - button [ref=f7e127] [cursor=pointer]:
+                - img "plus" [ref=f7e129]
+              - button [ref=f7e134] [cursor=pointer]:
+                - img "reload" [ref=f7e136]
+              - button [ref=f7e140] [cursor=pointer]:
+                - img "delete" [ref=f7e142]
+          - generic [ref=f7e151]:
+            - generic [ref=f7e155]:
+              - generic [ref=f7e156]:
+                - generic [ref=f7e158]:
+                  - img "paper-clip" [ref=f7e159]
+                  - generic [ref=f7e162]: E2E_费用脏数据.csv
+                - generic [ref=f7e163]: VERIFY2-O09：汇总附件中的有效金额，指出缺失值和重复行，生成可下载Excel VERIFY2_脏数据汇总.xlsx。只需简洁表格，不用美化。
+              - generic [ref=f7e167]:
+                - img "user" [ref=f7e169]
+                - generic [ref=f7e172]:
+                  - img "clock-circle" [ref=f7e173]
+                  - generic [ref=f7e177]: 10/13 20:41
+            - generic [ref=f7e181]:
+              - generic [ref=f7e185]:
+                - paragraph [ref=f7e186]: ⚠️ 沙箱已成功调用工具（bash）采集到相关数据，但在进行智能归纳或生成交付物时，上游推理模型连接中断或未返回最终交付文本。
+                - paragraph [ref=f7e187]: "【沙箱已检索到的参考数据】:"
+                - list [ref=f7e188]:
+                  - listitem [ref=f7e189]: VERIFY2_脏数据汇总.xlsx generated successfully.
+                - paragraph [ref=f7e190]: 💡 建议：可尝试重新提问，或在设置中切换为更稳定的模型重试。
+                - separator [ref=f7e191]: ✦
+                - paragraph [ref=f7e192]:
+                  - text: ⚠️
+                  - strong [ref=f7e193]: 【指标核算未完成声明】
+                - list [ref=f7e194]:
+                  - listitem [ref=f7e195]:
+                    - strong [ref=f7e196]: 已达成指标
+                    - text: ：无
+                  - listitem [ref=f7e197]:
+                    - strong [ref=f7e198]: 未完成指标
+                    - text: ：有效金额
+                  - listitem [ref=f7e199]:
+                    - strong [ref=f7e200]: 未完成原因
+                    - text: ：模型未能在当前回复中直接呈现全部关键指标的具体数值核算结论。
+                  - listitem [ref=f7e201]:
+                    - strong [ref=f7e202]: 💡 建议操作
+                    - text: ：可指定直接读取相关数据源工作表或明确计算口径重试。
+                - blockquote [ref=f7e203]:
+                  - paragraph [ref=f7e204]:
+                    - text: 📥
+                    - strong [ref=f7e205]: 生成产物已就绪
+                    - text: ：
+                  - list [ref=f7e206]:
+                    - listitem [ref=f7e207]:
+                      - text: 📊
+                      - strong [ref=f7e208]:
+                        - link "《VERIFY2_脏数据汇总.xlsx》" [active] [ref=f7e209] [cursor=pointer]:
+                          - /url: /api/ai/chat/workspace-files/e7fce333-a8f4-4097-9a53-f0a4c729da46/VERIFY2_%E8%84%8F%E6%95%B0%E6%8D%AE%E6%B1%87%E6%80%BB.xlsx?token=[REDACTED_TOKEN]
+                      - text: (点击直接下载 · 6.4 KB)
+              - generic [ref=f7e210]:
+                - generic [ref=f7e212]:
+                  - img "robot" [ref=f7e214]
+                  - generic [ref=f7e217]:
+                    - img "clock-circle" [ref=f7e218]
+                    - generic [ref=f7e222]: 10/13 20:41
+                - generic [ref=f7e225]:
+                  - generic [ref=f7e228] [cursor=pointer]:
+                    - generic [ref=f7e229]: Tokens:107499
+                    - generic [ref=f7e231]: /
+                    - generic [ref=f7e232]: 输入:100680 输出:3866 (+推理:45)
+                  - generic "评价回答" [ref=f7e235]:
+                    - button "回答有帮助" [ref=f7e236] [cursor=pointer]:
+                      - img "like" [ref=f7e238]
+                    - button "回答需要改进" [ref=f7e241] [cursor=pointer]:
+                      - img "dislike" [ref=f7e243]
+                  - button "保存到个人空间" [ref=f7e247] [cursor=pointer]:
+                    - img "book" [ref=f7e249]
+                  - button "收集到 GTD 收件箱" [ref=f7e253] [cursor=pointer]:
+                    - img "inbox" [ref=f7e255]
+                  - generic [ref=f7e259]:
+                    - button "复制" [ref=f7e260] [cursor=pointer]:
+                      - img "copy" [ref=f7e262]
+                    - button "重试" [ref=f7e265] [cursor=pointer]:
+                      - img "redo" [ref=f7e267]
+          - generic [ref=f7e273]:
+            - textbox "例如：/ppt 制作商业汇报 或 /research 调研开源模型（输入 / 唤起快捷指令）" [ref=f7e275]
+            - generic [ref=f7e276]:
+              - generic [ref=f7e277]:
+                - radiogroup "segmented control" [ref=f7e278]:
+                  - generic [ref=f7e279]:
+                    - generic [ref=f7e280] [cursor=pointer]:
+                      - radio "user 个人助理" [checked]
+                      - generic [ref=f7e281]:
+                        - img "user" [ref=f7e283]
+                        - generic [ref=f7e286]: 个人助理
+                    - generic [ref=f7e289] [cursor=pointer]:
+                      - radio "robot 企业协同"
+                      - generic [ref=f7e290]:
+                        - img "robot" [ref=f7e292]
+                        - generic [ref=f7e295]: 企业协同
+                - generic [ref=f7e296]:
+                  - 'button "bulb 思考: 中 down" [ref=f7e297] [cursor=pointer]':
+                    - img "bulb" [ref=f7e298]
+                    - generic [ref=f7e301]: "思考: 中"
+                    - img "down" [ref=f7e302]
+                  - generic "深度调研：已关闭（默认关闭。常规查看与问询不走调研；开启或输入 /research 启用多源深度调研）" [ref=f7e305]:
+                    - generic [ref=f7e306]:
+                      - img "compass" [ref=f7e307]
+                      - text: 调研
+                    - switch [ref=f7e310] [cursor=pointer]
+              - generic [ref=f7e313]:
+                - generic [ref=f7e316] [cursor=pointer]:
+                  - combobox [ref=f7e318]
+                  - generic "Auto / 系统默认" [ref=f7e319]
+                - button [ref=f7e323] [cursor=pointer]:
+                  - img "paper-clip" [ref=f7e325]
+                - button [ref=f7e328] [cursor=pointer]:
+                  - img "audio" [ref=f7e330]
+                - button [ref=f7e333] [cursor=pointer]:
+                  - img "plus" [ref=f7e335]
+                - button "send 发送" [disabled] [ref=f7e339]:
+                  - generic:
+                    - img "send"
+                  - generic: 发送

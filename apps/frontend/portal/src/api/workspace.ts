@@ -50,6 +50,7 @@ export interface WorkspaceNode {
   updatedAt: string;
   workspaceType?: 'personal' | 'department' | 'company';
   workspaceName?: string;
+  parentName?: string;
 }
 
 export interface ContentMatchSnippet {
@@ -79,7 +80,17 @@ export interface RegenerateDigestRequest {
 }
 
 export interface BatchRegenerateDigestRequest extends RegenerateDigestRequest {
-  nodeIds: string[];
+  nodeIds?: string[];
+  scope?: 'selected' | 'all' | 'uncleaned' | 'folder';
+  folderId?: string;
+}
+
+export interface WorkspaceDigestStats {
+  totalFiles: number;
+  aiCleanedFiles: number;
+  ruleDigestFiles: number;
+  noDigestFiles: number;
+  coveragePercent: number;
 }
 
 export interface BatchRegenerateDigestResponse {
@@ -100,9 +111,16 @@ export const workspaceApi = {
     });
   },
 
-  getNodes: async (workspaceId: string, parentId?: string | null): Promise<WorkspaceNode[]> => {
-    const params = parentId ? `?parentId=${encodeURIComponent(parentId)}` : '';
-    return await apiClient.get(`/workspaces/${workspaceId}/nodes${params}`);
+  getNodes: async (
+    workspaceId: string,
+    parentId?: string | null,
+    scope?: 'folder' | 'all' | 'ai_cleaned' | 'uncleaned'
+  ): Promise<WorkspaceNode[]> => {
+    const query = new URLSearchParams();
+    if (parentId) query.append('parentId', parentId);
+    if (scope && scope !== 'folder') query.append('scope', scope);
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return await apiClient.get(`/workspaces/${workspaceId}/nodes${qs}`);
   },
 
   createFolder: async (
@@ -209,5 +227,9 @@ export const workspaceApi = {
     options: BatchRegenerateDigestRequest
   ): Promise<BatchRegenerateDigestResponse> => {
     return await apiClient.post(`/workspaces/${workspaceId}/batch-digest`, options);
+  },
+
+  getDigestStats: async (workspaceId: string): Promise<WorkspaceDigestStats> => {
+    return await apiClient.get(`/workspaces/${workspaceId}/digest-stats`);
   },
 };

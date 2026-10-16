@@ -1,0 +1,45 @@
+{
+  "caseId": "R01",
+  "variant": "canonical",
+  "status": "passed",
+  "traceIds": [
+    "5b492757-848c-4a08-ad54-7fcd57fe3690"
+  ],
+  "executionIds": [],
+  "requestDigest": "b2107f68858392de07bd23c66297e9f3d5ec5a43287dae4cad39c6b5780b3727",
+  "fixtureDigest": null,
+  "catalogSnapshotDigest": "catalog-v1-snapshot-sha256",
+  "routingPolicyVersion": "routing-policy-v1",
+  "routingPolicyDigest": "routing-policy-sha256",
+  "selectedCapabilityRefs": [],
+  "planHash": null,
+  "inputHash": null,
+  "actualInvocations": [
+    "llm.native_generation"
+  ],
+  "usageByPurpose": {},
+  "logicalEffectCount": 0,
+  "artifactRefs": [],
+  "assertions": [
+    {
+      "assertion": "Returns total 200",
+      "passed": true,
+      "actual": "基于您提供的销售数据，计算结果如下：\n\n* **销售总额**：200 元（120元 + \n基于您提供的销售数据，计算结果如下：\n\n* **销售总额**：200 元（120元 + 80元）\n* **甲店"
+    },
+    {
+      "assertion": "Returns 60% and 40% proportions",
+      "passed": true,
+      "actual": "基于您提供的销售数据，计算结果如下：\n\n* **销售总额**：200 元（120元 + \n基于您提供的销售数据，计算结果如下：\n\n* **销售总额**：200 元（120元 + 80元）\n* **甲店"
+    },
+    {
+      "assertion": "No external tool or workspace retrieval invoked",
+      "passed": true,
+      "actual": []
+    },
+    {
+      "assertion": "No topology model calls",
+      "passed": true
+    }
+  ],
+  "failureCategory": null
+}

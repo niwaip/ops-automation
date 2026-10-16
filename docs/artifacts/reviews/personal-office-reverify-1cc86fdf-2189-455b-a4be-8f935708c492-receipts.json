@@ -1,0 +1,32 @@
+{
+  "sessionId": "1cc86fdf-2189-455b-a4be-8f935708c492",
+  "query": "【当前轮次用户上传附件】: E2E_个人周报.docx（这是用户本轮刚上传的新文件，为本次指令的主要处理对象）\n用户指令：VERIFY-O08：把Word附件的下周计划加上“更新接口文档”，生成 VERIFY_个人周报_v2.docx 供下载，请直接给出文件下载链接。",
+  "verified": false,
+  "receipts": [
+    {
+      "tool": "bash",
+      "status": "success",
+      "error": null
+    },
+    {
+      "tool": "bash",
+      "status": "success",
+      "error": null
+    },
+    {
+      "tool": "bash",
+      "status": "success",
+      "error": null
+    },
+    {
+      "tool": "bash",
+      "status": "success",
+      "error": null
+    },
+    {
+      "tool": "bash",
+      "status": "success",
+      "error": null
+    }
+  ]
+}

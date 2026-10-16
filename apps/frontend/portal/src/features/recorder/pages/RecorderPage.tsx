@@ -52,8 +52,8 @@ const RecorderPage: React.FC = () => {
     resumeCommandCount: 0,
   });
 
-  const leftSpan = hasExecuted || isExpanded ? 6 : 10;
-  const rightSpan = hasExecuted || isExpanded ? 18 : 14;
+  const leftSpan = isExpanded ? 6 : 9;
+  const rightSpan = isExpanded ? 18 : 15;
 
   const compileMutation = useMutation(
     (options: { script: string; intent?: string }) =>
@@ -208,6 +208,24 @@ const RecorderPage: React.FC = () => {
     setHasExecuted(true);
   }, []);
 
+  const handleBrowserReady = useCallback((ready: boolean, backend?: string) => {
+    setIsBrowserInitialized(ready);
+    if (backend) setBrowserBackend(backend);
+  }, []);
+
+  const handleBrowserEndpoints = useCallback(
+    (endpoints: { novnc?: string; cdp?: string }) => {
+      if (endpoints?.novnc) {
+        setDynamicNoVncUrl(endpoints.novnc);
+        setPreviewMode('session');
+      } else {
+        setDynamicNoVncUrl(null);
+        setPreviewMode('idle');
+      }
+    },
+    []
+  );
+
   const handleToggleExpand = useCallback(() => {
     setIsExpanded((prev) => !prev);
   }, []);
@@ -352,20 +370,9 @@ const RecorderPage: React.FC = () => {
           >
             <AIControls
               onCommandExecuted={handleAICommandExecuted}
-              onBrowserReady={(ready, backend) => {
-                setIsBrowserInitialized(ready);
-                if (backend) setBrowserBackend(backend);
-              }}
+              onBrowserReady={handleBrowserReady}
               onTakeoverStateChange={setTakeoverState}
-              onBrowserEndpoints={(endpoints) => {
-                if (endpoints.novnc) {
-                  setDynamicNoVncUrl(endpoints.novnc);
-                  setPreviewMode('session');
-                } else {
-                  setDynamicNoVncUrl(null);
-                  setPreviewMode('idle');
-                }
-              }}
+              onBrowserEndpoints={handleBrowserEndpoints}
               recorderStatus={recorderState.status}
               isConnected={isConnected}
               onStartRecording={handleStartWithReset}

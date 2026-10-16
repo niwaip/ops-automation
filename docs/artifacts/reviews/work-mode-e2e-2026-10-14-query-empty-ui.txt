@@ -1,0 +1,135 @@
+- complementary:
+  - button:
+  - menu:
+    - menuitem "dashboard 工作台":
+      - img "dashboard":
+      - generic: 工作台
+    - menuitem "message 智能协同":
+      - img "message":
+      - generic: 智能协同
+    - menuitem "carry-out 任务中心":
+      - img "carry-out":
+      - generic: 任务中心
+    - menuitem "team 数字员工":
+      - img "team":
+      - generic: 数字员工
+    - menuitem "folder 资料空间":
+      - img "folder":
+      - generic: 资料空间
+  - menu:
+    - menuitem "setting 系统设置":
+      - img "setting":
+      - generic: 系统设置
+- banner:
+  - button "展开侧边栏":
+    - img "menu-unfold":
+  - generic: 智能协同
+  - button "bell 1 3":
+    - img "bell":
+    - superscript:
+      - generic: "1"
+      - generic: "3"
+  - button "bg-colors 浅色":
+    - img "bg-colors":
+    - generic: 浅色
+  - button "global 中文":
+    - img "global":
+    - generic: 中文
+  - button "A admin admin@example.com down":
+    - generic: A
+    - generic: admin
+    - generic: admin@example.com
+    - img "down":
+- main:
+  - button "menu-unfold":
+    - img "menu-unfold":
+  - button "plus":
+    - img "plus":
+  - button "清理全部会话":
+    - img "clear":
+  - img "desktop":
+  - text: 网页
+  - strong: 只根据以下虚构会议记录整理会议纪要，在聊天里返回
+  - button "调整阅读字体大小":
+    - img "font-size":
+  - button "plus":
+    - img "plus":
+  - button "reload":
+    - img "reload":
+  - button "delete":
+    - img "delete":
+  - generic: 任务结果
+  - link "thunderbolt 详细":
+    - /url: /executions/aea9c70c-a548-44fd-875d-52f917c9f989
+    - img "thunderbolt":
+    - generic: 详细
+  - generic: 状态：已完成
+  - paragraph:
+    - text: 在当前工作空间（个人盘、部门盘与公司公共盘）的
+    - strong: "20"
+    - text: 个文档中，未检索到包含关键词
+    - code: E2E_WORK_MODE_NONEXISTENT_20261014
+    - text: 的相关内容。
+  - paragraph: 当前检索覆盖的文档包括：
+  - list:
+    - code: 合同合规审查报告_保密合同_测试验证_1790834878251_v1_法务批注版.html
+    - code: "[V1_历史留存稿] 保密合同_测试验证_1790834878251_v1.docx"
+    - code: "[V2_最新修改稿] 保密合同_测试验证_1790834878251_v1_法务批注版.docx"
+    - code: 保密合同_测试验证_1790834878251_v1_法务批注版.pdf
+    - code: 流程办结与电子存证备案单.md
+    - text: 等
+  - paragraph: 建议检查关键词拼写是否准确，或尝试更换相关的业务术语重新检索。
+  - generic "查看结构化结果"
+  - img "robot":
+  - img "clock-circle":
+  - generic: 10/14 14:46
+  - generic: 已完成
+  - generic: Tokens:1867
+  - generic: /
+  - generic: 输入:1295 输出:1 (+推理:571)
+  - generic "评价回答":
+    - button "回答有帮助":
+      - img "like":
+    - button "回答需要改进":
+      - img "dislike":
+  - button "保存到个人空间":
+    - img "book":
+  - button "收集到 GTD 收件箱":
+    - img "inbox":
+  - button "复制":
+    - img "copy":
+  - button "重试":
+    - img "redo":
+  - textbox "例如：/doc 分析工作空间架构 或 /email 总结今日邮件（输入 / 唤起工作技能，! 唤起工作流）"
+  - radiogroup "segmented control":
+    - radio "user 个人助理"
+    - img "user":
+    - generic: 个人助理
+    - radio "robot 企业协同" [checked]
+    - img "robot":
+    - generic: 企业协同
+  - 'button "bulb 思考: 中 down"':
+    - img "bulb":
+    - generic: "思考: 中"
+    - img "down":
+  - generic "联网搜索：已关闭（可选开启，开启后允许 AI 检索互联网公开资讯）":
+    - img "global":
+    - text: 联网
+    - switch
+  - generic "工作空间知识检索：已关闭（可选开启，开启后提问将自动探查并研读空间文档）":
+    - img "folder":
+    - text: 知识
+    - switch
+  - combobox
+  - generic "Auto / 系统默认"
+  - button "thunderbolt":
+    - img "thunderbolt":
+  - button "paper-clip":
+    - img "paper-clip":
+  - button "audio":
+    - img "audio":
+  - button "plus":
+    - img "plus":
+  - button "send 发送" [disabled]:
+    - img "send":
+    - generic: 发送

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
-import { getAiOrchestratorUrl } from '../ports';
+import { getAiOrchestratorUrl, getInternalServiceHeaders } from '../ports';
 import {
   InboxAiClarification,
   TodoPriority,
@@ -63,7 +63,10 @@ export class WorkbenchInboxClarifierService {
           systemPrompt: '你必须严格且仅输出单个合法 JSON 对象。',
           temperature: 0.1,
         },
-        { timeout: 9000 }
+        {
+          timeout: 9000,
+          headers: getInternalServiceHeaders(),
+        }
       );
 
       const rawResponse = response.data?.response;

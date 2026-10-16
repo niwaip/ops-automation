@@ -1,0 +1,44 @@
+{
+  "caseId": "F01",
+  "variant": "canonical",
+  "status": "passed",
+  "traceIds": [
+    "3e4b7057-4aec-4f4f-b7b8-435adcef02b4",
+    "c88ea682-5f2e-42d5-b284-d8d0d6f42dfd"
+  ],
+  "executionIds": [
+    "6469d61d-9bfa-437d-94d6-d617249659af",
+    "53e442a7-e357-40a5-a38c-5ec81e34ab30"
+  ],
+  "requestDigest": "df527622a2a9cc2186fe8697028df8273f278c484298a557df3292b7700efe21",
+  "fixtureDigest": null,
+  "catalogSnapshotDigest": "catalog-v1-snapshot-sha256",
+  "routingPolicyVersion": "routing-policy-v1",
+  "routingPolicyDigest": "routing-policy-sha256",
+  "selectedCapabilityRefs": [
+    "df15c847-ddbe-4984-a688-d0e46babafa6"
+  ],
+  "planHash": null,
+  "inputHash": null,
+  "actualInvocations": [
+    "saved_workflow.df15c847-ddbe-4984-a688-d0e46babafa6"
+  ],
+  "usageByPurpose": {},
+  "logicalEffectCount": 1,
+  "artifactRefs": [],
+  "assertions": [
+    {
+      "assertion": "First run matched saved workflow",
+      "passed": true
+    },
+    {
+      "assertion": "Second run matched saved workflow",
+      "passed": true
+    },
+    {
+      "assertion": "Topology model calls = 0 for both replays",
+      "passed": true
+    }
+  ],
+  "failureCategory": null
+}

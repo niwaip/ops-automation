@@ -66,7 +66,17 @@ describe('contractComparisonHelper', () => {
       expect(pair).toBeNull();
     });
 
-    it('should return baseDoc and latestDoc when versions >= 2', () => {
+    it('should return null when files are twin docx and pdf of the same contract version', () => {
+      const originals = [
+        { name: '保密合同_狗宝_v1_20261012.pdf', url: 'http://example.com/archived.pdf' },
+        { name: '保密合同_狗宝_v1_20261012.docx', url: 'http://example.com/draft.docx' },
+        { name: '保密合同_狗宝_v1_20261012.pdf', url: 'http://example.com/initial.pdf' },
+      ];
+      const pair = getContractComparisonPair(originals);
+      expect(pair).toBeNull();
+    });
+
+    it('should return baseDoc and latestDoc when versions >= 2 with distinct stems', () => {
       const originals = [
         { name: '保密合同_v2.docx', url: 'http://example.com/v2.docx' },
         { name: '保密合同_v1.docx', url: 'http://example.com/v1.docx' },

@@ -3,6 +3,7 @@ import { Button, Empty, Space, Tag, Typography } from 'antd';
 import { EyeOutlined, DownloadOutlined, ExportOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from 'react-query';
+import { useTranslation } from 'react-i18next';
 import { reminderApi } from '@/api';
 import { useStore } from 'zustand';
 import {
@@ -48,6 +49,7 @@ function formatFriendlyTime(timestamp: string): string {
  * 通知铃铛下拉内的预览面板（含头部操作条 + 最新 5 条列表 + 详情快速弹窗）。
  */
 export function NotificationPreviewPanel({ language }: NotificationPreviewPanelProps) {
+  const { t } = useTranslation('notification');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedNotification, setSelectedNotification] = useState<AppNotification | null>(null);
@@ -93,12 +95,12 @@ export function NotificationPreviewPanel({ language }: NotificationPreviewPanelP
           align="start"
         >
           <div>
-            <Typography.Text strong style={{ fontSize: 15 }}>通知预览</Typography.Text>
+            <Typography.Text strong style={{ fontSize: 15 }}>{t('preview_title', '通知预览')}</Typography.Text>
             <div style={{ marginTop: 2 }}>
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                 {unreadNotificationCount > 0
-                  ? `未读 ${unreadNotificationCount} 条`
-                  : '当前没有未读通知'}
+                  ? t('unread_count', { count: unreadNotificationCount, defaultValue: `未读 ${unreadNotificationCount} 条` })
+                  : t('no_unread', '当前没有未读通知')}
               </Typography.Text>
             </div>
           </div>
@@ -112,17 +114,17 @@ export function NotificationPreviewPanel({ language }: NotificationPreviewPanelP
                 void reminderApi.markAllRead().then(() => queryClient.invalidateQueries(['user-web-notifications']));
               }}
             >
-              全部已读
+              {t('mark_all_read', '全部已读')}
             </Button>
             <Button type="link" size="small" onClick={() => navigate('/notifications')}>
-              查看全部
+              {t('view_all', '查看全部')}
             </Button>
           </Space>
         </Space>
         {previewNotifications.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="暂无通知"
+            description={t('no_unread', '暂无通知')}
             style={{ margin: '20px 0 8px' }}
           />
         ) : (

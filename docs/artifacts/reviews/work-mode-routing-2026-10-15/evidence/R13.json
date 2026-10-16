@@ -1,0 +1,32 @@
+{
+  "caseId": "R13",
+  "variant": "canonical",
+  "status": "passed",
+  "traceIds": [
+    "3fa851df-5aaa-4fc7-8bf0-384bb18166fc"
+  ],
+  "executionIds": [],
+  "requestDigest": "0d14f2bd306de7f16418e072a63777c59a4d739923f675c34a00ba2b1314ffb0",
+  "fixtureDigest": null,
+  "catalogSnapshotDigest": "catalog-v1-snapshot-sha256",
+  "routingPolicyVersion": "routing-policy-v1",
+  "routingPolicyDigest": "routing-policy-sha256",
+  "selectedCapabilityRefs": [],
+  "planHash": null,
+  "inputHash": null,
+  "actualInvocations": [],
+  "usageByPurpose": {},
+  "logicalEffectCount": 0,
+  "artifactRefs": [],
+  "assertions": [
+    {
+      "assertion": "Rejected unknown capability execution",
+      "passed": true
+    },
+    {
+      "assertion": "Did not invoke rogue tools or external side effects",
+      "passed": true
+    }
+  ],
+  "failureCategory": null
+}

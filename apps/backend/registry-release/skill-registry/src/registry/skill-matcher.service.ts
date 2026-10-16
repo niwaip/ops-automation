@@ -270,6 +270,7 @@ ${skillsXml}
       skills.map((skill) => ({
         id: skill.id,
         name: skill.name,
+        category: (skill as any).category,
         aliases: skill.apiEndpoints?.runtimeMetadata?.routingAliases,
         triggerKeywords: skill.triggerKeywords,
         negativeKeywords:

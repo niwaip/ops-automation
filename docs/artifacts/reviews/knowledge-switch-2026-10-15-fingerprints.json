@@ -1,0 +1,5 @@
+{
+  "apps/backend/intelligence/ai-orchestrator/src/modules/chat/chat-knowledge-retrieval.service.ts": "c9085eeb8c861635560985821bee42a87f8376cce5231f74f543b99436660786",
+  "apps/backend/governance/workbench/src/workspace/workspace.service.ts": "9eb6ad792745a702ab0af3c96c386e0b42b7c41d0954c16df4efda4e8068d2dc",
+  "apps/backend/execution-control/control-plane/src/modules/execution/adapters/workspace/workspace-explorer.handler.ts": "8265d469cc713d0220f6c31804da7c9d1dd31ed089189506fd99108218ae5d87"
+}

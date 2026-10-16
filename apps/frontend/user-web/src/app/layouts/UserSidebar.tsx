@@ -31,6 +31,7 @@ export function UserSidebar({ selectedMenuKey }: UserSidebarProps) {
   const setChatWidgetOpen = useChatStore((state) => state.setOpen);
   const sidebarCollapsed = useStore(preferencesStore, (state) => state.sidebarCollapsed);
   const setSidebarCollapsed = useStore(preferencesStore, (state) => state.setSidebarCollapsed);
+  const theme = useStore(preferencesStore, (state) => state.theme);
   const { t } = useTranslation('common');
 
   const primaryMenuItems = [
@@ -56,6 +57,10 @@ export function UserSidebar({ selectedMenuKey }: UserSidebarProps) {
       collapsed={sidebarCollapsed}
       onCollapse={(collapsed) => setSidebarCollapsed(collapsed)}
       trigger={null}
+      theme={theme === 'dark' ? 'dark' : 'light'}
+      style={{
+        background: 'var(--bg-sidebar)',
+      }}
     >
       <div
         className={`${styles['user-shell-logo']} ${
@@ -112,7 +117,6 @@ export function UserSidebar({ selectedMenuKey }: UserSidebarProps) {
                 style={{
                   fontSize: 18,
                   fontWeight: 800,
-                  color: 'var(--text-primary)',
                   margin: 0,
                   letterSpacing: '-0.5px',
                   display: 'flex',
@@ -157,7 +161,7 @@ export function UserSidebar({ selectedMenuKey }: UserSidebarProps) {
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
         <Menu
           className={styles['user-shell-menu']}
-          theme="dark"
+          theme={theme === 'dark' ? 'dark' : 'light'}
           mode="inline"
           selectedKeys={[selectedMenuKey]}
           onClick={({ key }) => {
@@ -170,7 +174,7 @@ export function UserSidebar({ selectedMenuKey }: UserSidebarProps) {
       <div className={styles['user-shell-bottom-menu-wrapper']}>
         <Menu
           className={`${styles['user-shell-menu']} ${styles['user-shell-bottom-menu']}`}
-          theme="dark"
+          theme={theme === 'dark' ? 'dark' : 'light'}
           mode="inline"
           selectedKeys={[selectedMenuKey]}
           onClick={({ key }) => {

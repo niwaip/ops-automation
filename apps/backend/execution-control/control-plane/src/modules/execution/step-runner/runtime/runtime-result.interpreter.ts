@@ -359,10 +359,36 @@ export class RuntimeResultInterpreter {
 
     for (const art of rawArtifacts) {
       if (!art || typeof art !== 'object') continue;
-      const artifactUrl = art.url || art.downloadUrl || art.storageUri || art.path;
+      const artifactPath =
+        art.path ||
+        art.artifact?.path ||
+        art.snapshot?.path ||
+        art.artifactPath ||
+        art.snapshotPath ||
+        null;
+      const artifactUrl =
+        art.url ||
+        art.downloadUrl ||
+        art.storageUri ||
+        artifactPath;
       if (!artifactUrl && !art.id) continue;
 
-      const externalArtifactId = art.id || art.externalArtifactId || null;
+      const fileName = artifactPath
+        ? String(artifactPath).split('/').pop()
+        : art.name || art.filename || null;
+      const publicUrl =
+        (typeof artifactUrl === 'string' && (artifactUrl.startsWith('http') || artifactUrl.startsWith('/api/')))
+          ? artifactUrl
+          : fileName
+            ? `/api/browser-runtime/artifacts/${encodeURIComponent(fileName)}`
+            : (artifactUrl || '');
+
+      const externalArtifactId =
+        art.id ||
+        art.externalArtifactId ||
+        art.snapshot?.id ||
+        (fileName ? fileName.replace(/\.[^/.]+$/, '') : null) ||
+        null;
       if (externalArtifactId) {
         const existing = await this.prisma.executionArtifact.findFirst({
           where: {
@@ -373,31 +399,52 @@ export class RuntimeResultInterpreter {
           select: { id: true },
         });
         if (existing) continue;
-      } else if (artifactUrl) {
+      } else if (publicUrl) {
         const existing = await this.prisma.executionArtifact.findFirst({
           where: {
             executionId: context.executionId,
             producerStepId: context.stepId,
-            url: artifactUrl,
+            url: publicUrl,
           },
           select: { id: true },
         });
         if (existing) continue;
       }
 
+      const artifactType =
+        art.type ||
+        art.artifactType ||
+        (art.command || art.snapshot || String(fileName || '').endsWith('.png') ? 'snapshot' : 'file');
+      const name =
+        art.name ||
+        art.filename ||
+        (art.command ? `${art.command}-snapshot` : (fileName || 'output_artifact'));
+      const mimeType =
+        art.mimeType ||
+        (String(fileName || '').endsWith('.png') ? 'image/png' : 'application/octet-stream');
+
+      const metadataJson = {
+        ...(typeof art.metadata === 'object' && art.metadata ? art.metadata : {}),
+        ...(typeof art.artifact === 'object' && art.artifact ? art.artifact : {}),
+        ...(typeof art.snapshot === 'object' && art.snapshot ? art.snapshot : {}),
+        ...(artifactPath ? { path: artifactPath, artifactPath } : {}),
+        ...(art.command ? { command: art.command } : {}),
+        ...(art.status ? { status: art.status } : {}),
+      };
+
       const createdArtifact = await this.prisma.executionArtifact.create({
         data: {
           executionId: context.executionId,
           producerStepId: context.stepId,
           producerNodeId: planNodeId,
-          artifactType: art.type || art.artifactType || 'file',
+          artifactType,
           externalArtifactId,
-          name: art.name || art.filename || 'output_artifact',
-          url: artifactUrl || '',
-          mimeType: art.mimeType || 'application/octet-stream',
+          name,
+          url: publicUrl,
+          mimeType,
           sizeBytes: art.sizeBytes ? BigInt(art.sizeBytes) : null,
           sha256: art.sha256 || art.metadata?.sha256 || art.metadata_json?.sha256 || null,
-          metadataJson: art.metadata || null,
+          metadataJson: metadataJson as any,
         },
       });
 

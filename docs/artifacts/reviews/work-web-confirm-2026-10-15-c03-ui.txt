@@ -1,0 +1,169 @@
+- complementary:
+  - button:
+  - menu:
+    - menuitem "dashboard 工作台":
+      - img "dashboard":
+      - generic: 工作台
+    - menuitem "message 智能协同":
+      - img "message":
+      - generic: 智能协同
+    - menuitem "carry-out 任务中心":
+      - img "carry-out":
+      - generic: 任务中心
+    - menuitem "team 数字员工":
+      - img "team":
+      - generic: 数字员工
+    - menuitem "folder 资料空间":
+      - img "folder":
+      - generic: 资料空间
+  - menu:
+    - menuitem "setting 系统设置":
+      - img "setting":
+      - generic: 系统设置
+- banner:
+  - button "展开侧边栏":
+    - img "menu-unfold":
+  - generic: 智能协同
+  - button "bell 5":
+    - img "bell":
+    - superscript:
+      - generic: "5"
+  - button "bg-colors 浅色":
+    - img "bg-colors":
+    - generic: 浅色
+  - button "global 中文":
+    - img "global":
+    - generic: 中文
+  - button "A admin admin@example.com down":
+    - generic: A
+    - generic: admin
+    - generic: admin@example.com
+    - img "down":
+- main:
+  - button "menu-unfold":
+    - img "menu-unfold":
+  - button "plus":
+    - img "plus":
+  - button "清理全部会话":
+    - img "clear":
+  - img "desktop":
+  - text: 网页
+  - strong: Python 官方最新稳定版本是什么？请给出发布
+  - button "调整阅读字体大小":
+    - img "font-size":
+  - button "plus":
+    - img "plus":
+  - button "reload":
+    - img "reload":
+  - button "delete":
+    - img "delete":
+  - generic: 任务结果
+  - link "thunderbolt 详细":
+    - /url: /executions/fd2d0050-15c4-41ad-ad9d-5e467ff4b3ee
+    - img "thunderbolt":
+    - generic: 详细
+  - generic: 状态：已完成
+  - paragraph: 根据检索到的信息，Python 官方最新稳定版本及相关信息如下：
+  - list:
+    - strong: 最新稳定版本
+    - text: ：Python 3.13
+    - strong: 首次发布日期
+    - text: ：2024 年 10 月 7 日
+    - strong: 官网来源
+    - text: ：
+    - link "python.org":
+      - /url: https://www.python.org
+  - img "play-circle":
+  - generic: 📄 Python常见问题 — Python 3.10.22 文档
+  - generic: general.html
+  - generic: 💡 Python常见问题 — Python 3.10.22 文档已就绪（点击展开在线预览）
+  - button "eye 展开在线预览":
+    - img "eye":
+    - generic: 展开在线预览
+  - button "fullscreen 全屏":
+    - img "fullscreen":
+    - generic: 全屏
+  - button "export 新窗口":
+    - img "export":
+    - generic: 新窗口
+  - button "download 下载":
+    - img "download":
+    - generic: 下载
+  - img "global":
+  - generic: 参考来源 (5)：
+  - link "link Python下载 | Python中文网 官网":
+    - /url: https://python.uihtm.com/downloads
+    - img "link":
+    - text: Python下载 | Python中文网 官网
+  - link "link Python - 维基百科，自由的百科全书":
+    - /url: https://zh.wikipedia.org/zh-hans/Python
+    - img "link":
+    - text: Python - 维基百科，自由的百科全书
+  - link "link Python常见问题 — Python 3.10.22 文档":
+    - /url: https://docs.python.org/zh-cn/3.10/faq/general.html
+    - img "link":
+    - text: Python常见问题 — Python 3.10.22 文档
+  - link "link Python 版本状态 - Python 编程语言":
+    - /url: https://devguide.pythonlang.cn/versions
+    - img "link":
+    - text: Python 版本状态 - Python 编程语言
+  - link "link Python官网下载指南：从安装到高效使用全解析":
+    - /url: https://sites.google.com/view/pythonguanwangxiazai-1-ols
+    - img "link":
+    - text: Python官网下载指南：从安装到高效使用全解析
+  - generic "查看结构化结果" [active]
+  - generic: "{ \"query\": \"Python 官方最新稳定版本是什么?请给出发布日期和官网来源\", \"answer\": \"The official latest stable version of Python is 3.13, which was first released on October 7, 2024. This information is found on the Python中文网 官网 under the \\\"Python 版本\\\" section. The official website for downloading Python is python.org.\", \"results\": [ { \"url\": \"https://python.uihtm.com/downloads\", \"score\": 0.71687365, \"title\": \"Python下载 | Python中文网 官网\", \"snippet\": \"Python 版本 维护状态 首次发布 终止支持 发布时间表\\n\\n1. 3.13 bugfix 2024-10-07 2029-10 PEP 719\\n2. 3.12 bugfix 2023-10-02 2028-10 PEP 693\\n3. 3.11 bugfix 2022-10-24 2027-10 PEP 664\\n4. 3.10 security 2021-10-04 2026-10 PEP 619\\n5. 3.9 security 2020-10-05 2025-10 PEP 596\\n6. 3.8 生命周期结束，最新版本是 3.8.20 2019-10-14 2024-10-07 PEP 569\\n\\n## 寻找特定版本?\\n\\n按版本号列出的Python版本:\\n\\n发布版本 发布日期 点击查看更多 [...] 129. Python 3.5.3 Jan. 17, 2017 下载 发布说明\\n130. Python 3.6.0 Dec. 23, 2016 下载 发布说明\\n131. Python 2.7.13 Dec. 17, 2016 下载 发布说明\\n132. Python 3.4.5 June 27, 2016 下载 发布说明\\n133. Python 3.5.2 June 27, 2016 下载 发布说明\\n134. Python 2.7.12 June 25, 2016 下载 发布说明\\n135. Python 3.4.4 Dec. 21, 2015 下载 发布说明\\n136. Python 3.5.1 Dec. 7, 2015 下载 发布说明\\n137. Python 2.7.11 Dec. 5, 2015 下载 发布说明 [...] 148. Python 3.4.0 March 17, 2014 下载 发布说明\\n149. Python 3.3.5 March 9, 2014 下载 发布说明\\n150. Python 3.3.4 Feb. 9, 2014 下载 发布说明\\n151. Python 3.3.3 Nov. 17, 2013 下载 发布说明\\n152. Python 2.7.6 Nov. 10, 2013 下载 发布说明\\n153. Python 2.6.9 Oct. 29, 2013 下载 发布说明\\n154. Python 3.2.5 May 15, 2013 下载 发布说明\\n155. Python 3.3.2 May 15, 2013 下载 发布说明\\n156. Python 2.7.5 May 12, 2013 下载 发布说明\\n157. Python 3.3.1 April 6, 2013 下载 发布说明\" }, { \"url\": \"https://zh.wikipedia.org/zh-hans/Python\", \"score\": 0.68420124, \"title\": \"Python - 维基百科，自由的百科全书\", \"snippet\": \"在2008年12月，Python 3.0发布，它对语言做了较大修订而不能完全后向兼容，故而版本2.7的产品寿命结束推延到了2020年元旦。版本3.4介入了异步I/O模块。版本3.5介入了类型提示，和采用async/await语法的协程。吉多·范罗苏姆担任终身仁慈独裁者（BDFL）直到2018年7月12日，他参与了2019年第一届领导项目发展的五人掌控委员会。\\n\\n在2020年10月，版本3.9介入了内建的针对容器 \\\"容器 (数据类型)\\\")类的泛化别名（`types.GenericAlias`）类型，并在官方实现中介入了新的语法解析器。版本3.10介入了从Haskell和OCaml等借鉴来的结构式模式匹配，和内建的联合类型（`types.UnionType`）。版本3.11对官方实现进行了优化提速。版本3.12介入了类型参数语法，并废弃或移除了一些过时的模块和功能。 [...] 1. ^ 1.0 1.1 GitHub repository of Python 0.9.1 source. [2023-02-25]. （原始内容存档于2023-03-05）. \\n HISTORY. Python source distribution. Python Foundation. [2017-11-23]. （原始内容存档于2017-12-01）.\\n2. ^ Python 3.14.8. 2026年9月30日 [2026年10月2日] （英语）. 引文格式1维护：未识别语文类型 (link)\\n3. ^ 3.0 3.1 Glossary — duck-typing. [2023-06-28]. （原始内容存档于2020-06-25）.\\n4. ^ Why is Python a dynamic language and also a strongly typed language - Python Wiki. wiki.python.org. [2021-01-27]. （原始内容存档于2021-03-14）. [...] Python（英语发音：/ˈpaɪθən/；英语发音：/ˈpaɪθɑːn/），是一种广泛使用的解释型、高级和通用的编程语言。Python支持多种编程范型，包括结构化、过程式、反射式、面向对象和函数式编程。它拥有动态类型系统和垃圾回收 \\\"垃圾回收 (计算机科学)\\\")功能，能够自动管理内存使用，并且其本身拥有一个巨大而广泛的标准库。它的语言结构以及面向对象的方法，旨在帮助程序员为小型的和大型的项目编写逻辑清晰的代码。\\n\\n吉多·范罗苏姆于1980年代后期开始研发Python，作为ABC语言 \\\"ABC (程式语言)\\\")的后继者，它也可以被视为采用了叫做M-表达式（英语：M-expression）的中缀表示法的一种LISP方言。吉多·范罗苏姆于1991年首次发布 Python 0.9.0。Python 2.0于2000 年发布并引入了新功能。Python 3.0于2008年发布，它是该语言的主要修订版，并非完全向后兼容。Python 2于2020年随2.7.18版停止支持。\" }, { \"url\": \"https://docs.python.org/zh-cn/3.10/faq/general.html\", \"score\": 0.6826801, \"title\": \"Python常见问题 — Python 3.10.22 文档\", \"snippet\": \"### Python 有多稳定？¶\\n\\n非常稳定。 自 1991 年起大约每隔 6 到 18 个月就会推出新的稳定发布版，这种状态看来还还持续。 从 3.9 版开始，Python 将会每隔 12 个月推出一个新的主要发布版 (PEP 602)。\\n\\n开发者也会推出旧版本的“问题修正”发布版，因此现有发布版的稳定性还会逐步提升。 问题修正发布版会以版本号第三部分的数字来标示（例如 3.5.3, 3.6.2），用于稳定性的管理；只有对已知问题的修正会包含在问题修正发布版中，同一系列的问题修正发布版中的接口确定将会始终保持一致。\\n\\n最后的稳定版本总是可以在 Python 下载页 中找到。 有两个生产环境可用的 Python 版本：2.x 和 3.x。 推荐的版本是 3.x，大多数被广泛使用的库都支持它。 虽然 2.x 也仍然被广泛使用，但是 它已经停止维护。\\n\\n### 有多少人在使用 Python？¶\\n\\n使用者应该数以百万计，但很难获得一个精确的数字。 [...] 当前的 Python 稳定版本的标准文档可在 查看。 也可在 获取PDF、纯文本以及可下载的 HTML 版本。\\n\\n文档以 reStructuredText 格式撰写并使用 Sphinx 文档工具 生成。 文档的 reStructuredText 源文件是 Python 源代码发布版的一部分。\\n\\n### 我之前从未接触过编程。 哪里有 Python 的教程？¶\\n\\n有许多可选择的教程和书籍。 标准文档中也包含有 Python 教程。\\n\\n请参阅 新手指南 以获取针对 Python 编程初学者的信息，包括教程的清单。\\n\\n### 是否有专门针对 Python 的新闻组或邮件列表？¶\\n\\n有一个新闻组 comp.lang.python 和一个邮件列表 python-list。 新闻组和邮件列表是彼此互通的 —— 如果你可以阅读新闻就不必再订阅邮件列表。 comp.lang.python 的流量很大，每天会收到数以百计的发帖，Usenet 使用者通常更擅长处理这样大的流量。 [...] 你还可能看到带有“+”后缀的版本号，例如“2.2+”。 这表示未发布版本，直接基于 CPython 开发代码仓库构建。 在实际操作中，当一个小版本最终发布后，未发布版本号会递增到下一个小版本号，成为“a0”版本，例如“2.4a0”。\\n\\n另请参阅 `sys.version`, `sys.hexversion` 以及 `sys.version_info` 的文档。\\n\\n### 我应如何获取一份 Python 源代码的副本？¶\\n\\n最新的 Python 发布版源代码总能从 python.org 获取，下载页链接为 。 最新的开发版源代码可以在 获取。\\n\\n发布版源代码是一个以 gzip 压缩的 tar 文件，其中包含完整的 C 源代码、Sphinx 格式的文档、Python 库模块、示例程序以及一些有用的自由分发软件。 该源代码将可在大多数 UNIX 类平台上直接编译并运行。\\n\\n请参阅 Python 开发者指南的初步上手部分 了解有关获取源代码并进行编译的更多信息。\\n\\n### 我应如何获取 Python 的文档？¶\" }, { \"url\": \"https://devguide.pythonlang.cn/versions\", \"score\": 0.6485337, \"title\": \"Python 版本状态 - Python 编程语言\", \"snippet\": \"| 3.8 | PEP 569 | 安全 | 2019-10-14 | 2024-10 | Łukasz Langa | [...] | 分支 | 时间表 | 状态 | 首次发布 | 生命周期结束 | 版本经理 |\\n --- --- --- |\\n| main | PEP 745 | 功能 | 2025-10-01 | 2030-10 | Hugo van Kemenade |\\n| 3.13 | PEP 719 | 预发布 | 2024-10-01 | 2029-10 | Thomas Wouters |\\n| 3.12 | PEP 693 | 错误修复 | 2023-10-02 | 2028-10 | Thomas Wouters |\\n| 3.11 | PEP 664 | 安全 | 2022-10-24 | 2027-10 | Pablo Galindo Salgado |\\n| 3.10 | PEP 619 | 安全 | 2021-10-04 | 2026-10 | Pablo Galindo Salgado |\\n| 3.9 | PEP 596 | 安全 | 2020-10-05 | 2025-10 | Łukasz Langa | [...] | 分支 | 时间表 | 状态 | 首次发布 | 生命周期结束 | 版本经理 |\\n --- --- --- |\\n| 3.7 | PEP 537 | 生命周期结束 | 2018-06-27 | 2023-06-27 | Ned Deily |\\n| 3.6 | PEP 494 | 生命周期结束 | 2016-12-23 | 2021-12-23 | Ned Deily |\\n| 3.5 | PEP 478 | 生命周期结束 | 2015-09-13 | 2020-09-30 | Larry Hastings |\\n| 3.4 | PEP 429 | 生命周期结束 | 2014-03-16 | 2019-03-18 | Larry Hastings |\\n| 3.3 | PEP 398 | 生命周期结束 | 2012-09-29 | 2017-09-29 | Georg Brandl, Ned Deily (3.3.7+) |\\n| 3.2 | PEP 392 | 生命周期结束 | 2011-02-20 | 2016-02-20 | Georg Brandl |\" }, { \"url\": \"https://sites.google.com/view/pythonguanwangxiazai-1-ols\", \"score\": 0.57236487, \"title\": \"Python官网下载指南：从安装到高效使用全解析\", \"snippet\": \"1.1 选择平台\\n\\n \\n\\n打开浏览器，进入Python官网（python.org），将鼠标悬停在导航栏的“Downloads”菜单上，系统会自动识别你的操作系统并推荐对应的版本。如果你需要其他平台的安装包，可以点击“Downloads”下拉菜单中的“All releases”查看所有可用版本。选择适合你的平台（Windows、macOS或Linux）的安装包。\\n\\n \\n\\n1.2 搜索下载\\n\\n \\n\\n在“Downloads”页面中，找到最新稳定版本的Python（例如Python 3.12.x），点击对应系统架构的下载链接（如Windows installer (64-bit)）。如果你需要历史版本，可以在“All releases”页面中通过版本号筛选，点击“Download”按钮进入下载页。请确保从官方网站下载，避免第三方来源带来的安全风险。\\n\\n \\n\\n1.3 下载并安装\" } ], \"provider\": \"tavily\", \"warnings\": [], \"searchedAt\": \"2026-10-15T01:45:17.489Z\", \"resultCount\": 5 }"
+  - generic "查看相关结果与产物链接 (5 项)"
+  - img "robot":
+  - img "clock-circle":
+  - generic: 10/15 09:45
+  - generic: 已完成
+  - generic: Tokens:2759
+  - generic: /
+  - generic: 输入:1164 输出:32 (+推理:1563)
+  - generic "评价回答":
+    - button "回答有帮助":
+      - img "like":
+    - button "回答需要改进":
+      - img "dislike":
+  - button "保存到个人空间":
+    - img "book":
+  - button "收集到 GTD 收件箱":
+    - img "inbox":
+  - button "复制":
+    - img "copy":
+  - button "重试":
+    - img "redo":
+  - textbox "例如：/doc 分析工作空间架构 或 /email 总结今日邮件（输入 / 唤起工作技能，! 唤起工作流）"
+  - radiogroup "segmented control":
+    - radio "user 个人助理"
+    - img "user":
+    - generic: 个人助理
+    - radio "robot 企业协同" [checked]
+    - img "robot":
+    - generic: 企业协同
+  - 'button "bulb 思考: 中 down"':
+    - img "bulb":
+    - generic: "思考: 中"
+    - img "down":
+  - generic "联网搜索：已关闭（可选开启，开启后允许 AI 检索互联网公开资讯）":
+    - img "global":
+    - text: 联网
+    - switch
+  - generic "工作空间知识检索：已关闭（可选开启，开启后提问将自动探查并研读空间文档）":
+    - img "folder":
+    - text: 知识
+    - switch
+  - combobox
+  - generic "Auto / 系统默认"
+  - button "thunderbolt":
+    - img "thunderbolt":
+  - button "paper-clip":
+    - img "paper-clip":
+  - button "audio":
+    - img "audio":
+  - button "plus":
+    - img "plus":
+  - button "send 发送" [disabled]:
+    - img "send":
+    - generic: 发送

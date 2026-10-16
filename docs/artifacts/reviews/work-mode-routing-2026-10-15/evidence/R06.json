@@ -1,0 +1,51 @@
+{
+  "caseId": "R06",
+  "variant": "canonical",
+  "status": "passed",
+  "traceIds": [
+    "42b543ac-52bf-4556-b521-361bb8f76706",
+    "06e34148-1ae8-4fad-a54c-5766ce55ef7f"
+  ],
+  "executionIds": [
+    "63f1c627-9ef6-4e78-af7e-a8dd8d962f3a",
+    "b141ae17-029b-44ea-81f9-4a79b78c70f8"
+  ],
+  "requestDigest": "dc1260c8de1007411620c02b1dbbacb9a05cf57dfbe75c88cf55ee76a94983b6",
+  "fixtureDigest": "9d98c56fef1b97f6b1f0a6a40980fbff971943845ece24ff03b2037dfd671736",
+  "catalogSnapshotDigest": "catalog-v1-snapshot-sha256",
+  "routingPolicyVersion": "routing-policy-v1",
+  "routingPolicyDigest": "routing-policy-sha256",
+  "selectedCapabilityRefs": [
+    "platform.workspace.explorer",
+    "platform.workspace.explorer"
+  ],
+  "planHash": null,
+  "inputHash": null,
+  "actualInvocations": [
+    "platform.workspace.explorer"
+  ],
+  "usageByPurpose": {},
+  "logicalEffectCount": 1,
+  "artifactRefs": [],
+  "assertions": [
+    {
+      "assertion": "/workspace resolves to platform.workspace.explorer",
+      "passed": true,
+      "actual": [
+        "platform.workspace.explorer"
+      ]
+    },
+    {
+      "assertion": "/rag resolves to platform.workspace.explorer",
+      "passed": true,
+      "actual": [
+        "platform.workspace.explorer"
+      ]
+    },
+    {
+      "assertion": "Both aliases hit fixture in company workspace",
+      "passed": true
+    }
+  ],
+  "failureCategory": null
+}

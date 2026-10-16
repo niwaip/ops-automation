@@ -3,12 +3,13 @@ import axios from 'axios';
 import { ControlPlaneClient } from '../../client/control-plane.client';
 import { CONTROL_PLANE_EXECUTION_STATUS } from '../../client/control-plane.contracts';
 import { buildDocumentGuideContext } from '../../common/document-guide';
-import { resolveFriendlyInputDisplayName } from '../../common/input-label';
+import { normalizeChineseSpace, resolveFriendlyInputDisplayName } from '../../common/input-label';
 import { getAuthServiceUrl } from '../../config/service-endpoints';
 import { PlannerService } from '../planner';
 import { RecognizerService } from '../recognizer/recognizer.service';
 import { ModelService } from '../model/model.service';
 import type { LLMUsage } from '../react-engine/interfaces';
+import type { ChatUploadedFileDTO } from './chat.dto';
 import type {
   ChatSkillSchema,
   ChatUserContext,
@@ -67,8 +68,8 @@ export class ChatWaitingInputService {
           name: String(item.name).trim(),
           type: typeof item.type === 'string' ? item.type : undefined,
           description: typeof item.description === 'string' ? item.description : undefined,
-          group_label: typeof item.group_label === 'string' ? item.group_label : undefined,
-          display_name: typeof item.display_name === 'string' ? item.display_name : undefined,
+          group_label: typeof item.group_label === 'string' ? normalizeChineseSpace(item.group_label) : undefined,
+          display_name: typeof item.display_name === 'string' ? normalizeChineseSpace(item.display_name) : undefined,
           missing: item.missing === true,
           needs_confirmation: item.needs_confirmation === true,
         }));
@@ -135,7 +136,7 @@ export class ChatWaitingInputService {
     const missingLabels = this.dedupeWaitingInputLabels(input.missingInputs);
     const groupedInputs = input.missingInputs.reduce<Map<string, WaitingInputItem[]>>(
       (acc, item) => {
-        const label = typeof item.group_label === 'string' ? item.group_label.trim() : '';
+        const label = typeof item.group_label === 'string' ? normalizeChineseSpace(item.group_label) : '';
         if (!label) {
           return acc;
         }
@@ -229,12 +230,47 @@ export class ChatWaitingInputService {
     authToken?: string,
     originalObjective?: string,
     userId?: string,
-    modelId?: string
+    modelId?: string,
+    files?: ChatUploadedFileDTO[]
   ): Promise<WaitingInputPayload> {
     if (missingInputs.length === 0) {
       throw new Error('当前执行单没有可补充的缺失参数。');
     }
-    const [firstMissingInput] = missingInputs;
+
+    const fileResolvedInputs: Record<string, any> = {};
+    if (files && files.length > 0) {
+      const primaryFile = files[0];
+      if (primaryFile) {
+        for (const item of missingInputs) {
+          const rawName = item.name || '';
+          const paramKey = rawName.includes('.') ? rawName.split('.').pop()! : rawName;
+          if (['fileBase64', 'fileContent', 'content', 'pdfBase64'].includes(paramKey)) {
+            if (primaryFile.content) {
+              fileResolvedInputs[item.name] = primaryFile.content;
+            }
+          } else if (['fileName', 'filename', 'name'].includes(paramKey)) {
+            if (primaryFile.fileName) {
+              fileResolvedInputs[item.name] = primaryFile.fileName;
+            }
+          } else if (['mimeType', 'fileType', 'type'].includes(paramKey)) {
+            if (primaryFile.mimeType) {
+              fileResolvedInputs[item.name] = primaryFile.mimeType;
+            }
+          }
+        }
+      }
+    }
+
+    const remainingMissingInputs = missingInputs.filter((item) => !(item.name in fileResolvedInputs));
+    if (remainingMissingInputs.length === 0 && Object.keys(fileResolvedInputs).length > 0) {
+      return {
+        input: fileResolvedInputs,
+      };
+    }
+
+    const effectiveMissingInputs =
+      Object.keys(fileResolvedInputs).length > 0 ? remainingMissingInputs : missingInputs;
+    const [firstMissingInput] = effectiveMissingInputs;
 
     const skill = skillId ? await this.loadSkillSchema(skillId, authToken) : null;
     const parsedObject = this.parseJsonObjectMessage(message);
@@ -246,19 +282,19 @@ export class ChatWaitingInputService {
         !Array.isArray(parsedObject.params)
           ? (parsedObject.params as Record<string, unknown>)
           : parsedObject;
-      const allowedKeys = new Set(missingInputs.map((item) => item.name));
+      const allowedKeys = new Set(effectiveMissingInputs.map((item) => item.name));
       const filteredEntries = Object.entries(parsedParams).filter(([key]) => allowedKeys.has(key));
       if (filteredEntries.length > 0) {
         const expanded = await this.expandWaitingInputBilingualPayload(
           Object.fromEntries(filteredEntries),
-          missingInputs,
+          effectiveMissingInputs,
           allRequiredInputs,
           skill?.paramsSchema,
           message,
           modelId
         );
         return {
-          input: expanded.input,
+          input: { ...fileResolvedInputs, ...expanded.input },
           usage: expanded.usage,
         };
       }
@@ -273,7 +309,7 @@ export class ChatWaitingInputService {
       .join('\n\n');
 
     if (skillId) {
-      const paramsSchema = this.buildSchemaForMissingInputs(missingInputs, skill?.paramsSchema);
+      const paramsSchema = this.buildSchemaForMissingInputs(effectiveMissingInputs, skill?.paramsSchema);
       const alreadyCollected = Object.fromEntries(
         allRequiredInputs
           .filter((item) => item.missing !== true)
@@ -290,7 +326,7 @@ export class ChatWaitingInputService {
         context: {
           mode: 'waiting_input_resume',
           original_objective: originalObjective,
-          missing_inputs: missingInputs.map((item) => item.name),
+          missing_inputs: effectiveMissingInputs.map((item) => item.name),
           already_collected: alreadyCollected,
           skill_name: skill?.name,
         },
@@ -306,14 +342,14 @@ export class ChatWaitingInputService {
       if (recognizedEntries.length > 0) {
         const expanded = await this.expandWaitingInputBilingualPayload(
           Object.fromEntries(recognizedEntries),
-          missingInputs,
+          effectiveMissingInputs,
           allRequiredInputs,
           skill?.paramsSchema,
           message,
           modelId
         );
         return {
-          input: expanded.input,
+          input: { ...fileResolvedInputs, ...expanded.input },
           usage: this.sumUsage(recognized.usage, expanded.usage),
         };
       }
@@ -327,7 +363,7 @@ export class ChatWaitingInputService {
             context: {
               mode: 'waiting_input_resume',
               target_skill_id: skillId,
-              missing_inputs: missingInputs.map((item) => item.name),
+              missing_inputs: effectiveMissingInputs.map((item) => item.name),
               already_collected: alreadyCollected,
               original_objective: originalObjective,
               skill_name: skill?.name,
@@ -337,7 +373,7 @@ export class ChatWaitingInputService {
           authToken,
         });
 
-        const allowedKeys = new Set(missingInputs.map((item) => item.name));
+        const allowedKeys = new Set(effectiveMissingInputs.map((item) => item.name));
         const plannedResolvedEntries = (planDraft.required_inputs || [])
           .filter((item) => allowedKeys.has(item.name))
           .filter((item) => !item.missing)
@@ -352,14 +388,14 @@ export class ChatWaitingInputService {
         if (plannedResolvedEntries.length > 0) {
           const expanded = await this.expandWaitingInputBilingualPayload(
             Object.fromEntries(plannedResolvedEntries),
-            missingInputs,
+            effectiveMissingInputs,
             allRequiredInputs,
             skill?.paramsSchema,
             message,
             modelId
           );
           return {
-            input: expanded.input,
+            input: { ...fileResolvedInputs, ...expanded.input },
             usage: this.sumUsage(recognized?.usage, planDraft.usage, expanded.usage),
           };
         }
@@ -370,35 +406,36 @@ export class ChatWaitingInputService {
       }
     }
 
-    const labeledPayload = this.resolveWaitingInputLabeledPayload(message, missingInputs);
+    const labeledPayload = this.resolveWaitingInputLabeledPayload(message, effectiveMissingInputs);
     if (Object.keys(labeledPayload).length > 0) {
       const expanded = await this.expandWaitingInputBilingualPayload(
         labeledPayload,
-        missingInputs,
+        effectiveMissingInputs,
         allRequiredInputs,
         skill?.paramsSchema,
         message,
         modelId
       );
       return {
-        input: expanded.input,
+        input: { ...fileResolvedInputs, ...expanded.input },
         usage: expanded.usage,
       };
     }
 
-    if (missingInputs.length === 1) {
+    if (effectiveMissingInputs.length === 1 && message.trim()) {
       const normalizedType = String(firstMissingInput?.type || 'string').toLowerCase();
       if (!['string', 'text'].includes(normalizedType)) {
-        throw new Error(this.buildWaitingInputFollowupHint(missingInputs, semantic));
+        throw new Error(this.buildWaitingInputFollowupHint(effectiveMissingInputs, semantic));
       }
       return {
         input: {
+          ...fileResolvedInputs,
           [firstMissingInput!.name]: message.trim(),
         },
       };
     }
 
-    throw new Error(this.buildWaitingInputFollowupHint(missingInputs, semantic));
+    throw new Error(this.buildWaitingInputFollowupHint(effectiveMissingInputs, semantic));
   }
 
   private resolveWaitingInputLabel(input: {
@@ -462,10 +499,11 @@ export class ChatWaitingInputService {
       return '';
     }
 
-    return normalized
-      .replace(/\s*[（(](?:中文|日文|日语|zh|ja|cn|jp)[）)]\s*$/iu, '')
-      .replace(/[_-](?:zh|ja|cn|jp)$/iu, '')
-      .trim();
+    return normalizeChineseSpace(
+      normalized
+        .replace(/\s*[（(](?:中文|日文|日语|zh|ja|cn|jp)[）)]\s*$/iu, '')
+        .replace(/[_-](?:zh|ja|cn|jp)$/iu, '')
+    );
   }
 
   private normalizeWaitingInputMatchKey(value: string): string {

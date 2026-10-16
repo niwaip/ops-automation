@@ -59,9 +59,23 @@ export class RegenerateDigestDto {
 }
 
 export class BatchRegenerateDigestDto {
-  @ApiProperty({ description: '需要清洗的文件节点 ID 列表' })
+  @ApiPropertyOptional({ description: '需要清洗的文件节点 ID 列表（若 scope 为 all/uncleaned 则可为空）' })
+  @IsOptional()
   @IsArray()
-  nodeIds!: string[];
+  nodeIds?: string[];
+
+  @ApiPropertyOptional({
+    description: '治理扫描范围',
+    enum: ['selected', 'all', 'uncleaned', 'folder'],
+  })
+  @IsOptional()
+  @IsString()
+  scope?: 'selected' | 'all' | 'uncleaned' | 'folder';
+
+  @ApiPropertyOptional({ description: '指定目录 ID（scope 为 folder 时生效）' })
+  @IsOptional()
+  @IsString()
+  folderId?: string;
 
   @ApiPropertyOptional({ description: '是否使用大模型深度清洗与分析' })
   @IsOptional()
@@ -85,6 +99,14 @@ export class BatchRegenerateDigestDto {
   @IsOptional()
   @IsString()
   extractMode?: 'clean_summary' | 'extract_data' | 'custom';
+}
+
+export interface WorkspaceDigestStatsDto {
+  totalFiles: number;
+  aiCleanedFiles: number;
+  ruleDigestFiles: number;
+  noDigestFiles: number;
+  coveragePercent: number;
 }
 
 export class SaveTextNoteDto {
@@ -158,13 +180,22 @@ export class SaveTextNoteDto {
   workspaceId?: string;
 }
 
+export type ContentMatchSourceKind =
+  | 'physical_line'
+  | 'metadata_topic'
+  | 'metadata_summary'
+  | 'structured_data';
+
 export interface ContentMatchSnippet {
   line: number;
   snippet: string;
+  sourceKind?: ContentMatchSourceKind;
 }
 
 export interface ContentSearchResultDto extends WorkspaceNodeDto {
   matches: ContentMatchSnippet[];
+  fullTextPreview?: string;
+  physicalVerified?: boolean;
 }
 
 export interface WorkspaceSummaryDto {
@@ -226,6 +257,7 @@ export interface WorkspaceNodeDto {
   workspaceName?: string;
   fileCount?: number;
   latestUpdatedAt?: string;
+  parentName?: string;
 }
 
 export interface MulterUploadedFile {

@@ -1,0 +1,92 @@
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:16 PM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution 301a79a9-1a48-44d8-9a2a-c19bc94716fa (planHash: 1be9cb5978017ed3555081b939acc44e58fb37a750b3b98620bcfdb7a67f1c3d)
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:16 PM     LOG [TraceInterceptor] [b6b5ebc5-e651-4a5d-8824-310bfc02f90e] GET /api/executions/301a79a9-1a48-44d8-9a2a-c19bc94716fa 3ms
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:16 PM     LOG [TraceInterceptor] [da23e51a-9ee3-47f7-bab5-bbc06c373ad9] GET /api/executions/301a79a9-1a48-44d8-9a2a-c19bc94716fa/events/stream 1ms
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:16 PM     LOG [DeterministicPlanSchedulerService] Execution 301a79a9-1a48-44d8-9a2a-c19bc94716fa successfully completed all deterministic plan steps.
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:17 PM     LOG [TraceInterceptor] [a8eb9c81-6cfb-463c-8b65-cbb77de58f83] GET /api/executions/301a79a9-1a48-44d8-9a2a-c19bc94716fa 11ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:16 PM     LOG [ChatExecutionStreamService] Starting to observe execution 301a79a9-1a48-44d8-9a2a-c19bc94716fa via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:16 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 301a79a9-1a48-44d8-9a2a-c19bc94716fa
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:25 PM     LOG [TraceInterceptor] [1f4793be-22f4-457c-b15a-a219091bfc85] POST /api/executions/301a79a9-1a48-44d8-9a2a-c19bc94716fa/result-summary 18ms
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:25 PM     LOG [TraceInterceptor] [83a5fd91-fe5c-4d6b-b3cd-c17274f5155d] GET /api/executions/301a79a9-1a48-44d8-9a2a-c19bc94716fa/workflow-save-eligibility 10ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:16 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 301a79a9-1a48-44d8-9a2a-c19bc94716fa
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:16 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 301a79a9-1a48-44d8-9a2a-c19bc94716fa
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:25 PM     LOG [TraceInterceptor] [1d67a55c-dc28-449a-a57c-e983518c9d88] GET /api/internal/assistant-feedback/chat-session-1791986561472-2nhrjan2/1791986571926-ets0h34t 4ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:17 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 301a79a9-1a48-44d8-9a2a-c19bc94716fa
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:17 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 301a79a9-1a48-44d8-9a2a-c19bc94716fa
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:17 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 301a79a9-1a48-44d8-9a2a-c19bc94716fa
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:17 PM     LOG [ChatExecutionStreamService] Generating AI summary for execution 301a79a9-1a48-44d8-9a2a-c19bc94716fa with objective: "/doc 查找标题包含“E2E_WORK_MODE_NONEXISTENT_20261014”的文档，只查询，不创建或修改任何文件。若没有找到明确说明。"
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:25 PM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution 301a79a9-1a48-44d8-9a2a-c19bc94716fa (122 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:25 PM     LOG [ChatExecutionStreamService] Execution 301a79a9-1a48-44d8-9a2a-c19bc94716fa reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:25 PM   DEBUG [SessionService] Saved chat session chat-session-1791986561472-2nhrjan2, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:25 PM     LOG [TraceInterceptor] [b7e447f4-698b-4c3d-910d-99f269ffc16b] POST /ai/chat/stream 33383ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:25 PM     LOG [TraceInterceptor] [00f4f3fe-2f6b-4419-988f-fbb858470756] GET /ai/chat/sessions/chat-session-1791986561472-2nhrjan2/messages/1791986571926-ets0h34t/feedback?executionId=301a79a9-1a48-44d8-9a2a-c19bc94716fa 26ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:25 PM     LOG [TraceInterceptor] [c601799c-f060-4d68-a6cf-df04fb8b4dde] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 5ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:56 PM     LOG [ChatExecutionStreamService] Starting to observe execution 58204936-bb49-40dd-963c-2ea1163ecb2e via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:56 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 58204936-bb49-40dd-963c-2ea1163ecb2e
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:56 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.plan.generated for 58204936-bb49-40dd-963c-2ea1163ecb2e
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:56 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.steps.planned for 58204936-bb49-40dd-963c-2ea1163ecb2e
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:56 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 58204936-bb49-40dd-963c-2ea1163ecb2e
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:56 PM   DEBUG [ChatExecutionStreamService] Received execution event: runtime.skipped for 58204936-bb49-40dd-963c-2ea1163ecb2e
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:57 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 58204936-bb49-40dd-963c-2ea1163ecb2e
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:57 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 58204936-bb49-40dd-963c-2ea1163ecb2e
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:57 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 58204936-bb49-40dd-963c-2ea1163ecb2e
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:03:57 PM     LOG [ChatExecutionStreamService] Generating AI summary for execution 58204936-bb49-40dd-963c-2ea1163ecb2e with objective: "/doc 保密合同"
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:56 PM     LOG [ExecutionCreateService] Execution created: 58204936-bb49-40dd-963c-2ea1163ecb2e
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:56 PM     LOG [ExecutionStartService] Starting execution 58204936-bb49-40dd-963c-2ea1163ecb2e
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:56 PM     LOG [ExecutionFlowRunnerService] Advancing execution flow for 58204936-bb49-40dd-963c-2ea1163ecb2e
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:56 PM     LOG [TraceInterceptor] [0b4c2c1b-89f9-45d5-a22f-0a78a3d933db] GET /api/executions/58204936-bb49-40dd-963c-2ea1163ecb2e 3ms
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:56 PM     LOG [ExecutionFlowRunnerService] Next step for 58204936-bb49-40dd-963c-2ea1163ecb2e: 8914fa38-a697-4358-8d50-add8e69f12ab (type: system, action: execute_skill)
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:04:12 PM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution 58204936-bb49-40dd-963c-2ea1163ecb2e (1489 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:04:12 PM     LOG [ChatExecutionStreamService] Execution 58204936-bb49-40dd-963c-2ea1163ecb2e reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:04:12 PM   DEBUG [SessionService] Saved chat session chat-session-1791986561472-2nhrjan2, history=4
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:04:12 PM     LOG [TraceInterceptor] [4b10623e-1dca-4c24-bd9a-81af1f97fb1c] POST /ai/chat/stream 15926ms
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:56 PM     LOG [ExecutionFlowRunnerService] Executing system step for execution 58204936-bb49-40dd-963c-2ea1163ecb2e, step 8914fa38-a697-4358-8d50-add8e69f12ab (action: execute_skill)
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:56 PM     LOG [ExecutionStepExecutorService] Executing system skill step 8914fa38-a697-4358-8d50-add8e69f12ab for execution 58204936-bb49-40dd-963c-2ea1163ecb2e
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:56 PM     LOG [TraceInterceptor] [bca9542d-042f-4a37-a146-bd5c15bfcf39] GET /api/executions/58204936-bb49-40dd-963c-2ea1163ecb2e/events/stream 2ms
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:56 PM     LOG [ExecutionFlowRunnerService] Advancing execution flow for 58204936-bb49-40dd-963c-2ea1163ecb2e
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:56 PM     LOG [ExecutionFlowRunnerService] No more pending steps for execution 58204936-bb49-40dd-963c-2ea1163ecb2e
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:56 PM     LOG [ExecutionFlowRunnerService] Execution 58204936-bb49-40dd-963c-2ea1163ecb2e marked as succeeded
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:56 PM     LOG [ExecutionStartService] Skipped browser runtime allocation for execution 58204936-bb49-40dd-963c-2ea1163ecb2e (runtime: custom)
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:03:57 PM     LOG [TraceInterceptor] [7672be26-76ac-4d79-a42d-80893043f9a8] GET /api/executions/58204936-bb49-40dd-963c-2ea1163ecb2e 8ms
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:04:12 PM     LOG [TraceInterceptor] [aa8af29c-41ce-43c8-b8e4-6cd4604a390c] POST /api/executions/58204936-bb49-40dd-963c-2ea1163ecb2e/result-summary 21ms
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:04:12 PM     LOG [TraceInterceptor] [7215347f-f163-41ea-922c-1200bc3e3a44] GET /api/executions/58204936-bb49-40dd-963c-2ea1163ecb2e/workflow-save-eligibility 5ms
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:04:12 PM     LOG [TraceInterceptor] [4fe5901c-7cca-40a0-b283-72d3b74e8348] GET /api/internal/assistant-feedback/chat-session-1791986561472-2nhrjan2/1791986636542-bqk1etm2 1ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:04:12 PM     LOG [TraceInterceptor] [137e576e-0461-4c57-b480-91226d4ffe3f] GET /ai/chat/sessions/chat-session-1791986561472-2nhrjan2/messages/1791986636542-bqk1etm2/feedback?executionId=58204936-bb49-40dd-963c-2ea1163ecb2e 8ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:04:12 PM     LOG [TraceInterceptor] [db29b39b-fa73-4bef-b7fa-523ee82dacdb] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 30ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:04:58 PM   DEBUG [SessionService] Saved chat session chat-session-1791986561472-2nhrjan2, history=6
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:04:58 PM     LOG [TraceInterceptor] [a51d3760-611b-492d-af35-6d255f571463] POST /ai/chat/stream 7085ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:04:58 PM     LOG [TraceInterceptor] [af385fb8-2238-4d6b-897f-9486df091f4d] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 15ms
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:04:58 PM     LOG [TraceInterceptor] [2032129d-80e3-495a-a980-246df7b94a23] GET /api/internal/assistant-feedback/chat-session-1791986561472-2nhrjan2/1791986691409-mra08b73 5ms
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:04:58 PM     LOG [TraceInterceptor] [8503f6d3-3e33-43f5-b310-bda3b0b5c716] GET /api/executions/58204936-bb49-40dd-963c-2ea1163ecb2e/workflow-save-eligibility 6ms
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:04:58 PM     LOG [TraceInterceptor] [d622d608-ed7b-4778-8ea8-a92121cdcb27] GET /api/internal/assistant-feedback/chat-session-1791986561472-2nhrjan2/1791986636542-bqk1etm2 7ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:04:58 PM     LOG [TraceInterceptor] [084cc3dd-22d1-48d8-a580-2b836ab346af] GET /ai/chat/sessions/chat-session-1791986561472-2nhrjan2/messages/1791986691409-mra08b73/feedback?executionId=3c1368aa-a715-4b13-b656-52448d3f73c5 40ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:04:58 PM     LOG [TraceInterceptor] [583cd65d-8a97-471b-9553-a5d4f2835f61] GET /ai/chat/sessions/chat-session-1791986561472-2nhrjan2/messages/1791986636542-bqk1etm2/feedback?executionId=58204936-bb49-40dd-963c-2ea1163ecb2e 21ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:05:02 PM     LOG [TraceInterceptor] [2001cc85-b976-4380-94bf-a0842730b61e] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 15ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:05:06 PM     LOG [TraceInterceptor] [6a6d59a7-c76c-497f-9ebb-f3cfbe13beaf] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 13ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:05:10 PM     LOG [TraceInterceptor] [d9158af5-b90b-4b1e-8426-202c7defc721] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 14ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:05:14 PM     LOG [TraceInterceptor] [420568bb-a43f-436f-bd7a-cf2e60af8b5e] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 13ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:05:18 PM     LOG [TraceInterceptor] [c30dd6e9-afbe-4082-a540-b158cc1fdd01] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 14ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:05:22 PM     LOG [TraceInterceptor] [cd777ab4-c8f8-4a51-bde7-ac3d5fe1652f] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 13ms
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:06:07 PM     LOG [TraceInterceptor] [19e5a0f7-4d00-43ca-b351-a031be591887] GET /api/executions/58204936-bb49-40dd-963c-2ea1163ecb2e/workflow-save-eligibility 15ms
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:06:07 PM     LOG [TraceInterceptor] [76949ff9-df16-4d47-9b25-d36ee0bad969] GET /api/internal/assistant-feedback/chat-session-1791986561472-2nhrjan2/1791986636542-bqk1etm2 1ms
+ops-control-plane    | [Nest] 134  - 10/14/2026, 10:06:07 PM     LOG [TraceInterceptor] [1af9d13d-a112-42c0-9d02-95a042350e2f] GET /api/internal/assistant-feedback/chat-session-1791986561472-2nhrjan2/1791986691409-mra08b73 2ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:05:26 PM     LOG [TraceInterceptor] [d545a037-a3f6-4693-89f6-a5cc67e8df32] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 13ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:05:30 PM     LOG [TraceInterceptor] [dbb0f560-bca9-450a-b960-2963f0ebcb17] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 13ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:05:34 PM     LOG [TraceInterceptor] [0a01a802-9e5a-4c28-bb3a-d71d6039e358] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 8ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:05:38 PM     LOG [TraceInterceptor] [00578825-2194-426b-a651-e048fc65acef] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 12ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:05:40 PM     LOG [TraceInterceptor] [7baa9979-9d04-4c68-a52a-6f2b4331c5a8] POST /ai/chat/stream 9ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:05:40 PM     LOG [TraceInterceptor] [19ab9137-1601-4dc5-b6c6-d17083f5aa4b] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 22ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:05:40 PM   ERROR [TraceInterceptor] [350a15ff-156e-4f9d-ba3b-1c5d6fa25d06] GET /ai/chat/sessions/chat-session-1791986561472-2nhrjan2/messages/1791986740775-lc3wtwho/feedback failed: Assistant message not found
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:05:44 PM     LOG [TraceInterceptor] [5d6eae05-9a6b-41bb-8226-19ea4d7b9541] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 11ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:05:48 PM     LOG [TraceInterceptor] [70fd983b-837b-4a5e-98c8-b29c73542cb4] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 13ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:05:52 PM     LOG [TraceInterceptor] [49d78451-366d-423d-b66f-e9c3cb69c93d] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 11ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:05:56 PM     LOG [TraceInterceptor] [d44e5af2-169c-444d-a9f2-4830200e78c4] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 12ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:06:00 PM     LOG [TraceInterceptor] [d852de78-88bb-4832-8a22-8623b5a74214] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 4ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:06:05 PM     LOG [TraceInterceptor] [4a0d70e8-a281-4edf-a892-989809d7d379] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 19ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:06:07 PM     LOG [TraceInterceptor] [c65d012d-b3cd-4645-a9ea-3de097861c41] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 7ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:06:07 PM     LOG [TraceInterceptor] [6a3a99ae-a104-456d-9fea-2b2b5d2807ab] GET /ai/chat/sessions/chat-session-1791986561472-2nhrjan2/messages/1791986636542-bqk1etm2/feedback?executionId=58204936-bb49-40dd-963c-2ea1163ecb2e 19ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:06:07 PM     LOG [TraceInterceptor] [e4039c73-3fbb-499c-b3c3-113dc612b9a5] GET /ai/chat/sessions/chat-session-1791986561472-2nhrjan2/messages/1791986691409-mra08b73/feedback?executionId=3c1368aa-a715-4b13-b656-52448d3f73c5 21ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:06:11 PM     LOG [TraceInterceptor] [21b2813c-5a36-4198-adc1-50ed04ff6e73] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 13ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:06:15 PM     LOG [TraceInterceptor] [a727c184-a9fe-4b6f-b48f-06fdbe6f4a68] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 13ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:06:19 PM     LOG [TraceInterceptor] [f036a0eb-beef-4008-9611-f377df3d92c4] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 11ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:06:23 PM     LOG [TraceInterceptor] [28e35cbe-77a5-4571-a04b-dea5a7899f60] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 12ms
+ops-ai-orchestrator  | [Nest] 219  - 10/14/2026, 10:06:27 PM     LOG [TraceInterceptor] [bf8f46f9-097f-4890-8dfd-876ed61b0cd3] GET /ai/chat/history/chat-session-1791986561472-2nhrjan2 6ms

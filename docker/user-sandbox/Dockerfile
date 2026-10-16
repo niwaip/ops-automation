@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python-is-python3 \
     zsh \
     bash \
+    gawk \
     build-essential \
     poppler-utils \
     libreoffice-calc-nogui \

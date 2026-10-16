@@ -19,7 +19,7 @@ from .web_tools import enrich_search_context_with_pages
 from .runtime_policy import RuntimePolicy
 from .context_budget import ContextBudget
 from .prompt_builder import build_system_prompt, build_user_turn
-from .skill_router import SkillRouter
+from .skill_router import SkillRouter, is_text_only_request
 from .agent_loop import run_agent_loop, _is_tool_error
 from .artifact_exporter import ArtifactExporter
 from .telemetry import TelemetryStats
@@ -57,152 +57,36 @@ from .html_report_fallback import materialize_html_report_fallback
 from .llm import call_model_proxy, clean_output, parse_tool_calls
 
 
+def _extract_filename(item: str) -> str:
+    try:
+        obj = json.loads(item)
+        if isinstance(obj, dict) and "fileName" in obj:
+            return obj["fileName"]
+    except Exception:
+        pass
+    return Path(item).name
+
 
 WEATHER_RE = re.compile(
-    r'(天气|气象|气温|温度|下雨|降雨|暴雨|晴天|预报|几度|转晴|多云|'
-    r'\bweather\b|\bforecast\b|\btemperature\b|\brain(?:ing|y)?\b|\bsnow(?:ing|y)?\b)',
+    r'(?:天气|气象|天气预报|查天气|实时天气|降雨|降水|下雨|暴雨|大雨|阵雨|下雪|暴雪|气温|多云|晴天|阴天|'
+    r'降温天气|大幅降温|寒潮降温|'
+    r'\bweather\b|\bforecast\b|\bweather\s+forecast\b|\brain(?:ing|y)?\b|\bsnow(?:ing|y)?\b)',
     re.IGNORECASE,
 )
 REMINDER_RE = re.compile(r'(提醒|闹钟|待办|日程|remind\s+me|reminder|alarm)', re.I)
 
 
-def _run_planning_phase(
-    prompt: str,
-    messages: List[Dict[str, Any]],
-    model_name: str,
-    policy: RuntimePolicy,
-    deadline: Optional[float] = None,
-    has_web_search_permission: bool = True,
-    telemetry: Optional[TelemetryStats] = None,
-) -> Optional[str]:
-    """Execute the thinking model in the planning phase to reason, architect, and outline.
-    Only allows read-only web retrieval tools (web_search, fetch_page) to ground external facts,
-    strictly prohibiting any mutating tools (bash, write_file, patch_file, reminders, etc.).
-    """
-    planning_policy = RuntimePolicy(
-        temperature=policy.temperature,
-        model_socket_timeout=policy.model_socket_timeout,
-        single_request_timeout=min(policy.single_request_timeout, 120),
-        total_task_timeout=policy.total_task_timeout,
-        thinking=True,
-        reasoning_effort=policy.reasoning_effort or "medium",
-    )
-    planning_tools = (
-        get_sandbox_tools(allowed_names={"web_search", "fetch_page"})
-        if has_web_search_permission else None
-    )
+from .planning_phase import (
+    is_fast_path_task,
+    should_run_planning_phase,
+    run_planning_phase,
+    build_deliverable_execution_instruction,
+)
+from .intent_contract import is_modify_intent_requested, is_network_search_forbidden
 
-    planning_instruction = (
-        "【规划阶段任务】：请针对用户的需求与交付物目标进行深入思考与方案规划。\n"
-        "1. 深入分析用户目标、页面/内容结构、排版与视觉设计规范。\n"
-        "2. 若涉及外部开源项目、未知技术组件、最新库/API 或特定插件生态，你可以调用 `web_search` 与 `fetch_page` 检索一手技术事实与官方依据（本阶段仅开放只读网络检索，严禁且不支持写文件或执行命令工具）。\n"
-        "3. 给出详细的实现与落盘规划（包括功能模块划分、代码逻辑与目标落盘文件路径，如根据用户交付需求规划目标文件 `/workspace/<文件名>.<扩展名>`）。\n"
-        "4. 输出清晰详尽的规划方案。本阶段仅负责思考与架构规划，规划完成后系统将切换至执行与代码落盘阶段。"
-    )
+_run_planning_phase = run_planning_phase
 
-    planning_messages = [
-        *messages,
-        {
-            "role": "user",
-            "content": planning_instruction,
-        },
-    ]
 
-    max_search_rounds = 2
-    executed_search_count = 0
-
-    try:
-        print("🧠 [Harness Planning Phase] 开启思考模式：正在规划任务方案与实现架构...", flush=True)
-
-        while executed_search_count <= max_search_rounds:
-            res = call_model_proxy(
-                planning_messages,
-                model_name,
-                tools=planning_tools if executed_search_count < max_search_rounds else None,
-                timeout=planning_policy.single_request_timeout,
-                deadline=deadline,
-                policy=planning_policy,
-            )
-            if telemetry:
-                telemetry.record_llm_response(res, is_first_round=False)
-
-            res_text = res.get("content", "") if isinstance(res, dict) else str(res or "")
-            raw_tool_calls = res.get("tool_calls", []) if isinstance(res, dict) else []
-
-            # 过滤只允许规划阶段工具
-            allowed_calls = []
-            if raw_tool_calls:
-                for tc in raw_tool_calls:
-                    fn_name = tc.get("function", {}).get("name", "").lower()
-                    if fn_name in {"web_search", "fetch_page"}:
-                        allowed_calls.append(tc)
-
-            if not allowed_calls and res_text:
-                # 兼容文本形式的 tool_calls
-                text_calls = parse_tool_calls(res_text)
-                for tc in text_calls:
-                    fn_name = tc.get("name", "").lower()
-                    if fn_name in {"web_search", "fetch_page"}:
-                        allowed_calls.append({
-                            "id": tc.get("id") or f"plan_call_{int(time.time()*1000)}",
-                            "type": "function",
-                            "function": {
-                                "name": tc.get("name"),
-                                "arguments": json.dumps(tc.get("parameters", {}))
-                            }
-                        })
-
-            # 如果没有发起工具调用，或者已达到最大搜索轮次，说明规划思考完成
-            if not allowed_calls or executed_search_count >= max_search_rounds:
-                clean_plan = clean_output(res_text).strip()
-                if clean_plan:
-                    print("✓ [Harness Planning Phase] 任务规划完成，进入执行与工具调用阶段。", flush=True)
-                    return clean_plan
-                break
-
-            # 执行规划期只读搜索工具
-            executed_search_count += 1
-            call_names = [c["function"]["name"] for c in allowed_calls]
-            print(f"🔍 [Harness Planning Search] 规划期检索外部事实 (轮次 {executed_search_count}/{max_search_rounds}): {call_names}", flush=True)
-
-            planning_messages.append({
-                "role": "assistant",
-                "content": res_text or None,
-                "tool_calls": allowed_calls
-            })
-
-            for tc in allowed_calls:
-                t_id = tc.get("id") or f"plan_call_{int(time.time()*1000)}"
-                fn = tc.get("function", {})
-                t_name = fn.get("name")
-                t_args_raw = fn.get("arguments", "{}")
-                try:
-                    t_params = json.loads(t_args_raw) if isinstance(t_args_raw, str) else (t_args_raw or {})
-                except Exception:
-                    t_params = {}
-
-                print(f"-> 规划期检索调用: {t_name}({t_params})", flush=True)
-                t_res = execute_tool(t_name, t_params, deadline=deadline)
-                if telemetry:
-                    is_err = _is_tool_error(t_res)
-                    status = "error" if is_err else "success"
-                    telemetry.record_tool_call(tool_name=t_name, params=t_params, status=status)
-                clipped_res = ContextBudget.clip_tool_result(t_res, max_chars=4000)
-                planning_messages.append({
-                    "role": "tool",
-                    "tool_call_id": t_id,
-                    "name": t_name,
-                    "content": clipped_res
-                })
-
-            planning_messages.append({
-                "role": "user",
-                "content": "已获取上述检索数据。请结合上述真实事实，输出最终详尽的实施与架构落盘规划方案（本阶段无需再次调用工具）。"
-            })
-
-    except Exception as e:
-        print(f"⚠️ [Harness Planning Phase] 规划阶段异常，降级直接进入执行阶段: {e}", flush=True)
-    return None
 
 
 
@@ -218,7 +102,12 @@ def select_active_tools(
     detection may eagerly fetch obvious live information, but it must never be
     the capability gate: new sites and unfamiliar wording should still work.
     """
-    if (skill_res.skill_id == "xlsx" and not skill_res.is_generate_intent
+    if is_network_search_forbidden(prompt):
+        has_web_search_permission = False
+
+    is_modify = getattr(skill_res, "is_modify_intent", False) or is_modify_intent_requested(prompt)
+
+    if not is_modify and (skill_res.skill_id == "xlsx" and not skill_res.is_generate_intent
             and not skill_res.requires_execution and not getattr(skill_res,"is_guide_intent",False)):
         # A missing inspect keyword must not expose all mutative tools. The
         # attachment/skill selects a native read-only capability surface.
@@ -240,7 +129,7 @@ def select_active_tools(
             allowed.add("send_file")
         return get_sandbox_tools(allowed_names=allowed)
 
-    if requests_markdown_artifact(prompt) and not skill_res.skill_id:
+    if not is_modify and skill_res.is_generate_intent and requests_markdown_artifact(prompt) and not skill_res.skill_id:
         allowed = {"write_markdown"}
         if has_web_search_permission:
             allowed.update({"web_search", "fetch_page"})
@@ -249,15 +138,15 @@ def select_active_tools(
         return get_sandbox_tools(allowed_names=allowed)
 
     # 1. 纯查看/审阅/归纳/数据分析意图：限制在只读分析工具面，阻断 patch_file、write_markdown、create_reminders 等副作用写盘工具
-    if skill_res.is_inspect_intent and not (skill_res.is_generate_intent or skill_res.requires_execution):
+    if not is_modify and skill_res.is_inspect_intent and not (skill_res.is_generate_intent or skill_res.requires_execution):
         allowed = {"read_file", "scan_knowledge", "vision_inspect"}
         # 对于表格/数据计算类技能（xlsx, python）或涉及表格审计/财务核算的提问，开放受控的 bash 计算验证环境（供运行 Python 统计与公式计算），但严禁落盘工具
         is_table_or_calc_context = (
             skill_res.skill_id in {"xlsx", "python"}
-            or any(k in (prompt or "").lower() for k in [
+            or (skill_res.skill_id not in {"docx", "pdf"} and any(k in (prompt or "").lower() for k in [
                 "excel", "xlsx", "csv", "表格", "工作表", "工作簿", "sheet", "单元格",
                 "凭证", "明细", "财务", "核算", "勾稽", "试算", "查重", "对账", "报表"
-            ])
+            ]))
         )
         if is_table_or_calc_context:
             allowed.update({"bash", "compare_spreadsheet_columns"})
@@ -272,14 +161,12 @@ def select_active_tools(
             allowed.add("send_file")
         tools = get_sandbox_tools(allowed_names=allowed)
     # 2. 纯查阅/审阅/只读归纳任务：严格遵循最小特权原则，仅开放只读工具，严禁授予 bash
-    elif skill_res.is_inspect_intent and not skill_res.is_generate_intent:
+    elif not is_modify and skill_res.is_inspect_intent and not skill_res.is_generate_intent:
         allowed = {"web_search", "fetch_page"} if has_web_search_permission else set()
         if WEATHER_RE.search(prompt):
             allowed.add("weather")
         if REMINDER_RE.search(prompt):
             allowed.update({"create_reminders", "update_reminder", "delete_reminder"})
-        if requests_markdown_artifact(prompt):
-            allowed.add("write_markdown")
         if skill_res.is_knowledge_intent:
             allowed.update({"scan_knowledge", "read_file"})
         allowed.update({"read_file", "scan_knowledge", "vision_inspect"})
@@ -287,7 +174,7 @@ def select_active_tools(
             allowed.add("send_file")
         tools = get_sandbox_tools(allowed_names=allowed)
     # 3. 复杂生成、组合任务或明确需要物理落盘产物的技能，提供完整执行环境（bash、文件与技能工具）
-    elif skill_res.is_generate_intent or skill_res.requires_execution or (skill_res.skill_id and not skill_res.is_inspect_intent):
+    elif not is_text_only_request(prompt) and (is_modify or skill_res.is_generate_intent or skill_res.requires_execution or (skill_res.skill_id and not skill_res.is_inspect_intent)):
         tools = get_sandbox_tools()
     else:
         allowed = {"web_search", "fetch_page"} if has_web_search_permission else set()
@@ -455,13 +342,28 @@ def cmd_run(args):
     # 2. 联网前置检索
     # args.web_search 仅表示沙箱具备联网检索工具能力，绝不能将所有普通对话/生成需求直接断定为纯检索任务！
     # 只有当用户显式要求搜索（如以 /search 起始）或语义路由命中真实外部资讯检索意图（is_search_intent）时，才执行前置联网检索
-    has_web_search_permission = bool(args.web_search)
-    is_weather_intent = bool(WEATHER_RE.search(prompt))
+    forbidden_network = is_network_search_forbidden(prompt)
+    has_web_search_permission = bool(args.web_search) and not forbidden_network
+    is_weather_intent = bool(WEATHER_RE.search(prompt)) and not forbidden_network
     is_search_intent = (
-        prompt.strip().startswith("/search ")
-        or skill_res.is_search_intent
-        or is_weather_intent
+        not forbidden_network
+        and (
+            prompt.strip().startswith("/search ")
+            or skill_res.is_search_intent
+            or is_weather_intent
+        )
     )
+    # 严格遵循外部检索谨慎性原则：
+    # 物理文档/报表生成任务（如制作 word/excel/ppt/markdown）在未显式要求检索时，绝不执行前置盲搜！
+    # 避免将包含业务规范、表格列名的整段长需求投递给搜索引擎。
+    is_doc_task_without_search_cue = (
+        (skill_res.is_generate_intent or (skill_res.skill_id in {"docx", "xlsx", "pdf", "pptx", "html-ppt", "guizang-ppt"}))
+        and not prompt.strip().startswith("/search ")
+        and not is_weather_intent
+        and not any(k in prompt for k in ["联网", "搜索", "全网查询", "最新动态", "实时数据"])
+    )
+    if is_doc_task_without_search_cue:
+        is_search_intent = False
     search_context = ""
     if is_search_intent and has_web_search_permission:
         if task_deadline is not None and time.monotonic() >= task_deadline:
@@ -679,70 +581,44 @@ def cmd_run(args):
 
     # 5. 思考模式调度：规划阶段（开启思考与架构设计） -> 执行与工具调用阶段（关闭思考）
     telemetry = TelemetryStats()
-    is_deliverable_task = skill_res.is_generate_intent or skill_res.requires_execution
-    if policy.thinking and is_deliverable_task:
-        plan_text = _run_planning_phase(
-            prompt,
-            messages,
-            model_name,
-            policy,
+    should_plan, is_deliverable_task = should_run_planning_phase(
+        prompt=prompt,
+        skill_res=skill_res,
+        policy=policy,
+        has_web_search_permission=has_web_search_permission,
+        session_files=session_files,
+        search_context=search_context,
+    )
+    if should_plan:
+        plan_text = run_planning_phase(
+            prompt=prompt,
+            messages=messages,
+            model_name=model_name,
+            policy=policy,
             deadline=task_deadline,
             has_web_search_permission=has_web_search_permission,
             telemetry=telemetry,
+            is_deliverable_task=is_deliverable_task,
+            session_files=session_files,
         )
         if plan_text:
             messages.append({"role": "assistant", "content": f"【方案规划】\n{plan_text}"})
 
-            # 动态生成符合当前技能与目标交付物格式的执行指引，杜绝将 Word/Excel/PDF 等任务硬编码为 HTML
-            if skill_res.is_docx_intent or (skill_res.deliverables and any(ext.lower() == ".docx" for ext in skill_res.deliverables)):
-                execution_instruction = (
-                    "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
-                    "落盘方式：调用 `bash` 工具运行 Python 脚本（使用 python-docx 库创建并排版文档，保存至 `/workspace/<文件名>.docx`）。\n"
-                    "⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字而不提供代码或工具调用！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！"
-                )
-            elif skill_res.is_office_intent and (skill_res.deliverables and any(ext.lower() == ".xlsx" for ext in skill_res.deliverables)):
-                execution_instruction = (
-                    "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
-                    "落盘方式：调用 `bash` 工具运行 Python 脚本（使用 openpyxl 库创建并排版表格，保存至 `/workspace/<文件名>.xlsx`）。\n"
-                    "⚠️ 严禁仅输出口头文字！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！"
-                )
-            elif skill_res.deliverables and any(ext.lower() == ".pdf" for ext in skill_res.deliverables):
-                execution_instruction = (
-                    "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
-                    "落盘方式：调用 `write_markdown` 或运行脚本生成目标 PDF 文件保存至 `/workspace/`。\n"
-                    "⚠️ 严禁仅输出口头文字！必须实际调用工具完成物理文件落盘！"
-                )
-            elif skill_res.is_ppt_intent:
-                execution_instruction = (
-                    "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
-                    "落盘方式（任选其一，推荐方式 2）：\n"
-                    "1. 调用 `bash` 工具写入 `/workspace/presentation.html`；\n"
-                    "2. 直接在回复中输出完整的 ```html\n<!DOCTYPE html>\n...完整可运行代码...\n``` 代码块（系统将自动写入 /workspace/presentation.html 并在前端展示交互预览与全屏组件）。\n"
-                    "⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字而不提供代码或工具调用！必须提供完整代码！"
-                )
-            elif skill_res.is_design_intent or (skill_res.deliverables and any(ext.lower() == ".html" for ext in skill_res.deliverables)):
-                execution_instruction = (
-                    "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
-                    "落盘方式（任选其一，推荐方式 2）：\n"
-                    "1. 调用 `bash` 工具（如 `cat << 'EOF' > /workspace/index.html`）写入目标文件；\n"
-                    "2. 直接在回复中输出完整的 ```html\n<!DOCTYPE html>\n...完整可运行代码...\n``` 代码块（系统将自动写入 /workspace/index.html 并在前端展示交互预览与全屏组件）。\n"
-                    "⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字而不提供代码或工具调用！必须提供完整代码！"
-                )
+            if is_deliverable_task:
+                execution_instruction = build_deliverable_execution_instruction(skill_res)
+                messages.append({
+                    "role": "user",
+                    "content": execution_instruction,
+                })
             else:
-                target_ext = skill_res.deliverables[0] if skill_res.deliverables else ""
-                execution_instruction = (
-                    "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
-                    f"落盘方式：调用 `bash` 或对应写文件工具将文件保存至 `/workspace/` 路径下{f'（如 {target_ext} 交付物）' if target_ext else ''}。\n"
-                    "⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字而不提供代码或工具调用！必须完成物理文件落盘！"
-                )
-            messages.append({
-                "role": "user",
-                "content": execution_instruction,
-            })
+                messages.append({
+                    "role": "user",
+                    "content": "【呈现阶段】：上述调研已获取到充分的事实依据。请基于上述调研结论，以专业、清晰、直接的语言向用户输出完整回答（直接在对话中呈现核心事实，无需创建任何物理文件）。",
+                })
         policy.thinking = False
         policy.reasoning_effort = None
-        print("⚡ [Harness Phase Transition] 切换为执行与工具调用阶段：精简推理，优先调用工具落盘。", flush=True)
-    elif is_deliverable_task and policy.thinking:
+        print("⚡ [Harness Phase Transition] 切换为执行与工具调用阶段：精简推理，优先调用工具或呈现结果。", flush=True)
+    elif policy.thinking:
         policy.thinking = False
         policy.reasoning_effort = None
 
@@ -826,12 +702,27 @@ def cmd_run(args):
         outbound_set = list(loop_res.outbound_files)
         for exp_f in (exported_html_files or []):
             payload = json.dumps({"filePath": exp_f, "fileName": Path(exp_f).name}, ensure_ascii=False)
-            if payload not in outbound_set and not any(Path(exp_f).name in existing for existing in outbound_set):
+            if payload not in outbound_set and not any(_extract_filename(existing).lower() == Path(exp_f).name.lower() for existing in outbound_set):
                 outbound_set.append(payload)
         for item in detected_deliverables:
             payload = json.dumps({"filePath": item["filePath"], "fileName": item["fileName"]}, ensure_ascii=False)
-            if payload not in outbound_set and not any(item["fileName"] in existing for existing in outbound_set):
+            if payload not in outbound_set and not any(_extract_filename(existing).lower() == item["fileName"].lower() for existing in outbound_set):
                 outbound_set.append(payload)
+
+        # 语义净化：若存在二进制文档或技术文件，且用户未显式要求 markdown，排除多余中间草稿 md
+        user_wants_md = prompt and bool(re.search(r"(?:\.md\b|\bmarkdown\b|md\s*文件)", prompt, re.I))
+        has_primary_non_md = any(
+            not _extract_filename(f).lower().endswith(".md") for f in outbound_set
+        )
+        if has_primary_non_md and not user_wants_md:
+            outbound_set = [
+                f for f in outbound_set
+                if not (
+                    _extract_filename(f).lower().endswith((".py.md", ".sh.md", ".sql.md"))
+                    or _extract_filename(f).lower() in ("result.md", "script.md")
+                )
+            ]
+
         TelemetryStats.emit_outbound_files(outbound_set)
         if getattr(loop_res, "outbound_reminders", None):
             TelemetryStats.emit_outbound_reminders(loop_res.outbound_reminders)

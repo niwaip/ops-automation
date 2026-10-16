@@ -151,8 +151,9 @@
 }
 
 .chat-outcome-card.success {
-  background: linear-gradient(135deg, rgba(236, 253, 245, 0.96) 0%, rgba(220, 252, 231, 0.92) 100%);
-  border-color: rgba(34, 197, 94, 0.2);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid rgba(34, 197, 94, 0.28);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.05);
 }
 
 .chat-outcome-card.error {
@@ -170,8 +171,9 @@
 }
 
 [data-theme='dark'] .chat-outcome-card.success {
-  background: linear-gradient(135deg, rgba(6, 78, 59, 0.4) 0%, rgba(5, 150, 105, 0.2) 100%);
-  border-color: rgba(16, 185, 129, 0.3);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.78) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  box-shadow: 0 4px 20px -2px rgba(16, 185, 129, 0.08);
 }
 
 [data-theme='dark'] .chat-outcome-card.error {
@@ -291,8 +293,21 @@
 
 .chat-outcome-body {
   font-size: 14px;
-  color: #0f172a;
-  line-height: 1.55;
+  color: #334155;
+  line-height: 1.75;
+  letter-spacing: 0.01em;
+}
+
+[data-theme='dark'] .chat-outcome-body {
+  color: #cbd5e1;
+}
+
+.chat-outcome-fade-mask {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, rgba(248, 250, 252, 0.98) 100%);
+}
+
+[data-theme='dark'] .chat-outcome-fade-mask {
+  background: linear-gradient(to bottom, rgba(15, 23, 42, 0) 0%, rgba(15, 23, 42, 0.98) 100%);
 }
 
 .chat-outcome-body > :first-child {
@@ -304,7 +319,7 @@
 }
 
 .chat-outcome-body p {
-  margin: 2px 0 8px;
+  margin: 6px 0 10px;
 }
 
 .chat-outcome-body p:last-child {
@@ -313,26 +328,34 @@
 
 .chat-outcome-body ul,
 .chat-outcome-body ol {
-  margin: 2px 0 8px;
+  margin: 6px 0 10px;
   padding-left: 22px;
 }
 
 .chat-outcome-body li {
-  margin: 1px 0;
+  margin: 3px 0;
+  line-height: 1.7;
 }
 
 .chat-outcome-body h1,
 .chat-outcome-body h2,
 .chat-outcome-body h3 {
-  margin-top: 12px;
-  margin-bottom: 6px;
+  margin-top: 16px;
+  margin-bottom: 8px;
   font-weight: 600;
-  color: inherit;
+  color: #0f172a;
+  line-height: 1.4;
 }
 
-.chat-outcome-body h1 { font-size: 19px; }
-.chat-outcome-body h2 { font-size: 17px; }
-.chat-outcome-body h3 { font-size: 15px; }
+[data-theme='dark'] .chat-outcome-body h1,
+[data-theme='dark'] .chat-outcome-body h2,
+[data-theme='dark'] .chat-outcome-body h3 {
+  color: #f1f5f9;
+}
+
+.chat-outcome-body h1 { font-size: 18px; }
+.chat-outcome-body h2 { font-size: 16px; }
+.chat-outcome-body h3 { font-size: 14.5px; }
 
 .chat-outcome-body blockquote {
   margin: 8px 0;

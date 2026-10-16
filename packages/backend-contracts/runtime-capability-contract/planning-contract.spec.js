@@ -78,5 +78,39 @@ describe('planning capability contract', () => {
         ]);
         expect(docMatch?.capability.id).toBe('platform.document.pdf-content-extractor');
     });
+    it('gates physical file generation skills when user prompt is an inspection query', () => {
+        const mdWriterCapability = {
+            id: 'platform.document.markdown-artifact-writer',
+            name: '内置 Markdown 文件生成',
+            category: 'artifact',
+            aliases: ['文件生成', 'Markdown文件生成', '生成md文件'],
+            triggerKeywords: ['生成md文件', '输出Markdown文件', '保存Markdown', '生成Markdown', '输出md文件'],
+        };
+        const workspaceSearchCapability = {
+            id: 'platform.workspace.explorer',
+            name: '内置工作空间文档探索',
+            category: 'search',
+            triggerKeywords: ['工作空间探索', '查看工作空间文件'],
+        };
+        // '查询关于ai能力测试的文件' is an inspection request without generate verbs;
+        // it MUST NOT match markdown-artifact-writer even if its alias has '文件生成'
+        const match = (0, planning_contract_1.matchDeterministicRoutingCapability)('查询关于ai能力测试的文件', [
+            mdWriterCapability,
+            workspaceSearchCapability,
+        ]);
+        expect(match?.capability.id).not.toBe('platform.document.markdown-artifact-writer');
+        expect(match).toBeNull();
+    });
+    it('matches physical file generation skills when user explicitly requests file generation', () => {
+        const mdWriterCapability = {
+            id: 'platform.document.markdown-artifact-writer',
+            name: '内置 Markdown 文件生成',
+            category: 'artifact',
+            aliases: ['文件生成', 'Markdown文件生成', '生成md文件'],
+            triggerKeywords: ['生成md文件', '输出Markdown文件', '保存Markdown', '生成Markdown', '输出md文件'],
+        };
+        const match = (0, planning_contract_1.matchDeterministicRoutingCapability)('请生成Markdown文件', [mdWriterCapability]);
+        expect(match?.capability.id).toBe('platform.document.markdown-artifact-writer');
+    });
 });
 //# sourceMappingURL=planning-contract.spec.js.map

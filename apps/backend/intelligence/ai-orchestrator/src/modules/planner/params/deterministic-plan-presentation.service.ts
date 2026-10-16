@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { RequiredUserInputV1 } from '@ops/backend-deterministic-plan';
+import { resolveFriendlyInputDisplayName } from '../../../common/input-label';
 
 export interface FormattedMissingInputPresentation {
   message: string;
@@ -21,13 +22,24 @@ export class DeterministicPlanPresentationService {
     const fields = missingInputs.map((input) => {
       const fieldName = (input as any).name || input.targetField;
       const path = (input as any).inputPath || `planInputs.${input.nodeId}.${input.targetField}`;
-      const description = input.prompt || (input as any).description || `请输入 ${fieldName}`;
+      const label = resolveFriendlyInputDisplayName({
+        name: fieldName,
+        display_name: (input as any).displayName || (input as any).display_name,
+        description: input.prompt || (input as any).description,
+      });
+      const isFileField = /file(?:base64|_base64)?/i.test(fieldName);
+      const description =
+        input.prompt ||
+        (input as any).description ||
+        (isFileField
+          ? '请通过输入框下方的附件图标上传待提取的文档或附件'
+          : `请输入 ${label}`);
       const type = (input as any).type || 'string';
 
       return {
         name: fieldName,
         path,
-        label: fieldName,
+        label,
         type,
         description,
       };

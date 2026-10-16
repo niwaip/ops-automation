@@ -1,0 +1,441 @@
+{
+  "id": "e2a971e8-39ad-4c3e-815a-635a30676a6d",
+  "orgId": "e2bc525b-7b3e-499d-ba3d-e2a45ed9a71c",
+  "skillId": "platform.workspace.explorer",
+  "capabilityId": "platform.workspace.explorer",
+  "capabilitiesUsed": [
+    {
+      "id": "platform.workspace.explorer",
+      "name": "内置工作空间文档探索",
+      "version": "1.0.1"
+    }
+  ],
+  "skillVersion": "1.0.1",
+  "capabilityVersion": "1.0.1",
+  "status": "succeeded",
+  "runtimeType": "plan",
+  "riskLevel": "L0",
+  "executionMode": "deterministic_plan",
+  "currentStepId": null,
+  "currentPhaseKey": "phase_01_n1_内置工作空间文档探索",
+  "currentPhaseStatus": "completed",
+  "takeoverStatus": "resolved",
+  "requiresApproval": false,
+  "approvalStatus": "not_required",
+  "takeoverRequired": false,
+  "takeoverReason": null,
+  "resultJson": {
+    "result": {
+      "title": "/doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回其他文档。",
+      "summary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"AD-Q8VN-9999\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+      "resultType": "deterministic_plan",
+      "businessData": {
+        "finalOutputs": [
+          {
+            "value": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"AD-Q8VN-9999\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+            "fromNodeId": "n1_内置工作空间文档探索",
+            "isArtifact": false,
+            "targetField": "result",
+            "expectedType": "string",
+            "fromNodeOutput": "answer"
+          }
+        ],
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ]
+      },
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ]
+    },
+    "artifacts": [],
+    "execution": {
+      "status": "success",
+      "finishedAt": "2026-10-16T03:23:18.759Z",
+      "executionId": "e2a971e8-39ad-4c3e-815a-635a30676a6d"
+    },
+    "detailText": "在当前工作空间（涵盖个人盘、部门盘与公司公共盘）的 20 个文档中，全文精确检索关键词 **“AD-Q8VN-9999”** 未命中任何内容。",
+    "chatSummary": "在当前工作空间（涵盖个人盘、部门盘与公司公共盘）的 20 个文档中，全文精确检索关键词 **“AD-Q8VN-9999”** 未命中任何内容。",
+    "presentation": {
+      "detailText": "在当前工作空间（涵盖个人盘、部门盘与公司公共盘）的 20 个文档中，全文精确检索关键词 **“AD-Q8VN-9999”** 未命中任何内容。",
+      "chatSummary": "在当前工作空间（涵盖个人盘、部门盘与公司公共盘）的 20 个文档中，全文精确检索关键词 **“AD-Q8VN-9999”** 未命中任何内容。",
+      "detailFormat": "markdown",
+      "summaryFormat": "markdown",
+      "preferAiSummary": false,
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ],
+      "notificationSummary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"AD-Q8VN-9999\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+      "preferStructuredView": false
+    },
+    "capabilitiesUsed": [
+      {
+        "id": "platform.workspace.explorer",
+        "name": "内置工作空间文档探索",
+        "version": "1.0.1"
+      }
+    ]
+  },
+  "inputJson": {
+    "prompt": "/doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回其他文档。",
+    "__promptDebug": {
+      "notes": [
+        "Generated via deterministic recipe 'workspace_explore' followed by selected-capability parameter recognition.",
+        "参数 'query' 已依据能力语义角色和路由策略确定性解析，未调用参数识别模型。"
+      ],
+      "llmCalls": [],
+      "userPrompt": "/doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回其他文档。",
+      "debugSource": "planner",
+      "systemPrompt": "Deterministic Recipe Topology",
+      "userPromptSectionKeys": [
+        "user_request"
+      ],
+      "systemPromptSectionKeys": [
+        "routing_cards",
+        "topology_dag"
+      ]
+    }
+  },
+  "normalizedInputJson": {
+    "prompt": "/doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回其他文档。",
+    "__promptDebug": {
+      "notes": [
+        "Generated via deterministic recipe 'workspace_explore' followed by selected-capability parameter recognition.",
+        "参数 'query' 已依据能力语义角色和路由策略确定性解析，未调用参数识别模型。"
+      ],
+      "llmCalls": [],
+      "userPrompt": "/doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回其他文档。",
+      "debugSource": "planner",
+      "systemPrompt": "Deterministic Recipe Topology",
+      "userPromptSectionKeys": [
+        "user_request"
+      ],
+      "systemPromptSectionKeys": [
+        "routing_cards",
+        "topology_dag"
+      ]
+    }
+  },
+  "input": {
+    "prompt": "/doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回其他文档。",
+    "__promptDebug": {
+      "notes": [
+        "Generated via deterministic recipe 'workspace_explore' followed by selected-capability parameter recognition.",
+        "参数 'query' 已依据能力语义角色和路由策略确定性解析，未调用参数识别模型。"
+      ],
+      "llmCalls": [],
+      "userPrompt": "/doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回其他文档。",
+      "debugSource": "planner",
+      "systemPrompt": "Deterministic Recipe Topology",
+      "userPromptSectionKeys": [
+        "user_request"
+      ],
+      "systemPromptSectionKeys": [
+        "routing_cards",
+        "topology_dag"
+      ]
+    }
+  },
+  "normalizedInput": {
+    "prompt": "/doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回其他文档。",
+    "__promptDebug": {
+      "notes": [
+        "Generated via deterministic recipe 'workspace_explore' followed by selected-capability parameter recognition.",
+        "参数 'query' 已依据能力语义角色和路由策略确定性解析，未调用参数识别模型。"
+      ],
+      "llmCalls": [],
+      "userPrompt": "/doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回其他文档。",
+      "debugSource": "planner",
+      "systemPrompt": "Deterministic Recipe Topology",
+      "userPromptSectionKeys": [
+        "user_request"
+      ],
+      "systemPromptSectionKeys": [
+        "routing_cards",
+        "topology_dag"
+      ]
+    }
+  },
+  "semantic": null,
+  "result": {
+    "result": {
+      "title": "/doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回其他文档。",
+      "summary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"AD-Q8VN-9999\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+      "resultType": "deterministic_plan",
+      "businessData": {
+        "finalOutputs": [
+          {
+            "value": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"AD-Q8VN-9999\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+            "fromNodeId": "n1_内置工作空间文档探索",
+            "isArtifact": false,
+            "targetField": "result",
+            "expectedType": "string",
+            "fromNodeOutput": "answer"
+          }
+        ],
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ]
+      },
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ]
+    },
+    "artifacts": [],
+    "execution": {
+      "status": "success",
+      "finishedAt": "2026-10-16T03:23:18.759Z",
+      "executionId": "e2a971e8-39ad-4c3e-815a-635a30676a6d"
+    },
+    "detailText": "在当前工作空间（涵盖个人盘、部门盘与公司公共盘）的 20 个文档中，全文精确检索关键词 **“AD-Q8VN-9999”** 未命中任何内容。",
+    "chatSummary": "在当前工作空间（涵盖个人盘、部门盘与公司公共盘）的 20 个文档中，全文精确检索关键词 **“AD-Q8VN-9999”** 未命中任何内容。",
+    "presentation": {
+      "detailText": "在当前工作空间（涵盖个人盘、部门盘与公司公共盘）的 20 个文档中，全文精确检索关键词 **“AD-Q8VN-9999”** 未命中任何内容。",
+      "chatSummary": "在当前工作空间（涵盖个人盘、部门盘与公司公共盘）的 20 个文档中，全文精确检索关键词 **“AD-Q8VN-9999”** 未命中任何内容。",
+      "detailFormat": "markdown",
+      "summaryFormat": "markdown",
+      "preferAiSummary": false,
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ],
+      "notificationSummary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"AD-Q8VN-9999\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+      "preferStructuredView": false
+    },
+    "capabilitiesUsed": [
+      {
+        "id": "platform.workspace.explorer",
+        "name": "内置工作空间文档探索",
+        "version": "1.0.1"
+      }
+    ]
+  },
+  "normalizedResult": {
+    "envelope": {
+      "result": {
+        "title": "/doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回其他文档。",
+        "summary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"AD-Q8VN-9999\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+        "resultType": "deterministic_plan",
+        "businessData": {
+          "finalOutputs": [
+            {
+              "value": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"AD-Q8VN-9999\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+              "fromNodeId": "n1_内置工作空间文档探索",
+              "isArtifact": false,
+              "targetField": "result",
+              "expectedType": "string",
+              "fromNodeOutput": "answer"
+            }
+          ],
+          "capabilitiesUsed": [
+            {
+              "id": "platform.workspace.explorer",
+              "name": "内置工作空间文档探索",
+              "version": "1.0.1"
+            }
+          ]
+        },
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ]
+      },
+      "artifacts": [],
+      "execution": {
+        "status": "success",
+        "finishedAt": "2026-10-16T03:23:18.759Z",
+        "executionId": "e2a971e8-39ad-4c3e-815a-635a30676a6d"
+      },
+      "detailText": "在当前工作空间（涵盖个人盘、部门盘与公司公共盘）的 20 个文档中，全文精确检索关键词 **“AD-Q8VN-9999”** 未命中任何内容。",
+      "chatSummary": "在当前工作空间（涵盖个人盘、部门盘与公司公共盘）的 20 个文档中，全文精确检索关键词 **“AD-Q8VN-9999”** 未命中任何内容。",
+      "presentation": {
+        "detailText": "在当前工作空间（涵盖个人盘、部门盘与公司公共盘）的 20 个文档中，全文精确检索关键词 **“AD-Q8VN-9999”** 未命中任何内容。",
+        "chatSummary": "在当前工作空间（涵盖个人盘、部门盘与公司公共盘）的 20 个文档中，全文精确检索关键词 **“AD-Q8VN-9999”** 未命中任何内容。",
+        "detailFormat": "markdown",
+        "summaryFormat": "markdown",
+        "preferAiSummary": false,
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ],
+        "notificationSummary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"AD-Q8VN-9999\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+        "preferStructuredView": false
+      },
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ]
+    },
+    "resultType": "deterministic_plan",
+    "title": "/doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回其他文档。",
+    "summary": "在当前工作空间（涵盖个人盘、部门盘与公司公共盘）的 20 个文档中，全文精确检索关键词 **“AD-Q8VN-9999”** 未命中任何内容。",
+    "body": "在当前工作空间（涵盖个人盘、部门盘与公司公共盘）的 20 个文档中，全文精确检索关键词 **“AD-Q8VN-9999”** 未命中任何内容。",
+    "summaryFormat": "markdown",
+    "detailText": "在当前工作空间（涵盖个人盘、部门盘与公司公共盘）的 20 个文档中，全文精确检索关键词 **“AD-Q8VN-9999”** 未命中任何内容。",
+    "detailFormat": "markdown",
+    "structuredData": {
+      "finalOutputs": [
+        {
+          "value": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"AD-Q8VN-9999\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+          "fromNodeId": "n1_内置工作空间文档探索",
+          "isArtifact": false,
+          "targetField": "result",
+          "expectedType": "string",
+          "fromNodeOutput": "answer"
+        }
+      ],
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ]
+    },
+    "artifacts": [],
+    "hasBusinessResult": true,
+    "rawResult": {
+      "result": {
+        "title": "/doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回其他文档。",
+        "summary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"AD-Q8VN-9999\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+        "resultType": "deterministic_plan",
+        "businessData": {
+          "finalOutputs": [
+            {
+              "value": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"AD-Q8VN-9999\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+              "fromNodeId": "n1_内置工作空间文档探索",
+              "isArtifact": false,
+              "targetField": "result",
+              "expectedType": "string",
+              "fromNodeOutput": "answer"
+            }
+          ],
+          "capabilitiesUsed": [
+            {
+              "id": "platform.workspace.explorer",
+              "name": "内置工作空间文档探索",
+              "version": "1.0.1"
+            }
+          ]
+        },
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ]
+      },
+      "artifacts": [],
+      "execution": {
+        "status": "success",
+        "finishedAt": "2026-10-16T03:23:18.759Z",
+        "executionId": "e2a971e8-39ad-4c3e-815a-635a30676a6d"
+      },
+      "detailText": "在当前工作空间（涵盖个人盘、部门盘与公司公共盘）的 20 个文档中，全文精确检索关键词 **“AD-Q8VN-9999”** 未命中任何内容。",
+      "chatSummary": "在当前工作空间（涵盖个人盘、部门盘与公司公共盘）的 20 个文档中，全文精确检索关键词 **“AD-Q8VN-9999”** 未命中任何内容。",
+      "presentation": {
+        "detailText": "在当前工作空间（涵盖个人盘、部门盘与公司公共盘）的 20 个文档中，全文精确检索关键词 **“AD-Q8VN-9999”** 未命中任何内容。",
+        "chatSummary": "在当前工作空间（涵盖个人盘、部门盘与公司公共盘）的 20 个文档中，全文精确检索关键词 **“AD-Q8VN-9999”** 未命中任何内容。",
+        "detailFormat": "markdown",
+        "summaryFormat": "markdown",
+        "preferAiSummary": false,
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ],
+        "notificationSummary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"AD-Q8VN-9999\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+        "preferStructuredView": false
+      },
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ]
+    }
+  },
+  "usage": null,
+  "failureCode": null,
+  "failureReason": null,
+  "startedAt": "2026-10-16T03:23:18.252Z",
+  "endedAt": "2026-10-16T03:23:18.759Z",
+  "createdAt": "2026-10-16T03:23:18.244Z",
+  "updatedAt": "2026-10-16T03:23:24.356Z",
+  "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+  "phases": [
+    {
+      "id": "edd4b6f9-6871-47b4-8bf0-ec57f01e47a3",
+      "executionId": "e2a971e8-39ad-4c3e-815a-635a30676a6d",
+      "phaseKey": "phase_01_n1_内置工作空间文档探索",
+      "phaseName": "n1_内置工作空间文档探索",
+      "phaseType": "builtin",
+      "status": "completed",
+      "attempt": 1,
+      "runtimeSessionId": null,
+      "input": null,
+      "output": {
+        "action": "workflow",
+        "output": {
+          "query": "全文精确检索“AD-Q8VN-9999”,不要拆分关键词,未命中请明确说明,不要返回其他文档",
+          "answer": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"AD-Q8VN-9999\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+          "citations": [],
+          "scannedFiles": [],
+          "searchedFilesCount": 20
+        },
+        "status": "completed",
+        "stepId": "f87f51f9-2389-4a05-86c1-e8e96a59d075",
+        "snapshot": null,
+        "rawResult": null
+      },
+      "precheck": null,
+      "postcheck": null,
+      "errorCode": null,
+      "errorMessage": null,
+      "recoveryDecision": null,
+      "startedAt": "2026-10-16T03:23:18.261Z",
+      "completedAt": "2026-10-16T03:23:18.751Z",
+      "createdAt": "2026-10-16T03:23:18.261Z",
+      "updatedAt": "2026-10-16T03:23:18.751Z",
+      "artifacts": [],
+      "steps": [],
+      "takeovers": []
+    }
+  ]
+}

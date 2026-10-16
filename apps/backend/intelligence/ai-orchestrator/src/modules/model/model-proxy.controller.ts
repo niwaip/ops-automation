@@ -23,8 +23,8 @@ const DEFAULT_MAX_RETRIES = 1;
 /** 硬上限（绝不允许无限重试） */
 const ABSOLUTE_MAX_RETRIES = 3;
 const FAST_INTERNAL_SYNTHESIS_TIMEOUT_MS = 15_000;
-const DEFAULT_SANDBOX_ATTEMPT_TIMEOUT_MS = 30_000;
-const GENERATION_SANDBOX_ATTEMPT_TIMEOUT_MS = 60_000;
+const DEFAULT_SANDBOX_ATTEMPT_TIMEOUT_MS = 60_000;
+const GENERATION_SANDBOX_ATTEMPT_TIMEOUT_MS = 90_000;
 const LARGE_TOOL_SURFACE_THRESHOLD = 8;
 
 @ApiTags('AI-Proxy')
@@ -811,7 +811,7 @@ export class ModelProxyController {
       body?.request_context === 'web_search_synthesis' ||
       (Array.isArray(body?.tools) && body.tools.length >= LARGE_TOOL_SURFACE_THRESHOLD)
     ) {
-      return 60_000;
+      return 90_000;
     }
     if (
       body?.thinking === false &&
@@ -820,7 +820,7 @@ export class ModelProxyController {
     ) {
       return FAST_INTERNAL_SYNTHESIS_TIMEOUT_MS;
     }
-    return 30_000;
+    return 60_000;
   }
 
   /**

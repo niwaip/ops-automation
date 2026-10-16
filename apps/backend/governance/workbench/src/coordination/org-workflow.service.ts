@@ -26,6 +26,11 @@ UpdateOrgWorkflowDto,
 WorkflowStageDefinition
 } from './org-workflow.entity';
 import { BUILT_IN_WORKFLOW_TEMPLATES } from './workflow-templates.constants';
+import {
+  enrichWorkflowWithSkillParams,
+  enrichWorkflowsWithSkillParams,
+  syncWorkflowParamsToDb,
+} from './org-workflow-skill-adapter';
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -61,6 +66,16 @@ export class OrgWorkflowService implements OnModuleInit {
     } else {
       await this.loadWorkflowsFromDb();
     }
+    await this.enrichAndSyncAllWorkflows();
+  }
+
+  private async enrichAndSyncAllWorkflows(): Promise<void> {
+    const list = Array.from(this.workflows.values());
+    const enriched = await enrichWorkflowsWithSkillParams(this.prisma, list);
+    for (const wf of enriched) {
+      this.workflows.set(wf.id, wf);
+      await syncWorkflowParamsToDb(this.prisma, wf);
+    }
   }
 
   private async ensureTableExists(): Promise<void> {
@@ -81,23 +96,15 @@ export class OrgWorkflowService implements OnModuleInit {
           definition_json JSONB NOT NULL,
           created_at TIMESTAMPTZ DEFAULT NOW(),
           updated_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `);
-      await this.prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS idx_org_workflows_wf_id ON org_workflows(workflow_id)
-      `);
-      await this.prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS idx_org_workflows_org_id ON org_workflows(org_id)
-      `);
-      await this.prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS idx_org_workflows_version ON org_workflows(version)
-      `);
-      await this.prisma.$executeRawUnsafe(`
+        );
+        CREATE INDEX IF NOT EXISTS idx_org_workflows_wf_id ON org_workflows(workflow_id);
+        CREATE INDEX IF NOT EXISTS idx_org_workflows_org_id ON org_workflows(org_id);
+        CREATE INDEX IF NOT EXISTS idx_org_workflows_version ON org_workflows(version);
         CREATE TABLE IF NOT EXISTS org_workflow_system_meta (
           key VARCHAR(64) PRIMARY KEY,
           value TEXT NOT NULL,
           updated_at TIMESTAMPTZ DEFAULT NOW()
-        )
+        );
       `);
     } catch (err: any) {
       this.logger.warn(`Failed to verify or create org_workflows table: ${err.message}`);
@@ -180,36 +187,14 @@ export class OrgWorkflowService implements OnModuleInit {
     try {
       await this.ensureTableExists();
       const defJson = JSON.stringify(wf);
-      await this.prisma.$executeRawUnsafe(
-        `
-        INSERT INTO org_workflows (id, workflow_id, org_id, version, name, description, category, icon, task_type, status, is_published, definition_json, updated_at)
+      const sql = `INSERT INTO org_workflows (id, workflow_id, org_id, version, name, description, category, icon, task_type, status, is_published, definition_json, updated_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, NOW())
-        ON CONFLICT (id) DO UPDATE SET
-          workflow_id = EXCLUDED.workflow_id,
-          org_id = EXCLUDED.org_id,
-          version = EXCLUDED.version,
-          name = EXCLUDED.name,
-          description = EXCLUDED.description,
-          category = EXCLUDED.category,
-          icon = EXCLUDED.icon,
-          task_type = EXCLUDED.task_type,
-          status = EXCLUDED.status,
-          is_published = EXCLUDED.is_published,
-          definition_json = EXCLUDED.definition_json,
-          updated_at = NOW();
-        `,
-        wf.id,
-        wf.workflowId,
-        wf.orgId || null,
-        wf.version || '1.0.0',
-        wf.name,
-        wf.description || '',
-        wf.category || 'general',
-        wf.icon || null,
-        wf.taskType || 'approval',
-        wf.status || 'published',
-        Boolean(wf.isPublished),
-        defJson
+        ON CONFLICT (id) DO UPDATE SET workflow_id = EXCLUDED.workflow_id, org_id = EXCLUDED.org_id, version = EXCLUDED.version, name = EXCLUDED.name, description = EXCLUDED.description, category = EXCLUDED.category, icon = EXCLUDED.icon, task_type = EXCLUDED.task_type, status = EXCLUDED.status, is_published = EXCLUDED.is_published, definition_json = EXCLUDED.definition_json, updated_at = NOW();`;
+      await this.prisma.$executeRawUnsafe(
+        sql,
+        wf.id, wf.workflowId, wf.orgId || null, wf.version || '1.0.0', wf.name,
+        wf.description || '', wf.category || 'general', wf.icon || null,
+        wf.taskType || 'approval', wf.status || 'published', Boolean(wf.isPublished), defJson
       );
     } catch (err: any) {
       this.logger.error(`Failed to persist workflow ${wf.id} to db: ${err.message}`);
@@ -218,18 +203,10 @@ export class OrgWorkflowService implements OnModuleInit {
 
   public async deleteWorkflowFromDb(id: string, workflowId?: string): Promise<void> {
     try {
-      if (workflowId && workflowId !== id) {
-        await this.prisma.$executeRawUnsafe(
-          `DELETE FROM org_workflows WHERE id = $1 OR workflow_id = $1 OR id = $2 OR workflow_id = $2`,
-          id,
-          workflowId
-        );
-      } else {
-        await this.prisma.$executeRawUnsafe(
-          `DELETE FROM org_workflows WHERE id = $1 OR workflow_id = $1`,
-          id
-        );
-      }
+      const sql = workflowId && workflowId !== id
+        ? `DELETE FROM org_workflows WHERE id = $1 OR workflow_id = $1 OR id = $2 OR workflow_id = $2`
+        : `DELETE FROM org_workflows WHERE id = $1 OR workflow_id = $1`;
+      await this.prisma.$executeRawUnsafe(sql, id, ...(workflowId && workflowId !== id ? [workflowId] : []));
     } catch (err: any) {
       this.logger.error(`Failed to delete workflow ${id} from db: ${err.message}`);
     }
@@ -314,7 +291,8 @@ export class OrgWorkflowService implements OnModuleInit {
               id: 'draft_submission',
               name: '商务填报与初稿生成',
               type: 'submission',
-              description: '调用专属保密合同生成技能 (ConfidentialityAgreementGenerationWorkflow) 提取主体、保密期限等要件输出初稿',
+              capabilityId: '971a94dc-fdf0-4059-92bd-ca1f8d8d667d',
+              description: '调用专属保密合同生成技能 (971a94dc-fdf0-4059-92bd-ca1f8d8d667d) 提取主体、保密期限等要件输出初稿',
               isLocked: false,
             },
             {
@@ -703,7 +681,7 @@ export class OrgWorkflowService implements OnModuleInit {
 
     const isAdmin = userRoleNames.has('admin') || user?.role === 'admin';
 
-    // 仅返回已发布的工作流
+    // 仅返回已发布的工作流（参数契约已在工作流确定与保存时完整生成落库）
     const publishedWorkflows = Array.from(this.workflows.values()).filter(
       (w) => w.isPublished
     );
@@ -894,17 +872,36 @@ export class OrgWorkflowService implements OnModuleInit {
         if (sc) {
           skillId = sc.id;
           skillName = sc.name;
+        } else {
+          const rel = await this.prisma.capabilityRelease.findFirst({
+            where: {
+              OR: [{ id: refId }, { publishedSkillId: refId }, { sourceId: refId }],
+              status: 'published',
+            },
+            orderBy: { releaseVersion: 'desc' },
+          });
+          if (rel) {
+            skillId = rel.publishedSkillId || rel.id;
+            skillName = rel.sourceName || skillName;
+            skillVersion = String(rel.releaseVersion || '1.0.0');
+          }
         }
       } else {
+        const candidateNames = [
+          refId,
+          refId === 'ConfidentialityAgreementGenerationWorkflow' ? '保密合同生成' : null,
+          refId === 'ConfidentialityAgreementGenerationWorkflow' ? '商业保密协议(NDA)智能生成技能' : null,
+        ].filter(Boolean) as string[];
+
         const sc = await this.prisma.skillConfig.findFirst({
-          where: { name: refId, isActive: true },
+          where: { name: { in: candidateNames }, isActive: true },
         });
         if (sc) {
           skillId = sc.id;
           skillName = sc.name;
         } else {
           const rel = await this.prisma.capabilityRelease.findFirst({
-            where: { sourceName: refId, status: 'published' },
+            where: { sourceName: { in: candidateNames }, status: 'published' },
             orderBy: { releaseVersion: 'desc' },
           });
           if (rel?.publishedSkillId) {
@@ -1014,10 +1011,11 @@ export class OrgWorkflowService implements OnModuleInit {
       updatedAt: new Date().toISOString(),
     };
 
-    this.workflows.set(id, workflow);
-    await this.saveWorkflowToDb(workflow);
-    this.logger.log(`Created enterprise workflow: ${workflow.name} (${workflow.id})`);
-    return workflow;
+    const enriched = await enrichWorkflowWithSkillParams(this.prisma, workflow);
+    this.workflows.set(id, enriched);
+    await this.saveWorkflowToDb(enriched);
+    this.logger.log(`Created enterprise workflow: ${enriched.name} (${enriched.id})`);
+    return enriched;
   }
 
   /**
@@ -1053,10 +1051,11 @@ export class OrgWorkflowService implements OnModuleInit {
       updatedAt: new Date().toISOString(),
     };
 
-    this.workflows.set(updated.id, updated);
-    await this.saveWorkflowToDb(updated);
-    this.logger.log(`Updated enterprise workflow: ${updated.name} (${updated.id})`);
-    return updated;
+    const enriched = await enrichWorkflowWithSkillParams(this.prisma, updated);
+    this.workflows.set(enriched.id, enriched);
+    await this.saveWorkflowToDb(enriched);
+    this.logger.log(`Updated enterprise workflow: ${enriched.name} (${enriched.id})`);
+    return enriched;
   }
 
   /**
@@ -1069,14 +1068,21 @@ export class OrgWorkflowService implements OnModuleInit {
     }
 
     const nextPublished = publish !== undefined ? publish : !existing.isPublished;
-    existing.isPublished = nextPublished;
-    existing.status = nextPublished ? 'published' : 'draft';
-    existing.updatedAt = new Date().toISOString();
+    let target: OrganizationWorkflowDefinition = {
+      ...existing,
+      isPublished: nextPublished,
+      status: nextPublished ? 'published' : 'draft',
+      updatedAt: new Date().toISOString(),
+    };
 
-    this.workflows.set(existing.id, existing);
-    await this.saveWorkflowToDb(existing);
-    this.logger.log(`Workflow [${existing.name}] published status set to ${nextPublished}`);
-    return existing;
+    if (nextPublished) {
+      target = await enrichWorkflowWithSkillParams(this.prisma, target);
+    }
+
+    this.workflows.set(target.id, target);
+    await this.saveWorkflowToDb(target);
+    this.logger.log(`Workflow [${target.name}] published status set to ${nextPublished}`);
+    return target;
   }
 
   /**

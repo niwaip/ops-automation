@@ -8,7 +8,7 @@ import {
   resolveWaitingInputDisplayLabel,
 } from '@ops/user-core';
 import { findDeeplinkByLabel, resolveTaskParts } from '@chat-web/lib/contentParts';
-import SharedTaskOutcomeCard from '@chat-web/components/TaskOutcomeCard';
+import SharedTaskOutcomeCard, { normalizeChineseSpace } from '@chat-web/components/TaskOutcomeCard';
 import SharedTaskProgressCard from '@chat-web/components/TaskProgressCard';
 import { replaceLocalhostWithCurrentHost } from '@/shared/utils/publicUrl';
 import {
@@ -192,6 +192,7 @@ function TaskOutcomeBlockContent({
     description?: string;
     group_label?: string;
     display_name?: string;
+    label?: string;
     missing?: boolean;
   }[];
   const waitingInputItems = missingInputs.map((item, index) => ({
@@ -201,11 +202,13 @@ function TaskOutcomeBlockContent({
       description: item.description,
       group_label: item.group_label,
       display_name: item.display_name,
+      label: item.label,
     }),
   }));
   const waitingInputGroupMap = missingInputs.reduce<Map<string, typeof waitingInputItems>>(
     (groups, item, index) => {
-      const label = item.group_label?.trim() || '待补字段';
+      const rawLabel = item.group_label?.trim() || '待补字段';
+      const label = normalizeChineseSpace(rawLabel) || '待补字段';
       const groupItems = groups.get(label) || [];
       groupItems.push({
         key: `${label}-${item.name || 'missing'}-${index}`,
@@ -214,6 +217,7 @@ function TaskOutcomeBlockContent({
           description: item.description,
           group_label: item.group_label,
           display_name: item.display_name,
+          label: item.label,
         }),
       });
       groups.set(label, groupItems);

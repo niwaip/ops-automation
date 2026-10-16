@@ -1,0 +1,44 @@
+{
+  "caseId": "R04",
+  "variant": "canonical",
+  "status": "passed",
+  "traceIds": [
+    "05e75018-c667-42b6-9a2b-b4962dbf7ba0"
+  ],
+  "executionIds": [
+    "1851654d-c397-491c-a86e-be74148d6cf0"
+  ],
+  "requestDigest": "6c16667a300fab3bf53482daee44c18a9066543bff86d3cd7317559f10f30a06",
+  "fixtureDigest": null,
+  "catalogSnapshotDigest": "catalog-v1-snapshot-sha256",
+  "routingPolicyVersion": "routing-policy-v1",
+  "routingPolicyDigest": "routing-policy-sha256",
+  "selectedCapabilityRefs": [
+    "内置联网搜索",
+    "execute_skill"
+  ],
+  "planHash": null,
+  "inputHash": null,
+  "actualInvocations": [
+    "内置联网搜索",
+    "execute_skill"
+  ],
+  "usageByPurpose": {},
+  "logicalEffectCount": 1,
+  "artifactRefs": [],
+  "assertions": [
+    {
+      "assertion": "Selected platform.search.web capability",
+      "passed": true,
+      "actual": [
+        "内置联网搜索",
+        "execute_skill"
+      ]
+    },
+    {
+      "assertion": "Returned web search results or query observation",
+      "passed": true
+    }
+  ],
+  "failureCategory": null
+}

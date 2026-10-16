@@ -72,6 +72,7 @@ export const buildExecutionSkillNameMap = (
   map.set('platform.document.pdf-create', '文档转 PDF 与存证渲染');
   map.set('platform.notification.internal-message', '流转凭证与回执通知');
   map.set('ConfidentialityAgreementGenerationWorkflow', '商业保密协议(NDA)智能生成技能');
+  map.set('971a94dc-fdf0-4059-92bd-ca1f8d8d667d', '商业保密协议(NDA)智能生成技能');
 
   releases.forEach((release) => {
     if (!release.publishedSkillId) {

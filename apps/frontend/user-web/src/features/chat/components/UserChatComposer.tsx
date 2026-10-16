@@ -296,12 +296,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
 
       // 如果用户主动选择打开卡片弹窗，保持原有弹窗体验
       if (isModalAction) {
-        const targetUser = lastMentionedUser || {
-          id: '',
-          username: workflowSelectionUser || '协同成员',
-          email: null,
-        };
-        setSelectedAssignee(targetUser);
+        setSelectedAssignee(lastMentionedUser || null);
 
         const text = draft;
         const lower = text.toLowerCase();
@@ -312,6 +307,8 @@ export function UserChatComposer(props: UserChatComposerProps) {
           setCardInitialTemplateId(templateId || 'legal.contract.review_flow');
           setCardInitialValues({});
         }
+        // 清理由于唤起弹窗在输入框中留下的 ! 或草稿，杜绝残留符号
+        onDraftChange('');
         setCardModalOpen(true);
         return;
       }
@@ -615,11 +612,13 @@ export function UserChatComposer(props: UserChatComposerProps) {
         initialTemplateId={cardInitialTemplateId}
         initialValues={cardInitialValues}
         onClose={() => setCardModalOpen(false)}
-        onSuccess={(_task, markdownCard) => {
+        onSuccess={(_task, commandOrCard) => {
           setCardModalOpen(false);
           setSelectedAssignee(null);
-          if (markdownCard) {
-            onSend([], markdownCard);
+          // 提交卡片后彻底清空输入框残留
+          onDraftChange('');
+          if (commandOrCard) {
+            onSend([], commandOrCard);
           }
         }}
       />

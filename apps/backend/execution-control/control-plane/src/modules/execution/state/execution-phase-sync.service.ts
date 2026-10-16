@@ -863,6 +863,8 @@ export class ExecutionPhaseSyncService {
       output: {
         ...output,
         ...(snapshot ? { snapshot } : {}),
+        ...(stepRecord.artifact ? { artifact: stepRecord.artifact } : {}),
+        ...(stepRecord.artifactPath ? { artifactPath: stepRecord.artifactPath } : {}),
         ...(stepRecord.pageUrl ? { pageUrl: stepRecord.pageUrl } : {}),
         ...(stepRecord.pageTitle ? { pageTitle: stepRecord.pageTitle } : {}),
       },

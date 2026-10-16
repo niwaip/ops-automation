@@ -28,13 +28,42 @@ export const GlobalWorkspacePreviewModal: React.FC = () => {
   const [previewData, setPreviewData] = useState<FilePreviewResponse | null>(null);
 
   const handleOpen = useCallback(async (detail: OpenWorkspacePreviewEventDetail) => {
-    if (!detail.fileId) return;
+    const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    let targetFileId = (detail.fileId || '').trim();
+    let wsId = detail.workspaceId?.trim();
+
+    if (!UUID_REGEX.test(wsId || '')) {
+      wsId = undefined;
+    }
+
+    // 若 fileId 缺失或为非有效 UUID（例如模型输出占位符），尝试通过文件名反向查找实际节点
+    if (!UUID_REGEX.test(targetFileId)) {
+      if (detail.fileName && detail.fileName !== '文档预览') {
+        try {
+          const candidates = await workspaceApi.searchFiles(detail.fileName);
+          const matched = candidates.find((c) => c.name === detail.fileName) || candidates[0];
+          if (matched && UUID_REGEX.test(matched.id)) {
+            targetFileId = matched.id;
+            if (!wsId && matched.workspaceId && UUID_REGEX.test(matched.workspaceId)) {
+              wsId = matched.workspaceId;
+            }
+          }
+        } catch {
+          // ignore lookup error
+        }
+      }
+    }
+
+    if (!UUID_REGEX.test(targetFileId)) {
+      void antdMessage.warning('未能识别有效的文件标识，无法加载文档预览');
+      return;
+    }
 
     setIsOpen(true);
     setIsLoading(true);
     setNode({
-      id: detail.fileId,
-      workspaceId: detail.workspaceId || '',
+      id: targetFileId,
+      workspaceId: wsId || '',
       name: detail.fileName || '文档预览',
       type: 'file',
       mimeType: null,
@@ -47,19 +76,18 @@ export const GlobalWorkspacePreviewModal: React.FC = () => {
     setPreviewData(null);
 
     try {
-      let wsId = detail.workspaceId;
       if (!wsId) {
         const myWs = await workspaceApi.getMyWorkspaces();
         wsId = myWs.personal?.id || myWs.company?.id;
       }
-      if (!wsId) {
+      if (!wsId || !UUID_REGEX.test(wsId)) {
         throw new Error('未找到对应的工作空间');
       }
 
-      const res = await workspaceApi.previewFileContent(wsId, detail.fileId);
+      const res = await workspaceApi.previewFileContent(wsId, targetFileId);
       setPreviewData(res);
       setNode({
-        id: detail.fileId,
+        id: targetFileId,
         workspaceId: wsId,
         name: res.fileName || detail.fileName || '文档预览',
         type: 'file',

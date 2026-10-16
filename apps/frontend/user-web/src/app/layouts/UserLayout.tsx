@@ -49,13 +49,22 @@ export function UserLayout() {
                 ? '/reports'
                 : location.pathname;
 
+  const sidebarWidth = sidebarCollapsed ? 80 : 200;
+
   return (
-    <Layout className={styles['user-shell']}>
+    <Layout
+      className={styles['user-shell']}
+      style={
+        {
+          '--sidebar-width': `${sidebarWidth}px`,
+        } as React.CSSProperties
+      }
+    >
       <UserSidebar selectedMenuKey={selectedMenuKey} />
       <Layout
         className={styles['user-shell-main']}
         style={{
-          marginLeft: sidebarCollapsed ? 80 : 200,
+          marginLeft: sidebarWidth,
           transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
@@ -65,8 +74,8 @@ export function UserLayout() {
         >
           <Outlet />
         </Content>
-        {isChatRoute ? null : <UserChatWidget />}
       </Layout>
+      {isChatRoute ? null : <UserChatWidget />}
       <GlobalWorkspacePreviewModal />
     </Layout>
   );

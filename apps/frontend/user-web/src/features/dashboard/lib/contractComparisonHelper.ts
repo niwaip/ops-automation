@@ -28,6 +28,14 @@ export function isNonContractReportFile(
 }
 
 /**
+ * 获取文件的主干文件名（去除常见办公文档与 PDF 扩展名）
+ */
+export function getDocumentStemName(filename?: string): string {
+  if (!filename) return '';
+  return filename.replace(/\.(docx|doc|pdf|txt|rtf)$/i, '').trim();
+}
+
+/**
  * 提取并归一化任务中的所有有效合同文档版本（自动排除 HTML 审查报告）
  * 顺序统一为按版本升序：[V1, V2, ..., VN]
  */
@@ -87,27 +95,57 @@ export function resolveContractDocVersions(
   // 反转为按版本时间升序排列：[V1, V2, ..., VN]
   const chronologicalOriginals = [...validOriginals].reverse();
 
-  // 追加的文件属于更新的版本，拼接至末尾
-  const combined = [...chronologicalOriginals, ...validAppended];
+  // 对原始附件进行按版本主干归一化：
+  // 1) 同名或同 URL 文件自动去重；
+  // 2) 同一主干文件名的 docx 与 pdf 属于同一版本的双格式衍生件（如起草生成的 word 与排版渲染 pdf），
+  //    归一为同一个版本条目（优先保留可编辑的 docx 格式便于后续文本比对）；
+  const stemToDocMap = new Map<string, ChatTaskAttachment>();
+  const originalVersionList: ChatTaskAttachment[] = [];
 
-  // 按 URL 去重（若无 URL 则按文件名去重）
-  const seenKeys = new Set<string>();
-  const result: ChatTaskAttachment[] = [];
-  for (const rawDoc of combined) {
-    const docUrl = normalizeDocUrl(rawDoc) || (rawDoc === combined[combined.length - 1] ? parameters?.downloadUrl : undefined);
-    const key = docUrl || rawDoc.name;
-    if (key && !seenKeys.has(key)) {
-      seenKeys.add(key);
-      result.push({
-        name: rawDoc.name || '合同文档.docx',
-        url: docUrl,
-        size: rawDoc.size,
-        mimeType: rawDoc.mimeType || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      });
+  for (const rawDoc of chronologicalOriginals) {
+    const docUrl = normalizeDocUrl(rawDoc) || parameters?.downloadUrl;
+    const name = rawDoc.name || '合同文档.docx';
+    const stem = getDocumentStemName(name);
+    const docItem: ChatTaskAttachment = {
+      name,
+      url: docUrl,
+      size: rawDoc.size,
+      mimeType: rawDoc.mimeType || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    };
+
+    if (stemToDocMap.has(stem)) {
+      const existing = stemToDocMap.get(stem)!;
+      // 若已有同主干文件是 pdf 而新遇到的是 docx，则替换为 docx 作为代表性比对文档
+      if (
+        existing.name.toLowerCase().endsWith('.pdf') &&
+        (name.toLowerCase().endsWith('.docx') || name.toLowerCase().endsWith('.doc'))
+      ) {
+        const idx = originalVersionList.indexOf(existing);
+        if (idx !== -1) {
+          originalVersionList[idx] = docItem;
+          stemToDocMap.set(stem, docItem);
+        }
+      }
+    } else {
+      stemToDocMap.set(stem, docItem);
+      originalVersionList.push(docItem);
     }
   }
 
-  return result;
+  // 3) 追加的文件（appendedFiles）属于经办人或法务明确上传的后续修订版本，拼接到末尾
+  const appendedList: ChatTaskAttachment[] = [];
+  for (const rawAppended of validAppended) {
+    const docUrl = normalizeDocUrl(rawAppended);
+    const name = rawAppended.name || '修订版本.docx';
+    appendedList.push({
+      name,
+      url: docUrl,
+      size: rawAppended.size,
+      mimeType: rawAppended.mimeType || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+  }
+
+  return [...originalVersionList, ...appendedList];
 }
 
 export interface FormattedContractVersion {
@@ -140,7 +178,7 @@ export function getFormattedContractVersions(
     const isLatest = idx === 0;
     const versionLabel =
       total === 1
-        ? '送审版本'
+        ? '当前生效版'
         : isLatest
         ? `V${versionNumber} · 最新生效版`
         : versionNumber === 1
@@ -175,6 +213,14 @@ export function getContractComparisonPair(
   // 升序排列：[0] 为 V1 初稿基准，[length - 1] 为最新送审/修订版本
   const baseDoc = versions[0];
   const latestDoc = versions[versions.length - 1];
+
+  // 若基准版本与最新版本的主干名称和下载地址均相同，说明同属同一版本，不误触发比对
+  if (
+    baseDoc.name === latestDoc.name ||
+    (getDocumentStemName(baseDoc.name) === getDocumentStemName(latestDoc.name) && baseDoc.url === latestDoc.url)
+  ) {
+    return null;
+  }
 
   return {
     baseDoc,

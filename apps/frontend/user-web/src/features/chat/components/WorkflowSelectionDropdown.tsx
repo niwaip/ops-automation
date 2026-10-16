@@ -55,6 +55,8 @@ const DEFAULT_TEMPLATES: WorkflowOptionItem[] = [
   },
 ];
 
+const EMPTY_SERVER_TEMPLATES: WorkflowTemplateDefinition[] = [];
+
 export function WorkflowSelectionDropdown({
   open,
   mode = 'bang',
@@ -67,8 +69,9 @@ export function WorkflowSelectionDropdown({
   onFilteredItemsChange,
 }: WorkflowSelectionDropdownProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const prevItemsRef = useRef<WorkflowOptionItem[]>([]);
 
-  const { data: serverTemplates = [], isSuccess } = useQuery(
+  const { data: serverTemplates = EMPTY_SERVER_TEMPLATES, isSuccess } = useQuery(
     ['workflowTemplates'],
     () => workbenchCoordinationApi.getWorkflowTemplates(),
     {
@@ -107,15 +110,6 @@ export function WorkflowSelectionDropdown({
       }
     }
 
-    // 追加传统表单卡片选项
-    items.push({
-      id: 'custom.card.modal',
-      name: '打开传统表单卡片 (弹窗填写)',
-      description: '切换至结构化表单卡片填写（适合需要手动上传多个附件或调整复杂优先级的场景）',
-      category: 'general',
-      isModalAction: true,
-    });
-
     return items;
   }, [serverTemplates, isSuccess]);
 
@@ -131,7 +125,14 @@ export function WorkflowSelectionDropdown({
   }, [allItems, searchQuery]);
 
   useEffect(() => {
-    onFilteredItemsChange?.(filteredItems);
+    const prev = prevItemsRef.current;
+    const hasChanged =
+      prev.length !== filteredItems.length ||
+      prev.some((item, i) => item.id !== filteredItems[i]?.id);
+    if (hasChanged) {
+      prevItemsRef.current = filteredItems;
+      onFilteredItemsChange?.(filteredItems);
+    }
   }, [filteredItems, onFilteredItemsChange]);
 
   // 点击外部关闭
@@ -162,20 +163,15 @@ export function WorkflowSelectionDropdown({
         return <SafetyCertificateOutlined style={{ fontSize: 18, color: '#722ed1' }} />;
       case 'legal.contract.review_flow':
         return <SafetyCertificateOutlined style={{ fontSize: 18, color: '#2f54eb' }} />;
-      case 'custom.card.modal':
-        return <FormOutlined style={{ fontSize: 18, color: '#52c41a' }} />;
       default:
         return <FileDoneOutlined style={{ fontSize: 18, color: '#722ed1' }} />;
     }
   };
 
   const getCategoryBadge = (item: WorkflowOptionItem) => {
-    if (item.isModalAction) {
-      return <Tag color="green">表单卡片</Tag>;
-    }
     switch (item.category) {
       case 'legal':
-        return <Tag color="geekblue">法务审查</Tag>;
+        return <Tag color="geekblue">法务风控</Tag>;
       case 'hr':
         return <Tag color="blue">HRMS 考勤</Tag>;
       case 'oa':
@@ -225,7 +221,7 @@ export function WorkflowSelectionDropdown({
                 key={item.id}
                 className={`${styles['workflow-item']} ${isSelected ? styles['is-selected'] : ''}`}
                 onMouseEnter={() => onHoverIndex(idx)}
-                onClick={() => onSelectWorkflow(item.id, item.isModalAction, item)}
+                onClick={() => onSelectWorkflow(item.id, false, item)}
               >
                 <div style={{ paddingTop: 2 }}>{getItemIcon(item.id)}</div>
                 <div className={styles['workflow-item-main']}>
@@ -242,10 +238,28 @@ export function WorkflowSelectionDropdown({
         )}
       </div>
 
+      <div className={styles['workflow-action-bar']}>
+        <div className={styles['workflow-action-tip']}>
+          <FormOutlined style={{ color: '#1677ff' }} />
+          <span>需要逐项规范填报或上传多个附件？</span>
+        </div>
+        <Button
+          type="link"
+          size="small"
+          className={styles['workflow-action-btn']}
+          onClick={() => {
+            const currentSelected = filteredItems[selectedIndex] || filteredItems[0];
+            onSelectWorkflow(currentSelected?.id || 'legal.nda.generation_and_review_flow', true, currentSelected);
+          }}
+        >
+          切换为表单弹窗填写 ↗
+        </Button>
+      </div>
+
       <div className={styles['workflow-footer']}>
         <span>
           <span className={styles.kbd}>↑</span> <span className={styles.kbd}>↓</span> 切换，
-          <span className={styles.kbd}>Enter</span> 选定工作流，<span className={styles.kbd}>Esc</span> 取消
+          <span className={styles.kbd}>Enter</span> 快速调用，<span className={styles.kbd}>Esc</span> 取消
         </span>
         <span style={{ color: 'var(--text-tertiary)' }}>
           {mode === 'bang' ? '💡 选定后直接在对话框输入自然语言即可调用' : '亦可继续打字进行普通对话'}

@@ -40,6 +40,10 @@ export interface CoordinationActionRecord {
 export interface WorkflowParamProperty {
   type: 'string' | 'number' | 'date' | 'boolean';
   description: string;
+  displayName?: string;
+  groupLabel?: string;
+  renderPath?: string;
+  extractionPrompt?: string;
   required?: boolean;
   default?: any;
   enum?: Array<string | number>;

@@ -138,6 +138,17 @@ export class RecorderParameterService {
           exampleValue: String(command.params.index),
           source: `command.${index}.index`,
         });
+      } else if (command.tool === 'click' && typeof command.description === 'string') {
+        const rawIndex = this.extractOrdinalIndexFromText(command.description);
+        if (rawIndex) {
+          registerParameter({
+            name: 'resultIndex',
+            description: '结果序号，从 1 开始',
+            required: false,
+            exampleValue: rawIndex,
+            source: `command.${index}.index`,
+          });
+        }
       }
     }
 
@@ -188,6 +199,17 @@ export class RecorderParameterService {
           exampleValue: String(step.params.index),
           source: `template.${step.step_id}.params.index`,
         });
+      } else if (step.action === 'click' && typeof step.description === 'string') {
+        const rawIndex = this.extractOrdinalIndexFromText(step.description);
+        if (rawIndex) {
+          registerParameter({
+            name: 'resultIndex',
+            description: '结果序号，从 1 开始',
+            required: false,
+            exampleValue: rawIndex,
+            source: `template.${step.step_id}.params.index`,
+          });
+        }
       }
       if (
         step.action === 'type_text' &&
@@ -227,22 +249,85 @@ export class RecorderParameterService {
   }
 
   shouldExposeStartUrlParameter(
-    commands: BrowserCommand[],
-    templateSteps?: TemplateStepLike[]
+    _commands: BrowserCommand[],
+    _templateSteps?: TemplateStepLike[]
   ): boolean {
-    const hasNavigateCommand = commands.some(
-      (command) =>
-        (command.tool === 'navigate' || command.tool === 'goto') &&
-        typeof command.params?.url === 'string' &&
-        command.params.url.trim().length > 0
+    // Starting website URL should be fixed by default and not exposed as a variable parameter
+    return false;
+  }
+
+  extractOrdinalIndexFromText(text?: string): string | undefined {
+    if (!text) return undefined;
+
+    // Chinese pattern: e.g. 打开第二条记录, 点击第一个搜索结果, 选择第3条文章
+    const zhMatch = text.match(
+      /(?:点击|打开|选择)?(?:第)?([一二三四五六七八九十\d]+)[个条项篇]?(?:(?:搜索)?结果(?:链接)?|搜索项|记录|文章|数据|内容)/i
     );
-    const hasNavigateStep = (templateSteps || []).some(
-      (step) =>
-        (step.action === 'navigate' || step.action === 'goto') &&
-        ((typeof step.params?.url === 'string' && step.params.url.trim().length > 0) ||
-          (typeof step.target === 'string' && step.target.trim().length > 0))
+    if (zhMatch && zhMatch[1]) {
+      const resolved = this.resolveResultIndex(zhMatch[1]);
+      if (resolved > 0) return String(resolved);
+    }
+
+    // English pattern: e.g. open the 2nd record, click third article, select 1st result
+    const enMatch = text.match(
+      /(?:click|open|select)?\s*(?:the\s+)?(\d+(?:st|nd|rd|th)?|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)\s+(?:result|item|record|article|link|row|post)/i
     );
-    return hasNavigateCommand || hasNavigateStep || !templateSteps?.length;
+    if (enMatch && enMatch[1]) {
+      const resolved = this.resolveResultIndex(enMatch[1]);
+      if (resolved > 0) return String(resolved);
+    }
+
+    // Japanese pattern: e.g. 2番目の記事を開く, 3つ目の検索結果をクリック, 1番目のレコード
+    const jaMatch = text.match(
+      /([0-9一二三四五六七八九十]+)\s*(?:つ目|番目|個目|件目|条目)?(?:の)?(?:検索結果|結果|記事|レコード|データ|リンク)/i
+    );
+    if (jaMatch && jaMatch[1]) {
+      const resolved = this.resolveResultIndex(jaMatch[1]);
+      if (resolved > 0) return String(resolved);
+    }
+
+    return undefined;
+  }
+
+  private resolveResultIndex(value: string): number {
+    const indexMap: Record<string, number> = {
+      一: 1,
+      二: 2,
+      三: 3,
+      四: 4,
+      五: 5,
+      六: 6,
+      七: 7,
+      八: 8,
+      九: 9,
+      十: 10,
+      first: 1,
+      second: 2,
+      third: 3,
+      fourth: 4,
+      fifth: 5,
+      sixth: 6,
+      seventh: 7,
+      eighth: 8,
+      ninth: 9,
+      tenth: 10,
+      '1st': 1,
+      '2nd': 2,
+      '3rd': 3,
+      '4th': 4,
+      '5th': 5,
+      '6th': 6,
+      '7th': 7,
+      '8th': 8,
+      '9th': 9,
+      '10th': 10,
+    };
+    const normalized = value
+      .replace(/^第/, '')
+      .replace(/个|条|项|篇|つ目|番目|個目|件目|条目/g, '')
+      .trim()
+      .toLowerCase();
+    return indexMap[normalized] || parseInt(normalized.replace(/(?:st|nd|rd|th)$/, ''), 10) || 0;
   }
 
   templateStepsContainPlaceholder(steps: TemplateStepLike[], placeholderName: string): boolean {

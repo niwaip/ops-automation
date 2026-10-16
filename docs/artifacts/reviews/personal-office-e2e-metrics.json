@@ -1,0 +1,145 @@
+[
+  {
+    "case": "personal-office-o01-stream",
+    "sessionId": "885dc3a8-d182-473d-b56d-d6764d0cb061",
+    "traceId": "ac10122a-4fd0-4453-91ff-21fca0405bd9",
+    "durationMs": 8654,
+    "exitCode": 0,
+    "totalTokens": 8554,
+    "toolCallsCount": 0,
+    "toolErrors": [],
+    "done": true
+  },
+  {
+    "case": "personal-office-o02-stream",
+    "sessionId": "885dc3a8-d182-473d-b56d-d6764d0cb061",
+    "traceId": "14f2c701-2985-4d55-b6f3-89c3053b9de6",
+    "durationMs": 63754,
+    "exitCode": 0,
+    "totalTokens": 47943,
+    "toolCallsCount": 2,
+    "toolErrors": [],
+    "done": true
+  },
+  {
+    "case": "personal-office-o03-stream",
+    "sessionId": "b8b01125-97d1-4c48-b564-8a6c1c817659",
+    "traceId": "6b0d2779-9937-4edf-8f51-f31b3f56f49c",
+    "durationMs": 58500,
+    "exitCode": 0,
+    "totalTokens": 37568,
+    "toolCallsCount": 1,
+    "toolErrors": [],
+    "done": true
+  },
+  {
+    "case": "personal-office-o04-stream",
+    "sessionId": "c3949983-4699-4800-ad4d-1e375c5d8603",
+    "traceId": "e3e2c946-ea88-4f64-b6dc-b52deace4692",
+    "durationMs": 112209,
+    "exitCode": 0,
+    "totalTokens": 110407,
+    "toolCallsCount": 5,
+    "toolErrors": [],
+    "done": true
+  },
+  {
+    "case": "personal-office-o05-stream",
+    "sessionId": "6a93e923-3b2f-4442-8bb9-8b24fe7c1801",
+    "traceId": "91cd0494-0ff5-40ec-a147-eef07aa63575",
+    "durationMs": 214827,
+    "exitCode": 0,
+    "totalTokens": 97591,
+    "toolCallsCount": 3,
+    "toolErrors": [],
+    "done": true
+  },
+  {
+    "case": "personal-office-o06-stream",
+    "sessionId": "549995e3-c5cd-451b-8485-af2615a9f385",
+    "traceId": "b742ee19-f442-4d1b-9a37-420116c1f244",
+    "durationMs": 11622,
+    "exitCode": 0,
+    "totalTokens": 6593,
+    "toolCallsCount": 0,
+    "toolErrors": [],
+    "done": true
+  },
+  {
+    "case": "personal-office-o07-stream",
+    "sessionId": "549995e3-c5cd-451b-8485-af2615a9f385",
+    "traceId": "fc700c95-1d4a-4e81-b692-909dd0532eac",
+    "durationMs": 111326,
+    "exitCode": 0,
+    "totalTokens": 187246,
+    "toolCallsCount": 9,
+    "toolErrors": [
+      {
+        "name": "bash",
+        "params": {
+          "command": "python3 -c \"import fpdf; print(fpdf.__file__)\"\nfind / -name \"*NotoSansSC*\" 2>/dev/null"
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "legacy_error",
+        "workbook_id": null
+      }
+    ],
+    "done": true
+  },
+  {
+    "case": "personal-office-o08-stream",
+    "sessionId": "549995e3-c5cd-451b-8485-af2615a9f385",
+    "traceId": "cee60357-2b7c-432f-ab45-fe359696a64b",
+    "durationMs": 91267,
+    "exitCode": 0,
+    "totalTokens": 230444,
+    "toolCallsCount": 9,
+    "toolErrors": [],
+    "done": true
+  },
+  {
+    "case": "personal-office-o09-stream",
+    "sessionId": "aa99f8cf-d7c4-4585-92b6-31596bfee618",
+    "traceId": "76ff9b87-ee96-4711-a85b-a4bed3dd9fbf",
+    "durationMs": 94231,
+    "exitCode": 0,
+    "totalTokens": 125227,
+    "toolCallsCount": 5,
+    "toolErrors": [],
+    "done": true
+  },
+  {
+    "case": "personal-office-o10-stream",
+    "sessionId": "22d5591b-2d6d-4e93-b195-459a7ea974d4",
+    "traceId": "7dad9d35-fffa-459b-bd52-c01278f90ab3",
+    "durationMs": 6750,
+    "exitCode": 0,
+    "totalTokens": 2330,
+    "toolCallsCount": 0,
+    "toolErrors": [],
+    "done": true
+  },
+  {
+    "case": "personal-office-o12-stream",
+    "sessionId": "b637bf9b-d7e2-4eb9-8097-5abdc32e6cd6",
+    "traceId": "bd717104-ba78-4d10-af2b-524a865b5f8f",
+    "durationMs": 6032,
+    "exitCode": 0,
+    "totalTokens": 2164,
+    "toolCallsCount": 0,
+    "toolErrors": [],
+    "done": true
+  },
+  {
+    "case": "personal-office-o14-stream",
+    "sessionId": "48d6ee3d-e1ab-40d4-a439-0eea65dbc2cc",
+    "traceId": "aaed86ef-cbe9-44f1-aa5e-b99469246a49",
+    "durationMs": 22107,
+    "exitCode": 0,
+    "totalTokens": 9168,
+    "toolCallsCount": 1,
+    "toolErrors": [],
+    "done": true
+  }
+]

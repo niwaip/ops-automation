@@ -13,9 +13,10 @@ import {
   Typography,
   theme as antdTheme,
 } from 'antd';
-import { ArrowLeftOutlined, LinkOutlined, ReloadOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, DesktopOutlined, LinkOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useQuery } from 'react-query';
 import { apiClient } from '@/shared/api/http/client';
+import { buildNovncAutoConnectUrl } from '@ops/user-core';
 import RecorderOutcomeDetailCard from '../components/RecorderOutcomeDetailCard';
 
 const { Title, Text, Paragraph } = Typography;
@@ -231,6 +232,10 @@ interface RecorderDebugSession {
   backend: RecorderDebugBackend;
   browserInitialized: boolean;
   currentPageUrl?: string;
+  endpoints?: {
+    novnc?: string;
+    cdp?: string;
+  };
   lastObservation?: RecorderDebugObservation;
   loopDraft?: RecorderLoopDraft;
   pendingLoopCaptureStartCommandIndex?: number;
@@ -457,6 +462,18 @@ const RecorderDebugDetailPage: React.FC = () => {
             打开当前页面
           </Button>
         ) : null}
+        {session.endpoints?.novnc ? (
+          <Button
+            type="link"
+            icon={<DesktopOutlined />}
+            onClick={() => {
+              const url = buildNovncAutoConnectUrl(session.endpoints!.novnc, { resize: 'off' });
+              window.open(url, '_blank', 'noopener,noreferrer');
+            }}
+          >
+            打开 noVNC 预览 (1:1清晰)
+          </Button>
+        ) : null}
       </Space>
 
       <Card
@@ -475,6 +492,20 @@ const RecorderDebugDetailPage: React.FC = () => {
         <Descriptions bordered column={1} size="small">
           <Descriptions.Item label="会话 ID">{session.sessionId}</Descriptions.Item>
           <Descriptions.Item label="运行时会话 ID">{session.runtimeSessionId}</Descriptions.Item>
+          {session.endpoints?.novnc ? (
+            <Descriptions.Item label="noVNC 地址">
+              <Space>
+                <a
+                  href={buildNovncAutoConnectUrl(session.endpoints.novnc, { resize: 'off' })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {buildNovncAutoConnectUrl(session.endpoints.novnc, { resize: 'off' })}
+                </a>
+                <Tag color="blue">1:1 点对点清晰</Tag>
+              </Space>
+            </Descriptions.Item>
+          ) : null}
           <Descriptions.Item label="当前页面 URL">
             {session.currentPageUrl || '-'}
           </Descriptions.Item>

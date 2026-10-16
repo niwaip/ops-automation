@@ -25,4 +25,6 @@ export interface TodoCardProps {
   onArchiveTodo?: (id: string) => void;
   onRecallTodo?: (item: WorkbenchTodoItem) => void;
   onRemindTodo?: (item: WorkbenchTodoItem) => void;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }

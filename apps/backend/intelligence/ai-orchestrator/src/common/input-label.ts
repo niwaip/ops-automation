@@ -78,6 +78,30 @@ export const isMachineLikeInputLabel = (label: string, fieldName: string): boole
   return MACHINE_LIKE_LABEL_PATTERN.test(normalized);
 };
 
+/**
+ * Normalizes extra whitespace between Chinese characters while preserving English words spacing.
+ * e.g. "保 密 协 议" -> "保密协议", "Hello World" -> "Hello World"
+ */
+export const normalizeChineseSpace = (text?: string): string => {
+  if (!text || typeof text !== 'string') return '';
+  return text.replace(/(?<=[\u4e00-\u9fa5])\s+(?=[\u4e00-\u9fa5])/g, '').trim();
+};
+
+export const WELL_KNOWN_FRIENDLY_INPUT_LABELS: Record<string, string> = {
+  fileBase64: '待提取的文档附件',
+  file_base64: '待提取的文档附件',
+  fileName: '文档名称',
+  file_name: '文档名称',
+  fileBase64A: '文档 A 附件',
+  fileBase64B: '文档 B 附件',
+  workspaceId: '工作空间 ID',
+  workspace_id: '工作空间 ID',
+  recipientId: '接收人',
+  recipient_id: '接收人',
+  mailboxKey: '邮箱账号',
+  mailbox_key: '邮箱账号',
+};
+
 export const resolveFriendlyInputDisplayName = (input: {
   name: string;
   display_name?: string;
@@ -85,13 +109,18 @@ export const resolveFriendlyInputDisplayName = (input: {
 }): string => {
   const displayName = String(input.display_name || '').trim();
   if (displayName && !isMachineLikeInputLabel(displayName, input.name)) {
-    return displayName;
+    return normalizeChineseSpace(displayName);
   }
 
   const concise = deriveFriendlyInputLabel(input.description);
   if (concise) {
-    return concise;
+    return normalizeChineseSpace(concise);
   }
 
-  return displayName || input.name;
+  const wellKnown = WELL_KNOWN_FRIENDLY_INPUT_LABELS[input.name];
+  if (wellKnown) {
+    return wellKnown;
+  }
+
+  return normalizeChineseSpace(displayName || input.name);
 };

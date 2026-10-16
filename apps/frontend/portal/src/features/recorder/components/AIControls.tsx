@@ -92,10 +92,17 @@ const AIControls: React.FC<AIControlsProps> = ({
   const [executionBackend, setExecutionBackend] = useState<ExecutionBackend>('cli');
   const [currentPageUrl, setCurrentPageUrl] = useState<string>();
   const [isReactChatMode, setIsReactChatMode] = useState(true);
+  const [isChatExecuting, setIsChatExecuting] = useState(false);
   const [recorderDebugSessionId, setRecorderDebugSessionId] = useState<string>();
   const [recorderDebugRuntimeSessionId, setRecorderDebugRuntimeSessionId] = useState<string>();
   const [browserRuntimeSessionId, setBrowserRuntimeSessionId] =
     useState<string>(createRuntimeSessionId);
+  const onBrowserReadyRef = useRef(onBrowserReady);
+  onBrowserReadyRef.current = onBrowserReady;
+  const onBrowserEndpointsRef = useRef(onBrowserEndpoints);
+  onBrowserEndpointsRef.current = onBrowserEndpoints;
+  const onCommandExecutedRef = useRef(onCommandExecuted);
+  onCommandExecutedRef.current = onCommandExecuted;
   const latestBrowserSessionRef = useRef<{
     browserRuntimeSessionId?: string;
     recorderDebugRuntimeSessionId?: string;
@@ -192,15 +199,15 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   useEffect(() => {
     setIsBrowserReady(false);
-    onBrowserReady?.(false);
-  }, [executionBackend, onBrowserReady]);
+    onBrowserReadyRef.current?.(false);
+  }, [executionBackend]);
 
   useEffect(() => {
     setIsBrowserReady(false);
-    onBrowserReady?.(false);
-    onBrowserEndpoints?.({});
+    onBrowserReadyRef.current?.(false);
+    onBrowserEndpointsRef.current?.({});
     setCurrentPageUrl(undefined);
-  }, [browserRuntimeSessionId, onBrowserReady, onBrowserEndpoints]);
+  }, [browserRuntimeSessionId]);
 
   useEffect(() => {
     setRecorderDebugSessionId(undefined);
@@ -494,9 +501,9 @@ const AIControls: React.FC<AIControlsProps> = ({
           return;
         }
         setIsBrowserReady(true);
-        onBrowserReady?.(true, executionBackend);
+        onBrowserReadyRef.current?.(true, executionBackend);
         if (data.endpoints) {
-          onBrowserEndpoints?.(data.endpoints);
+          onBrowserEndpointsRef.current?.(data.endpoints);
         }
       },
       onError: (error: unknown) => {
@@ -550,7 +557,10 @@ const AIControls: React.FC<AIControlsProps> = ({
     // Auto init browser if not ready
     if (!isBrowserReady) {
       try {
-        await initBrowserMutation.mutateAsync();
+        const initData = await initBrowserMutation.mutateAsync();
+        if (initData?.endpoints) {
+          onBrowserEndpointsRef.current?.(initData.endpoints);
+        }
       } catch (e) {
         // Init failed, but we already added error to history
         return;
@@ -605,6 +615,7 @@ const AIControls: React.FC<AIControlsProps> = ({
     };
 
     if (isReactChatMode) {
+      setIsChatExecuting(true);
       try {
         const activeRuntimeSessionId = browserRuntimeSessionId || recorderDebugRuntimeSessionId;
         const data = await apiClient.post<RecorderDebugChatResponse>('/ai/recorder-debug/chat', {
@@ -643,6 +654,12 @@ const AIControls: React.FC<AIControlsProps> = ({
         if (data.currentPageUrl || data.observation?.currentPageUrl) {
           setCurrentPageUrl(data.currentPageUrl || data.observation?.currentPageUrl);
         }
+        if (data.endpoints) {
+          onBrowserEndpointsRef.current?.(data.endpoints);
+        }
+        if (data.commands && data.commands.length > 0) {
+          onCommandExecutedRef.current?.(data.commands);
+        }
         if (
           data.execution &&
           isExecutionFailed(data.execution as BrowserCommandExecutionResponse)
@@ -678,6 +695,7 @@ const AIControls: React.FC<AIControlsProps> = ({
         ]);
       } finally {
         clearProgressTimers();
+        setIsChatExecuting(false);
       }
       return;
     }
@@ -799,6 +817,13 @@ const AIControls: React.FC<AIControlsProps> = ({
     void message.success(t('common:copied'));
   };
 
+  const isExecuting =
+    parseCommandMutation.isLoading ||
+    executeCommandMutation.isLoading ||
+    isChatExecuting ||
+    initBrowserMutation.isLoading ||
+    rollbackLoading;
+
   const {
     templateSteps,
     savedTemplateId,
@@ -847,6 +872,7 @@ const AIControls: React.FC<AIControlsProps> = ({
     recorderDebugRuntimeSessionId,
     getScreenshotModeLabel,
     navigate,
+    isExecuting,
   });
 
   useEffect(() => {
@@ -866,9 +892,11 @@ const AIControls: React.FC<AIControlsProps> = ({
     onStartRecording?.(finalUrl);
   };
 
-  // Check if any mutation is loading
-  const isLoading = parseCommandMutation.isLoading || executeCommandMutation.isLoading;
-  const canUseSpeech = speechSupported && !isLoading && !isTranscribing;
+  // Check if any mutation or async process is loading
+  const isLoading =
+    parseCommandMutation.isLoading || executeCommandMutation.isLoading || isChatExecuting;
+  const isBusy = isExecuting || exportTemplateLoading;
+  const canUseSpeech = speechSupported && !isBusy && !isTranscribing;
   const backendLabels: Record<ExecutionBackend, string> = {
     cli: 'Playwright CLI',
     'chrome-devtools': 'Chrome DevTools CLI',
@@ -935,17 +963,17 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   const isRecording = recorderStatus === 'recording';
   const isPaused = recorderStatus === 'paused';
-  const canSend = Boolean(
-    isReactChatMode
-      ? paramInput.trim()
-      : (
-          predefinedCommands.find((c) => c.value === selectedCommand)?.prefix + paramInput.trim()
-        ).trim()
-  );
-  const canExport = Boolean(recorderDebugSessionId && recorderDebugRuntimeSessionId);
+  const canSend =
+    !isBusy &&
+    Boolean(
+      isReactChatMode
+        ? paramInput.trim()
+        : (predefinedCommands.find((c) => c.value === selectedCommand)?.prefix + paramInput.trim()).trim()
+    );
+  const canExport = Boolean(recorderDebugSessionId && recorderDebugRuntimeSessionId) && !isBusy;
   const buildRecorderDebugDetailPath = (sessionId: string) => `/recorder-debug/${sessionId}`;
   const actionColumnHeight = 84;
-  const primaryActionButtonStyle = {
+  const primaryActionButtonStyle: React.CSSProperties = {
     height: 38,
     borderRadius: 12,
     width: 90,
@@ -953,12 +981,10 @@ const AIControls: React.FC<AIControlsProps> = ({
     border: isDarkTheme ? '1px solid #7c83ff' : '1px solid #4f46e5',
     color: '#ffffff',
     fontWeight: 600,
-    background: isDarkTheme ? '#4f46e5' : '#4f46e5',
-    boxShadow: isDarkTheme
-      ? '0 6px 16px rgba(79, 70, 229, 0.3)'
-      : '0 4px 12px rgba(79, 70, 229, 0.2)',
-  } satisfies React.CSSProperties;
-  const secondaryActionButtonStyle = {
+    background: '#4f46e5',
+    boxShadow: isDarkTheme ? '0 6px 16px rgba(79, 70, 229, 0.3)' : '0 4px 12px rgba(79, 70, 229, 0.2)',
+  };
+  const secondaryActionButtonStyle: React.CSSProperties = {
     height: 38,
     borderRadius: 12,
     width: 90,
@@ -967,14 +993,12 @@ const AIControls: React.FC<AIControlsProps> = ({
     background: isDarkTheme ? '#1f2540' : '#eef2ff',
     color: isDarkTheme ? '#e0e7ff' : '#4338ca',
     fontWeight: 600,
-    boxShadow: isDarkTheme
-      ? '0 10px 24px rgba(15, 23, 42, 0.32)'
-      : '0 6px 16px rgba(99, 102, 241, 0.12)',
-  } satisfies React.CSSProperties;
-  const mutedActionButtonStyle = {
+    boxShadow: isDarkTheme ? '0 10px 24px rgba(15, 23, 42, 0.32)' : '0 6px 16px rgba(99, 102, 241, 0.12)',
+  };
+  const mutedActionButtonStyle: React.CSSProperties = {
     opacity: 0.72,
     cursor: 'not-allowed',
-  } satisfies React.CSSProperties;
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, gap: 4 }}>
@@ -1039,6 +1063,7 @@ const AIControls: React.FC<AIControlsProps> = ({
             isComposingRef={isComposingRef}
             handleInputKeyDown={handleInputKeyDown}
             isLoading={isLoading}
+            isExecuting={isBusy}
             isTranscribing={isTranscribing}
             actionColumnHeight={actionColumnHeight}
             handleSend={handleSend}

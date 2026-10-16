@@ -6,7 +6,7 @@ Extracted to keep agent_loop focused on multi-turn ReAct orchestration and asser
 import re
 import json
 from pathlib import Path
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from .llm import detect_unexecuted_script_leak
 
 # 常见工具核心参数名集合（用于检测模型是否在文本输出中裸露吐出工具调用参数）
@@ -188,6 +188,36 @@ def auto_heal_unexecuted_file_writes(text: str, workspace_dir: str) -> Tuple[str
                     except Exception as e:
                         print(f"⚠️ [Harness Auto-Heal] 写入自愈产物异常: {e}")
                     break
+            else:
+                py_save_match = re.search(
+                    r'(?:save|\.to_csv|\.to_excel)\s*\(\s*[\'"](?:/workspace/|\./workspace/)?([a-zA-Z0-9_\-\u4e00-\u9fa5]+\.(?:pptx?|docx?|xlsx?|pdf|csv|json|html|png|jpg))[\'"]',
+                    block_content
+                )
+                if py_save_match and ("import " in block_content or "from " in block_content):
+                    clean_filename = py_save_match.group(1).strip()
+                    dest_file = Path(workspace_dir) / clean_filename
+                    if not dest_file.exists() or dest_file.stat().st_size == 0:
+                        tmp_py = Path("/tmp") / f"_auto_heal_{clean_filename}.py"
+                        try:
+                            with open(tmp_py, "w", encoding="utf-8") as f:
+                                f.write(block_content.strip())
+                            import subprocess
+                            proc = subprocess.run(["python3", str(tmp_py)], cwd=workspace_dir, capture_output=True, text=True, timeout=30)
+                            if proc.returncode == 0 and dest_file.exists() and dest_file.stat().st_size > 0:
+                                written_files.append(str(dest_file))
+                                print(f"✨ [Harness Auto-Heal] 成功自愈执行未运行 Python 脚本生成产物: {dest_file}")
+                                replacement = f"✨ 已成功生成并保存文件：`/workspace/{clean_filename}`"
+                                cleaned_text = cleaned_text.replace(full_block, replacement)
+                            else:
+                                print(f"⚠️ [Harness Auto-Heal] Python 脚本自愈执行退出码 {proc.returncode}: {proc.stderr[:200]}")
+                        except Exception as e:
+                            print(f"⚠️ [Harness Auto-Heal] 执行自愈 Python 脚本异常: {e}")
+                        finally:
+                            if tmp_py.exists():
+                                try:
+                                    tmp_py.unlink()
+                                except Exception:
+                                    pass
 
     for hp in heredoc_patterns:
         for hm in list(re.finditer(hp, cleaned_text)):
@@ -280,95 +310,158 @@ def _extract_last_user_prompt(messages: List[Dict[str, Any]]) -> str:
     return ""
 
 
-def _build_fallback_report(messages: List[Dict[str, Any]], executed_calls_history: List[str]) -> str:
-    """Builds a diagnostic recovery report when model returns empty response or unexecuted filler."""
-    if executed_calls_history:
-        successful_tools = [
-            (c.split(":", 1)[0] if ":" in c else c)
-            for c in executed_calls_history
-            if not c.startswith("err:")
-        ]
-        tool_names = ", ".join(sorted(set(successful_tools))) if successful_tools else ""
-        if not tool_names:
-            tool_names = "相关工具"
-        data_clues = []
-        for msg in reversed(messages):
-            if msg.get("role") == "tool" and msg.get("content"):
-                c_str = str(msg["content"]).strip()
-                if not c_str or c_str.startswith("未识别") or c_str.startswith("[命令执行失败") or c_str.startswith("未提供工具"):
-                    continue
-                if "tool_not_available" in c_str or '"status": "error"' in c_str or '"code": "tool_not_available"' in c_str:
-                    continue
-                is_json_dict = False
-                try:
-                    import json
-                    parsed = json.loads(c_str)
-                    if isinstance(parsed, dict):
-                        is_json_dict = True
-                        if parsed.get("status") == "error" or parsed.get("error"):
-                            continue
-                        data_val = parsed.get("data")
-                        if isinstance(data_val, list):
-                            for item in data_val:
-                                if isinstance(item, dict):
-                                    title = item.get("title") or item.get("name") or ""
-                                    snippet = item.get("snippet") or item.get("summary") or item.get("desc") or ""
-                                    line_rep = f"{title}: {snippet}".strip(": ")
-                                    if line_rep and len(line_rep) > 6:
-                                        data_clues.append(line_rep[:150])
-                                elif isinstance(item, str) and len(item.strip()) > 6:
-                                    data_clues.append(item.strip()[:150])
-                                if len(data_clues) >= 6:
-                                    break
-                        elif isinstance(data_val, str) and len(data_val.strip()) > 6:
-                            for l in data_val.split("\n"):
-                                clean_l = l.strip()
-                                if clean_l and not clean_l.startswith("【") and len(clean_l) > 6:
-                                    data_clues.append(clean_l[:150])
-                                    if len(data_clues) >= 6:
-                                        break
-                except Exception:
-                    pass
+def _build_fallback_report(
+    messages: List[Dict[str, Any]],
+    executed_calls_history: List[str],
+    cause: Optional[str] = None,
+    trigger_evidence: Optional[str] = None,
+    completed_items: Optional[List[str]] = None,
+    pending_items: Optional[List[str]] = None,
+    retry_advice: Optional[str] = None,
+) -> str:
+    """Builds an evidence-grounded diagnostic recovery report.
+    
+    Strictly separates failure causes (user_cancel, deadline_exceeded, upstream_transport_error,
+    model_empty_final, model_budget_exhausted, tool_error, artifact_missing, validation_failed)
+    from spurious "upstream network error" assumptions.
+    """
+    successful_tools = [
+        (c.split(":", 1)[0] if ":" in c else c)
+        for c in (executed_calls_history or [])
+        if not c.startswith("err:")
+    ]
+    tool_names = ", ".join(sorted(set(successful_tools))) if successful_tools else ""
+    if not tool_names and executed_calls_history:
+        tool_names = "相关工具"
 
-                if not is_json_dict:
-                    for line in c_str.split("\n"):
-                        clean_l = line.strip()
-                        if clean_l and not clean_l.startswith("【") and len(clean_l) > 6:
-                            if clean_l.startswith("{") or clean_l.startswith("}") or clean_l.startswith('"schema_version"'):
-                                continue
-                            data_clues.append(clean_l[:150])
+    # 提取已检索到的数据线索
+    data_clues = []
+    for msg in reversed(messages or []):
+        if msg.get("role") == "tool" and msg.get("content"):
+            c_str = str(msg["content"]).strip()
+            if not c_str or c_str.startswith("未识别") or c_str.startswith("[命令执行失败") or c_str.startswith("未提供工具"):
+                continue
+            if "tool_not_available" in c_str or '"status": "error"' in c_str or '"code": "tool_not_available"' in c_str:
+                continue
+            is_json_dict = False
+            try:
+                import json
+                parsed = json.loads(c_str)
+                if isinstance(parsed, dict):
+                    is_json_dict = True
+                    if parsed.get("status") == "error" or parsed.get("error"):
+                        continue
+                    data_val = parsed.get("data")
+                    if isinstance(data_val, list):
+                        for item in data_val:
+                            if isinstance(item, dict):
+                                title = item.get("title") or item.get("name") or ""
+                                snippet = item.get("snippet") or item.get("summary") or item.get("desc") or ""
+                                line_rep = f"{title}: {snippet}".strip(": ")
+                                if line_rep and len(line_rep) > 6:
+                                    data_clues.append(line_rep[:150])
+                            elif isinstance(item, str) and len(item.strip()) > 6:
+                                data_clues.append(item.strip()[:150])
                             if len(data_clues) >= 6:
                                 break
-                if data_clues:
-                    break
-        clues_block = ("\n\n【沙箱已检索到的参考数据】:\n" + "\n".join(f"- {c}" for c in data_clues)) if data_clues else ""
-        return (
-            f"⚠️ 沙箱已成功调用工具（{tool_names}）采集到相关数据，但在进行智能归纳或生成交付物时，"
-            f"上游推理模型连接中断或未返回最终交付文本。{clues_block}\n\n"
-            "💡 建议：可尝试重新提问，或在设置中切换为更稳定的模型重试。"
-        )
-    recent_plan = ""
-    for msg in reversed(messages):
-        if msg.get("role") == "assistant" and msg.get("content"):
-            c = str(msg["content"]).strip()
-            if (
-                c
-                and not c.startswith("⚠️")
-                and not c.startswith("❌")
-                and not detect_unexecuted_script_leak(c)
-                and "chmod" not in c
-                and "```bash" not in c
-                and "```sh" not in c
-            ):
-                recent_plan = c
+                    elif isinstance(data_val, str) and len(data_val.strip()) > 6:
+                        for l in data_val.split("\n"):
+                            clean_l = l.strip()
+                            if clean_l and not clean_l.startswith("【") and len(clean_l) > 6:
+                                data_clues.append(clean_l[:150])
+                                if len(data_clues) >= 6:
+                                    break
+            except Exception:
+                pass
+
+            if not is_json_dict:
+                for line in c_str.split("\n"):
+                    clean_l = line.strip()
+                    if clean_l and not clean_l.startswith("【") and len(clean_l) > 6:
+                        if clean_l.startswith("{") or clean_l.startswith("}") or clean_l.startswith('"schema_version"'):
+                            continue
+                        data_clues.append(clean_l[:150])
+                        if len(data_clues) >= 6:
+                            break
+            if data_clues:
                 break
 
-    if recent_plan:
-        summary_preview = recent_plan[:350].strip()
-        return (
-            "⚠️ 沙箱已完成方案分析规划，但在自动执行代码生成物理交付物时未成功创建目标文件。\n\n"
-            f"【已规划的方案参考】:\n{summary_preview}...\n\n"
-            "💡 建议：可直接回复「请使用 Python 脚本生成该文档并保存到 /workspace/」重试落盘。"
-        )
+    clues_block = ("\n\n【沙箱已检索到的参考数据】:\n" + "\n".join(f"- {c}" for c in data_clues)) if data_clues else ""
 
-    return "⚠️ 沙箱运行正常，但上游模型未返回有效回复内容（可能网络连接超时或上游服务异常）。建议重新发送或切换模型重试。"
+    # 推理诊断原因与证据映射
+    cause_key = (cause or "").lower()
+    evidence_desc = trigger_evidence or ""
+
+    if cause_key == "user_cancel":
+        header = f"⚠️ 沙箱已成功调用工具（{tool_names}），但任务已由用户主动取消或终止。" if tool_names else "⚠️ 任务已由用户主动取消或终止。"
+        advice = retry_advice or "如需继续，请重新发送请求。"
+    elif cause_key == "deadline_exceeded":
+        header = f"⚠️ 沙箱已成功调用工具（{tool_names}），但任务执行时间已达到硬超时上限 ({evidence_desc or '超时'})。" if tool_names else f"⚠️ 任务执行时间已达到系统设定的硬超时上限 ({evidence_desc or '超时'})。"
+        advice = retry_advice or "建议拆分复杂任务或减少单次处理的文件规模重新提问。"
+    elif cause_key == "upstream_transport_error":
+        header = f"⚠️ 沙箱已成功调用工具（{tool_names}），但与上游模型通信时网络异常 ({evidence_desc or '连接中断'})。" if tool_names else f"⚠️ 上游模型通信网络异常 ({evidence_desc or '连接中断'})。"
+        advice = retry_advice or "此为上游接口临时网络抖动，可稍后直接重试。"
+    elif cause_key == "model_empty_final":
+        header = f"⚠️ 沙箱已成功调用工具（{tool_names}），但上游模型在收尾汇总时未输出最终有效正文。" if tool_names else "⚠️ 沙箱运行正常，但上游模型未返回有效回复内容（收尾汇总时未输出最终有效正文）。"
+        advice = retry_advice or "可直接回复「请根据上方信息输出最终回答」接力生成；原因未确定，不建议切换模型。"
+    elif cause_key == "model_budget_exhausted":
+        header = f"⚠️ 沙箱已成功调用工具（{tool_names}），但执行达到最大轮次预算上限 ({evidence_desc or '轮次耗尽'})，未能在单轮内完成所有步骤。" if tool_names else f"⚠️ 执行达到最大轮次预算上限 ({evidence_desc or '轮次耗尽'})，未能在单轮内完成所有步骤。"
+        advice = retry_advice or "可根据当前已收集的信息，提示模型在下一轮直接输出最终交付成果。"
+    elif cause_key == "artifact_missing":
+        header = f"⚠️ 沙箱已成功调用工具（{tool_names}），但任务要求的目标交付物未在沙箱工作区落盘 ({evidence_desc or '目标文件缺失'})。" if tool_names else f"⚠️ 任务要求生成目标交付物，但在沙箱工作区中未检测到物理文件落盘 ({evidence_desc or '文件未生成'})。"
+        advice = retry_advice or "可直接提示「请调用 Python 脚本直接生成该文件并保存到 /workspace/」。"
+    elif cause_key == "validation_failed":
+        header = f"⚠️ 沙箱已成功调用工具（{tool_names}），但产物未能通过数据一致性或结构安全校验门禁 ({evidence_desc or '校验未通过'})。" if tool_names else f"⚠️ 产物未能通过数据一致性或结构安全校验门禁 ({evidence_desc or '校验未通过'})。"
+        advice = retry_advice or "请检查原始输入数据完整性后重试。"
+    elif cause_key == "tool_error":
+        # 区分预期规则门禁拦截 vs 工具崩溃故障
+        is_rule_rejection = any(k in evidence_desc for k in ["规则", "门禁", "只接受输入原件", "降级", "结构工具", "只读"])
+        if is_rule_rejection:
+            header = f"⚠️ 沙箱已成功调用工具（{tool_names}），但后续操作触发规则门禁拦截 ({evidence_desc})。" if tool_names else f"⚠️ 操作触发规则门禁生效拦截 ({evidence_desc})。"
+            advice = retry_advice or "此为系统安全与质量门禁正常拦截，并非工具崩溃；请按门禁要求提供合法输入。"
+        else:
+            header = f"⚠️ 沙箱已调用工具（{tool_names}），但执行过程中发生异常 ({evidence_desc or '执行出错'})。" if tool_names else f"⚠️ 沙箱工具执行过程中发生异常 ({evidence_desc or '执行出错'})。"
+            advice = retry_advice or "请检查脚本逻辑或文件权限。"
+    else:
+        # 原因未确定场景：严禁擅自归咎为模型网络错误或推荐切换模型
+        if tool_names:
+            header = f"⚠️ 沙箱已成功调用工具（{tool_names}）采集到相关数据，但最终交付文本未完成输出（原因未确定）。"
+            advice = retry_advice or "可直接回复「请继续整理并回答」重新获取内容。"
+        else:
+            recent_plan = ""
+            for msg in reversed(messages or []):
+                if msg.get("role") == "assistant" and msg.get("content"):
+                    c = str(msg["content"]).strip()
+                    if (
+                        c
+                        and not c.startswith("⚠️")
+                        and not c.startswith("❌")
+                        and not detect_unexecuted_script_leak(c)
+                        and "chmod" not in c
+                        and "```bash" not in c
+                        and "```sh" not in c
+                    ):
+                        recent_plan = c
+                        break
+            if recent_plan:
+                summary_preview = recent_plan[:350].strip()
+                return (
+                    "⚠️ 沙箱已完成方案分析规划，但在自动执行代码生成物理交付物时未成功创建目标文件。\n\n"
+                    f"【已规划的方案参考】:\n{summary_preview}...\n\n"
+                    "💡 建议：可直接回复「请使用 Python 脚本生成该文档并保存到 /workspace/」重试落盘。"
+                )
+            header = "⚠️ 沙箱运行正常，但任务未完成最终交付（原因未确定）。"
+            advice = retry_advice or "请细化具体要求后重新发送。"
+
+    completed_part = f"\n- 已完成步骤：已成功调用 {tool_names}" if tool_names else ""
+    if completed_items:
+        completed_part += f"\n- 已完成产物：{', '.join(completed_items)}"
+    pending_part = f"\n- 阻塞未完成项：{', '.join(pending_items)}" if pending_items else ""
+
+    return (
+        f"{header}"
+        f"{completed_part}"
+        f"{pending_part}"
+        f"{clues_block}\n\n"
+        f"💡 建议：{advice}"
+    )

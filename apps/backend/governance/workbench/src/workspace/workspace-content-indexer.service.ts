@@ -2,6 +2,17 @@ import { Inject,Injectable,Logger } from '@nestjs/common';
 import type { ContentMatchSnippet } from './dto/workspace.dto';
 import { STORAGE_DRIVER,type StorageDriver } from './storage/storage-driver.interface';
 
+import * as JSZipLib from 'jszip';
+
+const loadZipAsync = (data: Buffer) => {
+  const lib: any = (JSZipLib as any).default || JSZipLib;
+  if (typeof lib.loadAsync === 'function') {
+    return lib.loadAsync(data);
+  }
+  const instance = new lib();
+  return instance.loadAsync(data);
+};
+
 type MatrixInit = ArrayLike<number> | undefined;
 
 class TextExtractionDomMatrix {
@@ -74,16 +85,30 @@ export class WorkspaceContentIndexerService {
    * 判断文件是否为纯文本类文件
    */
   public isTextFile(fileName: string, mimeType?: string | null): boolean {
+    const ext = fileName.toLowerCase().slice(fileName.lastIndexOf('.'));
+    const BINARY_OFFICE_EXTS = new Set([
+      '.xlsx', '.xls', '.docx', '.doc', '.pptx', '.ppt',
+      '.zip', '.tar', '.gz', '.7z', '.rar', '.bz2',
+      '.pdf', '.exe', '.dll', '.bin', '.iso', '.dmg',
+    ]);
+    if (BINARY_OFFICE_EXTS.has(ext)) {
+      return false;
+    }
+
     if (
       mimeType &&
       (mimeType.startsWith('text/') ||
-        mimeType.includes('json') ||
-        mimeType.includes('xml') ||
-        mimeType.includes('yaml'))
+        mimeType === 'application/json' ||
+        mimeType === 'application/xml' ||
+        mimeType.endsWith('+xml') ||
+        mimeType.endsWith('+json') ||
+        mimeType === 'application/x-yaml' ||
+        mimeType === 'text/yaml' ||
+        mimeType === 'application/javascript' ||
+        mimeType === 'application/typescript')
     ) {
       return true;
     }
-    const ext = fileName.toLowerCase().slice(fileName.lastIndexOf('.'));
     return TEXT_FILE_EXTENSIONS.has(ext);
   }
 
@@ -93,6 +118,123 @@ export class WorkspaceContentIndexerService {
   public isPdfFile(fileName: string, mimeType?: string | null): boolean {
     if (mimeType === 'application/pdf') return true;
     return fileName.toLowerCase().endsWith('.pdf');
+  }
+
+  /**
+   * 判断文件是否为 Word (.docx) 文件
+   */
+  public isDocxFile(fileName: string, mimeType?: string | null): boolean {
+    if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return true;
+    return fileName.toLowerCase().endsWith('.docx');
+  }
+
+  /**
+   * 判断文件是否为 Excel (.xlsx) 文件
+   */
+  public isXlsxFile(fileName: string, mimeType?: string | null): boolean {
+    if (mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') return true;
+    return fileName.toLowerCase().endsWith('.xlsx');
+  }
+
+  /**
+   * 从 Word (.docx) 文件中提取自然排版纯文本
+   */
+  public async extractDocxText(data: Buffer): Promise<string | null> {
+    try {
+      const zip = await loadZipAsync(data);
+      const docXml = zip.file('word/document.xml');
+      if (!docXml) return null;
+      const xml = await docXml.async('text');
+      const paragraphs = xml
+        .split(/<\/w:p>/gi)
+        .map((p: string) => {
+          const matches = p.match(/<w:t[^>]*>(.*?)<\/w:t>/gi);
+          if (!matches) return '';
+          return matches.map((t) => t.replace(/<[^>]+>/g, '')).join('');
+        })
+        .filter((p: string) => p.trim().length > 0);
+      return paragraphs.join('\n');
+    } catch (err: any) {
+      this.logger.warn(`Failed to extract docx text: ${err.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * 从 Excel (.xlsx) 文件中提取共享字符串文本与单元格数值数据
+   */
+  public async extractXlsxText(data: Buffer): Promise<string | null> {
+    try {
+      const zip = await loadZipAsync(data);
+
+      // 1. 解析共享字符串表 (xl/sharedStrings.xml)
+      const sharedStrings: string[] = [];
+      const stringsXmlFile = zip.file('xl/sharedStrings.xml');
+      if (stringsXmlFile) {
+        const xml = await stringsXmlFile.async('text');
+        const siMatches = xml.split(/<\/si>/gi);
+        for (const si of siMatches) {
+          const tMatches = si.match(/<t[^>]*>(.*?)<\/t>/gi);
+          if (tMatches) {
+            sharedStrings.push(tMatches.map((t) => t.replace(/<[^>]+>/g, '')).join(''));
+          }
+        }
+      }
+
+      // 2. 解析工作表数据 (xl/worksheets/sheet*.xml)，提取单元格数值、行关联及内联文本
+      const sheetFiles = zip.file(/^xl\/worksheets\/sheet.*\.xml$/i);
+      const rowLines: string[] = [];
+
+      for (const sheetFile of sheetFiles) {
+        const xml = await sheetFile.async('text');
+        const rows = xml.split(/<\/row>/gi);
+        for (const row of rows) {
+          const cellValues: string[] = [];
+          const cells = row.split(/<\/c>/gi);
+          for (const cell of cells) {
+            if (!cell.includes('<c ')) continue;
+            const typeMatch = cell.match(/t="([^"]+)"/);
+            const cellType = typeMatch ? typeMatch[1] : '';
+            let val = '';
+            if (cellType === 's') {
+              const vMatch = cell.match(/<v>(\d+)<\/v>/);
+              if (vMatch) {
+                const idx = parseInt(vMatch[1], 10);
+                val = sharedStrings[idx] || '';
+              }
+            } else if (cellType === 'inlineStr') {
+              const tMatch = cell.match(/<t[^>]*>(.*?)<\/t>/);
+              if (tMatch) val = tMatch[1].replace(/<[^>]+>/g, '');
+            } else {
+              const vMatch = cell.match(/<v>(.*?)<\/v>/);
+              if (vMatch) {
+                val = vMatch[1].replace(/<[^>]+>/g, '');
+              }
+            }
+            if (val.trim()) {
+              cellValues.push(val.trim());
+            }
+          }
+          if (cellValues.length > 0) {
+            rowLines.push(cellValues.join(' '));
+          }
+        }
+      }
+
+      if (rowLines.length > 0) {
+        return rowLines.join('\n');
+      }
+
+      // 降级：若未找到工作表定义则返回共享字符串
+      if (sharedStrings.length > 0) {
+        return Array.from(new Set(sharedStrings)).join('\n');
+      }
+
+      return null;
+    } catch (err: any) {
+      this.logger.warn(`Failed to extract xlsx text: ${err.message}`);
+      return null;
+    }
   }
 
   /**
@@ -106,6 +248,14 @@ export class WorkspaceContentIndexerService {
     try {
       if (this.isTextFile(fileName, mimeType)) {
         return data.toString('utf-8');
+      }
+
+      if (this.isDocxFile(fileName, mimeType)) {
+        return await this.extractDocxText(data);
+      }
+
+      if (this.isXlsxFile(fileName, mimeType)) {
+        return await this.extractXlsxText(data);
       }
 
       if (this.isPdfFile(fileName, mimeType)) {
@@ -300,7 +450,16 @@ export class WorkspaceContentIndexerService {
     const cacheKey = `${storagePath}.extracted.txt`;
     if (await this.storage.exists(cacheKey)) {
       const buf = await this.storage.getFile(cacheKey);
+      // 彻底拦截以 PK\x03\x04 (0x50 0x4B) 开头的 ZIP 二进制压缩流及包含控制字符的损坏缓存
+      if (buf.length >= 4 && buf[0] === 0x50 && buf[1] === 0x4b) {
+        this.logger.warn(`Discarding invalid binary zip text cache for ${storagePath}`);
+        return null;
+      }
       let text = buf.toString('utf-8');
+      if (text.includes('\0') || /[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(text.slice(0, 500))) {
+        this.logger.warn(`Discarding binary corrupted text cache for ${storagePath}`);
+        return null;
+      }
       if (this.hasUncleanedPdfArtifacts(text)) {
         if (await this.storage.exists(storagePath)) {
           const rawBuf = await this.storage.getFile(storagePath);
@@ -322,7 +481,11 @@ export class WorkspaceContentIndexerService {
       }
     }
 
-    if (this.isPdfFile(fileName, mimeType)) {
+    if (
+      this.isPdfFile(fileName, mimeType) ||
+      this.isDocxFile(fileName, mimeType) ||
+      this.isXlsxFile(fileName, mimeType)
+    ) {
       if (await this.storage.exists(storagePath)) {
         const buf = await this.storage.getFile(storagePath);
         const text = await this.extractText(buf, fileName, mimeType);
@@ -357,6 +520,15 @@ export class WorkspaceContentIndexerService {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const lowerLine = line.toLowerCase();
+
+      // 针对 <=3 字符的纯英数短词（如 ks、03 等），要求词边界匹配，防止在 tasks 等长词内部产生错误子串命中
+      if (compactKeyword.length <= 3 && /^[a-z0-9]+$/i.test(compactKeyword)) {
+        const boundaryRegex = new RegExp(`(^|[^a-zA-Z0-9])${compactKeyword}([^a-zA-Z0-9]|$)`, 'i');
+        if (!boundaryRegex.test(lowerLine)) {
+          continue;
+        }
+      }
+
       let matchIndex = lowerLine.indexOf(lowerKeyword);
       let matchLength = keyword.length;
 
@@ -408,19 +580,27 @@ export class WorkspaceContentIndexerService {
       }
 
       // 跨行滑动窗口：防止关键词刚好跨越换行符（如“代码库方\n面的能力”或“静态\n缺陷修复”）
+      // 仅当下一行自身也不完整包含关键词时，才判定为真正的跨行切断，避免产生相邻行合并与行号前移
       if (i < lines.length - 1 && compactKeyword.length >= 2) {
         const nextLine = lines[i + 1];
-        const combined = line + ' ' + nextLine;
-        const normalizedCombined = combined.normalize('NFKC');
-        const compactCombined = normalizedCombined.toLowerCase().replace(/[\s_]+/g, '');
-        if (compactCombined.includes(compactKeyword)) {
-          const snippet = (line.trim() + ' ' + nextLine.trim()).slice(0, 140);
-          results.push({
-            line: i + 1,
-            snippet,
-          });
-          if (results.length >= maxMatches) {
-            break;
+        const lowerNextLine = nextLine.toLowerCase();
+        const nextLineHasKeyword =
+          lowerNextLine.includes(lowerKeyword) ||
+          lowerNextLine.replace(/[\s_]+/g, '').includes(compactKeyword);
+
+        if (!nextLineHasKeyword) {
+          const combined = line + ' ' + nextLine;
+          const normalizedCombined = combined.normalize('NFKC');
+          const compactCombined = normalizedCombined.toLowerCase().replace(/[\s_]+/g, '');
+          if (compactCombined.includes(compactKeyword)) {
+            const snippet = (line.trim() + ' ' + nextLine.trim()).slice(0, 140);
+            results.push({
+              line: i + 1,
+              snippet,
+            });
+            if (results.length >= maxMatches) {
+              break;
+            }
           }
         }
       }

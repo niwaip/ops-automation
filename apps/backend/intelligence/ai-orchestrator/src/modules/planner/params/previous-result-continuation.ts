@@ -40,6 +40,28 @@ export function hasRelativeExtractionDirective(text?: string): boolean {
 }
 
 /**
+ * Checks whether user prompt represents a fresh, independent query, inspection, or inquiry
+ * (e.g. "查询关于ai能力测试的文件", "搜索...", "什么是..."), which should not
+ * passively inherit previous turn outputs as required input fields (such as 'content').
+ */
+export function isIndependentQueryOrInquiry(text?: string): boolean {
+  if (!text || typeof text !== 'string') return false;
+  const trimmed = text.trim();
+  if (
+    /^(?:请?帮我|麻烦帮我|请)?(?:查询|检索|搜索|查阅|查看|读取|排查|探查|浏览|找一下|找下|找出|找到|提取|寻找|问一下|告诉我|分析一下|什么是|怎么|如何|解释一下|说明一下)/i.test(
+      trimmed
+    ) ||
+    /^(?:search|find|query|lookup|inspect|examine|check)\b/i.test(trimmed)
+  ) {
+    return true;
+  }
+  if (/(?:查询|检索|搜索|查阅|排查|探查)\s*(?:关于|有关|对于)/i.test(trimmed)) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * Completes a single Skill's unresolved required input from the latest completed
  * execution. Exact schema field matches are preferred. A primary-result
  * projection is only used when exactly one required field remains unresolved,
@@ -59,6 +81,12 @@ export function projectPreviousResultIntoRecognition(
   // If user prompt explicitly indicates relative extraction (e.g. "打开 第一个url"),
   // do not deterministically short-circuit parameter recognition with stale values.
   if (hasRelativeExtractionDirective(userRequest)) {
+    return { recognized, projectedFields: [] };
+  }
+
+  // If user prompt is an independent query / inquiry (e.g. "查询关于ai能力测试的文件"),
+  // it is initiating a new search/inquiry task and must not inherit prior unstructured text.
+  if (isIndependentQueryOrInquiry(userRequest)) {
     return { recognized, projectedFields: [] };
   }
 

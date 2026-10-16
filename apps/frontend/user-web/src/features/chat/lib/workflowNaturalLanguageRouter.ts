@@ -16,10 +16,23 @@ export interface WorkflowExecutionArtifactContext {
   artifacts?: any[];
   downloadUrl?: string;
   fileName?: string;
+  parameters?: Record<string, any>;
 }
 
 export function isWorkflowCommand(content: string): boolean {
   return /^[!！][^\s!！]+/.test(content.trim());
+}
+
+let pendingWorkflowParameters: Record<string, any> | null = null;
+
+export function setPendingWorkflowParameters(params: Record<string, any> | null): void {
+  pendingWorkflowParameters = params;
+}
+
+export function getPendingWorkflowParameters(): Record<string, any> | null {
+  const p = pendingWorkflowParameters;
+  pendingWorkflowParameters = null;
+  return p;
 }
 
 async function resolveAssignee(
@@ -113,9 +126,23 @@ interface ExtractedContractEntities {
 }
 
 function extractContractEntities(taskBody: string): ExtractedContractEntities {
-  // 1. 识别我方主体与角色（如："我们是乙方富士通" / "我方是乙方" / "本方是甲方"）
-  let ourRole: '甲方' | '乙方' | undefined;
+  // 0. 优先提取显式声明（如："甲方为狗宝" / "乙方为富士通"）
+  let counterpartyAddress: string | undefined;
+  let counterpartyName = '';
   let ourParty: string | undefined;
+  let ourRole: '甲方' | '乙方' | undefined;
+
+  const explicitPartyAMatch = taskBody.match(/(?:甲方|相对方)(?:为|是|：|:)\s*([^\s,，。！!（(]+)/);
+  if (explicitPartyAMatch) {
+    counterpartyName = explicitPartyAMatch[1].trim();
+  }
+  const explicitPartyBMatch = taskBody.match(/(?:乙方|我方|本方)(?:为|是|：|:)\s*([^\s,，。！!（(]+)/);
+  if (explicitPartyBMatch) {
+    ourParty = explicitPartyBMatch[1].trim();
+    ourRole = '乙方';
+  }
+
+  // 1. 识别我方主体与角色（如："我们是乙方富士通" / "我方是乙方" / "本方是甲方"）
   const ourMatch = taskBody.match(
     /(?:我们|我方|我司|本方)\s*(?:是|为)?\s*(甲方|乙方|委托方|受托方|买方|卖方)?\s*([^\s,，。！!]{2,30}?)(?=[,，。！!]|签署|签订|协议|$)/
   );
@@ -133,9 +160,6 @@ function extractContractEntities(taskBody: string): ExtractedContractEntities {
   let counterpartyRole: '甲方' | '乙方' | undefined;
   if (ourRole === '乙方') counterpartyRole = '甲方';
   else if (ourRole === '甲方') counterpartyRole = '乙方';
-
-  let counterpartyAddress: string | undefined;
-  let counterpartyName = '';
 
   // 3. 优先提取 "地址 的 公司" 复合结构（如："深圳王府井大街100号的 豆包有限公司" / "深圳王府井大街100号的豆包有限公司"）
   const addrAndCompanyMatch = taskBody.match(
@@ -335,7 +359,10 @@ function extractContractEntities(taskBody: string): ExtractedContractEntities {
       };
     }
 
-    const finalCounterparty = counterpartyName || '相对方企业主体（待明确）';
+    const finalCounterparty =
+      artifactContext?.parameters?.['partyA.name'] ||
+      counterpartyName ||
+      '相对方企业主体（待明确）';
     const contractTitle = `${finalCounterparty} - 商业保密协议 (NDA)`;
     const docFileName = `保密合同_${finalCounterparty}_v1_${dayjs().format('YYYYMMDD')}.docx`;
 
@@ -367,6 +394,7 @@ function extractContractEntities(taskBody: string): ExtractedContractEntities {
     const effectiveFileName = attachments[0]?.name || artifactContext?.fileName || docFileName;
 
     const parameters: Record<string, any> = {
+      ...(artifactContext?.parameters || {}),
       contractTitle,
       contractType: 'nda',
       counterpartyName: finalCounterparty,
@@ -376,13 +404,23 @@ function extractContractEntities(taskBody: string): ExtractedContractEntities {
       downloadUrl: effectiveDownloadUrl,
       artifactId: attachments[0]?.id,
     };
-    if (entities.counterpartyAddress) parameters.counterpartyAddress = entities.counterpartyAddress;
+    if (artifactContext?.parameters?.['partyA.address'] || entities.counterpartyAddress) {
+      parameters.counterpartyAddress = artifactContext?.parameters?.['partyA.address'] || entities.counterpartyAddress;
+    }
     if (entities.counterpartyRole) parameters.counterpartyRole = entities.counterpartyRole;
-    if (entities.ourParty) parameters.ourParty = entities.ourParty;
+    if (artifactContext?.parameters?.['partyB.name'] || entities.ourParty) {
+      parameters.ourParty = artifactContext?.parameters?.['partyB.name'] || entities.ourParty;
+    }
     if (entities.ourRole) parameters.ourRole = entities.ourRole;
-    if (entities.cooperationSubject) parameters.cooperationSubject = entities.cooperationSubject;
+    if (artifactContext?.parameters?.['cooperation.subject'] || entities.cooperationSubject) {
+      parameters.cooperationSubject = artifactContext?.parameters?.['cooperation.subject'] || entities.cooperationSubject;
+    }
     if (entities.signDate) parameters.signDate = entities.signDate;
-    if (entities.durationYears !== undefined) parameters.durationYears = entities.durationYears;
+    if (artifactContext?.parameters?.['confidentiality.durationYears'] !== undefined || entities.durationYears !== undefined) {
+      parameters.durationYears = artifactContext?.parameters?.['confidentiality.durationYears'] !== undefined
+        ? Number(artifactContext.parameters['confidentiality.durationYears'])
+        : entities.durationYears;
+    }
     if (entities.myPosition !== undefined) parameters.myPosition = entities.myPosition;
     if (entities.penaltyAmount !== undefined) parameters.penaltyAmount = entities.penaltyAmount;
 

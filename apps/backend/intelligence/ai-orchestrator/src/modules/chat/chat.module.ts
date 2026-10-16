@@ -27,6 +27,7 @@ import { StorageConfigModule } from '../storage/storage-config.module';
 import { ChatKnowledgeRetrievalService } from './chat-knowledge-retrieval.service';
 import { DocumentProberService } from './document-prober.service';
 import { OfficeDocumentReaderService } from './office-document-reader.service';
+import { ChatCapabilityInquiryService } from './chat-capability-inquiry.service';
 
 @Module({
   imports: [
@@ -60,7 +61,13 @@ import { OfficeDocumentReaderService } from './office-document-reader.service';
     PersonalReminderBridgeService,
     ChatKnowledgeRetrievalService,
     DocumentProberService,
+    ChatCapabilityInquiryService,
   ],
-  exports: [WorkspaceArtifactService, DocumentProberService, OfficeDocumentReaderService],
+  exports: [
+    WorkspaceArtifactService,
+    DocumentProberService,
+    OfficeDocumentReaderService,
+    ChatCapabilityInquiryService,
+  ],
 })
 export class ChatModule {}

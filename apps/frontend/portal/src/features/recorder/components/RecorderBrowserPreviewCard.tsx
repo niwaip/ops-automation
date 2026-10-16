@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Card, Space, Typography } from 'antd';
+import { Button, Card, Segmented, Space, Tooltip, Typography } from 'antd';
 import { DesktopOutlined } from '@ant-design/icons';
 import { buildNovncAutoConnectUrl } from '@ops/user-core';
 
@@ -24,9 +24,11 @@ const RecorderBrowserPreviewCard: React.FC<RecorderBrowserPreviewCardProps> = ({
   startPreviewHint,
   noVncHint,
 }) => {
+  const [resizeMode, setResizeMode] = React.useState<'scale' | 'off'>('scale');
+
   const connectUrl = React.useMemo(
-    () => (previewUrl ? buildNovncAutoConnectUrl(previewUrl) : ''),
-    [previewUrl]
+    () => (previewUrl ? buildNovncAutoConnectUrl(previewUrl, { resize: resizeMode }) : ''),
+    [previewUrl, resizeMode]
   );
 
   return (
@@ -59,19 +61,46 @@ const RecorderBrowserPreviewCard: React.FC<RecorderBrowserPreviewCardProps> = ({
       },
     }}
     extra={
-      <Button
-        type="link"
-        size="small"
-        onClick={() => {
-          if (connectUrl) {
-            window.open(connectUrl, '_blank', 'noopener,noreferrer');
-          }
-        }}
-        disabled={!connectUrl}
-        style={{ color: '#6366f1' }}
-      >
-        {openInNewTabLabel}
-      </Button>
+      <Space size="small">
+        <Segmented
+          size="small"
+          value={resizeMode}
+          onChange={(val) => setResizeMode(val as 'scale' | 'off')}
+          options={[
+            {
+              label: (
+                <Tooltip title="完整缩放并适应卡片窗口（推荐在卡片中使用）">
+                  <span>自适应</span>
+                </Tooltip>
+              ),
+              value: 'scale',
+            },
+            {
+              label: (
+                <Tooltip title="1:1 点对点原画（文字最锐利，窗口不足时需滚动）">
+                  <span>1:1清晰</span>
+                </Tooltip>
+              ),
+              value: 'off',
+            },
+          ]}
+          disabled={!previewUrl}
+        />
+        <Button
+          type="link"
+          size="small"
+          onClick={() => {
+            if (previewUrl) {
+              const newTabUrl = buildNovncAutoConnectUrl(previewUrl, { resize: 'off' });
+              window.open(newTabUrl, '_blank', 'noopener,noreferrer');
+            }
+          }}
+          disabled={!previewUrl}
+          style={{ color: '#6366f1' }}
+        >
+          {openInNewTabLabel}
+        </Button>
+      </Space>
     }
   >
     <div
@@ -79,10 +108,10 @@ const RecorderBrowserPreviewCard: React.FC<RecorderBrowserPreviewCardProps> = ({
         width: '100%',
         height: '100%',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        alignItems: resizeMode === 'off' ? 'flex-start' : 'center',
+        justifyContent: resizeMode === 'off' ? 'flex-start' : 'center',
         background: isDarkTheme ? '#000000' : '#1a1a2e',
-        overflow: 'hidden',
+        overflow: resizeMode === 'off' ? 'auto' : 'hidden',
       }}
     >
       {connectUrl ? (

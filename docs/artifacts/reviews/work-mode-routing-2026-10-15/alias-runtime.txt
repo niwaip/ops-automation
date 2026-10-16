@@ -1,0 +1,95 @@
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 5:59:23 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=false, generation=false, artifact=false, documentSource=false, workSlash=true, previousResult=false)
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 5:59:23 PM     LOG [DeterministicTaskExecutionService] Executing deterministic multi-step task for user f9c8e328-e482-4041-ae32-20dd552dd499: "/workspace WM_ROUTE_FIXTURE_20261015_V1"
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 5:59:23 PM     LOG [CapabilityCandidateSelectorService] Valid skills (17): 合同文档智能审查与合规诊断:0, 内置邮件读取与搜索:0, 内置 Markdown 文件生成:0, 内置邮件发送:0, 内置文档内容提取:0, 内置 PDF 简单生成:0, 内置邮件状态更新:0, 内置 PDF 合并:0, 内置系统内部通知:0, 合同文档智能比对与红线审查:0, 消息提醒数字员工:0, 内置联网搜索:0, 内置 PDF 拆页:0, ConfidentialityAgreementGenerationWorkflow:100, live-export-replay-1790872547-72825696:0, EmailInboxSyncWorkflow:100, 打开掘金社区指定结果-c3e62eeb:0
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 5:59:23 PM     LOG [DeterministicTopologyPlannerService] Planning multi-step topology using model 'gemini-3.8-flash-high' for request: "/workspace WM_ROUTE_FIXTURE_20261015_V1" (12 cards): s0:ConfidentialityAgreementGenerationWorkflow, s1:EmailInboxSyncWorkflow, s2:合同文档智能审查与合规诊断, s3:内置邮件读取与搜索, s4:内置 Markdown 文件生成, s5:内置邮件发送, o0:结构化字段提取, o1:列表摘要, o2:文本摘要, o3:标准 LLM 文本变换, o4:标准 LLM 文本生成, o5:文档块排版与格式化
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 5:59:28 PM     LOG [TraceInterceptor] [3f8ce43b-d8b5-4663-94b6-5c3034c20484] GET /ai/chat/sessions 52ms
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 5:59:33 PM     LOG [TraceInterceptor] [49da14b5-d3de-4143-83e3-156f047c18cb] GET /ai/chat/sessions 40ms
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 5:59:37 PM     LOG [DeterministicTopologyPlannerService] LLM raw topology response: {
+ops-ai-orchestrator  |   "schemaVersion": "deterministic-topology/v1",
+ops-ai-orchestrator  |   "objective": "执行工作区指令 WM_ROUTE_FIXTURE_20261015_V1",
+ops-ai-orchestrator  |   "matchDecision": "no_match",
+ops-ai-orchestrator  |   "matchConfidence": 0.0,
+ops-ai-orchestrator  |   "matchReason": "当前能力集中不存在支持工作区管理或该测试夹具路由的相关能力",
+ops-ai-orchestrator  |   "nodes": [],
+ops-ai-orchestrator  |   "finalNodeRef": null,
+ops-ai-orchestrator  |   "finalOutputKind": "value",
+ops-ai-orchestrator  |   "requiresExternalData": false
+ops-ai-orchestrator  | }
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 5:59:37 PM   ERROR [DeterministicPlanGeneratorService] Two-Stage Topology Planner failed: 当前能力集中不存在支持工作区管理或该测试夹具路由的相关能力
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 5:59:37 PM   ERROR [DeterministicTaskExecutionService] Deterministic planning failed [CAPABILITY_NOT_FOUND]: 当前能力集中不存在支持工作区管理或该测试夹具路由的相关能力
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 5:59:37 PM   DEBUG [SessionService] Saved chat session chat-session-1792058357516-h3wy2sy1, history=2
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 5:59:37 PM     LOG [TraceInterceptor] [64e93a38-c7b2-4fa4-ac6e-3cf2cc37a20d] POST /ai/chat/stream 14340ms
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 5:59:37 PM     LOG [TraceInterceptor] [8b09079d-02fb-4da7-85e4-311b7efb80c2] GET /ai/chat/sessions 30ms
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 5:59:37 PM     LOG [TraceInterceptor] [f04f0981-25dc-4834-8548-e847e9e29838] GET /ai/chat/sessions/chat-session-1792058357516-h3wy2sy1/messages/1792058363198-mp81qkf8/feedback 36ms
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 5:59:37 PM     LOG [TraceInterceptor] [05cee194-b7f3-4e50-959f-7b024d501c27] GET /ai/chat/history/chat-session-1792058357516-h3wy2sy1 4ms
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 5:59:47 PM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 5:59:52 PM     LOG [TraceInterceptor] [fb51f25f-5a7c-4602-94d5-615a4ee493db] GET /ai/chat/sessions 40ms
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 5:59:57 PM     LOG [TraceInterceptor] [991c9fb8-8aa2-431d-86c2-67b9b487d841] GET /ai/chat/sessions 32ms
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:02 PM     LOG [TraceInterceptor] [6c46fbc6-235e-407d-8c05-c5b7a4f220c1] GET /ai/chat/sessions 32ms
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:07 PM     LOG [TraceInterceptor] [74db9f1c-3a94-471f-bf34-5877b4efd06c] GET /ai/chat/sessions 16ms
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:09 PM     LOG [ChatExecutionStreamService] Starting to observe execution 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2 via control-plane stream
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:09 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:09 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.plan.generated for 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:09 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.steps.planned for 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:09 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:09 PM   DEBUG [ChatExecutionStreamService] Received execution event: runtime.skipped for 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:10 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:12 PM     LOG [TraceInterceptor] [286d8177-fd3f-434f-abdc-689d0ee8c3a2] GET /ai/chat/sessions 33ms
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:13 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:13 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:13 PM     LOG [ChatExecutionStreamService] Generating AI summary for execution 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2 with objective: "/rag WM_ROUTE_FIXTURE_20261015_V1"
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:17 PM     LOG [TraceInterceptor] [cae2bd11-4395-4cbb-8ad0-0a658828dc8f] GET /ai/chat/sessions 36ms
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:21 PM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2 (539 chars)
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:21 PM     LOG [ChatExecutionStreamService] Execution 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:22 PM   DEBUG [SessionService] Saved chat session chat-session-1792058383475-3n6pkfw2, history=2
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:22 PM     LOG [TraceInterceptor] [c44b0867-653b-4336-b883-4aba9331a883] POST /ai/chat/stream 34399ms
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:22 PM     LOG [TraceInterceptor] [3e58ce74-1831-4205-8e03-934fdd31cd88] GET /ai/chat/sessions/chat-session-1792058383475-3n6pkfw2/messages/1792058387570-7mzgmvpd/feedback?executionId=4eb889ed-c851-40d1-bb5e-e6ffa02a57e2 30ms
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:22 PM     LOG [TraceInterceptor] [8a9d51d4-768c-4091-8e28-8381274ba467] GET /ai/chat/sessions 36ms
+ops-ai-orchestrator  | [Nest] 218  - 10/15/2026, 6:00:22 PM     LOG [TraceInterceptor] [0a8e5dc2-83e3-40e9-9ba7-2e4c2ad32f15] GET /ai/chat/history/chat-session-1792058383475-3n6pkfw2 5ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 5:59:06 PM     LOG [TraceInterceptor] [0be8a3f4-b843-4b39-9ffb-195ab288108e] GET /api/notifications?limit=100 51ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 5:59:09 PM     LOG [TraceInterceptor] [8757fa43-bd08-4b76-9348-20a66e9109b2] GET /api/notifications?limit=100 13ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 5:59:10 PM     LOG [TraceInterceptor] [14522b07-ae31-4a42-ac75-3a822363c4a2] GET /api/notifications?limit=100 13ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 5:59:16 PM     LOG [TraceInterceptor] [d1ea21e3-f6fa-4d65-b7cf-9bb6de09be35] GET /api/notifications?limit=100 58ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 5:59:20 PM     LOG [TraceInterceptor] [c946b747-608c-462b-8ecd-9fb54fcfd50b] GET /api/notifications?limit=100 20ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 5:59:23 PM     LOG [TraceInterceptor] [83dbb94b-3197-4617-accf-2e73c3641e58] GET /api/saved-skills 1ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 5:59:23 PM     LOG [TraceInterceptor] [30349731-324f-4d0a-ace4-c8bec9e16a69] POST /api/internal/routing-observations 2ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 5:59:23 PM     LOG [TraceInterceptor] [82482388-a3e7-4518-a840-09af8749518e] GET /api/internal/task-policies/effective 6ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 5:59:26 PM     LOG [TraceInterceptor] [a336b40a-85cb-4673-ac50-f01c96cd9218] GET /api/notifications?limit=100 50ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 5:59:30 PM     LOG [TraceInterceptor] [a9afdac8-3b50-4d8d-b5f2-da1dbf80bb85] GET /api/notifications?limit=100 15ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 5:59:36 PM     LOG [TraceInterceptor] [e1855ae8-7e85-42ae-9f43-a584e38c7ea0] GET /api/notifications?limit=100 52ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 5:59:37 PM     LOG [TraceInterceptor] [30e36f26-4423-47f7-87d5-99791b014d65] GET /api/notifications?limit=100 11ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 5:59:37 PM     LOG [TraceInterceptor] [3a675455-cdeb-4123-a020-0d0b0b9cf4f4] GET /api/internal/assistant-feedback/chat-session-1792058357516-h3wy2sy1/1792058363198-mp81qkf8 2ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 5:59:46 PM     LOG [TraceInterceptor] [5a885983-4d73-49a5-bc8e-1dfe777f1f1d] GET /api/notifications?limit=100 48ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 5:59:47 PM     LOG [TraceInterceptor] [0a55db0b-5c08-4c79-ac02-893977d6991c] GET /api/saved-skills 1ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 5:59:47 PM     LOG [TraceInterceptor] [f41167d0-e361-4ba7-9318-89279ae6700d] POST /api/internal/routing-observations 2ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 5:59:47 PM     LOG [TraceInterceptor] [b6dcd676-6e40-4571-be52-17553b618eaa] GET /api/notifications?limit=100 9ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 5:59:56 PM     LOG [TraceInterceptor] [5d2b4932-ff88-4015-ab91-2071ed44615c] GET /api/notifications?limit=100 53ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 5:59:57 PM     LOG [TraceInterceptor] [13c27f47-e5e0-438c-b146-abe905e46c6c] GET /api/notifications?limit=100 7ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:06 PM     LOG [TraceInterceptor] [d5c61f52-b88f-4224-b334-8c140284d2c3] GET /api/notifications?limit=100 60ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:07 PM     LOG [TraceInterceptor] [1d2f6fef-ab84-4f73-bd2e-d09509a4df88] GET /api/notifications?limit=100 7ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:09 PM     LOG [ExecutionController] Creating execution for user f9c8e328-e482-4041-ae32-20dd552dd499, skill platform.search.web
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:09 PM    WARN [ExecutionPlanningService] Failed to load runtime defaults for skill platform.search.web: Request failed with status code 403
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:09 PM     LOG [ExecutionPlanningService] Browser recording rewrite mode for capability platform.search.web: workflow_activity
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:09 PM     LOG [ExecutionCreateService] Execution created: 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:09 PM     LOG [ExecutionStartService] Starting execution 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:09 PM     LOG [TraceInterceptor] [1ace93fd-b575-4a1a-a054-9b826837bb38] POST /api/executions 46ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:09 PM     LOG [ExecutionFlowRunnerService] Advancing execution flow for 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:09 PM     LOG [TraceInterceptor] [d6aecc12-f717-448e-8563-b08b43d8c55f] GET /api/executions/4eb889ed-c851-40d1-bb5e-e6ffa02a57e2 2ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:09 PM     LOG [ExecutionFlowRunnerService] Next step for 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2: 757b0c77-02ca-402f-a4d2-8ad65dc18584 (type: system, action: execute_skill)
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:09 PM     LOG [ExecutionFlowRunnerService] Executing system step for execution 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2, step 757b0c77-02ca-402f-a4d2-8ad65dc18584 (action: execute_skill)
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:09 PM     LOG [ExecutionStepExecutorService] Executing system skill step 757b0c77-02ca-402f-a4d2-8ad65dc18584 for execution 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:09 PM     LOG [ExecutionStepExecutorService] Calling auth runtime for capability platform.search.web (version: 1.0.5); input fields: maxResults, orgId, prompt, query, searchDepth, sourcePolicy, topic
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:09 PM     LOG [TraceInterceptor] [5b78087d-af06-48c6-a5ae-ef8ae9818a04] GET /api/executions/4eb889ed-c851-40d1-bb5e-e6ffa02a57e2/events/stream 3ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:09 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=platform.search.web, capabilityKey=platform.search.web, version=1.0.5
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:12 PM     LOG [ExecutionFlowRunnerService] Advancing execution flow for 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:13 PM     LOG [ExecutionFlowRunnerService] No more pending steps for execution 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:13 PM     LOG [ExecutionFlowRunnerService] Execution 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2 marked as succeeded
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:13 PM     LOG [ExecutionStartService] Skipped browser runtime allocation for execution 4eb889ed-c851-40d1-bb5e-e6ffa02a57e2 (runtime: custom)
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:13 PM     LOG [TraceInterceptor] [1ef8cf94-5868-44da-b136-2fe5ec0cd7a7] GET /api/executions/4eb889ed-c851-40d1-bb5e-e6ffa02a57e2 9ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:16 PM     LOG [TraceInterceptor] [aa6e7820-064e-4e1f-bee4-b3ce9969597b] GET /api/notifications?limit=100 52ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:17 PM     LOG [TraceInterceptor] [bdef905a-8938-481d-82e5-bf955a92c770] GET /api/notifications?limit=100 7ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:21 PM     LOG [TraceInterceptor] [4e067306-bc5f-4d39-918d-5915c5da159a] POST /api/executions/4eb889ed-c851-40d1-bb5e-e6ffa02a57e2/result-summary 18ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:22 PM     LOG [TraceInterceptor] [82c65267-3bf6-4bd3-b244-5d74029cd5e6] GET /api/executions/4eb889ed-c851-40d1-bb5e-e6ffa02a57e2/workflow-save-eligibility 6ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:22 PM     LOG [TraceInterceptor] [d387e23b-eb5c-4d36-8dd2-6ee11bfdee77] GET /api/notifications?limit=100 11ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:22 PM     LOG [TraceInterceptor] [3f99f759-15f6-400b-87fb-e5886834c59a] GET /api/internal/assistant-feedback/chat-session-1792058383475-3n6pkfw2/1792058387570-7mzgmvpd 4ms
+ops-control-plane    | [Nest] 133  - 10/15/2026, 6:00:26 PM     LOG [TraceInterceptor] [2594a656-12db-47e9-ada9-4b27a11f1f68] GET /api/notifications?limit=100 39ms

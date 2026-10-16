@@ -21,6 +21,10 @@
   "status": "Status",
   "submit": "Submit",
   "yes": "Yes",
+  "theme": {
+    "dark": "Dark",
+    "light": "Light"
+  },
   "menu": {
     "dashboard": "Dashboard",
     "chat": "AI Chat",
@@ -28,10 +32,24 @@
     "published_skills": "Published Skills",
     "workspaces": "Workspaces",
     "settings": "Settings",
-    "im_channels": "IM Channels"
+    "im_channels": "IM Channels",
+    "email_settings": "Email Settings",
+    "notifications": "Notifications",
+    "reports": "Reports"
   },
   "sidebar": {
     "collapse": "Collapse sidebar",
     "expand": "Expand sidebar"
+  },
+  "user_menu": {
+    "email_connection": "Email Connection",
+    "email_connection_desc": "Configure work/personal mailbox and sending authorization",
+    "logout": "Sign Out",
+    "logout_desc": "Clear current session and return to sign in page",
+    "not_logged_in": "Not signed in",
+    "role": "Role",
+    "account_status": "Account Status",
+    "active": "Active",
+    "inactive": "Inactive"
   }
 }

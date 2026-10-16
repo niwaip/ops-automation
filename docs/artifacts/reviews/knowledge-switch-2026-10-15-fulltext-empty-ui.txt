@@ -1,0 +1,109 @@
+- complementary:
+  - button:
+  - menu:
+    - menuitem "dashboard 工作台":
+      - img "dashboard":
+      - generic: 工作台
+    - menuitem "message 智能协同":
+      - img "message":
+      - generic: 智能协同
+    - menuitem "carry-out 任务中心":
+      - img "carry-out":
+      - generic: 任务中心
+    - menuitem "team 数字员工":
+      - img "team":
+      - generic: 数字员工
+    - menuitem "folder 资料空间":
+      - img "folder":
+      - generic: 资料空间
+  - menu:
+    - menuitem "setting 系统设置":
+      - img "setting":
+      - generic: 系统设置
+- banner:
+  - button "展开侧边栏":
+    - img "menu-unfold":
+  - generic: 资料空间
+  - button "bell 2":
+    - img "bell":
+    - superscript:
+      - generic: "2"
+  - button "bg-colors 浅色":
+    - img "bg-colors":
+    - generic: 浅色
+  - button "global 中文":
+    - img "global":
+    - generic: 中文
+  - button "A admin admin@example.com down":
+    - generic: A
+    - generic: admin
+    - generic: admin@example.com
+    - img "down":
+- main:
+  - complementary:
+    - img "folder-open":
+    - heading "资料空间" [level=2]
+    - paragraph: 企业知识库与协同资料盘
+    - navigation:
+      - img "user":
+      - generic: 我的空间
+      - generic: 个人
+      - img "team":
+      - generic: 部门共享
+      - generic: 团队
+      - img "bank":
+      - generic: 公司公共盘
+      - generic: 维护
+      - img "audit":
+      - generic: 流程管理空间
+      - generic: 协同归档
+    - img "folder-open":
+    - text: 业务与沙盒资产沉淀
+    - paragraph: 数字员工任务成果与沙盒临时工作区文件自动归档，支持全文检索与一键智能摘要。
+    - generic: 已用容量配额
+    - img "cloud-server":
+    - progressbar
+    - generic: 35.2 KB
+    - generic: 5 GB
+  - main:
+    - navigation:
+      - list:
+        - img "home":
+        - text: 根目录
+    - combobox
+    - generic "全文内容"
+    - img "search":
+    - textbox "输入内容关键词检索..." [active]: KSWNOHIT20261015ZQ
+    - button "close-circle":
+      - img "close-circle":
+    - combobox
+    - generic "最新修改优先"
+    - button "plus 新建文件夹":
+      - img "plus":
+      - generic: 新建文件夹
+    - button "upload 上传文件":
+      - img "upload":
+      - generic: 上传文件
+    - button "reload":
+      - img "reload":
+    - table:
+      - rowgroup:
+        - row "名称 大小 类型 修改时间 操作":
+          - columnheader "名称":
+            - generic: 名称
+          - columnheader "大小":
+            - generic: 大小
+          - columnheader "类型"
+          - columnheader "修改时间":
+            - generic: 修改时间
+          - columnheader "操作"
+      - rowgroup:
+        - row "暂无数据 未检索到正文包含 \"KSWNOHIT20261015ZQ\" 的文档":
+          - cell "暂无数据 未检索到正文包含 \"KSWNOHIT20261015ZQ\" 的文档":
+            - img "暂无数据"
+            - generic: 未检索到正文包含 "KSWNOHIT20261015ZQ" 的文档
+    - generic: 共 0 个项目
+    - generic: （当前条件筛选结果）
+    - generic: 已用容量：35.2 KB / 5 GB
+- button "打开悬浮对话框":
+  - img "悬浮对话框"

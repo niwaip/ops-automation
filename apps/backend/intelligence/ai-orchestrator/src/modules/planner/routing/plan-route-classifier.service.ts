@@ -1,4 +1,5 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
+import { isGuideOrInquiryRequest } from '@ops/backend-runtime-capability-contract';
 import { hasRoutingSignal, stripSystemContext } from './routing-policy.matcher';
 import { RoutingPolicyService } from './routing-policy.service';
 
@@ -25,6 +26,18 @@ export class PlanRouteClassifierService {
     const policy = this.routingPolicy.getSnapshot();
     const cleanUserText = stripSystemContext(text) || text;
 
+    const hasWorkSlashCommand = /^\s*\/(?:extract|doc|workspace|rag|search|pdf|email|mail|pdf-extract)\b/i.test(cleanUserText);
+
+    // Guide and inquiry requests (e.g. "如何使用知识库进行多文档对比？", "什么是...")
+    // must not be forced into deterministic multi-step recipes or execution plans,
+    // UNLESS the user explicitly initiated a work slash command (e.g. /doc, /extract).
+    if (!hasWorkSlashCommand && isGuideOrInquiryRequest(cleanUserText)) {
+      this.logger.log(
+        `User input '${cleanUserText}' classified as guide/inquiry request; skipping deterministic plan routing.`
+      );
+      return 'single_skill';
+    }
+
     // Check for explicit multi-step compound signals on clean user text
     const hasSequentialKeyword = hasRoutingSignal(cleanUserText, 'sequential', policy);
     const hasProcessingKeyword = hasRoutingSignal(cleanUserText, 'processing', policy);
@@ -34,9 +47,9 @@ export class PlanRouteClassifierService {
       hasRoutingSignal(cleanUserText, 'documentSource', policy) ||
       /\[系统上下文：.*(?:附件|文档|文件|pdf|docx?|pptx?)/i.test(text);
 
-    if (hasArtifactKeyword || hasProcessingKeyword || hasGenerationKeyword) {
+    if (hasArtifactKeyword || hasProcessingKeyword || hasGenerationKeyword || hasWorkSlashCommand) {
       this.logger.log(
-        `Classified request as 'deterministic_plan' (policy=${policy.version}, sequential=${hasSequentialKeyword}, processing=${hasProcessingKeyword}, generation=${hasGenerationKeyword}, artifact=${hasArtifactKeyword}, documentSource=${hasDocumentSourceKeyword}, previousResult=${context?.hasPreviousResult === true})`
+        `Classified request as 'deterministic_plan' (policy=${policy.version}, sequential=${hasSequentialKeyword}, processing=${hasProcessingKeyword}, generation=${hasGenerationKeyword}, artifact=${hasArtifactKeyword}, documentSource=${hasDocumentSourceKeyword}, workSlash=${hasWorkSlashCommand}, previousResult=${context?.hasPreviousResult === true})`
       );
       return 'deterministic_plan';
     }

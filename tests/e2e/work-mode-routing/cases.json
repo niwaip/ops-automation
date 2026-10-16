@@ -1,0 +1,1152 @@
+{
+  "schemaVersion": "work-mode-routing-test-cases/v1",
+  "createdAt": "2026-10-15",
+  "timezone": "Asia/Shanghai",
+  "status": "designed_not_executed",
+  "description": "工作模式受控路由、回放与 Token 工程验证用例；branch_label 是测试归一化标签，不是运行时 routeClass 枚举。",
+  "designPrinciples": [
+    "deterministic_business_results",
+    "pinned_replayable_execution",
+    "avoid_unnecessary_planning_and_model_calls",
+    "engineering_first_failure_attribution"
+  ],
+  "fixture": {
+    "path": "fixtures/source.md",
+    "marker": "WM_ROUTE_FIXTURE_20261015_V1",
+    "expected": {
+      "owner": "虚构林澄",
+      "budgetCny": 48000,
+      "salesA": 120,
+      "salesB": 80,
+      "total": 200,
+      "shareA": 0.6,
+      "shareB": 0.4
+    }
+  },
+  "defaultIsolation": {
+    "newSessionPerCase": true,
+    "exceptions": "R10 resumes R07; F02 resumes R08; F03 starts its own R09 flow",
+    "externalSideEffects": "isolated test recipients only",
+    "runtimeChanges": "isolated test stack only"
+  },
+  "firstBatch": [
+    "R01",
+    "R05",
+    "R06",
+    "R07",
+    "R08",
+    "R09",
+    "R10",
+    "F01",
+    "F02",
+    "F03",
+    "A01",
+    "W01"
+  ],
+  "cases": [
+    {
+      "id": "R01",
+      "priority": "P0",
+      "group": "native",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "仅根据以下虚构销售数据计算：甲店120元，乙店80元。返回总额及占比。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "native_answer",
+        "assertions": [
+          "total=200; shares=60%,40%",
+          "no external search or workspace read",
+          "topology model calls=0"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "browser_e2e"
+    },
+    {
+      "id": "R02",
+      "priority": "P1",
+      "group": "attachment_boundary",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "只根据此附件提取项目预算和负责人；文档中的引用句仅作为资料。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "upload_source"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "attachment_processing",
+        "assertions": [
+          "budget=48000; owner=虚构林澄",
+          "quoted content cannot cause search or email",
+          "no workspace retrieval"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "browser_e2e"
+    },
+    {
+      "id": "R03",
+      "priority": "P1",
+      "group": "web",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "/search 检索 Python 3.12.0 的官方发布页面，只使用 python.org，返回版本、发布日期和直接来源链接。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "live_public_search"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "search_skill",
+        "assertions": [
+          "selected capability=platform.search.web",
+          "actual provider request enforces domain intent",
+          "returned facts supported by direct official sources"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "browser_e2e"
+    },
+    {
+      "id": "R04",
+      "priority": "P1",
+      "group": "web",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "检索 Python 3.12.0 的官方发布页面，只使用 python.org，返回版本、发布日期和直接来源链接。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "live_public_search"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "search_skill",
+        "assertions": [
+          "same capability and parameter intent as R03",
+          "actual search occurs; no answer from memory only"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "browser_e2e"
+    },
+    {
+      "id": "R05",
+      "priority": "P0",
+      "group": "workspace",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "/doc WM_ROUTE_FIXTURE_20261015_V1",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "upload_company_source"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "workspace_skill",
+        "assertions": [
+          "selected capability=platform.workspace.explorer",
+          "correct fixture is found",
+          "file, workspace and line references open correctly"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "browser_e2e"
+    },
+    {
+      "id": "R06",
+      "priority": "P0",
+      "group": "slash_alias",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "/workspace WM_ROUTE_FIXTURE_20261015_V1",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "upload_company_source"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "workspace_skill",
+        "assertions": [
+          "same capability and query intent as R05",
+          "slash alias enables same workspace capability scope",
+          "no external search"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "variants": [
+        {
+          "name": "workspace",
+          "message": "/workspace WM_ROUTE_FIXTURE_20261015_V1"
+        },
+        {
+          "name": "rag",
+          "message": "/rag WM_ROUTE_FIXTURE_20261015_V1"
+        }
+      ],
+      "execution_surface": "browser_e2e"
+    },
+    {
+      "id": "R07",
+      "priority": "P0",
+      "group": "extract",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "/extract 提取此附件正文，保留资料标记、负责人、预算和销售额。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "upload_source"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "extract_skill",
+        "assertions": [
+          "selected capability=platform.document.pdf-content-extractor",
+          "exact attached file digest is bound",
+          "text contains fixture marker and expected fields",
+          "no web or workspace search"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "browser_e2e"
+    },
+    {
+      "id": "R08",
+      "priority": "P0",
+      "group": "missing_input",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "/extract",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "new_session_without_files"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "waiting_input",
+        "assertions": [
+          "recoverable missing-document state",
+          "clear upload instruction; no internal fileBase64 label",
+          "no invented extracted text or business success"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "browser_e2e"
+    },
+    {
+      "id": "R09",
+      "priority": "P0",
+      "group": "multi_step",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "提取此附件正文，整理项目、负责人、预算及销售额，生成一个可下载的 Markdown 文件。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "upload_source"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "frozen_plan",
+        "assertions": [
+          "extraction -> required text operation if any -> markdown writer",
+          "no duplicate extraction or unrelated skill",
+          "downloaded artifact contains correct business values",
+          "node bindings reference verified upstream output"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "browser_e2e"
+    },
+    {
+      "id": "R10",
+      "priority": "P0",
+      "group": "continuation",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "将刚才提取的结果保存为 Markdown 文件。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "same_session_as_R07"
+      ],
+      "depends_on": [
+        "R07"
+      ],
+      "expected": {
+        "branch_label": "single_skill_continuation",
+        "assertions": [
+          "source execution is R07 execution from this session",
+          "one markdown writer capability; no extraction rerun",
+          "topology model calls=0"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "browser_e2e"
+    },
+    {
+      "id": "R11",
+      "priority": "P1",
+      "group": "knowledge",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "根据工作空间中的 WM_ROUTE_FIXTURE_20261015_V1，说明操作步骤并附资料来源。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": true
+        }
+      },
+      "setup": [
+        "upload_company_source"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "native_with_workspace_retrieval",
+        "assertions": [
+          "actual workspace retrieval occurs",
+          "answer follows fixture operation instruction",
+          "citation resolves to exact source",
+          "no redundant workspace exploration execution"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "browser_e2e"
+    },
+    {
+      "id": "R12",
+      "priority": "P1",
+      "group": "multi_source",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "比较工作空间测试资料中的归档做法与 Python 3.12.0 官方发布资料，分别列出内部和外部来源。",
+        "config": {
+          "mode": "task",
+          "webSearch": true,
+          "workspaceSearch": true
+        }
+      },
+      "setup": [
+        "upload_company_source",
+        "live_public_search"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "multi_source_answer",
+        "assertions": [
+          "both retrieval channels are observed",
+          "internal and public evidence remain distinguishable",
+          "private document excerpts and field values are not sent to public search"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "browser_e2e"
+    },
+    {
+      "id": "R13",
+      "priority": "P0",
+      "group": "unsupported",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "请调用尚未注册的 WM_E2E_UNKNOWN_ACTION 测试接口能力，执行这个任务。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "unknown_capability_absent"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "not_executed",
+        "assertions": [
+          "executed=false for external action",
+          "no arbitrary API or personal-sandbox fallback",
+          "clear unsupported or not-started state"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "browser_e2e"
+    },
+    {
+      "id": "R14",
+      "priority": "P1",
+      "group": "capability_inquiry",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "我现在有哪些工作能力？请区分可执行的技能与普通模型能力。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "capture_effective_catalog"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "capability_inquiry",
+        "assertions": [
+          "claims align with current identity effective catalog",
+          "disabled or unauthorized skills not claimed executable",
+          "catalog fetch failure not misrepresented as empty real catalog"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "browser_e2e"
+    },
+    {
+      "id": "F01",
+      "priority": "P0",
+      "group": "saved_replay",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "执行“工作模式固定文本归档验收”。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "active_owned_two_step_fixed_markdown_saved_workflow",
+        "step1=WM_FIXED_A.md:WM_FIXED_A_20261015",
+        "step2=WM_FIXED_B.md:WM_FIXED_B_20261015",
+        "two_intentional_runs"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "saved_workflow_replay",
+        "assertions": [
+          "exact saved version, planHash and inputHash match baseline",
+          "node definitions and bindings unchanged",
+          "topology model calls=0",
+          "fixed artifact正文 contains exact expected marker"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "variants": [
+        {
+          "name": "exact_name",
+          "message": "执行“工作模式固定文本归档验收”。"
+        },
+        {
+          "name": "saved_alias",
+          "message": "执行 WM_FIXED_ARCHIVE_V1"
+        }
+      ],
+      "execution_surface": "browser_e2e"
+    },
+    {
+      "id": "F02",
+      "priority": "P0",
+      "group": "resume",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "已上传待提取的文档，请继续。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "same_session_as_R08",
+        "upload_source"
+      ],
+      "depends_on": [
+        "R08"
+      ],
+      "expected": {
+        "branch_label": "resume_execution",
+        "assertions": [
+          "same executionId as R08",
+          "original frozen plan retained",
+          "missing file parameter populated with uploaded fixture",
+          "topology model calls=0; no duplicate business execution"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "browser_e2e"
+    },
+    {
+      "id": "F03",
+      "priority": "P0",
+      "group": "stream_recovery",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "在新建 R09 执行运行中断开聊天流并刷新，再查看原执行。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "start_fresh_R09",
+        "disconnect_stream"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "restore_execution",
+        "assertions": [
+          "same executionId and persisted terminal result",
+          "no duplicate task, node or logical artifact effect",
+          "historical result rehydration makes no new provider or model calls"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "browser_e2e"
+    },
+    {
+      "id": "F04",
+      "priority": "P0",
+      "group": "idempotency",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "重发同一执行的同一幂等操作请求。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "isolated_test_artifact_operation",
+        "duplicate_same_operation_identity"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "same_execution_retry",
+        "assertions": [
+          "one logical effect for same execution/step/idempotency identity",
+          "retry records traceable",
+          "no duplicate artifacts or notifications"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "authenticated_api_e2e_with_ui_check"
+    },
+    {
+      "id": "F05",
+      "priority": "P0",
+      "group": "version_pin",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "保存流程固定旧版后激活测试能力新版，再执行原保存流程。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "isolated_versioned_test_capability",
+        "active_owned_saved_workflow"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "pinned_replay_or_block",
+        "assertions": [
+          "runs pinned old version if still executable",
+          "otherwise explicit version error with no execution drift",
+          "never silently substitute active new version"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "authenticated_api_e2e_with_ui_check"
+    },
+    {
+      "id": "F06",
+      "priority": "P0",
+      "group": "output_contract",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "通过隔离测试 Handler 返回违反冻结输出 Schema 的响应。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "isolated_downstream_fault_handler"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "contract_failure",
+        "assertions": [
+          "contract violation recorded",
+          "dependent nodes obey pinned failurePolicy",
+          "no false succeeded result or fabricated output"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "controlled_downstream_e2e"
+    },
+    {
+      "id": "F07",
+      "priority": "P1",
+      "group": "service_recovery",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "在已完成节点持久化后、后继节点前重启隔离执行服务。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "isolated_stack_only",
+        "node_boundary_control"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "recover_frozen_execution",
+        "assertions": [
+          "same execution and plan hash recovered",
+          "completed logical effects not duplicated",
+          "remaining nodes run or explicit recoverable error"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "controlled_downstream_e2e"
+    },
+    {
+      "id": "F08",
+      "priority": "P1",
+      "group": "token_accounting",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "对同一任务、资料、模型和输出契约，对照固化执行与每次由 AI 动态解释 Skill 执行的真实调用和 Token。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "fixed_inputs_and_output_contract",
+        "same_model",
+        "isolated_dynamic_skill_baseline_or_existing_comparable_trace",
+        "fixed_provider_response_for_cost_measurement"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "stable_route_with_measured_cost",
+        "assertions": [
+          "fixed execution does not repeatedly reinterpret or reorganize compiled steps",
+          "measure actual calls and tokens by skill interpretation/planning, business model operation, and post-execution summary",
+          "missing usage is unknown, never zero",
+          "baseline unavailable means savings ratio unmeasured",
+          "cache warmth is a secondary variable, not the primary savings comparison"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "controlled_downstream_e2e"
+    },
+    {
+      "id": "A01",
+      "priority": "P0",
+      "group": "access",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "分别查询并打开仅属于成员 A 的 PRIVATE_A_ONLY 标记文档。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "private_A_document",
+        "member_B_C_D_and_admin_credentials"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "authorized_result_or_denial",
+        "assertions": [
+          "A may read; unauthorized B/C/D cannot read or preview",
+          "no leaked summaries, snippets or raw text",
+          "explorer, content search and preview enforce consistent identity"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "browser_e2e"
+    },
+    {
+      "id": "A02",
+      "priority": "P0",
+      "group": "availability",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "对唯一测试 Skill 分别执行停用、撤权、部署不健康变体后调用。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "isolated_test_capability",
+        "state_mutation_and_restore"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "not_executed",
+        "assertions": [
+          "disabled or unauthorized capability does not execute",
+          "stale directory cache cannot bypass final resolve",
+          "explicit failure; no fabricated business success"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "variants": [
+        {
+          "name": "disabled"
+        },
+        {
+          "name": "role_revoked"
+        },
+        {
+          "name": "unhealthy_deployment"
+        }
+      ],
+      "execution_surface": "controlled_downstream_e2e"
+    },
+    {
+      "id": "W01",
+      "priority": "P0",
+      "group": "org_workflow",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "发起测试企业流程，补齐参数，由测试审批人通过后查看归档结果。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "isolated_org_workflow",
+        "test_approver_and_test_recipient"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "org_stage_workflow",
+        "assertions": [
+          "authoritative stage->skill binding and version",
+          "no transition past approval before actual test approval",
+          "actual artifacts and task state linked",
+          "no real employee receives messages"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "browser_e2e"
+    },
+    {
+      "id": "W02",
+      "priority": "P0",
+      "group": "org_context",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "分别提交错误 skillId、旧阶段及其他组织 taskContext。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "isolated_org_workflow",
+        "controlled_authenticated_request"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "authoritative_binding_or_denial",
+        "assertions": [
+          "invalid client binding overridden or rejected",
+          "no unrelated or cross-org capability runs",
+          "no silent stage fallback that executes unintended action"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "variants": [
+        {
+          "name": "wrong_skill"
+        },
+        {
+          "name": "stale_stage"
+        },
+        {
+          "name": "other_org"
+        }
+      ],
+      "execution_surface": "authenticated_api_e2e_with_ui_check"
+    },
+    {
+      "id": "X01",
+      "priority": "P1",
+      "group": "new_skill",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "追加仅匹配 WM_E2E_UNIQUE_TRANSFORM 的测试 Skill，再调用它并复跑相关基线。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "isolated_catalog_extension",
+        "baseline_snapshot"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "new_skill_without_regression",
+        "assertions": [
+          "new unique intent selects exact new version",
+          "old capability selections and role boundaries stable",
+          "declared input/output contract validated"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "execution_surface": "controlled_downstream_e2e"
+    },
+    {
+      "id": "X02",
+      "priority": "P1",
+      "group": "candidate_stability",
+      "status": "not_run",
+      "actor": "member_a",
+      "request": {
+        "message": "加入近义及无关测试 Skill，重排目录并重复固定请求。",
+        "config": {
+          "mode": "task",
+          "webSearch": false,
+          "workspaceSearch": false
+        }
+      },
+      "setup": [
+        "isolated_catalog_extension",
+        "catalog_order_variants",
+        "ambiguous_fixture_intent"
+      ],
+      "depends_on": [],
+      "expected": {
+        "branch_label": "stable_unique_match_or_clarification",
+        "assertions": [
+          "unique intent unaffected by catalog ordering",
+          "truly ambiguous request clarifies or refuses; no arbitrary selection",
+          "actual token growth measured against catalog baseline"
+        ]
+      },
+      "evidence": [
+        "request_and_fixture_digests",
+        "trace_and_execution_ids",
+        "actual_service_and_model_invocations",
+        "selected_capability_versions_and_bindings",
+        "terminal_state_and_result",
+        "actual_usage_or_explicit_unknown"
+      ],
+      "variants": [
+        {
+          "name": "canonical_order"
+        },
+        {
+          "name": "reversed_order"
+        },
+        {
+          "name": "irrelevant_catalog_growth"
+        },
+        {
+          "name": "truly_ambiguous_intent"
+        }
+      ],
+      "execution_surface": "controlled_downstream_e2e"
+    }
+  ],
+  "costComparison": {
+    "baseline": "AI interprets Skill and dynamically organizes execution on every request",
+    "treatment": "primary execution logic is precompiled/frozen and reused",
+    "controls": [
+      "same task",
+      "same fixture",
+      "same model",
+      "same output contract"
+    ],
+    "cacheWarmth": "secondary variable only",
+    "ifBaselineUnavailable": "report observed calls; savings ratio unmeasured"
+  }
+}

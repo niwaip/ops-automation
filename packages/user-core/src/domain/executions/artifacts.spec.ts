@@ -128,6 +128,63 @@ describe('extractPhaseStepImageSources', () => {
     assert.equal(sources.length, 1);
     assert.equal(sources[0], 'http://127.0.0.1:3004/browser/artifacts/shot-matched.png');
   });
+
+  it('falls back to artifact with matching command when snapshotId is null and output is purely extracted text', () => {
+    const step = {
+      id: 'step-click',
+      stepIndex: 2,
+      action: 'click_result',
+      status: 'completed',
+      output: {
+        text: 'Page extracted body text here...',
+        mainContent: 'Page main content here...',
+      },
+    };
+    const artifacts = [
+      {
+        id: 'art-1',
+        artifactType: 'browser_artifact',
+        payload: {
+          command: 'navigate',
+          artifactPath: '/backend-var/tmp/browser-worker/playwright-cli-artifacts/shot-nav.png',
+        },
+      },
+      {
+        id: 'art-2',
+        artifactType: 'browser_artifact',
+        payload: {
+          command: 'click_result',
+          artifactPath: '/backend-var/tmp/browser-worker/playwright-cli-artifacts/shot-click.png',
+        },
+      },
+    ];
+    const sources = extractPhaseStepImageSources('ws://127.0.0.1:3004', step as any, artifacts as any);
+    assert.equal(sources.length, 1);
+    assert.equal(sources[0], 'http://127.0.0.1:3004/browser/artifacts/shot-click.png');
+  });
+
+  it('falls back to positional artifact when action matches or payload matches stepIndex', () => {
+    const step = {
+      id: 'step-pos',
+      stepIndex: 1,
+      action: 'navigate',
+      status: 'completed',
+      output: {},
+    };
+    const artifacts = [
+      {
+        id: 'art-pos-1',
+        artifactType: 'browser_artifact',
+        payload: {
+          artifactPath: '/tmp/pos-1.png',
+          stepIndex: 1,
+        },
+      },
+    ];
+    const sources = extractPhaseStepImageSources('ws://127.0.0.1:3004', step as any, artifacts as any);
+    assert.equal(sources.length, 1);
+    assert.equal(sources[0], 'http://127.0.0.1:3004/browser/artifacts/pos-1.png');
+  });
 });
 
 describe('extractWorkflowActivitySnapshotSources', () => {

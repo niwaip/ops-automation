@@ -221,6 +221,7 @@ export function useChatStreaming({
     assistantMessageId: string,
     options?: {
       workflowCommandContent?: string;
+      workflowParameters?: Record<string, any>;
     }
   ) => {
     setError(null);
@@ -255,9 +256,40 @@ export function useChatStreaming({
         );
         const metadata = currentMessage?.metadata;
         const executionId = metadata?.executionId || streamRecord.executionId || undefined;
-        const artifacts = (metadata?.artifacts || metadata?.normalizedResult?.artifacts || []) as any;
-        const downloadUrl = metadata?.downloadUrl || metadata?.normalizedResult?.downloadUrl || metadata?.fileUrl;
-        const fileName = artifacts?.[0]?.name || (metadata?.files?.[0] as any)?.fileName;
+        let artifacts = (metadata?.artifacts || metadata?.normalizedResult?.artifacts || []) as any;
+        let downloadUrl = metadata?.downloadUrl || metadata?.normalizedResult?.downloadUrl || metadata?.fileUrl;
+        let fileName = artifacts?.[0]?.name || (metadata?.files?.[0] as any)?.fileName;
+
+        if (executionId && (!downloadUrl || !Array.isArray(artifacts) || artifacts.length === 0)) {
+          try {
+            let exec = await executionApi.get(executionId);
+            if (exec?.status === 'running' || exec?.status === 'queued') {
+              for (let i = 0; i < 6; i++) {
+                await new Promise((r) => setTimeout(r, 1000));
+                exec = await executionApi.get(executionId);
+                if (exec?.status !== 'running' && exec?.status !== 'queued') break;
+              }
+            }
+            const resAny = (exec?.result || {}) as any;
+            const resArtifacts = resAny.artifacts || [];
+            if (Array.isArray(resArtifacts) && resArtifacts.length > 0) {
+              artifacts = resArtifacts;
+            }
+            downloadUrl =
+              downloadUrl ||
+              resAny.downloadUrl ||
+              resAny.result?.businessData?.result?.downloadUrl ||
+              resArtifacts[0]?.downloadUrl ||
+              resArtifacts[0]?.url;
+            fileName =
+              fileName ||
+              resArtifacts[0]?.name ||
+              resAny.fileName ||
+              resAny.result?.businessData?.result?.fileName;
+          } catch (execErr) {
+            console.warn('[WorkflowRouter] Failed to fetch execution artifacts:', execErr);
+          }
+        }
 
         try {
           const result = await handleWorkflowNaturalLanguage(options.workflowCommandContent, {
@@ -265,11 +297,31 @@ export function useChatStreaming({
             artifacts,
             downloadUrl,
             fileName,
+            parameters: options.workflowParameters,
           });
           if (result?.coordinationTask) {
             void queryClient.invalidateQueries(['user-web-notifications']);
+            void queryClient.invalidateQueries(['workbench-inbox']);
+            void queryClient.invalidateQueries(['workbench-inbox-summary']);
+            void queryClient.invalidateQueries(['workbench-todos']);
+            void queryClient.invalidateQueries(['workbench-todos-summary']);
             void queryClient.invalidateQueries(['workbench-inbox-items']);
             void queryClient.invalidateQueries(['coordinationTasks']);
+          }
+          if (result?.content) {
+            const currentMsg = (sessionMessagesRef.current[session.id] || []).find(
+              (m) => m.id === assistantMessageId
+            );
+            const existing = currentMsg?.content || '';
+            if (!existing.includes('组织工作流已启动')) {
+              updateMessage(session.id, assistantMessageId, {
+                content: existing ? `${existing}\n\n---\n\n${result.content}` : result.content,
+                metadata: {
+                  ...(currentMsg?.metadata || {}),
+                  coordinationTask: result.coordinationTask,
+                } as any,
+              });
+            }
           }
         } catch (err: any) {
           console.warn('[WorkflowRouter] Post-stream coordination registration error:', err);

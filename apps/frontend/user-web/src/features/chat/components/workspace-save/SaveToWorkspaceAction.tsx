@@ -131,7 +131,7 @@ export function SaveToWorkspaceAction({ message, userQuery }: SaveToWorkspaceAct
         );
       },
       onError: (err: any) => {
-        void toast.error(err.message || '保存至个人空间失败');
+        void toast.error(err.message || '保存至资料空间失败');
       },
     }
   );
@@ -146,7 +146,7 @@ export function SaveToWorkspaceAction({ message, userQuery }: SaveToWorkspaceAct
           icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
           onClick={() => navigate('/workspaces')}
           className="chat-action-btn chat-action-btn-icon"
-          aria-label="已保存至个人空间"
+          aria-label="已保存至资料空间"
         />
       </Tooltip>
     );
@@ -161,6 +161,7 @@ export function SaveToWorkspaceAction({ message, userQuery }: SaveToWorkspaceAct
           size="small"
           icon={<LoadingOutlined spin />}
           className="chat-action-btn chat-action-btn-icon"
+          aria-label="正在保存至资料空间"
           disabled
         />
       </Tooltip>
@@ -181,7 +182,7 @@ export function SaveToWorkspaceAction({ message, userQuery }: SaveToWorkspaceAct
           }
         }}
         className="chat-action-btn chat-action-btn-icon"
-        aria-label="保存到个人空间"
+        aria-label="保存到资料空间"
       />
     </Tooltip>
   );

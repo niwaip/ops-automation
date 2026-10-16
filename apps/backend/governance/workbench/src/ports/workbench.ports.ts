@@ -43,3 +43,18 @@ export const getControlPlaneApiUrl = (): string => {
   const baseUrl = isContainerRuntime() ? 'http://ops-control-plane:3003' : 'http://localhost:3003';
   return `${baseUrl}/api`;
 };
+
+export const getInternalServiceHeaders = (): Record<string, string> => {
+  const secret =
+    process.env.INTERNAL_API_SHARED_SECRET ||
+    process.env.INTERNAL_API_SECRET ||
+    process.env.JWT_SECRET ||
+    'ops_internal_shared_secret_change_me';
+  return {
+    'Content-Type': 'application/json',
+    'x-internal-auth': secret,
+    'x-user-id': '00000000-0000-0000-0000-000000000000',
+    'x-user-role': 'internal_service',
+    'x-user-name': 'workbench',
+  };
+};

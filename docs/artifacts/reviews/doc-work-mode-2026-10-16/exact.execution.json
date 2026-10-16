@@ -1,0 +1,453 @@
+{
+  "id": "0af1a9d3-abc3-4b78-8a70-81d188a856af",
+  "orgId": "e2bc525b-7b3e-499d-ba3d-e2a45ed9a71c",
+  "skillId": "platform.workspace.explorer",
+  "capabilityId": "platform.workspace.explorer",
+  "capabilitiesUsed": [
+    {
+      "id": "platform.workspace.explorer",
+      "name": "内置工作空间文档探索",
+      "version": "1.0.1"
+    }
+  ],
+  "skillVersion": "1.0.1",
+  "capabilityVersion": "1.0.1",
+  "status": "succeeded",
+  "runtimeType": "plan",
+  "riskLevel": "L0",
+  "executionMode": "deterministic_plan",
+  "currentStepId": null,
+  "currentPhaseKey": "phase_01_n1_内置工作空间文档探索",
+  "currentPhaseStatus": "completed",
+  "takeoverStatus": "resolved",
+  "requiresApproval": false,
+  "approvalStatus": "not_required",
+  "takeoverRequired": false,
+  "takeoverReason": null,
+  "resultJson": {
+    "result": {
+      "title": "/doc 全文精确检索“AD-Q8VN-6173”，给出命中文档、命中原文及行号，不要拆分关键词。",
+      "summary": "### 🔍 工作空间文档探查结果\n\n针对 **\"全文精确检索“AD-Q8VN-6173”,给出命中文档、命中原文及行号,不要拆分关键词\"**，在工作空间中检索到 **1** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n> **文档摘要**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n**命中上下文**：\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+      "resultType": "deterministic_plan",
+      "businessData": {
+        "finalOutputs": [
+          {
+            "value": "### 🔍 工作空间文档探查结果\n\n针对 **\"全文精确检索“AD-Q8VN-6173”,给出命中文档、命中原文及行号,不要拆分关键词\"**，在工作空间中检索到 **1** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n> **文档摘要**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n**命中上下文**：\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+            "fromNodeId": "n1_内置工作空间文档探索",
+            "isArtifact": false,
+            "targetField": "result",
+            "expectedType": "string",
+            "fromNodeOutput": "answer"
+          }
+        ],
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ]
+      },
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ]
+    },
+    "artifacts": [],
+    "execution": {
+      "status": "success",
+      "finishedAt": "2026-10-16T02:29:18.643Z",
+      "executionId": "0af1a9d3-abc3-4b78-8a70-81d188a856af"
+    },
+    "detailText": "检索关键词 **“AD-Q8VN-6173”** 的结果如下：\n\n* **命中文档**：[[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n* **行号**：第 8 行\n* **命中原文**：`验收口令：AD-Q8VN-6173。`",
+    "chatSummary": "检索关键词 **“AD-Q8VN-6173”** 的结果如下：\n\n* **命中文档**：[[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n* **行号**：第 8 行\n* **命中原文**：`验收口令：AD-Q8VN-6173。`",
+    "presentation": {
+      "detailText": "检索关键词 **“AD-Q8VN-6173”** 的结果如下：\n\n* **命中文档**：[[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n* **行号**：第 8 行\n* **命中原文**：`验收口令：AD-Q8VN-6173。`",
+      "chatSummary": "检索关键词 **“AD-Q8VN-6173”** 的结果如下：\n\n* **命中文档**：[[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n* **行号**：第 8 行\n* **命中原文**：`验收口令：AD-Q8VN-6173。`",
+      "detailFormat": "markdown",
+      "summaryFormat": "markdown",
+      "preferAiSummary": false,
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ],
+      "notificationSummary": "### 🔍 工作空间文档探查结果\n\n针对 **\"全文精确检索“AD-Q8VN-6173”,给出命中文档、命中原文及行号,不要拆分关键词\"**，在工作空间中检索到 **1** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n> **文档摘要**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n**命中上下文**：\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+      "preferStructuredView": false
+    },
+    "capabilitiesUsed": [
+      {
+        "id": "platform.workspace.explorer",
+        "name": "内置工作空间文档探索",
+        "version": "1.0.1"
+      }
+    ]
+  },
+  "inputJson": {
+    "prompt": "/doc 全文精确检索“AD-Q8VN-6173”，给出命中文档、命中原文及行号，不要拆分关键词。",
+    "__promptDebug": {
+      "notes": [
+        "Generated via deterministic recipe 'workspace_explore' followed by selected-capability parameter recognition.",
+        "参数 'query' 已依据能力语义角色和路由策略确定性解析，未调用参数识别模型。"
+      ],
+      "llmCalls": [],
+      "userPrompt": "/doc 全文精确检索“AD-Q8VN-6173”，给出命中文档、命中原文及行号，不要拆分关键词。",
+      "debugSource": "planner",
+      "systemPrompt": "Deterministic Recipe Topology",
+      "userPromptSectionKeys": [
+        "user_request"
+      ],
+      "systemPromptSectionKeys": [
+        "routing_cards",
+        "topology_dag"
+      ]
+    }
+  },
+  "normalizedInputJson": {
+    "prompt": "/doc 全文精确检索“AD-Q8VN-6173”，给出命中文档、命中原文及行号，不要拆分关键词。",
+    "__promptDebug": {
+      "notes": [
+        "Generated via deterministic recipe 'workspace_explore' followed by selected-capability parameter recognition.",
+        "参数 'query' 已依据能力语义角色和路由策略确定性解析，未调用参数识别模型。"
+      ],
+      "llmCalls": [],
+      "userPrompt": "/doc 全文精确检索“AD-Q8VN-6173”，给出命中文档、命中原文及行号，不要拆分关键词。",
+      "debugSource": "planner",
+      "systemPrompt": "Deterministic Recipe Topology",
+      "userPromptSectionKeys": [
+        "user_request"
+      ],
+      "systemPromptSectionKeys": [
+        "routing_cards",
+        "topology_dag"
+      ]
+    }
+  },
+  "input": {
+    "prompt": "/doc 全文精确检索“AD-Q8VN-6173”，给出命中文档、命中原文及行号，不要拆分关键词。",
+    "__promptDebug": {
+      "notes": [
+        "Generated via deterministic recipe 'workspace_explore' followed by selected-capability parameter recognition.",
+        "参数 'query' 已依据能力语义角色和路由策略确定性解析，未调用参数识别模型。"
+      ],
+      "llmCalls": [],
+      "userPrompt": "/doc 全文精确检索“AD-Q8VN-6173”，给出命中文档、命中原文及行号，不要拆分关键词。",
+      "debugSource": "planner",
+      "systemPrompt": "Deterministic Recipe Topology",
+      "userPromptSectionKeys": [
+        "user_request"
+      ],
+      "systemPromptSectionKeys": [
+        "routing_cards",
+        "topology_dag"
+      ]
+    }
+  },
+  "normalizedInput": {
+    "prompt": "/doc 全文精确检索“AD-Q8VN-6173”，给出命中文档、命中原文及行号，不要拆分关键词。",
+    "__promptDebug": {
+      "notes": [
+        "Generated via deterministic recipe 'workspace_explore' followed by selected-capability parameter recognition.",
+        "参数 'query' 已依据能力语义角色和路由策略确定性解析，未调用参数识别模型。"
+      ],
+      "llmCalls": [],
+      "userPrompt": "/doc 全文精确检索“AD-Q8VN-6173”，给出命中文档、命中原文及行号，不要拆分关键词。",
+      "debugSource": "planner",
+      "systemPrompt": "Deterministic Recipe Topology",
+      "userPromptSectionKeys": [
+        "user_request"
+      ],
+      "systemPromptSectionKeys": [
+        "routing_cards",
+        "topology_dag"
+      ]
+    }
+  },
+  "semantic": null,
+  "result": {
+    "result": {
+      "title": "/doc 全文精确检索“AD-Q8VN-6173”，给出命中文档、命中原文及行号，不要拆分关键词。",
+      "summary": "### 🔍 工作空间文档探查结果\n\n针对 **\"全文精确检索“AD-Q8VN-6173”,给出命中文档、命中原文及行号,不要拆分关键词\"**，在工作空间中检索到 **1** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n> **文档摘要**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n**命中上下文**：\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+      "resultType": "deterministic_plan",
+      "businessData": {
+        "finalOutputs": [
+          {
+            "value": "### 🔍 工作空间文档探查结果\n\n针对 **\"全文精确检索“AD-Q8VN-6173”,给出命中文档、命中原文及行号,不要拆分关键词\"**，在工作空间中检索到 **1** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n> **文档摘要**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n**命中上下文**：\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+            "fromNodeId": "n1_内置工作空间文档探索",
+            "isArtifact": false,
+            "targetField": "result",
+            "expectedType": "string",
+            "fromNodeOutput": "answer"
+          }
+        ],
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ]
+      },
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ]
+    },
+    "artifacts": [],
+    "execution": {
+      "status": "success",
+      "finishedAt": "2026-10-16T02:29:18.643Z",
+      "executionId": "0af1a9d3-abc3-4b78-8a70-81d188a856af"
+    },
+    "detailText": "检索关键词 **“AD-Q8VN-6173”** 的结果如下：\n\n* **命中文档**：[[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n* **行号**：第 8 行\n* **命中原文**：`验收口令：AD-Q8VN-6173。`",
+    "chatSummary": "检索关键词 **“AD-Q8VN-6173”** 的结果如下：\n\n* **命中文档**：[[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n* **行号**：第 8 行\n* **命中原文**：`验收口令：AD-Q8VN-6173。`",
+    "presentation": {
+      "detailText": "检索关键词 **“AD-Q8VN-6173”** 的结果如下：\n\n* **命中文档**：[[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n* **行号**：第 8 行\n* **命中原文**：`验收口令：AD-Q8VN-6173。`",
+      "chatSummary": "检索关键词 **“AD-Q8VN-6173”** 的结果如下：\n\n* **命中文档**：[[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n* **行号**：第 8 行\n* **命中原文**：`验收口令：AD-Q8VN-6173。`",
+      "detailFormat": "markdown",
+      "summaryFormat": "markdown",
+      "preferAiSummary": false,
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ],
+      "notificationSummary": "### 🔍 工作空间文档探查结果\n\n针对 **\"全文精确检索“AD-Q8VN-6173”,给出命中文档、命中原文及行号,不要拆分关键词\"**，在工作空间中检索到 **1** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n> **文档摘要**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n**命中上下文**：\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+      "preferStructuredView": false
+    },
+    "capabilitiesUsed": [
+      {
+        "id": "platform.workspace.explorer",
+        "name": "内置工作空间文档探索",
+        "version": "1.0.1"
+      }
+    ]
+  },
+  "normalizedResult": {
+    "envelope": {
+      "result": {
+        "title": "/doc 全文精确检索“AD-Q8VN-6173”，给出命中文档、命中原文及行号，不要拆分关键词。",
+        "summary": "### 🔍 工作空间文档探查结果\n\n针对 **\"全文精确检索“AD-Q8VN-6173”,给出命中文档、命中原文及行号,不要拆分关键词\"**，在工作空间中检索到 **1** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n> **文档摘要**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n**命中上下文**：\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+        "resultType": "deterministic_plan",
+        "businessData": {
+          "finalOutputs": [
+            {
+              "value": "### 🔍 工作空间文档探查结果\n\n针对 **\"全文精确检索“AD-Q8VN-6173”,给出命中文档、命中原文及行号,不要拆分关键词\"**，在工作空间中检索到 **1** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n> **文档摘要**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n**命中上下文**：\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+              "fromNodeId": "n1_内置工作空间文档探索",
+              "isArtifact": false,
+              "targetField": "result",
+              "expectedType": "string",
+              "fromNodeOutput": "answer"
+            }
+          ],
+          "capabilitiesUsed": [
+            {
+              "id": "platform.workspace.explorer",
+              "name": "内置工作空间文档探索",
+              "version": "1.0.1"
+            }
+          ]
+        },
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ]
+      },
+      "artifacts": [],
+      "execution": {
+        "status": "success",
+        "finishedAt": "2026-10-16T02:29:18.643Z",
+        "executionId": "0af1a9d3-abc3-4b78-8a70-81d188a856af"
+      },
+      "detailText": "检索关键词 **“AD-Q8VN-6173”** 的结果如下：\n\n* **命中文档**：[[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n* **行号**：第 8 行\n* **命中原文**：`验收口令：AD-Q8VN-6173。`",
+      "chatSummary": "检索关键词 **“AD-Q8VN-6173”** 的结果如下：\n\n* **命中文档**：[[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n* **行号**：第 8 行\n* **命中原文**：`验收口令：AD-Q8VN-6173。`",
+      "presentation": {
+        "detailText": "检索关键词 **“AD-Q8VN-6173”** 的结果如下：\n\n* **命中文档**：[[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n* **行号**：第 8 行\n* **命中原文**：`验收口令：AD-Q8VN-6173。`",
+        "chatSummary": "检索关键词 **“AD-Q8VN-6173”** 的结果如下：\n\n* **命中文档**：[[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n* **行号**：第 8 行\n* **命中原文**：`验收口令：AD-Q8VN-6173。`",
+        "detailFormat": "markdown",
+        "summaryFormat": "markdown",
+        "preferAiSummary": false,
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ],
+        "notificationSummary": "### 🔍 工作空间文档探查结果\n\n针对 **\"全文精确检索“AD-Q8VN-6173”,给出命中文档、命中原文及行号,不要拆分关键词\"**，在工作空间中检索到 **1** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n> **文档摘要**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n**命中上下文**：\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+        "preferStructuredView": false
+      },
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ]
+    },
+    "resultType": "deterministic_plan",
+    "title": "/doc 全文精确检索“AD-Q8VN-6173”，给出命中文档、命中原文及行号，不要拆分关键词。",
+    "summary": "检索关键词 **“AD-Q8VN-6173”** 的结果如下：\n\n* **命中文档**：[[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n* **行号**：第 8 行\n* **命中原文**：`验收口令：AD-Q8VN-6173。`",
+    "body": "检索关键词 **“AD-Q8VN-6173”** 的结果如下：\n\n* **命中文档**：[[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n* **行号**：第 8 行\n* **命中原文**：`验收口令：AD-Q8VN-6173。`",
+    "summaryFormat": "markdown",
+    "detailText": "检索关键词 **“AD-Q8VN-6173”** 的结果如下：\n\n* **命中文档**：[[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n* **行号**：第 8 行\n* **命中原文**：`验收口令：AD-Q8VN-6173。`",
+    "detailFormat": "markdown",
+    "structuredData": {
+      "finalOutputs": [
+        {
+          "value": "### 🔍 工作空间文档探查结果\n\n针对 **\"全文精确检索“AD-Q8VN-6173”,给出命中文档、命中原文及行号,不要拆分关键词\"**，在工作空间中检索到 **1** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n> **文档摘要**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n**命中上下文**：\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+          "fromNodeId": "n1_内置工作空间文档探索",
+          "isArtifact": false,
+          "targetField": "result",
+          "expectedType": "string",
+          "fromNodeOutput": "answer"
+        }
+      ],
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ]
+    },
+    "artifacts": [],
+    "hasBusinessResult": true,
+    "rawResult": {
+      "result": {
+        "title": "/doc 全文精确检索“AD-Q8VN-6173”，给出命中文档、命中原文及行号，不要拆分关键词。",
+        "summary": "### 🔍 工作空间文档探查结果\n\n针对 **\"全文精确检索“AD-Q8VN-6173”,给出命中文档、命中原文及行号,不要拆分关键词\"**，在工作空间中检索到 **1** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n> **文档摘要**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n**命中上下文**：\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+        "resultType": "deterministic_plan",
+        "businessData": {
+          "finalOutputs": [
+            {
+              "value": "### 🔍 工作空间文档探查结果\n\n针对 **\"全文精确检索“AD-Q8VN-6173”,给出命中文档、命中原文及行号,不要拆分关键词\"**，在工作空间中检索到 **1** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n> **文档摘要**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n**命中上下文**：\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+              "fromNodeId": "n1_内置工作空间文档探索",
+              "isArtifact": false,
+              "targetField": "result",
+              "expectedType": "string",
+              "fromNodeOutput": "answer"
+            }
+          ],
+          "capabilitiesUsed": [
+            {
+              "id": "platform.workspace.explorer",
+              "name": "内置工作空间文档探索",
+              "version": "1.0.1"
+            }
+          ]
+        },
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ]
+      },
+      "artifacts": [],
+      "execution": {
+        "status": "success",
+        "finishedAt": "2026-10-16T02:29:18.643Z",
+        "executionId": "0af1a9d3-abc3-4b78-8a70-81d188a856af"
+      },
+      "detailText": "检索关键词 **“AD-Q8VN-6173”** 的结果如下：\n\n* **命中文档**：[[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n* **行号**：第 8 行\n* **命中原文**：`验收口令：AD-Q8VN-6173。`",
+      "chatSummary": "检索关键词 **“AD-Q8VN-6173”** 的结果如下：\n\n* **命中文档**：[[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n* **行号**：第 8 行\n* **命中原文**：`验收口令：AD-Q8VN-6173。`",
+      "presentation": {
+        "detailText": "检索关键词 **“AD-Q8VN-6173”** 的结果如下：\n\n* **命中文档**：[[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n* **行号**：第 8 行\n* **命中原文**：`验收口令：AD-Q8VN-6173。`",
+        "chatSummary": "检索关键词 **“AD-Q8VN-6173”** 的结果如下：\n\n* **命中文档**：[[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n* **行号**：第 8 行\n* **命中原文**：`验收口令：AD-Q8VN-6173。`",
+        "detailFormat": "markdown",
+        "summaryFormat": "markdown",
+        "preferAiSummary": false,
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ],
+        "notificationSummary": "### 🔍 工作空间文档探查结果\n\n针对 **\"全文精确检索“AD-Q8VN-6173”,给出命中文档、命中原文及行号,不要拆分关键词\"**，在工作空间中检索到 **1** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n> **文档摘要**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n**命中上下文**：\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+        "preferStructuredView": false
+      },
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ]
+    }
+  },
+  "usage": null,
+  "failureCode": null,
+  "failureReason": null,
+  "startedAt": "2026-10-16T02:29:18.107Z",
+  "endedAt": "2026-10-16T02:29:18.643Z",
+  "createdAt": "2026-10-16T02:29:18.099Z",
+  "updatedAt": "2026-10-16T02:29:29.858Z",
+  "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+  "phases": [
+    {
+      "id": "345f021d-a27f-4a3c-84a5-dc21eec0c849",
+      "executionId": "0af1a9d3-abc3-4b78-8a70-81d188a856af",
+      "phaseKey": "phase_01_n1_内置工作空间文档探索",
+      "phaseName": "n1_内置工作空间文档探索",
+      "phaseType": "builtin",
+      "status": "completed",
+      "attempt": 1,
+      "runtimeSessionId": null,
+      "input": null,
+      "output": {
+        "action": "workflow",
+        "output": {
+          "query": "全文精确检索“AD-Q8VN-6173”,给出命中文档、命中原文及行号,不要拆分关键词",
+          "answer": "### 🔍 工作空间文档探查结果\n\n针对 **\"全文精确检索“AD-Q8VN-6173”,给出命中文档、命中原文及行号,不要拆分关键词\"**，在工作空间中检索到 **1** 个相关文档：\n\n### 📄 [[公司公共盘] workspace-admin-loop-2026-10-15-fixture.md](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n> **文档摘要**：本文档为“星桥管理闭环AD1015”端到端测试规程，旨在验证企业管理端在文档上传、索引构建与知识问答功能上的完整业务闭环。项目由测试员丁负责推进，核定预算为52931元，计划于2026年11月12日完成交付。项目核心验收指标包括完成四台模拟终端的联合调试工作并归档三份测试记录，验收口令为AD-Q8VN-6173，唯一检索标记为AD1015Q8VN，为知识库测试提供了精确的校验基准。\n**命中上下文**：\n- 第 8 行: `验收口令：AD-Q8VN-6173。`\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384)\n\n---\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*",
+          "citations": [
+            {
+              "url": "/workspaces?tab=company&fileId=8b921afe-c4b9-417d-9d18-ebadb2c8f78c&workspaceId=40ef4cf8-4205-4aaa-80a4-cbf3b165e384",
+              "line": 8,
+              "fileId": "8b921afe-c4b9-417d-9d18-ebadb2c8f78c",
+              "snippet": "验收口令：AD-Q8VN-6173。",
+              "fileName": "workspace-admin-loop-2026-10-15-fixture.md",
+              "workspaceId": "40ef4cf8-4205-4aaa-80a4-cbf3b165e384",
+              "workspaceName": "公司公共盘"
+            }
+          ],
+          "scannedFiles": [
+            "workspace-admin-loop-2026-10-15-fixture.md"
+          ],
+          "searchedFilesCount": 1
+        },
+        "status": "completed",
+        "stepId": "b3bdf0f2-0877-43b0-9731-41ed46fb8274",
+        "snapshot": null,
+        "rawResult": null
+      },
+      "precheck": null,
+      "postcheck": null,
+      "errorCode": null,
+      "errorMessage": null,
+      "recoveryDecision": null,
+      "startedAt": "2026-10-16T02:29:18.118Z",
+      "completedAt": "2026-10-16T02:29:18.632Z",
+      "createdAt": "2026-10-16T02:29:18.118Z",
+      "updatedAt": "2026-10-16T02:29:18.632Z",
+      "artifacts": [],
+      "steps": [],
+      "takeovers": []
+    }
+  ]
+}

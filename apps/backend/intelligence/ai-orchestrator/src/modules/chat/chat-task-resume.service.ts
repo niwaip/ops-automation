@@ -5,6 +5,7 @@ import type { StreamEvent } from '../react-engine/interfaces';
 import { StreamEventType } from '../react-engine/interfaces';
 import { ChatExecutionStreamService } from './chat-execution-stream.service';
 import { ChatWaitingInputService } from './chat-waiting-input.service';
+import type { ChatUploadedFileDTO } from './chat.dto';
 import type { WaitingInputSemantic } from './chat.types';
 
 interface ResumeUserContext {
@@ -15,6 +16,7 @@ interface ResumeUserContext {
 interface ResumeRequest {
   executionId?: string;
   message?: string;
+  files?: ChatUploadedFileDTO[];
   modelId?: string;
   authToken?: string;
   user: ResumeUserContext;
@@ -74,7 +76,10 @@ export class ChatTaskResumeService {
       };
     }
 
-    if (execution.status === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT && request.message) {
+    if (
+      execution.status === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT &&
+      (Boolean(request.message) || (Array.isArray(request.files) && request.files.length > 0))
+    ) {
       return {
         handled: true,
         events: this.submitInput(executionId, execution, request),
@@ -125,7 +130,8 @@ export class ChatTaskResumeService {
           ? execution.normalizedInput.objective
           : undefined,
         request.user.userId,
-        request.modelId
+        request.modelId,
+        request.files
       );
       await this.controlPlaneClient.submitExecutionInput(
         executionId,

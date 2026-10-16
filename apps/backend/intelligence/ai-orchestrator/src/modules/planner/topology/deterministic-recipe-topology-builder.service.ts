@@ -45,6 +45,7 @@ export class DeterministicRecipeTopologyBuilderService {
     const contractReviewSkill = this.selectSkillForRole(skillCards, 'contract_review', policy, recipe.objective);
     const webExtractorSkill = this.selectSkillForRole(skillCards, 'web_extract', policy, recipe.objective);
     const notifySkill = this.selectSkillForRole(skillCards, 'notify', policy, recipe.objective);
+    const workspaceExplorerSkill = this.selectSkillForRole(skillCards, 'workspace_explore', policy, recipe.objective);
 
     for (const step of recipe.steps) {
       let capabilityKey: string | undefined;
@@ -74,6 +75,8 @@ export class DeterministicRecipeTopologyBuilderService {
           capabilityKey = webExtractorSkill?.id || webExtractorSkill?.publishedSkillId;
         } else if (step.role === 'notify') {
           capabilityKey = notifySkill?.id || notifySkill?.publishedSkillId;
+        } else if (step.role === 'workspace_explore') {
+          capabilityKey = workspaceExplorerSkill?.id || workspaceExplorerSkill?.publishedSkillId;
         }
       } else if (step.kind === 'llm_operation') {
         capabilityKey = this.selectOperationForStep(step, llmOperationCards)?.id;
@@ -138,7 +141,8 @@ export class DeterministicRecipeTopologyBuilderService {
       | 'contract_compare'
       | 'contract_review'
       | 'web_extract'
-      | 'notify',
+      | 'notify'
+      | 'workspace_explore',
     policy: ReturnType<typeof createBuiltinRoutingPolicySnapshot>,
     userRequest?: string,
     requiresListOutput?: boolean
@@ -159,6 +163,19 @@ export class DeterministicRecipeTopologyBuilderService {
             : 'search';
     const candidates = skillCards.filter((card) => {
       if (card.kind !== 'skill') return false;
+      if (role === 'workspace_explore') {
+        const isWorkspaceMatch =
+          ['platform.workspace.explorer', 'workspace_explorer', 'workspace.explorer'].includes(
+            card.id.toLowerCase()
+          ) ||
+          Boolean(card.goals && card.goals.some((g) => /工作空间|知识库|文档中心/i.test(g))) ||
+          matchesCapabilityRole(
+            [card.displayName, card.id, card.summary, card.goals],
+            policyRole,
+            policy
+          );
+        return isWorkspaceMatch;
+      }
       if (role === 'markdown_writer') {
         const isMarkdownMatch =
           /markdown|md/i.test(card.id) ||
@@ -197,13 +214,21 @@ export class DeterministicRecipeTopologyBuilderService {
       | 'contract_compare'
       | 'contract_review'
       | 'web_extract'
-      | 'notify',
+      | 'notify'
+      | 'workspace_explore',
     policy?: ReturnType<typeof createBuiltinRoutingPolicySnapshot>,
     userRequest?: string,
     requiresListOutput?: boolean
   ): number {
     const inputs = Object.entries(card.inputs || {});
     const outputs = Object.entries(card.outputs || {});
+    if (role === 'workspace_explore') {
+      const isWorkspaceSkill = ['platform.workspace.explorer', 'workspace_explorer', 'workspace.explorer'].includes(
+        card.id.toLowerCase()
+      );
+      if (isWorkspaceSkill) return 100;
+      return 50;
+    }
     if (role === 'contract_compare' || role === 'contract_review') {
       let score = 100;
       if (userRequest) {

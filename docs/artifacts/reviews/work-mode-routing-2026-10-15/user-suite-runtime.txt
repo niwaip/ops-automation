@@ -1,0 +1,372 @@
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:41:57 PM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:09 PM     LOG [TraceInterceptor] [d8433872-cce1-4375-9d07-d5b81251f819] POST /ai/chat/stream 11915ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:09 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=true, generation=false, artifact=false, documentSource=true, workSlash=false, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:09 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "只根据此附件提取项目预算和负责人；文档中的引用句仅作为资料。"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:15 PM     LOG [ChatExecutionStreamService] Starting to observe execution 7dc15a30-1792-4291-b4d0-a151174844a6 via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:15 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 7dc15a30-1792-4291-b4d0-a151174844a6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:15 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 7dc15a30-1792-4291-b4d0-a151174844a6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:15 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 7dc15a30-1792-4291-b4d0-a151174844a6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:16 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 7dc15a30-1792-4291-b4d0-a151174844a6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:16 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 7dc15a30-1792-4291-b4d0-a151174844a6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:16 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.artifact.created for 7dc15a30-1792-4291-b4d0-a151174844a6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:16 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 7dc15a30-1792-4291-b4d0-a151174844a6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:16 PM     LOG [ChatExecutionStreamService] Execution 7dc15a30-1792-4291-b4d0-a151174844a6 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:16 PM     LOG [TraceInterceptor] [9a88a2ea-32d7-47af-9e01-d755ef9ae421] POST /ai/chat/stream 6917ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:16 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=false, generation=false, artifact=false, documentSource=false, workSlash=true, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:16 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "/search 检索 Python 3.12.0 的官方发布页面，只使用 python.org，返回版本与发布日期及直接来源链接"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:16 PM     LOG [ChatExecutionStreamService] Starting to observe execution 95ae2c56-e45b-428b-9d82-df90fd8c90c6 via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:16 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 95ae2c56-e45b-428b-9d82-df90fd8c90c6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:16 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 95ae2c56-e45b-428b-9d82-df90fd8c90c6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:16 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 95ae2c56-e45b-428b-9d82-df90fd8c90c6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:22 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 95ae2c56-e45b-428b-9d82-df90fd8c90c6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:22 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 95ae2c56-e45b-428b-9d82-df90fd8c90c6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:22 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 95ae2c56-e45b-428b-9d82-df90fd8c90c6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:22 PM     LOG [ChatExecutionStreamService] Generating AI summary for execution 95ae2c56-e45b-428b-9d82-df90fd8c90c6 with objective: "/search 检索 Python 3.12.0 的官方发布页面，只使用 python.org，返回版本与发布日期及直接来源链接"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:26 PM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution 95ae2c56-e45b-428b-9d82-df90fd8c90c6 (107 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:26 PM     LOG [ChatExecutionStreamService] Execution 95ae2c56-e45b-428b-9d82-df90fd8c90c6 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:26 PM     LOG [TraceInterceptor] [328f94ad-9f25-436b-8bcb-9a98b9eac9c2] POST /ai/chat/stream 10434ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:26 PM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:40 PM     LOG [ChatExecutionStreamService] Starting to observe execution 19b466ab-4fbc-4f94-9127-2129276845ea via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:40 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 19b466ab-4fbc-4f94-9127-2129276845ea
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:40 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.plan.generated for 19b466ab-4fbc-4f94-9127-2129276845ea
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:40 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.steps.planned for 19b466ab-4fbc-4f94-9127-2129276845ea
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:40 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 19b466ab-4fbc-4f94-9127-2129276845ea
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:40 PM   DEBUG [ChatExecutionStreamService] Received execution event: runtime.skipped for 19b466ab-4fbc-4f94-9127-2129276845ea
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:40 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 19b466ab-4fbc-4f94-9127-2129276845ea
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:43 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 19b466ab-4fbc-4f94-9127-2129276845ea
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:43 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 19b466ab-4fbc-4f94-9127-2129276845ea
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:43 PM     LOG [ChatExecutionStreamService] Generating AI summary for execution 19b466ab-4fbc-4f94-9127-2129276845ea with objective: "检索 Python 3.12.0 的官方发布页面，只使用 python.org，返回版本与发布日期及直接来源链接"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:49 PM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution 19b466ab-4fbc-4f94-9127-2129276845ea (183 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:49 PM     LOG [ChatExecutionStreamService] Execution 19b466ab-4fbc-4f94-9127-2129276845ea reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:49 PM     LOG [TraceInterceptor] [5207690b-9762-4f0f-9bc8-82c314888e32] POST /ai/chat/stream 22597ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:49 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=false, generation=false, artifact=false, documentSource=false, workSlash=true, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:49 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "/doc WM_ROUTE_FIXTURE_20261015_V1"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:49 PM     LOG [ChatExecutionStreamService] Starting to observe execution 65b9d59a-a7d3-4584-a269-dbc4562f2598 via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:49 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 65b9d59a-a7d3-4584-a269-dbc4562f2598
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:49 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 65b9d59a-a7d3-4584-a269-dbc4562f2598
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:49 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 65b9d59a-a7d3-4584-a269-dbc4562f2598
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:50 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 65b9d59a-a7d3-4584-a269-dbc4562f2598
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:50 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 65b9d59a-a7d3-4584-a269-dbc4562f2598
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:50 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 65b9d59a-a7d3-4584-a269-dbc4562f2598
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:50 PM     LOG [ChatExecutionStreamService] Generating AI summary for execution 65b9d59a-a7d3-4584-a269-dbc4562f2598 with objective: "/doc WM_ROUTE_FIXTURE_20261015_V1"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:57 PM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution 65b9d59a-a7d3-4584-a269-dbc4562f2598 (555 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:57 PM     LOG [ChatExecutionStreamService] Execution 65b9d59a-a7d3-4584-a269-dbc4562f2598 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:57 PM     LOG [TraceInterceptor] [45edba96-bace-4fe6-8bf1-30c22c844ab1] POST /ai/chat/stream 7951ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:57 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=false, generation=false, artifact=false, documentSource=false, workSlash=true, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:57 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "/workspace WM_ROUTE_FIXTURE_20261015_V1"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:57 PM     LOG [ChatExecutionStreamService] Starting to observe execution 4b8111f3-e0c2-45ac-986d-2a6c1a3863fb via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:57 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 4b8111f3-e0c2-45ac-986d-2a6c1a3863fb
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:57 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 4b8111f3-e0c2-45ac-986d-2a6c1a3863fb
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:57 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 4b8111f3-e0c2-45ac-986d-2a6c1a3863fb
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:57 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 4b8111f3-e0c2-45ac-986d-2a6c1a3863fb
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:57 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 4b8111f3-e0c2-45ac-986d-2a6c1a3863fb
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:57 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 4b8111f3-e0c2-45ac-986d-2a6c1a3863fb
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:42:57 PM     LOG [ChatExecutionStreamService] Generating AI summary for execution 4b8111f3-e0c2-45ac-986d-2a6c1a3863fb with objective: "/workspace WM_ROUTE_FIXTURE_20261015_V1"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:07 PM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution 4b8111f3-e0c2-45ac-986d-2a6c1a3863fb (414 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:07 PM     LOG [ChatExecutionStreamService] Execution 4b8111f3-e0c2-45ac-986d-2a6c1a3863fb reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:07 PM     LOG [TraceInterceptor] [68a4f6f6-2f37-454a-9c59-88a9cb96461a] POST /ai/chat/stream 10584ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:07 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=false, generation=false, artifact=false, documentSource=false, workSlash=true, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:07 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "/rag WM_ROUTE_FIXTURE_20261015_V1"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:07 PM     LOG [ChatExecutionStreamService] Starting to observe execution 1d9339ac-1438-43f6-a273-43102f169d67 via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:08 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 1d9339ac-1438-43f6-a273-43102f169d67
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:08 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 1d9339ac-1438-43f6-a273-43102f169d67
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:08 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 1d9339ac-1438-43f6-a273-43102f169d67
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:09 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 1d9339ac-1438-43f6-a273-43102f169d67
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:09 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 1d9339ac-1438-43f6-a273-43102f169d67
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:09 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 1d9339ac-1438-43f6-a273-43102f169d67
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:09 PM     LOG [ChatExecutionStreamService] Generating AI summary for execution 1d9339ac-1438-43f6-a273-43102f169d67 with objective: "/rag WM_ROUTE_FIXTURE_20261015_V1"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:16 PM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution 1d9339ac-1438-43f6-a273-43102f169d67 (446 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:17 PM     LOG [ChatExecutionStreamService] Execution 1d9339ac-1438-43f6-a273-43102f169d67 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:17 PM     LOG [TraceInterceptor] [9cf259c2-c417-4282-8f7e-b8981065a0aa] POST /ai/chat/stream 9080ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:17 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=true, generation=false, artifact=false, documentSource=true, workSlash=true, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:17 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "/extract 提取此附件正文"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:17 PM     LOG [ChatExecutionStreamService] Starting to observe execution fb24c9c7-4fad-4429-bf42-3b57909fa305 via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:17 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for fb24c9c7-4fad-4429-bf42-3b57909fa305
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:17 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for fb24c9c7-4fad-4429-bf42-3b57909fa305
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:17 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for fb24c9c7-4fad-4429-bf42-3b57909fa305
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:17 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for fb24c9c7-4fad-4429-bf42-3b57909fa305
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:17 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for fb24c9c7-4fad-4429-bf42-3b57909fa305
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:17 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.artifact.created for fb24c9c7-4fad-4429-bf42-3b57909fa305
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:17 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for fb24c9c7-4fad-4429-bf42-3b57909fa305
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:17 PM     LOG [ChatExecutionStreamService] Execution fb24c9c7-4fad-4429-bf42-3b57909fa305 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:17 PM     LOG [TraceInterceptor] [c2f9f117-f3bf-47f4-8774-748fb291a052] POST /ai/chat/stream 702ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:17 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=true, generation=false, artifact=false, documentSource=false, workSlash=true, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:17 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "/extract"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:24 PM     LOG [TraceInterceptor] [07842f61-df18-4947-ae7a-81197990ea69] POST /ai/chat/stream 7170ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:24 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=true, generation=false, artifact=true, documentSource=true, workSlash=false, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:24 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "提取此附件正文，整理项目、负责人、预算及销售额，生成一个可下载的 Markdown 文件。"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:33 PM     LOG [ChatExecutionStreamService] Starting to observe execution f1293d3a-803d-4eac-8540-ddf1a3537f95 via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:33 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for f1293d3a-803d-4eac-8540-ddf1a3537f95
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:33 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for f1293d3a-803d-4eac-8540-ddf1a3537f95
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:33 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for f1293d3a-803d-4eac-8540-ddf1a3537f95
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:33 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for f1293d3a-803d-4eac-8540-ddf1a3537f95
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:33 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for f1293d3a-803d-4eac-8540-ddf1a3537f95
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:33 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for f1293d3a-803d-4eac-8540-ddf1a3537f95
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:33 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for f1293d3a-803d-4eac-8540-ddf1a3537f95
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:44 PM    WARN Model output was not JSON; wrapping raw text into primary field summary
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:44 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for f1293d3a-803d-4eac-8540-ddf1a3537f95
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:44 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for f1293d3a-803d-4eac-8540-ddf1a3537f95
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:44 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for f1293d3a-803d-4eac-8540-ddf1a3537f95
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:44 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for f1293d3a-803d-4eac-8540-ddf1a3537f95
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:44 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.artifact.created for f1293d3a-803d-4eac-8540-ddf1a3537f95
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:44 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for f1293d3a-803d-4eac-8540-ddf1a3537f95
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:44 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for f1293d3a-803d-4eac-8540-ddf1a3537f95
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:44 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for f1293d3a-803d-4eac-8540-ddf1a3537f95
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:44 PM     LOG [ChatExecutionStreamService] Execution f1293d3a-803d-4eac-8540-ddf1a3537f95 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:44 PM     LOG [TraceInterceptor] [098653a4-69cc-4162-ac25-3c7df646d612] POST /ai/chat/stream 19718ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:44 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=true, generation=false, artifact=true, documentSource=true, workSlash=false, previousResult=true)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:44 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "将刚才提取的结果保存为 Markdown 文件"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:44 PM     LOG [ChatExecutionStreamService] Starting to observe execution 57339f9d-3b34-4cf4-90b0-2f80cdc8cf3f via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:44 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 57339f9d-3b34-4cf4-90b0-2f80cdc8cf3f
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:44 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 57339f9d-3b34-4cf4-90b0-2f80cdc8cf3f
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:44 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 57339f9d-3b34-4cf4-90b0-2f80cdc8cf3f
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:45 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.artifact.created for 57339f9d-3b34-4cf4-90b0-2f80cdc8cf3f
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:45 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 57339f9d-3b34-4cf4-90b0-2f80cdc8cf3f
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:45 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 57339f9d-3b34-4cf4-90b0-2f80cdc8cf3f
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:45 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 57339f9d-3b34-4cf4-90b0-2f80cdc8cf3f
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:45 PM     LOG [ChatExecutionStreamService] Execution 57339f9d-3b34-4cf4-90b0-2f80cdc8cf3f reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:45 PM     LOG [TraceInterceptor] [7a33b82a-43bf-41e6-a2f1-2753bf6733de] POST /ai/chat/stream 602ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:45 PM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:45 PM     LOG [ChatExecutionStreamService] Starting to observe execution d9af0ff2-6565-4927-9420-25777c09f632 via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:45 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for d9af0ff2-6565-4927-9420-25777c09f632
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:45 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.plan.generated for d9af0ff2-6565-4927-9420-25777c09f632
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:45 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.steps.planned for d9af0ff2-6565-4927-9420-25777c09f632
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:45 PM   DEBUG [ChatExecutionStreamService] Received execution event: runtime.skipped for d9af0ff2-6565-4927-9420-25777c09f632
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:45 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for d9af0ff2-6565-4927-9420-25777c09f632
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:45 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for d9af0ff2-6565-4927-9420-25777c09f632
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:46 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for d9af0ff2-6565-4927-9420-25777c09f632
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:46 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for d9af0ff2-6565-4927-9420-25777c09f632
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:46 PM     LOG [ChatExecutionStreamService] Generating AI summary for execution d9af0ff2-6565-4927-9420-25777c09f632 with objective: "根据内部空间资料，介绍一下测试夹具 source.md 的主要内容"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:54 PM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution d9af0ff2-6565-4927-9420-25777c09f632 (226 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:54 PM     LOG [ChatExecutionStreamService] Execution d9af0ff2-6565-4927-9420-25777c09f632 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:54 PM     LOG [TraceInterceptor] [146b9725-d14d-460d-a75c-6b9e50f76e09] POST /ai/chat/stream 9701ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:43:54 PM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:02 PM     LOG [TraceInterceptor] [6469e062-b4b7-4d67-b585-4a2e7d1bd50c] POST /ai/chat/stream 7577ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:19 PM     LOG [TraceInterceptor] [dc1e0968-4c7b-4979-bdb3-c75f7cd40390] POST /ai/chat/stream 17352ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:19 PM     LOG [DeterministicTaskExecutionService] Matched private saved workflow df15c847-ddbe-4984-a688-d0e46babafa6 at score 0.828 using routing policy builtin-2026-08-25
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:19 PM     LOG [ChatExecutionStreamService] Starting to observe execution 98fc5b48-7306-44a9-aee5-a3c61acdd8db via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:19 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 98fc5b48-7306-44a9-aee5-a3c61acdd8db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:19 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 98fc5b48-7306-44a9-aee5-a3c61acdd8db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:19 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 98fc5b48-7306-44a9-aee5-a3c61acdd8db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:20 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 98fc5b48-7306-44a9-aee5-a3c61acdd8db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:20 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 98fc5b48-7306-44a9-aee5-a3c61acdd8db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:20 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 98fc5b48-7306-44a9-aee5-a3c61acdd8db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:20 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 98fc5b48-7306-44a9-aee5-a3c61acdd8db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:35 PM    WARN Model output was not JSON; wrapping raw text into primary field summary
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:35 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 98fc5b48-7306-44a9-aee5-a3c61acdd8db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:35 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 98fc5b48-7306-44a9-aee5-a3c61acdd8db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:35 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 98fc5b48-7306-44a9-aee5-a3c61acdd8db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:35 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 98fc5b48-7306-44a9-aee5-a3c61acdd8db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:35 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.artifact.created for 98fc5b48-7306-44a9-aee5-a3c61acdd8db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:35 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 98fc5b48-7306-44a9-aee5-a3c61acdd8db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:35 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 98fc5b48-7306-44a9-aee5-a3c61acdd8db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:35 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 98fc5b48-7306-44a9-aee5-a3c61acdd8db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:35 PM     LOG [ChatExecutionStreamService] Execution 98fc5b48-7306-44a9-aee5-a3c61acdd8db reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:35 PM     LOG [TraceInterceptor] [4ca44cd2-814a-493a-80bf-9eb08c0a98a3] POST /ai/chat/stream 15290ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:35 PM     LOG [DeterministicTaskExecutionService] Matched private saved workflow df15c847-ddbe-4984-a688-d0e46babafa6 at score 0.828 using routing policy builtin-2026-08-25
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:35 PM     LOG [ChatExecutionStreamService] Starting to observe execution 80928ebd-7ecf-45aa-a985-4be4aeec8e63 via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:35 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 80928ebd-7ecf-45aa-a985-4be4aeec8e63
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:35 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 80928ebd-7ecf-45aa-a985-4be4aeec8e63
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:35 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 80928ebd-7ecf-45aa-a985-4be4aeec8e63
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:35 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 80928ebd-7ecf-45aa-a985-4be4aeec8e63
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:35 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 80928ebd-7ecf-45aa-a985-4be4aeec8e63
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:35 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 80928ebd-7ecf-45aa-a985-4be4aeec8e63
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:35 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 80928ebd-7ecf-45aa-a985-4be4aeec8e63
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:45 PM    WARN Model output was not JSON; wrapping raw text into primary field summary
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:46 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 80928ebd-7ecf-45aa-a985-4be4aeec8e63
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:46 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 80928ebd-7ecf-45aa-a985-4be4aeec8e63
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:46 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 80928ebd-7ecf-45aa-a985-4be4aeec8e63
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:46 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 80928ebd-7ecf-45aa-a985-4be4aeec8e63
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:46 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.artifact.created for 80928ebd-7ecf-45aa-a985-4be4aeec8e63
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:46 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 80928ebd-7ecf-45aa-a985-4be4aeec8e63
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:46 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 80928ebd-7ecf-45aa-a985-4be4aeec8e63
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:46 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 80928ebd-7ecf-45aa-a985-4be4aeec8e63
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:46 PM     LOG [ChatExecutionStreamService] Execution 80928ebd-7ecf-45aa-a985-4be4aeec8e63 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:46 PM     LOG [TraceInterceptor] [5f36a9ec-e547-4738-91ca-e06d8d668959] POST /ai/chat/stream 11244ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:46 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=true, generation=false, artifact=false, documentSource=false, workSlash=true, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:46 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "/extract"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:51 PM     LOG [TraceInterceptor] [a5070650-5d45-44e0-9c68-c73f008c3669] POST /ai/chat/stream 4788ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:51 PM     LOG [ChatExecutionStreamService] Starting to observe execution 15e85ef5-3c7e-4288-9a7e-2458a20aa08d via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:51 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 15e85ef5-3c7e-4288-9a7e-2458a20aa08d
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:51 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.input_submitted for 15e85ef5-3c7e-4288-9a7e-2458a20aa08d
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:51 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.resumed for 15e85ef5-3c7e-4288-9a7e-2458a20aa08d
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:51 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 15e85ef5-3c7e-4288-9a7e-2458a20aa08d
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:51 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 15e85ef5-3c7e-4288-9a7e-2458a20aa08d
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:51 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 15e85ef5-3c7e-4288-9a7e-2458a20aa08d
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:51 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 15e85ef5-3c7e-4288-9a7e-2458a20aa08d
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:51 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.artifact.created for 15e85ef5-3c7e-4288-9a7e-2458a20aa08d
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:51 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 15e85ef5-3c7e-4288-9a7e-2458a20aa08d
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:51 PM     LOG [ChatExecutionStreamService] Execution 15e85ef5-3c7e-4288-9a7e-2458a20aa08d reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:51 PM     LOG [TraceInterceptor] [7a5f5eb8-90e8-45d9-878c-4748b21eef67] POST /ai/chat/stream 553ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:51 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=false, generation=false, artifact=false, documentSource=false, workSlash=true, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:51 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "/doc PRIVATE_A_ONLY"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:51 PM     LOG [ChatExecutionStreamService] Starting to observe execution 795b49f4-fb73-492b-b4c2-c377af5ce63c via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:51 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 795b49f4-fb73-492b-b4c2-c377af5ce63c
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:51 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 795b49f4-fb73-492b-b4c2-c377af5ce63c
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:51 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 795b49f4-fb73-492b-b4c2-c377af5ce63c
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:52 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 795b49f4-fb73-492b-b4c2-c377af5ce63c
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:52 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 795b49f4-fb73-492b-b4c2-c377af5ce63c
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:52 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 795b49f4-fb73-492b-b4c2-c377af5ce63c
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:44:52 PM     LOG [ChatExecutionStreamService] Generating AI summary for execution 795b49f4-fb73-492b-b4c2-c377af5ce63c with objective: "/doc PRIVATE_A_ONLY"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:45:01 PM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution 795b49f4-fb73-492b-b4c2-c377af5ce63c (558 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:45:02 PM     LOG [ChatExecutionStreamService] Execution 795b49f4-fb73-492b-b4c2-c377af5ce63c reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:45:02 PM     LOG [TraceInterceptor] [af81d983-ea6e-4b81-9f44-564980eeb78f] POST /ai/chat/stream 10235ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:45:02 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=false, generation=false, artifact=false, documentSource=false, workSlash=true, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:45:02 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "/doc PRIVATE_A_ONLY"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:45:02 PM     LOG [ChatExecutionStreamService] Starting to observe execution c87e94a2-5101-4f53-adc9-736a1c891c94 via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:45:02 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for c87e94a2-5101-4f53-adc9-736a1c891c94
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:45:02 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for c87e94a2-5101-4f53-adc9-736a1c891c94
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:45:02 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for c87e94a2-5101-4f53-adc9-736a1c891c94
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:45:03 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for c87e94a2-5101-4f53-adc9-736a1c891c94
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:45:03 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for c87e94a2-5101-4f53-adc9-736a1c891c94
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:45:03 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for c87e94a2-5101-4f53-adc9-736a1c891c94
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:45:03 PM     LOG [ChatExecutionStreamService] Generating AI summary for execution c87e94a2-5101-4f53-adc9-736a1c891c94 with objective: "/doc PRIVATE_A_ONLY"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:45:08 PM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution c87e94a2-5101-4f53-adc9-736a1c891c94 (213 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:45:08 PM     LOG [ChatExecutionStreamService] Execution c87e94a2-5101-4f53-adc9-736a1c891c94 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 7:45:08 PM     LOG [TraceInterceptor] [b8dd96fc-389a-4341-8e2f-a9e3cffc8f3f] POST /ai/chat/stream 6515ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:15 PM     LOG [ExecutionController] Creating execution for user d6f71c6c-b359-450d-b706-175b7c9866f2, skill platform.document.pdf-content-extractor
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:15 PM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution 7dc15a30-1792-4291-b4d0-a151174844a6 (planHash: de399e7ea376b6428504e0feae4d373c8f9d2b1eacbdc65501de3ed25ef21d25)
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:15 PM     LOG [TraceInterceptor] [fa5eda74-a0f0-409f-999b-f8414b6314b1] GET /api/executions/7dc15a30-1792-4291-b4d0-a151174844a6 2ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:15 PM     LOG [TraceInterceptor] [b7ab0f51-d89e-439b-b372-53fea5e66e53] GET /api/executions/7dc15a30-1792-4291-b4d0-a151174844a6/events/stream 1ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:15 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=document.content-extractor.pdf, capabilityKey=platform.document.pdf-content-extractor, version=1.0.2
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:15 PM     LOG [DeterministicPlanSchedulerService] Execution 7dc15a30-1792-4291-b4d0-a151174844a6 successfully completed all deterministic plan steps.
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:16 PM     LOG [TraceInterceptor] [efcad1fa-c89b-43d8-88c2-4a132d4ce5a8] GET /api/executions/7dc15a30-1792-4291-b4d0-a151174844a6 5ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:16 PM     LOG [ExecutionController] Creating execution for user d6f71c6c-b359-450d-b706-175b7c9866f2, skill platform.search.web
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:16 PM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution 95ae2c56-e45b-428b-9d82-df90fd8c90c6 (planHash: eba0151fa57829d44419f121984c9786c2f3dc851b369994b7dd503457696a64)
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:16 PM     LOG [TraceInterceptor] [9b8140ba-74aa-472e-b152-abda426e8b3e] GET /api/executions/95ae2c56-e45b-428b-9d82-df90fd8c90c6 1ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:16 PM     LOG [TraceInterceptor] [1579e901-1c3f-4bdd-963b-8d2a33271964] GET /api/executions/95ae2c56-e45b-428b-9d82-df90fd8c90c6/events/stream 2ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:16 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=search.web, capabilityKey=platform.search.web, version=1.0.5
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:21 PM     LOG [DeterministicPlanSchedulerService] Execution 95ae2c56-e45b-428b-9d82-df90fd8c90c6 successfully completed all deterministic plan steps.
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:22 PM     LOG [TraceInterceptor] [033d0e20-5aca-4eb8-8cd8-ca54cefd9193] GET /api/executions/95ae2c56-e45b-428b-9d82-df90fd8c90c6 8ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:26 PM     LOG [TraceInterceptor] [5013c92a-2e8a-4bbe-94e4-f410d03bcc81] POST /api/executions/95ae2c56-e45b-428b-9d82-df90fd8c90c6/result-summary 13ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:40 PM     LOG [ExecutionController] Creating execution for user d6f71c6c-b359-450d-b706-175b7c9866f2, skill platform.search.web
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:40 PM    WARN [ExecutionPlanningService] Failed to load runtime defaults for skill platform.search.web: Request failed with status code 403
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:40 PM     LOG [ExecutionCreateService] Execution created: 19b466ab-4fbc-4f94-9127-2129276845ea
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:40 PM     LOG [ExecutionStartService] Starting execution 19b466ab-4fbc-4f94-9127-2129276845ea
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:40 PM     LOG [ExecutionFlowRunnerService] Advancing execution flow for 19b466ab-4fbc-4f94-9127-2129276845ea
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:40 PM     LOG [TraceInterceptor] [21e2a0e1-7f4f-4d06-92b3-fee07fc46ec7] GET /api/executions/19b466ab-4fbc-4f94-9127-2129276845ea 1ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:40 PM     LOG [ExecutionFlowRunnerService] Next step for 19b466ab-4fbc-4f94-9127-2129276845ea: ed50610e-fab9-414b-9015-da792e298e12 (type: system, action: execute_skill)
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:40 PM     LOG [ExecutionFlowRunnerService] Executing system step for execution 19b466ab-4fbc-4f94-9127-2129276845ea, step ed50610e-fab9-414b-9015-da792e298e12 (action: execute_skill)
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:40 PM     LOG [ExecutionStepExecutorService] Executing system skill step ed50610e-fab9-414b-9015-da792e298e12 for execution 19b466ab-4fbc-4f94-9127-2129276845ea
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:40 PM     LOG [TraceInterceptor] [ed6f83ad-a1a5-4320-9539-6737c0bc26c0] GET /api/executions/19b466ab-4fbc-4f94-9127-2129276845ea/events/stream 2ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:40 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=platform.search.web, capabilityKey=platform.search.web, version=1.0.5
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:43 PM     LOG [ExecutionFlowRunnerService] Advancing execution flow for 19b466ab-4fbc-4f94-9127-2129276845ea
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:43 PM     LOG [ExecutionFlowRunnerService] No more pending steps for execution 19b466ab-4fbc-4f94-9127-2129276845ea
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:43 PM     LOG [ExecutionFlowRunnerService] Execution 19b466ab-4fbc-4f94-9127-2129276845ea marked as succeeded
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:43 PM     LOG [ExecutionStartService] Skipped browser runtime allocation for execution 19b466ab-4fbc-4f94-9127-2129276845ea (runtime: custom)
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:43 PM     LOG [TraceInterceptor] [5bc48ad3-a5b6-4c91-9f0f-27d56de683ed] GET /api/executions/19b466ab-4fbc-4f94-9127-2129276845ea 9ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:49 PM     LOG [TraceInterceptor] [358a710c-edf2-4292-bb9d-c5ff93c65ede] POST /api/executions/19b466ab-4fbc-4f94-9127-2129276845ea/result-summary 24ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:49 PM     LOG [ExecutionController] Creating execution for user d6f71c6c-b359-450d-b706-175b7c9866f2, skill platform.workspace.explorer
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:49 PM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution 65b9d59a-a7d3-4584-a269-dbc4562f2598 (planHash: 2ecb2fbc44e5715b4e1078ceaf2efb4a43f16ffcca12d062ef8114e03e510155)
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:49 PM     LOG [TraceInterceptor] [043b4a22-4ae3-4fb5-9f3e-ee4c3a9bc27f] GET /api/executions/65b9d59a-a7d3-4584-a269-dbc4562f2598 2ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:49 PM     LOG [TraceInterceptor] [efbd402d-c346-40aa-837c-ffff0921bed2] GET /api/executions/65b9d59a-a7d3-4584-a269-dbc4562f2598/events/stream 2ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:49 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=workspace.explorer, capabilityKey=platform.workspace.explorer, version=1.0.1
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:50 PM     LOG [DeterministicPlanSchedulerService] Execution 65b9d59a-a7d3-4584-a269-dbc4562f2598 successfully completed all deterministic plan steps.
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:50 PM     LOG [TraceInterceptor] [ff4e881a-d963-4b0b-8320-6716536bdcca] GET /api/executions/65b9d59a-a7d3-4584-a269-dbc4562f2598 4ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:57 PM     LOG [TraceInterceptor] [94229cdb-1a19-40f0-9585-316555bdc20e] POST /api/executions/65b9d59a-a7d3-4584-a269-dbc4562f2598/result-summary 16ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:57 PM     LOG [ExecutionController] Creating execution for user d6f71c6c-b359-450d-b706-175b7c9866f2, skill platform.workspace.explorer
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:57 PM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution 4b8111f3-e0c2-45ac-986d-2a6c1a3863fb (planHash: 67126f7f69ec62cd5b5894d9333f8212f93177284203619b0d1b7fa7c5dcdc57)
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:57 PM     LOG [TraceInterceptor] [0427b0ca-f2ed-4b79-872c-63408d5e2e56] GET /api/executions/4b8111f3-e0c2-45ac-986d-2a6c1a3863fb 2ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:57 PM     LOG [TraceInterceptor] [7edd3ece-367a-44d4-8c40-1be03f7d6f85] GET /api/executions/4b8111f3-e0c2-45ac-986d-2a6c1a3863fb/events/stream 2ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:57 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=workspace.explorer, capabilityKey=platform.workspace.explorer, version=1.0.1
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:57 PM     LOG [DeterministicPlanSchedulerService] Execution 4b8111f3-e0c2-45ac-986d-2a6c1a3863fb successfully completed all deterministic plan steps.
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:42:57 PM     LOG [TraceInterceptor] [cd691b55-7f0f-488f-b0fa-8429b035560e] GET /api/executions/4b8111f3-e0c2-45ac-986d-2a6c1a3863fb 2ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:07 PM     LOG [TraceInterceptor] [30050fdf-ac7b-4734-9ce5-100bebe0c010] POST /api/executions/4b8111f3-e0c2-45ac-986d-2a6c1a3863fb/result-summary 8ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:07 PM     LOG [ExecutionController] Creating execution for user d6f71c6c-b359-450d-b706-175b7c9866f2, skill platform.workspace.explorer
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:07 PM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution 1d9339ac-1438-43f6-a273-43102f169d67 (planHash: 93fa06c8bb3a55fa2fc7db477d249045eecfe4ffaf5f30043fd528ed3597bb2a)
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:07 PM     LOG [TraceInterceptor] [b5f87944-1371-4d89-877b-4ba50bda7ea3] GET /api/executions/1d9339ac-1438-43f6-a273-43102f169d67 2ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:07 PM     LOG [TraceInterceptor] [07dbecd3-7325-4517-b83f-44ff9da4ce7c] GET /api/executions/1d9339ac-1438-43f6-a273-43102f169d67/events/stream 2ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:08 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=workspace.explorer, capabilityKey=platform.workspace.explorer, version=1.0.1
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:08 PM     LOG [DeterministicPlanSchedulerService] Execution 1d9339ac-1438-43f6-a273-43102f169d67 successfully completed all deterministic plan steps.
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:09 PM     LOG [TraceInterceptor] [e0402474-8f6a-49ff-9cd3-7a97abeb6184] GET /api/executions/1d9339ac-1438-43f6-a273-43102f169d67 2ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:16 PM     LOG [TraceInterceptor] [9ad73e44-2d18-405d-a7fe-73855460fadc] POST /api/executions/1d9339ac-1438-43f6-a273-43102f169d67/result-summary 14ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:17 PM     LOG [ExecutionController] Creating execution for user d6f71c6c-b359-450d-b706-175b7c9866f2, skill platform.document.pdf-content-extractor
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:17 PM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution fb24c9c7-4fad-4429-bf42-3b57909fa305 (planHash: b4f0bc8e9f3791b286340febe3b7af3fb07084eb847d588de16f8ecd14b1360d)
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:17 PM     LOG [TraceInterceptor] [5b1597df-e82d-4f85-9801-1c1a930be114] GET /api/executions/fb24c9c7-4fad-4429-bf42-3b57909fa305 1ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:17 PM     LOG [TraceInterceptor] [41cda209-74fe-4de8-a575-d00da2e6cfe9] GET /api/executions/fb24c9c7-4fad-4429-bf42-3b57909fa305/events/stream 1ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:17 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=document.content-extractor.pdf, capabilityKey=platform.document.pdf-content-extractor, version=1.0.2
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:17 PM     LOG [DeterministicPlanSchedulerService] Execution fb24c9c7-4fad-4429-bf42-3b57909fa305 successfully completed all deterministic plan steps.
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:17 PM     LOG [TraceInterceptor] [ffc417b6-802f-46c3-9f26-adafcbf1b10c] GET /api/executions/fb24c9c7-4fad-4429-bf42-3b57909fa305 6ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:24 PM     LOG [ExecutionController] Creating execution for user d6f71c6c-b359-450d-b706-175b7c9866f2, skill platform.document.pdf-content-extractor
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:24 PM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution 0ab498c4-d626-4418-9bb3-8adde1d2d32d (planHash: ceef04458b38b4ea48e74b34d54469b07bfa3651d40a71d33bc5399c2a7f8aed)
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:33 PM     LOG [ExecutionController] Creating execution for user d6f71c6c-b359-450d-b706-175b7c9866f2, skill platform.document.pdf-content-extractor
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:33 PM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution f1293d3a-803d-4eac-8540-ddf1a3537f95 (planHash: f6e452507bb293d24ddebe9a195c0dd10c0bb4f96247c9b9679520ad311ca6d3)
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:33 PM     LOG [TraceInterceptor] [43eca40e-5982-49ea-b78c-e5ce98f7c9f8] GET /api/executions/f1293d3a-803d-4eac-8540-ddf1a3537f95 1ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:33 PM     LOG [TraceInterceptor] [5eec4ec0-0afd-4baf-9102-b95ee420e556] GET /api/executions/f1293d3a-803d-4eac-8540-ddf1a3537f95/events/stream 1ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:33 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=document.content-extractor.pdf, capabilityKey=platform.document.pdf-content-extractor, version=1.0.2
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:33 PM     LOG [LlmOperationRuntimeAdapter] Invoking LLM Operation 'summarize_text' v1.0.28 at http://ai-orchestrator:3007/ai/operations/v2/execute with timeout 300000ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:44 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=document.markdown-artifact-writer, capabilityKey=platform.document.markdown-artifact-writer, version=1.0.2
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:44 PM     LOG [DeterministicPlanSchedulerService] Execution f1293d3a-803d-4eac-8540-ddf1a3537f95 successfully completed all deterministic plan steps.
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:44 PM     LOG [TraceInterceptor] [45282840-09e2-4b59-8e6b-24e368601166] GET /api/executions/f1293d3a-803d-4eac-8540-ddf1a3537f95 6ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:44 PM     LOG [ExecutionController] Creating execution for user d6f71c6c-b359-450d-b706-175b7c9866f2, skill platform.document.markdown-artifact-writer
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:44 PM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution 57339f9d-3b34-4cf4-90b0-2f80cdc8cf3f (planHash: 63c8ec7d8e7aaf40e3ac5581918ffb4f75877cce2de26cd1fe52135b99dc97bc)
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:44 PM     LOG [TraceInterceptor] [eb5940fb-ff07-4a54-b020-502f10a4da6e] GET /api/executions/57339f9d-3b34-4cf4-90b0-2f80cdc8cf3f 2ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:44 PM     LOG [TraceInterceptor] [3700d19d-b210-4956-b11c-1110e1e93828] GET /api/executions/57339f9d-3b34-4cf4-90b0-2f80cdc8cf3f/events/stream 2ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:44 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=document.markdown-artifact-writer, capabilityKey=platform.document.markdown-artifact-writer, version=1.0.2
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:44 PM     LOG [DeterministicPlanSchedulerService] Execution 57339f9d-3b34-4cf4-90b0-2f80cdc8cf3f successfully completed all deterministic plan steps.
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:45 PM     LOG [TraceInterceptor] [065c15a9-aded-4e91-b79d-bf839cac3928] GET /api/executions/57339f9d-3b34-4cf4-90b0-2f80cdc8cf3f 7ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:45 PM     LOG [ExecutionController] Creating execution for user d6f71c6c-b359-450d-b706-175b7c9866f2, skill platform.workspace.explorer
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:45 PM    WARN [ExecutionPlanningService] Failed to load runtime defaults for skill platform.workspace.explorer: Request failed with status code 403
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:45 PM     LOG [ExecutionCreateService] Execution created: d9af0ff2-6565-4927-9420-25777c09f632
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:45 PM     LOG [ExecutionStartService] Starting execution d9af0ff2-6565-4927-9420-25777c09f632
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:45 PM     LOG [ExecutionFlowRunnerService] Advancing execution flow for d9af0ff2-6565-4927-9420-25777c09f632
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:45 PM     LOG [TraceInterceptor] [8492661d-20c0-4057-90e0-1aa1fc079350] GET /api/executions/d9af0ff2-6565-4927-9420-25777c09f632 2ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:45 PM     LOG [ExecutionFlowRunnerService] Next step for d9af0ff2-6565-4927-9420-25777c09f632: d46accd9-6d5d-4d21-8293-2f2947128436 (type: system, action: execute_skill)
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:45 PM     LOG [ExecutionFlowRunnerService] Executing system step for execution d9af0ff2-6565-4927-9420-25777c09f632, step d46accd9-6d5d-4d21-8293-2f2947128436 (action: execute_skill)
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:45 PM     LOG [ExecutionStepExecutorService] Executing system skill step d46accd9-6d5d-4d21-8293-2f2947128436 for execution d9af0ff2-6565-4927-9420-25777c09f632
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:45 PM     LOG [TraceInterceptor] [5d7a2a29-f145-4a2d-a621-19c3b13177be] GET /api/executions/d9af0ff2-6565-4927-9420-25777c09f632/events/stream 1ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:45 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=platform.workspace.explorer, capabilityKey=platform.workspace.explorer, version=1.0.1
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:46 PM     LOG [ExecutionFlowRunnerService] Advancing execution flow for d9af0ff2-6565-4927-9420-25777c09f632
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:46 PM     LOG [ExecutionFlowRunnerService] No more pending steps for execution d9af0ff2-6565-4927-9420-25777c09f632
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:46 PM     LOG [ExecutionFlowRunnerService] Execution d9af0ff2-6565-4927-9420-25777c09f632 marked as succeeded
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:46 PM     LOG [ExecutionStartService] Skipped browser runtime allocation for execution d9af0ff2-6565-4927-9420-25777c09f632 (runtime: custom)
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:46 PM     LOG [TraceInterceptor] [40666902-f372-4238-83bc-a25687ff5588] GET /api/executions/d9af0ff2-6565-4927-9420-25777c09f632 7ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:43:54 PM     LOG [TraceInterceptor] [bf1f7bc1-3040-4a3d-bcae-9d8bfe9cfd99] POST /api/executions/d9af0ff2-6565-4927-9420-25777c09f632/result-summary 14ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:19 PM     LOG [ExecutionController] Creating execution for user d6f71c6c-b359-450d-b706-175b7c9866f2, skill df15c847-ddbe-4984-a688-d0e46babafa6
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:19 PM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution 98fc5b48-7306-44a9-aee5-a3c61acdd8db (planHash: ca375dc56e6b924f5902e15f2b9e4bc6027e6d505dd854efa176c4137b86862b)
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:19 PM     LOG [TraceInterceptor] [b9334503-4dcb-496a-9957-7e7adb06db0f] GET /api/executions/98fc5b48-7306-44a9-aee5-a3c61acdd8db 1ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:19 PM     LOG [TraceInterceptor] [d7156ff5-6164-4d5b-9226-0a2090cd8182] GET /api/executions/98fc5b48-7306-44a9-aee5-a3c61acdd8db/events/stream 1ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:19 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=document.content-extractor.pdf, capabilityKey=platform.document.pdf-content-extractor, version=1.0.2
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:19 PM     LOG [LlmOperationRuntimeAdapter] Invoking LLM Operation 'summarize_text' v1.0.28 at http://ai-orchestrator:3007/ai/operations/v2/execute with timeout 300000ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:35 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=document.markdown-artifact-writer, capabilityKey=platform.document.markdown-artifact-writer, version=1.0.2
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:35 PM     LOG [DeterministicPlanSchedulerService] Execution 98fc5b48-7306-44a9-aee5-a3c61acdd8db successfully completed all deterministic plan steps.
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:35 PM     LOG [TraceInterceptor] [5463b050-c021-4cb8-9f87-01caa883ab6f] GET /api/executions/98fc5b48-7306-44a9-aee5-a3c61acdd8db 6ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:35 PM     LOG [ExecutionController] Creating execution for user d6f71c6c-b359-450d-b706-175b7c9866f2, skill df15c847-ddbe-4984-a688-d0e46babafa6
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:35 PM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution 80928ebd-7ecf-45aa-a985-4be4aeec8e63 (planHash: ca375dc56e6b924f5902e15f2b9e4bc6027e6d505dd854efa176c4137b86862b)
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:35 PM     LOG [TraceInterceptor] [4714d13d-178a-438e-8c17-4fde13fcd5e6] GET /api/executions/80928ebd-7ecf-45aa-a985-4be4aeec8e63 2ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:35 PM     LOG [TraceInterceptor] [3414de83-3648-47b1-a55a-e59d8e47b2a9] GET /api/executions/80928ebd-7ecf-45aa-a985-4be4aeec8e63/events/stream 4ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:35 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=document.content-extractor.pdf, capabilityKey=platform.document.pdf-content-extractor, version=1.0.2
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:35 PM     LOG [LlmOperationRuntimeAdapter] Invoking LLM Operation 'summarize_text' v1.0.28 at http://ai-orchestrator:3007/ai/operations/v2/execute with timeout 300000ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:46 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=document.markdown-artifact-writer, capabilityKey=platform.document.markdown-artifact-writer, version=1.0.2
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:46 PM     LOG [DeterministicPlanSchedulerService] Execution 80928ebd-7ecf-45aa-a985-4be4aeec8e63 successfully completed all deterministic plan steps.
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:46 PM     LOG [TraceInterceptor] [75377ba3-98dd-437f-a64b-e57997f160a3] GET /api/executions/80928ebd-7ecf-45aa-a985-4be4aeec8e63 6ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:51 PM     LOG [ExecutionController] Creating execution for user d6f71c6c-b359-450d-b706-175b7c9866f2, skill platform.document.pdf-content-extractor
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:51 PM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution 15e85ef5-3c7e-4288-9a7e-2458a20aa08d (planHash: ceef04458b38b4ea48e74b34d54469b07bfa3651d40a71d33bc5399c2a7f8aed)
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:51 PM     LOG [TraceInterceptor] [2658be0b-cf5b-4b06-8f5f-13739761151c] GET /api/executions/15e85ef5-3c7e-4288-9a7e-2458a20aa08d 2ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:51 PM     LOG [TraceInterceptor] [308847c5-f8b5-4f58-9db5-34c5e59330aa] GET /api/executions/15e85ef5-3c7e-4288-9a7e-2458a20aa08d/steps 3ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:51 PM     LOG [ExecutionController] Input submission requested for execution 15e85ef5-3c7e-4288-9a7e-2458a20aa08d by user d6f71c6c-b359-450d-b706-175b7c9866f2
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:51 PM     LOG [ExecutionSubmitInputService] Input submitted for deterministic execution 15e85ef5-3c7e-4288-9a7e-2458a20aa08d; frozen plan resumed
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:51 PM     LOG [TraceInterceptor] [a03add36-3d90-47fa-8e30-518c5621f2b3] POST /api/executions/15e85ef5-3c7e-4288-9a7e-2458a20aa08d/submit-input 14ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:51 PM     LOG [TraceInterceptor] [d32215e3-26b0-45ec-b137-537315e87da0] GET /api/executions/15e85ef5-3c7e-4288-9a7e-2458a20aa08d 2ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:51 PM     LOG [TraceInterceptor] [f322b237-6fbf-46b1-979c-77bbb21ba933] GET /api/executions/15e85ef5-3c7e-4288-9a7e-2458a20aa08d 1ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:51 PM     LOG [TraceInterceptor] [a8d90397-993a-4143-a9c9-103cd0c04221] GET /api/executions/15e85ef5-3c7e-4288-9a7e-2458a20aa08d/events/stream 1ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:51 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=document.content-extractor.pdf, capabilityKey=platform.document.pdf-content-extractor, version=1.0.2
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:51 PM     LOG [DeterministicPlanSchedulerService] Execution 15e85ef5-3c7e-4288-9a7e-2458a20aa08d successfully completed all deterministic plan steps.
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:51 PM     LOG [TraceInterceptor] [03ad026e-c7d1-4eff-8f82-2d592d0a7fbf] GET /api/executions/15e85ef5-3c7e-4288-9a7e-2458a20aa08d 5ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:51 PM     LOG [TraceInterceptor] [59f0554a-8283-4d4c-9dd6-d49ad58de47c] GET /api/executions/f1293d3a-803d-4eac-8540-ddf1a3537f95 6ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:51 PM     LOG [ExecutionController] Creating execution for user d6f71c6c-b359-450d-b706-175b7c9866f2, skill platform.workspace.explorer
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:51 PM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution 795b49f4-fb73-492b-b4c2-c377af5ce63c (planHash: 07b46c2ae9e01070210f6717fefb5bcbf36f58b22a3bff5b07e96972fd86ac03)
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:51 PM     LOG [TraceInterceptor] [b9a2538c-e58a-4429-b6e8-9df6158c1ebc] GET /api/executions/795b49f4-fb73-492b-b4c2-c377af5ce63c 2ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:51 PM     LOG [TraceInterceptor] [5eec6735-eb34-47d9-9f2c-b4bc6ba0b6fa] GET /api/executions/795b49f4-fb73-492b-b4c2-c377af5ce63c/events/stream 2ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:51 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=workspace.explorer, capabilityKey=platform.workspace.explorer, version=1.0.1
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:52 PM     LOG [DeterministicPlanSchedulerService] Execution 795b49f4-fb73-492b-b4c2-c377af5ce63c successfully completed all deterministic plan steps.
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:44:52 PM     LOG [TraceInterceptor] [0f415094-2428-4018-acb7-ddcc08b4b15e] GET /api/executions/795b49f4-fb73-492b-b4c2-c377af5ce63c 5ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:45:02 PM     LOG [TraceInterceptor] [3ab5ac7e-9fc9-4e0e-9032-67d3a4ea4e00] POST /api/executions/795b49f4-fb73-492b-b4c2-c377af5ce63c/result-summary 17ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:45:02 PM     LOG [ExecutionController] Creating execution for user f9c8e328-e482-4041-ae32-20dd552dd499, skill platform.workspace.explorer
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:45:02 PM     LOG [DeterministicPlanFreezeService] Plan frozen & persisted for execution c87e94a2-5101-4f53-adc9-736a1c891c94 (planHash: 07b46c2ae9e01070210f6717fefb5bcbf36f58b22a3bff5b07e96972fd86ac03)
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:45:02 PM     LOG [TraceInterceptor] [63c2d33c-a664-41bc-80da-ffbb5e9b112a] GET /api/executions/c87e94a2-5101-4f53-adc9-736a1c891c94 1ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:45:02 PM     LOG [TraceInterceptor] [0fd5506d-ef44-4cc7-8122-c34ccb9b2ffb] GET /api/executions/c87e94a2-5101-4f53-adc9-736a1c891c94/events/stream 1ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:45:02 PM     LOG [BuiltinWorkflowRuntimeAdapter] Invoking builtin handler: handlerKey=workspace.explorer, capabilityKey=platform.workspace.explorer, version=1.0.1
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:45:02 PM     LOG [DeterministicPlanSchedulerService] Execution c87e94a2-5101-4f53-adc9-736a1c891c94 successfully completed all deterministic plan steps.
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:45:03 PM     LOG [TraceInterceptor] [c0ceb554-b773-4f84-9f86-50387ac622fc] GET /api/executions/c87e94a2-5101-4f53-adc9-736a1c891c94 20ms
+ops-control-plane    | [Nest] 134  - 10/15/2026, 7:45:08 PM     LOG [TraceInterceptor] [b9e631b6-83db-4f05-915f-39f79a8db6da] POST /api/executions/c87e94a2-5101-4f53-adc9-736a1c891c94/result-summary 5ms

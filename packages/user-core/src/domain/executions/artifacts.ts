@@ -208,6 +208,7 @@ export const extractPhaseStepImageSources = (
     }
   }
 
+  // Fallback 1: match by snapshotId
   if (step.snapshotId && found.size === 0) {
     const matchedArtifact = artifacts.find((artifact) => artifact.snapshotId === step.snapshotId);
     const artifactSrc = matchedArtifact
@@ -215,6 +216,72 @@ export const extractPhaseStepImageSources = (
       : undefined;
     if (artifactSrc) {
       found.add(artifactSrc);
+    }
+  }
+
+  // Fallback 2: match by stepId, stepIndex, or action/command in phase artifacts
+  if (found.size === 0 && artifacts.length > 0) {
+    const normalizedStepAction = typeof step.action === 'string' ? step.action.trim().toLowerCase() : '';
+    const stepId = typeof step.id === 'string' ? step.id.trim() : undefined;
+    const stepIndex = typeof step.stepIndex === 'number' ? step.stepIndex : undefined;
+
+    // Check by stepId or stepIndex match in artifact payload
+    let matchedArtifact = artifacts.find((art) => {
+      const payload = getPhaseArtifactPayload(art);
+      if (!payload) return false;
+      const artStepId = typeof payload.stepId === 'string' ? payload.stepId.trim() : undefined;
+      const artStepIndex = typeof payload.stepIndex === 'number' ? payload.stepIndex : undefined;
+      return (stepId && artStepId === stepId) || (stepIndex !== undefined && artStepIndex === stepIndex);
+    });
+
+    // If not matched, match by command/action
+    if (!matchedArtifact && normalizedStepAction) {
+      const matchingArtifacts = artifacts.filter((art) => {
+        const payload = getPhaseArtifactPayload(art);
+        const command = typeof payload?.command === 'string'
+          ? payload.command.trim().toLowerCase()
+          : typeof payload?.action === 'string'
+            ? payload.action.trim().toLowerCase()
+            : typeof payload?.name === 'string'
+              ? payload.name.trim().toLowerCase()
+              : typeof art.artifactType === 'string'
+                ? art.artifactType.trim().toLowerCase()
+                : '';
+        return Boolean(command && command === normalizedStepAction);
+      });
+
+      if (matchingArtifacts.length === 1) {
+        matchedArtifact = matchingArtifacts[0];
+      } else if (matchingArtifacts.length > 1 && stepIndex !== undefined) {
+        const positionalArt = artifacts[stepIndex - 1];
+        if (positionalArt && matchingArtifacts.includes(positionalArt)) {
+          matchedArtifact = positionalArt;
+        } else {
+          matchedArtifact = matchingArtifacts[0];
+        }
+      }
+    }
+
+    // If still not matched, check 1-based positional artifact (e.g. stepIndex 2 -> artifacts[1])
+    if (!matchedArtifact && stepIndex !== undefined && stepIndex >= 1 && stepIndex <= artifacts.length) {
+      const positionalArt = artifacts[stepIndex - 1];
+      if (positionalArt) {
+        const preview = getPhaseArtifactPreviewSrc(recorderWsUrl, positionalArt);
+        if (preview) {
+          const payload = getPhaseArtifactPayload(positionalArt);
+          const command = typeof payload?.command === 'string' ? payload.command.trim().toLowerCase() : '';
+          if (!command || !normalizedStepAction || command === normalizedStepAction) {
+            matchedArtifact = positionalArt;
+          }
+        }
+      }
+    }
+
+    if (matchedArtifact) {
+      const artifactSrc = getPhaseArtifactPreviewSrc(recorderWsUrl, matchedArtifact);
+      if (artifactSrc) {
+        found.add(artifactSrc);
+      }
     }
   }
 

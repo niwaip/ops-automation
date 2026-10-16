@@ -1,0 +1,70 @@
+{
+  "auditedWindow": "2026-10-15 19:42-19:45 Asia/Shanghai",
+  "evidenceFiles": 18,
+  "scopedExecutions": 16,
+  "executionStatuses": {
+    "succeeded": 15,
+    "waiting_input": 1
+  },
+  "falsePassCases": [
+    "W01"
+  ],
+  "fullAcceptance": false,
+  "coverageGaps": [
+    "F02 browser file upload continuation",
+    "F03 running stream disconnect/reload recovery",
+    "W01 real organization workflow approval lifecycle",
+    "A01 direct preview and full role/organization matrix",
+    "F01 model-free exact-content replay control",
+    "R11 expected native knowledge route",
+    "R14 exact effective catalog comparison"
+  ],
+  "modelUsageLedgerRows": 0,
+  "tokenSavingsRatio": "unmeasured",
+  "artifactIntegrity": [
+    {
+      "executionId": "f1293d3a-803d-4eac-8540-ddf1a3537f95",
+      "name": "source.md",
+      "url": "http://192.168.100.143:3009/renders/a00b962b1ee6481b5d41bae7dd3d7e5e.md",
+      "expectedSha256": "5e4190aa7e5e11f715424965118150aa4b14c717efbf7ae2deffcc696a067dc6",
+      "httpStatus": 200,
+      "actualSha256": "5e4190aa7e5e11f715424965118150aa4b14c717efbf7ae2deffcc696a067dc6",
+      "hashMatches": true,
+      "businessFieldsPresent": true,
+      "sizeBytes": 353
+    },
+    {
+      "executionId": "57339f9d-3b34-4cf4-90b0-2f80cdc8cf3f",
+      "name": "_extract________.md",
+      "url": "http://192.168.100.143:3009/renders/11f95ab0d194b539e90b879e624c434c.md",
+      "expectedSha256": "1bf097613caffe60c10fc60cdf68bffadc39bdf46c5cf6f285e90387566c8708",
+      "httpStatus": 200,
+      "actualSha256": "1bf097613caffe60c10fc60cdf68bffadc39bdf46c5cf6f285e90387566c8708",
+      "hashMatches": true,
+      "businessFieldsPresent": true,
+      "sizeBytes": 520
+    },
+    {
+      "executionId": "98fc5b48-7306-44a9-aee5-a3c61acdd8db",
+      "name": "source.md",
+      "url": "http://192.168.100.143:3009/renders/e2c1938a233a24725bafcbe0b702284b.md",
+      "expectedSha256": "00632f52fda825852a09d2b7b088bd000aba747fdd1353033df84afd3c55c31e",
+      "httpStatus": 200,
+      "actualSha256": "00632f52fda825852a09d2b7b088bd000aba747fdd1353033df84afd3c55c31e",
+      "hashMatches": true,
+      "businessFieldsPresent": true,
+      "sizeBytes": 368
+    },
+    {
+      "executionId": "80928ebd-7ecf-45aa-a985-4be4aeec8e63",
+      "name": "source.md",
+      "url": "http://192.168.100.143:3009/renders/90eb607ce95d9bd889c700a2316b0380.md",
+      "expectedSha256": "b4bce7d0070f0289563d09d9b8b3c6a7c2a7fece3d18bff61319dc7262b4f8ab",
+      "httpStatus": 200,
+      "actualSha256": "b4bce7d0070f0289563d09d9b8b3c6a7c2a7fece3d18bff61319dc7262b4f8ab",
+      "hashMatches": true,
+      "businessFieldsPresent": true,
+      "sizeBytes": 463
+    }
+  ]
+}

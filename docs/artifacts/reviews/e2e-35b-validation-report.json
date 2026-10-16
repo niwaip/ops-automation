@@ -1,0 +1,76 @@
+[
+  {
+    "id": "CASE-1-M03",
+    "title": "制造业夜班交接.md (禁 HTML/PPT)",
+    "passed": true,
+    "durationMs": 107602,
+    "usage": {
+      "prompt_tokens": 27991,
+      "completion_tokens": 1146,
+      "total_tokens": 29137
+    },
+    "checks": {
+      "mdExists": true,
+      "mdSize": 2489,
+      "htmlBlocked": true,
+      "pptxBlocked": true
+    }
+  },
+  {
+    "id": "CASE-2-RET02",
+    "title": "零售门店闭店交接清单.docx",
+    "passed": true,
+    "durationMs": 56328,
+    "usage": {
+      "prompt_tokens": 78997,
+      "completion_tokens": 5610,
+      "total_tokens": 84607
+    },
+    "checks": {
+      "docxExists": true,
+      "docxSize": 39611
+    }
+  },
+  {
+    "id": "CASE-3-M08",
+    "title": "设备操作培训.pptx (原生 PPTX, 禁 HTML)",
+    "passed": false,
+    "durationMs": 300044,
+    "usage": {},
+    "checks": {
+      "pptxExists": false,
+      "pptxSize": 0,
+      "htmlBlocked": true
+    }
+  },
+  {
+    "id": "CASE-4-O02",
+    "title": "跨部门行动清单.md (Fast-Path 直达)",
+    "passed": true,
+    "durationMs": 13879,
+    "usage": {
+      "prompt_tokens": 14415,
+      "completion_tokens": 284,
+      "total_tokens": 14699
+    },
+    "checks": {
+      "mdExists": true,
+      "mdSize": 836
+    }
+  },
+  {
+    "id": "CASE-5-R05",
+    "title": "收银与退款核对 (只读防越权)",
+    "passed": true,
+    "durationMs": 28405,
+    "usage": {
+      "prompt_tokens": 12107,
+      "completion_tokens": 1301,
+      "total_tokens": 13408
+    },
+    "checks": {
+      "textLength": 1749,
+      "mutatingToolsBlocked": true
+    }
+  }
+]

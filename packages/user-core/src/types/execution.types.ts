@@ -265,6 +265,7 @@ export interface WaitingInputDisplayField {
   description?: string;
   display_name?: string;
   group_label?: string;
+  label?: string;
 }
 
 export interface WaitingInputDisplayGroup<T> {

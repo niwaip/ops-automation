@@ -1,0 +1,36 @@
+{
+  "sessionId": "472915b7-c6ec-4b9e-9203-047b1dd4c39a",
+  "receipts": [
+    {
+      "tool": "bash",
+      "status": "success",
+      "error": null
+    },
+    {
+      "tool": "bash",
+      "status": "success",
+      "error": null
+    },
+    {
+      "tool": null,
+      "status": "error",
+      "error": {
+        "code": "source_outside_session_scope",
+        "message": "结构工具仅接受当前附件原件"
+      }
+    },
+    {
+      "tool": "read_file",
+      "status": "success",
+      "error": null
+    },
+    {
+      "tool": null,
+      "status": "error",
+      "error": {
+        "code": "escape_rejected",
+        "message": "当前任务包含明确的数值计算或指标核算需求，禁止降级为纯文本归纳。必须使用 aggregate_spreadsheet 或 check_spreadsheet_equations 完成计算。"
+      }
+    }
+  ]
+}
