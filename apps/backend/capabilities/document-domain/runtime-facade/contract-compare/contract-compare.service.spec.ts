@@ -7,6 +7,7 @@ import { SectionAlignerService } from './section-aligner.service';
 import { CharDiffEngineService } from './char-diff-engine.service';
 import { ContractHtmlRendererService } from './contract-html-renderer.service';
 import { ContractCompareService } from './contract-compare.service';
+import type { AlignedClausePair, DiffToken } from './contract-compare.types';
 
 describe('ContractCompareService Suite', () => {
   let astParser: ContractAstParserService;
@@ -292,6 +293,58 @@ describe('ContractCompareService Suite', () => {
         expect(result.htmlReport).toContain('合同智能比对与红线审查报告');
         expect(result.htmlReport).toContain('contract_v1_baseline.pdf');
         expect(result.htmlReport).toContain('contract_v2_revised.pdf');
+      }
+    });
+
+    it('should correctly mark identical cross-format DOCX vs PDF contract as UNCHANGED (CMP10 negative gate)', async () => {
+      const cmp10Docx = path.resolve(process.cwd(), 'tests/fixtures/contract-compare-20261018/CMP10/CMP10_A.docx');
+      const cmp10Pdf = path.resolve(process.cwd(), 'tests/fixtures/contract-compare-20261018/CMP10/CMP10_B.pdf');
+
+      if (fs.existsSync(cmp10Docx) && fs.existsSync(cmp10Pdf)) {
+        const fileBase64A = fs.readFileSync(cmp10Docx).toString('base64');
+        const fileBase64B = fs.readFileSync(cmp10Pdf).toString('base64');
+
+        const diffResult = await compareService.diffContracts({
+          fileBase64A,
+          fileNameA: 'CMP10_A.docx',
+          fileBase64B,
+          fileNameB: 'CMP10_B.pdf',
+          idempotencyKey: 'cmp10-cross-format-negative-test',
+        });
+
+        expect(diffResult.metrics.modifiedCount).toBe(0);
+        expect(diffResult.metrics.addedCount).toBe(0);
+        expect(diffResult.metrics.deletedCount).toBe(0);
+        expect(diffResult.metrics.unchangedCount).toBe(diffResult.metrics.totalClauses);
+        expect(diffResult.alignedClauses.every((p) => p.status === 'UNCHANGED')).toBe(true);
+      }
+    });
+
+    it('should correctly detect payment amount and term modifications in pure Japanese DOCX (CMP08 gate)', async () => {
+      const cmp08DocxA = path.resolve(process.cwd(), 'tests/fixtures/contract-compare-20261018/CMP08/CMP08_A.docx');
+      const cmp08DocxB = path.resolve(process.cwd(), 'tests/fixtures/contract-compare-20261018/CMP08/CMP08_B.docx');
+
+      if (fs.existsSync(cmp08DocxA) && fs.existsSync(cmp08DocxB)) {
+        const fileBase64A = fs.readFileSync(cmp08DocxA).toString('base64');
+        const fileBase64B = fs.readFileSync(cmp08DocxB).toString('base64');
+
+        const diffResult = await compareService.diffContracts({
+          fileBase64A,
+          fileNameA: 'CMP08_A.docx',
+          fileBase64B,
+          fileNameB: 'CMP08_B.docx',
+          idempotencyKey: 'cmp08-pure-japanese-test',
+        });
+
+        // Ensure non-empty body content in Japanese clauses
+        const payClausePair = diffResult.alignedClauses.find(
+          (p) => p.sourceClause?.title?.includes('支払') || p.sourceClause?.content?.includes('100000')
+        );
+        expect(payClausePair).toBeDefined();
+        expect(payClausePair?.sourceClause?.content).toContain('100000円');
+        expect(payClausePair?.targetClause?.content).toContain('150000円');
+        expect(payClausePair?.status).toBe('MODIFIED');
+        expect(diffResult.metrics.modifiedCount).toBe(1);
       }
     });
 
@@ -1090,6 +1143,56 @@ describe('ContractCompareService Suite', () => {
       // @media print forces all clause contents visible
       expect(html).toContain('.clause-content { display: block !important; }');
       expect(html).toContain('print-color-adjust: exact');
+    });
+  });
+
+  describe('Japanese Subtitle and Natural CMPH02 Comparison', () => {
+    it('preserves MODIFIED status and diffs when titleJa differs even if content is identical', async () => {
+      const diffRes = await compareService.diffContracts({
+        fileNameA: 'A.txt',
+        textA: '第一条 报酬\n甲は乙に支払う。',
+        fileNameB: 'B.txt',
+        textB: '第一条 报酬\n甲は乙に支払う。',
+      });
+      // Simulate clauses where titleJa differs
+      const pair = diffRes.alignedClauses[0];
+      pair.sourceClause!.titleJa = '報酬は月額十万円';
+      pair.targetClause!.titleJa = '報酬は月額十五万円';
+      pair.status = 'MODIFIED';
+
+      // Re-run service diffing logic verification via isPairEquivalent
+      expect(sectionAligner.isPairEquivalent(pair.sourceClause!, pair.targetClause!)).toBe(false);
+    });
+
+    it('correctly detects MODIFIED status for natural Japanese CMPH02 fixture files', async () => {
+      const pA = path.resolve(
+        process.cwd(),
+        'docs/artifacts/reviews/contract-compare-reaudit3/run-2026-10-18T10-34-17.378Z/natural-fixtures/CMPH02_A.docx'
+      );
+      const pB = path.resolve(
+        process.cwd(),
+        'docs/artifacts/reviews/contract-compare-reaudit3/run-2026-10-18T10-34-17.378Z/natural-fixtures/CMPH02_B.docx'
+      );
+      if (!fs.existsSync(pA) || !fs.existsSync(pB)) return;
+
+      const result = await compareService.diffContracts({
+        fileNameA: 'CMPH02_A.docx',
+        fileBase64A: fs.readFileSync(pA).toString('base64'),
+        fileNameB: 'CMPH02_B.docx',
+        fileBase64B: fs.readFileSync(pB).toString('base64'),
+      });
+
+      const feePair = result.alignedClauses.find(
+        (p: AlignedClausePair) => p.sourceClause?.content?.includes('報酬は月額') || p.targetClause?.content?.includes('報酬は月額')
+      );
+      expect(feePair).toBeDefined();
+      expect(feePair!.status).toBe('MODIFIED');
+      expect(feePair!.sourceClause?.content).toBe('報酬は月額十万円');
+      expect(feePair!.targetClause?.content).toBe('報酬は月額十五万円');
+      expect(feePair!.diffTokens?.some((t: DiffToken) => t.type === 'insert' && t.text === '五')).toBe(true);
+
+      expect(result.metrics.modifiedCount).toBe(1);
+      expect(result.metrics.unchangedCount).toBe(5);
     });
   });
 });

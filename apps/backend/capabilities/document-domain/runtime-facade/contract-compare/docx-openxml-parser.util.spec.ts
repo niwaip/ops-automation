@@ -54,4 +54,50 @@ describe('docx-openxml-parser.util', () => {
     );
     expect(hasBilingualBlocks).toBe(true);
   });
+
+  it('does not consume short Japanese clause text without punctuation as secondary title (CMPH01)', async () => {
+    const cmphPath = path.resolve(
+      process.cwd(),
+      'docs/artifacts/reviews/contract-compare-reaudit2/run-2026-10-18T07-26-52.918Z/heldout-fixtures/CMPH01_A.docx'
+    );
+    if (!fs.existsSync(cmphPath)) return;
+    const buf = fs.readFileSync(cmphPath);
+    const clauses = await parseDocxOpenXml(buf);
+
+    const payClause = clauses.find(
+      (c) => c.title.includes('付款期限') || c.clauseNumber?.includes('付款期限')
+    );
+    expect(payClause).toBeDefined();
+    // Operational Japanese clause body must stay in content, NOT swallowed into titleJa
+    expect(payClause!.content).toContain('甲は30日以内に100000円を支払う');
+    expect(payClause!.titleJa).toBeUndefined();
+  });
+
+  it('correctly preserves natural Japanese clause body with Kanji numerals and topic particle without punctuation (CMPH02)', async () => {
+    const cmph02PathA = path.resolve(
+      process.cwd(),
+      'docs/artifacts/reviews/contract-compare-reaudit3/run-2026-10-18T10-34-17.378Z/natural-fixtures/CMPH02_A.docx'
+    );
+    if (!fs.existsSync(cmph02PathA)) return;
+    const bufA = fs.readFileSync(cmph02PathA);
+    const clausesA = await parseDocxOpenXml(bufA);
+
+    const feeClauseA = clausesA.find((c) => c.title.includes('报酬金额'));
+    expect(feeClauseA).toBeDefined();
+    expect(feeClauseA!.content).toBe('報酬は月額十万円');
+    expect(feeClauseA!.titleJa).toBeUndefined();
+
+    const cmph02PathB = path.resolve(
+      process.cwd(),
+      'docs/artifacts/reviews/contract-compare-reaudit3/run-2026-10-18T10-34-17.378Z/natural-fixtures/CMPH02_B.docx'
+    );
+    if (!fs.existsSync(cmph02PathB)) return;
+    const bufB = fs.readFileSync(cmph02PathB);
+    const clausesB = await parseDocxOpenXml(bufB);
+
+    const feeClauseB = clausesB.find((c) => c.title.includes('报酬金额'));
+    expect(feeClauseB).toBeDefined();
+    expect(feeClauseB!.content).toBe('報酬は月額十五万円');
+    expect(feeClauseB!.titleJa).toBeUndefined();
+  });
 });

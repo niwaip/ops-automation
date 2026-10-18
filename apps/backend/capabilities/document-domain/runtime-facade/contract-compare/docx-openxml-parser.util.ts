@@ -36,6 +36,48 @@ export function escapeHtml(text: string): string {
     .replace(/'/g, '&#039;');
 }
 
+export function isLikelyClauseBody(text: string): boolean {
+  if (!text) return false;
+  const t = text.trim();
+  // 1. Sentence ending punctuation (Japanese, Chinese, Western)
+  if (/[。！？；\.]$/.test(t)) return true;
+
+  // 2. Clause numbering / list marker prefix e.g. (1), 1., 一、, (一), 1)
+  if (/^(?:\d+[\.、\)]|[（\(]\d+[）\)]|[一二三四五六七八九十]+[\.、\)]|[（\(][一二三四五六七八九十]+[）\)])/.test(t)) return true;
+
+  // 3. Known contractual party subjects with topic or nominative particles:
+  // e.g. 甲は, 乙は, 甲及び乙は, 買主は, 売主は, 当社は, 受託者は, 利用者は, 甲、乙は, 甲が, 乙が
+  if (/^(?:[甲乙丙丁]|買主|売主|甲及び乙|甲および乙|甲、乙|当社|受託者|委託者|利用者|顧客|各当事者|当事者)(?:[はが]|において)/.test(t)) {
+    return true;
+  }
+
+  // 4. Topic (は) or nominative (が) particle following any substantive noun:
+  // Contract titles are noun phrases; sentences state topics (e.g. 報酬は, 代金は, 本契約は, 期間は, 費用は, 管轄は)
+  if (/^[\u4e00-\u9fa5\u30a0-\u30ff\w]{1,10}[はが]\s*/u.test(t)) {
+    return true;
+  }
+
+  // 5. Monetary amounts, rates, prices, percentages (both Kanji and Arabic numerals):
+  // e.g. 十万円, 100000円, 50%, 月額, 日額, 年額, 総額, 金一封, 金100万円
+  if (/(?:[\d0-9一二三四五六七八九十百千万億]+(?:円|ドル|元|万|%|％|割)|月額|日額|年額|総額|金[0-9一二三四五六七八九十百千万]+円?)/u.test(t)) {
+    return true;
+  }
+
+  // 6. Timeframes, deadlines, periods:
+  // e.g. 30日以内, 3か月間, 1年間, 15日前
+  if (/(?:[\d0-9一二三四五六七八九十百千万]+(?:日|月|年|時間|週間)(?:以内|間|前|後)?)/u.test(t)) {
+    return true;
+  }
+
+  // 7. Contractual operative conjugated verbs, obligations, conditions, and legal predicates:
+  // e.g. 支払う, 支払わなければならない, 負う, 定める, 解除する, とする, てはならない, 請求できる, 効力を有する, 履行する
+  if (/(?:支払[いうえお]|負[うい]|義務を|定[める]|解除[すで]|解約[すで]|通知[すで]|請求[すで]|履行[すで]|賠償[すで]|禁止[すで]|とする|てはならない|効力を有する)/u.test(t)) {
+    return true;
+  }
+
+  return false;
+}
+
 export async function parseNumberingDefinitions(zip: any): Promise<NumberingDefinitions> {
   const numFile = zip.file('word/numbering.xml');
   if (!numFile) return { numToAbstract: {}, abstractLevels: {} };
@@ -312,8 +354,13 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
     chTitle?: string
   ) => {
     if (currentClause) {
-      if (currentClause.content.trim() || (currentClause.blocks && currentClause.blocks.length > 0)) {
+      if (currentClause.content.trim()) {
         currentClause.content = currentClause.content.trim();
+        clauses.push(currentClause);
+      } else if (currentClause.titleJa?.trim()) {
+        currentClause.content = currentClause.title.trim()
+          ? `${currentClause.title.trim()}\n${currentClause.titleJa.trim()}`
+          : currentClause.titleJa.trim();
         clauses.push(currentClause);
       } else if (currentClause.title.trim()) {
         currentClause.content = currentClause.title.trim();
@@ -395,7 +442,15 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
       currentChapterTitle = cleanText;
       let annexSecondaryText: string | undefined;
       let annexSecondaryHtml: string | undefined;
-      if (nextEl && nextEl.type === 'p' && nextEl.isJp && !annexRegex.test(nextEl.fullText)) {
+      if (
+        !el.isJp &&
+        nextEl &&
+        nextEl.type === 'p' &&
+        nextEl.isJp &&
+        nextEl.fullText.length <= 40 &&
+        !annexRegex.test(nextEl.fullText) &&
+        !isLikelyClauseBody(nextEl.fullText)
+      ) {
         annexSecondaryText = nextEl.fullText;
         annexSecondaryHtml = nextEl.html;
         i++;
@@ -422,7 +477,15 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
       currentChapterTitle = cleanText;
       let chapterSecondaryText: string | undefined;
       let chapterSecondaryHtml: string | undefined;
-      if (nextEl && nextEl.type === 'p' && nextEl.isJp && !chapterRegex.test(nextEl.fullText)) {
+      if (
+        !el.isJp &&
+        nextEl &&
+        nextEl.type === 'p' &&
+        nextEl.isJp &&
+        nextEl.fullText.length <= 40 &&
+        !chapterRegex.test(nextEl.fullText) &&
+        !isLikelyClauseBody(nextEl.fullText)
+      ) {
         chapterSecondaryText = nextEl.fullText;
         chapterSecondaryHtml = nextEl.html;
         i++;
@@ -492,7 +555,15 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
 
       let headingSecondaryText: string | undefined;
       let headingSecondaryHtml: string | undefined;
-      if (nextEl && nextEl.type === 'p' && nextEl.isJp && !articleRegex.test(nextEl.fullText)) {
+      if (
+        !el.isJp &&
+        nextEl &&
+        nextEl.type === 'p' &&
+        nextEl.isJp &&
+        nextEl.fullText.length <= 40 &&
+        !articleRegex.test(nextEl.fullText) &&
+        !isLikelyClauseBody(nextEl.fullText)
+      ) {
         headingSecondaryText = nextEl.fullText;
         headingSecondaryHtml = nextEl.html;
         i++; // Consume paired Japanese heading so it is not emitted as a standalone 15px paragraph
@@ -511,7 +582,6 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
         secondaryHtml: headingSecondaryHtml,
         isBold: true,
       });
-      currentClause!.content += title + (headingSecondaryText ? `\n${headingSecondaryText}` : '');
       if (inlineBodyText) {
         currentClause!.blocks!.push({
           id: `blk-${blockIdx++}`,
@@ -519,7 +589,7 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
           primaryText: inlineBodyText,
           primaryHtml: escapeHtml(inlineBodyText),
         });
-        currentClause!.content += '\n' + inlineBodyText;
+        currentClause!.content += inlineBodyText;
       }
       continue;
     }
@@ -562,8 +632,13 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
 
   if (currentClause) {
     const finalClause = currentClause as ContractClauseNode;
-    if (finalClause.content.trim() || (finalClause.blocks && finalClause.blocks.length > 0)) {
+    if (finalClause.content.trim()) {
       finalClause.content = finalClause.content.trim();
+      clauses.push(finalClause);
+    } else if (finalClause.titleJa?.trim()) {
+      finalClause.content = finalClause.title.trim()
+        ? `${finalClause.title.trim()}\n${finalClause.titleJa.trim()}`
+        : finalClause.titleJa.trim();
       clauses.push(finalClause);
     } else if (finalClause.title.trim()) {
       finalClause.content = finalClause.title.trim();

@@ -32,7 +32,21 @@ export class DeterministicParamResolverService {
       .trim();
     const effectiveInput = cleanInput || userInput;
 
-    const resolved = resolveDeterministicEnumParams(effectiveInput, schema.properties || {});
+    const effectiveProperties = { ...(schema.properties || {}) } as Record<string, any>;
+    if (effectiveProperties.myPosition && !effectiveProperties.myPosition.enum) {
+      effectiveProperties.myPosition = {
+        ...effectiveProperties.myPosition,
+        type: 'string',
+        enum: ['buyer', 'seller', 'neutral'],
+        'x-enum-aliases': {
+          buyer: ['甲方', '买方', '采购方', '委托方', '透露方', '披露方', '出租方', '雇主', '发包方', '買主', '発注者', '委託者', '賃貸人', '甲側', '我方为甲', '我方为甲方', '我方买方', '我为甲方'],
+          seller: ['乙方', '卖方', '销售方', '受托方', '接收方', '承租方', '雇员', '承包方', '売主', '受注者', '受託者', '賃借人', '乙側', '我方为乙', '我方为乙方', '我方卖方', '我为乙方'],
+          neutral: ['中立', '双向', '对等', '中立立场', '双方', '全面审查', '双方向', '双方対等', '中立的'],
+        },
+      };
+    }
+
+    const resolved = resolveDeterministicEnumParams(effectiveInput, effectiveProperties);
     const resolvedFields = Object.keys(resolved.params);
 
     const textResolution = cardOrSkill

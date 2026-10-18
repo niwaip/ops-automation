@@ -110,9 +110,29 @@ export class ContractCompareService {
 
     for (const pair of alignedPairs) {
       if (pair.status === 'MODIFIED' && pair.sourceClause && pair.targetClause) {
+        if (this.sectionAligner.isPairEquivalent(pair.sourceClause, pair.targetClause)) {
+          pair.status = 'UNCHANGED';
+          const safe = this.charDiffEngine.escapeHtml(pair.sourceClause.content).replace(/\n/g, '<br>');
+          pair.sourceHtml = safe;
+          pair.targetHtml = safe;
+          pair.similarity = 1.0;
+          continue;
+        }
+
+        const srcContent = pair.sourceClause.content;
+        const tgtContent = pair.targetClause.content;
+        const srcForDiff =
+          this.sectionAligner.isContentEquivalent(srcContent, tgtContent) && (pair.sourceClause.titleJa || pair.targetClause.titleJa)
+            ? `${pair.sourceClause.titleJa || ''}\n${srcContent}`.trim()
+            : srcContent;
+        const tgtForDiff =
+          this.sectionAligner.isContentEquivalent(srcContent, tgtContent) && (pair.sourceClause.titleJa || pair.targetClause.titleJa)
+            ? `${pair.targetClause.titleJa || ''}\n${tgtContent}`.trim()
+            : tgtContent;
+
         const diffRes = this.charDiffEngine.computeDiff(
-          pair.sourceClause.content,
-          pair.targetClause.content,
+          srcForDiff,
+          tgtForDiff,
           granularity
         );
         pair.diffTokens = diffRes.tokens;
