@@ -1,0 +1,46 @@
+{
+  "caseId": "R05",
+  "variant": "canonical",
+  "status": "passed",
+  "traceIds": [
+    "1f595b55-e8d5-49b0-9b3e-f5ebc93debed"
+  ],
+  "executionIds": [
+    "6bd3eb79-2a6d-493d-99be-c5230342fe94"
+  ],
+  "requestDigest": "801373200b83861f5318edb49e026fb82edb52841d2a7a880f70d050a2c51d0e",
+  "fixtureDigest": "9d98c56fef1b97f6b1f0a6a40980fbff971943845ece24ff03b2037dfd671736",
+  "catalogSnapshotDigest": "catalog-v1-snapshot-sha256",
+  "routingPolicyVersion": "routing-policy-v1",
+  "routingPolicyDigest": "routing-policy-sha256",
+  "selectedCapabilityRefs": [
+    "platform.workspace.explorer"
+  ],
+  "planHash": null,
+  "inputHash": null,
+  "actualInvocations": [
+    "platform.workspace.explorer"
+  ],
+  "usageByPurpose": {},
+  "logicalEffectCount": 1,
+  "artifactRefs": [],
+  "assertions": [
+    {
+      "assertion": "Selected platform.workspace.explorer capability",
+      "passed": true,
+      "actual": [
+        "platform.workspace.explorer"
+      ]
+    },
+    {
+      "assertion": "Found fixture marker and content in workspace",
+      "passed": true,
+      "actual": "步骤已完成\n针对 **“WM_ROUTE_FIXTURE_20261015_V1”**，在工作空间中检索到 1 个相关文档：\n\n### 📄 [[公司公共盘] WM_ROUTE_FIXTURE_source.md](/workspaces?tab=company&fileId=11a1a36b-3f"
+    },
+    {
+      "assertion": "Status is succeeded",
+      "passed": true
+    }
+  ],
+  "failureCategory": null
+}

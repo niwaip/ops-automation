@@ -3,6 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GUIDE_INQUIRY_PATTERNS = exports.GENERIC_ROUTING_BUZZWORDS = exports.ENUM_ALIASES_SCHEMA_KEY = void 0;
 exports.normalizePlanningText = normalizePlanningText;
 exports.isGuideOrInquiryRequest = isGuideOrInquiryRequest;
+exports.resolveCapabilityModality = resolveCapabilityModality;
+exports.resolveUserActionIntent = resolveUserActionIntent;
 exports.matchDeterministicRoutingCapability = matchDeterministicRoutingCapability;
 exports.resolveDeterministicEnumParams = resolveDeterministicEnumParams;
 exports.isDistinctiveSignal = isDistinctiveSignal;
@@ -76,6 +78,12 @@ exports.GENERIC_ROUTING_BUZZWORDS = new Set([
     '方法',
     '用户',
     '工作台',
+    // Domain generic nouns that must not act as sole capability triggers
+    '文件',
+    '文档',
+    '资料',
+    '附件',
+    '信息',
     // Pure generic action verbs that can apply to any arbitrary object
     '查看',
     '读取',
@@ -121,6 +129,7 @@ exports.GUIDE_INQUIRY_PATTERNS = [
     '架构原理',
     '架构设计',
     '系统架构',
+    '什么是',
     '是什么',
     '有什么用',
     '代码写法',
@@ -137,12 +146,57 @@ function isGuideOrInquiryRequest(userInput) {
         return false;
     return exports.GUIDE_INQUIRY_PATTERNS.some((pattern) => normalized.includes(normalizePlanningText(pattern)));
 }
+function resolveCapabilityModality(capability) {
+    if (capability.modality)
+        return capability.modality;
+    const id = (capability.id || '').toLowerCase();
+    const name = (capability.name || '').toLowerCase();
+    const cat = (capability.category || '').toLowerCase();
+    // Physical artifact / file generation
+    if (cat === 'artifact' ||
+        id.includes('markdown-artifact-writer') ||
+        id.includes('pdf-create') ||
+        id.includes('artifact-writer') ||
+        name.includes('文件生成') ||
+        name.includes('文档生成')) {
+        return 'generate';
+    }
+    // Mutate / external side effects (notifications, sending, mutating records)
+    if (cat === 'notification' ||
+        (cat === 'communication' && (id.includes('send') || id.includes('update'))) ||
+        id.includes('send') ||
+        id.includes('update') ||
+        id.includes('notify') ||
+        id.includes('reminder')) {
+        return 'mutate';
+    }
+    // Inspect / search / extract / read / review
+    if (cat === 'search' ||
+        cat === 'extraction' ||
+        cat === 'comparison' ||
+        cat === 'review' ||
+        id.includes('search') ||
+        id.includes('explorer') ||
+        id.includes('extractor') ||
+        id.includes('read') ||
+        id.includes('messages')) {
+        return 'inspect';
+    }
+    return 'inspect';
+}
+function resolveUserActionIntent(userInput) {
+    const hasInspectIntent = /(?:查询|检索|搜索|查阅|查看|读取|看下|看一下|看看|检查|排查|探查|浏览|找一下|找下|找出|找到|提取|抽取|search|find|query|inspect|view|check|examine|read|cat)/i.test(userInput);
+    const hasGenerateIntent = /(?:生成|制作|创建|导出|新建|另存为|保存为|输出为|做一份|做个|写一份|写个|写出|排版成|输出成|转为文件|保存成文件|generate|create|export|build|make|produce)/i.test(userInput);
+    const hasMutateIntent = /(?:发送|推送|提醒|更新|修改|删除|send|push|notify|update|delete)/i.test(userInput);
+    return { hasInspectIntent, hasGenerateIntent, hasMutateIntent };
+}
 function matchDeterministicRoutingCapability(userInput, capabilities) {
     const normalizedInput = normalizePlanningText(userInput);
     if (!normalizedInput)
         return null;
+    const userIntent = resolveUserActionIntent(userInput);
     const ranked = capabilities
-        .map((capability) => rankCapability(normalizedInput, capability))
+        .map((capability) => rankCapability(normalizedInput, capability, userIntent, userInput))
         .filter((candidate) => candidate.score >= 150)
         .sort((left, right) => right.score - left.score);
     const best = ranked[0];
@@ -180,7 +234,7 @@ function resolveDeterministicEnumParams(userInput, properties) {
     }
     return result;
 }
-function rankCapability(normalizedInput, capability) {
+function rankCapability(normalizedInput, capability, userIntent, rawUserInput) {
     // If negative keywords are defined and any matches, reject this capability immediately
     if (Array.isArray(capability.negativeKeywords) && capability.negativeKeywords.length > 0) {
         for (const neg of capability.negativeKeywords) {
@@ -189,6 +243,20 @@ function rankCapability(normalizedInput, capability) {
                 return { capability, matchedSignals: [], score: 0 };
             }
         }
+    }
+    // Modality Gate:
+    // If capability produces physical artifacts/files, user MUST have positive generate intent,
+    // OR explicitly mention the capability ID or exact capability name.
+    // A query like "查询关于ai能力测试的文件" has inspect intent and lacks positive generate intent,
+    // so artifact generation capabilities are strictly gated (score 0).
+    const modality = resolveCapabilityModality(capability);
+    const normalizedId = normalizePlanningText(capability.id);
+    const normalizedName = normalizePlanningText(capability.name);
+    const isExplicitInvocation = normalizedInput === normalizedId ||
+        normalizedInput === normalizedName ||
+        rawUserInput.includes(capability.id);
+    if (modality === 'generate' && !userIntent.hasGenerateIntent && !isExplicitInvocation) {
+        return { capability, matchedSignals: [], score: 0 };
     }
     // Capability IDs are stable, user-visible invocation handles. Treat an exact
     // ID mention as an explicit routing signal alongside display names/aliases so

@@ -1,1 +1,14 @@
-{}
+{
+  "preview_title": "Notifications",
+  "unread_count": "{{count}} unread",
+  "no_unread": "No unread notifications",
+  "mark_all_read": "Mark All as Read",
+  "view_all": "View All",
+  "just_now": "Just now",
+  "minutes_ago": "{{count}}m ago",
+  "today": "Today",
+  "notification_time": "Time: ",
+  "page_title": "Notifications",
+  "page_subtitle": "Aggregates execution notifications and reminders",
+  "refresh": "Refresh"
+}

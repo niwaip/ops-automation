@@ -196,7 +196,7 @@ export function WorkspaceDocumentPreviewModal({
             alignItems: 'center',
           }}
         >
-          <div style={{ fontSize: 12, color: '#8c8c8c' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)' }}>
             {rawText
               ? `共 ${rawText.length.toLocaleString()} 字符 · ${
                   rawText.split('\n').length
@@ -241,14 +241,22 @@ export function WorkspaceDocumentPreviewModal({
               minHeight: isFullscreen ? '78vh' : '420px',
               overflowY: 'auto',
               padding: 16,
-              background: '#ffffff',
+              background: 'var(--bg-card, #1e293b)',
+              color: 'var(--text-primary, #f8fafc)',
               borderRadius: 6,
-              border: '1px solid #f0f0f0',
+              border: '1px solid var(--border-color, #334155)',
             }}
           >
             {/* Markdown 渲染视图 */}
             {fileType === 'markdown' && viewMode === 'rendered' && (
-              <div style={{ lineHeight: 1.7, fontSize: 14, wordBreak: 'break-word' }}>
+              <div
+                style={{
+                  lineHeight: 1.7,
+                  fontSize: 14,
+                  wordBreak: 'break-word',
+                  color: 'var(--text-primary, #f8fafc)',
+                }}
+              >
                 {rawText ? (
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
@@ -275,6 +283,189 @@ export function WorkspaceDocumentPreviewModal({
                       return '';
                     }}
                     components={{
+                      h1: ({ ...props }) => (
+                        <h1
+                          style={{
+                            color: 'var(--text-primary, #f8fafc)',
+                            borderBottom: '1px solid var(--border-color, #334155)',
+                            paddingBottom: '0.3em',
+                            marginTop: '1.2em',
+                            marginBottom: '0.6em',
+                            fontSize: '1.6em',
+                          }}
+                          {...props}
+                        />
+                      ),
+                      h2: ({ ...props }) => (
+                        <h2
+                          style={{
+                            color: 'var(--text-primary, #f8fafc)',
+                            borderBottom: '1px solid var(--border-color, #334155)',
+                            paddingBottom: '0.25em',
+                            marginTop: '1.1em',
+                            marginBottom: '0.5em',
+                            fontSize: '1.35em',
+                          }}
+                          {...props}
+                        />
+                      ),
+                      h3: ({ ...props }) => (
+                        <h3
+                          style={{
+                            color: 'var(--text-primary, #f8fafc)',
+                            marginTop: '1em',
+                            marginBottom: '0.4em',
+                            fontSize: '1.15em',
+                          }}
+                          {...props}
+                        />
+                      ),
+                      h4: ({ ...props }) => (
+                        <h4
+                          style={{
+                            color: 'var(--text-primary, #f8fafc)',
+                            marginTop: '0.8em',
+                            marginBottom: '0.3em',
+                          }}
+                          {...props}
+                        />
+                      ),
+                      p: ({ ...props }) => (
+                        <p
+                          style={{
+                            color: 'var(--text-primary, #f8fafc)',
+                            marginBottom: '0.8em',
+                            lineHeight: 1.75,
+                          }}
+                          {...props}
+                        />
+                      ),
+                      ul: ({ ...props }) => (
+                        <ul
+                          style={{
+                            color: 'var(--text-primary, #f8fafc)',
+                            paddingLeft: '1.5em',
+                            marginBottom: '0.8em',
+                          }}
+                          {...props}
+                        />
+                      ),
+                      ol: ({ ...props }) => (
+                        <ol
+                          style={{
+                            color: 'var(--text-primary, #f8fafc)',
+                            paddingLeft: '1.5em',
+                            marginBottom: '0.8em',
+                          }}
+                          {...props}
+                        />
+                      ),
+                      li: ({ ...props }) => (
+                        <li style={{ marginBottom: '0.3em', color: 'var(--text-primary, #f8fafc)' }} {...props} />
+                      ),
+                      blockquote: ({ ...props }) => (
+                        <blockquote
+                          style={{
+                            margin: '0.8em 0',
+                            padding: '0.6em 1em',
+                            borderLeft: '4px solid #6366f1',
+                            background: 'var(--bg-subtle, #141f32)',
+                            color: 'var(--text-secondary, #cbd5e1)',
+                            borderRadius: '0 4px 4px 0',
+                          }}
+                          {...props}
+                        />
+                      ),
+                      code: ({ inline, children, ...props }: any) => {
+                        if (inline) {
+                          return (
+                            <code
+                              style={{
+                                background: 'var(--bg-subtle, #243244)',
+                                color: '#a5b4fc',
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                                fontSize: '0.9em',
+                                fontFamily: 'SFMono-Regular, Consolas, Menlo, monospace',
+                              }}
+                              {...props}
+                            >
+                              {children}
+                            </code>
+                          );
+                        }
+                        return (
+                          <pre
+                            style={{
+                              background: 'var(--bg-subtle, #0f172a)',
+                              color: 'var(--text-primary, #f8fafc)',
+                              padding: 12,
+                              borderRadius: 6,
+                              overflowX: 'auto',
+                              fontSize: '0.88em',
+                              border: '1px solid var(--border-color, #334155)',
+                              margin: '0.8em 0',
+                            }}
+                          >
+                            <code {...props}>{children}</code>
+                          </pre>
+                        );
+                      },
+                      table: ({ ...props }) => (
+                        <div style={{ overflowX: 'auto', margin: '1em 0' }}>
+                          <table
+                            style={{
+                              borderCollapse: 'collapse',
+                              width: '100%',
+                              border: '1px solid var(--border-color, #334155)',
+                            }}
+                            {...props}
+                          />
+                        </div>
+                      ),
+                      th: ({ ...props }) => (
+                        <th
+                          style={{
+                            border: '1px solid var(--border-color, #334155)',
+                            padding: '8px 12px',
+                            background: 'var(--bg-subtle, #243244)',
+                            color: 'var(--text-primary, #f8fafc)',
+                            fontWeight: 600,
+                          }}
+                          {...props}
+                        />
+                      ),
+                      td: ({ ...props }) => (
+                        <td
+                          style={{
+                            border: '1px solid var(--border-color, #334155)',
+                            padding: '8px 12px',
+                            color: 'var(--text-primary, #f8fafc)',
+                          }}
+                          {...props}
+                        />
+                      ),
+                      hr: ({ ...props }) => (
+                        <hr
+                          style={{
+                            border: 'none',
+                            borderTop: '1px solid var(--border-color, #334155)',
+                            margin: '1.2em 0',
+                          }}
+                          {...props}
+                        />
+                      ),
+                      a: ({ href, children, ...props }) => (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: '#818cf8', textDecoration: 'underline' }}
+                          {...props}
+                        >
+                          {children}
+                        </a>
+                      ),
                       img: ({ src, alt, ...props }) => (
                         <span style={{ display: 'block', margin: '16px 0', textAlign: 'center' }}>
                           <img
@@ -285,8 +476,8 @@ export function WorkspaceDocumentPreviewModal({
                               maxHeight: '520px',
                               objectFit: 'contain',
                               borderRadius: '8px',
-                              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-                              border: '1px solid #e5e7eb',
+                              boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+                              border: '1px solid var(--border-color, #334155)',
                               cursor: 'zoom-in',
                             }}
                             onClick={() => {
@@ -295,7 +486,14 @@ export function WorkspaceDocumentPreviewModal({
                             {...props}
                           />
                           {alt && (
-                            <span style={{ display: 'block', fontSize: '12px', color: '#64748b', marginTop: '6px' }}>
+                            <span
+                              style={{
+                                display: 'block',
+                                fontSize: '12px',
+                                color: 'var(--text-secondary, #94a3b8)',
+                                marginTop: '6px',
+                              }}
+                            >
                               📷 {alt}
                             </span>
                           )}
@@ -334,8 +532,9 @@ export function WorkspaceDocumentPreviewModal({
                   lineHeight: 1.65,
                   padding: 14,
                   borderRadius: 6,
-                  background: '#1a1a1a',
-                  color: '#e0e0e0',
+                  background: 'var(--bg-subtle, #0f172a)',
+                  color: 'var(--text-primary, #f8fafc)',
+                  border: '1px solid var(--border-color, #334155)',
                 }}
               >
                 {rawText || '（暂无提取到文本内容或文件为空）'}

@@ -1,0 +1,98 @@
+{
+  "batch": 1792120966697,
+  "results": [
+    {
+      "id": "exact",
+      "message": "/doc 全文精确检索“AD-Q8VN-6173”，给出命中文档、命中原文及行号，不要拆分关键词。",
+      "elapsedMs": 10979,
+      "executionId": "78b0c37f-f6c0-43ab-9814-5571ebcd19ce",
+      "executionStatus": "succeeded",
+      "routeChecks": {
+        "executionCreated": true,
+        "executionSucceeded": true,
+        "explorerUsed": true
+      },
+      "outputGate": null,
+      "checks": {
+        "completed": true,
+        "noStreamError": true,
+        "finalAnswer": true
+      },
+      "passed": true
+    },
+    {
+      "id": "fields",
+      "message": "/doc 检索“星桥管理闭环AD1015”，从原文核对预算、负责人、验收口令、交付截止日、验收规则，逐项给出准确值及行号引用。",
+      "elapsedMs": 7014,
+      "executionId": "a2f3b988-6ee5-4e22-9bde-363899b46bdc",
+      "executionStatus": "succeeded",
+      "routeChecks": {
+        "executionCreated": true,
+        "executionSucceeded": true,
+        "explorerUsed": true
+      },
+      "outputGate": null,
+      "checks": {
+        "completed": true,
+        "noStreamError": true,
+        "finalAnswer": true
+      },
+      "passed": true
+    },
+    {
+      "id": "nohit",
+      "message": "/doc 全文精确检索“UNSEEN1792120966697”，没有命中请明确说明，不要返回其他文件。",
+      "elapsedMs": 5492,
+      "executionId": "5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8",
+      "executionStatus": "succeeded",
+      "routeChecks": {
+        "executionCreated": true,
+        "executionSucceeded": true,
+        "explorerUsed": true
+      },
+      "outputGate": true,
+      "checks": {
+        "completed": true,
+        "noStreamError": true,
+        "finalAnswer": true
+      },
+      "passed": true
+    },
+    {
+      "id": "noise",
+      "message": "/doc UNSEEN1792120966697的安装配置方法，请检索工作空间文件，没有该实体请明确未找到，不要用其他软件教程代替。",
+      "elapsedMs": 7987,
+      "routeChecks": {
+        "executionCreated": false,
+        "executionSucceeded": false,
+        "explorerUsed": false
+      },
+      "outputGate": null,
+      "checks": {
+        "completed": true,
+        "noStreamError": true,
+        "finalAnswer": true
+      },
+      "passed": true
+    },
+    {
+      "id": "prefix",
+      "message": "/doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回其他文档。",
+      "elapsedMs": 6212,
+      "executionId": "e2a971e8-39ad-4c3e-815a-635a30676a6d",
+      "executionStatus": "succeeded",
+      "routeChecks": {
+        "executionCreated": true,
+        "executionSucceeded": true,
+        "explorerUsed": true
+      },
+      "outputGate": true,
+      "checks": {
+        "completed": true,
+        "noStreamError": true,
+        "finalAnswer": true
+      },
+      "passed": true
+    }
+  ]
+}

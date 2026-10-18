@@ -1,0 +1,34 @@
+[
+  {
+    "skill_id": null,
+    "is_generate_intent": true,
+    "is_inspect_intent": true,
+    "is_guide_intent": false,
+    "is_search_intent": false,
+    "is_research_intent": false,
+    "is_ppt_intent": false,
+    "deliverables": [],
+    "matched_reasons": [],
+    "empty_missing": ".md",
+    "test_chart_missing": ".md"
+  },
+  {
+    "skill_id": "xlsx",
+    "is_generate_intent": true,
+    "is_inspect_intent": true,
+    "is_guide_intent": false,
+    "is_search_intent": false,
+    "is_research_intent": false,
+    "is_ppt_intent": false,
+    "deliverables": [
+      ".xlsx"
+    ],
+    "matched_reasons": [
+      "trigger:xlsx(+18.0)",
+      "id/alias(+12.0)",
+      "desc_terms(6.3)"
+    ],
+    "empty_missing": ".xlsx",
+    "test_chart_missing": ".xlsx"
+  }
+]

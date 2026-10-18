@@ -1,0 +1,441 @@
+{
+  "id": "5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8",
+  "orgId": "e2bc525b-7b3e-499d-ba3d-e2a45ed9a71c",
+  "skillId": "platform.workspace.explorer",
+  "capabilityId": "platform.workspace.explorer",
+  "capabilitiesUsed": [
+    {
+      "id": "platform.workspace.explorer",
+      "name": "内置工作空间文档探索",
+      "version": "1.0.1"
+    }
+  ],
+  "skillVersion": "1.0.1",
+  "capabilityVersion": "1.0.1",
+  "status": "succeeded",
+  "runtimeType": "plan",
+  "riskLevel": "L0",
+  "executionMode": "deterministic_plan",
+  "currentStepId": null,
+  "currentPhaseKey": "phase_01_n1_内置工作空间文档探索",
+  "currentPhaseStatus": "completed",
+  "takeoverStatus": "resolved",
+  "requiresApproval": false,
+  "approvalStatus": "not_required",
+  "takeoverRequired": false,
+  "takeoverReason": null,
+  "resultJson": {
+    "result": {
+      "title": "/doc 全文精确检索“UNSEEN1792120966697”，没有命中请明确说明，不要返回其他文件。",
+      "summary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"UNSEEN1792120966697\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+      "resultType": "deterministic_plan",
+      "businessData": {
+        "finalOutputs": [
+          {
+            "value": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"UNSEEN1792120966697\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+            "fromNodeId": "n1_内置工作空间文档探索",
+            "isArtifact": false,
+            "targetField": "result",
+            "expectedType": "string",
+            "fromNodeOutput": "answer"
+          }
+        ],
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ]
+      },
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ]
+    },
+    "artifacts": [],
+    "execution": {
+      "status": "success",
+      "finishedAt": "2026-10-16T03:23:05.245Z",
+      "executionId": "5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8"
+    },
+    "detailText": "在当前工作空间（个人盘、部门盘与公司公共盘）的 20 个文档中，未检索到包含关键词“UNSEEN1792120966697”的内容，本次检索未命中任何文件。",
+    "chatSummary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 20 个文档中，未检索到包含关键词“UNSEEN1792120966697”的内容，本次检索未命中任何文件。",
+    "presentation": {
+      "detailText": "在当前工作空间（个人盘、部门盘与公司公共盘）的 20 个文档中，未检索到包含关键词“UNSEEN1792120966697”的内容，本次检索未命中任何文件。",
+      "chatSummary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 20 个文档中，未检索到包含关键词“UNSEEN1792120966697”的内容，本次检索未命中任何文件。",
+      "detailFormat": "markdown",
+      "summaryFormat": "markdown",
+      "preferAiSummary": false,
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ],
+      "notificationSummary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"UNSEEN1792120966697\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+      "preferStructuredView": false
+    },
+    "capabilitiesUsed": [
+      {
+        "id": "platform.workspace.explorer",
+        "name": "内置工作空间文档探索",
+        "version": "1.0.1"
+      }
+    ]
+  },
+  "inputJson": {
+    "prompt": "/doc 全文精确检索“UNSEEN1792120966697”，没有命中请明确说明，不要返回其他文件。",
+    "__promptDebug": {
+      "notes": [
+        "Generated via deterministic recipe 'workspace_explore' followed by selected-capability parameter recognition.",
+        "参数 'query' 已依据能力语义角色和路由策略确定性解析，未调用参数识别模型。"
+      ],
+      "llmCalls": [],
+      "userPrompt": "/doc 全文精确检索“UNSEEN1792120966697”，没有命中请明确说明，不要返回其他文件。",
+      "debugSource": "planner",
+      "systemPrompt": "Deterministic Recipe Topology",
+      "userPromptSectionKeys": [
+        "user_request"
+      ],
+      "systemPromptSectionKeys": [
+        "routing_cards",
+        "topology_dag"
+      ]
+    }
+  },
+  "normalizedInputJson": {
+    "prompt": "/doc 全文精确检索“UNSEEN1792120966697”，没有命中请明确说明，不要返回其他文件。",
+    "__promptDebug": {
+      "notes": [
+        "Generated via deterministic recipe 'workspace_explore' followed by selected-capability parameter recognition.",
+        "参数 'query' 已依据能力语义角色和路由策略确定性解析，未调用参数识别模型。"
+      ],
+      "llmCalls": [],
+      "userPrompt": "/doc 全文精确检索“UNSEEN1792120966697”，没有命中请明确说明，不要返回其他文件。",
+      "debugSource": "planner",
+      "systemPrompt": "Deterministic Recipe Topology",
+      "userPromptSectionKeys": [
+        "user_request"
+      ],
+      "systemPromptSectionKeys": [
+        "routing_cards",
+        "topology_dag"
+      ]
+    }
+  },
+  "input": {
+    "prompt": "/doc 全文精确检索“UNSEEN1792120966697”，没有命中请明确说明，不要返回其他文件。",
+    "__promptDebug": {
+      "notes": [
+        "Generated via deterministic recipe 'workspace_explore' followed by selected-capability parameter recognition.",
+        "参数 'query' 已依据能力语义角色和路由策略确定性解析，未调用参数识别模型。"
+      ],
+      "llmCalls": [],
+      "userPrompt": "/doc 全文精确检索“UNSEEN1792120966697”，没有命中请明确说明，不要返回其他文件。",
+      "debugSource": "planner",
+      "systemPrompt": "Deterministic Recipe Topology",
+      "userPromptSectionKeys": [
+        "user_request"
+      ],
+      "systemPromptSectionKeys": [
+        "routing_cards",
+        "topology_dag"
+      ]
+    }
+  },
+  "normalizedInput": {
+    "prompt": "/doc 全文精确检索“UNSEEN1792120966697”，没有命中请明确说明，不要返回其他文件。",
+    "__promptDebug": {
+      "notes": [
+        "Generated via deterministic recipe 'workspace_explore' followed by selected-capability parameter recognition.",
+        "参数 'query' 已依据能力语义角色和路由策略确定性解析，未调用参数识别模型。"
+      ],
+      "llmCalls": [],
+      "userPrompt": "/doc 全文精确检索“UNSEEN1792120966697”，没有命中请明确说明，不要返回其他文件。",
+      "debugSource": "planner",
+      "systemPrompt": "Deterministic Recipe Topology",
+      "userPromptSectionKeys": [
+        "user_request"
+      ],
+      "systemPromptSectionKeys": [
+        "routing_cards",
+        "topology_dag"
+      ]
+    }
+  },
+  "semantic": null,
+  "result": {
+    "result": {
+      "title": "/doc 全文精确检索“UNSEEN1792120966697”，没有命中请明确说明，不要返回其他文件。",
+      "summary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"UNSEEN1792120966697\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+      "resultType": "deterministic_plan",
+      "businessData": {
+        "finalOutputs": [
+          {
+            "value": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"UNSEEN1792120966697\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+            "fromNodeId": "n1_内置工作空间文档探索",
+            "isArtifact": false,
+            "targetField": "result",
+            "expectedType": "string",
+            "fromNodeOutput": "answer"
+          }
+        ],
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ]
+      },
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ]
+    },
+    "artifacts": [],
+    "execution": {
+      "status": "success",
+      "finishedAt": "2026-10-16T03:23:05.245Z",
+      "executionId": "5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8"
+    },
+    "detailText": "在当前工作空间（个人盘、部门盘与公司公共盘）的 20 个文档中，未检索到包含关键词“UNSEEN1792120966697”的内容，本次检索未命中任何文件。",
+    "chatSummary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 20 个文档中，未检索到包含关键词“UNSEEN1792120966697”的内容，本次检索未命中任何文件。",
+    "presentation": {
+      "detailText": "在当前工作空间（个人盘、部门盘与公司公共盘）的 20 个文档中，未检索到包含关键词“UNSEEN1792120966697”的内容，本次检索未命中任何文件。",
+      "chatSummary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 20 个文档中，未检索到包含关键词“UNSEEN1792120966697”的内容，本次检索未命中任何文件。",
+      "detailFormat": "markdown",
+      "summaryFormat": "markdown",
+      "preferAiSummary": false,
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ],
+      "notificationSummary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"UNSEEN1792120966697\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+      "preferStructuredView": false
+    },
+    "capabilitiesUsed": [
+      {
+        "id": "platform.workspace.explorer",
+        "name": "内置工作空间文档探索",
+        "version": "1.0.1"
+      }
+    ]
+  },
+  "normalizedResult": {
+    "envelope": {
+      "result": {
+        "title": "/doc 全文精确检索“UNSEEN1792120966697”，没有命中请明确说明，不要返回其他文件。",
+        "summary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"UNSEEN1792120966697\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+        "resultType": "deterministic_plan",
+        "businessData": {
+          "finalOutputs": [
+            {
+              "value": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"UNSEEN1792120966697\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+              "fromNodeId": "n1_内置工作空间文档探索",
+              "isArtifact": false,
+              "targetField": "result",
+              "expectedType": "string",
+              "fromNodeOutput": "answer"
+            }
+          ],
+          "capabilitiesUsed": [
+            {
+              "id": "platform.workspace.explorer",
+              "name": "内置工作空间文档探索",
+              "version": "1.0.1"
+            }
+          ]
+        },
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ]
+      },
+      "artifacts": [],
+      "execution": {
+        "status": "success",
+        "finishedAt": "2026-10-16T03:23:05.245Z",
+        "executionId": "5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8"
+      },
+      "detailText": "在当前工作空间（个人盘、部门盘与公司公共盘）的 20 个文档中，未检索到包含关键词“UNSEEN1792120966697”的内容，本次检索未命中任何文件。",
+      "chatSummary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 20 个文档中，未检索到包含关键词“UNSEEN1792120966697”的内容，本次检索未命中任何文件。",
+      "presentation": {
+        "detailText": "在当前工作空间（个人盘、部门盘与公司公共盘）的 20 个文档中，未检索到包含关键词“UNSEEN1792120966697”的内容，本次检索未命中任何文件。",
+        "chatSummary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 20 个文档中，未检索到包含关键词“UNSEEN1792120966697”的内容，本次检索未命中任何文件。",
+        "detailFormat": "markdown",
+        "summaryFormat": "markdown",
+        "preferAiSummary": false,
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ],
+        "notificationSummary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"UNSEEN1792120966697\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+        "preferStructuredView": false
+      },
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ]
+    },
+    "resultType": "deterministic_plan",
+    "title": "/doc 全文精确检索“UNSEEN1792120966697”，没有命中请明确说明，不要返回其他文件。",
+    "summary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 20 个文档中，未检索到包含关键词“UNSEEN1792120966697”的内容，本次检索未命中任何文件。",
+    "body": "在当前工作空间（个人盘、部门盘与公司公共盘）的 20 个文档中，未检索到包含关键词“UNSEEN1792120966697”的内容，本次检索未命中任何文件。",
+    "summaryFormat": "markdown",
+    "detailText": "在当前工作空间（个人盘、部门盘与公司公共盘）的 20 个文档中，未检索到包含关键词“UNSEEN1792120966697”的内容，本次检索未命中任何文件。",
+    "detailFormat": "markdown",
+    "structuredData": {
+      "finalOutputs": [
+        {
+          "value": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"UNSEEN1792120966697\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+          "fromNodeId": "n1_内置工作空间文档探索",
+          "isArtifact": false,
+          "targetField": "result",
+          "expectedType": "string",
+          "fromNodeOutput": "answer"
+        }
+      ],
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ]
+    },
+    "artifacts": [],
+    "hasBusinessResult": true,
+    "rawResult": {
+      "result": {
+        "title": "/doc 全文精确检索“UNSEEN1792120966697”，没有命中请明确说明，不要返回其他文件。",
+        "summary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"UNSEEN1792120966697\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+        "resultType": "deterministic_plan",
+        "businessData": {
+          "finalOutputs": [
+            {
+              "value": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"UNSEEN1792120966697\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+              "fromNodeId": "n1_内置工作空间文档探索",
+              "isArtifact": false,
+              "targetField": "result",
+              "expectedType": "string",
+              "fromNodeOutput": "answer"
+            }
+          ],
+          "capabilitiesUsed": [
+            {
+              "id": "platform.workspace.explorer",
+              "name": "内置工作空间文档探索",
+              "version": "1.0.1"
+            }
+          ]
+        },
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ]
+      },
+      "artifacts": [],
+      "execution": {
+        "status": "success",
+        "finishedAt": "2026-10-16T03:23:05.245Z",
+        "executionId": "5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8"
+      },
+      "detailText": "在当前工作空间（个人盘、部门盘与公司公共盘）的 20 个文档中，未检索到包含关键词“UNSEEN1792120966697”的内容，本次检索未命中任何文件。",
+      "chatSummary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 20 个文档中，未检索到包含关键词“UNSEEN1792120966697”的内容，本次检索未命中任何文件。",
+      "presentation": {
+        "detailText": "在当前工作空间（个人盘、部门盘与公司公共盘）的 20 个文档中，未检索到包含关键词“UNSEEN1792120966697”的内容，本次检索未命中任何文件。",
+        "chatSummary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 20 个文档中，未检索到包含关键词“UNSEEN1792120966697”的内容，本次检索未命中任何文件。",
+        "detailFormat": "markdown",
+        "summaryFormat": "markdown",
+        "preferAiSummary": false,
+        "capabilitiesUsed": [
+          {
+            "id": "platform.workspace.explorer",
+            "name": "内置工作空间文档探索",
+            "version": "1.0.1"
+          }
+        ],
+        "notificationSummary": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"UNSEEN1792120966697\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+        "preferStructuredView": false
+      },
+      "capabilitiesUsed": [
+        {
+          "id": "platform.workspace.explorer",
+          "name": "内置工作空间文档探索",
+          "version": "1.0.1"
+        }
+      ]
+    }
+  },
+  "usage": null,
+  "failureCode": null,
+  "failureReason": null,
+  "startedAt": "2026-10-16T03:23:04.766Z",
+  "endedAt": "2026-10-16T03:23:05.245Z",
+  "createdAt": "2026-10-16T03:23:04.751Z",
+  "updatedAt": "2026-10-16T03:23:10.159Z",
+  "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+  "phases": [
+    {
+      "id": "67000f41-3957-4698-b017-8912f46b9f5d",
+      "executionId": "5f7d67fc-a98e-4e9e-941c-1d4d9ab558a8",
+      "phaseKey": "phase_01_n1_内置工作空间文档探索",
+      "phaseName": "n1_内置工作空间文档探索",
+      "phaseType": "builtin",
+      "status": "completed",
+      "attempt": 1,
+      "runtimeSessionId": null,
+      "input": null,
+      "output": {
+        "action": "workflow",
+        "output": {
+          "query": "全文精确检索“UNSEEN1792120966697”,没有命中请明确说明,不要返回其他文件",
+          "answer": "在当前工作空间（个人盘、部门盘与公司公共盘）的 **20** 个文档中，未检索到包含关键词 \"UNSEEN1792120966697\" 的内容。\n\n当前工作空间共有 **20** 个文档（包括 `流程办结与电子存证备案单.md`、`合同合规智能审查与诊断报告.md`、`合同合规审查报告_保密合同_豆包有限公司_v1_20261001_法务批注版.html`、`保密合同_豆包有限公司_v1_20261001_法务批注版.pdf`、`流程办结与电子存证备案单.md` 等），建议检查关键词是否准确或尝试更换相关业务术语。",
+          "citations": [],
+          "scannedFiles": [],
+          "searchedFilesCount": 20
+        },
+        "status": "completed",
+        "stepId": "185cf9f3-f85f-4a23-a320-79fb07b04c20",
+        "snapshot": null,
+        "rawResult": null
+      },
+      "precheck": null,
+      "postcheck": null,
+      "errorCode": null,
+      "errorMessage": null,
+      "recoveryDecision": null,
+      "startedAt": "2026-10-16T03:23:04.778Z",
+      "completedAt": "2026-10-16T03:23:05.236Z",
+      "createdAt": "2026-10-16T03:23:04.778Z",
+      "updatedAt": "2026-10-16T03:23:05.236Z",
+      "artifacts": [],
+      "steps": [],
+      "takeovers": []
+    }
+  ]
+}

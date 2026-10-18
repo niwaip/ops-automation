@@ -6,6 +6,10 @@ import {
   stripSystemContext,
 } from '../routing/routing-policy.matcher';
 import { RoutingPolicyService } from '../routing/routing-policy.service';
+import {
+  isDocumentExtractCommand,
+  isWorkspaceExploreCommand,
+} from '../../chat/chat-slash-command.util';
 
 export type RecipeType = string;
 
@@ -26,7 +30,8 @@ export interface MatchedRecipe {
       | 'contract_review'
       | 'web_extract'
       | 'generate'
-      | 'notify';
+      | 'notify'
+      | 'workspace_explore';
     inputShape?: 'list' | 'text';
     dependsOn: string[];
   }>;
@@ -58,12 +63,12 @@ export class DeterministicRecipeMatcherService {
     const hasProcessing = hasRoutingSignal(userUtterance, 'processing', policy);
     const hasGeneration = hasRoutingSignal(userUtterance, 'generation', policy);
     const isExplicitFileExport =
-      /(?:生成|输出|导出|保存|写入|创建)\s*(?:为|成)?\s*(?:markdown|md|文档|文件|.*\.md)|\b(?:markdown|md)\s*(?:文件|交付件|文档)|\.md\b/i.test(
+      /(?:生成|输出|导出|保存|写入|创建)\s*(?:为|成|[一个份套项各类可下载正式的\s]*)*\s*(?:markdown|md|文档|文件|.*\.md)|\b(?:markdown|md)\s*(?:文件|交付件|交付物|成果物|文档)|\.md\b/i.test(
         userUtterance
       );
     const isJustFormatConstraint =
       /(?:用|以|按|按照)?\s*markdown\s*格式(?:总结|回复|输出|回答|提炼|概括)?/i.test(userUtterance) &&
-      !/(?:生成|导出|保存|写入)\s*(?:为|成)?\s*.*\.md|\.md\b/i.test(userUtterance);
+      !/(?:生成|导出|保存|写入)\s*.*?(?:文件|交付件|交付物|文档|\.md)/i.test(userUtterance);
     const hasMarkdownFile = isExplicitFileExport && !isJustFormatConstraint;
     const hasMarkdown = hasMarkdownFile;
     const hasPdfExport =
@@ -102,16 +107,25 @@ export class DeterministicRecipeMatcherService {
       /(?:生成|输出|导出|保存|写入|创建)\s*(?:为|成)?\s*(?:markdown|md|文档|文件|.*\.md)|\b(?:markdown|md)\s*(?:文件|交付件|文档)|\.md\b/gi,
       ''
     );
-    const isDocumentView =
-      /(?:查看|查阅|读取|提取|浏览|阅读)\s*(?:文档|文件|合同|协议|附件|内容|正文)/i.test(
+    const isReferenceToPreviousExtraction =
+      context?.hasPreviousResult === true &&
+      /(?:刚才|刚刚|上一次|上一轮|上述)(?:提取|生成|查阅|分析)?的?(?:结果|内容|正文|数据)/i.test(
         userUtterance
-      ) ||
-      ((hasAttachedDocument ||
-        /\.(?:pdf|docx?|pptx?|txt)\b/i.test(requestWithoutFileExport)) &&
-        /(?:查看|查阅|读取|提取|浏览|阅读)/i.test(userUtterance));
+      );
+    const hasDocumentExtractCmd = isDocumentExtractCommand(userUtterance);
+    const isDocumentView =
+      !isReferenceToPreviousExtraction &&
+      (hasDocumentExtractCmd ||
+        /(?:查看|查阅|读取|提取|浏览|阅读)\s*(?:文档|文件|合同|协议|附件|内容|正文)/i.test(
+          userUtterance
+        ) ||
+        ((hasAttachedDocument ||
+          /\.(?:pdf|docx?|pptx?|txt)\b/i.test(requestWithoutFileExport)) &&
+          /(?:查看|查阅|读取|提取|浏览|阅读)/i.test(userUtterance)));
     const effectiveHasSearch = hasSearch && !isDocumentView;
 
     const hasDocumentExtract =
+      !isReferenceToPreviousExtraction &&
       !hasPdfExport &&
       !hasPdfSplit &&
       !hasPdfMerge &&
@@ -286,6 +300,30 @@ export class DeterministicRecipeMatcherService {
       };
     }
 
+    // 提取文档正文 + 总结/整理 + 生成 Markdown 文件 (R09 场景)
+    if (hasDocumentExtract && (hasSummarize || hasProcessing || hasGeneration) && hasMarkdown) {
+      this.logger.log(
+        `Matched Recipe: document_extract_summarize_write_markdown for request: "${userUtterance}"`
+      );
+      return {
+        recipeName: 'document_extract_summarize_write_markdown',
+        objective: userRequest,
+        steps: [
+          { ref: 'n1', kind: 'skill', role: 'document_extract', dependsOn: [] },
+          {
+            ref: 'n2',
+            kind: 'llm_operation',
+            role: 'summarize',
+            inputShape: 'text',
+            dependsOn: ['n1'],
+          },
+          { ref: 'n3', kind: 'skill', role: 'markdown_writer', dependsOn: ['n2'] },
+        ],
+        finalNodeRef: 'n3',
+        requiresExternalData: true,
+      };
+    }
+
     // 模式 1：文档/附件文本提取 + 摘要。提取与生成式处理保持为两个
     // 独立能力，支持 PDF/Word/PPTX/TXT 等文档提取器复用同一编排形态。
     if (hasSummarize && hasDocumentExtract) {
@@ -343,6 +381,35 @@ export class DeterministicRecipeMatcherService {
       };
     }
 
+    // 工作空间文档探索 (R05 / R06)
+    // 只要显式输入 /doc、/workspace、/rag 指令，或明确提出探查工作空间，即使包含“方法/教程/列出/总结”等字眼，
+    // 也必须稳定进入工作空间文档探查流水线，绝不因包含通用描述词而漏入原生模型问答。
+    const isWorkspaceExplore =
+      isWorkspaceExploreCommand(userUtterance) ||
+      (/^(?:请?帮我)?(?:探查工作空间|查看工作空间文件|浏览知识库|列出空间文件|工作空间概览)/i.test(userUtterance) && !effectiveHasSearch);
+    if (isWorkspaceExplore && !hasMarkdownFile) {
+      this.logger.log(`Matched Recipe: workspace_explore for request: "${userUtterance}"`);
+      return {
+        recipeName: 'workspace_explore',
+        objective: userRequest,
+        steps: [{ ref: 'n1', kind: 'skill', role: 'workspace_explore', dependsOn: [] }],
+        finalNodeRef: 'n1',
+        requiresExternalData: true,
+      };
+    }
+
+    // 独立检索/搜索 (R03 / R04)
+    if (effectiveHasSearch && !hasSummarize && !hasNotifyAction && !hasMarkdown) {
+      this.logger.log(`Matched Recipe: web_search for request: "${userUtterance}"`);
+      return {
+        recipeName: 'web_search',
+        objective: userRequest,
+        steps: [{ ref: 'n1', kind: 'skill', role: 'search', dependsOn: [] }],
+        finalNodeRef: 'n1',
+        requiresExternalData: true,
+      };
+    }
+
     // 模式 2：搜索 + 总结
     if (effectiveHasSearch && hasSummarize) {
       this.logger.log(`Matched Recipe: search_then_summarize for request: "${userUtterance}"`);
@@ -383,6 +450,28 @@ export class DeterministicRecipeMatcherService {
           { ref: 'n2', kind: 'skill', role: 'markdown_writer', dependsOn: ['n1'] },
         ],
         finalNodeRef: 'n2',
+        requiresExternalData: false,
+      };
+    }
+
+    // 将上一次结果直接保存/导出为 Markdown 文件 (R10 续接场景)
+    if (
+      context?.hasPreviousResult === true &&
+      hasMarkdown &&
+      !hasDocumentExtract &&
+      !effectiveHasSearch &&
+      !hasSummarize
+    ) {
+      this.logger.log(
+        `Matched Recipe: write_markdown_from_previous_result for request: "${userUtterance}"`
+      );
+      return {
+        recipeName: 'write_markdown_from_previous_result',
+        objective: userRequest,
+        steps: [
+          { ref: 'n1', kind: 'skill', role: 'markdown_writer', dependsOn: [] },
+        ],
+        finalNodeRef: 'n1',
         requiresExternalData: false,
       };
     }

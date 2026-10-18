@@ -1,0 +1,151 @@
+- complementary:
+  - button:
+  - menu:
+    - menuitem "dashboard 工作台":
+      - img "dashboard":
+      - generic: 工作台
+    - menuitem "message 智能协同":
+      - img "message":
+      - generic: 智能协同
+    - menuitem "carry-out 任务中心":
+      - img "carry-out":
+      - generic: 任务中心
+    - menuitem "team 数字员工":
+      - img "team":
+      - generic: 数字员工
+    - menuitem "folder 资料空间":
+      - img "folder":
+      - generic: 资料空间
+  - menu:
+    - menuitem "setting 系统设置":
+      - img "setting":
+      - generic: 系统设置
+- banner:
+  - button "展开侧边栏":
+    - img "menu-unfold":
+  - generic: 智能协同
+  - button "bell 1 2":
+    - img "bell":
+    - superscript:
+      - generic: "1"
+      - generic: "2"
+  - button "bg-colors 浅色":
+    - img "bg-colors":
+    - generic: 浅色
+  - button "global 中文":
+    - img "global":
+    - generic: 中文
+  - button "A admin admin@example.com down":
+    - generic: A
+    - generic: admin
+    - generic: admin@example.com
+    - img "down":
+- main:
+  - button "menu-unfold":
+    - img "menu-unfold":
+  - button "plus":
+    - img "plus":
+  - button "清理全部会话":
+    - img "clear":
+  - img "desktop":
+  - text: 网页
+  - strong: 只根据以下虚构会议记录整理会议纪要，在聊天里返回
+  - button "调整阅读字体大小":
+    - img "font-size":
+  - button "plus":
+    - img "plus":
+  - button "reload":
+    - img "reload":
+  - button "delete":
+    - img "delete":
+  - generic: 只根据以下虚构会议记录整理会议纪要，在聊天里返回，不发送邮件、不通知他人、不创建日程。记录：2026年10月14日，测试项目例会，测试员甲与测试员乙参会；决定本周五完成接口联调，负责人测试员甲；测试员乙明天提交验收清单。请列出决议、负责人、截止时间，缺失信息标为未提供。
+  - img "user":
+  - img "clock-circle":
+  - generic: 10/14 14:44
+  - paragraph: 根据您提供的会议记录，整理的会议纪要如下：
+  - separator: ✦
+  - heading "会议纪要：测试项目例会" [level=3]:
+    - strong: 会议纪要：测试项目例会
+  - list:
+    - strong: 会议日期
+    - text: ：2026年10月14日
+    - strong: 参会人员
+    - text: ：测试员甲、测试员乙
+    - strong: 会议地点/形式
+    - text: ：未提供
+  - separator: ✦
+  - heading "决议与待办事项" [level=3]:
+    - strong: 决议与待办事项
+  - table:
+    - rowgroup:
+      - row "序号 决议事项 / 任务内容 负责人 截止时间":
+        - columnheader "序号"
+        - columnheader "决议事项 / 任务内容"
+        - columnheader "负责人"
+        - columnheader "截止时间"
+    - rowgroup:
+      - row "1 完成接口联调 测试员甲 本周五（2026年10月16日）":
+        - cell "1"
+        - cell "完成接口联调"
+        - cell "测试员甲"
+        - cell "本周五（2026年10月16日）"
+      - row "2 提交验收清单 测试员乙 明天（2026年10月15日）":
+        - cell "2"
+        - cell "提交验收清单"
+        - cell "测试员乙"
+        - cell "明天（2026年10月15日）"
+  - paragraph:
+    - emphasis:
+      - text: (注：记录中未提及的其他详细要求或验收标准均标为
+      - strong: 未提供
+      - text: )
+  - img "robot":
+  - img "clock-circle":
+  - generic: 10/14 14:44
+  - generic: 已完成
+  - generic "评价回答":
+    - button "回答有帮助":
+      - img "like":
+    - button "回答需要改进":
+      - img "dislike":
+  - button "保存到个人空间":
+    - img "book":
+  - button "收集到 GTD 收件箱":
+    - img "inbox":
+  - button "复制":
+    - img "copy":
+  - button "重试":
+    - img "redo":
+  - textbox "例如：/doc 分析工作空间架构 或 /email 总结今日邮件（输入 / 唤起工作技能，! 唤起工作流）"
+  - radiogroup "segmented control":
+    - radio "user 个人助理"
+    - img "user":
+    - generic: 个人助理
+    - radio "robot 企业协同" [checked]
+    - img "robot":
+    - generic: 企业协同
+  - 'button "bulb 思考: 中 down"':
+    - img "bulb":
+    - generic: "思考: 中"
+    - img "down":
+  - generic "联网搜索：已关闭（可选开启，开启后允许 AI 检索互联网公开资讯）":
+    - img "global":
+    - text: 联网
+    - switch
+  - generic "工作空间知识检索：已关闭（可选开启，开启后提问将自动探查并研读空间文档）":
+    - img "folder":
+    - text: 知识
+    - switch
+  - combobox
+  - generic "Auto / 系统默认"
+  - button "thunderbolt":
+    - img "thunderbolt":
+  - button "paper-clip":
+    - img "paper-clip":
+  - button "audio":
+    - img "audio":
+  - button "plus":
+    - img "plus":
+  - button "send 发送" [disabled]:
+    - img "send":
+    - generic: 发送

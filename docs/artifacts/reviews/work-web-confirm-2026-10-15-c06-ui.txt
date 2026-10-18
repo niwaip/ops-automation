@@ -1,0 +1,170 @@
+- complementary:
+  - button:
+  - menu:
+    - menuitem "dashboard 工作台":
+      - img "dashboard":
+      - generic: 工作台
+    - menuitem "message 智能协同":
+      - img "message":
+      - generic: 智能协同
+    - menuitem "carry-out 任务中心":
+      - img "carry-out":
+      - generic: 任务中心
+    - menuitem "team 数字员工":
+      - img "team":
+      - generic: 数字员工
+    - menuitem "folder 资料空间":
+      - img "folder":
+      - generic: 资料空间
+  - menu:
+    - menuitem "setting 系统设置":
+      - img "setting":
+      - generic: 系统设置
+- banner:
+  - button "展开侧边栏":
+    - img "menu-unfold":
+  - generic: 智能协同
+  - button "bell 7":
+    - img "bell":
+    - superscript:
+      - generic: "7"
+  - button "bg-colors 浅色":
+    - img "bg-colors":
+    - generic: 浅色
+  - button "global 中文":
+    - img "global":
+    - generic: 中文
+  - button "A admin admin@example.com down":
+    - generic: A
+    - generic: admin
+    - generic: admin@example.com
+    - img "down":
+- main:
+  - button "menu-unfold":
+    - img "menu-unfold":
+  - button "plus":
+    - img "plus":
+  - button "清理全部会话":
+    - img "clear":
+  - img "desktop":
+  - text: 网页
+  - strong: Python 官方最新稳定版本是什么？只检索 p
+  - button "调整阅读字体大小":
+    - img "font-size":
+  - button "plus":
+    - img "plus":
+  - button "reload":
+    - img "reload":
+  - button "delete":
+    - img "delete":
+  - generic: 任务结果
+  - link "thunderbolt 详细":
+    - /url: /executions/ad1398d6-4cfe-4540-98ee-af22f64505ad
+    - img "thunderbolt":
+    - generic: 详细
+  - generic: 状态：已完成
+  - paragraph: 根据检索到的 Python 官网信息，相关结果如下：
+  - list:
+    - strong: 版本号
+    - text: ：Python 3.15.0
+    - strong: 发布日期
+    - text: ：2026 年 10 月 9 日
+    - strong: 来源链接
+    - text: ：
+    - link "Python 官方网站 (python.org)":
+      - /url: https://www.python.org
+  - img "play-circle":
+  - generic: 📄 Python常见问题 — Python 3.10.22 文档
+  - generic: general.html
+  - generic: 💡 Python常见问题 — Python 3.10.22 文档已就绪（点击展开在线预览）
+  - button "eye 展开在线预览":
+    - img "eye":
+    - generic: 展开在线预览
+  - button "fullscreen 全屏":
+    - img "fullscreen":
+    - generic: 全屏
+  - button "export 新窗口":
+    - img "export":
+    - generic: 新窗口
+  - button "download 下载":
+    - img "download":
+    - generic: 下载
+  - img "global":
+  - generic: 参考来源 (5)：
+  - link "link Python Release Python 3.12.0 | Python.org":
+    - /url: https://www.python.org/downloads/release/python-3120
+    - img "link":
+    - text: Python Release Python 3.12.0 | Python.org
+  - link "link Download Python | Python.org":
+    - /url: https://www.python.org/downloads
+    - img "link":
+    - text: Download Python | Python.org
+  - link "link Python常见问题 — Python 3.10.22 文档":
+    - /url: https://docs.python.org/zh-cn/3.10/faq/general.html
+    - img "link":
+    - text: Python常见问题 — Python 3.10.22 文档
+  - link "link Python常见问题 — Python 3.13.16 文档":
+    - /url: https://docs.python.org/zh-cn/3.13/faq/general.html
+    - img "link":
+    - text: Python常见问题 — Python 3.13.16 文档
+  - link "link Welcome to Python.org":
+    - /url: https://www.python.org
+    - img "link":
+    - text: Welcome to Python.org
+  - generic "查看结构化结果" [active]
+  - generic: "{ \"query\": \"Python 官方最新稳定版本是什么?只检索 python.org,给出版本号、发布日期和来源链接\", \"answer\": \"According to the sources, the official latest stable version of Python as of today, October 15, 2026, is Python 3.15.0. This information is directly stated on the Python.org download page. The page also mentions that Python 3.16.0 alpha 1 is now available, indicating ongoing development beyond the stable release. For the most up-to-date information, it is recommended to visit the official Python website.\", \"results\": [ { \"url\": \"https://www.python.org/downloads/release/python-3120\", \"score\": 0.6690754, \"title\": \"Python Release Python 3.12.0 | Python.org\", \"snippet\": \"Python 3.12.0 is the newest major release of the Python programming language, and it contains many new features and optimizations.\\n\\n# Major new features of the 3.12 series, compared to 3.11\\n\\n## New features [...] | Version | Operating system | Description | File size | Sigstore | GPG | MD5 checksum |\\n --- --- --- \\n| Gzipped source tarball | Source release | 25.9 MB | .sigstore | SIG | `d6eda3e1399cef5d fde7c4f319b0596c` |\\n| XZ compressed source tarball | Source release | 19.6 MB | .sigstore | SIG | `f6f4616584b23254 d165f4db90c247d6` |\\n| macOS 64-bit universal2 installer | macOS | for macOS 10.9 and later | 43.3 MB | .sigstore | SIG | `eddf6f35a3cbab94 f2f83b2875c5fc27` | [...] ```\" }, { \"url\": \"https://www.python.org/downloads\", \"score\": 0.6659544, \"title\": \"Download Python | Python.org\", \"snippet\": \"166. Python 3.5.8 Oct. 29, 2019 Download Release notes\\n167. Python 3.5.7 March 18, 2019 Download Release notes\\n168. Python 3.5.6 Aug. 2, 2018 Download Release notes\\n169. Python 3.5.5 Feb. 5, 2018 Download Release notes\\n170. Python 3.5.4 Aug. 8, 2017 Download Release notes\\n171. Python 3.5.3 Jan. 17, 2017 Download Release notes\\n172. Python 3.5.2 June 27, 2016 Download Release notes\\n173. Python 3.5.1 Dec. 7, 2015 Download Release notes [...] 174. Python 3.5.0 Sept. 13, 2015 Download Release notes\\n175. Python 3.4.10 March 18, 2019 Download Release notes\\n176. Python 3.4.9 Aug. 2, 2018 Download Release notes\\n177. Python 3.4.8 Feb. 5, 2018 Download Release notes\\n178. Python 3.4.7 Aug. 9, 2017 Download Release notes\\n179. Python 3.4.6 Jan. 17, 2017 Download Release notes\\n180. Python 3.4.5 June 27, 2016 Download Release notes\\n181. Python 3.4.4 Dec. 21, 2015 Download Release notes [...] 118. Python 3.8.11 June 28, 2021 Download Release notes\\n119. Python 3.8.10 May 3, 2021 Download Release notes\\n120. Python 3.8.9 April 2, 2021 Download Release notes\\n121. Python 3.8.8 Feb. 19, 2021 Download Release notes\\n122. Python 3.8.7 Dec. 21, 2020 Download Release notes\\n123. Python 3.8.6 Sept. 24, 2020 Download Release notes\\n124. Python 3.8.5 July 20, 2020 Download Release notes\\n125. Python 3.8.4 July 13, 2020 Download Release notes\" }, { \"url\": \"https://docs.python.org/zh-cn/3.10/faq/general.html\", \"score\": 0.6601948, \"title\": \"Python常见问题 — Python 3.10.22 文档\", \"snippet\": \"### Python 有多稳定？¶\\n\\n非常稳定。 自 1991 年起大约每隔 6 到 18 个月就会推出新的稳定发布版，这种状态看来还还持续。 从 3.9 版开始，Python 将会每隔 12 个月推出一个新的主要发布版 (PEP 602)。\\n\\n开发者也会推出旧版本的“问题修正”发布版，因此现有发布版的稳定性还会逐步提升。 问题修正发布版会以版本号第三部分的数字来标示（例如 3.5.3, 3.6.2），用于稳定性的管理；只有对已知问题的修正会包含在问题修正发布版中，同一系列的问题修正发布版中的接口确定将会始终保持一致。\\n\\n最后的稳定版本总是可以在 Python 下载页 中找到。 有两个生产环境可用的 Python 版本：2.x 和 3.x。 推荐的版本是 3.x，大多数被广泛使用的库都支持它。 虽然 2.x 也仍然被广泛使用，但是 它已经停止维护。\\n\\n### 有多少人在使用 Python？¶\\n\\n使用者应该数以百万计，但很难获得一个精确的数字。 [...] 你还可能看到带有“+”后缀的版本号，例如“2.2+”。 这表示未发布版本，直接基于 CPython 开发代码仓库构建。 在实际操作中，当一个小版本最终发布后，未发布版本号会递增到下一个小版本号，成为“a0”版本，例如“2.4a0”。\\n\\n另请参阅 `sys.version`, `sys.hexversion` 以及 `sys.version_info` 的文档。\\n\\n### 我应如何获取一份 Python 源代码的副本？¶\\n\\n最新的 Python 发布版源代码总能从 python.org 获取，下载页链接为 。 最新的开发版源代码可以在 获取。\\n\\n发布版源代码是一个以 gzip 压缩的 tar 文件，其中包含完整的 C 源代码、Sphinx 格式的文档、Python 库模块、示例程序以及一些有用的自由分发软件。 该源代码将可在大多数 UNIX 类平台上直接编译并运行。\\n\\n请参阅 Python 开发者指南的初步上手部分 了解有关获取源代码并进行编译的更多信息。\\n\\n### 我应如何获取 Python 的文档？¶ [...] - Python 有多稳定？\\n - 有多少人在使用 Python？\\n - 有哪些重要的项目是用 Python 开发的？\\n - 在未来可以期待 Python 将有什么新进展？\\n - 提议对 Python 加入不兼容的更改是否合理？\\n - Python 是一种对编程初学者友好的语言吗？\\n\\n## 一般信息¶\\n\\n### 什么是 Python？¶\\n\\nPython 是一种解释型、交互式、面向对象的编程语言。 它包含了模块、异常、动态类型、高层级动态数据类型以及类等特性。 在面向对象编程以外它还支持多种编程范式，例如过程式和函数式编程等。 Python 结合了超强的功能和极清晰的语法。 它带有许多系统调用和库以及多种窗口系统的接口，并且能用 C 或 C++ 来进行扩展。 它还可用作需要可编程接口的应用程序的扩展语言。 最后，Python 非常易于移植：它可以在包括 Linux 和 macOS 在内的许多 Unix 变种以及 Windows 上运行。\" }, { \"url\": \"https://docs.python.org/zh-cn/3.13/faq/general.html\", \"score\": 0.60694176, \"title\": \"Python常见问题 — Python 3.13.16 文档\", \"snippet\": \"开发者也会推出较旧版本的问题修正发布版，因此现有发布版的稳定性还会逐步提升。 问题修正发布版会以版本号第三部分的数字来标示（例如 3.5.3, 3.6.2），用于稳定性管理；只有对已知问题的修正会包含在问题修正发布版中，而同一系列的问题修正发布版中的接口将会始终保持一致。\\n\\n最新的稳定发布版总是可以在 Python 下载页 中找到。 Python 3.x 是推荐的版本并被大多数广泛使用的库所支持。 Python 2.x 已不再维护。\\n\\n### 有多少人在使用 Python？¶\\n\\n使用者应该数以百万计，但很难获得一个精确的数字。\\n\\nPython 可以免费下载，因此并不存在销量数据，此外它也可以从许多不同网站获取，并且包含于许多 Linux 发行版之中，因此下载量统计同样无法完全说明问题。\\n\\ncomp.lang.python 新闻组非常活跃，但不是所有 Python 用户都会在新闻组发帖，许多人甚至不会阅读新闻组。\\n\\n### 有哪些重要的项目是用 Python 开发的？¶ [...] ### www.python.org 具体位于世界上的哪个地点？¶\\n\\nPython 项目的基础设施分布于世界各地并由 Python 基础设施团队负责管理。 相关细节请访问 这里。\\n\\n### 为何命名为 Python？¶\\n\\n在着手编写 Python 实现的时候，Guido van Rossum 同时还阅读了刚出版的 \\\"Monty Python 的飞行马戏团\\\" 剧本，这是一部自 1970 年代开始播出的 BBC 系列喜剧。 Van Rossum 觉得他需要选择一个简短、独特而又略显神秘的名字，于是他决定将这个新语言命名为 Python。\\n\\n### 我必须喜欢 \\\"Monty Python 的飞行马戏团\\\" 吗？¶\\n\\n不必，但这对学习会有帮助。 :)\\n\\n## 现实世界中的 Python¶\\n\\n### Python 有多稳定？¶\\n\\n非常稳定。 自 1991 年起大约每隔 6 至 18 个月就会推出新的稳定发布版，这种状态看来还会持续下去。 从 3.9 版开始，Python 将会每隔 12 个月推出一个新增特征版本 (PEP 602)。 [...] 你还可能看到带有“+”后缀的版本号，例如“2.2+”。 这表示未发布版本，直接基于 CPython 开发代码仓库构建。 在实际操作中，当一个小版本最终发布后，未发布版本号会递增到下一个小版本号，成为“a0”版本，例如“2.4a0”。\\n\\n请参阅 Developer's Guide 获取更多有关开发流程的信息，并参阅 PEP 387 了解更多有关 Python 的向下兼容策略的信息。 另请参阅有关 `sys.version`, `sys.hexversion` 和 `sys.version_info` 的文档。\\n\\n### 我应如何获取一份 Python 源代码的副本？¶\\n\\n最新的 Python 发布版源代码总能从 python.org 获取，下载页链接为 。 最新的开发版源代码可以在 获取。\\n\\n发布版源代码是一个以 gzip 压缩的 tar 文件，其中包含完整的 C 源代码、Sphinx 格式的文档、Python 库模块、示例程序以及一些有用的自由分发软件。 该源代码将可在大多数 UNIX 类平台上直接编译并运行。\" }, { \"url\": \"https://www.python.org\", \"score\": 0.5874941, \"title\": \"Welcome to Python.org\", \"snippet\": \"## Download\\n\\nPython source code and installers are available for download for all versions!\\n\\nLatest: Python 3.15.0\\n\\n## Docs\\n\\nDocumentation for Python's standard library, along with tutorials and guides, are available online.\\n\\ndocs.python.org\\n\\n## Jobs\\n\\nLooking for work or have a Python related position that you're trying to hire for? Our relaunched community-run job board is the place to go.\\n\\njobs.python.org\\n\\n## Latest News\\n\\nMore news [...] More news\\n\\n 2026-10-13Python 3.16.0 alpha 1 is now available\\n 2026-10-10PSF News: Board & Inaugural Python Packaging Council Election Results, Strategic Plan, and PyPI Security\\n 2026-10-09Python 3.15.0 (final) is here!\\n 2026-10-07PSF News: Board & Inaugural Python Packaging Council Election Results, Strategic Plan, and PyPI Security\\n 2026-10-02Python 3.15.0 candidate 3 is here!\\n\\n## Upcoming Events\\n\\nMore [...] Downloads\\n All releases\\n Source code\\n Windows\\n macOS\\n Android\\n iOS\\n Other Platforms\\n License\\n Alternative Implementations\\n ### Python Source\\n\\nPython 3.15.0\\n\\nNot the OS you are looking for? Python can be used on many operating systems and environments. View the full list of downloads. #### Download for Windows\\n\\nPython install manager\\n\\nOr get the standalone installer for Python 3.15.0\" } ], \"provider\": \"tavily\", \"warnings\": [], \"searchedAt\": \"2026-10-15T01:47:33.973Z\", \"resultCount\": 5 }"
+  - generic "查看相关结果与产物链接 (5 项)"
+  - img "robot":
+  - img "clock-circle":
+  - generic: 10/15 09:47
+  - generic: 已完成
+  - generic: Tokens:1840
+  - generic: /
+  - generic: 输入:1172 输出:38 (+推理:630)
+  - generic "评价回答":
+    - button "回答有帮助":
+      - img "like":
+    - button "回答需要改进":
+      - img "dislike":
+  - button "保存到个人空间":
+    - img "book":
+  - button "收集到 GTD 收件箱":
+    - img "inbox":
+  - button "复制":
+    - img "copy":
+  - button "重试":
+    - img "redo":
+  - textbox "例如：/doc 分析工作空间架构 或 /email 总结今日邮件（输入 / 唤起工作技能，! 唤起工作流）"
+  - radiogroup "segmented control":
+    - radio "user 个人助理"
+    - img "user":
+    - generic: 个人助理
+    - radio "robot 企业协同" [checked]
+    - img "robot":
+    - generic: 企业协同
+  - 'button "bulb 思考: 中 down"':
+    - img "bulb":
+    - generic: "思考: 中"
+    - img "down":
+  - generic "联网搜索：已关闭（可选开启，开启后允许 AI 检索互联网公开资讯）":
+    - img "global":
+    - text: 联网
+    - switch
+  - generic "工作空间知识检索：已关闭（可选开启，开启后提问将自动探查并研读空间文档）":
+    - img "folder":
+    - text: 知识
+    - switch
+  - combobox
+  - generic "Auto / 系统默认"
+  - button "thunderbolt":
+    - img "thunderbolt":
+  - button "paper-clip":
+    - img "paper-clip":
+  - button "audio":
+    - img "audio":
+  - button "plus":
+    - img "plus":
+  - button "send 发送" [disabled]:
+    - img "send":
+    - generic: 发送
+- tooltip "请输入内容后发送"

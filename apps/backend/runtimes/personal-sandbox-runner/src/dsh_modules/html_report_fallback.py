@@ -6,6 +6,42 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 
 
+def is_plausible_html_content(content: str, min_size: int = 40) -> bool:
+    """Validates if an HTML string is a plausible deliverable rather than an empty/placeholder test probe."""
+    if not content or len(content.strip()) < min_size:
+        return False
+    lower = content.lower().strip()
+    if not ("<!doctype html" in lower or "<html" in lower):
+        return False
+
+    # 提取 body 纯文本
+    body_m = re.search(r'<body[^>]*>(.*?)</body>', content, re.DOTALL | re.I)
+    body_content = body_m.group(1).strip() if body_m else content.strip()
+    visible_text = re.sub(r'<[^>]+>', ' ', body_content)
+    visible_text = re.sub(r'\s+', ' ', visible_text).strip().lower()
+
+    # 纯占位词或单词探针（如 <body>Test</body> 或 <body>Hello World</body>，且缺少语义内容标签）
+    if visible_text in {"test", "hello world", "test page", "demo", "placeholder", "temp", "sample", ""}:
+        has_semantic_tags = bool(re.search(r'<(?:h[1-6]|table|canvas|svg|form|main|article|ul|ol|p)\b', body_content, re.I))
+        if not has_semantic_tags:
+            return False
+
+    return True
+
+
+def is_plausible_html_file(file_path: Path, min_size: int = 40) -> bool:
+    """Validates if an HTML file on disk is a genuine deliverable rather than an empty probe/placeholder."""
+    try:
+        if not file_path.exists() or not file_path.is_file():
+            return False
+        if file_path.stat().st_size < min_size:
+            return False
+        content = file_path.read_text(encoding="utf-8", errors="ignore")
+        return is_plausible_html_content(content, min_size=min_size)
+    except Exception:
+        return False
+
+
 def _format_inline(text: str) -> str:
     """Formats basic markdown bold, italic, code, and links in HTML."""
     escaped = escape(text)
@@ -179,22 +215,30 @@ def materialize_requested_html(
     if ws.exists():
         recent_htmls = [
             f for f in ws.glob("*.html")
-            if f.is_file() and f.stat().st_size > 50 and (turn_start_time is None or f.stat().st_mtime >= turn_start_time - 2.0)
+            if f.is_file() and is_plausible_html_file(f) and (turn_start_time is None or f.stat().st_mtime >= turn_start_time - 2.0)
         ]
         if recent_htmls:
             return None, False
 
     # 3. 校验意图：用户明确要求 HTML / 网页 / 单页 / 报告，或模型声称输出了 HTML 文件
     p_lower = (prompt or "").lower()
+    user_cmd = p_lower
+    if "用户指令：" in user_cmd:
+        user_cmd = user_cmd.split("用户指令：")[-1].strip()
+    elif "用户指令:" in user_cmd:
+        user_cmd = user_cmd.split("用户指令:")[-1].strip()
+    else:
+        user_cmd = re.sub(r'【(?:当前轮次用户上传附件|当前会话有效附件清单)】:[^\n]+\n?', '', user_cmd).strip()
+
     text_lower = (final_text or "").lower()
     names_non_web_format = bool(
-        re.search(r'(?:pptx?|slides?|幻灯片|演示文稿|pdf|docx?|word|xlsx?|excel)', p_lower, re.I)
+        re.search(r'(?:pptx?|slides?|幻灯片|演示文稿|pdf|docx?|word|xlsx?|excel)', user_cmd, re.I)
     )
     html_cues = ["html", "单页", "页面", "网页", "原型", "demo", "大屏", "看板"]
     has_cue = (not names_non_web_format) and (
         is_design_intent
-        or any(cue in p_lower for cue in html_cues)
-        or ("报告" in p_lower and any(cue in p_lower for cue in ["单页", "一页", "html", "网页"]))
+        or any(cue in user_cmd for cue in html_cues)
+        or ("报告" in user_cmd and any(cue in user_cmd for cue in ["单页", "一页", "html", "网页"]))
     )
     claims_html = (not names_non_web_format) and (
         bool(re.search(r'(?:/workspace/|workspace/|`)([a-zA-Z0-9_\-]+\.html)', final_text or "", re.I)) or ("单页 html" in text_lower)
@@ -221,14 +265,29 @@ def materialize_requested_html(
 
 
 def _recent_report_source(history: List[Dict[str, Any]]) -> str:
-    for item in reversed(history[-12:]):
+    # 优先选取非方案规划的助手有效正文；若仅有方案规划且含实质结构化内容，作为保底来源
+    planning_candidate = ""
+    error_pattern = re.compile(
+        r"(?:未生成可用文件|模型响应超时|上游模型未返回|文件已成功写入|收尾汇总时未输出|沙箱已成功调用工具|任务未完成最终交付)"
+    )
+
+    for item in reversed(history[-30:]):
         if not isinstance(item, dict) or item.get("role") != "assistant":
             continue
         content = str(item.get("content") or "").strip()
-        if len(content) < 60 or re.search(r"(?:未生成可用文件|模型响应超时|上游模型未返回|文件已成功写入)", content):
+        if len(content) < 60:
+            continue
+        if error_pattern.search(content):
+            continue
+        if content.startswith("【方案规划】") or content.startswith("【规划阶段"):
+            if not planning_candidate:
+                cleaned_plan = re.sub(r"^【(?:方案规划|规划阶段)[^】]*】\s*", "", content).strip()
+                if len(cleaned_plan) >= 60 and any(sym in cleaned_plan for sym in ["#", "-", "*", "|", ":", "："]):
+                    planning_candidate = cleaned_plan[:24000]
             continue
         return content[:24000]
-    return ""
+
+    return planning_candidate
 
 
 

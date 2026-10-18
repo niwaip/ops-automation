@@ -66,5 +66,6 @@
   "selectTemplate": "选择报告模版",
   "selectTemplatePlaceholder": "选择一个报告模版",
   "noTemplates": "没有可用的报告模版",
-  "createTemplate": "创建模版"
+  "createTemplate": "创建模版",
+  "openInNewTab": "新标签页打开"
 }

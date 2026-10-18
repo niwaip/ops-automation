@@ -29,6 +29,8 @@ describe('PlanRouteClassifierService document routing', () => {
   it('routes standalone content processing through deterministic planning so missing content can be requested', () => {
     expect(service.classifyRoute('进行总结')).toBe('deterministic_plan');
     expect(service.classifyRoute('翻译成英文')).toBe('deterministic_plan');
+    expect(service.classifyRoute('/extract')).toBe('deterministic_plan');
+    expect(service.classifyRoute('/extract 客户数据')).toBe('deterministic_plan');
   });
 
   it.each([
@@ -65,5 +67,17 @@ describe('PlanRouteClassifierService document routing', () => {
     expect(
       service.shouldAttemptSingleSkillContinuation('bark推送', { hasPreviousResult: false })
     ).toBe(false);
+  });
+
+  it('routes guide and inquiry requests to single_skill to allow native model guidance', () => {
+    expect(service.classifyRoute('如何使用知识库进行多文档对比？')).toBe('single_skill');
+    expect(service.classifyRoute('什么是工作空间权限？')).toBe('single_skill');
+    expect(service.classifyRoute('如何配置邮件集成？')).toBe('single_skill');
+  });
+
+  it('preserves deterministic plan routing for explicit slash commands even when inquiry terms like "安装方法" are present', () => {
+    expect(service.classifyRoute('/doc deepseek harness的安装方法')).toBe('deterministic_plan');
+    expect(service.classifyRoute('/doc 未知实体的安装配置方法')).toBe('deterministic_plan');
+    expect(service.classifyRoute('/extract 附件使用教程')).toBe('deterministic_plan');
   });
 });

@@ -1,0 +1,4 @@
+ops-ai-orchestrator  | [Nest] 219  - 10/13/2026, 8:10:53 PM     LOG [UserSandboxDispatcherService] Stopping personal sandbox execution for user [e7fce333-a8f4-4097-9a53-f0a4c729da46] session [9ba69fff-18b0-4785-84bd-bfcfed31e749]...
+ops-ai-orchestrator  | [Nest] 219  - 10/13/2026, 8:10:53 PM    WARN [UserSandboxDispatcherService] Run harness timed out for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-ai-orchestrator  | [Nest] 219  - 10/13/2026, 8:10:53 PM   ERROR [TraceInterceptor] [d08e9c2d-6464-4941-a4ec-afec6da87da5] GET /ai/chat/sessions/9ba69fff-18b0-4785-84bd-bfcfed31e749/messages/1791893448367-3ku5h0dx/feedback failed: Chat session not found
+ops-ai-orchestrator  | [Nest] 219  - 10/13/2026, 8:10:53 PM     LOG [TraceInterceptor] [4a6b692a-c903-49eb-afaf-0f6485d93c46] POST /ai/chat/stop 164ms

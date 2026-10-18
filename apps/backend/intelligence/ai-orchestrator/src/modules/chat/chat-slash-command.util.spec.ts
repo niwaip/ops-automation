@@ -58,6 +58,14 @@ describe('parseChatSlashCommand', () => {
     const parsed = parseChatSlashCommand('/help');
     expect(parsed.isCommandOnly).toBe(true);
     expect(parsed.systemReply).toContain('快捷指令帮助');
+    expect(parsed.systemReply).toContain('需在左下方切换至【工作模式】使用');
+  });
+
+  it('adapts /help command when executed in work/task mode', () => {
+    const parsed = parseChatSlashCommand('/help', 'task');
+    expect(parsed.isCommandOnly).toBe(true);
+    expect(parsed.systemReply).toContain('企业工作能力（当前已就绪）');
+    expect(parsed.systemReply).not.toContain('需在左下方切换至【工作模式】使用');
   });
 
   it('leaves regular text untouched with default mode', () => {

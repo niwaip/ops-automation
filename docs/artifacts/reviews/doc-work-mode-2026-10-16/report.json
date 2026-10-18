@@ -1,0 +1,59 @@
+{
+  "batch": 1792117757998,
+  "results": [
+    {
+      "id": "exact",
+      "message": "/doc 全文精确检索“AD-Q8VN-6173”，给出命中文档、命中原文及行号，不要拆分关键词。",
+      "elapsedMs": 11892,
+      "executionId": "0af1a9d3-abc3-4b78-8a70-81d188a856af",
+      "executionStatus": "succeeded",
+      "checks": {
+        "executionCreated": true,
+        "noStreamError": true,
+        "explorerUsed": true,
+        "answer": true
+      },
+      "passed": true
+    },
+    {
+      "id": "fields",
+      "message": "/doc 检索“星桥管理闭环AD1015”，从原文核对预算、负责人、验收口令、交付截止日、验收规则，逐项给出准确值及行号引用。",
+      "elapsedMs": 7200,
+      "executionId": "8eb0a300-ebc2-468d-8d7d-e0fe8e2875a7",
+      "executionStatus": "succeeded",
+      "checks": {
+        "executionCreated": true,
+        "noStreamError": true,
+        "explorerUsed": true,
+        "answer": true
+      },
+      "passed": true
+    },
+    {
+      "id": "nohit",
+      "message": "/doc 全文精确检索“UNSEEN1792117757998”，没有命中请明确说明，不要返回其他文件。",
+      "elapsedMs": 5998,
+      "executionId": "b5fc706a-6cb5-479d-b442-9029b8b550b9",
+      "executionStatus": "succeeded",
+      "checks": {
+        "executionCreated": true,
+        "noStreamError": true,
+        "explorerUsed": true,
+        "answer": true
+      },
+      "passed": true
+    },
+    {
+      "id": "noise",
+      "message": "/doc UNSEEN1792117757998的安装配置方法，请检索工作空间文件，没有该实体请明确未找到，不要用其他软件教程代替。",
+      "elapsedMs": 7858,
+      "checks": {
+        "executionCreated": false,
+        "noStreamError": true,
+        "explorerUsed": false,
+        "answer": true
+      },
+      "passed": false
+    }
+  ]
+}

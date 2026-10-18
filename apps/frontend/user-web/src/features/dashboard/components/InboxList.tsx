@@ -24,6 +24,7 @@ import {
   UpOutlined,
 } from "@ant-design/icons";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { InboxContentPreview } from "./InboxContentPreview";
 import {
   getContractComparisonPair,
@@ -125,6 +126,7 @@ export function InboxList({
   onUnarchiveItem,
   onDeleteItem,
 }: InboxListProps) {
+  const { t } = useTranslation('dashboard');
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -600,7 +602,7 @@ export function InboxList({
             className={isShaking ? styles["inbox-input-shake"] : undefined}
             status={errorMessage ? "error" : undefined}
             value={inboxDraft}
-            placeholder="快速收集便签/要点（Enter 保存，Shift+Enter 换行）..."
+            placeholder={t("inbox.placeholder", "快速收集便签/要点（Enter 保存，Shift+Enter 换行）...")}
             onChange={(e) => handleDraftChange(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -617,21 +619,23 @@ export function InboxList({
             onClick={handleCollectClick}
             className={styles["workbench-compact-btn-primary"]}
           >
-            收集
+            {t("inbox.collect_btn", "收集")}
           </Button>
         </div>
         {onSyncEmail ? (
-          <Tooltip title="执行工作流：从已绑定的邮箱拉取未读邮件并沉淀入 GTD 收件箱">
-            <Button
-              size="small"
-              icon={isSyncingEmail ? <LoadingOutlined spin /> : <MailOutlined />}
-              onClick={onSyncEmail}
-              loading={isSyncingEmail}
-              className={styles["workbench-compact-btn-subtle"]}
-            >
-              收取邮件
-            </Button>
-          </Tooltip>
+          <div className={styles["workbench-compact-actions"]}>
+            <Tooltip title="执行工作流：从已绑定的邮箱拉取未读邮件并沉淀入 GTD 收件箱">
+              <Button
+                size="small"
+                icon={isSyncingEmail ? <LoadingOutlined spin /> : <MailOutlined />}
+                onClick={onSyncEmail}
+                loading={isSyncingEmail}
+                className={styles["workbench-compact-btn-subtle"]}
+              >
+                {t("inbox.sync_email_btn", "收取邮件")}
+              </Button>
+            </Tooltip>
+          </div>
         ) : null}
       </div>
       {errorMessage ? (
@@ -651,7 +655,7 @@ export function InboxList({
           {
             label: (
               <Space size={4} align="center">
-                <span>待介入</span>
+                <span>{t("inbox.pending_intervention", "待介入")}</span>
                 {priorityItems.length > 0 ? (
                   <Tag
                     color="error"
@@ -675,12 +679,12 @@ export function InboxList({
             ),
             value: "intervention",
           },
-          { label: `待整理 (${displaySummary.unprocessed})`, value: "unprocessed" },
+          { label: `${t("inbox.pending_clarification", "待整理")} (${displaySummary.unprocessed})`, value: "unprocessed" },
           {
-            label: `已厘清/归档 (${displaySummary.clarified + displaySummary.archived})`,
+            label: `${t("inbox.clarified_archived", "已厘清/归档")} (${displaySummary.clarified + displaySummary.archived})`,
             value: "clarified_archived",
           },
-          { label: `全部 (${displaySummary.total})`, value: "all" },
+          { label: `${t("inbox.all", "全部")} (${displaySummary.total})`, value: "all" },
         ]}
       />
 
@@ -701,7 +705,11 @@ export function InboxList({
         ) : displayInboxItems.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="收件箱暂无此状态条目 (Inbox Zero)"
+            description={
+              <span style={{ color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500 }}>
+                {t("inbox.empty", "收件箱暂无此状态条目 (Inbox Zero)")}
+              </span>
+            }
           />
         ) : (
           <List<WorkbenchInboxItem>
@@ -733,6 +741,20 @@ export function InboxList({
 
             // 智能节点语义分类（解耦 发起/初稿确认节点、审批承认节点、归档办结节点）
             const nodeSemantics = classifyWorkflowNode(item, user?.username, user?.id);
+
+            // 办结状态识别：已办结归档/已终审通过/非驳回回执 等终态事项
+            const isCompleted = Boolean(
+              (item.status as string) === "completed" ||
+              payload.status === "completed" ||
+              payload.taskStatus === "completed" ||
+              extra.status === "completed" ||
+              extra.taskStatus === "completed" ||
+              nodeSemantics.isArchiveNode ||
+              nodeSemantics.statusTagText === "已办结" ||
+              (isReceipt && !isRejectReceipt) ||
+              item.title?.includes("已办结") ||
+              item.title?.includes("已终审通过")
+            );
 
             return (
               <List.Item key={item.id} style={{ padding: "8px 0", border: "none" }}>
@@ -820,7 +842,7 @@ export function InboxList({
 
                       {/* 右侧动作按钮：发起/初稿确认显示“发送”，审批节点显示“同意”，作业节点显示“流转” */}
                       {/* 右侧动作按钮 */}
-                      <Space size={4} wrap className={inboxStyles["inbox-item-actions"]}>
+                      <Space size={6} wrap className={inboxStyles["inbox-item-actions"]}>
                         {item.status === "archived" ? (
                           /* 已归档条目：严格只读，仅提供「详细」查看与「恢复」按钮，绝不展示任何业务流转操作按钮（归档/发送/同意/转任务等） */
                           <>
@@ -840,7 +862,7 @@ export function InboxList({
                               <Button
                                 size="small"
                                 className={styles['workbench-todo-action-btn']}
-                                icon={<UndoOutlined />}
+                                icon={<UndoOutlined style={{ fontSize: 12 }} />}
                                 onClick={() => onUnarchiveItem?.(item.id)}
                               >
                                 恢复
@@ -849,8 +871,8 @@ export function InboxList({
                             <Tooltip title="快捷调用 AI 聊天窗口（新建会话并引用导入此内容）">
                               <Button
                                 size="small"
-                                className={styles['workbench-todo-action-btn']}
-                                icon={<RobotOutlined style={{ fontSize: 12, color: '#722ed1' }} />}
+                                className={styles['workbench-todo-ai-btn']}
+                                icon={<RobotOutlined />}
                                 onClick={() => handleOpenTaskInAiChat(item)}
                               >
                                 AI 对话
@@ -1014,46 +1036,47 @@ export function InboxList({
                             <Tooltip title="快捷调用 AI 聊天窗口（新建会话并引用导入此内容）">
                               <Button
                                 size="small"
-                                className={styles['workbench-todo-action-btn']}
-                                icon={<RobotOutlined style={{ fontSize: 12, color: '#722ed1' }} />}
+                                className={styles['workbench-todo-ai-btn']}
+                                icon={<RobotOutlined />}
                                 onClick={() => handleOpenTaskInAiChat(item)}
                               >
                                 AI 对话
                               </Button>
                             </Tooltip>
 
-                            {!isConverted && !nodeSemantics.isRevisionRequired ? (
-                              <>
-                                <Tooltip title="转为正式任务，进入行动待办看板排期执行">
-                                  <Button
-                                    size="small"
-                                    className={styles['workbench-todo-action-btn']}
-                                    icon={<ArrowRightOutlined style={{ fontSize: 12 }} />}
-                                    onClick={() => onConvertToTodo(item.id)}
-                                  >
-                                    转任务
-                                  </Button>
-                                </Tooltip>
-
-                                <Tooltip title={isReceipt ? "已阅并归档 (从收集箱清理移出)" : "归档此条目 (从收集箱清理移出)"}>
-                                  <Button
-                                    size="small"
-                                    type="text"
-                                    className={styles['workbench-todo-archive-btn']}
-                                    icon={<FolderOutlined style={{ fontSize: 13 }} />}
-                                    onClick={() => onArchiveItem(item.id)}
-                                  />
-                                </Tooltip>
-                              </>
-                            ) : (
-                              <Tooltip title="归档已转任务条目 (从收集箱清理移出)">
+                            {/* 未转任务 且 未处在需重修状态 且 未办结 的条目：允许转任务 */}
+                            {!isConverted && !nodeSemantics.isRevisionRequired && !isCompleted ? (
+                              <Tooltip title="转为正式任务，进入行动待办看板排期执行">
                                 <Button
                                   size="small"
-                                  icon={<FolderOutlined />}
-                                  onClick={() => onArchiveItem(item.id)}
-                                />
+                                  className={styles['workbench-todo-convert-btn']}
+                                  icon={<ArrowRightOutlined />}
+                                  onClick={() => onConvertToTodo(item.id)}
+                                >
+                                  转任务
+                                </Button>
                               </Tooltip>
-                            )}
+                            ) : null}
+
+                            {/* 归档按钮：未归档条目提供快捷归档移出收件箱 */}
+                            <Tooltip
+                              title={
+                                isCompleted
+                                  ? "已办结条目阅毕归档 (从收集箱清理移出)"
+                                  : isReceipt
+                                  ? "已阅并归档 (从收集箱清理移出)"
+                                  : isConverted
+                                  ? "归档已转任务条目 (从收集箱清理移出)"
+                                  : "归档此条目 (从收集箱清理移出)"
+                              }
+                            >
+                              <Button
+                                size="small"
+                                className={styles['workbench-todo-archive-btn']}
+                                icon={<FolderOutlined style={{ fontSize: 13 }} />}
+                                onClick={() => onArchiveItem(item.id)}
+                              />
+                            </Tooltip>
 
                             {!isWorkflowItem ? (
                               <Popconfirm

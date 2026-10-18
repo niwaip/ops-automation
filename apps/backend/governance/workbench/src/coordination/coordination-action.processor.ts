@@ -780,25 +780,25 @@ export class CoordinationActionProcessor {
         : null);
 
     if (pdfCandidate) {
-      const alreadyHasPdf = finalAttachments.some(
-        (a: any) =>
-          (a?.url && a?.url === pdfCandidate.url) ||
-          (a?.downloadUrl && a?.downloadUrl === pdfCandidate.downloadUrl)
-      );
-      if (!alreadyHasPdf) {
-        finalAttachments = [
-          {
-            id: pdfCandidate.id || randomUUID(),
-            name: pdfCandidate.name || '商业保密协议_归档存证.pdf',
-            url: pdfCandidate.url || pdfCandidate.downloadUrl,
-            downloadUrl: pdfCandidate.downloadUrl || pdfCandidate.url,
-            mimeType: 'application/pdf',
-            size: pdfCandidate.size || pdfCandidate.sizeBytes || 0,
-            sha256: pdfCandidate.sha256 || pdfCandidate.metadata?.sha256 || '',
-          },
-          ...finalAttachments,
-        ];
-      }
+      const newPdfAttachment = {
+        id: pdfCandidate.id || randomUUID(),
+        name: pdfCandidate.name || '商业保密协议_归档存证.pdf',
+        url: pdfCandidate.url || pdfCandidate.downloadUrl,
+        downloadUrl: pdfCandidate.downloadUrl || pdfCandidate.url,
+        mimeType: 'application/pdf',
+        size: pdfCandidate.size || pdfCandidate.sizeBytes || 0,
+        sha256: pdfCandidate.sha256 || pdfCandidate.metadata?.sha256 || '',
+      };
+      // 过滤掉同名、同下载地址的旧 PDF 副本，以最新存证/归档 PDF 为准
+      finalAttachments = [
+        newPdfAttachment,
+        ...finalAttachments.filter(
+          (a: any) =>
+            a?.url !== newPdfAttachment.url &&
+            a?.downloadUrl !== newPdfAttachment.downloadUrl &&
+            a?.name !== newPdfAttachment.name
+        ),
+      ];
     }
 
     const rollbackAssignee =

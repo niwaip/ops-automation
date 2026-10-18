@@ -76,6 +76,12 @@ def calculate_spreadsheet_analysis(source, plan, deadline=None, domain="generic"
     try:
         check = lambda: deadline_check(deadline)
         check(); source = Path(source).resolve()
+        if source.suffix.lower() == '.csv':
+            return ToolResult.error(
+                "unsupported_source_format",
+                f"原件 '{source.name}' 为纯文本 CSV 格式，openpyxl 表格聚合引擎仅支持 .xlsx 工作簿。如需汇总 CSV 数据，请使用 read_file/bash 执行 Python 脚本（如 pandas/csv 模块）完成计算与导出，或先转换为 xlsx 文件。",
+                data={"source_format": "csv", "supported_formats": [".xlsx", ".xlsm"]}
+            )
         pack = domain_pack(domain)
         if set(plan)-{"tables", "calculations", "checks", "rules", "profile_tables"}:
             raise ValueError("分析计划包含未知字段")
@@ -183,8 +189,10 @@ def calculate_spreadsheet_analysis(source, plan, deadline=None, domain="generic"
         return ToolResult.success(data=data,provenance=provenance,text=json.dumps(view,ensure_ascii=False,default=str))
     except TimeoutError:
         raise
-    except (ValueError, KeyError, TypeError, OSError, AttributeError, BadZipFile) as e:
-        return ToolResult.error("invalid_analysis_plan", f"{error_path}：{e}", data={"requested_plan":requested_plan},
+    except Exception as e:
+        err_msg = str(e)
+        code = "unsupported_source_format" if ("csv" in err_msg.lower() or "not support .csv" in err_msg) else "invalid_analysis_plan"
+        return ToolResult.error(code, f"{error_path}：{err_msg}", data={"requested_plan":requested_plan},
                                 provenance={"file_path":str(source),"workbook_id":locals().get("source_hash"),"plan_hash":hashlib.sha256(json.dumps(plan,sort_keys=True,ensure_ascii=False,default=str).encode()).hexdigest()})
     finally:
         if original:original.close()

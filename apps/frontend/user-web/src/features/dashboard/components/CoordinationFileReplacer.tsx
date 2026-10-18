@@ -21,6 +21,8 @@ import {
 import { replaceLocalhostWithCurrentHost } from '@/shared/utils/publicUrl';
 import {
   getContractComparisonPair,
+  getDocumentStemName,
+  isNonContractReportFile,
   triggerContractComparisonInAi,
   type ContractComparisonPair,
 } from '../lib/contractComparisonHelper';
@@ -65,10 +67,22 @@ export function CoordinationFileReplacer({
   );
   const [isHistoryOriginalsExpanded, setIsHistoryOriginalsExpanded] = useState(false);
 
-  // 严格过滤掉无名称也无下载地址的幽灵空附件
-  const validOriginals = (originalAttachments || []).filter(
-    (att) => Boolean(att && typeof att === 'object' && !Array.isArray(att) && (att.url?.trim() || (att as any).attachmentId || att.name?.trim()))
-  );
+  // 严格过滤掉无名称也无下载地址的幽灵空附件，并按 (name+size) 及 url 严格去重，避免起草与归档存证阶段产生同名重复 PDF
+  const seenOriginalKeys = new Set<string>();
+  const validOriginals = (originalAttachments || []).filter((att) => {
+    if (!att || typeof att !== 'object' || Array.isArray(att)) return false;
+    const hasValidRef = Boolean(
+      att.url?.trim() || (att as any).attachmentId || att.name?.trim()
+    );
+    if (!hasValidRef) return false;
+    if (isNonContractReportFile(att)) return false;
+    const key = att.name
+      ? `${att.name.trim()}_${(att as any).size || ''}`
+      : att.url || (att as any).attachmentId;
+    if (seenOriginalKeys.has(key)) return false;
+    seenOriginalKeys.add(key);
+    return true;
+  });
 
   // 兼顾 appendedFiles 与单文件 replacementFile 的兼容性
   const effectiveAppended: CoordinationAttachment[] =
@@ -77,6 +91,15 @@ export function CoordinationFileReplacer({
       : replacementFile
       ? [replacementFile]
       : [];
+
+  // 统计真正独立的合同文本版本数（同一个主干名称的 docx 与 pdf 属于同版本的双格式呈现，不计为两个不同修订版）
+  const distinctStems = new Set<string>();
+  validOriginals.forEach((att) => {
+    const stem = getDocumentStemName(att.name);
+    if (stem) distinctStems.add(stem);
+  });
+  const hasMultipleVersions = effectiveAppended.length > 0 || distinctStems.size > 1;
+  const distinctVersionCount = distinctStems.size + effectiveAppended.length;
 
   const canAppend = allowAppend && !isApprovalMode && !disabled;
 
@@ -106,9 +129,9 @@ export function CoordinationFileReplacer({
     message.info('已移除追加版本');
   };
 
-  const totalVersionCount = validOriginals.length + effectiveAppended.length;
-
-  const comparisonPair = getContractComparisonPair(validOriginals, effectiveAppended, parameters);
+  const comparisonPair = hasMultipleVersions
+    ? getContractComparisonPair(validOriginals, effectiveAppended, parameters)
+    : null;
 
   const handleCompareClick = () => {
     if (!comparisonPair) return;
@@ -135,16 +158,22 @@ export function CoordinationFileReplacer({
     const isWord = att.name?.endsWith('.docx') || att.name?.endsWith('.doc');
     const isPdf = att.name?.endsWith('.pdf');
 
-    // validOriginals[0] 为最新版本（V_N），后续索引为早先历史版本（V_N-1, V_N-2...）
     const totalOriginals = validOriginals.length;
-    const currentVersionNumber = totalOriginals - idx;
     const isSupersededByAppended = effectiveAppended.length > 0;
-    const isHistorical = isSupersededByAppended || idx > 0;
+    // 只有在明确存在多个实质版本且此条属于早前版本时，才判定为历史留存原稿
+    const isHistorical = hasMultipleVersions && (isSupersededByAppended || idx > 0);
 
-    const versionLabel =
-      currentVersionNumber === 1
-        ? 'V1 · 初始初稿'
-        : `V${currentVersionNumber} · 经办人送审版`;
+    // 版本标签：多版本时展示 V1、V2 等递增编号；单版本（如 Word 原稿 + PDF 存证）时展示格式定位
+    let versionLabel = '';
+    if (!hasMultipleVersions) {
+      versionLabel = isWord ? '可编辑原稿' : isPdf ? '电子存证件' : '交付材料';
+    } else {
+      const currentVersionNumber = totalOriginals - idx;
+      versionLabel =
+        currentVersionNumber === 1
+          ? 'V1 · 初始初稿'
+          : `V${currentVersionNumber} · 经办人送审版`;
+    }
 
     return (
       <div
@@ -234,11 +263,11 @@ export function CoordinationFileReplacer({
             >
               {att.size ? `${(att.size / 1024).toFixed(1)} KB · ` : ''}
               {isHistorical
-                ? `历史留存版本 (V${currentVersionNumber}) · 供法务与协同成员查验对比留痕，不作为当前送审版本`
+                ? `历史留存版本 · 供法务与协同成员查验对比留痕，不作为当前送审版本`
                 : isRevisionMode
-                ? `审核人员已提出修改要求 · 请下载查验并在下方上传修订后的最新版本（将追加为 V${totalOriginals + effectiveAppended.length + 1}）`
+                ? `审核人员已提出修改要求 · 请下载查验并在下方上传修订后的最新版本`
                 : isApprovalMode
-                ? `经办人最新送审生效文档 · 法务合规审查以此版本为准`
+                ? `经办人送审材料 · 法务合规审查以此版本为准`
                 : '系统当前生效文档 · 支持下载查验或本地修订'}
             </div>
           </div>
@@ -292,19 +321,19 @@ export function CoordinationFileReplacer({
           <span>📁 协同成果文档与版本履历</span>
           {effectiveAppended.length > 0 ? (
             <Tag color="success" bordered={false} style={{ fontSize: 11, margin: 0, fontWeight: 500 }}>
-              已追加最新版本 (共 {totalVersionCount} 个版本)
+              已追加最新版本 (共 {distinctVersionCount} 个版本)
             </Tag>
           ) : isRevisionMode ? (
             <Tag color="warning" bordered={false} style={{ fontSize: 11, margin: 0, fontWeight: 500 }}>
               待上传修订版本
             </Tag>
-          ) : isApprovalMode ? (
+          ) : hasMultipleVersions ? (
             <Tag color="blue" bordered={false} style={{ fontSize: 11, margin: 0 }}>
-              {validOriginals.length} 个版本材料{validOriginals.length > 1 ? '（含历史版本留存）' : ''}
+              共 {distinctVersionCount} 个版本材料（含历史版本留存）
             </Tag>
           ) : (
             <Tag color="blue" bordered={false} style={{ fontSize: 11, margin: 0 }}>
-              {validOriginals.length} 个版本材料
+              {validOriginals.length > 1 ? `1 个生效版本（共 ${validOriginals.length} 份交付材料）` : '1 个生效版本材料'}
             </Tag>
           )}
         </Space>

@@ -935,6 +935,14 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
     [executeMutation]
   );
 
+  const refreshTodos = useCallback(async () => {
+    await Promise.allSettled([
+      queryClient.invalidateQueries(['workbench-todos-summary']),
+      queryClient.invalidateQueries(['workbench-coordination-sent-tasks']),
+      queryClient.invalidateQueries(['workbench-inbox-summary-for-todos']),
+    ]);
+  }, [queryClient]);
+
   return {
     activeTab,
     handleArchiveTodo,
@@ -951,5 +959,6 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
     todoDraft,
     todoSummary,
     todos,
+    refreshTodos,
   };
 }

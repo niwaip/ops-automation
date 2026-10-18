@@ -1,0 +1,11 @@
+{
+  "contract_metrics": [
+    "附件中的有效金额"
+  ],
+  "status": "failed",
+  "pass": false,
+  "satisfied": [],
+  "missing": [
+    "附件中的有效金额"
+  ]
+}

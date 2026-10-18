@@ -7,6 +7,8 @@ import re
 from pathlib import Path
 from typing import Tuple, List, Optional
 
+from .html_report_fallback import is_plausible_html_file
+
 
 class ArtifactExporter:
     """Extracts and persists deliverable files to workspace."""
@@ -114,6 +116,10 @@ class ArtifactExporter:
         exported_files = []
         cleaned_text = final_text
 
+        from .skill_router import is_text_only_request, is_term_negated
+        if prompt and (is_text_only_request(prompt) or is_term_negated(prompt, "html") or is_term_negated(prompt, "ppt") or is_term_negated(prompt, "网页")):
+            return final_text, []
+
         # 情况 A: 模型回复中直接包含了 ```html 代码块
         if "```html" in cleaned_text:
             # 容错处理：若模型在回复中输出了多段完整的 HTML 文档，截取最完整的一段
@@ -206,7 +212,7 @@ class ArtifactExporter:
         mentioned = re.findall(r'(?:/workspace/|workspace/|`)([a-zA-Z0-9_\-\.]+\.html)', cleaned_text, re.I)
         for fn in mentioned:
             p = Path(workspace_dir) / fn
-            if p.exists() and p.is_file() and p.stat().st_size > 50:
+            if p.exists() and p.is_file() and is_plausible_html_file(p):
                 # 校验文件是否在当前轮次内被生成/修改，严禁将历史其他任务生成的残留同名文件（如 index.html）误判为本轮产物
                 is_current_turn_file = (turn_start_time is None) or (p.stat().st_mtime >= turn_start_time - 2.0)
                 if turn_start_time is not None and not is_current_turn_file:
@@ -218,15 +224,23 @@ class ArtifactExporter:
 
         # 仅当本轮具备明确的 HTML 产物意图，且该文件确系在当前轮次生成时，才执行未提及文件名的全局工作区探测
         prompt_str = (prompt or "").lower()
+        user_cmd = prompt_str
+        if "用户指令：" in user_cmd:
+            user_cmd = user_cmd.split("用户指令：")[-1].strip()
+        elif "用户指令:" in user_cmd:
+            user_cmd = user_cmd.split("用户指令:")[-1].strip()
+        else:
+            user_cmd = re.sub(r'【(?:当前轮次用户上传附件|当前会话有效附件清单)】:[^\n]+\n?', '', user_cmd).strip()
+
         names_non_web_format = bool(
-            re.search(r'(?:pptx?|slides?|幻灯片|演示文稿|pdf|docx?|word|xlsx?|excel)', prompt_str, re.I)
+            re.search(r'(?:pptx?|slides?|幻灯片|演示文稿|pdf|docx?|word|xlsx?|excel)', user_cmd, re.I)
         )
         html_cues = ["html", "网页", "页面", "前端", "看板", "大屏", "原型", "demo", "五子棋", "ppt", "幻灯片", "演示文稿", "单页"]
         has_html_intent = (not names_non_web_format) and (
             is_ppt_intent
             or is_design_intent
-            or any(cue in prompt_str for cue in html_cues)
-            or ("报告" in prompt_str and any(cue in prompt_str for cue in ["单页", "一页", "html", "网页"]))
+            or any(cue in user_cmd for cue in html_cues)
+            or ("报告" in user_cmd and any(cue in user_cmd for cue in ["单页", "一页", "html", "网页"]))
         )
 
         if not target_file and has_html_intent and Path(workspace_dir).exists():
@@ -235,7 +249,7 @@ class ArtifactExporter:
             min_mtime = (turn_start_time - 2.0) if turn_start_time is not None else (now - 30.0)
             recent_htmls = [
                 f for f in Path(workspace_dir).glob("*.html")
-                if f.is_file() and f.stat().st_size > 50 and (f.stat().st_mtime >= min_mtime)
+                if is_plausible_html_file(f) and (f.stat().st_mtime >= min_mtime)
             ]
             if recent_htmls:
                 recent_htmls.sort(key=lambda f: f.stat().st_mtime, reverse=True)
@@ -254,7 +268,7 @@ class ArtifactExporter:
                     is_design_intent=is_design_intent,
                     is_ppt_intent=is_ppt_intent
                 )
-                if mat_path and Path(mat_path).exists():
+                if mat_path and Path(mat_path).exists() and is_plausible_html_file(Path(mat_path)):
                     target_file = Path(mat_path)
             except Exception as e:
                 print(f"⚠️ [Harness Export] 声明式 HTML 产物自愈失败: {e}")
@@ -270,7 +284,7 @@ class ArtifactExporter:
                     workspace_dir=workspace_dir,
                     notice="本单页报告由系统基于会话中有效内容恢复生成，支持交互预览与全屏查看。"
                 )
-                if fallback_path and Path(fallback_path).exists():
+                if fallback_path and Path(fallback_path).exists() and is_plausible_html_file(Path(fallback_path)):
                     target_file = Path(fallback_path)
             except Exception as e:
                 print(f"⚠️ [Harness Export] 会话历史 HTML 产物自愈失败: {e}")
@@ -287,6 +301,12 @@ class ArtifactExporter:
                         len(cleaned_text.strip()) < 80 and
                         bool(re.search(r'(?:文件|代码|报告)?已成功(?:生成|写入|保存)', cleaned_text))
                     )
+                    is_fallback_error_text = (
+                        cleaned_text.startswith("⚠️")
+                        or cleaned_text.startswith("❌")
+                        or "收尾汇总时未输出" in cleaned_text
+                        or "任务未完成最终交付" in cleaned_text
+                    )
 
                     if is_ppt_intent:
                         banner = (
@@ -301,9 +321,17 @@ class ArtifactExporter:
                             "- **操作提示**：您可以在下方直接**展开在线预览**、**全屏查看**，或点击**下载**保存本地使用。\n\n"
                         )
 
-                    if is_hollow_claim_text:
+                    if is_fallback_error_text:
+                        # 错误兜底状态下，若通过历史数据自愈生成了有效 HTML，替换为清晰的自愈恢复说明，绝不呈现前后矛盾文案
+                        cleaned_text = (
+                            "✨ **单页 HTML 报告已由系统基于会话内容自动整理生成！**\n"
+                            f"- **输出文件**：`/workspace/{target_file.name}`\n"
+                            "- **操作提示**：您可以在下方直接**展开在线预览**、**全屏查看**，或点击**下载**保存本地使用。\n\n"
+                            "> 💡 **恢复说明**：上游模型在写入收尾阶段未输出有效正文，系统已自动提取前序会话核心数据并编译为单页报告。"
+                        )
+                    elif is_hollow_claim_text:
                         cleaned_text = banner
-                    elif not cleaned_text.startswith("✨"):
+                    elif not cleaned_text.startswith("✨") and not cleaned_text.startswith("⚠️"):
                         cleaned_text = banner + cleaned_text
 
                     cleaned_text = cleaned_text.rstrip() + f"\n\n```html\n{file_content}\n```\n"
@@ -343,7 +371,19 @@ class ArtifactExporter:
         """
         deliverables = []
         seen_names = set()
+
+        from .skill_router import is_text_only_request, is_term_negated
+        if prompt and is_text_only_request(prompt):
+            return deliverables
+
         doc_exts = {".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt", ".pdf", ".md", ".zip", ".csv"}
+        tech_exts = {".sh", ".sql", ".py", ".yaml", ".yml"}
+        special_tech_files = {"dockerfile", "docker-compose.yml", "docker-compose.yaml"}
+        has_tech_intent = bool(
+            (expected_deliverables and any(ext.lower() in tech_exts or ext.lower() in special_tech_files for ext in expected_deliverables))
+            or (prompt and re.search(r'(?:脚本|\.sh|\.sql|\.py|dockerfile|docker-compose|配置文件|yaml|yml)', prompt, re.I))
+        )
+        allowed_exts = doc_exts.union(tech_exts) if has_tech_intent else doc_exts
         excluded_names = set(Path(f).name.lower().strip() for f in (session_files or []))
 
         ws_path = Path(workspace_dir)
@@ -371,23 +411,45 @@ class ArtifactExporter:
             except Exception as e:
                 print(f"⚠️ [Harness Deliverable Export] 自动编译 PDF 失败: {e}")
 
+        # 若期望或提及技术脚本/配置文件，尝试自动物化
+        if has_tech_intent:
+            try:
+                from .deliverable_contract import materialize_config_or_code_deliverable
+                auto_tech_files = materialize_config_or_code_deliverable(
+                    prompt=prompt or "",
+                    final_text=final_text,
+                    workspace_dir=workspace_dir,
+                    turn_start_time=turn_start_time
+                )
+                for atf in auto_tech_files:
+                    p_atf = Path(atf)
+                    if p_atf.exists() and p_atf.name not in seen_names:
+                        deliverables.append({"filePath": str(p_atf), "fileName": p_atf.name})
+                        seen_names.add(p_atf.name)
+            except Exception as e:
+                print(f"⚠️ [Harness Deliverable Export] 物化技术配置/脚本失败: {e}")
+
         # 1. 扫描本轮次中新增或修改的文件（若未指定时间戳则扫描工作区所有有效交付物）
         min_mtime = (turn_start_time - 2.0) if turn_start_time is not None else 0.0
         for item in ws_path.iterdir():
-            if item.is_file() and item.suffix.lower() in doc_exts:
-                if item.name.lower() in excluded_names:
+            if not item.is_file():
+                continue
+            is_allowed = (item.suffix.lower() in allowed_exts) or (has_tech_intent and item.name.lower() in special_tech_files)
+            if not is_allowed:
+                continue
+            if item.name.lower() in excluded_names:
+                continue
+            if item.stat().st_size > 0 and item.stat().st_mtime >= min_mtime:
+                # 过滤未在最终正文中作为交付物明确提及的临时/测试文件（如 test.pdf）
+                if ArtifactExporter.is_temporary_file(item.name) and (item.name not in final_text):
                     continue
-                if item.stat().st_size > 0 and item.stat().st_mtime >= min_mtime:
-                    # 过滤未在最终正文中作为交付物明确提及的临时/测试文件（如 test.pdf）
-                    if ArtifactExporter.is_temporary_file(item.name) and (item.name not in final_text):
-                        continue
-                    if item.name not in seen_names:
-                        deliverables.append({"filePath": str(item), "fileName": item.name})
-                        seen_names.add(item.name)
+                if item.name not in seen_names:
+                    deliverables.append({"filePath": str(item), "fileName": item.name})
+                    seen_names.add(item.name)
 
         # 2. 扫描文本中明确提及的文件名
         mentioned = re.findall(
-            r'(?:/workspace/|workspace/|`|《|“|"|\')?([a-zA-Z0-9_\-\u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|md|zip|csv))(?:`|》|”|"|\')?',
+            r'(?:/workspace/|workspace/|`|《|“|"|\')?([a-zA-Z0-9_\-\u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|md|zip|csv|sh|sql|py|ya?ml)|Dockerfile|docker-compose\.ya?ml)(?:`|》|”|"|\')?',
             final_text,
             re.I
         )
@@ -395,17 +457,23 @@ class ArtifactExporter:
             if fn in seen_names or fn.lower() in excluded_names:
                 continue
             cand = ws_path / fn
-            if cand.exists() and cand.is_file() and cand.stat().st_size > 0:
+            if cand.exists() and cand.is_file() and cand.stat().st_size > 0 and cand.stat().st_mtime >= min_mtime:
                 deliverables.append({"filePath": str(cand), "fileName": cand.name})
                 seen_names.add(fn)
 
-        # 3. 产物语义净化：当用户明确指定需要特定二进制交付物（如 PDF/Word/Excel）且并未要求输出 md 时，
+        # 3. 产物语义净化：当用户明确指定需要特定二进制交付物（如 PDF/Word/Excel）或技术脚本/配置（如 .py, .sh, .sql, Dockerfile），且并未要求输出 md 时，
         # 排除将中间生成的草稿 Markdown 文件作为最终成果交付（避免挂羊头卖狗肉）
-        target_is_binary_doc = expected_deliverables and any(
-            ext.lower() in [".pdf", ".docx", ".xlsx", ".pptx"] for ext in expected_deliverables
+        target_is_binary_doc = bool(
+            expected_deliverables and any(ext.lower() in [".pdf", ".docx", ".xlsx", ".pptx"] for ext in expected_deliverables)
+        )
+        target_is_tech_file = bool(
+            (expected_deliverables and any(ext.lower() in [".sh", ".sql", ".py", ".yaml", ".yml", "dockerfile"] for ext in expected_deliverables))
+            or (prompt and re.search(r'(?:脚本|\.sh|\.sql|\.py|dockerfile|docker-compose)', prompt, re.I))
         )
         user_wants_md = prompt and bool(re.search(r"(?:\.md\b|\bmarkdown\b|md\s*文件)", prompt, re.I))
-        if target_is_binary_doc and not user_wants_md:
-            deliverables = [d for d in deliverables if not d["fileName"].lower().endswith(".md")]
+        if (target_is_binary_doc or target_is_tech_file) and not user_wants_md:
+            non_md = [d for d in deliverables if not d["fileName"].lower().endswith(".md")]
+            if non_md:
+                deliverables = non_md
 
         return deliverables

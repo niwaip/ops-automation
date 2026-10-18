@@ -6,6 +6,7 @@ import ExecutionBrowserAuditEvidenceCard from '@/features/executions/shared/comp
 import ExecutionBrowserSummaryCard from '@/features/executions/shared/components/ExecutionBrowserSummaryCard';
 import type { ExecutionDetailSectionsProps } from '@/features/executions/detail/components/ExecutionDetailSections.types';
 import ExecutionLegacyStepsProgressCard from '@/features/executions/shared/components/ExecutionLegacyStepsProgressCard';
+import ExecutionNonBrowserResultCard from '@/features/executions/shared/components/ExecutionNonBrowserResultCard';
 import ExecutionPhaseTimelineCard from '@/features/executions/shared/components/ExecutionPhaseTimelineCard';
 import type { BrowserExecutionResultViewModel } from '@/features/executions/shared/lib/browser';
 import { hasBrowserAuditEvidence } from '@/features/executions/shared/lib/browser';
@@ -58,6 +59,13 @@ const ExecutionBrowserDetailSections: React.FC<ExecutionDetailSectionsProps> = (
   shouldShowLegacySteps,
   steps,
   currentStepIndex,
+  executionInput,
+  normalizedResult,
+  primaryResultText,
+  shouldRenderPrimaryAsMarkdown,
+  shouldShowStructuredResult,
+  resultPreviewValue,
+  effectiveResultJson,
 }) => {
   const phaseTimelineSectionRef = React.useRef<HTMLDivElement | null>(null);
   const scrollToPhaseTimeline = React.useCallback(() => {
@@ -136,6 +144,29 @@ const ExecutionBrowserDetailSections: React.FC<ExecutionDetailSectionsProps> = (
         onReject={onReject}
         onSubmitInput={onSubmitInput}
       />
+
+      {(primaryResultText || normalizedResult || effectiveResultJson) ? (
+        <ExecutionNonBrowserResultCard
+          executionInput={executionInput}
+          normalizedResult={normalizedResult}
+          primaryResultText={primaryResultText}
+          shouldRenderPrimaryAsMarkdown={shouldRenderPrimaryAsMarkdown}
+          shouldShowStructuredResult={shouldShowStructuredResult}
+          resultPreviewValue={resultPreviewValue}
+          effectiveResultJson={effectiveResultJson}
+          labels={{
+            title: text.inputOutput,
+            input: text.input,
+            result: text.result,
+            resultArtifacts: isEnglish ? 'Result artifacts' : '成果物 / 交付文件',
+            sourceLinks: isEnglish ? 'Source links' : '来源链接',
+            temporalExecutionLink: isEnglish ? 'Open Temporal Execution' : '打开 Temporal 执行链路',
+            noInput: isEnglish ? 'No input' : '暂无输入内容',
+            noStructuredResult: isEnglish ? 'No structured result' : '暂无结构化结果',
+            noResultOutput: isEnglish ? 'No result output' : '暂无结果输出',
+          }}
+        />
+      ) : null}
 
       {displayActivityPhases.length > 0 ? (
         <ExecutionActivityOverviewCard

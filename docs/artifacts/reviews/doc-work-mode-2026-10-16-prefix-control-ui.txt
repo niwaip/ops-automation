@@ -1,0 +1,100 @@
+"
+- button "close":
+  - img "close":
+- img "desktop":
+- text: 网页
+- strong: /doc 全文精确检索“AD-Q8VN-9999
+- generic: qwen36-35b-a3b
+- button "调整阅读字体大小":
+  - img "font-size":
+- button "plus":
+  - img "plus":
+- button "reload":
+  - img "reload":
+- button "delete":
+  - img "delete":
+- generic: 任务结果
+- link "thunderbolt 详细":
+  - /url: /executions/5e63459d-fea6-41ec-af67-d1d3ca4c59ea
+  - img "thunderbolt":
+  - generic: 详细
+- generic: 状态：已完成
+- generic: 技能
+- generic: /doc 全文精确检索“AD-Q8VN-9999”，不要拆分关键词，未命中请明确说明，不要返回其他文档。
+- paragraph: 根据您的要求，对“全文精确检索“AD-Q8VN-9999””的结果汇报如下：
+- paragraph:
+  - strong: 检索结果：未命中
+- paragraph:
+  - text: 虽然系统在工作空间中检索到
+  - strong: "1"
+  - text: 个相关文档（
+  - code: "[我的空间] 今日个人工作总结_20261015.md"
+  - text: ），但经核查，该文档内容中
+  - strong: 不包含
+  - text: 完整关键词
+  - strong: “AD-Q8VN-9999”
+  - text: 。
+- paragraph:
+  - strong: 详细信息：
+- list:
+  - strong: 命中文档
+  - text: ：
+  - code: "[我的空间] 今日个人工作总结_20261015.md"
+  - strong: 命中情况
+  - text: ：仅包含类似标签
+  - code: "#AD-Q8VN"
+  - text: ，未匹配到完整的“AD-Q8VN-9999”字符串。
+  - strong: 结论
+  - text: ：未找到包含确切关键词“AD-Q8VN-9999”的文档内容。
+- generic "查看结构化结果" [active]
+- generic: "{ \"finalOutputs\": [ { \"value\": \"### 🔍 工作空间文档探查结果\\n\\n针对 **\\\"全文精确检索“AD-Q8VN-9999”,不要拆分关键词,未命中请明确说明,不要返回其他文档\\\"**，在工作空间中检索到 **1** 个相关文档：\\n\\n### 📄 [[我的空间] 今日个人工作总结_20261015.md](/workspaces?tab=personal&fileId=64680472-dd51-474c-aaa3-4921bc82ca19&workspaceId=c8d19632-da7e-4197-8f0d-275d8934750f)\\n> **文档摘要**：| 指标维度 | 数量 | 占比 | 状态说明 | | :--- | :---: | :---: | :--- | | 已完成任务 | 21 条 | 55.3% | 核心知识检索、验收口令核查与项目元数据提取均顺利闭环 | | 待人工处理 | 12 条 | 31.6% | 主要集中在 /extract 缺失附件待补输入及待确认事项 |\\n**命中上下文**：\\n- 第 1 行: `[核心主题标签] #AD-Q8VN`\\n- 🔗 **快速查阅**：[打开文档](/workspaces?tab=personal&fileId=64680472-dd51-474c-aaa3-4921bc82ca19&workspaceId=c8d19632-da7e-4197-8f0d-275d8934750f)\\n\\n---\\n*以上内容直接提取自物理工作空间文档。点击上方文档标题或链接可直接在线预览与下载。*\", \"fromNodeId\": \"n1_内置工作空间文档探索\", \"isArtifact\": false, \"targetField\": \"result\", \"expectedType\": \"string\", \"fromNodeOutput\": \"answer\" } ], \"capabilitiesUsed\": [ { \"id\": \"platform.workspace.explorer\", \"name\": \"内置工作空间文档探索\", \"version\": \"1.0.1\" } ] }"
+- img "robot":
+- img "clock-circle":
+- generic: 10/16 10:31
+- generic: 已完成
+- generic "评价回答":
+  - button "回答有帮助":
+    - img "like":
+  - button "回答需要改进":
+    - img "dislike":
+- button "保存到个人空间":
+  - img "book":
+- button "收集到 GTD 收件箱":
+  - img "inbox":
+- button "复制":
+  - img "copy":
+- button "重试":
+  - img "redo":
+- textbox "例如：/doc 分析工作空间架构 或 /email 总结今日邮件（输入 / 唤起工作技能，! 唤起工作流）"
+- radiogroup "segmented control":
+  - radio "user 个人助理"
+  - img "user":
+  - generic: 个人助理
+  - radio "robot 企业协同" [checked]
+  - img "robot":
+  - generic: 企业协同
+- 'button "bulb 思考: 中 down"':
+  - img "bulb":
+  - generic: "思考: 中"
+  - img "down":
+- generic "联网搜索：已关闭（可选开启，开启后允许 AI 检索互联网公开资讯）":
+  - img "global":
+  - text: 联网
+  - switch
+- generic "工作空间知识检索：已关闭（可选开启，开启后提问将自动探查并研读空间文档）":
+  - img "folder":
+  - text: 知识
+  - switch
+- combobox
+- generic "qwen36-35b-a3b (local) · 推理"
+- button "thunderbolt":
+  - img "thunderbolt":
+- button "paper-clip":
+  - img "paper-clip":
+- button "audio":
+  - img "audio":
+- button "plus":
+  - img "plus":
+- button "send 发送" [disabled]:
+  - img "send":
+  - generic: 发送

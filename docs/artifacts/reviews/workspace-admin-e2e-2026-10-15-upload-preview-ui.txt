@@ -1,0 +1,251 @@
+- complementary:
+  - text: OpsPilot
+  - generic: AI
+  - menu:
+    - menuitem "dashboard 仪表盘":
+      - img "dashboard":
+      - generic: 仪表盘
+    - menuitem "appstore 模版与能力":
+      - img "appstore":
+      - generic: 模版与能力
+    - menuitem "apartment 管理与发布":
+      - img "apartment":
+      - generic: 管理与发布
+    - menuitem "global 浏览器自动化":
+      - img "global":
+      - generic: 浏览器自动化
+    - menuitem "deployment-unit 模型规划调用":
+      - img "deployment-unit":
+      - generic: 模型规划调用
+    - menuitem "team 组织管理" [expanded]:
+      - img "team":
+      - generic: 组织管理
+    - menu:
+      - menuitem "apartment 组织架构":
+        - img "apartment":
+        - generic: 组织架构
+      - menuitem "user 用户管理":
+        - img "user":
+        - generic: 用户管理
+      - menuitem "folder-open 企业知识空间":
+        - img "folder-open":
+        - generic: 企业知识空间
+    - menuitem "history 运行与审计":
+      - img "history":
+      - generic: 运行与审计
+    - menuitem "setting 系统管理":
+      - img "setting":
+      - generic: 系统管理
+- banner:
+  - button "menu-fold":
+    - img "menu-fold":
+  - generic: 企业知识空间
+  - button "消息中心":
+    - img "bell":
+  - button "bg-colors 浅色":
+    - img "bg-colors":
+    - generic: 浅色
+  - link "export 用户入口":
+    - /url: http://192.168.100.143:5174/login
+    - img "export":
+    - generic: 用户入口
+  - button "global 简体中文":
+    - img "global":
+    - generic: 简体中文
+  - generic: A
+  - generic: admin
+- main:
+  - heading "folder-open 企业知识空间管理" [level=4]:
+    - img "folder-open":
+    - text: 企业知识空间管理
+  - generic: 企业级统一文档中心：管理员可集中维护公司制度、规程和专业知识资产，并可手动调用大模型对非结构化文档进行深度去噪、关键业务数据结构化萃取及重新清洗。
+  - strong: 公司公共盘
+  - generic: 35.6 KB / 5 GB
+  - progressbar:
+    - generic "0%"
+  - tablist:
+    - tab "bank 公司公共盘 (公司级制度/规程)" [selected]:
+      - img "bank":
+      - text: 公司公共盘 (公司级制度/规程)
+    - tab "team 部门共享盘":
+      - img "team":
+      - text: 部门共享盘
+    - tab "user 用户个人盘":
+      - img "user":
+      - text: 用户个人盘
+  - tabpanel "bank 公司公共盘 (公司级制度/规程)"
+  - navigation:
+    - list:
+      - img "home":
+      - text: 根目录
+  - radio "按文件名" [checked]
+  - text: 按文件名
+  - radio "全文检索 (Grep)"
+  - text: 全文检索 (Grep)
+  - img "search":
+  - textbox "过滤当前文件..."
+  - button "robot 一键全量 AI 清洗":
+    - img "robot":
+    - generic: 一键全量 AI 清洗
+  - button "plus 新建目录":
+    - img "plus":
+    - generic: 新建目录
+  - button "cloud-upload 上传文档":
+    - img "cloud-upload":
+    - generic: 上传文档
+  - button "reload":
+    - img "reload":
+  - alert:
+    - img "info-circle":
+    - generic: 公司公共盘中的文档全员默认只读；所有系统 Agent 与工作流均可检索引用此处知识。仅管理员具有上传、删除与调用 AI 深度重清洗的权限。
+  - table:
+    - rowgroup:
+      - row "Select all 名称 AI 治理 / 核心提炼一览 大小 更新时间 操作":
+        - columnheader
+        - columnheader "Select all":
+          - checkbox "Select all"
+        - columnheader "名称"
+        - columnheader "AI 治理 / 核心提炼一览"
+        - columnheader "大小"
+        - columnheader "更新时间"
+        - columnheader "操作"
+    - rowgroup:
+      - row "展开行 file-text workspace-admin-loop-2026-10-15-fixture.md 规则初级摘要 421 B 2026/10/15 12:19:19 eye file-text robot AI 清理 download delete":
+        - cell "展开行":
+          - button "展开行"
+        - cell:
+          - checkbox
+        - cell "file-text workspace-admin-loop-2026-10-15-fixture.md":
+          - img "file-text":
+          - button "workspace-admin-loop-2026-10-15-fixture.md":
+            - generic: workspace-admin-loop-2026-10-15-fixture.md
+        - cell "规则初级摘要":
+          - generic "点击调用大模型进行 AI 清理": 规则初级摘要
+        - cell "421 B"
+        - cell "2026/10/15 12:19:19"
+        - cell "eye file-text robot AI 清理 download delete":
+          - button "eye":
+            - img "eye":
+          - button "file-text":
+            - img "file-text":
+          - button "robot AI 清理":
+            - img "robot":
+            - generic: AI 清理
+          - button "download":
+            - img "download":
+          - button "delete":
+            - img "delete":
+      - row "展开行 file-text knowledge-switch-2026-10-15-fixture.md 规则初级摘要 464 B 2026/10/15 12:18:09 eye file-text robot AI 清理 download delete":
+        - cell "展开行":
+          - button "展开行"
+        - cell:
+          - checkbox
+        - cell "file-text knowledge-switch-2026-10-15-fixture.md":
+          - img "file-text":
+          - button "knowledge-switch-2026-10-15-fixture.md":
+            - generic: knowledge-switch-2026-10-15-fixture.md
+        - cell "规则初级摘要":
+          - generic "点击调用大模型进行 AI 清理": 规则初级摘要
+        - cell "464 B"
+        - cell "2026/10/15 12:18:09"
+        - cell "eye file-text robot AI 清理 download delete":
+          - button "eye":
+            - img "eye":
+          - button "file-text":
+            - img "file-text":
+          - button "robot AI 清理":
+            - img "robot":
+            - generic: AI 清理
+          - button "download":
+            - img "download":
+          - button "delete":
+            - img "delete":
+      - row "展开行 file-excel AI能力测试_财务报表.xlsx 未建卡片 31.3 KB 2026/10/15 10:21:24 eye file-text robot AI 清理 download delete":
+        - cell "展开行":
+          - button "展开行"
+        - cell:
+          - checkbox
+        - cell "file-excel AI能力测试_财务报表.xlsx":
+          - img "file-excel":
+          - button "AI能力测试_财务报表.xlsx":
+            - generic: AI能力测试_财务报表.xlsx
+        - cell "未建卡片":
+          - generic: 未建卡片
+        - cell "31.3 KB"
+        - cell "2026/10/15 10:21:24"
+        - cell "eye file-text robot AI 清理 download delete":
+          - button "eye":
+            - img "eye":
+          - button "file-text":
+            - img "file-text":
+          - button "robot AI 清理":
+            - img "robot":
+            - generic: AI 清理
+          - button "download":
+            - img "download":
+          - button "delete":
+            - img "delete":
+      - row "展开行 file-text 03-spell-unique.md 规则初级摘要 3.5 KB 2026/9/9 20:30:32 eye file-text robot AI 清理 download delete":
+        - cell "展开行":
+          - button "展开行"
+        - cell:
+          - checkbox
+        - cell "file-text 03-spell-unique.md":
+          - img "file-text":
+          - button "03-spell-unique.md":
+            - generic: 03-spell-unique.md
+        - cell "规则初级摘要":
+          - generic "点击调用大模型进行 AI 清理": 规则初级摘要
+        - cell "3.5 KB"
+        - cell "2026/9/9 20:30:32"
+        - cell "eye file-text robot AI 清理 download delete":
+          - button "eye":
+            - img "eye":
+          - button "file-text":
+            - img "file-text":
+          - button "robot AI 清理":
+            - img "robot":
+            - generic: AI 清理
+          - button "download":
+            - img "download":
+          - button "delete":
+            - img "delete":
+  - list:
+    - listitem "上一页":
+      - button "left" [disabled]:
+        - img "left":
+    - listitem "1":
+      - generic: "1"
+    - listitem "下一页":
+      - button "right" [disabled]:
+        - img "right":
+    - generic "页码":
+      - combobox "页码"
+      - generic "20 条/页"
+- button "打开悬浮对话框":
+  - img "悬浮对话框"
+- dialog "file-text workspace-admin-loop-2026-10-15-fixture.md Markdown segmented control":
+  - button "Close":
+    - generic "关闭":
+      - img "close":
+  - img "file-text":
+  - generic: workspace-admin-loop-2026-10-15-fixture.md
+  - generic: Markdown
+  - radiogroup "segmented control":
+    - radio "渲染视图" [checked]
+    - generic "渲染视图"
+    - radio "纯文本源码"
+    - generic "纯文本源码"
+  - heading "星桥管理闭环AD1015" [level=1]
+  - paragraph: 本文件仅用于管理端上传、索引与知识问答的端到端测试，所有信息均为虚构。
+  - paragraph: 项目名称：星桥管理闭环AD1015。 项目预算：52931元。 负责人：测试员丁。 验收口令：AD-Q8VN-6173。 交付截止日：2026年11月12日。 验收规则：完成四台模拟终端的联调，并归档三份虚构记录。
+  - paragraph: 唯一检索标记：AD1015Q8VN。
+  - generic: 共 181 字符 · 13 行
+  - button "fullscreen":
+    - img "fullscreen":
+  - button "copy 复制文本":
+    - img "copy":
+    - generic: 复制文本
+  - button "download 下载原文件":
+    - img "download":
+    - generic: 下载原文件

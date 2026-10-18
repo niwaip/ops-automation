@@ -46,17 +46,20 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
   margin-left: auto;
 }
 
 .inbox-item-actions :global(.ant-btn) {
   height: 26px !important;
-  padding-inline: 8px !important;
   font-size: 12px !important;
   border-radius: 6px !important;
   min-width: auto !important;
+}
+
+.inbox-item-actions :global(.ant-btn:not([class*='archive-btn'])) {
+  padding-inline: 9px !important;
 }
 
 /* 状态标签与元信息栏 */

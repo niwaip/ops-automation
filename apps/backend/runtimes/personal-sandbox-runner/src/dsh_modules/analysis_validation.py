@@ -56,7 +56,22 @@ def _extract_metric_value_from_reply(
         return False, None, False
 
     # Search for metric name or any alias
-    pattern_terms = [re.escape(metric.name)] + [p for p in metric.aliases if p != metric.name]
+    clean_name = re.sub(
+        r'^(?:(?:各|该|所有)?附件(?:中|里|内)?的?|(?:各|该)?工作表(?:中|里|内)?的?|(?:各|该)?表格(?:中|里|内)?的?|文件(?:中|里|内)?的?|数据(?:中|里|内)?的?|表内的?|其中的?|对应的?|相关的?|上述(?:的)?)',
+        '',
+        metric.name
+    ).strip()
+    pattern_terms = [re.escape(metric.name)]
+    if clean_name and clean_name != metric.name:
+        pattern_terms.append(re.escape(clean_name))
+        pattern_terms.append(re.escape(clean_name) + r'(?:汇总|总额|总计|合计)?')
+    for p in metric.aliases:
+        if p not in pattern_terms:
+            pattern_terms.append(p)
+    if clean_name:
+        summary_pat = re.escape(clean_name) + r'(?:汇总|总额|总计|合计)?'
+        if summary_pat not in pattern_terms:
+            pattern_terms.append(summary_pat)
     combined_pat = "|".join(pattern_terms)
 
     requires_month = bool(contract and contract.dimension == "month")
@@ -79,13 +94,14 @@ def _extract_metric_value_from_reply(
             # 该句提及指标但未关联具体月份，不能作为月度极值分析结论
             continue
 
-        # 提取候选数值
-        num_matches = list(re.finditer(r'([+-]?[\d,]+(?:\.\d+)?)\s*(%|万元|千元|亿元|元|件|个|笔)?', seg))
+        # 提取候选数值 (支持前缀货币符号 ¥ / $ / ￥ 等)
+        num_matches = list(re.finditer(r'([¥￥$€]\s*)?([+-]?[\d,]+(?:\.\d+)?)\s*(%|万元|千元|亿元|元|件|个|笔)?', seg))
         valid_candidates = []
 
         for nm in num_matches:
-            raw_num = nm.group(1).replace(",", "")
-            unit = nm.group(2) or ""
+            curr_prefix = nm.group(1) or ""
+            raw_num = nm.group(2).replace(",", "")
+            unit = nm.group(3) or ("元" if curr_prefix.strip() in ("¥", "￥") else "")
             after_context = seg[nm.end():nm.end() + 15]
 
             # 排除紧跟“月”或“年”的日期数字 (如 12月, 2026年)
@@ -95,7 +111,7 @@ def _extract_metric_value_from_reply(
                 continue
 
             # 排除年份数字混淆 (例如 19xx 或 20xx 且无货币单位)
-            if re.match(r'^(?:19|20)\d{2}$', raw_num) and not unit:
+            if re.match(r'^(?:19|20)\d{2}$', raw_num) and not unit and not curr_prefix:
                 is_year_hallucination = True
                 if any(k in after_context for k in ("尚未", "未", "暂无", "缺少", "不存在", "总结", "年度", "年")):
                     continue
@@ -133,6 +149,37 @@ def _extract_metric_value_from_reply(
                     best_val = cand
                     break
             return True, best_val, False
+
+    # 额外支持：解析 Markdown 表格中与指标列对应的单元格数值
+    table_lines = [line.strip() for line in reply_text.splitlines() if line.strip().startswith("|") and line.strip().endswith("|")]
+    if table_lines:
+        target_col_indices: List[int] = []
+        for line in table_lines:
+            cols = [c.strip() for c in line.strip("|").split("|")]
+            # 检查是否为表头分隔行 (e.g. | :--- | :---: |)
+            if all(re.match(r'^:?-+:?$', c) for c in cols if c):
+                continue
+            # 检查是否为包含目标指标的表头行
+            matching_indices = [idx for idx, c in enumerate(cols) if re.search(combined_pat, c, re.IGNORECASE)]
+            if matching_indices:
+                target_col_indices = matching_indices
+                continue
+            # 若已有匹配的表头列，提取对应单元格中的数值
+            if target_col_indices:
+                for col_idx in target_col_indices:
+                    if col_idx < len(cols):
+                        cell_val = cols[col_idx]
+                        num_m = re.search(r'([¥￥$€]\s*)?([+-]?[\d,]+(?:\.\d+)?)\s*(%|万元|千元|亿元|元|件|个|笔)?', cell_val)
+                        if num_m:
+                            curr_p = num_m.group(1) or ""
+                            raw_n = num_m.group(2).replace(",", "")
+                            unit_s = num_m.group(3) or ("元" if curr_p.strip() in ("¥", "￥") else "")
+                            try:
+                                float(raw_n)
+                                val_str = f"{raw_n}{unit_s}" if unit_s else raw_n
+                                return True, val_str, False
+                            except ValueError:
+                                pass
 
     return False, None, is_year_hallucination
 
@@ -267,7 +314,8 @@ def build_contract_termination_warning(
     contract: AnalysisContract,
     val_result: ContractValidationResult,
     messages: Optional[List[Dict[str, Any]]] = None,
-    telemetry: Optional[Any] = None
+    telemetry: Optional[Any] = None,
+    is_budget_exhausted: bool = True
 ) -> str:
     """
     Builds a truthful, non-evasive contract termination warning when conversation
@@ -316,12 +364,20 @@ def build_contract_termination_warning(
         reason = "模型出现反问或重复索取授权，未能直接调用计算工具完成交付。"
         advice = "沙箱已具备完整只读与计算权限，可直接指定运行脚本提取目标指标。"
     else:
-        if contract.operation in ("argmax", "argmin") and contract.dimension == "month":
-            reason = "多轮推理已达上限，模型未能在当前轮次内完成全部月份差异比对并明确锁定极值月份。"
-            advice = "可指定直接比对各月实际与预算差额，或运行 Python 重算脚本进行极值排序与定位。"
+        if is_budget_exhausted:
+            if contract.operation in ("argmax", "argmin") and contract.dimension == "month":
+                reason = "多轮推理已达上限，模型未能在当前轮次内完成全部月份差异比对并明确锁定极值月份。"
+                advice = "可指定直接比对各月实际与预算差额，或运行 Python 重算脚本进行极值排序与定位。"
+            else:
+                reason = "多轮推理已达上限，模型未能在当前轮次内输出完整的全部指标核算结论。"
+                advice = "可指定直接读取相关数据源工作表或明确计算口径重试。"
         else:
-            reason = "多轮推理已达上限，模型未能在当前轮次内输出完整的全部指标核算结论。"
-            advice = "可指定直接读取相关数据源工作表或明确计算口径重试。"
+            if contract.operation in ("argmax", "argmin") and contract.dimension == "month":
+                reason = "模型未能在当前回复中完成全部月份差异比对并明确锁定极值月份。"
+                advice = "可指定直接比对各月实际与预算差额，或运行 Python 重算脚本进行极值排序与定位。"
+            else:
+                reason = "模型未能在当前回复中直接呈现全部关键指标的具体数值核算结论。"
+                advice = "可指定直接读取相关数据源工作表或明确计算口径重试。"
 
     return (
         "\n\n---\n"

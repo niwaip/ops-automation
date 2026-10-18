@@ -1,0 +1,107 @@
+.formContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sectionCard {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--ant-color-border-secondary, rgba(255, 255, 255, 0.08));
+  border-radius: 8px;
+  padding: 12px 14px 4px 14px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ant-color-text-primary);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--ant-color-border-secondary, rgba(255, 255, 255, 0.06));
+}
+
+.sectionHeaderIcon {
+  color: #1677ff;
+  font-size: 14px;
+}
+
+.sectionBadge {
+  font-size: 11px;
+  font-weight: normal;
+  color: var(--ant-color-text-tertiary);
+  margin-left: auto;
+}
+
+.partiesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 12px;
+  row-gap: 0;
+}
+
+.partySubCard {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--ant-color-border-secondary, rgba(255, 255, 255, 0.06));
+  border-radius: 6px;
+  padding: 10px 12px 2px 12px;
+}
+
+.partySubCardTitle {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.partyTagA {
+  background: rgba(22, 119, 255, 0.1);
+  color: #1677ff;
+  border: 1px solid rgba(22, 119, 255, 0.2);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+}
+
+.partyTagB {
+  background: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+  border: 1px solid rgba(82, 196, 26, 0.2);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+}
+
+.twoColumnGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 12px;
+  row-gap: 0;
+}
+
+.fullWidthItem {
+  grid-column: 1 / -1;
+}
+
+.advancedCollapse {
+  background: transparent !important;
+  border: none !important;
+}
+
+.advancedCollapse :global(.ant-collapse-item) {
+  border: none !important;
+}
+
+.advancedCollapse :global(.ant-collapse-header) {
+  padding: 6px 0 !important;
+  font-size: 12px !important;
+  color: var(--ant-color-text-secondary) !important;
+}
+
+.advancedCollapse :global(.ant-collapse-content-box) {
+  padding: 8px 0 0 0 !important;
+}

@@ -1,0 +1,1730 @@
+{
+  "scope": "new business routes, capability selection, contract and execution-handoff instruction only; no model/tool execution",
+  "total": 24,
+  "passed": 24,
+  "failed": 0,
+  "skills": 18,
+  "source_hashes": {
+    "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/skill_router.py": "808eed597e0e3a774b7f83606ec1ecac6d1e3872e5767781f38e203d93af4915",
+    "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/runner.py": "8c0daf022a67a66747b49b2238f92ade86762722eeaeb6ef7a1593fb4b4a51ac",
+    "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/intent_contract.py": "785dccd885b4b77bad530c5957214a121783a514892e3504f44369a9fa15dbba",
+    "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/planning_phase.py": "121016121a2085d21044e3d6161bc4c021e33bcbb98ccba8fff12daf58e80afe",
+    "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/skills.py": "3227154ced5105890ca0e030fe500461f98e11723d5f40208409976d93bd1f9b"
+  },
+  "source_unchanged": true,
+  "repeat_changes": [],
+  "results": [
+    {
+      "id": "M01",
+      "industry": "制造业",
+      "title": "订单交期风险与客户跟进",
+      "prompt": "请读取订单明细、库存快照和产能说明，判断本周订单是否存在交付风险。按客户列出缺料与产能风险，生成“订单交期风险.xlsx”和“客户跟进计划.docx”；缺失数据标待确认，不要代替我联系客户。",
+      "files": [
+        "订单明细.xlsx",
+        "库存快照.xlsx",
+        "产能说明.txt"
+      ],
+      "expected": {
+        "is_generate_intent": true,
+        "format_has": [
+          ".xlsx",
+          ".docx"
+        ],
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_any": [
+          "bash",
+          "write_markdown",
+          "patch_file"
+        ]
+      },
+      "history": [],
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".docx",
+          "订单交期风险.xlsx",
+          "客户跟进计划.docx",
+          ".xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "should_plan": true,
+        "execution_instruction": "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施多目标材料落盘。\n本次任务需完整交付以下材料：订单交期风险.xlsx、客户跟进计划.docx\n落盘方式：\n- Excel 表格：调用 `bash` 工具运行 Python 脚本（使用 openpyxl 库创建并排版，保存至 `/workspace/订单交期风险.xlsx`）\n- Word 文档：调用 `bash` 工具运行 Python 脚本（使用 python-docx 库创建并排版，保存至 `/workspace/客户跟进计划.docx`）\n⚠️ 严禁仅输出口头文字！必须逐项调用工具完成全部目标材料的物理文件落盘！"
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "M02",
+      "industry": "制造业",
+      "title": "来料检验日报",
+      "prompt": "读取来料检验记录，按供应商和物料汇总检验数量与不良数量，生成“来料质量日报.xlsx”，包含异常批次清单；原记录保留。",
+      "files": [
+        "来料检验记录.csv"
+      ],
+      "expected": {
+        "is_generate_intent": true,
+        "format_has": [
+          ".xlsx"
+        ],
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_any": [
+          "bash",
+          "write_markdown",
+          "patch_file"
+        ]
+      },
+      "history": [],
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".xlsx",
+          "来料质量日报.xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "should_plan": true,
+        "execution_instruction": "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n落盘方式：调用 `bash` 工具运行 Python 脚本（使用 openpyxl 库创建并排版表格，保存至 `/workspace/<文件名>.xlsx`）。\n⚠️ 严禁仅输出口头文字！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！"
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "M03",
+      "industry": "制造业",
+      "title": "质量整改待办",
+      "prompt": "根据整改会议纪要和现场问题记录，提取责任人、措施和截止日期，生成“质量整改行动清单.md”。只用附件事实，缺少责任人标待确认，不要创建日程提醒。",
+      "files": [
+        "整改会议纪要.docx",
+        "现场问题记录.txt"
+      ],
+      "expected": {
+        "is_generate_intent": true,
+        "format_has": [
+          ".md"
+        ],
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_any": [
+          "bash",
+          "write_markdown",
+          "patch_file"
+        ],
+        "format_not": [
+          ".html",
+          ".pptx"
+        ],
+        "is_send_intent": false
+      },
+      "history": [],
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          "质量整改行动清单.md",
+          ".md"
+        ],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "write_markdown",
+          "scan_knowledge"
+        ],
+        "presearch": false,
+        "should_plan": false,
+        "execution_instruction": ""
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "M04",
+      "industry": "制造业",
+      "title": "作业指导书转打印版",
+      "prompt": "把上传的装配作业指导书转换为可下载PDF，文件名“装配作业指导书_打印版.pdf”，保留原文内容和原始Word文件。",
+      "files": [
+        "装配作业指导书.docx"
+      ],
+      "expected": {
+        "is_generate_intent": true,
+        "format_has": [
+          ".pdf"
+        ],
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_any": [
+          "bash",
+          "write_markdown",
+          "patch_file"
+        ],
+        "format_not": [
+          ".docx"
+        ]
+      },
+      "history": [],
+      "actual": {
+        "skill_id": "pdf",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".pdf",
+          "装配作业指导书_打印版.pdf"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "should_plan": true,
+        "execution_instruction": "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n落盘方式：调用 `write_markdown` 或运行脚本生成目标 PDF 文件保存至 `/workspace/`。\n⚠️ 严禁仅输出口头文字！必须实际调用工具完成物理文件落盘！"
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "M05",
+      "industry": "制造业",
+      "title": "采购报价决策建议",
+      "prompt": "读取供应商报价与采购需求，计算每家供应商的预计采购总额，结合交期列出可选方案。直接在聊天中给出比较结果和缺失信息，不需要生成文件。",
+      "files": [
+        "供应商报价.xlsx",
+        "采购需求.txt"
+      ],
+      "expected": {
+        "is_generate_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "patch_file",
+          "write_markdown"
+        ],
+        "tools_any": [
+          "aggregate_spreadsheet",
+          "analyze_spreadsheet",
+          "compare_spreadsheet_columns",
+          "bash"
+        ]
+      },
+      "history": [],
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 32.538973871058275,
+        "matched_reasons": [
+          "trigger:xlsx(+18.0)",
+          "id/alias:xlsx(+12.0)",
+          "desc_terms(2.5)"
+        ],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 3,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "web_search",
+          "fetch_page",
+          "read_file"
+        ],
+        "presearch": false,
+        "should_plan": false,
+        "execution_instruction": ""
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "M06",
+      "industry": "制造业",
+      "title": "修改客户交期通知",
+      "prompt": "把客户交期通知中的交货日期从2026年10月20日改为2026年10月22日，其他内容保持不变，另存为“客户交期通知_v2.docx”，不要覆盖原件或发给客户。",
+      "files": [
+        "客户交期通知.docx"
+      ],
+      "expected": {
+        "is_generate_intent": true,
+        "format_has": [
+          ".docx"
+        ],
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_any": [
+          "bash",
+          "write_markdown",
+          "patch_file"
+        ],
+        "is_send_intent": false
+      },
+      "history": [],
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".docx",
+          "客户交期通知_v2.docx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "should_plan": false,
+        "execution_instruction": ""
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "M07",
+      "industry": "制造业",
+      "title": "班组下周排班",
+      "prompt": "根据人员名单和排班规则，为下周重新安排早晚班，休假人员不排班，生成“下周班组排班.xlsx”。不清楚的规则标待确认，不要修改人员名单。",
+      "files": [
+        "人员名单.xlsx",
+        "排班规则.docx"
+      ],
+      "expected": {
+        "is_generate_intent": true,
+        "format_has": [
+          ".xlsx"
+        ],
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_any": [
+          "bash",
+          "write_markdown",
+          "patch_file"
+        ]
+      },
+      "history": [],
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".xlsx",
+          "下周班组排班.xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "should_plan": true,
+        "execution_instruction": "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n落盘方式：调用 `bash` 工具运行 Python 脚本（使用 openpyxl 库创建并排版表格，保存至 `/workspace/<文件名>.xlsx`）。\n⚠️ 严禁仅输出口头文字！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！"
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "M08",
+      "industry": "制造业",
+      "title": "设备操作培训演示",
+      "prompt": "根据设备说明书和故障记录制作5页班组培训演示文稿，交付原生PowerPoint文件“设备操作培训.pptx”，包含开机检查、常见故障和停机交接，不要HTML。",
+      "files": [
+        "设备说明书.pdf",
+        "故障记录.csv"
+      ],
+      "expected": {
+        "is_generate_intent": true,
+        "format_has": [
+          ".pptx"
+        ],
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_any": [
+          "bash",
+          "write_markdown",
+          "patch_file"
+        ],
+        "format_not": [
+          ".html"
+        ],
+        "native_ppt_handoff": true
+      },
+      "history": [],
+      "actual": {
+        "skill_id": "pptx",
+        "is_ppt_intent": true,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".pptx",
+          "设备操作培训.pptx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "should_plan": true,
+        "execution_instruction": "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n落盘方式：调用 `bash` 工具运行 Python 脚本（使用 python-pptx 库生成目标演示文稿并保存至 `/workspace/.pptx`）。\n⚠️ 严禁仅输出口头文字！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！"
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "R01",
+      "industry": "零售业",
+      "title": "门店经营周报与简报",
+      "prompt": "读取本周门店销售和门店基础信息，按门店统计销售额与订单数，生成“门店经营周报.xlsx”，再生成店长阅读用的“门店经营简报.pdf”。不要发布或发送。",
+      "files": [
+        "本周门店销售.csv",
+        "门店基础信息.xlsx"
+      ],
+      "expected": {
+        "is_generate_intent": true,
+        "format_has": [
+          ".xlsx",
+          ".pdf"
+        ],
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_any": [
+          "bash",
+          "write_markdown",
+          "patch_file"
+        ],
+        "is_send_intent": false
+      },
+      "history": [],
+      "actual": {
+        "skill_id": "pdf",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".pdf",
+          "门店经营周报.xlsx",
+          "门店经营简报.pdf",
+          ".xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "should_plan": true,
+        "execution_instruction": "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施多目标材料落盘。\n本次任务需完整交付以下材料：门店经营周报.xlsx、门店经营简报.pdf\n落盘方式：\n- Excel 表格：调用 `bash` 工具运行 Python 脚本（使用 openpyxl 库创建并排版，保存至 `/workspace/门店经营周报.xlsx`）\n- PDF 文档：调用 `write_markdown` 或运行脚本生成目标 PDF 保存至 `/workspace/门店经营简报.pdf`\n⚠️ 严禁仅输出口头文字！必须逐项调用工具完成全部目标材料的物理文件落盘！"
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "R02",
+      "industry": "零售业",
+      "title": "门店补货建议",
+      "prompt": "根据销量、现存数量和安全库存，列出缺货风险及建议补货数量，生成“门店补货建议.xlsx”。本次只生成建议，不下采购单。",
+      "files": [
+        "门店销量.xlsx",
+        "门店库存.xlsx"
+      ],
+      "expected": {
+        "is_generate_intent": true,
+        "format_has": [
+          ".xlsx"
+        ],
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_any": [
+          "bash",
+          "write_markdown",
+          "patch_file"
+        ]
+      },
+      "history": [],
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".xlsx",
+          "门店补货建议.xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "should_plan": true,
+        "execution_instruction": "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n落盘方式：调用 `bash` 工具运行 Python 脚本（使用 openpyxl 库创建并排版表格，保存至 `/workspace/<文件名>.xlsx`）。\n⚠️ 严禁仅输出口头文字！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！"
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "R03",
+      "industry": "零售业",
+      "title": "客诉原因归纳",
+      "prompt": "读取本月客诉记录，按原因归类，列出高频问题和需跟进的门店，直接在聊天中回答。不要创建报告文件或向顾客发送消息。",
+      "files": [
+        "本月客诉记录.csv"
+      ],
+      "expected": {
+        "is_generate_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "patch_file",
+          "write_markdown"
+        ],
+        "is_send_intent": false
+      },
+      "history": [],
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "should_plan": false,
+        "execution_instruction": ""
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "R04",
+      "industry": "零售业",
+      "title": "促销执行方案",
+      "prompt": "根据活动要求和商品清单制作门店促销执行方案，保存为“促销执行方案.docx”，包含准备、陈列、人员分工和复盘安排，不自行填入未提供的折扣。",
+      "files": [
+        "活动要求.md",
+        "活动商品.xlsx"
+      ],
+      "expected": {
+        "is_generate_intent": true,
+        "format_has": [
+          ".docx"
+        ],
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_any": [
+          "bash",
+          "write_markdown",
+          "patch_file"
+        ],
+        "format_not": [
+          ".md"
+        ]
+      },
+      "history": [],
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".docx",
+          "促销执行方案.docx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "should_plan": true,
+        "execution_instruction": "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n落盘方式：调用 `bash` 工具运行 Python 脚本（使用 python-docx 库创建并排版文档，保存至 `/workspace/<文件名>.docx`）。\n⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字而不提供代码或工具调用！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！"
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "R05",
+      "industry": "零售业",
+      "title": "收银与退款核对",
+      "prompt": "核对收银汇总与退款记录，列出金额差异及缺失单据，只在聊天中给出核对结果，不修改任何记录、不生成文件。",
+      "files": [
+        "收银汇总.xlsx",
+        "退款记录.csv"
+      ],
+      "expected": {
+        "is_generate_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "patch_file",
+          "write_markdown"
+        ]
+      },
+      "history": [],
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "should_plan": false,
+        "execution_instruction": ""
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "R06",
+      "industry": "零售业",
+      "title": "月度经营汇报PPT",
+      "prompt": "根据月度销售、客诉摘要和活动复盘制作6页原生PPTX经营汇报，保存为“门店月度汇报.pptx”，不要HTML，也不要额外生成Word报告。",
+      "files": [
+        "月度销售.xlsx",
+        "客诉摘要.txt",
+        "活动复盘.docx"
+      ],
+      "expected": {
+        "is_generate_intent": true,
+        "format_has": [
+          ".pptx"
+        ],
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_any": [
+          "bash",
+          "write_markdown",
+          "patch_file"
+        ],
+        "format_not": [
+          ".html",
+          ".docx"
+        ],
+        "native_ppt_handoff": true
+      },
+      "history": [],
+      "actual": {
+        "skill_id": "pptx",
+        "is_ppt_intent": true,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".pptx",
+          "门店月度汇报.pptx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "should_plan": true,
+        "execution_instruction": "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n落盘方式：调用 `bash` 工具运行 Python 脚本（使用 python-pptx 库生成目标演示文稿并保存至 `/workspace/.pptx`）。\n⚠️ 严禁仅输出口头文字！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！"
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "R07",
+      "industry": "零售业",
+      "title": "人员排班调整",
+      "prompt": "将店员排班表中周三王芳的早班调整为晚班，其他员工和日期不变，另存为“店员排班_v2.xlsx”，保留原表。",
+      "files": [
+        "店员排班.xlsx"
+      ],
+      "expected": {
+        "is_generate_intent": true,
+        "format_has": [
+          ".xlsx"
+        ],
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_any": [
+          "bash",
+          "write_markdown",
+          "patch_file"
+        ]
+      },
+      "history": [],
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".xlsx",
+          "店员排班_v2.xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "should_plan": true,
+        "execution_instruction": "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n落盘方式：调用 `bash` 工具运行 Python 脚本（使用 openpyxl 库创建并排版表格，保存至 `/workspace/<文件名>.xlsx`）。\n⚠️ 严禁仅输出口头文字！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！"
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "R08",
+      "industry": "零售业",
+      "title": "店长资料包",
+      "prompt": "读取闭店交接清单和库存差异记录，整理成一个店长可打印的PDF资料包“店长交接资料.pdf”，分别保留交接事项和库存异常，不要联网查资料。",
+      "files": [
+        "闭店交接清单.docx",
+        "库存差异记录.csv"
+      ],
+      "expected": {
+        "is_generate_intent": true,
+        "format_has": [
+          ".pdf"
+        ],
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_any": [
+          "bash",
+          "write_markdown",
+          "patch_file"
+        ],
+        "presearch": false,
+        "tools_not": [
+          "web_search",
+          "fetch_page"
+        ]
+      },
+      "history": [],
+      "actual": {
+        "skill_id": "pdf",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".pdf",
+          "店长交接资料.pdf"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "should_plan": true,
+        "execution_instruction": "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n落盘方式：调用 `write_markdown` 或运行脚本生成目标 PDF 文件保存至 `/workspace/`。\n⚠️ 严禁仅输出口头文字！必须实际调用工具完成物理文件落盘！"
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "O01",
+      "industry": "通用办公",
+      "title": "采购审批材料",
+      "prompt": "读取采购申请、供应商报价和预算说明，生成“采购审批说明.docx”和“采购费用明细.xlsx”，供主管审核；没有批准前不要代替我提交审批。",
+      "files": [
+        "采购申请.txt",
+        "供应商报价.xlsx",
+        "预算说明.docx"
+      ],
+      "expected": {
+        "is_generate_intent": true,
+        "format_has": [
+          ".docx",
+          ".xlsx"
+        ],
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_any": [
+          "bash",
+          "write_markdown",
+          "patch_file"
+        ]
+      },
+      "history": [],
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".docx",
+          "采购审批说明.docx",
+          "采购费用明细.xlsx",
+          ".xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "should_plan": true,
+        "execution_instruction": "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施多目标材料落盘。\n本次任务需完整交付以下材料：采购审批说明.docx、采购费用明细.xlsx\n落盘方式：\n- Excel 表格：调用 `bash` 工具运行 Python 脚本（使用 openpyxl 库创建并排版，保存至 `/workspace/采购费用明细.xlsx`）\n- Word 文档：调用 `bash` 工具运行 Python 脚本（使用 python-docx 库创建并排版，保存至 `/workspace/采购审批说明.docx`）\n⚠️ 严禁仅输出口头文字！必须逐项调用工具完成全部目标材料的物理文件落盘！"
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "O02",
+      "industry": "通用办公",
+      "title": "多部门会议行动清单",
+      "prompt": "把销售、仓储和生产三个部门的会议记录整理成“跨部门行动清单.md”，列出事项、负责人和截止时间，只依据附件，不生成PPT，不创建提醒。",
+      "files": [
+        "销售会议.txt",
+        "仓储会议.txt",
+        "生产会议.txt"
+      ],
+      "expected": {
+        "is_generate_intent": true,
+        "format_has": [
+          ".md"
+        ],
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_any": [
+          "bash",
+          "write_markdown",
+          "patch_file"
+        ],
+        "format_not": [
+          ".pptx",
+          ".html"
+        ]
+      },
+      "history": [],
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          "跨部门行动清单.md",
+          ".md"
+        ],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "write_markdown",
+          "scan_knowledge"
+        ],
+        "presearch": false,
+        "should_plan": false,
+        "execution_instruction": ""
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "O03",
+      "industry": "通用办公",
+      "title": "合同版本审阅",
+      "prompt": "比较采购合同的原版与修订版，指出交期、付款条件和违约责任的变化，只在聊天中列出差异，不改合同，也不用生成新文件。",
+      "files": [
+        "采购合同_原版.docx",
+        "采购合同_修订版.docx"
+      ],
+      "expected": {
+        "is_generate_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "patch_file",
+          "write_markdown"
+        ]
+      },
+      "history": [],
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 35.07794774211655,
+        "matched_reasons": [
+          "trigger:docx(+18.0)",
+          "id/alias:docx(+12.0)",
+          "desc_terms(5.1)"
+        ],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 3,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "should_plan": false,
+        "execution_instruction": ""
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "O04",
+      "industry": "通用办公",
+      "title": "费用报销检查",
+      "prompt": "根据报销明细和公司的报销标准，列出超限项目及缺失凭据，给出需要补充的材料，只在聊天中回答，不修改报销金额。",
+      "files": [
+        "报销明细.xlsx",
+        "报销标准.docx"
+      ],
+      "expected": {
+        "is_generate_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "patch_file",
+          "write_markdown"
+        ]
+      },
+      "history": [],
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 32.028148247292286,
+        "matched_reasons": [
+          "trigger:docx(+18.0)",
+          "id/alias:docx(+12.0)",
+          "desc_terms(2.0)"
+        ],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 3,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "should_plan": false,
+        "execution_instruction": ""
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "O05",
+      "industry": "通用办公",
+      "title": "原料行情与报价对照",
+      "prompt": "联网查询近期原材料价格，和上传的供应商报价对照，生成“原料报价对照.xlsx”，注明资料来源及查询时间，无法核实的数据标待确认。",
+      "files": [
+        "供应商报价.xlsx"
+      ],
+      "expected": {
+        "is_generate_intent": true,
+        "format_has": [
+          ".xlsx"
+        ],
+        "tools_has": [
+          "read_file",
+          "web_search"
+        ],
+        "tools_any": [
+          "bash",
+          "write_markdown",
+          "patch_file"
+        ]
+      },
+      "history": [],
+      "actual": {
+        "skill_id": "xlsx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".xlsx",
+          "原料报价对照.xlsx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "should_plan": true,
+        "execution_instruction": "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n落盘方式：调用 `bash` 工具运行 Python 脚本（使用 openpyxl 库创建并排版表格，保存至 `/workspace/<文件名>.xlsx`）。\n⚠️ 严禁仅输出口头文字！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！"
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "O06",
+      "industry": "通用办公",
+      "title": "客户回复草稿",
+      "prompt": "根据客户投诉和内部处理记录，起草给客户的回复，直接在聊天中输出供我审核，不要通过微信发送，也不要生成附件。",
+      "files": [
+        "客户投诉.txt",
+        "内部处理记录.docx"
+      ],
+      "expected": {
+        "is_generate_intent": false,
+        "deliverables_empty": true,
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_not": [
+          "patch_file",
+          "write_markdown"
+        ],
+        "is_send_intent": false
+      },
+      "history": [],
+      "actual": {
+        "skill_id": null,
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": false,
+        "is_research_intent": false,
+        "is_inspect_intent": true,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": false,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [],
+        "requires_execution": false,
+        "default_rounds": 0,
+        "tools": [
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "scan_knowledge",
+          "vision_inspect"
+        ],
+        "presearch": false,
+        "should_plan": false,
+        "execution_instruction": ""
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "O07",
+      "industry": "通用办公",
+      "title": "刚生成的采购说明转PDF",
+      "prompt": "将刚才生成的采购说明.docx转为“采购说明.pdf”，供下载打印，保留Word原版。",
+      "files": [
+        "采购说明.docx"
+      ],
+      "expected": {
+        "is_generate_intent": true,
+        "format_has": [
+          ".pdf"
+        ],
+        "tools_has": [
+          "read_file"
+        ],
+        "tools_any": [
+          "bash",
+          "write_markdown",
+          "patch_file"
+        ],
+        "format_not": [
+          ".docx"
+        ]
+      },
+      "history": [
+        {
+          "role": "user",
+          "content": "生成采购说明.docx"
+        },
+        {
+          "role": "assistant",
+          "content": "采购说明.docx已生成，可下载。"
+        }
+      ],
+      "actual": {
+        "skill_id": "pdf",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": false,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".pdf",
+          "采购说明.pdf"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "should_plan": true,
+        "execution_instruction": "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n落盘方式：调用 `write_markdown` 或运行脚本生成目标 PDF 文件保存至 `/workspace/`。\n⚠️ 严禁仅输出口头文字！必须实际调用工具完成物理文件落盘！"
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "O08",
+      "industry": "通用办公",
+      "title": "整套审批材料失败后重试",
+      "prompt": "重新生成",
+      "files": [],
+      "expected": {
+        "is_generate_intent": true,
+        "format_has": [
+          ".xlsx",
+          ".docx"
+        ],
+        "tools_any": [
+          "bash",
+          "write_markdown"
+        ]
+      },
+      "history": [
+        {
+          "role": "user",
+          "content": "根据采购需求生成“采购费用明细.xlsx”和“采购审批说明.docx”，不要HTML。"
+        },
+        {
+          "role": "assistant",
+          "content": "文件生成未完成，请重试。"
+        }
+      ],
+      "actual": {
+        "skill_id": "docx",
+        "is_ppt_intent": false,
+        "is_design_intent": false,
+        "is_send_intent": false,
+        "is_knowledge_intent": false,
+        "is_docx_intent": true,
+        "is_office_intent": true,
+        "is_research_intent": false,
+        "is_inspect_intent": false,
+        "is_guide_intent": false,
+        "is_search_intent": false,
+        "is_generate_intent": true,
+        "affinity_score": 0.0,
+        "matched_reasons": [],
+        "deliverables": [
+          ".docx",
+          "采购费用明细.xlsx",
+          "采购审批说明.docx"
+        ],
+        "requires_execution": true,
+        "default_rounds": 5,
+        "tools": [
+          "inspect_spreadsheet_structure",
+          "compare_spreadsheet_columns",
+          "analyze_spreadsheet",
+          "aggregate_spreadsheet",
+          "check_spreadsheet_equations",
+          "validate_spreadsheet_rows",
+          "report_informational_spreadsheet",
+          "weather",
+          "web_search",
+          "fetch_page",
+          "read_file",
+          "patch_file",
+          "write_markdown",
+          "bash",
+          "scan_knowledge",
+          "send_file",
+          "vision_inspect",
+          "image_gen",
+          "create_reminders",
+          "update_reminder",
+          "delete_reminder"
+        ],
+        "presearch": false,
+        "should_plan": true,
+        "execution_instruction": "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施多目标材料落盘。\n本次任务需完整交付以下材料：采购费用明细.xlsx、采购审批说明.docx\n落盘方式：\n- Excel 表格：调用 `bash` 工具运行 Python 脚本（使用 openpyxl 库创建并排版，保存至 `/workspace/采购费用明细.xlsx`）\n- Word 文档：调用 `bash` 工具运行 Python 脚本（使用 python-docx 库创建并排版，保存至 `/workspace/采购审批说明.docx`）\n⚠️ 严禁仅输出口头文字！必须逐项调用工具完成全部目标材料的物理文件落盘！"
+      },
+      "pass": true,
+      "failures": []
+    }
+  ]
+}

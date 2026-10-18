@@ -14,7 +14,7 @@
   position: relative;
   overflow: hidden;
   border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid rgba(226, 232, 240, 0.9);
   background: var(--bg-card, #ffffff);
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
 }
@@ -43,7 +43,7 @@
 
 .workbench-hero-title {
   margin: 0;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.01em;
@@ -56,6 +56,19 @@
   line-height: 1.2;
 }
 
+.workbench-clear-btn {
+  color: var(--text-light) !important;
+  font-size: 12px !important;
+  padding: 2px 8px !important;
+  border-radius: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+.workbench-clear-btn:hover {
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.08) !important;
+}
+
 .workbench-summary-strip {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -65,30 +78,35 @@
 
 .workbench-summary-item {
   min-width: 0;
-  min-height: 48px;
+  min-height: 52px;
   padding: 8px 14px;
-  border-radius: 8px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  background: rgba(248, 250, 252, 0.6);
+  border-radius: 10px;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  background: #ffffff;
   display: flex;
   gap: 10px;
   align-items: center;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
 .workbench-summary-item:hover {
-  border-color: rgba(99, 102, 241, 0.3);
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  border-color: rgba(99, 102, 241, 0.35);
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+  transform: translateY(-1px);
 }
 
 [data-theme='dark'] .workbench-summary-item {
   background: rgba(15, 23, 42, 0.4);
   border-color: rgba(148, 163, 184, 0.12);
+  box-shadow: none;
 }
 
 [data-theme='dark'] .workbench-summary-item:hover {
   background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .workbench-summary-icon {
@@ -164,7 +182,8 @@
 
 .workbench-summary-key {
   color: var(--text-secondary);
-  font-size: 11.5px;
+  font-size: 12px;
+  font-weight: 500;
   line-height: 1.2;
 }
 
@@ -195,10 +214,10 @@
 
 .workbench-summary-number {
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: 19px;
   line-height: 1.2;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .workbench-layout {
@@ -220,7 +239,7 @@
 
 .workbench-panel {
   border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid rgba(226, 232, 240, 0.85);
   background: var(--bg-card, #ffffff);
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
 }
@@ -721,23 +740,27 @@
   align-items: center;
   gap: 8px;
   width: 100%;
+  flex-wrap: wrap;
 }
 
 .workbench-compact-input-wrap {
   display: flex;
   align-items: center;
-  flex: 1 1 auto;
+  flex: 1 1 200px;
   min-width: 0;
   position: relative;
 }
 
+.workbench-compact-input-wrap textarea,
+.workbench-compact-input-wrap :global(textarea.ant-input),
 .workbench-compact-input-wrap :global(.ant-input-textarea) textarea {
-  padding-right: 64px !important;
+  padding-right: 76px !important;
   resize: none !important;
   min-height: 32px !important;
   line-height: 1.4 !important;
   padding-top: 5px !important;
   padding-bottom: 5px !important;
+  padding-left: 10px !important;
   border-radius: 8px !important;
   font-size: 13px;
   background: rgba(248, 250, 252, 0.7);
@@ -745,18 +768,24 @@
   transition: all 0.2s ease;
 }
 
+.workbench-compact-input-wrap textarea:focus,
+.workbench-compact-input-wrap :global(textarea.ant-input):focus,
 .workbench-compact-input-wrap :global(.ant-input-textarea) textarea:focus {
   background: #ffffff;
   border-color: #6366f1;
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12);
 }
 
+[data-theme='dark'] .workbench-compact-input-wrap textarea,
+[data-theme='dark'] .workbench-compact-input-wrap :global(textarea.ant-input),
 [data-theme='dark'] .workbench-compact-input-wrap :global(.ant-input-textarea) textarea {
   background: rgba(15, 23, 42, 0.6);
   border-color: rgba(148, 163, 184, 0.18);
   color: var(--text-primary);
 }
 
+[data-theme='dark'] .workbench-compact-input-wrap textarea:focus,
+[data-theme='dark'] .workbench-compact-input-wrap :global(textarea.ant-input):focus,
 [data-theme='dark'] .workbench-compact-input-wrap :global(.ant-input-textarea) textarea:focus {
   background: rgba(15, 23, 42, 0.9);
 }
@@ -774,6 +803,7 @@
   align-items: center;
   gap: 3px;
   z-index: 2;
+  white-space: nowrap;
 }
 
 .workbench-compact-actions {
@@ -781,6 +811,7 @@
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .workbench-compact-btn-subtle {
@@ -1431,42 +1462,175 @@
 /*  待办看板 & 协同流转统一高质感按钮（全面适配 Light / Dark 模式）          */
 /* -------------------------------------------------------------------------- */
 
-/* 1. 次级动作按钮（如「详细」） */
+/* 1. 次级动作按钮（如「详细」、「恢复」） */
 .workbench-todo-action-btn {
   height: 26px !important;
   border-radius: 6px !important;
-  padding: 0 10px !important;
+  padding: 0 9px !important;
   font-size: 12px !important;
   font-weight: 500 !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  background: var(--bg-hover, #f1f5f9) !important;
-  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.3)) !important;
-  color: var(--text-primary, #334155) !important;
+  gap: 4px !important;
+  background: rgba(241, 245, 249, 0.85) !important;
+  border: 1px solid rgba(203, 213, 225, 0.75) !important;
+  color: #475569 !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+  backdrop-filter: blur(4px);
 }
 
 .workbench-todo-action-btn:hover {
   background: #ffffff !important;
-  border-color: #1677ff !important;
-  color: #1677ff !important;
-  box-shadow: 0 2px 4px rgba(22, 119, 255, 0.15) !important;
+  border-color: #3b82f6 !important;
+  color: #1d4ed8 !important;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.16) !important;
+  transform: translateY(-0.5px);
+}
+
+.workbench-todo-action-btn:active {
+  transform: scale(0.97) !important;
 }
 
 [data-theme='dark'] .workbench-todo-action-btn {
-  background: rgba(30, 41, 59, 0.85) !important;
+  background: rgba(30, 41, 59, 0.65) !important;
   border-color: rgba(148, 163, 184, 0.22) !important;
-  color: rgba(226, 232, 240, 0.92) !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+  color: rgba(226, 232, 240, 0.9) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25) !important;
 }
 
 [data-theme='dark'] .workbench-todo-action-btn:hover {
-  background: rgba(51, 65, 85, 0.95) !important;
-  border-color: #3b82f6 !important;
+  background: rgba(51, 65, 85, 0.9) !important;
+  border-color: rgba(96, 165, 250, 0.55) !important;
+  color: #93c5fd !important;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25) !important;
+  transform: translateY(-0.5px);
+}
+
+/* 1.1 AI 对话专属科技灵动按钮（智能助手入口） */
+.workbench-todo-ai-btn {
+  height: 26px !important;
+  border-radius: 6px !important;
+  padding: 0 9px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  background: linear-gradient(135deg, rgba(245, 243, 255, 0.92) 0%, rgba(238, 242, 255, 0.92) 100%) !important;
+  border: 1px solid rgba(192, 132, 252, 0.5) !important;
+  color: #7c3aed !important;
+  box-shadow: 0 1px 3px rgba(124, 58, 237, 0.08) !important;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  backdrop-filter: blur(4px);
+}
+
+.workbench-todo-ai-btn :global(.anticon) {
+  font-size: 12px !important;
+  color: #8b5cf6 !important;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.workbench-todo-ai-btn:hover {
+  background: linear-gradient(135deg, rgba(243, 232, 255, 1) 0%, rgba(224, 231, 255, 1) 100%) !important;
+  border-color: #a855f7 !important;
+  color: #6d28d9 !important;
+  box-shadow: 0 2px 8px rgba(147, 51, 234, 0.22) !important;
+  transform: translateY(-0.5px);
+}
+
+.workbench-todo-ai-btn:hover :global(.anticon) {
+  transform: scale(1.15) rotate(-6deg);
+  color: #7c3aed !important;
+}
+
+.workbench-todo-ai-btn:active {
+  transform: scale(0.97) !important;
+}
+
+[data-theme='dark'] .workbench-todo-ai-btn {
+  background: linear-gradient(135deg, rgba(88, 28, 135, 0.35) 0%, rgba(49, 46, 129, 0.26) 100%) !important;
+  border-color: rgba(168, 85, 247, 0.42) !important;
+  color: #d8b4fe !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme='dark'] .workbench-todo-ai-btn :global(.anticon) {
+  color: #c084fc !important;
+}
+
+[data-theme='dark'] .workbench-todo-ai-btn:hover {
+  background: linear-gradient(135deg, rgba(126, 34, 206, 0.5) 0%, rgba(67, 56, 202, 0.38) 100%) !important;
+  border-color: rgba(216, 180, 254, 0.75) !important;
+  color: #f3e8ff !important;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.4) !important;
+  transform: translateY(-0.5px);
+}
+
+[data-theme='dark'] .workbench-todo-ai-btn:hover :global(.anticon) {
+  color: #e9d5ff !important;
+}
+
+/* 1.2 转任务流转按钮（条目转入正式待办） */
+.workbench-todo-convert-btn {
+  height: 26px !important;
+  border-radius: 6px !important;
+  padding: 0 9px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  background: rgba(239, 246, 255, 0.88) !important;
+  border: 1px solid rgba(147, 197, 253, 0.65) !important;
+  color: #1d4ed8 !important;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.05) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  backdrop-filter: blur(4px);
+}
+
+.workbench-todo-convert-btn :global(.anticon) {
+  font-size: 11px !important;
+  color: #2563eb !important;
+  transition: transform 0.2s ease;
+}
+
+.workbench-todo-convert-btn:hover {
+  background: rgba(219, 234, 254, 1) !important;
+  border-color: #2563eb !important;
+  color: #1e40af !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.18) !important;
+  transform: translateY(-0.5px);
+}
+
+.workbench-todo-convert-btn:hover :global(.anticon) {
+  transform: translateX(2px);
+}
+
+.workbench-todo-convert-btn:active {
+  transform: scale(0.97) !important;
+}
+
+[data-theme='dark'] .workbench-todo-convert-btn {
+  background: rgba(30, 58, 138, 0.3) !important;
+  border-color: rgba(96, 165, 250, 0.38) !important;
+  color: #93c5fd !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+}
+
+[data-theme='dark'] .workbench-todo-convert-btn :global(.anticon) {
   color: #60a5fa !important;
-  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.25) !important;
+}
+
+[data-theme='dark'] .workbench-todo-convert-btn:hover {
+  background: rgba(30, 58, 138, 0.5) !important;
+  border-color: rgba(147, 197, 253, 0.7) !important;
+  color: #dbeafe !important;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.3) !important;
+  transform: translateY(-0.5px);
 }
 
 /* 2. 发送 / 重新发送主按钮（Primary Send） */
@@ -1629,30 +1793,57 @@
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-/* 7. 归档小按钮（Archive） */
+/* 7. 归档小按钮（Archive 微工具按键） */
 .workbench-todo-archive-btn {
   height: 26px !important;
   width: 26px !important;
+  min-width: 26px !important;
   border-radius: 6px !important;
+  padding: 0 !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  color: var(--text-tertiary, #94a3b8) !important;
-  transition: all 0.2s ease !important;
+  background: rgba(241, 245, 249, 0.7) !important;
+  border: 1px solid rgba(203, 213, 225, 0.6) !important;
+  color: #64748b !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+}
+
+.workbench-todo-archive-btn :global(.anticon) {
+  font-size: 13px !important;
+  transition: transform 0.2s ease;
 }
 
 .workbench-todo-archive-btn:hover {
-  color: var(--text-primary, #0f172a) !important;
-  background: var(--bg-hover, rgba(148, 163, 184, 0.12)) !important;
+  color: #0f172a !important;
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  transform: translateY(-0.5px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08) !important;
+}
+
+.workbench-todo-archive-btn:hover :global(.anticon) {
+  transform: scale(1.1);
+}
+
+.workbench-todo-archive-btn:active {
+  transform: scale(0.95) !important;
 }
 
 [data-theme='dark'] .workbench-todo-archive-btn {
-  color: rgba(148, 163, 184, 0.7) !important;
+  background: rgba(30, 41, 59, 0.55) !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  color: rgba(148, 163, 184, 0.85) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
 }
 
 [data-theme='dark'] .workbench-todo-archive-btn:hover {
   color: #f8fafc !important;
-  background: rgba(148, 163, 184, 0.15) !important;
+  background: rgba(51, 65, 85, 0.85) !important;
+  border-color: rgba(148, 163, 184, 0.5) !important;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.3) !important;
+  transform: translateY(-0.5px);
 }
 
 /* 8. 附件下载按钮（Download） */

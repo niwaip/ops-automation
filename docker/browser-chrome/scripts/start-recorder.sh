@@ -2,8 +2,8 @@
 set -e
 
 # Default configuration
-SCREEN_WIDTH=${SCREEN_WIDTH:-1920}
-SCREEN_HEIGHT=${SCREEN_HEIGHT:-1080}
+SCREEN_WIDTH=${SCREEN_WIDTH:-1280}
+SCREEN_HEIGHT=${SCREEN_HEIGHT:-800}
 SCREEN_DEPTH=${SCREEN_DEPTH:-24}
 DISPLAY_NUM=${DISPLAY_NUM:-99}
 VNC_PORT=${VNC_PORT:-5900}
@@ -84,7 +84,7 @@ if [ "$HEADLESS" != "true" ]; then
     echo "[1/5] Starting Xvfb on display :${DISPLAY_NUM}..."
     rm -f /tmp/.X${DISPLAY_NUM}-lock /tmp/.X11-unix/X${DISPLAY_NUM}
     Xvfb :${DISPLAY_NUM} -screen 0 ${SCREEN_WIDTH}x${SCREEN_HEIGHT}x${SCREEN_DEPTH} \
-        -ac +extension GLX +render -noreset &
+        -dpi ${XVFB_DPI:-100} -ac +extension GLX +render -noreset &
     XVFB_PID=$!
     sleep 0.2
     if ! kill -0 $XVFB_PID 2>/dev/null; then
@@ -94,6 +94,29 @@ if [ "$HEADLESS" != "true" ]; then
     echo "OK: Xvfb started (PID: $XVFB_PID)"
 
     echo "[2/5] Starting Fluxbox window manager..."
+    # Ensure Fluxbox removes borders/titlebars and hides the toolbar to avoid coordinate shifts
+    mkdir -p ~/.fluxbox /root/.fluxbox /home/chrome/.fluxbox
+    cat << 'EOF' > /tmp/fluxbox-apps
+[app] (name=.*)
+  [Deco] {NONE}
+  [Position] (UPPERLEFT) {0 0}
+  [Maximized] {yes}
+[end]
+EOF
+    cp /tmp/fluxbox-apps ~/.fluxbox/apps 2>/dev/null || true
+    cp /tmp/fluxbox-apps /root/.fluxbox/apps 2>/dev/null || true
+    cp /tmp/fluxbox-apps /home/chrome/.fluxbox/apps 2>/dev/null || true
+
+    cat << 'EOF' > /tmp/fluxbox-init
+session.screen0.toolbar.visible: false
+session.screen0.defaultDeco: NONE
+session.screen0.workspaces: 1
+session.screen0.edgeSnapThreshold: 0
+EOF
+    cp /tmp/fluxbox-init ~/.fluxbox/init 2>/dev/null || true
+    cp /tmp/fluxbox-init /root/.fluxbox/init 2>/dev/null || true
+    cp /tmp/fluxbox-init /home/chrome/.fluxbox/init 2>/dev/null || true
+
     DISPLAY=:${DISPLAY_NUM} fluxbox &
     sleep 0.2
     echo "OK: Fluxbox started"
@@ -160,6 +183,8 @@ CHROME_COMMON_ARGS=(
     --remote-allow-origins=*
     --no-first-run
     --no-default-browser-check
+    --font-render-hinting=medium
+    --enable-font-antialiasing
     --homepage
     about:blank
     --user-data-dir=${CHROME_PROFILE_PATH}
@@ -194,6 +219,11 @@ if ! wait_for_http "http://127.0.0.1:${CHROME_DEBUG_PORT}/json/version" 20; then
 fi
 echo "OK: Chrome CDP is ready"
 echo "  DevTools: http://localhost:${CHROME_DEBUG_PORT}"
+
+# Align Chromium window to top-left and fill exact screen dimensions without frame offsets
+if [ "$HEADLESS" != "true" ]; then
+    DISPLAY=:${DISPLAY_NUM} xdotool search --onlyvisible --class "(chromium|google-chrome)" windowmove 0 0 windowsize ${SCREEN_WIDTH} ${SCREEN_HEIGHT} 2>/dev/null || true
+fi
 
 if [ "$HEADLESS" != "true" ]; then
     echo "[4/5] Starting VNC server on port ${VNC_PORT}..."

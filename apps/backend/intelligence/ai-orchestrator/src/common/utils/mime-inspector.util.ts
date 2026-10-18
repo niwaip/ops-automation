@@ -300,9 +300,14 @@ export function inspectBinaryMimeType(
     return { mimeType: 'audio/flac', category: 'audio', extension: ext || '.flac' };
   }
 
-  // 3. Text-based files (json, csv, txt, md)
-  const allowedTextExts = new Set(['.txt', '.md', '.csv', '.json']);
-  if (allowedTextExts.has(ext)) {
+  // 3. Text-based files (json, csv, txt, md, log, sql, code, configs, Dockerfile)
+  const allowedTextExts = new Set([
+    '.txt', '.md', '.csv', '.tsv', '.json', '.jsonl', '.xml',
+    '.log', '.sql', '.sh', '.bash', '.zsh', '.py', '.js', '.ts', '.tsx', '.jsx',
+    '.yaml', '.yml', '.conf', '.ini', '.env', '.toml', '.properties',
+  ]);
+  const isDockerfile = declaredFilename.toLowerCase() === 'dockerfile' || declaredFilename.toLowerCase().startsWith('dockerfile.');
+  if (allowedTextExts.has(ext) || isDockerfile) {
     // Check if buffer is valid text (no NUL bytes in the first 4KB)
     const checkLen = Math.min(buffer.length, 4096);
     for (let i = 0; i < checkLen; i++) {
@@ -312,18 +317,37 @@ export function inspectBinaryMimeType(
     }
 
     const textHead = buffer.subarray(0, Math.min(buffer.length, 2048)).toString('utf-8');
-    // Block script tags in text files to prevent XSS
-    if (/<script\b[^>]*>/i.test(textHead) || /javascript:/i.test(textHead)) {
+    // Block active script tags in general documents, but allow technical/code files
+    const isCodeOrLog = ['.log', '.sql', '.sh', '.bash', '.zsh', '.py', '.js', '.ts', '.tsx', '.jsx', '.yaml', '.yml', '.conf', '.ini', '.env', '.toml', '.properties'].includes(ext) || isDockerfile;
+    if (!isCodeOrLog && (/<script\b[^>]*>/i.test(textHead) || /javascript:/i.test(textHead))) {
       throw new BadRequestException(`File ${declaredFilename} contains dangerous active script tags`);
     }
 
     const textMimes: Record<string, string> = {
       '.json': 'application/json',
+      '.jsonl': 'application/x-ndjson',
       '.csv': 'text/csv',
+      '.tsv': 'text/tab-separated-values',
       '.md': 'text/markdown',
       '.txt': 'text/plain',
+      '.log': 'text/plain',
+      '.sql': 'application/sql',
+      '.sh': 'text/x-shellscript',
+      '.bash': 'text/x-shellscript',
+      '.zsh': 'text/x-shellscript',
+      '.py': 'text/x-python',
+      '.js': 'application/javascript',
+      '.ts': 'application/typescript',
+      '.yaml': 'application/x-yaml',
+      '.yml': 'application/x-yaml',
+      '.xml': 'application/xml',
+      '.conf': 'text/plain',
+      '.ini': 'text/plain',
+      '.env': 'text/plain',
+      '.toml': 'application/toml',
     };
-    return { mimeType: textMimes[ext] || 'text/plain', category: 'text', extension: ext };
+    const resolvedExt = isDockerfile ? '.dockerfile' : ext;
+    return { mimeType: textMimes[ext] || 'text/plain', category: 'text', extension: ext || resolvedExt };
   }
 
   const previewTextHead = buffer.subarray(0, Math.min(buffer.length, 2048)).toString('utf-8');

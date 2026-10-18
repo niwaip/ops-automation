@@ -168,6 +168,37 @@ describe('SkillMatcherService deterministic explicit routing', () => {
     );
   });
 
+  it('does not route inspection query "查询关于ai能力测试的文件" to markdown-artifact-writer', async () => {
+    const service = new SkillMatcherService({} as any);
+    (axios.post as jest.Mock).mockResolvedValueOnce({ data: { match: null } });
+
+    const result = await service.matchSkill({
+      userInput: '查询关于ai能力测试的文件',
+      userId: 'user-1',
+      availableSkills: [
+        {
+          skillId: 'platform.document.markdown-artifact-writer',
+          skillName: '文件生成',
+          executionType: 'artifact',
+          triggerKeywords: ['Markdown文件生成', '生成Markdown', '输出Markdown文档'],
+          apiEndpoints: {
+            runtimeMetadata: {
+              routingAliases: ['Markdown文件生成', '文件生成', '导出Markdown'],
+            },
+          },
+          paramsSchema: {
+            properties: {
+              content: { type: 'string', description: '文件内容', required: true },
+            },
+            required: ['content'],
+          },
+        },
+      ],
+    });
+
+    expect(result).toBeNull();
+  });
+
   it('does not resolve an ambiguous generic keyword as an explicit Skill', async () => {
     const service = new SkillMatcherService({} as any);
     (axios.post as jest.Mock).mockResolvedValueOnce({ data: { match: null } });
@@ -456,6 +487,28 @@ describe('SkillMatcherService deterministic explicit routing', () => {
       expect(result).not.toBeNull();
       expect(result?.skillId).toBe('platform.workspace.explorer');
       expect(result?.matchReason).toMatch(/workspace_knowledge_intent|deterministic_routing_signal/);
+    });
+
+    it('Case 2d: Explicit "/doc deepseek harness的安装方法" command routes to workspace explorer skill despite containing guide pattern', async () => {
+      const service = new SkillMatcherService({} as any);
+      const workspaceSkill = {
+        skillId: 'platform.workspace.explorer',
+        executableVersion: '1.0.1',
+        skillName: '工作空间文档探查',
+        description: '工作空间内部知识库检索与文档定位',
+        triggerKeywords: ['/doc', '工作空间', '探查工作空间'],
+        paramsSchema: {},
+      };
+
+      const result = await service.matchSkill({
+        userInput: '/doc deepseek harness的安装方法',
+        userId: 'user-1',
+        availableSkills: [workspaceSkill as any, webSearchSkill as any],
+        context: { workspaceSearch: true },
+      });
+
+      expect(result).not.toBeNull();
+      expect(result?.skillId).toBe('platform.workspace.explorer');
     });
 
     it('Case 3: Explicit positive anchor "登录系统AI问答" deterministically matches with 0.99 confidence', async () => {

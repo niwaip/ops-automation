@@ -17,6 +17,10 @@ type RecorderDebugSessionLike = {
   runtimeSessionId: string;
   browserInitialized: boolean;
   currentPageUrl?: string;
+  endpoints?: {
+    novnc?: string;
+    cdp?: string;
+  };
   loopDraft?: any;
   pendingLoopCaptureStartCommandIndex?: number;
   history: any[];
@@ -75,6 +79,7 @@ export class RecorderDebugResponseService {
       | 'runtimeSessionId'
       | 'browserInitialized'
       | 'currentPageUrl'
+      | 'endpoints'
       | 'loopDraft'
       | 'pendingLoopCaptureStartCommandIndex'
     >;
@@ -106,6 +111,7 @@ export class RecorderDebugResponseService {
       status: input.status,
       browserReady: input.session.browserInitialized,
       currentPageUrl: input.session.currentPageUrl,
+      ...(input.session.endpoints ? { endpoints: input.session.endpoints } : {}),
       ...(input.observation ? { observation: input.observation } : {}),
       ...(input.commands ? { commands: input.commands } : {}),
       ...(input.execution ? { execution: input.execution } : {}),

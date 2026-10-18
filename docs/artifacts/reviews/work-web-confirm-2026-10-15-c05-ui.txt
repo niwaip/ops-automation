@@ -1,0 +1,160 @@
+- complementary:
+  - button:
+  - menu:
+    - menuitem "dashboard 工作台":
+      - img "dashboard":
+      - generic: 工作台
+    - menuitem "message 智能协同":
+      - img "message":
+      - generic: 智能协同
+    - menuitem "carry-out 任务中心":
+      - img "carry-out":
+      - generic: 任务中心
+    - menuitem "team 数字员工":
+      - img "team":
+      - generic: 数字员工
+    - menuitem "folder 资料空间":
+      - img "folder":
+      - generic: 资料空间
+  - menu:
+    - menuitem "setting 系统设置":
+      - img "setting":
+      - generic: 系统设置
+- banner:
+  - button "展开侧边栏":
+    - img "menu-unfold":
+  - generic: 智能协同
+  - button "bell 6":
+    - img "bell":
+    - superscript:
+      - generic: "6"
+  - button "bg-colors 浅色":
+    - img "bg-colors":
+    - generic: 浅色
+  - button "global 中文":
+    - img "global":
+    - generic: 中文
+  - button "A admin admin@example.com down":
+    - generic: A
+    - generic: admin
+    - generic: admin@example.com
+    - img "down":
+- main:
+  - button "menu-unfold":
+    - img "menu-unfold":
+  - button "plus":
+    - img "plus":
+  - button "清理全部会话":
+    - img "clear":
+  - img "desktop":
+  - text: 网页
+  - strong: 请搜索 Python 3.15 的官方发布说明，
+  - button "调整阅读字体大小":
+    - img "font-size":
+  - button "plus":
+    - img "plus":
+  - button "reload":
+    - img "reload":
+  - button "delete":
+    - img "delete":
+  - generic: 任务结果
+  - link "thunderbolt 详细":
+    - /url: /executions/07983c79-4c29-4e72-bd54-cf2029d7fae1
+    - img "thunderbolt":
+    - generic: 详细
+  - generic: 状态：已完成
+  - generic: 技能
+  - generic: 请搜索 Python 3.15 的官方发布说明，基于 python.org 的资料总结三项主要变化，并在每项后附来源链接。
+  - paragraph: 根据 python.org 官方发布的《Python 3.15 有什么新变化》（PEP 790 发布计划），Python 3.15 的三项主要变化如下：
+  - list:
+    - paragraph:
+      - strong: 支持惰性导入（Lazy Imports）
+    - list:
+      - strong: 内容说明
+      - text: ：引入惰性导入机制，允许模块在真正被调用时才进行加载，大幅优化启动时间和内存占用，提升程序加载性能。
+      - strong: 来源链接
+      - text: ：
+      - link "Python 3.15 有什么新变化 — Python 3.15.0 文档":
+        - /url: https://docs.python.org/3.15/whatsnew/3.15.html
+    - paragraph:
+      - strong: 新增冻结字典与哨兵内置类型（Frozen Dict & Sentinel）
+    - list:
+      - strong: 内容说明
+      - text: ：在内置类型中新增“冻结字典”（不可变键值映射结构）与官方“哨兵”类型，为数据安全、不可变性保障及占位状态判定提供了原生语言级支持。
+      - strong: 来源链接
+      - text: ：
+      - link "Python 3.15 有什么新变化 — Python 3.15.0 文档":
+        - /url: https://docs.python.org/3.15/whatsnew/3.15.html
+    - paragraph:
+      - strong: 默认采用 UTF-8 编码格式
+    - list:
+      - strong: 内容说明
+      - text: ：将 UTF-8 确立为默认编码格式，统一各平台的文本处理行为，避免因操作系统环境差异导致的编码兼容性与乱码问题。
+      - strong: 来源链接
+      - text: ：
+      - link "Python 3.15 有什么新变化 — Python 3.15.0 文档":
+        - /url: https://docs.python.org/3.15/whatsnew/3.15.html
+  - generic "点击展开完整内容"
+  - button "down 展开阅读完整报告（约 699 字）":
+    - img "down":
+    - generic: 展开阅读完整报告（约 699 字）
+  - button "copy 复制全文":
+    - img "copy":
+    - generic: 复制全文
+  - button "fullscreen 全屏沉浸阅读":
+    - img "fullscreen":
+    - generic: 全屏沉浸阅读
+  - generic "查看结构化结果"
+  - img "robot":
+  - img "clock-circle":
+  - generic: 10/15 09:47
+  - generic: 已完成
+  - generic "评价回答":
+    - button "回答有帮助":
+      - img "like":
+    - button "回答需要改进":
+      - img "dislike":
+  - button "保存工作流":
+    - img "folder-add":
+  - button "保存到个人空间":
+    - img "book":
+  - button "收集到 GTD 收件箱":
+    - img "inbox":
+  - button "复制":
+    - img "copy":
+  - button "重试":
+    - img "redo":
+  - textbox "例如：/doc 分析工作空间架构 或 /email 总结今日邮件（输入 / 唤起工作技能，! 唤起工作流）"
+  - radiogroup "segmented control":
+    - radio "user 个人助理"
+    - img "user":
+    - generic: 个人助理
+    - radio "robot 企业协同" [checked]
+    - img "robot":
+    - generic: 企业协同
+  - 'button "bulb 思考: 中 down"':
+    - img "bulb":
+    - generic: "思考: 中"
+    - img "down":
+  - generic "联网搜索：已关闭（可选开启，开启后允许 AI 检索互联网公开资讯）":
+    - img "global":
+    - text: 联网
+    - switch
+  - generic "工作空间知识检索：已关闭（可选开启，开启后提问将自动探查并研读空间文档）":
+    - img "folder":
+    - text: 知识
+    - switch
+  - combobox
+  - generic "Auto / 系统默认"
+  - button "thunderbolt":
+    - img "thunderbolt":
+  - button "paper-clip":
+    - img "paper-clip":
+  - button "audio":
+    - img "audio":
+  - button "plus":
+    - img "plus":
+  - button "send 发送" [disabled]:
+    - img "send":
+    - generic: 发送
+- tooltip "请输入内容后发送"

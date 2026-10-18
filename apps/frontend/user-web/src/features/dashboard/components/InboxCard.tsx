@@ -1,10 +1,15 @@
 import {
   App,
+  Button,
   Card,
   Space,
   Tag,
+  Tooltip,
   Typography,
 } from "antd";
+import { ReloadOutlined } from "@ant-design/icons";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { ExecutionDto } from "@ops/user-core";
 import { useWorkbenchInbox } from "../hooks/useWorkbenchInbox";
 import { InboxList } from "./InboxList";
@@ -21,6 +26,8 @@ interface InboxCardProps {
   getExecutionDisplayTime?: (execution: ExecutionDto) => string;
   getSkillDisplayName?: (skillId?: string) => string;
   onTodoCreated?: () => void;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 export function InboxCard({
@@ -34,8 +41,12 @@ export function InboxCard({
   getExecutionDisplayTime,
   getSkillDisplayName,
   onTodoCreated,
+  onRefresh,
+  isRefreshing = false,
 }: InboxCardProps) {
   const { message } = App.useApp();
+  const { t } = useTranslation("dashboard");
+  const [internalRefreshing, setInternalRefreshing] = useState(false);
 
   const {
     inboxDraft,
@@ -53,11 +64,26 @@ export function InboxCard({
     handleUnarchiveItem,
     handleDeleteItem,
     handleSyncEmail,
+    refreshInbox,
   } = useWorkbenchInbox({
     message,
     onTodoCreated,
     defaultFilter: priorityItems.length > 0 ? "intervention" : "unprocessed",
   });
+
+  const handleRefresh = async () => {
+    if (onRefresh) {
+      onRefresh();
+      return;
+    }
+    try {
+      setInternalRefreshing(true);
+      await refreshInbox();
+      void message.success(t("inbox.refresh_success", "已刷新 GTD 收集箱"));
+    } finally {
+      setInternalRefreshing(false);
+    }
+  };
 
   return (
     <Card
@@ -66,7 +92,7 @@ export function InboxCard({
       title={
         <div className={styles["workbench-panel-header"]}>
           <Typography.Text strong className={styles["workbench-panel-title"]}>
-            GTD 收集箱
+            {t("inbox.title", "GTD 收集箱")}
           </Typography.Text>
         </div>
       }
@@ -79,7 +105,7 @@ export function InboxCard({
               style={{ cursor: "pointer" }}
               onClick={() => setInboxFilter("intervention")}
             >
-              待介入 {priorityItems.length}
+              {t("inbox.pending_intervention", "待介入")} {priorityItems.length}
             </Tag>
           ) : null}
           {inboxSummary.unprocessed > 0 ? (
@@ -89,7 +115,7 @@ export function InboxCard({
               style={{ cursor: "pointer" }}
               onClick={() => setInboxFilter("unprocessed")}
             >
-              待整理 {inboxSummary.unprocessed}
+              {t("inbox.pending_clarification", "待整理")} {inboxSummary.unprocessed}
             </Tag>
           ) : null}
           <Tag
@@ -98,7 +124,7 @@ export function InboxCard({
             style={{ cursor: "pointer" }}
             onClick={() => setInboxFilter("clarified_archived")}
           >
-            已厘清/归档 {inboxSummary.clarified + inboxSummary.archived}
+            {t("inbox.clarified_archived", "已厘清/归档")} {inboxSummary.clarified + inboxSummary.archived}
           </Tag>
           <Tag
             color={inboxFilter === "all" ? "blue" : "default"}
@@ -106,8 +132,16 @@ export function InboxCard({
             style={{ cursor: "pointer" }}
             onClick={() => setInboxFilter("all")}
           >
-            全部 {inboxSummary.total}
+            {t("inbox.all", "全部")} {inboxSummary.total}
           </Tag>
+          <Tooltip title={t("inbox.refresh_inbox", "刷新收集箱")}>
+            <Button
+              type="text"
+              size="small"
+              icon={<ReloadOutlined spin={isRefreshing || internalRefreshing} />}
+              onClick={handleRefresh}
+            />
+          </Tooltip>
         </Space>
       }
     >

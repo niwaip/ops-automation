@@ -26,12 +26,35 @@ export function materializeDeterministicPlanInput(
   const nextInput = cloneJsonRecord(currentInput);
   if (!plan) return nextInput;
 
+  const appliedKeys = new Set<string>();
+
   for (const requiredInput of getMissingDeterministicPlanInputs(plan)) {
     if (!Object.prototype.hasOwnProperty.call(submittedInput, requiredInput.name)) continue;
     const value = submittedInput[requiredInput.name];
     if (value === undefined) continue;
     setValueByPath(nextInput, requiredInput.inputPath, value);
+    appliedKeys.add(requiredInput.name);
   }
+
+  const planNodeIds = new Set((plan.nodes || []).map((node) => node.nodeId));
+  for (const [key, value] of Object.entries(submittedInput)) {
+    if (value === undefined || appliedKeys.has(key)) continue;
+
+    if (key.startsWith('planInputs.')) {
+      setValueByPath(nextInput, key, value);
+      continue;
+    }
+
+    const firstDotIndex = key.indexOf('.');
+    if (firstDotIndex > 0) {
+      const prefix = key.slice(0, firstDotIndex);
+      const subPath = key.slice(firstDotIndex + 1);
+      if (planNodeIds.has(prefix) && subPath.length > 0) {
+        setValueByPath(nextInput, `planInputs.${prefix}.${subPath}`, value);
+      }
+    }
+  }
+
   return nextInput;
 }
 

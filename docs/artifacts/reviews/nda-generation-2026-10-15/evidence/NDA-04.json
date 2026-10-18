@@ -1,0 +1,50 @@
+{
+  "caseId": "NDA-04",
+  "variant": "canonical",
+  "status": "passed",
+  "traceIds": [
+    "33bf2151-760a-4dab-8d84-f5d20e31d107"
+  ],
+  "executionIds": [
+    "c77fb258-e439-4714-8d70-50f8e281edcc"
+  ],
+  "requestDigest": "c41e4ef8a19594bc25cecf5d1cf802cfedae85ac85b51ff5430f5a6455a8b648",
+  "selectedCapabilityRefs": [
+    "platform.document.contract-reviewer"
+  ],
+  "actualInvocations": [
+    "platform.document.contract-reviewer"
+  ],
+  "resolvedParameters": {},
+  "performance": {
+    "ttftMs": 16387,
+    "planningDurationMs": 16387,
+    "executionDurationMs": 0,
+    "totalDurationMs": 16387
+  },
+  "assertions": [
+    {
+      "assertion": "正确阻断保密协议生成引擎 (ConfidentialityAgreementGenerationWorkflow)",
+      "passed": true,
+      "actual": [
+        "platform.document.contract-reviewer"
+      ],
+      "expected": "不包含 ConfidentialityAgreementGenerationWorkflow"
+    },
+    {
+      "assertion": "正确识别合同审查意图，路由至 contract-reviewer",
+      "passed": true,
+      "actual": [
+        "platform.document.contract-reviewer"
+      ],
+      "expected": "包含 platform.document.contract-reviewer"
+    },
+    {
+      "assertion": "审查路由判定时延处于合理区间 (< 60s)",
+      "passed": true,
+      "actual": "16387ms",
+      "expected": "< 60000ms"
+    }
+  ],
+  "failureCategory": null
+}

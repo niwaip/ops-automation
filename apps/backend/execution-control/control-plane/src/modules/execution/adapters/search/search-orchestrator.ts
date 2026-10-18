@@ -9,6 +9,7 @@ import {
 import { TavilyProvider } from './providers/tavily.provider';
 import { FirecrawlProvider } from './providers/firecrawl.provider';
 import { ExaProvider } from './providers/exa.provider';
+import { BingProvider } from './providers/bing.provider';
 import { DuckDuckGoProvider } from './providers/duckduckgo.provider';
 
 export class SearchOrchestrator {
@@ -20,6 +21,7 @@ export class SearchOrchestrator {
     this.registerProvider(new TavilyProvider());
     this.registerProvider(new FirecrawlProvider());
     this.registerProvider(new ExaProvider());
+    this.registerProvider(new BingProvider());
     this.registerProvider(new DuckDuckGoProvider());
   }
 
@@ -55,7 +57,7 @@ export class SearchOrchestrator {
   }
 
   public resolveProviderChain(runtimeConfigs: Record<string, string>): SearchEngineProvider[] {
-    const defaultOrder = ['tavily', 'firecrawl', 'exa', 'duckduckgo'];
+    const defaultOrder = ['tavily', 'firecrawl', 'exa', 'bing', 'duckduckgo'];
     const customOrderStr =
       process.env.SEARCH_PROVIDER_ORDER ||
       runtimeConfigs.SEARCH_PROVIDER_ORDER ||

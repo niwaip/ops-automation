@@ -71,6 +71,7 @@ export interface AIControlsInputAreaProps {
   handleRollbackLastStep: () => void;
   handleClearHistory: () => void;
   t: (key: string) => string;
+  isExecuting?: boolean;
 }
 
 export const AIControlsInputArea: React.FC<AIControlsInputAreaProps> = ({
@@ -91,6 +92,7 @@ export const AIControlsInputArea: React.FC<AIControlsInputAreaProps> = ({
   isComposingRef,
   handleInputKeyDown,
   isLoading,
+  isExecuting = false,
   isTranscribing,
   actionColumnHeight,
   handleSend,
@@ -201,7 +203,7 @@ export const AIControlsInputArea: React.FC<AIControlsInputAreaProps> = ({
           }
           autoSize={isReactChatMode ? false : { minRows: 2, maxRows: 4 }}
           onKeyDown={handleInputKeyDown}
-          disabled={isLoading || isTranscribing}
+          disabled={isLoading || isExecuting || isTranscribing}
           style={{
             flex: 1,
             minWidth: 180,
@@ -230,7 +232,7 @@ export const AIControlsInputArea: React.FC<AIControlsInputAreaProps> = ({
             onClick={() => {
               void handleSend();
             }}
-            loading={isLoading}
+            loading={isLoading || isExecuting}
             style={{
               ...primaryActionButtonStyle,
               ...(!canSend ? mutedActionButtonStyle : {}),
@@ -253,7 +255,7 @@ export const AIControlsInputArea: React.FC<AIControlsInputAreaProps> = ({
             title={
               speechSupported
                 ? isListening
-                  ? '停止录音并转写'
+                ? '停止录音并转写'
                   : '语音输入'
                 : '当前浏览器不支持录音'
             }
@@ -269,9 +271,10 @@ export const AIControlsInputArea: React.FC<AIControlsInputAreaProps> = ({
                   void handleExportTemplateFromRecorder();
                 }}
                 loading={exportTemplateLoading}
+                disabled={!canExport || isExecuting || exportTemplateLoading}
                 style={{
                   ...secondaryActionButtonStyle,
-                  ...(!canExport ? mutedActionButtonStyle : {}),
+                  ...(!canExport || isExecuting || exportTemplateLoading ? mutedActionButtonStyle : {}),
                 }}
               >
                 导出

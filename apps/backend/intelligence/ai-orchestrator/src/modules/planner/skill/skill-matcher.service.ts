@@ -10,6 +10,7 @@ import { TRACE_ID_HEADER } from '../../../common/trace.util';
 import { AvailableSkillDefinition, SkillMatchResult } from '../../react-engine/interfaces';
 import { SkillCacheService, isWorkspaceSearchSkill } from './skill-cache.service';
 import { getSkillMatchMinConfidence, isAcceptedSkillMatch } from './skill-match-policy';
+import { isWorkspaceExploreCommand } from '../../chat/chat-slash-command.util';
 
 export type SkillMatchAttempt =
   | { status: 'matched'; match: SkillMatchResult }
@@ -131,9 +132,14 @@ export class SkillMatcherService {
       };
     }
 
-    // Guide / installation / inquiry questions must not be forced into execution skills.
-    // If workspace search is requested, it acts as a native RAG data source, not an execution ticket.
-    if (isGuideOrInquiryRequest(input.userInput)) {
+    const isExplicitExploreSkillCommand =
+      isWorkspaceExploreCommand(input.userInput) ||
+      /^(?:\/doc\s*)?(?:探查工作空间|查看工作空间文件|浏览知识库|列出空间文件|工作空间概览)$/i.test(
+        input.userInput.trim()
+      );
+
+    // Guide / installation / inquiry questions must not be forced into execution skills unless explicit /doc command is invoked.
+    if (!isExplicitExploreSkillCommand && isGuideOrInquiryRequest(input.userInput)) {
       this.logger.log(
         `User input '${input.userInput}' classified as guide/inquiry request; skipping model skill matching.`
       );
@@ -275,7 +281,12 @@ export class SkillMatcherService {
     availableSkills: AvailableSkillDefinition[],
     _context?: Record<string, unknown>
   ): SkillMatchResult | null {
-    if (isGuideOrInquiryRequest(userInput)) {
+    const isExplicitExploreSkillCommand =
+      isWorkspaceExploreCommand(userInput) ||
+      /^(?:\/doc\s*)?(?:探查工作空间|查看工作空间文件|浏览知识库|列出空间文件|工作空间概览)$/i.test(
+        userInput.trim()
+      );
+    if (!isExplicitExploreSkillCommand && isGuideOrInquiryRequest(userInput)) {
       return null;
     }
 
@@ -409,6 +420,7 @@ export class SkillMatcherService {
       availableSkills.map((skill) => ({
         id: skill.skillId,
         name: skill.skillName,
+        category: (skill as any).category || (skill as any).executionType,
         aliases: skill.apiEndpoints?.runtimeMetadata?.routingAliases,
         triggerKeywords: skill.triggerKeywords,
         negativeKeywords:
@@ -468,6 +480,7 @@ export class SkillMatcherService {
 
     const trimmedInput = userInput.trim();
     const isExplicitExploreSkillCommand =
+      /^\/(?:doc|workspace|rag)\b/i.test(trimmedInput) ||
       /^(?:\/doc\s*)?(?:探查工作空间|查看工作空间文件|浏览知识库|列出空间文件|工作空间概览)$/i.test(
         trimmedInput
       );
@@ -475,9 +488,7 @@ export class SkillMatcherService {
     const isWorkspaceSearchAllowed =
       context?.workspace_search_enabled === true ||
       context?.workspaceSearch === true ||
-      (/^\/doc\b/i.test(trimmedInput) &&
-        context?.workspace_search_enabled !== false &&
-        context?.workspaceSearch !== false);
+      /^\/(?:doc|workspace|rag)\b/i.test(trimmedInput);
 
     if (isExplicitExploreSkillCommand && isWorkspaceSearchAllowed) {
       let workspaceSkill = availableSkills.find(
@@ -516,9 +527,10 @@ export class SkillMatcherService {
 
     const isWebSearchExplicitlyRequested =
       !hasLocalAttachmentContext &&
-      /(?:^|[^a-zA-Z0-9])(?:请?帮我)?(?:搜索|联网搜索|全网搜索|检索|搜一下|搜搜|网上搜|谷歌搜索|百度搜索|必应搜索|搜一下外网)/i.test(
-        userInput
-      );
+      (/^\/search\b/i.test(trimmedInput) ||
+        /(?:^|[^a-zA-Z0-9])(?:请?帮我)?(?:搜索|联网搜索|全网搜索|检索|搜一下|搜搜|网上搜|谷歌搜索|百度搜索|必应搜索|搜一下外网)/i.test(
+          userInput
+        ));
 
     const isNonSearchActionIntent =
       /(?:提醒|闹钟|待办|日程|remind|邮件|email|收件箱|发信|发邮件)/i.test(userInput);
@@ -531,14 +543,16 @@ export class SkillMatcherService {
         hasRoutingSignal(userInput, 'externalSearch', createBuiltinRoutingPolicySnapshot()) ||
         isGuideRequest);
 
-    const isWebSearchAllowed =
-      context?.web_search_enabled !== false && context?.webSearch !== false;
+    const isExplicitSearchCommand =
+      /^\/search\b/i.test(trimmedInput) || isWebSearchExplicitlyRequested;
 
     const isWebSearchEnabled =
-      isWebSearchAllowed &&
       !isNonSearchActionIntent &&
-      (isWebSearchExplicitlyRequested ||
-        ((context?.web_search_enabled === true || context?.webSearch === true) && hasSearchCues));
+      (isExplicitSearchCommand ||
+        (context?.web_search_enabled !== false &&
+          context?.webSearch !== false &&
+          (context?.web_search_enabled === true || context?.webSearch === true) &&
+          hasSearchCues));
 
     if (isWebSearchEnabled) {
       let searchSkill = availableSkills.find(

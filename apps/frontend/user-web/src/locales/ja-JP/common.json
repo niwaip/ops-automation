@@ -21,6 +21,10 @@
   "status": "ステータス",
   "submit": "送信",
   "yes": "はい",
+  "theme": {
+    "dark": "ダーク",
+    "light": "ライト"
+  },
   "menu": {
     "dashboard": "ワークベンチ",
     "chat": "AIチャット",
@@ -28,10 +32,24 @@
     "published_skills": "公開スキル",
     "workspaces": "ワークスペース",
     "settings": "設定",
-    "im_channels": "IM チャネル"
+    "im_channels": "IM チャネル",
+    "email_settings": "メール設定",
+    "notifications": "通知センター",
+    "reports": "レポート"
   },
   "sidebar": {
     "collapse": "サイドバーを折りたたむ",
     "expand": "サイドバーを展開"
+  },
+  "user_menu": {
+    "email_connection": "メール連携",
+    "email_connection_desc": "仕事用/個人用メールと送信権限を設定",
+    "logout": "ログアウト",
+    "logout_desc": "セッションをクリアしてログイン画面に戻る",
+    "not_logged_in": "未ログイン",
+    "role": "役割",
+    "account_status": "アカウント状態",
+    "active": "有効",
+    "inactive": "無効"
   }
 }

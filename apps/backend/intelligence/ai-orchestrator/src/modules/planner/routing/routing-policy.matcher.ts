@@ -36,16 +36,44 @@ export function normalizeRoutingText(value: string): string {
   return String(value || '').normalize('NFKC').toLowerCase();
 }
 
+export function isOccurrenceNegated(text: string, matchIndex: number): boolean {
+  const prefix = text.slice(Math.max(0, matchIndex - 14), matchIndex);
+  return (
+    /(?:不要|切勿|不用|无需|禁止|别|请勿|不得|严禁|不)[^，,。；;！!？?\s]{0,6}\s*$/i.test(prefix) ||
+    /(?:do\s+not|don't|no|never|without)\s+[^,.;!?\s]{0,10}\s*$/i.test(prefix)
+  );
+}
+
 export function containsRoutingAlias(value: string, alias: string): boolean {
   const text = normalizeRoutingText(value);
   const normalizedAlias = normalizeRoutingText(alias).trim();
   if (!text || !normalizedAlias) return false;
 
-  if (/^[a-z0-9_-]+$/.test(normalizedAlias)) {
-    const escaped = normalizedAlias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, 'i').test(text);
+  const isWordBoundary = /^[a-z0-9_-]+$/.test(normalizedAlias);
+  let startIndex = 0;
+
+  while (startIndex < text.length) {
+    const idx = text.indexOf(normalizedAlias, startIndex);
+    if (idx === -1) break;
+
+    if (isWordBoundary) {
+      const charBefore = idx > 0 ? text.charAt(idx - 1) : ' ';
+      const charAfter =
+        idx + normalizedAlias.length < text.length ? text.charAt(idx + normalizedAlias.length) : ' ';
+      if (/[a-z0-9]/.test(charBefore) || /[a-z0-9]/.test(charAfter)) {
+        startIndex = idx + 1;
+        continue;
+      }
+    }
+
+    if (!isOccurrenceNegated(text, idx)) {
+      return true;
+    }
+
+    startIndex = idx + normalizedAlias.length;
   }
-  return text.includes(normalizedAlias);
+
+  return false;
 }
 
 export function hasRoutingSignal(

@@ -162,9 +162,10 @@ export class BrowserExecutionControllerService {
     const finalObservation = nextObservation || input.observation;
     input.session.lastObservation = finalObservation;
     input.session.currentPageUrl = finalObservation?.currentPageUrl || input.session.currentPageUrl;
-    input.session.executedCommands.push(
-      ...(effectiveExecution.executedCommands || effectiveParsed.commands)
-    );
+    const commandsToRecord = effectiveExecution.executedCommands?.length
+      ? effectiveExecution.executedCommands
+      : effectiveParsed.commands;
+    input.session.executedCommands.push(...commandsToRecord);
     input.applyRecorderControlTokensAfterExecution(input.session, input.controlTokenState);
 
     const ambiguityReply = this.recorderDebugChatSupportService.buildAmbiguityReply(
@@ -444,10 +445,14 @@ export class BrowserExecutionControllerService {
         ? [...(recoveryExecution.results || [])]
         : [...(initialExecution.results || []), ...(recoveryExecution.results || [])],
       steps: [...(initialExecution.steps || []), ...(recoveryExecution.steps || [])],
-      executedCommands: [
-        ...(initialExecution.executedCommands || []),
-        ...(recoveryExecution.executedCommands || []),
-      ],
+      ...((initialExecution.executedCommands?.length || recoveryExecution.executedCommands?.length)
+        ? {
+            executedCommands: [
+              ...(initialExecution.executedCommands || []),
+              ...(recoveryExecution.executedCommands || []),
+            ],
+          }
+        : {}),
     };
   }
 

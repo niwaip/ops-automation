@@ -95,6 +95,8 @@ export interface RequiredUserInputV1 {
     prompt: string;
     /** Stable submission key exposed to the chat/client input form. */
     name?: string;
+    display_name?: string;
+    label?: string;
     /** Path in execution.inputJson consumed by a user_input binding. */
     inputPath?: string;
     type?: string;

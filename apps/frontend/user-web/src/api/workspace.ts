@@ -36,6 +36,11 @@ export interface WorkspaceFileDigest {
   readingTimeMinutes: number;
   extractedAt: string;
   hasExtractedText: boolean;
+  cleanedContent?: string;
+  extractedData?: Record<string, any> | Array<any> | null;
+  cleanedByAi?: boolean;
+  aiModel?: string;
+  cleanPrompt?: string;
 }
 
 export interface WorkspaceNode {
@@ -71,6 +76,13 @@ export interface FilePreviewResponse {
   mimeType: string;
   fileName: string;
   isText: boolean;
+}
+
+export interface RegenerateDigestRequest {
+  useAi?: boolean;
+  modelId?: string;
+  promptInstructions?: string;
+  extractMode?: 'clean_summary' | 'extract_data' | 'custom';
 }
 
 export interface SaveTextNoteDto {
@@ -198,9 +210,10 @@ export const workspaceApi = {
 
   regenerateDigest: async (
     workspaceId: string,
-    nodeId: string
+    nodeId: string,
+    options?: RegenerateDigestRequest
   ): Promise<{ success: boolean; digest: WorkspaceFileDigest }> => {
-    return await apiClient.post(`/workspaces/${workspaceId}/nodes/${nodeId}/digest`);
+    return await apiClient.post(`/workspaces/${workspaceId}/nodes/${nodeId}/digest`, options || {});
   },
 
   getFileBlob: async (workspaceId: string, nodeId: string): Promise<Blob> => {

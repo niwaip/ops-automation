@@ -1,0 +1,4 @@
+workbench build: exit 0
+platform restart: success; started 2026-10-15 12:22:12 Asia/Shanghai
+PROJECT_ROOT=/Users/chain/Documents/MyProject/ops-automation
+ops-platform         | [Nest] 129  - 10/15/2026, 12:22:28 PM    WARN [WorkspaceDigestService] AI digest extraction failed for workspace-admin-loop-2026-10-15-fixture.md: Request failed with status code 401. Falling back to heuristic.

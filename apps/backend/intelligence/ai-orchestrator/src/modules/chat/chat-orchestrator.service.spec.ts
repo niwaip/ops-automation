@@ -1356,4 +1356,108 @@ describe('ChatOrchestratorService', () => {
       })
     );
   });
+
+  it('handles capability inquiry in task mode by injecting dynamic skills catalog to native LLM', async () => {
+    const { controlPlaneClient, reactEngineService, plannerService } = createService();
+
+    let capturedSystemPrompt = '';
+    const mockModelService = {
+      resolveModelEntity: jest.fn().mockReturnValue({ id: 'default' }),
+      isVisionCapableModel: jest.fn().mockReturnValue(false),
+      callModelStreamWithMessages: jest.fn().mockImplementation((modelId, messages, onChunk) => {
+        onChunk('我具备合同审查与邮件通知等核心能力');
+        return Promise.resolve({
+          content: '我具备合同审查与邮件通知等核心能力',
+          finishReason: 'stop',
+        });
+      }),
+    };
+
+    const mockChatConversation = {
+      getLatestCompletedTaskResult: jest.fn().mockResolvedValue(null),
+      resolvePreferredChatModelId: jest.fn().mockReturnValue('default'),
+      isThinkingEnabled: jest.fn().mockReturnValue(false),
+      resolveReasoningConfig: jest.fn().mockResolvedValue({ enabled: false }),
+      buildConversationMessages: jest.fn().mockImplementation((sessionId, systemPrompt, content) => {
+        capturedSystemPrompt = systemPrompt;
+        return Promise.resolve([
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content },
+        ]);
+      }),
+      getVisibleChatContent: jest.fn().mockImplementation((content: string) => content),
+    };
+
+    const mockCapabilityInquiry = {
+      isCapabilityInquiry: jest.fn().mockReturnValue(true),
+      loadEffectiveCapabilities: jest.fn().mockResolvedValue({
+        builtinSkills: [
+          {
+            id: 'platform.document.contract-reviewer',
+            skillName: '合同文档智能审查与合规诊断',
+            description: '条款风险合规审查',
+            category: 'document',
+          },
+        ],
+        savedWorkflows: [],
+      }),
+      buildSkillsCatalogPrompt: jest.fn().mockReturnValue('DYNAMIC_CATALOG_CONTENT'),
+      buildCapabilityInquirySystemPrompt: jest.fn().mockImplementation((catalog) => `SYSTEM_PROMPT_WITH_${catalog}`),
+    };
+
+    const serviceWithInquiry = new ChatOrchestratorService(
+      controlPlaneClient as any,
+      reactEngineService as any,
+      plannerService as any,
+      { isPromptDebugEnabled: () => false } as any,
+      {} as any,
+      {} as any,
+      mockChatConversation as any,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mockModelService as any,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mockCapabilityInquiry as any
+    );
+
+    const events: any[] = [];
+    for await (const event of serviceWithInquiry.handleTaskMode(
+      {
+        message: '你有什么能力',
+        sessionId: 'session-inquiry-1',
+      },
+      {
+        sessionId: 'session-inquiry-1',
+        userId: 'user-inquiry-1',
+        userRoles: ['employee'],
+        traceId: 'trace-inquiry-1',
+        history: [],
+      },
+      'Bearer token-inquiry-1'
+    )) {
+      events.push(event);
+    }
+
+    expect(mockCapabilityInquiry.isCapabilityInquiry).toHaveBeenCalledWith('你有什么能力');
+    expect(mockCapabilityInquiry.loadEffectiveCapabilities).toHaveBeenCalled();
+    expect(mockCapabilityInquiry.buildSkillsCatalogPrompt).toHaveBeenCalled();
+    expect(capturedSystemPrompt).toContain('DYNAMIC_CATALOG_CONTENT');
+
+    const thoughtEvent = events.find(
+      (e) => e.type === StreamEventType.THOUGHT && e.content.includes('正在查询平台已启用的技能与能力清单')
+    );
+    expect(thoughtEvent).toBeDefined();
+
+    const resultEvent = events.find((e) => e.type === StreamEventType.RESULT);
+    expect(resultEvent).toBeDefined();
+    expect(resultEvent.content).toContain('我具备合同审查与邮件通知等核心能力');
+  });
 });

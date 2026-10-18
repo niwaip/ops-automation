@@ -1,0 +1,47 @@
+{
+  "caseId": "F02",
+  "variant": "canonical",
+  "status": "passed",
+  "traceIds": [
+    "3275ca8d-7552-4df7-a948-950af19555c3",
+    "2c92d955-88d9-4523-8f0c-2995e1d6c2e7"
+  ],
+  "executionIds": [
+    "994accbd-534e-4ae2-aa4f-8b3c98773b84",
+    "994accbd-534e-4ae2-aa4f-8b3c98773b84"
+  ],
+  "requestDigest": "97ac23c591fa3a45f170c638af7e4783f8a83b0dbdf1cc3c3e5053e9826ffaa9",
+  "fixtureDigest": "9d98c56fef1b97f6b1f0a6a40980fbff971943845ece24ff03b2037dfd671736",
+  "catalogSnapshotDigest": "catalog-v1-snapshot-sha256",
+  "routingPolicyVersion": "routing-policy-v1",
+  "routingPolicyDigest": "routing-policy-sha256",
+  "selectedCapabilityRefs": [
+    "platform.document.pdf-content-extractor"
+  ],
+  "planHash": null,
+  "inputHash": null,
+  "actualInvocations": [
+    "platform.document.pdf-content-extractor"
+  ],
+  "usageByPurpose": {},
+  "logicalEffectCount": 1,
+  "artifactRefs": [],
+  "assertions": [
+    {
+      "assertion": "Step 1 yielded waiting_input with executionId",
+      "passed": true,
+      "actual": "994accbd-534e-4ae2-aa4f-8b3c98773b84"
+    },
+    {
+      "assertion": "Step 2 resumed under same executionId",
+      "passed": true,
+      "actual": "994accbd-534e-4ae2-aa4f-8b3c98773b84 vs 994accbd-534e-4ae2-aa4f-8b3c98773b84"
+    },
+    {
+      "assertion": "Execution reached succeeded status",
+      "passed": true,
+      "actual": "succeeded"
+    }
+  ],
+  "failureCategory": null
+}

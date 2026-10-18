@@ -10,7 +10,33 @@ export interface ParsedChatSlashCommand {
  * 工作模式专属的 Slash 技能指令列表与匹配正则（企业知识库、文档内容提取与邮件）
  */
 export const WORK_SLASH_COMMAND_REGEX =
-  /^\s*\/(?:doc|workspace|rag|extract|email)(?:\s+|$)([\s\S]*)/i;
+  /^\s*\/(?:doc|workspace|rag|extract|email|pdf-extract)(?:\s+|$)([\s\S]*)/i;
+
+/**
+ * 工作空间探索指令集合（统一 SSOT）
+ */
+export const WORKSPACE_EXPLORE_COMMANDS = ['doc', 'workspace', 'rag'] as const;
+
+/**
+ * 检测是否为工作空间探索指令（/doc, /workspace, /rag）
+ */
+export function isWorkspaceExploreCommand(text: string): boolean {
+  return /^\s*\/(?:doc|workspace|rag)(?:\s+|$)/i.test((text || '').trim());
+}
+
+/**
+ * 检测是否为文档提取指令（/extract, /pdf-extract）
+ */
+export function isDocumentExtractCommand(text: string): boolean {
+  return /^\s*\/(?:extract|pdf-extract)(?:\s+|$)/i.test((text || '').trim());
+}
+
+/**
+ * 检测是否为联网搜索指令（/search）
+ */
+export function isWebSearchCommand(text: string): boolean {
+  return /^\s*\/search(?:\s+|$)/i.test((text || '').trim());
+}
 
 /**
  * 检测消息是否为工作模式专属的 Slash 指令
@@ -40,6 +66,11 @@ export function parseChatSlashCommand(
 
   // 1. Help command
   if (/^\s*\/(?:help|\?|帮助)(?:\s+|$)/i.test(text)) {
+    const isWorkMode = initialMode === 'task';
+    const modeSpecificHelp = isWorkMode
+      ? '• 企业工作能力（当前已就绪）：`/doc` 工作空间探索、`/extract` 文档提取、`/email` 邮件助手'
+      : '• 工作模式专属能力（`/doc` 工作空间探索、`/extract` 文档提取、`/email` 邮件助手）需在左下方切换至【工作模式】使用。';
+
     return {
       mode: initialMode,
       message: '',
@@ -49,7 +80,7 @@ export function parseChatSlashCommand(
         '• `/search <内容>`：联网检索公开资讯与网页来源\n' +
         '• `/clear` 或 `/n`：清空上下文并开启全新会话\n' +
         '• `/help`：查看指令帮助\n' +
-        '• 工作模式专属能力（`/doc` 工作空间探索、`/extract` 文档提取、`/email` 邮件助手）需在左下方切换至【工作模式】使用。',
+        modeSpecificHelp,
     };
   }
 

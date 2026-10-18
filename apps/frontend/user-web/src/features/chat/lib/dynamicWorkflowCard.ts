@@ -29,7 +29,21 @@ export function buildDynamicWorkflowCardPayload(
 
   // 1. 动态遍历 Schema 参数属性，进行类型转换与格式化输出
   Object.entries(properties).forEach(([key, prop]) => {
-    const rawVal = formValues[key];
+    let rawVal = formValues[key];
+    if (rawVal === undefined && key.includes('.')) {
+      const parts = key.split('.');
+      let curr: any = formValues;
+      for (const p of parts) {
+        if (curr && typeof curr === 'object') {
+          curr = curr[p];
+        } else {
+          curr = undefined;
+          break;
+        }
+      }
+      rawVal = curr;
+    }
+
     if (rawVal === undefined || rawVal === null || rawVal === '') {
       return;
     }
@@ -46,16 +60,46 @@ export function buildDynamicWorkflowCardPayload(
     } else if (prop.type === 'number') {
       const num = Number(rawVal);
       cleanParameters[key] = num;
-      if (
+      const isMoney =
         key.toLowerCase().includes('amount') ||
         key.toLowerCase().includes('price') ||
-        key.toLowerCase().includes('money')
-      ) {
+        key.toLowerCase().includes('fee') ||
+        key.toLowerCase().includes('money');
+      const isYear =
+        key.toLowerCase().includes('year') ||
+        Boolean(prop.description?.includes('年')) ||
+        Boolean(prop.displayName?.includes('年'));
+      const isMonth =
+        key.toLowerCase().includes('month') ||
+        Boolean(prop.description?.includes('月')) ||
+        Boolean(prop.displayName?.includes('月'));
+      const isDayOfMonth =
+        key.toLowerCase().includes('signdate.day') ||
+        Boolean(prop.description?.includes('日号')) ||
+        Boolean(prop.displayName?.includes('日号'));
+      const isDays =
+        key.toLowerCase().includes('days') ||
+        Boolean(prop.description?.includes('天')) ||
+        Boolean(prop.displayName?.includes('天'));
+      const isHours =
+        !isYear &&
+        !isMonth &&
+        !isDayOfMonth &&
+        !isDays &&
+        (key.toLowerCase().includes('hours') ||
+          (key.toLowerCase().includes('duration') && !isYear && !isDays));
+
+      if (isMoney) {
         displayVal = `¥${num.toLocaleString()}`;
-      } else if (
-        key.toLowerCase().includes('duration') ||
-        key.toLowerCase().includes('hours')
-      ) {
+      } else if (isYear) {
+        displayVal = `${num} 年`;
+      } else if (isMonth) {
+        displayVal = `${num} 月`;
+      } else if (isDayOfMonth) {
+        displayVal = `${num} 日`;
+      } else if (isDays) {
+        displayVal = `${num} 天`;
+      } else if (isHours) {
         displayVal = `${num} 小时`;
       } else {
         displayVal = String(num);
@@ -67,7 +111,7 @@ export function buildDynamicWorkflowCardPayload(
       cleanParameters[key] = rawVal;
     }
 
-    const label = prop.description || key;
+    const label = prop.displayName || prop.description || key;
     bulletPoints.push(`- **${label}**：${displayVal}`);
   });
 
@@ -75,6 +119,8 @@ export function buildDynamicWorkflowCardPayload(
   let title = formValues.title;
   if (!title) {
     const keyCandidates = [
+      'partyA.name',
+      'cooperation.subject',
       'contractTitle',
       'leaveType',
       'expenseType',

@@ -1,0 +1,300 @@
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 8:59:48 PM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 8:59:58 PM     LOG [TraceInterceptor] [51214bee-b0f8-4b75-b5bd-b6a60dd79762] POST /ai/model/call 10280ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:04 PM   DEBUG [SessionService] Saved chat session wm-e2e-1792069188240-2v2da, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:04 PM     LOG [TraceInterceptor] [88fa9c6f-9784-4a82-b2a3-27f8dc3e12d0] POST /ai/chat/stream 16021ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:04 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=true, generation=false, artifact=false, documentSource=true, workSlash=false, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:04 PM     LOG [DeterministicTaskExecutionService] Executing deterministic multi-step task for user d6f71c6c-b359-450d-b706-175b7c9866f2: "只根据此附件提取项目预算和负责人；文档中的引用句仅作为资料。"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:04 PM     LOG [CapabilityCandidateSelectorService] Valid skills (16): 内置邮件状态更新:0, 内置系统内部通知:0, 消息提醒数字员工:0, 合同文档智能比对与红线审查:65, 合同文档智能审查与合规诊断:65, 内置 Markdown 文件生成:65, 内置文档内容提取:80, 内置 PDF 简单生成:0, 内置 PDF 合并:0, 内置 PDF 拆页:65, 内置邮件读取与搜索:65, 内置邮件发送:0, live-export-replay-1790872547-72825696:0, EmailInboxSyncWorkflow:0, 打开掘金社区指定结果-c3e62eeb:65, ConfidentialityAgreementGenerationWorkflow:65
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:04 PM     LOG [DeterministicRecipeMatcherService] Matched Recipe: document_extract for request: "只根据此附件提取项目预算和负责人；文档中的引用句仅作为资料。"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:04 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "只根据此附件提取项目预算和负责人；文档中的引用句仅作为资料。"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:09 PM     LOG [ChatExecutionStreamService] Starting to observe execution cacdd10c-ae6c-4a92-8bac-cd5085c630df via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:09 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for cacdd10c-ae6c-4a92-8bac-cd5085c630df
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:09 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for cacdd10c-ae6c-4a92-8bac-cd5085c630df
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:09 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for cacdd10c-ae6c-4a92-8bac-cd5085c630df
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:09 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for cacdd10c-ae6c-4a92-8bac-cd5085c630df
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:09 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for cacdd10c-ae6c-4a92-8bac-cd5085c630df
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:09 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.artifact.created for cacdd10c-ae6c-4a92-8bac-cd5085c630df
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:09 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for cacdd10c-ae6c-4a92-8bac-cd5085c630df
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:09 PM     LOG [ChatExecutionStreamService] Execution cacdd10c-ae6c-4a92-8bac-cd5085c630df reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:09 PM   DEBUG [SessionService] Saved chat session wm-e2e-1792069204270-bdlc6, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:09 PM     LOG [TraceInterceptor] [12ab5bdf-6ae1-42ee-8abb-e9fc7bfecefd] POST /ai/chat/stream 5697ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:10 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=false, generation=false, artifact=false, documentSource=false, workSlash=true, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:10 PM     LOG [DeterministicTaskExecutionService] Executing deterministic multi-step task for user d6f71c6c-b359-450d-b706-175b7c9866f2: "/search 检索 Python 3.12.0 的官方发布页面，只使用 python.org，返回版本与发布日期及直接来源链接"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:10 PM     LOG [CapabilityCandidateSelectorService] Valid skills (17): 内置邮件状态更新:0, 内置系统内部通知:0, 消息提醒数字员工:0, 合同文档智能比对与红线审查:0, 内置联网搜索:395, 合同文档智能审查与合规诊断:0, 内置 Markdown 文件生成:65, 内置文档内容提取:0, 内置 PDF 简单生成:0, 内置 PDF 合并:0, 内置 PDF 拆页:125, 内置邮件读取与搜索:125, 内置邮件发送:0, live-export-replay-1790872547-72825696:425, EmailInboxSyncWorkflow:0, 打开掘金社区指定结果-c3e62eeb:125, ConfidentialityAgreementGenerationWorkflow:65
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:10 PM     LOG [DeterministicRecipeMatcherService] Matched Recipe: web_search for request: "/search 检索 Python 3.12.0 的官方发布页面，只使用 python.org，返回版本与发布日期及直接来源链接"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:10 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "/search 检索 Python 3.12.0 的官方发布页面，只使用 python.org，返回版本与发布日期及直接来源链接"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:10 PM     LOG [ChatExecutionStreamService] Starting to observe execution c0f12132-9208-4f2d-abad-22765466a9db via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:10 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for c0f12132-9208-4f2d-abad-22765466a9db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:10 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for c0f12132-9208-4f2d-abad-22765466a9db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:10 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for c0f12132-9208-4f2d-abad-22765466a9db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:17 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for c0f12132-9208-4f2d-abad-22765466a9db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:17 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for c0f12132-9208-4f2d-abad-22765466a9db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:17 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for c0f12132-9208-4f2d-abad-22765466a9db
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:17 PM     LOG [ChatExecutionStreamService] Generating AI summary for execution c0f12132-9208-4f2d-abad-22765466a9db with objective: "/search 检索 Python 3.12.0 的官方发布页面，只使用 python.org，返回版本与发布日期及直接来源链接"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:23 PM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution c0f12132-9208-4f2d-abad-22765466a9db (190 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:23 PM     LOG [ChatExecutionStreamService] Execution c0f12132-9208-4f2d-abad-22765466a9db reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:23 PM   DEBUG [SessionService] Saved chat session wm-e2e-1792069209978-1xlzy, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:23 PM     LOG [TraceInterceptor] [ee0d6e9c-88ec-43ac-903c-3fc24d93ceef] POST /ai/chat/stream 13443ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:23 PM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:34 PM     LOG [ChatExecutionStreamService] Starting to observe execution 81eed0a8-d141-4d42-ba09-9ee2356c4798 via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:34 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 81eed0a8-d141-4d42-ba09-9ee2356c4798
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:34 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.plan.generated for 81eed0a8-d141-4d42-ba09-9ee2356c4798
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:34 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.steps.planned for 81eed0a8-d141-4d42-ba09-9ee2356c4798
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:34 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 81eed0a8-d141-4d42-ba09-9ee2356c4798
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:34 PM   DEBUG [ChatExecutionStreamService] Received execution event: runtime.skipped for 81eed0a8-d141-4d42-ba09-9ee2356c4798
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:35 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 81eed0a8-d141-4d42-ba09-9ee2356c4798
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:45 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 81eed0a8-d141-4d42-ba09-9ee2356c4798
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:45 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 81eed0a8-d141-4d42-ba09-9ee2356c4798
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:45 PM     LOG [ChatExecutionStreamService] Generating AI summary for execution 81eed0a8-d141-4d42-ba09-9ee2356c4798 with objective: "检索 Python 3.12.0 的官方发布页面，只使用 python.org，返回版本与发布日期及直接来源链接"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:51 PM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution 81eed0a8-d141-4d42-ba09-9ee2356c4798 (187 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:51 PM     LOG [ChatExecutionStreamService] Execution 81eed0a8-d141-4d42-ba09-9ee2356c4798 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:51 PM   DEBUG [SessionService] Saved chat session wm-e2e-1792069223425-90r3k, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:51 PM     LOG [TraceInterceptor] [c1a078d9-4f61-4f79-a54c-d12e124d17c8] POST /ai/chat/stream 27627ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:51 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=false, generation=false, artifact=false, documentSource=false, workSlash=true, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:51 PM     LOG [DeterministicTaskExecutionService] Executing deterministic multi-step task for user d6f71c6c-b359-450d-b706-175b7c9866f2: "/doc WM_ROUTE_FIXTURE_20261015_V1"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:51 PM     LOG [CapabilityCandidateSelectorService] Valid skills (18): 内置邮件状态更新:0, 内置系统内部通知:0, 消息提醒数字员工:0, 合同文档智能比对与红线审查:0, 内置联网搜索:0, 内置工作空间文档探索:85, 合同文档智能审查与合规诊断:0, 内置 Markdown 文件生成:0, 内置文档内容提取:0, 内置 PDF 简单生成:0, 内置 PDF 合并:0, 内置 PDF 拆页:0, 内置邮件读取与搜索:0, 内置邮件发送:0, live-export-replay-1790872547-72825696:0, EmailInboxSyncWorkflow:0, 打开掘金社区指定结果-c3e62eeb:0, ConfidentialityAgreementGenerationWorkflow:0
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:51 PM     LOG [DeterministicRecipeMatcherService] Matched Recipe: workspace_explore for request: "/doc WM_ROUTE_FIXTURE_20261015_V1"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:51 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "/doc WM_ROUTE_FIXTURE_20261015_V1"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:51 PM     LOG [ChatExecutionStreamService] Starting to observe execution fdfcca9c-1368-4ca5-9fa5-692bbd488ad6 via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:51 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for fdfcca9c-1368-4ca5-9fa5-692bbd488ad6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:51 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for fdfcca9c-1368-4ca5-9fa5-692bbd488ad6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:51 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for fdfcca9c-1368-4ca5-9fa5-692bbd488ad6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:51 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for fdfcca9c-1368-4ca5-9fa5-692bbd488ad6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:51 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for fdfcca9c-1368-4ca5-9fa5-692bbd488ad6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:51 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for fdfcca9c-1368-4ca5-9fa5-692bbd488ad6
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:00:51 PM     LOG [ChatExecutionStreamService] Generating AI summary for execution fdfcca9c-1368-4ca5-9fa5-692bbd488ad6 with objective: "/doc WM_ROUTE_FIXTURE_20261015_V1"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:01 PM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution fdfcca9c-1368-4ca5-9fa5-692bbd488ad6 (410 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:01 PM     LOG [ChatExecutionStreamService] Execution fdfcca9c-1368-4ca5-9fa5-692bbd488ad6 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:01 PM   DEBUG [SessionService] Saved chat session wm-e2e-1792069251059-i9nfc, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:01 PM     LOG [TraceInterceptor] [2c6a7d77-3bb5-4f60-a97a-46a718888433] POST /ai/chat/stream 10052ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:01 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=false, generation=false, artifact=false, documentSource=false, workSlash=true, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:01 PM     LOG [DeterministicTaskExecutionService] Executing deterministic multi-step task for user d6f71c6c-b359-450d-b706-175b7c9866f2: "/workspace WM_ROUTE_FIXTURE_20261015_V1"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:01 PM     LOG [CapabilityCandidateSelectorService] Valid skills (18): 内置邮件状态更新:0, 内置系统内部通知:0, 消息提醒数字员工:0, 合同文档智能比对与红线审查:0, 内置联网搜索:0, 内置工作空间文档探索:175, 合同文档智能审查与合规诊断:0, 内置 Markdown 文件生成:0, 内置文档内容提取:0, 内置 PDF 简单生成:0, 内置 PDF 合并:0, 内置 PDF 拆页:0, 内置邮件读取与搜索:0, 内置邮件发送:0, live-export-replay-1790872547-72825696:0, EmailInboxSyncWorkflow:100, 打开掘金社区指定结果-c3e62eeb:0, ConfidentialityAgreementGenerationWorkflow:100
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:01 PM     LOG [DeterministicRecipeMatcherService] Matched Recipe: workspace_explore for request: "/workspace WM_ROUTE_FIXTURE_20261015_V1"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:01 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "/workspace WM_ROUTE_FIXTURE_20261015_V1"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:01 PM     LOG [ChatExecutionStreamService] Starting to observe execution 4e1242d5-1846-4711-b387-3e35f67449ef via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:01 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 4e1242d5-1846-4711-b387-3e35f67449ef
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:01 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 4e1242d5-1846-4711-b387-3e35f67449ef
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:01 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 4e1242d5-1846-4711-b387-3e35f67449ef
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:01 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 4e1242d5-1846-4711-b387-3e35f67449ef
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:01 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 4e1242d5-1846-4711-b387-3e35f67449ef
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:01 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 4e1242d5-1846-4711-b387-3e35f67449ef
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:01 PM     LOG [ChatExecutionStreamService] Generating AI summary for execution 4e1242d5-1846-4711-b387-3e35f67449ef with objective: "/workspace WM_ROUTE_FIXTURE_20261015_V1"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:10 PM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution 4e1242d5-1846-4711-b387-3e35f67449ef (503 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:10 PM     LOG [ChatExecutionStreamService] Execution 4e1242d5-1846-4711-b387-3e35f67449ef reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:10 PM   DEBUG [SessionService] Saved chat session wm-e2e-1792069261117-sv1n3, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:10 PM     LOG [TraceInterceptor] [8cc175e3-a225-4b16-9e03-a18910495e66] POST /ai/chat/stream 9008ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:10 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=false, generation=false, artifact=false, documentSource=false, workSlash=true, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:10 PM     LOG [DeterministicTaskExecutionService] Executing deterministic multi-step task for user d6f71c6c-b359-450d-b706-175b7c9866f2: "/rag WM_ROUTE_FIXTURE_20261015_V1"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:10 PM     LOG [CapabilityCandidateSelectorService] Valid skills (18): 内置邮件状态更新:0, 内置系统内部通知:0, 消息提醒数字员工:0, 合同文档智能比对与红线审查:0, 内置联网搜索:0, 内置工作空间文档探索:85, 合同文档智能审查与合规诊断:0, 内置 Markdown 文件生成:0, 内置文档内容提取:0, 内置 PDF 简单生成:0, 内置 PDF 合并:0, 内置 PDF 拆页:0, 内置邮件读取与搜索:0, 内置邮件发送:0, live-export-replay-1790872547-72825696:0, EmailInboxSyncWorkflow:0, 打开掘金社区指定结果-c3e62eeb:0, ConfidentialityAgreementGenerationWorkflow:0
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:10 PM     LOG [DeterministicRecipeMatcherService] Matched Recipe: workspace_explore for request: "/rag WM_ROUTE_FIXTURE_20261015_V1"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:10 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "/rag WM_ROUTE_FIXTURE_20261015_V1"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:10 PM     LOG [ChatExecutionStreamService] Starting to observe execution d907f9b9-3730-4273-aa63-9b19aebefa2e via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:10 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for d907f9b9-3730-4273-aa63-9b19aebefa2e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:10 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for d907f9b9-3730-4273-aa63-9b19aebefa2e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:10 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for d907f9b9-3730-4273-aa63-9b19aebefa2e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:10 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for d907f9b9-3730-4273-aa63-9b19aebefa2e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:10 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for d907f9b9-3730-4273-aa63-9b19aebefa2e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:10 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for d907f9b9-3730-4273-aa63-9b19aebefa2e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:10 PM     LOG [ChatExecutionStreamService] Generating AI summary for execution d907f9b9-3730-4273-aa63-9b19aebefa2e with objective: "/rag WM_ROUTE_FIXTURE_20261015_V1"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:17 PM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution d907f9b9-3730-4273-aa63-9b19aebefa2e (499 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:17 PM     LOG [ChatExecutionStreamService] Execution d907f9b9-3730-4273-aa63-9b19aebefa2e reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:17 PM   DEBUG [SessionService] Saved chat session wm-e2e-1792069270130-uiy6h, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:17 PM     LOG [TraceInterceptor] [4160da5c-c08c-4758-bfec-295fcf846918] POST /ai/chat/stream 7779ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:17 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=true, generation=false, artifact=false, documentSource=true, workSlash=true, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:17 PM     LOG [DeterministicTaskExecutionService] Executing deterministic multi-step task for user d6f71c6c-b359-450d-b706-175b7c9866f2: "/extract 提取此附件正文"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:17 PM     LOG [CapabilityCandidateSelectorService] Valid skills (16): 内置邮件状态更新:0, 内置系统内部通知:0, 消息提醒数字员工:0, 合同文档智能比对与红线审查:105, 合同文档智能审查与合规诊断:105, 内置 Markdown 文件生成:0, 内置文档内容提取:115, 内置 PDF 简单生成:0, 内置 PDF 合并:0, 内置 PDF 拆页:65, 内置邮件读取与搜索:65, 内置邮件发送:0, live-export-replay-1790872547-72825696:0, EmailInboxSyncWorkflow:0, 打开掘金社区指定结果-c3e62eeb:65, ConfidentialityAgreementGenerationWorkflow:0
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:17 PM     LOG [DeterministicRecipeMatcherService] Matched Recipe: document_extract for request: "/extract 提取此附件正文"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:17 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "/extract 提取此附件正文"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:18 PM     LOG [ChatExecutionStreamService] Starting to observe execution b1c4d83c-2bd6-4136-b0e1-541c21731f12 via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:18 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for b1c4d83c-2bd6-4136-b0e1-541c21731f12
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:18 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for b1c4d83c-2bd6-4136-b0e1-541c21731f12
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:18 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for b1c4d83c-2bd6-4136-b0e1-541c21731f12
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:18 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for b1c4d83c-2bd6-4136-b0e1-541c21731f12
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:18 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for b1c4d83c-2bd6-4136-b0e1-541c21731f12
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:18 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.artifact.created for b1c4d83c-2bd6-4136-b0e1-541c21731f12
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:18 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for b1c4d83c-2bd6-4136-b0e1-541c21731f12
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:18 PM     LOG [ChatExecutionStreamService] Execution b1c4d83c-2bd6-4136-b0e1-541c21731f12 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:18 PM   DEBUG [SessionService] Saved chat session r07-session-1792069277913, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:18 PM     LOG [TraceInterceptor] [c6e9454b-0c43-4f79-a764-c76cd34b6a42] POST /ai/chat/stream 618ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:18 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=true, generation=false, artifact=false, documentSource=false, workSlash=true, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:18 PM     LOG [DeterministicTaskExecutionService] Executing deterministic multi-step task for user d6f71c6c-b359-450d-b706-175b7c9866f2: "/extract"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:18 PM     LOG [CapabilityCandidateSelectorService] Valid skills (16): 内置邮件状态更新:0, 内置系统内部通知:0, 消息提醒数字员工:0, 合同文档智能比对与红线审查:105, 合同文档智能审查与合规诊断:105, 内置 Markdown 文件生成:0, 内置文档内容提取:115, 内置 PDF 简单生成:0, 内置 PDF 合并:0, 内置 PDF 拆页:0, 内置邮件读取与搜索:0, 内置邮件发送:0, live-export-replay-1790872547-72825696:0, EmailInboxSyncWorkflow:0, 打开掘金社区指定结果-c3e62eeb:0, ConfidentialityAgreementGenerationWorkflow:0
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:18 PM     LOG [DeterministicRecipeMatcherService] Matched Recipe: document_extract for request: "/extract"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:18 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "/extract"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:22 PM   DEBUG [SessionService] Saved chat session r08-session-1792069278538, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:22 PM     LOG [TraceInterceptor] [c0baca64-32e9-49bf-b244-948bd3118cf1] POST /ai/chat/stream 4162ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:22 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=true, generation=false, artifact=true, documentSource=true, workSlash=false, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:22 PM     LOG [DeterministicTaskExecutionService] Executing deterministic multi-step task for user d6f71c6c-b359-450d-b706-175b7c9866f2: "提取此附件正文，整理项目、负责人、预算及销售额，生成一个可下载的 Markdown 文件。"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:22 PM     LOG [CapabilityCandidateSelectorService] Valid skills (16): 内置邮件状态更新:65, 内置系统内部通知:0, 消息提醒数字员工:0, 合同文档智能比对与红线审查:65, 合同文档智能审查与合规诊断:65, 内置 Markdown 文件生成:255, 内置文档内容提取:145, 内置 PDF 简单生成:65, 内置 PDF 合并:80, 内置 PDF 拆页:65, 内置邮件读取与搜索:65, 内置邮件发送:0, live-export-replay-1790872547-72825696:0, EmailInboxSyncWorkflow:0, 打开掘金社区指定结果-c3e62eeb:65, ConfidentialityAgreementGenerationWorkflow:65
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:22 PM     LOG [DeterministicRecipeMatcherService] Matched Recipe: document_extract_summarize_write_markdown for request: "提取此附件正文，整理项目、负责人、预算及销售额，生成一个可下载的 Markdown 文件。"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:22 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "提取此附件正文，整理项目、负责人、预算及销售额，生成一个可下载的 Markdown 文件。"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:29 PM     LOG [TraceInterceptor] [6e05b63e-e050-4e89-8aa8-9776e9ff41fb] GET /ai/internal/operations/catalog/summarize_text 5ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:29 PM     LOG [TraceInterceptor] [47754561-1931-43c9-994f-3da9e2785580] GET /ai/internal/operations/attestations/summarize_text/1.0.28 3ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:29 PM     LOG [ChatExecutionStreamService] Starting to observe execution 01adcd71-bb07-4af6-9530-c68319e3d14e via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:29 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 01adcd71-bb07-4af6-9530-c68319e3d14e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:29 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 01adcd71-bb07-4af6-9530-c68319e3d14e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:29 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 01adcd71-bb07-4af6-9530-c68319e3d14e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:29 PM     LOG [TraceInterceptor] [b3f5cd1e-d0e2-47f3-aa64-f9467f58023c] GET /ai/internal/operations/catalog/summarize_text 2ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:29 PM     LOG Executing V2 LLM operation 'summarize_text' with model 'gemini-3.8-flash-high'
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:29 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 01adcd71-bb07-4af6-9530-c68319e3d14e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:29 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 01adcd71-bb07-4af6-9530-c68319e3d14e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:29 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 01adcd71-bb07-4af6-9530-c68319e3d14e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:29 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 01adcd71-bb07-4af6-9530-c68319e3d14e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM    WARN Model output was not JSON; wrapping raw text into primary field summary
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM     LOG [TraceInterceptor] [2cdef169-15db-4237-864d-7e9f2aa62b43] POST /ai/operations/v2/execute 13067ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 01adcd71-bb07-4af6-9530-c68319e3d14e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 01adcd71-bb07-4af6-9530-c68319e3d14e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 01adcd71-bb07-4af6-9530-c68319e3d14e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 01adcd71-bb07-4af6-9530-c68319e3d14e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.artifact.created for 01adcd71-bb07-4af6-9530-c68319e3d14e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 01adcd71-bb07-4af6-9530-c68319e3d14e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 01adcd71-bb07-4af6-9530-c68319e3d14e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 01adcd71-bb07-4af6-9530-c68319e3d14e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM     LOG [ChatExecutionStreamService] Execution 01adcd71-bb07-4af6-9530-c68319e3d14e reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM   DEBUG [SessionService] Saved chat session wm-e2e-1792069282704-dvvy7, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM     LOG [TraceInterceptor] [6f17cf12-f44f-4ea2-8e85-53d8de99bdf9] POST /ai/chat/stream 19657ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=true, generation=false, artifact=true, documentSource=true, workSlash=false, previousResult=true)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM     LOG [DeterministicTaskExecutionService] Executing deterministic multi-step task for user d6f71c6c-b359-450d-b706-175b7c9866f2: "将刚才提取的结果保存为 Markdown 文件"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM     LOG [CapabilityCandidateSelectorService] Valid skills (16): 内置邮件状态更新:65, 内置系统内部通知:0, 消息提醒数字员工:0, 合同文档智能比对与红线审查:0, 合同文档智能审查与合规诊断:0, 内置 Markdown 文件生成:255, 内置文档内容提取:145, 内置 PDF 简单生成:0, 内置 PDF 合并:65, 内置 PDF 拆页:65, 内置邮件读取与搜索:0, 内置邮件发送:0, live-export-replay-1790872547-72825696:0, EmailInboxSyncWorkflow:0, 打开掘金社区指定结果-c3e62eeb:65, ConfidentialityAgreementGenerationWorkflow:0
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM     LOG [DeterministicRecipeMatcherService] Matched Recipe: write_markdown_from_previous_result for request: "将刚才提取的结果保存为 Markdown 文件"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "将刚才提取的结果保存为 Markdown 文件"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM     LOG [ChatExecutionStreamService] Starting to observe execution 65fe3e0d-f3f8-4a20-9e26-c8eccf2c1259 via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 65fe3e0d-f3f8-4a20-9e26-c8eccf2c1259
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 65fe3e0d-f3f8-4a20-9e26-c8eccf2c1259
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 65fe3e0d-f3f8-4a20-9e26-c8eccf2c1259
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.artifact.created for 65fe3e0d-f3f8-4a20-9e26-c8eccf2c1259
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 65fe3e0d-f3f8-4a20-9e26-c8eccf2c1259
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 65fe3e0d-f3f8-4a20-9e26-c8eccf2c1259
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 65fe3e0d-f3f8-4a20-9e26-c8eccf2c1259
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM     LOG [ChatExecutionStreamService] Execution 65fe3e0d-f3f8-4a20-9e26-c8eccf2c1259 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM   DEBUG [SessionService] Saved chat session r07-session-1792069277913, history=4
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM     LOG [TraceInterceptor] [2f77e98c-b997-4563-961a-dd724e9c50d7] POST /ai/chat/stream 576ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:42 PM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:43 PM     LOG [ChatExecutionStreamService] Starting to observe execution 4b42a81a-2367-4bfe-92a7-94c7bba9ecbf via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:43 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 4b42a81a-2367-4bfe-92a7-94c7bba9ecbf
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:43 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.plan.generated for 4b42a81a-2367-4bfe-92a7-94c7bba9ecbf
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:43 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.steps.planned for 4b42a81a-2367-4bfe-92a7-94c7bba9ecbf
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:43 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 4b42a81a-2367-4bfe-92a7-94c7bba9ecbf
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:43 PM   DEBUG [ChatExecutionStreamService] Received execution event: runtime.skipped for 4b42a81a-2367-4bfe-92a7-94c7bba9ecbf
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:43 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 4b42a81a-2367-4bfe-92a7-94c7bba9ecbf
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:44 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 4b42a81a-2367-4bfe-92a7-94c7bba9ecbf
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:44 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 4b42a81a-2367-4bfe-92a7-94c7bba9ecbf
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:44 PM     LOG [ChatExecutionStreamService] Generating AI summary for execution 4b42a81a-2367-4bfe-92a7-94c7bba9ecbf with objective: "根据内部空间资料，介绍一下测试夹具 source.md 的主要内容"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:51 PM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution 4b42a81a-2367-4bfe-92a7-94c7bba9ecbf (205 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:51 PM     LOG [ChatExecutionStreamService] Execution 4b42a81a-2367-4bfe-92a7-94c7bba9ecbf reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:51 PM   DEBUG [SessionService] Saved chat session wm-e2e-1792069302946-87wbm, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:51 PM     LOG [TraceInterceptor] [6003b557-61fd-4d10-bf5b-01ace06072fb] POST /ai/chat/stream 8347ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:51 PM     LOG [PlanRouteClassifierService] Classified request as 'single_skill' (fast path)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:01:57 PM     LOG [TraceInterceptor] [5ac55ba3-8d66-4b87-8d4a-e8a0258e43c6] POST /ai/model/call 6038ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:06 PM   DEBUG [SessionService] Saved chat session wm-e2e-1792069311297-2ojel, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:06 PM     LOG [TraceInterceptor] [28ca17cd-8d9e-4b6e-9513-3e88ac40c0a3] POST /ai/chat/stream 15326ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:31 PM   DEBUG [SessionService] Saved chat session wm-e2e-1792069326630-repnw, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:31 PM     LOG [TraceInterceptor] [b05dd1af-f697-473d-a4e3-73df44a0a29f] POST /ai/chat/stream 25175ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:31 PM     LOG [TraceInterceptor] [1165ead7-6547-4367-8fd3-aeaced860966] GET /ai/internal/operations/catalog/summarize_text 4ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:31 PM     LOG [TraceInterceptor] [abcb1931-c8c4-4853-9f9f-b42aad1c4a4e] GET /ai/internal/operations/attestations/summarize_text/1.0.28 2ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:31 PM     LOG [DeterministicTaskExecutionService] Matched private saved workflow df15c847-ddbe-4984-a688-d0e46babafa6 at score 0.828 using routing policy builtin-2026-08-25
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:31 PM     LOG [ChatExecutionStreamService] Starting to observe execution a0743035-7248-42cc-ac0a-0572b361409e via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:31 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for a0743035-7248-42cc-ac0a-0572b361409e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:31 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for a0743035-7248-42cc-ac0a-0572b361409e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:31 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for a0743035-7248-42cc-ac0a-0572b361409e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:31 PM     LOG [TraceInterceptor] [db8ceff6-5962-4506-9ade-c26848640f13] GET /ai/internal/operations/catalog/summarize_text 2ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:31 PM     LOG Executing V2 LLM operation 'summarize_text' with model 'gemini-3.8-flash-high'
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:32 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for a0743035-7248-42cc-ac0a-0572b361409e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:32 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for a0743035-7248-42cc-ac0a-0572b361409e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:32 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for a0743035-7248-42cc-ac0a-0572b361409e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:32 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for a0743035-7248-42cc-ac0a-0572b361409e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM    WARN Model output was not JSON; wrapping raw text into primary field summary
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM     LOG [TraceInterceptor] [41f2d3b0-076b-472f-aa7a-4c4acba3b3e7] POST /ai/operations/v2/execute 6458ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for a0743035-7248-42cc-ac0a-0572b361409e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for a0743035-7248-42cc-ac0a-0572b361409e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for a0743035-7248-42cc-ac0a-0572b361409e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for a0743035-7248-42cc-ac0a-0572b361409e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.artifact.created for a0743035-7248-42cc-ac0a-0572b361409e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for a0743035-7248-42cc-ac0a-0572b361409e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for a0743035-7248-42cc-ac0a-0572b361409e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for a0743035-7248-42cc-ac0a-0572b361409e
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM     LOG [ChatExecutionStreamService] Execution a0743035-7248-42cc-ac0a-0572b361409e reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM   DEBUG [SessionService] Saved chat session wm-e2e-1792069351819-kjx5a, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM     LOG [TraceInterceptor] [145fb337-7bfd-434b-b777-85a39fcc23c4] POST /ai/chat/stream 6665ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM     LOG [TraceInterceptor] [1f9fac0d-067f-4d73-8faf-e498e793cc13] GET /ai/internal/operations/catalog/summarize_text 3ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM     LOG [TraceInterceptor] [05b2e96c-2af7-4e30-b114-65055a1c0add] GET /ai/internal/operations/attestations/summarize_text/1.0.28 2ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM     LOG [DeterministicTaskExecutionService] Matched private saved workflow df15c847-ddbe-4984-a688-d0e46babafa6 at score 0.828 using routing policy builtin-2026-08-25
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM     LOG [ChatExecutionStreamService] Starting to observe execution 4ecc5607-4b04-46f5-91ba-2b87aeaa79c9 via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 4ecc5607-4b04-46f5-91ba-2b87aeaa79c9
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 4ecc5607-4b04-46f5-91ba-2b87aeaa79c9
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 4ecc5607-4b04-46f5-91ba-2b87aeaa79c9
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM     LOG [TraceInterceptor] [d00b4e9e-8665-4d1c-a78f-3516ac8402d3] GET /ai/internal/operations/catalog/summarize_text 2ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:38 PM     LOG Executing V2 LLM operation 'summarize_text' with model 'gemini-3.8-flash-high'
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:39 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 4ecc5607-4b04-46f5-91ba-2b87aeaa79c9
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:39 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 4ecc5607-4b04-46f5-91ba-2b87aeaa79c9
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:39 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 4ecc5607-4b04-46f5-91ba-2b87aeaa79c9
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:39 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 4ecc5607-4b04-46f5-91ba-2b87aeaa79c9
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:48 PM    WARN Model output was not JSON; wrapping raw text into primary field summary
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:48 PM     LOG [TraceInterceptor] [b3f2059e-7e22-4144-9892-3ac254f3f5b6] POST /ai/operations/v2/execute 10070ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:48 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 4ecc5607-4b04-46f5-91ba-2b87aeaa79c9
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:48 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 4ecc5607-4b04-46f5-91ba-2b87aeaa79c9
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:48 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 4ecc5607-4b04-46f5-91ba-2b87aeaa79c9
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:48 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 4ecc5607-4b04-46f5-91ba-2b87aeaa79c9
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:48 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.artifact.created for 4ecc5607-4b04-46f5-91ba-2b87aeaa79c9
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:48 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 4ecc5607-4b04-46f5-91ba-2b87aeaa79c9
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:48 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 4ecc5607-4b04-46f5-91ba-2b87aeaa79c9
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:48 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 4ecc5607-4b04-46f5-91ba-2b87aeaa79c9
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:48 PM     LOG [ChatExecutionStreamService] Execution 4ecc5607-4b04-46f5-91ba-2b87aeaa79c9 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:48 PM   DEBUG [SessionService] Saved chat session wm-e2e-1792069358492-k1mqh, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:48 PM     LOG [TraceInterceptor] [20310a87-f01e-428f-a855-1118ad27f6a7] POST /ai/chat/stream 10263ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:48 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=true, generation=false, artifact=false, documentSource=false, workSlash=true, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:48 PM     LOG [DeterministicTaskExecutionService] Executing deterministic multi-step task for user d6f71c6c-b359-450d-b706-175b7c9866f2: "/extract"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:48 PM     LOG [CapabilityCandidateSelectorService] Valid skills (16): 内置邮件状态更新:0, 内置系统内部通知:0, 消息提醒数字员工:0, 合同文档智能比对与红线审查:105, 合同文档智能审查与合规诊断:105, 内置 Markdown 文件生成:0, 内置文档内容提取:115, 内置 PDF 简单生成:0, 内置 PDF 合并:0, 内置 PDF 拆页:0, 内置邮件读取与搜索:0, 内置邮件发送:0, live-export-replay-1790872547-72825696:0, EmailInboxSyncWorkflow:0, 打开掘金社区指定结果-c3e62eeb:0, ConfidentialityAgreementGenerationWorkflow:0
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:48 PM     LOG [DeterministicRecipeMatcherService] Matched Recipe: document_extract for request: "/extract"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:48 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "/extract"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM   DEBUG [SessionService] Saved chat session f02-suite-1792069368761, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM     LOG [TraceInterceptor] [84874f1c-ce25-41e2-ae2f-74e67a91d453] POST /ai/chat/stream 4533ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM     LOG [ChatExecutionStreamService] Starting to observe execution 8b47e14c-5a59-469f-aadf-f0002fff72b7 via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for 8b47e14c-5a59-469f-aadf-f0002fff72b7
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.input_submitted for 8b47e14c-5a59-469f-aadf-f0002fff72b7
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.resumed for 8b47e14c-5a59-469f-aadf-f0002fff72b7
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for 8b47e14c-5a59-469f-aadf-f0002fff72b7
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for 8b47e14c-5a59-469f-aadf-f0002fff72b7
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for 8b47e14c-5a59-469f-aadf-f0002fff72b7
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for 8b47e14c-5a59-469f-aadf-f0002fff72b7
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.artifact.created for 8b47e14c-5a59-469f-aadf-f0002fff72b7
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for 8b47e14c-5a59-469f-aadf-f0002fff72b7
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM     LOG [ChatExecutionStreamService] Execution 8b47e14c-5a59-469f-aadf-f0002fff72b7 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM   DEBUG [SessionService] Saved chat session f02-suite-1792069368761, history=4
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM     LOG [TraceInterceptor] [2482ab15-87d9-4fa6-8a02-c24763f52239] POST /ai/chat/stream 561ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=false, generation=false, artifact=false, documentSource=false, workSlash=true, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM     LOG [DeterministicTaskExecutionService] Executing deterministic multi-step task for user d6f71c6c-b359-450d-b706-175b7c9866f2: "/doc PRIVATE_A_ONLY"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM     LOG [CapabilityCandidateSelectorService] Valid skills (18): 内置邮件状态更新:0, 内置系统内部通知:0, 消息提醒数字员工:0, 合同文档智能比对与红线审查:0, 内置联网搜索:0, 内置工作空间文档探索:85, 合同文档智能审查与合规诊断:0, 内置 Markdown 文件生成:0, 内置文档内容提取:0, 内置 PDF 简单生成:0, 内置 PDF 合并:0, 内置 PDF 拆页:0, 内置邮件读取与搜索:0, 内置邮件发送:0, live-export-replay-1790872547-72825696:0, EmailInboxSyncWorkflow:0, 打开掘金社区指定结果-c3e62eeb:0, ConfidentialityAgreementGenerationWorkflow:0
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM     LOG [DeterministicRecipeMatcherService] Matched Recipe: workspace_explore for request: "/doc PRIVATE_A_ONLY"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "/doc PRIVATE_A_ONLY"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM     LOG [ChatExecutionStreamService] Starting to observe execution f315f778-b26a-4d28-9af5-f267096f9a0f via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for f315f778-b26a-4d28-9af5-f267096f9a0f
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for f315f778-b26a-4d28-9af5-f267096f9a0f
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:53 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for f315f778-b26a-4d28-9af5-f267096f9a0f
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:54 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for f315f778-b26a-4d28-9af5-f267096f9a0f
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:54 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for f315f778-b26a-4d28-9af5-f267096f9a0f
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:54 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for f315f778-b26a-4d28-9af5-f267096f9a0f
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:02:54 PM     LOG [ChatExecutionStreamService] Generating AI summary for execution f315f778-b26a-4d28-9af5-f267096f9a0f with objective: "/doc PRIVATE_A_ONLY"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:03 PM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution f315f778-b26a-4d28-9af5-f267096f9a0f (581 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:03 PM     LOG [ChatExecutionStreamService] Execution f315f778-b26a-4d28-9af5-f267096f9a0f reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:03 PM   DEBUG [SessionService] Saved chat session wm-e2e-1792069373878-sl0wt, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:03 PM     LOG [TraceInterceptor] [e593e4ab-518e-4e5b-b99d-ae3523cda18d] POST /ai/chat/stream 9252ms
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:03 PM     LOG [PlanRouteClassifierService] Classified request as 'deterministic_plan' (policy=builtin-2026-08-25, sequential=false, processing=false, generation=false, artifact=false, documentSource=false, workSlash=true, previousResult=false)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:03 PM     LOG [DeterministicTaskExecutionService] Executing deterministic multi-step task for user f9c8e328-e482-4041-ae32-20dd552dd499: "/doc PRIVATE_A_ONLY"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:03 PM     LOG [CapabilityCandidateSelectorService] Valid skills (18): 内置邮件状态更新:0, 内置系统内部通知:0, 消息提醒数字员工:0, 合同文档智能比对与红线审查:0, 内置联网搜索:0, 内置工作空间文档探索:85, 合同文档智能审查与合规诊断:0, 内置 Markdown 文件生成:0, 内置文档内容提取:0, 内置 PDF 简单生成:0, 内置 PDF 合并:0, 内置 PDF 拆页:0, 内置邮件读取与搜索:0, 内置邮件发送:0, live-export-replay-1790872547-72825696:0, EmailInboxSyncWorkflow:0, 打开掘金社区指定结果-c3e62eeb:0, ConfidentialityAgreementGenerationWorkflow:0
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:03 PM     LOG [DeterministicRecipeMatcherService] Matched Recipe: workspace_explore for request: "/doc PRIVATE_A_ONLY"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:03 PM     LOG [DeterministicPlanGeneratorService] Deterministic recipe topology succeeded for request: "/doc PRIVATE_A_ONLY"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:03 PM     LOG [ChatExecutionStreamService] Starting to observe execution ea244fdb-b2da-4e31-b443-cea5d2374bd4 via control-plane stream
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:03 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.created for ea244fdb-b2da-4e31-b443-cea5d2374bd4
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:03 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.started for ea244fdb-b2da-4e31-b443-cea5d2374bd4
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:03 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.started for ea244fdb-b2da-4e31-b443-cea5d2374bd4
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:04 PM   DEBUG [ChatExecutionStreamService] Received execution event: step.succeeded for ea244fdb-b2da-4e31-b443-cea5d2374bd4
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:04 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.node.succeeded for ea244fdb-b2da-4e31-b443-cea5d2374bd4
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:04 PM   DEBUG [ChatExecutionStreamService] Received execution event: execution.status_changed for ea244fdb-b2da-4e31-b443-cea5d2374bd4
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:04 PM     LOG [ChatExecutionStreamService] Generating AI summary for execution ea244fdb-b2da-4e31-b443-cea5d2374bd4 with objective: "/doc PRIVATE_A_ONLY"
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:08 PM     LOG [ChatExecutionStreamService] AI summary generated successfully for execution ea244fdb-b2da-4e31-b443-cea5d2374bd4 (229 chars)
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:08 PM     LOG [ChatExecutionStreamService] Execution ea244fdb-b2da-4e31-b443-cea5d2374bd4 reached terminal state: succeeded
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:08 PM   DEBUG [SessionService] Saved chat session wm-e2e-1792069383134-3av3b, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/15/2026, 9:03:08 PM     LOG [TraceInterceptor] [19165f82-380f-438c-8920-7781aa6cad9c] POST /ai/chat/stream 5658ms
+ops-platform         | [Nest] 207  - 10/15/2026, 9:03:08 PM     LOG [WorkbenchCoordinationService] Coordination task created: coord_5076c2e1-9ef7-4301-bc6f-c705fbdf818b by user test -> assignee law01, inboxItem: 6892d1d2-9865-4d4e-a470-d244fa6d6605

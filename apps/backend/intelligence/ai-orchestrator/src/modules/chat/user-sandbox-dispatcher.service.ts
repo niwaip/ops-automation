@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, Optional } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { StreamEventType } from '../react-engine/interfaces';
@@ -161,7 +161,10 @@ export class UserSandboxDispatcherService {
     sessionId?: string,
     executionId?: string
   ): Promise<boolean> {
-    const effectiveUserId = (userId || 'admin').trim();
+    const effectiveUserId = (userId || '').trim();
+    if (!effectiveUserId) {
+      throw new BadRequestException('userId 不能为空');
+    }
     const execKey = sessionId ? `${effectiveUserId}:${sessionId}` : effectiveUserId;
     if (sessionId) {
       const activeExec = this.activeUserExecutions.get(execKey);
@@ -228,7 +231,10 @@ export class UserSandboxDispatcherService {
     userId: string,
     abortSignal?: AbortSignal
   ): Promise<boolean> {
-    const effectiveUserId = (userId || 'admin').trim();
+    const effectiveUserId = (body.userId || userId || '').trim();
+    if (!effectiveUserId) {
+      throw new BadRequestException('userId 不能为空');
+    }
     const sessionId = body.sessionId || 'default';
 
     // 纵深防御：个人模式下禁止调用工作模式专属的 Slash 技能
@@ -250,6 +256,49 @@ export class UserSandboxDispatcherService {
     const sessionAttachedFiles: string[] = [];
     const currentTurnFiles: string[] = [];
     let turnStartTime: number | undefined;
+    let isTimedOut = false;
+    let controller: AbortController | undefined;
+    let onAbort: (() => void) | undefined;
+    let deltaAccumulator = '';
+    let thoughtAccumulator = '';
+    let isThinkingRequested: boolean | undefined = undefined;
+    let effectiveModel = body.modelId;
+
+    const handleUserAborted = async (): Promise<boolean> => {
+      this.logger.log(
+        `Personal sandbox task aborted by user for session [${sessionId}]. Persisting stopped turn to session history.`
+      );
+      const stoppedContent = deltaAccumulator.trim()
+        ? `${deltaAccumulator.trim()}\n\n*(任务已由用户手动停止)*`
+        : '任务已由用户手动停止。';
+      try {
+        const stoppedSession = await this.chatConversationService.persistConversation({
+          sessionId,
+          userContent: body.message,
+          assistantContent: stoppedContent,
+          rawAssistantContent: stoppedContent,
+          modelId: effectiveModel || body.modelId || 'default',
+          thinkingEnabled: Boolean(body.config?.thinking || isThinkingRequested || thoughtAccumulator),
+          ownerUserId: effectiveUserId,
+          clientMessageId: body.clientMessageId,
+          clientAssistantMessageId: body.clientAssistantMessageId,
+          files: body.files,
+          executionTrace: {
+            executed: false,
+            cancelled: true,
+            abortedByUser: true,
+            thoughtLogsSnapshot: thoughtAccumulator ? [thoughtAccumulator] : undefined,
+          },
+        });
+        if (stoppedSession) {
+          emit(this.chatConversationService.buildSessionPatchEvent(sessionId, stoppedSession));
+        }
+      } catch (persistErr: any) {
+        this.logger.warn(`Failed to persist user-aborted conversation: ${persistErr?.message}`);
+      }
+      return true;
+    };
+
     try {
       // 1. 获取当前会话上下文历史并收集属于当前会话的全部有效附件（会话作用域隔离）
       const addSessionFile = (name?: string) => {
@@ -390,14 +439,15 @@ export class UserSandboxDispatcherService {
         content: `⚡ 正在连接个人安全沙箱 [${effectiveUserId}]，启动智能分析与执行引擎...`,
       });
 
-      const controller = new AbortController();
-      const onAbort = () => {
-        controller.abort();
+      controller = new AbortController();
+      onAbort = () => {
+        controller?.abort();
         void this.stopPersonalSandbox(effectiveUserId, sessionId, (body as any).executionId);
       };
+
       if (abortSignal?.aborted) {
         onAbort();
-        return false;
+        return await handleUserAborted();
       }
       if (abortSignal) {
         abortSignal.addEventListener('abort', onAbort, { once: true });
@@ -429,15 +479,16 @@ export class UserSandboxDispatcherService {
         exitCode: number;
         metrics?: Record<string, unknown>;
       } | null = null;
-      let thoughtAccumulator = '';
-      let isThinkingRequested: boolean | undefined = undefined;
+      thoughtAccumulator = '';
+      deltaAccumulator = '';
+      isThinkingRequested = undefined;
 
       const isExplicitModel = Boolean(
         body.modelId &&
         body.modelId !== 'default' &&
         !(body.modelId === 'deepseek-chat' && !this.modelService.getClient('deepseek-chat'))
       );
-      let effectiveModel = body.modelId;
+      effectiveModel = body.modelId;
       let targetModelId = effectiveModel;
       if (!isExplicitModel) {
         const preferred =
@@ -449,8 +500,9 @@ export class UserSandboxDispatcherService {
 
       try {
         timeoutId = setTimeout(async () => {
+          isTimedOut = true;
           this.logger.warn(`Execution timeout (${timeoutMs / 1000}s) reached for user [${effectiveUserId}], stopping sandbox processes...`);
-          controller.abort();
+          controller?.abort();
           try {
             await this.stopPersonalSandbox(effectiveUserId, sessionId, (body as any).executionId);
           } catch (e: any) {
@@ -535,7 +587,7 @@ export class UserSandboxDispatcherService {
           const reader = (res.body as any).getReader();
           const decoder = new TextDecoder('utf-8');
           let sseBuffer = '';
-          let deltaAccumulator = '';
+          deltaAccumulator = '';
           thoughtAccumulator = '';
 
           for (;;) {
@@ -627,16 +679,25 @@ export class UserSandboxDispatcherService {
           );
         }
       } catch (fetchErr: any) {
-        if (abortSignal?.aborted) {
-          this.logger.log(`Run harness cancelled by client for user [${effectiveUserId}]`);
-          return true;
+        if (abortSignal?.aborted || (controller?.signal?.aborted && !isTimedOut)) {
+          return await handleUserAborted();
         }
-        if (controller.signal.aborted) {
+        if (isTimedOut) {
           this.logger.warn(`Run harness timed out for user [${effectiveUserId}]`);
+          const timeoutFriendlyMsg = `⚠️ 沙箱任务执行超时（超过 ${timeoutMs / 1000} 秒），已自动中止后台任务。请尝试简化任务或检查模型连通性。`;
           emit({
             type: StreamEventType.ERROR,
-            content: `⚠️ 沙箱任务执行超时（超过 ${timeoutMs / 1000} 秒），已自动中止后台任务。请尝试简化任务或检查模型连通性。`,
+            content: timeoutFriendlyMsg,
           });
+          await this.persistFriendlyErrorToSession(
+            sessionId,
+            body,
+            effectiveUserId,
+            timeoutFriendlyMsg,
+            'Execution timeout reached',
+            emit,
+            { executed: false, timeout: true }
+          );
           return true;
         }
         throw fetchErr;
@@ -888,6 +949,11 @@ export class UserSandboxDispatcherService {
       this.logger.warn(
         `Failed to dispatch to user sandbox (${errMsg}).`
       );
+
+      const isAbortedByUser = Boolean(abortSignal?.aborted || (controller?.signal?.aborted && !isTimedOut));
+      if (isAbortedByUser) {
+        return await handleUserAborted();
+      }
 
       const classifiedError = classifyPersonalSandboxError({
         message: body.message,

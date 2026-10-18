@@ -138,6 +138,7 @@ export class ReleaseRuntimeBindingService {
           OR source_id::text = $1
           OR source_name = $1
           OR source_name ILIKE $2
+          OR ($1 = 'ConfidentialityAgreementGenerationWorkflow' AND (source_name = '保密合同生成' OR published_skill_id::text = '971a94dc-fdf0-4059-92bd-ca1f8d8d667d'))
        ORDER BY
          CASE WHEN archived_at IS NULL THEN 0 ELSE 1 END,
          updated_at DESC

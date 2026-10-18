@@ -1,0 +1,45 @@
+{
+  "caseId": "R10",
+  "variant": "canonical",
+  "status": "passed",
+  "traceIds": [
+    "0a1ad265-4a13-4d59-a4fb-ded6cc3c3211"
+  ],
+  "executionIds": [
+    "739f0f7e-4613-4e69-9b98-c6bfdd1abf33"
+  ],
+  "requestDigest": "e2bafdc63bcbdf1c8b2b09e89591907a78c64cfdf2ef8fb97067e3cb92ff34de",
+  "fixtureDigest": null,
+  "catalogSnapshotDigest": "catalog-v1-snapshot-sha256",
+  "routingPolicyVersion": "routing-policy-v1",
+  "routingPolicyDigest": "routing-policy-sha256",
+  "selectedCapabilityRefs": [
+    "platform.document.markdown-artifact-writer"
+  ],
+  "planHash": null,
+  "inputHash": null,
+  "actualInvocations": [
+    "platform.document.markdown-artifact-writer"
+  ],
+  "usageByPurpose": {},
+  "logicalEffectCount": 1,
+  "artifactRefs": [],
+  "assertions": [
+    {
+      "assertion": "Selected markdown writer skill directly",
+      "passed": true,
+      "actual": [
+        "platform.document.markdown-artifact-writer"
+      ]
+    },
+    {
+      "assertion": "Did not re-extract attachment",
+      "passed": true
+    },
+    {
+      "assertion": "Execution status is succeeded",
+      "passed": true
+    }
+  ],
+  "failureCategory": null
+}

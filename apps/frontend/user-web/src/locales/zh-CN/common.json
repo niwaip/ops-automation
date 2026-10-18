@@ -21,6 +21,10 @@
   "status": "状态",
   "submit": "提交",
   "yes": "是",
+  "theme": {
+    "dark": "深色",
+    "light": "浅色"
+  },
   "menu": {
     "dashboard": "工作台",
     "chat": "智能协同",
@@ -28,10 +32,24 @@
     "published_skills": "数字员工",
     "workspaces": "资料空间",
     "settings": "系统设置",
-    "im_channels": "IM 渠道"
+    "im_channels": "IM 渠道",
+    "email_settings": "邮箱连接",
+    "notifications": "通知中心",
+    "reports": "执行报告"
   },
   "sidebar": {
     "collapse": "收起侧边栏",
     "expand": "展开侧边栏"
+  },
+  "user_menu": {
+    "email_connection": "个人邮箱连接",
+    "email_connection_desc": "配置专属工作/私人邮箱与发信授权",
+    "logout": "退出登录",
+    "logout_desc": "清除当前会话并返回登录页",
+    "not_logged_in": "未登录",
+    "role": "角色",
+    "account_status": "账号状态",
+    "active": "已启用",
+    "inactive": "已停用"
   }
 }

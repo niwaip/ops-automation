@@ -1,0 +1,22 @@
+data: {"type":"thought","content":"任务属于原生模型能力范畴（无需调用外部工具），在工作模式受控环境中执行...","seq":1,"protocolVersion":"1","sessionId":"doc-e2e-1792120966697-noise","traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac","data":{"traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac"}}
+
+data: {"type":"thought","content":"正在检索工作空间内部知识库相关文档...","seq":2,"protocolVersion":"1","sessionId":"doc-e2e-1792120966697-noise","traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac","data":{"traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac"}}
+
+data: {"type":"thought","content":"在工作空间知识库中未检索到与 \"UNSEEN1792120966697的安装配置方法，请检索工作空间文件，没有该实体请明确未找到，不要用其他软件教程代替。\" 直接相关的内容，将基于通用模型知识回答...","seq":3,"protocolVersion":"1","sessionId":"doc-e2e-1792120966697-noise","traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac","data":{"traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac"}}
+
+data: {"type":"observation","content":"","data":{"mode":"task","thinking":true,"reasoning":true,"traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac"},"seq":4,"protocolVersion":"1","sessionId":"doc-e2e-1792120966697-noise","traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac"}
+
+data: {"type":"observation","content":"经检索，当前工作空间及知识库中**未找到**与实体 **UNSEEN179212","data":{"mode":"task","thinking":true,"reasoning":true,"traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac"},"seq":5,"protocolVersion":"1","sessionId":"doc-e2e-1792120966697-noise","traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac"}
+
+data: {"type":"observation","content":"经检索，当前工作空间及知识库中**未找到**与实体 **UNSEEN1792120966697** 相关的任何文档或安装配置方法。\n\n根据您的要求，已确认","data":{"mode":"task","thinking":true,"reasoning":true,"traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac"},"seq":6,"protocolVersion":"1","sessionId":"doc-e2e-1792120966697-noise","traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac"}
+
+data: {"type":"observation","content":"经检索，当前工作空间及知识库中**未找到**与实体 **UNSEEN1792120966697** 相关的任何文档或安装配置方法。\n\n根据您的要求，已确认无此实体记录，不提供其他软件的替代教程。","data":{"mode":"task","thinking":true,"reasoning":true,"traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac"},"seq":7,"protocolVersion":"1","sessionId":"doc-e2e-1792120966697-noise","traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac"}
+
+data: {"type":"observation","content":"经检索，当前工作空间及知识库中**未找到**与实体 **UNSEEN1792120966697** 相关的任何文档或安装配置方法。\n\n根据您的要求，已确认无此实体记录，不提供其他软件的替代教程。","data":{"mode":"task","thinking":true,"reasoning":true,"traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac"},"seq":8,"protocolVersion":"1","sessionId":"doc-e2e-1792120966697-noise","traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac"}
+
+data: {"type":"result","content":"经检索，当前工作空间及知识库中**未找到**与实体 **UNSEEN1792120966697** 相关的任何文档或安装配置方法。\n\n根据您的要求，已确认无此实体记录，不提供其他软件的替代教程。","data":{"code":"NATIVE_TASK_COMPLETED","status":"completed","executed":true,"hasBusinessResult":true,"executionMode":"native_llm","usage":{"prompt_tokens":131,"completion_tokens":63,"total_tokens":756,"completion_tokens_details":{"reasoning_tokens":562}},"traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac"},"seq":9,"protocolVersion":"1","sessionId":"doc-e2e-1792120966697-noise","traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac"}
+
+data: {"type":"session_patch","sessionId":"doc-e2e-1792120966697-noise","content":"","data":{"title":"/doc UNSEEN1792120966697","status":"active","updatedAt":"2026-10-16T03:23:18.167Z","traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac"},"seq":10,"protocolVersion":"1","traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac"}
+
+data: {"type":"done","content":"Stream completed","seq":11,"protocolVersion":"1","sessionId":"doc-e2e-1792120966697-noise","traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac","data":{"traceId":"c4e08848-1787-47db-9ca5-2cdc879163ac"}}
+

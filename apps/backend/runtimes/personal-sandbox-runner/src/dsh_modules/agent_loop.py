@@ -36,9 +36,11 @@ from .deliverable_contract import (
     materialize_requested_markdown,
     materialize_script_deliverable,
     materialize_pdf_from_markdown,
+    materialize_config_or_code_deliverable,
     requests_markdown_artifact,
     unwrap_outer_markdown_fence,
 )
+from .skill_router import is_text_only_request, is_term_negated
 from .analysis_contract import build_analysis_contract, build_analysis_plan_context, supports_column_comparison
 from .comparison_delivery import compile_comparison_response, COMPARISON_DELIVERY_INSTRUCTIONS
 from .analysis_semantics import domain_plan_context
@@ -76,6 +78,16 @@ DELIVERABLE_EXTS = {
 
 MAX_AGENT_ROUNDS_HARD_CEILING = int(os.getenv("DSH_MAX_AGENT_ROUNDS_CEILING", "10"))
 MAX_SPREADSHEET_ROUNDS_CEILING = 4
+
+
+def extract_filename_from_outbound(item: str) -> str:
+    try:
+        obj = json.loads(item)
+        if isinstance(obj, dict) and "fileName" in obj:
+            return obj["fileName"]
+    except Exception:
+        pass
+    return Path(item).name
 
 
 def detect_missing_claimed_artifacts(
@@ -139,25 +151,44 @@ def detect_missing_claimed_artifacts(
         if has_inline_html and clean_name in ["index.html", "presentation.html"]:
             continue
 
-        # 非生成意图时，必须在该文件名局部存在明确的生成/保存/写入声称，或明确指称 /workspace/，避免提及外部项目文件时误触发断言
-        if not is_generate_intent:
-            escaped_name = re.escape(clean_name)
-            claimed_for_this_file = bool(
-                re.search(
-                    rf'(?:已.{{0,12}}(?:生成|创建|保存|导出|写入|完成)|(?:生成|创建|保存|导出|写入|输出).{{0,12}}(?:完成|完毕|成功|至|到|为)|输出文件(?:为|是|：|:)?|保存(?:路径|在|到|至)|落盘至|保存在|已保存至|代码已写入|文件路径[：:]\s*(?:/workspace/)?)[^\n。]{{0,30}}{escaped_name}',
-                    text,
-                    re.I
-                )
-                or re.search(
-                    rf'{escaped_name}[^\n。]{{0,30}}(?:已(?:生成|创建|保存|导出|写入|落盘)|已保存到工作区|已保存至|已写入)',
-                    text,
-                    re.I
-                )
-                or f"/workspace/{clean_name}" in text
-                or f"./workspace/{clean_name}" in text
+        escaped_name = re.escape(clean_name)
+
+        # 排除明确作为输入源、引用源或前置资料的文件名（如“基于/根据/参考...《文件名》”）
+        is_source_reference = bool(
+            re.search(
+                rf'(?:基于|根据|参考|依据|结合|来源|原始|上传的?|输入|读取|解析|查看|分析|引用)[^\n。]{{0,25}}(?:《|【|“|"|\'|`|\s)?{escaped_name}',
+                text,
+                re.I
             )
-            if not claimed_for_this_file:
-                continue
+            or re.search(
+                rf'{escaped_name}(?:》|】|”|"|\'|`|\s)?[^\n。]{{0,25}}(?:的内容|的数据|中提到|中记录|作为输入|作为参考|原始数据|附件|中指出)',
+                text,
+                re.I
+            )
+        )
+        if is_source_reference:
+            continue
+
+        # 必须在该文件名局部存在明确的生成/保存/写入声称，或保存至 /workspace/，避免提及外部/参考文件时误触发断言
+        claimed_for_this_file = bool(
+            re.search(
+                rf'(?:已.{{0,12}}(?:生成|创建|保存|导出|写入|完成)|(?:生成|创建|保存|导出|写入|输出).{{0,12}}(?:完成|完毕|成功|至|到|为)|输出文件(?:为|是|：|:)?|保存(?:路径|在|到|至)|落盘至|保存在|已保存至|代码已写入|文件路径[：:]\s*(?:/workspace/)?)[^\n。]{{0,30}}{escaped_name}',
+                text,
+                re.I
+            )
+            or re.search(
+                rf'{escaped_name}[^\n。]{{0,30}}(?:已(?:生成|创建|保存|导出|写入|落盘)|已保存到工作区|已保存至|已写入)',
+                text,
+                re.I
+            )
+            or re.search(
+                rf'(?:保存至|生成至|落盘至|输出至|写入至|保存到)\s*`?/(?:workspace|knowledge)/{escaped_name}',
+                text,
+                re.I
+            )
+        )
+        if not claimed_for_this_file:
+            continue
 
         ws_file = Path(WORKSPACE_DIR) / clean_name
         kn_file = Path(KNOWLEDGE_DIR) / clean_name
@@ -189,12 +220,14 @@ def detect_missing_requested_deliverable(
     Prioritizes explicit contract deliverables from the active skill.
     Strictly bypassed during read-only inspection turns (is_inspect_intent and not is_generate_intent).
     """
+    if not user_prompt or is_text_only_request(user_prompt):
+        return None
     if is_inspect_intent and not is_generate_intent:
         return None
 
     ws_path = Path(WORKSPACE_DIR)
 
-    # 1. 契约驱动优先：若技能已明确声明产物交付契约 (如 ['.pdf'], ['.docx'], ['.xlsx'], ['.html'])
+    # 1. 契约驱动优先：若技能已明确声明产物交付契约 (如 ['.pdf'], ['.docx'], ['.xlsx'], ['.html'], ['Dockerfile'], ['analyze_nginx_logs.sh'])
     if expected_deliverables:
         # 对于包含多选一备选格式的演示文稿类契约（如 guizang-ppt 兼容 .pptx 与 .html）
         has_presentation_alt = (
@@ -210,26 +243,41 @@ def detect_missing_requested_deliverable(
             except Exception:
                 pass
 
-        for req_ext in expected_deliverables:
-            norm_ext = req_ext if req_ext.startswith(".") else f".{req_ext}"
+        from .artifact_exporter import ArtifactExporter
+        for req_item in expected_deliverables:
+            if is_term_negated(user_prompt, req_item) or is_term_negated(user_prompt, req_item.lstrip(".")):
+                continue
             found = False
             if ws_path.exists():
                 try:
                     for p in ws_path.iterdir():
-                        if p.is_file() and p.suffix.lower() == norm_ext.lower() and p.stat().st_size > 0:
-                            if p.stat().st_mtime >= turn_start_time - 2.0:
+                        if not p.is_file() or p.stat().st_size <= 0:
+                            continue
+                        if p.stat().st_mtime < turn_start_time - 2.0:
+                            continue
+                        if ArtifactExporter.is_temporary_file(p.name):
+                            continue
+                        if req_item.startswith(".") or req_item.lower() in ["pdf", "docx", "xlsx", "pptx", "html", "md"]:
+                            norm_ext = req_item if req_item.startswith(".") else f".{req_item}"
+                            if p.suffix.lower() == norm_ext.lower():
+                                found = True
+                                break
+                        else:
+                            if p.name.lower() == req_item.lower() or p.name.lower().endswith(req_item.lower()):
                                 found = True
                                 break
                 except Exception:
                     pass
             if not found:
-                return norm_ext
+                return req_item
         return None
 
     # 2. 兜底回退：无契约声明时，根据提示词探测期望产物后缀（必须有明确的生成/导出谓词，不能仅因出现名词就判定为生成）
-    if not user_prompt:
-        return None
     lower = user_prompt.lower()
+    is_markdown_table = (
+        re.search(r'(?:markdown|文本|聊天|对话|正文)?\s*(?:对比表格|表格对比|markdown\s*表格)', lower)
+        and not any(ext in lower for ext in [".xlsx", ".xls", "excel", "工作簿", "导出表格", "下载表格", "生成表格文件"])
+    )
 
     req_ext = None
     if (
@@ -237,7 +285,7 @@ def detect_missing_requested_deliverable(
         any(k in lower for k in ["生成pdf", "导出pdf", "转为pdf", "转成pdf", "生成一页的pdf", "生成一份pdf", "制作pdf", "导出为pdf", "做个pdf"])
     ):
         req_ext = ".pdf"
-    elif (
+    elif not is_markdown_table and (
         re.search(r'(?:做成|制作|生成|导出|做个|建个|创建|整理成)[^，。\n]{0,8}(?:excel|xlsx|表格|表单)', lower) or
         any(k in lower for k in ["生成excel", "导出excel", "做成excel", "制作excel", "做个excel", "导出xlsx", "生成xlsx", "做个表", "生成表格"])
     ):
@@ -263,7 +311,7 @@ def detect_missing_requested_deliverable(
     ):
         req_ext = ".html"
 
-    if not req_ext:
+    if not req_ext or is_term_negated(lower, req_ext) or is_term_negated(lower, req_ext.lstrip(".")):
         return None
 
     # 检查工作区是否存在该类型的新文件 (mtime >= turn_start_time - 2.0)
@@ -271,10 +319,12 @@ def detect_missing_requested_deliverable(
         return req_ext
 
     try:
+        from .artifact_exporter import ArtifactExporter
         for p in ws_path.iterdir():
             if p.is_file() and p.suffix.lower() == req_ext and p.stat().st_size > 0:
                 if p.stat().st_mtime >= turn_start_time - 2.0:
-                    return None
+                    if not ArtifactExporter.is_temporary_file(p.name):
+                        return None
     except Exception:
         pass
 
@@ -355,7 +405,7 @@ def _check_no_tool_assertion_guard(
         return "continue", msg, bumped_max_rounds
 
     # 1. 物理产物声称断言：模型声称生成了文件，但文件物理不存在
-    if is_generate_intent or (not is_inspect_intent and not is_guide_intent and not is_search_intent):
+    if not is_text_only_request(last_user_prompt) and (is_generate_intent or (not is_inspect_intent and not is_guide_intent and not is_search_intent)):
         missing = detect_missing_claimed_artifacts(
             reply_text,
             is_generate_intent=is_generate_intent,
@@ -386,7 +436,7 @@ def _check_no_tool_assertion_guard(
 
     # 3. 契约交付物缺失断言：用户明确要求生成文件，但工作区尚未生成任何物理文件
     has_valid_html = ("```html" in reply_text.lower()) and not is_unclosed_or_truncated_html(reply_text)
-    if (is_generate_intent or bool(expected_deliverables)) and not is_guide_intent and not is_search_intent:
+    if not is_text_only_request(last_user_prompt) and (is_generate_intent or bool(expected_deliverables)) and not is_guide_intent and not is_search_intent:
         missing_deliverable = detect_missing_requested_deliverable(
             last_user_prompt,
             start_ts,
@@ -427,7 +477,7 @@ def _check_no_tool_assertion_guard(
                 return "continue", msg, bumped_max_rounds
 
     # 4. 行动垫话拦截
-    if not is_guide_intent and is_promising_action(reply_text):
+    if not is_guide_intent and not is_text_only_request(last_user_prompt) and is_promising_action(reply_text):
         print("⚡ [Harness Action Nudge] 检测到模型表达了后续执行意图但遗漏了工具调用，正在提醒模型执行工具...", flush=True)
         msg = "你提出了具体的行动计划，请直接使用工具函数实际执行该操作，不要仅输出口头承诺。"
         return "continue", msg, bumped_max_rounds
@@ -451,7 +501,7 @@ def _check_no_tool_assertion_guard(
         return "continue", msg, bumped_max_rounds
 
     # 7. 未执行脚本泄漏拦截（若已提供完整合法 HTML 交付物则放行至导出器落盘与挂载）
-    if not is_guide_intent and not is_explicit_code_request(last_user_prompt) and not has_valid_html and detect_unexecuted_script_leak(reply_text):
+    if not is_guide_intent and not is_text_only_request(last_user_prompt) and not is_explicit_code_request(last_user_prompt) and not has_valid_html and detect_unexecuted_script_leak(reply_text):
         print("⚡ [Harness Code Output Guard] 检测到模型直接输出了未执行的代码脚本或文件写入命令，正在引导执行工具落盘...", flush=True)
         if has_bash:
             msg = "检测到你输出了未执行的代码脚本或文件写入命令。请调用 bash 工具在终端实际运行脚本完成落盘，然后再向用户汇报完成。"
@@ -585,7 +635,19 @@ def _finalize_agent_text(
 
     healed_files: List[str] = []
     has_valid_html = ("```html" in final_text.lower()) and not is_unclosed_or_truncated_html(final_text)
+    has_physical_artifact = False
+    try:
+        if expected_deliverables and os.path.exists(WORKSPACE_DIR):
+            ws_files = [f for f in os.listdir(WORKSPACE_DIR) if not f.startswith(".")]
+            has_physical_artifact = any(
+                any(f.endswith(ext.lower()) for f in ws_files)
+                for ext in expected_deliverables
+            )
+    except Exception:
+        pass
+
     is_hollow_claim = (
+        not has_physical_artifact and
         len(final_text.strip()) < 220 and
         not has_valid_html and
         bool(re.search(r'(?:文件|代码|报告|文档|演示文稿|ppt|pdf|表格)?已(?:成功)?(?:生成|写入|保存|导出|落盘)|请查看(?:下方)?(?:下载)?卡片|<div\s+download-card', final_text, re.I))
@@ -643,8 +705,16 @@ def _finalize_agent_text(
             raise TimeoutError(f"Task total execution deadline ({policy.total_task_timeout}s) exceeded")
 
         p_lower = (last_user_prompt or "").lower()
+        user_cmd = p_lower
+        if "用户指令：" in user_cmd:
+            user_cmd = user_cmd.split("用户指令：")[-1].strip()
+        elif "用户指令:" in user_cmd:
+            user_cmd = user_cmd.split("用户指令:")[-1].strip()
+        else:
+            user_cmd = re.sub(r'【(?:当前轮次用户上传附件|当前会话有效附件清单)】:[^\n]+\n?', '', user_cmd).strip()
+
         names_non_web_format = bool(
-            re.search(r'(?:pptx?|slides?|幻灯片|演示文稿|pdf|docx?|word|xlsx?|excel)', p_lower, re.I)
+            re.search(r'(?:pptx?|slides?|幻灯片|演示文稿|pdf|docx?|word|xlsx?|excel)', user_cmd, re.I)
         )
         has_non_html_deliverable = bool(
             expected_deliverables and any(ext.lower() in [".docx", ".xlsx", ".pdf"] for ext in expected_deliverables)
@@ -654,20 +724,20 @@ def _finalize_agent_text(
             not names_non_web_format
             and not has_non_html_deliverable
             and (
-                any(cue in p_lower for cue in html_cues)
-                or ("报告" in p_lower and any(cue in p_lower for cue in ["单页", "一页", "html", "网页"]))
+                any(cue in user_cmd for cue in html_cues)
+                or ("报告" in user_cmd and any(cue in user_cmd for cue in ["单页", "一页", "html", "网页"]))
             )
         )
         if has_html_req:
             try:
-                from .html_report_fallback import materialize_html_report_fallback
+                from .html_report_fallback import materialize_html_report_fallback, is_plausible_html_file
                 fallback_path = materialize_html_report_fallback(
                     prompt=last_user_prompt,
                     history=messages,
                     workspace_dir=WORKSPACE_DIR,
                     notice="本单页报告由系统基于会话中有效内容恢复生成，支持交互预览与全屏查看。"
                 )
-                if fallback_path and Path(fallback_path).exists():
+                if fallback_path and Path(fallback_path).exists() and is_plausible_html_file(Path(fallback_path)):
                     file_content = Path(fallback_path).read_text(encoding="utf-8")
                     final_text = (
                         "✨ **单页 HTML 报告已由系统基于会话内容自动整理生成！**\n"
@@ -680,7 +750,13 @@ def _finalize_agent_text(
                 print(f"⚠️ [Harness Agent Loop] 自动编译单页 HTML 失败: {e}")
 
         if not final_text or is_terminal_filler or is_internal_plan_output(final_text):
-            final_text = _build_fallback_report(messages, executed_calls_history)
+            inf_cause = "model_empty_final" if executed_calls_history else "model_budget_exhausted"
+            final_text = _build_fallback_report(
+                messages,
+                executed_calls_history,
+                cause=inf_cause,
+                pending_items=[f"生成目标交付物 ({', '.join(expected_deliverables)})"] if expected_deliverables else None
+            )
 
     if was_token_truncated and "```html" not in final_text and not is_unclosed_or_truncated_html(final_text):
         truncation_suffix = (
@@ -692,7 +768,7 @@ def _finalize_agent_text(
         if "输出截断提醒" not in final_text:
             final_text += truncation_suffix
 
-    if not is_guide_intent and not is_explicit_code_request(last_user_prompt):
+    if not is_guide_intent and not is_text_only_request(last_user_prompt) and not is_explicit_code_request(last_user_prompt):
         final_text, extra_healed = auto_heal_unexecuted_file_writes(final_text, WORKSPACE_DIR)
         healed_files.extend(extra_healed)
         has_valid_html_final = ("```html" in final_text.lower()) and not is_unclosed_or_truncated_html(final_text)
@@ -702,7 +778,13 @@ def _finalize_agent_text(
             sys.stdout.flush()
         elif not has_valid_html_final and (detect_unexecuted_script_leak(final_text) or detect_unexecuted_tool_argument_leak(final_text)):
             print("⚠️ [Harness Script Leak Guard] 检测到模型输出了未执行的脚本或参数回显且未能自愈，触发安全兜底...", flush=True)
-            final_text = _build_fallback_report(messages, executed_calls_history)
+            final_text = _build_fallback_report(
+                messages,
+                executed_calls_history,
+                cause="model_empty_final",
+                trigger_evidence="模型输出了未执行的代码脚本或参数片段，自动执行自愈未通过",
+                retry_advice="请直接回复「请实际在终端运行上述脚本完成落盘」"
+            )
 
     feedback = sampling_feedback(final_text,last_user_prompt,messages,telemetry,execution_evidence,is_guide_intent)
     if feedback:
@@ -725,12 +807,15 @@ def _finalize_agent_text(
                 messages=messages,
                 execution_evidence=execution_evidence
             )
+            llm_calls = getattr(telemetry, "llm_invocations", 0) if telemetry else 0
+            is_budget_exhausted = bool(llm_calls >= audit_ceiling)
             if not val_result.is_pass:
                 contract_warning = build_contract_termination_warning(
                     contract=contract,
                     val_result=val_result,
                     messages=messages,
-                    telemetry=telemetry
+                    telemetry=telemetry,
+                    is_budget_exhausted=is_budget_exhausted
                 )
                 if val_result.comparison_error and execution_evidence is not None:
                     # Do not publish an unsupported extreme and then disclaim it.
@@ -963,6 +1048,22 @@ def run_agent_loop(
                         outbound_files.append(outbound_payload)
                     executed_calls_history.append("bash")
 
+            if not is_text_only_request(last_user_prompt):
+                tech_artifacts_mid = materialize_config_or_code_deliverable(
+                    prompt=last_user_prompt,
+                    final_text=reply_text,
+                    workspace_dir=WORKSPACE_DIR,
+                    turn_start_time=start_ts,
+                )
+                for ta in tech_artifacts_mid:
+                    outbound_payload = json.dumps(
+                        {"filePath": ta, "fileName": Path(ta).name},
+                        ensure_ascii=False,
+                    )
+                    ta_name = Path(ta).name.lower()
+                    if outbound_payload not in outbound_files and not any(extract_filename_from_outbound(existing).lower() == ta_name for existing in outbound_files):
+                        outbound_files.append(outbound_payload)
+
             action, guard_msg, max_rounds = _check_no_tool_assertion_guard(
                 reply_text=reply_text,
                 last_user_prompt=last_user_prompt,
@@ -1073,6 +1174,11 @@ def run_agent_loop(
             )
             if missing_deliv:
                 max_rounds = min(task_ceiling, max(max_rounds, round_idx + 2))
+                print(f"⚡ [Harness Dynamic Budget] 检测到目标交付物 {missing_deliv} 尚未生成，动态追加执行轮次至 {max_rounds} (硬上限: {task_ceiling})...", flush=True)
+                messages.append({
+                    "role": "user",
+                    "content": f"【系统阶段督促】：当前轮次临近上限，但目标交付物 {missing_deliv} 尚未生成落盘。请立即停止零散查看或临时测试，通过 bash 运行最终 Python/处理脚本将完整数据与图表直接写入 /workspace/ 目标文件！"
+                })
 
         # 当前轮次已执行工具，重置 reply_text，防止内部工具前置垫话或执行脚本残留进入最终回复
         reply_text = ""
@@ -1168,6 +1274,74 @@ def run_agent_loop(
                     pass
                 filtered_outbounds.append(item_str)
             outbound_files = filtered_outbounds
+
+    # 强制总结分支：若正文中输出了 Python 脚本块，自动执行落盘
+    if expected_deliverables and any(ext.lower() in [".docx", ".xlsx", ".pdf"] for ext in expected_deliverables):
+        script_artifact_path, _ = materialize_script_deliverable(
+            reply_text=final_text,
+            workspace_dir=WORKSPACE_DIR,
+            expected_deliverables=expected_deliverables,
+            turn_start_time=start_ts,
+        )
+        if script_artifact_path:
+            outbound_payload = json.dumps(
+                {"filePath": script_artifact_path, "fileName": Path(script_artifact_path).name},
+                ensure_ascii=False,
+            )
+            if outbound_payload not in outbound_files:
+                outbound_files.append(outbound_payload)
+
+    # 强制总结分支：若涉及技术脚本或配置文件 (Dockerfile, docker-compose.yml, *.sh, *.sql, *.py)，自动提取落盘
+    if not is_text_only_request(last_user_prompt):
+        tech_artifacts_final = materialize_config_or_code_deliverable(
+            prompt=last_user_prompt,
+            final_text=final_text,
+            workspace_dir=WORKSPACE_DIR,
+            turn_start_time=start_ts,
+        )
+        for ta in tech_artifacts_final:
+            outbound_payload = json.dumps(
+                {"filePath": ta, "fileName": Path(ta).name},
+                ensure_ascii=False,
+            )
+            ta_name = Path(ta).name.lower()
+            if outbound_payload not in outbound_files and not any(extract_filename_from_outbound(existing).lower() == ta_name for existing in outbound_files):
+                outbound_files.append(outbound_payload)
+
+        # 语义净化：当生成了真实的技术脚本/配置文件且用户并未显式要求 md 时，清除中间草稿（如 *.py.md, *.sh.md）
+        user_wants_md = bool(re.search(r"(?:\.md\b|\bmarkdown\b|md\s*文件)", last_user_prompt or "", re.I))
+        has_primary_tech = any(
+            extract_filename_from_outbound(f).lower().endswith((".py", ".sh", ".sql", ".yml", ".yaml"))
+            or extract_filename_from_outbound(f).lower() == "dockerfile"
+            for f in outbound_files
+        )
+        if has_primary_tech and not user_wants_md:
+            cleaned_outbounds = []
+            for item_str in outbound_files:
+                fname = extract_filename_from_outbound(item_str).lower()
+                if fname.endswith((".py.md", ".sh.md", ".sql.md")) or (fname.endswith(".md") and fname in ("result.md", "script.md")):
+                    continue
+                cleaned_outbounds.append(item_str)
+            outbound_files = cleaned_outbounds
+
+    # 终态物理交付物断言：若用户要求了特定文件但全流程仍未生成任何外发物理文件，进行明确诚信提示
+    if not is_text_only_request(last_user_prompt) and (expected_deliverables or is_generate_intent):
+        missing_final = detect_missing_requested_deliverable(
+            last_user_prompt,
+            start_ts,
+            expected_deliverables=expected_deliverables,
+            is_generate_intent=is_generate_intent,
+            is_inspect_intent=is_inspect_intent,
+        )
+        if missing_final and not outbound_files:
+            telemetry.record_guard("deliverable_contract", "reject", f"missing_physical_file_{missing_final}")
+            warning_notice = (
+                f"\n\n---\n"
+                f"⚠️ **【交付物落盘未完成提示】**：已为您完成前序数据核算与内容整理，但在沙箱规定轮次内未能在工作区生成目标物理文件（`{missing_final}`）。"
+                f"您可参考上方核算结果，或发送指令「请直接运行脚本生成该文件」继续完成落盘。"
+            )
+            if "【交付物落盘未完成提示】" not in final_text:
+                final_text += warning_notice
 
     return AgentLoopResult(
         final_text=final_text,

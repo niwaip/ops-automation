@@ -1,10 +1,13 @@
 .user-shell {
+  --sidebar-width: 200px;
   --chat-widget-safe-space: 0px;
   --chat-widget-safe-inline: 0px;
   min-height: 100vh;
 }
 
-.user-shell .ant-layout-sider {
+.user-shell :global(.ant-layout-sider),
+.user-shell-sider,
+:global(.ant-layout-sider).user-shell-sider {
   background: var(--bg-sidebar) !important;
 }
 
@@ -15,10 +18,17 @@
   left: 0;
   top: 0;
   bottom: 0;
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 1px 0 0 0 var(--border-color);
+  border-right: 1px solid var(--border-color);
   z-index: 500;
   pointer-events: auto;
   isolation: isolate;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+}
+
+[data-theme="dark"] .user-shell-sider {
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
 }
 
 .user-shell-sider :global(.ant-layout-sider-children) {
@@ -40,6 +50,12 @@
     radial-gradient(circle at top left, rgba(129, 140, 248, 0.22) 0%, transparent 32%),
     radial-gradient(circle at bottom right, rgba(244, 114, 182, 0.16) 0%, transparent 28%);
   pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+[data-theme="dark"] .user-shell-sider::before {
+  opacity: 1;
 }
 
 .user-shell-logo {
@@ -48,9 +64,13 @@
   height: 72px;
   display: flex;
   align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border-color);
   margin-bottom: 8px;
   box-sizing: border-box;
+}
+
+[data-theme="dark"] .user-shell-logo {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 
 .user-shell-logo-expanded {
@@ -82,13 +102,22 @@
   padding: 0 !important;
   border-radius: 8px !important;
   font-size: 16px !important;
-  color: rgba(255, 255, 255, 0.65) !important;
+  color: var(--text-secondary) !important;
   background: transparent !important;
   transition: all 0.2s ease !important;
   flex-shrink: 0;
 }
 
 .user-shell-collapse-btn:hover {
+  color: var(--text-primary) !important;
+  background: var(--bg-hover) !important;
+}
+
+[data-theme="dark"] .user-shell-collapse-btn {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+[data-theme="dark"] .user-shell-collapse-btn:hover {
   color: #fff !important;
   background: rgba(255, 255, 255, 0.12) !important;
 }
@@ -109,11 +138,15 @@
 }
 
 .user-shell-logo-text {
-  color: #fff;
+  color: var(--text-primary);
   font-size: 18px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
   line-height: 1.2;
+}
+
+[data-theme="dark"] .user-shell-logo-text {
+  color: #f8fafc;
 }
 
 .user-shell-menu {
@@ -121,21 +154,30 @@
   z-index: 1;
   padding: 8px 10px 16px !important;
   background: transparent !important;
+  border-inline-end: none !important;
+}
+
+:global(.ant-menu.ant-menu-root).user-shell-menu {
+  border-inline-end: none !important;
 }
 
 .user-shell-bottom-menu-wrapper {
   position: relative;
   z-index: 2;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--border-color);
   padding: 6px 0 10px;
   background: transparent;
+}
+
+[data-theme="dark"] .user-shell-bottom-menu-wrapper {
+  border-top-color: rgba(255, 255, 255, 0.08);
 }
 
 .user-shell-bottom-menu {
   padding: 0 !important;
 }
 
-.user-shell-menu .ant-menu-item {
+.user-shell-menu :global(.ant-menu-item) {
   height: 44px !important;
   line-height: 44px !important;
   padding-inline: 14px !important;
@@ -145,27 +187,61 @@
   position: relative;
   z-index: 2;
   pointer-events: auto;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-.user-shell-menu .ant-menu-item-icon,
-.user-shell-menu .ant-menu-title-content {
-  color: rgba(255, 255, 255, 0.92) !important;
+/* Light mode menu items */
+.user-shell-menu :global(.ant-menu-item .ant-menu-item-icon),
+.user-shell-menu :global(.ant-menu-item .ant-menu-title-content) {
+  color: var(--text-secondary) !important;
   position: relative;
   z-index: 2;
   pointer-events: auto;
+  transition: color 0.2s ease !important;
 }
 
-.user-shell-menu .ant-menu-item:hover {
+.user-shell-menu :global(.ant-menu-item):hover {
+  background: var(--bg-hover) !important;
+}
+
+.user-shell-menu :global(.ant-menu-item):hover :global(.ant-menu-item-icon),
+.user-shell-menu :global(.ant-menu-item):hover :global(.ant-menu-title-content) {
+  color: var(--text-primary) !important;
+}
+
+.user-shell-menu :global(.ant-menu-item.ant-menu-item-selected) {
+  background: #eef2ff !important;
+  box-shadow: none !important;
+}
+
+.user-shell-menu :global(.ant-menu-item.ant-menu-item-selected .ant-menu-item-icon),
+.user-shell-menu :global(.ant-menu-item.ant-menu-item-selected .ant-menu-title-content) {
+  color: var(--primary-color) !important;
+  font-weight: 600 !important;
+}
+
+/* Dark mode menu items */
+[data-theme="dark"] .user-shell-menu :global(.ant-menu-item .ant-menu-item-icon),
+[data-theme="dark"] .user-shell-menu :global(.ant-menu-item .ant-menu-title-content) {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+[data-theme="dark"] .user-shell-menu :global(.ant-menu-item):hover {
   background: rgba(255, 255, 255, 0.1) !important;
 }
 
-.user-shell-menu .ant-menu-item-selected {
-  background: linear-gradient(135deg, rgba(129, 140, 248, 0.28) 0%, rgba(99, 102, 241, 0.42) 100%) !important;
-  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.22);
+[data-theme="dark"] .user-shell-menu :global(.ant-menu-item):hover :global(.ant-menu-item-icon),
+[data-theme="dark"] .user-shell-menu :global(.ant-menu-item):hover :global(.ant-menu-title-content) {
+  color: #fff !important;
 }
 
-.user-shell-menu .ant-menu-item-selected .ant-menu-item-icon,
-.user-shell-menu .ant-menu-item-selected .ant-menu-title-content {
+[data-theme="dark"] .user-shell-menu :global(.ant-menu-item.ant-menu-item-selected) {
+  background: linear-gradient(135deg, rgba(129, 140, 248, 0.28) 0%, rgba(99, 102, 241, 0.42) 100%) !important;
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.22) !important;
+}
+
+[data-theme="dark"] .user-shell-menu :global(.ant-menu-item.ant-menu-item-selected .ant-menu-item-icon),
+[data-theme="dark"] .user-shell-menu :global(.ant-menu-item.ant-menu-item-selected .ant-menu-title-content) {
   color: #fff !important;
 }
 

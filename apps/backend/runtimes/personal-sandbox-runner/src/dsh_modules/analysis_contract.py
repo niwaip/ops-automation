@@ -171,10 +171,25 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
     if not requested_metrics and not is_catalog_only:
         m_generic = re.search(r'(?:统计|计算|核算|汇总|求)\s*([^\s，。！？、]{2,8}(?:金额|数量|费用|成本|总额|比率|率|均值))', clean_prompt)
         if m_generic:
-            custom_metric = m_generic.group(1).strip()
+            raw_metric = m_generic.group(1).strip()
+            # 剥离语境限定词与介词前缀 (如 "附件中的", "工作表里的", "表格中的", "文件中的", "数据中的", "表内的", "其中的")
+            clean_metric = re.sub(
+                r'^(?:(?:各|该|所有)?附件(?:中|里|内)?的?|(?:各|该)?工作表(?:中|里|内)?的?|(?:各|该)?表格(?:中|里|内)?的?|文件(?:中|里|内)?的?|数据(?:中|里|内)?的?|表内的?|其中的?|对应的?|相关的?|上述(?:的)?)',
+                '',
+                raw_metric
+            ).strip()
+            if not clean_metric:
+                clean_metric = raw_metric
+
+            aliases = [re.escape(clean_metric)]
+            if raw_metric != clean_metric:
+                aliases.append(re.escape(raw_metric))
+            # 常见衍生形式（如 "有效金额汇总"、"有效金额总计"、"有效金额总额"）
+            aliases.append(re.escape(clean_metric) + r'(?:汇总|总额|总计|合计)?')
+
             requested_metrics.append(MetricRequirement(
-                name=custom_metric,
-                aliases=[re.escape(custom_metric)],
+                name=clean_metric,
+                aliases=aliases,
                 expected_type="number",
                 period=period,
             ))

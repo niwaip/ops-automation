@@ -723,3 +723,32 @@ export function buildTemplateStepLocator(
 
   return undefined;
 }
+
+export function inferSiteNameFromUrl(rawUrl?: string): string | null {
+  if (!rawUrl || typeof rawUrl !== 'string') {
+    return null;
+  }
+  const trimmed = rawUrl.trim();
+  if (trimmed.includes('${') || trimmed.includes('{')) {
+    return null;
+  }
+  try {
+    const parsed = new URL(trimmed.startsWith('http') ? trimmed : `https://${trimmed}`);
+    const host = parsed.hostname.toLowerCase();
+    if (host.includes('juejin.cn')) return '掘金论坛';
+    if (host.includes('baidu.com')) return '百度搜索';
+    if (host.includes('bing.com')) return '必应搜索';
+    if (host.includes('google.com')) return '谷歌搜索';
+    if (host.includes('github.com')) return 'GitHub';
+    if (host.includes('zhihu.com')) return '知乎';
+    if (host.includes('bilibili.com')) return '哔哩哔哩';
+    if (host.includes('weibo.com')) return '微博';
+    if (host.includes('xiaohongshu.com')) return '小红书';
+    if (host.includes('taobao.com')) return '淘宝';
+    if (host.includes('jd.com')) return '京东';
+    if (host.includes('csdn.net')) return 'CSDN';
+    return null;
+  } catch {
+    return null;
+  }
+}

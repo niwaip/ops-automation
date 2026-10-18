@@ -1,0 +1,168 @@
+- generic [active] [ref=f5e1]:
+  - generic [ref=f5e4]:
+    - complementary [ref=f5e5]:
+      - generic [ref=f5e6]:
+        - generic [ref=f5e7]:
+          - generic [ref=f5e12]:
+            - text: OpsPilot
+            - generic [ref=f5e13]: AI
+          - button "收起侧边栏" [ref=f5e14] [cursor=pointer]:
+            - img "menu-fold" [ref=f5e16]
+        - menu [ref=f5e20]:
+          - menuitem "dashboard 工作台" [ref=f5e21] [cursor=pointer]:
+            - img "dashboard" [ref=f5e22]
+            - generic [ref=f5e25]: 工作台
+          - menuitem "message 智能协同" [ref=f5e26] [cursor=pointer]:
+            - img "message" [ref=f5e27]
+            - generic [ref=f5e30]: 智能协同
+          - menuitem "carry-out 任务中心" [ref=f5e31] [cursor=pointer]:
+            - img "carry-out" [ref=f5e32]
+            - generic [ref=f5e35]: 任务中心
+          - menuitem "team 数字员工" [ref=f5e36] [cursor=pointer]:
+            - img "team" [ref=f5e37]
+            - generic [ref=f5e40]: 数字员工
+          - menuitem "folder 资料空间" [ref=f5e41] [cursor=pointer]:
+            - img "folder" [ref=f5e42]
+            - generic [ref=f5e45]: 资料空间
+        - menu [ref=f5e47]:
+          - menuitem "setting 系统设置" [ref=f5e48] [cursor=pointer]:
+            - img "setting" [ref=f5e49]
+            - generic [ref=f5e52]: 系统设置
+    - generic [ref=f5e53]:
+      - banner [ref=f5e54]:
+        - generic [ref=f5e55]: 智能协同
+        - generic [ref=f5e59]:
+          - button "bell 8" [ref=f5e60] [cursor=pointer]:
+            - generic [ref=f5e62]:
+              - img "bell" [ref=f5e63]
+              - superscript [ref=f5e66]:
+                - generic [ref=f5e67]: "8"
+          - button "bg-colors 浅色" [ref=f5e69] [cursor=pointer]:
+            - img "bg-colors" [ref=f5e71]
+            - generic [ref=f5e74]: 浅色
+          - button "global 中文" [ref=f5e75] [cursor=pointer]:
+            - img "global" [ref=f5e77]
+            - generic [ref=f5e80]: 中文
+          - button "A admin admin@example.com down" [ref=f5e81] [cursor=pointer]:
+            - generic [ref=f5e82]: A
+            - generic [ref=f5e84]:
+              - generic [ref=f5e85]: admin
+              - generic [ref=f5e86]: admin@example.com
+            - img "down" [ref=f5e87]
+      - main [ref=f5e90]:
+        - generic [ref=f5e91]:
+          - generic [ref=f5e92]:
+            - button [ref=f5e93] [cursor=pointer]:
+              - img "menu-unfold" [ref=f5e95]
+            - button [ref=f5e98] [cursor=pointer]:
+              - img "plus" [ref=f5e100]
+            - button "清理全部会话" [ref=f5e104] [cursor=pointer]:
+              - img "clear" [ref=f5e106]
+          - generic [ref=f5e110]:
+            - generic [ref=f5e111]:
+              - generic [ref=f5e112]:
+                - generic [ref=f5e113]:
+                  - img "desktop" [ref=f5e114]
+                  - text: 网页
+                - strong [ref=f5e118]: VERIFY-O08：把Word附件的下周计划加
+              - generic [ref=f5e119]:
+                - button "调整阅读字体大小" [ref=f5e121] [cursor=pointer]:
+                  - img "font-size" [ref=f5e123]
+                - button [ref=f5e127] [cursor=pointer]:
+                  - img "plus" [ref=f5e129]
+                - button [ref=f5e134] [cursor=pointer]:
+                  - img "reload" [ref=f5e136]
+                - button [ref=f5e140] [cursor=pointer]:
+                  - img "delete" [ref=f5e142]
+            - generic [ref=f5e151]:
+              - generic [ref=f5e155]:
+                - generic [ref=f5e156]:
+                  - generic [ref=f5e158]:
+                    - img "paper-clip" [ref=f5e159]
+                    - generic [ref=f5e162]: E2E_个人周报.docx
+                  - generic [ref=f5e163]: VERIFY-O08：把Word附件的下周计划加上“更新接口文档”，生成 VERIFY_个人周报_v2.docx 供下载，请直接给出文件下载链接。
+                - generic [ref=f5e167]:
+                  - img "user" [ref=f5e169]
+                  - generic [ref=f5e172]:
+                    - img "clock-circle" [ref=f5e173]
+                    - generic [ref=f5e177]: 10/13 20:16
+              - generic [ref=f5e181]:
+                - generic [ref=f5e182]:
+                  - generic [ref=f5e184] [cursor=pointer]:
+                    - img "right" [ref=f5e185]
+                    - generic [ref=f5e189]:
+                      - generic [ref=f5e190]: 查看思考过程
+                      - generic [ref=f5e191]: (已深度思考)
+                  - generic [ref=f5e194]:
+                    - paragraph [ref=f5e195]: ⚠️ 沙箱已成功调用工具（bash）采集到相关数据，但在进行智能归纳或生成交付物时，上游推理模型连接中断或未返回最终交付文本。
+                    - paragraph [ref=f5e196]: "【沙箱已检索到的参考数据】:"
+                    - list [ref=f5e197]:
+                      - listitem [ref=f5e198]: "/workspace/.dsh/sessions/aa99f8cf-d7c4-4585-92b6-31596bfee618.evidence.json:1:{\"schema_version\": 1, \"turn_id\": \"1791889836515402836-66d571ebaf1848288b"
+                      - listitem [ref=f5e199]: ...[⚠️ 工具输出超过 10000 字符已自动截断。💡 建议：可使用 grep/head/tail 缩小输出范围，或使用 read_file 分片读取]
+                    - paragraph [ref=f5e200]: 💡 建议：可尝试重新提问，或在设置中切换为更稳定的模型重试。
+                - generic [ref=f5e201]:
+                  - generic [ref=f5e203]:
+                    - img "robot" [ref=f5e205]
+                    - generic [ref=f5e208]:
+                      - img "clock-circle" [ref=f5e209]
+                      - generic [ref=f5e213]: 10/13 20:16
+                  - generic [ref=f5e216]:
+                    - generic [ref=f5e219] [cursor=pointer]:
+                      - generic [ref=f5e220]: Tokens:116880
+                      - generic [ref=f5e222]: /
+                      - generic [ref=f5e223]: 输入:109647 输出:2406 (+推理:1957)
+                    - generic "评价回答" [ref=f5e226]:
+                      - button "回答有帮助" [ref=f5e227] [cursor=pointer]:
+                        - img "like" [ref=f5e229]
+                      - button "回答需要改进" [ref=f5e232] [cursor=pointer]:
+                        - img "dislike" [ref=f5e234]
+                    - button "保存到个人空间" [ref=f5e238] [cursor=pointer]:
+                      - img "book" [ref=f5e240]
+                    - button "收集到 GTD 收件箱" [ref=f5e244] [cursor=pointer]:
+                      - img "inbox" [ref=f5e246]
+                    - generic [ref=f5e250]:
+                      - button "复制" [ref=f5e251] [cursor=pointer]:
+                        - img "copy" [ref=f5e253]
+                      - button "重试" [ref=f5e256] [cursor=pointer]:
+                        - img "redo" [ref=f5e258]
+            - generic [ref=f5e264]:
+              - textbox "例如：/ppt 制作商业汇报 或 /research 调研开源模型（输入 / 唤起快捷指令）" [ref=f5e266]
+              - generic [ref=f5e267]:
+                - generic [ref=f5e268]:
+                  - radiogroup "segmented control" [ref=f5e269]:
+                    - generic [ref=f5e270]:
+                      - generic [ref=f5e271] [cursor=pointer]:
+                        - radio "user 个人助理" [checked]
+                        - generic [ref=f5e272]:
+                          - img "user" [ref=f5e274]
+                          - generic [ref=f5e277]: 个人助理
+                      - generic [ref=f5e280] [cursor=pointer]:
+                        - radio "robot 企业协同"
+                        - generic [ref=f5e281]:
+                          - img "robot" [ref=f5e283]
+                          - generic [ref=f5e286]: 企业协同
+                  - generic [ref=f5e287]:
+                    - 'button "bulb 思考: 中 down" [ref=f5e288] [cursor=pointer]':
+                      - img "bulb" [ref=f5e289]
+                      - generic [ref=f5e292]: "思考: 中"
+                      - img "down" [ref=f5e293]
+                    - generic "深度调研：已关闭（默认关闭。常规查看与问询不走调研；开启或输入 /research 启用多源深度调研）" [ref=f5e296]:
+                      - generic [ref=f5e297]:
+                        - img "compass" [ref=f5e298]
+                        - text: 调研
+                      - switch [ref=f5e301] [cursor=pointer]
+                - generic [ref=f5e304]:
+                  - generic [ref=f5e307] [cursor=pointer]:
+                    - combobox [ref=f5e309]
+                    - generic "Auto / 系统默认" [ref=f5e310]
+                  - button [ref=f5e314] [cursor=pointer]:
+                    - img "paper-clip" [ref=f5e316]
+                  - button [ref=f5e319] [cursor=pointer]:
+                    - img "audio" [ref=f5e321]
+                  - button [ref=f5e324] [cursor=pointer]:
+                    - img "plus" [ref=f5e326]
+                  - button "send 发送" [disabled] [ref=f5e330]:
+                    - generic:
+                      - img "send"
+                    - generic: 发送
+  - tooltip "请输入内容后发送" [ref=f5e333]

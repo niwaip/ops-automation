@@ -1,0 +1,68 @@
+{
+  "runWindowAsiaShanghai": "2026-10-15 21:00:04–21:03:08",
+  "caseCount": 18,
+  "caseStatus": {
+    "passed": 18
+  },
+  "falseAssertions": 0,
+  "executionCount": 16,
+  "executionStatus": {
+    "succeeded": 15,
+    "waiting_input": 1
+  },
+  "usageLedgerRows": 0,
+  "artifactChecks": [
+    {
+      "executionId": "01adcd71-bb07-4af6-9530-c68319e3d14e",
+      "url": "http://192.168.100.143:3009/renders/055f975f5ac3820db92c27ef14f61acd.md",
+      "expectedSha256": "e9915474e9261575ee3ea46abc344e274d3fccfaa10c38f05a46c5f63d589957",
+      "downloaded": true,
+      "sha256": "e9915474e9261575ee3ea46abc344e274d3fccfaa10c38f05a46c5f63d589957",
+      "sizeBytes": 374,
+      "businessFields": true,
+      "hashMatches": true
+    },
+    {
+      "executionId": "65fe3e0d-f3f8-4a20-9e26-c8eccf2c1259",
+      "url": "http://192.168.100.143:3009/renders/b9d039f8543435b3c96599bc5f79338e.md",
+      "expectedSha256": "1bf097613caffe60c10fc60cdf68bffadc39bdf46c5cf6f285e90387566c8708",
+      "downloaded": true,
+      "sha256": "1bf097613caffe60c10fc60cdf68bffadc39bdf46c5cf6f285e90387566c8708",
+      "sizeBytes": 520,
+      "businessFields": true,
+      "hashMatches": true
+    },
+    {
+      "executionId": "a0743035-7248-42cc-ac0a-0572b361409e",
+      "url": "http://192.168.100.143:3009/renders/05fd85ea4b1166d8bf99bb38f80afbb9.md",
+      "expectedSha256": "770568cf296db5a93895a489123eac6f68703c9b0c0360ba2a36be80098cf964",
+      "downloaded": true,
+      "sha256": "770568cf296db5a93895a489123eac6f68703c9b0c0360ba2a36be80098cf964",
+      "sizeBytes": 350,
+      "businessFields": true,
+      "hashMatches": true
+    },
+    {
+      "executionId": "4ecc5607-4b04-46f5-91ba-2b87aeaa79c9",
+      "url": "http://192.168.100.143:3009/renders/5cc6145a0e85c7582136984cef730324.md",
+      "expectedSha256": "e3372c387d130618c49eb97308db84c2edfdb64f8e0437514597280cc91318b7",
+      "downloaded": true,
+      "sha256": "e3372c387d130618c49eb97308db84c2edfdb64f8e0437514597280cc91318b7",
+      "sizeBytes": 389,
+      "businessFields": true,
+      "hashMatches": true
+    }
+  ],
+  "coverageMissing": [
+    "R12",
+    "F04",
+    "F05",
+    "F06",
+    "F07",
+    "F08",
+    "A02",
+    "W02",
+    "X01",
+    "X02"
+  ]
+}

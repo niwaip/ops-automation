@@ -12,7 +12,11 @@ import {
   buildChatRequest,
   buildResumeExecutionRequest,
 } from '@chat-web/controller/chatRequestController';
-import { isWorkflowCommand } from '../lib/workflowNaturalLanguageRouter';
+import {
+  isWorkflowCommand,
+  getPendingWorkflowParameters,
+} from '../lib/workflowNaturalLanguageRouter';
+import { useChatStore } from '../chatStore';
 import { upsertMessage } from '../lib/messageState';
 import { summarizeSessionTitle } from '../lib/sessionView';
 import { getLatestWaitingInputExecutionId } from '../lib/taskStatus';
@@ -42,6 +46,7 @@ interface UseChatPageActionsOptions {
     assistantMessageId: string,
     options?: {
       workflowCommandContent?: string;
+      workflowParameters?: Record<string, any>;
     }
   ) => Promise<void>;
   selectedModel: string;
@@ -116,9 +121,8 @@ export function useChatPageActions({
 
     const resolvedModelId =
       selectedModel && selectedModel !== 'default' ? selectedModel : undefined;
-    const continuedExecutionId = hasFiles
-      ? undefined
-      : (pendingExecutionId || getLatestWaitingInputExecutionId(activeMessages));
+    const continuedExecutionId =
+      pendingExecutionId || getLatestWaitingInputExecutionId(activeMessages);
     const now = toChatTimestamp();
 
     // 留在当前会话页面，不需要切换视窗！
@@ -156,9 +160,7 @@ export function useChatPageActions({
       updatedAt: now,
       modelId: resolvedModelId,
     });
-    if (contentOverride === undefined) {
-      setDraft('');
-    }
+    setDraft('');
     // 探测是否为规范协同卡片已生成的业务单据（制定/既定操作，已持久化，无需走 AI 能力匹配与模型规划）
     if (
       content.startsWith('### 📋') ||
@@ -230,6 +232,9 @@ export function useChatPageActions({
       });
 
       // 绑定组织工作流结构化上下文 (F1 驱动首阶段技能执行)
+      const currentTaskContext = useChatStore.getState().taskContext;
+      const workflowParameters =
+        getPendingWorkflowParameters() || currentTaskContext?.parameters;
       (request.config as any) = {
         ...(request.config || {}),
         taskContext: {
@@ -238,6 +243,7 @@ export function useChatPageActions({
           stageId: 'draft_submission',
           stageName: '业务初稿起草生成',
           triggerType: 'workbench_coordination',
+          ...(workflowParameters ? { parameters: workflowParameters } : {}),
         },
       };
 
@@ -247,6 +253,7 @@ export function useChatPageActions({
 
       void runAssistantRequest(session, request, assistantMessageId, {
         workflowCommandContent: content,
+        workflowParameters,
       });
       return;
     }

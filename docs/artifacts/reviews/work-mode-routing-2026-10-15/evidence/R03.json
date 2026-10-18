@@ -1,0 +1,41 @@
+{
+  "caseId": "R03",
+  "variant": "canonical",
+  "status": "passed",
+  "traceIds": [
+    "07b503a6-27d7-4408-9916-db2ecee027ce"
+  ],
+  "executionIds": [
+    "0b870953-d268-478d-8c0f-6aa60aa794fd"
+  ],
+  "requestDigest": "d7904e32f95422e3aab930c4041a8dbac696f1ad77a4575c36eb880d519ba7db",
+  "fixtureDigest": null,
+  "catalogSnapshotDigest": "catalog-v1-snapshot-sha256",
+  "routingPolicyVersion": "routing-policy-v1",
+  "routingPolicyDigest": "routing-policy-sha256",
+  "selectedCapabilityRefs": [
+    "platform.search.web"
+  ],
+  "planHash": null,
+  "inputHash": null,
+  "actualInvocations": [
+    "platform.search.web"
+  ],
+  "usageByPurpose": {},
+  "logicalEffectCount": 1,
+  "artifactRefs": [],
+  "assertions": [
+    {
+      "assertion": "Selected platform.search.web capability",
+      "passed": true,
+      "actual": [
+        "platform.search.web"
+      ]
+    },
+    {
+      "assertion": "Returned web search results or query observation",
+      "passed": true
+    }
+  ],
+  "failureCategory": null
+}

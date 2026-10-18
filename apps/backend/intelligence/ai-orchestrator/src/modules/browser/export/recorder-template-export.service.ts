@@ -88,6 +88,7 @@ escapeRegex,
 extractRecordedRef,
 extractTurnExecutionIndex,
 hasCoexistingGenericText,
+inferSiteNameFromUrl,
 inferTemplateLocatorType,
 isButtonLikeDescription,
 isEphemeralRuntimeHandle,
@@ -157,6 +158,7 @@ export class RecorderTemplateExportService {
         typeof command.params.url === 'string' &&
         command.params.url.trim() === startUrl
     );
+    const startSite = inferSiteNameFromUrl(startUrl);
     const templateSteps: TemplateStepArtifactLike[] = hasRecordedStartNavigate
       ? []
       : [
@@ -164,7 +166,7 @@ export class RecorderTemplateExportService {
             step_id: 'step_1',
             action: 'navigate',
             params: { url: startUrl },
-            description: '打开起始页面',
+            description: startSite ? `打开${startSite}` : '打开起始页面',
           },
         ];
     const nextStepId = () => `step_${templateSteps.length + 1}`;
@@ -570,11 +572,22 @@ export class RecorderTemplateExportService {
         ? command.description.trim()
         : undefined;
 
+    let finalDescription = description;
+    if (!finalDescription) {
+      if (action === 'navigate' || action === 'goto') {
+        const url = typeof command.params?.url === 'string' ? command.params.url : undefined;
+        const site = inferSiteNameFromUrl(url);
+        finalDescription = site ? `打开${site}` : '打开起始页面';
+      } else if (action === 'click_result') {
+        finalDescription = '打开详细页';
+      }
+    }
+
     if (action === 'click' && !locator && !params) {
       return {
         step_id: stepId,
         action: 'takeover_gate',
-        description: description || '页面存在待处理操作，请根据当前页面提示继续执行',
+        description: finalDescription || '页面存在待处理操作，请根据当前页面提示继续执行',
       };
     }
 
@@ -583,7 +596,7 @@ export class RecorderTemplateExportService {
       action,
       ...(locator ? { locator } : {}),
       ...(params ? { params } : {}),
-      ...(description ? { description } : {}),
+      ...(finalDescription ? { description: finalDescription } : {}),
     };
   }
 

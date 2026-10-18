@@ -146,8 +146,22 @@ export class CdpStepRunnerService {
       commandParams[key] = this.replaceParams(commandParams[key], params);
     }
 
+    let tool = step.action;
+    if (
+      (step.action === 'click' || step.action === 'click_result') &&
+      commandParams.index !== undefined
+    ) {
+      const parsedIndex = parseInt(String(commandParams.index), 10);
+      if (!isNaN(parsedIndex) && parsedIndex > 0) {
+        tool = 'click_result';
+        commandParams.index = parsedIndex;
+        delete commandParams.selector;
+        delete commandParams.target;
+      }
+    }
+
     return {
-      tool: step.action,
+      tool,
       params: commandParams,
     };
   }

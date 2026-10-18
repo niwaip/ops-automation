@@ -270,6 +270,13 @@ export function useWorkbenchInbox({ message, onTodoCreated, defaultFilter }: Use
     [syncEmailMutation]
   );
 
+  const refreshInbox = useCallback(async () => {
+    await Promise.allSettled([
+      queryClient.invalidateQueries(["workbench-inbox"]),
+      queryClient.invalidateQueries(["workbench-inbox-summary"]),
+    ]);
+  }, [queryClient]);
+
   return {
     inboxDraft,
     setInboxDraft,
@@ -287,5 +294,6 @@ export function useWorkbenchInbox({ message, onTodoCreated, defaultFilter }: Use
     handleUnarchiveItem,
     handleDeleteItem,
     handleSyncEmail,
+    refreshInbox,
   };
 }
