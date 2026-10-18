@@ -1,0 +1,820 @@
+{
+  "status": 200,
+  "data": {
+    "id": "73461a61-9791-4d74-a384-500b678ed3ca",
+    "orgId": "e2bc525b-7b3e-499d-ba3d-e2a45ed9a71c",
+    "capabilityId": null,
+    "capabilitiesUsed": [],
+    "skillVersion": "1.0.2",
+    "capabilityVersion": "1.0.2",
+    "status": "failed",
+    "runtimeType": "custom",
+    "riskLevel": "L0",
+    "executionMode": "single_skill",
+    "currentStepId": "c6cb1afd-54c6-4945-9141-2ef10fdb4952",
+    "currentPhaseKey": "phase_01_execute_skill",
+    "currentPhaseStatus": "failed",
+    "takeoverStatus": "failed",
+    "requiresApproval": false,
+    "approvalStatus": "not_required",
+    "takeoverRequired": false,
+    "takeoverReason": null,
+    "inputJson": {},
+    "normalizedInputJson": {
+      "input": {},
+      "__usage": {
+        "total_tokens": 3007,
+        "prompt_tokens": 2123,
+        "completion_tokens": 884
+      },
+      "semantic": {
+        "mode": "complex_document",
+        "enabled": true,
+        "summary": "文档参数已满足最终渲染要求。",
+        "complexity": {
+          "category": "complex_document",
+          "arrayGroups": 2,
+          "reasonCodes": [
+            "param_count_threshold",
+            "array_group_threshold"
+          ],
+          "totalFields": 12,
+          "missingFields": 0,
+          "requiredFields": 0
+        },
+        "finalReady": true,
+        "previewReady": true,
+        "groupedMissing": [],
+        "fallbackToFieldLevel": false
+      },
+      "objective": "我只是咨询：合同审查通常检查哪些方面？不用审查任何具体合同，也不用生成文件。",
+      "planSteps": [
+        {
+          "id": "execute-skill",
+          "kind": "skill",
+          "title": "Execute skill",
+          "status": "planned",
+          "description": "调用技能 合同文档智能审查与合规诊断 进入执行。"
+        }
+      ],
+      "skillMatch": {
+        "skill_id": "platform.document.contract-reviewer",
+        "confidence": 0.99,
+        "skill_name": "合同文档智能审查与合规诊断",
+        "match_reason": "deterministic_routing_signal",
+        "skill_version": "1.0.2"
+      },
+      "plannerMode": "skill",
+      "riskSummary": {
+        "items": [
+          "no_material_risk_detected"
+        ],
+        "level": "low",
+        "requires_human_review": false
+      },
+      "plannerSummary": "已识别技能 合同文档智能审查与合规诊断，可以按计划进入执行。 文档参数已满足最终渲染要求。",
+      "requiredInputs": [
+        {
+          "name": "text",
+          "type": "string",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "合同文档纯文本正文内容（若已上传附件文件，此字段可留空）",
+          "display_name": "合同文档纯文本正文内容（若已上传附件文件",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "name": "prompt",
+          "type": "string",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "针对该合同的专项审查提示词与重点关注要求",
+          "display_name": "针对该合同的专项审查提示词与重点关注要求",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "name": "fileUrl",
+          "type": "string",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "合同文档的存储或访问 URL",
+          "display_name": "合同文档的存储或访问 URL",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "name": "fileName",
+          "type": "string",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "上传的合同文件名",
+          "display_name": "上传的合同文件名",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "name": "fileBase64",
+          "type": "string",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "上传的合同文档 Base64 数据（Word .docx 或 PDF）",
+          "display_name": "上传的合同文档 Base64 数据（Word .docx 或 P...",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "name": "myPosition",
+          "type": "string",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "我方合同立场与角色（如：甲方、乙方、采购方、受托方、雇主、雇员、出租方、承租方），影响审查倾斜度与红线建议",
+          "display_name": "我方合同立场与角色（如",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "name": "downloadUrl",
+          "type": "string",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "合同文档的下载或访问 URL",
+          "display_name": "合同文档的下载或访问 URL",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "name": "taskContext",
+          "type": "object",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "协同任务或上游上下文元数据",
+          "display_name": "协同任务或上游上下文元数据",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "enum": [
+            "nda",
+            "software_development",
+            "procurement",
+            "employment",
+            "lease",
+            "general"
+          ],
+          "name": "contractType",
+          "type": "string",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "合同类型（留空则基于条款智能自动识别分类）",
+          "display_name": "合同类型（留空则基于条款智能自动识别分类）",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "name": "reviewPrompt",
+          "type": "string",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "审查提示词或专项指引规则要求（例如：重点审查保密期限与违约责任）",
+          "display_name": "审查提示词或专项指引规则要求（例如",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "name": "customCheckpoints",
+          "type": "array",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "兼容旧版契约的自定义审查要点",
+          "display_name": "兼容旧版契约的自定义审查要点",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "name": "customChecklistRules",
+          "type": "array",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "数字员工自定义配置的审查要点与规则清单",
+          "display_name": "数字员工自定义配置的审查要点与规则清单",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        }
+      ],
+      "capabilityMatch": {
+        "confidence": 0.99,
+        "matchReason": "deterministic_routing_signal",
+        "capabilityId": "platform.document.contract-reviewer",
+        "capabilityName": "合同文档智能审查与合规诊断"
+      },
+      "paramResolution": {
+        "text": {
+          "type": "string",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "合同文档纯文本正文内容（若已上传附件文件，此字段可留空）",
+          "display_name": "合同文档纯文本正文内容（若已上传附件文件",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "prompt": {
+          "type": "string",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "针对该合同的专项审查提示词与重点关注要求",
+          "display_name": "针对该合同的专项审查提示词与重点关注要求",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "fileUrl": {
+          "type": "string",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "合同文档的存储或访问 URL",
+          "display_name": "合同文档的存储或访问 URL",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "fileName": {
+          "type": "string",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "上传的合同文件名",
+          "display_name": "上传的合同文件名",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "fileBase64": {
+          "type": "string",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "上传的合同文档 Base64 数据（Word .docx 或 PDF）",
+          "display_name": "上传的合同文档 Base64 数据（Word .docx 或 P...",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "myPosition": {
+          "type": "string",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "我方合同立场与角色（如：甲方、乙方、采购方、受托方、雇主、雇员、出租方、承租方），影响审查倾斜度与红线建议",
+          "display_name": "我方合同立场与角色（如",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "downloadUrl": {
+          "type": "string",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "合同文档的下载或访问 URL",
+          "display_name": "合同文档的下载或访问 URL",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "taskContext": {
+          "type": "object",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "协同任务或上游上下文元数据",
+          "display_name": "协同任务或上游上下文元数据",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "contractType": {
+          "enum": [
+            "nda",
+            "software_development",
+            "procurement",
+            "employment",
+            "lease",
+            "general"
+          ],
+          "type": "string",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "合同类型（留空则基于条款智能自动识别分类）",
+          "display_name": "合同类型（留空则基于条款智能自动识别分类）",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "reviewPrompt": {
+          "type": "string",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "审查提示词或专项指引规则要求（例如：重点审查保密期限与违约责任）",
+          "display_name": "审查提示词或专项指引规则要求（例如",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "customCheckpoints": {
+          "type": "array",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "兼容旧版契约的自定义审查要点",
+          "display_name": "兼容旧版契约的自定义审查要点",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "customChecklistRules": {
+          "type": "array",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "数字员工自定义配置的审查要点与规则清单",
+          "display_name": "数字员工自定义配置的审查要点与规则清单",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        }
+      }
+    },
+    "input": {},
+    "normalizedInput": {
+      "input": {},
+      "__usage": {
+        "total_tokens": 3007,
+        "prompt_tokens": 2123,
+        "completion_tokens": 884
+      },
+      "semantic": {
+        "mode": "complex_document",
+        "enabled": true,
+        "summary": "文档参数已满足最终渲染要求。",
+        "complexity": {
+          "category": "complex_document",
+          "arrayGroups": 2,
+          "reasonCodes": [
+            "param_count_threshold",
+            "array_group_threshold"
+          ],
+          "totalFields": 12,
+          "missingFields": 0,
+          "requiredFields": 0
+        },
+        "finalReady": true,
+        "previewReady": true,
+        "groupedMissing": [],
+        "fallbackToFieldLevel": false
+      },
+      "objective": "我只是咨询：合同审查通常检查哪些方面？不用审查任何具体合同，也不用生成文件。",
+      "planSteps": [
+        {
+          "id": "execute-skill",
+          "kind": "skill",
+          "title": "Execute skill",
+          "status": "planned",
+          "description": "调用技能 合同文档智能审查与合规诊断 进入执行。"
+        }
+      ],
+      "skillMatch": {
+        "skill_id": "platform.document.contract-reviewer",
+        "confidence": 0.99,
+        "skill_name": "合同文档智能审查与合规诊断",
+        "match_reason": "deterministic_routing_signal",
+        "skill_version": "1.0.2"
+      },
+      "plannerMode": "skill",
+      "riskSummary": {
+        "items": [
+          "no_material_risk_detected"
+        ],
+        "level": "low",
+        "requires_human_review": false
+      },
+      "plannerSummary": "已识别技能 合同文档智能审查与合规诊断，可以按计划进入执行。 文档参数已满足最终渲染要求。",
+      "requiredInputs": [
+        {
+          "name": "text",
+          "type": "string",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "合同文档纯文本正文内容（若已上传附件文件，此字段可留空）",
+          "display_name": "合同文档纯文本正文内容（若已上传附件文件",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "name": "prompt",
+          "type": "string",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "针对该合同的专项审查提示词与重点关注要求",
+          "display_name": "针对该合同的专项审查提示词与重点关注要求",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "name": "fileUrl",
+          "type": "string",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "合同文档的存储或访问 URL",
+          "display_name": "合同文档的存储或访问 URL",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "name": "fileName",
+          "type": "string",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "上传的合同文件名",
+          "display_name": "上传的合同文件名",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "name": "fileBase64",
+          "type": "string",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "上传的合同文档 Base64 数据（Word .docx 或 PDF）",
+          "display_name": "上传的合同文档 Base64 数据（Word .docx 或 P...",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "name": "myPosition",
+          "type": "string",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "我方合同立场与角色（如：甲方、乙方、采购方、受托方、雇主、雇员、出租方、承租方），影响审查倾斜度与红线建议",
+          "display_name": "我方合同立场与角色（如",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "name": "downloadUrl",
+          "type": "string",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "合同文档的下载或访问 URL",
+          "display_name": "合同文档的下载或访问 URL",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "name": "taskContext",
+          "type": "object",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "协同任务或上游上下文元数据",
+          "display_name": "协同任务或上游上下文元数据",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "enum": [
+            "nda",
+            "software_development",
+            "procurement",
+            "employment",
+            "lease",
+            "general"
+          ],
+          "name": "contractType",
+          "type": "string",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "合同类型（留空则基于条款智能自动识别分类）",
+          "display_name": "合同类型（留空则基于条款智能自动识别分类）",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "name": "reviewPrompt",
+          "type": "string",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "审查提示词或专项指引规则要求（例如：重点审查保密期限与违约责任）",
+          "display_name": "审查提示词或专项指引规则要求（例如",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "name": "customCheckpoints",
+          "type": "array",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "兼容旧版契约的自定义审查要点",
+          "display_name": "兼容旧版契约的自定义审查要点",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        {
+          "name": "customChecklistRules",
+          "type": "array",
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "数字员工自定义配置的审查要点与规则清单",
+          "display_name": "数字员工自定义配置的审查要点与规则清单",
+          "required_mode": "optional",
+          "needs_confirmation": false,
+          "confirmation_threshold": 0.7
+        }
+      ],
+      "capabilityMatch": {
+        "confidence": 0.99,
+        "matchReason": "deterministic_routing_signal",
+        "capabilityId": "platform.document.contract-reviewer",
+        "capabilityName": "合同文档智能审查与合规诊断"
+      },
+      "paramResolution": {
+        "text": {
+          "type": "string",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "合同文档纯文本正文内容（若已上传附件文件，此字段可留空）",
+          "display_name": "合同文档纯文本正文内容（若已上传附件文件",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "prompt": {
+          "type": "string",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "针对该合同的专项审查提示词与重点关注要求",
+          "display_name": "针对该合同的专项审查提示词与重点关注要求",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "fileUrl": {
+          "type": "string",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "合同文档的存储或访问 URL",
+          "display_name": "合同文档的存储或访问 URL",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "fileName": {
+          "type": "string",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "上传的合同文件名",
+          "display_name": "上传的合同文件名",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "fileBase64": {
+          "type": "string",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "上传的合同文档 Base64 数据（Word .docx 或 PDF）",
+          "display_name": "上传的合同文档 Base64 数据（Word .docx 或 P...",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "myPosition": {
+          "type": "string",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "我方合同立场与角色（如：甲方、乙方、采购方、受托方、雇主、雇员、出租方、承租方），影响审查倾斜度与红线建议",
+          "display_name": "我方合同立场与角色（如",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "downloadUrl": {
+          "type": "string",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "合同文档的下载或访问 URL",
+          "display_name": "合同文档的下载或访问 URL",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "taskContext": {
+          "type": "object",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "协同任务或上游上下文元数据",
+          "display_name": "协同任务或上游上下文元数据",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "contractType": {
+          "enum": [
+            "nda",
+            "software_development",
+            "procurement",
+            "employment",
+            "lease",
+            "general"
+          ],
+          "type": "string",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "合同类型（留空则基于条款智能自动识别分类）",
+          "display_name": "合同类型（留空则基于条款智能自动识别分类）",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "reviewPrompt": {
+          "type": "string",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "审查提示词或专项指引规则要求（例如：重点审查保密期限与违约责任）",
+          "display_name": "审查提示词或专项指引规则要求（例如",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "customCheckpoints": {
+          "type": "array",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "兼容旧版契约的自定义审查要点",
+          "display_name": "兼容旧版契约的自定义审查要点",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        },
+        "customChecklistRules": {
+          "type": "array",
+          "final": true,
+          "source": "unresolved",
+          "missing": false,
+          "required": false,
+          "description": "数字员工自定义配置的审查要点与规则清单",
+          "display_name": "数字员工自定义配置的审查要点与规则清单",
+          "requiredMode": "optional",
+          "needsConfirmation": false,
+          "confirmation_threshold": 0.7
+        }
+      }
+    },
+    "semantic": {
+      "mode": "complex_document",
+      "enabled": true,
+      "summary": "文档参数已满足最终渲染要求。",
+      "complexity": {
+        "category": "complex_document",
+        "arrayGroups": 2,
+        "reasonCodes": [
+          "param_count_threshold",
+          "array_group_threshold"
+        ],
+        "totalFields": 12,
+        "missingFields": 0,
+        "requiredFields": 0
+      },
+      "finalReady": true,
+      "previewReady": true,
+      "groupedMissing": [],
+      "fallbackToFieldLevel": false
+    },
+    "normalizedResult": null,
+    "usage": {
+      "total_tokens": 3007,
+      "prompt_tokens": 2123,
+      "completion_tokens": 884
+    },
+    "failureCode": "BUILTIN_SKILL_EXECUTION_ERROR",
+    "failureReason": "未能从上传的文档中提取到有效的合同条款，请核对文档格式或内容。",
+    "startedAt": "2026-10-17T01:34:22.764Z",
+    "endedAt": "2026-10-17T01:34:22.783Z",
+    "createdAt": "2026-10-17T01:34:22.749Z",
+    "updatedAt": "2026-10-17T01:34:22.785Z",
+    "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+    "phases": [
+      {
+        "id": "addde1ba-6000-459e-9daf-047b5088593a",
+        "executionId": "73461a61-9791-4d74-a384-500b678ed3ca",
+        "phaseKey": "phase_01_execute_skill",
+        "phaseName": "Execute skill",
+        "phaseType": "system_skill",
+        "status": "failed",
+        "attempt": 1,
+        "runtimeSessionId": "73461a61-9791-4d74-a384-500b678ed3ca",
+        "input": null,
+        "output": null,
+        "precheck": null,
+        "postcheck": null,
+        "errorCode": "BUILTIN_SKILL_EXECUTION_ERROR",
+        "errorMessage": "未能从上传的文档中提取到有效的合同条款，请核对文档格式或内容。",
+        "recoveryDecision": null,
+        "startedAt": "2026-10-17T01:34:22.771Z",
+        "completedAt": "2026-10-17T01:34:22.784Z",
+        "createdAt": "2026-10-17T01:34:22.771Z",
+        "updatedAt": "2026-10-17T01:34:22.785Z",
+        "artifacts": [],
+        "steps": [],
+        "takeovers": []
+      }
+    ]
+  }
+}

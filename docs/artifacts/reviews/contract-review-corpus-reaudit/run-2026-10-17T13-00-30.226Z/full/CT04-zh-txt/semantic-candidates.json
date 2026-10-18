@@ -1,0 +1,123 @@
+[
+  {
+    "marker": "CT04-zh-A02",
+    "topic": "risk_internal_conflict",
+    "matchedClauseIndices": [
+      2
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "授予甲方“独家权”的同时允许乙方直接销售并指定其他经销商，构成实质性冲突，导致独家授权失效，严重损害买方商业利益。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-2-GENERAL-RISK",
+            "title": "[CT04-zh-A02]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "授予甲方“独家权”的同时允许乙方直接销售并指定其他经销商，构成实质性冲突，导致独家授权失效，严重损害买方商业利益。",
+            "evidenceQuote": "甲方享有区域独家销售权；乙方可不受限制地直接向区域客户销售并另行指定其他经销商。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-zh-A03",
+    "topic": "risk_target",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "供应商缺货属其违约或履行不能，强制买方补足差额显失公平，违反合同法公平原则，极易引发无效或可撤销争议。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT04-zh-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "供应商缺货属其违约或履行不能，强制买方补足差额显失公平，违反合同法公平原则，极易引发无效或可撤销争议。",
+            "evidenceQuote": "即使乙方缺货也不得调减目标，未达标须补足差额。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-zh-A04",
+    "topic": "risk_resale_price_review",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "限定转售价格涉嫌违反《反垄断法》，且单方终止授权及取消返利缺乏合理性依据，存在行政处罚及合同无效风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT04-zh-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "限定转售价格涉嫌违反《反垄断法》，且单方终止授权及取消返利缺乏合理性依据，存在行政处罚及合同无效风险。",
+            "evidenceQuote": "甲方须遵守乙方确定的最低转售价格；低价销售即取消全部返利并终止授权。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-zh-A07",
+    "topic": "risk_inventory_exit",
+    "matchedClauseIndices": [
+      7
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "乙方无因解除权且甲方库存不退，导致甲方丧失经营预期并承担沉没成本，风险极高。",
+        "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+        "findings": [
+          {
+            "id": "finding-clause-7-CUST-1",
+            "title": "重点检查我方义务、责任、数据或知识产权、付款...",
+            "ruleId": "prompt-rule-1",
+            "category": "审查Prompt专项要点",
+            "ruleCode": "CUST-1",
+            "severity": "HIGH",
+            "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+            "riskSummary": "乙方无因解除权且甲方库存不退，导致甲方丧失经营预期并承担沉没成本，风险极高。",
+            "evidenceQuote": "乙方可随时无理由立即终止；甲方已购库存不得退回"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

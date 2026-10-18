@@ -1,0 +1,228 @@
+{
+  "id": "CT05-ja-pdf",
+  "caseId": "CT05-ja",
+  "business": "development",
+  "language": "ja",
+  "format": "pdf",
+  "file": "contracts/development/CT05-ja.pdf",
+  "fixtureSha256": "b0819046b98c042b31ba0e236a41fa5b5f6668c4a80399a10ee408ceefaf5c98",
+  "status": "failed",
+  "startedAt": "2026-10-17T09:19:25.944Z",
+  "uploadMs": 6,
+  "sessionId": "corpus-CT05-ja-pdf-1792228765950",
+  "executionId": "feae685a-f5e5-4bb9-803a-bdc7addc465c",
+  "traceIds": [
+    "0499e215-1151-4b59-ba86-68635954d4ed"
+  ],
+  "chatMs": 22836,
+  "firstEventMs": 39,
+  "streamError": null,
+  "executionStatus": "succeeded",
+  "actualCapabilities": [
+    "platform.document.contract-reviewer"
+  ],
+  "semanticTopics": 4,
+  "topicsWithoutRiskSignal": [
+    "risk_acceptance",
+    "risk_ip",
+    "risk_third_party_ip",
+    "risk_unfilled"
+  ],
+  "metrics": {
+    "warnings": [],
+    "passCount": 0,
+    "isDegraded": false,
+    "healthScore": 16,
+    "isTruncated": false,
+    "lowRiskCount": 1,
+    "totalClauses": 9,
+    "highRiskCount": 1,
+    "mediumRiskCount": 7,
+    "llmReviewedCount": 9,
+    "missingClausesCount": 2,
+    "unfilledBlanksTotal": 2,
+    "degradedClausesCount": 0,
+    "unfilledVariablesCount": 0
+  },
+  "contractType": "general",
+  "myPosition": "buyer",
+  "observedUsage": [
+    {
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 779,
+      "outputTokens": 452
+    },
+    {
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 745,
+      "outputTokens": 583
+    },
+    {
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 772,
+      "outputTokens": 698
+    }
+  ],
+  "assertions": [
+    {
+      "name": "upload returned attachment",
+      "passed": true,
+      "actual": null,
+      "category": "UPLOAD"
+    },
+    {
+      "name": "chat HTTP success",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE finished",
+      "passed": true,
+      "actual": "done",
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "contract skill executed",
+      "passed": true,
+      "actual": [
+        "platform.document.contract-reviewer"
+      ],
+      "category": "ROUTING"
+    },
+    {
+      "name": "persistent execution succeeded",
+      "passed": true,
+      "actual": "succeeded",
+      "category": "STATE"
+    },
+    {
+      "name": "structured output exists",
+      "passed": true,
+      "actual": null,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "all eight article markers covered",
+      "passed": true,
+      "actual": [],
+      "category": "PARSE"
+    },
+    {
+      "name": "every source article language retained",
+      "passed": true,
+      "actual": [],
+      "category": "PARSE"
+    },
+    {
+      "name": "clause indices unique",
+      "passed": true,
+      "actual": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "category": "OUTPUT"
+    },
+    {
+      "name": "metrics consistent",
+      "passed": true,
+      "actual": {
+        "warnings": [],
+        "passCount": 0,
+        "isDegraded": false,
+        "healthScore": 16,
+        "isTruncated": false,
+        "lowRiskCount": 1,
+        "totalClauses": 9,
+        "highRiskCount": 1,
+        "mediumRiskCount": 7,
+        "llmReviewedCount": 9,
+        "missingClausesCount": 2,
+        "unfilledBlanksTotal": 2,
+        "degradedClausesCount": 0,
+        "unfilledVariablesCount": 0
+      },
+      "category": "OUTPUT"
+    },
+    {
+      "name": "score in range",
+      "passed": true,
+      "actual": 16,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "semantic review complete",
+      "passed": true,
+      "actual": {
+        "reviewed": 9,
+        "total": 9,
+        "warnings": []
+      },
+      "category": "SEMANTIC_COMPLETENESS"
+    },
+    {
+      "name": "not truncated",
+      "passed": true,
+      "actual": false,
+      "category": "PARSE"
+    },
+    {
+      "name": "business model ledger present",
+      "passed": true,
+      "actual": 3,
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "requested model actually used",
+      "passed": true,
+      "actual": [
+        "qwen36-35b-a3b"
+      ],
+      "category": "MODEL"
+    },
+    {
+      "name": "requested party role retained",
+      "passed": false,
+      "actual": {
+        "expected": "buyer",
+        "actual": "buyer",
+        "source": "default"
+      },
+      "category": "POSITION"
+    },
+    {
+      "name": "original artifact URL downloads HTML",
+      "passed": true,
+      "actual": {
+        "url": "http://192.168.100.143:3009/renders/ec5a3a19e541cca30b6887582ae3561c.html",
+        "status": 200,
+        "bytes": 467806,
+        "sha256": "312d2b909035732b2b56e288556b9917f310dc37439113ac6a580fbcedf31676",
+        "html": true
+      },
+      "category": "DELIVERY"
+    }
+  ],
+  "failures": [
+    {
+      "name": "requested party role retained",
+      "passed": false,
+      "actual": {
+        "expected": "buyer",
+        "actual": "buyer",
+        "source": "default"
+      },
+      "category": "POSITION"
+    }
+  ],
+  "semanticStatus": "pending_independent_review",
+  "wallMs": 22904,
+  "finishedAt": "2026-10-17T09:19:48.848Z"
+}

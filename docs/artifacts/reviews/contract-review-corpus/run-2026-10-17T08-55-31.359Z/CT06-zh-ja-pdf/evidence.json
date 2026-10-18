@@ -1,0 +1,14 @@
+{
+  "id": "CT06-zh-ja-pdf",
+  "caseId": "CT06-zh-ja",
+  "business": "lease",
+  "language": "zh-ja",
+  "format": "pdf",
+  "file": "contracts/lease/CT06-zh-ja.pdf",
+  "fixtureSha256": "ec718194106057199d13f35330a23120c6a0cd640841b9c4706fd8eac2da7595",
+  "status": "error",
+  "startedAt": "2026-10-17T08:55:43.151Z",
+  "error": "Login HTTP 429",
+  "wallMs": 3,
+  "finishedAt": "2026-10-17T08:55:43.154Z"
+}

@@ -1,0 +1,56 @@
+{
+  "id": "C09",
+  "name": "同会话替换合同不串件",
+  "status": "failed",
+  "sessionId": "crw-C02-1792165154483",
+  "executionId": "2c98dc21-0d92-431b-ade0-2870ebc99991",
+  "traceIds": [
+    "49db2e0c-0f60-4681-b8b3-ec23d3724559"
+  ],
+  "actualCapabilities": [],
+  "executionStatus": "succeeded",
+  "requestDigest": "07eda4fd6fdbc571e2007e8ff8750045f9bdf98b541e8b84f1131b2c4891441e",
+  "fixtureDigest": "fef1cfa60a005dda4dfa07747d8f9d59d3ae61746f1367f114377d73123eef91",
+  "timing": {
+    "firstEventMs": 27,
+    "firstContentMs": null,
+    "totalMs": 5466
+  },
+  "assertions": [
+    {
+      "name": "聊天HTTP成功",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE完整结束且无传输异常",
+      "passed": true,
+      "actual": "done",
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "实际执行合同审查能力",
+      "passed": false,
+      "actual": [],
+      "category": "ROUTING"
+    },
+    {
+      "name": "控制面持久终态成功",
+      "passed": true,
+      "actual": "succeeded",
+      "category": "EXECUTION_STATE"
+    },
+    {
+      "name": "输出含结构化条款和指标",
+      "passed": false,
+      "actual": null,
+      "category": "CONTRACT"
+    }
+  ],
+  "failures": [
+    "ROUTING",
+    "CONTRACT"
+  ],
+  "observedUsage": []
+}

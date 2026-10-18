@@ -1,0 +1,193 @@
+[
+  {
+    "marker": "CT02-zh-A03",
+    "topic": "risk_sla",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "条款排除最低服务标准且免除违约责任，导致甲方无法追究乙方服务瑕疵责任，风险极高。",
+        "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+        "findings": [
+          {
+            "id": "finding-clause-3-CUST-1",
+            "title": "重点检查我方义务、责任、数据或知识产权、付款...",
+            "ruleId": "prompt-rule-1",
+            "category": "审查Prompt专项要点",
+            "ruleCode": "CUST-1",
+            "severity": "HIGH",
+            "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+            "riskSummary": "条款排除最低服务标准且免除违约责任，导致甲方无法追究乙方服务瑕疵责任，风险极高。",
+            "evidenceQuote": "乙方仅尽力提供服务，不承诺最低可用率；连续中断十日亦不退费或承担责任。",
+            "recommendedRevision": "可用性：乙方仅尽力提供服务，不承诺最低可用率；连续中断十日亦不退费或承担责任。"
+          },
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT02-zh-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "“尽力而为”标准模糊，且排除法定违约责任，可能导致服务中断时甲方无法获得任何救济。",
+            "evidenceQuote": "乙方仅尽力提供服务，不承诺最低可用率；连续中断十日亦不退费或承担责任。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-zh-A04",
+    "topic": "risk_data_use",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "未经同意利用甲方核心数据（含个人信息）进行商业训练，侵犯数据所有权及合规义务。",
+        "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+        "findings": [
+          {
+            "id": "finding-clause-4-CUST-1",
+            "title": "重点检查我方义务、责任、数据或知识产权、付款...",
+            "ruleId": "prompt-rule-1",
+            "category": "审查Prompt专项要点",
+            "ruleCode": "CUST-1",
+            "severity": "HIGH",
+            "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+            "riskSummary": "未经同意利用甲方核心数据（含个人信息）进行商业训练，侵犯数据所有权及合规义务。",
+            "evidenceQuote": "乙方可未经甲方同意将含姓名、邮箱和交易记录的数据用于模型训练并永久留存。",
+            "recommendedRevision": "数据：甲方保有数据所有权；乙方可未经甲方同意将含姓名、邮箱和交易记录的数据用于模型训练并永久留存。"
+          },
+          {
+            "id": "finding-clause-4-NDA-01",
+            "title": "保密期限永久且未区分一般信息与商业秘密",
+            "ruleId": "nda_perpetual_duration",
+            "category": "CONFIDENTIALITY",
+            "ruleCode": "NDA-01",
+            "severity": "HIGH",
+            "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+            "riskSummary": "允许永久留存敏感数据用于商业目的，严重破坏保密义务，存在重大数据泄露及合规风险。",
+            "evidenceQuote": "乙方可未经甲方同意将含姓名、邮箱和交易记录的数据用于模型训练并永久留存。",
+            "recommendedRevision": "自披露之日起算，有效期为 3 年；依法属于商业秘密的信息在其合法保持秘密状态期间持续有效"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-zh-A05",
+    "topic": "risk_exit",
+    "matchedClauseIndices": [
+      5
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "退出机制完全依附于乙方单方自由裁量权，无期限保障，构成实质性的服务锁定风险。",
+        "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+        "findings": [
+          {
+            "id": "finding-clause-5-CUST-1",
+            "title": "重点检查我方义务、责任、数据或知识产权、付款...",
+            "ruleId": "prompt-rule-1",
+            "category": "审查Prompt专项要点",
+            "ruleCode": "CUST-1",
+            "severity": "HIGH",
+            "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+            "riskSummary": "退出机制完全依附于乙方单方自由裁量权，无期限保障，构成实质性的服务锁定风险。",
+            "evidenceQuote": "乙方可自行决定是否批准，且不承诺任何导出期限。",
+            "recommendedRevision": "退出：合同终止后甲方可申请导出数据，但乙方可自行决定是否批准，且不承诺任何导出期限。"
+          },
+          {
+            "id": "finding-clause-5-NDA-01",
+            "title": "保密期限永久且未区分一般信息与商业秘密",
+            "ruleId": "nda_perpetual_duration",
+            "category": "CONFIDENTIALITY",
+            "ruleCode": "NDA-01",
+            "severity": "HIGH",
+            "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+            "riskSummary": "缺乏明确的保密数据销毁或返还义务及期限，合同终止后数据安全性无法保障。",
+            "evidenceQuote": "乙方可自行决定是否批准，且不承诺任何导出期限。",
+            "recommendedRevision": "自披露之日起算，有效期为 3 年；依法属于商业秘密的信息在其合法保持秘密状态期间持续有效"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-zh-A06",
+    "topic": "risk_renewal",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "自动续约与单方涨价权违反权责对等原则，增加我方不可控成本与持续依赖风险。",
+        "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+        "findings": [
+          {
+            "id": "finding-clause-6-CUST-1",
+            "title": "重点检查我方义务、责任、数据或知识产权、付款...",
+            "ruleId": "prompt-rule-1",
+            "category": "审查Prompt专项要点",
+            "ruleCode": "CUST-1",
+            "severity": "HIGH",
+            "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+            "riskSummary": "自动续约与单方涨价权违反权责对等原则，增加我方不可控成本与持续依赖风险。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-zh-A08",
+    "topic": "risk_dispute_unclear",
+    "matchedClauseIndices": [
+      8
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "争议解决机制缺失导致条款无法执行，我方在纠纷中处于被动，无法保障追偿效率。",
+        "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+        "findings": [
+          {
+            "id": "finding-clause-8-CUST-1",
+            "title": "重点检查我方义务、责任、数据或知识产权、付款...",
+            "ruleId": "prompt-rule-1",
+            "category": "审查Prompt专项要点",
+            "ruleCode": "CUST-1",
+            "severity": "HIGH",
+            "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+            "riskSummary": "争议解决机制缺失导致条款无法执行，我方在纠纷中处于被动，无法保障追偿效率。",
+            "evidenceQuote": "争议提交有权机构处理，具体机构及所在地留待补充"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

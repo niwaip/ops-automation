@@ -6,6 +6,10 @@ export interface OrganizationSummary {
   name: string;
   code: string;
   description?: string | null;
+  legalEntityName?: string | null;
+  aliases?: string[];
+  creditCode?: string | null;
+  defaultContractRole?: string | null;
 }
 
 export interface OrganizationDepartment {
@@ -44,9 +48,20 @@ export interface OrganizationStructure {
   name: string;
   code: string;
   description?: string | null;
+  legalEntityName?: string | null;
+  aliases?: string[];
+  creditCode?: string | null;
+  defaultContractRole?: string | null;
   departments: OrganizationDepartment[];
   teams: OrganizationTeam[];
   memberships: OrganizationMember[];
+}
+
+export interface UpdateLegalProfileParams {
+  legalEntityName?: string;
+  aliases?: string[];
+  creditCode?: string;
+  defaultContractRole?: string;
 }
 
 export interface CreateOrganizationParams {
@@ -166,5 +181,10 @@ export const organizationApi = {
 
   removeMember: async (orgId: string, userId: string): Promise<{ success: boolean }> => {
     return apiClient.delete<{ success: boolean }>(`/organizations/${orgId}/members/${userId}`);
+  },
+
+  updateLegalProfile: async (orgId: string, params: UpdateLegalProfileParams): Promise<OrganizationSummary> => {
+    const res = await apiClient.put<{ organization: OrganizationSummary }>(`/organizations/${orgId}/legal-profile`, params);
+    return res.organization;
   },
 };

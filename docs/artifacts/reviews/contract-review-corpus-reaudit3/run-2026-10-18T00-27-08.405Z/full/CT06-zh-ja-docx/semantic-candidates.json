@@ -1,0 +1,124 @@
+[
+  {
+    "marker": "CT06-zh-ja-A04",
+    "topic": "risk_repairs",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "规定乙方无配合义务，若乙方不配合维修，条款缺乏执行强制力；且未明确维修期限，存在交付质量无法保障风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT06-zh-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "规定乙方无配合义务，若乙方不配合维修，条款缺乏执行强制力；且未明确维修期限，存在交付质量无法保障风险。",
+            "evidenceQuote": "费用不设上限，乙方无需配合"
+          },
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT06-zh-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "根据我方立场（买方/客户方），若此处'甲方'确指我方，则我方需承担无限额的隐蔽瑕疵修复责任，风险极高，需警惕主体混淆。",
+            "evidenceQuote": "所有结构、消防和隐蔽工程缺陷均由甲方修复"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT06-zh-ja-A05",
+    "topic": "risk_unilateral_change",
+    "matchedClauseIndices": [
+      5
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "赋予乙方单方任意调价权并剥夺甲方解除权，违反公平原则，导致我方合同目的落空且无救济途径。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-5-GENERAL-RISK",
+            "title": "[CT06-zh-ja-A05]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "赋予乙方单方任意调价权并剥夺甲方解除权，违反公平原则，导致我方合同目的落空且无救济途径。",
+            "evidenceQuote": "乙方可提前三日通知后随时调整租金，甲方不得拒绝，也不得因此解除合同"
+          },
+          {
+            "id": "finding-clause-5-GENERAL-RISK",
+            "title": "[CT06-zh-ja-A05]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "调整租金缺乏基准、幅度及合理性限制，极易被滥用，严重威胁我方财务预算与经营稳定性。",
+            "evidenceQuote": "乙方可提前三日通知后随时调整租金"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT06-zh-ja-A06",
+    "topic": "risk_deposit",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "条款赋予乙方单方否决权且无程序约束，虽主要涉及押金，但作为核心义务条款，其单方免责性与保密合规中的信息控制权逻辑类似，均体现极端不对等。",
+        "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+        "findings": [
+          {
+            "id": "finding-clause-6-NDA-01",
+            "title": "保密期限永久且未区分一般信息与商业秘密",
+            "ruleId": "nda_perpetual_duration",
+            "category": "CONFIDENTIALITY",
+            "ruleCode": "NDA-01",
+            "severity": "HIGH",
+            "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+            "riskSummary": "条款赋予乙方单方否决权且无程序约束，虽主要涉及押金，但作为核心义务条款，其单方免责性与保密合规中的信息控制权逻辑类似，均体现极端不对等。",
+            "evidenceQuote": "押金：租赁届满后乙方可自行判断是否退还押金，不设退款期限，也无需提供扣款凭据。",
+            "recommendedRevision": "自披露之日起算，有效期为 3 年；依法属于商业秘密的信息在其合法保持秘密状态期间持续有效"
+          },
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT06-zh-ja-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "日文版本同样赋予乙方自由判断权，未设置合理的退款审核期或异议机制，违反公平原则及中国合同法关于押金退还的通常商业惯例。",
+            "evidenceQuote": "保証金：満了後の返還可否は乙が自由に判断する。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

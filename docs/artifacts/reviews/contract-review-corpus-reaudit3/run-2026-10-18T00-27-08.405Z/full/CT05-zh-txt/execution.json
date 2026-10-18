@@ -1,0 +1,211 @@
+{
+  "status": 200,
+  "data": {
+    "id": "6c751d44-0a9a-4b61-9534-6a6d9bcc923d",
+    "orgId": "e2bc525b-7b3e-499d-ba3d-e2a45ed9a71c",
+    "capabilityId": null,
+    "capabilitiesUsed": [],
+    "skillVersion": "1.0.2",
+    "capabilityVersion": "1.0.2",
+    "status": "failed",
+    "runtimeType": "plan",
+    "riskLevel": "L0",
+    "executionMode": "deterministic_plan",
+    "currentStepId": null,
+    "requiresApproval": false,
+    "approvalStatus": "not_required",
+    "takeoverRequired": false,
+    "takeoverReason": null,
+    "inputJson": {
+      "partyA": "星桥合同测试有限公司",
+      "partyB": "青空合同测试株式会社",
+      "prompt": "请对附件这一份合同进行合同审查，我方为甲方（委托开发方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+      "fileUrl": "/api/ai/chat/files/file-1792284327561-t9xjsyiyn?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792286127.c4ee0c0657f6d8dde2a47d9310814ea16b35bd4cb49979b9a2bc5ebebd96294d",
+      "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "fileName": "CT05-zh.txt",
+      "fileBase64": "6L2v5Lu25aeU5omY5byA5Y+R5ZCI5ZCMCgrlkIjlkIznvJblj7cgQ1QwNS16aAoK55Sy5pa577ya5pif5qGl5ZCI5ZCM5rWL6K+V5pyJ6ZmQ5YWs5Y+4CgrkuZnmlrnvvJrpnZLnqbrlkIjlkIzmtYvor5XmoKrlvI/kvJrnpL4KCuetvue6puaXpeacn++8mjIwMjblubQxMuaciDHml6UKCuesrDHmnaEgW0NUMDUtemgtQTAxXQrojIPlm7TvvJrkuZnmlrnkuLrnlLLmlrnlvIDlj5Hku5PlgqjnrqHnkIbns7vnu5/vvIzkuqTku5jmupDku6PnoIHjgIHpg6jnvbLohJrmnKzjgIHmk43kvZzmiYvlhozlj4rmjqXlj6Por7TmmI7vvIzpnIDmsYLmuIXljZXnlLHlj4zmlrnnrb7nvbLnoa7orqTjgIIKCuesrDLmnaEgW0NUMDUtemgtQTAyXQrku7fmrL7vvJrmgLvku7fkurrmsJHluIE2MDAwMDDlhYPvvIzlkK/liqjjgIHmtYvor5Xnjq/looPkuqTku5jjgIHmnIDnu4jpqozmlLblkI7liIbliKvmlK/ku5jnmb7liIbkuYvkuInljYHjgIHkuInljYHjgIHlm5vljYHjgIIKCuesrDPmnaEgW0NUMDUtemgtQTAzXQrpqozmlLbvvJrkuZnmlrnlj5Hlh7rkuqTku5jpgq7ku7blkI7kuKTml6XlhoXnlLLmlrnmnKrkuabpnaLmi5Lnu53ljbPop4bkuLrpqozmlLbvvIzku7vkvZXmnKrkv67lpI3lronlhajmvI/mtJ7kuI3lvbHlk43pqozmlLbjgIIKCuesrDTmnaEgW0NUMDUtemgtQTA0XQrnn6Xor4bkuqfmnYPvvJrlhajpg6jlrprliLblvIDlj5HmiJDmnpzlj4rmupDku6PnoIHokZfkvZzmnYPlvZLkuZnmlrnvvJvnlLLmlrnku4Xlj5blvpfkuIDlubTmnJ/kuI3lj6/nu63lsZXnmoTlhoXpg6jkvb/nlKjorrjlj6/jgIIKCuesrDXmnaEgW0NUMDUtemgtQTA1XQrlj5jmm7TvvJrpnIDmsYLlj5jmm7TpobvlvaLmiJDkuabpnaLlj5jmm7TljZXvvIzliJfmmI7ku7fmoLzlj4rlt6XmnJ/lvbHlk43vvIznu4/lj4zmlrnnoa7orqTlkI7miafooYzjgIIKCuesrDbmnaEgW0NUMDUtemgtQTA2XQrlvIDmupDvvJrkuZnmlrnlj6/oh6rnlLHlvJXlhaXku7vmhI/nrKzkuInmlrnnu4Tku7bvvIzml6DpnIDmj5Dkvpvorrjlj6/muIXljZXvvIznlLLmlrnoh6rooYzmib/mi4Xlhajpg6jnrKzkuInmlrnmnYPliKnkuLvlvKDjgIIKCuesrDfmnaEgW0NUMDUtemgtQTA3XQrkv53kv67vvJrmnIDnu4jpqozmlLblkI7lha3kuKrmnIjlhoXkuZnmlrnlhY3otLnkv67lpI3nvLrpmbfvvJvkuKXph43mlYXpmpzlupTlnKjkuIDkuKrlt6XkvZzml6XlhoXlk43lupTjgIIKCuesrDjmnaEgW0NUMDUtemgtQTA4XQrkuonorq7kuI7nrb7nvbLvvJrkuK3ml6XmlofmnKzkuI3kuIDoh7Tml7bkuK3mlofkvJjlhYjvvJvkuonorq7nlLHooqvlkYrkvY/miYDlnLDms5XpmaLlpITnkIbjgILnlLLmlrnnrb7nvbLkurrvvJpfX19f77yb55Sf5pWI5pel5pyf77yaX19fX+OAggoK55Sy5pa55Luj6KGo77ya5pif5qGl5rWL6K+V5ouF5b2TICAgICDkuZnmlrnku6PooajvvJrpnZLnqbrmtYvor5Xmi4XlvZMK",
+      "downloadUrl": "/api/ai/chat/files/file-1792284327561-t9xjsyiyn?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792286127.c4ee0c0657f6d8dde2a47d9310814ea16b35bd4cb49979b9a2bc5ebebd96294d",
+      "contractType": "software_development",
+      "__promptDebug": {
+        "notes": [
+          "Generated via deterministic recipe 'contract_review' followed by selected-capability parameter recognition."
+        ],
+        "llmCalls": [
+          {
+            "label": "参数识别",
+            "stage": "recognizer",
+            "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+            "responseText": "\n\n{{\"myPosition\":\"甲方\",\"prompt\":\"重点检查我方义务、责任、数据或知识产权、付款和退出安排\",\"customCheckpoints\":[\"我方义务\",\"责任\",\"数据或知识产权\",\"付款\",\"退出安排\"]}",
+            "requestMessages": [
+              {
+                "role": "system",
+                "content": "你是一个智能工作流参数提取助手。\n任务：结合已识别工作流的输入参数定义（含字段路径、名称、类型、描述、显示名、枚举值与提取提示），对用户自然语言输入进行深度语义分析并提取 JSON 参数。\n【提取与转换规则】：\n1. 语义提取与同义词映射：根据参数定义的 description、displayName、enum 和 extractionPrompt，自动识别用户输入中的同义词、中英文转换、简称或缩写（例如：用户输入 \"weibo\" 或 \"微博\" 映射至平台字段；\"10条\" 或 \"前10\" 解析为数量/条数字段 10）。\n2. 类型转换与规范化：根据参数定义的 type (如 number, date, string, boolean)，将自然语言表述转换为对应标准数据类型（例如 \"10条\" 提取为数字 10；日期表述转化为标准日期；枚举表述转化为对应 Schema 枚举 Key）。\n3. 依据要求：只提取在用户输入或上下文中具有明确语义依据的参数。禁止根据常见业务惯例、行业默认值、模板示例、历史经验或通常应该如此来脑补任何参数。缺少依据的字段直接省略，不要猜测或伪造无关的默认占位符。不要为了让任务继续执行而伪造占位值（如（待补充）、N/A、TBD、0、空数组）。\n4. 缺失字段处理：如果用户要求“直接生成”“端对端”“不要追问”，但当前输入仍缺少关键字段，仍然只返回已确认字段；缺失字段交由后续多轮问询补齐。抽取英文或混合语言句子时，只保留字段本身的值，不要把 is、are、in bilingual layout、contract、please generate 等说明性残句带入字段值。\n5. 枚举字段：只能返回 Schema enum 中的一个精确值。用户没有明确表达可映射的枚举含义时省略该字段；禁止把完整任务、搜索词或自然语言片段复制到枚举字段。默认值由运行时补齐，不要自行输出默认值。\n6. 输出格式：返回纯 JSON 对象，顶层只保留本轮新识别或被用户明确修正的参数键值。不要输出 params、confidence、field_confidences、uncertain_fields、notes、explanation。如果本轮没有任何新增或更正的参数，返回空对象 {}。\n7. 签约主体角色映射规则（甲方 vs 乙方）：根据用户自然语言判断签约双方角色。若用户表述“我们是乙方”、“我方为乙方”或“对方是甲方”，或在合同模板中乙方已具备预设默认主体时，用户提及的签约合作对方（例如“和 [经营或注册地址] 的 [某合作企业名称] 签订保密协议”）必须提取为甲方（partyA.name/address），严禁错位识别为乙方（partyB）；若用户说明“我们是甲方”或“对方是乙方”，合作对方提取为乙方；若用户明确指定某方为甲方/乙方，严格遵从。各方的名称与地址（partyA.name/partyA.address 与 partyB.name/partyB.address）必须严格与各自的主体分别对应，严禁把一方的地址（例如注册地、所在地）赋值或覆盖给另一方。\n8. 相对日期换算与拆解：用户输入提及“今天”、“今日”、“即日”、“本日”、“当天”等相对日期词汇时，必须结合[当前系统基准时间]换算为实际年月日。若参数定义将日期拆解为单独的数值字段（如 agreement.signDate.year, agreement.signDate.month, agreement.signDate.day 等包含 year/month/day 的 number 字段），必须分别填入换算后的对应年份数字、月份数字和日号数字（例如当前为 2026年9月12日 时，输出纯数字 year: 2026, month: 9, day: 12）；若参数为标准日期字段，输出为 YYYY-MM-DD 格式。\n\n模版：合同文档智能审查与合规诊断\n\n【按需提取】（有则提取，无则省略）\n- text: string - 合同文档纯文本正文内容（若已上传附件文件，此字段可留空）\n- prompt: string - 针对该合同的专项审查提示词与重点关注要求\n- myPosition: string - 我方合同立场与角色（如：甲方、乙方、采购方、受托方、雇主、雇员、出租方、承租方），影响审查倾斜度与红线建议\n- taskContext: object - 协同任务或上游上下文元数据\n- reviewPrompt: string - 审查提示词或专项指引规则要求（例如：重点审查保密期限与违约责任）\n- customCheckpoints: array - 兼容旧版契约的自定义审查要点\n- customChecklistRules: array - 数字员工自定义配置的审查要点与规则清单"
+              },
+              {
+                "role": "user",
+                "content": "[当前系统基准时间]\n当前日期（北京时间 Asia/Shanghai）：2026-10-18（年份: 2026，月份: 10，日号: 18）\n\n[补充上下文]\nskill_name: 合同文档智能审查与合规诊断\nskill_description: 对单份合同协议（Word、PDF或文本）进行条款树解析、合同类型自动识别（或指定类型）、合规风险审查、缺失必备条款识别、修改红线建议，并生成交互式单页HTML审查报告\nnode_ref: n1\n\n[本轮用户输入]\n请对附件这一份合同进行合同审查，我方为甲方（委托开发方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。\n\n[系统上下文：已完成用户附件文档轻量元数据探测]\n- 附件文档：CT05-zh.txt\n  - 识别类型：软件技术开发合同 (contract.software_development)\n  - 文档标题：《软件委托开发合同》\n  - 识别签约主体：甲方: 星桥合同测试有限公司；乙方: 青空合同测试株式会社\n  - 文档特征摘要：字符数 609，正文哈希 sha256:625d828b7725f413"
+              }
+            ]
+          }
+        ],
+        "userPrompt": "请对附件这一份合同进行合同审查，我方为甲方（委托开发方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。\n\n[系统上下文：已完成用户附件文档轻量元数据探测]\n- 附件文档：CT05-zh.txt\n  - 识别类型：软件技术开发合同 (contract.software_development)\n  - 文档标题：《软件委托开发合同》\n  - 识别签约主体：甲方: 星桥合同测试有限公司；乙方: 青空合同测试株式会社\n  - 文档特征摘要：字符数 609，正文哈希 sha256:625d828b7725f413",
+        "debugSource": "planner",
+        "systemPrompt": "Deterministic Recipe Topology",
+        "userPromptSectionKeys": [
+          "user_request"
+        ],
+        "systemPromptSectionKeys": [
+          "routing_cards",
+          "topology_dag"
+        ]
+      },
+      "contractTitle": "软件委托开发合同"
+    },
+    "normalizedInputJson": {
+      "partyA": "星桥合同测试有限公司",
+      "partyB": "青空合同测试株式会社",
+      "prompt": "请对附件这一份合同进行合同审查，我方为甲方（委托开发方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+      "fileUrl": "/api/ai/chat/files/file-1792284327561-t9xjsyiyn?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792286127.c4ee0c0657f6d8dde2a47d9310814ea16b35bd4cb49979b9a2bc5ebebd96294d",
+      "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "fileName": "CT05-zh.txt",
+      "fileBase64": "6L2v5Lu25aeU5omY5byA5Y+R5ZCI5ZCMCgrlkIjlkIznvJblj7cgQ1QwNS16aAoK55Sy5pa577ya5pif5qGl5ZCI5ZCM5rWL6K+V5pyJ6ZmQ5YWs5Y+4CgrkuZnmlrnvvJrpnZLnqbrlkIjlkIzmtYvor5XmoKrlvI/kvJrnpL4KCuetvue6puaXpeacn++8mjIwMjblubQxMuaciDHml6UKCuesrDHmnaEgW0NUMDUtemgtQTAxXQrojIPlm7TvvJrkuZnmlrnkuLrnlLLmlrnlvIDlj5Hku5PlgqjnrqHnkIbns7vnu5/vvIzkuqTku5jmupDku6PnoIHjgIHpg6jnvbLohJrmnKzjgIHmk43kvZzmiYvlhozlj4rmjqXlj6Por7TmmI7vvIzpnIDmsYLmuIXljZXnlLHlj4zmlrnnrb7nvbLnoa7orqTjgIIKCuesrDLmnaEgW0NUMDUtemgtQTAyXQrku7fmrL7vvJrmgLvku7fkurrmsJHluIE2MDAwMDDlhYPvvIzlkK/liqjjgIHmtYvor5Xnjq/looPkuqTku5jjgIHmnIDnu4jpqozmlLblkI7liIbliKvmlK/ku5jnmb7liIbkuYvkuInljYHjgIHkuInljYHjgIHlm5vljYHjgIIKCuesrDPmnaEgW0NUMDUtemgtQTAzXQrpqozmlLbvvJrkuZnmlrnlj5Hlh7rkuqTku5jpgq7ku7blkI7kuKTml6XlhoXnlLLmlrnmnKrkuabpnaLmi5Lnu53ljbPop4bkuLrpqozmlLbvvIzku7vkvZXmnKrkv67lpI3lronlhajmvI/mtJ7kuI3lvbHlk43pqozmlLbjgIIKCuesrDTmnaEgW0NUMDUtemgtQTA0XQrnn6Xor4bkuqfmnYPvvJrlhajpg6jlrprliLblvIDlj5HmiJDmnpzlj4rmupDku6PnoIHokZfkvZzmnYPlvZLkuZnmlrnvvJvnlLLmlrnku4Xlj5blvpfkuIDlubTmnJ/kuI3lj6/nu63lsZXnmoTlhoXpg6jkvb/nlKjorrjlj6/jgIIKCuesrDXmnaEgW0NUMDUtemgtQTA1XQrlj5jmm7TvvJrpnIDmsYLlj5jmm7TpobvlvaLmiJDkuabpnaLlj5jmm7TljZXvvIzliJfmmI7ku7fmoLzlj4rlt6XmnJ/lvbHlk43vvIznu4/lj4zmlrnnoa7orqTlkI7miafooYzjgIIKCuesrDbmnaEgW0NUMDUtemgtQTA2XQrlvIDmupDvvJrkuZnmlrnlj6/oh6rnlLHlvJXlhaXku7vmhI/nrKzkuInmlrnnu4Tku7bvvIzml6DpnIDmj5Dkvpvorrjlj6/muIXljZXvvIznlLLmlrnoh6rooYzmib/mi4Xlhajpg6jnrKzkuInmlrnmnYPliKnkuLvlvKDjgIIKCuesrDfmnaEgW0NUMDUtemgtQTA3XQrkv53kv67vvJrmnIDnu4jpqozmlLblkI7lha3kuKrmnIjlhoXkuZnmlrnlhY3otLnkv67lpI3nvLrpmbfvvJvkuKXph43mlYXpmpzlupTlnKjkuIDkuKrlt6XkvZzml6XlhoXlk43lupTjgIIKCuesrDjmnaEgW0NUMDUtemgtQTA4XQrkuonorq7kuI7nrb7nvbLvvJrkuK3ml6XmlofmnKzkuI3kuIDoh7Tml7bkuK3mlofkvJjlhYjvvJvkuonorq7nlLHooqvlkYrkvY/miYDlnLDms5XpmaLlpITnkIbjgILnlLLmlrnnrb7nvbLkurrvvJpfX19f77yb55Sf5pWI5pel5pyf77yaX19fX+OAggoK55Sy5pa55Luj6KGo77ya5pif5qGl5rWL6K+V5ouF5b2TICAgICDkuZnmlrnku6PooajvvJrpnZLnqbrmtYvor5Xmi4XlvZMK",
+      "downloadUrl": "/api/ai/chat/files/file-1792284327561-t9xjsyiyn?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792286127.c4ee0c0657f6d8dde2a47d9310814ea16b35bd4cb49979b9a2bc5ebebd96294d",
+      "contractType": "software_development",
+      "__promptDebug": {
+        "notes": [
+          "Generated via deterministic recipe 'contract_review' followed by selected-capability parameter recognition."
+        ],
+        "llmCalls": [
+          {
+            "label": "参数识别",
+            "stage": "recognizer",
+            "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+            "responseText": "\n\n{{\"myPosition\":\"甲方\",\"prompt\":\"重点检查我方义务、责任、数据或知识产权、付款和退出安排\",\"customCheckpoints\":[\"我方义务\",\"责任\",\"数据或知识产权\",\"付款\",\"退出安排\"]}",
+            "requestMessages": [
+              {
+                "role": "system",
+                "content": "你是一个智能工作流参数提取助手。\n任务：结合已识别工作流的输入参数定义（含字段路径、名称、类型、描述、显示名、枚举值与提取提示），对用户自然语言输入进行深度语义分析并提取 JSON 参数。\n【提取与转换规则】：\n1. 语义提取与同义词映射：根据参数定义的 description、displayName、enum 和 extractionPrompt，自动识别用户输入中的同义词、中英文转换、简称或缩写（例如：用户输入 \"weibo\" 或 \"微博\" 映射至平台字段；\"10条\" 或 \"前10\" 解析为数量/条数字段 10）。\n2. 类型转换与规范化：根据参数定义的 type (如 number, date, string, boolean)，将自然语言表述转换为对应标准数据类型（例如 \"10条\" 提取为数字 10；日期表述转化为标准日期；枚举表述转化为对应 Schema 枚举 Key）。\n3. 依据要求：只提取在用户输入或上下文中具有明确语义依据的参数。禁止根据常见业务惯例、行业默认值、模板示例、历史经验或通常应该如此来脑补任何参数。缺少依据的字段直接省略，不要猜测或伪造无关的默认占位符。不要为了让任务继续执行而伪造占位值（如（待补充）、N/A、TBD、0、空数组）。\n4. 缺失字段处理：如果用户要求“直接生成”“端对端”“不要追问”，但当前输入仍缺少关键字段，仍然只返回已确认字段；缺失字段交由后续多轮问询补齐。抽取英文或混合语言句子时，只保留字段本身的值，不要把 is、are、in bilingual layout、contract、please generate 等说明性残句带入字段值。\n5. 枚举字段：只能返回 Schema enum 中的一个精确值。用户没有明确表达可映射的枚举含义时省略该字段；禁止把完整任务、搜索词或自然语言片段复制到枚举字段。默认值由运行时补齐，不要自行输出默认值。\n6. 输出格式：返回纯 JSON 对象，顶层只保留本轮新识别或被用户明确修正的参数键值。不要输出 params、confidence、field_confidences、uncertain_fields、notes、explanation。如果本轮没有任何新增或更正的参数，返回空对象 {}。\n7. 签约主体角色映射规则（甲方 vs 乙方）：根据用户自然语言判断签约双方角色。若用户表述“我们是乙方”、“我方为乙方”或“对方是甲方”，或在合同模板中乙方已具备预设默认主体时，用户提及的签约合作对方（例如“和 [经营或注册地址] 的 [某合作企业名称] 签订保密协议”）必须提取为甲方（partyA.name/address），严禁错位识别为乙方（partyB）；若用户说明“我们是甲方”或“对方是乙方”，合作对方提取为乙方；若用户明确指定某方为甲方/乙方，严格遵从。各方的名称与地址（partyA.name/partyA.address 与 partyB.name/partyB.address）必须严格与各自的主体分别对应，严禁把一方的地址（例如注册地、所在地）赋值或覆盖给另一方。\n8. 相对日期换算与拆解：用户输入提及“今天”、“今日”、“即日”、“本日”、“当天”等相对日期词汇时，必须结合[当前系统基准时间]换算为实际年月日。若参数定义将日期拆解为单独的数值字段（如 agreement.signDate.year, agreement.signDate.month, agreement.signDate.day 等包含 year/month/day 的 number 字段），必须分别填入换算后的对应年份数字、月份数字和日号数字（例如当前为 2026年9月12日 时，输出纯数字 year: 2026, month: 9, day: 12）；若参数为标准日期字段，输出为 YYYY-MM-DD 格式。\n\n模版：合同文档智能审查与合规诊断\n\n【按需提取】（有则提取，无则省略）\n- text: string - 合同文档纯文本正文内容（若已上传附件文件，此字段可留空）\n- prompt: string - 针对该合同的专项审查提示词与重点关注要求\n- myPosition: string - 我方合同立场与角色（如：甲方、乙方、采购方、受托方、雇主、雇员、出租方、承租方），影响审查倾斜度与红线建议\n- taskContext: object - 协同任务或上游上下文元数据\n- reviewPrompt: string - 审查提示词或专项指引规则要求（例如：重点审查保密期限与违约责任）\n- customCheckpoints: array - 兼容旧版契约的自定义审查要点\n- customChecklistRules: array - 数字员工自定义配置的审查要点与规则清单"
+              },
+              {
+                "role": "user",
+                "content": "[当前系统基准时间]\n当前日期（北京时间 Asia/Shanghai）：2026-10-18（年份: 2026，月份: 10，日号: 18）\n\n[补充上下文]\nskill_name: 合同文档智能审查与合规诊断\nskill_description: 对单份合同协议（Word、PDF或文本）进行条款树解析、合同类型自动识别（或指定类型）、合规风险审查、缺失必备条款识别、修改红线建议，并生成交互式单页HTML审查报告\nnode_ref: n1\n\n[本轮用户输入]\n请对附件这一份合同进行合同审查，我方为甲方（委托开发方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。\n\n[系统上下文：已完成用户附件文档轻量元数据探测]\n- 附件文档：CT05-zh.txt\n  - 识别类型：软件技术开发合同 (contract.software_development)\n  - 文档标题：《软件委托开发合同》\n  - 识别签约主体：甲方: 星桥合同测试有限公司；乙方: 青空合同测试株式会社\n  - 文档特征摘要：字符数 609，正文哈希 sha256:625d828b7725f413"
+              }
+            ]
+          }
+        ],
+        "userPrompt": "请对附件这一份合同进行合同审查，我方为甲方（委托开发方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。\n\n[系统上下文：已完成用户附件文档轻量元数据探测]\n- 附件文档：CT05-zh.txt\n  - 识别类型：软件技术开发合同 (contract.software_development)\n  - 文档标题：《软件委托开发合同》\n  - 识别签约主体：甲方: 星桥合同测试有限公司；乙方: 青空合同测试株式会社\n  - 文档特征摘要：字符数 609，正文哈希 sha256:625d828b7725f413",
+        "debugSource": "planner",
+        "systemPrompt": "Deterministic Recipe Topology",
+        "userPromptSectionKeys": [
+          "user_request"
+        ],
+        "systemPromptSectionKeys": [
+          "routing_cards",
+          "topology_dag"
+        ]
+      },
+      "contractTitle": "软件委托开发合同"
+    },
+    "input": {
+      "partyA": "星桥合同测试有限公司",
+      "partyB": "青空合同测试株式会社",
+      "prompt": "请对附件这一份合同进行合同审查，我方为甲方（委托开发方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+      "fileUrl": "/api/ai/chat/files/file-1792284327561-t9xjsyiyn?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792286127.c4ee0c0657f6d8dde2a47d9310814ea16b35bd4cb49979b9a2bc5ebebd96294d",
+      "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "fileName": "CT05-zh.txt",
+      "fileBase64": "6L2v5Lu25aeU5omY5byA5Y+R5ZCI5ZCMCgrlkIjlkIznvJblj7cgQ1QwNS16aAoK55Sy5pa577ya5pif5qGl5ZCI5ZCM5rWL6K+V5pyJ6ZmQ5YWs5Y+4CgrkuZnmlrnvvJrpnZLnqbrlkIjlkIzmtYvor5XmoKrlvI/kvJrnpL4KCuetvue6puaXpeacn++8mjIwMjblubQxMuaciDHml6UKCuesrDHmnaEgW0NUMDUtemgtQTAxXQrojIPlm7TvvJrkuZnmlrnkuLrnlLLmlrnlvIDlj5Hku5PlgqjnrqHnkIbns7vnu5/vvIzkuqTku5jmupDku6PnoIHjgIHpg6jnvbLohJrmnKzjgIHmk43kvZzmiYvlhozlj4rmjqXlj6Por7TmmI7vvIzpnIDmsYLmuIXljZXnlLHlj4zmlrnnrb7nvbLnoa7orqTjgIIKCuesrDLmnaEgW0NUMDUtemgtQTAyXQrku7fmrL7vvJrmgLvku7fkurrmsJHluIE2MDAwMDDlhYPvvIzlkK/liqjjgIHmtYvor5Xnjq/looPkuqTku5jjgIHmnIDnu4jpqozmlLblkI7liIbliKvmlK/ku5jnmb7liIbkuYvkuInljYHjgIHkuInljYHjgIHlm5vljYHjgIIKCuesrDPmnaEgW0NUMDUtemgtQTAzXQrpqozmlLbvvJrkuZnmlrnlj5Hlh7rkuqTku5jpgq7ku7blkI7kuKTml6XlhoXnlLLmlrnmnKrkuabpnaLmi5Lnu53ljbPop4bkuLrpqozmlLbvvIzku7vkvZXmnKrkv67lpI3lronlhajmvI/mtJ7kuI3lvbHlk43pqozmlLbjgIIKCuesrDTmnaEgW0NUMDUtemgtQTA0XQrnn6Xor4bkuqfmnYPvvJrlhajpg6jlrprliLblvIDlj5HmiJDmnpzlj4rmupDku6PnoIHokZfkvZzmnYPlvZLkuZnmlrnvvJvnlLLmlrnku4Xlj5blvpfkuIDlubTmnJ/kuI3lj6/nu63lsZXnmoTlhoXpg6jkvb/nlKjorrjlj6/jgIIKCuesrDXmnaEgW0NUMDUtemgtQTA1XQrlj5jmm7TvvJrpnIDmsYLlj5jmm7TpobvlvaLmiJDkuabpnaLlj5jmm7TljZXvvIzliJfmmI7ku7fmoLzlj4rlt6XmnJ/lvbHlk43vvIznu4/lj4zmlrnnoa7orqTlkI7miafooYzjgIIKCuesrDbmnaEgW0NUMDUtemgtQTA2XQrlvIDmupDvvJrkuZnmlrnlj6/oh6rnlLHlvJXlhaXku7vmhI/nrKzkuInmlrnnu4Tku7bvvIzml6DpnIDmj5Dkvpvorrjlj6/muIXljZXvvIznlLLmlrnoh6rooYzmib/mi4Xlhajpg6jnrKzkuInmlrnmnYPliKnkuLvlvKDjgIIKCuesrDfmnaEgW0NUMDUtemgtQTA3XQrkv53kv67vvJrmnIDnu4jpqozmlLblkI7lha3kuKrmnIjlhoXkuZnmlrnlhY3otLnkv67lpI3nvLrpmbfvvJvkuKXph43mlYXpmpzlupTlnKjkuIDkuKrlt6XkvZzml6XlhoXlk43lupTjgIIKCuesrDjmnaEgW0NUMDUtemgtQTA4XQrkuonorq7kuI7nrb7nvbLvvJrkuK3ml6XmlofmnKzkuI3kuIDoh7Tml7bkuK3mlofkvJjlhYjvvJvkuonorq7nlLHooqvlkYrkvY/miYDlnLDms5XpmaLlpITnkIbjgILnlLLmlrnnrb7nvbLkurrvvJpfX19f77yb55Sf5pWI5pel5pyf77yaX19fX+OAggoK55Sy5pa55Luj6KGo77ya5pif5qGl5rWL6K+V5ouF5b2TICAgICDkuZnmlrnku6PooajvvJrpnZLnqbrmtYvor5Xmi4XlvZMK",
+      "downloadUrl": "/api/ai/chat/files/file-1792284327561-t9xjsyiyn?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792286127.c4ee0c0657f6d8dde2a47d9310814ea16b35bd4cb49979b9a2bc5ebebd96294d",
+      "contractType": "software_development",
+      "__promptDebug": {
+        "notes": [
+          "Generated via deterministic recipe 'contract_review' followed by selected-capability parameter recognition."
+        ],
+        "llmCalls": [
+          {
+            "label": "参数识别",
+            "stage": "recognizer",
+            "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+            "responseText": "\n\n{{\"myPosition\":\"甲方\",\"prompt\":\"重点检查我方义务、责任、数据或知识产权、付款和退出安排\",\"customCheckpoints\":[\"我方义务\",\"责任\",\"数据或知识产权\",\"付款\",\"退出安排\"]}",
+            "requestMessages": [
+              {
+                "role": "system",
+                "content": "你是一个智能工作流参数提取助手。\n任务：结合已识别工作流的输入参数定义（含字段路径、名称、类型、描述、显示名、枚举值与提取提示），对用户自然语言输入进行深度语义分析并提取 JSON 参数。\n【提取与转换规则】：\n1. 语义提取与同义词映射：根据参数定义的 description、displayName、enum 和 extractionPrompt，自动识别用户输入中的同义词、中英文转换、简称或缩写（例如：用户输入 \"weibo\" 或 \"微博\" 映射至平台字段；\"10条\" 或 \"前10\" 解析为数量/条数字段 10）。\n2. 类型转换与规范化：根据参数定义的 type (如 number, date, string, boolean)，将自然语言表述转换为对应标准数据类型（例如 \"10条\" 提取为数字 10；日期表述转化为标准日期；枚举表述转化为对应 Schema 枚举 Key）。\n3. 依据要求：只提取在用户输入或上下文中具有明确语义依据的参数。禁止根据常见业务惯例、行业默认值、模板示例、历史经验或通常应该如此来脑补任何参数。缺少依据的字段直接省略，不要猜测或伪造无关的默认占位符。不要为了让任务继续执行而伪造占位值（如（待补充）、N/A、TBD、0、空数组）。\n4. 缺失字段处理：如果用户要求“直接生成”“端对端”“不要追问”，但当前输入仍缺少关键字段，仍然只返回已确认字段；缺失字段交由后续多轮问询补齐。抽取英文或混合语言句子时，只保留字段本身的值，不要把 is、are、in bilingual layout、contract、please generate 等说明性残句带入字段值。\n5. 枚举字段：只能返回 Schema enum 中的一个精确值。用户没有明确表达可映射的枚举含义时省略该字段；禁止把完整任务、搜索词或自然语言片段复制到枚举字段。默认值由运行时补齐，不要自行输出默认值。\n6. 输出格式：返回纯 JSON 对象，顶层只保留本轮新识别或被用户明确修正的参数键值。不要输出 params、confidence、field_confidences、uncertain_fields、notes、explanation。如果本轮没有任何新增或更正的参数，返回空对象 {}。\n7. 签约主体角色映射规则（甲方 vs 乙方）：根据用户自然语言判断签约双方角色。若用户表述“我们是乙方”、“我方为乙方”或“对方是甲方”，或在合同模板中乙方已具备预设默认主体时，用户提及的签约合作对方（例如“和 [经营或注册地址] 的 [某合作企业名称] 签订保密协议”）必须提取为甲方（partyA.name/address），严禁错位识别为乙方（partyB）；若用户说明“我们是甲方”或“对方是乙方”，合作对方提取为乙方；若用户明确指定某方为甲方/乙方，严格遵从。各方的名称与地址（partyA.name/partyA.address 与 partyB.name/partyB.address）必须严格与各自的主体分别对应，严禁把一方的地址（例如注册地、所在地）赋值或覆盖给另一方。\n8. 相对日期换算与拆解：用户输入提及“今天”、“今日”、“即日”、“本日”、“当天”等相对日期词汇时，必须结合[当前系统基准时间]换算为实际年月日。若参数定义将日期拆解为单独的数值字段（如 agreement.signDate.year, agreement.signDate.month, agreement.signDate.day 等包含 year/month/day 的 number 字段），必须分别填入换算后的对应年份数字、月份数字和日号数字（例如当前为 2026年9月12日 时，输出纯数字 year: 2026, month: 9, day: 12）；若参数为标准日期字段，输出为 YYYY-MM-DD 格式。\n\n模版：合同文档智能审查与合规诊断\n\n【按需提取】（有则提取，无则省略）\n- text: string - 合同文档纯文本正文内容（若已上传附件文件，此字段可留空）\n- prompt: string - 针对该合同的专项审查提示词与重点关注要求\n- myPosition: string - 我方合同立场与角色（如：甲方、乙方、采购方、受托方、雇主、雇员、出租方、承租方），影响审查倾斜度与红线建议\n- taskContext: object - 协同任务或上游上下文元数据\n- reviewPrompt: string - 审查提示词或专项指引规则要求（例如：重点审查保密期限与违约责任）\n- customCheckpoints: array - 兼容旧版契约的自定义审查要点\n- customChecklistRules: array - 数字员工自定义配置的审查要点与规则清单"
+              },
+              {
+                "role": "user",
+                "content": "[当前系统基准时间]\n当前日期（北京时间 Asia/Shanghai）：2026-10-18（年份: 2026，月份: 10，日号: 18）\n\n[补充上下文]\nskill_name: 合同文档智能审查与合规诊断\nskill_description: 对单份合同协议（Word、PDF或文本）进行条款树解析、合同类型自动识别（或指定类型）、合规风险审查、缺失必备条款识别、修改红线建议，并生成交互式单页HTML审查报告\nnode_ref: n1\n\n[本轮用户输入]\n请对附件这一份合同进行合同审查，我方为甲方（委托开发方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。\n\n[系统上下文：已完成用户附件文档轻量元数据探测]\n- 附件文档：CT05-zh.txt\n  - 识别类型：软件技术开发合同 (contract.software_development)\n  - 文档标题：《软件委托开发合同》\n  - 识别签约主体：甲方: 星桥合同测试有限公司；乙方: 青空合同测试株式会社\n  - 文档特征摘要：字符数 609，正文哈希 sha256:625d828b7725f413"
+              }
+            ]
+          }
+        ],
+        "userPrompt": "请对附件这一份合同进行合同审查，我方为甲方（委托开发方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。\n\n[系统上下文：已完成用户附件文档轻量元数据探测]\n- 附件文档：CT05-zh.txt\n  - 识别类型：软件技术开发合同 (contract.software_development)\n  - 文档标题：《软件委托开发合同》\n  - 识别签约主体：甲方: 星桥合同测试有限公司；乙方: 青空合同测试株式会社\n  - 文档特征摘要：字符数 609，正文哈希 sha256:625d828b7725f413",
+        "debugSource": "planner",
+        "systemPrompt": "Deterministic Recipe Topology",
+        "userPromptSectionKeys": [
+          "user_request"
+        ],
+        "systemPromptSectionKeys": [
+          "routing_cards",
+          "topology_dag"
+        ]
+      },
+      "contractTitle": "软件委托开发合同"
+    },
+    "normalizedInput": {
+      "partyA": "星桥合同测试有限公司",
+      "partyB": "青空合同测试株式会社",
+      "prompt": "请对附件这一份合同进行合同审查，我方为甲方（委托开发方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+      "fileUrl": "/api/ai/chat/files/file-1792284327561-t9xjsyiyn?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792286127.c4ee0c0657f6d8dde2a47d9310814ea16b35bd4cb49979b9a2bc5ebebd96294d",
+      "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "fileName": "CT05-zh.txt",
+      "fileBase64": "6L2v5Lu25aeU5omY5byA5Y+R5ZCI5ZCMCgrlkIjlkIznvJblj7cgQ1QwNS16aAoK55Sy5pa577ya5pif5qGl5ZCI5ZCM5rWL6K+V5pyJ6ZmQ5YWs5Y+4CgrkuZnmlrnvvJrpnZLnqbrlkIjlkIzmtYvor5XmoKrlvI/kvJrnpL4KCuetvue6puaXpeacn++8mjIwMjblubQxMuaciDHml6UKCuesrDHmnaEgW0NUMDUtemgtQTAxXQrojIPlm7TvvJrkuZnmlrnkuLrnlLLmlrnlvIDlj5Hku5PlgqjnrqHnkIbns7vnu5/vvIzkuqTku5jmupDku6PnoIHjgIHpg6jnvbLohJrmnKzjgIHmk43kvZzmiYvlhozlj4rmjqXlj6Por7TmmI7vvIzpnIDmsYLmuIXljZXnlLHlj4zmlrnnrb7nvbLnoa7orqTjgIIKCuesrDLmnaEgW0NUMDUtemgtQTAyXQrku7fmrL7vvJrmgLvku7fkurrmsJHluIE2MDAwMDDlhYPvvIzlkK/liqjjgIHmtYvor5Xnjq/looPkuqTku5jjgIHmnIDnu4jpqozmlLblkI7liIbliKvmlK/ku5jnmb7liIbkuYvkuInljYHjgIHkuInljYHjgIHlm5vljYHjgIIKCuesrDPmnaEgW0NUMDUtemgtQTAzXQrpqozmlLbvvJrkuZnmlrnlj5Hlh7rkuqTku5jpgq7ku7blkI7kuKTml6XlhoXnlLLmlrnmnKrkuabpnaLmi5Lnu53ljbPop4bkuLrpqozmlLbvvIzku7vkvZXmnKrkv67lpI3lronlhajmvI/mtJ7kuI3lvbHlk43pqozmlLbjgIIKCuesrDTmnaEgW0NUMDUtemgtQTA0XQrnn6Xor4bkuqfmnYPvvJrlhajpg6jlrprliLblvIDlj5HmiJDmnpzlj4rmupDku6PnoIHokZfkvZzmnYPlvZLkuZnmlrnvvJvnlLLmlrnku4Xlj5blvpfkuIDlubTmnJ/kuI3lj6/nu63lsZXnmoTlhoXpg6jkvb/nlKjorrjlj6/jgIIKCuesrDXmnaEgW0NUMDUtemgtQTA1XQrlj5jmm7TvvJrpnIDmsYLlj5jmm7TpobvlvaLmiJDkuabpnaLlj5jmm7TljZXvvIzliJfmmI7ku7fmoLzlj4rlt6XmnJ/lvbHlk43vvIznu4/lj4zmlrnnoa7orqTlkI7miafooYzjgIIKCuesrDbmnaEgW0NUMDUtemgtQTA2XQrlvIDmupDvvJrkuZnmlrnlj6/oh6rnlLHlvJXlhaXku7vmhI/nrKzkuInmlrnnu4Tku7bvvIzml6DpnIDmj5Dkvpvorrjlj6/muIXljZXvvIznlLLmlrnoh6rooYzmib/mi4Xlhajpg6jnrKzkuInmlrnmnYPliKnkuLvlvKDjgIIKCuesrDfmnaEgW0NUMDUtemgtQTA3XQrkv53kv67vvJrmnIDnu4jpqozmlLblkI7lha3kuKrmnIjlhoXkuZnmlrnlhY3otLnkv67lpI3nvLrpmbfvvJvkuKXph43mlYXpmpzlupTlnKjkuIDkuKrlt6XkvZzml6XlhoXlk43lupTjgIIKCuesrDjmnaEgW0NUMDUtemgtQTA4XQrkuonorq7kuI7nrb7nvbLvvJrkuK3ml6XmlofmnKzkuI3kuIDoh7Tml7bkuK3mlofkvJjlhYjvvJvkuonorq7nlLHooqvlkYrkvY/miYDlnLDms5XpmaLlpITnkIbjgILnlLLmlrnnrb7nvbLkurrvvJpfX19f77yb55Sf5pWI5pel5pyf77yaX19fX+OAggoK55Sy5pa55Luj6KGo77ya5pif5qGl5rWL6K+V5ouF5b2TICAgICDkuZnmlrnku6PooajvvJrpnZLnqbrmtYvor5Xmi4XlvZMK",
+      "downloadUrl": "/api/ai/chat/files/file-1792284327561-t9xjsyiyn?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792286127.c4ee0c0657f6d8dde2a47d9310814ea16b35bd4cb49979b9a2bc5ebebd96294d",
+      "contractType": "software_development",
+      "__promptDebug": {
+        "notes": [
+          "Generated via deterministic recipe 'contract_review' followed by selected-capability parameter recognition."
+        ],
+        "llmCalls": [
+          {
+            "label": "参数识别",
+            "stage": "recognizer",
+            "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+            "responseText": "\n\n{{\"myPosition\":\"甲方\",\"prompt\":\"重点检查我方义务、责任、数据或知识产权、付款和退出安排\",\"customCheckpoints\":[\"我方义务\",\"责任\",\"数据或知识产权\",\"付款\",\"退出安排\"]}",
+            "requestMessages": [
+              {
+                "role": "system",
+                "content": "你是一个智能工作流参数提取助手。\n任务：结合已识别工作流的输入参数定义（含字段路径、名称、类型、描述、显示名、枚举值与提取提示），对用户自然语言输入进行深度语义分析并提取 JSON 参数。\n【提取与转换规则】：\n1. 语义提取与同义词映射：根据参数定义的 description、displayName、enum 和 extractionPrompt，自动识别用户输入中的同义词、中英文转换、简称或缩写（例如：用户输入 \"weibo\" 或 \"微博\" 映射至平台字段；\"10条\" 或 \"前10\" 解析为数量/条数字段 10）。\n2. 类型转换与规范化：根据参数定义的 type (如 number, date, string, boolean)，将自然语言表述转换为对应标准数据类型（例如 \"10条\" 提取为数字 10；日期表述转化为标准日期；枚举表述转化为对应 Schema 枚举 Key）。\n3. 依据要求：只提取在用户输入或上下文中具有明确语义依据的参数。禁止根据常见业务惯例、行业默认值、模板示例、历史经验或通常应该如此来脑补任何参数。缺少依据的字段直接省略，不要猜测或伪造无关的默认占位符。不要为了让任务继续执行而伪造占位值（如（待补充）、N/A、TBD、0、空数组）。\n4. 缺失字段处理：如果用户要求“直接生成”“端对端”“不要追问”，但当前输入仍缺少关键字段，仍然只返回已确认字段；缺失字段交由后续多轮问询补齐。抽取英文或混合语言句子时，只保留字段本身的值，不要把 is、are、in bilingual layout、contract、please generate 等说明性残句带入字段值。\n5. 枚举字段：只能返回 Schema enum 中的一个精确值。用户没有明确表达可映射的枚举含义时省略该字段；禁止把完整任务、搜索词或自然语言片段复制到枚举字段。默认值由运行时补齐，不要自行输出默认值。\n6. 输出格式：返回纯 JSON 对象，顶层只保留本轮新识别或被用户明确修正的参数键值。不要输出 params、confidence、field_confidences、uncertain_fields、notes、explanation。如果本轮没有任何新增或更正的参数，返回空对象 {}。\n7. 签约主体角色映射规则（甲方 vs 乙方）：根据用户自然语言判断签约双方角色。若用户表述“我们是乙方”、“我方为乙方”或“对方是甲方”，或在合同模板中乙方已具备预设默认主体时，用户提及的签约合作对方（例如“和 [经营或注册地址] 的 [某合作企业名称] 签订保密协议”）必须提取为甲方（partyA.name/address），严禁错位识别为乙方（partyB）；若用户说明“我们是甲方”或“对方是乙方”，合作对方提取为乙方；若用户明确指定某方为甲方/乙方，严格遵从。各方的名称与地址（partyA.name/partyA.address 与 partyB.name/partyB.address）必须严格与各自的主体分别对应，严禁把一方的地址（例如注册地、所在地）赋值或覆盖给另一方。\n8. 相对日期换算与拆解：用户输入提及“今天”、“今日”、“即日”、“本日”、“当天”等相对日期词汇时，必须结合[当前系统基准时间]换算为实际年月日。若参数定义将日期拆解为单独的数值字段（如 agreement.signDate.year, agreement.signDate.month, agreement.signDate.day 等包含 year/month/day 的 number 字段），必须分别填入换算后的对应年份数字、月份数字和日号数字（例如当前为 2026年9月12日 时，输出纯数字 year: 2026, month: 9, day: 12）；若参数为标准日期字段，输出为 YYYY-MM-DD 格式。\n\n模版：合同文档智能审查与合规诊断\n\n【按需提取】（有则提取，无则省略）\n- text: string - 合同文档纯文本正文内容（若已上传附件文件，此字段可留空）\n- prompt: string - 针对该合同的专项审查提示词与重点关注要求\n- myPosition: string - 我方合同立场与角色（如：甲方、乙方、采购方、受托方、雇主、雇员、出租方、承租方），影响审查倾斜度与红线建议\n- taskContext: object - 协同任务或上游上下文元数据\n- reviewPrompt: string - 审查提示词或专项指引规则要求（例如：重点审查保密期限与违约责任）\n- customCheckpoints: array - 兼容旧版契约的自定义审查要点\n- customChecklistRules: array - 数字员工自定义配置的审查要点与规则清单"
+              },
+              {
+                "role": "user",
+                "content": "[当前系统基准时间]\n当前日期（北京时间 Asia/Shanghai）：2026-10-18（年份: 2026，月份: 10，日号: 18）\n\n[补充上下文]\nskill_name: 合同文档智能审查与合规诊断\nskill_description: 对单份合同协议（Word、PDF或文本）进行条款树解析、合同类型自动识别（或指定类型）、合规风险审查、缺失必备条款识别、修改红线建议，并生成交互式单页HTML审查报告\nnode_ref: n1\n\n[本轮用户输入]\n请对附件这一份合同进行合同审查，我方为甲方（委托开发方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。\n\n[系统上下文：已完成用户附件文档轻量元数据探测]\n- 附件文档：CT05-zh.txt\n  - 识别类型：软件技术开发合同 (contract.software_development)\n  - 文档标题：《软件委托开发合同》\n  - 识别签约主体：甲方: 星桥合同测试有限公司；乙方: 青空合同测试株式会社\n  - 文档特征摘要：字符数 609，正文哈希 sha256:625d828b7725f413"
+              }
+            ]
+          }
+        ],
+        "userPrompt": "请对附件这一份合同进行合同审查，我方为甲方（委托开发方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。\n\n[系统上下文：已完成用户附件文档轻量元数据探测]\n- 附件文档：CT05-zh.txt\n  - 识别类型：软件技术开发合同 (contract.software_development)\n  - 文档标题：《软件委托开发合同》\n  - 识别签约主体：甲方: 星桥合同测试有限公司；乙方: 青空合同测试株式会社\n  - 文档特征摘要：字符数 609，正文哈希 sha256:625d828b7725f413",
+        "debugSource": "planner",
+        "systemPrompt": "Deterministic Recipe Topology",
+        "userPromptSectionKeys": [
+          "user_request"
+        ],
+        "systemPromptSectionKeys": [
+          "routing_cards",
+          "topology_dag"
+        ]
+      },
+      "contractTitle": "软件委托开发合同"
+    },
+    "semantic": null,
+    "normalizedResult": null,
+    "usage": null,
+    "failureCode": "INPUT_SCHEMA_VIOLATION",
+    "failureReason": "步骤「合同文档智能审查与合规诊断」输入参数校验未通过：1. 参数【0】类型不符，期望为 object；2. 参数【1】类型不符，期望为 object；3. 参数【2】类型不符，期望为 object；4. 参数【3】类型不符，期望为 object；5. 参数【4】类型不符，期望为 object。\n\n[技术细节] Node 'n1_合同文档智能审查与合规诊断' failed: INPUT_SCHEMA_VIOLATION for node 'n1_合同文档智能审查与合规诊断': /customCheckpoints/0 (type): must be object; /customCheckpoints/1 (type): must be object; /customCheckpoints/2 (type): must be object; /customCheckpoints/3 (type): must be object; /customCheckpoints/4 (type): must be object",
+    "startedAt": "2026-10-18T00:45:57.704Z",
+    "endedAt": "2026-10-18T00:45:57.724Z",
+    "createdAt": "2026-10-18T00:45:57.680Z",
+    "updatedAt": "2026-10-18T00:45:57.724Z",
+    "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+    "phases": []
+  }
+}

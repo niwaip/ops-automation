@@ -1,0 +1,122 @@
+[
+  {
+    "marker": "CT04-ja-A02",
+    "topic": "risk_internal_conflict",
+    "matchedClauseIndices": [
+      2
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "授予方保留无限制直接销售权，实质剥夺了甲的独家权益，导致独家授权失效。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-2-GENERAL-RISK",
+            "title": "[CT04-ja-A02]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "授予方保留无限制直接销售权，实质剥夺了甲的独家权益，导致独家授权失效。",
+            "evidenceQuote": "ただし乙は当該地域の顧客へ無制限に直接販売し、他の販売店を指定できる。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-ja-A03",
+    "topic": "risk_target",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "卖方缺货时买方仍需补足采购额并赔偿差价，属严重不对等违约责任，违背公平原则。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT04-ja-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "卖方缺货时买方仍需补足采购额并赔偿差价，属严重不对等违约责任，违背公平原则。",
+            "evidenceQuote": "乙の欠品時も目標を減額せず、未達の場合は甲が差額を補填する"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-ja-A04",
+    "topic": "risk_resale_price_review",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "固定转售价格违反反垄断法风险；单方没收全部返利与销售权导致违约责任与过错严重不成比例。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT04-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "固定转售价格违反反垄断法风险；单方没收全部返利与销售权导致违约责任与过错严重不成比例。",
+            "evidenceQuote": "甲は乙が定める最低再販売価格を遵守する。下回った場合は全てのリベート及び販売権を失う"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-ja-A07",
+    "topic": "risk_inventory_exit",
+    "matchedClauseIndices": [
+      7
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "乙方单方无理由解除权显失公平，且限制退货造成甲方库存积压损失",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-7-GENERAL-RISK",
+            "title": "[CT04-ja-A07]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "乙方单方无理由解除权显失公平，且限制退货造成甲方库存积压损失",
+            "evidenceQuote": "乙は理由なく直ちに解除できる。甲の購入済み在庫は返品できず、継続販売も禁止する。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

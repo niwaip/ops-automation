@@ -1,0 +1,390 @@
+{
+  "status": 200,
+  "data": {
+    "success": true,
+    "output": {
+      "contractType": "procurement",
+      "contractTypeName": "企业采购与设备供货合同",
+      "myPosition": "buyer",
+      "positionSource": "user_confirmed",
+      "fileName": "CT01-zh.txt",
+      "fullText": "设备采购合同合同编号 CT01-zh\n**甲方**：星桥合同测试有限公司\n**乙方**：青空合同测试株式会社\n**签约日期**：2026年12月1日\n\n标的及价款：乙方向甲方供应精密泵十台，含税总价人民币480000元，附件列明型号和技术参数。\n\n交付：乙方于2027年3月15日前送达甲方上海仓库，运输及交付前毁损风险由乙方承担。\n\n验收：货物卸车即视为最终验收合格；即使存在隐蔽缺陷，甲方亦不得拒收或要求修理。\n\n付款：甲方签约后三日内支付全部价款；乙方无需提供履约担保，交付延期不影响收款。\n\n责任：乙方故意或重大过失造成的损失亦不承担赔偿；甲方逾期付款每日按合同总额百分之一支付违约金。\n\n质保：质保期为验收后十二个月；乙方在收到通知后五个工作日内免费修复质量缺陷。\n\n解除：甲方可在乙方逾期三十日未交货时解除合同，乙方在解除后十日内退还已收款项。\n\n争议与文本：适用中华人民共和国法律，争议提交上海仲裁委员会仲裁；中日文本具有同等效力。\n甲方代表：星桥测试担当     乙方代表：青空测试担当",
+      "sourceDocumentVersion": "sha256:cf42045cac9f9f2dd9793851f6fcf53f4426e5ebb7da5820241425c53708c5c9",
+      "sourceDocumentHash": "cf42045cac9f9f2dd9793851f6fcf53f4426e5ebb7da5820241425c53708c5c9",
+      "parsedClauses": [
+        {
+          "clauseIndex": 0,
+          "clauseNumber": "前言",
+          "title": "合同引言与主体信息",
+          "originalContent": "设备采购合同合同编号 CT01-zh\n**甲方**：星桥合同测试有限公司\n**乙方**：青空合同测试株式会社\n**签约日期**：2026年12月1日",
+          "chapterNumber": "前言",
+          "chapterTitle": "合同引言与签约主体",
+          "blocks": [
+            {
+              "id": "blk-0",
+              "type": "paragraph",
+              "primaryText": "设备采购合同合同编号 CT01-zh"
+            },
+            {
+              "id": "blk-1",
+              "type": "key_value_grid",
+              "metadata": [
+                {
+                  "key": "甲方",
+                  "value": "星桥合同测试有限公司"
+                },
+                {
+                  "key": "乙方",
+                  "value": "青空合同测试株式会社"
+                },
+                {
+                  "key": "签约日期",
+                  "value": "2026年12月1日"
+                }
+              ]
+            }
+          ],
+          "formIntegrity": {
+            "status": "WARNING",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [
+              "签约方注册住所/法定地址信息",
+              "统一社会信用代码/企业注册代码"
+            ],
+            "formatIssues": [],
+            "summary": "⚠️ 签约主体信息不完整，缺少：签约方注册住所/法定地址信息、统一社会信用代码/企业注册代码。"
+          },
+          "facts": {},
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 1,
+          "clauseNumber": "第1条",
+          "title": "[CT01-zh-A01]",
+          "originalContent": "标的及价款：乙方向甲方供应精密泵十台，含税总价人民币480000元，附件列明型号和技术参数。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-0",
+              "type": "paragraph",
+              "primaryText": "标的及价款：乙方向甲方供应精密泵十台，含税总价人民币480000元，附件列明型号和技术参数。"
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {},
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 2,
+          "clauseNumber": "第2条",
+          "title": "[CT01-zh-A02]",
+          "originalContent": "交付：乙方于2027年3月15日前送达甲方上海仓库，运输及交付前毁损风险由乙方承担。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-0",
+              "type": "paragraph",
+              "primaryText": "交付：乙方于2027年3月15日前送达甲方上海仓库，运输及交付前毁损风险由乙方承担。"
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {
+            "deliveryDayType": "unspecified",
+            "deliveryDays": 15,
+            "hasSourceCodeDelivery": false,
+            "isDeemedAcceptedEnabled": false
+          },
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 3,
+          "clauseNumber": "第3条",
+          "title": "[CT01-zh-A03]",
+          "originalContent": "验收：货物卸车即视为最终验收合格；即使存在隐蔽缺陷，甲方亦不得拒收或要求修理。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-0",
+              "type": "paragraph",
+              "primaryText": "验收：货物卸车即视为最终验收合格；即使存在隐蔽缺陷，甲方亦不得拒收或要求修理。"
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {
+            "hasSourceCodeDelivery": false,
+            "isDeemedAcceptedEnabled": false
+          },
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 4,
+          "clauseNumber": "第4条",
+          "title": "[CT01-zh-A04]",
+          "originalContent": "付款：甲方签约后三日内支付全部价款；乙方无需提供履约担保，交付延期不影响收款。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-0",
+              "type": "paragraph",
+              "primaryText": "付款：甲方签约后三日内支付全部价款；乙方无需提供履约担保，交付延期不影响收款。"
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {
+            "deliveryDayType": "unspecified",
+            "hasSourceCodeDelivery": false,
+            "isDeemedAcceptedEnabled": false,
+            "isPaymentTiedToInternalAudit": false
+          },
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 5,
+          "clauseNumber": "第5条",
+          "title": "[CT01-zh-A05]",
+          "originalContent": "责任：乙方故意或重大过失造成的损失亦不承担赔偿；甲方逾期付款每日按合同总额百分之一支付违约金。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-0",
+              "type": "paragraph",
+              "primaryText": "责任：乙方故意或重大过失造成的损失亦不承担赔偿；甲方逾期付款每日按合同总额百分之一支付违约金。"
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {
+            "isPaymentTiedToInternalAudit": false
+          },
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 6,
+          "clauseNumber": "第6条",
+          "title": "[CT01-zh-A06]",
+          "originalContent": "质保：质保期为验收后十二个月；乙方在收到通知后五个工作日内免费修复质量缺陷。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-0",
+              "type": "paragraph",
+              "primaryText": "质保：质保期为验收后十二个月；乙方在收到通知后五个工作日内免费修复质量缺陷。"
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {
+            "hasSourceCodeDelivery": false,
+            "isDeemedAcceptedEnabled": false
+          },
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 7,
+          "clauseNumber": "第7条",
+          "title": "[CT01-zh-A07]",
+          "originalContent": "解除：甲方可在乙方逾期三十日未交货时解除合同，乙方在解除后十日内退还已收款项。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-0",
+              "type": "paragraph",
+              "primaryText": "解除：甲方可在乙方逾期三十日未交货时解除合同，乙方在解除后十日内退还已收款项。"
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {
+            "deliveryDayType": "unspecified"
+          },
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 8,
+          "clauseNumber": "第8条",
+          "title": "[CT01-zh-A08]",
+          "originalContent": "争议与文本：适用中华人民共和国法律，争议提交上海仲裁委员会仲裁；中日文本具有同等效力。\n甲方代表：星桥测试担当     乙方代表：青空测试担当",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-0",
+              "type": "paragraph",
+              "primaryText": "争议与文本：适用中华人民共和国法律，争议提交上海仲裁委员会仲裁；中日文本具有同等效力。"
+            },
+            {
+              "id": "blk-1",
+              "type": "paragraph",
+              "primaryText": "甲方代表：星桥测试担当     乙方代表：青空测试担当"
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {
+            "forumType": "arbitration",
+            "forumLocation": "neutral_venue"
+          },
+          "matchedRules": [],
+          "candidateRules": [
+            {
+              "id": "comm_dispute_unfavorable_forum",
+              "elementId": "comm_dispute_unfavorable_forum",
+              "elementCode": "COMM-01",
+              "title": "争议司法管辖约定对我方不利",
+              "category": "DISPUTE_AND_GOVERNING",
+              "severity": "HIGH",
+              "riskSummary": "约定由对方所在地法院管辖，一旦发生争议我方将面临高昂的异地诉讼维权成本与潜在地方司法保护阻力。",
+              "legalAdvice": "建议约定由“原告所在地（我方住所地）人民法院”管辖，或选择中立权威仲裁委员会解决。",
+              "recommendedRevision": "由原告所在地有管辖权的人民法院管辖",
+              "criterion": "争议司法管辖约定对我方不利"
+            }
+          ]
+        }
+      ],
+      "availableRules": [
+        {
+          "id": "comm_dispute_unfavorable_forum",
+          "elementId": "comm_dispute_unfavorable_forum",
+          "elementCode": "COMM-01",
+          "title": "争议司法管辖约定对我方不利",
+          "category": "DISPUTE_AND_GOVERNING",
+          "severity": "HIGH",
+          "riskSummary": "约定由对方所在地法院管辖，一旦发生争议我方将面临高昂的异地诉讼维权成本与潜在地方司法保护阻力。",
+          "legalAdvice": "建议约定由“原告所在地（我方住所地）人民法院”管辖，或选择中立权威仲裁委员会解决。",
+          "recommendedRevision": "由原告所在地有管辖权的人民法院管辖",
+          "criterion": "争议司法管辖约定对我方不利"
+        },
+        {
+          "id": "comm_excessive_damages_scope",
+          "elementId": "comm_excessive_damages_scope",
+          "elementCode": "COMM-02",
+          "title": "违约赔偿范围包含不确定的间接损失或惩罚性赔偿",
+          "category": "LIABILITY_AND_REMEDY",
+          "severity": "HIGH",
+          "riskSummary": "约定了承担惩罚性或全部间接/可得利益损失赔偿，在轻微违约情形下可能面临远超合同交易价值的巨额索赔敞口。",
+          "legalAdvice": "建议以因违约直接造成的“直接实际财产损失”为限，明确排除间接损失、利润损失及商誉损失。",
+          "recommendedRevision": "赔偿因违约行为直接造成的实际财产损失（明确不包含任何间接损失、利润损失或可得利益损失）",
+          "criterion": "违约赔偿范围包含不确定的间接损失或惩罚性赔偿"
+        },
+        {
+          "id": "comm_unilateral_termination_imbalance",
+          "elementId": "comm_unilateral_termination_imbalance",
+          "elementCode": "COMM-03",
+          "title": "单方解除权不对等或随意解除",
+          "category": "TERMINATION_AND_SURVIVAL",
+          "severity": "MEDIUM",
+          "riskSummary": "赋予了单方过宽的无因随时解除权，可能导致我方在投入前期商务与技术成本后合同被对方随意解除且得不到有效救济。",
+          "legalAdvice": "应确保解除权对等，且行使单方解除权必须基于相对方实质违约，并经过合理期限的书面催告。",
+          "recommendedRevision": "【法务建议对等条款】：任一方行使单方合同解除权必须基于相对方严重违约，且经书面催告后 15 日内仍未纠正。",
+          "criterion": "单方解除权不对等或随意解除"
+        },
+        {
+          "id": "nda_perpetual_duration",
+          "elementId": "nda_perpetual_duration",
+          "elementCode": "NDA-01",
+          "title": "保密期限永久且未区分一般信息与商业秘密",
+          "category": "CONFIDENTIALITY",
+          "severity": "HIGH",
+          "riskSummary": "对全部一般商业信息要求无期限/永久承担保密义务，剥夺了普通信息生命周期结束后的合理使用权，形成无限期法律风险敞口。",
+          "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+          "recommendedRevision": "自披露之日起算，有效期为 3 年；依法属于商业秘密的信息在其合法保持秘密状态期间持续有效",
+          "criterion": "保密期限永久且未区分一般信息与商业秘密"
+        }
+      ],
+      "missingClauses": [
+        {
+          "id": "missing_force_majeure",
+          "elementId": "missing_force_majeure",
+          "elementCode": "COMM-04",
+          "title": "缺失不可抗力及责任免除顺延条款",
+          "category": "GENERAL_COMMERCIAL",
+          "severity": "MEDIUM",
+          "reason": "合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。",
+          "recommendedClause": "因地震、台风、水灾、战争、法律法规变更等不能预见、不能避免并不能克服的不可抗力事件，导致一方不能履行全部或部分义务的，免除受影响方的相应违约责任，履约期限相应顺延。受影响方应在事件发生后 48 小时内书面通知相对方并提供证明。"
+        }
+      ],
+      "comments": [],
+      "formIntegrityStats": {
+        "totalUnfilledVariables": 0,
+        "totalUnfilledBlanks": 0
+      },
+      "isTruncated": false,
+      "warnings": [],
+      "rawPrompt": "",
+      "ruleSetInfo": {
+        "ruleSetId": "contract-review/procurement",
+        "ruleSetVersion": "1.0.0",
+        "ruleSetDigest": "sha256:0808bbba48cf8f42138aa2697b5688f311146cd145ee15a57b6953815df44afc",
+        "ruleSetName": "企业采购与设备供货合同标准审查规则库"
+      }
+    }
+  }
+}

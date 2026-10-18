@@ -1,0 +1,162 @@
+[
+  {
+    "marker": "CT02-ja-A03",
+    "topic": "risk_sla",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "约定仅负努力义务且免除连续停机赔偿，显失公平且导致买方无法获得基本服务保障",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT02-ja-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "约定仅负努力义务且免除连续停机赔偿，显失公平且导致买方无法获得基本服务保障",
+            "evidenceQuote": "乙は努力義務のみを負い、最低稼働率を保証しない。10 日連続停止した場合も返金又は賠償を行わない。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-ja-A04",
+    "topic": "risk_data_use",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "未经同意且永久使用个人信息及商业秘密数据进行训练，严重违反数据安全法及个人信息保护规定",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT02-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "未经同意且永久使用个人信息及商业秘密数据进行训练，严重违反数据安全法及个人信息保护规定",
+            "evidenceQuote": "乙は氏名、メール及び取引履歴を甲の同意なくモデル学習に利用し、永久保存できる。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-ja-A05",
+    "topic": "risk_exit",
+    "matchedClauseIndices": [
+      5
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "服务商拥有任意拒绝权且无交付期限，导致买方无法有效收回数据资产，构成事实上的数据绑架",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-5-GENERAL-RISK",
+            "title": "[CT02-ja-A05]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "服务商拥有任意拒绝权且无交付期限，导致买方无法有效收回数据资产，构成事实上的数据绑架",
+            "evidenceQuote": "乙は承認の可否を自由に決定でき、出力期限を約束しない。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-ja-A06",
+    "topic": "risk_renewal",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "允许乙方单方变更核心商业条款（价格），违反对等原则，增加甲方履约风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT02-ja-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "允许乙方单方变更核心商业条款（价格），违反对等原则，增加甲方履约风险。",
+            "evidenceQuote": "乙は更新日に料金を一方的に増額できる"
+          },
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT02-ja-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "自动续约机制结合90天通知期，导致甲方退出成本高、操作繁琐，易造成事实绑定。",
+            "evidenceQuote": "本契約は 1 年間自動更新される。甲は満了 90 日前までに拒絶を通知し"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-ja-A08",
+    "topic": "risk_dispute_unclear",
+    "matchedClauseIndices": [
+      8
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "管辖机构未确定，若无法达成补充协议，将导致管辖权争议或诉讼成本极高，严重损害甲方救济权。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-8-GENERAL-RISK",
+            "title": "[CT02-ja-A08]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "管辖机构未确定，若无法达成补充协议，将导致管辖权争议或诉讼成本极高，严重损害甲方救济权。",
+            "evidenceQuote": "紛争は権限ある機関で処理するものとし、機関名及び所在地は後日補充する"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

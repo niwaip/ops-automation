@@ -1,0 +1,584 @@
+{
+  "caseId": "R01",
+  "isolated": true,
+  "request": {
+    "requestId": "crw-audit",
+    "executionId": "crw-audit-execution",
+    "stepId": "crw-audit-step",
+    "skillId": "platform.document.contract-reviewer",
+    "input": {
+      "text": "synthetic",
+      "modelId": "qwen36-35b-a3b"
+    },
+    "metadata": {
+      "definitionVersion": "1.0.2"
+    }
+  },
+  "result": {
+    "success": true,
+    "output": {
+      "capabilityKey": "platform.document.contract-reviewer",
+      "capabilityVersion": "1.0.2",
+      "summary": "审查完成",
+      "contractType": "procurement",
+      "myPosition": "buyer",
+      "positionSource": "default",
+      "metrics": {
+        "totalClauses": 10,
+        "healthScore": 0,
+        "highRiskCount": 10,
+        "mediumRiskCount": 0,
+        "lowRiskCount": 0,
+        "missingClausesCount": 0,
+        "passCount": 0,
+        "unfilledVariablesCount": 0,
+        "unfilledBlanksTotal": 0,
+        "llmReviewedCount": 10,
+        "degradedClausesCount": 0,
+        "isDegraded": false,
+        "isTruncated": false,
+        "warnings": []
+      },
+      "clauses": [
+        {
+          "clauseIndex": 0,
+          "clauseNumber": "第1条",
+          "title": "条款0",
+          "originalContent": "CRW_FAULT_0 双方依书面约定履行本条合同义务。",
+          "riskLevel": "HIGH",
+          "riskSummary": "synthetic risk",
+          "legalAdvice": "建议法务审阅复核。",
+          "matchedCheckpoints": [
+            "合规审查要件：条款0"
+          ],
+          "llmReviewed": true,
+          "isBypassed": false,
+          "isFallback": false,
+          "findings": [
+            {
+              "id": "finding-clause-0",
+              "category": "合规审查要件",
+              "severity": "HIGH",
+              "title": "条款0",
+              "riskSummary": "synthetic risk",
+              "legalAdvice": "建议法务审阅复核。"
+            }
+          ]
+        },
+        {
+          "clauseIndex": 1,
+          "clauseNumber": "第2条",
+          "title": "条款1",
+          "originalContent": "CRW_FAULT_1 双方依书面约定履行本条合同义务。",
+          "riskLevel": "HIGH",
+          "riskSummary": "synthetic risk",
+          "legalAdvice": "建议法务审阅复核。",
+          "matchedCheckpoints": [
+            "合规审查要件：条款1"
+          ],
+          "llmReviewed": true,
+          "isBypassed": false,
+          "isFallback": false,
+          "findings": [
+            {
+              "id": "finding-clause-1",
+              "category": "合规审查要件",
+              "severity": "HIGH",
+              "title": "条款1",
+              "riskSummary": "synthetic risk",
+              "legalAdvice": "建议法务审阅复核。"
+            }
+          ]
+        },
+        {
+          "clauseIndex": 2,
+          "clauseNumber": "第3条",
+          "title": "条款2",
+          "originalContent": "CRW_FAULT_2 双方依书面约定履行本条合同义务。",
+          "riskLevel": "HIGH",
+          "riskSummary": "synthetic risk",
+          "legalAdvice": "建议法务审阅复核。",
+          "matchedCheckpoints": [
+            "合规审查要件：条款2"
+          ],
+          "llmReviewed": true,
+          "isBypassed": false,
+          "isFallback": false,
+          "findings": [
+            {
+              "id": "finding-clause-2",
+              "category": "合规审查要件",
+              "severity": "HIGH",
+              "title": "条款2",
+              "riskSummary": "synthetic risk",
+              "legalAdvice": "建议法务审阅复核。"
+            }
+          ]
+        },
+        {
+          "clauseIndex": 3,
+          "clauseNumber": "第4条",
+          "title": "条款3",
+          "originalContent": "CRW_FAULT_3 双方依书面约定履行本条合同义务。",
+          "riskLevel": "HIGH",
+          "riskSummary": "synthetic risk",
+          "legalAdvice": "建议法务审阅复核。",
+          "matchedCheckpoints": [
+            "合规审查要件：条款3"
+          ],
+          "llmReviewed": true,
+          "isBypassed": false,
+          "isFallback": false,
+          "findings": [
+            {
+              "id": "finding-clause-3",
+              "category": "合规审查要件",
+              "severity": "HIGH",
+              "title": "条款3",
+              "riskSummary": "synthetic risk",
+              "legalAdvice": "建议法务审阅复核。"
+            }
+          ]
+        },
+        {
+          "clauseIndex": 4,
+          "clauseNumber": "第5条",
+          "title": "条款4",
+          "originalContent": "CRW_FAULT_4 双方依书面约定履行本条合同义务。",
+          "riskLevel": "HIGH",
+          "riskSummary": "synthetic risk",
+          "legalAdvice": "建议法务审阅复核。",
+          "matchedCheckpoints": [
+            "合规审查要件：条款4"
+          ],
+          "llmReviewed": true,
+          "isBypassed": false,
+          "isFallback": false,
+          "findings": [
+            {
+              "id": "finding-clause-4",
+              "category": "合规审查要件",
+              "severity": "HIGH",
+              "title": "条款4",
+              "riskSummary": "synthetic risk",
+              "legalAdvice": "建议法务审阅复核。"
+            }
+          ]
+        },
+        {
+          "clauseIndex": 5,
+          "clauseNumber": "第6条",
+          "title": "条款5",
+          "originalContent": "CRW_FAULT_5 双方依书面约定履行本条合同义务。",
+          "riskLevel": "HIGH",
+          "riskSummary": "synthetic risk",
+          "legalAdvice": "建议法务审阅复核。",
+          "matchedCheckpoints": [
+            "合规审查要件：条款5"
+          ],
+          "llmReviewed": true,
+          "isBypassed": false,
+          "isFallback": false,
+          "findings": [
+            {
+              "id": "finding-clause-5",
+              "category": "合规审查要件",
+              "severity": "HIGH",
+              "title": "条款5",
+              "riskSummary": "synthetic risk",
+              "legalAdvice": "建议法务审阅复核。"
+            }
+          ]
+        },
+        {
+          "clauseIndex": 6,
+          "clauseNumber": "第7条",
+          "title": "条款6",
+          "originalContent": "CRW_FAULT_6 双方依书面约定履行本条合同义务。",
+          "riskLevel": "HIGH",
+          "riskSummary": "synthetic risk",
+          "legalAdvice": "建议法务审阅复核。",
+          "matchedCheckpoints": [
+            "合规审查要件：条款6"
+          ],
+          "llmReviewed": true,
+          "isBypassed": false,
+          "isFallback": false,
+          "findings": [
+            {
+              "id": "finding-clause-6",
+              "category": "合规审查要件",
+              "severity": "HIGH",
+              "title": "条款6",
+              "riskSummary": "synthetic risk",
+              "legalAdvice": "建议法务审阅复核。"
+            }
+          ]
+        },
+        {
+          "clauseIndex": 7,
+          "clauseNumber": "第8条",
+          "title": "条款7",
+          "originalContent": "CRW_FAULT_7 双方依书面约定履行本条合同义务。",
+          "riskLevel": "HIGH",
+          "riskSummary": "synthetic risk",
+          "legalAdvice": "建议法务审阅复核。",
+          "matchedCheckpoints": [
+            "合规审查要件：条款7"
+          ],
+          "llmReviewed": true,
+          "isBypassed": false,
+          "isFallback": false,
+          "findings": [
+            {
+              "id": "finding-clause-7",
+              "category": "合规审查要件",
+              "severity": "HIGH",
+              "title": "条款7",
+              "riskSummary": "synthetic risk",
+              "legalAdvice": "建议法务审阅复核。"
+            }
+          ]
+        },
+        {
+          "clauseIndex": 8,
+          "clauseNumber": "第9条",
+          "title": "条款8",
+          "originalContent": "CRW_FAULT_8 双方依书面约定履行本条合同义务。",
+          "riskLevel": "HIGH",
+          "riskSummary": "synthetic risk",
+          "legalAdvice": "建议法务审阅复核。",
+          "matchedCheckpoints": [
+            "合规审查要件：条款8"
+          ],
+          "llmReviewed": true,
+          "isBypassed": false,
+          "isFallback": false,
+          "findings": [
+            {
+              "id": "finding-clause-8",
+              "category": "合规审查要件",
+              "severity": "HIGH",
+              "title": "条款8",
+              "riskSummary": "synthetic risk",
+              "legalAdvice": "建议法务审阅复核。"
+            }
+          ]
+        },
+        {
+          "clauseIndex": 9,
+          "clauseNumber": "第10条",
+          "title": "条款9",
+          "originalContent": "CRW_FAULT_9 双方依书面约定履行本条合同义务。",
+          "riskLevel": "HIGH",
+          "riskSummary": "synthetic risk",
+          "legalAdvice": "建议法务审阅复核。",
+          "matchedCheckpoints": [
+            "合规审查要件：条款9"
+          ],
+          "llmReviewed": true,
+          "isBypassed": false,
+          "isFallback": false,
+          "findings": [
+            {
+              "id": "finding-clause-9",
+              "category": "合规审查要件",
+              "severity": "HIGH",
+              "title": "条款9",
+              "riskSummary": "synthetic risk",
+              "legalAdvice": "建议法务审阅复核。"
+            }
+          ]
+        }
+      ],
+      "chapters": [
+        {
+          "chapterIndex": 1,
+          "chapterNumber": "前言",
+          "chapterTitle": "合同引言与签约主体",
+          "clauses": [
+            {
+              "clauseIndex": 0,
+              "clauseNumber": "第1条",
+              "title": "条款0",
+              "originalContent": "CRW_FAULT_0 双方依书面约定履行本条合同义务。",
+              "riskLevel": "HIGH",
+              "riskSummary": "synthetic risk",
+              "legalAdvice": "建议法务审阅复核。",
+              "matchedCheckpoints": [
+                "合规审查要件：条款0"
+              ],
+              "llmReviewed": true,
+              "isBypassed": false,
+              "isFallback": false,
+              "findings": [
+                {
+                  "id": "finding-clause-0",
+                  "category": "合规审查要件",
+                  "severity": "HIGH",
+                  "title": "条款0",
+                  "riskSummary": "synthetic risk",
+                  "legalAdvice": "建议法务审阅复核。"
+                }
+              ]
+            }
+          ],
+          "highRiskCount": 1,
+          "mediumRiskCount": 0,
+          "passCount": 0
+        },
+        {
+          "chapterIndex": 2,
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "clauses": [
+            {
+              "clauseIndex": 1,
+              "clauseNumber": "第2条",
+              "title": "条款1",
+              "originalContent": "CRW_FAULT_1 双方依书面约定履行本条合同义务。",
+              "riskLevel": "HIGH",
+              "riskSummary": "synthetic risk",
+              "legalAdvice": "建议法务审阅复核。",
+              "matchedCheckpoints": [
+                "合规审查要件：条款1"
+              ],
+              "llmReviewed": true,
+              "isBypassed": false,
+              "isFallback": false,
+              "findings": [
+                {
+                  "id": "finding-clause-1",
+                  "category": "合规审查要件",
+                  "severity": "HIGH",
+                  "title": "条款1",
+                  "riskSummary": "synthetic risk",
+                  "legalAdvice": "建议法务审阅复核。"
+                }
+              ]
+            },
+            {
+              "clauseIndex": 2,
+              "clauseNumber": "第3条",
+              "title": "条款2",
+              "originalContent": "CRW_FAULT_2 双方依书面约定履行本条合同义务。",
+              "riskLevel": "HIGH",
+              "riskSummary": "synthetic risk",
+              "legalAdvice": "建议法务审阅复核。",
+              "matchedCheckpoints": [
+                "合规审查要件：条款2"
+              ],
+              "llmReviewed": true,
+              "isBypassed": false,
+              "isFallback": false,
+              "findings": [
+                {
+                  "id": "finding-clause-2",
+                  "category": "合规审查要件",
+                  "severity": "HIGH",
+                  "title": "条款2",
+                  "riskSummary": "synthetic risk",
+                  "legalAdvice": "建议法务审阅复核。"
+                }
+              ]
+            },
+            {
+              "clauseIndex": 3,
+              "clauseNumber": "第4条",
+              "title": "条款3",
+              "originalContent": "CRW_FAULT_3 双方依书面约定履行本条合同义务。",
+              "riskLevel": "HIGH",
+              "riskSummary": "synthetic risk",
+              "legalAdvice": "建议法务审阅复核。",
+              "matchedCheckpoints": [
+                "合规审查要件：条款3"
+              ],
+              "llmReviewed": true,
+              "isBypassed": false,
+              "isFallback": false,
+              "findings": [
+                {
+                  "id": "finding-clause-3",
+                  "category": "合规审查要件",
+                  "severity": "HIGH",
+                  "title": "条款3",
+                  "riskSummary": "synthetic risk",
+                  "legalAdvice": "建议法务审阅复核。"
+                }
+              ]
+            },
+            {
+              "clauseIndex": 4,
+              "clauseNumber": "第5条",
+              "title": "条款4",
+              "originalContent": "CRW_FAULT_4 双方依书面约定履行本条合同义务。",
+              "riskLevel": "HIGH",
+              "riskSummary": "synthetic risk",
+              "legalAdvice": "建议法务审阅复核。",
+              "matchedCheckpoints": [
+                "合规审查要件：条款4"
+              ],
+              "llmReviewed": true,
+              "isBypassed": false,
+              "isFallback": false,
+              "findings": [
+                {
+                  "id": "finding-clause-4",
+                  "category": "合规审查要件",
+                  "severity": "HIGH",
+                  "title": "条款4",
+                  "riskSummary": "synthetic risk",
+                  "legalAdvice": "建议法务审阅复核。"
+                }
+              ]
+            },
+            {
+              "clauseIndex": 5,
+              "clauseNumber": "第6条",
+              "title": "条款5",
+              "originalContent": "CRW_FAULT_5 双方依书面约定履行本条合同义务。",
+              "riskLevel": "HIGH",
+              "riskSummary": "synthetic risk",
+              "legalAdvice": "建议法务审阅复核。",
+              "matchedCheckpoints": [
+                "合规审查要件：条款5"
+              ],
+              "llmReviewed": true,
+              "isBypassed": false,
+              "isFallback": false,
+              "findings": [
+                {
+                  "id": "finding-clause-5",
+                  "category": "合规审查要件",
+                  "severity": "HIGH",
+                  "title": "条款5",
+                  "riskSummary": "synthetic risk",
+                  "legalAdvice": "建议法务审阅复核。"
+                }
+              ]
+            },
+            {
+              "clauseIndex": 6,
+              "clauseNumber": "第7条",
+              "title": "条款6",
+              "originalContent": "CRW_FAULT_6 双方依书面约定履行本条合同义务。",
+              "riskLevel": "HIGH",
+              "riskSummary": "synthetic risk",
+              "legalAdvice": "建议法务审阅复核。",
+              "matchedCheckpoints": [
+                "合规审查要件：条款6"
+              ],
+              "llmReviewed": true,
+              "isBypassed": false,
+              "isFallback": false,
+              "findings": [
+                {
+                  "id": "finding-clause-6",
+                  "category": "合规审查要件",
+                  "severity": "HIGH",
+                  "title": "条款6",
+                  "riskSummary": "synthetic risk",
+                  "legalAdvice": "建议法务审阅复核。"
+                }
+              ]
+            },
+            {
+              "clauseIndex": 7,
+              "clauseNumber": "第8条",
+              "title": "条款7",
+              "originalContent": "CRW_FAULT_7 双方依书面约定履行本条合同义务。",
+              "riskLevel": "HIGH",
+              "riskSummary": "synthetic risk",
+              "legalAdvice": "建议法务审阅复核。",
+              "matchedCheckpoints": [
+                "合规审查要件：条款7"
+              ],
+              "llmReviewed": true,
+              "isBypassed": false,
+              "isFallback": false,
+              "findings": [
+                {
+                  "id": "finding-clause-7",
+                  "category": "合规审查要件",
+                  "severity": "HIGH",
+                  "title": "条款7",
+                  "riskSummary": "synthetic risk",
+                  "legalAdvice": "建议法务审阅复核。"
+                }
+              ]
+            },
+            {
+              "clauseIndex": 8,
+              "clauseNumber": "第9条",
+              "title": "条款8",
+              "originalContent": "CRW_FAULT_8 双方依书面约定履行本条合同义务。",
+              "riskLevel": "HIGH",
+              "riskSummary": "synthetic risk",
+              "legalAdvice": "建议法务审阅复核。",
+              "matchedCheckpoints": [
+                "合规审查要件：条款8"
+              ],
+              "llmReviewed": true,
+              "isBypassed": false,
+              "isFallback": false,
+              "findings": [
+                {
+                  "id": "finding-clause-8",
+                  "category": "合规审查要件",
+                  "severity": "HIGH",
+                  "title": "条款8",
+                  "riskSummary": "synthetic risk",
+                  "legalAdvice": "建议法务审阅复核。"
+                }
+              ]
+            },
+            {
+              "clauseIndex": 9,
+              "clauseNumber": "第10条",
+              "title": "条款9",
+              "originalContent": "CRW_FAULT_9 双方依书面约定履行本条合同义务。",
+              "riskLevel": "HIGH",
+              "riskSummary": "synthetic risk",
+              "legalAdvice": "建议法务审阅复核。",
+              "matchedCheckpoints": [
+                "合规审查要件：条款9"
+              ],
+              "llmReviewed": true,
+              "isBypassed": false,
+              "isFallback": false,
+              "findings": [
+                {
+                  "id": "finding-clause-9",
+                  "category": "合规审查要件",
+                  "severity": "HIGH",
+                  "title": "条款9",
+                  "riskSummary": "synthetic risk",
+                  "legalAdvice": "建议法务审阅复核。"
+                }
+              ]
+            }
+          ],
+          "highRiskCount": 9,
+          "mediumRiskCount": 0,
+          "passCount": 0
+        }
+      ],
+      "missingClauses": [],
+      "reviewStatus": "completed",
+      "htmlReport": "<html>synthetic</html>",
+      "artifact": {
+        "name": "synthetic.html"
+      },
+      "artifacts": [
+        {
+          "name": "synthetic.html"
+        }
+      ]
+    },
+    "artifacts": [
+      {
+        "name": "synthetic.html"
+      }
+    ]
+  }
+}

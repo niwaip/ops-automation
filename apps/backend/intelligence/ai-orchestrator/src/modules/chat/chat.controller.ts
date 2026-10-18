@@ -250,6 +250,13 @@ export class ChatController {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
+    req.socket?.setTimeout?.(0);
+
+    const heartbeatTimer = setInterval(() => {
+      if (!res.writableEnded) {
+        res.write(': keep-alive\n\n');
+      }
+    }, 15000);
 
     const traceId = getOrCreateTraceId(body.traceId || req.traceId);
     const sessionId = body.sessionId || 'default';
@@ -462,6 +469,8 @@ export class ChatController {
         content: errorMsg,
       });
       res.end();
+    } finally {
+      clearInterval(heartbeatTimer);
     }
   }
 

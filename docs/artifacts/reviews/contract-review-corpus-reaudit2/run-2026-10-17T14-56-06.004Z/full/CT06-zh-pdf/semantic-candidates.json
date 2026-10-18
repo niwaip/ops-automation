@@ -1,0 +1,92 @@
+[
+  {
+    "marker": "CT06-zh-A04",
+    "topic": "risk_repairs",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "排除乙方配合义务且费用无上限，显失公平，可能因违反公平原则导致条款无效。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT06-zh-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "排除乙方配合义务且费用无上限，显失公平，可能因违反公平原则导致条款无效。",
+            "evidenceQuote": "维修：所有结构、消防和隐蔽工程缺陷均由甲方修复，费用不设上限，乙方无需配合。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT06-zh-A05",
+    "topic": "risk_unilateral_change",
+    "matchedClauseIndices": [
+      5
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "赋予出租方任意涨租权并禁止承租方据此解约，构成显失公平，严重阻碍我方商业预期。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-5-GENERAL-RISK",
+            "title": "[CT06-zh-A05]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "赋予出租方任意涨租权并禁止承租方据此解约，构成显失公平，严重阻碍我方商业预期。",
+            "evidenceQuote": "调租：乙方可提前三日通知后随时调整租金，甲方不得拒绝，也不得因此解除合同。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT06-zh-A06",
+    "topic": "risk_deposit",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "押金退还由出租方单方决定且无期限限制，剥夺承租方知情权与救济权，显失公平。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT06-zh-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "押金退还由出租方单方决定且无期限限制，剥夺承租方知情权与救济权，显失公平。",
+            "evidenceQuote": "租赁届满后乙方可自行判断是否退还押金，不设退款期限，也无需提供扣款凭据。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

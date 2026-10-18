@@ -32,6 +32,19 @@ import type {
 } from './contract-review.types';
 import { ContractTypeClassifierService } from './contract-type-classifier.service';
 
+export interface LegalEntityProfile {
+  legalEntityName?: string;
+  aliases?: string[];
+  creditCode?: string;
+  defaultContractRole?: PartyPosition;
+}
+
+export const DEFAULT_ENTERPRISE_LEGAL_ENTITY: LegalEntityProfile = {
+  legalEntityName: '富士通（中国）信息系统有限公司',
+  aliases: ['富士通', '富士通（中国）', '富士通信息', 'Fujitsu', 'Fujitsu China', '富士通株式会社'],
+  defaultContractRole: 'seller',
+};
+
 export interface ReviewEngineInput {
   fileBase64?: string;
   fileName?: string;
@@ -47,6 +60,11 @@ export interface ReviewEngineInput {
   sourceAttachmentId?: string;
   sourceDocumentHash?: string;
   sourceDocumentVersion?: string;
+  legalEntityName?: string;
+  aliases?: string[];
+  creditCode?: string;
+  defaultContractRole?: string;
+  legalEntityProfile?: LegalEntityProfile;
 }
 
 export interface ReviewEngineResult {
@@ -111,7 +129,16 @@ export class ContractReviewEngineService {
       input.myPosition,
       fullText,
       typeInfo.defaultPosition,
-      input.positionSource
+      input.positionSource,
+      input.legalEntityProfile ||
+        (input.legalEntityName
+          ? {
+              legalEntityName: input.legalEntityName,
+              aliases: input.aliases,
+              creditCode: input.creditCode,
+              defaultContractRole: input.defaultContractRole as any,
+            }
+          : undefined)
     );
 
     const rawPrompt = (input.reviewPrompt || input.prompt || '').trim();
@@ -199,6 +226,7 @@ export class ContractReviewEngineService {
         clauseIndex: index,
         clauseNumber: clause.clauseNumber || `第 ${index + 1} 条`,
         title: clauseTitle,
+        titleJa: clause.titleJa,
         originalContent: clauseText,
         chapterNumber: clause.chapterNumber,
         chapterTitle: clause.chapterTitle,
@@ -294,6 +322,7 @@ export class ContractReviewEngineService {
       contractType,
       contractTypeName,
       myPosition,
+      positionSource,
       parsedClauses,
       missingClauses,
       formIntegrityStats,
@@ -398,6 +427,7 @@ export class ContractReviewEngineService {
           clauseIndex: index,
           clauseNumber: clause.clauseNumber || `第 ${index + 1} 条`,
           title: clauseTitle,
+          titleJa: clause.titleJa,
           originalContent: clauseText,
           riskLevel: semantic.riskLevel,
           riskSummary: semantic.riskSummary,
@@ -435,6 +465,21 @@ export class ContractReviewEngineService {
     score = Math.max(25, Math.min(100, score));
 
     const llmReviewedCount = reviewedClauses.filter((c) => c.llmReviewed === true).length;
+    const shouldSkipLlm = options?.skipLlmReview === true || process.env.CONTRACT_REVIEW_SKIP_LLM === 'true';
+
+    const effectiveWarnings: string[] = [...(warnings || [])];
+    if (positionSource === 'default') {
+      effectiveWarnings.push(
+        `审查立场提示: 未从用户输入或合同正文中确认签约主体立场，已使用系统默认立场（${myPosition}）执行审查。`
+      );
+    }
+    const degradedCount = reviewedClauses.length - llmReviewedCount;
+    const isDegraded = degradedCount > 0 && !shouldSkipLlm;
+    if (isDegraded) {
+      effectiveWarnings.push(
+        `语义模型审查部分降级: 共 ${reviewedClauses.length} 条条款中有 ${degradedCount} 条未完成大模型语义审查，已自动降级为规则矩阵审查兜底。`
+      );
+    }
 
     const metrics: ContractReviewMetrics = {
       totalClauses: reviewedClauses.length,
@@ -447,8 +492,10 @@ export class ContractReviewEngineService {
       unfilledVariablesCount: totalUnfilledVariables,
       unfilledBlanksTotal: totalUnfilledBlanks,
       llmReviewedCount,
+      degradedClausesCount: degradedCount,
+      isDegraded,
       isTruncated,
-      warnings: warnings && warnings.length > 0 ? warnings : undefined,
+      warnings: effectiveWarnings.length > 0 ? effectiveWarnings : undefined,
     };
 
     const chapterMap = new Map<string, ReviewChapterGroup>();
@@ -553,6 +600,40 @@ export class ContractReviewEngineService {
    * Intelligently resolves the party position by inspecting contract preamble definitions,
    * decoupling Party A / Party B from rigid buyer/seller stereotypes.
    */
+  private normalizeRawPosition(raw?: string): PartyPositionInput | undefined {
+    if (!raw || typeof raw !== 'string') return undefined;
+    const s = raw.trim().toLowerCase();
+    if (['buyer', 'seller', 'neutral', 'party_a', 'party_b', 'both', 'auto'].includes(s)) {
+      return s as PartyPositionInput;
+    }
+    // Buyer / client / tenant / employer (pays money / receives service or goods):
+    if (
+      /(?:买方|采购方|采购人|需方|客户|委托方|委托人|用人单位|雇主|承租方|承租人|買主|発注者|委託者|委託方|借主|賃借人)/i.test(
+        s
+      )
+    ) {
+      return 'buyer';
+    }
+    // Seller / provider / landlord / employee (provides goods/service/property / receives money):
+    if (
+      /(?:卖方|销售方|供方|供货方|供应商|服务商|开发方|技术方|承揽方|出卖人|受托方|受托人|劳动者|员工|出租方|出租人|売主|受注者|受託者|受託人|受託方|貸主|賃貸人)/i.test(
+        s
+      )
+    ) {
+      return 'seller';
+    }
+    if (/(?:中立|客观|公允|双方|双向|共同)/i.test(s)) {
+      return 'neutral';
+    }
+    if (/(?:甲方|第一方|^甲$|当事者甲)/i.test(s)) {
+      return 'party_a';
+    }
+    if (/(?:乙方|第二方|^乙$|当事者乙)/i.test(s)) {
+      return 'party_b';
+    }
+    return undefined;
+  }
+
   public resolvePartyPosition(
     positionInput?: PartyPositionInput,
     contractText: string = '',
@@ -565,64 +646,151 @@ export class ContractReviewEngineService {
     positionInput?: PartyPositionInput,
     contractText: string = '',
     defaultPosition: PartyPosition = 'buyer',
-    explicitSource?: 'default' | 'inferred' | 'user_confirmed'
+    explicitSource?: 'default' | 'inferred' | 'user_confirmed',
+    entityContext?: LegalEntityProfile
   ): { position: PartyPosition; positionSource: 'default' | 'inferred' | 'user_confirmed' } {
-    if (explicitSource) {
-      const pos =
-        positionInput === 'seller' || positionInput === 'buyer' || positionInput === 'neutral'
-          ? positionInput
+    const rawPos = String(positionInput || '').trim();
+    const normalizedPos = this.normalizeRawPosition(rawPos) || (positionInput as PartyPositionInput);
+
+    // =========================================================================
+    // 第一优先级：用户显式指定 (User Explicit Confirmation)
+    // 1. 若显式声明 explicitSource === 'user_confirmed'
+    // 2. 或未带 explicitSource，但用户提供了明确的商业立场或签约主体（非 'auto'）
+    // =========================================================================
+    if (explicitSource === 'user_confirmed') {
+      if (normalizedPos === 'party_a' || normalizedPos === 'party_b') {
+        return this.resolvePartyRoleInContract(normalizedPos as 'party_a' | 'party_b', contractText, 'user_confirmed');
+      }
+      const pos: PartyPosition =
+        normalizedPos === 'seller' || normalizedPos === 'buyer' || normalizedPos === 'neutral'
+          ? (normalizedPos as PartyPosition)
           : defaultPosition;
-      return { position: pos, positionSource: explicitSource };
+      return { position: pos, positionSource: 'user_confirmed' };
     }
 
-    // Inspect preamble where parties are typically defined
-    const preamble = contractText.slice(0, 3000);
+    if (!explicitSource && (normalizedPos === 'party_a' || normalizedPos === 'party_b')) {
+      return this.resolvePartyRoleInContract(normalizedPos as 'party_a' | 'party_b', contractText, 'user_confirmed');
+    }
 
-    // Mutual disclosure detection: if parties mutually disclose/receive, resolve to neutral
+    if (!explicitSource && (normalizedPos === 'buyer' || normalizedPos === 'seller' || normalizedPos === 'neutral')) {
+      return { position: normalizedPos as PartyPosition, positionSource: 'user_confirmed' };
+    }
+
+    if ((normalizedPos as string) === 'both') {
+      return { position: 'neutral', positionSource: 'user_confirmed' };
+    }
+
+    // =========================================================================
+    // 第二优先级：系统配置的企业主体关键词匹配 (System Configured Company Matching)
+    // 检索合同文本（前言 4000 字符 + 签署落款区 2000 字符）是否命中配置的企业全称或别名
+    // =========================================================================
+    const effectiveEntity =
+      entityContext && entityContext.legalEntityName
+        ? entityContext
+        : DEFAULT_ENTERPRISE_LEGAL_ENTITY;
+    const candidateAliases = [
+      effectiveEntity.legalEntityName,
+      ...(effectiveEntity.aliases || []),
+    ].filter((name): name is string => Boolean(name && name.trim().length > 1));
+
+    const preamble = contractText.slice(0, 4000);
+    const tail = contractText.length > 4000 ? contractText.slice(-2000) : '';
+    const searchScope = `${preamble}\n${tail}`;
+
+    let matchedPartyFromEntity: 'party_a' | 'party_b' | undefined;
+    for (const alias of candidateAliases) {
+      const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // 乙方匹配：乙方: 富士通 ... 或 富士通 ... (以下称为“乙方”) 或 受託者: 富士通
+      const partyBPattern = new RegExp(
+        `(?:(?:乙方|乙|第二方|受注者|受託者|借主|当事者乙)[^\\n\\r]{0,30}[：:\\s=][^\\n\\r]{0,30}${escaped})|(?:${escaped}[^\\n\\r]{0,60}(?:以下[简称|称为]*[“"「]?乙方[”"」]?|\\(以下称为“乙方”\\)|（以下「乙」）))`,
+        'i'
+      );
+      // 甲方匹配：甲方: 富士通 ... 或 富士通 ... (以下称为“甲方”) 或 発注者: 富士通
+      const partyAPattern = new RegExp(
+        `(?:(?:甲方|甲|第一方|発注者|委託者|貸主|当事者甲)[^\\n\\r]{0,30}[：:\\s=][^\\n\\r]{0,30}${escaped})|(?:${escaped}[^\\n\\r]{0,60}(?:以下[简称|称为]*[“"「]?甲方[”"」]?|\\(以下称为“甲方”\\)|（以下「甲」）))`,
+        'i'
+      );
+
+      if (partyBPattern.test(searchScope)) {
+        matchedPartyFromEntity = 'party_b';
+        break;
+      }
+      if (partyAPattern.test(searchScope)) {
+        matchedPartyFromEntity = 'party_a';
+        break;
+      }
+    }
+
+    if (matchedPartyFromEntity) {
+      return this.resolvePartyRoleInContract(matchedPartyFromEntity, preamble, 'inferred');
+    }
+
+    // =========================================================================
+    // 第三优先级：自动识别与默认回退 (Automatic Detection & Default Fallback)
+    // 3.1 双向对等条款检测
+    // 3.2 若入参带有明确指定的系统默认回退值 (explicitSource === 'default')
+    // 3.3 系统配置的企业默认商业角色倾向 (defaultContractRole, 如 seller)
+    // 3.4 合同类型默认基准角色 (defaultPosition)
+    // =========================================================================
     if (/双方互为(?:披露方|透露方|接收方)|双向保密|互为透露方|共同承担保密|各自披露/i.test(preamble)) {
       return { position: 'neutral', positionSource: 'inferred' };
     }
 
-    const posStr = String(positionInput || '');
-    if (!positionInput || positionInput === 'both' || posStr === 'auto') {
-      return {
-        position: positionInput === 'both' ? 'neutral' : defaultPosition,
-        positionSource: 'default',
-      };
+    if (
+      explicitSource === 'default' &&
+      (normalizedPos === 'seller' || normalizedPos === 'buyer' || normalizedPos === 'neutral')
+    ) {
+      return { position: normalizedPos as PartyPosition, positionSource: 'default' };
     }
 
-    if (positionInput === 'buyer' || positionInput === 'seller' || positionInput === 'neutral') {
-      return { position: positionInput, positionSource: 'user_confirmed' };
-    }
-
-    const isPartyA = positionInput === 'party_a';
-    const isPartyB = positionInput === 'party_b';
-
-    if (isPartyA) {
-      // Check if Party A is explicitly defined as seller/provider
-      if (/甲方\s*[（(][^）)]*(?:受托|卖方|供货|供方|出卖|开发|服务|承揽|接收方|劳动者|承租人)[^）)]*[）)]/i.test(preamble)) {
-        return { position: 'seller', positionSource: 'inferred' };
-      }
-      // Check if Party A is explicitly defined as buyer/client
-      if (/甲方\s*[（(][^）)]*(?:委托|买方|采购|发包|客户|需方|透露方|披露方|用人单位|出租人)[^）)]*[）)]/i.test(preamble)) {
-        return { position: 'buyer', positionSource: 'inferred' };
-      }
-      return { position: 'buyer', positionSource: 'default' };
-    }
-
-    if (isPartyB) {
-      // Check if Party B is explicitly defined as buyer/client
-      if (/乙方\s*[（(][^）)]*(?:委托|买方|采购|发包|客户|需方|透露方|披露方|用人单位|出租人)[^）)]*[）)]/i.test(preamble)) {
-        return { position: 'buyer', positionSource: 'inferred' };
-      }
-      // Check if Party B is explicitly defined as seller/provider
-      if (/乙方\s*[（(][^）)]*(?:受托|卖方|供货|供方|出卖|开发|服务|承揽|接收方|劳动者|承租人)[^）)]*[）)]/i.test(preamble)) {
-        return { position: 'seller', positionSource: 'inferred' };
-      }
-      return { position: 'seller', positionSource: 'default' };
+    const entityDefaultRole = entityContext?.defaultContractRole;
+    if (
+      entityDefaultRole &&
+      (entityDefaultRole === 'seller' || entityDefaultRole === 'buyer' || entityDefaultRole === 'neutral')
+    ) {
+      return { position: entityDefaultRole, positionSource: 'default' };
     }
 
     return { position: defaultPosition, positionSource: 'default' };
+  }
+
+  /**
+   * 根据合同前言中对甲方或乙方的实质权利义务定义，精确判定买方(披露方)/卖方(接收方)立场
+   */
+  private resolvePartyRoleInContract(
+    party: 'party_a' | 'party_b',
+    preamble: string,
+    source: 'user_confirmed' | 'inferred'
+  ): { position: PartyPosition; positionSource: 'user_confirmed' | 'inferred' } {
+    if (party === 'party_a') {
+      if (
+        /(?:甲方|甲)\s*[（:：(][^）\n)]*(?:受托|卖方|供货|供方|供应商|出卖|开发|服务|承揽|接收方|劳动者|出租方|出租人|売主|受注者|受託|開発|貸主|賃貸人)[^）\n)]*[）)]?/i.test(
+          preamble
+        ) ||
+        /(?:甲方|甲)(?:为|系|作为|属于|は)(?:受托|卖方|供货|供方|供应商|出卖|开发|服务|承揽|接收方|劳动者|出租方|出租人|売主|受注者|受託|開発|貸主|賃貸人)/i.test(
+          preamble
+        )
+      ) {
+        return { position: 'seller', positionSource: source };
+      }
+      return { position: 'buyer', positionSource: source };
+    }
+
+    if (party === 'party_b') {
+      if (
+        /(?:乙方|乙)\s*[（:：(][^）\n)]*(?:委托|买方|采购|发包|客户|需方|透露方|披露方|用人单位|承租方|承租人|買主|発注|委託|借主|賃借人)[^）\n)]*[）)]?/i.test(
+          preamble
+        ) ||
+        /(?:乙方|乙)(?:为|系|作为|属于|は)(?:委托|买方|采购|发包|客户|需方|透露方|披露方|用人单位|承租方|承租人|買主|発注|委託|借主|賃借人)/i.test(
+          preamble
+        )
+      ) {
+        return { position: 'buyer', positionSource: source };
+      }
+      return { position: 'seller', positionSource: source };
+    }
+
+    return { position: 'buyer', positionSource: source };
   }
 }
 

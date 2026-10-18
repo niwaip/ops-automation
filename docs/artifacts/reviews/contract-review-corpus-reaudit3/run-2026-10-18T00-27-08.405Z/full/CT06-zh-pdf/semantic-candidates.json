@@ -1,0 +1,80 @@
+[
+  {
+    "marker": "CT06-zh-A04",
+    "topic": "risk_repairs",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "LOW"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "该条款大模型语义审查降级 (INVALID_JSON_RESPONSE)，已回退为静态规则校验。",
+        "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。"
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT06-zh-A05",
+    "topic": "risk_unilateral_change",
+    "matchedClauseIndices": [
+      5
+    ],
+    "riskLevels": [
+      "LOW"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "该条款大模型语义审查降级 (INVALID_JSON_RESPONSE)，已回退为静态规则校验。",
+        "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。"
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT06-zh-A06",
+    "topic": "risk_deposit",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "条款赋予乙方单方裁量权且不设退款期限，实质构成无限期扣留资金，严重损害甲方权益。",
+        "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+        "findings": [
+          {
+            "id": "finding-clause-6-NDA-01",
+            "title": "保密期限永久且未区分一般信息与商业秘密",
+            "ruleId": "nda_perpetual_duration",
+            "category": "CONFIDENTIALITY",
+            "ruleCode": "NDA-01",
+            "severity": "HIGH",
+            "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+            "riskSummary": "条款赋予乙方单方裁量权且不设退款期限，实质构成无限期扣留资金，严重损害甲方权益。",
+            "evidenceQuote": "租赁届满后乙方可自行判断是否退还押金，不设退款期限，也无需提供扣款凭据。",
+            "recommendedRevision": "自披露之日起算，有效期为 3 年；依法属于商业秘密的信息在其合法保持秘密状态期间持续有效"
+          },
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT06-zh-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "免除乙方举证责任，违反公平原则及民事诉讼法关于举证责任的基本规定，存在重大履约风险。",
+            "evidenceQuote": "也无需提供扣款凭据。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

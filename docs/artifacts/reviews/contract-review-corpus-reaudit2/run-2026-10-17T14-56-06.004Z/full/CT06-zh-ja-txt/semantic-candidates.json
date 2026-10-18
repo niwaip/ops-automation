@@ -1,0 +1,92 @@
+[
+  {
+    "marker": "CT06-zh-ja-A04",
+    "topic": "risk_repairs",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "作为承租方（甲方）不应承担结构等根本性维修义务及无限费用，且乙方免予配合严重阻碍合同履行。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT06-zh-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "作为承租方（甲方）不应承担结构等根本性维修义务及无限费用，且乙方免予配合严重阻碍合同履行。",
+            "evidenceQuote": "所有结构、消防和隐蔽工程缺陷均由甲方修复，费用不设上限，乙方无需配合。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT06-zh-ja-A05",
+    "topic": "risk_unilateral_change",
+    "matchedClauseIndices": [
+      5
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "单方调租权缺乏合理性约束，禁止解除权导致甲方无法通过退出机制规避风险，显失公平。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-5-GENERAL-RISK",
+            "title": "[CT06-zh-ja-A05]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "单方调租权缺乏合理性约束，禁止解除权导致甲方无法通过退出机制规避风险，显失公平。",
+            "evidenceQuote": "乙方可提前三日通知后随时调整租金，甲方不得拒绝，也不得因此解除合同。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT06-zh-ja-A06",
+    "topic": "risk_deposit",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "条款赋予出租方单方且无限制的决定权，免除举证责任，违反公平原则及商事交易基本诚信。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT06-zh-ja-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "条款赋予出租方单方且无限制的决定权，免除举证责任，违反公平原则及商事交易基本诚信。",
+            "evidenceQuote": "租赁届满后乙方可自行判断是否退还押金，不设退款期限，也无需提供扣款凭据。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

@@ -1,0 +1,6 @@
+﻿id,business,language,format,executionId,status,previousGateStatus,executionStatus,outputPresent,markerCoverage,totalClauses,contractType,position,positionSource,degraded,chatMs,calls,inputTokens,outputTokens,failureReason
+META-ALIGNED-30-30-txt,distribution,zh-ja,txt,f29a1c66-61bb-4658-b080-fe06b09fe721,failed,failed,failed,False,0,0,,,,,24762,0,0,0,"步骤「合同文档智能审查与合规诊断」输入参数校验未通过：1. 参数【0】类型不符，期望为 object；2. 参数【1】类型不符，期望为 object；3. 参数【2】类型不符，期望为 object；4. 参数【3】类型不符，期望为 object；5. 参数【4】类型不符，期望为 object。
+
+[技术细节] Node 'n1_合同文档智能审查与合规诊断' failed: INPUT_SCHEMA_VIOLATION for node 'n1_合同文档智能审查与合规诊断': /customCheckpoints/0 (type): must be object; /customCheckpoints/1 (type): must be object; /customCheckpoints/2 (type): must be object; /customCheckpoints/3 (type): must be object; /customCheckpoints/4 (type): must be object"
+META-ALIGNED-60-60-txt,distribution,zh-ja,txt,36adc1b7-4c1c-448d-8d2d-1f8d0fe0b5a4,passed,passed,succeeded,True,8,9,procurement,buyer,user_confirmed,False,36969,3,3000,1158,
+META-CONFLICT-45-75-txt,distribution,zh-ja,txt,33f4d0ab-0ab8-4342-b60c-42b1c55379b5,passed,passed,succeeded,True,8,9,procurement,buyer,user_confirmed,False,32880,3,3022,1192,

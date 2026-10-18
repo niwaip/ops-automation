@@ -1,0 +1,19 @@
+{
+  "message": "请审查附件采购合同，我方是乙方，也就是卖方，请按卖方立场审查。",
+  "sessionId": "crw-C10-1792165129844",
+  "config": {
+    "mode": "task",
+    "thinking": true,
+    "webSearch": false,
+    "workspaceSearch": false,
+    "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+  },
+  "files": [
+    {
+      "fileName": "contract-a.docx",
+      "fileSize": 1232,
+      "fileType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "fileBase64": "data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,UEsDBBQAAAAIAGG8UF33S4B1wgAAAHYBAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbH2QuQ7CMAyGX6XKiqgRAwOiLMAKDLyAlbptRC7FLsfbk3INCBjt//gsLw7XSFxcnPVcqU4kzgFYd+SQyxDJZ6UJyaHkMbUQUR+xJZhOJjPQwQt5GcvQoZaLNTXYWyk2l7xmE3ylEllWxephHFiVwhit0ShZh5OvPyjjJ6HMybuHOxN5lA0KvhIG5TfgmdudKCVTU7HHJFt02QXnkGqog+5dTpb/a77cGZrGaHrnh7aYgiZm41tny7fi0PjX/XB/9/IGUEsDBBQAAAAIAGG8UF1hey9DiQAAAPIAAAALAAAAX3JlbHMvLnJlbHONzzsOAiEQBuCrEA6ws1pYGKCy2dZ4AQLDIy6PDBj19lJYrMbCcuaffH9GnHHVPZbcQqyNPdKam+Sh93oEaCZg0m0qFfNIXKGk+xjJQ9Xmqj3Cfp4PQFuDK7E12WIlp8XuOLs8K/5jF+eiwVMxt4S5/6j4uhiyJo9d8nshC/a9ngbLQQn4eFG9AFBLAwQUAAAACABhvFBdw293qi0CAADQBQAAEQAAAHdvcmQvZG9jdW1lbnQueG1sxZRRb9JQFMe/ysIHsAUTHggjQcIDyWYWQ2L2RBDqtmSlTYuibzgHLRm1XVLYHDOwyMZikKEyV9oOPow9t+WJr+AtRV2MDwYS7cNp2nvP/5z/r6c3XAhlmcwzmsrlV17Quzk+VFj1befzbIgg+Mw2Raf5ewxL5fDaU4aj03n8yG0RBYbLshyToXh+J7dF7xIBkgwSdHon54uEC6EnTPale2fdwLlhph7i2XSGWvWxHMVT3HPKF7HVpqV3nN4I2sJEEJzBR1BEUKphAqdE3MjNIvtXal6ubdZBvpmaJ7FHj1MBMhD0k/5gKrqYpK1+RvUhFkPHTXR2jq4PnKsalLoga1NTtIb92WplMXFr+NYTt/RD0Mq/iYNUX0bc7nYtrYjena2glmCf7C+mgnOdXt8lmUjG11PRqVn1ugbl0GNjjRqgq94nxAVB7uM9qGhYxo2fdC8ovf5W3Fus/OLW9aprffKhitSvy1qPxmLxjeTMvOcTxL4z6ICkObcXIH1xOmVL09Fp0TZEryKeRNQy8f45I02C0RGSFRB0yzCs25ozuJwIMph7Tq/3H+hoFZeOM3iPu1mWzloi+iCxlkhu3pkOVCuhfRmJ9YkgQbvjjAVof5oUW0hUPCJIauI3eCx/plj6BcaEKmN0UJozulbh1dhr8t8zgkbDZWQZx6g7WpbRRnRzPf7QGyEPAJxezo+9OwMDypv7JDo6h3IJqVe4NP6JcPU/myd+nLPErzM88h1QSwECFAMUAAAACABhvFBd90uAdcIAAAB2AQAAEwAAAAAAAAAAAAAAgAEAAAAAW0NvbnRlbnRfVHlwZXNdLnhtbFBLAQIUAxQAAAAIAGG8UF1hey9DiQAAAPIAAAALAAAAAAAAAAAAAACAAfMAAABfcmVscy8ucmVsc1BLAQIUAxQAAAAIAGG8UF3Db3eqLQIAANAFAAARAAAAAAAAAAAAAACAAaUBAAB3b3JkL2RvY3VtZW50LnhtbFBLBQYAAAAAAwADALkAAAABBAAAAAA="
+    }
+  ]
+}

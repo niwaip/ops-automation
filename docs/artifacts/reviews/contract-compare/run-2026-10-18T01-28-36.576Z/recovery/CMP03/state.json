@@ -1,0 +1,174 @@
+{
+  "id": "CMP03",
+  "name": "新增审计权并删除保密义务",
+  "startedAt": "2026-10-18T01:32:33.904Z",
+  "status": "failed",
+  "executionId": "9ef71ebe-ba24-453a-9b46-728efe467e26",
+  "chatMs": 40223,
+  "httpStatus": 201,
+  "businessModels": [],
+  "businessCalls": 0,
+  "metrics": {
+    "addedCount": 1,
+    "isTruncated": false,
+    "deletedCount": 1,
+    "totalClauses": 7,
+    "highRiskCount": 1,
+    "modifiedCount": 0,
+    "unchangedCount": 5,
+    "mediumRiskCount": 1,
+    "sourceClauseCount": 6,
+    "targetClauseCount": 6
+  },
+  "assertions": [
+    {
+      "name": "HTTP success",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE completed",
+      "passed": true,
+      "actual": null,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "execution succeeded",
+      "passed": true,
+      "actual": "succeeded",
+      "category": "STATE"
+    },
+    {
+      "name": "compare skill routed",
+      "passed": true,
+      "actual": null,
+      "category": "ROUTING"
+    },
+    {
+      "name": "compare output exists",
+      "passed": true,
+      "actual": null,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "all source bodies preserved",
+      "passed": true,
+      "actual": [],
+      "category": "EXTRACTION"
+    },
+    {
+      "name": "expected per-clause changes",
+      "passed": true,
+      "actual": [],
+      "category": "DIFF"
+    },
+    {
+      "name": "diff tokens reconstruct A and B",
+      "passed": true,
+      "actual": [],
+      "category": "DIFF"
+    },
+    {
+      "name": "metrics agree with pairs",
+      "passed": true,
+      "actual": {
+        "addedCount": 1,
+        "isTruncated": false,
+        "deletedCount": 1,
+        "totalClauses": 7,
+        "highRiskCount": 1,
+        "modifiedCount": 0,
+        "unchangedCount": 5,
+        "mediumRiskCount": 1,
+        "sourceClauseCount": 6,
+        "targetClauseCount": 6
+      },
+      "category": "METRICS"
+    },
+    {
+      "name": "not truncated",
+      "passed": true,
+      "actual": {
+        "addedCount": 1,
+        "isTruncated": false,
+        "deletedCount": 1,
+        "totalClauses": 7,
+        "highRiskCount": 1,
+        "modifiedCount": 0,
+        "unchangedCount": 5,
+        "mediumRiskCount": 1,
+        "sourceClauseCount": 6,
+        "targetClauseCount": 6
+      },
+      "category": "EXTRACTION"
+    },
+    {
+      "name": "business model ledger present",
+      "passed": false,
+      "actual": 0,
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "selected 35B used for semantic audit",
+      "passed": false,
+      "actual": [],
+      "category": "MODEL"
+    },
+    {
+      "name": "semantic result or explicit degradation",
+      "passed": true,
+      "actual": [
+        {
+          "id": "align-del-5",
+          "insight": {
+            "summary": "修订版删除了原合同条款，需评估是否有实质权利减损。；删除保密条款导致商业秘密丧失合同维权依据，商业信息外泄风险敞口骤增且法定救济举证极其困难。",
+            "keyChange": "直接删除商业秘密保密义务",
+            "riskLevel": "HIGH",
+            "legalAdvice": "坚决拒绝删除；建议恢复并升级为双向对等的保密条款，补充明确保密信息范围、披露例外及惩罚性违约金责任。",
+            "shortSummary": "直接删除商业秘密保密义务"
+          }
+        },
+        {
+          "id": "align-add-6",
+          "insight": {
+            "summary": "修订版新增了独立约定条款，请确认是否超出原商务合作范围。；单方新增高频审计权且缺失程序制约，易造成过度干涉日常经营、增加合规成本并引发商业敏感信息外泄。",
+            "keyChange": "单方新增高频履约审计权",
+            "riskLevel": "MEDIUM",
+            "legalAdvice": "建议降低审计频次至每年一次，补充至少提前10个工作日书面通知、审计费用自理及严格签署专项保密协议等限制条件。",
+            "shortSummary": "单方新增高频履约审计权"
+          }
+        }
+      ],
+      "category": "SEMANTIC_COMPLETENESS"
+    },
+    {
+      "name": "artifact downloaded HTML",
+      "passed": true,
+      "actual": {
+        "status": 200,
+        "bytes": 82282,
+        "sha256": "2c571a8e5972947c6236c555bff6e272bfe4cfb4a1043e7f144c35dc548128d1",
+        "html": true
+      },
+      "category": "DELIVERY"
+    }
+  ],
+  "failures": [
+    {
+      "name": "business model ledger present",
+      "passed": false,
+      "actual": 0,
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "selected 35B used for semantic audit",
+      "passed": false,
+      "actual": [],
+      "category": "MODEL"
+    }
+  ],
+  "wallMs": 40292,
+  "finishedAt": "2026-10-18T01:33:14.196Z",
+  "sourceDrift": []
+}

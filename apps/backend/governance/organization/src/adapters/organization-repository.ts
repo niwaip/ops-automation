@@ -12,6 +12,10 @@ export interface OrganizationSummaryRecord {
   name: string;
   code: string;
   description?: string | null;
+  legalEntityName?: string | null;
+  aliases?: string[];
+  creditCode?: string | null;
+  defaultContractRole?: string | null;
 }
 
 export interface OrganizationMembershipSummaryRecord {
@@ -51,6 +55,10 @@ export interface OrganizationStructureRecord {
   name: string;
   code: string;
   description?: string | null;
+  legalEntityName?: string | null;
+  aliases?: string[];
+  creditCode?: string | null;
+  defaultContractRole?: string | null;
   departments: Array<{
     id: string;
     name: string;
@@ -112,5 +120,9 @@ export interface OrganizationRepository {
     actorUserId: string
   ): Promise<OrganizationMemberRecord>;
   removeMember(orgId: string, userId: string): Promise<void>;
+  updateOrganizationLegalProfile(
+    orgId: string,
+    dto: { legalEntityName?: string; aliases?: string[]; creditCode?: string; defaultContractRole?: string }
+  ): Promise<OrganizationSummaryRecord>;
 }
 

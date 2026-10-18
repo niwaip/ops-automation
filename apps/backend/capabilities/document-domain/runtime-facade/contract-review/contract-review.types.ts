@@ -14,7 +14,7 @@ export type ContractType =
 export type ReviewRiskLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'PASS';
 
 export type PartyPosition = 'buyer' | 'seller' | 'neutral';
-export type PartyPositionInput = PartyPosition | 'party_a' | 'party_b' | 'both';
+export type PartyPositionInput = PartyPosition | 'party_a' | 'party_b' | 'both' | (string & {});
 
 export interface BuiltinContractReviewInput {
   fileBase64?: string;
@@ -36,6 +36,16 @@ export interface BuiltinContractReviewInput {
   sourceDocumentVersion?: string;
   sourceAttachmentId?: string;
   sourceDocumentHash?: string;
+  legalEntityName?: string;
+  aliases?: string[];
+  creditCode?: string;
+  defaultContractRole?: string;
+  legalEntityProfile?: {
+    legalEntityName?: string;
+    aliases?: string[];
+    creditCode?: string;
+    defaultContractRole?: PartyPosition;
+  };
 }
 
 export interface CustomCheckpointDto {
@@ -67,6 +77,7 @@ export interface ClauseReviewItem {
   clauseIndex: number;
   clauseNumber: string;
   title: string;
+  titleJa?: string;
   originalContent: string;
   riskLevel: ReviewRiskLevel;
   riskSummary: string;
@@ -117,6 +128,8 @@ export interface ContractReviewMetrics {
   unfilledVariablesCount?: number;
   unfilledBlanksTotal?: number;
   llmReviewedCount?: number;
+  degradedClausesCount?: number;
+  isDegraded?: boolean;
   isTruncated?: boolean;
   warnings?: string[];
 }
@@ -217,6 +230,7 @@ export interface ParsedClauseItem {
   clauseIndex: number;
   clauseNumber: string;
   title: string;
+  titleJa?: string;
   originalContent: string;
   chapterNumber?: string;
   chapterTitle?: string;

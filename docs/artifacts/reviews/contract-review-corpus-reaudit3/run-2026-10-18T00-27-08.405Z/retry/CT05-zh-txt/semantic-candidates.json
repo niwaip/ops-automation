@@ -1,0 +1,134 @@
+[
+  {
+    "marker": "CT05-zh-A03",
+    "topic": "risk_acceptance",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "设定仅2日的验收期且以自然日计算，时间过短极易导致买方因疏忽而丧失异议权，构成期限陷阱。",
+        "legalAdvice": "建议坚持采用“工作日”口径计算，或增加因甲方确认延迟、需求变更引起的工期对等顺延条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-SOFT-03",
+            "title": "工期计算口径被变更为自然日/日历日陷阱",
+            "ruleId": "soft_calendar_day_trap",
+            "category": "DELIVERY_AND_ACCEPTANCE",
+            "ruleCode": "SOFT-03",
+            "severity": "HIGH",
+            "legalAdvice": "建议坚持采用“工作日”口径计算，或增加因甲方确认延迟、需求变更引起的工期对等顺延条款。",
+            "riskSummary": "设定仅2日的验收期且以自然日计算，时间过短极易导致买方因疏忽而丧失异议权，构成期限陷阱。",
+            "evidenceQuote": "乙方发出交付邮件后两日内甲方未书面拒绝即视为验收",
+            "recommendedRevision": "工作日（遇法定节假日自动顺延）"
+          },
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT05-zh-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "强制规定安全漏洞不影响验收，实质免除了乙方交付安全合规产品的根本义务，对买方构成重大隐患。",
+            "evidenceQuote": "任何未修复安全漏洞不影响验收"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-A04",
+    "topic": "risk_ip",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "定制开发成果权属应归委托方，现条款导致买方丧失源代码所有权且面临许可到期后服务中断风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT05-zh-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "定制开发成果权属应归委托方，现条款导致买方丧失源代码所有权且面临许可到期后服务中断风险。",
+            "evidenceQuote": "全部定制开发成果及源代码著作权归乙方；甲方仅取得一年期不可续展的内部使用许可"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-A06",
+    "topic": "risk_third_party_ip",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "乙方未披露义务且将全部开源合规风险转嫁甲方，违反公平原则及侵权风险管控要求。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT05-zh-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "乙方未披露义务且将全部开源合规风险转嫁甲方，违反公平原则及侵权风险管控要求。",
+            "evidenceQuote": "乙方可自由引入任意第三方组件，无需提供许可清单，甲方自行承担全部第三方权利主张"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-A08",
+    "topic": "risk_unfilled",
+    "matchedClauseIndices": [
+      8
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "管辖条款未约定由甲方所在地法院管辖，若发生争议可能增加甲方维权成本。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-8-GENERAL-RISK",
+            "title": "[CT05-zh-A08]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "管辖条款未约定由甲方所在地法院管辖，若发生争议可能增加甲方维权成本。",
+            "evidenceQuote": "争议由被告住所地法院处理"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

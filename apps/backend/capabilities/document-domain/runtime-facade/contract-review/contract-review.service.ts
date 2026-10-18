@@ -45,6 +45,7 @@ export class ContractReviewService {
       text: input.text,
       contractType: input.contractType,
       myPosition: input.myPosition,
+      positionSource: input.positionSource,
       customCheckpoints: effectiveCustomRules,
       customChecklistRules: effectiveCustomRules,
       prompt: input.prompt,
@@ -52,6 +53,11 @@ export class ContractReviewService {
       sourceAttachmentId: input.sourceAttachmentId,
       sourceDocumentHash: input.sourceDocumentHash,
       sourceDocumentVersion: input.sourceDocumentVersion,
+      legalEntityName: input.legalEntityName,
+      aliases: input.aliases,
+      creditCode: input.creditCode,
+      defaultContractRole: input.defaultContractRole,
+      legalEntityProfile: input.legalEntityProfile,
     });
   }
 
@@ -140,15 +146,35 @@ export class ContractReviewService {
         ? '正文语义推断'
         : '用户指定确认';
 
+    const summaryTitle = effectiveMetrics.isDegraded
+      ? `### ⚠️ 合同智能合规审查已完成（部分条款降级）`
+      : `### ⚖️ 合同智能合规审查与风险诊断完成`;
+
+    const scoreVerdict = effectiveMetrics.isDegraded
+      ? '⚠️ 存在模型降级未审完条款，评分仅供参考，不可作完整合规评价'
+      : effectiveMetrics.healthScore >= 85
+      ? '合规良好'
+      : effectiveMetrics.healthScore >= 65
+      ? '⚠️ 存在中度法律风险'
+      : '🚨 存在重大高危漏洞';
+
     const summaryLines = [
-      `### ⚖️ 合同智能合规审查与风险诊断完成`,
+      summaryTitle,
       ``,
       `#### 📊 合规审查概览`,
       `- **合同类型识别**：**${contractTypeName}**`,
       `- **审查立场**：**${posLabel}**（${posNotice}）`,
-      `- **综合合规评分**：**${effectiveMetrics.healthScore} 分 / 100 分**（${effectiveMetrics.healthScore >= 85 ? '合规良好' : effectiveMetrics.healthScore >= 65 ? '⚠️ 存在中度法律风险' : '🚨 存在重大高危漏洞'}）`,
+      `- **综合合规评分**：**${effectiveMetrics.healthScore} 分 / 100 分**（${scoreVerdict}）`,
       `- **条款风控统计**：共 **${effectiveMetrics.totalClauses}** 项条款（🔴 高危 **${effectiveMetrics.highRiskCount}** 项，⚡ 缺失必备 **${effectiveMetrics.missingClausesCount}** 项，🟡 中风险 **${effectiveMetrics.mediumRiskCount}** 项，🟢 合规通过 **${effectiveMetrics.passCount}** 项）`,
     ];
+
+    if (effectiveMetrics.warnings && effectiveMetrics.warnings.length > 0) {
+      summaryLines.push(
+        ``,
+        `#### ⚠️ 审查降级与执行告警`,
+        ...effectiveMetrics.warnings.map((w: string) => `- ${w}`)
+      );
+    }
 
     if (missingHighlights.length > 0) {
       summaryLines.push(

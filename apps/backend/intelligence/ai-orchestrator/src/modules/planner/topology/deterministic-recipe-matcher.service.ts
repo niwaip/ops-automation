@@ -48,7 +48,7 @@ export class DeterministicRecipeMatcherService {
 
   public matchRecipe(
     userRequest: string,
-    context?: { hasPreviousResult?: boolean }
+    context?: { hasPreviousResult?: boolean; hasNewAttachment?: boolean }
   ): MatchedRecipe | null {
     const policy = this.routingPolicy?.getSnapshot() || createBuiltinRoutingPolicySnapshot();
     const userUtterance = stripSystemContext(userRequest) || userRequest;
@@ -85,6 +85,11 @@ export class DeterministicRecipeMatcherService {
       /(?:签订|起草|生成|撰写|制作|拟定|我们是(?:甲方|乙方))/i.test(userUtterance);
 
     // 合同审查判定：必须包含明确的审查/审核/风控/合规诊断意图，不能单凭泛化的“分析”或“查看”触发重型审查
+    const isConsultationOrNegation =
+      /(?:(?:我只是?|仅为?|作为)?(?:咨询|请问|请教)|(?:什么是|何为|怎么理解|如何理解|有哪些|通常检查|主要检查|一般检查|通常包含|主要包含|什么叫|怎样看待|需要注意哪些|怎么做|如何做))/i.test(
+        userUtterance
+      ) ||
+      /(?:不用|无需|不需要|不要|别)(?:审查|审核|排查|对比|比对|生成|执行)/i.test(userUtterance);
     const hasExplicitReviewVerb =
       /(?:审查|审核|排查|风控|合规|诊断|法务|风险评估|风险排查|合规分析|风险分析)/i.test(
         userUtterance
@@ -99,6 +104,7 @@ export class DeterministicRecipeMatcherService {
       !hasContractCompare &&
       !isNdaDraftIntent &&
       !isExplicitViewOrExtract &&
+      !isConsultationOrNegation &&
       hasExplicitReviewVerb &&
       hasContractTarget;
 
@@ -270,12 +276,14 @@ export class DeterministicRecipeMatcherService {
     // Skill 匹配模型和拓扑模型，并由参数绑定器把不可变结果快照绑定到 content。
     if (
       context?.hasPreviousResult === true &&
+      context?.hasNewAttachment !== true &&
       (hasGeneration || hasProcessing || hasSummarize) &&
       !hasWeb &&
       !effectiveHasSearch &&
       !hasMarkdownFile &&
       !hasDocumentExtract &&
       !hasContractCompare &&
+      !hasContractReview &&
       !hasPdfSplit &&
       !hasPdfMerge &&
       !hasPdfExport &&

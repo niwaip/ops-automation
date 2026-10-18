@@ -1,0 +1,102 @@
+[
+  {
+    "marker": "CT01-ja-A03",
+    "topic": "risk_acceptance",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "卖方免除隐蔽瑕疵担保责任，排除买方法定救济权，条款极可能因显失公平或违反强制性法律规定而无效。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT01-ja-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "卖方免除隐蔽瑕疵担保责任，排除买方法定救济权，条款极可能因显失公平或违反强制性法律规定而无效。",
+            "evidenceQuote": "隠れた欠陥がある場合も甲は受領拒否又は修理請求を行えない。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT01-ja-A04",
+    "topic": "risk_prepayment",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "买方在未获交付或未提供履约担保前需支付100%货款，且卖方对逾期交货不承担责任，严重失衡。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT01-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "买方在未获交付或未提供履约担保前需支付100%货款，且卖方对逾期交货不承担责任，严重失衡。",
+            "evidenceQuote": "乙は履行保証を提供せず、納入遅延によっても代金受領権は影響されない。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT01-ja-A05",
+    "topic": "risk_asymmetric_liability",
+    "matchedClauseIndices": [
+      5
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "卖方连故意或重大过失造成的损害也免责，违反法律关于侵权责任及合同根本违约的强制性规定，条款无效。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-5-GENERAL-RISK",
+            "title": "[CT01-ja-A05]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "卖方连故意或重大过失造成的损害也免责，违反法律关于侵权责任及合同根本违约的强制性规定，条款无效。",
+            "evidenceQuote": "乙は故意又は重大な過失による損害についても賠償責任を負わない。"
+          },
+          {
+            "id": "finding-clause-5-GENERAL-RISK",
+            "title": "[CT01-ja-A05]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "每日1%的违约金折合年化利率极高，远超法律保护上限，存在被法院调减的风险且执行困难。",
+            "evidenceQuote": "甲の支払遅延には契約総額の1％を日額違約金とする。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

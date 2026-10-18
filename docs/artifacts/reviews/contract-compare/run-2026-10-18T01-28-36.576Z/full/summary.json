@@ -1,0 +1,1246 @@
+[
+  {
+    "id": "CMP01",
+    "name": "完全相同负例",
+    "startedAt": "2026-10-18T01:28:36.620Z",
+    "status": "passed",
+    "executionId": "32afa411-1e2e-47e5-a4c9-0f14acb99d5c",
+    "chatMs": 25606,
+    "httpStatus": 201,
+    "businessModels": [],
+    "businessCalls": 0,
+    "metrics": {
+      "addedCount": 0,
+      "isTruncated": false,
+      "deletedCount": 0,
+      "totalClauses": 6,
+      "highRiskCount": 0,
+      "modifiedCount": 0,
+      "unchangedCount": 6,
+      "mediumRiskCount": 0,
+      "sourceClauseCount": 6,
+      "targetClauseCount": 6
+    },
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": true,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "all source bodies preserved",
+        "passed": true,
+        "actual": [],
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "expected per-clause changes",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "negative control has no changes",
+        "passed": true,
+        "actual": [],
+        "category": "FALSE_POSITIVE"
+      },
+      {
+        "name": "diff tokens reconstruct A and B",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "metrics agree with pairs",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 0,
+          "unchangedCount": 6,
+          "mediumRiskCount": 0,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "METRICS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 0,
+          "unchangedCount": 6,
+          "mediumRiskCount": 0,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "artifact downloaded HTML",
+        "passed": true,
+        "actual": {
+          "status": 200,
+          "bytes": 70746,
+          "sha256": "07cc210068494a6ad70a293694217f883703b50491d6184ecb5f339d082d9604",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [],
+    "wallMs": 25776,
+    "finishedAt": "2026-10-18T01:29:02.396Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP02",
+    "name": "付款金额与账期修改",
+    "startedAt": "2026-10-18T01:28:36.631Z",
+    "status": "failed",
+    "executionId": "a09caef0-bb62-407e-9331-91760b4d3c28",
+    "chatMs": 35905,
+    "httpStatus": 201,
+    "businessModels": [],
+    "businessCalls": 0,
+    "metrics": {
+      "addedCount": 0,
+      "isTruncated": false,
+      "deletedCount": 0,
+      "totalClauses": 6,
+      "highRiskCount": 0,
+      "modifiedCount": 1,
+      "unchangedCount": 5,
+      "mediumRiskCount": 1,
+      "sourceClauseCount": 6,
+      "targetClauseCount": 6
+    },
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": true,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "all source bodies preserved",
+        "passed": true,
+        "actual": [],
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "expected per-clause changes",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "diff tokens reconstruct A and B",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "metrics agree with pairs",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 1,
+          "unchangedCount": 5,
+          "mediumRiskCount": 1,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "METRICS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 1,
+          "unchangedCount": 5,
+          "mediumRiskCount": 1,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      },
+      {
+        "name": "semantic result or explicit degradation",
+        "passed": true,
+        "actual": [
+          {
+            "id": "align-3-3",
+            "insight": {
+              "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；付款周期由30日延长至60日，虽合同总价提升20%，但拉长了现金回笼周期并增加了履约逾期与坏账风险。",
+              "keyChange": "付款账期延长一倍且合同金额上调20%",
+              "riskLevel": "MEDIUM",
+              "legalAdvice": "建议核实增额依据并争取阶梯付款（如验收后30日付10万、60日付余款2万），同时明确逾期付款违约金计算标准。",
+              "shortSummary": "付款账期延长一倍且合同金额上调20%"
+            }
+          }
+        ],
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "artifact downloaded HTML",
+        "passed": true,
+        "actual": {
+          "status": 200,
+          "bytes": 76312,
+          "sha256": "b0cb65e63efdd20ba16c9f132c2ff1c6be4d0c1527ae2cf8154f83f74da45d25",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      }
+    ],
+    "wallMs": 36079,
+    "finishedAt": "2026-10-18T01:29:12.710Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP04",
+    "name": "否定词删除改变披露义务",
+    "startedAt": "2026-10-18T01:29:12.710Z",
+    "status": "failed",
+    "executionId": null,
+    "chatMs": 26788,
+    "httpStatus": 201,
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "wallMs": 26799,
+    "finishedAt": "2026-10-18T01:29:39.509Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP03",
+    "name": "新增审计权并删除保密义务",
+    "startedAt": "2026-10-18T01:29:02.397Z",
+    "status": "failed",
+    "executionId": "b95e8c2a-aedc-4541-be21-7d6812fd9db7",
+    "chatMs": 39150,
+    "httpStatus": 201,
+    "businessModels": [],
+    "businessCalls": 0,
+    "metrics": {
+      "addedCount": 1,
+      "isTruncated": false,
+      "deletedCount": 1,
+      "totalClauses": 7,
+      "highRiskCount": 1,
+      "modifiedCount": 0,
+      "unchangedCount": 5,
+      "mediumRiskCount": 1,
+      "sourceClauseCount": 6,
+      "targetClauseCount": 6
+    },
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": true,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "all source bodies preserved",
+        "passed": true,
+        "actual": [],
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "expected per-clause changes",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "diff tokens reconstruct A and B",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "metrics agree with pairs",
+        "passed": true,
+        "actual": {
+          "addedCount": 1,
+          "isTruncated": false,
+          "deletedCount": 1,
+          "totalClauses": 7,
+          "highRiskCount": 1,
+          "modifiedCount": 0,
+          "unchangedCount": 5,
+          "mediumRiskCount": 1,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "METRICS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": {
+          "addedCount": 1,
+          "isTruncated": false,
+          "deletedCount": 1,
+          "totalClauses": 7,
+          "highRiskCount": 1,
+          "modifiedCount": 0,
+          "unchangedCount": 5,
+          "mediumRiskCount": 1,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      },
+      {
+        "name": "semantic result or explicit degradation",
+        "passed": true,
+        "actual": [
+          {
+            "id": "align-del-5",
+            "insight": {
+              "summary": "修订版删除了原合同条款，需评估是否有实质权利减损。；完全删除保密条款致使商业秘密丧失合同法层面的直接约束与违约追责机制，泄密维权举证难度与商业风险敞口剧增。",
+              "keyChange": "删除保密义务及违约追责约束",
+              "riskLevel": "HIGH",
+              "legalAdvice": "坚决恢复保密条款并升级为双向对等保密；明确界定秘密信息范围、使用限制、泄密违约金及合同终止后至少2至3年的保密期限。",
+              "shortSummary": "删除保密义务及违约追责约束"
+            }
+          },
+          {
+            "id": "align-add-6",
+            "insight": {
+              "summary": "修订版新增了独立约定条款，请确认是否超出原商务合作范围。；单方新增高频履约审计权且缺乏程序性制约，易导致被审计方正常经营受扰、核心运营数据外泄及合规成本激增。",
+              "keyChange": "新增单方高频履约审计权",
+              "riskLevel": "MEDIUM",
+              "legalAdvice": "增设程序约束：改为年度审计且须提前10个工作日书面通知；限定在正常营业时间由具保密义务的独立第三方执行；费用由甲方承担。",
+              "shortSummary": "新增单方高频履约审计权"
+            }
+          }
+        ],
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "artifact downloaded HTML",
+        "passed": true,
+        "actual": {
+          "status": 200,
+          "bytes": 82356,
+          "sha256": "8e3085980af2ecb83d6625eea8e8c20dd6a19065148f24405efb66f894333971",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      }
+    ],
+    "wallMs": 39230,
+    "finishedAt": "2026-10-18T01:29:41.627Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP05",
+    "name": "条款整体移动",
+    "startedAt": "2026-10-18T01:29:39.510Z",
+    "status": "failed",
+    "executionId": null,
+    "chatMs": 9679,
+    "httpStatus": 201,
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "wallMs": 9697,
+    "finishedAt": "2026-10-18T01:29:49.207Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP06",
+    "name": "仅条款编号变化",
+    "startedAt": "2026-10-18T01:29:41.628Z",
+    "status": "failed",
+    "executionId": null,
+    "chatMs": 9376,
+    "httpStatus": 201,
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "wallMs": 9391,
+    "finishedAt": "2026-10-18T01:29:51.019Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP07",
+    "name": "真实表格单元格修改",
+    "startedAt": "2026-10-18T01:29:49.208Z",
+    "status": "failed",
+    "executionId": null,
+    "chatMs": 10599,
+    "httpStatus": 201,
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "wallMs": 10616,
+    "finishedAt": "2026-10-18T01:29:59.824Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP08",
+    "name": "日文账期与金额修改",
+    "startedAt": "2026-10-18T01:29:51.019Z",
+    "status": "failed",
+    "executionId": null,
+    "chatMs": 10632,
+    "httpStatus": 201,
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "wallMs": 10653,
+    "finishedAt": "2026-10-18T01:30:01.672Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP09",
+    "name": "双语仅日文发生变化",
+    "startedAt": "2026-10-18T01:29:59.825Z",
+    "status": "failed",
+    "executionId": null,
+    "chatMs": 9005,
+    "httpStatus": 201,
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "wallMs": 9018,
+    "finishedAt": "2026-10-18T01:30:08.843Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP10",
+    "name": "同正文跨DOCX和PDF负例",
+    "startedAt": "2026-10-18T01:30:01.673Z",
+    "status": "failed",
+    "executionId": null,
+    "chatMs": 7781,
+    "httpStatus": 201,
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "wallMs": 7800,
+    "finishedAt": "2026-10-18T01:30:09.473Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP11",
+    "name": "跨PDF和TXT付款修改",
+    "startedAt": "2026-10-18T01:30:08.845Z",
+    "status": "failed",
+    "executionId": null,
+    "chatMs": 8897,
+    "httpStatus": 201,
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "wallMs": 8916,
+    "finishedAt": "2026-10-18T01:30:17.761Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP12",
+    "name": "仅字体排版变化",
+    "startedAt": "2026-10-18T01:30:09.474Z",
+    "status": "failed",
+    "executionId": null,
+    "chatMs": 8988,
+    "httpStatus": 201,
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "wallMs": 8999,
+    "finishedAt": "2026-10-18T01:30:18.473Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP14",
+    "name": "HTML特殊字符安全",
+    "startedAt": "2026-10-18T01:30:18.476Z",
+    "status": "error",
+    "error": "Upload HTTP 400: File CMP14_B.txt contains dangerous active script tags",
+    "wallMs": 23,
+    "finishedAt": "2026-10-18T01:30:18.499Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP13",
+    "name": "重复标题精确配对",
+    "startedAt": "2026-10-18T01:30:17.763Z",
+    "status": "failed",
+    "executionId": null,
+    "chatMs": 8827,
+    "httpStatus": 201,
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "wallMs": 8841,
+    "finishedAt": "2026-10-18T01:30:26.604Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP15",
+    "name": "关闭风险分析参数",
+    "startedAt": "2026-10-18T01:30:18.501Z",
+    "status": "failed",
+    "executionId": null,
+    "chatMs": 9326,
+    "httpStatus": 201,
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "wallMs": 9342,
+    "finishedAt": "2026-10-18T01:30:27.843Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP16",
+    "name": "反向比较验证增删方向",
+    "startedAt": "2026-10-18T01:30:26.605Z",
+    "status": "failed",
+    "executionId": null,
+    "chatMs": 10272,
+    "httpStatus": 201,
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "execution succeeded",
+        "passed": false,
+        "actual": null,
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": false,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "wallMs": 10291,
+    "finishedAt": "2026-10-18T01:30:36.896Z",
+    "sourceDrift": []
+  }
+]

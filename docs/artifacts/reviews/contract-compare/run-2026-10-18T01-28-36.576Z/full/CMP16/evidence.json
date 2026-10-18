@@ -1,0 +1,64 @@
+{
+  "id": "CMP16",
+  "name": "反向比较验证增删方向",
+  "startedAt": "2026-10-18T01:30:26.605Z",
+  "status": "failed",
+  "executionId": null,
+  "chatMs": 10272,
+  "httpStatus": 201,
+  "assertions": [
+    {
+      "name": "HTTP success",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE completed",
+      "passed": true,
+      "actual": null,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "execution succeeded",
+      "passed": false,
+      "actual": null,
+      "category": "STATE"
+    },
+    {
+      "name": "compare skill routed",
+      "passed": false,
+      "actual": null,
+      "category": "ROUTING"
+    },
+    {
+      "name": "compare output exists",
+      "passed": false,
+      "actual": null,
+      "category": "OUTPUT"
+    }
+  ],
+  "failures": [
+    {
+      "name": "execution succeeded",
+      "passed": false,
+      "actual": null,
+      "category": "STATE"
+    },
+    {
+      "name": "compare skill routed",
+      "passed": false,
+      "actual": null,
+      "category": "ROUTING"
+    },
+    {
+      "name": "compare output exists",
+      "passed": false,
+      "actual": null,
+      "category": "OUTPUT"
+    }
+  ],
+  "wallMs": 10291,
+  "finishedAt": "2026-10-18T01:30:36.896Z",
+  "sourceDrift": []
+}

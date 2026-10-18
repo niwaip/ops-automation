@@ -64,7 +64,7 @@ describe('OpenAICompatibleClient', () => {
           },
         ],
       }),
-      expect.objectContaining({ timeout: 90000 })
+      expect.objectContaining({ timeout: 180000 })
     );
   });
 
@@ -109,7 +109,7 @@ describe('OpenAICompatibleClient', () => {
         messages: [{ role: 'user', content: 'hello' }],
         thinking: { type: 'adaptive' },
       }),
-      expect.objectContaining({ timeout: 90000 })
+      expect.objectContaining({ timeout: 180000 })
     );
     expect(postMock.mock.calls[0][1]).not.toHaveProperty('reasoning_effort');
   });
@@ -156,7 +156,7 @@ describe('OpenAICompatibleClient', () => {
         response_format: { type: 'json_object' },
         max_tokens: 4000,
       }),
-      expect.objectContaining({ timeout: 90000 })
+      expect.objectContaining({ timeout: 180000 })
     );
     expect(result).toMatchObject({
       content: '{"markdown_content":"摘要"}',
@@ -192,7 +192,7 @@ describe('OpenAICompatibleClient', () => {
       expect.objectContaining({
         max_tokens: 6000,
       }),
-      expect.objectContaining({ timeout: 90000 })
+      expect.objectContaining({ timeout: 180000 })
     );
     expect(postMock.mock.calls[0][1].reasoning).toBeUndefined();
   });

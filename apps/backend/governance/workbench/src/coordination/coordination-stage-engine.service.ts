@@ -794,6 +794,7 @@ export class CoordinationStageEngineService {
       initiator: context?.initiator,
       workflow: context?.workflow,
       payload: context?.payload,
+      prisma: context?.prisma,
     });
 
     // 3. 将真实执行记录写入 prisma.execution 与 step (若尚未通过 Control Plane 创建)

@@ -19,21 +19,21 @@ export class ParamContextMergeService {
     const recognizedParams = recognized.params || {};
     const recognizedKeys = new Set(Object.keys(recognizedParams));
     const mergedParams = {
-      ...collectedParams,
-      ...recognizedParams,
       ...systemCollected,
+      ...recognizedParams,
+      ...collectedParams,
     };
 
     const mergedFieldConfidences: Record<string, number> = {
-      ...Object.fromEntries(Object.keys(collectedParams).map((key) => [key, 1])),
+      ...Object.fromEntries(Object.keys(systemCollected).map((key) => [key, 0.75])),
       ...(recognized.field_confidences || {}),
-      ...Object.fromEntries(Object.keys(systemCollected).map((key) => [key, 1])),
+      ...Object.fromEntries(Object.keys(collectedParams).map((key) => [key, 1])),
     };
 
     const mergedUncertainFields = (recognized.uncertain_fields || []).filter(
       (field) =>
-        (!Object.prototype.hasOwnProperty.call(collectedParams, field) || recognizedKeys.has(field)) &&
-        !Object.prototype.hasOwnProperty.call(systemCollected, field)
+        !Object.prototype.hasOwnProperty.call(collectedParams, field) &&
+        !recognizedKeys.has(field)
     );
 
     return {

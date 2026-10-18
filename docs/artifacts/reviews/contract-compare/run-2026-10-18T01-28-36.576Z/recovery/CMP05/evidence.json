@@ -1,0 +1,122 @@
+{
+  "id": "CMP05",
+  "name": "条款整体移动",
+  "startedAt": "2026-10-18T01:33:14.197Z",
+  "status": "passed",
+  "executionId": "edd380e9-1010-440e-b3d2-12354cad8369",
+  "chatMs": 16871,
+  "httpStatus": 201,
+  "businessModels": [],
+  "businessCalls": 0,
+  "metrics": {
+    "addedCount": 0,
+    "isTruncated": false,
+    "deletedCount": 0,
+    "totalClauses": 6,
+    "highRiskCount": 0,
+    "modifiedCount": 0,
+    "unchangedCount": 6,
+    "mediumRiskCount": 0,
+    "sourceClauseCount": 6,
+    "targetClauseCount": 6
+  },
+  "assertions": [
+    {
+      "name": "HTTP success",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE completed",
+      "passed": true,
+      "actual": null,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "execution succeeded",
+      "passed": true,
+      "actual": "succeeded",
+      "category": "STATE"
+    },
+    {
+      "name": "compare skill routed",
+      "passed": true,
+      "actual": null,
+      "category": "ROUTING"
+    },
+    {
+      "name": "compare output exists",
+      "passed": true,
+      "actual": null,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "all source bodies preserved",
+      "passed": true,
+      "actual": [],
+      "category": "EXTRACTION"
+    },
+    {
+      "name": "expected per-clause changes",
+      "passed": true,
+      "actual": [],
+      "category": "DIFF"
+    },
+    {
+      "name": "diff tokens reconstruct A and B",
+      "passed": true,
+      "actual": [],
+      "category": "DIFF"
+    },
+    {
+      "name": "metrics agree with pairs",
+      "passed": true,
+      "actual": {
+        "addedCount": 0,
+        "isTruncated": false,
+        "deletedCount": 0,
+        "totalClauses": 6,
+        "highRiskCount": 0,
+        "modifiedCount": 0,
+        "unchangedCount": 6,
+        "mediumRiskCount": 0,
+        "sourceClauseCount": 6,
+        "targetClauseCount": 6
+      },
+      "category": "METRICS"
+    },
+    {
+      "name": "not truncated",
+      "passed": true,
+      "actual": {
+        "addedCount": 0,
+        "isTruncated": false,
+        "deletedCount": 0,
+        "totalClauses": 6,
+        "highRiskCount": 0,
+        "modifiedCount": 0,
+        "unchangedCount": 6,
+        "mediumRiskCount": 0,
+        "sourceClauseCount": 6,
+        "targetClauseCount": 6
+      },
+      "category": "EXTRACTION"
+    },
+    {
+      "name": "artifact downloaded HTML",
+      "passed": true,
+      "actual": {
+        "status": 200,
+        "bytes": 72168,
+        "sha256": "b263c0b319fa286067180fd503cd025b71d34b2fb36108bfb867121cc3f356f9",
+        "html": true
+      },
+      "category": "DELIVERY"
+    }
+  ],
+  "failures": [],
+  "wallMs": 16938,
+  "finishedAt": "2026-10-18T01:33:31.135Z",
+  "sourceDrift": []
+}

@@ -1,0 +1,141 @@
+[
+  {
+    "marker": "CT05-ja-A03",
+    "topic": "risk_acceptance",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "2日验收期过短，买方无合理时间测试，极易因逾期自动视为验收合格。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT05-ja-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "2日验收期过短，买方无合理时间测试，极易因逾期自动视为验收合格。",
+            "evidenceQuote": "納入メール後2日以内に甲が書面拒絶しなければ合格とみなす。"
+          },
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT05-ja-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "明确排除安全漏洞作为拒收理由，导致存在安全隐患的系统仍被视为合格，风险极高。",
+            "evidenceQuote": "未修正のセキュリティ脆弱性は検収に影響しない。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-ja-A04",
+    "topic": "risk_ip",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "定制化成果版权应归买方所有，现归卖方；且1年使用期届满后授权终止，导致业务中断风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT05-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "定制化成果版权应归买方所有，现归卖方；且1年使用期届满后授权终止，导致业务中断风险。",
+            "evidenceQuote": "全ての専用開発成果及びソースコードの著作権は乙に帰属する。甲には更新できない1年間の社内利用権のみを付与する。"
+          },
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT05-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "限制仅为‘1年’且‘不可更新’，严重限制买方长期商用权利，且排除续期可能。",
+            "evidenceQuote": "甲には更新できない1年間の社内利用権のみを付与する。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-ja-A06",
+    "topic": "risk_third_party_ip",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "约定所有第三方权利主张均由甲方承担，免除乙方对交付物知识产权瑕疵的担保责任，极大增加甲方法律风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT05-ja-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "约定所有第三方权利主张均由甲方承担，免除乙方对交付物知识产权瑕疵的担保责任，极大增加甲方法律风险。",
+            "evidenceQuote": "第三者からの全ての権利主張は甲が負担する。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-ja-A08",
+    "topic": "risk_unfilled",
+    "matchedClauseIndices": [
+      8
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "约定由对方所在地法院管辖，一旦发生争议我方将面临高昂的异地诉讼维权成本与潜在地方司法保护阻力。",
+        "legalAdvice": "建议约定由“原告所在地（我方住所地）人民法院”管辖，或选择中立权威仲裁委员会解决。",
+        "findings": [
+          {
+            "id": "finding-clause-8",
+            "title": "争议司法管辖约定对我方不利",
+            "category": "DISPUTE_AND_GOVERNING",
+            "severity": "HIGH",
+            "legalAdvice": "建议约定由“原告所在地（我方住所地）人民法院”管辖，或选择中立权威仲裁委员会解决。",
+            "riskSummary": "约定由对方所在地法院管辖，一旦发生争议我方将面临高昂的异地诉讼维权成本与潜在地方司法保护阻力。",
+            "recommendedRevision": "由原告所在地有管辖权的人民法院管辖"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

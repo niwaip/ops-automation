@@ -252,6 +252,7 @@ export interface RecognizeParamsDTO {
   template_id: string;
   user_input: string;
   modelId?: string;
+  model?: string;
   fallbackMode?: 'basic' | 'none';
   /**
    * `schema_only` keeps the LLM's semantic extraction authoritative and only

@@ -1,0 +1,231 @@
+[
+  {
+    "elapsedMs": 15,
+    "event": {
+      "type": "thought",
+      "content": "正在规划任务...",
+      "seq": 1,
+      "protocolVersion": "1",
+      "sessionId": "corpus-META-ALIGNED-30-30-txt-1792250787614",
+      "traceId": "1d8da8af-db38-4294-b65a-f2962fbd46be",
+      "data": {
+        "traceId": "1d8da8af-db38-4294-b65a-f2962fbd46be"
+      }
+    }
+  },
+  {
+    "elapsedMs": 15,
+    "event": {
+      "type": "thought",
+      "content": "正在获取用户可用 Skill 列表并进行确定性多步骤任务拆分规划...",
+      "seq": 2,
+      "protocolVersion": "1",
+      "sessionId": "corpus-META-ALIGNED-30-30-txt-1792250787614",
+      "traceId": "1d8da8af-db38-4294-b65a-f2962fbd46be",
+      "data": {
+        "traceId": "1d8da8af-db38-4294-b65a-f2962fbd46be"
+      }
+    }
+  },
+  {
+    "elapsedMs": 24231,
+    "event": {
+      "type": "thought",
+      "content": "已成功冻结 1 步骤执行计划 (ID: f29a1c66-61bb-4658-b080-fe06b09fe721)，控制面已按拓扑顺序调度运行。",
+      "seq": 3,
+      "protocolVersion": "1",
+      "sessionId": "corpus-META-ALIGNED-30-30-txt-1792250787614",
+      "traceId": "1d8da8af-db38-4294-b65a-f2962fbd46be",
+      "data": {
+        "traceId": "1d8da8af-db38-4294-b65a-f2962fbd46be"
+      }
+    }
+  },
+  {
+    "elapsedMs": 24232,
+    "event": {
+      "type": "thought",
+      "content": "已为你生成静态任务计划：\n\n1. 合同文档智能审查与合规诊断 - Skill: platform.document.contract-reviewer@1.0.2 (workflow)\n\n执行单 ID: `f29a1c66-61bb-4658-b080-fe06b09fe721`。正在跟踪流程执行状态...\n",
+      "data": {
+        "executionId": "f29a1c66-61bb-4658-b080-fe06b09fe721",
+        "status": "running",
+        "deterministicPlan": {
+          "objective": "请对附件这一份合同进行合同审查，我方为甲方（经销商）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+          "nodes": [
+            {
+              "nodeId": "n1_合同文档智能审查与合规诊断",
+              "sequence": 1,
+              "title": "合同文档智能审查与合规诊断",
+              "kind": "skill",
+              "skillId": "platform.document.contract-reviewer",
+              "skillVersion": "1.0.2",
+              "runtimeType": "workflow",
+              "executionRuntimeType": "workflow",
+              "dependsOn": [],
+              "inputBindings": {
+                "fileUrl": {
+                  "source": "user_input",
+                  "path": "fileUrl"
+                },
+                "fileName": {
+                  "source": "user_input",
+                  "path": "fileName"
+                },
+                "fileBase64": {
+                  "source": "user_input",
+                  "path": "fileBase64"
+                },
+                "downloadUrl": {
+                  "source": "user_input",
+                  "path": "downloadUrl"
+                },
+                "contractType": {
+                  "source": "user_input",
+                  "path": "contractType"
+                },
+                "prompt": {
+                  "source": "literal",
+                  "value": "请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。"
+                },
+                "myPosition": {
+                  "source": "literal",
+                  "value": "甲方"
+                },
+                "customCheckpoints": {
+                  "source": "literal",
+                  "value": [
+                    "我方义务",
+                    "责任",
+                    "数据或知识产权",
+                    "付款",
+                    "退出安排"
+                  ]
+                }
+              },
+              "outputContract": {
+                "clauses": "json",
+                "metrics": "json",
+                "summary": "string",
+                "artifact": "artifact_ref",
+                "artifacts": "json",
+                "htmlReport": "string",
+                "myPosition": "string",
+                "contractType": "string",
+                "missingClauses": "json",
+                "contractTypeName": "string"
+              },
+              "failurePolicy": "abort",
+              "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+            }
+          ],
+          "finalOutputs": [
+            {
+              "targetField": "result",
+              "fromNodeId": "n1_合同文档智能审查与合规诊断",
+              "fromNodeOutput": "artifact",
+              "expectedType": "artifact_ref",
+              "isArtifact": true
+            },
+            {
+              "targetField": "summary",
+              "fromNodeId": "n1_合同文档智能审查与合规诊断",
+              "fromNodeOutput": "summary",
+              "expectedType": "string",
+              "isArtifact": false
+            }
+          ]
+        },
+        "traceId": "1d8da8af-db38-4294-b65a-f2962fbd46be"
+      },
+      "seq": 4,
+      "protocolVersion": "1",
+      "sessionId": "corpus-META-ALIGNED-30-30-txt-1792250787614",
+      "traceId": "1d8da8af-db38-4294-b65a-f2962fbd46be"
+    }
+  },
+  {
+    "elapsedMs": 24238,
+    "event": {
+      "type": "action",
+      "content": "正在执行：platform.document.contract-reviewer",
+      "data": {
+        "stepId": "609b8386-f6ac-4fdf-b237-39a8a495a256",
+        "traceId": "1d8da8af-db38-4294-b65a-f2962fbd46be"
+      },
+      "seq": 5,
+      "protocolVersion": "1",
+      "sessionId": "corpus-META-ALIGNED-30-30-txt-1792250787614",
+      "traceId": "1d8da8af-db38-4294-b65a-f2962fbd46be"
+    }
+  },
+  {
+    "elapsedMs": 24748,
+    "event": {
+      "type": "error",
+      "content": "步骤执行失败: INPUT_SCHEMA_VIOLATION for node 'n1_合同文档智能审查与合规诊断': /customCheckpoints/0 (type): must be object; /customCheckpoints/1 (type): must be object; /customCheckpoints/2 (type): must be object; /customCheckpoints/3 (type): must be object; /customCheckpoints/4 (type): must be object",
+      "data": {
+        "stepId": "609b8386-f6ac-4fdf-b237-39a8a495a256",
+        "error": "INPUT_SCHEMA_VIOLATION for node 'n1_合同文档智能审查与合规诊断': /customCheckpoints/0 (type): must be object; /customCheckpoints/1 (type): must be object; /customCheckpoints/2 (type): must be object; /customCheckpoints/3 (type): must be object; /customCheckpoints/4 (type): must be object",
+        "phaseStatus": "failed",
+        "shouldTakeover": false,
+        "traceId": "1d8da8af-db38-4294-b65a-f2962fbd46be"
+      },
+      "seq": 6,
+      "protocolVersion": "1",
+      "sessionId": "corpus-META-ALIGNED-30-30-txt-1792250787614",
+      "traceId": "1d8da8af-db38-4294-b65a-f2962fbd46be"
+    }
+  },
+  {
+    "elapsedMs": 24758,
+    "event": {
+      "type": "result",
+      "content": "❌ 任务执行失败\n\n原因：步骤「合同文档智能审查与合规诊断」输入参数校验未通过：1. 参数【0】类型不符，期望为 object；2. 参数【1】类型不符，期望为 object；3. 参数【2】类型不符，期望为 object；4. 参数【3】类型不符，期望为 object；5. 参数【4】类型不符，期望为 object。\n\n[技术细节] Node 'n1_合同文档智能审查与合规诊断' failed: INPUT_SCHEMA_VIOLATION for node 'n1_合同文档智能审查与合规诊断': /customCheckpoints/0 (type): must be object; /customCheckpoints/1 (type): must be object; /customCheckpoints/2 (type): must be object; /customCheckpoints/3 (type): must be object; /customCheckpoints/4 (type): must be object\n\n执行单 ID: f29a1c66-61bb-4658-b080-fe06b09fe721",
+      "data": {
+        "executionId": "f29a1c66-61bb-4658-b080-fe06b09fe721",
+        "status": "failed",
+        "failureReason": "步骤「合同文档智能审查与合规诊断」输入参数校验未通过：1. 参数【0】类型不符，期望为 object；2. 参数【1】类型不符，期望为 object；3. 参数【2】类型不符，期望为 object；4. 参数【3】类型不符，期望为 object；5. 参数【4】类型不符，期望为 object。\n\n[技术细节] Node 'n1_合同文档智能审查与合规诊断' failed: INPUT_SCHEMA_VIOLATION for node 'n1_合同文档智能审查与合规诊断': /customCheckpoints/0 (type): must be object; /customCheckpoints/1 (type): must be object; /customCheckpoints/2 (type): must be object; /customCheckpoints/3 (type): must be object; /customCheckpoints/4 (type): must be object",
+        "hasBusinessResult": false,
+        "chatSummary": "❌ 任务执行失败\n\n原因：步骤「合同文档智能审查与合规诊断」输入参数校验未通过：1. 参数【0】类型不符，期望为 object；2. 参数【1】类型不符，期望为 object；3. 参数【2】类型不符，期望为 object；4. 参数【3】类型不符，期望为 object；5. 参数【4】类型不符，期望为 object。\n\n[技术细节] Node 'n1_合同文档智能审查与合规诊断' failed: INPUT_SCHEMA_VIOLATION for node 'n1_合同文档智能审查与合规诊断': /customCheckpoints/0 (type): must be object; /customCheckpoints/1 (type): must be object; /customCheckpoints/2 (type): must be object; /customCheckpoints/3 (type): must be object; /customCheckpoints/4 (type): must be object",
+        "summaryFormat": "markdown",
+        "usage": null,
+        "traceId": "1d8da8af-db38-4294-b65a-f2962fbd46be"
+      },
+      "seq": 7,
+      "protocolVersion": "1",
+      "sessionId": "corpus-META-ALIGNED-30-30-txt-1792250787614",
+      "traceId": "1d8da8af-db38-4294-b65a-f2962fbd46be"
+    }
+  },
+  {
+    "elapsedMs": 24760,
+    "event": {
+      "type": "session_patch",
+      "sessionId": "corpus-META-ALIGNED-30-30-txt-1792250787614",
+      "content": "",
+      "data": {
+        "title": "请对附件这一份合同进行合同审查，我方为甲方（经销",
+        "status": "active",
+        "updatedAt": "2026-10-17T15:26:52.371Z",
+        "traceId": "1d8da8af-db38-4294-b65a-f2962fbd46be"
+      },
+      "seq": 8,
+      "protocolVersion": "1",
+      "traceId": "1d8da8af-db38-4294-b65a-f2962fbd46be"
+    }
+  },
+  {
+    "elapsedMs": 24761,
+    "event": {
+      "type": "done",
+      "content": "Stream completed",
+      "seq": 9,
+      "protocolVersion": "1",
+      "sessionId": "corpus-META-ALIGNED-30-30-txt-1792250787614",
+      "traceId": "1d8da8af-db38-4294-b65a-f2962fbd46be",
+      "data": {
+        "traceId": "1d8da8af-db38-4294-b65a-f2962fbd46be"
+      }
+    }
+  }
+]

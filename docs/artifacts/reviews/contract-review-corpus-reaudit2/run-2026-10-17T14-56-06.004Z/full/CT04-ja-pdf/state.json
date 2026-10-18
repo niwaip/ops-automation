@@ -1,0 +1,311 @@
+{
+  "id": "CT04-ja-pdf",
+  "caseId": "CT04-ja",
+  "business": "distribution",
+  "language": "ja",
+  "format": "pdf",
+  "file": "contracts/distribution/CT04-ja.pdf",
+  "fixtureSha256": "bb40ebec0a85b9632375af5a61b01b5045c1801be5d571f4dcc3950e26a49895",
+  "status": "failed",
+  "startedAt": "2026-10-17T15:10:22.077Z",
+  "uploadMs": 8,
+  "sessionId": "corpus-CT04-ja-pdf-1792249822086",
+  "executionId": "2bf16776-51d0-4af9-b603-bdb4f9d1f3e9",
+  "traceIds": [
+    "a0b727b0-455b-4bed-8704-1b42e7c7d15a"
+  ],
+  "chatMs": 46780,
+  "firstEventMs": 37,
+  "streamError": null,
+  "executionStatus": "succeeded",
+  "actualCapabilities": [
+    "platform.document.contract-reviewer"
+  ],
+  "recognizerModels": [
+    "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+  ],
+  "recognizerErrors": [],
+  "semanticTopics": 4,
+  "topicsWithoutRiskSignal": [],
+  "metrics": {
+    "warnings": [
+      "批次 1 模型响应未能解析为有效 JSON 数组 (INVALID_JSON_RESPONSE)，条款 [1, 2, 3] 已降级为静态规则校验。",
+      "检测到 3 条条款未能完成大模型语义审查（已回退为静态规则校验），建议重点人工复核。"
+    ],
+    "passCount": 0,
+    "isDegraded": true,
+    "healthScore": 37,
+    "isTruncated": false,
+    "lowRiskCount": 3,
+    "totalClauses": 9,
+    "highRiskCount": 0,
+    "mediumRiskCount": 6,
+    "llmReviewedCount": 6,
+    "missingClausesCount": 2,
+    "unfilledBlanksTotal": 0,
+    "degradedClausesCount": 3,
+    "unfilledVariablesCount": 0
+  },
+  "contractType": "general",
+  "myPosition": "buyer",
+  "observedUsage": [
+    {
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 900,
+      "outputTokens": 588
+    },
+    {
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 886,
+      "outputTokens": 499
+    },
+    {
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 906,
+      "outputTokens": 454
+    }
+  ],
+  "previousGateStatus": "failed",
+  "assertions": [
+    {
+      "name": "upload returned attachment",
+      "passed": true,
+      "actual": null,
+      "category": "UPLOAD"
+    },
+    {
+      "name": "chat HTTP success",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE finished",
+      "passed": true,
+      "actual": "done",
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "contract skill executed",
+      "passed": true,
+      "actual": [
+        "platform.document.contract-reviewer"
+      ],
+      "category": "ROUTING"
+    },
+    {
+      "name": "persistent execution succeeded",
+      "passed": true,
+      "actual": "succeeded",
+      "category": "STATE"
+    },
+    {
+      "name": "structured output exists",
+      "passed": true,
+      "actual": null,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "recognizer no conflicting model or error",
+      "passed": true,
+      "actual": {
+        "observedModels": [
+          "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+        ],
+        "errors": []
+      },
+      "category": "MODEL_RECOGNIZER"
+    },
+    {
+      "name": "all eight article markers covered",
+      "passed": true,
+      "actual": [],
+      "category": "PARSE"
+    },
+    {
+      "name": "every source article language retained",
+      "passed": true,
+      "actual": [],
+      "category": "PARSE"
+    },
+    {
+      "name": "clause indices unique",
+      "passed": true,
+      "actual": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "category": "OUTPUT"
+    },
+    {
+      "name": "metrics consistent",
+      "passed": true,
+      "actual": {
+        "warnings": [
+          "批次 1 模型响应未能解析为有效 JSON 数组 (INVALID_JSON_RESPONSE)，条款 [1, 2, 3] 已降级为静态规则校验。",
+          "检测到 3 条条款未能完成大模型语义审查（已回退为静态规则校验），建议重点人工复核。"
+        ],
+        "passCount": 0,
+        "isDegraded": true,
+        "healthScore": 37,
+        "isTruncated": false,
+        "lowRiskCount": 3,
+        "totalClauses": 9,
+        "highRiskCount": 0,
+        "mediumRiskCount": 6,
+        "llmReviewedCount": 6,
+        "missingClausesCount": 2,
+        "unfilledBlanksTotal": 0,
+        "degradedClausesCount": 3,
+        "unfilledVariablesCount": 0
+      },
+      "category": "OUTPUT"
+    },
+    {
+      "name": "score in range",
+      "passed": true,
+      "actual": 37,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "semantic review complete",
+      "passed": false,
+      "actual": {
+        "reviewed": 6,
+        "total": 9,
+        "warnings": [
+          "批次 1 模型响应未能解析为有效 JSON 数组 (INVALID_JSON_RESPONSE)，条款 [1, 2, 3] 已降级为静态规则校验。",
+          "检测到 3 条条款未能完成大模型语义审查（已回退为静态规则校验），建议重点人工复核。"
+        ]
+      },
+      "category": "SEMANTIC_COMPLETENESS"
+    },
+    {
+      "name": "not truncated",
+      "passed": true,
+      "actual": false,
+      "category": "PARSE"
+    },
+    {
+      "name": "business model ledger present",
+      "passed": true,
+      "actual": 3,
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "requested model actually used",
+      "passed": true,
+      "actual": [
+        "qwen36-35b-a3b"
+      ],
+      "category": "MODEL"
+    },
+    {
+      "name": "degraded clauses have structured diagnostic",
+      "passed": true,
+      "actual": [
+        {
+          "clauseIndex": 0,
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 8317,
+            "rawSnippet": "[\n  {\n    \"clauseIndex\": 0,\n    \"riskLevel\": \"PASS\",\n    \"riskSummary\": \"条款权责明确，主体信息清晰，无实质风险\",\n    \"findings\": []\n  },\n  {\n    \"clauseIndex\": 1,\n    \"riskLevel\": \"HIGH\",\n    \"riskSummary\": \"核心授权范围模糊，缺乏交付标准与知识产权归属约定，严重损害买方/委托方权益\",\n    \"findings\": [\n      {\n        \"ruleId\": \"GENERAL-RISK\",\n        \"v",
+            "validationFailureCode": "INVALID_JSON_RESPONSE"
+          }
+        },
+        {
+          "clauseIndex": 1,
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 8317,
+            "rawSnippet": "[\n  {\n    \"clauseIndex\": 0,\n    \"riskLevel\": \"PASS\",\n    \"riskSummary\": \"条款权责明确，主体信息清晰，无实质风险\",\n    \"findings\": []\n  },\n  {\n    \"clauseIndex\": 1,\n    \"riskLevel\": \"HIGH\",\n    \"riskSummary\": \"核心授权范围模糊，缺乏交付标准与知识产权归属约定，严重损害买方/委托方权益\",\n    \"findings\": [\n      {\n        \"ruleId\": \"GENERAL-RISK\",\n        \"v",
+            "validationFailureCode": "INVALID_JSON_RESPONSE"
+          }
+        },
+        {
+          "clauseIndex": 2,
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 8317,
+            "rawSnippet": "[\n  {\n    \"clauseIndex\": 0,\n    \"riskLevel\": \"PASS\",\n    \"riskSummary\": \"条款权责明确，主体信息清晰，无实质风险\",\n    \"findings\": []\n  },\n  {\n    \"clauseIndex\": 1,\n    \"riskLevel\": \"HIGH\",\n    \"riskSummary\": \"核心授权范围模糊，缺乏交付标准与知识产权归属约定，严重损害买方/委托方权益\",\n    \"findings\": [\n      {\n        \"ruleId\": \"GENERAL-RISK\",\n        \"v",
+            "validationFailureCode": "INVALID_JSON_RESPONSE"
+          }
+        }
+      ],
+      "category": "DIAGNOSTICS"
+    },
+    {
+      "name": "original artifact URL downloads HTML",
+      "passed": true,
+      "actual": {
+        "url": "http://192.168.100.143:3009/renders/221eccad62676c11aa1cd972f30247f7.html",
+        "status": 200,
+        "bytes": 339837,
+        "sha256": "d8ce795559081bcd8ccd14677da3f0c181f734f4c046bb8c8d21fa9602fba1ae",
+        "html": true
+      },
+      "category": "DELIVERY"
+    }
+  ],
+  "failures": [
+    {
+      "name": "semantic review complete",
+      "passed": false,
+      "actual": {
+        "reviewed": 6,
+        "total": 9,
+        "warnings": [
+          "批次 1 模型响应未能解析为有效 JSON 数组 (INVALID_JSON_RESPONSE)，条款 [1, 2, 3] 已降级为静态规则校验。",
+          "检测到 3 条条款未能完成大模型语义审查（已回退为静态规则校验），建议重点人工复核。"
+        ]
+      },
+      "category": "SEMANTIC_COMPLETENESS"
+    }
+  ],
+  "semanticStatus": "pending_independent_review",
+  "sourceDigestsAtStart": {
+    "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+    "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+    "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+    "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+    "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+    "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+  },
+  "sourceDigestsAtEnd": {
+    "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+    "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+    "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+    "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+    "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+    "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+  },
+  "sourceDrift": [],
+  "wallMs": 46829,
+  "finishedAt": "2026-10-17T15:11:08.906Z"
+}

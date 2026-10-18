@@ -1,0 +1,181 @@
+[
+  {
+    "marker": "CT04-zh-ja-A02",
+    "topic": "risk_internal_conflict",
+    "matchedClauseIndices": [
+      2
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "乙方直接销售权无限制且可另寻经销商，导致甲方'独家'权利名存实亡，构成重大商业风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-2-GENERAL-RISK",
+            "title": "[CT04-zh-ja-A02]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "乙方直接销售权无限制且可另寻经销商，导致甲方'独家'权利名存实亡，构成重大商业风险。",
+            "evidenceQuote": "甲方享有区域独家销售权；乙方可不受限制地直接向区域客户销售并另行指定其他经销商。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-zh-ja-A03",
+    "topic": "risk_target",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "卖方缺货未构成免责事由，强制买方补足差额违反公平原则，显失公平且可能无效。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT04-zh-ja-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "卖方缺货未构成免责事由，强制买方补足差额违反公平原则，显失公平且可能无效。",
+            "evidenceQuote": "即使乙方缺货也不得调减目标，未达标须补足差额"
+          },
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT04-zh-ja-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "设定固定高额最低采购额，限制买方根据市场情况调整采购规模的自主权。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-zh-ja-A04",
+    "topic": "risk_resale_price_review",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "设定最低转售价格（RPM）违反《反垄断法》，涉嫌纵向垄断协议，条款面临无效风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT04-zh-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "设定最低转售价格（RPM）违反《反垄断法》，涉嫌纵向垄断协议，条款面临无效风险。",
+            "evidenceQuote": "甲方须遵守乙方确定的最低转售价格"
+          },
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT04-zh-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "单方终止授权及取消返利缺乏合理依据与比例原则，属过度违约惩罚，严重损害买方权益。",
+            "evidenceQuote": "低价销售即取消全部返利并终止授权"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-zh-ja-A07",
+    "topic": "risk_inventory_exit",
+    "matchedClauseIndices": [
+      7
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "乙方享有单方无理由解除权且我方需承担库存报废损失，严重偏向乙方，存在重大商业与法律风险。",
+        "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+        "findings": [
+          {
+            "id": "finding-clause-7-CUST-1",
+            "title": "重点检查我方义务、责任、数据或知识产权、付款...",
+            "ruleId": "prompt-rule-1",
+            "category": "审查Prompt专项要点",
+            "ruleCode": "CUST-1",
+            "severity": "HIGH",
+            "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+            "riskSummary": "乙方享有单方无理由解除权且我方需承担库存报废损失，严重偏向乙方，存在重大商业与法律风险。"
+          },
+          {
+            "id": "finding-clause-7-GENERAL-RISK",
+            "title": "[CT04-zh-ja-A07]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "赋予服务商单方任意解除权且无对价补偿，违反合同法公平原则，极易引发争议。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-zh-ja-A08",
+    "topic": "bilingual_conflict_30_60",
+    "matchedClauseIndices": [
+      8
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "中文约定付款期为30日，日文约定为60日。即便约定中文优先，双语数值冲突仍构成重大履约标准不一的风险。",
+        "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+        "findings": [
+          {
+            "id": "finding-clause-8-CUST-1",
+            "title": "重点检查我方义务、责任、数据或知识产权、付款...",
+            "ruleId": "prompt-rule-1",
+            "category": "审查Prompt专项要点",
+            "ruleCode": "CUST-1",
+            "severity": "HIGH",
+            "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+            "riskSummary": "中文约定付款期为30日，日文约定为60日。即便约定中文优先，双语数值冲突仍构成重大履约标准不一的风险。",
+            "recommendedRevision": "付款与文本：甲方收货后三十日支付货款，结算币种为人民币；中日文本冲突时中文优先。\n支払及び言語：甲は受領後60日以内に代金を支払う。決済通貨は人民元とし、両言語に相違がある場合は中国語を優先する。\n甲方代表 / 甲代表：星桥测试担当     乙方代表 / 乙代表：青空試験担当"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

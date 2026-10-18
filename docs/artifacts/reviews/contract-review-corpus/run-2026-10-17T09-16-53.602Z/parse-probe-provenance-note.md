@@ -1,0 +1,1 @@
+原始报告中的三份 parse-probe 文件在后续复测时被旧临时脚本覆盖。当前 parse-probe-*.json 是后续修复版本的复测响应，不能作为原始运行的解析证据。原始54例的 execution/output/SSE、compiled-docx-probe 与服务日志未被覆盖，原结论可由这些证据复核。后续响应另保存于 docs/artifacts/reviews/contract-review-corpus-reaudit/run-2026-10-17T13-00-30.226Z。

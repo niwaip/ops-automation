@@ -1,0 +1,19 @@
+{
+  "message": "请审查附件合同，我方为买方，并生成审查报告。",
+  "sessionId": "crw-C06-1792165011787",
+  "config": {
+    "mode": "task",
+    "thinking": true,
+    "webSearch": false,
+    "workspaceSearch": false,
+    "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+  },
+  "files": [
+    {
+      "fileName": "corrupt.docx",
+      "fileSize": 8,
+      "fileType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "fileBase64": "data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,UEsDBP8Agf4="
+    }
+  ]
+}

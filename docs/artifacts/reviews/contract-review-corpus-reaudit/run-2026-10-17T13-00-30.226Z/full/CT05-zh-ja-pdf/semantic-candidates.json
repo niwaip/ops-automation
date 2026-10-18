@@ -1,0 +1,124 @@
+[
+  {
+    "marker": "CT05-zh-ja-A03",
+    "topic": "risk_acceptance",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "强制接受存在安全缺陷的交付物，严重损害甲方系统安全与业务连续性，属根本性违约风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT05-zh-ja-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "强制接受存在安全缺陷的交付物，严重损害甲方系统安全与业务连续性，属根本性违约风险。",
+            "evidenceQuote": "任何未修复安全漏洞不影响验收"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-ja-A04",
+    "topic": "risk_ip",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "定制开发核心资产（源码及著作权）未归甲方所有，且授权期限过短不可续展，导致甲方长期依赖乙方，丧失资产控制权。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT05-zh-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "定制开发核心资产（源码及著作权）未归甲方所有，且授权期限过短不可续展，导致甲方长期依赖乙方，丧失资产控制权。",
+            "evidenceQuote": "全部定制开发成果及源代码著作权归乙方；甲方仅取得一年期不可续展的内部使用许可"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-ja-A06",
+    "topic": "risk_third_party_ip",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "免除乙方开源组件合规审查及知识产权担保义务，导致甲方面临侵权诉讼风险且无追偿依据。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT05-zh-ja-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "免除乙方开源组件合规审查及知识产权担保义务，导致甲方面临侵权诉讼风险且无追偿依据。",
+            "evidenceQuote": "乙方可自由引入任意第三方组件，无需提供许可清单，甲方自行承担全部第三方权利主张。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-ja-A08",
+    "topic": "risk_unfilled",
+    "matchedClauseIndices": [
+      8
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "约定被告所在地管辖可能增加我方异地诉讼成本，建议争取由合同履行地或我方所在地管辖。",
+        "legalAdvice": "建议约定由“原告所在地（我方住所地）人民法院”管辖，或选择中立权威仲裁委员会解决。",
+        "findings": [
+          {
+            "id": "finding-clause-8-COMM-01",
+            "title": "争议司法管辖约定对我方不利",
+            "ruleId": "comm_dispute_unfavorable_forum",
+            "category": "DISPUTE_AND_GOVERNING",
+            "ruleCode": "COMM-01",
+            "severity": "HIGH",
+            "legalAdvice": "建议约定由“原告所在地（我方住所地）人民法院”管辖，或选择中立权威仲裁委员会解决。",
+            "riskSummary": "约定被告所在地管辖可能增加我方异地诉讼成本，建议争取由合同履行地或我方所在地管辖。",
+            "evidenceQuote": "争议由被告住所地法院处理。",
+            "recommendedRevision": "由原告所在地有管辖权的人民法院管辖"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "status": 200,
+  "data": [
+    {
+      "id": "bf24a05a-c11c-40de-88aa-04ed751aee4d",
+      "executionId": "1d633f13-b112-46b6-bf15-4515a799a1de",
+      "stepId": "849e6cd5-5437-4162-b74a-eaaef584e412",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 685,
+      "outputTokens": 199,
+      "cachedTokens": 0,
+      "estimatedCost": "0.002564",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T09:17:11.870Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "97090822ed0e0d644c126268dc25afce5feb82f28b189ce63c120aff62f43e11",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    }
+  ]
+}

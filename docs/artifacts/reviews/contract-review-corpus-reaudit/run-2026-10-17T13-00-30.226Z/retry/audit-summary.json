@@ -1,0 +1,173 @@
+{
+  "cases": 3,
+  "runnerCounts": {
+    "passed": 2,
+    "failed": 1
+  },
+  "executionCounts": {
+    "succeeded": 3
+  },
+  "byFormat": {
+    "docx": {
+      "total": 2,
+      "runnerPassed": 2,
+      "sourceCovered": 2
+    },
+    "pdf": {
+      "total": 0,
+      "runnerPassed": 0,
+      "sourceCovered": 0
+    },
+    "txt": {
+      "total": 1,
+      "runnerPassed": 0,
+      "sourceCovered": 1
+    }
+  },
+  "provenanceFailures": [],
+  "businessModel": "qwen36-35b-a3b",
+  "observedBusinessCalls": 9,
+  "observedInputTokens": 7311,
+  "observedOutputTokens": 4392,
+  "degradedCases": [
+    "CT05-ja-txt"
+  ],
+  "recognizerErrorCases": 0,
+  "knownTypeMismatches": [
+    "CT05-ja-docx",
+    "CT06-ja-docx",
+    "CT05-ja-txt"
+  ],
+  "elapsedMinutes": 1.7593666666666665,
+  "chatMedianMs": 35396,
+  "chatMaxMs": 38220,
+  "results": [
+    {
+      "id": "CT05-ja-docx",
+      "caseId": "CT05-ja",
+      "business": "development",
+      "language": "ja",
+      "format": "docx",
+      "executionId": "9b9030d9-ad6c-4706-930c-b0e284d92540",
+      "status": "passed",
+      "executionStatus": "succeeded",
+      "integrity": {
+        "fixture_digest": true,
+        "task_mode": true,
+        "requested_35b": true,
+        "identity": true,
+        "done": true,
+        "actual_model_35b": true,
+        "artifact_digest": true
+      },
+      "missingMarkers": [],
+      "markerCoverage": 8,
+      "totalClauses": 9,
+      "semanticReviewed": 9,
+      "degraded": false,
+      "warnings": [],
+      "contractType": "general",
+      "expectedType": "software_development",
+      "typeMatches": false,
+      "position": "buyer",
+      "positionSource": "user_confirmed",
+      "recognizerModels": [
+        "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+      ],
+      "recognizerErrors": [],
+      "chatMs": 38220,
+      "uploadMs": 7,
+      "wallMs": 38379,
+      "calls": 3,
+      "inputTokens": 2482,
+      "outputTokens": 1617,
+      "failureNames": []
+    },
+    {
+      "id": "CT06-ja-docx",
+      "caseId": "CT06-ja",
+      "business": "lease",
+      "language": "ja",
+      "format": "docx",
+      "executionId": "0f7dc6d4-123a-4ece-946e-ebe830e483bf",
+      "status": "passed",
+      "executionStatus": "succeeded",
+      "integrity": {
+        "fixture_digest": true,
+        "task_mode": true,
+        "requested_35b": true,
+        "identity": true,
+        "done": true,
+        "actual_model_35b": true,
+        "artifact_digest": true
+      },
+      "missingMarkers": [],
+      "markerCoverage": 8,
+      "totalClauses": 9,
+      "semanticReviewed": 9,
+      "degraded": false,
+      "warnings": [],
+      "contractType": "general",
+      "expectedType": "lease",
+      "typeMatches": false,
+      "position": "buyer",
+      "positionSource": "user_confirmed",
+      "recognizerModels": [
+        "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+      ],
+      "recognizerErrors": [],
+      "chatMs": 31703,
+      "uploadMs": 5,
+      "wallMs": 31741,
+      "calls": 3,
+      "inputTokens": 2478,
+      "outputTokens": 1245,
+      "failureNames": []
+    },
+    {
+      "id": "CT05-ja-txt",
+      "caseId": "CT05-ja",
+      "business": "development",
+      "language": "ja",
+      "format": "txt",
+      "executionId": "ab577369-7e1a-4311-a9ee-8aab4d44d13a",
+      "status": "failed",
+      "executionStatus": "succeeded",
+      "integrity": {
+        "fixture_digest": true,
+        "task_mode": true,
+        "requested_35b": true,
+        "identity": true,
+        "done": true,
+        "actual_model_35b": true,
+        "artifact_digest": true
+      },
+      "missingMarkers": [],
+      "markerCoverage": 8,
+      "totalClauses": 9,
+      "semanticReviewed": 3,
+      "degraded": true,
+      "warnings": [
+        "检测到 6 条条款未能完成大模型语义审查（已回退为静态规则校验），建议重点人工复核。"
+      ],
+      "contractType": "general",
+      "expectedType": "software_development",
+      "typeMatches": false,
+      "position": "buyer",
+      "positionSource": "user_confirmed",
+      "recognizerModels": [
+        "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+      ],
+      "recognizerErrors": [],
+      "chatMs": 35396,
+      "uploadMs": 5,
+      "wallMs": 35440,
+      "calls": 3,
+      "inputTokens": 2351,
+      "outputTokens": 1530,
+      "failureNames": [
+        "semantic review complete"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,196 @@
+[
+  {
+    "marker": "CT02-ja-A03",
+    "topic": "risk_sla",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "服务商免除质量保证及违约赔偿责任，导致我方在系统故障时无法获得救济，权责严重不对等。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT02-ja-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "服务商免除质量保证及违约赔偿责任，导致我方在系统故障时无法获得救济，权责严重不对等。",
+            "evidenceQuote": "乙は努力義務のみを負い、最低稼働率を保証しない。10日連続停止した場合も返金又は賠償を行わない。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-ja-A04",
+    "topic": "risk_data_use",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "允许乙方无授权永久使用甲方数据，未区分一般信息与商业秘密，违反保密义务核心要求。",
+        "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+        "findings": [
+          {
+            "id": "finding-clause-4-NDA-01",
+            "title": "保密期限永久且未区分一般信息与商业秘密",
+            "ruleId": "nda_perpetual_duration",
+            "category": "CONFIDENTIALITY",
+            "ruleCode": "NDA-01",
+            "severity": "HIGH",
+            "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+            "riskSummary": "允许乙方无授权永久使用甲方数据，未区分一般信息与商业秘密，违反保密义务核心要求。",
+            "evidenceQuote": "乙は氏名、メール及び取引履歴を甲の同意なくモデル学習に利用し、永久保存できる。",
+            "recommendedRevision": "自披露之日起算，有效期为 3 年；依法属于商业秘密的信息在其合法保持秘密状态期间持续有效"
+          },
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT02-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "虽约定所有权归甲方，但使用权授予条款过于宽泛，实质上导致甲方数据资产被乙方无偿占用。",
+            "evidenceQuote": "所有権は甲に帰属する。ただし乙は氏名、メール及び取引履歴を甲の同意なくモデル学習に利用し、永久保存できる。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-ja-A05",
+    "topic": "risk_exit",
+    "matchedClauseIndices": [
+      5
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "数据输出期限未约定且由乙方自由决定，导致合同结束后甲方无法保障数据的及时回流与安全。",
+        "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+        "findings": [
+          {
+            "id": "finding-clause-5-NDA-01",
+            "title": "保密期限永久且未区分一般信息与商业秘密",
+            "ruleId": "nda_perpetual_duration",
+            "category": "CONFIDENTIALITY",
+            "ruleCode": "NDA-01",
+            "severity": "HIGH",
+            "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+            "riskSummary": "数据输出期限未约定且由乙方自由决定，导致合同结束后甲方无法保障数据的及时回流与安全。",
+            "evidenceQuote": "乙は承認の可否を自由に決定でき、出力期限を約束しない。",
+            "recommendedRevision": "自披露之日起算，有效期为 3 年；依法属于商业秘密的信息在其合法保持秘密状态期间持续有效"
+          },
+          {
+            "id": "finding-clause-5-GENERAL-RISK",
+            "title": "[CT02-ja-A05]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "赋予乙方对数据输出的否决权，使甲方在合同终止后面临数据丢失风险，严重损害客户权益。",
+            "evidenceQuote": "甲は終了後にデータ出力を申請できるが、乙は承認の可否を自由に決定でき、出力期限を約束しない。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-ja-A06",
+    "topic": "risk_renewal",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "条款赋予乙方单方涨价权，未设定涨幅上限或协商机制，违反权责对等原则。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT02-ja-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "条款赋予乙方单方涨价权，未设定涨幅上限或协商机制，违反权责对等原则。",
+            "evidenceQuote": "乙は更新日に料金を一方的に増額できる"
+          },
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT02-ja-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "90天通知期过长，限制我方合同退出灵活性，增加锁定风险。",
+            "evidenceQuote": "甲は満了90日前までに拒絶を通知し"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-ja-A08",
+    "topic": "risk_dispute_unclear",
+    "matchedClauseIndices": [
+      8
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "争议解决机构未明确，属于约定不明，存在重大履约与维权障碍。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-8-GENERAL-RISK",
+            "title": "[CT02-ja-A08]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "争议解决机构未明确，属于约定不明，存在重大履约与维权障碍。",
+            "evidenceQuote": "機関名及び所在地は後日補充する"
+          },
+          {
+            "id": "finding-clause-8-GENERAL-RISK",
+            "title": "[CT02-ja-A08]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "适用法律未明确约定，仅规定另行合意，增加法律适用不确定性。",
+            "evidenceQuote": "別途合意する法を適用する"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

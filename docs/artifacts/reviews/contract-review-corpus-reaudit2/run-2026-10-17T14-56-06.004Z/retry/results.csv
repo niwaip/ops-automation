@@ -1,0 +1,12 @@
+﻿id,business,language,format,executionId,status,previousGateStatus,executionStatus,outputPresent,markerCoverage,totalClauses,contractType,position,positionSource,degraded,chatMs,calls,inputTokens,outputTokens,failureReason
+CT01-ja-docx,procurement,ja,docx,8a6af7e5-03b6-4e94-a9d7-de876b5c1c69,passed,passed,succeeded,True,8,9,procurement,buyer,user_confirmed,False,48336,3,2855,1314,
+CT02-ja-docx,saas,ja,docx,23212786-782f-4008-9a24-68214cecdeeb,passed,passed,succeeded,True,8,9,general,buyer,user_confirmed,False,42432,3,2836,1377,
+CT03-ja-docx,nda,ja,docx,e9876978-f350-42db-800f-367f4642f336,failed,failed,succeeded,True,8,9,nda,buyer,user_confirmed,True,43890,3,2795,1301,
+CT03-zh-ja-pdf,nda,zh-ja,pdf,76fadba7-0fb2-4fc1-ad8d-b76ef533f5ed,failed,passed,succeeded,True,8,9,procurement,buyer,user_confirmed,False,38702,3,2967,964,
+CT03-zh-pdf,nda,zh,pdf,5049f35f-4da7-4363-b6b7-8b452b0948d6,failed,passed,succeeded,True,8,9,procurement,buyer,user_confirmed,False,40892,3,2691,888,
+CT04-ja-pdf,distribution,ja,pdf,c8cb277d-3e7e-4b58-b030-1cf51755a979,passed,passed,succeeded,True,8,9,general,buyer,user_confirmed,False,38340,3,2692,1303,
+CT04-zh-ja-pdf,distribution,zh-ja,pdf,81e1930f-d998-4c0f-96b4-9aa5068eef5a,passed,passed,succeeded,True,8,9,procurement,buyer,user_confirmed,False,45578,3,3029,1058,
+CT05-ja-txt,development,ja,txt,81f7bd18-8631-490f-b7d2-2e3af71c0ab9,passed,passed,succeeded,True,8,9,software_development,buyer,user_confirmed,False,40143,3,2732,1475,
+CT05-zh-ja-docx,development,zh-ja,docx,2bfd638d-defc-4f29-9c8a-6cf5c13d3574,passed,passed,succeeded,True,8,9,software_development,buyer,user_confirmed,False,44494,3,3080,1282,
+CT06-ja-docx,lease,ja,docx,13eb8072-4f58-456e-96b7-0687c295abad,passed,passed,succeeded,True,8,9,lease,buyer,user_confirmed,False,41789,3,2811,793,
+CT06-zh-docx,lease,zh,docx,f7edce7d-7ea0-4501-8acc-e9f2a9f7c893,failed,failed,succeeded,True,8,9,lease,buyer,default,False,40517,3,2658,1074,

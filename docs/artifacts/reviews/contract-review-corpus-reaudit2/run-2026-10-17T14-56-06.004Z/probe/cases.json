@@ -1,0 +1,311 @@
+[
+  {
+    "caseId": "CT01-ja",
+    "business": "procurement",
+    "language": "ja",
+    "reviewPosition": "买方 / 買主",
+    "party": "甲",
+    "contentMarkers": [
+      "CT01-ja-A01",
+      "CT01-ja-A02",
+      "CT01-ja-A03",
+      "CT01-ja-A04",
+      "CT01-ja-A05",
+      "CT01-ja-A06",
+      "CT01-ja-A07",
+      "CT01-ja-A08"
+    ],
+    "expectedObservations": [
+      {
+        "clause": 1,
+        "marker": "CT01-ja-A01",
+        "observation": "neutral",
+        "zh": "标的及价款：乙方向甲方供应精密泵十台，含税总价人民币480000元，附件列明型号和技术参数。",
+        "ja": "目的物及び代金：乙は甲に精密ポンプ10台を供給する。税込総額は480000人民元とし、型番及び仕様は別紙による。"
+      },
+      {
+        "clause": 2,
+        "marker": "CT01-ja-A02",
+        "observation": "balanced",
+        "zh": "交付：乙方于2027年3月15日前送达甲方上海仓库，运输及交付前毁损风险由乙方承担。",
+        "ja": "納入：乙は2027年3月15日までに甲の上海倉庫へ納入する。運送費及び納入前の滅失リスクは乙が負担する。"
+      },
+      {
+        "clause": 3,
+        "marker": "CT01-ja-A03",
+        "observation": "risk_acceptance",
+        "zh": "验收：货物卸车即视为最终验收合格；即使存在隐蔽缺陷，甲方亦不得拒收或要求修理。",
+        "ja": "検収：荷卸しをもって最終検収に合格したものとし、隠れた欠陥がある場合も甲は受領拒否又は修理請求を行えない。"
+      },
+      {
+        "clause": 4,
+        "marker": "CT01-ja-A04",
+        "observation": "risk_prepayment",
+        "zh": "付款：甲方签约后三日内支付全部价款；乙方无需提供履约担保，交付延期不影响收款。",
+        "ja": "支払：甲は締結後3日以内に代金全額を支払う。乙は履行保証を提供せず、納入遅延によっても代金受領権は影響されない。"
+      },
+      {
+        "clause": 5,
+        "marker": "CT01-ja-A05",
+        "observation": "risk_asymmetric_liability",
+        "zh": "责任：乙方故意或重大过失造成的损失亦不承担赔偿；甲方逾期付款每日按合同总额百分之一支付违约金。",
+        "ja": "責任：乙は故意又は重大な過失による損害についても賠償責任を負わない。甲の支払遅延には契約総額の1％を日額違約金とする。"
+      },
+      {
+        "clause": 6,
+        "marker": "CT01-ja-A06",
+        "observation": "balanced",
+        "zh": "质保：质保期为验收后十二个月；乙方在收到通知后五个工作日内免费修复质量缺陷。",
+        "ja": "保証：保証期間は検収後12か月とし、乙は通知受領後5営業日以内に品質上の欠陥を無償修補する。"
+      },
+      {
+        "clause": 7,
+        "marker": "CT01-ja-A07",
+        "observation": "balanced",
+        "zh": "解除：甲方可在乙方逾期三十日未交货时解除合同，乙方在解除后十日内退还已收款项。",
+        "ja": "解除：乙の納入遅延が30日を超えた場合、甲は解除できる。乙は解除後10日以内に受領済み代金を返還する。"
+      },
+      {
+        "clause": 8,
+        "marker": "CT01-ja-A08",
+        "observation": "language_priority_only_if_relevant",
+        "zh": "争议与文本：适用中华人民共和国法律，争议提交上海仲裁委员会仲裁；中日文本具有同等效力。",
+        "ja": "紛争及び言語：中国法を準拠法とし、紛争は上海仲裁委員会の仲裁に付す。中国語及び日本語の本文は同等の効力を有する。"
+      }
+    ],
+    "files": [
+      {
+        "path": "contracts/procurement/CT01-ja.txt",
+        "mimeType": "text/plain",
+        "bytes": 1648,
+        "sha256": "7d876d28b6bb8f4fe7445761873c0e7ba764f4fa2fb83ac5d8cf11c5af26438d"
+      },
+      {
+        "path": "contracts/procurement/CT01-ja.docx",
+        "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "bytes": 37729,
+        "sha256": "4ec631fa93c2785eeb02ceeefe646bcf1078f22092cebf2db4cbbb69c584cf9f"
+      },
+      {
+        "path": "contracts/procurement/CT01-ja.pdf",
+        "mimeType": "application/pdf",
+        "bytes": 102758,
+        "sha256": "c853a9a0375c14305190fc29d23f1fd174498f1a6c04941e8568af390a84d191"
+      }
+    ],
+    "expectedNumberedArticles": 8,
+    "file": {
+      "path": "contracts/procurement/CT01-ja.docx",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "bytes": 37729,
+      "sha256": "4ec631fa93c2785eeb02ceeefe646bcf1078f22092cebf2db4cbbb69c584cf9f"
+    },
+    "id": "CT01-ja-docx"
+  },
+  {
+    "caseId": "CT04-zh-ja",
+    "business": "distribution",
+    "language": "zh-ja",
+    "reviewPosition": "经销商 / 販売店",
+    "party": "甲",
+    "contentMarkers": [
+      "CT04-zh-ja-A01",
+      "CT04-zh-ja-A02",
+      "CT04-zh-ja-A03",
+      "CT04-zh-ja-A04",
+      "CT04-zh-ja-A05",
+      "CT04-zh-ja-A06",
+      "CT04-zh-ja-A07",
+      "CT04-zh-ja-A08"
+    ],
+    "expectedObservations": [
+      {
+        "clause": 1,
+        "marker": "CT04-zh-ja-A01",
+        "observation": "neutral",
+        "zh": "授权：乙方授权甲方在日本关东地区销售工业传感器，期限为2027年全年，是否独家以本合同为准。",
+        "ja": "授権：乙は甲に日本の関東地域における産業用センサーの販売権を付与する。期間は2027年中とし、独占性は本契約による。"
+      },
+      {
+        "clause": 2,
+        "marker": "CT04-zh-ja-A02",
+        "observation": "risk_internal_conflict",
+        "zh": "独家：甲方享有区域独家销售权；乙方可不受限制地直接向区域客户销售并另行指定其他经销商。",
+        "ja": "独占性：甲は地域独占販売権を有する。ただし乙は当該地域の顧客へ無制限に直接販売し、他の販売店を指定できる。"
+      },
+      {
+        "clause": 3,
+        "marker": "CT04-zh-ja-A03",
+        "observation": "risk_target",
+        "zh": "采购目标：甲方年度最低采购额为人民币3000000元，即使乙方缺货也不得调减目标，未达标须补足差额。",
+        "ja": "購入目標：年間最低購入額は3000000人民元とする。乙の欠品時も目標を減額せず、未達の場合は甲が差額を補填する。"
+      },
+      {
+        "clause": 4,
+        "marker": "CT04-zh-ja-A04",
+        "observation": "risk_resale_price_review",
+        "zh": "价格：甲方须遵守乙方确定的最低转售价格；低价销售即取消全部返利并终止授权。",
+        "ja": "価格：甲は乙が定める最低再販売価格を遵守する。下回った場合は全てのリベート及び販売権を失う。"
+      },
+      {
+        "clause": 5,
+        "marker": "CT04-zh-ja-A05",
+        "observation": "balanced",
+        "zh": "质保：产品缺陷由乙方负责维修或更换；甲方应保存批次及客户交付记录并协助召回。",
+        "ja": "保証：製品欠陥は乙が修理又は交換する。甲はロット及び納入先記録を保存し、回収に協力する。"
+      },
+      {
+        "clause": 6,
+        "marker": "CT04-zh-ja-A06",
+        "observation": "balanced",
+        "zh": "商标：甲方仅在授权期内为销售使用乙方商标，不得注册近似标识，终止后停止新增使用。",
+        "ja": "商標：甲は授権期間中、販売目的に限り乙の商標を使用できる。類似標章の登録は禁止し、終了後は新たな使用を停止する。"
+      },
+      {
+        "clause": 7,
+        "marker": "CT04-zh-ja-A07",
+        "observation": "risk_inventory_exit",
+        "zh": "终止：乙方可随时无理由立即终止；甲方已购库存不得退回，也不得继续销售。",
+        "ja": "終了：乙は理由なく直ちに解除できる。甲の購入済み在庫は返品できず、継続販売も禁止する。"
+      },
+      {
+        "clause": 8,
+        "marker": "CT04-zh-ja-A08",
+        "observation": "bilingual_conflict_30_60",
+        "zh": "付款与文本：甲方收货后三十日支付货款，结算币种为人民币；中日文本冲突时中文优先。",
+        "ja": "支払及び言語：甲は受領後60日以内に代金を支払う。決済通貨は人民元とし、両言語に相違がある場合は中国語を優先する。"
+      }
+    ],
+    "files": [
+      {
+        "path": "contracts/distribution/CT04-zh-ja.txt",
+        "mimeType": "text/plain",
+        "bytes": 2723,
+        "sha256": "469cae39784e3211a54e8ba18fc93d1584ff29aaf71aee2ec7a08cab13fa9c5d"
+      },
+      {
+        "path": "contracts/distribution/CT04-zh-ja.docx",
+        "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "bytes": 38314,
+        "sha256": "36654894432dd0020155522bca16be6045ea17d71a3f615ef4d01c897f895a31"
+      },
+      {
+        "path": "contracts/distribution/CT04-zh-ja.pdf",
+        "mimeType": "application/pdf",
+        "bytes": 144264,
+        "sha256": "0bb79f6a22a3640039a4409152d69b926ed669d85a9da829d3f6a96c7d3ab54a"
+      }
+    ],
+    "expectedNumberedArticles": 8,
+    "file": {
+      "path": "contracts/distribution/CT04-zh-ja.txt",
+      "mimeType": "text/plain",
+      "bytes": 2723,
+      "sha256": "469cae39784e3211a54e8ba18fc93d1584ff29aaf71aee2ec7a08cab13fa9c5d"
+    },
+    "id": "CT04-zh-ja-txt"
+  },
+  {
+    "caseId": "CT05-ja",
+    "business": "development",
+    "language": "ja",
+    "reviewPosition": "委托方 / 委託者",
+    "party": "甲",
+    "contentMarkers": [
+      "CT05-ja-A01",
+      "CT05-ja-A02",
+      "CT05-ja-A03",
+      "CT05-ja-A04",
+      "CT05-ja-A05",
+      "CT05-ja-A06",
+      "CT05-ja-A07",
+      "CT05-ja-A08"
+    ],
+    "expectedObservations": [
+      {
+        "clause": 1,
+        "marker": "CT05-ja-A01",
+        "observation": "balanced",
+        "zh": "范围：乙方为甲方开发仓储管理系统，交付源代码、部署脚本、操作手册及接口说明，需求清单由双方签署确认。",
+        "ja": "範囲：乙は甲のために倉庫管理システムを開発し、ソースコード、配備スクリプト、操作手順及びAPI仕様を納入する。要件表は双方が署名する。"
+      },
+      {
+        "clause": 2,
+        "marker": "CT05-ja-A02",
+        "observation": "balanced",
+        "zh": "价款：总价人民币600000元，启动、测试环境交付、最终验收后分别支付百分之三十、三十、四十。",
+        "ja": "代金：総額は600000人民元とし、開始時、試験環境納入時及び最終検収後に30％、30％、40％を支払う。"
+      },
+      {
+        "clause": 3,
+        "marker": "CT05-ja-A03",
+        "observation": "risk_acceptance",
+        "zh": "验收：乙方发出交付邮件后两日内甲方未书面拒绝即视为验收，任何未修复安全漏洞不影响验收。",
+        "ja": "検収：納入メール後2日以内に甲が書面拒絶しなければ合格とみなす。未修正のセキュリティ脆弱性は検収に影響しない。"
+      },
+      {
+        "clause": 4,
+        "marker": "CT05-ja-A04",
+        "observation": "risk_ip",
+        "zh": "知识产权：全部定制开发成果及源代码著作权归乙方；甲方仅取得一年期不可续展的内部使用许可。",
+        "ja": "知的財産：全ての専用開発成果及びソースコードの著作権は乙に帰属する。甲には更新できない1年間の社内利用権のみを付与する。"
+      },
+      {
+        "clause": 5,
+        "marker": "CT05-ja-A05",
+        "observation": "balanced",
+        "zh": "变更：需求变更须形成书面变更单，列明价格及工期影响，经双方确认后执行。",
+        "ja": "変更：要件変更は価格及び納期への影響を記載した変更書を双方が承認した後に実施する。"
+      },
+      {
+        "clause": 6,
+        "marker": "CT05-ja-A06",
+        "observation": "risk_third_party_ip",
+        "zh": "开源：乙方可自由引入任意第三方组件，无需提供许可清单，甲方自行承担全部第三方权利主张。",
+        "ja": "第三者部品：乙は任意の部品を自由に利用でき、ライセンス一覧を提出しない。第三者からの全ての権利主張は甲が負担する。"
+      },
+      {
+        "clause": 7,
+        "marker": "CT05-ja-A07",
+        "observation": "balanced",
+        "zh": "保修：最终验收后六个月内乙方免费修复缺陷；严重故障应在一个工作日内响应。",
+        "ja": "保証：最終検収後6か月間、乙は欠陥を無償修補する。重大障害には1営業日以内に対応する。"
+      },
+      {
+        "clause": 8,
+        "marker": "CT05-ja-A08",
+        "observation": "risk_unfilled",
+        "zh": "争议与签署：中日文本不一致时中文优先；争议由被告住所地法院处理。甲方签署人：____；生效日期：____。",
+        "ja": "言語及び署名：両言語に相違がある場合は中国語を優先する。被告所在地の裁判所で解決する。甲の署名者：____。発効日：____。"
+      }
+    ],
+    "files": [
+      {
+        "path": "contracts/development/CT05-ja.txt",
+        "mimeType": "text/plain",
+        "bytes": 1690,
+        "sha256": "ed5e2c0df081b7c33b8048b4d44a506475bdb480750cada35fa6c5aa9358cb84"
+      },
+      {
+        "path": "contracts/development/CT05-ja.docx",
+        "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "bytes": 37783,
+        "sha256": "b86a00c5e9d9fa676fdb241647a0dc4987fe191ff3b9c9e8fb7a645b20394b85"
+      },
+      {
+        "path": "contracts/development/CT05-ja.pdf",
+        "mimeType": "application/pdf",
+        "bytes": 109750,
+        "sha256": "b0819046b98c042b31ba0e236a41fa5b5f6668c4a80399a10ee408ceefaf5c98"
+      }
+    ],
+    "expectedNumberedArticles": 8,
+    "file": {
+      "path": "contracts/development/CT05-ja.txt",
+      "mimeType": "text/plain",
+      "bytes": 1690,
+      "sha256": "ed5e2c0df081b7c33b8048b4d44a506475bdb480750cada35fa6c5aa9358cb84"
+    },
+    "id": "CT05-ja-txt"
+  }
+]

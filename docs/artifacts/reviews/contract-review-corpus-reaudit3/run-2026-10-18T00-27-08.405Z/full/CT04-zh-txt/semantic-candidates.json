@@ -1,0 +1,132 @@
+[
+  {
+    "marker": "CT04-zh-A02",
+    "topic": "risk_internal_conflict",
+    "matchedClauseIndices": [
+      2
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "条款赋予乙方不受限制的直销及另售权，与‘独家’约定根本冲突，导致独家授权名存实亡，构成重大商业风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-2-GENERAL-RISK",
+            "title": "[CT04-zh-A02]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "条款赋予乙方不受限制的直销及另售权，与‘独家’约定根本冲突，导致独家授权名存实亡，构成重大商业风险。",
+            "evidenceQuote": "独家：甲方享有区域独家销售权；乙方可不受限制地直接向区域客户销售并另行指定其他经销商。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-zh-A03",
+    "topic": "risk_target",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "乙方缺货属乙方违约，甲方不应因此承担补足采购量的违约责任，显失公平。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT04-zh-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "乙方缺货属乙方违约，甲方不应因此承担补足采购量的违约责任，显失公平。",
+            "evidenceQuote": "即使乙方缺货也不得调减目标，未达标须补足差额。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-zh-A04",
+    "topic": "risk_resale_price_review",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "固定转售价格涉嫌纵向垄断，且“终止授权”处罚过重，存在合规与商业风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT04-zh-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "固定转售价格涉嫌纵向垄断，且“终止授权”处罚过重，存在合规与商业风险。",
+            "evidenceQuote": "甲方须遵守乙方确定的最低转售价格；低价销售即取消全部返利并终止授权。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-zh-A07",
+    "topic": "risk_inventory_exit",
+    "matchedClauseIndices": [
+      7
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "乙方拥有单方任意解除权且未约定提前通知期或违约责任，严重损害交易稳定性。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-7-GENERAL-RISK",
+            "title": "[CT04-zh-A07]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "乙方拥有单方任意解除权且未约定提前通知期或违约责任，严重损害交易稳定性。",
+            "evidenceQuote": "乙方可随时无理由立即终止"
+          },
+          {
+            "id": "finding-clause-7-GENERAL-RISK",
+            "title": "[CT04-zh-A07]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "在乙方无正当理由终止合同时，甲方库存无法退回且禁止销售，导致甲方承担全部沉没成本与商业损失，缺乏救济机制。",
+            "evidenceQuote": "甲方已购库存不得退回，也不得继续销售"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

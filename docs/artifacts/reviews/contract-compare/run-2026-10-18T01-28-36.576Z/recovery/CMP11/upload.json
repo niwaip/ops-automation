@@ -1,0 +1,20 @@
+[
+  {
+    "fileId": "file-1792287277666-8kpqkmuas",
+    "fileName": "CMP11_A.pdf",
+    "mimeType": "application/pdf",
+    "size": 66437,
+    "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792287277666-8kpqkmuas-CMP11_A.pdf",
+    "url": "/api/ai/chat/files/file-1792287277666-8kpqkmuas?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792289077.09dcb909639bad12c029fea098be55b0315d09f1c03099a6dc5f933f33e84aab",
+    "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792289077.09dcb909639bad12c029fea098be55b0315d09f1c03099a6dc5f933f33e84aab"
+  },
+  {
+    "fileId": "file-1792287277671-7m6sco7tr",
+    "fileName": "CMP11_B.txt",
+    "mimeType": "text/plain",
+    "size": 639,
+    "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792287277671-7m6sco7tr-CMP11_B.txt",
+    "url": "/api/ai/chat/files/file-1792287277671-7m6sco7tr?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792289077.86bb424b49596e164c5d60336306077b70518f994c9814f5a00c36e6f02be512",
+    "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792289077.86bb424b49596e164c5d60336306077b70518f994c9814f5a00c36e6f02be512"
+  }
+]

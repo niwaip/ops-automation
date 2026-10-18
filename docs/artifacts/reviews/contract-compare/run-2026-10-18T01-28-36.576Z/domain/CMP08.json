@@ -1,0 +1,364 @@
+{
+  "id": "CMP08",
+  "scope": "direct domain parse/diff; not authenticated work-mode E2E; no semantic LLM",
+  "status": 200,
+  "ms": 7,
+  "response": {
+    "success": true,
+    "output": {
+      "fileNameA": "CMP08_A.docx",
+      "fileNameB": "CMP08_B.docx",
+      "alignedClauses": [
+        {
+          "id": "align-1-1",
+          "status": "UNCHANGED",
+          "sourceClause": {
+            "id": "clause-0",
+            "clauseNumber": "前言",
+            "title": "合同引言与主体信息",
+            "content": "設備売買契約書\n甲方 星桥测试有限公司    乙方 青空テスト株式会社",
+            "blocks": [
+              {
+                "id": "blk-1",
+                "type": "bilingual_pair",
+                "primaryText": "設備売買契約書",
+                "secondaryText": "甲方 星桥测试有限公司    乙方 青空テスト株式会社",
+                "primaryHtml": "設備売買契約書",
+                "secondaryHtml": "甲方 星桥测试有限公司    乙方 青空テスト株式会社",
+                "primaryLang": "zh",
+                "secondaryLang": "ja",
+                "isBold": false,
+                "hasUnderline": false
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "前言",
+            "chapterTitle": "合同引言与签约主体"
+          },
+          "targetClause": {
+            "id": "clause-0",
+            "clauseNumber": "前言",
+            "title": "合同引言与主体信息",
+            "content": "設備売買契約書\n甲方 星桥测试有限公司    乙方 青空テスト株式会社",
+            "blocks": [
+              {
+                "id": "blk-1",
+                "type": "bilingual_pair",
+                "primaryText": "設備売買契約書",
+                "secondaryText": "甲方 星桥测试有限公司    乙方 青空テスト株式会社",
+                "primaryHtml": "設備売買契約書",
+                "secondaryHtml": "甲方 星桥测试有限公司    乙方 青空テスト株式会社",
+                "primaryLang": "zh",
+                "secondaryLang": "ja",
+                "isBold": false,
+                "hasUnderline": false
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "前言",
+            "chapterTitle": "合同引言与签约主体"
+          },
+          "similarity": 1,
+          "sourceHtml": "設備売買契約書<br>甲方 星桥测试有限公司    乙方 青空テスト株式会社",
+          "targetHtml": "設備売買契約書<br>甲方 星桥测试有限公司    乙方 青空テスト株式会社"
+        },
+        {
+          "id": "align-2-2",
+          "status": "UNCHANGED",
+          "sourceClause": {
+            "id": "clause-1",
+            "clauseNumber": "第1条",
+            "title": "業務範囲",
+            "content": "業務範囲\nCMP-SCOPE 乙は甲に試験設備10台を提供し、技術基準への適合を保証する。",
+            "blocks": [
+              {
+                "id": "blk-2",
+                "type": "heading",
+                "primaryText": "業務範囲",
+                "primaryHtml": "第1条 業務範囲",
+                "secondaryText": "CMP-SCOPE 乙は甲に試験設備10台を提供し、技術基準への適合を保証する。",
+                "secondaryHtml": "CMP-SCOPE 乙は甲に試験設備10台を提供し、技術基準への適合を保証する。",
+                "isBold": true
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "正文",
+            "chapterTitle": "合同正文条款",
+            "titleJa": "CMP-SCOPE 乙は甲に試験設備10台を提供し、技術基準への適合を保証する。"
+          },
+          "targetClause": {
+            "id": "clause-1",
+            "clauseNumber": "第1条",
+            "title": "業務範囲",
+            "content": "業務範囲\nCMP-SCOPE 乙は甲に試験設備10台を提供し、技術基準への適合を保証する。",
+            "blocks": [
+              {
+                "id": "blk-2",
+                "type": "heading",
+                "primaryText": "業務範囲",
+                "primaryHtml": "第1条 業務範囲",
+                "secondaryText": "CMP-SCOPE 乙は甲に試験設備10台を提供し、技術基準への適合を保証する。",
+                "secondaryHtml": "CMP-SCOPE 乙は甲に試験設備10台を提供し、技術基準への適合を保証する。",
+                "isBold": true
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "正文",
+            "chapterTitle": "合同正文条款",
+            "titleJa": "CMP-SCOPE 乙は甲に試験設備10台を提供し、技術基準への適合を保証する。"
+          },
+          "similarity": 1,
+          "sourceHtml": "業務範囲<br>CMP-SCOPE 乙は甲に試験設備10台を提供し、技術基準への適合を保証する。",
+          "targetHtml": "業務範囲<br>CMP-SCOPE 乙は甲に試験設備10台を提供し、技術基準への適合を保証する。"
+        },
+        {
+          "id": "align-3-3",
+          "status": "MODIFIED",
+          "sourceClause": {
+            "id": "clause-2",
+            "clauseNumber": "第2条",
+            "title": "支払期限",
+            "content": "支払期限\nCMP-PAY 甲は検収完了後30日以内に100000円を支払う。",
+            "blocks": [
+              {
+                "id": "blk-3",
+                "type": "heading",
+                "primaryText": "支払期限",
+                "primaryHtml": "第2条 支払期限",
+                "secondaryText": "CMP-PAY 甲は検収完了後30日以内に100000円を支払う。",
+                "secondaryHtml": "CMP-PAY 甲は検収完了後30日以内に100000円を支払う。",
+                "isBold": true
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "正文",
+            "chapterTitle": "合同正文条款",
+            "titleJa": "CMP-PAY 甲は検収完了後30日以内に100000円を支払う。"
+          },
+          "targetClause": {
+            "id": "clause-2",
+            "clauseNumber": "第2条",
+            "title": "支払期限",
+            "content": "支払期限\nCMP-PAY 甲は検収完了後75日以内に150000円を支払う。",
+            "blocks": [
+              {
+                "id": "blk-3",
+                "type": "heading",
+                "primaryText": "支払期限",
+                "primaryHtml": "第2条 支払期限",
+                "secondaryText": "CMP-PAY 甲は検収完了後75日以内に150000円を支払う。",
+                "secondaryHtml": "CMP-PAY 甲は検収完了後75日以内に150000円を支払う。",
+                "isBold": true
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "正文",
+            "chapterTitle": "合同正文条款",
+            "titleJa": "CMP-PAY 甲は検収完了後75日以内に150000円を支払う。"
+          },
+          "similarity": 0.9211,
+          "diffTokens": [
+            {
+              "type": "equal",
+              "text": "支払期限\nCMP-PAY 甲は検収完了後"
+            },
+            {
+              "type": "delete",
+              "text": "30"
+            },
+            {
+              "type": "insert",
+              "text": "75"
+            },
+            {
+              "type": "equal",
+              "text": "日以内に1"
+            },
+            {
+              "type": "delete",
+              "text": "0"
+            },
+            {
+              "type": "insert",
+              "text": "5"
+            },
+            {
+              "type": "equal",
+              "text": "0000円を支払う。"
+            }
+          ],
+          "sourceHtml": "支払期限<br>CMP-PAY 甲は検収完了後<del class=\"diff-del\">30</del>日以内に1<del class=\"diff-del\">0</del>0000円を支払う。",
+          "targetHtml": "支払期限<br>CMP-PAY 甲は検収完了後<ins class=\"diff-ins\">75</ins>日以内に1<ins class=\"diff-ins\">5</ins>0000円を支払う。",
+          "aiInsight": {
+            "riskLevel": "LOW",
+            "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。",
+            "keyChange": "条款文本词句微调",
+            "shortSummary": "文本修改"
+          }
+        },
+        {
+          "id": "align-4-4",
+          "status": "UNCHANGED",
+          "sourceClause": {
+            "id": "clause-3",
+            "clauseNumber": "第3条",
+            "title": "損害賠償",
+            "content": "損害賠償\nCMP-LIAB 乙の納入遅延について、契約総額の一日0.1%を違約金とする。",
+            "blocks": [
+              {
+                "id": "blk-4",
+                "type": "heading",
+                "primaryText": "損害賠償",
+                "primaryHtml": "第3条 損害賠償",
+                "secondaryText": "CMP-LIAB 乙の納入遅延について、契約総額の一日0.1%を違約金とする。",
+                "secondaryHtml": "CMP-LIAB 乙の納入遅延について、契約総額の一日0.1%を違約金とする。",
+                "isBold": true
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "正文",
+            "chapterTitle": "合同正文条款",
+            "titleJa": "CMP-LIAB 乙の納入遅延について、契約総額の一日0.1%を違約金とする。"
+          },
+          "targetClause": {
+            "id": "clause-3",
+            "clauseNumber": "第3条",
+            "title": "損害賠償",
+            "content": "損害賠償\nCMP-LIAB 乙の納入遅延について、契約総額の一日0.1%を違約金とする。",
+            "blocks": [
+              {
+                "id": "blk-4",
+                "type": "heading",
+                "primaryText": "損害賠償",
+                "primaryHtml": "第3条 損害賠償",
+                "secondaryText": "CMP-LIAB 乙の納入遅延について、契約総額の一日0.1%を違約金とする。",
+                "secondaryHtml": "CMP-LIAB 乙の納入遅延について、契約総額の一日0.1%を違約金とする。",
+                "isBold": true
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "正文",
+            "chapterTitle": "合同正文条款",
+            "titleJa": "CMP-LIAB 乙の納入遅延について、契約総額の一日0.1%を違約金とする。"
+          },
+          "similarity": 1,
+          "sourceHtml": "損害賠償<br>CMP-LIAB 乙の納入遅延について、契約総額の一日0.1%を違約金とする。",
+          "targetHtml": "損害賠償<br>CMP-LIAB 乙の納入遅延について、契約総額の一日0.1%を違約金とする。"
+        },
+        {
+          "id": "align-5-5",
+          "status": "UNCHANGED",
+          "sourceClause": {
+            "id": "clause-4",
+            "clauseNumber": "第4条",
+            "title": "秘密保持",
+            "content": "秘密保持\nCMP-DATA 乙は甲の営業秘密を第三者に開示してはならない。義務は3年間存続する。",
+            "blocks": [
+              {
+                "id": "blk-5",
+                "type": "heading",
+                "primaryText": "秘密保持",
+                "primaryHtml": "第4条 秘密保持",
+                "secondaryText": "CMP-DATA 乙は甲の営業秘密を第三者に開示してはならない。義務は3年間存続する。",
+                "secondaryHtml": "CMP-DATA 乙は甲の営業秘密を第三者に開示してはならない。義務は3年間存続する。",
+                "isBold": true
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "正文",
+            "chapterTitle": "合同正文条款",
+            "titleJa": "CMP-DATA 乙は甲の営業秘密を第三者に開示してはならない。義務は3年間存続する。"
+          },
+          "targetClause": {
+            "id": "clause-4",
+            "clauseNumber": "第4条",
+            "title": "秘密保持",
+            "content": "秘密保持\nCMP-DATA 乙は甲の営業秘密を第三者に開示してはならない。義務は3年間存続する。",
+            "blocks": [
+              {
+                "id": "blk-5",
+                "type": "heading",
+                "primaryText": "秘密保持",
+                "primaryHtml": "第4条 秘密保持",
+                "secondaryText": "CMP-DATA 乙は甲の営業秘密を第三者に開示してはならない。義務は3年間存続する。",
+                "secondaryHtml": "CMP-DATA 乙は甲の営業秘密を第三者に開示してはならない。義務は3年間存続する。",
+                "isBold": true
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "正文",
+            "chapterTitle": "合同正文条款",
+            "titleJa": "CMP-DATA 乙は甲の営業秘密を第三者に開示してはならない。義務は3年間存続する。"
+          },
+          "similarity": 1,
+          "sourceHtml": "秘密保持<br>CMP-DATA 乙は甲の営業秘密を第三者に開示してはならない。義務は3年間存続する。",
+          "targetHtml": "秘密保持<br>CMP-DATA 乙は甲の営業秘密を第三者に開示してはならない。義務は3年間存続する。"
+        },
+        {
+          "id": "align-6-6",
+          "status": "UNCHANGED",
+          "sourceClause": {
+            "id": "clause-5",
+            "clauseNumber": "第5条",
+            "title": "契約終了",
+            "content": "契約終了\nCMP-END 甲は15日前の書面通知により契約を解除でき、未履行分の代金を返還する。",
+            "blocks": [
+              {
+                "id": "blk-6",
+                "type": "heading",
+                "primaryText": "契約終了",
+                "primaryHtml": "第5条 契約終了",
+                "secondaryText": "CMP-END 甲は15日前の書面通知により契約を解除でき、未履行分の代金を返還する。",
+                "secondaryHtml": "CMP-END 甲は15日前の書面通知により契約を解除でき、未履行分の代金を返還する。",
+                "isBold": true
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "正文",
+            "chapterTitle": "合同正文条款",
+            "titleJa": "CMP-END 甲は15日前の書面通知により契約を解除でき、未履行分の代金を返還する。"
+          },
+          "targetClause": {
+            "id": "clause-5",
+            "clauseNumber": "第5条",
+            "title": "契約終了",
+            "content": "契約終了\nCMP-END 甲は15日前の書面通知により契約を解除でき、未履行分の代金を返還する。",
+            "blocks": [
+              {
+                "id": "blk-6",
+                "type": "heading",
+                "primaryText": "契約終了",
+                "primaryHtml": "第5条 契約終了",
+                "secondaryText": "CMP-END 甲は15日前の書面通知により契約を解除でき、未履行分の代金を返還する。",
+                "secondaryHtml": "CMP-END 甲は15日前の書面通知により契約を解除でき、未履行分の代金を返還する。",
+                "isBold": true
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "正文",
+            "chapterTitle": "合同正文条款",
+            "titleJa": "CMP-END 甲は15日前の書面通知により契約を解除でき、未履行分の代金を返還する。"
+          },
+          "similarity": 1,
+          "sourceHtml": "契約終了<br>CMP-END 甲は15日前の書面通知により契約を解除でき、未履行分の代金を返還する。",
+          "targetHtml": "契約終了<br>CMP-END 甲は15日前の書面通知により契約を解除でき、未履行分の代金を返還する。"
+        }
+      ],
+      "metrics": {
+        "totalClauses": 6,
+        "unchangedCount": 5,
+        "modifiedCount": 1,
+        "addedCount": 0,
+        "deletedCount": 0,
+        "highRiskCount": 0,
+        "mediumRiskCount": 0,
+        "sourceClauseCount": 6,
+        "targetClauseCount": 6,
+        "isTruncated": false
+      },
+      "sourceClauseCount": 6,
+      "targetClauseCount": 6,
+      "isTruncated": false
+    }
+  }
+}

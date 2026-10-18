@@ -1,0 +1,163 @@
+[
+  {
+    "marker": "META-CONFLICT-45-75-A02",
+    "topic": "risk_internal_conflict",
+    "matchedClauseIndices": [
+      2
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "独家授权名存实亡，甲方面临内部恶意竞争及客户流失风险，核心商业目的落空。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-2-GENERAL-RISK",
+            "title": "[META-CONFLICT-45-75-A02]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "独家授权名存实亡，甲方面临内部恶意竞争及客户流失风险，核心商业目的落空。",
+            "evidenceQuote": "甲方享有区域独家销售权；乙方可不受限制地直接向区域客户销售并另行指定其他经销商。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "META-CONFLICT-45-75-A03",
+    "topic": "risk_target",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "乙方缺货属违约或不可抗力，甲方不应承担补足差额的违约责任，该条款剥夺甲方抗辩权。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[META-CONFLICT-45-75-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "乙方缺货属违约或不可抗力，甲方不应承担补足差额的违约责任，该条款剥夺甲方抗辩权。",
+            "evidenceQuote": "即使乙方缺货也不得调减目标，未达标须补足差额。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "META-CONFLICT-45-75-A04",
+    "topic": "risk_resale_price_review",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "乙方单方确定RPM涉嫌纵向垄断协议，且‘终止授权’作为惩罚措施过于严苛，缺乏合理性。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[META-CONFLICT-45-75-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "乙方单方确定RPM涉嫌纵向垄断协议，且‘终止授权’作为惩罚措施过于严苛，缺乏合理性。",
+            "evidenceQuote": "甲方须遵守乙方确定的最低转售价格；低价销售即取消全部返利并终止授权。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "META-CONFLICT-45-75-A07",
+    "topic": "risk_inventory_exit",
+    "matchedClauseIndices": [
+      7
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "赋予乙方单方无理由即时解除权，缺乏对等约束，甲方面临突发性业务中断风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-7-GENERAL-RISK",
+            "title": "[META-CONFLICT-45-75-A07]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "赋予乙方单方无理由即时解除权，缺乏对等约束，甲方面临突发性业务中断风险。",
+            "evidenceQuote": "乙方可随时无理由立即终止"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "META-CONFLICT-45-75-A08",
+    "topic": "bilingual_conflict",
+    "matchedClauseIndices": [
+      8
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "中方约定收货后45日付款，日方文本约定75日内付款，存在重大数值冲突，违反CUST-1审查重点。",
+        "legalAdvice": "该条款触发了企业/个人自定义审查要点【逐条阅读全部语言的正文，重点检查我方义务、责...】，请重点核查。",
+        "findings": [
+          {
+            "id": "finding-clause-8-CUST-1",
+            "title": "逐条阅读全部语言的正文，重点检查我方义务、责...",
+            "ruleId": "prompt-rule-1",
+            "category": "审查Prompt专项要点",
+            "ruleCode": "CUST-1",
+            "severity": "HIGH",
+            "legalAdvice": "该条款触发了企业/个人自定义审查要点【逐条阅读全部语言的正文，重点检查我方义务、责...】，请重点核查。",
+            "riskSummary": "中方约定收货后45日付款，日方文本约定75日内付款，存在重大数值冲突，违反CUST-1审查重点。",
+            "recommendedRevision": "付款与文本：甲方收货后四十五日支付货款，结算币种为人民币；中日文本冲突时中文优先。\n支払及び言語：甲は受領後75日以内に代金を支払う。決済通貨は人民元とし、両言語に相違がある場合は中国語を優先する。\n甲方代表 / 甲代表：星桥测试担当     乙方代表 / 乙代表：青空試験担当"
+          },
+          {
+            "id": "finding-clause-8-GENERAL-RISK",
+            "title": "[META-CONFLICT-45-75-A08]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "虽约定中文优先，但双语实质性冲突极易引发履约争议，应确保合同文本数值严格一致。",
+            "evidenceQuote": "中日文本冲突时中文优先。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

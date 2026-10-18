@@ -1,0 +1,92 @@
+[
+  {
+    "marker": "CT06-zh-ja-A04",
+    "topic": "risk_repairs",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "条款将维修责任完全归于甲方且无费用上限，并免除乙方配合义务，严重违反商事合同权责对等原则及通常行业惯例，对甲方极不公平。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT06-zh-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "条款将维修责任完全归于甲方且无费用上限，并免除乙方配合义务，严重违反商事合同权责对等原则及通常行业惯例，对甲方极不公平。",
+            "evidenceQuote": "所有结构、消防和隐蔽工程缺陷均由甲方修复，费用不设上限，乙方无需配合。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT06-zh-ja-A05",
+    "topic": "risk_unilateral_change",
+    "matchedClauseIndices": [
+      5
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "单方任意调整租金且剥夺承租方拒绝权及合同解除权，严重违反公平原则及合同法理，对甲方构成重大法律风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-5-GENERAL-RISK",
+            "title": "[CT06-zh-ja-A05]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "单方任意调整租金且剥夺承租方拒绝权及合同解除权，严重违反公平原则及合同法理，对甲方构成重大法律风险。",
+            "evidenceQuote": "乙方可提前三日通知后随时调整租金，甲方不得拒绝，也不得因此解除合同。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT06-zh-ja-A06",
+    "topic": "risk_deposit",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "条款赋予乙方单方决定权且无退款期限及举证义务，严重违反公平原则及法定返还义务，极大损害买方权益。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT06-zh-ja-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "条款赋予乙方单方决定权且无退款期限及举证义务，严重违反公平原则及法定返还义务，极大损害买方权益。",
+            "evidenceQuote": "租赁届满后乙方可自行判断是否退还押金，不设退款期限，也无需提供扣款凭据。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

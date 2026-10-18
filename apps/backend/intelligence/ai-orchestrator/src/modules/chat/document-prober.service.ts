@@ -12,11 +12,18 @@ export interface DocumentProbeResult {
   docType: string;
   docTypeName: string;
   docTitle?: string;
+  confidence?: number;
+  source?: 'document_probe';
   summaryPreview: string;
   characterCount: number;
   parties?: {
     partyA?: string;
     partyB?: string;
+  };
+  matchedEntity?: {
+    party: 'party_a' | 'party_b';
+    entityName: string;
+    inferredPosition?: 'buyer' | 'seller';
   };
 }
 
@@ -76,9 +83,36 @@ export class DocumentProberService {
     }
 
     const snippet = extractedText.slice(0, MAX_SNIPPET_CHARS).trim();
-    const classification = this.classifyDocument(fileName, snippet);
-    const parties = classification.docCategory === 'contract' ? this.extractParties(snippet) : undefined;
     const docTitle = this.extractTitle(fileName, snippet);
+    const classification = this.classifyDocument(fileName, snippet, docTitle);
+    const parties = classification.docCategory === 'contract' ? this.extractParties(snippet) : undefined;
+
+    let matchedEntity:
+      | { party: 'party_a' | 'party_b'; entityName: string; inferredPosition?: 'buyer' | 'seller' }
+      | undefined;
+    if (parties) {
+      const enterpriseAliases = [
+        '富士通',
+        '富士通（中国）',
+        '富士通信息',
+        'Fujitsu',
+        'Fujitsu China',
+        '富士通株式会社',
+      ];
+      if (parties.partyB && enterpriseAliases.some((alias) => parties.partyB!.includes(alias))) {
+        matchedEntity = {
+          party: 'party_b',
+          entityName: parties.partyB,
+          inferredPosition: 'seller',
+        };
+      } else if (parties.partyA && enterpriseAliases.some((alias) => parties.partyA!.includes(alias))) {
+        matchedEntity = {
+          party: 'party_a',
+          entityName: parties.partyA,
+          inferredPosition: 'buyer',
+        };
+      }
+    }
 
     return {
       fileName,
@@ -87,9 +121,12 @@ export class DocumentProberService {
       docType: classification.docType,
       docTypeName: classification.docTypeName,
       docTitle,
+      confidence: classification.confidence || 0.8,
+      source: 'document_probe',
       summaryPreview: snippet,
       characterCount: extractedText.length,
       parties,
+      matchedEntity,
     };
   }
 
@@ -114,6 +151,11 @@ export class DocumentProberService {
           .filter(Boolean)
           .join('；');
         lines.push(`  - 识别签约主体：${partyInfo}`);
+        if (doc.matchedEntity) {
+          lines.push(
+            `  - 我方法人主体自动匹配：识别到 ${doc.matchedEntity.party === 'party_a' ? '甲方' : '乙方'} 为我方法人主体「${doc.matchedEntity.entityName}」，已自动对齐审查立场为 ${doc.matchedEntity.inferredPosition === 'seller' ? '乙方/受托方(seller)' : '甲方/委托采购方(buyer)'}`
+          );
+        }
       }
       const digest = crypto
         .createHash('sha256')
@@ -186,63 +228,133 @@ export class DocumentProberService {
 
   private classifyDocument(
     fileName: string,
-    snippet: string
-  ): { docCategory: DocumentProbeResult['docCategory']; docType: string; docTypeName: string } {
+    snippet: string,
+    docTitle?: string
+  ): { docCategory: DocumentProbeResult['docCategory']; docType: string; docTypeName: string; confidence?: number } {
     const combined = `${fileName} ${snippet}`.toLowerCase();
+    const titleCandidates = `${fileName} ${docTitle || ''}`.toLowerCase();
 
-    // 1. Contract category
+    // 1. High-priority Title/Filename matching (prevents embedded clauses like "保密条款" from skewing whole-doc classification)
+    if (
+      /(?:保密协议|保密合同|保密承诺|秘密保持|守秘義務|機密保持|non-disclosure|nda|confidentiality)/i.test(
+        titleCandidates
+      )
+    ) {
+      return {
+        docCategory: 'contract',
+        docType: 'contract.nda',
+        docTypeName: '保密协议',
+        confidence: 0.95,
+      };
+    }
+    if (
+      /(?:软件开发|技术开发|系统开发|委托开发|软件实施|系统集成|技术服务|开发委託|ソフトウェア開発|it服务|运维服务)/i.test(
+        titleCandidates
+      )
+    ) {
+      return {
+        docCategory: 'contract',
+        docType: 'contract.software_development',
+        docTypeName: '软件技术开发合同',
+        confidence: 0.95,
+      };
+    }
+    if (/(?:采购|供货|买卖|货物买卖|采购协议|设备买卖|供销|売買|調達)/i.test(titleCandidates)) {
+      return {
+        docCategory: 'contract',
+        docType: 'contract.procurement',
+        docTypeName: '采购合同',
+        confidence: 0.95,
+      };
+    }
+    if (/(?:租赁|租房|房屋出租|场地租赁|出租|承租|賃貸借|リース)/i.test(titleCandidates)) {
+      return {
+        docCategory: 'contract',
+        docType: 'contract.lease',
+        docTypeName: '房屋场地租赁合同',
+        confidence: 0.95,
+      };
+    }
+    if (/(?:劳动合同|雇佣|劳务合同|聘用协议|劳动聘用|离职|竞业限制|雇用|労働)/i.test(titleCandidates)) {
+      return {
+        docCategory: 'contract',
+        docType: 'contract.employment',
+        docTypeName: '劳动聘用合同',
+        confidence: 0.95,
+      };
+    }
+
+    // 2. Full content contract detection
     const isContract =
-      /(?:合同|协议|agreement|contract|nda|条款|履约|违约责任|买卖|租赁|委托)/i.test(combined);
+      /(?:合同|协议|agreement|contract|nda|条款|履约|违约责任|买卖|租赁|委托|契約)/i.test(combined);
 
     if (isContract) {
-      // NDA / 保密
-      if (
-        /(?:保密|秘密|保密协议|保密合同|商业秘密|保密条款|non-disclosure|nda|confidentiality)/i.test(
-          combined
-        )
-      ) {
+      // Strip disclaimer/negative phrases that mention procurement/investment in negative context
+      // e.g. "本协议不构成采购、投资或知识产权转让承诺", "本契約は調達を義務付けるものではない"
+      const cleanedCombined = combined
+        .replace(/(?:不构成|不作为|不承诺|不得解释为|不代表|并非|不具有|未承诺)[^。\n;；]*(?:采购|买卖|投资|供货|調達|売買)/gi, '')
+        .replace(/(?:采购|买卖|投资|供货|調達|売買)[^。\n;；]*(?:不构成|不作为|不承诺|不得解释为|不代表|并非|を義務付けるものではない|の義務を負わない)/gi, '');
+
+      // Check NDA first if text has explicit NDA contract declaration and lacks substantive commercial transaction terms
+      const hasNdaDeclaration = /(?:保密协议|保密合同|保密承诺书|秘密保持契約|守秘義務契約|機密保持契約|non-disclosure\s*agreement|\bnda\b)/i.test(cleanedCombined);
+      const hasSubstantiveProcurement = /(?:采购标的|交货期限|交货地点|验收标准|付款批次|货物交付|納品期限|検収条件|検収期間|検収基準)/i.test(cleanedCombined);
+      const hasSubstantiveSoftwareDev = /(?:技术指标|代码交付|开发阶段|需求规格|源代码|ソフトウェア仕様|納入成果物)/i.test(cleanedCombined);
+
+      if (hasNdaDeclaration && !hasSubstantiveProcurement && !hasSubstantiveSoftwareDev) {
         return {
           docCategory: 'contract',
           docType: 'contract.nda',
           docTypeName: '保密协议',
+          confidence: 0.9,
         };
       }
 
-      // Procurement / 采购 / 买卖
-      if (/(?:采购|供货|买卖|货物买卖|采购协议|设备买卖|供销)/i.test(combined)) {
-        return {
-          docCategory: 'contract',
-          docType: 'contract.procurement',
-          docTypeName: '采购合同',
-        };
-      }
-
-      // Software / 技术开发
       if (
-        /(?:软件开发|技术开发|系统开发|委托开发|软件实施|系统集成|技术服务)/i.test(combined)
+        /(?:软件开发|技术开发|系统开发|委托开发|软件实施|系统集成|技术服务|开发委託|ソフトウェア開発)/i.test(
+          cleanedCombined
+        )
       ) {
         return {
           docCategory: 'contract',
           docType: 'contract.software_development',
           docTypeName: '软件技术开发合同',
+          confidence: 0.85,
         };
       }
 
-      // Employment / 劳动雇佣
-      if (/(?:劳动合同|雇佣|劳务合同|聘用协议|劳动聘用|离职|竞业限制)/i.test(combined)) {
+      if (/(?:采购|供货|买卖|货物买卖|采购协议|设备买卖|供销|売買|調達)/i.test(cleanedCombined)) {
         return {
           docCategory: 'contract',
-          docType: 'contract.employment',
-          docTypeName: '劳动聘用合同',
+          docType: 'contract.procurement',
+          docTypeName: '采购合同',
+          confidence: 0.85,
         };
       }
 
-      // Lease / 租赁
-      if (/(?:租赁|租房|房屋出租|场地租赁|出租方|承租方)/i.test(combined)) {
+      if (/(?:租赁|租房|房屋出租|场地租赁|出租方|承租方|賃貸借|リース)/i.test(cleanedCombined)) {
         return {
           docCategory: 'contract',
           docType: 'contract.lease',
           docTypeName: '房屋场地租赁合同',
+          confidence: 0.85,
+        };
+      }
+
+      if (/(?:劳动合同|雇佣|劳务合同|聘用协议|劳动聘用|离职|竞业限制|雇用|労働)/i.test(cleanedCombined)) {
+        return {
+          docCategory: 'contract',
+          docType: 'contract.employment',
+          docTypeName: '劳动聘用合同',
+          confidence: 0.85,
+        };
+      }
+
+      if (hasNdaDeclaration) {
+        return {
+          docCategory: 'contract',
+          docType: 'contract.nda',
+          docTypeName: '保密协议',
+          confidence: 0.8,
         };
       }
 
@@ -250,6 +362,7 @@ export class DocumentProberService {
         docCategory: 'contract',
         docType: 'contract.general',
         docTypeName: '通用合同协议',
+        confidence: 0.6,
       };
     }
 
@@ -290,8 +403,10 @@ export class DocumentProberService {
   private extractParties(snippet: string): { partyA?: string; partyB?: string } {
     if (!snippet) return {};
 
-    const partyARegex = /(?:甲方(?:（[^）]+）)?|发包方|委托方|采购方|出租方|雇主|披露方)[：:\s]+([^\n\r\t,，。；;]{2,40})/;
-    const partyBRegex = /(?:乙方(?:（[^）]+）)?|承包方|受托方|供货方|承租方|员工|劳动者|接收方)[：:\s]+([^\n\r\t,，。；;]{2,40})/;
+    const partyARegex =
+      /(?:甲方(?:（[^）]+）)?|发包方|委托方|采购方|出租方|雇主|披露方|委託者|発注者|貸主)[：:\s]+([^\n\r\t,，。；;]{2,40})/;
+    const partyBRegex =
+      /(?:乙方(?:（[^）]+）)?|承包方|受托方|供货方|承租方|员工|劳动者|接收方|受託者|受注者|借主)[：:\s]+([^\n\r\t,，。；;]{2,40})/;
 
     const matchA = snippet.match(partyARegex);
     const matchB = snippet.match(partyBRegex);
@@ -312,20 +427,58 @@ export class DocumentProberService {
     };
   }
 
+  private isLikelyPageOrHeaderNoise(line: string): boolean {
+    const trimmed = line.trim();
+    if (!trimmed) return true;
+    // Pure numbers (e.g. "1", "2")
+    if (/^\d+$/.test(trimmed)) return true;
+    // Pagination patterns: [第 1 页], 第1页, Page 1, 1/5, --- 1 ---, [ 1 ]
+    if (/^\[?\s*(?:第\s*\d+\s*[页頁]|page\s*\d+|\d+\s*[\/／]\s*\d+|-+\s*\d+\s*-+)\s*\]?$/i.test(trimmed)) return true;
+    if (/^\[?\s*\d+\s*\]?$/.test(trimmed)) return true;
+    // Common header labels / metadata: 合同编号, 密级, 内部文件, 签订日期 etc.
+    if (/^(?:合同编号|契約番号|项目编号|文档编号|file\s*no|contract\s*no)[：:\s]/i.test(trimmed)) return true;
+    if (/^(?:密级|保密级别|保密等级|秘密区分|内部资料|内部文件|绝密|机密|秘密)[：:\s]/i.test(trimmed)) return true;
+    if (/^(?:签订日期|締結日|签署日期)[：:\s]/i.test(trimmed)) return true;
+    return false;
+  }
+
   private extractTitle(fileName: string, snippet: string): string {
-    // If snippet has a prominent 《...》 title in the first 200 chars
-    const bookTitleMatch = snippet.slice(0, 200).match(/《([^》]{2,40})》/);
+    // 1. If snippet has a prominent 《...》 title in the first 300 chars
+    const bookTitleMatch = snippet.slice(0, 300).match(/《([^》]{2,40})》/);
     if (bookTitleMatch && bookTitleMatch[1]) {
       return bookTitleMatch[1].trim();
     }
 
-    // First non-empty line if short and title-like
+    // 2. Filter out page markers and header noise
     const lines = snippet
       .split('\n')
       .map((l) => l.trim())
-      .filter(Boolean);
-    if (lines[0] && lines[0].length >= 3 && lines[0].length <= 35 && !/[。；;！!？?]/.test(lines[0])) {
-      return lines[0];
+      .filter((l) => l.length > 0 && !this.isLikelyPageOrHeaderNoise(l));
+
+    // Check first 6 candidate lines
+    const candidates = lines.slice(0, 6);
+    // Prioritize candidate line that explicitly contains contract/document title keywords
+    const contractTitleLine = candidates.find(
+      (l) =>
+        l.length >= 2 &&
+        l.length <= 40 &&
+        !/[。；;！!？?]/.test(l) &&
+        /(?:合同|协议|契约|契約|agreement|nda|承诺书|覚書|memorandum|规范|报告|方案)/i.test(l)
+    );
+    if (contractTitleLine) {
+      return contractTitleLine;
+    }
+
+    // Otherwise, first non-noise candidate line if short and title-like (not a sentence or party definition)
+    const firstValid = candidates.find(
+      (l) =>
+        l.length >= 2 &&
+        l.length <= 35 &&
+        !/[。；;！!？?]/.test(l) &&
+        !/^(?:甲方|乙方|丙方|委託者|受託者|采购方|供货方|出租方|承租方)[：:\s]/.test(l)
+    );
+    if (firstValid) {
+      return firstValid;
     }
 
     // Fall back to clean filename

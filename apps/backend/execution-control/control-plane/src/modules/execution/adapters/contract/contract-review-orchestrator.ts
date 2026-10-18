@@ -28,8 +28,17 @@ export interface ClauseReviewOutputItem {
   comments?: any[];
   formIntegrity?: any;
   llmReviewed?: boolean;
+  isBypassed?: boolean;
+  isFallback?: boolean;
   facts?: any;
   findings?: any[];
+  diagnostics?: {
+    attempt?: number;
+    modelId?: string;
+    elapsedMs?: number;
+    rawSnippet?: string;
+    validationFailureCode?: string;
+  };
 }
 
 export interface ReviewChapterGroupItem {
@@ -58,6 +67,218 @@ function normalizeRiskLevel(rawLevel: any): 'HIGH' | 'MEDIUM' | 'LOW' | 'PASS' |
   return null;
 }
 
+interface TransformedClauseReview {
+  isValid: boolean;
+  rejectionReason?: string;
+  findings: any[];
+  riskLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'PASS';
+  riskSummary: string;
+  legalAdvice: string;
+  recommendedRevision?: string;
+}
+
+/**
+ * Domain Transformation:
+ * Normalizes model finding structures, performs catalog rule hydration,
+ * validates semantic integrity, and derives final risk level in a single coherent step.
+ * Invariant: Any admitted risk finding MUST be materialized and preserved in final riskLevel.
+ * Under no circumstances may an unfulfilled/malformed risk finding be silently converted to PASS.
+ */
+function transformClauseSemanticReview(
+  match: any,
+  item: { clause: any; index: number },
+  availableRules: any[]
+): TransformedClauseReview {
+  if (!match || typeof match !== 'object' || Array.isArray(match)) {
+    return {
+      isValid: false,
+      rejectionReason: '模型响应缺失或格式非对象',
+      findings: [],
+      riskLevel: 'PASS',
+      riskSummary: '',
+      legalAdvice: '',
+    };
+  }
+
+  const explicitRiskLevel = normalizeRiskLevel(match.riskLevel);
+  const rawFindings: any[] = Array.isArray(match.findings) ? match.findings : [];
+  const clauseFindings: any[] = [];
+  let passedFindingsCount = 0;
+  let hasMalformedFinding = false;
+
+  for (const f of rawFindings) {
+    if (!f || typeof f !== 'object' || Array.isArray(f) || Object.keys(f).length === 0) {
+      hasMalformedFinding = true;
+      continue;
+    }
+
+    const normVerdict = typeof f.verdict === 'string' ? f.verdict.toUpperCase().trim() : undefined;
+    const fSeverity = normalizeRiskLevel(f.severity);
+
+    // Explicit pass finding
+    if (normVerdict === 'PASSED' || fSeverity === 'PASS') {
+      passedFindingsCount++;
+      continue;
+    }
+
+    // Risk finding: requires either a risk severity (HIGH/MEDIUM/LOW), verdict MATCHED, or non-empty rule/reason
+    const fLevel: 'HIGH' | 'MEDIUM' | 'LOW' | null =
+      fSeverity === 'HIGH' || fSeverity === 'MEDIUM' || fSeverity === 'LOW'
+        ? fSeverity
+        : normVerdict === 'MATCHED'
+        ? 'MEDIUM'
+        : null;
+
+    const rawRuleId = String(f.ruleId || f.id || '').trim();
+    const rawReason = String(f.reason || f.riskSummary || '').trim();
+
+    // If it has no level, no verdict, no rule, and no reason, it is malformed
+    if (!fLevel && !rawRuleId && !rawReason) {
+      hasMalformedFinding = true;
+      continue;
+    }
+
+    const effectiveSeverity = fLevel || 'MEDIUM';
+
+    let quote =
+      typeof f.evidenceQuote === 'string' && f.evidenceQuote.trim().length >= 4
+        ? f.evidenceQuote.trim().replace(/^["“'‘]|["”'’]$/g, '').trim()
+        : undefined;
+    if (quote) {
+      const normClause = String(item.clause.originalContent || '').replace(/\s+/g, '');
+      const normQuote = quote.replace(/\s+/g, '');
+      if (!normClause.includes(normQuote)) {
+        quote = undefined;
+      }
+    }
+
+    // Attempt catalog hydration
+    const targetRule = availableRules.find(
+      (r) =>
+        r.elementCode === rawRuleId ||
+        r.id === rawRuleId ||
+        r.title === rawRuleId ||
+        (r.elementCode && rawRuleId && rawRuleId.toUpperCase().includes(r.elementCode))
+    );
+
+    if (targetRule) {
+      clauseFindings.push({
+        id: `finding-clause-${item.index}-${targetRule.elementCode || targetRule.id}`,
+        category: targetRule.category || '合规审查要件',
+        severity: targetRule.severity || effectiveSeverity,
+        title: targetRule.title || item.clause.title || `第 ${item.index + 1} 条`,
+        riskSummary: rawReason || targetRule.riskSummary,
+        legalAdvice: f.legalAdvice || targetRule.legalAdvice,
+        recommendedRevision:
+          f.recommendedRevision ||
+          targetRule.recommendedRevision ||
+          (typeof targetRule.recommendRevision === 'function'
+            ? targetRule.recommendRevision(item.clause.originalContent)
+            : undefined),
+        evidenceQuote: quote,
+        ruleId: targetRule.id,
+        ruleCode: targetRule.elementCode,
+      });
+    } else {
+      // General / custom risk finding (preserves any reported risk finding)
+      clauseFindings.push({
+        id: `finding-clause-${item.index}-${rawRuleId || 'general'}`,
+        category: '专项法务风控发现',
+        severity: effectiveSeverity,
+        title: item.clause.title || `第 ${item.index + 1} 条`,
+        riskSummary:
+          rawReason ||
+          (rawRuleId && rawRuleId !== 'GENERAL-RISK'
+            ? `命中风险要件 [${rawRuleId}]`
+            : '审查发现商事权责失衡或合规隐患'),
+        legalAdvice: f.legalAdvice || '建议法务介入复核并协商对等条款。',
+        recommendedRevision: f.recommendedRevision,
+        evidenceQuote: quote,
+        ruleId: rawRuleId || 'GENERAL-RISK',
+      });
+    }
+  }
+
+  // Backward compatibility: flat response with explicit HIGH/MEDIUM risk level
+  if (clauseFindings.length === 0 && (explicitRiskLevel === 'HIGH' || explicitRiskLevel === 'MEDIUM')) {
+    const primaryRule = item.clause.matchedRules?.[0];
+    let quote =
+      typeof match.evidenceQuote === 'string' && match.evidenceQuote.trim().length >= 4
+        ? match.evidenceQuote.trim().replace(/^["“'‘]|["”'’]$/g, '').trim()
+        : undefined;
+    if (quote) {
+      const normClause = String(item.clause.originalContent || '').replace(/\s+/g, '');
+      const normQuote = quote.replace(/\s+/g, '');
+      if (!normClause.includes(normQuote)) {
+        quote = undefined;
+      }
+    }
+    clauseFindings.push({
+      id: `finding-clause-${item.index}`,
+      category: primaryRule?.category || '合规审查要件',
+      severity: explicitRiskLevel,
+      title: primaryRule?.title || item.clause.title || item.clause.clauseNumber || `第 ${item.index + 1} 条`,
+      riskSummary: primaryRule?.riskSummary || match.riskSummary || '审查风险',
+      legalAdvice: primaryRule?.legalAdvice || match.legalAdvice || '建议法务审阅复核。',
+      recommendedRevision: primaryRule?.recommendedRevision || match.recommendedRevision,
+      evidenceQuote: quote,
+    });
+  }
+
+  // Derive final risk level
+  let finalLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'PASS' = 'PASS';
+  if (clauseFindings.some((f) => f.severity === 'HIGH')) {
+    finalLevel = 'HIGH';
+  } else if (clauseFindings.some((f) => f.severity === 'MEDIUM')) {
+    finalLevel = 'MEDIUM';
+  } else if (clauseFindings.some((f) => f.severity === 'LOW')) {
+    finalLevel = 'LOW';
+  } else if (explicitRiskLevel !== null) {
+    finalLevel = explicitRiskLevel;
+  } else if (passedFindingsCount > 0 && !hasMalformedFinding) {
+    finalLevel = 'PASS';
+  }
+
+  // Determine if this is a valid semantic review
+  const hasDerivedRisk = clauseFindings.length > 0;
+  const hasExplicitPass = explicitRiskLevel === 'PASS';
+  const hasAllPassedFindings = passedFindingsCount > 0 && !hasDerivedRisk && !hasMalformedFinding;
+
+  const isValid = hasDerivedRisk || hasExplicitPass || hasAllPassedFindings || explicitRiskLevel !== null;
+
+  if (!isValid) {
+    return {
+      isValid: false,
+      rejectionReason: '模型响应缺失有效风险评估字段或有效判定结论',
+      findings: [],
+      riskLevel: 'PASS',
+      riskSummary: '',
+      legalAdvice: '',
+    };
+  }
+
+  const primaryFinding = clauseFindings[0];
+  const riskSummary =
+    primaryFinding?.riskSummary ||
+    match.riskSummary ||
+    (finalLevel === 'PASS' ? '该条款权责约定明确对称。' : '审查完毕');
+  const legalAdvice =
+    primaryFinding?.legalAdvice ||
+    match.legalAdvice ||
+    (finalLevel === 'PASS' ? '条款符合规范，可按原约定保留。' : '建议法务审阅复核。');
+  const recommendedRevision =
+    primaryFinding?.recommendedRevision || match.recommendedRevision || undefined;
+
+  return {
+    isValid: true,
+    findings: clauseFindings,
+    riskLevel: finalLevel,
+    riskSummary,
+    legalAdvice,
+    recommendedRevision,
+  };
+}
+
 function cleanAndParseJsonArray(text: string): any[] | null {
   if (!text || typeof text !== 'string') return null;
   let cleaned = text.trim();
@@ -73,18 +294,33 @@ function cleanAndParseJsonArray(text: string): any[] | null {
     cleaned = cleaned.substring(firstBracket, lastBracket + 1);
   }
 
+  let array: any[] | null = null;
   try {
     const res = JSON.parse(cleaned);
-    return Array.isArray(res) ? res : null;
+    array = Array.isArray(res) ? res : null;
   } catch {
     try {
       const sanitized = cleaned.replace(/,\s*([}\]])/g, '$1');
       const res = JSON.parse(sanitized);
-      return Array.isArray(res) ? res : null;
+      array = Array.isArray(res) ? res : null;
     } catch {
       return null;
     }
   }
+
+  if (array) {
+    for (const item of array) {
+      if (item && typeof item === 'object') {
+        const rawIdx = item.clauseIndex ?? item.clauseId ?? item.index ?? item.clause_index;
+        const num = Number(rawIdx);
+        if (Number.isInteger(num)) {
+          item.clauseIndex = num;
+        }
+      }
+    }
+  }
+
+  return array;
 }
 
 /**
@@ -96,11 +332,17 @@ async function executeBatchedSemanticReview(
   logger: Logger,
   modelLedger?: ModelInvocationLedgerService,
   request?: RuntimeStepInvokeRequest
-): Promise<ClauseReviewOutputItem[]> {
+): Promise<{ reviewedClauses: ClauseReviewOutputItem[]; orchestratorWarnings: string[] }> {
   const parsedClauses: any[] = parsedDoc.parsedClauses || [];
   const contractTypeName = parsedDoc.contractTypeName || '商事合同';
   const myPosition = parsedDoc.myPosition || 'buyer';
   const rawPrompt = parsedDoc.rawPrompt || '';
+  const requestedModelId =
+    (request?.input as any)?.modelId ||
+    (request?.metadata as any)?.modelId ||
+    parsedDoc.modelId ||
+    process.env.CONTRACT_REVIEW_MODEL_ID ||
+    'default';
 
   const positionDesc =
     myPosition === 'buyer'
@@ -125,6 +367,7 @@ async function executeBatchedSemanticReview(
     const isPureBlank = clauseText.length === 0 || (isAnnex && clauseText.length <= 10 && !matchedRules.length);
 
     if (skipLlmReview || process.env.DISABLE_LLM_REVIEW === 'true' || isPureBlank) {
+      const isBypassed = isPureBlank;
       // Deterministic Rule-based evaluation (bypass LLM)
       let riskLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'PASS' = 'PASS';
       let riskSummary = '该条款权责约定明确对称，未检测到单方免责陷阱、畸高违约金或隐蔽不利条款。';
@@ -167,6 +410,8 @@ async function executeBatchedSemanticReview(
         comments: clause.comments,
         formIntegrity,
         llmReviewed: false,
+        isBypassed,
+        isFallback: !isBypassed,
         facts: clause.facts,
       };
     } else {
@@ -185,17 +430,23 @@ async function executeBatchedSemanticReview(
     batches.push(clausesToReviewViaLlm.slice(i, i + BATCH_SIZE));
   }
 
-  // Concurrency limit of 3 batches
+  // Concurrency limit of batches (default 1 to prevent local GPU contention on designated 35B model)
   const orchestratorUrl = getAiOrchestratorUrl();
   let currentBatchIdx = 0;
-  const workerCount = Math.min(3, batches.length);
+  const configuredConcurrency = Number(process.env.CONTRACT_REVIEW_CONCURRENCY);
+  const maxConcurrency =
+    Number.isFinite(configuredConcurrency) && configuredConcurrency > 0
+      ? configuredConcurrency
+      : 1;
+  const workerCount = Math.min(maxConcurrency, batches.length);
+  const orchestratorWarnings: string[] = [];
 
   const workers = Array.from({ length: workerCount }, async () => {
     while (currentBatchIdx < batches.length) {
       const batchIdx = currentBatchIdx++;
       const currentBatch = batches[batchIdx];
 
-      const prompt = `你是一名资深中国商事合同法务与合规专家。请对以下合同条款批量进行深度法律合规审查，并严格以 JSON 数组格式返回每个条款的评估结果。
+      const prompt = `你是一名资深中国商事合同法务与合规专家。请对以下合同条款批量进行法律合规审查，并严格以 JSON 数组格式返回每个条款的评估结果。
 
 【合同类别】: ${contractTypeName}
 【我方立场】: ${positionDesc}
@@ -212,23 +463,29 @@ ${currentBatch
       .map((r: any) => ({
         ruleId: r.elementCode || r.id,
         criterion: r.title || r.criterion || r.riskSummary,
-        severity: r.severity,
+        severity: r.severity || 'MEDIUM',
       }));
+    const candidateRulesSummary =
+      candidateRules.length > 0
+        ? candidateRules.map((r: any) => `- [${r.ruleId}] (${r.severity}): ${r.criterion}`).join('\n')
+        : '无预设专项要件，请进行常规商事法律合规与权责对等核验';
     return `--- [条款序号: ${item.index}] [条款标题: ${item.clause.title || item.clause.clauseNumber || `第 ${item.index + 1} 条`}] ---
 【条款原文】:
 ${item.clause.originalContent}
-${candidateRules.length > 0 ? `【候选合规要件摘要】:\n${JSON.stringify(candidateRules, null, 2)}` : '【候选合规要件摘要】: 无预设专项要件，请进行权责对等与法律合规审查'}`;
+【候选合规要件摘要】:
+${candidateRulesSummary}`;
   })
   .join('\n\n')}
 
 【审查与判定规则】:
-1. 逐一核验各条款是否命中上述候选合规要件（命中则 verdict="MATCHED"，未命中则 verdict="PASSED"）。
-2. 若命中，必须在 evidenceQuote 中摘录条款原文证据原句（不可臆造），并在 reason 中简述判定理由（20-50字）。
-3. 如存在候选规则之外的重大法律风险，可使用 ruleId="GENERAL-RISK" 标识补充，并注明 severity ("HIGH"|"MEDIUM"|"LOW")、reason 与 legalAdvice，但不得虚构其他规则编号。
-4. 若条款权责平衡、无实质法律风险，findings 返回空数组或各项 verdict 为 PASSED。
+1. 目标导向：直接核验各条款是否命中上述候选要件。直接输出判定结果，禁止展开漫长的自我辩论或非结构化推演。
+2. 命中规则：命中则 verdict="MATCHED"，未命中则 verdict="PASSED"。若命中，必须在 evidenceQuote 中摘录条款原文证据原句（严禁臆造），并在 reason 中简述判定理由（20-50字内）。
+3. 补充风险：如存在候选规则之外的重大法律风险，可使用 ruleId="GENERAL-RISK" 标识补充，注明 severity ("HIGH"|"MEDIUM"|"LOW") 与 reason，但不得虚构其他规则编号。
+4. 数量控制：每个条款 findings 最多保留 1-2 项最关键实质性风险。若条款权责对等、无实质风险，findings 返回空数组或各项 verdict 为 PASSED。
+5. 双语排查与数值冲突：若条款中包含双语（如中日双语或中英双语）对照，必须严格比对两种语言版本在付款期限（如天数/日历日/工作日）、金额数值、违约金比例、交付节点及法律效力优先级上是否存在实质冲突。若存在期限或数值冲突（例如中文约定30日而日文约定60日），即便写明某一语言优先，仍构成重大法律理解与争议风险，必须判定为 HIGH 并在 riskSummary 中具体指出两种语言的差异与冲突。
 
 【输出格式要求】:
-必须且只能返回纯 JSON 数组，数组中每个对象对应上述条款，顺序一致：
+必须且只能返回纯 JSON 数组，数组中每个对象对应上述条款，顺序一致，且每个对象必须包含 clauseIndex 对应上述条款序号：
 [
   {
     "clauseIndex": <number>,
@@ -246,42 +503,80 @@ ${candidateRules.length > 0 ? `【候选合规要件摘要】:\n${JSON.stringify
 ]`;
 
       let batchSuccess = false;
+      const batchStartTime = Date.now();
+      let batchFailureCode: string | undefined;
+      let batchRawSnippet: string | undefined;
+      let lastAttempt = 1;
+      let batchModelId = requestedModelId;
+      const itemFailureCodes = new Map<number, string>();
+      const llmTimeoutMs = Number(process.env.CONTRACT_REVIEW_LLM_TIMEOUT_MS) || 60000;
       try {
-        const response = await axios.post<{
-          result?: string;
-          content?: string;
-          actualModel?: string;
-          actualModelId?: string;
-          provider?: string;
-          pricing?: {
-            input_price_per_1k: number;
-            output_price_per_1k: number;
-            currency: string;
-          };
-          usage?: {
-            prompt_tokens?: number;
-            completion_tokens?: number;
-            total_tokens?: number;
-            prompt_tokens_details?: { cached_tokens?: number };
-          };
-          debug?: {
-            modelId?: string;
-            actualModel?: string;
-            actualModelId?: string;
-            provider?: string;
-          };
-        }>(
-          `${orchestratorUrl}/ai/model/call`,
-          {
-            modelId: 'default',
-            prompt,
-            temperature: 0.1,
-            seed: 42,
-            responseFormat: 'json_array',
-            includeDebug: true,
-          },
-          { timeout: 60000 }
-        );
+        let response: any;
+        let lastErr: any;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          lastAttempt = attempt + 1;
+          try {
+            response = await axios.post<{
+              result?: string;
+              content?: string;
+              actualModel?: string;
+              actualModelId?: string;
+              provider?: string;
+              pricing?: {
+                input_price_per_1k: number;
+                output_price_per_1k: number;
+                currency: string;
+              };
+              usage?: {
+                prompt_tokens?: number;
+                completion_tokens?: number;
+                total_tokens?: number;
+                prompt_tokens_details?: { cached_tokens?: number };
+              };
+              debug?: {
+                modelId?: string;
+                actualModel?: string;
+                actualModelId?: string;
+                provider?: string;
+              };
+            }>(
+              `${orchestratorUrl}/ai/model/call`,
+              {
+                modelId: requestedModelId,
+                prompt,
+                temperature: 0.1,
+                seed: 42,
+                responseFormat: 'json_array',
+                includeDebug: true,
+                timeoutMs: llmTimeoutMs,
+                thinking: false,
+              },
+              { timeout: llmTimeoutMs + 10000 }
+            );
+            lastErr = null;
+            break;
+          } catch (err: any) {
+            lastErr = err;
+            if (attempt === 0) {
+              logger.warn(
+                `[ContractReviewOrchestrator] Batch ${batchIdx} call attempt 1 failed (${err.message}). Retrying once...`
+              );
+              await new Promise((r) => setTimeout(r, 600));
+            }
+          }
+        }
+        if (lastErr) {
+          if (lastErr.code === 'ECONNABORTED' || String(lastErr.message).toLowerCase().includes('timeout')) {
+            batchFailureCode = 'NETWORK_TIMEOUT';
+          } else if (lastErr.response?.status === 524) {
+            batchFailureCode = 'UPSTREAM_HTTP_524';
+          } else if (lastErr.response?.status) {
+            batchFailureCode = `UPSTREAM_HTTP_${lastErr.response.status}`;
+          } else {
+            batchFailureCode = 'UPSTREAM_NETWORK_ERROR';
+          }
+          throw lastErr;
+        }
 
         if (modelLedger && request) {
           try {
@@ -404,155 +699,137 @@ ${candidateRules.length > 0 ? `【候选合规要件摘要】:\n${JSON.stringify
           }
         }
 
+        batchModelId =
+          response.data?.actualModel ||
+          response.data?.actualModelId ||
+          response.data?.debug?.actualModel ||
+          response.data?.debug?.modelId ||
+          requestedModelId;
+
         const rawResult = response.data?.result || response.data?.content || '';
+        batchRawSnippet = typeof rawResult === 'string' ? rawResult.slice(0, 300) : undefined;
         const parsedArray = cleanAndParseJsonArray(rawResult);
 
-        if (parsedArray && parsedArray.length > 0) {
-          for (const item of currentBatch) {
-            const match = parsedArray.find((p) => p.clauseIndex === item.index) || parsedArray[currentBatch.indexOf(item)];
-            if (match) {
-              const matchedRules: any[] = item.clause.matchedRules || [];
-              const availableRules: any[] = [
-                ...(item.clause.candidateRules || []),
-                ...matchedRules,
-                ...(parsedDoc.availableRules || []),
-              ];
-              const rawFindings: any[] = Array.isArray(match.findings) ? match.findings : [];
+        if (!parsedArray || parsedArray.length === 0) {
+          batchFailureCode = rawResult ? 'INVALID_JSON_RESPONSE' : 'EMPTY_RESPONSE';
+          orchestratorWarnings.push(
+            `批次 ${batchIdx + 1} 模型响应未能解析为有效 JSON 数组 (${batchFailureCode})，条款 [${currentBatch.map((b) => b.index + 1).join(', ')}] 已降级为静态规则校验。`
+          );
+        } else {
+          // Detect schema anomalies in batch output: duplicate IDs or foreign IDs
+          const expectedIndices = new Set(currentBatch.map((item) => item.index));
+          const returnedIndices: number[] = [];
+          const duplicateIndices = new Set<number>();
+          const foreignIndices: number[] = [];
 
-              // Post-hydration from server-side rule catalog
-              const clauseFindings: any[] = [];
-              for (const f of rawFindings) {
-                if (f.verdict === 'PASSED') continue;
-                const ruleId = String(f.ruleId || f.id || '').trim();
-                const targetRule = availableRules.find(
-                  (r) =>
-                    r.elementCode === ruleId ||
-                    r.id === ruleId ||
-                    r.title === ruleId ||
-                    (r.elementCode && ruleId.toUpperCase().includes(r.elementCode))
-                );
-
-                const quote =
-                  typeof f.evidenceQuote === 'string' && f.evidenceQuote.trim().length >= 4
-                    ? f.evidenceQuote.trim().replace(/^["“'‘]|["”'’]$/g, '').trim()
-                    : undefined;
-
-                if (targetRule) {
-                  // Post-hydrated finding from authoritative rule
-                  clauseFindings.push({
-                    id: `finding-clause-${item.index}-${targetRule.elementCode || targetRule.id}`,
-                    category: targetRule.category || '合规审查要件',
-                    severity: targetRule.severity || 'MEDIUM',
-                    title: targetRule.title || item.clause.title || `第 ${item.index + 1} 条`,
-                    riskSummary: f.reason ? `${targetRule.riskSummary}（判定依据：${f.reason}）` : targetRule.riskSummary,
-                    legalAdvice: targetRule.legalAdvice,
-                    recommendedRevision:
-                      targetRule.recommendedRevision ||
-                      (typeof targetRule.recommendRevision === 'function'
-                        ? targetRule.recommendRevision(item.clause.originalContent)
-                        : undefined),
-                    evidenceQuote: quote,
-                    ruleId: targetRule.id,
-                    ruleCode: targetRule.elementCode,
-                  });
-                } else if (ruleId === 'GENERAL-RISK' || f.reason || f.riskSummary) {
-                  // General / open-ended risk finding
-                  const fLevel = normalizeRiskLevel(f.severity) || 'MEDIUM';
-                  clauseFindings.push({
-                    id: `finding-clause-${item.index}-general`,
-                    category: '专项法务风控发现',
-                    severity: fLevel,
-                    title: item.clause.title || `第 ${item.index + 1} 条`,
-                    riskSummary: f.reason || f.riskSummary || '审查发现商事权责失衡或合规隐患',
-                    legalAdvice: f.legalAdvice || '建议法务介入复核并协商对等条款。',
-                    recommendedRevision: f.recommendedRevision,
-                    evidenceQuote: quote,
-                    ruleId: 'GENERAL-RISK',
-                  });
-                }
-              }
-
-              // Backward compatibility for flat LLM responses
-              if (clauseFindings.length === 0 && (match.riskSummary || match.legalAdvice)) {
-                const parsedLevel = normalizeRiskLevel(match.riskLevel);
-                if (parsedLevel === 'HIGH' || parsedLevel === 'MEDIUM') {
-                  const primaryRule = matchedRules[0];
-                  const quote =
-                    typeof match.evidenceQuote === 'string' && match.evidenceQuote.trim().length >= 4
-                      ? match.evidenceQuote.trim().replace(/^["“'‘]|["”'’]$/g, '').trim()
-                      : undefined;
-                  clauseFindings.push({
-                    id: `finding-clause-${item.index}`,
-                    category: primaryRule?.category || '合规审查要件',
-                    severity: parsedLevel,
-                    title: primaryRule?.title || item.clause.title || item.clause.clauseNumber || `第 ${item.index + 1} 条`,
-                    riskSummary: primaryRule?.riskSummary || match.riskSummary || '审查风险',
-                    legalAdvice: primaryRule?.legalAdvice || match.legalAdvice,
-                    recommendedRevision: primaryRule?.recommendedRevision || match.recommendedRevision,
-                    evidenceQuote: quote,
-                  });
-                }
-              }
-
-              let finalLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'PASS' = 'PASS';
-              if (clauseFindings.some((f) => f.severity === 'HIGH')) {
-                finalLevel = 'HIGH';
-              } else if (clauseFindings.some((f) => f.severity === 'MEDIUM')) {
-                finalLevel = 'MEDIUM';
-              } else if (clauseFindings.some((f) => f.severity === 'LOW')) {
-                finalLevel = 'LOW';
+          for (const p of parsedArray) {
+            if (typeof p.clauseIndex === 'number') {
+              if (returnedIndices.includes(p.clauseIndex)) {
+                duplicateIndices.add(p.clauseIndex);
               } else {
-                finalLevel = normalizeRiskLevel(match.riskLevel) || 'PASS';
+                returnedIndices.push(p.clauseIndex);
               }
+              if (!expectedIndices.has(p.clauseIndex)) {
+                foreignIndices.push(p.clauseIndex);
+              }
+            }
+          }
 
-              const primaryFinding = clauseFindings[0];
-              const riskSummary =
-                primaryFinding?.riskSummary ||
-                match.riskSummary ||
-                (finalLevel === 'PASS' ? '该条款权责约定明确对称。' : '审查完毕');
-              const legalAdvice =
-                primaryFinding?.legalAdvice ||
-                match.legalAdvice ||
-                (finalLevel === 'PASS' ? '条款符合规范，可按原约定保留。' : '建议法务审阅复核。');
-              const recommendedRevision =
-                primaryFinding?.recommendedRevision || match.recommendedRevision || undefined;
+          if (duplicateIndices.size > 0) {
+            orchestratorWarnings.push(
+              `批次 ${batchIdx + 1} 模型响应中包含重复条款序号 [${Array.from(duplicateIndices).join(', ')}]，已记录为格式异常。`
+            );
+          }
+          if (foreignIndices.length > 0) {
+            orchestratorWarnings.push(
+              `批次 ${batchIdx + 1} 模型响应中包含未知条款序号 [${foreignIndices.join(', ')}]，超出当前批次预期范围。`
+            );
+          }
 
+          for (const item of currentBatch) {
+            const matches = parsedArray.filter((p) => p.clauseIndex === item.index);
+            const match = matches[0];
+            if (!match) {
+              itemFailureCodes.set(item.index, 'MISSING_CLAUSE_IN_BATCH_OUTPUT');
+              orchestratorWarnings.push(
+                `条款 ${item.index + 1} (${item.clause.clauseNumber || `第 ${item.index + 1} 条`}) 模型响应中未返回该条款评估，已回退为静态规则校验。`
+              );
+              continue;
+            }
+
+            const availableRules: any[] = [
+              ...(item.clause.candidateRules || []),
+              ...(item.clause.matchedRules || []),
+              ...(parsedDoc.availableRules || []),
+            ];
+
+            const transformed = transformClauseSemanticReview(match, item, availableRules);
+
+            if (!transformed.isValid) {
+              itemFailureCodes.set(item.index, 'MALFORMED_FINDING_SCHEMA');
+              orchestratorWarnings.push(
+                `条款 ${item.index + 1} (${item.clause.clauseNumber || `第 ${item.index + 1} 条`}) 模型响应缺失有效风险评估字段 (${transformed.rejectionReason || '字段不合法'})，已回退为静态规则校验。`
+              );
+            } else {
               results[item.index] = {
                 clauseIndex: item.index,
                 clauseNumber: item.clause.clauseNumber || `第 ${item.index + 1} 条`,
                 title: item.clause.title || item.clause.clauseNumber || `第 ${item.index + 1} 条`,
                 originalContent: item.clause.originalContent || '',
-                riskLevel: finalLevel,
-                riskSummary,
-                legalAdvice,
-                recommendedRevision,
+                riskLevel: transformed.riskLevel,
+                riskSummary: transformed.riskSummary,
+                legalAdvice: transformed.legalAdvice,
+                recommendedRevision: transformed.recommendedRevision,
                 matchedCheckpoints:
-                  clauseFindings.length > 0
-                    ? clauseFindings.map((f: any) => `${f.category || '合规审查要件'}：${f.title}`)
-                    : matchedRules.map((r: any) => `${r.category}：${r.title}`),
-                elementId: primaryFinding?.ruleId || matchedRules[0]?.elementId,
-                elementCode: primaryFinding?.ruleCode || matchedRules[0]?.elementCode,
+                  transformed.findings.length > 0
+                    ? transformed.findings.map((f: any) => `${f.category || '合规审查要件'}：${f.title}`)
+                    : (item.clause.matchedRules || []).map((r: any) => `${r.category}：${r.title}`),
+                elementId: transformed.findings[0]?.ruleId || item.clause.matchedRules?.[0]?.elementId,
+                elementCode: transformed.findings[0]?.ruleCode || item.clause.matchedRules?.[0]?.elementCode,
                 chapterNumber: item.clause.chapterNumber,
                 chapterTitle: item.clause.chapterTitle,
                 blocks: item.clause.blocks,
                 comments: item.clause.comments,
                 formIntegrity: item.clause.formIntegrity,
                 llmReviewed: true,
+                isBypassed: false,
+                isFallback: false,
                 facts: item.clause.facts,
-                findings: clauseFindings.length > 0 ? clauseFindings : undefined,
+                findings: transformed.findings.length > 0 ? transformed.findings : undefined,
+                diagnostics: {
+                  attempt: lastAttempt,
+                  modelId: batchModelId,
+                  elapsedMs: Date.now() - batchStartTime,
+                },
               };
             }
           }
-          batchSuccess = true;
+          batchSuccess = currentBatch.every((item) => results[item.index]?.llmReviewed === true);
         }
       } catch (err: any) {
-        logger.warn(`[ContractReviewOrchestrator] Batch ${batchIdx} model call failed: ${err.message}. Falling back.`);
+        if (!batchFailureCode) {
+          batchFailureCode =
+            err.code === 'ECONNABORTED' || String(err.message).toLowerCase().includes('timeout')
+              ? 'NETWORK_TIMEOUT'
+              : err.response?.status === 524
+              ? 'UPSTREAM_HTTP_524'
+              : err.response?.status
+              ? `UPSTREAM_HTTP_${err.response.status}`
+              : 'UPSTREAM_NETWORK_ERROR';
+        }
+        logger.warn(
+          `[ContractReviewOrchestrator] Batch ${batchIdx} model call failed (${batchFailureCode}): ${err.message}. Falling back.`
+        );
+        orchestratorWarnings.push(
+          `批次 ${batchIdx + 1} 模型调用失败 (${batchFailureCode}): ${err.message}，条款 [${currentBatch.map((b) => b.index + 1).join(', ')}] 已降级为静态规则校验。`
+        );
       }
 
       // Fallback for any unfulfilled items in this batch
       if (!batchSuccess) {
         for (const item of currentBatch) {
           if (!results[item.index]) {
+            const itemFailure = itemFailureCodes.get(item.index) || batchFailureCode || 'UNKNOWN_DEGRADATION';
             const matchedRules = item.clause.matchedRules || [];
             const hasHigh = matchedRules.some((r: any) => r.severity === 'HIGH');
             const hasMed = matchedRules.some((r: any) => r.severity === 'MEDIUM');
@@ -579,8 +856,10 @@ ${candidateRules.length > 0 ? `【候选合规要件摘要】:\n${JSON.stringify
               title: item.clause.title || item.clause.clauseNumber || `第 ${item.index + 1} 条`,
               originalContent: item.clause.originalContent || '',
               riskLevel,
-              riskSummary: primaryRule?.riskSummary || '该条款权责约定明确对称。',
-              legalAdvice: primaryRule?.legalAdvice || '条款符合规范，可按原约定保留。',
+              riskSummary:
+                primaryRule?.riskSummary ||
+                `该条款大模型语义审查降级 (${itemFailure})，已回退为静态规则校验。`,
+              legalAdvice: primaryRule?.legalAdvice || '未完成大模型语义深审，建议结合业务背景人工复核。',
               recommendedRevision: primaryRule?.recommendedRevision,
               matchedCheckpoints: matchedRules.map((r: any) => `${r.category}：${r.title}`),
               elementId: primaryRule?.elementId,
@@ -591,8 +870,17 @@ ${candidateRules.length > 0 ? `【候选合规要件摘要】:\n${JSON.stringify
               comments: item.clause.comments,
               formIntegrity: item.clause.formIntegrity,
               llmReviewed: false,
+              isBypassed: false,
+              isFallback: true,
               facts: item.clause.facts,
               findings: fallbackFindings.length > 0 ? fallbackFindings : undefined,
+              diagnostics: {
+                attempt: lastAttempt,
+                modelId: batchModelId,
+                elapsedMs: Date.now() - batchStartTime,
+                rawSnippet: batchRawSnippet,
+                validationFailureCode: itemFailure,
+              },
             };
           }
         }
@@ -601,7 +889,7 @@ ${candidateRules.length > 0 ? `【候选合规要件摘要】:\n${JSON.stringify
   });
 
   await Promise.all(workers);
-  return results;
+  return { reviewedClauses: results, orchestratorWarnings };
 }
 
 /**
@@ -683,7 +971,7 @@ export async function executeContractReviewOrchestration(
     request.metadata?.definitionVersion === '0.0.0-smoke' ||
     String(request.executionId || '').startsWith('smoke-');
 
-  const reviewedClauses = await executeBatchedSemanticReview(
+  const { reviewedClauses, orchestratorWarnings } = await executeBatchedSemanticReview(
     parseResult,
     skipLlm,
     logger,
@@ -707,11 +995,21 @@ export async function executeContractReviewOrchestration(
   if (totalUnfilledVariables > 0) {
     score -= Math.min(15, totalUnfilledVariables * 3);
   }
-  score = Math.max(25, Math.min(100, score));
+  const clampedScore = Math.max(0, Math.min(100, score));
+  const degradedClauses = reviewedClauses.filter((c: any) => c.isFallback === true);
+  const combinedWarnings = [
+    ...(parseResult.warnings || []),
+    ...orchestratorWarnings,
+  ];
+  if (degradedClauses.length > 0) {
+    combinedWarnings.push(
+      `检测到 ${degradedClauses.length} 条条款未能完成大模型语义审查（已回退为静态规则校验），建议重点人工复核。`
+    );
+  }
 
   const metrics = {
     totalClauses: reviewedClauses.length,
-    healthScore: score,
+    healthScore: clampedScore,
     highRiskCount,
     mediumRiskCount,
     lowRiskCount,
@@ -720,8 +1018,10 @@ export async function executeContractReviewOrchestration(
     unfilledVariablesCount: totalUnfilledVariables,
     unfilledBlanksTotal: parseResult.formIntegrityStats?.totalUnfilledBlanks || 0,
     llmReviewedCount: reviewedClauses.filter((c) => c.llmReviewed).length,
+    degradedClausesCount: degradedClauses.length,
+    isDegraded: degradedClauses.length > 0,
     isTruncated: parseResult.isTruncated,
-    warnings: parseResult.warnings,
+    warnings: combinedWarnings,
   };
 
   // Group chapters
@@ -816,6 +1116,7 @@ export async function executeContractReviewOrchestration(
         comments: allComments.length > 0 ? allComments : undefined,
         ruleSetInfo: renderOutput.ruleSetInfo || parseResult.ruleSetInfo,
         sourceDocumentVersion: parseResult.sourceDocumentVersion,
+        reviewStatus: (degradedClauses.length > 0 || orchestratorWarnings.length > 0) ? 'degraded' : 'completed',
         htmlReport: renderOutput.htmlReport,
         artifact: renderOutput.artifact,
         artifacts: renderOutput.artifacts,

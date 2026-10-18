@@ -15,7 +15,7 @@ import {
   AIProviderModelListDTO,
 } from '../../interfaces';
 import { OpenAICompatibleClient } from '../../client/openai-compatible';
-import { LLMClient, PromptCachingConfig } from '../../client/llm-client';
+import { LLMClient, LLMChatRequest, PromptCachingConfig } from '../../client/llm-client';
 import {
   ModelInvocationTelemetryService,
   type ModelInvocationContext,
@@ -854,6 +854,9 @@ export class ModelService implements OnModuleInit {
     options?: {
       reasoning?: ModelReasoningConfig;
       telemetry?: ModelInvocationContext;
+      timeoutMs?: number;
+      temperature?: number;
+      responseFormat?: 'json_object';
     }
   ): Promise<LLMResponse> {
     const client = this.getClient(id);
@@ -862,9 +865,23 @@ export class ModelService implements OnModuleInit {
     }
 
     const messages = [{ role: 'user' as const, content: prompt }];
-    const result = await client.chatCompletion(
-      options?.reasoning ? { messages, reasoning: options.reasoning } : messages
-    );
+    const hasExtendedOptions =
+      Boolean(options?.reasoning) ||
+      typeof options?.timeoutMs === 'number' ||
+      typeof options?.temperature === 'number' ||
+      Boolean(options?.responseFormat);
+
+    const requestPayload: LLMChatRequest | ChatMessage[] = hasExtendedOptions
+      ? {
+          messages,
+          ...(options?.reasoning ? { reasoning: options.reasoning } : {}),
+          ...(typeof options?.timeoutMs === 'number' ? { timeoutMs: options.timeoutMs } : {}),
+          ...(typeof options?.temperature === 'number' ? { temperature: options.temperature } : {}),
+          ...(options?.responseFormat ? { responseFormat: options.responseFormat } : {}),
+        }
+      : messages;
+
+    const result = await client.chatCompletion(requestPayload);
 
     // Strip thinking tags from MiniMax model response
     result.content = this.stripThinkingTags(result.content);

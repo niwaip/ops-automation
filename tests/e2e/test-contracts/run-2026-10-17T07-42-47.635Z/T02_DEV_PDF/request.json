@@ -1,0 +1,22 @@
+{
+  "message": "请审查这份PDF格式的软件开发合同，我们是开发方乙方，请重点审查违约金与工期风险。",
+  "sessionId": "test-t02_dev_pdf-1792222995976",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "config": {
+    "mode": "task",
+    "thinking": true,
+    "webSearch": false,
+    "workspaceSearch": false
+  },
+  "files": [
+    {
+      "fileId": "file-1792222995972-5p9gv4wxe",
+      "fileName": "software-dev-contract.pdf",
+      "mimeType": "application/pdf",
+      "size": 169100,
+      "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792222995972-5p9gv4wxe-software-dev-contract.pdf",
+      "url": "/api/ai/chat/files/file-1792222995972-5p9gv4wxe?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792224795.49721fab4bbc77f4a69e960fb7bd89d606eba4257b60c43f168b6744e6b25d59",
+      "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792224795.49721fab4bbc77f4a69e960fb7bd89d606eba4257b60c43f168b6744e6b25d59"
+    }
+  ]
+}

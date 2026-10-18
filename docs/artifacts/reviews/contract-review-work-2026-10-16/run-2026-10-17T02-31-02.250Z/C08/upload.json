@@ -1,0 +1,9 @@
+{
+  "fileId": "file-1792204779515-e78a79h02",
+  "fileName": "long-contract.docx",
+  "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "size": 1687,
+  "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792204779515-e78a79h02-long-contract.docx",
+  "url": "/api/ai/chat/files/file-1792204779515-e78a79h02?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792206579.70cc2cd01ad1760ada533a76010242f210646388bcd582277dbc3cc3d89249a9",
+  "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792206579.70cc2cd01ad1760ada533a76010242f210646388bcd582277dbc3cc3d89249a9"
+}

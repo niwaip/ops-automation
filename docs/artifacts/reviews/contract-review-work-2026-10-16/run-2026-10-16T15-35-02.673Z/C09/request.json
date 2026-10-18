@@ -1,0 +1,19 @@
+{
+  "message": "请改为审查本次新附件中的采购合同，我方为买方，使用新附件金额。",
+  "sessionId": "crw-C02-1792164946452",
+  "config": {
+    "mode": "task",
+    "thinking": true,
+    "webSearch": false,
+    "workspaceSearch": false,
+    "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+  },
+  "files": [
+    {
+      "fileName": "contract-b.docx",
+      "fileSize": 1237,
+      "fileType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "fileBase64": "data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,UEsDBBQAAAAIAGG8UF33S4B1wgAAAHYBAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbH2QuQ7CMAyGX6XKiqgRAwOiLMAKDLyAlbptRC7FLsfbk3INCBjt//gsLw7XSFxcnPVcqU4kzgFYd+SQyxDJZ6UJyaHkMbUQUR+xJZhOJjPQwQt5GcvQoZaLNTXYWyk2l7xmE3ylEllWxephHFiVwhit0ShZh5OvPyjjJ6HMybuHOxN5lA0KvhIG5TfgmdudKCVTU7HHJFt02QXnkGqog+5dTpb/a77cGZrGaHrnh7aYgiZm41tny7fi0PjX/XB/9/IGUEsDBBQAAAAIAGG8UF1hey9DiQAAAPIAAAALAAAAX3JlbHMvLnJlbHONzzsOAiEQBuCrEA6ws1pYGKCy2dZ4AQLDIy6PDBj19lJYrMbCcuaffH9GnHHVPZbcQqyNPdKam+Sh93oEaCZg0m0qFfNIXKGk+xjJQ9Xmqj3Cfp4PQFuDK7E12WIlp8XuOLs8K/5jF+eiwVMxt4S5/6j4uhiyJo9d8nshC/a9ngbLQQn4eFG9AFBLAwQUAAAACABhvFBds3nYGDICAADQBQAAEQAAAHdvcmQvZG9jdW1lbnQueG1sxZTfa9pQFMf/leIfsKQOZIgVVHwQ2lGGMPokTrO20JiQuLm9ua6aSE2TQrRd7dAyW8tw1m12TZNU/5jl3MQn/4XdGPeDsYehsOXhhOTe8z3n+8nJDRWCWSbzjKZy+aUX9E6ODxZWfFv5PBskCD6zRdFp/h7DUjm89pTh6HQeP3KbRIHhsizHZCie385t0juEnyQDBJ3ezvnCoULwCZN96d5ZN3BumKoHeTadoVZ8LEfxFPec8oVttWnpHac3hLYwFgRn8AEUEZRqiMApYTdy08j+lZqXa5t1kG8m5kns0eOUn/QHlsnlQCo6n6StfkL1WyyGjpvo7Bxd7ztXNSh1QdYmpmjd9qerlfnErds3nrilH4JW/k0cpPoi4na3a2lF9PZsCbUE+2RvPhWc6/T6LslEMr6Wik7Mqtc1KIceG2vYAF31PiEuCHIf70FFwzJu/A9IfEHp9dfi7nzl57euV13r4/dVpH5Z1HokFouvJ1MRbMzzCWLfGXRA0py7C5A+O52ypenotGgbolcRTyJqmXj/jJEmwfAIyQoIumUY1l3NGVyOBRnMXafX+w90tIpLxxm8w90sSmc1EYkmVhPJjSkgbzpQrYT2ZCTWx4IE7Y4zEqD9cVxsIVHxiCCpid/gsfyRYukXGBOqjNB+acboWoVXI6/Jf88IGg2XkWUco+5wUUbrkY21+ENvhDwAcHo5O/Z+GRhQDu6T6OgcyiWkXuHS+CfC1f9snvh+zhI/z/DwN1BLAQIUAxQAAAAIAGG8UF33S4B1wgAAAHYBAAATAAAAAAAAAAAAAACAAQAAAABbQ29udGVudF9UeXBlc10ueG1sUEsBAhQDFAAAAAgAYbxQXWF7L0OJAAAA8gAAAAsAAAAAAAAAAAAAAIAB8wAAAF9yZWxzLy5yZWxzUEsBAhQDFAAAAAgAYbxQXbN52BgyAgAA0AUAABEAAAAAAAAAAAAAAIABpQEAAHdvcmQvZG9jdW1lbnQueG1sUEsFBgAAAAADAAMAuQAAAAYEAAAAAA=="
+    }
+  ]
+}

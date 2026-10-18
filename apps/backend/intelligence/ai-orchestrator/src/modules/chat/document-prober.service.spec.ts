@@ -108,4 +108,107 @@ describe('DocumentProberService', () => {
     expect(result?.parties?.partyA).toBe('豆包网络科技有限公司');
     expect(result?.parties?.partyB).toBe('富士通智能系统开发有限公司');
   });
+
+  it('correctly classifies a technical service contract containing confidentiality clauses as software_development', async () => {
+    const file: ChatUploadedFileDTO = {
+      fileId: 'f6',
+      fileName: '中日双语技术服务合同_202606030853.docx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      size: 4096,
+      extractedText: `
+        《技术服务合同》
+        甲方：某某数字科技有限公司
+        乙方：富士通（中国）信息系统有限公司
+        第一条 技术服务内容、方式
+        第十条 保密条款与商业秘密保护
+        双方对在履行本合同过程中知悉的对方商业秘密及保密信息负有严格保密义务...
+      `,
+    };
+
+    const result = await service.probeSingleFile(file);
+    expect(result?.docCategory).toBe('contract');
+    expect(result?.docType).toBe('contract.software_development');
+    expect(result?.docTypeName).toBe('软件技术开发合同');
+    expect(result?.docTitle).toBe('技术服务合同');
+    expect(result?.parties?.partyA).toBe('某某数字科技有限公司');
+    expect(result?.parties?.partyB).toBe('富士通（中国）信息系统有限公司');
+    expect(result?.matchedEntity?.party).toBe('party_b');
+    expect(result?.matchedEntity?.inferredPosition).toBe('seller');
+  });
+
+  it('correctly classifies a Japanese development contract with Japanese party markers', async () => {
+    const file: ChatUploadedFileDTO = {
+      fileId: 'f7',
+      fileName: '業務委託契約書_ソフトウェア開発.docx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      size: 4096,
+      extractedText: `
+        ソフトウェア開発委託契約書
+        委託者：株式会社ABC
+        受託者：富士通株式会社
+        第1条 開発委託業務の内容
+        第8条 秘密保持義務
+      `,
+    };
+
+    const result = await service.probeSingleFile(file);
+    expect(result?.docCategory).toBe('contract');
+    expect(result?.docType).toBe('contract.software_development');
+    expect(result?.parties?.partyA).toBe('株式会社ABC');
+    expect(result?.parties?.partyB).toBe('富士通株式会社');
+    expect(result?.matchedEntity?.party).toBe('party_b');
+    expect(result?.matchedEntity?.inferredPosition).toBe('seller');
+  });
+
+  it('correctly filters pagination marker [第 1 页] and identifies NDA despite procurement disclaimer', async () => {
+    const file: ChatUploadedFileDTO = {
+      fileId: 'f8',
+      fileName: 'CT03-zh.pdf',
+      mimeType: 'application/pdf',
+      size: 4096,
+      extractedText: `
+        [第 1 页]
+        保密协议
+        甲方：北京某某科技有限公司
+        乙方：上海某某信息有限公司
+        第一条 保密信息范围与定义
+        双方确认，本协议的签署不构成双方进行采购、投资、合资或知识产权转让的任何承诺或约束。
+        第二条 保密义务期限
+      `,
+    };
+
+    const result = await service.probeSingleFile(file);
+    expect(result?.docCategory).toBe('contract');
+    expect(result?.docType).toBe('contract.nda');
+    expect(result?.docTypeName).toBe('保密协议');
+    expect(result?.docTitle).toBe('保密协议');
+    expect(result?.confidence).toBeGreaterThanOrEqual(0.9);
+    expect(result?.source).toBe('document_probe');
+  });
+
+  it('correctly filters Japanese Page 1 marker and handles procurement disclaimer in Japanese NDA', async () => {
+    const file: ChatUploadedFileDTO = {
+      fileId: 'f9',
+      fileName: '98765_random.pdf',
+      mimeType: 'application/pdf',
+      size: 4096,
+      extractedText: `
+        Page 1
+        秘密保持契約書
+        当事者甲：ABC商事株式会社
+        当事者乙：XYZテクノロジー株式会社
+        第1条 秘密情報の定義
+        本契約の締結は、両者間における調達、売買又は投資等の取引を義務付けるものではない。
+        第2条 守秘義務
+      `,
+    };
+
+    const result = await service.probeSingleFile(file);
+    expect(result?.docCategory).toBe('contract');
+    expect(result?.docType).toBe('contract.nda');
+    expect(result?.docTypeName).toBe('保密协议');
+    expect(result?.docTitle).toBe('秘密保持契約書');
+    expect(result?.confidence).toBeGreaterThanOrEqual(0.9);
+    expect(result?.source).toBe('document_probe');
+  });
 });

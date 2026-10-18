@@ -1,0 +1,25 @@
+{
+  "executionId": "da61bcd3-30ee-478c-aea8-275cce988a92",
+  "selectedModelInUi": "qwen36-35b-a3b",
+  "requestedPosition": "seller",
+  "status": "succeeded",
+  "actualPosition": "buyer",
+  "positionSource": "default",
+  "ledgerModels": [
+    "gemini-3.8-flash-high"
+  ],
+  "metrics": {
+    "warnings": [],
+    "passCount": 1,
+    "healthScore": 29,
+    "isTruncated": false,
+    "lowRiskCount": 0,
+    "totalClauses": 4,
+    "highRiskCount": 2,
+    "mediumRiskCount": 1,
+    "llmReviewedCount": 4,
+    "missingClausesCount": 3,
+    "unfilledBlanksTotal": 0,
+    "unfilledVariablesCount": 0
+  }
+}

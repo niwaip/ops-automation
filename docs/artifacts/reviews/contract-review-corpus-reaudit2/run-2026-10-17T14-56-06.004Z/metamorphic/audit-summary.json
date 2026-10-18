@@ -1,0 +1,333 @@
+{
+  "cases": 3,
+  "runnerCounts": {
+    "failed": 1,
+    "passed": 2
+  },
+  "previousGateCounts": {
+    "failed": 1,
+    "passed": 2
+  },
+  "executionCounts": {
+    "failed": 1,
+    "succeeded": 2
+  },
+  "byFormat": {
+    "docx": {
+      "total": 0,
+      "runnerPassed": 0,
+      "sourceCovered": 0,
+      "outputAbsent": 0
+    },
+    "pdf": {
+      "total": 0,
+      "runnerPassed": 0,
+      "sourceCovered": 0,
+      "outputAbsent": 0
+    },
+    "txt": {
+      "total": 3,
+      "runnerPassed": 2,
+      "sourceCovered": 2,
+      "outputAbsent": 1
+    }
+  },
+  "provenanceFailures": [],
+  "businessModel": "qwen36-35b-a3b",
+  "observedBusinessCalls": 6,
+  "observedInputTokens": 6022,
+  "observedOutputTokens": 2350,
+  "degradedCases": [],
+  "recognizerErrorCases": 0,
+  "knownTypeMismatches": [],
+  "knownTypeUnassessed": [],
+  "elapsedMinutes": 1.5804166666666668,
+  "chatMedianMs": 32880,
+  "chatMaxMs": 36969,
+  "results": [
+    {
+      "id": "META-ALIGNED-30-30-txt",
+      "caseId": "META-ALIGNED-30-30",
+      "business": "distribution",
+      "language": "zh-ja",
+      "format": "txt",
+      "executionId": "f29a1c66-61bb-4658-b080-fe06b09fe721",
+      "status": "failed",
+      "previousGateStatus": "failed",
+      "executionStatus": "failed",
+      "failureReason": "步骤「合同文档智能审查与合规诊断」输入参数校验未通过：1. 参数【0】类型不符，期望为 object；2. 参数【1】类型不符，期望为 object；3. 参数【2】类型不符，期望为 object；4. 参数【3】类型不符，期望为 object；5. 参数【4】类型不符，期望为 object。\n\n[技术细节] Node 'n1_合同文档智能审查与合规诊断' failed: INPUT_SCHEMA_VIOLATION for node 'n1_合同文档智能审查与合规诊断': /customCheckpoints/0 (type): must be object; /customCheckpoints/1 (type): must be object; /customCheckpoints/2 (type): must be object; /customCheckpoints/3 (type): must be object; /customCheckpoints/4 (type): must be object",
+      "outputPresent": false,
+      "integrity": {
+        "fixture_digest": true,
+        "task_mode": true,
+        "requested_35b": true,
+        "identity": true,
+        "done": true,
+        "actual_model_35b": null,
+        "artifact_digest": null
+      },
+      "missingMarkers": [
+        "META-ALIGNED-30-30-A01",
+        "META-ALIGNED-30-30-A02",
+        "META-ALIGNED-30-30-A03",
+        "META-ALIGNED-30-30-A04",
+        "META-ALIGNED-30-30-A05",
+        "META-ALIGNED-30-30-A06",
+        "META-ALIGNED-30-30-A07",
+        "META-ALIGNED-30-30-A08"
+      ],
+      "markerCoverage": 0,
+      "totalClauses": 0,
+      "semanticReviewed": null,
+      "degraded": null,
+      "warnings": [],
+      "contractType": null,
+      "expectedType": null,
+      "typeMatches": null,
+      "position": null,
+      "positionSource": null,
+      "recognizerModels": [
+        "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+      ],
+      "recognizerErrors": [],
+      "plannedTypeBinding": {
+        "source": "user_input",
+        "path": "contractType"
+      },
+      "plannedPositionBinding": {
+        "source": "literal",
+        "value": "甲方"
+      },
+      "chatMs": 24762,
+      "uploadMs": 7,
+      "wallMs": 24888,
+      "calls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "diagnostics": [],
+      "sourceDrift": [],
+      "failureNames": [
+        "persistent execution succeeded",
+        "structured output exists"
+      ]
+    },
+    {
+      "id": "META-ALIGNED-60-60-txt",
+      "caseId": "META-ALIGNED-60-60",
+      "business": "distribution",
+      "language": "zh-ja",
+      "format": "txt",
+      "executionId": "36adc1b7-4c1c-448d-8d2d-1f8d0fe0b5a4",
+      "status": "passed",
+      "previousGateStatus": "passed",
+      "executionStatus": "succeeded",
+      "failureReason": null,
+      "outputPresent": true,
+      "integrity": {
+        "fixture_digest": true,
+        "task_mode": true,
+        "requested_35b": true,
+        "identity": true,
+        "done": true,
+        "actual_model_35b": true,
+        "artifact_digest": true
+      },
+      "missingMarkers": [],
+      "markerCoverage": 8,
+      "totalClauses": 9,
+      "semanticReviewed": 9,
+      "degraded": false,
+      "warnings": [],
+      "contractType": "procurement",
+      "expectedType": null,
+      "typeMatches": null,
+      "position": "buyer",
+      "positionSource": "user_confirmed",
+      "recognizerModels": [
+        "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+      ],
+      "recognizerErrors": [],
+      "plannedTypeBinding": {
+        "source": "user_input",
+        "path": "contractType"
+      },
+      "plannedPositionBinding": {
+        "source": "literal",
+        "value": "甲方"
+      },
+      "chatMs": 36969,
+      "uploadMs": 12,
+      "wallMs": 37010,
+      "calls": 3,
+      "inputTokens": 3000,
+      "outputTokens": 1158,
+      "diagnostics": [
+        {
+          "clauseIndex": 0,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 2806
+        },
+        {
+          "clauseIndex": 1,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 2806
+        },
+        {
+          "clauseIndex": 2,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 2806
+        },
+        {
+          "clauseIndex": 3,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 4912
+        },
+        {
+          "clauseIndex": 4,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 4912
+        },
+        {
+          "clauseIndex": 5,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 4912
+        },
+        {
+          "clauseIndex": 6,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 4815
+        },
+        {
+          "clauseIndex": 7,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 4816
+        },
+        {
+          "clauseIndex": 8,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 4816
+        }
+      ],
+      "sourceDrift": [],
+      "failureNames": []
+    },
+    {
+      "id": "META-CONFLICT-45-75-txt",
+      "caseId": "META-CONFLICT-45-75",
+      "business": "distribution",
+      "language": "zh-ja",
+      "format": "txt",
+      "executionId": "33f4d0ab-0ab8-4342-b60c-42b1c55379b5",
+      "status": "passed",
+      "previousGateStatus": "passed",
+      "executionStatus": "succeeded",
+      "failureReason": null,
+      "outputPresent": true,
+      "integrity": {
+        "fixture_digest": true,
+        "task_mode": true,
+        "requested_35b": true,
+        "identity": true,
+        "done": true,
+        "actual_model_35b": true,
+        "artifact_digest": true
+      },
+      "missingMarkers": [],
+      "markerCoverage": 8,
+      "totalClauses": 9,
+      "semanticReviewed": 9,
+      "degraded": false,
+      "warnings": [],
+      "contractType": "procurement",
+      "expectedType": null,
+      "typeMatches": null,
+      "position": "buyer",
+      "positionSource": "user_confirmed",
+      "recognizerModels": [
+        "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+      ],
+      "recognizerErrors": [],
+      "plannedTypeBinding": {
+        "source": "user_input",
+        "path": "contractType"
+      },
+      "plannedPositionBinding": {
+        "source": "literal",
+        "value": "甲方"
+      },
+      "chatMs": 32880,
+      "uploadMs": 5,
+      "wallMs": 32924,
+      "calls": 3,
+      "inputTokens": 3022,
+      "outputTokens": 1192,
+      "diagnostics": [
+        {
+          "clauseIndex": 0,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 2787
+        },
+        {
+          "clauseIndex": 1,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 2787
+        },
+        {
+          "clauseIndex": 2,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 2788
+        },
+        {
+          "clauseIndex": 3,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 3836
+        },
+        {
+          "clauseIndex": 4,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 3836
+        },
+        {
+          "clauseIndex": 5,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 3836
+        },
+        {
+          "clauseIndex": 6,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 5882
+        },
+        {
+          "clauseIndex": 7,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 5882
+        },
+        {
+          "clauseIndex": 8,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 5882
+        }
+      ],
+      "sourceDrift": [],
+      "failureNames": []
+    }
+  ]
+}

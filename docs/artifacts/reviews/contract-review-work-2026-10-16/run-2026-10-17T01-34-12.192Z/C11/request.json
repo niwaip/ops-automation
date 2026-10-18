@@ -1,0 +1,11 @@
+{
+  "message": "我只是咨询：合同审查通常检查哪些方面？不用审查任何具体合同，也不用生成文件。",
+  "sessionId": "crw-C11-1792200852348",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "config": {
+    "mode": "task",
+    "thinking": true,
+    "webSearch": false,
+    "workspaceSearch": false
+  }
+}

@@ -42,6 +42,7 @@ export interface ContractClauseNode {
   id: string;
   clauseNumber: string;
   title: string;
+  titleJa?: string;
   content: string;
   level: number;
   subClauses?: ContractClauseNode[];

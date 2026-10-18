@@ -1,0 +1,31 @@
+{
+  "message": "请使用合同文档智能比对技能比对附件两份合同。CMP12_A.docx是基准合同A，CMP12_B.docx是修改后合同B，严格按A到B方向逐条比对。请保留全部中日文、表格和增删改内容，生成左右并排差异报告。我方为甲方（买方）。请分析变更风险。",
+  "sessionId": "compare-CMP12-1792287009485",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [
+    {
+      "fileId": "file-1792287009478-nz624rj24",
+      "fileName": "CMP12_A.docx",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "size": 37243,
+      "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792287009478-nz624rj24-CMP12_A.docx",
+      "url": "/api/ai/chat/files/file-1792287009478-nz624rj24?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792288809.2c4c8457f6cabfb011b077ecb8f0daf67e2054ba7697b209c927400c73ec73bc",
+      "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792288809.2c4c8457f6cabfb011b077ecb8f0daf67e2054ba7697b209c927400c73ec73bc"
+    },
+    {
+      "fileId": "file-1792287009482-64wksyky1",
+      "fileName": "CMP12_B.docx",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "size": 37245,
+      "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792287009482-64wksyky1-CMP12_B.docx",
+      "url": "/api/ai/chat/files/file-1792287009482-64wksyky1?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792288809.d9286300e0cd44a9cba9c8104bdbce6235b790ecff37599360bf15626b3a7830",
+      "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792288809.d9286300e0cd44a9cba9c8104bdbce6235b790ecff37599360bf15626b3a7830"
+    }
+  ],
+  "config": {
+    "mode": "task",
+    "thinking": true,
+    "webSearch": false,
+    "workspaceSearch": false
+  }
+}

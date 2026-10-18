@@ -1,0 +1,8 @@
+{
+  "status": 401,
+  "data": {
+    "message": "Invalid or expired token",
+    "error": "Unauthorized",
+    "statusCode": 401
+  }
+}

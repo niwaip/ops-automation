@@ -279,7 +279,7 @@ export class MultiNodeParameterBinderService {
             user_input: userRequest,
             fallbackMode: 'none',
             postProcessMode: 'schema_only',
-            ...(modelId ? { model: modelId } : {}),
+            ...(modelId ? { model: modelId, modelId } : {}),
             context: {
               skill_name: card?.displayName || card?.id || node.capabilityKey,
               skill_description: card?.summary || '',
@@ -413,6 +413,67 @@ export class MultiNodeParameterBinderService {
           }
         }
       }
+
+      // Check alternative required groups (anyOf / oneOf)
+      const rawAnyOf = (rawSchema as any)?.anyOf || (rawSchema as any)?.oneOf;
+      if (Array.isArray(rawAnyOf) && rawAnyOf.length > 0) {
+        let anyBranchSatisfied = false;
+        const candidateMissingBranches: string[][] = [];
+
+        for (const branch of rawAnyOf) {
+          if (Array.isArray(branch?.required) && branch.required.length > 0) {
+            const allBranchFieldsPresent = branch.required.every((field: string) => {
+              const val = nodeInputs[field];
+              if (typeof val === 'string') return val.trim().length > 0;
+              return val !== undefined && val !== null;
+            });
+            if (allBranchFieldsPresent) {
+              anyBranchSatisfied = true;
+              break;
+            }
+            candidateMissingBranches.push(branch.required);
+          }
+        }
+
+        if (!anyBranchSatisfied && candidateMissingBranches.length > 0) {
+          // If no alternative branch is satisfied, mark the required fields of the first branch as missing
+          const defaultBranch = candidateMissingBranches[0]!;
+          for (const paramName of defaultBranch) {
+            if (!requiredUserInputs.some((input) => input.targetField === paramName)) {
+              const property = rawSchema?.properties?.[paramName] || {};
+              const inputPath = `planInputs.${node.ref}.${paramName}`;
+              const nodeId = `${node.ref}_${card?.displayName || 'step'}`;
+              bindings[paramName] = {
+                source: 'user_input',
+                path: inputPath,
+              } as ValueBindingV1;
+              const friendlyLabel = resolveFriendlyInputDisplayName({
+                name: paramName,
+                description: typeof property.description === 'string' ? property.description : undefined,
+              });
+              const isFileField = /file(?:base64|_base64)?/i.test(paramName);
+              const promptText = isFileField
+                ? '请通过输入框下方的附件图标上传待提取的文档或附件'
+                : `请输入 ${card?.displayName || node.ref} 的 ${friendlyLabel} 参数`;
+              requiredUserInputs.push({
+                targetField: paramName,
+                nodeId,
+                prompt: promptText,
+                name: `${node.ref}.${paramName}`,
+                display_name: friendlyLabel,
+                label: friendlyLabel,
+                inputPath,
+                type: this.resolveDeclaredType(property, (card?.inputs as any)?.[paramName]),
+                description:
+                  typeof property.description === 'string' && property.description
+                    ? property.description
+                    : promptText,
+                missing: true,
+              });
+            }
+          }
+        }
+      }
     }
 
     return {
@@ -484,6 +545,32 @@ export class MultiNodeParameterBinderService {
     } else if (type === 'array') {
       normalized = Array.isArray(value) ? value : this.parseJsonValue(value, Array.isArray);
       if (!Array.isArray(normalized)) return undefined;
+      const itemSchema = property.items;
+      if (itemSchema && typeof itemSchema === 'object') {
+        const itemProperty = itemSchema as Record<string, unknown>;
+        const itemType = String(itemProperty.type || '').toLowerCase();
+        const coercedItems: unknown[] = [];
+        for (const rawItem of normalized) {
+          if (itemType === 'object') {
+            if (rawItem && typeof rawItem === 'object' && !Array.isArray(rawItem)) {
+              coercedItems.push(rawItem);
+            } else if (typeof rawItem === 'string') {
+              const parsed = this.parseJsonValue(rawItem, (c) => Boolean(c && typeof c === 'object' && !Array.isArray(c)));
+              if (parsed) {
+                coercedItems.push(parsed);
+              } else if (rawItem.trim()) {
+                coercedItems.push({ title: rawItem.trim(), rule: rawItem.trim() });
+              }
+            }
+          } else {
+            const itemNormalized = this.normalizeBySchema(rawItem, itemProperty);
+            if (itemNormalized !== undefined) {
+              coercedItems.push(itemNormalized);
+            }
+          }
+        }
+        normalized = coercedItems;
+      }
     } else if (type === 'object' || type === 'json') {
       normalized =
         value && typeof value === 'object' && !Array.isArray(value)

@@ -1,0 +1,105 @@
+[
+  {
+    "caseId": "CT01-zh",
+    "business": "procurement",
+    "language": "zh",
+    "reviewPosition": "买方 / 買主",
+    "party": "甲",
+    "contentMarkers": [
+      "CT01-zh-A01",
+      "CT01-zh-A02",
+      "CT01-zh-A03",
+      "CT01-zh-A04",
+      "CT01-zh-A05",
+      "CT01-zh-A06",
+      "CT01-zh-A07",
+      "CT01-zh-A08"
+    ],
+    "expectedObservations": [
+      {
+        "clause": 1,
+        "marker": "CT01-zh-A01",
+        "observation": "neutral",
+        "zh": "标的及价款：乙方向甲方供应精密泵十台，含税总价人民币480000元，附件列明型号和技术参数。",
+        "ja": "目的物及び代金：乙は甲に精密ポンプ10台を供給する。税込総額は480000人民元とし、型番及び仕様は別紙による。"
+      },
+      {
+        "clause": 2,
+        "marker": "CT01-zh-A02",
+        "observation": "balanced",
+        "zh": "交付：乙方于2027年3月15日前送达甲方上海仓库，运输及交付前毁损风险由乙方承担。",
+        "ja": "納入：乙は2027年3月15日までに甲の上海倉庫へ納入する。運送費及び納入前の滅失リスクは乙が負担する。"
+      },
+      {
+        "clause": 3,
+        "marker": "CT01-zh-A03",
+        "observation": "risk_acceptance",
+        "zh": "验收：货物卸车即视为最终验收合格；即使存在隐蔽缺陷，甲方亦不得拒收或要求修理。",
+        "ja": "検収：荷卸しをもって最終検収に合格したものとし、隠れた欠陥がある場合も甲は受領拒否又は修理請求を行えない。"
+      },
+      {
+        "clause": 4,
+        "marker": "CT01-zh-A04",
+        "observation": "risk_prepayment",
+        "zh": "付款：甲方签约后三日内支付全部价款；乙方无需提供履约担保，交付延期不影响收款。",
+        "ja": "支払：甲は締結後3日以内に代金全額を支払う。乙は履行保証を提供せず、納入遅延によっても代金受領権は影響されない。"
+      },
+      {
+        "clause": 5,
+        "marker": "CT01-zh-A05",
+        "observation": "risk_asymmetric_liability",
+        "zh": "责任：乙方故意或重大过失造成的损失亦不承担赔偿；甲方逾期付款每日按合同总额百分之一支付违约金。",
+        "ja": "責任：乙は故意又は重大な過失による損害についても賠償責任を負わない。甲の支払遅延には契約総額の1％を日額違約金とする。"
+      },
+      {
+        "clause": 6,
+        "marker": "CT01-zh-A06",
+        "observation": "balanced",
+        "zh": "质保：质保期为验收后十二个月；乙方在收到通知后五个工作日内免费修复质量缺陷。",
+        "ja": "保証：保証期間は検収後12か月とし、乙は通知受領後5営業日以内に品質上の欠陥を無償修補する。"
+      },
+      {
+        "clause": 7,
+        "marker": "CT01-zh-A07",
+        "observation": "balanced",
+        "zh": "解除：甲方可在乙方逾期三十日未交货时解除合同，乙方在解除后十日内退还已收款项。",
+        "ja": "解除：乙の納入遅延が30日を超えた場合、甲は解除できる。乙は解除後10日以内に受領済み代金を返還する。"
+      },
+      {
+        "clause": 8,
+        "marker": "CT01-zh-A08",
+        "observation": "language_priority_only_if_relevant",
+        "zh": "争议与文本：适用中华人民共和国法律，争议提交上海仲裁委员会仲裁；中日文本具有同等效力。",
+        "ja": "紛争及び言語：中国法を準拠法とし、紛争は上海仲裁委員会の仲裁に付す。中国語及び日本語の本文は同等の効力を有する。"
+      }
+    ],
+    "files": [
+      {
+        "path": "contracts/procurement/CT01-zh.txt",
+        "mimeType": "text/plain",
+        "bytes": 1394,
+        "sha256": "491a434eca814d3f43f8fe2c60013e4df6e22469a29d566ab504674b6ef32beb"
+      },
+      {
+        "path": "contracts/procurement/CT01-zh.docx",
+        "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "bytes": 37635,
+        "sha256": "4ba1e18e5c2d8011c62ccc04023dd7413c54a88265ee8a87495549406d550711"
+      },
+      {
+        "path": "contracts/procurement/CT01-zh.pdf",
+        "mimeType": "application/pdf",
+        "bytes": 97708,
+        "sha256": "0300a5c71a627caceb66703157d203fe1ec980c31e82fd01a583bf6776690d7e"
+      }
+    ],
+    "expectedNumberedArticles": 8,
+    "file": {
+      "path": "contracts/procurement/CT01-zh.docx",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "bytes": 37635,
+      "sha256": "4ba1e18e5c2d8011c62ccc04023dd7413c54a88265ee8a87495549406d550711"
+    },
+    "id": "CT01-zh-docx"
+  }
+]

@@ -1,0 +1,30 @@
+{
+  "kind": "direct provider control, NOT Work E2E",
+  "status": 201,
+  "durationMs": 5732,
+  "data": {
+    "result": "[{\"probe\":\"CRW_35B_CONTROL\"}]",
+    "usage": {
+      "prompt_tokens": 33,
+      "total_tokens": 314,
+      "completion_tokens": 281,
+      "prompt_tokens_details": null
+    },
+    "actualModel": "qwen36-35b-a3b",
+    "actualModelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+    "provider": "local",
+    "debug": {
+      "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "actualModel": "qwen36-35b-a3b",
+      "actualModelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "provider": "local",
+      "requestMessages": [
+        {
+          "role": "user",
+          "content": "请只输出 JSON 数组 [{\"probe\":\"CRW_35B_CONTROL\"}]，不要附加解释。"
+        }
+      ],
+      "responseText": "[{\"probe\":\"CRW_35B_CONTROL\"}]"
+    }
+  }
+}

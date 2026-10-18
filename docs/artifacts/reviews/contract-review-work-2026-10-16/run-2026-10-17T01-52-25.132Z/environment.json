@@ -1,0 +1,18 @@
+{
+  "startedAt": "2026-10-17T01:52:25.159Z",
+  "timezone": "Asia/Shanghai",
+  "entry": "authenticated POST /ai/chat/stream config.mode=task",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "expectedModel": "qwen36-35b-a3b",
+  "gitHead": "55f4e117ecd72b2a4a40b6c18a1599ef801a2599",
+  "gitStatus": "M apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts\n M apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts\n M apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.spec.ts\n M apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.types.ts\n M apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts\n M apps/backend/execution-control/control-plane/src/modules/execution/plan-runtime/deterministic-plan-scheduler.service.ts\n M apps/backend/execution-control/control-plane/src/modules/execution/state/execution.dto.ts\n M apps/backend/intelligence/ai-orchestrator/src/modules/chat/chat-orchestrator.service.ts\n M apps/backend/intelligence/ai-orchestrator/src/modules/chat/deterministic-task-execution.service.ts\n M apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts\n M apps/backend/intelligence/ai-orchestrator/src/modules/planner/candidate-selection/capability-candidate-selector.service.ts\n M apps/backend/intelligence/ai-orchestrator/src/modules/planner/candidate-selection/capability-intent-match.util.ts\n M apps/backend/intelligence/ai-orchestrator/src/modules/planner/deterministic/deterministic-contract-assembler.service.ts\n M apps/backend/intelligence/ai-orchestrator/src/modules/planner/deterministic/deterministic-plan-generator.service.ts\n M apps/backend/intelligence/ai-orchestrator/src/modules/planner/routing/plan-route-classifier.service.ts\n M apps/backend/intelligence/ai-orchestrator/src/modules/planner/skill/skill-cache.service.ts\n M apps/backend/intelligence/ai-orchestrator/src/modules/planner/topology/deterministic-recipe-matcher.service.ts\n M apps/backend/intelligence/ai-orchestrator/src/modules/react-engine/interfaces.ts\n M builtin-skills/platform.document.contract-reviewer/bundle-lock.json\n M builtin-skills/platform.document.contract-reviewer/manifest.yaml\n?? apps/backend/execution-control/control-plane/test/contract-review-harness-audit.test.ts\n?? docs/artifacts/reviews/contract-review-work-2026-10-16/\n?? tests/e2e/contract-review-work/",
+  "sourceDigests": {
+    "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+    "builtin-skills/platform.document.contract-reviewer/workflow.json": "22b195c867a1528708cc3ae7117bcddad003f41a5a99eccac1fba3aaee4429c0",
+    "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "d2007dc00d50bab34d8b338ba0826be4b2c86206e4fc1bbbd354e0bb576b3147",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "1037c237da3779f67360ac0420931d4458dea6922453c94a6939bc4c004c3776"
+  },
+  "node": "v26.5.0",
+  "identity": "test",
+  "scope": "No global provider changes or service failure injection; synthetic local documents only"
+}

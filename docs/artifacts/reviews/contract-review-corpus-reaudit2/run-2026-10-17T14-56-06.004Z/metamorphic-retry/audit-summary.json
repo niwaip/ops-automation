@@ -1,0 +1,155 @@
+{
+  "cases": 1,
+  "runnerCounts": {
+    "passed": 1
+  },
+  "previousGateCounts": {
+    "passed": 1
+  },
+  "executionCounts": {
+    "succeeded": 1
+  },
+  "byFormat": {
+    "docx": {
+      "total": 0,
+      "runnerPassed": 0,
+      "sourceCovered": 0,
+      "outputAbsent": 0
+    },
+    "pdf": {
+      "total": 0,
+      "runnerPassed": 0,
+      "sourceCovered": 0,
+      "outputAbsent": 0
+    },
+    "txt": {
+      "total": 1,
+      "runnerPassed": 1,
+      "sourceCovered": 1,
+      "outputAbsent": 0
+    }
+  },
+  "provenanceFailures": [],
+  "businessModel": "qwen36-35b-a3b",
+  "observedBusinessCalls": 3,
+  "observedInputTokens": 3046,
+  "observedOutputTokens": 953,
+  "degradedCases": [],
+  "recognizerErrorCases": 0,
+  "knownTypeMismatches": [],
+  "knownTypeUnassessed": [],
+  "elapsedMinutes": 0.7580166666666667,
+  "chatMedianMs": 45357,
+  "chatMaxMs": 45357,
+  "results": [
+    {
+      "id": "META-ALIGNED-30-30-txt",
+      "caseId": "META-ALIGNED-30-30",
+      "business": "distribution",
+      "language": "zh-ja",
+      "format": "txt",
+      "executionId": "6fdef232-4308-4969-abed-8fc36889b1ad",
+      "status": "passed",
+      "previousGateStatus": "passed",
+      "executionStatus": "succeeded",
+      "failureReason": null,
+      "outputPresent": true,
+      "integrity": {
+        "fixture_digest": true,
+        "task_mode": true,
+        "requested_35b": true,
+        "identity": true,
+        "done": true,
+        "actual_model_35b": true,
+        "artifact_digest": true
+      },
+      "missingMarkers": [],
+      "markerCoverage": 8,
+      "totalClauses": 9,
+      "semanticReviewed": 9,
+      "degraded": false,
+      "warnings": [],
+      "contractType": "procurement",
+      "expectedType": null,
+      "typeMatches": null,
+      "position": "buyer",
+      "positionSource": "user_confirmed",
+      "recognizerModels": [
+        "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+      ],
+      "recognizerErrors": [],
+      "plannedTypeBinding": {
+        "source": "user_input",
+        "path": "contractType"
+      },
+      "plannedPositionBinding": {
+        "source": "literal",
+        "value": "甲方"
+      },
+      "chatMs": 45357,
+      "uploadMs": 5,
+      "wallMs": 45481,
+      "calls": 3,
+      "inputTokens": 3046,
+      "outputTokens": 953,
+      "diagnostics": [
+        {
+          "clauseIndex": 0,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 3371
+        },
+        {
+          "clauseIndex": 1,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 3371
+        },
+        {
+          "clauseIndex": 2,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 3371
+        },
+        {
+          "clauseIndex": 3,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 3757
+        },
+        {
+          "clauseIndex": 4,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 3757
+        },
+        {
+          "clauseIndex": 5,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 3757
+        },
+        {
+          "clauseIndex": 6,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 3551
+        },
+        {
+          "clauseIndex": 7,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 3551
+        },
+        {
+          "clauseIndex": 8,
+          "attempt": 1,
+          "modelId": "qwen36-35b-a3b",
+          "elapsedMs": 3551
+        }
+      ],
+      "sourceDrift": [],
+      "failureNames": []
+    }
+  ]
+}

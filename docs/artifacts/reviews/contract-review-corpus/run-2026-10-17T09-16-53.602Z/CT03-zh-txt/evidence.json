@@ -1,0 +1,221 @@
+{
+  "id": "CT03-zh-txt",
+  "caseId": "CT03-zh",
+  "business": "nda",
+  "language": "zh",
+  "format": "txt",
+  "file": "contracts/nda/CT03-zh.txt",
+  "fixtureSha256": "86a316c36696e8e6e9c46e89be385593e29232c974be4b1a7c93e4f79c2db173",
+  "status": "failed",
+  "startedAt": "2026-10-17T09:21:24.106Z",
+  "uploadMs": 5,
+  "sessionId": "corpus-CT03-zh-txt-1792228884113",
+  "executionId": "5943639f-9567-4d6e-bb9c-a697ea13d5be",
+  "traceIds": [
+    "ed2554f5-8513-4ef8-a7ad-7092f11e99fb"
+  ],
+  "chatMs": 127801,
+  "firstEventMs": 11,
+  "streamError": null,
+  "executionStatus": "succeeded",
+  "actualCapabilities": [
+    "platform.document.contract-reviewer"
+  ],
+  "semanticTopics": 0,
+  "topicsWithoutRiskSignal": [],
+  "metrics": {
+    "warnings": [
+      "检测到 3 条条款未能完成大模型语义审查（已回退为静态规则校验），建议重点人工复核。"
+    ],
+    "passCount": 5,
+    "isDegraded": true,
+    "healthScore": 58,
+    "isTruncated": false,
+    "lowRiskCount": 2,
+    "totalClauses": 9,
+    "highRiskCount": 1,
+    "mediumRiskCount": 1,
+    "llmReviewedCount": 6,
+    "missingClausesCount": 2,
+    "unfilledBlanksTotal": 0,
+    "degradedClausesCount": 3,
+    "unfilledVariablesCount": 0
+  },
+  "contractType": "nda",
+  "myPosition": "buyer",
+  "observedUsage": [
+    {
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 768,
+      "outputTokens": 268
+    },
+    {
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 764,
+      "outputTokens": 359
+    },
+    {
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 849,
+      "outputTokens": 451
+    }
+  ],
+  "assertions": [
+    {
+      "name": "upload returned attachment",
+      "passed": true,
+      "actual": null,
+      "category": "UPLOAD"
+    },
+    {
+      "name": "chat HTTP success",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE finished",
+      "passed": true,
+      "actual": "done",
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "contract skill executed",
+      "passed": true,
+      "actual": [
+        "platform.document.contract-reviewer"
+      ],
+      "category": "ROUTING"
+    },
+    {
+      "name": "persistent execution succeeded",
+      "passed": true,
+      "actual": "succeeded",
+      "category": "STATE"
+    },
+    {
+      "name": "structured output exists",
+      "passed": true,
+      "actual": null,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "all eight article markers covered",
+      "passed": true,
+      "actual": [],
+      "category": "PARSE"
+    },
+    {
+      "name": "every source article language retained",
+      "passed": true,
+      "actual": [],
+      "category": "PARSE"
+    },
+    {
+      "name": "clause indices unique",
+      "passed": true,
+      "actual": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "category": "OUTPUT"
+    },
+    {
+      "name": "metrics consistent",
+      "passed": true,
+      "actual": {
+        "warnings": [
+          "检测到 3 条条款未能完成大模型语义审查（已回退为静态规则校验），建议重点人工复核。"
+        ],
+        "passCount": 5,
+        "isDegraded": true,
+        "healthScore": 58,
+        "isTruncated": false,
+        "lowRiskCount": 2,
+        "totalClauses": 9,
+        "highRiskCount": 1,
+        "mediumRiskCount": 1,
+        "llmReviewedCount": 6,
+        "missingClausesCount": 2,
+        "unfilledBlanksTotal": 0,
+        "degradedClausesCount": 3,
+        "unfilledVariablesCount": 0
+      },
+      "category": "OUTPUT"
+    },
+    {
+      "name": "score in range",
+      "passed": true,
+      "actual": 58,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "semantic review complete",
+      "passed": false,
+      "actual": {
+        "reviewed": 6,
+        "total": 9,
+        "warnings": [
+          "检测到 3 条条款未能完成大模型语义审查（已回退为静态规则校验），建议重点人工复核。"
+        ]
+      },
+      "category": "SEMANTIC_COMPLETENESS"
+    },
+    {
+      "name": "not truncated",
+      "passed": true,
+      "actual": false,
+      "category": "PARSE"
+    },
+    {
+      "name": "business model ledger present",
+      "passed": true,
+      "actual": 3,
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "requested model actually used",
+      "passed": true,
+      "actual": [
+        "qwen36-35b-a3b"
+      ],
+      "category": "MODEL"
+    },
+    {
+      "name": "original artifact URL downloads HTML",
+      "passed": true,
+      "actual": {
+        "url": "http://192.168.100.143:3009/renders/e04794af5b4c9fca9b9f68b282bc9f3d.html",
+        "status": 200,
+        "bytes": 282169,
+        "sha256": "2694eda6c2e6ff90962d95d186f6dc41179bc659c5cdcef2d3bd70c927b94b1b",
+        "html": true
+      },
+      "category": "DELIVERY"
+    }
+  ],
+  "failures": [
+    {
+      "name": "semantic review complete",
+      "passed": false,
+      "actual": {
+        "reviewed": 6,
+        "total": 9,
+        "warnings": [
+          "检测到 3 条条款未能完成大模型语义审查（已回退为静态规则校验），建议重点人工复核。"
+        ]
+      },
+      "category": "SEMANTIC_COMPLETENESS"
+    }
+  ],
+  "semanticStatus": "pending_independent_review",
+  "wallMs": 127841,
+  "finishedAt": "2026-10-17T09:23:31.947Z"
+}

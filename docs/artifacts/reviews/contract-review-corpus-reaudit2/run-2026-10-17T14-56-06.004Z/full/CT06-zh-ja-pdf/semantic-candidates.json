@@ -1,0 +1,92 @@
+[
+  {
+    "marker": "CT06-zh-ja-A04",
+    "topic": "risk_repairs",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "规定维修时乙方无需配合，剥夺了我方现场监督、验收及确认修复成果的权利，导致交付质量无法保障，存在重大履约风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT06-zh-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "规定维修时乙方无需配合，剥夺了我方现场监督、验收及确认修复成果的权利，导致交付质量无法保障，存在重大履约风险。",
+            "evidenceQuote": "乙方无需配合。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT06-zh-ja-A05",
+    "topic": "risk_unilateral_change",
+    "matchedClauseIndices": [
+      5
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "该条款赋予乙方单方变更核心商业条款的权利，且剥夺我方的抗辩与解除权，严重损害我方合同权益，极易引发纠纷且我方处于绝对弱势。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-5-GENERAL-RISK",
+            "title": "[CT06-zh-ja-A05]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "该条款赋予乙方单方变更核心商业条款的权利，且剥夺我方的抗辩与解除权，严重损害我方合同权益，极易引发纠纷且我方处于绝对弱势。",
+            "evidenceQuote": "乙方可提前三日通知后随时调整租金，甲方不得拒绝，也不得因此解除合同。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT06-zh-ja-A06",
+    "topic": "risk_deposit",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "条款免除乙方举证责任且无退款期限，违反公平原则及民法典关于不当得利返还规定，存在极大资金损失风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT06-zh-ja-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "条款免除乙方举证责任且无退款期限，违反公平原则及民法典关于不当得利返还规定，存在极大资金损失风险。",
+            "evidenceQuote": "租赁届满后乙方可自行判断是否退还押金，不设退款期限，也无需提供扣款凭据。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

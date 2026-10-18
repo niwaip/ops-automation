@@ -1,0 +1,10 @@
+data: {"type":"thought","content":"正在规划任务...","seq":1,"protocolVersion":"1","sessionId":"crw-C04-1792199750922","traceId":"18947028-4886-4c26-8863-8cbc3077ee52","data":{"traceId":"18947028-4886-4c26-8863-8cbc3077ee52"}}
+
+data: {"type":"thought","content":"正在获取用户可用 Skill 列表并进行确定性多步骤任务拆分规划...","seq":2,"protocolVersion":"1","sessionId":"crw-C04-1792199750922","traceId":"18947028-4886-4c26-8863-8cbc3077ee52","data":{"traceId":"18947028-4886-4c26-8863-8cbc3077ee52"}}
+
+data: {"type":"error","content":"任务规划/创建失败 [EXECUTION_CREATION_FAILED]: property modelId should not exist","data":{"code":"EXECUTION_CREATION_FAILED","errorMessage":"property modelId should not exist","status":"failed","traceId":"18947028-4886-4c26-8863-8cbc3077ee52"},"seq":3,"protocolVersion":"1","sessionId":"crw-C04-1792199750922","traceId":"18947028-4886-4c26-8863-8cbc3077ee52"}
+
+data: {"type":"session_patch","sessionId":"crw-C04-1792199750922","content":"","data":{"title":"请审查合同并生成审查报告，我方为买方。","status":"active","updatedAt":"2026-10-17T01:16:01.885Z","traceId":"18947028-4886-4c26-8863-8cbc3077ee52"},"seq":4,"protocolVersion":"1","traceId":"18947028-4886-4c26-8863-8cbc3077ee52"}
+
+data: {"type":"done","content":"Stream completed","seq":5,"protocolVersion":"1","sessionId":"crw-C04-1792199750922","traceId":"18947028-4886-4c26-8863-8cbc3077ee52","data":{"traceId":"18947028-4886-4c26-8863-8cbc3077ee52"}}
+

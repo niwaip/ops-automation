@@ -23,6 +23,7 @@ export interface AutomationExecutionOptions {
   initiator?: { id?: string; username?: string; email?: string | null };
   workflow?: OrganizationWorkflowDefinition;
   payload?: Record<string, any>;
+  prisma?: any;
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -133,8 +134,62 @@ export class CoordinationAutomationRunnerService {
       params.prompt;
     const contractType =
       params.contractType || stageConfig.contractType || 'nda';
-    const myPosition =
-      params.myPosition || stageConfig.myPosition || (contractType === 'nda' ? 'seller' : 'buyer');
+
+    // 智能推导立场：1. 用户明确指定(含 ourRole) > 2. 阶段配置回退 > 3. 自动匹配 ('auto')
+    let explicitPosition: string | undefined = params.myPosition || params.position;
+    let explicitPositionSource: 'user_confirmed' | 'inferred' | 'default' | undefined;
+
+    if (explicitPosition && explicitPosition !== 'auto') {
+      explicitPositionSource = 'user_confirmed';
+    } else if (params.ourRole) {
+      const roleStr = String(params.ourRole).trim().toLowerCase();
+      if (roleStr.includes('乙') || roleStr.includes('party b') || roleStr === 'seller') {
+        explicitPosition = 'party_b';
+        explicitPositionSource = 'user_confirmed';
+      } else if (roleStr.includes('甲') || roleStr.includes('party a') || roleStr === 'buyer') {
+        explicitPosition = 'party_a';
+        explicitPositionSource = 'user_confirmed';
+      }
+    }
+
+    const stageConfigPosition = stageConfig.myPosition || stageConfig.position;
+    const isStageAuto = !stageConfigPosition || stageConfigPosition === 'auto';
+
+    const myPosition = explicitPosition || (isStageAuto ? 'auto' : stageConfigPosition);
+    const positionSource = explicitPositionSource || (isStageAuto ? undefined : 'default');
+
+    let legalEntityProfile: Record<string, any> | undefined;
+    if (opts.prisma?.organization) {
+      try {
+        const org = effectiveOrgId
+          ? await opts.prisma.organization.findUnique({ where: { id: effectiveOrgId } })
+          : await opts.prisma.organization.findFirst();
+        if (org) {
+          legalEntityProfile = {
+            legalEntityName: (org as any).legal_entity_name || (org as any).legalEntityName || '富士通（中国）信息系统有限公司',
+            aliases: (org as any).aliases || ['富士通', '富士通（中国）', 'Fujitsu', 'Fujitsu China'],
+            creditCode: (org as any).credit_code || (org as any).creditCode,
+            defaultContractRole: (org as any).default_contract_role || (org as any).defaultContractRole || 'seller',
+          };
+        }
+      } catch (err: any) {
+        this.logger.warn(`Failed to load organization legal profile: ${err?.message || err}`);
+      }
+    }
+    if (!legalEntityProfile) {
+      legalEntityProfile = {
+        legalEntityName: '富士通（中国）信息系统有限公司',
+        aliases: ['富士通', '富士通（中国）', 'Fujitsu', 'Fujitsu China', '富士通株式会社'],
+        defaultContractRole: 'seller',
+      };
+    }
+    if (params.ourParty && typeof params.ourParty === 'string') {
+      const partyStr = params.ourParty.trim();
+      if (partyStr && !legalEntityProfile.aliases.includes(partyStr)) {
+        legalEntityProfile.aliases.push(partyStr);
+      }
+    }
+
     const customChecklistRules =
       stageConfig.customChecklistRules || stageConfig.customCheckpoints;
 
@@ -256,11 +311,13 @@ export class CoordinationAutomationRunnerService {
       url: downloadUrl,
       text,
       contractType,
-      myPosition,
       prompt: reviewPrompt,
       reviewPrompt,
       customChecklistRules,
+      ...(legalEntityProfile ? { legalEntityProfile, ...legalEntityProfile } : {}),
       ...params,
+      myPosition,
+      ...(positionSource ? { positionSource } : {}),
       taskContext: {
         workflowId: workflow?.workflowId,
         stageId: stage.id,
@@ -472,14 +529,19 @@ export class CoordinationAutomationRunnerService {
     const executionId = execution.id;
     this.logger.log(`[ControlPlane] Created execution ${executionId}, awaiting completion...`);
 
-    // 轮询执行单状态（真实大模型审查耗时约 30-45 秒，最多等待 90 秒，间隔 600 毫秒）
+    // 轮询执行单状态（真实大模型逐条审查耗时约 60-120 秒，支持环境变量 CONTROL_PLANE_POLL_TIMEOUT_MS，默认放宽至 180 秒，间隔 800 毫秒）
+    const pollTimeoutMs =
+      Number(process.env.CONTROL_PLANE_POLL_TIMEOUT_MS) ||
+      Number(process.env.STAGE_AUTOMATION_TIMEOUT_MS) ||
+      180000;
+    const pollIntervalMs = 800;
     const pollStart = Date.now();
     let finalExecution = execution;
-    while (Date.now() - pollStart < 90000) {
+    while (Date.now() - pollStart < pollTimeoutMs) {
       if (['completed', 'succeeded', 'failed', 'cancelled'].includes(finalExecution.status)) {
         break;
       }
-      await new Promise((r) => setTimeout(r, 600));
+      await new Promise((r) => setTimeout(r, pollIntervalMs));
       try {
         const checkRes = await axios.get<any>(`${controlPlaneUrl}/executions/${executionId}`, {
           headers,
@@ -502,7 +564,7 @@ export class CoordinationAutomationRunnerService {
 
     if (!['completed', 'succeeded'].includes(finalExecution.status)) {
       this.logger.warn(
-        `Execution ${executionId} did not complete within 90s (status: ${finalExecution.status}), falling back to direct capability execution.`
+        `Execution ${executionId} did not complete within ${Math.round(pollTimeoutMs / 1000)}s (status: ${finalExecution.status}), falling back to direct capability execution.`
       );
       return null;
     }
@@ -760,7 +822,7 @@ export class CoordinationAutomationRunnerService {
               (activeAttachment as any)?.version || activeAttachment?.attachmentId,
           },
         },
-        { timeout: 90000 }
+        { timeout: Number(process.env.CONTRACT_REVIEW_TIMEOUT_MS) || 180000 }
       );
 
       const resData = response.data;
@@ -835,7 +897,7 @@ export class CoordinationAutomationRunnerService {
             params,
           },
         },
-        { timeout: 90000 }
+        { timeout: Number(process.env.CONTRACT_COMPARE_TIMEOUT_MS) || 180000 }
       );
       const resData = response.data;
       if (resData?.success && resData?.output) {

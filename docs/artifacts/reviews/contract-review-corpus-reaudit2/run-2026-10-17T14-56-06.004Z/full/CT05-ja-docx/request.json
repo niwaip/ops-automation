@@ -1,0 +1,22 @@
+{
+  "message": "请对附件这一份合同进行合同审查，我方为甲方（委托开发方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+  "sessionId": "corpus-CT05-ja-docx-1792249401128",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [
+    {
+      "fileId": "file-1792249401123-raht74mdm",
+      "fileName": "CT05-ja.docx",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "size": 37783,
+      "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792249401123-raht74mdm-CT05-ja.docx",
+      "url": "/api/ai/chat/files/file-1792249401123-raht74mdm?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792251201.90cb3f2e276ca40406d57fca76bae06c1fc5878dad8b430fc26f9b65f645a909",
+      "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792251201.90cb3f2e276ca40406d57fca76bae06c1fc5878dad8b430fc26f9b65f645a909"
+    }
+  ],
+  "config": {
+    "mode": "task",
+    "thinking": true,
+    "webSearch": false,
+    "workspaceSearch": false
+  }
+}

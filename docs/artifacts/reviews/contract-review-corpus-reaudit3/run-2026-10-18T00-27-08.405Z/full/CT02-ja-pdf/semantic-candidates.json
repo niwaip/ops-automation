@@ -1,0 +1,185 @@
+[
+  {
+    "marker": "CT02-ja-A03",
+    "topic": "risk_sla",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "排除最低服务标准及重大故障赔偿责任，导致我方在连续停机场景下无追偿权，权责严重失衡。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT02-ja-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "排除最低服务标准及重大故障赔偿责任，导致我方在连续停机场景下无追偿权，权责严重失衡。",
+            "evidenceQuote": "乙は努力義務のみを負い、最低稼働率を保証しない。10 日連続停止した場合も返金又は賠償を行わない。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-ja-A04",
+    "topic": "risk_data_use",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "允许未经同意永久保存及使用敏感数据，违反保密义务核心要求，构成重大数据安全风险。",
+        "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+        "findings": [
+          {
+            "id": "finding-clause-4-NDA-01",
+            "title": "保密期限永久且未区分一般信息与商业秘密",
+            "ruleId": "nda_perpetual_duration",
+            "category": "CONFIDENTIALITY",
+            "ruleCode": "NDA-01",
+            "severity": "HIGH",
+            "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+            "riskSummary": "允许未经同意永久保存及使用敏感数据，违反保密义务核心要求，构成重大数据安全风险。",
+            "evidenceQuote": "乙は氏名、メール及び取引履歴を甲の同意なくモデル学習に利用し、永久保存できる。",
+            "recommendedRevision": "自披露之日起算，有效期为 3 年；依法属于商业秘密的信息在其合法保持秘密状态期间持续有效"
+          },
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT02-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "未经授权将个人信息及交易数据用于AI训练，可能违反个人信息保护法规及数据合规要求。",
+            "evidenceQuote": "乙は氏名、メール及び取引履歴を甲の同意なくモデル学習に利用し"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-ja-A05",
+    "topic": "risk_exit",
+    "matchedClauseIndices": [
+      5
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "赋予服务商单方否决权且无退出数据转移义务，导致保密期限虽结束但数据控制仍未解除，存在持续泄露风险。",
+        "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+        "findings": [
+          {
+            "id": "finding-clause-5-NDA-01",
+            "title": "保密期限永久且未区分一般信息与商业秘密",
+            "ruleId": "nda_perpetual_duration",
+            "category": "CONFIDENTIALITY",
+            "ruleCode": "NDA-01",
+            "severity": "HIGH",
+            "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+            "riskSummary": "赋予服务商单方否决权且无退出数据转移义务，导致保密期限虽结束但数据控制仍未解除，存在持续泄露风险。",
+            "evidenceQuote": "乙は承認の可否を自由に決定でき、出力期限を約束しない。",
+            "recommendedRevision": "自披露之日起算，有效期为 3 年；依法属于商业秘密的信息在其合法保持秘密状态期间持续有效"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-ja-A06",
+    "topic": "risk_renewal",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "服务商单方保留涨价权，缺乏涨价触发条件、幅度限制及买方拒绝权，构成重大价格风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT02-ja-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "服务商单方保留涨价权，缺乏涨价触发条件、幅度限制及买方拒绝权，构成重大价格风险。",
+            "evidenceQuote": "乙は更新日に料金を一方的に増額できる。"
+          },
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT02-ja-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "自动续约条款未设置默认终止机制，若买方未及时通知退出，将被动延续合作关系。",
+            "evidenceQuote": "本契約は 1 年間自動更新される。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-ja-A08",
+    "topic": "risk_dispute_unclear",
+    "matchedClauseIndices": [
+      8
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "适用法律及争议解决机构均未确定，属约定不明，极易引发管辖权异议，增加维权成本。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-8-GENERAL-RISK",
+            "title": "[CT02-ja-A08]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "适用法律及争议解决机构均未确定，属约定不明，极易引发管辖权异议，增加维权成本。"
+          },
+          {
+            "id": "finding-clause-8-GENERAL-RISK",
+            "title": "[CT02-ja-A08]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "签约代表职位而非姓名，主体身份识别不清，存在主体不适格或表见代理争议风险。",
+            "evidenceQuote": "甲代表：星橋試験担当 乙代表：青空試験担当"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

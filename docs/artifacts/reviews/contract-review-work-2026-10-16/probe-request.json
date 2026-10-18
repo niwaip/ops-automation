@@ -1,0 +1,11 @@
+{
+  "sessionId": "contract-probe-1792164646180",
+  "message": "请审查以下采购合同，我方为买方。请生成合同审查报告。\n生产设备采购合同\n甲方：星桥测试公司；乙方：云帆测试公司。\n第一条 标的\n乙方向甲方供应设备一台，总价100000元。\n第二条 验收\n设备到货卸车即视为最终验收合格，甲方不得提出任何质量异议。\n第三条 责任\n乙方故意或重大过失造成甲方损失的，乙方亦不承担任何赔偿责任。",
+  "config": {
+    "mode": "task",
+    "thinking": true,
+    "webSearch": false,
+    "workspaceSearch": false,
+    "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+  }
+}

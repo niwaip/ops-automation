@@ -1,0 +1,85 @@
+{
+  "docxChecks": [
+    {
+      "file": "tests/fixtures/contract-compare-20261018/CMP10/CMP10_A.docx",
+      "isOOXML": true,
+      "table": false,
+      "hasCJK": true
+    },
+    {
+      "file": "tests/fixtures/contract-compare-20261018/CMP05/CMP05_A.docx",
+      "isOOXML": true,
+      "table": false,
+      "hasCJK": true
+    },
+    {
+      "file": "tests/fixtures/contract-compare-20261018/CMP05/CMP05_B.docx",
+      "isOOXML": true,
+      "table": false,
+      "hasCJK": true
+    },
+    {
+      "file": "tests/fixtures/contract-compare-20261018/CMP12/CMP12_B.docx",
+      "isOOXML": true,
+      "table": false,
+      "hasCJK": true
+    },
+    {
+      "file": "tests/fixtures/contract-compare-20261018/CMP12/CMP12_A.docx",
+      "isOOXML": true,
+      "table": false,
+      "hasCJK": true
+    },
+    {
+      "file": "tests/fixtures/contract-compare-20261018/CMP09/CMP09_A.docx",
+      "isOOXML": true,
+      "table": false,
+      "hasCJK": true
+    },
+    {
+      "file": "tests/fixtures/contract-compare-20261018/CMP09/CMP09_B.docx",
+      "isOOXML": true,
+      "table": false,
+      "hasCJK": true
+    },
+    {
+      "file": "tests/fixtures/contract-compare-20261018/CMP07/CMP07_A.docx",
+      "isOOXML": true,
+      "table": true,
+      "hasCJK": true
+    },
+    {
+      "file": "tests/fixtures/contract-compare-20261018/CMP07/CMP07_B.docx",
+      "isOOXML": true,
+      "table": true,
+      "hasCJK": true
+    },
+    {
+      "file": "tests/fixtures/contract-compare-20261018/CMP06/CMP06_B.docx",
+      "isOOXML": true,
+      "table": false,
+      "hasCJK": true
+    },
+    {
+      "file": "tests/fixtures/contract-compare-20261018/CMP06/CMP06_A.docx",
+      "isOOXML": true,
+      "table": false,
+      "hasCJK": true
+    },
+    {
+      "file": "tests/fixtures/contract-compare-20261018/CMP08/CMP08_B.docx",
+      "isOOXML": true,
+      "table": false,
+      "hasCJK": true
+    },
+    {
+      "file": "tests/fixtures/contract-compare-20261018/CMP08/CMP08_A.docx",
+      "isOOXML": true,
+      "table": false,
+      "hasCJK": true
+    }
+  ],
+  "visualQA": "13 DOCX pages independently rendered by existing carbone-engine LibreOffice with Noto CJK, all viewed; 2 native PDFs viewed",
+  "localRendererLimitation": "bundled macOS renderer showed CJK font mapping failure; not attributed to input corruption",
+  "count": 32
+}

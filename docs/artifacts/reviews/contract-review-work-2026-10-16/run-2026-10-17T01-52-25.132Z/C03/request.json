@@ -1,0 +1,11 @@
+{
+  "message": "请审查以下采购合同，我方为买方，并生成审查报告。\n生产设备采购合同\n合同编号：CRW_20261016_A\n甲方：星桥测试公司（买方）\n乙方：云帆测试公司（卖方）\n第一章 标的\n第一条 标的\n标记CRW_ITEM_A，乙方向甲方供应设备一台，总价100000元。\n\n第二章 验收\n第二条 验收\n标记CRW_ACCEPT_A，设备到货卸车即视为最终验收合格，甲方不得提出任何质量异议。\n\n第三章 责任\n第三条 责任\n标记CRW_LIABILITY_A，乙方故意或重大过失造成甲方损失的，乙方亦不承担任何赔偿责任。\n\n第四章 付款\n第四条 付款\n标记CRW_PAYMENT_A，甲方在设备验收合格后30日内支付价款。",
+  "sessionId": "crw-C03-1792202111045",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "config": {
+    "mode": "task",
+    "thinking": true,
+    "webSearch": false,
+    "workspaceSearch": false
+  }
+}

@@ -1,0 +1,334 @@
+{
+  "id": "CT04-zh-ja-docx",
+  "caseId": "CT04-zh-ja",
+  "business": "distribution",
+  "language": "zh-ja",
+  "format": "docx",
+  "file": "contracts/distribution/CT04-zh-ja.docx",
+  "fixtureSha256": "36654894432dd0020155522bca16be6045ea17d71a3f615ef4d01c897f895a31",
+  "status": "failed",
+  "startedAt": "2026-10-17T09:17:19.451Z",
+  "uploadMs": 5,
+  "sessionId": "corpus-CT04-zh-ja-docx-1792228639457",
+  "executionId": "ded48ac2-c5c8-41a1-ba74-f42ef6ce3331",
+  "traceIds": [
+    "9afd18bf-1ab4-4872-99b2-727cb1d8bdae"
+  ],
+  "chatMs": 5151,
+  "firstEventMs": 56,
+  "streamError": null,
+  "executionStatus": "succeeded",
+  "actualCapabilities": [
+    "platform.document.contract-reviewer"
+  ],
+  "semanticTopics": 5,
+  "topicsWithoutRiskSignal": [
+    "risk_internal_conflict",
+    "risk_target",
+    "risk_resale_price_review",
+    "risk_inventory_exit",
+    "bilingual_conflict_30_60"
+  ],
+  "metrics": {
+    "warnings": [],
+    "passCount": 1,
+    "isDegraded": false,
+    "healthScore": 57,
+    "isTruncated": false,
+    "lowRiskCount": 0,
+    "totalClauses": 2,
+    "highRiskCount": 0,
+    "mediumRiskCount": 1,
+    "llmReviewedCount": 2,
+    "missingClausesCount": 3,
+    "unfilledBlanksTotal": 0,
+    "degradedClausesCount": 0,
+    "unfilledVariablesCount": 0
+  },
+  "contractType": "procurement",
+  "myPosition": "buyer",
+  "observedUsage": [
+    {
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 747,
+      "outputTokens": 296
+    }
+  ],
+  "assertions": [
+    {
+      "name": "upload returned attachment",
+      "passed": true,
+      "actual": null,
+      "category": "UPLOAD"
+    },
+    {
+      "name": "chat HTTP success",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE finished",
+      "passed": true,
+      "actual": "done",
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "contract skill executed",
+      "passed": true,
+      "actual": [
+        "platform.document.contract-reviewer"
+      ],
+      "category": "ROUTING"
+    },
+    {
+      "name": "persistent execution succeeded",
+      "passed": true,
+      "actual": "succeeded",
+      "category": "STATE"
+    },
+    {
+      "name": "structured output exists",
+      "passed": true,
+      "actual": null,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "all eight article markers covered",
+      "passed": false,
+      "actual": [
+        "CT04-zh-ja-A01",
+        "CT04-zh-ja-A02",
+        "CT04-zh-ja-A03",
+        "CT04-zh-ja-A04",
+        "CT04-zh-ja-A05",
+        "CT04-zh-ja-A06",
+        "CT04-zh-ja-A07"
+      ],
+      "category": "PARSE"
+    },
+    {
+      "name": "every source article language retained",
+      "passed": false,
+      "actual": [
+        {
+          "marker": "CT04-zh-ja-A01",
+          "language": "zh"
+        },
+        {
+          "marker": "CT04-zh-ja-A01",
+          "language": "ja"
+        },
+        {
+          "marker": "CT04-zh-ja-A02",
+          "language": "zh"
+        },
+        {
+          "marker": "CT04-zh-ja-A02",
+          "language": "ja"
+        },
+        {
+          "marker": "CT04-zh-ja-A03",
+          "language": "zh"
+        },
+        {
+          "marker": "CT04-zh-ja-A03",
+          "language": "ja"
+        },
+        {
+          "marker": "CT04-zh-ja-A04",
+          "language": "zh"
+        },
+        {
+          "marker": "CT04-zh-ja-A04",
+          "language": "ja"
+        },
+        {
+          "marker": "CT04-zh-ja-A05",
+          "language": "zh"
+        },
+        {
+          "marker": "CT04-zh-ja-A05",
+          "language": "ja"
+        },
+        {
+          "marker": "CT04-zh-ja-A06",
+          "language": "zh"
+        },
+        {
+          "marker": "CT04-zh-ja-A06",
+          "language": "ja"
+        },
+        {
+          "marker": "CT04-zh-ja-A07",
+          "language": "zh"
+        },
+        {
+          "marker": "CT04-zh-ja-A07",
+          "language": "ja"
+        }
+      ],
+      "category": "PARSE"
+    },
+    {
+      "name": "clause indices unique",
+      "passed": true,
+      "actual": [
+        0,
+        1
+      ],
+      "category": "OUTPUT"
+    },
+    {
+      "name": "metrics consistent",
+      "passed": true,
+      "actual": {
+        "warnings": [],
+        "passCount": 1,
+        "isDegraded": false,
+        "healthScore": 57,
+        "isTruncated": false,
+        "lowRiskCount": 0,
+        "totalClauses": 2,
+        "highRiskCount": 0,
+        "mediumRiskCount": 1,
+        "llmReviewedCount": 2,
+        "missingClausesCount": 3,
+        "unfilledBlanksTotal": 0,
+        "degradedClausesCount": 0,
+        "unfilledVariablesCount": 0
+      },
+      "category": "OUTPUT"
+    },
+    {
+      "name": "score in range",
+      "passed": true,
+      "actual": 57,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "semantic review complete",
+      "passed": true,
+      "actual": {
+        "reviewed": 2,
+        "total": 2,
+        "warnings": []
+      },
+      "category": "SEMANTIC_COMPLETENESS"
+    },
+    {
+      "name": "not truncated",
+      "passed": true,
+      "actual": false,
+      "category": "PARSE"
+    },
+    {
+      "name": "business model ledger present",
+      "passed": true,
+      "actual": 1,
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "requested model actually used",
+      "passed": true,
+      "actual": [
+        "qwen36-35b-a3b"
+      ],
+      "category": "MODEL"
+    },
+    {
+      "name": "original artifact URL downloads HTML",
+      "passed": true,
+      "actual": {
+        "url": "http://192.168.100.143:3009/renders/62d4f4a85598546599da1a536649529b.html",
+        "status": 200,
+        "bytes": 282010,
+        "sha256": "a1e7d5b3ec3dc82f974325b7e30d1aff68b1f21c53e42a5ce9fa993d0165ceb4",
+        "html": true
+      },
+      "category": "DELIVERY"
+    }
+  ],
+  "failures": [
+    {
+      "name": "all eight article markers covered",
+      "passed": false,
+      "actual": [
+        "CT04-zh-ja-A01",
+        "CT04-zh-ja-A02",
+        "CT04-zh-ja-A03",
+        "CT04-zh-ja-A04",
+        "CT04-zh-ja-A05",
+        "CT04-zh-ja-A06",
+        "CT04-zh-ja-A07"
+      ],
+      "category": "PARSE"
+    },
+    {
+      "name": "every source article language retained",
+      "passed": false,
+      "actual": [
+        {
+          "marker": "CT04-zh-ja-A01",
+          "language": "zh"
+        },
+        {
+          "marker": "CT04-zh-ja-A01",
+          "language": "ja"
+        },
+        {
+          "marker": "CT04-zh-ja-A02",
+          "language": "zh"
+        },
+        {
+          "marker": "CT04-zh-ja-A02",
+          "language": "ja"
+        },
+        {
+          "marker": "CT04-zh-ja-A03",
+          "language": "zh"
+        },
+        {
+          "marker": "CT04-zh-ja-A03",
+          "language": "ja"
+        },
+        {
+          "marker": "CT04-zh-ja-A04",
+          "language": "zh"
+        },
+        {
+          "marker": "CT04-zh-ja-A04",
+          "language": "ja"
+        },
+        {
+          "marker": "CT04-zh-ja-A05",
+          "language": "zh"
+        },
+        {
+          "marker": "CT04-zh-ja-A05",
+          "language": "ja"
+        },
+        {
+          "marker": "CT04-zh-ja-A06",
+          "language": "zh"
+        },
+        {
+          "marker": "CT04-zh-ja-A06",
+          "language": "ja"
+        },
+        {
+          "marker": "CT04-zh-ja-A07",
+          "language": "zh"
+        },
+        {
+          "marker": "CT04-zh-ja-A07",
+          "language": "ja"
+        }
+      ],
+      "category": "PARSE"
+    }
+  ],
+  "semanticStatus": "pending_independent_review",
+  "wallMs": 5192,
+  "finishedAt": "2026-10-17T09:17:24.643Z"
+}

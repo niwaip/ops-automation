@@ -1,0 +1,200 @@
+{
+  "full": {
+    "cases": 54,
+    "runnerCounts": {
+      "failed": 11,
+      "passed": 43
+    },
+    "previousGateCounts": {
+      "failed": 9,
+      "passed": 45
+    },
+    "executionCounts": {
+      "succeeded": 52,
+      "failed": 2
+    },
+    "byFormat": {
+      "docx": {
+        "total": 18,
+        "runnerPassed": 12,
+        "sourceCovered": 16,
+        "outputAbsent": 2
+      },
+      "pdf": {
+        "total": 18,
+        "runnerPassed": 14,
+        "sourceCovered": 18,
+        "outputAbsent": 0
+      },
+      "txt": {
+        "total": 18,
+        "runnerPassed": 17,
+        "sourceCovered": 18,
+        "outputAbsent": 0
+      }
+    },
+    "provenanceFailures": [],
+    "businessModel": "qwen36-35b-a3b",
+    "observedBusinessCalls": 156,
+    "observedInputTokens": 146907,
+    "observedOutputTokens": 63568,
+    "degradedCases": [
+      "CT04-ja-pdf",
+      "CT04-zh-ja-pdf"
+    ],
+    "recognizerErrorCases": 3,
+    "knownTypeMismatches": [
+      "CT03-zh-pdf",
+      "CT03-zh-ja-pdf"
+    ],
+    "knownTypeUnassessed": [
+      "CT03-ja-docx",
+      "CT05-zh-ja-docx"
+    ],
+    "elapsedMinutes": 21.8456,
+    "chatMedianMs": 43031.0,
+    "chatMaxMs": 144804
+  },
+  "retry": {
+    "cases": 11,
+    "runnerCounts": {
+      "passed": 7,
+      "failed": 4
+    },
+    "previousGateCounts": {
+      "passed": 9,
+      "failed": 2
+    },
+    "executionCounts": {
+      "succeeded": 11
+    },
+    "byFormat": {
+      "docx": {
+        "total": 6,
+        "runnerPassed": 4,
+        "sourceCovered": 6,
+        "outputAbsent": 0
+      },
+      "pdf": {
+        "total": 4,
+        "runnerPassed": 2,
+        "sourceCovered": 4,
+        "outputAbsent": 0
+      },
+      "txt": {
+        "total": 1,
+        "runnerPassed": 1,
+        "sourceCovered": 1,
+        "outputAbsent": 0
+      }
+    },
+    "provenanceFailures": [],
+    "businessModel": "qwen36-35b-a3b",
+    "observedBusinessCalls": 33,
+    "observedInputTokens": 31146,
+    "observedOutputTokens": 12829,
+    "degradedCases": [
+      "CT03-ja-docx"
+    ],
+    "recognizerErrorCases": 0,
+    "knownTypeMismatches": [
+      "CT03-zh-pdf",
+      "CT03-zh-ja-pdf"
+    ],
+    "knownTypeUnassessed": [],
+    "elapsedMinutes": 4.131616666666667,
+    "chatMedianMs": 41789,
+    "chatMaxMs": 48336
+  },
+  "metamorphic": {
+    "cases": 3,
+    "runnerCounts": {
+      "failed": 1,
+      "passed": 2
+    },
+    "previousGateCounts": {
+      "failed": 1,
+      "passed": 2
+    },
+    "executionCounts": {
+      "failed": 1,
+      "succeeded": 2
+    },
+    "byFormat": {
+      "docx": {
+        "total": 0,
+        "runnerPassed": 0,
+        "sourceCovered": 0,
+        "outputAbsent": 0
+      },
+      "pdf": {
+        "total": 0,
+        "runnerPassed": 0,
+        "sourceCovered": 0,
+        "outputAbsent": 0
+      },
+      "txt": {
+        "total": 3,
+        "runnerPassed": 2,
+        "sourceCovered": 2,
+        "outputAbsent": 1
+      }
+    },
+    "provenanceFailures": [],
+    "businessModel": "qwen36-35b-a3b",
+    "observedBusinessCalls": 6,
+    "observedInputTokens": 6022,
+    "observedOutputTokens": 2350,
+    "degradedCases": [],
+    "recognizerErrorCases": 0,
+    "knownTypeMismatches": [],
+    "knownTypeUnassessed": [],
+    "elapsedMinutes": 1.5804166666666668,
+    "chatMedianMs": 32880,
+    "chatMaxMs": 36969
+  },
+  "metamorphic-retry": {
+    "cases": 1,
+    "runnerCounts": {
+      "passed": 1
+    },
+    "previousGateCounts": {
+      "passed": 1
+    },
+    "executionCounts": {
+      "succeeded": 1
+    },
+    "byFormat": {
+      "docx": {
+        "total": 0,
+        "runnerPassed": 0,
+        "sourceCovered": 0,
+        "outputAbsent": 0
+      },
+      "pdf": {
+        "total": 0,
+        "runnerPassed": 0,
+        "sourceCovered": 0,
+        "outputAbsent": 0
+      },
+      "txt": {
+        "total": 1,
+        "runnerPassed": 1,
+        "sourceCovered": 1,
+        "outputAbsent": 0
+      }
+    },
+    "provenanceFailures": [],
+    "businessModel": "qwen36-35b-a3b",
+    "observedBusinessCalls": 3,
+    "observedInputTokens": 3046,
+    "observedOutputTokens": 953,
+    "degradedCases": [],
+    "recognizerErrorCases": 0,
+    "knownTypeMismatches": [],
+    "knownTypeUnassessed": [],
+    "elapsedMinutes": 0.7580166666666667,
+    "chatMedianMs": 45357,
+    "chatMaxMs": 45357
+  }
+}

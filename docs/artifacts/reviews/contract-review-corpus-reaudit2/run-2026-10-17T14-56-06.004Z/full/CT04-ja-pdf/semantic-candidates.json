@@ -1,0 +1,110 @@
+[
+  {
+    "marker": "CT04-ja-A02",
+    "topic": "risk_internal_conflict",
+    "matchedClauseIndices": [
+      2
+    ],
+    "riskLevels": [
+      "LOW"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "该条款大模型语义审查降级 (INVALID_JSON_RESPONSE)，已回退为静态规则校验。",
+        "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。"
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-ja-A03",
+    "topic": "risk_target",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "要求我方在乙方无法供货（非我方违约）的情况下，仍须对未达标部分进行现金补填，属于极端的不对等义务。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT04-ja-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "要求我方在乙方无法供货（非我方违约）的情况下，仍须对未达标部分进行现金补填，属于极端的不对等义务。",
+            "evidenceQuote": "乙の欠品時も目標を減額せず、未達の場合は甲が差額を補填する。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-ja-A04",
+    "topic": "risk_resale_price_review",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "乙方单方决定最低售价，且违约后果为没收所有返利及解除销售权，缺乏合理宽限期与比例原则，涉嫌限制竞争。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT04-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "乙方单方决定最低售价，且违约后果为没收所有返利及解除销售权，缺乏合理宽限期与比例原则，涉嫌限制竞争。",
+            "evidenceQuote": "甲は乙が定める最低再販売価格を遵守する。下回った場合は全てのリベート及び販売権を失う。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-ja-A07",
+    "topic": "risk_inventory_exit",
+    "matchedClauseIndices": [
+      7
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "解除后禁止继续销售且不可退货，导致甲方已付货款对应的库存资产直接报废，缺乏成本回收或折价回购机制，对我方极不公平。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-7-GENERAL-RISK",
+            "title": "[CT04-ja-A07]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "解除后禁止继续销售且不可退货，导致甲方已付货款对应的库存资产直接报废，缺乏成本回收或折价回购机制，对我方极不公平。",
+            "evidenceQuote": "甲の購入済み在庫は返品できず、継続販売も禁止する。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

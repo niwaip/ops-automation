@@ -1,0 +1,9 @@
+const requestedModelId = request?.input?.modelId ||
+        request?.metadata?.modelId ||
+        parsedDoc.modelId ||
+        process.env.CONTRACT_REVIEW_MODEL_ID ||
+        'default';
+    const positionDesc = myPosition === 'buyer'
+        ? '买方/客户方/委托方/披露方（核心诉求：严格保密、保障交付质量、明确违约追偿责任、防范服务商单方免责）'
+  
+PID1 sh -c bash /workspace/docker/scripts/build-control-plane-runtime.sh && node /workspace/docker/scripts/start-control-plane-runtime.cjs api 

@@ -231,6 +231,8 @@ export class CapabilityCandidateSelectorService {
               required: Array.isArray(inputSchema.required) ? inputSchema.required : [],
               defaults: this.extractParamDefaults(inputSchema),
               properties: this.extractRecognizerProperties(inputSchema),
+              anyOf: Array.isArray(inputSchema.anyOf) ? inputSchema.anyOf : undefined,
+              oneOf: Array.isArray(inputSchema.oneOf) ? inputSchema.oneOf : undefined,
             }
           : undefined,
       } as any;

@@ -192,4 +192,35 @@ describe('ModelController provider governance', () => {
 
     chatCompletionSpy.mockRestore();
   });
+
+  it('passes thinking: false as reasoning: { enabled: false } to client chatCompletion', async () => {
+    const model = await controller.createModel({
+      name: 'qwen36-35b-test',
+      provider: 'openai',
+      api_endpoint: 'https://api.openai.com/v1',
+      api_key: 'test-key',
+      config: {
+        supports_reasoning: true,
+      },
+    });
+
+    const chatCompletionSpy = jest
+      .spyOn(OpenAICompatibleClient.prototype, 'chatCompletion')
+      .mockResolvedValue({
+        content: '[]',
+      });
+
+    const res = await controller.callModel({
+      modelId: model.id,
+      prompt: 'test prompt',
+      thinking: false,
+    });
+
+    expect(res.result).toBe('[]');
+    expect(chatCompletionSpy).toHaveBeenCalledTimes(1);
+    const passedPayload: any = chatCompletionSpy.mock.calls[0][0];
+    expect(passedPayload.reasoning).toEqual({ enabled: false, effort: undefined });
+
+    chatCompletionSpy.mockRestore();
+  });
 });

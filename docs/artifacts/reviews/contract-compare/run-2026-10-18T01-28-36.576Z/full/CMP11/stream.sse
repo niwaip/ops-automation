@@ -1,0 +1,10 @@
+data: {"type":"thought","content":"正在规划任务...","seq":1,"protocolVersion":"1","sessionId":"compare-CMP11-1792287008864","traceId":"55182080-9afd-40df-8416-cc4ef8c3bb86","data":{"traceId":"55182080-9afd-40df-8416-cc4ef8c3bb86"}}
+
+data: {"type":"thought","content":"正在获取用户可用 Skill 列表并进行确定性多步骤任务拆分规划...","seq":2,"protocolVersion":"1","sessionId":"compare-CMP11-1792287008864","traceId":"55182080-9afd-40df-8416-cc4ef8c3bb86","data":{"traceId":"55182080-9afd-40df-8416-cc4ef8c3bb86"}}
+
+data: {"type":"result","content":"当前没有可执行且与该请求充分匹配的 Skills，任务未执行。","data":{"code":"CAPABILITY_NOT_FOUND","status":"not_started","executed":false,"traceId":"55182080-9afd-40df-8416-cc4ef8c3bb86"},"seq":3,"protocolVersion":"1","sessionId":"compare-CMP11-1792287008864","traceId":"55182080-9afd-40df-8416-cc4ef8c3bb86"}
+
+data: {"type":"session_patch","sessionId":"compare-CMP11-1792287008864","content":"","data":{"title":"请使用合同文档智能比对技能比对附件两份合同。CM","status":"active","updatedAt":"2026-10-18T01:30:17.759Z","traceId":"55182080-9afd-40df-8416-cc4ef8c3bb86"},"seq":4,"protocolVersion":"1","traceId":"55182080-9afd-40df-8416-cc4ef8c3bb86"}
+
+data: {"type":"done","content":"Stream completed","seq":5,"protocolVersion":"1","sessionId":"compare-CMP11-1792287008864","traceId":"55182080-9afd-40df-8416-cc4ef8c3bb86","data":{"traceId":"55182080-9afd-40df-8416-cc4ef8c3bb86"}}
+

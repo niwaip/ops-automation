@@ -1,0 +1,10 @@
+   19 Sat Oct 17 16:37:08 2026 node /usr/local/bin/pnpm --filter carbone-engine run dev
+   32 Sat Oct 17 16:37:08 2026 node /usr/local/bin/pnpm --filter @ops/document-domain run dev
+   44 Sat Oct 17 16:37:08 2026 sh -c pnpm run build:studio-web && prisma generate --schema template/prisma/schema.prisma && ts-node-dev --project tsconfig.json --respawn --transpile-only main.ts
+  136 Sat Oct 17 16:37:09 2026 node /workspace/apps/backend/capabilities/document-domain/node_modules/.bin/../ts-node-dev/lib/bin.js --project tsconfig.json --respawn --transpile-only main.ts
+ 1937 Sat Oct 17 17:14:04 2026 /usr/local/bin/node -r /tmp/ts-node-dev-hook-24302608575621365.js /workspace/node_modules/.pnpm/ts-node-dev@2.0.0_@types+node@20.19.37_typescript@5.9.3/node_modules/ts-node-dev/lib/wrap.js main.ts
+ 2388 Sat Oct 17 17:23:06 2026 sh -lc ps -eo pid,lstart,args | grep -E "node|nest" | head -12; ls -lh /workspace/apps/backend/capabilities/document-domain/dist/main* /workspace/apps/backend/capabilities/document-domain/dist/backend/capabilities/document-domain/main* 2>/dev/null
+ 2398 Sat Oct 17 17:23:06 2026 grep -E node|nest
+-rw-r--r-- 1 root root   11 Oct 17 16:36 /workspace/apps/backend/capabilities/document-domain/dist/backend/capabilities/document-domain/main.d.ts
+-rw-r--r-- 1 root root 4.3K Oct 17 16:36 /workspace/apps/backend/capabilities/document-domain/dist/backend/capabilities/document-domain/main.js
+-rw-r--r-- 1 root root 2.9K Oct 17 16:36 /workspace/apps/backend/capabilities/document-domain/dist/backend/capabilities/document-domain/main.js.map

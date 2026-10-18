@@ -15,14 +15,15 @@ export class ContractReviewHtmlDocumentRenderer {
     contractTypeName: string;
     clauses: ClauseReviewItem[];
     chapters: ReviewChapterGroup[];
+    secondaryLang?: string;
   }): string {
-    const { fileName, clauses, chapters } = params;
+    const { fileName, clauses, chapters, secondaryLang } = params;
 
     // Render continuous clauses organized by chapter or sequentially
     const bodyContentHtml =
       chapters && chapters.length > 0
         ? chapters
-            .map((ch, idx) => this.renderChapterSection(ch, idx))
+            .map((ch, idx) => this.renderChapterSection(ch, idx, secondaryLang))
             .join('\n')
         : clauses.map((c) => this.renderClause(c)).join('\n');
 
@@ -54,7 +55,11 @@ export class ContractReviewHtmlDocumentRenderer {
     `;
   }
 
-  private renderChapterSection(ch: ReviewChapterGroup, chIdx: number): string {
+  private renderChapterSection(
+    ch: ReviewChapterGroup,
+    chIdx: number,
+    secondaryLang?: string
+  ): string {
     const chapterLabel = ch.chapterTitle.startsWith(ch.chapterNumber)
       ? ch.chapterTitle
       : ch.chapterNumber === '正文' || ch.chapterNumber === '前言' || ch.chapterNumber === '附件'
@@ -64,25 +69,41 @@ export class ContractReviewHtmlDocumentRenderer {
     const isBilingualChapter = chapterLabel.includes('/') || chapterLabel.includes('／');
     let chapterTitleZh = chapterLabel;
     let chapterTitleJa = '';
+
+    const DEFAULT_CHAPTER_TRANSLATIONS: Record<string, { ja: string; en: string }> = {
+      '合同正文条款': { ja: '契約本文条項', en: 'Contract Terms & Conditions' },
+      '合同引言与签约主体': { ja: '契約前文および当事者情報', en: 'Preamble & Parties' },
+      '合同附件与补充协议': { ja: '付属文書および追加合意', en: 'Annexes & Addenda' },
+    };
+
     if (isBilingualChapter) {
       const parts = chapterLabel.split(/[/／]/);
       chapterTitleZh = parts[0].trim();
       chapterTitleJa = parts.slice(1).join(' / ').trim();
+    } else if (secondaryLang && DEFAULT_CHAPTER_TRANSLATIONS[chapterTitleZh]) {
+      const translation = DEFAULT_CHAPTER_TRANSLATIONS[chapterTitleZh];
+      chapterTitleJa = secondaryLang === 'en' ? translation.en : translation.ja;
     }
 
     const clausesHtml = ch.clauses.map((c) => this.renderClause(c)).join('\n');
+
+    // Only apply language-specific CSS classes when both languages exist;
+    // otherwise use a neutral class so the title stays visible in all language modes.
+    const hasBothChapterLangs = Boolean(chapterTitleZh && chapterTitleJa);
+    const chTitleZhClass = hasBothChapterLangs ? 'chapter-title-zh' : '';
+    const chTitleJaClass = 'chapter-title-ja';
 
     return `
     <section id="chapter-${ch.chapterIndex || chIdx}" class="chapter-block pt-2">
       <!-- Chapter Section Header -->
       <div class="chapter-header mb-4 pb-2 border-b-2 border-[#CBD5E1] flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <h2 class="text-base sm:text-lg font-bold text-[#1E293B] tracking-tight chapter-title-zh">
+          <h2 class="text-base sm:text-lg font-bold text-[#1E293B] tracking-tight ${chTitleZhClass}">
             ${this.escapeHtml(chapterTitleZh)}
           </h2>
           ${
             chapterTitleJa
-              ? `<div class="text-[12px] text-[#64748B] font-normal mt-0.5 chapter-title-ja">${this.escapeHtml(chapterTitleJa)}</div>`
+              ? `<div class="text-[12px] text-[#64748B] font-normal mt-0.5 ${chTitleJaClass}">${this.escapeHtml(chapterTitleJa)}</div>`
               : ''
           }
         </div>
@@ -101,12 +122,19 @@ export class ContractReviewHtmlDocumentRenderer {
     const isPreamble = c.clauseIndex === 0 || c.clauseNumber === '前言';
     const isAnnex = c.clauseNumber?.includes('附件') || (c.title && c.title.includes('附件'));
 
-    const { headingZh, headingJa } = this.normalizeHeading(
+    const normalized = this.normalizeHeading(
       c.clauseNumber,
       c.title,
       isPreamble,
       !!isAnnex
     );
+    const headingZh = normalized.headingZh;
+    let headingSecondary = (c.titleJa || normalized.headingJa || '').trim();
+
+    // Fallback: If titleJa is not explicitly populated, check if the first block is a heading with secondaryText
+    if (!headingSecondary && c.blocks && c.blocks[0]?.type === 'heading' && c.blocks[0].secondaryText) {
+      headingSecondary = c.blocks[0].secondaryText.replace(/^[:：\s]+|[:：\s]+$/g, '').trim();
+    }
 
     // Build clause body
     let contentHtml = '';
@@ -121,17 +149,21 @@ export class ContractReviewHtmlDocumentRenderer {
     const hasMediumRisk = c.riskLevel === 'MEDIUM';
     const hasComments = c.comments && c.comments.length > 0;
 
+    // Only apply language-specific CSS classes when both languages exist;
+    // otherwise the heading stays visible regardless of language mode.
+    const headingZhClass = headingSecondary ? 'heading-zh' : '';
+
     return `
     <div id="clause-node-${c.clauseIndex}" class="clause-node relative pt-1 group" data-clause-index="${c.clauseIndex}">
       <!-- Clause Title Row -->
       <div id="clause-heading-${c.clauseIndex}" class="clause-heading flex items-baseline justify-between gap-2 pb-1.5 mb-2 border-b border-[#E2E8F0]">
         <div class="flex items-baseline gap-2 truncate">
-          <span class="font-bold text-sm text-[#1E293B] select-text heading-zh">
+          <span class="font-bold text-sm text-[#1E293B] select-text ${headingZhClass}">
             ${this.escapeHtml(headingZh)}
           </span>
           ${
-            headingJa
-              ? `<span class="text-xs text-[#64748B] select-text heading-ja truncate">${this.escapeHtml(headingJa)}</span>`
+            headingSecondary
+              ? `<span class="text-xs text-[#64748B] select-text heading-ja truncate">${this.escapeHtml(headingSecondary)}</span>`
               : ''
           }
         </div>
@@ -169,13 +201,19 @@ export class ContractReviewHtmlDocumentRenderer {
   private renderBlocks(blocks: DocumentBlock[], clause: ClauseReviewItem): string {
     return blocks
       .map((b, blockIdx) => {
+        // Suppress the first heading block if it duplicates the clause-level title
+        // (which is already rendered with both languages in the clause heading row above)
+        if (blockIdx === 0 && b.type === 'heading') {
+          return '';
+        }
+
         // 1. Bilingual Pair Block
         if (b.type === 'bilingual_pair') {
           const indent = getLegalHierarchyIndentEm(b.prefix || b.primaryText || '');
-          const primaryText = this.formatInlineBlanks(b.primaryHtml || this.escapeHtml(b.primaryText || ''), clause);
-          const secondaryText = b.secondaryHtml || b.secondaryText
-            ? this.formatInlineBlanks(b.secondaryHtml || this.escapeHtml(b.secondaryText || ''), clause)
-            : '';
+          const cleanPrimary = this.stripDuplicatePrefix(b.primaryHtml || this.escapeHtml(b.primaryText || ''), b.prefix);
+          const primaryText = this.formatInlineBlanks(cleanPrimary, clause);
+          const cleanSecondary = this.stripDuplicatePrefix(b.secondaryHtml || this.escapeHtml(b.secondaryText || ''), b.prefix);
+          const secondaryText = cleanSecondary ? this.formatInlineBlanks(cleanSecondary, clause) : '';
 
           return `
           <div class="bilingual-pair mb-3.5" data-block-id="${b.id || blockIdx}" style="${indent > 0 ? `padding-left: ${indent}em; ` : ''}line-height: 1.8;">
@@ -244,10 +282,13 @@ export class ContractReviewHtmlDocumentRenderer {
 
         // 4. Heading Block inside Clause
         if (b.type === 'heading') {
+          const hasBothLangs = Boolean(b.primaryText && b.secondaryText);
+          const primaryClass = hasBothLangs ? 'heading-primary' : '';
+          const secondaryClass = hasBothLangs ? 'heading-secondary' : '';
           return `
-          <h3 class="text-sm font-bold text-[#202833] mt-2 mb-1">
-            <span class="heading-primary">${b.primaryHtml || this.escapeHtml(b.primaryText || '')}</span>
-            ${b.secondaryText ? `<span class="text-xs font-normal text-[#667085] ml-2 heading-secondary">/ ${this.escapeHtml(b.secondaryText)}</span>` : ''}
+          <h3 class="text-sm font-bold text-[#202833] mt-2 mb-1 flex items-baseline flex-wrap gap-2">
+            <span class="${primaryClass}">${b.primaryHtml || this.escapeHtml(b.primaryText || '')}</span>
+            ${b.secondaryText ? `<span class="text-xs font-normal text-[#667085] ${secondaryClass}">${b.secondaryHtml || this.escapeHtml(b.secondaryText)}</span>` : ''}
           </h3>
           `;
         }
@@ -255,7 +296,10 @@ export class ContractReviewHtmlDocumentRenderer {
         // 5. List Item Block
         if (b.type === 'list_item') {
           const indent = getLegalHierarchyIndentEm(b.prefix || b.primaryText || '');
-          const content = this.formatInlineBlanks(b.primaryHtml || this.escapeHtml(b.primaryText || ''), clause);
+          const cleanHtml = this.stripDuplicatePrefix(b.primaryHtml || this.escapeHtml(b.primaryText || ''), b.prefix);
+          const content = this.formatInlineBlanks(cleanHtml, clause);
+          const isJp = (b as any).isJp || /[\u3040-\u309F\u30A0-\u30FF]/.test(b.primaryText || '');
+          const fontSizeClass = isJp ? 'text-[13.5px] leading-[1.75] text-[#334155]' : 'text-[15px] leading-[1.75] text-[#202833]';
           return `
           <div class="list-item flex items-start gap-2.5 mb-2.5" style="padding-left: ${Math.max(0.5, indent)}em; line-height: 1.75;">
             ${
@@ -263,7 +307,7 @@ export class ContractReviewHtmlDocumentRenderer {
                 ? `<span class="font-mono text-xs font-semibold text-[#667085] shrink-0 select-none">${this.escapeHtml(b.prefix)}</span>`
                 : `<span class="inline-block w-1.5 h-1.5 rounded-full bg-slate-400 mt-2 shrink-0"></span>`
             }
-            <div class="text-[15px] leading-[1.75] text-[#202833] flex-1 select-text ${b.isBold ? 'font-semibold' : ''}">
+            <div class="${fontSizeClass} flex-1 select-text ${b.isBold ? 'font-semibold' : ''}">
               ${content}
             </div>
           </div>
@@ -272,9 +316,12 @@ export class ContractReviewHtmlDocumentRenderer {
 
         // 6. Standard Paragraph Block
         const indent = getLegalHierarchyIndentEm(b.prefix || b.primaryText || '');
-        const pContent = this.formatInlineBlanks(b.primaryHtml || this.escapeHtml(b.primaryText || ''), clause);
+        const cleanHtml = this.stripDuplicatePrefix(b.primaryHtml || this.escapeHtml(b.primaryText || ''), b.prefix);
+        const pContent = this.formatInlineBlanks(cleanHtml, clause);
+        const isJp = (b as any).isJp || /[\u3040-\u309F\u30A0-\u30FF]/.test(b.primaryText || '');
+        const fontSizeClass = isJp ? 'text-[13.5px] leading-[1.75] text-[#334155]' : 'text-[15px] leading-[1.8] text-[#202833]';
         return `
-        <p class="paragraph mb-3.5 text-[15px] leading-[1.8] text-[#202833] select-text ${b.alignment === 'center' ? 'text-center font-bold' : ''} ${b.isBold ? 'font-semibold' : ''}" style="${indent > 0 ? `padding-left: ${indent}em; ` : ''}line-height: 1.8;">
+        <p class="paragraph mb-3.5 ${fontSizeClass} select-text ${b.alignment === 'center' ? 'text-center font-bold' : ''} ${b.isBold ? 'font-semibold' : ''}" style="${indent > 0 ? `padding-left: ${indent}em; ` : ''}line-height: ${isJp ? '1.75' : '1.8'};">
           ${b.prefix ? `<span class="font-mono text-xs font-semibold text-[#667085] mr-1.5 select-none">${this.escapeHtml(b.prefix)}</span>` : ''}${pContent}
         </p>
         `;
@@ -314,7 +361,9 @@ export class ContractReviewHtmlDocumentRenderer {
           }
           return `<div class="clause-hierarchical-line" style="margin-bottom: 0.45rem; line-height: 1.8;">${formatted}</div>`;
         });
-        return `<div class="paragraph mb-3.5 text-[15px] leading-[1.8] text-[#202833] select-text">${formattedLines.join('')}</div>`;
+        const isJp = /[\u3040-\u309F\u30A0-\u30FF]/.test(trimmed);
+        const fontSizeClass = isJp ? 'text-[13.5px] leading-[1.75] text-[#334155]' : 'text-[15px] leading-[1.8] text-[#202833]';
+        return `<div class="paragraph mb-3.5 ${fontSizeClass} select-text">${formattedLines.join('')}</div>`;
       })
       .join('\n');
   }
@@ -436,6 +485,15 @@ export class ContractReviewHtmlDocumentRenderer {
         : clauseNumber || zhPart;
 
     return { headingZh: finalZh, headingJa: jaPart };
+  }
+
+  private stripDuplicatePrefix(html: string, prefix?: string): string {
+    if (!html || !prefix) return html;
+    const cleanPrefix = prefix.trim();
+    if (!cleanPrefix) return html;
+    const escaped = cleanPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`^(?:<strong[^>]*>\\s*${escaped}\\s*<\\/strong>|<b[^>]*>\\s*${escaped}\\s*<\\/b>|${escaped})\\s*`, 'i');
+    return html.replace(regex, '');
   }
 
   private escapeHtml(text: string): string {

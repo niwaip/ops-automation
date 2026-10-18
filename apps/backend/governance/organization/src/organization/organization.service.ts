@@ -102,5 +102,13 @@ export class OrganizationService {
     await this.organizationRepository.removeMember(orgId, userId);
     return { success: true };
   }
+
+  async updateLegalProfile(
+    orgId: string,
+    dto: { legalEntityName?: string; aliases?: string[]; creditCode?: string; defaultContractRole?: string }
+  ) {
+    const updated = await this.organizationRepository.updateOrganizationLegalProfile(orgId, dto);
+    return { organization: updated };
+  }
 }
 

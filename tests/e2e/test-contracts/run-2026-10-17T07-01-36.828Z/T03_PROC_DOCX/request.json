@@ -1,0 +1,22 @@
+{
+  "message": "请审查附件中的设备采购合同，我方为买方，生成审查报告。",
+  "sessionId": "test-t03_proc_docx-1792220681950",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "config": {
+    "mode": "task",
+    "thinking": true,
+    "webSearch": false,
+    "workspaceSearch": false
+  },
+  "files": [
+    {
+      "fileId": "file-1792220681947-xs9tp9ul9",
+      "fileName": "procurement-contract.docx",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "size": 38442,
+      "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792220681947-xs9tp9ul9-procurement-contract.docx",
+      "url": "/api/ai/chat/files/file-1792220681947-xs9tp9ul9?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792222481.fddb075bbb0c4e1762eee1370c02443f11fcccbd08d4a89094d866d5c5b981c6",
+      "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792222481.fddb075bbb0c4e1762eee1370c02443f11fcccbd08d4a89094d866d5c5b981c6"
+    }
+  ]
+}

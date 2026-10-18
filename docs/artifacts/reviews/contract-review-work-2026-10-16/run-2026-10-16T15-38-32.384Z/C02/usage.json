@@ -1,0 +1,22 @@
+{
+  "status": 200,
+  "data": [
+    {
+      "id": "5a53e0b4-243e-45c3-9fee-2659951d5dcf",
+      "executionId": "ae1d7e4c-f7fc-4905-b62e-a02ec9ae80b9",
+      "stepId": "508e8790-fba8-4913-b630-78f5d506856d",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "gemini-3.8-flash-high",
+      "inputTokens": 759,
+      "outputTokens": 318,
+      "cachedTokens": 0,
+      "estimatedCost": "0.003426",
+      "currency": "CNY",
+      "createdAt": "2026-10-16T15:39:47.454Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "fcb1a5e7c14b4288e06164a1235650cd8e39f2b47593b199ff7dd7d523c1df88",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    }
+  ]
+}

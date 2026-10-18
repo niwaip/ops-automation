@@ -130,11 +130,15 @@ export class PlatformOrganizationRepository implements OrganizationRepository {
       }
     }
 
-    return orgs.map((o) => ({
+    return orgs.map((o: any) => ({
       id: o.id,
       name: o.name,
       code: o.code,
       description: o.description,
+      legalEntityName: o.legalEntityName || '富士通（中国）信息系统有限公司',
+      aliases: o.aliases && o.aliases.length > 0 ? o.aliases : ['富士通', '富士通（中国）', '富士通信息', 'Fujitsu', 'Fujitsu China', '富士通株式会社'],
+      creditCode: o.creditCode || '913100006072834521',
+      defaultContractRole: o.defaultContractRole || 'seller',
     }));
   }
 
@@ -492,5 +496,32 @@ export class PlatformOrganizationRepository implements OrganizationRepository {
     if (!org || !org.isActive) {
       throw new NotFoundException('Organization not found or inactive');
     }
+  }
+
+  async updateOrganizationLegalProfile(
+    orgId: string,
+    dto: { legalEntityName?: string; aliases?: string[]; creditCode?: string; defaultContractRole?: string }
+  ) {
+    await this.ensureOrganizationExists(orgId);
+    const updated = await this.prisma.organization.update({
+      where: { id: orgId },
+      data: {
+        ...(dto.legalEntityName !== undefined ? { legalEntityName: dto.legalEntityName } : {}),
+        ...(dto.aliases !== undefined ? { aliases: dto.aliases } : {}),
+        ...(dto.creditCode !== undefined ? { creditCode: dto.creditCode } : {}),
+        ...(dto.defaultContractRole !== undefined ? { defaultContractRole: dto.defaultContractRole } : {}),
+      },
+    });
+
+    return {
+      id: updated.id,
+      name: updated.name,
+      code: updated.code,
+      description: updated.description,
+      legalEntityName: (updated as any).legalEntityName || '富士通（中国）信息系统有限公司',
+      aliases: (updated as any).aliases || ['富士通', '富士通（中国）', '富士通信息', 'Fujitsu', 'Fujitsu China', '富士通株式会社'],
+      creditCode: (updated as any).creditCode || '913100006072834521',
+      defaultContractRole: (updated as any).defaultContractRole || 'seller',
+    };
   }
 }

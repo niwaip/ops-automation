@@ -127,6 +127,13 @@ export class DeterministicPlanGeneratorService {
           (dto.systemInputs?.previousResultData !== undefined ||
             dto.systemInputs?.previousResultText)
         );
+        const hasNewAttachment = Boolean(
+          dto.systemInputs?.fileBase64 ||
+          dto.systemInputs?.fileUrl ||
+          dto.systemInputs?.downloadUrl ||
+          dto.systemInputs?.fileName ||
+          (Array.isArray(dto.systemInputs?.files) && (dto.systemInputs!.files as any[]).length > 0)
+        );
         // Layer 1: Check User Habit Fast-Gate (0-Token)
         const userId = dto.telemetry?.user?.userId;
         let habitTopology: DeterministicTopologyDraftV1 | null = null;
@@ -144,7 +151,7 @@ export class DeterministicPlanGeneratorService {
         const policyRecipe = this.taskCommandResolver?.matchRecipe(
           cleanUserRequest,
           dto.taskPolicySnapshot,
-          { hasPreviousResult }
+          { hasPreviousResult, hasNewAttachment }
         );
         if (policyRecipe) {
           habitTopology = null;
@@ -165,7 +172,7 @@ export class DeterministicPlanGeneratorService {
         }
         const recipe = policyRecipe || (habitTopology
           ? null
-          : this.recipeMatcher?.matchRecipe(dto.userRequest, { hasPreviousResult }));
+          : this.recipeMatcher?.matchRecipe(dto.userRequest, { hasPreviousResult, hasNewAttachment }));
         let recipeTopology = recipe
           ? this.recipeTopologyBuilder?.buildTopologyFromRecipe(
               recipe,

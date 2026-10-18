@@ -748,11 +748,32 @@ export class ChatOrchestratorService {
       }
     }
 
+    if (
+      typeof this.deterministicTaskExecutionService?.isConversationalChat === 'function' &&
+      this.deterministicTaskExecutionService.isConversationalChat(planningRequest, {
+        hasPreviousResult,
+      })
+    ) {
+      if (this.modelService && !this.isExternalSystemMutationRequest(body.message)) {
+        await this.planningDecisionShadowService?.record(body.message, {
+          authToken,
+          user,
+          routeClass: 'conversational_chat',
+          routeSource: 'conversational',
+          confidence: 1,
+          reasonCodes: ['conversational_inquiry_intent'],
+        });
+
+        yield* this.executeLlmNativeTask(body, context, resolvedModelId, authToken);
+        return;
+      }
+    }
+
     const matchPhase =
       continuationMatchPhase || (await this.plannerService.matchSkillPhase(plannerInput));
 
-    if (!matchPhase.matchedSkill) {
-      if (matchPhase.failure) {
+    if (!matchPhase?.matchedSkill) {
+      if (matchPhase?.failure) {
         yield {
           type: StreamEventType.ERROR,
           content: matchPhase.failure.message,

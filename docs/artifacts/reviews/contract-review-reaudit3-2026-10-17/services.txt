@@ -1,0 +1,20 @@
+NAME                    IMAGE                                         COMMAND                  SERVICE             CREATED             STATUS                       PORTS
+carbone-engine          ops-carbone-engine:dev                        "docker-entrypoint.s…"   carbone-engine      About an hour ago   Up About an hour (healthy)   0.0.0.0:3009->3009/tcp
+ops-ai-orchestrator     node:22-bookworm                              "docker-entrypoint.s…"   ai-orchestrator     5 days ago          Up 2 hours                   127.0.0.1:3007->3007/tcp
+ops-browser-chrome      ops-browser-chrome:local                      "/entrypoint.sh /sta…"   browser-chrome      5 days ago          Up 5 days (healthy)          127.0.0.1:3011->3011/tcp, 127.0.0.1:9222->9222/tcp, 127.0.0.1:5901->5900/tcp, 0.0.0.0:6080->8080/tcp
+ops-browser-semantics   node:22-bookworm                              "docker-entrypoint.s…"   browser-semantics   10 days ago         Up 10 days                   0.0.0.0:3006->3006/tcp
+ops-browser-template    node:22-bookworm                              "docker-entrypoint.s…"   browser-template    10 days ago         Up 10 days                   0.0.0.0:3005->3005/tcp
+ops-browser-worker      node:22-bookworm                              "docker-entrypoint.s…"   browser-worker      5 days ago          Up 5 days                    0.0.0.0:3004->3004/tcp
+ops-control-plane       node:22-bookworm                              "docker-entrypoint.s…"   control-plane       10 days ago         Up 58 minutes                0.0.0.0:3003->3003/tcp
+ops-platform            node:22-bookworm                              "docker-entrypoint.s…"   platform            10 days ago         Up 16 hours                  0.0.0.0:3001->3001/tcp
+ops-portal              node:22-bookworm                              "docker-entrypoint.s…"   portal              10 days ago         Up 2 days                    0.0.0.0:5173->5173/tcp
+ops-postgres            postgres:15-alpine                            "docker-entrypoint.s…"   postgres            10 days ago         Up 10 days (healthy)         127.0.0.1:5432->5432/tcp
+ops-redis               redis:7-alpine                                "docker-entrypoint.s…"   redis               10 days ago         Up 10 days (healthy)         127.0.0.1:6379->6379/tcp
+ops-report              node:22-bookworm                              "docker-entrypoint.s…"   report              10 days ago         Up 10 days                   0.0.0.0:3008->3008/tcp
+ops-sandbox-worker      compose-sandbox-worker                        "python -u worker.py"    sandbox-worker      10 days ago         Up 10 days                   0.0.0.0:8090->8090/tcp
+ops-session-broker      node:22-bookworm                              "docker-entrypoint.s…"   session-broker      10 days ago         Up 5 days                    127.0.0.1:3002->3002/tcp
+ops-temporal            docker.1ms.run/temporalio/auto-setup:1.22.0   "/etc/temporal/entry…"   temporal            10 days ago         Up 10 days (healthy)         0.0.0.0:7233-7236->7233-7236/tcp
+ops-temporal-ui         docker.1ms.run/temporalio/ui:2.20.0           "./start-ui-server.sh"   temporal-ui         10 days ago         Up 10 days                   0.0.0.0:8088->8080/tcp
+ops-temporal-worker     compose-temporal-worker                       "python -u worker.py"    temporal-worker     10 days ago         Up 10 days                   
+ops-user-web            node:22-bookworm                              "docker-entrypoint.s…"   user-web            10 days ago         Up 2 days                    0.0.0.0:5174->5174/tcp
+ops-xiaozhi-connector   node:22-bookworm                              "docker-entrypoint.s…"   xiaozhi-connector   10 days ago         Up 10 days                   

@@ -1,0 +1,64 @@
+{
+  "id": "C10",
+  "name": "显式卖方立场传递",
+  "status": "failed",
+  "sessionId": "crw-C10-1792202759946",
+  "executionId": "bfabc509-5c76-4bb8-b66b-22b2c4aefef9",
+  "traceIds": [
+    "2117ebff-b36a-4c93-9eaa-ccbfd11eaffc"
+  ],
+  "actualCapabilities": [
+    "platform.document.contract-reviewer"
+  ],
+  "executionStatus": "active",
+  "requestDigest": "3984ec2105a91a8c9c720918c8dd7475f4d7ad905f135ffa9141fe9c54a320a4",
+  "fixtureDigest": "f2c27a1378caba8d6bd0eb75dd584fba61c1342b3c58721117a34f54317ea0eb",
+  "timing": {
+    "firstEventMs": 40,
+    "firstContentMs": null,
+    "totalMs": 112794
+  },
+  "assertions": [
+    {
+      "name": "聊天HTTP成功",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE完整结束且无传输异常",
+      "passed": true,
+      "actual": "done",
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "实际执行合同审查能力",
+      "passed": true,
+      "actual": [
+        "platform.document.contract-reviewer"
+      ],
+      "category": "ROUTING"
+    },
+    {
+      "name": "控制面持久终态成功",
+      "passed": false,
+      "actual": "active",
+      "category": "EXECUTION_STATE"
+    },
+    {
+      "name": "输出含结构化条款和指标",
+      "passed": false,
+      "actual": null,
+      "category": "CONTRACT"
+    }
+  ],
+  "failures": [
+    "EXECUTION_STATE",
+    "CONTRACT"
+  ],
+  "observedUsage": {
+    "message": "Invalid or expired token",
+    "error": "Unauthorized",
+    "statusCode": 401
+  }
+}

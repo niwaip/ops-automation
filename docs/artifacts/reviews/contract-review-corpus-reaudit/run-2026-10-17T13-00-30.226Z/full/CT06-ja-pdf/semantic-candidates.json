@@ -1,0 +1,92 @@
+[
+  {
+    "marker": "CT06-ja-A04",
+    "topic": "risk_repairs",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "要求我方承担非自身过错导致的结构性/隐蔽工程修复费用，且无上限、无对方协助义务，风险极高。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT06-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "要求我方承担非自身过错导致的结构性/隐蔽工程修复费用，且无上限、无对方协助义务，风险极高。",
+            "evidenceQuote": "構造、防火設備及び隠ぺい工事の全ての欠陥は甲が修繕し、費用上限は設けず、乙は協力義務を負わない。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT06-ja-A05",
+    "topic": "risk_unilateral_change",
+    "matchedClauseIndices": [
+      5
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "允许对方短期通知即随意调价，且强制我方接受且禁止解约，严重违反公平原则及合同稳定性。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-5-GENERAL-RISK",
+            "title": "[CT06-ja-A05]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "允许对方短期通知即随意调价，且强制我方接受且禁止解约，严重违反公平原则及合同稳定性。",
+            "evidenceQuote": "乙は 3 日前の通知により随時賃料を改定できる。甲は拒否できず、これを理由に解除もできない。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT06-ja-A06",
+    "topic": "risk_deposit",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "条款赋予乙方单方决定权、无返还期限且无需举证，严重侵害甲方财产权及程序正义，属恶意陷阱条款。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT06-ja-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "条款赋予乙方单方决定权、无返还期限且无需举证，严重侵害甲方财产权及程序正义，属恶意陷阱条款。",
+            "evidenceQuote": "満了後の返還可否は乙が自由に判断する。返還期限は定めず、控除の証拠提出も不要とする。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

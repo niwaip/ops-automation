@@ -1,0 +1,164 @@
+{
+  "id": "CMP08",
+  "name": "日文账期与金额修改",
+  "startedAt": "2026-10-18T01:33:57.057Z",
+  "status": "failed",
+  "executionId": "084b5e5d-9e75-4c31-9e3c-aee82b7d0eb5",
+  "chatMs": 29447,
+  "httpStatus": 201,
+  "businessModels": [],
+  "businessCalls": 0,
+  "metrics": {
+    "addedCount": 0,
+    "isTruncated": false,
+    "deletedCount": 0,
+    "totalClauses": 6,
+    "highRiskCount": 0,
+    "modifiedCount": 1,
+    "unchangedCount": 5,
+    "mediumRiskCount": 1,
+    "sourceClauseCount": 6,
+    "targetClauseCount": 6
+  },
+  "assertions": [
+    {
+      "name": "HTTP success",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE completed",
+      "passed": true,
+      "actual": null,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "execution succeeded",
+      "passed": true,
+      "actual": "succeeded",
+      "category": "STATE"
+    },
+    {
+      "name": "compare skill routed",
+      "passed": true,
+      "actual": null,
+      "category": "ROUTING"
+    },
+    {
+      "name": "compare output exists",
+      "passed": true,
+      "actual": null,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "all source bodies preserved",
+      "passed": true,
+      "actual": [],
+      "category": "EXTRACTION"
+    },
+    {
+      "name": "expected per-clause changes",
+      "passed": true,
+      "actual": [],
+      "category": "DIFF"
+    },
+    {
+      "name": "diff tokens reconstruct A and B",
+      "passed": true,
+      "actual": [],
+      "category": "DIFF"
+    },
+    {
+      "name": "metrics agree with pairs",
+      "passed": true,
+      "actual": {
+        "addedCount": 0,
+        "isTruncated": false,
+        "deletedCount": 0,
+        "totalClauses": 6,
+        "highRiskCount": 0,
+        "modifiedCount": 1,
+        "unchangedCount": 5,
+        "mediumRiskCount": 1,
+        "sourceClauseCount": 6,
+        "targetClauseCount": 6
+      },
+      "category": "METRICS"
+    },
+    {
+      "name": "not truncated",
+      "passed": true,
+      "actual": {
+        "addedCount": 0,
+        "isTruncated": false,
+        "deletedCount": 0,
+        "totalClauses": 6,
+        "highRiskCount": 0,
+        "modifiedCount": 1,
+        "unchangedCount": 5,
+        "mediumRiskCount": 1,
+        "sourceClauseCount": 6,
+        "targetClauseCount": 6
+      },
+      "category": "EXTRACTION"
+    },
+    {
+      "name": "business model ledger present",
+      "passed": false,
+      "actual": 0,
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "selected 35B used for semantic audit",
+      "passed": false,
+      "actual": [],
+      "category": "MODEL"
+    },
+    {
+      "name": "semantic result or explicit degradation",
+      "passed": true,
+      "actual": [
+        {
+          "id": "align-3-3",
+          "insight": {
+            "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；付款金额提升50%但账期由30日拉长至75日，大幅增加收款方流动性压力及回款坏账风险。",
+            "keyChange": "付款金额上调但付款账期大幅延长",
+            "riskLevel": "MEDIUM",
+            "legalAdvice": "建议核实增额是否对等新增成本；若接受增额，应将账期压缩至常规区间（30-45日），或采用阶段性付款并增设逾期违约利息。",
+            "shortSummary": "付款金额上调但付款账期大幅延长"
+          }
+        }
+      ],
+      "category": "SEMANTIC_COMPLETENESS"
+    },
+    {
+      "name": "artifact downloaded HTML",
+      "passed": true,
+      "actual": {
+        "status": 200,
+        "bytes": 77862,
+        "sha256": "8014297973186e7ed9e15a2efb671c780a970313b45d1d7341ada940b80e5631",
+        "html": true
+      },
+      "category": "DELIVERY"
+    }
+  ],
+  "failures": [
+    {
+      "name": "business model ledger present",
+      "passed": false,
+      "actual": 0,
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "selected 35B used for semantic audit",
+      "passed": false,
+      "actual": [],
+      "category": "MODEL"
+    }
+  ],
+  "wallMs": 29523,
+  "finishedAt": "2026-10-18T01:34:26.580Z",
+  "sourceDrift": []
+}

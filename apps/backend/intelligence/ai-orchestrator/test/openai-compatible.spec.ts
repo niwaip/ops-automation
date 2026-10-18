@@ -69,7 +69,7 @@ describe('OpenAICompatibleClient', () => {
           model: 'gpt-4',
           messages,
         },
-        { timeout: 90000 }
+        { timeout: 180000 }
       );
     });
 

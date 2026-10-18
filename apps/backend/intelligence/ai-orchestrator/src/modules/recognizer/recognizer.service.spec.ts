@@ -88,6 +88,38 @@ describe('RecognizerService model routing', () => {
     expect(result.params).toEqual({ username: 'alice' });
   });
 
+  it('uses the requested model passed via dto.model when modelId is not explicitly set', async () => {
+    const requestedModelId = 'requested-model-id-via-model';
+    const requestedClient = {
+      chatCompletion: jest.fn().mockResolvedValue({
+        content: JSON.stringify({ username: 'bob' }),
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      }),
+    };
+
+    modelService.resolveModelId.mockResolvedValue(requestedModelId);
+    modelService.getClient.mockImplementation((id: string) => {
+      if (id === requestedModelId) return requestedClient as any;
+      return null;
+    });
+
+    const result = await service.recognizeParams({
+      template_id: 'test-template',
+      user_input: 'username: bob',
+      model: requestedModelId,
+      params_schema: {
+        properties: {
+          username: { type: 'string' },
+        },
+      },
+    });
+
+    expect(modelService.resolveModelId).toHaveBeenCalledWith(requestedModelId);
+    expect(modelService.getDefaultModel).not.toHaveBeenCalled();
+    expect(requestedClient.chatCompletion).toHaveBeenCalled();
+    expect(result.params).toEqual({ username: 'bob' });
+  });
+
   it('keeps LLM extraction authoritative for non-document skills and rejects invalid integers', async () => {
     const requestedModelId = 'requested-model-id';
     const requestedClient = {

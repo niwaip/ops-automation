@@ -76,7 +76,7 @@ export function calculateCapabilityIntentScore(
       for (let start = 0; start <= compactRequest.length - len; start++) {
         const sub = compactRequest.slice(start, start + len);
         if (PLANNER_STOP_WORDS.has(sub)) continue;
-        if (/^[a-z0-9_-]+$/.test(sub) && len < 4) continue;
+        if (!/[\u3400-\u9fff]/.test(sub)) continue;
         if (compact.includes(sub)) {
           score = Math.max(score, len >= 4 ? 80 + len * 5 : 35 + len * 15);
         }

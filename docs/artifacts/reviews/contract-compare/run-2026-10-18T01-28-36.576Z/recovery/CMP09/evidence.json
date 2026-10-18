@@ -1,0 +1,164 @@
+{
+  "id": "CMP09",
+  "name": "双语仅日文发生变化",
+  "startedAt": "2026-10-18T01:34:11.310Z",
+  "status": "failed",
+  "executionId": "1cac494a-404a-4a4c-b023-9dcbb05fe6e3",
+  "chatMs": 26265,
+  "httpStatus": 201,
+  "businessModels": [],
+  "businessCalls": 0,
+  "metrics": {
+    "addedCount": 0,
+    "isTruncated": false,
+    "deletedCount": 0,
+    "totalClauses": 6,
+    "highRiskCount": 1,
+    "modifiedCount": 1,
+    "unchangedCount": 5,
+    "mediumRiskCount": 0,
+    "sourceClauseCount": 6,
+    "targetClauseCount": 6
+  },
+  "assertions": [
+    {
+      "name": "HTTP success",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE completed",
+      "passed": true,
+      "actual": null,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "execution succeeded",
+      "passed": true,
+      "actual": "succeeded",
+      "category": "STATE"
+    },
+    {
+      "name": "compare skill routed",
+      "passed": true,
+      "actual": null,
+      "category": "ROUTING"
+    },
+    {
+      "name": "compare output exists",
+      "passed": true,
+      "actual": null,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "all source bodies preserved",
+      "passed": true,
+      "actual": [],
+      "category": "EXTRACTION"
+    },
+    {
+      "name": "expected per-clause changes",
+      "passed": true,
+      "actual": [],
+      "category": "DIFF"
+    },
+    {
+      "name": "diff tokens reconstruct A and B",
+      "passed": true,
+      "actual": [],
+      "category": "DIFF"
+    },
+    {
+      "name": "metrics agree with pairs",
+      "passed": true,
+      "actual": {
+        "addedCount": 0,
+        "isTruncated": false,
+        "deletedCount": 0,
+        "totalClauses": 6,
+        "highRiskCount": 1,
+        "modifiedCount": 1,
+        "unchangedCount": 5,
+        "mediumRiskCount": 0,
+        "sourceClauseCount": 6,
+        "targetClauseCount": 6
+      },
+      "category": "METRICS"
+    },
+    {
+      "name": "not truncated",
+      "passed": true,
+      "actual": {
+        "addedCount": 0,
+        "isTruncated": false,
+        "deletedCount": 0,
+        "totalClauses": 6,
+        "highRiskCount": 1,
+        "modifiedCount": 1,
+        "unchangedCount": 5,
+        "mediumRiskCount": 0,
+        "sourceClauseCount": 6,
+        "targetClauseCount": 6
+      },
+      "category": "EXTRACTION"
+    },
+    {
+      "name": "business model ledger present",
+      "passed": false,
+      "actual": 0,
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "selected 35B used for semantic audit",
+      "passed": false,
+      "actual": [],
+      "category": "MODEL"
+    },
+    {
+      "name": "semantic result or explicit degradation",
+      "passed": true,
+      "actual": [
+        {
+          "id": "align-3-3",
+          "insight": {
+            "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；日文版本悄然将付款期由30日延长至90日，造成中日双语严重冲突，存在隐蔽拖延付款周期的重大陷阱。",
+            "keyChange": "双语付款期限冲突/日文版付款账期延长至90日",
+            "riskLevel": "HIGH",
+            "legalAdvice": "坚决要求双语表述保持严格一致并统一为30日；同时排查合同语言效力条款，防范对方利用解释冲突拖延履行付款义务。",
+            "shortSummary": "双语付款期限冲突/日文版付款账期延长至90日"
+          }
+        }
+      ],
+      "category": "SEMANTIC_COMPLETENESS"
+    },
+    {
+      "name": "artifact downloaded HTML",
+      "passed": true,
+      "actual": {
+        "status": 200,
+        "bytes": 80116,
+        "sha256": "f1ffe2215a47155b26b355033c96cc1a777d6a7a3fbfeb062851f9a9b2e62538",
+        "html": true
+      },
+      "category": "DELIVERY"
+    }
+  ],
+  "failures": [
+    {
+      "name": "business model ledger present",
+      "passed": false,
+      "actual": 0,
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "selected 35B used for semantic audit",
+      "passed": false,
+      "actual": [],
+      "category": "MODEL"
+    }
+  ],
+  "wallMs": 26353,
+  "finishedAt": "2026-10-18T01:34:37.663Z",
+  "sourceDrift": []
+}

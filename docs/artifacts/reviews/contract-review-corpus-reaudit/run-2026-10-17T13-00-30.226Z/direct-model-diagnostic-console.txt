@@ -1,0 +1,16 @@
+==========================================
+Ops Automation - Docker Compose Launcher
+==========================================
+
+Environment configured:
+  PROJECT_ROOT: /Users/chain/Documents/MyProject/ops-automation
+  HOST_BIND_IP: 0.0.0.0
+
+Using env files: /Users/chain/Documents/MyProject/ops-automation/docker/.env
+Running: docker compose --env-file /Users/chain/Documents/MyProject/ops-automation/docker/.env -f /Users/chain/Documents/MyProject/ops-automation/docker/compose/docker-compose.base.yml exec -T control-plane node /workspace/docs/artifacts/reviews/contract-review-corpus-reaudit/run-2026-10-17T13-00-30.226Z/direct-model-diagnostic.cjs
+
+[32m[Nest] 225  - [39m10/17/2026, 9:30:10 PM [32m    LOG[39m [38;5;3m[ReadOnlyAuditDiagnostic] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 225  - [39m10/17/2026, 9:30:10 PM [32m    LOG[39m [38;5;3m[ReadOnlyAuditDiagnostic] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 9 clauses[39m
+[32m[Nest] 225  - [39m10/17/2026, 9:30:10 PM [32m    LOG[39m [38;5;3m[ReadOnlyAuditDiagnostic] [39m[32m[ContractReviewOrchestrator] Bypassed 0/9 empty/deterministic clauses. Dispatching 9 clauses to LLM in batches.[39m
+[32m[Nest] 225  - [39m10/17/2026, 9:30:19 PM [32m    LOG[39m [38;5;3m[ReadOnlyAuditDiagnostic] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+{"totalClauses":9,"healthScore":44,"highRiskCount":1,"mediumRiskCount":3,"lowRiskCount":0,"missingClausesCount":2,"passCount":5,"unfilledVariablesCount":0,"unfilledBlanksTotal":2,"llmReviewedCount":9,"degradedClausesCount":0,"isDegraded":false,"isTruncated":false,"warnings":[]}

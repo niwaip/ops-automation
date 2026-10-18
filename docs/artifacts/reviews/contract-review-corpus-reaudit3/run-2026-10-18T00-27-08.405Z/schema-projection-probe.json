@@ -1,0 +1,38 @@
+{
+  "isolatedDiagnostic": true,
+  "original": {
+    "properties": {
+      "customCheckpoints": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      }
+    }
+  },
+  "projected": {
+    "customCheckpoints": {
+      "type": "array"
+    }
+  },
+  "value": [
+    "付款",
+    "退出安排"
+  ],
+  "direct": [
+    {
+      "title": "付款",
+      "rule": "付款"
+    },
+    {
+      "title": "退出安排",
+      "rule": "退出安排"
+    }
+  ],
+  "through": [
+    "付款",
+    "退出安排"
+  ],
+  "itemsPreserved": false,
+  "throughConforms": false
+}

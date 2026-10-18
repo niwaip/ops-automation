@@ -1,0 +1,29 @@
+[
+  {
+    "marker": "CT01-zh-A03",
+    "topic": "risk_acceptance",
+    "matchedClauseIndices": [],
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "reviewText": [],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT01-zh-A04",
+    "topic": "risk_prepayment",
+    "matchedClauseIndices": [],
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "reviewText": [],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT01-zh-A05",
+    "topic": "risk_asymmetric_liability",
+    "matchedClauseIndices": [],
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "reviewText": [],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

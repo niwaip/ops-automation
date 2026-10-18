@@ -1,0 +1,9 @@
+﻿id,business,language,format,executionId,status,previousGateStatus,executionStatus,outputPresent,markerCoverage,totalClauses,contractType,position,positionSource,degraded,chatMs,calls,inputTokens,outputTokens,failureReason
+CT02-ja-pdf,saas,ja,pdf,d3d1002f-39bc-4e0f-a207-3f438a5f71e7,passed,passed,succeeded,True,8,9,general,buyer,user_confirmed,False,48245,3,2729,1334,
+CT03-zh-ja-docx,nda,zh-ja,docx,065a19cf-0372-4494-96e3-9aa5e94ef49b,passed,passed,succeeded,True,8,9,nda,buyer,user_confirmed,False,40224,3,3130,1133,
+CT05-zh-txt,development,zh,txt,9e7fdafd-7ac5-4870-92d6-4eb4c150224c,passed,passed,succeeded,True,8,9,software_development,buyer,user_confirmed,False,37807,3,2673,1080,
+CT06-zh-ja-txt,lease,zh-ja,txt,ec61e6a0-9f1d-44a7-9e03-078c5efd1713,passed,passed,succeeded,True,8,9,lease,buyer,user_confirmed,False,39875,3,3028,1115,
+CT06-zh-pdf,lease,zh,pdf,9c2ab86e-4721-4cd0-a9ec-f7996b6ba335,passed,passed,succeeded,True,8,9,lease,buyer,user_confirmed,False,41570,3,2678,848,
+CT06-zh-txt,lease,zh,txt,26b02a15-0d4b-4176-a45d-da91d814bb75,failed,failed,failed,False,0,0,,,,,31638,0,0,0,"步骤「合同文档智能审查与合规诊断」输入参数校验未通过：1. 参数【0】类型不符，期望为 object；2. 参数【1】类型不符，期望为 object；3. 参数【2】类型不符，期望为 object；4. 参数【3】类型不符，期望为 object。
+
+[技术细节] Node 'n1_合同文档智能审查与合规诊断' failed: INPUT_SCHEMA_VIOLATION for node 'n1_合同文档智能审查与合规诊断': /customCheckpoints/0 (type): must be object; /customCheckpoints/1 (type): must be object; /customCheckpoints/2 (type): must be object; /customCheckpoints/3 (type): must be object"

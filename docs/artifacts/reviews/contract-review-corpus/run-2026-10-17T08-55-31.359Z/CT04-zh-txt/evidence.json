@@ -1,0 +1,14 @@
+{
+  "id": "CT04-zh-txt",
+  "caseId": "CT04-zh",
+  "business": "distribution",
+  "language": "zh",
+  "format": "txt",
+  "file": "contracts/distribution/CT04-zh.txt",
+  "fixtureSha256": "e94c68c87f29ef015d05717f47822524ae647bcb6c08d9241b5626030798023d",
+  "status": "error",
+  "startedAt": "2026-10-17T08:55:43.202Z",
+  "error": "Login HTTP 429",
+  "wallMs": 4,
+  "finishedAt": "2026-10-17T08:55:43.206Z"
+}

@@ -1,0 +1,39 @@
+{
+  "status": 200,
+  "data": [
+    {
+      "id": "ed6c301d-df5b-4b05-a844-c847a50b81c9",
+      "executionId": "09322e8b-7e98-4355-861e-5ddd287fc208",
+      "stepId": "44bbb1bb-29fb-4912-973d-fdb44e213069",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 666,
+      "outputTokens": 3529,
+      "cachedTokens": 0,
+      "estimatedCost": "0.022506",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:18:31.632Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "ed0073b79b9b9a4071070e2b28670b9aa321a9662b821c5ece9d4c79393fbe01",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "162a4107-44d3-4d63-aa68-c90a626fdb0a",
+      "executionId": "09322e8b-7e98-4355-861e-5ddd287fc208",
+      "stepId": "44bbb1bb-29fb-4912-973d-fdb44e213069",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 599,
+      "outputTokens": 4224,
+      "cachedTokens": 0,
+      "estimatedCost": "0.026542",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:19:08.904Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "b3b62f1dde8ba9a69c4e29cb68dc6073ad57ec81a0333c2bd2cdb4cb8a4a89be",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+  218 Sat Oct 17 22:48:50 2026 sh -c node dist/main.js
+  219 Sat Oct 17 22:48:50 2026 node dist/main.js
+  247 Sat Oct 17 22:58:57 2026 sh -lc ps -eo pid,lstart,args | grep "node dist/main.js" | head -3; grep -n "???????????????\|effectiveInput" /workspace/apps/backend/intelligence/ai-orchestrator/dist/modules/planner/params/deterministic-param-resolver.service.js | head -5
+32:        const cleanInput = (userInput || '').replace(/\n*\[系统上下文：[\s\S]*$/i, '').replace(/\[系统上下文：[^\]]*\]/g, '').replace(/\n*\[System Context:[\s\S]*$/i, '').replace(/\[System Context:[^\]]*\]/g, '').trim();
+33:        const effectiveInput = cleanInput || userInput;
+34:        const resolved = (0, _backendruntimecapabilitycontract.resolveDeterministicEnumParams)(effectiveInput, schema.properties || {});
+36:        const textResolution = cardOrSkill ? this.resolveTextParams(effectiveInput, {
+48:        const urlResolution = this.resolveUrlParams(effectiveInput, schema.properties || {});

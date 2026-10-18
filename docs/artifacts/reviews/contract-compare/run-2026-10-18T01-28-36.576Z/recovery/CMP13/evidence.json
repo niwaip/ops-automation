@@ -1,0 +1,164 @@
+{
+  "id": "CMP13",
+  "name": "重复标题精确配对",
+  "startedAt": "2026-10-18T01:35:14.679Z",
+  "status": "failed",
+  "executionId": "2daadf9a-4ec1-428e-8de9-ecea0d3cf340",
+  "chatMs": 31932,
+  "httpStatus": 201,
+  "businessModels": [],
+  "businessCalls": 0,
+  "metrics": {
+    "addedCount": 0,
+    "isTruncated": false,
+    "deletedCount": 0,
+    "totalClauses": 6,
+    "highRiskCount": 1,
+    "modifiedCount": 1,
+    "unchangedCount": 5,
+    "mediumRiskCount": 0,
+    "sourceClauseCount": 6,
+    "targetClauseCount": 6
+  },
+  "assertions": [
+    {
+      "name": "HTTP success",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE completed",
+      "passed": true,
+      "actual": null,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "execution succeeded",
+      "passed": true,
+      "actual": "succeeded",
+      "category": "STATE"
+    },
+    {
+      "name": "compare skill routed",
+      "passed": true,
+      "actual": null,
+      "category": "ROUTING"
+    },
+    {
+      "name": "compare output exists",
+      "passed": true,
+      "actual": null,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "all source bodies preserved",
+      "passed": true,
+      "actual": [],
+      "category": "EXTRACTION"
+    },
+    {
+      "name": "expected per-clause changes",
+      "passed": true,
+      "actual": [],
+      "category": "DIFF"
+    },
+    {
+      "name": "diff tokens reconstruct A and B",
+      "passed": true,
+      "actual": [],
+      "category": "DIFF"
+    },
+    {
+      "name": "metrics agree with pairs",
+      "passed": true,
+      "actual": {
+        "addedCount": 0,
+        "isTruncated": false,
+        "deletedCount": 0,
+        "totalClauses": 6,
+        "highRiskCount": 1,
+        "modifiedCount": 1,
+        "unchangedCount": 5,
+        "mediumRiskCount": 0,
+        "sourceClauseCount": 6,
+        "targetClauseCount": 6
+      },
+      "category": "METRICS"
+    },
+    {
+      "name": "not truncated",
+      "passed": true,
+      "actual": {
+        "addedCount": 0,
+        "isTruncated": false,
+        "deletedCount": 0,
+        "totalClauses": 6,
+        "highRiskCount": 1,
+        "modifiedCount": 1,
+        "unchangedCount": 5,
+        "mediumRiskCount": 0,
+        "sourceClauseCount": 6,
+        "targetClauseCount": 6
+      },
+      "category": "EXTRACTION"
+    },
+    {
+      "name": "business model ledger present",
+      "passed": false,
+      "actual": 0,
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "selected 35B used for semantic audit",
+      "passed": false,
+      "actual": [],
+      "category": "MODEL"
+    },
+    {
+      "name": "semantic result or explicit degradation",
+      "passed": true,
+      "actual": [
+        {
+          "id": "align-5-5",
+          "insight": {
+            "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；对方意图免除向关联方披露的审批限制并删除了保密期限，导致商业秘密泄露风险失控且缺乏连带追偿机制。",
+            "keyChange": "放宽关联方披露限制/删除事前同意要求及保密期限",
+            "riskLevel": "HIGH",
+            "legalAdvice": "建议恢复保密期限；如确需向关联方披露，应严格限定“知悉必要性”前提，要求关联方签署同等保密协议，并由乙方承担连带赔偿责任。",
+            "shortSummary": "放宽关联方披露限制/删除事前同意要求及保密期限"
+          }
+        }
+      ],
+      "category": "SEMANTIC_COMPLETENESS"
+    },
+    {
+      "name": "artifact downloaded HTML",
+      "passed": true,
+      "actual": {
+        "status": 200,
+        "bytes": 76699,
+        "sha256": "62fd76b33f68cedd7d5e3585f9b94cba95afe11fc498f5cda863d800570790c0",
+        "html": true
+      },
+      "category": "DELIVERY"
+    }
+  ],
+  "failures": [
+    {
+      "name": "business model ledger present",
+      "passed": false,
+      "actual": 0,
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "selected 35B used for semantic audit",
+      "passed": false,
+      "actual": [],
+      "category": "MODEL"
+    }
+  ],
+  "wallMs": 31989,
+  "finishedAt": "2026-10-18T01:35:46.668Z",
+  "sourceDrift": []
+}

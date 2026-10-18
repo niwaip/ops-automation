@@ -1,0 +1,8 @@
+{
+  "capturedAt": "2026-10-18T00:40:43.592383+00:00",
+  "note": "Supplemental files discovered during audit, not whole-run start hashes",
+  "sha256": {
+    "apps/backend/intelligence/ai-orchestrator/src/modules/planner/candidate-selection/capability-candidate-selector.service.ts": "5d5f8b6e82b0c39947beebb9b5caa8daa147360ee705212c8392b6fd1d8c2327",
+    "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/param-context-merge.service.ts": "6f0802e6b34ad2cd54577f05c69c7c02d3544e458b841adbe71b492392b478a8"
+  }
+}

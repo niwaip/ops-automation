@@ -1,0 +1,164 @@
+[
+  {
+    "marker": "CT05-zh-A03",
+    "topic": "risk_acceptance",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "将工期/验收期定义为2日自然日，极易导致买方因疏忽视为验收，构成日历日陷阱。",
+        "legalAdvice": "建议坚持采用“工作日”口径计算，或增加因甲方确认延迟、需求变更引起的工期对等顺延条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-SOFT-03",
+            "title": "工期计算口径被变更为自然日/日历日陷阱",
+            "ruleId": "soft_calendar_day_trap",
+            "category": "DELIVERY_AND_ACCEPTANCE",
+            "ruleCode": "SOFT-03",
+            "severity": "HIGH",
+            "legalAdvice": "建议坚持采用“工作日”口径计算，或增加因甲方确认延迟、需求变更引起的工期对等顺延条款。",
+            "riskSummary": "将工期/验收期定义为2日自然日，极易导致买方因疏忽视为验收，构成日历日陷阱。",
+            "evidenceQuote": "两日内甲方未书面拒绝即视为验收",
+            "recommendedRevision": "工作日（遇法定节假日自动顺延）"
+          },
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT05-zh-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "明确排除安全漏洞对验收的影响，导致核心交付质量缺陷无法作为拒收或索赔依据。",
+            "evidenceQuote": "任何未修复安全漏洞不影响验收"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-A04",
+    "topic": "risk_ip",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "委托开发成果原则上应归委托方（买方）所有，归属乙方导致买方丧失核心资产控制权。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT05-zh-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "委托开发成果原则上应归委托方（买方）所有，归属乙方导致买方丧失核心资产控制权。",
+            "evidenceQuote": "全部定制开发成果及源代码著作权归乙方"
+          },
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT05-zh-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "限制使用期限且不可续展，导致合同结束后买方业务面临停机风险，缺乏权利保障。",
+            "evidenceQuote": "甲方仅取得一年期不可续展的内部使用许可"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-A06",
+    "topic": "risk_third_party_ip",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "乙方免除开源组件合规审查义务，甲方承担全部侵权风险，严重违反权责对等原则。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT05-zh-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "乙方免除开源组件合规审查义务，甲方承担全部侵权风险，严重违反权责对等原则。",
+            "evidenceQuote": "乙方可自由引入任意第三方组件，无需提供许可清单，甲方自行承担全部第三方权利主张。"
+          },
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT05-zh-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "剥夺甲方知情权，导致无法评估组件许可证兼容性（如GPL传染性风险）。",
+            "evidenceQuote": "无需提供许可清单"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-A08",
+    "topic": "risk_unfilled",
+    "matchedClauseIndices": [
+      8
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "买方若起诉，需赴被告（乙方）所在地诉讼，增加差旅与律师成本，且可能存在地方保护主义。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-8-GENERAL-RISK",
+            "title": "[CT05-zh-A08]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "买方若起诉，需赴被告（乙方）所在地诉讼，增加差旅与律师成本，且可能存在地方保护主义。",
+            "evidenceQuote": "争议由被告住所地法院处理。"
+          },
+          {
+            "id": "finding-clause-8-GENERAL-RISK",
+            "title": "[CT05-zh-A08]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "虽然约定中文优先符合我方立场，但需确保签署的中文版本与日文版本在关键数值上无实质冲突。",
+            "evidenceQuote": "中日文本不一致时中文优先"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

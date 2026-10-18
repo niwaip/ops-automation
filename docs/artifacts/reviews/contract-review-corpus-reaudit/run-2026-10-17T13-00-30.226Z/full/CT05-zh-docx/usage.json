@@ -1,0 +1,56 @@
+{
+  "status": 200,
+  "data": [
+    {
+      "id": "d483137b-7449-4081-87f3-f509faf2eaae",
+      "executionId": "bb3b8446-82e6-47fa-956e-f0f6141900c4",
+      "stepId": "536f3ddb-6813-403c-8b6e-9030c38aa911",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 810,
+      "outputTokens": 326,
+      "cachedTokens": 0,
+      "estimatedCost": "0.003576",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T13:09:34.591Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "a381c1ae91c8025714ea50f7104ee8107cf6c163407e29cbd39ca1538aaf6339",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "133394fa-51bf-4574-a7be-a36b475e6cf1",
+      "executionId": "bb3b8446-82e6-47fa-956e-f0f6141900c4",
+      "stepId": "536f3ddb-6813-403c-8b6e-9030c38aa911",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 795,
+      "outputTokens": 467,
+      "cachedTokens": 0,
+      "estimatedCost": "0.004392",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T13:09:39.439Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "6b4dfb0e39dab66a3a0ec1fa180f7fb0d1fc3645a7da75056fd56538cb965b8d",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "ac7ecf91-3423-46bc-978a-e2c14ecd79de",
+      "executionId": "bb3b8446-82e6-47fa-956e-f0f6141900c4",
+      "stepId": "536f3ddb-6813-403c-8b6e-9030c38aa911",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 797,
+      "outputTokens": 263,
+      "cachedTokens": 0,
+      "estimatedCost": "0.003172",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T13:09:42.371Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "949958442b19174c6fa72e2fd61511480635af7c6691fa5480e311696daf4797",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    }
+  ]
+}

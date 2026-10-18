@@ -1,0 +1,442 @@
+{
+  "id": "CMP09",
+  "scope": "direct domain parse/diff; not authenticated work-mode E2E; no semantic LLM",
+  "status": 200,
+  "ms": 8,
+  "response": {
+    "success": true,
+    "output": {
+      "fileNameA": "CMP09_A.docx",
+      "fileNameB": "CMP09_B.docx",
+      "alignedClauses": [
+        {
+          "id": "align-1-1",
+          "status": "UNCHANGED",
+          "sourceClause": {
+            "id": "clause-0",
+            "clauseNumber": "前言",
+            "title": "合同引言与主体信息",
+            "content": "设备采购合作合同\n甲方 星桥测试有限公司    乙方 青空テスト株式会社",
+            "blocks": [
+              {
+                "id": "blk-1",
+                "type": "bilingual_pair",
+                "primaryText": "设备采购合作合同",
+                "secondaryText": "甲方 星桥测试有限公司    乙方 青空テスト株式会社",
+                "primaryHtml": "设备采购合作合同",
+                "secondaryHtml": "甲方 星桥测试有限公司    乙方 青空テスト株式会社",
+                "primaryLang": "zh",
+                "secondaryLang": "ja",
+                "isBold": false,
+                "hasUnderline": false
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "前言",
+            "chapterTitle": "合同引言与签约主体"
+          },
+          "targetClause": {
+            "id": "clause-0",
+            "clauseNumber": "前言",
+            "title": "合同引言与主体信息",
+            "content": "设备采购合作合同\n甲方 星桥测试有限公司    乙方 青空テスト株式会社",
+            "blocks": [
+              {
+                "id": "blk-1",
+                "type": "bilingual_pair",
+                "primaryText": "设备采购合作合同",
+                "secondaryText": "甲方 星桥测试有限公司    乙方 青空テスト株式会社",
+                "primaryHtml": "设备采购合作合同",
+                "secondaryHtml": "甲方 星桥测试有限公司    乙方 青空テスト株式会社",
+                "primaryLang": "zh",
+                "secondaryLang": "ja",
+                "isBold": false,
+                "hasUnderline": false
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "前言",
+            "chapterTitle": "合同引言与签约主体"
+          },
+          "similarity": 1,
+          "sourceHtml": "设备采购合作合同<br>甲方 星桥测试有限公司    乙方 青空テスト株式会社",
+          "targetHtml": "设备采购合作合同<br>甲方 星桥测试有限公司    乙方 青空テスト株式会社"
+        },
+        {
+          "id": "align-2-2",
+          "status": "UNCHANGED",
+          "sourceClause": {
+            "id": "clause-1",
+            "clauseNumber": "第1条",
+            "title": "合作范围",
+            "content": "合作范围\nCMP-SCOPE 乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。\n日本語正文：双方は誠実に本条の義務を履行する。",
+            "blocks": [
+              {
+                "id": "blk-2",
+                "type": "heading",
+                "primaryText": "合作范围",
+                "primaryHtml": "第1条 合作范围",
+                "isBold": true
+              },
+              {
+                "id": "blk-3",
+                "type": "bilingual_pair",
+                "primaryText": "CMP-SCOPE 乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。",
+                "secondaryText": "日本語正文：双方は誠実に本条の義務を履行する。",
+                "primaryHtml": "CMP-SCOPE 乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。",
+                "secondaryHtml": "日本語正文：双方は誠実に本条の義務を履行する。",
+                "primaryLang": "zh",
+                "secondaryLang": "ja",
+                "isBold": false,
+                "hasUnderline": false
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "正文",
+            "chapterTitle": "合同正文条款"
+          },
+          "targetClause": {
+            "id": "clause-1",
+            "clauseNumber": "第1条",
+            "title": "合作范围",
+            "content": "合作范围\nCMP-SCOPE 乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。\n日本語正文：双方は誠実に本条の義務を履行する。",
+            "blocks": [
+              {
+                "id": "blk-2",
+                "type": "heading",
+                "primaryText": "合作范围",
+                "primaryHtml": "第1条 合作范围",
+                "isBold": true
+              },
+              {
+                "id": "blk-3",
+                "type": "bilingual_pair",
+                "primaryText": "CMP-SCOPE 乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。",
+                "secondaryText": "日本語正文：双方は誠実に本条の義務を履行する。",
+                "primaryHtml": "CMP-SCOPE 乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。",
+                "secondaryHtml": "日本語正文：双方は誠実に本条の義務を履行する。",
+                "primaryLang": "zh",
+                "secondaryLang": "ja",
+                "isBold": false,
+                "hasUnderline": false
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "正文",
+            "chapterTitle": "合同正文条款"
+          },
+          "similarity": 1,
+          "sourceHtml": "合作范围<br>CMP-SCOPE 乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。<br>日本語正文：双方は誠実に本条の義務を履行する。",
+          "targetHtml": "合作范围<br>CMP-SCOPE 乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。<br>日本語正文：双方は誠実に本条の義務を履行する。"
+        },
+        {
+          "id": "align-3-3",
+          "status": "MODIFIED",
+          "sourceClause": {
+            "id": "clause-2",
+            "clauseNumber": "第2条",
+            "title": "付款期限",
+            "content": "付款期限\nCMP-PAY 中文：甲方在验收合格后30日内付款。\n日本語：甲は検収完了後30日以内に支払う。",
+            "blocks": [
+              {
+                "id": "blk-4",
+                "type": "heading",
+                "primaryText": "付款期限",
+                "primaryHtml": "第2条 付款期限",
+                "isBold": true
+              },
+              {
+                "id": "blk-5",
+                "type": "bilingual_pair",
+                "primaryText": "CMP-PAY 中文：甲方在验收合格后30日内付款。",
+                "secondaryText": "日本語：甲は検収完了後30日以内に支払う。",
+                "primaryHtml": "CMP-PAY 中文：甲方在验收合格后30日内付款。",
+                "secondaryHtml": "日本語：甲は検収完了後30日以内に支払う。",
+                "primaryLang": "zh",
+                "secondaryLang": "ja",
+                "isBold": false,
+                "hasUnderline": false
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "正文",
+            "chapterTitle": "合同正文条款"
+          },
+          "targetClause": {
+            "id": "clause-2",
+            "clauseNumber": "第2条",
+            "title": "付款期限",
+            "content": "付款期限\nCMP-PAY 中文：甲方在验收合格后30日内付款。\n日本語：甲は検収完了後90日以内に支払う。",
+            "blocks": [
+              {
+                "id": "blk-4",
+                "type": "heading",
+                "primaryText": "付款期限",
+                "primaryHtml": "第2条 付款期限",
+                "isBold": true
+              },
+              {
+                "id": "blk-5",
+                "type": "bilingual_pair",
+                "primaryText": "CMP-PAY 中文：甲方在验收合格后30日内付款。",
+                "secondaryText": "日本語：甲は検収完了後90日以内に支払う。",
+                "primaryHtml": "CMP-PAY 中文：甲方在验收合格后30日内付款。",
+                "secondaryHtml": "日本語：甲は検収完了後90日以内に支払う。",
+                "primaryLang": "zh",
+                "secondaryLang": "ja",
+                "isBold": false,
+                "hasUnderline": false
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "正文",
+            "chapterTitle": "合同正文条款"
+          },
+          "similarity": 0.9811,
+          "diffTokens": [
+            {
+              "type": "equal",
+              "text": "付款期限\nCMP-PAY 中文：甲方在验收合格后30日内付款。\n日本語：甲は検収完了後"
+            },
+            {
+              "type": "delete",
+              "text": "3"
+            },
+            {
+              "type": "insert",
+              "text": "9"
+            },
+            {
+              "type": "equal",
+              "text": "0日以内に支払う。"
+            }
+          ],
+          "sourceHtml": "付款期限<br>CMP-PAY 中文：甲方在验收合格后30日内付款。<br>日本語：甲は検収完了後<del class=\"diff-del\">3</del>0日以内に支払う。",
+          "targetHtml": "付款期限<br>CMP-PAY 中文：甲方在验收合格后30日内付款。<br>日本語：甲は検収完了後<ins class=\"diff-ins\">9</ins>0日以内に支払う。",
+          "aiInsight": {
+            "riskLevel": "LOW",
+            "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。",
+            "keyChange": "条款文本词句微调",
+            "shortSummary": "文本修改"
+          }
+        },
+        {
+          "id": "align-4-4",
+          "status": "UNCHANGED",
+          "sourceClause": {
+            "id": "clause-3",
+            "clauseNumber": "第3条",
+            "title": "违约责任",
+            "content": "违约责任\nCMP-LIAB 乙方延期交付应按合同总价每日0.1%向甲方支付违约金。\n日本語正文：双方は誠実に本条の義務を履行する。",
+            "blocks": [
+              {
+                "id": "blk-6",
+                "type": "heading",
+                "primaryText": "违约责任",
+                "primaryHtml": "第3条 违约责任",
+                "isBold": true
+              },
+              {
+                "id": "blk-7",
+                "type": "bilingual_pair",
+                "primaryText": "CMP-LIAB 乙方延期交付应按合同总价每日0.1%向甲方支付违约金。",
+                "secondaryText": "日本語正文：双方は誠実に本条の義務を履行する。",
+                "primaryHtml": "CMP-LIAB 乙方延期交付应按合同总价每日0.1%向甲方支付违约金。",
+                "secondaryHtml": "日本語正文：双方は誠実に本条の義務を履行する。",
+                "primaryLang": "zh",
+                "secondaryLang": "ja",
+                "isBold": false,
+                "hasUnderline": false
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "正文",
+            "chapterTitle": "合同正文条款"
+          },
+          "targetClause": {
+            "id": "clause-3",
+            "clauseNumber": "第3条",
+            "title": "违约责任",
+            "content": "违约责任\nCMP-LIAB 乙方延期交付应按合同总价每日0.1%向甲方支付违约金。\n日本語正文：双方は誠実に本条の義務を履行する。",
+            "blocks": [
+              {
+                "id": "blk-6",
+                "type": "heading",
+                "primaryText": "违约责任",
+                "primaryHtml": "第3条 违约责任",
+                "isBold": true
+              },
+              {
+                "id": "blk-7",
+                "type": "bilingual_pair",
+                "primaryText": "CMP-LIAB 乙方延期交付应按合同总价每日0.1%向甲方支付违约金。",
+                "secondaryText": "日本語正文：双方は誠実に本条の義務を履行する。",
+                "primaryHtml": "CMP-LIAB 乙方延期交付应按合同总价每日0.1%向甲方支付违约金。",
+                "secondaryHtml": "日本語正文：双方は誠実に本条の義務を履行する。",
+                "primaryLang": "zh",
+                "secondaryLang": "ja",
+                "isBold": false,
+                "hasUnderline": false
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "正文",
+            "chapterTitle": "合同正文条款"
+          },
+          "similarity": 1,
+          "sourceHtml": "违约责任<br>CMP-LIAB 乙方延期交付应按合同总价每日0.1%向甲方支付违约金。<br>日本語正文：双方は誠実に本条の義務を履行する。",
+          "targetHtml": "违约责任<br>CMP-LIAB 乙方延期交付应按合同总价每日0.1%向甲方支付违约金。<br>日本語正文：双方は誠実に本条の義務を履行する。"
+        },
+        {
+          "id": "align-5-5",
+          "status": "UNCHANGED",
+          "sourceClause": {
+            "id": "clause-4",
+            "clauseNumber": "第4条",
+            "title": "资料保密",
+            "content": "资料保密\nCMP-DATA 乙方不得向第三方披露甲方商业秘密，保密义务持续三年。\n日本語正文：双方は誠実に本条の義務を履行する。",
+            "blocks": [
+              {
+                "id": "blk-8",
+                "type": "heading",
+                "primaryText": "资料保密",
+                "primaryHtml": "第4条 资料保密",
+                "isBold": true
+              },
+              {
+                "id": "blk-9",
+                "type": "bilingual_pair",
+                "primaryText": "CMP-DATA 乙方不得向第三方披露甲方商业秘密，保密义务持续三年。",
+                "secondaryText": "日本語正文：双方は誠実に本条の義務を履行する。",
+                "primaryHtml": "CMP-DATA 乙方不得向第三方披露甲方商业秘密，保密义务持续三年。",
+                "secondaryHtml": "日本語正文：双方は誠実に本条の義務を履行する。",
+                "primaryLang": "zh",
+                "secondaryLang": "ja",
+                "isBold": false,
+                "hasUnderline": false
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "正文",
+            "chapterTitle": "合同正文条款"
+          },
+          "targetClause": {
+            "id": "clause-4",
+            "clauseNumber": "第4条",
+            "title": "资料保密",
+            "content": "资料保密\nCMP-DATA 乙方不得向第三方披露甲方商业秘密，保密义务持续三年。\n日本語正文：双方は誠実に本条の義務を履行する。",
+            "blocks": [
+              {
+                "id": "blk-8",
+                "type": "heading",
+                "primaryText": "资料保密",
+                "primaryHtml": "第4条 资料保密",
+                "isBold": true
+              },
+              {
+                "id": "blk-9",
+                "type": "bilingual_pair",
+                "primaryText": "CMP-DATA 乙方不得向第三方披露甲方商业秘密，保密义务持续三年。",
+                "secondaryText": "日本語正文：双方は誠実に本条の義務を履行する。",
+                "primaryHtml": "CMP-DATA 乙方不得向第三方披露甲方商业秘密，保密义务持续三年。",
+                "secondaryHtml": "日本語正文：双方は誠実に本条の義務を履行する。",
+                "primaryLang": "zh",
+                "secondaryLang": "ja",
+                "isBold": false,
+                "hasUnderline": false
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "正文",
+            "chapterTitle": "合同正文条款"
+          },
+          "similarity": 1,
+          "sourceHtml": "资料保密<br>CMP-DATA 乙方不得向第三方披露甲方商业秘密，保密义务持续三年。<br>日本語正文：双方は誠実に本条の義務を履行する。",
+          "targetHtml": "资料保密<br>CMP-DATA 乙方不得向第三方披露甲方商业秘密，保密义务持续三年。<br>日本語正文：双方は誠実に本条の義務を履行する。"
+        },
+        {
+          "id": "align-6-6",
+          "status": "UNCHANGED",
+          "sourceClause": {
+            "id": "clause-5",
+            "clauseNumber": "第5条",
+            "title": "终止安排",
+            "content": "终止安排\nCMP-END 甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。\n日本語正文：双方は誠実に本条の義務を履行する。",
+            "blocks": [
+              {
+                "id": "blk-10",
+                "type": "heading",
+                "primaryText": "终止安排",
+                "primaryHtml": "第5条 终止安排",
+                "isBold": true
+              },
+              {
+                "id": "blk-11",
+                "type": "bilingual_pair",
+                "primaryText": "CMP-END 甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。",
+                "secondaryText": "日本語正文：双方は誠実に本条の義務を履行する。",
+                "primaryHtml": "CMP-END 甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。",
+                "secondaryHtml": "日本語正文：双方は誠実に本条の義務を履行する。",
+                "primaryLang": "zh",
+                "secondaryLang": "ja",
+                "isBold": false,
+                "hasUnderline": false
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "正文",
+            "chapterTitle": "合同正文条款"
+          },
+          "targetClause": {
+            "id": "clause-5",
+            "clauseNumber": "第5条",
+            "title": "终止安排",
+            "content": "终止安排\nCMP-END 甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。\n日本語正文：双方は誠実に本条の義務を履行する。",
+            "blocks": [
+              {
+                "id": "blk-10",
+                "type": "heading",
+                "primaryText": "终止安排",
+                "primaryHtml": "第5条 终止安排",
+                "isBold": true
+              },
+              {
+                "id": "blk-11",
+                "type": "bilingual_pair",
+                "primaryText": "CMP-END 甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。",
+                "secondaryText": "日本語正文：双方は誠実に本条の義務を履行する。",
+                "primaryHtml": "CMP-END 甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。",
+                "secondaryHtml": "日本語正文：双方は誠実に本条の義務を履行する。",
+                "primaryLang": "zh",
+                "secondaryLang": "ja",
+                "isBold": false,
+                "hasUnderline": false
+              }
+            ],
+            "level": 2,
+            "chapterNumber": "正文",
+            "chapterTitle": "合同正文条款"
+          },
+          "similarity": 1,
+          "sourceHtml": "终止安排<br>CMP-END 甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。<br>日本語正文：双方は誠実に本条の義務を履行する。",
+          "targetHtml": "终止安排<br>CMP-END 甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。<br>日本語正文：双方は誠実に本条の義務を履行する。"
+        }
+      ],
+      "metrics": {
+        "totalClauses": 6,
+        "unchangedCount": 5,
+        "modifiedCount": 1,
+        "addedCount": 0,
+        "deletedCount": 0,
+        "highRiskCount": 0,
+        "mediumRiskCount": 0,
+        "sourceClauseCount": 6,
+        "targetClauseCount": 6,
+        "isTruncated": false
+      },
+      "sourceClauseCount": 6,
+      "targetClauseCount": 6,
+      "isTruncated": false
+    }
+  }
+}

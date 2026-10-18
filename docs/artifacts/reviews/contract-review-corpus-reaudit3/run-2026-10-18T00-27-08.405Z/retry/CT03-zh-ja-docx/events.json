@@ -1,0 +1,888 @@
+[
+  {
+    "elapsedMs": 125,
+    "event": {
+      "type": "thought",
+      "content": "正在规划任务...",
+      "seq": 1,
+      "protocolVersion": "1",
+      "sessionId": "corpus-CT03-zh-ja-docx-1792284481134",
+      "traceId": "1e06fb6c-992e-4a3b-b96a-e146ea538123",
+      "data": {
+        "traceId": "1e06fb6c-992e-4a3b-b96a-e146ea538123"
+      }
+    }
+  },
+  {
+    "elapsedMs": 126,
+    "event": {
+      "type": "thought",
+      "content": "正在获取用户可用 Skill 列表并进行确定性多步骤任务拆分规划...",
+      "seq": 2,
+      "protocolVersion": "1",
+      "sessionId": "corpus-CT03-zh-ja-docx-1792284481134",
+      "traceId": "1e06fb6c-992e-4a3b-b96a-e146ea538123",
+      "data": {
+        "traceId": "1e06fb6c-992e-4a3b-b96a-e146ea538123"
+      }
+    }
+  },
+  {
+    "elapsedMs": 24953,
+    "event": {
+      "type": "thought",
+      "content": "已成功冻结 1 步骤执行计划 (ID: 065a19cf-0372-4494-96e3-9aa5e94ef49b)，控制面已按拓扑顺序调度运行。",
+      "seq": 3,
+      "protocolVersion": "1",
+      "sessionId": "corpus-CT03-zh-ja-docx-1792284481134",
+      "traceId": "1e06fb6c-992e-4a3b-b96a-e146ea538123",
+      "data": {
+        "traceId": "1e06fb6c-992e-4a3b-b96a-e146ea538123"
+      }
+    }
+  },
+  {
+    "elapsedMs": 24954,
+    "event": {
+      "type": "thought",
+      "content": "已为你生成静态任务计划：\n\n1. 合同文档智能审查与合规诊断 - Skill: platform.document.contract-reviewer@1.0.2 (workflow)\n\n执行单 ID: `065a19cf-0372-4494-96e3-9aa5e94ef49b`。正在跟踪流程执行状态...\n",
+      "data": {
+        "executionId": "065a19cf-0372-4494-96e3-9aa5e94ef49b",
+        "status": "running",
+        "deterministicPlan": {
+          "objective": "请对附件这一份合同进行合同审查，我方为甲方（信息披露及接收双方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+          "nodes": [
+            {
+              "nodeId": "n1_合同文档智能审查与合规诊断",
+              "sequence": 1,
+              "title": "合同文档智能审查与合规诊断",
+              "kind": "skill",
+              "skillId": "platform.document.contract-reviewer",
+              "skillVersion": "1.0.2",
+              "runtimeType": "workflow",
+              "executionRuntimeType": "workflow",
+              "dependsOn": [],
+              "inputBindings": {
+                "fileUrl": {
+                  "source": "user_input",
+                  "path": "fileUrl"
+                },
+                "fileName": {
+                  "source": "user_input",
+                  "path": "fileName"
+                },
+                "fileBase64": {
+                  "source": "user_input",
+                  "path": "fileBase64"
+                },
+                "downloadUrl": {
+                  "source": "user_input",
+                  "path": "downloadUrl"
+                },
+                "contractType": {
+                  "source": "user_input",
+                  "path": "contractType"
+                },
+                "prompt": {
+                  "source": "literal",
+                  "value": "重点检查我方义务、责任、数据或知识产权、付款和退出安排"
+                },
+                "myPosition": {
+                  "source": "literal",
+                  "value": "甲方"
+                }
+              },
+              "outputContract": {
+                "clauses": "json",
+                "metrics": "json",
+                "summary": "string",
+                "artifact": "artifact_ref",
+                "artifacts": "json",
+                "htmlReport": "string",
+                "myPosition": "string",
+                "contractType": "string",
+                "missingClauses": "json",
+                "contractTypeName": "string"
+              },
+              "failurePolicy": "abort",
+              "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+            }
+          ],
+          "finalOutputs": [
+            {
+              "targetField": "result",
+              "fromNodeId": "n1_合同文档智能审查与合规诊断",
+              "fromNodeOutput": "artifact",
+              "expectedType": "artifact_ref",
+              "isArtifact": true
+            },
+            {
+              "targetField": "summary",
+              "fromNodeId": "n1_合同文档智能审查与合规诊断",
+              "fromNodeOutput": "summary",
+              "expectedType": "string",
+              "isArtifact": false
+            }
+          ]
+        },
+        "traceId": "1e06fb6c-992e-4a3b-b96a-e146ea538123"
+      },
+      "seq": 4,
+      "protocolVersion": "1",
+      "sessionId": "corpus-CT03-zh-ja-docx-1792284481134",
+      "traceId": "1e06fb6c-992e-4a3b-b96a-e146ea538123"
+    }
+  },
+  {
+    "elapsedMs": 24966,
+    "event": {
+      "type": "action",
+      "content": "正在执行：platform.document.contract-reviewer",
+      "data": {
+        "stepId": "1f935a78-c886-455d-a801-07f4c0930959",
+        "traceId": "1e06fb6c-992e-4a3b-b96a-e146ea538123"
+      },
+      "seq": 5,
+      "protocolVersion": "1",
+      "sessionId": "corpus-CT03-zh-ja-docx-1792284481134",
+      "traceId": "1e06fb6c-992e-4a3b-b96a-e146ea538123"
+    }
+  },
+  {
+    "elapsedMs": 40199,
+    "event": {
+      "type": "observation",
+      "content": "步骤已完成",
+      "data": {
+        "stepId": "1f935a78-c886-455d-a801-07f4c0930959",
+        "result": {
+          "summary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+          "artifactId": "9d32b634-2bb5-4ae6-a7f6-771b37eff3a6",
+          "myPosition": "buyer",
+          "contractType": "nda",
+          "reviewStatus": "completed",
+          "capabilityKey": "platform.document.contract-reviewer",
+          "positionSource": "user_confirmed",
+          "contractTypeName": "商业保密协议 (NDA)",
+          "htmlReportLength": 287755,
+          "capabilityVersion": "1.0.2",
+          "sourceDocumentVersion": "sha256:50a1f66565aa9f5f222a1d354613cb3de6f6c86c483d30e1977ae122cfeec9c2"
+        },
+        "normalizedResult": {
+          "envelope": {
+            "execution": {
+              "status": "success"
+            },
+            "result": {
+              "resultType": "generic",
+              "summary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+              "businessData": {
+                "artifactId": "9d32b634-2bb5-4ae6-a7f6-771b37eff3a6",
+                "myPosition": "buyer",
+                "contractType": "nda",
+                "reviewStatus": "completed",
+                "capabilityKey": "platform.document.contract-reviewer",
+                "positionSource": "user_confirmed",
+                "contractTypeName": "商业保密协议 (NDA)",
+                "htmlReportLength": 287755,
+                "capabilityVersion": "1.0.2",
+                "sourceDocumentVersion": "sha256:50a1f66565aa9f5f222a1d354613cb3de6f6c86c483d30e1977ae122cfeec9c2"
+              }
+            },
+            "artifacts": [],
+            "presentation": {
+              "preferAiSummary": false,
+              "preferStructuredView": false,
+              "summaryFormat": "plain_text",
+              "detailFormat": "plain_text"
+            }
+          },
+          "resultType": "generic",
+          "summary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+          "body": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+          "summaryFormat": "plain_text",
+          "detailText": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+          "detailFormat": "plain_text",
+          "structuredData": {
+            "artifactId": "9d32b634-2bb5-4ae6-a7f6-771b37eff3a6",
+            "myPosition": "buyer",
+            "contractType": "nda",
+            "reviewStatus": "completed",
+            "capabilityKey": "platform.document.contract-reviewer",
+            "positionSource": "user_confirmed",
+            "contractTypeName": "商业保密协议 (NDA)",
+            "htmlReportLength": 287755,
+            "capabilityVersion": "1.0.2",
+            "sourceDocumentVersion": "sha256:50a1f66565aa9f5f222a1d354613cb3de6f6c86c483d30e1977ae122cfeec9c2"
+          },
+          "artifacts": [],
+          "hasBusinessResult": true,
+          "rawResult": {
+            "summary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+            "artifactId": "9d32b634-2bb5-4ae6-a7f6-771b37eff3a6",
+            "myPosition": "buyer",
+            "contractType": "nda",
+            "reviewStatus": "completed",
+            "capabilityKey": "platform.document.contract-reviewer",
+            "positionSource": "user_confirmed",
+            "contractTypeName": "商业保密协议 (NDA)",
+            "htmlReportLength": 287755,
+            "capabilityVersion": "1.0.2",
+            "sourceDocumentVersion": "sha256:50a1f66565aa9f5f222a1d354613cb3de6f6c86c483d30e1977ae122cfeec9c2"
+          }
+        },
+        "traceId": "1e06fb6c-992e-4a3b-b96a-e146ea538123"
+      },
+      "seq": 6,
+      "protocolVersion": "1",
+      "sessionId": "corpus-CT03-zh-ja-docx-1792284481134",
+      "traceId": "1e06fb6c-992e-4a3b-b96a-e146ea538123"
+    }
+  },
+  {
+    "elapsedMs": 40220,
+    "event": {
+      "type": "result",
+      "content": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+      "data": {
+        "_version": "1",
+        "executionId": "065a19cf-0372-4494-96e3-9aa5e94ef49b",
+        "status": "succeeded",
+        "hasBusinessResult": true,
+        "chatSummary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+        "summaryFormat": "markdown",
+        "title": "请对附件这一份合同进行合同审查，我方为甲方（信息披露及接收双方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+        "businessData": {
+          "finalOutputs": [
+            {
+              "value": {
+                "id": "3727921b72fb2d27b59d44fc10148cfe",
+                "url": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+                "name": "合同合规审查报告_CT03-zh-ja.html",
+                "type": "document",
+                "metadata": {
+                  "format": "html",
+                  "category": "contract-review-report"
+                },
+                "mimeType": "text/html; charset=utf-8",
+                "sizeBytes": 303098,
+                "downloadUrl": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html"
+              },
+              "artifact": {
+                "id": "9d32b634-2bb5-4ae6-a7f6-771b37eff3a6",
+                "url": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+                "name": "合同合规审查报告_CT03-zh-ja.html",
+                "sha256": null,
+                "mimeType": "text/html; charset=utf-8",
+                "createdAt": "2026-10-18T00:48:41.242Z",
+                "sizeBytes": "303098",
+                "executionId": "065a19cf-0372-4494-96e3-9aa5e94ef49b",
+                "artifactType": "document",
+                "metadataJson": {
+                  "format": "html",
+                  "category": "contract-review-report"
+                },
+                "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                "producerStepId": "1f935a78-c886-455d-a801-07f4c0930959",
+                "externalArtifactId": "3727921b72fb2d27b59d44fc10148cfe"
+              },
+              "fromNodeId": "n1_合同文档智能审查与合规诊断",
+              "isArtifact": true,
+              "targetField": "result",
+              "expectedType": "artifact_ref",
+              "fromNodeOutput": "artifact"
+            },
+            {
+              "value": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+              "artifact": {
+                "id": "9d32b634-2bb5-4ae6-a7f6-771b37eff3a6",
+                "url": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+                "name": "合同合规审查报告_CT03-zh-ja.html",
+                "sha256": null,
+                "mimeType": "text/html; charset=utf-8",
+                "createdAt": "2026-10-18T00:48:41.242Z",
+                "sizeBytes": "303098",
+                "executionId": "065a19cf-0372-4494-96e3-9aa5e94ef49b",
+                "artifactType": "document",
+                "metadataJson": {
+                  "format": "html",
+                  "category": "contract-review-report"
+                },
+                "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                "producerStepId": "1f935a78-c886-455d-a801-07f4c0930959",
+                "externalArtifactId": "3727921b72fb2d27b59d44fc10148cfe"
+              },
+              "fromNodeId": "n1_合同文档智能审查与合规诊断",
+              "isArtifact": false,
+              "targetField": "summary",
+              "expectedType": "string",
+              "fromNodeOutput": "summary"
+            }
+          ],
+          "capabilitiesUsed": [
+            {
+              "id": "platform.document.contract-reviewer",
+              "name": "合同文档智能审查与合规诊断",
+              "version": "1.0.2"
+            }
+          ]
+        },
+        "artifacts": [
+          {
+            "type": "document",
+            "artifactType": "document",
+            "name": "合同合规审查报告_CT03-zh-ja.html",
+            "label": "合同合规审查报告_CT03-zh-ja.html",
+            "downloadUrl": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+            "url": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+            "mimeType": "text/html; charset=utf-8"
+          }
+        ],
+        "downloadUrl": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+        "runtimeType": "plan",
+        "result": {
+          "result": {
+            "title": "请对附件这一份合同进行合同审查，我方为甲方（信息披露及接收双方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+            "summary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+            "resultType": "deterministic_plan",
+            "businessData": {
+              "finalOutputs": [
+                {
+                  "value": {
+                    "id": "3727921b72fb2d27b59d44fc10148cfe",
+                    "url": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+                    "name": "合同合规审查报告_CT03-zh-ja.html",
+                    "type": "document",
+                    "metadata": {
+                      "format": "html",
+                      "category": "contract-review-report"
+                    },
+                    "mimeType": "text/html; charset=utf-8",
+                    "sizeBytes": 303098,
+                    "downloadUrl": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html"
+                  },
+                  "artifact": {
+                    "id": "9d32b634-2bb5-4ae6-a7f6-771b37eff3a6",
+                    "url": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+                    "name": "合同合规审查报告_CT03-zh-ja.html",
+                    "sha256": null,
+                    "mimeType": "text/html; charset=utf-8",
+                    "createdAt": "2026-10-18T00:48:41.242Z",
+                    "sizeBytes": "303098",
+                    "executionId": "065a19cf-0372-4494-96e3-9aa5e94ef49b",
+                    "artifactType": "document",
+                    "metadataJson": {
+                      "format": "html",
+                      "category": "contract-review-report"
+                    },
+                    "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                    "producerStepId": "1f935a78-c886-455d-a801-07f4c0930959",
+                    "externalArtifactId": "3727921b72fb2d27b59d44fc10148cfe"
+                  },
+                  "fromNodeId": "n1_合同文档智能审查与合规诊断",
+                  "isArtifact": true,
+                  "targetField": "result",
+                  "expectedType": "artifact_ref",
+                  "fromNodeOutput": "artifact"
+                },
+                {
+                  "value": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+                  "artifact": {
+                    "id": "9d32b634-2bb5-4ae6-a7f6-771b37eff3a6",
+                    "url": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+                    "name": "合同合规审查报告_CT03-zh-ja.html",
+                    "sha256": null,
+                    "mimeType": "text/html; charset=utf-8",
+                    "createdAt": "2026-10-18T00:48:41.242Z",
+                    "sizeBytes": "303098",
+                    "executionId": "065a19cf-0372-4494-96e3-9aa5e94ef49b",
+                    "artifactType": "document",
+                    "metadataJson": {
+                      "format": "html",
+                      "category": "contract-review-report"
+                    },
+                    "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                    "producerStepId": "1f935a78-c886-455d-a801-07f4c0930959",
+                    "externalArtifactId": "3727921b72fb2d27b59d44fc10148cfe"
+                  },
+                  "fromNodeId": "n1_合同文档智能审查与合规诊断",
+                  "isArtifact": false,
+                  "targetField": "summary",
+                  "expectedType": "string",
+                  "fromNodeOutput": "summary"
+                }
+              ],
+              "capabilitiesUsed": [
+                {
+                  "id": "platform.document.contract-reviewer",
+                  "name": "合同文档智能审查与合规诊断",
+                  "version": "1.0.2"
+                }
+              ]
+            },
+            "capabilitiesUsed": [
+              {
+                "id": "platform.document.contract-reviewer",
+                "name": "合同文档智能审查与合规诊断",
+                "version": "1.0.2"
+              }
+            ]
+          },
+          "artifacts": [
+            {
+              "id": "9d32b634-2bb5-4ae6-a7f6-771b37eff3a6",
+              "url": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+              "name": "合同合规审查报告_CT03-zh-ja.html",
+              "sha256": null,
+              "mimeType": "text/html; charset=utf-8",
+              "createdAt": "2026-10-18T00:48:41.242Z",
+              "sizeBytes": "303098",
+              "executionId": "065a19cf-0372-4494-96e3-9aa5e94ef49b",
+              "artifactType": "document",
+              "metadataJson": {
+                "format": "html",
+                "category": "contract-review-report"
+              },
+              "producerNodeId": "n1_合同文档智能审查与合规诊断",
+              "producerStepId": "1f935a78-c886-455d-a801-07f4c0930959",
+              "externalArtifactId": "3727921b72fb2d27b59d44fc10148cfe"
+            }
+          ],
+          "execution": {
+            "status": "success",
+            "finishedAt": "2026-10-18T00:48:41.291Z",
+            "executionId": "065a19cf-0372-4494-96e3-9aa5e94ef49b"
+          },
+          "presentation": {
+            "detailText": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+            "chatSummary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+            "detailFormat": "markdown",
+            "summaryFormat": "markdown",
+            "preferAiSummary": false,
+            "capabilitiesUsed": [
+              {
+                "id": "platform.document.contract-reviewer",
+                "name": "合同文档智能审查与合规诊断",
+                "version": "1.0.2"
+              }
+            ],
+            "notificationSummary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+            "preferStructuredView": false
+          },
+          "capabilitiesUsed": [
+            {
+              "id": "platform.document.contract-reviewer",
+              "name": "合同文档智能审查与合规诊断",
+              "version": "1.0.2"
+            }
+          ]
+        },
+        "normalizedResult": {
+          "envelope": {
+            "result": {
+              "title": "请对附件这一份合同进行合同审查，我方为甲方（信息披露及接收双方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+              "summary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+              "resultType": "deterministic_plan",
+              "businessData": {
+                "finalOutputs": [
+                  {
+                    "value": {
+                      "id": "3727921b72fb2d27b59d44fc10148cfe",
+                      "url": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+                      "name": "合同合规审查报告_CT03-zh-ja.html",
+                      "type": "document",
+                      "metadata": {
+                        "format": "html",
+                        "category": "contract-review-report"
+                      },
+                      "mimeType": "text/html; charset=utf-8",
+                      "sizeBytes": 303098,
+                      "downloadUrl": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html"
+                    },
+                    "artifact": {
+                      "id": "9d32b634-2bb5-4ae6-a7f6-771b37eff3a6",
+                      "url": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+                      "name": "合同合规审查报告_CT03-zh-ja.html",
+                      "sha256": null,
+                      "mimeType": "text/html; charset=utf-8",
+                      "createdAt": "2026-10-18T00:48:41.242Z",
+                      "sizeBytes": "303098",
+                      "executionId": "065a19cf-0372-4494-96e3-9aa5e94ef49b",
+                      "artifactType": "document",
+                      "metadataJson": {
+                        "format": "html",
+                        "category": "contract-review-report"
+                      },
+                      "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                      "producerStepId": "1f935a78-c886-455d-a801-07f4c0930959",
+                      "externalArtifactId": "3727921b72fb2d27b59d44fc10148cfe"
+                    },
+                    "fromNodeId": "n1_合同文档智能审查与合规诊断",
+                    "isArtifact": true,
+                    "targetField": "result",
+                    "expectedType": "artifact_ref",
+                    "fromNodeOutput": "artifact"
+                  },
+                  {
+                    "value": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+                    "artifact": {
+                      "id": "9d32b634-2bb5-4ae6-a7f6-771b37eff3a6",
+                      "url": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+                      "name": "合同合规审查报告_CT03-zh-ja.html",
+                      "sha256": null,
+                      "mimeType": "text/html; charset=utf-8",
+                      "createdAt": "2026-10-18T00:48:41.242Z",
+                      "sizeBytes": "303098",
+                      "executionId": "065a19cf-0372-4494-96e3-9aa5e94ef49b",
+                      "artifactType": "document",
+                      "metadataJson": {
+                        "format": "html",
+                        "category": "contract-review-report"
+                      },
+                      "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                      "producerStepId": "1f935a78-c886-455d-a801-07f4c0930959",
+                      "externalArtifactId": "3727921b72fb2d27b59d44fc10148cfe"
+                    },
+                    "fromNodeId": "n1_合同文档智能审查与合规诊断",
+                    "isArtifact": false,
+                    "targetField": "summary",
+                    "expectedType": "string",
+                    "fromNodeOutput": "summary"
+                  }
+                ],
+                "capabilitiesUsed": [
+                  {
+                    "id": "platform.document.contract-reviewer",
+                    "name": "合同文档智能审查与合规诊断",
+                    "version": "1.0.2"
+                  }
+                ]
+              },
+              "capabilitiesUsed": [
+                {
+                  "id": "platform.document.contract-reviewer",
+                  "name": "合同文档智能审查与合规诊断",
+                  "version": "1.0.2"
+                }
+              ]
+            },
+            "artifacts": [
+              {
+                "type": "document",
+                "artifactType": "document",
+                "name": "合同合规审查报告_CT03-zh-ja.html",
+                "label": "合同合规审查报告_CT03-zh-ja.html",
+                "downloadUrl": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+                "url": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+                "mimeType": "text/html; charset=utf-8"
+              }
+            ],
+            "execution": {
+              "status": "success",
+              "finishedAt": "2026-10-18T00:48:41.291Z",
+              "executionId": "065a19cf-0372-4494-96e3-9aa5e94ef49b"
+            },
+            "presentation": {
+              "detailText": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+              "chatSummary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+              "detailFormat": "markdown",
+              "summaryFormat": "markdown",
+              "preferAiSummary": false,
+              "capabilitiesUsed": [
+                {
+                  "id": "platform.document.contract-reviewer",
+                  "name": "合同文档智能审查与合规诊断",
+                  "version": "1.0.2"
+                }
+              ],
+              "notificationSummary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+              "preferStructuredView": false
+            },
+            "capabilitiesUsed": [
+              {
+                "id": "platform.document.contract-reviewer",
+                "name": "合同文档智能审查与合规诊断",
+                "version": "1.0.2"
+              }
+            ]
+          },
+          "resultType": "deterministic_plan",
+          "title": "请对附件这一份合同进行合同审查，我方为甲方（信息披露及接收双方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+          "summary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+          "body": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+          "summaryFormat": "markdown",
+          "detailText": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+          "detailFormat": "markdown",
+          "structuredData": {
+            "finalOutputs": [
+              {
+                "value": {
+                  "id": "3727921b72fb2d27b59d44fc10148cfe",
+                  "url": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+                  "name": "合同合规审查报告_CT03-zh-ja.html",
+                  "type": "document",
+                  "metadata": {
+                    "format": "html",
+                    "category": "contract-review-report"
+                  },
+                  "mimeType": "text/html; charset=utf-8",
+                  "sizeBytes": 303098,
+                  "downloadUrl": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html"
+                },
+                "artifact": {
+                  "id": "9d32b634-2bb5-4ae6-a7f6-771b37eff3a6",
+                  "url": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+                  "name": "合同合规审查报告_CT03-zh-ja.html",
+                  "sha256": null,
+                  "mimeType": "text/html; charset=utf-8",
+                  "createdAt": "2026-10-18T00:48:41.242Z",
+                  "sizeBytes": "303098",
+                  "executionId": "065a19cf-0372-4494-96e3-9aa5e94ef49b",
+                  "artifactType": "document",
+                  "metadataJson": {
+                    "format": "html",
+                    "category": "contract-review-report"
+                  },
+                  "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                  "producerStepId": "1f935a78-c886-455d-a801-07f4c0930959",
+                  "externalArtifactId": "3727921b72fb2d27b59d44fc10148cfe"
+                },
+                "fromNodeId": "n1_合同文档智能审查与合规诊断",
+                "isArtifact": true,
+                "targetField": "result",
+                "expectedType": "artifact_ref",
+                "fromNodeOutput": "artifact"
+              },
+              {
+                "value": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+                "artifact": {
+                  "id": "9d32b634-2bb5-4ae6-a7f6-771b37eff3a6",
+                  "url": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+                  "name": "合同合规审查报告_CT03-zh-ja.html",
+                  "sha256": null,
+                  "mimeType": "text/html; charset=utf-8",
+                  "createdAt": "2026-10-18T00:48:41.242Z",
+                  "sizeBytes": "303098",
+                  "executionId": "065a19cf-0372-4494-96e3-9aa5e94ef49b",
+                  "artifactType": "document",
+                  "metadataJson": {
+                    "format": "html",
+                    "category": "contract-review-report"
+                  },
+                  "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                  "producerStepId": "1f935a78-c886-455d-a801-07f4c0930959",
+                  "externalArtifactId": "3727921b72fb2d27b59d44fc10148cfe"
+                },
+                "fromNodeId": "n1_合同文档智能审查与合规诊断",
+                "isArtifact": false,
+                "targetField": "summary",
+                "expectedType": "string",
+                "fromNodeOutput": "summary"
+              }
+            ],
+            "capabilitiesUsed": [
+              {
+                "id": "platform.document.contract-reviewer",
+                "name": "合同文档智能审查与合规诊断",
+                "version": "1.0.2"
+              }
+            ]
+          },
+          "artifacts": [
+            {
+              "type": "document",
+              "artifactType": "document",
+              "name": "合同合规审查报告_CT03-zh-ja.html",
+              "label": "合同合规审查报告_CT03-zh-ja.html",
+              "downloadUrl": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+              "url": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+              "mimeType": "text/html; charset=utf-8"
+            }
+          ],
+          "downloadUrl": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+          "hasBusinessResult": true,
+          "rawResult": {
+            "result": {
+              "title": "请对附件这一份合同进行合同审查，我方为甲方（信息披露及接收双方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+              "summary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+              "resultType": "deterministic_plan",
+              "businessData": {
+                "finalOutputs": [
+                  {
+                    "value": {
+                      "id": "3727921b72fb2d27b59d44fc10148cfe",
+                      "url": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+                      "name": "合同合规审查报告_CT03-zh-ja.html",
+                      "type": "document",
+                      "metadata": {
+                        "format": "html",
+                        "category": "contract-review-report"
+                      },
+                      "mimeType": "text/html; charset=utf-8",
+                      "sizeBytes": 303098,
+                      "downloadUrl": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html"
+                    },
+                    "artifact": {
+                      "id": "9d32b634-2bb5-4ae6-a7f6-771b37eff3a6",
+                      "url": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+                      "name": "合同合规审查报告_CT03-zh-ja.html",
+                      "sha256": null,
+                      "mimeType": "text/html; charset=utf-8",
+                      "createdAt": "2026-10-18T00:48:41.242Z",
+                      "sizeBytes": "303098",
+                      "executionId": "065a19cf-0372-4494-96e3-9aa5e94ef49b",
+                      "artifactType": "document",
+                      "metadataJson": {
+                        "format": "html",
+                        "category": "contract-review-report"
+                      },
+                      "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                      "producerStepId": "1f935a78-c886-455d-a801-07f4c0930959",
+                      "externalArtifactId": "3727921b72fb2d27b59d44fc10148cfe"
+                    },
+                    "fromNodeId": "n1_合同文档智能审查与合规诊断",
+                    "isArtifact": true,
+                    "targetField": "result",
+                    "expectedType": "artifact_ref",
+                    "fromNodeOutput": "artifact"
+                  },
+                  {
+                    "value": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+                    "artifact": {
+                      "id": "9d32b634-2bb5-4ae6-a7f6-771b37eff3a6",
+                      "url": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+                      "name": "合同合规审查报告_CT03-zh-ja.html",
+                      "sha256": null,
+                      "mimeType": "text/html; charset=utf-8",
+                      "createdAt": "2026-10-18T00:48:41.242Z",
+                      "sizeBytes": "303098",
+                      "executionId": "065a19cf-0372-4494-96e3-9aa5e94ef49b",
+                      "artifactType": "document",
+                      "metadataJson": {
+                        "format": "html",
+                        "category": "contract-review-report"
+                      },
+                      "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                      "producerStepId": "1f935a78-c886-455d-a801-07f4c0930959",
+                      "externalArtifactId": "3727921b72fb2d27b59d44fc10148cfe"
+                    },
+                    "fromNodeId": "n1_合同文档智能审查与合规诊断",
+                    "isArtifact": false,
+                    "targetField": "summary",
+                    "expectedType": "string",
+                    "fromNodeOutput": "summary"
+                  }
+                ],
+                "capabilitiesUsed": [
+                  {
+                    "id": "platform.document.contract-reviewer",
+                    "name": "合同文档智能审查与合规诊断",
+                    "version": "1.0.2"
+                  }
+                ]
+              },
+              "capabilitiesUsed": [
+                {
+                  "id": "platform.document.contract-reviewer",
+                  "name": "合同文档智能审查与合规诊断",
+                  "version": "1.0.2"
+                }
+              ]
+            },
+            "artifacts": [
+              {
+                "id": "9d32b634-2bb5-4ae6-a7f6-771b37eff3a6",
+                "url": "http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html",
+                "name": "合同合规审查报告_CT03-zh-ja.html",
+                "sha256": null,
+                "mimeType": "text/html; charset=utf-8",
+                "createdAt": "2026-10-18T00:48:41.242Z",
+                "sizeBytes": "303098",
+                "executionId": "065a19cf-0372-4494-96e3-9aa5e94ef49b",
+                "artifactType": "document",
+                "metadataJson": {
+                  "format": "html",
+                  "category": "contract-review-report"
+                },
+                "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                "producerStepId": "1f935a78-c886-455d-a801-07f4c0930959",
+                "externalArtifactId": "3727921b72fb2d27b59d44fc10148cfe"
+              }
+            ],
+            "execution": {
+              "status": "success",
+              "finishedAt": "2026-10-18T00:48:41.291Z",
+              "executionId": "065a19cf-0372-4494-96e3-9aa5e94ef49b"
+            },
+            "presentation": {
+              "detailText": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+              "chatSummary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+              "detailFormat": "markdown",
+              "summaryFormat": "markdown",
+              "preferAiSummary": false,
+              "capabilitiesUsed": [
+                {
+                  "id": "platform.document.contract-reviewer",
+                  "name": "合同文档智能审查与合规诊断",
+                  "version": "1.0.2"
+                }
+              ],
+              "notificationSummary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+              "preferStructuredView": false
+            },
+            "capabilitiesUsed": [
+              {
+                "id": "platform.document.contract-reviewer",
+                "name": "合同文档智能审查与合规诊断",
+                "version": "1.0.2"
+              }
+            ]
+          }
+        },
+        "resultType": "deterministic_plan",
+        "resultTitle": "请对附件这一份合同进行合同审查，我方为甲方（信息披露及接收双方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+        "resultSummary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**商业保密协议 (NDA)**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**51 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **1** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **2** 项，🟢 合规通过 **5** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n- ⚡ **保密除外情形约定不够周延** [必备缺失]：除外条款已约定核心除外情形（命中 4/5 项），但法定覆盖不够周全，建议核验并补充约定未明确列明的除外情形（如独立研发等），消除履约抗辩隐患。\n\n#### 🔍 核心高风险条款诊断\n- 🔴 **[CT03-zh-ja-A07]**：仅限直接损失排除了间接损失，导致我方维权时无法主张利润损失等核心间接损害。 *（建议：该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。）*\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/3727921b72fb2d27b59d44fc10148cfe.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+        "usage": null,
+        "skillId": "platform.document.contract-reviewer",
+        "skillName": "请对附件这一份合同进行合同审查，我方为甲方（信息披露及接收双方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+        "skillUsed": "请对附件这一份合同进行合同审查，我方为甲方（信息披露及接收双方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+        "traceId": "1e06fb6c-992e-4a3b-b96a-e146ea538123"
+      },
+      "seq": 7,
+      "protocolVersion": "1",
+      "sessionId": "corpus-CT03-zh-ja-docx-1792284481134",
+      "traceId": "1e06fb6c-992e-4a3b-b96a-e146ea538123"
+    }
+  },
+  {
+    "elapsedMs": 40222,
+    "event": {
+      "type": "session_patch",
+      "sessionId": "corpus-CT03-zh-ja-docx-1792284481134",
+      "content": "",
+      "data": {
+        "title": "请对附件这一份合同进行合同审查，我方为甲方（信息",
+        "status": "active",
+        "updatedAt": "2026-10-18T00:48:41.352Z",
+        "traceId": "1e06fb6c-992e-4a3b-b96a-e146ea538123"
+      },
+      "seq": 8,
+      "protocolVersion": "1",
+      "traceId": "1e06fb6c-992e-4a3b-b96a-e146ea538123"
+    }
+  },
+  {
+    "elapsedMs": 40223,
+    "event": {
+      "type": "done",
+      "content": "Stream completed",
+      "seq": 9,
+      "protocolVersion": "1",
+      "sessionId": "corpus-CT03-zh-ja-docx-1792284481134",
+      "traceId": "1e06fb6c-992e-4a3b-b96a-e146ea538123",
+      "data": {
+        "traceId": "1e06fb6c-992e-4a3b-b96a-e146ea538123"
+      }
+    }
+  }
+]

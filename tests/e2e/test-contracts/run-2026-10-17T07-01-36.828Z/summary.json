@@ -1,0 +1,94 @@
+[
+  {
+    "id": "T01_DEV_DOCX",
+    "name": "软件研发合同 (DOCX) - 乙方立场审查",
+    "file": "software-dev-contract.docx",
+    "format": "DOCX",
+    "pass": false,
+    "executionId": "b8e7846f-4b60-42c4-8b33-bcaae9a972ef",
+    "status": "succeeded",
+    "durationMs": 142517,
+    "clausesCount": 10,
+    "llmReviewedCount": 7,
+    "isDegraded": true,
+    "healthScore": 44,
+    "riskStats": {
+      "high": 3,
+      "medium": 2,
+      "low": 2,
+      "pass": 3
+    },
+    "tokensEmitted": 1090,
+    "estimatedCostCny": "0.011564",
+    "artifactUrl": "http://192.168.100.143:3009/renders/d745c19461d2564c32930a3ff4d9e899.html"
+  },
+  {
+    "id": "T02_DEV_PDF",
+    "name": "软件研发合同 (PDF) - 乙方立场审查",
+    "file": "software-dev-contract.pdf",
+    "format": "PDF",
+    "pass": false,
+    "executionId": "ceab03ae-7712-4bcf-8982-459a340a58d6",
+    "status": "succeeded",
+    "durationMs": 42538,
+    "clausesCount": 10,
+    "llmReviewedCount": 7,
+    "isDegraded": true,
+    "healthScore": 51,
+    "riskStats": {
+      "high": 2,
+      "medium": 3,
+      "low": 2,
+      "pass": 3
+    },
+    "tokensEmitted": 1779,
+    "estimatedCostCny": "0.017524",
+    "artifactUrl": "http://192.168.100.143:3009/renders/3c19292b579e72654d6a1450882e8b88.html"
+  },
+  {
+    "id": "T03_PROC_DOCX",
+    "name": "设备采购合同 (DOCX) - 买方立场审查",
+    "file": "procurement-contract.docx",
+    "format": "DOCX",
+    "pass": true,
+    "executionId": "17f672b3-30ed-4057-ab9f-30d289afa7b2",
+    "status": "succeeded",
+    "durationMs": 47292,
+    "clausesCount": 6,
+    "llmReviewedCount": 6,
+    "isDegraded": false,
+    "healthScore": 50,
+    "riskStats": {
+      "high": 1,
+      "medium": 3,
+      "low": 0,
+      "pass": 2
+    },
+    "tokensEmitted": 758,
+    "estimatedCostCny": "0.008046",
+    "artifactUrl": "http://192.168.100.143:3009/renders/2ee42d8e5da12fac3945e08dff1fdad3.html"
+  },
+  {
+    "id": "T04_PROC_PDF",
+    "name": "设备采购合同 (PDF) - 卖方立场审查",
+    "file": "procurement-contract.pdf",
+    "format": "PDF",
+    "pass": true,
+    "executionId": "a4b05df0-c4e6-403c-afa9-277642891cd6",
+    "status": "succeeded",
+    "durationMs": 18123,
+    "clausesCount": 6,
+    "llmReviewedCount": 6,
+    "isDegraded": false,
+    "healthScore": 65,
+    "riskStats": {
+      "high": 2,
+      "medium": 1,
+      "low": 1,
+      "pass": 2
+    },
+    "tokensEmitted": 799,
+    "estimatedCostCny": "0.008228",
+    "artifactUrl": "http://192.168.100.143:3009/renders/55714950a827df09a94d3c487497d5d8.html"
+  }
+]

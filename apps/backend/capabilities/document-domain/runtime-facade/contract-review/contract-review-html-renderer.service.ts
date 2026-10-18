@@ -99,6 +99,12 @@ export class ContractReviewHtmlRendererService {
         ? input.chapters
         : this.buildFallbackChapters(clauses);
 
+    // 1b. Detect the secondary language from clause content
+    const detectedLang = this.detectSecondaryLanguage(clauses);
+    const hasBilingual = detectedLang !== null;
+    const secondaryLangLabel = detectedLang?.label || '外文';
+    const secondaryLangCode = detectedLang?.code;
+
     // 2. Build Unified Findings for the right 40% inspection workbench
     const findings: FindingItemViewModel[] = this.findingRenderer.buildFindingViewModels(
       clauses,
@@ -129,6 +135,7 @@ export class ContractReviewHtmlRendererService {
       contractTypeName,
       clauses,
       chapters,
+      secondaryLang: secondaryLangCode,
     });
 
     // 5. Render Right 40% Findings & Comments Workbench
@@ -147,14 +154,15 @@ export class ContractReviewHtmlRendererService {
       commentCreateWorkspaceHtml
     );
 
-    // Truncation banner for partial review
-    const truncationBannerHtml = metrics.isTruncated
+    // Truncation or degradation banner for partial/degraded review
+    const showDegradedOrTruncated = metrics.isTruncated || metrics.isDegraded;
+    const truncationBannerHtml = showDegradedOrTruncated
       ? `
         <div class="mb-4 bg-[#FFFBEB] border-l-4 border-[#F59E0B] p-3.5 rounded-r-md text-xs text-[#B45309] flex items-start space-x-2.5">
           <span class="text-base shrink-0">⚠️</span>
           <div class="space-y-0.5">
-            <p class="font-bold text-[#92400E]">文档部分截断审查警示 (Partial Review Warning)</p>
-            <p class="text-slate-700">本文档篇幅超过单次审查上限，系统仅对前序已提取部分完成合规审查。未被提取的后续章节未纳入本次体检范围，请留意潜在未覆盖风险。</p>
+            <p class="font-bold text-[#92400E]">${metrics.isTruncated ? '文档部分截断审查警示 (Partial Review Warning)' : '大模型语义审查部分降级警示 (Review Degraded Warning)'}</p>
+            <p class="text-slate-700">${metrics.isTruncated ? '本文档篇幅超过单次审查上限，系统仅对前序已提取部分完成合规审查。未被提取的后续章节未纳入本次体检范围，请留意潜在未覆盖风险。' : '检测到部分条款大模型语义审查未完成或响应异常，系统已自动回退为静态规则校验。相关条款未经完整大模型语义深审，请结合业务背景重点人工复核。'}</p>
             ${metrics.warnings && metrics.warnings.length > 0 ? `<ul class="list-disc list-inside mt-1 text-[11px] text-slate-600">${metrics.warnings.map((w: string) => `<li>${this.escapeHtml(w)}</li>`).join('')}</ul>` : ''}
           </div>
         </div>
@@ -217,9 +225,19 @@ export class ContractReviewHtmlRendererService {
   <style>
     ${CONTRACT_REPORT_STANDALONE_CSS}
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Hiragino Sans", "Meiryo", sans-serif;
       background-color: #EDF1F5;
       color: #1E293B;
+    }
+    .heading-ja, .heading-secondary {
+      font-size: 12px !important;
+      font-weight: 400 !important;
+      color: #64748B !important;
+    }
+    .lang-secondary {
+      font-size: 12px !important;
+      line-height: 1.6 !important;
+      color: #64748B !important;
     }
     .hidden-by-filter { display: none !important; }
     .active-filter-tab {
@@ -245,12 +263,14 @@ export class ContractReviewHtmlRendererService {
     /* Language Toggle Visibility Controls */
     .lang-zh-only .lang-secondary,
     .lang-zh-only .chapter-title-ja,
-    .lang-zh-only .heading-ja {
+    .lang-zh-only .heading-ja,
+    .lang-zh-only .heading-secondary {
       display: none !important;
     }
     .lang-ja-only .lang-primary,
     .lang-ja-only .chapter-title-zh,
-    .lang-ja-only .heading-zh {
+    .lang-ja-only .heading-zh,
+    .lang-ja-only .heading-primary {
       display: none !important;
     }
     /* Scrollbars */
@@ -321,7 +341,8 @@ export class ContractReviewHtmlRendererService {
           <span class="hidden sm:inline text-[11px]">目录</span>
         </button>
 
-        <!-- Language Switcher -->
+        <!-- Language Switcher (only shown for bilingual contracts) -->
+        ${hasBilingual ? `
         <div class="inline-flex rounded border border-[#334E68] bg-[#101E2E] p-0.5 text-xs select-none shrink-0">
           <button type="button" id="lang-btn-both" onclick="setLanguageMode('both')" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#2E5882] text-white transition cursor-pointer">
             双语
@@ -330,9 +351,10 @@ export class ContractReviewHtmlRendererService {
             中文
           </button>
           <button type="button" id="lang-btn-ja" onclick="setLanguageMode('ja')" class="px-2 py-0.5 rounded text-[11px] text-slate-300 hover:text-white transition cursor-pointer">
-            日文
+            ${this.escapeHtml(secondaryLangLabel!)}
           </button>
         </div>
+        ` : ''}
 
         <div class="h-4 w-px bg-[#334E68] hidden md:block"></div>
 
@@ -566,6 +588,47 @@ export class ContractReviewHtmlRendererService {
       else if (c.riskLevel === 'PASS') group.passCount++;
     }
     return Array.from(chapterMap.values());
+  }
+
+  /**
+   * Scans clause blocks and titles for secondary text and detects the second language.
+   * Returns a structured object { label, code } (e.g. { label: '日文', code: 'ja' }, { label: 'English', code: 'en' })
+   * or null if no bilingual content is found.
+   */
+  private detectSecondaryLanguage(
+    clauses: ClauseReviewItem[]
+  ): { label: string; code: 'ja' | 'en' | 'ko' | 'other' } | null {
+    // Collect secondary text samples from titleJa, blocks, and bilingual title splits
+    const samples: string[] = [];
+    for (const c of clauses) {
+      if (c.titleJa) samples.push(c.titleJa.trim());
+      // Check title for bilingual split
+      if (c.title && (c.title.includes('/') || c.title.includes('／'))) {
+        const parts = c.title.split(/[/／]/);
+        if (parts.length > 1) samples.push(parts.slice(1).join('').trim());
+      }
+      // Check blocks for secondary text
+      if (c.blocks) {
+        for (const b of c.blocks) {
+          if (b.secondaryText) samples.push(b.secondaryText.trim());
+          if (samples.length >= 15) break;
+        }
+      }
+      if (samples.length >= 15) break;
+    }
+
+    if (samples.length === 0) return null;
+
+    // Count character type occurrences across samples
+    const joined = samples.join('');
+    const jpChars = (joined.match(/[\u3040-\u309F\u30A0-\u30FF]/g) || []).length;
+    const enChars = (joined.match(/[a-zA-Z]/g) || []).length;
+    const koChars = (joined.match(/[\uAC00-\uD7A3]/g) || []).length;
+
+    if (jpChars >= enChars && jpChars >= koChars && jpChars > 0) return { label: '日文', code: 'ja' };
+    if (enChars >= jpChars && enChars >= koChars && enChars > 0) return { label: 'English', code: 'en' };
+    if (koChars > 0) return { label: '한국어', code: 'ko' };
+    return { label: '译文', code: 'other' };
   }
 
   private escapeHtml(text: string): string {

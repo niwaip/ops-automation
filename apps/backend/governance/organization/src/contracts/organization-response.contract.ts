@@ -3,6 +3,10 @@ export interface OrganizationSummary {
   name: string;
   code: string;
   description?: string | null;
+  legalEntityName?: string | null;
+  aliases?: string[];
+  creditCode?: string | null;
+  defaultContractRole?: string | null;
 }
 
 export interface OrganizationMembershipSummary {
@@ -69,6 +73,10 @@ export interface OrganizationStructure {
   name: string;
   code: string;
   description?: string | null;
+  legalEntityName?: string | null;
+  aliases?: string[];
+  creditCode?: string | null;
+  defaultContractRole?: string | null;
   departments: OrganizationDepartment[];
   teams: OrganizationTeam[];
   memberships: OrganizationStructureMembership[];

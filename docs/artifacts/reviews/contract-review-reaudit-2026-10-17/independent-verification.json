@@ -1,0 +1,313 @@
+{
+  "run": "/Users/chain/Documents/MyProject/ops-automation/docs/artifacts/reviews/contract-review-work-2026-10-16/run-2026-10-17T02-31-02.250Z",
+  "declaredPassed": 12,
+  "rawEvidenceIntegrityPassed": 12,
+  "rows": [
+    {
+      "id": "C01",
+      "executionId": "5aa9cb73-00ca-4094-8219-d2da3a151de7",
+      "declaredStatus": "passed",
+      "integrity": {
+        "task_mode": true,
+        "requested_35b": true,
+        "request_sha": true,
+        "sse_done": true,
+        "execution_id": true,
+        "exact_ledger_coverage": true,
+        "actual_35b": true,
+        "artifact_sha": true
+      },
+      "score": 29,
+      "scoreWithinRange": true,
+      "durationMs": 108337,
+      "modelCalls": 2,
+      "myPosition": "buyer"
+    },
+    {
+      "id": "C02",
+      "executionId": "01271aa1-c4e8-427d-9d2c-5927193be4b2",
+      "declaredStatus": "passed",
+      "integrity": {
+        "task_mode": true,
+        "requested_35b": true,
+        "request_sha": true,
+        "sse_done": true,
+        "execution_id": true,
+        "exact_ledger_coverage": true,
+        "actual_35b": true,
+        "artifact_sha": true
+      },
+      "score": 8,
+      "scoreWithinRange": true,
+      "durationMs": 108877,
+      "modelCalls": 2,
+      "myPosition": "buyer"
+    },
+    {
+      "id": "C03",
+      "executionId": "3047718d-34f4-4378-bd0a-bdd22d3be1c5",
+      "declaredStatus": "passed",
+      "integrity": {
+        "task_mode": true,
+        "requested_35b": true,
+        "request_sha": true,
+        "sse_done": true,
+        "execution_id": true,
+        "exact_ledger_coverage": true,
+        "actual_35b": true,
+        "artifact_sha": true
+      },
+      "score": 43,
+      "scoreWithinRange": true,
+      "durationMs": 94592,
+      "modelCalls": 2,
+      "myPosition": "buyer"
+    },
+    {
+      "id": "C04",
+      "executionId": "1fe1138e-4577-49fc-b6ba-67d53b2e37d2",
+      "declaredStatus": "passed",
+      "integrity": {
+        "task_mode": true,
+        "requested_35b": true,
+        "request_sha": true,
+        "sse_done": true,
+        "execution_id": true
+      },
+      "score": null,
+      "scoreWithinRange": null,
+      "durationMs": 10804,
+      "modelCalls": null,
+      "myPosition": null
+    },
+    {
+      "id": "C05",
+      "executionId": "1fe1138e-4577-49fc-b6ba-67d53b2e37d2",
+      "declaredStatus": "passed",
+      "integrity": {
+        "task_mode": true,
+        "requested_35b": true,
+        "request_sha": true,
+        "sse_done": true,
+        "execution_id": true,
+        "exact_ledger_coverage": true,
+        "actual_35b": true,
+        "artifact_sha": true
+      },
+      "score": 36,
+      "scoreWithinRange": true,
+      "durationMs": 76979,
+      "modelCalls": 2,
+      "myPosition": "buyer"
+    },
+    {
+      "id": "C06",
+      "executionId": "0fe9b233-12d6-4407-a666-001a6a06be8c",
+      "declaredStatus": "passed",
+      "integrity": {
+        "task_mode": true,
+        "requested_35b": true,
+        "request_sha": true,
+        "sse_done": true,
+        "execution_id": true
+      },
+      "score": null,
+      "scoreWithinRange": null,
+      "durationMs": 7339,
+      "modelCalls": null,
+      "myPosition": null
+    },
+    {
+      "id": "C07",
+      "executionId": "0c89f0a7-8930-4e15-88d5-db87b5bb043e",
+      "declaredStatus": "passed",
+      "integrity": {
+        "task_mode": true,
+        "requested_35b": true,
+        "request_sha": true,
+        "sse_done": true,
+        "execution_id": true,
+        "exact_ledger_coverage": true,
+        "actual_35b": true,
+        "artifact_sha": true
+      },
+      "score": 36,
+      "scoreWithinRange": true,
+      "durationMs": 109434,
+      "modelCalls": 2,
+      "myPosition": "buyer"
+    },
+    {
+      "id": "C08",
+      "executionId": "436e1e03-1629-456b-9bd1-d4906f242a4d",
+      "declaredStatus": "passed",
+      "integrity": {
+        "task_mode": true,
+        "requested_35b": true,
+        "request_sha": true,
+        "sse_done": true,
+        "execution_id": true,
+        "exact_ledger_coverage": true,
+        "actual_35b": true,
+        "artifact_sha": true
+      },
+      "score": -146,
+      "scoreWithinRange": false,
+      "durationMs": 478524,
+      "modelCalls": 11,
+      "myPosition": "buyer"
+    },
+    {
+      "id": "C09",
+      "executionId": "3424c0d5-191b-41ef-ae56-45426a04fb58",
+      "declaredStatus": "passed",
+      "integrity": {
+        "task_mode": true,
+        "requested_35b": true,
+        "request_sha": true,
+        "sse_done": true,
+        "execution_id": true,
+        "exact_ledger_coverage": true,
+        "actual_35b": true,
+        "artifact_sha": true
+      },
+      "score": 36,
+      "scoreWithinRange": true,
+      "durationMs": 177798,
+      "modelCalls": 2,
+      "myPosition": "buyer"
+    },
+    {
+      "id": "C10",
+      "executionId": "ddc5ad9a-33d1-483b-b939-ef43821e0e0d",
+      "declaredStatus": "passed",
+      "integrity": {
+        "task_mode": true,
+        "requested_35b": true,
+        "request_sha": true,
+        "sse_done": true,
+        "execution_id": true,
+        "exact_ledger_coverage": true,
+        "actual_35b": true,
+        "artifact_sha": true
+      },
+      "score": 51,
+      "scoreWithinRange": true,
+      "durationMs": 113311,
+      "modelCalls": 2,
+      "myPosition": "seller"
+    },
+    {
+      "id": "C11",
+      "executionId": null,
+      "declaredStatus": "passed",
+      "integrity": {
+        "task_mode": true,
+        "requested_35b": true,
+        "request_sha": true,
+        "sse_done": true
+      },
+      "score": null,
+      "scoreWithinRange": null,
+      "durationMs": 33982,
+      "modelCalls": null,
+      "myPosition": null
+    },
+    {
+      "id": "C12",
+      "executionId": "bae56207-3208-4411-9681-2b42d2a44289",
+      "declaredStatus": "passed",
+      "integrity": {
+        "task_mode": true,
+        "requested_35b": true,
+        "request_sha": true,
+        "sse_done": true,
+        "execution_id": true,
+        "exact_ledger_coverage": true,
+        "actual_35b": true,
+        "artifact_sha": true
+      },
+      "score": 36,
+      "scoreWithinRange": true,
+      "durationMs": 97644,
+      "modelCalls": 2,
+      "myPosition": "buyer"
+    }
+  ],
+  "sourceDigestsUnchangedSinceRun": {
+    "builtin-skills/platform.document.contract-reviewer/manifest.yaml": true,
+    "builtin-skills/platform.document.contract-reviewer/workflow.json": true,
+    "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": true,
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": true
+  },
+  "uniqueLedgerCalls": 27,
+  "uniquePlans": 10,
+  "models": {
+    "qwen36-35b-a3b": 27
+  },
+  "purposes": {
+    "llm_operation": 27
+  },
+  "observedTokens": {
+    "input": 21561,
+    "output": 131418
+  },
+  "faultTests": [
+    {
+      "title": "F01 partial model response must not crash on an undefined clause",
+      "status": "passed"
+    },
+    {
+      "title": "F02 duplicate IDs must not be accepted as complete semantic coverage",
+      "status": "passed"
+    },
+    {
+      "title": "F03 foreign IDs must not be reassigned to source clauses by array position",
+      "status": "passed"
+    },
+    {
+      "title": "F04 fabricated evidence must not survive as anchored source evidence",
+      "status": "passed"
+    },
+    {
+      "title": "F05 model timeout must disclose incomplete/degraded review",
+      "status": "passed"
+    },
+    {
+      "title": "F06 empty JSON array must disclose incomplete/degraded review",
+      "status": "passed"
+    },
+    {
+      "title": "F07 render failure must not return success",
+      "status": "passed"
+    },
+    {
+      "title": "F08 batch scheduling keeps concurrency <=3, correct model and source order",
+      "status": "passed"
+    },
+    {
+      "title": "R01 health score must remain in [0,100] for many high-risk clauses",
+      "status": "failed"
+    },
+    {
+      "title": "R02 duplicate IDs alongside full coverage must be detected",
+      "status": "failed"
+    },
+    {
+      "title": "R03 foreign extra IDs alongside full coverage must be detected",
+      "status": "failed"
+    },
+    {
+      "title": "R04 missing semantic fields must not silently default to PASS",
+      "status": "failed"
+    }
+  ],
+  "degradedRender": {
+    "status": 200,
+    "llmReviewedCount": 0,
+    "totalClauses": 3,
+    "isDegraded": true,
+    "showsHealthy100": true,
+    "warningInSummary": false
+  }
+}

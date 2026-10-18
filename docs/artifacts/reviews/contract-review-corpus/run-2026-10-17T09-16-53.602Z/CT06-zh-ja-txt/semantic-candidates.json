@@ -1,0 +1,29 @@
+[
+  {
+    "marker": "CT06-zh-ja-A04",
+    "topic": "risk_repairs",
+    "matchedClauseIndices": [],
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "reviewText": [],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT06-zh-ja-A05",
+    "topic": "risk_unilateral_change",
+    "matchedClauseIndices": [],
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "reviewText": [],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT06-zh-ja-A06",
+    "topic": "risk_deposit",
+    "matchedClauseIndices": [],
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "reviewText": [],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

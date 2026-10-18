@@ -1,0 +1,236 @@
+[
+  {
+    "case": "META-ALIGNED-30-30-txt",
+    "marker": "META-ALIGNED-30-30-A02",
+    "expectedTopic": "risk_internal_conflict",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "约定我方享有独家销售权，但允许甲方直接销售及引入第三方，导致独家权利完全落空，存在严重逻辑冲突与商业风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "独家：甲方享有区域独家销售权；乙方可不受限制地直接向区域客户销售并另行指定其他经销商。\n独占性：甲は地域独占販売権を有する。ただし乙は当該地域の顧客へ無制限に直接販売し、他の販売店を指定できる。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "META-ALIGNED-30-30-txt",
+    "marker": "META-ALIGNED-30-30-A03",
+    "expectedTopic": "risk_target",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "要求买方承担供应商缺货的违约责任，违背公平原则与合同对等性。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "采购目标：甲方年度最低采购额为人民币3000000元，即使乙方缺货也不得调减目标，未达标须补足差额。\n購入目標：年間最低購入額は3000000人民元とする。乙の欠品時も目標を減額せず、未達の場合は甲が差額を補填する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "META-ALIGNED-30-30-txt",
+    "marker": "META-ALIGNED-30-30-A04",
+    "expectedTopic": "risk_resale_price_review",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "限制转售价格违反《反垄断法》关于禁止纵向垄断协议的规定，条款可能无效。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "价格：甲方须遵守乙方确定的最低转售价格；低价销售即取消全部返利并终止授权。\n価格：甲は乙が定める最低再販売価格を遵守する。下回った場合は全てのリベート及び販売権を失う。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "META-ALIGNED-30-30-txt",
+    "marker": "META-ALIGNED-30-30-A07",
+    "expectedTopic": "risk_inventory_exit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "卖方享有任意解除权且买方已付款库存既不能退回也不能转售，构成根本性违约风险与巨额财产损失，严重违背公平原则。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "终止：乙方可随时无理由立即终止；甲方已购库存不得退回，也不得继续销售。\n終了：乙は理由なく直ちに解除できる。甲の購入済み在庫は返品できず、継続販売も禁止する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "META-ALIGNED-60-60-txt",
+    "marker": "META-ALIGNED-60-60-A02",
+    "expectedTopic": "risk_internal_conflict",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "授权甲方享有‘独家’销售权，但乙方却可‘不受限制’直接销售并新增其他经销商，导致独家权实质落空，买方核心商业利益受损。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "独家：甲方享有区域独家销售权；乙方可不受限制地直接向区域客户销售并另行指定其他经销商。\n独占性：甲は地域独占販売権を有する。ただし乙は当該地域の顧客へ無制限に直接販売し、他の販売店を指定できる。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "META-ALIGNED-60-60-txt",
+    "marker": "META-ALIGNED-60-60-A03",
+    "expectedTopic": "risk_target",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "强制完成额排除不可抗力/违约免责，显失公平，且'补足差额'性质不明，极易引发争议。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "采购目标：甲方年度最低采购额为人民币3000000元，即使乙方缺货也不得调减目标，未达标须补足差额。\n購入目標：年間最低購入額は3000000人民元とする。乙の欠品時も目標を減額せず、未達の場合は甲が差額を補填する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "META-ALIGNED-60-60-txt",
+    "marker": "META-ALIGNED-60-60-A04",
+    "expectedTopic": "risk_resale_price_review",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "纵向价格垄断高风险；'终止授权'作为违约救济过于严厉，缺乏整改期且与违约金不匹配。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "价格：甲方须遵守乙方确定的最低转售价格；低价销售即取消全部返利并终止授权。\n価格：甲は乙が定める最低再販売価格を遵守する。下回った場合は全てのリベート及び販売権を失う。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "META-ALIGNED-60-60-txt",
+    "marker": "META-ALIGNED-60-60-A07",
+    "expectedTopic": "risk_inventory_exit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "乙方享有单方任意解除权，缺乏对等限制，严重损害买方商业稳定性。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "终止：乙方可随时无理由立即终止；甲方已购库存不得退回，也不得继续销售。\n終了：乙は理由なく直ちに解除できる。甲の購入済み在庫は返品できず、継続販売も禁止する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "META-CONFLICT-45-75-txt",
+    "marker": "META-CONFLICT-45-75-A02",
+    "expectedTopic": "risk_internal_conflict",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "约定甲方享有独家权，但乙方却可无限制直销并指定其他经销商，导致独家权实质落空，严重违反权责对等。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "独家：甲方享有区域独家销售权；乙方可不受限制地直接向区域客户销售并另行指定其他经销商。\n独占性：甲は地域独占販売権を有する。ただし乙は当該地域の顧客へ無制限に直接販売し、他の販売店を指定できる。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "META-CONFLICT-45-75-txt",
+    "marker": "META-CONFLICT-45-75-A03",
+    "expectedTopic": "risk_target",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "卖方缺货不应免除买方最低采购义务，否则卖方违约无后果。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "采购目标：甲方年度最低采购额为人民币3000000元，即使乙方缺货也不得调减目标，未达标须补足差额。\n購入目標：年間最低購入額は3000000人民元とする。乙の欠品時も目標を減額せず、未達の場合は甲が差額を補填する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "META-CONFLICT-45-75-txt",
+    "marker": "META-CONFLICT-45-75-A04",
+    "expectedTopic": "risk_resale_price_review",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "固定转售价格违反《反垄断法》，终止授权条款涉嫌滥用市场支配地位。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "价格：甲方须遵守乙方确定的最低转售价格；低价销售即取消全部返利并终止授权。\n価格：甲は乙が定める最低再販売価格を遵守する。下回った場合は全てのリベート及び販売権を失う。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "META-CONFLICT-45-75-txt",
+    "marker": "META-CONFLICT-45-75-A07",
+    "expectedTopic": "risk_inventory_exit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "卖方享有单方无理由解除权且没收买方库存，导致买方承担全部商业风险，严重显失公平。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "终止：乙方可随时无理由立即终止；甲方已购库存不得退回，也不得继续销售。\n終了：乙は理由なく直ちに解除できる。甲の購入済み在庫は返品できず、継続販売も禁止する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "META-CONFLICT-45-75-txt",
+    "marker": "META-CONFLICT-45-75-A08",
+    "expectedTopic": "bilingual_conflict",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "中文约定45日付款，日文约定75日，数值严重冲突。虽约定中文优先，但双语不一致极易引发履行争议与合规风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "付款与文本：甲方收货后四十五日支付货款，结算币种为人民币；中日文本冲突时中文优先。\n支払及び言語：甲は受領後75日以内に代金を支払う。決済通貨は人民元とし、両言語に相違がある場合は中国語を優先する。\n甲方代表 / 甲代表：星桥测试担当     乙方代表 / 乙代表：青空試験担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  }
+]

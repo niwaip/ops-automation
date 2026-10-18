@@ -1,0 +1,297 @@
+{
+  "id": "CT05-ja-docx",
+  "caseId": "CT05-ja",
+  "business": "development",
+  "language": "ja",
+  "format": "docx",
+  "file": "contracts/development/CT05-ja.docx",
+  "fixtureSha256": "b86a00c5e9d9fa676fdb241647a0dc4987fe191ff3b9c9e8fb7a645b20394b85",
+  "status": "failed",
+  "startedAt": "2026-10-17T09:17:23.676Z",
+  "uploadMs": 9,
+  "sessionId": "corpus-CT05-ja-docx-1792228643686",
+  "executionId": "96e9ab31-fe92-44ea-ad0b-3cf6938a60d9",
+  "traceIds": [
+    "7e21dadb-5191-455a-9278-f1b0cef7b435"
+  ],
+  "chatMs": 6266,
+  "firstEventMs": 48,
+  "streamError": null,
+  "executionStatus": "succeeded",
+  "actualCapabilities": [
+    "platform.document.contract-reviewer"
+  ],
+  "semanticTopics": 4,
+  "topicsWithoutRiskSignal": [
+    "risk_acceptance",
+    "risk_ip",
+    "risk_third_party_ip",
+    "risk_unfilled"
+  ],
+  "metrics": {
+    "warnings": [],
+    "passCount": 1,
+    "isDegraded": false,
+    "healthScore": 72,
+    "isTruncated": false,
+    "lowRiskCount": 0,
+    "totalClauses": 2,
+    "highRiskCount": 0,
+    "mediumRiskCount": 1,
+    "llmReviewedCount": 2,
+    "missingClausesCount": 2,
+    "unfilledBlanksTotal": 0,
+    "degradedClausesCount": 0,
+    "unfilledVariablesCount": 0
+  },
+  "contractType": "general",
+  "myPosition": "buyer",
+  "observedUsage": [
+    {
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 691,
+      "outputTokens": 278
+    }
+  ],
+  "assertions": [
+    {
+      "name": "upload returned attachment",
+      "passed": true,
+      "actual": null,
+      "category": "UPLOAD"
+    },
+    {
+      "name": "chat HTTP success",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE finished",
+      "passed": true,
+      "actual": "done",
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "contract skill executed",
+      "passed": true,
+      "actual": [
+        "platform.document.contract-reviewer"
+      ],
+      "category": "ROUTING"
+    },
+    {
+      "name": "persistent execution succeeded",
+      "passed": true,
+      "actual": "succeeded",
+      "category": "STATE"
+    },
+    {
+      "name": "structured output exists",
+      "passed": true,
+      "actual": null,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "all eight article markers covered",
+      "passed": false,
+      "actual": [
+        "CT05-ja-A01",
+        "CT05-ja-A02",
+        "CT05-ja-A03",
+        "CT05-ja-A04",
+        "CT05-ja-A05",
+        "CT05-ja-A06",
+        "CT05-ja-A07"
+      ],
+      "category": "PARSE"
+    },
+    {
+      "name": "every source article language retained",
+      "passed": false,
+      "actual": [
+        {
+          "marker": "CT05-ja-A01",
+          "language": "ja"
+        },
+        {
+          "marker": "CT05-ja-A02",
+          "language": "ja"
+        },
+        {
+          "marker": "CT05-ja-A03",
+          "language": "ja"
+        },
+        {
+          "marker": "CT05-ja-A04",
+          "language": "ja"
+        },
+        {
+          "marker": "CT05-ja-A05",
+          "language": "ja"
+        },
+        {
+          "marker": "CT05-ja-A06",
+          "language": "ja"
+        },
+        {
+          "marker": "CT05-ja-A07",
+          "language": "ja"
+        }
+      ],
+      "category": "PARSE"
+    },
+    {
+      "name": "clause indices unique",
+      "passed": true,
+      "actual": [
+        0,
+        1
+      ],
+      "category": "OUTPUT"
+    },
+    {
+      "name": "metrics consistent",
+      "passed": true,
+      "actual": {
+        "warnings": [],
+        "passCount": 1,
+        "isDegraded": false,
+        "healthScore": 72,
+        "isTruncated": false,
+        "lowRiskCount": 0,
+        "totalClauses": 2,
+        "highRiskCount": 0,
+        "mediumRiskCount": 1,
+        "llmReviewedCount": 2,
+        "missingClausesCount": 2,
+        "unfilledBlanksTotal": 0,
+        "degradedClausesCount": 0,
+        "unfilledVariablesCount": 0
+      },
+      "category": "OUTPUT"
+    },
+    {
+      "name": "score in range",
+      "passed": true,
+      "actual": 72,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "semantic review complete",
+      "passed": true,
+      "actual": {
+        "reviewed": 2,
+        "total": 2,
+        "warnings": []
+      },
+      "category": "SEMANTIC_COMPLETENESS"
+    },
+    {
+      "name": "not truncated",
+      "passed": true,
+      "actual": false,
+      "category": "PARSE"
+    },
+    {
+      "name": "business model ledger present",
+      "passed": true,
+      "actual": 1,
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "requested model actually used",
+      "passed": true,
+      "actual": [
+        "qwen36-35b-a3b"
+      ],
+      "category": "MODEL"
+    },
+    {
+      "name": "requested party role retained",
+      "passed": false,
+      "actual": {
+        "expected": "buyer",
+        "actual": "buyer",
+        "source": "default"
+      },
+      "category": "POSITION"
+    },
+    {
+      "name": "original artifact URL downloads HTML",
+      "passed": true,
+      "actual": {
+        "url": "http://192.168.100.143:3009/renders/f4b635a4a94a1385faba2cf7d8732ee4.html",
+        "status": 200,
+        "bytes": 248066,
+        "sha256": "1d0a6d00964335124fd45ee4a84a6106038d5d96a52bd16c37abcb1589da2d1d",
+        "html": true
+      },
+      "category": "DELIVERY"
+    }
+  ],
+  "failures": [
+    {
+      "name": "all eight article markers covered",
+      "passed": false,
+      "actual": [
+        "CT05-ja-A01",
+        "CT05-ja-A02",
+        "CT05-ja-A03",
+        "CT05-ja-A04",
+        "CT05-ja-A05",
+        "CT05-ja-A06",
+        "CT05-ja-A07"
+      ],
+      "category": "PARSE"
+    },
+    {
+      "name": "every source article language retained",
+      "passed": false,
+      "actual": [
+        {
+          "marker": "CT05-ja-A01",
+          "language": "ja"
+        },
+        {
+          "marker": "CT05-ja-A02",
+          "language": "ja"
+        },
+        {
+          "marker": "CT05-ja-A03",
+          "language": "ja"
+        },
+        {
+          "marker": "CT05-ja-A04",
+          "language": "ja"
+        },
+        {
+          "marker": "CT05-ja-A05",
+          "language": "ja"
+        },
+        {
+          "marker": "CT05-ja-A06",
+          "language": "ja"
+        },
+        {
+          "marker": "CT05-ja-A07",
+          "language": "ja"
+        }
+      ],
+      "category": "PARSE"
+    },
+    {
+      "name": "requested party role retained",
+      "passed": false,
+      "actual": {
+        "expected": "buyer",
+        "actual": "buyer",
+        "source": "default"
+      },
+      "category": "POSITION"
+    }
+  ],
+  "semanticStatus": "pending_independent_review",
+  "wallMs": 6313,
+  "finishedAt": "2026-10-17T09:17:29.989Z"
+}

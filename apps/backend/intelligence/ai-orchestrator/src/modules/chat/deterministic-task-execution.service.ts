@@ -39,6 +39,13 @@ export class DeterministicTaskExecutionService {
     return this.routeClassifier.classifyRoute(userRequest, context) === 'deterministic_plan';
   }
 
+  public isConversationalChat(
+    userRequest: string,
+    context?: { hasPreviousResult?: boolean }
+  ): boolean {
+    return this.routeClassifier.classifyRoute(userRequest, context) === 'conversational_chat';
+  }
+
   public shouldAttemptSingleSkillContinuation(
     userRequest: string,
     context?: { hasPreviousResult?: boolean }
@@ -279,8 +286,10 @@ export class DeterministicTaskExecutionService {
           executionMode: 'deterministic_plan',
           orgId: options?.user?.organizationId,
           triggerType: (options?.systemInputs as any)?.triggerType || ((options?.systemInputs as any)?.taskContext ? 'on_submit' : undefined),
+          ...(options?.modelId && options.modelId !== 'default' ? { modelId: options.modelId } : {}),
           input: {
             prompt: userRequest,
+            ...(options?.modelId && options.modelId !== 'default' ? { modelId: options.modelId } : {}),
             ...(options?.user?.organizationId ? { orgId: options.user.organizationId } : {}),
             ...(options?.systemInputs || {}),
             ...(promptDebug ? { __promptDebug: promptDebug } : {}),

@@ -1,0 +1,10 @@
+{
+  "id": "CMP14",
+  "name": "HTML特殊字符安全",
+  "startedAt": "2026-10-18T01:30:18.476Z",
+  "status": "error",
+  "error": "Upload HTTP 400: File CMP14_B.txt contains dangerous active script tags",
+  "wallMs": 23,
+  "finishedAt": "2026-10-18T01:30:18.499Z",
+  "sourceDrift": []
+}

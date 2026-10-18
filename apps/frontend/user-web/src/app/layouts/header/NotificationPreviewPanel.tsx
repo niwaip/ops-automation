@@ -263,6 +263,7 @@ export function NotificationPreviewPanel({ language }: NotificationPreviewPanelP
         open={Boolean(selectedNotification)}
         notification={selectedNotification}
         language={language}
+        zIndex={1500}
         onClose={() => setSelectedNotification(null)}
         onNavigate={(actionUrl) => {
           if (selectedNotification) {

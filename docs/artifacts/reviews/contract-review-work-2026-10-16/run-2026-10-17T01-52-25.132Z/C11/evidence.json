@@ -1,0 +1,44 @@
+{
+  "id": "C11",
+  "name": "概念咨询不误启动审查",
+  "status": "failed",
+  "sessionId": "crw-C11-1792202872753",
+  "executionId": null,
+  "traceIds": [],
+  "actualCapabilities": [],
+  "requestDigest": "abd251fbba2b08b85a58fc498f4c003182bf766d625d9139b78c9ef92fac6ee6",
+  "fixtureDigest": null,
+  "timing": {
+    "firstEventMs": null,
+    "firstContentMs": null,
+    "totalMs": 9
+  },
+  "assertions": [
+    {
+      "name": "聊天HTTP成功",
+      "passed": false,
+      "actual": 401,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE完整结束且无传输异常",
+      "passed": false,
+      "actual": null,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "概念咨询不创建合同审查执行",
+      "passed": true,
+      "actual": {
+        "executionId": null,
+        "actualCapabilities": []
+      },
+      "category": "ROUTING"
+    }
+  ],
+  "failures": [
+    "TRANSPORT",
+    "TRANSPORT"
+  ],
+  "observedUsage": null
+}

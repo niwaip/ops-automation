@@ -1,0 +1,53 @@
+{
+  "cases": 27,
+  "runnerCounts": {
+    "failed": 8,
+    "passed": 19
+  },
+  "previousGateCounts": {
+    "failed": 6,
+    "passed": 21
+  },
+  "executionCounts": {
+    "succeeded": 25,
+    "failed": 2
+  },
+  "byFormat": {
+    "docx": {
+      "total": 18,
+      "runnerPassed": 12,
+      "sourceCovered": 16,
+      "outputAbsent": 2
+    },
+    "pdf": {
+      "total": 9,
+      "runnerPassed": 7,
+      "sourceCovered": 9,
+      "outputAbsent": 0
+    },
+    "txt": {
+      "total": 0,
+      "runnerPassed": 0,
+      "sourceCovered": 0,
+      "outputAbsent": 0
+    }
+  },
+  "provenanceFailures": [],
+  "businessModel": "qwen36-35b-a3b",
+  "observedBusinessCalls": 75,
+  "observedInputTokens": 71095,
+  "observedOutputTokens": 30121,
+  "degradedCases": [],
+  "recognizerErrorCases": 3,
+  "knownTypeMismatches": [
+    "CT03-zh-pdf",
+    "CT03-zh-ja-pdf"
+  ],
+  "knownTypeUnassessed": [
+    "CT03-ja-docx",
+    "CT05-zh-ja-docx"
+  ],
+  "elapsedMinutes": 11.6958,
+  "chatMedianMs": 43405,
+  "chatMaxMs": 144804
+}

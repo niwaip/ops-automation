@@ -1,0 +1,6 @@
+[
+  "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts",
+  "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts",
+  "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts",
+  "builtin-skills/platform.document.contract-reviewer/manifest.yaml"
+]

@@ -904,8 +904,24 @@ export class DeterministicPlanSchedulerService {
       planNode?.metadata && typeof planNode.metadata === 'object' ? planNode.metadata : {};
     const executionMeta =
       execution?.metadataJson && typeof execution.metadataJson === 'object'
-        ? execution.metadataJson
+        ? (execution.metadataJson as Record<string, any>)
         : {};
+
+    const resolvedModelId =
+      planNode?.modelId ||
+      frozenMeta.modelId ||
+      executionMeta.modelId ||
+      (execution.plan as any)?.modelId ||
+      (execution as any).modelId ||
+      (execution as any).inputJson?.modelId ||
+      (execution as any).normalizedInputJson?.modelId ||
+      (execution as any).input?.modelId;
+    if (resolvedModelId && typeof resolvedModelId === 'string' && resolvedModelId.trim()) {
+      metadata.modelId = resolvedModelId.trim();
+      if (!(inputWithIdempotency as any).modelId) {
+        (inputWithIdempotency as any).modelId = resolvedModelId.trim();
+      }
+    }
     const isPlanExecutionAuthorized = Boolean(
       execution.executionMode === 'deterministic_plan' &&
         (execution.approvalStatus === 'approved' ||

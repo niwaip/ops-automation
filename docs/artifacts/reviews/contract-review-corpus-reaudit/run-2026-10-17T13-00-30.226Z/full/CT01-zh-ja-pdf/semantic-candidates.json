@@ -1,0 +1,97 @@
+[
+  {
+    "marker": "CT01-zh-ja-A03",
+    "topic": "risk_acceptance",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "该条款通过合同约定排除法定瑕疵担保责任，使买方丧失对隐蔽缺陷的救济权利，违反《民法典》关于产品质量责任的强制性规定，属无效或可撤销条款。",
+        "legalAdvice": "该条款触发了企业/个人自定义审查要点【请逐条阅读全部语言的正文，重点检查我方义务、...】，请重点核查。",
+        "findings": [
+          {
+            "id": "finding-clause-3-CUST-1",
+            "title": "请逐条阅读全部语言的正文，重点检查我方义务、...",
+            "ruleId": "prompt-rule-1",
+            "category": "审查Prompt专项要点",
+            "ruleCode": "CUST-1",
+            "severity": "HIGH",
+            "legalAdvice": "该条款触发了企业/个人自定义审查要点【请逐条阅读全部语言的正文，重点检查我方义务、...】，请重点核查。",
+            "riskSummary": "该条款通过合同约定排除法定瑕疵担保责任，使买方丧失对隐蔽缺陷的救济权利，违反《民法典》关于产品质量责任的强制性规定，属无效或可撤销条款。",
+            "evidenceQuote": "即使存在隐蔽缺陷，甲方亦不得拒收或要求修理。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT01-zh-ja-A04",
+    "topic": "risk_prepayment",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "全款前置支付且放弃抗辩权，使我方在未收到货物前即承担全部资金风险，且剥夺了因乙方违约（延期）而拒付或扣款的法定抗辩权。",
+        "legalAdvice": "该条款触发了企业/个人自定义审查要点【请逐条阅读全部语言的正文，重点检查我方义务、...】，请重点核查。",
+        "findings": [
+          {
+            "id": "finding-clause-4-CUST-1",
+            "title": "请逐条阅读全部语言的正文，重点检查我方义务、...",
+            "ruleId": "prompt-rule-1",
+            "category": "审查Prompt专项要点",
+            "ruleCode": "CUST-1",
+            "severity": "HIGH",
+            "legalAdvice": "该条款触发了企业/个人自定义审查要点【请逐条阅读全部语言的正文，重点检查我方义务、...】，请重点核查。",
+            "riskSummary": "全款前置支付且放弃抗辩权，使我方在未收到货物前即承担全部资金风险，且剥夺了因乙方违约（延期）而拒付或扣款的法定抗辩权。",
+            "evidenceQuote": "甲方签约后三日内支付全部价款；乙方无需提供履约担保，交付延期不影响收款。",
+            "recommendedRevision": "付款：甲方签约后三日内支付全部价款；乙方无需提供履约担保，交付延期不影响收款。\n支払：甲は締結後 3 日以内に代金全額を支払う。乙は履行保証を提供せず、納入遅延によっても代金受領権は影響されない。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT01-zh-ja-A05",
+    "topic": "risk_asymmetric_liability",
+    "matchedClauseIndices": [
+      5
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "免除故意或重大过失责任违反法律强制性规定，属无效条款；同时违约金比例畸高（日1%折合年化365%）且双方责任严重不对等。",
+        "legalAdvice": "该条款触发了企业/个人自定义审查要点【请逐条阅读全部语言的正文，重点检查我方义务、...】，请重点核查。",
+        "findings": [
+          {
+            "id": "finding-clause-5-CUST-1",
+            "title": "请逐条阅读全部语言的正文，重点检查我方义务、...",
+            "ruleId": "prompt-rule-1",
+            "category": "审查Prompt专项要点",
+            "ruleCode": "CUST-1",
+            "severity": "HIGH",
+            "legalAdvice": "该条款触发了企业/个人自定义审查要点【请逐条阅读全部语言的正文，重点检查我方义务、...】，请重点核查。",
+            "riskSummary": "免除故意或重大过失责任违反法律强制性规定，属无效条款；同时违约金比例畸高（日1%折合年化365%）且双方责任严重不对等。",
+            "evidenceQuote": "乙方故意或重大过失造成的损失亦不承担赔偿；甲方逾期付款每日按合同总额百分之一支付违约金。",
+            "recommendedRevision": "责任：乙方故意或重大过失造成的损失亦不承担赔偿；甲方逾期付款每日按合同总额百分之一支付违约金。\n責任：乙は故意又は重大な過失による損害についても賠償責任を負わない。甲の支払遅延には契約総額の 1％を日額違約金とする。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

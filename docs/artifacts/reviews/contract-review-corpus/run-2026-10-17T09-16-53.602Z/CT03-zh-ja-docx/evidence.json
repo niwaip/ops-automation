@@ -1,0 +1,328 @@
+{
+  "id": "CT03-zh-ja-docx",
+  "caseId": "CT03-zh-ja",
+  "business": "nda",
+  "language": "zh-ja",
+  "format": "docx",
+  "file": "contracts/nda/CT03-zh-ja.docx",
+  "fixtureSha256": "b93d92774bc38d722da50cc54cbd22daba09c957890be863be2a6981792a1175",
+  "status": "failed",
+  "startedAt": "2026-10-17T09:17:12.048Z",
+  "uploadMs": 6,
+  "sessionId": "corpus-CT03-zh-ja-docx-1792228632055",
+  "executionId": "08adc838-b560-4935-b622-8c1f44f709c8",
+  "traceIds": [
+    "1be9df96-e21c-486d-ad1d-d00d65ec7ff7"
+  ],
+  "chatMs": 5734,
+  "firstEventMs": 33,
+  "streamError": null,
+  "executionStatus": "succeeded",
+  "actualCapabilities": [
+    "platform.document.contract-reviewer"
+  ],
+  "semanticTopics": 0,
+  "topicsWithoutRiskSignal": [],
+  "metrics": {
+    "warnings": [],
+    "passCount": 1,
+    "isDegraded": false,
+    "healthScore": 57,
+    "isTruncated": false,
+    "lowRiskCount": 0,
+    "totalClauses": 2,
+    "highRiskCount": 0,
+    "mediumRiskCount": 1,
+    "llmReviewedCount": 2,
+    "missingClausesCount": 3,
+    "unfilledBlanksTotal": 0,
+    "degradedClausesCount": 0,
+    "unfilledVariablesCount": 0
+  },
+  "contractType": "nda",
+  "myPosition": "neutral",
+  "observedUsage": [
+    {
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 741,
+      "outputTokens": 352
+    }
+  ],
+  "assertions": [
+    {
+      "name": "upload returned attachment",
+      "passed": true,
+      "actual": null,
+      "category": "UPLOAD"
+    },
+    {
+      "name": "chat HTTP success",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE finished",
+      "passed": true,
+      "actual": "done",
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "contract skill executed",
+      "passed": true,
+      "actual": [
+        "platform.document.contract-reviewer"
+      ],
+      "category": "ROUTING"
+    },
+    {
+      "name": "persistent execution succeeded",
+      "passed": true,
+      "actual": "succeeded",
+      "category": "STATE"
+    },
+    {
+      "name": "structured output exists",
+      "passed": true,
+      "actual": null,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "all eight article markers covered",
+      "passed": false,
+      "actual": [
+        "CT03-zh-ja-A01",
+        "CT03-zh-ja-A02",
+        "CT03-zh-ja-A03",
+        "CT03-zh-ja-A04",
+        "CT03-zh-ja-A05",
+        "CT03-zh-ja-A06",
+        "CT03-zh-ja-A07"
+      ],
+      "category": "PARSE"
+    },
+    {
+      "name": "every source article language retained",
+      "passed": false,
+      "actual": [
+        {
+          "marker": "CT03-zh-ja-A01",
+          "language": "zh"
+        },
+        {
+          "marker": "CT03-zh-ja-A01",
+          "language": "ja"
+        },
+        {
+          "marker": "CT03-zh-ja-A02",
+          "language": "zh"
+        },
+        {
+          "marker": "CT03-zh-ja-A02",
+          "language": "ja"
+        },
+        {
+          "marker": "CT03-zh-ja-A03",
+          "language": "zh"
+        },
+        {
+          "marker": "CT03-zh-ja-A03",
+          "language": "ja"
+        },
+        {
+          "marker": "CT03-zh-ja-A04",
+          "language": "zh"
+        },
+        {
+          "marker": "CT03-zh-ja-A04",
+          "language": "ja"
+        },
+        {
+          "marker": "CT03-zh-ja-A05",
+          "language": "zh"
+        },
+        {
+          "marker": "CT03-zh-ja-A05",
+          "language": "ja"
+        },
+        {
+          "marker": "CT03-zh-ja-A06",
+          "language": "zh"
+        },
+        {
+          "marker": "CT03-zh-ja-A06",
+          "language": "ja"
+        },
+        {
+          "marker": "CT03-zh-ja-A07",
+          "language": "zh"
+        },
+        {
+          "marker": "CT03-zh-ja-A07",
+          "language": "ja"
+        }
+      ],
+      "category": "PARSE"
+    },
+    {
+      "name": "clause indices unique",
+      "passed": true,
+      "actual": [
+        0,
+        1
+      ],
+      "category": "OUTPUT"
+    },
+    {
+      "name": "metrics consistent",
+      "passed": true,
+      "actual": {
+        "warnings": [],
+        "passCount": 1,
+        "isDegraded": false,
+        "healthScore": 57,
+        "isTruncated": false,
+        "lowRiskCount": 0,
+        "totalClauses": 2,
+        "highRiskCount": 0,
+        "mediumRiskCount": 1,
+        "llmReviewedCount": 2,
+        "missingClausesCount": 3,
+        "unfilledBlanksTotal": 0,
+        "degradedClausesCount": 0,
+        "unfilledVariablesCount": 0
+      },
+      "category": "OUTPUT"
+    },
+    {
+      "name": "score in range",
+      "passed": true,
+      "actual": 57,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "semantic review complete",
+      "passed": true,
+      "actual": {
+        "reviewed": 2,
+        "total": 2,
+        "warnings": []
+      },
+      "category": "SEMANTIC_COMPLETENESS"
+    },
+    {
+      "name": "not truncated",
+      "passed": true,
+      "actual": false,
+      "category": "PARSE"
+    },
+    {
+      "name": "business model ledger present",
+      "passed": true,
+      "actual": 1,
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "requested model actually used",
+      "passed": true,
+      "actual": [
+        "qwen36-35b-a3b"
+      ],
+      "category": "MODEL"
+    },
+    {
+      "name": "original artifact URL downloads HTML",
+      "passed": true,
+      "actual": {
+        "url": "http://192.168.100.143:3009/renders/00e0b548d2e38fcde308930e2d413263.html",
+        "status": 200,
+        "bytes": 267072,
+        "sha256": "6478715fc8426d56b58a195cf8716e6558b1b0f6827ba787173ef5adb81d9d1a",
+        "html": true
+      },
+      "category": "DELIVERY"
+    }
+  ],
+  "failures": [
+    {
+      "name": "all eight article markers covered",
+      "passed": false,
+      "actual": [
+        "CT03-zh-ja-A01",
+        "CT03-zh-ja-A02",
+        "CT03-zh-ja-A03",
+        "CT03-zh-ja-A04",
+        "CT03-zh-ja-A05",
+        "CT03-zh-ja-A06",
+        "CT03-zh-ja-A07"
+      ],
+      "category": "PARSE"
+    },
+    {
+      "name": "every source article language retained",
+      "passed": false,
+      "actual": [
+        {
+          "marker": "CT03-zh-ja-A01",
+          "language": "zh"
+        },
+        {
+          "marker": "CT03-zh-ja-A01",
+          "language": "ja"
+        },
+        {
+          "marker": "CT03-zh-ja-A02",
+          "language": "zh"
+        },
+        {
+          "marker": "CT03-zh-ja-A02",
+          "language": "ja"
+        },
+        {
+          "marker": "CT03-zh-ja-A03",
+          "language": "zh"
+        },
+        {
+          "marker": "CT03-zh-ja-A03",
+          "language": "ja"
+        },
+        {
+          "marker": "CT03-zh-ja-A04",
+          "language": "zh"
+        },
+        {
+          "marker": "CT03-zh-ja-A04",
+          "language": "ja"
+        },
+        {
+          "marker": "CT03-zh-ja-A05",
+          "language": "zh"
+        },
+        {
+          "marker": "CT03-zh-ja-A05",
+          "language": "ja"
+        },
+        {
+          "marker": "CT03-zh-ja-A06",
+          "language": "zh"
+        },
+        {
+          "marker": "CT03-zh-ja-A06",
+          "language": "ja"
+        },
+        {
+          "marker": "CT03-zh-ja-A07",
+          "language": "zh"
+        },
+        {
+          "marker": "CT03-zh-ja-A07",
+          "language": "ja"
+        }
+      ],
+      "category": "PARSE"
+    }
+  ],
+  "semanticStatus": "pending_independent_review",
+  "wallMs": 5769,
+  "finishedAt": "2026-10-17T09:17:17.817Z"
+}

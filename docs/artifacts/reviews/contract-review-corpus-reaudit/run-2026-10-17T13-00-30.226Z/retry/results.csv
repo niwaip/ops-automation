@@ -1,0 +1,4 @@
+﻿id,business,language,format,executionId,status,executionStatus,markerCoverage,totalClauses,contractType,position,positionSource,degraded,chatMs,calls,inputTokens,outputTokens
+CT05-ja-docx,development,ja,docx,9b9030d9-ad6c-4706-930c-b0e284d92540,passed,succeeded,8,9,general,buyer,user_confirmed,False,38220,3,2482,1617
+CT05-ja-txt,development,ja,txt,ab577369-7e1a-4311-a9ee-8aab4d44d13a,failed,succeeded,8,9,general,buyer,user_confirmed,True,35396,3,2351,1530
+CT06-ja-docx,lease,ja,docx,0f7dc6d4-123a-4ece-946e-ebe830e483bf,passed,succeeded,8,9,general,buyer,user_confirmed,False,31703,3,2478,1245

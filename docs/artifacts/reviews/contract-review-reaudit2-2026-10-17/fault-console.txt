@@ -1,0 +1,149 @@
+==========================================
+Ops Automation - Docker Compose Launcher
+==========================================
+
+Environment configured:
+  PROJECT_ROOT: /Users/chain/Documents/MyProject/ops-automation
+  HOST_BIND_IP: 0.0.0.0
+
+Using env files: /Users/chain/Documents/MyProject/ops-automation/docker/.env
+Running: docker compose --env-file /Users/chain/Documents/MyProject/ops-automation/docker/.env -f /Users/chain/Documents/MyProject/ops-automation/docker/compose/docker-compose.base.yml exec -T control-plane sh -lc cd\ /workspace/apps/backend/execution-control/control-plane\ \&\&\ ./node_modules/.bin/jest\ test/contract-review-reaudit2-20261017.test.ts\ --runInBand\ --json\ --outputFile=/workspace/docs/artifacts/reviews/contract-review-reaudit2-2026-10-17/fault-jest.json
+
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 3 clauses[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/3 empty/deterministic clauses. Dispatching 3 clauses to LLM in batches.[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 3 clauses[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/3 empty/deterministic clauses. Dispatching 3 clauses to LLM in batches.[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 3 clauses[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/3 empty/deterministic clauses. Dispatching 3 clauses to LLM in batches.[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 3 clauses[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/3 empty/deterministic clauses. Dispatching 3 clauses to LLM in batches.[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 3 clauses[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/3 empty/deterministic clauses. Dispatching 3 clauses to LLM in batches.[39m
+[33m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [33m   WARN[39m [38;5;3m[ContractHarnessAudit] [39m[33m[ContractReviewOrchestrator] Batch 0 model call failed: ETIMEDOUT synthetic isolated model timeout. Falling back.[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 3 clauses[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/3 empty/deterministic clauses. Dispatching 3 clauses to LLM in batches.[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 3 clauses[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/3 empty/deterministic clauses. Dispatching 3 clauses to LLM in batches.[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 10 clauses[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/10 empty/deterministic clauses. Dispatching 10 clauses to LLM in batches.[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 10 clauses[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/10 empty/deterministic clauses. Dispatching 10 clauses to LLM in batches.[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 3 clauses[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/3 empty/deterministic clauses. Dispatching 3 clauses to LLM in batches.[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 3 clauses[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/3 empty/deterministic clauses. Dispatching 3 clauses to LLM in batches.[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 3 clauses[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/3 empty/deterministic clauses. Dispatching 3 clauses to LLM in batches.[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 3 clauses[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/3 empty/deterministic clauses. Dispatching 3 clauses to LLM in batches.[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 3 clauses[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/3 empty/deterministic clauses. Dispatching 3 clauses to LLM in batches.[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 3 clauses[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/3 empty/deterministic clauses. Dispatching 3 clauses to LLM in batches.[39m
+[32m[Nest] 186  - [39m10/17/2026, 12:07:02 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+FAIL test/contract-review-reaudit2-20261017.test.ts
+  Contract review harness: fault-injection audit (isolated mocked dependencies)
+    ✓ F01 partial model response must not crash on an undefined clause (5 ms)
+    ✓ F02 duplicate IDs must not be accepted as complete semantic coverage (2 ms)
+    ✓ F03 foreign IDs must not be reassigned to source clauses by array position (2 ms)
+    ✓ F04 fabricated evidence must not survive as anchored source evidence (2 ms)
+    ✓ F05 model timeout must disclose incomplete/degraded review (1 ms)
+    ✓ F06 empty JSON array must disclose incomplete/degraded review (1 ms)
+    ✓ F07 render failure must not return success (19 ms)
+    ✓ F08 batch scheduling keeps concurrency <=3, correct model and source order (26 ms)
+  Additional re-audit contract invariants
+    ✓ R01 health score must remain in [0,100] for many high-risk clauses (1 ms)
+    ✓ R02 duplicate IDs alongside full coverage must be detected (2 ms)
+    ✓ R03 foreign extra IDs alongside full coverage must be detected
+    ✓ R04 missing semantic fields must not silently default to PASS (1 ms)
+  Semantic validity alternatives re-audit
+    ✕ S01 riskSummary alone cannot be converted to a PASS decision (2 ms)
+    ✕ S02 invalid riskLevel plus a summary cannot count as reviewed (2 ms)
+    ✕ S03 empty finding objects cannot constitute a semantic review (1 ms)
+
+  ● Semantic validity alternatives re-audit › S01 riskSummary alone cannot be converted to a PASS decision
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      155 |     setup(async () => [0,1,2].map(clauseIndex => ({clauseIndex,riskSummary:'本条存在严重风险，需要复核'})));
+      156 |     const result=await invoke();
+    > 157 |     expect(result.output.metrics.isDegraded || result.output.metrics.llmReviewedCount < 3).toBe(true);
+          |                                                                                            ^
+      158 |   });
+      159 |   it('S02 invalid riskLevel plus a summary cannot count as reviewed', async () => {
+      160 |     setup(async () => [0,1,2].map(clauseIndex => ({clauseIndex,riskLevel:'INVALID',riskSummary:'异常结果'})));
+
+      at Object.<anonymous> (test/contract-review-reaudit2-20261017.test.ts:157:92)
+
+  ● Semantic validity alternatives re-audit › S02 invalid riskLevel plus a summary cannot count as reviewed
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      160 |     setup(async () => [0,1,2].map(clauseIndex => ({clauseIndex,riskLevel:'INVALID',riskSummary:'异常结果'})));
+      161 |     const result=await invoke();
+    > 162 |     expect(result.output.metrics.isDegraded || result.output.metrics.llmReviewedCount < 3).toBe(true);
+          |                                                                                            ^
+      163 |   });
+      164 |   it('S03 empty finding objects cannot constitute a semantic review', async () => {
+      165 |     setup(async () => [0,1,2].map(clauseIndex => ({clauseIndex,findings:[{}]})));
+
+      at Object.<anonymous> (test/contract-review-reaudit2-20261017.test.ts:162:92)
+
+  ● Semantic validity alternatives re-audit › S03 empty finding objects cannot constitute a semantic review
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      165 |     setup(async () => [0,1,2].map(clauseIndex => ({clauseIndex,findings:[{}]})));
+      166 |     const result=await invoke();
+    > 167 |     expect(result.output.metrics.isDegraded || result.output.metrics.llmReviewedCount < 3).toBe(true);
+          |                                                                                            ^
+      168 |   });
+      169 | });
+      170 |
+
+      at Object.<anonymous> (test/contract-review-reaudit2-20261017.test.ts:167:92)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 12 passed, 15 total
+Snapshots:   0 total
+Time:        5.03 s
+Ran all test suites matching /test\/contract-review-reaudit2-20261017.test.ts/i.
+Test results written to: ../../../../docs/artifacts/reviews/contract-review-reaudit2-2026-10-17/fault-jest.json

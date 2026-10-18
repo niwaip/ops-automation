@@ -1,0 +1,22 @@
+{
+  "message": "请审查附件中的采购合同，我方为买方，并生成审查报告。",
+  "sessionId": "crw-C02-1792202049796",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "config": {
+    "mode": "task",
+    "thinking": true,
+    "webSearch": false,
+    "workspaceSearch": false
+  },
+  "files": [
+    {
+      "fileId": "file-1792202049801-5lj6ccsv1",
+      "fileName": "contract-a.docx",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "size": 1232,
+      "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792202049801-5lj6ccsv1-contract-a.docx",
+      "url": "/api/ai/chat/files/file-1792202049801-5lj6ccsv1?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792203849.a0d8bb04b459ff5aa3e6e878587303735120df450102bb1d8bfd1ba9322d5242",
+      "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792203849.a0d8bb04b459ff5aa3e6e878587303735120df450102bb1d8bfd1ba9322d5242"
+    }
+  ]
+}

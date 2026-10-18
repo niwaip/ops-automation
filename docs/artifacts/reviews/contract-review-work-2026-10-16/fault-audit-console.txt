@@ -1,0 +1,161 @@
+==========================================
+Ops Automation - Docker Compose Launcher
+==========================================
+
+Environment configured:
+  PROJECT_ROOT: /Users/chain/Documents/MyProject/ops-automation
+  HOST_BIND_IP: 0.0.0.0
+
+Using env files: /Users/chain/Documents/MyProject/ops-automation/docker/.env
+Running: docker compose --env-file /Users/chain/Documents/MyProject/ops-automation/docker/.env -f /Users/chain/Documents/MyProject/ops-automation/docker/compose/docker-compose.base.yml exec -T control-plane sh -lc cd\ /workspace/apps/backend/execution-control/control-plane\ \&\&\ ./node_modules/.bin/jest\ test/contract-review-harness-audit.test.ts\ --runInBand\ --json\ --outputFile=/workspace/docs/artifacts/reviews/contract-review-work-2026-10-16/fault-audit-jest.json
+
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 3 clauses[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/3 empty/deterministic clauses. Dispatching 3 clauses to LLM in batches.[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 3 clauses[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/3 empty/deterministic clauses. Dispatching 3 clauses to LLM in batches.[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 3 clauses[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/3 empty/deterministic clauses. Dispatching 3 clauses to LLM in batches.[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 3 clauses[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/3 empty/deterministic clauses. Dispatching 3 clauses to LLM in batches.[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 3 clauses[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/3 empty/deterministic clauses. Dispatching 3 clauses to LLM in batches.[39m
+[33m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [33m   WARN[39m [38;5;3m[ContractHarnessAudit] [39m[33m[ContractReviewOrchestrator] Batch 0 model call failed: ETIMEDOUT synthetic isolated model timeout. Falling back.[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 3 clauses[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/3 empty/deterministic clauses. Dispatching 3 clauses to LLM in batches.[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 3 clauses[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/3 empty/deterministic clauses. Dispatching 3 clauses to LLM in batches.[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 1: Requesting document parsing from http://carbone-engine:3009[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 2: Conducting batched semantic review for 10 clauses[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Bypassed 0/10 empty/deterministic clauses. Dispatching 10 clauses to LLM in batches.[39m
+[32m[Nest] 170  - [39m10/16/2026, 11:42:38 PM [32m    LOG[39m [38;5;3m[ContractHarnessAudit] [39m[32m[ContractReviewOrchestrator] Stage 3: Rendering report and artifact via http://carbone-engine:3009[39m
+FAIL test/contract-review-harness-audit.test.ts
+  Contract review harness: fault-injection audit (isolated mocked dependencies)
+    ✕ F01 partial model response must not crash on an undefined clause (17 ms)
+    ✕ F02 duplicate IDs must not be accepted as complete semantic coverage (3 ms)
+    ✕ F03 foreign IDs must not be reassigned to source clauses by array position (1 ms)
+    ✕ F04 fabricated evidence must not survive as anchored source evidence (1 ms)
+    ✕ F05 model timeout must disclose incomplete/degraded review
+    ✕ F06 empty JSON array must disclose incomplete/degraded review
+    ✓ F07 render failure must not return success (4 ms)
+    ✓ F08 batch scheduling keeps concurrency <=3, correct model and source order (13 ms)
+
+  ● Contract review harness: fault-injection audit (isolated mocked dependencies) › F01 partial model response must not crash on an undefined clause
+
+    TypeError: Cannot read properties of undefined (reading 'clauseIndex')
+
+      735 |   let chIdx = 1;
+      736 |   for (const c of reviewedClauses) {
+    > 737 |     const isPreamble = c.clauseIndex === 0 || c.clauseNumber === '前言';
+          |                          ^
+      738 |     const isAnnex = c.clauseNumber?.includes('附件') || c.title?.includes('附件') || /付属文書/i.test(c.title);
+      739 |     const chNum = isPreamble
+      740 |       ? c.chapterNumber && c.chapterNumber !== '正文' ? c.chapterNumber : '前言'
+
+      at executeContractReviewOrchestration (src/modules/execution/adapters/contract/contract-review-orchestrator.ts:737:26)
+      at invoke (test/contract-review-harness-audit.test.ts:38:20)
+      at Object.<anonymous> (test/contract-review-harness-audit.test.ts:58:20)
+
+  ● Contract review harness: fault-injection audit (isolated mocked dependencies) › F02 duplicate IDs must not be accepted as complete semantic coverage
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      65 |     setup(async () => Array.from({length: 3}, () => ({ clauseIndex: 0, riskLevel: 'PASS', riskSummary: '重复结果' })));
+      66 |     const result = await invoke();
+    > 67 |     expect(disclosed(result) || result.output.metrics.llmReviewedCount < 3).toBe(true);
+         |                                                                             ^
+      68 |   });
+      69 |
+      70 |   it('F03 foreign IDs must not be reassigned to source clauses by array position', async () => {
+
+      at Object.<anonymous> (test/contract-review-harness-audit.test.ts:67:77)
+
+  ● Contract review harness: fault-injection audit (isolated mocked dependencies) › F03 foreign IDs must not be reassigned to source clauses by array position
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      71 |     setup(async () => [90, 91, 92].map(clauseIndex => ({ clauseIndex, riskLevel: 'HIGH', riskSummary: '其他条款的结果' })));
+      72 |     const result = await invoke();
+    > 73 |     expect(disclosed(result) || result.output.metrics.llmReviewedCount === 0).toBe(true);
+         |                                                                               ^
+      74 |   });
+      75 |
+      76 |   it('F04 fabricated evidence must not survive as anchored source evidence', async () => {
+
+      at Object.<anonymous> (test/contract-review-harness-audit.test.ts:73:79)
+
+  ● Contract review harness: fault-injection audit (isolated mocked dependencies) › F04 fabricated evidence must not survive as anchored source evidence
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      81 |     const result = await invoke();
+      82 |     const findings = result.output.clauses.flatMap((c: any) => (c.findings || []).map((f: any) => ({c, f})));
+    > 83 |     expect(findings.every(({c, f}: any) => !f.evidenceQuote || c.originalContent.includes(f.evidenceQuote) || f.evidenceStatus === 'unverified')).toBe(true);
+         |                                                                                                                                                   ^
+      84 |   });
+      85 |
+      86 |   it('F05 model timeout must disclose incomplete/degraded review', async () => {
+
+      at Object.<anonymous> (test/contract-review-harness-audit.test.ts:83:147)
+
+  ● Contract review harness: fault-injection audit (isolated mocked dependencies) › F05 model timeout must disclose incomplete/degraded review
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      88 |     const result = await invoke();
+      89 |     expect(result.output.metrics.llmReviewedCount).toBe(0);
+    > 90 |     expect(disclosed(result)).toBe(true);
+         |                               ^
+      91 |   });
+      92 |
+      93 |   it('F06 empty JSON array must disclose incomplete/degraded review', async () => {
+
+      at Object.<anonymous> (test/contract-review-harness-audit.test.ts:90:31)
+
+  ● Contract review harness: fault-injection audit (isolated mocked dependencies) › F06 empty JSON array must disclose incomplete/degraded review
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      94 |     setup(async () => []);
+      95 |     const result = await invoke();
+    > 96 |     expect(disclosed(result)).toBe(true);
+         |                               ^
+      97 |   });
+      98 |
+      99 |   it('F07 render failure must not return success', async () => {
+
+      at Object.<anonymous> (test/contract-review-harness-audit.test.ts:96:31)
+
+Test Suites: 1 failed, 1 total
+Tests:       6 failed, 2 passed, 8 total
+Snapshots:   0 total
+Time:        4.838 s, estimated 8 s
+Ran all test suites matching /test\/contract-review-harness-audit.test.ts/i.
+Test results written to: ../../../../docs/artifacts/reviews/contract-review-work-2026-10-16/fault-audit-jest.json

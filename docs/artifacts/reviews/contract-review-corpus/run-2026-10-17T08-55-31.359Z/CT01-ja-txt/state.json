@@ -1,0 +1,14 @@
+{
+  "id": "CT01-ja-txt",
+  "caseId": "CT01-ja",
+  "business": "procurement",
+  "language": "ja",
+  "format": "txt",
+  "file": "contracts/procurement/CT01-ja.txt",
+  "fixtureSha256": "7d876d28b6bb8f4fe7445761873c0e7ba764f4fa2fb83ac5d8cf11c5af26438d",
+  "status": "error",
+  "startedAt": "2026-10-17T08:55:43.155Z",
+  "error": "Login HTTP 429",
+  "wallMs": 3,
+  "finishedAt": "2026-10-17T08:55:43.158Z"
+}

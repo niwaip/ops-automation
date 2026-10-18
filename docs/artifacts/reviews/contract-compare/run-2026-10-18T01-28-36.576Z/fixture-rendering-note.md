@@ -1,0 +1,1 @@
+本地打包 render_docx.py 两次字体尝试均出现 CJK 空白/字符映射错误；DOCX 原始 OOXML 内容完整，未据本地渲染判定产品丢文。转用现有 carbone-engine LibreOffice 与 Noto CJK 字体独立渲染。首轮前已完成字体配置修改并重新生成 manifest；全量运行期间不再修改语料。原始探针仅 TXT，不受字体修改影响。

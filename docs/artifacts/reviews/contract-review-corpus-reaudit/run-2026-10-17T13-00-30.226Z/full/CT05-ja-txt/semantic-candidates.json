@@ -1,0 +1,152 @@
+[
+  {
+    "marker": "CT05-ja-A03",
+    "topic": "risk_acceptance",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "排除安全漏洞验收标准，导致买方无法以安全隐患为由拒收或索赔。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT05-ja-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "排除安全漏洞验收标准，导致买方无法以安全隐患为由拒收或索赔。",
+            "evidenceQuote": "未修正のセキュリティ脆弱性は検収に影響しない。"
+          },
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT05-ja-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "2天被动验收期过短，且未规定修复义务，极易导致买方因时间不足而丧失抗辩权。",
+            "evidenceQuote": "納入メール後2日以内に甲が書面拒絶しなければ合格とみなす。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-ja-A04",
+    "topic": "risk_ip",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "定制开发成果归属乙方，买方未获得源代码所有权，存在后续依赖与转让障碍。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT05-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "定制开发成果归属乙方，买方未获得源代码所有权，存在后续依赖与转让障碍。",
+            "evidenceQuote": "全ての専用開発成果及びソースコードの著作権は乙に帰属する。"
+          },
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT05-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "限制仅授权且不可更新，严重削弱买方长期使用与迭代权利。",
+            "evidenceQuote": "甲には更新できない1年間の社内利用権のみを付与する。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-ja-A06",
+    "topic": "risk_third_party_ip",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "乙方试图将知识产权或第三方侵权风险完全转嫁给甲方，属于严重的不公平责任条款，违反权责对等原则。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT05-ja-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "乙方试图将知识产权或第三方侵权风险完全转嫁给甲方，属于严重的不公平责任条款，违反权责对等原则。",
+            "evidenceQuote": "第三者からの全ての権利主張は甲が負担する"
+          },
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT05-ja-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "乙方拒绝提供部件许可清单，导致甲方无法核查知识产权合规性，存在潜在的侵权风险且无法溯源。",
+            "evidenceQuote": "乙は任意の部品を自由に利用でき、ライセンス一覧を提出しない"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-ja-A08",
+    "topic": "risk_unfilled",
+    "matchedClauseIndices": [
+      8
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "日文合同中约定中文优先，若乙方为日本企业，此条可能因乙方内部审核不通过或理解偏差产生争议，且甲方作为非中文母语方（假设），在解释上可能处于被动。若甲方为中国企业，此条有利。需确认甲方语言能力。此处假设甲方为中国企业，该条有利。但若甲方需确保乙方理解无误，双语差异风险仍需注意。鉴于甲方立场为中国方，此条为有利条款。故对此项不判为风险。但上一条管辖地问题需重新评估。'被告所在地'意味着谁告谁就在谁的地方。若甲方起诉乙方，乙方需来甲方所在地应诉？不对，被告所在地。若甲方原告，乙方被告，管辖地在乙方所在地。甲方需异地诉讼。不利。若乙方原告，甲方被告，管辖地在甲方所在地。有利。通常甲方是强势方，很少被乙方起诉。主要风险是甲方起诉乙方时的异地成本。因此，该条款对甲方存在潜在诉讼成本劣势。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-8-GENERAL-RISK",
+            "title": "[CT05-ja-A08]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "日文合同中约定中文优先，若乙方为日本企业，此条可能因乙方内部审核不通过或理解偏差产生争议，且甲方作为非中文母语方（假设），在解释上可能处于被动。若甲方为中国企业，此条有利。需确认甲方语言能力。此处假设甲方为中国企业，该条有利。但若甲方需确保乙方理解无误，双语差异风险仍需注意。鉴于甲方立场为中国方，此条为有利条款。故对此项不判为风险。但上一条管辖地问题需重新评估。'被告所在地'意味着谁告谁就在谁的地方。若甲方起诉乙方，乙方需来甲方所在地应诉？不对，被告所在地。若甲方原告，乙方被告，管辖地在乙方所在地。甲方需异地诉讼。不利。若乙方原告，甲方被告，管辖地在甲方所在地。有利。通常甲方是强势方，很少被乙方起诉。主要风险是甲方起诉乙方时的异地成本。因此，该条款对甲方存在潜在诉讼成本劣势。",
+            "evidenceQuote": "両言語に相違がある場合は中国語を優先する"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

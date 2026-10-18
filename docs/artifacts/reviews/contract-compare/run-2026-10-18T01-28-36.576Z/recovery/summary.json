@@ -1,0 +1,2543 @@
+[
+  {
+    "id": "CMP01",
+    "name": "完全相同负例",
+    "startedAt": "2026-10-18T01:32:11.595Z",
+    "status": "passed",
+    "executionId": "fd7d071e-3051-4e82-87a8-ffda42c7b8ef",
+    "chatMs": 22133,
+    "httpStatus": 201,
+    "businessModels": [],
+    "businessCalls": 0,
+    "metrics": {
+      "addedCount": 0,
+      "isTruncated": false,
+      "deletedCount": 0,
+      "totalClauses": 6,
+      "highRiskCount": 0,
+      "modifiedCount": 0,
+      "unchangedCount": 6,
+      "mediumRiskCount": 0,
+      "sourceClauseCount": 6,
+      "targetClauseCount": 6
+    },
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": true,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "all source bodies preserved",
+        "passed": true,
+        "actual": [],
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "expected per-clause changes",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "negative control has no changes",
+        "passed": true,
+        "actual": [],
+        "category": "FALSE_POSITIVE"
+      },
+      {
+        "name": "diff tokens reconstruct A and B",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "metrics agree with pairs",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 0,
+          "unchangedCount": 6,
+          "mediumRiskCount": 0,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "METRICS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 0,
+          "unchangedCount": 6,
+          "mediumRiskCount": 0,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "artifact downloaded HTML",
+        "passed": true,
+        "actual": {
+          "status": 200,
+          "bytes": 70746,
+          "sha256": "07cc210068494a6ad70a293694217f883703b50491d6184ecb5f339d082d9604",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [],
+    "wallMs": 22308,
+    "finishedAt": "2026-10-18T01:32:33.903Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP02",
+    "name": "付款金额与账期修改",
+    "startedAt": "2026-10-18T01:32:11.605Z",
+    "status": "failed",
+    "executionId": "4ad3f975-da89-4ae8-8f01-086db40be1c6",
+    "chatMs": 37106,
+    "httpStatus": 201,
+    "businessModels": [],
+    "businessCalls": 0,
+    "metrics": {
+      "addedCount": 0,
+      "isTruncated": false,
+      "deletedCount": 0,
+      "totalClauses": 6,
+      "highRiskCount": 0,
+      "modifiedCount": 1,
+      "unchangedCount": 5,
+      "mediumRiskCount": 1,
+      "sourceClauseCount": 6,
+      "targetClauseCount": 6
+    },
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": true,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "all source bodies preserved",
+        "passed": true,
+        "actual": [],
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "expected per-clause changes",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "diff tokens reconstruct A and B",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "metrics agree with pairs",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 1,
+          "unchangedCount": 5,
+          "mediumRiskCount": 1,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "METRICS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 1,
+          "unchangedCount": 5,
+          "mediumRiskCount": 1,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      },
+      {
+        "name": "semantic result or explicit degradation",
+        "passed": true,
+        "actual": [
+          {
+            "id": "align-3-3",
+            "insight": {
+              "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；对方以总价上浮2万元为对价将付款账期延长至60日，增加了收款方的资金占用成本与信用违约敞口。",
+              "keyChange": "付款期限从30日延长至60日，支付金额由10万元增加至12万元",
+              "riskLevel": "MEDIUM",
+              "legalAdvice": "核实金额上浮是否匹配额外成本；建议折中将账期调整为45日，或补充逾期付款违约金条款，确保资金安全与权责对等。",
+              "shortSummary": "付款期限从30日延长至60日，支付金额由10万元增加至12万元"
+            }
+          }
+        ],
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "artifact downloaded HTML",
+        "passed": true,
+        "actual": {
+          "status": 200,
+          "bytes": 76376,
+          "sha256": "82638816e53e03e3bb2949f8004ce02d1fa4b6161920f5952c3d610799c0429a",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      }
+    ],
+    "wallMs": 37288,
+    "finishedAt": "2026-10-18T01:32:48.893Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP03",
+    "name": "新增审计权并删除保密义务",
+    "startedAt": "2026-10-18T01:32:33.904Z",
+    "status": "failed",
+    "executionId": "9ef71ebe-ba24-453a-9b46-728efe467e26",
+    "chatMs": 40223,
+    "httpStatus": 201,
+    "businessModels": [],
+    "businessCalls": 0,
+    "metrics": {
+      "addedCount": 1,
+      "isTruncated": false,
+      "deletedCount": 1,
+      "totalClauses": 7,
+      "highRiskCount": 1,
+      "modifiedCount": 0,
+      "unchangedCount": 5,
+      "mediumRiskCount": 1,
+      "sourceClauseCount": 6,
+      "targetClauseCount": 6
+    },
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": true,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "all source bodies preserved",
+        "passed": true,
+        "actual": [],
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "expected per-clause changes",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "diff tokens reconstruct A and B",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "metrics agree with pairs",
+        "passed": true,
+        "actual": {
+          "addedCount": 1,
+          "isTruncated": false,
+          "deletedCount": 1,
+          "totalClauses": 7,
+          "highRiskCount": 1,
+          "modifiedCount": 0,
+          "unchangedCount": 5,
+          "mediumRiskCount": 1,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "METRICS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": {
+          "addedCount": 1,
+          "isTruncated": false,
+          "deletedCount": 1,
+          "totalClauses": 7,
+          "highRiskCount": 1,
+          "modifiedCount": 0,
+          "unchangedCount": 5,
+          "mediumRiskCount": 1,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      },
+      {
+        "name": "semantic result or explicit degradation",
+        "passed": true,
+        "actual": [
+          {
+            "id": "align-del-5",
+            "insight": {
+              "summary": "修订版删除了原合同条款，需评估是否有实质权利减损。；删除保密条款导致商业秘密丧失合同维权依据，商业信息外泄风险敞口骤增且法定救济举证极其困难。",
+              "keyChange": "直接删除商业秘密保密义务",
+              "riskLevel": "HIGH",
+              "legalAdvice": "坚决拒绝删除；建议恢复并升级为双向对等的保密条款，补充明确保密信息范围、披露例外及惩罚性违约金责任。",
+              "shortSummary": "直接删除商业秘密保密义务"
+            }
+          },
+          {
+            "id": "align-add-6",
+            "insight": {
+              "summary": "修订版新增了独立约定条款，请确认是否超出原商务合作范围。；单方新增高频审计权且缺失程序制约，易造成过度干涉日常经营、增加合规成本并引发商业敏感信息外泄。",
+              "keyChange": "单方新增高频履约审计权",
+              "riskLevel": "MEDIUM",
+              "legalAdvice": "建议降低审计频次至每年一次，补充至少提前10个工作日书面通知、审计费用自理及严格签署专项保密协议等限制条件。",
+              "shortSummary": "单方新增高频履约审计权"
+            }
+          }
+        ],
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "artifact downloaded HTML",
+        "passed": true,
+        "actual": {
+          "status": 200,
+          "bytes": 82282,
+          "sha256": "2c571a8e5972947c6236c555bff6e272bfe4cfb4a1043e7f144c35dc548128d1",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      }
+    ],
+    "wallMs": 40292,
+    "finishedAt": "2026-10-18T01:33:14.196Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP04",
+    "name": "否定词删除改变披露义务",
+    "startedAt": "2026-10-18T01:32:48.894Z",
+    "status": "failed",
+    "executionId": "518867d7-35ef-4277-9899-2c2da24fe581",
+    "chatMs": 30548,
+    "httpStatus": 201,
+    "businessModels": [],
+    "businessCalls": 0,
+    "metrics": {
+      "addedCount": 0,
+      "isTruncated": false,
+      "deletedCount": 0,
+      "totalClauses": 6,
+      "highRiskCount": 1,
+      "modifiedCount": 1,
+      "unchangedCount": 5,
+      "mediumRiskCount": 0,
+      "sourceClauseCount": 6,
+      "targetClauseCount": 6
+    },
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": true,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "all source bodies preserved",
+        "passed": true,
+        "actual": [],
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "expected per-clause changes",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "diff tokens reconstruct A and B",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "metrics agree with pairs",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 1,
+          "modifiedCount": 1,
+          "unchangedCount": 5,
+          "mediumRiskCount": 0,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "METRICS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 1,
+          "modifiedCount": 1,
+          "unchangedCount": 5,
+          "mediumRiskCount": 0,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      },
+      {
+        "name": "semantic result or explicit degradation",
+        "passed": true,
+        "actual": [
+          {
+            "id": "align-5-5",
+            "insight": {
+              "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；删去‘不’字将禁止性保密义务颠覆为单方披露权利，造成核心商业秘密彻底失控且丧失侵权追责依据。",
+              "keyChange": "禁止性保密义务倒转为披露权利",
+              "riskLevel": "HIGH",
+              "legalAdvice": "坚决拒绝修改并恢复‘不得’字样。若属笔误须要求对方立即纠正；若属故意设陷，该条款颠覆商业目的，应列为一票否决项。",
+              "shortSummary": "禁止性保密义务倒转为披露权利"
+            }
+          }
+        ],
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "artifact downloaded HTML",
+        "passed": true,
+        "actual": {
+          "status": 200,
+          "bytes": 76324,
+          "sha256": "e4b900e9502a69e9da4426efdaaaf7a2b2b8bb64af10cc1313e5cf960f30276a",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      }
+    ],
+    "wallMs": 30620,
+    "finishedAt": "2026-10-18T01:33:19.514Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP05",
+    "name": "条款整体移动",
+    "startedAt": "2026-10-18T01:33:14.197Z",
+    "status": "passed",
+    "executionId": "edd380e9-1010-440e-b3d2-12354cad8369",
+    "chatMs": 16871,
+    "httpStatus": 201,
+    "businessModels": [],
+    "businessCalls": 0,
+    "metrics": {
+      "addedCount": 0,
+      "isTruncated": false,
+      "deletedCount": 0,
+      "totalClauses": 6,
+      "highRiskCount": 0,
+      "modifiedCount": 0,
+      "unchangedCount": 6,
+      "mediumRiskCount": 0,
+      "sourceClauseCount": 6,
+      "targetClauseCount": 6
+    },
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": true,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "all source bodies preserved",
+        "passed": true,
+        "actual": [],
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "expected per-clause changes",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "diff tokens reconstruct A and B",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "metrics agree with pairs",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 0,
+          "unchangedCount": 6,
+          "mediumRiskCount": 0,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "METRICS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 0,
+          "unchangedCount": 6,
+          "mediumRiskCount": 0,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "artifact downloaded HTML",
+        "passed": true,
+        "actual": {
+          "status": 200,
+          "bytes": 72168,
+          "sha256": "b263c0b319fa286067180fd503cd025b71d34b2fb36108bfb867121cc3f356f9",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [],
+    "wallMs": 16938,
+    "finishedAt": "2026-10-18T01:33:31.135Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP06",
+    "name": "仅条款编号变化",
+    "startedAt": "2026-10-18T01:33:19.514Z",
+    "status": "passed",
+    "executionId": "830ed2ef-e2b8-415e-a4f9-4dbd06d2566a",
+    "chatMs": 37461,
+    "httpStatus": 201,
+    "businessModels": [],
+    "businessCalls": 0,
+    "metrics": {
+      "addedCount": 0,
+      "isTruncated": false,
+      "deletedCount": 0,
+      "totalClauses": 6,
+      "highRiskCount": 0,
+      "modifiedCount": 0,
+      "unchangedCount": 6,
+      "mediumRiskCount": 0,
+      "sourceClauseCount": 6,
+      "targetClauseCount": 6
+    },
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": true,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "all source bodies preserved",
+        "passed": true,
+        "actual": [],
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "expected per-clause changes",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "diff tokens reconstruct A and B",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "metrics agree with pairs",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 0,
+          "unchangedCount": 6,
+          "mediumRiskCount": 0,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "METRICS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 0,
+          "unchangedCount": 6,
+          "mediumRiskCount": 0,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "artifact downloaded HTML",
+        "passed": true,
+        "actual": {
+          "status": 200,
+          "bytes": 72178,
+          "sha256": "f7cdab03a24a0e4c5d6be74e6fcb784fcf130539bb5652605833f30435c68cb2",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [],
+    "wallMs": 37543,
+    "finishedAt": "2026-10-18T01:33:57.057Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP07",
+    "name": "真实表格单元格修改",
+    "startedAt": "2026-10-18T01:33:31.136Z",
+    "status": "failed",
+    "executionId": "aa095775-1088-40f7-9890-8c4620de4187",
+    "chatMs": 40088,
+    "httpStatus": 201,
+    "businessModels": [],
+    "businessCalls": 0,
+    "metrics": {
+      "addedCount": 0,
+      "isTruncated": false,
+      "deletedCount": 0,
+      "totalClauses": 6,
+      "highRiskCount": 0,
+      "modifiedCount": 1,
+      "unchangedCount": 5,
+      "mediumRiskCount": 1,
+      "sourceClauseCount": 6,
+      "targetClauseCount": 6
+    },
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": true,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "all source bodies preserved",
+        "passed": true,
+        "actual": [],
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "expected per-clause changes",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "diff tokens reconstruct A and B",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "metrics agree with pairs",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 1,
+          "unchangedCount": 5,
+          "mediumRiskCount": 1,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "METRICS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 1,
+          "unchangedCount": 5,
+          "mediumRiskCount": 1,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      },
+      {
+        "name": "semantic result or explicit degradation",
+        "passed": true,
+        "actual": [
+          {
+            "id": "align-3-3",
+            "insight": {
+              "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；付款金额上调20%，但付款周期由30日翻倍至60日，实质增加了收款方资金占用成本及买方延期履约的信用风险敞口。",
+              "keyChange": "付款金额增加2万元且付款期限由30日延长至60日",
+              "riskLevel": "MEDIUM",
+              "legalAdvice": "核算溢价是否覆盖资金成本；建议争取折中账期（如45日），并同步补充逾期付款违约金条款，或约定验收后支付首款、到期付尾款的分期机制。",
+              "shortSummary": "付款金额增加2万元且付款期限由30日延长至60日"
+            }
+          }
+        ],
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "artifact downloaded HTML",
+        "passed": true,
+        "actual": {
+          "status": 200,
+          "bytes": 78080,
+          "sha256": "f73b20a8bd0ac9e868ced74fa0e7646da0a1dbd5fa7822ddf069d994fae680ec",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      }
+    ],
+    "wallMs": 40174,
+    "finishedAt": "2026-10-18T01:34:11.310Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP08",
+    "name": "日文账期与金额修改",
+    "startedAt": "2026-10-18T01:33:57.057Z",
+    "status": "failed",
+    "executionId": "084b5e5d-9e75-4c31-9e3c-aee82b7d0eb5",
+    "chatMs": 29447,
+    "httpStatus": 201,
+    "businessModels": [],
+    "businessCalls": 0,
+    "metrics": {
+      "addedCount": 0,
+      "isTruncated": false,
+      "deletedCount": 0,
+      "totalClauses": 6,
+      "highRiskCount": 0,
+      "modifiedCount": 1,
+      "unchangedCount": 5,
+      "mediumRiskCount": 1,
+      "sourceClauseCount": 6,
+      "targetClauseCount": 6
+    },
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": true,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "all source bodies preserved",
+        "passed": true,
+        "actual": [],
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "expected per-clause changes",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "diff tokens reconstruct A and B",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "metrics agree with pairs",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 1,
+          "unchangedCount": 5,
+          "mediumRiskCount": 1,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "METRICS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 1,
+          "unchangedCount": 5,
+          "mediumRiskCount": 1,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      },
+      {
+        "name": "semantic result or explicit degradation",
+        "passed": true,
+        "actual": [
+          {
+            "id": "align-3-3",
+            "insight": {
+              "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；付款金额提升50%但账期由30日拉长至75日，大幅增加收款方流动性压力及回款坏账风险。",
+              "keyChange": "付款金额上调但付款账期大幅延长",
+              "riskLevel": "MEDIUM",
+              "legalAdvice": "建议核实增额是否对等新增成本；若接受增额，应将账期压缩至常规区间（30-45日），或采用阶段性付款并增设逾期违约利息。",
+              "shortSummary": "付款金额上调但付款账期大幅延长"
+            }
+          }
+        ],
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "artifact downloaded HTML",
+        "passed": true,
+        "actual": {
+          "status": 200,
+          "bytes": 77862,
+          "sha256": "8014297973186e7ed9e15a2efb671c780a970313b45d1d7341ada940b80e5631",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      }
+    ],
+    "wallMs": 29523,
+    "finishedAt": "2026-10-18T01:34:26.580Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP09",
+    "name": "双语仅日文发生变化",
+    "startedAt": "2026-10-18T01:34:11.310Z",
+    "status": "failed",
+    "executionId": "1cac494a-404a-4a4c-b023-9dcbb05fe6e3",
+    "chatMs": 26265,
+    "httpStatus": 201,
+    "businessModels": [],
+    "businessCalls": 0,
+    "metrics": {
+      "addedCount": 0,
+      "isTruncated": false,
+      "deletedCount": 0,
+      "totalClauses": 6,
+      "highRiskCount": 1,
+      "modifiedCount": 1,
+      "unchangedCount": 5,
+      "mediumRiskCount": 0,
+      "sourceClauseCount": 6,
+      "targetClauseCount": 6
+    },
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": true,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "all source bodies preserved",
+        "passed": true,
+        "actual": [],
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "expected per-clause changes",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "diff tokens reconstruct A and B",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "metrics agree with pairs",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 1,
+          "modifiedCount": 1,
+          "unchangedCount": 5,
+          "mediumRiskCount": 0,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "METRICS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 1,
+          "modifiedCount": 1,
+          "unchangedCount": 5,
+          "mediumRiskCount": 0,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      },
+      {
+        "name": "semantic result or explicit degradation",
+        "passed": true,
+        "actual": [
+          {
+            "id": "align-3-3",
+            "insight": {
+              "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；日文版本悄然将付款期由30日延长至90日，造成中日双语严重冲突，存在隐蔽拖延付款周期的重大陷阱。",
+              "keyChange": "双语付款期限冲突/日文版付款账期延长至90日",
+              "riskLevel": "HIGH",
+              "legalAdvice": "坚决要求双语表述保持严格一致并统一为30日；同时排查合同语言效力条款，防范对方利用解释冲突拖延履行付款义务。",
+              "shortSummary": "双语付款期限冲突/日文版付款账期延长至90日"
+            }
+          }
+        ],
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "artifact downloaded HTML",
+        "passed": true,
+        "actual": {
+          "status": 200,
+          "bytes": 80116,
+          "sha256": "f1ffe2215a47155b26b355033c96cc1a777d6a7a3fbfeb062851f9a9b2e62538",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      }
+    ],
+    "wallMs": 26353,
+    "finishedAt": "2026-10-18T01:34:37.663Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP10",
+    "name": "同正文跨DOCX和PDF负例",
+    "startedAt": "2026-10-18T01:34:26.581Z",
+    "status": "failed",
+    "executionId": "8d686fb2-add1-40ef-ad08-3de629975a42",
+    "chatMs": 35753,
+    "httpStatus": 201,
+    "businessModels": [],
+    "businessCalls": 0,
+    "metrics": {
+      "addedCount": 0,
+      "isTruncated": false,
+      "deletedCount": 0,
+      "totalClauses": 6,
+      "highRiskCount": 0,
+      "modifiedCount": 6,
+      "unchangedCount": 0,
+      "mediumRiskCount": 0,
+      "sourceClauseCount": 6,
+      "targetClauseCount": 6
+    },
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": true,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "all source bodies preserved",
+        "passed": true,
+        "actual": [],
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "expected per-clause changes",
+        "passed": false,
+        "actual": [
+          {
+            "marker": "CMP-END",
+            "expected": "UNCHANGED",
+            "actual": [
+              "MODIFIED"
+            ],
+            "matchedIds": [
+              "align-6-6"
+            ],
+            "ok": false
+          },
+          {
+            "marker": "CMP-SCOPE",
+            "expected": "UNCHANGED",
+            "actual": [
+              "MODIFIED"
+            ],
+            "matchedIds": [
+              "align-2-2"
+            ],
+            "ok": false
+          },
+          {
+            "marker": "CMP-LIAB",
+            "expected": "UNCHANGED",
+            "actual": [
+              "MODIFIED"
+            ],
+            "matchedIds": [
+              "align-4-4"
+            ],
+            "ok": false
+          },
+          {
+            "marker": "CMP-PAY",
+            "expected": "UNCHANGED",
+            "actual": [
+              "MODIFIED"
+            ],
+            "matchedIds": [
+              "align-3-3"
+            ],
+            "ok": false
+          },
+          {
+            "marker": "CMP-DATA",
+            "expected": "UNCHANGED",
+            "actual": [
+              "MODIFIED"
+            ],
+            "matchedIds": [
+              "align-5-5"
+            ],
+            "ok": false
+          }
+        ],
+        "category": "DIFF"
+      },
+      {
+        "name": "negative control has no changes",
+        "passed": false,
+        "actual": [
+          {
+            "id": "align-1-1",
+            "status": "MODIFIED"
+          },
+          {
+            "id": "align-2-2",
+            "status": "MODIFIED"
+          },
+          {
+            "id": "align-3-3",
+            "status": "MODIFIED"
+          },
+          {
+            "id": "align-4-4",
+            "status": "MODIFIED"
+          },
+          {
+            "id": "align-5-5",
+            "status": "MODIFIED"
+          },
+          {
+            "id": "align-6-6",
+            "status": "MODIFIED"
+          }
+        ],
+        "category": "FALSE_POSITIVE"
+      },
+      {
+        "name": "diff tokens reconstruct A and B",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "metrics agree with pairs",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 6,
+          "unchangedCount": 0,
+          "mediumRiskCount": 0,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "METRICS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 6,
+          "unchangedCount": 0,
+          "mediumRiskCount": 0,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      },
+      {
+        "name": "semantic result or explicit degradation",
+        "passed": true,
+        "actual": [
+          {
+            "id": "align-1-1",
+            "insight": {
+              "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；仅为合同标题与签约主体信息的换行排版合并，未变更主体资格及权责关系，无实质风险。",
+              "keyChange": "排版格式合并/无实质内容变动",
+              "riskLevel": "NONE",
+              "legalAdvice": "纯文本排版变动不影响实质法律效力，可直接接受；但建议恢复标准换行分列，以维护文本严肃性与可读性。",
+              "shortSummary": "排版格式合并/无实质内容变动"
+            }
+          },
+          {
+            "id": "align-2-2",
+            "insight": {
+              "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；仅删除了小节标题文字，设备交付数量、型号及技术标准等实质权责完全保留，无风险敞口。",
+              "keyChange": "删除条款标题/正文权责未变",
+              "riskLevel": "NONE",
+              "legalAdvice": "该修改不影响双方实质买卖权责，可直接同意；若需保持全篇结构规范，可建议补回标题以便于履约检索。",
+              "shortSummary": "删除条款标题/正文权责未变"
+            }
+          },
+          {
+            "id": "align-3-3",
+            "insight": {
+              "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；仅删除正文重复标题，付款节点、期限及金额均未发生变动，无实质权利义务调整。",
+              "keyChange": "删除重复标题/无实质变更",
+              "riskLevel": "NONE",
+              "legalAdvice": "该项修改仅为版式优化，对合同履行及资金风控无实质性影响，建议直接予以确认接受。",
+              "shortSummary": "删除重复标题/无实质变更"
+            }
+          },
+          {
+            "id": "align-4-4",
+            "insight": {
+              "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；仅删减条款重复标题，延期交付违约金计提标准及责任主体完全一致，无新增法律风险。",
+              "keyChange": "删除重复标题/无实质变更",
+              "riskLevel": "NONE",
+              "legalAdvice": "该修订不涉及实质违约责任调整与风险转嫁，未恶化双方权利义务关系，建议直接采纳。",
+              "shortSummary": "删除重复标题/无实质变更"
+            }
+          },
+          {
+            "id": "align-5-5",
+            "insight": {
+              "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；本次修改仅删除了条款小标题，保密义务主体与三年期限等实质内容未变，无新增法律风险敞口。",
+              "keyChange": "删除条款小标题，保密权利义务正文无实质改动",
+              "riskLevel": "NONE",
+              "legalAdvice": "该改动不涉及实质权责变更，可直接确认接受；若从全局风控完善角度，后续可考虑协商将乙方单方保密调整为双向对等保密。",
+              "shortSummary": "删除条款小标题，保密权利义务正文无实质改动"
+            }
+          },
+          {
+            "id": "align-6-6",
+            "insight": {
+              "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；修改仅删除了章节小标题，甲方享有的提前15天单方任意解除权及退款规则未变，未引入新风险。",
+              "keyChange": "删除条款小标题，单方解除权正文未做变动",
+              "riskLevel": "NONE",
+              "legalAdvice": "本次修改属于纯排版/标题整理，可予以接受；若需追求权责对等，可在商务谈判中视情况争取补充乙方的对等解除权与合理补偿条款。",
+              "shortSummary": "删除条款小标题，单方解除权正文未做变动"
+            }
+          }
+        ],
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "artifact downloaded HTML",
+        "passed": true,
+        "actual": {
+          "status": 200,
+          "bytes": 72257,
+          "sha256": "3b152f3959f9c646c6541633c9936cf5a4ccc9a70df2c10ab85990f77b5062c5",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [
+      {
+        "name": "expected per-clause changes",
+        "passed": false,
+        "actual": [
+          {
+            "marker": "CMP-END",
+            "expected": "UNCHANGED",
+            "actual": [
+              "MODIFIED"
+            ],
+            "matchedIds": [
+              "align-6-6"
+            ],
+            "ok": false
+          },
+          {
+            "marker": "CMP-SCOPE",
+            "expected": "UNCHANGED",
+            "actual": [
+              "MODIFIED"
+            ],
+            "matchedIds": [
+              "align-2-2"
+            ],
+            "ok": false
+          },
+          {
+            "marker": "CMP-LIAB",
+            "expected": "UNCHANGED",
+            "actual": [
+              "MODIFIED"
+            ],
+            "matchedIds": [
+              "align-4-4"
+            ],
+            "ok": false
+          },
+          {
+            "marker": "CMP-PAY",
+            "expected": "UNCHANGED",
+            "actual": [
+              "MODIFIED"
+            ],
+            "matchedIds": [
+              "align-3-3"
+            ],
+            "ok": false
+          },
+          {
+            "marker": "CMP-DATA",
+            "expected": "UNCHANGED",
+            "actual": [
+              "MODIFIED"
+            ],
+            "matchedIds": [
+              "align-5-5"
+            ],
+            "ok": false
+          }
+        ],
+        "category": "DIFF"
+      },
+      {
+        "name": "negative control has no changes",
+        "passed": false,
+        "actual": [
+          {
+            "id": "align-1-1",
+            "status": "MODIFIED"
+          },
+          {
+            "id": "align-2-2",
+            "status": "MODIFIED"
+          },
+          {
+            "id": "align-3-3",
+            "status": "MODIFIED"
+          },
+          {
+            "id": "align-4-4",
+            "status": "MODIFIED"
+          },
+          {
+            "id": "align-5-5",
+            "status": "MODIFIED"
+          },
+          {
+            "id": "align-6-6",
+            "status": "MODIFIED"
+          }
+        ],
+        "category": "FALSE_POSITIVE"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      }
+    ],
+    "wallMs": 35871,
+    "finishedAt": "2026-10-18T01:35:02.452Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP11",
+    "name": "跨PDF和TXT付款修改",
+    "startedAt": "2026-10-18T01:34:37.663Z",
+    "status": "failed",
+    "executionId": "14031711-cc2d-42f1-b025-5e2569152029",
+    "chatMs": 36938,
+    "httpStatus": 201,
+    "businessModels": [],
+    "businessCalls": 0,
+    "metrics": {
+      "addedCount": 0,
+      "isTruncated": false,
+      "deletedCount": 0,
+      "totalClauses": 6,
+      "highRiskCount": 0,
+      "modifiedCount": 2,
+      "unchangedCount": 4,
+      "mediumRiskCount": 1,
+      "sourceClauseCount": 6,
+      "targetClauseCount": 6
+    },
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": true,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "all source bodies preserved",
+        "passed": true,
+        "actual": [],
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "expected per-clause changes",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "diff tokens reconstruct A and B",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "metrics agree with pairs",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 2,
+          "unchangedCount": 4,
+          "mediumRiskCount": 1,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "METRICS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 2,
+          "unchangedCount": 4,
+          "mediumRiskCount": 1,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      },
+      {
+        "name": "semantic result or explicit degradation",
+        "passed": true,
+        "actual": [
+          {
+            "id": "align-1-1",
+            "insight": {
+              "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；仅为多处空格排版的格式微调，主体资质与合同名称未实质变动，无任何法律风险敞口。",
+              "keyChange": "格式排版微调（增添空格），无实质权责变动",
+              "riskLevel": "NONE",
+              "legalAdvice": "属于非实质性文本排版修改，不影响合同效力及双方权责，建议直接确认接受当前修改。",
+              "shortSummary": "格式排版微调（增添空格），无实质权责变动"
+            }
+          },
+          {
+            "id": "align-3-3",
+            "insight": {
+              "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；付款账期翻倍延长至60日且合同金额上调20%，实质性改变核心商务对价与履约现金流风险。",
+              "keyChange": "付款账期由30日延长至60日，合同总额由10万元上调至12万元",
+              "riskLevel": "MEDIUM",
+              "legalAdvice": "需核实商务共识；若同意延期，建议补充逾期付款违约金条款，或改为‘首期+尾款’分期支付，防范资金占用与坏账风险。",
+              "shortSummary": "付款账期由30日延长至60日，合同总额由10万元上调至12万元"
+            }
+          }
+        ],
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "artifact downloaded HTML",
+        "passed": true,
+        "actual": {
+          "status": 200,
+          "bytes": 76459,
+          "sha256": "c2be876fda74ff3e6b563449cca5e2c2dca6a2cdc8af07f41be3b27c6d471fb8",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      }
+    ],
+    "wallMs": 37015,
+    "finishedAt": "2026-10-18T01:35:14.678Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP12",
+    "name": "仅字体排版变化",
+    "startedAt": "2026-10-18T01:35:02.452Z",
+    "status": "passed",
+    "executionId": "79586043-897c-4af9-a0be-dc3e6bd3ab70",
+    "chatMs": 29237,
+    "httpStatus": 201,
+    "businessModels": [],
+    "businessCalls": 0,
+    "metrics": {
+      "addedCount": 0,
+      "isTruncated": false,
+      "deletedCount": 0,
+      "totalClauses": 6,
+      "highRiskCount": 0,
+      "modifiedCount": 0,
+      "unchangedCount": 6,
+      "mediumRiskCount": 0,
+      "sourceClauseCount": 6,
+      "targetClauseCount": 6
+    },
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": true,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "all source bodies preserved",
+        "passed": true,
+        "actual": [],
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "expected per-clause changes",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "negative control has no changes",
+        "passed": true,
+        "actual": [],
+        "category": "FALSE_POSITIVE"
+      },
+      {
+        "name": "diff tokens reconstruct A and B",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "metrics agree with pairs",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 0,
+          "unchangedCount": 6,
+          "mediumRiskCount": 0,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "METRICS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 0,
+          "modifiedCount": 0,
+          "unchangedCount": 6,
+          "mediumRiskCount": 0,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "artifact downloaded HTML",
+        "passed": true,
+        "actual": {
+          "status": 200,
+          "bytes": 72168,
+          "sha256": "9761bb9f1567034e160099e5068e590f1e317743b80f550e10f884cf4f4170d5",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [],
+    "wallMs": 29330,
+    "finishedAt": "2026-10-18T01:35:31.782Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP13",
+    "name": "重复标题精确配对",
+    "startedAt": "2026-10-18T01:35:14.679Z",
+    "status": "failed",
+    "executionId": "2daadf9a-4ec1-428e-8de9-ecea0d3cf340",
+    "chatMs": 31932,
+    "httpStatus": 201,
+    "businessModels": [],
+    "businessCalls": 0,
+    "metrics": {
+      "addedCount": 0,
+      "isTruncated": false,
+      "deletedCount": 0,
+      "totalClauses": 6,
+      "highRiskCount": 1,
+      "modifiedCount": 1,
+      "unchangedCount": 5,
+      "mediumRiskCount": 0,
+      "sourceClauseCount": 6,
+      "targetClauseCount": 6
+    },
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": true,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "all source bodies preserved",
+        "passed": true,
+        "actual": [],
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "expected per-clause changes",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "diff tokens reconstruct A and B",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "metrics agree with pairs",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 1,
+          "modifiedCount": 1,
+          "unchangedCount": 5,
+          "mediumRiskCount": 0,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "METRICS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 1,
+          "modifiedCount": 1,
+          "unchangedCount": 5,
+          "mediumRiskCount": 0,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      },
+      {
+        "name": "semantic result or explicit degradation",
+        "passed": true,
+        "actual": [
+          {
+            "id": "align-5-5",
+            "insight": {
+              "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；对方意图免除向关联方披露的审批限制并删除了保密期限，导致商业秘密泄露风险失控且缺乏连带追偿机制。",
+              "keyChange": "放宽关联方披露限制/删除事前同意要求及保密期限",
+              "riskLevel": "HIGH",
+              "legalAdvice": "建议恢复保密期限；如确需向关联方披露，应严格限定“知悉必要性”前提，要求关联方签署同等保密协议，并由乙方承担连带赔偿责任。",
+              "shortSummary": "放宽关联方披露限制/删除事前同意要求及保密期限"
+            }
+          }
+        ],
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "artifact downloaded HTML",
+        "passed": true,
+        "actual": {
+          "status": 200,
+          "bytes": 76699,
+          "sha256": "62fd76b33f68cedd7d5e3585f9b94cba95afe11fc498f5cda863d800570790c0",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      }
+    ],
+    "wallMs": 31989,
+    "finishedAt": "2026-10-18T01:35:46.668Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP15",
+    "name": "关闭风险分析参数",
+    "startedAt": "2026-10-18T01:35:31.784Z",
+    "status": "failed",
+    "executionId": "952b307a-a1a4-474b-9d97-88c8e6f7f251",
+    "chatMs": 30102,
+    "httpStatus": 201,
+    "businessModels": [],
+    "businessCalls": 0,
+    "metrics": {
+      "addedCount": 0,
+      "isTruncated": false,
+      "deletedCount": 0,
+      "totalClauses": 6,
+      "highRiskCount": 1,
+      "modifiedCount": 1,
+      "unchangedCount": 5,
+      "mediumRiskCount": 0,
+      "sourceClauseCount": 6,
+      "targetClauseCount": 6
+    },
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": true,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "all source bodies preserved",
+        "passed": true,
+        "actual": [],
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "expected per-clause changes",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "diff tokens reconstruct A and B",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "metrics agree with pairs",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 1,
+          "modifiedCount": 1,
+          "unchangedCount": 5,
+          "mediumRiskCount": 0,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "METRICS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": {
+          "addedCount": 0,
+          "isTruncated": false,
+          "deletedCount": 0,
+          "totalClauses": 6,
+          "highRiskCount": 1,
+          "modifiedCount": 1,
+          "unchangedCount": 5,
+          "mediumRiskCount": 0,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "risk disabled produces no risk insights",
+        "passed": false,
+        "actual": {
+          "calls": 0,
+          "insights": 1
+        },
+        "category": "OPTION"
+      },
+      {
+        "name": "artifact downloaded HTML",
+        "passed": true,
+        "actual": {
+          "status": 200,
+          "bytes": 76350,
+          "sha256": "5b879af21c7c52a6c88feaab07289e3f2856d5c156a2df631cb9cb73c16cf44d",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [
+      {
+        "name": "risk disabled produces no risk insights",
+        "passed": false,
+        "actual": {
+          "calls": 0,
+          "insights": 1
+        },
+        "category": "OPTION"
+      }
+    ],
+    "wallMs": 30170,
+    "finishedAt": "2026-10-18T01:36:01.954Z",
+    "sourceDrift": []
+  },
+  {
+    "id": "CMP16",
+    "name": "反向比较验证增删方向",
+    "startedAt": "2026-10-18T01:35:46.669Z",
+    "status": "failed",
+    "executionId": "60313c38-261e-48c6-8258-cac6579104a5",
+    "chatMs": 40300,
+    "httpStatus": 201,
+    "businessModels": [],
+    "businessCalls": 0,
+    "metrics": {
+      "addedCount": 1,
+      "isTruncated": false,
+      "deletedCount": 1,
+      "totalClauses": 7,
+      "highRiskCount": 0,
+      "modifiedCount": 0,
+      "unchangedCount": 5,
+      "mediumRiskCount": 2,
+      "sourceClauseCount": 6,
+      "targetClauseCount": 6
+    },
+    "assertions": [
+      {
+        "name": "HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE completed",
+        "passed": true,
+        "actual": null,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "compare skill routed",
+        "passed": true,
+        "actual": null,
+        "category": "ROUTING"
+      },
+      {
+        "name": "compare output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "all source bodies preserved",
+        "passed": true,
+        "actual": [],
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "expected per-clause changes",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "diff tokens reconstruct A and B",
+        "passed": true,
+        "actual": [],
+        "category": "DIFF"
+      },
+      {
+        "name": "metrics agree with pairs",
+        "passed": true,
+        "actual": {
+          "addedCount": 1,
+          "isTruncated": false,
+          "deletedCount": 1,
+          "totalClauses": 7,
+          "highRiskCount": 0,
+          "modifiedCount": 0,
+          "unchangedCount": 5,
+          "mediumRiskCount": 2,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "METRICS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": {
+          "addedCount": 1,
+          "isTruncated": false,
+          "deletedCount": 1,
+          "totalClauses": 7,
+          "highRiskCount": 0,
+          "modifiedCount": 0,
+          "unchangedCount": 5,
+          "mediumRiskCount": 2,
+          "sourceClauseCount": 6,
+          "targetClauseCount": 6
+        },
+        "category": "EXTRACTION"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      },
+      {
+        "name": "semantic result or explicit degradation",
+        "passed": true,
+        "actual": [
+          {
+            "id": "align-add-5",
+            "insight": {
+              "summary": "修订版新增了独立约定条款，请确认是否超出原商务合作范围。；单向施加乙方保密义务而未要求甲方对等保密，且期限起算点不明，存在权责失衡及履约界限模糊风险。",
+              "keyChange": "新增单向保密义务且期限起算点不明",
+              "riskLevel": "MEDIUM",
+              "legalAdvice": "建议修改为双方对等保密，明确“自披露之日或合同终止日起算三年”，并补充商业秘密范围排除项与泄密救济条款。",
+              "shortSummary": "新增单向保密义务且期限起算点不明"
+            }
+          },
+          {
+            "id": "align-del-6",
+            "insight": {
+              "summary": "修订版删除了原合同条款，需评估是否有实质权利减损。；彻底删除甲方的过程核查权，剥夺履约透明度与合规监督抓手，导致违约行为难以追溯且过程失控。",
+              "keyChange": "完全删除履约过程审计监督权",
+              "riskLevel": "MEDIUM",
+              "legalAdvice": "建议恢复有限审计权，可通过谈判将频次降为“每年一次”或“提前书面通知后”，以合理商业边界兼顾双方管理成本与监督需求。",
+              "shortSummary": "完全删除履约过程审计监督权"
+            }
+          }
+        ],
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "artifact downloaded HTML",
+        "passed": true,
+        "actual": {
+          "status": 200,
+          "bytes": 82178,
+          "sha256": "3b28536aa4920acad550e91fe1353dd08bf51dd14e8bfa2731f61a2bbd0421f4",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [
+      {
+        "name": "business model ledger present",
+        "passed": false,
+        "actual": 0,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "selected 35B used for semantic audit",
+        "passed": false,
+        "actual": [],
+        "category": "MODEL"
+      }
+    ],
+    "wallMs": 40367,
+    "finishedAt": "2026-10-18T01:36:27.036Z",
+    "sourceDrift": []
+  }
+]

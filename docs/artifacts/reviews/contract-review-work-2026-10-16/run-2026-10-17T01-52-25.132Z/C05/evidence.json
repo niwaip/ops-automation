@@ -1,0 +1,210 @@
+{
+  "id": "C05",
+  "name": "缺参后上传附件续接",
+  "status": "passed",
+  "sessionId": "crw-C04-1792202216701",
+  "executionId": "a91bd7af-b0bc-48b0-96ef-ddb4371643ed",
+  "traceIds": [
+    "007a2162-0c6c-443a-875d-183d15cfc507"
+  ],
+  "actualCapabilities": [
+    "platform.document.contract-reviewer"
+  ],
+  "executionStatus": "succeeded",
+  "requestDigest": "2a9ff7abf86df4af57392278f275f212737ec4b0cb28b796925f15dfa340edd0",
+  "fixtureDigest": "f2c27a1378caba8d6bd0eb75dd584fba61c1342b3c58721117a34f54317ea0eb",
+  "timing": {
+    "firstEventMs": 24,
+    "firstContentMs": null,
+    "totalMs": 54975
+  },
+  "assertions": [
+    {
+      "name": "聊天HTTP成功",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE完整结束且无传输异常",
+      "passed": true,
+      "actual": "done",
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "实际执行合同审查能力",
+      "passed": true,
+      "actual": [
+        "platform.document.contract-reviewer"
+      ],
+      "category": "ROUTING"
+    },
+    {
+      "name": "控制面持久终态成功",
+      "passed": true,
+      "actual": "succeeded",
+      "category": "EXECUTION_STATE"
+    },
+    {
+      "name": "输出含结构化条款和指标",
+      "passed": true,
+      "actual": [
+        "clauses",
+        "metrics",
+        "summary",
+        "artifact",
+        "chapters",
+        "artifacts",
+        "htmlReport",
+        "myPosition",
+        "chatSummary",
+        "ruleSetInfo",
+        "contractType",
+        "capabilityKey",
+        "missingClauses",
+        "positionSource",
+        "contractTypeName",
+        "capabilityVersion",
+        "sourceDocumentVersion"
+      ],
+      "category": "CONTRACT"
+    },
+    {
+      "name": "所有固定正文标记均覆盖",
+      "passed": true,
+      "actual": [],
+      "category": "CONTEXT_BINDING"
+    },
+    {
+      "name": "条款ID唯一且无空洞",
+      "passed": true,
+      "actual": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "category": "CONTRACT"
+    },
+    {
+      "name": "指标数量与条款风险统计一致",
+      "passed": true,
+      "actual": {
+        "warnings": [],
+        "passCount": 1,
+        "isDegraded": false,
+        "healthScore": 29,
+        "isTruncated": false,
+        "lowRiskCount": 0,
+        "totalClauses": 5,
+        "highRiskCount": 1,
+        "mediumRiskCount": 3,
+        "llmReviewedCount": 5,
+        "missingClausesCount": 3,
+        "unfilledBlanksTotal": 0,
+        "degradedClausesCount": 0,
+        "unfilledVariablesCount": 0
+      },
+      "category": "CONTRACT"
+    },
+    {
+      "name": "无未声明的语义审查降级",
+      "passed": true,
+      "actual": {
+        "reviewed": 5,
+        "total": 5
+      },
+      "category": "COMPLETENESS"
+    },
+    {
+      "name": "我方立场贯穿输出",
+      "passed": true,
+      "actual": {
+        "expected": "buyer",
+        "actual": "buyer",
+        "source": "user_confirmed"
+      },
+      "category": "CONTEXT_BINDING"
+    },
+    {
+      "name": "未声明文本截断",
+      "passed": true,
+      "actual": false,
+      "category": "COMPLETENESS"
+    },
+    {
+      "name": "每个语义批次有账本",
+      "passed": true,
+      "actual": {
+        "rows": 2,
+        "expected": 2
+      },
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "实际业务模型与指定35B一致",
+      "passed": true,
+      "actual": [
+        "qwen36-35b-a3b"
+      ],
+      "category": "MODEL_ROUTE"
+    },
+    {
+      "name": "续接保持原执行单",
+      "passed": true,
+      "actual": {
+        "before": "a91bd7af-b0bc-48b0-96ef-ddb4371643ed",
+        "after": "a91bd7af-b0bc-48b0-96ef-ddb4371643ed"
+      },
+      "category": "EXECUTION_STATE"
+    },
+    {
+      "name": "原始交付URL可下载HTML实体",
+      "passed": true,
+      "actual": {
+        "artifactStatus": 200,
+        "bytes": 318661,
+        "error": null
+      },
+      "category": "DELIVERY"
+    }
+  ],
+  "failures": [],
+  "observedUsage": [
+    {
+      "id": "2f1527bb-efb2-4ff4-915f-7683a33f45ab",
+      "executionId": "a91bd7af-b0bc-48b0-96ef-ddb4371643ed",
+      "stepId": "b202d58e-0305-4060-a241-d29b085632f1",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 668,
+      "outputTokens": 4364,
+      "cachedTokens": 0,
+      "estimatedCost": "0.02752",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T01:57:57.747Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "70cd4e801c61e3c676ee6782afe7ad57a280fe0e73a8515550fa9678b21738a2",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "d674918f-2aee-49ab-8d66-cee54bc41e60",
+      "executionId": "a91bd7af-b0bc-48b0-96ef-ddb4371643ed",
+      "stepId": "b202d58e-0305-4060-a241-d29b085632f1",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 607,
+      "outputTokens": 4727,
+      "cachedTokens": 0,
+      "estimatedCost": "0.029576",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T01:58:02.438Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "fcb1a5e7c14b4288e06164a1235650cd8e39f2b47593b199ff7dd7d523c1df88",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    }
+  ]
+}

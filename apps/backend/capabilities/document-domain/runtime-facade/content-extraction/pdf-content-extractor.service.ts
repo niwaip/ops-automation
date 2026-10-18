@@ -124,7 +124,7 @@ export class PdfContentExtractorService {
     if (bytes.toString('ascii', 0, PDF_SIGNATURE.length) !== PDF_SIGNATURE) {
       const sample = bytes.subarray(0, Math.min(bytes.length, 1024));
       const hasNullByte = sample.includes(0);
-      if (!hasNullByte && bytes.length > 0) {
+      if (!hasNullByte && bytes.length > 0 && input.fileName && !input.fileName.toLowerCase().endsWith('.pdf')) {
         return this.extractPlainText(bytes, maxCharacters, includePages, input.fileName || 'document.txt');
       }
       throw new BadRequestException('输入内容不是支持的文档格式（支持 PDF、PPTX、DOCX、Markdown、TXT 等文档）');

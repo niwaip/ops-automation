@@ -38,7 +38,12 @@ export function parseHtmlToClauses(html: string): ContractClauseNode[] {
       const isList = b.startsWith('<ol') || b.startsWith('<ul');
       const isHeadingTag = /^<h[1-6]/i.test(b);
       const hasStrong = /<strong>/i.test(b);
-      let text = b.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      let text = b
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/[ \t]+/g, ' ')
+        .replace(/ *\n */g, '\n')
+        .trim();
       const mdMatch = text.match(/^#{1,6}\s+(.*)$/);
       const isMdHeading = !!mdMatch;
       if (mdMatch) text = mdMatch[1].trim();
@@ -65,9 +70,14 @@ export function parseHtmlToClauses(html: string): ContractClauseNode[] {
     chNum?: string,
     chTitle?: string
   ) => {
-    if (currentClause && currentClause.content.trim()) {
-      currentClause.content = currentClause.content.trim();
-      clauses.push(currentClause);
+    if (currentClause) {
+      if (currentClause.content.trim()) {
+        currentClause.content = currentClause.content.trim();
+        clauses.push(currentClause);
+      } else if (currentClause.title.trim()) {
+        currentClause.content = currentClause.title.trim();
+        clauses.push(currentClause);
+      }
     }
     currentClause = {
       id: `clause-${clauseIndex++}`,
@@ -150,6 +160,13 @@ export function parseHtmlToClauses(html: string): ContractClauseNode[] {
 
     if (isNumberedArticle || isStrongNumberedList || isAnnexNumberedItem || isHeadingTag) {
       let heading = it.text.replace(/[:：\s]+$/, '');
+      let inlineBody = '';
+
+      if (heading.includes('\n')) {
+        const parts = heading.split('\n');
+        heading = parts[0].trim().replace(/[:：\s]+$/, '');
+        inlineBody = parts.slice(1).join('\n').trim();
+      }
 
       // Language-agnostic bilingual pairing (short heading followed immediately by translation line)
       if (
@@ -178,13 +195,31 @@ export function parseHtmlToClauses(html: string): ContractClauseNode[] {
 
       if (matchArt) {
         cNum = matchArt[1].trim();
-        cleanTitle = matchArt[2]?.trim().replace(/^[:：\s]+|[:：\s]+$/g, '') || matchArt[1].trim();
+        const afterNum = matchArt[2]?.trim().replace(/^[:：\s]+|[:：\s]+$/g, '') || matchArt[1].trim();
+        const splitColon = afterNum.match(/^(\[[^\]]+\]\s*)?([^:：\n]{1,40}[:：])\s*([\s\S]+)$/);
+        if (splitColon) {
+          cleanTitle = ((splitColon[1] || '') + splitColon[2]).trim().replace(/^[:：\s]+|[:：\s]+$/g, '');
+          inlineBody = (inlineBody ? inlineBody + '\n' : '') + splitColon[3].trim();
+        } else if (afterNum.length > 50 && /[。！？；]$/.test(afterNum)) {
+          const firstSentence = afterNum.match(/^(\[[^\]]+\]\s*)?([^。！？；\n]{1,40}[。！？；\s])\s*([\s\S]+)$/);
+          if (firstSentence) {
+            cleanTitle = ((firstSentence[1] || '') + firstSentence[2]).trim().replace(/^[:：\s]+|[:：\s]+$/g, '');
+            inlineBody = (inlineBody ? inlineBody + '\n' : '') + firstSentence[3].trim();
+          } else {
+            cleanTitle = afterNum;
+          }
+        } else {
+          cleanTitle = afterNum;
+        }
       } else if (matchNum) {
         cNum = matchNum[1].trim();
         cleanTitle = matchNum[2]?.trim().replace(/^[:：\s]+|[:：\s]+$/g, '') || heading;
       }
 
       pushClause(cleanTitle, cNum, 2);
+      if (inlineBody) {
+        currentClause!.content += (currentClause!.content ? '\n' : '') + inlineBody;
+      }
     } else {
       if (!currentClause) {
         pushClause('合同引言与主体信息', '前言', 2);
@@ -194,9 +229,14 @@ export function parseHtmlToClauses(html: string): ContractClauseNode[] {
   }
 
   const finalHtmlClause = currentClause as ContractClauseNode | null;
-  if (finalHtmlClause && finalHtmlClause.content.trim()) {
-    finalHtmlClause.content = finalHtmlClause.content.trim();
-    clauses.push(finalHtmlClause);
+  if (finalHtmlClause) {
+    if (finalHtmlClause.content.trim()) {
+      finalHtmlClause.content = finalHtmlClause.content.trim();
+      clauses.push(finalHtmlClause);
+    } else if (finalHtmlClause.title.trim()) {
+      finalHtmlClause.content = finalHtmlClause.title.trim();
+      clauses.push(finalHtmlClause);
+    }
   }
 
   return clauses;

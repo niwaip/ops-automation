@@ -1,0 +1,22 @@
+{
+  "message": "请审查附件采购合同，我方是乙方，也就是卖方，请按卖方立场审查。",
+  "sessionId": "crw-C10-1792202986052",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "config": {
+    "mode": "task",
+    "thinking": true,
+    "webSearch": false,
+    "workspaceSearch": false
+  },
+  "files": [
+    {
+      "fileId": "file-1792202986056-zu2me0ve7",
+      "fileName": "contract-a.docx",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "size": 1232,
+      "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792202986056-zu2me0ve7-contract-a.docx",
+      "url": "/api/ai/chat/files/file-1792202986056-zu2me0ve7?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792204786.97508a91f621683f9de1647359f3545990b83bf0deb65ea6619f53a2e56ad7a3",
+      "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792204786.97508a91f621683f9de1647359f3545990b83bf0deb65ea6619f53a2e56ad7a3"
+    }
+  ]
+}

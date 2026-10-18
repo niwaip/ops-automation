@@ -1,0 +1,394 @@
+{
+  "id": "CMP10",
+  "name": "同正文跨DOCX和PDF负例",
+  "startedAt": "2026-10-18T01:34:26.581Z",
+  "status": "failed",
+  "executionId": "8d686fb2-add1-40ef-ad08-3de629975a42",
+  "chatMs": 35753,
+  "httpStatus": 201,
+  "businessModels": [],
+  "businessCalls": 0,
+  "metrics": {
+    "addedCount": 0,
+    "isTruncated": false,
+    "deletedCount": 0,
+    "totalClauses": 6,
+    "highRiskCount": 0,
+    "modifiedCount": 6,
+    "unchangedCount": 0,
+    "mediumRiskCount": 0,
+    "sourceClauseCount": 6,
+    "targetClauseCount": 6
+  },
+  "assertions": [
+    {
+      "name": "HTTP success",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE completed",
+      "passed": true,
+      "actual": null,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "execution succeeded",
+      "passed": true,
+      "actual": "succeeded",
+      "category": "STATE"
+    },
+    {
+      "name": "compare skill routed",
+      "passed": true,
+      "actual": null,
+      "category": "ROUTING"
+    },
+    {
+      "name": "compare output exists",
+      "passed": true,
+      "actual": null,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "all source bodies preserved",
+      "passed": true,
+      "actual": [],
+      "category": "EXTRACTION"
+    },
+    {
+      "name": "expected per-clause changes",
+      "passed": false,
+      "actual": [
+        {
+          "marker": "CMP-END",
+          "expected": "UNCHANGED",
+          "actual": [
+            "MODIFIED"
+          ],
+          "matchedIds": [
+            "align-6-6"
+          ],
+          "ok": false
+        },
+        {
+          "marker": "CMP-SCOPE",
+          "expected": "UNCHANGED",
+          "actual": [
+            "MODIFIED"
+          ],
+          "matchedIds": [
+            "align-2-2"
+          ],
+          "ok": false
+        },
+        {
+          "marker": "CMP-LIAB",
+          "expected": "UNCHANGED",
+          "actual": [
+            "MODIFIED"
+          ],
+          "matchedIds": [
+            "align-4-4"
+          ],
+          "ok": false
+        },
+        {
+          "marker": "CMP-PAY",
+          "expected": "UNCHANGED",
+          "actual": [
+            "MODIFIED"
+          ],
+          "matchedIds": [
+            "align-3-3"
+          ],
+          "ok": false
+        },
+        {
+          "marker": "CMP-DATA",
+          "expected": "UNCHANGED",
+          "actual": [
+            "MODIFIED"
+          ],
+          "matchedIds": [
+            "align-5-5"
+          ],
+          "ok": false
+        }
+      ],
+      "category": "DIFF"
+    },
+    {
+      "name": "negative control has no changes",
+      "passed": false,
+      "actual": [
+        {
+          "id": "align-1-1",
+          "status": "MODIFIED"
+        },
+        {
+          "id": "align-2-2",
+          "status": "MODIFIED"
+        },
+        {
+          "id": "align-3-3",
+          "status": "MODIFIED"
+        },
+        {
+          "id": "align-4-4",
+          "status": "MODIFIED"
+        },
+        {
+          "id": "align-5-5",
+          "status": "MODIFIED"
+        },
+        {
+          "id": "align-6-6",
+          "status": "MODIFIED"
+        }
+      ],
+      "category": "FALSE_POSITIVE"
+    },
+    {
+      "name": "diff tokens reconstruct A and B",
+      "passed": true,
+      "actual": [],
+      "category": "DIFF"
+    },
+    {
+      "name": "metrics agree with pairs",
+      "passed": true,
+      "actual": {
+        "addedCount": 0,
+        "isTruncated": false,
+        "deletedCount": 0,
+        "totalClauses": 6,
+        "highRiskCount": 0,
+        "modifiedCount": 6,
+        "unchangedCount": 0,
+        "mediumRiskCount": 0,
+        "sourceClauseCount": 6,
+        "targetClauseCount": 6
+      },
+      "category": "METRICS"
+    },
+    {
+      "name": "not truncated",
+      "passed": true,
+      "actual": {
+        "addedCount": 0,
+        "isTruncated": false,
+        "deletedCount": 0,
+        "totalClauses": 6,
+        "highRiskCount": 0,
+        "modifiedCount": 6,
+        "unchangedCount": 0,
+        "mediumRiskCount": 0,
+        "sourceClauseCount": 6,
+        "targetClauseCount": 6
+      },
+      "category": "EXTRACTION"
+    },
+    {
+      "name": "business model ledger present",
+      "passed": false,
+      "actual": 0,
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "selected 35B used for semantic audit",
+      "passed": false,
+      "actual": [],
+      "category": "MODEL"
+    },
+    {
+      "name": "semantic result or explicit degradation",
+      "passed": true,
+      "actual": [
+        {
+          "id": "align-1-1",
+          "insight": {
+            "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；仅为合同标题与签约主体信息的换行排版合并，未变更主体资格及权责关系，无实质风险。",
+            "keyChange": "排版格式合并/无实质内容变动",
+            "riskLevel": "NONE",
+            "legalAdvice": "纯文本排版变动不影响实质法律效力，可直接接受；但建议恢复标准换行分列，以维护文本严肃性与可读性。",
+            "shortSummary": "排版格式合并/无实质内容变动"
+          }
+        },
+        {
+          "id": "align-2-2",
+          "insight": {
+            "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；仅删除了小节标题文字，设备交付数量、型号及技术标准等实质权责完全保留，无风险敞口。",
+            "keyChange": "删除条款标题/正文权责未变",
+            "riskLevel": "NONE",
+            "legalAdvice": "该修改不影响双方实质买卖权责，可直接同意；若需保持全篇结构规范，可建议补回标题以便于履约检索。",
+            "shortSummary": "删除条款标题/正文权责未变"
+          }
+        },
+        {
+          "id": "align-3-3",
+          "insight": {
+            "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；仅删除正文重复标题，付款节点、期限及金额均未发生变动，无实质权利义务调整。",
+            "keyChange": "删除重复标题/无实质变更",
+            "riskLevel": "NONE",
+            "legalAdvice": "该项修改仅为版式优化，对合同履行及资金风控无实质性影响，建议直接予以确认接受。",
+            "shortSummary": "删除重复标题/无实质变更"
+          }
+        },
+        {
+          "id": "align-4-4",
+          "insight": {
+            "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；仅删减条款重复标题，延期交付违约金计提标准及责任主体完全一致，无新增法律风险。",
+            "keyChange": "删除重复标题/无实质变更",
+            "riskLevel": "NONE",
+            "legalAdvice": "该修订不涉及实质违约责任调整与风险转嫁，未恶化双方权利义务关系，建议直接采纳。",
+            "shortSummary": "删除重复标题/无实质变更"
+          }
+        },
+        {
+          "id": "align-5-5",
+          "insight": {
+            "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；本次修改仅删除了条款小标题，保密义务主体与三年期限等实质内容未变，无新增法律风险敞口。",
+            "keyChange": "删除条款小标题，保密权利义务正文无实质改动",
+            "riskLevel": "NONE",
+            "legalAdvice": "该改动不涉及实质权责变更，可直接确认接受；若从全局风控完善角度，后续可考虑协商将乙方单方保密调整为双向对等保密。",
+            "shortSummary": "删除条款小标题，保密权利义务正文无实质改动"
+          }
+        },
+        {
+          "id": "align-6-6",
+          "insight": {
+            "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；修改仅删除了章节小标题，甲方享有的提前15天单方任意解除权及退款规则未变，未引入新风险。",
+            "keyChange": "删除条款小标题，单方解除权正文未做变动",
+            "riskLevel": "NONE",
+            "legalAdvice": "本次修改属于纯排版/标题整理，可予以接受；若需追求权责对等，可在商务谈判中视情况争取补充乙方的对等解除权与合理补偿条款。",
+            "shortSummary": "删除条款小标题，单方解除权正文未做变动"
+          }
+        }
+      ],
+      "category": "SEMANTIC_COMPLETENESS"
+    },
+    {
+      "name": "artifact downloaded HTML",
+      "passed": true,
+      "actual": {
+        "status": 200,
+        "bytes": 72257,
+        "sha256": "3b152f3959f9c646c6541633c9936cf5a4ccc9a70df2c10ab85990f77b5062c5",
+        "html": true
+      },
+      "category": "DELIVERY"
+    }
+  ],
+  "failures": [
+    {
+      "name": "expected per-clause changes",
+      "passed": false,
+      "actual": [
+        {
+          "marker": "CMP-END",
+          "expected": "UNCHANGED",
+          "actual": [
+            "MODIFIED"
+          ],
+          "matchedIds": [
+            "align-6-6"
+          ],
+          "ok": false
+        },
+        {
+          "marker": "CMP-SCOPE",
+          "expected": "UNCHANGED",
+          "actual": [
+            "MODIFIED"
+          ],
+          "matchedIds": [
+            "align-2-2"
+          ],
+          "ok": false
+        },
+        {
+          "marker": "CMP-LIAB",
+          "expected": "UNCHANGED",
+          "actual": [
+            "MODIFIED"
+          ],
+          "matchedIds": [
+            "align-4-4"
+          ],
+          "ok": false
+        },
+        {
+          "marker": "CMP-PAY",
+          "expected": "UNCHANGED",
+          "actual": [
+            "MODIFIED"
+          ],
+          "matchedIds": [
+            "align-3-3"
+          ],
+          "ok": false
+        },
+        {
+          "marker": "CMP-DATA",
+          "expected": "UNCHANGED",
+          "actual": [
+            "MODIFIED"
+          ],
+          "matchedIds": [
+            "align-5-5"
+          ],
+          "ok": false
+        }
+      ],
+      "category": "DIFF"
+    },
+    {
+      "name": "negative control has no changes",
+      "passed": false,
+      "actual": [
+        {
+          "id": "align-1-1",
+          "status": "MODIFIED"
+        },
+        {
+          "id": "align-2-2",
+          "status": "MODIFIED"
+        },
+        {
+          "id": "align-3-3",
+          "status": "MODIFIED"
+        },
+        {
+          "id": "align-4-4",
+          "status": "MODIFIED"
+        },
+        {
+          "id": "align-5-5",
+          "status": "MODIFIED"
+        },
+        {
+          "id": "align-6-6",
+          "status": "MODIFIED"
+        }
+      ],
+      "category": "FALSE_POSITIVE"
+    },
+    {
+      "name": "business model ledger present",
+      "passed": false,
+      "actual": 0,
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "selected 35B used for semantic audit",
+      "passed": false,
+      "actual": [],
+      "category": "MODEL"
+    }
+  ],
+  "wallMs": 35871,
+  "finishedAt": "2026-10-18T01:35:02.452Z",
+  "sourceDrift": []
+}

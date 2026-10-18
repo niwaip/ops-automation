@@ -22,6 +22,7 @@ interface NotificationDetailModalProps {
   open: boolean;
   notification: AppNotification | null;
   language?: 'zh-CN' | 'en-US' | 'ja-JP';
+  zIndex?: number;
   onClose: () => void;
   onNavigate?: (actionUrl: string) => void;
 }
@@ -30,6 +31,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
   open,
   notification,
   language = 'zh-CN',
+  zIndex = 1500,
   onClose,
   onNavigate,
 }) => {
@@ -62,6 +64,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
     <Modal
       open={open}
       onCancel={onClose}
+      zIndex={zIndex}
       width={640}
       title={
         <Space wrap size={[8, 8]} align="center" style={{ maxWidth: '90%' }}>

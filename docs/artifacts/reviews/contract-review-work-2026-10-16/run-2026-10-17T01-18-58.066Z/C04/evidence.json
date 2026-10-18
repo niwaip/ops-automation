@@ -1,0 +1,51 @@
+{
+  "id": "C04",
+  "name": "无正文无附件缺参门禁",
+  "status": "failed",
+  "sessionId": "crw-C04-1792199938216",
+  "executionId": "6a6e060c-db31-4f6d-9207-f435830c4f74",
+  "traceIds": [
+    "c0127590-68ab-44dc-afaf-fb505619a6df"
+  ],
+  "actualCapabilities": [
+    "platform.document.contract-reviewer"
+  ],
+  "executionStatus": "failed",
+  "requestDigest": "8512800687eef2b42a144828eb54845b40ef7ed8975dd9298d14c20ef2e89ce5",
+  "fixtureDigest": null,
+  "timing": {
+    "firstEventMs": 57,
+    "firstContentMs": null,
+    "totalMs": 10029
+  },
+  "assertions": [
+    {
+      "name": "聊天HTTP成功",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE完整结束且无传输异常",
+      "passed": true,
+      "actual": "done",
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "缺合同进入waiting_input",
+      "passed": false,
+      "actual": "failed",
+      "category": "EXECUTION_STATE"
+    },
+    {
+      "name": "缺参未生成审查产物",
+      "passed": true,
+      "actual": null,
+      "category": "CONTRACT"
+    }
+  ],
+  "failures": [
+    "EXECUTION_STATE"
+  ],
+  "observedUsage": []
+}

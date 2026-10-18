@@ -1,0 +1,281 @@
+{
+  "runs": [
+    "/Users/chain/Documents/MyProject/ops-automation/docs/artifacts/reviews/contract-review-work-2026-10-16/run-2026-10-17T03-44-43.260Z",
+    "/Users/chain/Documents/MyProject/ops-automation/docs/artifacts/reviews/contract-review-work-2026-10-16/run-2026-10-17T03-48-59.508Z"
+  ],
+  "verifiedCases": [
+    {
+      "id": "C01",
+      "executionId": "d9e6a5ba-283c-47a3-918b-479d3ce8afaf",
+      "declaredStatus": "passed",
+      "checks": {
+        "request_sha": true,
+        "task_mode": true,
+        "requested_model": true,
+        "execution_id": true,
+        "sse_done": true,
+        "actual_model": true,
+        "ledger_bijection": true,
+        "artifact_sha": true,
+        "score_range": true
+      },
+      "metrics": {
+        "warnings": [],
+        "passCount": 2,
+        "isDegraded": false,
+        "healthScore": 36,
+        "isTruncated": false,
+        "lowRiskCount": 0,
+        "totalClauses": 5,
+        "highRiskCount": 1,
+        "mediumRiskCount": 2,
+        "llmReviewedCount": 5,
+        "missingClausesCount": 3,
+        "unfilledBlanksTotal": 0,
+        "degradedClausesCount": 0,
+        "unfilledVariablesCount": 0
+      },
+      "myPosition": "buyer",
+      "totalMs": 73244,
+      "calls": 2
+    },
+    {
+      "id": "C02",
+      "executionId": "ba0e8c8c-1085-490f-893f-edfd62d61460",
+      "declaredStatus": "passed",
+      "checks": {
+        "request_sha": true,
+        "task_mode": true,
+        "requested_model": true,
+        "execution_id": true,
+        "sse_done": true,
+        "actual_model": true,
+        "ledger_bijection": true,
+        "artifact_sha": true,
+        "score_range": true
+      },
+      "metrics": {
+        "warnings": [],
+        "passCount": 2,
+        "isDegraded": false,
+        "healthScore": 29,
+        "isTruncated": false,
+        "lowRiskCount": 0,
+        "totalClauses": 5,
+        "highRiskCount": 2,
+        "mediumRiskCount": 1,
+        "llmReviewedCount": 5,
+        "missingClausesCount": 3,
+        "unfilledBlanksTotal": 0,
+        "degradedClausesCount": 0,
+        "unfilledVariablesCount": 0
+      },
+      "myPosition": "buyer",
+      "totalMs": 82274,
+      "calls": 2
+    },
+    {
+      "id": "C03",
+      "executionId": "9f86cba0-8540-4323-94a3-9cb749fef64c",
+      "declaredStatus": "passed",
+      "checks": {
+        "request_sha": true,
+        "task_mode": true,
+        "requested_model": true,
+        "execution_id": true,
+        "sse_done": true,
+        "actual_model": true,
+        "ledger_bijection": true,
+        "artifact_sha": true,
+        "score_range": true
+      },
+      "metrics": {
+        "warnings": [],
+        "passCount": 2,
+        "isDegraded": false,
+        "healthScore": 29,
+        "isTruncated": false,
+        "lowRiskCount": 0,
+        "totalClauses": 5,
+        "highRiskCount": 2,
+        "mediumRiskCount": 1,
+        "llmReviewedCount": 5,
+        "missingClausesCount": 3,
+        "unfilledBlanksTotal": 0,
+        "degradedClausesCount": 0,
+        "unfilledVariablesCount": 0
+      },
+      "myPosition": "buyer",
+      "totalMs": 87587,
+      "calls": 2
+    },
+    {
+      "id": "C08",
+      "executionId": "667988a2-f2a1-4637-8d96-175998f9e9cf",
+      "declaredStatus": "passed",
+      "checks": {
+        "request_sha": true,
+        "task_mode": true,
+        "requested_model": true,
+        "execution_id": true,
+        "sse_done": true,
+        "actual_model": true,
+        "ledger_bijection": true,
+        "artifact_sha": true,
+        "score_range": true
+      },
+      "metrics": {
+        "warnings": [],
+        "passCount": 6,
+        "isDegraded": false,
+        "healthScore": 0,
+        "isTruncated": false,
+        "lowRiskCount": 0,
+        "totalClauses": 31,
+        "highRiskCount": 4,
+        "mediumRiskCount": 21,
+        "llmReviewedCount": 31,
+        "missingClausesCount": 3,
+        "unfilledBlanksTotal": 0,
+        "degradedClausesCount": 0,
+        "unfilledVariablesCount": 0
+      },
+      "myPosition": "buyer",
+      "totalMs": 468154,
+      "calls": 11
+    },
+    {
+      "id": "C10",
+      "executionId": "33925f23-aef1-4d3b-88be-4c74a835415a",
+      "declaredStatus": "passed",
+      "checks": {
+        "request_sha": true,
+        "task_mode": true,
+        "requested_model": true,
+        "execution_id": true,
+        "sse_done": true,
+        "actual_model": true,
+        "ledger_bijection": true,
+        "artifact_sha": true,
+        "score_range": true
+      },
+      "metrics": {
+        "warnings": [],
+        "passCount": 3,
+        "isDegraded": false,
+        "healthScore": 58,
+        "isTruncated": false,
+        "lowRiskCount": 0,
+        "totalClauses": 5,
+        "highRiskCount": 1,
+        "mediumRiskCount": 1,
+        "llmReviewedCount": 5,
+        "missingClausesCount": 2,
+        "unfilledBlanksTotal": 0,
+        "degradedClausesCount": 0,
+        "unfilledVariablesCount": 0
+      },
+      "myPosition": "seller",
+      "totalMs": 74019,
+      "calls": 2
+    }
+  ],
+  "sourceFingerprints": [
+    {
+      "run": "/Users/chain/Documents/MyProject/ops-automation/docs/artifacts/reviews/contract-review-work-2026-10-16/run-2026-10-17T03-44-43.260Z",
+      "checks": {
+        "builtin-skills/platform.document.contract-reviewer/manifest.yaml": true,
+        "builtin-skills/platform.document.contract-reviewer/workflow.json": true,
+        "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": true,
+        "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": true
+      }
+    },
+    {
+      "run": "/Users/chain/Documents/MyProject/ops-automation/docs/artifacts/reviews/contract-review-work-2026-10-16/run-2026-10-17T03-48-59.508Z",
+      "checks": {
+        "builtin-skills/platform.document.contract-reviewer/manifest.yaml": true,
+        "builtin-skills/platform.document.contract-reviewer/workflow.json": true,
+        "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": true,
+        "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": true
+      }
+    }
+  ],
+  "uniquePlans": 5,
+  "uniqueModelCalls": 19,
+  "actualModels": {
+    "qwen36-35b-a3b": 19
+  },
+  "recordedTokens": {
+    "input": 16395,
+    "output": 80133
+  },
+  "faultTests": [
+    {
+      "name": "F01 partial model response must not crash on an undefined clause",
+      "status": "passed"
+    },
+    {
+      "name": "F02 duplicate IDs must not be accepted as complete semantic coverage",
+      "status": "passed"
+    },
+    {
+      "name": "F03 foreign IDs must not be reassigned to source clauses by array position",
+      "status": "passed"
+    },
+    {
+      "name": "F04 fabricated evidence must not survive as anchored source evidence",
+      "status": "passed"
+    },
+    {
+      "name": "F05 model timeout must disclose incomplete/degraded review",
+      "status": "passed"
+    },
+    {
+      "name": "F06 empty JSON array must disclose incomplete/degraded review",
+      "status": "passed"
+    },
+    {
+      "name": "F07 render failure must not return success",
+      "status": "passed"
+    },
+    {
+      "name": "F08 batch scheduling keeps concurrency <=3, correct model and source order",
+      "status": "passed"
+    },
+    {
+      "name": "R01 health score must remain in [0,100] for many high-risk clauses",
+      "status": "passed"
+    },
+    {
+      "name": "R02 duplicate IDs alongside full coverage must be detected",
+      "status": "passed"
+    },
+    {
+      "name": "R03 foreign extra IDs alongside full coverage must be detected",
+      "status": "passed"
+    },
+    {
+      "name": "R04 missing semantic fields must not silently default to PASS",
+      "status": "passed"
+    },
+    {
+      "name": "S01 riskSummary alone cannot be converted to a PASS decision",
+      "status": "failed"
+    },
+    {
+      "name": "S02 invalid riskLevel plus a summary cannot count as reviewed",
+      "status": "failed"
+    },
+    {
+      "name": "S03 empty finding objects cannot constitute a semantic review",
+      "status": "failed"
+    }
+  ],
+  "renderVerification": {
+    "http_ok": true,
+    "summary_warning": true,
+    "no_healthy_claim": true,
+    "warning_details": true,
+    "html_warning_banner": true
+  }
+}

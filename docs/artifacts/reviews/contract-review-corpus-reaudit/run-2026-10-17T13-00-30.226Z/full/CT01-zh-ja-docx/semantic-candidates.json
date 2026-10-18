@@ -1,0 +1,109 @@
+[
+  {
+    "marker": "CT01-zh-ja-A03",
+    "topic": "risk_acceptance",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "免除卖方对隐蔽瑕疵的违约责任，剥夺买方法定救济权，显失公平。",
+        "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+        "findings": [
+          {
+            "id": "finding-clause-3-CUST-1",
+            "title": "重点检查我方义务、责任、数据或知识产权、付款...",
+            "ruleId": "prompt-rule-1",
+            "category": "审查Prompt专项要点",
+            "ruleCode": "CUST-1",
+            "severity": "HIGH",
+            "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+            "riskSummary": "免除卖方对隐蔽瑕疵的违约责任，剥夺买方法定救济权，显失公平。",
+            "evidenceQuote": "即使存在隐蔽缺陷，甲方亦不得拒收或要求修理"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT01-zh-ja-A04",
+    "topic": "risk_prepayment",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "缺乏履约保障机制，卖方违约成本低，买方资金安全无保障。",
+        "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+        "findings": [
+          {
+            "id": "finding-clause-4-CUST-1",
+            "title": "重点检查我方义务、责任、数据或知识产权、付款...",
+            "ruleId": "prompt-rule-1",
+            "category": "审查Prompt专项要点",
+            "ruleCode": "CUST-1",
+            "severity": "HIGH",
+            "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+            "riskSummary": "缺乏履约保障机制，卖方违约成本低，买方资金安全无保障。",
+            "evidenceQuote": "乙方无需提供履约担保，交付延期不影响收款",
+            "recommendedRevision": "[CT01-zh-ja-A04]\n付款：甲方签约后三日内支付全部价款；乙方无需提供履约担保，交付延期不影响收款。\n支払：甲は締結後3日以内に代金全額を支払う。乙は履行保証を提供せず、納入遅延によっても代金受領権は影響されない。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT01-zh-ja-A05",
+    "topic": "risk_asymmetric_liability",
+    "matchedClauseIndices": [
+      5
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "试图免除故意或重大过失责任，违反法律强制性规定，风险极高。",
+        "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+        "findings": [
+          {
+            "id": "finding-clause-5-CUST-1",
+            "title": "重点检查我方义务、责任、数据或知识产权、付款...",
+            "ruleId": "prompt-rule-1",
+            "category": "审查Prompt专项要点",
+            "ruleCode": "CUST-1",
+            "severity": "HIGH",
+            "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+            "riskSummary": "试图免除故意或重大过失责任，违反法律强制性规定，风险极高。",
+            "evidenceQuote": "乙方故意或重大过失造成的损失亦不承担赔偿",
+            "recommendedRevision": "[CT01-zh-ja-A05]\n责任：乙方故意或重大过失造成的损失亦不承担赔偿；甲方逾期付款每日按合同总额百分之一支付违约金。\n責任：乙は故意又は重大な過失による損害についても賠償責任を負わない。甲の支払遅延には契約総額の1％を日額違約金とする。"
+          },
+          {
+            "id": "finding-clause-5-CUST-1",
+            "title": "重点检查我方义务、责任、数据或知识产权、付款...",
+            "ruleId": "prompt-rule-1",
+            "category": "审查Prompt专项要点",
+            "ruleCode": "CUST-1",
+            "severity": "HIGH",
+            "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+            "riskSummary": "日1%（年化365%）违约金畸高，缺乏对等性，存在重大财务风险。",
+            "evidenceQuote": "甲方逾期付款每日按合同总额百分之一支付违约金",
+            "recommendedRevision": "[CT01-zh-ja-A05]\n责任：乙方故意或重大过失造成的损失亦不承担赔偿；甲方逾期付款每日按合同总额百分之一支付违约金。\n責任：乙は故意又は重大な過失による損害についても賠償責任を負わない。甲の支払遅延には契約総額の1％を日額違約金とする。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

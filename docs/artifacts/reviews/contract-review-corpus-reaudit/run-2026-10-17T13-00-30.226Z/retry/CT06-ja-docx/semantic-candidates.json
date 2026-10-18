@@ -1,0 +1,124 @@
+[
+  {
+    "marker": "CT06-ja-A04",
+    "topic": "risk_repairs",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "约定甲方单方承担修缮及全部费用，乙方免责，严重失衡。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT06-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "约定甲方单方承担修缮及全部费用，乙方免责，严重失衡。",
+            "evidenceQuote": "甲が修繕し、費用上限は設けず、乙は協力義務を負わない。"
+          },
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT06-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "连隐蔽工程等乙方通常负责的潜在缺陷亦由甲方承担，极不合理。",
+            "evidenceQuote": "構造、防火設備及び隠ぺい工事の全ての欠陥は甲が修繕し"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT06-ja-A05",
+    "topic": "risk_unilateral_change",
+    "matchedClauseIndices": [
+      5
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "乙方仅凭提前三日通知即可随时调价，缺乏合理性限制。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-5-GENERAL-RISK",
+            "title": "[CT06-ja-A05]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "乙方仅凭提前三日通知即可随时调价，缺乏合理性限制。",
+            "evidenceQuote": "乙は3日前の通知により随時賃料を改定できる。"
+          },
+          {
+            "id": "finding-clause-5-GENERAL-RISK",
+            "title": "[CT06-ja-A05]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "完全排除甲方对涨价的异议权及合同解除权，显失公平。",
+            "evidenceQuote": "甲は拒否できず、これを理由に解除もできない。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT06-ja-A06",
+    "topic": "risk_deposit",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "虽属保证金条款，但体现了对披露方/我方权益的极度不公，核心风险在于对方拥有绝对自由裁量权。",
+        "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+        "findings": [
+          {
+            "id": "finding-clause-6-NDA-01",
+            "title": "保密期限永久且未区分一般信息与商业秘密",
+            "ruleId": "nda_perpetual_duration",
+            "category": "CONFIDENTIALITY",
+            "ruleCode": "NDA-01",
+            "severity": "HIGH",
+            "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+            "riskSummary": "虽属保证金条款，但体现了对披露方/我方权益的极度不公，核心风险在于对方拥有绝对自由裁量权。",
+            "evidenceQuote": "保証金：満了後の返還可否は乙が自由に判断する。",
+            "recommendedRevision": "自披露之日起算，有效期为 3 年；依法属于商业秘密的信息在其合法保持秘密状态期间持续有效"
+          },
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT06-ja-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "未设定退还期限且免除对方举证责任，导致我方资金被无限制占用，且无法通过法律途径有效追索。",
+            "evidenceQuote": "返還期限は定めず、控除の証拠提出も不要とする。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "message": "请审查附件中的软件开发合同，我方为受托方（乙方），请按乙方立场进行合规审查并生成报告。",
+  "sessionId": "test-t01_dev_docx-1792222967744",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "config": {
+    "mode": "task",
+    "thinking": true,
+    "webSearch": false,
+    "workspaceSearch": false
+  },
+  "files": [
+    {
+      "fileId": "file-1792222967740-4gcd6jpzk",
+      "fileName": "software-dev-contract.docx",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "size": 39428,
+      "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792222967740-4gcd6jpzk-software-dev-contract.docx",
+      "url": "/api/ai/chat/files/file-1792222967740-4gcd6jpzk?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792224767.3c2747f558d3596c0b818c13d22eb02b5e67e7d85e68c8b2c179fcc2e138af50",
+      "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792224767.3c2747f558d3596c0b818c13d22eb02b5e67e7d85e68c8b2c179fcc2e138af50"
+    }
+  ]
+}

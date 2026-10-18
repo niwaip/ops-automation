@@ -1,0 +1,22 @@
+{
+  "message": "请审查附件合同，我方为甲方（信息披露及接收双方），重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。涉及中日双语时请核对两个文本的差异及优先条款。请以中文回复。",
+  "sessionId": "corpus-CT03-zh-docx-1792227336699",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [
+    {
+      "fileId": "file-1792227336696-7g5ydulnz",
+      "fileName": "CT03-zh.docx",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "size": 37638,
+      "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792227336696-7g5ydulnz-CT03-zh.docx",
+      "url": "/api/ai/chat/files/file-1792227336696-7g5ydulnz?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792229136.d7c724cbe889fec746b47c0793d88c39ede239844beb8687a4a3756b4e0ce80d",
+      "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792229136.d7c724cbe889fec746b47c0793d88c39ede239844beb8687a4a3756b4e0ce80d"
+    }
+  ],
+  "config": {
+    "mode": "task",
+    "thinking": true,
+    "webSearch": false,
+    "workspaceSearch": false
+  }
+}

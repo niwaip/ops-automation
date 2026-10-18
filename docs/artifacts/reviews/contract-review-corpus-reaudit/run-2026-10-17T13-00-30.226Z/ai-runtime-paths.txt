@@ -1,0 +1,2 @@
+/workspace/apps/backend/intelligence/ai-orchestrator/dist/modules/planner/binding/multi-node-parameter-binder.service.js
+/workspace/apps/backend/intelligence/ai-orchestrator/dist/modules/recognizer/recognizer.service.js

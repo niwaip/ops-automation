@@ -24,12 +24,20 @@ export class DeterministicParamResolverService {
     schema: ParamsSchema,
     cardOrSkill?: any
   ): RecognizeParamsResponseDTO {
-    const resolved = resolveDeterministicEnumParams(userInput, schema.properties || {});
+    const cleanInput = (userInput || '')
+      .replace(/\n*\[系统上下文：[\s\S]*$/i, '')
+      .replace(/\[系统上下文：[^\]]*\]/g, '')
+      .replace(/\n*\[System Context:[\s\S]*$/i, '')
+      .replace(/\[System Context:[^\]]*\]/g, '')
+      .trim();
+    const effectiveInput = cleanInput || userInput;
+
+    const resolved = resolveDeterministicEnumParams(effectiveInput, schema.properties || {});
     const resolvedFields = Object.keys(resolved.params);
 
     const textResolution = cardOrSkill
       ? this.resolveTextParams(
-          userInput,
+          effectiveInput,
           {
             id: cardOrSkill.skillId || cardOrSkill.id || '',
             displayName: cardOrSkill.skillName || cardOrSkill.displayName || '',
@@ -44,7 +52,7 @@ export class DeterministicParamResolverService {
       : { params: {}, notes: [] };
 
     const urlResolution = this.resolveUrlParams(
-      userInput,
+      effectiveInput,
       (schema.properties as any) || {}
     );
 

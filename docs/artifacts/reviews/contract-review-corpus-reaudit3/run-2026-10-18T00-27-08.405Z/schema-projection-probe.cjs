@@ -1,0 +1,13 @@
+const fs=require('fs');
+const base='/workspace/apps/backend/intelligence/ai-orchestrator/dist/modules/planner/';
+const {CapabilityCandidateSelectorService:S}=require(base+'candidate-selection/capability-candidate-selector.service.js');
+const {MultiNodeParameterBinderService:B}=require(base+'binding/multi-node-parameter-binder.service.js');
+const selector=Object.create(S.prototype),binder=Object.create(B.prototype);
+const original={properties:{customCheckpoints:{type:'array',items:{type:'object'}}}};
+const projected=selector.extractRecognizerProperties(original);
+const value=['付款','退出安排'];
+const direct=binder.normalizeBySchema(value,original.properties.customCheckpoints);
+const through=binder.normalizeBySchema(value,projected.customCheckpoints);
+const evidence={isolatedDiagnostic:true,original,projected,value,direct,through,itemsPreserved:!!projected.customCheckpoints.items,throughConforms:through.every(x=>typeof x==='object')};
+fs.writeFileSync(__dirname+'/schema-projection-probe.json',JSON.stringify(evidence,null,2));
+console.log(JSON.stringify(evidence));

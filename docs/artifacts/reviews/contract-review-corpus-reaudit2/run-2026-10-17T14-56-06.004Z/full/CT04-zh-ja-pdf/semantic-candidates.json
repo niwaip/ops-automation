@@ -1,0 +1,137 @@
+[
+  {
+    "marker": "CT04-zh-ja-A02",
+    "topic": "risk_internal_conflict",
+    "matchedClauseIndices": [
+      2
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "条款标题称'独家'，但正文允许乙方直销及另设经销商，导致独家权形同虚设，严重损害买方利益。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-2-GENERAL-RISK",
+            "title": "[CT04-zh-ja-A02]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "条款标题称'独家'，但正文允许乙方直销及另设经销商，导致独家权形同虚设，严重损害买方利益。",
+            "evidenceQuote": "甲方享有区域独家销售权；乙方可不受限制地直接向区域客户销售并另行指定其他经销商。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-zh-ja-A03",
+    "topic": "risk_target",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "LOW"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "该条款大模型语义审查降级 (INVALID_JSON_RESPONSE)，已回退为静态规则校验。",
+        "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。"
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-zh-ja-A04",
+    "topic": "risk_resale_price_review",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "LOW"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "该条款大模型语义审查降级 (INVALID_JSON_RESPONSE)，已回退为静态规则校验。",
+        "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。"
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-zh-ja-A07",
+    "topic": "risk_inventory_exit",
+    "matchedClauseIndices": [
+      7
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "赋予乙方单方无理由即时解约权，打破合同稳定性，极大增加买方经营风险",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-7-GENERAL-RISK",
+            "title": "[CT04-zh-ja-A07]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "赋予乙方单方无理由即时解约权，打破合同稳定性，极大增加买方经营风险",
+            "evidenceQuote": "乙方可随时无理由立即终止"
+          },
+          {
+            "id": "finding-clause-7-GENERAL-RISK",
+            "title": "[CT04-zh-ja-A07]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "未约定解约后的库存处理机制及补偿义务，导致买方已付货款对应的资产面临沉没风险",
+            "evidenceQuote": "甲方已购库存不得退回"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-zh-ja-A08",
+    "topic": "bilingual_conflict_30_60",
+    "matchedClauseIndices": [
+      8
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "中文约定30日付款而日文约定60日付款，即便规定中文优先，实质冲突仍引发解释风险，建议统一表述",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-8-GENERAL-RISK",
+            "title": "[CT04-zh-ja-A08]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "中文约定30日付款而日文约定60日付款，即便规定中文优先，实质冲突仍引发解释风险，建议统一表述"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]
