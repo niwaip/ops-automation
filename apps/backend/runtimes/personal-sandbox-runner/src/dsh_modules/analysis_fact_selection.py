@@ -30,6 +30,40 @@ def _column(column, headers):
     return normalized(headers.get(key.upper(), key))
 
 
+_PROMPT_INTENT_STOP_CHARS = frozenset('的了和与在各每按中及是个有一')
+
+
+def _matches_prompt_intent(cond, prompt, headers=None):
+    """
+    Check if a filter condition is grounded in the user's prompt (Data-driven condition overlap).
+    Zero-hardcoding: operates purely on the candidate condition's values/prefixes/column and the prompt.
+    """
+    clean_p = prompt.casefold()
+    p_nospace = re.sub(r'\s+', '', clean_p)
+    for key in ('values', 'prefixes', 'exclude_prefixes', 'exclude_values'):
+        vals = cond.get(key) or []
+        if isinstance(vals, (str, int, float)):
+            vals = [vals]
+        for v in vals:
+            sv = str(v).strip().casefold()
+            if not sv:
+                continue
+            v_nospace = re.sub(r'\s+', '', sv)
+            if len(v_nospace) >= 2:
+                if v_nospace in p_nospace:
+                    return True
+            else:
+                if sv in _PROMPT_INTENT_STOP_CHARS:
+                    continue
+                if sv.isascii():
+                    if re.search(r'(?:^|[^\da-zA-Z])' + re.escape(sv) + r'(?:$|[^\da-zA-Z])', clean_p):
+                        return True
+                else:
+                    if sv in clean_p:
+                        return True
+    return False
+
+
 def _predicate(condition, headers):
     op = condition.get('op', '')
     if 'exclude_prefixes' in condition or op in ('exclude_prefix', 'exclude_prefixes', 'not_prefix'):
@@ -89,9 +123,18 @@ def resolve_conforming_facts(receipts, prompt=''):
     if not items:
         return []
     # Prefix columns must be resolved from real headers, never from an invented sheet/field.
-    has_filter_intent = contract.has_filters or bool(re.search(r'(?:只包含|仅包含|(?<!不)排除|不包含|剔除|去除|开头|只要|除了|去掉|限定)', prompt))
+    explicit_filter_kw = bool(re.search(
+        r'(?:只包含|仅包含|(?<!不)排除|不包含|剔除|去除|开头|只要|除了|去掉|限定|筛选|过滤|仅保留|只保留)',
+        prompt
+    ))
+    data_driven_filter = any(
+        _matches_prompt_intent(cond, prompt, all_headers)
+        for s in [scope for it in items for scope in it[3]]
+        for cond in s.get('filters', [])
+    )
+    has_filter_intent = contract.has_filters or explicit_filter_kw or data_driven_filter
 
-    # Layer 1: 如果有过滤意图，先由 LLM-as-a-Judge 语义裁判裁决（支持大模型理解复杂否定与同义表述）
+    # Layer 1: 如果有过滤/切片意图，先由 LLM-as-a-Judge 语义裁判裁决（支持大模型理解复杂否定、同义表述与分类切片）
     if has_filter_intent:
         from .semantic_filter_judge import judge_filter_conformance
         judge_matched = []
@@ -119,7 +162,14 @@ def resolve_conforming_facts(receipts, prompt=''):
             if required:
                 items = [it for it in items if set(it[2]) == set(required)]
             elif neutral_filtered:
-                items = [it for it in neutral_filtered if it not in judge_rejected]
+                aligned_filtered = [
+                    it for it in neutral_filtered
+                    if it not in judge_rejected and any(
+                        _matches_prompt_intent(c, prompt, all_headers)
+                        for s in it[3] for c in s.get('filters', [])
+                    )
+                ]
+                items = aligned_filtered if aligned_filtered else [it for it in neutral_filtered if it not in judge_rejected]
             else:
                 items = [it for it in items if it[2] and it not in judge_rejected]
     elif contract.domain == 'generic':
