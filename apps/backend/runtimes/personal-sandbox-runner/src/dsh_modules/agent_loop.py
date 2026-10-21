@@ -141,7 +141,7 @@ def detect_missing_claimed_artifacts(
         for pfx in sorted(CLAIM_PATTERNS, key=len, reverse=True):
             if clean_name.startswith(pfx):
                 clean_name = clean_name[len(pfx):].strip()
-        clean_name = re.sub(r'^[：:到至为在\s]+', '', clean_name).strip()
+        clean_name = re.sub(r'^(?:(?:文件名|文件名称|文档名|表格名|报告名)(?:称)?(?:为|叫|是|：|:)?|文件(?:为|叫|是|：|:)|名称(?:为|叫|是|：|:)|命名(?:为)?|名字(?:为|叫|是|：|:)|[：:到至为在\s])+', '', clean_name).strip()
         if not clean_name:
             continue
 
@@ -156,12 +156,12 @@ def detect_missing_claimed_artifacts(
         # 排除明确作为输入源、引用源或前置资料的文件名（如“基于/根据/参考...《文件名》”）
         is_source_reference = bool(
             re.search(
-                rf'(?:基于|根据|参考|依据|结合|来源|原始|上传的?|输入|读取|解析|查看|分析|引用)[^\n。]{{0,25}}(?:《|【|“|"|\'|`|\s)?{escaped_name}',
+                rf'(?:基于|根据|参考|依据|结合|来源|原始|上传的?|输入|读取|解析|查看|分析|引用)[^\n。，,]{{0,25}}(?:《|【|“|"|\'|`|\s)?{escaped_name}',
                 text,
                 re.I
             )
             or re.search(
-                rf'{escaped_name}(?:》|】|”|"|\'|`|\s)?[^\n。]{{0,25}}(?:的内容|的数据|中提到|中记录|作为输入|作为参考|原始数据|附件|中指出)',
+                rf'{escaped_name}(?:》|】|”|"|\'|`|\s)?[^\n。，,]{{0,25}}(?:的内容|的数据|中提到|中记录|作为输入|作为参考|原始数据|附件|中指出)',
                 text,
                 re.I
             )
@@ -171,13 +171,14 @@ def detect_missing_claimed_artifacts(
 
         # 必须在该文件名局部存在明确的生成/保存/写入声称，或保存至 /workspace/，避免提及外部/参考文件时误触发断言
         claimed_for_this_file = bool(
-            re.search(
+            (is_generate_intent and (f"/workspace/{clean_name}" in text or f"./workspace/{clean_name}" in text))
+            or re.search(
                 rf'(?:已.{{0,12}}(?:生成|创建|保存|导出|写入|完成)|(?:生成|创建|保存|导出|写入|输出).{{0,12}}(?:完成|完毕|成功|至|到|为)|输出文件(?:为|是|：|:)?|保存(?:路径|在|到|至)|落盘至|保存在|已保存至|代码已写入|文件路径[：:]\s*(?:/workspace/)?)[^\n。]{{0,30}}{escaped_name}',
                 text,
                 re.I
             )
             or re.search(
-                rf'{escaped_name}[^\n。]{{0,30}}(?:已(?:生成|创建|保存|导出|写入|落盘)|已保存到工作区|已保存至|已写入)',
+                rf'{escaped_name}[^\n。]{{0,30}}(?:已(?:生成|创建|保存|导出|写入|落盘)|已保存到工作区|已保存至|已写入|created|saved|written)',
                 text,
                 re.I
             )
@@ -257,6 +258,9 @@ def detect_missing_requested_deliverable(
                             continue
                         if ArtifactExporter.is_temporary_file(p.name):
                             continue
+                        from .workbook_delivery import deliverable_is_valid
+                        if not deliverable_is_valid(p):
+                            continue
                         if req_item.startswith(".") or req_item.lower() in ["pdf", "docx", "xlsx", "pptx", "html", "md"]:
                             norm_ext = req_item if req_item.startswith(".") else f".{req_item}"
                             if p.suffix.lower() == norm_ext.lower():
@@ -324,7 +328,9 @@ def detect_missing_requested_deliverable(
             if p.is_file() and p.suffix.lower() == req_ext and p.stat().st_size > 0:
                 if p.stat().st_mtime >= turn_start_time - 2.0:
                     if not ArtifactExporter.is_temporary_file(p.name):
-                        return None
+                        from .workbook_delivery import deliverable_is_valid
+                        if deliverable_is_valid(p):
+                            return None
     except Exception:
         pass
 
@@ -531,6 +537,21 @@ def _check_no_tool_assertion_guard(
         )
         return "continue", msg, bumped_max_rounds
 
+    reminder_delete_claims = [
+        "已为您处理并取消", "已取消", "已成功取消", "已为您取消", "已删除提醒", "已为您删除", "已成功删除",
+        "已停止执行，之后每日均不再触发", "已移除提醒", "已清空提醒"
+    ]
+    has_delete_claim = any(c in reply_text for c in reminder_delete_claims)
+    is_delete_intent = bool(re.search(r'(?:删除|取消|关掉|关闭|清空|移除|撤销|停用|废弃|去掉|delete|cancel|remove)', last_user_prompt, re.I))
+    has_executed_delete = any("delete_reminder" in call or "delete_reminders" in call for call in executed)
+    if is_delete_intent and has_delete_claim and not has_executed_delete:
+        print("⚡ [Harness Reminder Delete Guard] 检测到模型口头声称已取消/删除提醒但未调用 delete_reminder 工具，正在引导调用工具...", flush=True)
+        msg = (
+            "【系统提醒检查】：检测到口头声称已取消或删除提醒，但沙箱中并未实际调用 `delete_reminder` 工具。"
+            "口头宣称已取消无法在系统数据库中生效，后台仍会继续按原计划推送！请立即通过 Function Calling 协议调用 `delete_reminder` 工具执行删除。"
+        )
+        return "continue", msg, bumped_max_rounds
+
     # 8. 检索不匹配与消极放弃拦截 (Retrieval Mismatch Guard)
     has_web_search = bool(
         tools and any(
@@ -614,6 +635,9 @@ def _dispatch_tool_calls(*args, **kwargs):
                                error_fn=_is_tool_error, preview_fn=sanitize_preview)
 
 
+from .workbook_delivery_recalc import recalculate_generated_workbooks as _recalculate_generated_workbooks
+
+
 def _finalize_agent_text(
     reply_text: str,
     messages: List[Dict[str, Any]],
@@ -626,7 +650,8 @@ def _finalize_agent_text(
     telemetry: TelemetryStats,
     last_user_prompt: str = "",
     expected_deliverables: Optional[List[str]] = None,
-    execution_evidence: Optional[List[ToolResult]] = None
+    execution_evidence: Optional[List[ToolResult]] = None,
+    turn_start_time: Optional[float] = None
 ) -> Tuple[str, List[str]]:
     """Finalizes agent text, requesting forced summary if needed and applying fallback reports."""
     has_pending_tool_calls = bool(parse_tool_calls(reply_text, is_guide=is_guide_intent))
@@ -824,6 +849,21 @@ def _finalize_agent_text(
                 if "【指标核算未完成声明】" not in final_text:
                     final_text += contract_warning
 
+    # 自动对工作区中本轮新生成的带公式但缺少缓存值的 xlsx 交付物执行无头重算以补齐公式缓存
+    _recalculate_generated_workbooks(WORKSPACE_DIR, turn_start_time=turn_start_time)
+
+    try:
+        from .delivery_reconciliation import reconcile_delivery_presentation
+        final_text = reconcile_delivery_presentation(
+            final_text,
+            WORKSPACE_DIR,
+            messages=messages,
+            prompt=last_user_prompt,
+            turn_start_time=turn_start_time
+        )
+    except Exception as e:
+        logger.warning("Delivery reconciliation error: %s", e)
+
     return final_text, healed_files
 
 
@@ -855,6 +895,9 @@ def run_agent_loop(
     start_ts = turn_start_time if turn_start_time is not None else time.time()
     last_user_prompt = _extract_last_user_prompt(messages)
     analysis_turn=AnalysisTurn(last_user_prompt) if spreadsheet_analysis_required else None
+    from .bounded_summary_recovery import SummaryRecovery
+    summary_recovery = SummaryRecovery(last_user_prompt, WORKSPACE_DIR, deadline,
+        enabled=not is_guide_intent and (spreadsheet_analysis_required or (is_generate_intent and bool(re.search(r'xlsx|Excel', last_user_prompt, re.I)))))
     comparison_contract = build_analysis_contract(last_user_prompt)
     comparison_required = (not is_generate_intent and not is_guide_intent
         and supports_column_comparison(comparison_contract)
@@ -964,6 +1007,10 @@ def run_agent_loop(
 
         # 若当轮无任何工具调用
         if not structured_calls:
+            if summary_recovery.apply(execution_evidence, telemetry, outbound_files):
+                spreadsheet_analysis_required = True
+                analysis_turn = AnalysisTurn(last_user_prompt)
+                break
             if comparison_required:
                 compiled, error = compile_comparison_response(comparison_contract, execution_evidence)
                 telemetry.record_guard('comparison_evidence', 'reject' if error else 'accept', error)
@@ -1125,6 +1172,16 @@ def run_agent_loop(
                                 for t in active_tools]
         )
 
+        # 仅在当轮尚未产生有效分析事实时，才尝试兜底恢复；严禁覆盖主模型已成功完成的分析回执
+        has_completed_analysis = bool(execution_evidence and any(
+            getattr(r, 'is_success', False) and isinstance(getattr(r, 'data', None), dict) and r.data.get('facts')
+            for r in execution_evidence
+        ))
+        if not has_completed_analysis and summary_recovery.apply(execution_evidence, telemetry, outbound_files):
+            spreadsheet_analysis_required = True
+            analysis_turn = AnalysisTurn(last_user_prompt)
+            break
+
         if analysis_turn:
             completed=analysis_turn.complete(execution_evidence,telemetry,
                 [t.get('function',{}).get('name') for t in active_tools],deadline)
@@ -1217,7 +1274,8 @@ def run_agent_loop(
         telemetry=telemetry,
         last_user_prompt=last_user_prompt,
         expected_deliverables=expected_deliverables,
-        execution_evidence=execution_evidence
+        execution_evidence=execution_evidence,
+        turn_start_time=start_ts
     ))
     if requests_markdown_artifact(last_user_prompt):
         final_text = unwrap_outer_markdown_fence(final_text)
@@ -1342,6 +1400,27 @@ def run_agent_loop(
             )
             if "【交付物落盘未完成提示】" not in final_text:
                 final_text += warning_notice
+
+    # 交付前对本轮生成/导出的带公式 Excel 进行无头重算以补齐缓存值
+    _recalculate_generated_workbooks(WORKSPACE_DIR, turn_start_time=start_ts)
+
+    from .workbook_delivery import quarantine_invalid_deliverables
+    final_text, outbound_files, rejected = quarantine_invalid_deliverables(
+        WORKSPACE_DIR, start_ts, final_text, outbound_files)
+    if rejected:
+        telemetry.record_guard("workbook_delivery", "reject", rejected)
+
+    try:
+        from .delivery_reconciliation import reconcile_delivery_presentation
+        final_text = reconcile_delivery_presentation(
+            final_text,
+            WORKSPACE_DIR,
+            messages=messages,
+            prompt=last_user_prompt,
+            turn_start_time=start_ts
+        )
+    except Exception as e:
+        logger.warning("Delivery reconciliation error in agent loop: %s", e)
 
     return AgentLoopResult(
         final_text=final_text,
