@@ -455,17 +455,17 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
           }
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: '1 1 auto' }}>
           {isStreaming ? (
-            <LoadingOutlined spin style={{ color: '#1677ff', fontSize: '15px' }} />
+            <LoadingOutlined spin style={{ color: '#1677ff', fontSize: '15px', flexShrink: 0 }} />
           ) : isContractCompare ? (
-            <FileTextOutlined style={{ color: '#1677ff', fontSize: '15px' }} />
+            <FileTextOutlined style={{ color: '#1677ff', fontSize: '15px', flexShrink: 0 }} />
           ) : (
-            <PlayCircleOutlined style={{ color: '#1677ff', fontSize: '15px' }} />
+            <PlayCircleOutlined style={{ color: '#1677ff', fontSize: '15px', flexShrink: 0 }} />
           )}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600, fontSize: '13px' }}>
-              <span>{displayTitle}</span>
+          <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600, fontSize: '13px', flexWrap: 'wrap', minWidth: 0 }}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '240px' }}>{displayTitle}</span>
               <span
                 style={{
                   fontSize: '11px',
@@ -474,6 +474,7 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
                   background: isStreaming ? 'rgba(22, 119, 255, 0.08)' : 'rgba(22, 119, 255, 0.1)',
                   color: '#1677ff',
                   fontWeight: 500,
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {defaultFileName}
@@ -513,6 +514,9 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
                   fontSize: '11px',
                   color: isStreaming ? '#1677ff' : '#64748b',
                   marginTop: '2px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {tipText}
@@ -522,7 +526,7 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
         </div>
 
         {isStreaming ? (
-          <Space size="small" onClick={(e) => e.stopPropagation()}>
+          <Space size="small" wrap onClick={(e) => e.stopPropagation()}>
             <span
               style={{
                 display: 'inline-flex',
@@ -540,7 +544,7 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
             </span>
           </Space>
         ) : (
-          <Space size="small" onClick={(e) => e.stopPropagation()}>
+          <Space size="small" wrap onClick={(e) => e.stopPropagation()} style={{ maxWidth: '100%', flexWrap: 'wrap' }}>
             <Button
               size="small"
               type={effectiveExpanded ? 'default' : 'primary'}
@@ -678,7 +682,7 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
         title={
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: '24px' }}>
             <span>{displayTitle} - 全屏预览</span>
-            <Space size="small">
+            <Space size="small" wrap>
               <Button size="small" icon={<ExportOutlined />} onClick={handleOpenNewWindow}>
                 新标签页打开
               </Button>

@@ -10,9 +10,13 @@ def render_ratio_trends(evidence, formatter):
         data=receipt.data
         if data.get('kind')!='spreadsheet_analysis':continue
         tables={c['id']:c for c in data['coverage']}
-        definitions={c['id']:c['expression'] for c in data['plan'].get('calculations',[])}
+        plan_obj = data.get('plan') or {}
+        raw_calcs = plan_obj.get('calculations') or []
+        if not raw_calcs and plan_obj.get('metrics'):
+            raw_calcs = [{'id': m['id'], 'expression': {'aggregate': m.get('op', 'sum'), 'column': m.get('field', '')}} for m in plan_obj.get('metrics', []) if isinstance(m, dict)]
+        definitions = {c['id']: c.get('expression', {}) for c in raw_calcs if isinstance(c, dict)}
         for fact in data['facts']:
-            expr=definitions[fact['id']]
+            expr = definitions.get(fact['id']) or definitions.get(fact['id'].split('__')[0], {})
             if fact['unit']!='%' or expr.get('op')!='divide':continue
             args=expr.get('args',[])
             if len(args)!=2 or any(a.get('aggregate')!='sum' for a in args):continue

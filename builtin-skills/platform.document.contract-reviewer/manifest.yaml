@@ -34,6 +34,9 @@ spec:
       - 分析合同
       - 合同分析
       - 评估合同
+      - 审计合同
+      - 合同审计
+      - 合规审计
     matchSummary: 智能审查合同协议，诊断合规风险、缺漏条款与不对等责任，并生成交互式单页 HTML 审查报告
     runtimeType: workflow
     supportsArtifact: true

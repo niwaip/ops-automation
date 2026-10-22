@@ -16,6 +16,7 @@ import { LlmOperationModule } from './modules/llm-operation/llm-operation.module
 import { UserWorkflowReviewModule } from './modules/user-workflow-review/user-workflow-review.module';
 import { StorageConfigModule } from './modules/storage/storage-config.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
+import { PersonalSkillModule } from './modules/personal-skill/personal-skill.module';
 
 import { APP_GUARD } from '@nestjs/core';
 import { AiAuthGuard } from './common/guards/ai-auth.guard';
@@ -42,6 +43,7 @@ import { HealthController } from './modules/health/health.controller';
     UserWorkflowReviewModule,
     StorageConfigModule,
     MetricsModule,
+    PersonalSkillModule,
   ],
   providers: [
     {

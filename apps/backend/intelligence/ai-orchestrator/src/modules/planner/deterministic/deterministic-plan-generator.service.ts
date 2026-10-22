@@ -182,12 +182,10 @@ export class DeterministicPlanGeneratorService {
             )
           : null;
         if (recipe?.source === 'policy' && !recipeTopology) {
-          const err: any = new Error(
-            `Policy recipe '${recipe.recipeName}' has an unresolved capability role`
+          this.logger.warn(
+            `Policy recipe '${recipe.recipeName}' has an unresolved capability role; delegating to AI topology planner`
           );
-          err.code = 'RECIPE_CAPABILITY_ROLE_UNRESOLVED';
-          err.details = { recipeName: recipe.recipeName };
-          throw err;
+          recipeTopology = null;
         }
         const policy = this.routingPolicy?.getSnapshot() || createBuiltinRoutingPolicySnapshot();
         const hasUncoveredActionKeyword = hasRoutingSignal(

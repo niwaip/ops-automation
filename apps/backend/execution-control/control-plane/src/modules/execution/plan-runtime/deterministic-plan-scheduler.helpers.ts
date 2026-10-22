@@ -703,8 +703,24 @@ export async function materializeMarkdownReportArtifact(params: {
   }
 
   const content = reportOutput.value.trim();
-  const titleMatch = content.match(/^#\s+([^\r\n]+)/m);
-  const rawTitle = titleMatch ? titleMatch[1].trim() : (params.planDraft?.objective || '执行生成报告');
+  const titleMatch =
+    content.match(/^#\s+([^\r\n]+)/m) ||
+    content.match(/^(?:件名|主题|标题|Subject|Title)[:：]\s*([^\r\n]+)/im);
+  let rawTitle = titleMatch ? titleMatch[1].trim() : '';
+
+  if (!rawTitle) {
+    const fallbackObjective = (params.planDraft?.objective || '').trim();
+    if (fallbackObjective) {
+      const cleanObj = fallbackObjective
+        .replace(/^(?:请|请帮我|我要|帮我|麻烦|协助)?(?:写一份|撰写|编写|起草|制作|生成|输出)?/i, '')
+        .replace(/[，。！？\r\n].*$/s, '')
+        .trim();
+      rawTitle = cleanObj ? cleanObj.slice(0, 30) : fallbackObjective.slice(0, 30);
+    } else {
+      rawTitle = '执行生成报告';
+    }
+  }
+
   const cleanTitle = rawTitle.replace(/[\\/\\?%*:|"<>]/g, '_').slice(0, 60).trim();
   const fileName = `${cleanTitle}-${params.executionId.slice(0, 8)}.md`;
 
@@ -746,7 +762,7 @@ export async function materializeMarkdownReportArtifact(params: {
       producerNodeId: reportOutput.fromNodeId || null,
       artifactType: 'document',
       externalArtifactId: fileName.replace(/\.[^/.]+$/, ''),
-      name: `${rawTitle}.md`,
+      name: `${cleanTitle}.md`,
       url: publicUrl,
       mimeType: 'text/markdown',
       sizeBytes: BigInt(Buffer.byteLength(content, 'utf8')),
@@ -754,7 +770,7 @@ export async function materializeMarkdownReportArtifact(params: {
       metadataJson: {
         source: 'markdown_report',
         targetField: reportOutput.targetField,
-        title: rawTitle,
+        title: cleanTitle,
       },
     },
   });

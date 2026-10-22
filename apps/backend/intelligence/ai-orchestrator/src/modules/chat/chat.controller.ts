@@ -316,9 +316,25 @@ export class ChatController {
     };
 
     const resolvedFiles = await this.chatMediaService.resolveUploadedFiles(body.files, userCtx);
+    let messageText = parsed.message;
+    if (!messageText && resolvedFiles && resolvedFiles.length > 0) {
+      const isAllContracts = resolvedFiles.every((f) =>
+        /(?:合同|协议|agreement|contract|nda)/i.test(f.fileName)
+      );
+      if (resolvedFiles.length === 2 && isAllContracts) {
+        messageText = `合同比对 ${resolvedFiles[0].fileName} 与 ${resolvedFiles[1].fileName}`;
+      } else if (resolvedFiles.length === 1 && isAllContracts) {
+        messageText = `审查合同 ${resolvedFiles[0].fileName}`;
+      } else if (resolvedFiles.length === 1) {
+        messageText = `请分析附件文档 ${resolvedFiles[0].fileName}`;
+      } else {
+        const fileNames = resolvedFiles.map((f) => f.fileName).filter(Boolean).join('、');
+        messageText = `请分析附件文档 ${fileNames}`;
+      }
+    }
     body = {
       ...body,
-      message: parsed.message,
+      message: messageText,
       files: resolvedFiles,
       config: {
         ...body.config,

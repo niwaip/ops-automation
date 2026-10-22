@@ -23,15 +23,25 @@ export function useExecutionListQueryState() {
   const [statusFilter, setStatusFilter] = useState<ExecutionStatus | undefined>();
   const [searchText, setSearchText] = useState('');
 
+  const handleSetSearchText = (text: string) => {
+    setSearchText(text);
+    setPage(1);
+  };
+
+  const handleSetStatusFilter = (status: ExecutionStatus | undefined) => {
+    setStatusFilter(status);
+    setPage(1);
+  };
+
   return {
     page,
     setPage,
     pageSize,
     setPageSize,
     statusFilter,
-    setStatusFilter,
+    setStatusFilter: handleSetStatusFilter,
     searchText,
-    setSearchText,
+    setSearchText: handleSetSearchText,
   };
 }
 

@@ -6,6 +6,8 @@ import re
 from .analysis_contract import build_analysis_contract
 from .spreadsheet_fact_identity import fact_identity
 from .spreadsheet_request import explicit_filters, normalized
+from .analysis_request_text import user_instruction
+from .analysis_delivery_constraints import has_group_filter, has_row_filter, group_filter_boolean_matches, is_empty_query, has_distinct_list
 
 
 def request_fingerprint(prompt, workbook_id):
@@ -15,9 +17,23 @@ def request_fingerprint(prompt, workbook_id):
 def authoritative_receipts(receipts, prompt):
     native = [r for r in receipts if getattr(r, 'is_success', False)
               and isinstance(getattr(r, 'data', None), dict)
-              and r.data.get('facts')
+              and (r.data.get('facts') or is_empty_query(r.data))
               and (r.provenance or {}).get('execution_origin') != 'bounded_summary_recovery']
     if native:
+        contract = build_analysis_contract(prompt)
+        if contract.limit is not None or has_group_filter(prompt) or has_distinct_list(prompt) or re.search(r'升序|降序', prompt):
+            candidates = [r for r in native if r.data.get('query_ir_version') and
+                          (not has_group_filter(prompt) or r.data.get('plan', {}).get('having')) and
+                          group_filter_boolean_matches(prompt, r.data.get('plan', {}).get('having')) and
+                          (contract.limit is None or r.data.get('plan', {}).get('limit') == contract.limit) and
+                          (not has_distinct_list(prompt) or r.data.get('plan', {}).get('distinct')) and
+                          (not re.search(r'升序|降序', prompt) or r.data.get('plan', {}).get('order_by'))]
+            if candidates:
+                # Later corrected execution supersedes exploratory group totals.
+                latest = {}
+                for receipt in candidates:
+                    latest[(receipt.provenance or {}).get('workbook_id')] = receipt
+                return list(latest.values())
         return native
     compiled = [r for r in receipts if isinstance(getattr(r, 'data', None), dict)
                 and r.data.get('request_fingerprint') == request_fingerprint(prompt, (r.provenance or {}).get('workbook_id'))
@@ -40,7 +56,7 @@ def _matches_prompt_intent(cond, prompt, headers=None):
     """
     clean_p = prompt.casefold()
     p_nospace = re.sub(r'\s+', '', clean_p)
-    for key in ('values', 'prefixes', 'exclude_prefixes', 'exclude_values'):
+    for key in ('values', 'prefixes', 'exclude_prefixes', 'exclude_values', 'value'):
         vals = cond.get(key) or []
         if isinstance(vals, (str, int, float)):
             vals = [vals]
@@ -65,18 +81,27 @@ def _matches_prompt_intent(cond, prompt, headers=None):
 
 
 def _predicate(condition, headers):
+    col = condition.get('column') or condition.get('field')
     op = condition.get('op', '')
+    val = condition.get('value')
+    vals = condition.get('values') or ([val] if val is not None else [])
     if 'exclude_prefixes' in condition or op in ('exclude_prefix', 'exclude_prefixes', 'not_prefix'):
-        kind, values = 'exclude_prefix', condition.get('exclude_prefixes') or condition.get('prefixes') or condition.get('values', [])
+        kind, values = 'exclude_prefix', condition.get('exclude_prefixes') or condition.get('prefixes') or vals
     elif 'prefixes' in condition or op in ('prefix', 'starts_with', 'startswith'):
-        kind, values = 'prefix', condition.get('prefixes') or condition.get('values', [])
-    elif 'exclude_values' in condition or op == 'not_in':
-        kind, values = 'not_in', condition.get('exclude_values') or condition.get('values', [])
+        kind, values = 'prefix', condition.get('prefixes') or vals
+    elif 'exclude_values' in condition or op in ('not_in', 'ne', '!='):
+        kind, values = 'not_in', condition.get('exclude_values') or vals
+    elif op in ('ends_with', 'endswith'):
+        kind, values = 'ends_with', vals
+    elif op in ('contains', 'contains_text'):
+        kind, values = 'contains', vals
+    elif op in ('gt', 'gte', 'lt', 'lte', 'between'):
+        kind, values = op, vals or [condition.get('min'), condition.get('max')]
     else:
-        kind, values = 'in', condition.get('values', [])
+        kind, values = 'in', vals
     case_sensitive = bool(condition.get('case_sensitive', False))
-    vals = [str(v) if case_sensitive else str(v).casefold() for v in values]
-    return _column(condition.get('column'), headers), kind, frozenset(vals)
+    clean_vals = [str(v) if case_sensitive else str(v).casefold() for v in values if v is not None]
+    return _column(col, headers), kind, frozenset(clean_vals)
 
 
 def _tables_in(expression):
@@ -89,6 +114,7 @@ def _tables_in(expression):
 
 
 def resolve_conforming_facts(receipts, prompt=''):
+    prompt = user_instruction(prompt)
     contract = build_analysis_contract(prompt)
     items = []
     all_headers, categories = {}, {}
@@ -104,12 +130,14 @@ def resolve_conforming_facts(receipts, prompt=''):
             all_headers.update(table.get('headers', {}))
             for cond in table.get('filters', []):
                 categories.setdefault(cond.get('column'), set()).update(cond.get('values', []))
-        calculations = plan.get('calculations', [])
+        calculations = plan.get('calculations', []) or []
+        metrics_list = plan.get('metrics', []) or []
         for fact in data.get('facts', []):
             cid = str(fact.get('id', ''))
             calc = next((c for c in calculations if cid == c['id'] or cid.startswith(c['id'] + '__')), {})
-            expr = calc.get('expression') or {}
-            tids = _tables_in(expr)
+            metric_item = next((m for m in metrics_list if cid == m['id'] or cid.startswith(m['id'] + '__')), {})
+            expr = calc.get('expression') or metric_item
+            tids = _tables_in(expr) if calc else set()
             # Legacy receipts without a calculation map can bind only a single table.
             if not tids and len(tables) == 1:
                 tids = set(tables)
@@ -123,9 +151,11 @@ def resolve_conforming_facts(receipts, prompt=''):
     if not items:
         return []
     # Prefix columns must be resolved from real headers, never from an invented sheet/field.
+    LAYOUT_TRIMMING_PATTERN = r'(?:排除|去除|剔除|不包含|去掉|忽略)\s*(?:(?:标题|表头|尾注|报表尾注|表尾|汇总行|合计行|空行|注释|说明行|非数据行|物理行)[、，\s和及与]*)+'
+    business_filter_prompt = re.sub(LAYOUT_TRIMMING_PATTERN, '', prompt)
     explicit_filter_kw = bool(re.search(
-        r'(?:只包含|仅包含|(?<!不)排除|不包含|剔除|去除|开头|只要|除了|去掉|限定|筛选|过滤|仅保留|只保留)',
-        prompt
+        r'(?:只包含|仅包含|(?<!不)排除|不包含|剔除|去除|开头|结尾|只要|除了|去掉|限定|筛选|过滤|仅保留|只保留|大于|小于|高于|低于|超过|在.*之间)',
+        business_filter_prompt
     ))
     data_driven_filter = any(
         _matches_prompt_intent(cond, prompt, all_headers)
@@ -171,7 +201,16 @@ def resolve_conforming_facts(receipts, prompt=''):
                 ]
                 items = aligned_filtered if aligned_filtered else [it for it in neutral_filtered if it not in judge_rejected]
             else:
-                items = [it for it in items if it[2] and it not in judge_rejected]
+                filtered_items = [it for it in items if it[2] and it not in judge_rejected]
+                if filtered_items:
+                    items = filtered_items
+                else:
+                    # 组过滤 (HAVING) 兜底：若 prompt 包含的是针对分组/聚合后指标的过滤（而非底表单行过滤），
+                    # 且事实本身为原生分组聚合事实（无底表行过滤），应予保留，不因缺少行级谓词而清空
+                    if has_group_filter(prompt) and not has_row_filter(prompt):
+                        items = [it for it in items if it not in judge_rejected]
+                    else:
+                        items = []
     elif contract.domain == 'generic':
         # 用户未请求过滤：优先采纳无过滤事实；若全为带过滤事实且未显式禁止过滤，做宽松兼容
         unfiltered = [it for it in items if not it[2]]

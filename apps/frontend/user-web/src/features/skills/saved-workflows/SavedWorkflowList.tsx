@@ -51,7 +51,7 @@ export function SavedWorkflowList() {
   }, [schedulesQuery.data]);
 
   const activeSkillsCount = useMemo(
-    () => skills.filter((skill) => skill.status === 'active').length,
+    () => skills.filter((skill) => skill.status === 'active' && skill.isRunnable !== false).length,
     [skills]
   );
 
@@ -79,7 +79,7 @@ export function SavedWorkflowList() {
       }
 
       if (statusFilter && statusFilter !== 'all') {
-        if (statusFilter === 'active' && skill.status !== 'active') return false;
+        if (statusFilter === 'active' && (skill.status !== 'active' || skill.isRunnable === false)) return false;
         if (statusFilter === 'scheduled') {
           const sList = schedulesBySkillId.get(skill.id) || [];
           if (!sList.some((s) => s.isActive)) return false;

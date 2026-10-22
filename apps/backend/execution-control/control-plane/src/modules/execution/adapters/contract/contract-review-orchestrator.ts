@@ -9,6 +9,7 @@ import {
 } from '../../../../config/service-endpoints';
 import { formatDocumentDomainError } from '../builtin-handler-registry.service';
 import type { ModelInvocationLedgerService } from '../../../experience-learning/model-invocation-ledger.service';
+import { partitionClausesAdaptively } from './contract-clause-batcher';
 
 export interface ClauseReviewOutputItem {
   clauseIndex: number;
@@ -332,7 +333,11 @@ async function executeBatchedSemanticReview(
   logger: Logger,
   modelLedger?: ModelInvocationLedgerService,
   request?: RuntimeStepInvokeRequest
-): Promise<{ reviewedClauses: ClauseReviewOutputItem[]; orchestratorWarnings: string[] }> {
+): Promise<{
+  reviewedClauses: ClauseReviewOutputItem[];
+  orchestratorWarnings: string[];
+  usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
+}> {
   const parsedClauses: any[] = parsedDoc.parsedClauses || [];
   const contractTypeName = parsedDoc.contractTypeName || '商事合同';
   const myPosition = parsedDoc.myPosition || 'buyer';
@@ -423,12 +428,13 @@ async function executeBatchedSemanticReview(
     `[ContractReviewOrchestrator] Bypassed ${parsedClauses.length - clausesToReviewViaLlm.length}/${parsedClauses.length} empty/deterministic clauses. Dispatching ${clausesToReviewViaLlm.length} clauses to LLM in batches.`
   );
 
-  // Batch substantive clauses (3 clauses per batch)
-  const BATCH_SIZE = 3;
-  const batches: { clause: any; index: number }[][] = [];
-  for (let i = 0; i < clausesToReviewViaLlm.length; i += BATCH_SIZE) {
-    batches.push(clausesToReviewViaLlm.slice(i, i + BATCH_SIZE));
-  }
+  // Dynamically partition substantive clauses using adaptive content-aware batching
+  const batches = partitionClausesAdaptively(clausesToReviewViaLlm);
+  logger.log(
+    `[ContractReviewOrchestrator] Adaptive batching packed ${clausesToReviewViaLlm.length} clauses into ${batches.length} batches ` +
+    `(avg ${(clausesToReviewViaLlm.length / (batches.length || 1)).toFixed(1)} clauses/batch, ` +
+    `distribution: [${batches.map((b) => b.length).join(', ')}]).`
+  );
 
   // Concurrency limit of batches (default 1 to prevent local GPU contention on designated 35B model)
   const orchestratorUrl = getAiOrchestratorUrl();
@@ -440,6 +446,8 @@ async function executeBatchedSemanticReview(
       : 1;
   const workerCount = Math.min(maxConcurrency, batches.length);
   const orchestratorWarnings: string[] = [];
+  let totalPromptTokens = 0;
+  let totalCompletionTokens = 0;
 
   const workers = Array.from({ length: workerCount }, async () => {
     while (currentBatchIdx < batches.length) {
@@ -578,6 +586,12 @@ ${candidateRulesSummary}`;
           throw lastErr;
         }
 
+        const inputTokens = response.data?.usage?.prompt_tokens ?? 0;
+        const outputTokens = response.data?.usage?.completion_tokens ?? 0;
+        const cachedTokens = response.data?.usage?.prompt_tokens_details?.cached_tokens ?? 0;
+        totalPromptTokens += inputTokens;
+        totalCompletionTokens += outputTokens;
+
         if (modelLedger && request) {
           try {
             const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -621,10 +635,6 @@ ${candidateRulesSummary}`;
               .createHash('sha256')
               .update(JSON.stringify(samplingPolicy))
               .digest('hex');
-
-            const inputTokens = response.data?.usage?.prompt_tokens ?? 0;
-            const outputTokens = response.data?.usage?.completion_tokens ?? 0;
-            const cachedTokens = response.data?.usage?.prompt_tokens_details?.cached_tokens ?? 0;
 
             let estimatedCost: number | null = null;
             let currency: string | null = null;
@@ -889,7 +899,16 @@ ${candidateRulesSummary}`;
   });
 
   await Promise.all(workers);
-  return { reviewedClauses: results, orchestratorWarnings };
+  const totalTokens = totalPromptTokens + totalCompletionTokens;
+  const usage =
+    totalTokens > 0
+      ? {
+          prompt_tokens: totalPromptTokens,
+          completion_tokens: totalCompletionTokens,
+          total_tokens: totalTokens,
+        }
+      : undefined;
+  return { reviewedClauses: results, orchestratorWarnings, usage };
 }
 
 /**
@@ -971,7 +990,7 @@ export async function executeContractReviewOrchestration(
     request.metadata?.definitionVersion === '0.0.0-smoke' ||
     String(request.executionId || '').startsWith('smoke-');
 
-  const { reviewedClauses, orchestratorWarnings } = await executeBatchedSemanticReview(
+  const { reviewedClauses, orchestratorWarnings, usage } = await executeBatchedSemanticReview(
     parseResult,
     skipLlm,
     logger,
@@ -1020,8 +1039,9 @@ export async function executeContractReviewOrchestration(
     llmReviewedCount: reviewedClauses.filter((c) => c.llmReviewed).length,
     degradedClausesCount: degradedClauses.length,
     isDegraded: degradedClauses.length > 0,
-    isTruncated: parseResult.isTruncated,
+    isTruncated: Boolean(parseResult.isTruncated),
     warnings: combinedWarnings,
+    tokens: usage,
   };
 
   // Group chapters
@@ -1120,6 +1140,7 @@ export async function executeContractReviewOrchestration(
         htmlReport: renderOutput.htmlReport,
         artifact: renderOutput.artifact,
         artifacts: renderOutput.artifacts,
+        usage,
       },
       artifacts: renderOutput.artifacts,
     };

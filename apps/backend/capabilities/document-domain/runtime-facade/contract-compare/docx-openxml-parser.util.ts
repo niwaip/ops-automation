@@ -1,5 +1,5 @@
 import * as JSZip from 'jszip';
-import type { ContractClauseNode, DocumentBlock } from './contract-compare.types';
+import type { ContractClauseNode, DocumentBlock, TableCellItem } from './contract-compare.types';
 import { cleanMarkdownFormatting } from './contract-clause-segmenter.util';
 
 export interface NumberingDefinitions {
@@ -179,7 +179,7 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
     html?: string;
     hasUnderline?: boolean;
     prefix?: string;
-    rows?: string[][];
+    rows?: TableCellItem[][];
     jc?: string;
     ilvl?: number;
     numId?: string;
@@ -196,29 +196,40 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
     if (tag === 'w:tbl') {
       const rowRegex = /<w:tr(?:\s[^>]*)?>([\s\S]*?)<\/w:tr>/g;
       let rM: RegExpExecArray | null;
-      const rows: string[][] = [];
+      const rows: TableCellItem[][] = [];
       while ((rM = rowRegex.exec(inner)) !== null) {
         const cellRegex = /<w:tc(?:\s[^>]*)?>([\s\S]*?)<\/w:tc>/g;
         let cM: RegExpExecArray | null;
-        const cells: string[] = [];
+        const cells: TableCellItem[] = [];
         while ((cM = cellRegex.exec(rM[1])) !== null) {
+          const gridSpanMatch = cM[1].match(/<w:gridSpan\s+[^>]*w:val="(\d+)"/i);
+          const colSpan = gridSpanMatch ? parseInt(gridSpanMatch[1], 10) : undefined;
+
           const tRegex = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g;
           let tM: RegExpExecArray | null;
           let cellText = '';
           while ((tM = tRegex.exec(cM[1])) !== null) {
             cellText += decodeXmlEntities(tM[1]);
           }
-          cells.push(cellText.trim());
+          const trimmed = cellText.trim();
+          if (colSpan && colSpan > 1) {
+            cells.push({ text: trimmed, colSpan });
+          } else {
+            cells.push(trimmed);
+          }
         }
-        if (cells.some((c) => c.length > 0)) {
+        if (cells.some((c) => (typeof c === 'string' ? c.length > 0 : c.text.length > 0))) {
           rows.push(cells);
         }
       }
       if (rows.length > 0) {
+        const textRepresentation = rows
+          .map((r) => r.map((c) => (typeof c === 'string' ? c : c.text)).join(' | '))
+          .join('\n');
         rawElements.push({
           type: 'table',
-          text: rows.map((r) => r.join(' | ')).join('\n'),
-          fullText: rows.map((r) => r.join(' | ')).join('\n'),
+          text: textRepresentation,
+          fullText: textRepresentation,
           rows,
         });
       }
@@ -406,7 +417,10 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
         currentClause!.blocks!.push({
           id: `blk-${blockIdx++}`,
           type: 'key_value_grid',
-          metadata: el.rows.map((r) => ({ key: r[0], value: r[1] })),
+          metadata: el.rows.map((r) => ({
+            key: typeof r[0] === 'string' ? r[0] : r[0].text,
+            value: typeof r[1] === 'string' ? r[1] : r[1].text,
+          })),
         });
       } else {
         currentClause!.blocks!.push({

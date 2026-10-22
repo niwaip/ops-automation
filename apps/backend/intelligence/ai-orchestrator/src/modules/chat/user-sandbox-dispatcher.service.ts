@@ -21,6 +21,8 @@ import {
   isArtifactRegenerationRequest,
   classifyPersonalSandboxError,
 } from './user-sandbox-error.util';
+import { handleSavePersonalSkillChat } from '../personal-skill/personal-skill-chat.handler';
+import { PersonalSkillCaptureService } from '../personal-skill/personal-skill-capture.service';
 
 const SANDBOX_HISTORY_TURNS_LIMIT = Number(process.env.SANDBOX_HISTORY_TURNS_LIMIT || 16);
 const SANDBOX_HISTORY_ITEM_CHAR_LIMIT = Number(process.env.SANDBOX_HISTORY_ITEM_CHAR_LIMIT || 12000);
@@ -35,7 +37,8 @@ export class UserSandboxDispatcherService {
     private readonly chatConversationService: ChatConversationService,
     private readonly chatMediaService: ChatMediaService,
     private readonly modelService: ModelService,
-    @Optional() private readonly reminderBridge?: PersonalReminderBridgeService
+    @Optional() private readonly reminderBridge?: PersonalReminderBridgeService,
+    @Optional() private readonly personalSkillCaptureService?: PersonalSkillCaptureService
   ) {
     const host =
       process.env.SESSION_BROKER_HOST ||
@@ -247,6 +250,12 @@ export class UserSandboxDispatcherService {
       });
       return true;
     }
+
+    if (await handleSavePersonalSkillChat({
+      body, userId: effectiveUserId, emit,
+      conversation: this.chatConversationService,
+      capture: this.personalSkillCaptureService,
+    })) return true;
 
     this.logger.log(
       `Dispatching personal request to sandbox harness for user [${effectiveUserId}]`

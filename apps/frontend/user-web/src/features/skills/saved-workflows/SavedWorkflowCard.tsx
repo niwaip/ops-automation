@@ -32,6 +32,8 @@ export function SavedWorkflowCard({
   const activeSchedules = schedules.filter((schedule) => schedule.isActive);
   const nextSchedule = activeSchedules[0] || schedules[0];
   const isActive = skill.status === 'active';
+  const isRunnable = skill.isRunnable !== false;
+  const canOperate = isActive && isRunnable;
 
   return (
     <Card
@@ -61,7 +63,7 @@ export function SavedWorkflowCard({
           </div>
           <span
             className={`${styles['employee-status-dot']} ${
-              isActive ? styles['dot-authorized'] : styles['dot-unauthorized']
+              isActive && isRunnable ? styles['dot-authorized'] : styles['dot-unauthorized']
             }`}
           />
         </div>
@@ -84,8 +86,12 @@ export function SavedWorkflowCard({
               固定 {skill.stepCount} 步
             </span>
             <span className={styles['employee-version-pill']}>v{skill.version}</span>
-            <Tag color={isActive ? 'success' : 'default'} bordered={false} style={{ margin: 0, fontSize: 11 }}>
-              {isActive ? '就绪' : skill.status}
+            <Tag
+              color={isActive && isRunnable ? 'success' : !isRunnable ? 'warning' : 'default'}
+              bordered={false}
+              style={{ margin: 0, fontSize: 11 }}
+            >
+              {isActive && isRunnable ? '就绪' : !isRunnable ? '依赖下线' : skill.status}
             </Tag>
           </div>
         </div>
@@ -158,12 +164,28 @@ export function SavedWorkflowCard({
         </div>
 
         {/* AI Review & Saved time */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span className={styles['workflow-review-badge']}>
-            <SafetyCertificateFilled style={{ color: '#10b981', fontSize: 12 }} />
-            <span>{skill.review.summary || 'AI 审查已通过，执行计划未被改写'}</span>
-          </span>
-          <span style={{ fontSize: 11, color: 'var(--text-secondary)', paddingLeft: 17 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {!isRunnable ? (
+            <div
+              style={{
+                padding: '4px 8px',
+                background: '#fff2f0',
+                border: '1px solid #ffccc7',
+                borderRadius: 4,
+                fontSize: 12,
+                color: '#ff4d4f',
+                lineHeight: 1.4,
+              }}
+            >
+              {skill.unavailableReason || '工作流依赖的底层技能已下线归档，暂不可运行'}
+            </div>
+          ) : (
+            <span className={styles['workflow-review-badge']}>
+              <SafetyCertificateFilled style={{ color: '#10b981', fontSize: 12 }} />
+              <span>{skill.review.summary || 'AI 审查已通过，执行计划未被改写'}</span>
+            </span>
+          )}
+          <span style={{ fontSize: 11, color: 'var(--text-secondary)', paddingLeft: isRunnable ? 17 : 2 }}>
             保存于 {formatLocalizedDateTime(skill.createdAt)}
           </span>
         </div>
@@ -174,14 +196,14 @@ export function SavedWorkflowCard({
         <Button
           type="primary"
           icon={<PlayCircleOutlined />}
-          disabled={!isActive}
+          disabled={!canOperate}
           onClick={() => onExecute(skill)}
           className={styles['employee-primary-action-btn']}
         >
           立即执行
         </Button>
         <Button
-          disabled={!isActive}
+          disabled={!canOperate}
           onClick={() => onSchedule(skill)}
           className={styles['employee-secondary-action-btn']}
         >

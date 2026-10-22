@@ -514,6 +514,7 @@ export class PdfCreateService {
       this.applyBodyFont(doc, cjkFont);
       doc.y = y + rowHeight;
     });
+    doc.x = left;
     doc.moveDown(0.5);
   }
 

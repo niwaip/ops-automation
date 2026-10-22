@@ -143,3 +143,31 @@ docker/ops
 managed_components/
 sdkconfig.old
 sdkconfig
+
+# Review / audit test run artifacts (large SSE logs, fixtures, intermediate results)
+docs/artifacts/reviews/**/*.sse.txt
+docs/artifacts/reviews/**/*.sse
+docs/artifacts/reviews/**/fault-evidence/
+docs/artifacts/reviews/**/isolated/
+docs/artifacts/reviews/**/downloads/
+docs/artifacts/reviews/**/fixtures/
+docs/artifacts/reviews/**/first-pass/
+docs/artifacts/reviews/**/harness-auth-preflight/
+docs/artifacts/reviews/**/*.xlsx
+docs/artifacts/reviews/**/*.zip
+docs/artifacts/reviews/**/*.pptx
+
+# New review run directories (test artifacts, not source code)
+docs/artifacts/reviews/contract-compare-reaudit/
+docs/artifacts/reviews/contract-compare-reaudit2/
+docs/artifacts/reviews/contract-compare-reaudit3/
+docs/artifacts/reviews/department-paid-skill-audit-20261022/
+docs/artifacts/reviews/detail-query-audit-*/
+docs/artifacts/reviews/employee-detail-*/
+docs/artifacts/reviews/groupby-query-audit-*/
+docs/artifacts/reviews/nda-closed-loop-*/
+docs/artifacts/reviews/nda-flow-retest-*/
+docs/artifacts/reviews/personal-no-hardcode-*/
+docs/artifacts/reviews/personal-skill-audit-*/
+docs/artifacts/reviews/spreadsheet-query-*/
+docs/artifacts/reviews/wbs-personal-*/

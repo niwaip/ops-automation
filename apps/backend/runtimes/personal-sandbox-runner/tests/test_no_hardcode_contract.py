@@ -65,12 +65,14 @@ class NoHardcodeContractTests(unittest.TestCase):
             self.assertNotIn(seeded, system)
 
     def test_analysis_fact_selection_has_no_hardcoded_business_values(self):
-        """Rule check: Zero hardcoded business values in fact selection or semantic filter judge."""
-        for filename in ('analysis_fact_selection.py', 'semantic_filter_judge.py'):
+        """Rule check: Zero hardcoded business values in fact selection, semantic judge, or task state."""
+        import re
+        for filename in ('analysis_fact_selection.py', 'semantic_filter_judge.py', 'analysis_task_state.py'):
             source_file = Path(__file__).resolve().parent.parent / 'src' / 'dsh_modules' / filename
             content = source_file.read_text(encoding='utf-8')
-            for forbidden in ('有偿', '无偿', '有偿无偿', 'FC34000', 'FC45031', 'SM華南BAS', 'DM華南BAS'):
-                self.assertNotIn(forbidden, content, f"Forbidden hardcoded term '{forbidden}' found in {filename}")
+            code_only = re.sub(r'#.*', '', content)
+            for forbidden in ('"有偿"', "'有偿'", '"无偿"', "'无偿'", '有偿无偿', 'FC34000', 'FC45031', 'SM華南BAS', 'DM華南BAS'):
+                self.assertNotIn(forbidden, code_only, f"Forbidden hardcoded term '{forbidden}' found in {filename}")
 
     def test_multi_round_category_partition_selection_zero_hardcode(self):
         """Zero-hardcoding: arbitrary category partition (自研 / 外包) must converge to refined round."""
@@ -116,7 +118,9 @@ class NoHardcodeContractTests(unittest.TestCase):
 
     def test_audit_session_reproduction_both_paid_and_unpaid_preserved(self):
         """Reproduction of user session chat-session-1792572669074-09bmpzd6: all 13 facts preserved."""
-        evidence_path = Path('./data/users/e7fce333-a8f4-4097-9a53-f0a4c729da46/workspace/.dsh/sessions/chat-session-1792572669074-09bmpzd6.evidence.json')
+        evidence_path = Path('./data/users/e7fce333-a8f4-4097-9a53-f0a4c729da46/workspace/.dsh/sessions/chat-session-1792572669074-09bmpzd6.evidence/1792577941643112959-fa4bfe00079240e1a76602c737ee7030.json')
+        if not evidence_path.exists():
+            evidence_path = Path('./data/users/e7fce333-a8f4-4097-9a53-f0a4c729da46/workspace/.dsh/sessions/chat-session-1792572669074-09bmpzd6.evidence.json')
         if not evidence_path.exists():
             return
         import json

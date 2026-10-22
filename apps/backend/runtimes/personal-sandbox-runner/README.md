@@ -55,6 +55,10 @@ personal-sandbox-runner/
 │       ├── table_comparison.py # 显式列对与范围的只读计算、排序与来源证据
 │       ├── comparison_evidence.py# 本轮执行证据及极值结论一致性验证
 │       ├── agent_loop.py       # ReAct 智能体多轮执行循环、防死锁反推与物理产物拦截断言
+│       ├── final_answer.py     # 最终回复呈现、已有产物恢复与终态验收
+│       ├── retrieval_answer_validation.py # 基于本轮检索回执的正文完整性检查
+│       ├── retrieval_answer_recovery.py   # 同模型、无工具、有截止时间的一次正文补全
+│       ├── response_observability.py      # 清洗前后长度、SHA-256 与流结束来源
 │       ├── artifact_exporter.py# HTML 原型与各类交付物提取、Token 截断自动闭合与自愈
 │       └── telemetry.py        # 遥测指标收集（TTFT、Token、耗时）与协议标记外发
 ├── plugins/                    # 系统扩展插件目录
@@ -152,6 +156,22 @@ dsh exec python3 -c "import docx; print(docx.__version__)"
 
 ## 五、关键技术亮点与纵深防御
 
+### 检索答案完整性交付
+
+文件成功声明在循环最终返回前另做一次物理检查，不受普通纠偏次数或生成/只读意图分类影响。明确声称“已生成”“生成了文件”等，但对应文件不存在、为空或早于本轮时，最终答复改为未完成提示并记录 `artifact_delivery/reject`。仅引用输入文件、询问示例路径或明确说明失败不会触发成功声明检查。安装依赖、写出脚本不等于生成目标文件。回归：`tests/test_artifact_terminal_claims.py`。
+
+本轮存在成功且非空的 `web_search` / `fetch_page` 执行回执时，终态检查拒绝“仅标题、仅目录层级、空正文”的结构性未交付。前置搜索、思考规划检索与执行循环检索统一传递本轮证据，规划原始资料在预算内传入呈现阶段。正常的短事实、明确的不确定性说明、具体澄清问题以及用户明确要求的标题保留；不使用统一最小字数门槛。历史工具消息不作为本轮触发条件。
+
+未通过时，最多追加一次同模型、无工具的正文综合。该调用关闭思考与 runner 传输重试，缓冲输出；使用已有检索资料，不重复搜索，不执行副作用工具。时间窗口取 30 秒、单次调用预算和任务剩余时间的最小值；不足 5 秒不启动补全。代理已有的瞬时网络重试仍可能发生，但受本次客户端截止时间约束。补全仍为空、仅标题、工具协议、流提前关闭或 `length` 时，返回明确的“本次回答未完成”提示。总任务超时继续按原有超时路径退出，不伪装成完成。
+
+`metrics.answerValidation` 表示该结构检查的终态：`status=completed|needs_input|incomplete`、`reason` 和 `attempts=0|1`；未适用时为空对象。`completed` 仅表示通过结构验收，不代表事实已经全部核实。`exitCode=0` 表示进程正常完成；判断答案是否完整还须检查此字段。决策进入 `guardDecisions`，并随现有链路保存到会话的 `executionTrace.metrics`。
+
+`metrics.modelResponses` 按模型调用顺序保存 `rawChars`、`cleanChars`、两份 SHA-256、`finishReason`、`receivedDone` 和 `finishReasonSource`。结束来源区分代理明确返回的 `upstream`、仅收到 `[DONE]` 的 `done_fallback` 与 `stream_closed`。这些新增字段不保存响应正文、思考正文或密钥，便于区分生成不足、输出清洗和流传输异常。
+
+沙箱将模块目录只读挂载到 `/usr/local/bin/dsh_modules`，每次 `dsh run` 启动新 Python 进程。此类 Python 模块修复可由下一次请求加载，需实际导入并核对挂载源代码；无此挂载的部署需要更新镜像并重建沙箱。Compose 入口仍统一为仓库根目录的 `./docker/start-smart.sh`。
+
+新增回归：`test_retrieval_answer_validation.py`、`test_retrieval_answer_recovery.py`、`test_response_observability.py` 与 `test_planning_retrieval_delivery.py`。相关既有回归覆盖 `test_dsh.py`、`test_dsh_skills.py`、`test_small_model_protocol.py`、`test_table_comparison.py`、`test_spreadsheet_analysis.py`、`test_financial_workbook_fixes.py`。完整契约见 [检索答案交付验收方案](../../../../docs/design/Retrieval-Answer-Delivery-Validation_v1.0.md)。
+
 1. **工作区目录边界严格受限（Directory Confinement & Anti-Traversal）**：
    - 文件工具（`read_file`、`patch_file`、`send_file`、`inspect_image`）经由 `resolve_sandboxed_path` 严格锁定根边界：
      - 用户工作区：`/workspace`（完全读写）
@@ -239,8 +259,14 @@ AI 负责将自然语言转换成受限 JSON 计划并选择真实来源；可�
 
 `registered_metric_completion.py` 根据领域注册表的分子/分母关系生成受限派生计划，要求当前原件、当前领域版本、唯一字段绑定、同表头与同选中行范围。只复用来源表达式，不对缓存事实值口算；使用原核算引擎重执行并保存父证据 ID 与新回执。每轮最多四次内部补算，失败的相同计划不重试。内部补算仍要求本轮具备聚合工具权限。没有定义、来源不唯一、范围不同或零分母时不会声明完成。Excel 适配层没有固定问句、Sheet、财务坐标或预置结果；财务或实验等领域关系由独立注册表提供。
 
+### 门禁复核与澄清
+
+门禁异常交给 `task_completeness_judge.py` 根据请求、真实表头、计划、范围、来源和事实分类为 `recheck`、`repair` 或 `clarify`。同一上下文复用判定；缓存绑定全部筛选条件、选中行、来源及契约。`analysis_gate_review.py` 对误报建议重新验证，目前只允许有原生分组证据支持的稀疏指标告警被撤销；来源失效、缺少计算或未执行的查询阶段不允许通过裁判直接豁免。复核总时限最多18秒，不重试同一失败上下文；复核不可用时保留原校验结果。工具循环最多额外预留两轮修复或提问机会，仍遵从总截止时间。
+
+缺少数据或口径不明时允许以用户能理解的问题进入 `awaiting_user`，用户要求先澄清时不强迫本轮计算；工具选择保持自主，执行证据门禁在模型选择后校验结果。带长解释的澄清另行核对字段含义、公式等断言，保留问题并去掉没有来源支持的业务推断。有来源支持的部分结果可以与问题一起交付，每个数值断言仍检查当前原件。附件包装文字不参与任务实体、指标或期间解析。QueryIR 的最终结果按引擎已执行的 HAVING、排序与截断顺序直接呈现，后续纠正回执替代前期全组试算。公开的 `aggregate_spreadsheet` 参数与执行器保持一致，支持单独的 `query`，无需附带旧式 `calculations`；去重清单与去重数量分开验收。显式表级分组继承到聚合表达式，分组原字段可以作为真实并列排序键。
+
 ### 用户报告与来源明细分离
 
-`report_presentation.py` 从已核验回执生成用户视图，与计算和证据验收独立。正文优先展示请求指标、极值分组、实际/预算及有符号差额；显示千位分隔和最多两位小数，极小非零值保留精度。辅助指标、完整口径、声明范围、坐标、语义版本和证据 ID 放入默认折叠的“查看来源与核算明细”。核验仍使用未舍入的回执数值；完整回执照常归档。偏差正文单独经过证据验收，不能依赖折叠明细中的正确数值掩盖错误正文。未完成项、期间变化、业务适用性限制和待验证解释保留在正文。
+`report_presentation.py` 从已核验回执生成用户视图，与计算和证据验收独立。正文优先展示请求指标、极值分组、实际/预算及有符号差额；常规统计显示千位分隔和最多两位小数，极小非零值保留精度；QueryIR 最终行保留引擎精度及执行顺序。辅助指标、完整口径、声明范围、坐标、语义版本和证据 ID 放入默认折叠的“查看来源与核算明细”。核验仍使用未舍入的回执数值；完整回执照常归档。偏差正文单独经过证据验收，不能依赖折叠明细中的正确数值掩盖错误正文。未完成项、期间变化、业务适用性限制和待验证解释保留在正文。
 
 折叠采用严格的独立行 `<details>` / `<summary>` 标记。共享聊天渲染器仅识别无属性、完整闭合、位于代码围栏外的标记，以 React 原生 details 展示，内部仍使用原有安全 Markdown 渲染；不启用任意 HTML。纯文本模式保留明细文字并去除折叠标记。根工作区原件通过已有登录态下载端点提供，其他路径只显示文件名，避免猜测链接。展示层不包含固定财务 Sheet、问题句式或结果，其他领域可复用。

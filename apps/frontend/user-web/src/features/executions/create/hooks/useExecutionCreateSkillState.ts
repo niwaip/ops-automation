@@ -14,12 +14,14 @@ import {
 } from '@/features/executions/create/lib/executionCreate';
 import { useAuthStore } from '@/shared/store/authStore';
 
-type PublishedSkillOption = {
+export type PublishedSkillOption = {
   skillId: string;
   skillName: string;
   updatedAt: string;
   sourceType: 'published' | 'saved-workflow';
   skillVersion?: string;
+  isRunnable?: boolean;
+  unavailableReason?: string;
 };
 
 type PublishedSkillCandidate = PublishedSkillOption & {
@@ -106,6 +108,8 @@ export function useExecutionCreateSkillState({
         updatedAt: skill.updatedAt,
         sourceType: 'saved-workflow',
         skillVersion: skill.version,
+        isRunnable: skill.isRunnable !== false,
+        unavailableReason: skill.unavailableReason,
       }));
 
     return [...savedOptions, ...publishedOptions].sort((left, right) =>
@@ -235,6 +239,7 @@ export function useExecutionCreateSkillState({
     isSkillOptionsLoading:
       publishedSkillsQuery.isLoading || authorizedSkillsQuery.isLoading || savedSkillsQuery.isLoading,
     selectedSkill,
+    selectedSkillOption,
     selectedSkillDisplayName,
     selectedSkillLoading: savedSkillsQuery.isLoading || selectedSkillQuery.isFetching,
     selectedSkillVersion: selectedSkillOption?.skillVersion,

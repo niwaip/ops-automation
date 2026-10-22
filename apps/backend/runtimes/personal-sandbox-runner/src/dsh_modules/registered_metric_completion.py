@@ -57,7 +57,11 @@ class RegisteredMetricCompletion:
             data=receipt.data
             if data.get('semantic_domain')!={'id':contract.domain,'version':pack.VERSION}:
                 continue
-            calculations={c['id']:c for c in data['plan'].get('calculations',[])}
+            plan_obj = data.get('plan') or {}
+            raw_calcs = plan_obj.get('calculations') or []
+            if not raw_calcs and plan_obj.get('metrics'):
+                raw_calcs = [{'id': m['id'], 'expression': {'aggregate': m.get('op', 'sum'), 'column': m.get('field', '')}} for m in plan_obj.get('metrics', []) if isinstance(m, dict)]
+            calculations = {c['id']: c for c in raw_calcs if isinstance(c, dict)}
             for fact in data.get('facts',[]):
                 calculation=calculations.get(fact['id'])
                 if not calculation or not fact.get('metric_id'):

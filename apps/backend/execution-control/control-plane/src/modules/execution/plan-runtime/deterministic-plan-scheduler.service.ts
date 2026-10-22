@@ -1369,6 +1369,30 @@ export class DeterministicPlanSchedulerService {
       ? [...(checkResult.artifacts || []), materializedReportArtifact]
       : (checkResult.artifacts || []);
 
+    let usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } | undefined;
+    if (this.prisma.llmUsageLedger) {
+      try {
+        const ledgerAgg = await this.prisma.llmUsageLedger.aggregate({
+          where: { executionId: execution.id },
+          _sum: {
+            inputTokens: true,
+            outputTokens: true,
+          },
+        });
+        const promptTokens = ledgerAgg._sum.inputTokens || 0;
+        const completionTokens = ledgerAgg._sum.outputTokens || 0;
+        if (promptTokens > 0 || completionTokens > 0) {
+          usage = {
+            prompt_tokens: promptTokens,
+            completion_tokens: completionTokens,
+            total_tokens: promptTokens + completionTokens,
+          };
+        }
+      } catch (err) {
+        this.logger.warn(`Failed to aggregate llm usage for execution ${execution.id}: ${(err as Error).message}`);
+      }
+    }
+
     const endedAt = new Date();
     const resultJson = buildDeterministicExecutionResult({
       executionId: execution.id,
@@ -1376,6 +1400,7 @@ export class DeterministicPlanSchedulerService {
       finalOutputs,
       artifacts: allArtifacts,
       finishedAt: endedAt,
+      usage,
     });
 
     await this.prisma.execution.update({

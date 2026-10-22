@@ -46,8 +46,8 @@ export const AntdProvider: React.FC<{ children: React.ReactNode }> = ({ children
       },
       components: {
         Layout: {
-          colorBgBody: theme === 'dark' ? '#0f172a' : '#f1f5f9',
-          colorBgHeader: theme === 'dark' ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+          bodyBg: theme === 'dark' ? '#0f172a' : '#f1f5f9',
+          headerBg: theme === 'dark' ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
           siderBg: theme === 'dark' ? '#0f172a' : '#ffffff',
           lightSiderBg: '#ffffff',
           darkSiderBg: '#0f172a',

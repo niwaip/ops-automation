@@ -8,9 +8,17 @@ export interface DiffToken {
   text: string;
 }
 
+export interface TableCell {
+  text: string;
+  colSpan?: number;
+  rowSpan?: number;
+}
+
+export type TableCellItem = string | TableCell;
+
 export interface DocumentBlock {
   id: string;
-  type: 'paragraph' | 'bilingual_pair' | 'list_item' | 'table' | 'key_value_grid' | 'heading';
+  type: 'paragraph' | 'bilingual_pair' | 'list_item' | 'table' | 'key_value_grid' | 'heading' | 'image';
   primaryText?: string;
   secondaryText?: string;
   primaryHtml?: string;
@@ -21,8 +29,10 @@ export interface DocumentBlock {
   isBold?: boolean;
   hasUnderline?: boolean;
   prefix?: string;
-  tableData?: { headers?: string[]; rows: string[][] };
+  tableData?: { headers?: TableCellItem[]; rows: TableCellItem[][] };
   metadata?: Array<{ key: string; value: string }>;
+  imageUrl?: string;
+  caption?: string;
   html?: string;
 }
 

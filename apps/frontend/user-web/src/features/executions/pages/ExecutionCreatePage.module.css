@@ -12,3 +12,21 @@
   height: 0;
   display: none;
 }
+
+.execution-create-content-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr);
+  gap: 20px;
+  min-height: 0;
+  flex: 1;
+  height: 100%;
+  align-items: stretch;
+}
+
+@media (max-width: 992px) {
+  .execution-create-content-grid {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow-y: visible;
+  }
+}

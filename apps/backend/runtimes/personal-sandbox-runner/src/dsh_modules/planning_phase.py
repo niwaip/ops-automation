@@ -19,6 +19,7 @@ from .llm import call_model_proxy, clean_output, parse_tool_calls
 from .runtime_policy import RuntimePolicy
 from .telemetry import TelemetryStats
 from .tools import execute_tool, get_sandbox_tools
+from .tool_result import ToolResult, adapt_tool_output
 
 
 def _dispatch_call_model_proxy(*args, **kwargs):
@@ -291,6 +292,7 @@ def run_planning_phase(
     telemetry: Optional[TelemetryStats] = None,
     is_deliverable_task: bool = True,
     session_files: Optional[List[str]] = None,
+    execution_evidence: Optional[List[ToolResult]] = None,
 ) -> Optional[str]:
     """Execute the thinking model in the planning phase to reason, architect, outline,
 
@@ -426,10 +428,18 @@ def run_planning_phase(
 
                 print(f"-> 规划期检索调用: {t_name}({t_params})", flush=True)
                 t_res = _dispatch_execute_tool(t_name, t_params, deadline=deadline)
+                receipt = adapt_tool_output(t_res)
+                receipt.provenance = {
+                    **(receipt.provenance or {}), "tool": t_name,
+                    "phase": "planning", "round": executed_search_count - 1,
+                }
+                if execution_evidence is not None:
+                    execution_evidence.append(receipt)
                 if telemetry:
                     is_err = _is_tool_error(t_res)
                     status = "error" if is_err else "success"
                     telemetry.record_tool_call(tool_name=t_name, params=t_params, status=status)
+                    telemetry.record_execution_result(receipt)
                 clipped_res = ContextBudget.clip_tool_result(t_res, max_chars=4000)
                 planning_messages.append({
                     "role": "tool",

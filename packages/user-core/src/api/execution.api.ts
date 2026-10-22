@@ -76,6 +76,7 @@ export interface ListExecutionsRequest {
   status?: ExecutionStatus;
   skillId?: string;
   id?: string;
+  q?: string;
 }
 
 export interface CleanupExecutionsBeforeDateRequest {

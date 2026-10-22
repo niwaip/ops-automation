@@ -1100,6 +1100,54 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
       })
     );
   });
-});
 
+  it('intercepts natural language save personal skill intent and triggers capture', async () => {
+    const mockCaptureService: any = {
+      createCapture: jest.fn().mockResolvedValue({
+        captureId: 'cap-123',
+        status: 'queued',
+      }),
+      getCaptureStatus: jest.fn().mockReturnValue({
+        captureId: 'cap-123',
+        skillId: 'skill-123',
+        status: 'ready',
+        version: 1,
+        slug: 'dept-amount-summary',
+      }),
+    };
+
+    const customService = new UserSandboxDispatcherService(
+      mockConversationService as any,
+      mockMediaService as any,
+      mockModelService as any,
+      undefined,
+      mockCaptureService
+    );
+
+    const emittedEvents: any[] = [];
+    const handled = await customService.dispatchPersonalSandbox(
+      {
+        message: '结果正确，把刚才的处理逻辑保存为个人技能，名称是按部门无偿统计',
+        userId: 'test_user',
+        sessionId: 'session_save_skill',
+      } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(handled).toBe(true);
+    expect(mockCaptureService.createCapture).toHaveBeenCalledWith(
+      'test_user',
+      expect.objectContaining({
+        displayName: '按部门无偿统计',
+        sourceRef: expect.objectContaining({ sessionId: 'session_save_skill' }),
+      })
+    );
+    expect(
+      emittedEvents.some(
+        (e) => e.type === 'observation' && e.content.includes('已保存个人技能「按部门无偿统计」v1')
+      )
+    ).toBe(true);
+  });
+});
 

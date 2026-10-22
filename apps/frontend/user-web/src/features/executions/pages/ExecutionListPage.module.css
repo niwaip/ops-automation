@@ -324,6 +324,11 @@
   min-height: 34px !important;
 }
 
+.execution-list-table {
+  width: 100%;
+  max-width: 100%;
+}
+
 .execution-list-table :global(.ant-table) {
   background: transparent;
 }

@@ -1,6 +1,7 @@
 import { Injectable,Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { CoordinationAutomationRunnerService } from './coordination-automation-runner.service';
+import { deduplicateCoordinationAttachments } from './coordination-attachment-helper';
 import type {
 CoordinationAttachment,
 SubmitCoordinationActionDto,
@@ -501,8 +502,8 @@ export class CoordinationStageEngineService {
           currentStage: nextHumanStage.id,
           previousStage: currentStageId,
           parameters: { ...(params || {}), currentStage: nextHumanStage.id },
-          reviewReport: latestAuto || undefined,
-          executionId: latestAuto?.executionId || undefined,
+          reviewReport: latestAuto || payload.reviewReport || undefined,
+          executionId: latestAuto?.executionId || payload.executionId || undefined,
           taskType: CoordinationTaskType.approval,
           status: CoordinationTaskStatus.pending,
           priority: payload.priority || CoordinationTaskPriority.medium,
@@ -568,8 +569,8 @@ export class CoordinationStageEngineService {
               ? '合同合规智能审查与法务流转中心'
               : '企业流程流转中心',
             message: syncMessage,
-            reviewReport: latestAuto || undefined,
-            executionId: latestAuto?.executionId || undefined,
+            reviewReport: latestAuto || payload.reviewReport || undefined,
+            executionId: latestAuto?.executionId || payload.executionId || undefined,
             isDraftReplaced: hasReplacedFile,
             activeAttachment: activeAttachments[0],
           },
@@ -613,7 +614,9 @@ export class CoordinationStageEngineService {
             targetItem,
             workflow,
             payload,
-            activeAttachments: effectiveAttachment ? [effectiveAttachment, ...activeAttachments] : activeAttachments,
+            activeAttachments: deduplicateCoordinationAttachments(
+              effectiveAttachment ? [effectiveAttachment, ...activeAttachments] : activeAttachments
+            ),
           },
           3
         );
@@ -650,7 +653,10 @@ export class CoordinationStageEngineService {
           isTerminal: true,
           trackingNumber,
           pdfArtifact,
-          artifacts: latestAuto?.artifacts || activeAttachments,
+          artifacts: deduplicateCoordinationAttachments(
+            latestAuto?.artifacts ? [...latestAuto.artifacts, ...activeAttachments] : activeAttachments
+          ),
+          reviewReport: payload.reviewReport || (targetItem as any)?.reviewReport || (targetItem as any)?.unifiedPayload?.reviewReport || undefined,
           receiptExecutionId: receiptReport?.executionId,
           downloadUrl: pdfArtifact?.downloadUrl || pdfArtifact?.url || latestAuto?.downloadUrl,
           sha256: pdfArtifact?.sha256 || latestAuto?.sha256,
@@ -671,7 +677,9 @@ export class CoordinationStageEngineService {
             pdfArtifact: pdfArtifact || undefined,
             downloadUrl: pdfArtifact?.downloadUrl || pdfArtifact?.url || latestAuto?.downloadUrl,
             sha256: pdfArtifact?.sha256 || latestAuto?.sha256,
-            artifacts: latestAuto?.artifacts || activeAttachments,
+            artifacts: deduplicateCoordinationAttachments(
+              latestAuto?.artifacts ? [...latestAuto.artifacts, ...activeAttachments] : activeAttachments
+            ),
             receiptExecutionId: receiptReport?.executionId,
             archivedAt: new Date().toISOString(),
           },
@@ -917,15 +925,29 @@ export class CoordinationStageEngineService {
 
       for (const art of report.artifacts) {
         const artUrl = art.url || art.downloadUrl;
-        if (artUrl && !context.activeAttachments.some((a) => a.url === artUrl)) {
+        if (artUrl) {
           context.activeAttachments.push({
-            name: art.name || art.fileName || '智能合规审查诊断报告.html',
+            ...art,
+            name:
+              art.name ||
+              art.fileName ||
+              (art.mimeType === 'application/pdf' || artUrl.endsWith('.pdf')
+                ? '归档存证.pdf'
+                : '智能合规审查诊断报告.html'),
             url: artUrl,
+            downloadUrl: artUrl,
             size: art.sizeBytes || art.size,
-            mimeType: art.mimeType || 'text/html',
+            mimeType:
+              art.mimeType || (artUrl.endsWith('.pdf') ? 'application/pdf' : 'text/html'),
+            sha256: art.sha256 || art.metadata?.sha256,
           });
         }
       }
+      context.activeAttachments.splice(
+        0,
+        context.activeAttachments.length,
+        ...deduplicateCoordinationAttachments(context.activeAttachments)
+      );
     }
 
     return report;

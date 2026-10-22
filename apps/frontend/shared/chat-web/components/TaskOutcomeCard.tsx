@@ -454,7 +454,7 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
     });
   }, [artifacts]);
 
-  const showDownloadButton = Boolean(downloadUrl && !browserExecutionMode);
+  const showDownloadButton = Boolean(downloadUrl && !browserExecutionMode && !mdArtifact && !htmlArtifact);
   const showDetailButton = Boolean(executionDetailLink || temporalLink);
   const normalizedSkillName = skillName?.trim();
 
@@ -470,11 +470,24 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
       if (!val) return true;
       const trimmed = val.trim();
       if (isUuid(trimmed)) return true;
+      // 避免长段用户提示词或包含句子标点的文本被当成技能名渲染
+      if (trimmed.length > 40 || /[\r\n。？！!?]/.test(trimmed)) {
+        return true;
+      }
       const lower = trimmed.toLowerCase();
       if (
-        ['result', 'results', 'generic', 'tool_execution', 'flow_execute', 'skill-match'].includes(
-          lower
-        )
+        [
+          'result',
+          'results',
+          'generic',
+          'tool_execution',
+          'flow_execute',
+          'skill-match',
+          'deterministic_plan',
+          'deterministic-plan',
+          'standard_text_generation',
+          'standard_text_transformation',
+        ].includes(lower)
       ) {
         return true;
       }

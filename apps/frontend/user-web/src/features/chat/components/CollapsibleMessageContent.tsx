@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from 'antd';
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import styles from './CollapsibleMessageContent.module.css';
@@ -21,33 +21,70 @@ export const CollapsibleMessageContent: React.FC<CollapsibleMessageContentProps>
   const contentRef = useRef<HTMLDivElement>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [hasOpenDetails, setHasOpenDetails] = useState(false);
 
   // Only collapse assistant responses
   const canCollapse = role === 'assistant';
 
+  const checkState = useCallback(() => {
+    if (!contentRef.current) return;
+    const openDetails = contentRef.current.querySelector('details[open]');
+    const hasOpen = Boolean(openDetails);
+    setHasOpenDetails(hasOpen);
+
+    const scrollHeight = contentRef.current.scrollHeight;
+    // Allow a buffer over maxCollapsedHeight before showing collapse button
+    const overflowing = scrollHeight > maxCollapsedHeight + 24;
+    setIsOverflowing(overflowing);
+  }, [maxCollapsedHeight]);
+
   useEffect(() => {
     if (!canCollapse) return;
 
-    const checkOverflow = () => {
-      if (!contentRef.current) return;
-      const scrollHeight = contentRef.current.scrollHeight;
-      // Allow a buffer over maxCollapsedHeight before showing collapse button
-      const overflowing = scrollHeight > maxCollapsedHeight + 24;
-      setIsOverflowing(overflowing);
+    checkState();
+
+    const container = contentRef.current;
+    if (!container) return;
+
+    // Listen to native toggle event on <details> with capture: true (toggle event does not bubble in HTML5)
+    const onToggle = () => {
+      checkState();
     };
 
-    checkOverflow();
+    const onClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target &&
+        (target.tagName === 'SUMMARY' ||
+          target.closest('summary') ||
+          target.tagName === 'DETAILS' ||
+          target.closest('details'))
+      ) {
+        // Wait a microtask / tick for native DOM 'open' attribute toggle
+        setTimeout(checkState, 20);
+      }
+    };
 
-    if (typeof ResizeObserver !== 'undefined' && contentRef.current) {
-      const ro = new ResizeObserver(() => {
-        checkOverflow();
+    container.addEventListener('toggle', onToggle, true);
+    container.addEventListener('click', onClick, true);
+
+    let ro: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => {
+        checkState();
       });
-      ro.observe(contentRef.current);
-      return () => ro.disconnect();
+      ro.observe(container);
     }
-  }, [children, canCollapse, maxCollapsedHeight]);
 
-  const shouldCollapse = canCollapse && isOverflowing && !isExpanded && !isStreaming;
+    return () => {
+      container.removeEventListener('toggle', onToggle, true);
+      container.removeEventListener('click', onClick, true);
+      if (ro) ro.disconnect();
+    };
+  }, [children, canCollapse, checkState]);
+
+  // When details is open (e.g. user clicked "查看来源与核算明细"), fully expand and never collapse or show "展开全文"
+  const shouldCollapse = canCollapse && isOverflowing && !isExpanded && !isStreaming && !hasOpenDetails;
 
   return (
     <div className={styles.collapsibleWrapper}>
@@ -59,7 +96,7 @@ export const CollapsibleMessageContent: React.FC<CollapsibleMessageContentProps>
         {children}
       </div>
 
-      {canCollapse && isOverflowing && !isStreaming && (
+      {canCollapse && isOverflowing && !isStreaming && !hasOpenDetails && (
         <div className={styles.expandActionWrapper}>
           <Button
             type="link"

@@ -57,7 +57,10 @@ export function ComplianceAuditCard({
     if (rating.includes('中') || (reportData?.score !== undefined && reportData.score < 80)) {
       return 'MEDIUM';
     }
-    return 'LOW';
+    if (reportData?.score !== undefined || rating) {
+      return 'LOW';
+    }
+    return 'UNKNOWN';
   }, [reportData?.overallRisk, reportData?.rating, reportData?.score]);
 
   // 解析条款风控统计汇总
@@ -121,9 +124,13 @@ export function ComplianceAuditCard({
                 <Tag color="warning" bordered={false} icon={<WarningOutlined />} style={{ margin: 0, fontWeight: 500 }}>
                   {reportData?.score !== undefined ? `${reportData.score} 分 · 中度风险` : '中度风险预警'}
                 </Tag>
-              ) : (
+              ) : riskLevel === 'LOW' ? (
                 <Tag color="success" bordered={false} icon={<CheckCircleOutlined />} style={{ margin: 0, fontWeight: 500 }}>
                   {reportData?.score !== undefined ? `${reportData.score} 分 · 合规良好` : '合规通过'}
+                </Tag>
+              ) : (
+                <Tag color="default" bordered={false} style={{ margin: 0, fontWeight: 500 }}>
+                  已附审查报告
                 </Tag>
               )}
             </Space>
@@ -476,13 +483,32 @@ export function extractAuditReportFromTask(
   }
 
   // 3. 从 reviewReport 直接构造
-  if (reviewReport && reviewReport.overallRisk) {
+  if (
+    reviewReport &&
+    (reviewReport.overallRisk ||
+      reviewReport.riskScore !== undefined ||
+      reviewReport.healthScore !== undefined ||
+      reviewReport.metrics?.healthScore !== undefined)
+  ) {
+    const rawScore =
+      reviewReport.riskScore ??
+      reviewReport.healthScore ??
+      reviewReport.metrics?.healthScore;
+    const computedRisk =
+      reviewReport.overallRisk ||
+      (rawScore !== undefined
+        ? rawScore < 60
+          ? 'HIGH'
+          : rawScore < 80
+          ? 'MEDIUM'
+          : 'LOW'
+        : undefined);
     const alerts = cleanAndSortAlerts(reviewReport.summaryItems || []);
     return {
       auditReport: {
         title: reviewReport.title || '合同合规智能审查',
-        overallRisk: reviewReport.overallRisk,
-        score: reviewReport.riskScore,
+        overallRisk: computedRisk,
+        score: rawScore,
         statsText: reviewReport.metrics
           ? `共 ${reviewReport.metrics.totalClauses || 0} 项条款（🔴 高危 ${reviewReport.metrics.highRiskCount || 0} 项，⚡ 必备缺失 ${reviewReport.metrics.missingClausesCount || 0} 项，🟡 中风险 ${reviewReport.metrics.mediumRiskCount || 0} 项，🟢 合规通过 ${reviewReport.metrics.passCount || 0} 项）`
           : undefined,

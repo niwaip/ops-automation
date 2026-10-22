@@ -3,6 +3,7 @@ import { Button } from 'antd';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
 import { preferencesStore } from '../../../adapters/preferences/preferencesStore';
+import styles from '../UserLayout.module.css';
 
 /**
  * 主题切换按钮。
@@ -19,14 +20,12 @@ export function ThemeToggle() {
       type="text"
       icon={<BgColorsOutlined />}
       onClick={toggleTheme}
-      style={{
-        color: 'var(--text-secondary)',
-        borderRadius: 10,
-        height: 36,
-        padding: '0 12px',
-      }}
+      className={styles['user-shell-theme-btn']}
+      aria-label={theme === 'light' ? t('theme.dark', '深色模式') : t('theme.light', '浅色模式')}
     >
-      {theme === 'light' ? t('theme.dark', '深色') : t('theme.light', '浅色')}
+      <span className={styles['user-shell-theme-label']}>
+        {theme === 'light' ? t('theme.dark', '深色') : t('theme.light', '浅色')}
+      </span>
     </Button>
   );
 }

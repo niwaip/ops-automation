@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ExecutionPhaseService } from '../state/execution-phase.service';
 import { ExecutionStepService } from '../step-runner/steps/execution-step.service';
@@ -25,6 +25,8 @@ interface RequestUserContext {
 
 @Injectable()
 export class ExecutionQueryService {
+  private readonly logger = new Logger(ExecutionQueryService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly executionPhaseService: ExecutionPhaseService,
@@ -108,8 +110,33 @@ export class ExecutionQueryService {
       }
     }
 
+    let usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } | undefined;
+    if (this.prisma.llmUsageLedger) {
+      try {
+        const ledgerAgg = await this.prisma.llmUsageLedger.aggregate({
+          where: { executionId: id },
+          _sum: {
+            inputTokens: true,
+            outputTokens: true,
+          },
+        });
+        const promptTokens = ledgerAgg._sum.inputTokens || 0;
+        const completionTokens = ledgerAgg._sum.outputTokens || 0;
+        if (promptTokens > 0 || completionTokens > 0) {
+          usage = {
+            prompt_tokens: promptTokens,
+            completion_tokens: completionTokens,
+            total_tokens: promptTokens + completionTokens,
+          };
+        }
+      } catch (err) {
+        this.logger.warn(`Failed to aggregate llm usage for execution ${id}: ${(err as Error).message}`);
+      }
+    }
+
     return mapExecutionToDto({
       ...execution,
+      usage,
       runtimeSessionId: runtimeSession?.id || null,
       phases,
       pendingOutboundEffects,
@@ -173,6 +200,36 @@ export class ExecutionQueryService {
         } catch {
           // ignore fallback
         }
+      }
+    }
+
+    const cleanQuery = dto.q?.trim();
+    if (cleanQuery) {
+      try {
+        const matching = await this.prisma.$queryRaw<{ id: string }[]>`
+          SELECT id FROM executions 
+          WHERE id::text ILIKE ${'%' + cleanQuery + '%'}
+             OR input_json::text ILIKE ${'%' + cleanQuery + '%'}
+             OR normalized_input_json::text ILIKE ${'%' + cleanQuery + '%'}
+             OR result_json::text ILIKE ${'%' + cleanQuery + '%'}
+             OR failure_reason ILIKE ${'%' + cleanQuery + '%'}
+          ORDER BY created_at DESC
+          LIMIT 500
+        `;
+        const ids = matching.map((r) => r.id);
+        if (where.id && typeof where.id === 'object' && 'in' in (where.id as any)) {
+          const existingIds = new Set((where.id as any).in as string[]);
+          const intersected = ids.filter((id) => existingIds.has(id));
+          where.id = { in: intersected.length > 0 ? intersected : ['00000000-0000-0000-0000-000000000000'] };
+        } else if (where.id && typeof where.id === 'string') {
+          if (!ids.includes(where.id)) {
+            where.id = '00000000-0000-0000-0000-000000000000';
+          }
+        } else {
+          where.id = { in: ids.length > 0 ? ids : ['00000000-0000-0000-0000-000000000000'] };
+        }
+      } catch (err: any) {
+        this.logger.warn(`Failed to execute search query q fallback: ${err.message}`);
       }
     }
 

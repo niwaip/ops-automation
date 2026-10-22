@@ -111,7 +111,8 @@ export const UserChatComposerToolbar: React.FC<UserChatComposerToolbarProps> = (
               label: (
                 <span>
                   {chatMode === 'chat' && <span className={styles['user-chat-mode-dot']} />}
-                  个人助理
+                  <span className={styles['user-chat-mode-text']}>个人助理</span>
+                  <span className={styles['user-chat-mode-short-text']}>助理</span>
                 </span>
               ),
             },
@@ -121,7 +122,8 @@ export const UserChatComposerToolbar: React.FC<UserChatComposerToolbarProps> = (
               label: (
                 <span>
                   {chatMode === 'task' && <span className={styles['user-chat-mode-dot']} />}
-                  企业协同
+                  <span className={styles['user-chat-mode-text']}>企业协同</span>
+                  <span className={styles['user-chat-mode-short-text']}>协同</span>
                 </span>
               ),
             },
@@ -196,9 +198,16 @@ export const UserChatComposerToolbar: React.FC<UserChatComposerToolbarProps> = (
                   style={{ color: enableThinking ? '#6366f1' : undefined }}
                 />
                 <span className={styles['user-chat-reasoning-trigger-text']}>
-                  {enableThinking
-                    ? `思考: ${reasoningEffort === 'low' ? '浅' : reasoningEffort === 'high' ? '深' : '中'}`
-                    : '深度思考'}
+                  <span className={styles['user-chat-reasoning-full-text']}>
+                    {enableThinking
+                      ? `思考: ${reasoningEffort === 'low' ? '浅' : reasoningEffort === 'high' ? '深' : '中'}`
+                      : '深度思考'}
+                  </span>
+                  <span className={styles['user-chat-reasoning-short-text']}>
+                    {enableThinking
+                      ? `${reasoningEffort === 'low' ? '浅' : reasoningEffort === 'high' ? '深' : '中'}`
+                      : '思考'}
+                  </span>
                 </span>
                 <DownOutlined className={styles['user-chat-reasoning-trigger-arrow']} />
               </button>
@@ -230,7 +239,12 @@ export const UserChatComposerToolbar: React.FC<UserChatComposerToolbarProps> = (
                   style={{ color: enableThinking ? '#6366f1' : undefined }}
                 />
                 <span className={styles['user-chat-reasoning-trigger-text']}>
-                  {enableThinking ? `${thinkingLabel}: 开` : thinkingLabel}
+                  <span className={styles['user-chat-reasoning-full-text']}>
+                    {enableThinking ? `${thinkingLabel}: 开` : thinkingLabel}
+                  </span>
+                  <span className={styles['user-chat-reasoning-short-text']}>
+                    {enableThinking ? '思考: 开' : '思考'}
+                  </span>
                 </span>
                 <DownOutlined className={styles['user-chat-reasoning-trigger-arrow']} />
               </button>
@@ -252,7 +266,7 @@ export const UserChatComposerToolbar: React.FC<UserChatComposerToolbarProps> = (
                     color: enableResearch ? '#10b981' : undefined,
                   }}
                 />
-                调研
+                <span className={styles['user-chat-control-text']}>调研</span>
               </span>
               <Switch
                 size="small"
@@ -278,7 +292,7 @@ export const UserChatComposerToolbar: React.FC<UserChatComposerToolbarProps> = (
                     color: enableWebSearch ? '#6366f1' : undefined,
                   }}
                 />
-                联网
+                <span className={styles['user-chat-control-text']}>联网</span>
               </span>
               <Switch
                 size="small"
@@ -303,7 +317,7 @@ export const UserChatComposerToolbar: React.FC<UserChatComposerToolbarProps> = (
                 ) : (
                   <FolderOutlined style={{ marginRight: 4 }} />
                 )}
-                知识
+                <span className={styles['user-chat-control-text']}>知识</span>
               </span>
               <Switch
                 size="small"
@@ -442,7 +456,7 @@ export const UserChatComposerToolbar: React.FC<UserChatComposerToolbarProps> = (
               className={styles['user-chat-input-send-btn']}
               icon={<SendOutlined />}
             >
-              发送
+              <span className={styles['user-chat-send-btn-text']}>发送</span>
             </Button>
           </Tooltip>
         )}

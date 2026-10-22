@@ -19,6 +19,7 @@ x-common-env: &common-env
   USER_CREDENTIAL_ENCRYPTION_KEY_FALLBACK: ${USER_CREDENTIAL_ENCRYPTION_KEY_FALLBACK:-}
   JWT_SECRET: ${JWT_SECRET:-ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa}
   INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
+  NODE_OPTIONS: ${NODE_OPTIONS:---max-old-space-size=2048}
 
 x-common-node-service: &common-node-service
   image: ${NODE_IMAGE:-${DOCKER_REGISTRY:-}node:22-bookworm}
@@ -97,6 +98,7 @@ services:
   platform:
     <<: *common-node-service
     container_name: ops-platform
+    restart: unless-stopped
     environment:
       <<: *common-env
       DOCKER_ENV: true
@@ -164,6 +166,7 @@ services:
   session-broker:
     <<: *common-node-service
     container_name: ops-session-broker
+    restart: unless-stopped
     command: >
       sh -c "corepack enable && pnpm --filter @ops/session-broker run build
       && rm -rf /workspace/apps/backend/execution-control/session-broker/dist/generated
@@ -193,6 +196,7 @@ services:
   control-plane:
     <<: *common-node-service
     container_name: ops-control-plane
+    restart: unless-stopped
     command: >
       sh -c "bash /workspace/docker/scripts/build-control-plane-runtime.sh
       && node /workspace/docker/scripts/start-control-plane-runtime.cjs api"
@@ -433,6 +437,7 @@ services:
   ai-orchestrator:
     <<: *common-node-service
     container_name: ops-ai-orchestrator
+    restart: unless-stopped
     command: >
       sh -c "corepack enable
       && pnpm --filter @ops/browser-recorder --filter @ops/browser-runtime-facade run build

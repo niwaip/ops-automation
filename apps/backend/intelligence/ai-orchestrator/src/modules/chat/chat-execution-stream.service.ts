@@ -300,6 +300,12 @@ export class ChatExecutionStreamService {
       }>(executionId, this.waitingInputService.buildControlPlaneRequestOptions(authToken, user));
       const rawResult = execution.resultJson ?? execution.result;
       const runtimeType = execution.runtimeType || execution.runtime_type;
+      const resolvedUsage =
+        execution.usage ||
+        (rawResult as any)?.output?.usage ||
+        (rawResult as any)?.usage ||
+        (rawResult as any)?.metrics?.tokens ||
+        (rawResult as any)?.output?.metrics?.tokens;
 
       if (status === CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED) {
         if (rawResult !== null && rawResult !== undefined) {
@@ -463,22 +469,20 @@ export class ChatExecutionStreamService {
               downloadUrl: normalizedResult.downloadUrl,
               temporalLink: normalizedResult.temporalLink,
               hasBusinessResult: normalizedResult.hasBusinessResult,
-              usage: execution.usage,
-              skillId: execution.skillId || execution.skill_id || execution.capabilityId,
+              usage: resolvedUsage,
+              skillId:
+                execution.skillId && execution.skillId !== 'deterministic_plan'
+                  ? execution.skillId
+                  : execution.capabilityId,
               skillName:
                 execution.skillName ||
                 execution.skill_name ||
-                (normalizedResult.title && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(normalizedResult.title.trim())
-                  ? normalizedResult.title.trim()
-                  : undefined),
+                undefined,
               skillUsed:
                 execution.skillName ||
                 execution.skill_name ||
-                (normalizedResult.title && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(normalizedResult.title.trim())
-                  ? normalizedResult.title.trim()
-                  : undefined) ||
-                execution.skillId ||
-                execution.skill_id ||
+                (execution.skillId && execution.skillId !== 'deterministic_plan' ? execution.skillId : undefined) ||
+                (execution.skill_id && execution.skill_id !== 'deterministic_plan' ? execution.skill_id : undefined) ||
                 execution.capabilityId,
             },
           };
@@ -495,7 +499,7 @@ export class ChatExecutionStreamService {
             hasBusinessResult: false,
             chatSummary: noResultContent,
             summaryFormat: 'plain_text',
-            usage: execution.usage,
+            usage: resolvedUsage,
           },
         };
       }
@@ -523,7 +527,7 @@ export class ChatExecutionStreamService {
             hasBusinessResult: false,
             chatSummary: `❌ 任务执行失败\n\n原因：${failureReason}`,
             summaryFormat: 'markdown',
-            usage: execution.usage,
+            usage: resolvedUsage,
           },
         };
       }
@@ -539,7 +543,7 @@ export class ChatExecutionStreamService {
           hasBusinessResult: false,
           chatSummary: cancelledContent,
           summaryFormat: 'plain_text',
-          usage: execution.usage,
+          usage: resolvedUsage,
         },
       };
     } catch (error) {

@@ -688,6 +688,27 @@ export class ChatConversationService {
       metadata.temporalLink = temporalLink;
     }
 
+    const usage =
+      data?.usage ||
+      (data?.result as any)?.output?.usage ||
+      (data?.result as any)?.usage ||
+      (normalizedResult as any)?.usage ||
+      (data?.businessData as any)?.output?.usage ||
+      (data?.businessData as any)?.usage;
+    if (usage && typeof usage === 'object') {
+      metadata.usage = usage;
+    }
+
+    const rateLimit = data?.rateLimit;
+    if (rateLimit && typeof rateLimit === 'object') {
+      metadata.rateLimit = rateLimit;
+    }
+
+    const executionTrace = data?.executionTrace;
+    if (executionTrace && typeof executionTrace === 'object') {
+      metadata.executionTrace = executionTrace;
+    }
+
     return {
       role: 'assistant',
       content,

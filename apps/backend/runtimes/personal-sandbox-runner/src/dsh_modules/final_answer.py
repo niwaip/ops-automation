@@ -1,0 +1,271 @@
+"""Final response presentation, artifact recovery and delivery validation.
+
+The loop injects runtime adapters so this module never imports agent_loop.
+"""
+import json
+import logging
+import os
+import re
+import sys
+import time
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+from .runtime_policy import RuntimePolicy
+from .telemetry import TelemetryStats
+from .tool_result import ToolResult
+from .llm import clean_output, parse_tool_calls, is_promising_action, detect_unexecuted_script_leak
+from .action_protocol import is_internal_plan_output
+from .skill_router import is_text_only_request
+from .analysis_contract import build_analysis_contract
+from .analysis_validation import validate_reply_against_contract, build_contract_termination_warning
+from .sampling_guard import sampling_feedback
+from .workbook_delivery_recalc import recalculate_generated_workbooks as _recalculate_generated_workbooks
+from .agent_loop_helpers import (
+    ACTION_FILLER_KEYWORDS, is_unclosed_or_truncated_html, is_explicit_code_request,
+    auto_heal_unexecuted_file_writes, detect_unexecuted_tool_argument_leak, _build_fallback_report,
+)
+
+logger = logging.getLogger(__name__)
+
+
+def finalize_agent_text(
+    reply_text: str,
+    messages: List[Dict[str, Any]],
+    model: str,
+    policy: RuntimePolicy,
+    deadline: Optional[float],
+    is_guide_intent: bool,
+    executed_calls_history: List[str],
+    was_token_truncated: bool,
+    telemetry: TelemetryStats,
+    last_user_prompt: str = "",
+    expected_deliverables: Optional[List[str]] = None,
+    execution_evidence: Optional[List[ToolResult]] = None,
+    turn_start_time: Optional[float] = None,
+    *,
+    call_model,
+    workspace_dir: str,
+    max_agent_rounds: int,
+    max_spreadsheet_rounds: int,
+) -> Tuple[str, List[str]]:
+    """Finalizes agent text, requesting forced summary if needed and applying fallback reports."""
+    has_pending_tool_calls = bool(parse_tool_calls(reply_text, is_guide=is_guide_intent))
+    final_text = clean_output(reply_text, is_guide=is_guide_intent)
+    has_internal_plan = is_internal_plan_output(reply_text)
+
+    healed_files: List[str] = []
+    has_valid_html = ("```html" in final_text.lower()) and not is_unclosed_or_truncated_html(final_text)
+    has_physical_artifact = False
+    try:
+        if expected_deliverables and os.path.exists(workspace_dir):
+            ws_files = [f for f in os.listdir(workspace_dir) if not f.startswith(".")]
+            has_physical_artifact = any(
+                any(f.endswith(ext.lower()) for f in ws_files)
+                for ext in expected_deliverables
+            )
+    except Exception:
+        pass
+
+    is_hollow_claim = (
+        not has_physical_artifact and
+        len(final_text.strip()) < 220 and
+        not has_valid_html and
+        bool(re.search(r'(?:文件|代码|报告|文档|演示文稿|ppt|pdf|表格)?已(?:成功)?(?:生成|写入|保存|导出|落盘)|请查看(?:下方)?(?:下载)?卡片|<div\s+download-card', final_text, re.I))
+    )
+
+    is_transitional_filler = (
+        len(final_text) < 120 and
+        (any(kw in final_text for kw in ACTION_FILLER_KEYWORDS) or is_promising_action(reply_text) or is_hollow_claim)
+    )
+    has_raw_dsml = bool(re.search(r'<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}', reply_text))
+    has_raw_tool = bool(re.search(r'<(?:tool_call|tool_calls)', reply_text))
+
+    if has_pending_tool_calls or not final_text or is_transitional_filler or has_raw_dsml or has_raw_tool or has_internal_plan:
+        messages.append({"role": "assistant", "content": reply_text or None})
+        if is_hollow_claim:
+            nudge_prompt = (
+                "【双通道完整交付要求】：你已完成交付物生成，但当前聊天回复仅包含简短的文件生成通知/下载卡片提示，缺失核心正文内容。"
+                "根据平台双通道交付原则，聊天对话中必须向用户呈现完整、清晰、结构化的核心成果与总结要点（例如天气明细、报告核心结论与结构化摘要）。"
+                "请直接在当前回复中输出详尽的 Markdown 正文回答，严禁仅回复'已生成/请看卡片'等空话！"
+            )
+        else:
+            nudge_prompt = "工具调用轮次已结束。请根据目前已探索和收集到的所有信息与仓库内容，直接给出深入、结构完整、详尽的最终中文回答（严禁输出中间过渡垫话或未执行的工具标签）。"
+        messages.append({"role": "user", "content": nudge_prompt})
+        try:
+            forced_res = call_model(
+                messages,
+                model,
+                timeout=policy.single_request_timeout,
+                deadline=deadline,
+                policy=policy
+            )
+            telemetry.record_llm_response(forced_res, is_first_round=False)
+            forced_reply = forced_res.get("content", "") if isinstance(forced_res, dict) else str(forced_res)
+            forced_clean = clean_output(forced_reply, is_guide=is_guide_intent) or forced_reply.strip()
+            is_still_filler = (
+                len(forced_clean) < 120 and
+                (any(kw in forced_clean for kw in ACTION_FILLER_KEYWORDS) or is_promising_action(forced_reply))
+            )
+            if forced_clean and not is_still_filler and not is_internal_plan_output(forced_clean):
+                final_text = forced_clean
+            elif is_transitional_filler or has_internal_plan:
+                final_text = ""
+        except TimeoutError:
+            raise
+        except Exception:
+            if is_transitional_filler or has_internal_plan:
+                final_text = ""
+
+    is_terminal_filler = (
+        len(final_text) < 120 and
+        (any(kw in final_text for kw in ACTION_FILLER_KEYWORDS) or is_promising_action(final_text) or is_hollow_claim)
+    )
+    if not final_text or is_terminal_filler or is_internal_plan_output(final_text):
+        if deadline is not None and time.monotonic() >= deadline:
+            raise TimeoutError(f"Task total execution deadline ({policy.total_task_timeout}s) exceeded")
+
+        p_lower = (last_user_prompt or "").lower()
+        user_cmd = p_lower
+        if "用户指令：" in user_cmd:
+            user_cmd = user_cmd.split("用户指令：")[-1].strip()
+        elif "用户指令:" in user_cmd:
+            user_cmd = user_cmd.split("用户指令:")[-1].strip()
+        else:
+            user_cmd = re.sub(r'【(?:当前轮次用户上传附件|当前会话有效附件清单)】:[^\n]+\n?', '', user_cmd).strip()
+
+        names_non_web_format = bool(
+            re.search(r'(?:pptx?|slides?|幻灯片|演示文稿|pdf|docx?|word|xlsx?|excel)', user_cmd, re.I)
+        )
+        has_non_html_deliverable = bool(
+            expected_deliverables and any(ext.lower() in [".docx", ".xlsx", ".pdf"] for ext in expected_deliverables)
+        )
+        html_cues = ["html", "网页", "单页", "大屏", "看板"]
+        has_html_req = (
+            not names_non_web_format
+            and not has_non_html_deliverable
+            and (
+                any(cue in user_cmd for cue in html_cues)
+                or ("报告" in user_cmd and any(cue in user_cmd for cue in ["单页", "一页", "html", "网页"]))
+            )
+        )
+        if has_html_req:
+            try:
+                from .html_report_fallback import materialize_html_report_fallback, is_plausible_html_file
+                fallback_path = materialize_html_report_fallback(
+                    prompt=last_user_prompt,
+                    history=messages,
+                    workspace_dir=workspace_dir,
+                    notice="本单页报告由系统基于会话中有效内容恢复生成，支持交互预览与全屏查看。"
+                )
+                if fallback_path and Path(fallback_path).exists() and is_plausible_html_file(Path(fallback_path)):
+                    file_content = Path(fallback_path).read_text(encoding="utf-8")
+                    final_text = (
+                        "✨ **单页 HTML 报告已由系统基于会话内容自动整理生成！**\n"
+                        f"- **输出文件**：`/workspace/{Path(fallback_path).name}`\n"
+                        "- **操作提示**：您可以在下方直接**展开在线预览**、**全屏查看**，或点击**下载**保存本地使用。\n\n"
+                        f"```html\n{file_content}\n```"
+                    )
+                    healed_files.append(fallback_path)
+            except Exception as e:
+                print(f"⚠️ [Harness Agent Loop] 自动编译单页 HTML 失败: {e}")
+
+        if not final_text or is_terminal_filler or is_internal_plan_output(final_text):
+            inf_cause = "model_empty_final" if executed_calls_history else "model_budget_exhausted"
+            final_text = _build_fallback_report(
+                messages,
+                executed_calls_history,
+                cause=inf_cause,
+                pending_items=[f"生成目标交付物 ({', '.join(expected_deliverables)})"] if expected_deliverables else None
+            )
+
+    if was_token_truncated and "```html" not in final_text and not is_unclosed_or_truncated_html(final_text):
+        truncation_suffix = (
+            "\n\n---\n"
+            "⚠️ **输出截断提醒（已达到模型单次 Token 上限）**\n"
+            "- **状态说明**：上游模型输出达到最大长度限制提前结束。\n"
+            "- **💡 通用建议**：如需获取后续完整内容，请直接回复「**继续**」，模型将从中断处接力输出。若需长篇内容，也可在提问中指定分段或分章节输出。"
+        )
+        if "输出截断提醒" not in final_text:
+            final_text += truncation_suffix
+
+    if not is_guide_intent and not is_text_only_request(last_user_prompt) and not is_explicit_code_request(last_user_prompt):
+        final_text, extra_healed = auto_heal_unexecuted_file_writes(final_text, workspace_dir)
+        healed_files.extend(extra_healed)
+        has_valid_html_final = ("```html" in final_text.lower()) and not is_unclosed_or_truncated_html(final_text)
+        if extra_healed:
+            sys.stdout.write("<<<DSH_DELTA_RESET>>>\n")
+            sys.stdout.write(f"<<<DSH_DELTA:{json.dumps(final_text, ensure_ascii=False)}>>>\n")
+            sys.stdout.flush()
+        elif not has_valid_html_final and (detect_unexecuted_script_leak(final_text) or detect_unexecuted_tool_argument_leak(final_text)):
+            print("⚠️ [Harness Script Leak Guard] 检测到模型输出了未执行的脚本或参数回显且未能自愈，触发安全兜底...", flush=True)
+            final_text = _build_fallback_report(
+                messages,
+                executed_calls_history,
+                cause="model_empty_final",
+                trigger_evidence="模型输出了未执行的代码脚本或参数片段，自动执行自愈未通过",
+                retry_advice="请直接回复「请实际在终端运行上述脚本完成落盘」"
+            )
+
+    feedback = sampling_feedback(final_text,last_user_prompt,messages,telemetry,execution_evidence,is_guide_intent)
+    if feedback:
+        final_text += "\n\n⚠️ **【数据覆盖度与真实性提示】**\n当前分析基于局部切片或抽样数据。\n" + feedback
+
+    # 指标契约未完成阻碍声明（防模型在轮次耗尽时静默放行未完成的指标分析）
+    if not is_guide_intent and last_user_prompt:
+        contract = build_analysis_contract(last_user_prompt)
+        if contract.has_metrics:
+            audit_ceiling = (
+                max_spreadsheet_rounds
+                if not expected_deliverables
+                else max_agent_rounds
+            )
+            val_result = validate_reply_against_contract(
+                contract=contract,
+                reply_text=final_text or "",
+                round_idx=audit_ceiling,
+                max_rounds=audit_ceiling,
+                messages=messages,
+                execution_evidence=execution_evidence
+            )
+            llm_calls = getattr(telemetry, "llm_invocations", 0) if telemetry else 0
+            is_budget_exhausted = bool(llm_calls >= audit_ceiling)
+            if not val_result.is_pass:
+                contract_warning = build_contract_termination_warning(
+                    contract=contract,
+                    val_result=val_result,
+                    messages=messages,
+                    telemetry=telemetry,
+                    is_budget_exhausted=is_budget_exhausted
+                )
+                if val_result.comparison_error and execution_evidence is not None:
+                    # Do not publish an unsupported extreme and then disclaim it.
+                    # This is a failed verification, not an alternate computed answer.
+                    final_text = "本次比较结论尚未通过执行证据核验。"
+                if "【指标核算未完成声明】" not in final_text:
+                    final_text += contract_warning
+
+    # 自动对工作区中本轮新生成的带公式但缺少缓存值的 xlsx 交付物执行无头重算以补齐公式缓存
+    _recalculate_generated_workbooks(workspace_dir, turn_start_time=turn_start_time)
+
+    try:
+        from .delivery_reconciliation import reconcile_delivery_presentation
+        final_text = reconcile_delivery_presentation(
+            final_text,
+            workspace_dir,
+            messages=messages,
+            prompt=last_user_prompt,
+            turn_start_time=turn_start_time
+        )
+    except Exception as e:
+        logger.warning("Delivery reconciliation error: %s", e)
+
+    from .retrieval_answer_recovery import ensure_retrieval_answer
+    final_text = ensure_retrieval_answer(
+        final_text, prompt=last_user_prompt, messages=messages,
+        evidence=execution_evidence or [], telemetry=telemetry,
+        model=model, policy=policy, deadline=deadline, call_model=call_model,
+        token_truncated=was_token_truncated,
+    )
+    return final_text, healed_files
+

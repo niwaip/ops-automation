@@ -89,17 +89,17 @@ export class DeterministicRecipeMatcherService {
       /(?:(?:我只是?|仅为?|作为)?(?:咨询|请问|请教)|(?:什么是|何为|怎么理解|如何理解|有哪些|通常检查|主要检查|一般检查|通常包含|主要包含|什么叫|怎样看待|需要注意哪些|怎么做|如何做))/i.test(
         userUtterance
       ) ||
-      /(?:不用|无需|不需要|不要|别)(?:审查|审核|排查|对比|比对|生成|执行)/i.test(userUtterance);
+      /(?:不用|无需|不需要|不要|别)(?:审查|审核|审计|排查|对比|比对|生成|执行)/i.test(userUtterance);
     const hasExplicitReviewVerb =
-      /(?:审查|审核|排查|风控|合规|诊断|法务|风险评估|风险排查|合规分析|风险分析)/i.test(
+      /(?:审查|审核|审计|排查|风控|合规|诊断|法务|风险评估|风险排查|合规分析|风险分析)/i.test(
         userUtterance
       );
     const isExplicitViewOrExtract =
       /(?:查看|查阅|读取|提取|显示|浏览|阅读|正文)/i.test(userUtterance) &&
-      !/(?:审查|审核|风控|合规|诊断|风险|法务)/i.test(userUtterance);
+      !/(?:审查|审核|审计|风控|合规|诊断|风险|法务)/i.test(userUtterance);
     const hasContractTarget =
       /(?:合同|协议|条款)/i.test(userUtterance) ||
-      (hasAttachedContract && /(?:审查|审核|排查|风控|合规|诊断)/i.test(userUtterance));
+      (hasAttachedContract && /(?:审查|审核|审计|排查|风控|合规|诊断)/i.test(userUtterance));
     const hasContractReview =
       !hasContractCompare &&
       !isNdaDraftIntent &&

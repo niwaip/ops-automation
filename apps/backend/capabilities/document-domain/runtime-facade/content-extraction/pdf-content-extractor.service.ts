@@ -8,6 +8,7 @@ import type {
 import { ensurePdfJsTextRuntime } from './pdfjs-text-runtime.compat';
 import { PdfPageRasterizerService } from './pdf-page-rasterizer.service';
 import { DocumentVisionOcrService } from './document-vision-ocr.service';
+import { tryExtractPdfTable, tryExtractPdfTables } from './pdf-table-extractor.util';
 
 import * as mammoth from 'mammoth';
 import JSZip from 'jszip';
@@ -329,7 +330,7 @@ export class PdfContentExtractorService {
       const page = await document.getPage(pageNumber);
       try {
         const content = await page.getTextContent({ includeMarkedContent: false });
-        const fullPageText = this.joinTextItems(content.items);
+        const fullPageText = this.joinPageTextItems(content.items);
         const hasText = this.isPageTextSufficient(fullPageText);
         pageRecords.push({
           pageNumber,
@@ -518,13 +519,74 @@ export class PdfContentExtractorService {
     return parsed;
   }
 
+  private joinPageTextItems(items: PdfJsTextItem[]): string {
+    const tables = tryExtractPdfTables(items as any);
+    if (tables.length === 0) {
+      return this.joinTextItems(items);
+    }
+
+    const allTableItems = new Set<PdfJsTextItem>();
+    for (const t of tables) {
+      t.tableItems.forEach((it) => allTableItems.add(it as any));
+    }
+
+    const parts: string[] = [];
+    let currentY = Infinity;
+
+    for (const table of tables) {
+      const betweenItems = items.filter(
+        (it) =>
+          !allTableItems.has(it) &&
+          Array.isArray(it.transform) &&
+          typeof it.transform[5] === 'number' &&
+          it.transform[5] <= currentY &&
+          it.transform[5] > table.headerY + 3.5
+      );
+      if (betweenItems.length > 0) {
+        const text = this.joinTextItems(betweenItems);
+        if (text) parts.push(text);
+      }
+      parts.push(table.tableMarkdown);
+      currentY = table.minY - 3.5;
+    }
+
+    const finalItems = items.filter(
+      (it) =>
+        !allTableItems.has(it) &&
+        Array.isArray(it.transform) &&
+        typeof it.transform[5] === 'number' &&
+        it.transform[5] <= currentY
+    );
+    if (finalItems.length > 0) {
+      const text = this.joinTextItems(finalItems);
+      if (text) parts.push(text);
+    }
+
+    return parts.join('\n\n');
+  }
+
   private joinTextItems(items: PdfJsTextItem[]): string {
+    // 2D Geometric Sorting: Sort items by vertical position (Y descending: top to bottom),
+    // and horizontal position (X ascending: left to right).
+    // This recovers natural document layout even when PDF content stream operators were emitted out of order
+    // (e.g. headers, sidebars, or summary tables added after main text stream).
+    const sortedItems = [...items].sort((a, b) => {
+      const yA = Array.isArray(a.transform) && typeof a.transform[5] === 'number' ? a.transform[5] : 0;
+      const yB = Array.isArray(b.transform) && typeof b.transform[5] === 'number' ? b.transform[5] : 0;
+      if (Math.abs(yA - yB) > 3.5) {
+        return yB - yA;
+      }
+      const xA = Array.isArray(a.transform) && typeof a.transform[4] === 'number' ? a.transform[4] : 0;
+      const xB = Array.isArray(b.transform) && typeof b.transform[4] === 'number' ? b.transform[4] : 0;
+      return xA - xB;
+    });
+
     let text = '';
     let lastY: number | null = null;
     let lastX: number | null = null;
     let lastWidth: number | null = null;
 
-    for (const item of items) {
+    for (const item of sortedItems) {
       if (typeof item?.str !== 'string') continue;
       const str = item.str;
       const currentY =
@@ -538,11 +600,11 @@ export class PdfContentExtractorService {
       const width = typeof item.width === 'number' ? item.width : 0;
 
       // Line break detection:
-      // 1. item.hasEOL is explicitly true (even if str is empty)
-      // 2. Y-coordinate changed by more than line threshold (> 4pt)
-      const isNewLine =
-        Boolean(item.hasEOL) ||
-        (lastY !== null && currentY !== null && Math.abs(currentY - lastY) > 4);
+      // When items are sorted by 2D geometry (Y descending, X ascending),
+      // vertical displacement (delta Y > 4pt) is the physical ground truth for line breaks.
+      // Raw item.hasEOL from PDF.js reflects pre-sorted drawing order and causes false breaks
+      // when out-of-order table cells or layout fragments are restored.
+      const isNewLine = lastY !== null && currentY !== null && Math.abs(currentY - lastY) > 4;
 
       if (isNewLine) {
         if (!text.endsWith('\n')) {
@@ -560,23 +622,36 @@ export class PdfContentExtractorService {
       if (!str) continue;
 
       // On the same horizontal line:
-      if (text.length > 0 && !text.endsWith('\n') && !text.endsWith(' ') && !str.startsWith(' ')) {
+      const gap =
+        lastX !== null && lastWidth !== null && currentX !== null
+          ? currentX - (lastX + lastWidth)
+          : 0;
+
+      // Detect large tabular/column gutters:
+      // Either physical coordinate gap > 20pt OR an explicit whitespace operator with width > 20pt
+      const isLargeGutter = gap > 20 || (str.trim() === '' && width > 20);
+
+      if (isLargeGutter) {
+        if (!text.endsWith('  ')) {
+          text = text.trimEnd() + '  ';
+        }
+      } else if (str.trim() === '' && (text.endsWith(' ') || text.endsWith('  '))) {
+        // Skip redundant single whitespace item if text already ends with whitespace
+      } else if (text.length > 0 && !text.endsWith('\n') && !text.endsWith(' ') && !str.startsWith(' ')) {
         const prevChar = text.slice(-1);
         const nextChar = str[0];
         const isPrevAscii = /[a-zA-Z0-9]/.test(prevChar);
         const isNextAscii = /[a-zA-Z0-9]/.test(nextChar);
-        const gap =
-          lastX !== null && lastWidth !== null && currentX !== null
-            ? currentX - (lastX + lastWidth)
-            : 0;
 
-        // Insert space only between ASCII words or large tabular gaps, never within Chinese phrases
+        // Insert space between ASCII words or medium gaps
         if ((isPrevAscii && isNextAscii) || gap > 12) {
           text += ' ';
         }
       }
 
-      text += str;
+      if (str.trim() !== '' || (!text.endsWith(' ') && !text.endsWith('  '))) {
+        text += str;
+      }
       if (currentY !== null) lastY = currentY;
       if (currentX !== null) {
         lastX = currentX;
@@ -586,7 +661,7 @@ export class PdfContentExtractorService {
 
     return text
       .replace(/[ \t]+\n/g, '\n')
-      .replace(/[ \t]{2,}/g, ' ')
+      .replace(/[ \t]{3,}/g, '  ')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
   }

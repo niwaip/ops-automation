@@ -77,8 +77,8 @@ def runtime_domain():
 
 def validate_domain_calculation(item, bindings, domain):
     pack = domain_pack(domain)
-    metric_id = item.get('metric_id')
-    if metric_id is not None:
+    metric_id = (item.get('metric_id') or '').strip()
+    if metric_id:
         metrics = pack.METRICS if pack else []
         if not isinstance(metric_id, str) or not any(m['id'] == metric_id for m in metrics):
             raise ValueError(f'当前领域 {domain} 未注册 metric_id={metric_id}')

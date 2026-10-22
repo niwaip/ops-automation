@@ -72,7 +72,7 @@ ${skillsXml}
 用户输入：${userInput}
 
 请分析用户意图，返回最匹配的技能信息。如果没有任何技能匹配，返回 null。
-只有当技能名称、描述与用户目标明确匹配，且置信度不低于 ${getSkillMatchMinConfidence()} 时才返回技能；否则 matchedSkill 必须返回 null。不要因为某个技能是候选列表中唯一接近的能力就勉强匹配。
+只有当技能名称、描述或触发词与用户目标明确匹配，且置信度不低于 ${getSkillMatchMinConfidence()} 时才返回技能；否则 matchedSkill 必须返回 null。不要因为某个技能是候选列表中唯一接近的能力就勉强匹配。
 
 请严格按照以下 JSON 格式返回（不要添加任何其他文字）：
 {
@@ -175,12 +175,15 @@ ${skillsXml}
     };
 
     const lines = skills
-      .map(
-        (skill) => `  <skill>
+      .map((skill) => {
+        const triggers = (skill.triggerKeywords || []).slice(0, 10).join(', ');
+        return `  <skill>
     <name>${this.escapeXml(skill.name)}</name>
-    <description>${this.escapeXml(getMatchSummary(skill).slice(0, this.candidateSummaryLimit))}</description>
-  </skill>`
-      )
+    <description>${this.escapeXml(getMatchSummary(skill).slice(0, this.candidateSummaryLimit))}</description>${
+      triggers ? `\n    <triggers>${this.escapeXml(triggers)}</triggers>` : ''
+    }
+  </skill>`;
+      })
       .join('\n');
     return `<available_skills>\n${lines}\n</available_skills>`;
   }

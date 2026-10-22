@@ -9,6 +9,7 @@ import {
 import { randomUUID } from 'crypto';
 import { SKILL_REGISTRY_PRISMA, SkillRegistryPrismaPort } from './skill-registry.ports';
 import {
+  ParamsSchema,
   PublishedSkillCatalogItemDTO,
   SkillAccessRequestDTO,
   SkillAccessRequestReviewDTO,
@@ -99,7 +100,11 @@ export class SkillAccessService {
 
   async listSkillsForUser(userId: string): Promise<SkillConfigDto[]> {
     if (userId === 'system') {
-      return (await this.listAllActiveSkills()).filter((skill) => skill.isPublished);
+      const [customSkills, builtinSkills] = await Promise.all([
+        this.listAllActiveSkills(),
+        this.listAllActiveBuiltinSkills('system', []),
+      ]);
+      return [...customSkills.filter((skill) => skill.isPublished), ...builtinSkills];
     }
 
     if (!isValidUUID(userId)) {
@@ -110,10 +115,6 @@ export class SkillAccessService {
       where: { id: userId },
     });
 
-    if (user?.role === 'admin') {
-      return (await this.listAllActiveSkills()).filter((skill) => skill.isPublished);
-    }
-
     const userRoles = await this.prisma.userRole.findMany({
       where: { userId },
       include: { role: true },
@@ -122,15 +123,14 @@ export class SkillAccessService {
     const roleIds = userRoles.map((ur: any) => ur.roleId);
     const roleNames = new Set(userRoles.map((ur: any) => ur.role?.name).filter(Boolean));
 
-    const isAdmin = userRoles.some(
-      (ur: any) =>
-        ur.role.name === 'admin' ||
-        (ur.role.permissions as Record<string, boolean>)?.['all_skills'] === true
-    );
-
-    if (isAdmin) {
-      return (await this.listAllActiveSkills()).filter((skill) => skill.isPublished);
-    }
+    const isAdmin =
+      user?.role === 'admin' ||
+      roleNames.has('admin') ||
+      userRoles.some(
+        (ur: any) =>
+          ur.role.name === 'admin' ||
+          (ur.role.permissions as Record<string, boolean>)?.['all_skills'] === true
+      );
 
     if (user?.role && !roleNames.has(user.role)) {
       const fallbackRole = await this.prisma.role.findUnique({
@@ -144,12 +144,15 @@ export class SkillAccessService {
       }
     }
 
-    if (roleNames.has('admin')) {
-      return (await this.listAllActiveSkills()).filter((skill) => skill.isPublished);
+    const builtinSkills = await this.listAllActiveBuiltinSkills(userId, roleIds);
+
+    if (isAdmin) {
+      const customSkills = (await this.listAllActiveSkills()).filter((skill) => skill.isPublished);
+      return [...customSkills, ...builtinSkills];
     }
 
     if (roleIds.length === 0) {
-      return [];
+      return [...builtinSkills];
     }
 
     const skillPermissions = await this.prisma.skillPermission.findMany({
@@ -168,7 +171,8 @@ export class SkillAccessService {
     }
 
     const enrichedSkills = await this.skillEnrichmentService.enrichSkillsWithPublication(skills);
-    return enrichedSkills.filter((skill) => skill.isPublished);
+    const authorizedCustomSkills = enrichedSkills.filter((skill) => skill.isPublished);
+    return [...authorizedCustomSkills, ...builtinSkills];
   }
 
   async listPublishedSkillCatalogForUser(userId: string): Promise<PublishedSkillCatalogItemDTO[]> {
@@ -594,6 +598,110 @@ export class SkillAccessService {
     return this.skillEnrichmentService.enrichSkillsWithPublication(skills, {
       hideHistoricalPublishedVersions: true,
     });
+  }
+
+  async listAllActiveBuiltinSkills(
+    userId?: string,
+    roleIds?: string[]
+  ): Promise<SkillConfigDto[]> {
+    if (!this.prisma.builtinSkill) {
+      return [];
+    }
+    try {
+      const builtinSkills = await this.prisma.builtinSkill.findMany({
+        where: { isEnabled: true },
+        include: { versions: true },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      const denySkillIds = new Set<string>();
+      if (
+        this.prisma.builtinSkillPermissionOverride &&
+        (userId || (roleIds && roleIds.length > 0))
+      ) {
+        try {
+          const overrides = await this.prisma.builtinSkillPermissionOverride.findMany({
+            where: { effect: 'deny' },
+          });
+          const now = new Date();
+          for (const o of overrides as any[]) {
+            if (o.expiresAt && o.expiresAt <= now) continue;
+            if (o.principalType === 'user' && userId && o.principalId === userId) {
+              denySkillIds.add(o.builtinSkillId);
+            }
+            if (o.principalType === 'role' && roleIds && roleIds.includes(o.principalId)) {
+              denySkillIds.add(o.builtinSkillId);
+            }
+          }
+        } catch {
+          // best-effort permission overrides check
+        }
+      }
+
+      return builtinSkills
+        .filter((bSkill: any) => !denySkillIds.has(bSkill.id))
+        .map((bSkill: any) => {
+          const active =
+            bSkill.versions?.find((v: any) => v.id === bSkill.activeVersionId) ||
+            bSkill.versions?.[0];
+          const manifest = active?.manifestJson || {};
+          const spec = manifest.spec || {};
+          const planner = spec.planner || {};
+          const inputSchema = spec.contracts?.input?.schema || {};
+          const outputSchema = spec.contracts?.output?.schema || {};
+          const handlerKey = spec.runtime?.handlerKey;
+
+          const rawProps = inputSchema.properties || {};
+          const required = Array.isArray(inputSchema.required) ? inputSchema.required : [];
+          const properties: ParamsSchema['properties'] = {};
+
+          for (const [key, val] of Object.entries(rawProps) as [string, any][]) {
+            const rawType =
+              val?.type === 'integer' || val?.type === 'number'
+                ? 'number'
+                : val?.type === 'boolean'
+                ? 'boolean'
+                : 'string';
+            properties[key] = {
+              type: rawType,
+              description: typeof val?.description === 'string' ? val.description : key,
+              required: required.includes(key),
+              ...(val?.enum ? { enum: val.enum } : {}),
+              ...(val?.['x-enum-aliases'] ? { 'x-enum-aliases': val['x-enum-aliases'] } : {}),
+            };
+          }
+
+          return {
+            id: bSkill.capabilityKey,
+            userConfigurable: spec.userConfigurable === true,
+            name: bSkill.displayName || bSkill.capabilityKey,
+            description: bSkill.description || planner.matchSummary || '',
+            triggerKeywords: planner.triggerKeywords || [],
+            paramsSchema: {
+              properties,
+              required,
+            },
+            executionFlowTemplateIds: [],
+            executionFlow: [],
+            tools: handlerKey ? [handlerKey] : [],
+            effectiveTools: handlerKey ? [handlerKey] : [],
+            apiEndpoints: {
+              runtimeMetadata: {
+                matchSummary: planner.matchSummary,
+                sourceType: 'builtin_skill',
+                runtimeType: planner.runtimeType || spec.workflow?.engine || 'workflow',
+                outputParams: outputSchema,
+                supportsArtifact: planner.supportsArtifact || false,
+              },
+            },
+            isActive: true,
+            isPublished: true,
+            outputSchema,
+          };
+        });
+    } catch {
+      return [];
+    }
   }
 
   private async listPendingRequestsForUser(userId: string): Promise<SkillAccessRequestDTO[]> {

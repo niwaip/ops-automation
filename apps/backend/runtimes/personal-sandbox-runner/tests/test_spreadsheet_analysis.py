@@ -410,7 +410,7 @@ class SpreadsheetAnalysisTests(unittest.TestCase):
         sys_msgs = [m['content'] for m in captured_messages if m.get('role') == 'system']
         self.assertTrue(any('【财务与经营管理咨询规范】' in s for s in sys_msgs))
 
-    def test_task_contract_keeps_tools_required_after_insufficient_success(self):
+    def test_task_contract_keeps_tools_available_and_allows_clarification_after_insufficient_success(self):
         from dsh_modules.tools import get_sandbox_tools
         params={'file_path':str(self.path),'tables':[self.table],
                 'calculations':[{'id':'n','label':'记录数','expression':aggregate('tx','A','number','count')}]}
@@ -424,7 +424,8 @@ class SpreadsheetAnalysisTests(unittest.TestCase):
              patch('dsh_modules.spreadsheet_analysis.resolve_sandboxed_path',return_value=(self.path,None)):
             result=run_agent_loop([{'role':'system','content':'test'},{'role':'user','content':'汇总营业收入'}],
                 'test',RuntimePolicy(),2,tools=get_sandbox_tools({'analyze_spreadsheet'}),spreadsheet_analysis_required=True)
-        self.assertEqual(calls[1]['tool_choice'],'required')
+        self.assertIsNone(calls[1]['tool_choice'])
+        self.assertTrue(calls[1]['tools'])
         self.assertIn('尚未通过',result.final_text)
 
     def test_browse_and_summary_intent_bypasses_spreadsheet_analysis(self):
@@ -535,6 +536,126 @@ class SpreadsheetAnalysisTests(unittest.TestCase):
         self.assertNotIn('尚未通过执行证据核验', result.final_text)
         self.assertNotIn('无法计算的原因说明', result.final_text)
         self.assertEqual(result.telemetry.guard_decisions[-1]['action'], 'accept')
+
+    def test_cjk_variant_fuzzy_matching_and_sheet_alignment(self):
+        """Verifies zero-hardcoding CJK variant alignment for file_path and sheet names."""
+        from dsh_modules.spreadsheet_context import execute_spreadsheet_structure
+        from dsh_modules.spreadsheet_analysis import execute_spreadsheet_analysis
+
+        real_filename = "工数实绩明细_20261020134124.xlsx"
+        real_path = Path(self.tmp.name) / real_filename
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "工数实绩明细"
+        ws.append(["部门", "WBS编号", "金额(元)"])
+        ws.append(["FC01", "IK-100", 100])
+        ws.append(["FC02", "EX-200", 200])
+        wb.save(real_path)
+        wb.close()
+
+        # 模型产生异体字幻觉：把 "实" 写成日文汉字 "実"
+        variant_file_path = f"/workspace/工数実绩明细_20261020134124.xlsx"
+        variant_sheet = "工数実绩明细"
+
+        with patch.dict(os.environ, {"DSH_SESSION_ATTACHMENTS": real_filename}), \
+             patch("dsh_modules.config.WORKSPACE_DIR", self.tmp.name):
+            # 1. 结构探测工具应自愈并成功解析工作簿与工作表结构
+            struct_output = execute_spreadsheet_structure({
+                "file_path": variant_file_path,
+                "sheets": [variant_sheet]
+            })
+            self.assertTrue(struct_output.tool_result.is_success, str(struct_output))
+            self.assertEqual(struct_output.tool_result.data["sheets"][0]["sheet"], "工数实绩明细")
+
+            # 2. 原生聚合分析工具应自愈并成功执行计算
+            analysis_output = execute_spreadsheet_analysis({
+                "file_path": variant_file_path,
+                "tables": [{
+                    "id": "t1",
+                    "sheet": variant_sheet,
+                    "header_row": 1,
+                    "data_range": "A2:C3",
+                    "filters": [{"column": "B", "op": "exclude_prefix", "exclude_prefixes": ["EX"]}]
+                }],
+                "calculations": [{
+                    "id": "c1",
+                    "label": "金额合计",
+                    "expression": {"aggregate": "sum", "table": "t1", "column": "C", "unit": "amount"}
+                }]
+            })
+            self.assertTrue(analysis_output.tool_result.is_success, str(analysis_output))
+            self.assertEqual(analysis_output.tool_result.data["facts"][0]["value"], "100")
+
+            # 3. 传入完全不相关的别处文件时，必须严格拦截并返回包含可用附件列表的自愈提示
+            irrelevant_output = execute_spreadsheet_analysis({
+                "file_path": "/workspace/totally_different.xlsx",
+                "tables": []
+            })
+            self.assertEqual(irrelevant_output.tool_result.error_code, "source_outside_session_scope")
+            self.assertIn(real_filename, str(irrelevant_output))
+
+    def test_predicate_dominance_and_targeted_entity_routing(self):
+        """Standardized routing test: Entity predicates and targeted queries must NOT be collapsed into broad browsing."""
+        from dsh_modules.analysis_contract import build_analysis_contract
+        targeted_queries = [
+            '查看员工编号 S22014的工数数据',
+            '查看员工编号S22014',
+            '看下员工杨烨的工数明细',
+            '调出华东MIS部门的数据',
+            '查找WBS编号 IW-S62662-00-001 的明细',
+        ]
+        for q in targeted_queries:
+            skill = SkillRouter.route(q, [], files=['工数实绩明细_20261020134124.xlsx'])
+            contract = build_analysis_contract(q)
+            self.assertFalse(contract.is_browse_or_summary, f"Query '{q}' should NOT be browse_or_summary")
+            self.assertTrue(requires_spreadsheet_analysis(q, skill), f"Query '{q}' MUST require spreadsheet analysis")
+            self.assertTrue(len(contract.entity_predicates) > 0 or len(contract.attribute_targets) > 0)
+
+    def test_context_budget_compacts_assistant_evidence_blocks(self):
+        """Verifies that ContextBudget folds historical assistant evidence details to prevent context bloat and hallucination."""
+        from dsh_modules.context_budget import ContextBudget
+        hist = [
+            {"role": "user", "content": "统计前序数据"},
+            {"role": "assistant", "content": "这是前序结论。\n<details><summary>查看来源与核算明细</summary>\n来源：data.xlsx；证据 `fakehash12345678901234`。\n| a | 1 |\n</details>"}
+        ]
+        budgeted, _ = ContextBudget.budget_history(hist, max_total_chars=10000)
+        assistant_msg = next(m for m in budgeted if m["role"] == "assistant")
+        self.assertNotIn("<details>", assistant_msg["content"])
+        self.assertNotIn("fakehash12345678901234", assistant_msg["content"])
+        self.assertIn("前序轮次已核验明细", assistant_msg["content"])
+
+    def test_preflight_profiling_and_multi_column_group_by(self):
+        """Verifies Phase 1 Preflight profiling and multi-column group_by execution."""
+        from dsh_modules.spreadsheet_preflight import profile_spreadsheet_for_planning
+        from dsh_modules.spreadsheet_expression import ExpressionEvaluator
+
+        # 1. Preflight on self.path
+        res = profile_spreadsheet_for_planning(self.path, prompt="按部门和审批状态统计金额")
+        self.assertIn("Pre-flight Sheet Profile", res["compact_markdown"])
+        self.assertIn("通用业务表格", res["compact_markdown"])
+        self.assertEqual(res["header_row"], 5)
+        self.assertEqual(res["data_range"], "A6:E85")
+
+        # 2. Multi-column group_by via compute
+        r = self.compute(
+            tables=[self.table],
+            calculations=[{
+                "id": "dept_summary",
+                "label": "部门状态金额",
+                "expression": {
+                    "aggregate": "sum",
+                    "table": "tx",
+                    "column": "C",
+                    "group_by": ["E", "D"],  # 部门, 审批状态
+                    "unit": "amount"
+                }
+            }]
+        )
+        self.assertTrue(r.is_success, getattr(r, "error", None))
+        self.assertTrue(len(r.data["facts"]) >= 1)
+        for f in r.data["facts"]:
+            self.assertIn(" - ", f["group_key"])
+            self.assertEqual(f["unit"], "千元")
 
 
 if __name__=='__main__':unittest.main()

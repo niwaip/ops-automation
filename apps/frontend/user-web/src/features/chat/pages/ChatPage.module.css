@@ -701,6 +701,7 @@
   background: rgba(255, 255, 255, 0.28);
   flex-wrap: nowrap;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
 }
 
@@ -1297,6 +1298,30 @@
   box-shadow: 0 0 6px #ffffff;
   margin-right: 4px;
   vertical-align: middle;
+}
+
+.user-chat-mode-text {
+  display: inline;
+}
+
+.user-chat-mode-short-text {
+  display: none;
+}
+
+.user-chat-reasoning-full-text {
+  display: inline;
+}
+
+.user-chat-reasoning-short-text {
+  display: none;
+}
+
+.user-chat-control-text {
+  display: inline;
+}
+
+.user-chat-send-btn-text {
+  display: inline;
 }
 
 /* 暗色主题高对比度适配 */
@@ -2514,8 +2539,8 @@
   }
 
   .user-chat-input-toolbar {
-    flex-wrap: wrap;
-    overflow-x: visible;
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
     padding: 6px 10px;
     row-gap: 6px;
     column-gap: 6px;
@@ -2523,6 +2548,8 @@
 
   .user-chat-input-left-group {
     gap: 4px;
+    flex-wrap: wrap !important;
+    max-width: 100%;
   }
 
   .user-chat-input-controls {
@@ -2546,6 +2573,8 @@
 
   .user-chat-input-actions-group {
     gap: 4px;
+    flex-wrap: wrap !important;
+    max-width: 100%;
   }
 
   .user-chat-input-model-select {
@@ -2588,9 +2617,29 @@
     display: none;
   }
 
+  .user-chat-control-text {
+    display: none !important;
+  }
+
+  .user-chat-mode-text {
+    display: none !important;
+  }
+
+  .user-chat-mode-short-text {
+    display: inline !important;
+  }
+
+  .user-chat-reasoning-full-text {
+    display: none !important;
+  }
+
+  .user-chat-reasoning-short-text {
+    display: inline !important;
+  }
+
   .user-chat-input-model-select {
-    width: 130px !important;
-    min-width: 100px !important;
+    width: 120px !important;
+    min-width: 86px !important;
   }
 }
 
@@ -2605,8 +2654,58 @@
   }
 
   .user-chat-input-model-select {
-    width: 110px !important;
-    min-width: 86px !important;
+    width: 100px !important;
+    min-width: 76px !important;
+  }
+
+  .user-chat-send-btn-text {
+    display: none !important;
+  }
+
+  .user-chat-input-send-btn {
+    padding-inline: 10px !important;
+  }
+
+  .user-chat-input-stop-btn {
+    padding-inline: 10px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .user-chat-mode-text {
+    display: none !important;
+  }
+
+  .user-chat-mode-short-text {
+    display: inline !important;
+  }
+
+  .user-chat-reasoning-full-text {
+    display: none !important;
+  }
+
+  .user-chat-reasoning-short-text {
+    display: inline !important;
+  }
+
+  .user-chat-control-text {
+    display: none !important;
+  }
+
+  .user-chat-send-btn-text {
+    display: none !important;
+  }
+
+  .user-chat-input-send-btn {
+    height: 30px !important;
+    min-width: 32px !important;
+    padding: 0 8px !important;
+  }
+
+  .user-chat-input-stop-btn {
+    height: 30px !important;
+    min-width: 32px !important;
+    padding: 0 8px !important;
   }
 }
 
@@ -2617,6 +2716,28 @@
 
   .user-chat-input-toolbar {
     padding: 4px 6px;
+    row-gap: 6px;
+    column-gap: 4px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .user-chat-input-left-group {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .user-chat-input-toolbar-spacer {
+    display: none;
+  }
+
+  .user-chat-input-actions-group {
+    width: 100%;
+    justify-content: space-between;
+    margin-left: 0;
+    gap: 4px;
   }
 
   .user-chat-input-mode-switch.ant-segmented {
@@ -2625,8 +2746,8 @@
   }
 
   .user-chat-input-model-select {
-    width: 82px !important;
-    min-width: 68px !important;
+    width: 76px !important;
+    min-width: 62px !important;
   }
 }
 

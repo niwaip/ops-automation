@@ -22,6 +22,7 @@ interface UseExecutionCreatePageViewOptions {
   selectedSkillDisplayName: string;
   selectedSkillId?: string;
   selectedSkillLoading: boolean;
+  isRunnable?: boolean;
   schemaFields: SchemaField[];
   executionMode: ExecutionCreateFormValues['executionMode'];
   schedulePattern: SchedulePattern;
@@ -54,6 +55,7 @@ export function useExecutionCreatePageView({
   selectedSkillDisplayName,
   selectedSkillId,
   selectedSkillLoading,
+  isRunnable,
   executionMode,
   schedulePattern,
   createLoading,
@@ -94,8 +96,9 @@ export function useExecutionCreatePageView({
         createLoading,
         scheduleLoading,
         selectedSkillId,
+        isRunnable,
       }),
-    [createLoading, executionMode, scheduleLoading, selectedSkillId]
+    [createLoading, executionMode, isRunnable, scheduleLoading, selectedSkillId]
   );
 
   const scheduleHour = Form.useWatch('scheduleHour', form);

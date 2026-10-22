@@ -9,6 +9,14 @@ import json
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 from .analysis_semantics import domain_definitions, select_domain
+from .analysis_request_text import user_instruction as extract_user_instruction
+
+
+TASK_TYPE_TABULAR_QUERY = "tabular_query"
+TASK_TYPE_TABULAR_COMPUTE = "tabular_compute"
+TASK_TYPE_TABULAR_AUDIT = "tabular_audit"
+TASK_TYPE_TABULAR_OVERVIEW = "tabular_overview"
+TASK_TYPE_ADVISORY = "advisory"
 
 
 @dataclass
@@ -32,6 +40,9 @@ class AnalysisContract:
     is_advisory_intent: bool = False
     is_browse_or_summary: bool = False
     is_explicit_calc: bool = False
+    is_detail_query: bool = False
+    is_grouped: bool = False
+    group_dimension: Optional[str] = None
     operation: Optional[str] = None  # "argmax" | "argmin" | "summary" | "audit"
     dimension: Optional[str] = None  # "month" | "year" | "category"
     comparison: Optional[str] = None  # "variance" | "budget_vs_actual" | "yoy"
@@ -39,6 +50,11 @@ class AnalysisContract:
     ranking: str = "absolute"  # absolute | signed | rate
     concepts: List[str] = field(default_factory=list)
     domain: str = "generic"
+    has_filters: bool = False
+    task_type: str = TASK_TYPE_TABULAR_COMPUTE
+    entity_predicates: List[str] = field(default_factory=list)
+    attribute_targets: List[str] = field(default_factory=list)
+    limit: Optional[int] = None
 
 
     @property
@@ -63,7 +79,7 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
     if not prompt:
         return AnalysisContract(raw_prompt="")
 
-    clean_prompt = prompt.strip()
+    clean_prompt = extract_user_instruction(prompt)
     active_domain = select_domain(clean_prompt, domain)
     metric_definitions, concept_definitions = domain_definitions(active_domain)
 
@@ -115,6 +131,15 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
         if re.search(r'负向|缺口|不足', clean_prompt):
             operation = "argmin"
 
+    # 2.7 识别分组/分类汇总维度 (Group By / Breakdown)
+    is_grouped = bool(re.search(r'(?:按(?:照)?\s*.{1,20}?(?:分组|汇总|统计|分类|求和|计算|前\d+个[字符|字母]|前两位|前两位字母)|每组|各组|各类别|各个|逐组|分别统计|按组)', clean_prompt))
+    group_dimension = None
+    m_grp = re.search(r'按(?:照)?\s*[“"\'\`]?([^\s，。！？、()（）"\'\`]{1,30}?)[”"\'\`]?\s*(?:进行)?(?:分组|汇总|统计|分类|求和|计算)', clean_prompt)
+    if m_grp:
+        group_dimension = re.sub(r'的$', '', m_grp.group(1).strip())
+    elif "每组" in clean_prompt or "各组" in clean_prompt:
+        group_dimension = "分组"
+
     # 2.8 识别定性咨询/管理建议意图与显式计算动词
     advisory_patterns = [
         r'(?:提出|给出|提供|有哪些|列出|整理|提)\s*(?:\d+条)?.*(?:建议|措施|策略|对策|方案|方向|意见)',
@@ -127,13 +152,37 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
     is_advisory = any(bool(re.search(pat, clean_prompt, re.I)) for pat in advisory_patterns)
     is_explicit_calc = bool(re.search(r'(?:计算|核算|求和|求出|求解|统计|算一下|汇总|查重|对账|检验|勾稽|识别.*异常|\b(?:calculate|compute|reconcile|audit)\b)', clean_prompt, re.I))
 
+    # 2.9 识别行记录与明细查询意图 (Detail / Row-level Records Query)
+    # 提取真实用户指令（剔除系统附加的附件前缀元数据，避免附件名中的“明细”干扰意图识别）
+    user_instruction = clean_prompt
+
+    # 剥离文件名/表名引用（如 工数实绩明细_20261020134124.xlsx、工数实绩明细表、《工数实绩明细》）
+    text_for_detail = re.sub(r'[^\s/\\<>\'"`]+\.(?:xlsx|xls|csv|docx|doc|pdf|txt|json)\b', ' ', user_instruction, flags=re.I)
+    text_for_detail = re.sub(r'《[^》]+》', ' ', text_for_detail)
+    text_for_detail = re.sub(r'【[^】]+】', ' ', text_for_detail)
+
+    detail_query_patterns = [
+        r'(?:明细|清单|记录|详情|哪几条|哪几笔|具体哪|每一条|每一笔|所有记录|全部记录|明细行|明细数据|明细列表)',
+        r'\b(?:list|details?|records?|rows?|breakdown records)\b',
+    ]
+    has_explicit_agg_verb = bool(re.search(r'(?:求和|总计|合计|汇总|平均|均值|占比|比率|总额|总工数|总金额|计算.*总|统计)', user_instruction))
+    has_explicit_detail_requirement = bool(re.search(r'(?:明细行|逐行|每条记录|每一笔|具体哪几笔|明细清单|明细表格|明细列表|全部记录|所有记录)', text_for_detail))
+    is_pure_detail_keyword = any(bool(re.search(pat, text_for_detail, re.I)) for pat in detail_query_patterns)
+
+    if is_grouped or (has_explicit_agg_verb and not is_pure_detail_keyword):
+        is_detail_query = has_explicit_detail_requirement
+    elif has_explicit_agg_verb and is_pure_detail_keyword:
+        is_detail_query = has_explicit_detail_requirement or bool(re.search(r'查看.*明细|查.*明细|列出.*明细|展示.*明细|看.*明细', text_for_detail))
+    else:
+        is_detail_query = is_pure_detail_keyword
+
     # 3. 识别是否为审计/查重/异常筛查意图
     audit_keywords = [
         "查重", "重复", "重复凭证", "重号", "核对", "稽核", "勾稽", "检验", "对账",
         "最大绝对偏差", "最大偏差", "偏差最大", "绝对偏差", "异常", "筛查", "排查",
         "缺失", "漏填", "空值", "未填", "缺失字段"
     ]
-    is_audit = any(k in clean_prompt for k in audit_keywords)
+    is_audit = any(k in clean_prompt.replace('不重复', '') for k in audit_keywords)
 
     # 4. 动态匹配请求的指标
     requested_metrics: List[MetricRequirement] = []
@@ -167,25 +216,65 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
     if {'data_quality', 'reconciliation'} & set(concepts):
         is_audit = True
 
-    # 5. 通用后备匹配：检测类似于 "统计X金额" / "计算X总额" 的通用需求
-    if not requested_metrics and not is_catalog_only:
-        m_generic = re.search(r'(?:统计|计算|核算|汇总|求)\s*([^\s，。！？、]{2,8}(?:金额|数量|费用|成本|总额|比率|率|均值))', clean_prompt)
-        if m_generic:
-            raw_metric = m_generic.group(1).strip()
-            # 剥离语境限定词与介词前缀 (如 "附件中的", "工作表里的", "表格中的", "文件中的", "数据中的", "表内的", "其中的")
-            clean_metric = re.sub(
-                r'^(?:(?:各|该|所有)?附件(?:中|里|内)?的?|(?:各|该)?工作表(?:中|里|内)?的?|(?:各|该)?表格(?:中|里|内)?的?|文件(?:中|里|内)?的?|数据(?:中|里|内)?的?|表内的?|其中的?|对应的?|相关的?|上述(?:的)?)',
-                '',
-                raw_metric
-            ).strip()
+    # 5. 通用后备匹配：检测类似于 "统计X金额" / "计算X总额" / "汇总金额和工数" 的通用需求
+    if not requested_metrics and not is_catalog_only and not (is_detail_query and not has_explicit_agg_verb and not is_explicit_calc):
+        peel_prefixes = (
+            r'^(?:(?:各|该|所有)?(?:附件|工作表|表格|文件|数据|表内|其中|对应|相关|上述)(?:[中里内])?(?:的)?|'
+            r'(?:每|每个|各|各个|该|所有|逐)?(?:组|类别|部门|中心|项目)(?:的)?|'
+            r'(?:各|该)?明细(?:的)?|'
+            r'[和及与、并]|'
+            r'的)+'
+        )
+        # 兼容中文共享后置度量语法，如 "有偿和无偿金额" -> 展开匹配 "有偿金额" 与 "无偿金额"
+        measure_pattern = r'金额|数量|费用|成本|总额|比率|均值|工数|工时|单价|明细条数|条数|行数|记录数|笔数|计数'
+        def _expand_shared_measure(m):
+            w1, w2, meas = m.group(1), m.group(2), m.group(3)
+            if re.search(f'(?:{measure_pattern})$', w1):
+                return m.group(0)
+            return f'{w1}{meas}和{w2}{meas}'
+
+        expanded_target_prompt = re.sub(
+            r'([^\s，。！？、()（）和及与、并]{1,8})[和与及、并]([^\s，。！？、()（）和及与、并]{1,8})(' + measure_pattern + r')',
+            _expand_shared_measure,
+            clean_prompt
+        )
+        # 匹配动词引导或连词连接的数值度量（如 金额、工数、工时、数量、费用、成本、总额、单价、比率、明细条数等）
+        matches = list(re.finditer(
+            r'(?:(?:统计|计算|核算|汇总|求|列出|分析)\s*|[和及与、并]\s*)'
+            r'([^\s，。！？、()（）和及与、并]{0,12}(?:' + measure_pattern + r'))',
+            expanded_target_prompt
+        ))
+        # 兼容中文动宾倒装句式，如“进行金额的统计”、“针对工数进行汇总”、“做部门费用的核算”
+        inverted_matches = list(re.finditer(
+            r'(?:进行|做|针对|开展|对)\s*'
+            r'([^\s，。！？、()（）和及与、并]{0,12}(?:' + measure_pattern + r'))\s*(?:的)?\s*(?:进行|做)?\s*'
+            r'(?:统计|计算|核算|汇总|求和|分析)',
+            expanded_target_prompt
+        ))
+        matches.extend(inverted_matches)
+        found_metrics = []
+        for m_item in matches:
+            raw_metric = m_item.group(1).strip()
+            # A numeric literal followed by a measure (e.g. an expected empty-result
+            # value) is not another requested source column. Keep numeric field
+            # qualifiers such as years or alphanumeric product names intact.
+            if re.fullmatch(r'[-+]?\d+(?:\.\d+)?\s*(?:金额|数量|费用|成本|总额|比率|均值|工数|工时|单价|明细条数|条数|行数|记录数|笔数|计数)', raw_metric):
+                continue
+            clean_metric = re.sub(peel_prefixes, '', raw_metric).strip()
+            if re.search(r'(?:所有不同|不重复|去重|唯一).*?(?:负责|所属)', raw_metric):
+                continue  # A categorical column name is not a requested cost metric.
             if not clean_metric:
                 clean_metric = raw_metric
+            if clean_metric and clean_metric not in [item[0] for item in found_metrics]:
+                found_metrics.append((clean_metric, raw_metric))
 
+        for clean_metric, raw_metric in found_metrics:
             aliases = [re.escape(clean_metric)]
             if raw_metric != clean_metric:
                 aliases.append(re.escape(raw_metric))
-            # 常见衍生形式（如 "有效金额汇总"、"有效金额总计"、"有效金额总额"）
-            aliases.append(re.escape(clean_metric) + r'(?:汇总|总额|总计|合计)?')
+            # 常见衍生形式（如 "金额(K)"、"金额汇总"、"部门A金额"）
+            aliases.append(re.escape(clean_metric) + r'(?:汇总|总额|总计|合计|\([^)]+\)|（[^）]+）)?')
+            aliases.append(r'[^\s，。！？、]{0,10}' + re.escape(clean_metric))
 
             requested_metrics.append(MetricRequirement(
                 name=clean_metric,
@@ -213,7 +302,57 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
             if arithmetic or (between and "预算" not in clean_prompt):
                 comparison_basis, comparison = "cross_metric", "variance"
 
-    # 7. 识别纯查阅/浏览/归纳/总结意图 (非数值指标计算，亦非审计对账)
+    # 7. 实体槽位与定向字段查询抽取 (Entity Slots & Attribute Targets)
+    entity_predicates = []
+    # 7.1 提取编号/代码主键类实体 (如 S22014, FC45031, IW-S62662-00-001)
+    for m in re.finditer(r'(?:员工编号|工号|部门编号|BU编号|WBS编号|WBS|项目编号|项目代码|客户编号|订单号|单号|编号|代码|ID)\s*[:：=]?\s*([A-Za-z0-9_-]+)', clean_prompt, re.I):
+        val = m.group(1).strip()
+        upper_val = val.upper()
+        if upper_val and upper_val not in entity_predicates:
+            entity_predicates.append(upper_val)
+        elif val and val not in entity_predicates:
+            entity_predicates.append(val)
+    # 提取代码标记 (如 S22014 或 IW-S62662 等典型业务编号)
+    for m in re.finditer(r'\b([A-Za-z]\d{4,}|\b[A-Za-z]{2}-[A-Za-z0-9]{4,}(?:-[0-9A-Za-z]+)*)\b', clean_prompt):
+        val = m.group(1).strip()
+        upper_val = val.upper()
+        if upper_val and upper_val not in entity_predicates and not re.match(r'^(?:20\d\d)$', upper_val):
+            entity_predicates.append(upper_val)
+    # 7.2 提取命名业务实体约束 (如 员工杨烨, 部门華東MIS, 客户将军空调)
+    for m in re.finditer(r'(?:员工|人员|用户|同事|部门|客户|项目)\s*[:：=]?\s*([^\s，。！？、的]{2,15})', clean_prompt):
+        val = m.group(1).strip()
+        if val and val not in entity_predicates and not any(k in val for k in ["编号", "姓名", "名称", "明细", "数据", "实绩", "工数", "金额", "列表", "情况"]):
+            entity_predicates.append(val)
+    # 提取逆序组织实体约束 (如 华东MIS部门, 交付中心BU)
+    for m in re.finditer(r'([^\s，。！？、]{2,10}?)(?:部门|分部|BU|组|中心)', clean_prompt):
+        val = m.group(1).strip()
+        for prefix in ['调出', '查看', '看下', '查询', '统计', '检索', '定位', '筛选']:
+            if val.startswith(prefix):
+                val = val[len(prefix):].strip()
+        if val and val not in entity_predicates and not any(k in val for k in ['所属', '负责', '对应', '各个', '每个', '该', '此', '不同', '所有', '列出', '按']):
+            entity_predicates.append(val)
+
+    # 7.3 提取关注的明细与度量属性
+    attribute_targets = []
+    attribute_patterns = [
+        r'(?:工数|工时|单价|金额|产值|费用|成本|收入|明细|实绩|记录|小时|用量|数量|数据)'
+    ]
+    for pat in attribute_patterns:
+        for m in re.finditer(pat, clean_prompt):
+            val = m.group(0).strip()
+            if val and val not in attribute_targets:
+                attribute_targets.append(val)
+
+    LAYOUT_TRIMMING_PATTERN = r'(?:排除|去除|剔除|不包含|去掉|忽略)\s*(?:(?:标题|表头|尾注|报表尾注|表尾|汇总行|合计行|空行|注释|说明行|非数据行|物理行)[、，\s和及与]*)+'
+    business_filter_prompt = re.sub(LAYOUT_TRIMMING_PATTERN, '', clean_prompt)
+    has_filters = bool(re.search(
+        r'(?:不包含|(?<!不)排除|剔除|仅保留|只保留|只包含|仅包含|包含|(?<!不)(?<!无需)过滤|筛选|只要|除了|去掉|去除|限定|以.*结尾|结尾为|结尾是|以.*开头|开头为|开头是|前缀为|前缀是|后缀为|后缀是|大于|小于|高于|低于|不小于|不大于|超过|在.*之间|between|>=|<=|>|<|==|!=)',
+        business_filter_prompt
+    ))
+
+    # 8. 谓词优先原则判定：有实体约束或特定字段查询时，绝非全表宏观概括，必须走精准查询
+    is_targeted_query = bool(entity_predicates or (has_filters and attribute_targets) or (entity_predicates and attribute_targets))
+
     browse_summary_patterns = [
         r'(?:查看|浏览|阅读|通读|导读|查阅)',
         r'(?:归纳|总结|概括|简述|介绍|梳理|说明|解读)',
@@ -221,13 +360,40 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
         r'\b(?:overview|summarize|summary|browse|read|brief|inspect content|what is this about)\b',
     ]
     is_browse_or_summary = (
-        any(bool(re.search(pat, clean_prompt, re.I)) for pat in browse_summary_patterns)
+        not is_targeted_query
+        and any(bool(re.search(pat, clean_prompt, re.I)) for pat in browse_summary_patterns)
         and not is_explicit_calc
         and not is_audit
         and not requested_metrics
         and not comparison
         and operation not in ("argmax", "argmin")
     )
+
+    # 9. 确定 TaskType 标准意图
+    if is_advisory and not is_explicit_calc:
+        task_type = TASK_TYPE_ADVISORY
+    elif is_audit or operation in ("argmax", "argmin") or comparison:
+        task_type = TASK_TYPE_TABULAR_AUDIT
+    elif is_detail_query and not has_explicit_agg_verb and not is_explicit_calc:
+        task_type = TASK_TYPE_TABULAR_QUERY
+    elif is_explicit_calc or requested_metrics or is_grouped:
+        task_type = TASK_TYPE_TABULAR_COMPUTE
+    elif is_targeted_query or entity_predicates or has_filters or attribute_targets or is_detail_query:
+        task_type = TASK_TYPE_TABULAR_QUERY
+    elif is_catalog_only or is_browse_or_summary:
+        task_type = TASK_TYPE_TABULAR_OVERVIEW
+    else:
+        task_type = TASK_TYPE_TABULAR_QUERY
+
+    limit = None
+    m_limit = re.search(r'(?:取|排|列出|截取|仅保留|只保留)?\s*前\s*([0-9一二两三四五六七八九十]+)\s*(?:组|项|名|条|个(?!字母|字符)|位(?!字母|字符))|top\s*(\d+)', clean_prompt, re.I)
+    if m_limit:
+        raw_val = m_limit.group(1) or m_limit.group(2)
+        digit_map = {"一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
+        if raw_val in digit_map:
+            limit = digit_map[raw_val]
+        elif raw_val and raw_val.isdigit():
+            limit = int(raw_val)
 
     return AnalysisContract(
         raw_prompt=clean_prompt,
@@ -238,6 +404,9 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
         is_advisory_intent=is_advisory,
         is_browse_or_summary=is_browse_or_summary,
         is_explicit_calc=is_explicit_calc,
+        is_detail_query=is_detail_query,
+        is_grouped=is_grouped,
+        group_dimension=group_dimension,
         operation=operation,
         dimension=dimension,
         comparison=comparison,
@@ -245,6 +414,11 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
         ranking=ranking,
         concepts=concepts,
         domain=active_domain,
+        has_filters=has_filters,
+        task_type=task_type,
+        entity_predicates=entity_predicates,
+        attribute_targets=attribute_targets,
+        limit=limit,
     )
 
 

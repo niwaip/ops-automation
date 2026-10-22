@@ -40,6 +40,7 @@ import { CoordinationLifecycleService } from './coordination-lifecycle.service';
 import {
   sanitizeCoordinationAttachments,
   resolveEffectiveAndHistoricalAttachments,
+  deduplicateCoordinationAttachments,
 } from './coordination-attachment-helper';
 import { CoordinationActionProcessor } from './coordination-action.processor';
 
@@ -50,6 +51,7 @@ export {
   CollaboratorUserDto,
   sanitizeCoordinationAttachments,
   resolveEffectiveAndHistoricalAttachments,
+  deduplicateCoordinationAttachments,
 };
 
 @Injectable()
@@ -1168,7 +1170,7 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       dueDate: payload.dueDate,
       initiator: payload.initiator,
       assignee: payload.assignee,
-      attachments: payload.attachments || [],
+      attachments: deduplicateCoordinationAttachments(payload.attachments || []),
       actions: payload.actions || [],
       externalSyncResult: payload.externalSyncResult,
       unifiedPayload: payload,
@@ -1193,7 +1195,9 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       take: 100,
     });
 
-    await Promise.all(items.map((item) => this.inboxService.hydrateItemExecutionArtifacts(item)));
+    if (typeof this.inboxService?.hydrateItemExecutionArtifacts === 'function') {
+      await Promise.all(items.map((item) => this.inboxService.hydrateItemExecutionArtifacts(item)));
+    }
 
     const taskMap = new Map<string, any>();
     const supersededParentTaskIds = new Set<string>();
@@ -1287,7 +1291,7 @@ export class WorkbenchCoordinationService implements OnModuleInit {
         dueDate: payload.dueDate,
         initiator,
         assignee,
-        attachments: payload.attachments || [],
+        attachments: deduplicateCoordinationAttachments(payload.attachments || []),
         actions: payload.actions || [],
         externalSyncResult: payload.externalSyncResult,
         metadata: payload.metadata || {},

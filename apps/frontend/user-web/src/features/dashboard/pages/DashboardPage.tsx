@@ -356,8 +356,25 @@ export function DashboardPage() {
                     <ArrowRightOutlined />
                   </div>
                   <div className={styles['workbench-summary-body']}>
-                    <span className={styles['workbench-summary-key']}>{t('summary.completed_week', '本周完成')}</span>
-                    <span className={styles['workbench-summary-number']}>{weekCompletedExecutions.length}</span>
+                    <span className={styles['workbench-summary-key-row']}>
+                      <span className={styles['workbench-summary-key']}>{t('summary.completed_week', '本周完成')}</span>
+                      <Popover
+                        trigger={['hover']}
+                        placement="bottomLeft"
+                        overlayClassName="workbench-summary-popover"
+                        content={
+                          <div style={{ fontSize: 12, lineHeight: 1.6 }}>
+                            <div>{t('summary.todo_completed_count', '待办任务完成：')}<strong>{todoSummary.completedThisWeek ?? 0}</strong></div>
+                            <div>{t('summary.exec_completed_count', '自动化执行完成：')}<strong>{weekCompletedExecutions.length}</strong></div>
+                          </div>
+                        }
+                      >
+                        <InfoCircleOutlined className={styles['workbench-summary-tip']} />
+                      </Popover>
+                    </span>
+                    <span className={styles['workbench-summary-number']}>
+                      {(todoSummary.completedThisWeek ?? 0) + weekCompletedExecutions.length}
+                    </span>
                   </div>
                 </div>
 

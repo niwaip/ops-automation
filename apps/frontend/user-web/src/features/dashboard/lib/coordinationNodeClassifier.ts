@@ -713,12 +713,12 @@ export function classifyWorkflowNode(
     operatorDisplayText: item.sourceSender ? (isCurrentMe(item.sourceSender) ? '来自: 我' : `@${item.sourceSender}`) : undefined,
     operatorIsMe: isCurrentMe(item.sourceSender),
     displayTitle: rawTitle,
-    cardActionText: isProcessTask ? '发送' : '流转',
+    cardActionText: isProcessTask ? '发送' : '完成',
     cardActionType: isProcessTask ? 'send' : 'flow',
     modalTitle: isProcessTask
       ? (hasDocumentWorkflow ? '流程流转处理' : '业务要件流转处理')
-      : '任务详细信息',
-    modalSubmitText: isProcessTask ? (hasDocumentWorkflow ? '发送' : '确认并提交') : '确认流转',
+      : '待办任务详情',
+    modalSubmitText: isProcessTask ? (hasDocumentWorkflow ? '发送' : '确认并提交') : '确认完成',
     allowReject: isCoordination,
     rejectRecord,
     approvalComment: !isRevisionRequired ? extractApprovalComment(item, payload) : undefined,

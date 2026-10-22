@@ -50,25 +50,87 @@ def with_sources(main, audit, receipts):
             + downloads + audit + '\n\n</details>')
 
 
+from .analysis_fact_selection import resolve_conforming_facts
+
+
+def select_delivery_queries(queries, contract):
+    """Filter out auxiliary/exploratory query receipts from final delivery presentation."""
+    if len(queries) <= 1:
+        return queries
+
+    # 1. 实体限定：用户要求特定实体时，优先展示针对该实体的查询，排除全表探索或辅助去重查询
+    if contract.entity_predicates:
+        from .analysis_task_state import filter_matches_entities
+        entity_queries = [q for q in queries if filter_matches_entities(q, contract.entity_predicates)]
+        if entity_queries:
+            return entity_queries
+
+    # 2. 去重意图：若用户未请求不重复/去重列表，排除纯辅助性的 distinct 探索查询
+    if not contract.has_distinct_list:
+        non_distinct = [q for q in queries if not (q.data.get('plan') or {}).get('distinct')]
+        if non_distinct:
+            return non_distinct
+
+    return queries
+
+
 def analysis_overview(receipts, prompt):
-    facts = []; seen = set(); parts = []
-    for receipt in receipts:
-        for fact in receipt.data.get('facts', []):
-            key = fact_identity(fact, receipt.data, receipt.provenance)
-            if key not in seen:
-                seen.add(key); facts.append(fact)
-    metrics = build_analysis_contract(prompt).metrics
-    def matches(fact, metric):
-        if fact.get('metric_id') and metric.semantic_id:
-            return fact['metric_id'] == metric.semantic_id
-        return any(re.search(alias, fact['label']) for alias in metric.aliases)
-    requested = [fact for fact in facts if any(matches(fact, metric) for metric in metrics)]
-    visible = requested or facts
-    if visible:
-        parts.extend(['核算结果如下。金额与比例的单位分别标注；展示数值已四舍五入。', '',
-                      '| 指标 | 结果 |', '|---|---:|'])
+    contract = build_analysis_contract(prompt)
+    queries = [r for r in receipts if r.data.get('query_ir_version') and r.data.get('plan', {}).get('source')]
+    if queries and all(r.data.get('query_ir_version') for r in receipts):
+        delivery_queries = select_delivery_queries(queries, contract)
+        return query_overview(delivery_queries, contract)
+    visible = resolve_conforming_facts(receipts, prompt)
+    all_rows = [r for rc in receipts for r in (rc.data.get('rows', []) if hasattr(rc, 'data') else (rc.get('data', {}).get('rows', []) if isinstance(rc, dict) else [])) if isinstance(r, dict)]
+    parts = []
+
+    # 若为明细查询任务（且非分组统计汇总任务），优先按明细表格呈现行级数据
+    is_detail = (contract.is_detail_query and not contract.is_grouped) or any(f.get('id') == 'matched_rows_count' for f in visible)
+    if is_detail and all_rows:
+        cols = list(dict.fromkeys(k for r in all_rows[:50] for k in r.keys() if k != 'group_key'))
+        active_cols = [c for c in cols if any(r.get(c) not in (None, "") for r in all_rows[:50])]
+        if not active_cols:
+            active_cols = cols
+        if active_cols:
+            parts.extend([f'已检索到符合条件的明细数据，共 {len(all_rows)} 条记录：', '',
+                          '| ' + ' | '.join(text(c) for c in active_cols) + ' |',
+                          '|' + '|'.join('---' for _ in active_cols) + '|'])
+            for r in all_rows[:50]:
+                parts.append('| ' + ' | '.join(text(str(r.get(c, '') if r.get(c) is not None else '')) for c in active_cols) + ' |')
+            if len(all_rows) > 50:
+                parts.append(f'\n*注：仅展示前 50 条明细记录，完整匹配共 {len(all_rows)} 条。*')
+        if visible:
+            parts.extend(['', '### 核心指标汇总', '', '| 统计指标 | 核算结果 |', '|---|---:|'])
+            for fact in visible:
+                parts.append(f"| {text(fact['label'])} | {quantity(fact['value'], fact['unit'])} |")
+    elif visible:
+        parts.extend(['已完成数据的核算与多维统计，核心核算结果汇总如下（金额与比例的单位分别标注；数值已四舍五入）：', '',
+                      '| 统计指标 / 分组 | 核算结果 |', '|---|---:|'])
         for fact in visible:
             parts.append(f"| {text(fact['label'])} | {quantity(fact['value'], fact['unit'])} |")
+
+        # 若用户请求了总计/合计，且当前仅展示了各分组事实而未包含全表总计，则基于已核验的分组事实补充合计行
+        has_total = any(
+            f.get('group_key') is None
+            or re.match(r'^(?:总|合计|总计|全表|all|total)', str(f.get('label') or ''), re.I)
+            or re.search(r'(?:总和|总计|合计|总额)$', str(f.get('label') or ''))
+            for f in visible
+        )
+        requires_total = bool(re.search(r'(?:总计|合计|总额|各组和总计|附总计|含总计|核对合计)', prompt))
+        group_facts = [f for f in visible if f.get('group_key')]
+        if requires_total and not has_total and len(group_facts) >= 2:
+            by_unit = {}
+            for gf in group_facts:
+                u = gf.get('unit')
+                try:
+                    val = Decimal(str(gf.get('value', '')).replace(',', ''))
+                    by_unit.setdefault(u, Decimal('0'))
+                    by_unit[u] += val
+                except Exception:
+                    pass
+            for u, tot_dec in by_unit.items():
+                tot_lbl = '各组总计'
+                parts.append(f"| **{text(tot_lbl)}** | **{quantity(str(tot_dec), u)}** |")
     checks = [c for r in receipts for c in r.data.get('checks', [])]
     if checks:
         parts.extend(['', '| 检查项 | 结果 | 差额 |', '|---|---|---:|'])
@@ -114,8 +176,46 @@ def analysis_overview(receipts, prompt):
         parts.append('\n以上按声明规则筛查，规则适用性尚需确认；不代表业务合规结论。')
     if not parts:
         parts.append('已完成所选范围的字段概况检查；缺失值、取值分布和位置见下方明细。')
-    names = dict.fromkeys(Path(r.provenance['file_path']).name for r in receipts)
-    parts.append('\n数据来源：' + '、'.join('《' + text(name) + '》' for name in names) + '。')
+    names = dict.fromkeys(Path(r.provenance['file_path']).name for r in receipts if (r.provenance or {}).get('file_path'))
+    if names:
+        parts.append('\n数据来源：' + '、'.join('《' + text(name) + '》' for name in names) + '。')
+    return '\n'.join(parts)
+
+
+def query_overview(receipts, contract):
+    """Render the engine's final rows in their actual HAVING/ORDER/LIMIT order."""
+    parts = []
+    for receipt in receipts:
+        data = receipt.data
+        rows = data.get('rows', [])
+        is_zero_rows = not rows or (
+            len(rows) == 1 and all(str(v).strip() in ('0', '0.0') or v == 0 for v in rows[0].values())
+            and any(k in ('total_records', 'count', 'matched_rows_count') for k in rows[0])
+        )
+        if is_zero_rows:
+            if getattr(contract, 'entity_predicates', None):
+                entity_str = '、'.join(contract.entity_predicates)
+                parts.append(f'已在当前附件中查询，未找到【{entity_str}】的符合条件明细记录（没有符合条件的结果）。')
+            else:
+                parts.append('按所述筛选与分组条件执行后，没有符合条件的结果。')
+            continue
+        metrics = {m['id']: m.get('label', m['id']) for m in data.get('plan', {}).get('metrics', [])}
+        units = {}
+        for fact in data.get('facts', []):
+            for mid in metrics:
+                if fact.get('id') == mid or str(fact.get('id', '')).startswith(mid + '__'):
+                    units[mid] = fact.get('unit')
+        columns = list(rows[0])
+        labels = []
+        for col in columns:
+            label = (contract.group_dimension or '分组') if col == 'group_key' else metrics.get(col, col)
+            unit = units.get(col)
+            labels.append(label + (f'（{unit}）' if unit and unit != 'number' and unit not in label else ''))
+        parts.extend(['按请求执行后的结果如下：', '',
+                      '| ' + ' | '.join(text(c) for c in labels) + ' |',
+                      '|' + '|'.join('---' for _ in columns) + '|'])
+        parts.extend('| ' + ' | '.join(text('' if row.get(c) is None else row.get(c)) for c in columns) + ' |'
+                     for row in rows)
     return '\n'.join(parts)
 
 
@@ -187,9 +287,22 @@ def render_unverified_guidance(state, prompt="", failed_detail=""):
     guidances = []
 
     if missing_metrics:
-        metric_names = "、".join(f"【{m.get('name', m.get('metric_id', ''))}】" for m in missing_metrics)
-        reasons.append(f"表格中缺少计算 {metric_names} 所需的原始列或对应数据。")
-        guidances.append(f"请补充提供包含 {metric_names} 对应原始列的工作表，或告知具体的计算口径与公式。")
+        uncalc = [m for m in missing_metrics if m.get('source_column_exists')]
+        gen_miss = [m for m in missing_metrics if m.get('source_column_exists') is False]
+        unknown = [m for m in missing_metrics if m.get('source_column_exists') is None]
+        if uncalc:
+            names = '、'.join(f"【{m['name']}】" for m in uncalc)
+            source_cols = '、'.join(f"【{c}】" for m in uncalc for c in m.get('matched_source_columns', []))
+            reasons.append(f"表格中已存在对应列（{source_cols}），但本轮分析计划尚未执行对 {names} 的聚合计算。")
+            guidances.append(f"本轮执行尚未完成对 {names} 的聚合计算，可重新提交分析请求以生成汇总事实。")
+        if gen_miss:
+            names = '、'.join(f"【{m['name']}】" for m in gen_miss)
+            reasons.append(f"表格中缺少计算 {names} 所需的原始列或对应数据。")
+            guidances.append(f"请补充提供包含 {names} 对应原始列的工作表，或告知具体的计算口径与公式。")
+        if unknown:
+            names = '、'.join(f"【{m['name']}】" for m in unknown)
+            reasons.append(f"本轮尚未核实 {names} 的来源字段，不能据此认定原件缺列。")
+            guidances.append('应先核实实际工作表和表头，修正执行计划；无需修改原件或重复授权。')
 
     for issue in issues:
         code = issue.get("code")
@@ -198,8 +311,24 @@ def render_unverified_guidance(state, prompt="", failed_detail=""):
             reasons.append("您提出了对比变化或分析趋势的需求，但当前数据范围缺少可对比的其他期间数据。")
             guidances.append("请补充其他期间（如去年同期、上月或不同季度）的数据区域或说明对比基准。")
         elif code == "execution_evidence_missing":
-            reasons.append("未能在表格中识别或定位到符合分析要求的有效数据区域。")
-            guidances.append("请明确指定分析所需的工作表（Sheet）名称以及数据所在的大致行列范围。")
+            reasons.append("本次还没有取得可核验的计算结果，暂不能判断是否缺少业务数据。")
+            available_sheets = state.get('available_sheets', [])
+            if len(available_sheets) == 1:
+                reasons.append(f"当前工作表为【{available_sheets[0]}】。")
+            elif available_sheets:
+                reasons.append('已有工作表：' + '、'.join(available_sheets) + '。')
+            guidances.append("可以重试本次分析；系统需要先完成工作表与字段核对。")
+        elif code == "grouping_incomplete":
+            reasons.append("本次尚未完成您要求的各分组统计。")
+            guidances.append("可以重试分组统计；现有数据不会被当作完整分组结果。")
+        elif code in ('group_filter_not_applied', 'ordering_not_applied', 'ranking_limit_not_applied',
+                      'query_stages_disconnected', 'row_filter_not_applied', 'group_filter_boolean_incomplete',
+                      'distinct_not_applied', 'ordering_incomplete'):
+            reasons.append("本次尚未完整执行您要求的筛选、排序或结果数量限制。")
+            guidances.append("可以重试本次查询；无需修改原表或提供工具参数。")
+        elif code == 'clarification_first_required':
+            reasons.append('您要求先确认定义，本轮尚未完成口径确认。')
+            guidances.append('请说明希望采用的定义；确认后再继续计算。')
         elif code not in ("required_metrics_missing", "comparison_windows_missing", "execution_evidence_missing") and msg:
             reasons.append(msg)
 
@@ -209,13 +338,13 @@ def render_unverified_guidance(state, prompt="", failed_detail=""):
     if not reasons:
         reasons.append("当前数据不满足任务完整计算与核验的必要条件。")
     if not guidances:
-        guidances.append("您可以补充更详细的业务说明、计算公式或上传完整的数据表格以继续分析。")
+        guidances.append("可以重试本次分析；如果涉及业务定义，也可以说明希望采用的口径。")
 
     parts = ["本次分析尚未通过执行证据核验。\n", "### 分析未完成说明", "", "**无法完成计算的原因：**"]
     for r in dict.fromkeys(reasons):
         parts.append(f"- {r}")
 
-    parts.append("\n**建议您补充以下信息以继续：**")
+    parts.append("\n**下一步处理建议：**")
     for idx, g in enumerate(dict.fromkeys(guidances), 1):
         parts.append(f"{idx}. {g}")
 

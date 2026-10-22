@@ -9,6 +9,7 @@ import type {
   OrganizationWorkflowDefinition,
 } from './org-workflow.entity';
 import type { CoordinationAttachment } from './dto/workbench-coordination.dto';
+import { deduplicateCoordinationAttachments } from './coordination-attachment-helper';
 import { CoordinationAttachmentStorageService } from './coordination-attachment-storage.service';
 
 export interface AutomationExecutionOptions {
@@ -101,9 +102,7 @@ export class CoordinationAutomationRunnerService {
 
     const effectiveOrgId = payload?.orgId || (initiator as any)?.orgId || (operator as any)?.orgId || undefined;
 
-    const sanitizedAttachments = (activeAttachments || []).filter(
-      (a: any) => Boolean(a && typeof a === 'object' && !Array.isArray(a) && (a.url?.trim() || a.name?.trim()))
-    );
+    const sanitizedAttachments = deduplicateCoordinationAttachments(activeAttachments || []);
     const activeAttachment = sanitizedAttachments?.[0];
     const fileName =
       activeAttachment?.name ||
@@ -264,7 +263,7 @@ export class CoordinationAutomationRunnerService {
         stageId: stage.id,
         stageName: stage.name,
         taskId: payload?.taskId,
-        attachments: activeAttachments || [],
+        attachments: sanitizedAttachments,
       },
     };
 
@@ -281,7 +280,7 @@ export class CoordinationAutomationRunnerService {
       workflowId: workflow?.workflowId,
       stageId: stage.id,
       orgId: effectiveOrgId,
-      attachments: activeAttachments || [],
+      attachments: sanitizedAttachments,
       reviewSummary: params.reviewSummary || targetItem?.title || contractTitle,
       metadata: {
         taskId: payload?.taskId,
@@ -291,7 +290,7 @@ export class CoordinationAutomationRunnerService {
         contractTitle,
         trackingNumber: params.trackingNumber,
         reviewSummary: params.reviewSummary || targetItem?.title || contractTitle,
-        attachments: activeAttachments || [],
+        attachments: sanitizedAttachments,
         operator,
       },
       taskContext: {
@@ -300,7 +299,7 @@ export class CoordinationAutomationRunnerService {
         stageName: stage.name,
         taskId: payload?.taskId,
         orgId: effectiveOrgId,
-        attachments: activeAttachments || [],
+        attachments: sanitizedAttachments,
       },
     };
 
@@ -323,7 +322,7 @@ export class CoordinationAutomationRunnerService {
         stageId: stage.id,
         stageName: stage.name,
         taskId: payload?.taskId,
-        attachments: activeAttachments || [],
+        attachments: sanitizedAttachments,
       },
     };
 
@@ -1054,10 +1053,23 @@ export class CoordinationAutomationRunnerService {
     const durationYears = params.durationYears || 3;
     const remarks = params.remarks || targetItem?.unifiedPayload?.remarks || '商业合作保密义务约定与法律合规归档存证';
 
-    const reviewReport = targetItem?.unifiedPayload?.reviewReport || (params as any)?.reviewReport;
-    const reviewScore = reviewReport?.riskScore || reviewReport?.healthScore || 100;
-    const reviewRisk = reviewReport?.overallRisk || 'LOW';
+    const reviewReport = targetItem?.unifiedPayload?.reviewReport || (params as any)?.reviewReport || targetItem?.reviewReport;
+    const reviewScore = reviewReport?.riskScore ?? reviewReport?.healthScore ?? reviewReport?.metrics?.healthScore;
+    const reviewRisk = reviewReport?.overallRisk || (reviewScore !== undefined && reviewScore < 60 ? 'HIGH' : reviewScore !== undefined && reviewScore < 80 ? 'MEDIUM' : 'LOW');
     const reviewTime = reviewReport?.reviewedAt || new Date().toISOString();
+
+    let reviewConclusion = '智能合规审查已完成';
+    if (reviewScore !== undefined) {
+      if (reviewRisk === 'HIGH' || reviewScore < 60) {
+        reviewConclusion = `合规审查预警 (${reviewScore}分 / ${reviewRisk})`;
+      } else if (reviewRisk === 'MEDIUM' || reviewScore < 80) {
+        reviewConclusion = `中度风险提示 (${reviewScore}分 / ${reviewRisk})`;
+      } else {
+        reviewConclusion = `合规诊断通过 (${reviewScore}分 / ${reviewRisk})`;
+      }
+    } else if (reviewRisk) {
+      reviewConclusion = reviewRisk === 'HIGH' ? `合规高危预警 (${reviewRisk})` : reviewRisk === 'MEDIUM' ? `中度合规风险 (${reviewRisk})` : `合规诊断通过 (${reviewRisk})`;
+    }
 
     const initiatorName = initiator?.username || params.initiatorName || 'admin (业务发起人)';
     const approverName = operator?.username || 'law01 (法务部终审人)';
@@ -1096,7 +1108,7 @@ export class CoordinationAutomationRunnerService {
         headers: ['流转节点', '责任主体 / 承办人', '节点结论 / 状态', '时间戳'],
         rows: [
           ['1. 业务起草与送审', `@${initiatorName}`, '初稿生成并确认送审', signDate],
-          ['2. 智能合规审查', 'platform.document.contract-reviewer', `合规诊断通过 (${reviewScore}分 / ${reviewRisk})`, reviewTime.slice(0, 19).replace('T', ' ')],
+          ['2. 智能合规审查', 'platform.document.contract-reviewer', reviewConclusion, reviewTime.slice(0, 19).replace('T', ' ')],
           ['3. 法务专项终审', `@${approverName}`, '终审审批通过 (Approved)', archiveTime.slice(0, 19).replace('T', ' ')],
           ['4. 电子存证固化', '法务电子合同库 & 存证归档中心', '不可篡改已入库存证 (Archived)', archiveTime.slice(0, 19).replace('T', ' ')],
         ],

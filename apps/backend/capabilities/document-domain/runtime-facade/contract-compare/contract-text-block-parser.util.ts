@@ -1,4 +1,5 @@
 import type { DocumentBlock } from './contract-compare.types';
+import { tryExtractCommercialTable } from './contract-tabular-extractor.util';
 
 /**
  * Universal Legal Text Block Parser:
@@ -25,7 +26,7 @@ export function buildDocumentBlocksFromText(
   const preambleMetadata: Array<{ key: string; value: string }> = [];
 
   const LIST_PREFIX_REGEX =
-    /^(\d+(?:\.\d+)+|[（(](?:[0-9一二三四五六七八九十a-zA-Z]+)[）)]|[一二三四五六七八九十]+[、.]|[0-9a-zA-Z][)）.、])\s*(.*)$/;
+    /^(\d+(?:\.\d+)+|[（(](?:\d{1,2}|[一二三四五六七八九十]{1,3}|[ivxIVX]+|[a-zA-Z])[）)]|[一二三四五六七八九十]{1,3}[、.]|(?:\d{1,2}|[a-zA-Z])[)）.、]|[■◆●▶★])\s*(.*)$/;
 
   let currentBlock: DocumentBlock | null = null;
 
@@ -45,8 +46,8 @@ export function buildDocumentBlocksFromText(
     const prevChar = prev.slice(-1);
     const nextChar = next.slice(0, 1);
     const isCjk =
-      /[\u4e00-\u9fa5\u3040-\u30ff]/.test(prevChar) ||
-      /[\u4e00-\u9fa5\u3040-\u30ff]/.test(nextChar);
+      /[\u4e00-\u9fa5\u3040-\u30ff\u3000-\u303f\uff00-\uffef]/.test(prevChar) ||
+      /[\u4e00-\u9fa5\u3040-\u30ff\u3000-\u303f\uff00-\uffef]/.test(nextChar);
     return isCjk ? prev + next : `${prev} ${next}`;
   };
 
@@ -54,14 +55,25 @@ export function buildDocumentBlocksFromText(
     const line = lines[i];
 
     if (isPreamble) {
-      // 1. Heading in Preamble: e.g. # 软件定制开发主协议
-      if (/^#{1,6}\s+/.test(line)) {
+      // 1. Heading in Preamble: Markdown header or leading standalone document title
+      const isFirstContentLine = blocks.length === 0 && preambleMetadata.length === 0;
+      const isDocumentTitle =
+        isFirstContentLine &&
+        !line.includes('：') &&
+        !line.includes(':') &&
+        line.length <= 50 &&
+        !LIST_PREFIX_REGEX.test(line) &&
+        !/^[-—_*]{3,}$/.test(line);
+
+      if (/^#{1,6}\s+/.test(line) || isDocumentTitle) {
         flushPreambleMetadata();
         const headingText = line.replace(/^#{1,6}\s+/, '').replace(/\*\*/g, '').trim();
         blocks.push({
           id: `blk-${blocks.length}`,
           type: 'heading',
           primaryText: headingText,
+          alignment: 'center',
+          isBold: true,
         });
         currentBlock = null;
         continue;
@@ -83,14 +95,65 @@ export function buildDocumentBlocksFromText(
         currentBlock = null;
         continue;
       }
+
+      // 4. Multiline continuation of previous preamble Key-Value entry (e.g. wrapped address, bank branch, entity name)
+      const isRecitalParagraph =
+        /^(?:鉴于|本合同[由经甲乙]|双方(?:经|同意|在|恪守)|根据(?:《|中华人民共和国)|为(?:明确|保证|此)|经双方友好协商)/.test(line);
+      const isListItemOrDate =
+        LIST_PREFIX_REGEX.test(line) ||
+        /^\s*(?:\d{4}\s*年\s*\d{1,2}\s*月|\d{4}[-/.]\d{1,2})/.test(line);
+
+      if (preambleMetadata.length > 0 && !isRecitalParagraph && !isListItemOrDate) {
+        const lastMeta = preambleMetadata[preambleMetadata.length - 1];
+        if (!/[。！？]$/.test(lastMeta.value)) {
+          lastMeta.value = joinLines(lastMeta.value, line);
+          continue;
+        }
+      }
     }
 
-    // Check list item prefix: e.g. 1.1, 3.1.1, (1), （一）
+    // Check structured commercial table (quotation / fee schedule in Annex or clause)
+    const tableResult = tryExtractCommercialTable(lines, i);
+    if (tableResult) {
+      flushPreambleMetadata();
+      blocks.push(tableResult.tableBlock);
+      i += tableResult.consumedLines - 1;
+      currentBlock = null;
+      continue;
+    }
+
+    // Check list item prefix: e.g. 1.1, 3.1.1, (1), （一）, 1.
     const listMatch = line.match(LIST_PREFIX_REGEX);
     if (listMatch) {
-      flushPreambleMetadata();
       const prefix = listMatch[1].trim();
       const bodyText = listMatch[2].replace(/\*\*/g, '').trim();
+
+      // Guard: if preceding block was mid-sentence (e.g. ended without sentence terminators like 。！？),
+      // or if prefix is a sub-level Roman/letter like (ii) while preceding block contains inline (i),
+      // treat as inline continuation within the paragraph rather than an artificial standalone list item.
+      const isSecondLevelRomanOrLetter = /^[(（]?(?:ii+|iii|iv|v|vi|b|c)[)）.]?$/i.test(prefix);
+      const isLevel1ListPrefix = /^(?:[1-9一二三四五六七八九十][)）.、]|[(（][1-9一二三四五六七八九十][)）]|[■◆●▶★])/.test(prefix);
+      const isPrecedingKeyValue =
+        currentBlock &&
+        currentBlock.type === 'paragraph' &&
+        currentBlock.primaryText !== undefined &&
+        /^[^:：\n]{2,20}[:：]/.test(currentBlock.primaryText);
+
+      const isPrecedingMidSentence =
+        currentBlock &&
+        currentBlock.type === 'paragraph' &&
+        currentBlock.primaryText !== undefined &&
+        !isPrecedingKeyValue &&
+        !isLevel1ListPrefix &&
+        (!/[。！？；:：]$/.test(currentBlock.primaryText) ||
+          (isSecondLevelRomanOrLetter && /[(（]i[)）]/i.test(currentBlock.primaryText)));
+
+      if (isPrecedingMidSentence && currentBlock && currentBlock.primaryText !== undefined) {
+        currentBlock.primaryText = joinLines(currentBlock.primaryText, line);
+        continue;
+      }
+
+      flushPreambleMetadata();
       currentBlock = {
         id: `blk-${blocks.length}`,
         type: 'list_item',
@@ -126,13 +189,55 @@ export function buildDocumentBlocksFromText(
       continue;
     }
 
+    // Check standalone date item (e.g. 2026年04月05日)
+    const DATE_LINE_REGEX =
+      /^\s*(?:\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日?|\d{4}[-/.]\d{1,2}[-/.]\d{1,2})\s*$/;
+    if (DATE_LINE_REGEX.test(line)) {
+      flushPreambleMetadata();
+      currentBlock = {
+        id: `blk-${blocks.length}`,
+        type: 'list_item',
+        prefix: '•',
+        primaryText: line,
+      };
+      blocks.push(currentBlock);
+      continue;
+    }
+
+    // Explanatory lead-in ending with colon (e.g. 验收预定日：)
+    // Only treat as standalone paragraph if currentBlock was not a list item
+    if ((line.endsWith('：') || line.endsWith(':')) && (!currentBlock || currentBlock.type !== 'list_item')) {
+      flushPreambleMetadata();
+      currentBlock = {
+        id: `blk-${blocks.length}`,
+        type: 'paragraph',
+        primaryText: line,
+      };
+      blocks.push(currentBlock);
+      continue;
+    }
+
     // Continuation line vs new paragraph
     flushPreambleMetadata();
     if (currentBlock && currentBlock.type === 'list_item' && currentBlock.primaryText !== undefined) {
-      currentBlock.primaryText = joinLines(currentBlock.primaryText, line);
+      // Unnumbered continuation line under a list item (e.g. breakdown under item 1, schedule under item 3)
+      // Maintains subordination to the parent list item rather than dropping to root margin
+      if (/[。！？；:：]$/.test(currentBlock.primaryText)) {
+        currentBlock.primaryText += '\n' + line;
+      } else {
+        currentBlock.primaryText = joinLines(currentBlock.primaryText, line);
+      }
     } else if (currentBlock && currentBlock.type === 'paragraph' && currentBlock.primaryText !== undefined) {
       // If previous line didn't end with sentence terminator, merge as continuation
-      if (!/[。！？；:：]$/.test(currentBlock.primaryText) && currentBlock.primaryText.length < 200) {
+      // Eliminates arbitrary line length caps that tore sentences apart
+      const isPrevEnded = /[。！？:：]$/.test(currentBlock.primaryText);
+      const isNextDistinct =
+        /^[^:：\n]{2,20}[:：]\s*.+$/.test(line) ||
+        /^[（(]\s*单位[：:]?[^）)]+[）)]$/.test(line) ||
+        line.endsWith('：') ||
+        line.endsWith(':');
+
+      if (!isPrevEnded && !isNextDistinct) {
         currentBlock.primaryText = joinLines(currentBlock.primaryText, line);
       } else {
         currentBlock = {
@@ -164,10 +269,17 @@ export function buildDocumentBlocksFromText(
         normalizedLines.push(`**${m.key}**：${m.value}`);
       }
     } else if (b.type === 'list_item') {
-      normalizedLines.push(`${b.prefix ? `${b.prefix} ` : ''}${b.primaryText || ''}`);
+      const subLines = (b.primaryText || '').split('\n');
+      for (let k = 0; k < subLines.length; k++) {
+        if (k === 0) {
+          normalizedLines.push(`${b.prefix ? `${b.prefix} ` : ''}${subLines[k]}`);
+        } else {
+          normalizedLines.push(subLines[k]);
+        }
+      }
     } else if (b.type === 'table' && b.tableData) {
       for (const row of b.tableData.rows) {
-        normalizedLines.push(`| ${row.join(' | ')} |`);
+        normalizedLines.push(`| ${row.map((c) => (typeof c === 'string' ? c : c?.text || '')).join(' | ')} |`);
       }
     } else if (b.type === 'paragraph') {
       normalizedLines.push(b.primaryText || '');

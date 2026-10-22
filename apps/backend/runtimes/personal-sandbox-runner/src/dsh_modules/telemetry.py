@@ -6,6 +6,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from typing import Dict, Any, List, Tuple
+from .response_observability import response_fingerprint
 
 
 def format_dsh_marker(tag: str, payload: str) -> str:
@@ -167,6 +168,8 @@ class TelemetryStats:
     round_finish_reasons: List[str] = field(default_factory=list)
     tool_calls_detail: List[Dict[str, Any]] = field(default_factory=list)
     guard_decisions: List[Dict[str, Any]] = field(default_factory=list)
+    model_responses: List[Dict[str, Any]] = field(default_factory=list)
+    answer_validation: Dict[str, Any] = field(default_factory=dict)
 
     def record_guard(self, guard: str, action: str, reason: Any = None) -> None:
         self.guard_decisions.append({"guard":guard,"action":action,"reason":reason})
@@ -210,6 +213,7 @@ class TelemetryStats:
         fr = llm_res.get("finish_reason") or "unknown"
         self.finish_reason = fr
         self.round_finish_reasons.append(fr)
+        self.model_responses.append(response_fingerprint(llm_res))
 
     def record_tool_call(
         self,
@@ -251,6 +255,8 @@ class TelemetryStats:
             "finishReason": self.finish_reason,
             "roundFinishReasons": self.round_finish_reasons,
             "guardDecisions": self.guard_decisions,
+            "modelResponses": self.model_responses,
+            "answerValidation": self.answer_validation,
         }
         return json.dumps(data, ensure_ascii=False)
 

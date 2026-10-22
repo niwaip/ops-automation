@@ -291,7 +291,9 @@ export const buildExecutionListColumns = ({
   {
     title: '运行结果',
     key: 'result',
+    width: 300,
     minWidth: 260,
+    ellipsis: true,
     align: 'left',
     render: (_: unknown, record: ExecutionDto) => {
       const resultInfo = formatCustomerFacingResult(record);
@@ -411,6 +413,7 @@ export const buildExecutionListColumns = ({
     title: '详情',
     key: 'action',
     width: 85,
+    fixed: 'right',
     align: 'center',
     render: (_: unknown, record: ExecutionDto) => (
       <Tooltip title="进入完整执行详情页面">

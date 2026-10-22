@@ -11,6 +11,8 @@ export interface TodoCardProps {
     sent?: number;
     ended?: number;
     overdue?: number;
+    completedToday?: number;
+    completedThisWeek?: number;
   };
   todos: WorkbenchTodoItem[];
   activeTab?: WorkbenchTodoTab;

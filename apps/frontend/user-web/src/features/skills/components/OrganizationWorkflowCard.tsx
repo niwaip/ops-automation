@@ -208,7 +208,7 @@ export const OrganizationWorkflowCard: React.FC<OrganizationWorkflowCardProps> =
       </div>
 
       {/* 底部操作栏 */}
-      <div style={{ display: 'flex', gap: 8, paddingTop: 12, borderTop: '1px solid var(--border-color)' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingTop: 12, borderTop: '1px solid var(--border-color)' }}>
         {isAuthorized ? (
           <Button
             type="primary"

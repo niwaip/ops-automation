@@ -31,4 +31,18 @@ describe('CollapsibleMessageContent', () => {
     expect(html).toContain('Streaming text...');
     expect(html).not.toContain('展开全文');
   });
+
+  it('renders open details cleanly without forcing expand button', () => {
+    const html = renderToStaticMarkup(
+      <CollapsibleMessageContent role="assistant" contentLength={1000}>
+        <p>Short preamble</p>
+        <details open>
+          <summary>查看来源与核算明细</summary>
+          <p>Lots of detail rows and verification data...</p>
+        </details>
+      </CollapsibleMessageContent>
+    );
+    expect(html).toContain('查看来源与核算明细');
+    expect(html).toContain('Lots of detail rows');
+  });
 });

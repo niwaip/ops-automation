@@ -24,6 +24,7 @@ import { UserSandboxDispatcherService } from './user-sandbox-dispatcher.service'
 import { WorkspaceArtifactService } from './workspace-artifact.service';
 import { PersonalReminderBridgeService } from './personal-reminder-bridge.service';
 import { StorageConfigModule } from '../storage/storage-config.module';
+import { PersonalSkillModule } from '../personal-skill/personal-skill.module';
 import { ChatKnowledgeRetrievalService } from './chat-knowledge-retrieval.service';
 import { DocumentProberService } from './document-prober.service';
 import { OfficeDocumentReaderService } from './office-document-reader.service';
@@ -39,6 +40,7 @@ import { ChatCapabilityInquiryService } from './chat-capability-inquiry.service'
     RecognizerModule,
     RedisModule,
     StorageConfigModule,
+    PersonalSkillModule,
   ],
   controllers: [ChatController],
   providers: [
@@ -68,6 +70,8 @@ import { ChatCapabilityInquiryService } from './chat-capability-inquiry.service'
     DocumentProberService,
     OfficeDocumentReaderService,
     ChatCapabilityInquiryService,
+    ChatConversationService,
+    UserSandboxDispatcherService,
   ],
 })
 export class ChatModule {}

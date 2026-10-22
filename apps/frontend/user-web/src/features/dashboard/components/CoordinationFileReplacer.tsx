@@ -158,21 +158,34 @@ export function CoordinationFileReplacer({
     const isWord = att.name?.endsWith('.docx') || att.name?.endsWith('.doc');
     const isPdf = att.name?.endsWith('.pdf');
 
-    const totalOriginals = validOriginals.length;
+    const wordOriginals = validOriginals.filter(
+      (a) => a.name?.endsWith('.docx') || a.name?.endsWith('.doc')
+    );
+    const wordIdx = wordOriginals.indexOf(att);
+    const totalWordVersions = wordOriginals.length;
+
     const isSupersededByAppended = effectiveAppended.length > 0;
-    // 只有在明确存在多个实质版本且此条属于早前版本时，才判定为历史留存原稿
-    const isHistorical = hasMultipleVersions && (isSupersededByAppended || idx > 0);
+    // 只有在明确存在多个实质 Word 版本且此条属于早前版本时，才判定为历史留存原稿
+    const isHistorical = isWord
+      ? (hasMultipleVersions && (isSupersededByAppended || wordIdx > 0))
+      : false;
 
     // 版本标签：多版本时展示 V1、V2 等递增编号；单版本（如 Word 原稿 + PDF 存证）时展示格式定位
     let versionLabel = '';
-    if (!hasMultipleVersions) {
-      versionLabel = isWord ? '可编辑原稿' : isPdf ? '电子存证件' : '交付材料';
+    if (isPdf) {
+      versionLabel = '电子存证件 · 归档版';
+    } else if (isWord) {
+      if (totalWordVersions <= 1 && !isSupersededByAppended) {
+        versionLabel = '可编辑原稿';
+      } else {
+        const currentVersionNumber = totalWordVersions - (wordIdx >= 0 ? wordIdx : idx);
+        versionLabel =
+          currentVersionNumber === 1
+            ? 'V1 · 初始初稿'
+            : `V${currentVersionNumber} · 经办人送审版`;
+      }
     } else {
-      const currentVersionNumber = totalOriginals - idx;
-      versionLabel =
-        currentVersionNumber === 1
-          ? 'V1 · 初始初稿'
-          : `V${currentVersionNumber} · 经办人送审版`;
+      versionLabel = '交付材料';
     }
 
     return (
