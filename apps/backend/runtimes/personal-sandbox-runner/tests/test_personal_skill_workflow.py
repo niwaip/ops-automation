@@ -30,6 +30,19 @@ class PersonalSkillWorkflowTests(unittest.TestCase):
                      'instructions': ['按部门汇总金额并排除指定WBS前缀'], 'steps': ['绑定本轮附件', '执行并验收'],
                      'verification': {'source_hash': True, 'row_accounting': True, 'group_total': True}}
         self.write_source()
+        self.gate_model = patch('dsh_modules.personal_skill_gate.call_model_proxy', side_effect=self.gate_response)
+        self.gate_model.start()
+        self.addCleanup(self.gate_model.stop)
+
+    def gate_response(self, messages, **kwargs):
+        payload = json.loads(messages[-1]['content'])
+        if 'execution' in payload:
+            result = {'status': 'accept', 'evidence_id': payload['execution']['evidence_id'],
+                      'covered': ['r1'], 'reason': '', 'question': ''}
+        else:
+            result = {'mode': 'query', 'requirements': [{'id': 'r1', 'quote': payload['request'], 'target': '/metrics'}],
+                      'query': payload['saved_query_template'], 'question': ''}
+        return {'content': json.dumps(result), 'finish_reason': 'stop'}
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -114,15 +127,15 @@ class PersonalSkillWorkflowTests(unittest.TestCase):
         with patch('dsh_modules.personal_skill_workflow.CUSTOM_SKILL_DIR', self.root / 'skills'), \
              patch('dsh_modules.personal_skill_workflow.WORKSPACE_DIR', self.root), redirect_stdout(out):
             self.assertTrue(try_run_personal_workflow(SimpleNamespace(skill_id='custom-sum'),
-                files if files is not None else [self.source.name], '部门别有偿统计', history_file, [], time.time(), None))
+                files if files is not None else [self.source.name], 'custom-sum', history_file, [], time.time(), None))
         metrics = json.loads(extract_dsh_markers(out.getvalue(), 'METRICS')[0][0])
         return json.loads(history_file.read_text()), metrics
 
-    def test_runtime_always_executes_and_persists_verified_evidence_without_model(self):
+    def test_runtime_executes_only_after_admission_and_persists_reviewed_evidence(self):
         self.install(); history, metrics = self.invoke()
         self.assertTrue(history[-1]['verification']['verified'])
         self.assertEqual(metrics['toolCallsCount'], 1)
-        self.assertEqual(metrics['llmInvocations'], 0)
+        self.assertEqual(metrics['llmInvocations'], 2)
         self.assertIn('30.00000', history[-1]['content'])
 
     def test_missing_flow_altered_script_and_multiple_inputs_never_return_numbers(self):
@@ -148,7 +161,7 @@ class PersonalSkillWorkflowTests(unittest.TestCase):
              patch('dsh_modules.personal_skill_workflow.WORKSPACE_DIR', self.root), \
              patch('dsh_modules.personal_skill_presentation.present_verified_workflow', side_effect=changed), \
              redirect_stdout(io.StringIO()):
-            try_run_personal_workflow(SimpleNamespace(skill_id='custom-sum'), [self.source.name], '部门别有偿统计',
+            try_run_personal_workflow(SimpleNamespace(skill_id='custom-sum'), [self.source.name], 'custom-sum',
                                       history_file, [], time.time(), None, present=True)
         answer = json.loads(history_file.read_text())[-1]
         self.assertFalse(answer['verification']['verified'])

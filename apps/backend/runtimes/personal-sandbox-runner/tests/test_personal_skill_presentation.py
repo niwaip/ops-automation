@@ -60,12 +60,6 @@ class PersonalSkillPresentationTests(unittest.TestCase):
         self.assertEqual(result, 'VERIFIED TABLE')
         self.assertEqual(self.telemetry.llm_invocations, 1)
 
-    def test_explanation_is_separate_from_a_new_business_rule(self):
-        from dsh_modules.personal_skill_workflow import requests_workflow_change
-        self.assertFalse(requests_workflow_change('解释为什么排除了这些记录'))
-        self.assertTrue(requests_workflow_change('改为只保留有偿记录，再解释一下'))
-        self.assertTrue(requests_workflow_change('只保留有偿记录'))
-
     def test_ties_and_negative_amounts_are_not_misrepresented(self):
         self.data['groups'][1]['amount'] = '30.00000'
         facts = observation_catalog(self.data)
