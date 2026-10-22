@@ -3,10 +3,12 @@
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 from .file_tools import resolve_sandboxed_path
 from .tool_result import ToolResult, TextToolOutput
 from .analysis_contract import build_analysis_contract
+from .spreadsheet_context import resolve_session_attachment
 
 
 def execute_informational_spreadsheet(params, deadline=None):
@@ -18,17 +20,9 @@ def execute_informational_spreadsheet(params, deadline=None):
         result = ToolResult.error("invalid_parameters", "调用 report_informational_spreadsheet 必须提供明确的判定理由 (reason)")
         return TextToolOutput(result.render_text(), result)
 
-    source, error = resolve_sandboxed_path(file_path)
-    if error or source is None or not source.exists():
-        result = ToolResult.error("source_unavailable", error or "原件不可用或文件不存在")
-        return TextToolOutput(result.render_text(), result)
-
-    attachments = [v.strip() for v in os.getenv("DSH_SESSION_ATTACHMENTS", "").split(",") if v.strip()]
-    from .config import WORKSPACE_DIR
-    allowed = {(Path(WORKSPACE_DIR) / name).resolve() for name in attachments}
-    if allowed and source.resolve() not in allowed:
-        result = ToolResult.error("source_outside_session_scope", "当前工具仅接受本轮附件原件")
-        return TextToolOutput(result.render_text(), result)
+    source, err_res = resolve_session_attachment(file_path, "说明报告工具")
+    if err_res:
+        return TextToolOutput(err_res.render_text(), err_res)
 
     try:
         source_bytes = source.read_bytes()
@@ -37,9 +31,11 @@ def execute_informational_spreadsheet(params, deadline=None):
         result = ToolResult.error("source_read_failed", f"读取文件哈希失败: {e}")
         return TextToolOutput(result.render_text(), result)
 
-    # 严格财务与计算拦截：若用户提问中包含明确计算指令或已知数值指标，禁止逃生
+    # 严格财务与计算拦截：若用户提问中包含明确计算指令且无客观数据缺口，禁止偷懒逃生
     last_prompt = os.getenv("DSH_LAST_USER_PROMPT", "")
-    if last_prompt:
+    is_missing_data = bool(re.search(r'(?:缺少|未包含|未找到|缺失|无对应|没有.*列|无.*列|无法计算|数据不足|信息不全|需补充|请补充|缺口|无.*字段)', reason))
+    prompt_allows_clarify = bool(re.search(r'(?:缺失.*先告诉我|数据.*缺失.*告知|先确认|先说明|若.*缺失|缺失.*补充)', last_prompt or ""))
+    if last_prompt and not (is_missing_data or prompt_allows_clarify):
         contract = build_analysis_contract(last_prompt)
         if contract.is_explicit_calc or (contract.metrics and any(m.semantic_id for m in contract.metrics)):
             result = ToolResult.error(
@@ -56,6 +52,7 @@ def execute_informational_spreadsheet(params, deadline=None):
         "reason": reason,
         "summary_focus": summary_focus,
         "is_informational": True,
+        "clarification_missing_data": is_missing_data or prompt_allows_clarify,
     }
     provenance = {
         "file_path": str(source),

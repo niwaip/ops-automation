@@ -665,24 +665,25 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
   });
 
   it('matches contract_review recipe and selects contract reviewer skill', () => {
-    const userRequest = '审查合同';
-    const matched = matcher.matchRecipe(userRequest);
+    for (const userRequest of ['审查合同', '审计合同', '合同合规审计']) {
+      const matched = matcher.matchRecipe(userRequest);
 
-    expect(matched).not.toBeNull();
-    expect(matched?.recipeName).toBe('contract_review');
-    expect(matched?.steps).toHaveLength(1);
-    expect(matched?.steps[0]?.role).toBe('contract_review');
+      expect(matched).not.toBeNull();
+      expect(matched?.recipeName).toBe('contract_review');
+      expect(matched?.steps).toHaveLength(1);
+      expect(matched?.steps[0]?.role).toBe('contract_review');
 
-    const topology = topologyBuilder.buildTopologyFromRecipe(
-      matched!,
-      mockSkillCards,
-      mockLlmOpCards
-    );
+      const topology = topologyBuilder.buildTopologyFromRecipe(
+        matched!,
+        mockSkillCards,
+        mockLlmOpCards
+      );
 
-    expect(topology).not.toBeNull();
-    expect(topology?.nodes).toHaveLength(1);
-    expect(topology?.nodes[0]?.capabilityKey).toBe('platform.document.contract-reviewer');
-    expect(topology?.finalOutputKind).toBe('artifact');
+      expect(topology).not.toBeNull();
+      expect(topology?.nodes).toHaveLength(1);
+      expect(topology?.nodes[0]?.capabilityKey).toBe('platform.document.contract-reviewer');
+      expect(topology?.finalOutputKind).toBe('artifact');
+    }
   });
 
   it('does not hijack NDA drafting / generation requests as contract_review', () => {

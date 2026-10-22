@@ -60,7 +60,7 @@ class AnalysisCompletionTests(unittest.TestCase):
     def test_structured_task_state_detects_missing_rate_independent_of_json(self):
         state=analysis_task_state([self.receipt()],QUERY)
         self.assertFalse(state['complete'])
-        self.assertEqual(state['missing_metrics'],[{'metric_id':'finance.gross_margin','name':'毛利率','expected_type':'percentage'}])
+        self.assertEqual(state['missing_metrics'],[{'metric_id':'finance.gross_margin','name':'毛利率','expected_type':'percentage','source_column_status':'unknown'}])
         self.assertIn('finance.gross_margin',task_feedback([self.receipt()],QUERY))
 
     def test_duplicate_realistic_receipts_are_completed_once_and_ids_are_runtime_owned(self):
@@ -261,9 +261,10 @@ class AnalysisCompletionTests(unittest.TestCase):
         guidance = render_unverified_guidance(state, "总结2026年毛利率")
         self.assertIn("本次分析尚未通过执行证据核验", guidance)
         self.assertIn("无法完成计算的原因", guidance)
-        self.assertIn("缺少计算 【毛利率】 所需的原始列或对应数据", guidance)
-        self.assertIn("建议您补充以下信息以继续", guidance)
-        self.assertIn("请补充提供包含 【毛利率】 对应原始列的工作表", guidance)
+        self.assertIn("尚未核实 【毛利率】 的来源字段", guidance)
+        self.assertIn("下一步处理建议", guidance)
+        self.assertIn("应先核实实际工作表和表头", guidance)
+        self.assertNotIn("请补充提供", guidance)
         self.assertIn("尚未验证的项目不会被列为完成", guidance)
 
     def test_synthesize_analysis_summary_with_mock_llm(self):
@@ -621,6 +622,175 @@ class AnalysisCompletionTests(unittest.TestCase):
             self.assertNotEqual(res, "兜底模板文本")
             self.assertIn("98,000", res)
             self.assertIn("1.25%", res)
+
+    def test_grouping_contract_blocks_when_requested_metric_misses_group_by(self):
+        """测试门禁防御：当用户要求按部门分组统计金额时，若模型仅对工数/条数分组、核心指标金额仅算总计，严格拦截报错。"""
+        import hashlib
+        wb_hash = hashlib.sha256(self.source.read_bytes()).hexdigest()
+        # 1. 模拟 11:08 现场：金额(c1)漏配 group_by，工数(c2)和条数(c3)配了 group_by
+        receipt_partial = ToolResult(data={
+            "kind": "spreadsheet_analysis",
+            "evidence_id": "ev_partial",
+            "table_id": "t1",
+            "coverage": [{"id": "t1", "coverage_complete": True, "evaluated_records": 201, "headers": {"D": "部门名称", "P": "金额", "O": "工数"}}],
+            "plan": {
+                "tables": [{"id": "t1", "sheet": "来源甲", "data_range": "A2:P202"}],
+                "calculations": [
+                    {
+                        "id": "c1",
+                        "label": "各部门金额总计(K)",
+                        "expression": {"aggregate": "sum", "table": "t1", "column": "P"}
+                    },
+                    {
+                        "id": "c2",
+                        "label": "各部门工数(h)",
+                        "expression": {"aggregate": "sum", "table": "t1", "column": "O", "group_by": "D"}
+                    },
+                    {
+                        "id": "c3",
+                        "label": "各部门条数",
+                        "expression": {"aggregate": "count", "table": "t1", "column": "A", "group_by": "D"}
+                    }
+                ]
+            },
+            "facts": [
+                {"id": "c1", "label": "各部门金额总计(K)", "value": 1887.73, "unit": "K"},
+                {"id": "c2__华南MIS", "label": "华南MIS工数(h)", "value": 100.0, "unit": "h", "group_key": "华南MIS"},
+                {"id": "c2__华东MIS", "label": "华东MIS工数(h)", "value": 200.0, "unit": "h", "group_key": "华东MIS"},
+                {"id": "c3__华南MIS", "label": "华南MIS条数", "value": 50, "unit": "条", "group_key": "华南MIS"},
+                {"id": "c3__华东MIS", "label": "华东MIS条数", "value": 80, "unit": "条", "group_key": "华东MIS"}
+            ]
+        }, provenance={"file_path": str(self.source), "workbook_id": wb_hash})
+
+        prompt = "按照 部门名称 分组 进行金额的统计"
+        state = analysis_task_state([receipt_partial], prompt)
+        self.assertFalse(state["complete"])
+        missing_metric_issues = [iss for iss in state.get("issues", []) if iss.get("code") == "per_group_metrics_missing"]
+        self.assertTrue(len(missing_metric_issues) > 0, f"Expected per_group_metrics_missing issue, got: {state.get('issues')}")
+        self.assertEqual(missing_metric_issues[0]["metric"], "金额")
+        self.assertIn("华南MIS", missing_metric_issues[0]["missing_groups"])
+        self.assertIn("华东MIS", missing_metric_issues[0]["missing_groups"])
+
+        # 2. 正确执行：金额配了 group_by 并输出了各部门金额
+        receipt_complete = ToolResult(data={
+            "kind": "spreadsheet_analysis",
+            "evidence_id": "ev_complete",
+            "table_id": "t1",
+            "coverage": [{"id": "t1", "coverage_complete": True, "evaluated_records": 201, "headers": {"D": "部门名称", "P": "金额"}}],
+            "plan": {
+                "tables": [{"id": "t1", "sheet": "来源甲", "data_range": "A2:P202"}],
+                "calculations": [
+                    {
+                        "id": "c1",
+                        "label": "各部门金额(K)",
+                        "expression": {"aggregate": "sum", "table": "t1", "column": "P", "group_by": "D"}
+                    }
+                ]
+            },
+            "facts": [
+                {"id": "c1__华南MIS", "label": "华南MIS金额(K)", "value": 887.73, "unit": "K", "group_key": "华南MIS"},
+                {"id": "c1__华东MIS", "label": "华东MIS金额(K)", "value": 1000.00, "unit": "K", "group_key": "华东MIS"}
+            ]
+        }, provenance={"file_path": str(self.source), "workbook_id": wb_hash})
+
+        state_ok = analysis_task_state([receipt_complete], prompt)
+        self.assertTrue(state_ok["complete"], f"Expected complete=True, got issues: {state_ok.get('issues')}")
+
+    def test_synthesize_analysis_summary_rejects_grouping_excuse(self):
+        """测试门禁防御：在分组统计任务中，若模型生成包含推脱责任、甩锅无明细的免责文本，严格拦截并回退模板。"""
+        from dsh_modules.analysis_synthesis import synthesize_analysis_summary
+        prompt = "按照 部门名称 分组 进行金额的统计"
+        receipt = ToolResult(data={
+            "kind": "spreadsheet_analysis",
+            "evidence_id": "ev_test",
+            "table_id": "t1",
+            "coverage": [{"id": "t1", "coverage_complete": True, "evaluated_records": 100, "headers": {"D": "部门名称", "P": "金额"}}],
+            "plan": {"tables": [], "calculations": []},
+            "facts": [{"id": "c1", "label": "金额总计", "value": 1887.73, "unit": "千元"}]
+        }, provenance={"file_path": "/workspace/test.xlsx"})
+
+        with patch("dsh_modules.analysis_synthesis._can_reach_proxy", return_value=True), \
+             patch("dsh_modules.llm.call_model_proxy") as mock_proxy:
+            mock_proxy.return_value = {
+                "content": "本次统计金额总计为 1887.73 千元。由于底层数据仅提供总计数值，未提供按部门拆解数据，故无法展示各部门明细。"
+            }
+            res = synthesize_analysis_summary(
+                prompt=prompt,
+                receipts=[receipt],
+                audit="审计明细",
+                fallback_text="【兜底结构化报表】",
+                model="test-model",
+                policy=types.SimpleNamespace(single_request_timeout=10)
+            )
+            # 必须拦截模型甩锅文本，回退至兜底结构化报表
+            self.assertEqual(res, "【兜底结构化报表】")
+
+    def test_entity_filter_guard_blocks_unfiltered_global_aggregate_for_entity_query(self):
+        """测试门禁防御：当用户指定查询特定员工时，若模型未配置针对该员工的过滤条件、用全表总数冒充，严格拦截报错。"""
+        import hashlib
+        wb_hash = hashlib.sha256(self.source.read_bytes()).hexdigest()
+        prompt = "查看 员工  s22014 的 工数明细"
+
+        # 1. 模拟 11:45 现场：未配 filters，把全表当成目标表
+        receipt_unfiltered = ToolResult(data={
+            "kind": "spreadsheet_analysis",
+            "evidence_id": "ev_unfiltered",
+            "table_id": "t1",
+            "coverage": [{
+                "id": "t1",
+                "coverage_complete": True,
+                "input_records": 274,
+                "evaluated_records": 274,
+                "headers": {"E": "员工编号", "O": "工数", "P": "金额"},
+                "filters": []  # 漏配 filter!
+            }],
+            "plan": {
+                "tables": [{"id": "t1", "sheet": "来源甲", "data_range": "A2:P202"}],
+                "calculations": [
+                    {"id": "c1", "label": "总工数", "expression": {"aggregate": "sum", "table": "t1", "column": "O"}},
+                    {"id": "c2", "label": "总金额", "expression": {"aggregate": "sum", "table": "t1", "column": "P"}}
+                ]
+            },
+            "facts": [
+                {"id": "c1", "label": "总工数", "value": 6532.01, "unit": "小时"},
+                {"id": "c2", "label": "总金额", "value": 1887.73, "unit": "千元"}
+            ]
+        }, provenance={"file_path": str(self.source), "workbook_id": wb_hash})
+
+        state = analysis_task_state([receipt_unfiltered], prompt)
+        self.assertFalse(state["complete"])
+        entity_filter_issues = [iss for iss in state.get("issues", []) if iss.get("code") == "entity_filter_missing"]
+        self.assertTrue(len(entity_filter_issues) > 0, f"Expected entity_filter_missing issue, got: {state.get('issues')}")
+
+        # 2. 正常配置：配了员工编号过滤
+        receipt_filtered = ToolResult(data={
+            "kind": "spreadsheet_analysis",
+            "evidence_id": "ev_filtered",
+            "table_id": "t1",
+            "coverage": [{
+                "id": "t1",
+                "coverage_complete": True,
+                "input_records": 274,
+                "evaluated_records": 6,
+                "headers": {"E": "员工编号", "O": "工数", "P": "金额"},
+                "filters": [{"column": "E", "values": ["s22014"], "op": "in"}]
+            }],
+            "plan": {
+                "tables": [{"id": "t1", "sheet": "来源甲", "data_range": "A2:P202", "filters": [{"column": "E", "values": ["s22014"], "op": "in"}]}],
+                "calculations": [
+                    {"id": "c1", "label": "s22014工数", "expression": {"aggregate": "sum", "table": "t1", "column": "O"}},
+                    {"id": "c2", "label": "s22014金额", "expression": {"aggregate": "sum", "table": "t1", "column": "P"}}
+                ]
+            },
+            "facts": [
+                {"id": "c1", "label": "s22014工数", "value": 170.59, "unit": "小时"},
+                {"id": "c2", "label": "s22014金额", "value": 45.16, "unit": "千元"}
+            ]
+        }, provenance={"file_path": str(self.source), "workbook_id": wb_hash})
+
+        state_ok = analysis_task_state([receipt_filtered], prompt)
+        self.assertTrue(state_ok["complete"], f"Expected complete=True, got issues: {state_ok.get('issues')}")
+
 
 
 if __name__=='__main__':unittest.main()

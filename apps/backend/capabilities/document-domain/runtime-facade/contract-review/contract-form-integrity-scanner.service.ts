@@ -66,7 +66,8 @@ export class ContractFormIntegrityScannerService {
         if (b.type === 'table' && b.tableData) {
           for (const row of b.tableData.rows) {
             for (const cell of row) {
-              const cellVars = cell.match(this.TEMPLATE_VAR_REGEX);
+              const cellText = typeof cell === 'string' ? cell : cell?.text || '';
+              const cellVars = cellText.match(this.TEMPLATE_VAR_REGEX);
               if (cellVars) {
                 for (const cv of cellVars) {
                   if (!unfilledVariables.includes(cv)) unfilledVariables.push(cv);

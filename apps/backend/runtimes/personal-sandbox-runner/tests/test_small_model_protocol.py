@@ -362,6 +362,12 @@ class TestSmallModelProtocol(unittest.TestCase):
         self.assertTrue(has_explicit_reminder_intent("每工作日早上8点叫我起床"))
         self.assertTrue(has_explicit_reminder_intent("建个待办：明天交发票"))
         self.assertTrue(has_explicit_reminder_intent("remind me to submit report tomorrow"))
+        self.assertTrue(has_explicit_reminder_intent("删除 这个 提醒"))
+        self.assertTrue(has_explicit_reminder_intent("取消滴眼药水提醒"))
+        self.assertTrue(has_explicit_reminder_intent("把开会提醒删了"))
+        self.assertTrue(has_explicit_reminder_intent("清空所有提醒日程"))
+        self.assertTrue(has_explicit_reminder_intent("delete this reminder"))
+        self.assertTrue(has_explicit_reminder_intent("cancel the reminder"))
 
         # 消费性、总结性、查询性提问严禁被判定为提醒意图
         self.assertFalse(has_explicit_reminder_intent("总结这篇关于日程提醒产品的网页"))

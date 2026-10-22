@@ -473,10 +473,11 @@ def cmd_run(args):
             comparison_context = build_comparison_source_context(fpath, prompt, deadline=task_deadline)
             # A usable schema keeps full numeric rows on the tool path. No
             # eager all-sheet extraction/recalculation is needed for planning.
-            analysis_context = (build_spreadsheet_source_context(fpath,deadline=task_deadline)
-                if requires_spreadsheet_analysis(prompt, skill_res) and fpath.suffix.lower() in (".xlsx", ".xlsm") else "")
-            extracted = comparison_context or analysis_context or read_workspace_file(
-                fname, deadline=task_deadline, model_name=model_name, prompt=prompt)
+            if fpath.suffix.lower() in (".xlsx", ".xlsm"):
+                extracted = comparison_context or build_spreadsheet_source_context(fpath, deadline=task_deadline, prompt=prompt)
+            else:
+                extracted = comparison_context or read_workspace_file(
+                    fname, deadline=task_deadline, model_name=model_name, prompt=prompt)
             if extracted and not extracted.startswith("文件未找到"):
                 clipped = ContextBudget.clip_attachment(extracted, policy.max_attachment_chars)
                 file_context += f"\n\n[Attached File Content - {fname}]:\n{clipped}"

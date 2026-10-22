@@ -95,7 +95,7 @@ def _extract_metric_value_from_reply(
             continue
 
         # 提取候选数值 (支持前缀货币符号 ¥ / $ / ￥ 等)
-        num_matches = list(re.finditer(r'([¥￥$€]\s*)?([+-]?[\d,]+(?:\.\d+)?)\s*(%|万元|千元|亿元|元|件|个|笔)?', seg))
+        num_matches = list(re.finditer(r'([¥￥$€]\s*)?([+-]?[\d,]+(?:\.\d+)?)\s*(%|万元|千元|亿元|元|件|个|笔|[kKmM])?', seg))
         valid_candidates = []
 
         for nm in num_matches:
@@ -145,7 +145,7 @@ def _extract_metric_value_from_reply(
             # 优先选择带单位或带有正负号的数值作为更精确的交付证据
             best_val = valid_candidates[-1]
             for cand in valid_candidates:
-                if any(u in cand for u in ("万元", "千元", "亿元", "元", "%", "+", "-")):
+                if any(u in cand for u in ("万元", "千元", "亿元", "元", "%", "+", "-", "K", "k", "M", "m")):
                     best_val = cand
                     break
             return True, best_val, False

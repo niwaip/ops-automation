@@ -174,13 +174,13 @@ export function InboxTaskDetailModal({
     params.contractUrl ||
     (payload.metadata as any)?.generatedDocUrl;
 
-  const allAttachments: CoordinationAttachment[] = [...validIncoming];
-  if (directUrl && !allAttachments.some((a) => a.url === directUrl)) {
+  const rawAttachments: CoordinationAttachment[] = [...validIncoming];
+  if (directUrl && !rawAttachments.some((a) => a.url === directUrl)) {
     const docName =
       params.fileName ||
       params.contractFileName ||
       (params.contractTitle ? `${params.contractTitle}.docx` : item?.title ? `${item.title}.docx` : '合同文档.docx');
-    allAttachments.unshift({
+    rawAttachments.unshift({
       name: docName,
       url: directUrl,
       mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -190,13 +190,24 @@ export function InboxTaskDetailModal({
   const originalDraftUrl =
     params.originalDraftUrl ||
     (payload.metadata as any)?.originalDraftUrl;
-  if (originalDraftUrl && !allAttachments.some((a) => a.url === originalDraftUrl)) {
-    allAttachments.push({
+  if (originalDraftUrl && !rawAttachments.some((a) => a.url === originalDraftUrl)) {
+    rawAttachments.push({
       name: params.originalDraftFileName || (params.fileName ? `初始版本 · ${params.fileName}` : '初始合同原稿.docx'),
       url: originalDraftUrl,
       mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
   }
+
+  const allAttachments = useMemo(() => {
+    const seen = new Set<string>();
+    return rawAttachments.filter((att) => {
+      if (!att) return false;
+      const key = (att.url || (att as any).downloadUrl || att.name || '').trim();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [rawAttachments]);
 
   const initiatorUsername = payload.initiator?.username;
   const initiatorId = payload.initiator?.id;
@@ -210,10 +221,16 @@ export function InboxTaskDetailModal({
   const { auditReport, cleanedRawContent, htmlAttachment } = useMemo(() => {
     return extractAuditReportFromTask(
       item?.rawContent,
-      payload.reviewReport,
+      payload.reviewReport || (item as any)?.reviewReport || (payload.externalSyncResult as any)?.reviewReport,
       allAttachments
     );
-  }, [item?.rawContent, payload.reviewReport, allAttachments]);
+  }, [
+    item?.rawContent,
+    payload.reviewReport,
+    (item as any)?.reviewReport,
+    (payload.externalSyncResult as any)?.reviewReport,
+    allAttachments,
+  ]);
 
   const businessAttachments = useMemo(() => {
     return allAttachments.filter((att) => {

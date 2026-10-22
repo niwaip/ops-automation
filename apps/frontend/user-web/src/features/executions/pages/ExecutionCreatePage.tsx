@@ -21,7 +21,6 @@ import ExecutionCreateScheduleListCard from '@/features/executions/create/compon
 import ExecutionCreateSkillInfoCard from '@/features/executions/create/components/ExecutionCreateSkillInfoCard';
 import {
   executionCreateContainerStyle,
-  executionCreateContentGridStyle,
   executionCreateSidebarStyle,
 } from '@/features/executions/create/components/executionCreateStyles';
 import { useExecutionCreateActions } from '@/features/executions/create/hooks/useExecutionCreateActions';
@@ -43,6 +42,7 @@ const ExecutionCreatePage: React.FC = () => {
     requiredFieldCount,
     schemaFields,
     selectedSkill,
+    selectedSkillOption,
     selectedSkillDisplayName,
     selectedSkillLoading,
     selectedSkillVersion,
@@ -96,6 +96,7 @@ const ExecutionCreatePage: React.FC = () => {
     schemaFields,
     selectedSkillDisplayName,
     selectedSkillVersion,
+    selectedSkillOption,
     onCredentialsRequired: () => setCredentialModalOpen(true),
   });
   const formLoadingIndicator = <LoadingOutlined style={{ fontSize: 24 }} spin />;
@@ -112,6 +113,7 @@ const ExecutionCreatePage: React.FC = () => {
     selectedSkillDisplayName,
     selectedSkillId,
     selectedSkillLoading,
+    isRunnable: selectedSkillOption?.isRunnable !== false,
     schemaFields,
     executionMode,
     schedulePattern,
@@ -183,7 +185,20 @@ const ExecutionCreatePage: React.FC = () => {
           />
         )}
 
-      <div style={executionCreateContentGridStyle}>
+      {selectedSkillOption?.isRunnable === false && (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="当前工作流依赖的底层技能已下线或归档"
+          description={
+            selectedSkillOption.unavailableReason ||
+            '该工作流包含已被下线的步骤节点，无法直接发起新执行。如需继续使用，请联系管理员在技能中心重新发布对应技能。'
+          }
+        />
+      )}
+
+      <div className={styles['execution-create-content-grid']}>
         <ExecutionCreateFormPanel
           form={form}
           initialSkillId={initialSkillId}

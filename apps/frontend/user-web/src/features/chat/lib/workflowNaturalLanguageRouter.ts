@@ -70,48 +70,7 @@ async function resolveAssignee(
   return { id: 'admin', username: 'admin' };
 }
 
-/**
- * 组织工作流自然语言连接器：
- * 解析 !工作流 后的自然语言输入，执行槽位提取与参数识别。
- * 若关键参数不足，通过会话向用户直接追问；
- * 若参数齐备且产物生成完成，调用阶段底层流并派发至下一阶段（如法务部审查）。
- */
-export async function handleWorkflowNaturalLanguage(
-  content: string,
-  artifactContext?: WorkflowExecutionArtifactContext
-): Promise<WorkflowRoutingResult | null> {
-  const match = content.trim().match(/^[!！]([^\s!！]+)\s*(.*)$/s);
-  if (!match) return null;
-
-  const rawWorkflow = match[1].trim();
-  const taskBody = (match[2] || '').trim();
-
-  const isCompare = /比对|对比|差异|红线/i.test(rawWorkflow);
-  if (isCompare) {
-    return {
-      handled: true,
-      content: [
-        `🔍 **已启动 AI 合同比对与智能审查引擎**`,
-        `- **审查标的**：${taskBody || '指定合同文档'}`,
-        `- **底层能力**：\`contract-comparator\` 与 \`contract-reviewer\``,
-        `- **说明**：系统将对比合同初稿与最新修订版，全面排查违约责任、保密范围、管辖权及合规风险。请在对话流中查看分析结果。`,
-      ].join('\n'),
-    };
-  }
-
-  const isDedicatedNda =
-    /保密|nda|legal\.nda\.generation_and_review_flow|生成保密合同/i.test(rawWorkflow) ||
-    (/保密|nda/i.test(taskBody) && /合同|协议|生成/i.test(rawWorkflow));
-  const isLegal = isDedicatedNda || /法务|合同|审查|legal\.contract\.review_flow/i.test(rawWorkflow);
-  const workflowId = isDedicatedNda
-    ? 'legal.nda.generation_and_review_flow'
-    : 'legal.contract.review_flow';
-
-  const workflowName = isDedicatedNda
-    ? '生成保密合同 (保密合同起草与法务审查闭环流)'
-    : '标准合同起草与法务审查闭环流';
-
-interface ExtractedContractEntities {
+export interface ExtractedContractEntities {
   counterpartyName: string;
   counterpartyAddress?: string;
   counterpartyRole?: '甲方' | '乙方';
@@ -125,7 +84,7 @@ interface ExtractedContractEntities {
   contractAmount?: number;
 }
 
-function extractContractEntities(taskBody: string): ExtractedContractEntities {
+export function extractContractEntities(taskBody: string): ExtractedContractEntities {
   // 0. 优先提取显式声明（如："甲方为狗宝" / "乙方为富士通"）
   let counterpartyAddress: string | undefined;
   let counterpartyName = '';
@@ -222,16 +181,33 @@ function extractContractEntities(taskBody: string): ExtractedContractEntities {
     }
   }
 
-  // 7. 单独地址匹配（若未从复合结构中提取到）
+  // 7.0 显式关联相对方/甲方的地址提取（例如："甲方是...，地址北京王府井大街100号" / "相对方地址为..." / "对方位于..."）
+  if (!counterpartyAddress) {
+    const explicitPartyAAddrMatch = taskBody.match(
+      /(?:甲方|相对方|对方)[^;；。！!]{0,50}?(?:地址(?:是|为|：|:)?|位于|在)\s*([^\s;；,，。！!]+)/
+    );
+    if (explicitPartyAAddrMatch) {
+      let rawAddr = explicitPartyAAddrMatch[1]
+        .replace(/^(?:地址|位于|在)?(?:是|为|：|:)?/, '')
+        .trim();
+      rawAddr = rawAddr.replace(/(?:签署|签订|协议|合同|保密).*$/, '').trim();
+      if (/[省市区县街道巷弄号楼厦园区]/.test(rawAddr) && !/(?:有限公司|科技|网络|技术|集团|公司)$/.test(rawAddr)) {
+        counterpartyAddress = rawAddr;
+      }
+    }
+  }
+
+  // 7.1 单独地址匹配（若未从复合结构中提取到）
   if (!counterpartyAddress) {
     const addressMatch = taskBody.match(
-      /(?:在|位于|和|与)?\s*([^\s,，。！!]{2,20}?(?:省|市|区|县|路|街|巷|弄|道|号|大厦|大楼|园区|中心)(?:[0-9]+号)?)\s*(?:的)?/
+      /(?:在|位于|和|与|地址(?:是|为|：|:)?)?\s*([^\s,，。！!]{2,40}?(?:省|市|区|县|路|街|巷|弄|道|号|大厦|大楼|园区|中心)(?:[0-9]+号)?)\s*(?:的)?/
     );
     if (addressMatch) {
-      const addrCandidate = addressMatch[1]
-        .replace(/^(?:我需要|请帮我|帮我|我要|需要)?(?:和|与|跟|同|在|位于)?/, '')
+      let addrCandidate = addressMatch[1]
+        .replace(/^(?:我需要|请帮我|帮我|我要|需要)?(?:和|与|跟|同|在|位于|地址(?:是|为|：|:)?)?/, '')
         .trim();
-      if (/[街路道巷弄号楼厦区]/.test(addrCandidate) && !/(?:有限公司|科技|网络|技术|集团|公司)$/.test(addrCandidate)) {
+      addrCandidate = addrCandidate.replace(/(?:签署|签订|协议|合同|保密).*$/, '').trim();
+      if (/[省市区县街道巷弄号楼厦园区]/.test(addrCandidate) && !/(?:有限公司|科技|网络|技术|集团|公司)$/.test(addrCandidate)) {
         counterpartyAddress = addrCandidate;
       }
     }
@@ -259,13 +235,15 @@ function extractContractEntities(taskBody: string): ExtractedContractEntities {
     }
   }
 
-  // 6. 提取合作业务主题
+  // 6. 提取合作业务主题（优先匹配显式业务主题声明，避免误命中“仅用于系统测试”）
   let cooperationSubject: string | undefined;
   const subjectMatch = taskBody.match(
-    /(?:内容是?关于|关于|涉及|围绕|用于|针对|事由为|项目为|合作内容为?)\s*([^\s,，。！!]+(?:开发|研究|服务|合作|项目|采购|业务|模型|技术|[a-zA-Z0-9\u4e00-\u9fa5]+?))(?=[,，。！!]|签署|签订|签订日期|我们|我方|$)/i
+    /(?:合作主题|项目主题|合作事项|合同主题|业务主题|主题|合作内容|内容是?关于|关于|涉及|围绕|针对|事由为|项目为)\s*(?:是|为|：|:)?\s*([^\s;；,，。！!]+(?:开发|研究|服务|合作|项目|采购|业务|模型|技术|[a-zA-Z0-9\u4e00-\u9fa5]+?))(?=[;；,，。！!]|签署|签订|签订日期|我们|我方|$)/i
   );
   if (subjectMatch && subjectMatch[1]) {
-    cooperationSubject = subjectMatch[1].trim();
+    cooperationSubject = subjectMatch[1]
+      .replace(/^(?:是|为|：|:)\s*/, '')
+      .trim();
   }
 
   // 7. 提取签署日期
@@ -333,6 +311,47 @@ function extractContractEntities(taskBody: string): ExtractedContractEntities {
     contractAmount,
   };
 }
+
+/**
+ * 组织工作流自然语言连接器：
+ * 解析 !工作流 后的自然语言输入，执行槽位提取与参数识别。
+ * 若关键参数不足，通过会话向用户直接追问；
+ * 若参数齐备且产物生成完成，调用阶段底层流并派发至下一阶段（如法务部审查）。
+ */
+export async function handleWorkflowNaturalLanguage(
+  content: string,
+  artifactContext?: WorkflowExecutionArtifactContext
+): Promise<WorkflowRoutingResult | null> {
+  const match = content.trim().match(/^[!！]([^\s!！]+)\s*(.*)$/s);
+  if (!match) return null;
+
+  const rawWorkflow = match[1].trim();
+  const taskBody = (match[2] || '').trim();
+
+  const isCompare = /比对|对比|差异|红线/i.test(rawWorkflow);
+  if (isCompare) {
+    return {
+      handled: true,
+      content: [
+        `🔍 **已启动 AI 合同比对与智能审查引擎**`,
+        `- **审查标的**：${taskBody || '指定合同文档'}`,
+        `- **底层能力**：\`contract-comparator\` 与 \`contract-reviewer\``,
+        `- **说明**：系统将对比合同初稿与最新修订版，全面排查违约责任、保密范围、管辖权及合规风险。请在对话流中查看分析结果。`,
+      ].join('\n'),
+    };
+  }
+
+  const isDedicatedNda =
+    /保密|nda|legal\.nda\.generation_and_review_flow|生成保密合同/i.test(rawWorkflow) ||
+    (/保密|nda/i.test(taskBody) && /合同|协议|生成/i.test(rawWorkflow));
+  const isLegal = isDedicatedNda || /法务|合同|审查|legal\.contract\.review_flow/i.test(rawWorkflow);
+  const workflowId = isDedicatedNda
+    ? 'legal.nda.generation_and_review_flow'
+    : 'legal.contract.review_flow';
+
+  const workflowName = isDedicatedNda
+    ? '生成保密合同 (保密合同起草与法务审查闭环流)'
+    : '标准合同起草与法务审查闭环流';
 
   // ==========================================
   // 1. 保密合同专用工作流 (专属技能生成初稿 -> 法务审查 -> 归档)

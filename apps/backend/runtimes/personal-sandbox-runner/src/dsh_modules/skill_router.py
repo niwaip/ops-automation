@@ -546,7 +546,14 @@ class SemanticSkillMatcher:
 
             # 5. Text-Only Request Suppression for Physical Document Skills
             if is_text_only_request(lower_q):
-                physical_skills = {"docx", "xlsx", "pdf", "guizang-ppt", "pptx", "html-ppt", "saas-landing", "frontend-design", "web-prototype"}
+                is_md_table = bool(re.search(r'markdown\s*(?:对比)?表格|md\s*(?:对比)?表格', lower_q)) and not any(k in lower_q for k in [".xlsx", ".xls", "excel", "附件"])
+                has_spreadsheet_analysis = s_id == "xlsx" and not is_md_table and (
+                    any(k in lower_q for k in [".xlsx", ".xls", ".csv", "工作簿", "excel", "附件"])
+                    or (any(k in lower_q for k in ["表格", "工作表"]) and any(k in lower_q for k in ["明细", "工数", "统计", "核算", "求和", "计算", "数据", "行", "列"]))
+                )
+                physical_skills = {"docx", "pdf", "guizang-ppt", "pptx", "html-ppt", "saas-landing", "frontend-design", "web-prototype"}
+                if not has_spreadsheet_analysis:
+                    physical_skills.add("xlsx")
                 if s_id in physical_skills:
                     score = 0.0
                     reasons = ['text_only_suppressed']
@@ -562,10 +569,12 @@ class SemanticSkillMatcher:
             # 7. Document generation skills require at least one trigger or alias cue in query
             doc_skills = {"pdf", "xlsx", "docx", "guizang-ppt", "html-ppt"}
             if s_id in doc_skills:
+                extra_cues = [".xlsx", ".xls", "表格", "工作表", "工作簿", "附件", "明细"] if s_id == "xlsx" else []
+                all_cues = data['triggers'] + data['aliases'] + [s_id] + extra_cues
                 has_doc_cue = (
-                    any(c in lower_q for c in data['triggers'] + data['aliases'] + [s_id])
-                    or any(c in cleaned_q for c in data['triggers'] + data['aliases'] + [s_id])
-                    or any(c in normalized_q_no_de for c in data['triggers'] + data['aliases'] + [s_id])
+                    any(c in lower_q for c in all_cues)
+                    or any(c in cleaned_q for c in all_cues)
+                    or any(c in normalized_q_no_de for c in all_cues)
                 )
                 if not has_doc_cue:
                     score = 0.0

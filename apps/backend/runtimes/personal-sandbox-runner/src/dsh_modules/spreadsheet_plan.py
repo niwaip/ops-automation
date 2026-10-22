@@ -99,6 +99,12 @@ def normalize_plan(requested, workbook=None, source_tables=None):
         return expr
     for calculation in plan.get('calculations',[]):
         expression=calculation.get('expression')
+        if isinstance(expression, dict) and expression.get('aggregate') and not expression.get('group_by'):
+            table = next((t for t in plan.get('tables', []) if t.get('id') == expression.get('table')), {})
+            grouping = plan.get('group_by') or table.get('group_by')
+            if grouping:
+                expression['group_by'] = copy.deepcopy(grouping)
+                changes.append(f"{calculation['id']}：继承显式分组声明")
         if isinstance(expression,dict) and 'output_unit' in expression:
             unit=expression.pop('output_unit')
             if 'output_unit' in calculation and calculation['output_unit']!=unit:

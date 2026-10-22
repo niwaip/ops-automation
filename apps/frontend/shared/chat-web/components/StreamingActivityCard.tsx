@@ -16,6 +16,12 @@ const RESEARCH_PHASES = [
   '🔍 正在梳理核心事实与关键论据...',
 ];
 
+const SPREADSHEET_PHASES = [
+  '📊 正在定位表格结构与字段映射...',
+  '📊 正在执行数据筛选与精确聚合...',
+  '📊 正在核算核心指标与勾稽结果...',
+];
+
 const SEARCH_PHASES = [
   '🔍 正在检索实时网络与开源社区数据...',
   '🔍 正在筛选与比对相关数据源...',
@@ -33,9 +39,8 @@ const GENERAL_PHASES = [
   '⚙️ 正在校验结果与执行后续步骤...',
 ];
 
-export const humanizeProgressText = (rawText?: string): string | undefined => {
-  if (!rawText) return undefined;
-  let text = rawText.trim();
+const humanizeSingleLine = (rawLine: string): string | undefined => {
+  let text = rawLine.trim();
   // 去除 【观察】 或 【行动】 等通用协议前缀
   text = text.replace(/^【(?:观察|行动)】\s*/u, '').trim();
 
@@ -78,6 +83,19 @@ export const humanizeProgressText = (rawText?: string): string | undefined => {
       cleanParam = cleanParam.slice(0, 48) + '...';
     }
 
+    if (
+      lowerTool === 'aggregate_spreadsheet' ||
+      lowerTool === 'calculate_spreadsheet_analysis' ||
+      lowerTool === 'calculate_column_comparison'
+    ) {
+      return '📊 正在执行数据筛选与指标核算...';
+    }
+    if (lowerTool === 'inspect_spreadsheet_structure') {
+      return '📋 正在解析表格字段与工作表结构...';
+    }
+    if (lowerTool === 'compare_spreadsheet_columns') {
+      return '⚖️ 正在比对表格列数据差异...';
+    }
     if (lowerTool === 'web_search') {
       return cleanParam ? `🔍 正在联网检索: ${cleanParam}` : '🔍 正在联网检索实时信息...';
     }
@@ -141,6 +159,9 @@ export const humanizeProgressText = (rawText?: string): string | undefined => {
     if (name === 'fetch_page') {
       return '✓ 页面详情解析完成，进一步归纳中...';
     }
+    if (name && (name.includes('spreadsheet') || name.includes('aggregate') || name.includes('comparison'))) {
+      return '✓ 表格数据处理与核算完成，进一步归纳中...';
+    }
     return '✓ 阶段数据获取完成，进一步归纳中...';
   }
 
@@ -170,12 +191,26 @@ export const humanizeProgressText = (rawText?: string): string | undefined => {
   return cleaned.length > 0 ? cleaned : undefined;
 };
 
+export const humanizeProgressText = (rawText?: string): string | undefined => {
+  if (!rawText) return undefined;
+  // If rawText contains multiple lines from accumulated stream events, evaluate latest non-empty lines from bottom up
+  const lines = rawText.split('\n').map((l) => l.trim()).filter(Boolean);
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const res = humanizeSingleLine(lines[i]);
+    if (res) return res;
+  }
+  return undefined;
+};
+
 const resolveTitle = (query?: string): string => {
   const q = (query || '').toLowerCase();
   if (/(?:research|深度调研|全网调研|多源调研|评价|评测|对比|怎么样)/i.test(q)) {
     return '正在进行多源深度调研与事实检索';
   }
-  if (/(?:搜索|检索|查询|查找|最流行|最新|插件|动态|趋势|现状|社区|skill|生态)/i.test(q)) {
+  if (/(?:excel|xlsx|表格|表单|算式|报表|工数|工时|明细|金额|合计|汇总|平均|单价|成本中心|wbs)/i.test(q)) {
+    return '正在分析表格数据与核算指标';
+  }
+  if (/(?:搜索|检索|查找|全网|搜一下|最流行|最新|插件|动态|趋势|现状|社区|skill|生态)/i.test(q)) {
     return '正在检索与分析实时信息';
   }
   if (/(?:html|网页|单页|报告|看板|大屏|原型|演示文稿|ppt|slide|五子棋|游戏)/i.test(q)) {
@@ -184,11 +219,11 @@ const resolveTitle = (query?: string): string => {
   if (/(?:word|docx|审阅|审查|批注|合同|留痕)/i.test(q)) {
     return '正在处理文档';
   }
-  if (/(?:excel|xlsx|表格|表单|算式|报表)/i.test(q)) {
-    return '正在生成数据表格';
-  }
   if (/(?:pdf|导出一份pdf|生成pdf)/i.test(q)) {
     return '正在排版与生成 PDF 文档';
+  }
+  if (/(?:查询)/i.test(q)) {
+    return '正在检索与查询数据';
   }
   return 'AI 正在执行任务';
 };
@@ -226,31 +261,25 @@ export const StreamingActivityCard: React.FC<StreamingActivityCardProps> = ({
   const cleanProgressText = humanizeProgressText(currentProgressText);
 
   const isResearchQuery = title.includes('深度调研');
-  const isSearchQuery = title.includes('检索') || title.includes('分析实时信息');
+  const isSpreadsheetQuery = title.includes('表格') || title.includes('核算指标');
+  const isSearchQuery = title.includes('检索') || title.includes('分析实时信息') || title.includes('查询数据');
   const isDeliverableQuery =
     title.includes('交付物') ||
     title.includes('文档') ||
-    title.includes('表格') ||
     title.includes('PDF');
 
+  // 真实工具执行进度（cleanProgressText）优先于定时轮播预设文案
   let activeProgress = cleanProgressText;
-  if (!activeProgress || phaseIndex > 0) {
+  if (!activeProgress) {
     if (isResearchQuery) {
-      activeProgress =
-        phaseIndex === 0 && cleanProgressText
-          ? cleanProgressText
-          : RESEARCH_PHASES[Math.min(phaseIndex, RESEARCH_PHASES.length - 1)];
+      activeProgress = RESEARCH_PHASES[Math.min(phaseIndex, RESEARCH_PHASES.length - 1)];
+    } else if (isSpreadsheetQuery) {
+      activeProgress = SPREADSHEET_PHASES[Math.min(phaseIndex, SPREADSHEET_PHASES.length - 1)];
     } else if (isSearchQuery) {
-      activeProgress =
-        phaseIndex === 0 && cleanProgressText
-          ? cleanProgressText
-          : SEARCH_PHASES[Math.min(phaseIndex, SEARCH_PHASES.length - 1)];
+      activeProgress = SEARCH_PHASES[Math.min(phaseIndex, SEARCH_PHASES.length - 1)];
     } else if (isDeliverableQuery) {
-      activeProgress =
-        phaseIndex === 0 && cleanProgressText
-          ? cleanProgressText
-          : DELIVERABLE_PHASES[Math.min(phaseIndex, DELIVERABLE_PHASES.length - 1)];
-    } else if (!activeProgress) {
+      activeProgress = DELIVERABLE_PHASES[Math.min(phaseIndex, DELIVERABLE_PHASES.length - 1)];
+    } else {
       activeProgress = GENERAL_PHASES[Math.min(phaseIndex, GENERAL_PHASES.length - 1)];
     }
   }
@@ -271,6 +300,14 @@ export const StreamingActivityCard: React.FC<StreamingActivityCardProps> = ({
   const hasRealLength = typeof realContentLength === 'number' && realContentLength > 0;
   const compactStatusText = isResearchQuery
     ? '深度调研中'
+    : activeProgress?.includes('联网') || activeProgress?.includes('网络')
+    ? '联网检索中'
+    : isSpreadsheetQuery || activeProgress?.includes('表格') || activeProgress?.includes('核算')
+    ? activeProgress?.includes('核算') || activeProgress?.includes('聚合')
+      ? '指标核算中'
+      : activeProgress?.includes('结构') || activeProgress?.includes('解析')
+      ? '结构解析中'
+      : '表格分析中'
     : isSearchQuery
     ? '联网检索中'
     : isDeliverableQuery

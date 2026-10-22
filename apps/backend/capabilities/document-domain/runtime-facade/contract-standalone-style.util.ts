@@ -9,6 +9,7 @@ export const CONTRACT_REPORT_STANDALONE_CSS = `
 button { font-family: inherit; font-size: inherit; line-height: inherit; color: inherit; background: transparent; border: none; cursor: pointer; }
 input, select, textarea { font-family: inherit; font-size: inherit; line-height: inherit; }
 body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.65; -webkit-font-smoothing: antialiased; background-color: #EEF2F6; color: #1E293B; }
+table { width: 100%; border-collapse: collapse; }
 
 /* Display & Layout */
 .hidden { display: none !important; }
@@ -28,6 +29,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 .justify-center { justify-content: center; }
 .shrink-0 { flex-shrink: 0; }
 .min-w-0 { min-width: 0px; }
+.min-w-full { min-width: 100%; }
 .min-h-screen { min-height: 100vh; }
 .w-full { width: 100%; }
 .w-px { width: 1px; }
@@ -1025,5 +1027,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 /* Filter controls button safety spacing */
 #findings-filter-controls button, #findings-filter-controls select {
   margin: 0 2px;
+}
+
+/* Legal inline blanks & variable underline tokens */
+.inline-blank {
+  background-color: #FEF3C7;
+  color: #9A6700;
+  border-bottom: 2px dashed #F59E0B;
+  padding: 0.125rem 0.375rem;
+  border-radius: 2px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 600;
+}
+.contract-underlined-term, .contract-variable-term {
+  border-bottom: 2px solid #2563EB;
+  color: #0F172A;
+  font-weight: 500;
+  padding: 0 0.25rem;
+  text-decoration: none;
 }
 `;

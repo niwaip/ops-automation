@@ -25,6 +25,7 @@ import { PdfSplitService } from './pdf-operations/pdf-split.service';
 import { ContractCompareController } from './contract-compare/contract-compare.controller';
 import { ContractCompareService } from './contract-compare/contract-compare.service';
 import { ContractAstParserService } from './contract-compare/contract-ast-parser.service';
+import { PdfDocumentParserService } from './contract-compare/pdf-document-parser.service';
 import { SectionAlignerService } from './contract-compare/section-aligner.service';
 import { CharDiffEngineService } from './contract-compare/char-diff-engine.service';
 import { ContractHtmlRendererService } from './contract-compare/contract-html-renderer.service';
@@ -73,6 +74,7 @@ import {
     PdfCreateService,
     ContractCompareService,
     ContractAstParserService,
+    PdfDocumentParserService,
     SectionAlignerService,
     CharDiffEngineService,
     ContractHtmlRendererService,
@@ -108,6 +110,7 @@ import {
     PdfCreateService,
     ContractCompareService,
     ContractAstParserService,
+    PdfDocumentParserService,
     SectionAlignerService,
     ContractReviewService,
     ContractTypeClassifierService,

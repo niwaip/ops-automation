@@ -14,6 +14,7 @@ export function buildDeterministicExecutionResult(input: {
   finalOutputs: ResolvedFinalOutput[];
   artifacts: unknown[];
   finishedAt?: Date;
+  usage?: Record<string, unknown> | null;
 }): Record<string, unknown> {
   const rawBody = pickTopLevelBody(input.finalOutputs);
   const fallbackSummary = input.plan?.objective
@@ -53,16 +54,28 @@ export function buildDeterministicExecutionResult(input: {
       executionId: input.executionId,
       status: 'success',
       finishedAt,
+      ...(input.usage ? { usage: input.usage } : {}),
     },
     capabilitiesUsed,
+    ...(input.usage ? { usage: input.usage } : {}),
+    ...(input.usage
+      ? {
+          output: {
+            usage: input.usage,
+            metrics: { tokens: input.usage },
+          },
+        }
+      : {}),
     result: {
       resultType: 'deterministic_plan',
       ...(title ? { title } : {}),
       ...(body ? { summary: body } : {}),
       capabilitiesUsed,
+      ...(input.usage ? { usage: input.usage } : {}),
       businessData: {
         finalOutputs: input.finalOutputs,
         capabilitiesUsed,
+        ...(input.usage ? { usage: input.usage } : {}),
       },
     },
     artifacts: input.artifacts,

@@ -25,7 +25,30 @@ interface UseExecutionCreateActionsOptions {
   schemaFields: SchemaField[];
   selectedSkillDisplayName: string;
   selectedSkillVersion?: string;
+  selectedSkillOption?: {
+    isRunnable?: boolean;
+    unavailableReason?: string;
+  };
   onCredentialsRequired?: () => void;
+}
+
+function extractErrorMessage(error: unknown, fallback: string): string {
+  if (!error) return fallback;
+  const anyErr = error as any;
+  const respData = anyErr?.response?.data;
+  if (typeof respData?.message === 'string' && respData.message.trim().length > 0) {
+    return respData.message;
+  }
+  if (Array.isArray(respData?.message) && respData.message.length > 0) {
+    return respData.message.join('; ');
+  }
+  if (typeof respData === 'string' && respData.trim().length > 0) {
+    return respData;
+  }
+  if (typeof anyErr.message === 'string' && anyErr.message.trim().length > 0) {
+    return anyErr.message;
+  }
+  return fallback;
 }
 
 export function useExecutionCreateActions({
@@ -33,6 +56,7 @@ export function useExecutionCreateActions({
   schemaFields,
   selectedSkillDisplayName,
   selectedSkillVersion,
+  selectedSkillOption,
   onCredentialsRequired,
 }: UseExecutionCreateActionsOptions) {
   const { message } = App.useApp();
@@ -102,8 +126,8 @@ export function useExecutionCreateActions({
         ]);
         navigate(`/executions/${execution.id}`);
       },
-      onError: (error: Error) => {
-        void message.error(`创建执行失败：${error.message}`);
+      onError: (error: unknown) => {
+        void message.error(`创建执行失败：${extractErrorMessage(error, '后台服务异常')}`);
       },
     }
   );
@@ -147,8 +171,8 @@ export function useExecutionCreateActions({
           monthlyDay: 1,
         });
       },
-      onError: (error: Error) => {
-        void message.error(`创建定时任务失败：${error.message}`);
+      onError: (error: unknown) => {
+        void message.error(`创建定时任务失败：${extractErrorMessage(error, '后台服务异常')}`);
       },
     }
   );
@@ -162,8 +186,8 @@ export function useExecutionCreateActions({
         void message.success(`${schedule.name} 已${schedule.isActive ? '启用' : '停用'}`);
         await queryClient.invalidateQueries(['execution-create-schedules']);
       },
-      onError: (error: Error) => {
-        void message.error(`更新定时任务状态失败：${error.message}`);
+      onError: (error: unknown) => {
+        void message.error(`更新定时任务状态失败：${extractErrorMessage(error, '后台服务异常')}`);
       },
     }
   );
@@ -179,8 +203,8 @@ export function useExecutionCreateActions({
           queryClient.invalidateQueries(['execution-create-schedules']),
         ]);
       },
-      onError: (error: Error) => {
-        void message.error(`触发定时任务失败：${error.message}`);
+      onError: (error: unknown) => {
+        void message.error(`触发定时任务失败：${extractErrorMessage(error, '后台服务异常')}`);
       },
     }
   );
@@ -192,14 +216,20 @@ export function useExecutionCreateActions({
         void message.success('定时任务已删除');
         await queryClient.invalidateQueries(['execution-create-schedules']);
       },
-      onError: (error: Error) => {
-        void message.error(`删除定时任务失败：${error.message}`);
+      onError: (error: unknown) => {
+        void message.error(`删除定时任务失败：${extractErrorMessage(error, '后台服务异常')}`);
       },
     }
   );
 
   const handleSubmit = async (values: ExecutionCreateFormValues) => {
     try {
+      if (selectedSkillOption && selectedSkillOption.isRunnable === false) {
+        void message.error(
+          selectedSkillOption.unavailableReason || '当前工作流依赖的底层技能已下线或归档，无法发起执行'
+        );
+        return;
+      }
       const credentialStatus = await credentialApi.getSkillStatus(values.skillId);
       if (credentialStatus.hasCredentialRequirements && !credentialStatus.isFullyConfigured) {
         onCredentialsRequired?.();
@@ -212,7 +242,7 @@ export function useExecutionCreateActions({
       }
       createMutation.mutate(values);
     } catch (error) {
-      void message.error(error instanceof Error ? error.message : '输入格式无效');
+      void message.error(extractErrorMessage(error, '输入格式无效'));
     }
   };
 

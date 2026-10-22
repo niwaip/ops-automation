@@ -1069,6 +1069,79 @@ class TestFinancialWorkbookFixes(unittest.TestCase):
         val_res_legacy = validate_reply_against_contract(contract_legacy, table_reply, round_idx=1, max_rounds=3)
         self.assertTrue(val_res_legacy.is_pass, "Validation must defensively normalize 附件中的有效金额 and match table header 有效金额汇总!")
 
+    def test_read_only_workbook_with_inaccurate_dimension_ref_a1(self):
+        """验证当第三方导出工具将 dimension 误写为 A1 时，流式解析器能够自愈并准确提取真实范围和表头"""
+        import zipfile
+        import re
+        from dsh_modules.worksheet_metadata import worksheet_dimensions
+        from dsh_modules.spreadsheet_context import spreadsheet_structure
+
+        test_path = self.workspace / "corrupted_dim.xlsx"
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "工数明细"
+        ws.append([""])  # row 1 empty
+        ws.append(["标题"])  # row 2
+        ws.append(["日期"])  # row 3
+        ws.append(["WBS编号", "WBS负责成本中心", "金额(K)"])  # row 4 header
+        for i in range(1, 10):
+            ws.append([f"WBS-{i}", f"CC-{i}", i * 100.0])
+        wb.save(test_path)
+        wb.close()
+
+        # Tamper XML to inject <dimension ref="A1"/>
+        temp_zip = self.workspace / "temp_corrupt.zip"
+        with zipfile.ZipFile(test_path, "r") as zin, zipfile.ZipFile(temp_zip, "w") as zout:
+            for item in zin.infolist():
+                content = zin.read(item.filename)
+                if "sheet1.xml" in item.filename:
+                    content = re.sub(rb'<dimension ref="[^"]+"/>', b'<dimension ref="A1"/>', content)
+                zout.writestr(item, content)
+        temp_zip.replace(test_path)
+
+        # 1. Direct worksheet_dimensions check
+        wb_ro = openpyxl.load_workbook(test_path, read_only=True)
+        ws_ro = wb_ro["工数明细"]
+        dim = worksheet_dimensions(ws_ro)
+        self.assertEqual(dim, "A1:C13")
+        self.assertEqual(ws_ro.max_row, 13)
+        self.assertEqual(ws_ro.max_column, 3)
+        wb_ro.close()
+
+        # 2. Spreadsheet structure tool check
+        res = spreadsheet_structure(str(test_path))
+        self.assertTrue(res.is_success)
+        sheet_data = res.data["sheets"][0]
+        self.assertEqual(sheet_data["dimensions"], "A1:C13")
+        self.assertEqual(sheet_data["physical_rows"], 13)
+        self.assertTrue(len(sheet_data["header_candidates"]) > 0)
+        self.assertEqual(sheet_data["header_candidates"][0]["row"], 4)
+        self.assertIn("WBS编号", sheet_data["header_candidates"][0]["columns"].values())
+
+    def test_render_unverified_guidance_single_vs_multi_sheet(self):
+        """验证当仅有单个工作表时，未通过核验说明不会询问用户选择Sheet，并能识别确切表名"""
+        from dsh_modules.report_presentation import render_unverified_guidance
+
+        state_single = {
+            "missing_metrics": [],
+            "issues": [{"code": "execution_evidence_missing", "message": "缺少本轮成功的分析执行证据。"}],
+            "available_sheets": ["工数实绩明细"]
+        }
+        out_single = render_unverified_guidance(state_single, "按成本中心统计")
+        self.assertIn("当前工作表为【工数实绩明细】", out_single)
+        self.assertNotIn("如果表格中包含多个工作表", out_single)
+        self.assertNotIn("请明确指定分析所需的工作表（Sheet）名称", out_single)
+
+        state_multi = {
+            "missing_metrics": [],
+            "issues": [{"code": "execution_evidence_missing", "message": "缺少本轮成功的分析执行证据。"}],
+            "available_sheets": ["工数2025", "工数2026"]
+        }
+        out_multi = render_unverified_guidance(state_multi, "按成本中心统计")
+        self.assertIn("已有工作表：工数2025、工数2026", out_multi)
+        self.assertNotIn("请从已有工作表", out_multi)
+        self.assertIn("暂不能判断是否缺少业务数据", out_multi)
+
 
 
 if __name__ == "__main__":

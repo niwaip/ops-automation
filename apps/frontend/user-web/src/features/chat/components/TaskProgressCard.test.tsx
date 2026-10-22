@@ -133,6 +133,30 @@ describe('StreamingActivityCard - Progress Humanization & Status Passthrough', (
     expect(searchCardHtml).toContain('正在检索与分析实时信息');
     expect(searchCardHtml).toContain('联网检索中');
     expect(searchCardHtml).not.toContain('深度调研中');
+
+    // 12. Spreadsheet / Data Analysis Query (Does NOT falsely show "联网检索中")
+    const aggToolText = '【观察】⚡ [Harness Tool Call] 正在调用工具: aggregate_spreadsheet({"file_path": "工数.xlsx"})...';
+    expect(humanizeProgressText(aggToolText)).toBe('📊 正在执行数据筛选与指标核算...');
+
+    // Multi-line event stream test: latest event is prioritized
+    const multiLineStreamText =
+      '【行动】🔍 [Harness Web Search] 正在检索实时数据: "test"...\n' +
+      '【观察】✓ 实时网络数据检索完成\n' +
+      '【行动】⚡ [Harness Tool Call] 正在调用工具: aggregate_spreadsheet({"where": "S22014"})...';
+    expect(humanizeProgressText(multiLineStreamText)).toBe('📊 正在执行数据筛选与指标核算...');
+
+    const spreadsheetCardHtml = renderToStaticMarkup(
+      <StreamingActivityCard
+        isStreaming={true}
+        userQuery="查询 员工编号 s22014 的 工数 和金额 的合计"
+        currentProgressText={multiLineStreamText}
+        realContentLength={0}
+      />
+    );
+    expect(spreadsheetCardHtml).toContain('正在分析表格数据与核算指标');
+    expect(spreadsheetCardHtml).toContain('📊 正在执行数据筛选与指标核算...');
+    expect(spreadsheetCardHtml).toContain('指标核算中');
+    expect(spreadsheetCardHtml).not.toContain('联网检索中');
   });
 });
 
@@ -206,6 +230,68 @@ describe('TaskOutcomeCard & Progress Humanization for End Users', () => {
 
     expect(html).toContain('执行单 ID：b8a52827-ea97-4a38-b9e3-85c94b4a75d3');
     expect(html).toContain('ConfidentialityAgreementGenerationWorkflow');
+  });
+
+  it('filters out long prompt sentences so they are not leaked as skill names in task outcome card', () => {
+    const longPrompt = '我要写一份 邮件 主要 内容如下， 感谢上周的现场支援，我们对 现场环境进行了 确认，了解现在网络环境的需求主要 是 网络设备老朽化...';
+    const html = renderToStaticMarkup(
+      <TaskOutcomeCard
+        executionStatus="已完成"
+        executionId="880267bb-e68c-4892-a105-0129c1c192f6"
+        skillName={longPrompt}
+        hasBusinessResult={true}
+        showTechnicalMeta={false}
+        finalResult="邮件草案已生成"
+        browserExecutionMode={false}
+        shouldShowTakeoverCard={false}
+        shouldShowErrorCard={false}
+        shouldShowStructuredResult={false}
+        isWaitingInput={false}
+        isPendingApproval={false}
+        showRunningState={false}
+        waitingInputGroups={[]}
+        waitingInputItems={[]}
+        approvalAction={null}
+        onApproveExecution={() => {}}
+        onRejectExecution={() => {}}
+      />
+    );
+
+    expect(html).not.toContain('chat-outcome-overview-skill');
+    expect(html).not.toContain(longPrompt);
+  });
+
+  it('does not render duplicate "下载生成的文档" button when mdArtifact is present', () => {
+    const html = renderToStaticMarkup(
+      <TaskOutcomeCard
+        executionStatus="已完成"
+        executionId="880267bb-e68c-4892-a105-0129c1c192f6"
+        downloadUrl="/api/browser-runtime/artifacts/test.md"
+        artifacts={[
+          {
+            name: 'test.md',
+            url: '/api/browser-runtime/artifacts/test.md',
+            mimeType: 'text/markdown',
+          },
+        ]}
+        hasBusinessResult={true}
+        showTechnicalMeta={false}
+        browserExecutionMode={false}
+        shouldShowTakeoverCard={false}
+        shouldShowErrorCard={false}
+        shouldShowStructuredResult={false}
+        isWaitingInput={false}
+        isPendingApproval={false}
+        showRunningState={false}
+        waitingInputGroups={[]}
+        waitingInputItems={[]}
+        approvalAction={null}
+        onApproveExecution={() => {}}
+        onRejectExecution={() => {}}
+      />
+    );
+
+    expect(html).not.toContain('下载生成的文档');
   });
 });
 

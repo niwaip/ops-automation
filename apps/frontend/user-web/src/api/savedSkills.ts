@@ -40,6 +40,8 @@ export type SavedSkill = {
   review: SavedSkillReview;
   createdAt: string;
   updatedAt: string;
+  isRunnable?: boolean;
+  unavailableReason?: string;
 };
 
 export type WorkflowSaveEligibility = {

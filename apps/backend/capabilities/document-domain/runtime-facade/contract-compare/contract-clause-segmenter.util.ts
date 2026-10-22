@@ -1,5 +1,6 @@
 import type { ContractClauseNode } from './contract-compare.types';
 import { buildDocumentBlocksFromText } from './contract-text-block-parser.util';
+import { parseContractTextWithStateMachine } from './contract-clause-state-machine.util';
 
 // Universal Legal Document Numbering Grammars (Language-neutral, structure-driven)
 export const TIER1_CHAPTER_REGEX =
@@ -306,137 +307,10 @@ export function fallbackParagraphChunking(text: string): ContractClauseNode[] {
  * Parse structured contract text into hierarchical Clause Nodes with Chapter awareness
  */
 export function parseTextToClauses(text: string): ContractClauseNode[] {
-  const rawLines = text.split(/\r?\n/);
-  const lines = rawLines.map((l) => l.trim()).filter((l) => l.length > 0);
-  if (lines.length === 0) return [];
-
-  const clauses: ContractClauseNode[] = [];
-  let currentClause: ContractClauseNode | null = null;
-  let clauseIndex = 0;
-  let currentDivisionNum = '前言';
-  let currentDivisionTitle = '合同引言与签约主体';
-
-  const pushClause = (
-    title: string,
-    clauseNum: string,
-    level: number,
-    chNum?: string,
-    chTitle?: string
-  ) => {
-    if (currentClause && (currentClause.content.trim() || (currentClause.blocks && currentClause.blocks.length > 0))) {
-      const isPreamble = currentClause.clauseNumber === '前言' || currentClause.id === 'clause-0';
-      const parsed = buildDocumentBlocksFromText(currentClause.content, isPreamble);
-      currentClause.content = parsed.content || currentClause.content.trim();
-      currentClause.blocks = parsed.blocks;
-      clauses.push(currentClause);
-    }
-    currentClause = {
-      id: `clause-${clauseIndex++}`,
-      clauseNumber: clauseNum,
-      title,
-      content: '',
-      blocks: [],
-      level,
-      chapterNumber: chNum || currentDivisionNum,
-      chapterTitle: chTitle || currentDivisionTitle,
-    };
-  };
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const nextLine = lines[i + 1] || '';
-
-    const cleanLine = cleanMarkdownFormatting(line);
-
-    // Annex / Division
-    const isAnnex = ANNEX_BOUNDARY_REGEX.test(cleanLine) && cleanLine.length < 30;
-    if (isAnnex) {
-      const annexNum = cleanLine.replace(/[:：\s]+$/, '');
-      let annexTitle = annexNum;
-      const cleanNext = cleanMarkdownFormatting(nextLine);
-      if (cleanNext && cleanNext.length < 35 && !TIER2_ARTICLE_REGEX.test(cleanNext)) {
-        annexTitle += ' ' + cleanNext.replace(/[:：\s]+$/, '');
-        i++;
-      }
-      currentDivisionNum = annexNum;
-      currentDivisionTitle = annexTitle;
-      pushClause(annexTitle, annexNum, 1, annexNum, annexTitle);
-      continue;
-    }
-
-    // Tier 1 Chapter: e.g. "第一章 总则", "CHAPTER 1"
-    const isTier1 = TIER1_CHAPTER_REGEX.test(cleanLine);
-    if (isTier1) {
-      const chNum = cleanLine.split(/\s+/)[0];
-      currentDivisionNum = chNum;
-      currentDivisionTitle = cleanLine;
-      pushClause(cleanLine, chNum, 1, chNum, cleanLine);
-      continue;
-    }
-
-    // Tier 2 Article: e.g. "第一条", "一、", "1.", "ARTICLE 1"
-    const isNumberedArticle =
-      TIER2_ARTICLE_REGEX.test(cleanLine) ||
-      (/^\s*(?:(?:\d+)|[一二三四五六七八九十百]+)[.、\s]+(?!\d)/i.test(cleanLine) &&
-        cleanLine.length < 50 &&
-        !/[。！？；]$/.test(cleanLine));
-
-    if (isNumberedArticle) {
-      if (currentDivisionNum === '前言') {
-        currentDivisionNum = '正文';
-        currentDivisionTitle = '合同正文条款';
-      }
-      let heading = cleanLine.replace(/[:：\s]+$/, '');
-      const cleanNext = cleanMarkdownFormatting(nextLine);
-      if (
-        cleanNext &&
-        cleanNext.length < 40 &&
-        !/^\d+(\.\d+)/.test(cleanNext) &&
-        (cleanNext.endsWith('：') || cleanNext.endsWith(':'))
-      ) {
-        heading += ' / ' + cleanNext.replace(/[:：\s]+$/, '');
-        i++;
-      }
-
-      const matchArt = heading.match(
-        /^\s*(第\s*[一二三四五六七八九十百千万\d]+\s*条|(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b)\s*(.*)$/i
-      );
-      const matchNum = heading.match(
-        /^\s*(\d+[.、\s]+(?!\d)|[一二三四五六七八九十百]+[、\s]+)\s*(.*)$/
-      );
-      let cNum = `第 ${clauseIndex} 条`;
-      let cleanTitle = heading;
-
-      if (matchArt) {
-        cNum = matchArt[1].replace(/\s+/g, '');
-        cleanTitle = matchArt[2]?.trim().replace(/^[:：\s]+|[:：\s]+$/g, '') || matchArt[1].trim();
-      } else if (matchNum) {
-        cNum = matchNum[1].trim();
-        cleanTitle = matchNum[2]?.trim().replace(/^[:：\s]+|[:：\s]+$/g, '') || heading;
-      }
-
-      pushClause(cleanTitle, cNum, 2, currentDivisionNum, currentDivisionTitle);
-    } else {
-      if (!currentClause) {
-        pushClause('合同引言与主体信息', '前言', 2, '前言', '合同引言与签约主体');
-      }
-      currentClause!.content += (currentClause!.content ? '\n' : '') + line;
-    }
-  }
-
-  const finalTextClause = currentClause as ContractClauseNode | null;
-  if (finalTextClause && (finalTextClause.content.trim() || (finalTextClause.blocks && finalTextClause.blocks.length > 0))) {
-    const isPreamble = finalTextClause.clauseNumber === '前言' || finalTextClause.id === 'clause-0';
-    const parsed = buildDocumentBlocksFromText(finalTextClause.content, isPreamble);
-    finalTextClause.content = parsed.content || finalTextClause.content.trim();
-    finalTextClause.blocks = parsed.blocks;
-    clauses.push(finalTextClause);
-  }
-
-  // Fallback: If no clauses detected at all, do chunking
+  const clauses = parseContractTextWithStateMachine(text);
   if (clauses.length <= 1 && text.length > 300) {
     return fallbackParagraphChunking(text);
   }
-
   return clauses;
 }
+

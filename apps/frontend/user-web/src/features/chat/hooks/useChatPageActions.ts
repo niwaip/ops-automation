@@ -103,8 +103,23 @@ export function useChatPageActions({
   }, [queryClient]);
 
   const handleSend = useCallback((filesToSend?: UploadedFileDescriptor[], contentOverride?: string) => {
-    const content = (contentOverride !== undefined ? contentOverride : draft).trim();
+    let content = (contentOverride !== undefined ? contentOverride : draft).trim();
     const hasFiles = (filesToSend || []).length > 0;
+    if (!content && hasFiles) {
+      const isAllContracts = filesToSend!.every((f) =>
+        /(?:合同|协议|agreement|contract|nda)/i.test(f.fileName)
+      );
+      if (filesToSend!.length === 2 && isAllContracts) {
+        content = `合同比对 ${filesToSend![0].fileName} 与 ${filesToSend![1].fileName}`;
+      } else if (filesToSend!.length === 1 && isAllContracts) {
+        content = `审查合同 ${filesToSend![0].fileName}`;
+      } else if (filesToSend!.length === 1) {
+        content = `请分析附件文档 ${filesToSend![0].fileName}`;
+      } else {
+        const fileNames = filesToSend!.map((f) => f.fileName).filter(Boolean).join('、');
+        content = `请分析附件文档 ${fileNames}`;
+      }
+    }
     if ((!content && !hasFiles) || isSubmittingRef.current) {
       return;
     }
@@ -194,7 +209,7 @@ export function useChatPageActions({
         orchestratorMessage = taskBody ? `生成保密合同 ${taskBody}` : '生成保密合同';
       } else if (/起草|生成|填报/i.test(rawWorkflow) || (!filesToSend?.length && /(?:合同|协议).*(?:起草|生成|签订)/.test(taskBody))) {
         orchestratorMessage = taskBody ? `生成合同 ${taskBody}` : '生成合同';
-      } else if (/审查|审核|合规/i.test(rawWorkflow)) {
+      } else if (/审查|审核|审计|合规/i.test(rawWorkflow)) {
         orchestratorMessage = taskBody ? `合同审查 ${taskBody}` : '合同审查';
       } else if (/合同|协议/i.test(rawWorkflow)) {
         orchestratorMessage = taskBody ? `生成合同 ${taskBody}` : '生成合同';

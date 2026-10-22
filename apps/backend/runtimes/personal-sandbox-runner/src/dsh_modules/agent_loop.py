@@ -894,7 +894,7 @@ def run_agent_loop(
     was_token_truncated = False
     start_ts = turn_start_time if turn_start_time is not None else time.time()
     last_user_prompt = _extract_last_user_prompt(messages)
-    analysis_turn=AnalysisTurn(last_user_prompt) if spreadsheet_analysis_required else None
+    analysis_turn=AnalysisTurn(last_user_prompt,model=model,deadline=deadline) if spreadsheet_analysis_required else None
     from .bounded_summary_recovery import SummaryRecovery
     summary_recovery = SummaryRecovery(last_user_prompt, WORKSPACE_DIR, deadline,
         enabled=not is_guide_intent and (spreadsheet_analysis_required or (is_generate_intent and bool(re.search(r'xlsx|Excel', last_user_prompt, re.I)))))
@@ -953,9 +953,11 @@ def run_agent_loop(
             deadline=deadline,
             policy=policy,
             stream_deltas=False if spreadsheet_analysis_required or comparison_required else None,
-            tool_choice="required" if active_tools and (
-                (spreadsheet_analysis_required and analysis_turn.response(execution_evidence) is None)
-                or (comparison_required and compile_comparison_response(comparison_contract,execution_evidence)[0] is None)) else None
+            # A spreadsheet model may ask a valid question before computing.
+            # The evidence gate checks assertions after its choice; forcing a
+            # tool call here would remove the right to clarify.
+            tool_choice="required" if active_tools and comparison_required
+                and compile_comparison_response(comparison_contract,execution_evidence)[0] is None else None
         )
         reply_text = (llm_res.get("content") or "") if isinstance(llm_res, dict) else str(llm_res or "")
         structured_calls = list(llm_res.get("tool_calls") or []) if isinstance(llm_res, dict) else []
@@ -1009,7 +1011,7 @@ def run_agent_loop(
         if not structured_calls:
             if summary_recovery.apply(execution_evidence, telemetry, outbound_files):
                 spreadsheet_analysis_required = True
-                analysis_turn = AnalysisTurn(last_user_prompt)
+                analysis_turn = AnalysisTurn(last_user_prompt,model=model,deadline=deadline)
                 break
             if comparison_required:
                 compiled, error = compile_comparison_response(comparison_contract, execution_evidence)
@@ -1022,6 +1024,9 @@ def run_agent_loop(
                     continue
                 break
             if spreadsheet_analysis_required:
+                if analysis_turn.is_clarification(execution_evidence, reply_text):
+                    telemetry.record_guard("spreadsheet_evidence", "accept", "clarification_requested")
+                    break
                 response=analysis_turn.response(execution_evidence,reply_text)
                 error=None if response else analysis_turn.feedback(execution_evidence)
                 telemetry.record_guard("spreadsheet_evidence", "reject" if error else "accept", error)
@@ -1179,14 +1184,18 @@ def run_agent_loop(
         ))
         if not has_completed_analysis and summary_recovery.apply(execution_evidence, telemetry, outbound_files):
             spreadsheet_analysis_required = True
-            analysis_turn = AnalysisTurn(last_user_prompt)
+            analysis_turn = AnalysisTurn(last_user_prompt,model=model,deadline=deadline)
             break
 
         if analysis_turn:
             completed=analysis_turn.complete(execution_evidence,telemetry,
                 [t.get('function',{}).get('name') for t in active_tools],deadline)
             if analysis_turn.may_finish(execution_evidence):
+                if structured_calls:
+                    reply_text = ""
                 break
+            max_rounds=analysis_turn.extend_repair_budget(
+                execution_evidence,round_idx,max_rounds,task_ceiling,telemetry)
             messages.append({'role':'user','content':analysis_turn.feedback(execution_evidence)})
             if completed:
                 messages.append({'role':'user','content':'【程序注册关系补算回执】\n'+

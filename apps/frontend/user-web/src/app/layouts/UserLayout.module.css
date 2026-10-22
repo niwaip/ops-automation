@@ -251,6 +251,9 @@
   overflow: hidden;
   position: relative;
   z-index: 1;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .user-shell-header {
@@ -265,13 +268,35 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--bg-secondary);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-.user-shell-header-left,
+.user-shell-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex-shrink: 1;
+}
+
 .user-shell-header-right {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
+}
+
+.user-shell-theme-btn,
+.user-shell-language-btn {
+  color: var(--text-secondary) !important;
+  border-radius: 10px !important;
+  height: 36px !important;
+  padding: 0 12px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .user-shell-header-icon-button.ant-btn {
@@ -559,12 +584,90 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .user-shell-header {
+    padding: 0 12px !important;
+  }
+
+  .user-shell-header-right {
+    gap: 8px;
+  }
+
   .user-shell-user {
-    padding-right: 10px;
+    max-width: 140px;
+    padding: 4px 8px;
+    gap: 6px;
   }
 
   .user-shell-user-secondary {
-    display: none;
+    display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .user-shell-header {
+    padding: 0 8px !important;
+  }
+
+  .user-shell-header-left {
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .user-shell-header-right {
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .user-shell-header-tag {
+    display: none !important;
+  }
+
+  .user-shell-theme-label,
+  .user-shell-language-label {
+    display: none !important;
+  }
+
+  .user-shell-theme-btn,
+  .user-shell-language-btn {
+    padding: 0 !important;
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+  }
+
+  .user-shell-header-icon-button.ant-btn {
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+  }
+
+  .user-shell-user {
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    min-width: unset !important;
+    max-width: unset !important;
+    gap: 0 !important;
+  }
+
+  .user-shell-user:hover {
+    box-shadow: none !important;
+    transform: none !important;
+  }
+
+  .user-shell-user-avatar {
+    width: 32px !important;
+    height: 32px !important;
+    line-height: 32px !important;
+  }
+
+  .user-shell-user-meta {
+    display: none !important;
+  }
+
+  .user-shell-user-chevron {
+    display: none !important;
   }
 }

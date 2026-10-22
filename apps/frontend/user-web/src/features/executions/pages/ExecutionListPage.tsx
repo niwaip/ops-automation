@@ -6,7 +6,7 @@
 
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Table } from 'antd';
+import { Alert, Button, Card, Table } from 'antd';
 import '@/features/chat/ChatMessage.css';
 import ExecutionListDetailDrawer from '@/features/executions/list/components/ExecutionListDetailDrawer';
 import ExecutionListSummaryStrip from '@/features/executions/list/components/ExecutionListSummaryStrip';
@@ -78,10 +78,11 @@ const ExecutionListPage: React.FC = () => {
   } = useExecutionListSelection({
     navigate,
   });
-  const { data, isLoading, isFetching, refetch, getSkillDisplayName } = useExecutionListData({
+  const { data, isLoading, isFetching, isError, error, refetch, getSkillDisplayName } = useExecutionListData({
     page,
     pageSize,
     statusFilter,
+    q: searchText,
   });
 
   const {
@@ -171,6 +172,8 @@ const ExecutionListPage: React.FC = () => {
     hasActiveFilters,
     isDarkTheme,
     isLoading,
+    isError,
+    onRetry: () => void refetch(),
     navigate,
     onClearFilters: clearFilters,
     onExecutionRowClick: handleExecutionRowClick,
@@ -247,6 +250,24 @@ const ExecutionListPage: React.FC = () => {
 
       <Card className={styles['execution-list-card']} styles={{ body: { padding: 0 } }}>
         <ExecutionListToolbar {...toolbarProps} />
+        {isError ? (
+          <Alert
+            type="error"
+            showIcon
+            message="任务执行列表加载失败"
+            description={
+              (error as any)?.response?.data?.message ||
+              (error as any)?.message ||
+              '请求失败，请检查后台 control-plane 服务运行状态或点击重试。'
+            }
+            action={
+              <Button size="small" type="primary" danger onClick={() => void refetch()}>
+                重试加载
+              </Button>
+            }
+            style={{ margin: '12px 16px' }}
+          />
+        ) : null}
         <Table {...tableProps} />
       </Card>
 

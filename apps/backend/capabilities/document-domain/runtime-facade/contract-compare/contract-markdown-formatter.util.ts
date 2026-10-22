@@ -27,10 +27,11 @@ export function getLegalHierarchyIndentEm(rawLine: string): number {
   if (/^\d+\.\d+(?!\.)/.test(plain)) {
     return 1.5;
   }
-  // Bracketed or parenthesized list items: (1), （1）, (一), （一）, 1), a) -> 3.0em
+  // Bracketed or parenthesized list items: (1), （1）, (一), （一）, 1), a), (i) -> 3.0em
+  // Constrain digits to \d{1,2} to strictly exclude years like (2010) or currency tokens
   if (
-    /^[(（](?:[0-9一二三四五六七八九十a-zA-Z]+)[)）]/.test(plain) ||
-    /^[0-9a-zA-Z][)）]/.test(plain)
+    /^[(（](?:\d{1,2}|[一二三四五六七八九十]{1,3}|[ivxIVX]+|[a-zA-Z])[)）]/.test(plain) ||
+    /^(?:\d{1,2}|[a-zA-Z])[)）]/.test(plain)
   ) {
     return 3.0;
   }

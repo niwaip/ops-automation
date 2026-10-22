@@ -12,6 +12,8 @@ interface UseExecutionListTablePropsOptions {
   hasActiveFilters: boolean;
   isDarkTheme: boolean;
   isLoading: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
   navigate: (path: string) => void;
   onClearFilters: () => void;
   onExecutionRowClick: (record: ExecutionDto) => void;
@@ -29,6 +31,8 @@ export function useExecutionListTableProps({
   hasActiveFilters,
   isDarkTheme,
   isLoading,
+  isError,
+  onRetry,
   navigate,
   onClearFilters,
   onExecutionRowClick,
@@ -44,13 +48,15 @@ export function useExecutionListTableProps({
         <ExecutionListEmptyState
           description={emptyStateDescription}
           hasActiveFilters={hasActiveFilters}
+          isError={isError}
+          onRetry={onRetry}
           onCreate={() => navigate('/executions/new')}
           onViewPublishedSkills={() => navigate('/published-skills')}
           onClearFilters={onClearFilters}
         />
       ),
     }),
-    [emptyStateDescription, hasActiveFilters, navigate, onClearFilters]
+    [emptyStateDescription, hasActiveFilters, isError, onRetry, navigate, onClearFilters]
   );
 
   const pagination = useMemo<NonNullable<TableProps<ExecutionDto>['pagination']>>(
@@ -90,6 +96,8 @@ export function useExecutionListTableProps({
     locale,
     showSorterTooltip: false,
     pagination,
+    tableLayout: 'fixed',
+    scroll: { x: 1000 },
     rowClassName: () => styles['execution-list-table-row'],
     onRow,
   };

@@ -39,6 +39,7 @@ interface BuildExecutionCreateSubmitActionOptions {
   createLoading: boolean;
   scheduleLoading: boolean;
   selectedSkillId?: string;
+  isRunnable?: boolean;
 }
 
 export function buildExecutionCreateSubmitAction({
@@ -46,11 +47,12 @@ export function buildExecutionCreateSubmitAction({
   createLoading,
   scheduleLoading,
   selectedSkillId,
+  isRunnable,
 }: BuildExecutionCreateSubmitActionOptions) {
   return {
     label: executionMode === 'schedule' ? '创建定时任务' : '创建执行',
     loading: createLoading || scheduleLoading,
-    disabled: !selectedSkillId,
+    disabled: !selectedSkillId || isRunnable === false,
   };
 }
 

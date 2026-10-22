@@ -15,7 +15,7 @@ import { OrgWorkflowService } from './org-workflow.service';
 import { CoordinationStageEngineService } from './coordination-stage-engine.service';
 import { WorkspaceService } from '../workspace/workspace.service';
 import { UUID_REGEX } from './coordination-collaborator.service';
-import { resolveEffectiveAndHistoricalAttachments } from './coordination-attachment-helper';
+import { deduplicateCoordinationAttachments, resolveEffectiveAndHistoricalAttachments } from './coordination-attachment-helper';
 import { CoordinationAttachmentStorageService } from './coordination-attachment-storage.service';
 import { DocxCommentInjectorService, deduplicateRejectionText, getJSZip, unescapeXml } from './docx-comment-injector.service';
 
@@ -789,16 +789,13 @@ export class CoordinationActionProcessor {
         size: pdfCandidate.size || pdfCandidate.sizeBytes || 0,
         sha256: pdfCandidate.sha256 || pdfCandidate.metadata?.sha256 || '',
       };
-      // 过滤掉同名、同下载地址的旧 PDF 副本，以最新存证/归档 PDF 为准
-      finalAttachments = [
+      // 规范化去重：将最新存证/归档 PDF 置顶，并按唯一 URL/ID 清理历史旧副本
+      finalAttachments = deduplicateCoordinationAttachments([
         newPdfAttachment,
-        ...finalAttachments.filter(
-          (a: any) =>
-            a?.url !== newPdfAttachment.url &&
-            a?.downloadUrl !== newPdfAttachment.downloadUrl &&
-            a?.name !== newPdfAttachment.name
-        ),
-      ];
+        ...finalAttachments,
+      ]);
+    } else {
+      finalAttachments = deduplicateCoordinationAttachments(finalAttachments);
     }
 
     const rollbackAssignee =
@@ -845,6 +842,7 @@ export class CoordinationActionProcessor {
           : {}),
       },
       externalSyncResult,
+      reviewReport: externalSyncResult?.reviewReport || payload.reviewReport || (targetItem as any)?.reviewReport,
       asyncExecution: {
         status: 'succeeded',
         endedAt: new Date().toISOString(),

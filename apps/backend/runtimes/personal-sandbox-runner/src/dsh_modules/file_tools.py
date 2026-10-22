@@ -14,8 +14,10 @@ import urllib.request
 import urllib.parse
 import urllib.error
 import tempfile
+import unicodedata
+from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Optional, Tuple, List, Dict, Any
+from typing import Optional, Tuple, List, Dict, Any, Iterable
 
 IMAGE_MIME_MAP = {
     ".jpg": "image/jpeg",
@@ -91,15 +93,70 @@ def is_path_within(target: Path, base_dirs: List[Path]) -> bool:
     return False
 
 
+def match_candidate_name(
+    query: str,
+    candidates: Iterable[str],
+    min_similarity: float = 0.72,
+    match_extension: bool = True
+) -> Optional[str]:
+    """Matches a query string to the best matching candidate name using normalization and stem similarity.
+
+    Zero hardcoding: utilizes Unicode NFKC normalization and SequenceMatcher ratio on file stems.
+    """
+    if not query or not candidates:
+        return None
+    clean_query = Path(str(query).strip()).name
+    cand_list = [Path(str(c).strip()).name for c in candidates if str(c).strip()]
+    if not cand_list:
+        return None
+
+    # 1. Exact match
+    for cand in cand_list:
+        if clean_query == cand:
+            return cand
+
+    # 2. Unicode NFKC normalization match (case-insensitive)
+    norm_query = unicodedata.normalize("NFKC", clean_query).casefold()
+    for cand in cand_list:
+        if norm_query == unicodedata.normalize("NFKC", cand).casefold():
+            return cand
+
+    # 3. Stem & SequenceMatcher similarity
+    query_p = Path(clean_query)
+    query_stem = unicodedata.normalize("NFKC", query_p.stem).casefold()
+    query_ext = query_p.suffix.lower()
+    best_cand = None
+    best_ratio = 0.0
+
+    for cand in cand_list:
+        cand_p = Path(cand)
+        cand_ext = cand_p.suffix.lower()
+        if match_extension and query_ext and cand_ext and query_ext != cand_ext:
+            continue
+        cand_stem = unicodedata.normalize("NFKC", cand_p.stem).casefold()
+        stem_ratio = SequenceMatcher(None, query_stem, cand_stem).ratio()
+        full_ratio = SequenceMatcher(None, norm_query, unicodedata.normalize("NFKC", cand).casefold()).ratio()
+        effective_ratio = min(stem_ratio, full_ratio) if query_ext else stem_ratio
+        if effective_ratio > best_ratio:
+            best_ratio = effective_ratio
+            best_cand = cand
+
+    if best_cand and best_ratio >= min_similarity:
+        return best_cand
+
+    return None
+
+
 def _locate_readable_candidate(raw: str, ws: str, kn: str) -> Optional[Path]:
     """Tries to find an existing file in workspace or knowledge using relative path or glob matching."""
+    raw_name = Path(raw).name
     kn_candidate = Path(kn) / raw
     if kn_candidate.exists():
         return kn_candidate
     ws_path = Path(ws)
     if ws_path.exists():
         try:
-            ws_matches = list(ws_path.glob(f"*{raw}*"))
+            ws_matches = list(ws_path.glob(f"*{raw_name}*"))
             if ws_matches:
                 return ws_matches[0]
         except Exception:
@@ -108,17 +165,36 @@ def _locate_readable_candidate(raw: str, ws: str, kn: str) -> Optional[Path]:
         sessions_path = ws_path / ".sessions"
         if sessions_path.exists():
             try:
-                for s_match in sessions_path.glob(f"*/*{raw}*"):
+                for s_match in sessions_path.glob(f"*/*{raw_name}*"):
                     if s_match.is_file():
                         return s_match
             except Exception:
                 pass
+        # 通用相似度模糊匹配工作区文件（容错异体字与轻微拼写偏差）
+        try:
+            ws_files = [f.name for f in ws_path.iterdir() if f.is_file()]
+            matched = match_candidate_name(raw_name, ws_files, min_similarity=0.75)
+            if matched:
+                cand_file = ws_path / matched
+                if cand_file.exists():
+                    return cand_file
+        except Exception:
+            pass
     kn_path = Path(kn)
     if kn_path.exists():
         try:
-            kn_matches = list(kn_path.glob(f"*{raw}*"))
+            kn_matches = list(kn_path.glob(f"*{raw_name}*"))
             if kn_matches:
                 return kn_matches[0]
+        except Exception:
+            pass
+        try:
+            kn_files = [f.name for f in kn_path.iterdir() if f.is_file()]
+            matched = match_candidate_name(raw_name, kn_files, min_similarity=0.75)
+            if matched:
+                cand_file = kn_path / matched
+                if cand_file.exists():
+                    return cand_file
         except Exception:
             pass
     return None
@@ -198,8 +274,8 @@ def resolve_sandboxed_path(
     # 构造初始候选 Path
     candidate = Path(raw) if os.path.isabs(raw) else Path(ws) / raw
 
-    # 若未找到，且为相对路径读取，尝试在知识库或通配符中查找
-    if not candidate.exists() and not for_write and not for_outbound and not os.path.isabs(raw):
+    # 若未找到，且为只读访问，尝试在知识库或模糊匹配中查找真实候选文件
+    if not candidate.exists() and not for_write and not for_outbound:
         fuzzy = _locate_readable_candidate(raw, ws, kn)
         if fuzzy:
             candidate = fuzzy
@@ -739,6 +815,12 @@ def send_workspace_file(file_path: str, comment: str = "") -> str:
             return f"发送失败：文件体积过大 ({size / (1024 * 1024):.1f} MB > 500 MB)，超出沙箱交付物外发上限。"
     except Exception as e:
         return f"发送失败：无法获取文件信息 ({p.name}): {e}"
+
+    if p.suffix.lower() in (".xlsx", ".xlsm"):
+        from .workbook_delivery import inspect_generated_workbook
+        validation = inspect_generated_workbook(p)
+        if not validation["valid"]:
+            return "发送失败：Excel 交付校验未通过：" + "；".join(validation["issues"][:5])
 
     payload = {
         "filePath": str(p),

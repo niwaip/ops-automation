@@ -90,3 +90,62 @@ export function resolveEffectiveAndHistoricalAttachments(
     parameterPatch,
   };
 }
+
+export function isSameCoordinationAttachment(a: any, b: any): boolean {
+  if (!a || !b) return false;
+  const aUrls = [a.url, a.downloadUrl].filter(Boolean).map((u: string) => String(u).trim());
+  const bUrls = [b.url, b.downloadUrl].filter(Boolean).map((u: string) => String(u).trim());
+  if (aUrls.length > 0 && bUrls.length > 0 && aUrls.some((u) => bUrls.includes(u))) {
+    return true;
+  }
+
+  const aId = (a.id || a.attachmentId)?.trim();
+  const bId = (b.id || b.attachmentId)?.trim();
+  if (aId && bId && aId === bId) {
+    return true;
+  }
+
+  // Fallback: If both lack URL and ID, compare by non-empty file name
+  if (aUrls.length === 0 && bUrls.length === 0 && !aId && !bId) {
+    const aName = a.name?.trim();
+    const bName = b.name?.trim();
+    if (aName && bName && aName === bName) return true;
+  }
+
+  return false;
+}
+
+export function deduplicateCoordinationAttachments<T extends Record<string, any>>(items?: T[]): T[] {
+  if (!Array.isArray(items)) return [];
+  const result: T[] = [];
+
+  const getScore = (item: any): number => {
+    let score = 0;
+    if (item?.sha256 || item?.metadata?.sha256) score += 10;
+    if (item?.metadata && typeof item.metadata === 'object' && Object.keys(item.metadata).length > 0) score += 10;
+    if (item?.sizeBytes || item?.size) score += 5;
+    if (item?.id || item?.attachmentId) score += 5;
+    if (item?.downloadUrl) score += 2;
+    if (item?.mimeType) score += 1;
+    return score;
+  };
+
+  for (const item of items) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+    const existingIndex = result.findIndex((existing) => isSameCoordinationAttachment(existing, item));
+    if (existingIndex === -1) {
+      result.push(item);
+    } else {
+      const existing = result[existingIndex];
+      const existingScore = getScore(existing);
+      const currentScore = getScore(item);
+      if (currentScore > existingScore) {
+        result[existingIndex] = { ...existing, ...item };
+      } else {
+        result[existingIndex] = { ...item, ...existing };
+      }
+    }
+  }
+
+  return result;
+}

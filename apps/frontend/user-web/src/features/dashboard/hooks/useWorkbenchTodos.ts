@@ -549,12 +549,33 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
       );
     };
 
+    // 本周完成待办统计（周一 00:00:00 至 周日 23:59:59）
+    const isThisWeek = (dateStr?: string | null) => {
+      if (!dateStr) return false;
+      const d = new Date(dateStr);
+      if (Number.isNaN(d.getTime())) return false;
+      const now = new Date();
+      const day = now.getDay();
+      const diffToMonday = day === 0 ? 6 : day - 1;
+      const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diffToMonday, 0, 0, 0, 0);
+      const nextMonday = new Date(monday.getTime() + 7 * 24 * 60 * 60 * 1000);
+      return d >= monday && d < nextMonday;
+    };
+
     const completedToday = allItems.filter(
       (i) =>
         i.status === 'completed' &&
         !archivedIds.has(i.id) &&
         !(i.contextData as any)?.isArchived &&
         (isToday(i.completedAt) || isToday(i.updatedAt))
+    ).length;
+
+    const completedThisWeek = allItems.filter(
+      (i) =>
+        i.status === 'completed' &&
+        !archivedIds.has(i.id) &&
+        !(i.contextData as any)?.isArchived &&
+        (isThisWeek(i.completedAt) || isThisWeek(i.updatedAt))
     ).length;
 
     return {
@@ -566,6 +587,7 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
       overdue,
       completed,
       completedToday,
+      completedThisWeek,
     };
   }, [allItems, currentUsername, currentUserId, archivedIds]);
 

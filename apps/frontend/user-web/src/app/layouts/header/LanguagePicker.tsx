@@ -3,6 +3,7 @@ import { Button, Dropdown } from 'antd';
 import type { MenuProps } from 'antd';
 import { useStore } from 'zustand';
 import { preferencesStore } from '../../../adapters/preferences/preferencesStore';
+import styles from '../UserLayout.module.css';
 
 type Language = 'zh-CN' | 'en-US' | 'ja-JP';
 
@@ -34,14 +35,12 @@ export function LanguagePicker({ language }: LanguagePickerProps) {
       <Button
         type="text"
         icon={<GlobalOutlined />}
-        style={{
-          color: 'var(--text-secondary)',
-          borderRadius: 10,
-          height: 36,
-          padding: '0 12px',
-        }}
+        className={styles['user-shell-language-btn']}
+        aria-label="选择语言 / Select Language"
       >
-        {language === 'zh-CN' ? '中文' : language === 'en-US' ? 'EN' : '日本語'}
+        <span className={styles['user-shell-language-label']}>
+          {language === 'zh-CN' ? '中文' : language === 'en-US' ? 'EN' : '日本語'}
+        </span>
       </Button>
     </Dropdown>
   );

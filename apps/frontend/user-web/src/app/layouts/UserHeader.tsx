@@ -68,6 +68,7 @@ export function UserHeader({ language, selectedMenuKey }: UserHeaderProps) {
         <Space size={8}>
           <Tag
             bordered={false}
+            className={styles['user-shell-header-tag']}
             style={{
               marginInlineEnd: 0,
               borderRadius: 999,

@@ -202,9 +202,15 @@ export class ContractReviewHtmlDocumentRenderer {
     return blocks
       .map((b, blockIdx) => {
         // Suppress the first heading block if it duplicates the clause-level title
-        // (which is already rendered with both languages in the clause heading row above)
-        if (blockIdx === 0 && b.type === 'heading') {
-          return '';
+        // (which is already rendered with both languages in the clause heading row above).
+        // Never suppress in preamble (clauseIndex === 0) or if it represents the centered contract title.
+        const isDocMainTitle = clause.clauseIndex === 0 || b.alignment === 'center';
+        if (blockIdx === 0 && b.type === 'heading' && !isDocMainTitle) {
+          const title = (clause.title || '').trim();
+          const heading = (b.primaryText || '').trim();
+          if (title.includes(heading) || (heading && title && heading.includes(title))) {
+            return '';
+          }
         }
 
         // 1. Bilingual Pair Block
@@ -254,21 +260,62 @@ export class ContractReviewHtmlDocumentRenderer {
         }
 
         // 3. Table Block
-        if (b.type === 'table' && b.tableData && b.tableData.rows.length > 0) {
+        if (
+          b.type === 'table' &&
+          b.tableData &&
+          ((b.tableData.rows && b.tableData.rows.length > 0) ||
+            (b.tableData.headers && b.tableData.headers.length > 0))
+        ) {
+          const headers = b.tableData.headers || [];
+          const rows = b.tableData.rows || [];
           return `
-          <div class="table-container my-3 overflow-x-auto border border-[#E2E5EA] rounded-xs">
-            <table class="min-w-full text-xs text-left divide-y divide-[#E2E5EA]">
+          <div class="table-container my-3 overflow-x-auto border border-[#E2E5EA] rounded-xs shadow-xs">
+            <table class="w-full min-w-full text-xs text-left divide-y divide-[#E2E5EA] border-collapse" style="width: 100%;">
+              ${
+                headers.length > 0
+                  ? `
+              <thead class="bg-[#F1F5F9] text-[#334155] font-semibold border-b border-[#E2E5EA]">
+                <tr>
+                  ${headers
+                    .map((headerCell, hIdx) => {
+                      const text = typeof headerCell === 'string' ? headerCell : headerCell?.text || '';
+                      const colSpan =
+                        typeof headerCell === 'object' && headerCell?.colSpan && headerCell.colSpan > 1
+                          ? ` colspan="${headerCell.colSpan}"`
+                          : '';
+                      const rowSpan =
+                        typeof headerCell === 'object' && headerCell?.rowSpan && headerCell.rowSpan > 1
+                          ? ` rowspan="${headerCell.rowSpan}"`
+                          : '';
+                      const widthStyle = headers.length === 3
+                        ? (hIdx === 0 ? ' style="width: 20%;"' : ' style="width: 40%;"')
+                        : (headers.length === 2 ? ' style="width: 50%;"' : '');
+                      return `<th class="px-3 py-2 text-[#334155] font-semibold align-top leading-relaxed select-text bg-[#F1F5F9] border-r border-[#E2E5EA] last:border-r-0"${colSpan}${rowSpan}${widthStyle}>${this.formatInlineBlanks(this.escapeHtml(text), clause)}</th>`;
+                    })
+                    .join('')}
+                </tr>
+              </thead>
+              `
+                  : ''
+              }
               <tbody class="divide-y divide-[#F0F2F5] bg-white">
-                ${b.tableData.rows
+                ${rows
                   .map(
                     (row, rIdx) => `
                   <tr class="${rIdx % 2 === 0 ? 'bg-white' : 'bg-[#F9FAFB]'}">
                     ${row
-                      .map(
-                        (cell) => `
-                      <td class="px-3 py-2 text-[#202833] align-top leading-relaxed select-text">${this.formatInlineBlanks(this.escapeHtml(cell), clause)}</td>
-                    `
-                      )
+                      .map((cell) => {
+                        const text = typeof cell === 'string' ? cell : cell?.text || '';
+                        const colSpan =
+                          typeof cell === 'object' && cell?.colSpan && cell.colSpan > 1
+                            ? ` colspan="${cell.colSpan}"`
+                            : '';
+                        const rowSpan =
+                          typeof cell === 'object' && cell?.rowSpan && cell.rowSpan > 1
+                            ? ` rowspan="${cell.rowSpan}"`
+                            : '';
+                        return `<td class="px-3 py-2 text-[#202833] align-top leading-relaxed select-text border-r border-[#F0F2F5] last:border-r-0"${colSpan}${rowSpan}>${this.formatInlineBlanks(this.escapeHtml(text), clause)}</td>`;
+                      })
                       .join('')}
                   </tr>
                 `
@@ -280,8 +327,37 @@ export class ContractReviewHtmlDocumentRenderer {
           `;
         }
 
+        // 3.5. Image Card Block (visual snapshot / high-res original table / attachment)
+        if (b.type === 'image' && b.imageUrl) {
+          const captionHtml = b.caption
+            ? `<div class="text-xs font-semibold text-[#475569] mb-2 flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                <span>${this.escapeHtml(b.caption)}</span>
+              </div>`
+            : '';
+          return `
+          <div class="figure-block my-3.5 p-3 bg-white border border-[#E2E5EA] rounded shadow-xs">
+            ${captionHtml}
+            <div class="overflow-hidden rounded border border-slate-200 bg-slate-50 flex justify-center">
+              <img src="${b.imageUrl}" alt="${this.escapeHtml(b.caption || '合同原件图表')}" class="w-full h-auto max-h-[850px] object-contain cursor-zoom-in hover:opacity-95 transition" onclick="window.open(this.src, '_blank')" title="点击查看高清大图" />
+            </div>
+          </div>
+          `;
+        }
+
         // 4. Heading Block inside Clause
         if (b.type === 'heading') {
+          const isCenteredTitle = b.alignment === 'center' || (clause.clauseIndex === 0 && blockIdx === 0);
+          if (isCenteredTitle) {
+            return `
+            <div class="document-main-title text-center my-4 py-2 border-b border-[#E2E8F0]">
+              <h1 class="text-xl sm:text-2xl font-extrabold text-[#0F172A] tracking-wider select-text">
+                ${b.primaryHtml || this.escapeHtml(b.primaryText || '')}
+              </h1>
+              ${b.secondaryText ? `<div class="text-xs sm:text-sm font-medium text-[#64748B] mt-1 select-text">${b.secondaryHtml || this.escapeHtml(b.secondaryText)}</div>` : ''}
+            </div>
+            `;
+          }
           const hasBothLangs = Boolean(b.primaryText && b.secondaryText);
           const primaryClass = hasBothLangs ? 'heading-primary' : '';
           const secondaryClass = hasBothLangs ? 'heading-secondary' : '';
@@ -297,9 +373,20 @@ export class ContractReviewHtmlDocumentRenderer {
         if (b.type === 'list_item') {
           const indent = getLegalHierarchyIndentEm(b.prefix || b.primaryText || '');
           const cleanHtml = this.stripDuplicatePrefix(b.primaryHtml || this.escapeHtml(b.primaryText || ''), b.prefix);
-          const content = this.formatInlineBlanks(cleanHtml, clause);
           const isJp = (b as any).isJp || /[\u3040-\u309F\u30A0-\u30FF]/.test(b.primaryText || '');
           const fontSizeClass = isJp ? 'text-[13.5px] leading-[1.75] text-[#334155]' : 'text-[15px] leading-[1.75] text-[#202833]';
+
+          const subLines = cleanHtml.split('\n').map((l) => l.trim()).filter(Boolean);
+          const content = subLines
+            .map((line, lIdx) => {
+              const formatted = this.formatInlineBlanks(line, clause);
+              if (lIdx === 0) {
+                return `<div>${formatted}</div>`;
+              }
+              return `<div class="mt-1.5 text-[#334155] leading-relaxed">${formatted}</div>`;
+            })
+            .join('');
+
           return `
           <div class="list-item flex items-start gap-2.5 mb-2.5" style="padding-left: ${Math.max(0.5, indent)}em; line-height: 1.75;">
             ${
@@ -378,10 +465,22 @@ export class ContractReviewHtmlDocumentRenderer {
     // 防御性清理可能残留的双重转义字符实体（如 &amp;#160; 或 &#160;），替换为标准 HTML 不换行空格
     const sanitizedText = escapedText.replace(/&amp;#160;|&amp;nbsp;|&#160;|&nbsp;/g, '&nbsp;');
 
-    // 1. Highlight blanks: consecutive underlines, empty brackets, or unfilled markers
+    // 1. Support semantic underline tags (&lt;u&gt;...&lt;/u&gt;)
     let formatted = sanitizedText.replace(
-      /([_＿]{2,}|\[[_＿\s]+\]|\[待填[^\]]*\]|&lt;待填[^&]*&gt;|\{[^}]+\})/g,
-      '<span class="inline-blank px-1.5 py-0.5 bg-[#FEF3C7] text-[#9A6700] border-b border-[#F59E0B] rounded-xs font-mono text-xs font-semibold select-all" title="待填报要素/空白">$1</span>'
+      /&lt;u&gt;(.*?)&lt;\/u&gt;/g,
+      '<u class="contract-underlined-term text-[#0F172A] font-medium border-b-2 border-[#2563EB] px-0.5 select-text" style="text-decoration: none;">$1</u>'
+    );
+
+    // 2. Highlight blanks: consecutive underlines, empty brackets, or unfilled markers
+    formatted = formatted.replace(
+      /([_＿]{2,}|\[[_＿\s]{2,}\]|（\s*[_＿]{2,}\s*）|\(\s*[_＿]{2,}\s*\)|\[待填[^\]]*\]|&lt;待填[^&]*&gt;|\{[^}]+\})/g,
+      '<span class="inline-blank px-1.5 py-0.5 bg-[#FEF3C7] text-[#9A6700] border-b-2 border-dashed border-[#F59E0B] rounded-xs font-mono text-xs font-semibold select-all" title="待填报要素/空白">$1</span>'
+    );
+
+    // 3. Highlight template variable slots with clean legal underline (e.g. 就 [项目名称] 项目)
+    formatted = formatted.replace(
+      /(就\s+)([^，。\n]{2,40}?)(\s+项目)/g,
+      '$1<span class="contract-variable-term border-b-2 border-[#2563EB] text-[#0F172A] font-medium px-1 select-text" title="合同标的/定制变量">$2</span>$3'
     );
 
     // 2. Inject evidence marks if findings quote specific phrases (Distinct legal risk markings)

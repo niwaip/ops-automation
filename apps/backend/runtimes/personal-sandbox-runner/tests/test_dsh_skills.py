@@ -100,7 +100,12 @@ class TestDshSkillsAndArtifacts(unittest.TestCase):
 
                 # 写入正式目标产物后 -> 断言通过
                 real_xlsx = Path(tmp_ws) / "CP_季度销售分析.xlsx"
-                real_xlsx.write_bytes(b"PK\x03\x04 real excel workbook")
+                import openpyxl
+                book = openpyxl.Workbook()
+                book.active.append(["区域", "销售额"])
+                book.active.append(["北区", 100])
+                book.save(real_xlsx)
+                book.close()
                 missing_xlsx_ok = detect_missing_requested_deliverable(
                     "按区域汇总销售额与目标，生成Excel文件“CP_季度销售分析.xlsx”",
                     now,

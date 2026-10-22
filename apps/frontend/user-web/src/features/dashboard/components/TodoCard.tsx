@@ -146,43 +146,50 @@ export function TodoCard({
         ? 'archived'
         : (contextData.inboxStatus || 'unprocessed'),
       confidence: 1.0,
-      unifiedPayload: {
-        kind: 'coordination',
-        taskId:
-          detailModalTodo.sourceRefId ||
+      unifiedPayload: (() => {
+        const isProcess = Boolean(
+          unifiedPayload.kind === 'coordination' ||
           contextData.taskId ||
-          unifiedPayload.taskId ||
-          detailModalTodo.id,
-        workflowId:
-          detailModalTodo.boundWorkflowId ||
-          contextData.workflowId ||
-          unifiedPayload.workflowId,
-        taskType:
-          unifiedPayload.taskType ||
-          contextData.taskType ||
-          'approval',
-        status:
-          (detailModalTodo.status === 'completed' || detailModalTodo.status === 'cancelled')
-            ? 'archived'
-            : (unifiedPayload.status ||
-               contextData.status ||
-               (detailModalTodo.title?.includes('[需重修]') || detailModalTodo.title?.includes('已驳回')
-                 ? 'revision_required'
-                 : 'pending')),
-        rollbackReason:
-          unifiedPayload.rollbackReason ||
-          unifiedPayload.metadata?.rollbackReason ||
-          contextData.rollbackReason,
-        parameters:
-          unifiedPayload.parameters ||
-          contextData.parameters ||
-          contextData ||
-          {},
-        attachments:
-          unifiedPayload.attachments ||
-          contextData.attachments ||
-          [],
-        actions:
+          (detailModalTodo.boundWorkflowId && detailModalTodo.boundWorkflowId !== 'none') ||
+          (detailModalTodo.sourceType as string) === 'workflow' ||
+          (typeof detailModalTodo.sourceRefId === 'string' && detailModalTodo.sourceRefId.startsWith('coord_'))
+        );
+        return {
+          kind: isProcess ? 'coordination' : (unifiedPayload.kind || 'personal'),
+          taskId:
+            detailModalTodo.sourceRefId ||
+            contextData.taskId ||
+            unifiedPayload.taskId ||
+            detailModalTodo.id,
+          workflowId:
+            detailModalTodo.boundWorkflowId ||
+            contextData.workflowId ||
+            unifiedPayload.workflowId,
+          taskType:
+            unifiedPayload.taskType ||
+            contextData.taskType ||
+            (isProcess ? 'approval' : 'assignment'),
+          status:
+            (detailModalTodo.status === 'completed' || detailModalTodo.status === 'cancelled')
+              ? 'archived'
+              : (unifiedPayload.status ||
+                 contextData.status ||
+                 (detailModalTodo.title?.includes('[需重修]') || detailModalTodo.title?.includes('已驳回')
+                   ? 'revision_required'
+                   : 'pending')),
+          rollbackReason:
+            unifiedPayload.rollbackReason ||
+            unifiedPayload.metadata?.rollbackReason ||
+            contextData.rollbackReason,
+          parameters:
+            unifiedPayload.parameters ||
+            contextData.parameters ||
+            (isProcess ? contextData : {}),
+          attachments:
+            unifiedPayload.attachments ||
+            contextData.attachments ||
+            [],
+          actions:
           unifiedPayload.actions ||
           contextData.actions ||
           [],
@@ -200,10 +207,11 @@ export function TodoCard({
         initiator,
         assignee,
         ...unifiedPayload,
-      },
-      createdAt: detailModalTodo.createdAt,
-    } as any;
-  }, [detailModalTodo, currentUserId, currentUsername]);
+      };
+    })(),
+    createdAt: detailModalTodo.createdAt,
+  } as any;
+}, [detailModalTodo, currentUserId, currentUsername]);
 
   const handleQuickAction = async (item: WorkbenchTodoItem) => {
     try {
@@ -238,6 +246,12 @@ export function TodoCard({
         void queryClient.invalidateQueries(['workbench-coordination-sent-tasks']);
         void queryClient.invalidateQueries(['workbench-inbox']);
         void queryClient.invalidateQueries(['workbench-inbox-summary-for-todos']);
+        return;
+      }
+
+      if (!nodeSemantics.isProcessTask) {
+        await onToggleTodo(item.id, true);
+        void message.success(`已完成待办「${nodeSemantics.displayTitle || item.title}」`);
         return;
       }
 
@@ -448,11 +462,9 @@ export function TodoCard({
                     Boolean(extSync.detail?.archiveId) ||
                     coordPayload.currentStage === "final_receipt";
                   const isCoordination =
-                    (item.sourceType as string) === "chat" ||
                     (item.sourceType as string) === "workflow" ||
-                    Boolean(contextData.sourceSender) ||
                     Boolean(contextData.taskId) ||
-                    Boolean(contextData.inboxItemId) ||
+                    (typeof item.sourceRefId === "string" && item.sourceRefId.startsWith("coord_")) ||
                     coordPayload.kind === "coordination";
                   const isReceipt = Boolean(
                     coordPayload.isReceipt ||
@@ -737,14 +749,18 @@ export function TodoCard({
                                           ? "确认提交送审？"
                                           : nodeSemantics.isApprovalNode
                                           ? "确认审批通过？"
-                                          : "确认办理完成？"
+                                          : nodeSemantics.isProcessTask
+                                          ? "确认办理完成？"
+                                          : "确认完成待办？"
                                       }
                                       description={
                                         nodeSemantics.cardActionType === 'send'
                                           ? "提交后将流转至智能审查与后续审批。"
                                           : nodeSemantics.isApprovalNode
                                           ? "审批记录将同步归档并流转至下一环节。"
-                                          : "办理完成后将提交流转至后续节点。"
+                                          : nodeSemantics.isProcessTask
+                                          ? "办理完成后将提交流转至后续节点。"
+                                          : "完成后该待办事项将标记为已办结。"
                                       }
                                       overlayStyle={{ maxWidth: 280 }}
                                       okText={nodeSemantics.cardActionText}
@@ -758,7 +774,9 @@ export function TodoCard({
                                             ? "快捷指令：一键确认初稿并发送至下一节点"
                                             : nodeSemantics.isApprovalNode
                                             ? "快捷指令：一键审核通过并流转至下一节点"
-                                            : "快捷指令：一键办结并提交流转"
+                                            : nodeSemantics.isProcessTask
+                                            ? "快捷指令：一键办结并提交流转"
+                                            : "快捷指令：一键办结待办事项"
                                         }
                                       >
                                         <Button

@@ -491,6 +491,56 @@ describe('ChatConversationService', () => {
     );
   });
 
+  it('persists usage, rateLimit, and executionTrace for task history', async () => {
+    const { service, sessionService } = createService();
+    sessionService.appendChatMessages.mockResolvedValue({
+      session: {
+        id: 'task-session-usage',
+        status: 'active',
+        createdAt: '2026-08-12T00:00:00.000Z',
+        updatedAt: '2026-08-12T00:00:01.000Z',
+      },
+      history: [],
+    });
+
+    const expectedUsage = {
+      prompt_tokens: 7128,
+      completion_tokens: 2954,
+      total_tokens: 10082,
+    };
+
+    await service.persistTaskConversation({
+      sessionId: 'task-session-usage',
+      userContent: '审查合同',
+      terminalEvent: {
+        type: StreamEventType.RESULT,
+        content: '合同智能合规审查与风险诊断完成',
+        data: {
+          executionId: 'exec-contract-1',
+          status: 'succeeded',
+          usage: expectedUsage,
+          hasBusinessResult: true,
+        },
+      } as any,
+    });
+
+    expect(sessionService.appendChatMessages).toHaveBeenCalledWith(
+      'task-session-usage',
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: 'assistant',
+          metadata: expect.objectContaining({
+            mode: 'task',
+            taskStatus: 'completed',
+            executionId: 'exec-contract-1',
+            usage: expectedUsage,
+          }),
+        }),
+      ]),
+      expect.any(Object)
+    );
+  });
+
   describe('getLatestCompletedTaskResult', () => {
     it('returns the most recent completed task result, skipping failed and waiting messages', async () => {
       const { service, sessionService } = createService();

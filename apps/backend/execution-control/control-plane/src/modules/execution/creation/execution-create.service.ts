@@ -559,7 +559,7 @@ export class ExecutionCreateService {
         if (node.kind === 'skill' && node.skillId) {
           if (!node.skillVersion) {
             throw new BadRequestException(
-              `Skill node '${node.nodeId || node.skillId}' is missing mandatory skillVersion`
+              `工作流依赖的步骤节点“${node.title || node.nodeId || node.skillId}”缺少版本号 (mandatory skillVersion)`
             );
           }
 
@@ -576,13 +576,13 @@ export class ExecutionCreateService {
               String(node.skillVersion).trim()
           ) {
             throw new BadRequestException(
-              `Skill node '${node.nodeId || node.skillId}' version mismatch: submitted '${node.skillVersion}', but published executable version is '${skillDescriptor.publishedReleaseVersion}'`
+              `工作流依赖的步骤节点“${node.title || node.nodeId || node.skillId}”版本不匹配：提交版本为 v${node.skillVersion}，但最新已发布版本为 v${skillDescriptor.publishedReleaseVersion}`
             );
           }
 
           if (skillDescriptor.publishedReleaseStatus !== 'published') {
             throw new BadRequestException(
-              `Skill node '${node.nodeId || node.skillId}' is not published (status=${skillDescriptor.publishedReleaseStatus || 'null'})`
+              `工作流依赖的步骤节点“${node.title || node.nodeId || node.skillId}”未发布或已下线归档 (status=${skillDescriptor.publishedReleaseStatus || 'null'})`
             );
           }
 
@@ -591,7 +591,7 @@ export class ExecutionCreateService {
             skillDescriptor.publishedDeploymentStatus !== 'healthy'
           ) {
             throw new BadRequestException(
-              `Skill node '${node.nodeId || node.skillId}' deployment is not active (status=${skillDescriptor.publishedDeploymentStatus || 'null'})`
+              `工作流依赖的步骤节点“${node.title || node.nodeId || node.skillId}”部署状态异常 (status=${skillDescriptor.publishedDeploymentStatus || 'null'})`
             );
           }
 

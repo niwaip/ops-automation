@@ -168,6 +168,11 @@ export async function executeWorkspaceExplorer(
     'x-user-role': 'admin',
   };
 
+  const explorerTimeoutMs = Math.max(
+    5000,
+    parseInt(process.env.WORKSPACE_EXPLORER_TIMEOUT_MS || '', 10) || 20000
+  );
+
   try {
     // 1. 识别是否属于“泛意图空间文件概览”需求（非特定关键词搜索，而是想了解空间里有哪些文档或概况）
     const strippedTerms = cleanKeyword
@@ -184,7 +189,7 @@ export async function executeWorkspaceExplorer(
       const listUrl = `${authUrl}/workspaces/search?q=`;
       const listRes = await axios.get<any[]>(listUrl, {
         headers,
-        timeout: 8000,
+        timeout: explorerTimeoutMs,
       });
       const allFiles = Array.isArray(listRes.data) ? listRes.data : [];
       const fileNames = allFiles.map((f) => f.name);
@@ -228,7 +233,7 @@ export async function executeWorkspaceExplorer(
     const searchUrl = `${authUrl}/workspaces/search-content?q=${encodeURIComponent(targetTerm)}`;
     const searchRes = await axios.get<ContentSearchResult[]>(searchUrl, {
       headers,
-      timeout: 8000,
+      timeout: explorerTimeoutMs,
     });
 
     let searchResults = Array.isArray(searchRes.data) ? searchRes.data : [];

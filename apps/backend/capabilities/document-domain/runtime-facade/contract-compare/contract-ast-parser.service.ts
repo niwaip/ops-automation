@@ -3,15 +3,16 @@ import * as fs from 'fs';
 import * as mammoth from 'mammoth';
 import * as path from 'path';
 import { PdfContentExtractorService } from '../content-extraction/pdf-content-extractor.service';
+import { PdfDocumentParserService } from './pdf-document-parser.service';
 import {
-cleanMarkdownFormatting,
-parseHtmlToClauses,
-parseTextToClauses
+  cleanMarkdownFormatting,
+  parseHtmlToClauses,
+  parseTextToClauses
 } from './contract-clause-segmenter.util';
 import type {
-ContractAstParseResult,
-ContractClauseNode,
-DocumentAstMetadata,
+  ContractAstParseResult,
+  ContractClauseNode,
+  DocumentAstMetadata,
 } from './contract-compare.types';
 import { parseDocxOpenXml } from './docx-openxml-parser.util';
 
@@ -41,7 +42,8 @@ export class ContractAstParserService {
   private readonly logger = new Logger(ContractAstParserService.name);
 
   constructor(
-    private readonly pdfExtractor: PdfContentExtractorService = new PdfContentExtractorService()
+    private readonly pdfExtractor: PdfContentExtractorService = new PdfContentExtractorService(),
+    private readonly pdfParser: PdfDocumentParserService = new PdfDocumentParserService(pdfExtractor)
   ) {}
 
   public cleanMarkdownFormatting(text: string): string {
@@ -179,28 +181,11 @@ export class ContractAstParserService {
           return { clauses: openXmlClauses, metadata: { isTruncated: false, format: 'docx' } };
         }
       } else if (isPdf) {
-        try {
-          const extraction = await this.pdfExtractor.extract({
-            fileBase64: input.base64,
-            fileName: input.fileName || 'contract.pdf',
-          });
-          if (extraction?.text && extraction.text.trim()) {
-            return {
-              clauses: this.parseTextToClauses(extraction.text),
-              metadata: {
-                isTruncated: extraction.truncated,
-                pageCount: extraction.pageCount,
-                extractedPageCount: extraction.extractedPageCount,
-                characterCount: extraction.characterCount,
-                warnings: extraction.warnings,
-                format: 'pdf',
-              },
-            };
-          }
-        } catch (err) {
-          this.logger.warn(`PDF extraction failed: ${(err as Error).message}`);
-        }
-        return { clauses: [], metadata: { isTruncated: false, format: 'pdf' } };
+        return await this.pdfParser.parsePdfToAstDetailed({
+          base64: input.base64,
+          fileName: input.fileName,
+          text: input.text,
+        });
       } else {
         // Binary buffer that is neither DOCX nor PDF
         if (buffer.includes(0)) {
@@ -288,28 +273,10 @@ export class ContractAstParserService {
                 return { clauses: openXmlClauses, metadata: { isTruncated: false, format: 'docx' } };
               }
             } else if (isPdf) {
-              try {
-                const extraction = await this.pdfExtractor.extract({
-                  fileBase64: buffer.toString('base64'),
-                  fileName: path.basename(resolvedPath),
-                });
-                if (extraction?.text && extraction.text.trim()) {
-                  return {
-                    clauses: this.parseTextToClauses(extraction.text),
-                    metadata: {
-                      isTruncated: extraction.truncated,
-                      pageCount: extraction.pageCount,
-                      extractedPageCount: extraction.extractedPageCount,
-                      characterCount: extraction.characterCount,
-                      warnings: extraction.warnings,
-                      format: 'pdf',
-                    },
-                  };
-                }
-              } catch (err) {
-                this.logger.warn(`PDF candidate extraction failed for ${resolvedPath}: ${(err as Error).message}`);
-              }
-              return { clauses: [], metadata: { isTruncated: false, format: 'pdf' } };
+              return await this.pdfParser.parsePdfToAstDetailed({
+                base64: buffer.toString('base64'),
+                fileName: path.basename(resolvedPath),
+              });
             } else {
               if (buffer.includes(0)) {
                 throw new BadRequestException(

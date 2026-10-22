@@ -44,6 +44,23 @@ class ContextBudget:
         return cls.clip_text(result, max_chars, suffix=suffix)
 
     @classmethod
+    def compact_assistant_history(cls, content: str) -> str:
+        """
+        Compacts verbose technical verification details and evidence blocks in previous assistant messages
+        before feeding them back as multi-turn context. Prevents context bloat and Few-shot evidence hallucination.
+        """
+        if not content:
+            return ""
+        import re
+        # 将历史中前序轮次的 <details>...</details> 证据块折叠为简洁的业务标记
+        compacted = re.sub(
+            r'<details>[\s\S]*?</details>',
+            '\n<!-- [前序轮次已核验明细与技术凭证已折叠] -->\n',
+            content
+        )
+        return compacted
+
+    @classmethod
     def budget_history(
         cls,
         existing_history: List[Dict[str, Any]],
@@ -95,6 +112,8 @@ class ContextBudget:
                 role = h.get("role")
                 content = h.get("content") or ""
                 content_str = str(content)
+                if role == "assistant":
+                    content_str = cls.compact_assistant_history(content_str)
                 if len(content_str) > max_item_chars:
                     # 双端保留策略：保留头部前情 (约 30%) 与尾部最终结论/修正 (约 60%)，中间插入系统注释省略标记
                     # 严禁使用口语化自然语言省略句，防止模型在多轮对话中将其作为少样本模式产生偷懒截断复读

@@ -211,10 +211,18 @@ def has_explicit_reminder_intent(user_prompt: Optional[str]) -> bool:
     # Remove quoted examples before detecting commands such as “提醒我”.
     command_text = re.sub(r'[“”"\'`][\s\S]*?[“”"\'`]', ' ', clean)
 
-    # 2. 强指令谓词匹配：用户明确要求助手为自己创建、设置、建立提醒/待办/闹钟
+    # 2. 强指令谓词匹配：用户明确要求助手为自己创建、设置、删除、取消提醒/待办/闹钟
     has_imperative_directive = bool(
         re.search(
-            r'(?:帮我|请|给我|麻烦)?(?:设置|创建|建个|定个|加个|添加|设个|设一下|定一下|新增|安排|建立)(?:[一1张个条份项次])?(?:定时)?(?:提醒|闹钟|待办|日程)',
+            r'(?:帮我|请|给我|麻烦)?(?:删除|取消|关掉|关闭|清空|移除|撤销|停用|废弃|去掉|修改|调整|改下|改一下|设置|创建|建个|定个|加个|添加|设个|设一下|定一下|新增|安排|建立)(?:[一1张个条份项次])?(?:定时)?(?:这个|这些|此|该)?(?:提醒|闹钟|待办|日程)',
+            command_text,
+            re.I
+        ) or re.search(
+            r'(?:删除|取消|关掉|关闭|清空|移除|撤销|停用|修改|改).{0,8}(?:闹钟|提醒|待办|日程)',
+            command_text,
+            re.I
+        ) or re.search(
+            r'(?:把|将).{0,15}(?:闹钟|提醒|待办|日程).{0,6}(?:删除|删了|取消|关了|关掉|移除|停用|撤销)',
             command_text,
             re.I
         ) or re.search(
@@ -230,7 +238,7 @@ def has_explicit_reminder_intent(user_prompt: Optional[str]) -> bool:
             command_text,
             re.I
         ) or re.search(
-            r'\b(?:remind\s+me|set\s+(?:a\s+)?reminder|create\s+(?:a\s+)?reminder|schedule\s+(?:a\s+)?reminder|set\s+(?:an\s+)?alarm|wake\s+me\s+up)\b',
+            r'\b(?:remind\s+me|set\s+(?:a\s+)?reminder|create\s+(?:a\s+)?reminder|schedule\s+(?:a\s+)?reminder|set\s+(?:an\s+)?alarm|wake\s+me\s+up|delete\s+(?:the\s+|this\s+|all\s+)?reminder|cancel\s+(?:the\s+|this\s+|all\s+)?reminder|remove\s+(?:the\s+|this\s+|all\s+)?reminder)\b',
             command_text,
             re.I
         )

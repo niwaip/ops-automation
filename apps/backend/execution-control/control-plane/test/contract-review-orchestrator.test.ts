@@ -536,4 +536,76 @@ describe('ContractReviewOrchestrator (Option B Pipeline)', () => {
       })
     );
   });
+
+  it('adaptively partitions multiple clauses into fewer batches reducing HTTP calls', async () => {
+    // 6 个短条款，预期自适应打包为 2 批（每批 3~5 条），相比写死 3 条或 1 条能根据实际字符动态打包
+    const parsedClauses = Array.from({ length: 6 }, (_, i) => ({
+      clauseIndex: i,
+      clauseNumber: `第 ${i + 1} 条`,
+      title: `简短条款标题 ${i + 1}`,
+      originalContent: `简短约定内容 ${i + 1}。`,
+      matchedRules: [],
+    }));
+
+    mockedAxios.post.mockImplementation(async (url: string, data: any) => {
+      if (url.includes('/internal/document/contract-review/parse')) {
+        return {
+          data: {
+            output: {
+              fileName: 'contract.docx',
+              contractType: 'PURCHASE',
+              contractTypeName: '采购合同',
+              myPosition: 'buyer',
+              comments: [],
+              parsedClauses,
+              missingClauses: [],
+              formIntegrityStats: { totalUnfilledVariables: 0, totalUnfilledBlanks: 0 },
+            },
+          },
+        } as any;
+      }
+      if (url.includes('/ai/model/call')) {
+        // 返回当前批次所有条款对应的 PASS 评估
+        const promptText = String(data.prompt || '');
+        const matchedIndices: number[] = [];
+        for (let i = 0; i < 6; i++) {
+          if (promptText.includes(`条款序号: ${i}`)) {
+            matchedIndices.push(i);
+          }
+        }
+        return {
+          data: {
+            result: JSON.stringify(
+              matchedIndices.map((idx) => ({
+                clauseIndex: idx,
+                riskLevel: 'PASS',
+                riskSummary: '权责明确',
+                findings: [],
+              }))
+            ),
+          },
+        } as any;
+      }
+      if (url.includes('/internal/document/contract-review/render')) {
+        return {
+          data: {
+            output: {
+              htmlReport: '<html><body>Mock Adaptive Report</body></html>',
+              artifact: { id: 'art-adaptive-1', name: 'report.html', url: 'http://cdn/report.html' },
+            },
+          },
+        } as any;
+      }
+      return { data: {} } as any;
+    });
+
+    const result = await executeContractReviewOrchestration(baseRequest, 'idemp-adaptive-1', logger);
+
+    expect(result.success).toBe(true);
+    // 6 个短小条款，在默认 maxBatchSize=5, targetBatchChars=1200 下切分为 2 个批次 (5 + 1)
+    const modelCalls = mockedAxios.post.mock.calls.filter((c) => String(c[0]).includes('/ai/model/call'));
+    expect(modelCalls.length).toBe(2);
+    expect((result.output as any).clauses.length).toBe(6);
+  });
 });
+

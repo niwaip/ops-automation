@@ -100,4 +100,38 @@ describe('docx-openxml-parser.util', () => {
     expect(feeClauseB!.content).toBe('報酬は月額十五万円');
     expect(feeClauseB!.titleJa).toBeUndefined();
   });
+
+  it('correctly parses table with headers and w:gridSpan cell spans', async () => {
+    const docxPath = path.resolve(
+      process.cwd(),
+      'apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792388446418-fiwl2300n-补充条款_富士通Azure超额261015.docx'
+    );
+    if (!fs.existsSync(docxPath)) return;
+    const buf = fs.readFileSync(docxPath);
+    const clauses = await parseDocxOpenXml(buf);
+
+    const priceClause = clauses.find((c) => c.title.includes('产品清单及价格'));
+    expect(priceClause).toBeDefined();
+    const tableBlock = priceClause!.blocks?.find((b) => b.type === 'table');
+    expect(tableBlock).toBeDefined();
+    expect(tableBlock!.tableData).toBeDefined();
+
+    // Verify headers extracted
+    expect(tableBlock!.tableData!.headers).toEqual([
+      '序号',
+      'SKU号',
+      '名称及规格',
+      '总价（未税）',
+      '总价（人民币含税6%）',
+      '备注',
+    ]);
+
+    // Verify cell with colSpan 4 (总金额)
+    const row2 = tableBlock!.tableData!.rows[2];
+    expect(row2[0]).toEqual({ text: '总金额（人民币，含税6%）', colSpan: 4 });
+
+    // Verify cell with colSpan 5 (备注长文本)
+    const row3 = tableBlock!.tableData!.rows[3];
+    expect((row3[1] as any).colSpan).toBe(5);
+  });
 });

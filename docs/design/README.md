@@ -6,6 +6,9 @@
 
 ## 0. 领域功能设计
 
+- **从已确认结果生成个人 Skill：统一设计**：[`Personal-Skill-Capture-and-Reuse-Design_v1.0.md`](Personal-Skill-Capture-and-Reuse-Design_v1.0.md)
+  *用户确认结果后，通过统一流程提炼技能包，保存到个人沙箱，并支持后续调用、复制、导出和版本更新。*
+
 - **合同法务审查套件功能设计**：[`Contract-Legal-Review-Toolkit-Functional-Design_v1.0.md`](Contract-Legal-Review-Toolkit-Functional-Design_v1.0.md)
   *围绕合同智能比对、合规诊断、统一问题项、证据锚点、Legal Playbook 与后续法务工作流衔接的功能设计。*
 

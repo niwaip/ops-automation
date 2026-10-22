@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from .analysis_contract import build_analysis_contract
-from .report_presentation import text, quantity, with_sources, render_unverified_guidance
+from .report_presentation import text, quantity, with_sources, render_unverified_guidance, resolve_conforming_facts
 
 logger = logging.getLogger(__name__)
 
@@ -70,17 +70,7 @@ def _partition_facts_by_prompt(
     receipts: List[Any], prompt: str = ""
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """Splits verified facts into (required_facts, optional_facts) based on user prompt contract."""
-    facts: List[Dict[str, Any]] = []
-    seen_facts = set()
-    for receipt in receipts or []:
-        data = _receipt_data(receipt)
-        for fact in data.get("facts", []):
-            if not isinstance(fact, dict):
-                continue
-            f_key = (fact.get("label"), str(fact.get("value")), fact.get("unit"))
-            if f_key not in seen_facts:
-                seen_facts.add(f_key)
-                facts.append(fact)
+    facts = resolve_conforming_facts(receipts or [], prompt or "")
 
     metrics = build_analysis_contract(prompt or "").metrics if prompt else []
     if metrics:
@@ -97,30 +87,141 @@ def _clean_fact_label_for_prompt(label: Any) -> str:
     return str(label or "").replace("（注册关系补算）", "").strip()
 
 
+def _is_zero_match_receipts(receipts: List[Any], contract: Any) -> bool:
+    """Returns True if receipts represent an executed query that matched 0 records."""
+    if not receipts:
+        return False
+    # Only evaluate query / analysis receipts; ignore metadata/structure inspection receipts
+    query_receipts = [
+        r for r in receipts
+        if _receipt_data(r).get("kind") == "spreadsheet_analysis"
+        or "coverage" in _receipt_data(r)
+        or "stages" in _receipt_data(r)
+    ]
+    if not query_receipts:
+        return False
+
+    has_valid = False
+    for r in query_receipts:
+        data = _receipt_data(r)
+        if not data:
+            continue
+        has_valid = True
+        cov = [c for c in data.get("coverage", []) if isinstance(c, dict)]
+        has_filters = any(c.get("filters") for c in cov) or bool(getattr(contract, "entity_predicates", None))
+        if has_filters:
+            stages = data.get("stages", {})
+            where_zero = (stages.get("where_rows") == 0) if "where_rows" in stages else False
+            cov_zero = all(c.get("evaluated_records", 0) == 0 for c in cov if c.get("filters")) if cov else False
+            if not (where_zero or cov_zero):
+                return False
+        else:
+            stages = data.get("stages", {})
+            if stages and stages.get("final_rows", 0) > 0:
+                return False
+
+        rows = [row for row in data.get("rows", []) if isinstance(row, dict)]
+        if rows:
+            is_zero_metric_row = (
+                len(rows) == 1
+                and all(str(v).strip() in ('0', '0.0', '') or v == 0 for v in rows[0].values())
+            )
+            if not is_zero_metric_row:
+                return False
+
+        facts = [f for f in data.get("facts", []) if isinstance(f, dict)]
+        for f in facts:
+            val = f.get("value")
+            try:
+                if float(str(val).replace(",", "")) > 0:
+                    return False
+            except (ValueError, TypeError):
+                pass
+    return has_valid
+
+
 def build_verified_facts_digest(receipts: List[Any], prompt: str = "") -> str:
     """Extracts a structured, human-readable summary of verified facts and rules for LLM context."""
     sections = []
+    contract = build_analysis_contract(prompt or "")
+    is_zero_match = _is_zero_match_receipts(receipts, contract)
 
-    # 1. 指标计算结果（区分必答核心指标与辅助衍生指标）
+    # 1. 零匹配场景：显式注入零匹配事实与范围，指导 LLM 给出准确事实与业务排查指引
+    if is_zero_match:
+        entity_desc = f"（目标实体限定: {'、'.join(contract.entity_predicates)}）" if contract.entity_predicates else ""
+        total_scanned = max([c.get("input_records", 0) for r in receipts for c in _receipt_data(r).get("coverage", []) if isinstance(c, dict)] or [0])
+        zero_lines = [
+            f"【检索事实（零匹配）】: 当前数据源中未检索到符合条件的记录{entity_desc}。",
+            f"- 扫描原件数据行数: 共完整扫描 {total_scanned} 条业务记录",
+            "- 符合条件的记录数: 0 条",
+            "- 事实状态: 过滤条件已正确完整执行，当前工作表中无对应记录",
+        ]
+        sections.append("\n".join(zero_lines))
+
+    # 2. 指标计算结果（区分必答核心指标与辅助衍生指标）
     required_facts, optional_facts = _partition_facts_by_prompt(receipts, prompt)
-    if required_facts and optional_facts:
-        req_lines = ["【用户提问核心指标（回答正文中必须完整包含以下数值）】:"]
-        for f in required_facts:
-            val_str = quantity(f.get("value"), f.get("unit"))
-            req_lines.append(f"- {_clean_fact_label_for_prompt(f.get('label'))}: {val_str}")
-        sections.append("\n".join(req_lines))
+    if not is_zero_match:
+        if required_facts and optional_facts:
+            req_lines = ["【用户提问核心指标（回答正文中必须完整包含以下数值）】:"]
+            for f in required_facts:
+                val_str = quantity(f.get("value"), f.get("unit"))
+                req_lines.append(f"- {_clean_fact_label_for_prompt(f.get('label'))}: {val_str}")
+            sections.append("\n".join(req_lines))
 
-        opt_lines = ["【底层衍生/辅助核算指标（可按需引用，无需全部罗列，严禁自行口算其他数字）】:"]
-        for f in optional_facts:
-            val_str = quantity(f.get("value"), f.get("unit"))
-            opt_lines.append(f"- {_clean_fact_label_for_prompt(f.get('label'))}: {val_str}")
-        sections.append("\n".join(opt_lines))
-    elif required_facts:
-        fact_lines = ["【已核算指标数值（回答正文中必须包含）】:"]
-        for f in required_facts:
-            val_str = quantity(f.get("value"), f.get("unit"))
-            fact_lines.append(f"- {_clean_fact_label_for_prompt(f.get('label'))}: {val_str}")
-        sections.append("\n".join(fact_lines))
+            opt_lines = ["【底层衍生/辅助核算指标（可按需引用，无需全部罗列，严禁自行口算其他数字）】:"]
+            for f in optional_facts:
+                val_str = quantity(f.get("value"), f.get("unit"))
+                opt_lines.append(f"- {_clean_fact_label_for_prompt(f.get('label'))}: {val_str}")
+            sections.append("\n".join(opt_lines))
+        elif required_facts:
+            fact_lines = ["【已核算指标数值（回答正文中必须包含）】:"]
+            for f in required_facts:
+                val_str = quantity(f.get("value"), f.get("unit"))
+                fact_lines.append(f"- {_clean_fact_label_for_prompt(f.get('label'))}: {val_str}")
+            group_facts = [f for f in required_facts if f.get("group_key")]
+            if len(group_facts) >= 2:
+                from collections import defaultdict
+                metric_groups = defaultdict(list)
+                for f in group_facts:
+                    mid = f.get("metric_id") or (f.get("id", "").split("__")[0] if "__" in f.get("id", "") else None)
+                    u = f.get("unit") or ""
+                    metric_groups[(mid, u)].append(f)
+
+                for (mid, u), m_facts in metric_groups.items():
+                    if len(m_facts) >= 2:
+                        try:
+                            tot = sum(float(str(f.get("value")).replace(",", "")) for f in m_facts)
+                            lbl = m_facts[0].get("label", "")
+                            measure_name = ""
+                            for word in ["金额", "工数", "工时", "条数", "数量", "费用", "成本"]:
+                                if word in lbl:
+                                    measure_name = word
+                                    break
+                            summary_title = f"各分组核算合计{measure_name}" if measure_name else "各分组核算合计"
+                            fact_lines.append(f"- 【{summary_title}】: {quantity(tot, u)}")
+                        except Exception:
+                            pass
+            sections.append("\n".join(fact_lines))
+
+    # 3. 底层过滤检索到的明细记录行 (Rows)
+    if not is_zero_match:
+        all_rows = [row for r in (receipts or []) for row in _receipt_data(r).get("rows", []) if isinstance(row, dict)]
+        valid_rows = [
+            r for r in all_rows
+            if not all(str(v).strip() in ('0', '0.0', '') or v == 0 for v in r.values())
+            and not (len(r) == 1 and any(k in ('total_records', 'count', 'matched_rows_count') for k in r))
+        ]
+        if valid_rows and (contract.is_detail_query or not contract.is_grouped):
+            row_lines = [f"【底层检索到的匹配明细记录清单（共 {len(valid_rows)} 条，回答中若用户要求明细必须以此列出明细表格）】:"]
+            row_cols = list(dict.fromkeys(k for r in valid_rows[:20] for k in r.keys() if k != 'group_key'))
+            if row_cols:
+                row_lines.append("| " + " | ".join(row_cols) + " |")
+                row_lines.append("|" + "|".join("---" for _ in row_cols) + "|")
+                for r_item in valid_rows[:30]:
+                    row_lines.append("| " + " | ".join(str(r_item.get(c, "")) for c in row_cols) + " |")
+                if len(valid_rows) > 30:
+                    row_lines.append(f"*（仅展示前 30 条明细，完整匹配共 {len(valid_rows)} 条）*")
+            sections.append("\n".join(row_lines))
 
     # 2. 等式检查
     checks = [c for r in (receipts or []) for c in _receipt_data(r).get("checks", [])]
@@ -331,20 +432,25 @@ def _collect_allowed_numbers(
         if r_text:
             for m in re.finditer(r"[-+]?\d+(?:\.\d+)?", str(r_text).replace(",", "")):
                 _add(m.group(0))
-        for fact in data.get("facts", []):
-            if isinstance(fact, dict):
-                raw_v = fact.get("value")
-                _add(raw_v)
-                try:
-                    fv = float(str(raw_v).replace(",", "").strip())
-                    if len(fact_nums) < 16:
-                        fact_nums.append(fv)
-                    if 0 < fv < 100:
-                        _add(100.0 - fv)
-                except (ValueError, TypeError):
-                    pass
-                for m in re.finditer(r"\d+(?:\.\d+)?", str(fact.get("label") or "")):
-                    _add(m.group(0))
+        facts_list = [f for f in data.get("facts", []) if isinstance(f, dict)]
+        if facts_list:
+            _add(len(facts_list))
+        for fact in facts_list:
+            raw_v = fact.get("value")
+            _add(raw_v)
+            _add(fact.get("matched_records"))
+            try:
+                fv = float(str(raw_v).replace(",", "").strip())
+                if len(fact_nums) < 16:
+                    fact_nums.append(fv)
+                if 0 < fv < 100:
+                    _add(100.0 - fv)
+            except (ValueError, TypeError):
+                pass
+            for m in re.finditer(r"\d+(?:\.\d+)?", str(fact.get("label") or "")):
+                _add(m.group(0))
+        if fact_nums:
+            _add(sum(fact_nums))
         for check in data.get("checks", []):
             if isinstance(check, dict):
                 _add(check.get("left"))
@@ -374,6 +480,10 @@ def _collect_allowed_numbers(
                     rc_val = cov.get(rc_key)
                     if isinstance(rc_val, int) and rc_val > 0:
                         row_counts.add(rc_val)
+        for row in data.get("rows", []):
+            if isinstance(row, dict):
+                for rv in row.values():
+                    _add(rv)
         for prof in data.get("profiles", []):
             if isinstance(prof, dict):
                 rec_total = prof.get("records")
@@ -402,6 +512,26 @@ def _collect_allowed_numbers(
     # Pre-compute exact pairwise arithmetic derivations between verified facts so
     # mathematically true comparisons (e.g. difference a - b, ratio a / b * 100%, monthly avg a / N)
     # are permitted while any inaccurate mental math or fabricated external number is rejected.
+    total_fact_sum = sum(fact_nums) if fact_nums else 0.0
+    if total_fact_sum > 1e-9:
+        _add(total_fact_sum)
+        for a in fact_nums:
+            ratio_pct = (a / total_fact_sum) * 100.0
+            _add(a / total_fact_sum)
+            _add(ratio_pct)
+            if 0 < ratio_pct < 100:
+                _add(100.0 - ratio_pct)
+        # Precompute cumulative sums and percentages for top-k subsets (e.g. top 2, top 3 concentration)
+        sorted_facts = sorted(fact_nums, reverse=True)
+        running_sum = 0.0
+        for val in sorted_facts:
+            running_sum += val
+            _add(running_sum)
+            cum_pct = (running_sum / total_fact_sum) * 100.0
+            _add(cum_pct)
+            if 0 < cum_pct < 100:
+                _add(100.0 - cum_pct)
+
     for i, a in enumerate(fact_nums):
         for rc in row_counts:
             _add(a / rc)
@@ -418,11 +548,16 @@ def _collect_allowed_numbers(
                     _add(100.0 - abs(ratio_pct))
                 _add((abs(a - b) / abs(b)) * 100.0)
 
-    # Also allow any numbers explicitly present in the user prompt or deterministic audit text
+    # Also allow any numbers explicitly present in the user prompt, deterministic audit text or file paths
     for source_text in (prompt or "", audit or ""):
         clean_src = source_text.replace(",", "").replace("，", "")
         for m in re.finditer(r"[-+]?\d+(?:\.\d+)?", clean_src):
             _add(m.group(0))
+    for receipt in receipts or []:
+        prov = getattr(receipt, "provenance", {}) or {}
+        if isinstance(prov, dict):
+            for m in re.finditer(r"\d+", str(prov.get("file_path") or "")):
+                _add(m.group(0))
 
     return allowed_strs, allowed_floats
 
@@ -432,6 +567,8 @@ def _has_unverified_numbers(
 ) -> bool:
     """Detects whether LLM synthesis introduced any business number not grounded in receipts/prompt."""
     text_body = (content or "").replace(",", "").replace("，", "")
+    # 0. Strip document/file names so numeric identifiers are not treated as business values.
+    text_body = re.sub(r"[^\s/\\<>'\"`]+\.(?:xlsx|xls|csv|docx|doc|pdf|txt|json|zip)\b", " ", text_body, flags=re.I)
     # 1. Strip cell references & ranges (e.g. 明细表!B15, A4:N15, F5) and Q1-Q4 quarter tags
     text_body = re.sub(r"\b[A-Za-z]{1,3}\d{1,5}(?::[A-Za-z]{1,3}\d{1,5})?\b", " ", text_body)
     # 2. Strip ISO dates/timestamps (e.g. 2026-01-02T00:00:00) and Chinese calendar dates (e.g. 2026年, 1月3日)
@@ -441,22 +578,34 @@ def _has_unverified_numbers(
         text_body,
     )
     text_body = re.sub(r"(?<!\d)(?:19|20)\d{2}\s*年(?:度)?", " ", text_body)
-    text_body = re.sub(r"\b\d{1,2}\s*月\s*\d{1,2}\s*[日号]\b", " ", text_body)
+    text_body = re.sub(r"(?<!\d)\d{1,2}\s*月(?:份)?(?:\s*\d{1,2}\s*[日号])?", " ", text_body)
     text_body = re.sub(r"\b\d+(?:\.\d+)?\s*(?:[×xX\*]|倍)\s*IQR\b", " ", text_body, flags=re.I)
-    # 3. Strip line-leading Markdown headings and list/section indices (e.g. "1. ", "### 2.1 ", "- **1.** ")
+    # 3. Strip line-leading Markdown headings and list/section indices (e.g. "1. ", "### 2.1 ", "- **1.** ", "1、")
     text_body = re.sub(
-        r"(?m)^\s*(?:#{1,6}\s+|[-*+>]\s+)*(?:\*{1,2})?(?:\(\d+\)|（\d+）|\d+(?:\.\d+){1,2}[\.\)、]?|\d+[\.\)、])(?:\*{1,2})?\s+",
+        r"(?m)^\s*(?:#{1,6}\s+|[-*+>]\s+)*(?:\*{1,2})?(?:\(\d+\)|（\d+）|\d+(?:\.\d+){1,2}(?:\.(?!\d)|[、\)）])?|\d+(?:\.(?!\d)|[、\)）]))(?:\*{1,2})?\s*",
         " ",
         text_body,
     )
-    # 4. Strip small structural counts (e.g. 4个指标, 3个维度, 12个月, 3项规则)
+    # 3.1 Strip inline list indicators (e.g. 1. 2. 1、 2、 (1) （1）) without corrupting decimal numbers
+    text_body = re.sub(r"(?<!\d)\d{1,2}(?:\.(?!\d)|[、\)）])", " ", text_body)
+    text_body = re.sub(r"[（\(]\d{1,2}[）\)]", " ", text_body)
+    # 4. Strip small structural counts (e.g. 10个有效成本中心, 4个指标, 3个维度, 12个月, 3项规则)
     text_body = re.sub(
-        r"\b\d{1,2}\s*(?:个核心指标|个指标|项指标|大指标|个维度|个方面|点建议|条建议|个工作表|张工作表|张表|个月|个季度|条规则|项规则|个规则|类异常|项异常|处异常|个字段|列字段)\b",
+        r"\b\d{1,2}\s*(?:个负责成本中心|个成本中心|个分组|个组|类分组|个类别|个项目|个部门|个核心指标|个指标|项指标|大指标|个维度|个方面|点建议|条建议|个工作表|张工作表|张表|个月|个季度|条规则|项规则|个规则|类异常|项异常|处异常|个字段|列字段)\b",
         " ",
         text_body,
+    )
+    # 5. Strip Markdown table pure sequence / ranking columns (e.g. "| 1 |", "| 9 |")
+    text_body = re.sub(r"(?<=\|)\s*\d{1,3}\s*(?=\|)", " ", text_body)
+    # 6. Strip ranking / ordinal descriptors (e.g. 前3名, 前3大, Top 3, 第1位, 第2梯队)
+    text_body = re.sub(
+        r"(?<!\d)(?:第\s*\d{1,2}\s*(?:名|位|梯队|阶段|步|项|组)|Top\s*\d{1,2}|前\s*\d{1,2}\s*(?:名|位|大|个))\b",
+        " ",
+        text_body,
+        flags=re.I,
     )
 
-    for m in re.finditer(r"(?<![A-Za-z])[-+]?\d+(?:\.\d+)?", text_body):
+    for m in re.finditer(r"(?<![A-Za-z0-9])[-+]?\d+(?:\.\d+)?(?![A-Za-z0-9])", text_body):
         token = m.group(0)
         raw_unsigned = token.lstrip("+-")
         if token in allowed_strs or raw_unsigned in allowed_strs:
@@ -465,7 +614,7 @@ def _has_unverified_numbers(
             val = float(token)
         except ValueError:
             continue
-        if any(abs(val - af) <= 0.015 or abs(abs(val) - af) <= 0.015 for af in allowed_floats):
+        if any(abs(val - af) <= 0.035 or abs(abs(val) - af) <= 0.035 for af in allowed_floats):
             continue
         logger.warning(
             "Synthesized summary introduced unverified number '%s'; rejecting synthesis.",
@@ -474,6 +623,14 @@ def _has_unverified_numbers(
         return True
 
     return False
+
+
+def _number_in_text(cand: str, text: str) -> bool:
+    """Verifies that number candidate appears as an isolated numeric token with boundary."""
+    if not cand:
+        return False
+    # Use word boundary to avoid matching inside identifiers like S22024, IK-S63048, etc.
+    return bool(re.search(rf'(?<![A-Za-z0-9]){re.escape(cand)}(?![A-Za-z0-9])', text))
 
 
 def _is_synthesis_grounded(
@@ -488,12 +645,23 @@ def _is_synthesis_grounded(
     if not clean_content.strip():
         return False
 
+    # 0. 防御甩锅免责致辞：若模型正文声称“未提供按...拆解”或“无法展示各部门”，说明模型拒绝交付或交付残缺，严禁放行
+    contract = build_analysis_contract(prompt or "")
+    if contract.is_grouped:
+        if re.search(r'(?:未提供按.*(?:拆解|细分|分组|明细)|未提供.*明细分组|无法.*展示各.*(?:部门|分组|类别)|缺少按.*(?:分拆|细分|拆解))', clean_content):
+            logger.warning("Synthesized summary contained disclaimer for missing grouping breakdown; rejecting synthesis.")
+            return False
+
     required_facts, _ = _partition_facts_by_prompt(receipts, prompt)
     for fact in required_facts:
-        str_candidates, _ = _numeric_candidates(fact.get("value"))
+        val = fact.get("value")
+        str_candidates, _ = _numeric_candidates(val)
         if not str_candidates:
             continue
-        if not any(c and c in clean_content for c in str_candidates):
+        is_zero_fact = (str(val).strip() in ("0", "0.0") or val == 0)
+        has_semantic_zero = is_zero_fact and bool(re.search(r'未找到|无匹配|未检索到|0\s*条|零条|无对应记录|未查询到|无此员工', clean_content))
+        has_number_match = any(c and _number_in_text(c, clean_content) for c in str_candidates)
+        if not (has_number_match or has_semantic_zero):
             logger.warning(
                 "Synthesized summary missed required metric '%s' (%s); falling back to template.",
                 fact.get("label"),
@@ -507,7 +675,7 @@ def _is_synthesis_grounded(
         for rule in data.get("rules", []):
             if isinstance(rule, dict) and (rule.get("violation_count") or 0) > 0:
                 v_strs, _ = _numeric_candidates(rule.get("violation_count"))
-                if v_strs and not any(c in clean_content for c in v_strs):
+                if v_strs and not any(_number_in_text(c, clean_content) for c in v_strs):
                     return False
 
     allowed_strs, allowed_floats = _collect_allowed_numbers(receipts, prompt=prompt, audit=audit)
@@ -539,18 +707,25 @@ def synthesize_analysis_summary(
 
     system_prompt = (
         "你是一位专业、严谨的数据分析顾问。\n"
-        "请结合用户最初的询问语句，依据下方由底层计算引擎严格核验的事实数据，给出结构清晰、友好易读、专业得体的分析总结。\n\n"
-        "【严格要求】：\n"
-        "1. 直接针对用户最初提出的问题进行总结，必须完整包含【用户提问核心指标】中的所有数值；\n"
-        "2. 正文中所提及的所有金额、比例、数量、行号、单元格坐标，必须 100% 来源于下方提供的已核验数据，请勿自行额外口算未提供的比率、同比/环比或差额；\n"
+        "请结合用户最初的询问语句，依据下方已核验的事实数据，给出清晰凝练、友好易读、专业得体的分析回答。\n\n"
+        "【极其严格的数值纪律（必须 100% 遵守，违反将直接被质检系统判定为幻觉驳回）】：\n"
+        "1. 必须直接针对用户提问进行解答，完整包含【用户提问核心指标】中的所有数值；\n"
+        "2. 【严禁自造区间概数与近似整数】：正文、表格及要点解读中的所有金额数值，必须精确引用下方核验数据。不得自行编造范围、上下限或近似整数；描述分布时只能使用本轮回执中实际存在的分组名称和精确数值；\n"
         "3. 若涉及异常检查，请结合【数据质量与异常规则筛查】与【字段全量统计概况与极值分布】，明确指明异常类型、异常记录数，并列出关键异常样本（单元格坐标与实际异常值，包含统计离群极值）；\n"
-        "4. 输出排版使用优雅规范的 Markdown 格式（例如简明核心结论导语 + 汇总表格 + 要点解读），不要包含客套寒暄。"
+        "4. 【明细与清单要求】：若用户提问是要求查看明细、清单或具体记录，且核验数据中提供了【底层检索到的匹配明细记录清单】，必须在正文中输出 Markdown 明细表格完整展示具体记录的各关键列（如项目、客户、工时、金额等），绝不能只给几个汇总数字；\n"
+        "5. 【零匹配/未找到记录的业务引导要求】：若核验数据表明目标实体或条件匹配结果为 0 条（未找到记录）：\n"
+        "   - 必须开门见山友好告知用户未在当前报表中查到该实体的明细记录（匹配 0 条），语言亲切自然、简洁专业；\n"
+        "   - 【严禁输出全为 0 的空表格】：切勿输出全为 0 或 0 小时、0 元的空数据表格，直接以文本清晰说明并附带排查建议；\n"
+        "   - 给出 2-3 条简明务实的业务排查建议（如：① 核对工号拼写大小写及是否有前后空格；② 确认该员工是否属于本期报表范围，或是否需要查询其他期间文件）；\n"
+        "6. 【语言风格与禁语规则】：\n"
+        "   - 严禁在开头使用生硬、机械的模板套话（例如“针对...在文件...中的查询”、“经底层引擎严格核验”、“经系统核算/核查无误”等过度机械化表达）；\n"
+        "   - 输出排版使用优雅规范的 Markdown 格式（例如简明结论导语 + 核心数据/排查指引），避免冗长无效的说教与客套话。"
     )
 
     user_prompt = (
         f"【用户最初提问】:\n{prompt}\n\n"
-        f"【底层已核验事实数据】:\n{facts_digest}\n\n"
-        "请结合我的提问，给出清晰完整的分析总结回答。"
+        f"【已核验事实数据】:\n{facts_digest}\n\n"
+        "请结合我的提问，给出清晰凝练的分析回答。"
     )
 
     try:
@@ -609,18 +784,35 @@ def synthesize_missing_content_explanation(
     if not missing_metrics and not issues:
         return fallback_guidance
 
+    uncalculated_metrics = [m for m in missing_metrics if m.get('source_column_exists')]
+    genuinely_missing_metrics = [m for m in missing_metrics if not m.get('source_column_exists')]
+
     system_prompt = (
         "你是一位亲切、专业的数据分析助手。\n"
-        "用户向你提出了数据分析需求，但底层数据在核验时发现缺少必要的内容或字段导致无法完成完整计算。\n"
-        "请用专业、清晰且有建设性的口吻回复用户：\n"
-        "1. 明确告知用户由于表格中缺少什么具体内容/字段而无法计算；\n"
-        "2. 友好且具体地引导用户补充所需的信息（例如补充哪些工作表、列名或核算口径）；\n"
-        "3. 保持积极协助的态度，排版条理分明。"
+        "用户向你提出了数据分析需求，但当前未能向用户输出完整的分析结果。\n"
+        "请根据【无法计算与缺失信息诊断】客观、实事求是地向用户解释原因，严禁推诿或给出虚假归因：\n"
+        "1. 若诊断提示【未完成计算项】（即源表格实际存在对应列，但本轮分析计划尚未执行聚合计算）：\n"
+        "   - 必须如实告知用户是当前分析流程未能完成该指标的聚合计算；\n"
+        "   - 严禁声称表格缺少该列或要求用户补充该列数据！\n"
+        "2. 若诊断提示【源表格确实缺少字段】（经源数据结构核验确实不存在）：\n"
+        "   - 明确告知用户表格中缺少该具体列，并友好引导用户补充；\n"
+        "3. 若工作表已知或仅有单表，切勿询问用户工作表名称，严禁凭空假设存在多个工作表；\n"
+        "4. 保持积极协助的态度，排版条理分明。"
     )
 
     details_lines = []
-    if missing_metrics:
-        details_lines.append(f"缺失指标项: {', '.join(m.get('name', m.get('metric_id', '')) for m in missing_metrics)}")
+    available_sheets = state.get("available_sheets", [])
+    if available_sheets:
+        if len(available_sheets) == 1:
+            details_lines.append(f"表格工作表状态: 仅有单一工作表【{available_sheets[0]}】（已知确切工作表，无需询问用户确认Sheet名称）")
+        else:
+            details_lines.append(f"表格工作表列表: {', '.join(available_sheets)}")
+    if uncalculated_metrics:
+        uncalc_str = '、'.join(f"【{m['name']}】（已在源表中定位到对应列：{', '.join(m.get('matched_source_columns', []))}）" for m in uncalculated_metrics)
+        details_lines.append(f"未完成计算项（表格已存在对应列，但本轮分析计划尚未完成聚合计算）: {uncalc_str}")
+    if genuinely_missing_metrics:
+        missing_str = '、'.join(f"【{m['name']}】" for m in genuinely_missing_metrics)
+        details_lines.append(f"源表格确实缺少字段: {missing_str}")
     for issue in issues:
         msg = issue.get("message")
         if msg:

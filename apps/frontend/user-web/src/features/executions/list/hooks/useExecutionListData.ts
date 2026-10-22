@@ -13,20 +13,23 @@ interface UseExecutionListDataOptions {
   page: number;
   pageSize: number;
   statusFilter?: ExecutionStatus;
+  q?: string;
 }
 
 export function useExecutionListData({
   page,
   pageSize,
   statusFilter,
+  q,
 }: UseExecutionListDataOptions) {
   const { data: skillsData } = useQuery(['skills-name-map'], () => skillApi.list());
   const { data: releasesData } = useQuery(['published-skills-name-map'], () =>
     capabilityReleaseApi.listReleaseCenter()
   );
+  const cleanQ = q?.trim() || undefined;
   const executionsQuery = useQuery(
-    ['executions', page, pageSize, statusFilter],
-    () => executionApi.list({ page, pageSize, status: statusFilter }),
+    ['executions', page, pageSize, statusFilter, cleanQ],
+    () => executionApi.list({ page, pageSize, status: statusFilter, q: cleanQ }),
     { keepPreviousData: true }
   );
 

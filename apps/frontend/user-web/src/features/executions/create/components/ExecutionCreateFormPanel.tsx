@@ -25,6 +25,8 @@ interface ExecutionCreateFormPanelProps {
     skillId: string;
     skillName: string;
     sourceType: 'published' | 'saved-workflow';
+    isRunnable?: boolean;
+    unavailableReason?: string;
   }>;
   selectedSkillId?: string;
   schemaFields: SchemaField[];
@@ -72,31 +74,46 @@ const ExecutionCreateFormPanel: React.FC<ExecutionCreateFormPanelProps> = ({
   onCancel,
 }) => {
   const skillSelectOptions: React.ComponentProps<typeof Select>['options'] = skillOptions.map(
-    (skill) => ({
-      value: skill.skillId,
-      label: (
-        <Space size={8}>
-          <span>{skill.skillName}</span>
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              padding: '0 8px',
-              height: 22,
-              borderRadius: 999,
-              background: 'rgba(82, 196, 26, 0.12)',
-              color: '#389e0d',
-              fontSize: 12,
-              lineHeight: 1,
-            }}
-          >
-            {skill.sourceType === 'saved-workflow' ? '我的工作流' : 'published'}
-          </span>
-        </Space>
-      ),
-      'data-label': skill.skillName,
-      'data-search': `${skill.skillName} ${skill.skillId}`,
-    })
+    (skill) => {
+      const isUnrunnable = skill.isRunnable === false;
+      return {
+        value: skill.skillId,
+        disabled: isUnrunnable,
+        label: (
+          <Space size={8}>
+            <span
+              style={{
+                textDecoration: isUnrunnable ? 'line-through' : undefined,
+                color: isUnrunnable ? '#8c8c8c' : undefined,
+              }}
+            >
+              {skill.skillName}
+            </span>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '0 8px',
+                height: 22,
+                borderRadius: 999,
+                background: isUnrunnable ? 'rgba(0, 0, 0, 0.06)' : 'rgba(82, 196, 26, 0.12)',
+                color: isUnrunnable ? '#8c8c8c' : '#389e0d',
+                fontSize: 12,
+                lineHeight: 1,
+              }}
+            >
+              {isUnrunnable
+                ? '依赖已下线'
+                : skill.sourceType === 'saved-workflow'
+                  ? '我的工作流'
+                  : 'published'}
+            </span>
+          </Space>
+        ),
+        'data-label': skill.skillName,
+        'data-search': `${skill.skillName} ${skill.skillId}`,
+      };
+    }
   );
 
   return (

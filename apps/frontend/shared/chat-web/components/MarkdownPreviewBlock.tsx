@@ -315,13 +315,13 @@ export const MarkdownPreviewBlock: React.FC<MarkdownPreviewBlockProps> = React.m
             }
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
             {isStreaming ? (
-              <LoadingOutlined spin style={{ color: '#1677ff', fontSize: '15px' }} />
+              <LoadingOutlined spin style={{ color: '#1677ff', fontSize: '15px', flexShrink: 0 }} />
             ) : (
-              <FileMarkdownOutlined style={{ color: '#1677ff', fontSize: '16px' }} />
+              <FileMarkdownOutlined style={{ color: '#1677ff', fontSize: '16px', flexShrink: 0 }} />
             )}
-            <div>
+            <div style={{ minWidth: 0, flex: 1 }}>
               <div
                 style={{
                   display: 'flex',
@@ -329,9 +329,21 @@ export const MarkdownPreviewBlock: React.FC<MarkdownPreviewBlockProps> = React.m
                   gap: '6px',
                   fontWeight: 600,
                   fontSize: '13px',
+                  minWidth: 0,
                 }}
               >
-                <span>📝 {displayFileName}</span>
+                <span
+                  style={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    maxWidth: '460px',
+                    minWidth: 0,
+                  }}
+                  title={displayFileName}
+                >
+                  📝 {displayFileName}
+                </span>
                 <span
                   style={{
                     fontSize: '11px',
@@ -340,6 +352,8 @@ export const MarkdownPreviewBlock: React.FC<MarkdownPreviewBlockProps> = React.m
                     background: isStreaming ? 'rgba(22, 119, 255, 0.08)' : 'rgba(22, 119, 255, 0.1)',
                     color: '#1677ff',
                     fontWeight: 500,
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
                   }}
                 >
                   .md
@@ -347,10 +361,12 @@ export const MarkdownPreviewBlock: React.FC<MarkdownPreviewBlockProps> = React.m
                 <span
                   style={{
                     fontSize: '11px',
-                    padding: '1px 5px',
+                    padding: '1px 6px',
                     borderRadius: '4px',
                     background: 'rgba(0, 0, 0, 0.04)',
                     color: '#64748b',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
                   }}
                 >
                   {approxSize}
@@ -362,6 +378,9 @@ export const MarkdownPreviewBlock: React.FC<MarkdownPreviewBlockProps> = React.m
                     fontSize: '11px',
                     color: isStreaming ? '#1677ff' : '#64748b',
                     marginTop: '2px',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
                   }}
                 >
                   {isStreaming
@@ -373,7 +392,7 @@ export const MarkdownPreviewBlock: React.FC<MarkdownPreviewBlockProps> = React.m
           </div>
 
           {isStreaming ? (
-            <Space size="small" onClick={(e) => e.stopPropagation()}>
+            <Space size="small" wrap onClick={(e) => e.stopPropagation()}>
               <span
                 style={{
                   display: 'inline-flex',
@@ -391,7 +410,7 @@ export const MarkdownPreviewBlock: React.FC<MarkdownPreviewBlockProps> = React.m
               </span>
             </Space>
           ) : (
-            <Space size="small" onClick={(e) => e.stopPropagation()}>
+            <Space size="small" wrap onClick={(e) => e.stopPropagation()} style={{ maxWidth: '100%', flexWrap: 'wrap' }}>
               <Button
                 size="small"
                 type={effectiveExpanded ? 'default' : 'primary'}

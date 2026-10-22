@@ -176,7 +176,15 @@ export const mapExecutionToDto = (execution: Record<string, unknown>): Execution
   const usage =
     (normalizedInput && typeof normalizedInput === 'object'
       ? (normalizedInput.__usage as Record<string, unknown> | undefined)
-      : undefined) || null;
+      : undefined) ||
+    ((execution as any)?.usage as Record<string, unknown> | undefined) ||
+    ((result as any)?.usage as Record<string, unknown> | undefined) ||
+    ((result as any)?.output?.usage as Record<string, unknown> | undefined) ||
+    ((result as any)?.result?.usage as Record<string, unknown> | undefined) ||
+    ((result as any)?.result?.businessData?.usage as Record<string, unknown> | undefined) ||
+    ((result as any)?.execution?.usage as Record<string, unknown> | undefined) ||
+    ((result as any)?.output?.metrics?.tokens as Record<string, unknown> | undefined) ||
+    null;
   const semantic = asExecutionSemantic(
     normalizedInput && typeof normalizedInput === 'object'
       ? (normalizedInput.semantic as unknown)

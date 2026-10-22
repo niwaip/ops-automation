@@ -40,4 +40,9 @@ export class ListExecutionsDto {
   @IsOptional()
   @IsString()
   id?: string;
+
+  @ApiProperty({ description: 'Filter by search query / keyword across title, inputs and results', required: false })
+  @IsOptional()
+  @IsString()
+  q?: string;
 }

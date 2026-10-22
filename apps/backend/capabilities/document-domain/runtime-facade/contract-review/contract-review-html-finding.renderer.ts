@@ -35,7 +35,7 @@ export class ContractReviewHtmlFindingRenderer {
     let counter = 1;
 
     // 1. Convert Missing Clause Alerts to Findings (Type: 信息缺失)
-    for (const m of missingClauses) {
+    for (const m of (missingClauses || [])) {
       // Deduplicate "缺失" in title
       const cleanTitle = (m.title || '必备条款').replace(/^(缺失|缺少|未包含|未约定|未订立)\s*/, '');
 

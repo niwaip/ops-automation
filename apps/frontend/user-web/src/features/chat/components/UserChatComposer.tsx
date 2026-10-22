@@ -488,6 +488,9 @@ export function UserChatComposer(props: UserChatComposerProps) {
       return;
     }
     const filesToSend = [...uploadedFiles];
+    if (!trimmed && filesToSend.length === 0) {
+      return;
+    }
     setUploadedFiles([]);
 
     if (lastMentionedUser) {
@@ -495,7 +498,25 @@ export function UserChatComposer(props: UserChatComposerProps) {
     }
 
     let finalMessage = trimmed;
-    if (taskContext && trimmed) {
+    if (!finalMessage && filesToSend.length > 0) {
+      // 当仅上传附件且输入框无文字时，根据附件名称与数量智能推断标准意图
+      const isAllContracts = filesToSend.every((f) =>
+        /(?:合同|协议|agreement|contract|nda)/i.test(f.fileName)
+      );
+      if (filesToSend.length === 2 && isAllContracts) {
+        finalMessage = `合同比对 ${filesToSend[0].fileName} 与 ${filesToSend[1].fileName}`;
+      } else if (filesToSend.length === 1 && isAllContracts) {
+        finalMessage = `审查合同 ${filesToSend[0].fileName}`;
+      } else if (filesToSend.length === 1) {
+        finalMessage = `请分析附件文档 ${filesToSend[0].fileName}`;
+      } else {
+        const fileNames = filesToSend.map((f) => f.fileName).filter(Boolean).join('、');
+        finalMessage = `请分析附件文档 ${fileNames}`;
+      }
+    }
+
+    if (taskContext && (trimmed || finalMessage)) {
+      const msgForContext = finalMessage || trimmed;
       const contextLines: string[] = [];
       const isNoteQuote = !taskContext.workflowId;
 
@@ -535,7 +556,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
         if (
           taskContext.taskContent &&
           taskContext.taskContent !== taskContext.taskTitle &&
-          !trimmed.includes(taskContext.taskContent)
+          !msgForContext.includes(taskContext.taskContent)
         ) {
           contextLines.push(`- **任务要求**：${taskContext.taskContent}`);
         }
@@ -555,12 +576,12 @@ export function UserChatComposer(props: UserChatComposerProps) {
       }
 
       if (contextLines.length > 0) {
-        finalMessage = `${trimmed}\n${contextLines.join('\n')}`;
+        finalMessage = `${msgForContext}\n${contextLines.join('\n')}`;
       }
       setTaskContext(null);
     }
 
-    onSend(filesToSend, finalMessage !== trimmed ? finalMessage : undefined);
+    onSend(filesToSend, finalMessage);
   }, [chatMode, draft, lastMentionedUser, onSend, setTaskContext, taskContext, uploadedFiles, workspaceSearchEnabled]);
 
   return (

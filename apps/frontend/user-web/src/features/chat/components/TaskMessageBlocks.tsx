@@ -261,17 +261,25 @@ function TaskOutcomeBlockContent({
 
   const shouldShowArtifactActions = status === 'completed' || status === 'failed';
 
-  const isUuid = (val?: unknown): val is string =>
+  const isUuid = (val?: unknown): boolean =>
     typeof val === 'string' &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val.trim());
 
-  const rawSkillName =
-    (message.metadata as any)?.skillName ||
-    (message.metadata as any)?.displayName ||
-    (!isUuid(message.metadata?.resultTitle) ? message.metadata?.resultTitle : undefined) ||
-    (!isUuid(message.metadata?.skillUsed) ? message.metadata?.skillUsed : undefined);
+  const isSkillName = (val?: unknown): val is string => {
+    if (typeof val !== 'string') return false;
+    const trimmed = val.trim();
+    if (!trimmed || isUuid(trimmed)) return false;
+    // 技能名通常为简短标识或名称（<=40字），不能是长 prompt、完整句子或包含标点
+    if (trimmed.length > 40 || /[\r\n。？！!?]/.test(trimmed)) return false;
+    return true;
+  };
 
-  const displaySkillName = isUuid(rawSkillName) ? undefined : rawSkillName;
+  const rawSkillName =
+    (isSkillName((message.metadata as any)?.skillName) ? (message.metadata as any)?.skillName : undefined) ||
+    (isSkillName((message.metadata as any)?.displayName) ? (message.metadata as any)?.displayName : undefined) ||
+    (isSkillName(message.metadata?.skillUsed) ? message.metadata?.skillUsed : undefined);
+
+  const displaySkillName = rawSkillName ? rawSkillName.trim() : undefined;
 
   const effectiveDownloadUrl = replaceLocalhostWithCurrentHost(
     message.metadata?.downloadUrl ||

@@ -252,7 +252,8 @@ export class SavedSkillService {
       `WHERE s.owner_user_id = $1::uuid ORDER BY s.updated_at DESC`,
       [userId]
     );
-    return { skills: rows.map((row) => this.mapRow(row)) };
+    const unrunnableMap = await this.resolveUnrunnableDetails(rows);
+    return { skills: rows.map((row) => this.mapRow(row, unrunnableMap)) };
   }
 
   async replaceAliases(
@@ -302,7 +303,8 @@ export class SavedSkillService {
     if (!rows[0]) {
       throw new NotFoundException(`Saved workflow ${skillId} not found`);
     }
-    return this.mapRow(rows[0]);
+    const unrunnableMap = await this.resolveUnrunnableDetails(rows);
+    return this.mapRow(rows[0], unrunnableMap);
   }
 
   private async findExistingBySourceExecution(
@@ -313,7 +315,9 @@ export class SavedSkillService {
       `WHERE s.owner_user_id = $1::uuid AND v.source_execution_id = $2::uuid LIMIT 1`,
       [userId, executionId]
     );
-    return rows[0] ? this.mapRow(rows[0]) : null;
+    if (!rows[0]) return null;
+    const unrunnableMap = await this.resolveUnrunnableDetails(rows);
+    return this.mapRow(rows[0], unrunnableMap);
   }
 
   private async queryRows(whereClause: string, params: unknown[]): Promise<SavedSkillRow[]> {
@@ -398,9 +402,73 @@ export class SavedSkillService {
     return { execution, plan, steps } as ExecutionSnapshot;
   }
 
-  private mapRow(row: SavedSkillRow): SavedSkillDto {
+  private async resolveUnrunnableDetails(rows: SavedSkillRow[]): Promise<Map<string, string>> {
+    const unrunnableMap = new Map<string, string>();
+    const referencedSkillIds = new Set<string>();
+    const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+    for (const row of rows) {
+      const plan = this.asPlan(row.planSnapshotJson);
+      if (plan?.nodes) {
+        for (const node of plan.nodes) {
+          if (
+            node.kind === 'skill' &&
+            node.skillId &&
+            !node.skillId.startsWith('platform.') &&
+            uuidPattern.test(node.skillId)
+          ) {
+            referencedSkillIds.add(node.skillId);
+          }
+        }
+      }
+    }
+
+    if (referencedSkillIds.size === 0) {
+      return unrunnableMap;
+    }
+
+    const uniqueSkillIds = Array.from(referencedSkillIds);
+    const activeRows = await this.prisma.$queryRawUnsafe<Array<{ published_skill_id: string }>>(
+      `SELECT DISTINCT published_skill_id
+         FROM capability_releases
+        WHERE archived_at IS NULL
+          AND status = 'published'
+          AND published_skill_id = ANY($1::uuid[])`,
+      uniqueSkillIds
+    );
+    const activeSkillSet = new Set(activeRows.map((r) => r.published_skill_id));
+
+    for (const row of rows) {
+      const plan = this.asPlan(row.planSnapshotJson);
+      if (plan?.nodes) {
+        for (const node of plan.nodes) {
+          if (
+            node.kind === 'skill' &&
+            node.skillId &&
+            !node.skillId.startsWith('platform.') &&
+            uuidPattern.test(node.skillId)
+          ) {
+            if (!activeSkillSet.has(node.skillId)) {
+              unrunnableMap.set(
+                row.id,
+                `工作流依赖的步骤节点“${node.title || node.nodeId || node.skillId}”未发布或已下线归档`
+              );
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    return unrunnableMap;
+  }
+
+  private mapRow(row: SavedSkillRow, unrunnableMap?: Map<string, string>): SavedSkillDto {
     const plan = this.asPlan(row.planSnapshotJson);
     const fixedInput = this.asRecord(row.fixedInputJson) || {};
+    const unavailableReason = unrunnableMap?.get(row.id);
+    const isRunnable = !unavailableReason;
+
     return {
       id: row.id,
       ownerUserId: row.ownerUserId,
@@ -426,6 +494,8 @@ export class SavedSkillService {
       review: row.aiReviewJson,
       createdAt: new Date(row.createdAt).toISOString(),
       updatedAt: new Date(row.updatedAt).toISOString(),
+      isRunnable,
+      ...(unavailableReason ? { unavailableReason } : {}),
     };
   }
 

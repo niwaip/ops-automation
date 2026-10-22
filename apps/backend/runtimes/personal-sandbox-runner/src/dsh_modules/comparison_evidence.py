@@ -86,7 +86,19 @@ def validate_execution_output(prompt, output):
         return output
     if result.is_success and isinstance(result.data, dict) and result.data.get("kind") == "informational_spreadsheet":
         contract = build_analysis_contract(prompt or "")
-        if contract.is_explicit_calc or (contract.metrics and any(m.semantic_id for m in contract.metrics)):
+        reason = str(result.data.get("reason", "")) + " " + str(result.data.get("text", "")) + " " + str(result.data.get("explanation", ""))
+        missing_data_patterns = [
+            r'(?:缺少|未包含|未找到|缺失|无对应|没有.*列|无.*列|无法计算|数据不足|信息不全|需补充|请补充|缺口|无.*字段|未提供.*数据|未提供.*指标|无.*数据|无相关|无法核算|无法得出|口径未定义|未定义.*口径|缺.*列)',
+            r'\b(?:missing|lack|not found|insufficient|unavailable|cannot compute|data gap|unknown column|no .* column|undefined)\b'
+        ]
+        is_missing_data = (
+            any(bool(re.search(pat, reason, re.I)) for pat in missing_data_patterns)
+            or bool(result.data.get("clarification_missing_data"))
+            or bool(result.data.get("missing_columns"))
+            or bool(result.data.get("data_gap"))
+        )
+        prompt_allows_clarify = bool(re.search(r'(?:缺失.*先告诉我|数据.*缺失.*告知|先确认|先说明|若.*缺失|缺失.*补充|如果.*缺|若.*缺)', prompt or ""))
+        if (contract.is_explicit_calc or (contract.metrics and any(m.semantic_id for m in contract.metrics))) and not (is_missing_data or prompt_allows_clarify):
             rejected = ToolResult.error(
                 "escape_rejected",
                 "当前任务包含明确的数值计算或指标核算需求，禁止降级为纯文本归纳。必须使用 aggregate_spreadsheet 或 check_spreadsheet_equations 完成计算。",

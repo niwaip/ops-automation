@@ -60,6 +60,8 @@ export interface SavedSkillDto {
   review: SavedSkillReviewDto;
   createdAt: string;
   updatedAt: string;
+  isRunnable?: boolean;
+  unavailableReason?: string;
 }
 
 export interface WorkflowSaveEligibilityDto {

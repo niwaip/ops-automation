@@ -136,11 +136,13 @@ export function SkillCard({
       style={{
         borderColor: recentlyRequested && skill.accessStatus === 'requested' ? token.colorInfoBorder : undefined,
       }}
+      classNames={{
+        body: styles['employee-card-body'],
+      }}
       styles={{
         body: {
           display: 'flex',
           flexDirection: 'column',
-          padding: '18px',
           height: '100%',
           flex: 1,
         },

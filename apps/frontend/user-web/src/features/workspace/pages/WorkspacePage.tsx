@@ -490,6 +490,7 @@ export function WorkspacePage() {
       title: '名称',
       dataIndex: 'name',
       key: 'name',
+      ellipsis: true,
       sorter: true,
       sortOrder: sortField === 'name' ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
       render: (_, record) => {
@@ -610,7 +611,8 @@ export function WorkspacePage() {
     {
       title: '操作',
       key: 'action',
-      width: 160,
+      width: 150,
+      fixed: 'right',
       render: (_, record) => {
         const isRoot = breadcrumbs.length === 1;
         const sysMeta = getSystemFolderMeta(record, isRoot);
@@ -978,6 +980,8 @@ export function WorkspacePage() {
             columns={columns}
             dataSource={displayNodes}
             rowKey="id"
+            scroll={{ x: 720 }}
+            tableLayout="fixed"
             loading={isWsLoading || (searchMode === 'name' ? isNodesLoading : isContentSearching)}
             onChange={(_, __, sorter: any) => {
               if (!Array.isArray(sorter) && sorter.field) {
