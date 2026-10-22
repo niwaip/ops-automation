@@ -1,0 +1,136 @@
+[
+  {
+    "marker": "CT05-zh-ja-A03",
+    "topic": "risk_acceptance",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "设定2日为验收期，时间过短且采用默示验收机制，买方难以在短期内完成全面测试。",
+        "legalAdvice": "建议坚持采用“工作日”口径计算，或增加因甲方确认延迟、需求变更引起的工期对等顺延条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-SOFT-03",
+            "title": "工期计算口径被变更为自然日/日历日陷阱",
+            "ruleId": "soft_calendar_day_trap",
+            "category": "DELIVERY_AND_ACCEPTANCE",
+            "ruleCode": "SOFT-03",
+            "severity": "HIGH",
+            "legalAdvice": "建议坚持采用“工作日”口径计算，或增加因甲方确认延迟、需求变更引起的工期对等顺延条款。",
+            "riskSummary": "设定2日为验收期，时间过短且采用默示验收机制，买方难以在短期内完成全面测试。",
+            "evidenceQuote": "乙方发出交付邮件后两日内甲方未书面拒绝即视为验收",
+            "recommendedRevision": "工作日（遇法定节假日自动顺延）"
+          },
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT05-zh-ja-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "约定安全漏洞不影响验收，导致重大安全隐患无法通过验收程序制约，风险极高。",
+            "evidenceQuote": "任何未修复安全漏洞不影响验收"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-ja-A04",
+    "topic": "risk_ip",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "定制开发成果应归买方所有，现行约定使买方仅获短期许可，丧失核心资产控制权。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT05-zh-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "定制开发成果应归买方所有，现行约定使买方仅获短期许可，丧失核心资产控制权。",
+            "evidenceQuote": "全部定制开发成果及源代码著作权归乙方；甲方仅取得一年期不可续展的内部使用许可"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-ja-A06",
+    "topic": "risk_third_party_ip",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "条款免除乙方对第三方组件的合规担保责任，将全部侵权风险转嫁给甲方，违反《民法典》公平原则及软件合规惯例。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT05-zh-ja-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "条款免除乙方对第三方组件的合规担保责任，将全部侵权风险转嫁给甲方，违反《民法典》公平原则及软件合规惯例。",
+            "evidenceQuote": "乙方可自由引入任意第三方组件，无需提供许可清单，甲方自行承担全部第三方权利主张。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-ja-A08",
+    "topic": "risk_unfilled",
+    "matchedClauseIndices": [
+      8
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "管辖法院随被告变动，增加我方异地诉讼成本；作为买方/委托方，应争取己方所在地或合同履行地法院管辖。",
+        "legalAdvice": "建议约定由“原告所在地（我方住所地）人民法院”管辖，或选择中立权威仲裁委员会解决。",
+        "findings": [
+          {
+            "id": "finding-clause-8-COMM-01",
+            "title": "争议司法管辖约定对我方不利",
+            "ruleId": "comm_dispute_unfavorable_forum",
+            "category": "DISPUTE_AND_GOVERNING",
+            "ruleCode": "COMM-01",
+            "severity": "HIGH",
+            "legalAdvice": "建议约定由“原告所在地（我方住所地）人民法院”管辖，或选择中立权威仲裁委员会解决。",
+            "riskSummary": "管辖法院随被告变动，增加我方异地诉讼成本；作为买方/委托方，应争取己方所在地或合同履行地法院管辖。",
+            "evidenceQuote": "争议由被告住所地法院处理。",
+            "recommendedRevision": "由原告所在地有管辖权的人民法院管辖"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

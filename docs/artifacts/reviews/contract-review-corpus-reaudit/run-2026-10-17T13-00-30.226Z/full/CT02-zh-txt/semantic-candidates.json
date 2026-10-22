@@ -1,0 +1,178 @@
+[
+  {
+    "marker": "CT02-zh-A03",
+    "topic": "risk_sla",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "约定‘仅尽力’且‘不承诺可用率’、‘不担责’，排除核心履约义务与违约责任。",
+        "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+        "findings": [
+          {
+            "id": "finding-clause-3-CUST-1",
+            "title": "重点检查我方义务、责任、数据或知识产权、付款...",
+            "ruleId": "prompt-rule-1",
+            "category": "审查Prompt专项要点",
+            "ruleCode": "CUST-1",
+            "severity": "HIGH",
+            "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+            "riskSummary": "约定‘仅尽力’且‘不承诺可用率’、‘不担责’，排除核心履约义务与违约责任。",
+            "evidenceQuote": "乙方仅尽力提供服务，不承诺最低可用率；连续中断十日亦不退费或承担责任。",
+            "recommendedRevision": "可用性：乙方仅尽力提供服务，不承诺最低可用率；连续中断十日亦不退费或承担责任。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-zh-A04",
+    "topic": "risk_data_use",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "允许未经授权使用甲方核心数据进行商业训练，严重侵犯数据控制权与知识产权。",
+        "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+        "findings": [
+          {
+            "id": "finding-clause-4-CUST-1",
+            "title": "重点检查我方义务、责任、数据或知识产权、付款...",
+            "ruleId": "prompt-rule-1",
+            "category": "审查Prompt专项要点",
+            "ruleCode": "CUST-1",
+            "severity": "HIGH",
+            "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+            "riskSummary": "允许未经授权使用甲方核心数据进行商业训练，严重侵犯数据控制权与知识产权。",
+            "evidenceQuote": "乙方可未经甲方同意将含姓名、邮箱和交易记录的数据用于模型训练并永久留存。",
+            "recommendedRevision": "数据：甲方保有数据所有权；乙方可未经甲方同意将含姓名、邮箱和交易记录的数据用于模型训练并永久留存。"
+          },
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT02-zh-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "处理姓名、邮箱等个人信息用于训练且永久留存，极大概率违反《个人信息保护法》及数据合规要求。",
+            "evidenceQuote": "乙方可未经甲方同意将含姓名、邮箱和交易记录的数据用于模型训练并永久留存。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-zh-A05",
+    "topic": "risk_exit",
+    "matchedClauseIndices": [
+      5
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "数据导出完全取决于乙方单方意愿且无时间约束，导致甲方数据资产控制权丧失。",
+        "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+        "findings": [
+          {
+            "id": "finding-clause-5-CUST-1",
+            "title": "重点检查我方义务、责任、数据或知识产权、付款...",
+            "ruleId": "prompt-rule-1",
+            "category": "审查Prompt专项要点",
+            "ruleCode": "CUST-1",
+            "severity": "HIGH",
+            "legalAdvice": "该条款触发了企业/个人自定义审查要点【重点检查我方义务、责任、数据或知识产权、付款...】，请重点核查。",
+            "riskSummary": "数据导出完全取决于乙方单方意愿且无时间约束，导致甲方数据资产控制权丧失。",
+            "evidenceQuote": "乙方可自行决定是否批准，且不承诺任何导出期限。",
+            "recommendedRevision": "退出：合同终止后甲方可申请导出数据，但乙方可自行决定是否批准，且不承诺任何导出期限。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-zh-A06",
+    "topic": "risk_renewal",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "赋予乙方单方随意涨价权，缺乏透明度与合理性约束，严重损害买方成本控制权益。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT02-zh-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "赋予乙方单方随意涨价权，缺乏透明度与合理性约束，严重损害买方成本控制权益。",
+            "evidenceQuote": "乙方可在续约日自行上调费用"
+          },
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT02-zh-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "超长自动续约期及极长退出通知期构成隐性绑定，极大增加买方退出成本与运营风险。",
+            "evidenceQuote": "服务自动续约一年；甲方须在到期前九十日书面拒绝"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-zh-A08",
+    "topic": "risk_dispute_unclear",
+    "matchedClauseIndices": [
+      8
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "核心商业条款（法律适用、管辖机构）处于未定状态，导致争议发生时管辖权不明，极大增加买方维权难度与成本。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-8-GENERAL-RISK",
+            "title": "[CT02-zh-A08]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "核心商业条款（法律适用、管辖机构）处于未定状态，导致争议发生时管辖权不明，极大增加买方维权难度与成本。",
+            "evidenceQuote": "适用双方另行约定的法律；争议提交有权机构处理，具体机构及所在地留待补充。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

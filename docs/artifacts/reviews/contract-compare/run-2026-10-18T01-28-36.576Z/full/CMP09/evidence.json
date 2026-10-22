@@ -1,0 +1,64 @@
+{
+  "id": "CMP09",
+  "name": "双语仅日文发生变化",
+  "startedAt": "2026-10-18T01:29:59.825Z",
+  "status": "failed",
+  "executionId": null,
+  "chatMs": 9005,
+  "httpStatus": 201,
+  "assertions": [
+    {
+      "name": "HTTP success",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE completed",
+      "passed": true,
+      "actual": null,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "execution succeeded",
+      "passed": false,
+      "actual": null,
+      "category": "STATE"
+    },
+    {
+      "name": "compare skill routed",
+      "passed": false,
+      "actual": null,
+      "category": "ROUTING"
+    },
+    {
+      "name": "compare output exists",
+      "passed": false,
+      "actual": null,
+      "category": "OUTPUT"
+    }
+  ],
+  "failures": [
+    {
+      "name": "execution succeeded",
+      "passed": false,
+      "actual": null,
+      "category": "STATE"
+    },
+    {
+      "name": "compare skill routed",
+      "passed": false,
+      "actual": null,
+      "category": "ROUTING"
+    },
+    {
+      "name": "compare output exists",
+      "passed": false,
+      "actual": null,
+      "category": "OUTPUT"
+    }
+  ],
+  "wallMs": 9018,
+  "finishedAt": "2026-10-18T01:30:08.843Z",
+  "sourceDrift": []
+}

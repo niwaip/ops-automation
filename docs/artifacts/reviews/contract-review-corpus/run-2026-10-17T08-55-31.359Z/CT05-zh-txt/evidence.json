@@ -1,0 +1,14 @@
+{
+  "id": "CT05-zh-txt",
+  "caseId": "CT05-zh",
+  "business": "development",
+  "language": "zh",
+  "format": "txt",
+  "file": "contracts/development/CT05-zh.txt",
+  "fixtureSha256": "d2fc2ac33e65dccd671766721695baaaaebac5f8e11bb56b3c73e1db5e114c42",
+  "status": "error",
+  "startedAt": "2026-10-17T08:55:43.213Z",
+  "error": "Login HTTP 429",
+  "wallMs": 2,
+  "finishedAt": "2026-10-17T08:55:43.215Z"
+}

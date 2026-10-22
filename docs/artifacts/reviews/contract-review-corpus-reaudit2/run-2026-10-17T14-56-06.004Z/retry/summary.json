@@ -1,0 +1,3000 @@
+[
+  {
+    "id": "CT02-ja-docx",
+    "caseId": "CT02-ja",
+    "business": "saas",
+    "language": "ja",
+    "format": "docx",
+    "file": "contracts/saas/CT02-ja.docx",
+    "fixtureSha256": "0891e5612343b1ad6411f269883b8b70ad7a228c4f20c1d98e0c7d13c09a767a",
+    "status": "passed",
+    "startedAt": "2026-10-17T15:21:48.028Z",
+    "uploadMs": 10,
+    "sessionId": "corpus-CT02-ja-docx-1792250508129",
+    "executionId": "23212786-782f-4008-9a24-68214cecdeeb",
+    "traceIds": [
+      "135881fe-9709-4c97-8937-a4d4eb9e093a"
+    ],
+    "chatMs": 42432,
+    "firstEventMs": 124,
+    "streamError": null,
+    "executionStatus": "succeeded",
+    "actualCapabilities": [
+      "platform.document.contract-reviewer"
+    ],
+    "recognizerModels": [
+      "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+    ],
+    "recognizerErrors": [],
+    "semanticTopics": 5,
+    "topicsWithoutRiskSignal": [],
+    "metrics": {
+      "warnings": [],
+      "passCount": 2,
+      "isDegraded": false,
+      "healthScore": 30,
+      "isTruncated": false,
+      "lowRiskCount": 0,
+      "totalClauses": 9,
+      "highRiskCount": 0,
+      "mediumRiskCount": 7,
+      "llmReviewedCount": 9,
+      "missingClausesCount": 2,
+      "unfilledBlanksTotal": 0,
+      "degradedClausesCount": 0,
+      "unfilledVariablesCount": 0
+    },
+    "contractType": "general",
+    "myPosition": "buyer",
+    "observedUsage": [
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 941,
+        "outputTokens": 392
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 940,
+        "outputTokens": 462
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 955,
+        "outputTokens": 523
+      }
+    ],
+    "previousGateStatus": "passed",
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": true,
+        "actual": [
+          "platform.document.contract-reviewer"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "recognizer no conflicting model or error",
+        "passed": true,
+        "actual": {
+          "observedModels": [
+            "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+          ],
+          "errors": []
+        },
+        "category": "MODEL_RECOGNIZER"
+      },
+      {
+        "name": "all eight article markers covered",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "every source article language retained",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "clause indices unique",
+        "passed": true,
+        "actual": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "category": "OUTPUT"
+      },
+      {
+        "name": "metrics consistent",
+        "passed": true,
+        "actual": {
+          "warnings": [],
+          "passCount": 2,
+          "isDegraded": false,
+          "healthScore": 30,
+          "isTruncated": false,
+          "lowRiskCount": 0,
+          "totalClauses": 9,
+          "highRiskCount": 0,
+          "mediumRiskCount": 7,
+          "llmReviewedCount": 9,
+          "missingClausesCount": 2,
+          "unfilledBlanksTotal": 0,
+          "degradedClausesCount": 0,
+          "unfilledVariablesCount": 0
+        },
+        "category": "OUTPUT"
+      },
+      {
+        "name": "score in range",
+        "passed": true,
+        "actual": 30,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "semantic review complete",
+        "passed": true,
+        "actual": {
+          "reviewed": 9,
+          "total": 9,
+          "warnings": []
+        },
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": false,
+        "category": "PARSE"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": true,
+        "actual": 3,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "requested model actually used",
+        "passed": true,
+        "actual": [
+          "qwen36-35b-a3b"
+        ],
+        "category": "MODEL"
+      },
+      {
+        "name": "requested party role retained",
+        "passed": true,
+        "actual": {
+          "expected": "buyer",
+          "actual": "buyer",
+          "source": "user_confirmed"
+        },
+        "category": "POSITION"
+      },
+      {
+        "name": "original artifact URL downloads HTML",
+        "passed": true,
+        "actual": {
+          "url": "http://192.168.100.143:3009/renders/2968429baee2a821c1bd0ae7fa9b4b98.html",
+          "status": 200,
+          "bytes": 364164,
+          "sha256": "4591343d4569bd777f50ad0b7b4166e60b80904ea9da6356e8d8e612f67c6881",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [],
+    "semanticStatus": "pending_independent_review",
+    "sourceDigestsAtStart": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDigestsAtEnd": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDrift": [],
+    "wallMs": 42575,
+    "finishedAt": "2026-10-17T15:22:30.603Z"
+  },
+  {
+    "id": "CT01-ja-docx",
+    "caseId": "CT01-ja",
+    "business": "procurement",
+    "language": "ja",
+    "format": "docx",
+    "file": "contracts/procurement/CT01-ja.docx",
+    "fixtureSha256": "4ec631fa93c2785eeb02ceeefe646bcf1078f22092cebf2db4cbbb69c584cf9f",
+    "status": "passed",
+    "startedAt": "2026-10-17T15:21:48.018Z",
+    "uploadMs": 14,
+    "sessionId": "corpus-CT01-ja-docx-1792250508133",
+    "executionId": "8a6af7e5-03b6-4e94-a9d7-de876b5c1c69",
+    "traceIds": [
+      "65a6daf0-f2d0-4a33-a841-fbbc48f686e6"
+    ],
+    "chatMs": 48336,
+    "firstEventMs": 121,
+    "streamError": null,
+    "executionStatus": "succeeded",
+    "actualCapabilities": [
+      "platform.document.contract-reviewer"
+    ],
+    "recognizerModels": [
+      "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+    ],
+    "recognizerErrors": [],
+    "semanticTopics": 3,
+    "topicsWithoutRiskSignal": [],
+    "metrics": {
+      "warnings": [],
+      "passCount": 2,
+      "isDegraded": false,
+      "healthScore": 15,
+      "isTruncated": false,
+      "lowRiskCount": 0,
+      "totalClauses": 9,
+      "highRiskCount": 0,
+      "mediumRiskCount": 7,
+      "llmReviewedCount": 9,
+      "missingClausesCount": 3,
+      "unfilledBlanksTotal": 0,
+      "degradedClausesCount": 0,
+      "unfilledVariablesCount": 0
+    },
+    "contractType": "procurement",
+    "myPosition": "buyer",
+    "observedUsage": [
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 945,
+        "outputTokens": 225
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 946,
+        "outputTokens": 610
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 964,
+        "outputTokens": 479
+      }
+    ],
+    "previousGateStatus": "passed",
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": true,
+        "actual": [
+          "platform.document.contract-reviewer"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "recognizer no conflicting model or error",
+        "passed": true,
+        "actual": {
+          "observedModels": [
+            "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+          ],
+          "errors": []
+        },
+        "category": "MODEL_RECOGNIZER"
+      },
+      {
+        "name": "all eight article markers covered",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "every source article language retained",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "clause indices unique",
+        "passed": true,
+        "actual": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "category": "OUTPUT"
+      },
+      {
+        "name": "metrics consistent",
+        "passed": true,
+        "actual": {
+          "warnings": [],
+          "passCount": 2,
+          "isDegraded": false,
+          "healthScore": 15,
+          "isTruncated": false,
+          "lowRiskCount": 0,
+          "totalClauses": 9,
+          "highRiskCount": 0,
+          "mediumRiskCount": 7,
+          "llmReviewedCount": 9,
+          "missingClausesCount": 3,
+          "unfilledBlanksTotal": 0,
+          "degradedClausesCount": 0,
+          "unfilledVariablesCount": 0
+        },
+        "category": "OUTPUT"
+      },
+      {
+        "name": "score in range",
+        "passed": true,
+        "actual": 15,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "semantic review complete",
+        "passed": true,
+        "actual": {
+          "reviewed": 9,
+          "total": 9,
+          "warnings": []
+        },
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": false,
+        "category": "PARSE"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": true,
+        "actual": 3,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "requested model actually used",
+        "passed": true,
+        "actual": [
+          "qwen36-35b-a3b"
+        ],
+        "category": "MODEL"
+      },
+      {
+        "name": "requested party role retained",
+        "passed": true,
+        "actual": {
+          "expected": "buyer",
+          "actual": "buyer",
+          "source": "user_confirmed"
+        },
+        "category": "POSITION"
+      },
+      {
+        "name": "supported business type correct",
+        "passed": true,
+        "actual": {
+          "expected": "procurement",
+          "actual": "procurement"
+        },
+        "category": "TYPE_CLASSIFICATION"
+      },
+      {
+        "name": "original artifact URL downloads HTML",
+        "passed": true,
+        "actual": {
+          "url": "http://192.168.100.143:3009/renders/257ee23b4a678d665af3931f527aebe9.html",
+          "status": 200,
+          "bytes": 382644,
+          "sha256": "dd9bd9e8ee4606a137016de0502d83abd4444f2d7d33e60b44b7618303c73211",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [],
+    "semanticStatus": "pending_independent_review",
+    "sourceDigestsAtStart": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDigestsAtEnd": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDrift": [],
+    "wallMs": 48486,
+    "finishedAt": "2026-10-17T15:22:36.504Z"
+  },
+  {
+    "id": "CT03-ja-docx",
+    "caseId": "CT03-ja",
+    "business": "nda",
+    "language": "ja",
+    "format": "docx",
+    "file": "contracts/nda/CT03-ja.docx",
+    "fixtureSha256": "b8eb860a4b1d30f03c5019f0f3d4625ac49449e7ddb8b0f040aaf0caaf566c80",
+    "status": "failed",
+    "startedAt": "2026-10-17T15:22:30.605Z",
+    "uploadMs": 6,
+    "sessionId": "corpus-CT03-ja-docx-1792250550612",
+    "executionId": "e9876978-f350-42db-800f-367f4642f336",
+    "traceIds": [
+      "4770778e-d363-442a-b9b4-ad3c1cb46a5b"
+    ],
+    "chatMs": 43890,
+    "firstEventMs": 88,
+    "streamError": null,
+    "executionStatus": "succeeded",
+    "actualCapabilities": [
+      "platform.document.contract-reviewer"
+    ],
+    "recognizerModels": [
+      "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+    ],
+    "recognizerErrors": [],
+    "semanticTopics": 0,
+    "topicsWithoutRiskSignal": [],
+    "metrics": {
+      "warnings": [
+        "批次 3 模型响应未能解析为有效 JSON 数组 (INVALID_JSON_RESPONSE)，条款 [7, 8, 9] 已降级为静态规则校验。",
+        "检测到 3 条条款未能完成大模型语义审查（已回退为静态规则校验），建议重点人工复核。"
+      ],
+      "passCount": 3,
+      "isDegraded": true,
+      "healthScore": 43,
+      "isTruncated": false,
+      "lowRiskCount": 3,
+      "totalClauses": 9,
+      "highRiskCount": 0,
+      "mediumRiskCount": 3,
+      "llmReviewedCount": 6,
+      "missingClausesCount": 3,
+      "unfilledBlanksTotal": 0,
+      "degradedClausesCount": 3,
+      "unfilledVariablesCount": 0
+    },
+    "contractType": "nda",
+    "myPosition": "buyer",
+    "observedUsage": [
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 921,
+        "outputTokens": 390
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 925,
+        "outputTokens": 349
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 949,
+        "outputTokens": 562
+      }
+    ],
+    "previousGateStatus": "failed",
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": true,
+        "actual": [
+          "platform.document.contract-reviewer"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "recognizer no conflicting model or error",
+        "passed": true,
+        "actual": {
+          "observedModels": [
+            "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+          ],
+          "errors": []
+        },
+        "category": "MODEL_RECOGNIZER"
+      },
+      {
+        "name": "all eight article markers covered",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "every source article language retained",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "clause indices unique",
+        "passed": true,
+        "actual": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "category": "OUTPUT"
+      },
+      {
+        "name": "metrics consistent",
+        "passed": true,
+        "actual": {
+          "warnings": [
+            "批次 3 模型响应未能解析为有效 JSON 数组 (INVALID_JSON_RESPONSE)，条款 [7, 8, 9] 已降级为静态规则校验。",
+            "检测到 3 条条款未能完成大模型语义审查（已回退为静态规则校验），建议重点人工复核。"
+          ],
+          "passCount": 3,
+          "isDegraded": true,
+          "healthScore": 43,
+          "isTruncated": false,
+          "lowRiskCount": 3,
+          "totalClauses": 9,
+          "highRiskCount": 0,
+          "mediumRiskCount": 3,
+          "llmReviewedCount": 6,
+          "missingClausesCount": 3,
+          "unfilledBlanksTotal": 0,
+          "degradedClausesCount": 3,
+          "unfilledVariablesCount": 0
+        },
+        "category": "OUTPUT"
+      },
+      {
+        "name": "score in range",
+        "passed": true,
+        "actual": 43,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "semantic review complete",
+        "passed": false,
+        "actual": {
+          "reviewed": 6,
+          "total": 9,
+          "warnings": [
+            "批次 3 模型响应未能解析为有效 JSON 数组 (INVALID_JSON_RESPONSE)，条款 [7, 8, 9] 已降级为静态规则校验。",
+            "检测到 3 条条款未能完成大模型语义审查（已回退为静态规则校验），建议重点人工复核。"
+          ]
+        },
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": false,
+        "category": "PARSE"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": true,
+        "actual": 3,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "requested model actually used",
+        "passed": true,
+        "actual": [
+          "qwen36-35b-a3b"
+        ],
+        "category": "MODEL"
+      },
+      {
+        "name": "supported business type correct",
+        "passed": true,
+        "actual": {
+          "expected": "nda",
+          "actual": "nda"
+        },
+        "category": "TYPE_CLASSIFICATION"
+      },
+      {
+        "name": "degraded clauses have structured diagnostic",
+        "passed": true,
+        "actual": [
+          {
+            "clauseIndex": 6,
+            "diagnostics": {
+              "attempt": 1,
+              "modelId": "qwen36-35b-a3b",
+              "elapsedMs": 7331,
+              "rawSnippet": "[\n  {\n    \"clauseIndex\": 6,\n    \"riskLevel\": \"MEDIUM\",\n    \"riskSummary\": \"条款涵盖资料返还/删除义务及法定备份例外，但未明确返还/删除的证明文件及验收标准，存在履约争议风险。\",\n    \"findings\": [\n      {\n        \"ruleId\": \"GENERAL-RISK\",\n        \"verdict\": \"MATCHED\",\n        \"evidenceQuote\": \"評価終了後30日以内に資料を返還又は削除する。\",\n        \"reason\": \"缺乏对‘返还’或‘删除",
+              "validationFailureCode": "INVALID_JSON_RESPONSE"
+            }
+          },
+          {
+            "clauseIndex": 7,
+            "diagnostics": {
+              "attempt": 1,
+              "modelId": "qwen36-35b-a3b",
+              "elapsedMs": 7331,
+              "rawSnippet": "[\n  {\n    \"clauseIndex\": 6,\n    \"riskLevel\": \"MEDIUM\",\n    \"riskSummary\": \"条款涵盖资料返还/删除义务及法定备份例外，但未明确返还/删除的证明文件及验收标准，存在履约争议风险。\",\n    \"findings\": [\n      {\n        \"ruleId\": \"GENERAL-RISK\",\n        \"verdict\": \"MATCHED\",\n        \"evidenceQuote\": \"評価終了後30日以内に資料を返還又は削除する。\",\n        \"reason\": \"缺乏对‘返还’或‘删除",
+              "validationFailureCode": "INVALID_JSON_RESPONSE"
+            }
+          },
+          {
+            "clauseIndex": 8,
+            "diagnostics": {
+              "attempt": 1,
+              "modelId": "qwen36-35b-a3b",
+              "elapsedMs": 7331,
+              "rawSnippet": "[\n  {\n    \"clauseIndex\": 6,\n    \"riskLevel\": \"MEDIUM\",\n    \"riskSummary\": \"条款涵盖资料返还/删除义务及法定备份例外，但未明确返还/删除的证明文件及验收标准，存在履约争议风险。\",\n    \"findings\": [\n      {\n        \"ruleId\": \"GENERAL-RISK\",\n        \"verdict\": \"MATCHED\",\n        \"evidenceQuote\": \"評価終了後30日以内に資料を返還又は削除する。\",\n        \"reason\": \"缺乏对‘返还’或‘删除",
+              "validationFailureCode": "INVALID_JSON_RESPONSE"
+            }
+          }
+        ],
+        "category": "DIAGNOSTICS"
+      },
+      {
+        "name": "original artifact URL downloads HTML",
+        "passed": true,
+        "actual": {
+          "url": "http://192.168.100.143:3009/renders/afd23a12d3df90fe1b9946b36de5e993.html",
+          "status": 200,
+          "bytes": 323715,
+          "sha256": "220ccd790097726eb91a3a12b59ec6d9432bd5c7f88ec2f3a966597174ed0e05",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [
+      {
+        "name": "semantic review complete",
+        "passed": false,
+        "actual": {
+          "reviewed": 6,
+          "total": 9,
+          "warnings": [
+            "批次 3 模型响应未能解析为有效 JSON 数组 (INVALID_JSON_RESPONSE)，条款 [7, 8, 9] 已降级为静态规则校验。",
+            "检测到 3 条条款未能完成大模型语义审查（已回退为静态规则校验），建议重点人工复核。"
+          ]
+        },
+        "category": "SEMANTIC_COMPLETENESS"
+      }
+    ],
+    "semanticStatus": "pending_independent_review",
+    "sourceDigestsAtStart": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDigestsAtEnd": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDrift": [],
+    "wallMs": 43941,
+    "finishedAt": "2026-10-17T15:23:14.546Z"
+  },
+  {
+    "id": "CT05-zh-ja-docx",
+    "caseId": "CT05-zh-ja",
+    "business": "development",
+    "language": "zh-ja",
+    "format": "docx",
+    "file": "contracts/development/CT05-zh-ja.docx",
+    "fixtureSha256": "19d3daf426ebae115cd2441b98b6dce2dd5cf6ce2af5b489cdef4375f1287406",
+    "status": "passed",
+    "startedAt": "2026-10-17T15:22:36.505Z",
+    "uploadMs": 6,
+    "sessionId": "corpus-CT05-zh-ja-docx-1792250556511",
+    "executionId": "2bfd638d-defc-4f29-9c8a-6cf5c13d3574",
+    "traceIds": [
+      "357d7df5-c6e0-45b5-8203-24820d0604dd"
+    ],
+    "chatMs": 44494,
+    "firstEventMs": 49,
+    "streamError": null,
+    "executionStatus": "succeeded",
+    "actualCapabilities": [
+      "platform.document.contract-reviewer"
+    ],
+    "recognizerModels": [
+      "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+    ],
+    "recognizerErrors": [],
+    "semanticTopics": 4,
+    "topicsWithoutRiskSignal": [],
+    "metrics": {
+      "warnings": [],
+      "passCount": 5,
+      "isDegraded": false,
+      "healthScore": 22,
+      "isTruncated": false,
+      "lowRiskCount": 0,
+      "totalClauses": 9,
+      "highRiskCount": 2,
+      "mediumRiskCount": 2,
+      "llmReviewedCount": 9,
+      "missingClausesCount": 3,
+      "unfilledBlanksTotal": 4,
+      "degradedClausesCount": 0,
+      "unfilledVariablesCount": 0
+    },
+    "contractType": "software_development",
+    "myPosition": "buyer",
+    "observedUsage": [
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 1036,
+        "outputTokens": 325
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 1012,
+        "outputTokens": 497
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 1032,
+        "outputTokens": 460
+      }
+    ],
+    "previousGateStatus": "passed",
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": true,
+        "actual": [
+          "platform.document.contract-reviewer"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "recognizer no conflicting model or error",
+        "passed": true,
+        "actual": {
+          "observedModels": [
+            "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+          ],
+          "errors": []
+        },
+        "category": "MODEL_RECOGNIZER"
+      },
+      {
+        "name": "all eight article markers covered",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "every source article language retained",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "clause indices unique",
+        "passed": true,
+        "actual": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "category": "OUTPUT"
+      },
+      {
+        "name": "metrics consistent",
+        "passed": true,
+        "actual": {
+          "warnings": [],
+          "passCount": 5,
+          "isDegraded": false,
+          "healthScore": 22,
+          "isTruncated": false,
+          "lowRiskCount": 0,
+          "totalClauses": 9,
+          "highRiskCount": 2,
+          "mediumRiskCount": 2,
+          "llmReviewedCount": 9,
+          "missingClausesCount": 3,
+          "unfilledBlanksTotal": 4,
+          "degradedClausesCount": 0,
+          "unfilledVariablesCount": 0
+        },
+        "category": "OUTPUT"
+      },
+      {
+        "name": "score in range",
+        "passed": true,
+        "actual": 22,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "semantic review complete",
+        "passed": true,
+        "actual": {
+          "reviewed": 9,
+          "total": 9,
+          "warnings": []
+        },
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": false,
+        "category": "PARSE"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": true,
+        "actual": 3,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "requested model actually used",
+        "passed": true,
+        "actual": [
+          "qwen36-35b-a3b"
+        ],
+        "category": "MODEL"
+      },
+      {
+        "name": "requested party role retained",
+        "passed": true,
+        "actual": {
+          "expected": "buyer",
+          "actual": "buyer",
+          "source": "user_confirmed"
+        },
+        "category": "POSITION"
+      },
+      {
+        "name": "supported business type correct",
+        "passed": true,
+        "actual": {
+          "expected": "software_development",
+          "actual": "software_development"
+        },
+        "category": "TYPE_CLASSIFICATION"
+      },
+      {
+        "name": "original artifact URL downloads HTML",
+        "passed": true,
+        "actual": {
+          "url": "http://192.168.100.143:3009/renders/541a18375ab450ae25c586a42a311c7d.html",
+          "status": 200,
+          "bytes": 384834,
+          "sha256": "762b1352bd559356cf6f1ac8a049e70537ff0101e34d8d8c47b4324711bb535e",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [],
+    "semanticStatus": "pending_independent_review",
+    "sourceDigestsAtStart": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDigestsAtEnd": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDrift": [],
+    "wallMs": 44539,
+    "finishedAt": "2026-10-17T15:23:21.044Z"
+  },
+  {
+    "id": "CT06-ja-docx",
+    "caseId": "CT06-ja",
+    "business": "lease",
+    "language": "ja",
+    "format": "docx",
+    "file": "contracts/lease/CT06-ja.docx",
+    "fixtureSha256": "0de86b74b67015263420dfb651fbe4b705340f89251e61cde78c963f4c2428af",
+    "status": "passed",
+    "startedAt": "2026-10-17T15:23:14.549Z",
+    "uploadMs": 8,
+    "sessionId": "corpus-CT06-ja-docx-1792250594558",
+    "executionId": "13eb8072-4f58-456e-96b7-0687c295abad",
+    "traceIds": [
+      "2829eddb-8107-43e7-a85f-6ec716b09beb"
+    ],
+    "chatMs": 41789,
+    "firstEventMs": 56,
+    "streamError": null,
+    "executionStatus": "succeeded",
+    "actualCapabilities": [
+      "platform.document.contract-reviewer"
+    ],
+    "recognizerModels": [
+      "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+    ],
+    "recognizerErrors": [],
+    "semanticTopics": 3,
+    "topicsWithoutRiskSignal": [
+      "risk_repairs"
+    ],
+    "metrics": {
+      "warnings": [],
+      "passCount": 4,
+      "isDegraded": false,
+      "healthScore": 58,
+      "isTruncated": false,
+      "lowRiskCount": 2,
+      "totalClauses": 9,
+      "highRiskCount": 0,
+      "mediumRiskCount": 3,
+      "llmReviewedCount": 9,
+      "missingClausesCount": 2,
+      "unfilledBlanksTotal": 0,
+      "degradedClausesCount": 0,
+      "unfilledVariablesCount": 0
+    },
+    "contractType": "lease",
+    "myPosition": "buyer",
+    "observedUsage": [
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 935,
+        "outputTokens": 251
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 930,
+        "outputTokens": 253
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 946,
+        "outputTokens": 289
+      }
+    ],
+    "previousGateStatus": "passed",
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": true,
+        "actual": [
+          "platform.document.contract-reviewer"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "recognizer no conflicting model or error",
+        "passed": true,
+        "actual": {
+          "observedModels": [
+            "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+          ],
+          "errors": []
+        },
+        "category": "MODEL_RECOGNIZER"
+      },
+      {
+        "name": "all eight article markers covered",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "every source article language retained",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "clause indices unique",
+        "passed": true,
+        "actual": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "category": "OUTPUT"
+      },
+      {
+        "name": "metrics consistent",
+        "passed": true,
+        "actual": {
+          "warnings": [],
+          "passCount": 4,
+          "isDegraded": false,
+          "healthScore": 58,
+          "isTruncated": false,
+          "lowRiskCount": 2,
+          "totalClauses": 9,
+          "highRiskCount": 0,
+          "mediumRiskCount": 3,
+          "llmReviewedCount": 9,
+          "missingClausesCount": 2,
+          "unfilledBlanksTotal": 0,
+          "degradedClausesCount": 0,
+          "unfilledVariablesCount": 0
+        },
+        "category": "OUTPUT"
+      },
+      {
+        "name": "score in range",
+        "passed": true,
+        "actual": 58,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "semantic review complete",
+        "passed": true,
+        "actual": {
+          "reviewed": 9,
+          "total": 9,
+          "warnings": []
+        },
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": false,
+        "category": "PARSE"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": true,
+        "actual": 3,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "requested model actually used",
+        "passed": true,
+        "actual": [
+          "qwen36-35b-a3b"
+        ],
+        "category": "MODEL"
+      },
+      {
+        "name": "requested party role retained",
+        "passed": true,
+        "actual": {
+          "expected": "buyer",
+          "actual": "buyer",
+          "source": "user_confirmed"
+        },
+        "category": "POSITION"
+      },
+      {
+        "name": "supported business type correct",
+        "passed": true,
+        "actual": {
+          "expected": "lease",
+          "actual": "lease"
+        },
+        "category": "TYPE_CLASSIFICATION"
+      },
+      {
+        "name": "original artifact URL downloads HTML",
+        "passed": true,
+        "actual": {
+          "url": "http://192.168.100.143:3009/renders/b86ed14b475726fead9d49e1096ab290.html",
+          "status": 200,
+          "bytes": 289513,
+          "sha256": "74a04c75e3929cb01b7e8ec6828ea64e3d6b5314e47e1b36490e6fef06bde871",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [],
+    "semanticStatus": "pending_independent_review",
+    "sourceDigestsAtStart": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDigestsAtEnd": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDrift": [],
+    "wallMs": 41836,
+    "finishedAt": "2026-10-17T15:23:56.385Z"
+  },
+  {
+    "id": "CT06-zh-docx",
+    "caseId": "CT06-zh",
+    "business": "lease",
+    "language": "zh",
+    "format": "docx",
+    "file": "contracts/lease/CT06-zh.docx",
+    "fixtureSha256": "0e6d927141ccd596b9068b7e3ff1ed2be7e3517c50b8527f53dfbddd92efd230",
+    "status": "failed",
+    "startedAt": "2026-10-17T15:23:21.045Z",
+    "uploadMs": 5,
+    "sessionId": "corpus-CT06-zh-docx-1792250601051",
+    "executionId": "f7edce7d-7ea0-4501-8acc-e9f2a9f7c893",
+    "traceIds": [
+      "a2254f6f-45e4-43ae-93c5-00583f2a0756"
+    ],
+    "chatMs": 40517,
+    "firstEventMs": 37,
+    "streamError": null,
+    "executionStatus": "succeeded",
+    "actualCapabilities": [
+      "platform.document.contract-reviewer"
+    ],
+    "recognizerModels": [
+      "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+    ],
+    "recognizerErrors": [],
+    "semanticTopics": 3,
+    "topicsWithoutRiskSignal": [],
+    "metrics": {
+      "warnings": [],
+      "passCount": 5,
+      "isDegraded": false,
+      "healthScore": 44,
+      "isTruncated": false,
+      "lowRiskCount": 0,
+      "totalClauses": 9,
+      "highRiskCount": 1,
+      "mediumRiskCount": 3,
+      "llmReviewedCount": 9,
+      "missingClausesCount": 2,
+      "unfilledBlanksTotal": 0,
+      "degradedClausesCount": 0,
+      "unfilledVariablesCount": 0
+    },
+    "contractType": "lease",
+    "myPosition": "buyer",
+    "observedUsage": [
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 901,
+        "outputTokens": 281
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 867,
+        "outputTokens": 425
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 890,
+        "outputTokens": 368
+      }
+    ],
+    "previousGateStatus": "failed",
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": true,
+        "actual": [
+          "platform.document.contract-reviewer"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "recognizer no conflicting model or error",
+        "passed": true,
+        "actual": {
+          "observedModels": [
+            "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+          ],
+          "errors": []
+        },
+        "category": "MODEL_RECOGNIZER"
+      },
+      {
+        "name": "all eight article markers covered",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "every source article language retained",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "clause indices unique",
+        "passed": true,
+        "actual": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "category": "OUTPUT"
+      },
+      {
+        "name": "metrics consistent",
+        "passed": true,
+        "actual": {
+          "warnings": [],
+          "passCount": 5,
+          "isDegraded": false,
+          "healthScore": 44,
+          "isTruncated": false,
+          "lowRiskCount": 0,
+          "totalClauses": 9,
+          "highRiskCount": 1,
+          "mediumRiskCount": 3,
+          "llmReviewedCount": 9,
+          "missingClausesCount": 2,
+          "unfilledBlanksTotal": 0,
+          "degradedClausesCount": 0,
+          "unfilledVariablesCount": 0
+        },
+        "category": "OUTPUT"
+      },
+      {
+        "name": "score in range",
+        "passed": true,
+        "actual": 44,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "semantic review complete",
+        "passed": true,
+        "actual": {
+          "reviewed": 9,
+          "total": 9,
+          "warnings": []
+        },
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": false,
+        "category": "PARSE"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": true,
+        "actual": 3,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "requested model actually used",
+        "passed": true,
+        "actual": [
+          "qwen36-35b-a3b"
+        ],
+        "category": "MODEL"
+      },
+      {
+        "name": "requested party role retained",
+        "passed": false,
+        "actual": {
+          "expected": "buyer",
+          "actual": "buyer",
+          "source": "default"
+        },
+        "category": "POSITION"
+      },
+      {
+        "name": "supported business type correct",
+        "passed": true,
+        "actual": {
+          "expected": "lease",
+          "actual": "lease"
+        },
+        "category": "TYPE_CLASSIFICATION"
+      },
+      {
+        "name": "original artifact URL downloads HTML",
+        "passed": true,
+        "actual": {
+          "url": "http://192.168.100.143:3009/renders/d4654fda7c8d5ac46a90641189575a30.html",
+          "status": 200,
+          "bytes": 328350,
+          "sha256": "58175c0a7d525eef7c3a0b2fe6fa732a4cb008b3fdb6457ac2d30b7e27c01bc7",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [
+      {
+        "name": "requested party role retained",
+        "passed": false,
+        "actual": {
+          "expected": "buyer",
+          "actual": "buyer",
+          "source": "default"
+        },
+        "category": "POSITION"
+      }
+    ],
+    "semanticStatus": "pending_independent_review",
+    "sourceDigestsAtStart": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDigestsAtEnd": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDrift": [],
+    "wallMs": 40563,
+    "finishedAt": "2026-10-17T15:24:01.608Z"
+  },
+  {
+    "id": "CT03-zh-pdf",
+    "caseId": "CT03-zh",
+    "business": "nda",
+    "language": "zh",
+    "format": "pdf",
+    "file": "contracts/nda/CT03-zh.pdf",
+    "fixtureSha256": "4efcc5c43af22ccc4639b401e36800f353f2ae7a576812ae113d6061f2df6123",
+    "status": "failed",
+    "startedAt": "2026-10-17T15:23:56.386Z",
+    "uploadMs": 6,
+    "sessionId": "corpus-CT03-zh-pdf-1792250636393",
+    "executionId": "5049f35f-4da7-4363-b6b7-8b452b0948d6",
+    "traceIds": [
+      "ae448dd4-5057-491c-befb-4ec4ef5807c2"
+    ],
+    "chatMs": 40892,
+    "firstEventMs": 61,
+    "streamError": null,
+    "executionStatus": "succeeded",
+    "actualCapabilities": [
+      "platform.document.contract-reviewer"
+    ],
+    "recognizerModels": [
+      "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+    ],
+    "recognizerErrors": [],
+    "semanticTopics": 0,
+    "topicsWithoutRiskSignal": [],
+    "metrics": {
+      "warnings": [],
+      "passCount": 4,
+      "isDegraded": false,
+      "healthScore": 36,
+      "isTruncated": false,
+      "lowRiskCount": 2,
+      "totalClauses": 9,
+      "highRiskCount": 1,
+      "mediumRiskCount": 2,
+      "llmReviewedCount": 9,
+      "missingClausesCount": 3,
+      "unfilledBlanksTotal": 0,
+      "degradedClausesCount": 0,
+      "unfilledVariablesCount": 0
+    },
+    "contractType": "procurement",
+    "myPosition": "buyer",
+    "observedUsage": [
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 889,
+        "outputTokens": 339
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 874,
+        "outputTokens": 153
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 928,
+        "outputTokens": 396
+      }
+    ],
+    "previousGateStatus": "passed",
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": true,
+        "actual": [
+          "platform.document.contract-reviewer"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "recognizer no conflicting model or error",
+        "passed": true,
+        "actual": {
+          "observedModels": [
+            "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+          ],
+          "errors": []
+        },
+        "category": "MODEL_RECOGNIZER"
+      },
+      {
+        "name": "all eight article markers covered",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "every source article language retained",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "clause indices unique",
+        "passed": true,
+        "actual": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "category": "OUTPUT"
+      },
+      {
+        "name": "metrics consistent",
+        "passed": true,
+        "actual": {
+          "warnings": [],
+          "passCount": 4,
+          "isDegraded": false,
+          "healthScore": 36,
+          "isTruncated": false,
+          "lowRiskCount": 2,
+          "totalClauses": 9,
+          "highRiskCount": 1,
+          "mediumRiskCount": 2,
+          "llmReviewedCount": 9,
+          "missingClausesCount": 3,
+          "unfilledBlanksTotal": 0,
+          "degradedClausesCount": 0,
+          "unfilledVariablesCount": 0
+        },
+        "category": "OUTPUT"
+      },
+      {
+        "name": "score in range",
+        "passed": true,
+        "actual": 36,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "semantic review complete",
+        "passed": true,
+        "actual": {
+          "reviewed": 9,
+          "total": 9,
+          "warnings": []
+        },
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": false,
+        "category": "PARSE"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": true,
+        "actual": 3,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "requested model actually used",
+        "passed": true,
+        "actual": [
+          "qwen36-35b-a3b"
+        ],
+        "category": "MODEL"
+      },
+      {
+        "name": "supported business type correct",
+        "passed": false,
+        "actual": {
+          "expected": "nda",
+          "actual": "procurement"
+        },
+        "category": "TYPE_CLASSIFICATION"
+      },
+      {
+        "name": "original artifact URL downloads HTML",
+        "passed": true,
+        "actual": {
+          "url": "http://192.168.100.143:3009/renders/5f687576167027ede63bc85bacbe4993.html",
+          "status": 200,
+          "bytes": 330103,
+          "sha256": "10f3f0405dbb8b289daae2154a295e283b4cd5016530eb793ba7f4e28a129531",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [
+      {
+        "name": "supported business type correct",
+        "passed": false,
+        "actual": {
+          "expected": "nda",
+          "actual": "procurement"
+        },
+        "category": "TYPE_CLASSIFICATION"
+      }
+    ],
+    "semanticStatus": "pending_independent_review",
+    "sourceDigestsAtStart": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDigestsAtEnd": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDrift": [],
+    "wallMs": 40945,
+    "finishedAt": "2026-10-17T15:24:37.331Z"
+  },
+  {
+    "id": "CT03-zh-ja-pdf",
+    "caseId": "CT03-zh-ja",
+    "business": "nda",
+    "language": "zh-ja",
+    "format": "pdf",
+    "file": "contracts/nda/CT03-zh-ja.pdf",
+    "fixtureSha256": "25115c4777094970517300100b539c481782accedee1609014f094e443d82e44",
+    "status": "failed",
+    "startedAt": "2026-10-17T15:24:01.611Z",
+    "uploadMs": 6,
+    "sessionId": "corpus-CT03-zh-ja-pdf-1792250641617",
+    "executionId": "76fadba7-0fb2-4fc1-ad8d-b76ef533f5ed",
+    "traceIds": [
+      "2410d532-42cd-4a04-83f5-3e7c7f84d8af"
+    ],
+    "chatMs": 38702,
+    "firstEventMs": 33,
+    "streamError": null,
+    "executionStatus": "succeeded",
+    "actualCapabilities": [
+      "platform.document.contract-reviewer"
+    ],
+    "recognizerModels": [
+      "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+    ],
+    "recognizerErrors": [],
+    "semanticTopics": 0,
+    "topicsWithoutRiskSignal": [],
+    "metrics": {
+      "warnings": [],
+      "passCount": 6,
+      "isDegraded": false,
+      "healthScore": 36,
+      "isTruncated": false,
+      "lowRiskCount": 0,
+      "totalClauses": 9,
+      "highRiskCount": 1,
+      "mediumRiskCount": 2,
+      "llmReviewedCount": 9,
+      "missingClausesCount": 3,
+      "unfilledBlanksTotal": 0,
+      "degradedClausesCount": 0,
+      "unfilledVariablesCount": 0
+    },
+    "contractType": "procurement",
+    "myPosition": "buyer",
+    "observedUsage": [
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 967,
+        "outputTokens": 500
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 964,
+        "outputTokens": 161
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 1036,
+        "outputTokens": 303
+      }
+    ],
+    "previousGateStatus": "passed",
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": true,
+        "actual": [
+          "platform.document.contract-reviewer"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "recognizer no conflicting model or error",
+        "passed": true,
+        "actual": {
+          "observedModels": [
+            "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+          ],
+          "errors": []
+        },
+        "category": "MODEL_RECOGNIZER"
+      },
+      {
+        "name": "all eight article markers covered",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "every source article language retained",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "clause indices unique",
+        "passed": true,
+        "actual": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "category": "OUTPUT"
+      },
+      {
+        "name": "metrics consistent",
+        "passed": true,
+        "actual": {
+          "warnings": [],
+          "passCount": 6,
+          "isDegraded": false,
+          "healthScore": 36,
+          "isTruncated": false,
+          "lowRiskCount": 0,
+          "totalClauses": 9,
+          "highRiskCount": 1,
+          "mediumRiskCount": 2,
+          "llmReviewedCount": 9,
+          "missingClausesCount": 3,
+          "unfilledBlanksTotal": 0,
+          "degradedClausesCount": 0,
+          "unfilledVariablesCount": 0
+        },
+        "category": "OUTPUT"
+      },
+      {
+        "name": "score in range",
+        "passed": true,
+        "actual": 36,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "semantic review complete",
+        "passed": true,
+        "actual": {
+          "reviewed": 9,
+          "total": 9,
+          "warnings": []
+        },
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": false,
+        "category": "PARSE"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": true,
+        "actual": 3,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "requested model actually used",
+        "passed": true,
+        "actual": [
+          "qwen36-35b-a3b"
+        ],
+        "category": "MODEL"
+      },
+      {
+        "name": "supported business type correct",
+        "passed": false,
+        "actual": {
+          "expected": "nda",
+          "actual": "procurement"
+        },
+        "category": "TYPE_CLASSIFICATION"
+      },
+      {
+        "name": "original artifact URL downloads HTML",
+        "passed": true,
+        "actual": {
+          "url": "http://192.168.100.143:3009/renders/07bb7db696c76c51a035c70174c65735.html",
+          "status": 200,
+          "bytes": 315295,
+          "sha256": "a2205ef86d57065d1e261f079f4bb5b3669e46b0eec37a0f928e9a2f57478be6",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [
+      {
+        "name": "supported business type correct",
+        "passed": false,
+        "actual": {
+          "expected": "nda",
+          "actual": "procurement"
+        },
+        "category": "TYPE_CLASSIFICATION"
+      }
+    ],
+    "semanticStatus": "pending_independent_review",
+    "sourceDigestsAtStart": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDigestsAtEnd": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDrift": [],
+    "wallMs": 38760,
+    "finishedAt": "2026-10-17T15:24:40.371Z"
+  },
+  {
+    "id": "CT04-ja-pdf",
+    "caseId": "CT04-ja",
+    "business": "distribution",
+    "language": "ja",
+    "format": "pdf",
+    "file": "contracts/distribution/CT04-ja.pdf",
+    "fixtureSha256": "bb40ebec0a85b9632375af5a61b01b5045c1801be5d571f4dcc3950e26a49895",
+    "status": "passed",
+    "startedAt": "2026-10-17T15:24:37.332Z",
+    "uploadMs": 6,
+    "sessionId": "corpus-CT04-ja-pdf-1792250677338",
+    "executionId": "c8cb277d-3e7e-4b58-b030-1cf51755a979",
+    "traceIds": [
+      "4be0fc93-0c09-4681-9f96-f0853401de9f"
+    ],
+    "chatMs": 38340,
+    "firstEventMs": 30,
+    "streamError": null,
+    "executionStatus": "succeeded",
+    "actualCapabilities": [
+      "platform.document.contract-reviewer"
+    ],
+    "recognizerModels": [
+      "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+    ],
+    "recognizerErrors": [],
+    "semanticTopics": 4,
+    "topicsWithoutRiskSignal": [],
+    "metrics": {
+      "warnings": [],
+      "passCount": 2,
+      "isDegraded": false,
+      "healthScore": 37,
+      "isTruncated": false,
+      "lowRiskCount": 1,
+      "totalClauses": 9,
+      "highRiskCount": 0,
+      "mediumRiskCount": 6,
+      "llmReviewedCount": 9,
+      "missingClausesCount": 2,
+      "unfilledBlanksTotal": 0,
+      "degradedClausesCount": 0,
+      "unfilledVariablesCount": 0
+    },
+    "contractType": "general",
+    "myPosition": "buyer",
+    "observedUsage": [
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 900,
+        "outputTokens": 344
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 886,
+        "outputTokens": 542
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 906,
+        "outputTokens": 417
+      }
+    ],
+    "previousGateStatus": "passed",
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": true,
+        "actual": [
+          "platform.document.contract-reviewer"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "recognizer no conflicting model or error",
+        "passed": true,
+        "actual": {
+          "observedModels": [
+            "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+          ],
+          "errors": []
+        },
+        "category": "MODEL_RECOGNIZER"
+      },
+      {
+        "name": "all eight article markers covered",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "every source article language retained",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "clause indices unique",
+        "passed": true,
+        "actual": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "category": "OUTPUT"
+      },
+      {
+        "name": "metrics consistent",
+        "passed": true,
+        "actual": {
+          "warnings": [],
+          "passCount": 2,
+          "isDegraded": false,
+          "healthScore": 37,
+          "isTruncated": false,
+          "lowRiskCount": 1,
+          "totalClauses": 9,
+          "highRiskCount": 0,
+          "mediumRiskCount": 6,
+          "llmReviewedCount": 9,
+          "missingClausesCount": 2,
+          "unfilledBlanksTotal": 0,
+          "degradedClausesCount": 0,
+          "unfilledVariablesCount": 0
+        },
+        "category": "OUTPUT"
+      },
+      {
+        "name": "score in range",
+        "passed": true,
+        "actual": 37,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "semantic review complete",
+        "passed": true,
+        "actual": {
+          "reviewed": 9,
+          "total": 9,
+          "warnings": []
+        },
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": false,
+        "category": "PARSE"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": true,
+        "actual": 3,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "requested model actually used",
+        "passed": true,
+        "actual": [
+          "qwen36-35b-a3b"
+        ],
+        "category": "MODEL"
+      },
+      {
+        "name": "original artifact URL downloads HTML",
+        "passed": true,
+        "actual": {
+          "url": "http://192.168.100.143:3009/renders/f11f9b7a3bfd9b7e1ed400b2eb5091c1.html",
+          "status": 200,
+          "bytes": 383935,
+          "sha256": "14d6380fa651f05463a1ca35d5405a6bb36efbbb10c4acb57d2d7e91e35cc9f4",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [],
+    "semanticStatus": "pending_independent_review",
+    "sourceDigestsAtStart": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDigestsAtEnd": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDrift": [],
+    "wallMs": 38394,
+    "finishedAt": "2026-10-17T15:25:15.726Z"
+  },
+  {
+    "id": "CT04-zh-ja-pdf",
+    "caseId": "CT04-zh-ja",
+    "business": "distribution",
+    "language": "zh-ja",
+    "format": "pdf",
+    "file": "contracts/distribution/CT04-zh-ja.pdf",
+    "fixtureSha256": "0bb79f6a22a3640039a4409152d69b926ed669d85a9da829d3f6a96c7d3ab54a",
+    "status": "passed",
+    "startedAt": "2026-10-17T15:24:40.373Z",
+    "uploadMs": 7,
+    "sessionId": "corpus-CT04-zh-ja-pdf-1792250680381",
+    "executionId": "81e1930f-d998-4c0f-96b4-9aa5068eef5a",
+    "traceIds": [
+      "12b9a40c-a268-4d52-a22b-8466cdfefd97"
+    ],
+    "chatMs": 45578,
+    "firstEventMs": 31,
+    "streamError": null,
+    "executionStatus": "succeeded",
+    "actualCapabilities": [
+      "platform.document.contract-reviewer"
+    ],
+    "recognizerModels": [
+      "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+    ],
+    "recognizerErrors": [],
+    "semanticTopics": 5,
+    "topicsWithoutRiskSignal": [],
+    "metrics": {
+      "warnings": [],
+      "passCount": 4,
+      "isDegraded": false,
+      "healthScore": 29,
+      "isTruncated": false,
+      "lowRiskCount": 0,
+      "totalClauses": 9,
+      "highRiskCount": 0,
+      "mediumRiskCount": 5,
+      "llmReviewedCount": 9,
+      "missingClausesCount": 3,
+      "unfilledBlanksTotal": 0,
+      "degradedClausesCount": 0,
+      "unfilledVariablesCount": 0
+    },
+    "contractType": "procurement",
+    "myPosition": "buyer",
+    "observedUsage": [
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 1006,
+        "outputTokens": 345
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 996,
+        "outputTokens": 373
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 1027,
+        "outputTokens": 340
+      }
+    ],
+    "previousGateStatus": "passed",
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": true,
+        "actual": [
+          "platform.document.contract-reviewer"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "recognizer no conflicting model or error",
+        "passed": true,
+        "actual": {
+          "observedModels": [
+            "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+          ],
+          "errors": []
+        },
+        "category": "MODEL_RECOGNIZER"
+      },
+      {
+        "name": "all eight article markers covered",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "every source article language retained",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "clause indices unique",
+        "passed": true,
+        "actual": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "category": "OUTPUT"
+      },
+      {
+        "name": "metrics consistent",
+        "passed": true,
+        "actual": {
+          "warnings": [],
+          "passCount": 4,
+          "isDegraded": false,
+          "healthScore": 29,
+          "isTruncated": false,
+          "lowRiskCount": 0,
+          "totalClauses": 9,
+          "highRiskCount": 0,
+          "mediumRiskCount": 5,
+          "llmReviewedCount": 9,
+          "missingClausesCount": 3,
+          "unfilledBlanksTotal": 0,
+          "degradedClausesCount": 0,
+          "unfilledVariablesCount": 0
+        },
+        "category": "OUTPUT"
+      },
+      {
+        "name": "score in range",
+        "passed": true,
+        "actual": 29,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "semantic review complete",
+        "passed": true,
+        "actual": {
+          "reviewed": 9,
+          "total": 9,
+          "warnings": []
+        },
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": false,
+        "category": "PARSE"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": true,
+        "actual": 3,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "requested model actually used",
+        "passed": true,
+        "actual": [
+          "qwen36-35b-a3b"
+        ],
+        "category": "MODEL"
+      },
+      {
+        "name": "known bilingual payment conflict flagged",
+        "passed": true,
+        "actual": {
+          "expectedConflict": true,
+          "levels": [
+            "MEDIUM"
+          ],
+          "generated": "中文约定30日付款，日文约定60日付款，期限冲突明显。即便中文优先，该差异仍引发重大合规与解释风险。 建议法务介入复核并协商对等条款。 中文约定30日付款，日文约定60日付款，期限冲突明显。即便中文优先，该差异仍引发重大合规与解释风险。 "
+        },
+        "category": "BILINGUAL_CONFLICT"
+      },
+      {
+        "name": "original artifact URL downloads HTML",
+        "passed": true,
+        "actual": {
+          "url": "http://192.168.100.143:3009/renders/6d95aa34d21c034367daabd4fc2fe2ef.html",
+          "status": 200,
+          "bytes": 342342,
+          "sha256": "b93ec248c6ee749d34d88ec18a977480d90e5066e426d7acbe20edb61bd81ef3",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [],
+    "semanticStatus": "pending_independent_review",
+    "sourceDigestsAtStart": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDigestsAtEnd": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDrift": [],
+    "wallMs": 45639,
+    "finishedAt": "2026-10-17T15:25:26.012Z"
+  },
+  {
+    "id": "CT05-ja-txt",
+    "caseId": "CT05-ja",
+    "business": "development",
+    "language": "ja",
+    "format": "txt",
+    "file": "contracts/development/CT05-ja.txt",
+    "fixtureSha256": "ed5e2c0df081b7c33b8048b4d44a506475bdb480750cada35fa6c5aa9358cb84",
+    "status": "passed",
+    "startedAt": "2026-10-17T15:25:15.727Z",
+    "uploadMs": 4,
+    "sessionId": "corpus-CT05-ja-txt-1792250715732",
+    "executionId": "81f7bd18-8631-490f-b7d2-2e3af71c0ab9",
+    "traceIds": [
+      "f3fd55f6-2c29-4438-995a-4631d3935075"
+    ],
+    "chatMs": 40143,
+    "firstEventMs": 13,
+    "streamError": null,
+    "executionStatus": "succeeded",
+    "actualCapabilities": [
+      "platform.document.contract-reviewer"
+    ],
+    "recognizerModels": [
+      "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+    ],
+    "recognizerErrors": [],
+    "semanticTopics": 4,
+    "topicsWithoutRiskSignal": [],
+    "metrics": {
+      "warnings": [],
+      "passCount": 2,
+      "isDegraded": false,
+      "healthScore": 0,
+      "isTruncated": false,
+      "lowRiskCount": 0,
+      "totalClauses": 9,
+      "highRiskCount": 1,
+      "mediumRiskCount": 6,
+      "llmReviewedCount": 9,
+      "missingClausesCount": 4,
+      "unfilledBlanksTotal": 2,
+      "degradedClausesCount": 0,
+      "unfilledVariablesCount": 0
+    },
+    "contractType": "software_development",
+    "myPosition": "buyer",
+    "observedUsage": [
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 921,
+        "outputTokens": 493
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 892,
+        "outputTokens": 534
+      },
+      {
+        "modelId": "qwen36-35b-a3b",
+        "inputTokens": 919,
+        "outputTokens": 448
+      }
+    ],
+    "previousGateStatus": "passed",
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": true,
+        "actual": [
+          "platform.document.contract-reviewer"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": true,
+        "actual": "succeeded",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": true,
+        "actual": null,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "recognizer no conflicting model or error",
+        "passed": true,
+        "actual": {
+          "observedModels": [
+            "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+          ],
+          "errors": []
+        },
+        "category": "MODEL_RECOGNIZER"
+      },
+      {
+        "name": "all eight article markers covered",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "every source article language retained",
+        "passed": true,
+        "actual": [],
+        "category": "PARSE"
+      },
+      {
+        "name": "clause indices unique",
+        "passed": true,
+        "actual": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "category": "OUTPUT"
+      },
+      {
+        "name": "metrics consistent",
+        "passed": true,
+        "actual": {
+          "warnings": [],
+          "passCount": 2,
+          "isDegraded": false,
+          "healthScore": 0,
+          "isTruncated": false,
+          "lowRiskCount": 0,
+          "totalClauses": 9,
+          "highRiskCount": 1,
+          "mediumRiskCount": 6,
+          "llmReviewedCount": 9,
+          "missingClausesCount": 4,
+          "unfilledBlanksTotal": 2,
+          "degradedClausesCount": 0,
+          "unfilledVariablesCount": 0
+        },
+        "category": "OUTPUT"
+      },
+      {
+        "name": "score in range",
+        "passed": true,
+        "actual": 0,
+        "category": "OUTPUT"
+      },
+      {
+        "name": "semantic review complete",
+        "passed": true,
+        "actual": {
+          "reviewed": 9,
+          "total": 9,
+          "warnings": []
+        },
+        "category": "SEMANTIC_COMPLETENESS"
+      },
+      {
+        "name": "not truncated",
+        "passed": true,
+        "actual": false,
+        "category": "PARSE"
+      },
+      {
+        "name": "business model ledger present",
+        "passed": true,
+        "actual": 3,
+        "category": "OBSERVABILITY"
+      },
+      {
+        "name": "requested model actually used",
+        "passed": true,
+        "actual": [
+          "qwen36-35b-a3b"
+        ],
+        "category": "MODEL"
+      },
+      {
+        "name": "requested party role retained",
+        "passed": true,
+        "actual": {
+          "expected": "buyer",
+          "actual": "buyer",
+          "source": "user_confirmed"
+        },
+        "category": "POSITION"
+      },
+      {
+        "name": "supported business type correct",
+        "passed": true,
+        "actual": {
+          "expected": "software_development",
+          "actual": "software_development"
+        },
+        "category": "TYPE_CLASSIFICATION"
+      },
+      {
+        "name": "original artifact URL downloads HTML",
+        "passed": true,
+        "actual": {
+          "url": "http://192.168.100.143:3009/renders/b6fd9129e55bf89e3bc1eb26964c86db.html",
+          "status": 200,
+          "bytes": 453615,
+          "sha256": "31a46673e589e63f37c99be9d9c44e3c3ee1d1a84d65ba1c216eddaf90910726",
+          "html": true
+        },
+        "category": "DELIVERY"
+      }
+    ],
+    "failures": [],
+    "semanticStatus": "pending_independent_review",
+    "sourceDigestsAtStart": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDigestsAtEnd": {
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/params/deterministic-param-resolver.service.ts": "ec912008614299e18583a41eb08b8395c593e61b9dbad94a0c65c7fa5c71bf3e",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/chat/document-prober.service.ts": "d56ee54237f56a3b98697ce882967a43bbc396c0367bbef3091f2b0d3eb4dd06",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-llm-review.service.ts": "285ecc1a08b005e9a8cd291188a08960f0ca80971ce3d864cec891b6e3ef83b6",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "ffc0ebadce8c32f0bf76db4c3109cea9a89c954afba46ea614dbf669da074802",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "529a73c4668e712a605636bd4c28b28d1af1dde14e67b1fe3eccb7301a0f020f",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+      "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+      "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+      "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "ea4434099a311613099e8096ed042a8232ffc45c29be287a3adf796336094417",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "e1dd22725559a4de7ac53b2971e912802f9f2d7d0c8a77406c6cc00f09501af2",
+      "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+    },
+    "sourceDrift": [],
+    "wallMs": 40188,
+    "finishedAt": "2026-10-17T15:25:55.915Z"
+  }
+]

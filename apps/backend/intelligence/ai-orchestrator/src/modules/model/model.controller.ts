@@ -181,6 +181,10 @@ export class ModelController {
       seed?: number;
       responseFormat?: string;
       includeDebug?: boolean;
+      timeoutMs?: number;
+      thinking?: boolean;
+      enableThinking?: boolean;
+      reasoningEffort?: 'low' | 'medium' | 'high';
     }
   ): Promise<{
     result: string;
@@ -202,7 +206,21 @@ export class ModelController {
 
     try {
       const model = this.modelService.resolveModelEntity(modelId);
-      const response = await this.modelService.callModel(modelId, body.prompt);
+      const enableThinking = body.enableThinking ?? body.thinking;
+      const reasoningOption =
+        enableThinking !== undefined
+          ? {
+              enabled: Boolean(enableThinking),
+              effort: body.reasoningEffort,
+            }
+          : undefined;
+      const modelKind = enableThinking === false ? 'auxiliary' : 'reasoning';
+      const response = await this.modelService.callModel(modelId, body.prompt, modelKind, {
+        timeoutMs: body.timeoutMs,
+        temperature: body.temperature,
+        responseFormat: body.responseFormat === 'json_object' ? 'json_object' : undefined,
+        reasoning: reasoningOption,
+      });
       return {
         result: response.content,
         usage: response.usage,

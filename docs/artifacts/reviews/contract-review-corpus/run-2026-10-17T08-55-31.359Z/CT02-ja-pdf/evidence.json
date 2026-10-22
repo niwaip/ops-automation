@@ -1,0 +1,14 @@
+{
+  "id": "CT02-ja-pdf",
+  "caseId": "CT02-ja",
+  "business": "saas",
+  "language": "ja",
+  "format": "pdf",
+  "file": "contracts/saas/CT02-ja.pdf",
+  "fixtureSha256": "0218003b02baaa7bd31d3af2cbd010abf46c7972f35c25051dcbcbd226eeeb9c",
+  "status": "error",
+  "startedAt": "2026-10-17T08:55:43.092Z",
+  "error": "Login HTTP 429",
+  "wallMs": 4,
+  "finishedAt": "2026-10-17T08:55:43.096Z"
+}

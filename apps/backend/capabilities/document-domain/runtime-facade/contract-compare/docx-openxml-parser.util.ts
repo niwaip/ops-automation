@@ -36,6 +36,48 @@ export function escapeHtml(text: string): string {
     .replace(/'/g, '&#039;');
 }
 
+export function isLikelyClauseBody(text: string): boolean {
+  if (!text) return false;
+  const t = text.trim();
+  // 1. Sentence ending punctuation (Japanese, Chinese, Western)
+  if (/[。！？；\.]$/.test(t)) return true;
+
+  // 2. Clause numbering / list marker prefix e.g. (1), 1., 一、, (一), 1)
+  if (/^(?:\d+[\.、\)]|[（\(]\d+[）\)]|[一二三四五六七八九十]+[\.、\)]|[（\(][一二三四五六七八九十]+[）\)])/.test(t)) return true;
+
+  // 3. Known contractual party subjects with topic or nominative particles:
+  // e.g. 甲は, 乙は, 甲及び乙は, 買主は, 売主は, 当社は, 受託者は, 利用者は, 甲、乙は, 甲が, 乙が
+  if (/^(?:[甲乙丙丁]|買主|売主|甲及び乙|甲および乙|甲、乙|当社|受託者|委託者|利用者|顧客|各当事者|当事者)(?:[はが]|において)/.test(t)) {
+    return true;
+  }
+
+  // 4. Topic (は) or nominative (が) particle following any substantive noun:
+  // Contract titles are noun phrases; sentences state topics (e.g. 報酬は, 代金は, 本契約は, 期間は, 費用は, 管轄は)
+  if (/^[\u4e00-\u9fa5\u30a0-\u30ff\w]{1,10}[はが]\s*/u.test(t)) {
+    return true;
+  }
+
+  // 5. Monetary amounts, rates, prices, percentages (both Kanji and Arabic numerals):
+  // e.g. 十万円, 100000円, 50%, 月額, 日額, 年額, 総額, 金一封, 金100万円
+  if (/(?:[\d0-9一二三四五六七八九十百千万億]+(?:円|ドル|元|万|%|％|割)|月額|日額|年額|総額|金[0-9一二三四五六七八九十百千万]+円?)/u.test(t)) {
+    return true;
+  }
+
+  // 6. Timeframes, deadlines, periods:
+  // e.g. 30日以内, 3か月間, 1年間, 15日前
+  if (/(?:[\d0-9一二三四五六七八九十百千万]+(?:日|月|年|時間|週間)(?:以内|間|前|後)?)/u.test(t)) {
+    return true;
+  }
+
+  // 7. Contractual operative conjugated verbs, obligations, conditions, and legal predicates:
+  // e.g. 支払う, 支払わなければならない, 負う, 定める, 解除する, とする, てはならない, 請求できる, 効力を有する, 履行する
+  if (/(?:支払[いうえお]|負[うい]|義務を|定[める]|解除[すで]|解約[すで]|通知[すで]|請求[すで]|履行[すで]|賠償[すで]|禁止[すで]|とする|てはならない|効力を有する)/u.test(t)) {
+    return true;
+  }
+
+  return false;
+}
+
 export async function parseNumberingDefinitions(zip: any): Promise<NumberingDefinitions> {
   const numFile = zip.file('word/numbering.xml');
   if (!numFile) return { numToAbstract: {}, abstractLevels: {} };
@@ -133,6 +175,7 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
     type: 'p' | 'table';
     text: string;
     fullText: string;
+    bodyHtml?: string;
     html?: string;
     hasUnderline?: boolean;
     prefix?: string;
@@ -193,61 +236,106 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
         prefix = resolveNumberingPrefix(numCounters, numId, ilvl, numDefs);
       }
 
-      const runRegex = /<w:r(?:\s[^>]*)?>([\s\S]*?)<\/w:r>/g;
-      let rM: RegExpExecArray | null;
-      let pText = '';
-      let pHtml = '';
-      let hasUnderline = false;
-      let boldCount = 0;
-      let totalRuns = 0;
+      interface ParagraphSegment {
+        text: string;
+        html: string;
+        boldCount: number;
+        totalRuns: number;
+        hasUnderline: boolean;
+      }
 
-      while ((rM = runRegex.exec(inner)) !== null) {
-        const runBody = rM[1];
-        const isRunBold = /<w:b(\/|\s[^>]*\/|\s+w:val="(?!0|false|none)[^"]*")>/.test(runBody);
-        const isRunUnderline = /<w:u\s+w:val="(?!none)[^"]*"/.test(runBody);
-        if (isRunUnderline) hasUnderline = true;
+      const segments: ParagraphSegment[] = [];
+      let currentSeg: ParagraphSegment = {
+        text: '',
+        html: '',
+        boldCount: 0,
+        totalRuns: 0,
+        hasUnderline: false,
+      };
 
-        const tRegex = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g;
-        let tM: RegExpExecArray | null;
-        let runText = '';
-        while ((tM = tRegex.exec(runBody)) !== null) {
-          runText += decodeXmlEntities(tM[1]);
+      const tokenRegex = /(<w:r(?:\s[^>]*)?>([\s\S]*?)<\/w:r>|<w:br(?:\s[^>]*)?\/?>|<w:cr(?:\s[^>]*)?\/?>)/g;
+      let tM: RegExpExecArray | null;
+
+      while ((tM = tokenRegex.exec(inner)) !== null) {
+        if (tM[0].startsWith('<w:br') || tM[0].startsWith('<w:cr')) {
+          segments.push(currentSeg);
+          currentSeg = {
+            text: '',
+            html: '',
+            boldCount: 0,
+            totalRuns: 0,
+            hasUnderline: false,
+          };
+          continue;
         }
 
-        if (runText) {
-          totalRuns++;
-          pText += runText;
-          const safe = escapeHtml(runText);
-          if (isRunBold) {
-            boldCount++;
-            pHtml += `<strong>${safe}</strong>`;
-          } else {
-            pHtml += safe;
+        const runBody = tM[2];
+        const isRunBold = /<w:b(\/|\s[^>]*\/|\s+w:val="(?!0|false|none)[^"]*")>/.test(runBody);
+        const isRunUnderline = /<w:u\s+w:val="(?!none)[^"]*"/.test(runBody);
+        if (isRunUnderline) currentSeg.hasUnderline = true;
+
+        const innerTokenRegex = /(<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:br(?:\s[^>]*)?\/?>|<w:cr(?:\s[^>]*)?\/?>)/g;
+        let itM: RegExpExecArray | null;
+
+        while ((itM = innerTokenRegex.exec(runBody)) !== null) {
+          if (itM[0].startsWith('<w:br') || itM[0].startsWith('<w:cr')) {
+            segments.push(currentSeg);
+            currentSeg = {
+              text: '',
+              html: '',
+              boldCount: 0,
+              totalRuns: 0,
+              hasUnderline: false,
+            };
+            continue;
+          }
+
+          const rawRunText = itM[2];
+          const runText = decodeXmlEntities(rawRunText);
+          if (runText) {
+            currentSeg.totalRuns++;
+            currentSeg.text += runText;
+            const safe = escapeHtml(runText);
+            if (isRunBold) {
+              currentSeg.boldCount++;
+              currentSeg.html += `<strong>${safe}</strong>`;
+            } else {
+              currentSeg.html += safe;
+            }
           }
         }
       }
+      segments.push(currentSeg);
 
-      const trimmedText = pText.trim();
-      if (trimmedText) {
-        const isBold = totalRuns > 0 && boldCount >= totalRuns * 0.8;
-        const fullText = prefix ? `${prefix}${trimmedText}` : trimmedText;
-        const fullHtml = prefix ? `<strong>${escapeHtml(prefix)}</strong>${pHtml.trim()}` : pHtml.trim();
-        const isJp = /[\u3040-\u309F\u30A0-\u30FF]/.test(trimmedText);
+      segments.forEach((seg, sIdx) => {
+        const trimmedText = seg.text.trim();
+        if (!trimmedText) return;
+
+        const segPrefix = sIdx === 0 ? prefix : '';
+        const isBold = seg.totalRuns > 0 && seg.boldCount >= seg.totalRuns * 0.8;
+        const fullText = segPrefix ? `${segPrefix}${trimmedText}` : trimmedText;
+        const bodyHtml = seg.html.trim();
+        const fullHtml = segPrefix ? `<strong>${escapeHtml(segPrefix)}</strong>${bodyHtml}` : bodyHtml;
+        const hasJpChars = /[\u3040-\u309F\u30A0-\u30FF]/.test(trimmedText);
+        const hasChineseChars = /[\u4e00-\u9fa5]/.test(trimmedText);
+        const hasEnOrWestern = !hasChineseChars && /[a-zA-Z]{2,}/.test(trimmedText);
+        const isJp = hasJpChars || hasEnOrWestern;
 
         rawElements.push({
           type: 'p',
           text: trimmedText,
           fullText,
+          bodyHtml,
           html: fullHtml,
-          hasUnderline,
-          prefix: prefix ? prefix.trim() : undefined,
+          hasUnderline: seg.hasUnderline,
+          prefix: segPrefix ? segPrefix.trim() : undefined,
           jc,
           ilvl,
-          numId,
+          numId: sIdx === 0 ? numId : undefined,
           isBold,
           isJp,
         });
-      }
+      });
     }
   }
 
@@ -265,9 +353,19 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
     chNum?: string,
     chTitle?: string
   ) => {
-    if (currentClause && (currentClause.content.trim() || (currentClause.blocks && currentClause.blocks.length > 0))) {
-      currentClause.content = currentClause.content.trim();
-      clauses.push(currentClause);
+    if (currentClause) {
+      if (currentClause.content.trim()) {
+        currentClause.content = currentClause.content.trim();
+        clauses.push(currentClause);
+      } else if (currentClause.titleJa?.trim()) {
+        currentClause.content = currentClause.title.trim()
+          ? `${currentClause.title.trim()}\n${currentClause.titleJa.trim()}`
+          : currentClause.titleJa.trim();
+        clauses.push(currentClause);
+      } else if (currentClause.title.trim()) {
+        currentClause.content = currentClause.title.trim();
+        clauses.push(currentClause);
+      }
     }
     currentClause = {
       id: `clause-${clauseIndex++}`,
@@ -290,7 +388,9 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
   const hasFormalArticles = rawElements.some((el) => {
     if (el.type !== 'p') return false;
     const c = cleanMarkdownFormatting(el.fullText || el.text);
-    return articleRegex.test(c) && !/[。！？；]$/.test(c);
+    const isFormalStart =
+      /^\s*(?:第\s*[一二三四五六七八九十百千万\d]+\s*条|(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b)/i.test(c);
+    return isFormalStart || (articleRegex.test(c) && !/[。！？；]$/.test(c));
   });
 
   let blockIdx = 1;
@@ -328,40 +428,83 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
     const isChapter = chapterRegex.test(cleanText) && cleanText.length < 50 && !/[。！？；]$/.test(cleanText);
 
     // Only top level in Word numbering (ilvl === 0) or unnumbered article headings qualify
+    const isFormalArticleStart =
+      /^\s*(?:第\s*[一二三四五六七八九十百千万\d]+\s*条|(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b)/i.test(cleanText);
     const isTopLevelNumbered =
       Boolean(el.numId) && el.ilvl === 0 && cleanText.length < 60 && !/[。！？；]$/.test(cleanText);
     const matchesArticleText =
-      !el.numId && articleRegex.test(cleanText) && cleanText.length < 60 && !/[。！？；]$/.test(cleanText);
+      !el.numId &&
+      (isFormalArticleStart || (articleRegex.test(cleanText) && cleanText.length < 60 && !/[。！？；]$/.test(cleanText)));
     const isArticle = !isAnnex && !isChapter && (isTopLevelNumbered || matchesArticleText);
 
     if (isAnnex) {
       currentChapterNum = '附件';
       currentChapterTitle = cleanText;
+      let annexSecondaryText: string | undefined;
+      let annexSecondaryHtml: string | undefined;
+      if (
+        !el.isJp &&
+        nextEl &&
+        nextEl.type === 'p' &&
+        nextEl.isJp &&
+        nextEl.fullText.length <= 40 &&
+        !annexRegex.test(nextEl.fullText) &&
+        !isLikelyClauseBody(nextEl.fullText)
+      ) {
+        annexSecondaryText = nextEl.fullText;
+        annexSecondaryHtml = nextEl.html;
+        i++;
+      }
       pushNewClause(cleanText, '附件', 1, currentChapterNum, currentChapterTitle);
+      if (annexSecondaryText) {
+        currentClause!.titleJa = annexSecondaryText.replace(/^[:：\s]+|[:：\s]+$/g, '');
+      }
       currentClause!.blocks!.push({
         id: `blk-${blockIdx++}`,
         type: 'heading',
         primaryText: cleanText,
         primaryHtml: el.html,
+        secondaryText: annexSecondaryText,
+        secondaryHtml: annexSecondaryHtml,
         isBold: true,
       });
-      currentClause!.content += cleanText;
+      currentClause!.content += cleanText + (annexSecondaryText ? `\n${annexSecondaryText}` : '');
       continue;
     }
 
     if (isChapter) {
       currentChapterNum = cleanText.split(/\s+/)[0];
       currentChapterTitle = cleanText;
+      let chapterSecondaryText: string | undefined;
+      let chapterSecondaryHtml: string | undefined;
+      if (
+        !el.isJp &&
+        nextEl &&
+        nextEl.type === 'p' &&
+        nextEl.isJp &&
+        nextEl.fullText.length <= 40 &&
+        !chapterRegex.test(nextEl.fullText) &&
+        !isLikelyClauseBody(nextEl.fullText)
+      ) {
+        chapterSecondaryText = nextEl.fullText;
+        chapterSecondaryHtml = nextEl.html;
+        i++;
+      }
       if (!hasFormalArticles) {
         pushNewClause(cleanText, currentChapterNum, 1, currentChapterNum, currentChapterTitle);
+        if (chapterSecondaryText) {
+          currentClause!.titleJa = chapterSecondaryText.replace(/^[:：\s]+|[:：\s]+$/g, '');
+        }
         currentClause!.blocks!.push({
           id: `blk-${blockIdx++}`,
           type: 'heading',
           primaryText: cleanText,
           primaryHtml: el.html,
+          secondaryText: chapterSecondaryText,
+          secondaryHtml: chapterSecondaryHtml,
           isBold: true,
         });
-        currentClause!.content += cleanText;
+        currentClause!.content += cleanText + (chapterSecondaryText ? `\n${chapterSecondaryText}` : '');
       }
       continue;
     }
@@ -369,6 +512,7 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
     if (isArticle) {
       let title = cleanText;
       let num = '';
+      let inlineBodyText: string | undefined;
       const matchFormal = cleanText.match(
         /^\s*(第\s*[一二三四五六七八九十百千万\d]+\s*条|(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b)\s*(.*)$/i
       );
@@ -377,7 +521,22 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
       );
       if (matchFormal) {
         num = matchFormal[1].trim();
-        title = matchFormal[2]?.trim().replace(/^[:：\s]+|[:：\s]+$/g, '') || num;
+        const afterNum = matchFormal[2]?.trim() || '';
+        const splitColon = afterNum.match(/^(\[[^\]]+\]\s*)?([^:：\n]{1,40}[:：])\s*([\s\S]+)$/);
+        if (splitColon) {
+          title = ((splitColon[1] || '') + splitColon[2]).trim().replace(/^[:：\s]+|[:：\s]+$/g, '');
+          inlineBodyText = splitColon[3].trim();
+        } else if (afterNum.length > 50 && /[。！？；]$/.test(afterNum)) {
+          const firstSentence = afterNum.match(/^(\[[^\]]+\]\s*)?([^。！？；\n]{1,40}[。！？；\s])\s*([\s\S]+)$/);
+          if (firstSentence) {
+            title = ((firstSentence[1] || '') + firstSentence[2]).trim().replace(/^[:：\s]+|[:：\s]+$/g, '');
+            inlineBodyText = firstSentence[3].trim();
+          } else {
+            title = afterNum.replace(/^[:：\s]+|[:：\s]+$/g, '') || num;
+          }
+        } else {
+          title = afterNum.replace(/^[:：\s]+|[:：\s]+$/g, '') || num;
+        }
       } else if (matchNum) {
         num = matchNum[1].trim();
         title = matchNum[2]?.trim().replace(/^[:：\s]+|[:：\s]+$/g, '') || cleanText;
@@ -394,15 +553,44 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
         currentChapterTitle = '合同正文条款';
       }
 
+      let headingSecondaryText: string | undefined;
+      let headingSecondaryHtml: string | undefined;
+      if (
+        !el.isJp &&
+        nextEl &&
+        nextEl.type === 'p' &&
+        nextEl.isJp &&
+        nextEl.fullText.length <= 40 &&
+        !articleRegex.test(nextEl.fullText) &&
+        !isLikelyClauseBody(nextEl.fullText)
+      ) {
+        headingSecondaryText = nextEl.fullText;
+        headingSecondaryHtml = nextEl.html;
+        i++; // Consume paired Japanese heading so it is not emitted as a standalone 15px paragraph
+      }
+
       pushNewClause(title, num, 2, currentChapterNum, currentChapterTitle);
+      if (headingSecondaryText) {
+        currentClause!.titleJa = headingSecondaryText.replace(/^[:：\s]+|[:：\s]+$/g, '');
+      }
       currentClause!.blocks!.push({
         id: `blk-${blockIdx++}`,
         type: 'heading',
-        primaryText: cleanText,
+        primaryText: title,
         primaryHtml: el.html,
+        secondaryText: headingSecondaryText,
+        secondaryHtml: headingSecondaryHtml,
         isBold: true,
       });
-      currentClause!.content += cleanText;
+      if (inlineBodyText) {
+        currentClause!.blocks!.push({
+          id: `blk-${blockIdx++}`,
+          type: 'paragraph',
+          primaryText: inlineBodyText,
+          primaryHtml: escapeHtml(inlineBodyText),
+        });
+        currentClause!.content += inlineBodyText;
+      }
       continue;
     }
 
@@ -412,10 +600,10 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
       currentClause!.blocks!.push({
         id: `blk-${blockIdx++}`,
         type: 'bilingual_pair',
-        primaryText: el.fullText,
-        secondaryText: nextEl.fullText,
-        primaryHtml: el.html,
-        secondaryHtml: nextEl.html,
+        primaryText: el.prefix ? el.text : el.fullText,
+        secondaryText: nextEl.prefix ? nextEl.text : nextEl.fullText,
+        primaryHtml: el.prefix ? (el.bodyHtml || el.html) : el.html,
+        secondaryHtml: nextEl.prefix ? (nextEl.bodyHtml || nextEl.html) : nextEl.html,
         primaryLang: 'zh',
         secondaryLang: 'ja',
         prefix: el.prefix,
@@ -432,8 +620,8 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
     currentClause!.blocks!.push({
       id: `blk-${blockIdx++}`,
       type: el.prefix ? 'list_item' : 'paragraph',
-      primaryText: el.fullText,
-      primaryHtml: el.html,
+      primaryText: el.prefix ? el.text : el.fullText,
+      primaryHtml: el.prefix ? (el.bodyHtml || el.html) : el.html,
       prefix: el.prefix,
       isBold: el.isBold,
       hasUnderline: el.hasUnderline,
@@ -444,8 +632,16 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
 
   if (currentClause) {
     const finalClause = currentClause as ContractClauseNode;
-    if (finalClause.content.trim() || (finalClause.blocks && finalClause.blocks.length > 0)) {
+    if (finalClause.content.trim()) {
       finalClause.content = finalClause.content.trim();
+      clauses.push(finalClause);
+    } else if (finalClause.titleJa?.trim()) {
+      finalClause.content = finalClause.title.trim()
+        ? `${finalClause.title.trim()}\n${finalClause.titleJa.trim()}`
+        : finalClause.titleJa.trim();
+      clauses.push(finalClause);
+    } else if (finalClause.title.trim()) {
+      finalClause.content = finalClause.title.trim();
       clauses.push(finalClause);
     }
   }

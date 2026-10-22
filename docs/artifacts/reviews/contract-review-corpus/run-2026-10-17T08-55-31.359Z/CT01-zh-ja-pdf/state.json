@@ -1,0 +1,14 @@
+{
+  "id": "CT01-zh-ja-pdf",
+  "caseId": "CT01-zh-ja",
+  "business": "procurement",
+  "language": "zh-ja",
+  "format": "pdf",
+  "file": "contracts/procurement/CT01-zh-ja.pdf",
+  "fixtureSha256": "35bbe35dea84d856c1a39d9300e075eb3a7b10f73d25d365878fde197d190eb3",
+  "status": "error",
+  "startedAt": "2026-10-17T08:55:43.086Z",
+  "error": "Login HTTP 429",
+  "wallMs": 6,
+  "finishedAt": "2026-10-17T08:55:43.092Z"
+}

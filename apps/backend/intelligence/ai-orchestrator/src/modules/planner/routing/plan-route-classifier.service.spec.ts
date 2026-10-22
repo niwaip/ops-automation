@@ -69,10 +69,10 @@ describe('PlanRouteClassifierService document routing', () => {
     ).toBe(false);
   });
 
-  it('routes guide and inquiry requests to single_skill to allow native model guidance', () => {
-    expect(service.classifyRoute('如何使用知识库进行多文档对比？')).toBe('single_skill');
-    expect(service.classifyRoute('什么是工作空间权限？')).toBe('single_skill');
-    expect(service.classifyRoute('如何配置邮件集成？')).toBe('single_skill');
+  it('routes guide and inquiry requests to conversational_chat to allow native model guidance', () => {
+    expect(service.classifyRoute('如何使用知识库进行多文档对比？')).toBe('conversational_chat');
+    expect(service.classifyRoute('什么是工作空间权限？')).toBe('conversational_chat');
+    expect(service.classifyRoute('如何配置邮件集成？')).toBe('conversational_chat');
   });
 
   it('preserves deterministic plan routing for explicit slash commands even when inquiry terms like "安装方法" are present', () => {

@@ -1,0 +1,1883 @@
+[
+  {
+    "id": "CT01-ja-docx",
+    "caseId": "CT01-ja",
+    "business": "procurement",
+    "language": "ja",
+    "format": "docx",
+    "file": "contracts/procurement/CT01-ja.docx",
+    "fixtureSha256": "4ec631fa93c2785eeb02ceeefe646bcf1078f22092cebf2db4cbbb69c584cf9f",
+    "status": "failed",
+    "startedAt": "2026-10-17T08:55:31.375Z",
+    "uploadMs": 18,
+    "sessionId": "corpus-CT01-ja-docx-1792227331576",
+    "executionId": "2f4030cd-2096-4136-922d-72702c174ee5",
+    "traceIds": [
+      "0b11b410-001a-4b93-b9c7-945c5be5e64a"
+    ],
+    "chatMs": 1337,
+    "firstEventMs": 118,
+    "streamError": null,
+    "executionStatus": "failed",
+    "actualCapabilities": [
+      "platform.document.contract-comparator"
+    ],
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "semanticStatus": "not_assessable",
+    "wallMs": 1552,
+    "finishedAt": "2026-10-17T08:55:32.927Z"
+  },
+  {
+    "id": "CT01-zh-docx",
+    "caseId": "CT01-zh",
+    "business": "procurement",
+    "language": "zh",
+    "format": "docx",
+    "file": "contracts/procurement/CT01-zh.docx",
+    "fixtureSha256": "4ba1e18e5c2d8011c62ccc04023dd7413c54a88265ee8a87495549406d550711",
+    "status": "failed",
+    "startedAt": "2026-10-17T08:55:31.384Z",
+    "uploadMs": 17,
+    "sessionId": "corpus-CT01-zh-docx-1792227331572",
+    "executionId": "dacc687d-6403-4dea-98f5-c60eae0f7fc2",
+    "traceIds": [
+      "fe511ea3-d654-4d61-b4c3-637a4498a16d"
+    ],
+    "chatMs": 2358,
+    "firstEventMs": 121,
+    "streamError": null,
+    "executionStatus": "failed",
+    "actualCapabilities": [
+      "platform.document.contract-comparator"
+    ],
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "semanticStatus": "not_assessable",
+    "wallMs": 2565,
+    "finishedAt": "2026-10-17T08:55:33.949Z"
+  },
+  {
+    "id": "CT01-zh-ja-docx",
+    "caseId": "CT01-zh-ja",
+    "business": "procurement",
+    "language": "zh-ja",
+    "format": "docx",
+    "file": "contracts/procurement/CT01-zh-ja.docx",
+    "fixtureSha256": "0a9570336a306adb01227ac24e1256ab4ee153ea39976e368d3dbac6e54b3ad0",
+    "status": "failed",
+    "startedAt": "2026-10-17T08:55:32.928Z",
+    "uploadMs": 7,
+    "sessionId": "corpus-CT01-zh-ja-docx-1792227332999",
+    "executionId": "1b215bdb-e903-45a2-b0f4-d7ea07e94139",
+    "traceIds": [
+      "646db24b-5d1c-4ec8-92f8-05d35fb67ad9"
+    ],
+    "chatMs": 1181,
+    "firstEventMs": 44,
+    "streamError": null,
+    "executionStatus": "failed",
+    "actualCapabilities": [
+      "platform.document.contract-comparator"
+    ],
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "semanticStatus": "not_assessable",
+    "wallMs": 1279,
+    "finishedAt": "2026-10-17T08:55:34.207Z"
+  },
+  {
+    "id": "CT02-ja-docx",
+    "caseId": "CT02-ja",
+    "business": "saas",
+    "language": "ja",
+    "format": "docx",
+    "file": "contracts/saas/CT02-ja.docx",
+    "fixtureSha256": "0891e5612343b1ad6411f269883b8b70ad7a228c4f20c1d98e0c7d13c09a767a",
+    "status": "failed",
+    "startedAt": "2026-10-17T08:55:33.949Z",
+    "uploadMs": 9,
+    "sessionId": "corpus-CT02-ja-docx-1792227334028",
+    "executionId": "39522da6-6e54-41b0-9347-b1270b590a34",
+    "traceIds": [
+      "77362a17-56fd-46dc-85ca-6f62f5ac061d"
+    ],
+    "chatMs": 1201,
+    "firstEventMs": 43,
+    "streamError": null,
+    "executionStatus": "failed",
+    "actualCapabilities": [
+      "platform.document.contract-comparator"
+    ],
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "semanticStatus": "not_assessable",
+    "wallMs": 1301,
+    "finishedAt": "2026-10-17T08:55:35.250Z"
+  },
+  {
+    "id": "CT02-zh-docx",
+    "caseId": "CT02-zh",
+    "business": "saas",
+    "language": "zh",
+    "format": "docx",
+    "file": "contracts/saas/CT02-zh.docx",
+    "fixtureSha256": "218cfaf277eb0480768d8b26d8cac7c8f871cafec824b4ae0d7a1527165152d8",
+    "status": "failed",
+    "startedAt": "2026-10-17T08:55:34.208Z",
+    "uploadMs": 6,
+    "sessionId": "corpus-CT02-zh-docx-1792227334280",
+    "executionId": "bc82a14e-9efa-46da-8b14-416404e1692b",
+    "traceIds": [
+      "b5c48d16-c3d7-4413-9af4-003c65e3a3fd"
+    ],
+    "chatMs": 1135,
+    "firstEventMs": 33,
+    "streamError": null,
+    "executionStatus": "failed",
+    "actualCapabilities": [
+      "platform.document.contract-comparator"
+    ],
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "semanticStatus": "not_assessable",
+    "wallMs": 1227,
+    "finishedAt": "2026-10-17T08:55:35.435Z"
+  },
+  {
+    "id": "CT02-zh-ja-docx",
+    "caseId": "CT02-zh-ja",
+    "business": "saas",
+    "language": "zh-ja",
+    "format": "docx",
+    "file": "contracts/saas/CT02-zh-ja.docx",
+    "fixtureSha256": "722fb8cfcdf5ae2930227eedcbfbbda225baea561d5a66f3ec9080aaac547fe3",
+    "status": "failed",
+    "startedAt": "2026-10-17T08:55:35.250Z",
+    "uploadMs": 7,
+    "sessionId": "corpus-CT02-zh-ja-docx-1792227335320",
+    "executionId": "8dc73f94-91df-48b4-ab7a-4869c2f30d8e",
+    "traceIds": [
+      "d9914888-c8a6-4214-9a10-db3ff44bb69c"
+    ],
+    "chatMs": 1279,
+    "firstEventMs": 37,
+    "streamError": null,
+    "executionStatus": "failed",
+    "actualCapabilities": [
+      "platform.document.contract-comparator"
+    ],
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "semanticStatus": "not_assessable",
+    "wallMs": 1365,
+    "finishedAt": "2026-10-17T08:55:36.615Z"
+  },
+  {
+    "id": "CT03-ja-docx",
+    "caseId": "CT03-ja",
+    "business": "nda",
+    "language": "ja",
+    "format": "docx",
+    "file": "contracts/nda/CT03-ja.docx",
+    "fixtureSha256": "b8eb860a4b1d30f03c5019f0f3d4625ac49449e7ddb8b0f040aaf0caaf566c80",
+    "status": "failed",
+    "startedAt": "2026-10-17T08:55:35.436Z",
+    "uploadMs": 8,
+    "sessionId": "corpus-CT03-ja-docx-1792227335508",
+    "executionId": "469a8909-7d4b-4446-8f9d-8d4f8e3f3c1b",
+    "traceIds": [
+      "1837003c-80a8-4ebf-9828-ee4bc528d5de"
+    ],
+    "chatMs": 1168,
+    "firstEventMs": 59,
+    "streamError": null,
+    "executionStatus": "failed",
+    "actualCapabilities": [
+      "platform.document.contract-comparator"
+    ],
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "semanticStatus": "not_assessable",
+    "wallMs": 1252,
+    "finishedAt": "2026-10-17T08:55:36.688Z"
+  },
+  {
+    "id": "CT03-zh-docx",
+    "caseId": "CT03-zh",
+    "business": "nda",
+    "language": "zh",
+    "format": "docx",
+    "file": "contracts/nda/CT03-zh.docx",
+    "fixtureSha256": "facc27fb5c7f321d7e106b915de5217a791c9316f3b2d612b6650c6a1cb037bc",
+    "status": "failed",
+    "startedAt": "2026-10-17T08:55:36.615Z",
+    "uploadMs": 5,
+    "sessionId": "corpus-CT03-zh-docx-1792227336699",
+    "executionId": "a764a49d-8ae6-4a45-8937-ce9146f50e46",
+    "traceIds": [
+      "e1fb8b89-04fd-403a-91e8-f2fa6b31749e"
+    ],
+    "chatMs": 1283,
+    "firstEventMs": 85,
+    "streamError": null,
+    "executionStatus": "failed",
+    "actualCapabilities": [
+      "platform.document.contract-comparator"
+    ],
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "semanticStatus": "not_assessable",
+    "wallMs": 1497,
+    "finishedAt": "2026-10-17T08:55:38.112Z"
+  },
+  {
+    "id": "CT03-zh-ja-docx",
+    "caseId": "CT03-zh-ja",
+    "business": "nda",
+    "language": "zh-ja",
+    "format": "docx",
+    "file": "contracts/nda/CT03-zh-ja.docx",
+    "fixtureSha256": "b93d92774bc38d722da50cc54cbd22daba09c957890be863be2a6981792a1175",
+    "status": "failed",
+    "startedAt": "2026-10-17T08:55:36.689Z",
+    "uploadMs": 5,
+    "sessionId": "corpus-CT03-zh-ja-docx-1792227336754",
+    "executionId": "237b4092-e327-4e81-ade1-1449547b0e48",
+    "traceIds": [
+      "9ac9c18d-3ee3-4c8a-be9b-fdb4cc0d74f2"
+    ],
+    "chatMs": 1218,
+    "firstEventMs": 55,
+    "streamError": null,
+    "executionStatus": "failed",
+    "actualCapabilities": [
+      "platform.document.contract-comparator"
+    ],
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "semanticStatus": "not_assessable",
+    "wallMs": 1428,
+    "finishedAt": "2026-10-17T08:55:38.117Z"
+  },
+  {
+    "id": "CT04-zh-docx",
+    "caseId": "CT04-zh",
+    "business": "distribution",
+    "language": "zh",
+    "format": "docx",
+    "file": "contracts/distribution/CT04-zh.docx",
+    "fixtureSha256": "d3b0764f08e62255ffd1a4c347a846f6c9245d1076ea5c05da0c48e32114a361",
+    "status": "failed",
+    "startedAt": "2026-10-17T08:55:38.118Z",
+    "uploadMs": 5,
+    "sessionId": "corpus-CT04-zh-docx-1792227338322",
+    "executionId": "60f254c4-4120-42f6-8410-b67497035699",
+    "traceIds": [
+      "edc7f87f-700e-4671-a617-7182c513e9d0"
+    ],
+    "chatMs": 1222,
+    "firstEventMs": 54,
+    "streamError": null,
+    "executionStatus": "failed",
+    "actualCapabilities": [
+      "platform.document.contract-comparator"
+    ],
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "semanticStatus": "not_assessable",
+    "wallMs": 1450,
+    "finishedAt": "2026-10-17T08:55:39.568Z"
+  },
+  {
+    "id": "CT04-ja-docx",
+    "caseId": "CT04-ja",
+    "business": "distribution",
+    "language": "ja",
+    "format": "docx",
+    "file": "contracts/distribution/CT04-ja.docx",
+    "fixtureSha256": "e98f75b6af77c37c6995d49a82fa42994c0149b373fb9e35727c7b87db0039ef",
+    "status": "failed",
+    "startedAt": "2026-10-17T08:55:38.114Z",
+    "uploadMs": 8,
+    "sessionId": "corpus-CT04-ja-docx-1792227338326",
+    "executionId": "1172c90b-511a-4c7c-90db-e6be49c12744",
+    "traceIds": [
+      "e9d40de5-6e67-45c6-b581-b3cdd4ec89c1"
+    ],
+    "chatMs": 2217,
+    "firstEventMs": 51,
+    "streamError": null,
+    "executionStatus": "failed",
+    "actualCapabilities": [
+      "platform.document.contract-comparator"
+    ],
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "semanticStatus": "not_assessable",
+    "wallMs": 2448,
+    "finishedAt": "2026-10-17T08:55:40.562Z"
+  },
+  {
+    "id": "CT04-zh-ja-docx",
+    "caseId": "CT04-zh-ja",
+    "business": "distribution",
+    "language": "zh-ja",
+    "format": "docx",
+    "file": "contracts/distribution/CT04-zh-ja.docx",
+    "fixtureSha256": "36654894432dd0020155522bca16be6045ea17d71a3f615ef4d01c897f895a31",
+    "status": "failed",
+    "startedAt": "2026-10-17T08:55:39.569Z",
+    "uploadMs": 7,
+    "sessionId": "corpus-CT04-zh-ja-docx-1792227339667",
+    "executionId": "fb7a0eeb-e8e3-49c2-85fc-eac748f39638",
+    "traceIds": [
+      "0d1b5ea2-9565-4dae-88ed-c641ca09b982"
+    ],
+    "chatMs": 1652,
+    "firstEventMs": 35,
+    "streamError": null,
+    "executionStatus": "failed",
+    "actualCapabilities": [
+      "platform.document.contract-comparator"
+    ],
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "semanticStatus": "not_assessable",
+    "wallMs": 1776,
+    "finishedAt": "2026-10-17T08:55:41.345Z"
+  },
+  {
+    "id": "CT05-ja-docx",
+    "caseId": "CT05-ja",
+    "business": "development",
+    "language": "ja",
+    "format": "docx",
+    "file": "contracts/development/CT05-ja.docx",
+    "fixtureSha256": "b86a00c5e9d9fa676fdb241647a0dc4987fe191ff3b9c9e8fb7a645b20394b85",
+    "status": "failed",
+    "startedAt": "2026-10-17T08:55:40.562Z",
+    "uploadMs": 6,
+    "sessionId": "corpus-CT05-ja-docx-1792227340636",
+    "executionId": "924e594d-69cd-4989-902f-08fccbf24fb6",
+    "traceIds": [
+      "1d8f06f1-ed33-4735-90f0-01cbe46e80fc"
+    ],
+    "chatMs": 1176,
+    "firstEventMs": 35,
+    "streamError": null,
+    "executionStatus": "failed",
+    "actualCapabilities": [
+      "platform.document.contract-comparator"
+    ],
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "semanticStatus": "not_assessable",
+    "wallMs": 1269,
+    "finishedAt": "2026-10-17T08:55:41.831Z"
+  },
+  {
+    "id": "CT05-zh-ja-docx",
+    "caseId": "CT05-zh-ja",
+    "business": "development",
+    "language": "zh-ja",
+    "format": "docx",
+    "file": "contracts/development/CT05-zh-ja.docx",
+    "fixtureSha256": "19d3daf426ebae115cd2441b98b6dce2dd5cf6ce2af5b489cdef4375f1287406",
+    "status": "failed",
+    "startedAt": "2026-10-17T08:55:41.831Z",
+    "uploadMs": 5,
+    "sessionId": "corpus-CT05-zh-ja-docx-1792227341906",
+    "executionId": "3fb37a04-2d16-4e34-adf5-7641606655d7",
+    "traceIds": [
+      "c58fd5b2-44a9-41e3-a900-3949896abd60"
+    ],
+    "chatMs": 1138,
+    "firstEventMs": 38,
+    "streamError": null,
+    "executionStatus": "failed",
+    "actualCapabilities": [
+      "platform.document.contract-comparator"
+    ],
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "semanticStatus": "not_assessable",
+    "wallMs": 1230,
+    "finishedAt": "2026-10-17T08:55:43.061Z"
+  },
+  {
+    "id": "CT06-ja-docx",
+    "caseId": "CT06-ja",
+    "business": "lease",
+    "language": "ja",
+    "format": "docx",
+    "file": "contracts/lease/CT06-ja.docx",
+    "fixtureSha256": "0de86b74b67015263420dfb651fbe4b705340f89251e61cde78c963f4c2428af",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.062Z",
+    "error": "Login HTTP 429",
+    "wallMs": 4,
+    "finishedAt": "2026-10-17T08:55:43.066Z"
+  },
+  {
+    "id": "CT06-zh-docx",
+    "caseId": "CT06-zh",
+    "business": "lease",
+    "language": "zh",
+    "format": "docx",
+    "file": "contracts/lease/CT06-zh.docx",
+    "fixtureSha256": "0e6d927141ccd596b9068b7e3ff1ed2be7e3517c50b8527f53dfbddd92efd230",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.067Z",
+    "error": "Login HTTP 429",
+    "wallMs": 3,
+    "finishedAt": "2026-10-17T08:55:43.070Z"
+  },
+  {
+    "id": "CT06-zh-ja-docx",
+    "caseId": "CT06-zh-ja",
+    "business": "lease",
+    "language": "zh-ja",
+    "format": "docx",
+    "file": "contracts/lease/CT06-zh-ja.docx",
+    "fixtureSha256": "731db3d6259fb22548a27f3e194fc23ef06cd963aefac30fcbf5d3e6c590e7ba",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.070Z",
+    "error": "Login HTTP 429",
+    "wallMs": 4,
+    "finishedAt": "2026-10-17T08:55:43.074Z"
+  },
+  {
+    "id": "CT01-ja-pdf",
+    "caseId": "CT01-ja",
+    "business": "procurement",
+    "language": "ja",
+    "format": "pdf",
+    "file": "contracts/procurement/CT01-ja.pdf",
+    "fixtureSha256": "c853a9a0375c14305190fc29d23f1fd174498f1a6c04941e8568af390a84d191",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.075Z",
+    "error": "Login HTTP 429",
+    "wallMs": 5,
+    "finishedAt": "2026-10-17T08:55:43.080Z"
+  },
+  {
+    "id": "CT01-zh-pdf",
+    "caseId": "CT01-zh",
+    "business": "procurement",
+    "language": "zh",
+    "format": "pdf",
+    "file": "contracts/procurement/CT01-zh.pdf",
+    "fixtureSha256": "0300a5c71a627caceb66703157d203fe1ec980c31e82fd01a583bf6776690d7e",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.080Z",
+    "error": "Login HTTP 429",
+    "wallMs": 4,
+    "finishedAt": "2026-10-17T08:55:43.084Z"
+  },
+  {
+    "id": "CT01-zh-ja-pdf",
+    "caseId": "CT01-zh-ja",
+    "business": "procurement",
+    "language": "zh-ja",
+    "format": "pdf",
+    "file": "contracts/procurement/CT01-zh-ja.pdf",
+    "fixtureSha256": "35bbe35dea84d856c1a39d9300e075eb3a7b10f73d25d365878fde197d190eb3",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.086Z",
+    "error": "Login HTTP 429",
+    "wallMs": 6,
+    "finishedAt": "2026-10-17T08:55:43.092Z"
+  },
+  {
+    "id": "CT02-ja-pdf",
+    "caseId": "CT02-ja",
+    "business": "saas",
+    "language": "ja",
+    "format": "pdf",
+    "file": "contracts/saas/CT02-ja.pdf",
+    "fixtureSha256": "0218003b02baaa7bd31d3af2cbd010abf46c7972f35c25051dcbcbd226eeeb9c",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.092Z",
+    "error": "Login HTTP 429",
+    "wallMs": 4,
+    "finishedAt": "2026-10-17T08:55:43.096Z"
+  },
+  {
+    "id": "CT02-zh-pdf",
+    "caseId": "CT02-zh",
+    "business": "saas",
+    "language": "zh",
+    "format": "pdf",
+    "file": "contracts/saas/CT02-zh.pdf",
+    "fixtureSha256": "a2a9be0471296759e8b89c092ad0a4d2a2ea00db28d874b2b228ea60fef5c43c",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.097Z",
+    "error": "Login HTTP 429",
+    "wallMs": 3,
+    "finishedAt": "2026-10-17T08:55:43.100Z"
+  },
+  {
+    "id": "CT02-zh-ja-pdf",
+    "caseId": "CT02-zh-ja",
+    "business": "saas",
+    "language": "zh-ja",
+    "format": "pdf",
+    "file": "contracts/saas/CT02-zh-ja.pdf",
+    "fixtureSha256": "2618436e488620886c0439e265ce72315e43688f69c6195d67cc4c1f816a9385",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.101Z",
+    "error": "Login HTTP 429",
+    "wallMs": 4,
+    "finishedAt": "2026-10-17T08:55:43.105Z"
+  },
+  {
+    "id": "CT03-ja-pdf",
+    "caseId": "CT03-ja",
+    "business": "nda",
+    "language": "ja",
+    "format": "pdf",
+    "file": "contracts/nda/CT03-ja.pdf",
+    "fixtureSha256": "cf927ac2ceca0a50523ab6fedbfc4542d5dc36d46ec382c7f49b36467800e78f",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.106Z",
+    "error": "Login HTTP 429",
+    "wallMs": 4,
+    "finishedAt": "2026-10-17T08:55:43.110Z"
+  },
+  {
+    "id": "CT03-zh-pdf",
+    "caseId": "CT03-zh",
+    "business": "nda",
+    "language": "zh",
+    "format": "pdf",
+    "file": "contracts/nda/CT03-zh.pdf",
+    "fixtureSha256": "4efcc5c43af22ccc4639b401e36800f353f2ae7a576812ae113d6061f2df6123",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.110Z",
+    "error": "Login HTTP 429",
+    "wallMs": 3,
+    "finishedAt": "2026-10-17T08:55:43.113Z"
+  },
+  {
+    "id": "CT03-zh-ja-pdf",
+    "caseId": "CT03-zh-ja",
+    "business": "nda",
+    "language": "zh-ja",
+    "format": "pdf",
+    "file": "contracts/nda/CT03-zh-ja.pdf",
+    "fixtureSha256": "25115c4777094970517300100b539c481782accedee1609014f094e443d82e44",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.114Z",
+    "error": "Login HTTP 429",
+    "wallMs": 4,
+    "finishedAt": "2026-10-17T08:55:43.118Z"
+  },
+  {
+    "id": "CT04-ja-pdf",
+    "caseId": "CT04-ja",
+    "business": "distribution",
+    "language": "ja",
+    "format": "pdf",
+    "file": "contracts/distribution/CT04-ja.pdf",
+    "fixtureSha256": "bb40ebec0a85b9632375af5a61b01b5045c1801be5d571f4dcc3950e26a49895",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.119Z",
+    "error": "Login HTTP 429",
+    "wallMs": 3,
+    "finishedAt": "2026-10-17T08:55:43.122Z"
+  },
+  {
+    "id": "CT04-zh-pdf",
+    "caseId": "CT04-zh",
+    "business": "distribution",
+    "language": "zh",
+    "format": "pdf",
+    "file": "contracts/distribution/CT04-zh.pdf",
+    "fixtureSha256": "ce9a7be891e6ee64933e218c373469d21100d94e7266ad1323c6f9c7d1624b76",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.122Z",
+    "error": "Login HTTP 429",
+    "wallMs": 5,
+    "finishedAt": "2026-10-17T08:55:43.127Z"
+  },
+  {
+    "id": "CT04-zh-ja-pdf",
+    "caseId": "CT04-zh-ja",
+    "business": "distribution",
+    "language": "zh-ja",
+    "format": "pdf",
+    "file": "contracts/distribution/CT04-zh-ja.pdf",
+    "fixtureSha256": "0bb79f6a22a3640039a4409152d69b926ed669d85a9da829d3f6a96c7d3ab54a",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.127Z",
+    "error": "Login HTTP 429",
+    "wallMs": 4,
+    "finishedAt": "2026-10-17T08:55:43.131Z"
+  },
+  {
+    "id": "CT05-ja-pdf",
+    "caseId": "CT05-ja",
+    "business": "development",
+    "language": "ja",
+    "format": "pdf",
+    "file": "contracts/development/CT05-ja.pdf",
+    "fixtureSha256": "b0819046b98c042b31ba0e236a41fa5b5f6668c4a80399a10ee408ceefaf5c98",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.132Z",
+    "error": "Login HTTP 429",
+    "wallMs": 3,
+    "finishedAt": "2026-10-17T08:55:43.135Z"
+  },
+  {
+    "id": "CT05-zh-pdf",
+    "caseId": "CT05-zh",
+    "business": "development",
+    "language": "zh",
+    "format": "pdf",
+    "file": "contracts/development/CT05-zh.pdf",
+    "fixtureSha256": "83b42600ba22834b371074bd28b06240aa46751d6869dcd735a10d1496d5107a",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.136Z",
+    "error": "Login HTTP 429",
+    "wallMs": 3,
+    "finishedAt": "2026-10-17T08:55:43.139Z"
+  },
+  {
+    "id": "CT05-zh-ja-pdf",
+    "caseId": "CT05-zh-ja",
+    "business": "development",
+    "language": "zh-ja",
+    "format": "pdf",
+    "file": "contracts/development/CT05-zh-ja.pdf",
+    "fixtureSha256": "e52de46db355e47760dee7f032869b29c4d4aad5bdca02a3926a322c9149e570",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.140Z",
+    "error": "Login HTTP 429",
+    "wallMs": 4,
+    "finishedAt": "2026-10-17T08:55:43.144Z"
+  },
+  {
+    "id": "CT06-ja-pdf",
+    "caseId": "CT06-ja",
+    "business": "lease",
+    "language": "ja",
+    "format": "pdf",
+    "file": "contracts/lease/CT06-ja.pdf",
+    "fixtureSha256": "e1a16393805166363c453ce0f9b0ab4bc2cc715ca4165517ea995c7d4512a12c",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.144Z",
+    "error": "Login HTTP 429",
+    "wallMs": 3,
+    "finishedAt": "2026-10-17T08:55:43.147Z"
+  },
+  {
+    "id": "CT06-zh-pdf",
+    "caseId": "CT06-zh",
+    "business": "lease",
+    "language": "zh",
+    "format": "pdf",
+    "file": "contracts/lease/CT06-zh.pdf",
+    "fixtureSha256": "773da2915f15cd6b9ed16c18252d5aa9e0bd214cdbb024dab108c8912a4fc157",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.147Z",
+    "error": "Login HTTP 429",
+    "wallMs": 4,
+    "finishedAt": "2026-10-17T08:55:43.151Z"
+  },
+  {
+    "id": "CT06-zh-ja-pdf",
+    "caseId": "CT06-zh-ja",
+    "business": "lease",
+    "language": "zh-ja",
+    "format": "pdf",
+    "file": "contracts/lease/CT06-zh-ja.pdf",
+    "fixtureSha256": "ec718194106057199d13f35330a23120c6a0cd640841b9c4706fd8eac2da7595",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.151Z",
+    "error": "Login HTTP 429",
+    "wallMs": 3,
+    "finishedAt": "2026-10-17T08:55:43.154Z"
+  },
+  {
+    "id": "CT01-ja-txt",
+    "caseId": "CT01-ja",
+    "business": "procurement",
+    "language": "ja",
+    "format": "txt",
+    "file": "contracts/procurement/CT01-ja.txt",
+    "fixtureSha256": "7d876d28b6bb8f4fe7445761873c0e7ba764f4fa2fb83ac5d8cf11c5af26438d",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.155Z",
+    "error": "Login HTTP 429",
+    "wallMs": 3,
+    "finishedAt": "2026-10-17T08:55:43.158Z"
+  },
+  {
+    "id": "CT01-zh-txt",
+    "caseId": "CT01-zh",
+    "business": "procurement",
+    "language": "zh",
+    "format": "txt",
+    "file": "contracts/procurement/CT01-zh.txt",
+    "fixtureSha256": "491a434eca814d3f43f8fe2c60013e4df6e22469a29d566ab504674b6ef32beb",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.159Z",
+    "error": "Login HTTP 429",
+    "wallMs": 6,
+    "finishedAt": "2026-10-17T08:55:43.165Z"
+  },
+  {
+    "id": "CT01-zh-ja-txt",
+    "caseId": "CT01-zh-ja",
+    "business": "procurement",
+    "language": "zh-ja",
+    "format": "txt",
+    "file": "contracts/procurement/CT01-zh-ja.txt",
+    "fixtureSha256": "0eacd746c9ed6c49cbd3d34433901a099ec4251944d2325090ed8d573de782b3",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.167Z",
+    "error": "Login HTTP 429",
+    "wallMs": 4,
+    "finishedAt": "2026-10-17T08:55:43.171Z"
+  },
+  {
+    "id": "CT02-ja-txt",
+    "caseId": "CT02-ja",
+    "business": "saas",
+    "language": "ja",
+    "format": "txt",
+    "file": "contracts/saas/CT02-ja.txt",
+    "fixtureSha256": "a7fab94f3c7981384303662518b45247e52194e9f344339f59903196d215055b",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.171Z",
+    "error": "Login HTTP 429",
+    "wallMs": 3,
+    "finishedAt": "2026-10-17T08:55:43.174Z"
+  },
+  {
+    "id": "CT02-zh-txt",
+    "caseId": "CT02-zh",
+    "business": "saas",
+    "language": "zh",
+    "format": "txt",
+    "file": "contracts/saas/CT02-zh.txt",
+    "fixtureSha256": "64185733a34811b423d2238aee2ed8190b8cbcfabd9c0ef6428ee1ec733d8951",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.174Z",
+    "error": "Login HTTP 429",
+    "wallMs": 3,
+    "finishedAt": "2026-10-17T08:55:43.177Z"
+  },
+  {
+    "id": "CT02-zh-ja-txt",
+    "caseId": "CT02-zh-ja",
+    "business": "saas",
+    "language": "zh-ja",
+    "format": "txt",
+    "file": "contracts/saas/CT02-zh-ja.txt",
+    "fixtureSha256": "414767407b590b17645a0769cd78c84e1460cab2585a52e4e7b10718c4a938e0",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.178Z",
+    "error": "Login HTTP 429",
+    "wallMs": 4,
+    "finishedAt": "2026-10-17T08:55:43.182Z"
+  },
+  {
+    "id": "CT03-ja-txt",
+    "caseId": "CT03-ja",
+    "business": "nda",
+    "language": "ja",
+    "format": "txt",
+    "file": "contracts/nda/CT03-ja.txt",
+    "fixtureSha256": "ed81e4f715b5d33383c8d814b6d7f426593c9cc829f40349b54b96196ac41f74",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.183Z",
+    "error": "Login HTTP 429",
+    "wallMs": 3,
+    "finishedAt": "2026-10-17T08:55:43.186Z"
+  },
+  {
+    "id": "CT03-zh-txt",
+    "caseId": "CT03-zh",
+    "business": "nda",
+    "language": "zh",
+    "format": "txt",
+    "file": "contracts/nda/CT03-zh.txt",
+    "fixtureSha256": "86a316c36696e8e6e9c46e89be385593e29232c974be4b1a7c93e4f79c2db173",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.187Z",
+    "error": "Login HTTP 429",
+    "wallMs": 7,
+    "finishedAt": "2026-10-17T08:55:43.194Z"
+  },
+  {
+    "id": "CT03-zh-ja-txt",
+    "caseId": "CT03-zh-ja",
+    "business": "nda",
+    "language": "zh-ja",
+    "format": "txt",
+    "file": "contracts/nda/CT03-zh-ja.txt",
+    "fixtureSha256": "75f73e4ab6340596531f34e2615eabbf54e49e2c45f77569ce6de136645243b1",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.195Z",
+    "error": "Login HTTP 429",
+    "wallMs": 3,
+    "finishedAt": "2026-10-17T08:55:43.198Z"
+  },
+  {
+    "id": "CT04-ja-txt",
+    "caseId": "CT04-ja",
+    "business": "distribution",
+    "language": "ja",
+    "format": "txt",
+    "file": "contracts/distribution/CT04-ja.txt",
+    "fixtureSha256": "276fbb33e0fd77b7d8bcefabe64f3343dd3e2a24e5fb5e8abc3ef36e2af3fad2",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.199Z",
+    "error": "Login HTTP 429",
+    "wallMs": 3,
+    "finishedAt": "2026-10-17T08:55:43.202Z"
+  },
+  {
+    "id": "CT04-zh-txt",
+    "caseId": "CT04-zh",
+    "business": "distribution",
+    "language": "zh",
+    "format": "txt",
+    "file": "contracts/distribution/CT04-zh.txt",
+    "fixtureSha256": "e94c68c87f29ef015d05717f47822524ae647bcb6c08d9241b5626030798023d",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.202Z",
+    "error": "Login HTTP 429",
+    "wallMs": 4,
+    "finishedAt": "2026-10-17T08:55:43.206Z"
+  },
+  {
+    "id": "CT04-zh-ja-txt",
+    "caseId": "CT04-zh-ja",
+    "business": "distribution",
+    "language": "zh-ja",
+    "format": "txt",
+    "file": "contracts/distribution/CT04-zh-ja.txt",
+    "fixtureSha256": "469cae39784e3211a54e8ba18fc93d1584ff29aaf71aee2ec7a08cab13fa9c5d",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.206Z",
+    "error": "Login HTTP 429",
+    "wallMs": 3,
+    "finishedAt": "2026-10-17T08:55:43.209Z"
+  },
+  {
+    "id": "CT05-ja-txt",
+    "caseId": "CT05-ja",
+    "business": "development",
+    "language": "ja",
+    "format": "txt",
+    "file": "contracts/development/CT05-ja.txt",
+    "fixtureSha256": "ed5e2c0df081b7c33b8048b4d44a506475bdb480750cada35fa6c5aa9358cb84",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.209Z",
+    "error": "Login HTTP 429",
+    "wallMs": 3,
+    "finishedAt": "2026-10-17T08:55:43.212Z"
+  },
+  {
+    "id": "CT05-zh-txt",
+    "caseId": "CT05-zh",
+    "business": "development",
+    "language": "zh",
+    "format": "txt",
+    "file": "contracts/development/CT05-zh.txt",
+    "fixtureSha256": "d2fc2ac33e65dccd671766721695baaaaebac5f8e11bb56b3c73e1db5e114c42",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.213Z",
+    "error": "Login HTTP 429",
+    "wallMs": 2,
+    "finishedAt": "2026-10-17T08:55:43.215Z"
+  },
+  {
+    "id": "CT05-zh-ja-txt",
+    "caseId": "CT05-zh-ja",
+    "business": "development",
+    "language": "zh-ja",
+    "format": "txt",
+    "file": "contracts/development/CT05-zh-ja.txt",
+    "fixtureSha256": "6f10abcee4af3cabd875c2572d759465a97c7c761994f35946f64b30e3cca39b",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.215Z",
+    "error": "Login HTTP 429",
+    "wallMs": 3,
+    "finishedAt": "2026-10-17T08:55:43.218Z"
+  },
+  {
+    "id": "CT06-ja-txt",
+    "caseId": "CT06-ja",
+    "business": "lease",
+    "language": "ja",
+    "format": "txt",
+    "file": "contracts/lease/CT06-ja.txt",
+    "fixtureSha256": "447744893453d78c2c88be27e66dc0f7f353feb5625ea8837752337882b4e94f",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.219Z",
+    "error": "Login HTTP 429",
+    "wallMs": 2,
+    "finishedAt": "2026-10-17T08:55:43.221Z"
+  },
+  {
+    "id": "CT06-zh-txt",
+    "caseId": "CT06-zh",
+    "business": "lease",
+    "language": "zh",
+    "format": "txt",
+    "file": "contracts/lease/CT06-zh.txt",
+    "fixtureSha256": "6a595a2caaf783b9ab99e0b4014b0b15471a824cc1f414cf7d08778be3392854",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.222Z",
+    "error": "Login HTTP 429",
+    "wallMs": 2,
+    "finishedAt": "2026-10-17T08:55:43.224Z"
+  },
+  {
+    "id": "CT06-zh-ja-txt",
+    "caseId": "CT06-zh-ja",
+    "business": "lease",
+    "language": "zh-ja",
+    "format": "txt",
+    "file": "contracts/lease/CT06-zh-ja.txt",
+    "fixtureSha256": "2f152c6c5a15c6101cb50d1a6cdd7dadde92e3d97bcb48152cd49fb4b20833e9",
+    "status": "error",
+    "startedAt": "2026-10-17T08:55:43.224Z",
+    "error": "Login HTTP 429",
+    "wallMs": 3,
+    "finishedAt": "2026-10-17T08:55:43.227Z"
+  },
+  {
+    "id": "CT05-zh-docx",
+    "caseId": "CT05-zh",
+    "business": "development",
+    "language": "zh",
+    "format": "docx",
+    "file": "contracts/development/CT05-zh.docx",
+    "fixtureSha256": "fbec16acc0e4910e917abd0946ddfad362e66daf64cd1f59f5f6124b8caf2435",
+    "status": "failed",
+    "startedAt": "2026-10-17T08:55:41.346Z",
+    "uploadMs": 11,
+    "sessionId": "corpus-CT05-zh-docx-1792227341437",
+    "executionId": "1552aebb-8192-41ca-b4b2-41ff9c02614d",
+    "traceIds": [
+      "a7bff208-8f70-458d-94ef-029bfb8d2c2c"
+    ],
+    "chatMs": 2189,
+    "firstEventMs": 55,
+    "streamError": null,
+    "executionStatus": "failed",
+    "actualCapabilities": [
+      "platform.document.contract-comparator"
+    ],
+    "assertions": [
+      {
+        "name": "upload returned attachment",
+        "passed": true,
+        "actual": null,
+        "category": "UPLOAD"
+      },
+      {
+        "name": "chat HTTP success",
+        "passed": true,
+        "actual": 201,
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "SSE finished",
+        "passed": true,
+        "actual": "done",
+        "category": "TRANSPORT"
+      },
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "failures": [
+      {
+        "name": "contract skill executed",
+        "passed": false,
+        "actual": [
+          "platform.document.contract-comparator"
+        ],
+        "category": "ROUTING"
+      },
+      {
+        "name": "persistent execution succeeded",
+        "passed": false,
+        "actual": "failed",
+        "category": "STATE"
+      },
+      {
+        "name": "structured output exists",
+        "passed": false,
+        "actual": null,
+        "category": "OUTPUT"
+      }
+    ],
+    "semanticStatus": "not_assessable",
+    "wallMs": 2300,
+    "finishedAt": "2026-10-17T08:55:43.646Z"
+  }
+]

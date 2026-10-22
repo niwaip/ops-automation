@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-10-16",
+  "projectRoot": "/Users/chain/Documents/MyProject/ops-automation",
+  "entry": "./docker/start-smart.sh dev",
+  "controlPlane": {
+    "sourceSha256": "43d49098b4e5ce338ec5078d4f745f31aefee112448221b7734e6806cb99c558",
+    "builtJsSha256": "246249ba1da89804cb6f2bea18f42747c17ad14002c94fb293fb93e869c2c839",
+    "sourceMtime": "2026-10-16T14:43:21.078Z",
+    "builtJsMtime": "2026-10-16T14:54:37.899Z",
+    "explicitModelRoutingInSourceAndBuild": true
+  },
+  "note": "来自运行容器的只读检查；业务源码保留用户已有改动，本次仅新增测试和文档，无须重载应用。构建存在选模代码，不以文件时间单独证明所有源码均一致。"
+}

@@ -1,0 +1,12 @@
+{
+  "capturedAt": "2026-10-17T09:31:57.145824+00:00",
+  "sourceDigests": {
+    "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+    "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "c89a22d1198f28ba475275bb3a2a93df3b4e8364f7c5a446b41cbeb0d4c53615",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "32787d21f7d241dc13e75555f9706e444dba55d26dd5a8382913721def98ea6b",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+  },
+  "changedSinceStart": [
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts"
+  ]
+}

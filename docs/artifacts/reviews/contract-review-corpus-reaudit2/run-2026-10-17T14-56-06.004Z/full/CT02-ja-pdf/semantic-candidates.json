@@ -1,0 +1,172 @@
+[
+  {
+    "marker": "CT02-ja-A03",
+    "topic": "risk_sla",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "服务商通过免除最低服务标准保证及排除连续性故障的赔偿/退款责任，单方面免除核心违约责任，导致买方无实质救济途径。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT02-ja-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "服务商通过免除最低服务标准保证及排除连续性故障的赔偿/退款责任，单方面免除核心违约责任，导致买方无实质救济途径。",
+            "evidenceQuote": "乙は努力義務のみを負い、最低稼働率を保証しない。10 日連続停止した場合も返金又は賠償を行わない。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-ja-A04",
+    "topic": "risk_data_use",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "虽约定所有权归甲方，但允许乙方无需同意即可永久保存并利用甲方数据进行模型训练，实质剥夺了甲方的数据控制权及知识产权独占性，违反保密及知识产权核心诉求。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT02-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "虽约定所有权归甲方，但允许乙方无需同意即可永久保存并利用甲方数据进行模型训练，实质剥夺了甲方的数据控制权及知识产权独占性，违反保密及知识产权核心诉求。",
+            "evidenceQuote": "乙は氏名、メール及び取引履歴を甲の同意なくモデル学習に利用し、永久保存できる。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-ja-A05",
+    "topic": "risk_exit",
+    "matchedClauseIndices": [
+      5
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "乙方拥有数据输出的单方审批权且无交付期限约束，导致合同终止后买方无法有效回收数据，构成实质性的服务绑定与退出障碍。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-5-GENERAL-RISK",
+            "title": "[CT02-ja-A05]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "乙方拥有数据输出的单方审批权且无交付期限约束，导致合同终止后买方无法有效回收数据，构成实质性的服务绑定与退出障碍。",
+            "evidenceQuote": "乙は承認の可否を自由に決定でき、出力期限を約束しない。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-ja-A06",
+    "topic": "risk_renewal",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "乙方有权单方决定更新日涨价，我方缺乏定价控制权，存在成本不可控风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-6-PRICE_UNILATERAL_INCREASE",
+            "title": "[CT02-ja-A06]",
+            "ruleId": "PRICE_UNILATERAL_INCREASE",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "乙方有权单方决定更新日涨价，我方缺乏定价控制权，存在成本不可控风险。",
+            "evidenceQuote": "乙は更新日に料金を一方的に増額できる。"
+          },
+          {
+            "id": "finding-clause-6-AUTO_RENEWAL_NOTICE_PERIOD",
+            "title": "[CT02-ja-A06]",
+            "ruleId": "AUTO_RENEWAL_NOTICE_PERIOD",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "自动续约机制下，90天退出窗口期较长，增加管理成本，且未明确续约条件需双方同意。",
+            "evidenceQuote": "本契約は 1 年間自動更新される。甲は満了 90 日前までに拒絶を通知し"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT02-ja-A08",
+    "topic": "risk_dispute_unclear",
+    "matchedClauseIndices": [
+      8
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "争议解决机构未明确且留待日后补充，导致管辖条款在当前状态下缺乏执行力，增加维权不确定性。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-8-VAGUE_DISPUTE_RESOLUTION",
+            "title": "[CT02-ja-A08]",
+            "ruleId": "VAGUE_DISPUTE_RESOLUTION",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "争议解决机构未明确且留待日后补充，导致管辖条款在当前状态下缺乏执行力，增加维权不确定性。",
+            "evidenceQuote": "紛争は権限ある機関で処理するものとし、機関名及び所在地は後日補充する。"
+          },
+          {
+            "id": "finding-clause-8-GENERAL-RISK",
+            "title": "[CT02-ja-A08]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "适用法律约定为“另行合意”，若未达成新合意，将导致法律适用空白，增加诉讼/仲裁复杂度。",
+            "evidenceQuote": "別途合意する法を適用する。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

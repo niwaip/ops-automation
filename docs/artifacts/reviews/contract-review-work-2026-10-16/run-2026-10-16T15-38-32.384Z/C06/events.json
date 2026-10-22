@@ -1,0 +1,198 @@
+[
+  {
+    "elapsedMs": 37,
+    "event": {
+      "type": "thought",
+      "content": "正在规划任务...",
+      "seq": 1,
+      "protocolVersion": "1",
+      "sessionId": "crw-C06-1792165329917",
+      "traceId": "acce7cbc-24f9-4552-b409-ff41993192ee",
+      "data": {
+        "traceId": "acce7cbc-24f9-4552-b409-ff41993192ee"
+      }
+    }
+  },
+  {
+    "elapsedMs": 37,
+    "event": {
+      "type": "thought",
+      "content": "正在获取用户可用 Skill 列表并进行确定性多步骤任务拆分规划...",
+      "seq": 2,
+      "protocolVersion": "1",
+      "sessionId": "crw-C06-1792165329917",
+      "traceId": "acce7cbc-24f9-4552-b409-ff41993192ee",
+      "data": {
+        "traceId": "acce7cbc-24f9-4552-b409-ff41993192ee"
+      }
+    }
+  },
+  {
+    "elapsedMs": 6955,
+    "event": {
+      "type": "thought",
+      "content": "已成功冻结 1 步骤执行计划 (ID: 906b371e-36fb-4049-a9d1-ee008e6da406)，控制面已按拓扑顺序调度运行。",
+      "seq": 3,
+      "protocolVersion": "1",
+      "sessionId": "crw-C06-1792165329917",
+      "traceId": "acce7cbc-24f9-4552-b409-ff41993192ee",
+      "data": {
+        "traceId": "acce7cbc-24f9-4552-b409-ff41993192ee"
+      }
+    }
+  },
+  {
+    "elapsedMs": 6955,
+    "event": {
+      "type": "thought",
+      "content": "已为你生成静态任务计划：\n\n1. 合同文档智能审查与合规诊断 - Skill: platform.document.contract-reviewer@1.0.2 (workflow)\n\n执行单 ID: `906b371e-36fb-4049-a9d1-ee008e6da406`。正在跟踪流程执行状态...\n",
+      "data": {
+        "executionId": "906b371e-36fb-4049-a9d1-ee008e6da406",
+        "status": "running",
+        "deterministicPlan": {
+          "objective": "请审查附件合同，我方为买方，并生成审查报告。",
+          "nodes": [
+            {
+              "nodeId": "n1_合同文档智能审查与合规诊断",
+              "sequence": 1,
+              "title": "合同文档智能审查与合规诊断",
+              "kind": "skill",
+              "skillId": "platform.document.contract-reviewer",
+              "skillVersion": "1.0.2",
+              "runtimeType": "workflow",
+              "executionRuntimeType": "workflow",
+              "dependsOn": [],
+              "inputBindings": {
+                "fileUrl": {
+                  "source": "user_input",
+                  "path": "fileUrl"
+                },
+                "fileName": {
+                  "source": "user_input",
+                  "path": "fileName"
+                },
+                "fileBase64": {
+                  "source": "user_input",
+                  "path": "fileBase64"
+                },
+                "downloadUrl": {
+                  "source": "user_input",
+                  "path": "downloadUrl"
+                },
+                "myPosition": {
+                  "source": "literal",
+                  "value": "买方"
+                },
+                "contractType": {
+                  "source": "literal",
+                  "value": "general"
+                }
+              },
+              "outputContract": {
+                "clauses": "json",
+                "metrics": "json",
+                "summary": "string",
+                "artifact": "artifact_ref",
+                "artifacts": "json",
+                "htmlReport": "string",
+                "myPosition": "string",
+                "contractType": "string",
+                "missingClauses": "json",
+                "contractTypeName": "string"
+              },
+              "failurePolicy": "abort"
+            }
+          ],
+          "finalOutputs": [
+            {
+              "targetField": "result",
+              "fromNodeId": "n1_合同文档智能审查与合规诊断",
+              "fromNodeOutput": "artifact",
+              "expectedType": "artifact_ref",
+              "isArtifact": true
+            },
+            {
+              "targetField": "summary",
+              "fromNodeId": "n1_合同文档智能审查与合规诊断",
+              "fromNodeOutput": "summary",
+              "expectedType": "string",
+              "isArtifact": false
+            }
+          ]
+        },
+        "traceId": "acce7cbc-24f9-4552-b409-ff41993192ee"
+      },
+      "seq": 4,
+      "protocolVersion": "1",
+      "sessionId": "crw-C06-1792165329917",
+      "traceId": "acce7cbc-24f9-4552-b409-ff41993192ee"
+    }
+  },
+  {
+    "elapsedMs": 6964,
+    "event": {
+      "type": "action",
+      "content": "正在执行：platform.document.contract-reviewer",
+      "data": {
+        "stepId": "8c5080b6-7fec-4248-b7e7-88a5d2e46946",
+        "traceId": "acce7cbc-24f9-4552-b409-ff41993192ee"
+      },
+      "seq": 5,
+      "protocolVersion": "1",
+      "sessionId": "crw-C06-1792165329917",
+      "traceId": "acce7cbc-24f9-4552-b409-ff41993192ee"
+    }
+  },
+  {
+    "elapsedMs": 7484,
+    "event": {
+      "type": "result",
+      "content": "❌ 任务执行失败\n\n原因：Node 'n1_合同文档智能审查与合规诊断' failed: Word 文档 (.docx) 结构损坏或无法解包解析，请核对文件后重试。\n\n执行单 ID: 906b371e-36fb-4049-a9d1-ee008e6da406",
+      "data": {
+        "executionId": "906b371e-36fb-4049-a9d1-ee008e6da406",
+        "status": "failed",
+        "failureReason": "Node 'n1_合同文档智能审查与合规诊断' failed: Word 文档 (.docx) 结构损坏或无法解包解析，请核对文件后重试。",
+        "hasBusinessResult": false,
+        "chatSummary": "❌ 任务执行失败\n\n原因：Node 'n1_合同文档智能审查与合规诊断' failed: Word 文档 (.docx) 结构损坏或无法解包解析，请核对文件后重试。",
+        "summaryFormat": "markdown",
+        "usage": null,
+        "traceId": "acce7cbc-24f9-4552-b409-ff41993192ee"
+      },
+      "seq": 6,
+      "protocolVersion": "1",
+      "sessionId": "crw-C06-1792165329917",
+      "traceId": "acce7cbc-24f9-4552-b409-ff41993192ee"
+    }
+  },
+  {
+    "elapsedMs": 7486,
+    "event": {
+      "type": "session_patch",
+      "sessionId": "crw-C06-1792165329917",
+      "content": "",
+      "data": {
+        "title": "请审查附件合同，我方为买方，并生成审查报告。",
+        "status": "active",
+        "updatedAt": "2026-10-16T15:42:17.407Z",
+        "traceId": "acce7cbc-24f9-4552-b409-ff41993192ee"
+      },
+      "seq": 7,
+      "protocolVersion": "1",
+      "traceId": "acce7cbc-24f9-4552-b409-ff41993192ee"
+    }
+  },
+  {
+    "elapsedMs": 7488,
+    "event": {
+      "type": "done",
+      "content": "Stream completed",
+      "seq": 8,
+      "protocolVersion": "1",
+      "sessionId": "crw-C06-1792165329917",
+      "traceId": "acce7cbc-24f9-4552-b409-ff41993192ee",
+      "data": {
+        "traceId": "acce7cbc-24f9-4552-b409-ff41993192ee"
+      }
+    }
+  }
+]

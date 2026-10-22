@@ -1,0 +1,25 @@
+[
+  {
+    "id": "T04_PROC_PDF",
+    "name": "设备采购合同 (PDF) - 卖方立场审查",
+    "file": "procurement-contract.pdf",
+    "format": "PDF",
+    "pass": true,
+    "executionId": "14cc0977-f9c1-41b0-bc2d-2a55ce3dfc88",
+    "status": "succeeded",
+    "durationMs": 26478,
+    "clausesCount": 6,
+    "llmReviewedCount": 6,
+    "isDegraded": false,
+    "healthScore": 58,
+    "riskStats": {
+      "high": 2,
+      "medium": 2,
+      "low": 0,
+      "pass": 2
+    },
+    "tokensEmitted": 793,
+    "estimatedCostCny": "0.008244",
+    "artifactUrl": "http://192.168.100.143:3009/renders/5aa5e53eeb6400fc234da214207b9b34.html"
+  }
+]

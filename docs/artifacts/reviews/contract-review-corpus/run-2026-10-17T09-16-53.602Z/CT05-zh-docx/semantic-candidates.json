@@ -1,0 +1,38 @@
+[
+  {
+    "marker": "CT05-zh-A03",
+    "topic": "risk_acceptance",
+    "matchedClauseIndices": [],
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "reviewText": [],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-A04",
+    "topic": "risk_ip",
+    "matchedClauseIndices": [],
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "reviewText": [],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-A06",
+    "topic": "risk_third_party_ip",
+    "matchedClauseIndices": [],
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "reviewText": [],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-A08",
+    "topic": "risk_unfilled",
+    "matchedClauseIndices": [],
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "reviewText": [],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

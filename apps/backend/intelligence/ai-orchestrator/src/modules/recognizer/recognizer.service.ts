@@ -164,7 +164,8 @@ export class RecognizerService {
     });
 
     // Prefer the caller-selected model so planner/debug traces match the chat UI choice.
-    const runtime = await this.resolveModelRuntime(dto.modelId);
+    const requestedModelId = dto.modelId || dto.model;
+    const runtime = await this.resolveModelRuntime(requestedModelId);
     if (!runtime) {
       if (dto.fallbackMode === 'none') {
         this.logger.warn('No AI client available and deterministic fallback is disabled');
@@ -892,8 +893,18 @@ export class RecognizerService {
       return undefined;
     }
     if (Array.isArray(value)) {
+      const isObjectItems = schema.items && (schema.items as any).type === 'object';
       const normalized = value
-        .map((item) => this.normalizeSchemaCompatibleValue(key, item, schema))
+        .map((item) => {
+          if (isObjectItems && typeof item === 'string' && item.trim()) {
+            try {
+              const parsed = JSON.parse(item);
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+            } catch {}
+            return { title: item.trim(), rule: item.trim() };
+          }
+          return this.normalizeSchemaCompatibleValue(key, item, schema);
+        })
         .filter((item) => item !== undefined);
       return normalized.length > 0 ? normalized : undefined;
     }

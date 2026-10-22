@@ -1,0 +1,74 @@
+[
+  {
+    "case": "META-ALIGNED-30-30-txt",
+    "marker": "META-ALIGNED-30-30-A02",
+    "expectedTopic": "risk_internal_conflict",
+    "sourcePresent": true,
+    "riskLevels": [
+      "PASS"
+    ],
+    "hasRiskSignal": false,
+    "texts": [
+      {
+        "summary": "条款权责明确",
+        "advice": "条款符合规范，可按原约定保留。",
+        "source": "独家：甲方享有区域独家销售权；乙方可不受限制地直接向区域客户销售并另行指定其他经销商。\n独占性：甲は地域独占販売権を有する。ただし乙は当該地域の顧客へ無制限に直接販売し、他の販売店を指定できる。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "META-ALIGNED-30-30-txt",
+    "marker": "META-ALIGNED-30-30-A03",
+    "expectedTopic": "risk_target",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "卖方缺货不应由买方承担补足差额责任，该条款显失公平且违背对等原则。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "采购目标：甲方年度最低采购额为人民币3000000元，即使乙方缺货也不得调减目标，未达标须补足差额。\n購入目標：年間最低購入額は3000000人民元とする。乙の欠品時も目標を減額せず、未達の場合は甲が差額を補填する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "META-ALIGNED-30-30-txt",
+    "marker": "META-ALIGNED-30-30-A04",
+    "expectedTopic": "risk_resale_price_review",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "固定转售价格违反《反垄断法》禁止纵向垄断协议规定，且单方终止授权缺乏合理依据。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "价格：甲方须遵守乙方确定的最低转售价格；低价销售即取消全部返利并终止授权。\n価格：甲は乙が定める最低再販売価格を遵守する。下回った場合は全てのリベート及び販売権を失う。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "META-ALIGNED-30-30-txt",
+    "marker": "META-ALIGNED-30-30-A07",
+    "expectedTopic": "risk_inventory_exit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "赋予乙方单方无理由解除权，且要求甲方承担库存积压损失，显失公平，存在重大履约与经济损失风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "终止：乙方可随时无理由立即终止；甲方已购库存不得退回，也不得继续销售。\n終了：乙は理由なく直ちに解除できる。甲の購入済み在庫は返品できず、継続販売も禁止する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  }
+]

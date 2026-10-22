@@ -3,7 +3,7 @@ import { isGuideOrInquiryRequest } from '@ops/backend-runtime-capability-contrac
 import { hasRoutingSignal, stripSystemContext } from './routing-policy.matcher';
 import { RoutingPolicyService } from './routing-policy.service';
 
-export type PlanRouteType = 'single_skill' | 'deterministic_plan';
+export type PlanRouteType = 'single_skill' | 'deterministic_plan' | 'conversational_chat';
 
 @Injectable()
 export class PlanRouteClassifierService {
@@ -28,14 +28,22 @@ export class PlanRouteClassifierService {
 
     const hasWorkSlashCommand = /^\s*\/(?:extract|doc|workspace|rag|search|pdf|email|mail|pdf-extract)\b/i.test(cleanUserText);
 
-    // Guide and inquiry requests (e.g. "如何使用知识库进行多文档对比？", "什么是...")
+    // Guide, inquiry, and explicit negation requests (e.g. "如何使用知识库进行多文档对比？", "什么是...", "我只是咨询...不用审查...")
     // must not be forced into deterministic multi-step recipes or execution plans,
     // UNLESS the user explicitly initiated a work slash command (e.g. /doc, /extract).
-    if (!hasWorkSlashCommand && isGuideOrInquiryRequest(cleanUserText)) {
+    const isConsultationOrNegation =
+      !hasWorkSlashCommand &&
+      (isGuideOrInquiryRequest(cleanUserText) ||
+        /(?:(?:我只是?|仅为?|作为)?(?:咨询|请问|请教)|(?:什么是|何为|怎么理解|如何理解|有哪些|通常检查|主要检查|一般检查|通常包含|主要包含|什么叫|怎样看待|需要注意哪些|怎么做|如何做))/i.test(
+          cleanUserText
+        ) ||
+        /(?:不用|无需|不需要|不要|别)(?:审查|审核|排查|对比|比对|生成|执行|操作)/i.test(cleanUserText));
+
+    if (isConsultationOrNegation) {
       this.logger.log(
-        `User input '${cleanUserText}' classified as guide/inquiry request; skipping deterministic plan routing.`
+        `User input '${cleanUserText}' classified as guide/inquiry/negation request; routing to conversational_chat.`
       );
-      return 'single_skill';
+      return 'conversational_chat';
     }
 
     // Check for explicit multi-step compound signals on clean user text

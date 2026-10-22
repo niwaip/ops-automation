@@ -34,6 +34,21 @@ export interface UserCustomRule {
   createdAt?: string;
 }
 
+export interface EnterpriseLegalProfile {
+  legalEntityName: string;
+  aliases: string[];
+  creditCode?: string;
+  defaultContractRole: 'seller' | 'buyer' | 'neutral';
+}
+
 export const STORAGE_KEY_USER_RULES = 'ops_user_contract_checkpoints';
 export const STORAGE_KEY_ORG_RULES = 'ops_org_contract_checkpoints';
+export const STORAGE_KEY_LEGAL_PROFILE = 'ops_enterprise_legal_profile';
 export const LEGACY_STORAGE_KEY = 'ops_custom_contract_checkpoints';
+
+export const DEFAULT_ENTERPRISE_PROFILE: EnterpriseLegalProfile = {
+  legalEntityName: '富士通（中国）信息系统有限公司',
+  aliases: ['富士通', '富士通（中国）', '富士通信息', 'Fujitsu', 'Fujitsu China', '富士通株式会社'],
+  creditCode: '913100006072834521',
+  defaultContractRole: 'seller',
+};

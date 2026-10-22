@@ -1,0 +1,41 @@
+{
+  "diagnosticOnly": true,
+  "notWorkModeE2E": true,
+  "request": {
+    "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+    "prompt": "你是一名资深中国商事合同法务与合规专家。请对以下合同条款批量进行法律合规审查，并严格以 JSON 数组格式返回每个条款的评估结果。\n\n【合同类别】: 通用商业合作协议\n【我方立场】: 买方/客户方/委托方/披露方（核心诉求：严格保密、保障交付质量、明确违约追偿责任、防范服务商单方免责）\n【用户专项审查要求】: 重点检查我方义务、责任、数据或知识产权、付款和退出安排\n\n【待审查条款列表及各条款候选合规要件】:\n--- [条款序号: 3] [条款标题: [CT05-ja-A03]] ---\n【条款原文】:\n検収：納入メール後2日以内に甲が書面拒絶しなければ合格とみなす。未修正のセキュリティ脆弱性は検収に影響しない。\n【候选合规要件摘要】:\n无预设专项要件，请进行常规商事法律合规与权责对等核验\n\n--- [条款序号: 4] [条款标题: [CT05-ja-A04]] ---\n【条款原文】:\n知的財産：全ての専用開発成果及びソースコードの著作権は乙に帰属する。甲には更新できない1年間の社内利用権のみを付与する。\n【候选合规要件摘要】:\n无预设专项要件，请进行常规商事法律合规与权责对等核验\n\n--- [条款序号: 5] [条款标题: [CT05-ja-A05]] ---\n【条款原文】:\n変更：要件変更は価格及び納期への影響を記載した変更書を双方が承認した後に実施する。\n【候选合规要件摘要】:\n无预设专项要件，请进行常规商事法律合规与权责对等核验\n\n【审查与判定规则】:\n1. 目标导向：直接核验各条款是否命中上述候选要件。直接输出判定结果，禁止展开漫长的自我辩论或非结构化推演。\n2. 命中规则：命中则 verdict=\"MATCHED\"，未命中则 verdict=\"PASSED\"。若命中，必须在 evidenceQuote 中摘录条款原文证据原句（严禁臆造），并在 reason 中简述判定理由（20-50字内）。\n3. 补充风险：如存在候选规则之外的重大法律风险，可使用 ruleId=\"GENERAL-RISK\" 标识补充，注明 severity (\"HIGH\"|\"MEDIUM\"|\"LOW\") 与 reason，但不得虚构其他规则编号。\n4. 数量控制：每个条款 findings 最多保留 1-2 项最关键实质性风险。若条款权责对等、无实质风险，findings 返回空数组或各项 verdict 为 PASSED。\n\n【输出格式要求】:\n必须且只能返回纯 JSON 数组，数组中每个对象对应上述条款，顺序一致，且每个对象必须包含 clauseIndex 对应上述条款序号：\n[\n  {\n    \"clauseIndex\": <number>,\n    \"riskLevel\": \"HIGH\" | \"MEDIUM\" | \"LOW\" | \"PASS\",\n    \"riskSummary\": \"一句话准确概括核心法律风险（若PASS则填条款权责明确）\",\n    \"findings\": [\n      {\n        \"ruleId\": \"<候选规则ID或GENERAL-RISK>\",\n        \"verdict\": \"MATCHED\" | \"PASSED\",\n        \"evidenceQuote\": \"触发风险的原文原句\",\n        \"reason\": \"判定理由\"\n      }\n    ]\n  }\n]",
+    "temperature": 0.1,
+    "seed": 42,
+    "responseFormat": "json_array",
+    "includeDebug": true,
+    "timeoutMs": 45000,
+    "thinking": false
+  },
+  "status": 201,
+  "elapsedMs": 3685,
+  "response": {
+    "result": "[\n  {\n    \"clauseIndex\": 3,\n    \"riskLevel\": \"HIGH\",\n    \"riskSummary\": \"自动验收机制及排除核心安全缺陷导致验收标准形同虚设，严重损害买方权益。\",\n    \"findings\": [\n      {\n        \"ruleId\": \"GENERAL-RISK\",\n        \"verdict\": \"MATCHED\",\n        \"evidenceQuote\": \"未修正のセキュリティ脆弱性は検収に影響しない。\",\n        \"reason\": \"允许存在未修复安全漏洞仍视为合格，严重违反交付质量标准，增加买方后续安全风险。\"\n      }\n    ]\n  },\n  {\n    \"clauseIndex\": 4,\n    \"riskLevel\": \"HIGH\",\n    \"riskSummary\": \"知识产权归属卖方且买方仅有受限使用权，严重削弱买方资产价值与控制力。\",\n    \"findings\": [\n      {\n        \"ruleId\": \"GENERAL-RISK\",\n        \"verdict\": \"MATCHED\",\n        \"evidenceQuote\": \"全ての専用開発成果及びソースコードの著作権は乙に帰属する。\",\n        \"reason\": \"买方委托开发的核心成果知识产权归卖方所有，买方仅获授权，丧失资产控制权且面临依赖风险。\"\n      }\n    ]\n  },\n  {\n    \"clauseIndex\": 5,\n    \"riskLevel\": \"PASS\",\n    \"riskSummary\": \"条款权责明确，变更流程规范，符合商事交易惯例。\",\n    \"findings\": []\n  }\n]",
+    "usage": {
+      "prompt_tokens": 765,
+      "total_tokens": 1099,
+      "completion_tokens": 334,
+      "prompt_tokens_details": null
+    },
+    "actualModel": "qwen36-35b-a3b",
+    "actualModelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+    "provider": "local",
+    "debug": {
+      "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "actualModel": "qwen36-35b-a3b",
+      "actualModelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "provider": "local",
+      "requestMessages": [
+        {
+          "role": "user",
+          "content": "你是一名资深中国商事合同法务与合规专家。请对以下合同条款批量进行法律合规审查，并严格以 JSON 数组格式返回每个条款的评估结果。\n\n【合同类别】: 通用商业合作协议\n【我方立场】: 买方/客户方/委托方/披露方（核心诉求：严格保密、保障交付质量、明确违约追偿责任、防范服务商单方免责）\n【用户专项审查要求】: 重点检查我方义务、责任、数据或知识产权、付款和退出安排\n\n【待审查条款列表及各条款候选合规要件】:\n--- [条款序号: 3] [条款标题: [CT05-ja-A03]] ---\n【条款原文】:\n検収：納入メール後2日以内に甲が書面拒絶しなければ合格とみなす。未修正のセキュリティ脆弱性は検収に影響しない。\n【候选合规要件摘要】:\n无预设专项要件，请进行常规商事法律合规与权责对等核验\n\n--- [条款序号: 4] [条款标题: [CT05-ja-A04]] ---\n【条款原文】:\n知的財産：全ての専用開発成果及びソースコードの著作権は乙に帰属する。甲には更新できない1年間の社内利用権のみを付与する。\n【候选合规要件摘要】:\n无预设专项要件，请进行常规商事法律合规与权责对等核验\n\n--- [条款序号: 5] [条款标题: [CT05-ja-A05]] ---\n【条款原文】:\n変更：要件変更は価格及び納期への影響を記載した変更書を双方が承認した後に実施する。\n【候选合规要件摘要】:\n无预设专项要件，请进行常规商事法律合规与权责对等核验\n\n【审查与判定规则】:\n1. 目标导向：直接核验各条款是否命中上述候选要件。直接输出判定结果，禁止展开漫长的自我辩论或非结构化推演。\n2. 命中规则：命中则 verdict=\"MATCHED\"，未命中则 verdict=\"PASSED\"。若命中，必须在 evidenceQuote 中摘录条款原文证据原句（严禁臆造），并在 reason 中简述判定理由（20-50字内）。\n3. 补充风险：如存在候选规则之外的重大法律风险，可使用 ruleId=\"GENERAL-RISK\" 标识补充，注明 severity (\"HIGH\"|\"MEDIUM\"|\"LOW\") 与 reason，但不得虚构其他规则编号。\n4. 数量控制：每个条款 findings 最多保留 1-2 项最关键实质性风险。若条款权责对等、无实质风险，findings 返回空数组或各项 verdict 为 PASSED。\n\n【输出格式要求】:\n必须且只能返回纯 JSON 数组，数组中每个对象对应上述条款，顺序一致，且每个对象必须包含 clauseIndex 对应上述条款序号：\n[\n  {\n    \"clauseIndex\": <number>,\n    \"riskLevel\": \"HIGH\" | \"MEDIUM\" | \"LOW\" | \"PASS\",\n    \"riskSummary\": \"一句话准确概括核心法律风险（若PASS则填条款权责明确）\",\n    \"findings\": [\n      {\n        \"ruleId\": \"<候选规则ID或GENERAL-RISK>\",\n        \"verdict\": \"MATCHED\" | \"PASSED\",\n        \"evidenceQuote\": \"触发风险的原文原句\",\n        \"reason\": \"判定理由\"\n      }\n    ]\n  }\n]"
+        }
+      ],
+      "responseText": "[\n  {\n    \"clauseIndex\": 3,\n    \"riskLevel\": \"HIGH\",\n    \"riskSummary\": \"自动验收机制及排除核心安全缺陷导致验收标准形同虚设，严重损害买方权益。\",\n    \"findings\": [\n      {\n        \"ruleId\": \"GENERAL-RISK\",\n        \"verdict\": \"MATCHED\",\n        \"evidenceQuote\": \"未修正のセキュリティ脆弱性は検収に影響しない。\",\n        \"reason\": \"允许存在未修复安全漏洞仍视为合格，严重违反交付质量标准，增加买方后续安全风险。\"\n      }\n    ]\n  },\n  {\n    \"clauseIndex\": 4,\n    \"riskLevel\": \"HIGH\",\n    \"riskSummary\": \"知识产权归属卖方且买方仅有受限使用权，严重削弱买方资产价值与控制力。\",\n    \"findings\": [\n      {\n        \"ruleId\": \"GENERAL-RISK\",\n        \"verdict\": \"MATCHED\",\n        \"evidenceQuote\": \"全ての専用開発成果及びソースコードの著作権は乙に帰属する。\",\n        \"reason\": \"买方委托开发的核心成果知识产权归卖方所有，买方仅获授权，丧失资产控制权且面临依赖风险。\"\n      }\n    ]\n  },\n  {\n    \"clauseIndex\": 5,\n    \"riskLevel\": \"PASS\",\n    \"riskSummary\": \"条款权责明确，变更流程规范，符合商事交易惯例。\",\n    \"findings\": []\n  }\n]"
+    }
+  }
+}

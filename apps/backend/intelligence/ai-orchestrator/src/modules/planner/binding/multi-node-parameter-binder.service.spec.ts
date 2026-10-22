@@ -645,4 +645,60 @@ describe('MultiNodeParameterBinderService', () => {
       value: 'http://192.168.100.143:3009/studio/download/b19a51ab-b321-431b-a6fe-43b204c1265d',
     });
   });
+
+  it('recursively normalizes and coerces string array elements to objects when schema items type is object', async () => {
+    const cardWithObjectArray = {
+      id: 'custom-skill',
+      displayName: '自定义审核技能',
+      inputs: {
+        customCheckpoints: 'array',
+      },
+      outputs: {},
+      _rawInputSchema: {
+        properties: {
+          customCheckpoints: {
+            type: 'array',
+            items: {
+              type: 'object',
+            },
+          },
+        },
+      },
+    } as unknown as CompactCapabilityCardV1;
+
+    const recognizer = {
+      recognizeParams: jest.fn().mockResolvedValue({
+        params: {
+          customCheckpoints: [
+            '排查付款账期是否为30日',
+            '违约金比例不得超过20%',
+          ],
+        },
+        confidence: 0.9,
+      }),
+    };
+
+    const binder = new MultiNodeParameterBinderService(
+      new NodeOutputBindingResolverService(),
+      recognizer as any
+    );
+
+    const result = await binder.bindParameters(
+      '审查合同并关注付款账期',
+      [{ ref: 'n1', capabilityKey: 'custom-skill', dependsOn: [] }],
+      new Map([['custom-skill', cardWithObjectArray]])
+    );
+
+    expect(result.planInputs.n1?.customCheckpoints).toEqual([
+      { title: '排查付款账期是否为30日', rule: '排查付款账期是否为30日' },
+      { title: '违约金比例不得超过20%', rule: '违约金比例不得超过20%' },
+    ]);
+    expect(result.nodeBindings.n1?.customCheckpoints).toEqual({
+      source: 'literal',
+      value: [
+        { title: '排查付款账期是否为30日', rule: '排查付款账期是否为30日' },
+        { title: '违约金比例不得超过20%', rule: '违约金比例不得超过20%' },
+      ],
+    });
+  });
 });

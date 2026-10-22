@@ -1,0 +1,142 @@
+[
+  {
+    "marker": "META-ALIGNED-30-30-A02",
+    "topic": "risk_internal_conflict",
+    "matchedClauseIndices": [
+      2
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "约定我方享有独家销售权，但允许甲方直接销售及引入第三方，导致独家权利完全落空，存在严重逻辑冲突与商业风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-2-GENERAL-RISK",
+            "title": "[META-ALIGNED-30-30-A02]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "约定我方享有独家销售权，但允许甲方直接销售及引入第三方，导致独家权利完全落空，存在严重逻辑冲突与商业风险。",
+            "evidenceQuote": "乙方可不受限制地直接向区域客户销售并另行指定其他经销商。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "META-ALIGNED-30-30-A03",
+    "topic": "risk_target",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "要求买方承担供应商缺货的违约责任，违背公平原则与合同对等性。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[META-ALIGNED-30-30-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "要求买方承担供应商缺货的违约责任，违背公平原则与合同对等性。",
+            "evidenceQuote": "即使乙方缺货也不得调减目标，未达标须补足差额。"
+          },
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[META-ALIGNED-30-30-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "固定最低采购额限制买方经营自主权，且未约定不可抗力等免责情形。",
+            "evidenceQuote": "采购目标：甲方年度最低采购额为人民币3000000元"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "META-ALIGNED-30-30-A04",
+    "topic": "risk_resale_price_review",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "限制转售价格违反《反垄断法》关于禁止纵向垄断协议的规定，条款可能无效。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[META-ALIGNED-30-30-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "限制转售价格违反《反垄断法》关于禁止纵向垄断协议的规定，条款可能无效。",
+            "evidenceQuote": "甲方须遵守乙方确定的最低转售价格"
+          },
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[META-ALIGNED-30-30-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "单方终止授权缺乏合理通知期及补救机制，易导致买方业务突然中断。",
+            "evidenceQuote": "低价销售即取消全部返利并终止授权"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "META-ALIGNED-30-30-A07",
+    "topic": "risk_inventory_exit",
+    "matchedClauseIndices": [
+      7
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "卖方享有任意解除权且买方已付款库存既不能退回也不能转售，构成根本性违约风险与巨额财产损失，严重违背公平原则。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-7-GENERAL-RISK",
+            "title": "[META-ALIGNED-30-30-A07]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "卖方享有任意解除权且买方已付款库存既不能退回也不能转售，构成根本性违约风险与巨额财产损失，严重违背公平原则。",
+            "evidenceQuote": "乙方可随时无理由立即终止；甲方已购库存不得退回，也不得继续销售。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

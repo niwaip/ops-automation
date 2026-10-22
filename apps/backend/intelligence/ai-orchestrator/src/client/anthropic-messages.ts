@@ -53,7 +53,10 @@ export class AnthropicMessagesClient {
   private timeout: number;
   private anthropicVersion: string;
 
-  constructor(config: OpenAICompatibleConfig, timeout: number = 90000) {
+  constructor(
+    config: OpenAICompatibleConfig,
+    timeout: number = Number(process.env.DEFAULT_LLM_TIMEOUT_MS) || 180000
+  ) {
     this.baseURL = config.baseURL;
     this.apiKey = config.apiKey;
     this.model = config.model;

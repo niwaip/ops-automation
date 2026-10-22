@@ -21,6 +21,14 @@ export interface ClauseLlmReviewInput {
   reviewPrompt?: string;
 }
 
+export interface ClauseLlmReviewDiagnostics {
+  attempt?: number;
+  modelId?: string;
+  elapsedMs?: number;
+  rawSnippet?: string;
+  validationFailureCode?: 'NETWORK_TIMEOUT' | 'UPSTREAM_HTTP_ERROR' | 'INVALID_JSON_RESPONSE' | 'EMPTY_RESPONSE' | string;
+}
+
 export interface ClauseLlmReviewResult {
   riskLevel: ReviewRiskLevel;
   riskSummary: string;
@@ -28,6 +36,7 @@ export interface ClauseLlmReviewResult {
   recommendedRevision?: string;
   evidenceQuote?: string;
   llmReviewed?: boolean;
+  diagnostics?: ClauseLlmReviewDiagnostics;
 }
 
 @Injectable()
@@ -58,6 +67,11 @@ export class ContractLlmReviewService {
       return this.reviewClauseRuleBasedFallback(input);
     }
 
+    const startTime = Date.now();
+    const modelId = (input as any).modelId || process.env.CONTRACT_REVIEW_MODEL_ID || 'default';
+    let failureCode: ClauseLlmReviewDiagnostics['validationFailureCode'];
+    let rawSnippet: string | undefined;
+
     try {
       const orchestratorUrl = this.getAiOrchestratorUrl();
       const prompt = this.buildPrompt(input);
@@ -69,15 +83,17 @@ export class ContractLlmReviewService {
       const response = await axios.post<{ result?: string; content?: string }>(
         `${orchestratorUrl}/ai/model/call`,
         {
-          modelId: 'default',
+          modelId,
           prompt,
         },
         {
-          timeout: Number(process.env.CONTRACT_REVIEW_LLM_TIMEOUT_MS) || 60000,
+          timeout: Number(process.env.CONTRACT_REVIEW_LLM_TIMEOUT_MS) || 90000,
         }
       );
 
       const rawResult = response.data?.result || response.data?.content || '';
+      rawSnippet = typeof rawResult === 'string' ? rawResult.slice(0, 200) : undefined;
+
       if (rawResult) {
         const parsed = this.cleanAndParseJson(rawResult);
         if (parsed) {
@@ -115,16 +131,43 @@ export class ContractLlmReviewService {
                 ? String(parsed.evidenceQuote).trim()
                 : undefined,
             llmReviewed: true,
+            diagnostics: {
+              attempt: 1,
+              modelId,
+              elapsedMs: Date.now() - startTime,
+            },
           };
+        } else {
+          failureCode = 'INVALID_JSON_RESPONSE';
+          this.logger.warn(
+            `Clause ${input.clauseIndex} LLM response could not be parsed as valid JSON: ${rawSnippet}`
+          );
         }
+      } else {
+        failureCode = 'EMPTY_RESPONSE';
+        this.logger.warn(`Clause ${input.clauseIndex} LLM returned empty response.`);
       }
     } catch (err: any) {
+      failureCode =
+        err.code === 'ECONNABORTED' || String(err.message).toLowerCase().includes('timeout')
+          ? 'NETWORK_TIMEOUT'
+          : 'UPSTREAM_HTTP_ERROR';
       this.logger.warn(
-        `AI Orchestrator call failed for clause ${input.clauseIndex}: ${err.message}. Falling back to rule matrix.`
+        `AI Orchestrator call failed for clause ${input.clauseIndex} (${failureCode}): ${err.message}. Falling back to rule matrix.`
       );
     }
 
-    return this.reviewClauseRuleBasedFallback(input);
+    const fallbackResult = this.reviewClauseRuleBasedFallback(input);
+    return {
+      ...fallbackResult,
+      diagnostics: {
+        attempt: 1,
+        modelId,
+        elapsedMs: Date.now() - startTime,
+        rawSnippet,
+        validationFailureCode: failureCode,
+      },
+    };
   }
 
   /**
@@ -242,6 +285,14 @@ export class ContractLlmReviewService {
       customPromptDesc = `\n【用户专项审查提示词 / 业务指引要求】:\n${input.reviewPrompt.trim()}\n`;
     }
 
+    const hasBilingual =
+      /[\u4e00-\u9fa5]/.test(clauseText) &&
+      (/[\u3040-\u309f\u30a0-\u30ff]/.test(clauseText) || /[a-zA-Z]{4,}/.test(clauseText));
+
+    const bilingualInstruction = hasBilingual
+      ? '\n3. 【双语对照与数值冲突排查】：该条款包含双语对照内容。请严格比对不同语言版本在付款期限（如天数/日历日/工作日）、付款条件、违约金比例、交付节点及法律效力优先级等约定上是否存在不一致或冲突。若两种语言约定的期限/数值或权责不一致，必须明确判定为 HIGH 或 MEDIUM 风险，并在风险总结中具体指明两种语言的差异（例如“中文约定30日而日文约定60日”）。'
+      : '';
+
     return `你是一名资深中国商事合同法务与合规专家。请审查以下合同条款并以严格的 JSON 格式输出深度分析。
 
 【合同类别】: ${contractTypeName || '商事合同'}
@@ -255,8 +306,8 @@ ${standardsDesc}${formIntegrityDesc}${customPromptDesc}
 
 【审查要求】
 1. 结合我方商业立场、法律审查标准以及上述专项审查提示词要求，进行实质性法理审查与风险研判。
-2. 若存在单方倾斜、单方免责、过度责任、保密范围不对称或草案模板未填充等问题，指出核心风险并给出针对我方立场的谈判与修改策略。
-3. 严格输出一个 JSON 对象，严禁使用任何 markdown 代码块标记（禁止输出 \`\`\`json），严禁输出任何前后解释文字：
+2. 若存在单方倾斜、单方免责、过度责任、保密范围不对称或草案模板未填充等问题，指出核心风险并给出针对我方立场的谈判与修改策略。${bilingualInstruction}
+4. 严格输出一个 JSON 对象，严禁使用任何 markdown 代码块标记（禁止输出 \`\`\`json），严禁输出任何前后解释文字：
 {
   "riskLevel": "PASS" | "LOW" | "MEDIUM" | "HIGH",
   "riskSummary": "核心法律风险总结或合规评语（精准概括，60字以内）",

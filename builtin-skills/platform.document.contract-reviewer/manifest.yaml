@@ -43,6 +43,10 @@ spec:
       schema:
         type: object
         additionalProperties: false
+        anyOf:
+          - required: [fileBase64]
+          - required: [text]
+          - required: [fileUrl]
         properties:
           fileBase64:
             type: string
@@ -56,9 +60,20 @@ spec:
           contractType:
             type: string
             enum: [nda, software_development, procurement, employment, lease, general]
+            x-enum-aliases:
+              nda: [保密协议, 保密合同, 秘密保持契約, 守秘義務契約, 秘密保持, 守秘義務, NDA, nda]
+              software_development: [软件开发合同, 技术开发合同, 系统开发合同, 软件服务合同, ソフトウェア開発委託契約, 開発委託契約, ソフトウェア開発, システム開発]
+              procurement: [采购合同, 买卖合同, 货物买卖合同, 供货合同, 売買契約, 調達契約, 物品売買契約]
+              employment: [劳动合同, 雇佣合同, 劳务合同, 雇用契約, 労働契約]
+              lease: [租赁合同, 房屋租赁合同, 场地租赁合同, 賃貸借契約, リース契約]
             description: 合同类型（留空则基于条款智能自动识别分类）
           myPosition:
             type: string
+            enum: [buyer, seller, neutral]
+            x-enum-aliases:
+              buyer: [甲方, 买方, 采购方, 委托方, 透露方, 披露方, 出租方, 雇主, 发包方, 買主, 発注者, 委託者, 賃貸人, 甲側, 我方为甲, 我方为甲方, 我方买方, 我为甲方]
+              seller: [乙方, 卖方, 销售方, 受托方, 接收方, 承租方, 雇员, 承包方, 売主, 受注者, 受託者, 賃借人, 乙側, 我方为乙, 我方为乙方, 我方卖方, 我为乙方]
+              neutral: [中立, 双方, 对等, 客观, 中立立场]
             description: 我方合同立场与角色（如：甲方、乙方、采购方、受托方、雇主、雇员、出租方、承租方），影响审查倾斜度与红线建议
           customChecklistRules:
             type: array

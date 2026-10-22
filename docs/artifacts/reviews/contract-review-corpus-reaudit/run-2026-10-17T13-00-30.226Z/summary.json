@@ -1,0 +1,68 @@
+{
+  "fullRunCases": 54,
+  "engineeringGate": {
+    "passed": 51,
+    "failed": 3
+  },
+  "byFormat": {
+    "docx": {
+      "total": 18,
+      "runnerPassed": 16,
+      "sourceCovered": 18
+    },
+    "pdf": {
+      "total": 18,
+      "runnerPassed": 18,
+      "sourceCovered": 18
+    },
+    "txt": {
+      "total": 18,
+      "runnerPassed": 17,
+      "sourceCovered": 18
+    }
+  },
+  "allSourceArticlesCovered": 54,
+  "successfulRecognizerModels": {
+    "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af": 52
+  },
+  "recognizerFailures": 2,
+  "businessLedgerEntries": 162,
+  "businessModel": "qwen36-35b-a3b",
+  "isolatedFaultTests": {
+    "total": 28,
+    "passed": 28,
+    "failed": 0
+  },
+  "retry": {
+    "cases": 3,
+    "counts": {
+      "passed": 2,
+      "failed": 1
+    },
+    "unresolved": [
+      "CT05-ja-txt"
+    ]
+  },
+  "typeMismatchCases": [
+    "CT01-ja-docx",
+    "CT03-ja-docx",
+    "CT05-ja-docx",
+    "CT06-ja-docx",
+    "CT01-ja-pdf",
+    "CT03-ja-pdf",
+    "CT05-ja-pdf",
+    "CT06-ja-pdf",
+    "CT01-ja-txt",
+    "CT03-ja-txt",
+    "CT05-ja-txt",
+    "CT06-ja-txt"
+  ],
+  "sourceChangesDuringCases": [],
+  "sourceChangesAcrossFullRun": [],
+  "evidenceIntegrityFailures": [],
+  "harnessDigests": {
+    "audit-corpus.py": "d07bcb05c5cfc9bc28459cc15b7f434ac83a4492329fea7a33b227c28f9d5b0e",
+    "client.mjs": "4058c983f3f32bb8825a6be1dc67ac43a5075a9a8b2a7a62f629d80d4f994ad6",
+    "run-corpus.mjs": "079dfe50fdc9d33bf23523f5b9f34ea44ab3aaebce69d505a912cef8aaf4b46d"
+  }
+}

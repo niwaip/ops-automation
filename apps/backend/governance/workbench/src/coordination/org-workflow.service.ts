@@ -314,7 +314,7 @@ export class OrgWorkflowService implements OnModuleInit {
               capabilityId: 'platform.document.contract-reviewer',
               config: {
                 contractType: 'nda',
-                myPosition: 'buyer',
+                myPosition: 'auto',
               },
               description: '担当确认后自动调用 contract-review 规则库排查永久保密陷阱、除外责任及违约条款，输出审查报告',
               isLocked: true,

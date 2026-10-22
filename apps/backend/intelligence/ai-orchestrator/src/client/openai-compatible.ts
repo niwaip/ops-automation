@@ -58,7 +58,10 @@ export class OpenAICompatibleClient {
   /** Learned per-client capability: this model rejects an explicit off request. */
   private reasoningOffRejected = false;
 
-  constructor(config: OpenAICompatibleConfig, timeout: number = 90000) {
+  constructor(
+    config: OpenAICompatibleConfig,
+    timeout: number = Number(process.env.DEFAULT_LLM_TIMEOUT_MS) || 180000
+  ) {
     this.baseURL = config.baseURL;
     this.apiKey = config.apiKey;
     this.model = config.model;

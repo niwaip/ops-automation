@@ -449,7 +449,7 @@ describe('Word OpenXML Comments End-to-End Extraction & Rendering', () => {
     expect(html).toContain('标记核实');
     expect(html).toContain('待处理');
     expect(html).toContain('dispatchReviewResult');
-    expect(html).toContain('showSyncCompleteModal');
+    expect(html).toContain('showSyncNotice');
     expect(html).toContain('confirmApprovalOpinion');
     expect(html).toContain('toggleApprovalOpinionBox');
     expect(html).toContain('copyPureText');

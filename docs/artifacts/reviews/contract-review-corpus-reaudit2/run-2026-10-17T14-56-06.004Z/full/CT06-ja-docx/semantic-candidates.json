@@ -1,0 +1,92 @@
+[
+  {
+    "marker": "CT06-ja-A04",
+    "topic": "risk_repairs",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "PASS"
+    ],
+    "hasRiskSignal": false,
+    "reviewText": [
+      {
+        "riskSummary": "条款权责明确，明确我方不承担费用上限及协作义务，对我方有利。",
+        "legalAdvice": "条款符合规范，可按原约定保留。"
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT06-ja-A05",
+    "topic": "risk_unilateral_change",
+    "matchedClauseIndices": [
+      5
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "强制接受调价且禁止解约，构成权利滥用与显失公平，合规风险极高。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-5-GENERAL-RISK",
+            "title": "[CT06-ja-A05]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "强制接受调价且禁止解约，构成权利滥用与显失公平，合规风险极高。",
+            "evidenceQuote": "甲は拒否できず、これを理由に解除もできない"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT06-ja-A06",
+    "topic": "risk_deposit",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "条款赋予乙方单方决定是否退还及扣除保证金的权利，且无需提供证据，严重违背公平原则及保密/合规对等性。",
+        "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+        "findings": [
+          {
+            "id": "finding-clause-6-NDA-01",
+            "title": "保密期限永久且未区分一般信息与商业秘密",
+            "ruleId": "nda_perpetual_duration",
+            "category": "CONFIDENTIALITY",
+            "ruleCode": "NDA-01",
+            "severity": "HIGH",
+            "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+            "riskSummary": "条款赋予乙方单方决定是否退还及扣除保证金的权利，且无需提供证据，严重违背公平原则及保密/合规对等性。",
+            "evidenceQuote": "保証金：満了後の返還可否は乙が自由に判断する。返還期限は定めず、控除の証拠提出も不要とする。",
+            "recommendedRevision": "自披露之日起算，有效期为 3 年；依法属于商业秘密的信息在其合法保持秘密状态期间持续有效"
+          },
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT06-ja-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "剥夺甲方要求退还保证金的权利，且无明确退还期限，存在资金被无故侵占的高风险。",
+            "evidenceQuote": "満了後の返還可否は乙が自由に判断する"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

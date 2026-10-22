@@ -1,0 +1,192 @@
+{
+  "caseId": "T13",
+  "isolated": true,
+  "request": {
+    "requestId": "crw-audit",
+    "executionId": "crw-audit-execution",
+    "stepId": "crw-audit-step",
+    "skillId": "platform.document.contract-reviewer",
+    "input": {
+      "text": "synthetic",
+      "modelId": "qwen36-35b-a3b"
+    },
+    "metadata": {
+      "definitionVersion": "1.0.2"
+    }
+  },
+  "result": {
+    "success": true,
+    "output": {
+      "capabilityKey": "platform.document.contract-reviewer",
+      "capabilityVersion": "1.0.2",
+      "summary": "审查完成",
+      "contractType": "procurement",
+      "myPosition": "buyer",
+      "positionSource": "default",
+      "metrics": {
+        "totalClauses": 3,
+        "healthScore": 100,
+        "highRiskCount": 0,
+        "mediumRiskCount": 0,
+        "lowRiskCount": 0,
+        "missingClausesCount": 0,
+        "passCount": 3,
+        "unfilledVariablesCount": 0,
+        "unfilledBlanksTotal": 0,
+        "llmReviewedCount": 3,
+        "degradedClausesCount": 0,
+        "isDegraded": false,
+        "isTruncated": false,
+        "warnings": []
+      },
+      "clauses": [
+        {
+          "clauseIndex": 0,
+          "clauseNumber": "第1条",
+          "title": "条款0",
+          "originalContent": "CRW_FAULT_0 双方依书面约定履行本条合同义务。",
+          "riskLevel": "PASS",
+          "riskSummary": "该条款权责约定明确对称。",
+          "legalAdvice": "条款符合规范，可按原约定保留。",
+          "matchedCheckpoints": [],
+          "llmReviewed": true,
+          "isBypassed": false,
+          "isFallback": false,
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 0
+          }
+        },
+        {
+          "clauseIndex": 1,
+          "clauseNumber": "第2条",
+          "title": "条款1",
+          "originalContent": "CRW_FAULT_1 双方依书面约定履行本条合同义务。",
+          "riskLevel": "PASS",
+          "riskSummary": "该条款权责约定明确对称。",
+          "legalAdvice": "条款符合规范，可按原约定保留。",
+          "matchedCheckpoints": [],
+          "llmReviewed": true,
+          "isBypassed": false,
+          "isFallback": false,
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 0
+          }
+        },
+        {
+          "clauseIndex": 2,
+          "clauseNumber": "第3条",
+          "title": "条款2",
+          "originalContent": "CRW_FAULT_2 双方依书面约定履行本条合同义务。",
+          "riskLevel": "PASS",
+          "riskSummary": "该条款权责约定明确对称。",
+          "legalAdvice": "条款符合规范，可按原约定保留。",
+          "matchedCheckpoints": [],
+          "llmReviewed": true,
+          "isBypassed": false,
+          "isFallback": false,
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 0
+          }
+        }
+      ],
+      "chapters": [
+        {
+          "chapterIndex": 1,
+          "chapterNumber": "前言",
+          "chapterTitle": "合同引言与签约主体",
+          "clauses": [
+            {
+              "clauseIndex": 0,
+              "clauseNumber": "第1条",
+              "title": "条款0",
+              "originalContent": "CRW_FAULT_0 双方依书面约定履行本条合同义务。",
+              "riskLevel": "PASS",
+              "riskSummary": "该条款权责约定明确对称。",
+              "legalAdvice": "条款符合规范，可按原约定保留。",
+              "matchedCheckpoints": [],
+              "llmReviewed": true,
+              "isBypassed": false,
+              "isFallback": false,
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 0
+              }
+            }
+          ],
+          "highRiskCount": 0,
+          "mediumRiskCount": 0,
+          "passCount": 1
+        },
+        {
+          "chapterIndex": 2,
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "clauses": [
+            {
+              "clauseIndex": 1,
+              "clauseNumber": "第2条",
+              "title": "条款1",
+              "originalContent": "CRW_FAULT_1 双方依书面约定履行本条合同义务。",
+              "riskLevel": "PASS",
+              "riskSummary": "该条款权责约定明确对称。",
+              "legalAdvice": "条款符合规范，可按原约定保留。",
+              "matchedCheckpoints": [],
+              "llmReviewed": true,
+              "isBypassed": false,
+              "isFallback": false,
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 0
+              }
+            },
+            {
+              "clauseIndex": 2,
+              "clauseNumber": "第3条",
+              "title": "条款2",
+              "originalContent": "CRW_FAULT_2 双方依书面约定履行本条合同义务。",
+              "riskLevel": "PASS",
+              "riskSummary": "该条款权责约定明确对称。",
+              "legalAdvice": "条款符合规范，可按原约定保留。",
+              "matchedCheckpoints": [],
+              "llmReviewed": true,
+              "isBypassed": false,
+              "isFallback": false,
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 0
+              }
+            }
+          ],
+          "highRiskCount": 0,
+          "mediumRiskCount": 0,
+          "passCount": 2
+        }
+      ],
+      "missingClauses": [],
+      "reviewStatus": "completed",
+      "htmlReport": "<html>synthetic</html>",
+      "artifact": {
+        "name": "synthetic.html"
+      },
+      "artifacts": [
+        {
+          "name": "synthetic.html"
+        }
+      ]
+    },
+    "artifacts": [
+      {
+        "name": "synthetic.html"
+      }
+    ]
+  }
+}

@@ -1,0 +1,2 @@
+﻿id,business,language,format,executionId,status,previousGateStatus,executionStatus,outputPresent,markerCoverage,totalClauses,contractType,position,positionSource,degraded,chatMs,calls,inputTokens,outputTokens,failureReason
+META-ALIGNED-30-30-txt,distribution,zh-ja,txt,6fdef232-4308-4969-abed-8fc36889b1ad,passed,passed,succeeded,True,8,9,procurement,buyer,user_confirmed,False,45357,3,3046,953,

@@ -1,0 +1,14 @@
+{
+  "id": "CT03-ja-pdf",
+  "caseId": "CT03-ja",
+  "business": "nda",
+  "language": "ja",
+  "format": "pdf",
+  "file": "contracts/nda/CT03-ja.pdf",
+  "fixtureSha256": "cf927ac2ceca0a50523ab6fedbfc4542d5dc36d46ec382c7f49b36467800e78f",
+  "status": "error",
+  "startedAt": "2026-10-17T08:55:43.106Z",
+  "error": "Login HTTP 429",
+  "wallMs": 4,
+  "finishedAt": "2026-10-17T08:55:43.110Z"
+}

@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import axios from 'axios';
+import * as crypto from 'crypto';
 import { BuiltinSkillHandlerResult } from '@ops/backend-builtin-skill-contract';
 import type { RuntimeStepInvokeRequest } from '../runtime-adapter.interface';
 import {
@@ -7,6 +8,37 @@ import {
   getAiOrchestratorUrl,
 } from '../../../../config/service-endpoints';
 import { formatDocumentDomainError } from '../builtin-handler-registry.service';
+import type { ModelInvocationLedgerService } from '../../../experience-learning/model-invocation-ledger.service';
+
+export interface SemanticAuditOutcome {
+  hasFailure: boolean;
+  warnings: string[];
+  reviewedCount: number;
+  failedCount: number;
+  totalBatches: number;
+}
+
+export function resolvePositionDescription(myPosition?: string): string {
+  const clean = String(myPosition || '').trim().toLowerCase();
+  if (
+    ['buyer', '甲方', '买方', '客户方', '委托方', '发包方', '采购方'].some((k) =>
+      clean.includes(k.toLowerCase())
+    )
+  ) {
+    return '甲方/买方/委托方（核心诉求：防止责任转嫁、防范免责条款扩大、严守工期与质量违约追偿）';
+  }
+  if (
+    ['seller', '乙方', '卖方', '服务商', '开发方', '承包方', '供应商'].some((k) =>
+      clean.includes(k.toLowerCase())
+    )
+  ) {
+    return '乙方/卖方/服务商（核心诉求：合理限制违约责任上限、明确免责抗辩、防止苛刻延期罚则）';
+  }
+  if (clean && clean !== 'both' && clean !== 'neutral' && clean !== '中立') {
+    return `${myPosition}（核心诉求：维护我方合法权益、对等履行合同义务、防范隐蔽法律陷阱）`;
+  }
+  return '中立客观商事法务专家（核心诉求：权利义务对等、公平合理、防范隐蔽法律陷阱）';
+}
 
 export interface AlignedClausePairDto {
   id: string;
@@ -86,25 +118,32 @@ function cleanAndParseJsonArray(text: string): any[] | null {
 async function auditChangedClausesWithLlm(
   alignedClauses: AlignedClausePairDto[],
   myPosition: string,
-  logger: Logger
-): Promise<void> {
+  request: RuntimeStepInvokeRequest,
+  logger: Logger,
+  modelLedger?: ModelInvocationLedgerService
+): Promise<SemanticAuditOutcome> {
+  const outcome: SemanticAuditOutcome = {
+    hasFailure: false,
+    warnings: [],
+    reviewedCount: 0,
+    failedCount: 0,
+    totalBatches: 0,
+  };
+
   const changedPairs = alignedClauses.filter((p) => p.status !== 'UNCHANGED');
 
   if (changedPairs.length === 0) {
     logger.log('[ContractCompareOrchestrator] No changed clauses detected. Skipping LLM audit.');
-    return;
+    return outcome;
   }
 
   logger.log(
     `[ContractCompareOrchestrator] Auditing ${changedPairs.length} changed clauses via LLM.`
   );
 
-  const positionDesc =
-    myPosition === 'buyer'
-      ? '买方/客户方/委托方（核心诉求：防止责任转嫁、防范免责条款扩大、严守工期与质量违约追偿）'
-      : myPosition === 'seller'
-      ? '卖方/服务商/开发方（核心诉求：合理限制违约责任上限、明确免责抗辩、防止苛刻延期罚则）'
-      : '中立客观商事法务专家（核心诉求：权利义务对等、公平合理、防范隐蔽法律陷阱）';
+  const positionDesc = resolvePositionDescription(myPosition);
+  const requestedModelId =
+    (request as any).modelId || request.metadata?.modelId || 'default';
 
   // Batch 2-3 changed clauses per LLM call
   const BATCH_SIZE = 2;
@@ -112,6 +151,7 @@ async function auditChangedClausesWithLlm(
   for (let i = 0; i < changedPairs.length; i += BATCH_SIZE) {
     batches.push(changedPairs.slice(i, i + BATCH_SIZE));
   }
+  outcome.totalBatches = batches.length;
 
   const orchestratorUrl = getAiOrchestratorUrl();
   let currentBatchIdx = 0;
@@ -172,63 +212,231 @@ ${baselineInsight}${contentDesc}
 ]`;
 
       try {
-        const response = await axios.post<{ result?: string; content?: string }>(
+        const response = await axios.post<{
+          result?: string;
+          content?: string;
+          usage?: {
+            prompt_tokens?: number;
+            completion_tokens?: number;
+            prompt_tokens_details?: { cached_tokens?: number };
+          };
+          pricing?: { input_price_per_1k?: number; output_price_per_1k?: number };
+          debug?: {
+            modelId?: string;
+            actualModel?: string;
+            actualModelId?: string;
+            provider?: string;
+          };
+        }>(
           `${orchestratorUrl}/ai/model/call`,
-          { modelId: 'default', prompt },
+          {
+            modelId: requestedModelId,
+            prompt,
+            temperature: 0.1,
+            seed: 42,
+            responseFormat: 'json_array',
+            timeoutMs: 60000,
+            includeDebug: true,
+          },
           { timeout: 60000 }
         );
+
+        if (modelLedger && request) {
+          try {
+            const UUID_REGEX =
+              /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+            const ownerUserId =
+              request.traceContext?.userId && UUID_REGEX.test(request.traceContext.userId)
+                ? request.traceContext.userId
+                : 'e7fce333-a8f4-4097-9a53-f0a4c729da46';
+            const executionId =
+              request.executionId && UUID_REGEX.test(request.executionId)
+                ? request.executionId
+                : undefined;
+            const stepId =
+              request.stepId && UUID_REGEX.test(request.stepId)
+                ? request.stepId
+                : undefined;
+
+            const promptDigest = crypto.createHash('sha256').update(prompt, 'utf8').digest('hex');
+            const systemPromptDigest = crypto
+              .createHash('sha256')
+              .update('contract-compare-expert', 'utf8')
+              .digest('hex');
+
+            const samplingPolicy = {
+              temperature: 0.1,
+              seed: 42,
+              responseFormat: 'json_array',
+            };
+            const modelPolicyDigest = crypto
+              .createHash('sha256')
+              .update(JSON.stringify(samplingPolicy))
+              .digest('hex');
+
+            const inputTokens = response.data?.usage?.prompt_tokens ?? 0;
+            const outputTokens = response.data?.usage?.completion_tokens ?? 0;
+            const cachedTokens =
+              response.data?.usage?.prompt_tokens_details?.cached_tokens ?? 0;
+
+            let estimatedCost: number | null = null;
+            let currency: string | null = null;
+            const pricing = response.data?.pricing;
+            if (
+              pricing &&
+              typeof pricing.input_price_per_1k === 'number' &&
+              typeof pricing.output_price_per_1k === 'number'
+            ) {
+              estimatedCost = Number(
+                (
+                  ((inputTokens - cachedTokens) / 1000) * pricing.input_price_per_1k +
+                  (cachedTokens / 1000) * (pricing.input_price_per_1k * 0.5) +
+                  (outputTokens / 1000) * pricing.output_price_per_1k
+                ).toFixed(6)
+              );
+              currency = 'USD';
+            }
+
+            await modelLedger.record(ownerUserId, {
+              executionId,
+              stepId,
+              traceId: request.traceContext?.traceId,
+              purpose: 'llm_operation',
+              promptTemplateVersion: '1.0.0',
+              promptTemplateDigest: promptDigest,
+              systemPromptDigest,
+              modelPolicyDigest,
+              generationParameters: samplingPolicy,
+              inputRefs: currentBatch.map((pair) => ({
+                id: pair.id,
+                status: pair.status,
+                sourceTitle: pair.sourceClause?.title,
+                targetTitle: pair.targetClause?.title,
+              })),
+              provider:
+                (response.data as any)?.provider ||
+                response.data?.debug?.provider ||
+                'builtin',
+              modelId:
+                (response.data as any)?.actualModel ||
+                response.data?.debug?.actualModel ||
+                (response.data as any)?.actualModelId ||
+                response.data?.debug?.actualModelId ||
+                requestedModelId,
+              inputTokens,
+              outputTokens,
+              cachedTokens,
+              estimatedCost,
+              currency,
+            });
+          } catch (ledgerErr: any) {
+            logger.warn(
+              `[ContractCompareOrchestrator] Failed to record model invocation ledger: ${ledgerErr.message}`
+            );
+          }
+        }
 
         const rawResult = response.data?.result || response.data?.content || '';
         const parsedArray = cleanAndParseJsonArray(rawResult);
 
         if (parsedArray && parsedArray.length > 0) {
           for (const item of currentBatch) {
-            const match =
-              parsedArray.find((p) => p.clauseId === item.id) ||
-              parsedArray[currentBatch.indexOf(item)];
+            const matches = parsedArray.filter(
+              (p) => p && typeof p === 'object' && p.clauseId === item.id
+            );
 
-            if (match) {
-              const parsedLevel = normalizeRiskLevel(match.riskLevel);
-              const prevInsight = item.aiInsight;
-
-              // Determine final risk level (highest of rule level and LLM level)
-              let finalRisk = parsedLevel || 'MEDIUM';
-              if (prevInsight?.riskLevel === 'HIGH' || parsedLevel === 'HIGH') {
-                finalRisk = 'HIGH';
-              }
-
-              // Combine rule insight with LLM deep insight
-              let combinedSummary = match.summary || '条款存在实质变更';
-              if (prevInsight?.summary && !combinedSummary.includes(prevInsight.summary)) {
-                combinedSummary = `${prevInsight.summary}；${combinedSummary}`;
-              }
-
-              let combinedAdvice = match.legalAdvice || prevInsight?.legalAdvice || '建议重点复核。';
-              if (prevInsight?.legalAdvice && !combinedAdvice.includes(prevInsight.legalAdvice)) {
-                combinedAdvice = `${prevInsight.legalAdvice} ${combinedAdvice}`;
-              }
-
-              item.aiInsight = {
-                riskLevel: finalRisk,
-                summary: combinedSummary,
-                legalAdvice: combinedAdvice,
-                keyChange: match.keyChange || prevInsight?.keyChange,
-                shortSummary: match.keyChange || prevInsight?.shortSummary,
-                elementId: prevInsight?.elementId,
-                elementCode: prevInsight?.elementCode,
-              };
+            // 1. Missing / unmatched clause (F09)
+            if (matches.length === 0) {
+              outcome.hasFailure = true;
+              outcome.failedCount++;
+              outcome.warnings.push(`Clause ${item.id} not matched in semantic model response`);
+              continue;
             }
+
+            // 2. Duplicate clause IDs with conflict insights (F06)
+            if (matches.length > 1) {
+              outcome.hasFailure = true;
+              outcome.failedCount++;
+              outcome.warnings.push(
+                `Duplicate conflict semantic insights returned for clause ${item.id}`
+              );
+              continue;
+            }
+
+            const match = matches[0];
+
+            // 3. Incomplete semantic fields (F07)
+            const hasValidContent = Boolean(
+              match.riskLevel &&
+                (match.summary || match.keyChange || match.legalAdvice)
+            );
+            if (!hasValidContent) {
+              outcome.hasFailure = true;
+              outcome.failedCount++;
+              outcome.warnings.push(
+                `Clause ${item.id} returned invalid or incomplete semantic payload`
+              );
+              continue;
+            }
+
+            const parsedLevel = normalizeRiskLevel(match.riskLevel);
+            if (!parsedLevel) {
+              outcome.hasFailure = true;
+              outcome.failedCount++;
+              outcome.warnings.push(
+                `Clause ${item.id} returned invalid riskLevel '${match.riskLevel}'`
+              );
+              continue;
+            }
+            const prevInsight = item.aiInsight;
+
+            // Determine final risk level (highest of rule level and LLM level)
+            let finalRisk = parsedLevel;
+            if (prevInsight?.riskLevel === 'HIGH' || parsedLevel === 'HIGH') {
+              finalRisk = 'HIGH';
+            }
+
+            // Combine rule insight with LLM deep insight
+            let combinedSummary = match.summary || '条款存在实质变更';
+            if (prevInsight?.summary && !combinedSummary.includes(prevInsight.summary)) {
+              combinedSummary = `${prevInsight.summary}；${combinedSummary}`;
+            }
+
+            let combinedAdvice = match.legalAdvice || prevInsight?.legalAdvice || '建议重点复核。';
+            if (prevInsight?.legalAdvice && !combinedAdvice.includes(prevInsight.legalAdvice)) {
+              combinedAdvice = `${prevInsight.legalAdvice} ${combinedAdvice}`;
+            }
+
+            item.aiInsight = {
+              riskLevel: finalRisk,
+              summary: combinedSummary,
+              legalAdvice: combinedAdvice,
+              keyChange: match.keyChange || prevInsight?.keyChange,
+              shortSummary: match.keyChange || prevInsight?.shortSummary,
+              elementId: prevInsight?.elementId,
+              elementCode: prevInsight?.elementCode,
+            };
+            outcome.reviewedCount++;
           }
+        } else {
+          outcome.hasFailure = true;
+          outcome.failedCount += currentBatch.length;
+          outcome.warnings.push(`Batch ${batchIdx + 1} returned unparseable or empty semantic model result`);
         }
       } catch (err: any) {
+        outcome.hasFailure = true;
+        outcome.failedCount += currentBatch.length;
+        const msg = `Batch ${batchIdx + 1} LLM audit call failed: ${err.message}`;
+        outcome.warnings.push(msg);
         logger.warn(
-          `[ContractCompareOrchestrator] Batch ${batchIdx} LLM audit call failed: ${err.message}. Retaining rule insights.`
+          `[ContractCompareOrchestrator] ${msg}. Retaining rule insights.`
         );
       }
     }
   });
 
   await Promise.all(workers);
+  return outcome;
 }
 
 /**
@@ -240,7 +448,8 @@ ${baselineInsight}${contentDesc}
 export async function executeContractCompareOrchestration(
   request: RuntimeStepInvokeRequest,
   idempotencyKey: string,
-  logger: Logger
+  logger: Logger,
+  modelLedger?: ModelInvocationLedgerService
 ): Promise<BuiltinSkillHandlerResult> {
   const domainUrl = getCarboneServiceUrl();
   const input = request.input || {};
@@ -291,24 +500,38 @@ export async function executeContractCompareOrchestration(
   // Stage 2: Batched LLM Audit for Changed Clauses
   const skipLlm =
     input.skipLlmReview === true ||
+    input.enableRiskAnalysis === false ||
     request.metadata?.definitionVersion === '0.0.0-smoke' ||
     String(request.executionId || '').startsWith('smoke-');
+
+  let semanticAuditOutcome: SemanticAuditOutcome | undefined;
 
   if (!skipLlm && process.env.DISABLE_LLM_REVIEW !== 'true') {
     logger.log(
       `[ContractCompareOrchestrator] Stage 2: Performing LLM semantic audit on changed clauses`
     );
-    await auditChangedClausesWithLlm(alignedClauses, String(input.myPosition || 'both'), logger);
+    semanticAuditOutcome = await auditChangedClausesWithLlm(
+      alignedClauses,
+      String(input.myPosition || 'both'),
+      request,
+      logger,
+      modelLedger
+    );
   }
 
   // Recalculate metrics
   const highRiskCount = alignedClauses.filter((p) => p.aiInsight?.riskLevel === 'HIGH').length;
   const mediumRiskCount = alignedClauses.filter((p) => p.aiInsight?.riskLevel === 'MEDIUM').length;
 
+  const isDegraded = Boolean(semanticAuditOutcome?.hasFailure);
+  const warnings = semanticAuditOutcome?.warnings || [];
+
   const metrics = {
     ...diffResult.metrics,
     highRiskCount,
     mediumRiskCount,
+    ...(isDegraded ? { isDegraded: true } : {}),
+    ...(warnings.length > 0 ? { warnings } : {}),
   };
 
   // Stage 3: Render Report via Carbone Engine
@@ -332,11 +555,13 @@ export async function executeContractCompareOrchestration(
     );
 
     const renderOutput = renderResponse.data?.output || {};
+    const reviewStatus = semanticAuditOutcome?.hasFailure ? 'incomplete' : 'complete';
 
     return {
       success: true,
       output: {
         summary: renderOutput.summary,
+        reviewStatus,
         metrics,
         alignedClauses,
         htmlReport: renderOutput.htmlReport,

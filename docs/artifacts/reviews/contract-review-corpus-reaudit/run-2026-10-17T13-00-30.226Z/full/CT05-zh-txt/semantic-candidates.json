@@ -1,0 +1,129 @@
+[
+  {
+    "marker": "CT05-zh-A03",
+    "topic": "risk_acceptance",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "强制将存在重大安全隐患的代码视为合格交付，免除乙方安全修复责任，极大增加买方后续运营风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT05-zh-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "强制将存在重大安全隐患的代码视为合格交付，免除乙方安全修复责任，极大增加买方后续运营风险。",
+            "evidenceQuote": "任何未修复安全漏洞不影响验收"
+          },
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT05-zh-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "2日时效极短，不符合软件验收常规流程，易导致买方因程序原因丧失抗辩权，变相强制接受劣质交付。",
+            "evidenceQuote": "乙方发出交付邮件后两日内甲方未书面拒绝即视为验收"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-A04",
+    "topic": "risk_ip",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "委托开发成果默认归受托方（乙方），买方仅获短期许可，丧失核心资产控制权，存在续期及依赖风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT05-zh-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "委托开发成果默认归受托方（乙方），买方仅获短期许可，丧失核心资产控制权，存在续期及依赖风险。",
+            "evidenceQuote": "全部定制开发成果及源代码著作权归乙方；甲方仅取得一年期不可续展的内部使用许可"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-A06",
+    "topic": "risk_third_party_ip",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "未要求开源合规审查及清单披露，将全部IP侵权风险转嫁甲方，极高风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT05-zh-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "未要求开源合规审查及清单披露，将全部IP侵权风险转嫁甲方，极高风险。",
+            "evidenceQuote": "乙方可自由引入任意第三方组件，无需提供许可清单，甲方自行承担全部第三方权利主张。"
+          },
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT05-zh-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "缺乏对引入组件许可证兼容性（如GPL传染性）的限制，可能导致甲方专有代码被迫开源。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-A08",
+    "topic": "risk_unfilled",
+    "matchedClauseIndices": [
+      8
+    ],
+    "riskLevels": [
+      "PASS"
+    ],
+    "hasRiskSignal": false,
+    "reviewText": [
+      {
+        "riskSummary": "语言解释顺序有利于我方，管辖法院约定明确且便于诉讼。",
+        "legalAdvice": "条款符合规范，可按原约定保留。"
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

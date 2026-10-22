@@ -1,0 +1,10 @@
+data: {"type":"thought","content":"正在规划任务...","seq":1,"protocolVersion":"1","sessionId":"crw-C01-1792201116625","traceId":"0008080e-2bcd-4336-bf9d-8be482293536","data":{"traceId":"0008080e-2bcd-4336-bf9d-8be482293536"}}
+
+data: {"type":"thought","content":"正在获取用户可用 Skill 列表并进行确定性多步骤任务拆分规划...","seq":2,"protocolVersion":"1","sessionId":"crw-C01-1792201116625","traceId":"0008080e-2bcd-4336-bf9d-8be482293536","data":{"traceId":"0008080e-2bcd-4336-bf9d-8be482293536"}}
+
+data: {"type":"error","content":"任务规划/创建失败 [PLANNER_OUTPUT_INVALID]: Task decomposition failed: LLM topology planner returned no topology","data":{"code":"PLANNER_OUTPUT_INVALID","errorMessage":"Task decomposition failed: LLM topology planner returned no topology","status":"failed","traceId":"0008080e-2bcd-4336-bf9d-8be482293536"},"seq":3,"protocolVersion":"1","sessionId":"crw-C01-1792201116625","traceId":"0008080e-2bcd-4336-bf9d-8be482293536"}
+
+data: {"type":"session_patch","sessionId":"crw-C01-1792201116625","content":"","data":{"title":"请审查以下采购合同，我方为买方，并生成审查报告。","status":"active","updatedAt":"2026-10-17T01:38:56.363Z","traceId":"0008080e-2bcd-4336-bf9d-8be482293536"},"seq":4,"protocolVersion":"1","traceId":"0008080e-2bcd-4336-bf9d-8be482293536"}
+
+data: {"type":"done","content":"Stream completed","seq":5,"protocolVersion":"1","sessionId":"crw-C01-1792201116625","traceId":"0008080e-2bcd-4336-bf9d-8be482293536","data":{"traceId":"0008080e-2bcd-4336-bf9d-8be482293536"}}
+

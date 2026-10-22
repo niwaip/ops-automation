@@ -1,0 +1,181 @@
+{
+  "id": "C08",
+  "name": "30条长文本多批覆盖",
+  "status": "failed",
+  "sessionId": "crw-C08-1792203657370",
+  "executionId": "11157657-4ab9-4d4c-b9d3-e4337a6a07fd",
+  "traceIds": [
+    "8583e341-8f4b-4741-9222-a709e847ca6d"
+  ],
+  "actualCapabilities": [
+    "platform.document.contract-reviewer"
+  ],
+  "executionStatus": "running",
+  "requestDigest": "2c6137a05b86cf70599b094ea7374838a8bb6cd72d99f54e6eb836ad8d116a07",
+  "fixtureDigest": "8a05333c4c4d904ee853f4891b28fcda895b804dd9a8cf524177a5ebe5b29595",
+  "timing": {
+    "firstEventMs": 49,
+    "firstContentMs": null,
+    "totalMs": 314462
+  },
+  "assertions": [
+    {
+      "name": "聊天HTTP成功",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE完整结束且无传输异常",
+      "passed": false,
+      "actual": "terminated",
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "实际执行合同审查能力",
+      "passed": true,
+      "actual": [
+        "platform.document.contract-reviewer"
+      ],
+      "category": "ROUTING"
+    },
+    {
+      "name": "控制面持久终态成功",
+      "passed": false,
+      "actual": "running",
+      "category": "EXECUTION_STATE"
+    },
+    {
+      "name": "输出含结构化条款和指标",
+      "passed": false,
+      "actual": null,
+      "category": "CONTRACT"
+    }
+  ],
+  "failures": [
+    "TRANSPORT",
+    "EXECUTION_STATE",
+    "CONTRACT"
+  ],
+  "observedUsage": [
+    {
+      "id": "42ae83d2-9dec-411f-86f3-021883185ddb",
+      "executionId": "11157657-4ab9-4d4c-b9d3-e4337a6a07fd",
+      "stepId": "5d8961cf-000a-4ea5-a2d2-f8742b9816fb",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 947,
+      "outputTokens": 4722,
+      "cachedTokens": 0,
+      "estimatedCost": "0.030226",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:21:53.810Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "1c708c6838f4ffce670d96a099bf6ba9191815cdc0e02d2fb39e3357a313ef27",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "563777f0-264a-4a6c-bc9c-3bd633b83d8e",
+      "executionId": "11157657-4ab9-4d4c-b9d3-e4337a6a07fd",
+      "stepId": "5d8961cf-000a-4ea5-a2d2-f8742b9816fb",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 1070,
+      "outputTokens": 4157,
+      "cachedTokens": 0,
+      "estimatedCost": "0.027082",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:22:33.794Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "25fb9dc07157b836b205709c936ac01f0c2190236b10a2d2b2a9fd07cc414e52",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "94668121-4f84-431e-8516-8877221e9d2b",
+      "executionId": "11157657-4ab9-4d4c-b9d3-e4337a6a07fd",
+      "stepId": "5d8961cf-000a-4ea5-a2d2-f8742b9816fb",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 1070,
+      "outputTokens": 3386,
+      "cachedTokens": 0,
+      "estimatedCost": "0.022456",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:23:06.378Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "c22080ef9f8fd030cdd76ff69aa826e655246a4561b5cb5e97be0ce6e011b757",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "48cb3aaa-7720-40f4-bd5f-43c186e327ff",
+      "executionId": "11157657-4ab9-4d4c-b9d3-e4337a6a07fd",
+      "stepId": "5d8961cf-000a-4ea5-a2d2-f8742b9816fb",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 1078,
+      "outputTokens": 3312,
+      "cachedTokens": 0,
+      "estimatedCost": "0.022028",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:23:37.189Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "6e57ccac02c99fc58a9e204db01f306f48f202d89b6bb991a84c7109260d7b6a",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "ead24315-6014-442e-bf02-2157a8333978",
+      "executionId": "11157657-4ab9-4d4c-b9d3-e4337a6a07fd",
+      "stepId": "5d8961cf-000a-4ea5-a2d2-f8742b9816fb",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 1082,
+      "outputTokens": 4550,
+      "cachedTokens": 0,
+      "estimatedCost": "0.029464",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:24:19.849Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "3218a5b83e5f17904cba29e2d84b426cc1d3491fa6294a169dcede3e7992604b",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "cb0a11e6-3f87-4936-93a2-51619c55f4af",
+      "executionId": "11157657-4ab9-4d4c-b9d3-e4337a6a07fd",
+      "stepId": "5d8961cf-000a-4ea5-a2d2-f8742b9816fb",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 1082,
+      "outputTokens": 6374,
+      "cachedTokens": 0,
+      "estimatedCost": "0.040408",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:25:16.472Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "febf13cd4eae29c6bed433e8c2b8d884856e6ae0ebbc88528f0d4d9071500659",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "7fbe21e3-6761-4a85-bdaa-e4218b90fbea",
+      "executionId": "11157657-4ab9-4d4c-b9d3-e4337a6a07fd",
+      "stepId": "5d8961cf-000a-4ea5-a2d2-f8742b9816fb",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 1082,
+      "outputTokens": 5535,
+      "cachedTokens": 0,
+      "estimatedCost": "0.035374",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:26:05.551Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "8109aaac71c6c580b9623587705768526dbc568b21e2c4a76feed36ec0846aee",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    }
+  ]
+}

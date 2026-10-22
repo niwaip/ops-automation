@@ -1,0 +1,207 @@
+{
+  "id": "C09",
+  "name": "同会话替换合同不串件",
+  "status": "passed",
+  "sessionId": "crw-C02-1792202049796",
+  "executionId": "94fe2ab1-ef7d-4264-9e42-36fc88de5200",
+  "traceIds": [
+    "f690cef7-be8b-405a-a988-2fce7988fbaf"
+  ],
+  "actualCapabilities": [
+    "platform.document.contract-reviewer"
+  ],
+  "executionStatus": "succeeded",
+  "requestDigest": "b4d35f81f7064c40277e7c5bcf93f1ae649831bba55de387b4582d31cebc05b2",
+  "fixtureDigest": "fef1cfa60a005dda4dfa07747d8f9d59d3ae61746f1367f114377d73123eef91",
+  "timing": {
+    "firstEventMs": 34,
+    "firstContentMs": null,
+    "totalMs": 139866
+  },
+  "assertions": [
+    {
+      "name": "聊天HTTP成功",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE完整结束且无传输异常",
+      "passed": true,
+      "actual": "done",
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "实际执行合同审查能力",
+      "passed": true,
+      "actual": [
+        "platform.document.contract-reviewer"
+      ],
+      "category": "ROUTING"
+    },
+    {
+      "name": "控制面持久终态成功",
+      "passed": true,
+      "actual": "succeeded",
+      "category": "EXECUTION_STATE"
+    },
+    {
+      "name": "输出含结构化条款和指标",
+      "passed": true,
+      "actual": [
+        "clauses",
+        "metrics",
+        "summary",
+        "artifact",
+        "chapters",
+        "artifacts",
+        "htmlReport",
+        "myPosition",
+        "chatSummary",
+        "ruleSetInfo",
+        "contractType",
+        "capabilityKey",
+        "missingClauses",
+        "positionSource",
+        "contractTypeName",
+        "capabilityVersion",
+        "sourceDocumentVersion"
+      ],
+      "category": "CONTRACT"
+    },
+    {
+      "name": "所有固定正文标记均覆盖",
+      "passed": true,
+      "actual": [],
+      "category": "CONTEXT_BINDING"
+    },
+    {
+      "name": "条款ID唯一且无空洞",
+      "passed": true,
+      "actual": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "category": "CONTRACT"
+    },
+    {
+      "name": "指标数量与条款风险统计一致",
+      "passed": true,
+      "actual": {
+        "warnings": [],
+        "passCount": 3,
+        "isDegraded": false,
+        "healthScore": 43,
+        "isTruncated": false,
+        "lowRiskCount": 0,
+        "totalClauses": 5,
+        "highRiskCount": 1,
+        "mediumRiskCount": 1,
+        "llmReviewedCount": 5,
+        "missingClausesCount": 3,
+        "unfilledBlanksTotal": 0,
+        "degradedClausesCount": 0,
+        "unfilledVariablesCount": 0
+      },
+      "category": "CONTRACT"
+    },
+    {
+      "name": "无未声明的语义审查降级",
+      "passed": true,
+      "actual": {
+        "reviewed": 5,
+        "total": 5
+      },
+      "category": "COMPLETENESS"
+    },
+    {
+      "name": "我方立场贯穿输出",
+      "passed": true,
+      "actual": {
+        "expected": "buyer",
+        "actual": "buyer",
+        "source": "default"
+      },
+      "category": "CONTEXT_BINDING"
+    },
+    {
+      "name": "未声明文本截断",
+      "passed": true,
+      "actual": false,
+      "category": "COMPLETENESS"
+    },
+    {
+      "name": "每个语义批次有账本",
+      "passed": true,
+      "actual": {
+        "rows": 2,
+        "expected": 2
+      },
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "实际业务模型与指定35B一致",
+      "passed": true,
+      "actual": [
+        "qwen36-35b-a3b"
+      ],
+      "category": "MODEL_ROUTE"
+    },
+    {
+      "name": "新合同金额生效且无旧标记",
+      "passed": true,
+      "actual": "生产设备采购合同\n合同编号：CRW_20261016_B\n甲方：星桥测试公司（买方）\n乙方：云帆测试公司（卖方）\n第一条 标的\n标记CRW_ITEM_B，乙方向甲方供应设备一台，总价280000元。\n第二条 验收\n标记CRW_ACCEPT_A，设备到货卸车即视为最终验收合格，甲方不得提出任何质量异议。\n第三条 责任\n标记CRW_LIABILITY_A，乙方故意或重大过失造成甲方损失的，乙方亦不承担任何赔偿责任。\n第四条 付款\n标记CRW_PAYMENT_A，甲方在设备验收合格后30日内支付价款。",
+      "category": "CONTEXT_BINDING"
+    },
+    {
+      "name": "原始交付URL可下载HTML实体",
+      "passed": true,
+      "actual": {
+        "artifactStatus": 200,
+        "bytes": 287338,
+        "error": null
+      },
+      "category": "DELIVERY"
+    }
+  ],
+  "failures": [],
+  "observedUsage": [
+    {
+      "id": "c7fff77a-ff94-4593-8335-35570d8225ae",
+      "executionId": "94fe2ab1-ef7d-4264-9e42-36fc88de5200",
+      "stepId": "9a3c4cda-df6a-40f2-b4b0-fde34a06760c",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 607,
+      "outputTokens": 4087,
+      "cachedTokens": 0,
+      "estimatedCost": "0.025736",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:05:58.795Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "fcb1a5e7c14b4288e06164a1235650cd8e39f2b47593b199ff7dd7d523c1df88",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "74b25ef0-edfa-46b0-9564-747e328a460f",
+      "executionId": "94fe2ab1-ef7d-4264-9e42-36fc88de5200",
+      "stepId": "9a3c4cda-df6a-40f2-b4b0-fde34a06760c",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 668,
+      "outputTokens": 3986,
+      "cachedTokens": 0,
+      "estimatedCost": "0.025252",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:05:59.370Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "a6cfae65ce924a8391c5c0e098ba2a02350e96c21fcb239aa4fa150514c32f66",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    }
+  ]
+}

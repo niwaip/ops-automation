@@ -1,0 +1,9 @@
+{
+  "fileId": "file-1792204662575-qgomvcjd6",
+  "fileName": "corrupt.docx",
+  "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "size": 8,
+  "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792204662575-qgomvcjd6-corrupt.docx",
+  "url": "/api/ai/chat/files/file-1792204662575-qgomvcjd6?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792206462.2ccfd490caa49092f6d542fe5ad66e1c0add45ae9b21b6c1f44f53f958ed3bfa",
+  "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792206462.2ccfd490caa49092f6d542fe5ad66e1c0add45ae9b21b6c1f44f53f958ed3bfa"
+}

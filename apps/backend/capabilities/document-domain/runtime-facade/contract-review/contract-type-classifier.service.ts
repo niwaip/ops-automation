@@ -60,8 +60,12 @@ export class ContractTypeClassifierService {
     contentSnippet: string = '',
     explicitType?: string
   ): ContractTypeInfo {
-    // 1. Explicit override
-    if (explicitType && explicitType !== 'auto') {
+    // 1. Explicit override for specific contract types (generic fallback 'general' does not preempt specific detection)
+    if (
+      explicitType &&
+      explicitType !== 'auto' &&
+      explicitType.toLowerCase().trim() !== 'general'
+    ) {
       const normalized = explicitType.toLowerCase().trim();
       if (normalized === 'software_dev' || normalized === 'software_development') {
         return this.typeMetadata.software_development;
@@ -72,27 +76,57 @@ export class ContractTypeClassifierService {
       if (normalized in this.typeMetadata) {
         return this.typeMetadata[normalized];
       }
-      if (normalized.includes('nda') || normalized.includes('保密')) return this.typeMetadata.nda;
+      if (
+        normalized.includes('nda') ||
+        normalized.includes('保密') ||
+        normalized.includes('秘密保持') ||
+        normalized.includes('守秘義務') ||
+        normalized.includes('機密保持')
+      ) {
+        return this.typeMetadata.nda;
+      }
       if (
         normalized.includes('开发') ||
         normalized.includes('软件') ||
         normalized.includes('研发') ||
-        normalized.includes('software')
+        normalized.includes('software') ||
+        normalized.includes('開発') ||
+        normalized.includes('受託') ||
+        normalized.includes('システム')
       ) {
         return this.typeMetadata.software_development;
       }
-      if (normalized.includes('采购') || normalized.includes('买卖') || normalized.includes('供货'))
+      if (
+        normalized.includes('采购') ||
+        normalized.includes('买卖') ||
+        normalized.includes('供货') ||
+        normalized.includes('売買') ||
+        normalized.includes('購買') ||
+        normalized.includes('調達') ||
+        normalized.includes('供給')
+      ) {
         return this.typeMetadata.procurement;
+      }
       if (
         normalized.includes('劳动') ||
         normalized.includes('用工') ||
         normalized.includes('竞业') ||
-        normalized.includes('employ')
+        normalized.includes('employ') ||
+        normalized.includes('雇用') ||
+        normalized.includes('労働') ||
+        normalized.includes('就業')
       ) {
         return this.typeMetadata.employment;
       }
-      if (normalized.includes('租赁') || normalized.includes('租房') || normalized.includes('lease'))
+      if (
+        normalized.includes('租赁') ||
+        normalized.includes('租房') ||
+        normalized.includes('lease') ||
+        normalized.includes('賃貸') ||
+        normalized.includes('リース')
+      ) {
         return this.typeMetadata.lease;
+      }
     }
 
     const titleAndHeader = `${fileName} ${contentSnippet.slice(0, 300)}`.toLowerCase();
@@ -100,68 +134,82 @@ export class ContractTypeClassifierService {
 
     // 2. High-priority specific transaction types matching Title / Header / FileName
     if (
-      /软件开发|定制开发|定制研发|系统集成|软件定制|技术开发|技术研发|平台开发|代码交付|源代码|开发及联调|运维平台.*研发/i.test(
+      /软件开发|定制开发|定制研发|系统集成|软件定制|技术开发|技术研发|平台开发|代码交付|源代码|开发及联调|运维平台.*研发|ソフトウェア開発|システム開発|開発委託|業務委託|受託開発|システム構築/i.test(
         titleAndHeader
       ) ||
-      /软件开发|定制开发|定制研发|系统集成|软件定制/i.test(fileName)
+      /软件开发|定制开发|定制研发|系统集成|软件定制|ソフトウェア開発|システム開発|開発委託|業務委託/i.test(fileName)
     ) {
       return this.typeMetadata.software_development;
     }
 
     if (
-      /采购主协议|采购合同|采购协议|买卖合同|订购合同|供货协议|设备采购/i.test(titleAndHeader) ||
-      /采购|供货|买卖/i.test(fileName)
+      /采购主协议|采购合同|采购协议|买卖合同|订购合同|供货协议|设备采购|売買契約|購買契約|調達契約|供給契約|売買基本契約|購買基本契約|設備売買/i.test(titleAndHeader) ||
+      /采购|供货|买卖|売買|購買|調達|供給/i.test(fileName)
     ) {
       return this.typeMetadata.procurement;
     }
 
     if (
-      /劳动合同|聘用协议|员工入职|竞业限制|劳务派遣/i.test(titleAndHeader) ||
-      /劳动|聘用|竞业/i.test(fileName)
+      /劳动合同|聘用协议|员工入职|竞业限制|劳务派遣|雇用契約|労働契約|就業規則|労働者派遣/i.test(titleAndHeader) ||
+      /劳动|聘用|竞业|雇用|労働/i.test(fileName)
     ) {
       return this.typeMetadata.employment;
     }
 
     if (
-      /租赁合同|租赁协议|房屋租赁|商铺租赁|厂房租赁/i.test(titleAndHeader) ||
-      /租赁|租房/i.test(fileName)
+      /租赁合同|租赁协议|房屋租赁|商铺租赁|厂房租赁|賃貸借契約|リース契約|建物賃貸借|土地賃貸借|事業用建物賃貸借/i.test(titleAndHeader) ||
+      /租赁|租房|賃貸借|リース/i.test(fileName)
     ) {
       return this.typeMetadata.lease;
     }
 
     // 3. Genuine NDA matching title or standalone NDA contract
     if (
-      /保密协议|保密承诺书?|保密合同|保密协议书|nondisclosure|non-disclosure|\bnda\b/i.test(
+      /保密协议|保密承诺书?|保密合同|保密协议书|nondisclosure|non-disclosure|\bnda\b|秘密保持契約|守秘義務契約|機密保持契約|相互秘密保持/i.test(
         titleAndHeader
       ) ||
-      /保密协议|保密承诺|保密合同|\bnda\b/i.test(fileName)
+      /保密协议|保密承诺|保密合同|\bnda\b|秘密保持|守秘義務|機密保持/i.test(fileName)
     ) {
       return this.typeMetadata.nda;
     }
 
     // 4. Secondary fallback checking broader combined text
     if (
-      /软件开发|定制开发|定制研发|系统集成|软件定制|技术开发|技术研发|平台开发|代码交付|源代码|开发及联调/i.test(
+      /软件开发|定制开发|定制研发|系统集成|软件定制|技术开发|技术研发|平台开发|代码交付|源代码|开发及联调|ソフトウェア開発|システム開発|開発委託|業務委託|受託開発/i.test(
         combined
       )
     ) {
       return this.typeMetadata.software_development;
     }
 
-    if (/采购主协议|采购合同|采购协议|买卖合同|订购合同|供货协议|设备采购/i.test(combined)) {
+    if (
+      /采购主协议|采购合同|采购协议|买卖合同|订购合同|供货协议|设备采购|売買契約|購買契約|調達契約|供給契約|売買基本契約|購買基本契約|設備売買/i.test(
+        combined
+      )
+    ) {
       return this.typeMetadata.procurement;
     }
 
-    if (/劳动合同|聘用协议|员工入职|竞业限制|保密及竞业|劳务派遣/i.test(combined)) {
+    if (
+      /劳动合同|聘用协议|员工入职|竞业限制|保密及竞业|劳务派遣|雇用契約|労働契約|就業規則|労働者派遣/i.test(
+        combined
+      )
+    ) {
       return this.typeMetadata.employment;
     }
 
-    if (/租赁合同|租赁协议|房屋租赁|商铺租赁|厂房租赁/i.test(combined)) {
+    if (
+      /租赁合同|租赁协议|房屋租赁|商铺租赁|厂房租赁|賃貸借契約|リース契約|建物賃貸借|土地賃貸借|事業用建物賃貸借/i.test(
+        combined
+      )
+    ) {
       return this.typeMetadata.lease;
     }
 
     if (
-      /保密协议|保密承诺|保密合同|nondisclosure|non-disclosure|\bnda\b/i.test(combined)
+      /保密协议|保密承诺|保密合同|nondisclosure|non-disclosure|\bnda\b|秘密保持契約|守秘義務契約|機密保持契約|相互秘密保持/i.test(
+        combined
+      )
     ) {
       return this.typeMetadata.nda;
     }

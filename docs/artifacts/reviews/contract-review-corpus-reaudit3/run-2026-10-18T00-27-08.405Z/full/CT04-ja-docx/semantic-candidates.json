@@ -1,0 +1,130 @@
+[
+  {
+    "marker": "CT04-ja-A02",
+    "topic": "risk_internal_conflict",
+    "matchedClauseIndices": [
+      2
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "乙方保留无限直接销售权及指定其他经销商的权利，实质剥夺了甲方的独占性，构成重大商业风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-2-GENERAL-RISK",
+            "title": "[CT04-ja-A02]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "乙方保留无限直接销售权及指定其他经销商的权利，实质剥夺了甲方的独占性，构成重大商业风险。",
+            "evidenceQuote": "ただし乙は当該地域の顧客へ無制限に直接販売し、他の販売店を指定できる。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-ja-A03",
+    "topic": "risk_target",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "条款强制要求甲方在乙方缺货（非甲方原因）时仍维持采购目标并补差额，严重违反公平原则，导致甲方承担非过错违约风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-OBLIGATION-RISK",
+            "title": "[CT04-ja-A03]",
+            "ruleId": "OBLIGATION-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "条款强制要求甲方在乙方缺货（非甲方原因）时仍维持采购目标并补差额，严重违反公平原则，导致甲方承担非过错违约风险。",
+            "evidenceQuote": "乙の欠品時も目標を減額せず、未達の場合は甲が差額を補填する。"
+          },
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT04-ja-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "设定刚性最低采购额，未与乙方供货能力挂钩，若乙方无法履约，甲方仍需为未提货支付差价，法律风险极高。",
+            "evidenceQuote": "年間最低購入額は3000000人民元とする。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-ja-A04",
+    "topic": "risk_resale_price_review",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "固定转售价格（RPM）在中国《反垄断法》下属于严重违法行为，可能导致合同无效及高额行政罚款。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-COMPLIANCE-RISK",
+            "title": "[CT04-ja-A04]",
+            "ruleId": "COMPLIANCE-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "固定转售价格（RPM）在中国《反垄断法》下属于严重违法行为，可能导致合同无效及高额行政罚款。",
+            "evidenceQuote": "甲は乙が定める最低再販売価格を遵守する。"
+          },
+          {
+            "id": "finding-clause-4-PENALTY-RISK",
+            "title": "[CT04-ja-A04]",
+            "ruleId": "PENALTY-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "一旦违反价格约定即没收全部返利并剥夺销售权，属于惩罚性过重且可能无效的违约责任条款，对甲方极为不利。",
+            "evidenceQuote": "下回った場合は全てのリベート及び販売権を失う。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-ja-A07",
+    "topic": "risk_inventory_exit",
+    "matchedClauseIndices": [
+      7
+    ],
+    "riskLevels": [
+      "PASS"
+    ],
+    "hasRiskSignal": false,
+    "reviewText": [
+      {
+        "riskSummary": "条款权责明确，符合买方合规要求。",
+        "legalAdvice": "条款符合规范，可按原约定保留。"
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

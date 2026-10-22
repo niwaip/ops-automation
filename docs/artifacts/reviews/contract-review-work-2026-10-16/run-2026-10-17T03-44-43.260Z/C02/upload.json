@@ -1,0 +1,9 @@
+{
+  "fileId": "file-1792208756833-swu8lgv0o",
+  "fileName": "contract-a.docx",
+  "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "size": 1232,
+  "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792208756833-swu8lgv0o-contract-a.docx",
+  "url": "/api/ai/chat/files/file-1792208756833-swu8lgv0o?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792210556.f778f1cf489764b0a6d0c61ed7125751c7b03340d7633edf271ae4c3067c094c",
+  "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792210556.f778f1cf489764b0a6d0c61ed7125751c7b03340d7633edf271ae4c3067c094c"
+}

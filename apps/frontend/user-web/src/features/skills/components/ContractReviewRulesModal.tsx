@@ -30,9 +30,13 @@ import {
 import type { PublishedSkillCatalogItem } from '@/api/skill';
 import type {
   ContractTypeKey,
+  EnterpriseLegalProfile,
   PartyPosition,
   RuleScope,
   UserCustomRule,
+} from './contractReviewRules.types';
+import {
+  DEFAULT_ENTERPRISE_PROFILE,
 } from './contractReviewRules.types';
 import {
   BUILTIN_RULES_DATA,
@@ -40,12 +44,15 @@ import {
 } from './contractReviewBuiltinRules';
 import {
   DEFAULT_PERSONAL_PRESETS,
+  getEnterpriseLegalProfile,
   getOrgRules,
   getUserRules,
+  saveEnterpriseLegalProfile,
   saveOrgRules,
   saveUserRules,
 } from './contractReviewRulesStorage';
 import { ContractRuleEditModal } from './ContractRuleEditModal';
+import { EnterpriseLegalProfileEditModal } from './EnterpriseLegalProfileEditModal';
 
 const { Text, Paragraph } = Typography;
 
@@ -79,6 +86,8 @@ export const ContractReviewRulesModal: React.FC<ContractReviewRulesModalProps> =
   // Tab 2 & Tab 3 state
   const [orgRules, setOrgRulesState] = useState<UserCustomRule[]>([]);
   const [userRules, setUserRulesState] = useState<UserCustomRule[]>([]);
+  const [legalProfile, setLegalProfile] = useState<EnterpriseLegalProfile>(DEFAULT_ENTERPRISE_PROFILE);
+  const [legalProfileModalOpen, setLegalProfileModalOpen] = useState(false);
 
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -94,8 +103,17 @@ export const ContractReviewRulesModal: React.FC<ContractReviewRulesModalProps> =
     if (open) {
       setOrgRulesState(getOrgRules());
       setUserRulesState(getUserRules());
+      setLegalProfile(getEnterpriseLegalProfile());
     }
   }, [open]);
+
+  // Handle Legal Profile update
+  const handleSaveLegalProfile = (updated: EnterpriseLegalProfile) => {
+    setLegalProfile(updated);
+    saveEnterpriseLegalProfile(updated);
+    setLegalProfileModalOpen(false);
+    message.success('企业签约主体法人信息已保存并即时生效');
+  };
 
   // Handle Org rules mutations
   const handleToggleOrgRule = (id: string, enabled: boolean) => {
@@ -424,6 +442,58 @@ export const ContractReviewRulesModal: React.FC<ContractReviewRulesModalProps> =
               children: (
                 <Space direction="vertical" size={16} style={{ width: '100%', marginTop: 8 }}>
                   <Alert
+                    type="info"
+                    showIcon
+                    icon={<BankOutlined />}
+                    message={
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                        <span>
+                          <strong>当前组织生效主体：</strong>
+                          <span style={{ color: '#1677ff', fontWeight: 600 }}>{legalProfile.legalEntityName}</span>
+                          {legalProfile.creditCode && (
+                            <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
+                              (信用代码: {legalProfile.creditCode})
+                            </Text>
+                          )}
+                        </span>
+                        <Space>
+                          <Tag color="purple" style={{ margin: 0 }}>
+                            默认立场：{legalProfile.defaultContractRole === 'seller' ? '优先作为乙方/受托方' : legalProfile.defaultContractRole === 'buyer' ? '优先作为甲方/委托方' : '双方中立平衡'}
+                          </Tag>
+                          <Button
+                            size="small"
+                            type="primary"
+                            ghost
+                            icon={<EditOutlined />}
+                            onClick={() => setLegalProfileModalOpen(true)}
+                          >
+                            编辑主体
+                          </Button>
+                        </Space>
+                      </div>
+                    }
+                    description={
+                      <div style={{ marginTop: 6, fontSize: 12 }}>
+                        <Space size={6} wrap style={{ marginBottom: 4 }}>
+                          <Text type="secondary">自动识别别名：</Text>
+                          {legalProfile.aliases && legalProfile.aliases.length > 0 ? (
+                            legalProfile.aliases.map((alias) => (
+                              <Tag key={alias} bordered={false} color="blue">
+                                {alias}
+                              </Tag>
+                            ))
+                          ) : (
+                            <Text type="secondary" italic>未配置别名</Text>
+                          )}
+                        </Space>
+                        <div style={{ color: 'var(--text-secondary)' }}>
+                          企业工作流与异步审批时，审查引擎将优先在合同前言与抬头中匹配上述主体并锁定防御立场；仅在未匹配到该主体时，才退回默认立场。
+                        </div>
+                      </div>
+                    }
+                  />
+
+                  <Alert
                     type="warning"
                     showIcon
                     icon={<SafetyCertificateOutlined />}
@@ -748,6 +818,14 @@ export const ContractReviewRulesModal: React.FC<ContractReviewRulesModalProps> =
           setEditModalOpen(false);
           setEditingRule(null);
         }}
+      />
+
+      {/* 企业签约主体法人编辑弹窗 */}
+      <EnterpriseLegalProfileEditModal
+        open={legalProfileModalOpen}
+        profile={legalProfile}
+        onCancel={() => setLegalProfileModalOpen(false)}
+        onSave={handleSaveLegalProfile}
       />
     </>
   );

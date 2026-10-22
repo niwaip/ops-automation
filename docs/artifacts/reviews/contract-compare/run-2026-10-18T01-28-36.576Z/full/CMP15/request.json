@@ -1,0 +1,31 @@
+{
+  "message": "请使用合同文档智能比对技能比对附件两份合同。CMP15_A.txt是基准合同A，CMP15_B.txt是修改后合同B，严格按A到B方向逐条比对。请保留全部中日文、表格和增删改内容，生成左右并排差异报告。我方为甲方（买方）。仅进行文本差异比对，关闭风险分析（enableRiskAnalysis=false），不要进行法律风险分析。",
+  "sessionId": "compare-CMP15-1792287018517",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [
+    {
+      "fileId": "file-1792287018504-9g9s6fyap",
+      "fileName": "CMP15_A.txt",
+      "mimeType": "text/plain",
+      "size": 639,
+      "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792287018504-9g9s6fyap-CMP15_A.txt",
+      "url": "/api/ai/chat/files/file-1792287018504-9g9s6fyap?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792288818.f8477cf73962a73d2bf93924b0cb7b274f73edc72ea1d46c446740f02085e3c7",
+      "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792288818.f8477cf73962a73d2bf93924b0cb7b274f73edc72ea1d46c446740f02085e3c7"
+    },
+    {
+      "fileId": "file-1792287018512-xyip4au9m",
+      "fileName": "CMP15_B.txt",
+      "mimeType": "text/plain",
+      "size": 640,
+      "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792287018512-xyip4au9m-CMP15_B.txt",
+      "url": "/api/ai/chat/files/file-1792287018512-xyip4au9m?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792288818.5f03620486e96e3388031935a9437bf1974d05426ae1d9cd45120dc5b39ae13f",
+      "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792288818.5f03620486e96e3388031935a9437bf1974d05426ae1d9cd45120dc5b39ae13f"
+    }
+  ],
+  "config": {
+    "mode": "task",
+    "thinking": true,
+    "webSearch": false,
+    "workspaceSearch": false
+  }
+}

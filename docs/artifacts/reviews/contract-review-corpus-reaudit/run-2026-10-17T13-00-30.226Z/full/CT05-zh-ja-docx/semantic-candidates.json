@@ -1,0 +1,154 @@
+[
+  {
+    "marker": "CT05-zh-ja-A03",
+    "topic": "risk_acceptance",
+    "matchedClauseIndices": [
+      3
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "约定安全漏洞不影响验收，直接免除乙方质量责任，严重损害我方权益。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT05-zh-ja-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "约定安全漏洞不影响验收，直接免除乙方质量责任，严重损害我方权益。",
+            "evidenceQuote": "任何未修复安全漏洞不影响验收"
+          },
+          {
+            "id": "finding-clause-3-GENERAL-RISK",
+            "title": "[CT05-zh-ja-A03]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "2天验收期过短且为默示验收，未给足测试时间，且存在自然日陷阱风险。",
+            "evidenceQuote": "乙方发出交付邮件后两日内甲方未书面拒绝即视为验收"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-ja-A04",
+    "topic": "risk_ip",
+    "matchedClauseIndices": [
+      4
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "委托开发成果权属应归委托方（我方），现归乙方且许可受限，导致我方失去核心资产。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-4-GENERAL-RISK",
+            "title": "[CT05-zh-ja-A04]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "委托开发成果权属应归委托方（我方），现归乙方且许可受限，导致我方失去核心资产。",
+            "evidenceQuote": "全部定制开发成果及源代码著作权归乙方；甲方仅取得一年期不可续展的内部使用许可"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-ja-A06",
+    "topic": "risk_third_party_ip",
+    "matchedClauseIndices": [
+      6
+    ],
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "乙方未提供开源组件清单且不承担侵权责任，导致甲方面临极高的合规及诉讼风险。",
+        "legalAdvice": "建议法务介入复核并协商对等条款。",
+        "findings": [
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT05-zh-ja-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "乙方未提供开源组件清单且不承担侵权责任，导致甲方面临极高的合规及诉讼风险。",
+            "evidenceQuote": "乙方可自由引入任意第三方组件，无需提供许可清单，甲方自行承担全部第三方权利主张。"
+          },
+          {
+            "id": "finding-clause-6-GENERAL-RISK",
+            "title": "[CT05-zh-ja-A06]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "日方条款同样免除乙方提供许可证的义务，双方权利义务严重不对等。",
+            "evidenceQuote": "第三者部品：乙は任意の部品を自由に利用でき、ライセンス一覧を提出しない。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT05-zh-ja-A08",
+    "topic": "risk_unfilled",
+    "matchedClauseIndices": [
+      8
+    ],
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "reviewText": [
+      {
+        "riskSummary": "被告住所地管辖可能导致我方需赴乙方所在地诉讼，增加维权成本。",
+        "legalAdvice": "建议约定由“原告所在地（我方住所地）人民法院”管辖，或选择中立权威仲裁委员会解决。",
+        "findings": [
+          {
+            "id": "finding-clause-8-COMM-01",
+            "title": "争议司法管辖约定对我方不利",
+            "ruleId": "comm_dispute_unfavorable_forum",
+            "category": "DISPUTE_AND_GOVERNING",
+            "ruleCode": "COMM-01",
+            "severity": "HIGH",
+            "legalAdvice": "建议约定由“原告所在地（我方住所地）人民法院”管辖，或选择中立权威仲裁委员会解决。",
+            "riskSummary": "被告住所地管辖可能导致我方需赴乙方所在地诉讼，增加维权成本。",
+            "evidenceQuote": "被告所在地の裁判所で解決する。",
+            "recommendedRevision": "由原告所在地有管辖权的人民法院管辖"
+          },
+          {
+            "id": "finding-clause-8-GENERAL-RISK",
+            "title": "[CT05-zh-ja-A08]",
+            "ruleId": "GENERAL-RISK",
+            "category": "专项法务风控发现",
+            "severity": "MEDIUM",
+            "legalAdvice": "建议法务介入复核并协商对等条款。",
+            "riskSummary": "虽然约定中文优先有利于我方，但需注意签署版本的一致性以防争议。",
+            "evidenceQuote": "両言語に相違がある場合は中国語を優先する。"
+          }
+        ]
+      }
+    ],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

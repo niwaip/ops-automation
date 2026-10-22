@@ -1,0 +1,1 @@
+-rw-r--r-- 1 root root 20799 Oct 17 16:35 /workspace/apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts

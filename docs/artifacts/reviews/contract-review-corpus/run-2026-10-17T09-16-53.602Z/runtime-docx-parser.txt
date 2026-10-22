@@ -1,0 +1,112 @@
+2026-10-17 16:36:54.006855512 +0800 /workspace/apps/backend/capabilities/document-domain/dist/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.js
+                    const safe = escapeHtml(runText);
+                    if (isRunBold) {
+                        boldCount++;
+                        pHtml += `<strong>${safe}</strong>`;
+                    }
+                    else {
+                        pHtml += safe;
+                    }
+                }
+            }
+            const trimmedText = pText.trim();
+            if (trimmedText) {
+                const isBold = totalRuns > 0 && boldCount >= totalRuns * 0.8;
+                const fullText = prefix ? `${prefix}${trimmedText}` : trimmedText;
+                const bodyHtml = pHtml.trim();
+                const fullHtml = prefix ? `<strong>${escapeHtml(prefix)}</strong>${bodyHtml}` : bodyHtml;
+                const isJp = /[\u3040-\u309F\u30A0-\u30FF]/.test(trimmedText);
+                rawElements.push({
+                    type: 'p',
+                    text: trimmedText,
+                    fullText,
+                    bodyHtml,
+                    html: fullHtml,
+                    hasUnderline,
+                    prefix: prefix ? prefix.trim() : undefined,
+                    jc,
+                    ilvl,
+                    numId,
+                    isBold,
+                    isJp,
+                });
+            }
+        }
+    }
+    const clauses = [];
+    let currentClause = null;
+    let clauseIndex = 0;
+    let currentChapterNum = '前言';
+    let currentChapterTitle = '合同引言与签约主体';
+    const pushNewClause = (title, clauseNum, level, chNum, chTitle) => {
+        if (currentClause && (currentClause.content.trim() || (currentClause.blocks && currentClause.blocks.length > 0))) {
+            currentClause.content = currentClause.content.trim();
+            clauses.push(currentClause);
+        }
+        currentClause = {
+            id: `clause-${clauseIndex++}`,
+            clauseNumber: clauseNum,
+            title,
+            content: '',
+            blocks: [],
+            level,
+            chapterNumber: chNum || currentChapterNum,
+            chapterTitle: chTitle || currentChapterTitle,
+        };
+    };
+    const articleRegex = /^\s*(?:(?:第\s*[一二三四五六七八九十百千万\d]+\s*条)|(?:(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b)|(?:[一二三四五六七八九十百]+[、\s]+)|(?:\d+[.、\s]+(?!\d)))/i;
+    const annexRegex = /^(?:附件|附录|付属文書|Exhibit|Schedule|Annex|Appendix)\s*[一二三四五六七八九十\d\w]*/i;
+    const chapterRegex = /^\s*(?:第\s*[一二三四五六七八九十百千万\d]+\s*[编章节篇部]|(?:CHAPTER|PART|TITLE|SECTION)\s+(?:[IVXLCDM\d]+|[A-Z]|\d+)\b)/i;
+    const hasFormalArticles = rawElements.some((el) => {
+        if (el.type !== 'p')
+            return false;
+        const c = (0, contract_clause_segmenter_util_1.cleanMarkdownFormatting)(el.fullText || el.text);
+        return articleRegex.test(c) && !/[。！？；]$/.test(c);
+    });
+    let blockIdx = 1;
+    for (let i = 0; i < rawElements.length; i++) {
+        const el = rawElements[i];
+        const nextEl = rawElements[i + 1];
+        if (el.type === 'table') {
+            if (!currentClause)
+                pushNewClause('合同引言与主体信息', '前言', 2, '前言', '合同引言与签约主体');
+            const isGrid = el.rows && el.rows.every((r) => r.length === 2);
+            if (isGrid && el.rows) {
+                currentClause.blocks.push({
+                    id: `blk-${blockIdx++}`,
+                    type: 'key_value_grid',
+                    metadata: el.rows.map((r) => ({ key: r[0], value: r[1] })),
+                });
+            }
+            else {
+                currentClause.blocks.push({
+                    id: `blk-${blockIdx++}`,
+                    type: 'table',
+                    tableData: {
+                        headers: el.rows && el.rows.length > 0 ? el.rows[0] : [],
+                        rows: el.rows && el.rows.length > 1 ? el.rows.slice(1) : [],
+                    },
+                });
+            }
+            currentClause.content += (currentClause.content ? '\n\n' : '') + el.text;
+            continue;
+        }
+        const cleanText = (0, contract_clause_segmenter_util_1.cleanMarkdownFormatting)(el.fullText).trim();
+        const isAnnex = annexRegex.test(cleanText) && cleanText.length < 40;
+        const isChapter = chapterRegex.test(cleanText) && cleanText.length < 50 && !/[。！？；]$/.test(cleanText);
+        const isTopLevelNumbered = Boolean(el.numId) && el.ilvl === 0 && cleanText.length < 60 && !/[。！？；]$/.test(cleanText);
+        const matchesArticleText = !el.numId && articleRegex.test(cleanText) && cleanText.length < 60 && !/[。！？；]$/.test(cleanText);
+        const isArticle = !isAnnex && !isChapter && (isTopLevelNumbered || matchesArticleText);
+        if (isAnnex) {
+            currentChapterNum = '附件';
+            currentChapterTitle = cleanText;
+            let annexSecondaryText;
+            let annexSecondaryHtml;
+            if (nextEl && nextEl.type === 'p' && nextEl.isJp && !annexRegex.test(nextEl.fullText)) {
+                annexSecondaryText = nextEl.fullText;
+                annexSecondaryHtml = nextEl.html;
+                i++;
+            }
+            pushNewClause(cleanText, '附件', 1, currentChapterNum, currentChapterTitle);
+            if (annexSecondaryText) {
+                currentClause.titleJa = annexSecondaryText.replace(/^[:：\s]+|[:：\s]+$/g, '');

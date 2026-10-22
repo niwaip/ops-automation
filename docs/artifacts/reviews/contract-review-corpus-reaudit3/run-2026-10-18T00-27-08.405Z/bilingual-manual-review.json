@@ -1,0 +1,41 @@
+[
+  {
+    "id": "META-ALIGNED-30-30-txt",
+    "name": "known bilingual payment conflict flagged",
+    "passed": true,
+    "actual": {
+      "expectedConflict": false,
+      "levels": [
+        "PASS"
+      ],
+      "generated": "条款权责明确，付款期限合理且以我方语言优先，无明显法律风险。 条款符合规范，可按原约定保留。"
+    },
+    "category": "BILINGUAL_CONFLICT"
+  },
+  {
+    "id": "META-ALIGNED-60-60-txt",
+    "name": "known bilingual payment conflict flagged",
+    "passed": true,
+    "actual": {
+      "expectedConflict": false,
+      "levels": [
+        "PASS"
+      ],
+      "generated": "付款期限、币种及语言效力优先约定明确，未发现冲突风险 条款符合规范，可按原约定保留。"
+    },
+    "category": "BILINGUAL_CONFLICT"
+  },
+  {
+    "id": "META-CONFLICT-45-75-txt",
+    "name": "known bilingual payment conflict flagged",
+    "passed": true,
+    "actual": {
+      "expectedConflict": true,
+      "levels": [
+        "MEDIUM"
+      ],
+      "generated": "中文约定45日付款，日文约定75日，数值严重冲突。虽约定中文优先，但双语不一致极易引发履行争议与合规风险。 建议法务介入复核并协商对等条款。 中文约定45日付款，日文约定75日，数值严重冲突。虽约定中文优先，但双语不一致极易引发履行争议与合规风险。 "
+    },
+    "category": "BILINGUAL_CONFLICT"
+  }
+]

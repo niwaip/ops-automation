@@ -1,0 +1,421 @@
+[
+  {
+    "id": "CT01-zh-docx",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT01-ja-docx",
+    "previous": "failed",
+    "current": "passed",
+    "previousFailures": [
+      "recognizer no conflicting model or error",
+      "requested party role retained"
+    ],
+    "currentFailures": []
+  },
+  {
+    "id": "CT01-zh-ja-docx",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT02-ja-docx",
+    "previous": "failed",
+    "current": "passed",
+    "previousFailures": [
+      "requested party role retained"
+    ],
+    "currentFailures": []
+  },
+  {
+    "id": "CT02-zh-ja-docx",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT02-zh-docx",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT03-zh-docx",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT03-ja-docx",
+    "previous": "failed",
+    "current": "passed",
+    "previousFailures": [
+      "persistent execution succeeded",
+      "structured output exists"
+    ],
+    "currentFailures": []
+  },
+  {
+    "id": "CT03-zh-ja-docx",
+    "previous": "passed",
+    "current": "failed",
+    "previousFailures": [],
+    "currentFailures": [
+      "persistent execution succeeded",
+      "structured output exists"
+    ]
+  },
+  {
+    "id": "CT04-ja-docx",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT04-zh-docx",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT04-zh-ja-docx",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT05-ja-docx",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT05-zh-docx",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT05-zh-ja-docx",
+    "previous": "failed",
+    "current": "passed",
+    "previousFailures": [
+      "persistent execution succeeded",
+      "structured output exists"
+    ],
+    "currentFailures": []
+  },
+  {
+    "id": "CT06-ja-docx",
+    "previous": "failed",
+    "current": "passed",
+    "previousFailures": [
+      "recognizer no conflicting model or error",
+      "requested party role retained"
+    ],
+    "currentFailures": []
+  },
+  {
+    "id": "CT06-zh-docx",
+    "previous": "failed",
+    "current": "passed",
+    "previousFailures": [
+      "recognizer no conflicting model or error",
+      "requested party role retained"
+    ],
+    "currentFailures": []
+  },
+  {
+    "id": "CT06-zh-ja-docx",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT01-ja-pdf",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT01-zh-pdf",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT01-zh-ja-pdf",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT02-ja-pdf",
+    "previous": "passed",
+    "current": "failed",
+    "previousFailures": [],
+    "currentFailures": [
+      "semantic review complete"
+    ]
+  },
+  {
+    "id": "CT02-zh-pdf",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT03-ja-pdf",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT02-zh-ja-pdf",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT03-zh-pdf",
+    "previous": "failed",
+    "current": "passed",
+    "previousFailures": [
+      "supported business type correct"
+    ],
+    "currentFailures": []
+  },
+  {
+    "id": "CT03-zh-ja-pdf",
+    "previous": "failed",
+    "current": "passed",
+    "previousFailures": [
+      "supported business type correct"
+    ],
+    "currentFailures": []
+  },
+  {
+    "id": "CT04-ja-pdf",
+    "previous": "failed",
+    "current": "passed",
+    "previousFailures": [
+      "semantic review complete"
+    ],
+    "currentFailures": []
+  },
+  {
+    "id": "CT04-zh-pdf",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT04-zh-ja-pdf",
+    "previous": "failed",
+    "current": "passed",
+    "previousFailures": [
+      "semantic review complete"
+    ],
+    "currentFailures": []
+  },
+  {
+    "id": "CT05-ja-pdf",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT05-zh-pdf",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT05-zh-ja-pdf",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT06-ja-pdf",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT06-zh-pdf",
+    "previous": "passed",
+    "current": "failed",
+    "previousFailures": [],
+    "currentFailures": [
+      "semantic review complete"
+    ]
+  },
+  {
+    "id": "CT01-ja-txt",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT06-zh-ja-pdf",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT01-zh-ja-txt",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT01-zh-txt",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT02-ja-txt",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT02-zh-txt",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT03-ja-txt",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT02-zh-ja-txt",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT03-zh-txt",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT03-zh-ja-txt",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT04-ja-txt",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT04-zh-txt",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT04-zh-ja-txt",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT05-ja-txt",
+    "previous": "failed",
+    "current": "passed",
+    "previousFailures": [
+      "requested party role retained"
+    ],
+    "currentFailures": []
+  },
+  {
+    "id": "CT05-zh-txt",
+    "previous": "passed",
+    "current": "failed",
+    "previousFailures": [],
+    "currentFailures": [
+      "persistent execution succeeded",
+      "structured output exists"
+    ]
+  },
+  {
+    "id": "CT05-zh-ja-txt",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT06-ja-txt",
+    "previous": "passed",
+    "current": "passed",
+    "previousFailures": [],
+    "currentFailures": []
+  },
+  {
+    "id": "CT06-zh-txt",
+    "previous": "passed",
+    "current": "failed",
+    "previousFailures": [],
+    "currentFailures": [
+      "semantic review complete"
+    ]
+  },
+  {
+    "id": "CT06-zh-ja-txt",
+    "previous": "passed",
+    "current": "failed",
+    "previousFailures": [],
+    "currentFailures": [
+      "semantic review complete"
+    ]
+  }
+]

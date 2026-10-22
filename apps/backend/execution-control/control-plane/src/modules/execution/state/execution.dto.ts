@@ -281,6 +281,11 @@ export class CreateExecutionDto {
   @IsOptional()
   @IsString()
   orgId?: string;
+
+  @ApiProperty({ description: 'Requested model ID for execution runtime', required: false })
+  @IsOptional()
+  @IsString()
+  modelId?: string;
 }
 
 export class ExecutionDto {

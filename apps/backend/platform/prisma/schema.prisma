@@ -205,6 +205,10 @@ model Organization {
   type        OrganizationType @default(enterprise)
   description String?          @db.VarChar(500)
   isActive    Boolean          @default(true) @map("is_active")
+  legalEntityName     String?          @map("legal_entity_name") @db.VarChar(255)
+  aliases             String[]         @default([])
+  creditCode          String?          @map("credit_code") @db.VarChar(100)
+  defaultContractRole String?          @default("seller") @map("default_contract_role") @db.VarChar(50)
   createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 

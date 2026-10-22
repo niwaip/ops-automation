@@ -31,12 +31,13 @@ export class SectionAlignerService {
         if (isNumMatch && isCompatibleTitle) {
           matchedSourceIdxs.add(s);
           matchedTargetIdxs.add(t);
+          const isEquiv = this.isPairEquivalent(src, tgt);
           alignedPairs.push({
             id: `align-${s + 1}-${t + 1}`,
-            status: src.content.trim() === tgt.content.trim() ? 'UNCHANGED' : 'MODIFIED',
+            status: isEquiv ? 'UNCHANGED' : 'MODIFIED',
             sourceClause: src,
             targetClause: tgt,
-            similarity: src.content.trim() === tgt.content.trim() ? 1.0 : 0.8,
+            similarity: isEquiv ? 1.0 : 0.8,
           });
           break;
         }
@@ -57,12 +58,13 @@ export class SectionAlignerService {
         if (titleSim >= 0.8) {
           matchedSourceIdxs.add(s);
           matchedTargetIdxs.add(t);
+          const isEquiv = this.isPairEquivalent(src, tgt);
           alignedPairs.push({
             id: `align-${s + 1}-${t + 1}`,
-            status: src.content.trim() === tgt.content.trim() ? 'UNCHANGED' : 'MODIFIED',
+            status: isEquiv ? 'UNCHANGED' : 'MODIFIED',
             sourceClause: src,
             targetClause: tgt,
-            similarity: src.content.trim() === tgt.content.trim() ? 1.0 : 0.8,
+            similarity: isEquiv ? 1.0 : 0.8,
           });
           break;
         }
@@ -86,12 +88,13 @@ export class SectionAlignerService {
           if (titleSim >= 0.25 || !src.title || !tgt.title) {
             matchedSourceIdxs.add(s);
             matchedTargetIdxs.add(t);
+            const isEquiv = this.isPairEquivalent(src, tgt);
             alignedPairs.push({
               id: `align-${s + 1}-${t + 1}`,
-              status: src.content.trim() === tgt.content.trim() ? 'UNCHANGED' : 'MODIFIED',
+              status: isEquiv ? 'UNCHANGED' : 'MODIFIED',
               sourceClause: src,
               targetClause: tgt,
-              similarity: src.content.trim() === tgt.content.trim() ? 1.0 : 0.8,
+              similarity: isEquiv ? 1.0 : 0.8,
             });
             break;
           }
@@ -125,12 +128,13 @@ export class SectionAlignerService {
         matchedSourceIdxs.add(s);
         matchedTargetIdxs.add(bestTargetIdx);
         const tgt = targetClauses[bestTargetIdx];
+        const isEquiv = this.isPairEquivalent(src, tgt);
         alignedPairs.push({
           id: `align-${s + 1}-${bestTargetIdx + 1}`,
-          status: src.content.trim() === tgt.content.trim() ? 'UNCHANGED' : 'MODIFIED',
+          status: isEquiv ? 'UNCHANGED' : 'MODIFIED',
           sourceClause: src,
           targetClause: tgt,
-          similarity: Number(highestSimilarity.toFixed(4)),
+          similarity: isEquiv ? 1.0 : Number(highestSimilarity.toFixed(4)),
         });
       }
     }
@@ -250,5 +254,37 @@ export class SectionAlignerService {
       }
       return (a.targetClause ? 0 : 1) - (b.targetClause ? 0 : 1);
     });
+  }
+
+  /**
+   * Determine whether two clause contents are equivalent, ignoring document-format specific
+   * whitespace/linebreak artifacts while strictly preserving words, numbers, negation tokens and characters.
+   */
+  public isContentEquivalent(a?: string, b?: string): boolean {
+    if (!a && !b) return true;
+    if (!a || !b) return false;
+    if (a.trim() === b.trim()) return true;
+
+    // 1. Fold all whitespace sequences (newlines, spaces, full-width spaces, tabs) to single space
+    const normA = a.replace(/[\r\n\t\s\u3000]+/g, ' ').trim();
+    const normB = b.replace(/[\r\n\t\s\u3000]+/g, ' ').trim();
+    if (normA === normB) return true;
+
+    // 2. Also fold whitespace between CJK/Japanese characters that may be introduced or omitted across docx/pdf text extraction
+    const stripA = normA.replace(/(?<=[\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff])\s+(?=[\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff])/g, '');
+    const stripB = normB.replace(/(?<=[\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff])\s+(?=[\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff])/g, '');
+    return stripA === stripB;
+  }
+
+  /**
+   * Check whether a matched clause pair is completely equivalent across both primary content
+   * and any secondary/Japanese headings.
+   */
+  public isPairEquivalent(src: ContractClauseNode, tgt: ContractClauseNode): boolean {
+    if (!this.isContentEquivalent(src.content, tgt.content)) return false;
+    if (src.titleJa || tgt.titleJa) {
+      if (!this.isContentEquivalent(src.titleJa, tgt.titleJa)) return false;
+    }
+    return true;
   }
 }

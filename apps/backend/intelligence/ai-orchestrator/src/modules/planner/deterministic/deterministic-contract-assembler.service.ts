@@ -99,6 +99,7 @@ export class DeterministicContractAssemblerService {
           inputBindings,
           outputContract,
           failurePolicy: 'abort',
+          ...(runtimeModelId ? { modelId: runtimeModelId } : {}),
         };
         nodes.push(planNode);
       } else {

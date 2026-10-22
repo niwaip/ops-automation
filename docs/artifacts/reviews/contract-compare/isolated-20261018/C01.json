@@ -1,0 +1,59 @@
+{
+  "isolated": true,
+  "id": "C01",
+  "request": {
+    "executionId": "compare-isolated-C01",
+    "stepId": "n1",
+    "skillId": "platform.document.contract-comparator",
+    "publishedSkillId": "platform.document.contract-comparator",
+    "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+    "metadata": {
+      "definitionVersion": "1.0.2",
+      "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+    },
+    "input": {}
+  },
+  "result": {
+    "success": true,
+    "output": {
+      "summary": "比对完成",
+      "metrics": {
+        "totalClauses": 1,
+        "modifiedCount": 1,
+        "highRiskCount": 1,
+        "mediumRiskCount": 0
+      },
+      "alignedClauses": [
+        {
+          "id": "pair-pay",
+          "status": "MODIFIED",
+          "sourceClause": {
+            "content": "30日内付款"
+          },
+          "targetClause": {
+            "content": "180日内付款"
+          },
+          "similarity": 0.8,
+          "aiInsight": {
+            "riskLevel": "HIGH",
+            "summary": "账期延长增加买方资金安排风险",
+            "legalAdvice": "协商调整账期",
+            "keyChange": "30→180日",
+            "shortSummary": "30→180日"
+          }
+        }
+      ],
+      "artifact": {
+        "url": "synthetic"
+      },
+      "artifacts": []
+    },
+    "artifacts": []
+  },
+  "modelRequests": [
+    {
+      "modelId": "default",
+      "prompt": "你是一名资深中国商事合同法务与风控专家。\n以下是两份合同版本比对中发现的【实质变更条款】。请对每一处变更进行深入的法律风控审计：\n【我方立场】: 中立客观商事法务专家（核心诉求：权利义务对等、公平合理、防范隐蔽法律陷阱）\n\n【待审计变更条款】:\n=== [变更序号: 1] [Clause ID: pair-pay] [条款标题: 条款 pair-pay] [变更性质: 文本修改 (MODIFIED)] ===\n【规则引擎初步线索】: 账期延长\n【基准版原文 (修改前)】:\n30日内付款\n\n【修订版原文 (修改后)】:\n180日内付款\n\n\n【审计任务要求】:\n1. 辨析变更意图与实质性影响（对方试图改变什么权利义务关系？是否存在责任转嫁、免责扩大、陷阱条款）；\n2. 评估对我方的法律风险等级（HIGH/MEDIUM/LOW/NONE）与具体风险敞口；\n3. 给出针对该项变更的专业修改反驳或谈判应对策略。\n\n【输出格式要求】:\n必须且只能返回纯 JSON 数组，数组中每个对象对应上述条款：\n[\n  {\n    \"clauseId\": \"<string, 对应 Clause ID>\",\n    \"riskLevel\": \"HIGH\" | \"MEDIUM\" | \"LOW\" | \"NONE\",\n    \"summary\": \"一句话准确揭示变更意图与核心法律风险敞口（20-60字）\",\n    \"legalAdvice\": \"针对该项变更给出的专业修改/谈判应对策略（30-80字）\",\n    \"keyChange\": \"简练标注核心改动要点（如：工期压缩/免责范围扩大/删除违约追偿）\"\n  }\n]"
+    }
+  ]
+}

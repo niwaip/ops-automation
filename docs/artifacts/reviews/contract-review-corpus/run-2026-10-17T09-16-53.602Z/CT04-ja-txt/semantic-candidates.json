@@ -1,0 +1,38 @@
+[
+  {
+    "marker": "CT04-ja-A02",
+    "topic": "risk_internal_conflict",
+    "matchedClauseIndices": [],
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "reviewText": [],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-ja-A03",
+    "topic": "risk_target",
+    "matchedClauseIndices": [],
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "reviewText": [],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-ja-A04",
+    "topic": "risk_resale_price_review",
+    "matchedClauseIndices": [],
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "reviewText": [],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  },
+  {
+    "marker": "CT04-ja-A07",
+    "topic": "risk_inventory_exit",
+    "matchedClauseIndices": [],
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "reviewText": [],
+    "semanticVerdict": "NEEDS_INDEPENDENT_REVIEW"
+  }
+]

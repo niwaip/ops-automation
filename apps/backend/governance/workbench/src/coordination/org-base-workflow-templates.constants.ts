@@ -67,7 +67,7 @@ export const DEFAULT_NDA_ASSEMBLED_WORKFLOWS: AssembledBaseWorkflow[] = [
     stageId: 'contract_review_execution',
     config: {
       contractType: 'nda',
-      myPosition: 'buyer',
+      myPosition: 'auto',
     },
     description: '担当确认后自动执行合同合规审查规则库，排查永久保密陷阱、除外责任及违约条款，输出审查报告',
   },

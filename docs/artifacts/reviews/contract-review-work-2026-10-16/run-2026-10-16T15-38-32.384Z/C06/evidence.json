@@ -1,0 +1,43 @@
+{
+  "id": "C06",
+  "name": "损坏DOCX不伪成功",
+  "status": "passed",
+  "sessionId": "crw-C06-1792165329917",
+  "executionId": "906b371e-36fb-4049-a9d1-ee008e6da406",
+  "traceIds": [
+    "acce7cbc-24f9-4552-b409-ff41993192ee"
+  ],
+  "actualCapabilities": [
+    "platform.document.contract-reviewer"
+  ],
+  "executionStatus": "failed",
+  "requestDigest": "bb0307690dd4fc48b6a88f035392dc6792efee1039f8faea440d7e74a87d3963",
+  "fixtureDigest": null,
+  "timing": {
+    "firstEventMs": 37,
+    "firstContentMs": null,
+    "totalMs": 7490
+  },
+  "assertions": [
+    {
+      "name": "聊天HTTP成功",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE完整结束且无传输异常",
+      "passed": true,
+      "actual": "done",
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "损坏文件未宣称成功",
+      "passed": true,
+      "actual": "failed",
+      "category": "INPUT_VALIDATION"
+    }
+  ],
+  "failures": [],
+  "observedUsage": []
+}

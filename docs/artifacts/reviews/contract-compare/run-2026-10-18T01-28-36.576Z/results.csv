@@ -1,0 +1,47 @@
+﻿stage,id,name,runnerStatus,executionStatus,output,coreDiffPassed,businessCalls,businessModels,failureNames,bodyGaps,oracleErrors,wallMs
+full,CMP01,完全相同负例,passed,succeeded,True,True,0,[],[],[],[],25776
+full,CMP02,付款金额与账期修改,failed,succeeded,True,True,0,[],"['business model ledger present', 'selected 35B used for semantic audit']",[],[],36079
+full,CMP03,新增审计权并删除保密义务,failed,succeeded,True,True,0,[],"['business model ledger present', 'selected 35B used for semantic audit']",[],[],39230
+full,CMP04,否定词删除改变披露义务,failed,,False,,,,"['execution succeeded', 'compare skill routed', 'compare output exists']",[],[],26799
+full,CMP05,条款整体移动,failed,,False,,,,"['execution succeeded', 'compare skill routed', 'compare output exists']",[],[],9697
+full,CMP06,仅条款编号变化,failed,,False,,,,"['execution succeeded', 'compare skill routed', 'compare output exists']",[],[],9391
+full,CMP07,真实表格单元格修改,failed,,False,,,,"['execution succeeded', 'compare skill routed', 'compare output exists']",[],[],10616
+full,CMP08,日文账期与金额修改,failed,,False,,,,"['execution succeeded', 'compare skill routed', 'compare output exists']",[],[],10653
+full,CMP09,双语仅日文发生变化,failed,,False,,,,"['execution succeeded', 'compare skill routed', 'compare output exists']",[],[],9018
+full,CMP10,同正文跨DOCX和PDF负例,failed,,False,,,,"['execution succeeded', 'compare skill routed', 'compare output exists']",[],[],7800
+full,CMP11,跨PDF和TXT付款修改,failed,,False,,,,"['execution succeeded', 'compare skill routed', 'compare output exists']",[],[],8916
+full,CMP12,仅字体排版变化,failed,,False,,,,"['execution succeeded', 'compare skill routed', 'compare output exists']",[],[],8999
+full,CMP13,重复标题精确配对,failed,,False,,,,"['execution succeeded', 'compare skill routed', 'compare output exists']",[],[],8841
+full,CMP14,HTML特殊字符安全,error,,False,,,,[],[],[],23
+full,CMP15,关闭风险分析参数,failed,,False,,,,"['execution succeeded', 'compare skill routed', 'compare output exists']",[],[],9342
+full,CMP16,反向比较验证增删方向,failed,,False,,,,"['execution succeeded', 'compare skill routed', 'compare output exists']",[],[],10291
+recovery,CMP01,完全相同负例,passed,succeeded,True,True,0,[],[],[],[],22308
+recovery,CMP02,付款金额与账期修改,failed,succeeded,True,True,0,[],"['business model ledger present', 'selected 35B used for semantic audit']",[],[],37288
+recovery,CMP03,新增审计权并删除保密义务,failed,succeeded,True,True,0,[],"['business model ledger present', 'selected 35B used for semantic audit']",[],[],40292
+recovery,CMP04,否定词删除改变披露义务,failed,succeeded,True,True,0,[],"['business model ledger present', 'selected 35B used for semantic audit']",[],[],30620
+recovery,CMP05,条款整体移动,passed,succeeded,True,True,0,[],[],[],[],16938
+recovery,CMP06,仅条款编号变化,passed,succeeded,True,True,0,[],[],[],[],37543
+recovery,CMP07,真实表格单元格修改,failed,succeeded,True,True,0,[],"['business model ledger present', 'selected 35B used for semantic audit']",[],[],40174
+recovery,CMP08,日文账期与金额修改,failed,succeeded,True,True,0,[],"['business model ledger present', 'selected 35B used for semantic audit']",[],[],29523
+recovery,CMP09,双语仅日文发生变化,failed,succeeded,True,True,0,[],"['business model ledger present', 'selected 35B used for semantic audit']",[],[],26353
+recovery,CMP10,同正文跨DOCX和PDF负例,failed,succeeded,True,False,0,[],"['expected per-clause changes', 'negative control has no changes', 'business model ledger present', 'selected 35B used for semantic audit']",[],"[{'marker': 'CMP-END', 'expected': 'UNCHANGED', 'actual': ['MODIFIED']}, {'marker': 'CMP-SCOPE', 'expected': 'UNCHANGED', 'actual': ['MODIFIED']}, {'marker': 'CMP-LIAB', 'expected': 'UNCHANGED', 'actual': ['MODIFIED']}, {'marker': 'CMP-PAY', 'expected': 'UNCHANGED', 'actual': ['MODIFIED']}, {'marker': 'CMP-DATA', 'expected': 'UNCHANGED', 'actual': ['MODIFIED']}]",35871
+recovery,CMP11,跨PDF和TXT付款修改,failed,succeeded,True,True,0,[],"['business model ledger present', 'selected 35B used for semantic audit']",[],[],37015
+recovery,CMP12,仅字体排版变化,passed,succeeded,True,True,0,[],[],[],[],29330
+recovery,CMP13,重复标题精确配对,failed,succeeded,True,True,0,[],"['business model ledger present', 'selected 35B used for semantic audit']",[],[],31989
+recovery,CMP15,关闭风险分析参数,failed,succeeded,True,True,0,[],['risk disabled produces no risk insights'],[],[],30170
+domain,CMP01,完全相同负例,200,,True,True,,,[],[],[],28
+domain,CMP02,付款金额与账期修改,200,,True,True,,,[],[],[],6
+domain,CMP03,新增审计权并删除保密义务,200,,True,True,,,[],[],[],7
+domain,CMP04,否定词删除改变披露义务,200,,True,True,,,[],[],[],5
+domain,CMP05,条款整体移动,200,,True,True,,,[],[],[],13
+domain,CMP06,仅条款编号变化,200,,True,True,,,[],[],[],8
+domain,CMP07,真实表格单元格修改,200,,True,True,,,[],[],[],9
+domain,CMP08,日文账期与金额修改,200,,True,True,,,[],[],[],7
+domain,CMP09,双语仅日文发生变化,200,,True,True,,,[],[],[],8
+domain,CMP10,同正文跨DOCX和PDF负例,200,,True,False,,,[],[],"[{'marker': 'CMP-END', 'expected': 'UNCHANGED', 'actual': ['MODIFIED']}, {'marker': 'CMP-SCOPE', 'expected': 'UNCHANGED', 'actual': ['MODIFIED']}, {'marker': 'CMP-LIAB', 'expected': 'UNCHANGED', 'actual': ['MODIFIED']}, {'marker': 'CMP-PAY', 'expected': 'UNCHANGED', 'actual': ['MODIFIED']}, {'marker': 'CMP-DATA', 'expected': 'UNCHANGED', 'actual': ['MODIFIED']}]",560
+domain,CMP11,跨PDF和TXT付款修改,200,,True,True,,,[],[],[],19
+domain,CMP12,仅字体排版变化,200,,True,True,,,[],[],[],6
+domain,CMP13,重复标题精确配对,200,,True,True,,,[],[],[],4
+domain,CMP14,HTML特殊字符安全,200,,True,True,,,[],[],[],4
+domain,CMP15,关闭风险分析参数,200,,True,True,,,[],[],[],4
+domain,CMP16,反向比较验证增删方向,200,,True,True,,,[],[],[],4

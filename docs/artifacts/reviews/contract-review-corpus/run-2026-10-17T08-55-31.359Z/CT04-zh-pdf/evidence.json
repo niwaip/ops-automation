@@ -1,0 +1,14 @@
+{
+  "id": "CT04-zh-pdf",
+  "caseId": "CT04-zh",
+  "business": "distribution",
+  "language": "zh",
+  "format": "pdf",
+  "file": "contracts/distribution/CT04-zh.pdf",
+  "fixtureSha256": "ce9a7be891e6ee64933e218c373469d21100d94e7266ad1323c6f9c7d1624b76",
+  "status": "error",
+  "startedAt": "2026-10-17T08:55:43.122Z",
+  "error": "Login HTTP 429",
+  "wallMs": 5,
+  "finishedAt": "2026-10-17T08:55:43.127Z"
+}

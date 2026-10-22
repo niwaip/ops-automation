@@ -1,9 +1,9 @@
 {
   "capabilityKey": "platform.document.contract-reviewer",
   "definitionVersion": "1.0.2",
-  "definitionDigest": "sha256:bcc7c1e42c892dc5d0a4a81c534087e3ace47f2b54fcc06e19e41fa5b9266252",
+  "definitionDigest": "sha256:677d301f290109a70952d1d53401aeb9ea890c5e0e7eb98616c835389f3f53a9",
   "fileHashes": {
-    "manifest.yaml": "sha256:d3d746ff6dec88405b4b92243435f8593ec60b516a299a117dfff3e6179fc0a8",
+    "manifest.yaml": "sha256:49029456ba55ec3389744e126f9011bd0ec4c1d683dc368078413598dfe0d17b",
     "workflow.json": "sha256:22b195c867a1528708cc3ae7117bcddad003f41a5a99eccac1fba3aaee4429c0",
     "fixtures/smoke-input.json": "sha256:034ae3464e765f59e5232236d06e835aaee5769d12bbfa90d7ba3cf3b70cae57"
   },

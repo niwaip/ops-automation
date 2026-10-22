@@ -1,0 +1,227 @@
+{
+  "status": 200,
+  "data": {
+    "id": "906b371e-36fb-4049-a9d1-ee008e6da406",
+    "orgId": "e2bc525b-7b3e-499d-ba3d-e2a45ed9a71c",
+    "capabilityId": null,
+    "capabilitiesUsed": [],
+    "skillVersion": "1.0.2",
+    "capabilityVersion": "1.0.2",
+    "status": "failed",
+    "runtimeType": "plan",
+    "riskLevel": "L0",
+    "executionMode": "deterministic_plan",
+    "currentStepId": null,
+    "currentPhaseKey": "phase_01_n1_合同文档智能审查与合规诊断",
+    "currentPhaseStatus": "failed",
+    "takeoverStatus": "failed",
+    "requiresApproval": false,
+    "approvalStatus": "not_required",
+    "takeoverRequired": false,
+    "takeoverReason": null,
+    "inputJson": {
+      "prompt": "请审查附件合同，我方为买方，并生成审查报告。",
+      "fileUrl": "/api/ai/chat/files/file-1792165329921-y2uaj2605?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792167129.c9def8b074212fa395a511837d38a51a9d671b56452c2f1193bfeae8b182dcd4",
+      "fileName": "corrupt.docx",
+      "fileBase64": "UEsDBP8Agf4=",
+      "downloadUrl": "/api/ai/chat/files/file-1792165329921-y2uaj2605?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792167129.c9def8b074212fa395a511837d38a51a9d671b56452c2f1193bfeae8b182dcd4",
+      "__promptDebug": {
+        "notes": [
+          "Generated via deterministic recipe 'contract_review' followed by selected-capability parameter recognition.",
+          "能力契约别名已确定性解析字段: contractType",
+          "命中别名: {\"contractType\":\"general\"}"
+        ],
+        "llmCalls": [
+          {
+            "label": "参数识别",
+            "stage": "recognizer",
+            "modelId": "ae03ac58-9e4c-4344-8d8b-3c13bea558aa",
+            "responseText": "{\n  \"myPosition\": \"买方\"\n}",
+            "requestMessages": [
+              {
+                "role": "system",
+                "content": "你是一个智能工作流参数提取助手。\n任务：结合已识别工作流的输入参数定义（含字段路径、名称、类型、描述、显示名、枚举值与提取提示），对用户自然语言输入进行深度语义分析并提取 JSON 参数。\n【提取与转换规则】：\n1. 语义提取与同义词映射：根据参数定义的 description、displayName、enum 和 extractionPrompt，自动识别用户输入中的同义词、中英文转换、简称或缩写（例如：用户输入 \"weibo\" 或 \"微博\" 映射至平台字段；\"10条\" 或 \"前10\" 解析为数量/条数字段 10）。\n2. 类型转换与规范化：根据参数定义的 type (如 number, date, string, boolean)，将自然语言表述转换为对应标准数据类型（例如 \"10条\" 提取为数字 10；日期表述转化为标准日期；枚举表述转化为对应 Schema 枚举 Key）。\n3. 依据要求：只提取在用户输入或上下文中具有明确语义依据的参数。禁止根据常见业务惯例、行业默认值、模板示例、历史经验或通常应该如此来脑补任何参数。缺少依据的字段直接省略，不要猜测或伪造无关的默认占位符。不要为了让任务继续执行而伪造占位值（如（待补充）、N/A、TBD、0、空数组）。\n4. 缺失字段处理：如果用户要求“直接生成”“端对端”“不要追问”，但当前输入仍缺少关键字段，仍然只返回已确认字段；缺失字段交由后续多轮问询补齐。抽取英文或混合语言句子时，只保留字段本身的值，不要把 is、are、in bilingual layout、contract、please generate 等说明性残句带入字段值。\n5. 枚举字段：只能返回 Schema enum 中的一个精确值。用户没有明确表达可映射的枚举含义时省略该字段；禁止把完整任务、搜索词或自然语言片段复制到枚举字段。默认值由运行时补齐，不要自行输出默认值。\n6. 输出格式：返回纯 JSON 对象，顶层只保留本轮新识别或被用户明确修正的参数键值。不要输出 params、confidence、field_confidences、uncertain_fields、notes、explanation。如果本轮没有任何新增或更正的参数，返回空对象 {}。\n7. 签约主体角色映射规则（甲方 vs 乙方）：根据用户自然语言判断签约双方角色。若用户表述“我们是乙方”、“我方为乙方”或“对方是甲方”，或在合同模板中乙方已具备预设默认主体时，用户提及的签约合作对方（例如“和 [经营或注册地址] 的 [某合作企业名称] 签订保密协议”）必须提取为甲方（partyA.name/address），严禁错位识别为乙方（partyB）；若用户说明“我们是甲方”或“对方是乙方”，合作对方提取为乙方；若用户明确指定某方为甲方/乙方，严格遵从。各方的名称与地址（partyA.name/partyA.address 与 partyB.name/partyB.address）必须严格与各自的主体分别对应，严禁把一方的地址（例如注册地、所在地）赋值或覆盖给另一方。\n8. 相对日期换算与拆解：用户输入提及“今天”、“今日”、“即日”、“本日”、“当天”等相对日期词汇时，必须结合[当前系统基准时间]换算为实际年月日。若参数定义将日期拆解为单独的数值字段（如 agreement.signDate.year, agreement.signDate.month, agreement.signDate.day 等包含 year/month/day 的 number 字段），必须分别填入换算后的对应年份数字、月份数字和日号数字（例如当前为 2026年9月12日 时，输出纯数字 year: 2026, month: 9, day: 12）；若参数为标准日期字段，输出为 YYYY-MM-DD 格式。\n\n模版：合同文档智能审查与合规诊断\n\n【按需提取】（有则提取，无则省略）\n- text: string - 合同文档纯文本正文内容（若已上传附件文件，此字段可留空）\n- prompt: string - 针对该合同的专项审查提示词与重点关注要求\n- myPosition: string - 我方合同立场与角色（如：甲方、乙方、采购方、受托方、雇主、雇员、出租方、承租方），影响审查倾斜度与红线建议\n- taskContext: object - 协同任务或上游上下文元数据\n- reviewPrompt: string - 审查提示词或专项指引规则要求（例如：重点审查保密期限与违约责任）\n- customCheckpoints: array - 兼容旧版契约的自定义审查要点\n- customChecklistRules: array - 数字员工自定义配置的审查要点与规则清单"
+              },
+              {
+                "role": "user",
+                "content": "[当前系统基准时间]\n当前日期（北京时间 Asia/Shanghai）：2026-10-16（年份: 2026，月份: 10，日号: 16）\n\n[补充上下文]\nskill_name: 合同文档智能审查与合规诊断\nskill_description: 对单份合同协议（Word、PDF或文本）进行条款树解析、合同类型自动识别（或指定类型）、合规风险审查、缺失必备条款识别、修改红线建议，并生成交互式单页HTML审查报告\nnode_ref: n1\n\n[本轮用户输入]\n请审查附件合同，我方为买方，并生成审查报告。\n\n[系统上下文：已完成用户附件文档轻量元数据探测]\n- 附件文档：corrupt.docx\n  - 识别类型：通用办公文档 (document.general)\n  - 文档标题：《corrupt》\n  - 文档特征摘要：字符数 0，正文哈希 sha256:e3b0c44298fc1c14"
+              }
+            ]
+          }
+        ],
+        "userPrompt": "请审查附件合同，我方为买方，并生成审查报告。\n\n[系统上下文：已完成用户附件文档轻量元数据探测]\n- 附件文档：corrupt.docx\n  - 识别类型：通用办公文档 (document.general)\n  - 文档标题：《corrupt》\n  - 文档特征摘要：字符数 0，正文哈希 sha256:e3b0c44298fc1c14",
+        "debugSource": "planner",
+        "systemPrompt": "Deterministic Recipe Topology",
+        "userPromptSectionKeys": [
+          "user_request"
+        ],
+        "systemPromptSectionKeys": [
+          "routing_cards",
+          "topology_dag"
+        ]
+      }
+    },
+    "normalizedInputJson": {
+      "prompt": "请审查附件合同，我方为买方，并生成审查报告。",
+      "fileUrl": "/api/ai/chat/files/file-1792165329921-y2uaj2605?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792167129.c9def8b074212fa395a511837d38a51a9d671b56452c2f1193bfeae8b182dcd4",
+      "fileName": "corrupt.docx",
+      "fileBase64": "UEsDBP8Agf4=",
+      "downloadUrl": "/api/ai/chat/files/file-1792165329921-y2uaj2605?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792167129.c9def8b074212fa395a511837d38a51a9d671b56452c2f1193bfeae8b182dcd4",
+      "__promptDebug": {
+        "notes": [
+          "Generated via deterministic recipe 'contract_review' followed by selected-capability parameter recognition.",
+          "能力契约别名已确定性解析字段: contractType",
+          "命中别名: {\"contractType\":\"general\"}"
+        ],
+        "llmCalls": [
+          {
+            "label": "参数识别",
+            "stage": "recognizer",
+            "modelId": "ae03ac58-9e4c-4344-8d8b-3c13bea558aa",
+            "responseText": "{\n  \"myPosition\": \"买方\"\n}",
+            "requestMessages": [
+              {
+                "role": "system",
+                "content": "你是一个智能工作流参数提取助手。\n任务：结合已识别工作流的输入参数定义（含字段路径、名称、类型、描述、显示名、枚举值与提取提示），对用户自然语言输入进行深度语义分析并提取 JSON 参数。\n【提取与转换规则】：\n1. 语义提取与同义词映射：根据参数定义的 description、displayName、enum 和 extractionPrompt，自动识别用户输入中的同义词、中英文转换、简称或缩写（例如：用户输入 \"weibo\" 或 \"微博\" 映射至平台字段；\"10条\" 或 \"前10\" 解析为数量/条数字段 10）。\n2. 类型转换与规范化：根据参数定义的 type (如 number, date, string, boolean)，将自然语言表述转换为对应标准数据类型（例如 \"10条\" 提取为数字 10；日期表述转化为标准日期；枚举表述转化为对应 Schema 枚举 Key）。\n3. 依据要求：只提取在用户输入或上下文中具有明确语义依据的参数。禁止根据常见业务惯例、行业默认值、模板示例、历史经验或通常应该如此来脑补任何参数。缺少依据的字段直接省略，不要猜测或伪造无关的默认占位符。不要为了让任务继续执行而伪造占位值（如（待补充）、N/A、TBD、0、空数组）。\n4. 缺失字段处理：如果用户要求“直接生成”“端对端”“不要追问”，但当前输入仍缺少关键字段，仍然只返回已确认字段；缺失字段交由后续多轮问询补齐。抽取英文或混合语言句子时，只保留字段本身的值，不要把 is、are、in bilingual layout、contract、please generate 等说明性残句带入字段值。\n5. 枚举字段：只能返回 Schema enum 中的一个精确值。用户没有明确表达可映射的枚举含义时省略该字段；禁止把完整任务、搜索词或自然语言片段复制到枚举字段。默认值由运行时补齐，不要自行输出默认值。\n6. 输出格式：返回纯 JSON 对象，顶层只保留本轮新识别或被用户明确修正的参数键值。不要输出 params、confidence、field_confidences、uncertain_fields、notes、explanation。如果本轮没有任何新增或更正的参数，返回空对象 {}。\n7. 签约主体角色映射规则（甲方 vs 乙方）：根据用户自然语言判断签约双方角色。若用户表述“我们是乙方”、“我方为乙方”或“对方是甲方”，或在合同模板中乙方已具备预设默认主体时，用户提及的签约合作对方（例如“和 [经营或注册地址] 的 [某合作企业名称] 签订保密协议”）必须提取为甲方（partyA.name/address），严禁错位识别为乙方（partyB）；若用户说明“我们是甲方”或“对方是乙方”，合作对方提取为乙方；若用户明确指定某方为甲方/乙方，严格遵从。各方的名称与地址（partyA.name/partyA.address 与 partyB.name/partyB.address）必须严格与各自的主体分别对应，严禁把一方的地址（例如注册地、所在地）赋值或覆盖给另一方。\n8. 相对日期换算与拆解：用户输入提及“今天”、“今日”、“即日”、“本日”、“当天”等相对日期词汇时，必须结合[当前系统基准时间]换算为实际年月日。若参数定义将日期拆解为单独的数值字段（如 agreement.signDate.year, agreement.signDate.month, agreement.signDate.day 等包含 year/month/day 的 number 字段），必须分别填入换算后的对应年份数字、月份数字和日号数字（例如当前为 2026年9月12日 时，输出纯数字 year: 2026, month: 9, day: 12）；若参数为标准日期字段，输出为 YYYY-MM-DD 格式。\n\n模版：合同文档智能审查与合规诊断\n\n【按需提取】（有则提取，无则省略）\n- text: string - 合同文档纯文本正文内容（若已上传附件文件，此字段可留空）\n- prompt: string - 针对该合同的专项审查提示词与重点关注要求\n- myPosition: string - 我方合同立场与角色（如：甲方、乙方、采购方、受托方、雇主、雇员、出租方、承租方），影响审查倾斜度与红线建议\n- taskContext: object - 协同任务或上游上下文元数据\n- reviewPrompt: string - 审查提示词或专项指引规则要求（例如：重点审查保密期限与违约责任）\n- customCheckpoints: array - 兼容旧版契约的自定义审查要点\n- customChecklistRules: array - 数字员工自定义配置的审查要点与规则清单"
+              },
+              {
+                "role": "user",
+                "content": "[当前系统基准时间]\n当前日期（北京时间 Asia/Shanghai）：2026-10-16（年份: 2026，月份: 10，日号: 16）\n\n[补充上下文]\nskill_name: 合同文档智能审查与合规诊断\nskill_description: 对单份合同协议（Word、PDF或文本）进行条款树解析、合同类型自动识别（或指定类型）、合规风险审查、缺失必备条款识别、修改红线建议，并生成交互式单页HTML审查报告\nnode_ref: n1\n\n[本轮用户输入]\n请审查附件合同，我方为买方，并生成审查报告。\n\n[系统上下文：已完成用户附件文档轻量元数据探测]\n- 附件文档：corrupt.docx\n  - 识别类型：通用办公文档 (document.general)\n  - 文档标题：《corrupt》\n  - 文档特征摘要：字符数 0，正文哈希 sha256:e3b0c44298fc1c14"
+              }
+            ]
+          }
+        ],
+        "userPrompt": "请审查附件合同，我方为买方，并生成审查报告。\n\n[系统上下文：已完成用户附件文档轻量元数据探测]\n- 附件文档：corrupt.docx\n  - 识别类型：通用办公文档 (document.general)\n  - 文档标题：《corrupt》\n  - 文档特征摘要：字符数 0，正文哈希 sha256:e3b0c44298fc1c14",
+        "debugSource": "planner",
+        "systemPrompt": "Deterministic Recipe Topology",
+        "userPromptSectionKeys": [
+          "user_request"
+        ],
+        "systemPromptSectionKeys": [
+          "routing_cards",
+          "topology_dag"
+        ]
+      }
+    },
+    "input": {
+      "prompt": "请审查附件合同，我方为买方，并生成审查报告。",
+      "fileUrl": "/api/ai/chat/files/file-1792165329921-y2uaj2605?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792167129.c9def8b074212fa395a511837d38a51a9d671b56452c2f1193bfeae8b182dcd4",
+      "fileName": "corrupt.docx",
+      "fileBase64": "UEsDBP8Agf4=",
+      "downloadUrl": "/api/ai/chat/files/file-1792165329921-y2uaj2605?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792167129.c9def8b074212fa395a511837d38a51a9d671b56452c2f1193bfeae8b182dcd4",
+      "__promptDebug": {
+        "notes": [
+          "Generated via deterministic recipe 'contract_review' followed by selected-capability parameter recognition.",
+          "能力契约别名已确定性解析字段: contractType",
+          "命中别名: {\"contractType\":\"general\"}"
+        ],
+        "llmCalls": [
+          {
+            "label": "参数识别",
+            "stage": "recognizer",
+            "modelId": "ae03ac58-9e4c-4344-8d8b-3c13bea558aa",
+            "responseText": "{\n  \"myPosition\": \"买方\"\n}",
+            "requestMessages": [
+              {
+                "role": "system",
+                "content": "你是一个智能工作流参数提取助手。\n任务：结合已识别工作流的输入参数定义（含字段路径、名称、类型、描述、显示名、枚举值与提取提示），对用户自然语言输入进行深度语义分析并提取 JSON 参数。\n【提取与转换规则】：\n1. 语义提取与同义词映射：根据参数定义的 description、displayName、enum 和 extractionPrompt，自动识别用户输入中的同义词、中英文转换、简称或缩写（例如：用户输入 \"weibo\" 或 \"微博\" 映射至平台字段；\"10条\" 或 \"前10\" 解析为数量/条数字段 10）。\n2. 类型转换与规范化：根据参数定义的 type (如 number, date, string, boolean)，将自然语言表述转换为对应标准数据类型（例如 \"10条\" 提取为数字 10；日期表述转化为标准日期；枚举表述转化为对应 Schema 枚举 Key）。\n3. 依据要求：只提取在用户输入或上下文中具有明确语义依据的参数。禁止根据常见业务惯例、行业默认值、模板示例、历史经验或通常应该如此来脑补任何参数。缺少依据的字段直接省略，不要猜测或伪造无关的默认占位符。不要为了让任务继续执行而伪造占位值（如（待补充）、N/A、TBD、0、空数组）。\n4. 缺失字段处理：如果用户要求“直接生成”“端对端”“不要追问”，但当前输入仍缺少关键字段，仍然只返回已确认字段；缺失字段交由后续多轮问询补齐。抽取英文或混合语言句子时，只保留字段本身的值，不要把 is、are、in bilingual layout、contract、please generate 等说明性残句带入字段值。\n5. 枚举字段：只能返回 Schema enum 中的一个精确值。用户没有明确表达可映射的枚举含义时省略该字段；禁止把完整任务、搜索词或自然语言片段复制到枚举字段。默认值由运行时补齐，不要自行输出默认值。\n6. 输出格式：返回纯 JSON 对象，顶层只保留本轮新识别或被用户明确修正的参数键值。不要输出 params、confidence、field_confidences、uncertain_fields、notes、explanation。如果本轮没有任何新增或更正的参数，返回空对象 {}。\n7. 签约主体角色映射规则（甲方 vs 乙方）：根据用户自然语言判断签约双方角色。若用户表述“我们是乙方”、“我方为乙方”或“对方是甲方”，或在合同模板中乙方已具备预设默认主体时，用户提及的签约合作对方（例如“和 [经营或注册地址] 的 [某合作企业名称] 签订保密协议”）必须提取为甲方（partyA.name/address），严禁错位识别为乙方（partyB）；若用户说明“我们是甲方”或“对方是乙方”，合作对方提取为乙方；若用户明确指定某方为甲方/乙方，严格遵从。各方的名称与地址（partyA.name/partyA.address 与 partyB.name/partyB.address）必须严格与各自的主体分别对应，严禁把一方的地址（例如注册地、所在地）赋值或覆盖给另一方。\n8. 相对日期换算与拆解：用户输入提及“今天”、“今日”、“即日”、“本日”、“当天”等相对日期词汇时，必须结合[当前系统基准时间]换算为实际年月日。若参数定义将日期拆解为单独的数值字段（如 agreement.signDate.year, agreement.signDate.month, agreement.signDate.day 等包含 year/month/day 的 number 字段），必须分别填入换算后的对应年份数字、月份数字和日号数字（例如当前为 2026年9月12日 时，输出纯数字 year: 2026, month: 9, day: 12）；若参数为标准日期字段，输出为 YYYY-MM-DD 格式。\n\n模版：合同文档智能审查与合规诊断\n\n【按需提取】（有则提取，无则省略）\n- text: string - 合同文档纯文本正文内容（若已上传附件文件，此字段可留空）\n- prompt: string - 针对该合同的专项审查提示词与重点关注要求\n- myPosition: string - 我方合同立场与角色（如：甲方、乙方、采购方、受托方、雇主、雇员、出租方、承租方），影响审查倾斜度与红线建议\n- taskContext: object - 协同任务或上游上下文元数据\n- reviewPrompt: string - 审查提示词或专项指引规则要求（例如：重点审查保密期限与违约责任）\n- customCheckpoints: array - 兼容旧版契约的自定义审查要点\n- customChecklistRules: array - 数字员工自定义配置的审查要点与规则清单"
+              },
+              {
+                "role": "user",
+                "content": "[当前系统基准时间]\n当前日期（北京时间 Asia/Shanghai）：2026-10-16（年份: 2026，月份: 10，日号: 16）\n\n[补充上下文]\nskill_name: 合同文档智能审查与合规诊断\nskill_description: 对单份合同协议（Word、PDF或文本）进行条款树解析、合同类型自动识别（或指定类型）、合规风险审查、缺失必备条款识别、修改红线建议，并生成交互式单页HTML审查报告\nnode_ref: n1\n\n[本轮用户输入]\n请审查附件合同，我方为买方，并生成审查报告。\n\n[系统上下文：已完成用户附件文档轻量元数据探测]\n- 附件文档：corrupt.docx\n  - 识别类型：通用办公文档 (document.general)\n  - 文档标题：《corrupt》\n  - 文档特征摘要：字符数 0，正文哈希 sha256:e3b0c44298fc1c14"
+              }
+            ]
+          }
+        ],
+        "userPrompt": "请审查附件合同，我方为买方，并生成审查报告。\n\n[系统上下文：已完成用户附件文档轻量元数据探测]\n- 附件文档：corrupt.docx\n  - 识别类型：通用办公文档 (document.general)\n  - 文档标题：《corrupt》\n  - 文档特征摘要：字符数 0，正文哈希 sha256:e3b0c44298fc1c14",
+        "debugSource": "planner",
+        "systemPrompt": "Deterministic Recipe Topology",
+        "userPromptSectionKeys": [
+          "user_request"
+        ],
+        "systemPromptSectionKeys": [
+          "routing_cards",
+          "topology_dag"
+        ]
+      }
+    },
+    "normalizedInput": {
+      "prompt": "请审查附件合同，我方为买方，并生成审查报告。",
+      "fileUrl": "/api/ai/chat/files/file-1792165329921-y2uaj2605?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792167129.c9def8b074212fa395a511837d38a51a9d671b56452c2f1193bfeae8b182dcd4",
+      "fileName": "corrupt.docx",
+      "fileBase64": "UEsDBP8Agf4=",
+      "downloadUrl": "/api/ai/chat/files/file-1792165329921-y2uaj2605?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792167129.c9def8b074212fa395a511837d38a51a9d671b56452c2f1193bfeae8b182dcd4",
+      "__promptDebug": {
+        "notes": [
+          "Generated via deterministic recipe 'contract_review' followed by selected-capability parameter recognition.",
+          "能力契约别名已确定性解析字段: contractType",
+          "命中别名: {\"contractType\":\"general\"}"
+        ],
+        "llmCalls": [
+          {
+            "label": "参数识别",
+            "stage": "recognizer",
+            "modelId": "ae03ac58-9e4c-4344-8d8b-3c13bea558aa",
+            "responseText": "{\n  \"myPosition\": \"买方\"\n}",
+            "requestMessages": [
+              {
+                "role": "system",
+                "content": "你是一个智能工作流参数提取助手。\n任务：结合已识别工作流的输入参数定义（含字段路径、名称、类型、描述、显示名、枚举值与提取提示），对用户自然语言输入进行深度语义分析并提取 JSON 参数。\n【提取与转换规则】：\n1. 语义提取与同义词映射：根据参数定义的 description、displayName、enum 和 extractionPrompt，自动识别用户输入中的同义词、中英文转换、简称或缩写（例如：用户输入 \"weibo\" 或 \"微博\" 映射至平台字段；\"10条\" 或 \"前10\" 解析为数量/条数字段 10）。\n2. 类型转换与规范化：根据参数定义的 type (如 number, date, string, boolean)，将自然语言表述转换为对应标准数据类型（例如 \"10条\" 提取为数字 10；日期表述转化为标准日期；枚举表述转化为对应 Schema 枚举 Key）。\n3. 依据要求：只提取在用户输入或上下文中具有明确语义依据的参数。禁止根据常见业务惯例、行业默认值、模板示例、历史经验或通常应该如此来脑补任何参数。缺少依据的字段直接省略，不要猜测或伪造无关的默认占位符。不要为了让任务继续执行而伪造占位值（如（待补充）、N/A、TBD、0、空数组）。\n4. 缺失字段处理：如果用户要求“直接生成”“端对端”“不要追问”，但当前输入仍缺少关键字段，仍然只返回已确认字段；缺失字段交由后续多轮问询补齐。抽取英文或混合语言句子时，只保留字段本身的值，不要把 is、are、in bilingual layout、contract、please generate 等说明性残句带入字段值。\n5. 枚举字段：只能返回 Schema enum 中的一个精确值。用户没有明确表达可映射的枚举含义时省略该字段；禁止把完整任务、搜索词或自然语言片段复制到枚举字段。默认值由运行时补齐，不要自行输出默认值。\n6. 输出格式：返回纯 JSON 对象，顶层只保留本轮新识别或被用户明确修正的参数键值。不要输出 params、confidence、field_confidences、uncertain_fields、notes、explanation。如果本轮没有任何新增或更正的参数，返回空对象 {}。\n7. 签约主体角色映射规则（甲方 vs 乙方）：根据用户自然语言判断签约双方角色。若用户表述“我们是乙方”、“我方为乙方”或“对方是甲方”，或在合同模板中乙方已具备预设默认主体时，用户提及的签约合作对方（例如“和 [经营或注册地址] 的 [某合作企业名称] 签订保密协议”）必须提取为甲方（partyA.name/address），严禁错位识别为乙方（partyB）；若用户说明“我们是甲方”或“对方是乙方”，合作对方提取为乙方；若用户明确指定某方为甲方/乙方，严格遵从。各方的名称与地址（partyA.name/partyA.address 与 partyB.name/partyB.address）必须严格与各自的主体分别对应，严禁把一方的地址（例如注册地、所在地）赋值或覆盖给另一方。\n8. 相对日期换算与拆解：用户输入提及“今天”、“今日”、“即日”、“本日”、“当天”等相对日期词汇时，必须结合[当前系统基准时间]换算为实际年月日。若参数定义将日期拆解为单独的数值字段（如 agreement.signDate.year, agreement.signDate.month, agreement.signDate.day 等包含 year/month/day 的 number 字段），必须分别填入换算后的对应年份数字、月份数字和日号数字（例如当前为 2026年9月12日 时，输出纯数字 year: 2026, month: 9, day: 12）；若参数为标准日期字段，输出为 YYYY-MM-DD 格式。\n\n模版：合同文档智能审查与合规诊断\n\n【按需提取】（有则提取，无则省略）\n- text: string - 合同文档纯文本正文内容（若已上传附件文件，此字段可留空）\n- prompt: string - 针对该合同的专项审查提示词与重点关注要求\n- myPosition: string - 我方合同立场与角色（如：甲方、乙方、采购方、受托方、雇主、雇员、出租方、承租方），影响审查倾斜度与红线建议\n- taskContext: object - 协同任务或上游上下文元数据\n- reviewPrompt: string - 审查提示词或专项指引规则要求（例如：重点审查保密期限与违约责任）\n- customCheckpoints: array - 兼容旧版契约的自定义审查要点\n- customChecklistRules: array - 数字员工自定义配置的审查要点与规则清单"
+              },
+              {
+                "role": "user",
+                "content": "[当前系统基准时间]\n当前日期（北京时间 Asia/Shanghai）：2026-10-16（年份: 2026，月份: 10，日号: 16）\n\n[补充上下文]\nskill_name: 合同文档智能审查与合规诊断\nskill_description: 对单份合同协议（Word、PDF或文本）进行条款树解析、合同类型自动识别（或指定类型）、合规风险审查、缺失必备条款识别、修改红线建议，并生成交互式单页HTML审查报告\nnode_ref: n1\n\n[本轮用户输入]\n请审查附件合同，我方为买方，并生成审查报告。\n\n[系统上下文：已完成用户附件文档轻量元数据探测]\n- 附件文档：corrupt.docx\n  - 识别类型：通用办公文档 (document.general)\n  - 文档标题：《corrupt》\n  - 文档特征摘要：字符数 0，正文哈希 sha256:e3b0c44298fc1c14"
+              }
+            ]
+          }
+        ],
+        "userPrompt": "请审查附件合同，我方为买方，并生成审查报告。\n\n[系统上下文：已完成用户附件文档轻量元数据探测]\n- 附件文档：corrupt.docx\n  - 识别类型：通用办公文档 (document.general)\n  - 文档标题：《corrupt》\n  - 文档特征摘要：字符数 0，正文哈希 sha256:e3b0c44298fc1c14",
+        "debugSource": "planner",
+        "systemPrompt": "Deterministic Recipe Topology",
+        "userPromptSectionKeys": [
+          "user_request"
+        ],
+        "systemPromptSectionKeys": [
+          "routing_cards",
+          "topology_dag"
+        ]
+      }
+    },
+    "semantic": null,
+    "normalizedResult": null,
+    "usage": null,
+    "failureCode": "BUILTIN_SKILL_EXECUTION_ERROR",
+    "failureReason": "Node 'n1_合同文档智能审查与合规诊断' failed: Word 文档 (.docx) 结构损坏或无法解包解析，请核对文件后重试。",
+    "startedAt": "2026-10-16T15:42:16.875Z",
+    "endedAt": "2026-10-16T15:42:16.937Z",
+    "createdAt": "2026-10-16T15:42:16.852Z",
+    "updatedAt": "2026-10-16T15:42:16.938Z",
+    "createdBy": "d6f71c6c-b359-450d-b706-175b7c9866f2",
+    "phases": [
+      {
+        "id": "51893646-805e-47e2-bc25-9cd561527a13",
+        "executionId": "906b371e-36fb-4049-a9d1-ee008e6da406",
+        "phaseKey": "phase_01_n1_合同文档智能审查与合规诊断",
+        "phaseName": "n1_合同文档智能审查与合规诊断",
+        "phaseType": "builtin",
+        "status": "failed",
+        "attempt": 1,
+        "runtimeSessionId": null,
+        "input": null,
+        "output": null,
+        "precheck": null,
+        "postcheck": null,
+        "errorCode": "BUILTIN_SKILL_EXECUTION_ERROR",
+        "errorMessage": "Word 文档 (.docx) 结构损坏或无法解包解析，请核对文件后重试。",
+        "recoveryDecision": null,
+        "startedAt": "2026-10-16T15:42:16.892Z",
+        "completedAt": "2026-10-16T15:42:16.929Z",
+        "createdAt": "2026-10-16T15:42:16.893Z",
+        "updatedAt": "2026-10-16T15:42:16.930Z",
+        "artifacts": [],
+        "steps": [],
+        "takeovers": []
+      }
+    ]
+  }
+}

@@ -1,0 +1,620 @@
+[
+  {
+    "caseId": "CT03-zh-ja",
+    "business": "nda",
+    "language": "zh-ja",
+    "reviewPosition": "双方 / 双方",
+    "party": "甲",
+    "contentMarkers": [
+      "CT03-zh-ja-A01",
+      "CT03-zh-ja-A02",
+      "CT03-zh-ja-A03",
+      "CT03-zh-ja-A04",
+      "CT03-zh-ja-A05",
+      "CT03-zh-ja-A06",
+      "CT03-zh-ja-A07",
+      "CT03-zh-ja-A08"
+    ],
+    "expectedObservations": [
+      {
+        "clause": 1,
+        "marker": "CT03-zh-ja-A01",
+        "observation": "balanced",
+        "zh": "目的：双方仅为评估联合研发项目交换信息，本协议不构成采购、投资或知识产权转让承诺。",
+        "ja": "目的：双方は共同研究開発の評価のためにのみ情報を交換する。本契約は購入、出資又は知的財産権譲渡の約束を構成しない。"
+      },
+      {
+        "clause": 2,
+        "marker": "CT03-zh-ja-A02",
+        "observation": "balanced",
+        "zh": "定义：保密信息是书面标密信息及口头披露后三十日内书面确认的信息。",
+        "ja": "定義：秘密情報とは秘密である旨を表示した書面情報及び口頭開示後30日以内に書面確認された情報をいう。"
+      },
+      {
+        "clause": 3,
+        "marker": "CT03-zh-ja-A03",
+        "observation": "balanced",
+        "zh": "除外：已公开、接收方合法持有、独立开发或从有权第三方合法取得的信息不受本协议限制。",
+        "ja": "除外：公知情報、受領者が適法に保有する情報、独自開発情報又は権限ある第三者から適法に取得した情報は対象外とする。"
+      },
+      {
+        "clause": 4,
+        "marker": "CT03-zh-ja-A04",
+        "observation": "balanced",
+        "zh": "使用：接收方仅可为评估目的使用信息，并限于确有必要且承担同等保密义务的人员接触。",
+        "ja": "使用：受領者は評価目的に限り情報を使用し、必要性があり同等の秘密保持義務を負う者にのみ開示できる。"
+      },
+      {
+        "clause": 5,
+        "marker": "CT03-zh-ja-A05",
+        "observation": "balanced",
+        "zh": "强制披露：依法必须披露时，接收方在法律允许范围内事先通知披露方，并将披露范围限于必要部分。",
+        "ja": "強制開示：法令上開示が必要な場合、受領者は法令が許す範囲で事前通知し、開示を必要な範囲に限定する。"
+      },
+      {
+        "clause": 6,
+        "marker": "CT03-zh-ja-A06",
+        "observation": "balanced",
+        "zh": "返还：评估终止后三十日内返还或删除资料；法定留档及无法即时删除的备份仍受保密义务约束。",
+        "ja": "返還：評価終了後30日以内に資料を返還又は削除する。法定保存資料及び即時削除できないバックアップには秘密保持義務が存続する。"
+      },
+      {
+        "clause": 7,
+        "marker": "CT03-zh-ja-A07",
+        "observation": "balanced",
+        "zh": "期限及责任：一般保密义务持续三年，商业秘密在秘密存续期间持续；违约方承担有证据证明的直接损失。",
+        "ja": "期間及び責任：一般情報は3年間、営業秘密は秘密性が存続する間保護する。違反当事者は立証された直接損害を賠償する。"
+      },
+      {
+        "clause": 8,
+        "marker": "CT03-zh-ja-A08",
+        "observation": "balanced",
+        "zh": "文本与争议：中日文本不一致时中文优先，适用中华人民共和国法律，争议由上海市浦东新区人民法院处理。",
+        "ja": "言語及び紛争：両言語に不一致がある場合は中国語を優先する。中国法を準拠法とし、上海市浦東新区人民法院で解決する。"
+      }
+    ],
+    "files": [
+      {
+        "path": "contracts/nda/CT03-zh-ja.txt",
+        "mimeType": "text/plain",
+        "bytes": 2851,
+        "sha256": "75f73e4ab6340596531f34e2615eabbf54e49e2c45f77569ce6de136645243b1"
+      },
+      {
+        "path": "contracts/nda/CT03-zh-ja.docx",
+        "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "bytes": 38355,
+        "sha256": "b93d92774bc38d722da50cc54cbd22daba09c957890be863be2a6981792a1175"
+      },
+      {
+        "path": "contracts/nda/CT03-zh-ja.pdf",
+        "mimeType": "application/pdf",
+        "bytes": 145683,
+        "sha256": "25115c4777094970517300100b539c481782accedee1609014f094e443d82e44"
+      }
+    ],
+    "expectedNumberedArticles": 8,
+    "file": {
+      "path": "contracts/nda/CT03-zh-ja.docx",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "bytes": 38355,
+      "sha256": "b93d92774bc38d722da50cc54cbd22daba09c957890be863be2a6981792a1175"
+    },
+    "id": "CT03-zh-ja-docx"
+  },
+  {
+    "caseId": "CT02-ja",
+    "business": "saas",
+    "language": "ja",
+    "reviewPosition": "客户 / 利用者",
+    "party": "甲",
+    "contentMarkers": [
+      "CT02-ja-A01",
+      "CT02-ja-A02",
+      "CT02-ja-A03",
+      "CT02-ja-A04",
+      "CT02-ja-A05",
+      "CT02-ja-A06",
+      "CT02-ja-A07",
+      "CT02-ja-A08"
+    ],
+    "expectedObservations": [
+      {
+        "clause": 1,
+        "marker": "CT02-ja-A01",
+        "observation": "neutral",
+        "zh": "服务范围：乙方向甲方提供一百个项目管理账号及每日备份，服务期限自2027年1月1日至12月31日。",
+        "ja": "サービス：乙は甲にプロジェクト管理用100アカウント及び日次バックアップを提供する。期間は2027年1月1日から12月31日までとする。"
+      },
+      {
+        "clause": 2,
+        "marker": "CT02-ja-A02",
+        "observation": "balanced",
+        "zh": "费用：年度含税服务费人民币120000元，开通后十日内支付；超额存储价格须经双方书面确认。",
+        "ja": "料金：年間税込利用料は120000人民元とし、開通後10日以内に支払う。追加保存容量の価格は双方が書面で合意する。"
+      },
+      {
+        "clause": 3,
+        "marker": "CT02-ja-A03",
+        "observation": "risk_sla",
+        "zh": "可用性：乙方仅尽力提供服务，不承诺最低可用率；连续中断十日亦不退费或承担责任。",
+        "ja": "可用性：乙は努力義務のみを負い、最低稼働率を保証しない。10日連続停止した場合も返金又は賠償を行わない。"
+      },
+      {
+        "clause": 4,
+        "marker": "CT02-ja-A04",
+        "observation": "risk_data_use",
+        "zh": "数据：甲方保有数据所有权；乙方可未经甲方同意将含姓名、邮箱和交易记录的数据用于模型训练并永久留存。",
+        "ja": "データ：所有権は甲に帰属する。ただし乙は氏名、メール及び取引履歴を甲の同意なくモデル学習に利用し、永久保存できる。"
+      },
+      {
+        "clause": 5,
+        "marker": "CT02-ja-A05",
+        "observation": "risk_exit",
+        "zh": "退出：合同终止后甲方可申请导出数据，但乙方可自行决定是否批准，且不承诺任何导出期限。",
+        "ja": "終了：甲は終了後にデータ出力を申請できるが、乙は承認の可否を自由に決定でき、出力期限を約束しない。"
+      },
+      {
+        "clause": 6,
+        "marker": "CT02-ja-A06",
+        "observation": "risk_renewal",
+        "zh": "续约：服务自动续约一年；甲方须在到期前九十日书面拒绝，乙方可在续约日自行上调费用。",
+        "ja": "更新：本契約は1年間自動更新される。甲は満了90日前までに拒絶を通知し、乙は更新日に料金を一方的に増額できる。"
+      },
+      {
+        "clause": 7,
+        "marker": "CT02-ja-A07",
+        "observation": "balanced",
+        "zh": "事件通知：乙方发现数据泄露后应在二十四小时内通知甲方并协助止损，双方指定安全联系人。",
+        "ja": "事故通知：乙は漏えいを発見した場合24時間以内に甲へ通知し、被害抑制に協力する。双方は安全管理窓口を指定する。"
+      },
+      {
+        "clause": 8,
+        "marker": "CT02-ja-A08",
+        "observation": "risk_dispute_unclear",
+        "zh": "争议：适用双方另行约定的法律；争议提交有权机构处理，具体机构及所在地留待补充。",
+        "ja": "紛争：別途合意する法を適用する。紛争は権限ある機関で処理するものとし、機関名及び所在地は後日補充する。"
+      }
+    ],
+    "files": [
+      {
+        "path": "contracts/saas/CT02-ja.txt",
+        "mimeType": "text/plain",
+        "bytes": 1703,
+        "sha256": "a7fab94f3c7981384303662518b45247e52194e9f344339f59903196d215055b"
+      },
+      {
+        "path": "contracts/saas/CT02-ja.docx",
+        "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "bytes": 37778,
+        "sha256": "0891e5612343b1ad6411f269883b8b70ad7a228c4f20c1d98e0c7d13c09a767a"
+      },
+      {
+        "path": "contracts/saas/CT02-ja.pdf",
+        "mimeType": "application/pdf",
+        "bytes": 107036,
+        "sha256": "0218003b02baaa7bd31d3af2cbd010abf46c7972f35c25051dcbcbd226eeeb9c"
+      }
+    ],
+    "expectedNumberedArticles": 8,
+    "file": {
+      "path": "contracts/saas/CT02-ja.pdf",
+      "mimeType": "application/pdf",
+      "bytes": 107036,
+      "sha256": "0218003b02baaa7bd31d3af2cbd010abf46c7972f35c25051dcbcbd226eeeb9c"
+    },
+    "id": "CT02-ja-pdf"
+  },
+  {
+    "caseId": "CT06-zh",
+    "business": "lease",
+    "language": "zh",
+    "reviewPosition": "承租方 / 賃借人",
+    "party": "甲",
+    "contentMarkers": [
+      "CT06-zh-A01",
+      "CT06-zh-A02",
+      "CT06-zh-A03",
+      "CT06-zh-A04",
+      "CT06-zh-A05",
+      "CT06-zh-A06",
+      "CT06-zh-A07",
+      "CT06-zh-A08"
+    ],
+    "expectedObservations": [
+      {
+        "clause": 1,
+        "marker": "CT06-zh-A01",
+        "observation": "neutral",
+        "zh": "场地：乙方将上海市测试路88号三层共300平方米场地出租给甲方作办公室，期限2027年1月1日至2028年12月31日。",
+        "ja": "物件：乙は上海市テスト路88号3階の300平方メートルを甲の事務所として貸す。期間は2027年1月1日から2028年12月31日までとする。"
+      },
+      {
+        "clause": 2,
+        "marker": "CT06-zh-A02",
+        "observation": "neutral",
+        "zh": "租金：月租人民币30000元，按季度预付；押金人民币90000元，不计利息。",
+        "ja": "賃料：月額30000人民元、四半期前払いとする。保証金は90000人民元とし、利息は付さない。"
+      },
+      {
+        "clause": 3,
+        "marker": "CT06-zh-A03",
+        "observation": "balanced",
+        "zh": "交付：乙方保证具备出租权并提供权属证明；如因无权出租导致无法使用，应退还已付款并赔偿直接损失。",
+        "ja": "引渡し：乙は賃貸権限を保証し、権利証明を提出する。無権限により利用不能の場合、受領金を返還し直接損害を賠償する。"
+      },
+      {
+        "clause": 4,
+        "marker": "CT06-zh-A04",
+        "observation": "risk_repairs",
+        "zh": "维修：所有结构、消防和隐蔽工程缺陷均由甲方修复，费用不设上限，乙方无需配合。",
+        "ja": "修繕：構造、防火設備及び隠ぺい工事の全ての欠陥は甲が修繕し、費用上限は設けず、乙は協力義務を負わない。"
+      },
+      {
+        "clause": 5,
+        "marker": "CT06-zh-A05",
+        "observation": "risk_unilateral_change",
+        "zh": "调租：乙方可提前三日通知后随时调整租金，甲方不得拒绝，也不得因此解除合同。",
+        "ja": "賃料改定：乙は3日前の通知により随時賃料を改定できる。甲は拒否できず、これを理由に解除もできない。"
+      },
+      {
+        "clause": 6,
+        "marker": "CT06-zh-A06",
+        "observation": "risk_deposit",
+        "zh": "押金：租赁届满后乙方可自行判断是否退还押金，不设退款期限，也无需提供扣款凭据。",
+        "ja": "保証金：満了後の返還可否は乙が自由に判断する。返還期限は定めず、控除の証拠提出も不要とする。"
+      },
+      {
+        "clause": 7,
+        "marker": "CT06-zh-A07",
+        "observation": "balanced",
+        "zh": "停用：非甲方原因连续无法使用超过十五日时，甲方可解除合同；无法使用期间免付租金。",
+        "ja": "利用不能：甲の責めによらず15日を超えて連続利用不能の場合、甲は解除できる。利用不能期間の賃料は免除する。"
+      },
+      {
+        "clause": 8,
+        "marker": "CT06-zh-A08",
+        "observation": "balanced",
+        "zh": "争议与通知：中日文本不一致时中文优先；争议由场地所在地法院处理，双方书面指定通知地址。",
+        "ja": "言語及び通知：両言語に相違がある場合は中国語を優先する。紛争は物件所在地の裁判所で処理し、双方は通知先を文書指定する。"
+      }
+    ],
+    "files": [
+      {
+        "path": "contracts/lease/CT06-zh.txt",
+        "mimeType": "text/plain",
+        "bytes": 1395,
+        "sha256": "6a595a2caaf783b9ab99e0b4014b0b15471a824cc1f414cf7d08778be3392854"
+      },
+      {
+        "path": "contracts/lease/CT06-zh.docx",
+        "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "bytes": 37611,
+        "sha256": "0e6d927141ccd596b9068b7e3ff1ed2be7e3517c50b8527f53dfbddd92efd230"
+      },
+      {
+        "path": "contracts/lease/CT06-zh.pdf",
+        "mimeType": "application/pdf",
+        "bytes": 94436,
+        "sha256": "773da2915f15cd6b9ed16c18252d5aa9e0bd214cdbb024dab108c8912a4fc157"
+      }
+    ],
+    "expectedNumberedArticles": 8,
+    "file": {
+      "path": "contracts/lease/CT06-zh.pdf",
+      "mimeType": "application/pdf",
+      "bytes": 94436,
+      "sha256": "773da2915f15cd6b9ed16c18252d5aa9e0bd214cdbb024dab108c8912a4fc157"
+    },
+    "id": "CT06-zh-pdf"
+  },
+  {
+    "caseId": "CT05-zh",
+    "business": "development",
+    "language": "zh",
+    "reviewPosition": "委托方 / 委託者",
+    "party": "甲",
+    "contentMarkers": [
+      "CT05-zh-A01",
+      "CT05-zh-A02",
+      "CT05-zh-A03",
+      "CT05-zh-A04",
+      "CT05-zh-A05",
+      "CT05-zh-A06",
+      "CT05-zh-A07",
+      "CT05-zh-A08"
+    ],
+    "expectedObservations": [
+      {
+        "clause": 1,
+        "marker": "CT05-zh-A01",
+        "observation": "balanced",
+        "zh": "范围：乙方为甲方开发仓储管理系统，交付源代码、部署脚本、操作手册及接口说明，需求清单由双方签署确认。",
+        "ja": "範囲：乙は甲のために倉庫管理システムを開発し、ソースコード、配備スクリプト、操作手順及びAPI仕様を納入する。要件表は双方が署名する。"
+      },
+      {
+        "clause": 2,
+        "marker": "CT05-zh-A02",
+        "observation": "balanced",
+        "zh": "价款：总价人民币600000元，启动、测试环境交付、最终验收后分别支付百分之三十、三十、四十。",
+        "ja": "代金：総額は600000人民元とし、開始時、試験環境納入時及び最終検収後に30％、30％、40％を支払う。"
+      },
+      {
+        "clause": 3,
+        "marker": "CT05-zh-A03",
+        "observation": "risk_acceptance",
+        "zh": "验收：乙方发出交付邮件后两日内甲方未书面拒绝即视为验收，任何未修复安全漏洞不影响验收。",
+        "ja": "検収：納入メール後2日以内に甲が書面拒絶しなければ合格とみなす。未修正のセキュリティ脆弱性は検収に影響しない。"
+      },
+      {
+        "clause": 4,
+        "marker": "CT05-zh-A04",
+        "observation": "risk_ip",
+        "zh": "知识产权：全部定制开发成果及源代码著作权归乙方；甲方仅取得一年期不可续展的内部使用许可。",
+        "ja": "知的財産：全ての専用開発成果及びソースコードの著作権は乙に帰属する。甲には更新できない1年間の社内利用権のみを付与する。"
+      },
+      {
+        "clause": 5,
+        "marker": "CT05-zh-A05",
+        "observation": "balanced",
+        "zh": "变更：需求变更须形成书面变更单，列明价格及工期影响，经双方确认后执行。",
+        "ja": "変更：要件変更は価格及び納期への影響を記載した変更書を双方が承認した後に実施する。"
+      },
+      {
+        "clause": 6,
+        "marker": "CT05-zh-A06",
+        "observation": "risk_third_party_ip",
+        "zh": "开源：乙方可自由引入任意第三方组件，无需提供许可清单，甲方自行承担全部第三方权利主张。",
+        "ja": "第三者部品：乙は任意の部品を自由に利用でき、ライセンス一覧を提出しない。第三者からの全ての権利主張は甲が負担する。"
+      },
+      {
+        "clause": 7,
+        "marker": "CT05-zh-A07",
+        "observation": "balanced",
+        "zh": "保修：最终验收后六个月内乙方免费修复缺陷；严重故障应在一个工作日内响应。",
+        "ja": "保証：最終検収後6か月間、乙は欠陥を無償修補する。重大障害には1営業日以内に対応する。"
+      },
+      {
+        "clause": 8,
+        "marker": "CT05-zh-A08",
+        "observation": "risk_unfilled",
+        "zh": "争议与签署：中日文本不一致时中文优先；争议由被告住所地法院处理。甲方签署人：____；生效日期：____。",
+        "ja": "言語及び署名：両言語に相違がある場合は中国語を優先する。被告所在地の裁判所で解決する。甲の署名者：____。発効日：____。"
+      }
+    ],
+    "files": [
+      {
+        "path": "contracts/development/CT05-zh.txt",
+        "mimeType": "text/plain",
+        "bytes": 1452,
+        "sha256": "d2fc2ac33e65dccd671766721695baaaaebac5f8e11bb56b3c73e1db5e114c42"
+      },
+      {
+        "path": "contracts/development/CT05-zh.docx",
+        "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "bytes": 37668,
+        "sha256": "fbec16acc0e4910e917abd0946ddfad362e66daf64cd1f59f5f6124b8caf2435"
+      },
+      {
+        "path": "contracts/development/CT05-zh.pdf",
+        "mimeType": "application/pdf",
+        "bytes": 97059,
+        "sha256": "83b42600ba22834b371074bd28b06240aa46751d6869dcd735a10d1496d5107a"
+      }
+    ],
+    "expectedNumberedArticles": 8,
+    "file": {
+      "path": "contracts/development/CT05-zh.txt",
+      "mimeType": "text/plain",
+      "bytes": 1452,
+      "sha256": "d2fc2ac33e65dccd671766721695baaaaebac5f8e11bb56b3c73e1db5e114c42"
+    },
+    "id": "CT05-zh-txt"
+  },
+  {
+    "caseId": "CT06-zh",
+    "business": "lease",
+    "language": "zh",
+    "reviewPosition": "承租方 / 賃借人",
+    "party": "甲",
+    "contentMarkers": [
+      "CT06-zh-A01",
+      "CT06-zh-A02",
+      "CT06-zh-A03",
+      "CT06-zh-A04",
+      "CT06-zh-A05",
+      "CT06-zh-A06",
+      "CT06-zh-A07",
+      "CT06-zh-A08"
+    ],
+    "expectedObservations": [
+      {
+        "clause": 1,
+        "marker": "CT06-zh-A01",
+        "observation": "neutral",
+        "zh": "场地：乙方将上海市测试路88号三层共300平方米场地出租给甲方作办公室，期限2027年1月1日至2028年12月31日。",
+        "ja": "物件：乙は上海市テスト路88号3階の300平方メートルを甲の事務所として貸す。期間は2027年1月1日から2028年12月31日までとする。"
+      },
+      {
+        "clause": 2,
+        "marker": "CT06-zh-A02",
+        "observation": "neutral",
+        "zh": "租金：月租人民币30000元，按季度预付；押金人民币90000元，不计利息。",
+        "ja": "賃料：月額30000人民元、四半期前払いとする。保証金は90000人民元とし、利息は付さない。"
+      },
+      {
+        "clause": 3,
+        "marker": "CT06-zh-A03",
+        "observation": "balanced",
+        "zh": "交付：乙方保证具备出租权并提供权属证明；如因无权出租导致无法使用，应退还已付款并赔偿直接损失。",
+        "ja": "引渡し：乙は賃貸権限を保証し、権利証明を提出する。無権限により利用不能の場合、受領金を返還し直接損害を賠償する。"
+      },
+      {
+        "clause": 4,
+        "marker": "CT06-zh-A04",
+        "observation": "risk_repairs",
+        "zh": "维修：所有结构、消防和隐蔽工程缺陷均由甲方修复，费用不设上限，乙方无需配合。",
+        "ja": "修繕：構造、防火設備及び隠ぺい工事の全ての欠陥は甲が修繕し、費用上限は設けず、乙は協力義務を負わない。"
+      },
+      {
+        "clause": 5,
+        "marker": "CT06-zh-A05",
+        "observation": "risk_unilateral_change",
+        "zh": "调租：乙方可提前三日通知后随时调整租金，甲方不得拒绝，也不得因此解除合同。",
+        "ja": "賃料改定：乙は3日前の通知により随時賃料を改定できる。甲は拒否できず、これを理由に解除もできない。"
+      },
+      {
+        "clause": 6,
+        "marker": "CT06-zh-A06",
+        "observation": "risk_deposit",
+        "zh": "押金：租赁届满后乙方可自行判断是否退还押金，不设退款期限，也无需提供扣款凭据。",
+        "ja": "保証金：満了後の返還可否は乙が自由に判断する。返還期限は定めず、控除の証拠提出も不要とする。"
+      },
+      {
+        "clause": 7,
+        "marker": "CT06-zh-A07",
+        "observation": "balanced",
+        "zh": "停用：非甲方原因连续无法使用超过十五日时，甲方可解除合同；无法使用期间免付租金。",
+        "ja": "利用不能：甲の責めによらず15日を超えて連続利用不能の場合、甲は解除できる。利用不能期間の賃料は免除する。"
+      },
+      {
+        "clause": 8,
+        "marker": "CT06-zh-A08",
+        "observation": "balanced",
+        "zh": "争议与通知：中日文本不一致时中文优先；争议由场地所在地法院处理，双方书面指定通知地址。",
+        "ja": "言語及び通知：両言語に相違がある場合は中国語を優先する。紛争は物件所在地の裁判所で処理し、双方は通知先を文書指定する。"
+      }
+    ],
+    "files": [
+      {
+        "path": "contracts/lease/CT06-zh.txt",
+        "mimeType": "text/plain",
+        "bytes": 1395,
+        "sha256": "6a595a2caaf783b9ab99e0b4014b0b15471a824cc1f414cf7d08778be3392854"
+      },
+      {
+        "path": "contracts/lease/CT06-zh.docx",
+        "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "bytes": 37611,
+        "sha256": "0e6d927141ccd596b9068b7e3ff1ed2be7e3517c50b8527f53dfbddd92efd230"
+      },
+      {
+        "path": "contracts/lease/CT06-zh.pdf",
+        "mimeType": "application/pdf",
+        "bytes": 94436,
+        "sha256": "773da2915f15cd6b9ed16c18252d5aa9e0bd214cdbb024dab108c8912a4fc157"
+      }
+    ],
+    "expectedNumberedArticles": 8,
+    "file": {
+      "path": "contracts/lease/CT06-zh.txt",
+      "mimeType": "text/plain",
+      "bytes": 1395,
+      "sha256": "6a595a2caaf783b9ab99e0b4014b0b15471a824cc1f414cf7d08778be3392854"
+    },
+    "id": "CT06-zh-txt"
+  },
+  {
+    "caseId": "CT06-zh-ja",
+    "business": "lease",
+    "language": "zh-ja",
+    "reviewPosition": "承租方 / 賃借人",
+    "party": "甲",
+    "contentMarkers": [
+      "CT06-zh-ja-A01",
+      "CT06-zh-ja-A02",
+      "CT06-zh-ja-A03",
+      "CT06-zh-ja-A04",
+      "CT06-zh-ja-A05",
+      "CT06-zh-ja-A06",
+      "CT06-zh-ja-A07",
+      "CT06-zh-ja-A08"
+    ],
+    "expectedObservations": [
+      {
+        "clause": 1,
+        "marker": "CT06-zh-ja-A01",
+        "observation": "neutral",
+        "zh": "场地：乙方将上海市测试路88号三层共300平方米场地出租给甲方作办公室，期限2027年1月1日至2028年12月31日。",
+        "ja": "物件：乙は上海市テスト路88号3階の300平方メートルを甲の事務所として貸す。期間は2027年1月1日から2028年12月31日までとする。"
+      },
+      {
+        "clause": 2,
+        "marker": "CT06-zh-ja-A02",
+        "observation": "neutral",
+        "zh": "租金：月租人民币30000元，按季度预付；押金人民币90000元，不计利息。",
+        "ja": "賃料：月額30000人民元、四半期前払いとする。保証金は90000人民元とし、利息は付さない。"
+      },
+      {
+        "clause": 3,
+        "marker": "CT06-zh-ja-A03",
+        "observation": "balanced",
+        "zh": "交付：乙方保证具备出租权并提供权属证明；如因无权出租导致无法使用，应退还已付款并赔偿直接损失。",
+        "ja": "引渡し：乙は賃貸権限を保証し、権利証明を提出する。無権限により利用不能の場合、受領金を返還し直接損害を賠償する。"
+      },
+      {
+        "clause": 4,
+        "marker": "CT06-zh-ja-A04",
+        "observation": "risk_repairs",
+        "zh": "维修：所有结构、消防和隐蔽工程缺陷均由甲方修复，费用不设上限，乙方无需配合。",
+        "ja": "修繕：構造、防火設備及び隠ぺい工事の全ての欠陥は甲が修繕し、費用上限は設けず、乙は協力義務を負わない。"
+      },
+      {
+        "clause": 5,
+        "marker": "CT06-zh-ja-A05",
+        "observation": "risk_unilateral_change",
+        "zh": "调租：乙方可提前三日通知后随时调整租金，甲方不得拒绝，也不得因此解除合同。",
+        "ja": "賃料改定：乙は3日前の通知により随時賃料を改定できる。甲は拒否できず、これを理由に解除もできない。"
+      },
+      {
+        "clause": 6,
+        "marker": "CT06-zh-ja-A06",
+        "observation": "risk_deposit",
+        "zh": "押金：租赁届满后乙方可自行判断是否退还押金，不设退款期限，也无需提供扣款凭据。",
+        "ja": "保証金：満了後の返還可否は乙が自由に判断する。返還期限は定めず、控除の証拠提出も不要とする。"
+      },
+      {
+        "clause": 7,
+        "marker": "CT06-zh-ja-A07",
+        "observation": "balanced",
+        "zh": "停用：非甲方原因连续无法使用超过十五日时，甲方可解除合同；无法使用期间免付租金。",
+        "ja": "利用不能：甲の責めによらず15日を超えて連続利用不能の場合、甲は解除できる。利用不能期間の賃料は免除する。"
+      },
+      {
+        "clause": 8,
+        "marker": "CT06-zh-ja-A08",
+        "observation": "balanced",
+        "zh": "争议与通知：中日文本不一致时中文优先；争议由场地所在地法院处理，双方书面指定通知地址。",
+        "ja": "言語及び通知：両言語に相違がある場合は中国語を優先する。紛争は物件所在地の裁判所で処理し、双方は通知先を文書指定する。"
+      }
+    ],
+    "files": [
+      {
+        "path": "contracts/lease/CT06-zh-ja.txt",
+        "mimeType": "text/plain",
+        "bytes": 2752,
+        "sha256": "2f152c6c5a15c6101cb50d1a6cdd7dadde92e3d97bcb48152cd49fb4b20833e9"
+      },
+      {
+        "path": "contracts/lease/CT06-zh-ja.docx",
+        "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "bytes": 38317,
+        "sha256": "731db3d6259fb22548a27f3e194fc23ef06cd963aefac30fcbf5d3e6c590e7ba"
+      },
+      {
+        "path": "contracts/lease/CT06-zh-ja.pdf",
+        "mimeType": "application/pdf",
+        "bytes": 147802,
+        "sha256": "ec718194106057199d13f35330a23120c6a0cd640841b9c4706fd8eac2da7595"
+      }
+    ],
+    "expectedNumberedArticles": 8,
+    "file": {
+      "path": "contracts/lease/CT06-zh-ja.txt",
+      "mimeType": "text/plain",
+      "bytes": 2752,
+      "sha256": "2f152c6c5a15c6101cb50d1a6cdd7dadde92e3d97bcb48152cd49fb4b20833e9"
+    },
+    "id": "CT06-zh-ja-txt"
+  }
+]

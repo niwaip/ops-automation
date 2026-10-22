@@ -1,0 +1,281 @@
+{
+  "run": "docs/artifacts/reviews/contract-review-work-2026-10-16/run-2026-10-17T02-31-02.250Z",
+  "auditedCases": [
+    {
+      "caseId": "C01",
+      "rawStatus": "passed",
+      "auditStatus": "passed",
+      "executionId": "5aa9cb73-00ca-4094-8219-d2da3a151de7",
+      "evidenceIntegrity": {
+        "request_is_task_mode": true,
+        "request_model_is_top_level_35b": true,
+        "trace_ends_done": true,
+        "execution_identity_matches": true,
+        "request_digest_matches": true,
+        "output_indices_unique": true,
+        "metrics_match_output": true,
+        "ledger_exactly_covers_reviewed_indices": true
+      },
+      "note": "",
+      "observedCalls": 2,
+      "observedTokens": 11594,
+      "modelIds": [
+        "qwen36-35b-a3b"
+      ],
+      "failedAssertions": []
+    },
+    {
+      "caseId": "C02",
+      "rawStatus": "passed",
+      "auditStatus": "passed",
+      "executionId": "01271aa1-c4e8-427d-9d2c-5927193be4b2",
+      "evidenceIntegrity": {
+        "request_is_task_mode": true,
+        "request_model_is_top_level_35b": true,
+        "trace_ends_done": true,
+        "execution_identity_matches": true,
+        "request_digest_matches": true,
+        "output_indices_unique": true,
+        "metrics_match_output": true,
+        "ledger_exactly_covers_reviewed_indices": true
+      },
+      "note": "",
+      "observedCalls": 2,
+      "observedTokens": 12993,
+      "modelIds": [
+        "qwen36-35b-a3b"
+      ],
+      "failedAssertions": []
+    },
+    {
+      "caseId": "C03",
+      "rawStatus": "passed",
+      "auditStatus": "passed",
+      "executionId": "3047718d-34f4-4378-bd0a-bdd22d3be1c5",
+      "evidenceIntegrity": {
+        "request_is_task_mode": true,
+        "request_model_is_top_level_35b": true,
+        "trace_ends_done": true,
+        "execution_identity_matches": true,
+        "request_digest_matches": true,
+        "output_indices_unique": true,
+        "metrics_match_output": true,
+        "ledger_exactly_covers_reviewed_indices": true
+      },
+      "note": "",
+      "observedCalls": 2,
+      "observedTokens": 10004,
+      "modelIds": [
+        "qwen36-35b-a3b"
+      ],
+      "failedAssertions": []
+    },
+    {
+      "caseId": "C04",
+      "rawStatus": "passed",
+      "auditStatus": "passed",
+      "executionId": "1fe1138e-4577-49fc-b6ba-67d53b2e37d2",
+      "evidenceIntegrity": {
+        "request_is_task_mode": true,
+        "request_model_is_top_level_35b": true,
+        "trace_ends_done": true,
+        "execution_identity_matches": true,
+        "request_digest_matches": true
+      },
+      "note": "",
+      "observedCalls": 2,
+      "observedTokens": 9715,
+      "modelIds": [
+        "qwen36-35b-a3b"
+      ],
+      "failedAssertions": []
+    },
+    {
+      "caseId": "C05",
+      "rawStatus": "passed",
+      "auditStatus": "passed",
+      "executionId": "1fe1138e-4577-49fc-b6ba-67d53b2e37d2",
+      "evidenceIntegrity": {
+        "request_is_task_mode": true,
+        "request_model_is_top_level_35b": true,
+        "trace_ends_done": true,
+        "execution_identity_matches": true,
+        "request_digest_matches": true,
+        "output_indices_unique": true,
+        "metrics_match_output": true,
+        "ledger_exactly_covers_reviewed_indices": true
+      },
+      "note": "",
+      "observedCalls": 2,
+      "observedTokens": 9715,
+      "modelIds": [
+        "qwen36-35b-a3b"
+      ],
+      "failedAssertions": []
+    },
+    {
+      "caseId": "C06",
+      "rawStatus": "passed",
+      "auditStatus": "passed",
+      "executionId": "0fe9b233-12d6-4407-a666-001a6a06be8c",
+      "evidenceIntegrity": {
+        "request_is_task_mode": true,
+        "request_model_is_top_level_35b": true,
+        "trace_ends_done": true,
+        "execution_identity_matches": true,
+        "request_digest_matches": true
+      },
+      "note": "",
+      "observedCalls": 0,
+      "observedTokens": null,
+      "modelIds": [],
+      "failedAssertions": []
+    },
+    {
+      "caseId": "C07",
+      "rawStatus": "passed",
+      "auditStatus": "passed",
+      "executionId": "0c89f0a7-8930-4e15-88d5-db87b5bb043e",
+      "evidenceIntegrity": {
+        "request_is_task_mode": true,
+        "request_model_is_top_level_35b": true,
+        "trace_ends_done": true,
+        "execution_identity_matches": true,
+        "request_digest_matches": true,
+        "output_indices_unique": true,
+        "metrics_match_output": true,
+        "ledger_exactly_covers_reviewed_indices": true
+      },
+      "note": "",
+      "observedCalls": 2,
+      "observedTokens": 12197,
+      "modelIds": [
+        "qwen36-35b-a3b"
+      ],
+      "failedAssertions": []
+    },
+    {
+      "caseId": "C08",
+      "rawStatus": "passed",
+      "auditStatus": "passed",
+      "executionId": "436e1e03-1629-456b-9bd1-d4906f242a4d",
+      "evidenceIntegrity": {
+        "request_is_task_mode": true,
+        "request_model_is_top_level_35b": true,
+        "trace_ends_done": true,
+        "execution_identity_matches": true,
+        "request_digest_matches": true,
+        "output_indices_unique": true,
+        "metrics_match_output": true,
+        "ledger_exactly_covers_reviewed_indices": true
+      },
+      "note": "",
+      "observedCalls": 11,
+      "observedTokens": 62541,
+      "modelIds": [
+        "qwen36-35b-a3b"
+      ],
+      "failedAssertions": []
+    },
+    {
+      "caseId": "C09",
+      "rawStatus": "passed",
+      "auditStatus": "passed",
+      "executionId": "3424c0d5-191b-41ef-ae56-45426a04fb58",
+      "evidenceIntegrity": {
+        "request_is_task_mode": true,
+        "request_model_is_top_level_35b": true,
+        "trace_ends_done": true,
+        "execution_identity_matches": true,
+        "request_digest_matches": true,
+        "output_indices_unique": true,
+        "metrics_match_output": true,
+        "ledger_exactly_covers_reviewed_indices": true
+      },
+      "note": "",
+      "observedCalls": 2,
+      "observedTokens": 10976,
+      "modelIds": [
+        "qwen36-35b-a3b"
+      ],
+      "failedAssertions": []
+    },
+    {
+      "caseId": "C10",
+      "rawStatus": "passed",
+      "auditStatus": "passed",
+      "executionId": "ddc5ad9a-33d1-483b-b939-ef43821e0e0d",
+      "evidenceIntegrity": {
+        "request_is_task_mode": true,
+        "request_model_is_top_level_35b": true,
+        "trace_ends_done": true,
+        "execution_identity_matches": true,
+        "request_digest_matches": true,
+        "output_indices_unique": true,
+        "metrics_match_output": true,
+        "ledger_exactly_covers_reviewed_indices": true
+      },
+      "note": "",
+      "observedCalls": 2,
+      "observedTokens": 12146,
+      "modelIds": [
+        "qwen36-35b-a3b"
+      ],
+      "failedAssertions": []
+    },
+    {
+      "caseId": "C11",
+      "rawStatus": "passed",
+      "auditStatus": "passed",
+      "executionId": null,
+      "evidenceIntegrity": {
+        "request_is_task_mode": true,
+        "request_model_is_top_level_35b": true,
+        "trace_ends_done": true,
+        "execution_identity_matches": true,
+        "request_digest_matches": true
+      },
+      "note": "",
+      "observedCalls": 0,
+      "observedTokens": null,
+      "modelIds": [],
+      "failedAssertions": []
+    },
+    {
+      "caseId": "C12",
+      "rawStatus": "passed",
+      "auditStatus": "passed",
+      "executionId": "bae56207-3208-4411-9681-2b42d2a44289",
+      "evidenceIntegrity": {
+        "request_is_task_mode": true,
+        "request_model_is_top_level_35b": true,
+        "trace_ends_done": true,
+        "execution_identity_matches": true,
+        "request_digest_matches": true,
+        "output_indices_unique": true,
+        "metrics_match_output": true,
+        "ledger_exactly_covers_reviewed_indices": true
+      },
+      "note": "",
+      "observedCalls": 2,
+      "observedTokens": 10813,
+      "modelIds": [
+        "qwen36-35b-a3b"
+      ],
+      "failedAssertions": []
+    }
+  ],
+  "rawCounts": {
+    "passed": 12
+  },
+  "auditedCounts": {
+    "passed": 12
+  },
+  "evidenceIntegrityFailures": [],
+  "observedModelIds": [
+    "qwen36-35b-a3b"
+  ],
+  "observedCallsIncludingUi": 27,
+  "observedTokensIncludingUi": 152979,
+  "tokenScope": "Only rows present in ledger. Missing recognizer calls and timed-out calls are unknown, not zero."
+}

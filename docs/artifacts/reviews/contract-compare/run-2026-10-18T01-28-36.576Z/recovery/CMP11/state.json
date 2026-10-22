@@ -1,0 +1,174 @@
+{
+  "id": "CMP11",
+  "name": "跨PDF和TXT付款修改",
+  "startedAt": "2026-10-18T01:34:37.663Z",
+  "status": "failed",
+  "executionId": "14031711-cc2d-42f1-b025-5e2569152029",
+  "chatMs": 36938,
+  "httpStatus": 201,
+  "businessModels": [],
+  "businessCalls": 0,
+  "metrics": {
+    "addedCount": 0,
+    "isTruncated": false,
+    "deletedCount": 0,
+    "totalClauses": 6,
+    "highRiskCount": 0,
+    "modifiedCount": 2,
+    "unchangedCount": 4,
+    "mediumRiskCount": 1,
+    "sourceClauseCount": 6,
+    "targetClauseCount": 6
+  },
+  "assertions": [
+    {
+      "name": "HTTP success",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE completed",
+      "passed": true,
+      "actual": null,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "execution succeeded",
+      "passed": true,
+      "actual": "succeeded",
+      "category": "STATE"
+    },
+    {
+      "name": "compare skill routed",
+      "passed": true,
+      "actual": null,
+      "category": "ROUTING"
+    },
+    {
+      "name": "compare output exists",
+      "passed": true,
+      "actual": null,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "all source bodies preserved",
+      "passed": true,
+      "actual": [],
+      "category": "EXTRACTION"
+    },
+    {
+      "name": "expected per-clause changes",
+      "passed": true,
+      "actual": [],
+      "category": "DIFF"
+    },
+    {
+      "name": "diff tokens reconstruct A and B",
+      "passed": true,
+      "actual": [],
+      "category": "DIFF"
+    },
+    {
+      "name": "metrics agree with pairs",
+      "passed": true,
+      "actual": {
+        "addedCount": 0,
+        "isTruncated": false,
+        "deletedCount": 0,
+        "totalClauses": 6,
+        "highRiskCount": 0,
+        "modifiedCount": 2,
+        "unchangedCount": 4,
+        "mediumRiskCount": 1,
+        "sourceClauseCount": 6,
+        "targetClauseCount": 6
+      },
+      "category": "METRICS"
+    },
+    {
+      "name": "not truncated",
+      "passed": true,
+      "actual": {
+        "addedCount": 0,
+        "isTruncated": false,
+        "deletedCount": 0,
+        "totalClauses": 6,
+        "highRiskCount": 0,
+        "modifiedCount": 2,
+        "unchangedCount": 4,
+        "mediumRiskCount": 1,
+        "sourceClauseCount": 6,
+        "targetClauseCount": 6
+      },
+      "category": "EXTRACTION"
+    },
+    {
+      "name": "business model ledger present",
+      "passed": false,
+      "actual": 0,
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "selected 35B used for semantic audit",
+      "passed": false,
+      "actual": [],
+      "category": "MODEL"
+    },
+    {
+      "name": "semantic result or explicit degradation",
+      "passed": true,
+      "actual": [
+        {
+          "id": "align-1-1",
+          "insight": {
+            "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；仅为多处空格排版的格式微调，主体资质与合同名称未实质变动，无任何法律风险敞口。",
+            "keyChange": "格式排版微调（增添空格），无实质权责变动",
+            "riskLevel": "NONE",
+            "legalAdvice": "属于非实质性文本排版修改，不影响合同效力及双方权责，建议直接确认接受当前修改。",
+            "shortSummary": "格式排版微调（增添空格），无实质权责变动"
+          }
+        },
+        {
+          "id": "align-3-3",
+          "insight": {
+            "summary": "条款具体文本有词句修订，整体权责结构未见显著恶化。；付款账期翻倍延长至60日且合同金额上调20%，实质性改变核心商务对价与履约现金流风险。",
+            "keyChange": "付款账期由30日延长至60日，合同总额由10万元上调至12万元",
+            "riskLevel": "MEDIUM",
+            "legalAdvice": "需核实商务共识；若同意延期，建议补充逾期付款违约金条款，或改为‘首期+尾款’分期支付，防范资金占用与坏账风险。",
+            "shortSummary": "付款账期由30日延长至60日，合同总额由10万元上调至12万元"
+          }
+        }
+      ],
+      "category": "SEMANTIC_COMPLETENESS"
+    },
+    {
+      "name": "artifact downloaded HTML",
+      "passed": true,
+      "actual": {
+        "status": 200,
+        "bytes": 76459,
+        "sha256": "c2be876fda74ff3e6b563449cca5e2c2dca6a2cdc8af07f41be3b27c6d471fb8",
+        "html": true
+      },
+      "category": "DELIVERY"
+    }
+  ],
+  "failures": [
+    {
+      "name": "business model ledger present",
+      "passed": false,
+      "actual": 0,
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "selected 35B used for semantic audit",
+      "passed": false,
+      "actual": [],
+      "category": "MODEL"
+    }
+  ],
+  "wallMs": 37015,
+  "finishedAt": "2026-10-18T01:35:14.678Z",
+  "sourceDrift": []
+}

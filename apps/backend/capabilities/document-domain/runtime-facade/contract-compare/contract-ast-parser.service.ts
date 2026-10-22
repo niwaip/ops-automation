@@ -133,10 +133,20 @@ export class ContractAstParserService {
           this.logger.warn(`OpenXML direct parsing failed, falling back to Mammoth: ${(err as Error).message}`);
         }
 
+        const openXmlCharCount = (openXmlClauses || []).reduce(
+          (sum, c) => sum + (c.title?.length || 0) + (c.content?.length || 0),
+          0
+        );
+
         try {
           const { value: html } = await mammoth.convertToHtml({ buffer });
           const htmlClauses = this.parseHtmlToClauses(html);
-          if (htmlClauses.length > 1 || !openXmlClauses || openXmlClauses.length === 0) {
+          const htmlCharCount = htmlClauses.reduce(
+            (sum, c) => sum + (c.title?.length || 0) + (c.content?.length || 0),
+            0
+          );
+          const textCoverageHealthy = openXmlCharCount === 0 || htmlCharCount >= openXmlCharCount * 0.7;
+          if ((htmlClauses.length > 1 && textCoverageHealthy) || !openXmlClauses || openXmlClauses.length === 0) {
             return {
               clauses: htmlClauses,
               metadata: { isTruncated: false, format: 'docx' },
@@ -147,7 +157,12 @@ export class ContractAstParserService {
           try {
             const raw = await mammoth.extractRawText({ buffer });
             const textClauses = this.parseTextToClauses(raw.value || '');
-            if (textClauses.length > 1 || !openXmlClauses || openXmlClauses.length === 0) {
+            const textCharCount = textClauses.reduce(
+              (sum, c) => sum + (c.title?.length || 0) + (c.content?.length || 0),
+              0
+            );
+            const textCoverageHealthy = openXmlCharCount === 0 || textCharCount >= openXmlCharCount * 0.7;
+            if ((textClauses.length > 1 && textCoverageHealthy) || !openXmlClauses || openXmlClauses.length === 0) {
               return {
                 clauses: textClauses,
                 metadata: { isTruncated: false, format: 'docx' },

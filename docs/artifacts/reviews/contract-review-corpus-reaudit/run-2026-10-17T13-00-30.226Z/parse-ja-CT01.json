@@ -1,0 +1,452 @@
+{
+  "status": 200,
+  "data": {
+    "success": true,
+    "output": {
+      "contractType": "procurement",
+      "contractTypeName": "企业采购与设备供货合同",
+      "myPosition": "buyer",
+      "positionSource": "user_confirmed",
+      "fileName": "CT01-ja.docx",
+      "fullText": "設備売買契約書\n契約番号 CT01-ja\n甲：星橋契約テスト有限公司\n乙：青空テスト株式会社\n締結日：2026年12月1日\n\n[CT01-ja-A01]\n目的物及び代金：乙は甲に精密ポンプ10台を供給する。税込総額は480000人民元とし、型番及び仕様は別紙による。\n\n[CT01-ja-A02]\n納入：乙は2027年3月15日までに甲の上海倉庫へ納入する。運送費及び納入前の滅失リスクは乙が負担する。\n\n[CT01-ja-A03]\n検収：荷卸しをもって最終検収に合格したものとし、隠れた欠陥がある場合も甲は受領拒否又は修理請求を行えない。\n\n[CT01-ja-A04]\n支払：甲は締結後3日以内に代金全額を支払う。乙は履行保証を提供せず、納入遅延によっても代金受領権は影響されない。\n\n[CT01-ja-A05]\n責任：乙は故意又は重大な過失による損害についても賠償責任を負わない。甲の支払遅延には契約総額の1％を日額違約金とする。\n\n[CT01-ja-A06]\n保証：保証期間は検収後12か月とし、乙は通知受領後5営業日以内に品質上の欠陥を無償修補する。\n\n[CT01-ja-A07]\n解除：乙の納入遅延が30日を超えた場合、甲は解除できる。乙は解除後10日以内に受領済み代金を返還する。\n\n[CT01-ja-A08]\n紛争及び言語：中国法を準拠法とし、紛争は上海仲裁委員会の仲裁に付す。中国語及び日本語の本文は同等の効力を有する。\n甲代表：星橋試験担当     乙代表：青空試験担当",
+      "sourceDocumentVersion": "sha256:67b857ee21d70146c3b611c1edefd66aaa97c814beb51379e19ac324705d2499",
+      "sourceDocumentHash": "67b857ee21d70146c3b611c1edefd66aaa97c814beb51379e19ac324705d2499",
+      "parsedClauses": [
+        {
+          "clauseIndex": 0,
+          "clauseNumber": "前言",
+          "title": "合同引言与主体信息",
+          "originalContent": "設備売買契約書\n契約番号 CT01-ja\n甲：星橋契約テスト有限公司\n乙：青空テスト株式会社\n締結日：2026年12月1日",
+          "chapterNumber": "前言",
+          "chapterTitle": "合同引言与签约主体",
+          "blocks": [
+            {
+              "id": "blk-1",
+              "type": "paragraph",
+              "primaryText": "設備売買契約書",
+              "primaryHtml": "設備売買契約書",
+              "isBold": false,
+              "hasUnderline": false,
+              "alignment": "left"
+            },
+            {
+              "id": "blk-2",
+              "type": "bilingual_pair",
+              "primaryText": "契約番号 CT01-ja",
+              "secondaryText": "甲：星橋契約テスト有限公司",
+              "primaryHtml": "契約番号 CT01-ja",
+              "secondaryHtml": "甲：星橋契約テスト有限公司",
+              "primaryLang": "zh",
+              "secondaryLang": "ja",
+              "isBold": false,
+              "hasUnderline": false
+            },
+            {
+              "id": "blk-3",
+              "type": "paragraph",
+              "primaryText": "乙：青空テスト株式会社",
+              "primaryHtml": "乙：青空テスト株式会社",
+              "isBold": false,
+              "hasUnderline": false,
+              "alignment": "left"
+            },
+            {
+              "id": "blk-4",
+              "type": "paragraph",
+              "primaryText": "締結日：2026年12月1日",
+              "primaryHtml": "締結日：2026年12月1日",
+              "isBold": false,
+              "hasUnderline": false,
+              "alignment": "left"
+            }
+          ],
+          "formIntegrity": {
+            "status": "WARNING",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [
+              "甲方（或首要签约方）身份主体标识",
+              "乙方（或相对签约方）身份主体标识",
+              "签约方注册住所/法定地址信息",
+              "统一社会信用代码/企业注册代码"
+            ],
+            "formatIssues": [],
+            "summary": "⚠️ 签约主体信息不完整，缺少：甲方（或首要签约方）身份主体标识、乙方（或相对签约方）身份主体标识。"
+          },
+          "facts": {},
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 1,
+          "clauseNumber": "第1条",
+          "title": "[CT01-ja-A01]",
+          "titleJa": "目的物及び代金：乙は甲に精密ポンプ10台を供給する。税込総額は480000人民元とし、型番及び仕様は別紙による。",
+          "originalContent": "[CT01-ja-A01]\n目的物及び代金：乙は甲に精密ポンプ10台を供給する。税込総額は480000人民元とし、型番及び仕様は別紙による。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-5",
+              "type": "heading",
+              "primaryText": "[CT01-ja-A01]",
+              "primaryHtml": "<strong>第1条 [CT01-ja-A01]</strong>",
+              "secondaryText": "目的物及び代金：乙は甲に精密ポンプ10台を供給する。税込総額は480000人民元とし、型番及び仕様は別紙による。",
+              "secondaryHtml": "目的物及び代金：乙は甲に精密ポンプ10台を供給する。税込総額は480000人民元とし、型番及び仕様は別紙による。",
+              "isBold": true
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {},
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 2,
+          "clauseNumber": "第2条",
+          "title": "[CT01-ja-A02]",
+          "titleJa": "納入：乙は2027年3月15日までに甲の上海倉庫へ納入する。運送費及び納入前の滅失リスクは乙が負担する。",
+          "originalContent": "[CT01-ja-A02]\n納入：乙は2027年3月15日までに甲の上海倉庫へ納入する。運送費及び納入前の滅失リスクは乙が負担する。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-6",
+              "type": "heading",
+              "primaryText": "[CT01-ja-A02]",
+              "primaryHtml": "<strong>第2条 [CT01-ja-A02]</strong>",
+              "secondaryText": "納入：乙は2027年3月15日までに甲の上海倉庫へ納入する。運送費及び納入前の滅失リスクは乙が負担する。",
+              "secondaryHtml": "納入：乙は2027年3月15日までに甲の上海倉庫へ納入する。運送費及び納入前の滅失リスクは乙が負担する。",
+              "isBold": true
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {},
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 3,
+          "clauseNumber": "第3条",
+          "title": "[CT01-ja-A03]",
+          "titleJa": "検収：荷卸しをもって最終検収に合格したものとし、隠れた欠陥がある場合も甲は受領拒否又は修理請求を行えない。",
+          "originalContent": "[CT01-ja-A03]\n検収：荷卸しをもって最終検収に合格したものとし、隠れた欠陥がある場合も甲は受領拒否又は修理請求を行えない。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-7",
+              "type": "heading",
+              "primaryText": "[CT01-ja-A03]",
+              "primaryHtml": "<strong>第3条 [CT01-ja-A03]</strong>",
+              "secondaryText": "検収：荷卸しをもって最終検収に合格したものとし、隠れた欠陥がある場合も甲は受領拒否又は修理請求を行えない。",
+              "secondaryHtml": "検収：荷卸しをもって最終検収に合格したものとし、隠れた欠陥がある場合も甲は受領拒否又は修理請求を行えない。",
+              "isBold": true
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {},
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 4,
+          "clauseNumber": "第4条",
+          "title": "[CT01-ja-A04]",
+          "titleJa": "支払：甲は締結後3日以内に代金全額を支払う。乙は履行保証を提供せず、納入遅延によっても代金受領権は影響されない。",
+          "originalContent": "[CT01-ja-A04]\n支払：甲は締結後3日以内に代金全額を支払う。乙は履行保証を提供せず、納入遅延によっても代金受領権は影響されない。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-8",
+              "type": "heading",
+              "primaryText": "[CT01-ja-A04]",
+              "primaryHtml": "<strong>第4条 [CT01-ja-A04]</strong>",
+              "secondaryText": "支払：甲は締結後3日以内に代金全額を支払う。乙は履行保証を提供せず、納入遅延によっても代金受領権は影響されない。",
+              "secondaryHtml": "支払：甲は締結後3日以内に代金全額を支払う。乙は履行保証を提供せず、納入遅延によっても代金受領権は影響されない。",
+              "isBold": true
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {},
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 5,
+          "clauseNumber": "第5条",
+          "title": "[CT01-ja-A05]",
+          "titleJa": "責任：乙は故意又は重大な過失による損害についても賠償責任を負わない。甲の支払遅延には契約総額の1％を日額違約金とする。",
+          "originalContent": "[CT01-ja-A05]\n責任：乙は故意又は重大な過失による損害についても賠償責任を負わない。甲の支払遅延には契約総額の1％を日額違約金とする。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-9",
+              "type": "heading",
+              "primaryText": "[CT01-ja-A05]",
+              "primaryHtml": "<strong>第5条 [CT01-ja-A05]</strong>",
+              "secondaryText": "責任：乙は故意又は重大な過失による損害についても賠償責任を負わない。甲の支払遅延には契約総額の1％を日額違約金とする。",
+              "secondaryHtml": "責任：乙は故意又は重大な過失による損害についても賠償責任を負わない。甲の支払遅延には契約総額の1％を日額違約金とする。",
+              "isBold": true
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {},
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 6,
+          "clauseNumber": "第6条",
+          "title": "[CT01-ja-A06]",
+          "titleJa": "保証：保証期間は検収後12か月とし、乙は通知受領後5営業日以内に品質上の欠陥を無償修補する。",
+          "originalContent": "[CT01-ja-A06]\n保証：保証期間は検収後12か月とし、乙は通知受領後5営業日以内に品質上の欠陥を無償修補する。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-10",
+              "type": "heading",
+              "primaryText": "[CT01-ja-A06]",
+              "primaryHtml": "<strong>第6条 [CT01-ja-A06]</strong>",
+              "secondaryText": "保証：保証期間は検収後12か月とし、乙は通知受領後5営業日以内に品質上の欠陥を無償修補する。",
+              "secondaryHtml": "保証：保証期間は検収後12か月とし、乙は通知受領後5営業日以内に品質上の欠陥を無償修補する。",
+              "isBold": true
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {},
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 7,
+          "clauseNumber": "第7条",
+          "title": "[CT01-ja-A07]",
+          "titleJa": "解除：乙の納入遅延が30日を超えた場合、甲は解除できる。乙は解除後10日以内に受領済み代金を返還する。",
+          "originalContent": "[CT01-ja-A07]\n解除：乙の納入遅延が30日を超えた場合、甲は解除できる。乙は解除後10日以内に受領済み代金を返還する。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-11",
+              "type": "heading",
+              "primaryText": "[CT01-ja-A07]",
+              "primaryHtml": "<strong>第7条 [CT01-ja-A07]</strong>",
+              "secondaryText": "解除：乙の納入遅延が30日を超えた場合、甲は解除できる。乙は解除後10日以内に受領済み代金を返還する。",
+              "secondaryHtml": "解除：乙の納入遅延が30日を超えた場合、甲は解除できる。乙は解除後10日以内に受領済み代金を返還する。",
+              "isBold": true
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {},
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 8,
+          "clauseNumber": "第8条",
+          "title": "[CT01-ja-A08]",
+          "titleJa": "紛争及び言語：中国法を準拠法とし、紛争は上海仲裁委員会の仲裁に付す。中国語及び日本語の本文は同等の効力を有する。",
+          "originalContent": "[CT01-ja-A08]\n紛争及び言語：中国法を準拠法とし、紛争は上海仲裁委員会の仲裁に付す。中国語及び日本語の本文は同等の効力を有する。\n甲代表：星橋試験担当     乙代表：青空試験担当",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-12",
+              "type": "heading",
+              "primaryText": "[CT01-ja-A08]",
+              "primaryHtml": "<strong>第8条 [CT01-ja-A08]</strong>",
+              "secondaryText": "紛争及び言語：中国法を準拠法とし、紛争は上海仲裁委員会の仲裁に付す。中国語及び日本語の本文は同等の効力を有する。",
+              "secondaryHtml": "紛争及び言語：中国法を準拠法とし、紛争は上海仲裁委員会の仲裁に付す。中国語及び日本語の本文は同等の効力を有する。",
+              "isBold": true
+            },
+            {
+              "id": "blk-13",
+              "type": "paragraph",
+              "primaryText": "甲代表：星橋試験担当     乙代表：青空試験担当",
+              "primaryHtml": "甲代表：星橋試験担当     乙代表：青空試験担当",
+              "isBold": false,
+              "hasUnderline": false,
+              "alignment": "left"
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {
+            "forumType": "arbitration",
+            "forumLocation": "neutral_venue"
+          },
+          "matchedRules": [],
+          "candidateRules": [
+            {
+              "id": "comm_dispute_unfavorable_forum",
+              "elementId": "comm_dispute_unfavorable_forum",
+              "elementCode": "COMM-01",
+              "title": "争议司法管辖约定对我方不利",
+              "category": "DISPUTE_AND_GOVERNING",
+              "severity": "HIGH",
+              "riskSummary": "约定由对方所在地法院管辖，一旦发生争议我方将面临高昂的异地诉讼维权成本与潜在地方司法保护阻力。",
+              "legalAdvice": "建议约定由“原告所在地（我方住所地）人民法院”管辖，或选择中立权威仲裁委员会解决。",
+              "recommendedRevision": "由原告所在地有管辖权的人民法院管辖",
+              "criterion": "争议司法管辖约定对我方不利"
+            }
+          ]
+        }
+      ],
+      "availableRules": [
+        {
+          "id": "comm_dispute_unfavorable_forum",
+          "elementId": "comm_dispute_unfavorable_forum",
+          "elementCode": "COMM-01",
+          "title": "争议司法管辖约定对我方不利",
+          "category": "DISPUTE_AND_GOVERNING",
+          "severity": "HIGH",
+          "riskSummary": "约定由对方所在地法院管辖，一旦发生争议我方将面临高昂的异地诉讼维权成本与潜在地方司法保护阻力。",
+          "legalAdvice": "建议约定由“原告所在地（我方住所地）人民法院”管辖，或选择中立权威仲裁委员会解决。",
+          "recommendedRevision": "由原告所在地有管辖权的人民法院管辖",
+          "criterion": "争议司法管辖约定对我方不利"
+        },
+        {
+          "id": "comm_excessive_damages_scope",
+          "elementId": "comm_excessive_damages_scope",
+          "elementCode": "COMM-02",
+          "title": "违约赔偿范围包含不确定的间接损失或惩罚性赔偿",
+          "category": "LIABILITY_AND_REMEDY",
+          "severity": "HIGH",
+          "riskSummary": "约定了承担惩罚性或全部间接/可得利益损失赔偿，在轻微违约情形下可能面临远超合同交易价值的巨额索赔敞口。",
+          "legalAdvice": "建议以因违约直接造成的“直接实际财产损失”为限，明确排除间接损失、利润损失及商誉损失。",
+          "recommendedRevision": "赔偿因违约行为直接造成的实际财产损失（明确不包含任何间接损失、利润损失或可得利益损失）",
+          "criterion": "违约赔偿范围包含不确定的间接损失或惩罚性赔偿"
+        },
+        {
+          "id": "comm_unilateral_termination_imbalance",
+          "elementId": "comm_unilateral_termination_imbalance",
+          "elementCode": "COMM-03",
+          "title": "单方解除权不对等或随意解除",
+          "category": "TERMINATION_AND_SURVIVAL",
+          "severity": "MEDIUM",
+          "riskSummary": "赋予了单方过宽的无因随时解除权，可能导致我方在投入前期商务与技术成本后合同被对方随意解除且得不到有效救济。",
+          "legalAdvice": "应确保解除权对等，且行使单方解除权必须基于相对方实质违约，并经过合理期限的书面催告。",
+          "recommendedRevision": "【法务建议对等条款】：任一方行使单方合同解除权必须基于相对方严重违约，且经书面催告后 15 日内仍未纠正。",
+          "criterion": "单方解除权不对等或随意解除"
+        },
+        {
+          "id": "nda_perpetual_duration",
+          "elementId": "nda_perpetual_duration",
+          "elementCode": "NDA-01",
+          "title": "保密期限永久且未区分一般信息与商业秘密",
+          "category": "CONFIDENTIALITY",
+          "severity": "HIGH",
+          "riskSummary": "对全部一般商业信息要求无期限/永久承担保密义务，剥夺了普通信息生命周期结束后的合理使用权，形成无限期法律风险敞口。",
+          "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+          "recommendedRevision": "自披露之日起算，有效期为 3 年；依法属于商业秘密的信息在其合法保持秘密状态期间持续有效",
+          "criterion": "保密期限永久且未区分一般信息与商业秘密"
+        }
+      ],
+      "missingClauses": [
+        {
+          "id": "missing_force_majeure",
+          "elementId": "missing_force_majeure",
+          "elementCode": "COMM-04",
+          "title": "缺失不可抗力及责任免除顺延条款",
+          "category": "GENERAL_COMMERCIAL",
+          "severity": "MEDIUM",
+          "reason": "合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。",
+          "recommendedClause": "因地震、台风、水灾、战争、法律法规变更等不能预见、不能避免并不能克服的不可抗力事件，导致一方不能履行全部或部分义务的，免除受影响方的相应违约责任，履约期限相应顺延。受影响方应在事件发生后 48 小时内书面通知相对方并提供证明。"
+        },
+        {
+          "id": "missing_dispute_resolution",
+          "elementId": "missing_dispute_resolution",
+          "elementCode": "COMM-05",
+          "title": "缺失明确的争议解决与管辖条款",
+          "category": "DISPUTE_AND_GOVERNING",
+          "severity": "HIGH",
+          "reason": "合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。",
+          "recommendedClause": "本协议的订立、效力、解释及争议解决均适用中华人民共和国法律。因本协议引起的任何争议，双方应友好协商；协商不成的，任何一方均有权向原告所在地有管辖权的人民法院提起诉讼。"
+        },
+        {
+          "id": "proc_missing_quality_warranty",
+          "elementId": "proc_missing_quality_warranty",
+          "elementCode": "PROC-01",
+          "title": "缺失质保期限与售后维修响应机制",
+          "category": "DELIVERY_AND_ACCEPTANCE",
+          "severity": "HIGH",
+          "reason": "采购合同未明确质保期限与售后故障响应标准，设备或物资出现质量瑕疵时难以要求供货方承担免费修复或退换责任。",
+          "recommendedClause": "供货方对所供标的物提供不少于 12 个月的免费质保期，自最终验收合格之日起算。质保期内发生质量故障的，供货方应在接到通知后 24 小时内响应并免费负责维修或退换。"
+        }
+      ],
+      "comments": [],
+      "formIntegrityStats": {
+        "totalUnfilledVariables": 0,
+        "totalUnfilledBlanks": 0
+      },
+      "isTruncated": false,
+      "warnings": [],
+      "rawPrompt": "",
+      "ruleSetInfo": {
+        "ruleSetId": "contract-review/procurement",
+        "ruleSetVersion": "1.0.0",
+        "ruleSetDigest": "sha256:0808bbba48cf8f42138aa2697b5688f311146cd145ee15a57b6953815df44afc",
+        "ruleSetName": "企业采购与设备供货合同标准审查规则库"
+      }
+    }
+  }
+}

@@ -1,0 +1,2726 @@
+[
+  {
+    "case": "CT01-ja-docx",
+    "marker": "CT01-ja-A03",
+    "expectedTopic": "risk_acceptance",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-ja-docx",
+    "marker": "CT01-ja-A04",
+    "expectedTopic": "risk_prepayment",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-ja-docx",
+    "marker": "CT01-ja-A05",
+    "expectedTopic": "risk_asymmetric_liability",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-zh-docx",
+    "marker": "CT01-zh-A03",
+    "expectedTopic": "risk_acceptance",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-zh-docx",
+    "marker": "CT01-zh-A04",
+    "expectedTopic": "risk_prepayment",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-zh-docx",
+    "marker": "CT01-zh-A05",
+    "expectedTopic": "risk_asymmetric_liability",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-zh-ja-docx",
+    "marker": "CT01-zh-ja-A03",
+    "expectedTopic": "risk_acceptance",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-zh-ja-docx",
+    "marker": "CT01-zh-ja-A04",
+    "expectedTopic": "risk_prepayment",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-zh-ja-docx",
+    "marker": "CT01-zh-ja-A05",
+    "expectedTopic": "risk_asymmetric_liability",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-ja-docx",
+    "marker": "CT02-ja-A03",
+    "expectedTopic": "risk_sla",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-ja-docx",
+    "marker": "CT02-ja-A04",
+    "expectedTopic": "risk_data_use",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-ja-docx",
+    "marker": "CT02-ja-A05",
+    "expectedTopic": "risk_exit",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-ja-docx",
+    "marker": "CT02-ja-A06",
+    "expectedTopic": "risk_renewal",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-ja-docx",
+    "marker": "CT02-ja-A08",
+    "expectedTopic": "risk_dispute_unclear",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "争议解决机构及所在地留白，若无法达成补充协议，将导致管辖权不明，极大增加我方维权成本与不确定性。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "甲代表：星橋試験担当 乙代表：青空試験担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-docx",
+    "marker": "CT02-zh-A03",
+    "expectedTopic": "risk_sla",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-docx",
+    "marker": "CT02-zh-A04",
+    "expectedTopic": "risk_data_use",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-docx",
+    "marker": "CT02-zh-A05",
+    "expectedTopic": "risk_exit",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-docx",
+    "marker": "CT02-zh-A06",
+    "expectedTopic": "risk_renewal",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-docx",
+    "marker": "CT02-zh-A08",
+    "expectedTopic": "risk_dispute_unclear",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "标题声称争议解决条款，但原文仅列代表姓名，缺失管辖权约定，导致争议解决机制缺失。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "甲方代表：星桥测试担当 乙方代表：青空测试担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-ja-docx",
+    "marker": "CT02-zh-ja-A03",
+    "expectedTopic": "risk_sla",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-ja-docx",
+    "marker": "CT02-zh-ja-A04",
+    "expectedTopic": "risk_data_use",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-ja-docx",
+    "marker": "CT02-zh-ja-A05",
+    "expectedTopic": "risk_exit",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-ja-docx",
+    "marker": "CT02-zh-ja-A06",
+    "expectedTopic": "risk_renewal",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-ja-docx",
+    "marker": "CT02-zh-ja-A08",
+    "expectedTopic": "risk_dispute_unclear",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "约定“另行约定”及“后日补充”，若无法达成补充协议，将导致管辖法院不明，极易引发管辖权异议，严重拖延维权进程。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "甲方代表 / 甲代表：星桥测试担当 乙方代表 / 乙代表：青空試験担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-ja-docx",
+    "marker": "CT04-ja-A02",
+    "expectedTopic": "risk_internal_conflict",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-ja-docx",
+    "marker": "CT04-ja-A03",
+    "expectedTopic": "risk_target",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-ja-docx",
+    "marker": "CT04-ja-A04",
+    "expectedTopic": "risk_resale_price_review",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-ja-docx",
+    "marker": "CT04-ja-A07",
+    "expectedTopic": "risk_inventory_exit",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-docx",
+    "marker": "CT04-zh-A02",
+    "expectedTopic": "risk_internal_conflict",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-docx",
+    "marker": "CT04-zh-A03",
+    "expectedTopic": "risk_target",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-docx",
+    "marker": "CT04-zh-A04",
+    "expectedTopic": "risk_resale_price_review",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-docx",
+    "marker": "CT04-zh-A07",
+    "expectedTopic": "risk_inventory_exit",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-ja-docx",
+    "marker": "CT04-zh-ja-A02",
+    "expectedTopic": "risk_internal_conflict",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-ja-docx",
+    "marker": "CT04-zh-ja-A03",
+    "expectedTopic": "risk_target",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-ja-docx",
+    "marker": "CT04-zh-ja-A04",
+    "expectedTopic": "risk_resale_price_review",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-ja-docx",
+    "marker": "CT04-zh-ja-A07",
+    "expectedTopic": "risk_inventory_exit",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-ja-docx",
+    "marker": "CT04-zh-ja-A08",
+    "expectedTopic": "bilingual_conflict_30_60",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "原文规定付款期为60日，与标题及采购方诉求的30日严重冲突，增加资金占用风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "甲方代表 / 甲代表：星桥测试担当 乙方代表 / 乙代表：青空試験担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-docx",
+    "marker": "CT05-zh-A03",
+    "expectedTopic": "risk_acceptance",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-docx",
+    "marker": "CT05-zh-A04",
+    "expectedTopic": "risk_ip",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-docx",
+    "marker": "CT05-zh-A06",
+    "expectedTopic": "risk_third_party_ip",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-docx",
+    "marker": "CT05-zh-A08",
+    "expectedTopic": "risk_unfilled",
+    "sourcePresent": true,
+    "riskLevels": [
+      "PASS"
+    ],
+    "hasRiskSignal": false,
+    "texts": [
+      {
+        "summary": "条款权责明确",
+        "advice": "条款符合规范，可按原约定保留。",
+        "source": "甲方代表：星桥测试担当 乙方代表：青空测试担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-ja-docx",
+    "marker": "CT05-ja-A03",
+    "expectedTopic": "risk_acceptance",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-ja-docx",
+    "marker": "CT05-ja-A04",
+    "expectedTopic": "risk_ip",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-ja-docx",
+    "marker": "CT05-ja-A06",
+    "expectedTopic": "risk_third_party_ip",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-ja-docx",
+    "marker": "CT05-ja-A08",
+    "expectedTopic": "risk_unfilled",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "标题提及管辖与语言优先条款，但正文缺失。若仅以此正文为准，将导致管辖不明及语言歧义风险，严重损害我方权益。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "甲代表：星橋試験担当 乙代表：青空試験担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-ja-docx",
+    "marker": "CT05-zh-ja-A03",
+    "expectedTopic": "risk_acceptance",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-ja-docx",
+    "marker": "CT05-zh-ja-A04",
+    "expectedTopic": "risk_ip",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-ja-docx",
+    "marker": "CT05-zh-ja-A06",
+    "expectedTopic": "risk_third_party_ip",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-ja-docx",
+    "marker": "CT05-zh-ja-A08",
+    "expectedTopic": "risk_unfilled",
+    "sourcePresent": true,
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "约定由对方所在地法院管辖，一旦发生争议我方将面临高昂的异地诉讼维权成本与潜在地方司法保护阻力。（判定依据：约定由被告住所地法院管辖，若我方起诉需赴乙方所在地，增加诉讼成本且处于不利地位）",
+        "advice": "建议约定由“原告所在地（我方住所地）人民法院”管辖，或选择中立权威仲裁委员会解决。",
+        "source": "甲方代表 / 甲代表：星桥测试担当 乙方代表 / 乙代表：青空試験担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-ja-docx",
+    "marker": "CT06-ja-A04",
+    "expectedTopic": "risk_repairs",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-ja-docx",
+    "marker": "CT06-ja-A05",
+    "expectedTopic": "risk_unilateral_change",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-ja-docx",
+    "marker": "CT06-ja-A06",
+    "expectedTopic": "risk_deposit",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-zh-docx",
+    "marker": "CT06-zh-A04",
+    "expectedTopic": "risk_repairs",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-zh-docx",
+    "marker": "CT06-zh-A05",
+    "expectedTopic": "risk_unilateral_change",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-zh-docx",
+    "marker": "CT06-zh-A06",
+    "expectedTopic": "risk_deposit",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-zh-ja-docx",
+    "marker": "CT06-zh-ja-A04",
+    "expectedTopic": "risk_repairs",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-zh-ja-docx",
+    "marker": "CT06-zh-ja-A05",
+    "expectedTopic": "risk_unilateral_change",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-zh-ja-docx",
+    "marker": "CT06-zh-ja-A06",
+    "expectedTopic": "risk_deposit",
+    "sourcePresent": false,
+    "riskLevels": [],
+    "hasRiskSignal": false,
+    "texts": [],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-zh-pdf",
+    "marker": "CT01-zh-A03",
+    "expectedTopic": "risk_acceptance",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "排除法定隐蔽瑕疵担保责任，导致买方无法对潜在质量问题追责。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "验收：货物卸车即视为最终验收合格；即使存在隐蔽缺陷，甲方亦不得拒收或要求修理。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-zh-pdf",
+    "marker": "CT01-zh-A04",
+    "expectedTopic": "risk_prepayment",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "前置全额付款且无履约担保，使买方失去制约卖方履约的核心手段。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "付款：甲方签约后三日内支付全部价款；乙方无需提供履约担保，交付延期不影响收款。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-zh-pdf",
+    "marker": "CT01-zh-A05",
+    "expectedTopic": "risk_asymmetric_liability",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "免除故意/重大过失责任条款无效；每日1%违约金远超法定上限且显失公平。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "责任：乙方故意或重大过失造成的损失亦不承担赔偿；甲方逾期付款每日按合同总额百分之一支付违约金。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-ja-pdf",
+    "marker": "CT01-ja-A03",
+    "expectedTopic": "risk_acceptance",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "完全免除卖方对隐蔽瑕疵的责任，剥夺买方法定检验权及救济权，属重大不公平条款。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "検収：荷卸しをもって最終検収に合格したものとし、隠れた欠陥がある場合も甲は受領拒否又は修理請求を行えない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-ja-pdf",
+    "marker": "CT01-ja-A04",
+    "expectedTopic": "risk_prepayment",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "卖方无履约担保且迟延不影响收款权，导致买方面临全额预付且卖方不履约的极端风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "支払：甲は締結後 3 日以内に代金全額を支払う。乙は履行保証を提供せず、納入遅延によっても代金受領権は影響されない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-ja-pdf",
+    "marker": "CT01-ja-A05",
+    "expectedTopic": "risk_asymmetric_liability",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "免除故意或重大过失导致的损害赔偿责任通常属无效条款，严重损害买方追偿权。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "責任：乙は故意又は重大な過失による損害についても賠償責任を負わない。甲の支払遅延には契約総額の 1％を日額違約金とする。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-zh-ja-pdf",
+    "marker": "CT01-zh-ja-A03",
+    "expectedTopic": "risk_acceptance",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "排除法定瑕疵担保责任，严重损害买方权益，条款可能因显失公平或违反强制性规定而无效。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "验收：货物卸车即视为最终验收合格；即使存在隐蔽缺陷，甲方亦不得拒收或要求修理。\n検収：荷卸しをもって最終検収に合格したものとし、隠れた欠陥がある場合も甲は受領拒否又は修理請求を行えない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-zh-ja-pdf",
+    "marker": "CT01-zh-ja-A04",
+    "expectedTopic": "risk_prepayment",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "签约即全款且无担保，买方丧失履约杠杆，一旦卖方违约将陷入被动追偿困境，资金安全风险极高。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "付款：甲方签约后三日内支付全部价款；乙方无需提供履约担保，交付延期不影响收款。\n支払：甲は締結後 3 日以内に代金全額を支払う。乙は履行保証を提供せず、納入遅延によっても代金受領権は影響されない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-zh-ja-pdf",
+    "marker": "CT01-zh-ja-A05",
+    "expectedTopic": "risk_asymmetric_liability",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "根据法律规定，造成对方人身伤害或因故意、重大过失造成财产损失的免责条款无效，该约定无效且风险极高。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "责任：乙方故意或重大过失造成的损失亦不承担赔偿；甲方逾期付款每日按合同总额百分之一支付违约金。\n責任：乙は故意又は重大な過失による損害についても賠償責任を負わない。甲の支払遅延には契約総額の 1％を日額違約金とする。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-ja-pdf",
+    "marker": "CT02-ja-A03",
+    "expectedTopic": "risk_sla",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "将可用性降格为努力义务，且对严重故障（10日连续停机）完全免责，违反公平原则及基本服务合同义务。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "可用性：乙は努力義務のみを負い、最低稼働率を保証しない。10 日連続停止した場合も返金又は賠償を行わない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-ja-pdf",
+    "marker": "CT02-ja-A04",
+    "expectedTopic": "risk_data_use",
+    "sourcePresent": true,
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "对全部一般商业信息要求无期限/永久承担保密义务，剥夺了普通信息生命周期结束后的合理使用权，形成无限期法律风险敞口。（判定依据：未经同意将个人信息及交易数据永久保存并用于模型训练，违反保密义务及数据合规要求。）",
+        "advice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+        "source": "データ：所有権は甲に帰属する。ただし乙は氏名、メール及び取引履歴を甲の同意なくモデル学習に利用し、永久保存できる。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-ja-pdf",
+    "marker": "CT02-ja-A05",
+    "expectedTopic": "risk_exit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "对全部一般商业信息要求无期限/永久承担保密义务，剥夺了普通信息生命周期结束后的合理使用权，形成无限期法律风险敞口。（判定依据：赋予服务商任意拒绝权且无交付期限，导致数据永久无法取回，构成实质性的数据垄断与违约风险。）",
+        "advice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+        "source": "終了：甲は終了後にデータ出力を申請できるが、乙は承認の可否を自由に決定でき、出力期限を約束しない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-ja-pdf",
+    "marker": "CT02-ja-A06",
+    "expectedTopic": "risk_renewal",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "甲方负有单方通知义务而乙方免责；乙方享有单方涨价权且无价格锚定机制，严重损害买方利益。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "更新：本契約は 1 年間自動更新される。甲は満了 90 日前までに拒絶を通知し、乙は更新日に料金を一方的に増額できる。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-ja-pdf",
+    "marker": "CT02-ja-A08",
+    "expectedTopic": "risk_dispute_unclear",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "适用法律及管辖机构均未确定，属于“协议之协议”，在争议发生时导致条款无效，极大增加维权成本与不确定性。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "紛争：別途合意する法を適用する。紛争は権限ある機関で処理するものとし、機関名及び所在地は後日補充する。\n甲代表：星橋試験担当 乙代表：青空試験担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-pdf",
+    "marker": "CT02-zh-A03",
+    "expectedTopic": "risk_sla",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "排除最低服务标准及故障退费责任，构成不合理免责，违反公平原则及合同法基本精神。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "可用性：乙方仅尽力提供服务，不承诺最低可用率；连续中断十日亦不退费或承担责任。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-pdf",
+    "marker": "CT02-zh-A04",
+    "expectedTopic": "risk_data_use",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "未经授权商业化使用及永久留存含个人敏感信息，严重违反数据安全法及个人信息保护法。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "数据：甲方保有数据所有权；乙方可未经甲方同意将含姓名、邮箱和交易记录的数据用于模型训练并永久留存。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-pdf",
+    "marker": "CT02-zh-A05",
+    "expectedTopic": "risk_exit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "赋予乙方单方面拒绝权及无期限拖延权，导致甲方丧失业务连续性保障及数据控制权。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "退出：合同终止后甲方可申请导出数据，但乙方可自行决定是否批准，且不承诺任何导出期限。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-pdf",
+    "marker": "CT02-zh-A06",
+    "expectedTopic": "risk_renewal",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "强制自动续约剥夺甲方到期终止权，违反合同自愿原则，易形成事实绑定。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "续约：服务自动续约一年；甲方须在到期前九十日书面拒绝，乙方可在续约日自行上调费用。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-pdf",
+    "marker": "CT02-zh-A08",
+    "expectedTopic": "risk_dispute_unclear",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "争议解决条款核心要素缺失，若未补充则导致该条款无法执行，增加诉讼管辖风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "争议：适用双方另行约定的法律；争议提交有权机构处理，具体机构及所在地留待补充。\n甲方代表：星桥测试担当 乙方代表：青空测试担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-ja-pdf",
+    "marker": "CT02-zh-ja-A03",
+    "expectedTopic": "risk_sla",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "免除乙方因违约或重大过失造成损失的责任，违反《民法典》关于格式条款无效的规定，导致甲方无法追偿。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "可用性：乙方仅尽力提供服务，不承诺最低可用率；连续中断十日亦不退费或承担责任。\n可用性：乙は努力義務のみを負い、最低稼働率を保証しない。10 日連続停止した場合も返金又は賠償を行わない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-ja-pdf",
+    "marker": "CT02-zh-ja-A04",
+    "expectedTopic": "risk_data_use",
+    "sourcePresent": true,
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "对全部一般商业信息要求无期限/永久承担保密义务，剥夺了普通信息生命周期结束后的合理使用权，形成无限期法律风险敞口。（判定依据：未经同意使用个人信息进行训练，违反《个人信息保护法》及保密义务，且未区分保密信息范围。）",
+        "advice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+        "source": "数据：甲方保有数据所有权；乙方可未经甲方同意将含姓名、邮箱和交易记录的数据用于模型训练并永久留存。\nデータ：所有権は甲に帰属する。ただし乙は氏名、メール及び取引履歴を甲の同意なくモデル学習に利用し、永久保存できる。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-ja-pdf",
+    "marker": "CT02-zh-ja-A05",
+    "expectedTopic": "risk_exit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "对全部一般商业信息要求无期限/永久承担保密义务，剥夺了普通信息生命周期结束后的合理使用权，形成无限期法律风险敞口。（判定依据：数据导出拒绝权归乙方且无时限，违反合同终止后返还或销毁数据的法定义务，导致保密期限事实上无法执行。）",
+        "advice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+        "source": "退出：合同终止后甲方可申请导出数据，但乙方可自行决定是否批准，且不承诺任何导出期限。\n終了：甲は終了後にデータ出力を申請できるが、乙は承認の可否を自由に決定でき、出力期限を約束しない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-ja-pdf",
+    "marker": "CT02-zh-ja-A06",
+    "expectedTopic": "risk_renewal",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "允许服务商单方上调费用且无幅度或程序限制，严重违背公平原则，损害买方利益。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "续约：服务自动续约一年；甲方须在到期前九十日书面拒绝，乙方可在续约日自行上调费用。\n更新：本契約は 1 年間自動更新される。甲は満了 9 0 日前までに拒絶を通知し、乙は更新日に料金を一方的に増額できる。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-ja-pdf",
+    "marker": "CT02-zh-ja-A08",
+    "expectedTopic": "risk_dispute_unclear",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "核心争议解决要素（管辖机构、适用法律）缺失，条款缺乏可操作性，极大增加维权成本与风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "争议：适用双方另行约定的法律；争议提交有权机构处理，具体机构及所在地留待补充。\n紛争：別途合意する法を適用する。紛争は権限ある機関で処理するものとし、機関名及び所在地は後日補充する。\n甲方代表 / 甲代表：星桥测试担当 乙方代表 / 乙代表：青空試験担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-ja-pdf",
+    "marker": "CT04-ja-A02",
+    "expectedTopic": "risk_internal_conflict",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "乙方保留直接销售及引入第三方权限，彻底否定甲方的独占性，存在重大履约风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "独占性：甲は地域独占販売権を有する。ただし乙は当該地域の顧客へ無制限に直接販売し、他の販売店を指定できる。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-ja-pdf",
+    "marker": "CT04-ja-A03",
+    "expectedTopic": "risk_target",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "要求买方对卖方缺货导致的销售缺口承担现金补填责任，属严重不对等条款。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "購入目標：年間最低購入額は 3000000 人民元とする。乙の欠品時も目標を減額せず、未達の場合は甲が差額を補填する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-ja-pdf",
+    "marker": "CT04-ja-A04",
+    "expectedTopic": "risk_resale_price_review",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "固定转售价格涉嫌纵向垄断协议，且丧失全部销售权处罚过重，可能无效。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "価格：甲は乙が定める最低再販売価格を遵守する。下回った場合は全てのリベート及び販売権を失う。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-ja-pdf",
+    "marker": "CT04-ja-A07",
+    "expectedTopic": "risk_inventory_exit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "赋予乙方无理由即时解除权且我方需承担库存损失，严重违反公平原则，构成重大法律风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "終了：乙は理由なく直ちに解除できる。甲の購入済み在庫は返品できず、継続販売も禁止する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-pdf",
+    "marker": "CT04-zh-A02",
+    "expectedTopic": "risk_internal_conflict",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "授予甲方独家权的同时允许乙方直销及发展其他经销商，导致独家权名存实亡，构成重大商业违约风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "独家：甲方享有区域独家销售权；乙方可不受限制地直接向区域客户销售并另行指定其他经销商。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-pdf",
+    "marker": "CT04-zh-A03",
+    "expectedTopic": "risk_target",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "条款未排除不可抗力或乙方违约导致缺货的免责情形，单方加重买方责任，违反公平原则。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "采购目标：甲方年度最低采购额为人民币 3000000 元，即使乙方缺货也不得调减目标，未达标须补足差额。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-pdf",
+    "marker": "CT04-zh-A04",
+    "expectedTopic": "risk_resale_price_review",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "固定或限定转售价格属于《反垄断法》禁止的纵向垄断行为，严重合规风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "价格：甲方须遵守乙方确定的最低转售价格；低价销售即取消全部返利并终止授权。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-pdf",
+    "marker": "CT04-zh-A07",
+    "expectedTopic": "risk_inventory_exit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "赋予乙方单方任意解除权，甲方无对等保护，违反合同稳定性原则。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "终止：乙方可随时无理由立即终止；甲方已购库存不得退回，也不得继续销售。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-ja-pdf",
+    "marker": "CT04-zh-ja-A02",
+    "expectedTopic": "risk_internal_conflict",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "独家权被卖方直接销售和引入第三方经销商的权利完全架空，构成根本性违约风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "独家：甲方享有区域独家销售权；乙方可不受限制地直接向区域客户销售并另行指定其他经销商。\n独占性：甲は地域独占販売権を有する。ただし乙は当該地域の顧客へ無制限に直接販売し、他の販売店を指定できる。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-ja-pdf",
+    "marker": "CT04-zh-ja-A03",
+    "expectedTopic": "risk_target",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "卖方缺货仍强制买方完成采购量并补足差额，免除卖方供货责任，极度不对等。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "采购目标：甲方年度最低采购额为人民币 3000000 元，即使乙方缺货也不得调减目标，未达标须补足差额。\n購入目標：年間最低購入額は 3000000 人民元とする。乙の欠品時も目標を減額せず、未達の場合は甲が差額を補填する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-ja-pdf",
+    "marker": "CT04-zh-ja-A04",
+    "expectedTopic": "risk_resale_price_review",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "固定转售价格涉嫌违反反垄断法，且条款未设置合理例外，买方无自主定价权。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "价格：甲方须遵守乙方确定的最低转售价格；低价销售即取消全部返利并终止授权。\n価格：甲は乙が定める最低再販売価格を遵守する。下回った場合は全てのリベート及び販売権を失う。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-ja-pdf",
+    "marker": "CT04-zh-ja-A07",
+    "expectedTopic": "risk_inventory_exit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "赋予乙方单方无理由即时解除权，缺乏对等制约，甲方缺乏履约保障。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "终止：乙方可随时无理由立即终止；甲方已购库存不得退回，也不得继续销售。\n終了：乙は理由なく直ちに解除できる。甲の購入済み在庫は返品できず、継続販売も禁止する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-ja-pdf",
+    "marker": "CT04-zh-ja-A08",
+    "expectedTopic": "bilingual_conflict_30_60",
+    "sourcePresent": true,
+    "riskLevels": [
+      "PASS"
+    ],
+    "hasRiskSignal": false,
+    "texts": [
+      {
+        "summary": "条款权责明确",
+        "advice": "条款符合规范，可按原约定保留。",
+        "source": "付款与文本：甲方收货后三十日支付货款，结算币种为人民币；中日文本冲突时中文优先。\n支払及び言語：甲は受領後 60 日以内に代金を支払う。決済通貨は人民元とし、両言語に相違がある場合は中国語を優先する。\n甲方代表 / 甲代表：星桥测试担当 乙方代表 / 乙代表：青空試験担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-pdf",
+    "marker": "CT05-zh-A03",
+    "expectedTopic": "risk_acceptance",
+    "sourcePresent": true,
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "工期按日历日/自然日计算剥夺了法定节假日与周末研发时间，大幅压缩实际项目开发周期，将显著增加延期违约风险。（判定依据：2日自然日期限过短且含“视为验收”陷阱，剥夺买方实质检验权，易导致工期与验收混淆。）",
+        "advice": "建议坚持采用“工作日”口径计算，或增加因甲方确认延迟、需求变更引起的工期对等顺延条款。",
+        "source": "验收：乙方发出交付邮件后两日内甲方未书面拒绝即视为验收，任何未修复安全漏洞不影响验收。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-pdf",
+    "marker": "CT05-zh-A04",
+    "expectedTopic": "risk_ip",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "委托开发成果默认应归委托方（甲方）所有。当前条款使甲方丧失所有权及长期使用权，构成核心商业利益流失。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "知识产权：全部定制开发成果及源代码著作权归乙方；甲方仅取得一年期不可续展的内部使用许可。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-pdf",
+    "marker": "CT05-zh-A06",
+    "expectedTopic": "risk_third_party_ip",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "该条款剥夺甲方知情权与审核权，且乙方完全免责，违反合同法公平原则，极易导致甲方面临侵权索赔。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "开源：乙方可自由引入任意第三方组件，无需提供许可清单，甲方自行承担全部第三方权利主张。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-pdf",
+    "marker": "CT05-zh-A08",
+    "expectedTopic": "risk_unfilled",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "作为买方，应争取由甲方所在地（合同履行地或原告住所地）法院管辖，以降低成本并避免地方保护主义风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "争议与签署：中日文本不一致时中文优先；争议由被告住所地法院处理。甲方签署人：____；生效日期：____。\n甲方代表：星桥测试担当 乙方代表：青空测试担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-ja-pdf",
+    "marker": "CT05-ja-A03",
+    "expectedTopic": "risk_acceptance",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "2日验收期过短，买方难以完成实质审查，极易因疏忽视为合格，丧失索赔权。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "検収：納入メール後 2 日以内に甲が書面拒絶しなければ合格とみなす。未修正のセキュリティ脆弱性は検収に影響しない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-ja-pdf",
+    "marker": "CT05-ja-A04",
+    "expectedTopic": "risk_ip",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "定制开发成果版权归乙方，买方未获得源代码所有权，存在供应商锁定及后续维护风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "知的財産：全ての専用開発成果及びソースコードの著作権は乙に帰属する。甲には更新できない 1 年間の社内利用権のみを付与する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-ja-pdf",
+    "marker": "CT05-ja-A06",
+    "expectedTopic": "risk_third_party_ip",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "要求我方承担乙方任意使用第三方部件产生的所有权利主张，责任范围无限且缺乏免责例外，极高风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "第三者部品：乙は任意の部品を自由に利用でき、ライセンス一覧を提出しない。第三者からの全ての権利主張は甲が負担する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-ja-pdf",
+    "marker": "CT05-ja-A08",
+    "expectedTopic": "risk_unfilled",
+    "sourcePresent": true,
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "约定由对方所在地法院管辖，一旦发生争议我方将面临高昂的异地诉讼维权成本与潜在地方司法保护阻力。（判定依据：约定被告所在地法院管辖，若我方起诉乙方，需赴乙方所在地诉讼，显著增加我方维权成本及地方保护主义风险。）",
+        "advice": "建议约定由“原告所在地（我方住所地）人民法院”管辖，或选择中立权威仲裁委员会解决。",
+        "source": "言語及び署名：両言語に相違がある場合は中国語を優先する。被告所在地の裁判所で解決する。甲の署名者：____。\n発効日：____。\n甲代表：星橋試験担当 乙代表：青空試験担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-ja-pdf",
+    "marker": "CT06-ja-A04",
+    "expectedTopic": "risk_repairs",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "约定维修费用无上限，构成无限责任，严重损害卖方利益。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "修繕：構造、防火設備及び隠ぺい工事の全ての欠陥は甲が修繕し、費用上限は設けず、乙は協力義務を負わない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-ja-pdf",
+    "marker": "CT06-ja-A05",
+    "expectedTopic": "risk_unilateral_change",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "剥夺买方对价格调整的拒绝权及合同解除权，显失公平。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "賃料改定：乙は 3 日前の通知により随時賃料を改定できる。甲は拒否できず、これを理由に解除もできない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-ja-pdf",
+    "marker": "CT06-ja-A06",
+    "expectedTopic": "risk_deposit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "赋予乙方单方随意扣留保证金的权利，且免除其举证责任，违反公平原则及不当得利法理，极大增加我方资金损失风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "保証金：満了後の返還可否は乙が自由に判断する。返還期限は定めず、控除の証拠提出も不要とする。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-ja-pdf",
+    "marker": "CT05-zh-ja-A03",
+    "expectedTopic": "risk_acceptance",
+    "sourcePresent": true,
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "工期按日历日/自然日计算剥夺了法定节假日与周末研发时间，大幅压缩实际项目开发周期，将显著增加延期违约风险。（判定依据：2日的异议期过短，不符合软件定制研发常规验收周期，变相强制买方接受未充分测试的成果。）",
+        "advice": "建议坚持采用“工作日”口径计算，或增加因甲方确认延迟、需求变更引起的工期对等顺延条款。",
+        "source": "验收：乙方发出交付邮件后两日内甲方未书面拒绝即视为验收，任何未修复安全漏洞不影响验收。\n検収：納入メール後 2 日以内に甲が書面拒絶しなければ合格とみなす。未修正のセキュリティ脆弱性は検収に影響しない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-ja-pdf",
+    "marker": "CT05-zh-ja-A04",
+    "expectedTopic": "risk_ip",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "定制开发的核心价值在于资产沉淀。此条款导致买方仅获短期使用权，无法拥有源代码所有权及后续维护、修改、转让的权利，权责严重不对等。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "知识产权：全部定制开发成果及源代码著作权归乙方；甲方仅取得一年期不可续展的内部使用许可。\n知的財産：全ての専用開発成果及びソースコードの著作権は乙に帰属する。甲には更新できない 1 年間の社内利用権のみを付与する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-ja-pdf",
+    "marker": "CT05-zh-ja-A06",
+    "expectedTopic": "risk_third_party_ip",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "条款免除乙方开源合规审查义务，导致甲方面临极高的侵权索赔及合规风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "开源：乙方可自由引入任意第三方组件，无需提供许可清单，甲方自行承担全部第三方权利主张。\n第三者部品：乙は任意の部品を自由に利用でき、ライセンス一覧を提出しない。第三者からの全ての権利主張は甲が負担する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-ja-pdf",
+    "marker": "CT05-zh-ja-A08",
+    "expectedTopic": "risk_unfilled",
+    "sourcePresent": true,
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "约定由对方所在地法院管辖，一旦发生争议我方将面临高昂的异地诉讼维权成本与潜在地方司法保护阻力。（判定依据：约定被告所在地管辖对作为原告方的甲方增加诉讼成本与异地应诉风险。）",
+        "advice": "建议约定由“原告所在地（我方住所地）人民法院”管辖，或选择中立权威仲裁委员会解决。",
+        "source": "争议与签署：中日文本不一致时中文优先；争议由被告住所地法院处理。甲方签署人：____；生效日期：____。\n言語及び署名：両言語に相違がある場合は中国語を優先する。被告所在地の裁判所で解決する。甲の署名者：____。\n発効日：____。\n甲方代表 / 甲代表：星桥测试担当 乙方代表 / 乙代表：青空試験担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-zh-ja-pdf",
+    "marker": "CT06-zh-ja-A04",
+    "expectedTopic": "risk_repairs",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "角色指代混乱且约定乙方无需配合，导致甲方单方履行困难，存在履约不能风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "维修：所有结构、消防和隐蔽工程缺陷均由甲方修复，费用不设上限，乙方无需配合。\n修繕：構造、防火設備及び隠ぺい工事の全ての欠陥は甲が修繕し、費用上限は設けず、乙は協力義務を負わない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-zh-ja-pdf",
+    "marker": "CT06-zh-ja-A05",
+    "expectedTopic": "risk_unilateral_change",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "单方任意调价且剥夺解除权，显失公平，该免责及限制权利条款在法律上极可能无效。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "调租：乙方可提前三日通知后随时调整租金，甲方不得拒绝，也不得因此解除合同。\n賃料改定：乙は 3 日前の通知により随時賃料を改定できる。甲は拒否できず、これを理由に解除もできない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-zh-ja-pdf",
+    "marker": "CT06-zh-ja-A06",
+    "expectedTopic": "risk_deposit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "条款赋予乙方单方最终解释权与无限期扣留权，缺乏公平性依据，违反公平原则及消费者权益保护法相关精神。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "押金：租赁届满后乙方可自行判断是否退还押金，不设退款期限，也无需提供扣款凭据。\n保証金：満了後の返還可否は乙が自由に判断する。返還期限は定めず、控除の証拠提出も不要とする。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-zh-pdf",
+    "marker": "CT06-zh-A04",
+    "expectedTopic": "risk_repairs",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "无限责任且排除乙方配合义务，显失公平且不可执行",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "维修：所有结构、消防和隐蔽工程缺陷均由甲方修复，费用不设上限，乙方无需配合。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-zh-pdf",
+    "marker": "CT06-zh-A05",
+    "expectedTopic": "risk_unilateral_change",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "价格条款缺失约束机制，赋予对方任意变更权，违反公平原则",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "调租：乙方可提前三日通知后随时调整租金，甲方不得拒绝，也不得因此解除合同。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-zh-pdf",
+    "marker": "CT06-zh-A06",
+    "expectedTopic": "risk_deposit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "乙方单方决定是否退还且无退款期限、无凭据要求，违反公平原则及民法典关于押金退还的常规义务，构成重大履约风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "押金：租赁届满后乙方可自行判断是否退还押金，不设退款期限，也无需提供扣款凭据。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-ja-txt",
+    "marker": "CT01-ja-A03",
+    "expectedTopic": "risk_acceptance",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "买方放弃对隐蔽瑕疵的拒收及修理请求权，违反质量担保义务，风险极高。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "検収：荷卸しをもって最終検収に合格したものとし、隠れた欠陥がある場合も甲は受領拒否又は修理請求を行えない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-ja-txt",
+    "marker": "CT01-ja-A04",
+    "expectedTopic": "risk_prepayment",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "卖方无履约担保且迟延不扣款，买方资金风险完全暴露，缺乏制衡机制。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "支払：甲は締結後3日以内に代金全額を支払う。乙は履行保証を提供せず、納入遅延によっても代金受領権は影響されない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-ja-txt",
+    "marker": "CT01-ja-A05",
+    "expectedTopic": "risk_asymmetric_liability",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "免除故意或重大过失责任条款通常无效，且导致买方核心权益无法保障。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "責任：乙は故意又は重大な過失による損害についても賠償責任を負わない。甲の支払遅延には契約総額の1％を日額違約金とする。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-zh-txt",
+    "marker": "CT01-zh-A03",
+    "expectedTopic": "risk_acceptance",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "免除卖方对隐蔽瑕疵责任条款无效，严重损害买方验收权益。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "验收：货物卸车即视为最终验收合格；即使存在隐蔽缺陷，甲方亦不得拒收或要求修理。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-zh-txt",
+    "marker": "CT01-zh-A04",
+    "expectedTopic": "risk_prepayment",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "买方在未取得任何交付或担保前需全额付款，风险极高。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "付款：甲方签约后三日内支付全部价款；乙方无需提供履约担保，交付延期不影响收款。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-zh-txt",
+    "marker": "CT01-zh-A05",
+    "expectedTopic": "risk_asymmetric_liability",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "法定禁止因故意或重大过失造成对方财产损失免责。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "责任：乙方故意或重大过失造成的损失亦不承担赔偿；甲方逾期付款每日按合同总额百分之一支付违约金。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-zh-ja-txt",
+    "marker": "CT01-zh-ja-A03",
+    "expectedTopic": "risk_acceptance",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "卖方试图免除法定瑕疵担保责任，导致买方无法在发现隐蔽缺陷时获得救济，严重损害买方权益。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "验收：货物卸车即视为最终验收合格；即使存在隐蔽缺陷，甲方亦不得拒收或要求修理。\n検収：荷卸しをもって最終検収に合格したものとし、隠れた欠陥がある場合も甲は受領拒否又は修理請求を行えない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-zh-ja-txt",
+    "marker": "CT01-zh-ja-A04",
+    "expectedTopic": "risk_prepayment",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "全额预付且无履约担保，若卖方违约，买方将面临资金损失且无有效制约措施，权利义务严重失衡。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "付款：甲方签约后三日内支付全部价款；乙方无需提供履约担保，交付延期不影响收款。\n支払：甲は締結後3日以内に代金全額を支払う。乙は履行保証を提供せず、納入遅延によっても代金受領権は影響されない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT01-zh-ja-txt",
+    "marker": "CT01-zh-ja-A05",
+    "expectedTopic": "risk_asymmetric_liability",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "法律规定故意或重大过失不得免责，该条款因违反强制性规定而无效，且可能引发其他条款效力争议。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "责任：乙方故意或重大过失造成的损失亦不承担赔偿；甲方逾期付款每日按合同总额百分之一支付违约金。\n責任：乙は故意又は重大な過失による損害についても賠償責任を負わない。甲の支払遅延には契約総額の1％を日額違約金とする。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-ja-txt",
+    "marker": "CT02-ja-A03",
+    "expectedTopic": "risk_sla",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "将服务标准降格为努力义务，且设定连续故障不赔偿的霸王条款，违反公平原则及基本合同正义。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "可用性：乙は努力義務のみを負い、最低稼働率を保証しない。10日連続停止した場合も返金又は賠償を行わない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-ja-txt",
+    "marker": "CT02-ja-A04",
+    "expectedTopic": "risk_data_use",
+    "sourcePresent": true,
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "对全部一般商业信息要求无期限/永久承担保密义务，剥夺了普通信息生命周期结束后的合理使用权，形成无限期法律风险敞口。（判定依据：未获同意即利用个人信息及商业数据，且永久保存，严重违反保密期限及数据最小化原则。）",
+        "advice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+        "source": "データ：所有権は甲に帰属する。ただし乙は氏名、メール及び取引履歴を甲の同意なくモデル学習に利用し、永久保存できる。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-ja-txt",
+    "marker": "CT02-ja-A05",
+    "expectedTopic": "risk_exit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "对全部一般商业信息要求无期限/永久承担保密义务，剥夺了普通信息生命周期结束后的合理使用权，形成无限期法律风险敞口。（判定依据：数据输出依赖乙方单方意志且无期限约束，实质上导致保密义务无限期延续且数据无法回收，违背商业合理性。）",
+        "advice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+        "source": "終了：甲は終了後にデータ出力を申請できるが、乙は承認の可否を自由に決定でき、出力期限を約束しない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-ja-txt",
+    "marker": "CT02-ja-A06",
+    "expectedTopic": "risk_renewal",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "赋予乙方单方涨价权，严重破坏价格稳定性，损害买方商业预期与成本控制。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "更新：本契約は1年間自動更新される。甲は満了90日前までに拒絶を通知し、乙は更新日に料金を一方的に増額できる。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-ja-txt",
+    "marker": "CT02-ja-A08",
+    "expectedTopic": "risk_dispute_unclear",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "争议解决机构及地点约定不明，若未能在争议发生时达成补充协议，将导致管辖权条款无效或引发管辖权异议，增加维权不确定性。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "紛争：別途合意する法を適用する。紛争は権限ある機関で処理するものとし、機関名及び所在地は後日補充する。\n甲代表：星橋試験担当     乙代表：青空試験担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-txt",
+    "marker": "CT02-zh-A03",
+    "expectedTopic": "risk_sla",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "排除最低服务标准及核心违约赔偿，导致甲方服务中断无法追偿，显失公平。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "可用性：乙方仅尽力提供服务，不承诺最低可用率；连续中断十日亦不退费或承担责任。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-txt",
+    "marker": "CT02-zh-A04",
+    "expectedTopic": "risk_data_use",
+    "sourcePresent": true,
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "对全部一般商业信息要求无期限/永久承担保密义务，剥夺了普通信息生命周期结束后的合理使用权，形成无限期法律风险敞口。（判定依据：未经同意将包含个人身份信息及交易数据用于商业训练并永久留存，构成严重泄密。）",
+        "advice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+        "source": "数据：甲方保有数据所有权；乙方可未经甲方同意将含姓名、邮箱和交易记录的数据用于模型训练并永久留存。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-txt",
+    "marker": "CT02-zh-A05",
+    "expectedTopic": "risk_exit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "赋予乙方任意拒绝权且无时限约束，导致甲方终止合同后面临数据无法取回的风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "退出：合同终止后甲方可申请导出数据，但乙方可自行决定是否批准，且不承诺任何导出期限。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-txt",
+    "marker": "CT02-zh-A06",
+    "expectedTopic": "risk_renewal",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "赋予服务商单方涨价权，违反公平原则，未设涨价上限或协商机制。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "续约：服务自动续约一年；甲方须在到期前九十日书面拒绝，乙方可在续约日自行上调费用。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-txt",
+    "marker": "CT02-zh-A08",
+    "expectedTopic": "risk_dispute_unclear",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "争议解决机构未明确，一旦产生纠纷将导致管辖权异议，极大增加诉讼成本与不确定性。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "争议：适用双方另行约定的法律；争议提交有权机构处理，具体机构及所在地留待补充。\n甲方代表：星桥测试担当     乙方代表：青空测试担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-ja-txt",
+    "marker": "CT02-zh-ja-A03",
+    "expectedTopic": "risk_sla",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "乙方完全免除服务可用性保证责任及违约赔偿责任，导致买方在服务质量不达标时丧失追偿权，显失公平。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "可用性：乙方仅尽力提供服务，不承诺最低可用率；连续中断十日亦不退费或承担责任。\n可用性：乙は努力義務のみを負い、最低稼働率を保証しない。10日連続停止した場合も返金又は賠償を行わない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-ja-txt",
+    "marker": "CT02-zh-ja-A04",
+    "expectedTopic": "risk_data_use",
+    "sourcePresent": true,
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "对全部一般商业信息要求无期限/永久承担保密义务，剥夺了普通信息生命周期结束后的合理使用权，形成无限期法律风险敞口。（判定依据：乙方擅自将包含个人敏感信息及交易记录的数据用于商业训练，且无保密期限区分，严重违反保密义务及数据合规要求。）",
+        "advice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+        "source": "数据：甲方保有数据所有权；乙方可未经甲方同意将含姓名、邮箱和交易记录的数据用于模型训练并永久留存。\nデータ：所有権は甲に帰属する。ただし乙は氏名、メール及び取引履歴を甲の同意なくモデル学習に利用し、永久保存できる。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-ja-txt",
+    "marker": "CT02-zh-ja-A05",
+    "expectedTopic": "risk_exit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "对全部一般商业信息要求无期限/永久承担保密义务，剥夺了普通信息生命周期结束后的合理使用权，形成无限期法律风险敞口。（判定依据：数据导出权完全依附于乙方单方裁量且无期限约束，导致买方无法在合作结束时有效回收数据，违反保密及数据返还义务。）",
+        "advice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+        "source": "退出：合同终止后甲方可申请导出数据，但乙方可自行决定是否批准，且不承诺任何导出期限。\n終了：甲は終了後にデータ出力を申請できるが、乙は承認の可否を自由に決定でき、出力期限を約束しない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-ja-txt",
+    "marker": "CT02-zh-ja-A06",
+    "expectedTopic": "risk_renewal",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "赋予乙方单方任意调价权，无涨幅限制及协商机制，违反公平原则及买方成本管控诉求。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "续约：服务自动续约一年；甲方须在到期前九十日书面拒绝，乙方可在续约日自行上调费用。\n更新：本契約は1年間自動更新される。甲は満了90日前までに拒絶を通知し、乙は更新日に料金を一方的に増額できる。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT02-zh-ja-txt",
+    "marker": "CT02-zh-ja-A08",
+    "expectedTopic": "risk_dispute_unclear",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "核心争议解决要素缺失，一旦发生纠纷将面临管辖权异议及高昂的异地诉讼成本，严重损害买方权益。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "争议：适用双方另行约定的法律；争议提交有权机构处理，具体机构及所在地留待补充。\n紛争：別途合意する法を適用する。紛争は権限ある機関で処理するものとし、機関名及び所在地は後日補充する。\n甲方代表 / 甲代表：星桥测试担当     乙方代表 / 乙代表：青空試験担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-ja-txt",
+    "marker": "CT04-ja-A02",
+    "expectedTopic": "risk_internal_conflict",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "明确保留乙方直接销售权及发展其他代理商的权利，致使所谓的‘独占性’完全失效，我方无商业保护。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "独占性：甲は地域独占販売権を有する。ただし乙は当該地域の顧客へ無制限に直接販売し、他の販売店を指定できる。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-ja-txt",
+    "marker": "CT04-ja-A03",
+    "expectedTopic": "risk_target",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "我方作为买方，在卖方（乙）缺货的情况下仍被强制要求完成采购目标并补填差额，显失公平且无事实基础。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "購入目標：年間最低購入額は3000000人民元とする。乙の欠品時も目標を減額せず、未達の場合は甲が差額を補填する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-ja-txt",
+    "marker": "CT04-ja-A04",
+    "expectedTopic": "risk_resale_price_review",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "约定遵守卖方单方确定的最低转售价格，违反《反垄断法》关于禁止纵向垄断协议的规定，合同相关条款可能无效并面临行政处罚。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "価格：甲は乙が定める最低再販売価格を遵守する。下回った場合は全てのリベート及び販売権を失う。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-ja-txt",
+    "marker": "CT04-ja-A07",
+    "expectedTopic": "risk_inventory_exit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "赋予乙方单方无理由解除权，且导致甲方库存积压与销售禁令，严重失衡。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "終了：乙は理由なく直ちに解除できる。甲の購入済み在庫は返品できず、継続販売も禁止する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-txt",
+    "marker": "CT04-zh-A02",
+    "expectedTopic": "risk_internal_conflict",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "独家授权条款与乙方保留直接销售权及多重分销权相矛盾，严重削弱甲方独家权益，存在重大履约风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "独家：甲方享有区域独家销售权；乙方可不受限制地直接向区域客户销售并另行指定其他经销商。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-txt",
+    "marker": "CT04-zh-A03",
+    "expectedTopic": "risk_target",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "条款强行排除乙方供货障碍作为履约免责事由，导致买方在乙方违约时仍需承担补足差额责任，权责严重失衡。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "采购目标：甲方年度最低采购额为人民币3000000元，即使乙方缺货也不得调减目标，未达标须补足差额。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-txt",
+    "marker": "CT04-zh-A04",
+    "expectedTopic": "risk_resale_price_review",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "固定转售价格可能构成纵向垄断协议，存在行政处罚风险；且单方终止授权未区分违约程度，处罚过当。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "价格：甲方须遵守乙方确定的最低转售价格；低价销售即取消全部返利并终止授权。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-txt",
+    "marker": "CT04-zh-A07",
+    "expectedTopic": "risk_inventory_exit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "乙方享有单方无理由解除权，且我方已购库存既不能退货也不能销售，导致我方承担全部沉没成本，权利严重不对等。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "终止：乙方可随时无理由立即终止；甲方已购库存不得退回，也不得继续销售。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-ja-txt",
+    "marker": "CT04-zh-ja-A02",
+    "expectedTopic": "risk_internal_conflict",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "乙方保留直接销售及引入第三方经销权，导致甲方的独家授权名存实亡，无法保障买方/客户的独家商业权益。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "独家：甲方享有区域独家销售权；乙方可不受限制地直接向区域客户销售并另行指定其他经销商。\n独占性：甲は地域独占販売権を有する。ただし乙は当該地域の顧客へ無制限に直接販売し、他の販売店を指定できる。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-ja-txt",
+    "marker": "CT04-zh-ja-A03",
+    "expectedTopic": "risk_target",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "卖方缺货不应成为买方承担违约责任的理由，强制补足差额条款显失公平且缺乏商业合理性。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "采购目标：甲方年度最低采购额为人民币3000000元，即使乙方缺货也不得调减目标，未达标须补足差额。\n購入目標：年間最低購入額は3000000人民元とする。乙の欠品時も目標を減額せず、未達の場合は甲が差額を補填する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-ja-txt",
+    "marker": "CT04-zh-ja-A04",
+    "expectedTopic": "risk_resale_price_review",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "固定转售价格违反《反垄断法》，且单方设定价格并以此终止授权缺乏法律依据，属高风险条款。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "价格：甲方须遵守乙方确定的最低转售价格；低价销售即取消全部返利并终止授权。\n価格：甲は乙が定める最低再販売価格を遵守する。下回った場合は全てのリベート及び販売権を失う。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-ja-txt",
+    "marker": "CT04-zh-ja-A07",
+    "expectedTopic": "risk_inventory_exit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "[专属要点] 请逐条阅读全部语言的正文，重点检查我方义务、...：请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告（判定依据：卖方享有单方无理由即时解除权，且强制要求买方承担库存损失并禁止销售，造成重大商业风险与责任失衡。）",
+        "advice": "该条款触发了企业/个人自定义审查要点【请逐条阅读全部语言的正文，重点检查我方义务、...】，请重点核查。",
+        "source": "终止：乙方可随时无理由立即终止；甲方已购库存不得退回，也不得继续销售。\n終了：乙は理由なく直ちに解除できる。甲の購入済み在庫は返品できず、継続販売も禁止する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT04-zh-ja-txt",
+    "marker": "CT04-zh-ja-A08",
+    "expectedTopic": "bilingual_conflict_30_60",
+    "sourcePresent": true,
+    "riskLevels": [
+      "LOW"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "存在支付期限中英文文本不一致的风险，且中文优先条款对买方有利",
+        "advice": "建议法务审阅复核。",
+        "source": "付款与文本：甲方收货后三十日支付货款，结算币种为人民币；中日文本冲突时中文优先。\n支払及び言語：甲は受領後60日以内に代金を支払う。決済通貨は人民元とし、両言語に相違がある場合は中国語を優先する。\n甲方代表 / 甲代表：星桥测试担当     乙方代表 / 乙代表：青空試験担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-ja-txt",
+    "marker": "CT05-ja-A03",
+    "expectedTopic": "risk_acceptance",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "条款强制规定安全漏洞不影响验收合格，可能导致我方在未修复高危漏洞情况下被认定为履行完毕，违反基本质量标准。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "検収：納入メール後2日以内に甲が書面拒絶しなければ合格とみなす。未修正のセキュリティ脆弱性は検収に影響しない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-ja-txt",
+    "marker": "CT05-ja-A04",
+    "expectedTopic": "risk_ip",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "约定著作权归我方（乙），但仅授权甲方（甲）1年使用权，未明确期满后权利延续、开源组件合规性及二次开发权益，存在后续商业授权障碍。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "知的財産：全ての専用開発成果及びソースコードの著作権は乙に帰属する。甲には更新できない1年間の社内利用権のみを付与する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-ja-txt",
+    "marker": "CT05-ja-A06",
+    "expectedTopic": "risk_third_party_ip",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "甲方承担所有第三方权利主张，未约定赔偿上限、免责情形及知识产权瑕疵担保义务，风险敞口无限。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "第三者部品：乙は任意の部品を自由に利用でき、ライセンス一覧を提出しない。第三者からの全ての権利主張は甲が負担する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-ja-txt",
+    "marker": "CT05-ja-A08",
+    "expectedTopic": "risk_unfilled",
+    "sourcePresent": true,
+    "riskLevels": [
+      "PASS"
+    ],
+    "hasRiskSignal": false,
+    "texts": [
+      {
+        "summary": "条款权责明确，管辖法院约定清晰。",
+        "advice": "条款符合规范，可按原约定保留。",
+        "source": "言語及び署名：両言語に相違がある場合は中国語を優先する。被告所在地の裁判所で解決する。甲の署名者：____。発効日：____。\n甲代表：星橋試験担当     乙代表：青空試験担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-txt",
+    "marker": "CT05-zh-A03",
+    "expectedTopic": "risk_acceptance",
+    "sourcePresent": true,
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "工期按日历日/自然日计算剥夺了法定节假日与周末研发时间，大幅压缩实际项目开发周期，将显著增加延期违约风险。（判定依据：条款使用“两日”未明确为工作日，且仅以沉默视为验收，构成自然日陷阱且程序不公。）",
+        "advice": "建议坚持采用“工作日”口径计算，或增加因甲方确认延迟、需求变更引起的工期对等顺延条款。",
+        "source": "验收：乙方发出交付邮件后两日内甲方未书面拒绝即视为验收，任何未修复安全漏洞不影响验收。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-txt",
+    "marker": "CT05-zh-A04",
+    "expectedTopic": "risk_ip",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "定制开发成果依惯例及买方付费事实应归买方所有，现归乙方且许可短促，导致买方资产流失及依赖风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "知识产权：全部定制开发成果及源代码著作权归乙方；甲方仅取得一年期不可续展的内部使用许可。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-txt",
+    "marker": "CT05-zh-A06",
+    "expectedTopic": "risk_third_party_ip",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "免除乙方开源合规及权利瑕疵担保义务，导致甲方面临不可控的知识产权诉讼及业务中断风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "开源：乙方可自由引入任意第三方组件，无需提供许可清单，甲方自行承担全部第三方权利主张。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-txt",
+    "marker": "CT05-zh-A08",
+    "expectedTopic": "risk_unfilled",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "未约定原告或合同履行地法院，若乙方在外地，甲方将面临较高的异地诉讼成本及司法地方保护风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "争议与签署：中日文本不一致时中文优先；争议由被告住所地法院处理。甲方签署人：____；生效日期：____。\n甲方代表：星桥测试担当     乙方代表：青空测试担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-ja-txt",
+    "marker": "CT06-ja-A04",
+    "expectedTopic": "risk_repairs",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "原文规定'费用上限不设'且'不承担协作义务'，导致我方需承担无上限成本的单方责任，构成实质性重大风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "修繕：構造、防火設備及び隠ぺい工事の全ての欠陥は甲が修繕し、費用上限は設けず、乙は協力義務を負わない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-ja-txt",
+    "marker": "CT06-ja-A05",
+    "expectedTopic": "risk_unilateral_change",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "原文允许'随时'调整租金且我方'不得拒绝'或'解除'，构成显失公平的条款，对我方商业利益造成不可控风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "賃料改定：乙は3日前の通知により随時賃料を改定できる。甲は拒否できず、これを理由に解除もできない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-ja-txt",
+    "marker": "CT06-ja-A06",
+    "expectedTopic": "risk_deposit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "返还与否、期限及扣款依据均归乙方单方任意，严重损害我方财产权，构成显失公平。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "保証金：満了後の返還可否は乙が自由に判断する。返還期限は定めず、控除の証拠提出も不要とする。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-ja-txt",
+    "marker": "CT05-zh-ja-A03",
+    "expectedTopic": "risk_acceptance",
+    "sourcePresent": true,
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "工期按日历日/自然日计算剥夺了法定节假日与周末研发时间，大幅压缩实际项目开发周期，将显著增加延期违约风险。（判定依据：设定2天极短验收期且未区分工作日与自然日，构成工期计算陷阱，导致买方极易因疏忽被视同验收。）",
+        "advice": "建议坚持采用“工作日”口径计算，或增加因甲方确认延迟、需求变更引起的工期对等顺延条款。",
+        "source": "验收：乙方发出交付邮件后两日内甲方未书面拒绝即视为验收，任何未修复安全漏洞不影响验收。\n検収：納入メール後2日以内に甲が書面拒絶しなければ合格とみなす。未修正のセキュリティ脆弱性は検収に影響しない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-ja-txt",
+    "marker": "CT05-zh-ja-A04",
+    "expectedTopic": "risk_ip",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "定制开发成果知识产权应归买方所有，约定归卖方仅授予短期许可，导致买方丧失资产所有权且面临续费或侵权风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "知识产权：全部定制开发成果及源代码著作权归乙方；甲方仅取得一年期不可续展的内部使用许可。\n知的財産：全ての専用開発成果及びソースコードの著作権は乙に帰属する。甲には更新できない1年間の社内利用権のみを付与する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-ja-txt",
+    "marker": "CT05-zh-ja-A06",
+    "expectedTopic": "risk_third_party_ip",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "免除乙方开源合规审查及瑕疵担保责任，导致甲方面临侵权及 License 冲突风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "开源：乙方可自由引入任意第三方组件，无需提供许可清单，甲方自行承担全部第三方权利主张。\n第三者部品：乙は任意の部品を自由に利用でき、ライセンス一覧を提出しない。第三者からの全ての権利主張は甲が負担する。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT05-zh-ja-txt",
+    "marker": "CT05-zh-ja-A08",
+    "expectedTopic": "risk_unfilled",
+    "sourcePresent": true,
+    "riskLevels": [
+      "HIGH"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "约定由对方所在地法院管辖，一旦发生争议我方将面临高昂的异地诉讼维权成本与潜在地方司法保护阻力。（判定依据：作为甲方，若涉诉可能需在乙方所在地诉讼，增加维权成本，应争取甲方所在地管辖。）",
+        "advice": "建议约定由“原告所在地（我方住所地）人民法院”管辖，或选择中立权威仲裁委员会解决。",
+        "source": "争议与签署：中日文本不一致时中文优先；争议由被告住所地法院处理。甲方签署人：____；生效日期：____。\n言語及び署名：両言語に相違がある場合は中国語を優先する。被告所在地の裁判所で解決する。甲の署名者：____。発効日：____。\n甲方代表 / 甲代表：星桥测试担当     乙方代表 / 乙代表：青空試験担当"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-zh-ja-txt",
+    "marker": "CT06-zh-ja-A04",
+    "expectedTopic": "risk_repairs",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "‘费用不设上限’条款对我方（甲方）极为不利，可能导致无限责任；‘乙方无需配合’违反商事合作常理，易引发履约争议及工期延误风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "维修：所有结构、消防和隐蔽工程缺陷均由甲方修复，费用不设上限，乙方无需配合。\n修繕：構造、防火設備及び隠ぺい工事の全ての欠陥は甲が修繕し、費用上限は設けず、乙は協力義務を負わない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-zh-ja-txt",
+    "marker": "CT06-zh-ja-A05",
+    "expectedTopic": "risk_unilateral_change",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "单方随意调租且禁止解除，导致合同基础丧失但强制履行，严重损害甲方权益，该条款在司法实践中极可能被认定显失公平或无效，对我方合规性构成重大挑战。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "调租：乙方可提前三日通知后随时调整租金，甲方不得拒绝，也不得因此解除合同。\n賃料改定：乙は3日前の通知により随時賃料を改定できる。甲は拒否できず、これを理由に解除もできない。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-zh-ja-txt",
+    "marker": "CT06-zh-ja-A06",
+    "expectedTopic": "risk_deposit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "条款设定乙方单方决定权且无举证义务，实质构成不当得利，违反押金担保功能及公平原则。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "押金：租赁届满后乙方可自行判断是否退还押金，不设退款期限，也无需提供扣款凭据。\n保証金：満了後の返還可否は乙が自由に判断する。返還期限は定めず、控除の証拠提出も不要とする。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-zh-txt",
+    "marker": "CT06-zh-A04",
+    "expectedTopic": "risk_repairs",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "原文主体为甲方承担维修，但标题为‘维修’且结合用户立场，若甲方为对方则对我方有利；若甲方为我方则极度危险。鉴于用户立场为‘卖方/开发方’，通常对应甲方，此条款对我方有利。但需注意‘乙方无需配合’可能引发履约争议。此处判定为对我方有利，但存在解释歧义风险。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "维修：所有结构、消防和隐蔽工程缺陷均由甲方修复，费用不设上限，乙方无需配合。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-zh-txt",
+    "marker": "CT06-zh-A05",
+    "expectedTopic": "risk_unilateral_change",
+    "sourcePresent": true,
+    "riskLevels": [
+      "MEDIUM"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "我方（甲方）被剥夺抗辩权与解除权，面临对方单方变更核心条款（租金）的风险，严重失衡。",
+        "advice": "建议法务介入复核并协商对等条款。",
+        "source": "调租：乙方可提前三日通知后随时调整租金，甲方不得拒绝，也不得因此解除合同。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  },
+  {
+    "case": "CT06-zh-txt",
+    "marker": "CT06-zh-A06",
+    "expectedTopic": "risk_deposit",
+    "sourcePresent": true,
+    "riskLevels": [
+      "LOW"
+    ],
+    "hasRiskSignal": true,
+    "texts": [
+      {
+        "summary": "该条款大模型语义审查超时/未响应，已回退为静态规则校验。",
+        "advice": "未完成大模型语义深审，建议结合业务背景人工复核。",
+        "source": "押金：租赁届满后乙方可自行判断是否退还押金，不设退款期限，也无需提供扣款凭据。"
+      }
+    ],
+    "verdict": "NOT_FULL_LEGAL_ACCURACY_EVAL"
+  }
+]

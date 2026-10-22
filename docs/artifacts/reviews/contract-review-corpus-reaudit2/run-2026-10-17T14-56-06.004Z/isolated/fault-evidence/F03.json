@@ -1,0 +1,210 @@
+{
+  "caseId": "F03",
+  "isolated": true,
+  "request": {
+    "requestId": "crw-audit",
+    "executionId": "crw-audit-execution",
+    "stepId": "crw-audit-step",
+    "skillId": "platform.document.contract-reviewer",
+    "input": {
+      "text": "synthetic",
+      "modelId": "qwen36-35b-a3b"
+    },
+    "metadata": {
+      "definitionVersion": "1.0.2"
+    }
+  },
+  "result": {
+    "success": true,
+    "output": {
+      "capabilityKey": "platform.document.contract-reviewer",
+      "capabilityVersion": "1.0.2",
+      "summary": "审查完成",
+      "contractType": "procurement",
+      "myPosition": "buyer",
+      "positionSource": "default",
+      "metrics": {
+        "totalClauses": 3,
+        "healthScore": 100,
+        "highRiskCount": 0,
+        "mediumRiskCount": 0,
+        "lowRiskCount": 3,
+        "missingClausesCount": 0,
+        "passCount": 0,
+        "unfilledVariablesCount": 0,
+        "unfilledBlanksTotal": 0,
+        "llmReviewedCount": 0,
+        "degradedClausesCount": 3,
+        "isDegraded": true,
+        "isTruncated": false,
+        "warnings": [
+          "批次 1 模型响应中包含未知条款序号 [90, 91, 92]，超出当前批次预期范围。",
+          "条款 1 (第1条) 模型响应中未返回该条款评估，已回退为静态规则校验。",
+          "条款 2 (第2条) 模型响应中未返回该条款评估，已回退为静态规则校验。",
+          "条款 3 (第3条) 模型响应中未返回该条款评估，已回退为静态规则校验。",
+          "检测到 3 条条款未能完成大模型语义审查（已回退为静态规则校验），建议重点人工复核。"
+        ]
+      },
+      "clauses": [
+        {
+          "clauseIndex": 0,
+          "clauseNumber": "第1条",
+          "title": "条款0",
+          "originalContent": "CRW_FAULT_0 双方依书面约定履行本条合同义务。",
+          "riskLevel": "LOW",
+          "riskSummary": "该条款大模型语义审查降级 (MISSING_CLAUSE_IN_BATCH_OUTPUT)，已回退为静态规则校验。",
+          "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。",
+          "matchedCheckpoints": [],
+          "llmReviewed": false,
+          "isBypassed": false,
+          "isFallback": true,
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 0,
+            "rawSnippet": "[{\"clauseIndex\":90,\"riskLevel\":\"HIGH\",\"riskSummary\":\"其他条款的结果\"},{\"clauseIndex\":91,\"riskLevel\":\"HIGH\",\"riskSummary\":\"其他条款的结果\"},{\"clauseIndex\":92,\"riskLevel\":\"HIGH\",\"riskSummary\":\"其他条款的结果\"}]",
+            "validationFailureCode": "MISSING_CLAUSE_IN_BATCH_OUTPUT"
+          }
+        },
+        {
+          "clauseIndex": 1,
+          "clauseNumber": "第2条",
+          "title": "条款1",
+          "originalContent": "CRW_FAULT_1 双方依书面约定履行本条合同义务。",
+          "riskLevel": "LOW",
+          "riskSummary": "该条款大模型语义审查降级 (MISSING_CLAUSE_IN_BATCH_OUTPUT)，已回退为静态规则校验。",
+          "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。",
+          "matchedCheckpoints": [],
+          "llmReviewed": false,
+          "isBypassed": false,
+          "isFallback": true,
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 0,
+            "rawSnippet": "[{\"clauseIndex\":90,\"riskLevel\":\"HIGH\",\"riskSummary\":\"其他条款的结果\"},{\"clauseIndex\":91,\"riskLevel\":\"HIGH\",\"riskSummary\":\"其他条款的结果\"},{\"clauseIndex\":92,\"riskLevel\":\"HIGH\",\"riskSummary\":\"其他条款的结果\"}]",
+            "validationFailureCode": "MISSING_CLAUSE_IN_BATCH_OUTPUT"
+          }
+        },
+        {
+          "clauseIndex": 2,
+          "clauseNumber": "第3条",
+          "title": "条款2",
+          "originalContent": "CRW_FAULT_2 双方依书面约定履行本条合同义务。",
+          "riskLevel": "LOW",
+          "riskSummary": "该条款大模型语义审查降级 (MISSING_CLAUSE_IN_BATCH_OUTPUT)，已回退为静态规则校验。",
+          "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。",
+          "matchedCheckpoints": [],
+          "llmReviewed": false,
+          "isBypassed": false,
+          "isFallback": true,
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 0,
+            "rawSnippet": "[{\"clauseIndex\":90,\"riskLevel\":\"HIGH\",\"riskSummary\":\"其他条款的结果\"},{\"clauseIndex\":91,\"riskLevel\":\"HIGH\",\"riskSummary\":\"其他条款的结果\"},{\"clauseIndex\":92,\"riskLevel\":\"HIGH\",\"riskSummary\":\"其他条款的结果\"}]",
+            "validationFailureCode": "MISSING_CLAUSE_IN_BATCH_OUTPUT"
+          }
+        }
+      ],
+      "chapters": [
+        {
+          "chapterIndex": 1,
+          "chapterNumber": "前言",
+          "chapterTitle": "合同引言与签约主体",
+          "clauses": [
+            {
+              "clauseIndex": 0,
+              "clauseNumber": "第1条",
+              "title": "条款0",
+              "originalContent": "CRW_FAULT_0 双方依书面约定履行本条合同义务。",
+              "riskLevel": "LOW",
+              "riskSummary": "该条款大模型语义审查降级 (MISSING_CLAUSE_IN_BATCH_OUTPUT)，已回退为静态规则校验。",
+              "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。",
+              "matchedCheckpoints": [],
+              "llmReviewed": false,
+              "isBypassed": false,
+              "isFallback": true,
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 0,
+                "rawSnippet": "[{\"clauseIndex\":90,\"riskLevel\":\"HIGH\",\"riskSummary\":\"其他条款的结果\"},{\"clauseIndex\":91,\"riskLevel\":\"HIGH\",\"riskSummary\":\"其他条款的结果\"},{\"clauseIndex\":92,\"riskLevel\":\"HIGH\",\"riskSummary\":\"其他条款的结果\"}]",
+                "validationFailureCode": "MISSING_CLAUSE_IN_BATCH_OUTPUT"
+              }
+            }
+          ],
+          "highRiskCount": 0,
+          "mediumRiskCount": 0,
+          "passCount": 0
+        },
+        {
+          "chapterIndex": 2,
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "clauses": [
+            {
+              "clauseIndex": 1,
+              "clauseNumber": "第2条",
+              "title": "条款1",
+              "originalContent": "CRW_FAULT_1 双方依书面约定履行本条合同义务。",
+              "riskLevel": "LOW",
+              "riskSummary": "该条款大模型语义审查降级 (MISSING_CLAUSE_IN_BATCH_OUTPUT)，已回退为静态规则校验。",
+              "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。",
+              "matchedCheckpoints": [],
+              "llmReviewed": false,
+              "isBypassed": false,
+              "isFallback": true,
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 0,
+                "rawSnippet": "[{\"clauseIndex\":90,\"riskLevel\":\"HIGH\",\"riskSummary\":\"其他条款的结果\"},{\"clauseIndex\":91,\"riskLevel\":\"HIGH\",\"riskSummary\":\"其他条款的结果\"},{\"clauseIndex\":92,\"riskLevel\":\"HIGH\",\"riskSummary\":\"其他条款的结果\"}]",
+                "validationFailureCode": "MISSING_CLAUSE_IN_BATCH_OUTPUT"
+              }
+            },
+            {
+              "clauseIndex": 2,
+              "clauseNumber": "第3条",
+              "title": "条款2",
+              "originalContent": "CRW_FAULT_2 双方依书面约定履行本条合同义务。",
+              "riskLevel": "LOW",
+              "riskSummary": "该条款大模型语义审查降级 (MISSING_CLAUSE_IN_BATCH_OUTPUT)，已回退为静态规则校验。",
+              "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。",
+              "matchedCheckpoints": [],
+              "llmReviewed": false,
+              "isBypassed": false,
+              "isFallback": true,
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 0,
+                "rawSnippet": "[{\"clauseIndex\":90,\"riskLevel\":\"HIGH\",\"riskSummary\":\"其他条款的结果\"},{\"clauseIndex\":91,\"riskLevel\":\"HIGH\",\"riskSummary\":\"其他条款的结果\"},{\"clauseIndex\":92,\"riskLevel\":\"HIGH\",\"riskSummary\":\"其他条款的结果\"}]",
+                "validationFailureCode": "MISSING_CLAUSE_IN_BATCH_OUTPUT"
+              }
+            }
+          ],
+          "highRiskCount": 0,
+          "mediumRiskCount": 0,
+          "passCount": 0
+        }
+      ],
+      "missingClauses": [],
+      "reviewStatus": "degraded",
+      "htmlReport": "<html>synthetic</html>",
+      "artifact": {
+        "name": "synthetic.html"
+      },
+      "artifacts": [
+        {
+          "name": "synthetic.html"
+        }
+      ]
+    },
+    "artifacts": [
+      {
+        "name": "synthetic.html"
+      }
+    ]
+  }
+}

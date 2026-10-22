@@ -1,0 +1,4 @@
+e6509d5e3c921b243d9b619e8620f281fd59cb5aa2c12dde6d1e36b4cc9889e5  /workspace/apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts
+2026-10-17 12:25:24.478506695 +0800 /workspace/apps/backend/execution-control/control-plane/dist/apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.js
+356:                        const hasDerivableFindings = hasActionableFinding || hasExplicitPassedFindings;
+357:                        const isValidSemanticMatch = Boolean(match && (hasValidExplicitLevel || hasDerivableFindings));

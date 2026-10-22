@@ -1,0 +1,47 @@
+{
+  "status": 200,
+  "models": [
+    {
+      "id": "8508e34d-5e8a-4644-becc-62281675a84e",
+      "name": "deepseek-v4-flash-0731",
+      "provider": "alibaba-bailian",
+      "status": "active"
+    },
+    {
+      "id": "bc660c37-bf55-411b-91cd-8e732b0301f0",
+      "name": "minimax/minimax-m3:free",
+      "provider": "openrouter",
+      "status": "active"
+    },
+    {
+      "id": "abae5ce1-c9ca-4815-a2d0-ee3b4f33fc7a",
+      "name": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "provider": "openrouter",
+      "status": "active"
+    },
+    {
+      "id": "a7035e89-b4d7-4f77-8c96-8833bf03babf",
+      "name": "gemini-3.1-flash-image",
+      "provider": "local",
+      "status": "active"
+    },
+    {
+      "id": "d8bcb4b1-5d5d-4927-a037-c61b767a5337",
+      "name": "XingChenAGI/XingChenASR-V3.2",
+      "provider": "siliconflow",
+      "status": "active"
+    },
+    {
+      "id": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "name": "qwen36-35b-a3b",
+      "provider": "local",
+      "status": "active"
+    },
+    {
+      "id": "ae03ac58-9e4c-4344-8d8b-3c13bea558aa",
+      "name": "gemini-3.8-flash-high",
+      "provider": "local",
+      "status": "active"
+    }
+  ]
+}

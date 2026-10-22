@@ -102,7 +102,7 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
       ['platform.document.pdf-create']
     );
     const contractCompareHandler: BuiltinHandlerFn = (req, idempotencyKey) =>
-      executeContractCompareOrchestration(req, idempotencyKey, this.logger);
+      executeContractCompareOrchestration(req, idempotencyKey, this.logger, this.modelLedger);
     this.registerHandler('document.contract.compare', contractCompareHandler);
     this.registerHandler('platform.document.contract-comparator', contractCompareHandler);
     const contractReviewHandler: BuiltinHandlerFn = (req, idempotencyKey) =>

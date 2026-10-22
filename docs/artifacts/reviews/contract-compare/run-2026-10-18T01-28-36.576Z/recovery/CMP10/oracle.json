@@ -1,0 +1,57 @@
+[
+  {
+    "marker": "CMP-END",
+    "expected": "UNCHANGED",
+    "actual": [
+      "MODIFIED"
+    ],
+    "matchedIds": [
+      "align-6-6"
+    ],
+    "ok": false
+  },
+  {
+    "marker": "CMP-SCOPE",
+    "expected": "UNCHANGED",
+    "actual": [
+      "MODIFIED"
+    ],
+    "matchedIds": [
+      "align-2-2"
+    ],
+    "ok": false
+  },
+  {
+    "marker": "CMP-LIAB",
+    "expected": "UNCHANGED",
+    "actual": [
+      "MODIFIED"
+    ],
+    "matchedIds": [
+      "align-4-4"
+    ],
+    "ok": false
+  },
+  {
+    "marker": "CMP-PAY",
+    "expected": "UNCHANGED",
+    "actual": [
+      "MODIFIED"
+    ],
+    "matchedIds": [
+      "align-3-3"
+    ],
+    "ok": false
+  },
+  {
+    "marker": "CMP-DATA",
+    "expected": "UNCHANGED",
+    "actual": [
+      "MODIFIED"
+    ],
+    "matchedIds": [
+      "align-5-5"
+    ],
+    "ok": false
+  }
+]

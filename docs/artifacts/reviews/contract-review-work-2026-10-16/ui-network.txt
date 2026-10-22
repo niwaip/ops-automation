@@ -1,0 +1,6 @@
+225. [POST] http://127.0.0.1:5174/api/ai/chat/stream => [201] Created
+226. [POST] http://127.0.0.1:5174/api/ai/chat/stream => [201] Created
+306. [POST] http://127.0.0.1:5174/api/ai/chat/stream => [201] Created
+319. [GET] http://127.0.0.1:5174/api/executions/da61bcd3-30ee-478c-aea8-275cce988a92/workflow-save-eligibility => [200] OK
+
+Note: 278 static requests not shown, run with "static" option to see them.

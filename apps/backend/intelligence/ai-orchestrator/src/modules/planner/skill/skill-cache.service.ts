@@ -368,7 +368,12 @@ export class SkillCacheService {
       }
     });
 
-    return { properties, required };
+    return {
+      properties,
+      required,
+      ...(Array.isArray(schema?.anyOf) ? { anyOf: schema.anyOf } : {}),
+      ...(Array.isArray(schema?.oneOf) ? { oneOf: schema.oneOf } : {}),
+    };
   }
 
   hydrateParamsSchemaRenderPaths(

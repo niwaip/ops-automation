@@ -1,0 +1,296 @@
+{
+  "id": "CT06-zh-docx",
+  "caseId": "CT06-zh",
+  "business": "lease",
+  "language": "zh",
+  "format": "docx",
+  "file": "contracts/lease/CT06-zh.docx",
+  "fixtureSha256": "0e6d927141ccd596b9068b7e3ff1ed2be7e3517c50b8527f53dfbddd92efd230",
+  "status": "failed",
+  "startedAt": "2026-10-17T09:17:32.902Z",
+  "uploadMs": 5,
+  "sessionId": "corpus-CT06-zh-docx-1792228652909",
+  "executionId": "fffcb6a8-8759-4787-87e5-76245f6a7939",
+  "traceIds": [
+    "b35a4bf4-15be-455d-af79-f62a740cd46d"
+  ],
+  "chatMs": 5302,
+  "firstEventMs": 36,
+  "streamError": null,
+  "executionStatus": "succeeded",
+  "actualCapabilities": [
+    "platform.document.contract-reviewer"
+  ],
+  "semanticTopics": 3,
+  "topicsWithoutRiskSignal": [
+    "risk_repairs",
+    "risk_unilateral_change",
+    "risk_deposit"
+  ],
+  "metrics": {
+    "warnings": [],
+    "passCount": 1,
+    "isDegraded": false,
+    "healthScore": 72,
+    "isTruncated": false,
+    "lowRiskCount": 0,
+    "totalClauses": 2,
+    "highRiskCount": 0,
+    "mediumRiskCount": 1,
+    "llmReviewedCount": 2,
+    "missingClausesCount": 2,
+    "unfilledBlanksTotal": 0,
+    "degradedClausesCount": 0,
+    "unfilledVariablesCount": 0
+  },
+  "contractType": "lease",
+  "myPosition": "buyer",
+  "observedUsage": [
+    {
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 675,
+      "outputTokens": 302
+    }
+  ],
+  "assertions": [
+    {
+      "name": "upload returned attachment",
+      "passed": true,
+      "actual": null,
+      "category": "UPLOAD"
+    },
+    {
+      "name": "chat HTTP success",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE finished",
+      "passed": true,
+      "actual": "done",
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "contract skill executed",
+      "passed": true,
+      "actual": [
+        "platform.document.contract-reviewer"
+      ],
+      "category": "ROUTING"
+    },
+    {
+      "name": "persistent execution succeeded",
+      "passed": true,
+      "actual": "succeeded",
+      "category": "STATE"
+    },
+    {
+      "name": "structured output exists",
+      "passed": true,
+      "actual": null,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "all eight article markers covered",
+      "passed": false,
+      "actual": [
+        "CT06-zh-A01",
+        "CT06-zh-A02",
+        "CT06-zh-A03",
+        "CT06-zh-A04",
+        "CT06-zh-A05",
+        "CT06-zh-A06",
+        "CT06-zh-A07"
+      ],
+      "category": "PARSE"
+    },
+    {
+      "name": "every source article language retained",
+      "passed": false,
+      "actual": [
+        {
+          "marker": "CT06-zh-A01",
+          "language": "zh"
+        },
+        {
+          "marker": "CT06-zh-A02",
+          "language": "zh"
+        },
+        {
+          "marker": "CT06-zh-A03",
+          "language": "zh"
+        },
+        {
+          "marker": "CT06-zh-A04",
+          "language": "zh"
+        },
+        {
+          "marker": "CT06-zh-A05",
+          "language": "zh"
+        },
+        {
+          "marker": "CT06-zh-A06",
+          "language": "zh"
+        },
+        {
+          "marker": "CT06-zh-A07",
+          "language": "zh"
+        }
+      ],
+      "category": "PARSE"
+    },
+    {
+      "name": "clause indices unique",
+      "passed": true,
+      "actual": [
+        0,
+        1
+      ],
+      "category": "OUTPUT"
+    },
+    {
+      "name": "metrics consistent",
+      "passed": true,
+      "actual": {
+        "warnings": [],
+        "passCount": 1,
+        "isDegraded": false,
+        "healthScore": 72,
+        "isTruncated": false,
+        "lowRiskCount": 0,
+        "totalClauses": 2,
+        "highRiskCount": 0,
+        "mediumRiskCount": 1,
+        "llmReviewedCount": 2,
+        "missingClausesCount": 2,
+        "unfilledBlanksTotal": 0,
+        "degradedClausesCount": 0,
+        "unfilledVariablesCount": 0
+      },
+      "category": "OUTPUT"
+    },
+    {
+      "name": "score in range",
+      "passed": true,
+      "actual": 72,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "semantic review complete",
+      "passed": true,
+      "actual": {
+        "reviewed": 2,
+        "total": 2,
+        "warnings": []
+      },
+      "category": "SEMANTIC_COMPLETENESS"
+    },
+    {
+      "name": "not truncated",
+      "passed": true,
+      "actual": false,
+      "category": "PARSE"
+    },
+    {
+      "name": "business model ledger present",
+      "passed": true,
+      "actual": 1,
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "requested model actually used",
+      "passed": true,
+      "actual": [
+        "qwen36-35b-a3b"
+      ],
+      "category": "MODEL"
+    },
+    {
+      "name": "requested party role retained",
+      "passed": false,
+      "actual": {
+        "expected": "buyer",
+        "actual": "buyer",
+        "source": "default"
+      },
+      "category": "POSITION"
+    },
+    {
+      "name": "original artifact URL downloads HTML",
+      "passed": true,
+      "actual": {
+        "url": "http://192.168.100.143:3009/renders/966d996333f72a5d87c8efad5a15ac99.html",
+        "status": 200,
+        "bytes": 263805,
+        "sha256": "bca80c220fbbc6bc05366e206f56f93af02da4263eb093a032bf1a332447e098",
+        "html": true
+      },
+      "category": "DELIVERY"
+    }
+  ],
+  "failures": [
+    {
+      "name": "all eight article markers covered",
+      "passed": false,
+      "actual": [
+        "CT06-zh-A01",
+        "CT06-zh-A02",
+        "CT06-zh-A03",
+        "CT06-zh-A04",
+        "CT06-zh-A05",
+        "CT06-zh-A06",
+        "CT06-zh-A07"
+      ],
+      "category": "PARSE"
+    },
+    {
+      "name": "every source article language retained",
+      "passed": false,
+      "actual": [
+        {
+          "marker": "CT06-zh-A01",
+          "language": "zh"
+        },
+        {
+          "marker": "CT06-zh-A02",
+          "language": "zh"
+        },
+        {
+          "marker": "CT06-zh-A03",
+          "language": "zh"
+        },
+        {
+          "marker": "CT06-zh-A04",
+          "language": "zh"
+        },
+        {
+          "marker": "CT06-zh-A05",
+          "language": "zh"
+        },
+        {
+          "marker": "CT06-zh-A06",
+          "language": "zh"
+        },
+        {
+          "marker": "CT06-zh-A07",
+          "language": "zh"
+        }
+      ],
+      "category": "PARSE"
+    },
+    {
+      "name": "requested party role retained",
+      "passed": false,
+      "actual": {
+        "expected": "buyer",
+        "actual": "buyer",
+        "source": "default"
+      },
+      "category": "POSITION"
+    }
+  ],
+  "semanticStatus": "pending_independent_review",
+  "wallMs": 5363,
+  "finishedAt": "2026-10-17T09:17:38.265Z"
+}

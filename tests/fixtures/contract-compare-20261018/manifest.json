@@ -1,0 +1,1291 @@
+{
+  "synthetic": true,
+  "purpose": "合同智能比对功能E2E",
+  "cases": [
+    {
+      "id": "CMP01",
+      "name": "完全相同负例",
+      "formatA": "txt",
+      "formatB": "txt",
+      "a": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "b": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "kind": "normal",
+      "files": {
+        "A": {
+          "path": "CMP01/CMP01_A.txt",
+          "mime": "text/plain",
+          "sha256": "46360a0daa570b61503e86f0085a462ed7b1a4637265bb6f89a6609f0d777d2b"
+        },
+        "B": {
+          "path": "CMP01/CMP01_B.txt",
+          "mime": "text/plain",
+          "sha256": "46360a0daa570b61503e86f0085a462ed7b1a4637265bb6f89a6609f0d777d2b"
+        }
+      },
+      "expected": {
+        "CMP-END": "UNCHANGED",
+        "CMP-SCOPE": "UNCHANGED",
+        "CMP-LIAB": "UNCHANGED",
+        "CMP-PAY": "UNCHANGED",
+        "CMP-DATA": "UNCHANGED"
+      }
+    },
+    {
+      "id": "CMP02",
+      "name": "付款金额与账期修改",
+      "formatA": "txt",
+      "formatB": "txt",
+      "a": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "b": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后60日内支付人民币120000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "kind": "normal",
+      "files": {
+        "A": {
+          "path": "CMP02/CMP02_A.txt",
+          "mime": "text/plain",
+          "sha256": "46360a0daa570b61503e86f0085a462ed7b1a4637265bb6f89a6609f0d777d2b"
+        },
+        "B": {
+          "path": "CMP02/CMP02_B.txt",
+          "mime": "text/plain",
+          "sha256": "9d062c90f7530e7f317253175dbfb98b51338e1169c6e5eb77e15a8e1e8ce9c8"
+        }
+      },
+      "expected": {
+        "CMP-END": "UNCHANGED",
+        "CMP-SCOPE": "UNCHANGED",
+        "CMP-LIAB": "UNCHANGED",
+        "CMP-PAY": "MODIFIED",
+        "CMP-DATA": "UNCHANGED"
+      }
+    },
+    {
+      "id": "CMP03",
+      "name": "新增审计权并删除保密义务",
+      "formatA": "txt",
+      "formatB": "txt",
+      "a": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "b": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ],
+        [
+          "CMP-AUDIT",
+          "审计权",
+          "甲方有权每季度审计乙方与本合同相关的履约记录。"
+        ]
+      ],
+      "kind": "normal",
+      "files": {
+        "A": {
+          "path": "CMP03/CMP03_A.txt",
+          "mime": "text/plain",
+          "sha256": "46360a0daa570b61503e86f0085a462ed7b1a4637265bb6f89a6609f0d777d2b"
+        },
+        "B": {
+          "path": "CMP03/CMP03_B.txt",
+          "mime": "text/plain",
+          "sha256": "c662ac204e67f8badb0621e1745197e4278a1a77c98d7dd0f7ce2f328a03889a"
+        }
+      },
+      "expected": {
+        "CMP-END": "UNCHANGED",
+        "CMP-SCOPE": "UNCHANGED",
+        "CMP-LIAB": "UNCHANGED",
+        "CMP-PAY": "UNCHANGED",
+        "CMP-AUDIT": "ADDED",
+        "CMP-DATA": "DELETED"
+      }
+    },
+    {
+      "id": "CMP04",
+      "name": "否定词删除改变披露义务",
+      "formatA": "txt",
+      "formatB": "txt",
+      "a": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "b": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "kind": "normal",
+      "files": {
+        "A": {
+          "path": "CMP04/CMP04_A.txt",
+          "mime": "text/plain",
+          "sha256": "46360a0daa570b61503e86f0085a462ed7b1a4637265bb6f89a6609f0d777d2b"
+        },
+        "B": {
+          "path": "CMP04/CMP04_B.txt",
+          "mime": "text/plain",
+          "sha256": "8e221975dd00c325e96dff41ae75e6704af3f8f16d9ad4947b518cd7a1d12c9e"
+        }
+      },
+      "expected": {
+        "CMP-END": "UNCHANGED",
+        "CMP-SCOPE": "UNCHANGED",
+        "CMP-LIAB": "UNCHANGED",
+        "CMP-PAY": "UNCHANGED",
+        "CMP-DATA": "MODIFIED"
+      }
+    },
+    {
+      "id": "CMP05",
+      "name": "条款整体移动",
+      "formatA": "docx",
+      "formatB": "docx",
+      "a": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "b": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ]
+      ],
+      "kind": "move",
+      "files": {
+        "A": {
+          "path": "CMP05/CMP05_A.docx",
+          "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "sha256": "b5499f70009750bb3c7ef43a1ba46d24111eaeb1ef0ae2c522cdc124c45e3619"
+        },
+        "B": {
+          "path": "CMP05/CMP05_B.docx",
+          "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "sha256": "ae849e1e525ff4a2f6addc6607e3b780b58b403dde6c06ba9cd7a5d21a3a0999"
+        }
+      },
+      "expected": {
+        "CMP-END": "UNCHANGED",
+        "CMP-SCOPE": "UNCHANGED",
+        "CMP-LIAB": "UNCHANGED",
+        "CMP-PAY": "UNCHANGED",
+        "CMP-DATA": "UNCHANGED"
+      }
+    },
+    {
+      "id": "CMP06",
+      "name": "仅条款编号变化",
+      "formatA": "docx",
+      "formatB": "docx",
+      "a": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "b": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "kind": "renumber",
+      "files": {
+        "A": {
+          "path": "CMP06/CMP06_A.docx",
+          "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "sha256": "b5499f70009750bb3c7ef43a1ba46d24111eaeb1ef0ae2c522cdc124c45e3619"
+        },
+        "B": {
+          "path": "CMP06/CMP06_B.docx",
+          "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "sha256": "929a48a3ae01ccccf1828334f387c5d8d7f526a9cb2080b4a8aeb986f40b2a65"
+        }
+      },
+      "expected": {
+        "CMP-END": "UNCHANGED",
+        "CMP-SCOPE": "UNCHANGED",
+        "CMP-LIAB": "UNCHANGED",
+        "CMP-PAY": "UNCHANGED",
+        "CMP-DATA": "UNCHANGED"
+      }
+    },
+    {
+      "id": "CMP07",
+      "name": "真实表格单元格修改",
+      "formatA": "docx",
+      "formatB": "docx",
+      "a": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "b": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后60日内支付人民币120000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "kind": "table",
+      "files": {
+        "A": {
+          "path": "CMP07/CMP07_A.docx",
+          "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "sha256": "4ec8111d2e6e7568b98e34d5303f8653b2b3361f0b3ec687dcd482a2fa06f561"
+        },
+        "B": {
+          "path": "CMP07/CMP07_B.docx",
+          "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "sha256": "da40a2474de104b2918fb77302bb644986bdc2ad9f27a628ae3b1813ccfacd7b"
+        }
+      },
+      "expected": {
+        "CMP-END": "UNCHANGED",
+        "CMP-SCOPE": "UNCHANGED",
+        "CMP-LIAB": "UNCHANGED",
+        "CMP-PAY": "MODIFIED",
+        "CMP-DATA": "UNCHANGED"
+      }
+    },
+    {
+      "id": "CMP08",
+      "name": "日文账期与金额修改",
+      "formatA": "docx",
+      "formatB": "docx",
+      "a": [
+        [
+          "CMP-SCOPE",
+          "業務範囲",
+          "乙は甲に試験設備10台を提供し、技術基準への適合を保証する。"
+        ],
+        [
+          "CMP-PAY",
+          "支払期限",
+          "甲は検収完了後30日以内に100000円を支払う。"
+        ],
+        [
+          "CMP-LIAB",
+          "損害賠償",
+          "乙の納入遅延について、契約総額の一日0.1%を違約金とする。"
+        ],
+        [
+          "CMP-DATA",
+          "秘密保持",
+          "乙は甲の営業秘密を第三者に開示してはならない。義務は3年間存続する。"
+        ],
+        [
+          "CMP-END",
+          "契約終了",
+          "甲は15日前の書面通知により契約を解除でき、未履行分の代金を返還する。"
+        ]
+      ],
+      "b": [
+        [
+          "CMP-SCOPE",
+          "業務範囲",
+          "乙は甲に試験設備10台を提供し、技術基準への適合を保証する。"
+        ],
+        [
+          "CMP-PAY",
+          "支払期限",
+          "甲は検収完了後75日以内に150000円を支払う。"
+        ],
+        [
+          "CMP-LIAB",
+          "損害賠償",
+          "乙の納入遅延について、契約総額の一日0.1%を違約金とする。"
+        ],
+        [
+          "CMP-DATA",
+          "秘密保持",
+          "乙は甲の営業秘密を第三者に開示してはならない。義務は3年間存続する。"
+        ],
+        [
+          "CMP-END",
+          "契約終了",
+          "甲は15日前の書面通知により契約を解除でき、未履行分の代金を返還する。"
+        ]
+      ],
+      "kind": "normal",
+      "language": "ja",
+      "files": {
+        "A": {
+          "path": "CMP08/CMP08_A.docx",
+          "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "sha256": "ca9be76717661f0062d655fe33dae0db6220c1976a6422f08e18ee16e4771d41"
+        },
+        "B": {
+          "path": "CMP08/CMP08_B.docx",
+          "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "sha256": "8179db321f1e4149a3bbf9c846b6b2812b69ade505cf1dc2791cafa844bf54e3"
+        }
+      },
+      "expected": {
+        "CMP-END": "UNCHANGED",
+        "CMP-SCOPE": "UNCHANGED",
+        "CMP-LIAB": "UNCHANGED",
+        "CMP-PAY": "MODIFIED",
+        "CMP-DATA": "UNCHANGED"
+      }
+    },
+    {
+      "id": "CMP09",
+      "name": "双语仅日文发生变化",
+      "formatA": "docx",
+      "formatB": "docx",
+      "a": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。\n日本語正文：双方は誠実に本条の義務を履行する。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "中文：甲方在验收合格后30日内付款。\n日本語：甲は検収完了後30日以内に支払う。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。\n日本語正文：双方は誠実に本条の義務を履行する。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。\n日本語正文：双方は誠実に本条の義務を履行する。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。\n日本語正文：双方は誠実に本条の義務を履行する。"
+        ]
+      ],
+      "b": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。\n日本語正文：双方は誠実に本条の義務を履行する。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "中文：甲方在验收合格后30日内付款。\n日本語：甲は検収完了後90日以内に支払う。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。\n日本語正文：双方は誠実に本条の義務を履行する。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。\n日本語正文：双方は誠実に本条の義務を履行する。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。\n日本語正文：双方は誠実に本条の義務を履行する。"
+        ]
+      ],
+      "kind": "normal",
+      "language": "zh-ja",
+      "files": {
+        "A": {
+          "path": "CMP09/CMP09_A.docx",
+          "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "sha256": "a5ad5fb7124e7bacd2d0930d21351e5567e8fa2b37db8021bcccf852a909fc3f"
+        },
+        "B": {
+          "path": "CMP09/CMP09_B.docx",
+          "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "sha256": "23b4f8bfedc8c148359c6dbc8d9d8cb7954f7e98c3a95e19a13a6772b6ef909b"
+        }
+      },
+      "expected": {
+        "CMP-END": "UNCHANGED",
+        "CMP-SCOPE": "UNCHANGED",
+        "CMP-LIAB": "UNCHANGED",
+        "CMP-PAY": "MODIFIED",
+        "CMP-DATA": "UNCHANGED"
+      }
+    },
+    {
+      "id": "CMP10",
+      "name": "同正文跨DOCX和PDF负例",
+      "formatA": "docx",
+      "formatB": "pdf",
+      "a": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "b": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "kind": "cross-identical",
+      "files": {
+        "A": {
+          "path": "CMP10/CMP10_A.docx",
+          "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "sha256": "b5499f70009750bb3c7ef43a1ba46d24111eaeb1ef0ae2c522cdc124c45e3619"
+        },
+        "B": {
+          "path": "CMP10/CMP10_B.pdf",
+          "mime": "application/pdf",
+          "sha256": "7bb2a39d3c1b7b9904655e2acf910bc58575af8ca276affd6a868e31098b746d"
+        }
+      },
+      "expected": {
+        "CMP-END": "UNCHANGED",
+        "CMP-SCOPE": "UNCHANGED",
+        "CMP-LIAB": "UNCHANGED",
+        "CMP-PAY": "UNCHANGED",
+        "CMP-DATA": "UNCHANGED"
+      }
+    },
+    {
+      "id": "CMP11",
+      "name": "跨PDF和TXT付款修改",
+      "formatA": "pdf",
+      "formatB": "txt",
+      "a": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "b": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后60日内支付人民币120000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "kind": "normal",
+      "files": {
+        "A": {
+          "path": "CMP11/CMP11_A.pdf",
+          "mime": "application/pdf",
+          "sha256": "19a412e889553563ecbda4543bc0d1241bf2be1c2fc02fa82be7691a82f118dc"
+        },
+        "B": {
+          "path": "CMP11/CMP11_B.txt",
+          "mime": "text/plain",
+          "sha256": "9d062c90f7530e7f317253175dbfb98b51338e1169c6e5eb77e15a8e1e8ce9c8"
+        }
+      },
+      "expected": {
+        "CMP-END": "UNCHANGED",
+        "CMP-SCOPE": "UNCHANGED",
+        "CMP-LIAB": "UNCHANGED",
+        "CMP-PAY": "MODIFIED",
+        "CMP-DATA": "UNCHANGED"
+      }
+    },
+    {
+      "id": "CMP12",
+      "name": "仅字体排版变化",
+      "formatA": "docx",
+      "formatB": "docx",
+      "a": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "b": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "kind": "formatting",
+      "files": {
+        "A": {
+          "path": "CMP12/CMP12_A.docx",
+          "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "sha256": "b5499f70009750bb3c7ef43a1ba46d24111eaeb1ef0ae2c522cdc124c45e3619"
+        },
+        "B": {
+          "path": "CMP12/CMP12_B.docx",
+          "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "sha256": "2ca66a600777b02346ff5c0d5b38f18985506613b564d50d9148adfe7607dc73"
+        }
+      },
+      "expected": {
+        "CMP-END": "UNCHANGED",
+        "CMP-SCOPE": "UNCHANGED",
+        "CMP-LIAB": "UNCHANGED",
+        "CMP-PAY": "UNCHANGED",
+        "CMP-DATA": "UNCHANGED"
+      }
+    },
+    {
+      "id": "CMP13",
+      "name": "重复标题精确配对",
+      "formatA": "txt",
+      "formatB": "txt",
+      "a": [
+        [
+          "CMP-SCOPE",
+          "履约安排",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "履约安排",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "履约安排",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "履约安排",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "履约安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "b": [
+        [
+          "CMP-SCOPE",
+          "履约安排",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "履约安排",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "履约安排",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "履约安排",
+          "乙方可以向关联方披露甲方商业秘密，且无需事先取得甲方同意。"
+        ],
+        [
+          "CMP-END",
+          "履约安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "kind": "normal",
+      "files": {
+        "A": {
+          "path": "CMP13/CMP13_A.txt",
+          "mime": "text/plain",
+          "sha256": "720652fcd88adc2fe38712f6a4f42756a819f9d5e9918074a4b5236f8d65b262"
+        },
+        "B": {
+          "path": "CMP13/CMP13_B.txt",
+          "mime": "text/plain",
+          "sha256": "d34daad7fe7c06f0b0be813e971b2e2f40163e8a653ec6bfdb84194d35f981d9"
+        }
+      },
+      "expected": {
+        "CMP-END": "UNCHANGED",
+        "CMP-SCOPE": "UNCHANGED",
+        "CMP-LIAB": "UNCHANGED",
+        "CMP-PAY": "UNCHANGED",
+        "CMP-DATA": "MODIFIED"
+      }
+    },
+    {
+      "id": "CMP14",
+      "name": "HTML特殊字符安全",
+      "formatA": "txt",
+      "formatB": "txt",
+      "a": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "b": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100。备注文字为<script>window.CMP_XSS=1</script>和A&B，不得作为脚本执行。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "kind": "normal",
+      "files": {
+        "A": {
+          "path": "CMP14/CMP14_A.txt",
+          "mime": "text/plain",
+          "sha256": "46360a0daa570b61503e86f0085a462ed7b1a4637265bb6f89a6609f0d777d2b"
+        },
+        "B": {
+          "path": "CMP14/CMP14_B.txt",
+          "mime": "text/plain",
+          "sha256": "0367e8bfd9eb6d1dac8990bb65795dcff08eeb8f1b19d54cf8f1b7d409ec715c"
+        }
+      },
+      "expected": {
+        "CMP-END": "UNCHANGED",
+        "CMP-SCOPE": "MODIFIED",
+        "CMP-LIAB": "UNCHANGED",
+        "CMP-PAY": "UNCHANGED",
+        "CMP-DATA": "UNCHANGED"
+      }
+    },
+    {
+      "id": "CMP15",
+      "name": "关闭风险分析参数",
+      "formatA": "txt",
+      "formatB": "txt",
+      "a": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "b": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后180日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "kind": "normal",
+      "riskEnabled": false,
+      "files": {
+        "A": {
+          "path": "CMP15/CMP15_A.txt",
+          "mime": "text/plain",
+          "sha256": "46360a0daa570b61503e86f0085a462ed7b1a4637265bb6f89a6609f0d777d2b"
+        },
+        "B": {
+          "path": "CMP15/CMP15_B.txt",
+          "mime": "text/plain",
+          "sha256": "0b714a40b1a4ea07e9decd890030f1bcbe7f670560421bc77d60def9ab18894c"
+        }
+      },
+      "expected": {
+        "CMP-END": "UNCHANGED",
+        "CMP-SCOPE": "UNCHANGED",
+        "CMP-LIAB": "UNCHANGED",
+        "CMP-PAY": "MODIFIED",
+        "CMP-DATA": "UNCHANGED"
+      }
+    },
+    {
+      "id": "CMP16",
+      "name": "反向比较验证增删方向",
+      "formatA": "txt",
+      "formatB": "txt",
+      "a": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ],
+        [
+          "CMP-AUDIT",
+          "审计权",
+          "甲方有权每季度审计乙方与本合同相关的履约记录。"
+        ]
+      ],
+      "b": [
+        [
+          "CMP-SCOPE",
+          "合作范围",
+          "乙方向甲方提供测试设备十台，型号为ZX100，并保证符合附件技术标准。"
+        ],
+        [
+          "CMP-PAY",
+          "付款期限",
+          "甲方在验收合格后30日内支付人民币100000元。"
+        ],
+        [
+          "CMP-LIAB",
+          "违约责任",
+          "乙方延期交付应按合同总价每日0.1%向甲方支付违约金。"
+        ],
+        [
+          "CMP-DATA",
+          "资料保密",
+          "乙方不得向第三方披露甲方商业秘密，保密义务持续三年。"
+        ],
+        [
+          "CMP-END",
+          "终止安排",
+          "甲方可提前15日书面通知解除合同，乙方应退还未履行部分价款。"
+        ]
+      ],
+      "kind": "normal",
+      "files": {
+        "A": {
+          "path": "CMP16/CMP16_A.txt",
+          "mime": "text/plain",
+          "sha256": "c662ac204e67f8badb0621e1745197e4278a1a77c98d7dd0f7ce2f328a03889a"
+        },
+        "B": {
+          "path": "CMP16/CMP16_B.txt",
+          "mime": "text/plain",
+          "sha256": "46360a0daa570b61503e86f0085a462ed7b1a4637265bb6f89a6609f0d777d2b"
+        }
+      },
+      "expected": {
+        "CMP-END": "UNCHANGED",
+        "CMP-SCOPE": "UNCHANGED",
+        "CMP-LIAB": "UNCHANGED",
+        "CMP-PAY": "UNCHANGED",
+        "CMP-AUDIT": "DELETED",
+        "CMP-DATA": "ADDED"
+      }
+    }
+  ]
+}

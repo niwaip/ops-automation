@@ -1,0 +1,89 @@
+{
+  "id": "CT05-zh-ja-docx",
+  "caseId": "CT05-zh-ja",
+  "business": "development",
+  "language": "zh-ja",
+  "format": "docx",
+  "file": "contracts/development/CT05-zh-ja.docx",
+  "fixtureSha256": "19d3daf426ebae115cd2441b98b6dce2dd5cf6ce2af5b489cdef4375f1287406",
+  "status": "failed",
+  "startedAt": "2026-10-17T08:55:41.831Z",
+  "uploadMs": 5,
+  "sessionId": "corpus-CT05-zh-ja-docx-1792227341906",
+  "executionId": "3fb37a04-2d16-4e34-adf5-7641606655d7",
+  "traceIds": [
+    "c58fd5b2-44a9-41e3-a900-3949896abd60"
+  ],
+  "chatMs": 1138,
+  "firstEventMs": 38,
+  "streamError": null,
+  "executionStatus": "failed",
+  "actualCapabilities": [
+    "platform.document.contract-comparator"
+  ],
+  "assertions": [
+    {
+      "name": "upload returned attachment",
+      "passed": true,
+      "actual": null,
+      "category": "UPLOAD"
+    },
+    {
+      "name": "chat HTTP success",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE finished",
+      "passed": true,
+      "actual": "done",
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "contract skill executed",
+      "passed": false,
+      "actual": [
+        "platform.document.contract-comparator"
+      ],
+      "category": "ROUTING"
+    },
+    {
+      "name": "persistent execution succeeded",
+      "passed": false,
+      "actual": "failed",
+      "category": "STATE"
+    },
+    {
+      "name": "structured output exists",
+      "passed": false,
+      "actual": null,
+      "category": "OUTPUT"
+    }
+  ],
+  "failures": [
+    {
+      "name": "contract skill executed",
+      "passed": false,
+      "actual": [
+        "platform.document.contract-comparator"
+      ],
+      "category": "ROUTING"
+    },
+    {
+      "name": "persistent execution succeeded",
+      "passed": false,
+      "actual": "failed",
+      "category": "STATE"
+    },
+    {
+      "name": "structured output exists",
+      "passed": false,
+      "actual": null,
+      "category": "OUTPUT"
+    }
+  ],
+  "semanticStatus": "not_assessable",
+  "wallMs": 1230,
+  "finishedAt": "2026-10-17T08:55:43.061Z"
+}

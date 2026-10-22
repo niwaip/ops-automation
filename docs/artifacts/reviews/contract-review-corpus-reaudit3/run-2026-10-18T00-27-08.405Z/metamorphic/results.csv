@@ -1,0 +1,4 @@
+﻿id,business,language,format,executionId,status,previousGateStatus,executionStatus,outputPresent,markerCoverage,totalClauses,contractType,position,positionSource,degraded,chatMs,calls,inputTokens,outputTokens,failureReason
+META-ALIGNED-30-30-txt,distribution,zh-ja,txt,36806339-1286-426b-b16f-14175a6d304d,passed,passed,succeeded,True,8,9,procurement,buyer,user_confirmed,False,35942,3,3040,1278,
+META-ALIGNED-60-60-txt,distribution,zh-ja,txt,14b15fa2-da8d-40e0-a15a-3edc21632db4,passed,passed,succeeded,True,8,9,procurement,buyer,user_confirmed,False,30991,3,3021,1242,
+META-CONFLICT-45-75-txt,distribution,zh-ja,txt,1cc60a05-3d8d-4dbe-964c-2373c37e41e0,passed,passed,succeeded,True,8,9,procurement,buyer,user_confirmed,False,32769,3,3046,1107,

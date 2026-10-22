@@ -457,6 +457,8 @@ export interface SkillMatchResult {
 export interface ParamsSchema {
   properties: Record<string, ParamProperty>;
   required: string[];
+  anyOf?: Array<{ required?: string[] }>;
+  oneOf?: Array<{ required?: string[] }>;
 }
 
 /**

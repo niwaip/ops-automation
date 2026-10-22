@@ -94,3 +94,25 @@ export class UpdateDepartmentDto {
   managerUserId?: string | null;
 }
 
+export class UpdateOrganizationLegalProfileDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  legalEntityName?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  aliases?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  creditCode?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  defaultContractRole?: string;
+}
+

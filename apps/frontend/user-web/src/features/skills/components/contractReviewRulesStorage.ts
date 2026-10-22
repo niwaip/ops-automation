@@ -2,11 +2,14 @@ import {
   DEFAULT_ORG_RULES,
 } from './contractReviewBuiltinRules';
 import type {
+  EnterpriseLegalProfile,
   PartyPosition,
   UserCustomRule,
 } from './contractReviewRules.types';
 import {
+  DEFAULT_ENTERPRISE_PROFILE,
   LEGACY_STORAGE_KEY,
+  STORAGE_KEY_LEGAL_PROFILE,
   STORAGE_KEY_ORG_RULES,
   STORAGE_KEY_USER_RULES,
 } from './contractReviewRules.types';
@@ -160,3 +163,30 @@ export function getActiveCustomCheckpoints(options?: {
     recommendedRevision: r.recommendedRevision,
   }));
 }
+
+/**
+ * Reads enterprise legal entity profile from localStorage.
+ * Falls back to DEFAULT_ENTERPRISE_PROFILE if none saved.
+ */
+export function getEnterpriseLegalProfile(): EnterpriseLegalProfile {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_LEGAL_PROFILE);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.legalEntityName) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.warn('[ContractRules] Failed to parse legal profile from localStorage', err);
+  }
+  return DEFAULT_ENTERPRISE_PROFILE;
+}
+
+/**
+ * Saves enterprise legal entity profile to localStorage.
+ */
+export function saveEnterpriseLegalProfile(profile: EnterpriseLegalProfile): void {
+  localStorage.setItem(STORAGE_KEY_LEGAL_PROFILE, JSON.stringify(profile));
+}
+

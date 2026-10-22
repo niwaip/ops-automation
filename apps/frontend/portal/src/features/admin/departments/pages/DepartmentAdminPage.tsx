@@ -3,18 +3,20 @@ import { Row, Col, Card, Space, Button, Typography, Tag, message, Alert } from '
 import {
   BankOutlined,
   ReloadOutlined,
+  SafetyCertificateOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { organizationApi, type OrganizationDepartment } from '@/api/organization';
+import { organizationApi, type OrganizationDepartment, type UpdateLegalProfileParams } from '@/api/organization';
 import { userApi } from '@/api/auth';
 import { useAuthStore } from '@/shared/store/authStore';
 import { ListSectionHeader } from '@/components/page/PageScaffold';
 import { DepartmentTreeCard } from '../components/DepartmentTreeCard';
 import { DepartmentMemberCard } from '../components/DepartmentMemberCard';
 import { DepartmentFormModal } from '../components/DepartmentFormModal';
+import { EnterpriseLegalProfileModal } from '../components/EnterpriseLegalProfileModal';
 
 const { Text, Title } = Typography;
 
@@ -25,6 +27,7 @@ const DepartmentAdminPage: React.FC = () => {
 
   const [selectedDept, setSelectedDept] = useState<OrganizationDepartment | null>(null);
   const [formModalOpen, setFormModalOpen] = useState(false);
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
   const [editingDept, setEditingDept] = useState<OrganizationDepartment | null>(null);
   const [parentDeptIdForCreate, setParentDeptIdForCreate] = useState<string | null>(null);
 
@@ -129,6 +132,24 @@ const DepartmentAdminPage: React.FC = () => {
       },
       onError: (err: any) => {
         message.error(err?.response?.data?.message || err?.message || '更新部门失败');
+      },
+    }
+  );
+
+  const updateLegalProfileMutation = useMutation(
+    (values: UpdateLegalProfileParams) => {
+      if (!activeOrgId) throw new Error('未检测到有效企业组织');
+      return organizationApi.updateLegalProfile(activeOrgId, values);
+    },
+    {
+      onSuccess: () => {
+        message.success('企业签约主体资料更新成功');
+        queryClient.invalidateQueries('admin-organizations');
+        queryClient.invalidateQueries(['admin-org-structure']);
+        setLegalModalOpen(false);
+      },
+      onError: (err: any) => {
+        message.error(err?.response?.data?.message || err?.message || '更新企业签约主体失败');
       },
     }
   );
@@ -310,12 +331,34 @@ const DepartmentAdminPage: React.FC = () => {
                   {activeOrg?.code || (orgsQuery.isLoading ? 'LOADING' : 'UNINITIALIZED')}
                 </Tag>
               </Space>
-              <Text type="secondary" style={{ fontSize: 13 }}>
+              <Text type="secondary" style={{ fontSize: 13, display: 'block' }}>
                 {(activeOrg as any)?.description ||
                   (orgsQuery.isLoading
                     ? '正在同步企业组织层级与组织架构信息...'
                     : '当前系统尚未检测到有效企业组织，请点击下方初始化按钮创建根企业组织')}
               </Text>
+              {activeOrg && (
+                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <Tag color="cyan" style={{ margin: 0, padding: '2px 8px' }}>
+                    <strong>签约法人主体：</strong>{(activeOrg as any).legalEntityName || '富士通（中国）信息系统有限公司'}
+                  </Tag>
+                  <Tag color="blue" style={{ margin: 0, padding: '2px 8px' }}>
+                    <strong>税号/信用代码：</strong>{(activeOrg as any).creditCode || '913100006072834521'}
+                  </Tag>
+                  <Tag color="purple" style={{ margin: 0, padding: '2px 8px' }}>
+                    <strong>默认审查立场：</strong>{(activeOrg as any).defaultContractRole === 'buyer' ? '优先作为买方/采购方' : '优先作为卖方/服务商'}
+                  </Tag>
+                  <Button
+                    type="link"
+                    size="small"
+                    icon={<SafetyCertificateOutlined />}
+                    onClick={() => setLegalModalOpen(true)}
+                    style={{ padding: 0, fontSize: 12 }}
+                  >
+                    维护签约主体信息
+                  </Button>
+                </div>
+              )}
             </div>
           </Space>
 
@@ -420,6 +463,14 @@ const DepartmentAdminPage: React.FC = () => {
         loading={createDeptMutation.isLoading || updateDeptMutation.isLoading}
         onCancel={() => setFormModalOpen(false)}
         onSave={handleSaveDept}
+      />
+
+      <EnterpriseLegalProfileModal
+        open={legalModalOpen}
+        org={activeOrg}
+        loading={updateLegalProfileMutation.isLoading}
+        onCancel={() => setLegalModalOpen(false)}
+        onSave={(vals) => updateLegalProfileMutation.mutate(vals)}
       />
     </div>
   );

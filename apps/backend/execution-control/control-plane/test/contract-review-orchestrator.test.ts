@@ -238,6 +238,7 @@ describe('ContractReviewOrchestrator (Option B Pipeline)', () => {
         expect(data.prompt).toContain('【我方立场】: 卖方/服务商/开发方/接收方');
         expect(data.prompt).toContain('NDA-01');
         expect(data.prompt).toContain('候选合规要件摘要');
+        expect(data.thinking).toBe(false);
 
         return {
           data: {

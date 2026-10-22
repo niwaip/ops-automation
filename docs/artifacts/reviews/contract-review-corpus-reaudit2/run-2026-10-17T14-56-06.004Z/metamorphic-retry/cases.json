@@ -1,0 +1,94 @@
+[
+  {
+    "caseId": "META-ALIGNED-30-30",
+    "business": "distribution",
+    "language": "zh-ja",
+    "reviewPosition": "经销商 / 販売店",
+    "party": "甲",
+    "contentMarkers": [
+      "META-ALIGNED-30-30-A01",
+      "META-ALIGNED-30-30-A02",
+      "META-ALIGNED-30-30-A03",
+      "META-ALIGNED-30-30-A04",
+      "META-ALIGNED-30-30-A05",
+      "META-ALIGNED-30-30-A06",
+      "META-ALIGNED-30-30-A07",
+      "META-ALIGNED-30-30-A08"
+    ],
+    "expectedObservations": [
+      {
+        "clause": 1,
+        "marker": "META-ALIGNED-30-30-A01",
+        "observation": "neutral",
+        "zh": "授权：乙方授权甲方在日本关东地区销售工业传感器，期限为2027年全年，是否独家以本合同为准。",
+        "ja": "授権：乙は甲に日本の関東地域における産業用センサーの販売権を付与する。期間は2027年中とし、独占性は本契約による。"
+      },
+      {
+        "clause": 2,
+        "marker": "META-ALIGNED-30-30-A02",
+        "observation": "risk_internal_conflict",
+        "zh": "独家：甲方享有区域独家销售权；乙方可不受限制地直接向区域客户销售并另行指定其他经销商。",
+        "ja": "独占性：甲は地域独占販売権を有する。ただし乙は当該地域の顧客へ無制限に直接販売し、他の販売店を指定できる。"
+      },
+      {
+        "clause": 3,
+        "marker": "META-ALIGNED-30-30-A03",
+        "observation": "risk_target",
+        "zh": "采购目标：甲方年度最低采购额为人民币3000000元，即使乙方缺货也不得调减目标，未达标须补足差额。",
+        "ja": "購入目標：年間最低購入額は3000000人民元とする。乙の欠品時も目標を減額せず、未達の場合は甲が差額を補填する。"
+      },
+      {
+        "clause": 4,
+        "marker": "META-ALIGNED-30-30-A04",
+        "observation": "risk_resale_price_review",
+        "zh": "价格：甲方须遵守乙方确定的最低转售价格；低价销售即取消全部返利并终止授权。",
+        "ja": "価格：甲は乙が定める最低再販売価格を遵守する。下回った場合は全てのリベート及び販売権を失う。"
+      },
+      {
+        "clause": 5,
+        "marker": "META-ALIGNED-30-30-A05",
+        "observation": "balanced",
+        "zh": "质保：产品缺陷由乙方负责维修或更换；甲方应保存批次及客户交付记录并协助召回。",
+        "ja": "保証：製品欠陥は乙が修理又は交換する。甲はロット及び納入先記録を保存し、回収に協力する。"
+      },
+      {
+        "clause": 6,
+        "marker": "META-ALIGNED-30-30-A06",
+        "observation": "balanced",
+        "zh": "商标：甲方仅在授权期内为销售使用乙方商标，不得注册近似标识，终止后停止新增使用。",
+        "ja": "商標：甲は授権期間中、販売目的に限り乙の商標を使用できる。類似標章の登録は禁止し、終了後は新たな使用を停止する。"
+      },
+      {
+        "clause": 7,
+        "marker": "META-ALIGNED-30-30-A07",
+        "observation": "risk_inventory_exit",
+        "zh": "终止：乙方可随时无理由立即终止；甲方已购库存不得退回，也不得继续销售。",
+        "ja": "終了：乙は理由なく直ちに解除できる。甲の購入済み在庫は返品できず、継続販売も禁止する。"
+      },
+      {
+        "clause": 8,
+        "marker": "META-ALIGNED-30-30-A08",
+        "observation": "aligned_payment_control",
+        "zh": "付款与文本：甲方收货后三十日支付货款，结算币种为人民币；中日文本冲突时中文优先。",
+        "ja": "支払及び言語：甲は受領後30日以内に代金を支払う。決済通貨は人民元とし、両言語に相違がある場合は中国語を優先する。"
+      }
+    ],
+    "files": [
+      {
+        "path": "META-ALIGNED-30-30.txt",
+        "mimeType": "text/plain",
+        "bytes": 2795,
+        "sha256": "adc526d22f71ab9eefe58efcb909a7cce2d335476f4863746a8ce7bcfd54b8f0"
+      }
+    ],
+    "expectedNumberedArticles": 8,
+    "expectedBilingualConflict": false,
+    "file": {
+      "path": "META-ALIGNED-30-30.txt",
+      "mimeType": "text/plain",
+      "bytes": 2795,
+      "sha256": "adc526d22f71ab9eefe58efcb909a7cce2d335476f4863746a8ce7bcfd54b8f0"
+    },
+    "id": "META-ALIGNED-30-30-txt"
+  }
+]

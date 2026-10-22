@@ -1,0 +1,17 @@
+{
+  "capturedAt": "2026-10-17T13:02:23.625Z",
+  "sourceDigests": {
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-clause-segmenter.util.ts": "10499056091398782199e172e0efa0511ff9ba9a50e77d62bff07bdfb102abb5",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/docx-openxml-parser.util.ts": "875a329450e10bc75f01a4fb0c96f2f5f4938128f165a14d9fd3c972efe96a74",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-type-classifier.service.ts": "60106f2c4d07b518632a1ad7ce582308993e4db30ccabfc18b72f6b9fcb7dbe6",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-engine.service.ts": "edf6adfa95806677726029417b0060b5d323197af6de7660e0ffa0f2afa0d1de",
+    "apps/backend/intelligence/ai-orchestrator/src/modules/planner/binding/multi-node-parameter-binder.service.ts": "3d2393a1860d1371de89f8898fe2f803886492aac326ed6e09e15e34ea412f9a",
+    "apps/backend/intelligence/ai-orchestrator/src/modules/recognizer/recognizer.service.ts": "055c0b88fc68909721b3c3fc4405064c8c392637edce704155f2570262a5e0a4",
+    "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+    "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "2cd9136beca573fd6ee63e85d53dd20c063cb5484b67c60a7511cb9985731f92",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "32787d21f7d241dc13e75555f9706e444dba55d26dd5a8382913721def98ea6b",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "8d0bd034f62ce66ee144752108fdfc5ddbab1a7622aff18ed55acb7fbc023216"
+  },
+  "changedSinceStart": []
+}

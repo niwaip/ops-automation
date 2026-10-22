@@ -1,0 +1,14 @@
+{
+  "id": "CT05-ja-pdf",
+  "caseId": "CT05-ja",
+  "business": "development",
+  "language": "ja",
+  "format": "pdf",
+  "file": "contracts/development/CT05-ja.pdf",
+  "fixtureSha256": "b0819046b98c042b31ba0e236a41fa5b5f6668c4a80399a10ee408ceefaf5c98",
+  "status": "error",
+  "startedAt": "2026-10-17T08:55:43.132Z",
+  "error": "Login HTTP 429",
+  "wallMs": 3,
+  "finishedAt": "2026-10-17T08:55:43.135Z"
+}

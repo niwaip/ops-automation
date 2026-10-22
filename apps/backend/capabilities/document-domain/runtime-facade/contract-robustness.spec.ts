@@ -568,7 +568,8 @@ describe('Contract Robustness & High-Risk Vulnerability Fixes', () => {
 
       // Verify sub-clauses are contained inside their parent clauses
       expect(clauses[1].content).toContain('专有信息的定义');
-      expect(clauses[7].content).toContain('救济方法');
+      expect(clauses[7].title).toBe('救济方法');
+      expect(clauses[7].content).toContain('双方承认并同意如下内容');
       expect(clauses[8].content).toContain('保密期限为“接收方”收到相关专有信息起3年');
     });
 

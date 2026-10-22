@@ -1,0 +1,22 @@
+{
+  "message": "请改为审查本次新附件中的采购合同，我方为买方，使用新附件金额。",
+  "sessionId": "crw-C02-1792202049796",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "config": {
+    "mode": "task",
+    "thinking": true,
+    "webSearch": false,
+    "workspaceSearch": false
+  },
+  "files": [
+    {
+      "fileId": "file-1792202620044-1cbvov6p7",
+      "fileName": "contract-b.docx",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "size": 1237,
+      "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792202620044-1cbvov6p7-contract-b.docx",
+      "url": "/api/ai/chat/files/file-1792202620044-1cbvov6p7?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792204420.6991e60cf2e18526c460c4cff3d46f7d81eb984bff1cdd1cf86c905e3779eb6e",
+      "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792204420.6991e60cf2e18526c460c4cff3d46f7d81eb984bff1cdd1cf86c905e3779eb6e"
+    }
+  ]
+}

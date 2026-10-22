@@ -15,7 +15,10 @@ import {
 import { formatLocalizedDateTime } from '@/shared/utils/dateText';
 import { summarizeCronExpression } from '@/shared/utils/scheduleText';
 
-import { getActiveCustomCheckpoints } from '@/features/skills/components/contractReviewRulesStorage';
+import {
+  getActiveCustomCheckpoints,
+  getEnterpriseLegalProfile,
+} from '@/features/skills/components/contractReviewRulesStorage';
 
 interface UseExecutionCreateActionsOptions {
   form: FormInstance;
@@ -47,6 +50,17 @@ export function useExecutionCreateActions({
         selectedSkillDisplayName?.includes('合同');
 
       if (isContractSkill) {
+        const legalProfile = getEnterpriseLegalProfile();
+        if (legalProfile && legalProfile.legalEntityName) {
+          normalizedInput = {
+            ...normalizedInput,
+            legalEntityName: normalizedInput.legalEntityName || legalProfile.legalEntityName,
+            aliases: normalizedInput.aliases || legalProfile.aliases,
+            creditCode: normalizedInput.creditCode || legalProfile.creditCode,
+            defaultContractRole: normalizedInput.defaultContractRole || legalProfile.defaultContractRole,
+          };
+        }
+
         const rawCheckpoints = normalizedInput.customChecklistRules || normalizedInput.customCheckpoints;
         if (!rawCheckpoints || (Array.isArray(rawCheckpoints) && rawCheckpoints.length === 0)) {
           const activeCheckpoints = getActiveCustomCheckpoints({

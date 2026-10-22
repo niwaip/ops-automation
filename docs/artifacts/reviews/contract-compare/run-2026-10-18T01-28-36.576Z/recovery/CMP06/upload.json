@@ -1,0 +1,20 @@
+[
+  {
+    "fileId": "file-1792287199518-ca1kljhyj",
+    "fileName": "CMP06_A.docx",
+    "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "size": 37243,
+    "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792287199518-ca1kljhyj-CMP06_A.docx",
+    "url": "/api/ai/chat/files/file-1792287199518-ca1kljhyj?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792288999.aad660dd740397ef524ec57a3c8367ffcfbcc6922d5733eceeb281c8af415986",
+    "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792288999.aad660dd740397ef524ec57a3c8367ffcfbcc6922d5733eceeb281c8af415986"
+  },
+  {
+    "fileId": "file-1792287199523-kjio1ymhs",
+    "fileName": "CMP06_B.docx",
+    "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "size": 37244,
+    "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792287199523-kjio1ymhs-CMP06_B.docx",
+    "url": "/api/ai/chat/files/file-1792287199523-kjio1ymhs?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792288999.2ab461676e1a1f54f14fc2d26e9759a72e07eb787784f4a22a747df3eb7ac6e1",
+    "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792288999.2ab461676e1a1f54f14fc2d26e9759a72e07eb787784f4a22a747df3eb7ac6e1"
+  }
+]

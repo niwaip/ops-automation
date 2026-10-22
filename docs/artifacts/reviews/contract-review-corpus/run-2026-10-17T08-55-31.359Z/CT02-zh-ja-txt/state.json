@@ -1,0 +1,14 @@
+{
+  "id": "CT02-zh-ja-txt",
+  "caseId": "CT02-zh-ja",
+  "business": "saas",
+  "language": "zh-ja",
+  "format": "txt",
+  "file": "contracts/saas/CT02-zh-ja.txt",
+  "fixtureSha256": "414767407b590b17645a0769cd78c84e1460cab2585a52e4e7b10718c4a938e0",
+  "status": "error",
+  "startedAt": "2026-10-17T08:55:43.178Z",
+  "error": "Login HTTP 429",
+  "wallMs": 4,
+  "finishedAt": "2026-10-17T08:55:43.182Z"
+}

@@ -1,0 +1,23 @@
+{
+  "message": "这是需要审查的合同附件，我方为买方，请继续。",
+  "sessionId": "crw-C04-1792165292982",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "config": {
+    "mode": "task",
+    "thinking": true,
+    "webSearch": false,
+    "workspaceSearch": false
+  },
+  "executionId": "506708c6-8403-4acc-9eda-5218ea576d51",
+  "files": [
+    {
+      "fileId": "file-1792165300724-n7mzk6r6i",
+      "fileName": "contract-a.docx",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "size": 1232,
+      "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792165300724-n7mzk6r6i-contract-a.docx",
+      "url": "/api/ai/chat/files/file-1792165300724-n7mzk6r6i?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792167100.fe1d86c5a94bce6c622c78c3627fb27907ae80756a864b06facf975d76b2cad2",
+      "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792167100.fe1d86c5a94bce6c622c78c3627fb27907ae80756a864b06facf975d76b2cad2"
+    }
+  ]
+}

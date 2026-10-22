@@ -1,0 +1,15 @@
+{
+  "startedAt": "2026-10-18T01:32:11.592Z",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "expectedModel": "qwen36-35b-a3b",
+  "concurrency": 2,
+  "sourceDigests": {
+    "builtin-skills/platform.document.contract-comparator/manifest.yaml": "285f973ad1c0334ee6d67c6753971492f8e2af705dd684665fcecc7b5c2faee2",
+    "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-compare-orchestrator.ts": "387f938b57b0488de67b5ce12bfad8efbeb0169a1a62141c2f639c950712eb66",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-compare.service.ts": "e35ee36b9c80ae70b2a4855518862ecfc4c011e98171e78eb28d55766b50c8f3",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-compare/contract-ast-parser.service.ts": "b238b602b096f70b1773a987105b97cc5a5e0eca48605db0ad61355a1cafaa7b"
+  },
+  "manifestDigest": "3c9f467181bd59871ceed6231ff85bb749c94cee0aae5762ea949dcb4b95d3e6",
+  "entry": "authenticated upload + work/task SSE API",
+  "scope": "not browser UI E2E"
+}

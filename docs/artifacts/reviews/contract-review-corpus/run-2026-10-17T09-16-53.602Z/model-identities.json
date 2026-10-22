@@ -1,0 +1,17 @@
+{
+  "source": "authenticated GET /ai/models verified during this task; identity fields only",
+  "models": [
+    {
+      "id": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "name": "qwen36-35b-a3b",
+      "provider": "local",
+      "status": "active"
+    },
+    {
+      "id": "ae03ac58-9e4c-4344-8d8b-3c13bea558aa",
+      "name": "gemini-3.8-flash-high",
+      "provider": "local",
+      "status": "active"
+    }
+  ]
+}

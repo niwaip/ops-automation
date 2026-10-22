@@ -110,7 +110,7 @@ describe('End-to-End Scanned PDF Extraction, Legal Review and Redline Comparison
       myPosition: 'buyer',
     });
 
-    expect(result.summary).toContain('合同智能合规审查与风险诊断完成');
+    expect(result.summary).toMatch(/合同智能合规审查(?:已完成|与风险诊断完成)/);
     expect(result.contractType).toBe('software_development');
     expect(result.contractTypeName).toContain('软件定制研发');
     expect(result.clauses.length).toBeGreaterThanOrEqual(6);

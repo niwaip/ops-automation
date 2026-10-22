@@ -1,0 +1,352 @@
+{
+  "id": "CT01-zh-ja-docx",
+  "caseId": "CT01-zh-ja",
+  "business": "procurement",
+  "language": "zh-ja",
+  "format": "docx",
+  "file": "contracts/procurement/CT01-zh-ja.docx",
+  "fixtureSha256": "0a9570336a306adb01227ac24e1256ab4ee153ea39976e368d3dbac6e54b3ad0",
+  "status": "failed",
+  "startedAt": "2026-10-17T09:17:01.413Z",
+  "uploadMs": 9,
+  "sessionId": "corpus-CT01-zh-ja-docx-1792228621424",
+  "executionId": "faf98f05-1089-4479-ac46-60f9c93a2072",
+  "traceIds": [
+    "987d27a0-286e-4e92-a8d4-55ec27295d79"
+  ],
+  "chatMs": 3093,
+  "firstEventMs": 60,
+  "streamError": null,
+  "executionStatus": "succeeded",
+  "actualCapabilities": [
+    "platform.document.contract-reviewer"
+  ],
+  "semanticTopics": 3,
+  "topicsWithoutRiskSignal": [
+    "risk_acceptance",
+    "risk_prepayment",
+    "risk_asymmetric_liability"
+  ],
+  "metrics": {
+    "warnings": [],
+    "passCount": 2,
+    "isDegraded": false,
+    "healthScore": 79,
+    "isTruncated": false,
+    "lowRiskCount": 0,
+    "totalClauses": 2,
+    "highRiskCount": 0,
+    "mediumRiskCount": 0,
+    "llmReviewedCount": 2,
+    "missingClausesCount": 2,
+    "unfilledBlanksTotal": 0,
+    "degradedClausesCount": 0,
+    "unfilledVariablesCount": 0
+  },
+  "contractType": "procurement",
+  "myPosition": "buyer",
+  "observedUsage": [
+    {
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 745,
+      "outputTokens": 88
+    }
+  ],
+  "assertions": [
+    {
+      "name": "upload returned attachment",
+      "passed": true,
+      "actual": null,
+      "category": "UPLOAD"
+    },
+    {
+      "name": "chat HTTP success",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE finished",
+      "passed": true,
+      "actual": "done",
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "contract skill executed",
+      "passed": true,
+      "actual": [
+        "platform.document.contract-reviewer"
+      ],
+      "category": "ROUTING"
+    },
+    {
+      "name": "persistent execution succeeded",
+      "passed": true,
+      "actual": "succeeded",
+      "category": "STATE"
+    },
+    {
+      "name": "structured output exists",
+      "passed": true,
+      "actual": null,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "all eight article markers covered",
+      "passed": false,
+      "actual": [
+        "CT01-zh-ja-A01",
+        "CT01-zh-ja-A02",
+        "CT01-zh-ja-A03",
+        "CT01-zh-ja-A04",
+        "CT01-zh-ja-A05",
+        "CT01-zh-ja-A06",
+        "CT01-zh-ja-A07"
+      ],
+      "category": "PARSE"
+    },
+    {
+      "name": "every source article language retained",
+      "passed": false,
+      "actual": [
+        {
+          "marker": "CT01-zh-ja-A01",
+          "language": "zh"
+        },
+        {
+          "marker": "CT01-zh-ja-A01",
+          "language": "ja"
+        },
+        {
+          "marker": "CT01-zh-ja-A02",
+          "language": "zh"
+        },
+        {
+          "marker": "CT01-zh-ja-A02",
+          "language": "ja"
+        },
+        {
+          "marker": "CT01-zh-ja-A03",
+          "language": "zh"
+        },
+        {
+          "marker": "CT01-zh-ja-A03",
+          "language": "ja"
+        },
+        {
+          "marker": "CT01-zh-ja-A04",
+          "language": "zh"
+        },
+        {
+          "marker": "CT01-zh-ja-A04",
+          "language": "ja"
+        },
+        {
+          "marker": "CT01-zh-ja-A05",
+          "language": "zh"
+        },
+        {
+          "marker": "CT01-zh-ja-A05",
+          "language": "ja"
+        },
+        {
+          "marker": "CT01-zh-ja-A06",
+          "language": "zh"
+        },
+        {
+          "marker": "CT01-zh-ja-A06",
+          "language": "ja"
+        },
+        {
+          "marker": "CT01-zh-ja-A07",
+          "language": "zh"
+        },
+        {
+          "marker": "CT01-zh-ja-A07",
+          "language": "ja"
+        }
+      ],
+      "category": "PARSE"
+    },
+    {
+      "name": "clause indices unique",
+      "passed": true,
+      "actual": [
+        0,
+        1
+      ],
+      "category": "OUTPUT"
+    },
+    {
+      "name": "metrics consistent",
+      "passed": true,
+      "actual": {
+        "warnings": [],
+        "passCount": 2,
+        "isDegraded": false,
+        "healthScore": 79,
+        "isTruncated": false,
+        "lowRiskCount": 0,
+        "totalClauses": 2,
+        "highRiskCount": 0,
+        "mediumRiskCount": 0,
+        "llmReviewedCount": 2,
+        "missingClausesCount": 2,
+        "unfilledBlanksTotal": 0,
+        "degradedClausesCount": 0,
+        "unfilledVariablesCount": 0
+      },
+      "category": "OUTPUT"
+    },
+    {
+      "name": "score in range",
+      "passed": true,
+      "actual": 79,
+      "category": "OUTPUT"
+    },
+    {
+      "name": "semantic review complete",
+      "passed": true,
+      "actual": {
+        "reviewed": 2,
+        "total": 2,
+        "warnings": []
+      },
+      "category": "SEMANTIC_COMPLETENESS"
+    },
+    {
+      "name": "not truncated",
+      "passed": true,
+      "actual": false,
+      "category": "PARSE"
+    },
+    {
+      "name": "business model ledger present",
+      "passed": true,
+      "actual": 1,
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "requested model actually used",
+      "passed": true,
+      "actual": [
+        "qwen36-35b-a3b"
+      ],
+      "category": "MODEL"
+    },
+    {
+      "name": "requested party role retained",
+      "passed": false,
+      "actual": {
+        "expected": "buyer",
+        "actual": "buyer",
+        "source": "default"
+      },
+      "category": "POSITION"
+    },
+    {
+      "name": "original artifact URL downloads HTML",
+      "passed": true,
+      "actual": {
+        "url": "http://192.168.100.143:3009/renders/26f5aa195161fba491423699328e54f8.html",
+        "status": 200,
+        "bytes": 232283,
+        "sha256": "d79b4abe78c6b93b7797e0bde29463f83b9bcb2aea6fb2e7c5463863796da063",
+        "html": true
+      },
+      "category": "DELIVERY"
+    }
+  ],
+  "failures": [
+    {
+      "name": "all eight article markers covered",
+      "passed": false,
+      "actual": [
+        "CT01-zh-ja-A01",
+        "CT01-zh-ja-A02",
+        "CT01-zh-ja-A03",
+        "CT01-zh-ja-A04",
+        "CT01-zh-ja-A05",
+        "CT01-zh-ja-A06",
+        "CT01-zh-ja-A07"
+      ],
+      "category": "PARSE"
+    },
+    {
+      "name": "every source article language retained",
+      "passed": false,
+      "actual": [
+        {
+          "marker": "CT01-zh-ja-A01",
+          "language": "zh"
+        },
+        {
+          "marker": "CT01-zh-ja-A01",
+          "language": "ja"
+        },
+        {
+          "marker": "CT01-zh-ja-A02",
+          "language": "zh"
+        },
+        {
+          "marker": "CT01-zh-ja-A02",
+          "language": "ja"
+        },
+        {
+          "marker": "CT01-zh-ja-A03",
+          "language": "zh"
+        },
+        {
+          "marker": "CT01-zh-ja-A03",
+          "language": "ja"
+        },
+        {
+          "marker": "CT01-zh-ja-A04",
+          "language": "zh"
+        },
+        {
+          "marker": "CT01-zh-ja-A04",
+          "language": "ja"
+        },
+        {
+          "marker": "CT01-zh-ja-A05",
+          "language": "zh"
+        },
+        {
+          "marker": "CT01-zh-ja-A05",
+          "language": "ja"
+        },
+        {
+          "marker": "CT01-zh-ja-A06",
+          "language": "zh"
+        },
+        {
+          "marker": "CT01-zh-ja-A06",
+          "language": "ja"
+        },
+        {
+          "marker": "CT01-zh-ja-A07",
+          "language": "zh"
+        },
+        {
+          "marker": "CT01-zh-ja-A07",
+          "language": "ja"
+        }
+      ],
+      "category": "PARSE"
+    },
+    {
+      "name": "requested party role retained",
+      "passed": false,
+      "actual": {
+        "expected": "buyer",
+        "actual": "buyer",
+        "source": "default"
+      },
+      "category": "POSITION"
+    }
+  ],
+  "semanticStatus": "pending_independent_review",
+  "wallMs": 3145,
+  "finishedAt": "2026-10-17T09:17:04.558Z"
+}

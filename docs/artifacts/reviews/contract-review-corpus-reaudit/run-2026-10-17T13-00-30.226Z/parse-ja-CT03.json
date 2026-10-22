@@ -1,0 +1,448 @@
+{
+  "status": 200,
+  "data": {
+    "success": true,
+    "output": {
+      "contractType": "nda",
+      "contractTypeName": "商业保密协议 (NDA)",
+      "myPosition": "buyer",
+      "positionSource": "user_confirmed",
+      "fileName": "CT03-ja.docx",
+      "fullText": "相互秘密保持契約書\n契約番号 CT03-ja\n甲：星橋契約テスト有限公司\n乙：青空テスト株式会社\n締結日：2026年12月1日\n\n[CT03-ja-A01]\n目的：双方は共同研究開発の評価のためにのみ情報を交換する。本契約は購入、出資又は知的財産権譲渡の約束を構成しない。\n\n[CT03-ja-A02]\n定義：秘密情報とは秘密である旨を表示した書面情報及び口頭開示後30日以内に書面確認された情報をいう。\n\n[CT03-ja-A03]\n除外：公知情報、受領者が適法に保有する情報、独自開発情報又は権限ある第三者から適法に取得した情報は対象外とする。\n\n[CT03-ja-A04]\n使用：受領者は評価目的に限り情報を使用し、必要性があり同等の秘密保持義務を負う者にのみ開示できる。\n\n[CT03-ja-A05]\n強制開示：法令上開示が必要な場合、受領者は法令が許す範囲で事前通知し、開示を必要な範囲に限定する。\n\n[CT03-ja-A06]\n返還：評価終了後30日以内に資料を返還又は削除する。法定保存資料及び即時削除できないバックアップには秘密保持義務が存続する。\n\n[CT03-ja-A07]\n期間及び責任：一般情報は3年間、営業秘密は秘密性が存続する間保護する。違反当事者は立証された直接損害を賠償する。\n\n[CT03-ja-A08]\n言語及び紛争：両言語に不一致がある場合は中国語を優先する。中国法を準拠法とし、上海市浦東新区人民法院で解決する。\n甲代表：星橋試験担当     乙代表：青空試験担当",
+      "sourceDocumentVersion": "sha256:1730db60eca88f46f4446b16aea928563b3fe7875fdfcd2a1161804d7ae366a3",
+      "sourceDocumentHash": "1730db60eca88f46f4446b16aea928563b3fe7875fdfcd2a1161804d7ae366a3",
+      "parsedClauses": [
+        {
+          "clauseIndex": 0,
+          "clauseNumber": "前言",
+          "title": "合同引言与主体信息",
+          "originalContent": "相互秘密保持契約書\n契約番号 CT03-ja\n甲：星橋契約テスト有限公司\n乙：青空テスト株式会社\n締結日：2026年12月1日",
+          "chapterNumber": "前言",
+          "chapterTitle": "合同引言与签约主体",
+          "blocks": [
+            {
+              "id": "blk-1",
+              "type": "paragraph",
+              "primaryText": "相互秘密保持契約書",
+              "primaryHtml": "相互秘密保持契約書",
+              "isBold": false,
+              "hasUnderline": false,
+              "alignment": "left"
+            },
+            {
+              "id": "blk-2",
+              "type": "bilingual_pair",
+              "primaryText": "契約番号 CT03-ja",
+              "secondaryText": "甲：星橋契約テスト有限公司",
+              "primaryHtml": "契約番号 CT03-ja",
+              "secondaryHtml": "甲：星橋契約テスト有限公司",
+              "primaryLang": "zh",
+              "secondaryLang": "ja",
+              "isBold": false,
+              "hasUnderline": false
+            },
+            {
+              "id": "blk-3",
+              "type": "paragraph",
+              "primaryText": "乙：青空テスト株式会社",
+              "primaryHtml": "乙：青空テスト株式会社",
+              "isBold": false,
+              "hasUnderline": false,
+              "alignment": "left"
+            },
+            {
+              "id": "blk-4",
+              "type": "paragraph",
+              "primaryText": "締結日：2026年12月1日",
+              "primaryHtml": "締結日：2026年12月1日",
+              "isBold": false,
+              "hasUnderline": false,
+              "alignment": "left"
+            }
+          ],
+          "formIntegrity": {
+            "status": "WARNING",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [
+              "甲方（或首要签约方）身份主体标识",
+              "乙方（或相对签约方）身份主体标识",
+              "签约方注册住所/法定地址信息",
+              "统一社会信用代码/企业注册代码"
+            ],
+            "formatIssues": [],
+            "summary": "⚠️ 签约主体信息不完整，缺少：甲方（或首要签约方）身份主体标识、乙方（或相对签约方）身份主体标识。"
+          },
+          "facts": {},
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 1,
+          "clauseNumber": "第1条",
+          "title": "[CT03-ja-A01]",
+          "titleJa": "目的：双方は共同研究開発の評価のためにのみ情報を交換する。本契約は購入、出資又は知的財産権譲渡の約束を構成しない。",
+          "originalContent": "[CT03-ja-A01]\n目的：双方は共同研究開発の評価のためにのみ情報を交換する。本契約は購入、出資又は知的財産権譲渡の約束を構成しない。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-5",
+              "type": "heading",
+              "primaryText": "[CT03-ja-A01]",
+              "primaryHtml": "<strong>第1条 [CT03-ja-A01]</strong>",
+              "secondaryText": "目的：双方は共同研究開発の評価のためにのみ情報を交換する。本契約は購入、出資又は知的財産権譲渡の約束を構成しない。",
+              "secondaryHtml": "目的：双方は共同研究開発の評価のためにのみ情報を交換する。本契約は購入、出資又は知的財産権譲渡の約束を構成しない。",
+              "isBold": true
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {},
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 2,
+          "clauseNumber": "第2条",
+          "title": "[CT03-ja-A02]",
+          "titleJa": "定義：秘密情報とは秘密である旨を表示した書面情報及び口頭開示後30日以内に書面確認された情報をいう。",
+          "originalContent": "[CT03-ja-A02]\n定義：秘密情報とは秘密である旨を表示した書面情報及び口頭開示後30日以内に書面確認された情報をいう。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-6",
+              "type": "heading",
+              "primaryText": "[CT03-ja-A02]",
+              "primaryHtml": "<strong>第2条 [CT03-ja-A02]</strong>",
+              "secondaryText": "定義：秘密情報とは秘密である旨を表示した書面情報及び口頭開示後30日以内に書面確認された情報をいう。",
+              "secondaryHtml": "定義：秘密情報とは秘密である旨を表示した書面情報及び口頭開示後30日以内に書面確認された情報をいう。",
+              "isBold": true
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {},
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 3,
+          "clauseNumber": "第3条",
+          "title": "[CT03-ja-A03]",
+          "titleJa": "除外：公知情報、受領者が適法に保有する情報、独自開発情報又は権限ある第三者から適法に取得した情報は対象外とする。",
+          "originalContent": "[CT03-ja-A03]\n除外：公知情報、受領者が適法に保有する情報、独自開発情報又は権限ある第三者から適法に取得した情報は対象外とする。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-7",
+              "type": "heading",
+              "primaryText": "[CT03-ja-A03]",
+              "primaryHtml": "<strong>第3条 [CT03-ja-A03]</strong>",
+              "secondaryText": "除外：公知情報、受領者が適法に保有する情報、独自開発情報又は権限ある第三者から適法に取得した情報は対象外とする。",
+              "secondaryHtml": "除外：公知情報、受領者が適法に保有する情報、独自開発情報又は権限ある第三者から適法に取得した情報は対象外とする。",
+              "isBold": true
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {},
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 4,
+          "clauseNumber": "第4条",
+          "title": "[CT03-ja-A04]",
+          "titleJa": "使用：受領者は評価目的に限り情報を使用し、必要性があり同等の秘密保持義務を負う者にのみ開示できる。",
+          "originalContent": "[CT03-ja-A04]\n使用：受領者は評価目的に限り情報を使用し、必要性があり同等の秘密保持義務を負う者にのみ開示できる。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-8",
+              "type": "heading",
+              "primaryText": "[CT03-ja-A04]",
+              "primaryHtml": "<strong>第4条 [CT03-ja-A04]</strong>",
+              "secondaryText": "使用：受領者は評価目的に限り情報を使用し、必要性があり同等の秘密保持義務を負う者にのみ開示できる。",
+              "secondaryHtml": "使用：受領者は評価目的に限り情報を使用し、必要性があり同等の秘密保持義務を負う者にのみ開示できる。",
+              "isBold": true
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {},
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 5,
+          "clauseNumber": "第5条",
+          "title": "[CT03-ja-A05]",
+          "titleJa": "強制開示：法令上開示が必要な場合、受領者は法令が許す範囲で事前通知し、開示を必要な範囲に限定する。",
+          "originalContent": "[CT03-ja-A05]\n強制開示：法令上開示が必要な場合、受領者は法令が許す範囲で事前通知し、開示を必要な範囲に限定する。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-9",
+              "type": "heading",
+              "primaryText": "[CT03-ja-A05]",
+              "primaryHtml": "<strong>第5条 [CT03-ja-A05]</strong>",
+              "secondaryText": "強制開示：法令上開示が必要な場合、受領者は法令が許す範囲で事前通知し、開示を必要な範囲に限定する。",
+              "secondaryHtml": "強制開示：法令上開示が必要な場合、受領者は法令が許す範囲で事前通知し、開示を必要な範囲に限定する。",
+              "isBold": true
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {},
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 6,
+          "clauseNumber": "第6条",
+          "title": "[CT03-ja-A06]",
+          "titleJa": "返還：評価終了後30日以内に資料を返還又は削除する。法定保存資料及び即時削除できないバックアップには秘密保持義務が存続する。",
+          "originalContent": "[CT03-ja-A06]\n返還：評価終了後30日以内に資料を返還又は削除する。法定保存資料及び即時削除できないバックアップには秘密保持義務が存続する。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-10",
+              "type": "heading",
+              "primaryText": "[CT03-ja-A06]",
+              "primaryHtml": "<strong>第6条 [CT03-ja-A06]</strong>",
+              "secondaryText": "返還：評価終了後30日以内に資料を返還又は削除する。法定保存資料及び即時削除できないバックアップには秘密保持義務が存続する。",
+              "secondaryHtml": "返還：評価終了後30日以内に資料を返還又は削除する。法定保存資料及び即時削除できないバックアップには秘密保持義務が存続する。",
+              "isBold": true
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {},
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 7,
+          "clauseNumber": "第7条",
+          "title": "[CT03-ja-A07]",
+          "titleJa": "期間及び責任：一般情報は3年間、営業秘密は秘密性が存続する間保護する。違反当事者は立証された直接損害を賠償する。",
+          "originalContent": "[CT03-ja-A07]\n期間及び責任：一般情報は3年間、営業秘密は秘密性が存続する間保護する。違反当事者は立証された直接損害を賠償する。",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-11",
+              "type": "heading",
+              "primaryText": "[CT03-ja-A07]",
+              "primaryHtml": "<strong>第7条 [CT03-ja-A07]</strong>",
+              "secondaryText": "期間及び責任：一般情報は3年間、営業秘密は秘密性が存続する間保護する。違反当事者は立証された直接損害を賠償する。",
+              "secondaryHtml": "期間及び責任：一般情報は3年間、営業秘密は秘密性が存続する間保護する。違反当事者は立証された直接損害を賠償する。",
+              "isBold": true
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {},
+          "matchedRules": [],
+          "candidateRules": []
+        },
+        {
+          "clauseIndex": 8,
+          "clauseNumber": "第8条",
+          "title": "[CT03-ja-A08]",
+          "titleJa": "言語及び紛争：両言語に不一致がある場合は中国語を優先する。中国法を準拠法とし、上海市浦東新区人民法院で解決する。",
+          "originalContent": "[CT03-ja-A08]\n言語及び紛争：両言語に不一致がある場合は中国語を優先する。中国法を準拠法とし、上海市浦東新区人民法院で解決する。\n甲代表：星橋試験担当     乙代表：青空試験担当",
+          "chapterNumber": "正文",
+          "chapterTitle": "合同正文条款",
+          "blocks": [
+            {
+              "id": "blk-12",
+              "type": "heading",
+              "primaryText": "[CT03-ja-A08]",
+              "primaryHtml": "<strong>第8条 [CT03-ja-A08]</strong>",
+              "secondaryText": "言語及び紛争：両言語に不一致がある場合は中国語を優先する。中国法を準拠法とし、上海市浦東新区人民法院で解決する。",
+              "secondaryHtml": "言語及び紛争：両言語に不一致がある場合は中国語を優先する。中国法を準拠法とし、上海市浦東新区人民法院で解決する。",
+              "isBold": true
+            },
+            {
+              "id": "blk-13",
+              "type": "paragraph",
+              "primaryText": "甲代表：星橋試験担当     乙代表：青空試験担当",
+              "primaryHtml": "甲代表：星橋試験担当     乙代表：青空試験担当",
+              "isBold": false,
+              "hasUnderline": false,
+              "alignment": "left"
+            }
+          ],
+          "formIntegrity": {
+            "status": "PASS",
+            "unfilledVariables": [],
+            "unfilledBlanksCount": 0,
+            "missingEntities": [],
+            "formatIssues": [],
+            "summary": "形式要件规范，未检测到未替换变量或待填空白。"
+          },
+          "facts": {},
+          "matchedRules": [],
+          "candidateRules": []
+        }
+      ],
+      "availableRules": [
+        {
+          "id": "comm_dispute_unfavorable_forum",
+          "elementId": "comm_dispute_unfavorable_forum",
+          "elementCode": "COMM-01",
+          "title": "争议司法管辖约定对我方不利",
+          "category": "DISPUTE_AND_GOVERNING",
+          "severity": "HIGH",
+          "riskSummary": "约定由对方所在地法院管辖，一旦发生争议我方将面临高昂的异地诉讼维权成本与潜在地方司法保护阻力。",
+          "legalAdvice": "建议约定由“原告所在地（我方住所地）人民法院”管辖，或选择中立权威仲裁委员会解决。",
+          "recommendedRevision": "由原告所在地有管辖权的人民法院管辖",
+          "criterion": "争议司法管辖约定对我方不利"
+        },
+        {
+          "id": "comm_excessive_damages_scope",
+          "elementId": "comm_excessive_damages_scope",
+          "elementCode": "COMM-02",
+          "title": "违约赔偿范围包含不确定的间接损失或惩罚性赔偿",
+          "category": "LIABILITY_AND_REMEDY",
+          "severity": "HIGH",
+          "riskSummary": "约定了承担惩罚性或全部间接/可得利益损失赔偿，在轻微违约情形下可能面临远超合同交易价值的巨额索赔敞口。",
+          "legalAdvice": "建议以因违约直接造成的“直接实际财产损失”为限，明确排除间接损失、利润损失及商誉损失。",
+          "recommendedRevision": "赔偿因违约行为直接造成的实际财产损失（明确不包含任何间接损失、利润损失或可得利益损失）",
+          "criterion": "违约赔偿范围包含不确定的间接损失或惩罚性赔偿"
+        },
+        {
+          "id": "nda_perpetual_duration",
+          "elementId": "nda_perpetual_duration",
+          "elementCode": "NDA-01",
+          "title": "保密期限永久且未区分一般信息与商业秘密",
+          "category": "CONFIDENTIALITY",
+          "severity": "HIGH",
+          "riskSummary": "对全部一般商业信息要求无期限/永久承担保密义务，剥夺了普通信息生命周期结束后的合理使用权，形成无限期法律风险敞口。",
+          "legalAdvice": "建议落实双轨区分：一般商业信息限制为合理期限（2~3 年）；仅依法成立的商业秘密在存续期内持续受保护。",
+          "recommendedRevision": "自披露之日起算，有效期为 3 年；依法属于商业秘密的信息在其合法保持秘密状态期间持续有效",
+          "criterion": "保密期限永久且未区分一般信息与商业秘密"
+        },
+        {
+          "id": "nda_overbroad_scope",
+          "elementId": "nda_overbroad_scope",
+          "elementCode": "NDA-02",
+          "title": "保密信息定义过于宽泛且未约定明确标记程序",
+          "category": "CONFIDENTIALITY",
+          "severity": "MEDIUM",
+          "riskSummary": "保密信息缺乏客观的书面标记或口头书面确认程序，极易导致日常工作沟通信息被随意归为机密并主张泄密侵权。",
+          "legalAdvice": "建议增加程序限制：书面材料应标注“保密”字样；口头信息须在披露后 10 个工作日内以书面形式补充确认。",
+          "recommendedRevision": "【建议补充增设】：以书面或电子形式提供的保密信息应标明“保密”或“机密”；以口头方式披露的，应在披露后 10 个工作日内向接收方出具书面确认备忘录。",
+          "criterion": "保密信息定义过于宽泛且未约定明确标记程序"
+        },
+        {
+          "id": "nda_strict_duty_of_care",
+          "elementId": "nda_strict_duty_of_care",
+          "elementCode": "NDA-03",
+          "title": "过严或不切实际的绝对化注意义务",
+          "category": "CONFIDENTIALITY",
+          "severity": "MEDIUM",
+          "riskSummary": "约定了“绝对安全”或“最高标准”等绝对结果义务，实质上将不可归责于接收方的黑客攻击或第三方极端风险全部转嫁。",
+          "legalAdvice": "建议修正为不低于保护自身同等重要机密的商业合理注意标准（且不低于合理的商业安全措施）。",
+          "recommendedRevision": "采取不低于保护自身同等重要商业秘密的谨慎与合理注意措施（且在任何情况下不低于合理的商业安全标准）",
+          "criterion": "过严或不切实际的绝对化注意义务"
+        }
+      ],
+      "missingClauses": [
+        {
+          "id": "missing_dispute_resolution",
+          "elementId": "missing_dispute_resolution",
+          "elementCode": "COMM-05",
+          "title": "缺失明确的争议解决与管辖条款",
+          "category": "DISPUTE_AND_GOVERNING",
+          "severity": "HIGH",
+          "reason": "合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。",
+          "recommendedClause": "本协议的订立、效力、解释及争议解决均适用中华人民共和国法律。因本协议引起的任何争议，双方应友好协商；协商不成的，任何一方均有权向原告所在地有管辖权的人民法院提起诉讼。"
+        },
+        {
+          "id": "missing_nda_exceptions",
+          "elementId": "missing_nda_exceptions",
+          "elementCode": "NDA-04",
+          "title": "缺失法定披露与保密除外情形 (严重风控漏洞)",
+          "category": "CONFIDENTIALITY",
+          "severity": "HIGH",
+          "reason": "保密协议缺少除外情形约定，意味着即使信息已成为公众周知或司法机关强制调取，我方依然承担保密违约责任，极其危险。",
+          "recommendedClause": "保密信息不包括以下情形：(1) 在披露前已为接收方合法知悉的信息；(2) 非因接收方过错而已为公众合法知悉的信息；(3) 接收方从对其不负保密义务的第三方合法获得的信息；(4) 接收方未使用披露方保密信息而独立开发形成的信息；(5) 依据法律法规、司法判决或监管部门命令依法强制披露的信息。"
+        },
+        {
+          "id": "missing_nda_return_destroy",
+          "elementId": "missing_nda_return_destroy",
+          "elementCode": "NDA-05",
+          "title": "缺失保密介质返还/销毁机制或缺乏自动备份留存例外",
+          "category": "CONFIDENTIALITY",
+          "severity": "MEDIUM",
+          "reason": "协议终止后未约定保密文档及载体的处理程序，或要求绝对物理清除导致违反企业常规数据灾备与法规审计归档合规要求。",
+          "recommendedClause": "合作终止或披露方书面要求后 10 个工作日内，接收方应返还或安全销毁保密材料。因系统常规自动数据备份机制产生的无法即时删除的电子副本，可继续留存并不再用于日常业务，在留存期内继续受本协议保密义务约束。"
+        }
+      ],
+      "comments": [],
+      "formIntegrityStats": {
+        "totalUnfilledVariables": 0,
+        "totalUnfilledBlanks": 0
+      },
+      "isTruncated": false,
+      "warnings": [],
+      "rawPrompt": "",
+      "ruleSetInfo": {
+        "ruleSetId": "contract-review/nda",
+        "ruleSetVersion": "1.0.0",
+        "ruleSetDigest": "sha256:426a5f1d00412d4c8fe87ac28f18d2dda423df38e8bcf78b29d3c59e381c769a",
+        "ruleSetName": "商业保密协议 (NDA)标准审查规则库"
+      }
+    }
+  }
+}

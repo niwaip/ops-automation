@@ -1,0 +1,20 @@
+[
+  {
+    "fileId": "file-1792287314682-2rbod5218",
+    "fileName": "CMP13_A.txt",
+    "mimeType": "text/plain",
+    "size": 639,
+    "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792287314682-2rbod5218-CMP13_A.txt",
+    "url": "/api/ai/chat/files/file-1792287314682-2rbod5218?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792289114.9d513d78c75d4580467b30fae4995672af360148110f5543c2dc23efba57d9ee",
+    "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792289114.9d513d78c75d4580467b30fae4995672af360148110f5543c2dc23efba57d9ee"
+  },
+  {
+    "fileId": "file-1792287314685-j3c41klgs",
+    "fileName": "CMP13_B.txt",
+    "mimeType": "text/plain",
+    "size": 648,
+    "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792287314685-j3c41klgs-CMP13_B.txt",
+    "url": "/api/ai/chat/files/file-1792287314685-j3c41klgs?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792289114.3c7560b5e31067bdbed797246aaa2de00ae5dd759f50989cf0e8c28124b87541",
+    "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792289114.3c7560b5e31067bdbed797246aaa2de00ae5dd759f50989cf0e8c28124b87541"
+  }
+]

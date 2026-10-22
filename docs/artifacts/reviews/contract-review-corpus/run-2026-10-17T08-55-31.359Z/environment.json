@@ -1,0 +1,17 @@
+{
+  "startedAt": "2026-10-17T08:55:31.365Z",
+  "entry": "authenticated upload + POST /ai/chat/stream config.mode=task",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "expectedModel": "qwen36-35b-a3b",
+  "concurrency": 2,
+  "caseCount": 54,
+  "gitHead": "55f4e117ecd72b2a4a40b6c18a1599ef801a2599",
+  "sourceDigests": {
+    "builtin-skills/platform.document.contract-reviewer/manifest.yaml": "e6103199bcd733090237f0870a5967913a98a2daa0f0029b06f5bf097c7e3e46",
+    "apps/backend/execution-control/control-plane/src/modules/execution/adapters/contract/contract-review-orchestrator.ts": "c89a22d1198f28ba475275bb3a2a93df3b4e8364f7c5a446b41cbeb0d4c53615",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review.service.ts": "32787d21f7d241dc13e75555f9706e444dba55d26dd5a8382913721def98ea6b",
+    "apps/backend/capabilities/document-domain/runtime-facade/contract-review/contract-review-html-renderer.service.ts": "796e935a8ffd6c923866cb449b53df2090472dd1a8a71eac999db09a7c76ee02"
+  },
+  "manifestDigest": "023d98b5af582e5b2e2d63430a6aa3a57fd36b2bcccb3626a0ec314677f1b10c",
+  "coverage": "API E2E with real provider; no browser file picker; topic flags need independent semantic review"
+}

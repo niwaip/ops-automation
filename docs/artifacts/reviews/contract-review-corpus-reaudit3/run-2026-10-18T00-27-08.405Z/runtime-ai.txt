@@ -1,0 +1,8 @@
+394:    isLikelyPageOrHeaderNoise(line) {
+415:        const lines = snippet.split('\n').map((l)=>l.trim()).filter((l)=>l.length > 0 && !this.isLikelyPageOrHeaderNoise(l));
+437:                const coercedItems = [];
+441:                            coercedItems.push(rawItem);
+445:                                coercedItems.push(parsed);
+447:                                coercedItems.push({
+456:                            coercedItems.push(itemNormalized);
+460:                normalized = coercedItems;

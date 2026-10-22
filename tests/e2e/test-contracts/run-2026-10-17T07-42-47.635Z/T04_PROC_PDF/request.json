@@ -1,0 +1,22 @@
+{
+  "message": "请审查附件中的设备采购供应协议PDF文件，我方为供货方（卖方乙方）。",
+  "sessionId": "test-t04_proc_pdf-1792223053932",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "config": {
+    "mode": "task",
+    "thinking": true,
+    "webSearch": false,
+    "workspaceSearch": false
+  },
+  "files": [
+    {
+      "fileId": "file-1792223053926-bu1rvcsfm",
+      "fileName": "procurement-contract.pdf",
+      "mimeType": "application/pdf",
+      "size": 135583,
+      "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792223053926-bu1rvcsfm-procurement-contract.pdf",
+      "url": "/api/ai/chat/files/file-1792223053926-bu1rvcsfm?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792224853.abdc607a7a2cbd37c7ad2ce8dede696b5cb94d86ac63224fc7eb95308099ed4c",
+      "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792224853.abdc607a7a2cbd37c7ad2ce8dede696b5cb94d86ac63224fc7eb95308099ed4c"
+    }
+  ]
+}

@@ -1,0 +1,137 @@
+{
+  "contractCount": 18,
+  "uploadFileCount": 54,
+  "numberedArticlesPerContract": 8,
+  "checks": [
+    {
+      "caseId": "CT01-zh",
+      "pages": 1,
+      "txtDocxPdfTextEqual": true,
+      "markers": 8,
+      "visualReview": "passed"
+    },
+    {
+      "caseId": "CT01-ja",
+      "pages": 1,
+      "txtDocxPdfTextEqual": true,
+      "markers": 8,
+      "visualReview": "passed"
+    },
+    {
+      "caseId": "CT01-zh-ja",
+      "pages": 1,
+      "txtDocxPdfTextEqual": true,
+      "markers": 8,
+      "visualReview": "passed"
+    },
+    {
+      "caseId": "CT02-zh",
+      "pages": 1,
+      "txtDocxPdfTextEqual": true,
+      "markers": 8,
+      "visualReview": "passed"
+    },
+    {
+      "caseId": "CT02-ja",
+      "pages": 1,
+      "txtDocxPdfTextEqual": true,
+      "markers": 8,
+      "visualReview": "passed"
+    },
+    {
+      "caseId": "CT02-zh-ja",
+      "pages": 1,
+      "txtDocxPdfTextEqual": true,
+      "markers": 8,
+      "visualReview": "passed"
+    },
+    {
+      "caseId": "CT03-zh",
+      "pages": 1,
+      "txtDocxPdfTextEqual": true,
+      "markers": 8,
+      "visualReview": "passed"
+    },
+    {
+      "caseId": "CT03-ja",
+      "pages": 1,
+      "txtDocxPdfTextEqual": true,
+      "markers": 8,
+      "visualReview": "passed"
+    },
+    {
+      "caseId": "CT03-zh-ja",
+      "pages": 1,
+      "txtDocxPdfTextEqual": true,
+      "markers": 8,
+      "visualReview": "passed"
+    },
+    {
+      "caseId": "CT04-zh",
+      "pages": 1,
+      "txtDocxPdfTextEqual": true,
+      "markers": 8,
+      "visualReview": "passed"
+    },
+    {
+      "caseId": "CT04-ja",
+      "pages": 1,
+      "txtDocxPdfTextEqual": true,
+      "markers": 8,
+      "visualReview": "passed"
+    },
+    {
+      "caseId": "CT04-zh-ja",
+      "pages": 1,
+      "txtDocxPdfTextEqual": true,
+      "markers": 8,
+      "visualReview": "passed"
+    },
+    {
+      "caseId": "CT05-zh",
+      "pages": 1,
+      "txtDocxPdfTextEqual": true,
+      "markers": 8,
+      "visualReview": "passed"
+    },
+    {
+      "caseId": "CT05-ja",
+      "pages": 1,
+      "txtDocxPdfTextEqual": true,
+      "markers": 8,
+      "visualReview": "passed"
+    },
+    {
+      "caseId": "CT05-zh-ja",
+      "pages": 1,
+      "txtDocxPdfTextEqual": true,
+      "markers": 8,
+      "visualReview": "passed"
+    },
+    {
+      "caseId": "CT06-zh",
+      "pages": 1,
+      "txtDocxPdfTextEqual": true,
+      "markers": 8,
+      "visualReview": "passed"
+    },
+    {
+      "caseId": "CT06-ja",
+      "pages": 1,
+      "txtDocxPdfTextEqual": true,
+      "markers": 8,
+      "visualReview": "passed"
+    },
+    {
+      "caseId": "CT06-zh-ja",
+      "pages": 1,
+      "txtDocxPdfTextEqual": true,
+      "markers": 8,
+      "visualReview": "passed"
+    }
+  ],
+  "e2eReviewExecuted": false,
+  "pdfType": "text, exported from corresponding DOCX",
+  "pdfRenderer": "bundled LibreOffice; local CJK fonts via explicit fontconfig",
+  "note": "Final page PNGs visually inspected separately; this script checks text equivalence and hashes."
+}

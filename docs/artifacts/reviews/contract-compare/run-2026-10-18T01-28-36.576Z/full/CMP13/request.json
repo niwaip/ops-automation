@@ -1,0 +1,31 @@
+{
+  "message": "请使用合同文档智能比对技能比对附件两份合同。CMP13_A.txt是基准合同A，CMP13_B.txt是修改后合同B，严格按A到B方向逐条比对。请保留全部中日文、表格和增删改内容，生成左右并排差异报告。我方为甲方（买方）。请分析变更风险。",
+  "sessionId": "compare-CMP13-1792287017777",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [
+    {
+      "fileId": "file-1792287017765-woq2bztpu",
+      "fileName": "CMP13_A.txt",
+      "mimeType": "text/plain",
+      "size": 639,
+      "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792287017765-woq2bztpu-CMP13_A.txt",
+      "url": "/api/ai/chat/files/file-1792287017765-woq2bztpu?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792288817.341d3880b0f782e657e1a80e3a983c1a27952affce09c7fa0d205d270e829f96",
+      "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792288817.341d3880b0f782e657e1a80e3a983c1a27952affce09c7fa0d205d270e829f96"
+    },
+    {
+      "fileId": "file-1792287017773-w4p77n1yz",
+      "fileName": "CMP13_B.txt",
+      "mimeType": "text/plain",
+      "size": 648,
+      "filePath": "/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads/file-1792287017773-w4p77n1yz-CMP13_B.txt",
+      "url": "/api/ai/chat/files/file-1792287017773-w4p77n1yz?ticket=d6f71c6c-b359-450d-b706-175b7c9866f2.1792288817.5dccf3920af2db7571278b2595553a2ab6a015f5ba0f59dc7f3551c313575576",
+      "ticket": "d6f71c6c-b359-450d-b706-175b7c9866f2.1792288817.5dccf3920af2db7571278b2595553a2ab6a015f5ba0f59dc7f3551c313575576"
+    }
+  ],
+  "config": {
+    "mode": "task",
+    "thinking": true,
+    "webSearch": false,
+    "workspaceSearch": false
+  }
+}

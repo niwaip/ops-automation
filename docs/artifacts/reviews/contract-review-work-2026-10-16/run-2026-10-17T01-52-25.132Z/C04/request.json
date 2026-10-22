@@ -1,0 +1,11 @@
+{
+  "message": "请审查合同并生成审查报告，我方为买方。",
+  "sessionId": "crw-C04-1792202216701",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "config": {
+    "mode": "task",
+    "thinking": true,
+    "webSearch": false,
+    "workspaceSearch": false
+  }
+}

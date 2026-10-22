@@ -6,6 +6,7 @@ import {
   CreateOrganizationDto,
   CreateTeamDto,
   UpdateDepartmentDto,
+  UpdateOrganizationLegalProfileDto,
 } from '../contracts';
 import { OrganizationService } from './organization.service';
 
@@ -86,6 +87,15 @@ export class OrganizationController {
     @Param('userId') userId: string
   ) {
     return this.organizationService.removeMember(orgId, userId);
+  }
+
+  @RequireAdmin()
+  @Put(':orgId/legal-profile')
+  async updateLegalProfile(
+    @Param('orgId') orgId: string,
+    @Body() dto: UpdateOrganizationLegalProfileDto
+  ) {
+    return this.organizationService.updateLegalProfile(orgId, dto);
   }
 }
 

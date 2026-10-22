@@ -1,0 +1,39 @@
+{
+  "status": 200,
+  "data": [
+    {
+      "id": "40e599fe-d889-4b85-8dd8-c7fc068654c2",
+      "executionId": "8b613619-7c8d-4c1d-918d-38d31afcbdf3",
+      "stepId": "d267389b-f38e-4499-98a6-24c9084cb1f7",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "gemini-3.8-flash-high",
+      "inputTokens": 824,
+      "outputTokens": 484,
+      "cachedTokens": 0,
+      "estimatedCost": "0.004552",
+      "currency": "CNY",
+      "createdAt": "2026-10-16T15:45:01.472Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "70cd4e801c61e3c676ee6782afe7ad57a280fe0e73a8515550fa9678b21738a2",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "a82f2040-d6b1-4cf2-8259-48a3671386e5",
+      "executionId": "8b613619-7c8d-4c1d-918d-38d31afcbdf3",
+      "stepId": "d267389b-f38e-4499-98a6-24c9084cb1f7",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "gemini-3.8-flash-high",
+      "inputTokens": 759,
+      "outputTokens": 333,
+      "cachedTokens": 0,
+      "estimatedCost": "0.003516",
+      "currency": "CNY",
+      "createdAt": "2026-10-16T15:45:02.592Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "fcb1a5e7c14b4288e06164a1235650cd8e39f2b47593b199ff7dd7d523c1df88",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    }
+  ]
+}

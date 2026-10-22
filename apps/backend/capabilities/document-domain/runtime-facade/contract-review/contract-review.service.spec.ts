@@ -99,6 +99,7 @@ describe('Contract Review System', () => {
         fileName: '保密协议_202605200707.docx',
         text: 'dummy text',
         myPosition: 'buyer',
+        skipLlmReview: true,
       });
 
       expect(result.contractType).toBe('nda');
@@ -912,6 +913,113 @@ describe('Contract Review System', () => {
         expect(result.htmlReport).toContain('合同文档智能深度审查报告');
         expect(result.htmlReport).toContain('contract_v1_baseline.pdf');
       }
+    });
+
+    it('should correctly normalize Chinese party positions', () => {
+      expect(engine.resolvePartyPosition('我方是乙方，也就是卖方')).toBe('seller');
+      expect(engine.resolvePartyPosition('卖方')).toBe('seller');
+      expect(engine.resolvePartyPosition('受托方')).toBe('seller');
+      expect(engine.resolvePartyPosition('供应商')).toBe('seller');
+      expect(engine.resolvePartyPosition('买方')).toBe('buyer');
+      expect(engine.resolvePartyPosition('采购方')).toBe('buyer');
+      expect(engine.resolvePartyPosition('双向中立')).toBe('neutral');
+
+      // Lease positions
+      expect(engine.resolvePartyPosition('承租方')).toBe('buyer');
+      expect(engine.resolvePartyPosition('承租人')).toBe('buyer');
+      expect(engine.resolvePartyPosition('出租方')).toBe('seller');
+      expect(engine.resolvePartyPosition('出租人')).toBe('seller');
+
+      // Development and Japanese roles
+      expect(engine.resolvePartyPosition('委托方')).toBe('buyer');
+      expect(engine.resolvePartyPosition('委託者')).toBe('buyer');
+      expect(engine.resolvePartyPosition('借主')).toBe('buyer');
+      expect(engine.resolvePartyPosition('受託者')).toBe('seller');
+      expect(engine.resolvePartyPosition('貸主')).toBe('seller');
+
+      const res = engine.resolvePartyPositionWithSource('我方是乙方，也就是卖方');
+      expect(res.position).toBe('seller');
+      expect(res.positionSource).toBe('user_confirmed');
+
+      const resB = engine.resolvePartyPositionWithSource('我们是乙方');
+      expect(resB.position).toBe('seller');
+      expect(resB.positionSource).toBe('user_confirmed');
+
+      const resA = engine.resolvePartyPositionWithSource('我们是甲方');
+      expect(resA.position).toBe('buyer');
+      expect(resA.positionSource).toBe('user_confirmed');
+
+      // Japanese preamble inference for Party A and B
+      const jaPreamble = 'ソフトウェア開発委託契約書\n甲：星橋契約テスト有限公司\n乙：青空テスト株式会社\n甲は乙に対しシステム開発を委託し、乙はこれを受託した。';
+      const resJaA = engine.resolvePartyPositionWithSource('甲', jaPreamble);
+      expect(resJaA.position).toBe('buyer');
+      expect(resJaA.positionSource).toBe('user_confirmed');
+
+      const resJaB = engine.resolvePartyPositionWithSource('乙', jaPreamble);
+      expect(resJaB.position).toBe('seller');
+      expect(resJaB.positionSource).toBe('user_confirmed');
+
+      const resDefault = engine.resolvePartyPositionWithSource(undefined, '', 'buyer');
+      expect(resDefault.position).toBe('buyer');
+      expect(resDefault.positionSource).toBe('default');
+
+      // Enterprise Entity Matching tests (Default Fujitsu / 富士通)
+      const preamblePartyB = `技术服务合同\n甲方（委托方）：北京豆包网络科技有限公司\n乙方（受托方）：富士通（中国）信息系统有限公司\n双方就系统技术服务达成如下协议...`;
+      const resFujitsuB = engine.resolvePartyPositionWithSource(undefined, preamblePartyB);
+      expect(resFujitsuB.position).toBe('seller');
+      expect(resFujitsuB.positionSource).toBe('inferred');
+
+      const preamblePartyA = `设备采购合同\n甲方（采购方）：富士通（中国）信息系统有限公司\n乙方（供货方）：联想（北京）信息技术有限公司\n双方就设备采购达成如下协议...`;
+      const resFujitsuA = engine.resolvePartyPositionWithSource(undefined, preamblePartyA);
+      expect(resFujitsuA.position).toBe('buyer');
+      expect(resFujitsuA.positionSource).toBe('inferred');
+
+      const preambleJaFujitsu = `ソフトウェア開発委託契約書\n委託者（甲）：ソニー株式会社\n受託者（乙）：富士通株式会社\n甲は乙に対し業務を委託し...`;
+      const resFujitsuJa = engine.resolvePartyPositionWithSource(undefined, preambleJaFujitsu);
+      expect(resFujitsuJa.position).toBe('seller');
+      expect(resFujitsuJa.positionSource).toBe('inferred');
+
+      // Custom entity context override
+      const customEntityPreamble = `框架合作协议\n甲方：阿里巴巴（中国）网络技术有限公司\n乙方：华为技术有限公司\n双方达成一致...`;
+      const resCustomEntity = engine.resolvePartyPositionWithSource(undefined, customEntityPreamble, 'buyer', undefined, {
+        legalEntityName: '华为技术有限公司',
+        aliases: ['华为', 'Huawei'],
+        defaultContractRole: 'seller',
+      });
+      expect(resCustomEntity.position).toBe('seller');
+      expect(resCustomEntity.positionSource).toBe('inferred');
+
+      // Three-tier resolution sequence tests:
+      // Case 1: System Company Keyword Matching (Tier 2) overrides default fallback (Tier 3)
+      const resTier2OverrideDefault = engine.resolvePartyPositionWithSource(
+        'buyer',
+        preamblePartyB,
+        'buyer',
+        'default'
+      );
+      expect(resTier2OverrideDefault.position).toBe('seller');
+      expect(resTier2OverrideDefault.positionSource).toBe('inferred');
+
+      // Case 2: User Explicit Specification (Tier 1) overrides Company Keyword Matching (Tier 2)
+      const resTier1OverrideAll = engine.resolvePartyPositionWithSource(
+        'buyer',
+        preamblePartyB,
+        'seller',
+        'user_confirmed'
+      );
+      expect(resTier1OverrideAll.position).toBe('buyer');
+      expect(resTier1OverrideAll.positionSource).toBe('user_confirmed');
+
+      // Case 3: Neither User nor Company Matched -> Mutual Detection or Default Role (Tier 3)
+      const mutualPreamble = `保密协议\n甲方：公司A\n乙方：公司B\n双方互为披露方，各自披露相关保密信息...`;
+      const resMutual = engine.resolvePartyPositionWithSource(
+        'auto',
+        mutualPreamble,
+        'buyer',
+        undefined
+      );
+      expect(resMutual.position).toBe('neutral');
+      expect(resMutual.positionSource).toBe('inferred');
     });
   });
 });

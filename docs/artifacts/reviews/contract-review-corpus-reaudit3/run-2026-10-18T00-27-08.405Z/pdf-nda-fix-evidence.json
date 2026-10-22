@@ -1,0 +1,14 @@
+[
+  {
+    "id": "CT03-zh-pdf",
+    "inputType": "nda",
+    "title": "CT03 zh",
+    "outputType": "nda"
+  },
+  {
+    "id": "CT03-zh-ja-pdf",
+    "inputType": "nda",
+    "title": "CT03 zh ja",
+    "outputType": "nda"
+  }
+]

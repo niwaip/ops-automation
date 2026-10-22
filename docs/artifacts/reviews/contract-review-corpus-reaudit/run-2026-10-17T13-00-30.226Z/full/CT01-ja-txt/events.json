@@ -1,0 +1,888 @@
+[
+  {
+    "elapsedMs": 17,
+    "event": {
+      "type": "thought",
+      "content": "正在规划任务...",
+      "seq": 1,
+      "protocolVersion": "1",
+      "sessionId": "corpus-CT01-ja-txt-1792243166501",
+      "traceId": "12b9d225-a7a6-495a-9792-0659baaff158",
+      "data": {
+        "traceId": "12b9d225-a7a6-495a-9792-0659baaff158"
+      }
+    }
+  },
+  {
+    "elapsedMs": 17,
+    "event": {
+      "type": "thought",
+      "content": "正在获取用户可用 Skill 列表并进行确定性多步骤任务拆分规划...",
+      "seq": 2,
+      "protocolVersion": "1",
+      "sessionId": "corpus-CT01-ja-txt-1792243166501",
+      "traceId": "12b9d225-a7a6-495a-9792-0659baaff158",
+      "data": {
+        "traceId": "12b9d225-a7a6-495a-9792-0659baaff158"
+      }
+    }
+  },
+  {
+    "elapsedMs": 21218,
+    "event": {
+      "type": "thought",
+      "content": "已成功冻结 1 步骤执行计划 (ID: f7586993-fd26-425c-9a43-175c3ea3de41)，控制面已按拓扑顺序调度运行。",
+      "seq": 3,
+      "protocolVersion": "1",
+      "sessionId": "corpus-CT01-ja-txt-1792243166501",
+      "traceId": "12b9d225-a7a6-495a-9792-0659baaff158",
+      "data": {
+        "traceId": "12b9d225-a7a6-495a-9792-0659baaff158"
+      }
+    }
+  },
+  {
+    "elapsedMs": 21218,
+    "event": {
+      "type": "thought",
+      "content": "已为你生成静态任务计划：\n\n1. 合同文档智能审查与合规诊断 - Skill: platform.document.contract-reviewer@1.0.2 (workflow)\n\n执行单 ID: `f7586993-fd26-425c-9a43-175c3ea3de41`。正在跟踪流程执行状态...\n",
+      "data": {
+        "executionId": "f7586993-fd26-425c-9a43-175c3ea3de41",
+        "status": "running",
+        "deterministicPlan": {
+          "objective": "请对附件这一份合同进行合同审查，我方为甲方（买方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+          "nodes": [
+            {
+              "nodeId": "n1_合同文档智能审查与合规诊断",
+              "sequence": 1,
+              "title": "合同文档智能审查与合规诊断",
+              "kind": "skill",
+              "skillId": "platform.document.contract-reviewer",
+              "skillVersion": "1.0.2",
+              "runtimeType": "workflow",
+              "executionRuntimeType": "workflow",
+              "dependsOn": [],
+              "inputBindings": {
+                "fileUrl": {
+                  "source": "user_input",
+                  "path": "fileUrl"
+                },
+                "fileName": {
+                  "source": "user_input",
+                  "path": "fileName"
+                },
+                "fileBase64": {
+                  "source": "user_input",
+                  "path": "fileBase64"
+                },
+                "downloadUrl": {
+                  "source": "user_input",
+                  "path": "downloadUrl"
+                },
+                "myPosition": {
+                  "source": "literal",
+                  "value": "甲方"
+                },
+                "contractType": {
+                  "source": "literal",
+                  "value": "general"
+                },
+                "reviewPrompt": {
+                  "source": "literal",
+                  "value": "逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。"
+                }
+              },
+              "outputContract": {
+                "clauses": "json",
+                "metrics": "json",
+                "summary": "string",
+                "artifact": "artifact_ref",
+                "artifacts": "json",
+                "htmlReport": "string",
+                "myPosition": "string",
+                "contractType": "string",
+                "missingClauses": "json",
+                "contractTypeName": "string"
+              },
+              "failurePolicy": "abort",
+              "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+            }
+          ],
+          "finalOutputs": [
+            {
+              "targetField": "result",
+              "fromNodeId": "n1_合同文档智能审查与合规诊断",
+              "fromNodeOutput": "artifact",
+              "expectedType": "artifact_ref",
+              "isArtifact": true
+            },
+            {
+              "targetField": "summary",
+              "fromNodeId": "n1_合同文档智能审查与合规诊断",
+              "fromNodeOutput": "summary",
+              "expectedType": "string",
+              "isArtifact": false
+            }
+          ]
+        },
+        "traceId": "12b9d225-a7a6-495a-9792-0659baaff158"
+      },
+      "seq": 4,
+      "protocolVersion": "1",
+      "sessionId": "corpus-CT01-ja-txt-1792243166501",
+      "traceId": "12b9d225-a7a6-495a-9792-0659baaff158"
+    }
+  },
+  {
+    "elapsedMs": 21224,
+    "event": {
+      "type": "action",
+      "content": "正在执行：platform.document.contract-reviewer",
+      "data": {
+        "stepId": "d3318784-09b4-43d7-b92e-e98e4e8303a0",
+        "traceId": "12b9d225-a7a6-495a-9792-0659baaff158"
+      },
+      "seq": 5,
+      "protocolVersion": "1",
+      "sessionId": "corpus-CT01-ja-txt-1792243166501",
+      "traceId": "12b9d225-a7a6-495a-9792-0659baaff158"
+    }
+  },
+  {
+    "elapsedMs": 38504,
+    "event": {
+      "type": "observation",
+      "content": "步骤已完成",
+      "data": {
+        "stepId": "d3318784-09b4-43d7-b92e-e98e4e8303a0",
+        "result": {
+          "summary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+          "artifactId": "5cc39dae-9382-4c70-9758-e551b1954a61",
+          "myPosition": "buyer",
+          "contractType": "general",
+          "reviewStatus": "completed",
+          "capabilityKey": "platform.document.contract-reviewer",
+          "positionSource": "user_confirmed",
+          "contractTypeName": "通用商业合作协议",
+          "htmlReportLength": 351233,
+          "capabilityVersion": "1.0.2",
+          "sourceDocumentVersion": "sha256:4388d6aeafd26ce2dca76cc05538e841a420f7a40f086db111c6a26bc44007ce"
+        },
+        "normalizedResult": {
+          "envelope": {
+            "execution": {
+              "status": "success"
+            },
+            "result": {
+              "resultType": "generic",
+              "summary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+              "businessData": {
+                "artifactId": "5cc39dae-9382-4c70-9758-e551b1954a61",
+                "myPosition": "buyer",
+                "contractType": "general",
+                "reviewStatus": "completed",
+                "capabilityKey": "platform.document.contract-reviewer",
+                "positionSource": "user_confirmed",
+                "contractTypeName": "通用商业合作协议",
+                "htmlReportLength": 351233,
+                "capabilityVersion": "1.0.2",
+                "sourceDocumentVersion": "sha256:4388d6aeafd26ce2dca76cc05538e841a420f7a40f086db111c6a26bc44007ce"
+              }
+            },
+            "artifacts": [],
+            "presentation": {
+              "preferAiSummary": false,
+              "preferStructuredView": false,
+              "summaryFormat": "plain_text",
+              "detailFormat": "plain_text"
+            }
+          },
+          "resultType": "generic",
+          "summary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+          "body": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+          "summaryFormat": "plain_text",
+          "detailText": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+          "detailFormat": "plain_text",
+          "structuredData": {
+            "artifactId": "5cc39dae-9382-4c70-9758-e551b1954a61",
+            "myPosition": "buyer",
+            "contractType": "general",
+            "reviewStatus": "completed",
+            "capabilityKey": "platform.document.contract-reviewer",
+            "positionSource": "user_confirmed",
+            "contractTypeName": "通用商业合作协议",
+            "htmlReportLength": 351233,
+            "capabilityVersion": "1.0.2",
+            "sourceDocumentVersion": "sha256:4388d6aeafd26ce2dca76cc05538e841a420f7a40f086db111c6a26bc44007ce"
+          },
+          "artifacts": [],
+          "hasBusinessResult": true,
+          "rawResult": {
+            "summary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+            "artifactId": "5cc39dae-9382-4c70-9758-e551b1954a61",
+            "myPosition": "buyer",
+            "contractType": "general",
+            "reviewStatus": "completed",
+            "capabilityKey": "platform.document.contract-reviewer",
+            "positionSource": "user_confirmed",
+            "contractTypeName": "通用商业合作协议",
+            "htmlReportLength": 351233,
+            "capabilityVersion": "1.0.2",
+            "sourceDocumentVersion": "sha256:4388d6aeafd26ce2dca76cc05538e841a420f7a40f086db111c6a26bc44007ce"
+          }
+        },
+        "traceId": "12b9d225-a7a6-495a-9792-0659baaff158"
+      },
+      "seq": 6,
+      "protocolVersion": "1",
+      "sessionId": "corpus-CT01-ja-txt-1792243166501",
+      "traceId": "12b9d225-a7a6-495a-9792-0659baaff158"
+    }
+  },
+  {
+    "elapsedMs": 38517,
+    "event": {
+      "type": "result",
+      "content": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+      "data": {
+        "_version": "1",
+        "executionId": "f7586993-fd26-425c-9a43-175c3ea3de41",
+        "status": "succeeded",
+        "hasBusinessResult": true,
+        "chatSummary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+        "summaryFormat": "markdown",
+        "title": "请对附件这一份合同进行合同审查，我方为甲方（买方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+        "businessData": {
+          "finalOutputs": [
+            {
+              "value": {
+                "id": "b7431eedb6740add663560e1837b668a",
+                "url": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+                "name": "合同合规审查报告_CT01-ja.html",
+                "type": "document",
+                "metadata": {
+                  "format": "html",
+                  "category": "contract-review-report"
+                },
+                "mimeType": "text/html; charset=utf-8",
+                "sizeBytes": 369072,
+                "downloadUrl": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html"
+              },
+              "artifact": {
+                "id": "5cc39dae-9382-4c70-9758-e551b1954a61",
+                "url": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+                "name": "合同合规审查报告_CT01-ja.html",
+                "sha256": null,
+                "mimeType": "text/html; charset=utf-8",
+                "createdAt": "2026-10-17T13:20:04.911Z",
+                "sizeBytes": "369072",
+                "executionId": "f7586993-fd26-425c-9a43-175c3ea3de41",
+                "artifactType": "document",
+                "metadataJson": {
+                  "format": "html",
+                  "category": "contract-review-report"
+                },
+                "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                "producerStepId": "d3318784-09b4-43d7-b92e-e98e4e8303a0",
+                "externalArtifactId": "b7431eedb6740add663560e1837b668a"
+              },
+              "fromNodeId": "n1_合同文档智能审查与合规诊断",
+              "isArtifact": true,
+              "targetField": "result",
+              "expectedType": "artifact_ref",
+              "fromNodeOutput": "artifact"
+            },
+            {
+              "value": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+              "artifact": {
+                "id": "5cc39dae-9382-4c70-9758-e551b1954a61",
+                "url": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+                "name": "合同合规审查报告_CT01-ja.html",
+                "sha256": null,
+                "mimeType": "text/html; charset=utf-8",
+                "createdAt": "2026-10-17T13:20:04.911Z",
+                "sizeBytes": "369072",
+                "executionId": "f7586993-fd26-425c-9a43-175c3ea3de41",
+                "artifactType": "document",
+                "metadataJson": {
+                  "format": "html",
+                  "category": "contract-review-report"
+                },
+                "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                "producerStepId": "d3318784-09b4-43d7-b92e-e98e4e8303a0",
+                "externalArtifactId": "b7431eedb6740add663560e1837b668a"
+              },
+              "fromNodeId": "n1_合同文档智能审查与合规诊断",
+              "isArtifact": false,
+              "targetField": "summary",
+              "expectedType": "string",
+              "fromNodeOutput": "summary"
+            }
+          ],
+          "capabilitiesUsed": [
+            {
+              "id": "platform.document.contract-reviewer",
+              "name": "合同文档智能审查与合规诊断",
+              "version": "1.0.2"
+            }
+          ]
+        },
+        "artifacts": [
+          {
+            "type": "document",
+            "artifactType": "document",
+            "name": "合同合规审查报告_CT01-ja.html",
+            "label": "合同合规审查报告_CT01-ja.html",
+            "downloadUrl": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+            "url": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+            "mimeType": "text/html; charset=utf-8"
+          }
+        ],
+        "downloadUrl": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+        "runtimeType": "plan",
+        "result": {
+          "result": {
+            "title": "请对附件这一份合同进行合同审查，我方为甲方（买方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+            "summary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+            "resultType": "deterministic_plan",
+            "businessData": {
+              "finalOutputs": [
+                {
+                  "value": {
+                    "id": "b7431eedb6740add663560e1837b668a",
+                    "url": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+                    "name": "合同合规审查报告_CT01-ja.html",
+                    "type": "document",
+                    "metadata": {
+                      "format": "html",
+                      "category": "contract-review-report"
+                    },
+                    "mimeType": "text/html; charset=utf-8",
+                    "sizeBytes": 369072,
+                    "downloadUrl": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html"
+                  },
+                  "artifact": {
+                    "id": "5cc39dae-9382-4c70-9758-e551b1954a61",
+                    "url": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+                    "name": "合同合规审查报告_CT01-ja.html",
+                    "sha256": null,
+                    "mimeType": "text/html; charset=utf-8",
+                    "createdAt": "2026-10-17T13:20:04.911Z",
+                    "sizeBytes": "369072",
+                    "executionId": "f7586993-fd26-425c-9a43-175c3ea3de41",
+                    "artifactType": "document",
+                    "metadataJson": {
+                      "format": "html",
+                      "category": "contract-review-report"
+                    },
+                    "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                    "producerStepId": "d3318784-09b4-43d7-b92e-e98e4e8303a0",
+                    "externalArtifactId": "b7431eedb6740add663560e1837b668a"
+                  },
+                  "fromNodeId": "n1_合同文档智能审查与合规诊断",
+                  "isArtifact": true,
+                  "targetField": "result",
+                  "expectedType": "artifact_ref",
+                  "fromNodeOutput": "artifact"
+                },
+                {
+                  "value": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+                  "artifact": {
+                    "id": "5cc39dae-9382-4c70-9758-e551b1954a61",
+                    "url": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+                    "name": "合同合规审查报告_CT01-ja.html",
+                    "sha256": null,
+                    "mimeType": "text/html; charset=utf-8",
+                    "createdAt": "2026-10-17T13:20:04.911Z",
+                    "sizeBytes": "369072",
+                    "executionId": "f7586993-fd26-425c-9a43-175c3ea3de41",
+                    "artifactType": "document",
+                    "metadataJson": {
+                      "format": "html",
+                      "category": "contract-review-report"
+                    },
+                    "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                    "producerStepId": "d3318784-09b4-43d7-b92e-e98e4e8303a0",
+                    "externalArtifactId": "b7431eedb6740add663560e1837b668a"
+                  },
+                  "fromNodeId": "n1_合同文档智能审查与合规诊断",
+                  "isArtifact": false,
+                  "targetField": "summary",
+                  "expectedType": "string",
+                  "fromNodeOutput": "summary"
+                }
+              ],
+              "capabilitiesUsed": [
+                {
+                  "id": "platform.document.contract-reviewer",
+                  "name": "合同文档智能审查与合规诊断",
+                  "version": "1.0.2"
+                }
+              ]
+            },
+            "capabilitiesUsed": [
+              {
+                "id": "platform.document.contract-reviewer",
+                "name": "合同文档智能审查与合规诊断",
+                "version": "1.0.2"
+              }
+            ]
+          },
+          "artifacts": [
+            {
+              "id": "5cc39dae-9382-4c70-9758-e551b1954a61",
+              "url": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+              "name": "合同合规审查报告_CT01-ja.html",
+              "sha256": null,
+              "mimeType": "text/html; charset=utf-8",
+              "createdAt": "2026-10-17T13:20:04.911Z",
+              "sizeBytes": "369072",
+              "executionId": "f7586993-fd26-425c-9a43-175c3ea3de41",
+              "artifactType": "document",
+              "metadataJson": {
+                "format": "html",
+                "category": "contract-review-report"
+              },
+              "producerNodeId": "n1_合同文档智能审查与合规诊断",
+              "producerStepId": "d3318784-09b4-43d7-b92e-e98e4e8303a0",
+              "externalArtifactId": "b7431eedb6740add663560e1837b668a"
+            }
+          ],
+          "execution": {
+            "status": "success",
+            "finishedAt": "2026-10-17T13:20:04.947Z",
+            "executionId": "f7586993-fd26-425c-9a43-175c3ea3de41"
+          },
+          "presentation": {
+            "detailText": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+            "chatSummary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+            "detailFormat": "markdown",
+            "summaryFormat": "markdown",
+            "preferAiSummary": false,
+            "capabilitiesUsed": [
+              {
+                "id": "platform.document.contract-reviewer",
+                "name": "合同文档智能审查与合规诊断",
+                "version": "1.0.2"
+              }
+            ],
+            "notificationSummary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+            "preferStructuredView": false
+          },
+          "capabilitiesUsed": [
+            {
+              "id": "platform.document.contract-reviewer",
+              "name": "合同文档智能审查与合规诊断",
+              "version": "1.0.2"
+            }
+          ]
+        },
+        "normalizedResult": {
+          "envelope": {
+            "result": {
+              "title": "请对附件这一份合同进行合同审查，我方为甲方（买方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+              "summary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+              "resultType": "deterministic_plan",
+              "businessData": {
+                "finalOutputs": [
+                  {
+                    "value": {
+                      "id": "b7431eedb6740add663560e1837b668a",
+                      "url": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+                      "name": "合同合规审查报告_CT01-ja.html",
+                      "type": "document",
+                      "metadata": {
+                        "format": "html",
+                        "category": "contract-review-report"
+                      },
+                      "mimeType": "text/html; charset=utf-8",
+                      "sizeBytes": 369072,
+                      "downloadUrl": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html"
+                    },
+                    "artifact": {
+                      "id": "5cc39dae-9382-4c70-9758-e551b1954a61",
+                      "url": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+                      "name": "合同合规审查报告_CT01-ja.html",
+                      "sha256": null,
+                      "mimeType": "text/html; charset=utf-8",
+                      "createdAt": "2026-10-17T13:20:04.911Z",
+                      "sizeBytes": "369072",
+                      "executionId": "f7586993-fd26-425c-9a43-175c3ea3de41",
+                      "artifactType": "document",
+                      "metadataJson": {
+                        "format": "html",
+                        "category": "contract-review-report"
+                      },
+                      "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                      "producerStepId": "d3318784-09b4-43d7-b92e-e98e4e8303a0",
+                      "externalArtifactId": "b7431eedb6740add663560e1837b668a"
+                    },
+                    "fromNodeId": "n1_合同文档智能审查与合规诊断",
+                    "isArtifact": true,
+                    "targetField": "result",
+                    "expectedType": "artifact_ref",
+                    "fromNodeOutput": "artifact"
+                  },
+                  {
+                    "value": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+                    "artifact": {
+                      "id": "5cc39dae-9382-4c70-9758-e551b1954a61",
+                      "url": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+                      "name": "合同合规审查报告_CT01-ja.html",
+                      "sha256": null,
+                      "mimeType": "text/html; charset=utf-8",
+                      "createdAt": "2026-10-17T13:20:04.911Z",
+                      "sizeBytes": "369072",
+                      "executionId": "f7586993-fd26-425c-9a43-175c3ea3de41",
+                      "artifactType": "document",
+                      "metadataJson": {
+                        "format": "html",
+                        "category": "contract-review-report"
+                      },
+                      "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                      "producerStepId": "d3318784-09b4-43d7-b92e-e98e4e8303a0",
+                      "externalArtifactId": "b7431eedb6740add663560e1837b668a"
+                    },
+                    "fromNodeId": "n1_合同文档智能审查与合规诊断",
+                    "isArtifact": false,
+                    "targetField": "summary",
+                    "expectedType": "string",
+                    "fromNodeOutput": "summary"
+                  }
+                ],
+                "capabilitiesUsed": [
+                  {
+                    "id": "platform.document.contract-reviewer",
+                    "name": "合同文档智能审查与合规诊断",
+                    "version": "1.0.2"
+                  }
+                ]
+              },
+              "capabilitiesUsed": [
+                {
+                  "id": "platform.document.contract-reviewer",
+                  "name": "合同文档智能审查与合规诊断",
+                  "version": "1.0.2"
+                }
+              ]
+            },
+            "artifacts": [
+              {
+                "type": "document",
+                "artifactType": "document",
+                "name": "合同合规审查报告_CT01-ja.html",
+                "label": "合同合规审查报告_CT01-ja.html",
+                "downloadUrl": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+                "url": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+                "mimeType": "text/html; charset=utf-8"
+              }
+            ],
+            "execution": {
+              "status": "success",
+              "finishedAt": "2026-10-17T13:20:04.947Z",
+              "executionId": "f7586993-fd26-425c-9a43-175c3ea3de41"
+            },
+            "presentation": {
+              "detailText": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+              "chatSummary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+              "detailFormat": "markdown",
+              "summaryFormat": "markdown",
+              "preferAiSummary": false,
+              "capabilitiesUsed": [
+                {
+                  "id": "platform.document.contract-reviewer",
+                  "name": "合同文档智能审查与合规诊断",
+                  "version": "1.0.2"
+                }
+              ],
+              "notificationSummary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+              "preferStructuredView": false
+            },
+            "capabilitiesUsed": [
+              {
+                "id": "platform.document.contract-reviewer",
+                "name": "合同文档智能审查与合规诊断",
+                "version": "1.0.2"
+              }
+            ]
+          },
+          "resultType": "deterministic_plan",
+          "title": "请对附件这一份合同进行合同审查，我方为甲方（买方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+          "summary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+          "body": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+          "summaryFormat": "markdown",
+          "detailText": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+          "detailFormat": "markdown",
+          "structuredData": {
+            "finalOutputs": [
+              {
+                "value": {
+                  "id": "b7431eedb6740add663560e1837b668a",
+                  "url": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+                  "name": "合同合规审查报告_CT01-ja.html",
+                  "type": "document",
+                  "metadata": {
+                    "format": "html",
+                    "category": "contract-review-report"
+                  },
+                  "mimeType": "text/html; charset=utf-8",
+                  "sizeBytes": 369072,
+                  "downloadUrl": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html"
+                },
+                "artifact": {
+                  "id": "5cc39dae-9382-4c70-9758-e551b1954a61",
+                  "url": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+                  "name": "合同合规审查报告_CT01-ja.html",
+                  "sha256": null,
+                  "mimeType": "text/html; charset=utf-8",
+                  "createdAt": "2026-10-17T13:20:04.911Z",
+                  "sizeBytes": "369072",
+                  "executionId": "f7586993-fd26-425c-9a43-175c3ea3de41",
+                  "artifactType": "document",
+                  "metadataJson": {
+                    "format": "html",
+                    "category": "contract-review-report"
+                  },
+                  "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                  "producerStepId": "d3318784-09b4-43d7-b92e-e98e4e8303a0",
+                  "externalArtifactId": "b7431eedb6740add663560e1837b668a"
+                },
+                "fromNodeId": "n1_合同文档智能审查与合规诊断",
+                "isArtifact": true,
+                "targetField": "result",
+                "expectedType": "artifact_ref",
+                "fromNodeOutput": "artifact"
+              },
+              {
+                "value": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+                "artifact": {
+                  "id": "5cc39dae-9382-4c70-9758-e551b1954a61",
+                  "url": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+                  "name": "合同合规审查报告_CT01-ja.html",
+                  "sha256": null,
+                  "mimeType": "text/html; charset=utf-8",
+                  "createdAt": "2026-10-17T13:20:04.911Z",
+                  "sizeBytes": "369072",
+                  "executionId": "f7586993-fd26-425c-9a43-175c3ea3de41",
+                  "artifactType": "document",
+                  "metadataJson": {
+                    "format": "html",
+                    "category": "contract-review-report"
+                  },
+                  "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                  "producerStepId": "d3318784-09b4-43d7-b92e-e98e4e8303a0",
+                  "externalArtifactId": "b7431eedb6740add663560e1837b668a"
+                },
+                "fromNodeId": "n1_合同文档智能审查与合规诊断",
+                "isArtifact": false,
+                "targetField": "summary",
+                "expectedType": "string",
+                "fromNodeOutput": "summary"
+              }
+            ],
+            "capabilitiesUsed": [
+              {
+                "id": "platform.document.contract-reviewer",
+                "name": "合同文档智能审查与合规诊断",
+                "version": "1.0.2"
+              }
+            ]
+          },
+          "artifacts": [
+            {
+              "type": "document",
+              "artifactType": "document",
+              "name": "合同合规审查报告_CT01-ja.html",
+              "label": "合同合规审查报告_CT01-ja.html",
+              "downloadUrl": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+              "url": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+              "mimeType": "text/html; charset=utf-8"
+            }
+          ],
+          "downloadUrl": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+          "hasBusinessResult": true,
+          "rawResult": {
+            "result": {
+              "title": "请对附件这一份合同进行合同审查，我方为甲方（买方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+              "summary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+              "resultType": "deterministic_plan",
+              "businessData": {
+                "finalOutputs": [
+                  {
+                    "value": {
+                      "id": "b7431eedb6740add663560e1837b668a",
+                      "url": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+                      "name": "合同合规审查报告_CT01-ja.html",
+                      "type": "document",
+                      "metadata": {
+                        "format": "html",
+                        "category": "contract-review-report"
+                      },
+                      "mimeType": "text/html; charset=utf-8",
+                      "sizeBytes": 369072,
+                      "downloadUrl": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html"
+                    },
+                    "artifact": {
+                      "id": "5cc39dae-9382-4c70-9758-e551b1954a61",
+                      "url": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+                      "name": "合同合规审查报告_CT01-ja.html",
+                      "sha256": null,
+                      "mimeType": "text/html; charset=utf-8",
+                      "createdAt": "2026-10-17T13:20:04.911Z",
+                      "sizeBytes": "369072",
+                      "executionId": "f7586993-fd26-425c-9a43-175c3ea3de41",
+                      "artifactType": "document",
+                      "metadataJson": {
+                        "format": "html",
+                        "category": "contract-review-report"
+                      },
+                      "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                      "producerStepId": "d3318784-09b4-43d7-b92e-e98e4e8303a0",
+                      "externalArtifactId": "b7431eedb6740add663560e1837b668a"
+                    },
+                    "fromNodeId": "n1_合同文档智能审查与合规诊断",
+                    "isArtifact": true,
+                    "targetField": "result",
+                    "expectedType": "artifact_ref",
+                    "fromNodeOutput": "artifact"
+                  },
+                  {
+                    "value": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+                    "artifact": {
+                      "id": "5cc39dae-9382-4c70-9758-e551b1954a61",
+                      "url": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+                      "name": "合同合规审查报告_CT01-ja.html",
+                      "sha256": null,
+                      "mimeType": "text/html; charset=utf-8",
+                      "createdAt": "2026-10-17T13:20:04.911Z",
+                      "sizeBytes": "369072",
+                      "executionId": "f7586993-fd26-425c-9a43-175c3ea3de41",
+                      "artifactType": "document",
+                      "metadataJson": {
+                        "format": "html",
+                        "category": "contract-review-report"
+                      },
+                      "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                      "producerStepId": "d3318784-09b4-43d7-b92e-e98e4e8303a0",
+                      "externalArtifactId": "b7431eedb6740add663560e1837b668a"
+                    },
+                    "fromNodeId": "n1_合同文档智能审查与合规诊断",
+                    "isArtifact": false,
+                    "targetField": "summary",
+                    "expectedType": "string",
+                    "fromNodeOutput": "summary"
+                  }
+                ],
+                "capabilitiesUsed": [
+                  {
+                    "id": "platform.document.contract-reviewer",
+                    "name": "合同文档智能审查与合规诊断",
+                    "version": "1.0.2"
+                  }
+                ]
+              },
+              "capabilitiesUsed": [
+                {
+                  "id": "platform.document.contract-reviewer",
+                  "name": "合同文档智能审查与合规诊断",
+                  "version": "1.0.2"
+                }
+              ]
+            },
+            "artifacts": [
+              {
+                "id": "5cc39dae-9382-4c70-9758-e551b1954a61",
+                "url": "http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html",
+                "name": "合同合规审查报告_CT01-ja.html",
+                "sha256": null,
+                "mimeType": "text/html; charset=utf-8",
+                "createdAt": "2026-10-17T13:20:04.911Z",
+                "sizeBytes": "369072",
+                "executionId": "f7586993-fd26-425c-9a43-175c3ea3de41",
+                "artifactType": "document",
+                "metadataJson": {
+                  "format": "html",
+                  "category": "contract-review-report"
+                },
+                "producerNodeId": "n1_合同文档智能审查与合规诊断",
+                "producerStepId": "d3318784-09b4-43d7-b92e-e98e4e8303a0",
+                "externalArtifactId": "b7431eedb6740add663560e1837b668a"
+              }
+            ],
+            "execution": {
+              "status": "success",
+              "finishedAt": "2026-10-17T13:20:04.947Z",
+              "executionId": "f7586993-fd26-425c-9a43-175c3ea3de41"
+            },
+            "presentation": {
+              "detailText": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+              "chatSummary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+              "detailFormat": "markdown",
+              "summaryFormat": "markdown",
+              "preferAiSummary": false,
+              "capabilitiesUsed": [
+                {
+                  "id": "platform.document.contract-reviewer",
+                  "name": "合同文档智能审查与合规诊断",
+                  "version": "1.0.2"
+                }
+              ],
+              "notificationSummary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+              "preferStructuredView": false
+            },
+            "capabilitiesUsed": [
+              {
+                "id": "platform.document.contract-reviewer",
+                "name": "合同文档智能审查与合规诊断",
+                "version": "1.0.2"
+              }
+            ]
+          }
+        },
+        "resultType": "deterministic_plan",
+        "resultTitle": "请对附件这一份合同进行合同审查，我方为甲方（买方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+        "resultSummary": "### ⚖️ 合同智能合规审查与风险诊断完成\n\n#### 📊 合规审查概览\n- **合同类型识别**：**通用商业合作协议**\n- **审查立场**：**买方/披露方**（用户指定确认）\n- **综合合规评分**：**37 分 / 100 分**（🚨 存在重大高危漏洞）\n- **条款风控统计**：共 **9** 项条款（🔴 高危 **0** 项，⚡ 缺失必备 **2** 项，🟡 中风险 **6** 项，🟢 合规通过 **2** 项）\n\n#### 🚨 关键必备条款缺失预警（严重风控敞口）\n- ⚡ **缺失不可抗力及责任免除顺延条款** [必备缺失]：合同未约定不可抗力定义、通知程序及责任免除机制，遇到无法预见的重大外部事件时可能无法法定免责。\n- ⚡ **缺失明确的争议解决与管辖条款** [必备缺失]：合同未载明争议解决条款，涉诉时管辖法院难以迅速确定，容易产生管辖异议纠纷并增加异地诉讼成本。\n\n🔗 **[👉 点击在新窗口打开全屏审查报告](http://192.168.100.143:3009/renders/b7431eedb6740add663560e1837b668a.html)**\n*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*",
+        "usage": null,
+        "skillId": "platform.document.contract-reviewer",
+        "skillName": "请对附件这一份合同进行合同审查，我方为甲方（买方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+        "skillUsed": "请对附件这一份合同进行合同审查，我方为甲方（买方）。请逐条阅读全部语言的正文，重点检查我方义务、责任、数据或知识产权、付款和退出安排，生成完整合同审查报告。请以中文回复。",
+        "traceId": "12b9d225-a7a6-495a-9792-0659baaff158"
+      },
+      "seq": 7,
+      "protocolVersion": "1",
+      "sessionId": "corpus-CT01-ja-txt-1792243166501",
+      "traceId": "12b9d225-a7a6-495a-9792-0659baaff158"
+    }
+  },
+  {
+    "elapsedMs": 38518,
+    "event": {
+      "type": "session_patch",
+      "sessionId": "corpus-CT01-ja-txt-1792243166501",
+      "content": "",
+      "data": {
+        "title": "请对附件这一份合同进行合同审查，我方为甲方（买方",
+        "status": "active",
+        "updatedAt": "2026-10-17T13:20:05.017Z",
+        "traceId": "12b9d225-a7a6-495a-9792-0659baaff158"
+      },
+      "seq": 8,
+      "protocolVersion": "1",
+      "traceId": "12b9d225-a7a6-495a-9792-0659baaff158"
+    }
+  },
+  {
+    "elapsedMs": 38519,
+    "event": {
+      "type": "done",
+      "content": "Stream completed",
+      "seq": 9,
+      "protocolVersion": "1",
+      "sessionId": "corpus-CT01-ja-txt-1792243166501",
+      "traceId": "12b9d225-a7a6-495a-9792-0659baaff158",
+      "data": {
+        "traceId": "12b9d225-a7a6-495a-9792-0659baaff158"
+      }
+    }
+  }
+]

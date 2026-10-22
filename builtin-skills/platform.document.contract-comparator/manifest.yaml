@@ -10,7 +10,7 @@ metadata:
     domain: document
     format: multi-format
 spec:
-  definitionVersion: 1.0.2
+  definitionVersion: 1.0.4
   lifecycle: experimental
   defaultAccess:
     mode: authenticated
@@ -57,6 +57,11 @@ spec:
             default: true
           myPosition:
             type: string
+            enum: [buyer, seller, neutral]
+            x-enum-aliases:
+              buyer: [甲方, 买方, 采购方, 委托方, 透露方, 披露方, 出租方, 雇主, 发包方, 買主, 発注者, 委託者, 賃貸人, 甲側, 我方为甲, 我方为甲方, 我方买方, 我为甲方]
+              seller: [乙方, 卖方, 销售方, 受托方, 接收方, 承租方, 雇员, 承包方, 売主, 受注者, 受託者, 賃借人, 乙側, 我方为乙, 我方为乙方, 我方卖方, 我为乙方]
+              neutral: [中立, 双向, 对等, 中立立场, 双方, 全面审查, 双方向, 双方対等, 中立的]
             description: 我方合同立场与角色（如：甲方、乙方、采购方、受托方）
           customChecklistRules:
             type: array
@@ -104,6 +109,12 @@ spec:
         properties:
           summary:
             type: string
+          reviewStatus:
+            type: string
+            enum:
+              - complete
+              - incomplete
+            description: 语义审查执行完整状态，语义模型降级或失败时为 incomplete
           metrics:
             type: object
           alignedClauses:

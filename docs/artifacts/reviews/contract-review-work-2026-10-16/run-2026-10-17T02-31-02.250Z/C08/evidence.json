@@ -1,0 +1,401 @@
+{
+  "id": "C08",
+  "name": "30条长文本多批覆盖",
+  "status": "passed",
+  "sessionId": "crw-C08-1792204779514",
+  "executionId": "436e1e03-1629-456b-9bd1-d4906f242a4d",
+  "traceIds": [
+    "d554073e-740d-42e6-927f-e1d554f752e0"
+  ],
+  "actualCapabilities": [
+    "platform.document.contract-reviewer"
+  ],
+  "executionStatus": "succeeded",
+  "requestDigest": "c12deb7dedc4d63f009f23876e9eade02d7cf8cd3c0bbb79cd961eddb4fd2ccb",
+  "fixtureDigest": "8a05333c4c4d904ee853f4891b28fcda895b804dd9a8cf524177a5ebe5b29595",
+  "timing": {
+    "firstEventMs": 24,
+    "firstContentMs": null,
+    "totalMs": 478524
+  },
+  "assertions": [
+    {
+      "name": "聊天HTTP成功",
+      "passed": true,
+      "actual": 201,
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "SSE完整结束且无传输异常",
+      "passed": true,
+      "actual": "done",
+      "category": "TRANSPORT"
+    },
+    {
+      "name": "实际执行合同审查能力",
+      "passed": true,
+      "actual": [
+        "platform.document.contract-reviewer"
+      ],
+      "category": "ROUTING"
+    },
+    {
+      "name": "控制面持久终态成功",
+      "passed": true,
+      "actual": "succeeded",
+      "category": "EXECUTION_STATE"
+    },
+    {
+      "name": "输出含结构化条款和指标",
+      "passed": true,
+      "actual": [
+        "clauses",
+        "metrics",
+        "summary",
+        "artifact",
+        "chapters",
+        "artifacts",
+        "htmlReport",
+        "myPosition",
+        "chatSummary",
+        "ruleSetInfo",
+        "contractType",
+        "capabilityKey",
+        "missingClauses",
+        "positionSource",
+        "contractTypeName",
+        "capabilityVersion",
+        "sourceDocumentVersion"
+      ],
+      "category": "CONTRACT"
+    },
+    {
+      "name": "所有固定正文标记均覆盖",
+      "passed": true,
+      "actual": [],
+      "category": "CONTEXT_BINDING"
+    },
+    {
+      "name": "条款ID唯一且无空洞",
+      "passed": true,
+      "actual": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30
+      ],
+      "category": "CONTRACT"
+    },
+    {
+      "name": "指标数量与条款风险统计一致",
+      "passed": true,
+      "actual": {
+        "warnings": [],
+        "passCount": 7,
+        "isDegraded": false,
+        "healthScore": -146,
+        "isTruncated": false,
+        "lowRiskCount": 0,
+        "totalClauses": 31,
+        "highRiskCount": 6,
+        "mediumRiskCount": 18,
+        "llmReviewedCount": 31,
+        "missingClausesCount": 3,
+        "unfilledBlanksTotal": 0,
+        "degradedClausesCount": 0,
+        "unfilledVariablesCount": 0
+      },
+      "category": "CONTRACT"
+    },
+    {
+      "name": "无未声明的语义审查降级",
+      "passed": true,
+      "actual": {
+        "reviewed": 31,
+        "total": 31
+      },
+      "category": "COMPLETENESS"
+    },
+    {
+      "name": "我方立场贯穿输出",
+      "passed": true,
+      "actual": {
+        "expected": "buyer",
+        "actual": "buyer",
+        "source": "user_confirmed"
+      },
+      "category": "CONTEXT_BINDING"
+    },
+    {
+      "name": "未声明文本截断",
+      "passed": true,
+      "actual": false,
+      "category": "COMPLETENESS"
+    },
+    {
+      "name": "每个语义批次有账本",
+      "passed": true,
+      "actual": {
+        "rows": 11,
+        "expected": 11
+      },
+      "category": "OBSERVABILITY"
+    },
+    {
+      "name": "实际业务模型与指定35B一致",
+      "passed": true,
+      "actual": [
+        "qwen36-35b-a3b"
+      ],
+      "category": "MODEL_ROUTE"
+    },
+    {
+      "name": "长文至少31节点且审完30正文条款",
+      "passed": true,
+      "actual": {
+        "warnings": [],
+        "passCount": 7,
+        "isDegraded": false,
+        "healthScore": -146,
+        "isTruncated": false,
+        "lowRiskCount": 0,
+        "totalClauses": 31,
+        "highRiskCount": 6,
+        "mediumRiskCount": 18,
+        "llmReviewedCount": 31,
+        "missingClausesCount": 3,
+        "unfilledBlanksTotal": 0,
+        "degradedClausesCount": 0,
+        "unfilledVariablesCount": 0
+      },
+      "category": "COMPLETENESS"
+    },
+    {
+      "name": "原始交付URL可下载HTML实体",
+      "passed": true,
+      "actual": {
+        "artifactStatus": 200,
+        "bytes": 706650,
+        "error": null
+      },
+      "category": "DELIVERY"
+    }
+  ],
+  "failures": [],
+  "observedUsage": [
+    {
+      "id": "37877dfc-2571-45f3-861d-0e0b4419b57a",
+      "executionId": "436e1e03-1629-456b-9bd1-d4906f242a4d",
+      "stepId": "d047dbb4-528b-4f3a-a8bc-bb7770a6cf67",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 947,
+      "outputTokens": 6943,
+      "cachedTokens": 0,
+      "estimatedCost": "0.043552",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:40:54.662Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "1c708c6838f4ffce670d96a099bf6ba9191815cdc0e02d2fb39e3357a313ef27",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "26b56307-b185-4092-86d9-e59cf7342db8",
+      "executionId": "436e1e03-1629-456b-9bd1-d4906f242a4d",
+      "stepId": "d047dbb4-528b-4f3a-a8bc-bb7770a6cf67",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 1070,
+      "outputTokens": 5509,
+      "cachedTokens": 0,
+      "estimatedCost": "0.035194",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:41:42.747Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "25fb9dc07157b836b205709c936ac01f0c2190236b10a2d2b2a9fd07cc414e52",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "6d9671a6-4dac-416b-b630-cfbc8801c34c",
+      "executionId": "436e1e03-1629-456b-9bd1-d4906f242a4d",
+      "stepId": "d047dbb4-528b-4f3a-a8bc-bb7770a6cf67",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 1070,
+      "outputTokens": 5643,
+      "cachedTokens": 0,
+      "estimatedCost": "0.035998",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:42:34.033Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "c22080ef9f8fd030cdd76ff69aa826e655246a4561b5cb5e97be0ce6e011b757",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "867da754-84ab-4e72-8c4c-de5e606e358d",
+      "executionId": "436e1e03-1629-456b-9bd1-d4906f242a4d",
+      "stepId": "d047dbb4-528b-4f3a-a8bc-bb7770a6cf67",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 1078,
+      "outputTokens": 3234,
+      "cachedTokens": 0,
+      "estimatedCost": "0.02156",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:43:04.786Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "6e57ccac02c99fc58a9e204db01f306f48f202d89b6bb991a84c7109260d7b6a",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "a340fa02-fdce-46c1-90ee-32759f52d642",
+      "executionId": "436e1e03-1629-456b-9bd1-d4906f242a4d",
+      "stepId": "d047dbb4-528b-4f3a-a8bc-bb7770a6cf67",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 1082,
+      "outputTokens": 4623,
+      "cachedTokens": 0,
+      "estimatedCost": "0.029902",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:43:45.930Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "3218a5b83e5f17904cba29e2d84b426cc1d3491fa6294a169dcede3e7992604b",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "e7e2764f-4211-4fd9-bd52-962dfa925b1f",
+      "executionId": "436e1e03-1629-456b-9bd1-d4906f242a4d",
+      "stepId": "d047dbb4-528b-4f3a-a8bc-bb7770a6cf67",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 1082,
+      "outputTokens": 5288,
+      "cachedTokens": 0,
+      "estimatedCost": "0.033892",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:44:32.719Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "febf13cd4eae29c6bed433e8c2b8d884856e6ae0ebbc88528f0d4d9071500659",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "531f6db0-81d9-48ac-aacc-ff48aeb029b3",
+      "executionId": "436e1e03-1629-456b-9bd1-d4906f242a4d",
+      "stepId": "d047dbb4-528b-4f3a-a8bc-bb7770a6cf67",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 1082,
+      "outputTokens": 4149,
+      "cachedTokens": 0,
+      "estimatedCost": "0.027058",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:45:09.845Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "8109aaac71c6c580b9623587705768526dbc568b21e2c4a76feed36ec0846aee",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "d758caa6-3efb-474f-88b6-35860d21f180",
+      "executionId": "436e1e03-1629-456b-9bd1-d4906f242a4d",
+      "stepId": "d047dbb4-528b-4f3a-a8bc-bb7770a6cf67",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 1082,
+      "outputTokens": 4609,
+      "cachedTokens": 0,
+      "estimatedCost": "0.029818",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:45:52.045Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "c295f82be325953a4432a1aba6822abbd2f2cefe80c7714d000eab946ced25e4",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "d0dee366-57a4-4a54-adda-e3ac6f306142",
+      "executionId": "436e1e03-1629-456b-9bd1-d4906f242a4d",
+      "stepId": "d047dbb4-528b-4f3a-a8bc-bb7770a6cf67",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 1082,
+      "outputTokens": 3464,
+      "cachedTokens": 0,
+      "estimatedCost": "0.022948",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:46:24.674Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "bb24dba22eaadc69eca6e3ec292d4441eec60f1e2c631b043dd073277d241d1d",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "f82fea5b-a604-4dc4-9a88-dce9866f9897",
+      "executionId": "436e1e03-1629-456b-9bd1-d4906f242a4d",
+      "stepId": "d047dbb4-528b-4f3a-a8bc-bb7770a6cf67",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 1082,
+      "outputTokens": 4001,
+      "cachedTokens": 0,
+      "estimatedCost": "0.02617",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:47:02.766Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "33ca5a423ce1fc9c0acb4486455d9d58abff24e5f702d1e1f4c31183d552bf25",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    },
+    {
+      "id": "73285ed0-d021-4df2-b885-9149137bfb5f",
+      "executionId": "436e1e03-1629-456b-9bd1-d4906f242a4d",
+      "stepId": "d047dbb4-528b-4f3a-a8bc-bb7770a6cf67",
+      "purpose": "llm_operation",
+      "provider": "local",
+      "modelId": "qwen36-35b-a3b",
+      "inputTokens": 644,
+      "outputTokens": 3777,
+      "cachedTokens": 0,
+      "estimatedCost": "0.02395",
+      "currency": "CNY",
+      "createdAt": "2026-10-17T02:47:37.167Z",
+      "promptTemplateVersion": "1.0.0",
+      "promptTemplateDigest": "5f35b29618e963e1dac0e0d35a78f5d4931b0ef7ae1d8f2a1251a58db02d59f5",
+      "systemPromptDigest": "a8f2a52929a96c81eec595039ee2cacd9f0f8241b48133d5e4d084ce1e797168"
+    }
+  ]
+}
