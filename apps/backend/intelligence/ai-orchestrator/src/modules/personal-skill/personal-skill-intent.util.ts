@@ -19,21 +19,15 @@ export function parseSavePersonalSkillIntent(
 
   // 2. 否定意图识别：明确拒绝保存的不触发（如“不要保存为个人技能”、“请勿保存”）
   const isNegated =
-    /(?:不要|别|不|严禁|禁止|无需|不用|请勿|不需要|切勿)\s*(?:[^\n，。！？]{0,10})保存/.test(
-      trimmed
-    );
+    /(?:不要|严禁|禁止|无需|不用|请勿|不需要|切勿)[^\n，。！？；;]{0,24}(?:保存|另存)/.test(trimmed) ||
+    /(?:^|[\s，。！？；;]|请|先)(?:别|不)\s*(?:再\s*)?(?:保存|另存)/.test(trimmed);
   if (isNegated) {
     return { isMatch: false };
   }
 
   // 3. 核心特征关键词过滤
   const hasSaveKeyword =
-    trimmed.includes('保存为个人技能') ||
-    trimmed.includes('保存为个人skill') ||
-    trimmed.includes('保存为个人 skill') ||
-    trimmed.includes('保存为skill') ||
-    trimmed.includes('保存为技能') ||
-    (trimmed.includes('保存') && trimmed.includes('技能'));
+    /(?:保存|另存)[^\n，。！？；;]{0,120}(?:技能|\bskills?\b)/i.test(trimmed);
 
   if (!hasSaveKeyword) {
     return { isMatch: false };
@@ -41,16 +35,17 @@ export function parseSavePersonalSkillIntent(
 
   // 4. 提取名称 (支持“名称是xxx”、“叫做xxx”、“叫xxx”、“：「xxx」”等)
   const namePatterns = [
+    /(?:保存|另存)\s*(?:为|成)\s*(.+?)\s*的\s*(?:个人\s*)?(?:技能|skills?\b)/i,
     /(?:名称是|名字是|命名为|叫做|叫|：|:)\s*[「“"']?([^，。！？；;\n"”」']+)[」”"']?/,
     /[「“"']([^「“"'\n]+)[」”"']/,
-    /保存为个人技能\s+([^\s，。！？；;\n]+)/,
+    /(?:保存|另存)\s*(?:为|成)\s*(?:一个\s*)?(?:个人\s*)?(?:技能|skills?\b)\s+([^，。！？；;\n]+)/i,
   ];
 
   let displayName: string | undefined;
   for (const pat of namePatterns) {
     const match = trimmed.match(pat);
     if (match && match[1]) {
-      const candidate = match[1].trim();
+      const candidate = match[1].trim().replace(/^[「“"']|[」”"']$/g, '').trim();
       if (
         candidate &&
         candidate !== '个人技能' &&

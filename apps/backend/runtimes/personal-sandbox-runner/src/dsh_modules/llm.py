@@ -276,6 +276,8 @@ def call_model_proxy(
 
     max_retries = active_policy.model_max_retries
     for attempt in range(max_retries + 1):
+        finish_reason = None
+        received_done = False
         if deadline is not None:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
@@ -343,6 +345,7 @@ def call_model_proxy(
             sys.stdout.write(f"<<<DSH_DELTA:{json.dumps(res_text, ensure_ascii=False)}>>>\n")
             sys.stdout.flush()
 
+    finish_reason_source = "upstream" if finish_reason else ("done_fallback" if received_done else "stream_closed")
     if not finish_reason:
         finish_reason = "stop" if received_done else "stream_closed_prematurely"
 
@@ -351,6 +354,7 @@ def call_model_proxy(
         "tool_calls": structured_calls,
         "finish_reason": finish_reason,
         "received_done": received_done,
+        "finish_reason_source": finish_reason_source,
         "usage": usage,
         "ttft_ms": round(ttft_ms if ttft_ms is not None else total_ms, 2),
         "total_ms": round(total_ms, 2)

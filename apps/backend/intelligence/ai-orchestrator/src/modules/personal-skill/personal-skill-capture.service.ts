@@ -127,7 +127,7 @@ export class PersonalSkillCaptureService {
         description: dto.description || source.objective,
         deliverables,
         hasScript,
-        sourceRef: dto.sourceRef,
+        sourceRef: source.source,
       });
 
       // 5. 成功完成

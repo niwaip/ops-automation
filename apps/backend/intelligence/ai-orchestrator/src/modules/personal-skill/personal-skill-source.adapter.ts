@@ -8,6 +8,8 @@ import {
 import * as path from 'path';
 import { ChatConversationService } from '../chat/chat-conversation.service';
 import { SessionService } from '../redis/session.service';
+import { selectPersonalSkillSourceTurn } from './personal-skill-source-turn.util';
+import { parseSavePersonalSkillIntent } from './personal-skill-intent.util';
 import type {
   PersonalSkillSourceRef,
   SkillSource,
@@ -69,41 +71,9 @@ export class PersonalSkillSourceAdapter {
     }
 
     // 1. 定位目标消息对（用户提示与助手回复）
-    let targetIndex = -1;
-    if (sourceRef.messageId) {
-      targetIndex = history.findIndex(
-        (m: any) => m.id === sourceRef.messageId || m.messageId === sourceRef.messageId
-      );
-      // 如果历史消息具备 ID 体系但未找到明确指定的 messageId，则抛出异常，防止静默选错任务 (B07)
-      const hasIndexedMessages = history.some((m: any) => m.id || m.messageId);
-      if (hasIndexedMessages && targetIndex === -1) {
-        throw new NotFoundException(
-          `Specified message [${sourceRef.messageId}] not found in session [${sessionId}]`
-        );
-      }
-    }
-
-    if (targetIndex === -1) {
-      // 倒序寻找最近的一个由助手回复且非报错的轮次
-      for (let i = history.length - 1; i >= 0; i--) {
-        if (history[i]?.role === 'assistant' && (history[i]?.content || '').trim()) {
-          targetIndex = i;
-          break;
-        }
-      }
-    }
-
-    if (targetIndex === -1) {
-      throw new NotFoundException(`No valid assistant turns found in session [${sessionId}]`);
-    }
-
+    const targetIndex = selectPersonalSkillSourceTurn(history, sourceRef.messageId);
     const assistantMsg = history[targetIndex];
-    let userMsg = history[targetIndex - 1]?.role === 'user' ? history[targetIndex - 1] : undefined;
-
-    // 如果指定的是 user 消息，则反转查找
-    if (assistantMsg?.role === 'user') {
-      userMsg = assistantMsg;
-    }
+    const userMsg = history[targetIndex - 1];
 
     const userPrompt = (userMsg?.content || '').trim();
     const assistantContent = (assistantMsg?.content || '').trim();
@@ -115,7 +85,7 @@ export class PersonalSkillSourceAdapter {
       const msg = history[i];
       if (msg?.role === 'user') {
         const text = (msg.content || '').trim();
-        if (correctionKeywords.some((kw) => text.includes(kw))) {
+        if (!parseSavePersonalSkillIntent(text).isMatch && correctionKeywords.some((kw) => text.includes(kw))) {
           corrections.push({
             userCorrection: text,
             adjustment: '按用户纠偏指令应用规则约束',
@@ -132,7 +102,7 @@ export class PersonalSkillSourceAdapter {
     const reusableFiles: SkillSourceFile[] = [];
     const rawFiles: any[] = [];
 
-    for (const msg of history) {
+    for (const msg of history.slice(0, targetIndex + 1)) {
       if (Array.isArray(msg?.metadata?.files)) {
         rawFiles.push(...msg.metadata.files);
       }
@@ -163,7 +133,15 @@ export class PersonalSkillSourceAdapter {
 
     // 5. 分析输出约定
     const outputContract: SkillSourceOutput[] = [];
-    const detectedExts = this.detectOutputFormats(assistantContent);
+    // Source-file citations are not output contracts (e.g. a text answer citing input.xlsx).
+    let outputContent = assistantContent;
+    for (const fileName of seenFileNames) {
+      for (const variant of [fileName, fileName.replace(/_/g, '\\_'), encodeURIComponent(fileName)]) {
+        const escaped = variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        outputContent = outputContent.replace(new RegExp(escaped, 'gi'), '');
+      }
+    }
+    const detectedExts = this.detectOutputFormats(outputContent);
     for (const ext of detectedExts) {
       outputContract.push({
         filenamePattern: `*${ext}`,
@@ -190,7 +168,7 @@ export class PersonalSkillSourceAdapter {
     }
 
     return {
-      source: sourceRef,
+      source: { ...sourceRef, messageId: assistantMsg.id || assistantMsg.messageId },
       objective,
       confirmedInstructions,
       corrections,
@@ -246,7 +224,8 @@ export class PersonalSkillSourceAdapter {
   private extractConfirmedInstructions(userPrompt: string): string[] {
     if (!userPrompt) return ['按已确认的业务逻辑进行数据处理与计算'];
     const parts = userPrompt
-      .split(/[，。；;\n]+/)
+      // Commas can separate values inside a single rule; never drop short list items.
+      .split(/[。；;\n]+/)
       .map((s) => s.trim())
       .filter((s) => s.length >= 3 && !s.startsWith('结果正确') && !s.startsWith('保存为'));
     return parts.length > 0 ? parts : [userPrompt];

@@ -21,7 +21,7 @@ import {
   isArtifactRegenerationRequest,
   classifyPersonalSandboxError,
 } from './user-sandbox-error.util';
-import { parseSavePersonalSkillIntent } from '../personal-skill/personal-skill-intent.util';
+import { handleSavePersonalSkillChat } from '../personal-skill/personal-skill-chat.handler';
 import { PersonalSkillCaptureService } from '../personal-skill/personal-skill-capture.service';
 
 const SANDBOX_HISTORY_TURNS_LIMIT = Number(process.env.SANDBOX_HISTORY_TURNS_LIMIT || 16);
@@ -251,65 +251,11 @@ export class UserSandboxDispatcherService {
       return true;
     }
 
-    // 捕获“将刚才的处理逻辑保存为个人技能”自然语言或命令
-    const skillIntent = parseSavePersonalSkillIntent(body.message);
-    if (skillIntent.isMatch && this.personalSkillCaptureService) {
-      const displayName = skillIntent.displayName || '我的个人技能';
-      emit({
-        type: StreamEventType.THOUGHT,
-        content: `正在从已确认的任务结果中提炼个人技能「${displayName}」...`,
-      });
-
-      try {
-        const capture = await this.personalSkillCaptureService.createCapture(effectiveUserId, {
-          sourceRef: { kind: 'sandbox_turn', sessionId },
-          displayName,
-        });
-
-        let status = this.personalSkillCaptureService.getCaptureStatus(effectiveUserId, capture.captureId);
-        const maxWaitMs = 5000;
-        const start = Date.now();
-        while (status.status !== 'ready' && status.status !== 'failed' && Date.now() - start < maxWaitMs) {
-          await new Promise((r) => setTimeout(r, 100));
-          status = this.personalSkillCaptureService.getCaptureStatus(effectiveUserId, capture.captureId);
-        }
-
-        if (status.status === 'ready') {
-          const successMsg =
-            `已保存个人技能「${displayName}」v${status.version || 1}，仅你可见。\n\n` +
-            `• **技能目录**：\`/knowledge/skills/${status.slug}\`\n` +
-            `• **复用方式**：下次上传新附件后，可以说“用${displayName}处理这份附件”。`;
-
-          emit({
-            type: StreamEventType.OBSERVATION,
-            content: successMsg,
-          });
-
-          await this.chatConversationService.persistConversation({
-            sessionId,
-            userContent: body.message,
-            assistantContent: successMsg,
-            rawAssistantContent: successMsg,
-            modelId: body.modelId || 'default',
-            thinkingEnabled: false,
-            ownerUserId: effectiveUserId,
-            clientMessageId: body.clientMessageId,
-            clientAssistantMessageId: body.clientAssistantMessageId,
-          });
-
-          return true;
-        } else if (status.status === 'failed') {
-          const failMsg = `保存个人技能「${displayName}」失败: ${status.error || '未知错误'}`;
-          emit({
-            type: StreamEventType.ERROR,
-            content: failMsg,
-          });
-          return true;
-        }
-      } catch (err: any) {
-        this.logger.error(`Failed to handle save personal skill intent: ${err.message}`);
-      }
-    }
+    if (await handleSavePersonalSkillChat({
+      body, userId: effectiveUserId, emit,
+      conversation: this.chatConversationService,
+      capture: this.personalSkillCaptureService,
+    })) return true;
 
     this.logger.log(
       `Dispatching personal request to sandbox harness for user [${effectiveUserId}]`

@@ -1109,6 +1109,7 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
       }),
       getCaptureStatus: jest.fn().mockReturnValue({
         captureId: 'cap-123',
+        skillId: 'skill-123',
         status: 'ready',
         version: 1,
         slug: 'dept-amount-summary',
@@ -1149,5 +1150,4 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     ).toBe(true);
   });
 });
-
 

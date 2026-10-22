@@ -13,6 +13,7 @@ import type {
   PersonalSkillSourceRef,
 } from './personal-skill.types';
 import { normalizeSkillSlug } from './personal-skill-slug.util';
+import { resolvePersonalSkillProjectRoot } from './personal-skill-root.util';
 
 @Injectable()
 export class PersonalSkillStoreService {
@@ -21,7 +22,7 @@ export class PersonalSkillStoreService {
   private readonly userLocks = new Map<string, Promise<unknown>>();
 
   constructor() {
-    this.projectRoot = process.env.PROJECT_ROOT || process.cwd();
+    this.projectRoot = resolvePersonalSkillProjectRoot();
   }
 
   /**

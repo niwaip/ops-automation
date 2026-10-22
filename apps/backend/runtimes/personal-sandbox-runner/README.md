@@ -55,6 +55,10 @@ personal-sandbox-runner/
 │       ├── table_comparison.py # 显式列对与范围的只读计算、排序与来源证据
 │       ├── comparison_evidence.py# 本轮执行证据及极值结论一致性验证
 │       ├── agent_loop.py       # ReAct 智能体多轮执行循环、防死锁反推与物理产物拦截断言
+│       ├── final_answer.py     # 最终回复呈现、已有产物恢复与终态验收
+│       ├── retrieval_answer_validation.py # 基于本轮检索回执的正文完整性检查
+│       ├── retrieval_answer_recovery.py   # 同模型、无工具、有截止时间的一次正文补全
+│       ├── response_observability.py      # 清洗前后长度、SHA-256 与流结束来源
 │       ├── artifact_exporter.py# HTML 原型与各类交付物提取、Token 截断自动闭合与自愈
 │       └── telemetry.py        # 遥测指标收集（TTFT、Token、耗时）与协议标记外发
 ├── plugins/                    # 系统扩展插件目录
@@ -151,6 +155,22 @@ dsh exec python3 -c "import docx; print(docx.__version__)"
 ---
 
 ## 五、关键技术亮点与纵深防御
+
+### 检索答案完整性交付
+
+文件成功声明在循环最终返回前另做一次物理检查，不受普通纠偏次数或生成/只读意图分类影响。明确声称“已生成”“生成了文件”等，但对应文件不存在、为空或早于本轮时，最终答复改为未完成提示并记录 `artifact_delivery/reject`。仅引用输入文件、询问示例路径或明确说明失败不会触发成功声明检查。安装依赖、写出脚本不等于生成目标文件。回归：`tests/test_artifact_terminal_claims.py`。
+
+本轮存在成功且非空的 `web_search` / `fetch_page` 执行回执时，终态检查拒绝“仅标题、仅目录层级、空正文”的结构性未交付。前置搜索、思考规划检索与执行循环检索统一传递本轮证据，规划原始资料在预算内传入呈现阶段。正常的短事实、明确的不确定性说明、具体澄清问题以及用户明确要求的标题保留；不使用统一最小字数门槛。历史工具消息不作为本轮触发条件。
+
+未通过时，最多追加一次同模型、无工具的正文综合。该调用关闭思考与 runner 传输重试，缓冲输出；使用已有检索资料，不重复搜索，不执行副作用工具。时间窗口取 30 秒、单次调用预算和任务剩余时间的最小值；不足 5 秒不启动补全。代理已有的瞬时网络重试仍可能发生，但受本次客户端截止时间约束。补全仍为空、仅标题、工具协议、流提前关闭或 `length` 时，返回明确的“本次回答未完成”提示。总任务超时继续按原有超时路径退出，不伪装成完成。
+
+`metrics.answerValidation` 表示该结构检查的终态：`status=completed|needs_input|incomplete`、`reason` 和 `attempts=0|1`；未适用时为空对象。`completed` 仅表示通过结构验收，不代表事实已经全部核实。`exitCode=0` 表示进程正常完成；判断答案是否完整还须检查此字段。决策进入 `guardDecisions`，并随现有链路保存到会话的 `executionTrace.metrics`。
+
+`metrics.modelResponses` 按模型调用顺序保存 `rawChars`、`cleanChars`、两份 SHA-256、`finishReason`、`receivedDone` 和 `finishReasonSource`。结束来源区分代理明确返回的 `upstream`、仅收到 `[DONE]` 的 `done_fallback` 与 `stream_closed`。这些新增字段不保存响应正文、思考正文或密钥，便于区分生成不足、输出清洗和流传输异常。
+
+沙箱将模块目录只读挂载到 `/usr/local/bin/dsh_modules`，每次 `dsh run` 启动新 Python 进程。此类 Python 模块修复可由下一次请求加载，需实际导入并核对挂载源代码；无此挂载的部署需要更新镜像并重建沙箱。Compose 入口仍统一为仓库根目录的 `./docker/start-smart.sh`。
+
+新增回归：`test_retrieval_answer_validation.py`、`test_retrieval_answer_recovery.py`、`test_response_observability.py` 与 `test_planning_retrieval_delivery.py`。相关既有回归覆盖 `test_dsh.py`、`test_dsh_skills.py`、`test_small_model_protocol.py`、`test_table_comparison.py`、`test_spreadsheet_analysis.py`、`test_financial_workbook_fixes.py`。完整契约见 [检索答案交付验收方案](../../../../docs/design/Retrieval-Answer-Delivery-Validation_v1.0.md)。
 
 1. **工作区目录边界严格受限（Directory Confinement & Anti-Traversal）**：
    - 文件工具（`read_file`、`patch_file`、`send_file`、`inspect_image`）经由 `resolve_sandboxed_path` 严格锁定根边界：
