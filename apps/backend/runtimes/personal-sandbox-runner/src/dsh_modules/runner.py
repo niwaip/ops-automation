@@ -336,6 +336,10 @@ def cmd_run(args):
     allow_research = bool(getattr(args, "research", False))
     session_files = resolve_session_attachments(args, session_id)
     skill_res = SkillRouter.route(prompt, existing_history, allow_research=allow_research, files=session_files)
+    from .personal_skill_workflow import try_run_personal_workflow
+    if try_run_personal_workflow(skill_res, session_files, prompt, history_file,
+                                 existing_history, overall_start_time, task_deadline):
+        return
     knowledge_context = scan_personal_knowledge() if skill_res.is_knowledge_intent else ""
 
 

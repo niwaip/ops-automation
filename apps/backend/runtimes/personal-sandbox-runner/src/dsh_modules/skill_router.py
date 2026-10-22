@@ -929,7 +929,12 @@ class SkillRouter:
 
                     # 核心解耦规则：仅当用户意图属于产物生成/输出时，才绑定交付物契约与执行强制要求。
                     # 当用户为纯查阅、阅读、分析、检查已有文件时，保留技能参考上下文，但不强制产物物理交付闭环。
-                    if is_text_only_request(lower_query):
+                    if s.get('execution_mode') == 'verified_workflow':
+                        # Computation is mandatory even when delivery is text-only.
+                        result.deliverables = []
+                        result.requires_execution = True
+                        result.default_rounds = 1
+                    elif is_text_only_request(lower_query):
                         result.deliverables = []
                         result.requires_execution = False
                         result.default_rounds = min(skill_rounds, 3) if skill_rounds > 0 else 2

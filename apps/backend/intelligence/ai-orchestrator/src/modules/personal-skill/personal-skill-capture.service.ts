@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import * as crypto from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 import type {
   CreateSkillCaptureDto,
   SkillCaptureStatusDto,
@@ -114,7 +116,18 @@ export class PersonalSkillCaptureService {
 
       // 3. 校验包完整性
       updateStatus({ status: 'validating', progress: 75 });
-      const validation = await this.validator.validatePackage(stagingDir);
+      const workspace = path.join(this.store.getUserKnowledgeDir(userId), '..', 'workspace');
+      const session = (source.source.sessionId || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const inputCandidates = source.inputs.flatMap((input) => [
+        path.join(workspace, '.sessions', session, path.basename(input.name)),
+        path.join(workspace, path.basename(input.name)),
+      ]);
+      const validationInput = inputCandidates.find((candidate) => fs.existsSync(candidate));
+      const hasWorkflow = fs.existsSync(path.join(stagingDir, 'execution.json'));
+      if (hasWorkflow && source.inputs.length !== 1) {
+        throw new Error('当前核算流程需要唯一来源附件，不能猜测多个输入文件');
+      }
+      const validation = await this.validator.validatePackage(stagingDir, validationInput);
       if (!validation.valid) {
         throw new Error(`技能包校验失败: ${validation.errors.join('; ')}`);
       }
@@ -137,6 +150,7 @@ export class PersonalSkillCaptureService {
         skillId: record.skillId,
         slug: record.slug,
         version: record.version,
+        executionMode: hasWorkflow ? 'verified_workflow' : undefined,
       });
       this.logger.log(`Capture pipeline successfully ready: skill [${record.displayName}] v${record.version}`);
     } catch (err: any) {

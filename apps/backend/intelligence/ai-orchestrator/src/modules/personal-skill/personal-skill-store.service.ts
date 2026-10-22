@@ -246,7 +246,7 @@ export class PersonalSkillStoreService {
           effectiveSlug,
         ],
         deliverables: params.deliverables,
-        requiresExecution: true,
+        requiresExecution: params.hasScript,
         version: currentVersion,
         packageHash,
         status: 'ready',
@@ -382,6 +382,10 @@ export class PersonalSkillStoreService {
       const activeSkillPath = path.join(this.getUserSkillsDir(userId), skill.slug);
       if (!fs.existsSync(activeSkillPath)) {
         throw new NotFoundException(`Skill directory ${skill.slug} not found on disk`);
+      }
+
+      if (fs.existsSync(path.join(activeSkillPath, 'execution.json'))) {
+        throw new BadRequestException('可验证核算技能的规则变更必须重新编译并重放来源附件；不能仅追加文字或替换脚本后发布版本');
       }
 
       const nextVersion = skill.version + 1;

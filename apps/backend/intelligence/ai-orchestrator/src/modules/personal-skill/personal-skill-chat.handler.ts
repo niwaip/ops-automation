@@ -45,6 +45,7 @@ export async function handleSavePersonalSkillChat(ctx: SaveSkillChatContext): Pr
         throw new Error('技能安装回执不完整，无法确认保存成功');
       }
       content = `已保存个人技能「${displayName}」v${status.version}，仅你可见。\n\n` +
+        (status.executionMode === 'verified_workflow' ? '关键核算规则与执行流程已保存，并通过来源附件的重放验证。\n\n' : '') +
         `• **技能目录**：\`/knowledge/skills/${status.slug}\`\n` +
         `• **复用方式**：下次上传新附件后，可以说“用${displayName}处理这份附件”。`;
     } else if (status.status === 'failed') {

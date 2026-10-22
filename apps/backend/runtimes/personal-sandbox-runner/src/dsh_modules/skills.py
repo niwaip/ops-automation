@@ -154,6 +154,8 @@ def get_available_skills() -> list:
                                                 current_block_key = "deliverables"
                                         elif k == "requires_execution":
                                             meta["requires_execution"] = v.lower() in ("true", "1", "yes")
+                                        elif k == "execution_mode":
+                                            meta["execution_mode"] = v
                                         elif k == "default_rounds":
                                             try:
                                                 meta["default_rounds"] = int(v)

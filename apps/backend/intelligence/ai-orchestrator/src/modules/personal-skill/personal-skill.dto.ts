@@ -64,6 +64,9 @@ export class CreateSkillCaptureDto {
 }
 
 export class SkillCaptureStatusDto {
+  @ApiPropertyOptional({ description: '可验证核算流程已完成来源重放验收', enum: ['verified_workflow'] })
+  executionMode?: 'verified_workflow';
+
   @ApiProperty({ description: '捕获任务标识' })
   captureId!: string;
 
