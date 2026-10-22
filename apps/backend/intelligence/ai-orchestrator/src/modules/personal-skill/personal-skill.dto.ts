@@ -37,6 +37,14 @@ export class PersonalSkillSourceRefDto implements PersonalSkillSourceRef {
 }
 
 export class CreateSkillCaptureDto {
+  @ApiPropertyOptional({ description: '显式更新当前用户已有技能；重新提炼并验证后创建新版本' })
+  @IsOptional()
+  @IsString()
+  existingSkillId?: string;
+  @ApiPropertyOptional({ description: '用于技能提炼的当前对话模型' })
+  @IsOptional()
+  @IsString()
+  modelId?: string;
   @ApiProperty({ description: '来源任务或执行引用' })
   @ValidateNested()
   @Type(() => PersonalSkillSourceRefDto)
@@ -64,13 +72,15 @@ export class CreateSkillCaptureDto {
 }
 
 export class SkillCaptureStatusDto {
+  @ApiPropertyOptional({ description: '保存技能前需要确认的问题', type: [String] })
+  questions?: string[];
   @ApiPropertyOptional({ description: '可验证核算流程已完成来源重放验收', enum: ['verified_workflow'] })
   executionMode?: 'verified_workflow';
 
   @ApiProperty({ description: '捕获任务标识' })
   captureId!: string;
 
-  @ApiProperty({ description: '生成状态', enum: ['queued', 'generating', 'validating', 'installing', 'ready', 'failed'] })
+  @ApiProperty({ description: '生成状态', enum: ['queued', 'generating', 'validating', 'installing', 'ready', 'needs_input', 'failed'] })
   status!: SkillCaptureStatus;
 
   @ApiPropertyOptional({ description: '生成完成后的技能标识' })

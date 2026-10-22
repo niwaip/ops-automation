@@ -31,12 +31,13 @@ export async function handleSavePersonalSkillChat(ctx: SaveSkillChatContext): Pr
     const capture = await ctx.capture.createCapture(ctx.userId, {
       sourceRef: { kind: 'sandbox_turn', sessionId },
       displayName,
+      modelId: ctx.body.modelId,
       idempotencyKey: ctx.body.clientMessageId
         ? `chat:${sessionId}:${ctx.body.clientMessageId}` : undefined,
     });
-    const deadline = Date.now() + (ctx.waitMs ?? 5000);
+    const deadline = Date.now() + (ctx.waitMs ?? 45000);
     status = ctx.capture.getCaptureStatus(ctx.userId, capture.captureId);
-    while (status.status !== 'ready' && status.status !== 'failed' && Date.now() < deadline) {
+    while (!['ready', 'failed', 'needs_input'].includes(status.status) && Date.now() < deadline) {
       await new Promise((resolve) => setTimeout(resolve, Math.min(100, Math.max(0, deadline - Date.now()))));
       status = ctx.capture.getCaptureStatus(ctx.userId, capture.captureId);
     }
@@ -48,6 +49,9 @@ export async function handleSavePersonalSkillChat(ctx: SaveSkillChatContext): Pr
         (status.executionMode === 'verified_workflow' ? '关键核算规则与执行流程已保存，并通过来源附件的重放验证。\n\n' : '') +
         `• **技能目录**：\`/knowledge/skills/${status.slug}\`\n` +
         `• **复用方式**：下次上传新附件后，可以说“用${displayName}处理这份附件”。`;
+    } else if (status.status === 'needs_input') {
+      content = `保存个人技能「${displayName}」前需要确认：\n\n` +
+        (status.questions || []).map((q, i) => `${i + 1}. ${q}`).join('\n') + '\n\n当前尚未安装技能。';
     } else if (status.status === 'failed') {
       failed = true;
       content = `保存个人技能「${displayName}」失败：${status.error || '请稍后重试'}`;

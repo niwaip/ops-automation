@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -12,6 +12,8 @@ import { PersonalSkillGeneratorService } from './personal-skill-generator.servic
 import { PersonalSkillValidatorService } from './personal-skill-validator.service';
 import { PersonalSkillStoreService } from './personal-skill-store.service';
 import type { SkillCaptureStatus } from './personal-skill.types';
+import { PersonalSkillAuthoringService } from './personal-skill-authoring.service';
+import { resolveSkillInput, skillInputSchema } from './personal-skill-input.adapter';
 
 @Injectable()
 export class PersonalSkillCaptureService {
@@ -23,7 +25,8 @@ export class PersonalSkillCaptureService {
     private readonly sourceAdapter: PersonalSkillSourceAdapter,
     private readonly generator: PersonalSkillGeneratorService,
     private readonly validator: PersonalSkillValidatorService,
-    private readonly store: PersonalSkillStoreService
+    private readonly store: PersonalSkillStoreService,
+    @Optional() private readonly authoring?: PersonalSkillAuthoringService
   ) {}
 
   /**
@@ -100,8 +103,20 @@ export class PersonalSkillCaptureService {
     try {
       // 1. 提炼来源
       updateStatus({ status: 'generating', progress: 30 });
-      const source = await this.sourceAdapter.extractSource(userId, dto.sourceRef);
-      const slug = normalizeSkillSlug(dto.displayName, dto.slug);
+      let source = await this.sourceAdapter.extractSource(userId, dto.sourceRef);
+      const existing = dto.existingSkillId ? this.store.loadCatalog(userId)[dto.existingSkillId] : undefined;
+      if (dto.existingSkillId && !existing) throw new NotFoundException('待更新的技能不属于当前用户或不存在');
+      const slug = existing?.slug || normalizeSkillSlug(dto.displayName, dto.slug);
+      const workspace = path.join(this.store.getUserKnowledgeDir(userId), '..', 'workspace');
+      const validationInput = resolveSkillInput(workspace, source);
+      if (this.authoring) {
+        const authored = await this.authoring.author(source, dto.modelId || 'default', skillInputSchema(validationInput));
+        if (authored.status === 'needs_input') {
+          updateStatus({ status: 'needs_input', progress: 30, questions: authored.questions });
+          return;
+        }
+        source = authored.source;
+      }
 
       // 2. 生成包文件到 staging
       updateStatus({ progress: 50 });
@@ -116,13 +131,6 @@ export class PersonalSkillCaptureService {
 
       // 3. 校验包完整性
       updateStatus({ status: 'validating', progress: 75 });
-      const workspace = path.join(this.store.getUserKnowledgeDir(userId), '..', 'workspace');
-      const session = (source.source.sessionId || '').replace(/[^a-zA-Z0-9_-]/g, '_');
-      const inputCandidates = source.inputs.flatMap((input) => [
-        path.join(workspace, '.sessions', session, path.basename(input.name)),
-        path.join(workspace, path.basename(input.name)),
-      ]);
-      const validationInput = inputCandidates.find((candidate) => fs.existsSync(candidate));
       const hasWorkflow = fs.existsSync(path.join(stagingDir, 'execution.json'));
       if (hasWorkflow && source.inputs.length !== 1) {
         throw new Error('当前核算流程需要唯一来源附件，不能猜测多个输入文件');
@@ -137,10 +145,11 @@ export class PersonalSkillCaptureService {
       const record = await this.store.installFromStaging(userId, captureId, {
         displayName: dto.displayName,
         slug,
-        description: dto.description || source.objective,
+        description: dto.description || source.authoring?.description || source.objective,
         deliverables,
         hasScript,
         sourceRef: source.source,
+        existingSkillId: existing?.skillId,
       });
 
       // 5. 成功完成

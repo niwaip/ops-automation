@@ -6,12 +6,15 @@ import { PersonalSkillGeneratorService } from './personal-skill-generator.servic
 import { PersonalSkillSourceAdapter } from './personal-skill-source.adapter';
 import { PersonalSkillStoreService } from './personal-skill-store.service';
 import { PersonalSkillValidatorService } from './personal-skill-validator.service';
+import { ModelModule } from '../model/model.module';
+import { PersonalSkillAuthoringService } from './personal-skill-authoring.service';
 
 @Module({
-  imports: [RedisModule],
+  imports: [RedisModule, ModelModule],
   controllers: [PersonalSkillController],
   providers: [
     PersonalSkillSourceAdapter,
+    PersonalSkillAuthoringService,
     PersonalSkillGeneratorService,
     PersonalSkillValidatorService,
     PersonalSkillStoreService,

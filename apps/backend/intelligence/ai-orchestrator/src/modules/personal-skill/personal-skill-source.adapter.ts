@@ -168,6 +168,10 @@ export class PersonalSkillSourceAdapter {
     }
 
     return {
+      userMessages: history.slice(0, targetIndex).flatMap((message, i) =>
+        message?.role === 'user' && typeof message.content === 'string' &&
+        !parseSavePersonalSkillIntent(message.content).isMatch
+          ? [{ id: String(message.id || message.messageId || `user-${i}`), text: message.content.trim() }] : []),
       source: { ...sourceRef, messageId: assistantMsg.id || assistantMsg.messageId },
       objective,
       confirmedInstructions,

@@ -4,6 +4,7 @@ import * as path from 'path';
 import type { SkillSource } from './personal-skill.types';
 import { compilePersonalSkillWorkflow } from './personal-skill-workflow.compiler';
 import { writeWorkflowPackage } from './personal-skill-workflow-package.util';
+import { authoredSkillMarkdown } from './personal-skill-authored-markdown.util';
 
 @Injectable()
 export class PersonalSkillGeneratorService {
@@ -23,17 +24,18 @@ export class PersonalSkillGeneratorService {
 
     const description =
       customDescription ||
+      source.authoring?.description ||
       `按已确认的业务逻辑与规则处理新附件，自动化执行“${displayName}”。`;
 
     const deliverables = source.outputContract
       .filter((o) => o && o.type)
       .map((o) => (o.type.startsWith('.') ? o.type : `.${o.type}`));
 
-    const workflow = compilePersonalSkillWorkflow(source);
+    const workflow = source.workflow || compilePersonalSkillWorkflow(source);
     const hasScript = Boolean(workflow || (source.scriptCode && source.scriptCode.trim().length > 30));
 
     // 1. 生成 SKILL.md
-    const skillMdContent = this.buildSkillMd(
+    const skillMdContent = source.authoring && workflow ? authoredSkillMarkdown(source, displayName, slug, description) : this.buildSkillMd(
       slug,
       displayName,
       description,
@@ -79,6 +81,11 @@ export class PersonalSkillGeneratorService {
       JSON.stringify(rulesJson, null, 2),
       'utf-8'
     );
+    if (source.authoring) {
+      fs.writeFileSync(path.join(referencesDir, 'authoring.json'), JSON.stringify({
+        ...source.authoring, user_messages: source.userMessages, source_ref: source.source,
+      }, null, 2), 'utf-8');
+    }
 
     // 4. 复制可复用模板与资产到 assets/ (R07 / B05)
     if (source.reusableFiles && source.reusableFiles.length > 0) {

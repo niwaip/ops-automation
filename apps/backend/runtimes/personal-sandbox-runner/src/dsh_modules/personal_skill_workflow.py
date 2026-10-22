@@ -13,7 +13,17 @@ from .telemetry import TelemetryStats
 from .tool_result import ToolResult
 
 
-def try_run_personal_workflow(skill_res, files, prompt, history_file, history, start_time, deadline):
+def requests_workflow_change(instruction):
+    if re.search(r'改为|改成|修改|调整|新增|增加|删掉|删除', instruction):
+        return True
+    # Asking how an existing rule works is a presentation request, not a rule mutation.
+    if re.search(r'为什么|为何|解释|解读|说明|含义|怎么计算|如何计算', instruction):
+        return False
+    return bool(re.search(r'排除|剔除|不包含|不统计|仅统计|只统计|仅保留|只保留|仅包含|只包含|筛选|按照|分组|汇总金额', instruction))
+
+
+def try_run_personal_workflow(skill_res, files, prompt, history_file, history, start_time, deadline,
+                              model=None, policy=None, present=False):
     slug = getattr(skill_res, 'skill_id', None)
     if not slug or not re.fullmatch(r'[a-zA-Z0-9_-]+', slug):
         return False
@@ -56,7 +66,7 @@ def try_run_personal_workflow(skill_res, files, prompt, history_file, history, s
             raise ValueError('请提供本轮唯一的 XLSX/XLSM 附件，不能自动选择历史文件')
         # The saved flow is immutable during an invocation; do not silently ignore overrides.
         user_instruction = prompt.split('用户指令：')[-1]
-        if re.search(r'排除|不包含|仅统计|只统计|筛选|改为|修改|按照|分组|汇总金额', user_instruction):
+        if requests_workflow_change(user_instruction):
             raise ValueError('本轮包含新的核算口径，请先更新并验证技能版本后执行')
         if re.search(r'生成|导出|(?:输出|保存).*(?:文件|xlsx|csv|pdf)', user_instruction, re.I):
             raise ValueError('该技能保存的是文本核算流程，尚无本轮所需的文件交付步骤')
@@ -100,6 +110,17 @@ def try_run_personal_workflow(skill_res, files, prompt, history_file, history, s
         telemetry.record_guard('personal_skill_evidence', 'reject', str(error))
         text = f'本次核算未通过验证：{error}。未输出未经核算的金额。'
     telemetry.record_execution_result(receipt)
+    if receipt.is_success and present:
+        from .personal_skill_presentation import present_verified_workflow
+        text = present_verified_workflow(receipt.data, text, prompt, model, policy, telemetry, deadline)
+        try:
+            verify_receipt(receipt.data, plan, source)
+        except (OSError, ValueError) as error:
+            print('<<<DSH_DELTA_RESET>>>', flush=True)
+            receipt = ToolResult.error('personal_skill_source_changed', str(error))
+            telemetry.record_execution_result(receipt)
+            telemetry.record_guard('personal_skill_evidence', 'reject', 'source_changed_during_presentation')
+            text = '附件在结果解读期间发生变化，本次结果不再作为当前附件的有效核算，请重新执行。'
     if history_file:
         verification = persist_turn_evidence(history_file, hashes, prompt, [receipt], telemetry.guard_decisions)
         history.extend([{'role': 'user', 'content': prompt},

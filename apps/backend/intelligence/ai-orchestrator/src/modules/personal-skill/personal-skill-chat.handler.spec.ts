@@ -36,6 +36,13 @@ describe('save skill chat lifecycle', () => {
     expect(events.find((e) => e.data)?.data.statusUrl).toContain('/captures/cap');
   });
 
+  it('presents authoring questions without claiming the skill was installed', async () => {
+    capture.getCaptureStatus.mockReturnValue({ captureId: 'cap', status: 'needs_input', questions: ['按哪个字段分组？'] });
+    expect(await run()).toBe(true);
+    const content = conversation.persistConversation.mock.calls[0][0].assistantContent;
+    expect(content).toContain('按哪个字段分组？'); expect(content).toContain('尚未安装技能');
+  });
+
   it.each(['failed', 'exception', 'unavailable', 'incomplete_receipt', 'status_exception'])(
     'keeps %s inside the save flow', async (failure) => {
       if (failure === 'failed') capture.getCaptureStatus.mockReturnValue({ captureId: 'cap', status: 'failed', error: '安装失败' });

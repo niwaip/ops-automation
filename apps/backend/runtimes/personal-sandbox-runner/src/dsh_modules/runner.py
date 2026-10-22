@@ -338,7 +338,8 @@ def cmd_run(args):
     skill_res = SkillRouter.route(prompt, existing_history, allow_research=allow_research, files=session_files)
     from .personal_skill_workflow import try_run_personal_workflow
     if try_run_personal_workflow(skill_res, session_files, prompt, history_file,
-                                 existing_history, overall_start_time, task_deadline):
+                                 existing_history, overall_start_time, task_deadline,
+                                 model=getattr(args, 'model', None) or os.environ.get('DSH_MODEL'), policy=policy, present=True):
         return
     knowledge_context = scan_personal_knowledge() if skill_res.is_knowledge_intent else ""
 
