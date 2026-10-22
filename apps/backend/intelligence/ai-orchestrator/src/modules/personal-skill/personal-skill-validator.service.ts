@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import { validateWorkflowPackage } from './personal-skill-workflow-validation.util';
 
 const execFileAsync = promisify(execFile);
 
@@ -19,7 +20,7 @@ export class PersonalSkillValidatorService {
   /**
    * 针对个人沙箱模式执行轻量级校验（保证结构规范，避免过度门禁）
    */
-  async validatePackage(packageDir: string): Promise<SkillValidationResult> {
+  async validatePackage(packageDir: string, inputPath?: string): Promise<SkillValidationResult> {
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -59,6 +60,13 @@ export class PersonalSkillValidatorService {
       }
     }
 
+    if (fs.existsSync(path.join(packageDir, 'execution.json'))) {
+      try { validateWorkflowPackage(packageDir, inputPath); }
+      catch (err: any) { errors.push(`核算流程重放失败: ${err.message}`); }
+    } else if (content.includes('execution_mode: verified_workflow')) {
+      errors.push('缺少可验证核算流程 execution.json');
+    }
+
     // 3. 检查可选的 scripts/run.py 可运行性（轻量语法检查）
     const runPyPath = path.join(packageDir, 'scripts', 'run.py');
     if (fs.existsSync(runPyPath)) {
@@ -93,7 +101,7 @@ export class PersonalSkillValidatorService {
 
   private async checkPythonSyntax(pyFilePath: string): Promise<string | null> {
     try {
-      await execFileAsync('python3', ['-m', 'py_compile', pyFilePath]);
+      await execFileAsync('python3', ['-c', 'import ast,sys; ast.parse(open(sys.argv[1], encoding="utf-8").read())', pyFilePath], { timeout: 10000 });
       return null;
     } catch (err: any) {
       // 若当前环境中无 python3 命令，则安全跳过编译检查

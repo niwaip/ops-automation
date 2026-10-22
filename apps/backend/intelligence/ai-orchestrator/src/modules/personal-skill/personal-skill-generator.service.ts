@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { SkillSource } from './personal-skill.types';
+import { compilePersonalSkillWorkflow } from './personal-skill-workflow.compiler';
+import { writeWorkflowPackage } from './personal-skill-workflow-package.util';
 
 @Injectable()
 export class PersonalSkillGeneratorService {
@@ -27,7 +29,8 @@ export class PersonalSkillGeneratorService {
       .filter((o) => o && o.type)
       .map((o) => (o.type.startsWith('.') ? o.type : `.${o.type}`));
 
-    const hasScript = Boolean(source.scriptCode && source.scriptCode.trim().length > 30);
+    const workflow = compilePersonalSkillWorkflow(source);
+    const hasScript = Boolean(workflow || (source.scriptCode && source.scriptCode.trim().length > 30));
 
     // 1. 生成 SKILL.md
     const skillMdContent = this.buildSkillMd(
@@ -36,12 +39,15 @@ export class PersonalSkillGeneratorService {
       description,
       deliverables,
       hasScript,
-      source
+      source,
+      Boolean(workflow)
     );
     fs.writeFileSync(path.join(stagingDir, 'SKILL.md'), skillMdContent, 'utf-8');
 
     // 2. 生成 scripts/run.py（如存在可用代码）
-    if (hasScript && source.scriptCode) {
+    if (workflow) {
+      writeWorkflowPackage(stagingDir, workflow);
+    } else if (hasScript && source.scriptCode) {
       const scriptsDir = path.join(stagingDir, 'scripts');
       fs.mkdirSync(scriptsDir, { recursive: true });
       const parameterizedCode = this.parameterizeScript(source.scriptCode, slug);
@@ -64,6 +70,8 @@ export class PersonalSkillGeneratorService {
       negativeConstraints: source.corrections || [],
       inputExpectations: source.inputs,
       outputContract: source.outputContract,
+      reusableSteps: workflow?.steps || source.reusableSteps,
+      workflow: workflow ? 'workflow.json' : undefined,
       createdAt: new Date().toISOString(),
     };
     fs.writeFileSync(
@@ -96,7 +104,8 @@ export class PersonalSkillGeneratorService {
     description: string,
     deliverables: string[],
     hasScript: boolean,
-    source: SkillSource
+    source: SkillSource,
+    hasWorkflow = false
   ): string {
     const triggers = [
       displayName,
@@ -118,7 +127,9 @@ export class PersonalSkillGeneratorService {
           '\n'
         : '';
 
-    const scriptSection = hasScript
+    const scriptSection = hasWorkflow
+      ? `## 4. 可重复执行与验收\n关键逻辑和核算步骤保存在 \`references/workflow.json\`，入口为 \`scripts/run.py\`。\n平台绑定本轮附件执行固定流程，按字段重新定位表头，校验输入摘要、筛选行数及分组总额后直接呈现结果。\n禁止从技能名称推断额外筛选条件；缺失字段、多个候选工作表或规则变化时停止，不能猜测或改写流程。\n独立重放：\n\`\`\`bash\npython scripts/run.py --input /workspace/新附件.xlsx --receipt /workspace/核算回执.json\n\`\`\`\n`
+      : hasScript
       ? `## 4. 可重复执行程序\n确定性执行程序位于 \`scripts/run.py\`。\n运行指令示例：\n\`\`\`bash\npython scripts/run.py --input /workspace/新上传附件.xlsx --output /workspace/输出结果.xlsx\n\`\`\`\n对新附件执行时，若表头或数据行有微调，允许根据本 SKILL.md 规则自主微调参数或适配代码后执行。\n`
       : `## 4. 执行机制\n本技能为规则说明型个人技能，沙箱 Agent 读取本说明后根据规则自主进行数据分析、脚本编写与结果交付。\n`;
 
@@ -144,7 +155,7 @@ aliases:
   - "${slug}"
 ${deliverablesYaml}
 requires_execution: ${hasScript}
-default_rounds: 5
+${hasWorkflow ? 'execution_mode: verified_workflow\n' : ''}default_rounds: 5
 ---
 
 # ${displayName}

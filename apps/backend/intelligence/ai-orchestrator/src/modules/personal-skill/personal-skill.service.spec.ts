@@ -89,8 +89,8 @@ describe('PersonalSkill End-to-End Suite', () => {
     it('generates standard skill package with parameterized scripts and rules', async () => {
       const mockSource: SkillSource = {
         source: { kind: 'sandbox_turn', sessionId: 'sess-1' },
-        objective: '按部门统计并剔除外包人员',
-        confirmedInstructions: ['按部门汇总金额', '剔除外包人员'],
+        objective: '按部门排版并剔除外包人员',
+        confirmedInstructions: ['按部门排版表格', '剔除外包人员'],
         corrections: [{ userCorrection: '不要包含外包人员' }],
         inputs: [{ name: 'dept_data.xlsx', type: 'xlsx', required: true }],
         reusableSteps: [{ description: '执行汇总脚本' }],
@@ -139,7 +139,7 @@ describe('PersonalSkill End-to-End Suite', () => {
         {
           id: 'msg-1',
           role: 'user',
-          content: '请汇总表格',
+          content: '请整理表格格式',
           files: [{ fileName: 'report.xlsx' }],
         },
         {
