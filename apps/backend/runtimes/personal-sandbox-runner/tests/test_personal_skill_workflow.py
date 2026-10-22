@@ -139,6 +139,21 @@ class PersonalSkillWorkflowTests(unittest.TestCase):
         self.install(); history, _ = self.invoke([self.source.name, 'another.xlsx'])
         self.assertFalse(history[-1]['verification']['verified'])
 
+    def test_source_changes_during_model_presentation_retract_completion(self):
+        self.install(); history_file = self.root / 'presentation-change.json'
+        def changed(data, table, *args):
+            self.write_source('70.00000')
+            return table
+        with patch('dsh_modules.personal_skill_workflow.CUSTOM_SKILL_DIR', self.root / 'skills'), \
+             patch('dsh_modules.personal_skill_workflow.WORKSPACE_DIR', self.root), \
+             patch('dsh_modules.personal_skill_presentation.present_verified_workflow', side_effect=changed), \
+             redirect_stdout(io.StringIO()):
+            try_run_personal_workflow(SimpleNamespace(skill_id='custom-sum'), [self.source.name], '部门别有偿统计',
+                                      history_file, [], time.time(), None, present=True)
+        answer = json.loads(history_file.read_text())[-1]
+        self.assertFalse(answer['verification']['verified'])
+        self.assertNotIn('30.00000', answer['content'])
+
     def test_text_delivery_does_not_remove_mandatory_workflow_execution(self):
         from dsh_modules.skills import get_available_skills
         from dsh_modules.skill_router import SkillRouter

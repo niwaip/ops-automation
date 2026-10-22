@@ -4,6 +4,7 @@ export type SkillCaptureStatus =
   | 'validating'
   | 'installing'
   | 'ready'
+  | 'needs_input'
   | 'failed';
 
 export interface PersonalSkillSourceRef {
@@ -44,6 +45,18 @@ export interface SkillSourceCorrection {
 }
 
 export interface SkillSource {
+  userMessages?: Array<{ id: string; text: string }>;
+  workflow?: import('./personal-skill-workflow.compiler').PersonalSkillWorkflow;
+  authoring?: {
+    schema_version: 1;
+    model: string;
+    description: string;
+    when_to_use: string;
+    procedure: string[];
+    evidence: unknown;
+    usage?: unknown;
+    duration_ms: number;
+  };
   source: PersonalSkillSourceRef;
   objective: string;
   confirmedInstructions: string[];

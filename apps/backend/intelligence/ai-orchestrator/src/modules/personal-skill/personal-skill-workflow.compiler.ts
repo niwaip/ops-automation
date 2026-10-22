@@ -12,6 +12,13 @@ export interface PersonalSkillWorkflow {
 }
 
 /** Compile explicit rules only. Skill names and assistant prose are not business rules. */
+export function isCalculationSkillSource(source: SkillSource): boolean {
+  const text = [...source.confirmedInstructions, ...(source.userMessages || []).map((m) => m.text)].join('；');
+  return source.inputs.some((i) => ['xlsx', 'xlsm', 'csv', 'xls'].includes(i.type)) &&
+    (/(汇总|合计|求和|核算|统计|计算|平均|加权|计数|比率|归集|归并|加总|累计|总额|sum|group)/i.test(text) ||
+      /groupby|\.sum\s*\(|\.mean\s*\(|\.agg\s*\(/i.test(source.scriptCode || ''));
+}
+
 export function compilePersonalSkillWorkflow(source: SkillSource): PersonalSkillWorkflow | undefined {
   const instructions = [...new Set([
     ...source.confirmedInstructions,
@@ -62,6 +69,11 @@ export function compilePersonalSkillWorkflow(source: SkillSource): PersonalSkill
     }
   }
   if (!group || !measure) throw new Error('核算技能缺少明确的分组字段或求和字段，不能仅保存文字说明');
+  return createGroupSumWorkflow(group, measure, filters, instructions);
+}
+
+export function createGroupSumWorkflow(group: string, measure: string,
+  filters: PersonalSkillWorkflow['filters'], instructions: string[]): PersonalSkillWorkflow {
   return {
     schema_version: 1, engine: 'spreadsheet-group-sum-v1', group_by: group, measure,
     filters: [...new Map(filters.map((f) => [JSON.stringify(f), f])).values()], instructions,
