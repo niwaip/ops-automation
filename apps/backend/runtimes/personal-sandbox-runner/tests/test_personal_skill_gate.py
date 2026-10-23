@@ -49,7 +49,7 @@ class PersonalSkillGateTests(unittest.TestCase):
             {'id': 'group', 'quote': '部门编号', 'target': '/group_by'},
             {'id': 'threshold', 'quote': '超过500k', 'target': '/having'}], 'query': query, 'question': ''}
 
-    def invoke(self, responder, request=None):
+    def invoke(self, responder, request=None, use_defaults=False):
         calls = []
         def model(messages, **kwargs):
             payload = json.loads(messages[-1]['content']); calls.append(payload)
@@ -59,7 +59,7 @@ class PersonalSkillGateTests(unittest.TestCase):
             return {'content': '', 'finish_reason': 'tool_calls', 'tool_calls': [{'type': 'function',
                     'function': {'name': kwargs['tools'][0]['function']['name'], 'arguments': json.dumps(result)}}]}
         out = io.StringIO(); history_path = self.root / 'session.json'
-        route = SimpleNamespace(skill_id='custom-sum')
+        route = SimpleNamespace(skill_id='custom-sum', admission={'action': 'use', 'skill_id': 'custom-sum', 'use_default_rules': use_defaults})
         with patch('dsh_modules.personal_skill_workflow.CUSTOM_SKILL_DIR', self.root / 'skills'), \
              patch('dsh_modules.personal_skill_workflow.WORKSPACE_DIR', self.root), \
              patch('dsh_modules.personal_skill_gate.call_model_proxy', side_effect=model), redirect_stdout(out):
@@ -87,6 +87,21 @@ class PersonalSkillGateTests(unittest.TestCase):
         self.assertEqual(data['stages']['having_groups_count'], 1)
         self.assertEqual(len(calls), 2)
         self.assertEqual(metrics['llmInvocations'], 2)
+
+    def test_unsupported_aggregate_projection_is_replanned_before_execution(self):
+        def responder(payload, attempt):
+            if attempt == 1:
+                proposal = self.proposal()
+                proposal['query']['fields'] = ['部门编号', 'amount']
+                return proposal
+            if attempt == 2:
+                self.assertIn('删除fields', payload['repair_feedback']['error'])
+                return self.proposal()
+            return self.accept(payload)
+        answer, archive, calls, metrics = self.invoke(responder)
+        self.assertTrue(answer['verification']['verified'])
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(sum(r['status'] == 'success' for r in archive['receipts']), 1)
 
     def test_review_rejects_unrequested_filter_and_replans_from_original_request(self):
         def responder(p, n):
@@ -128,7 +143,7 @@ class PersonalSkillGateTests(unittest.TestCase):
     def test_explicit_skill_preserves_saved_filters_for_transient_query(self):
         original_plan = (self.root / 'skills/custom-sum/references/workflow.json').read_bytes()
         answer, _, _, _ = self.invoke(lambda p, _: self.accept(p) if 'execution' in p else self.proposal(filters=True),
-                                     '用custom-sum，' + self.request)
+                                     '用custom-sum，' + self.request, use_defaults=True)
         self.assertTrue(answer['verification']['verified'])
         self.assertIn('| A | 600 | 2 |', answer['content'])
         self.assertEqual(original_plan, (self.root / 'skills/custom-sum/references/workflow.json').read_bytes())
@@ -154,7 +169,7 @@ class PersonalSkillGateTests(unittest.TestCase):
         self.assertEqual(len(calls), 2)
 
     def test_fake_quote_missing_binding_and_fake_evidence_do_not_pass(self):
-        context = {'request': self.request, 'user_history': [], 'named_skill_by_user': False}
+        context = {'request': self.request, 'user_history': [], 'use_saved_rules': False}
         proposal = self.proposal(); proposal['requirements'][0]['quote'] = '不存在的原话'
         with self.assertRaises(ValueError): validate_proposal(proposal, context)
         proposal = self.proposal(); proposal['requirements'][0]['target'] = '/no_such_field'
@@ -181,7 +196,7 @@ class PersonalSkillGateTests(unittest.TestCase):
 
     def test_irrelevant_candidate_falls_back_without_business_rule_context(self):
         result, _, _, route = self.invoke(lambda p, _: {'mode': 'fallback', 'requirements': [], 'query': None, 'question': ''})
-        self.assertIsNone(result); self.assertEqual(route.skill_id, 'xlsx')
+        self.assertIsNone(result); self.assertIsNone(route.skill_id)
         self.assertFalse(route.requires_execution)
 
 

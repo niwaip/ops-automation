@@ -126,7 +126,7 @@ class PersonalSkillWorkflowTests(unittest.TestCase):
         out = io.StringIO(); history_file = self.root / 'session.json'
         with patch('dsh_modules.personal_skill_workflow.CUSTOM_SKILL_DIR', self.root / 'skills'), \
              patch('dsh_modules.personal_skill_workflow.WORKSPACE_DIR', self.root), redirect_stdout(out):
-            self.assertTrue(try_run_personal_workflow(SimpleNamespace(skill_id='custom-sum'),
+            self.assertTrue(try_run_personal_workflow(SimpleNamespace(skill_id='custom-sum', admission={'action': 'use', 'skill_id': 'custom-sum', 'use_default_rules': True}),
                 files if files is not None else [self.source.name], 'custom-sum', history_file, [], time.time(), None))
         metrics = json.loads(extract_dsh_markers(out.getvalue(), 'METRICS')[0][0])
         return json.loads(history_file.read_text()), metrics
@@ -161,7 +161,7 @@ class PersonalSkillWorkflowTests(unittest.TestCase):
              patch('dsh_modules.personal_skill_workflow.WORKSPACE_DIR', self.root), \
              patch('dsh_modules.personal_skill_presentation.present_verified_workflow', side_effect=changed), \
              redirect_stdout(io.StringIO()):
-            try_run_personal_workflow(SimpleNamespace(skill_id='custom-sum'), [self.source.name], 'custom-sum',
+            try_run_personal_workflow(SimpleNamespace(skill_id='custom-sum', admission={'action': 'use', 'skill_id': 'custom-sum', 'use_default_rules': True}), [self.source.name], 'custom-sum',
                                       history_file, [], time.time(), None, present=True)
         answer = json.loads(history_file.read_text())[-1]
         self.assertFalse(answer['verification']['verified'])

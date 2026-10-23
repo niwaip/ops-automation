@@ -32,7 +32,6 @@ def decision_tool(phase, allow_saved=True):
                 'enum': ['sum', 'min', 'max', 'avg', 'count_rows', 'count_distinct']}, 'field': TEXT, 'unit': TEXT}, ['id', 'op'])},
             'order_by': {'type': 'array', 'items': obj({'ref': TEXT, 'direction': {'type': 'string', 'enum': ['asc', 'desc']}}, ['ref', 'direction'])},
             'limit': {'type': 'integer', 'minimum': 1}, 'offset': {'type': 'integer', 'minimum': 0},
-            'fields': {'type': 'array', 'items': TEXT}, 'distinct': {'type': 'boolean'},
         }, ['source', 'group_by', 'metrics', 'where', 'having'])
         query['properties']['where']['type'] = ['object', 'null']
         query['properties']['having']['type'] = ['object', 'null']
@@ -40,7 +39,7 @@ def decision_tool(phase, allow_saved=True):
         params = obj({'mode': {'type': 'string', 'enum': ['query', 'clarify', 'fallback']},
             'requirements': {'type': 'array', 'items': obj({'id': TEXT, 'quote': TEXT,
                 'target': {'type': 'string', 'enum': ['/source', '/group_by', '/metrics', '/where', '/having',
-                           '/order_by', '/limit', '/offset', '/fields', '/distinct']}}, ['id', 'quote', 'target'])},
+                           '/order_by', '/limit', '/offset']}}, ['id', 'quote', 'target'])},
             'query': query, 'question': TEXT}, ['mode', 'requirements', 'query', 'question'])
         if not allow_saved:
             params['properties']['mode']['enum'] = ['query', 'clarify', 'fallback']

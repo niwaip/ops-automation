@@ -16,20 +16,21 @@ from .telemetry import TelemetryStats
 from .tool_result import ToolResult
 
 
-def _fallback_to_general_analysis(skill_res):
+def _fallback_to_general_analysis(skill_res, prompt, history, files):
     """Do not leave rejected business rules in the ordinary agent's prompt."""
-    from .skills import read_skill
-    skill_res.skill_id = 'xlsx'
-    skill_res.skill_context = read_skill('xlsx') or ''
-    skill_res.requires_execution = False
-    skill_res.deliverables = []
-    skill_res.is_office_intent = True
+    from .skill_admission import general_route
+    admission = getattr(skill_res, 'admission', {})
+    fresh = general_route(prompt, history, files, admission if 'output_mode' in admission else None)
+    vars(skill_res).update(vars(fresh))
+    skill_res.source_formats = list(dict.fromkeys(Path(f).suffix.lower() for f in files))
 
 
 def try_run_personal_workflow(skill_res, files, prompt, history_file, history, start_time, deadline,
-                              model=None, policy=None, present=False):
+                              model=None, policy=None, present=False, telemetry=None):
     slug = getattr(skill_res, 'skill_id', None)
     if not slug or not re.fullmatch(r'[a-zA-Z0-9_-]+', slug):
+        return False
+    if getattr(skill_res, 'admission', {}).get('task_mode') == 'consult':
         return False
     package = Path(CUSTOM_SKILL_DIR) / slug
     manifest_file = package / 'execution.json'
@@ -49,7 +50,7 @@ def try_run_personal_workflow(skill_res, files, prompt, history_file, history, s
     if not manifest_file.exists() and 'execution_mode: verified_workflow' not in skill_md and not legacy_calc:
         return False
 
-    telemetry = TelemetryStats()
+    telemetry = telemetry if telemetry is not None else TelemetryStats()
     hashes = {}; receipt = None; attempts = []; accepted = False
     try:
         if not manifest_file.is_file():
@@ -62,7 +63,7 @@ def try_run_personal_workflow(skill_res, files, prompt, history_file, history, s
         if not source.is_relative_to(Path(WORKSPACE_DIR).resolve()) or not source.is_file():
             raise ValueError('本轮附件不在授权工作区或不存在')
         hashes[filename] = hashlib.sha256(source.read_bytes()).hexdigest()
-        context = candidate_context(slug, skill_md, saved, prompt, history, source)
+        context = candidate_context(slug, skill_md, saved, prompt, history, source, getattr(skill_res, 'admission', {}))
         catalog_file = Path(CUSTOM_SKILL_DIR).parent / '.personal-skills-catalog.json'
         catalog = json.loads(catalog_file.read_text(encoding='utf-8')) if catalog_file.is_file() else {}
         records = [r for r in catalog.values() if r.get('slug') == slug]
@@ -75,7 +76,7 @@ def try_run_personal_workflow(skill_res, files, prompt, history_file, history, s
             try:
                 proposal = plan_candidate(context, feedback, model, policy, telemetry, deadline)
                 if proposal['mode'] == 'fallback':
-                    _fallback_to_general_analysis(skill_res)
+                    _fallback_to_general_analysis(skill_res, prompt, history, files)
                     return False
                 if proposal['mode'] == 'clarify':
                     raise ValueError('需要确认：' + proposal['question'])
