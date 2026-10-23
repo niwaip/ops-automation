@@ -13,13 +13,19 @@ from .report_presentation import analysis_overview, with_sources
 from .analysis_delivery_constraints import is_empty_query
 
 
+def has_spreadsheet_analysis_input(skill_res):
+    spreadsheet_input = bool(set(getattr(skill_res, 'source_formats', [])) & {'.xlsx', '.xlsm', '.csv', '.xls'})
+    return (getattr(skill_res, 'skill_id', None) == 'xlsx'
+            or (getattr(skill_res, 'skill_id', None) is None and spreadsheet_input))
+
+
 def requires_spreadsheet_analysis(prompt, skill_res):
     contract = build_analysis_contract(prompt)
     if contract.is_advisory_intent and not contract.is_explicit_calc:
         return False
     if contract.is_browse_or_summary:
         return False
-    return (getattr(skill_res,"skill_id",None)=="xlsx"
+    return (has_spreadsheet_analysis_input(skill_res)
             and not getattr(skill_res,"is_generate_intent",False)
             and not getattr(skill_res,"requires_execution",False)
             and not getattr(skill_res,"is_guide_intent",False)

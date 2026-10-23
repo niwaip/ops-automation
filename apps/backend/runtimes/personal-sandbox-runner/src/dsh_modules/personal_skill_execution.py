@@ -2,7 +2,6 @@
 
 import hashlib
 import json
-import re
 from pathlib import Path
 
 from .personal_skill_workflow_engine import bind_field, digest, execute_workflow, verify_receipt
@@ -28,31 +27,32 @@ def load_package(package):
     return manifest, json.loads(plan_bytes), validation
 
 
-def candidate_context(slug, skill_md, saved, prompt, history, source):
+def candidate_context(slug, skill_md, saved, prompt, history, source, admission):
     request = prompt.split('用户指令：')[-1]
     users = list(dict.fromkeys(h['content'].split('用户指令：')[-1]
                               for h in history if h.get('role') == 'user'))[-6:]
     users = [text for text in users if text != request]
     if len(request) > 6000 or sum(map(len, users)) > 20000:
         raise ValueError('请求上下文超过语义门禁预算，不能静默截断后执行')
-    names = [slug]
-    if skill_md.startswith('---'):
-        names.extend(re.findall(r'^(?:name|zh_name):\s*[\"\']?([^\n\"\']+)', skill_md.split('---', 2)[1], re.M))
-    named = any(n.strip().casefold() in t.casefold() for n in names if n.strip() for t in [request] + users)
+    if admission.get('action') != 'use' or admission.get('skill_id') != slug:
+        raise ValueError('未通过共享技能准入，不能直接执行个人核算技能')
+    use_saved_rules = admission.get('use_default_rules')
+    if not isinstance(use_saved_rules, bool):
+        raise ValueError('共享准入口径缺失')
     profile = profile_spreadsheet_for_planning(source, prompt=request)
     if not profile.get('headers'):
         raise ValueError('无法检查本轮附件结构')
     # The profile is structural evidence; do not send sampled amounts as computed facts.
     structure = {k: profile[k] for k in ('sheet', 'header_row', 'data_range', 'records', 'headers')}
     candidate = {'slug': slug, 'skill': skill_md[:12000], 'saved_workflow': saved}
-    if not named:
+    if not use_saved_rules:
         # Discovery metadata is not an instruction to inherit an unselected business policy.
         candidate = {'slug': slug, 'role': 'capability_reference_only',
                      'capability': {'group_by': saved['group_by'], 'measure': saved['measure']},
                      'default_business_rules_applicable': False}
     context = {'request': request, 'user_history': users, 'candidate': candidate,
-               'named_skill_by_user': named, 'source_structure': structure}
-    if named:
+               'use_saved_rules': use_saved_rules, 'shared_admission': admission, 'source_structure': structure}
+    if use_saved_rules:
         headers = list(structure['headers'].values())
         field = lambda name: headers[bind_field(headers, name)]
         filters = [{'field': field(f['field']), 'op': 'not_starts_with' if f['op'] == 'exclude_prefix' else f['op'],
@@ -87,6 +87,7 @@ def execute_proposal(proposal, source, saved, validation, identity, context, dea
         receipt = calculate_spreadsheet_analysis(source, {'query': query}, deadline=deadline)
         if not receipt.is_success:
             raise ValueError(receipt.error_message or '临时查询执行失败')
+    receipt.data['field_labels'] = context['source_structure'].get('headers', {})
     receipt.data['skill'] = identity
     receipt.data['request_contract'] = proposal
     receipt.data['evidence_id'] = digest({k: v for k, v in receipt.data.items() if k != 'evidence_id'})[:24]
@@ -111,10 +112,11 @@ def render_query_receipt(receipt):
         return str(value if value is not None else '').replace('|', '\\|').replace('\n', ' ').replace('\r', ' ')
     if rows:
         columns = list(rows[0])
-        labels = {m['id']: m.get('label', m['id']) for m in query.get('metrics', [])}
+        labels = dict(data.get('field_labels', {}))
+        labels.update({m['id']: m.get('label', m['id']) for m in query.get('metrics', [])})
         if len(query.get('group_by', [])) == 1:
             group = query['group_by'][0]
-            labels['group_key'] = group if isinstance(group, str) else group.get('alias', group.get('field', '分组'))
+            labels['group_key'] = labels.get(group, group) if isinstance(group, str) else group.get('alias', group.get('field', '分组'))
         units = {f['id'].split('__')[0]: f.get('unit') for f in data.get('facts', [])}
         def heading(column):
             name = labels.get(column, column)
@@ -151,7 +153,7 @@ def render_query_receipt(receipt):
     if query.get('where'):
         conditions.append('明细条件：' + condition(query['where']))
     if query.get('having'):
-        conditions.append('部门/分组汇总后条件：' + condition(query['having']))
+        conditions.append('汇总后条件：' + condition(query['having']))
     if query.get('order_by'):
         conditions.append('排序：' + '、'.join(metric_labels.get(o['ref'], o['ref'])
                           + ('降序' if o.get('direction') == 'desc' else '升序') for o in query['order_by']))

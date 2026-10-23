@@ -24,7 +24,7 @@ from .agent_loop import run_agent_loop, _is_tool_error
 from .artifact_exporter import ArtifactExporter
 from .telemetry import TelemetryStats
 from .comparison_context import build_comparison_source_context
-from .spreadsheet_analysis_evidence import requires_spreadsheet_analysis
+from .spreadsheet_analysis_evidence import requires_spreadsheet_analysis, has_spreadsheet_analysis_input
 from .spreadsheet_context import build_spreadsheet_source_context, STRUCTURE_TOOL_NAME
 from .evidence_store import persist_turn_evidence, load_task_context
 
@@ -107,7 +107,7 @@ def select_active_tools(
 
     is_modify = getattr(skill_res, "is_modify_intent", False) or is_modify_intent_requested(prompt)
 
-    if not is_modify and (skill_res.skill_id == "xlsx" and not skill_res.is_generate_intent
+    if not is_modify and (has_spreadsheet_analysis_input(skill_res) and not skill_res.is_generate_intent
             and not skill_res.requires_execution and not getattr(skill_res,"is_guide_intent",False)):
         # A missing inspect keyword must not expose all mutative tools. The
         # attachment/skill selects a native read-only capability surface.
@@ -335,11 +335,28 @@ def cmd_run(args):
     # 1. 意图与技能解析 (精确规则 + Slash 命令)
     allow_research = bool(getattr(args, "research", False))
     session_files = resolve_session_attachments(args, session_id)
-    skill_res = SkillRouter.route(prompt, existing_history, allow_research=allow_research, files=session_files)
+    telemetry = TelemetryStats()
+    skill_res = SkillRouter.route(prompt, existing_history, allow_research=allow_research, files=session_files,
+                                  load_skill_context=False)
+    from .skill_admission import admit_skill, emit_admission_stop, AdmissionClarification, AdmissionUnavailable, general_route
+    try:
+        skill_res = admit_skill(prompt, existing_history, session_files, skill_res,
+            getattr(args, 'model', None) or os.environ.get('DSH_MODEL'), policy, telemetry, task_deadline)
+    except AdmissionClarification as error:
+        emit_admission_stop(error, prompt, history_file, existing_history, telemetry)
+        return
+    except AdmissionUnavailable as error:
+        telemetry.record_guard('skill_admission', 'fallback_to_general', str(error)[:300])
+        print(f"⚠️ [Skill Admission] 技能准入复核未通过 ({error})，已安全降级为通用能力执行")
+        skill_res = general_route(prompt, existing_history, session_files, error.task_contract)
+    except ValueError as error:
+        emit_admission_stop(error, prompt, history_file, existing_history, telemetry)
+        return
     from .personal_skill_workflow import try_run_personal_workflow
     if try_run_personal_workflow(skill_res, session_files, prompt, history_file,
                                  existing_history, overall_start_time, task_deadline,
-                                 model=getattr(args, 'model', None) or os.environ.get('DSH_MODEL'), policy=policy, present=True):
+                                 model=getattr(args, 'model', None) or os.environ.get('DSH_MODEL'), policy=policy,
+                                 present=True, telemetry=telemetry):
         return
     knowledge_context = scan_personal_knowledge() if skill_res.is_knowledge_intent else ""
 
@@ -530,6 +547,10 @@ def cmd_run(args):
         skill_context=ContextBudget.clip_skill(skill_res.skill_context, max_chars=policy.max_skill_chars)
     )
     messages = [{"role": "system", "content": system_prompt}]
+    from .skill_admission import execution_contract_context
+    admission_context = execution_contract_context(skill_res.admission)
+    if admission_context:
+        messages.append({'role': 'system', 'content': admission_context})
 
     budgeted_history, dropped_count = ContextBudget.budget_history(
         existing_history, policy.max_history_chars, policy.max_single_history_chars
@@ -586,7 +607,6 @@ def cmd_run(args):
     )
 
     # 5. 思考模式调度：规划阶段（开启思考与架构设计） -> 执行与工具调用阶段（关闭思考）
-    telemetry = TelemetryStats()
     retrieval_evidence = []
     if search_context:
         from .tool_result import adapt_tool_output

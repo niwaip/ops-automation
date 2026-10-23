@@ -34,6 +34,8 @@ class SkillRoutingResult:
     deliverables: List[str] = field(default_factory=list)
     requires_execution: bool = False
     default_rounds: int = 0
+    admission: Dict[str, Any] = field(default_factory=dict)
+    source_formats: List[str] = field(default_factory=list)
 
 
 STOP_WORDS = {
@@ -598,7 +600,9 @@ class SkillRouter:
         existing_history: Optional[List[Dict[str, Any]]] = None,
         available_skills: Optional[List[Dict[str, Any]]] = None,
         allow_research: bool = False,
-        files: Optional[List[str]] = None
+        files: Optional[List[str]] = None,
+        selection: Optional[Dict[str, Any]] = None,
+        load_skill_context: bool = True,
     ) -> SkillRoutingResult:
         """
         Determines skill and intent for a given prompt via semantic affinity matching.
@@ -904,6 +908,17 @@ class SkillRouter:
                 result.is_research_intent = True
                 result.is_inspect_intent = False
 
+        # Semantic admission overrides the candidate before binding any skill contract.
+        if selection is not None:
+            selected = selection.get('skill_id')
+            catalog = available_skills if available_skills is not None else get_available_skills()
+            if selected is not None and selected not in {s['id'] for s in catalog}:
+                raise ValueError('准入技能不在当前可用目录')
+            result.skill_id = selected
+            result.is_research_intent = False
+            result.affinity_score = 0
+            result.matched_reasons = ['semantic_admission']
+
         # 7. 标记意图分类与读取技能内容
         if result.skill_id:
             if result.skill_id in ["guizang-ppt", "pptx", "slides", "html-ppt"]:
@@ -968,8 +983,9 @@ class SkillRouter:
                     break
 
             reasons_info = f" (亲和度得分: {result.affinity_score:.1f})" if result.affinity_score > 0 else ""
-            print(f"🎯 [Skill Router] 命中意图规范: {result.skill_id}{reasons_info}，正在注入专业规范...", flush=True)
-            result.skill_context = read_skill(result.skill_id, prompt=effective_query)
+            print(f"🎯 [Skill Router] {'采用' if load_skill_context else '候选'}: {result.skill_id}{reasons_info}", flush=True)
+            if load_skill_context:
+                result.skill_context = read_skill(result.skill_id, prompt=effective_query)
 
         # 8. 探测技术脚本与配置交付物意图 (Dockerfile, docker-compose, *.sh, *.sql, *.py, *.md, *.csv, *.json)
         # 保护原则：若已判定为纯查阅/只读意图，绝不扫描并强行开启生成！
