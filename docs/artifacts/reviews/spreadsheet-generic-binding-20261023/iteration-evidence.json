@@ -1,0 +1,798 @@
+[
+  {
+    "case": "original",
+    "duration_ms": 109428.53,
+    "calls": [
+      {
+        "name": "inspect_spreadsheet_structure",
+        "params": {
+          "file_path": "/workspace/.validation/generic-binding-20261023/original/工数3Q预实管理.xlsx",
+          "sheets": "['1019']"
+        },
+        "status": "success",
+        "result_status": "success",
+        "kind": "spreadsheet_structure",
+        "workbook_id": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d"
+      },
+      {
+        "name": "inspect_spreadsheet_structure",
+        "params": {
+          "file_path": "/workspace/.validation/generic-binding-20261023/original/工数实绩明细_20261020134124.xlsx",
+          "sheets": "['工数实绩明细']"
+        },
+        "status": "success",
+        "result_status": "success",
+        "kind": "spreadsheet_structure",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+      },
+      {
+        "name": "inspect_spreadsheet_structure",
+        "params": {
+          "file_path": "/workspace/.validation/generic-binding-20261023/original/工数3Q预实管理.xlsx",
+          "sheets": "['1019']"
+        },
+        "status": "loop_intercepted"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "/workspace/.validation/generic-binding-20261023/original/工数3Q预实管理.xlsx",
+          "query": "{'source': {'sheet': '1019', 'header_row': 4, 'data_range': 'A5:T64'}, 'where': {'op': 'not_eq', 'field': 'B', 'value': ..."
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "invalid_analysis_plan",
+        "workbook_id": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "/workspace/.validation/generic-binding-20261023/original/工数3Q预实管理.xlsx",
+          "query": "{'source': {'sheet': '1019', 'header_row': 4, 'data_range': 'A5:T64'}, 'limit': 70}"
+        },
+        "status": "success",
+        "result_status": "success",
+        "evidence_id": "588170347be3c53c399fd44d",
+        "plan_hash": "8e2455a4744a2070713435a060f817c4126811452c20e88426807e4dc3d01c39",
+        "kind": "spreadsheet_analysis",
+        "workbook_id": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d"
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "end_line": "64",
+          "file_path": "/workspace/.validation/generic-binding-20261023/original/工数3Q预实管理.xlsx",
+          "range": "1019!A1:T64",
+          "sheet": "1019"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "end_line": "64",
+          "file_path": "/workspace/.validation/generic-binding-20261023/original/工数3Q预实管理.xlsx",
+          "range": "A1:T64",
+          "sheet": "1019"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "end_line": "50",
+          "file_path": "/workspace/.validation/generic-binding-20261023/original/工数3Q预实管理.xlsx",
+          "range": "A1:P64",
+          "sheet": "1019"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "/workspace/.validation/generic-binding-20261023/original/工数实绩明细_20261020134124.xlsx",
+          "tables": "[{'data_range': 'A5:R278', 'header_row': 4, 'id': 'source', 'sheet': '工数实绩明细', 'filters': [{'column': '有偿无偿', 'op': 'in'...",
+          "query": "{'source': {'sheet': '工数实绩明细', 'header_row': 4, 'data_range': 'A5:R278'}, 'where': {'op': 'in', 'field': '有偿无偿', 'value'..."
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "invalid_analysis_plan",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "/workspace/.validation/generic-binding-20261023/original/工数实绩明细_20261020134124.xlsx",
+          "query": "{'source': {'sheet': '工数实绩明细', 'header_row': 4, 'data_range': 'A5:R278'}, 'where': {'op': 'in', 'field': '有偿无偿', 'values..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "evidence_id": "d739a9b53596ad11834f8c99",
+        "plan_hash": "abd58c20bc1adf04cc35eb40eb1109cf8f6665a9b3f3af268778396ebdbe7c5e",
+        "kind": "spreadsheet_analysis",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "end_line": "64",
+          "file_path": "/workspace/.validation/generic-binding-20261023/original/工数3Q预实管理.xlsx",
+          "range": "35:64",
+          "sheet": "1019"
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "invalid_range",
+        "workbook_id": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d"
+      }
+    ]
+  },
+  {
+    "case": "changed",
+    "duration_ms": 108533.8,
+    "calls": [
+      {
+        "name": "inspect_spreadsheet_structure",
+        "params": {
+          "file_path": "收入记录.xlsx",
+          "sheets": "['明细记录']"
+        },
+        "status": "success",
+        "result_status": "success",
+        "kind": "spreadsheet_structure",
+        "workbook_id": "c98d37dce430ae16722e22c79056b536b8d4d9615e8532e275d486dd7172bc7f"
+      },
+      {
+        "name": "inspect_spreadsheet_structure",
+        "params": {
+          "file_path": "滚动管理.xlsx",
+          "sheets": "['快照-2028-10-01', '快照-2028-11-01']"
+        },
+        "status": "success",
+        "result_status": "success",
+        "kind": "spreadsheet_structure",
+        "workbook_id": "45f1936df0acbba7b389374336ff35cf36407d4a94ccf5ceee9305b4457129cd"
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "end_line": "50",
+          "file_path": "滚动管理.xlsx",
+          "range": "A1:X94",
+          "sheet": "快照-2028-11-01"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "end_line": "18",
+          "file_path": "滚动管理.xlsx",
+          "range": "A1:X18",
+          "sheet": "快照-2028-11-01"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "end_line": "25",
+          "file_path": "滚动管理.xlsx",
+          "range": "A18:X75",
+          "sheet": "快照-2028-11-01"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "end_line": "45",
+          "file_path": "滚动管理.xlsx",
+          "range": "A42:X94",
+          "sheet": "快照-2028-11-01"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "end_line": "94",
+          "file_path": "滚动管理.xlsx",
+          "range": "A65:X94",
+          "sheet": "快照-2028-11-01"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "end_line": "94",
+          "file_path": "滚动管理.xlsx",
+          "range": "A87:X94",
+          "sheet": "快照-2028-11-01"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "收入记录.xlsx",
+          "query": "{'source': {'sheet': '明细记录', 'header_row': 12, 'data_range': 'A13:U286'}, 'where': {'op': 'eq', 'field': '归属期', 'value':..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "evidence_id": "399af24706ce244d92b07554",
+        "plan_hash": "f66d9b6baa50de1e8faf360e75ed9ba07da4081050b2f071de1570eb8217c081",
+        "kind": "spreadsheet_analysis",
+        "workbook_id": "c98d37dce430ae16722e22c79056b536b8d4d9615e8532e275d486dd7172bc7f"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "收入记录.xlsx",
+          "query": "{'source': {'sheet': '明细记录', 'header_row': 12, 'data_range': 'A13:U286'}, 'where': {'op': 'and', 'children': [{'op': 'eq..."
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "invalid_analysis_plan",
+        "workbook_id": "c98d37dce430ae16722e22c79056b536b8d4d9615e8532e275d486dd7172bc7f"
+      }
+    ]
+  },
+  {
+    "case": "original-v2",
+    "duration_ms": 103412.05,
+    "calls": [
+      {
+        "name": "read_skill",
+        "params": {
+          "skill_name": "work-hours-update"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "inspect_spreadsheet_structure",
+        "params": {
+          "file_path": "/workspace/工数3Q预实管理.xlsx",
+          "sheets": "['1019']"
+        },
+        "status": "success",
+        "result_status": "success",
+        "kind": "spreadsheet_structure",
+        "workbook_id": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d"
+      },
+      {
+        "name": "inspect_spreadsheet_structure",
+        "params": {
+          "file_path": "/workspace/工数实绩明细_20261020134124.xlsx",
+          "sheets": "['工数实绩明细']"
+        },
+        "status": "success",
+        "result_status": "success",
+        "kind": "spreadsheet_structure",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "/workspace/工数实绩明细_20261020134124.xlsx",
+          "tables": "[{'id': 't1', 'sheet': '工数实绩明细', 'data_range': 'A5:R278', 'header_row': 4}]",
+          "query": "{'source': {'sheet': '工数实绩明细', 'header_row': 4, 'data_range': 'A5:R278'}, 'where': {'op': 'eq', 'field': '有偿无偿', 'value'..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "evidence_id": "d34276de86d306070332e671",
+        "plan_hash": "df47fa2d9404f084308b02fe5c8b25f6fd480a6386056aed55197079a4a269b4",
+        "kind": "spreadsheet_analysis",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+      },
+      {
+        "name": "plan_spreadsheet_update",
+        "params": {
+          "target_file": "/workspace/工数3Q预实管理.xlsx",
+          "source_sheet": "工数实绩明细",
+          "new_sheet": "1023",
+          "period": "202610",
+          "period_field": "工数年月",
+          "section": "有偿",
+          "target_label": "预测",
+          "target_kind": "forecast",
+          "key_field": "部门编号",
+          "result_id": "d34276de86d306070332e671",
+          "metric_id": "m_total",
+          "target_range": "C5:C64",
+          "protected_labels": "['计划', '差异', '前日比', '3Q合计', '实绩']"
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "spreadsheet_update_rejected",
+        "workbook_id": null
+      },
+      {
+        "name": "plan_spreadsheet_update",
+        "params": {
+          "key_field": "部门编号",
+          "metric_id": "m_total",
+          "new_sheet": "1023",
+          "result_id": "d34276de86d306070332e671",
+          "period": "202610",
+          "period_field": "工数年月",
+          "protected_labels": "['计划', '差异', '前日比', '3Q合计', '实绩']",
+          "source_sheet": "工数实绩明细",
+          "target_file": "/workspace/工数3Q预实管理.xlsx",
+          "target_kind": "forecast",
+          "target_label": "预测",
+          "target_range": "C5:C64"
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "spreadsheet_update_rejected",
+        "workbook_id": null
+      },
+      {
+        "name": "plan_spreadsheet_update",
+        "params": {
+          "key_field": "部门编号",
+          "metric_id": "m_total",
+          "new_sheet": "1023",
+          "result_id": "d34276de86d306070332e671",
+          "period": "202610",
+          "period_field": "工数年月",
+          "protected_labels": "['计划', '差异', '前日比', '3Q合计', '实绩']",
+          "source_sheet": "工数实绩明细",
+          "target_file": "/workspace/工数3Q预实管理.xlsx",
+          "target_kind": "forecast",
+          "target_label": "预测",
+          "target_range": "C5:C64",
+          "section": "有偿"
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "spreadsheet_update_rejected",
+        "workbook_id": null
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "/workspace/工数实绩明细_20261020134124.xlsx",
+          "query": "{'group_by': ['部门编号'], 'metrics': [{'field': '金额(K)', 'id': 'm_total', 'label': '有偿金额合计', 'op': 'sum', 'unit': 'source'}..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "evidence_id": "9c517fa1404bfccf09f724eb",
+        "plan_hash": "5b7fdefde5dc44c696eec26ceff2cbf80a0fcc471cf3bae8803fe8af8e132027",
+        "kind": "spreadsheet_analysis",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+      },
+      {
+        "name": "plan_spreadsheet_update",
+        "params": {
+          "key_field": "部门编号",
+          "metric_id": "m_total",
+          "new_sheet": "1023",
+          "period": "202610",
+          "period_field": "工数年月",
+          "protected_labels": "['计划', '差异', '前日比', '3Q合计', '实绩']",
+          "result_id": "9c517fa1404bfccf09f724eb",
+          "section": "有偿",
+          "source_sheet": "工数实绩明细",
+          "target_file": "/workspace/工数3Q预实管理.xlsx",
+          "target_kind": "forecast",
+          "target_label": "预测",
+          "target_range": "C5:C64"
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "spreadsheet_update_rejected",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "ls -la /workspace/*.xlsx"
+        },
+        "status": "blocked",
+        "result_status": "error",
+        "error_code": "tool_not_available"
+      }
+    ]
+  },
+  {
+    "case": "changed-v2",
+    "duration_ms": 122422.32,
+    "calls": [
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "收入记录.xlsx",
+          "query": "{'source': {'sheet': '明细记录', 'header_row': 12, 'data_range': 'A13:U286'}, 'where': {'op': 'and', 'children': [{'op': 'eq..."
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "invalid_analysis_plan",
+        "workbook_id": "c98d37dce430ae16722e22c79056b536b8d4d9615e8532e275d486dd7172bc7f"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "收入记录.xlsx",
+          "query": "{'source': {'sheet': '明细记录', 'header_row': 12, 'data_range': 'A13:U286'}, 'where': {'op': 'and', 'children': [{'op': 'eq..."
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "invalid_analysis_plan",
+        "workbook_id": "c98d37dce430ae16722e22c79056b536b8d4d9615e8532e275d486dd7172bc7f"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "收入记录.xlsx",
+          "query": "{'source': {'sheet': '明细记录', 'header_row': 12, 'data_range': 'A13:U286'}, 'where': {'op': 'and', 'children': [{'field': ..."
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "invalid_analysis_plan",
+        "workbook_id": "c98d37dce430ae16722e22c79056b536b8d4d9615e8532e275d486dd7172bc7f"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "收入记录.xlsx",
+          "query": "{'source': {'sheet': '明细记录', 'header_row': 12, 'data_range': 'A13:U286'}, 'where': {'children': [{'field': '归属期', 'op': ..."
+        },
+        "status": "loop_intercepted"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "收入记录.xlsx",
+          "query": "{'source': {'sheet': '明细记录', 'header_row': 12, 'data_range': 'A13:U286'}, 'where': {'and': [{'field': '归属期', 'op': 'eq',..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "evidence_id": "69fff3a41de3ed29c08b6810",
+        "plan_hash": "7f78997f8bb00a32f07115e9d91c26cc1462836a348d3a5f8d9c18872f58b429",
+        "kind": "spreadsheet_analysis",
+        "workbook_id": "c98d37dce430ae16722e22c79056b536b8d4d9615e8532e275d486dd7172bc7f"
+      },
+      {
+        "name": "plan_spreadsheet_update",
+        "params": {
+          "target_file": "滚动管理.xlsx",
+          "source_sheet": "明细记录",
+          "new_sheet": "复核版",
+          "period": "202811",
+          "period_field": "归属期",
+          "section": "收费业务",
+          "target_label": "本期估算",
+          "target_kind": "forecast",
+          "target_unit": "万元",
+          "unit_cell": "A1",
+          "key_field": "组织键",
+          "result_id": "69fff3a41de3ed29c08b6810",
+          "metric_id": "revenue",
+          "protected_labels": "['基准预算', '差异', '前日比']"
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "spreadsheet_update_rejected",
+        "workbook_id": null
+      },
+      {
+        "name": "inspect_spreadsheet_structure",
+        "params": {
+          "file_path": "滚动管理.xlsx",
+          "sheets": "['快照-2028-11-01']"
+        },
+        "status": "success",
+        "result_status": "success",
+        "kind": "spreadsheet_structure",
+        "workbook_id": "45f1936df0acbba7b389374336ff35cf36407d4a94ccf5ceee9305b4457129cd"
+      },
+      {
+        "name": "plan_spreadsheet_update",
+        "params": {
+          "key_field": "组织键",
+          "metric_id": "revenue",
+          "new_sheet": "复核版",
+          "period": "202811",
+          "period_field": "归属期",
+          "protected_labels": "['基准预算', '差异', '前日比']",
+          "result_id": "69fff3a41de3ed29c08b6810",
+          "source_sheet": "明细记录",
+          "target_file": "滚动管理.xlsx",
+          "target_kind": "forecast",
+          "target_label": "本期估算",
+          "target_unit": "万元",
+          "unit_cell": "A1",
+          "section": "收费业务"
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "spreadsheet_update_rejected",
+        "workbook_id": null
+      },
+      {
+        "name": "plan_spreadsheet_update",
+        "params": {
+          "key_field": "组织键",
+          "metric_id": "revenue",
+          "new_sheet": "复核版",
+          "period": "202811",
+          "period_field": "归属期",
+          "protected_labels": "['基准预算', '差异', '前日比']",
+          "result_id": "69fff3a41de3ed29c08b6810",
+          "source_sheet": "明细记录",
+          "target_file": "/rolling/滚动管理.xlsx",
+          "target_kind": "forecast",
+          "target_label": "本期估算",
+          "target_unit": "万元",
+          "unit_cell": "A1",
+          "section": "收费业务"
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "spreadsheet_update_rejected",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "command": "ls -la /workspace/"
+        },
+        "status": "blocked",
+        "result_status": "error",
+        "error_code": "tool_not_available"
+      }
+    ]
+  },
+  {
+    "case": "original-v3",
+    "duration_ms": 97698.03,
+    "calls": [
+      {
+        "name": "inspect_spreadsheet_structure",
+        "params": {
+          "file_path": "工数3Q预实管理.xlsx",
+          "sheets": "['1019']"
+        },
+        "status": "success",
+        "result_status": "success",
+        "kind": "spreadsheet_structure",
+        "workbook_id": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d"
+      },
+      {
+        "name": "inspect_spreadsheet_structure",
+        "params": {
+          "file_path": "工数3Q预实管理.xlsx",
+          "sheets": "['1019']"
+        },
+        "status": "loop_intercepted"
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "end_line": "30",
+          "file_path": "工数3Q预实管理.xlsx",
+          "range": "工数3Q预实管理.xlsx",
+          "sheet": "1019",
+          "start_line": "1"
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "invalid_range",
+        "workbook_id": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d"
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "file_path": "工数3Q预实管理.xlsx",
+          "range": "1019!A1:T30",
+          "sheet": "1019"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "file_path": "工数3Q预实管理.xlsx",
+          "range": "1019!A22:T64",
+          "sheet": "1019"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "end_line": "70",
+          "file_path": "工数3Q预实管理.xlsx",
+          "range": "1019!A42:T64",
+          "sheet": "1019",
+          "start_line": "42"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "file_path": "工数3Q预实管理.xlsx",
+          "range": "A42:T64",
+          "sheet": "1019"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "工数实绩明细_20261020134124.xlsx",
+          "query": "{'source': {'sheet': '工数实绩明细', 'header_row': 4, 'data_range': 'A5:R278'}, 'where': {'op': 'eq', 'field': '有偿无偿', 'value'..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "evidence_id": "3b75399316d5ddc4ef2a59cb",
+        "plan_hash": "f7a32e4d625e71af8bf209698f228cd0b6d42d463a3c19c865572c685c0da928",
+        "kind": "spreadsheet_analysis",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+      },
+      {
+        "name": "plan_spreadsheet_update",
+        "params": {
+          "target_file": "工数3Q预实管理.xlsx",
+          "base_sheet": "1019",
+          "new_sheet": "1023",
+          "period": "202610",
+          "period_field": "工数年月",
+          "section": "有偿",
+          "target_label": "预测",
+          "target_kind": "forecast",
+          "key_field": "部门编号",
+          "result_id": "有偿金额__(('str', 'FC45031'),)",
+          "metric_id": "有偿金额",
+          "target_range": "A4:C64"
+        },
+        "status": "error",
+        "result_status": "partial",
+        "workbook_id": null
+      }
+    ]
+  },
+  {
+    "case": "changed-v3",
+    "duration_ms": 93149.25,
+    "calls": [
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "收入记录.xlsx",
+          "query": "{'source': {'sheet': '明细记录', 'header_row': 12, 'data_range': 'A13:U286'}, 'where': {'op': 'and', 'conditions': [{'field'..."
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "invalid_analysis_plan",
+        "workbook_id": "c98d37dce430ae16722e22c79056b536b8d4d9615e8532e275d486dd7172bc7f"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "收入记录.xlsx",
+          "query": "{'source': {'data_range': 'A13:U286', 'header_row': 12, 'sheet': '明细记录'}, 'group_by': ['组织键'], 'metrics': [{'field': '收入..."
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "invalid_analysis_plan",
+        "workbook_id": "c98d37dce430ae16722e22c79056b536b8d4d9615e8532e275d486dd7172bc7f"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "收入记录.xlsx",
+          "query": "{'source': {'data_range': 'A13:U286', 'header_row': 12, 'sheet': '明细记录'}, 'where': {'op': 'and', 'conditions': [{'field'..."
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "invalid_analysis_plan",
+        "workbook_id": "c98d37dce430ae16722e22c79056b536b8d4d9615e8532e275d486dd7172bc7f"
+      },
+      {
+        "name": "inspect_spreadsheet_structure",
+        "params": {
+          "file_path": "收入记录.xlsx",
+          "sheets": "['明细记录']"
+        },
+        "status": "success",
+        "result_status": "success",
+        "kind": "spreadsheet_structure",
+        "workbook_id": "c98d37dce430ae16722e22c79056b536b8d4d9615e8532e275d486dd7172bc7f"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "收入记录.xlsx",
+          "query": "{'source': {'data_range': 'D13:U286', 'header_row': 12, 'sheet': '明细记录'}, 'where': {'op': 'and', 'conditions': [{'field'..."
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "invalid_analysis_plan",
+        "workbook_id": "c98d37dce430ae16722e22c79056b536b8d4d9615e8532e275d486dd7172bc7f"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "收入记录.xlsx",
+          "query": "{'group_by': ['组织键'], 'metrics': [{'field': '收入(K)', 'id': 'revenue', 'op': 'sum', 'unit': 'source'}], 'order_by': [{'di..."
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "invalid_analysis_plan",
+        "workbook_id": "c98d37dce430ae16722e22c79056b536b8d4d9615e8532e275d486dd7172bc7f"
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "end_line": "15",
+          "file_path": "收入记录.xlsx",
+          "sheet": "明细记录",
+          "range": "D12:U20"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "收入记录.xlsx",
+          "query": "{'group_by': ['组织键'], 'metrics': [{'field': '收入(K)', 'id': 'revenue', 'op': 'sum', 'unit': 'source'}], 'order_by': [{'di..."
+        },
+        "status": "loop_intercepted"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "收入记录.xlsx",
+          "query": "{'group_by': ['组织键'], 'metrics': [{'field': '收入(K)', 'id': 'revenue', 'op': 'sum', 'unit': 'source'}], 'order_by': [{'di..."
+        },
+        "status": "loop_intercepted"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "收入记录.xlsx",
+          "query": "{'source': {'sheet': '明细记录', 'header_row': 12, 'data_range': 'D13:U286'}, 'where': {'op': 'and', 'conditions': [{'field'..."
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "invalid_analysis_plan",
+        "workbook_id": "c98d37dce430ae16722e22c79056b536b8d4d9615e8532e275d486dd7172bc7f"
+      }
+    ]
+  }
+]

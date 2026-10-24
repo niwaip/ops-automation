@@ -107,6 +107,64 @@ def select_active_tools(
 
     is_modify = getattr(skill_res, "is_modify_intent", False) or is_modify_intent_requested(prompt)
 
+    # 0. 表格更新任务契约与权限路由：
+    # 严格遵循否定指令与只读优先原则：若属于咨询、方法指导或存在明确否定执行词汇，严禁暴露写执行工具
+    from .skill_router import is_term_negated
+    is_guide = getattr(skill_res, "is_guide_intent", False)
+    has_negative_execution = (
+        is_term_negated(prompt, "执行")
+        or is_term_negated(prompt, "修改")
+        or is_term_negated(prompt, "更新")
+        or is_term_negated(prompt, "落盘")
+        or is_term_negated(prompt, "覆盖")
+        or is_term_negated(prompt, "写入")
+    )
+    from .analysis_contract import build_analysis_contract, supports_column_comparison
+    contract = build_analysis_contract(prompt)
+    is_advisory = contract.is_advisory_intent or contract.is_browse_or_summary
+
+    from .spreadsheet_update.routing import is_workbook_update
+    admission = getattr(skill_res, 'admission', None) or {}
+    is_update_task = is_workbook_update(prompt, admission)
+    if admission.get('task_mode') == 'consult':
+        is_guide = True
+    update_enabled = os.environ.get("DSH_SPREADSHEET_UPDATE_ENABLED", "true").lower() in ("1", "true", "yes")
+
+    if (is_modify or is_update_task) and has_spreadsheet_analysis_input(skill_res) and update_enabled:
+        from .spreadsheet_analysis_schema import ANALYSIS_TOOL_NAMES
+        if is_guide or has_negative_execution or is_advisory:
+            # 咨询/指导或否定执行模式：只允许无副作用的只读分析或规划预览，严禁开放 execute_spreadsheet_update
+            update_read_allowed = {
+                "read_file",
+                "read_skill",
+                "compare_spreadsheet_columns",
+                STRUCTURE_TOOL_NAME,
+                *ANALYSIS_TOOL_NAMES,
+                "plan_spreadsheet_update",
+                "get_spreadsheet_update_status",
+            }
+            if has_web_search_permission:
+                update_read_allowed.update({"web_search", "fetch_page"})
+            return get_sandbox_tools(allowed_names=update_read_allowed)
+        else:
+            # 明确授权的完整更新任务：执行宽松原则，开放受限更新工具面与受控 bash 环境，由后置校验严格保障公式与数据完整性
+            update_exec_allowed = {
+                "bash",
+                "read_file",
+                "read_skill",
+                "compare_spreadsheet_columns",
+                STRUCTURE_TOOL_NAME,
+                *ANALYSIS_TOOL_NAMES,
+                "plan_spreadsheet_update",
+                "execute_spreadsheet_update",
+                "get_spreadsheet_update_status",
+            }
+            if has_web_search_permission:
+                update_exec_allowed.update({"web_search", "fetch_page"})
+            if skill_res.is_send_intent:
+                update_exec_allowed.add("send_file")
+            return get_sandbox_tools(allowed_names=update_exec_allowed)
+
     if not is_modify and (has_spreadsheet_analysis_input(skill_res) and not skill_res.is_generate_intent
             and not skill_res.requires_execution and not getattr(skill_res,"is_guide_intent",False)):
         # A missing inspect keyword must not expose all mutative tools. The
@@ -536,7 +594,10 @@ def cmd_run(args):
         ]
     if requires_spreadsheet_analysis(prompt, skill_res):
         from .spreadsheet_analysis_schema import select_analysis_tools
-        active_tools = select_analysis_tools(active_tools, prompt)
+        update_tool_names = {"plan_spreadsheet_update", "execute_spreadsheet_update", "get_spreadsheet_update_status", "read_skill"}
+        has_update_tools = any(t.get("function", {}).get("name") in update_tool_names for t in active_tools)
+        if not has_update_tools:
+            active_tools = select_analysis_tools(active_tools, prompt)
     task_context = load_task_context(history_file, original_hashes)
     # 4. 组装 System Prompt 与 User Turn (保持前缀稳定以命中 Prompt Caching)
     system_prompt = build_system_prompt(
@@ -623,6 +684,10 @@ def cmd_run(args):
         session_files=session_files,
         search_context=search_context,
     )
+    # A bounded update already plans from actual query evidence and workbook labels.
+    # Do not prepend a second free-text plan without these tool schemas.
+    if any(tool.get('function', {}).get('name') == 'plan_spreadsheet_update' for tool in active_tools):
+        should_plan = False
     if should_plan:
         plan_text = run_planning_phase(
             prompt=prompt,
@@ -682,6 +747,13 @@ def cmd_run(args):
             is_search_intent=is_search_intent,
             initial_execution_evidence=retrieval_evidence,
             user_prompt=prompt,
+            user_declarations={
+                'unit_confirmation': (skill_res.admission or {}).get('unit_confirmation'),
+                'user_statements': [prompt.split('用户指令：')[-1], *[
+                    item['content'].split('用户指令：')[-1] for item in existing_history
+                    if item.get('role') == 'user'
+                    and (skill_res.admission or {}).get('instruction_relation') == 'followup']],
+            },
         )
 
         if attachment_diagnostic_evidence:

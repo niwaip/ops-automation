@@ -133,7 +133,7 @@
           "diagnostics": {
             "attempt": 1,
             "modelId": "qwen36-35b-a3b",
-            "elapsedMs": 1
+            "elapsedMs": 0
           }
         }
       ],
@@ -246,7 +246,7 @@
               "diagnostics": {
                 "attempt": 1,
                 "modelId": "qwen36-35b-a3b",
-                "elapsedMs": 1
+                "elapsedMs": 0
               }
             }
           ],

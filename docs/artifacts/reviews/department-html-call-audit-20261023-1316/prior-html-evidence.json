@@ -1,0 +1,14 @@
+{
+  "session_id": "chat-session-1792730309468-pezbjusi",
+  "source_history_mtime_unix": 1792731763.5435877,
+  "user_requests": [
+    "统计 各个部门里面  合计金额 超过 500k的部门有哪些",
+    "【当前会话有效附件清单】: 工数实绩明细_20261020134124.xlsx\n用户指令：按 部门别  进行金额的统计 ，生成一张html的柱状图"
+  ],
+  "html_lines": 250,
+  "html_bytes": 8660,
+  "html_sha256": "2bb51163b3a39b6150a1259a264da993394f64a7ab8595aa45ea2260822e03d0",
+  "title": [
+    "各部门金额统计柱状图"
+  ]
+}

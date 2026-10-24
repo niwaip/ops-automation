@@ -78,7 +78,7 @@
           "diagnostics": {
             "attempt": 1,
             "modelId": "qwen36-35b-a3b",
-            "elapsedMs": 1,
+            "elapsedMs": 0,
             "rawSnippet": "[{\"clauseIndex\":0,\"riskLevel\":\"PASS\",\"riskSummary\":\"重复结果\"},{\"clauseIndex\":0,\"riskLevel\":\"PASS\",\"riskSummary\":\"重复结果\"},{\"clauseIndex\":0,\"riskLevel\":\"PASS\",\"riskSummary\":\"重复结果\"}]",
             "validationFailureCode": "MISSING_CLAUSE_IN_BATCH_OUTPUT"
           }
@@ -98,7 +98,7 @@
           "diagnostics": {
             "attempt": 1,
             "modelId": "qwen36-35b-a3b",
-            "elapsedMs": 1,
+            "elapsedMs": 0,
             "rawSnippet": "[{\"clauseIndex\":0,\"riskLevel\":\"PASS\",\"riskSummary\":\"重复结果\"},{\"clauseIndex\":0,\"riskLevel\":\"PASS\",\"riskSummary\":\"重复结果\"},{\"clauseIndex\":0,\"riskLevel\":\"PASS\",\"riskSummary\":\"重复结果\"}]",
             "validationFailureCode": "MISSING_CLAUSE_IN_BATCH_OUTPUT"
           }
@@ -153,7 +153,7 @@
               "diagnostics": {
                 "attempt": 1,
                 "modelId": "qwen36-35b-a3b",
-                "elapsedMs": 1,
+                "elapsedMs": 0,
                 "rawSnippet": "[{\"clauseIndex\":0,\"riskLevel\":\"PASS\",\"riskSummary\":\"重复结果\"},{\"clauseIndex\":0,\"riskLevel\":\"PASS\",\"riskSummary\":\"重复结果\"},{\"clauseIndex\":0,\"riskLevel\":\"PASS\",\"riskSummary\":\"重复结果\"}]",
                 "validationFailureCode": "MISSING_CLAUSE_IN_BATCH_OUTPUT"
               }
@@ -173,7 +173,7 @@
               "diagnostics": {
                 "attempt": 1,
                 "modelId": "qwen36-35b-a3b",
-                "elapsedMs": 1,
+                "elapsedMs": 0,
                 "rawSnippet": "[{\"clauseIndex\":0,\"riskLevel\":\"PASS\",\"riskSummary\":\"重复结果\"},{\"clauseIndex\":0,\"riskLevel\":\"PASS\",\"riskSummary\":\"重复结果\"},{\"clauseIndex\":0,\"riskLevel\":\"PASS\",\"riskSummary\":\"重复结果\"}]",
                 "validationFailureCode": "MISSING_CLAUSE_IN_BATCH_OUTPUT"
               }

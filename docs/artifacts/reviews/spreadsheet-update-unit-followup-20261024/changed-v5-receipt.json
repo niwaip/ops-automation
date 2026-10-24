@@ -1,0 +1,136 @@
+{
+  "schema_version": "SpreadsheetUpdateReceipt/v1",
+  "run_id": "run_fd3a6a603145",
+  "plan_id": "plan_8f6423dc4af1_run_fd3a6a603145",
+  "plan_hash": "8f6423dc4af19045d31c7cb69c9a54fe77b6a00cde1fbdb3b1509cd177f2f64c",
+  "request_hash": "d9e62bc936eca3eb51066a582e6f2ce8367cc717a95c05af702d34776e5d40dc",
+  "target_id": "/workspace/.validation/unit-followup-20261024/changed-v5/.dsh/spreadsheet-runs/run_fd3a6a603145/snapshot_滚动管理.xlsx",
+  "target_input_hash": "45f1936df0acbba7b389374336ff35cf36407d4a94ccf5ceee9305b4457129cd",
+  "output_hash": "3ccc6f0af115255a604a056401c08045982c2f4225cfe50c225112c53ba74a5e",
+  "output_path": "/workspace/.validation/unit-followup-20261024/changed-v5/滚动管理_复核版.xlsx",
+  "status": "published",
+  "validation_verdict": "passed_with_warnings",
+  "warnings": [
+    "来源无匹配记录，保留原值：0, 003, LAB::8, R-9"
+  ],
+  "applied_operations": [
+    {
+      "op": "copy_sheet",
+      "op_id": "copy",
+      "source_sheet": "快照-2028-11-01",
+      "target_sheet": "复核版"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_0",
+      "target_sheet": "复核版",
+      "coordinate": "G40",
+      "fact_ref": "40cf5f4487d89e0d702c7a66:metric_709207b518ca__(('str', '九部'),)",
+      "region_id": "收费业务",
+      "department_code": "九部",
+      "metric_id": "metric_709207b518ca",
+      "period": "202811",
+      "value_kind": "forecast",
+      "unit": "万元"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_1",
+      "target_sheet": "复核版",
+      "coordinate": "G35",
+      "fact_ref": "40cf5f4487d89e0d702c7a66:metric_709207b518ca__(('str', '组织/11'),)",
+      "region_id": "收费业务",
+      "department_code": "组织/11",
+      "metric_id": "metric_709207b518ca",
+      "period": "202811",
+      "value_kind": "forecast",
+      "unit": "万元"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_2",
+      "target_sheet": "复核版",
+      "coordinate": "G45",
+      "fact_ref": "40cf5f4487d89e0d702c7a66:metric_709207b518ca__(('str', '七号'),)",
+      "region_id": "收费业务",
+      "department_code": "七号",
+      "metric_id": "metric_709207b518ca",
+      "period": "202811",
+      "value_kind": "forecast",
+      "unit": "万元"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_3",
+      "target_sheet": "复核版",
+      "coordinate": "G44",
+      "fact_ref": "40cf5f4487d89e0d702c7a66:metric_709207b518ca__(('str', 'Ω组'),)",
+      "region_id": "收费业务",
+      "department_code": "Ω组",
+      "metric_id": "metric_709207b518ca",
+      "period": "202811",
+      "value_kind": "forecast",
+      "unit": "万元"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_4",
+      "target_sheet": "复核版",
+      "coordinate": "G46",
+      "fact_ref": "40cf5f4487d89e0d702c7a66:metric_709207b518ca__(('str', '研发/甲'),)",
+      "region_id": "收费业务",
+      "department_code": "研发/甲",
+      "metric_id": "metric_709207b518ca",
+      "period": "202811",
+      "value_kind": "forecast",
+      "unit": "万元"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_5",
+      "target_sheet": "复核版",
+      "coordinate": "G43",
+      "fact_ref": "40cf5f4487d89e0d702c7a66:metric_709207b518ca__(('str', '组织_乙'),)",
+      "region_id": "收费业务",
+      "department_code": "组织_乙",
+      "metric_id": "metric_709207b518ca",
+      "period": "202811",
+      "value_kind": "forecast",
+      "unit": "万元"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_6",
+      "target_sheet": "复核版",
+      "coordinate": "G38",
+      "fact_ref": "40cf5f4487d89e0d702c7a66:metric_709207b518ca__(('str', '余项'),)",
+      "region_id": "收费业务",
+      "department_code": "余项",
+      "metric_id": "metric_709207b518ca",
+      "period": "202811",
+      "value_kind": "forecast",
+      "unit": "万元"
+    }
+  ],
+  "evidence_refs": [],
+  "formula_health": {
+    "schema_version": 1,
+    "status": "verified",
+    "engine_execution": "success",
+    "provenance": {
+      "workbook_id": "68e38fe71ab48a7139a51dfed5e706acf3ef448096d34eb7e92e300ee7e6e037",
+      "output_hash": "3ccc6f0af115255a604a056401c08045982c2f4225cfe50c225112c53ba74a5e",
+      "engine": "libreoffice_calc_headless",
+      "validator_version": "v3_unified",
+      "calculated_at": "2026-10-23T16:54:46.553620+00:00"
+    },
+    "total_formulas": 933,
+    "cached_formulas": 933,
+    "uncalculated_formulas": 0,
+    "total_errors": 0,
+    "error_summary": {},
+    "error": null
+  },
+  "requirement_coverages": [],
+  "created_at": "2026-10-23T16:54:46.699861+00:00"
+}

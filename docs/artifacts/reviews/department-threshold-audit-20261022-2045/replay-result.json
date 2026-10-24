@@ -1,0 +1,121 @@
+{
+  "source_sha256": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+  "declared_dimension": "A1:A1",
+  "business_range": "A5:R278",
+  "query": "【当前会话有效附件清单】: 工数实绩明细_20261020134124.xlsx\n用户指令：按 部门编号统计 各个部分的金额 合计超过500k的部门 有哪些",
+  "routing": {
+    "skill_id": "dept-summary",
+    "affinity_score": 38.85400748168739,
+    "matched_reasons": [
+      "desc_terms(38.9)"
+    ],
+    "requires_execution": true
+  },
+  "new_instruction_guard_detected": false,
+  "recomputation": {
+    "all_business_rows": {
+      "groups": [
+        {
+          "department": "FC34022",
+          "count": 63,
+          "amount_k": "167.77218"
+        },
+        {
+          "department": "FC44003",
+          "count": 22,
+          "amount_k": "220.99259"
+        },
+        {
+          "department": "FC44004",
+          "count": 18,
+          "amount_k": "253.90590"
+        },
+        {
+          "department": "FC44006",
+          "count": 17,
+          "amount_k": "171.65638"
+        },
+        {
+          "department": "FC45031",
+          "count": 103,
+          "amount_k": "677.58544"
+        },
+        {
+          "department": "FC46005",
+          "count": 45,
+          "amount_k": "328.78323"
+        },
+        {
+          "department": "FC48005",
+          "count": 6,
+          "amount_k": "67.03530"
+        }
+      ],
+      "total_k": "1887.73102",
+      "included_rows": 274,
+      "departments_over_500k": [
+        {
+          "department": "FC45031",
+          "count": 103,
+          "amount_k": "677.58544"
+        }
+      ]
+    },
+    "saved_wbs_exclusions": {
+      "groups": [
+        {
+          "department": "FC34022",
+          "count": 62,
+          "amount_k": "164.90159"
+        },
+        {
+          "department": "FC44003",
+          "count": 21,
+          "amount_k": "212.90759"
+        },
+        {
+          "department": "FC44004",
+          "count": 16,
+          "amount_k": "198.51766"
+        },
+        {
+          "department": "FC44006",
+          "count": 17,
+          "amount_k": "171.65638"
+        },
+        {
+          "department": "FC45031",
+          "count": 91,
+          "amount_k": "561.75345"
+        },
+        {
+          "department": "FC46005",
+          "count": 40,
+          "amount_k": "260.64793"
+        },
+        {
+          "department": "FC48005",
+          "count": 6,
+          "amount_k": "67.03530"
+        }
+      ],
+      "total_k": "1637.41990",
+      "included_rows": 253,
+      "departments_over_500k": [
+        {
+          "department": "FC45031",
+          "count": 91,
+          "amount_k": "561.75345"
+        }
+      ]
+    }
+  },
+  "runtime_hashes": {
+    "runner.py": "3229c25d8b331f267044953ba10a39ec9606aefdc0f14b8b4ab24c54d4d6254f",
+    "skill_router.py": "46f753063edfd8e9c022b6e402727e0efb2f7e5710c9660e371e232cecfc9873",
+    "personal_skill_workflow.py": "13dbd6ef4679c0328909b19e49a16e8764846308c7f4bf4958b1140453894421",
+    "personal_skill_workflow_engine.py": "3f6114fe88b70b739379b19695a94a0b5a520561bc5fe941e65d56281557a860",
+    "personal_skill_presentation.py": "7ed06733768fc4ed3f14888629b8a9ea8d1edd100ce5b78647b4384b3746aac4"
+  },
+  "source_unchanged": true
+}

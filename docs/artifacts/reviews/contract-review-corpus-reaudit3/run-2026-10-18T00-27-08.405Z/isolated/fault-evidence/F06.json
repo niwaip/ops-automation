@@ -78,7 +78,7 @@
           "diagnostics": {
             "attempt": 1,
             "modelId": "qwen36-35b-a3b",
-            "elapsedMs": 1,
+            "elapsedMs": 0,
             "rawSnippet": "[]",
             "validationFailureCode": "INVALID_JSON_RESPONSE"
           }
@@ -98,7 +98,7 @@
           "diagnostics": {
             "attempt": 1,
             "modelId": "qwen36-35b-a3b",
-            "elapsedMs": 1,
+            "elapsedMs": 0,
             "rawSnippet": "[]",
             "validationFailureCode": "INVALID_JSON_RESPONSE"
           }
@@ -155,7 +155,7 @@
               "diagnostics": {
                 "attempt": 1,
                 "modelId": "qwen36-35b-a3b",
-                "elapsedMs": 1,
+                "elapsedMs": 0,
                 "rawSnippet": "[]",
                 "validationFailureCode": "INVALID_JSON_RESPONSE"
               }
@@ -175,7 +175,7 @@
               "diagnostics": {
                 "attempt": 1,
                 "modelId": "qwen36-35b-a3b",
-                "elapsedMs": 1,
+                "elapsedMs": 0,
                 "rawSnippet": "[]",
                 "validationFailureCode": "INVALID_JSON_RESPONSE"
               }

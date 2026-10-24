@@ -53,13 +53,20 @@ def finalize_agent_text(
     has_pending_tool_calls = bool(parse_tool_calls(reply_text, is_guide=is_guide_intent))
     final_text = clean_output(reply_text, is_guide=is_guide_intent)
     has_internal_plan = is_internal_plan_output(reply_text)
+    from .spreadsheet_update.presentation import render_published_update
+    published_summary = render_published_update(execution_evidence, workspace_dir)
 
     healed_files: List[str] = []
     has_valid_html = ("```html" in final_text.lower()) and not is_unclosed_or_truncated_html(final_text)
     has_physical_artifact = False
     try:
         if expected_deliverables and os.path.exists(workspace_dir):
-            ws_files = [f for f in os.listdir(workspace_dir) if not f.startswith(".")]
+            min_mtime = (turn_start_time - 2.0) if turn_start_time is not None else None
+            ws_files = [
+                f for f in os.listdir(workspace_dir)
+                if not f.startswith(".")
+                and (min_mtime is None or os.path.getmtime(os.path.join(workspace_dir, f)) >= min_mtime)
+            ]
             has_physical_artifact = any(
                 any(f.endswith(ext.lower()) for f in ws_files)
                 for ext in expected_deliverables
@@ -81,7 +88,13 @@ def finalize_agent_text(
     has_raw_dsml = bool(re.search(r'<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}', reply_text))
     has_raw_tool = bool(re.search(r'<(?:tool_call|tool_calls)', reply_text))
 
-    if has_pending_tool_calls or not final_text or is_transitional_filler or has_raw_dsml or has_raw_tool or has_internal_plan:
+    needs_summary = (has_pending_tool_calls or not final_text or is_transitional_filler
+                     or has_raw_dsml or has_raw_tool or has_internal_plan)
+    if needs_summary and published_summary:
+        final_text = published_summary
+        has_internal_plan = False
+        is_transitional_filler = False
+    elif needs_summary:
         messages.append({"role": "assistant", "content": reply_text or None})
         if is_hollow_claim:
             nudge_prompt = (
@@ -172,7 +185,7 @@ def finalize_agent_text(
 
         if not final_text or is_terminal_filler or is_internal_plan_output(final_text):
             inf_cause = "model_empty_final" if executed_calls_history else "model_budget_exhausted"
-            final_text = _build_fallback_report(
+            final_text = published_summary or _build_fallback_report(
                 messages,
                 executed_calls_history,
                 cause=inf_cause,
@@ -199,7 +212,7 @@ def finalize_agent_text(
             sys.stdout.flush()
         elif not has_valid_html_final and (detect_unexecuted_script_leak(final_text) or detect_unexecuted_tool_argument_leak(final_text)):
             print("⚠️ [Harness Script Leak Guard] 检测到模型输出了未执行的脚本或参数回显且未能自愈，触发安全兜底...", flush=True)
-            final_text = _build_fallback_report(
+            final_text = published_summary or _build_fallback_report(
                 messages,
                 executed_calls_history,
                 cause="model_empty_final",
@@ -210,6 +223,42 @@ def finalize_agent_text(
     feedback = sampling_feedback(final_text,last_user_prompt,messages,telemetry,execution_evidence,is_guide_intent)
     if feedback:
         final_text += "\n\n⚠️ **【数据覆盖度与真实性提示】**\n当前分析基于局部切片或抽样数据。\n" + feedback
+
+    # 引导用户明确指定目标列：若任务要求更新表格但未物理落盘，且模型输出了无法绑定/手动更新的推脱话术，
+    # 转换为标准的业务引导（呈现已统计事实 + 引导用户指定具体目标列）
+    if not is_guide_intent and last_user_prompt:
+        from .intent_contract import is_modify_intent_requested
+        from .task_intent import is_spreadsheet_mutation_requested
+        is_update_req = (
+            is_modify_intent_requested(last_user_prompt)
+            or is_spreadsheet_mutation_requested(last_user_prompt)
+        )
+        if is_update_req:
+            has_update_deliverable = False
+            ws_path = Path(workspace_dir)
+            if ws_path.exists():
+                min_mtime = (turn_start_time - 2.0) if turn_start_time is not None else 0.0
+                for f in ws_path.iterdir():
+                    if f.is_file() and f.suffix.lower() in ('.xlsx', '.xlsm') and f.stat().st_size > 0 and f.stat().st_mtime >= min_mtime:
+                        if not f.name.startswith(('~$', 'sample', 'test', 'temp', 'tmp')):
+                            from .workbook_delivery import deliverable_is_valid
+                            if deliverable_is_valid(f):
+                                has_update_deliverable = True
+                                break
+            if not has_update_deliverable:
+                is_avoidance = bool(re.search(
+                    r'(?:无法自动建立.*绑定|手动完成.*快照|直接用于手动更新|移动或复制.*创建副本|建议您直接在原文件|手动回填需确保)',
+                    final_text
+                ))
+                if is_avoidance:
+                    guidance_block = (
+                        "\n\n---\n"
+                        "### 📁 目标列确认与执行引导\n"
+                        "当前已完成源数据事实统计。由于目标工作簿中可能存在多列预测或需确认具体回填位置，为确保数据回填 100% 准确：\n"
+                        "💡 **请告知明确的目标列**（例如：直接回复「填入 C 列」或指定目标列号），我将立即为您执行工作表复制、数据写入与公式重算物理交付。"
+                    )
+                    clean_core = re.split(r'###\s*📁\s*物理文件交付|建议您直接在原文件', final_text)[0].strip()
+                    final_text = clean_core + guidance_block
 
     # 指标契约未完成阻碍声明（防模型在轮次耗尽时静默放行未完成的指标分析）
     if not is_guide_intent and last_user_prompt:
@@ -231,19 +280,29 @@ def finalize_agent_text(
             llm_calls = getattr(telemetry, "llm_invocations", 0) if telemetry else 0
             is_budget_exhausted = bool(llm_calls >= audit_ceiling)
             if not val_result.is_pass:
-                contract_warning = build_contract_termination_warning(
-                    contract=contract,
-                    val_result=val_result,
-                    messages=messages,
-                    telemetry=telemetry,
-                    is_budget_exhausted=is_budget_exhausted
-                )
-                if val_result.comparison_error and execution_evidence is not None:
-                    # Do not publish an unsupported extreme and then disclaim it.
-                    # This is a failed verification, not an alternate computed answer.
-                    final_text = "本次比较结论尚未通过执行证据核验。"
-                if "【指标核算未完成声明】" not in final_text:
-                    final_text += contract_warning
+                # 若已通过表格更新专有工具完成物理写盘与门禁校验，或最终输出已通过 verified 交付物摘要呈现，
+                # 严禁追加矛盾的“指标核算未完成声明”
+                has_verified_published = bool(published_summary or (is_update_req and has_update_deliverable))
+                if not has_verified_published and execution_evidence:
+                    for ev in execution_evidence:
+                        data = getattr(ev, "data", None) or {}
+                        if isinstance(data, dict) and data.get("status") == "published" and data.get("published_file"):
+                            has_verified_published = True
+                            break
+                if not has_verified_published:
+                    contract_warning = build_contract_termination_warning(
+                        contract=contract,
+                        val_result=val_result,
+                        messages=messages,
+                        telemetry=telemetry,
+                        is_budget_exhausted=is_budget_exhausted
+                    )
+                    if val_result.comparison_error and execution_evidence is not None:
+                        # Do not publish an unsupported extreme and then disclaim it.
+                        # This is a failed verification, not an alternate computed answer.
+                        final_text = "本次比较结论尚未通过执行证据核验。"
+                    if "【指标核算未完成声明】" not in final_text:
+                        final_text += contract_warning
 
     # 自动对工作区中本轮新生成的带公式但缺少缓存值的 xlsx 交付物执行无头重算以补齐公式缓存
     _recalculate_generated_workbooks(workspace_dir, turn_start_time=turn_start_time)
@@ -268,4 +327,3 @@ def finalize_agent_text(
         token_truncated=was_token_truncated,
     )
     return final_text, healed_files
-

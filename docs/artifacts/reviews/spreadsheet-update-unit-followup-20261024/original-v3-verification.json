@@ -1,0 +1,33 @@
+{
+  "status": "passed",
+  "record_count": 259,
+  "key_count": 7,
+  "unit": "K",
+  "source_total": "1747.12579",
+  "coordinates": {
+    "FC48005": "C5",
+    "FC46005": "C8",
+    "FC45031": "C10",
+    "FC44003": "C13",
+    "FC44004": "C14",
+    "FC44006": "C15",
+    "FC34022": "C16"
+  },
+  "actually_changed": [
+    "C8",
+    "C10",
+    "C14",
+    "C16"
+  ],
+  "formula_count": 622,
+  "formula_errors": 0,
+  "missing_caches": 0,
+  "history_budget_other_periods_and_regions_preserved": true,
+  "unit_basis": {
+    "source": "user",
+    "unit": "K",
+    "quote": "k单位"
+  },
+  "output_file": "工数3Q预实管理_1023.xlsx",
+  "output_hash": "bc066445a553b8eac217280023320ef156107c8a5aa7b139d68b28b0ba2a9630"
+}

@@ -38,6 +38,7 @@
         "isDegraded": true,
         "isTruncated": false,
         "warnings": [
+          "批次 1 模型调用失败 (NETWORK_TIMEOUT): ETIMEDOUT synthetic isolated model timeout，条款 [1, 2, 3] 已降级为静态规则校验。",
           "检测到 3 条条款未能完成大模型语义审查（已回退为静态规则校验），建议重点人工复核。"
         ]
       },
@@ -48,12 +49,18 @@
           "title": "条款0",
           "originalContent": "CRW_FAULT_0 双方依书面约定履行本条合同义务。",
           "riskLevel": "LOW",
-          "riskSummary": "该条款大模型语义审查超时/未响应，已回退为静态规则校验。",
+          "riskSummary": "该条款大模型语义审查降级 (NETWORK_TIMEOUT)，已回退为静态规则校验。",
           "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。",
           "matchedCheckpoints": [],
           "llmReviewed": false,
           "isBypassed": false,
-          "isFallback": true
+          "isFallback": true,
+          "diagnostics": {
+            "attempt": 2,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 602,
+            "validationFailureCode": "NETWORK_TIMEOUT"
+          }
         },
         {
           "clauseIndex": 1,
@@ -61,12 +68,18 @@
           "title": "条款1",
           "originalContent": "CRW_FAULT_1 双方依书面约定履行本条合同义务。",
           "riskLevel": "LOW",
-          "riskSummary": "该条款大模型语义审查超时/未响应，已回退为静态规则校验。",
+          "riskSummary": "该条款大模型语义审查降级 (NETWORK_TIMEOUT)，已回退为静态规则校验。",
           "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。",
           "matchedCheckpoints": [],
           "llmReviewed": false,
           "isBypassed": false,
-          "isFallback": true
+          "isFallback": true,
+          "diagnostics": {
+            "attempt": 2,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 602,
+            "validationFailureCode": "NETWORK_TIMEOUT"
+          }
         },
         {
           "clauseIndex": 2,
@@ -74,12 +87,18 @@
           "title": "条款2",
           "originalContent": "CRW_FAULT_2 双方依书面约定履行本条合同义务。",
           "riskLevel": "LOW",
-          "riskSummary": "该条款大模型语义审查超时/未响应，已回退为静态规则校验。",
+          "riskSummary": "该条款大模型语义审查降级 (NETWORK_TIMEOUT)，已回退为静态规则校验。",
           "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。",
           "matchedCheckpoints": [],
           "llmReviewed": false,
           "isBypassed": false,
-          "isFallback": true
+          "isFallback": true,
+          "diagnostics": {
+            "attempt": 2,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 602,
+            "validationFailureCode": "NETWORK_TIMEOUT"
+          }
         }
       ],
       "chapters": [
@@ -94,12 +113,18 @@
               "title": "条款0",
               "originalContent": "CRW_FAULT_0 双方依书面约定履行本条合同义务。",
               "riskLevel": "LOW",
-              "riskSummary": "该条款大模型语义审查超时/未响应，已回退为静态规则校验。",
+              "riskSummary": "该条款大模型语义审查降级 (NETWORK_TIMEOUT)，已回退为静态规则校验。",
               "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。",
               "matchedCheckpoints": [],
               "llmReviewed": false,
               "isBypassed": false,
-              "isFallback": true
+              "isFallback": true,
+              "diagnostics": {
+                "attempt": 2,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 602,
+                "validationFailureCode": "NETWORK_TIMEOUT"
+              }
             }
           ],
           "highRiskCount": 0,
@@ -117,12 +142,18 @@
               "title": "条款1",
               "originalContent": "CRW_FAULT_1 双方依书面约定履行本条合同义务。",
               "riskLevel": "LOW",
-              "riskSummary": "该条款大模型语义审查超时/未响应，已回退为静态规则校验。",
+              "riskSummary": "该条款大模型语义审查降级 (NETWORK_TIMEOUT)，已回退为静态规则校验。",
               "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。",
               "matchedCheckpoints": [],
               "llmReviewed": false,
               "isBypassed": false,
-              "isFallback": true
+              "isFallback": true,
+              "diagnostics": {
+                "attempt": 2,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 602,
+                "validationFailureCode": "NETWORK_TIMEOUT"
+              }
             },
             {
               "clauseIndex": 2,
@@ -130,12 +161,18 @@
               "title": "条款2",
               "originalContent": "CRW_FAULT_2 双方依书面约定履行本条合同义务。",
               "riskLevel": "LOW",
-              "riskSummary": "该条款大模型语义审查超时/未响应，已回退为静态规则校验。",
+              "riskSummary": "该条款大模型语义审查降级 (NETWORK_TIMEOUT)，已回退为静态规则校验。",
               "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。",
               "matchedCheckpoints": [],
               "llmReviewed": false,
               "isBypassed": false,
-              "isFallback": true
+              "isFallback": true,
+              "diagnostics": {
+                "attempt": 2,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 602,
+                "validationFailureCode": "NETWORK_TIMEOUT"
+              }
             }
           ],
           "highRiskCount": 0,

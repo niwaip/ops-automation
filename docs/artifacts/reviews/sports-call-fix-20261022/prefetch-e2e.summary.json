@@ -1,0 +1,82 @@
+{
+  "sessionId": "sports-fix-e2e-1792664928312",
+  "prompt": "/search 今天的体育赛事",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "startedAt": "2026-10-22T10:28:48.312Z",
+  "httpStatus": 201,
+  "finishedAt": "2026-10-22T10:29:18.523Z",
+  "done": true,
+  "errors": [],
+  "answerChars": 1603,
+  "metrics": {
+    "ttftMs": 2595.72,
+    "durationMs": 29367.4,
+    "llmDurationMs": 15387.56,
+    "toolCallsCount": 2,
+    "toolCalls": [
+      {
+        "name": "web_search",
+        "params": {
+          "query": "/search 今天的体育赛事"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "web_search",
+        "params": {
+          "query": "2026年10月22日 体育赛事 比分 直播",
+          "freshness": "day"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      }
+    ],
+    "llmInvocations": 2,
+    "tokens": {
+      "prompt_tokens": 22132,
+      "completion_tokens": 1128,
+      "total_tokens": 23260
+    },
+    "finishReason": "stop",
+    "roundFinishReasons": [
+      "tool_calls",
+      "stop"
+    ],
+    "guardDecisions": [
+      {
+        "guard": "retrieval_answer",
+        "action": "accept",
+        "reason": "substantive_answer"
+      }
+    ],
+    "modelResponses": [
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 1599,
+        "cleanChars": 1599,
+        "rawSha256": "0cfd3773c818b34c31ab73c2e9819a3aad1d2c84cda4b786faeb538598b1a429",
+        "cleanSha256": "0cfd3773c818b34c31ab73c2e9819a3aad1d2c84cda4b786faeb538598b1a429",
+        "finishReason": "stop",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      }
+    ],
+    "answerValidation": {
+      "status": "completed",
+      "reason": "substantive_answer",
+      "attempts": 0
+    }
+  },
+  "historyStatus": 200
+}

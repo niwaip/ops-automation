@@ -163,7 +163,7 @@
           "diagnostics": {
             "attempt": 1,
             "modelId": "qwen36-35b-a3b",
-            "elapsedMs": 8
+            "elapsedMs": 6
           }
         },
         {
@@ -181,7 +181,7 @@
           "diagnostics": {
             "attempt": 1,
             "modelId": "qwen36-35b-a3b",
-            "elapsedMs": 8
+            "elapsedMs": 6
           }
         },
         {
@@ -199,7 +199,7 @@
           "diagnostics": {
             "attempt": 1,
             "modelId": "qwen36-35b-a3b",
-            "elapsedMs": 8
+            "elapsedMs": 6
           }
         },
         {
@@ -217,7 +217,7 @@
           "diagnostics": {
             "attempt": 1,
             "modelId": "qwen36-35b-a3b",
-            "elapsedMs": 8
+            "elapsedMs": 6
           }
         }
       ],
@@ -360,7 +360,7 @@
               "diagnostics": {
                 "attempt": 1,
                 "modelId": "qwen36-35b-a3b",
-                "elapsedMs": 8
+                "elapsedMs": 6
               }
             },
             {
@@ -378,7 +378,7 @@
               "diagnostics": {
                 "attempt": 1,
                 "modelId": "qwen36-35b-a3b",
-                "elapsedMs": 8
+                "elapsedMs": 6
               }
             },
             {
@@ -396,7 +396,7 @@
               "diagnostics": {
                 "attempt": 1,
                 "modelId": "qwen36-35b-a3b",
-                "elapsedMs": 8
+                "elapsedMs": 6
               }
             },
             {
@@ -414,7 +414,7 @@
               "diagnostics": {
                 "attempt": 1,
                 "modelId": "qwen36-35b-a3b",
-                "elapsedMs": 8
+                "elapsedMs": 6
               }
             }
           ],

@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Optional
 from .telemetry import TelemetryStats, extract_dsh_markers, strip_dsh_markers
 from .runtime_policy import RuntimePolicy
 from .context_budget import ContextBudget
-from .tool_result import ToolResult
+from .tool_result import ToolResult, TextToolOutput
 from .comparison_evidence import validate_execution_output
 from .action_protocol import has_explicit_reminder_intent, has_explicit_reminder_time
 from .analysis_semantics import analysis_domain_scope
@@ -220,11 +220,20 @@ def dispatch_tool_calls(
         if not isinstance(evidence, ToolResult) and status in ("success", "error"):
             from .tool_result import adapt_tool_output
             evidence = adapt_tool_output(tool_res)
-            if evidence.provenance is None:
-                evidence.provenance = {"tool": canonical_name, "round": round_idx}
+        if isinstance(evidence, ToolResult) and evidence.provenance is None:
+            evidence.provenance = {"tool": canonical_name, "round": round_idx}
         if execution_evidence is not None and isinstance(evidence, ToolResult):
             execution_evidence.append(evidence)
             telemetry.record_execution_result(evidence)
+
+        if status == "success" and isinstance(evidence, ToolResult) and isinstance(evidence.data, dict):
+            if evidence.data.get("kind") == "spreadsheet_analysis":
+                try:
+                    from .spreadsheet_update.tools import harvest_analytical_facts
+                    harvest_analytical_facts(evidence.data, provenance=evidence.provenance)
+                    tool_res = TextToolOutput(str(tool_res) + "\n统计结果 ID：" + evidence.data["evidence_id"], evidence)
+                except Exception as ex:
+                    print(f"⚠️ [harvest_analytical_facts] Warning: {ex}", flush=True)
 
         for m, _, _ in extract_dsh_markers(tool_res, "OUTBOUND_FILE"):
             outbound_files.append(m.strip())

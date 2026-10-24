@@ -132,13 +132,25 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
             operation = "argmin"
 
     # 2.7 识别分组/分类汇总维度 (Group By / Breakdown)
-    is_grouped = bool(re.search(r'(?:按(?:照)?\s*.{1,20}?(?:分组|汇总|统计|分类|求和|计算|前\d+个[字符|字母]|前两位|前两位字母)|每组|各组|各类别|各个|逐组|分别统计|按组)', clean_prompt))
+    GROUP_CONNECTOR = r'(?:按(?:照)?|用|以|依据|根据|基于)'
+    AGG_ACTION = r'(?:分组|汇总|统计|分类|求和|计算|分析|归集)'
+    is_grouped = bool(re.search(
+        rf'(?:{GROUP_CONNECTOR}\s*[^，。！？、;；\n]{{1,20}}?(?:{AGG_ACTION}|前\d+个[字符|字母]|前两位|前两位字母)|每组|各组|各类别|各个|逐组|分别统计|按组|分部门|各部门|各项目|各员工|各人员)',
+        clean_prompt
+    ))
     group_dimension = None
-    m_grp = re.search(r'按(?:照)?\s*[“"\'\`]?([^\s，。！？、()（）"\'\`]{1,30}?)[”"\'\`]?\s*(?:进行)?(?:分组|汇总|统计|分类|求和|计算)', clean_prompt)
+    m_grp = re.search(
+        rf'{GROUP_CONNECTOR}\s*[“"\'\`]?([^\s，。！？、;；\n()（）"\'\`]{{1,30}}?)[”"\'\`]?\s*(?:进行)?{AGG_ACTION}',
+        clean_prompt
+    )
     if m_grp:
         group_dimension = re.sub(r'的$', '', m_grp.group(1).strip())
     elif "每组" in clean_prompt or "各组" in clean_prompt:
         group_dimension = "分组"
+    elif re.search(r'分部门|各部门', clean_prompt):
+        group_dimension = "部门"
+    elif re.search(r'分项目|各项目', clean_prompt):
+        group_dimension = "项目"
 
     # 2.8 识别定性咨询/管理建议意图与显式计算动词
     advisory_patterns = [
@@ -150,13 +162,13 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
         r'\b(?:recommendations?|suggestions?|actionable advice|strategic advice|how to improve|how to reduce)\b',
     ]
     is_advisory = any(bool(re.search(pat, clean_prompt, re.I)) for pat in advisory_patterns)
-    is_explicit_calc = bool(re.search(r'(?:计算|核算|求和|求出|求解|统计|算一下|汇总|查重|对账|检验|勾稽|识别.*异常|\b(?:calculate|compute|reconcile|audit)\b)', clean_prompt, re.I))
+    is_explicit_calc = bool(re.search(r'(?:计算|核算|求和|求出|求解|统计|算一下|汇总|合计|总计|加总|累加|合算|查重|对账|检验|勾稽|识别.*异常|\b(?:calculate|compute|reconcile|audit|sum|total)\b)', clean_prompt, re.I))
 
     # 2.9 识别行记录与明细查询意图 (Detail / Row-level Records Query)
     # 提取真实用户指令（剔除系统附加的附件前缀元数据，避免附件名中的“明细”干扰意图识别）
     user_instruction = clean_prompt
 
-    # 剥离文件名/表名引用（如 工数实绩明细_20261020134124.xlsx、工数实绩明细表、《工数实绩明细》）
+    # 剥离文件名/表名引用
     text_for_detail = re.sub(r'[^\s/\\<>\'"`]+\.(?:xlsx|xls|csv|docx|doc|pdf|txt|json)\b', ' ', user_instruction, flags=re.I)
     text_for_detail = re.sub(r'《[^》]+》', ' ', text_for_detail)
     text_for_detail = re.sub(r'【[^】]+】', ' ', text_for_detail)
@@ -226,7 +238,7 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
             r'的)+'
         )
         # 兼容中文共享后置度量语法，如 "有偿和无偿金额" -> 展开匹配 "有偿金额" 与 "无偿金额"
-        measure_pattern = r'金额|数量|费用|成本|总额|比率|均值|工数|工时|单价|明细条数|条数|行数|记录数|笔数|计数'
+        measure_pattern = r'金额|数量|费用|成本|总额|比率|均值|工数|工时|时间|时长|单价|明细条数|条数|行数|记录数|笔数|计数'
         def _expand_shared_measure(m):
             w1, w2, meas = m.group(1), m.group(2), m.group(3)
             if re.search(f'(?:{measure_pattern})$', w1):
@@ -238,12 +250,19 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
             _expand_shared_measure,
             clean_prompt
         )
+        normalized_target_prompt = re.sub(r'(?<=[\u4e00-\u9fff])\s+(?=[\u4e00-\u9fff])', '', expanded_target_prompt)
         # 匹配动词引导或连词连接的数值度量（如 金额、工数、工时、数量、费用、成本、总额、单价、比率、明细条数等）
         matches = list(re.finditer(
             r'(?:(?:统计|计算|核算|汇总|求|列出|分析)\s*|[和及与、并]\s*)'
             r'([^\s，。！？、()（）和及与、并]{0,12}(?:' + measure_pattern + r'))',
             expanded_target_prompt
         ))
+        if normalized_target_prompt != expanded_target_prompt:
+            matches.extend(list(re.finditer(
+                r'(?:(?:统计|计算|核算|汇总|求|列出|分析)\s*|[和及与、并]\s*)'
+                r'([^\s，。！？、()（）和及与、并]{0,12}(?:' + measure_pattern + r'))',
+                normalized_target_prompt
+            )))
         # 兼容中文动宾倒装句式，如“进行金额的统计”、“针对工数进行汇总”、“做部门费用的核算”
         inverted_matches = list(re.finditer(
             r'(?:进行|做|针对|开展|对)\s*'
@@ -251,16 +270,34 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
             r'(?:统计|计算|核算|汇总|求和|分析)',
             expanded_target_prompt
         ))
+        if normalized_target_prompt != expanded_target_prompt:
+            inverted_matches.extend(list(re.finditer(
+                r'(?:进行|做|针对|开展|对)\s*'
+                r'([^\s，。！？、()（）和及与、并]{0,12}(?:' + measure_pattern + r'))\s*(?:的)?\s*(?:进行|做)?\s*'
+                r'(?:统计|计算|核算|汇总|求和|分析)',
+                normalized_target_prompt
+            )))
         matches.extend(inverted_matches)
+        # 兼容“查看/展示/给出 [度量1] 和 [度量2] 的 合计/总计/汇总/求和”等后置聚合句式（仅在前序未识别到度量时兜底识别）
+        if not matches:
+            m_trailing_agg = re.search(r'(?:的)?\s*(?:合计|总计|汇总|求和|加总|累加|均值|平均)\b', expanded_target_prompt)
+            if m_trailing_agg:
+                prefix_part = expanded_target_prompt[:m_trailing_agg.start()]
+                trailing_matches = list(re.finditer(
+                    r'(?:[和及与、并\s]|^)([^\s，。！？、()（）和及与、并]{0,8}(?:' + measure_pattern + r'))(?=[和及与、并\s]|$)',
+                    prefix_part
+                ))
+                matches.extend(trailing_matches)
         found_metrics = []
         for m_item in matches:
             raw_metric = m_item.group(1).strip()
             # A numeric literal followed by a measure (e.g. an expected empty-result
             # value) is not another requested source column. Keep numeric field
             # qualifiers such as years or alphanumeric product names intact.
-            if re.fullmatch(r'[-+]?\d+(?:\.\d+)?\s*(?:金额|数量|费用|成本|总额|比率|均值|工数|工时|单价|明细条数|条数|行数|记录数|笔数|计数)', raw_metric):
+            if re.fullmatch(r'[-+]?\d+(?:\.\d+)?\s*(?:金额|数量|费用|成本|总额|比率|均值|工数|工时|时间|时长|单价|明细条数|条数|行数|记录数|笔数|计数)', raw_metric):
                 continue
             clean_metric = re.sub(peel_prefixes, '', raw_metric).strip()
+            clean_metric = re.sub(r'部分的?', '', clean_metric).strip()
             if re.search(r'(?:所有不同|不重复|去重|唯一).*?(?:负责|所属)', raw_metric):
                 continue  # A categorical column name is not a requested cost metric.
             if not clean_metric:
@@ -275,6 +312,10 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
             # 常见衍生形式（如 "金额(K)"、"金额汇总"、"部门A金额"）
             aliases.append(re.escape(clean_metric) + r'(?:汇总|总额|总计|合计|\([^)]+\)|（[^）]+）)?')
             aliases.append(r'[^\s，。！？、]{0,10}' + re.escape(clean_metric))
+            if clean_metric in ("时间", "时长"):
+                aliases.extend([r'工数', r'工时', r'小时', r'时数', r'工数\(小时\)', r'工时\(小时\)'])
+            elif clean_metric in ("工数", "工时"):
+                aliases.extend([r'时间', r'时长', r'小时', r'时数'])
 
             requested_metrics.append(MetricRequirement(
                 name=clean_metric,
@@ -304,7 +345,7 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
 
     # 7. 实体槽位与定向字段查询抽取 (Entity Slots & Attribute Targets)
     entity_predicates = []
-    # 7.1 提取编号/代码主键类实体 (如 S22014, FC45031, IW-S62662-00-001)
+    # 7.1 提取编号/代码主键类实体
     for m in re.finditer(r'(?:员工编号|工号|部门编号|BU编号|WBS编号|WBS|项目编号|项目代码|客户编号|订单号|单号|编号|代码|ID)\s*[:：=]?\s*([A-Za-z0-9_-]+)', clean_prompt, re.I):
         val = m.group(1).strip()
         upper_val = val.upper()
@@ -321,6 +362,14 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
     # 7.2 提取命名业务实体约束 (如 员工杨烨, 部门華東MIS, 客户将军空调)
     for m in re.finditer(r'(?:员工|人员|用户|同事|部门|客户|项目)\s*[:：=]?\s*([^\s，。！？、的]{2,15})', clean_prompt):
         val = m.group(1).strip()
+        # 1. 结构化判定：若处于分组连词（用/按/以...）结构中，为聚合维度指定，绝非实体实例
+        start_idx = m.start()
+        prefix_ctx = clean_prompt[max(0, start_idx - 10):start_idx]
+        if re.search(rf'{GROUP_CONNECTOR}\s*$', prefix_ctx):
+            continue
+        # 2. 若当前已提取分组维度，且 val 与 group_dimension 互为子串（如“部门编码”与“编码”），严禁作为实体约束
+        if group_dimension and (val in group_dimension or group_dimension in val):
+            continue
         if val and val not in entity_predicates and not any(k in val for k in ["编号", "姓名", "名称", "明细", "数据", "实绩", "工数", "金额", "列表", "情况"]):
             entity_predicates.append(val)
     # 提取逆序组织实体约束 (如 华东MIS部门, 交付中心BU)
@@ -329,8 +378,16 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
         for prefix in ['调出', '查看', '看下', '查询', '统计', '检索', '定位', '筛选']:
             if val.startswith(prefix):
                 val = val[len(prefix):].strip()
+        if group_dimension and (val in group_dimension or group_dimension in val):
+            continue
         if val and val not in entity_predicates and not any(k in val for k in ['所属', '负责', '对应', '各个', '每个', '该', '此', '不同', '所有', '列出', '按']):
             entity_predicates.append(val)
+
+    if group_dimension:
+        entity_predicates = [
+            e for e in entity_predicates
+            if e != group_dimension and e not in group_dimension and group_dimension not in e
+        ]
 
     # 7.3 提取关注的明细与度量属性
     attribute_targets = []
@@ -366,6 +423,7 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
         and not is_audit
         and not requested_metrics
         and not comparison
+        and not has_explicit_agg_verb
         and operation not in ("argmax", "argmin")
     )
 

@@ -52,6 +52,12 @@ def recalculate_generated_workbooks(workspace_dir: str, turn_start_time: Optiona
                 if is_protected_session_file(fpath):
                     continue
                 try:
+                    from .spreadsheet_update.delivery import is_verified_update_file
+                    if is_verified_update_file(fpath):
+                        continue
+                except Exception:
+                    pass
+                try:
                     if mtime_threshold and fpath.stat().st_mtime < mtime_threshold:
                         continue
                 except OSError:

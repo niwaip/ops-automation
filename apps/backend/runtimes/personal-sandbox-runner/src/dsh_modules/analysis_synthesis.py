@@ -652,6 +652,12 @@ def _is_synthesis_grounded(
             logger.warning("Synthesized summary contained disclaimer for missing grouping breakdown; rejecting synthesis.")
             return False
 
+    # 防御假性零匹配幻觉：若底层回执中明明有实际计算结果或匹配行，但模型正文声称“未找到匹配”或“没有任何一个...超过/达到/符合”，严禁放行
+    if not _is_zero_match_receipts(receipts, contract):
+        if re.search(r'没有任何一个.*(?:符合|超过|大于|达到)|未找到匹配的目标记录|未检索到符合条件的记录', clean_content):
+            logger.warning("Synthesized summary claimed zero-match when receipts have non-zero results; rejecting synthesis.")
+            return False
+
     required_facts, _ = _partition_facts_by_prompt(receipts, prompt)
     for fact in required_facts:
         val = fact.get("value")
@@ -703,6 +709,13 @@ def synthesize_analysis_summary(
 
     facts_digest = build_verified_facts_digest(receipts, prompt)
     if not facts_digest.strip():
+        return fallback_text
+
+    has_actual_facts = any(
+        kw in facts_digest
+        for kw in ("【已核算指标数值", "【用户提问核心指标", "【检索事实（零匹配）", "【底层检索到的匹配明细记录清单")
+    )
+    if not has_actual_facts:
         return fallback_text
 
     system_prompt = (

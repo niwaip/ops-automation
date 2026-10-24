@@ -200,7 +200,14 @@ class ArtifactExporter:
                                 f"- **输出文件**：`/workspace/{out_name}`\n"
                                 "- **操作提示**：您可以在下方直接**展开在线预览**、**全屏查看**，或点击**下载**保存本地使用。\n\n"
                             )
-                        cleaned_text = banner + cleaned_text
+                        # 将 ```html ... ``` 从正文提出并置顶到 banner 正下方，确保首屏立即可见操作卡片
+                        m_code = re.search(r'```html\s*\n(?:<!DOCTYPE html|<html)[\s\S]*?```', cleaned_text, re.I)
+                        if m_code and m_code.start() > 200:
+                            h_block = m_code.group(0)
+                            body_without = (cleaned_text[:m_code.start()] + cleaned_text[m_code.end():]).strip()
+                            cleaned_text = f"{banner}{h_block}\n\n---\n\n{body_without}\n"
+                        else:
+                            cleaned_text = banner + cleaned_text
                 except Exception as e:
                     print(f"⚠️ [Harness Export] 写入工作区文件异常: {e}")
 
@@ -294,12 +301,21 @@ class ArtifactExporter:
                 with open(target_file, "r", encoding="utf-8") as f:
                     file_content = f.read().strip()
                 if "<!DOCTYPE html" in file_content or "<html" in file_content:
+                    if any(err_kw in file_content for err_kw in ("指标核算未完成声明", "无法完成计算的原因", "本次尚未通过执行证据核验")):
+                        print(f"⚠️ [Harness Export] 文件 {target_file} 包含系统警告/未完成声明，跳过作为正常产物导出")
+                        return cleaned_text, exported_files
+
                     exported_files.append(str(target_file))
                     print(f"✨ [Harness Export] 自动从工作区提取生成文件注入卡片: {target_file}")
 
                     is_hollow_claim_text = (
                         len(cleaned_text.strip()) < 80 and
                         bool(re.search(r'(?:文件|代码|报告)?已成功(?:生成|写入|保存)', cleaned_text))
+                    )
+                    is_contract_failure = (
+                        "指标核算未完成声明" in cleaned_text
+                        or "尚未通过执行证据核验" in cleaned_text
+                        or "无法完成计算的原因" in cleaned_text
                     )
                     is_fallback_error_text = (
                         cleaned_text.startswith("⚠️")
@@ -321,20 +337,27 @@ class ArtifactExporter:
                             "- **操作提示**：您可以在下方直接**展开在线预览**、**全屏查看**，或点击**下载**保存本地使用。\n\n"
                         )
 
-                    if is_fallback_error_text:
+                    if is_contract_failure:
+                        # 严禁将失败/警告包装为大成功，直接保留原始警告文本与代码块，不加成功横幅
+                        cleaned_text = f"```html\n{file_content}\n```\n\n---\n\n{cleaned_text.strip()}\n"
+                    elif is_fallback_error_text:
                         # 错误兜底状态下，若通过历史数据自愈生成了有效 HTML，替换为清晰的自愈恢复说明，绝不呈现前后矛盾文案
                         cleaned_text = (
                             "✨ **单页 HTML 报告已由系统基于会话内容自动整理生成！**\n"
                             f"- **输出文件**：`/workspace/{target_file.name}`\n"
                             "- **操作提示**：您可以在下方直接**展开在线预览**、**全屏查看**，或点击**下载**保存本地使用。\n\n"
+                            f"```html\n{file_content}\n```\n\n"
                             "> 💡 **恢复说明**：上游模型在写入收尾阶段未输出有效正文，系统已自动提取前序会话核心数据并编译为单页报告。"
                         )
                     elif is_hollow_claim_text:
-                        cleaned_text = banner
-                    elif not cleaned_text.startswith("✨") and not cleaned_text.startswith("⚠️"):
-                        cleaned_text = banner + cleaned_text
-
-                    cleaned_text = cleaned_text.rstrip() + f"\n\n```html\n{file_content}\n```\n"
+                        cleaned_text = f"{banner}```html\n{file_content}\n```\n"
+                    else:
+                        # 将 ```html ... ``` 置顶到 banner 正下方，首屏立即可见操作卡片
+                        cleaned_body = cleaned_text.strip()
+                        if cleaned_body:
+                            cleaned_text = f"{banner}```html\n{file_content}\n```\n\n---\n\n{cleaned_body}\n"
+                        else:
+                            cleaned_text = f"{banner}```html\n{file_content}\n```\n"
             except Exception as e:
                 print(f"⚠️ [Harness Export] 读取工作区补全文件异常: {e}")
 
@@ -475,5 +498,21 @@ class ArtifactExporter:
             non_md = [d for d in deliverables if not d["fileName"].lower().endswith(".md")]
             if non_md:
                 deliverables = non_md
+
+        # 4. Excel 统一交付门禁校验：排除未通过公式/更新验收的损坏或错误表格
+        try:
+            from .spreadsheet_update.delivery import validate_update_delivery
+            valid_deliverables = []
+            for d in deliverables:
+                f_path = Path(d.get("filePath", ""))
+                if f_path.suffix.lower() in (".xlsx", ".xlsm"):
+                    is_valid, issues = validate_update_delivery(f_path)
+                    if not is_valid:
+                        print(f"⚠️ [Harness Deliverable Export] 表格 {f_path.name} 未通过交付门禁，跳过导出: {issues[:2]}")
+                        continue
+                valid_deliverables.append(d)
+            deliverables = valid_deliverables
+        except Exception as e:
+            print(f"⚠️ [Harness Deliverable Export] 交付门禁检查异常: {e}")
 
         return deliverables

@@ -1,0 +1,14 @@
+{
+  "container": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+  "cwd": "/workspace/.validation/unit-followup-20261024/changed-v3",
+  "env": [
+    "PYTHONPATH=/usr/local/bin",
+    "WORKSPACE=/workspace/.validation/unit-followup-20261024/changed-v3",
+    "WORKSPACE_DIR=/workspace/.validation/unit-followup-20261024/changed-v3"
+  ],
+  "cmd": [
+    "python3",
+    "-c",
+    "import subprocess,time,json; from pathlib import Path; start=time.time(); log=Path('model-run.log').open('w'); result=subprocess.run(['dsh', 'run', '用《收入记录.xlsx》的明细，按归属期202811、结算性质为收费筛选，按组织键汇总收入。复制《滚动管理.xlsx》最新快照工作表生成“复核版”，将收费业务区块的202811本期估算列更新为汇总金额。单位按目标工作簿声明换算，保留基准预算、公式和其他区块，生成新的Excel。', '--session-id', 'validation-unit-followup-20261024-changed-v3', '--files', '滚动管理.xlsx,收入记录.xlsx', '--web-search', '--thinking', '--reasoning-effort', 'medium', '--model', 'd13e0d30-87b9-4e87-b96a-d8b1b3cf78af', '--model-display-name', 'qwen36-35b-a3b', '--timeout', '300'],stdout=log,stderr=subprocess.STDOUT); log.close(); Path('model-run-result.json').write_text(json.dumps({'model':'qwen36-35b-a3b','model_id':'d13e0d30-87b9-4e87-b96a-d8b1b3cf78af','exit_code':result.returncode,'seconds':time.time()-start})); print(Path('model-run-result.json').read_text()); raise SystemExit(result.returncode)"
+  ]
+}

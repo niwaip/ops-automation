@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "turn_id": "1792670178764711219-389266cbd2fd4850bb858e378c4eb220",
+  "created_at_ns": 1792670178764721700,
+  "source_hashes": {
+    "workflow-new-input-20261022.xlsx": "31527344836a9a232ef4b41b972f6f58a4b8c6e81fc92d6aac5ec4df212682a3"
+  },
+  "query": "用部门别有偿统计处理这份附件",
+  "verified": true,
+  "guard_decisions": [
+    {
+      "guard": "personal_skill_evidence",
+      "action": "accept",
+      "reason": "8d422f1c6ea2cfba56f8e34f"
+    }
+  ],
+  "receipts": [
+    {
+      "schema_version": 1,
+      "status": "success",
+      "data": {
+        "kind": "personal_skill_workflow",
+        "engine": "spreadsheet-group-sum-v1",
+        "plan_hash": "95c45804e2f88c5a2f7c1f4a814fc77b8d6a7988e58c30fc9e3257d09a680bbb",
+        "workbook_id": "31527344836a9a232ef4b41b972f6f58a4b8c6e81fc92d6aac5ec4df212682a3",
+        "file_name": "workflow-new-input-20261022.xlsx",
+        "sheet": "换名且换列",
+        "header_row": 3,
+        "data_range": "A4:D12",
+        "field_mapping": {
+          "部门编号": "C",
+          "金额": "B",
+          "WBS编号": "D"
+        },
+        "group_by": "部门编号",
+        "measure": "金额(K)",
+        "unit": "K",
+        "filters": [
+          {
+            "field": "WBS编号",
+            "op": "exclude_prefix",
+            "values": [
+              "ex",
+              "sy",
+              "sp",
+              "ip",
+              "ib",
+              "sz"
+            ]
+          }
+        ],
+        "source_rows": 9,
+        "included_rows": 3,
+        "excluded_rows": 6,
+        "excluded_by_filter": {
+          "0": 6
+        },
+        "selected_rows": [
+          4,
+          5,
+          6
+        ],
+        "skipped_summary_rows": [],
+        "skipped_metadata_rows": [],
+        "groups": [
+          {
+            "key": "新A",
+            "count": 2,
+            "amount": "30.3"
+          },
+          {
+            "key": "新B",
+            "count": 1,
+            "amount": "-0.3"
+          }
+        ],
+        "total": "30.0",
+        "verified": true,
+        "evidence_id": "8d422f1c6ea2cfba56f8e34f",
+        "skill": {
+          "slug": "dept-summary",
+          "skillId": "c60d78fd-b6c3-4e7c-99ba-67f6d61efecd",
+          "version": 2,
+          "packageHash": "940f7d7916871ed56b632f17582a288389fd466372e413eb4223e73f94f7896a",
+          "plan_sha256": "de0eb32d5dc5e5d422b74ae99c5648ed288fe01a8c066bd36d6375f8fa45248a",
+          "engine_sha256": "3f6114fe88b70b739379b19695a94a0b5a520561bc5fe941e65d56281557a860"
+        }
+      },
+      "error": null,
+      "provenance": {
+        "file_path": "/workspace/workflow-new-input-20261022.xlsx",
+        "workbook_id": "31527344836a9a232ef4b41b972f6f58a4b8c6e81fc92d6aac5ec4df212682a3"
+      },
+      "text_representation": "{\"kind\": \"personal_skill_workflow\", \"engine\": \"spreadsheet-group-sum-v1\", \"plan_hash\": \"95c45804e2f88c5a2f7c1f4a814fc77b8d6a7988e58c30fc9e3257d09a680bbb\", \"workbook_id\": \"31527344836a9a232ef4b41b972f6f58a4b8c6e81fc92d6aac5ec4df212682a3\", \"file_name\": \"workflow-new-input-20261022.xlsx\", \"sheet\": \"换名且换列\", \"header_row\": 3, \"data_range\": \"A4:D12\", \"field_mapping\": {\"部门编号\": \"C\", \"金额\": \"B\", \"WBS编号\": \"D\"}, \"group_by\": \"部门编号\", \"measure\": \"金额(K)\", \"unit\": \"K\", \"filters\": [{\"field\": \"WBS编号\", \"op\": \"exclude_prefix\", \"values\": [\"ex\", \"sy\", \"sp\", \"ip\", \"ib\", \"sz\"]}], \"source_rows\": 9, \"included_rows\": 3, \"excluded_rows\": 6, \"excluded_by_filter\": {\"0\": 6}, \"selected_rows\": [4, 5, 6], \"skipped_summary_rows\": [], \"skipped_metadata_rows\": [], \"groups\": [{\"key\": \"新A\", \"count\": 2, \"amount\": \"30.3\"}, {\"key\": \"新B\", \"count\": 1, \"amount\": \"-0.3\"}], \"total\": \"30.0\", \"verified\": true, \"evidence_id\": \"8d422f1c6ea2cfba56f8e34f\", \"skill\": {\"slug\": \"dept-summary\", \"skillId\": \"c60d78fd-b6c3-4e7c-99ba-67f6d61efecd\", \"version\": 2, \"packageHash\": \"940f7d7916871ed56b632f17582a288389fd466372e413eb4223e73f94f7896a\", \"plan_sha256\": \"de0eb32d5dc5e5d422b74ae99c5648ed288fe01a8c066bd36d6375f8fa45248a\", \"engine_sha256\": \"3f6114fe88b70b739379b19695a94a0b5a520561bc5fe941e65d56281557a860\"}}"
+    }
+  ]
+}

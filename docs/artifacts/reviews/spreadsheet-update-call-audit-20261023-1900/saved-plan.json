@@ -1,0 +1,196 @@
+{
+  "target_ref": "/workspace/工数3Q预实管理.xlsx",
+  "as_of": "2026-10-23",
+  "snapshot": {
+    "selected_sheet_id": "1019",
+    "new_sheet_name": "1023"
+  },
+  "operations": [
+    {
+      "op": "copy_sheet",
+      "op_id": "op_1",
+      "source_sheet": "1019",
+      "target_sheet": "1023"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "op_2",
+      "target_sheet": "1023",
+      "coordinate": "C5",
+      "department_code": "FC48005",
+      "metric_id": "有偿金额",
+      "period": "202610",
+      "value_kind": "forecast",
+      "fact_ref": "fact_fc48005",
+      "region_id": "FC48005"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "op_3",
+      "target_sheet": "1023",
+      "coordinate": "C6",
+      "department_code": "FC34032",
+      "metric_id": "有偿金额",
+      "period": "202610",
+      "value_kind": "forecast",
+      "fact_ref": "fact_fc34032",
+      "region_id": "FC34032"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "op_4",
+      "target_sheet": "1023",
+      "coordinate": "C7",
+      "department_code": "FC44008",
+      "metric_id": "有偿金额",
+      "period": "202610",
+      "value_kind": "forecast",
+      "fact_ref": "fact_fc44008",
+      "region_id": "FC44008"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "op_5",
+      "target_sheet": "1023",
+      "coordinate": "C8",
+      "department_code": "FC46005",
+      "metric_id": "有偿金额",
+      "period": "202610",
+      "value_kind": "forecast",
+      "fact_ref": "fact_fc46005",
+      "region_id": "FC46005"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "op_6",
+      "target_sheet": "1023",
+      "coordinate": "C9",
+      "department_code": "FC44003",
+      "metric_id": "有偿金额",
+      "period": "202610",
+      "value_kind": "forecast",
+      "fact_ref": "fact_fc44003",
+      "region_id": "FC44003"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "op_7",
+      "target_sheet": "1023",
+      "coordinate": "C10",
+      "department_code": "FC44004",
+      "metric_id": "有偿金额",
+      "period": "202610",
+      "value_kind": "forecast",
+      "fact_ref": "fact_fc44004",
+      "region_id": "FC44004"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "op_8",
+      "target_sheet": "1023",
+      "coordinate": "C11",
+      "department_code": "FC44006",
+      "metric_id": "有偿金额",
+      "period": "202610",
+      "value_kind": "forecast",
+      "fact_ref": "fact_fc44006",
+      "region_id": "FC44006"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "op_9",
+      "target_sheet": "1023",
+      "coordinate": "C12",
+      "department_code": "FC45031",
+      "metric_id": "有偿金额",
+      "period": "202610",
+      "value_kind": "forecast",
+      "fact_ref": "fact_fc45031",
+      "region_id": "FC45031"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "op_10",
+      "target_sheet": "1023",
+      "coordinate": "C13",
+      "department_code": "FC34022",
+      "metric_id": "有偿金额",
+      "period": "202610",
+      "value_kind": "forecast",
+      "fact_ref": "fact_fc34022",
+      "region_id": "FC34022"
+    }
+  ],
+  "sources": [
+    {
+      "source_id": "fact_fc48005",
+      "file_path": "工数实绩明细_20261020134124.xlsx",
+      "sheet": "工数实绩明细",
+      "via_skill": "xlsx"
+    },
+    {
+      "source_id": "fact_fc46005",
+      "file_path": "工数实绩明细_20261020134124.xlsx",
+      "sheet": "工数实绩明细",
+      "via_skill": "xlsx"
+    },
+    {
+      "source_id": "fact_fc44003",
+      "file_path": "工数实绩明细_20261020134124.xlsx",
+      "sheet": "工数实绩明细",
+      "via_skill": "xlsx"
+    },
+    {
+      "source_id": "fact_fc44004",
+      "file_path": "工数实绩明细_20261020134124.xlsx",
+      "sheet": "工数实绩明细",
+      "via_skill": "xlsx"
+    },
+    {
+      "source_id": "fact_fc44006",
+      "file_path": "工数实绩明细_20261020134124.xlsx",
+      "sheet": "工数实绩明细",
+      "via_skill": "xlsx"
+    },
+    {
+      "source_id": "fact_fc45031",
+      "file_path": "工数实绩明细_20261020134124.xlsx",
+      "sheet": "工数实绩明细",
+      "via_skill": "xlsx"
+    },
+    {
+      "source_id": "fact_fc34022",
+      "file_path": "工数实绩明细_20261020134124.xlsx",
+      "sheet": "工数实绩明细",
+      "via_skill": "xlsx"
+    }
+  ],
+  "output": {
+    "mode": "deliverable_file",
+    "display_name": "工数3Q预实管理_1023.xlsx"
+  },
+  "schema_version": "SpreadsheetUpdatePlan/v1",
+  "task_contract_ref": "current_turn",
+  "preserve": {
+    "protected_sheets": [
+      "1019"
+    ],
+    "protected_ranges": [],
+    "formulas": "all",
+    "styles": "all"
+  },
+  "requirements": {
+    "req_update": [
+      "op_1",
+      "op_2",
+      "op_3",
+      "op_4",
+      "op_5",
+      "op_6",
+      "op_7",
+      "op_8",
+      "op_9",
+      "op_10"
+    ]
+  }
+}

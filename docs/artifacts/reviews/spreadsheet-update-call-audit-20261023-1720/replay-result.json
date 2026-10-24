@@ -1,0 +1,296 @@
+{
+  "session_id": "chat-session-1792747141627-wheti8di",
+  "turn_id": "1792747226343236630-076bacdae63e42ae9c6027f076ac5963",
+  "request": "需要更新工数管理，里面有计划和预测，先复制最新的sheet 生成今天 1023的新sheet，用 部门编码 统计 部门的 有偿 部分的金额 更新到 这个月的预测部分",
+  "accepted_contract": {
+    "instruction_relation": "standalone",
+    "task_mode": "execute",
+    "output_mode": "artifact",
+    "artifact_types": [
+      ".xlsx"
+    ],
+    "skill_invocation": {
+      "mode": "none",
+      "name": "",
+      "replace_defaults": false
+    },
+    "requirements": [
+      {
+        "id": "req_1",
+        "quote": "生成今天 1023的新sheet"
+      },
+      {
+        "id": "req_2",
+        "quote": "用 部门编码 统计 部门的 有偿 部分的金额 更新到 这个月的预测部分"
+      }
+    ]
+  },
+  "parser": {
+    "entities": [],
+    "is_grouped": true,
+    "group_dimension": "部门编码"
+  },
+  "routing_reconstruction": {
+    "flags": {
+      "is_modify_intent": null,
+      "is_generate_intent": true,
+      "requires_execution": true,
+      "is_inspect_intent": false,
+      "is_guide_intent": false,
+      "is_office_intent": false
+    },
+    "tools": [
+      "inspect_spreadsheet_structure",
+      "compare_spreadsheet_columns",
+      "aggregate_spreadsheet",
+      "check_spreadsheet_equations",
+      "validate_spreadsheet_rows",
+      "report_informational_spreadsheet",
+      "plan_spreadsheet_update",
+      "execute_spreadsheet_update",
+      "get_spreadsheet_update_status",
+      "web_search",
+      "fetch_page",
+      "read_file",
+      "read_skill"
+    ],
+    "requires_spreadsheet_analysis": false,
+    "update_tools_available": true,
+    "note": "Reconstructed from saved accepted contract and current same-hash modules; historical tool schema was not persisted.",
+    "admission_context": "[本轮共享技能准入契约] 以下为已核对的任务范围，仍受运行时权限与执行证据约束；不能从技能默认行为扩大业务口径或交付。没有接受默认规则时，技能仅提供方法参考。\n【注意】本轮任务为独立指令(standalone)，不继承前序轮次中未重申的限定条件或文件交付格式；请基于原始输入数据完整计算，并在对话中直接回复结论。\n{\"schema_version\": 1, \"instruction_relation\": \"standalone\", \"task_mode\": \"execute\", \"output_mode\": \"artifact\", \"artifact_types\": [\".xlsx\"], \"skill_invocation\": {\"mode\": \"none\", \"name\": \"\", \"replace_defaults\": false}, \"requirements\": [{\"id\": \"req_1\", \"quote\": \"生成今天 1023的新sheet\"}, {\"id\": \"req_2\", \"quote\": \"用 部门编码 统计 部门的 有偿 部分的金额 更新到 这个月的预测部分\"}], \"action\": \"general\", \"skill_id\": null, \"use_default_rules\": false, \"rule_basis\": \"\", \"reason\": \"scope_mismatch\", \"question\": \"\"}",
+    "plan_tool_schema": {
+      "type": "object",
+      "properties": {
+        "plan": {
+          "type": "object",
+          "description": "符合 SpreadsheetUpdatePlan/v1 规范的完整结构化计划对象。"
+        }
+      },
+      "required": [
+        "plan"
+      ]
+    }
+  },
+  "prompt_and_recovery_reproduction": {
+    "user_turn_demands_unavailable_bash": true,
+    "admission_requires_conversation": true,
+    "controlled_candidate_guard_action": "continue",
+    "controlled_candidate_guard_hint": "【系统产物物理断言拦截】：你在回复中提及已生成或保存文件 工数3Q预实管理_1023.xlsx，但当前沙箱物理文件并不存在。当前任务为只读模式（未提供写盘工具），请直接在当前回复中向用户完整输出 Markdown 格式的回答正文与分析内容，切勿声称已在本地保存文件。",
+    "note": "Same code and recorded task contract. Guard candidate text is synthetic, not recovered historical output. No model calls."
+  },
+  "reconciliation": {
+    "evidence_id": "f263bf8c4da2ee33b4a050c0",
+    "input_records": 274,
+    "paid_records": 259,
+    "months": {
+      "202610": 274
+    },
+    "by_department": [
+      {
+        "department_code": "FC34022",
+        "paid_amount_source_K": "167.77218",
+        "paid_records": 63,
+        "target_rows": [
+          16,
+          37,
+          53
+        ]
+      },
+      {
+        "department_code": "FC44003",
+        "paid_amount_source_K": "212.90759",
+        "paid_records": 21,
+        "target_rows": [
+          13,
+          34,
+          50
+        ]
+      },
+      {
+        "department_code": "FC44004",
+        "paid_amount_source_K": "242.51766",
+        "paid_records": 17,
+        "target_rows": [
+          14,
+          35,
+          51
+        ]
+      },
+      {
+        "department_code": "FC44006",
+        "paid_amount_source_K": "171.65638",
+        "paid_records": 17,
+        "target_rows": [
+          15,
+          36,
+          52
+        ]
+      },
+      {
+        "department_code": "FC45031",
+        "paid_amount_source_K": "570.75345",
+        "paid_records": 92,
+        "target_rows": [
+          10,
+          31,
+          48
+        ]
+      },
+      {
+        "department_code": "FC46005",
+        "paid_amount_source_K": "314.48323",
+        "paid_records": 43,
+        "target_rows": [
+          8,
+          29,
+          47
+        ]
+      },
+      {
+        "department_code": "FC48005",
+        "paid_amount_source_K": "67.03530",
+        "paid_records": 6,
+        "target_rows": [
+          5,
+          26,
+          44
+        ]
+      }
+    ],
+    "total_paid_amount_source_K": "1747.12579",
+    "matches_receipt": true
+  },
+  "target": {
+    "sheets": [
+      "1019"
+    ],
+    "period_headers": {
+      "C3": "202610",
+      "D3": "202611",
+      "E3": "202612",
+      "G3": "202610",
+      "H3": "202611",
+      "I3": "202612"
+    },
+    "metric_headers": {
+      "C4": "预测",
+      "D4": "预测",
+      "E4": "预测",
+      "G4": "计划",
+      "H4": "计划",
+      "I4": "计划"
+    },
+    "section_labels": [
+      {
+        "coordinate": "A1",
+        "label": "有偿"
+      },
+      {
+        "coordinate": "A2",
+        "label": "部门"
+      },
+      {
+        "coordinate": "A19",
+        "label": "总计"
+      },
+      {
+        "coordinate": "A22",
+        "label": "*P/*Y/EX（不含*L/*B）"
+      },
+      {
+        "coordinate": "A23",
+        "label": "部门"
+      },
+      {
+        "coordinate": "A40",
+        "label": "总计"
+      }
+    ],
+    "column_B_formula_count": 0,
+    "baseline_formula_check": {
+      "status": "partial",
+      "total_formulas": 343,
+      "cached_formulas": 343,
+      "uncalculated_formulas": 0,
+      "uncalculated_locations": [],
+      "total_errors": 32,
+      "error_summary": {
+        "#DIV/0!": [
+          "sheet1!P53",
+          "sheet1!R53"
+        ],
+        "#REF!": [
+          "sheet1!P5",
+          "sheet1!P6",
+          "sheet1!P7",
+          "sheet1!P8",
+          "sheet1!P9",
+          "sheet1!P10",
+          "sheet1!P11",
+          "sheet1!P12",
+          "sheet1!P13",
+          "sheet1!P14",
+          "sheet1!P15",
+          "sheet1!P16",
+          "sheet1!P17",
+          "sheet1!P18",
+          "sheet1!P19",
+          "sheet1!P26",
+          "sheet1!P27",
+          "sheet1!P28",
+          "sheet1!P29",
+          "sheet1!P30",
+          "sheet1!P31",
+          "sheet1!P32",
+          "sheet1!P33",
+          "sheet1!P34",
+          "sheet1!P35",
+          "sheet1!P36",
+          "sheet1!P37",
+          "sheet1!P38",
+          "sheet1!P39",
+          "sheet1!P40"
+        ]
+      },
+      "has_uncalculated": false
+    }
+  },
+  "pre_read_gate_reproduction": {
+    "query": {
+      "query": {
+        "source": {
+          "sheet": "1019",
+          "header_row": 4,
+          "data_range": "A5:T64"
+        },
+        "distinct": true,
+        "fields": [
+          "B"
+        ]
+      }
+    },
+    "status": "error",
+    "error": {
+      "code": "calculation_unverified",
+      "message": "重算或来源验证未通过"
+    },
+    "recorded_recalculation_engine": "success",
+    "recorded_total_errors": 32,
+    "recalculation_receipt_replayed": 1,
+    "note": "Injects the historical partial receipt, not a new engine run. Literal B projection is rejected before query compilation."
+  },
+  "file_integrity": {
+    "before": {
+      "工数3Q预实管理.xlsx": "9b3f8bcb2fe726e3043db5a3698ea679e14394dfbfdab9f1a4ad9054b8410f87",
+      "工数实绩明细_20261020134124.xlsx": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+    },
+    "after": {
+      "工数3Q预实管理.xlsx": "9b3f8bcb2fe726e3043db5a3698ea679e14394dfbfdab9f1a4ad9054b8410f87",
+      "工数实绩明细_20261020134124.xlsx": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+    },
+    "unchanged": true,
+    "matches_call": true,
+    "requested_output_exists": false
+  },
+  "model_calls": 0
+}

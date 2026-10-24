@@ -16,6 +16,12 @@ AMOUNT_UNIT_FACTORS = {
 }
 
 
+def normalize_unit(unit):
+    """Canonicalize standard unit aliases without choosing a business default."""
+    return {'千元': 'K', 'k': 'K', '百万元': 'M', 'm': 'M', 'yuan': '元',
+            '小时': 'hours', 'h': 'hours'}.get(unit, unit)
+
+
 def declared_amount_unit(workbook, selected_sheet, header_row):
     def collect(sheets):
         found = {}

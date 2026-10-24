@@ -1,0 +1,91 @@
+{
+  "sessionId": "sports-fix-e2e-1792665255993",
+  "prompt": "今天的体育赛事",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "startedAt": "2026-10-22T10:34:15.993Z",
+  "httpStatus": 201,
+  "finishedAt": "2026-10-22T10:36:26.377Z",
+  "done": true,
+  "errors": [],
+  "answerChars": 1262,
+  "metrics": {
+    "ttftMs": 10799.73,
+    "durationMs": 110506.91,
+    "llmDurationMs": 99200.69,
+    "toolCallsCount": 2,
+    "toolCalls": [
+      {
+        "name": "web_search",
+        "params": {
+          "query": "2026年10月22日 体育赛事 新闻"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "web_search",
+        "params": {
+          "query": "2026年10月22日 足球 篮球 赛程"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      }
+    ],
+    "llmInvocations": 3,
+    "tokens": {
+      "prompt_tokens": 20175,
+      "completion_tokens": 2985,
+      "total_tokens": 23160
+    },
+    "finishReason": "stop",
+    "roundFinishReasons": [
+      "tool_calls",
+      "stop",
+      "stop"
+    ],
+    "guardDecisions": [
+      {
+        "guard": "retrieval_answer",
+        "action": "accept",
+        "reason": "substantive_answer"
+      }
+    ],
+    "modelResponses": [
+      {
+        "rawChars": 1137,
+        "cleanChars": 1137,
+        "rawSha256": "cc42fccc084146d8684dbe56e901b4d9b616566c9196451fed6b330d947b214c",
+        "cleanSha256": "cc42fccc084146d8684dbe56e901b4d9b616566c9196451fed6b330d947b214c",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 2075,
+        "cleanChars": 2075,
+        "rawSha256": "381b04dcbf92b4cf4dcc929dc48fb755557bf40990aec70ace25561043272e58",
+        "cleanSha256": "381b04dcbf92b4cf4dcc929dc48fb755557bf40990aec70ace25561043272e58",
+        "finishReason": "stop",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 1259,
+        "cleanChars": 1259,
+        "rawSha256": "18461dfa92fd6cf29aadad0c7517d7bd3e6230f76aaf1453d7e17363817751d2",
+        "cleanSha256": "18461dfa92fd6cf29aadad0c7517d7bd3e6230f76aaf1453d7e17363817751d2",
+        "finishReason": "stop",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      }
+    ],
+    "answerValidation": {
+      "status": "completed",
+      "reason": "substantive_answer",
+      "attempts": 0
+    }
+  },
+  "historyStatus": 200
+}

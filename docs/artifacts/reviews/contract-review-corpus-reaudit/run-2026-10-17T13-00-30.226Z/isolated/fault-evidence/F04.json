@@ -65,7 +65,12 @@
               "legalAdvice": "建议法务介入复核并协商对等条款。",
               "ruleId": "GENERAL-RISK"
             }
-          ]
+          ],
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 1
+          }
         },
         {
           "clauseIndex": 1,
@@ -92,7 +97,12 @@
               "legalAdvice": "建议法务介入复核并协商对等条款。",
               "ruleId": "GENERAL-RISK"
             }
-          ]
+          ],
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 1
+          }
         },
         {
           "clauseIndex": 2,
@@ -119,7 +129,12 @@
               "legalAdvice": "建议法务介入复核并协商对等条款。",
               "ruleId": "GENERAL-RISK"
             }
-          ]
+          ],
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 1
+          }
         }
       ],
       "chapters": [
@@ -153,7 +168,12 @@
                   "legalAdvice": "建议法务介入复核并协商对等条款。",
                   "ruleId": "GENERAL-RISK"
                 }
-              ]
+              ],
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 1
+              }
             }
           ],
           "highRiskCount": 1,
@@ -190,7 +210,12 @@
                   "legalAdvice": "建议法务介入复核并协商对等条款。",
                   "ruleId": "GENERAL-RISK"
                 }
-              ]
+              ],
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 1
+              }
             },
             {
               "clauseIndex": 2,
@@ -217,7 +242,12 @@
                   "legalAdvice": "建议法务介入复核并协商对等条款。",
                   "ruleId": "GENERAL-RISK"
                 }
-              ]
+              ],
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 1
+              }
             }
           ],
           "highRiskCount": 2,

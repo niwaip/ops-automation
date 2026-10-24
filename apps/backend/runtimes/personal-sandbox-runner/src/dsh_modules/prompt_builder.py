@@ -400,21 +400,31 @@ def build_user_turn(
             "- 【自愈重试与结果汇报】：若脚本执行报错，分析 STDERR 报错并自愈修改代码后重新运行，直到文件成功生成落盘；生成完成后向用户汇报文件名称与大小。"
         )
 
+    has_update_tools = "plan_spreadsheet_update" in (available_tool_names or [])
     effective_is_xlsx = (
-        (is_office_intent and any(k in prompt.lower() for k in ["excel", "xlsx", "表格", "表单", "算式"]))
-        or any(k in prompt.lower() for k in ["excel", "xlsx", "做个表", "生成excel", "导出excel"])
-    ) and (is_generate_intent or not is_inspect_intent)
+        has_update_tools
+        or (
+            (
+                (is_office_intent and any(k in prompt.lower() for k in ["excel", "xlsx", "表格", "表单", "算式"]))
+                or any(k in prompt.lower() for k in ["excel", "xlsx", "做个表", "生成excel", "导出excel"])
+            ) and (is_generate_intent or not is_inspect_intent)
+        )
+    )
 
     if effective_is_xlsx and not effective_is_pdf:
-        user_parts.append(
-            "【Excel 表格生成硬性执行要求 (Action Grounding)】:\n"
-            "- 【默认严禁只向用户返回代码】：除非用户指令明确要求‘查看代码’、‘写出代码’或‘给出源码’，否则绝对不要在回复中直接输出 Python 代码半成品！\n"
-            "- 【闭环执行落盘】：你必须调用 `bash` 工具在 Linux 终端执行 Python openpyxl 脚本，将最终生成的表格保存到工作区 `/workspace/<文件名>.xlsx`！\n"
-            "- 【公式与重算规范】：生成公式时，调用 `/opt/dsh/skills/xlsx/scripts/recalc.py <file.xlsx>` 进行静态公式重算；\n"
-            "- 【自愈重试与结果汇报】：若脚本执行报错，修正代码重新运行，直到文件成功生成落盘；生成完成后向用户汇报文件名称与大小。"
-        )
+        if has_update_tools:
+            from .spreadsheet_update.agent_protocol import UPDATE_INSTRUCTIONS
+            user_parts.append(UPDATE_INSTRUCTIONS)
+        elif "bash" in (available_tool_names or []):
+            user_parts.append(
+                "【Excel 表格生成硬性执行要求 (Action Grounding)】:\n"
+                "- 【默认严禁只向用户返回代码】：除非用户指令明确要求‘查看代码’、‘写出代码’或‘给出源码’，否则绝对不要在回复中直接输出 Python 代码半成品！\n"
+                "- 【闭环执行落盘】：你必须调用 `bash` 工具在 Linux 终端执行 Python openpyxl 脚本，将最终生成的表格保存到工作区 `/workspace/<文件名>.xlsx`！\n"
+                "- 【公式与重算规范】：生成公式时，调用 `/opt/dsh/skills/xlsx/scripts/recalc.py <file.xlsx>` 进行静态公式重算；\n"
+                "- 【自愈重试与结果汇报】：若脚本执行报错，修正代码重新运行，直到文件成功生成落盘；生成完成后向用户汇报文件名称与大小。"
+            )
 
-    if is_inspect_intent and not is_generate_intent:
+    if is_inspect_intent and not is_generate_intent and not has_update_tools:
         names = set(available_tool_names or [])
         calculation_guidance = (
             "本轮允许 bash，可运行只读 Python 核算，并保留来源、完整范围和计算结果。"

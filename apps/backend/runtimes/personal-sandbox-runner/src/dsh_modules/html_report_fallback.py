@@ -251,6 +251,21 @@ def materialize_requested_html(
     if not final_text or len(final_text.strip()) < 120:
         return None, False
 
+    # 严禁将系统错误声明、校验未通过声明或未完成警告编译为 HTML 报告
+    error_cues = [
+        "指标核算未完成声明",
+        "本次尚未通过执行证据核验",
+        "无法完成计算的原因",
+        "未通过完整校验",
+        "尚未完成您要求的各分组统计",
+        "尚未完成您要求",
+        "任务未完成最终交付",
+        "收尾汇总时未输出",
+        "上游模型未返回",
+    ]
+    if any(cue in final_text for cue in error_cues):
+        return None, False
+
     # 5. 提取标题与目标文件名
     title = _infer_title(final_text)
     out_name = "presentation.html" if is_ppt_intent else "index.html"
@@ -268,7 +283,7 @@ def _recent_report_source(history: List[Dict[str, Any]]) -> str:
     # 优先选取非方案规划的助手有效正文；若仅有方案规划且含实质结构化内容，作为保底来源
     planning_candidate = ""
     error_pattern = re.compile(
-        r"(?:未生成可用文件|模型响应超时|上游模型未返回|文件已成功写入|收尾汇总时未输出|沙箱已成功调用工具|任务未完成最终交付)"
+        r"(?:未生成可用文件|模型响应超时|上游模型未返回|文件已成功写入|收尾汇总时未输出|沙箱已成功调用工具|任务未完成最终交付|指标核算未完成声明|尚未通过执行证据核验|无法完成计算的原因|未通过完整校验)"
     )
 
     for item in reversed(history[-30:]):

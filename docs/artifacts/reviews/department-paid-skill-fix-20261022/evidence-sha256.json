@@ -1,0 +1,22 @@
+{
+  "deployment-logs.txt": "7fe4d1e0bdd9597991ed2f0b86ffce4ae2e47ec46a7d295db54700557c7c1942",
+  "independent-reuse-check.json": "fd1681e562209ba8708afa5ad1edf64630c0f037641c4137edd9a45a2c5a6db2",
+  "jest-results.json": "e91228869c127593da96786757d5b73c731e040f6d68eec1113df0c42ee25102",
+  "live-reuse-result.json": "6213c1ae66835f4ae74caf653289682badcdaf9598aee83549ac37a786810a56",
+  "live-reuse.cjs": "44bcd79d80428e1ace4c94b04c41b8aa846d2b43a4264154337c1e592a9fa3d7",
+  "live-save-result.json": "e074bd5d7bb6b9d74a9dc3f9e7761f3a99827e4de7b06fec9dd9f3a62ad3d9e4",
+  "live-save.cjs": "054c999614a6cbd4534f4d9e23c34ba369e794faa25349e1e30f6d0b8212db0d",
+  "live-save.sse": "b50f8bf446522655601f230439668544e9ea17510929015ea0f4d1c1e70ea743",
+  "migrate-captured-skill.cjs": "0f55b76f4839d75af814e6ba2d8f78699956b3fab47b0f7b6f8a7ef66df86e04",
+  "misplaced-skill-backup/.personal-skills-catalog.json": "219335f50f8ac271f2597c18d14467824b394dc146f5c22e5cbb551cc2b28bff",
+  "misplaced-skill-backup/.skill-versions/c60d78fd-b6c3-4e7c-99ba-67f6d61efecd/v1/SKILL.md": "9196a77b9ce8cfa0a96ba7eb66b0ea881e575aae29d693f17580d8d37d402737",
+  "misplaced-skill-backup/.skill-versions/c60d78fd-b6c3-4e7c-99ba-67f6d61efecd/v1/references/rules.json": "69bda88f3df6df27a0de3845ab262d936652ca6be8efa995af5ab885bea4be83",
+  "misplaced-skill-backup/skills/dept-summary/SKILL.md": "9196a77b9ce8cfa0a96ba7eb66b0ea881e575aae29d693f17580d8d37d402737",
+  "misplaced-skill-backup/skills/dept-summary/references/rules.json": "69bda88f3df6df27a0de3845ab262d936652ca6be8efa995af5ab885bea4be83",
+  "python-results.txt": "deb869a0ece557a630ab96005cc149b54b4ebae673ee6a2821b38ae67ce7cc06",
+  "report.md": "c4d2b8cf105d2bd1684cc11465fa6a5cde59fb591e648f2e2d92aeadf84f2d75",
+  "reuse-turn-evidence.json": "1f9f5c2055a790fd58c6bd24461f8519ee7d51895e490c60f12bc172ddc21236",
+  "run-sandbox-checks.cjs": "866f19cd1462528bc0be394dc5b49774cc19d3c4225c09e7b15942ef2786fb8b",
+  "skill-validation-20261022.xlsx": "09051d50185046d75a1b36595b5e232ba585d81beaee02dce31c2b64d8c8b1ae",
+  "typecheck-diagnostics.txt": "acc385af2d0af8272f8dbfcbf6415e6be9176d0af327b8badb0c81668c6c428c"
+}

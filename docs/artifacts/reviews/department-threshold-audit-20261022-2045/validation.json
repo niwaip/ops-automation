@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "status": "replayed",
+  "verifier": "sheetjs-bigint-v1",
+  "source_sha256": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+  "plan_sha256": "b0d4e9a30c3c06f7a87d1f803942eb78940488e7bd6f6e1a9e25cc7f3f64bf0f",
+  "sheet": "工数实绩明细",
+  "source_rows": 274,
+  "included_rows": 253,
+  "excluded_rows": 21,
+  "total_scaled_1e20": "163741990000000000000000",
+  "group_count": 7,
+  "skipped_metadata_rows": [
+    279,
+    280,
+    281,
+    282,
+    283
+  ]
+}

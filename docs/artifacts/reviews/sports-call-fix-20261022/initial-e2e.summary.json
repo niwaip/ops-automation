@@ -1,0 +1,113 @@
+{
+  "sessionId": "sports-fix-e2e-1792664464268",
+  "prompt": "今天的体育赛事",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "startedAt": "2026-10-22T10:21:04.268Z",
+  "httpStatus": 201,
+  "finishedAt": "2026-10-22T10:22:28.371Z",
+  "done": true,
+  "errors": [],
+  "answerChars": 1219,
+  "metrics": {
+    "ttftMs": 8567.14,
+    "durationMs": 83544.26,
+    "llmDurationMs": 67285.55,
+    "toolCallsCount": 5,
+    "toolCalls": [
+      {
+        "name": "web_search",
+        "params": {
+          "query": "2026年10月22日 体育赛事 今日赛程",
+          "freshness": "day"
+        },
+        "status": "success"
+      },
+      {
+        "name": "web_search",
+        "params": {
+          "query": "今日体育比赛结果 2026年10月",
+          "freshness": "day"
+        },
+        "status": "success"
+      },
+      {
+        "name": "web_search",
+        "params": {
+          "freshness": "day",
+          "query": "NBA scores October 22 2026"
+        },
+        "status": "success"
+      },
+      {
+        "name": "web_search",
+        "params": {
+          "freshness": "day",
+          "query": "欧冠 足球 10月22日 2026 赛果"
+        },
+        "status": "success"
+      },
+      {
+        "name": "web_search",
+        "params": {
+          "freshness": "day",
+          "query": "英超 意甲 西甲 2026年10月22日 赛程"
+        },
+        "status": "success"
+      }
+    ],
+    "llmInvocations": 4,
+    "tokens": {
+      "prompt_tokens": 25395,
+      "completion_tokens": 5250,
+      "total_tokens": 30645
+    },
+    "finishReason": "stop",
+    "roundFinishReasons": [
+      "tool_calls",
+      "tool_calls",
+      "stop",
+      "stop"
+    ],
+    "guardDecisions": [],
+    "modelResponses": [
+      {
+        "rawChars": 44,
+        "cleanChars": 44,
+        "rawSha256": "00026dd6e1e08952bb96c58cf23e5b9bbfa646d2885c85e19ee792e41c332f72",
+        "cleanSha256": "00026dd6e1e08952bb96c58cf23e5b9bbfa646d2885c85e19ee792e41c332f72",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 866,
+        "cleanChars": 866,
+        "rawSha256": "f0389e34f52e888f9898ddd0099d5f98d1b65ac689503b70f31bfd78bbdd4bf4",
+        "cleanSha256": "f0389e34f52e888f9898ddd0099d5f98d1b65ac689503b70f31bfd78bbdd4bf4",
+        "finishReason": "stop",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 1215,
+        "cleanChars": 1215,
+        "rawSha256": "ddf3c45d424993f0928adb263596c2b7ecf6c6e1a6f020917046a03000e9dd23",
+        "cleanSha256": "ddf3c45d424993f0928adb263596c2b7ecf6c6e1a6f020917046a03000e9dd23",
+        "finishReason": "stop",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      }
+    ],
+    "answerValidation": {}
+  },
+  "historyStatus": 200
+}

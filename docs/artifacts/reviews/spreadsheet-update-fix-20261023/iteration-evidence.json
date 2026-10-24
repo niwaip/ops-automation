@@ -1,0 +1,600 @@
+[
+  {
+    "case": "qwen35b-fixed",
+    "duration_ms": 183957.99,
+    "tool_calls": [
+      {
+        "name": "inspect_spreadsheet_structure",
+        "params": {
+          "file_path": "/workspace/.validation/spreadsheet-fix-20261023/qwen35b-fixed/工数3Q预实管理.xlsx",
+          "sheets": "['1019']"
+        },
+        "status": "success",
+        "result_status": "success",
+        "kind": "spreadsheet_structure",
+        "workbook_id": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d"
+      },
+      {
+        "name": "inspect_spreadsheet_structure",
+        "params": {
+          "file_path": "/workspace/.validation/spreadsheet-fix-20261023/qwen35b-fixed/工数实绩明细_20261020134124.xlsx",
+          "sheets": "['工数实绩明细']"
+        },
+        "status": "success",
+        "result_status": "success",
+        "kind": "spreadsheet_structure",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "end_line": "64",
+          "file_path": "/workspace/.validation/spreadsheet-fix-20261023/qwen35b-fixed/工数3Q预实管理.xlsx",
+          "range": "工数3Q预实管理.xlsx!A1:T64",
+          "sheet": "1019"
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "sheet_not_found",
+        "workbook_id": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d"
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "end_line": "283",
+          "file_path": "/workspace/.validation/spreadsheet-fix-20261023/qwen35b-fixed/工数实绩明细_20261020134124.xlsx",
+          "range": "工数实绩明细!A5:R278",
+          "sheet": "工数实绩明细"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "inspect_spreadsheet_structure",
+        "params": {
+          "file_path": "/workspace/.validation/spreadsheet-fix-20261023/qwen35b-fixed/工数3Q预实管理.xlsx",
+          "sheets": "['1019']"
+        },
+        "status": "loop_intercepted"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "/workspace/.validation/spreadsheet-fix-20261023/qwen35b-fixed/工数实绩明细_20261020134124.xlsx",
+          "query": "{'source': {'sheet': '工数实绩明细', 'header_row': 4, 'data_range': 'A5:R278'}, 'where': {'op': 'eq', 'field': '有偿无偿', 'value'..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "evidence_id": "274df658b286ff2fca0fbdfc",
+        "plan_hash": "4c22028a33aabe00011ad6273a6f6ef2136d6825f861bd07d19a728ed0fa775d",
+        "kind": "spreadsheet_analysis",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+      },
+      {
+        "name": "bash",
+        "params": {
+          "cmd": "cd /workspace/.validation/spreadsheet-fix-20261023/qwen35b-fixed && python3 -c \"\nfrom openpyxl import load_workbook\nwb =..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "cmd": "cd /workspace/.validation/spreadsheet-fix-20261023/qwen35b-fixed && python3 << 'PYEOF'\nfrom openpyxl import load_workboo..."
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "legacy_error",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "cmd": "cd /workspace/.validation/spreadsheet-fix-20261023/qwen35b-fixed && python3 << 'PYEOF'\nfrom openpyxl import load_workboo..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "cmd": "cd /workspace/.validation/spreadsheet-fix-20261023/qwen35b-fixed && python3 << 'PYEOF'\nfrom openpyxl import load_workboo..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "bash",
+        "params": {
+          "cmd": "cd /workspace/.validation/spreadsheet-fix-20261023/qwen35b-fixed && python3 << 'PYEOF'\nfrom openpyxl import load_workboo..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "plan_spreadsheet_update",
+        "params": {
+          "target_file": "工数3Q预实管理.xlsx",
+          "period": "202610",
+          "section": "有偿",
+          "target_kind": "forecast",
+          "target_unit": "K",
+          "source_sheet": "1019",
+          "new_sheet": "1023"
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "spreadsheet_update_rejected",
+        "workbook_id": null
+      }
+    ],
+    "guard_decisions": [
+      {
+        "guard": "task_intent_review",
+        "action": "accept",
+        "reason": {
+          "output_mode": "artifact",
+          "task_mode": "execute"
+        }
+      },
+      {
+        "guard": "task_intent",
+        "action": "accept",
+        "reason": {
+          "instruction_relation": "standalone",
+          "task_mode": "execute",
+          "output_mode": "artifact",
+          "artifact_types": [
+            ".xlsx"
+          ],
+          "skill_invocation": {
+            "mode": "none",
+            "name": "",
+            "replace_defaults": false
+          },
+          "requirements": [
+            {
+              "id": "req_1",
+              "quote": "先复制最新的sheet 生成今天 1023的新sheet"
+            },
+            {
+              "id": "req_2",
+              "quote": "用 部门编码 统计 部门的 有偿 部分的金额 更新到 这个月的预测部分"
+            }
+          ]
+        }
+      },
+      {
+        "guard": "skill_admission",
+        "action": "reject",
+        "reason": "JSONDecodeError"
+      },
+      {
+        "guard": "skill_admission_attempt",
+        "action": "reject",
+        "reason": "语义决策不可用或响应无效"
+      },
+      {
+        "guard": "skill_admission",
+        "action": "reject",
+        "reason": "JSONDecodeError"
+      },
+      {
+        "guard": "skill_admission_attempt",
+        "action": "reject",
+        "reason": "语义决策不可用或响应无效"
+      },
+      {
+        "guard": "skill_admission",
+        "action": "fallback_to_general",
+        "reason": "技能准入经复核仍未通过，未执行任何候选技能"
+      },
+      {
+        "guard": "spreadsheet_update_evidence",
+        "action": "reject",
+        "reason": "检测到任务明确要求更新工作簿/工作表并回填数据，当前仅输出了分析文本，尚未完成物理写盘！严禁在此停顿输出文字，必须立即调用工具完成物理写盘落盘：\n- 方式一（专有工具，推荐）：直接调用 `plan_spreadsheet_update` 提交更新意图（如：target_file、period、section、target_kind、target_unit），计划锁定后紧接着调用 `execute_spreadsheet_update` 写盘；\n- 方式二（脚本执行）：直接调用 `bash` 编写 openpyxl 脚本复制 Sheet 并回填数据（注意限定在目标业务块内），保存到 /workspace/ 并运行 recalc.py 验证重算。\n请立即发起工具调用执行写盘！"
+      }
+    ]
+  },
+  {
+    "case": "qwen35b-final",
+    "duration_ms": 92393.81,
+    "tool_calls": [
+      {
+        "name": "inspect_spreadsheet_structure",
+        "params": {
+          "file_path": "/workspace/.validation/spreadsheet-fix-20261023/qwen35b-final/工数3Q预实管理.xlsx",
+          "sheets": "['1019']"
+        },
+        "status": "success",
+        "result_status": "success",
+        "kind": "spreadsheet_structure",
+        "workbook_id": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "/workspace/.validation/spreadsheet-fix-20261023/qwen35b-final/工数实绩明细_20261020134124.xlsx",
+          "query": "{'source': {'sheet': '工数实绩明细', 'header_row': 4, 'data_range': 'A5:R278'}, 'where': {'op': 'eq', 'field': '有偿无偿', 'value'..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "evidence_id": "8e8646fb54e95cc5b2446e88",
+        "plan_hash": "7b0c6fc4f82c5d5d22e9f28772faf5a352ed30bfbf3d47c4ef76ec96ef2ba39f",
+        "kind": "spreadsheet_analysis",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+      },
+      {
+        "name": "plan_spreadsheet_update",
+        "params": {
+          "target_file": "工数3Q预实管理.xlsx",
+          "period": "202610",
+          "section": "有偿",
+          "target_kind": "forecast",
+          "target_unit": "K",
+          "new_sheet": "1023",
+          "result_id": "8e8646fb54e95cc5b2446e88"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "execute_spreadsheet_update",
+        "params": {
+          "plan_id": "plan_2a424cbacda3_run_8eebe0640f17"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "get_spreadsheet_update_status",
+        "params": {
+          "run_id": "plan_2a424cbacda3_run_8eebe0640f17"
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "spreadsheet_update_rejected",
+        "workbook_id": null
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "file_path": "/workspace/.validation/spreadsheet-fix-20261023/qwen35b-final/工数3Q预实管理_1023.xlsx",
+          "sheet": "1023"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      }
+    ],
+    "guard_decisions": [
+      {
+        "guard": "task_intent_review",
+        "action": "accept",
+        "reason": {
+          "output_mode": "artifact",
+          "task_mode": "execute"
+        }
+      },
+      {
+        "guard": "task_intent",
+        "action": "accept",
+        "reason": {
+          "instruction_relation": "standalone",
+          "task_mode": "execute",
+          "output_mode": "artifact",
+          "artifact_types": [
+            ".xlsx"
+          ],
+          "skill_invocation": {
+            "mode": "none",
+            "name": "",
+            "replace_defaults": false
+          },
+          "requirements": [
+            {
+              "id": "req_1",
+              "quote": "先复制最新的sheet 生成今天 1023的新sheet"
+            },
+            {
+              "id": "req_2",
+              "quote": "用 部门编码 统计 部门的 有偿 部分的金额 更新到 这个月的预测部分"
+            }
+          ]
+        }
+      },
+      {
+        "guard": "skill_admission",
+        "action": "reject",
+        "reason": "JSONDecodeError"
+      },
+      {
+        "guard": "skill_admission_attempt",
+        "action": "reject",
+        "reason": "语义决策不可用或响应无效"
+      },
+      {
+        "guard": "skill_admission",
+        "action": "reject",
+        "reason": "TimeoutError"
+      },
+      {
+        "guard": "skill_admission_attempt",
+        "action": "reject",
+        "reason": "语义决策不可用或响应无效"
+      },
+      {
+        "guard": "skill_admission",
+        "action": "fallback_to_general",
+        "reason": "技能准入经复核仍未通过，未执行任何候选技能"
+      }
+    ]
+  },
+  {
+    "case": "qwen35b-verified",
+    "duration_ms": 58505.5,
+    "tool_calls": [
+      {
+        "name": "inspect_spreadsheet_structure",
+        "params": {
+          "file_path": "工数3Q预实管理.xlsx",
+          "sheets": "['1019']"
+        },
+        "status": "success",
+        "result_status": "success",
+        "kind": "spreadsheet_structure",
+        "workbook_id": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d"
+      },
+      {
+        "name": "inspect_spreadsheet_structure",
+        "params": {
+          "file_path": "工数实绩明细_20261020134124.xlsx",
+          "sheets": "['工数实绩明细']"
+        },
+        "status": "success",
+        "result_status": "success",
+        "kind": "spreadsheet_structure",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+      },
+      {
+        "name": "inspect_spreadsheet_structure",
+        "params": {
+          "file_path": "工数3Q预实管理.xlsx",
+          "sheets": "['1019']"
+        },
+        "status": "loop_intercepted"
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "end_line": "70",
+          "file_path": "工数3Q预实管理.xlsx",
+          "range": "A1:T64",
+          "sheet": "1019"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "工数实绩明细_20261020134124.xlsx",
+          "query": "{'source': {'sheet': '工数实绩明细', 'header_row': 4}, 'where': {'and': [{'field': '工数年月', 'op': 'eq', 'value': '202610'}, {'f..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "evidence_id": "786b4b22beae125acb58f6d7",
+        "plan_hash": "3294eed08304d3d720eaf830e5402726a978a32717009a008057bdc811923964",
+        "kind": "spreadsheet_analysis",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+      },
+      {
+        "name": "read_file",
+        "params": {
+          "file_path": "工数3Q预实管理.xlsx"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "plan_spreadsheet_update",
+        "params": {
+          "target_file": "工数3Q预实管理.xlsx",
+          "period": "202610",
+          "section": "有偿",
+          "target_kind": "forecast",
+          "target_unit": "K",
+          "new_sheet": "1023"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "execute_spreadsheet_update",
+        "params": {
+          "plan_id": "plan_5656c91fcdcc_run_e4f117fe9a89"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      }
+    ],
+    "guard_decisions": [
+      {
+        "guard": "task_intent_review",
+        "action": "revise",
+        "reason": {
+          "output_mode": "artifact",
+          "task_mode": "execute"
+        }
+      },
+      {
+        "guard": "task_intent",
+        "action": "accept",
+        "reason": {
+          "instruction_relation": "standalone",
+          "task_mode": "execute",
+          "output_mode": "artifact",
+          "artifact_types": [
+            ".xlsx"
+          ],
+          "skill_invocation": {
+            "mode": "none",
+            "name": "",
+            "replace_defaults": false
+          },
+          "requirements": [
+            {
+              "id": "1",
+              "quote": "复制最新的sheet 生成今天 1023的新sheet"
+            },
+            {
+              "id": "2",
+              "quote": "用 部门编码 统计 部门的 有偿 部分的金额 更新到 这个月的预测部分"
+            }
+          ]
+        }
+      },
+      {
+        "guard": "skill_admission",
+        "action": "use",
+        "reason": {
+          "initial_candidate": "work-hours-update",
+          "skill_id": "work-hours-update",
+          "use_default_rules": false,
+          "reason": "applicable",
+          "requirement_ids": [
+            "1",
+            "2"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "case": "qwen35b-release-check",
+    "duration_ms": 43757.56,
+    "tool_calls": [
+      {
+        "name": "inspect_spreadsheet_structure",
+        "params": {
+          "file_path": "/workspace/.validation/spreadsheet-fix-20261023/qwen35b-release-check/工数3Q预实管理.xlsx",
+          "sheets": "['1019']"
+        },
+        "status": "success",
+        "result_status": "success",
+        "kind": "spreadsheet_structure",
+        "workbook_id": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d"
+      },
+      {
+        "name": "inspect_spreadsheet_structure",
+        "params": {
+          "file_path": "/workspace/.validation/spreadsheet-fix-20261023/qwen35b-release-check/工数实绩明细_20261020134124.xlsx",
+          "sheets": "['工数实绩明细']"
+        },
+        "status": "success",
+        "result_status": "success",
+        "kind": "spreadsheet_structure",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "/workspace/.validation/spreadsheet-fix-20261023/qwen35b-release-check/工数实绩明细_20261020134124.xlsx",
+          "query": "{'source': {'sheet': '工数实绩明细', 'header_row': 4}, 'where': {'and': [{'field': '工数年月', 'op': 'eq', 'value': '202610'}, {'f..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "evidence_id": "786b4b22beae125acb58f6d7",
+        "plan_hash": "3294eed08304d3d720eaf830e5402726a978a32717009a008057bdc811923964",
+        "kind": "spreadsheet_analysis",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+      },
+      {
+        "name": "plan_spreadsheet_update",
+        "params": {
+          "target_file": "/workspace/.validation/spreadsheet-fix-20261023/qwen35b-release-check/工数3Q预实管理.xlsx",
+          "period": "202610",
+          "section": "有偿",
+          "target_kind": "forecast",
+          "target_unit": "K",
+          "new_sheet": "1023"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "execute_spreadsheet_update",
+        "params": {
+          "plan_id": "plan_9262894ece03_run_377c922f4b22"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      }
+    ],
+    "guard_decisions": [
+      {
+        "guard": "task_intent_review",
+        "action": "revise",
+        "reason": {
+          "output_mode": "artifact",
+          "task_mode": "execute"
+        }
+      },
+      {
+        "guard": "task_intent",
+        "action": "accept",
+        "reason": {
+          "instruction_relation": "standalone",
+          "task_mode": "execute",
+          "output_mode": "artifact",
+          "artifact_types": [
+            ".xlsx"
+          ],
+          "skill_invocation": {
+            "mode": "none",
+            "name": "",
+            "replace_defaults": false
+          },
+          "requirements": [
+            {
+              "id": "req_1",
+              "quote": "复制最新的sheet 生成今天 1023的新sheet"
+            },
+            {
+              "id": "req_2",
+              "quote": "用 部门编码 统计 部门的 有偿 部分的金额 更新到 这个月的预测部分"
+            }
+          ]
+        }
+      },
+      {
+        "guard": "skill_admission",
+        "action": "use",
+        "reason": {
+          "initial_candidate": "work-hours-update",
+          "skill_id": "work-hours-update",
+          "use_default_rules": false,
+          "reason": "applicable",
+          "requirement_ids": [
+            "req_1",
+            "req_2"
+          ]
+        }
+      }
+    ]
+  }
+]

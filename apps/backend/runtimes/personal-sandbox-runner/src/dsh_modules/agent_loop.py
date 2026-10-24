@@ -64,18 +64,6 @@ from .agent_loop_helpers import (
 )
 
 
-CLAIM_PATTERNS = [
-    "已生成", "已经生成", "生成了", "输出了", "输出文件", "保存到", "已保存", "已经保存",
-    "保存至", "输出为", "保存在", "写入了", "创建了", "落盘至", "生成完毕", "导出为",
-    "导出了", "已导出", "保存路径", "文件已生成", "文档已生成",
-    "写入文件", "写入到", "写入至", "代码写入", "已更新", "更新了", "修复并保存", "修改并保存", "write_file"
-]
-
-DELIVERABLE_EXTS = {
-    ".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt", ".pdf",
-    ".html", ".csv", ".json", ".md", ".py", ".sh", ".txt", ".png", ".jpg"
-}
-
 MAX_AGENT_ROUNDS_HARD_CEILING = int(os.getenv("DSH_MAX_AGENT_ROUNDS_CEILING", "10"))
 MAX_SPREADSHEET_ROUNDS_CEILING = 4
 
@@ -90,252 +78,15 @@ def extract_filename_from_outbound(item: str) -> str:
     return Path(item).name
 
 
-def detect_missing_claimed_artifacts(
-    text: str,
-    is_generate_intent: bool = False,
-    is_inspect_intent: bool = False,
-    is_search_intent: bool = False,
-    turn_start_time: Optional[float] = None,
-    verify_claims_only: bool = False,
-) -> List[str]:
-    """
-    Detects if the model claimed in text to have generated or outputted deliverable files
-    that do not physically exist on disk in WORKSPACE_DIR or KNOWLEDGE_DIR.
-    Strictly bypassed during read-only inspection turns (is_inspect_intent and not is_generate_intent)
-    or search turns (is_search_intent and not is_generate_intent).
-    """
-    if not text or (is_inspect_intent and not is_generate_intent) or (is_search_intent and not is_generate_intent):
-        return []
-
-    has_claim_pattern = any(k in text for k in CLAIM_PATTERNS) or bool(
-        re.search(
-            r'(?:已.{0,10}(?:生成|创建|保存|导出|写入|完成)|'
-            r'(?:生成|创建|保存|导出|写入|输出).{0,10}(?:完成|完毕|成功|至|到)|'
-            r'下载并在本地|/workspace/|/knowledge/)',
-            text,
-            re.I
-        )
-    )
-    if not is_generate_intent and not has_claim_pattern:
-        return []
-
-    # 提取被引号/书名号包裹的文件名（允许合理文件名，但不跨越冒号或整句命令提示）
-    quoted_pattern = r'(?:《|【|“|"|\'|`)([a-zA-Z0-9_\-\u4e00-\u9fa5\.\/ ]*?[a-zA-Z0-9_\-\u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|html|csv|json|md|py|sh|txt|png|jpg))(?:》|】|”|"|\'|`)'
-    # 提取未带引号的文件名（以路径或空白/标点分隔，不含空格）
-    unquoted_pattern = r'(?:(?:/workspace/|/knowledge/|\./workspace/)|\b)([a-zA-Z0-9_\-\u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|html|csv|json|md|py|sh|txt|png|jpg))\b'
-
-    found_names = re.findall(quoted_pattern, text) + re.findall(unquoted_pattern, text)
-    if not found_names:
-        return []
-
-    missing: List[str] = []
-    has_inline_html = ("```html" in text.lower()) and not is_unclosed_or_truncated_html(text)
-
-    for name in found_names:
-        clean_name = name.strip()
-        if not clean_name:
-            continue
-        clean_name = re.sub(r'^(?:\./|/)?(?:workspace/|knowledge/)?', '', clean_name)
-        if ":" in clean_name or "：" in clean_name:
-            clean_name = re.split(r'[:：]', clean_name)[-1].strip()
-        clean_name = re.sub(r'^(?:\./|/)?(?:workspace/|knowledge/)?', '', clean_name)
-        for pfx in sorted(CLAIM_PATTERNS, key=len, reverse=True):
-            if clean_name.startswith(pfx):
-                clean_name = clean_name[len(pfx):].strip()
-        clean_name = re.sub(r'^(?:(?:文件名|文件名称|文档名|表格名|报告名)(?:称)?(?:为|叫|是|：|:)?|文件(?:为|叫|是|：|:)|名称(?:为|叫|是|：|:)|命名(?:为)?|名字(?:为|叫|是|：|:)|[：:到至为在\s])+', '', clean_name).strip()
-        if not clean_name:
-            continue
-
-        ext = Path(clean_name).suffix.lower()
-        if ext not in DELIVERABLE_EXTS:
-            continue
-        if has_inline_html and clean_name in ["index.html", "presentation.html"]:
-            continue
-
-        escaped_name = re.escape(clean_name)
-
-        # 排除明确作为输入源、引用源或前置资料的文件名（如“基于/根据/参考...《文件名》”）
-        is_source_reference = bool(
-            re.search(
-                rf'(?:基于|根据|参考|依据|结合|来源|原始|上传的?|输入|读取|解析|查看|分析|引用)[^\n。，,]{{0,25}}(?:《|【|“|"|\'|`|\s)?{escaped_name}',
-                text,
-                re.I
-            )
-            or re.search(
-                rf'{escaped_name}(?:》|】|”|"|\'|`|\s)?[^\n。，,]{{0,25}}(?:的内容|的数据|中提到|中记录|作为输入|作为参考|原始数据|附件|中指出)',
-                text,
-                re.I
-            )
-        )
-        if is_source_reference:
-            continue
-
-        # 必须在该文件名局部存在明确的生成/保存/写入声称，或保存至 /workspace/，避免提及外部/参考文件时误触发断言
-        claimed_for_this_file = bool(
-            (is_generate_intent and not verify_claims_only and (f"/workspace/{clean_name}" in text or f"./workspace/{clean_name}" in text))
-            or re.search(
-                rf'(?:已.{{0,12}}(?:生成|创建|保存|导出|写入|完成)|(?:生成|创建|保存|导出|写入|输出).{{0,12}}(?:完成|完毕|成功|至|到|为|了)|输出文件(?:为|是|：|:)?|保存(?:路径|在|到|至)|落盘至|保存在|已保存至|代码已写入|文件路径[：:]\s*(?:/workspace/)?)[^\n。]{{0,30}}{escaped_name}',
-                text,
-                re.I
-            )
-            or re.search(
-                rf'{escaped_name}[^\n。]{{0,30}}(?:已(?:生成|创建|保存|导出|写入|落盘)|已保存到工作区|已保存至|已写入|created|saved|written)',
-                text,
-                re.I
-            )
-            or re.search(
-                rf'(?:保存至|生成至|落盘至|输出至|写入至|保存到)\s*`?/(?:workspace|knowledge)/{escaped_name}',
-                text,
-                re.I
-            )
-        )
-        if not claimed_for_this_file:
-            continue
-
-        ws_file = Path(WORKSPACE_DIR) / clean_name
-        kn_file = Path(KNOWLEDGE_DIR) / clean_name
-
-        exists_and_nonempty = (
-            (ws_file.exists() and ws_file.is_file() and ws_file.stat().st_size > 0) or
-            (kn_file.exists() and kn_file.is_file() and kn_file.stat().st_size > 0)
-        )
-        if exists_and_nonempty and is_generate_intent and turn_start_time is not None:
-            target_p = ws_file if (ws_file.exists() and ws_file.is_file()) else kn_file
-            if target_p.exists() and target_p.stat().st_mtime < turn_start_time - 2.0:
-                exists_and_nonempty = False
-
-        if not exists_and_nonempty and clean_name not in missing:
-            missing.append(clean_name)
-
-    return missing
+def detect_missing_claimed_artifacts(*args, **kwargs):
+    from .deliverable_detection import detect_missing_claimed_artifacts as detect
+    return detect(*args, **kwargs, workspace=WORKSPACE_DIR, knowledge=KNOWLEDGE_DIR)
 
 
-def detect_missing_requested_deliverable(
-    user_prompt: str,
-    turn_start_time: float,
-    expected_deliverables: Optional[List[str]] = None,
-    is_generate_intent: bool = False,
-    is_inspect_intent: bool = False
-) -> Optional[str]:
-    """
-    Detects if the expected deliverable (from skill contract or prompt) was not created in WORKSPACE_DIR.
-    Prioritizes explicit contract deliverables from the active skill.
-    Strictly bypassed during read-only inspection turns (is_inspect_intent and not is_generate_intent).
-    """
-    if not user_prompt or is_text_only_request(user_prompt):
-        return None
-    if is_inspect_intent and not is_generate_intent:
-        return None
+def detect_missing_requested_deliverable(*args, **kwargs):
+    from .deliverable_detection import detect_missing_requested_deliverable as detect
+    return detect(*args, **kwargs, workspace=WORKSPACE_DIR)
 
-    ws_path = Path(WORKSPACE_DIR)
-
-    # 1. 契约驱动优先：若技能已明确声明产物交付契约 (如 ['.pdf'], ['.docx'], ['.xlsx'], ['.html'], ['Dockerfile'], ['analyze_nginx_logs.sh'])
-    if expected_deliverables:
-        # 对于包含多选一备选格式的演示文稿类契约（如 guizang-ppt 兼容 .pptx 与 .html）
-        has_presentation_alt = (
-            any(ext.lower() in [".pptx", ".ppt"] for ext in expected_deliverables)
-            and any(ext.lower() in [".html", ".htm"] for ext in expected_deliverables)
-        )
-        if has_presentation_alt and ws_path.exists():
-            try:
-                for p in ws_path.iterdir():
-                    if p.is_file() and p.suffix.lower() in [".pptx", ".ppt", ".html", ".htm"] and p.stat().st_size > 0:
-                        if p.stat().st_mtime >= turn_start_time - 2.0:
-                            return None
-            except Exception:
-                pass
-
-        from .artifact_exporter import ArtifactExporter
-        for req_item in expected_deliverables:
-            if is_term_negated(user_prompt, req_item) or is_term_negated(user_prompt, req_item.lstrip(".")):
-                continue
-            found = False
-            if ws_path.exists():
-                try:
-                    for p in ws_path.iterdir():
-                        if not p.is_file() or p.stat().st_size <= 0:
-                            continue
-                        if p.stat().st_mtime < turn_start_time - 2.0:
-                            continue
-                        if ArtifactExporter.is_temporary_file(p.name):
-                            continue
-                        from .workbook_delivery import deliverable_is_valid
-                        if not deliverable_is_valid(p):
-                            continue
-                        if req_item.startswith(".") or req_item.lower() in ["pdf", "docx", "xlsx", "pptx", "html", "md"]:
-                            norm_ext = req_item if req_item.startswith(".") else f".{req_item}"
-                            if p.suffix.lower() == norm_ext.lower():
-                                found = True
-                                break
-                        else:
-                            if p.name.lower() == req_item.lower() or p.name.lower().endswith(req_item.lower()):
-                                found = True
-                                break
-                except Exception:
-                    pass
-            if not found:
-                return req_item
-        return None
-
-    # 2. 兜底回退：无契约声明时，根据提示词探测期望产物后缀（必须有明确的生成/导出谓词，不能仅因出现名词就判定为生成）
-    lower = user_prompt.lower()
-    is_markdown_table = (
-        re.search(r'(?:markdown|文本|聊天|对话|正文)?\s*(?:对比表格|表格对比|markdown\s*表格)', lower)
-        and not any(ext in lower for ext in [".xlsx", ".xls", "excel", "工作簿", "导出表格", "下载表格", "生成表格文件"])
-    )
-
-    req_ext = None
-    if (
-        re.search(r'(?:做成|制作|生成|导出|做个|建个|创建|转为|转成)[^，。\n]{0,8}(?:pdf)', lower) or
-        any(k in lower for k in ["生成pdf", "导出pdf", "转为pdf", "转成pdf", "生成一页的pdf", "生成一份pdf", "制作pdf", "导出为pdf", "做个pdf"])
-    ):
-        req_ext = ".pdf"
-    elif not is_markdown_table and (
-        re.search(r'(?:做成|制作|生成|导出|做个|建个|创建|整理成)[^，。\n]{0,8}(?:excel|xlsx|表格|表单)', lower) or
-        any(k in lower for k in ["生成excel", "导出excel", "做成excel", "制作excel", "做个excel", "导出xlsx", "生成xlsx", "做个表", "生成表格"])
-    ):
-        req_ext = ".xlsx"
-    elif (
-        re.search(r'(?:做成|制作|生成|导出|做个|建个|创建|整理成)[^，。\n]{0,8}(?:word|docx|文档)', lower) or
-        any(k in lower for k in ["生成word", "导出word", "做成word", "制作word", "做个word", "导出docx", "生成docx"])
-    ):
-        req_ext = ".docx"
-    elif (
-        re.search(r'(?:做成|制作|生成|导出|做个|建个|创建|整理成|汇总成|总结成)[^，。\n]{0,8}(?:ppt|pptx|幻灯片|演示文稿)', lower) or
-        any(k in lower for k in ["生成ppt", "导出ppt", "做成ppt", "制作ppt", "做个ppt", "导出pptx", "生成pptx", "一张ppt", "一份ppt"])
-    ):
-        req_ext = ".html"
-    elif (
-        re.search(r'(?:输出|生成|创建|导出|保存|写入|制作|做成)[^，。\n]{0,16}(?:\.md\b|\bmarkdown\b|\bmd\b)', lower, re.I) or
-        re.search(r'(?:\.md\b|\bmarkdown\b|\bmd\b)\s*(?:格式)?\s*文件', lower, re.I)
-    ):
-        req_ext = ".md"
-    elif (
-        any(k in lower for k in ["生成html", "导出html", "做成html", "制作html", "html报告", "生成网页", "做个网页", "生成单页", "网页游戏", "html游戏", "五子棋", "贪吃蛇", "原型", "看板", "大屏"]) or
-        (any(v in lower for v in ["生成", "做个", "做成", "制作", "创建", "输出", "开发"]) and any(n in lower for n in ["网页", "单页", "html", "游戏", "页面"]))
-    ):
-        req_ext = ".html"
-
-    if not req_ext or is_term_negated(lower, req_ext) or is_term_negated(lower, req_ext.lstrip(".")):
-        return None
-
-    # 检查工作区是否存在该类型的新文件 (mtime >= turn_start_time - 2.0)
-    if not ws_path.exists():
-        return req_ext
-
-    try:
-        from .artifact_exporter import ArtifactExporter
-        for p in ws_path.iterdir():
-            if p.is_file() and p.suffix.lower() == req_ext and p.stat().st_size > 0:
-                if p.stat().st_mtime >= turn_start_time - 2.0:
-                    if not ArtifactExporter.is_temporary_file(p.name):
-                        from .workbook_delivery import deliverable_is_valid
-                        if deliverable_is_valid(p):
-                            return None
-    except Exception:
-        pass
-
-    return req_ext
 
 
 @dataclass
@@ -381,10 +132,16 @@ def _check_no_tool_assertion_guard(
             for t in effective_tools
         )
     )
+    has_update_tools_effective = bool(
+        effective_tools and any(
+            (t.get("function", {}).get("name") or t.get("name", "")).lower() in ("plan_spreadsheet_update", "execute_spreadsheet_update")
+            for t in effective_tools
+        )
+    )
     if hard_ceiling is None:
         hard_ceiling = (
             MAX_SPREADSHEET_ROUNDS_CEILING
-            if (is_inspect_intent and not is_generate_intent and not expected_deliverables)
+            if (is_inspect_intent and not is_generate_intent and not expected_deliverables and not has_update_tools_effective)
             else MAX_AGENT_ROUNDS_HARD_CEILING
         )
     # 普通问答只纠偏一次；明确的文件生成任务允许第二次、更加具体的落盘纠偏。
@@ -401,6 +158,35 @@ def _check_no_tool_assertion_guard(
         return "pass", None, max_rounds
 
     bumped_max_rounds = min(hard_ceiling, max_rounds + 1)
+
+    has_update_tools = bool(
+        effective_tools and any(
+            (t.get("function", {}).get("name") or t.get("name", "")).lower() in ("plan_spreadsheet_update", "execute_spreadsheet_update")
+            for t in effective_tools
+        )
+    )
+    has_plan_succeeded = bool(
+        (executed_calls_history and any(
+            call.startswith("plan_spreadsheet_update:") and not call.startswith("err:")
+            for call in executed_calls_history
+        )) or (execution_evidence and any(
+            getattr(e, "is_success", False) and (
+                (getattr(e, "provenance", None) or {}).get("tool") == "plan_spreadsheet_update"
+                or (isinstance(getattr(e, "data", None), dict) and e.data.get("status") == "planned")
+            )
+            for e in execution_evidence
+        ))
+    )
+    planned_run_id = None
+    if execution_evidence:
+        for e in reversed(execution_evidence):
+            if getattr(e, "is_success", False) and isinstance(getattr(e, "data", None), dict):
+                if e.data.get("status") == "planned" and "run_id" in e.data:
+                    planned_run_id = e.data["run_id"]
+                    break
+                elif "run_id" in e.data and "plan" in e.data:
+                    planned_run_id = e.data["run_id"]
+                    break
 
     # 0. 内部计划与伪工具调用拦截：模型仅输出未执行的计划草稿时引导执行
     if not is_guide_intent and is_internal_plan_output(reply_text):
@@ -424,11 +210,24 @@ def _check_no_tool_assertion_guard(
             print(f"⚡ [Harness Artifact Assertion Guard] 检测到模型声称生成了文件 {missing}，但物理文件并不存在，正在拦截引导落盘...", flush=True)
             has_html_in_missing = any(f.endswith(".html") or f.endswith(".htm") for f in missing)
             code_block_hint = "，或者直接在回复中以完整的代码块（如 ```html\\n<!DOCTYPE html>...\\n```）输出全部源码" if has_html_in_missing else ""
+
             if has_bash:
                 msg = (
                     f"【系统产物物理断言拦截】：你在回复中提及已生成或保存文件 {', '.join(missing)}，但当前沙箱物理文件并不存在{code_block_hint and '，且未在回复中提供完整代码块' or ''}。"
                     f"请立即调用 bash 执行代码将目标文件保存到 /workspace/ 路径下{code_block_hint}。严禁仅做口头汇报！"
                 )
+            elif has_update_tools and any(f.lower().endswith((".xlsx", ".xlsm")) for f in missing):
+                if has_plan_succeeded:
+                    run_arg = "(plan_id=上一步返回的计划ID)" if planned_run_id else ""
+                    msg = (
+                        f"【系统表格更新物理断言拦截】：更新计划已就绪，但物理文件尚未生成。"
+                        f"请立即通过 Function Calling 协议调用 `execute_spreadsheet_update{run_arg}` 执行更新落盘！切勿仅做口头汇报！"
+                    )
+                else:
+                    msg = (
+                        f"【系统表格更新物理断言拦截】：你在回复中提及已生成或更新文件 {', '.join(missing)}，但当前工作区物理文件并不存在。"
+                        f"请通过 Function Calling 协议调用 `plan_spreadsheet_update` 锁定更新计划，并调用 `execute_spreadsheet_update` 执行物理更新落盘！切勿仅做口头汇报！"
+                    )
             else:
                 msg = (
                     f"【系统产物物理断言拦截】：你在回复中提及已生成或保存文件 {', '.join(missing)}，但当前沙箱物理文件并不存在。"
@@ -457,10 +256,29 @@ def _check_no_tool_assertion_guard(
             if missing_deliverable:
                 print(f"⚡ [Harness Deliverable Assertion Guard] 检测到用户要求生成 {missing_deliverable} 交付物但沙箱尚未生成，正在引导执行工具落盘...", flush=True)
                 if not has_bash:
-                    msg = (
-                        f"【系统交付物提示】：当前环境为只读模式（未提供代码执行工具），"
-                        f"请直接在回复中以完整的 Markdown 格式或代码块输出 {missing_deliverable} 对应的全部正文内容。"
+                    has_update_tools = bool(
+                        effective_tools and any(
+                            (t.get("function", {}).get("name") or t.get("name", "")).lower() in ("plan_spreadsheet_update", "execute_spreadsheet_update")
+                            for t in effective_tools
+                        )
                     )
+                    if has_update_tools and missing_deliverable in [".xlsx", ".xlsm"]:
+                        if has_plan_succeeded:
+                            run_arg = "(plan_id=上一步返回的计划ID)" if planned_run_id else ""
+                            msg = (
+                                f"【系统表格更新交付提示】：检测到更新计划已锁定，但尚未执行物理落盘。"
+                                f"请立即调用 `execute_spreadsheet_update{run_arg}` 完成更新并交付！"
+                            )
+                        else:
+                            msg = (
+                                f"【系统表格更新交付提示】：检测到用户要求更新/交付 {missing_deliverable} 表格文件，当前工作区中尚未检测到更新后的物理产物。"
+                                f"请通过 Function Calling 协议调用 `plan_spreadsheet_update` 规划复制与回填，并调用 `execute_spreadsheet_update` 执行落盘交付！"
+                            )
+                    else:
+                        msg = (
+                            f"【系统交付物提示】：当前环境为只读模式（未提供代码执行工具），"
+                            f"请直接在回复中以完整的 Markdown 格式或代码块输出 {missing_deliverable} 对应的全部正文内容。"
+                        )
                 elif script_execution_error:
                     msg = (
                         f"【系统脚本执行自愈提示】：检测到你在回复中提供了生成 {missing_deliverable} 的脚本代码，"
@@ -666,6 +484,7 @@ def run_agent_loop(
     is_search_intent: bool = False,
     initial_execution_evidence: Optional[List[ToolResult]] = None,
     user_prompt: Optional[str] = None,
+    user_declarations: Optional[Dict[str, Any]] = None,
 ) -> AgentLoopResult:
     """Executes the multi-turn ReAct tool calling loop up to max_rounds."""
     active_tools = tools if tools is not None else get_sandbox_tools()
@@ -677,6 +496,12 @@ def run_agent_loop(
     reply_text = ""
     was_token_truncated = False
     start_ts = turn_start_time if turn_start_time is not None else time.time()
+    from .spreadsheet_update.tools import reset_turn_results
+    reset_turn_results()
+    from .user_declarations import bind_user_declarations
+    declaration = bind_user_declarations(user_declarations)
+    if declaration:
+        telemetry.record_guard('user_unit_confirmation', 'accept', declaration)
     last_user_prompt = user_prompt if user_prompt is not None else _extract_last_user_prompt(messages)
     analysis_turn=AnalysisTurn(last_user_prompt,model=model,deadline=deadline) if spreadsheet_analysis_required else None
     from .bounded_summary_recovery import SummaryRecovery
@@ -707,10 +532,22 @@ def run_agent_loop(
             messages.insert(0, {"role": "system", "content": requirements})
     execution_evidence: List[ToolResult] = list(initial_execution_evidence or [])
     guard_nudges_count = 0
+    has_active_update_tools = any(
+        (t.get("function", {}).get("name") or t.get("name", "")).lower() in ("plan_spreadsheet_update", "execute_spreadsheet_update")
+        for t in active_tools
+    )
+    from .intent_contract import is_modify_intent_requested
+    from .task_intent import is_spreadsheet_mutation_requested
+    is_update_req = is_modify_intent_requested(last_user_prompt) or is_spreadsheet_mutation_requested(last_user_prompt)
+    if is_update_req and has_active_update_tools and not is_guide_intent:
+        from .spreadsheet_update.agent_protocol import select_update_tools, UPDATE_INSTRUCTIONS
+        active_tools = select_update_tools(active_tools)
+        messages.insert(0, {'role':'system', 'content':UPDATE_INSTRUCTIONS})
+    force_tool_choice = False
     is_pure_spreadsheet_or_inspect = (
-        spreadsheet_analysis_required
+        (spreadsheet_analysis_required and not (is_update_req and has_active_update_tools))
         or comparison_required
-        or (is_inspect_intent and not is_generate_intent and not expected_deliverables)
+        or (is_inspect_intent and not is_generate_intent and not expected_deliverables and not (is_update_req and has_active_update_tools))
     )
     task_ceiling = MAX_SPREADSHEET_ROUNDS_CEILING if is_pure_spreadsheet_or_inspect else MAX_AGENT_ROUNDS_HARD_CEILING
     max_rounds = min(max_rounds, task_ceiling)
@@ -740,8 +577,10 @@ def run_agent_loop(
             # A spreadsheet model may ask a valid question before computing.
             # The evidence gate checks assertions after its choice; forcing a
             # tool call here would remove the right to clarify.
-            tool_choice="required" if active_tools and comparison_required
-                and compile_comparison_response(comparison_contract,execution_evidence)[0] is None else None
+            tool_choice="required" if (
+                (force_tool_choice and active_tools)
+                or (active_tools and comparison_required and compile_comparison_response(comparison_contract, execution_evidence)[0] is None)
+            ) else None
         )
         reply_text = (llm_res.get("content") or "") if isinstance(llm_res, dict) else str(llm_res or "")
         structured_calls = list(llm_res.get("tool_calls") or []) if isinstance(llm_res, dict) else []
@@ -791,6 +630,9 @@ def run_agent_loop(
                     flush=True,
                 )
 
+        if structured_calls:
+            force_tool_choice = False
+
         # 若当轮无任何工具调用
         if not structured_calls:
             if summary_recovery.apply(execution_evidence, telemetry, outbound_files):
@@ -807,6 +649,78 @@ def run_agent_loop(
                     round_idx += 1
                     continue
                 break
+            # 独立表格更新完成门禁：凡任务明确要求更新工作簿/工作表并配备更新工具，必须具备更新执行回执
+            from .intent_contract import is_modify_intent_requested
+            from .task_intent import is_spreadsheet_mutation_requested
+            is_update_req = (
+                is_modify_intent_requested(last_user_prompt)
+                or is_spreadsheet_mutation_requested(last_user_prompt)
+            )
+            has_update_tools = bool(
+                active_tools and any(
+                    (t.get("function", {}).get("name") or t.get("name", "")).lower() in ("plan_spreadsheet_update", "execute_spreadsheet_update")
+                    for t in active_tools
+                )
+            )
+            if is_update_req and has_update_tools and not is_guide_intent:
+                has_update_exec = any(
+                    getattr(e, 'is_success', False)
+                    and isinstance(getattr(e, 'data', None), dict)
+                    and e.data.get('status') == 'published'
+                    and e.data.get('published_file')
+                    for e in execution_evidence
+                )
+                has_new_valid_workbook = False
+                ws_p = Path(WORKSPACE_DIR)
+                if ws_p.exists():
+                    min_mtime = start_ts - 2.0
+                    for p in ws_p.iterdir():
+                        if p.is_file() and p.suffix.lower() in ('.xlsx', '.xlsm') and p.stat().st_size > 0 and p.stat().st_mtime >= min_mtime:
+                            if not p.name.startswith(('~$', 'sample', 'test', 'temp', 'tmp')):
+                                from .deliverable_detection import is_new_deliverable
+                                if is_new_deliverable(p, start_ts, require_update_receipt=True):
+                                    has_new_valid_workbook = True
+                                    break
+                if has_update_exec or has_new_valid_workbook:
+                    if telemetry:
+                        telemetry.record_guard("spreadsheet_update_evidence", "accept", "published_verified")
+                else:
+                    planned_ev = next(
+                        (e for e in execution_evidence if getattr(e, 'is_success', False) and (
+                            getattr(e, 'name', '') == 'plan_spreadsheet_update' or (getattr(e, 'provenance', None) or {}).get('tool') == 'plan_spreadsheet_update'
+                        ) and isinstance(getattr(e, 'data', None), dict) and getattr(e, 'data', {}).get('plan_id')),
+                        None
+                    )
+                    if planned_ev:
+                        p_data = planned_ev.data
+                        p_id = p_data.get('plan_id')
+                        p_hash = p_data.get('plan_hash')
+                        r_id = p_data.get('run_id')
+                        update_err = (
+                            f"检测到你已成功锁定更新计划 (Plan ID: {p_id})，但尚未执行物理写盘与公式重算！\n"
+                            f"严禁在此停顿输出文字，目标文件尚未真正写入物理磁盘。请立即发起工具调用：\n"
+                            f"`execute_spreadsheet_update(plan_id='{p_id}')`\n"
+                            f"只有该工具执行成功后新表格才会真正落盘完成交付！"
+                        )
+                    else:
+                        update_err = (
+                            "检测到任务明确要求更新工作簿/工作表并回填数据，当前仅输出了分析文本，尚未完成物理写盘！"
+                            "严禁在此停顿输出文字，必须立即调用工具完成物理写盘落盘：\n"
+                            "- 方式一（专有工具，推荐）：直接调用 `plan_spreadsheet_update` 提交更新意图（如：target_file、period、section、target_kind、target_unit），计划锁定后紧接着调用 `execute_spreadsheet_update` 写盘；\n"
+                            "只按工具返回的具体错误修正参数；目标不明确时说明需要的信息。\n"
+                            "请立即发起工具调用执行写盘！"
+                        )
+                    telemetry.record_guard("spreadsheet_update_evidence", "reject", update_err)
+                    if round_idx < task_ceiling - 1:
+                        max_rounds = min(task_ceiling, max_rounds + 1)
+                        force_tool_choice = True
+                        messages.append({"role": "assistant", "content": reply_text})
+                        messages.append({"role": "user", "content": f"【系统表格更新门禁拦截】：{update_err}"})
+                        round_idx += 1
+                        continue
+                    else:
+                        break
+
             if spreadsheet_analysis_required:
                 if analysis_turn.is_clarification(execution_evidence, reply_text):
                     telemetry.record_guard("spreadsheet_evidence", "accept", "clarification_requested")
@@ -961,6 +875,14 @@ def run_agent_loop(
                                 for t in active_tools]
         )
 
+        if execution_evidence:
+            latest = execution_evidence[-1]
+            if (isinstance(latest.data, dict) and latest.data.get('status') == 'needs_input'
+                    and (latest.provenance or {}).get('tool') == 'plan_spreadsheet_update'):
+                telemetry.record_guard('spreadsheet_update_binding', 'needs_input', latest.data['question'])
+                return AgentLoopResult(final_text=latest.data['question'], telemetry=telemetry,
+                                       messages=messages, execution_evidence=execution_evidence)
+
         # 仅在当轮尚未产生有效分析事实时，才尝试兜底恢复；严禁覆盖主模型已成功完成的分析回执
         has_completed_analysis = bool(execution_evidence and any(
             getattr(r, 'is_success', False) and isinstance(getattr(r, 'data', None), dict) and r.data.get('facts')
@@ -1010,8 +932,8 @@ def run_agent_loop(
                 if tool.get("function", {}).get("name") not in exhausted
             ]
 
-        if spreadsheet_analysis_required and execution_evidence and execution_evidence[-1].is_error:
-            max_rounds=min(task_ceiling,max(max_rounds,round_idx+2))
+        if (spreadsheet_analysis_required or has_active_update_tools) and execution_evidence and execution_evidence[-1].is_error:
+            max_rounds = min(task_ceiling, max(max_rounds, round_idx + 2))
 
         # 当任务需要生成物理交付物（如 PDF/Word/Excel）且尚未落盘，但模型仍处于探索/草稿阶段（例如刚调用了搜索或写入了中间文件），
         # 且轮次临近上限时，动态追加 2 轮预算，避免在最后落盘前被硬截断
@@ -1025,18 +947,51 @@ def run_agent_loop(
             if missing_deliv:
                 max_rounds = min(task_ceiling, max(max_rounds, round_idx + 2))
                 print(f"⚡ [Harness Dynamic Budget] 检测到目标交付物 {missing_deliv} 尚未生成，动态追加执行轮次至 {max_rounds} (硬上限: {task_ceiling})...", flush=True)
+                has_update_tools_active = any(
+                    (t.get("function", {}).get("name") or t.get("name", "")).lower() in ("plan_spreadsheet_update", "execute_spreadsheet_update")
+                    for t in active_tools
+                )
+                has_bash_active = any(
+                    (t.get("function", {}).get("name") or t.get("name", "")).lower() in ("bash", "cmd", "terminal", "sh", "exec")
+                    for t in active_tools
+                )
+                if has_update_tools_active and missing_deliv in [".xlsx", ".xlsm"]:
+                    nudge_msg = f"【系统阶段督促】：当前轮次临近上限，但目标交付物 {missing_deliv} 尚未生成落盘。请调用 `plan_spreadsheet_update` 规划并调用 `execute_spreadsheet_update` 执行落盘！"
+                elif has_bash_active:
+                    nudge_msg = f"【系统阶段督促】：当前轮次临近上限，但目标交付物 {missing_deliv} 尚未生成落盘。请立即停止零散查看或临时测试，通过 bash 运行最终 Python/处理脚本将完整数据与图表直接写入 /workspace/ 目标文件！"
+                else:
+                    nudge_msg = f"【系统阶段督促】：当前轮次临近上限，但目标交付物 {missing_deliv} 尚未生成落盘。请直接在回复中输出完整分析与数据结论。"
                 messages.append({
                     "role": "user",
-                    "content": f"【系统阶段督促】：当前轮次临近上限，但目标交付物 {missing_deliv} 尚未生成落盘。请立即停止零散查看或临时测试，通过 bash 运行最终 Python/处理脚本将完整数据与图表直接写入 /workspace/ 目标文件！"
+                    "content": nudge_msg
                 })
 
         # 当前轮次已执行工具，重置 reply_text，防止内部工具前置垫话或执行脚本残留进入最终回复
+        # 但在重置前，若当前轮次伴随工具调用输出了完整 HTML 代码块或未执行的脚本/命令，执行自愈落盘
+        if reply_text and ("```html" in reply_text.lower() or "cat" in reply_text or "write_file" in reply_text):
+            try:
+                from .agent_loop_helpers import auto_heal_unexecuted_file_writes
+                _, mid_healed = auto_heal_unexecuted_file_writes(reply_text, WORKSPACE_DIR)
+                if mid_healed:
+                    print(f"✨ [Harness Auto-Heal] 工具轮次中成功自愈落盘产物: {mid_healed}", flush=True)
+                m_mid_html = re.search(r'```html\s*\n(<!DOCTYPE html[\s\S]*?</html>)\s*```', reply_text, re.I)
+                if not m_mid_html:
+                    m_mid_html = re.search(r'```html\s*\n(<html[\s\S]*?</html>)\s*```', reply_text, re.I)
+                if m_mid_html:
+                    h_code = m_mid_html.group(1).strip()
+                    if len(h_code) > 150:
+                        out_html = Path(WORKSPACE_DIR) / "index.html"
+                        out_html.write_text(h_code, encoding="utf-8")
+                        print(f"✨ [Harness Auto-Heal] 工具轮次中成功物化 HTML 代码块至工作区: {out_html}", flush=True)
+            except Exception as e:
+                print(f"⚠️ [Harness Auto-Heal] 工具轮次物化产物异常: {e}", flush=True)
+
         reply_text = ""
 
         if is_file_sent:
             messages.append({
                 "role": "user",
-                "content": "文件已成功标记并推送至即时通讯通道。请直接回复用户，告知文件已发送，请其查收即可。无需再调用任何其他工具。"
+                "content": "文件已成功标记并推送至即时通讯通道。请直接回复用户告知文件已发送，并简要概述核心结论或关键统计数值（无需再调用任何其他工具）。"
             })
             final_step = call_model_proxy(
                 messages,

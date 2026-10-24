@@ -440,12 +440,15 @@ def extract_xlsx_text(
             return TextToolOutput(sliced_text, tr)
 
         full_content = "\n".join(overview_header) + "\n" + "\n".join(all_sheet_rows)
-        for txt_name in [f"{p.stem}.txt", f"{p.name}.txt"]:
-            tp = p.parent / txt_name
-            try:
-                tp.write_text(full_content, encoding="utf-8")
-            except Exception:
-                pass
+        # 仅在非切片、非目录模式下才生成/更新全量同名 .txt 缓存，防止切片内容覆盖完整表头与分段数据
+        is_partial = bool(range_bounds or is_catalog or effective_sheet_name or start_line or end_line)
+        if not is_partial:
+            for txt_name in [f"{p.stem}.txt", f"{p.name}.txt"]:
+                tp = p.parent / txt_name
+                try:
+                    tp.write_text(full_content, encoding="utf-8")
+                except Exception:
+                    pass
 
         if len(full_content) > max_chars:
             hint = (

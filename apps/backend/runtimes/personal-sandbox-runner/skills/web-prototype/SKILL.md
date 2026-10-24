@@ -1,20 +1,13 @@
 ---
 name: web-prototype
-description: "交互式前端原型、Web 单页面应用与交互小游戏开发。当用户需要制作前端页面原型、交互式 Demo、小游戏（五子棋等）、Web UI 或交互页面时必须使用此技能。输出为单文件包含 HTML/CSS/JS 的自包含页面。"
+zh_name: "交互式前端原型与单页应用（已并入 frontend-design）"
+aliases:
+  - "frontend-design"
+description: |
+  交互式前端原型、Web 单页应用（SPA）与交互小游戏开发（本技能已与 frontend-design 深度整合并共享规范）。当用户需要制作前端页面原型、交互式 Demo、小游戏、Web UI 或交互页面时使用。输出为单文件包含 HTML/CSS/JS 的自包含页面。不要用于日常问答或 PDF 导出。
 triggers:
-  - "prototype"
-  - "mockup"
-  - "landing"
-  - "web原型"
-  - "前端原型"
+  - "web-prototype"
   - "交互原型"
-  - "页面原型"
-  - "做个网页"
-  - "制作网页"
-  - "单页应用"
-  - "单页面应用"
-  - "web应用"
-  - "前端应用"
 od:
   mode: prototype
   platform: desktop
@@ -27,82 +20,15 @@ od:
     sections: [color, typography, layout, components]
 ---
 
-# Web Prototype Skill
+# Web Prototype Skill (已与 frontend-design 统合)
 
-Produce a single, self-contained HTML prototype using the bundled seed and layout library — **not** by writing CSS from scratch. The seed already encodes good defaults (typography, spacing, accent budget). Your job is to compose it.
+> 💡 **架构整合提示**：本技能已与 `frontend-design` 深度整合为统一的前端设计与交互原型规范。两者完全互通并共享同一套底层种子模板、8 大布局区块以及反 AI 廉价感（Anti-AI Slop）设计准则。
 
-## Resource map
+详细指引与数据图表可视化规范请直接参阅：`frontend-design/SKILL.md`。
 
-```
-web-prototype/
-├── SKILL.md                ← you're reading this
-├── assets/
-│   └── template.html       ← seed: tokens + class system + chrome (READ FIRST)
-└── references/
-    ├── layouts.md          ← 8 paste-ready section skeletons
-    └── checklist.md        ← P0/P1/P2 self-review
-```
+## 核心约定与快速装配
 
-## Workflow
-
-### Step 0 — Pre-flight (do this once before writing anything)
-
-1. **Read `assets/template.html` end-to-end** — at minimum through the `<style>` block. The class inventory at the top of `references/layouts.md` lists every class that must be defined there; if one is missing, add it to `<style>` rather than re-defining it inline on every section.
-2. **Read `references/layouts.md`** so you know which section skeletons exist. Don't write a section type that isn't covered — pick the closest layout and adapt.
-3. **Read the active DESIGN.md** (already injected into your system prompt). Map its colors to the six `:root` variables in the seed; don't introduce new tokens.
-
-### Step 1 — Prepare `index.html` from the seed
-
-Use `assets/template.html` as the seed for the canonical project file, normally `index.html`.
-
-Replace the six `:root` variables with the active design system's tokens. Replace the page `<title>` and the topnav brand.
-
-### Step 2 — Plan the structure internally, then continue immediately
-
-**Pick layouts before writing copy.** Default rhythms (from `layouts.md`):
-
-| Page kind | Default rhythm |
-|---|---|
-| Landing | 1 hero → 3 features → 4 stats *or* 5 quote → custom split → 6 cta |
-| Marketing / editorial | 1 hero-center → 7 log list → 6 cta |
-| Pricing | 1 hero-center → 8 comparison table → 6 cta |
-| Docs index | 1 hero-center → 7 log list (sections of docs) → 6 cta |
-
-Choose the structure internally and proceed to implementation in the same turn. Do not pause for confirmation, offer a plan instead of a file, or ask the user to reply again for complete code when the request already asks to create/build/generate the prototype.
-
-For interactive apps and games, do not force a marketing-page section rhythm. Build an application shell suited to the task (game canvas/board, score or status HUD, controls, overlays, responsive input) while reusing the seed's design tokens and reset styles.
-
-### Step 3 — Paste and fill
-
-For each chosen layout, copy the `<section>` block from `layouts.md` into `<main id="content">` of the project HTML. Replace bracketed `[REPLACE]` strings with real, specific copy from the user's brief. **No filler** — if a slot is empty, the section is the wrong choice; pick a different layout. Treat every `.ph-img` block as layout scaffolding and replace it when the section requires imagery, following the real-first rule below before self-checking.
-
-### Step 4 — Self-check
-
-Run through `references/checklist.md` top to bottom. Every P0 item must pass before you move on. P1 items should pass; P2 are bonus.
-
-### Step 5 — Write the project file
-
-Write the completed HTML to the canonical project file, normally `index.html`. Then send one short ordinary assistant summary naming the file and describing what's there. Do not output the full HTML source in chat.
-
-## Hard rules (the seed protects most of these — don't fight it)
-
-- **Single accent, used at most twice per screen.** Eyebrow + primary CTA is the default budget.
-- **Display font is serif** (Iowan Old Style / Charter / Georgia in the seed). Sans for body. Mono for numerics, captions, eyebrows.
-- **Real imagery, never remote hotlinks.** `.ph-img` is temporary layout scaffolding, not the default final treatment. For a named real-world referent, search/fetch the correct real image, copy it into the project, and reference it relatively; never generate, draw, or invent a substitute. For illustrative or atmospheric subjects, prefer suitable fetched real photography and use image generation only as a fallback. If no compliant asset can be acquired, keep an intentional labeled `.ph-img` and disclose the limitation in the delivery summary.
-- **Preserve real-image geometry.** Inspect each acquired image's intrinsic width and height, replace the entire `.ph-img` scaffold with an `<img class="content-img">`, and set matching `width` and `height` attributes. Never copy `.ph-img`, `.wide`, `.portrait`, or `.square` onto a real image. Content images must show the full frame; `object-fit: cover` is only for intentionally croppable decorative fills. The seed's `.content-img` rule bounds unusually tall or wide images to the viewport while keeping the other axis automatic.
-- **Mobile reflow already works** via the seed's media query at 920px. Don't break it by adding fixed widths.
-- **`data-od-id` on every `<section>`** so comment mode can target it.
-
-## Output contract
-
-Filesystem runs use project files as the source of truth:
-
-```
-index.html
-```
-
-OpenDesign derives the preview from the written project file. Do not also emit a source-code `<artifact>` block for the same generation turn.
-
-One short summary after writing the file. Nothing after.
-
-An explicit create/build/generate request is already authorization to implement. A feature list, architecture proposal, pseudo-code, or “reply to receive the full source” is not a valid deliverable. The turn is incomplete until `index.html` exists and contains the working implementation.
+1. **种子文件**：直接使用 `assets/template.html` 作为 `index.html` 的基底。
+2. **布局组件**：从 `references/layouts.md` 选择最接近的 Section 骨架填入 `<main id="content">`。
+3. **输出落盘**：始终完整输出自包含的物理文件（通常为 `/workspace/index.html`），切勿直接向对话窗口打印裸代码。
+4. **拒绝关键字堆叠与硬编码**：语义准入层将根据任务真实需求调用此技能。严禁在提示词中堆砌无意义的近义词。

@@ -1,0 +1,92 @@
+{
+  "session_id": "chat-session-1792763169153-avueiz5g",
+  "turn_id": "1792764784041692090-fdda230a87dd45fab14bd440fb48ef04",
+  "real_plan_error": {
+    "code": "failed",
+    "message": "Plan schema validation failed: Operation 'set_snapshot_date' (op_2_date) has invalid coordinate ''."
+  },
+  "contract_mismatch": {
+    "controlled_missing_date_coordinate_passes_public_schema": true,
+    "normalized_plan_passes_domain_schema": false,
+    "domain_issues": [
+      "Operation 'set_snapshot_date' (op_2_date) has invalid coordinate ''."
+    ],
+    "public_check_scope": "Declared type/required/enum constraints of concrete example; no external schema library.",
+    "note": "Controlled minimal payload matches real error condition; not recovered full historical arguments."
+  },
+  "harvest_exact_receipt": {
+    "input_facts": 7,
+    "harvested_facts": 1056,
+    "source_metric_unit_request": "source",
+    "receipt_FC48005": {
+      "value": "67.0353",
+      "unit": "K"
+    },
+    "harvest_FC48005_forecast_K": "0.0670353",
+    "created_zero_departments": [
+      "FC32008",
+      "FC34001",
+      "FC34032",
+      "FC44008"
+    ],
+    "note": "Runs exact receipt through current same-hash adapter in an isolated FactTable."
+  },
+  "published_skill_example_normalization": {
+    "original_operations": 2,
+    "normalized_operations": 1057,
+    "fill_operations": 1056,
+    "unique_fill_op_ids": 11,
+    "max_repetitions_same_op_id": 96,
+    "distinct_target_coordinates": 11,
+    "max_writes_same_coordinate": 96,
+    "note": "Controlled skill example, not historical payload. Fake coordinator stops before planning/writes."
+  },
+  "api_review": {
+    "top_level_fields": [
+      "target_ref",
+      "as_of",
+      "snapshot",
+      "operations",
+      "sources",
+      "output",
+      "auto_execute",
+      "plan"
+    ],
+    "top_level_required": [],
+    "operation_required": [
+      "op"
+    ],
+    "operation_unit_property_exposed": false,
+    "auto_execute_description": "是否在计划锁定后自动执行物理更新与重算落盘（默认自动开启；推荐保持开启以一步完成落盘并生成最终文件）。",
+    "runtime_default_from_source": false
+  },
+  "file_integrity": {
+    "before": {
+      "工数3Q预实管理.xlsx": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d",
+      "工数实绩明细_20261020134124.xlsx": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+    },
+    "after": {
+      "工数3Q预实管理.xlsx": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d",
+      "工数实绩明细_20261020134124.xlsx": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+    },
+    "unchanged": true,
+    "matches_call": true,
+    "target_sheet_names": [
+      "1019"
+    ],
+    "desired_output_exists": true,
+    "desired_output_mtime": 1792759559.0,
+    "desired_output_predates_turn": true
+  },
+  "delivery_false_positive_reproduction": {
+    "current_inputs_passing_fresh_valid_xlsx_condition": [
+      "工数3Q预实管理.xlsx",
+      "工数实绩明细_20261020134124.xlsx"
+    ],
+    "missing_requested_deliverable_result": null,
+    "published_receipts_in_this_turn": 0,
+    "note": "Exact fresh-file predicate includes input attachments; existing output predates this turn."
+  },
+  "model_calls": 0,
+  "workbook_writes": 0
+}

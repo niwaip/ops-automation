@@ -1,0 +1,136 @@
+{
+  "schema_version": "SpreadsheetUpdateReceipt/v1",
+  "run_id": "run_40672837318c",
+  "plan_id": "plan_e0322c6159e7_run_40672837318c",
+  "plan_hash": "e0322c6159e7f2a17d944b64ed1f69db9cb423354e0b5f412b16c05c37c5dd6d",
+  "request_hash": "d9e62bc936eca3eb51066a582e6f2ce8367cc717a95c05af702d34776e5d40dc",
+  "target_id": "/workspace/.validation/unit-followup-20261024/original-v3/.dsh/spreadsheet-runs/run_40672837318c/snapshot_工数3Q预实管理.xlsx",
+  "target_input_hash": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d",
+  "output_hash": "bc066445a553b8eac217280023320ef156107c8a5aa7b139d68b28b0ba2a9630",
+  "output_path": "/workspace/.validation/unit-followup-20261024/original-v3/工数3Q预实管理_1023.xlsx",
+  "status": "published",
+  "validation_verdict": "passed_with_warnings",
+  "warnings": [
+    "来源无匹配记录，保留原值：FC32008, FC34001, FC34032, FC44008"
+  ],
+  "applied_operations": [
+    {
+      "op": "copy_sheet",
+      "op_id": "copy",
+      "source_sheet": "1019",
+      "target_sheet": "1023"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_0",
+      "target_sheet": "1023",
+      "coordinate": "C10",
+      "fact_ref": "e232c62863cc7a82506d2396:metric_8caddbad5683__(('str', 'FC45031'),)",
+      "region_id": "有偿",
+      "department_code": "FC45031",
+      "metric_id": "metric_8caddbad5683",
+      "period": "202610",
+      "value_kind": "forecast",
+      "unit": "K"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_1",
+      "target_sheet": "1023",
+      "coordinate": "C5",
+      "fact_ref": "e232c62863cc7a82506d2396:metric_8caddbad5683__(('str', 'FC48005'),)",
+      "region_id": "有偿",
+      "department_code": "FC48005",
+      "metric_id": "metric_8caddbad5683",
+      "period": "202610",
+      "value_kind": "forecast",
+      "unit": "K"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_2",
+      "target_sheet": "1023",
+      "coordinate": "C15",
+      "fact_ref": "e232c62863cc7a82506d2396:metric_8caddbad5683__(('str', 'FC44006'),)",
+      "region_id": "有偿",
+      "department_code": "FC44006",
+      "metric_id": "metric_8caddbad5683",
+      "period": "202610",
+      "value_kind": "forecast",
+      "unit": "K"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_3",
+      "target_sheet": "1023",
+      "coordinate": "C14",
+      "fact_ref": "e232c62863cc7a82506d2396:metric_8caddbad5683__(('str', 'FC44004'),)",
+      "region_id": "有偿",
+      "department_code": "FC44004",
+      "metric_id": "metric_8caddbad5683",
+      "period": "202610",
+      "value_kind": "forecast",
+      "unit": "K"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_4",
+      "target_sheet": "1023",
+      "coordinate": "C16",
+      "fact_ref": "e232c62863cc7a82506d2396:metric_8caddbad5683__(('str', 'FC34022'),)",
+      "region_id": "有偿",
+      "department_code": "FC34022",
+      "metric_id": "metric_8caddbad5683",
+      "period": "202610",
+      "value_kind": "forecast",
+      "unit": "K"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_5",
+      "target_sheet": "1023",
+      "coordinate": "C13",
+      "fact_ref": "e232c62863cc7a82506d2396:metric_8caddbad5683__(('str', 'FC44003'),)",
+      "region_id": "有偿",
+      "department_code": "FC44003",
+      "metric_id": "metric_8caddbad5683",
+      "period": "202610",
+      "value_kind": "forecast",
+      "unit": "K"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_6",
+      "target_sheet": "1023",
+      "coordinate": "C8",
+      "fact_ref": "e232c62863cc7a82506d2396:metric_8caddbad5683__(('str', 'FC46005'),)",
+      "region_id": "有偿",
+      "department_code": "FC46005",
+      "metric_id": "metric_8caddbad5683",
+      "period": "202610",
+      "value_kind": "forecast",
+      "unit": "K"
+    }
+  ],
+  "evidence_refs": [],
+  "formula_health": {
+    "schema_version": 1,
+    "status": "verified",
+    "engine_execution": "success",
+    "provenance": {
+      "workbook_id": "e6f26b1478301a505ac06c2a920841866982761e0d158e6b20b1cbc69f58aa8b",
+      "output_hash": "bc066445a553b8eac217280023320ef156107c8a5aa7b139d68b28b0ba2a9630",
+      "engine": "libreoffice_calc_headless",
+      "validator_version": "v3_unified",
+      "calculated_at": "2026-10-23T16:43:41.788658+00:00"
+    },
+    "total_formulas": 622,
+    "cached_formulas": 622,
+    "uncalculated_formulas": 0,
+    "total_errors": 0,
+    "error_summary": {},
+    "error": null
+  },
+  "requirement_coverages": [],
+  "created_at": "2026-10-23T16:43:41.888272+00:00"
+}

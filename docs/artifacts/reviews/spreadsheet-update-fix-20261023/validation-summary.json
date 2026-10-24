@@ -1,0 +1,65 @@
+{
+  "model": "qwen36-35b-a3b",
+  "model_id": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "duration_ms": 43757.56,
+  "tool_calls": [
+    [
+      "inspect_spreadsheet_structure",
+      "success"
+    ],
+    [
+      "inspect_spreadsheet_structure",
+      "success"
+    ],
+    [
+      "aggregate_spreadsheet",
+      "success"
+    ],
+    [
+      "plan_spreadsheet_update",
+      "success"
+    ],
+    [
+      "execute_spreadsheet_update",
+      "success"
+    ]
+  ],
+  "regression_cases_passed": 61,
+  "additional_guard_cases_passed": 4,
+  "source_hashes_unchanged_since_model_start": true,
+  "original_user_inputs_unchanged": true,
+  "verification": {
+    "status": "passed",
+    "input_hashes": {
+      "工数实绩明细_20261020134124.xlsx": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+      "工数3Q预实管理.xlsx": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d"
+    },
+    "output_hash": "c867d8faced15cd9a824b439a6a389c38fea9a3e820285c966eb3c087eb23505",
+    "paid_records": 259,
+    "department_count": 7,
+    "source_total_K": "1747.12579",
+    "department_values_K": {
+      "FC34022": "167.77218",
+      "FC44003": "212.90759",
+      "FC44004": "242.51766",
+      "FC44006": "171.65638",
+      "FC45031": "570.75345",
+      "FC46005": "314.48323",
+      "FC48005": "67.03530"
+    },
+    "changed_cells": [
+      "C10",
+      "C14",
+      "C16",
+      "C8"
+    ],
+    "formula_count": 622,
+    "formula_errors": 0,
+    "missing_caches": 0,
+    "historical_sheet_preserved": true,
+    "budget_other_months_and_unpaid_preserved": true,
+    "unmatched_departments_preserved": 4,
+    "receipt_verdict": "passed_with_warnings"
+  },
+  "final_response": "已生成 `工数3Q预实管理_1023.xlsx`，已通过公式重算和交付门禁。\n新增工作表 `1023`，更新 7 个部门（单位：K）。\n来源无匹配记录，保留原预测：FC32008, FC34001, FC34032, FC44008"
+}

@@ -817,10 +817,18 @@ def send_workspace_file(file_path: str, comment: str = "") -> str:
         return f"发送失败：无法获取文件信息 ({p.name}): {e}"
 
     if p.suffix.lower() in (".xlsx", ".xlsm"):
-        from .workbook_delivery import inspect_generated_workbook
-        validation = inspect_generated_workbook(p)
-        if not validation["valid"]:
-            return "发送失败：Excel 交付校验未通过：" + "；".join(validation["issues"][:5])
+        from .spreadsheet_update.delivery import validate_update_delivery
+        is_valid, issues = validate_update_delivery(p)
+        if not is_valid:
+            return "发送失败：Excel 交付校验未通过：" + "；".join(issues[:5])
+
+    if p.suffix.lower() == ".html":
+        try:
+            content = p.read_text(encoding="utf-8", errors="ignore")
+            if any(cue in content for cue in ("指标核算未完成声明", "无法完成计算的原因", "本次尚未通过执行证据核验")):
+                return f"发送失败：目标 HTML 文件 ({p.name}) 属于系统未完成/错误声明页面，不符合交付标准。"
+        except Exception:
+            pass
 
     payload = {
         "filePath": str(p),

@@ -137,6 +137,9 @@ class TextToolOutput(str):
         obj.tool_result = tool_result
         return obj
 
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.tool_result, name)
+
 
 def adapt_tool_output(output: Union[ToolResult, str, dict, Any]) -> ToolResult:
     """

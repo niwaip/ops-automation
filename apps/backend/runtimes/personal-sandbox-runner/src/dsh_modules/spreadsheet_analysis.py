@@ -216,7 +216,7 @@ def calculate_spreadsheet_analysis(source, plan, deadline=None, domain="generic"
         allowed_plan_keys = {
             "tables", "calculations", "checks", "rules", "profile_tables",
             "query", "where", "group_by", "having", "order_by", "limit",
-            "offset", "distinct", "distinct_fields", "fields"
+            "offset", "distinct", "distinct_fields", "fields", "metrics", "source"
         }
         if set(plan) - allowed_plan_keys:
             raise ValueError("分析计划包含未知字段")
@@ -227,6 +227,8 @@ def calculate_spreadsheet_analysis(source, plan, deadline=None, domain="generic"
         t0 = plan.get("tables", [{}])[0] if isinstance(plan.get("tables"), list) and plan.get("tables") else {}
         has_query_features = (
             "query" in plan
+            or "metrics" in plan
+            or "source" in plan
             or "where" in plan
             or "where" in t0
             or "having" in plan
@@ -247,12 +249,33 @@ def calculate_spreadsheet_analysis(source, plan, deadline=None, domain="generic"
 
         has_formula = any(c.data_type == "f" for ws in original for row in ws for c in row)
         read_path, calculation = get_or_create_recalculated_workbook(source) if has_formula else (source, {"status":"literal_values"})
+        is_partial_recalc = False
         if has_formula:
             provenance = calculation.get("provenance", {})
-            if (calculation.get("status") not in ("verified", "recalculated_verified")
+            calc_status = calculation.get("status")
+            if (calc_status not in ("verified", "recalculated_verified", "partial")
                     or provenance.get("workbook_id") != source_hash
                     or provenance.get("output_hash") != hashlib.sha256(Path(read_path).read_bytes()).hexdigest()):
                 return ToolResult.error("calculation_unverified", "重算或来源验证未通过", data=calculation)
+            if calc_status == "partial":
+                is_partial_recalc = True
+
+        def _check_partial_error_intersection(visited_cells_set):
+            if not is_partial_recalc:
+                return None
+            err_set = set()
+            for err_list in (calculation.get("error_summary") or {}).values():
+                for loc in err_list:
+                    err_set.add(str(loc).upper())
+                    err_set.add(str(loc).split("!")[-1].upper())
+            for loc in (calculation.get("uncalculated_locations") or []):
+                err_set.add(str(loc).upper())
+                err_set.add(str(loc).split("!")[-1].upper())
+            for v in visited_cells_set:
+                clean_v = str(v).split("!")[-1].upper()
+                if clean_v in err_set:
+                    return clean_v
+            return None
         check(); values = openpyxl.load_workbook(read_path, data_only=True)
 
         units = [declared_amount_unit(original, ws.title, min(ws.max_row,20)) for ws in original]
@@ -263,6 +286,11 @@ def calculate_spreadsheet_analysis(source, plan, deadline=None, domain="generic"
             legacy_pred = compile_legacy_filters_to_predicate(t0.get("filters", []))
             if "query" in plan:
                 q_spec = dict(plan["query"])
+                if legacy_pred:
+                    q_where = q_spec.get("where")
+                    q_spec["where"] = {"and": [legacy_pred, q_where]} if q_where else legacy_pred
+            elif "metrics" in plan or (isinstance(plan.get("where"), dict) and not plan.get("calculations")):
+                q_spec = dict(plan)
                 if legacy_pred:
                     q_where = q_spec.get("where")
                     q_spec["where"] = {"and": [legacy_pred, q_where]} if q_where else legacy_pred
@@ -321,6 +349,11 @@ def calculate_spreadsheet_analysis(source, plan, deadline=None, domain="generic"
                 }
 
             query_res = execute_query_plan(values, q_spec, check, amount_unit)
+            if is_partial_recalc:
+                visited = getattr(query_res, "visited_cells", []) or (query_res.data.get("visited_cells") if isinstance(getattr(query_res, "data", None), dict) else [])
+                err_cell = _check_partial_error_intersection(visited)
+                if err_cell:
+                    return ToolResult.error("calculation_unverified", f"查询涉及的单元格 {err_cell} 包含公式计算错误", data=calculation)
             canonical = json.dumps(plan, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
             plan_hash = hashlib.sha256(canonical.encode()).hexdigest()
             return query_res.to_tool_result(source, source_hash, requested_plan, q_spec, plan_hash, amount_unit)
@@ -417,6 +450,11 @@ def calculate_spreadsheet_analysis(source, plan, deadline=None, domain="generic"
                            "residual":str(left.value-right.value),"unit":left.unit,"tolerance":str(tolerance),
                            "passed":abs(left.value-right.value)<=tolerance,"assumptions":item["assumptions"],
                            "source_cells":sources})
+        if is_partial_recalc:
+            err_cell = _check_partial_error_intersection(evaluator.visited_cells)
+            if err_cell:
+                return ToolResult.error("calculation_unverified", f"计算引用的单元格 {err_cell} 包含公式计算错误", data=calculation)
+
         rules = [evaluate_rule(r, values, tables, check) for r in plan.get("rules", [])]
         profiles_result = profiles(values, tables, check) if rules or plan.get('profile_tables') is True else []
         if hashlib.sha256(source.read_bytes()).hexdigest() != source_hash:

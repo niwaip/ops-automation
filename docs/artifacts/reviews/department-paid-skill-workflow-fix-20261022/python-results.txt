@@ -1,0 +1,17 @@
+==========================================
+Ops Automation - Docker Compose Launcher
+==========================================
+
+Environment configured:
+  PROJECT_ROOT: /Users/chain/Documents/MyProject/ops-automation
+  HOST_BIND_IP: 0.0.0.0
+
+Using env files: /Users/chain/Documents/MyProject/ops-automation/docker/.env
+Running: docker compose --env-file /Users/chain/Documents/MyProject/ops-automation/docker/.env -f /Users/chain/Documents/MyProject/ops-automation/docker/compose/docker-compose.base.yml exec -T session-broker node -
+
+.......🎯 [Skill Router] 命中意图规范: custom-sum (亲和度得分: 22.5)，正在注入专业规范...
+...
+----------------------------------------------------------------------
+Ran 10 tests in 0.070s
+
+OK

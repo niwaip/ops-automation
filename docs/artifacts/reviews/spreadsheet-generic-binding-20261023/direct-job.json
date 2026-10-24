@@ -1,0 +1,1 @@
+{"container": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46", "cwd": "/workspace/.validation/generic-binding-20261023/direct", "env": ["PYTHONPATH=/usr/local/bin", "WORKSPACE=/workspace/.validation/generic-binding-20261023/direct", "WORKSPACE_DIR=/workspace/.validation/generic-binding-20261023/direct"], "cmd": ["python3", "direct_check.py"]}

@@ -40,6 +40,7 @@ def has_group_filter(prompt):
     text = user_instruction(prompt)
     return bool(re.search(r'(?:只保留|仅保留|筛选)[^。；;]*' + _COMPARISON + r'[^。；;]*的组', text)
                 or re.search(r'(?:分组|组内|每组|各组)[^。；;]*?(?:合计|总额|总数)[^。；;]*' + _COMPARISON, text)
+                or re.search(r'(?:合计|总额|总数|总计|金额合计|平均|均值)[^。；;]*' + _COMPARISON, text)
                 or re.search(r'\bhaving\b', text, re.I))
 
 

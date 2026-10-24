@@ -116,8 +116,15 @@ class RuntimePolicy:
             ])
         )
 
+        is_complex_spreadsheet_mutation = (
+            any(k in lower_prompt for k in [
+                "更新预实", "复制最新", "复制sheet", "新sheet", "更新工数", "更新预测", "更新计划", "回填预测", "更新表格"
+            ])
+            or (req_exec and ("xlsx" in lower_prompt or "excel" in lower_prompt or is_office))
+        )
+
         if delivs or req_exec or is_office or is_prompt_deliverable:
-            if has_open_search_or_research:
+            if has_open_search_or_research or is_complex_spreadsheet_mutation:
                 return int(os.getenv("DSH_COMPOSITE_MAX_ROUNDS", "8"))
             return int(os.getenv("DSH_MAX_DELIVERABLE_ROUNDS", "5"))
 

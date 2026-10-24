@@ -1,0 +1,25 @@
+==========================================
+Ops Automation - Docker Compose Launcher
+==========================================
+
+Environment configured:
+  PROJECT_ROOT: /Users/chain/Documents/MyProject/ops-automation
+  HOST_BIND_IP: 0.0.0.0
+
+Using env files: /Users/chain/Documents/MyProject/ops-automation/docker/.env
+Running: docker compose --env-file /Users/chain/Documents/MyProject/ops-automation/docker/.env -f /Users/chain/Documents/MyProject/ops-automation/docker/compose/docker-compose.base.yml exec -T ai-orchestrator pnpm --filter @ops/ai-orchestrator run build
+
+
+> @ops/ai-orchestrator@1.0.0 build /workspace/apps/backend/intelligence/ai-orchestrator
+> prisma generate && (nest build -b swc || tsc -p tsconfig.json --incremental false) && mkdir -p dist/generated && cp -R src/generated/prisma dist/generated/
+
+Prisma schema loaded from prisma/schema.prisma
+
+✔ Generated Prisma Client (v5.22.0) to ./src/generated/prisma in 143ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
+
+>  SWC  Running...
+Successfully compiled: 537 files with swc (16.35ms)

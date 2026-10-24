@@ -1,0 +1,40 @@
+{
+  "c60d78fd-b6c3-4e7c-99ba-67f6d61efecd": {
+    "skillId": "c60d78fd-b6c3-4e7c-99ba-67f6d61efecd",
+    "ownerUserId": "e7fce333-a8f4-4097-9a53-f0a4c729da46",
+    "slug": "dept-summary",
+    "displayName": "部门别有偿统计",
+    "description": "按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据",
+    "aliases": [
+      "部门别有偿统计",
+      "dept-summary"
+    ],
+    "triggers": [
+      "部门别有偿统计",
+      "用部门别有偿统计处理",
+      "使用部门别有偿统计",
+      "dept-summary"
+    ],
+    "deliverables": [],
+    "requiresExecution": true,
+    "version": 1,
+    "packageHash": "5020bab3fa09951b703b17a903b6a113f6ee399b892c74d1eeb2800074af9084",
+    "status": "ready",
+    "sourceRef": {
+      "kind": "sandbox_turn",
+      "sessionId": "chat-session-1792662104437-7gysxeoy",
+      "messageId": "1792662113385-m6g3sd8r"
+    },
+    "hasScript": false,
+    "versions": [
+      {
+        "version": 1,
+        "packageHash": "5020bab3fa09951b703b17a903b6a113f6ee399b892c74d1eeb2800074af9084",
+        "createdAt": "2026-10-22T10:57:55.817Z",
+        "description": "初始创建 v1"
+      }
+    ],
+    "createdAt": "2026-10-22T10:57:55.817Z",
+    "updatedAt": "2026-10-22T10:57:55.817Z"
+  }
+}

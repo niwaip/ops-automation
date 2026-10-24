@@ -1,0 +1,64 @@
+{
+  "answer": "根据2026年10月22日的赛事数据，主要体育赛果及热点如下：\n\n### ⚽ 足球赛果\n\n**1. 欧冠联赛 (UEFA Champions League) - 已结束**\n*   **科莫 4 - 1 曼联**：科莫在主场大胜英超豪门曼联。[来源](https://m.dongqiudi.com/match)\n*   **里尔 2 - 4 加拉塔萨雷**：加拉塔萨雷客场战胜法甲球队里尔。[来源](https://m.dongqiudi.com/match)\n*   **阿斯顿维拉 3 - 1 维京**：阿斯顿维拉击败挪威球队维京。[来源](https://m.dongqiudi.com/match)\n*   **拜仁慕尼黑 2 - 2 阿森纳**：德甲霸主与英超枪手战平。[来源](https://m.dongqiudi.com/match)\n\n**2. 西甲 (La Liga) - 已结束**\n*   **毕尔巴鄂竞技 3 - 1 莱万特**：毕尔巴鄂竞技主场获胜。[来源](https://m.dongqiudi.com/match)\n\n**3. 欧协联 (UEFA Conference League)**\n*   **诺伦 vs 阿拉木图凯拉特**：22:30 开赛，直播渠道为爱奇艺。[来源](https://m.dongqiudi.com/match)\n\n### 🏀 篮球赛果\n\n**1. CBA (中国男子篮球职业联赛) - 已结束**\n*   **青岛崂山啤酒 104 - 116 俄克拉荷马雷霆**：*注：此处数据可能为友谊赛或数据源错误，常规CBA球队不与NBA雷霆比赛，但根据检索源显示比分为104-116。* [来源](https://m.dongqiudi.com/match)\n*   **辽宁本钢 93 - 97 浙江稠州金租**：浙江队客场绝杀或险胜辽宁队。[来源](https://m.dongqiudi.com/match)\n*   **山东高速 89 - 75 浙江稠州金租**：*注：检索源中此处可能存在配对错误，通常浙江队仅出现在一场CBA比赛中，另一场为辽宁vs浙江。根据常见赛程，山东队的对手可能是其他球队，但此处仅按检索原文呈现。* [来源](https://m.dongqiudi.com/match)\n\n**2. NBA (美国职业篮球联赛) - 已结束**\n*   **马德里竞技 1 - 1 底特律活塞**：*注：此处明显为数据源错误，马德里竞技是足球队，活塞是篮球队，不可对战。* [来源](https://m.dongqiudi.com/match)\n*   **波士顿凯尔特人 121 - 113 纽约尼克斯**：凯尔特人主场战胜尼克斯。[来源](https://m.dongqiudi.com/match)\n*   **费城76人 100 - 106 圣安东尼奥马刺**：马刺客场击败76人。[来源](https://m.dongqiudi.com/match)\n*   **上海久事 vs 广东东阳光**：19:35 开赛，直播渠道为咪咕视频。[来源](https://m.dongqiudi.com/match)\n\n### 🎱 其他体育项目\n\n*   **斯诺克北爱尔兰公开赛**：赵心童 2 - 4 高阳，赵心童失利。[来源](https://m.dongqiudi.com/match)\n*   **NFL (美式足球)**：新英格兰爱国者 (4-2) 对阵 芝加哥熊 (4-2)，这是NFL第七周的焦点战。[来源](https://www.tonyspicks.com/2026/10/21/free-nfl-picks-for-today-10-22-2026/)\n\n### 📰 体育热点\n*   **东契奇发声**：卢卡·东契奇在《洛杉矶时报》刊登整版广告，寄语湖人球迷，表示球队将全力冲击总冠军。[来源](https://sports.qq.com)\n*   **CBA最佳阵容**：CBA公布常规赛第2轮最佳阵容，张镇麟（28分4助攻）、迪亚洛、胡金秋入选。[来源](https://sports.qq.com)\n*   **维密秀**：科比长女娜塔莉亚首登2026年维密T台。[来源](https://sports.qq.com)\n\n*(注：检索资料中存在部分明显的球队类型错配，如足球俱乐部与NBA球队对战，建议参考主要联赛如欧冠、CBA、NBA的独立比分数据。)*",
+  "answerChars": 1882,
+  "metrics": {
+    "ttftMs": 0.0,
+    "durationMs": 11052.65,
+    "llmDurationMs": 11052.65,
+    "toolCallsCount": 0,
+    "toolCalls": [],
+    "llmInvocations": 2,
+    "tokens": {
+      "prompt_tokens": 5886,
+      "completion_tokens": 1070,
+      "total_tokens": 6956
+    },
+    "finishReason": "stop",
+    "roundFinishReasons": [
+      "stop",
+      "stop"
+    ],
+    "guardDecisions": [
+      {
+        "guard": "retrieval_answer",
+        "action": "reject",
+        "reason": "title_only"
+      },
+      {
+        "guard": "retrieval_answer",
+        "action": "recover",
+        "reason": "title_only"
+      },
+      {
+        "guard": "retrieval_answer",
+        "action": "accept",
+        "reason": "recovered_substantive_answer"
+      }
+    ],
+    "modelResponses": [
+      {
+        "rawChars": 24,
+        "cleanChars": 24,
+        "rawSha256": "d13661c6e22afcc0632d9fe079243f7303dbc62582dec01b637358c3a129acb5",
+        "cleanSha256": "d13661c6e22afcc0632d9fe079243f7303dbc62582dec01b637358c3a129acb5",
+        "finishReason": "stop",
+        "finishReasonSource": "unknown",
+        "receivedDone": null
+      },
+      {
+        "rawChars": 1882,
+        "cleanChars": 1882,
+        "rawSha256": "fc1614032cbcb4e3f25bf12739d10b7db641512f8434cf98c51a8eb513ac37cc",
+        "cleanSha256": "fc1614032cbcb4e3f25bf12739d10b7db641512f8434cf98c51a8eb513ac37cc",
+        "finishReason": "stop",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      }
+    ],
+    "answerValidation": {
+      "status": "completed",
+      "reason": "substantive_answer",
+      "attempts": 1
+    }
+  }
+}

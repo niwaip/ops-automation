@@ -26,10 +26,10 @@ def persist_turn_evidence(history_file, source_hashes, query, receipts, guard_de
     archive = history_file.with_suffix('.evidence')
     archive.mkdir(parents=True, exist_ok=True)
     turn_id = f'{time.time_ns()}-{uuid.uuid4().hex}'
-    accepted = any(d.get('guard') in {'spreadsheet_evidence', 'comparison_evidence', 'personal_skill_evidence'}
+    accepted = any(d.get('guard') in {'spreadsheet_evidence', 'comparison_evidence', 'personal_skill_evidence', 'spreadsheet_update_evidence'}
                    and d.get('action') == 'accept' for d in guard_decisions)
     # A later rejection must not inherit an earlier acceptance.
-    decisions = [d for d in guard_decisions if d.get('guard') in {'spreadsheet_evidence', 'comparison_evidence', 'personal_skill_evidence'}]
+    decisions = [d for d in guard_decisions if d.get('guard') in {'spreadsheet_evidence', 'comparison_evidence', 'personal_skill_evidence', 'spreadsheet_update_evidence'}]
     if decisions:
         accepted = decisions[-1].get('action') == 'accept'
     payload = {'schema_version': 1, 'turn_id': turn_id, 'created_at_ns': time.time_ns(),

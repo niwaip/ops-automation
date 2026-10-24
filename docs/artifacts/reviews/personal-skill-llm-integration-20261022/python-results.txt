@@ -1,0 +1,35 @@
+==========================================
+Ops Automation - Docker Compose Launcher
+==========================================
+
+Environment configured:
+  PROJECT_ROOT: /Users/chain/Documents/MyProject/ops-automation
+  HOST_BIND_IP: 0.0.0.0
+
+Using env files: /Users/chain/Documents/MyProject/ops-automation/docker/.env
+Running: docker compose --env-file /Users/chain/Documents/MyProject/ops-automation/docker/.env -f /Users/chain/Documents/MyProject/ops-automation/docker/compose/docker-compose.base.yml exec -T session-broker node -
+
+test_explicit_paid_filter_changes_the_plan_and_result (test_personal_skill_workflow.PersonalSkillWorkflowTests.test_explicit_paid_filter_changes_the_plan_and_result) ... ok
+test_full_replay_new_columns_names_and_data_preserves_exact_rules (test_personal_skill_workflow.PersonalSkillWorkflowTests.test_full_replay_new_columns_names_and_data_preserves_exact_rules) ... ok
+test_missing_ambiguous_fields_and_formula_amounts_fail_closed (test_personal_skill_workflow.PersonalSkillWorkflowTests.test_missing_ambiguous_fields_and_formula_amounts_fail_closed) ... ok
+test_missing_flow_altered_script_and_multiple_inputs_never_return_numbers (test_personal_skill_workflow.PersonalSkillWorkflowTests.test_missing_flow_altered_script_and_multiple_inputs_never_return_numbers) ... ok
+test_multiple_input_files_are_not_guessed (test_personal_skill_workflow.PersonalSkillWorkflowTests.test_multiple_input_files_are_not_guessed) ... ok
+test_runtime_always_executes_and_persists_verified_evidence_without_model (test_personal_skill_workflow.PersonalSkillWorkflowTests.test_runtime_always_executes_and_persists_verified_evidence_without_model) ... ok
+test_source_changes_during_model_presentation_retract_completion (test_personal_skill_workflow.PersonalSkillWorkflowTests.test_source_changes_during_model_presentation_retract_completion) ... ok
+test_tampered_numbers_cannot_pass_receipt_verification (test_personal_skill_workflow.PersonalSkillWorkflowTests.test_tampered_numbers_cannot_pass_receipt_verification) ... ok
+test_text_delivery_does_not_remove_mandatory_workflow_execution (test_personal_skill_workflow.PersonalSkillWorkflowTests.test_text_delivery_does_not_remove_mandatory_workflow_execution) ... 🎯 [Skill Router] 命中意图规范: custom-sum (亲和度得分: 22.5)，正在注入专业规范...
+ok
+test_trailing_query_metadata_is_excluded_but_incomplete_business_rows_are_not (test_personal_skill_workflow.PersonalSkillWorkflowTests.test_trailing_query_metadata_is_excluded_but_incomplete_business_rows_are_not) ... ok
+test_unknown_operations_cannot_be_silently_ignored (test_personal_skill_workflow.PersonalSkillWorkflowTests.test_unknown_operations_cannot_be_silently_ignored) ... ok
+test_explanation_is_separate_from_a_new_business_rule (test_personal_skill_presentation.PersonalSkillPresentationTests.test_explanation_is_separate_from_a_new_business_rule) ... ok
+test_fake_numbers_arbitrary_text_and_unknown_facts_fall_back_to_verified_table (test_personal_skill_presentation.PersonalSkillPresentationTests.test_fake_numbers_arbitrary_text_and_unknown_facts_fall_back_to_verified_table) ... ok
+test_model_failure_preserves_computation (test_personal_skill_presentation.PersonalSkillPresentationTests.test_model_failure_preserves_computation) ... ok
+test_model_selects_insights_without_rewriting_verified_table_or_numbers (test_personal_skill_presentation.PersonalSkillPresentationTests.test_model_selects_insights_without_rewriting_verified_table_or_numbers) ... ok
+test_results_only_avoids_the_model_call (test_personal_skill_presentation.PersonalSkillPresentationTests.test_results_only_avoids_the_model_call) ... ok
+test_ties_and_negative_amounts_are_not_misrepresented (test_personal_skill_presentation.PersonalSkillPresentationTests.test_ties_and_negative_amounts_are_not_misrepresented) ... ok
+test_verified_table_is_streamed_in_broker_format_before_model_call (test_personal_skill_presentation.PersonalSkillPresentationTests.test_verified_table_is_streamed_in_broker_format_before_model_call) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 0.099s
+
+OK

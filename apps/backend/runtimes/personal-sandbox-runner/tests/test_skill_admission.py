@@ -140,6 +140,15 @@ class SkillAdmissionTests(unittest.TestCase):
         with self.assertRaisesRegex(AdmissionClarification, '哪个期间'):
             self.invoke(lambda p, n: {**self.decision(action='clarify', skill=None), 'question': '需要统计哪个期间？'})
 
+    def test_clarify_forbids_output_format_inquiry(self):
+        with self.assertRaisesRegex(ValueError, '交付格式已由任务契约锁定'):
+            validate_decision(
+                {**self.decision(action='clarify', skill=None),
+                 'question': '请问您希望将统计结果输出为什么格式？例如：1. 纯文本列表；2. 汇总表格图片；3. 生成新的 Excel 报表。'},
+                {s['id'] for s in self.skills},
+                [self.request]
+            )
+
     def test_schema_or_quote_error_gets_one_recheck_without_execution(self):
         def responder(p, n):
             if n == 1:

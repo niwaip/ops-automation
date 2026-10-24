@@ -1,0 +1,44 @@
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:53:49 PM     LOG [InstanceLoader] PersonalSkillModule dependencies initialized +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:53:49 PM     LOG [RoutesResolver] PersonalSkillController {/ai/personal-skills}: +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:53:49 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/captures, POST} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:53:49 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/captures/:captureId, GET} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:53:49 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills, GET} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:53:49 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/:skillId, GET} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:53:49 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/:skillId/versions, POST} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:53:49 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/:skillId/copies, POST} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:53:49 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/:skillId/export, GET} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:53:49 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/:skillId, DELETE} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:53:49 PM     LOG [NestApplication] Nest application successfully started +1ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:55:37 PM     LOG [TraceInterceptor] [d60ae06b-b8ce-4018-8224-426b2a8f9626] GET /ai/personal-skills 2ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:57:07 PM     LOG [InstanceLoader] PersonalSkillModule dependencies initialized +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:57:07 PM     LOG [RoutesResolver] PersonalSkillController {/ai/personal-skills}: +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:57:07 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/captures, POST} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:57:07 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/captures/:captureId, GET} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:57:07 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills, GET} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:57:07 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/:skillId, GET} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:57:07 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/:skillId/versions, POST} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:57:07 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/:skillId/copies, POST} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:57:07 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/:skillId/export, GET} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:57:07 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/:skillId, DELETE} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:57:07 PM     LOG [NestApplication] Nest application successfully started +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:57:55 PM     LOG [TraceInterceptor] [ba9b0722-49b9-4ef0-9a93-6c4d25ad66ad] GET /ai/personal-skills 1ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:57:55 PM     LOG [PersonalSkillGeneratorService] Successfully generated personal skill package at staging [/workspace/apps/backend/intelligence/ai-orchestrator/data/users/e7fce333-a8f4-4097-9a53-f0a4c729da46/knowledge/.staging/a54dc1a0-572b-49ff-a1c9-a212570cedf0]
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:57:55 PM     LOG [PersonalSkillStoreService] Installed personal skill [部门别有偿统计] (dept-summary) v1 for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:57:55 PM     LOG [PersonalSkillCaptureService] Capture pipeline successfully ready: skill [部门别有偿统计] v1
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:58:12 PM     LOG [TraceInterceptor] [98716c0b-84e0-49e3-938c-f2dfde961342] GET /ai/personal-skills 1ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:58:12 PM     LOG [PersonalSkillCaptureService] Returning idempotent capture [a54dc1a0-572b-49ff-a1c9-a212570cedf0] for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:58:12 PM     LOG [TraceInterceptor] [f2a8b9cf-a6ad-46b3-8afd-3a20d00e823a] GET /ai/personal-skills 0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 6:58:12 PM     LOG [TraceInterceptor] [dc45992c-5ba3-4726-8238-981bd9304a3e] GET /ai/personal-skills/c60d78fd-b6c3-4e7c-99ba-67f6d61efecd 1ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:00:31 PM     LOG [InstanceLoader] PersonalSkillModule dependencies initialized +1ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:00:31 PM     LOG [RoutesResolver] PersonalSkillController {/ai/personal-skills}: +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:00:31 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/captures, POST} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:00:31 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/captures/:captureId, GET} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:00:31 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills, GET} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:00:31 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/:skillId, GET} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:00:31 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/:skillId/versions, POST} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:00:31 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/:skillId/copies, POST} route +1ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:00:31 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/:skillId/export, GET} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:00:31 PM     LOG [RouterExplorer] Mapped {/ai/personal-skills/:skillId, DELETE} route +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:00:32 PM     LOG [NestApplication] Nest application successfully started +0ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:01:12 PM     LOG [TraceInterceptor] [9e0bde29-b6d0-44cf-9f5a-cb2dbdbcc31a] GET /ai/personal-skills 2ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:01:12 PM     LOG [TraceInterceptor] [d90cc61b-8578-4c24-a4d9-6922a53cbbbf] GET /ai/personal-skills/c60d78fd-b6c3-4e7c-99ba-67f6d61efecd 2ms

@@ -29,6 +29,7 @@ recovery,CMP11,跨PDF和TXT付款修改,failed,succeeded,True,True,0,[],"['busin
 recovery,CMP12,仅字体排版变化,passed,succeeded,True,True,0,[],[],[],[],29330
 recovery,CMP13,重复标题精确配对,failed,succeeded,True,True,0,[],"['business model ledger present', 'selected 35B used for semantic audit']",[],[],31989
 recovery,CMP15,关闭风险分析参数,failed,succeeded,True,True,0,[],['risk disabled produces no risk insights'],[],[],30170
+recovery,CMP16,反向比较验证增删方向,failed,succeeded,True,True,0,[],"['business model ledger present', 'selected 35B used for semantic audit']",[],[],40367
 domain,CMP01,完全相同负例,200,,True,True,,,[],[],[],28
 domain,CMP02,付款金额与账期修改,200,,True,True,,,[],[],[],6
 domain,CMP03,新增审计权并删除保密义务,200,,True,True,,,[],[],[],7
