@@ -64,7 +64,9 @@ def run_full_e2e():
     print(f"📁 [Step 1/6] 准备隔离工作区: {ws_path}")
 
     # Copy real production test attachments
-    repo_root = Path('/workspace/ops-automation') if Path('/workspace/ops-automation').exists() else Path('/Users/chain/Documents/MyProject/ops-automation')
+    repo_root = Path('/workspace') if (Path('/workspace') / 'docs').exists() else (
+        Path('/workspace/ops-automation') if Path('/workspace/ops-automation').exists() else Path('/Users/chain/Documents/MyProject/ops-automation')
+    )
     audit_dir = repo_root / 'docs/artifacts/reviews/spreadsheet-update-call-audit-20261024-1831'
     target_src = audit_dir / '工数3Q预实管理.xlsx'
     source_src = audit_dir / '工数实绩明细_20261020134124.xlsx'
