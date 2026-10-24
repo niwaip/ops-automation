@@ -1,0 +1,110 @@
+{
+  "update_enabled": "<default:true>",
+  "files": {
+    "runner.py": {
+      "exists": true,
+      "sha256": "fc542430bb3aba5676227fb7f883b397c3abd8a61cf0d2121f60b1c3bdcb1815",
+      "mtime": 1792746656.1218996,
+      "local_sha256": "fc542430bb3aba5676227fb7f883b397c3abd8a61cf0d2121f60b1c3bdcb1815",
+      "matches_local": true
+    },
+    "task_intent.py": {
+      "exists": true,
+      "sha256": "6999f20b5a0f02a1dc9e0525c680150c2fdc6abca8ace4443df2be8f46f0c3a3",
+      "mtime": 1792746601.4104042,
+      "local_sha256": "6999f20b5a0f02a1dc9e0525c680150c2fdc6abca8ace4443df2be8f46f0c3a3",
+      "matches_local": true
+    },
+    "analysis_contract.py": {
+      "exists": true,
+      "sha256": "92b86d495f0435e9ba69443d150b4bce24143e41b1849a197fb048cf24dc499e",
+      "mtime": 1792746863.5158799,
+      "local_sha256": "92b86d495f0435e9ba69443d150b4bce24143e41b1849a197fb048cf24dc499e",
+      "matches_local": true
+    },
+    "skill_admission.py": {
+      "exists": true,
+      "sha256": "9719365bfc0ee67533201240c79a8d0ef1142910aec8375a107e651dbfb7f8c2",
+      "mtime": 1792746873.2194624,
+      "local_sha256": "9719365bfc0ee67533201240c79a8d0ef1142910aec8375a107e651dbfb7f8c2",
+      "matches_local": true
+    },
+    "agent_loop.py": {
+      "exists": true,
+      "sha256": "166628677efe9eec5d71f1a5943e8a859ec7f500862365967d8bc68f8136ac70",
+      "mtime": 1792746689.4198425,
+      "local_sha256": "166628677efe9eec5d71f1a5943e8a859ec7f500862365967d8bc68f8136ac70",
+      "matches_local": true
+    },
+    "spreadsheet_analysis_schema.py": {
+      "exists": true,
+      "sha256": "07fb313a64e96ec80e628970a8c68302b1edd8fc93775e4f287cbb7f97b96419",
+      "mtime": 1792732372.594626,
+      "local_sha256": "07fb313a64e96ec80e628970a8c68302b1edd8fc93775e4f287cbb7f97b96419",
+      "matches_local": true
+    },
+    "spreadsheet_analysis_evidence.py": {
+      "exists": true,
+      "sha256": "beffb91a48b84a3d5992b941dd484746a5537c5455ab733c5cc5a62d6683929c",
+      "mtime": 1792717658.4905913,
+      "local_sha256": "beffb91a48b84a3d5992b941dd484746a5537c5455ab733c5cc5a62d6683929c",
+      "matches_local": true
+    },
+    "spreadsheet_analysis.py": {
+      "exists": true,
+      "sha256": "112d2f65d7a770834a38713b84e09ea69f8566abfa17d5d816cb47cd89ac767f",
+      "mtime": 1792682751.3627732,
+      "local_sha256": "112d2f65d7a770834a38713b84e09ea69f8566abfa17d5d816cb47cd89ac767f",
+      "matches_local": true
+    },
+    "workbook_calculation.py": {
+      "exists": true,
+      "sha256": "bef279f32809ca00ca52c0a594a76b39b72f91f17f89bbdb6d77ff61612ef2ac",
+      "mtime": 1792737561.9385765,
+      "local_sha256": "bef279f32809ca00ca52c0a594a76b39b72f91f17f89bbdb6d77ff61612ef2ac",
+      "matches_local": true
+    },
+    "tools.py": {
+      "exists": true,
+      "sha256": "a37c4cc6b3444e86dfcdbd84b46c7f0a92e58c7821c998ab1f0f8bb975efae03",
+      "mtime": 1792739561.8835223,
+      "local_sha256": "a37c4cc6b3444e86dfcdbd84b46c7f0a92e58c7821c998ab1f0f8bb975efae03",
+      "matches_local": true
+    },
+    "spreadsheet_update/tools.py": {
+      "exists": true,
+      "sha256": "b58024be74fc499c04035b1ca0c222d001e361192e1e6927f4dc8ffd640bcdee",
+      "mtime": 1792740672.590884,
+      "local_sha256": "b58024be74fc499c04035b1ca0c222d001e361192e1e6927f4dc8ffd640bcdee",
+      "matches_local": true
+    },
+    "prompt_builder.py": {
+      "sha256": "440f6c6f442d79e5143720b31dec84b47e8853fa39b3160608b1f231254f676e",
+      "mtime": null,
+      "exists": true,
+      "local_sha256": "440f6c6f442d79e5143720b31dec84b47e8853fa39b3160608b1f231254f676e",
+      "matches_local": true
+    },
+    "intent_contract.py": {
+      "sha256": "3a11b0a24d31f60779bb9c397c7556fb9f385d7af4b85ac9c507ee0f4a1a90b6",
+      "mtime": null,
+      "exists": true,
+      "local_sha256": "3a11b0a24d31f60779bb9c397c7556fb9f385d7af4b85ac9c507ee0f4a1a90b6",
+      "matches_local": true
+    },
+    "spreadsheet_update/schema.py": {
+      "sha256": "cbd0078665f2f07ad21c16f52973ace913fa543eed3b05733fcb35b10f778e98",
+      "mtime": null,
+      "exists": true,
+      "local_sha256": "cbd0078665f2f07ad21c16f52973ace913fa543eed3b05733fcb35b10f778e98",
+      "matches_local": true
+    },
+    "file_tools.py": {
+      "sha256": "7ddd9f6e99badad639beca8fde1cd45d0128381dd1e47a466b7b47054cf0cf0f",
+      "mtime": null,
+      "exists": true,
+      "local_sha256": "7ddd9f6e99badad639beca8fde1cd45d0128381dd1e47a466b7b47054cf0cf0f",
+      "matches_local": true
+    }
+  }
+}

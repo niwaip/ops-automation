@@ -60,7 +60,7 @@
           "diagnostics": {
             "attempt": 1,
             "modelId": "qwen36-35b-a3b",
-            "elapsedMs": 0,
+            "elapsedMs": 1,
             "rawSnippet": "[{\"clauseIndex\":0,\"riskLevel\":\"INVALID\",\"riskSummary\":\"异常结果\"},{\"clauseIndex\":1,\"riskLevel\":\"INVALID\",\"riskSummary\":\"异常结果\"},{\"clauseIndex\":2,\"riskLevel\":\"INVALID\",\"riskSummary\":\"异常结果\"}]",
             "validationFailureCode": "MALFORMED_FINDING_SCHEMA"
           }
@@ -80,7 +80,7 @@
           "diagnostics": {
             "attempt": 1,
             "modelId": "qwen36-35b-a3b",
-            "elapsedMs": 0,
+            "elapsedMs": 1,
             "rawSnippet": "[{\"clauseIndex\":0,\"riskLevel\":\"INVALID\",\"riskSummary\":\"异常结果\"},{\"clauseIndex\":1,\"riskLevel\":\"INVALID\",\"riskSummary\":\"异常结果\"},{\"clauseIndex\":2,\"riskLevel\":\"INVALID\",\"riskSummary\":\"异常结果\"}]",
             "validationFailureCode": "MALFORMED_FINDING_SCHEMA"
           }
@@ -100,7 +100,7 @@
           "diagnostics": {
             "attempt": 1,
             "modelId": "qwen36-35b-a3b",
-            "elapsedMs": 0,
+            "elapsedMs": 1,
             "rawSnippet": "[{\"clauseIndex\":0,\"riskLevel\":\"INVALID\",\"riskSummary\":\"异常结果\"},{\"clauseIndex\":1,\"riskLevel\":\"INVALID\",\"riskSummary\":\"异常结果\"},{\"clauseIndex\":2,\"riskLevel\":\"INVALID\",\"riskSummary\":\"异常结果\"}]",
             "validationFailureCode": "MALFORMED_FINDING_SCHEMA"
           }
@@ -127,7 +127,7 @@
               "diagnostics": {
                 "attempt": 1,
                 "modelId": "qwen36-35b-a3b",
-                "elapsedMs": 0,
+                "elapsedMs": 1,
                 "rawSnippet": "[{\"clauseIndex\":0,\"riskLevel\":\"INVALID\",\"riskSummary\":\"异常结果\"},{\"clauseIndex\":1,\"riskLevel\":\"INVALID\",\"riskSummary\":\"异常结果\"},{\"clauseIndex\":2,\"riskLevel\":\"INVALID\",\"riskSummary\":\"异常结果\"}]",
                 "validationFailureCode": "MALFORMED_FINDING_SCHEMA"
               }
@@ -157,7 +157,7 @@
               "diagnostics": {
                 "attempt": 1,
                 "modelId": "qwen36-35b-a3b",
-                "elapsedMs": 0,
+                "elapsedMs": 1,
                 "rawSnippet": "[{\"clauseIndex\":0,\"riskLevel\":\"INVALID\",\"riskSummary\":\"异常结果\"},{\"clauseIndex\":1,\"riskLevel\":\"INVALID\",\"riskSummary\":\"异常结果\"},{\"clauseIndex\":2,\"riskLevel\":\"INVALID\",\"riskSummary\":\"异常结果\"}]",
                 "validationFailureCode": "MALFORMED_FINDING_SCHEMA"
               }
@@ -177,7 +177,7 @@
               "diagnostics": {
                 "attempt": 1,
                 "modelId": "qwen36-35b-a3b",
-                "elapsedMs": 0,
+                "elapsedMs": 1,
                 "rawSnippet": "[{\"clauseIndex\":0,\"riskLevel\":\"INVALID\",\"riskSummary\":\"异常结果\"},{\"clauseIndex\":1,\"riskLevel\":\"INVALID\",\"riskSummary\":\"异常结果\"},{\"clauseIndex\":2,\"riskLevel\":\"INVALID\",\"riskSummary\":\"异常结果\"}]",
                 "validationFailureCode": "MALFORMED_FINDING_SCHEMA"
               }

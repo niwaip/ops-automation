@@ -1,0 +1,61 @@
+{
+  "business": [
+    {
+      "case": "implicit-threshold",
+      "verified": true,
+      "calls": 5,
+      "elapsedMs": 12599,
+      "output": "conversation",
+      "where_rows": 274,
+      "having": {
+        "metric": "amount_sum",
+        "op": "gt",
+        "value": 500
+      }
+    },
+    {
+      "case": "explicit-threshold",
+      "verified": true,
+      "calls": 5,
+      "elapsedMs": 15012,
+      "output": "conversation",
+      "where_rows": 253,
+      "having": {
+        "metric": "amount",
+        "op": "gt",
+        "value": 500
+      }
+    },
+    {
+      "case": "explicit-fast",
+      "verified": true,
+      "calls": 7,
+      "elapsedMs": 20788,
+      "output": "conversation",
+      "where_rows": 253,
+      "having": null
+    }
+  ],
+  "generic": [
+    {
+      "case": "wrong-business-defaults",
+      "outcome": "general",
+      "calls": 3
+    },
+    {
+      "case": "alternative-writing",
+      "outcome": "general",
+      "calls": 3
+    },
+    {
+      "case": "consult-not-execution",
+      "outcome": "general",
+      "calls": 3
+    },
+    {
+      "case": "new-skill-no-code-branch",
+      "outcome": "use",
+      "calls": 3
+    }
+  ]
+}

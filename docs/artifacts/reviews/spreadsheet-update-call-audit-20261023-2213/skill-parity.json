@@ -1,0 +1,11 @@
+{
+  "/opt/dsh/skills/work-hours-update/SKILL.md": {
+    "exists": true,
+    "sha256": "37d206aa51fe2ca8333d79f95d90febfb53e4b857f5b9152734213d5dcd7dd36"
+  },
+  "/knowledge/skills/work-hours-update/SKILL.md": {
+    "exists": false,
+    "sha256": null
+  },
+  "repo_skill_sha256": "37d206aa51fe2ca8333d79f95d90febfb53e4b857f5b9152734213d5dcd7dd36"
+}

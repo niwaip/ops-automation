@@ -126,6 +126,57 @@ class QueryCapabilitiesTests(unittest.TestCase):
         self.assertEqual(res.rows[1]["amt_sum"], "150")
         self.assertEqual(res.rows[1]["hrs_avg"], "12.5")
 
+    def test_query_executor_preserves_source_unit_when_label_declares_source_unit(self):
+        """测试单位自洽防线：当度量 label 显式声明了 (K)，但 req_unit 误填为 '元' 时，
+        必须优先遵循声明的 (K) 原表单位，严禁执行 1000 倍放大！"""
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Sheet1"
+        ws.append(["部门", "金额(K)"])
+        ws.append(["華東MIS", 677.58544])
+        ws.append(["華東BAS", 328.78323])
+
+        plan = {
+            "source": {"sheet": "Sheet1", "header_row": 1, "data_range": "A2:B3"},
+            "group_by": ["部门"],
+            "metrics": [
+                {"id": "total_amount", "label": "合计金额(K)", "op": "sum", "field": "金额(K)", "unit": "元"}
+            ],
+        }
+
+        res = execute_query_plan(wb, plan)
+        # 验证数值未被乘以 1000
+        self.assertEqual(res.rows[0]["group_key"], "華東MIS")
+        self.assertEqual(res.rows[0]["total_amount"], "677.58544")
+        mis_fact = next(f for f in res.facts if f["group_key"] == "華東MIS")
+        self.assertEqual(mis_fact["value"], "677.58544")
+        self.assertEqual(mis_fact["unit"], "K")
+        self.assertIn("合计金额(K)", mis_fact["label"])
+
+    def test_query_executor_synchronizes_label_when_unit_is_scaled(self):
+        """测试度量标签对齐：若确实将原表 K 换算为 元（label 未写死 (K)），
+        则回传 fact 的 label 必须自动同步为 (元)，杜绝标签 (K) 配 元数值 的矛盾事实！"""
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Sheet1"
+        ws.append(["部门", "金额(K)"])
+        ws.append(["華東MIS", 2.5])
+
+        plan = {
+            "source": {"sheet": "Sheet1", "header_row": 1, "data_range": "A2:B2"},
+            "group_by": ["部门"],
+            "metrics": [
+                {"id": "total_amount", "label": "合计金额", "op": "sum", "field": "金额(K)", "unit": "元"}
+            ],
+        }
+
+        res = execute_query_plan(wb, plan)
+        self.assertEqual(res.rows[0]["total_amount"], "2500")
+        mis_fact = next(f for f in res.facts if f["group_key"] == "華東MIS")
+        self.assertEqual(mis_fact["value"], "2500")
+        self.assertEqual(mis_fact["unit"], "元")
+        self.assertIn("合计金额(元)", mis_fact["label"])
+
 
 if __name__ == "__main__":
     unittest.main()

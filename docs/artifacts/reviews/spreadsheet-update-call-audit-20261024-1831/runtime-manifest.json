@@ -1,0 +1,56 @@
+{
+  "container": "/ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+  "image": "sha256:fe8c1c9492d21b69086dfaaad4b284e3f079d561bd2178ac5f2c8974bd543b96",
+  "created": "2026-10-21T06:36:39.369602547Z",
+  "mounts": [
+    {
+      "Type": "bind",
+      "Source": "/Users/chain/Documents/MyProject/ops-automation/data/users/e7fce333-a8f4-4097-9a53-f0a4c729da46/workspace",
+      "Destination": "/workspace",
+      "Mode": "rw",
+      "RW": true,
+      "Propagation": "rprivate"
+    },
+    {
+      "Type": "bind",
+      "Source": "/Users/chain/Documents/MyProject/ops-automation/data/users/e7fce333-a8f4-4097-9a53-f0a4c729da46/knowledge",
+      "Destination": "/knowledge",
+      "Mode": "rw",
+      "RW": true,
+      "Propagation": "rprivate"
+    },
+    {
+      "Type": "bind",
+      "Source": "/Users/chain/Documents/MyProject/ops-automation/data/shared/dsh-plugins",
+      "Destination": "/opt/dsh/plugins",
+      "Mode": "ro",
+      "RW": false,
+      "Propagation": "rprivate"
+    },
+    {
+      "Type": "bind",
+      "Source": "/Users/chain/Documents/MyProject/ops-automation/data/shared/dsh-skills",
+      "Destination": "/opt/dsh/skills",
+      "Mode": "ro",
+      "RW": false,
+      "Propagation": "rprivate"
+    },
+    {
+      "Type": "bind",
+      "Source": "/Users/chain/Documents/MyProject/ops-automation/apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules",
+      "Destination": "/usr/local/bin/dsh_modules",
+      "Mode": "ro",
+      "RW": false,
+      "Propagation": "rprivate"
+    },
+    {
+      "Type": "bind",
+      "Source": "/Users/chain/Documents/MyProject/ops-automation/apps/backend/runtimes/personal-sandbox-runner/bin/dsh",
+      "Destination": "/usr/local/bin/dsh",
+      "Mode": "ro",
+      "RW": false,
+      "Propagation": "rprivate"
+    }
+  ],
+  "tool_result_limit_env": []
+}

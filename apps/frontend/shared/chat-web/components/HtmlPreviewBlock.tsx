@@ -111,17 +111,28 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
 
   const targetForDetection = `${code} ${defaultTitle || ''} ${srcUrl || ''}`;
 
+  const isChartOrDashboard =
+    targetForDetection.includes('<svg') ||
+    targetForDetection.includes('chart') ||
+    targetForDetection.includes('柱状图') ||
+    targetForDetection.includes('折线图') ||
+    targetForDetection.includes('饼图') ||
+    targetForDetection.includes('看板') ||
+    targetForDetection.includes('dashboard') ||
+    targetForDetection.includes('index.html');
+
   const isPresentation =
-    targetForDetection.includes('guizang') ||
-    targetForDetection.includes('slide') ||
-    targetForDetection.includes('presentation') ||
-    targetForDetection.includes('deck') ||
-    targetForDetection.includes('swiper') ||
-    targetForDetection.includes('html报告') ||
-    targetForDetection.includes('阶段性报告') ||
-    targetForDetection.includes('项目报告') ||
-    targetForDetection.includes('进度报告') ||
-    targetForDetection.includes('演示文稿');
+    !isChartOrDashboard &&
+    (targetForDetection.includes('guizang') ||
+      targetForDetection.includes('slide') ||
+      targetForDetection.includes('presentation') ||
+      targetForDetection.includes('deck') ||
+      targetForDetection.includes('swiper') ||
+      targetForDetection.includes('html报告') ||
+      targetForDetection.includes('阶段性报告') ||
+      targetForDetection.includes('项目报告') ||
+      targetForDetection.includes('进度报告') ||
+      targetForDetection.includes('演示文稿'));
 
   const isContractReview =
     targetForDetection.includes('合同智能审查') ||
@@ -273,6 +284,8 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
     defaultFileName = 'contract_review_report.html';
   } else if (isContractCompare) {
     defaultFileName = 'contract_diff_report.html';
+  } else if (isChartOrDashboard) {
+    defaultFileName = 'index.html';
   } else if (isPresentation) {
     defaultFileName = 'presentation.html';
   } else if (code.includes('五子棋') || code.includes('gomoku')) {
@@ -300,8 +313,10 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
 
   const readyTipText = isTruncated
     ? '⚠️ HTML 产物在生成过程中未完全闭合（点击展开查看已生成部分与恢复指引）'
-    : isPresentation
-      ? '💡 演示文稿已就绪：支持键盘翻页 (← → / 空格)、全屏演播（点击展开预览）'
+    : isChartOrDashboard
+      ? '💡 交互式图表与数据看板已就绪：支持在线交互、全屏查看与本地导出（点击展开预览）'
+      : isPresentation
+        ? '💡 演示文稿已就绪：支持键盘翻页 (← → / 空格)、全屏演播（点击展开预览）'
       : isContractCompare
         ? '💡 比对报告已就绪：支持左右双栏对齐、字符级红线与高风险筛选（点击展开预览）'
         : isContractReview
@@ -310,8 +325,10 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
             ? '💡 交互应用已就绪：支持在线操作、全屏沉浸与本地导出（点击展开预览）'
             : `💡 ${defaultTitle}已就绪（点击展开在线预览）`;
 
-  const generatingTipText = isPresentation
-    ? '⚡ 演示文稿生成中：AI 正在编写交互式页面结构与幻灯片样式...'
+  const generatingTipText = isChartOrDashboard
+    ? '⚡ 数据看板生成中：AI 正在构建自包含图表与响应式布局...'
+    : isPresentation
+      ? '⚡ 演示文稿生成中：AI 正在编写交互式页面结构与幻灯片样式...'
     : isContractCompare
       ? '⚡ 比对报告生成中：AI 正在提取条款并计算字符级红线差异...'
       : isContractReview

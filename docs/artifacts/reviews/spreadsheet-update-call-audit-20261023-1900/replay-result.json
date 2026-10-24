@@ -1,0 +1,271 @@
+{
+  "session_id": "chat-session-1792753181184-xf6a3kw1",
+  "turn_id": "1792753256707802129-334251a9cb5d41e0bcc3ce931ae2aec6",
+  "run_id": "run_1e043e19200a",
+  "schema_validation": [
+    true,
+    []
+  ],
+  "exact_compilation_error": "Cardinality check failed: FactTable missing facts for 9 required logical key(s): ['FC48005::FC48005::有偿金额::202610::forecast::hours', 'FC34032::FC34032::有偿金额::202610::forecast::hours', 'FC44008::FC44008::有偿金额::202610::forecast::hours', 'FC46005::FC46005::有偿金额::202610::forecast::hours', 'FC44003::FC44003::有偿金额::202610::forecast::hours', 'FC44004::FC44004::有偿金额::202610::forecast::hours', 'FC44006::FC44006::有偿金额::202610::forecast::hours', 'FC45031::FC45031::有偿金额::202610::forecast::hours', 'FC34022::FC34022::有偿金额::202610::forecast::hours']",
+  "matches_real_error": false,
+  "requested_first_binding": "FC48005::FC48005::有偿金额::202610::forecast::hours",
+  "discovered_same_cell_bindings": [
+    {
+      "key": "FC48005::FC48005::有偿金额::202610::forecast::千元",
+      "coordinate": "C5"
+    },
+    {
+      "key": "FC48005::FC48005::有偿金额::202610::forecast::K",
+      "coordinate": "C5"
+    },
+    {
+      "key": "FC48005::FC48005::有偿金额::202610::forecast::hours",
+      "coordinate": "C5"
+    },
+    {
+      "key": "FC48005::FC48005::有偿金额::202610::forecast::元",
+      "coordinate": "C5"
+    },
+    {
+      "key": "FC48005::FC48005::有偿金额::202610::actual::千元",
+      "coordinate": "C5"
+    },
+    {
+      "key": "FC48005::FC48005::有偿金额::202610::actual::K",
+      "coordinate": "C5"
+    },
+    {
+      "key": "FC48005::FC48005::有偿金额::202610::actual::hours",
+      "coordinate": "C5"
+    },
+    {
+      "key": "FC48005::FC48005::有偿金额::202610::actual::元",
+      "coordinate": "C5"
+    },
+    {
+      "key": "FC48005::FC48005::有偿金额::202610::plan::千元",
+      "coordinate": "G5"
+    },
+    {
+      "key": "FC48005::FC48005::有偿金额::202610::plan::K",
+      "coordinate": "G5"
+    },
+    {
+      "key": "FC48005::FC48005::有偿金额::202610::plan::hours",
+      "coordinate": "G5"
+    },
+    {
+      "key": "FC48005::FC48005::有偿金额::202610::plan::元",
+      "coordinate": "G5"
+    },
+    {
+      "key": "FC48005::FC48005::有偿金额::202610::variance::千元",
+      "coordinate": "K5"
+    },
+    {
+      "key": "FC48005::FC48005::有偿金额::202610::variance::K",
+      "coordinate": "K5"
+    },
+    {
+      "key": "FC48005::FC48005::有偿金额::202610::variance::hours",
+      "coordinate": "K5"
+    },
+    {
+      "key": "FC48005::FC48005::有偿金额::202610::variance::元",
+      "coordinate": "K5"
+    }
+  ],
+  "diagnostic_only_actual_instead_of_forecast": {
+    "error": "Cardinality check failed: FactTable missing facts for 1 required logical key(s): ['FC48005::FC48005::有偿金额::202610::actual::hours']",
+    "note": "Change made only to an in-memory first-operation diagnostic. Not a fix or executed update."
+  },
+  "fact_ingestion": {
+    "source_queries_count": 0,
+    "mappings_count": 0,
+    "ingested_count": 0,
+    "ingest_issues": [],
+    "empty_fact_cardinality_is_valid": false,
+    "matched_count": 0,
+    "missing_required_count": 9
+  },
+  "coordinate_checks": [
+    {
+      "op_id": "op_2",
+      "department_code": "FC48005",
+      "planned_coordinate": "C5",
+      "target_department_at_row": "FC48005",
+      "expected_paid_amount_coordinates": [
+        "C5"
+      ],
+      "is_formula": false,
+      "department_row_matches": true
+    },
+    {
+      "op_id": "op_3",
+      "department_code": "FC34032",
+      "planned_coordinate": "C6",
+      "target_department_at_row": "FC34032",
+      "expected_paid_amount_coordinates": [
+        "C6"
+      ],
+      "is_formula": false,
+      "department_row_matches": true
+    },
+    {
+      "op_id": "op_4",
+      "department_code": "FC44008",
+      "planned_coordinate": "C7",
+      "target_department_at_row": "Subtotal",
+      "expected_paid_amount_coordinates": [
+        "C9"
+      ],
+      "is_formula": true,
+      "department_row_matches": false
+    },
+    {
+      "op_id": "op_5",
+      "department_code": "FC46005",
+      "planned_coordinate": "C8",
+      "target_department_at_row": "FC46005",
+      "expected_paid_amount_coordinates": [
+        "C8"
+      ],
+      "is_formula": false,
+      "department_row_matches": true
+    },
+    {
+      "op_id": "op_6",
+      "department_code": "FC44003",
+      "planned_coordinate": "C9",
+      "target_department_at_row": "FC44008",
+      "expected_paid_amount_coordinates": [
+        "C13"
+      ],
+      "is_formula": false,
+      "department_row_matches": false
+    },
+    {
+      "op_id": "op_7",
+      "department_code": "FC44004",
+      "planned_coordinate": "C10",
+      "target_department_at_row": "FC45031",
+      "expected_paid_amount_coordinates": [
+        "C14"
+      ],
+      "is_formula": false,
+      "department_row_matches": false
+    },
+    {
+      "op_id": "op_8",
+      "department_code": "FC44006",
+      "planned_coordinate": "C11",
+      "target_department_at_row": "FC34001",
+      "expected_paid_amount_coordinates": [
+        "C15"
+      ],
+      "is_formula": false,
+      "department_row_matches": false
+    },
+    {
+      "op_id": "op_9",
+      "department_code": "FC45031",
+      "planned_coordinate": "C12",
+      "target_department_at_row": "Subtotal",
+      "expected_paid_amount_coordinates": [
+        "C10"
+      ],
+      "is_formula": true,
+      "department_row_matches": false
+    },
+    {
+      "op_id": "op_10",
+      "department_code": "FC34022",
+      "planned_coordinate": "C13",
+      "target_department_at_row": "FC44003",
+      "expected_paid_amount_coordinates": [
+        "C16"
+      ],
+      "is_formula": false,
+      "department_row_matches": false
+    }
+  ],
+  "unit_and_amount_check": {
+    "source_unit": "K",
+    "query_metric_unit": "元",
+    "operation_units": [
+      "<omitted -> hours>",
+      "<omitted -> hours>",
+      "<omitted -> hours>",
+      "<omitted -> hours>",
+      "<omitted -> hours>",
+      "<omitted -> hours>",
+      "<omitted -> hours>",
+      "<omitted -> hours>",
+      "<omitted -> hours>"
+    ],
+    "paid_records": 259,
+    "months": {
+      "202610": 274
+    },
+    "sum_source_K": "1747.12579",
+    "sum_receipt_yuan": "1747125.79",
+    "receipt_matches_K_times_1000": true
+  },
+  "persisted_state": {
+    "run_id": "run_1e043e19200a",
+    "status": "planned",
+    "user_id": "sandbox_user",
+    "target_path": "/workspace/.dsh/spreadsheet-runs/run_1e043e19200a/snapshot_工数3Q预实管理.xlsx",
+    "target_hash": "9b3f8bcb2fe726e3043db5a3698ea679e14394dfbfdab9f1a4ad9054b8410f87",
+    "plan_id": null,
+    "plan_hash": null,
+    "candidate_path": null,
+    "candidate_hash": null,
+    "published_path": null,
+    "published_hash": null,
+    "idempotency_key": "8b89d30dd0666b215ada7b1567090cdc6b12b3c910644aad8dfbefedb8914603",
+    "phase_history": [
+      {
+        "status": "discovered",
+        "timestamp": 1792753235.9672585
+      },
+      {
+        "status": "planned",
+        "timestamp": 1792753235.969809,
+        "details": {
+          "plan_id": "plan_e96369cdf7c5",
+          "plan_hash": "e96369cdf7c5db0fef615daadec59d2d31df312ae8e1054d76d5c1cee675329f"
+        }
+      }
+    ],
+    "errors": [],
+    "created_at": 1792753235.967275,
+    "updated_at": 1792753235.969811
+  },
+  "file_integrity": {
+    "before": {
+      "工数3Q预实管理.xlsx": "9b3f8bcb2fe726e3043db5a3698ea679e14394dfbfdab9f1a4ad9054b8410f87",
+      "工数实绩明细_20261020134124.xlsx": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+      ".dsh/spreadsheet-runs/run_1e043e19200a/snapshot_工数3Q预实管理.xlsx": "9b3f8bcb2fe726e3043db5a3698ea679e14394dfbfdab9f1a4ad9054b8410f87",
+      ".dsh/spreadsheet-runs/run_1e043e19200a/plan.json": "b42bf1299b2816471a2b3638bb8e415e6da59962ae4faac75f516efc6ffdcece",
+      ".dsh/spreadsheet-runs/run_1e043e19200a/state.json": "9d7767816235b54d16be088c41b7e3b9f3986580122e6e61953317eb26295858"
+    },
+    "after": {
+      "工数3Q预实管理.xlsx": "9b3f8bcb2fe726e3043db5a3698ea679e14394dfbfdab9f1a4ad9054b8410f87",
+      "工数实绩明细_20261020134124.xlsx": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+      ".dsh/spreadsheet-runs/run_1e043e19200a/snapshot_工数3Q预实管理.xlsx": "9b3f8bcb2fe726e3043db5a3698ea679e14394dfbfdab9f1a4ad9054b8410f87",
+      ".dsh/spreadsheet-runs/run_1e043e19200a/plan.json": "b42bf1299b2816471a2b3638bb8e415e6da59962ae4faac75f516efc6ffdcece",
+      ".dsh/spreadsheet-runs/run_1e043e19200a/state.json": "9d7767816235b54d16be088c41b7e3b9f3986580122e6e61953317eb26295858"
+    },
+    "unchanged": true,
+    "inputs_match_call": true,
+    "target_sheet_names": [
+      "1019"
+    ],
+    "candidate_exists": false,
+    "planned_output_exists": false,
+    "notice_output_exists": false
+  },
+  "model_calls": 0,
+  "workbook_writes": 0
+}

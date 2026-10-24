@@ -18,7 +18,7 @@ class TaskIntentTests(unittest.TestCase):
         request = '读取附件，列出各组结果'
         def model(messages, **kwargs):
             payload = json.loads(messages[-1]['content'])
-            self.assertTrue(set(payload) <= {'request', 'user_history', 'input_count', 'skill_names', 'feedback', 'proposed_contract'})
+            self.assertTrue(set(payload) <= {'request', 'user_history', 'recent_dialogue', 'input_count', 'skill_names', 'feedback', 'proposed_contract'})
             self.assertFalse(kwargs['stream_deltas'])
             return {'finish_reason': 'stop', 'content': json.dumps({'task_mode': 'execute',
                 'output_mode': 'conversation', 'artifact_types': [], 'skill_invocation': {'mode': 'none', 'name': '', 'replace_defaults': False},
@@ -85,6 +85,102 @@ class TaskIntentTests(unittest.TestCase):
         with patch('dsh_modules.semantic_decision.call_model_proxy', return_value=response):
             result = extract_task_intent('导出novel7文件', [], 'model', None, TelemetryStats(), time.monotonic()+30)
         self.assertEqual(result['artifact_types'], ['.novel7'])
+
+    def test_standalone_relation_blocks_historical_requirement_grounding(self):
+        request = '统计 各个部门里面 合计金额 超过 500k的部门有哪些'
+        users = ['使用部门别有偿统计，只要表格，无需解读']
+        contaminated_response = {'finish_reason': 'stop', 'content': json.dumps({
+            'instruction_relation': 'standalone',
+            'task_mode': 'execute',
+            'output_mode': 'conversation',
+            'artifact_types': [],
+            'skill_invocation': {'mode': 'none', 'name': '', 'replace_defaults': False},
+            'requirements': [
+                {'id': 'r1', 'quote': request},
+                {'id': 'r2', 'quote': '只要表格，无需解读'}
+            ]
+        })}
+        clean_response = {'finish_reason': 'stop', 'content': json.dumps({
+            'instruction_relation': 'standalone',
+            'task_mode': 'execute',
+            'output_mode': 'conversation',
+            'artifact_types': [],
+            'skill_invocation': {'mode': 'none', 'name': '', 'replace_defaults': False},
+            'requirements': [
+                {'id': 'r1', 'quote': request}
+            ]
+        })}
+        # First attempt returns contaminated_response which fails validate_intent, second returns clean_response
+        replies = [contaminated_response, clean_response, clean_response]
+        with patch('dsh_modules.semantic_decision.call_model_proxy', side_effect=replies):
+            result = extract_task_intent(request, users, 'model', None, TelemetryStats(), time.monotonic()+30)
+        self.assertEqual(len(result['requirements']), 1)
+        self.assertEqual(result['requirements'][0]['quote'], request)
+        self.assertEqual(result['instruction_relation'], 'standalone')
+
+    def test_standalone_relation_normalizes_unrequested_artifact_to_conversation(self):
+        request = '统计 各个部门里面 合计金额 超过 500k的部门有哪些'
+        artifact_response = {'finish_reason': 'stop', 'content': json.dumps({
+            'instruction_relation': 'standalone',
+            'task_mode': 'execute',
+            'output_mode': 'artifact',
+            'artifact_types': ['xlsx'],
+            'skill_invocation': {'mode': 'none', 'name': '', 'replace_defaults': False},
+            'requirements': [{'id': 'r1', 'quote': request}]
+        })}
+        with patch('dsh_modules.semantic_decision.call_model_proxy', return_value=artifact_response):
+            result = extract_task_intent(request, [], 'model', None, TelemetryStats(), time.monotonic()+30)
+        self.assertEqual(result['output_mode'], 'conversation')
+        self.assertEqual(result['artifact_types'], [])
+
+    def test_standalone_relation_preserves_explicit_export_request(self):
+        request = '导出各个部门统计为excel文件'
+        artifact_response = {'finish_reason': 'stop', 'content': json.dumps({
+            'instruction_relation': 'standalone',
+            'task_mode': 'execute',
+            'output_mode': 'artifact',
+            'artifact_types': ['xlsx'],
+            'skill_invocation': {'mode': 'none', 'name': '', 'replace_defaults': False},
+            'requirements': [{'id': 'r1', 'quote': request}]
+        })}
+        with patch('dsh_modules.semantic_decision.call_model_proxy', return_value=artifact_response):
+            result = extract_task_intent(request, [], 'model', None, TelemetryStats(), time.monotonic()+30)
+        self.assertEqual(result['output_mode'], 'artifact')
+        self.assertEqual(result['artifact_types'], ['.xlsx'])
+
+    def test_followup_relation_allows_historical_requirement_grounding(self):
+        request = '再筛选出大于500的'
+        users = ['统计各个部门合计金额']
+        followup_response = {'finish_reason': 'stop', 'content': json.dumps({
+            'instruction_relation': 'followup',
+            'task_mode': 'execute',
+            'output_mode': 'conversation',
+            'artifact_types': [],
+            'skill_invocation': {'mode': 'none', 'name': '', 'replace_defaults': False},
+            'requirements': [
+                {'id': 'r1', 'quote': request},
+                {'id': 'r2', 'quote': '统计各个部门合计金额'}
+            ]
+        })}
+        with patch('dsh_modules.semantic_decision.call_model_proxy', return_value=followup_response):
+            result = extract_task_intent(request, users, 'model', None, TelemetryStats(), time.monotonic()+30)
+        self.assertEqual(result['instruction_relation'], 'followup')
+        self.assertEqual(len(result['requirements']), 2)
+
+    def test_followup_parameter_fulfillment_normalizes_to_execute(self):
+        request = '有偿的金额'
+        users = ['统计各个部门金额']
+        consult_response = {'finish_reason': 'stop', 'content': json.dumps({
+            'instruction_relation': 'followup',
+            'task_mode': 'consult',
+            'output_mode': 'conversation',
+            'artifact_types': [],
+            'skill_invocation': {'mode': 'none', 'name': '', 'replace_defaults': False},
+            'requirements': [{'id': '1', 'quote': request}]
+        })}
+        with patch('dsh_modules.semantic_decision.call_model_proxy', return_value=consult_response):
+            result = extract_task_intent(request, users, 'model', None, TelemetryStats(), time.monotonic()+30)
+        self.assertEqual(result['task_mode'], 'execute')
 
 
 if __name__ == '__main__': unittest.main()

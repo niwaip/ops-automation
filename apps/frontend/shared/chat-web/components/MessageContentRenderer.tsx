@@ -184,6 +184,55 @@ export const renderWithLineBreaks = (node: React.ReactNode): React.ReactNode => 
   return node;
 };
 
+export const hoistHtmlPreviewBlock = (markdownText: string): string => {
+  if (!markdownText || typeof markdownText !== 'string') return markdownText;
+
+  // 匹配完整的自包含 HTML 代码块
+  const htmlBlockRegex = /```html\s*\n(?:<!DOCTYPE html|<html)[\s\S]*?```/i;
+  const match = htmlBlockRegex.exec(markdownText);
+  if (!match) return markdownText;
+
+  const htmlBlock = match[0];
+  const matchIndex = match.index;
+
+  // 探测顶部交付提示 Banner（以 ✨, ⚠️, 💡 或引用/标题起始，通常包含输出文件、操作提示或交付就绪等）
+  const bannerPattern = /^(?:✨|⚠️|💡|[#>])[^\n]+(?:\n+(?:[-*>]|\s*(?:输出文件|操作提示|恢复说明|💡|⚠️))[^\n]+)*/i;
+  const bannerMatch = bannerPattern.exec(markdownText);
+
+  if (bannerMatch) {
+    const bannerEnd = bannerMatch.index + bannerMatch[0].length;
+    // 检查 banner 与 htmlBlock 之间是否只有空行/空白
+    const textBetween = markdownText.slice(bannerEnd, matchIndex).trim();
+    if (textBetween.length === 0) {
+      // 已经紧随顶部 Banner，无需重复提升
+      return markdownText;
+    }
+
+    const banner = bannerMatch[0].trim();
+    const remainingBefore = markdownText.slice(bannerEnd, matchIndex).trim();
+    const remainingAfter = markdownText.slice(matchIndex + htmlBlock.length).trim();
+    const rest = [remainingBefore, remainingAfter].filter(Boolean).join('\n\n');
+
+    return `${banner}\n\n${htmlBlock}\n\n---\n\n${rest}`;
+  }
+
+  // 若无特定顶部 Banner，但前文包含交付产物特征提示，将操作卡片提升至顶部
+  const hasDeliveryCues = /(?:已生成|交付|操作提示|在线预览|全屏查看|\/workspace\/)/.test(
+    markdownText.slice(0, matchIndex)
+  );
+  if (hasDeliveryCues) {
+    const textBefore = markdownText.slice(0, matchIndex).trim();
+    if (textBefore.length === 0) {
+      return markdownText;
+    }
+    const textAfter = markdownText.slice(matchIndex + htmlBlock.length).trim();
+    const rest = [textBefore, textAfter].filter(Boolean).join('\n\n');
+    return `${htmlBlock}\n\n---\n\n${rest}`;
+  }
+
+  return markdownText;
+};
+
 const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
   content,
   mode,
@@ -200,17 +249,19 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
     return null;
   }
 
+  const effectiveContent = mode === 'markdown' && !isStreaming ? hoistHtmlPreviewBlock(content) : content;
+
   if (mode === 'plain') {
     return (
       <div className="chat-message-plain">
-        {splitReportDetails(content).map((part) => part.kind === 'details'
+        {splitReportDetails(effectiveContent).map((part) => part.kind === 'details'
           ? `${part.title}\n\n${part.content.trim()}` : part.content).join('\n\n')}
         {isStreaming ? <StreamingIndicator /> : null}
       </div>
     );
   }
 
-  const reportParts = splitReportDetails(unwrapOuterMarkdownFence(content));
+  const reportParts = splitReportDetails(unwrapOuterMarkdownFence(effectiveContent));
   if (reportParts.some((part) => part.kind === 'details')) {
     return (
       <div className="chat-message-markdown">

@@ -1,0 +1,39 @@
+{
+  "run_id": "run_377c922f4b22",
+  "status": "published",
+  "user_id": "sandbox_user",
+  "target_path": "/workspace/.validation/spreadsheet-fix-20261023/qwen35b-release-check/.dsh/spreadsheet-runs/run_377c922f4b22/snapshot_工数3Q预实管理.xlsx",
+  "target_hash": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d",
+  "plan_id": "plan_9262894ece03_run_377c922f4b22",
+  "plan_hash": "9262894ece03b97a8ded843e291c1750b6dafd928debeea8b5ad444c0760099f",
+  "candidate_path": null,
+  "candidate_hash": null,
+  "published_path": "/workspace/.validation/spreadsheet-fix-20261023/qwen35b-release-check/工数3Q预实管理_1023.xlsx",
+  "published_hash": "c867d8faced15cd9a824b439a6a389c38fea9a3e820285c966eb3c087eb23505",
+  "idempotency_key": "9987e629ee2ab3f15eeeb21ebef8b7467c0b67825108cec817beb993e47b4a3d",
+  "phase_history": [
+    {
+      "status": "discovered",
+      "timestamp": 1792768457.5467207
+    },
+    {
+      "status": "planned",
+      "timestamp": 1792768457.548105,
+      "details": {
+        "plan_id": "plan_9262894ece03_run_377c922f4b22",
+        "plan_hash": "9262894ece03b97a8ded843e291c1750b6dafd928debeea8b5ad444c0760099f"
+      }
+    },
+    {
+      "status": "published",
+      "timestamp": 1792768460.5992057,
+      "details": {
+        "published_hash": "c867d8faced15cd9a824b439a6a389c38fea9a3e820285c966eb3c087eb23505",
+        "published_path": "/workspace/.validation/spreadsheet-fix-20261023/qwen35b-release-check/工数3Q预实管理_1023.xlsx"
+      }
+    }
+  ],
+  "errors": [],
+  "created_at": 1792768457.5467238,
+  "updated_at": 1792768460.599207
+}

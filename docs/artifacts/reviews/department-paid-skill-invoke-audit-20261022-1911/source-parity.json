@@ -1,0 +1,9 @@
+{
+  "runner.py": true,
+  "skill_router.py": true,
+  "agent_loop.py": true,
+  "planning_phase.py": true,
+  "prompt_builder.py": true,
+  "spreadsheet_analysis_evidence.py": true,
+  "spreadsheet_preflight.py": true
+}

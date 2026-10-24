@@ -15,8 +15,8 @@ from .analysis_delivery_constraints import is_empty_query
 
 def has_spreadsheet_analysis_input(skill_res):
     spreadsheet_input = bool(set(getattr(skill_res, 'source_formats', [])) & {'.xlsx', '.xlsm', '.csv', '.xls'})
-    return (getattr(skill_res, 'skill_id', None) == 'xlsx'
-            or (getattr(skill_res, 'skill_id', None) is None and spreadsheet_input))
+    sid = getattr(skill_res, 'skill_id', None)
+    return spreadsheet_input or sid == 'xlsx'
 
 
 def requires_spreadsheet_analysis(prompt, skill_res):

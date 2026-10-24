@@ -1,0 +1,12 @@
+{
+  "captureId": "b05d5a16-bbb0-4d37-9570-cdb9eaf2d879",
+  "status": "ready",
+  "progress": 100,
+  "createdAt": "2026-10-22T12:27:27.188Z",
+  "updatedAt": "2026-10-22T12:27:34.384Z",
+  "ownerUserId": "e7fce333-a8f4-4097-9a53-f0a4c729da46",
+  "skillId": "c60d78fd-b6c3-4e7c-99ba-67f6d61efecd",
+  "slug": "dept-summary",
+  "version": 4,
+  "executionMode": "verified_workflow"
+}

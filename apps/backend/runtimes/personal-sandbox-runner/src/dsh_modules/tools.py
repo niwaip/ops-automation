@@ -56,12 +56,14 @@ from .deliverable_contract import write_markdown_artifact
 from .comparison_tool_schema import COMPARISON_TOOL
 from .spreadsheet_analysis_schema import ANALYSIS_TOOL, ANALYSIS_CAPABILITIES, ANALYSIS_TOOL_NAMES
 from .spreadsheet_context import STRUCTURE_TOOL, STRUCTURE_TOOL_NAME
+from .spreadsheet_update.tools import SPREADSHEET_UPDATE_TOOL_DEFINITIONS
 
 SANDBOX_TOOLS = [
     STRUCTURE_TOOL,
     COMPARISON_TOOL,
     ANALYSIS_TOOL,
     *ANALYSIS_CAPABILITIES,
+    *SPREADSHEET_UPDATE_TOOL_DEFINITIONS,
     {
         "type": "function",
         "function": {
@@ -455,7 +457,11 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
         name_clean = "web_search"
     res = ""
 
-    if name_clean in ["weather", "get_weather", "query_weather"]:
+    if name_clean in {'plan_spreadsheet_update', 'execute_spreadsheet_update', 'get_spreadsheet_update_status'}:
+        from .spreadsheet_update.tools import dispatch_update_tool
+        return dispatch_update_tool(name_clean, params)
+
+    elif name_clean in ["weather", "get_weather", "query_weather"]:
         city = (
             params.get("city") or
             params.get("location") or
@@ -511,7 +517,11 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
         from .spreadsheet_analysis import execute_spreadsheet_analysis
         if name_clean == "validate_spreadsheet_rows":
             params = {**params,"profile_tables":True}
-        res = execute_spreadsheet_analysis(params, deadline=deadline)
+        if name_clean=='aggregate_spreadsheet' and 'value_field' in params:
+            from .spreadsheet_update.aggregation_api import execute_aggregation
+            res=execute_aggregation(params,deadline=deadline)
+        else:
+            res = execute_spreadsheet_analysis(params, deadline=deadline)
 
     elif name_clean in ["read_file", "cat", "view_file", "read_doc", "parse_file", "open_file", "read"]:
         fpath = (

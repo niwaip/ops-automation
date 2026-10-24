@@ -28,7 +28,7 @@ export const isTransientSandboxModelFailure = (message: string): boolean =>
   );
 
 export const isSandboxModelAuthFailure = (message: string): boolean =>
-  /(?:鉴权失败|鉴权异常|invalid token|check your api key|api key|unauthorized|forbidden|401|403|authentication_error)/i.test(
+  /(?:鉴权失败|鉴权异常|invalid token|check your api key|api key|unauthorized|forbidden|\b(?:401|403)\b|authentication_error)/i.test(
     String(message || '')
   );
 
@@ -43,7 +43,7 @@ export const isSandboxModelConnectionRefused = (message: string): boolean =>
   );
 
 export const isSandboxExecutionError = (message: string): boolean =>
-  /(?:\[DeepSeek Harness 异常\]:\s*执行异常:|执行异常:\s*(?:openpyxl|unsupported_source_format|FileNotFoundError|ValueError|KeyError|TypeError|AttributeError|InvalidFileException))/i.test(
+  /(?:\[DeepSeek Harness 异常\]:\s*执行异常:|执行异常:\s*(?:openpyxl|unsupported_source_format|FileNotFoundError|ValueError|KeyError|TypeError|AttributeError|UnboundLocalError|InvalidFileException|Exception))/i.test(
     String(message || '')
   );
 
@@ -154,6 +154,20 @@ export function classifyPersonalSandboxError(options: {
     };
   }
 
+  // 4.0. 沙箱代码/工具级执行异常（优先于鉴权，防止日志正文业务字符如 FC34032 误判为鉴权失败）
+  if (isSandboxExecutionError(errMsg)) {
+    const detailMatch = errMsg.match(/执行异常:\s*([^\n\r]+)/);
+    const detail = detailMatch?.[1] ? detailMatch[1].trim() : errMsg;
+    return {
+      friendlyError: `❌ 沙箱工具执行异常：${detail}。本次任务未能完成，请检查输入文件格式与参数要求。`,
+      eventData: {
+        code: 'SANDBOX_TOOL_EXECUTION_ERROR',
+        retryable: false,
+      },
+      executionTrace: { executed: true, errorType: 'TOOL_EXECUTION_ERROR', rawError: errMsg },
+    };
+  }
+
   // 4. 上游大模型鉴权失败 / API Key 错误
   if (isSandboxModelAuthFailure(errMsg)) {
     return {
@@ -190,20 +204,6 @@ export function classifyPersonalSandboxError(options: {
         retryable: true,
       },
       executionTrace: { executed: false, errorType: 'CONNECTION_REFUSED', rawError: errMsg },
-    };
-  }
-
-  // 4.3. 沙箱代码/工具级执行异常（非大模型服务离线或网络故障）
-  if (isSandboxExecutionError(errMsg)) {
-    const detailMatch = errMsg.match(/执行异常:\s*([^\n\r]+)/);
-    const detail = detailMatch?.[1] ? detailMatch[1].trim() : errMsg;
-    return {
-      friendlyError: `❌ 沙箱工具执行异常：${detail}。本次任务未能完成，请检查输入文件格式与参数要求。`,
-      eventData: {
-        code: 'SANDBOX_TOOL_EXECUTION_ERROR',
-        retryable: false,
-      },
-      executionTrace: { executed: true, errorType: 'TOOL_EXECUTION_ERROR', rawError: errMsg },
     };
   }
 

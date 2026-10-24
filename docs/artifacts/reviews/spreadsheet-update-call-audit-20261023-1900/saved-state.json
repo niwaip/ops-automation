@@ -1,0 +1,31 @@
+{
+  "run_id": "run_1e043e19200a",
+  "status": "planned",
+  "user_id": "sandbox_user",
+  "target_path": "/workspace/.dsh/spreadsheet-runs/run_1e043e19200a/snapshot_工数3Q预实管理.xlsx",
+  "target_hash": "9b3f8bcb2fe726e3043db5a3698ea679e14394dfbfdab9f1a4ad9054b8410f87",
+  "plan_id": null,
+  "plan_hash": null,
+  "candidate_path": null,
+  "candidate_hash": null,
+  "published_path": null,
+  "published_hash": null,
+  "idempotency_key": "8b89d30dd0666b215ada7b1567090cdc6b12b3c910644aad8dfbefedb8914603",
+  "phase_history": [
+    {
+      "status": "discovered",
+      "timestamp": 1792753235.9672585
+    },
+    {
+      "status": "planned",
+      "timestamp": 1792753235.969809,
+      "details": {
+        "plan_id": "plan_e96369cdf7c5",
+        "plan_hash": "e96369cdf7c5db0fef615daadec59d2d31df312ae8e1054d76d5c1cee675329f"
+      }
+    }
+  ],
+  "errors": [],
+  "created_at": 1792753235.967275,
+  "updated_at": 1792753235.969811
+}

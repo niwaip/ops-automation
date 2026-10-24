@@ -1,0 +1,22 @@
+ops-session-broker  | [Nest] 135  - 10/22/2026, 7:11:04 PM     LOG [LockService] Sandbox execution lock acquired for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], token=94bcfcb6-d0b7-461e-91b9-0837bfab703b, waitedMs=1
+ops-session-broker  | [Nest] 135  - 10/22/2026, 7:11:04 PM     LOG [UserSandboxContainerService] Ensuring user sandbox for [e7fce333-a8f4-4097-9a53-f0a4c729da46], container: ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46
+ops-session-broker  | [Nest] 135  - 10/22/2026, 7:11:04 PM     LOG [UserSandboxContainerService] Container ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46 is already running.
+ops-session-broker  | [Nest] 135  - 10/22/2026, 7:11:04 PM     LOG [UserSandboxHarnessService] Executing in sandbox [ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46]: ["dsh","run","【当前轮次用户上传附件】: 工数实绩明细_20261020134124.xlsx（这是用户本轮刚上传的新文件，为本次指令的主要处理对象）\n用户指令：部门别有偿统计","--session-id","chat-session-1792667458057-iiyfxw64","--files","工数实绩明细_20261020134124.xlsx","--web-search","--thinking","--reasoning-effort","medium","--model","d13e0d30-87b9-4e87-b96a-d8b1b3cf78af","--model-display-name","qwen36-35b-a3b","--timeout","300"]
+ops-session-broker  | [Nest] 135  - 10/22/2026, 7:11:26 PM     LOG [LockService] Sandbox execution lock released for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:11:01 PM     LOG [TraceInterceptor] [c14169a8-5ca0-4d05-85c7-078c8aadfd03] POST /ai/chat/upload 22ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:11:04 PM     LOG [ChatController] Dispatching personal chat request to unified sandbox agent for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:11:04 PM     LOG [UserSandboxDispatcherService] Dispatching personal request to sandbox harness for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:11:04 PM     LOG [UserSandboxDispatcherService] Synced attached file [工数实绩明细_20261020134124.xlsx] to session [chat-session-1792667458057-iiyfxw64] and workspace: /workspace/data/users/e7fce333-a8f4-4097-9a53-f0a4c729da46/workspace/.sessions/chat-session-1792667458057-iiyfxw64/工数实绩明细_20261020134124.xlsx
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:11:05 PM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:11:05 PM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:11:09 PM     LOG [TraceInterceptor] [1d71949f-3ddd-4947-9439-15a1301bb2d0] GET /ai/chat/sessions 86ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:11:10 PM    WARN [ModelProxyController] Primary model [qwen36-35b-a3b] stream hit transient error (attempt 1/3): aborted. Retrying in 1000ms...
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:11:14 PM     LOG [TraceInterceptor] [1164dd3a-398d-4b7f-b7db-ae9b92d206cf] GET /ai/chat/sessions 56ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:11:19 PM     LOG [TraceInterceptor] [98dfa20c-0b04-45ee-b382-52d6a3e9083e] GET /ai/chat/sessions 25ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:11:22 PM     LOG [TraceInterceptor] [aa14a88c-1810-4f80-a32a-83411edb12db] POST /ai/proxy/v1/chat/completions 17290ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:11:24 PM     LOG [TraceInterceptor] [901c8a9f-ec16-4d36-80de-88f9166c2566] GET /ai/chat/sessions 38ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:11:26 PM   DEBUG [SessionService] Saved chat session chat-session-1792667458057-iiyfxw64, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:11:26 PM     LOG [TraceInterceptor] [00dc0d8c-e5a9-4c4b-aef4-0ad1aac812c8] POST /ai/chat/stream 22372ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:11:26 PM     LOG [TraceInterceptor] [ff591a74-ee37-4b71-a4f2-fe1bbdb3ceed] GET /ai/chat/sessions/chat-session-1792667458057-iiyfxw64/messages/1792667464210-ztez9lb8/feedback 14ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:11:26 PM     LOG [TraceInterceptor] [822928d7-c864-4431-a803-86bee5046ee3] GET /ai/chat/sessions 47ms
+ops-ai-orchestrator  | [Nest] 219  - 10/22/2026, 7:11:26 PM     LOG [TraceInterceptor] [f65de9f6-0a9d-492e-9c92-dc3bec31f321] GET /ai/chat/history/chat-session-1792667458057-iiyfxw64 6ms

@@ -1,0 +1,20 @@
+{
+  "same_as_main": true,
+  "errors": [
+    "src/modules/chat/chat-orchestrator.service.ts(761,11): error TS2322: Type '\"conversational_chat\"' is not assignable to type '\"recipe_plan\" | \"generated_plan\" | \"replay_workflow\" | \"single_capability\" | \"exploratory_agent\" | undefined'.",
+    "src/modules/chat/chat-orchestrator.service.ts(762,11): error TS2322: Type '\"conversational\"' is not assignable to type '\"recipe\" | \"llm_topology\" | \"saved_workflow\" | \"explicit_reference\" | \"deterministic_match\" | \"exploratory\" | undefined'.",
+    "src/modules/chat/chat.controller.ts(325,31): error TS2532: Object is possibly 'undefined'.",
+    "src/modules/chat/chat.controller.ts(325,62): error TS2532: Object is possibly 'undefined'.",
+    "src/modules/chat/chat.controller.ts(327,31): error TS2532: Object is possibly 'undefined'.",
+    "src/modules/chat/chat.controller.ts(329,34): error TS2532: Object is possibly 'undefined'.",
+    "src/modules/model/model.controller.spec.ts(221,32): error TS2532: Object is possibly 'undefined'.",
+    "src/modules/planner/binding/contract-compare-position-audit-20261018.spec.ts(12,9): error TS18048: 'result.planInputs.n1' is possibly 'undefined'.",
+    "src/modules/planner/deterministic/deterministic-plan-generator.service.ts(154,32): error TS2353: Object literal may only specify known properties, and 'hasNewAttachment' does not exist in type '{ hasPreviousResult?: boolean | undefined; }'.",
+    "src/modules/planner/params/deterministic-param-resolver.service.spec.ts(28,9): error TS2739: Type '{ type: \"string\"; enum: string[]; }' is missing the following properties from type 'ParamProperty': description, required",
+    "src/modules/planner/params/deterministic-param-resolver.service.spec.ts(64,59): error TS2345: Argument of type '{ properties: any; }' is not assignable to parameter of type 'ParamsSchema'.",
+    "src/modules/planner/params/deterministic-param-resolver.service.spec.ts(70,67): error TS2345: Argument of type '{ properties: any; }' is not assignable to parameter of type 'ParamsSchema'.",
+    "src/modules/planner/params/deterministic-param-resolver.service.spec.ts(76,59): error TS2345: Argument of type '{ properties: any; }' is not assignable to parameter of type 'ParamsSchema'.",
+    "src/modules/recognizer/recognizer.service.ts(896,36): error TS2339: Property 'items' does not exist on type 'ParamSchemaProperty'.",
+    "src/modules/recognizer/recognizer.service.ts(896,53): error TS2339: Property 'items' does not exist on type 'ParamSchemaProperty'."
+  ]
+}

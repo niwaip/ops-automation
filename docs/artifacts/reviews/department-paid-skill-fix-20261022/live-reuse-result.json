@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-10-22T11:04:53.480Z",
+  "sessionId": "personal-skill-reuse-20261022",
+  "fixture": "skill-validation-20261022.xlsx",
+  "recoveredFromPersistedSession": true,
+  "expected": {
+    "验证A": 30,
+    "验证B": 10,
+    "total": 40,
+    "includedRows": 4,
+    "excludedRows": 6
+  },
+  "success": null,
+  "exitCode": null,
+  "durationMs": null,
+  "final": "完整数据已读取，下面按业务规则进行处理：\n\n---\n\n## 部门别有偿统计结果\n\n### 处理规则回顾\n\n按 **部门编号** 分组，统计 **金额** 的合计。\n**排除** WBS 编号以 `ex`、`sy`、`sp`、`ip`、`ib`、`sz` 开头的数据（不区分大小写）。\n\n### 1. 明细筛选\n\n| 行号 | WBS 编号 | 金额(K) | 部门编号 | 处理 |\n|------|----------|---------|----------|------|\n| 3 | billable-a | 10 | 验证A | ✅ 保留 |\n| 4 | billable-b | 20 | 验证A | ✅ 保留 |\n| 5 | billable-c | 7.5 | 验证B | ✅ 保留 |\n| 6 | billable-d | 2.5 | 验证B | ✅ 保留 |\n| 7 | EX-excluded | 1000 | 验证A | ❌ 排除（ex 开头） |\n| 8 | Sy-excluded | 1000 | 验证A | ❌ 排除（sy 开头） |\n| 9 | sP-excluded | 1000 | 验证A | ❌ 排除（sp 开头） |\n| 10 | IP-excluded | 1000 | 验证A | ❌ 排除（ip 开头） |\n| 11 | ib-excluded | 1000 | 验证A | ❌ 排除（ib 开头） |\n| 12 | SZ-excluded | 1000 | 验证A | ❌ 排除（sz 开头） |\n\n共 10 条明细，其中 **6 条被排除**，**4 条纳入统计**。\n\n### 2. 部门别合计\n\n| 部门编号 | 统计明细 | 金额合计 (K) |\n|----------|----------|-------------|\n| **验证A** | billable-a (10) + billable-b (20) | **30.0** |\n| **验证B** | billable-c (7.5) + billable-d (2.5) | **10.0** |\n| **合计** | — | **40.0** |\n\n### 3. 排除项汇总\n\n有 6 条数据因 WBS 编号以排除前缀开头而被剔除，合计排除金额 **6000 K**。排除涉及部门仅为 **验证A**，但这些数据均不计入统计。",
+  "metrics": []
+}

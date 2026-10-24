@@ -129,7 +129,18 @@ def execute_query_plan(
         raise KeyError(f"工作表 '{sheet_name}' 不存在")
 
     ws = workbook[sheet_name]
-    header_row = int(source_spec.get("header_row", 1))
+    if "header_row" in source_spec and source_spec["header_row"] is not None:
+        header_row = int(source_spec["header_row"])
+    else:
+        # Auto-detect best header row within first 20 rows
+        best_row = 1
+        best_count = 0
+        for r in range(1, min(ws.max_row + 1, 21)):
+            str_cnt = sum(1 for c in range(1, ws.max_column + 1) if isinstance(ws.cell(r, c).value, str) and str(ws.cell(r, c).value).strip())
+            if str_cnt > best_count:
+                best_count = str_cnt
+                best_row = r
+        header_row = best_row if best_count >= 2 else 1
     data_range_str = source_spec.get("data_range")
 
     if data_range_str:
@@ -371,6 +382,35 @@ def execute_query_plan(
 
     group_count = len(groups)
 
+    # Discover 1-to-1 correlated label/name columns for grouped fields (e.g., 部门名称 for 部门编号)
+    if group_specs and groups:
+        candidate_cols = []
+        for c_idx, h_name in col_to_header.items():
+            if not h_name:
+                continue
+            h_str = str(h_name).strip()
+            if any(term in h_str for term in ["名称", "Name", "name", "描述", "说明"]):
+                candidate_cols.append(h_str)
+
+        for h_str in candidate_cols:
+            all_groups_single_val = True
+            group_to_val = {}
+            for internal_key, g_info in groups.items():
+                distinct_vals = {
+                    row_records[r].get(h_str)
+                    for r in g_info["rows"]
+                    if row_records[r].get(h_str) is not None and str(row_records[r].get(h_str)).strip() != ""
+                }
+                if len(distinct_vals) == 1:
+                    group_to_val[internal_key] = next(iter(distinct_vals))
+                else:
+                    all_groups_single_val = False
+                    break
+            if all_groups_single_val and group_to_val:
+                for internal_key, g_info in groups.items():
+                    if internal_key in group_to_val:
+                        g_info["group_fields"][h_str] = group_to_val[internal_key]
+
     # 6. METRICS Aggregation stage
     metrics_spec = plan.get("metrics", [])
     group_results: List[Dict[str, Any]] = []
@@ -385,6 +425,9 @@ def execute_query_plan(
                 row_res[g_spec["alias"]] = next(iter(g_info["group_fields"].values())) if g_info["group_fields"] else g_info["group_key"]
             else:
                 row_res["group_key"] = next(iter(g_info["group_fields"].values())) if g_info["group_fields"] else g_info["group_key"]
+            for k, v in g_info["group_fields"].items():
+                if k not in row_res:
+                    row_res[k] = v
         elif len(group_specs) > 1:
             row_res.update(g_info["group_fields"])
 
@@ -456,7 +499,20 @@ def execute_query_plan(
                 if not src_unit:
                     src_unit = default_amount_unit if op in ("sum", "min", "max", "avg", "dec_avg") else "number"
 
-            if not req_unit or req_unit == "source":
+            metric_label = m.get("label") or mid
+            # If label explicitly declares the source unit (e.g. "合计金额(K)" where src_unit is "K"),
+            # but req_unit loosely specified a conflicting unit (e.g. "元"),
+            # honor the declared label/source unit to prevent accidental 1000x scaling disaster.
+            if (
+                src_unit
+                and metric_label
+                and re.search(rf'[\(（]\s*{re.escape(src_unit)}\s*[\)）]', metric_label, re.I)
+                and req_unit
+                and req_unit != src_unit
+                and req_unit not in ("source", "amount", "duration")
+            ):
+                final_unit = src_unit
+            elif not req_unit or req_unit == "source":
                 final_unit = src_unit
             elif req_unit == "duration":
                 final_unit = "小时"
@@ -498,10 +554,18 @@ def execute_query_plan(
 
             unit = final_unit
 
+            # Synchronize metric_label if final_unit differs from src_unit
+            effective_metric_label = metric_label
+            if final_unit != src_unit and effective_metric_label:
+                if src_unit and re.search(rf'[\(（]\s*{re.escape(src_unit)}\s*[\)）]', effective_metric_label, re.I):
+                    effective_metric_label = re.sub(rf'[\(（]\s*{re.escape(src_unit)}\s*[\)）]', f'({final_unit})', effective_metric_label, flags=re.I)
+                elif not re.search(rf'[\(（]\s*{re.escape(final_unit)}\s*[\)）]', effective_metric_label, re.I):
+                    effective_metric_label = f"{effective_metric_label}({final_unit})"
+
             fact_id = f"{mid}__{g_key}" if g_key is not None else mid
             metric_facts.append({
                 "id": fact_id,
-                "label": f"{g_info['group_key']} {m.get('label', mid)}" if g_key is not None else m.get('label', mid),
+                "label": f"{g_info['group_key']} {effective_metric_label}" if g_key is not None else effective_metric_label,
                 "group_key": g_info['group_key'],
                 "group_fields": g_info["group_fields"],
                 "value": row_res[mid],

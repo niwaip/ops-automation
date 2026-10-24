@@ -1,0 +1,935 @@
+{
+  "session_id": "chat-session-1792747141627-wheti8di",
+  "turn_id": "1792747226343236630-076bacdae63e42ae9c6027f076ac5963",
+  "assistant_message_id": "1792747155824-fmj7ajuc",
+  "timestamp": "2026-10-23T09:20:26.374Z",
+  "request": "【当前轮次用户上传附件】: 工数3Q预实管理.xlsx, 工数实绩明细_20261020134124.xlsx（这是用户本轮刚上传的新文件，为本次指令的主要处理对象）\n用户指令：需要更新工数管理，里面有计划和预测，先复制最新的sheet 生成今天 1023的新sheet，用 部门编码 统计 部门的 有偿 部分的金额 更新到 这个月的预测部分",
+  "final_content": "本次文件生成未完成，以下文件尚未生成可用的交付版本：`工数3Q预实管理_1023.xlsx`。当前无法提供这些文件的下载。",
+  "usage": {
+    "prompt_tokens": 114910,
+    "completion_tokens": 4903,
+    "total_tokens": 119813
+  },
+  "execution_trace": {
+    "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+    "harness": "deepseek-harness",
+    "executed": true,
+    "durationMs": 70330,
+    "exitCode": 0,
+    "metrics": {
+      "ttftMs": 3908.54,
+      "durationMs": 69699.54,
+      "llmDurationMs": 61647.11,
+      "toolCallsCount": 7,
+      "toolCalls": [
+        {
+          "name": "inspect_spreadsheet_structure",
+          "params": {
+            "file_path": "工数3Q预实管理.xlsx",
+            "sheets": "['1019']"
+          },
+          "status": "success",
+          "result_status": "success",
+          "kind": "spreadsheet_structure",
+          "workbook_id": "9b3f8bcb2fe726e3043db5a3698ea679e14394dfbfdab9f1a4ad9054b8410f87"
+        },
+        {
+          "name": "inspect_spreadsheet_structure",
+          "params": {
+            "file_path": "工数实绩明细_20261020134124.xlsx",
+            "sheets": "['工数实绩明细']"
+          },
+          "status": "success",
+          "result_status": "success",
+          "kind": "spreadsheet_structure",
+          "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+        },
+        {
+          "name": "aggregate_spreadsheet",
+          "params": {
+            "file_path": "工数实绩明细_20261020134124.xlsx",
+            "query": "{'source': {'sheet': '工数实绩明细', 'header_row': 4, 'data_range': 'A5:R278'}, 'where': {'op': 'eq', 'field': '有偿无偿', 'value'..."
+          },
+          "status": "success",
+          "result_status": "success",
+          "evidence_id": "f263bf8c4da2ee33b4a050c0",
+          "plan_hash": "96e8ab93c4daa3081e4a23c17e0650a9416a2be67014ef801027409388a99f39",
+          "kind": "spreadsheet_analysis",
+          "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+        },
+        {
+          "name": "aggregate_spreadsheet",
+          "params": {
+            "file_path": "工数3Q预实管理.xlsx",
+            "query": "{'source': {'sheet': '1019', 'header_row': 4, 'data_range': 'A5:T64'}, 'metrics': [{'id': 'dept_code', 'label': '部门编码', ..."
+          },
+          "status": "error",
+          "result_status": "error",
+          "error_code": "calculation_unverified"
+        },
+        {
+          "name": "aggregate_spreadsheet",
+          "params": {
+            "file_path": "工数3Q预实管理.xlsx",
+            "tables": "[{'id': 't1', 'sheet': '1019', 'data_range': 'A5:T64', 'header_row': 4}]",
+            "query": "{'source': {'data_range': 'A5:T64', 'header_row': 4, 'sheet': '1019'}, 'distinct': True, 'distinct_fields': ['A', 'B']}"
+          },
+          "status": "error",
+          "result_status": "error",
+          "error_code": "calculation_unverified"
+        },
+        {
+          "name": "inspect_spreadsheet_structure",
+          "params": {
+            "file_path": "工数3Q预实管理.xlsx",
+            "sheets": "['1019']"
+          },
+          "status": "loop_intercepted"
+        },
+        {
+          "name": "read_file",
+          "params": {
+            "end_line": "64",
+            "file_path": "工数3Q预实管理.xlsx",
+            "range": "工数3Q预实管理.xlsx!A1:T64",
+            "start_line": "1"
+          },
+          "status": "error",
+          "result_status": "error",
+          "error_code": "sheet_not_found",
+          "workbook_id": "9b3f8bcb2fe726e3043db5a3698ea679e14394dfbfdab9f1a4ad9054b8410f87"
+        }
+      ],
+      "llmInvocations": 10,
+      "tokens": {
+        "prompt_tokens": 114910,
+        "completion_tokens": 4903,
+        "total_tokens": 119813
+      },
+      "finishReason": "stop",
+      "roundFinishReasons": [
+        "tool_calls",
+        "tool_calls",
+        "tool_calls",
+        "stop",
+        "tool_calls",
+        "tool_calls",
+        "tool_calls",
+        "tool_calls",
+        "tool_calls",
+        "stop"
+      ],
+      "guardDecisions": [
+        {
+          "guard": "task_intent_review",
+          "action": "revise",
+          "reason": {
+            "output_mode": "artifact",
+            "task_mode": "execute"
+          }
+        },
+        {
+          "guard": "task_intent",
+          "action": "accept",
+          "reason": {
+            "instruction_relation": "standalone",
+            "task_mode": "execute",
+            "output_mode": "artifact",
+            "artifact_types": [
+              ".xlsx"
+            ],
+            "skill_invocation": {
+              "mode": "none",
+              "name": "",
+              "replace_defaults": false
+            },
+            "requirements": [
+              {
+                "id": "req_1",
+                "quote": "生成今天 1023的新sheet"
+              },
+              {
+                "id": "req_2",
+                "quote": "用 部门编码 统计 部门的 有偿 部分的金额 更新到 这个月的预测部分"
+              }
+            ]
+          }
+        },
+        {
+          "guard": "skill_admission",
+          "action": "general",
+          "reason": {
+            "initial_candidate": "dept-summary",
+            "skill_id": null,
+            "use_default_rules": false,
+            "reason": "scope_mismatch",
+            "requirement_ids": [
+              "req_1",
+              "req_2"
+            ]
+          }
+        },
+        {
+          "guard": "artifact_delivery",
+          "action": "reject",
+          "reason": {
+            "missing_files": [
+              "工数3Q预实管理_1023.xlsx"
+            ]
+          }
+        }
+      ],
+      "modelResponses": [
+        {
+          "rawChars": 0,
+          "cleanChars": 0,
+          "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "finishReason": "tool_calls",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        },
+        {
+          "rawChars": 0,
+          "cleanChars": 0,
+          "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "finishReason": "tool_calls",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        },
+        {
+          "rawChars": 0,
+          "cleanChars": 0,
+          "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "finishReason": "tool_calls",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        },
+        {
+          "rawChars": 1218,
+          "cleanChars": 1218,
+          "rawSha256": "51dfc9280b0592f085c648ad0bf8d430e046f289d0db1cbe73e5fce7f1068b5f",
+          "cleanSha256": "51dfc9280b0592f085c648ad0bf8d430e046f289d0db1cbe73e5fce7f1068b5f",
+          "finishReason": "stop",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        },
+        {
+          "rawChars": 41,
+          "cleanChars": 41,
+          "rawSha256": "13bf708d2bb9bf3d2c35107c99c4c3bfb7bc3dfdc9c3e4280229737c7e72d3f0",
+          "cleanSha256": "13bf708d2bb9bf3d2c35107c99c4c3bfb7bc3dfdc9c3e4280229737c7e72d3f0",
+          "finishReason": "tool_calls",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        },
+        {
+          "rawChars": 269,
+          "cleanChars": 269,
+          "rawSha256": "d41868a9f8917bdc86bc69a3798a7efd02cd8911eca4677cdefea1e60a08c35c",
+          "cleanSha256": "d41868a9f8917bdc86bc69a3798a7efd02cd8911eca4677cdefea1e60a08c35c",
+          "finishReason": "tool_calls",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        },
+        {
+          "rawChars": 47,
+          "cleanChars": 47,
+          "rawSha256": "ce35ca6fbe48441d96cbbd02ef0735dea7d5b49a628ac3ecd5c03d76488d48cf",
+          "cleanSha256": "ce35ca6fbe48441d96cbbd02ef0735dea7d5b49a628ac3ecd5c03d76488d48cf",
+          "finishReason": "tool_calls",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        },
+        {
+          "rawChars": 0,
+          "cleanChars": 0,
+          "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "finishReason": "tool_calls",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        },
+        {
+          "rawChars": 0,
+          "cleanChars": 0,
+          "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "finishReason": "tool_calls",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        },
+        {
+          "rawChars": 1118,
+          "cleanChars": 1118,
+          "rawSha256": "fa5ac76981c5c93859575465137b0e10a216be66ad2d31809c71b454ecd6f97b",
+          "cleanSha256": "fa5ac76981c5c93859575465137b0e10a216be66ad2d31809c71b454ecd6f97b",
+          "finishReason": "stop",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        }
+      ],
+      "answerValidation": {}
+    }
+  },
+  "verified": false,
+  "source_hashes": {
+    "工数3Q预实管理.xlsx": "9b3f8bcb2fe726e3043db5a3698ea679e14394dfbfdab9f1a4ad9054b8410f87",
+    "工数实绩明细_20261020134124.xlsx": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+  },
+  "receipts": [
+    {
+      "status": "success",
+      "error": null,
+      "provenance": {
+        "file_path": "/workspace/工数3Q预实管理.xlsx",
+        "workbook_id": "9b3f8bcb2fe726e3043db5a3698ea679e14394dfbfdab9f1a4ad9054b8410f87"
+      },
+      "kind": "spreadsheet_structure",
+      "available_sheets": [
+        "1019"
+      ]
+    },
+    {
+      "status": "success",
+      "error": null,
+      "provenance": {
+        "file_path": "/workspace/工数实绩明细_20261020134124.xlsx",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+      },
+      "kind": "spreadsheet_structure",
+      "available_sheets": [
+        "工数实绩明细"
+      ]
+    },
+    {
+      "status": "success",
+      "error": null,
+      "provenance": {
+        "file_path": "/workspace/工数实绩明细_20261020134124.xlsx",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+        "plan_hash": "96e8ab93c4daa3081e4a23c17e0650a9416a2be67014ef801027409388a99f39",
+        "evidence_id": "f263bf8c4da2ee33b4a050c0"
+      },
+      "kind": "spreadsheet_analysis",
+      "evidence_id": "f263bf8c4da2ee33b4a050c0",
+      "plan": {
+        "source": {
+          "sheet": "工数实绩明细",
+          "header_row": 4,
+          "data_range": "A5:R278"
+        },
+        "where": {
+          "op": "eq",
+          "field": "有偿无偿",
+          "value": "有偿"
+        },
+        "group_by": [
+          "部门编号",
+          "部门名称"
+        ],
+        "metrics": [
+          {
+            "id": "total_hours",
+            "label": "工数汇总",
+            "op": "sum",
+            "field": "工数(小时)",
+            "unit": "source"
+          },
+          {
+            "id": "total_amount",
+            "label": "金额汇总",
+            "op": "sum",
+            "field": "金额(K)",
+            "unit": "source"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "id": "detail",
+          "sheet": "工数实绩明细",
+          "data_range": "A5:R278",
+          "header_row": 4,
+          "input_records": 274,
+          "evaluated_records": 259,
+          "excluded_header_rows": [],
+          "headers": {
+            "A": "会计年度",
+            "B": "工数年月",
+            "C": "部门编号",
+            "D": "部门名称",
+            "E": "员工编号",
+            "F": "员工姓名",
+            "G": "员工职级",
+            "H": "职级单价",
+            "I": "WBS编号",
+            "J": "WBS负责成本中心",
+            "K": "WBS名称",
+            "L": "客户名称",
+            "M": "有偿无偿",
+            "N": "直接间接",
+            "O": "工数(小时)",
+            "P": "金额(K)",
+            "Q": "BU编号",
+            "R": "BU名称"
+          },
+          "selected_rows": [
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            33,
+            34,
+            35,
+            36,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43,
+            44,
+            45,
+            46,
+            47,
+            48,
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55,
+            56,
+            57,
+            58,
+            59,
+            60,
+            61,
+            62,
+            63,
+            64,
+            65,
+            66,
+            67,
+            68,
+            69,
+            70,
+            71,
+            72,
+            73,
+            76,
+            77,
+            78,
+            79,
+            80,
+            81,
+            82,
+            83,
+            84,
+            86,
+            87,
+            88,
+            89,
+            90,
+            91,
+            92,
+            93,
+            95,
+            96,
+            97,
+            98,
+            99,
+            101,
+            102,
+            103,
+            104,
+            105,
+            106,
+            107,
+            108,
+            109,
+            110,
+            111,
+            113,
+            114,
+            115,
+            116,
+            117,
+            118,
+            119,
+            120,
+            121,
+            122,
+            123,
+            124,
+            125,
+            126,
+            127,
+            128,
+            129,
+            130,
+            131,
+            132,
+            133,
+            134,
+            135,
+            136,
+            137,
+            138,
+            139,
+            140,
+            141,
+            142,
+            143,
+            144,
+            145,
+            146,
+            147,
+            148,
+            149,
+            150,
+            151,
+            152,
+            153,
+            154,
+            155,
+            156,
+            157,
+            158,
+            159,
+            160,
+            161,
+            162,
+            163,
+            164,
+            165,
+            166,
+            167,
+            168,
+            169,
+            170,
+            171,
+            172,
+            173,
+            174,
+            175,
+            176,
+            177,
+            178,
+            179,
+            180,
+            182,
+            183,
+            184,
+            185,
+            186,
+            187,
+            188,
+            189,
+            191,
+            192,
+            193,
+            194,
+            195,
+            197,
+            198,
+            199,
+            200,
+            201,
+            202,
+            203,
+            204,
+            205,
+            206,
+            207,
+            208,
+            209,
+            210,
+            211,
+            212,
+            213,
+            214,
+            215,
+            216,
+            217,
+            218,
+            219,
+            220,
+            221,
+            222,
+            223,
+            224,
+            225,
+            226,
+            227,
+            229,
+            230,
+            231,
+            232,
+            233,
+            234,
+            235,
+            236,
+            237,
+            238,
+            239,
+            240,
+            241,
+            242,
+            243,
+            244,
+            245,
+            246,
+            247,
+            248,
+            249,
+            250,
+            251,
+            252,
+            253,
+            254,
+            255,
+            256,
+            258,
+            259,
+            260,
+            261,
+            262,
+            263,
+            264,
+            265,
+            266,
+            267,
+            268,
+            269,
+            270,
+            271,
+            272,
+            273,
+            274,
+            275,
+            276,
+            278
+          ],
+          "coverage_complete": true,
+          "filters": [
+            {
+              "op": "eq",
+              "field": "有偿无偿",
+              "value": "有偿"
+            }
+          ]
+        }
+      ],
+      "facts": [
+        {
+          "id": "total_hours__(('str', 'FC45031'), ('str', '華東MIS'))",
+          "group_fields": {
+            "部门编号": "FC45031",
+            "部门名称": "華東MIS"
+          },
+          "value": "1870.48",
+          "unit": "小时",
+          "matched_records": 92
+        },
+        {
+          "id": "total_amount__(('str', 'FC45031'), ('str', '華東MIS'))",
+          "group_fields": {
+            "部门编号": "FC45031",
+            "部门名称": "華東MIS"
+          },
+          "value": "570.75345",
+          "unit": "K",
+          "matched_records": 92
+        },
+        {
+          "id": "total_hours__(('str', 'FC48005'), ('str', '華北BAS'))",
+          "group_fields": {
+            "部门编号": "FC48005",
+            "部门名称": "華北BAS"
+          },
+          "value": "259",
+          "unit": "小时",
+          "matched_records": 6
+        },
+        {
+          "id": "total_amount__(('str', 'FC48005'), ('str', '華北BAS'))",
+          "group_fields": {
+            "部门编号": "FC48005",
+            "部门名称": "華北BAS"
+          },
+          "value": "67.0353",
+          "unit": "K",
+          "matched_records": 6
+        },
+        {
+          "id": "total_hours__(('str', 'FC44006'), ('str', 'DM華南BAS'))",
+          "group_fields": {
+            "部门编号": "FC44006",
+            "部门名称": "DM華南BAS"
+          },
+          "value": "584.54",
+          "unit": "小时",
+          "matched_records": 17
+        },
+        {
+          "id": "total_amount__(('str', 'FC44006'), ('str', 'DM華南BAS'))",
+          "group_fields": {
+            "部门编号": "FC44006",
+            "部门名称": "DM華南BAS"
+          },
+          "value": "171.65638",
+          "unit": "K",
+          "matched_records": 17
+        },
+        {
+          "id": "total_hours__(('str', 'FC44004'), ('str', '流通/EBISS'))",
+          "group_fields": {
+            "部门编号": "FC44004",
+            "部门名称": "流通/EBISS"
+          },
+          "value": "872",
+          "unit": "小时",
+          "matched_records": 17
+        },
+        {
+          "id": "total_amount__(('str', 'FC44004'), ('str', '流通/EBISS'))",
+          "group_fields": {
+            "部门编号": "FC44004",
+            "部门名称": "流通/EBISS"
+          },
+          "value": "242.51766",
+          "unit": "K",
+          "matched_records": 17
+        },
+        {
+          "id": "total_hours__(('str', 'FC34022'), ('str', '華南MIS'))",
+          "group_fields": {
+            "部门编号": "FC34022",
+            "部门名称": "華南MIS"
+          },
+          "value": "553.07",
+          "unit": "小时",
+          "matched_records": 63
+        },
+        {
+          "id": "total_amount__(('str', 'FC34022'), ('str', '華南MIS'))",
+          "group_fields": {
+            "部门编号": "FC34022",
+            "部门名称": "華南MIS"
+          },
+          "value": "167.77218",
+          "unit": "K",
+          "matched_records": 63
+        },
+        {
+          "id": "total_hours__(('str', 'FC44003'), ('str', 'SM華南BAS'))",
+          "group_fields": {
+            "部门编号": "FC44003",
+            "部门名称": "SM華南BAS"
+          },
+          "value": "783.54",
+          "unit": "小时",
+          "matched_records": 21
+        },
+        {
+          "id": "total_amount__(('str', 'FC44003'), ('str', 'SM華南BAS'))",
+          "group_fields": {
+            "部门编号": "FC44003",
+            "部门名称": "SM華南BAS"
+          },
+          "value": "212.90759",
+          "unit": "K",
+          "matched_records": 21
+        },
+        {
+          "id": "total_hours__(('str', 'FC46005'), ('str', '華東BAS'))",
+          "group_fields": {
+            "部门编号": "FC46005",
+            "部门名称": "華東BAS"
+          },
+          "value": "1156.15",
+          "unit": "小时",
+          "matched_records": 43
+        },
+        {
+          "id": "total_amount__(('str', 'FC46005'), ('str', '華東BAS'))",
+          "group_fields": {
+            "部门编号": "FC46005",
+            "部门名称": "華東BAS"
+          },
+          "value": "314.48323",
+          "unit": "K",
+          "matched_records": 43
+        }
+      ]
+    },
+    {
+      "status": "error",
+      "error": {
+        "code": "calculation_unverified",
+        "message": "重算或来源验证未通过"
+      },
+      "provenance": null,
+      "kind": null,
+      "calculation": {
+        "status": "partial",
+        "engine_execution": "success",
+        "provenance": {
+          "workbook_id": "9b3f8bcb2fe726e3043db5a3698ea679e14394dfbfdab9f1a4ad9054b8410f87",
+          "output_hash": "1db2fd377c24826c275cc493feadb030fbc54001fdf4c8db1ee71ef3b371fcbb",
+          "engine": "libreoffice_calc_headless",
+          "validator_version": "v3_unified",
+          "calculated_at": "2026-10-23T09:20:03.187415+00:00"
+        },
+        "total_formulas": 343,
+        "cached_formulas": 343,
+        "uncalculated_formulas": 0,
+        "total_errors": 32,
+        "error_summary": {
+          "#DIV/0!": [
+            "sheet1!P53",
+            "sheet1!R53"
+          ],
+          "#REF!": [
+            "sheet1!P5",
+            "sheet1!P6",
+            "sheet1!P7",
+            "sheet1!P8",
+            "sheet1!P9",
+            "sheet1!P10",
+            "sheet1!P11",
+            "sheet1!P12",
+            "sheet1!P13",
+            "sheet1!P14",
+            "sheet1!P15",
+            "sheet1!P16",
+            "sheet1!P17",
+            "sheet1!P18",
+            "sheet1!P19",
+            "sheet1!P26",
+            "sheet1!P27",
+            "sheet1!P28",
+            "sheet1!P29",
+            "sheet1!P30",
+            "sheet1!P31",
+            "sheet1!P32",
+            "sheet1!P33",
+            "sheet1!P34",
+            "sheet1!P35",
+            "sheet1!P36",
+            "sheet1!P37",
+            "sheet1!P38",
+            "sheet1!P39",
+            "sheet1!P40"
+          ]
+        }
+      }
+    },
+    {
+      "status": "error",
+      "error": {
+        "code": "calculation_unverified",
+        "message": "重算或来源验证未通过"
+      },
+      "provenance": null,
+      "kind": null,
+      "calculation": {
+        "status": "partial",
+        "engine_execution": "success",
+        "provenance": {
+          "workbook_id": "9b3f8bcb2fe726e3043db5a3698ea679e14394dfbfdab9f1a4ad9054b8410f87",
+          "output_hash": "7b6565ff4d904c1d5d159c6023133495ba13eaf81bfe0d07e4ad0aff826db94a",
+          "engine": "libreoffice_calc_headless",
+          "validator_version": "v3_unified",
+          "calculated_at": "2026-10-23T09:20:06.948415+00:00"
+        },
+        "total_formulas": 343,
+        "cached_formulas": 343,
+        "uncalculated_formulas": 0,
+        "total_errors": 32,
+        "error_summary": {
+          "#DIV/0!": [
+            "sheet1!P53",
+            "sheet1!R53"
+          ],
+          "#REF!": [
+            "sheet1!P5",
+            "sheet1!P6",
+            "sheet1!P7",
+            "sheet1!P8",
+            "sheet1!P9",
+            "sheet1!P10",
+            "sheet1!P11",
+            "sheet1!P12",
+            "sheet1!P13",
+            "sheet1!P14",
+            "sheet1!P15",
+            "sheet1!P16",
+            "sheet1!P17",
+            "sheet1!P18",
+            "sheet1!P19",
+            "sheet1!P26",
+            "sheet1!P27",
+            "sheet1!P28",
+            "sheet1!P29",
+            "sheet1!P30",
+            "sheet1!P31",
+            "sheet1!P32",
+            "sheet1!P33",
+            "sheet1!P34",
+            "sheet1!P35",
+            "sheet1!P36",
+            "sheet1!P37",
+            "sheet1!P38",
+            "sheet1!P39",
+            "sheet1!P40"
+          ]
+        }
+      }
+    },
+    {
+      "status": "error",
+      "error": {
+        "code": "sheet_not_found",
+        "message": "工作簿 (工数3Q预实管理.xlsx) 中不存在工作表 '工数3Q预实管理.xlsx'",
+        "requested_sheet": "工数3Q预实管理.xlsx",
+        "available_sheets": [
+          "1019"
+        ],
+        "recovery": "select_existing_sheet"
+      },
+      "provenance": {
+        "workbook_id": "9b3f8bcb2fe726e3043db5a3698ea679e14394dfbfdab9f1a4ad9054b8410f87",
+        "file_path": "/workspace/工数3Q预实管理.xlsx"
+      },
+      "kind": null
+    }
+  ]
+}

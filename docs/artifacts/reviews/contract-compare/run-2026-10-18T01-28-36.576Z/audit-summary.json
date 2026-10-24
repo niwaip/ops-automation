@@ -13,12 +13,12 @@
       }
     },
     "recovery": {
-      "attempted": 14,
-      "outputs": 14,
-      "coreDiffPassed": 13,
+      "attempted": 15,
+      "outputs": 15,
+      "coreDiffPassed": 14,
       "runnerCounts": {
         "passed": 4,
-        "failed": 10
+        "failed": 11
       }
     },
     "domain": {
@@ -937,6 +937,41 @@
         "modifiedCount": 1,
         "unchangedCount": 5,
         "mediumRiskCount": 0,
+        "sourceClauseCount": 6,
+        "targetClauseCount": 6
+      },
+      "coreDiffPassed": true,
+      "artifactVerified": true
+    },
+    {
+      "stage": "recovery",
+      "id": "CMP16",
+      "name": "反向比较验证增删方向",
+      "runnerStatus": "failed",
+      "executionId": "60313c38-261e-48c6-8258-cac6579104a5",
+      "executionStatus": "succeeded",
+      "output": true,
+      "bodyGaps": [],
+      "oracleErrors": [],
+      "roundTripErrors": [],
+      "falsePositive": false,
+      "failureNames": [
+        "business model ledger present",
+        "selected 35B used for semantic audit"
+      ],
+      "sourceDrift": [],
+      "wallMs": 40367,
+      "businessCalls": 0,
+      "businessModels": [],
+      "metrics": {
+        "addedCount": 1,
+        "isTruncated": false,
+        "deletedCount": 1,
+        "totalClauses": 7,
+        "highRiskCount": 0,
+        "modifiedCount": 0,
+        "unchangedCount": 5,
+        "mediumRiskCount": 2,
         "sourceClauseCount": 6,
         "targetClauseCount": 6
       },

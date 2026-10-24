@@ -1,0 +1,204 @@
+{
+  "elapsedMs": 7712,
+  "task": {
+    "captureId": "b05d5a16-bbb0-4d37-9570-cdb9eaf2d879",
+    "status": "ready",
+    "progress": 100,
+    "createdAt": "2026-10-22T12:27:27.188Z",
+    "updatedAt": "2026-10-22T12:27:34.384Z",
+    "ownerUserId": "e7fce333-a8f4-4097-9a53-f0a4c729da46",
+    "skillId": "c60d78fd-b6c3-4e7c-99ba-67f6d61efecd",
+    "slug": "dept-summary",
+    "version": 4,
+    "executionMode": "verified_workflow"
+  },
+  "detail": {
+    "id": "c60d78fd-b6c3-4e7c-99ba-67f6d61efecd",
+    "slug": "dept-summary",
+    "displayName": "部门别有偿统计",
+    "description": "按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据",
+    "version": 4,
+    "triggers": [
+      "部门别有偿统计",
+      "用部门别有偿统计处理",
+      "使用部门别有偿统计",
+      "dept-summary"
+    ],
+    "aliases": [
+      "部门别有偿统计",
+      "dept-summary"
+    ],
+    "deliverables": [],
+    "hasScript": true,
+    "packageHash": "7b3316d4bc6379a7937f09a990bb957b4fe824b685c811737926e8ee32b04d4f",
+    "createdAt": "2026-10-22T10:57:55.817Z",
+    "updatedAt": "2026-10-22T12:27:34.383Z",
+    "skillMdContent": "---\nname: dept-summary\nzh_name: \"部门别有偿统计\"\ndescription: \"基于工数实绩明细表，按部门编号分组汇总金额（K），并排除WBS编号以特定前缀开头的记录。\"\nzh_description: \"基于工数实绩明细表，按部门编号分组汇总金额（K），并排除WBS编号以特定前缀开头的记录。\"\ntriggers:\n  - \"部门别有偿统计\"\n  - \"用部门别有偿统计处理\"\n  - \"dept-summary\"\naliases: [\"部门别有偿统计\", \"dept-summary\"]\ndeliverables: []\nrequires_execution: true\nexecution_mode: verified_workflow\ndefault_rounds: 1\n---\n\n# 部门别有偿统计\n\n用户需要处理包含'部门编号'、'金额'和'WBS编号'字段的表格数据，要求按部门统计金额总和，且需过滤掉WBS编号以指定前缀（如ex, sy等）开头的无效或特殊数据。适用于XLSX/XLSM格式的单一工作表数据清洗与聚合。\n\n- 加载指定Excel文件，定位到包含'部门编号'、'金额(K)'和'WBS编号'的工作表。\n- 数据预处理：筛选保留'WBS编号'列中不包含前缀'ex', 'sy', 'sp', 'ip', 'ib', 'sz'的行数据。\n- 数据分组：以'部门编号'为唯一分组键，对原始数据进行分组。\n- 聚合计算：对每个分组内的'金额(K)'字段执行求和操作，得到各部门金额合计。\n- 输出结果：生成包含'部门编号'和'合计金额'的新表格/数据集。\n\n执行当前附件时按字段重新定位数据，不固化旧文件名、行号或旧结果。核算由确定性程序执行并验收；有歧义时先确认，不能从技能名称补充筛选。\n\n- 核算规则与操作：[workflow.json](references/workflow.json)。执行时读取。\n- 用户原话与提炼依据：[authoring.json](references/authoring.json)。追溯或修改口径时读取。\n- 独立重放验收：[validation.json](references/validation.json)。排查数值差异时读取。\n- 独立执行：`python scripts/run.py --input /workspace/新附件.xlsx --receipt /workspace/核算回执.json`。\n\n结果表格由程序生成。LLM 仅基于验证回执选择解读重点，不改写数值或推断未确认的业务原因。\n",
+    "scriptFiles": [
+      {
+        "name": "run.py",
+        "content": "\"\"\"Portable, read-only interpreter for saved spreadsheet aggregation workflows.\n\nThis exact module is shipped as scripts/run.py. No generated code is evaluated.\n\"\"\"\n\nimport argparse\nimport hashlib\nimport json\nimport re\nimport time\nfrom collections import Counter, defaultdict\nfrom decimal import Decimal, InvalidOperation, localcontext\nfrom pathlib import Path\n\nimport openpyxl\n\n\nENGINE = 'spreadsheet-group-sum-v1'\n\n\ndef digest(value):\n    return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False,\n                                     separators=(',', ':')).encode()).hexdigest()\n\n\ndef validate_workflow(plan):\n    allowed = {'schema_version', 'engine', 'group_by', 'measure', 'filters',\n               'instructions', 'steps', 'verification'}\n    if not isinstance(plan, dict) or set(plan) != allowed:\n        raise ValueError('流程字段不完整或包含未知操作')\n    if plan['schema_version'] != 1 or plan['engine'] != ENGINE:\n        raise ValueError('不支持的核算流程版本')\n    for name in ('group_by', 'measure'):\n        if not isinstance(plan[name], str) or not plan[name].strip():\n            raise ValueError('缺少明确的分组或求和字段')\n    if plan['verification'] != {'source_hash': True, 'row_accounting': True, 'group_total': True}:\n        raise ValueError('不能关闭核算验收')\n    for name in ('instructions', 'steps'):\n        if not isinstance(plan[name], list) or not plan[name] or not all(isinstance(v, str) and v.strip() for v in plan[name]):\n            raise ValueError('缺少业务规则或执行步骤')\n    if not isinstance(plan['filters'], list) or len(plan['filters']) > 16:\n        raise ValueError('非法筛选列表')\n    for f in plan['filters']:\n        if (not isinstance(f, dict) or set(f) != {'field', 'op', 'values'}\n                or not isinstance(f['field'], str) or not f['field'].strip()\n                or f['op'] not in {'exclude_prefix', 'in', 'not_in'}\n                or not isinstance(f['values'], list) or not f['values']\n                or not all(isinstance(v, str) and v.strip() for v in f['values'])):\n            raise ValueError('筛选规则不完整或操作不受支持')\n    return plan\n\n\ndef field_key(value):\n    return re.sub(r'\\s+', '', str(value or '')).casefold()\n\n\ndef bind_field(headers, field):\n    key = field_key(field)\n    exact = [i for i, h in enumerate(headers) if field_key(h) == key]\n    matches = exact or [i for i, h in enumerate(headers)\n                        if re.sub(r'[（(][^()（）]+[）)]$', '', field_key(h)) == key]\n    if len(matches) != 1:\n        raise ValueError(f'字段缺失或不唯一：{field}')\n    return matches[0]\n\n\ndef locate_table(workbook, fields):\n    candidates = []\n    for ws in workbook:\n        if ws.max_row * ws.max_column > 250000:\n            raise ValueError('工作表超过可验证核算预算')\n        for row in ws.iter_rows(max_row=min(ws.max_row, 50), values_only=True):\n            try:\n                mapping = {f: bind_field(row, f) for f in fields}\n                candidates.append((ws, row, mapping))\n            except ValueError:\n                continue\n    if len(candidates) != 1:\n        raise ValueError('无法按必需字段定位唯一表头与工作表；请检查缺失字段、重复字段或多个候选表')\n    ws, headers, mapping = candidates[0]\n    # Locate the exact header without relying on worksheet dimension metadata.\n    header_row = next(r[0].row for r in ws.iter_rows(max_row=min(ws.max_row, 50))\n                      if tuple(c.value for c in r) == tuple(headers))\n    return ws, header_row, headers, mapping\n\n\ndef matches(value, condition):\n    text = str(value if value is not None else '').strip().casefold()\n    values = [v.strip().casefold() for v in condition['values']]\n    if condition['op'] == 'exclude_prefix':\n        return not text.startswith(tuple(values))\n    present = text in values\n    return present if condition['op'] == 'in' else not present\n\n\ndef decimal_amount(value, coordinate):\n    if value is None or isinstance(value, bool):\n        raise ValueError(f'金额缺失或不是数值：{coordinate}')\n    try:\n        amount = Decimal(str(value))\n    except InvalidOperation as error:\n        raise ValueError(f'金额不是明确数值：{coordinate}') from error\n    if not amount.is_finite():\n        raise ValueError(f'金额不是有限数值：{coordinate}')\n    return amount\n\n\ndef business_end(ws, header_row, mapping):\n    \"\"\"Exclude a standalone trailing report-query section; never skip incomplete detail.\"\"\"\n    for row in ws.iter_rows(min_row=header_row + 1):\n        if not re.fullmatch(r'查询条件\\s*[:：]\\s*', str(row[0].value or '').strip()):\n            continue\n        start = row[0].row\n        for tail in ws.iter_rows(min_row=start):\n            filled = [c for c in tail if c.value is not None and str(c.value).strip()]\n            if filled and (len(filled) != 1 or filled[0].column != 1\n                           or not re.search(r'[:：]', str(filled[0].value))):\n                raise ValueError('查询条件说明段与业务字段混杂，不能猜测核算范围')\n            if any(tail[i].value is not None for i in mapping.values() if i != 0):\n                raise ValueError('表尾说明含业务数据，不能跳过')\n        return start - 1, list(range(start, ws.max_row + 1))\n    return ws.max_row, []\n\n\ndef execute_workflow(source, plan, deadline=None):\n    with localcontext() as context:\n        context.prec = 100\n        return _execute_workflow(source, plan, deadline)\n\n\ndef _execute_workflow(source, plan, deadline=None):\n    validate_workflow(plan)\n    source = Path(source).resolve()\n    if source.suffix.lower() not in {'.xlsx', '.xlsm'}:\n        raise ValueError('当前可验证流程仅支持 XLSX/XLSM 原附件')\n    source_hash = hashlib.sha256(source.read_bytes()).hexdigest()\n    workbook = openpyxl.load_workbook(source, data_only=False)\n    cached = None\n    try:\n        fields = list(dict.fromkeys([plan['group_by'], plan['measure']]\n                                   + [f['field'] for f in plan['filters']]))\n        ws, header_row, headers, mapping = locate_table(workbook, fields)\n        end_row, metadata_rows = business_end(ws, header_row, mapping)\n        cached = openpyxl.load_workbook(source, data_only=True)\n        value_ws = cached[ws.title]\n        sums = defaultdict(Decimal); counts = Counter()\n        source_rows = 0; excluded = Counter(); skipped = []; selected = []\n        for row in ws.iter_rows(min_row=header_row + 1, max_row=end_row):\n            if deadline is not None and time.monotonic() >= deadline:\n                raise TimeoutError('核算流程超时')\n            if not any(c.value is not None for c in row):\n                continue\n            r = row[0].row\n            group_cell = row[mapping[plan['group_by']]]\n            if re.fullmatch(r'(合计|总计|小计|total|grand total)[:：]?', str(group_cell.value or '').strip(), re.I):\n                # Only a trailing subtotal may be ignored; embedded totals are ambiguous.\n                if any(any(c.value is not None for c in rr) for rr in ws.iter_rows(min_row=r + 1)):\n                    raise ValueError('业务区域中存在合计行，不能猜测统计范围')\n                skipped.append(r)\n                continue\n            if group_cell.value is None or group_cell.data_type == 'f':\n                raise ValueError(f'分组字段缺失或含公式：{group_cell.coordinate}')\n            source_rows += 1\n            rejected = False\n            for i, f in enumerate(plan['filters']):\n                cell = row[mapping[f['field']]]\n                if cell.data_type == 'f' or cell.value is None:\n                    raise ValueError(f'筛选字段缺失或含公式：{cell.coordinate}')\n                if not matches(cell.value, f):\n                    excluded[str(i)] += 1\n                    rejected = True\n                    break\n            if rejected:\n                continue\n            amount_cell = row[mapping[plan['measure']]]\n            # Formula caches cannot establish freshness; require a recalculation workflow.\n            if amount_cell.data_type == 'f':\n                raise ValueError(f'金额含公式，需要显式重算流程：{amount_cell.coordinate}')\n            amount = decimal_amount(value_ws[amount_cell.coordinate].value, amount_cell.coordinate)\n            group = str(group_cell.value).strip()\n            if not group:\n                raise ValueError(f'分组字段为空：{group_cell.coordinate}')\n            sums[group] += amount; counts[group] += 1; selected.append(r)\n        if not source_rows:\n            raise ValueError('附件没有可核算业务明细')\n        total = sum(sums.values(), Decimal(0))\n        amount_header = str(headers[mapping[plan['measure']]])\n        unit_match = re.search(r'[（(]([^()（）]+)[）)]$', amount_header)\n        data = {\n            'kind': 'personal_skill_workflow', 'engine': ENGINE, 'plan_hash': digest(plan),\n            'workbook_id': source_hash, 'file_name': source.name, 'sheet': ws.title,\n            'header_row': header_row, 'data_range': f'A{header_row + 1}:{openpyxl.utils.get_column_letter(ws.max_column)}{end_row}',\n            'field_mapping': {f: openpyxl.utils.get_column_letter(i + 1) for f, i in mapping.items()},\n            'group_by': plan['group_by'], 'measure': amount_header,\n            'unit': unit_match.group(1) if unit_match else '原表单位',\n            'filters': plan['filters'], 'source_rows': source_rows,\n            'included_rows': len(selected), 'excluded_rows': sum(excluded.values()),\n            'excluded_by_filter': dict(excluded), 'selected_rows': selected, 'skipped_summary_rows': skipped,\n            'skipped_metadata_rows': metadata_rows,\n            'groups': [{'key': k, 'count': counts[k], 'amount': str(sums[k])} for k in sorted(sums)],\n            'total': str(total), 'verified': True,\n        }\n        data['evidence_id'] = digest(data)[:24]\n        verify_receipt(data, plan, source)\n        return data\n    finally:\n        workbook.close()\n        if cached:\n            cached.close()\n\n\ndef verify_receipt(data, plan, source):\n    if data['plan_hash'] != digest(plan) or data['workbook_id'] != hashlib.sha256(Path(source).read_bytes()).hexdigest():\n        raise ValueError('流程或输入文件摘要不一致')\n    if data['source_rows'] != data['included_rows'] + data['excluded_rows']:\n        raise ValueError('筛选前后行数不守恒')\n    if sum(g['count'] for g in data['groups']) != data['included_rows']:\n        raise ValueError('分组条数不守恒')\n    if len(set(data['selected_rows'])) != data['included_rows']:\n        raise ValueError('核算范围含重复或缺失行')\n    with localcontext() as context:\n        context.prec = 100\n        if sum((Decimal(g['amount']) for g in data['groups']), Decimal(0)) != Decimal(data['total']):\n            raise ValueError('分组金额与总额不一致')\n    if data['evidence_id'] != digest({k: v for k, v in data.items() if k != 'evidence_id'})[:24]:\n        raise ValueError('核算回执摘要不一致')\n\n\ndef render_receipt(data):\n    def cell(value):\n        return str(value).replace('|', '\\\\|').replace('\\n', ' ').replace('\\r', ' ')\n    lines = [f\"已完成核算并通过校验：纳入 **{data['included_rows']} 条**，排除 **{data['excluded_rows']} 条**。\",\n             '', f\"| {cell(data['group_by'])} | 条数 | {cell(data['measure'])} |\", '|---|---:|---:|']\n    lines += [f\"| {cell(g['key'])} | {g['count']} | {g['amount']} |\" for g in data['groups']]\n    lines += [f\"| **合计** | **{data['included_rows']}** | **{data['total']}** |\", '',\n              f\"来源：{cell(data['file_name'])}，{cell(data['sheet'])}，{data['data_range']}；单位：{cell(data['unit'])}。\"]\n    return '\\n'.join(lines)\n\n\ndef main():\n    parser = argparse.ArgumentParser(description='Replay and verify a saved calculation workflow')\n    parser.add_argument('--input', required=True)\n    parser.add_argument('--plan', default=str(Path(__file__).resolve().parent.parent / 'references' / 'workflow.json'))\n    parser.add_argument('--receipt', help='Optional JSON execution receipt path')\n    args = parser.parse_args()\n    plan = json.loads(Path(args.plan).read_text(encoding='utf-8'))\n    data = execute_workflow(args.input, plan)\n    if args.receipt:\n        if Path(args.receipt).resolve() == Path(args.input).resolve():\n            raise ValueError('回执不能覆盖输入附件')\n        Path(args.receipt).write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')\n    print(json.dumps(data, ensure_ascii=False))\n\n\nif __name__ == '__main__':\n    main()\n"
+      }
+    ],
+    "referenceFiles": [
+      {
+        "name": "authoring.json",
+        "content": "{\n  \"schema_version\": 1,\n  \"model\": \"d13e0d30-87b9-4e87-b96a-d8b1b3cf78af\",\n  \"description\": \"基于工数实绩明细表，按部门编号分组汇总金额（K），并排除WBS编号以特定前缀开头的记录。\",\n  \"when_to_use\": \"用户需要处理包含'部门编号'、'金额'和'WBS编号'字段的表格数据，要求按部门统计金额总和，且需过滤掉WBS编号以指定前缀（如ex, sy等）开头的无效或特殊数据。适用于XLSX/XLSM格式的单一工作表数据清洗与聚合。\",\n  \"procedure\": [\n    \"加载指定Excel文件，定位到包含'部门编号'、'金额(K)'和'WBS编号'的工作表。\",\n    \"数据预处理：筛选保留'WBS编号'列中不包含前缀'ex', 'sy', 'sp', 'ip', 'ib', 'sz'的行数据。\",\n    \"数据分组：以'部门编号'为唯一分组键，对原始数据进行分组。\",\n    \"聚合计算：对每个分组内的'金额(K)'字段执行求和操作，得到各部门金额合计。\",\n    \"输出结果：生成包含'部门编号'和'合计金额'的新表格/数据集。\"\n  ],\n  \"evidence\": [\n    {\n      \"field\": \"部门编号\",\n      \"message_id\": \"1792662113385-26w75yrd\",\n      \"quote\": \"按照 部门编号 分组统计\"\n    },\n    {\n      \"field\": \"金额(K)\",\n      \"message_id\": \"1792662113385-26w75yrd\",\n      \"quote\": \"统计金额 的合计\"\n    },\n    {\n      \"field\": \"WBS编号\",\n      \"message_id\": \"1792662113385-26w75yrd\",\n      \"quote\": \"不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据\"\n    }\n  ],\n  \"duration_ms\": 7069,\n  \"usage\": [\n    {\n      \"finishReason\": \"stop\",\n      \"usage\": {\n        \"prompt_tokens\": 663,\n        \"total_tokens\": 1252,\n        \"completion_tokens\": 589,\n        \"prompt_tokens_details\": null\n      },\n      \"validation\": \"\"\n    }\n  ],\n  \"user_messages\": [\n    {\n      \"id\": \"1792662113385-26w75yrd\",\n      \"text\": \"按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据\"\n    }\n  ],\n  \"source_ref\": {\n    \"kind\": \"sandbox_turn\",\n    \"sessionId\": \"chat-session-1792662104437-7gysxeoy\",\n    \"messageId\": \"1792662113385-m6g3sd8r\"\n  }\n}"
+      },
+      {
+        "name": "rules.json",
+        "content": "{\n  \"slug\": \"dept-summary\",\n  \"displayName\": \"部门别有偿统计\",\n  \"objective\": \"按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据\",\n  \"confirmedInstructions\": [\n    \"按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据\"\n  ],\n  \"negativeConstraints\": [\n    {\n      \"userCorrection\": \"按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据\",\n      \"adjustment\": \"按用户纠偏指令应用规则约束\"\n    }\n  ],\n  \"inputExpectations\": [\n    {\n      \"name\": \"工数实绩明细_20261020134124.xlsx\",\n      \"type\": \"xlsx\",\n      \"description\": \"来源附件 [工数实绩明细_20261020134124.xlsx] 对应的同构输入\",\n      \"required\": true\n    }\n  ],\n  \"outputContract\": [],\n  \"reusableSteps\": [\n    \"绑定本轮唯一附件并计算摘要\",\n    \"按必需字段定位唯一表头与工作表，排除独立的表尾查询条件说明段\",\n    \"全量读取业务行并逐条执行筛选\",\n    \"按分组字段用 Decimal 汇总原单位金额\",\n    \"核对输入未变、行数守恒、分组金额与总额一致\",\n    \"只从已验证回执呈现结果\"\n  ],\n  \"workflow\": \"workflow.json\",\n  \"createdAt\": \"2026-10-22T12:27:34.295Z\"\n}"
+      },
+      {
+        "name": "validation.json",
+        "content": "{\n  \"schema_version\": 1,\n  \"status\": \"replayed\",\n  \"verifier\": \"sheetjs-bigint-v1\",\n  \"source_sha256\": \"5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374\",\n  \"plan_sha256\": \"b0d4e9a30c3c06f7a87d1f803942eb78940488e7bd6f6e1a9e25cc7f3f64bf0f\",\n  \"sheet\": \"工数实绩明细\",\n  \"source_rows\": 274,\n  \"included_rows\": 253,\n  \"excluded_rows\": 21,\n  \"total_scaled_1e20\": \"163741990000000000000000\",\n  \"group_count\": 7,\n  \"skipped_metadata_rows\": [\n    279,\n    280,\n    281,\n    282,\n    283\n  ]\n}"
+      },
+      {
+        "name": "workflow.json",
+        "content": "{\n  \"schema_version\": 1,\n  \"engine\": \"spreadsheet-group-sum-v1\",\n  \"group_by\": \"部门编号\",\n  \"measure\": \"金额(K)\",\n  \"filters\": [\n    {\n      \"field\": \"WBS编号\",\n      \"op\": \"exclude_prefix\",\n      \"values\": [\n        \"ex\",\n        \"sy\",\n        \"sp\",\n        \"ip\",\n        \"ib\",\n        \"sz\"\n      ]\n    }\n  ],\n  \"instructions\": [\n    \"按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据\"\n  ],\n  \"steps\": [\n    \"绑定本轮唯一附件并计算摘要\",\n    \"按必需字段定位唯一表头与工作表，排除独立的表尾查询条件说明段\",\n    \"全量读取业务行并逐条执行筛选\",\n    \"按分组字段用 Decimal 汇总原单位金额\",\n    \"核对输入未变、行数守恒、分组金额与总额一致\",\n    \"只从已验证回执呈现结果\"\n  ],\n  \"verification\": {\n    \"source_hash\": true,\n    \"row_accounting\": true,\n    \"group_total\": true\n  }\n}\n"
+      }
+    ],
+    "assetFiles": [],
+    "sourceRef": {
+      "kind": "sandbox_turn",
+      "sessionId": "chat-session-1792662104437-7gysxeoy",
+      "messageId": "1792662113385-m6g3sd8r"
+    },
+    "versions": [
+      {
+        "version": 1,
+        "packageHash": "5020bab3fa09951b703b17a903b6a113f6ee399b892c74d1eeb2800074af9084",
+        "createdAt": "2026-10-22T10:57:55.817Z",
+        "description": "初始创建 v1"
+      },
+      {
+        "version": 2,
+        "packageHash": "940f7d7916871ed56b632f17582a288389fd466372e413eb4223e73f94f7896a",
+        "createdAt": "2026-10-22T11:51:03.240Z",
+        "description": "更新至 v2"
+      },
+      {
+        "version": 3,
+        "packageHash": "dabcae4c753b211f4f134fdbbc8282a7bca4f8f9cf90bff786bde480705e290b",
+        "createdAt": "2026-10-22T12:22:24.273Z",
+        "description": "更新至 v3"
+      },
+      {
+        "version": 4,
+        "packageHash": "7b3316d4bc6379a7937f09a990bb957b4fe824b685c811737926e8ee32b04d4f",
+        "createdAt": "2026-10-22T12:27:34.383Z",
+        "description": "更新至 v4"
+      }
+    ]
+  },
+  "plan": {
+    "schema_version": 1,
+    "engine": "spreadsheet-group-sum-v1",
+    "group_by": "部门编号",
+    "measure": "金额(K)",
+    "filters": [
+      {
+        "field": "WBS编号",
+        "op": "exclude_prefix",
+        "values": [
+          "ex",
+          "sy",
+          "sp",
+          "ip",
+          "ib",
+          "sz"
+        ]
+      }
+    ],
+    "instructions": [
+      "按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据"
+    ],
+    "steps": [
+      "绑定本轮唯一附件并计算摘要",
+      "按必需字段定位唯一表头与工作表，排除独立的表尾查询条件说明段",
+      "全量读取业务行并逐条执行筛选",
+      "按分组字段用 Decimal 汇总原单位金额",
+      "核对输入未变、行数守恒、分组金额与总额一致",
+      "只从已验证回执呈现结果"
+    ],
+    "verification": {
+      "source_hash": true,
+      "row_accounting": true,
+      "group_total": true
+    }
+  },
+  "design": {
+    "schema_version": 1,
+    "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+    "description": "基于工数实绩明细表，按部门编号分组汇总金额（K），并排除WBS编号以特定前缀开头的记录。",
+    "when_to_use": "用户需要处理包含'部门编号'、'金额'和'WBS编号'字段的表格数据，要求按部门统计金额总和，且需过滤掉WBS编号以指定前缀（如ex, sy等）开头的无效或特殊数据。适用于XLSX/XLSM格式的单一工作表数据清洗与聚合。",
+    "procedure": [
+      "加载指定Excel文件，定位到包含'部门编号'、'金额(K)'和'WBS编号'的工作表。",
+      "数据预处理：筛选保留'WBS编号'列中不包含前缀'ex', 'sy', 'sp', 'ip', 'ib', 'sz'的行数据。",
+      "数据分组：以'部门编号'为唯一分组键，对原始数据进行分组。",
+      "聚合计算：对每个分组内的'金额(K)'字段执行求和操作，得到各部门金额合计。",
+      "输出结果：生成包含'部门编号'和'合计金额'的新表格/数据集。"
+    ],
+    "evidence": [
+      {
+        "field": "部门编号",
+        "message_id": "1792662113385-26w75yrd",
+        "quote": "按照 部门编号 分组统计"
+      },
+      {
+        "field": "金额(K)",
+        "message_id": "1792662113385-26w75yrd",
+        "quote": "统计金额 的合计"
+      },
+      {
+        "field": "WBS编号",
+        "message_id": "1792662113385-26w75yrd",
+        "quote": "不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据"
+      }
+    ],
+    "duration_ms": 7069,
+    "usage": [
+      {
+        "finishReason": "stop",
+        "usage": {
+          "prompt_tokens": 663,
+          "total_tokens": 1252,
+          "completion_tokens": 589,
+          "prompt_tokens_details": null
+        },
+        "validation": ""
+      }
+    ],
+    "user_messages": [
+      {
+        "id": "1792662113385-26w75yrd",
+        "text": "按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据"
+      }
+    ],
+    "source_ref": {
+      "kind": "sandbox_turn",
+      "sessionId": "chat-session-1792662104437-7gysxeoy",
+      "messageId": "1792662113385-m6g3sd8r"
+    }
+  },
+  "validation": {
+    "schema_version": 1,
+    "status": "replayed",
+    "verifier": "sheetjs-bigint-v1",
+    "source_sha256": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+    "plan_sha256": "b0d4e9a30c3c06f7a87d1f803942eb78940488e7bd6f6e1a9e25cc7f3f64bf0f",
+    "sheet": "工数实绩明细",
+    "source_rows": 274,
+    "included_rows": 253,
+    "excluded_rows": 21,
+    "total_scaled_1e20": "163741990000000000000000",
+    "group_count": 7,
+    "skipped_metadata_rows": [
+      279,
+      280,
+      281,
+      282,
+      283
+    ]
+  }
+}

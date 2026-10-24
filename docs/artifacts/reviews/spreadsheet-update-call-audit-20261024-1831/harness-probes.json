@@ -1,0 +1,44 @@
+{
+  "ungrounded_quote_accepted": true,
+  "ungrounded_quote_result": {
+    "费用": {
+      "section": "费用",
+      "target_title": "内部成本",
+      "quote": "用户从未说过的确认"
+    }
+  },
+  "negative_reply_accepted_as_confirmation": true,
+  "negative_reply_result": {
+    "section": "费用",
+    "target_title": "ABCDEF",
+    "quote": "不要确认 ABCXYZ"
+  },
+  "general_mapping_applied_to_unrelated_hash": true,
+  "cross_section_key_accepted": true,
+  "cross_section_binding": {
+    "region": "销售",
+    "rows": {
+      "SERVICE_ONLY": 9
+    },
+    "column": 3
+  },
+  "negative_preserved_amount_not_flagged_as_impact": true,
+  "reconciliation_result": {
+    "section": "费用",
+    "unit": "K",
+    "source_actual_sum": "100",
+    "preserved_old_forecast_sum": "-5",
+    "delivered_forecast_sum": "95",
+    "is_balanced": true,
+    "unmatched_count": 1,
+    "unmatched_details": [
+      {
+        "key": "CREDIT",
+        "row": 1,
+        "old_forecast": "-5",
+        "unit": "K",
+        "has_impact": false
+      }
+    ]
+  }
+}

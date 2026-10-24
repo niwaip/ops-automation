@@ -1,0 +1,322 @@
+[
+  {
+    "case": "wrong-business-defaults",
+    "decision": {
+      "schema_version": 1,
+      "task_mode": "consult",
+      "output_mode": "conversation",
+      "artifact_types": [],
+      "skill_invocation": {
+        "mode": "none",
+        "name": "",
+        "replace_defaults": false
+      },
+      "requirements": [
+        {
+          "id": "1",
+          "quote": "记录：甲部门已审批10，乙部门未审批20。汇总全部记录，不按审批状态过滤，只在聊天中回答"
+        }
+      ],
+      "action": "general",
+      "skill_id": null,
+      "use_default_rules": false,
+      "rule_basis": "",
+      "reason": "scope_mismatch",
+      "question": ""
+    },
+    "model_calls": 3,
+    "elapsed_ms": 5688,
+    "guards": [
+      {
+        "guard": "task_intent_review",
+        "action": "revise",
+        "reason": {
+          "output_mode": "conversation",
+          "task_mode": "consult"
+        }
+      },
+      {
+        "guard": "task_intent",
+        "action": "accept",
+        "reason": {
+          "task_mode": "consult",
+          "output_mode": "conversation",
+          "artifact_types": [],
+          "skill_invocation": {
+            "mode": "none",
+            "name": "",
+            "replace_defaults": false
+          },
+          "requirements": [
+            {
+              "id": "1",
+              "quote": "记录：甲部门已审批10，乙部门未审批20。汇总全部记录，不按审批状态过滤，只在聊天中回答"
+            }
+          ]
+        }
+      },
+      {
+        "guard": "skill_admission",
+        "action": "general",
+        "reason": {
+          "initial_candidate": "limited-ledger-73",
+          "skill_id": null,
+          "use_default_rules": false,
+          "reason": "scope_mismatch",
+          "requirement_ids": [
+            "1"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "case": "alternative-writing",
+    "decision": {
+      "schema_version": 1,
+      "task_mode": "execute",
+      "output_mode": "conversation",
+      "artifact_types": [],
+      "skill_invocation": {
+        "mode": "none",
+        "name": "",
+        "replace_defaults": false
+      },
+      "requirements": [
+        {
+          "id": "1",
+          "quote": "说明：每周周一巡检，发现异常即登记"
+        },
+        {
+          "id": "2",
+          "quote": "将这段说明整理成两个段落"
+        },
+        {
+          "id": "3",
+          "quote": "不要制作演示文稿"
+        }
+      ],
+      "action": "general",
+      "skill_id": null,
+      "use_default_rules": false,
+      "rule_basis": "",
+      "reason": "scope_mismatch",
+      "question": ""
+    },
+    "model_calls": 3,
+    "elapsed_ms": 5652,
+    "guards": [
+      {
+        "guard": "task_intent_review",
+        "action": "revise",
+        "reason": {
+          "output_mode": "conversation",
+          "task_mode": "execute"
+        }
+      },
+      {
+        "guard": "task_intent",
+        "action": "accept",
+        "reason": {
+          "task_mode": "execute",
+          "output_mode": "conversation",
+          "artifact_types": [],
+          "skill_invocation": {
+            "mode": "none",
+            "name": "",
+            "replace_defaults": false
+          },
+          "requirements": [
+            {
+              "id": "1",
+              "quote": "说明：每周周一巡检，发现异常即登记"
+            },
+            {
+              "id": "2",
+              "quote": "将这段说明整理成两个段落"
+            },
+            {
+              "id": "3",
+              "quote": "不要制作演示文稿"
+            }
+          ]
+        }
+      },
+      {
+        "guard": "skill_admission",
+        "action": "general",
+        "reason": {
+          "initial_candidate": "slide-styler-91",
+          "skill_id": null,
+          "use_default_rules": false,
+          "reason": "scope_mismatch",
+          "requirement_ids": [
+            "1",
+            "2",
+            "3"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "case": "consult-not-execution",
+    "decision": {
+      "schema_version": 1,
+      "task_mode": "consult",
+      "output_mode": "conversation",
+      "artifact_types": [],
+      "skill_invocation": {
+        "mode": "reference",
+        "name": "invoice-review-67",
+        "replace_defaults": false
+      },
+      "requirements": [
+        {
+          "id": "req_1",
+          "quote": "解释invoice-review-67是干什么的"
+        },
+        {
+          "id": "req_2",
+          "quote": "不要执行审批"
+        }
+      ],
+      "action": "general",
+      "skill_id": null,
+      "use_default_rules": false,
+      "rule_basis": "",
+      "reason": "scope_mismatch",
+      "question": ""
+    },
+    "model_calls": 3,
+    "elapsed_ms": 5621,
+    "guards": [
+      {
+        "guard": "task_intent_review",
+        "action": "revise",
+        "reason": {
+          "output_mode": "conversation",
+          "task_mode": "consult"
+        }
+      },
+      {
+        "guard": "task_intent",
+        "action": "accept",
+        "reason": {
+          "task_mode": "consult",
+          "output_mode": "conversation",
+          "artifact_types": [],
+          "skill_invocation": {
+            "mode": "reference",
+            "name": "invoice-review-67",
+            "replace_defaults": false
+          },
+          "requirements": [
+            {
+              "id": "req_1",
+              "quote": "解释invoice-review-67是干什么的"
+            },
+            {
+              "id": "req_2",
+              "quote": "不要执行审批"
+            }
+          ]
+        }
+      },
+      {
+        "guard": "skill_admission",
+        "action": "general",
+        "reason": {
+          "initial_candidate": "invoice-review-67",
+          "skill_id": null,
+          "use_default_rules": false,
+          "reason": "scope_mismatch",
+          "requirement_ids": [
+            "req_1",
+            "req_2"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "case": "new-skill-no-code-branch",
+    "decision": {
+      "schema_version": 1,
+      "task_mode": "execute",
+      "output_mode": "conversation",
+      "artifact_types": [],
+      "skill_invocation": {
+        "mode": "execute",
+        "name": "contract-digest-8f",
+        "replace_defaults": false
+      },
+      "requirements": [
+        {
+          "id": "req_1",
+          "quote": "用contract-digest-8f整理这段条款中的义务：甲方每月交付报告，乙方五日内确认。"
+        },
+        {
+          "id": "req_2",
+          "quote": "在聊天中列出即可。"
+        }
+      ],
+      "action": "use",
+      "skill_id": "contract-digest-8f",
+      "use_default_rules": true,
+      "rule_basis": "用contract-digest-8f整理这段条款中的义务：甲方每月交付报告，乙方五日内确认。在聊天中列出即可。",
+      "reason": "applicable",
+      "question": ""
+    },
+    "model_calls": 3,
+    "elapsed_ms": 6743,
+    "guards": [
+      {
+        "guard": "task_intent_review",
+        "action": "revise",
+        "reason": {
+          "output_mode": "conversation",
+          "task_mode": "execute"
+        }
+      },
+      {
+        "guard": "task_intent",
+        "action": "accept",
+        "reason": {
+          "task_mode": "execute",
+          "output_mode": "conversation",
+          "artifact_types": [],
+          "skill_invocation": {
+            "mode": "execute",
+            "name": "contract-digest-8f",
+            "replace_defaults": false
+          },
+          "requirements": [
+            {
+              "id": "req_1",
+              "quote": "用contract-digest-8f整理这段条款中的义务：甲方每月交付报告，乙方五日内确认。"
+            },
+            {
+              "id": "req_2",
+              "quote": "在聊天中列出即可。"
+            }
+          ]
+        }
+      },
+      {
+        "guard": "skill_admission",
+        "action": "use",
+        "reason": {
+          "initial_candidate": "contract-digest-8f",
+          "skill_id": "contract-digest-8f",
+          "use_default_rules": true,
+          "reason": "applicable",
+          "requirement_ids": [
+            "req_1",
+            "req_2"
+          ]
+        }
+      }
+    ]
+  }
+]

@@ -1,0 +1,22 @@
+test_dependency_install_and_script_are_not_the_report (test_artifact_terminal_claims.TerminalArtifactClaimTests.test_dependency_install_and_script_are_not_the_report) ... ok
+test_exact_failed_turn_claim_is_missing (test_artifact_terminal_claims.TerminalArtifactClaimTests.test_exact_failed_turn_claim_is_missing) ... ok
+test_existing_current_file_can_be_delivered (test_artifact_terminal_claims.TerminalArtifactClaimTests.test_existing_current_file_can_be_delivered) ... ok
+test_loop_rejects_claim_even_after_normal_guards_allow_completion (test_artifact_terminal_claims.TerminalArtifactClaimTests.test_loop_rejects_claim_even_after_normal_guards_allow_completion) ... ok
+test_references_questions_and_explicit_failure_are_not_success_claims (test_artifact_terminal_claims.TerminalArtifactClaimTests.test_references_questions_and_explicit_failure_are_not_success_claims) ... ok
+test_stale_and_empty_files_cannot_satisfy_a_new_claim (test_artifact_terminal_claims.TerminalArtifactClaimTests.test_stale_and_empty_files_cannot_satisfy_a_new_claim) ... ok
+test_detect_missing_claimed_artifacts_rejects_historical_other_task_file (test_dsh.TestDshCoreModules.test_detect_missing_claimed_artifacts_rejects_historical_other_task_file)
+验证已存在但属于历史任务的 index.html 不会被误判为本轮已成功生成 ... ok
+test_missing_claimed_artifacts_sanitizes_sentence_prefixes (test_dsh.TestDshCoreModules.test_missing_claimed_artifacts_sanitizes_sentence_prefixes)
+验证带命令回显的句子中提取文件名时不会将句子前缀错当成文件名 ... ok
+test_generation_guard_rejects_plan_only_web_game_response (test_small_model_protocol.TestSmallModelProtocol.test_generation_guard_rejects_plan_only_web_game_response) ... ok
+test_metric_alignment_guard_intercepts_sheet_listing_parroting (test_small_model_protocol.TestSmallModelProtocol.test_metric_alignment_guard_intercepts_sheet_listing_parroting) ... ⚡ [Harness Deliverable Assertion Guard] 检测到用户要求生成 html 交付物但沙箱尚未生成，正在引导执行工具落盘...
+⚡ [Harness Contract Guard] 拦截未完成指标核算回复 (status=failed, satisfied=[], missing=['营业收入', '毛利率', '营业利润', '净利润'])
+ok
+test_guard_handles_assistant_messages_with_none_content (test_small_model_protocol.TestSmallModelProtocol.test_guard_handles_assistant_messages_with_none_content) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.044s
+
+OK
+🎯 [Skill Router] 命中意图规范: dept-summary (亲和度得分: 53.6)，正在注入专业规范...
+SUMMARY_JSON={"testsRun": 11, "failures": 0, "errors": 0, "skillFound": true, "selectedSkill": "dept-summary", "skillSha256": "9196a77b9ce8cfa0a96ba7eb66b0ea881e575aae29d693f17580d8d37d402737", "runtimeAgentLoopSha256": "cb0a949717ee68419a59b6bbb0212266bf63b8c90308cc1cdd7fedcb2acc08de"}

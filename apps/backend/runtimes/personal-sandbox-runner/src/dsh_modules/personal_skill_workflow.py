@@ -55,9 +55,16 @@ def try_run_personal_workflow(skill_res, files, prompt, history_file, history, s
     try:
         if not manifest_file.is_file():
             raise ValueError('该核算技能仅保存了说明，尚无可验证执行流程，请先升级技能')
-        manifest, saved, validation = load_package(package)
         if len(files) != 1:
+            is_composite_task = any(k in (prompt or "").lower() for k in [
+                "更新预实", "复制最新", "复制sheet", "更新数据", "更新表格", "填入数值", "更新快照"
+            ])
+            if is_composite_task:
+                telemetry.record_guard('personal_skill_workflow', 'fallback_composite_task', f'files_count={len(files)}')
+                _fallback_to_general_analysis(skill_res, prompt, history, files)
+                return False
             raise ValueError('请提供当前会话唯一的 XLSX/XLSM 附件')
+        manifest, saved, validation = load_package(package)
         filename = files[0]
         source = (Path(WORKSPACE_DIR) / filename).resolve()
         if not source.is_relative_to(Path(WORKSPACE_DIR).resolve()) or not source.is_file():

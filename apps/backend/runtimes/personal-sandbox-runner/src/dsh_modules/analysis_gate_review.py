@@ -36,6 +36,55 @@ def revalidate_review(issues, verdict, receipts, facts):
                 and filter_matches_entities(r, entities)
                 for r in receipts if isinstance(getattr(r, 'data', None), dict)
             )
+        elif code == 'grouping_incomplete':
+            # Dismissed by judge: verified if receipts demonstrate grouping execution across table coverage
+            justified = any(
+                getattr(r, 'is_success', False)
+                and isinstance(getattr(r, 'data', None), dict)
+                and any(v.get('coverage_complete') for v in r.data.get('coverage', []))
+                and (
+                    bool((r.data.get('plan') or {}).get('group_by'))
+                    or (r.data.get('stages') or {}).get('groups_count', 0) > 1
+                    or any(c.get('expression', {}).get('group_by') for c in (r.data.get('plan') or {}).get('calculations', []))
+                )
+                for r in receipts
+            )
+        elif code == 'row_filter_not_applied':
+            # Dismissed by judge: verified if receipts show condition was handled via having/group aggregation
+            justified = any(
+                getattr(r, 'is_success', False)
+                and isinstance(getattr(r, 'data', None), dict)
+                and any(v.get('coverage_complete') for v in r.data.get('coverage', []))
+                and (
+                    bool((r.data.get('plan') or {}).get('having'))
+                    or bool((r.data.get('plan') or {}).get('group_by'))
+                )
+                for r in receipts
+            )
+        elif code in ('group_filter_not_applied', 'group_filter_boolean_incomplete'):
+            # Dismissed by judge: verified if receipts actually executed a having stage
+            justified = any(
+                getattr(r, 'is_success', False)
+                and isinstance(getattr(r, 'data', None), dict)
+                and bool((r.data.get('plan') or {}).get('having'))
+                for r in receipts
+            )
+        elif code in ('ordering_not_applied', 'ordering_incomplete'):
+            # Dismissed by judge: verified if receipts actually executed an order_by stage
+            justified = any(
+                getattr(r, 'is_success', False)
+                and isinstance(getattr(r, 'data', None), dict)
+                and bool((r.data.get('plan') or {}).get('order_by'))
+                for r in receipts
+            )
+        elif code == 'ranking_limit_not_applied':
+            # Dismissed by judge: verified if receipts actually executed a limit stage
+            justified = any(
+                getattr(r, 'is_success', False)
+                and isinstance(getattr(r, 'data', None), dict)
+                and (r.data.get('plan') or {}).get('limit') is not None
+                for r in receipts
+            )
 
         if justified:
             dismissed.append(code)

@@ -48,6 +48,7 @@ yarn-error.log*
 *.pyo
 
 # Testing
+.dsh/
 coverage/
 .nyc_output/
 test-results/
@@ -171,3 +172,4 @@ docs/artifacts/reviews/personal-no-hardcode-*/
 docs/artifacts/reviews/personal-skill-audit-*/
 docs/artifacts/reviews/spreadsheet-query-*/
 docs/artifacts/reviews/wbs-personal-*/
+docs/artifacts/reviews/contract-compare/run-final-20261018/

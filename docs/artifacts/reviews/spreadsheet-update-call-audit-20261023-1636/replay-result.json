@@ -1,0 +1,160 @@
+{
+  "session_id": "chat-session-1792742409266-8tff0l1d",
+  "turn_id": "1792744582324015586-1ef76146bd64439690cad10e72d352dc",
+  "request": "需要更新工数管理，里面有计划和预测，先复制最新的sheet 生成今天 1023的新sheet，用 部门编码 统计 部门的 有偿 部分的金额 更新到 这个月的预测部分",
+  "contract_parser": {
+    "entities": [
+      "编码"
+    ],
+    "is_grouped": false,
+    "group_dimension": null,
+    "metrics": [],
+    "entity_regex_matches": [
+      {
+        "matched": "部门编码",
+        "captured_value": "编码"
+      }
+    ]
+  },
+  "artifact_intent_reproduction": {
+    "physical_artifact_regex_match": false,
+    "reviewed_mode_controlled_input": "artifact",
+    "reviewed_types_controlled_input": [
+      ".xlsx"
+    ],
+    "after_deterministic_override": {
+      "instruction_relation": "standalone",
+      "task_mode": "execute",
+      "output_mode": "conversation",
+      "artifact_types": [],
+      "skill_invocation": {
+        "mode": "none",
+        "name": "",
+        "replace_defaults": false
+      },
+      "requirements": [
+        {
+          "id": "req_1",
+          "quote": "先复制最新的sheet 生成今天 1023的新sheet"
+        },
+        {
+          "id": "req_2",
+          "quote": "用 部门编码 统计 部门的 有偿 部分的金额 更新到 这个月的预测部分"
+        }
+      ]
+    }
+  },
+  "routing_reproduction": {
+    "is_modify_intent_requested": false,
+    "route_flags": {
+      "skill_id": null,
+      "is_modify_intent": null,
+      "is_generate_intent": false,
+      "requires_execution": false,
+      "is_inspect_intent": true
+    },
+    "before_analysis_filter": [
+      "inspect_spreadsheet_structure",
+      "compare_spreadsheet_columns",
+      "aggregate_spreadsheet",
+      "check_spreadsheet_equations",
+      "validate_spreadsheet_rows",
+      "report_informational_spreadsheet",
+      "plan_spreadsheet_update",
+      "get_spreadsheet_update_status",
+      "web_search",
+      "fetch_page",
+      "read_file",
+      "read_skill"
+    ],
+    "requires_spreadsheet_analysis": true,
+    "after_analysis_filter": [
+      "inspect_spreadsheet_structure",
+      "aggregate_spreadsheet",
+      "check_spreadsheet_equations",
+      "validate_spreadsheet_rows",
+      "report_informational_spreadsheet"
+    ],
+    "note": "Reconstruction from persisted accepted contract and current source; not a historical tool-schema capture."
+  },
+  "gate_reproduction": {
+    "complete": false,
+    "issues": [
+      {
+        "code": "entity_filter_missing",
+        "entities": [
+          "编码"
+        ],
+        "message": "用户明确要求查询特定实体【编码】的数据，当前分析计划未配置针对【编码】的过滤条件（filters），严禁用未过滤的全表汇总数据替代单人/单实体指标！请在 aggregate 或 query 的 filters 中指定针对实体列（如员工编号、员工姓名等）的过滤条件并补充计算。"
+      }
+    ],
+    "evidence_ids": [
+      "a804a2363fdebcebcd27f580"
+    ],
+    "model_calls": 0
+  },
+  "counterfactual_analysis_only_gate": {
+    "complete": true,
+    "issues": [],
+    "note": "Corrected grouping contract only; no copy/write/file-delivery receipts were added. An analysis PASS is not completion of the requested update workflow."
+  },
+  "reconciliation": {
+    "receipt_evidence_id": "a804a2363fdebcebcd27f580",
+    "input_records": 274,
+    "paid_records": 259,
+    "source_months": [
+      "202610"
+    ],
+    "by_department": [
+      {
+        "department_code": "FC34022",
+        "paid_amount_source_K": "167.77218",
+        "paid_records": 63,
+        "receipt_value": "167.77218"
+      },
+      {
+        "department_code": "FC44003",
+        "paid_amount_source_K": "212.90759",
+        "paid_records": 21,
+        "receipt_value": "212.90759"
+      },
+      {
+        "department_code": "FC44004",
+        "paid_amount_source_K": "242.51766",
+        "paid_records": 17,
+        "receipt_value": "242.51766"
+      },
+      {
+        "department_code": "FC44006",
+        "paid_amount_source_K": "171.65638",
+        "paid_records": 17,
+        "receipt_value": "171.65638"
+      },
+      {
+        "department_code": "FC45031",
+        "paid_amount_source_K": "570.75345",
+        "paid_records": 92,
+        "receipt_value": "570.75345"
+      },
+      {
+        "department_code": "FC46005",
+        "paid_amount_source_K": "314.48323",
+        "paid_records": 43,
+        "receipt_value": "314.48323"
+      },
+      {
+        "department_code": "FC48005",
+        "paid_amount_source_K": "67.03530",
+        "paid_records": 6,
+        "receipt_value": "67.03530"
+      }
+    ],
+    "independent_matches_receipt": true,
+    "paid_total_source_K": "1747.12579",
+    "target_sheets_after_call": [
+      "1019"
+    ],
+    "source_hashes_match_call": true,
+    "source_hashes_unchanged_by_audit": true
+  }
+}

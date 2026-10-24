@@ -63,7 +63,12 @@
               "riskSummary": "synthetic risk",
               "legalAdvice": "建议法务审阅复核。"
             }
-          ]
+          ],
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 1
+          }
         },
         {
           "clauseIndex": 1,
@@ -88,7 +93,12 @@
               "riskSummary": "synthetic risk",
               "legalAdvice": "建议法务审阅复核。"
             }
-          ]
+          ],
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 1
+          }
         },
         {
           "clauseIndex": 2,
@@ -113,7 +123,12 @@
               "riskSummary": "synthetic risk",
               "legalAdvice": "建议法务审阅复核。"
             }
-          ]
+          ],
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 1
+          }
         },
         {
           "clauseIndex": 3,
@@ -138,7 +153,12 @@
               "riskSummary": "synthetic risk",
               "legalAdvice": "建议法务审阅复核。"
             }
-          ]
+          ],
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 1
+          }
         },
         {
           "clauseIndex": 4,
@@ -163,7 +183,12 @@
               "riskSummary": "synthetic risk",
               "legalAdvice": "建议法务审阅复核。"
             }
-          ]
+          ],
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 1
+          }
         },
         {
           "clauseIndex": 5,
@@ -188,7 +213,12 @@
               "riskSummary": "synthetic risk",
               "legalAdvice": "建议法务审阅复核。"
             }
-          ]
+          ],
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 0
+          }
         },
         {
           "clauseIndex": 6,
@@ -213,7 +243,12 @@
               "riskSummary": "synthetic risk",
               "legalAdvice": "建议法务审阅复核。"
             }
-          ]
+          ],
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 0
+          }
         },
         {
           "clauseIndex": 7,
@@ -238,7 +273,12 @@
               "riskSummary": "synthetic risk",
               "legalAdvice": "建议法务审阅复核。"
             }
-          ]
+          ],
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 0
+          }
         },
         {
           "clauseIndex": 8,
@@ -263,7 +303,12 @@
               "riskSummary": "synthetic risk",
               "legalAdvice": "建议法务审阅复核。"
             }
-          ]
+          ],
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 0
+          }
         },
         {
           "clauseIndex": 9,
@@ -288,7 +333,12 @@
               "riskSummary": "synthetic risk",
               "legalAdvice": "建议法务审阅复核。"
             }
-          ]
+          ],
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 0
+          }
         }
       ],
       "chapters": [
@@ -320,7 +370,12 @@
                   "riskSummary": "synthetic risk",
                   "legalAdvice": "建议法务审阅复核。"
                 }
-              ]
+              ],
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 1
+              }
             }
           ],
           "highRiskCount": 1,
@@ -355,7 +410,12 @@
                   "riskSummary": "synthetic risk",
                   "legalAdvice": "建议法务审阅复核。"
                 }
-              ]
+              ],
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 1
+              }
             },
             {
               "clauseIndex": 2,
@@ -380,7 +440,12 @@
                   "riskSummary": "synthetic risk",
                   "legalAdvice": "建议法务审阅复核。"
                 }
-              ]
+              ],
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 1
+              }
             },
             {
               "clauseIndex": 3,
@@ -405,7 +470,12 @@
                   "riskSummary": "synthetic risk",
                   "legalAdvice": "建议法务审阅复核。"
                 }
-              ]
+              ],
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 1
+              }
             },
             {
               "clauseIndex": 4,
@@ -430,7 +500,12 @@
                   "riskSummary": "synthetic risk",
                   "legalAdvice": "建议法务审阅复核。"
                 }
-              ]
+              ],
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 1
+              }
             },
             {
               "clauseIndex": 5,
@@ -455,7 +530,12 @@
                   "riskSummary": "synthetic risk",
                   "legalAdvice": "建议法务审阅复核。"
                 }
-              ]
+              ],
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 0
+              }
             },
             {
               "clauseIndex": 6,
@@ -480,7 +560,12 @@
                   "riskSummary": "synthetic risk",
                   "legalAdvice": "建议法务审阅复核。"
                 }
-              ]
+              ],
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 0
+              }
             },
             {
               "clauseIndex": 7,
@@ -505,7 +590,12 @@
                   "riskSummary": "synthetic risk",
                   "legalAdvice": "建议法务审阅复核。"
                 }
-              ]
+              ],
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 0
+              }
             },
             {
               "clauseIndex": 8,
@@ -530,7 +620,12 @@
                   "riskSummary": "synthetic risk",
                   "legalAdvice": "建议法务审阅复核。"
                 }
-              ]
+              ],
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 0
+              }
             },
             {
               "clauseIndex": 9,
@@ -555,7 +650,12 @@
                   "riskSummary": "synthetic risk",
                   "legalAdvice": "建议法务审阅复核。"
                 }
-              ]
+              ],
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 0
+              }
             }
           ],
           "highRiskCount": 9,

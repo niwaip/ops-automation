@@ -1,0 +1,32 @@
+{
+  "artifact_exporter.py": {
+    "local_sha256": "0895e8d35efa23ae76683d1c585ee4f6e4b94ef3d3ce99fef0f9bcc6534dce01",
+    "sandbox_sha256": "0895e8d35efa23ae76683d1c585ee4f6e4b94ef3d3ce99fef0f9bcc6534dce01",
+    "matched": true,
+    "local_mtime": "2026-10-22T22:54:20.222589+08:00"
+  },
+  "final_answer.py": {
+    "local_sha256": "3ae4e20d80f7c70301bad2813a9da3b0898b6d8bf172be7f910c482d7d98cedf",
+    "sandbox_sha256": "3ae4e20d80f7c70301bad2813a9da3b0898b6d8bf172be7f910c482d7d98cedf",
+    "matched": true,
+    "local_mtime": "2026-10-22T18:15:21.937108+08:00"
+  },
+  "html_report_fallback.py": {
+    "local_sha256": "d9aa19f77b503702934b33de0ae706987733de1d6c0a969354c8cb2ad1f53d20",
+    "sandbox_sha256": "d9aa19f77b503702934b33de0ae706987733de1d6c0a969354c8cb2ad1f53d20",
+    "matched": true,
+    "local_mtime": "2026-10-14T12:37:57.284341+08:00"
+  },
+  "agent_loop.py": {
+    "local_sha256": "cb0a949717ee68419a59b6bbb0212266bf63b8c90308cc1cdd7fedcb2acc08de",
+    "sandbox_sha256": "cb0a949717ee68419a59b6bbb0212266bf63b8c90308cc1cdd7fedcb2acc08de",
+    "matched": true,
+    "local_mtime": "2026-10-22T18:53:19.554363+08:00"
+  },
+  "analysis_validation.py": {
+    "local_sha256": "0febdb2bffd1fdefff2926986a604c72e9f48c5a5bd1464b9a4a796a525d2453",
+    "sandbox_sha256": "0febdb2bffd1fdefff2926986a604c72e9f48c5a5bd1464b9a4a796a525d2453",
+    "matched": true,
+    "local_mtime": "2026-10-20T16:57:49.009758+08:00"
+  }
+}

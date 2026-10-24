@@ -92,7 +92,14 @@ def generated_workbook_totals(path):
 
 def deliverable_is_valid(path):
     path = Path(path)
-    return path.suffix.lower() not in ('.xlsx', '.xlsm') or inspect_generated_workbook(path)['valid']
+    if path.suffix.lower() not in ('.xlsx', '.xlsm'):
+        return True
+    try:
+        from .spreadsheet_update.delivery import validate_update_delivery
+        is_valid, _ = validate_update_delivery(path)
+        return is_valid
+    except Exception:
+        return inspect_generated_workbook(path)['valid']
 
 
 def quarantine_invalid_deliverables(workspace, turn_start_time, text, outbounds):
@@ -101,6 +108,12 @@ def quarantine_invalid_deliverables(workspace, turn_start_time, text, outbounds)
     import uuid
     from urllib.parse import quote, unquote
     from .file_tools import is_protected_session_file
+    try:
+        from .spreadsheet_update.delivery import is_verified_update_file, validate_update_delivery
+    except Exception:
+        is_verified_update_file = None
+        validate_update_delivery = None
+
     root = Path(workspace)
     rejected = []
     for path in root.iterdir() if root.exists() else []:
@@ -109,13 +122,22 @@ def quarantine_invalid_deliverables(workspace, turn_start_time, text, outbounds)
                 or path.stat().st_mtime < turn_start_time - 2
                 or is_protected_session_file(path)):
             continue
-        validation = inspect_generated_workbook(path)
-        if validation['valid']:
+        if is_verified_update_file and is_verified_update_file(path):
             continue
+        if validate_update_delivery:
+            is_valid, val_issues = validate_update_delivery(path)
+            if is_valid:
+                continue
+            issues = val_issues
+        else:
+            validation = inspect_generated_workbook(path)
+            if validation['valid']:
+                continue
+            issues = validation['issues']
         folder = root / '.dsh' / 'rejected' / uuid.uuid4().hex
         folder.mkdir(parents=True, exist_ok=True)
         path.replace(folder / path.name)
-        rejected.append({'fileName': path.name, 'issues': validation['issues'], 'preserved_path': str(folder / path.name)})
+        rejected.append({'fileName': path.name, 'issues': issues, 'preserved_path': str(folder / path.name)})
     if not rejected:
         return text, outbounds, []
     names = {r['fileName'] for r in rejected}

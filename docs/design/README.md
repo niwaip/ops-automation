@@ -6,6 +6,9 @@
 
 ## 0. 领域功能设计
 
+- **Excel 理解、跨文件更新与验证交付**：[`Spreadsheet-Update-and-Delivery-Design_v1.0.md`](Spreadsheet-Update-and-Delivery-Design_v1.0.md)
+  *自然语言生成受限更新计划，多来源取数后在副本中更新，经重算、变更核对与统一交付门禁输出新 Excel。包含模块拆分、历史错误策略及六个实施 PR。*
+
 - **从已确认结果生成个人 Skill：统一设计**：[`Personal-Skill-Capture-and-Reuse-Design_v1.0.md`](Personal-Skill-Capture-and-Reuse-Design_v1.0.md)
   *用户确认结果后，通过统一流程提炼技能包，保存到个人沙箱，并支持后续调用、复制、导出和版本更新。*
 

@@ -1,0 +1,16 @@
+{
+  "sessionId": "sports-fix-e2e-1792665255993",
+  "historyMatchesSse": true,
+  "status": {
+    "status": "completed",
+    "reason": "substantive_answer",
+    "attempts": 0
+  },
+  "retrievalPhases": [
+    "planning",
+    "planning"
+  ],
+  "sourceHashesUnchanged": true,
+  "localTests": 296,
+  "sandboxTests": 24
+}

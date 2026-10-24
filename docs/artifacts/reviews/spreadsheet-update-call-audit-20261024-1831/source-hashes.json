@@ -1,0 +1,177 @@
+{
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/semantic_decision.py": {
+    "sha256": "26594918dd314dd26c0b73d25cb8ec97dc0634650a62d6e7db5d546caa7e905c",
+    "mtime_cst": "2026-10-22T21:46:51.230125+08:00",
+    "lines": 60
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/domain_memory.py": {
+    "sha256": "52ba57e02ccf23f1198bd8be3a02ade7b287d7c9d3f9c57dc14407c0b040740f",
+    "mtime_cst": "2026-10-24T18:22:26.008241+08:00",
+    "lines": 117
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/runner.py": {
+    "sha256": "235f4e2ecaa06987fa8c08f51279cba01fcce597ff47fd478198611ee3e0b597",
+    "mtime_cst": "2026-10-24T10:42:43.912657+08:00",
+    "lines": 1143
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/agent_loop.py": {
+    "sha256": "8c3d048b2f5d3b1950d3864f07e3bddbc5b8a9639fa981128d4e4f58f369a289",
+    "mtime_cst": "2026-10-24T14:30:47.981419+08:00",
+    "lines": 1267
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/tool_dispatch.py": {
+    "sha256": "f67fd9e131919f03bc2f6fd1d2757dfeb238f1b659a55b4fe2a4767771f2f8d0",
+    "mtime_cst": "2026-10-24T10:42:43.917710+08:00",
+    "lines": 266
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/final_answer.py": {
+    "sha256": "ec5c6ac2d49fc1e5bcfe016acde2238efea1981ca939dbd294ebbabe80709e81",
+    "mtime_cst": "2026-10-24T10:42:43.911384+08:00",
+    "lines": 329
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/context_budget.py": {
+    "sha256": "7bc612487bdbb2c1d98584bd985e3cc4991fd18bef80c72471b80a2d540b82c3",
+    "mtime_cst": "2026-10-21T16:43:33.773459+08:00",
+    "lines": 151
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/task_intent.py": {
+    "sha256": "161232e5b17feeafe8e0c1785630de48c395588f97a865b0f4cee1bb50e4124f",
+    "mtime_cst": "2026-10-24T17:52:45.857267+08:00",
+    "lines": 323
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/skill_admission.py": {
+    "sha256": "e70530369ab50ff367032cacb4e7224ce662f58646c79e2ba404b0519f6eba44",
+    "mtime_cst": "2026-10-24T16:01:58.715239+08:00",
+    "lines": 316
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/user_declarations.py": {
+    "sha256": "3826a0e7599451177b383f35ec23457c782134b166794d5c3ff43129f8be82b1",
+    "mtime_cst": "2026-10-24T18:22:35.128526+08:00",
+    "lines": 149
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/turn.py": {
+    "sha256": "a5c558656b05fc49d7b2a241a6fc0af140b4f9a139ebff91fbc00bb63befa29e",
+    "mtime_cst": "2026-10-24T10:42:43.917256+08:00",
+    "lines": 473
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/delivery.py": {
+    "sha256": "9fee54b62a820e660d0fc61879359bbaf9f0fc0d5b05dafccd349d2ea700a6d0",
+    "mtime_cst": "2026-10-24T10:42:43.915364+08:00",
+    "lines": 108
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/agent_protocol.py": {
+    "sha256": "81d8423edf8509642320de418fd95461ece94b23310990afa951ff2ab5e8081e",
+    "mtime_cst": "2026-10-24T18:23:34.816050+08:00",
+    "lines": 28
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/compiler.py": {
+    "sha256": "3497f0f88a82adcfa183df37167617ef76fd0eb5bbdf0796341d97cbacaa252f",
+    "mtime_cst": "2026-10-24T10:42:43.915113+08:00",
+    "lines": 240
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/business_checks.py": {
+    "sha256": "ea12679fe4e3621309a33ea87ab420103082a422cc59c0e66cf731092c6c8fcf",
+    "mtime_cst": "2026-10-24T10:42:43.914821+08:00",
+    "lines": 36
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/layout_binding.py": {
+    "sha256": "8c3ccda0befa98a236eefd057862efe68d561f37870c07b037d8a0b6a7ea223f",
+    "mtime_cst": "2026-10-24T16:04:14.987443+08:00",
+    "lines": 237
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/discovery.py": {
+    "sha256": "63ebece7183427b862e26270a675620b8a1e42161891755331e1cba7f4937602",
+    "mtime_cst": "2026-10-24T10:42:43.915626+08:00",
+    "lines": 107
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/reconciliation.py": {
+    "sha256": "17888ad49f0cf11544235664bbe8f8a966678e67009d1fb4baaf90d0f862d489",
+    "mtime_cst": "2026-10-24T15:43:42.147590+08:00",
+    "lines": 68
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/tool_schema.py": {
+    "sha256": "7b3445392704af9153ba3001b0dd63aad614e9027ab1764d956ac00e28786d35",
+    "mtime_cst": "2026-10-24T18:23:46.660205+08:00",
+    "lines": 39
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/tools.py": {
+    "sha256": "cc1eb20762e7071acabadfd874e087d5725b62db7e4cd573a0f24f1808bb809a",
+    "mtime_cst": "2026-10-24T14:29:20.991924+08:00",
+    "lines": 166
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/__init__.py": {
+    "sha256": "701b938766a71bab9eb4beb47e910b52032d19c78d68b6a105073d35a0e6c8bf",
+    "mtime_cst": "2026-10-24T10:42:43.914348+08:00",
+    "lines": 132
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/presentation.py": {
+    "sha256": "a2f7bdca90e2118cf2b72c1683c4c5d4dee9082d2497c384397067c4d8da6228",
+    "mtime_cst": "2026-10-24T10:42:43.916040+08:00",
+    "lines": 39
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/sources.py": {
+    "sha256": "2d678dc32a85da9425516544771f784b96c819ae72d8a3e5c9d8d87efaaad23e",
+    "mtime_cst": "2026-10-24T10:42:43.916657+08:00",
+    "lines": 209
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/capabilities.py": {
+    "sha256": "06ecc612fccbbe3cfad67e287c92630f98c9163af1b1e3596d1c820b4c2c5170",
+    "mtime_cst": "2026-10-24T10:42:43.914951+08:00",
+    "lines": 201
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/routing.py": {
+    "sha256": "c3ffe7e6208d7d79d8420fde39ff56cbd66aaa0dce27c4b00907195192f2dea8",
+    "mtime_cst": "2026-10-24T17:50:43.124663+08:00",
+    "lines": 24
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/semantic_plan.py": {
+    "sha256": "8d52288545dcd3772c0810bdcebcc2bfb8b12c31d959cdeab84eb20a67d0569a",
+    "mtime_cst": "2026-10-24T18:25:31.720108+08:00",
+    "lines": 256
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/bindings.py": {
+    "sha256": "9ed8061b2d25d6c8233763d6d326f5818bc3eab3f3b20744a930e3c98c1e4f4f",
+    "mtime_cst": "2026-10-24T10:42:43.914699+08:00",
+    "lines": 68
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/diff.py": {
+    "sha256": "7c6c5d0f6bca9f4f0964b9abd6de72595447058516cafe202c86189c6fb8ebe5",
+    "mtime_cst": "2026-10-24T10:42:43.915493+08:00",
+    "lines": 194
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/aggregation_api.py": {
+    "sha256": "76010db247cfd85210f66dfc7cba1b7746705ac536d9847ff6cd12c54ad84227",
+    "mtime_cst": "2026-10-24T13:27:07.846519+08:00",
+    "lines": 84
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/contract.py": {
+    "sha256": "9096187571fc0ed49a89232ea92560ecda326bdcb17393f0569296cbcfa31586",
+    "mtime_cst": "2026-10-24T10:42:43.915242+08:00",
+    "lines": 80
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/executor.py": {
+    "sha256": "02fa09381c1126a1ae8d9432f86b180fe85b0d011a665a90eee1c572bce07d6e",
+    "mtime_cst": "2026-10-24T14:50:35.150863+08:00",
+    "lines": 184
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/state.py": {
+    "sha256": "6fed36c687a9bf1d23ab27ca8b6b9f17a9275199cd786490a292c06ad27aa8d3",
+    "mtime_cst": "2026-10-24T10:42:43.916785+08:00",
+    "lines": 177
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/result_catalog.py": {
+    "sha256": "1c65c5874d4e07f173900316f32a8bc245fa25d8e5a3df5199a53ada21f57b55",
+    "mtime_cst": "2026-10-24T10:42:43.916171+08:00",
+    "lines": 126
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/schema.py": {
+    "sha256": "04402aecf487c4cda273d541fd17aee3e6ed024dd8111b388401cadb5918a6a7",
+    "mtime_cst": "2026-10-24T10:42:43.916402+08:00",
+    "lines": 220
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/validation.py": {
+    "sha256": "c2eb6eb6ffc8b2a9422dc49053a53ca07cbded9a5172f08611fa91ec73c93985",
+    "mtime_cst": "2026-10-24T10:42:43.917400+08:00",
+    "lines": 236
+  }
+}

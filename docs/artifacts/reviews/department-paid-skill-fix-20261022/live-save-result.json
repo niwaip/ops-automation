@@ -1,0 +1,137 @@
+{
+  "checkedAt": "2026-10-22T11:01:12.358Z",
+  "elapsedMs": 6,
+  "sessionId": "chat-session-1792662104437-7gysxeoy",
+  "skill": {
+    "id": "c60d78fd-b6c3-4e7c-99ba-67f6d61efecd",
+    "slug": "dept-summary",
+    "displayName": "部门别有偿统计",
+    "description": "按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据",
+    "version": 1,
+    "triggers": [
+      "部门别有偿统计",
+      "用部门别有偿统计处理",
+      "使用部门别有偿统计",
+      "dept-summary"
+    ],
+    "aliases": [
+      "部门别有偿统计",
+      "dept-summary"
+    ],
+    "deliverables": [],
+    "hasScript": false,
+    "packageHash": "5020bab3fa09951b703b17a903b6a113f6ee399b892c74d1eeb2800074af9084",
+    "createdAt": "2026-10-22T10:57:55.817Z",
+    "updatedAt": "2026-10-22T10:57:55.817Z"
+  },
+  "detail": {
+    "id": "c60d78fd-b6c3-4e7c-99ba-67f6d61efecd",
+    "slug": "dept-summary",
+    "displayName": "部门别有偿统计",
+    "description": "按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据",
+    "version": 1,
+    "triggers": [
+      "部门别有偿统计",
+      "用部门别有偿统计处理",
+      "使用部门别有偿统计",
+      "dept-summary"
+    ],
+    "aliases": [
+      "部门别有偿统计",
+      "dept-summary"
+    ],
+    "deliverables": [],
+    "hasScript": false,
+    "packageHash": "5020bab3fa09951b703b17a903b6a113f6ee399b892c74d1eeb2800074af9084",
+    "createdAt": "2026-10-22T10:57:55.817Z",
+    "updatedAt": "2026-10-22T10:57:55.817Z",
+    "skillMdContent": "---\nname: dept-summary\nzh_name: \"部门别有偿统计\"\ndescription: \"按已确认的业务逻辑与规则处理新附件，自动化执行“部门别有偿统计”。\"\nzh_description: \"按已确认的业务逻辑与规则处理新附件，自动化执行“部门别有偿统计”。\"\ntriggers:\n  - \"部门别有偿统计\"\n  - \"用部门别有偿统计处理\"\n  - \"使用部门别有偿统计\"\n  - \"dept-summary\"\naliases:\n  - \"部门别有偿统计\"\n  - \"dept-summary\"\ndeliverables: []\nrequires_execution: false\ndefault_rounds: 5\n---\n\n# 部门别有偿统计\n\n按已确认的业务逻辑与规则处理新附件，自动化执行“部门别有偿统计”。\n\n## 1. 业务目标与触发场景\n- **业务目标**：按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据\n- **触发意图**：当用户上传相关业务附件并提出类似“用部门别有偿统计处理”或“按部门别有偿统计要求统计”时触发。\n\n## 2. 业务规则与处理口径\n- 按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据\n\n## 2.1 用户确认的边界纠偏与排除规则（负向约束）\n- ⚠️ 纠偏要点: 按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据\n\n## 3. 输入要求与参数化规范\n- **输入附件**：新上传的同构业务文件（如 Excel / CSV / 报表）。\n- **去硬编码原则**：严禁固化原文件名、固定数据行号或旧历史数字；对新输入文件必须重新扫描表头与有效数据区域。\n- 详细结构化规则可参考 `references/rules.json`。\n\n## 4. 执行机制\n本技能为规则说明型个人技能，沙箱 Agent 读取本说明后根据规则自主进行数据分析、脚本编写与结果交付。\n\n## 5. 输出约定\n- 本技能无需生成独立物理附件，处理结果根据业务规则在沙箱中以文本或结构化数据直接呈现。\n",
+    "scriptFiles": [],
+    "referenceFiles": [
+      {
+        "name": "rules.json",
+        "content": "{\n  \"slug\": \"dept-summary\",\n  \"displayName\": \"部门别有偿统计\",\n  \"objective\": \"按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据\",\n  \"confirmedInstructions\": [\n    \"按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据\"\n  ],\n  \"negativeConstraints\": [\n    {\n      \"userCorrection\": \"按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据\",\n      \"adjustment\": \"按用户纠偏指令应用规则约束\"\n    }\n  ],\n  \"inputExpectations\": [\n    {\n      \"name\": \"工数实绩明细_20261020134124.xlsx\",\n      \"type\": \"xlsx\",\n      \"description\": \"来源附件 [工数实绩明细_20261020134124.xlsx] 对应的同构输入\",\n      \"required\": true\n    }\n  ],\n  \"outputContract\": [],\n  \"createdAt\": \"2026-10-22T10:57:55.813Z\"\n}"
+      }
+    ],
+    "assetFiles": [],
+    "sourceRef": {
+      "kind": "sandbox_turn",
+      "sessionId": "chat-session-1792662104437-7gysxeoy",
+      "messageId": "1792662113385-m6g3sd8r"
+    },
+    "versions": [
+      {
+        "version": 1,
+        "packageHash": "5020bab3fa09951b703b17a903b6a113f6ee399b892c74d1eeb2800074af9084",
+        "createdAt": "2026-10-22T10:57:55.817Z",
+        "description": "初始创建 v1"
+      }
+    ]
+  },
+  "rules": {
+    "slug": "dept-summary",
+    "displayName": "部门别有偿统计",
+    "objective": "按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据",
+    "confirmedInstructions": [
+      "按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据"
+    ],
+    "negativeConstraints": [
+      {
+        "userCorrection": "按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据",
+        "adjustment": "按用户纠偏指令应用规则约束"
+      }
+    ],
+    "inputExpectations": [
+      {
+        "name": "工数实绩明细_20261020134124.xlsx",
+        "type": "xlsx",
+        "description": "来源附件 [工数实绩明细_20261020134124.xlsx] 对应的同构输入",
+        "required": true
+      }
+    ],
+    "outputContract": [],
+    "createdAt": "2026-10-22T10:57:55.813Z"
+  },
+  "skillMd": "---\nname: dept-summary\nzh_name: \"部门别有偿统计\"\ndescription: \"按已确认的业务逻辑与规则处理新附件，自动化执行“部门别有偿统计”。\"\nzh_description: \"按已确认的业务逻辑与规则处理新附件，自动化执行“部门别有偿统计”。\"\ntriggers:\n  - \"部门别有偿统计\"\n  - \"用部门别有偿统计处理\"\n  - \"使用部门别有偿统计\"\n  - \"dept-summary\"\naliases:\n  - \"部门别有偿统计\"\n  - \"dept-summary\"\ndeliverables: []\nrequires_execution: false\ndefault_rounds: 5\n---\n\n# 部门别有偿统计\n\n按已确认的业务逻辑与规则处理新附件，自动化执行“部门别有偿统计”。\n\n## 1. 业务目标与触发场景\n- **业务目标**：按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据\n- **触发意图**：当用户上传相关业务附件并提出类似“用部门别有偿统计处理”或“按部门别有偿统计要求统计”时触发。\n\n## 2. 业务规则与处理口径\n- 按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据\n\n## 2.1 用户确认的边界纠偏与排除规则（负向约束）\n- ⚠️ 纠偏要点: 按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据\n\n## 3. 输入要求与参数化规范\n- **输入附件**：新上传的同构业务文件（如 Excel / CSV / 报表）。\n- **去硬编码原则**：严禁固化原文件名、固定数据行号或旧历史数字；对新输入文件必须重新扫描表头与有效数据区域。\n- 详细结构化规则可参考 `references/rules.json`。\n\n## 4. 执行机制\n本技能为规则说明型个人技能，沙箱 Agent 读取本说明后根据规则自主进行数据分析、脚本编写与结果交付。\n\n## 5. 输出约定\n- 本技能无需生成独立物理附件，处理结果根据业务规则在沙箱中以文本或结构化数据直接呈现。\n",
+  "catalog": {
+    "c60d78fd-b6c3-4e7c-99ba-67f6d61efecd": {
+      "skillId": "c60d78fd-b6c3-4e7c-99ba-67f6d61efecd",
+      "ownerUserId": "e7fce333-a8f4-4097-9a53-f0a4c729da46",
+      "slug": "dept-summary",
+      "displayName": "部门别有偿统计",
+      "description": "按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据",
+      "aliases": [
+        "部门别有偿统计",
+        "dept-summary"
+      ],
+      "triggers": [
+        "部门别有偿统计",
+        "用部门别有偿统计处理",
+        "使用部门别有偿统计",
+        "dept-summary"
+      ],
+      "deliverables": [],
+      "requiresExecution": true,
+      "version": 1,
+      "packageHash": "5020bab3fa09951b703b17a903b6a113f6ee399b892c74d1eeb2800074af9084",
+      "status": "ready",
+      "sourceRef": {
+        "kind": "sandbox_turn",
+        "sessionId": "chat-session-1792662104437-7gysxeoy",
+        "messageId": "1792662113385-m6g3sd8r"
+      },
+      "hasScript": false,
+      "versions": [
+        {
+          "version": 1,
+          "packageHash": "5020bab3fa09951b703b17a903b6a113f6ee399b892c74d1eeb2800074af9084",
+          "createdAt": "2026-10-22T10:57:55.817Z",
+          "description": "初始创建 v1"
+        }
+      ],
+      "createdAt": "2026-10-22T10:57:55.817Z",
+      "updatedAt": "2026-10-22T10:57:55.817Z"
+    }
+  },
+  "eventTypes": []
+}

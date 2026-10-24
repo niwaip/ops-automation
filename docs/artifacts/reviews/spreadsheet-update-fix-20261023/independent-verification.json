@@ -1,0 +1,33 @@
+{
+  "status": "passed",
+  "input_hashes": {
+    "工数实绩明细_20261020134124.xlsx": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+    "工数3Q预实管理.xlsx": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d"
+  },
+  "output_hash": "c867d8faced15cd9a824b439a6a389c38fea9a3e820285c966eb3c087eb23505",
+  "paid_records": 259,
+  "department_count": 7,
+  "source_total_K": "1747.12579",
+  "department_values_K": {
+    "FC34022": "167.77218",
+    "FC44003": "212.90759",
+    "FC44004": "242.51766",
+    "FC44006": "171.65638",
+    "FC45031": "570.75345",
+    "FC46005": "314.48323",
+    "FC48005": "67.03530"
+  },
+  "changed_cells": [
+    "C10",
+    "C14",
+    "C16",
+    "C8"
+  ],
+  "formula_count": 622,
+  "formula_errors": 0,
+  "missing_caches": 0,
+  "historical_sheet_preserved": true,
+  "budget_other_months_and_unpaid_preserved": true,
+  "unmatched_departments_preserved": 4,
+  "receipt_verdict": "passed_with_warnings"
+}

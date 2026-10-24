@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "kind": "personal_skill_workflow",
+  "entrypoint": "scripts/run.py",
+  "plan": "references/workflow.json",
+  "engine_sha256": "3f6114fe88b70b739379b19695a94a0b5a520561bc5fe941e65d56281557a860",
+  "plan_sha256": "b0d4e9a30c3c06f7a87d1f803942eb78940488e7bd6f6e1a9e25cc7f3f64bf0f"
+}

@@ -133,3 +133,104 @@ describe('ThoughtProcessPanel - Clean Collapsed State', () => {
     expect(html).toContain('Second step thinking');
   });
 });
+
+describe('hoistHtmlPreviewBlock - Unify Header Banner and Preview Card', () => {
+  it('hoists html code block from bottom to immediately beneath header banner', async () => {
+    const { hoistHtmlPreviewBlock } = await import('@chat-web/components/MessageContentRenderer');
+    const inputMarkdown = [
+      '✨ **交互式页面已生成完毕！**',
+      '- **输出文件**：`/workspace/index.html`',
+      '- **操作提示**：您可以在下方直接**展开在线预览**、**全屏查看**，或点击**下载**保存本地使用。',
+      '',
+      '### 一、分析摘要',
+      '这里是长达数百字的背景分析与详细指标解读...',
+      '### 二、业务明细',
+      '各部门工数统计与金额明细表...',
+      '### 三、管理建议',
+      '持续优化人员效能与工数核算...',
+      '### 四、交互式 HTML 柱状图看板源码与物理交付',
+      '物理文件已生成落盘至工作区：`/workspace/index.html`。',
+      '',
+      '```html',
+      '<!DOCTYPE html>',
+      '<html><head><title>看板</title></head><body><svg><rect width="100" height="200"/></svg></body></html>',
+      '```',
+    ].join('\n');
+
+    const result = hoistHtmlPreviewBlock(inputMarkdown);
+
+    // 验证 ```html 代码块被提升到顶部 Banner 之后
+    const bannerIndex = result.indexOf('✨ **交互式页面已生成完毕！**');
+    const htmlBlockIndex = result.indexOf('```html\n<!DOCTYPE html>');
+    const analysisIndex = result.indexOf('### 一、分析摘要');
+
+    expect(bannerIndex).toBeGreaterThanOrEqual(0);
+    expect(htmlBlockIndex).toBeGreaterThan(bannerIndex);
+    // htmlBlock 必须位于分析正文之前，保证操作组件在第一屏立即可见
+    expect(htmlBlockIndex).toBeLessThan(analysisIndex);
+    // 确保原正文内容保持完整，仅代码块位置提升
+    expect(result).toContain('### 四、交互式 HTML 柱状图看板源码与物理交付');
+  });
+
+  it('keeps markdown unchanged when html code block is already right below banner', async () => {
+    const { hoistHtmlPreviewBlock } = await import('@chat-web/components/MessageContentRenderer');
+    const inputMarkdown = [
+      '✨ **交互式页面已生成完毕！**',
+      '- **输出文件**：`/workspace/index.html`',
+      '- **操作提示**：您可以在下方直接**展开在线预览**、**全屏查看**，或点击**下载**保存本地使用。',
+      '',
+      '```html',
+      '<!DOCTYPE html>',
+      '<html><head><title>看板</title></head><body><svg><rect width="100" height="200"/></svg></body></html>',
+      '```',
+      '',
+      '### 一、分析摘要',
+      '这里是长达数百字的背景分析与详细指标解读...',
+    ].join('\n');
+
+    const result = hoistHtmlPreviewBlock(inputMarkdown);
+    expect(result).toBe(inputMarkdown);
+  });
+
+  it('hoists when banner is plain text without markdown list markers', async () => {
+    const { hoistHtmlPreviewBlock } = await import('@chat-web/components/MessageContentRenderer');
+    const inputMarkdown = [
+      '✨ 单页 HTML 报告已由系统基于会话内容自动整理生成！',
+      '',
+      '输出文件：/workspace/index.html',
+      '操作提示：您可以在下方直接展开在线预览、全屏查看，或点击下载保存本地使用。',
+      '💡 恢复说明：上游模型在写入收尾阶段未输出有效正文，系统已自动提取前序会话核心数据并编译为单页报告。',
+      '',
+      '### 一、数据统计',
+      '各部门金额统计...',
+      '',
+      '```html',
+      '<!DOCTYPE html>',
+      '<html><body><svg></svg></body></html>',
+      '```',
+    ].join('\n');
+
+    const result = hoistHtmlPreviewBlock(inputMarkdown);
+    const htmlBlockIndex = result.indexOf('```html');
+    const statsIndex = result.indexOf('### 一、数据统计');
+
+    expect(htmlBlockIndex).toBeGreaterThan(0);
+    expect(htmlBlockIndex).toBeLessThan(statsIndex);
+  });
+
+  it('renders index.html and chart tip for SVG/chart html instead of presentation.html', () => {
+    const chartHtml = '<!DOCTYPE html><html><body><svg><rect/></svg></body></html>';
+    const html = renderToStaticMarkup(
+      <HtmlPreviewBlock
+        code={chartHtml}
+        isStreaming={false}
+      />
+    );
+
+    // 严禁误标为 presentation.html 或 演示文稿翻页提示
+    expect(html).toContain('index.html');
+    expect(html).not.toContain('presentation.html');
+    expect(html).toContain('交互式图表与数据看板已就绪');
+    expect(html).not.toContain('支持键盘翻页');
+  });
+});

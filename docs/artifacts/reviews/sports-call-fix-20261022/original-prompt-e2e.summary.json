@@ -1,0 +1,143 @@
+{
+  "sessionId": "sports-fix-e2e-1792664775606",
+  "prompt": "今天的体育赛事",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "startedAt": "2026-10-22T10:26:15.606Z",
+  "httpStatus": 201,
+  "finishedAt": "2026-10-22T10:27:03.658Z",
+  "done": true,
+  "errors": [],
+  "answerChars": 1157,
+  "metrics": {
+    "ttftMs": 1980.01,
+    "durationMs": 47594.2,
+    "llmDurationMs": 27640.44,
+    "toolCallsCount": 6,
+    "toolCalls": [
+      {
+        "name": "web_search",
+        "params": {
+          "query": "2026年10月22日 体育赛事 结果 直播",
+          "freshness": "day"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "web_search",
+        "params": {
+          "query": "2026年10月22日 足球赛事 结果",
+          "freshness": "day"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "web_search",
+        "params": {
+          "query": "2026年10月22日 NBA 篮球赛 结果",
+          "freshness": "day"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "web_search",
+        "params": {
+          "query": "2026年10月22日 NBA 凯尔特人 尼克斯 比分 结果",
+          "freshness": "day"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "web_search",
+        "params": {
+          "query": "2026年10月22日 足球 欧冠 意甲 西甲 德甲 英超 比赛结果",
+          "freshness": "day"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "web_search",
+        "params": {
+          "query": "2026年10月22日 亚残运会 乒乓球 网球 赛事 结果",
+          "freshness": "day"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      }
+    ],
+    "llmInvocations": 4,
+    "tokens": {
+      "prompt_tokens": 55147,
+      "completion_tokens": 1607,
+      "total_tokens": 56754
+    },
+    "finishReason": "stop",
+    "roundFinishReasons": [
+      "stop",
+      "tool_calls",
+      "tool_calls",
+      "stop"
+    ],
+    "guardDecisions": [
+      {
+        "guard": "retrieval_answer",
+        "action": "accept",
+        "reason": "substantive_answer"
+      }
+    ],
+    "modelResponses": [
+      {
+        "rawChars": 792,
+        "cleanChars": 792,
+        "rawSha256": "bee93f038692e2ac39e55e9a126a0baeb3502ca4d4da4874baa4287f027910e7",
+        "cleanSha256": "bee93f038692e2ac39e55e9a126a0baeb3502ca4d4da4874baa4287f027910e7",
+        "finishReason": "stop",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 1155,
+        "cleanChars": 1155,
+        "rawSha256": "0d0de404aea475612d5799d4c3a002d71aad5da5c412871037534cb951c9686c",
+        "cleanSha256": "0d0de404aea475612d5799d4c3a002d71aad5da5c412871037534cb951c9686c",
+        "finishReason": "stop",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      }
+    ],
+    "answerValidation": {
+      "status": "completed",
+      "reason": "substantive_answer",
+      "attempts": 0
+    }
+  },
+  "historyStatus": 200
+}

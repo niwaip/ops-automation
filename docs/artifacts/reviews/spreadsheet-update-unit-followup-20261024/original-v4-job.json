@@ -1,0 +1,14 @@
+{
+  "container": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+  "cwd": "/workspace/.validation/unit-followup-20261024/original-v4",
+  "env": [
+    "PYTHONPATH=/usr/local/bin",
+    "WORKSPACE=/workspace/.validation/unit-followup-20261024/original-v4",
+    "WORKSPACE_DIR=/workspace/.validation/unit-followup-20261024/original-v4"
+  ],
+  "cmd": [
+    "python3",
+    "-c",
+    "import subprocess,time,json\nfrom pathlib import Path\nfrom types import SimpleNamespace\nfrom dsh_modules.runner import resolve_session_attachments\nfrom dsh_modules.skills import get_available_skills\nassert set(resolve_session_attachments(SimpleNamespace(files=None),'validation-unit-followup-20261024-original-v4'))==set(['工数3Q预实管理.xlsx', '工数实绩明细_20261020134124.xlsx'])\nassert all(s['id']!='work-hours-update' for s in get_available_skills())\nPath('skills.json').write_text(json.dumps([s['id'] for s in get_available_skills()]))\nstart=time.monotonic()\nwith Path('model-run.log').open('w') as log:\n result=subprocess.run(['dsh', 'run', '【当前上下文聚焦文档】: 工数实绩明细_20261020134124.xlsx（当前正在讨论的核心文件，为本次指令的主要处理对象）\\n【早期历史参考附件】: 工数3Q预实管理.xlsx（属于早期对话的历史背景，除非用户显式要求，否则不要把早期无关文件混淆合并进本轮交付物）\\n用户指令：k单位', '--session-id', 'validation-unit-followup-20261024-original-v4', '--web-search', '--thinking', '--reasoning-effort', 'medium', '--model', 'd13e0d30-87b9-4e87-b96a-d8b1b3cf78af', '--model-display-name', 'qwen36-35b-a3b', '--timeout', '300'],stdout=log,stderr=subprocess.STDOUT)\nreport={'model':'qwen36-35b-a3b','exit_code':result.returncode,'seconds':time.monotonic()-start}\nPath('model-run-result.json').write_text(json.dumps(report));print(json.dumps(report))\n"
+  ]
+}

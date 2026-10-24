@@ -70,6 +70,104 @@ class TerminalArtifactClaimTests(unittest.TestCase):
         self.assertNotIn('已生成文件', result.final_text)
         self.assertTrue(any(d['guard'] == 'artifact_delivery' for d in result.telemetry.guard_decisions))
 
+    def test_html_report_fallback_rejects_warning_disclaimer(self):
+        from dsh_modules.html_report_fallback import materialize_requested_html
+        warning_text = (
+            "文件已推送，请查收。\n\n"
+            "⚠️ **【指标核算未完成声明】**\n\n"
+            "**无法完成计算的原因：**\n"
+            "- 本次尚未完成您要求的各分组统计。\n"
+            "- 本次尚未完整执行您要求的筛选、排序或结果数量限制。\n\n"
+            "尚未验证的项目不会被列为完成。"
+        )
+        path, created = materialize_requested_html(
+            prompt="按部门统计金额，生成一张html的柱状图",
+            final_text=warning_text,
+            workspace_dir=str(self.root)
+        )
+        self.assertIsNone(path)
+        self.assertFalse(created)
+
+    def test_artifact_exporter_suppresses_success_banner_on_warning(self):
+        from dsh_modules.artifact_exporter import ArtifactExporter
+        chart_file = self.root / "index.html"
+        chart_file.write_text("<!DOCTYPE html><html><body><svg>Real Chart</svg></body></html>", encoding="utf-8")
+        os.utime(chart_file, (self.start, self.start))
+
+        warning_text = (
+            "文件已推送，请查收。\n\n"
+            "⚠️ **【指标核算未完成声明】**\n"
+            "无法完成计算的原因：未完成分组统计。"
+        )
+        final_text, exported = ArtifactExporter.export_html(
+            final_text=warning_text,
+            is_ppt_intent=False,
+            workspace_dir=str(self.root),
+            turn_start_time=self.start - 5.0,
+            prompt="按部门统计金额，生成一张html的柱状图"
+        )
+        self.assertNotIn("✨ **交互式页面已生成完毕！**", final_text)
+        self.assertIn("【指标核算未完成声明】", final_text)
+
+    def test_artifact_exporter_rejects_warning_html_file(self):
+        from dsh_modules.artifact_exporter import ArtifactExporter
+        warning_file = self.root / "index.html"
+        warning_file.write_text("<!DOCTYPE html><html><body><h1>指标核算未完成声明</h1></body></html>", encoding="utf-8")
+        os.utime(warning_file, (self.start, self.start))
+
+        final_text, exported = ArtifactExporter.export_html(
+            final_text="文件已生成",
+            is_ppt_intent=False,
+            workspace_dir=str(self.root),
+            turn_start_time=self.start - 5.0,
+            prompt="生成html报告"
+        )
+        self.assertEqual(exported, [])
+        self.assertNotIn("✨ **交互式页面已生成完毕！**", final_text)
+
+    def test_analysis_validation_accepts_metric_when_delivered_and_computed(self):
+        from dsh_modules.analysis_contract import build_analysis_contract
+        from dsh_modules.analysis_validation import validate_reply_against_contract
+        contract = build_analysis_contract("按 部门别 进行金额的统计 ，生成一张html的柱状图")
+        messages = [
+            {"role": "user", "content": "按 部门别 进行金额的统计 ，生成一张html的柱状图"},
+            {"role": "assistant", "content": None, "tool_calls": [{"id": "c1", "type": "function", "function": {"name": "bash", "arguments": "{}"}}]},
+            {"role": "tool", "tool_call_id": "c1", "name": "bash", "content": "部门金额汇总: 华东MIS 677.58544 K, 华东BAS 328.78323 K, 总额 1887.73102 K"},
+            {"role": "assistant", "content": None, "tool_calls": [{"id": "c2", "type": "function", "function": {"name": "send_workspace_file", "arguments": '{"file_path": "/workspace/index.html"}'}}]},
+            {"role": "tool", "tool_call_id": "c2", "name": "send_workspace_file", "content": '<<<DSH_OUTBOUND_FILE:10:{"fileName": "index.html"}>>>'}
+        ]
+        concise_reply = "文件已推送，请查收。"
+        val_res = validate_reply_against_contract(
+            contract=contract,
+            reply_text=concise_reply,
+            round_idx=3,
+            max_rounds=3,
+            messages=messages
+        )
+        self.assertTrue(val_res.is_pass)
+        self.assertIn("金额", val_res.satisfied_metrics)
+
+    def test_send_workspace_file_blocks_warning_html(self):
+        from dsh_modules.file_tools import send_workspace_file
+        warn_file = self.root / "index.html"
+        warn_file.write_text("<!DOCTYPE html><html><body><h3>指标核算未完成声明</h3></body></html>", encoding="utf-8")
+        with patch("dsh_modules.config.WORKSPACE_DIR", str(self.root)):
+            res = send_workspace_file("index.html")
+            self.assertIn("发送失败", res)
+            self.assertIn("声明页面", res)
+
+    def test_referential_terms_do_not_produce_fake_sheet_missing_files(self):
+        import openpyxl
+        wb = openpyxl.Workbook()
+        wb.create_sheet('1023')
+        wb_path = self.root / '工数3Q预实管理_1023_6.xlsx'
+        wb.save(wb_path)
+
+        text = '已生成 工数3Q预实管理_1023_6.xlsx，新增工作表 1023，已将数据回填至目标工作表。'
+        missing = self.verify(text)
+        self.assertNotIn('新工作表_目标.xlsx', missing)
+        self.assertEqual(missing, [])
+
 
 if __name__ == '__main__':
     unittest.main()

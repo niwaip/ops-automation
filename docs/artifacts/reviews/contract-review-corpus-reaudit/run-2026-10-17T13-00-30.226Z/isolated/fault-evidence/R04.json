@@ -38,9 +38,9 @@
         "isDegraded": true,
         "isTruncated": false,
         "warnings": [
-          "条款 1 (第1条) 模型响应缺失有效风险评估字段，已回退为静态规则校验。",
-          "条款 2 (第2条) 模型响应缺失有效风险评估字段，已回退为静态规则校验。",
-          "条款 3 (第3条) 模型响应缺失有效风险评估字段，已回退为静态规则校验。",
+          "条款 1 (第1条) 模型响应缺失有效风险评估字段 (模型响应缺失有效风险评估字段或有效判定结论)，已回退为静态规则校验。",
+          "条款 2 (第2条) 模型响应缺失有效风险评估字段 (模型响应缺失有效风险评估字段或有效判定结论)，已回退为静态规则校验。",
+          "条款 3 (第3条) 模型响应缺失有效风险评估字段 (模型响应缺失有效风险评估字段或有效判定结论)，已回退为静态规则校验。",
           "检测到 3 条条款未能完成大模型语义审查（已回退为静态规则校验），建议重点人工复核。"
         ]
       },
@@ -51,12 +51,19 @@
           "title": "条款0",
           "originalContent": "CRW_FAULT_0 双方依书面约定履行本条合同义务。",
           "riskLevel": "LOW",
-          "riskSummary": "该条款大模型语义审查超时/未响应，已回退为静态规则校验。",
+          "riskSummary": "该条款大模型语义审查降级 (MALFORMED_FINDING_SCHEMA)，已回退为静态规则校验。",
           "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。",
           "matchedCheckpoints": [],
           "llmReviewed": false,
           "isBypassed": false,
-          "isFallback": true
+          "isFallback": true,
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 0,
+            "rawSnippet": "[{\"clauseIndex\":0},{\"clauseIndex\":1},{\"clauseIndex\":2}]",
+            "validationFailureCode": "MALFORMED_FINDING_SCHEMA"
+          }
         },
         {
           "clauseIndex": 1,
@@ -64,12 +71,19 @@
           "title": "条款1",
           "originalContent": "CRW_FAULT_1 双方依书面约定履行本条合同义务。",
           "riskLevel": "LOW",
-          "riskSummary": "该条款大模型语义审查超时/未响应，已回退为静态规则校验。",
+          "riskSummary": "该条款大模型语义审查降级 (MALFORMED_FINDING_SCHEMA)，已回退为静态规则校验。",
           "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。",
           "matchedCheckpoints": [],
           "llmReviewed": false,
           "isBypassed": false,
-          "isFallback": true
+          "isFallback": true,
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 0,
+            "rawSnippet": "[{\"clauseIndex\":0},{\"clauseIndex\":1},{\"clauseIndex\":2}]",
+            "validationFailureCode": "MALFORMED_FINDING_SCHEMA"
+          }
         },
         {
           "clauseIndex": 2,
@@ -77,12 +91,19 @@
           "title": "条款2",
           "originalContent": "CRW_FAULT_2 双方依书面约定履行本条合同义务。",
           "riskLevel": "LOW",
-          "riskSummary": "该条款大模型语义审查超时/未响应，已回退为静态规则校验。",
+          "riskSummary": "该条款大模型语义审查降级 (MALFORMED_FINDING_SCHEMA)，已回退为静态规则校验。",
           "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。",
           "matchedCheckpoints": [],
           "llmReviewed": false,
           "isBypassed": false,
-          "isFallback": true
+          "isFallback": true,
+          "diagnostics": {
+            "attempt": 1,
+            "modelId": "qwen36-35b-a3b",
+            "elapsedMs": 0,
+            "rawSnippet": "[{\"clauseIndex\":0},{\"clauseIndex\":1},{\"clauseIndex\":2}]",
+            "validationFailureCode": "MALFORMED_FINDING_SCHEMA"
+          }
         }
       ],
       "chapters": [
@@ -97,12 +118,19 @@
               "title": "条款0",
               "originalContent": "CRW_FAULT_0 双方依书面约定履行本条合同义务。",
               "riskLevel": "LOW",
-              "riskSummary": "该条款大模型语义审查超时/未响应，已回退为静态规则校验。",
+              "riskSummary": "该条款大模型语义审查降级 (MALFORMED_FINDING_SCHEMA)，已回退为静态规则校验。",
               "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。",
               "matchedCheckpoints": [],
               "llmReviewed": false,
               "isBypassed": false,
-              "isFallback": true
+              "isFallback": true,
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 0,
+                "rawSnippet": "[{\"clauseIndex\":0},{\"clauseIndex\":1},{\"clauseIndex\":2}]",
+                "validationFailureCode": "MALFORMED_FINDING_SCHEMA"
+              }
             }
           ],
           "highRiskCount": 0,
@@ -120,12 +148,19 @@
               "title": "条款1",
               "originalContent": "CRW_FAULT_1 双方依书面约定履行本条合同义务。",
               "riskLevel": "LOW",
-              "riskSummary": "该条款大模型语义审查超时/未响应，已回退为静态规则校验。",
+              "riskSummary": "该条款大模型语义审查降级 (MALFORMED_FINDING_SCHEMA)，已回退为静态规则校验。",
               "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。",
               "matchedCheckpoints": [],
               "llmReviewed": false,
               "isBypassed": false,
-              "isFallback": true
+              "isFallback": true,
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 0,
+                "rawSnippet": "[{\"clauseIndex\":0},{\"clauseIndex\":1},{\"clauseIndex\":2}]",
+                "validationFailureCode": "MALFORMED_FINDING_SCHEMA"
+              }
             },
             {
               "clauseIndex": 2,
@@ -133,12 +168,19 @@
               "title": "条款2",
               "originalContent": "CRW_FAULT_2 双方依书面约定履行本条合同义务。",
               "riskLevel": "LOW",
-              "riskSummary": "该条款大模型语义审查超时/未响应，已回退为静态规则校验。",
+              "riskSummary": "该条款大模型语义审查降级 (MALFORMED_FINDING_SCHEMA)，已回退为静态规则校验。",
               "legalAdvice": "未完成大模型语义深审，建议结合业务背景人工复核。",
               "matchedCheckpoints": [],
               "llmReviewed": false,
               "isBypassed": false,
-              "isFallback": true
+              "isFallback": true,
+              "diagnostics": {
+                "attempt": 1,
+                "modelId": "qwen36-35b-a3b",
+                "elapsedMs": 0,
+                "rawSnippet": "[{\"clauseIndex\":0},{\"clauseIndex\":1},{\"clauseIndex\":2}]",
+                "validationFailureCode": "MALFORMED_FINDING_SCHEMA"
+              }
             }
           ],
           "highRiskCount": 0,

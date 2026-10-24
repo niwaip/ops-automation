@@ -1,0 +1,126 @@
+{
+  "source_sha256": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+  "declared_dimension": "A1:A1",
+  "range": "工数实绩明细!A5:R278",
+  "groups": [
+    {
+      "code": "FC45031",
+      "name": "華東MIS",
+      "amount_k": "677.58544",
+      "hours": "2204.72",
+      "rows": 103,
+      "employees": 15
+    },
+    {
+      "code": "FC46005",
+      "name": "華東BAS",
+      "amount_k": "328.78323",
+      "hours": "1206.15",
+      "rows": 45,
+      "employees": 9
+    },
+    {
+      "code": "FC44004",
+      "name": "流通/EBISS",
+      "amount_k": "253.90590",
+      "hours": "916.00",
+      "rows": 18,
+      "employees": 7
+    },
+    {
+      "code": "FC44003",
+      "name": "SM華南BAS",
+      "amount_k": "220.99259",
+      "hours": "808.53",
+      "rows": 22,
+      "employees": 8
+    },
+    {
+      "code": "FC44006",
+      "name": "DM華南BAS",
+      "amount_k": "171.65638",
+      "hours": "584.54",
+      "rows": 17,
+      "employees": 5
+    },
+    {
+      "code": "FC34022",
+      "name": "華南MIS",
+      "amount_k": "167.77218",
+      "hours": "553.07",
+      "rows": 63,
+      "employees": 5
+    },
+    {
+      "code": "FC48005",
+      "name": "華北BAS",
+      "amount_k": "67.03530",
+      "hours": "259.0",
+      "rows": 6,
+      "employees": 2
+    }
+  ],
+  "total_amount_k": "1887.73102",
+  "total_hours": "6532.01",
+  "rows": 274,
+  "unique_employees": 51,
+  "amount_per_employee_k": "37.01433372549019607843137255",
+  "dept_data_amounts_match": true,
+  "last_model_response_hash_matches": true,
+  "validator_with_successful_computation": {
+    "status": "failed",
+    "satisfied_metrics": [],
+    "missing_metrics": [
+      "金额"
+    ],
+    "has_evasion": false,
+    "details": {
+      "金额": {
+        "metric_name": "金额",
+        "satisfied": false,
+        "detected_value_text": null,
+        "is_year_hallucination": false
+      }
+    },
+    "feedback_message": "【系统指标逐项验收未完成拦截】：用户明确要求计算全部以下指标：【金额】。\n当前回复已给出有效数据：【无】，但仍缺少关键指标：【金额】。\n严禁仅给出局部单项指标或将年份字样误作结论！请读取对应工作表或运行 Python 补齐所缺指标的真实数值与核算结论。",
+    "comparison_error": null
+  },
+  "prior_html": {
+    "session": "chat-session-1792730309468-pezbjusi",
+    "lines": 250,
+    "bytes_without_trailing_newline": 8660,
+    "sha256": "2bb51163b3a39b6150a1259a264da993394f64a7ab8595aa45ea2260822e03d0"
+  },
+  "reproduction": {
+    "stale_file": {
+      "model_calls": 0,
+      "finalizer_text": "文件已推送，请查收。\n\n---\n⚠️ **【指标核算未完成声明】**\n- **已达成指标**：无\n- **未完成指标**：金额\n- **未完成原因**：模型未能在当前回复中直接呈现全部关键指标的具体数值核算结论。\n- **💡 建议操作**：可指定直接读取相关数据源工作表或明确计算口径重试。",
+      "success_banner": true,
+      "output_bytes": 2179,
+      "output_sha256": "5efc9ea64773904e4461cbd79e6d9b200729500c43cbcb6dff2fe4703dc2a18c",
+      "matches_actual_file": true,
+      "has_svg_or_canvas": false,
+      "original_preserved": false,
+      "matches_actual_answer": true
+    },
+    "current_turn_file": {
+      "model_calls": 0,
+      "finalizer_text": "文件已推送，请查收。\n\n---\n⚠️ **【指标核算未完成声明】**\n- **已达成指标**：无\n- **未完成指标**：金额\n- **未完成原因**：模型未能在当前回复中直接呈现全部关键指标的具体数值核算结论。\n- **💡 建议操作**：可指定直接读取相关数据源工作表或明确计算口径重试。",
+      "success_banner": true,
+      "output_bytes": 8661,
+      "output_sha256": "87815899c24dbff09985b5750c97d7c7175b5ee69b27ce364fe8bc1d048b8b3c",
+      "matches_actual_file": false,
+      "has_svg_or_canvas": true,
+      "original_preserved": true,
+      "matches_actual_answer": false
+    }
+  },
+  "original_files_unchanged": true,
+  "local_runtime_hashes": {
+    "artifact_exporter.py": "0895e8d35efa23ae76683d1c585ee4f6e4b94ef3d3ce99fef0f9bcc6534dce01",
+    "final_answer.py": "3ae4e20d80f7c70301bad2813a9da3b0898b6d8bf172be7f910c482d7d98cedf",
+    "html_report_fallback.py": "d9aa19f77b503702934b33de0ae706987733de1d6c0a969354c8cb2ad1f53d20",
+    "agent_loop.py": "cb0a949717ee68419a59b6bbb0212266bf63b8c90308cc1cdd7fedcb2acc08de",
+    "analysis_validation.py": "0febdb2bffd1fdefff2926986a604c72e9f48c5a5bd1464b9a4a796a525d2453"
+  }
+}

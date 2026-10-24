@@ -149,6 +149,9 @@ def is_modify_intent_requested(query: str, attached_files: Optional[List[str]] =
         r'(?:将|把)[^，。！？；;\n]*(?:早班|晚班|班次|人员|负责人|李师傅|王师傅|预算|金额|数值|内容|字段|时间|日期)[^，。！？；;\n]*(?:换成|改为|替换为|改成)',
         r'(?:换成|改为|替换为|更新为|改成)[^，。！？；;\n]*(?:早班|晚班|班次|人员|负责人|李师傅|王师傅|\d+)',
         r'(?:仅|只)?(?:修改|替换|改动|变更|调整)[^，。！？；;\n]*内容',
+        r'(?:更新|修改|调整|刷新|填入|回填|覆盖|替换)\s*[^，。！？；;\n]*(?:预实|工数|表格|工作簿|sheet|工作表|预测|实绩|计划|数据|数值|单元格|内容)',
+        r'复制\s*[^，。！？；;\n]*(?:sheet|工作表|标签页)\s*生成',
+        r'(?:更新|回填|写入|填入)\s*到\s*[^，。！？；;\n]*(?:预测|计划|实绩|表格|sheet|工作表|单元格)',
     ]
     clauses = re.split(r'[，。！？；;\n]+', p)
     has_positive = False
@@ -260,7 +263,8 @@ def extract_source_and_target_artifacts(
 
             is_src = (
                 bool(re.search(rf'^{INSPECT_SOURCE_PREFIXES}', raw_stem))
-                or any(k in c_clean for k in ["读取", "基于", "输入", "来自", "核对", "阅读", "总结", "分析", "检查", "审阅", "提取", "抽取", "对账", "查看"])
+                or any(k in c_clean for k in ["读取", "基于", "输入", "来自", "核对", "阅读", "总结", "分析", "检查", "审阅", "提取", "抽取", "对账", "查看", "上传附件", "用户上传", "有效附件", "附件清单"])
+                or (attached_files and any(af in c_clean or af == f"{raw_stem}{ext}" for af in attached_files))
             )
             # 严格剥离动词与量词修饰前缀（注意：命名引导词必须包含完整词根，严禁将裸“名”或裸“名称”当可剥除前缀，以保留“名单”、“名册”、“名称对照表”等真实文件名）
             action_prefix_pat = (
@@ -293,6 +297,7 @@ def extract_source_and_target_artifacts(
     masked_for_cues, _ = mask_file_references(lower, attached_files)
     format_cue_mappings = [
         (r'(?:转为|转成|生成|制作|导出|另存为|输出为)[^，。！？；;\n]*(?:pdf|pdf文件|pdf报告)', ".pdf", "pdf"),
+        (r'(?:转为|转成|生成|制作|导出|另存为|输出为)[^，。！？；;\n]*(?:html|html文件|html报告|网页|页面|单页|柱状图|折线图|饼图|图表)', ".html", "html"),
         (r'(?:转为|转成|生成|制作|导出|另存为|输出为)[^，。！？；;\n]*(?:word|word文档|docx|doc)', ".docx", "docx"),
         (r'(?:转为|转成|生成|制作|导出|另存为|输出为)[^，。！？；;\n]*(?:excel|excel文件|表格|xlsx|xls)', ".xlsx", "xlsx"),
         (r'(?:转为|转成|生成|制作|导出|另存为|输出为)[^，。！？；;\n]*(?:pptx?|幻灯片|演示文稿)', ".pptx", "pptx"),

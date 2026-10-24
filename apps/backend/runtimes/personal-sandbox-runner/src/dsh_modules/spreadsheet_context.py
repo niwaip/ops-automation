@@ -153,7 +153,10 @@ def spreadsheet_structure(source, selected_sheets=None, deadline=None):
             candidates=([{"header_row":best["row"],"data_range":f"A{best['row']+1}:{get_column_letter(ws.max_column)}{end}",
                            "reason":"候选来自非公式文本表头；排除末尾显式合计行与说明行，请按任务核对"}]
                          if best and best["row"]<end else [])
+            from .spreadsheet_structure_evidence import collect_label_bands
+            structural_evidence = collect_label_bands(ws, deadline)
             sheets.append({"sheet":ws.title,"dimensions":dimensions,"physical_rows":ws.max_row,
+                           **structural_evidence,
                            "coverage_complete":False,"sample_cells":sample,
                            "header_candidates":sorted(headers,key=lambda h:len(h["columns"]),reverse=True)[:3],
                            "data_region_candidates":candidates,"row_labels":row_labels})

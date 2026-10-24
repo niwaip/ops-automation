@@ -321,6 +321,9 @@ def render_unverified_guidance(state, prompt="", failed_detail=""):
         elif code == "grouping_incomplete":
             reasons.append("本次尚未完成您要求的各分组统计。")
             guidances.append("可以重试分组统计；现有数据不会被当作完整分组结果。")
+        elif code == 'unsolicited_filter_applied':
+            reasons.append("当前执行包含了未经请求的过滤条件，导致核算口径偏离。")
+            guidances.append("建议重试并移除不必要的行过滤条件。")
         elif code in ('group_filter_not_applied', 'ordering_not_applied', 'ranking_limit_not_applied',
                       'query_stages_disconnected', 'row_filter_not_applied', 'group_filter_boolean_incomplete',
                       'distinct_not_applied', 'ordering_incomplete'):

@@ -1,0 +1,13 @@
+{
+  "sums": {
+    "验证A": 30,
+    "验证B": 10
+  },
+  "total": 40,
+  "excludedRows": 6,
+  "includedRows": 4,
+  "fixtureSha256": "09051d50185046d75a1b36595b5e232ba585d81beaee02dce31c2b64d8c8b1ae",
+  "recordedSourceSha256": "09051d50185046d75a1b36595b5e232ba585d81beaee02dce31c2b64d8c8b1ae",
+  "matchesRecordedSource": true,
+  "runtimeNumericalEvidenceVerified": false
+}

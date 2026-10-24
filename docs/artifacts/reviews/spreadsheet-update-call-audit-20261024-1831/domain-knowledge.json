@@ -1,0 +1,11 @@
+{
+  "general": {
+    "section_mappings": {
+      "无偿": {
+        "target_title": "*P/*Y/EX（不含*L/*B）",
+        "source": "user_confirmation",
+        "quote": "【*P/Y/EX（不含L/*B）】 就是无偿"
+      }
+    }
+  }
+}

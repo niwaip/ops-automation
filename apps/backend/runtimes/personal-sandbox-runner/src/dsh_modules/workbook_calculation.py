@@ -188,6 +188,175 @@ def has_uncalculated_formulas(file_path: Union[str, Path]) -> bool:
     return res.get("has_uncalculated", False)
 
 
+def recalculate_candidate(
+    file_path: Union[str, Path],
+    output_path: Optional[Union[str, Path]] = None,
+    force: bool = False
+) -> Tuple[Optional[Path], Dict[str, Any]]:
+    """
+    Low-level recalculation entry point for candidate workbooks via headless LibreOffice.
+    Returns: (candidate_path, diagnostic_metadata)
+    Guarantees:
+    - Never mutates the original input workbook.
+    - If recalculation produces a valid workbook, returns its path and exact diagnostics
+      (whether clean/verified or partial).
+    - Preserves exact diagnosis: never relabels 'partial' as 'verified'.
+    - Never returns original input workbook pretending it was recalculated.
+    - If recalculation execution fatally fails or corrupts, candidate_path is None.
+    """
+    src_p = Path(file_path).resolve()
+    if not src_p.exists() or not zipfile.is_zipfile(src_p):
+        return None, {
+            "schema_version": 1,
+            "status": "failed",
+            "provenance": {
+                "workbook_id": "",
+                "engine": "libreoffice_calc_headless",
+                "validator_version": RECALC_CACHE_VERSION,
+            },
+            "error": f"Source file does not exist or is not a valid zip archive: {src_p}"
+        }
+
+    try:
+        src_bytes = src_p.read_bytes()
+        src_hash = hashlib.sha256(src_bytes).hexdigest()
+    except Exception as e:
+        return None, {
+            "schema_version": 1,
+            "status": "failed",
+            "provenance": {
+                "workbook_id": "",
+                "engine": "libreoffice_calc_headless",
+                "validator_version": RECALC_CACHE_VERSION,
+            },
+            "error": f"Failed to read file hash: {e}"
+        }
+
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    if output_path:
+        dest_p = Path(output_path).resolve()
+        dest_p.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        dest_p = CACHE_DIR / f"cand_{src_p.stem}_{src_hash[:16]}_{RECALC_CACHE_VERSION}.xlsx"
+
+    # Temporary staging file for atomic operation
+    tmp_fd, tmp_path_str = tempfile.mkstemp(prefix=f"recalc_cand_{src_p.stem}_", suffix=".xlsx", dir=str(CACHE_DIR))
+    os.close(tmp_fd)
+    tmp_path = Path(tmp_path_str)
+
+    try:
+        recalc_res = None
+        recalc_script = None
+        for cand in [
+            Path("/opt/dsh/skills/xlsx/scripts/recalc.py"),
+            Path(__file__).resolve().parent.parent.parent / "skills" / "xlsx" / "scripts" / "recalc.py",
+            Path("/workspace/skills/xlsx/scripts/recalc.py"),
+        ]:
+            if cand.exists():
+                recalc_script = cand
+                break
+
+        if recalc_script:
+            env = os.environ.copy()
+            python_paths = ["/usr/local/bin", str(Path(__file__).resolve().parent.parent)]
+            if "PYTHONPATH" in env:
+                python_paths.append(env["PYTHONPATH"])
+            env["PYTHONPATH"] = ":".join(p for p in python_paths if p)
+
+            sub_proc = subprocess.run(
+                [sys.executable, str(recalc_script), str(src_p), "-o", str(tmp_path), "--force"],
+                capture_output=True,
+                text=True,
+                env=env,
+                timeout=45
+            )
+            if sub_proc.returncode == 0 and sub_proc.stdout.strip():
+                try:
+                    recalc_res = json.loads(sub_proc.stdout.strip())
+                except Exception:
+                    recalc_res = {"status": "failed", "error": f"Invalid JSON output: {sub_proc.stdout[:200]}"}
+            else:
+                err_msg = sub_proc.stderr.strip() or sub_proc.stdout.strip() or f"recalc exit code {sub_proc.returncode}"
+                recalc_res = {"status": "failed", "error": err_msg}
+        else:
+            try:
+                import recalc
+                recalc_res = recalc.recalc(str(src_p), output=str(tmp_path), force=True)
+            except Exception as ex:
+                recalc_res = {"status": "failed", "error": f"recalc script not found: {ex}"}
+
+        if tmp_path.exists() and zipfile.is_zipfile(tmp_path):
+            shutil.move(str(tmp_path), str(dest_p))
+            out_bytes = dest_p.read_bytes()
+            out_hash = hashlib.sha256(out_bytes).hexdigest()
+
+            # Ensure post-calculation formula validation is run if not already present in recalc_res
+            if not isinstance(recalc_res, dict) or "total_formulas" not in recalc_res:
+                formula_check = check_workbook_formulas(dest_p, is_post_recalc=True)
+                raw_status = formula_check.get("status", "partial")
+                status = "verified" if raw_status == "recalculated_verified" or (formula_check.get("total_errors", 0) == 0 and not formula_check.get("has_uncalculated", False)) else "partial"
+                total_formulas = formula_check.get("total_formulas", 0)
+                cached_formulas = formula_check.get("cached_formulas", 0)
+                uncalculated_formulas = formula_check.get("uncalculated_formulas", 0)
+                total_errors = formula_check.get("total_errors", 0)
+                error_summary = formula_check.get("error_summary", {})
+            else:
+                status = recalc_res.get("status", "partial")
+                total_formulas = recalc_res.get("total_formulas", 0)
+                cached_formulas = recalc_res.get("cached_formulas", 0)
+                uncalculated_formulas = recalc_res.get("uncalculated_formulas", 0)
+                total_errors = recalc_res.get("total_errors", 0)
+                error_summary = recalc_res.get("error_summary", {})
+
+            meta = {
+                "schema_version": 1,
+                "status": status,
+                "engine_execution": "success",
+                "provenance": {
+                    "workbook_id": src_hash,
+                    "output_hash": out_hash,
+                    "engine": "libreoffice_calc_headless",
+                    "validator_version": RECALC_CACHE_VERSION,
+                    "calculated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                },
+                "total_formulas": total_formulas,
+                "cached_formulas": cached_formulas,
+                "uncalculated_formulas": uncalculated_formulas,
+                "total_errors": total_errors,
+                "error_summary": error_summary,
+                "error": recalc_res.get("error") if isinstance(recalc_res, dict) else None,
+            }
+            return dest_p, meta
+        else:
+            status = recalc_res.get("status", "failed") if isinstance(recalc_res, dict) else "failed"
+            meta = {
+                "schema_version": 1,
+                "status": status,
+                "engine_execution": "failed",
+                "provenance": {
+                    "workbook_id": src_hash,
+                    "engine": "libreoffice_calc_headless",
+                    "validator_version": RECALC_CACHE_VERSION,
+                },
+                "error": recalc_res.get("error") if isinstance(recalc_res, dict) else str(recalc_res),
+            }
+            return None, meta
+    except Exception as e:
+        return None, {
+            "schema_version": 1,
+            "status": "failed",
+            "engine_execution": "failed",
+            "provenance": {
+                "workbook_id": src_hash,
+                "engine": "libreoffice_calc_headless",
+                "validator_version": RECALC_CACHE_VERSION,
+            },
+            "error": f"Exception during recalculation candidate generation: {e}"
+        }
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
 def get_or_create_recalculated_workbook(
     file_path: Union[str, Path],
     force: bool = False
@@ -234,8 +403,6 @@ def get_or_create_recalculated_workbook(
     # 2. Check if original workbook even needs recalculation
     pre_check = check_workbook_formulas(src_p)
     if not pre_check.get("has_uncalculated", False) and pre_check.get("total_errors", 0) == 0:
-        # Original has full cache, but as per audit requirements, label as cached_unverified
-        # Unless caller specifically requests recalculation, we can return original with cached_unverified status
         meta = {
             "schema_version": 1,
             "status": "cached_unverified",
@@ -247,97 +414,16 @@ def get_or_create_recalculated_workbook(
             },
             "formula_check": pre_check
         }
-    # 3. Perform headless recalculation via recalc.py using atomic temporary file
-    tmp_fd, tmp_path_str = tempfile.mkstemp(prefix=f"recalc_{src_p.stem}_", suffix=".xlsx", dir=str(CACHE_DIR))
-    os.close(tmp_fd)
-    tmp_path = Path(tmp_path_str)
 
-    try:
-        recalc_res = None
-        recalc_script = None
-        for cand in [
-            Path("/opt/dsh/skills/xlsx/scripts/recalc.py"),
-            Path(__file__).resolve().parent.parent.parent / "skills" / "xlsx" / "scripts" / "recalc.py",
-            Path("/workspace/skills/xlsx/scripts/recalc.py"),
-        ]:
-            if cand.exists():
-                recalc_script = cand
-                break
-
-        if recalc_script:
-            env = os.environ.copy()
-            python_paths = ["/usr/local/bin", str(Path(__file__).resolve().parent.parent)]
-            if "PYTHONPATH" in env:
-                python_paths.append(env["PYTHONPATH"])
-            env["PYTHONPATH"] = ":".join(p for p in python_paths if p)
-
-            sub_proc = subprocess.run(
-                [sys.executable, str(recalc_script), str(src_p), "-o", str(tmp_path), "--force"],
-                capture_output=True,
-                text=True,
-                env=env,
-                timeout=45
-            )
-            if sub_proc.returncode == 0 and sub_proc.stdout.strip():
-                try:
-                    recalc_res = json.loads(sub_proc.stdout.strip())
-                except Exception:
-                    recalc_res = {"status": "failed", "error": f"Invalid JSON output: {sub_proc.stdout[:200]}"}
-            else:
-                err_msg = sub_proc.stderr.strip() or sub_proc.stdout.strip() or f"recalc exit code {sub_proc.returncode}"
-                recalc_res = {"status": "failed", "error": err_msg}
-        else:
-            try:
-                import recalc
-                recalc_res = recalc.recalc(str(src_p), output=str(tmp_path), force=True)
-            except Exception as ex:
-                recalc_res = {"status": "failed", "error": f"recalc script not found: {ex}"}
-
-        if isinstance(recalc_res, dict) and recalc_res.get("status") == "verified" and tmp_path.exists() and zipfile.is_zipfile(tmp_path):
-            os.replace(str(tmp_path), str(cache_xlsx))
-            out_bytes = cache_xlsx.read_bytes()
-            out_hash = hashlib.sha256(out_bytes).hexdigest()
-            meta = {
-                "schema_version": 1,
-                "status": "recalculated_verified",
-                "provenance": {
-                    "workbook_id": src_hash,
-                    "output_hash": out_hash,
-                    "engine": "libreoffice_calc_headless",
-                    "validator_version": RECALC_CACHE_VERSION,
-                    "calculated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                },
-                "total_formulas": recalc_res.get("total_formulas", 0),
-                "cached_formulas": recalc_res.get("cached_formulas", 0),
-                "uncalculated_formulas": recalc_res.get("uncalculated_formulas", 0),
-                "total_errors": recalc_res.get("total_errors", 0),
-                "error_summary": recalc_res.get("error_summary", {}),
-            }
-            cache_meta.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
-            return cache_xlsx, meta
-        else:
-            status = recalc_res.get("status", "failed") if isinstance(recalc_res, dict) else "failed"
-            meta = {
-                "schema_version": 1,
-                "status": status,
-                "provenance": {
-                    "workbook_id": src_hash,
-                    "engine": "libreoffice_calc_headless",
-                    "validator_version": RECALC_CACHE_VERSION,
-                },
-                "error": recalc_res.get("error") if isinstance(recalc_res, dict) else str(recalc_res),
-            }
-            return src_p, meta
-    except Exception as e:
-        return src_p, {
-            "schema_version": 1,
-            "status": "failed",
-            "provenance": {
-                "workbook_id": src_hash,
-                "engine": "libreoffice_calc_headless",
-                "validator_version": RECALC_CACHE_VERSION,
-            },
-            "error": f"Exception during recalculation: {e}"
-        }
-    finally:
-        tmp_path.unlink(missing_ok=True)
+    # 3. Perform headless recalculation via underlying recalculate_candidate
+    cand_path, meta = recalculate_candidate(src_p, output_path=cache_xlsx, force=force)
+    if cand_path and cand_path.exists() and meta.get("status") in ("verified", "clean"):
+        meta["status"] = "recalculated_verified"
+        cache_meta.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+        return cache_xlsx, meta
+    else:
+        # Legacy strict behavior: if not verified clean, do not claim verified and purge cache_xlsx
+        if cand_path and cand_path.exists():
+            cand_path.unlink(missing_ok=True)
+        cache_meta.unlink(missing_ok=True)
+        return src_p, meta

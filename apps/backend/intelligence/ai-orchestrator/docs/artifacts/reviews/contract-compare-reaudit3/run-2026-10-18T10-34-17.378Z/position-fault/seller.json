@@ -1,0 +1,26 @@
+{
+  "isolated": true,
+  "role": "乙方（卖方）",
+  "expected": "seller",
+  "result": {
+    "nodeBindings": {
+      "n1": {
+        "myPosition": {
+          "source": "literal",
+          "value": "seller"
+        }
+      }
+    },
+    "planInputs": {
+      "n1": {
+        "myPosition": "seller"
+      }
+    },
+    "requiredUserInputs": [],
+    "notes": [
+      "能力契约别名已确定性解析字段: myPosition",
+      "命中别名: {\"myPosition\":\"我方为乙方\"}"
+    ]
+  },
+  "recognizerCalls": 0
+}

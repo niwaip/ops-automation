@@ -1,0 +1,24 @@
+{
+  "slug": "dept-summary",
+  "displayName": "部门别有偿统计",
+  "objective": "按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据",
+  "confirmedInstructions": [
+    "按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据"
+  ],
+  "negativeConstraints": [
+    {
+      "userCorrection": "按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据",
+      "adjustment": "按用户纠偏指令应用规则约束"
+    }
+  ],
+  "inputExpectations": [
+    {
+      "name": "工数实绩明细_20261020134124.xlsx",
+      "type": "xlsx",
+      "description": "来源附件 [工数实绩明细_20261020134124.xlsx] 对应的同构输入",
+      "required": true
+    }
+  ],
+  "outputContract": [],
+  "createdAt": "2026-10-22T10:57:55.813Z"
+}

@@ -1,0 +1,157 @@
+{
+  "schema_version": "SpreadsheetUpdatePlan/v1",
+  "task_contract_ref": "current_turn",
+  "target_ref": "/workspace/.validation/generic-binding-20261023/changed-v4/滚动管理.xlsx",
+  "sources": [],
+  "as_of": "2026-10-24",
+  "snapshot": {
+    "selected_sheet_id": "快照-2028-11-01",
+    "new_sheet_name": "复核版"
+  },
+  "semantic_bindings": {
+    "region_specs": [
+      {
+        "region_id": "收费业务",
+        "header_row": 34,
+        "key_col": 6,
+        "min_row": 19,
+        "max_row": 53,
+        "min_col": 1,
+        "max_col": 24,
+        "period_columns": {
+          "202811": 7
+        },
+        "department_rows": {
+          "组织/11": 35,
+          "R-9": 36,
+          "余项": 38,
+          "LAB::8": 39,
+          "九部": 40,
+          "0": 41,
+          "组织_乙": 43,
+          "Ω组": 44,
+          "七号": 45,
+          "研发/甲": 46,
+          "003": 48
+        },
+        "protected_coordinates": [],
+        "metric_id": "metric_709207b518ca",
+        "unit": "万元",
+        "value_kind": "forecast"
+      }
+    ],
+    "facts_hash": "aa13ff4cbcfb1fe7083cafafbf9289c5ccaf49612d280f3c86c8c3c35acdd505",
+    "input_hashes": {
+      "/workspace/.validation/generic-binding-20261023/changed-v4/滚动管理.xlsx": "45f1936df0acbba7b389374336ff35cf36407d4a94ccf5ceee9305b4457129cd",
+      "/workspace/.validation/generic-binding-20261023/changed-v4/收入记录.xlsx": "c98d37dce430ae16722e22c79056b536b8d4d9615e8532e275d486dd7172bc7f"
+    },
+    "warnings": [
+      "来源无匹配记录，保留原值：0, 003, LAB::8, R-9"
+    ]
+  },
+  "operations": [
+    {
+      "op": "copy_sheet",
+      "op_id": "copy",
+      "source_sheet": "快照-2028-11-01",
+      "target_sheet": "复核版"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_0",
+      "target_sheet": "复核版",
+      "coordinate": "G40",
+      "fact_ref": "40cf5f4487d89e0d702c7a66:metric_709207b518ca__(('str', '九部'),)",
+      "region_id": "收费业务",
+      "department_code": "九部",
+      "metric_id": "metric_709207b518ca",
+      "period": "202811",
+      "value_kind": "forecast",
+      "unit": "万元"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_1",
+      "target_sheet": "复核版",
+      "coordinate": "G35",
+      "fact_ref": "40cf5f4487d89e0d702c7a66:metric_709207b518ca__(('str', '组织/11'),)",
+      "region_id": "收费业务",
+      "department_code": "组织/11",
+      "metric_id": "metric_709207b518ca",
+      "period": "202811",
+      "value_kind": "forecast",
+      "unit": "万元"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_2",
+      "target_sheet": "复核版",
+      "coordinate": "G45",
+      "fact_ref": "40cf5f4487d89e0d702c7a66:metric_709207b518ca__(('str', '七号'),)",
+      "region_id": "收费业务",
+      "department_code": "七号",
+      "metric_id": "metric_709207b518ca",
+      "period": "202811",
+      "value_kind": "forecast",
+      "unit": "万元"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_3",
+      "target_sheet": "复核版",
+      "coordinate": "G44",
+      "fact_ref": "40cf5f4487d89e0d702c7a66:metric_709207b518ca__(('str', 'Ω组'),)",
+      "region_id": "收费业务",
+      "department_code": "Ω组",
+      "metric_id": "metric_709207b518ca",
+      "period": "202811",
+      "value_kind": "forecast",
+      "unit": "万元"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_4",
+      "target_sheet": "复核版",
+      "coordinate": "G46",
+      "fact_ref": "40cf5f4487d89e0d702c7a66:metric_709207b518ca__(('str', '研发/甲'),)",
+      "region_id": "收费业务",
+      "department_code": "研发/甲",
+      "metric_id": "metric_709207b518ca",
+      "period": "202811",
+      "value_kind": "forecast",
+      "unit": "万元"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_5",
+      "target_sheet": "复核版",
+      "coordinate": "G43",
+      "fact_ref": "40cf5f4487d89e0d702c7a66:metric_709207b518ca__(('str', '组织_乙'),)",
+      "region_id": "收费业务",
+      "department_code": "组织_乙",
+      "metric_id": "metric_709207b518ca",
+      "period": "202811",
+      "value_kind": "forecast",
+      "unit": "万元"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_6",
+      "target_sheet": "复核版",
+      "coordinate": "G38",
+      "fact_ref": "40cf5f4487d89e0d702c7a66:metric_709207b518ca__(('str', '余项'),)",
+      "region_id": "收费业务",
+      "department_code": "余项",
+      "metric_id": "metric_709207b518ca",
+      "period": "202811",
+      "value_kind": "forecast",
+      "unit": "万元"
+    }
+  ],
+  "preserve": {},
+  "requirements": {},
+  "output": {
+    "mode": "deliverable_file",
+    "display_name": "滚动管理_复核版.xlsx"
+  }
+}

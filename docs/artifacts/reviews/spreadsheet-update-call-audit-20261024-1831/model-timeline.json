@@ -1,0 +1,86 @@
+[
+  {
+    "completed_at_cst": "2026-10-24T18:29:53.651349+08:00",
+    "trace_id": "bbecbbf8-40f9-41ef-8d3d-303b22be419d",
+    "proxy_ms": 3362,
+    "phase_inferred_from_order": "intent_extract"
+  },
+  {
+    "completed_at_cst": "2026-10-24T18:29:56.155770+08:00",
+    "trace_id": "926855b3-6e7b-4ad2-a310-ad80d9d63000",
+    "proxy_ms": 2491,
+    "phase_inferred_from_order": "intent_review"
+  },
+  {
+    "completed_at_cst": "2026-10-24T18:29:59.997604+08:00",
+    "trace_id": "dce61a57-8a57-45d5-afd3-387f41787e64",
+    "proxy_ms": 3593,
+    "phase_inferred_from_order": "inspect_both_files"
+  },
+  {
+    "completed_at_cst": "2026-10-24T18:30:02.684986+08:00",
+    "trace_id": "9a7db699-4e11-47ed-8f8f-61671bdc37d3",
+    "proxy_ms": 2508,
+    "phase_inferred_from_order": "read_target_all"
+  },
+  {
+    "completed_at_cst": "2026-10-24T18:31:07.517030+08:00",
+    "trace_id": "7f2606d0-6d58-48df-9661-551da2fc5e98",
+    "proxy_ms": 64770,
+    "phase_inferred_from_order": "read_invalid_range"
+  },
+  {
+    "completed_at_cst": "2026-10-24T18:31:09.069729+08:00",
+    "trace_id": "634acb9c-b60f-4e3c-8f7a-acbaabd5f433",
+    "proxy_ms": 1522,
+    "phase_inferred_from_order": "read_target_slice"
+  },
+  {
+    "completed_at_cst": "2026-10-24T18:31:13.537879+08:00",
+    "trace_id": "6c19597c-fe60-4527-b773-a1cd374a7c81",
+    "proxy_ms": 4407,
+    "phase_inferred_from_order": "aggregate_paid"
+  },
+  {
+    "completed_at_cst": "2026-10-24T18:31:16.801787+08:00",
+    "trace_id": "327fcf99-c308-42d5-a0d5-9d0ae9297189",
+    "proxy_ms": 3166,
+    "phase_inferred_from_order": "aggregate_unpaid"
+  },
+  {
+    "completed_at_cst": "2026-10-24T18:31:23.008810+08:00",
+    "trace_id": "aaeba0a7-03fc-4e83-9646-f01017ad633b",
+    "proxy_ms": 6127,
+    "phase_inferred_from_order": "plan_rejected"
+  },
+  {
+    "completed_at_cst": "2026-10-24T18:31:25.953114+08:00",
+    "trace_id": "f3dcb2ca-df9d-43e6-8757-1aca1513ef88",
+    "proxy_ms": 2887,
+    "phase_inferred_from_order": "plan_first"
+  },
+  {
+    "completed_at_cst": "2026-10-24T18:31:29.585708+08:00",
+    "trace_id": "327e2725-aca0-47e6-8676-d98fe1a8256d",
+    "proxy_ms": 3536,
+    "phase_inferred_from_order": "aggregate_unpaid_repeat"
+  },
+  {
+    "completed_at_cst": "2026-10-24T18:31:33.503100+08:00",
+    "trace_id": "1d05203f-87cc-4ebc-898c-532ddbeb7c4d",
+    "proxy_ms": 3815,
+    "phase_inferred_from_order": "plan_second"
+  },
+  {
+    "completed_at_cst": "2026-10-24T18:31:35.604760+08:00",
+    "trace_id": "d150c295-a3f2-41db-8abe-03b18e418078",
+    "proxy_ms": 2030,
+    "phase_inferred_from_order": "execute"
+  },
+  {
+    "completed_at_cst": "2026-10-24T18:31:45.735883+08:00",
+    "trace_id": "9f9fd002-d2e1-4b1f-87b0-e4d541b4fdac",
+    "proxy_ms": 9084,
+    "phase_inferred_from_order": "final_summary"
+  }
+]

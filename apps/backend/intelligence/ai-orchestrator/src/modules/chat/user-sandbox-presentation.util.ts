@@ -255,7 +255,8 @@ export function embedWorkspaceDeliverablesAndImagesInAnswer(
   const handledFiles = new Set<string>();
 
   // 2.0 扫描正文中已经存在的 API 下载直链，将其对应文件加入 handledFiles，防止重复挂载下载卡片
-  const existingApiLinkRegex = /\/api\/ai\/chat\/workspace-files\/[^/)]+\/([a-zA-Z0-9_\-%. \u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|zip|tar|gz|csv|md|markdown|html))/gi;
+  // 支持带 userId (/workspace-files/:userId/:fileName) 或不带 userId (/workspace-files/:fileName) 的格式
+  const existingApiLinkRegex = /\/api\/ai\/chat\/workspace-files\/(?:[^/)]+\/)?([a-zA-Z0-9_\-%. \u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|zip|tar|gz|csv|md|markdown|html))/gi;
   let existingApiMatch: RegExpExecArray | null;
   while ((existingApiMatch = existingApiLinkRegex.exec(result)) !== null) {
     const rawMatch = existingApiMatch[1]?.trim();
@@ -268,9 +269,9 @@ export function embedWorkspaceDeliverablesAndImagesInAnswer(
     }
   }
 
-  // 2.1 将正文中现存的 Markdown 链接中的 /workspace/xxx 或本地文件名改写为直链下载地址
+  // 2.1 将正文中现存的 Markdown 链接中的 /workspace/xxx、本地文件名或缺省 userId 的 API 链接改写为规范直链下载地址
   result = result.replace(
-    /\[(.*?)\]\((?:(?:\/workspace\/|\/api\/ai\/chat\/workspace-files\/[^/)]+\/)?([a-zA-Z0-9_\-%. \u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|zip|tar|gz|csv|md|markdown|html)))\)/gi,
+    /\[(.*?)\]\((?:(?:\/workspace\/|\/api\/ai\/chat\/workspace-files\/(?:[^/)]+\/)?)?([a-zA-Z0-9_\-%. \u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|zip|tar|gz|csv|md|markdown|html)))\)/gi,
     (match, label, rawFileName) => {
       let cleanName: string;
       try {

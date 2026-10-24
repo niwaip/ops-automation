@@ -32,7 +32,7 @@ ANALYSIS_TOOL = {
                         "having": {"type": "object", "description": "分组过滤条件"},
                     }, "required": ["id", "sheet", "data_range", "header_row"],
                 }},
-                "query": {"type": "object", "description": '声明式查询：source={sheet,header_row,data_range}；where用{op,field,value/values}及and/or/not；op支持eq/ne/gt/gte/lt/lte/between/in/not_in/contains/not_contains/starts_with/not_starts_with/ends_with/is_null/is_not_null/is_blank。group_by为字段数组；metrics=[{id,label,op,field,unit}]，计数用count_rows；having用{metric:度量id,op,value}；order_by=[{ref:度量id或分组列,direction:asc/desc}]；limit整数。必须在同一计划中按WHERE→GROUP BY→HAVING→ORDER BY→LIMIT执行，不要用未筛选的全组结果替代最终结果。'},
+                "query": {"type": "object", "description": '声明式查询：source={sheet,header_row,data_range}；where用{op,field,value/values}及and/or/not；op支持eq/ne/gt/gte/lt/lte/between/in/not_in/contains/not_contains/starts_with/not_starts_with/ends_with/is_null/is_not_null/is_blank。group_by为字段数组；metrics=[{id,label,op,field,unit}]，计数用count_rows；金额度量unit默认设为"source"或"amount"以保持原表物理量纲（如K/千元/万元），无明确换算需求时严禁随意设为元导致千倍放大；label必须与unit保持一致；having用{metric:度量id,op,value}；order_by=[{ref:度量id或分组列,direction:asc/desc}]；limit整数。必须在同一计划中按WHERE→GROUP BY→HAVING→ORDER BY→LIMIT执行，不要用未筛选的全组结果替代最终结果。'},
                 "where": {"type": "object", "description": "顶层行过滤谓词"},
                 "group_by": {"type": ["string", "array", "object"], "description": "顶层分组"},
                 "having": {"type": "object", "description": "顶层分组过滤条件"},

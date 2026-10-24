@@ -1,0 +1,262 @@
+ops-session-broker  | [32m[Nest] 135  - [39m10/22/2026, 8:28:39 PM [32m    LOG[39m [38;5;3m[LockService] [39m[32mSandbox execution lock acquired for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], token=df4232cc-7572-44f0-a2cf-ade10800649c, waitedMs=0[39m
+ops-session-broker  | [32m[Nest] 135  - [39m10/22/2026, 8:28:39 PM [32m    LOG[39m [38;5;3m[UserSandboxContainerService] [39m[32mEnsuring user sandbox for [e7fce333-a8f4-4097-9a53-f0a4c729da46], container: ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46[39m
+ops-session-broker  | [32m[Nest] 135  - [39m10/22/2026, 8:28:39 PM [32m    LOG[39m [38;5;3m[UserSandboxContainerService] [39m[32mContainer ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46 is already running.[39m
+ops-session-broker  | [32m[Nest] 135  - [39m10/22/2026, 8:28:39 PM [32m    LOG[39m [38;5;3m[UserSandboxHarnessService] [39m[32mExecuting in sandbox [ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46]: ["dsh","run","【当前轮次用户上传附件】: 工数实绩明细_20261020134124.xlsx（这是用户本轮刚上传的新文件，为本次指令的主要处理对象）\n用户指令：用部门别有偿统计处理这份附件，并解释排除口径与金额分布","--session-id","llm-skill-insights-original-20261022","--files","工数实绩明细_20261020134124.xlsx","--no-thinking","--model","d13e0d30-87b9-4e87-b96a-d8b1b3cf78af","--model-display-name","qwen36-35b-a3b","--timeout","300"][39m
+ops-session-broker  | [32m[Nest] 135  - [39m10/22/2026, 8:28:41 PM [32m    LOG[39m [38;5;3m[LockService] [39m[32mSandbox execution lock released for user [e7fce333-a8f4-4097-9a53-f0a4c729da46][39m
+ops-session-broker  | [32m[Nest] 135  - [39m10/22/2026, 8:28:41 PM [32m    LOG[39m [38;5;3m[LockService] [39m[32mSandbox execution lock acquired for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], token=5869aa54-7ca7-4aa8-a67d-9318e2746db4, waitedMs=0[39m
+ops-session-broker  | [32m[Nest] 135  - [39m10/22/2026, 8:28:41 PM [32m    LOG[39m [38;5;3m[UserSandboxContainerService] [39m[32mEnsuring user sandbox for [e7fce333-a8f4-4097-9a53-f0a4c729da46], container: ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46[39m
+ops-session-broker  | [32m[Nest] 135  - [39m10/22/2026, 8:28:41 PM [32m    LOG[39m [38;5;3m[UserSandboxContainerService] [39m[32mContainer ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46 is already running.[39m
+ops-session-broker  | [32m[Nest] 135  - [39m10/22/2026, 8:28:41 PM [32m    LOG[39m [38;5;3m[UserSandboxHarnessService] [39m[32mExecuting in sandbox [ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46]: ["dsh","run","用部门别有偿统计处理这份附件，只要表格，无需解读","--session-id","llm-skill-insights-fast-20261022","--no-thinking","--model","d13e0d30-87b9-4e87-b96a-d8b1b3cf78af","--model-display-name","qwen36-35b-a3b","--timeout","300"][39m
+ops-session-broker  | [32m[Nest] 135  - [39m10/22/2026, 8:28:42 PM [32m    LOG[39m [38;5;3m[LockService] [39m[32mSandbox execution lock released for user [e7fce333-a8f4-4097-9a53-f0a4c729da46][39m
+ops-ai-orchestrator  | Scope: 2 of 52 workspace projects
+ops-ai-orchestrator  | .../browser-domain/runtime-facade build$ rm -rf dist tsconfig*.tsbuildinfo && (pnpm exec tsc -p tsconfig.json || tsc -p tsconfig.json)
+ops-ai-orchestrator  | .../capabilities/browser-domain/recorder build$ rm -rf dist tsconfig*.tsbuildinfo && (pnpm exec tsc -p tsconfig.json || tsc -p tsconfig.json)
+ops-ai-orchestrator  | .../browser-domain/runtime-facade build: Done
+ops-ai-orchestrator  | .../capabilities/browser-domain/recorder build: Done
+ops-ai-orchestrator  | 
+ops-ai-orchestrator  | > @ops/ai-orchestrator@1.0.0 build /workspace/apps/backend/intelligence/ai-orchestrator
+ops-ai-orchestrator  | > prisma generate && (nest build -b swc || tsc -p tsconfig.json --incremental false) && mkdir -p dist/generated && cp -R src/generated/prisma dist/generated/
+ops-ai-orchestrator  | 
+ops-ai-orchestrator  | Prisma schema loaded from prisma/schema.prisma
+ops-ai-orchestrator  | 
+ops-ai-orchestrator  | ✔ Generated Prisma Client (v5.22.0) to ./src/generated/prisma in 101ms
+ops-ai-orchestrator  | 
+ops-ai-orchestrator  | Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+ops-ai-orchestrator  | 
+ops-ai-orchestrator  | Tip: Curious about the SQL queries Prisma ORM generates? Optimize helps you enhance your visibility: https://pris.ly/tip-2-optimize
+ops-ai-orchestrator  | 
+ops-ai-orchestrator  | >  SWC  Running...
+ops-ai-orchestrator  | Successfully compiled: 537 files with swc (804.66ms)
+ops-ai-orchestrator  | 
+ops-ai-orchestrator  | > @ops/ai-orchestrator@1.0.0 start /workspace/apps/backend/intelligence/ai-orchestrator
+ops-ai-orchestrator  | > node dist/main.js
+ops-ai-orchestrator  | 
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPrismaModule dependencies initialized[39m[38;5;3m +15ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mControlPlaneClientModule dependencies initialized[39m[38;5;3m +1ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDebugSettingsModule dependencies initialized[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAgentModule dependencies initialized[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDeciderModule dependencies initialized[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRedisModule dependencies initialized[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mMetricsModule dependencies initialized[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDiscoveryModule dependencies initialized[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +1ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mStorageConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRecognizerModule dependencies initialized[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mBranchAnalysisModule dependencies initialized[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mBrowserPhaseRecoveryModule dependencies initialized[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mReActEngineModule dependencies initialized[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mUserWorkflowReviewModule dependencies initialized[39m[38;5;3m +1ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPersonalSkillModule dependencies initialized[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mModelModule dependencies initialized[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mOrchestrationModule dependencies initialized[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mBrowserModule dependencies initialized[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPlannerModule dependencies initialized[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mLlmOperationModule dependencies initialized[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mChatModule dependencies initialized[39m[38;5;3m +1ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mHealthController {/}:[39m[38;5;3m +17ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/health, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mModelController {/ai}:[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/models, GET} route[39m[38;5;3m +1ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/models/admin, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/models/providers, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/providers, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/providers, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/providers/:id, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/providers/:id, PATCH} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/providers/:id, DELETE} route[39m[38;5;3m +1ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/providers/:id/health, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/model/call, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/model/ocr, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/debug-settings, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/debug-settings, PATCH} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/providers/:id/models, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/models, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/models/:id, GET} route[39m[38;5;3m +1ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/models/:id/enable, PATCH} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/models/:id/disable, PATCH} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/models/:id, PATCH} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/models/:id, DELETE} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/models/check-all, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/models/:id/test-config, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/models/:id/test, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/models/:id/stream, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/models/test-config, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mModelProxyController {/ai/proxy/v1}:[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/proxy/v1/chat/completions, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/proxy/v1/models, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/proxy/v1/images/generations, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mSandboxSearchProxyController {/ai/proxy/v1}:[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/proxy/v1/search/web, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mBrowserCommandController {/ai/browser}:[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/browser/parse-command, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/browser/websites, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/browser/websites, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/browser/websites/:name, DELETE} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/browser/url-patterns, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mRecorderDebugController {/ai/recorder-debug}:[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/recorder-debug/chat, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/recorder-debug/export, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/recorder-debug/loop-draft, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/recorder-debug/loop-draft/reset, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/recorder-debug/reconcile, POST} route[39m[38;5;3m +1ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/recorder-debug/reset, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/recorder-debug/rollback, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/recorder-debug/rollback/confirm, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/recorder-debug/:sessionId, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mDeterministicPlanController {/ai/plans/deterministic}:[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/plans/deterministic/generate, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mWorkflowAuthoringController {/ai/workflow-authoring}:[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/workflow-authoring/optimize-description, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/workflow-authoring/test-planner-matching, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mLlmOperationController {/ai/operations}:[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/operations/execute, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/operations/:operationId, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mLlmOperationCatalogController {/ai/internal/operations/catalog}:[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/internal/operations/catalog, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/internal/operations/catalog/:operationId, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mOperationAdminController {/ai/admin/operations}:[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/admin/operations, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/admin/operations/_health, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/admin/operations/:operationKey, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/admin/operations, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/admin/operations/:operationKey/versions, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/admin/operations/:operationKey/versions, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/admin/operations/:operationKey/versions/:version, PUT} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/admin/operations/:operationKey/versions/:version/validate, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/admin/operations/:operationKey/versions/:version/approve, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/admin/operations/:operationKey/activations, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/admin/operations/:operationKey/activations/rollback, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/admin/operations/:operationKey/activations/canary, PATCH} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/admin/operations/:operationKey/activations/history, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/admin/operations/:operationKey/versions/:version/diff, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAttestationController {/ai/internal/operations/attestations}:[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/internal/operations/attestations/:versionId, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/internal/operations/attestations/:operationKey/:version, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mLlmOperationV2Controller {/ai/operations/v2}:[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/operations/v2/execute, POST} route[39m[38;5;3m +1ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mChatController {/ai}:[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/chat/sessions, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/chat/sessions, DELETE} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/chat/sessions/:sessionId, DELETE} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/chat/history/:sessionId, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/chat/sessions/:sessionId/messages/:messageId/feedback, PUT} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/chat/sessions/:sessionId/messages/:messageId/feedback, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/chat/sessions/:sessionId/messages/:messageId/feedback, DELETE} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/chat/stream, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/chat/stop, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/chat, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/internal/chat, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/chat/upload, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/chat/audio/transcriptions, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/chat/workspace-files/:userId/:fileName, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/chat/files/:fileId, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mStorageConfigController {/ai/storage}:[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/storage/config, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/storage/config, PUT} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/storage/test, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPersonalSkillController {/ai/personal-skills}:[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/personal-skills/captures, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/personal-skills/captures/:captureId, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/personal-skills, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/personal-skills/:skillId, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/personal-skills/:skillId/versions, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/personal-skills/:skillId/copies, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/personal-skills/:skillId/export, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/personal-skills/:skillId, DELETE} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mOrchestrationController {/ai}:[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/agents, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/agents/:id, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/recognize-params, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/decide-failure, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/execute-activity, POST} route[39m[38;5;3m +1ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/plans/generate, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/browser-phase-recovery/plan, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/analyze-branch-condition, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/tools/refresh, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mUserWorkflowReviewController {/ai/internal/user-workflows}:[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/internal/user-workflows/review, POST} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mMetricsController {/ai/metrics}:[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/ai/metrics, GET} route[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[ModelService] [39m[32mInitializing model service...[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[ModelService] [39m[32mChecking for persisted models in /workspace/apps/backend/var/cache/ai-orchestrator/ai-models.json[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [38;5;3m[ModelService] [39m[95mLoaded model: deepseek-v4-flash-0731 (8508e34d-5e8a-4644-becc-62281675a84e)[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [38;5;3m[ModelService] [39m[95mLoaded model: deepseek-v4-flash (9a2a4f5b-c25b-456b-b9ed-19889a67ed22)[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [38;5;3m[ModelService] [39m[95mLoaded model: minimax/minimax-m3:free (bc660c37-bf55-411b-91cd-8e732b0301f0)[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [38;5;3m[ModelService] [39m[95mLoaded model: gemini-3.7-flash (be08672d-b459-4a10-b1f2-7f1ca58b20b6)[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [38;5;3m[ModelService] [39m[95mLoaded model: nvidia/nemotron-3-ultra-550b-a55b:free (abae5ce1-c9ca-4815-a2d0-ee3b4f33fc7a)[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [38;5;3m[ModelService] [39m[95mLoaded model: gemini-3.5-flash-lite (231b3955-fbba-4b0e-aa5d-0507deccb213)[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [38;5;3m[ModelService] [39m[95mLoaded model: gemini-3.1-flash-image (a7035e89-b4d7-4f77-8c96-8833bf03babf)[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [38;5;3m[ModelService] [39m[95mLoaded model: XingChenAGI/XingChenASR-V3.2 (d8bcb4b1-5d5d-4927-a037-c61b767a5337)[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [38;5;3m[ModelService] [39m[95mLoaded model: qwen36-35b-a3b (d13e0d30-87b9-4e87-b96a-d8b1b3cf78af)[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [38;5;3m[ModelService] [39m[95mLoaded model: gemini-3.8-flash-high (ae03ac58-9e4c-4344-8d8b-3c13bea558aa)[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[ModelService] [39m[32mLoaded 10 persisted models from file[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[ModelService] [39m[32mLoaded 0 persisted API keys from file[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[ModelService] [39m[32mClient initialized for model deepseek-v4-flash-0731 (8508e34d-5e8a-4644-becc-62281675a84e)[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[ModelService] [39m[32mClient initialized for model deepseek-v4-flash (9a2a4f5b-c25b-456b-b9ed-19889a67ed22)[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[ModelService] [39m[32mClient initialized for model minimax/minimax-m3:free (bc660c37-bf55-411b-91cd-8e732b0301f0)[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[ModelService] [39m[32mClient initialized for model gemini-3.7-flash (be08672d-b459-4a10-b1f2-7f1ca58b20b6)[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[ModelService] [39m[32mClient initialized for model nvidia/nemotron-3-ultra-550b-a55b:free (abae5ce1-c9ca-4815-a2d0-ee3b4f33fc7a)[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[ModelService] [39m[32mClient initialized for model gemini-3.5-flash-lite (231b3955-fbba-4b0e-aa5d-0507deccb213)[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[ModelService] [39m[32mClient initialized for model gemini-3.1-flash-image (a7035e89-b4d7-4f77-8c96-8833bf03babf)[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[ModelService] [39m[32mClient initialized for model XingChenAGI/XingChenASR-V3.2 (d8bcb4b1-5d5d-4927-a037-c61b767a5337)[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[ModelService] [39m[32mClient initialized for model qwen36-35b-a3b (d13e0d30-87b9-4e87-b96a-d8b1b3cf78af)[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[ModelService] [39m[32mClient initialized for model gemini-3.8-flash-high (ae03ac58-9e4c-4344-8d8b-3c13bea558aa)[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RedisService] [39m[32mConnecting to Redis at redis:6379[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [38;5;3m[ToolExecutor] [39m[95mApplying security policy to tool file_parse[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[ToolExecutor] [39m[32mAutomatically discovered and registered 14 tools via decorators[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[StorageConfigService] [39m[32mLoaded storage configuration (protocol: local)[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[RedisService] [39m[32mRedis connected[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [95mOperation already exists: classify_intent_label[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [95mOperation already exists: extract_structured_fields[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [95mVersion already exists: extract_structured_fields@1.0.28[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [95mOperation already exists: format_document_blocks[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [95mVersion already exists: format_document_blocks@1.0.28[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [95mOperation already exists: generate_text[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [95mVersion already exists: generate_text@1.0.28[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [95mOperation already exists: merge_multi_source_notes[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [95mOperation already exists: rewrite_to_markdown[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [95mOperation already exists: summarize_list[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [95mVersion already exists: summarize_list@1.0.28[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [95mOperation already exists: summarize_text[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [95mVersion already exists: summarize_text@1.0.28[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [95mOperation already exists: transform_text[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [95m  DEBUG[39m [95mVersion already exists: transform_text@1.0.28[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[SystemOperationBootstrapService] [39m[32mSystem LLM Operation bootstrap ready (0), unchanged (6)[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:26:56 PM [32m    LOG[39m [38;5;3m[Bootstrap] [39m[32mAI Orchestrator Service running on: http://192.168.100.143:3007[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:27 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[aaa4fce0-301a-4e62-8eba-e684b9000db0] GET /ai/personal-skills/c60d78fd-b6c3-4e7c-99ba-67f6d61efecd 3ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:27 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[e7f94fa8-91a0-4efe-8b6b-89e5281fde45] POST /ai/personal-skills/captures 1ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:27 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[00eabb74-5d7e-4885-8d0a-8a880af74c0d] GET /ai/personal-skills/captures/b05d5a16-bbb0-4d37-9570-cdb9eaf2d879 0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:27 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[abfed81f-eefb-4b29-99a7-d599ccb9db09] GET /ai/personal-skills/captures/b05d5a16-bbb0-4d37-9570-cdb9eaf2d879 0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:28 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[aa0270b2-66f9-4960-8e8f-a8c37601bdd5] GET /ai/personal-skills/captures/b05d5a16-bbb0-4d37-9570-cdb9eaf2d879 1ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:28 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[725caca0-cab1-4649-a730-de3497588c87] GET /ai/personal-skills/captures/b05d5a16-bbb0-4d37-9570-cdb9eaf2d879 1ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:29 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[1dc42062-7323-42e9-a45c-18f36eb72c96] GET /ai/personal-skills/captures/b05d5a16-bbb0-4d37-9570-cdb9eaf2d879 0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:29 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[bb402e24-2b38-4bd0-adab-a502dda9041e] GET /ai/personal-skills/captures/b05d5a16-bbb0-4d37-9570-cdb9eaf2d879 1ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:30 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[fbf0f7ee-0b33-4510-bb9c-25d1fa22d5fb] GET /ai/personal-skills/captures/b05d5a16-bbb0-4d37-9570-cdb9eaf2d879 0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:30 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[7e2cbad4-00be-416b-9fed-9bb61d6b284f] GET /ai/personal-skills/captures/b05d5a16-bbb0-4d37-9570-cdb9eaf2d879 0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:31 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[b02ce1ec-bfa8-44de-8876-8766cf2b9926] GET /ai/personal-skills/captures/b05d5a16-bbb0-4d37-9570-cdb9eaf2d879 0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:31 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[68584acd-0276-44aa-8a56-b70e29468be3] GET /ai/personal-skills/captures/b05d5a16-bbb0-4d37-9570-cdb9eaf2d879 0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:32 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[f9ab3f10-83e0-4ba0-920f-a34103203b17] GET /ai/personal-skills/captures/b05d5a16-bbb0-4d37-9570-cdb9eaf2d879 0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:32 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[fad857d6-b51b-4613-bb76-dd0def976a33] GET /ai/personal-skills/captures/b05d5a16-bbb0-4d37-9570-cdb9eaf2d879 1ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:33 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[f3fbe4dd-0406-4bb2-b6f6-942ff2c8b48b] GET /ai/personal-skills/captures/b05d5a16-bbb0-4d37-9570-cdb9eaf2d879 1ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:33 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[aad65751-facd-4a61-a0ed-23a60c013f88] GET /ai/personal-skills/captures/b05d5a16-bbb0-4d37-9570-cdb9eaf2d879 0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:34 PM [32m    LOG[39m [38;5;3m[PersonalSkillGeneratorService] [39m[32mSuccessfully generated personal skill package at staging [/workspace/data/users/e7fce333-a8f4-4097-9a53-f0a4c729da46/knowledge/.staging/b05d5a16-bbb0-4d37-9570-cdb9eaf2d879][39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:34 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[b0ff1a9d-091a-4193-a2c4-7281e41ed8a9] GET /ai/personal-skills/captures/b05d5a16-bbb0-4d37-9570-cdb9eaf2d879 1ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:34 PM [32m    LOG[39m [38;5;3m[PersonalSkillStoreService] [39m[32mInstalled personal skill [部门别有偿统计] (dept-summary) v4 for user [e7fce333-a8f4-4097-9a53-f0a4c729da46][39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:34 PM [32m    LOG[39m [38;5;3m[PersonalSkillCaptureService] [39m[32mCapture pipeline successfully ready: skill [部门别有偿统计] v4[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:34 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[bb2d633b-4166-46d7-9c57-19675ad5fe37] GET /ai/personal-skills/captures/b05d5a16-bbb0-4d37-9570-cdb9eaf2d879 0ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:27:34 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[72a795f6-ea89-4afc-8c0e-8be0bb39babb] GET /ai/personal-skills/c60d78fd-b6c3-4e7c-99ba-67f6d61efecd 8ms[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:28:39 PM [32m    LOG[39m [38;5;3m[ChatController] [39m[32mDispatching personal chat request to unified sandbox agent for user [e7fce333-a8f4-4097-9a53-f0a4c729da46][39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:28:39 PM [32m    LOG[39m [38;5;3m[UserSandboxDispatcherService] [39m[32mDispatching personal request to sandbox harness for user [e7fce333-a8f4-4097-9a53-f0a4c729da46][39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:28:39 PM [32m    LOG[39m [38;5;3m[UserSandboxDispatcherService] [39m[32mSynced attached file [工数实绩明细_20261020134124.xlsx] to session [llm-skill-insights-original-20261022] and workspace: /workspace/data/users/e7fce333-a8f4-4097-9a53-f0a4c729da46/workspace/.sessions/llm-skill-insights-original-20261022/工数实绩明细_20261020134124.xlsx[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:28:39 PM [32m    LOG[39m [38;5;3m[ModelProxyController] [39m[32mProxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:28:39 PM [32m    LOG[39m [38;5;3m[ModelProxyController] [39m[32mUsing platform-managed model client for sandbox proxy (qwen36-35b-a3b)[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:28:41 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[a29a2226-dc3a-468b-bf32-8498b414ed8a] POST /ai/proxy/v1/chat/completions 1177ms[39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:28:41 PM [95m  DEBUG[39m [38;5;3m[SessionService] [39m[95mSaved chat session llm-skill-insights-original-20261022, history=2[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:28:41 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[c32f7407-bf8f-43fa-8bcd-2cb7ba3ff718] POST /ai/chat/stream 1809ms[39m
+ops-ai-orchestrator  | [33m[Nest] 218  - [39m10/22/2026, 8:28:41 PM [33m   WARN[39m [38;5;3m[ChatMediaService] [39m[33mDropping unverified file reference: fileId=fixture-fast, storagePath=undefined[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:28:41 PM [32m    LOG[39m [38;5;3m[ChatController] [39m[32mDispatching personal chat request to unified sandbox agent for user [e7fce333-a8f4-4097-9a53-f0a4c729da46][39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:28:41 PM [32m    LOG[39m [38;5;3m[UserSandboxDispatcherService] [39m[32mDispatching personal request to sandbox harness for user [e7fce333-a8f4-4097-9a53-f0a4c729da46][39m
+ops-ai-orchestrator  | [95m[Nest] 218  - [39m10/22/2026, 8:28:42 PM [95m  DEBUG[39m [38;5;3m[SessionService] [39m[95mSaved chat session llm-skill-insights-fast-20261022, history=2[39m
+ops-ai-orchestrator  | [32m[Nest] 218  - [39m10/22/2026, 8:28:42 PM [32m    LOG[39m [38;5;3m[TraceInterceptor] [39m[32m[d51484b1-563c-4975-816e-cde56f1393e5] POST /ai/chat/stream 1199ms[39m

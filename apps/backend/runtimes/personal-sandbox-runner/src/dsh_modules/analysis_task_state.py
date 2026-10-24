@@ -93,6 +93,11 @@ def analysis_task_state(evidence, prompt='', model=None, deadline=None):
             issues.append({'code':'scope_incomplete','message':'声明范围尚未完整处理。'})
     # 提取符合当前契约约束的权威事实闭包（自动淘汰未过滤全表试算，后序纠偏覆盖前序，隔离探索口径）
     facts = resolve_conforming_facts(successful, prompt)
+    if successful and not facts and any(r.data.get('facts') for r in successful):
+        issues.append({
+            'code': 'unsolicited_filter_applied',
+            'message': '执行计划包含了未经请求的明细行过滤条件，导致核算事实无法对齐当前指令。请移除多余过滤条件后重新聚合计算。'
+        })
     # 收集来源表格已知表头字段，用于精确区分「计划未计算」还是「源表确实缺少列」
     known_headers = set()
     for e in evidence:
@@ -263,11 +268,24 @@ def analysis_task_state(evidence, prompt='', model=None, deadline=None):
                 for c in (receipt.data.get('plan') or {}).get('calculations', [])
             )
 
-        executed_all_requested_groupings = (
-            bool(requested_metrics) and all(_metric_has_native_grouping(m) for m in requested_metrics)
+        executed_native_group_by = any(
+            bool((r.data.get('plan') or {}).get('group_by'))
+            and all(c.get('coverage_complete') for c in r.data.get('coverage', []))
+            for r in successful
         )
 
-        if len(effective_group_keys) <= 1 and not executed_all_requested_groupings:
+        executed_all_requested_groupings = (
+            (bool(requested_metrics) and all(_metric_has_native_grouping(m) for m in requested_metrics))
+            or (not requested_metrics and executed_native_group_by)
+        )
+
+        has_having_filter = any(
+            bool((r.data.get('plan') or {}).get('having'))
+            and (r.data.get('stages') or {}).get('groups_count', 0) > 1
+            for r in successful
+        )
+
+        if len(effective_group_keys) <= 1 and not executed_all_requested_groupings and not has_having_filter:
             dim_name = contract.group_dimension or "指定维度"
             grp_str = f"（当前仅计算了分组: {', '.join(sorted(effective_group_keys))}）" if effective_group_keys else "（当前仅计算了全表汇总，未完成各分组细分）"
             issues.append({

@@ -448,6 +448,50 @@ class GateReviewTests(unittest.TestCase):
         )
         self.assertFalse(_is_synthesis_grounded(hallucinated_guidance, [r1], prompt=prompt))
 
+    def test_gate_review_dismisses_grouping_incomplete_and_row_filter_with_having_receipt(self):
+        receipt = self.receipt({'source': self.query['source'],
+                                'group_by': ['部门'],
+                                'metrics': [{'id': 'a', 'label': '金额', 'field': '金额(K)', 'op': 'sum'}],
+                                'having': {'and': [{'metric': 'a', 'op': 'gt', 'value': 20}]}})
+        issues = [{'code': 'grouping_incomplete'}, {'code': 'row_filter_not_applied'}]
+        verdict = {'action': 'recheck', 'category': 'gate_false_positive', 'complete': True,
+                   'dismissed_issue_codes': ['grouping_incomplete', 'row_filter_not_applied'],
+                   'supporting_fact_ids': [receipt.data['facts'][0]['id']]}
+        remaining, reviewed = revalidate_review(issues, verdict, [receipt], receipt.data['facts'])
+        self.assertEqual(remaining, [])
+        self.assertTrue(reviewed['complete'])
+        self.assertEqual(reviewed['dismissed_issue_codes'], ['grouping_incomplete', 'row_filter_not_applied'])
+
+    def test_department_aggregate_query_delivery_constraints(self):
+        from dsh_modules.analysis_delivery_constraints import has_group_filter, has_row_filter
+        prompt = '统计 各个部门里面  合计金额 超过 500k的部门有哪些'
+        self.assertTrue(has_group_filter(prompt))
+        self.assertFalse(has_row_filter(prompt))
+
+    def test_unsolicited_filter_rejected_by_judge_raises_task_state_issue(self):
+        receipt = self.receipt({'source': self.query['source'],
+                                'where': {'field': '部门', 'op': 'eq', 'value': '甲'},
+                                'group_by': ['部门'],
+                                'metrics': [{'id': 'a', 'label': '金额', 'field': '金额(K)', 'op': 'sum'}]})
+        # Mock semantic judge to reject the filter
+        prompt = '统计 各个部门里面  合计金额 超过 500k的部门有哪些'
+        with patch('dsh_modules.semantic_filter_judge.judge_filter_conformance', return_value=False):
+            state = analysis_task_state([receipt], prompt)
+        issue_codes = [i['code'] for i in state['issues']]
+        self.assertIn('unsolicited_filter_applied', issue_codes)
+        self.assertFalse(state['complete'])
+
+    def test_synthesis_rejects_hallucinated_zero_match_when_receipts_have_data(self):
+        from dsh_modules.analysis_synthesis import _is_synthesis_grounded, synthesize_analysis_summary
+        prompt = '统计 各个部门里面  合计金额 超过 500k的部门有哪些'
+        receipt = self.receipt()
+        hallucinated = '在您上传的文件中，结果显示：当前报表范围内，没有任何一个部门的合计金额超过 500k。未找到匹配的目标记录。'
+        self.assertFalse(_is_synthesis_grounded(hallucinated, [receipt], prompt=prompt))
+
+        # Also verify fallback_text is returned when facts digest lacks actual metrics
+        with patch('dsh_modules.analysis_synthesis.build_verified_facts_digest', return_value='【数据来源文件】: test.xlsx'):
+            res = synthesize_analysis_summary(prompt, [receipt], 'audit', 'fallback_result', model='test')
+            self.assertEqual(res, 'fallback_result')
 
 
 if __name__ == '__main__':

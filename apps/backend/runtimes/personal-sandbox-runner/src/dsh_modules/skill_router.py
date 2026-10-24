@@ -715,6 +715,18 @@ class SkillRouter:
                         result.skill_id = s["id"]
                         break
 
+        # A single-page report defaults to a web document unless the user names
+        # another physical format. This also makes short contextual follow-ups
+        # such as "生成一页的报告" deterministic instead of asking a
+        # small model to choose between PPT, HTML, Word, and PDF at execution time.
+        is_single_page_report = bool(
+            re.search(r'(?:一页|单页|single[- ]page)', lower_query, re.I)
+            and re.search(r'(?:报告|报表|report)', lower_query, re.I)
+        )
+        names_non_web_format = bool(
+            re.search(r'(?:pptx?|slides?|幻灯片|演示文稿|pdf|docx?|word|xlsx?|excel|markdown|\.md\b)', lower_query, re.I)
+        )
+
         # 5a. 目标格式显式指定优先于输入源文件格式推断（例如：“读取采购.xlsx，生成采购说明.docx” 应路由至 docx）
         if not result.skill_id and target_formats:
             if ".pdf" in target_formats and not is_term_negated(lower_query, "pdf"):
@@ -728,18 +740,14 @@ class SkillRouter:
                     result.skill_id = "guizang-ppt"
                 else:
                     result.skill_id = "pptx"
+            elif ".html" in target_formats and not is_term_negated(lower_query, "html"):
+                if is_single_page_report:
+                    result.skill_id = "frontend-design"
+                elif re.search(r'(?:ppt\s*(?:的)?报告|html\s*(?:的)?报告|网页\s*(?:的)?报告|交互式\s*(?:的)?报告)', lower_query):
+                    result.skill_id = "guizang-ppt"
+                else:
+                    result.skill_id = "frontend-design"
 
-        # A single-page report defaults to a web document unless the user names
-        # another physical format. This also makes short contextual follow-ups
-        # such as "生成一页的报告" deterministic instead of asking a
-        # small model to choose between PPT, HTML, Word, and PDF at execution time.
-        is_single_page_report = bool(
-            re.search(r'(?:一页|单页|single[- ]page)', lower_query, re.I)
-            and re.search(r'(?:报告|报表|report)', lower_query, re.I)
-        )
-        names_non_web_format = bool(
-            re.search(r'(?:pptx?|slides?|幻灯片|演示文稿|pdf|docx?|word|xlsx?|excel|markdown|\.md\b)', lower_query, re.I)
-        )
         if (
             not result.skill_id
             and not names_non_web_format
