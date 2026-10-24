@@ -1,0 +1,72 @@
+[
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/runner.py",
+    "sha256": "235f4e2ecaa06987fa8c08f51279cba01fcce597ff47fd478198611ee3e0b597",
+    "mtime": "2026-10-24T02:42:43.912657+00:00"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/agent_loop.py",
+    "sha256": "8c3d048b2f5d3b1950d3864f07e3bddbc5b8a9639fa981128d4e4f58f369a289",
+    "mtime": "2026-10-24T06:30:47.981419+00:00"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/task_intent.py",
+    "sha256": "0169a0d2fafffc07947fd46fe2e9d8626b0244d292441c6a899819cb749c47bb",
+    "mtime": "2026-10-24T06:05:23.728870+00:00"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/semantic_decision.py",
+    "sha256": "26594918dd314dd26c0b73d25cb8ec97dc0634650a62d6e7db5d546caa7e905c",
+    "mtime": "2026-10-22T13:46:51.230125+00:00"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/skill_admission.py",
+    "sha256": "73b3a4a8a2947d86eeef9daa9aa51bbd904f8f07bcecc3d445e5963458573e90",
+    "mtime": "2026-10-24T02:42:43.912982+00:00"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/prompt_builder.py",
+    "sha256": "4793cd9d4131a07b5551f680937e7083ef34ee678feec999bdd359782a018418",
+    "mtime": "2026-10-24T02:42:43.912100+00:00"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/semantic_plan.py",
+    "sha256": "05e2b9f595574564e4c00297fa48d27e9bbd12d39937cb00a2b2e81aef857807",
+    "mtime": "2026-10-24T06:32:48.927113+00:00"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/layout_binding.py",
+    "sha256": "f56a8d36394ad7bbf5ea06753e96c5418a21495a98846e0449caf2df9a015349",
+    "mtime": "2026-10-24T03:09:29.433463+00:00"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/executor.py",
+    "sha256": "02fa09381c1126a1ae8d9432f86b180fe85b0d011a665a90eee1c572bce07d6e",
+    "mtime": "2026-10-24T06:50:35.150863+00:00"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/turn.py",
+    "sha256": "a5c558656b05fc49d7b2a241a6fc0af140b4f9a139ebff91fbc00bb63befa29e",
+    "mtime": "2026-10-24T02:42:43.917256+00:00"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/tools.py",
+    "sha256": "cc1eb20762e7071acabadfd874e087d5725b62db7e4cd573a0f24f1808bb809a",
+    "mtime": "2026-10-24T06:29:20.991924+00:00"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/agent_protocol.py",
+    "sha256": "17fc87c0ebedbcab283eed77ce7f7b4f61ec3862d5140938bc37460d74a54499",
+    "mtime": "2026-10-24T06:02:51.224612+00:00"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/aggregation_api.py",
+    "sha256": "76010db247cfd85210f66dfc7cba1b7746705ac536d9847ff6cd12c54ad84227",
+    "mtime": "2026-10-24T05:27:07.846519+00:00"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/delivery.py",
+    "sha256": "9fee54b62a820e660d0fc61879359bbaf9f0fc0d5b05dafccd349d2ea700a6d0",
+    "mtime": "2026-10-24T02:42:43.915364+00:00"
+  }
+]

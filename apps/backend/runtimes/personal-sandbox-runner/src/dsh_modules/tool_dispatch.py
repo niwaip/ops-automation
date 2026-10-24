@@ -184,7 +184,8 @@ def dispatch_tool_calls(
         err_call_sig = f"err:{call_sig}"
         is_idempotent_read = canonical_name in (
             "read_skill", "read_workspace_file", "weather",
-            "web_search", "fetch_page", "scan_knowledge", "read_file", "inspect_spreadsheet_structure"
+            "web_search", "fetch_page", "scan_knowledge", "read_file", "inspect_spreadsheet_structure",
+            "aggregate_spreadsheet"
         )
         success_count = executed_calls_history.count(call_sig)
         error_count = executed_calls_history.count(err_call_sig)

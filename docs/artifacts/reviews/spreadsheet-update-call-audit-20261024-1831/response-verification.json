@@ -1,0 +1,131 @@
+{
+  "method": "Compare final Markdown table amounts and old forecasts to actual workbook cells with 2dp presentation tolerance",
+  "table_checks": [
+    {
+      "section": "有偿",
+      "key": "FC45031",
+      "coordinate": "C10",
+      "claimed_old": "563.90",
+      "actual_old": "563.9171499999999",
+      "old_claim_matches_2dp": false,
+      "claimed_new": "570.75",
+      "actual_new": "570.75345",
+      "new_claim_matches_2dp": true
+    },
+    {
+      "section": "有偿",
+      "key": "FC48005",
+      "coordinate": "C5",
+      "claimed_old": "67.04",
+      "actual_old": "67.0353",
+      "old_claim_matches_2dp": true,
+      "claimed_new": "67.04",
+      "actual_new": "67.0353",
+      "new_claim_matches_2dp": true
+    },
+    {
+      "section": "有偿",
+      "key": "FC46005",
+      "coordinate": "C8",
+      "claimed_old": "160.25",
+      "actual_old": "160.24706999999998",
+      "old_claim_matches_2dp": true,
+      "claimed_new": "314.48",
+      "actual_new": "314.48323",
+      "new_claim_matches_2dp": true
+    },
+    {
+      "section": "有偿",
+      "key": "FC44003",
+      "coordinate": "C13",
+      "claimed_old": "212.91",
+      "actual_old": "212.90759",
+      "old_claim_matches_2dp": true,
+      "claimed_new": "212.91",
+      "actual_new": "212.90759",
+      "new_claim_matches_2dp": true
+    },
+    {
+      "section": "有偿",
+      "key": "FC44004",
+      "coordinate": "C14",
+      "claimed_old": "198.50",
+      "actual_old": "198.51766",
+      "old_claim_matches_2dp": false,
+      "claimed_new": "242.52",
+      "actual_new": "242.51766",
+      "new_claim_matches_2dp": true
+    },
+    {
+      "section": "有偿",
+      "key": "FC44006",
+      "coordinate": "C15",
+      "claimed_old": "171.66",
+      "actual_old": "171.65638",
+      "old_claim_matches_2dp": true,
+      "claimed_new": "171.66",
+      "actual_new": "171.65638",
+      "new_claim_matches_2dp": true
+    },
+    {
+      "section": "有偿",
+      "key": "FC34022",
+      "coordinate": "C16",
+      "claimed_old": "164.90",
+      "actual_old": "164.90159000000006",
+      "old_claim_matches_2dp": true,
+      "claimed_new": "167.77",
+      "actual_new": "167.77218",
+      "new_claim_matches_2dp": true
+    },
+    {
+      "section": "无偿",
+      "key": "FC45031",
+      "coordinate": "C31",
+      "claimed_old": "0",
+      "actual_old": "9",
+      "old_claim_matches_2dp": false,
+      "claimed_new": "106.83",
+      "actual_new": "106.83199",
+      "new_claim_matches_2dp": true
+    },
+    {
+      "section": "无偿",
+      "key": "FC44004",
+      "coordinate": "C35",
+      "claimed_old": "0",
+      "actual_old": "55.388239999999996",
+      "old_claim_matches_2dp": false,
+      "claimed_new": "11.39",
+      "actual_new": "11.38824",
+      "new_claim_matches_2dp": true
+    },
+    {
+      "section": "无偿",
+      "key": "FC44003",
+      "coordinate": "C34",
+      "claimed_old": "0",
+      "actual_old": "8.085",
+      "old_claim_matches_2dp": false,
+      "claimed_new": "8.09",
+      "actual_new": "8.085",
+      "new_claim_matches_2dp": true
+    },
+    {
+      "section": "无偿",
+      "key": "FC46005",
+      "coordinate": "C29",
+      "claimed_old": "0",
+      "actual_old": "53.835300000000004",
+      "old_claim_matches_2dp": false,
+      "claimed_new": "14.30",
+      "actual_new": "14.3",
+      "new_claim_matches_2dp": true
+    }
+  ],
+  "incorrect_table_old_claim_count": 6,
+  "all_table_new_amounts_match": true,
+  "unpaid_warning_old_claim": "164.9",
+  "actual_unpaid_warning_old_value": "2.87059",
+  "unpaid_warning_claim_matches": false
+}

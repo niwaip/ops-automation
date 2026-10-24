@@ -1,0 +1,22 @@
+test_memory_path_with_workspace_env_only (test_domain_memory_persistence.TestDomainMemoryPersistence.test_memory_path_with_workspace_env_only) ... ok
+test_persistence_across_in_memory_resets (test_domain_memory_persistence.TestDomainMemoryPersistence.test_persistence_across_in_memory_resets) ... ok
+test_result_disambiguation_with_metric_labels (test_domain_memory_persistence.TestDomainMemoryPersistence.test_result_disambiguation_with_metric_labels) ... ok
+test_deterministic_reconciliation_balances_and_discloses_variance (test_spreadsheet_zero_hardcoding_and_memory.ZeroHardcodingAndMemoryLifecycleTests.test_deterministic_reconciliation_balances_and_discloses_variance)
+Reconciliation discloses exact legacy forecast retention (FC34022 = 2.87059 K). ... ok
+test_domain_memory_auto_loads_without_asking_user_again (test_spreadsheet_zero_hardcoding_and_memory.ZeroHardcodingAndMemoryLifecycleTests.test_domain_memory_auto_loads_without_asking_user_again)
+Subsequent turns automatically reload domain memory, no re-prompting needed. ... ok
+test_independent_boundary_scan_captures_leading_unmatched_departments (test_spreadsheet_zero_hardcoding_and_memory.ZeroHardcodingAndMemoryLifecycleTests.test_independent_boundary_scan_captures_leading_unmatched_departments)
+FC48005 and FC34032 (rows 26 & 27) are captured despite FC46005 (row 29) being the first source match. ... ok
+test_missing_alias_triggers_active_clarification_with_candidates (test_spreadsheet_zero_hardcoding_and_memory.ZeroHardcodingAndMemoryLifecycleTests.test_missing_alias_triggers_active_clarification_with_candidates)
+Zero hardcoded aliases: unknown '无偿' must ask user with discovered candidates. ... ok
+test_natural_language_clarification_no_regex_trap (test_spreadsheet_zero_hardcoding_and_memory.ZeroHardcodingAndMemoryLifecycleTests.test_natural_language_clarification_no_regex_trap)
+Verify that natural phrasing '【*P/Y/EX（不含L/*B）】 就是无偿' never degrades to '就'. ... ok
+test_two_turn_clarification_end_to_end (test_spreadsheet_zero_hardcoding_and_memory.ZeroHardcodingAndMemoryLifecycleTests.test_two_turn_clarification_end_to_end)
+End-to-end multi-turn flow: Ask -> User Clarifies -> Followup Locked -> File Delivered. ... ok
+test_user_confirmation_persists_to_memory_and_enables_planning (test_spreadsheet_zero_hardcoding_and_memory.ZeroHardcodingAndMemoryLifecycleTests.test_user_confirmation_persists_to_memory_and_enables_planning)
+User clarification saves mapping to workspace memory and unblocks execution. ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.075s
+
+OK

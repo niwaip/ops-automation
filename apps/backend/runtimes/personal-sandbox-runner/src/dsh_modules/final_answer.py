@@ -90,10 +90,24 @@ def finalize_agent_text(
 
     needs_summary = (has_pending_tool_calls or not final_text or is_transitional_filler
                      or has_raw_dsml or has_raw_tool or has_internal_plan)
-    if needs_summary and published_summary:
-        final_text = published_summary
-        has_internal_plan = False
-        is_transitional_filler = False
+    if published_summary:
+        if needs_summary:
+            final_text = published_summary
+            has_internal_plan = False
+            is_transitional_filler = False
+        else:
+            # Ground responses with verified data to eliminate hallucinated numbers or tables
+            if "|" in final_text or any(kw in final_text for kw in ("回填结果", "预测值", "金额 (K)", "金额(K)")):
+                intro_match = re.split(r'\n\s*(?:#|\||---)', final_text, maxsplit=1)
+                intro = intro_match[0].strip() if intro_match else ""
+                if intro and len(intro) < 300 and "|" not in intro:
+                    final_text = f"{intro}\n\n{published_summary}"
+                else:
+                    final_text = published_summary
+            elif published_summary not in final_text:
+                final_text = f"{final_text.strip()}\n\n{published_summary}"
+            has_internal_plan = False
+            is_transitional_filler = False
     elif needs_summary:
         messages.append({"role": "assistant", "content": reply_text or None})
         if is_hollow_claim:

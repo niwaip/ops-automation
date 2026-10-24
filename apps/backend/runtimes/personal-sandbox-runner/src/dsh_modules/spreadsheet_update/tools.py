@@ -58,6 +58,7 @@ def tool_plan_spreadsheet_update(plan, user_id='sandbox_user'):
     from ..config import WORKSPACE_DIR
     try:
         internal, facts, payload, preview, warnings = build_semantic_plan(plan, WORKSPACE_DIR)
+        reconciliations = internal.get('semantic_bindings', {}).get('reconciliations', [])
         coord = SpreadsheetUpdateTurnCoordinator()
         result = coord.plan_update(internal, user_id=user_id)
         if not result.get('success'):
@@ -67,6 +68,7 @@ def tool_plan_spreadsheet_update(plan, user_id='sandbox_user'):
         register_turn_facts(coord.mgr.run_id, facts)
         return _output({'status': 'planned', 'plan_id': result['plan_id'],
                         'preview': preview, 'warnings': warnings,
+                        'reconciliations': reconciliations,
                         'base_sheet': internal['snapshot']['selected_sheet_id'],
                         'new_sheet': internal['snapshot']['new_sheet_name'],
                         'next_action': '调用 execute_spreadsheet_update(plan_id) 生成并验证文件；当前尚未生成'})
@@ -147,9 +149,13 @@ def dispatch_update_tool(name, params):
     schema = definition['parameters']
     if not isinstance(params, dict):
         return _output(error='工具参数必须为对象')
-    unknown = params.keys() - schema['properties'].keys()
+    harmless_keys = {'comment', 'notes', 'description', 'reasoning', 'user_instruction', 'source_sheet', 'sheet'}
+    unknown = params.keys() - schema['properties'].keys() - harmless_keys
     missing = [key for key in schema['required'] if not params.get(key)]
     if name == 'plan_spreadsheet_update':
+        has_sheet = bool(params.get('target_sheet') or params.get('sheet') or params.get('base_sheet'))
+        if not has_sheet and not params.get('new_sheet'):
+            missing.append('base_sheet')
         has_sections = bool(params.get('sections'))
         if not has_sections and not params.get('section'):
             missing.append('section')
@@ -157,6 +163,9 @@ def dispatch_update_tool(name, params):
         sections_have_labels = bool(sections_list and all(isinstance(s, dict) and s.get('target_label') for s in sections_list))
         if not params.get('target_label') and not sections_have_labels:
             missing.append('target_label')
+        sections_have_kinds = bool(sections_list and all(isinstance(s, dict) and s.get('target_kind') for s in sections_list))
+        if not params.get('target_kind') and not sections_have_kinds:
+            missing.append('target_kind')
     if unknown or missing:
         return _output(error=f'不支持的参数：{sorted(unknown)}；缺少必填参数：{sorted(set(missing))}')
     if name == 'plan_spreadsheet_update':

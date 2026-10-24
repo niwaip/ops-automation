@@ -376,6 +376,23 @@ class SemanticUpdateTests(unittest.TestCase):
         if res.error:
             self.assertNotIn('缺少必填参数', str(res.error))
 
+        # Multi-section payload with target_kind inside sections (root target_kind omitted)
+        req_without_root_kind = {
+            'target_file': str(self.target),
+            'base_sheet': '1019',
+            'new_sheet': '1023',
+            'period': '202610',
+            'period_field': '工数年月',
+            'sections': [
+                {'section': '有偿', 'target_label': '预测', 'target_kind': 'forecast', 'result_id': 'verified_result'},
+                {'section': '无偿', 'target_label': '预测', 'target_kind': 'forecast', 'result_id': 'verified_result'},
+            ]
+        }
+        res_kind = dispatch_update_tool('plan_spreadsheet_update', req_without_root_kind)
+        if res_kind.error:
+            self.assertNotIn('缺少必填参数', str(res_kind.error))
+            self.assertNotIn('target_kind', str(res_kind.error))
+
         # Missing section and sections
         missing_sec = dispatch_update_tool('plan_spreadsheet_update', dict(base_req, target_label='预测'))
         self.assertTrue(missing_sec.is_error)
@@ -391,6 +408,82 @@ class SemanticUpdateTests(unittest.TestCase):
         self.assertTrue(unknown_param.is_error)
         self.assertIn('不支持的参数', str(unknown_param.error))
         self.assertIn('project_id', str(unknown_param.error))
+
+    def test_in_place_update_without_new_sheet_succeeds(self):
+        from dsh_modules.spreadsheet_update.semantic_plan import build_semantic_plan
+        # In-place update specifies target_sheet directly, without new_sheet
+        in_place_req = {
+            'target_file': str(self.target),
+            'target_sheet': '1019',
+            'period': '202610',
+            'period_field': '工数年月',
+            'section': '有偿',
+            'target_label': '预测',
+            'target_kind': 'forecast',
+            'result_id': 'verified_result'
+        }
+        plan, facts, payload, preview, warnings = build_semantic_plan(in_place_req, self.ws)
+        # Should not generate a copy_sheet op
+        copy_ops = [op for op in plan['operations'] if op.get('op') == 'copy_sheet']
+        self.assertEqual(len(copy_ops), 0)
+        # Fill ops should point to 1019
+        fill_ops = [op for op in plan['operations'] if op.get('op') == 'fill_from_result']
+        self.assertTrue(len(fill_ops) > 0)
+        self.assertEqual(fill_ops[0]['target_sheet'], '1019')
+
+    def test_target_kind_allows_budget_and_plan(self):
+        from dsh_modules.spreadsheet_update.semantic_plan import build_semantic_plan
+        from dsh_modules.spreadsheet_update.compiler import UpdateCompilationError
+        # Non-baseline kind like estimate should be accepted
+        plan_req = dict(self.request, target_kind='estimate')
+        plan, facts, payload, preview, warnings = build_semantic_plan(plan_req, self.ws)
+        self.assertTrue(len(plan['operations']) > 0)
+        fill_ops = [op for op in plan['operations'] if op.get('op') == 'fill_from_result']
+        self.assertEqual(fill_ops[0]['value_kind'], 'estimate')
+
+        # Baseline plan/budget mutation should be safely caught by compiler gate
+        protected_req = dict(self.request, target_kind='budget')
+        with self.assertRaises(UpdateCompilationError):
+            build_semantic_plan(protected_req, self.ws)
+
+    def test_harmless_extra_parameters_tolerated(self):
+        from dsh_modules.spreadsheet_update.tools import dispatch_update_tool
+        req_with_harmless = {
+            'target_file': str(self.target),
+            'base_sheet': '1019',
+            'new_sheet': '1023_test',
+            'period': '202610',
+            'period_field': '工数年月',
+            'section': '有偿',
+            'target_label': '预测',
+            'target_kind': 'forecast',
+            'comment': '模型自动生成的说明',
+            'notes': '自动执行笔记',
+            'description': '更新本月预测',
+        }
+        res = dispatch_update_tool('plan_spreadsheet_update', req_with_harmless)
+        self.assertFalse(res.is_error, msg=f"Should succeed without rejecting harmless keys: {res.error}")
+
+    def test_select_result_tolerates_metric_id_and_single_result(self):
+        from dsh_modules.spreadsheet_update.result_catalog import select_result, RESULTS
+        RESULTS.clear()
+        mock_data = {
+            'data': {
+                'evidence_id': 'ev_test_123',
+                'plan': {'metrics': [{'id': 'amount_sum', 'label': '金额合计(K)'}]}
+            }
+        }
+        RESULTS['ev_test_123'] = mock_data
+
+        # 1. Exact match by evidence_id
+        self.assertEqual(select_result('ev_test_123'), mock_data)
+        # 2. Tolerant match by metric_id when model confuses result_id with metric_id
+        self.assertEqual(select_result('amount_sum'), mock_data)
+        # 3. Tolerant match by single result fallback
+        self.assertEqual(select_result('unseen_id'), mock_data)
+        self.assertEqual(select_result(None), mock_data)
+
+
 
 
 

@@ -18,7 +18,7 @@ class TaskIntentTests(unittest.TestCase):
         request = '读取附件，列出各组结果'
         def model(messages, **kwargs):
             payload = json.loads(messages[-1]['content'])
-            self.assertTrue(set(payload) <= {'request', 'user_history', 'input_count', 'skill_names', 'feedback', 'proposed_contract'})
+            self.assertTrue(set(payload) <= {'request', 'user_history', 'recent_dialogue', 'input_count', 'skill_names', 'feedback', 'proposed_contract'})
             self.assertFalse(kwargs['stream_deltas'])
             return {'finish_reason': 'stop', 'content': json.dumps({'task_mode': 'execute',
                 'output_mode': 'conversation', 'artifact_types': [], 'skill_invocation': {'mode': 'none', 'name': '', 'replace_defaults': False},

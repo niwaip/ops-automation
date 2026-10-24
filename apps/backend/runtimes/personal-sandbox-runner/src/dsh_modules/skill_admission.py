@@ -123,7 +123,8 @@ def admit_skill(prompt, history, files, provisional, model, policy, telemetry, d
     if len(request) + sum(map(len, users)) > 24000 or len(catalog) > 100:
         raise ValueError('技能准入上下文超出预算，未执行候选技能')
     intent = extract_task_intent(request, users, model, policy, telemetry, deadline, input_count=len(files),
-        skill_names=[{'id': s['id'], 'name': s.get('name', s['id']), 'aliases': s.get('aliases', [])} for s in skills])
+        skill_names=[{'id': s['id'], 'name': s.get('name', s['id']), 'aliases': s.get('aliases', [])} for s in skills],
+        history=history)
     from .spreadsheet_update.routing import is_workbook_update
     if (spreadsheet_input and is_workbook_update(request, intent, history)
             and intent['skill_invocation']['mode'] != 'execute'):

@@ -1,0 +1,293 @@
+{
+  "method": "Independent Decimal aggregation and openpyxl readback; no application imports, model calls or workbook writes",
+  "hashes": {
+    "工数3Q预实管理.xlsx": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d",
+    "工数实绩明细_20261020134124.xlsx": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+    "工数3Q预实管理_1023_14.xlsx": "5d8dfcf5cda7782c16bc31e46880de98eb1a82d35f6b32d1c87805ee819e7088"
+  },
+  "input_hashes_match_execution_evidence": true,
+  "output_hash_matches_published_receipt": true,
+  "sheet_names": [
+    "1019",
+    "1023"
+  ],
+  "detail_records": 274,
+  "detail_rows_excluded_by_period_and_category": [
+    279,
+    280,
+    281,
+    282,
+    283
+  ],
+  "category_totals": {
+    "有偿": "1747.12579",
+    "无偿": "140.60523"
+  },
+  "category_record_counts": {
+    "有偿": 259,
+    "无偿": 15
+  },
+  "category_directness": [
+    {
+      "category": "有偿",
+      "directness": "直接",
+      "count": 259
+    },
+    {
+      "category": "无偿",
+      "directness": "直接",
+      "count": 15
+    }
+  ],
+  "cell_checks": [
+    {
+      "section": "有偿",
+      "code": "FC45031",
+      "coordinate": "C10",
+      "records": 92,
+      "expected": "570.75345",
+      "actual": "570.75345",
+      "matches": true,
+      "changed_from_source": true
+    },
+    {
+      "section": "有偿",
+      "code": "FC48005",
+      "coordinate": "C5",
+      "records": 6,
+      "expected": "67.03530",
+      "actual": "67.0353",
+      "matches": true,
+      "changed_from_source": false
+    },
+    {
+      "section": "有偿",
+      "code": "FC44006",
+      "coordinate": "C15",
+      "records": 17,
+      "expected": "171.65638",
+      "actual": "171.65638",
+      "matches": true,
+      "changed_from_source": false
+    },
+    {
+      "section": "有偿",
+      "code": "FC44004",
+      "coordinate": "C14",
+      "records": 17,
+      "expected": "242.51766",
+      "actual": "242.51766",
+      "matches": true,
+      "changed_from_source": true
+    },
+    {
+      "section": "有偿",
+      "code": "FC34022",
+      "coordinate": "C16",
+      "records": 63,
+      "expected": "167.77218",
+      "actual": "167.77218",
+      "matches": true,
+      "changed_from_source": true
+    },
+    {
+      "section": "有偿",
+      "code": "FC44003",
+      "coordinate": "C13",
+      "records": 21,
+      "expected": "212.90759",
+      "actual": "212.90759",
+      "matches": true,
+      "changed_from_source": false
+    },
+    {
+      "section": "有偿",
+      "code": "FC46005",
+      "coordinate": "C8",
+      "records": 43,
+      "expected": "314.48323",
+      "actual": "314.48323",
+      "matches": true,
+      "changed_from_source": true
+    },
+    {
+      "section": "无偿",
+      "code": "FC45031",
+      "coordinate": "C31",
+      "records": 11,
+      "expected": "106.83199",
+      "actual": "106.83199",
+      "matches": true,
+      "changed_from_source": true
+    },
+    {
+      "section": "无偿",
+      "code": "FC44004",
+      "coordinate": "C35",
+      "records": 1,
+      "expected": "11.38824",
+      "actual": "11.38824",
+      "matches": true,
+      "changed_from_source": true
+    },
+    {
+      "section": "无偿",
+      "code": "FC44003",
+      "coordinate": "C34",
+      "records": 1,
+      "expected": "8.085",
+      "actual": "8.085",
+      "matches": true,
+      "changed_from_source": false
+    },
+    {
+      "section": "无偿",
+      "code": "FC46005",
+      "coordinate": "C29",
+      "records": 2,
+      "expected": "14.30000",
+      "actual": "14.3",
+      "matches": true,
+      "changed_from_source": true
+    }
+  ],
+  "actual_changed_target_values": 7,
+  "all_target_keys_without_source": {
+    "有偿": [
+      "FC32008",
+      "FC34001",
+      "FC34032",
+      "FC44008"
+    ],
+    "无偿": [
+      "FC32008",
+      "FC34001",
+      "FC34022",
+      "FC34032",
+      "FC44006",
+      "FC44008",
+      "FC48005"
+    ]
+  },
+  "retained_unmatched_values": {
+    "有偿": {
+      "FC32008": 0,
+      "FC34001": 0,
+      "FC34032": 0,
+      "FC44008": 0
+    },
+    "无偿": {
+      "FC32008": 0,
+      "FC34001": 0,
+      "FC34022": 2.87059,
+      "FC34032": 0,
+      "FC44006": 0,
+      "FC44008": 0,
+      "FC48005": 0
+    }
+  },
+  "plan_warning_missing_keys": {
+    "有偿": [],
+    "无偿": []
+  },
+  "historical_sheet_check": {
+    "unexpected_value_or_formula_changes": [],
+    "storage_value_differences": [
+      "C2",
+      "C8",
+      "C10",
+      "C16",
+      "C23",
+      "C29",
+      "C35",
+      "C44",
+      "D44",
+      "E44",
+      "C45",
+      "D45",
+      "E45",
+      "K45",
+      "K46",
+      "K47",
+      "C48",
+      "D48",
+      "E48",
+      "K48",
+      "K49",
+      "C50",
+      "D50",
+      "E50",
+      "K50",
+      "C51",
+      "D51",
+      "E51",
+      "K51",
+      "C52",
+      "D52",
+      "E52",
+      "K52",
+      "D53"
+    ],
+    "formula_count": 311,
+    "nonempty_cell_font_name_changes": [],
+    "merged_ranges_preserved": true
+  },
+  "new_sheet_check": {
+    "unexpected_value_or_formula_changes": [],
+    "storage_value_differences": [
+      "C2",
+      "C8",
+      "C10",
+      "C14",
+      "C16",
+      "C23",
+      "C29",
+      "C31",
+      "C35",
+      "C44",
+      "D44",
+      "E44",
+      "C45",
+      "D45",
+      "E45",
+      "K45",
+      "K46",
+      "K47",
+      "C48",
+      "D48",
+      "E48",
+      "K48",
+      "K49",
+      "C50",
+      "D50",
+      "E50",
+      "K50",
+      "C51",
+      "D51",
+      "E51",
+      "K51",
+      "C52",
+      "D52",
+      "E52",
+      "K52",
+      "D53"
+    ],
+    "formula_count": 311,
+    "nonempty_cell_font_name_changes": [],
+    "merged_ranges_preserved": true
+  },
+  "date_headers": {
+    "C2": "2026-10-19 00:00:00",
+    "C23": "2026-10-19 00:00:00"
+  },
+  "formula_count": 622,
+  "missing_formula_caches": [],
+  "cached_errors": [],
+  "cached_totals": {
+    "C19": 1747.12579,
+    "C40": 143.47582
+  },
+  "receipt_requirement_coverages": [],
+  "receipt_evidence_refs": [],
+  "numeric_and_formula_checks_pass": true
+}

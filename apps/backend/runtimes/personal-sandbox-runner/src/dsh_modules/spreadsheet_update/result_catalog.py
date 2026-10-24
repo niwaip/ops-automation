@@ -70,8 +70,9 @@ def bind_result(result, key_field, period_field, period, metric_id=None):
         key_field = group_fields[0]
     if key_field not in group_fields:
         raise ValueError('key_field 必须是统计查询实际使用的分组字段')
-    if not period_field or not _requires_equality(data.get('plan', {}).get('where'), period_field, period):
-        raise ValueError('缺少单一期间依据：请在统计查询中按 period_field 等于 period 筛选')
+    if period_field and period is not None:
+        if not _requires_equality(data.get('plan', {}).get('where'), period_field, period):
+            raise ValueError('缺少单一期间依据：请在统计查询中按 period_field 等于 period 筛选')
     metrics = [m['id'] for m in data.get('plan', {}).get('metrics', [])]
     metric_id = metric_id or (metrics[0] if len(metrics) == 1 else None)
     if metric_id not in metrics:
@@ -100,12 +101,24 @@ def bind_result(result, key_field, period_field, period, metric_id=None):
 
 def select_result(result_id=None):
     if result_id:
-        if result_id not in RESULTS:
-            raise ValueError('该统计结果不属于本轮已验证结果，请先调用 aggregate_spreadsheet')
-        return RESULTS[result_id]
-    if len(RESULTS) != 1:
-        raise ValueError('请用 result_id 指定本轮统计结果；当前没有唯一结果')
-    return next(iter(RESULTS.values()))
+        if result_id in RESULTS:
+            return RESULTS[result_id]
+        # 容错 1：模型可能混淆了 evidence_id 与指标 ID / 标签 (如传入 amount_sum, 金额合计(K) 等)
+        for r in RESULTS.values():
+            plan_obj = r.get('data', {}).get('plan', {})
+            metric_ids = {m.get('id') for m in plan_obj.get('metrics', [])}
+            metric_labels = {m.get('label') for m in plan_obj.get('metrics', [])}
+            if result_id in metric_ids or result_id in metric_labels:
+                return r
+        # 容错 2：当前上下文有且仅有一个已验证聚合结果时，宽容直接关联该唯一结果
+        if len(RESULTS) == 1:
+            return next(iter(RESULTS.values()))
+        raise ValueError('该统计结果不属于本轮已验证结果，请先调用 aggregate_spreadsheet')
+    if len(RESULTS) == 1:
+        return next(iter(RESULTS.values()))
+    if not RESULTS:
+        raise ValueError('本轮尚未调用 aggregate_spreadsheet 完成数据验证')
+    raise ValueError('请用 result_id 指定本轮统计结果；当前没有唯一结果')
 
 
 def serialize_facts(table):

@@ -1,0 +1,226 @@
+{
+  "1019": {
+    "method": "Compare copied openpyxl style objects, not StyleProxy identity; storage differences are not automatically visual regressions",
+    "changed_nonempty_cell_style_components": {
+      "font": {
+        "count": 568,
+        "sample": [
+          {
+            "cell": "A1",
+            "before": "<openpyxl.styles.fonts.Font object>\nParameters:\nname='等线', charset=134, family=3.0, b=True, i=False, strike=None, outline=None, shadow=None, condense=None, color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFF0000', indexed=None, auto=None, theme=None, tint=0.0, type='rgb', extend=None, sz=11.0, u=None, vertAlign=None, scheme='minor'",
+            "after": "<openpyxl.styles.fonts.Font object>\nParameters:\nname='等线', charset=None, family=2.0, b=True, i=False, strike=None, outline=None, shadow=None, condense=None, color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFF0000', indexed=None, auto=None, theme=None, tint=0.0, type='rgb', extend=None, sz=11.0, u=None, vertAlign=None, scheme=None"
+          },
+          {
+            "cell": "A2",
+            "before": "<openpyxl.styles.fonts.Font object>\nParameters:\nname='等线', charset=134, family=2.0, b=False, i=False, strike=None, outline=None, shadow=None, condense=None, color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme', extend=None, sz=11.0, u=None, vertAlign=None, scheme='minor'",
+            "after": "<openpyxl.styles.fonts.Font object>\nParameters:\nname='等线', charset=None, family=2.0, b=False, i=False, strike=None, outline=None, shadow=None, condense=None, color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FF000000', indexed=None, auto=None, theme=None, tint=0.0, type='rgb', extend=None, sz=11.0, u=None, vertAlign=None, scheme=None"
+          },
+          {
+            "cell": "C2",
+            "before": "<openpyxl.styles.fonts.Font object>\nParameters:\nname='等线', charset=134, family=2.0, b=False, i=False, strike=None, outline=None, shadow=None, condense=None, color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme', extend=None, sz=11.0, u=None, vertAlign=None, scheme='minor'",
+            "after": "<openpyxl.styles.fonts.Font object>\nParameters:\nname='等线', charset=134, family=2.0, b=False, i=False, strike=None, outline=None, shadow=None, condense=None, color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FF000000', indexed=None, auto=None, theme=None, tint=0.0, type='rgb', extend=None, sz=11.0, u=None, vertAlign=None, scheme=None"
+          }
+        ]
+      },
+      "fill": {
+        "count": 154,
+        "sample": [
+          {
+            "cell": "B7",
+            "before": "<openpyxl.styles.fills.PatternFill object>\nParameters:\npatternType='solid', fgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFFFF00', indexed=None, auto=None, theme=None, tint=0.0, type='rgb', bgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=64, auto=None, theme=None, tint=0.0, type='indexed'",
+            "after": "<openpyxl.styles.fills.PatternFill object>\nParameters:\npatternType='solid', fgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFFFF00', indexed=None, auto=None, theme=None, tint=0.0, type='rgb', bgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFFFF00', indexed=None, auto=None, theme=None, tint=0.0, type='rgb'"
+          },
+          {
+            "cell": "C7",
+            "before": "<openpyxl.styles.fills.PatternFill object>\nParameters:\npatternType='solid', fgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFFFF00', indexed=None, auto=None, theme=None, tint=0.0, type='rgb', bgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=64, auto=None, theme=None, tint=0.0, type='indexed'",
+            "after": "<openpyxl.styles.fills.PatternFill object>\nParameters:\npatternType='solid', fgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFFFF00', indexed=None, auto=None, theme=None, tint=0.0, type='rgb', bgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFFFF00', indexed=None, auto=None, theme=None, tint=0.0, type='rgb'"
+          },
+          {
+            "cell": "D7",
+            "before": "<openpyxl.styles.fills.PatternFill object>\nParameters:\npatternType='solid', fgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFFFF00', indexed=None, auto=None, theme=None, tint=0.0, type='rgb', bgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=64, auto=None, theme=None, tint=0.0, type='indexed'",
+            "after": "<openpyxl.styles.fills.PatternFill object>\nParameters:\npatternType='solid', fgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFFFF00', indexed=None, auto=None, theme=None, tint=0.0, type='rgb', bgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFFFF00', indexed=None, auto=None, theme=None, tint=0.0, type='rgb'"
+          }
+        ]
+      },
+      "border": {
+        "count": 455,
+        "sample": [
+          {
+            "cell": "A2",
+            "before": "<openpyxl.styles.borders.Border object>\nParameters:\noutline=True, diagonalUp=False, diagonalDown=False, start=None, end=None, left=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thick', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', right=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', top=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thick', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', bottom=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', diagonal=<openpyxl.styles.borders.Side object>\nParameters:\nstyle=None, color=None, vertical=None, horizontal=None",
+            "after": "<openpyxl.styles.borders.Border object>\nParameters:\noutline=True, diagonalUp=False, diagonalDown=False, start=None, end=None, left=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thick', color=None, right=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=None, top=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thick', color=None, bottom=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=None, diagonal=<openpyxl.styles.borders.Side object>\nParameters:\nstyle=None, color=None, vertical=None, horizontal=None"
+          },
+          {
+            "cell": "C2",
+            "before": "<openpyxl.styles.borders.Border object>\nParameters:\noutline=True, diagonalUp=False, diagonalDown=False, start=None, end=None, left=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', right=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', top=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thick', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', bottom=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', diagonal=<openpyxl.styles.borders.Side object>\nParameters:\nstyle=None, color=None, vertical=None, horizontal=None",
+            "after": "<openpyxl.styles.borders.Border object>\nParameters:\noutline=True, diagonalUp=False, diagonalDown=False, start=None, end=None, left=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=None, right=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=None, top=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thick', color=None, bottom=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=None, diagonal=<openpyxl.styles.borders.Side object>\nParameters:\nstyle=None, color=None, vertical=None, horizontal=None"
+          },
+          {
+            "cell": "G2",
+            "before": "<openpyxl.styles.borders.Border object>\nParameters:\noutline=True, diagonalUp=False, diagonalDown=False, start=None, end=None, left=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', right=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', top=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thick', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', bottom=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', diagonal=<openpyxl.styles.borders.Side object>\nParameters:\nstyle=None, color=None, vertical=None, horizontal=None",
+            "after": "<openpyxl.styles.borders.Border object>\nParameters:\noutline=True, diagonalUp=False, diagonalDown=False, start=None, end=None, left=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=None, right=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=None, top=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thick', color=None, bottom=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=None, diagonal=<openpyxl.styles.borders.Side object>\nParameters:\nstyle=None, color=None, vertical=None, horizontal=None"
+          }
+        ]
+      },
+      "alignment": {
+        "count": 468,
+        "sample": [
+          {
+            "cell": "A1",
+            "before": "<openpyxl.styles.alignment.Alignment object>\nParameters:\nhorizontal=None, vertical='center', textRotation=0, wrapText=None, shrinkToFit=None, indent=0.0, relativeIndent=0.0, justifyLastLine=None, readingOrder=0.0",
+            "after": "<openpyxl.styles.alignment.Alignment object>\nParameters:\nhorizontal='general', vertical='center', textRotation=0, wrapText=None, shrinkToFit=None, indent=0.0, relativeIndent=0.0, justifyLastLine=None, readingOrder=0.0"
+          },
+          {
+            "cell": "P3",
+            "before": "<openpyxl.styles.alignment.Alignment object>\nParameters:\nhorizontal=None, vertical='center', textRotation=0, wrapText=None, shrinkToFit=None, indent=0.0, relativeIndent=0.0, justifyLastLine=None, readingOrder=0.0",
+            "after": "<openpyxl.styles.alignment.Alignment object>\nParameters:\nhorizontal='general', vertical='center', textRotation=0, wrapText=None, shrinkToFit=None, indent=0.0, relativeIndent=0.0, justifyLastLine=None, readingOrder=0.0"
+          },
+          {
+            "cell": "C5",
+            "before": "<openpyxl.styles.alignment.Alignment object>\nParameters:\nhorizontal=None, vertical='center', textRotation=0, wrapText=None, shrinkToFit=None, indent=0.0, relativeIndent=0.0, justifyLastLine=None, readingOrder=0.0",
+            "after": "<openpyxl.styles.alignment.Alignment object>\nParameters:\nhorizontal='general', vertical='center', textRotation=0, wrapText=None, shrinkToFit=None, indent=0.0, relativeIndent=0.0, justifyLastLine=None, readingOrder=0.0"
+          }
+        ]
+      },
+      "number_format": {
+        "count": 395,
+        "sample": [
+          {
+            "cell": "C2",
+            "before": "General",
+            "after": "m/d/yyyy"
+          },
+          {
+            "cell": "C5",
+            "before": "_ * #,##0.0_ ;_ * \\-#,##0.0_ ;_ * \"-\"??_ ;_ @_ ",
+            "after": "_ * #,##0.0_ ;_ * \\-#,##0.0_ ;_ * \\-??_ ;_ @_ "
+          },
+          {
+            "cell": "F5",
+            "before": "_ * #,##0.0_ ;_ * \\-#,##0.0_ ;_ * \"-\"??_ ;_ @_ ",
+            "after": "_ * #,##0.0_ ;_ * \\-#,##0.0_ ;_ * \\-??_ ;_ @_ "
+          }
+        ]
+      },
+      "protection": {
+        "count": 0,
+        "sample": []
+      }
+    },
+    "merged_ranges_preserved": true,
+    "source_dimensions": "A1:T64",
+    "output_dimensions": "A1:T64"
+  },
+  "1023": {
+    "method": "Compare copied openpyxl style objects, not StyleProxy identity; storage differences are not automatically visual regressions",
+    "changed_nonempty_cell_style_components": {
+      "font": {
+        "count": 568,
+        "sample": [
+          {
+            "cell": "A1",
+            "before": "<openpyxl.styles.fonts.Font object>\nParameters:\nname='等线', charset=134, family=3.0, b=True, i=False, strike=None, outline=None, shadow=None, condense=None, color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFF0000', indexed=None, auto=None, theme=None, tint=0.0, type='rgb', extend=None, sz=11.0, u=None, vertAlign=None, scheme='minor'",
+            "after": "<openpyxl.styles.fonts.Font object>\nParameters:\nname='等线', charset=None, family=2.0, b=True, i=False, strike=None, outline=None, shadow=None, condense=None, color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFF0000', indexed=None, auto=None, theme=None, tint=0.0, type='rgb', extend=None, sz=11.0, u=None, vertAlign=None, scheme=None"
+          },
+          {
+            "cell": "A2",
+            "before": "<openpyxl.styles.fonts.Font object>\nParameters:\nname='等线', charset=134, family=2.0, b=False, i=False, strike=None, outline=None, shadow=None, condense=None, color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme', extend=None, sz=11.0, u=None, vertAlign=None, scheme='minor'",
+            "after": "<openpyxl.styles.fonts.Font object>\nParameters:\nname='等线', charset=None, family=2.0, b=False, i=False, strike=None, outline=None, shadow=None, condense=None, color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FF000000', indexed=None, auto=None, theme=None, tint=0.0, type='rgb', extend=None, sz=11.0, u=None, vertAlign=None, scheme=None"
+          },
+          {
+            "cell": "C2",
+            "before": "<openpyxl.styles.fonts.Font object>\nParameters:\nname='等线', charset=134, family=2.0, b=False, i=False, strike=None, outline=None, shadow=None, condense=None, color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme', extend=None, sz=11.0, u=None, vertAlign=None, scheme='minor'",
+            "after": "<openpyxl.styles.fonts.Font object>\nParameters:\nname='等线', charset=134, family=2.0, b=False, i=False, strike=None, outline=None, shadow=None, condense=None, color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FF000000', indexed=None, auto=None, theme=None, tint=0.0, type='rgb', extend=None, sz=11.0, u=None, vertAlign=None, scheme=None"
+          }
+        ]
+      },
+      "fill": {
+        "count": 154,
+        "sample": [
+          {
+            "cell": "B7",
+            "before": "<openpyxl.styles.fills.PatternFill object>\nParameters:\npatternType='solid', fgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFFFF00', indexed=None, auto=None, theme=None, tint=0.0, type='rgb', bgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=64, auto=None, theme=None, tint=0.0, type='indexed'",
+            "after": "<openpyxl.styles.fills.PatternFill object>\nParameters:\npatternType='solid', fgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFFFF00', indexed=None, auto=None, theme=None, tint=0.0, type='rgb', bgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFFFF00', indexed=None, auto=None, theme=None, tint=0.0, type='rgb'"
+          },
+          {
+            "cell": "C7",
+            "before": "<openpyxl.styles.fills.PatternFill object>\nParameters:\npatternType='solid', fgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFFFF00', indexed=None, auto=None, theme=None, tint=0.0, type='rgb', bgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=64, auto=None, theme=None, tint=0.0, type='indexed'",
+            "after": "<openpyxl.styles.fills.PatternFill object>\nParameters:\npatternType='solid', fgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFFFF00', indexed=None, auto=None, theme=None, tint=0.0, type='rgb', bgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFFFF00', indexed=None, auto=None, theme=None, tint=0.0, type='rgb'"
+          },
+          {
+            "cell": "D7",
+            "before": "<openpyxl.styles.fills.PatternFill object>\nParameters:\npatternType='solid', fgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFFFF00', indexed=None, auto=None, theme=None, tint=0.0, type='rgb', bgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=64, auto=None, theme=None, tint=0.0, type='indexed'",
+            "after": "<openpyxl.styles.fills.PatternFill object>\nParameters:\npatternType='solid', fgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFFFF00', indexed=None, auto=None, theme=None, tint=0.0, type='rgb', bgColor=<openpyxl.styles.colors.Color object>\nParameters:\nrgb='FFFFFF00', indexed=None, auto=None, theme=None, tint=0.0, type='rgb'"
+          }
+        ]
+      },
+      "border": {
+        "count": 455,
+        "sample": [
+          {
+            "cell": "A2",
+            "before": "<openpyxl.styles.borders.Border object>\nParameters:\noutline=True, diagonalUp=False, diagonalDown=False, start=None, end=None, left=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thick', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', right=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', top=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thick', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', bottom=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', diagonal=<openpyxl.styles.borders.Side object>\nParameters:\nstyle=None, color=None, vertical=None, horizontal=None",
+            "after": "<openpyxl.styles.borders.Border object>\nParameters:\noutline=True, diagonalUp=False, diagonalDown=False, start=None, end=None, left=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thick', color=None, right=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=None, top=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thick', color=None, bottom=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=None, diagonal=<openpyxl.styles.borders.Side object>\nParameters:\nstyle=None, color=None, vertical=None, horizontal=None"
+          },
+          {
+            "cell": "C2",
+            "before": "<openpyxl.styles.borders.Border object>\nParameters:\noutline=True, diagonalUp=False, diagonalDown=False, start=None, end=None, left=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', right=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', top=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thick', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', bottom=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', diagonal=<openpyxl.styles.borders.Side object>\nParameters:\nstyle=None, color=None, vertical=None, horizontal=None",
+            "after": "<openpyxl.styles.borders.Border object>\nParameters:\noutline=True, diagonalUp=False, diagonalDown=False, start=None, end=None, left=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=None, right=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=None, top=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thick', color=None, bottom=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=None, diagonal=<openpyxl.styles.borders.Side object>\nParameters:\nstyle=None, color=None, vertical=None, horizontal=None"
+          },
+          {
+            "cell": "G2",
+            "before": "<openpyxl.styles.borders.Border object>\nParameters:\noutline=True, diagonalUp=False, diagonalDown=False, start=None, end=None, left=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', right=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', top=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thick', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', bottom=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=<openpyxl.styles.colors.Color object>\nParameters:\nrgb=None, indexed=None, auto=True, theme=None, tint=0.0, type='auto', diagonal=<openpyxl.styles.borders.Side object>\nParameters:\nstyle=None, color=None, vertical=None, horizontal=None",
+            "after": "<openpyxl.styles.borders.Border object>\nParameters:\noutline=True, diagonalUp=False, diagonalDown=False, start=None, end=None, left=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=None, right=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=None, top=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thick', color=None, bottom=<openpyxl.styles.borders.Side object>\nParameters:\nstyle='thin', color=None, diagonal=<openpyxl.styles.borders.Side object>\nParameters:\nstyle=None, color=None, vertical=None, horizontal=None"
+          }
+        ]
+      },
+      "alignment": {
+        "count": 468,
+        "sample": [
+          {
+            "cell": "A1",
+            "before": "<openpyxl.styles.alignment.Alignment object>\nParameters:\nhorizontal=None, vertical='center', textRotation=0, wrapText=None, shrinkToFit=None, indent=0.0, relativeIndent=0.0, justifyLastLine=None, readingOrder=0.0",
+            "after": "<openpyxl.styles.alignment.Alignment object>\nParameters:\nhorizontal='general', vertical='center', textRotation=0, wrapText=None, shrinkToFit=None, indent=0.0, relativeIndent=0.0, justifyLastLine=None, readingOrder=0.0"
+          },
+          {
+            "cell": "P3",
+            "before": "<openpyxl.styles.alignment.Alignment object>\nParameters:\nhorizontal=None, vertical='center', textRotation=0, wrapText=None, shrinkToFit=None, indent=0.0, relativeIndent=0.0, justifyLastLine=None, readingOrder=0.0",
+            "after": "<openpyxl.styles.alignment.Alignment object>\nParameters:\nhorizontal='general', vertical='center', textRotation=0, wrapText=None, shrinkToFit=None, indent=0.0, relativeIndent=0.0, justifyLastLine=None, readingOrder=0.0"
+          },
+          {
+            "cell": "C5",
+            "before": "<openpyxl.styles.alignment.Alignment object>\nParameters:\nhorizontal=None, vertical='center', textRotation=0, wrapText=None, shrinkToFit=None, indent=0.0, relativeIndent=0.0, justifyLastLine=None, readingOrder=0.0",
+            "after": "<openpyxl.styles.alignment.Alignment object>\nParameters:\nhorizontal='general', vertical='center', textRotation=0, wrapText=None, shrinkToFit=None, indent=0.0, relativeIndent=0.0, justifyLastLine=None, readingOrder=0.0"
+          }
+        ]
+      },
+      "number_format": {
+        "count": 395,
+        "sample": [
+          {
+            "cell": "C2",
+            "before": "General",
+            "after": "m/d/yyyy"
+          },
+          {
+            "cell": "C5",
+            "before": "_ * #,##0.0_ ;_ * \\-#,##0.0_ ;_ * \"-\"??_ ;_ @_ ",
+            "after": "_ * #,##0.0_ ;_ * \\-#,##0.0_ ;_ * \\-??_ ;_ @_ "
+          },
+          {
+            "cell": "F5",
+            "before": "_ * #,##0.0_ ;_ * \\-#,##0.0_ ;_ * \"-\"??_ ;_ @_ ",
+            "after": "_ * #,##0.0_ ;_ * \\-#,##0.0_ ;_ * \\-??_ ;_ @_ "
+          }
+        ]
+      },
+      "protection": {
+        "count": 0,
+        "sample": []
+      }
+    },
+    "merged_ranges_preserved": true,
+    "source_dimensions": "A1:T64",
+    "output_dimensions": "A1:T64"
+  }
+}

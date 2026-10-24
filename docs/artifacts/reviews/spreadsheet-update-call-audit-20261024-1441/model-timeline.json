@@ -1,0 +1,74 @@
+[
+  {
+    "stage": "任务契约提取",
+    "finish_beijing": "2:40:27",
+    "trace_id": "0233a4c0-45df-4576-a290-8efada12a8fb",
+    "proxy_duration_ms": 3739
+  },
+  {
+    "stage": "任务契约复核",
+    "finish_beijing": "2:40:29",
+    "trace_id": "0aeef88b-e97c-4633-b1e7-d3bf0b1386dd",
+    "proxy_duration_ms": 2145
+  },
+  {
+    "stage": "结构检查",
+    "finish_beijing": "2:40:32",
+    "trace_id": "87c0fcb9-13c9-4ac0-be9e-123d7de3e01c",
+    "proxy_duration_ms": 3228
+  },
+  {
+    "stage": "全表读取",
+    "finish_beijing": "2:40:35",
+    "trace_id": "4a06ae9f-9222-42fd-96e6-a1332662014b",
+    "proxy_duration_ms": 2468
+  },
+  {
+    "stage": "越界文本分页",
+    "finish_beijing": "2:40:38",
+    "trace_id": "43cb564f-05ba-4e02-afec-955b5b8be1a2",
+    "proxy_duration_ms": 3302
+  },
+  {
+    "stage": "读取 A26:T64",
+    "finish_beijing": "2:40:41",
+    "trace_id": "503728d0-f3d6-4ccf-bc63-44cb0de30043",
+    "proxy_duration_ms": 2392
+  },
+  {
+    "stage": "读取 A51:T64",
+    "finish_beijing": "2:40:45",
+    "trace_id": "74cbcb5a-dff0-459e-aeed-bf15670e0222",
+    "proxy_duration_ms": 3786
+  },
+  {
+    "stage": "聚合有偿",
+    "finish_beijing": "2:40:51",
+    "trace_id": "03424d62-c0db-4874-950f-357c6e29c8ba",
+    "proxy_duration_ms": 6543
+  },
+  {
+    "stage": "聚合无偿",
+    "finish_beijing": "2:40:54",
+    "trace_id": "89bced3f-ec85-4707-b54d-25d04e04a21c",
+    "proxy_duration_ms": 2845
+  },
+  {
+    "stage": "生成更新计划",
+    "finish_beijing": "2:41:02",
+    "trace_id": "c362b80f-755e-4652-aa0e-598254c7abd4",
+    "proxy_duration_ms": 7260
+  },
+  {
+    "stage": "执行更新前模型决策",
+    "finish_beijing": "2:41:05",
+    "trace_id": "63523977-f85c-4e94-b1fb-1b9033ba17d7",
+    "proxy_duration_ms": 3185
+  },
+  {
+    "stage": "最终回答",
+    "finish_beijing": "2:41:15",
+    "trace_id": "52a7fbd5-1d95-4ff5-b0b1-e4f865ffc052",
+    "proxy_duration_ms": 8442
+  }
+]

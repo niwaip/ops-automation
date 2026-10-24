@@ -106,6 +106,7 @@ class MultiSectionSpreadsheetUpdateTests(unittest.TestCase):
         # Subsequent separate table (e.g. utilization rates)
         ws['B22'] = 'FC48005'; ws['C22'] = 0.8
         ws['B23'] = 'FC46005'; ws['C23'] = 0.9
+        ws['F1'] = '单位：K'
 
         wb.save(self.target)
         wb.close()
@@ -164,14 +165,22 @@ class MultiSectionSpreadsheetUpdateTests(unittest.TestCase):
         self.patch_env.start()
         self.patch_config = patch('dsh_modules.config.WORKSPACE_DIR', str(self.ws))
         self.patch_config.start()
+        from dsh_modules.domain_memory import clear_domain_memory
+        clear_domain_memory()
+        bind_user_declarations({})
 
     def tearDown(self):
+        from dsh_modules.domain_memory import clear_domain_memory
+        clear_domain_memory()
+        bind_user_declarations({})
         self.patch_config.stop()
         self.patch_env.stop()
         reset_turn_results()
         self.temp.cleanup()
 
     def test_multi_section_planning_with_alias_resolution(self):
+        from dsh_modules.spreadsheet_update.layout_binding import BindingNeedsInput
+        from dsh_modules.user_declarations import bind_user_declarations
         req = {
             'target_file': '工数3Q预实管理.xlsx',
             'base_sheet': '1019',
@@ -181,11 +190,22 @@ class MultiSectionSpreadsheetUpdateTests(unittest.TestCase):
             'target_label': '预测',
             'target_kind': 'forecast',
             'target_unit': 'K',
+            'unit_cell': 'F1',
             'sections': [
                 {'section': '有偿', 'result_id': 'result_paid'},
                 {'section': '无偿', 'result_id': 'result_unpaid'}
             ]
         }
+        # 1. Without clarification or memory, system must ask user instead of guessing hardcoded aliases
+        with self.assertRaises(BindingNeedsInput) as cm:
+            build_semantic_plan(req, self.ws)
+        self.assertIn('*P/*Y/EX', str(cm.exception))
+
+        # 2. Grounded user declaration resolves the mapping
+        bind_user_declarations({
+            'section_confirmation': {'section': '无偿', 'target_title': '*P/*Y/EX（不含*L/*B）', 'quote': '无偿对应*P'},
+            'user_statements': ['无偿对应*P']
+        })
         plan, mapped, payload, preview, warnings = build_semantic_plan(req, self.ws)
         # 2 paid writes + 2 unpaid writes = 4 writes
         self.assertEqual(len(preview), 4)
@@ -193,12 +213,18 @@ class MultiSectionSpreadsheetUpdateTests(unittest.TestCase):
         # Paid block
         self.assertEqual(preview_map['C5'], '67.0353')
         self.assertEqual(preview_map['C8'], '314.48323')
-        # Unpaid block (mapped to row 16 & 17 via alias resolution)
+        # Unpaid block (mapped to row 16 & 17 via user confirmation)
         self.assertEqual(preview_map['C16'], '15.5')
         self.assertEqual(preview_map['C17'], '14.3')
         self.assertEqual(len(plan['semantic_bindings']['region_specs']), 2)
 
     def test_multi_section_auto_matching_with_comma_separated_sections(self):
+        from dsh_modules.domain_memory import save_section_mapping, clear_domain_memory
+        clear_domain_memory()
+        # Save learned mapping into domain memory
+        target_hash = fingerprint(self.target)
+        save_section_mapping('无偿', '*P/*Y/EX（不含*L/*B）', file_hash=target_hash)
+
         req = {
             'target_file': '工数3Q预实管理.xlsx',
             'base_sheet': '1019',
@@ -208,6 +234,7 @@ class MultiSectionSpreadsheetUpdateTests(unittest.TestCase):
             'target_label': '预测',
             'target_kind': 'forecast',
             'target_unit': 'K',
+            'unit_cell': 'F1',
             'section': '有偿, 无偿'
         }
         plan, mapped, payload, preview, warnings = build_semantic_plan(req, self.ws)
@@ -217,10 +244,12 @@ class MultiSectionSpreadsheetUpdateTests(unittest.TestCase):
         self.assertEqual(preview_map['C8'], '314.48323')
         self.assertEqual(preview_map['C16'], '15.5')
         self.assertEqual(preview_map['C17'], '14.3')
+        clear_domain_memory()
 
     @patch('dsh_modules.spreadsheet_update.executor.recalculate_candidate')
     def test_multi_section_end_to_end_execute(self, mock_recalc):
         mock_recalc.side_effect = self._simulate_recalculate_candidate
+        from dsh_modules.user_declarations import bind_user_declarations
 
         req = {
             'target_file': '工数3Q预实管理.xlsx',
@@ -231,11 +260,22 @@ class MultiSectionSpreadsheetUpdateTests(unittest.TestCase):
             'target_label': '预测',
             'target_kind': 'forecast',
             'target_unit': 'K',
+            'unit_cell': 'F1',
             'sections': [
                 {'section': '有偿', 'result_id': 'result_paid'},
                 {'section': '无偿', 'result_id': 'result_unpaid'}
             ]
         }
+        # First round requires user input for unknown section
+        first_plan = tool_plan_spreadsheet_update(req)
+        self.assertTrue(first_plan.is_partial)
+        self.assertEqual(first_plan.data.get('status'), 'needs_input')
+
+        # User confirms declaration
+        bind_user_declarations({
+            'section_confirmation': {'section': '无偿', 'target_title': '*P/*Y/EX（不含*L/*B）', 'quote': '确认无偿'},
+            'user_statements': ['确认无偿']
+        })
         plan_res = tool_plan_spreadsheet_update(req)
         self.assertTrue(plan_res.is_success, str(plan_res))
         plan_id = plan_res.data['plan_id']
