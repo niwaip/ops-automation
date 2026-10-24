@@ -156,6 +156,18 @@ class TerminalArtifactClaimTests(unittest.TestCase):
             self.assertIn("发送失败", res)
             self.assertIn("声明页面", res)
 
+    def test_referential_terms_do_not_produce_fake_sheet_missing_files(self):
+        import openpyxl
+        wb = openpyxl.Workbook()
+        wb.create_sheet('1023')
+        wb_path = self.root / '工数3Q预实管理_1023_6.xlsx'
+        wb.save(wb_path)
+
+        text = '已生成 工数3Q预实管理_1023_6.xlsx，新增工作表 1023，已将数据回填至目标工作表。'
+        missing = self.verify(text)
+        self.assertNotIn('新工作表_目标.xlsx', missing)
+        self.assertEqual(missing, [])
+
 
 if __name__ == '__main__':
     unittest.main()

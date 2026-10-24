@@ -9,9 +9,12 @@ import os
 import json
 import time
 import sys
+import logging
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 from .runtime_policy import RuntimePolicy
 from .context_budget import ContextBudget
@@ -64,7 +67,7 @@ from .agent_loop_helpers import (
 )
 
 
-MAX_AGENT_ROUNDS_HARD_CEILING = int(os.getenv("DSH_MAX_AGENT_ROUNDS_CEILING", "10"))
+MAX_AGENT_ROUNDS_HARD_CEILING = int(os.getenv("DSH_MAX_AGENT_ROUNDS_CEILING", "24"))
 MAX_SPREADSHEET_ROUNDS_CEILING = 4
 
 
@@ -138,6 +141,49 @@ def _check_no_tool_assertion_guard(
             for t in effective_tools
         )
     )
+    has_plan_succeeded = bool(
+        (executed_calls_history and any(
+            call.startswith("plan_spreadsheet_update:") and not call.startswith("err:")
+            for call in executed_calls_history
+        )) or (execution_evidence and any(
+            getattr(e, "is_success", False) and (
+                (getattr(e, "provenance", None) or {}).get("tool") == "plan_spreadsheet_update"
+                or (isinstance(getattr(e, "data", None), dict) and e.data.get("status") == "planned")
+            )
+            for e in execution_evidence
+        ))
+    )
+    has_update_published = bool(
+        execution_evidence and any(
+            getattr(e, "is_success", False) and (
+                (getattr(e, "provenance", None) or {}).get("tool") == "execute_spreadsheet_update"
+                or (isinstance(getattr(e, "data", None), dict) and e.data.get("status") == "published")
+            )
+            for e in execution_evidence
+        )
+    )
+    planned_run_id = None
+    if execution_evidence:
+        for e in reversed(execution_evidence):
+            if getattr(e, "is_success", False) and isinstance(getattr(e, "data", None), dict):
+                if e.data.get("status") == "planned" and ("plan_id" in e.data or "run_id" in e.data):
+                    planned_run_id = e.data.get("plan_id") or e.data.get("run_id")
+                    break
+                elif ("run_id" in e.data or "plan_id" in e.data) and "plan" in e.data:
+                    planned_run_id = e.data.get("plan_id") or e.data.get("run_id")
+                    break
+
+    # 强制执行已锁定的表格更新计划：若更新计划已成功生成但尚未落盘，坚决不允许因轮次耗尽或口头汇报而终止
+    if has_update_tools_effective and has_plan_succeeded and not has_update_published:
+        print("⚡ [Harness Spreadsheet Execution Guard] 检测到更新计划已锁定但未调用 execute_spreadsheet_update，正在强制推进执行...", flush=True)
+        run_arg = f"(plan_id='{planned_run_id}')" if planned_run_id else ""
+        msg = (
+            f"【系统表格更新强制执行指令】：检测到更新计划已成功锁定（plan_id='{planned_run_id}'），但物理文件尚未生成落盘！"
+            f"用户要求的是直接生成/交付更新后的表格文件，绝不能在此中断向用户索要二次确认。"
+            f"请立即通过 Function Calling 协议调用 `execute_spreadsheet_update{run_arg}` 完成物理更新与文件交付！"
+        )
+        return "continue", msg, max(hard_ceiling or 10, round_idx + 3)
+
     if hard_ceiling is None:
         hard_ceiling = (
             MAX_SPREADSHEET_ROUNDS_CEILING
@@ -159,34 +205,7 @@ def _check_no_tool_assertion_guard(
 
     bumped_max_rounds = min(hard_ceiling, max_rounds + 1)
 
-    has_update_tools = bool(
-        effective_tools and any(
-            (t.get("function", {}).get("name") or t.get("name", "")).lower() in ("plan_spreadsheet_update", "execute_spreadsheet_update")
-            for t in effective_tools
-        )
-    )
-    has_plan_succeeded = bool(
-        (executed_calls_history and any(
-            call.startswith("plan_spreadsheet_update:") and not call.startswith("err:")
-            for call in executed_calls_history
-        )) or (execution_evidence and any(
-            getattr(e, "is_success", False) and (
-                (getattr(e, "provenance", None) or {}).get("tool") == "plan_spreadsheet_update"
-                or (isinstance(getattr(e, "data", None), dict) and e.data.get("status") == "planned")
-            )
-            for e in execution_evidence
-        ))
-    )
-    planned_run_id = None
-    if execution_evidence:
-        for e in reversed(execution_evidence):
-            if getattr(e, "is_success", False) and isinstance(getattr(e, "data", None), dict):
-                if e.data.get("status") == "planned" and "run_id" in e.data:
-                    planned_run_id = e.data["run_id"]
-                    break
-                elif "run_id" in e.data and "plan" in e.data:
-                    planned_run_id = e.data["run_id"]
-                    break
+    has_update_tools = has_update_tools_effective
 
     # 0. 内部计划与伪工具调用拦截：模型仅输出未执行的计划草稿时引导执行
     if not is_guide_intent and is_internal_plan_output(reply_text):
@@ -206,6 +225,24 @@ def _check_no_tool_assertion_guard(
             is_search_intent=is_search_intent,
             turn_start_time=start_ts,
         )
+        if missing:
+            try:
+                from .delivery_claim_judge import judge_delivery_claims
+                verdict = judge_delivery_claims(
+                    prompt=last_user_prompt,
+                    reply_text=reply_text,
+                    candidate_missing=missing,
+                    workspace_dir=WORKSPACE_DIR,
+                    turn_start_time=start_ts,
+                    model=model,
+                    deadline=deadline
+                )
+                if verdict and not verdict.get("phantom_claim"):
+                    missing = []
+                elif verdict and isinstance(verdict.get("missing_items"), list):
+                    missing = [str(x) for x in verdict["missing_items"] if x]
+            except Exception:
+                pass
         if missing:
             print(f"⚡ [Harness Artifact Assertion Guard] 检测到模型声称生成了文件 {missing}，但物理文件并不存在，正在拦截引导落盘...", flush=True)
             has_html_in_missing = any(f.endswith(".html") or f.endswith(".htm") for f in missing)
@@ -553,6 +590,7 @@ def run_agent_loop(
     max_rounds = min(max_rounds, task_ceiling)
 
     round_idx = 0
+    consecutive_tool_errors = 0
     while round_idx < max_rounds:
         if round_idx > 0:
             if getattr(policy, "thinking", False):
@@ -875,6 +913,15 @@ def run_agent_loop(
                                 for t in active_tools]
         )
 
+        if execution_evidence and execution_evidence[-1].is_error:
+            consecutive_tool_errors += 1
+        elif execution_evidence and execution_evidence[-1].is_success:
+            consecutive_tool_errors = 0
+
+        if consecutive_tool_errors >= 4:
+            print(f"⚠️ [Harness Stagnation Guard] 工具连续出现 {consecutive_tool_errors} 次执行错误且未能恢复，主动终止避免死循环", flush=True)
+            break
+
         if execution_evidence:
             latest = execution_evidence[-1]
             if (isinstance(latest.data, dict) and latest.data.get('status') == 'needs_input'
@@ -933,20 +980,31 @@ def run_agent_loop(
             ]
 
         if (spreadsheet_analysis_required or has_active_update_tools) and execution_evidence and execution_evidence[-1].is_error:
-            max_rounds = min(task_ceiling, max(max_rounds, round_idx + 2))
+            if consecutive_tool_errors < 3:
+                max_rounds = min(task_ceiling, max(max_rounds, round_idx + 2))
 
-        # 当任务需要生成物理交付物（如 PDF/Word/Excel）且尚未落盘，但模型仍处于探索/草稿阶段（例如刚调用了搜索或写入了中间文件），
-        # 且轮次临近上限时，动态追加 2 轮预算，避免在最后落盘前被硬截断
-        if (expected_deliverables or is_generate_intent) and round_idx >= max_rounds - 1 and round_idx < task_ceiling - 1:
+        # 动态推进预算：只要任务需要生成物理交付物且尚未落盘，或者工具调用成功推进了业务证据，
+        # 且轮次临近上限时，动态追加执行轮次预算（最高至 task_ceiling），避免被固定硬轮次截断
+        is_making_progress = bool(
+            consecutive_tool_errors < 3 and (
+                (has_active_update_tools and any(getattr(r, 'is_success', False) for r in (execution_evidence or [])))
+                or (execution_evidence and execution_evidence[-1].is_success)
+            )
+        )
+        if (expected_deliverables or is_generate_intent or is_making_progress) and round_idx >= max_rounds - 2 and round_idx < task_ceiling - 1:
             missing_deliv = detect_missing_requested_deliverable(
                 last_user_prompt, start_ts,
                 expected_deliverables=expected_deliverables,
                 is_generate_intent=is_generate_intent,
                 is_inspect_intent=is_inspect_intent
             )
-            if missing_deliv:
-                max_rounds = min(task_ceiling, max(max_rounds, round_idx + 2))
-                print(f"⚡ [Harness Dynamic Budget] 检测到目标交付物 {missing_deliv} 尚未生成，动态追加执行轮次至 {max_rounds} (硬上限: {task_ceiling})...", flush=True)
+            has_update_pending = (has_active_update_tools and not any(
+                r.is_success and getattr(r.data, 'get', lambda k: None)('published_file')
+                for r in (execution_evidence or []) if isinstance(getattr(r, 'data', None), dict)
+            ))
+            if missing_deliv or has_update_pending or is_making_progress:
+                max_rounds = min(task_ceiling, max(max_rounds, round_idx + 3))
+                print(f"⚡ [Harness Dynamic Budget] 检测到任务持续推进中，动态追加执行轮次至 {max_rounds} (硬上限: {task_ceiling})...", flush=True)
                 has_update_tools_active = any(
                     (t.get("function", {}).get("name") or t.get("name", "")).lower() in ("plan_spreadsheet_update", "execute_spreadsheet_update")
                     for t in active_tools
@@ -955,16 +1013,17 @@ def run_agent_loop(
                     (t.get("function", {}).get("name") or t.get("name", "")).lower() in ("bash", "cmd", "terminal", "sh", "exec")
                     for t in active_tools
                 )
-                if has_update_tools_active and missing_deliv in [".xlsx", ".xlsm"]:
-                    nudge_msg = f"【系统阶段督促】：当前轮次临近上限，但目标交付物 {missing_deliv} 尚未生成落盘。请调用 `plan_spreadsheet_update` 规划并调用 `execute_spreadsheet_update` 执行落盘！"
-                elif has_bash_active:
+                if has_update_tools_active and (missing_deliv in [".xlsx", ".xlsm"] or has_update_pending):
+                    nudge_msg = f"【系统阶段督促】：当前轮次临近上限，但目标交付物尚未生成落盘。请调用 `plan_spreadsheet_update` 规划并调用 `execute_spreadsheet_update` 执行落盘！"
+                elif has_bash_active and missing_deliv:
                     nudge_msg = f"【系统阶段督促】：当前轮次临近上限，但目标交付物 {missing_deliv} 尚未生成落盘。请立即停止零散查看或临时测试，通过 bash 运行最终 Python/处理脚本将完整数据与图表直接写入 /workspace/ 目标文件！"
                 else:
-                    nudge_msg = f"【系统阶段督促】：当前轮次临近上限，但目标交付物 {missing_deliv} 尚未生成落盘。请直接在回复中输出完整分析与数据结论。"
-                messages.append({
-                    "role": "user",
-                    "content": nudge_msg
-                })
+                    nudge_msg = f"【系统阶段督促】：当前轮次临近上限，请基于已有执行证据抓紧完成最终操作或给出明确结论。"
+                if round_idx >= max_rounds - 2:
+                    messages.append({
+                        "role": "user",
+                        "content": nudge_msg
+                    })
 
         # 当前轮次已执行工具，重置 reply_text，防止内部工具前置垫话或执行脚本残留进入最终回复
         # 但在重置前，若当前轮次伴随工具调用输出了完整 HTML 代码块或未执行的脚本/命令，执行自愈落盘
@@ -1142,12 +1201,12 @@ def run_agent_loop(
         if missing_final and not outbound_files:
             telemetry.record_guard("deliverable_contract", "reject", f"missing_physical_file_{missing_final}")
             warning_notice = (
-                f"\n\n---\n"
-                f"⚠️ **【交付物落盘未完成提示】**：已为您完成前序数据核算与内容整理，但在沙箱规定轮次内未能在工作区生成目标物理文件（`{missing_final}`）。"
-                f"您可参考上方核算结果，或发送指令「请直接运行脚本生成该文件」继续完成落盘。"
+                f"> ⚠️ **【重要提示：目标交付物尚未生成落盘】**\n"
+                f"> 本轮已完成前序数据核算与方案规划，但目标文件（`{missing_final}`）未在沙箱内完成物理落盘。\n"
+                f"> **下一步操作**：您可直接回复 **「继续执行更新并生成表格」** 立即完成文件生成与交付。\n\n---\n\n"
             )
-            if "【交付物落盘未完成提示】" not in final_text:
-                final_text += warning_notice
+            if "【重要提示：目标交付物尚未生成落盘】" not in final_text and "【交付物落盘未完成提示】" not in final_text:
+                final_text = warning_notice + final_text
 
     # 交付前对本轮生成/导出的带公式 Excel 进行无头重算以补齐缓存值
     _recalculate_generated_workbooks(WORKSPACE_DIR, turn_start_time=start_ts)
@@ -1173,6 +1232,26 @@ def run_agent_loop(
     # Final success claims must be checked even when intent routing or nudge budgets skipped guards.
     missing_claims = detect_missing_claimed_artifacts(
         final_text, is_generate_intent=True, turn_start_time=start_ts, verify_claims_only=True)
+    if missing_claims:
+        try:
+            from .delivery_claim_judge import judge_delivery_claims
+            verdict = judge_delivery_claims(
+                prompt=last_user_prompt,
+                reply_text=final_text,
+                candidate_missing=missing_claims,
+                workspace_dir=WORKSPACE_DIR,
+                turn_start_time=start_ts,
+                model=model,
+                deadline=deadline
+            )
+            if verdict and not verdict.get("phantom_claim"):
+                logger.info("DeliveryClaimJudge dismissed missing claims %s: %s", missing_claims, verdict.get("reason"))
+                missing_claims = []
+            elif verdict and isinstance(verdict.get("missing_items"), list):
+                missing_claims = [str(x) for x in verdict["missing_items"] if x]
+        except Exception as e:
+            logger.warning("DeliveryClaimJudge error in terminal verification: %s", e)
+
     if missing_claims:
         telemetry.record_guard("artifact_delivery", "reject", {"missing_files": missing_claims})
         final_text = "本次文件生成未完成，以下文件尚未生成可用的交付版本：" + "、".join(

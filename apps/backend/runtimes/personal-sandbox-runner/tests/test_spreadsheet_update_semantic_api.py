@@ -287,3 +287,110 @@ class SemanticUpdateTests(unittest.TestCase):
         self.assertIn('已生成', text)
         self.assertNotIn('【指标核算未完成声明】', text)
         self.assertNotIn('未完成指标', text)
+
+    def test_compile_aggregation_robustness(self):
+        from dsh_modules.spreadsheet_update.aggregation_api import compile_aggregation
+        base_params = {
+            'file_path': 'source.xlsx',
+            'sheet': 'Sheet1',
+            'header_row': 1,
+            'filters': [{'field': '工数年月', 'op': 'eq', 'value': '202610'}],
+            'operation': 'sum',
+            'value_field': '金额(K)',
+        }
+        # String group_by auto-coerced to list
+        params_str = dict(base_params, group_by='部门编号')
+        compiled = compile_aggregation(params_str)
+        self.assertEqual(compiled['query']['group_by'], ['部门编号'])
+
+        # Multi-key error gives actionable filters hint
+        params_multi = dict(base_params, group_by=['部门编号', '有偿无偿'])
+        with self.assertRaises(ValueError) as ctx:
+            compile_aggregation(params_multi)
+        self.assertIn('仅支持单个回填业务主键', str(ctx.exception))
+        self.assertIn('filters', str(ctx.exception))
+
+        # Column letter in group_by gives clear guidance
+        params_letter = dict(base_params, group_by='C')
+        with self.assertRaises(ValueError) as ctx:
+            compile_aggregation(params_letter)
+        self.assertIn('不能传入列字母', str(ctx.exception))
+        self.assertIn('部门编号', str(ctx.exception))
+
+        # Column letter in value_field gives clear guidance
+        params_val_letter = dict(base_params, group_by=['部门编号'], value_field='P')
+        with self.assertRaises(ValueError) as ctx:
+            compile_aggregation(params_val_letter)
+        self.assertIn('不能传入列字母', str(ctx.exception))
+
+    def test_forced_execution_guard_when_plan_ready(self):
+        from dsh_modules.agent_loop import _check_no_tool_assertion_guard
+        from dsh_modules.tool_result import ToolResult
+        evidence = [
+            ToolResult.success(
+                data={'status': 'planned', 'plan_id': 'plan_test_123', 'new_sheet': '1023'},
+                provenance={'tool': 'plan_spreadsheet_update'}
+            )
+        ]
+        tools = [
+            {'function': {'name': 'plan_spreadsheet_update'}},
+            {'function': {'name': 'execute_spreadsheet_update'}},
+        ]
+        action, msg, bumped = _check_no_tool_assertion_guard(
+            reply_text='以下是更新计划，请您确认无误后回复执行更新',
+            last_user_prompt='继续执行更新并生成表格',
+            round_idx=9,
+            max_rounds=10,
+            start_ts=0,
+            is_guide_intent=False,
+            expected_deliverables=['.xlsx'],
+            is_generate_intent=True,
+            is_inspect_intent=False,
+            guard_nudges_count=0,
+            hard_ceiling=10,
+            execution_evidence=evidence,
+            tools=tools,
+        )
+        self.assertEqual(action, 'continue')
+        self.assertIn('execute_spreadsheet_update', msg)
+        self.assertIn('plan_test_123', msg)
+        self.assertGreaterEqual(bumped, 11)
+
+    def test_dispatch_update_tool_parameter_validation(self):
+        from dsh_modules.spreadsheet_update.tools import dispatch_update_tool
+        base_req = {
+            'target_file': str(self.target),
+            'base_sheet': '1019',
+            'new_sheet': '1023',
+            'period': '202610',
+            'period_field': '工数年月',
+            'target_kind': 'forecast',
+        }
+        # Multi-section payload with target_label inside sections
+        multi_req = dict(base_req, sections=[
+            {'section': '有偿', 'target_label': '预测', 'result_id': 'verified_result'},
+            {'section': '无偿', 'target_label': '预测', 'result_id': 'verified_result'},
+        ])
+        res = dispatch_update_tool('plan_spreadsheet_update', multi_req)
+        # Should not fail on schema validation
+        if res.error:
+            self.assertNotIn('缺少必填参数', str(res.error))
+
+        # Missing section and sections
+        missing_sec = dispatch_update_tool('plan_spreadsheet_update', dict(base_req, target_label='预测'))
+        self.assertTrue(missing_sec.is_error)
+        self.assertIn('section', str(missing_sec.error))
+
+        # Missing target_label
+        missing_lbl = dispatch_update_tool('plan_spreadsheet_update', dict(base_req, section='有偿'))
+        self.assertTrue(missing_lbl.is_error)
+        self.assertIn('target_label', str(missing_lbl.error))
+
+        # Unknown parameter project_id
+        unknown_param = dispatch_update_tool('plan_spreadsheet_update', dict(base_req, section='有偿', target_label='预测', project_id='proj1'))
+        self.assertTrue(unknown_param.is_error)
+        self.assertIn('不支持的参数', str(unknown_param.error))
+        self.assertIn('project_id', str(unknown_param.error))
+
+
+

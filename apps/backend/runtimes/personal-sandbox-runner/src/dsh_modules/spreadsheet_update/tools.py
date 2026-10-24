@@ -149,8 +149,16 @@ def dispatch_update_tool(name, params):
         return _output(error='工具参数必须为对象')
     unknown = params.keys() - schema['properties'].keys()
     missing = [key for key in schema['required'] if not params.get(key)]
+    if name == 'plan_spreadsheet_update':
+        has_sections = bool(params.get('sections'))
+        if not has_sections and not params.get('section'):
+            missing.append('section')
+        sections_list = params.get('sections') if isinstance(params.get('sections'), list) else []
+        sections_have_labels = bool(sections_list and all(isinstance(s, dict) and s.get('target_label') for s in sections_list))
+        if not params.get('target_label') and not sections_have_labels:
+            missing.append('target_label')
     if unknown or missing:
-        return _output(error=f'不支持的参数：{sorted(unknown)}；缺少必填参数：{missing}')
+        return _output(error=f'不支持的参数：{sorted(unknown)}；缺少必填参数：{sorted(set(missing))}')
     if name == 'plan_spreadsheet_update':
         return tool_plan_spreadsheet_update(params)
     if name == 'execute_spreadsheet_update':

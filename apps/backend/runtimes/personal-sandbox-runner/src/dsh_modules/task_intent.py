@@ -209,6 +209,15 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False):
         seen.add(item['id'])
         valid_requirements.append(item)
     if not valid_requirements:
-        raise ValueError('任务目标缺失')
+        if relation == 'followup' and users:
+            last_u = users[-1].strip()
+            if last_u:
+                valid_requirements.append({'id': 'req_inherited', 'quote': last_u[:120]})
+        if not valid_requirements and request.strip():
+            req_quote = ground_user_quote(request.strip(), [request])
+            if req_quote:
+                valid_requirements.append({'id': 'req_direct', 'quote': req_quote})
+        if not valid_requirements:
+            raise ValueError('任务目标缺失')
     result['requirements'] = valid_requirements
     return result

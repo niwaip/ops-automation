@@ -10,17 +10,12 @@ def is_workbook_update(prompt, admission=None, history=None):
     texts = [request]
     if admission.get('instruction_relation') == 'followup':
         texts.extend(item['quote'] for item in admission.get('requirements', []))
-        from ..user_declarations import direct_unit_reply
-        if direct_unit_reply(request):
-            # A reviewer may retain only the new unit requirement. Recover the
-            # immediate user task, skipping previous unit-only replies, never
-            # taking instructions from assistant text or attachments.
-            for item in reversed(history or []):
-                if item.get('role') != 'user':
-                    continue
-                previous = item['content'].split('用户指令：')[-1]
-                if previous == request or direct_unit_reply(previous):
-                    continue
+        # In a followup turn, also consider the immediate previous user task from history
+        for item in reversed(history or []):
+            if item.get('role') != 'user':
+                continue
+            previous = item['content'].split('用户指令：')[-1]
+            if previous != request:
                 texts.append(previous)
                 break
     return any(is_spreadsheet_mutation_requested(text) for text in texts)

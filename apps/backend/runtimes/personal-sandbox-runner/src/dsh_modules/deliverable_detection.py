@@ -202,48 +202,11 @@ def detect_missing_claimed_artifacts(
     unquoted_pattern = r'(?:(?:/workspace/|/knowledge/|\./workspace/)|\b)([a-zA-Z0-9_\-\u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|html|csv|json|md|py|sh|txt|png|jpg))\b'
 
     found_names = re.findall(quoted_pattern, text) + re.findall(unquoted_pattern, text)
-
-    # 提取在现有表格中新建/复制/回填 Sheet 的声称
-    sheet_claims = set()
-    for match in re.finditer(
-        r'(?:新建|创建|生成|映射至|写入|更新至|更新到|回填至)(?:的)?\s*(?:工作表|sheet)?\s*[`"\'《【]?([a-zA-Z0-9_\-\u4e00-\u9fa5]{2,30})[`"\'》】]?\s*(?:工作表|sheet)',
-        text,
-        re.I
-    ):
-        claimed_sheet = match.group(1).strip()
-        if claimed_sheet not in ('一个', '这个', '该', '原', '最新', '工数', '预测', '工作表', 'sheet'):
-            sheet_claims.add(claimed_sheet)
-
-    if not found_names and not sheet_claims:
+    if not found_names:
         return []
 
     missing: List[str] = []
     has_inline_html = ("```html" in text.lower()) and not is_unclosed_or_truncated_html(text)
-
-    # 校验 Sheet 级完成声称：若模型声称已新建/更新某 Sheet，但工作区内任何工作簿均不含该 Sheet，记录缺失
-    if sheet_claims:
-        ws_p = Path(WORKSPACE_DIR)
-        found_sheet_in_disk = False
-        try:
-            import openpyxl
-            for xlsx_f in ws_p.glob("*.xlsx"):
-                if xlsx_f.is_file() and not xlsx_f.name.startswith("~$"):
-                    try:
-                        wb_chk = openpyxl.load_workbook(xlsx_f, read_only=True)
-                        for cs in sheet_claims:
-                            if cs in wb_chk.sheetnames:
-                                found_sheet_in_disk = True
-                                break
-                        wb_chk.close()
-                    except Exception:
-                        pass
-                if found_sheet_in_disk:
-                    break
-        except Exception:
-            pass
-        if not found_sheet_in_disk:
-            for cs in sorted(sheet_claims):
-                missing.append(f"新工作表_{cs}.xlsx")
 
     for name in found_names:
         clean_name = name.strip()

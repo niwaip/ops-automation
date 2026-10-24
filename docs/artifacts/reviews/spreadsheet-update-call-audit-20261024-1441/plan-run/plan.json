@@ -1,0 +1,242 @@
+{
+  "schema_version": "SpreadsheetUpdatePlan/v1",
+  "task_contract_ref": "current_turn",
+  "target_ref": "/workspace/工数3Q预实管理.xlsx",
+  "sources": [],
+  "as_of": "2026-10-24",
+  "snapshot": {
+    "selected_sheet_id": "1019",
+    "new_sheet_name": "1023"
+  },
+  "semantic_bindings": {
+    "region_specs": [
+      {
+        "region_id": "有偿",
+        "header_row": 4,
+        "key_col": 2,
+        "min_row": 1,
+        "max_row": 23,
+        "min_col": 1,
+        "max_col": 20,
+        "period_columns": {
+          "202610": 3
+        },
+        "department_rows": {
+          "FC48005": 5,
+          "FC34032": 6,
+          "FC46005": 8,
+          "FC44008": 9,
+          "FC45031": 10,
+          "FC34001": 11,
+          "FC44003": 13,
+          "FC44004": 14,
+          "FC44006": 15,
+          "FC34022": 16,
+          "FC32008": 18
+        },
+        "protected_coordinates": [],
+        "metric_id": "metric_8caddbad5683",
+        "unit": "K",
+        "value_kind": "forecast"
+      },
+      {
+        "region_id": "无偿",
+        "header_row": 28,
+        "key_col": 2,
+        "min_row": 22,
+        "max_row": 39,
+        "min_col": 1,
+        "max_col": 20,
+        "period_columns": {
+          "202610": 3
+        },
+        "department_rows": {
+          "FC46005": 29,
+          "FC44008": 30,
+          "FC45031": 31,
+          "FC34001": 32,
+          "FC44003": 34,
+          "FC44004": 35,
+          "FC44006": 36,
+          "FC34022": 37,
+          "FC32008": 39
+        },
+        "protected_coordinates": [],
+        "metric_id": "metric_ee262e853588",
+        "unit": "K",
+        "value_kind": "forecast"
+      }
+    ],
+    "facts_hash": "7aed249fa2f33e874da81ed20e2ab670974fe4c206a373278276aed3d3f9f808",
+    "unit_basis": {
+      "source": "user",
+      "unit": "K",
+      "quote": "以K为单位"
+    },
+    "input_hashes": {
+      "/workspace/工数3Q预实管理.xlsx": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d",
+      "/workspace/工数实绩明细_20261020134124.xlsx": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+    },
+    "warnings": [
+      "有偿区块来源无匹配记录，保留原值：FC32008, FC34001, FC34032, FC44008",
+      "无偿区块来源无匹配记录，保留原值：FC32008, FC34001, FC34022, FC44006, FC44008"
+    ]
+  },
+  "operations": [
+    {
+      "op": "copy_sheet",
+      "op_id": "copy",
+      "source_sheet": "1019",
+      "target_sheet": "1023"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_0",
+      "target_sheet": "1023",
+      "coordinate": "C10",
+      "fact_ref": "e232c62863cc7a82506d2396:metric_8caddbad5683__(('str', 'FC45031'),)",
+      "region_id": "有偿",
+      "department_code": "FC45031",
+      "metric_id": "metric_8caddbad5683",
+      "period": "202610",
+      "value_kind": "forecast",
+      "unit": "K"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_1",
+      "target_sheet": "1023",
+      "coordinate": "C5",
+      "fact_ref": "e232c62863cc7a82506d2396:metric_8caddbad5683__(('str', 'FC48005'),)",
+      "region_id": "有偿",
+      "department_code": "FC48005",
+      "metric_id": "metric_8caddbad5683",
+      "period": "202610",
+      "value_kind": "forecast",
+      "unit": "K"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_2",
+      "target_sheet": "1023",
+      "coordinate": "C15",
+      "fact_ref": "e232c62863cc7a82506d2396:metric_8caddbad5683__(('str', 'FC44006'),)",
+      "region_id": "有偿",
+      "department_code": "FC44006",
+      "metric_id": "metric_8caddbad5683",
+      "period": "202610",
+      "value_kind": "forecast",
+      "unit": "K"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_3",
+      "target_sheet": "1023",
+      "coordinate": "C14",
+      "fact_ref": "e232c62863cc7a82506d2396:metric_8caddbad5683__(('str', 'FC44004'),)",
+      "region_id": "有偿",
+      "department_code": "FC44004",
+      "metric_id": "metric_8caddbad5683",
+      "period": "202610",
+      "value_kind": "forecast",
+      "unit": "K"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_4",
+      "target_sheet": "1023",
+      "coordinate": "C16",
+      "fact_ref": "e232c62863cc7a82506d2396:metric_8caddbad5683__(('str', 'FC34022'),)",
+      "region_id": "有偿",
+      "department_code": "FC34022",
+      "metric_id": "metric_8caddbad5683",
+      "period": "202610",
+      "value_kind": "forecast",
+      "unit": "K"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_5",
+      "target_sheet": "1023",
+      "coordinate": "C13",
+      "fact_ref": "e232c62863cc7a82506d2396:metric_8caddbad5683__(('str', 'FC44003'),)",
+      "region_id": "有偿",
+      "department_code": "FC44003",
+      "metric_id": "metric_8caddbad5683",
+      "period": "202610",
+      "value_kind": "forecast",
+      "unit": "K"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_6",
+      "target_sheet": "1023",
+      "coordinate": "C8",
+      "fact_ref": "e232c62863cc7a82506d2396:metric_8caddbad5683__(('str', 'FC46005'),)",
+      "region_id": "有偿",
+      "department_code": "FC46005",
+      "metric_id": "metric_8caddbad5683",
+      "period": "202610",
+      "value_kind": "forecast",
+      "unit": "K"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_7",
+      "target_sheet": "1023",
+      "coordinate": "C31",
+      "fact_ref": "0471dfaccf381644c1e85a09:metric_ee262e853588__(('str', 'FC45031'),)",
+      "region_id": "无偿",
+      "department_code": "FC45031",
+      "metric_id": "metric_ee262e853588",
+      "period": "202610",
+      "value_kind": "forecast",
+      "unit": "K"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_8",
+      "target_sheet": "1023",
+      "coordinate": "C35",
+      "fact_ref": "0471dfaccf381644c1e85a09:metric_ee262e853588__(('str', 'FC44004'),)",
+      "region_id": "无偿",
+      "department_code": "FC44004",
+      "metric_id": "metric_ee262e853588",
+      "period": "202610",
+      "value_kind": "forecast",
+      "unit": "K"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_9",
+      "target_sheet": "1023",
+      "coordinate": "C34",
+      "fact_ref": "0471dfaccf381644c1e85a09:metric_ee262e853588__(('str', 'FC44003'),)",
+      "region_id": "无偿",
+      "department_code": "FC44003",
+      "metric_id": "metric_ee262e853588",
+      "period": "202610",
+      "value_kind": "forecast",
+      "unit": "K"
+    },
+    {
+      "op": "fill_from_result",
+      "op_id": "fill_10",
+      "target_sheet": "1023",
+      "coordinate": "C29",
+      "fact_ref": "0471dfaccf381644c1e85a09:metric_ee262e853588__(('str', 'FC46005'),)",
+      "region_id": "无偿",
+      "department_code": "FC46005",
+      "metric_id": "metric_ee262e853588",
+      "period": "202610",
+      "value_kind": "forecast",
+      "unit": "K"
+    }
+  ],
+  "preserve": {},
+  "requirements": {},
+  "output": {
+    "mode": "deliverable_file",
+    "display_name": "工数3Q预实管理_1023_9.xlsx"
+  }
+}

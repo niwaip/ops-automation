@@ -6,6 +6,12 @@ from .result_catalog import normalize_unit
 from ..spreadsheet_units import AMOUNT_UNIT_FACTORS
 
 
+SECTION_ALIASES = {
+    '无偿': ['*P/*Y/EX（不含*L/*B）', '*P/*Y/EX(不含*L/*B)', '*P/*Y/EX', '无偿', '無償', '非有偿', 'EX', '间接', '社内'],
+    '有偿': ['有偿', '有償', '直接', '有偿工数'],
+}
+
+
 class BindingNeedsInput(ValueError):
     """A business fact is absent from the workbook, so the model cannot guess it."""
 
@@ -27,8 +33,26 @@ def _effective(ws, row, col):
 def locate(ws, section, period, target_label, source_keys, target_range=None, protected_labels=()):
     bounds=range_boundaries(target_range) if target_range else (1,1,ws.max_column,ws.max_row)
     min_c,min_r,max_c,max_r=bounds
+    # 1. Exact match
     titles=[cell for row in ws.iter_rows(min_row=min_r,max_row=max_r,min_col=min_c,max_col=max_c)
             for cell in row if text_value(cell.value)==section]
+    # 2. Alias match if not found
+    if len(titles) == 0:
+        aliases = []
+        for k, v in SECTION_ALIASES.items():
+            if k == section or k in section or section in k:
+                aliases.extend(v)
+        if aliases:
+            titles = [cell for row in ws.iter_rows(min_row=min_r, max_row=max_r, min_col=min_c, max_col=max_c)
+                      for cell in row if text_value(cell.value) in aliases]
+    # 3. Normalized / substring match if still not found
+    if len(titles) == 0:
+        norm = lambda s: re.sub(r'[\s（）()/*_\-]+', '', str(s or '').lower())
+        norm_sec = norm(section)
+        if norm_sec:
+            titles = [cell for row in ws.iter_rows(min_row=min_r, max_row=max_r, min_col=min_c, max_col=max_c)
+                      for cell in row if cell.value and (norm(cell.value) == norm_sec or (len(norm_sec) >= 2 and norm_sec in norm(cell.value)))]
+
     if len(titles)!=1:
         if section == period:
             candidates=[]
@@ -42,7 +66,13 @@ def locate(ws, section, period, target_label, source_keys, target_range=None, pr
                              + '；'.join(candidates[:30]))
         if target_range and not titles:
             raise ValueError('target_range 必须包含区块标题、完整表头和关联键列；请省略范围让服务端定位，不能只给目标列')
-        raise ValueError(f'区块标题必须唯一：{section}，匹配 {len(titles)} 处；可用 target_range 限定')
+        candidates = []
+        for row in ws.iter_rows():
+            populated = [cell for cell in row if cell.value is not None]
+            if len(populated) == 1 and isinstance(populated[0].value, str) and populated[0].data_type != 'f':
+                candidates.append(str(populated[0].value))
+        hint = f'；当前工作表检测到的独立标题候选：{candidates[:10]}' if candidates else ''
+        raise ValueError(f'区块标题必须唯一：{section}，匹配 {len(titles)} 处；可用 target_range 限定{hint}')
     start=titles[0].row
     matches=[cell for row in ws.iter_rows(min_row=start+1,max_row=max_r,min_col=min_c,max_col=max_c)
              for cell in row if text_value(cell.value) in source_keys]
@@ -76,11 +106,21 @@ def locate(ws, section, period, target_label, source_keys, target_range=None, pr
         if periods and labels:
             boundary=min(min(periods),min(labels))-1
             break
+        totals = [r for r in range(previous+1, next_row)
+                  if any(text_value(ws.cell(r, c).value) in ('总计', '合计', 'Grand Total') for c in range(min_c, max_c+1))]
+        blanks = [r for r in range(previous+1, next_row)
+                  if all(ws.cell(r, c).value is None or text_value(ws.cell(r, c).value) == '' for c in range(min_c, max_c+1))]
+        if totals or blanks:
+            boundary = min(totals + blanks) - 1
+            break
+
     keys={}
     for row in range(first,boundary+1):
+        if any(text_value(ws.cell(row, c).value) in ('总计', '合计', 'Grand Total') for c in range(min_c, max_c+1)):
+            break
         raw=ws.cell(row,key_col).value
         key=text_value(raw)
-        if raw is None or not key:
+        if raw is None or not key or key == 'Subtotal':
             continue
         target=ws.cell(row,col)
         if key not in source_keys and target.data_type=='f':

@@ -120,6 +120,8 @@ def execute_compiled_update(
     # 6. Recalculate via headless LibreOffice candidate engine
     if recalculate:
         recalc_out, meta = recalculate_candidate(cand_p, output_path=cand_p, force=True)
+        if recalc_out and recalc_out.exists():
+            _heal_substituted_fonts(recalc_out, src_p)
         return ExecutionResult(
             is_success=bool(recalc_out and recalc_out.exists()),
             candidate_path=cand_p,
@@ -136,3 +138,47 @@ def execute_compiled_update(
             applied_writes_count=writes_count,
             applied_formulas_count=formulas_count
         )
+
+
+def _heal_substituted_fonts(candidate_path: Path, source_path: Path) -> None:
+    """
+    Restores original font names (such as 等线, 微软雅黑) if headless LibreOffice
+    in Linux container substituted them with DejaVu Sans. Modifies xl/styles.xml directly
+    so formula caches calculated by LibreOffice are 100% preserved.
+    """
+    try:
+        import zipfile
+        if not candidate_path.exists() or not zipfile.is_zipfile(candidate_path):
+            return
+
+        source_font_names = set()
+        if source_path.exists() and zipfile.is_zipfile(source_path):
+            with zipfile.ZipFile(source_path, 'r') as z_src:
+                if 'xl/styles.xml' in z_src.namelist():
+                    import xml.etree.ElementTree as ET
+                    st = ET.fromstring(z_src.read('xl/styles.xml'))
+                    ns = {'m': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+                    for f in st.findall('m:fonts/m:font/m:name', ns):
+                        val = f.attrib.get('val')
+                        if val and val not in ('DejaVu Sans', 'DejaVu Serif', 'DejaVu Sans Mono'):
+                            source_font_names.add(val)
+
+        target_default_font = '等线' if '等线' in source_font_names else (next(iter(source_font_names)) if source_font_names else None)
+        if not target_default_font:
+            return
+
+        with zipfile.ZipFile(candidate_path, 'r') as zin:
+            file_map = {name: zin.read(name) for name in zin.namelist()}
+
+        if 'xl/styles.xml' not in file_map:
+            return
+
+        styles_str = file_map['xl/styles.xml'].decode('utf-8')
+        if 'DejaVu Sans' in styles_str:
+            styles_str = styles_str.replace('DejaVu Sans', target_default_font)
+            file_map['xl/styles.xml'] = styles_str.encode('utf-8')
+            with zipfile.ZipFile(candidate_path, 'w', compression=zipfile.ZIP_DEFLATED) as zout:
+                for name, content in file_map.items():
+                    zout.writestr(name, content)
+    except Exception:
+        pass
