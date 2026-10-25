@@ -1,0 +1,269 @@
+{
+  "mode": "offline; original cached intent, original receipts; no model calls",
+  "source_hash": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+  "profile": {
+    "primary_sheet": "管理驾驶舱",
+    "headers": [
+      "核心指标",
+      "数值",
+      "月份",
+      "收入",
+      "净利润"
+    ],
+    "cache_key": "5e4071c836f89fc96c09cc34092ae8ad17450cdebc47e06918be377cb0c2a613"
+  },
+  "original_contract": {
+    "raw_prompt": "找出收入与净利润偏差最大的月份。",
+    "period": null,
+    "currency": null,
+    "metrics": [
+      {
+        "name": "营业收入",
+        "aliases": [
+          "营业收入",
+          "总收入",
+          "主营业务收入",
+          "营收",
+          "收入"
+        ],
+        "expected_type": "number",
+        "period": null,
+        "required": true,
+        "semantic_id": "finance.revenue"
+      },
+      {
+        "name": "净利润",
+        "aliases": [
+          "净利润",
+          "税后净利",
+          "净收益",
+          "纯利润"
+        ],
+        "expected_type": "number",
+        "period": null,
+        "required": true,
+        "semantic_id": "finance.net_profit"
+      },
+      {
+        "name": "偏差",
+        "aliases": [
+          "偏差",
+          "偏差(?:汇总|总额|总计|合计|\\([^)]+\\)|（[^）]+）)?"
+        ],
+        "expected_type": "number",
+        "period": null,
+        "required": true,
+        "semantic_id": null
+      }
+    ],
+    "is_audit_intent": false,
+    "is_catalog_only": false,
+    "is_advisory_intent": false,
+    "is_browse_or_summary": false,
+    "is_explicit_calc": false,
+    "is_detail_query": false,
+    "is_grouped": false,
+    "group_dimension": null,
+    "operation": "argmax",
+    "dimension": "month",
+    "comparison": "variance",
+    "comparison_basis": "cross_metric",
+    "ranking": "signed",
+    "concepts": [],
+    "domain": "finance",
+    "has_filters": false,
+    "requires_source_scope_review": false,
+    "scope_requirements": {
+      "period": null,
+      "conditions": [],
+      "entities": [],
+      "group_dimension": null
+    },
+    "task_type": "tabular_compute",
+    "entity_predicates": [],
+    "attribute_targets": [
+      "收入"
+    ],
+    "limit": 1,
+    "audit_checks": []
+  },
+  "original_plan_error": null,
+  "original_compilation_error": "回复的指标、极值分组或偏差数值与本轮来源证据不一致：偏差",
+  "operand_only_compilation_error": null,
+  "recovered_answer": "按基准比较，以下分组的有符号差额最大（并列结果全部保留）。\n\n- **收入与净利润偏差**：有符号差额最大的分组为 **12月**，差额为 **11,319.8 千元**。\n\n金额单位：千元。差额＝对比值－基准值；正数表示高于基准，负数表示低于基准。\n\n| 指标 | 分组 | 对比值 | 基准值 | 差额 | 偏差率 |\n|---|---|---:|---:|---:|---:|\n| 收入与净利润偏差 | 12月 | 13,400 | 2,080.2 | +11,319.8 | +544.17% |\n\n已比较所选范围内的 12 个分组。偏差率＝差额÷基准绝对值。\n\n后续计划未执行成功，以下项目未列为完成：\n- invalid_comparison：Column must be an Excel column letter。\n- comparison_plan_mismatch：列比较计划与任务排序不一致：需要 rank_by=difference，操作=argmax。不能自行改成另一种比率或排序。。\n\n<details>\n<summary>查看来源与核算明细</summary>\n\n原始文件：AI能力测试\\_财务报表.xlsx。\n\n来源：AI能力测试_财务报表.xlsx，月度经营!A4:N15；处理声明范围内12个分组。证据 `fb932fe93a2d14fdba1d9e6d`。\n比较基准：cross_metric；按有符号差额取最大值，保留并列。差额＝左值－基准；相对差额＝差额/abs(基准)。来源单位：千元。\n\n| 指标 | 分组 | 左值 | 基准 | 差额 | 绝对差额 | 相对差额 | 排序值 | 来源坐标 |\n|---|---|---:|---:|---:|---:|---:|---:|---|\n| 收入与净利润偏差 | 12月 | 13400 | 2080.2 | 11319.8 | 11319.8 | 544.1688% | 11319.8 | 月度经营!A15, 月度经营!B15, 月度经营!N15 |\n\n</details>",
+  "signed_extreme": {
+    "group": "12月",
+    "left": 13400.0,
+    "right": 2080.2,
+    "difference": 11319.8,
+    "relative_difference": 5.441688299202,
+    "exact": {
+      "left": "13400",
+      "right": "2080.2",
+      "difference": "11319.8",
+      "relative_difference": "5.441688299201999807710797039"
+    },
+    "score": "11319.8",
+    "source": {
+      "group": "月度经营!A15",
+      "left": "月度经营!B15",
+      "right": "月度经营!N15"
+    }
+  },
+  "absolute_extreme": {
+    "group": "12月",
+    "left": 13400.0,
+    "right": 2080.2,
+    "difference": 11319.8,
+    "relative_difference": 5.441688299202,
+    "exact": {
+      "left": "13400",
+      "right": "2080.2",
+      "difference": "11319.8",
+      "relative_difference": "5.441688299201999807710797039"
+    },
+    "score": "11319.8",
+    "source": {
+      "group": "月度经营!A15",
+      "left": "月度经营!B15",
+      "right": "月度经营!N15"
+    }
+  },
+  "wrong_answer_rejected": "回复的指标、极值分组或偏差数值与本轮来源证据不一致：营业收入、净利润",
+  "changed_hash_rejected": "原件已变化，本轮比较证据失效。",
+  "wrong_basis_rejected": "列比较计划改变了用户明确指定的基准：budget",
+  "recalculated_output_hash": "acf91435279f8ec1adabcabdbb3f452e4e584ad7d581327ea249594dcfcddc7a",
+  "original_plan_recomputed_identically": true,
+  "later_profile": {
+    "sheet": "预算对比",
+    "cache_key": "c515bbb45a2a0521d8cde7358fa3401765b9ff8d4a335ab4339acd19bc47ec4a"
+  },
+  "later_contract": {
+    "raw_prompt": "预算对比sheet 里面 找出收入与净利润偏差最大的月份",
+    "period": null,
+    "currency": null,
+    "metrics": [
+      {
+        "name": "营业收入",
+        "aliases": [
+          "营业收入",
+          "总收入",
+          "主营业务收入",
+          "营收",
+          "收入"
+        ],
+        "expected_type": "number",
+        "period": null,
+        "required": true,
+        "semantic_id": "finance.revenue"
+      },
+      {
+        "name": "利润差异",
+        "aliases": [
+          "利润差异",
+          "利润差异(?:汇总|总额|总计|合计|\\([^)]+\\)|（[^）]+）)?"
+        ],
+        "expected_type": "number",
+        "period": null,
+        "required": true,
+        "semantic_id": null
+      }
+    ],
+    "is_audit_intent": false,
+    "is_catalog_only": false,
+    "is_advisory_intent": false,
+    "is_browse_or_summary": false,
+    "is_explicit_calc": false,
+    "is_detail_query": false,
+    "is_grouped": false,
+    "group_dimension": null,
+    "operation": "argmax",
+    "dimension": "month",
+    "comparison": "variance",
+    "comparison_basis": "cross_metric",
+    "ranking": "absolute",
+    "concepts": [],
+    "domain": "finance",
+    "has_filters": false,
+    "requires_source_scope_review": false,
+    "scope_requirements": {
+      "period": null,
+      "conditions": [],
+      "entities": [],
+      "group_dimension": null
+    },
+    "task_type": "tabular_compute",
+    "entity_predicates": [],
+    "attribute_targets": [
+      "收入"
+    ],
+    "limit": 1,
+    "audit_checks": []
+  },
+  "later_original_plan_error": "列比较计划包含未能由来源表头确认的请求指标。",
+  "counterfactual_budget_results": [
+    {
+      "label": "收入预算偏差",
+      "left_headers": [
+        "收入实际",
+        "营业收入"
+      ],
+      "right_headers": [
+        "收入预算"
+      ],
+      "matches": [
+        {
+          "group": "12月",
+          "left": 13400.0,
+          "right": 11530.0,
+          "difference": 1870.0,
+          "relative_difference": 0.16218560277536861,
+          "exact": {
+            "left": "13400",
+            "right": "11530",
+            "difference": "1870",
+            "relative_difference": "0.1621856027753686036426712923"
+          },
+          "score": "1870",
+          "source": {
+            "group": "预算对比!A15",
+            "left": "预算对比!C15",
+            "right": "预算对比!B15"
+          }
+        }
+      ]
+    },
+    {
+      "label": "净利润预算偏差",
+      "left_headers": [
+        "净利润",
+        "利润实际"
+      ],
+      "right_headers": [
+        "利润预算"
+      ],
+      "matches": [
+        {
+          "group": "7月",
+          "left": 934.3125,
+          "right": 1380.0,
+          "difference": -445.6875,
+          "relative_difference": -0.32296195652173915,
+          "exact": {
+            "left": "934.3125",
+            "right": "1380",
+            "difference": "-445.6875",
+            "relative_difference": "-0.3229619565217391304347826087"
+          },
+          "score": "445.6875",
+          "source": {
+            "group": "预算对比!A10",
+            "left": "预算对比!F10",
+            "right": "预算对比!E10"
+          }
+        }
+      ]
+    }
+  ],
+  "counterfactual_budget_response": "按预算比较，以下分组的绝对差额最大（并列结果全部保留）。\n\n- **收入预算偏差**：绝对差额最大的分组为 **12月**，差额为 **1,870 千元**。\n- **净利润预算偏差**：绝对差额最大的分组为 **7月**，差额为 **-445.69 千元**。\n\n金额单位：千元。差额＝实际－预算；正数表示高于预算，负数表示低于预算。\n\n| 指标 | 分组 | 实际 | 预算 | 差额 | 偏差率 |\n|---|---|---:|---:|---:|---:|\n| 收入预算偏差 | 12月 | 13,400 | 11,530 | +1,870 | +16.22% |\n| 净利润预算偏差 | 7月 | 934.31 | 1,380 | -445.69 | -32.3% |\n\n已比较所选范围内的 12 个分组。偏差率＝差额÷基准绝对值。\n\n<details>\n<summary>查看来源与核算明细</summary>\n\n原始文件：AI能力测试\\_财务报表.xlsx。\n\n来源：AI能力测试_财务报表.xlsx，预算对比!A4:H15；处理声明范围内12个分组。证据 `6e95037f03060964a1c760aa`。\n比较基准：budget；按绝对差额取最大值，保留并列。差额＝左值－基准；相对差额＝差额/abs(基准)。来源单位：千元。\n\n| 指标 | 分组 | 左值 | 基准 | 差额 | 绝对差额 | 相对差额 | 排序值 | 来源坐标 |\n|---|---|---:|---:|---:|---:|---:|---:|---|\n| 收入预算偏差 | 12月 | 13400 | 11530 | 1870 | 1870 | 16.2186% | 1870 | 预算对比!A15, 预算对比!C15, 预算对比!B15 |\n| 净利润预算偏差 | 7月 | 934.3125 | 1380 | -445.6875 | 445.6875 | -32.2962% | 445.6875 | 预算对比!A10, 预算对比!F10, 预算对比!E10 |\n\n</details>"
+}

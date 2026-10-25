@@ -1,0 +1,48 @@
+{
+  "source_sha256": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+  "method": "Independent Decimal reconstruction from raw literals and formula rates; no model or runtime calculation tools",
+  "golden": {
+    "revenue": "124020",
+    "gross_profit": "53443.250",
+    "operating_profit": "21209.400",
+    "net_profit": "16038.30000",
+    "gross_margin": "0.4309244476697306885986131269",
+    "net_margin": "0.1293202709240445089501693275"
+  },
+  "budget_net_extreme": {
+    "month": "7月",
+    "actual": "934.31250",
+    "budget": "1380",
+    "difference": "-445.68750"
+  },
+  "equations": [
+    {
+      "left": "60950",
+      "right": "67138.30000",
+      "difference": "-6188.30000"
+    },
+    {
+      "left": "20588.30000",
+      "right": "16850",
+      "difference": "3738.30000"
+    }
+  ],
+  "anomaly_rows": {
+    "duplicate_voucher": [
+      12,
+      13
+    ],
+    "blank_department": [
+      28
+    ],
+    "large_amount": [
+      43
+    ],
+    "out_of_period": [
+      58
+    ],
+    "unapproved": [
+      73
+    ]
+  }
+}

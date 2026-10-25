@@ -26,12 +26,23 @@ def persist_turn_evidence(history_file, source_hashes, query, receipts, guard_de
     archive = history_file.with_suffix('.evidence')
     archive.mkdir(parents=True, exist_ok=True)
     turn_id = f'{time.time_ns()}-{uuid.uuid4().hex}'
-    accepted = any(d.get('guard') in {'spreadsheet_evidence', 'comparison_evidence', 'personal_skill_evidence', 'spreadsheet_update_evidence'}
-                   and d.get('action') == 'accept' for d in guard_decisions)
-    # A later rejection must not inherit an earlier acceptance.
-    decisions = [d for d in guard_decisions if d.get('guard') in {'spreadsheet_evidence', 'comparison_evidence', 'personal_skill_evidence', 'spreadsheet_update_evidence'}]
+    has_rejection = any(d.get('action') == 'reject' for d in guard_decisions)
+    decisions = [d for d in guard_decisions if d.get('guard') in {'spreadsheet_evidence', 'comparison_evidence', 'personal_skill_evidence', 'spreadsheet_update_evidence', 'workbook_delivery', 'artifact_delivery', 'deliverable_contract'}]
     if decisions:
-        accepted = decisions[-1].get('action') == 'accept'
+        accepted = (decisions[-1].get('action') == 'accept') and not any(
+            d.get('guard') in {'workbook_delivery', 'artifact_delivery', 'deliverable_contract'} and d.get('action') == 'reject'
+            for d in guard_decisions
+        )
+    else:
+        # For non-analysis deliverable/file turns (e.g. F06 XLSX generation and delivery):
+        # Mark verified if intent accepted artifact generation, no rejections occurred, and outbound file was delivered
+        is_artifact_turn = any(d.get('guard') == 'task_intent' and isinstance(d.get('reason'), dict) and d['reason'].get('output_mode') == 'artifact' and d.get('action') == 'accept' for d in guard_decisions)
+        has_delivery = any(
+            (getattr(r, 'provenance', {}) or {}).get('tool') == 'send_file'
+            or '<<<DSH_OUTBOUND_FILE' in str(getattr(r, 'data', ''))
+            for r in receipts
+        ) or any(d.get('guard') == 'workbook_delivery' and d.get('action') == 'accept' for d in guard_decisions)
+        accepted = is_artifact_turn and not has_rejection and has_delivery
     payload = {'schema_version': 1, 'turn_id': turn_id, 'created_at_ns': time.time_ns(),
                'source_hashes': source_hashes, 'query': query, 'verified': accepted,
                'guard_decisions': guard_decisions, 'receipts': [r.to_dict() for r in receipts]}

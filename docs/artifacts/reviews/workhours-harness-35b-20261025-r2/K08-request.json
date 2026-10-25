@@ -1,0 +1,17 @@
+{
+  "message": "将部门编号FC45031、有偿无偿为有偿、工数(小时)严格大于8的全部业务明细，按工数降序、同值按原行号升序导出为新的UTF-8 CSV文件 E2E_workhours_r2_filtered.csv。首列新增原Excel行号，其后保留原18列及字段值，保留员工编号、年月为文本，不要覆盖附件。请提供下载，不联网。",
+  "clientMessageId": "1792915338753-ajzv0swc",
+  "clientAssistantMessageId": "1792915338753-2fos2xtr",
+  "sessionId": "chat-session-1792913884915-mf3awvji",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

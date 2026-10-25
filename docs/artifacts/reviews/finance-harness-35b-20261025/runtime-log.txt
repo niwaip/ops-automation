@@ -1,0 +1,300 @@
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:35:36 AM     LOG [TraceInterceptor] [d146c163-7dd1-48d3-92cf-c95f86261a74] POST /ai/chat/upload 11ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:35:47 AM     LOG [ChatController] Dispatching personal chat request to unified sandbox agent for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:35:47 AM     LOG [UserSandboxDispatcherService] Dispatching personal request to sandbox harness for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:35:47 AM     LOG [UserSandboxDispatcherService] Synced attached file [AI能力测试_财务报表.xlsx] to session [chat-session-1792891849108-tr03rtwn] and workspace: /workspace/data/users/e7fce333-a8f4-4097-9a53-f0a4c729da46/workspace/.sessions/chat-session-1792891849108-tr03rtwn/AI能力测试_财务报表.xlsx
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:35:48 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:35:48 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:35:52 AM     LOG [TraceInterceptor] [3acc0ac9-62c3-475d-a541-9e26f90c89bb] POST /ai/proxy/v1/chat/completions 3830ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:35:52 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:35:52 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:35:52 AM     LOG [TraceInterceptor] [3d56b304-e15e-4958-8077-db9f170a46c0] GET /ai/chat/sessions 58ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:35:54 AM     LOG [TraceInterceptor] [3f643227-a444-4b4a-828c-a0ebe8bca660] POST /ai/proxy/v1/chat/completions 2637ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:35:54 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:35:54 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:35:57 AM     LOG [TraceInterceptor] [2ebff42d-df55-4d47-aca7-ed61f69928d7] POST /ai/proxy/v1/chat/completions 2189ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:35:57 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:35:57 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:35:57 AM     LOG [TraceInterceptor] [8f7b1b7f-be7b-4d7c-9982-dc15088585d2] GET /ai/chat/sessions 38ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:35:58 AM     LOG [TraceInterceptor] [936343d4-ddbd-4d12-9ba6-82b1aedc4986] POST /ai/proxy/v1/chat/completions 1563ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:35:58 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:35:58 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:02 AM     LOG [TraceInterceptor] [e6c15852-426b-4f7a-be6f-1d8f400c0efb] POST /ai/proxy/v1/chat/completions 3570ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:02 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: default
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:02 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:02 AM     LOG [TraceInterceptor] [79faf8fc-ad21-4476-9e75-857abf0ba04c] GET /ai/chat/sessions 38ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:07 AM     LOG [TraceInterceptor] [c1a25996-ca32-4211-94b9-a8cde5ea1e3a] GET /ai/chat/sessions 36ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:08 AM     LOG [TraceInterceptor] [577e9bde-c4be-4922-a413-745cfe1b5a6a] POST /ai/proxy/v1/chat/completions 6357ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:08 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:08 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:12 AM     LOG [TraceInterceptor] [54adf4df-fd1a-458f-863d-682ee67ec399] POST /ai/proxy/v1/chat/completions 3383ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:12 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: default
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:12 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:12 AM     LOG [TraceInterceptor] [2b693d51-2a0f-4232-91b8-d4613cece9b2] GET /ai/chat/sessions 32ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:16 AM     LOG [TraceInterceptor] [5b2d71eb-1dab-4434-83ce-afdb94b9ecc1] POST /ai/proxy/v1/chat/completions 3855ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:16 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:16 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:17 AM     LOG [TraceInterceptor] [9b82ba25-fd8c-4330-9e0d-da2652ed060c] GET /ai/chat/sessions 30ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:19 AM     LOG [TraceInterceptor] [4951bdd8-3e2c-4a4b-813b-53d54915320a] POST /ai/proxy/v1/chat/completions 3247ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:19 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: default
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:19 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:22 AM     LOG [TraceInterceptor] [f1761c58-01df-45d6-863a-3e8a85825c1c] GET /ai/chat/sessions 35ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:24 AM     LOG [TraceInterceptor] [8f367577-7941-4f7a-a4f8-fea852549c8b] POST /ai/proxy/v1/chat/completions 5507ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:24 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:24 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:27 AM     LOG [TraceInterceptor] [44b0a134-fb42-4a69-8d8f-63625533cdb2] GET /ai/chat/sessions 30ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:32 AM     LOG [TraceInterceptor] [1916aa8a-d1b8-4703-80cc-65067592e1af] GET /ai/chat/sessions 32ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:34 AM     LOG [TraceInterceptor] [0b069101-e0c0-4261-a50e-25e2e54cb989] POST /ai/proxy/v1/chat/completions 9654ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:37 AM     LOG [TraceInterceptor] [31acd866-daaa-4005-a60d-6a75a7d4e45d] GET /ai/chat/sessions 17ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:42 AM   DEBUG [SessionService] Saved chat session chat-session-1792891849108-tr03rtwn, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:42 AM     LOG [TraceInterceptor] [15480c46-3edc-4b09-8b56-cd49d42b894d] POST /ai/chat/stream 54586ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:42 AM     LOG [TraceInterceptor] [803c32f0-9691-4d69-bda7-eb3145053709] GET /ai/chat/sessions 24ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:42 AM     LOG [TraceInterceptor] [78a85ee4-4c93-4f2c-a5b1-6fcbf4b2b14f] GET /ai/chat/sessions/chat-session-1792891849108-tr03rtwn/messages/1792892147662-zfguxhsa/feedback 21ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:42 AM     LOG [TraceInterceptor] [bc193d3e-88e2-4323-b7f1-aaa8a4d6d82d] GET /ai/chat/history/chat-session-1792891849108-tr03rtwn 7ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:55 AM     LOG [ChatController] Dispatching personal chat request to unified sandbox agent for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:55 AM     LOG [UserSandboxDispatcherService] Dispatching personal request to sandbox harness for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:55 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:55 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:58 AM     LOG [TraceInterceptor] [03ceade6-bc45-409b-984c-db516765302e] POST /ai/proxy/v1/chat/completions 2310ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:58 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:36:58 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:00 AM     LOG [TraceInterceptor] [bbcc9d2b-63cd-4b37-be16-12d2bf3d1d53] GET /ai/chat/sessions 33ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:00 AM     LOG [TraceInterceptor] [e281b972-1518-4c5f-912c-8c995d2b76db] POST /ai/proxy/v1/chat/completions 2209ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:00 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:00 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:02 AM     LOG [TraceInterceptor] [2189e01b-6408-42c4-af24-4f0eb49f22d5] POST /ai/proxy/v1/chat/completions 2480ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:02 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:02 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:04 AM     LOG [TraceInterceptor] [f9407d17-cf1d-4bcf-917a-c6910c008824] POST /ai/proxy/v1/chat/completions 1537ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:04 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:04 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:05 AM     LOG [TraceInterceptor] [37cd46eb-efb2-4799-b1f8-b38a375df0c4] GET /ai/chat/sessions 38ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:07 AM     LOG [TraceInterceptor] [4fdba89f-2df1-41e4-aaa1-68594fb25df0] POST /ai/proxy/v1/chat/completions 3382ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:07 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: default
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:07 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:10 AM     LOG [TraceInterceptor] [c1cf3660-1163-463e-b718-a36c45862753] GET /ai/chat/sessions 29ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:11 AM     LOG [TraceInterceptor] [668e4952-c232-4f73-bb3a-17ea6d3726e1] POST /ai/proxy/v1/chat/completions 3239ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:11 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:11 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:15 AM     LOG [TraceInterceptor] [3108c832-e274-4102-8538-72b15c7cd195] GET /ai/chat/sessions 30ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:15 AM     LOG [TraceInterceptor] [8c9f5357-a8c8-45ca-a1af-3baadcad6fc1] POST /ai/proxy/v1/chat/completions 4292ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:15 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: default
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:15 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:18 AM     LOG [TraceInterceptor] [dec217c8-2f56-498b-b603-d68bf170c866] POST /ai/proxy/v1/chat/completions 2733ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:18 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:18 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:20 AM     LOG [TraceInterceptor] [d906a384-c4b7-4f66-b399-e7f982536c25] GET /ai/chat/sessions 20ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:25 AM     LOG [TraceInterceptor] [90460524-cb8b-4b88-8185-eece514e5a56] GET /ai/chat/sessions 33ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:28 AM     LOG [TraceInterceptor] [3b0fc5ed-d177-489a-9b94-eb9b0351d872] POST /ai/proxy/v1/chat/completions 10143ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:28 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:28 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:30 AM     LOG [TraceInterceptor] [e014d0b6-98c1-41a5-95d1-5089a94aa8a6] GET /ai/chat/sessions 29ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:35 AM     LOG [TraceInterceptor] [a8af0aa7-5263-46b5-bc54-33e9dc35c53f] GET /ai/chat/sessions 27ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:38 AM     LOG [TraceInterceptor] [b8e149f6-8b52-496b-ba1b-ab0c51a23c5a] POST /ai/proxy/v1/chat/completions 9878ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:40 AM     LOG [TraceInterceptor] [f16b67a3-2409-4c0b-95db-7a2333415700] GET /ai/chat/sessions 22ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:45 AM     LOG [TraceInterceptor] [826f25cd-9b2f-4034-990e-981e833c3c77] GET /ai/chat/sessions 18ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:45 AM   DEBUG [SessionService] Saved chat session chat-session-1792891849108-tr03rtwn, history=4
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:45 AM     LOG [TraceInterceptor] [cf1a65c6-942b-415c-ac5e-6a8aeb4a4224] POST /ai/chat/stream 50489ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:45 AM     LOG [TraceInterceptor] [c49f44a1-1543-4d8f-9c68-38ed30f15499] GET /ai/chat/sessions 36ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:45 AM     LOG [TraceInterceptor] [5f3c509a-cdab-4b9a-8e51-1b57d891f0ab] GET /ai/chat/sessions/chat-session-1792891849108-tr03rtwn/messages/1792892214990-79ea24v7/feedback 43ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:37:45 AM     LOG [TraceInterceptor] [255778e5-409b-4937-922e-6b3529281267] GET /ai/chat/history/chat-session-1792891849108-tr03rtwn 38ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:38:45 AM     LOG [TraceInterceptor] [6866cbd7-e93d-42a2-b9d2-7850d88e8c5f] POST /ai/chat/upload 28ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:38:57 AM     LOG [ChatController] Dispatching personal chat request to unified sandbox agent for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:38:57 AM     LOG [UserSandboxDispatcherService] Dispatching personal request to sandbox harness for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:38:57 AM     LOG [UserSandboxDispatcherService] Synced attached file [AI能力测试_财务报表.xlsx] to session [chat-session-1792892318750-hpmje4ba] and workspace: /workspace/data/users/e7fce333-a8f4-4097-9a53-f0a4c729da46/workspace/.sessions/chat-session-1792892318750-hpmje4ba/AI能力测试_财务报表.xlsx
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:38:58 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:38:58 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:01 AM     LOG [TraceInterceptor] [3769b490-2af2-4ee7-a124-d47cdd7c8807] POST /ai/proxy/v1/chat/completions 2774ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:01 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:01 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:02 AM     LOG [TraceInterceptor] [4d0812bc-cf1d-45db-afcc-8892bd28a3cf] GET /ai/chat/sessions 50ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:03 AM     LOG [TraceInterceptor] [ad58b6a8-031c-447b-aaf5-d326f999cbcf] POST /ai/proxy/v1/chat/completions 2549ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:03 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:03 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:06 AM     LOG [TraceInterceptor] [b395f337-7af9-4435-be9b-ab2256f2c8e4] POST /ai/proxy/v1/chat/completions 2198ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:06 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:06 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:07 AM     LOG [TraceInterceptor] [bb01d34a-2d33-411f-8a73-27efc5f465b0] POST /ai/proxy/v1/chat/completions 1546ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:07 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:07 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:07 AM     LOG [TraceInterceptor] [f1ee2a18-6e16-46ad-9639-db8e62b4cf46] GET /ai/chat/sessions 44ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:10 AM     LOG [TraceInterceptor] [bb905ac7-6350-47bc-a7ad-4a7673269da7] POST /ai/proxy/v1/chat/completions 2892ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:10 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:10 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:12 AM     LOG [TraceInterceptor] [07ddb24f-fdea-4d34-9ae6-35fcb0a7d869] POST /ai/proxy/v1/chat/completions 1512ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:12 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:12 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:12 AM     LOG [TraceInterceptor] [b729f6d5-5896-47ba-a4b0-502245d448ea] GET /ai/chat/sessions 31ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:15 AM     LOG [TraceInterceptor] [4b1d70a4-7cf9-4da7-a35b-5aec8c1591e0] POST /ai/proxy/v1/chat/completions 2903ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:15 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:15 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:17 AM     LOG [TraceInterceptor] [ef2772d8-3ac9-4ac9-ad16-7bcde3730db1] GET /ai/chat/sessions 29ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:18 AM     LOG [TraceInterceptor] [87d9a05f-5417-4d5d-beb3-510a90526041] POST /ai/proxy/v1/chat/completions 3269ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:22 AM     LOG [TraceInterceptor] [3c1af85d-97e7-4e2d-a745-07da7c1b95ab] GET /ai/chat/sessions 16ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:26 AM   DEBUG [SessionService] Saved chat session chat-session-1792892318750-hpmje4ba, history=2
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:26 AM     LOG [TraceInterceptor] [89716ef2-47f7-45a3-9c3c-ba8160684c01] POST /ai/chat/stream 28861ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:26 AM     LOG [TraceInterceptor] [ddac07a3-765b-4199-a610-41596cbdf659] GET /ai/chat/sessions/chat-session-1792892318750-hpmje4ba/messages/1792892337763-95t906f7/feedback 35ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:26 AM     LOG [TraceInterceptor] [fc9b8793-a3fc-4be6-b602-0e564554d632] GET /ai/chat/sessions 43ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:26 AM     LOG [TraceInterceptor] [119b9600-7703-48a2-b27d-77aed7ad1f98] GET /ai/chat/history/chat-session-1792892318750-hpmje4ba 5ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:36 AM     LOG [ChatController] Dispatching personal chat request to unified sandbox agent for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:36 AM     LOG [UserSandboxDispatcherService] Dispatching personal request to sandbox harness for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:37 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:37 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:40 AM     LOG [TraceInterceptor] [346764fb-9c44-4054-b7c0-dbd7d454b3e3] POST /ai/proxy/v1/chat/completions 2856ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:40 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:40 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:41 AM     LOG [TraceInterceptor] [56d5c582-989a-4fa4-b750-a025a5fdba92] GET /ai/chat/sessions 35ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:43 AM     LOG [TraceInterceptor] [57adeb23-bc91-49be-99a3-f5e6c3f3b86b] POST /ai/proxy/v1/chat/completions 2983ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:43 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:43 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:45 AM     LOG [TraceInterceptor] [1e2aa9fb-6836-420e-97fe-057caa17ad7d] POST /ai/proxy/v1/chat/completions 2595ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:45 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:45 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:46 AM     LOG [TraceInterceptor] [f828ae64-27ce-461c-9235-167f6a23f03c] GET /ai/chat/sessions 29ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:48 AM     LOG [TraceInterceptor] [01c517b1-7f13-4555-a93d-723a65ba5f08] POST /ai/proxy/v1/chat/completions 2522ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:48 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:48 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:51 AM     LOG [TraceInterceptor] [fb1b292e-06c7-458d-bc65-57e40c4a8800] GET /ai/chat/sessions 49ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:51 AM     LOG [TraceInterceptor] [0925aeb5-0854-4b2e-8610-e9585debf80c] POST /ai/proxy/v1/chat/completions 3183ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:51 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:51 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:56 AM     LOG [TraceInterceptor] [ae30f49d-e785-4527-9c84-1f132477ed25] GET /ai/chat/sessions 28ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:57 AM     LOG [TraceInterceptor] [4f010444-25ce-4d92-bbd1-da9014bce077] POST /ai/proxy/v1/chat/completions 5727ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:57 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:39:57 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:00 AM     LOG [TraceInterceptor] [041eed3e-e8a1-477f-953b-c6b414ae2766] POST /ai/proxy/v1/chat/completions 2808ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:00 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: default
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:00 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:01 AM     LOG [TraceInterceptor] [48a684e8-c828-4577-ae80-059b32eb1bc1] GET /ai/chat/sessions 36ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:01 AM     LOG [TraceInterceptor] [c5e16c5f-d59c-44ee-b9b2-ecb8bf1113e7] POST /ai/proxy/v1/chat/completions 1360ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:01 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:01 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:05 AM     LOG [TraceInterceptor] [f65d74d0-2c31-4da2-aae6-31bd73f7af2c] POST /ai/proxy/v1/chat/completions 3703ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:05 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:05 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:06 AM     LOG [TraceInterceptor] [753812c4-8487-4bd2-a609-2462daea05f2] GET /ai/chat/sessions 27ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:10 AM     LOG [TraceInterceptor] [6921add9-014b-43be-9c5b-de5170e511dc] POST /ai/proxy/v1/chat/completions 4793ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:10 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:10 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:11 AM     LOG [TraceInterceptor] [407de051-a0cd-4602-811f-59b72d060104] GET /ai/chat/sessions 27ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:13 AM     LOG [TraceInterceptor] [19229abf-0a3f-4880-9f36-1e41e8330eab] POST /ai/proxy/v1/chat/completions 3113ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:13 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:13 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:16 AM     LOG [TraceInterceptor] [47dcfd1f-3eaa-4cbf-9974-13e96c0285bf] GET /ai/chat/sessions 29ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:16 AM     LOG [TraceInterceptor] [c7568899-1bda-4b0d-bbc5-dbfd4d1b2632] POST /ai/proxy/v1/chat/completions 3105ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:16 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:16 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:21 AM     LOG [TraceInterceptor] [e2bdce01-401f-4a2f-bcf1-37a9e61dfb5e] POST /ai/proxy/v1/chat/completions 4474ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:21 AM     LOG [TraceInterceptor] [b6884946-118d-40b3-b4b8-a8e32326c7c7] GET /ai/chat/sessions 16ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:26 AM     LOG [TraceInterceptor] [e3f1485c-60bd-4cd7-893c-84ec7dd6ea88] GET /ai/chat/sessions 19ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:29 AM   DEBUG [SessionService] Saved chat session chat-session-1792892318750-hpmje4ba, history=4
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:29 AM     LOG [TraceInterceptor] [99a49083-f444-4d16-9327-1b153a0b5344] POST /ai/chat/stream 52451ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:29 AM     LOG [TraceInterceptor] [88c209eb-f8cb-46f2-a324-065e8707a710] GET /ai/chat/history/chat-session-1792892318750-hpmje4ba 16ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:29 AM     LOG [TraceInterceptor] [62e11688-21f9-4208-827e-539cf95eec06] GET /ai/chat/sessions/chat-session-1792892318750-hpmje4ba/messages/1792892376644-h18z5qmv/feedback 30ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:29 AM     LOG [TraceInterceptor] [ee3ce3b8-15f1-4307-94b0-1adcfb2e77dd] GET /ai/chat/sessions 57ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:46 AM     LOG [ChatController] Dispatching personal chat request to unified sandbox agent for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:46 AM     LOG [UserSandboxDispatcherService] Dispatching personal request to sandbox harness for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:47 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:47 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:49 AM     LOG [TraceInterceptor] [3702aeff-92fa-494d-b54d-9f1da2d41340] POST /ai/proxy/v1/chat/completions 2719ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:49 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:49 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:51 AM     LOG [TraceInterceptor] [863c6418-820d-4453-97fe-ba886c4c57a7] GET /ai/chat/sessions 39ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:52 AM     LOG [TraceInterceptor] [9961b5e6-0edf-4a94-804b-2c15b73cdd92] POST /ai/proxy/v1/chat/completions 2723ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:52 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:52 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:54 AM     LOG [TraceInterceptor] [617d847f-e5f4-4f0d-8268-8963ead550ef] POST /ai/proxy/v1/chat/completions 2258ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:54 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:54 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:56 AM     LOG [TraceInterceptor] [e0c6ced5-4b0f-40f9-b986-2107e2a54eeb] GET /ai/chat/sessions 47ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:56 AM     LOG [TraceInterceptor] [854e482b-8a7c-4be1-a543-e633f7074841] POST /ai/proxy/v1/chat/completions 1649ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:56 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:40:56 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:01 AM     LOG [TraceInterceptor] [60f2078b-164e-40ed-a4cf-5aee67b9a1dc] POST /ai/proxy/v1/chat/completions 4632ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:01 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:01 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:01 AM     LOG [TraceInterceptor] [4a8b5bd4-cc48-45cf-91be-cfd505b124f4] GET /ai/chat/sessions 23ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:05 AM     LOG [TraceInterceptor] [4fe4ce70-8724-47af-824f-4b5baa07ef82] POST /ai/proxy/v1/chat/completions 4454ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:06 AM     LOG [TraceInterceptor] [7edf5405-fbb8-48b0-ab3d-3bf359534b94] GET /ai/chat/sessions 24ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:11 AM     LOG [TraceInterceptor] [b899d7e6-231e-4eb9-9d6e-6f5169aa177c] GET /ai/chat/sessions 17ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:13 AM   DEBUG [SessionService] Saved chat session chat-session-1792892318750-hpmje4ba, history=6
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:13 AM     LOG [TraceInterceptor] [ac04ecf3-3ba3-4c68-9524-52060f25cbf0] POST /ai/chat/stream 27115ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:13 AM     LOG [TraceInterceptor] [5259d378-56e0-47b2-a371-ba3f966b83f3] GET /ai/chat/history/chat-session-1792892318750-hpmje4ba 20ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:13 AM     LOG [TraceInterceptor] [d9fb6b43-048f-45c5-8fec-46f6aef2e2a0] GET /ai/chat/sessions 64ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:13 AM     LOG [TraceInterceptor] [5b28dddc-eab3-4994-b09a-ba5aba3d8501] GET /ai/chat/sessions/chat-session-1792892318750-hpmje4ba/messages/1792892446464-lmcunxjz/feedback 66ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:22 AM     LOG [ChatController] Dispatching personal chat request to unified sandbox agent for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:22 AM     LOG [UserSandboxDispatcherService] Dispatching personal request to sandbox harness for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:22 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:22 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:25 AM     LOG [TraceInterceptor] [4c2ecfbd-176f-4875-a587-b49128e2fbc0] POST /ai/proxy/v1/chat/completions 2616ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:25 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:25 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:27 AM     LOG [TraceInterceptor] [53f49c0e-0be7-41ee-9b89-274705ec8b6a] GET /ai/chat/sessions 28ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:28 AM     LOG [TraceInterceptor] [c54f1482-1cc8-4833-968c-c965ff5dd59c] POST /ai/proxy/v1/chat/completions 2741ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:28 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:28 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:30 AM     LOG [TraceInterceptor] [cb76e557-7ebf-426b-8bd0-5df7553fd74c] POST /ai/proxy/v1/chat/completions 2747ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:30 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:30 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:32 AM     LOG [TraceInterceptor] [1f48c448-8f18-4bd8-a2e5-f1d701d0c557] GET /ai/chat/sessions 27ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:37 AM     LOG [TraceInterceptor] [99eb60d5-e40c-4974-a5de-8429ecd2229d] GET /ai/chat/sessions 38ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:37 AM     LOG [TraceInterceptor] [a2e60e4b-f9ed-44b2-8fc4-78ebf186ed9a] POST /ai/proxy/v1/chat/completions 6475ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:37 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:37 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:42 AM     LOG [TraceInterceptor] [b4ca8c2d-5fb2-4a03-ab8b-f2684eec40e0] GET /ai/chat/sessions 35ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:44 AM     LOG [TraceInterceptor] [ddad5712-1325-4ac0-9f6b-f5737315ffc1] POST /ai/proxy/v1/chat/completions 7525ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:45 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:45 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:47 AM     LOG [TraceInterceptor] [4453d320-0ddc-4b01-a21c-22c8f819deca] POST /ai/proxy/v1/chat/completions 1763ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:47 AM     LOG [TraceInterceptor] [dc6154fd-974d-43a0-819f-fc41d924bb74] GET /ai/chat/sessions 35ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:48 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:48 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:50 AM     LOG [TraceInterceptor] [c7fb52bf-199a-480c-aa36-8cc9d2317a2b] POST /ai/proxy/v1/chat/completions 2226ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:50 AM     LOG [ModelProxyController] Proxying model completion for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], model: d13e0d30-87b9-4e87-b96a-d8b1b3cf78af
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:50 AM     LOG [ModelProxyController] Using platform-managed model client for sandbox proxy (qwen36-35b-a3b)
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:52 AM     LOG [TraceInterceptor] [0115013a-d5dd-4246-9b8b-99025e40f31d] GET /ai/chat/sessions 43ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:56 AM     LOG [TraceInterceptor] [682dbd6e-904d-4611-85be-dc6ba89c6bb7] POST /ai/proxy/v1/chat/completions 5403ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:41:57 AM     LOG [TraceInterceptor] [a782bd66-193a-42e9-8599-84f60bd50b23] GET /ai/chat/sessions 32ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:42:02 AM     LOG [TraceInterceptor] [762641dd-cd99-4bd1-a152-1cea9ad98233] GET /ai/chat/sessions 25ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:42:07 AM     LOG [TraceInterceptor] [beb3d5cd-d968-4763-8ad0-3946c66007f2] GET /ai/chat/sessions 18ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:42:12 AM     LOG [TraceInterceptor] [83f81ff0-47c3-4d99-8b1c-8ef6b3eaaddd] GET /ai/chat/sessions 21ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:42:12 AM   DEBUG [SessionService] Saved chat session chat-session-1792892318750-hpmje4ba, history=8
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:42:12 AM     LOG [TraceInterceptor] [4775f35d-6abe-4cbb-b903-b0826a2cc20a] POST /ai/chat/stream 50174ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:42:12 AM     LOG [TraceInterceptor] [1fcc981a-cb03-4352-8cd6-ec6a4f008b99] GET /ai/chat/sessions 41ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:42:12 AM     LOG [TraceInterceptor] [512f52e5-3adf-44ef-9283-9ba79fbd6f7b] GET /ai/chat/history/chat-session-1792892318750-hpmje4ba 40ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:42:12 AM     LOG [TraceInterceptor] [12c3bb87-5502-4ea8-bd83-1325602949d7] GET /ai/chat/sessions/chat-session-1792892318750-hpmje4ba/messages/1792892482008-9no5z39t/feedback 49ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:42:34 AM     LOG [TraceInterceptor] [1970e580-8b10-44a9-a7aa-9076484bb9da] GET /ai/chat/workspace-files/e7fce333-a8f4-4097-9a53-f0a4c729da46/E2E_finance_35B.xlsx?token=[REDACTED] 2ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:42:36 AM     LOG [TraceInterceptor] [8b5cfa12-e4f1-41ee-9898-16f78a106518] GET /ai/models 1ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:42:36 AM     LOG [TraceInterceptor] [e982b060-81ec-422b-95e7-8d20490a0086] GET /ai/chat/sessions 48ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:42:36 AM     LOG [TraceInterceptor] [664a12c3-e1e1-43a7-936e-86f3ba18c97e] GET /ai/chat/history/chat-session-1792892318750-hpmje4ba 4ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:42:36 AM     LOG [TraceInterceptor] [9895bf63-ce3c-476f-9fa8-edb47e9f788d] GET /ai/chat/sessions/chat-session-1792892318750-hpmje4ba/messages/1792892482008-9no5z39t/feedback 7ms
+ops-ai-orchestrator  | [Nest] 219  - 10/25/2026, 9:42:36 AM     LOG [TraceInterceptor] [7ca74a7c-1dc3-461e-89e3-64b292aaa416] GET /ai/chat/sessions/chat-session-1792892318750-hpmje4ba/messages/1792892446464-lmcunxjz/feedback 8ms
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:35:47 AM     LOG [LockService] Sandbox execution lock acquired for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], token=[REDACTED], waitedMs=2
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:35:48 AM     LOG [UserSandboxContainerService] Ensuring user sandbox for [e7fce333-a8f4-4097-9a53-f0a4c729da46], container: ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:35:48 AM     LOG [UserSandboxContainerService] Container ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46 is already running.
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:35:48 AM     LOG [UserSandboxHarnessService] Executing in sandbox [ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46]: ["dsh","run","【当前轮次用户上传附件】: AI能力测试_财务报表.xlsx（这是用户本轮刚上传的新文件，为本次指令的主要处理对象）\n用户指令：请根据附件实际数据，总结2026年全年营业收入、毛利、毛利率、营业利润、净利润和净利率。请读取完整工作簿并核实公式结果，全年利润率按全年利润除以全年收入计算。金额沿用原表单位，给出来源工作表和单元格。只在聊天中回复，不生成文件，不联网。","--session-id","chat-session-1792891849108-tr03rtwn","--files","AI能力测试_财务报表.xlsx","--web-search","--thinking","--reasoning-effort","medium","--model","d13e0d30-87b9-4e87-b96a-d8b1b3cf78af","--model-display-name","qwen36-35b-a3b","--timeout","300"]
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:36:42 AM     LOG [LockService] Sandbox execution lock released for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:36:55 AM     LOG [LockService] Sandbox execution lock acquired for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], token=[REDACTED], waitedMs=2
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:36:55 AM     LOG [UserSandboxContainerService] Ensuring user sandbox for [e7fce333-a8f4-4097-9a53-f0a4c729da46], container: ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:36:55 AM     LOG [UserSandboxContainerService] Container ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46 is already running.
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:36:55 AM     LOG [UserSandboxHarnessService] Executing in sandbox [ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46]: ["dsh","run","【当前会话有效附件清单】: AI能力测试_财务报表.xlsx\n用户指令：继续读取同一个附件。只核算2026年营业收入、毛利率、营业利润和净利润，提供金额单位和结果。只在聊天回复，不生成文件，不联网。","--session-id","chat-session-1792891849108-tr03rtwn","--files","AI能力测试_财务报表.xlsx","--web-search","--thinking","--reasoning-effort","medium","--model","d13e0d30-87b9-4e87-b96a-d8b1b3cf78af","--model-display-name","qwen36-35b-a3b","--timeout","300"]
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:37:45 AM     LOG [LockService] Sandbox execution lock released for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:38:57 AM     LOG [LockService] Sandbox execution lock acquired for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], token=[REDACTED], waitedMs=2
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:38:58 AM     LOG [UserSandboxContainerService] Ensuring user sandbox for [e7fce333-a8f4-4097-9a53-f0a4c729da46], container: ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:38:58 AM     LOG [UserSandboxContainerService] Container ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46 is already running.
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:38:58 AM     LOG [UserSandboxHarnessService] Executing in sandbox [ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46]: ["dsh","run","【当前轮次用户上传附件】: AI能力测试_财务报表.xlsx（这是用户本轮刚上传的新文件，为本次指令的主要处理对象）\n用户指令：读取附件的“预算对比”工作表，比较2026年12个月。分别找出收入差异绝对值最大的月份、净利润差异绝对值最大的月份，列出该月预算、实际、实际减预算的差异及原表单位。只在聊天回复，不生成文件，不联网。","--session-id","chat-session-1792892318750-hpmje4ba","--files","AI能力测试_财务报表.xlsx","--web-search","--thinking","--reasoning-effort","medium","--model","d13e0d30-87b9-4e87-b96a-d8b1b3cf78af","--model-display-name","qwen36-35b-a3b","--timeout","300"]
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:39:26 AM     LOG [LockService] Sandbox execution lock released for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:39:36 AM     LOG [LockService] Sandbox execution lock acquired for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], token=[REDACTED], waitedMs=1
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:39:37 AM     LOG [UserSandboxContainerService] Ensuring user sandbox for [e7fce333-a8f4-4097-9a53-f0a4c729da46], container: ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:39:37 AM     LOG [UserSandboxContainerService] Container ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46 is already running.
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:39:37 AM     LOG [UserSandboxHarnessService] Executing in sandbox [ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46]: ["dsh","run","【当前会话有效附件清单】: AI能力测试_财务报表.xlsx\n用户指令：接下来检查同一个附件的“交易明细”第4至83行。分别列出：凭证号重复的全部记录；部门为空的记录；金额绝对值大于10000的记录；日期不在2026年内的记录；审批状态不是已审批的记录。每类给出条数、Excel行号和关键字段。备注为空不算异常，费用负数不算异常。只在聊天回复，不修改原件，不联网。","--session-id","chat-session-1792892318750-hpmje4ba","--files","AI能力测试_财务报表.xlsx","--web-search","--thinking","--reasoning-effort","medium","--model","d13e0d30-87b9-4e87-b96a-d8b1b3cf78af","--model-display-name","qwen36-35b-a3b","--timeout","300"]
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:40:29 AM     LOG [LockService] Sandbox execution lock released for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:40:46 AM     LOG [LockService] Sandbox execution lock acquired for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], token=[REDACTED], waitedMs=1
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:40:46 AM     LOG [UserSandboxContainerService] Ensuring user sandbox for [e7fce333-a8f4-4097-9a53-f0a4c729da46], container: ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:40:46 AM     LOG [UserSandboxContainerService] Container ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46 is already running.
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:40:46 AM     LOG [UserSandboxHarnessService] Executing in sandbox [ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46]: ["dsh","run","【当前会话有效附件清单】: AI能力测试_财务报表.xlsx\n用户指令：核对同一个附件中的两条报表等式：资产负债表B11等于B20；现金流量表B17等于资产负债表B4。实际读取公式重算后的数值，分别输出左值、右值、左值减右值的差额以及是否相等，金额单位沿用原表。不要修改任何数据，只在聊天回复核对结果，不联网。","--session-id","chat-session-1792892318750-hpmje4ba","--files","AI能力测试_财务报表.xlsx","--web-search","--thinking","--reasoning-effort","medium","--model","d13e0d30-87b9-4e87-b96a-d8b1b3cf78af","--model-display-name","qwen36-35b-a3b","--timeout","300"]
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:41:13 AM     LOG [LockService] Sandbox execution lock released for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:41:22 AM     LOG [LockService] Sandbox execution lock acquired for user [e7fce333-a8f4-4097-9a53-f0a4c729da46], token=[REDACTED], waitedMs=1
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:41:22 AM     LOG [UserSandboxContainerService] Ensuring user sandbox for [e7fce333-a8f4-4097-9a53-f0a4c729da46], container: ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:41:22 AM     LOG [UserSandboxContainerService] Container ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46 is already running.
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:41:22 AM     LOG [UserSandboxHarnessService] Executing in sandbox [ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46]: ["dsh","run","【当前会话有效附件清单】: AI能力测试_财务报表.xlsx\n用户指令：从同一附件的利润表读取2026实际营业收入、毛利、营业利润、净利润，生成一个可下载的Excel文件 E2E_finance_35B.xlsx。表中包含指标、数值、单位、来源单元格四列。数值必须来自原件公式重算结果。保留原始附件，不联网。","--session-id","chat-session-1792892318750-hpmje4ba","--files","AI能力测试_财务报表.xlsx","--web-search","--thinking","--reasoning-effort","medium","--model","d13e0d30-87b9-4e87-b96a-d8b1b3cf78af","--model-display-name","qwen36-35b-a3b","--timeout","300"]
+ops-session-broker   | [Nest] 135  - 10/25/2026, 9:42:12 AM     LOG [LockService] Sandbox execution lock released for user [e7fce333-a8f4-4097-9a53-f0a4c729da46]

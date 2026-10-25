@@ -1,0 +1,822 @@
+{
+  "data": "entirely generated synthetic data",
+  "passed": true,
+  "contract": {
+    "raw_prompt": "总结2037年收入、毛利率、营业利润和净利润。",
+    "period": "2037年",
+    "currency": null,
+    "metrics": [
+      {
+        "name": "营业收入",
+        "aliases": [
+          "营业收入",
+          "总收入",
+          "主营业务收入",
+          "营收",
+          "收入"
+        ],
+        "expected_type": "number",
+        "period": "2037年",
+        "required": true,
+        "semantic_id": "finance.revenue"
+      },
+      {
+        "name": "毛利率",
+        "aliases": [
+          "毛利率",
+          "综合毛利率",
+          "销售毛利率"
+        ],
+        "expected_type": "percentage",
+        "period": "2037年",
+        "required": true,
+        "semantic_id": "finance.gross_margin"
+      },
+      {
+        "name": "营业利润",
+        "aliases": [
+          "营业利润",
+          "核心经营利润",
+          "经营利润"
+        ],
+        "expected_type": "number",
+        "period": "2037年",
+        "required": true,
+        "semantic_id": "finance.operating_profit"
+      },
+      {
+        "name": "净利润",
+        "aliases": [
+          "净利润",
+          "税后净利",
+          "净收益",
+          "纯利润"
+        ],
+        "expected_type": "number",
+        "period": "2037年",
+        "required": true,
+        "semantic_id": "finance.net_profit"
+      }
+    ],
+    "is_audit_intent": false,
+    "is_catalog_only": false,
+    "is_advisory_intent": false,
+    "is_browse_or_summary": false,
+    "is_explicit_calc": false,
+    "is_detail_query": false,
+    "is_grouped": false,
+    "group_dimension": null,
+    "operation": null,
+    "dimension": null,
+    "comparison": null,
+    "comparison_basis": null,
+    "ranking": null,
+    "concepts": [],
+    "domain": "finance",
+    "has_filters": true,
+    "requires_source_scope_review": true,
+    "scope_requirements": {
+      "period": "2037年",
+      "conditions": [
+        "月份 = '2037年' (或所有属于2037年的月份)"
+      ],
+      "entities": [],
+      "group_dimension": null
+    },
+    "task_type": "tabular_compute",
+    "entity_predicates": [],
+    "attribute_targets": [
+      "收入"
+    ],
+    "limit": null,
+    "audit_checks": []
+  },
+  "mixed_facts": [
+    {
+      "id": "revenue",
+      "label": "营业收入",
+      "group_key": null,
+      "group_fields": {},
+      "value": "1860",
+      "unit": "千元",
+      "source_cells": [
+        "合成经营!B10",
+        "合成经营!B11",
+        "合成经营!B12",
+        "合成经营!B13",
+        "合成经营!B14",
+        "合成经营!B15",
+        "合成经营!B4",
+        "合成经营!B5",
+        "合成经营!B6",
+        "合成经营!B7",
+        "合成经营!B8",
+        "合成经营!B9"
+      ],
+      "matched_records": 12
+    },
+    {
+      "id": "gross_profit",
+      "label": "毛利",
+      "group_key": null,
+      "group_fields": {},
+      "value": "630",
+      "unit": "千元",
+      "source_cells": [
+        "合成经营!C10",
+        "合成经营!C11",
+        "合成经营!C12",
+        "合成经营!C13",
+        "合成经营!C14",
+        "合成经营!C15",
+        "合成经营!C4",
+        "合成经营!C5",
+        "合成经营!C6",
+        "合成经营!C7",
+        "合成经营!C8",
+        "合成经营!C9"
+      ],
+      "matched_records": 12
+    },
+    {
+      "id": "operating_profit",
+      "label": "营业利润",
+      "group_key": null,
+      "group_fields": {},
+      "value": "372",
+      "unit": "千元",
+      "source_cells": [
+        "合成经营!E10",
+        "合成经营!E11",
+        "合成经营!E12",
+        "合成经营!E13",
+        "合成经营!E14",
+        "合成经营!E15",
+        "合成经营!E4",
+        "合成经营!E5",
+        "合成经营!E6",
+        "合成经营!E7",
+        "合成经营!E8",
+        "合成经营!E9"
+      ],
+      "matched_records": 12
+    },
+    {
+      "id": "net_profit",
+      "label": "净利润",
+      "group_key": null,
+      "group_fields": {},
+      "value": "186",
+      "unit": "千元",
+      "source_cells": [
+        "合成经营!F10",
+        "合成经营!F11",
+        "合成经营!F12",
+        "合成经营!F13",
+        "合成经营!F14",
+        "合成经营!F15",
+        "合成经营!F4",
+        "合成经营!F5",
+        "合成经营!F6",
+        "合成经营!F7",
+        "合成经营!F8",
+        "合成经营!F9"
+      ],
+      "matched_records": 12
+    },
+    {
+      "id": "gross_margin",
+      "label": "毛利率",
+      "source_cells": [
+        "合成经营!B10",
+        "合成经营!B11",
+        "合成经营!B12",
+        "合成经营!B13",
+        "合成经营!B14",
+        "合成经营!B15",
+        "合成经营!B4",
+        "合成经营!B5",
+        "合成经营!B6",
+        "合成经营!B7",
+        "合成经营!B8",
+        "合成经营!B9",
+        "合成经营!C10",
+        "合成经营!C11",
+        "合成经营!C12",
+        "合成经营!C13",
+        "合成经营!C14",
+        "合成经营!C15",
+        "合成经营!C4",
+        "合成经营!C5",
+        "合成经营!C6",
+        "合成经营!C7",
+        "合成经营!C8",
+        "合成经营!C9"
+      ],
+      "value": "33.87096774193548387096774194",
+      "unit": "%",
+      "calculation_stage": "post_query"
+    }
+  ],
+  "mixed_state": {
+    "complete": true,
+    "domain": "finance",
+    "evidence_ids": [
+      "8bd62c8e5f3dceac8f2dbd0c"
+    ],
+    "missing_metrics": [],
+    "issues": [],
+    "available_sheets": [],
+    "known_headers": [
+      "净利润",
+      "月份",
+      "毛利",
+      "毛利率",
+      "营业利润",
+      "营业收入"
+    ],
+    "gate_review": null
+  },
+  "rendered": "已完成数据的核算与多维统计，核心核算结果汇总如下（金额与比例的单位分别标注；数值已四舍五入）：\n\n| 统计指标 / 分组 | 核算结果 |\n|---|---:|\n| 营业收入 | 1,860 千元 |\n| 营业利润 | 372 千元 |\n| 净利润 | 186 千元 |\n| 毛利率 | 33.87% |\n\n来源单元格：营业收入（`合成经营!B10..合成经营!B9`（共12个单元格））、营业利润（`合成经营!E10..合成经营!E9`（共12个单元格））、净利润（`合成经营!F10..合成经营!F9`（共12个单元格））、毛利率（`合成经营!B10..合成经营!C9`（共24个单元格））。\n\n数据来源：《synthetic.xlsx》。",
+  "completion_results": [
+    {
+      "schema_version": 1,
+      "status": "success",
+      "data": {
+        "kind": "spreadsheet_analysis",
+        "plan": {
+          "tables": [
+            {
+              "sheet": "合成经营",
+              "data_range": "A4:F15",
+              "header_row": 3,
+              "row_ids": [
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15
+              ],
+              "id": "derive_t0"
+            }
+          ],
+          "calculations": [
+            {
+              "id": "derive_m0",
+              "label": "毛利率（注册关系补算）",
+              "metric_id": "finance.gross_margin",
+              "output_unit": "%",
+              "expression": {
+                "op": "divide",
+                "args": [
+                  {
+                    "aggregate": "sum",
+                    "table": "derive_t0",
+                    "column": "C",
+                    "unit": "amount"
+                  },
+                  {
+                    "aggregate": "sum",
+                    "table": "derive_t0",
+                    "column": "B",
+                    "unit": "amount"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "requested_plan": {
+          "tables": [
+            {
+              "sheet": "合成经营",
+              "data_range": "A4:F15",
+              "header_row": 3,
+              "row_ids": [
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15
+              ],
+              "id": "derive_t0"
+            }
+          ],
+          "calculations": [
+            {
+              "id": "derive_m0",
+              "label": "毛利率（注册关系补算）",
+              "metric_id": "finance.gross_margin",
+              "output_unit": "%",
+              "expression": {
+                "op": "divide",
+                "args": [
+                  {
+                    "aggregate": "sum",
+                    "table": "derive_t0",
+                    "column": "C",
+                    "unit": "amount"
+                  },
+                  {
+                    "aggregate": "sum",
+                    "table": "derive_t0",
+                    "column": "B",
+                    "unit": "amount"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "semantic_domain": {
+          "id": "finance",
+          "version": "1"
+        },
+        "normalizations": [],
+        "plan_hash": "48869e4f082a70900e747fbcdd26529b9f5e82051cc9d21ea3b19514cf996295",
+        "facts": [
+          {
+            "id": "derive_m0",
+            "label": "毛利率（注册关系补算）",
+            "source_cells": [
+              "合成经营!B10",
+              "合成经营!B11",
+              "合成经营!B12",
+              "合成经营!B13",
+              "合成经营!B14",
+              "合成经营!B15",
+              "合成经营!B4",
+              "合成经营!B5",
+              "合成经营!B6",
+              "合成经营!B7",
+              "合成经营!B8",
+              "合成经营!B9",
+              "合成经营!C10",
+              "合成经营!C11",
+              "合成经营!C12",
+              "合成经营!C13",
+              "合成经营!C14",
+              "合成经营!C15",
+              "合成经营!C4",
+              "合成经营!C5",
+              "合成经营!C6",
+              "合成经营!C7",
+              "合成经营!C8",
+              "合成经营!C9"
+            ],
+            "metric_id": "finance.gross_margin",
+            "value": "33.87096774193548387096774194",
+            "unit": "%"
+          }
+        ],
+        "checks": [],
+        "rules": [],
+        "profiles": [],
+        "coverage": [
+          {
+            "id": "derive_t0",
+            "sheet": "合成经营",
+            "data_range": "A4:F15",
+            "header_row": 3,
+            "input_records": 12,
+            "evaluated_records": 12,
+            "excluded_header_rows": [],
+            "headers": {
+              "A": "月份",
+              "B": "营业收入",
+              "C": "毛利",
+              "D": "毛利率",
+              "E": "营业利润",
+              "F": "净利润"
+            },
+            "source_months": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ],
+            "selected_rows": [
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15
+            ],
+            "filters": [],
+            "coverage_complete": true,
+            "source_labels": [
+              {
+                "cell": "A1",
+                "text": "2037年月度经营明细（完全合成测试数据）"
+              },
+              {
+                "cell": "A2",
+                "text": "单位：千元"
+              }
+            ],
+            "selected_row_labels": [
+              {
+                "cell": "A4",
+                "text": "1月"
+              },
+              {
+                "cell": "A5",
+                "text": "2月"
+              },
+              {
+                "cell": "A6",
+                "text": "3月"
+              },
+              {
+                "cell": "A7",
+                "text": "4月"
+              },
+              {
+                "cell": "A8",
+                "text": "5月"
+              },
+              {
+                "cell": "A9",
+                "text": "6月"
+              },
+              {
+                "cell": "A10",
+                "text": "7月"
+              },
+              {
+                "cell": "A11",
+                "text": "8月"
+              },
+              {
+                "cell": "A12",
+                "text": "9月"
+              },
+              {
+                "cell": "A13",
+                "text": "10月"
+              },
+              {
+                "cell": "A14",
+                "text": "11月"
+              },
+              {
+                "cell": "A15",
+                "text": "12月"
+              }
+            ],
+            "row_labels_complete": true
+          }
+        ],
+        "rows": [],
+        "visited_cells": [
+          "合成经营!B10",
+          "合成经营!B11",
+          "合成经营!B12",
+          "合成经营!B13",
+          "合成经营!B14",
+          "合成经营!B15",
+          "合成经营!B4",
+          "合成经营!B5",
+          "合成经营!B6",
+          "合成经营!B7",
+          "合成经营!B8",
+          "合成经营!B9",
+          "合成经营!C10",
+          "合成经营!C11",
+          "合成经营!C12",
+          "合成经营!C13",
+          "合成经营!C14",
+          "合成经营!C15",
+          "合成经营!C4",
+          "合成经营!C5",
+          "合成经营!C6",
+          "合成经营!C7",
+          "合成经营!C8",
+          "合成经营!C9"
+        ],
+        "amount_unit": "千元",
+        "unit_sources": [
+          "合成经营!A2"
+        ],
+        "evidence_id": "aa9ffea0562c97e258808762"
+      },
+      "error": null,
+      "provenance": {
+        "file_path": "/tmp/public-monthly-probe-kb532ft3/synthetic.xlsx",
+        "workbook_id": "1b3bb7a6e7f447c8dd9670cef3096cb43e251ec5a1e5a1a242bc3a8c72799b4f",
+        "calculation": {
+          "status": "literal_values"
+        },
+        "plan_hash": "48869e4f082a70900e747fbcdd26529b9f5e82051cc9d21ea3b19514cf996295",
+        "execution_origin": "registered_derivation",
+        "parent_evidence_ids": [
+          "815c3ab33481e36e7be63641"
+        ],
+        "recipe_domain": "finance",
+        "recipe_version": "1"
+      },
+      "text_representation": "{\"evidence_id\": \"aa9ffea0562c97e258808762\", \"rules\": [], \"profiles\": [], \"amount_unit\": \"千元\", \"semantic_domain\": {\"id\": \"finance\", \"version\": \"1\"}, \"facts\": [{\"id\": \"derive_m0\", \"label\": \"毛利率（注册关系补算）\", \"metric_id\": \"finance.gross_margin\", \"value\": \"33.87096774193548387096774194\", \"unit\": \"%\", \"source_cells\": [\"合成经营!B10\", \"合成经营!B11\", \"合成经营!B12\", \"合成经营!B13\", \"合成经营!B14\", \"合成经营!B15\", \"...\", \"合成经营!C8\", \"合成经营!C9\"], \"source_cell_count\": 24}], \"checks\": [], \"coverage\": [{\"id\": \"derive_t0\", \"sheet\": \"合成经营\", \"data_range\": \"A4:F15\", \"header_row\": 3, \"input_records\": 12, \"evaluated_records\": 12, \"excluded_header_rows\": [], \"headers\": {\"A\": \"月份\", \"B\": \"营业收入\", \"C\": \"毛利\", \"D\": \"毛利率\", \"E\": \"营业利润\", \"F\": \"净利润\"}, \"source_months\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], \"filters\": [], \"coverage_complete\": true, \"source_labels\": [{\"cell\": \"A1\", \"text\": \"2037年月度经营明细（完全合成测试数据）\"}, {\"cell\": \"A2\", \"text\": \"单位：千元\"}], \"selected_row_labels\": [{\"cell\": \"A4\", \"text\": \"1月\"}, {\"cell\": \"A5\", \"text\": \"2月\"}, {\"cell\": \"A6\", \"text\": \"3月\"}, {\"cell\": \"A7\", \"text\": \"4月\"}, {\"cell\": \"A8\", \"text\": \"5月\"}, {\"cell\": \"A9\", \"text\": \"6月\"}, {\"cell\": \"A10\", \"text\": \"7月\"}, {\"cell\": \"A11\", \"text\": \"8月\"}, {\"cell\": \"A12\", \"text\": \"9月\"}, {\"cell\": \"A13\", \"text\": \"10月\"}, {\"cell\": \"A14\", \"text\": \"11月\"}, {\"cell\": \"A15\", \"text\": \"12月\"}], \"row_labels_complete\": true}]}"
+    }
+  ],
+  "completed_state": {
+    "complete": true,
+    "domain": "finance",
+    "evidence_ids": [
+      "815c3ab33481e36e7be63641",
+      "aa9ffea0562c97e258808762"
+    ],
+    "missing_metrics": [],
+    "issues": [],
+    "available_sheets": [],
+    "known_headers": [
+      "净利润",
+      "月份",
+      "毛利",
+      "毛利率",
+      "营业利润",
+      "营业收入"
+    ],
+    "gate_review": null
+  },
+  "wrong_title_state": {
+    "complete": false,
+    "domain": "finance",
+    "evidence_ids": [
+      "712def4813ce4c64ac99b430"
+    ],
+    "missing_metrics": [
+      {
+        "metric_id": "finance.revenue",
+        "name": "营业收入",
+        "expected_type": "number",
+        "execution_evidence_exists": true,
+        "source_column_exists": true,
+        "matched_source_columns": [
+          "营业收入"
+        ]
+      },
+      {
+        "metric_id": "finance.gross_margin",
+        "name": "毛利率",
+        "expected_type": "percentage",
+        "execution_evidence_exists": true,
+        "source_column_exists": true,
+        "matched_source_columns": [
+          "毛利率"
+        ]
+      },
+      {
+        "metric_id": "finance.operating_profit",
+        "name": "营业利润",
+        "expected_type": "number",
+        "execution_evidence_exists": true,
+        "source_column_exists": true,
+        "matched_source_columns": [
+          "营业利润"
+        ]
+      },
+      {
+        "metric_id": "finance.net_profit",
+        "name": "净利润",
+        "expected_type": "number",
+        "execution_evidence_exists": true,
+        "source_column_exists": true,
+        "matched_source_columns": [
+          "净利润"
+        ]
+      }
+    ],
+    "issues": [
+      {
+        "code": "source_scope_mismatch",
+        "message": "实际取数列或范围与请求的期间或口径不一致，请修正取数计划。"
+      },
+      {
+        "code": "required_metrics_missing",
+        "metrics": [
+          {
+            "metric_id": "finance.revenue",
+            "name": "营业收入",
+            "expected_type": "number",
+            "execution_evidence_exists": true,
+            "source_column_exists": true,
+            "matched_source_columns": [
+              "营业收入"
+            ]
+          },
+          {
+            "metric_id": "finance.gross_margin",
+            "name": "毛利率",
+            "expected_type": "percentage",
+            "execution_evidence_exists": true,
+            "source_column_exists": true,
+            "matched_source_columns": [
+              "毛利率"
+            ]
+          },
+          {
+            "metric_id": "finance.operating_profit",
+            "name": "营业利润",
+            "expected_type": "number",
+            "execution_evidence_exists": true,
+            "source_column_exists": true,
+            "matched_source_columns": [
+              "营业利润"
+            ]
+          },
+          {
+            "metric_id": "finance.net_profit",
+            "name": "净利润",
+            "expected_type": "number",
+            "execution_evidence_exists": true,
+            "source_column_exists": true,
+            "matched_source_columns": [
+              "净利润"
+            ]
+          }
+        ],
+        "message": "指标已有执行结果，但尚未通过来源或口径核验：营业收入、毛利率、营业利润、净利润。"
+      }
+    ],
+    "available_sheets": [],
+    "known_headers": [
+      "净利润",
+      "月份",
+      "毛利",
+      "毛利率",
+      "营业利润",
+      "营业收入"
+    ],
+    "gate_review": {
+      "action": "repair",
+      "category": "gate_false_positive",
+      "complete": false,
+      "dismissed_issue_codes": [],
+      "supporting_fact_ids": [
+        "712def4813ce4c64ac99b430"
+      ],
+      "reason": "误报：1. 关于 `source_scope_mismatch`：请求明确指定期间为'2037年'，且执行计划中 `scope_requirements` 已正确设定过滤条件为 '月份 = 2037年'。虽然数据源的标题行（A1）文本显示为 '2036年'，但根据门禁复核原则，表头A列的 '月份' 字段值为 '1月' 至 '12月' 且无年份标识，结合请求中的 '2037年' 及 A2 行单位提示，系统将 A4:A15 的数据行关联至 2037 年是符合逻辑的口径映射（通常此类测试数据表仅含月份，年份由请求或全局上下文决定）。执行计划未错误排除数据，因此无范围不匹配问题。2. 关于 `required_metrics_missing`：所有四个指标（营业收入、毛利率、营业利润、净利润）在 `known_headers` 中均存在，且 `execution` 计划中已包含对应的聚合或计算步骤，`execution_evidence_exists` 为 true，并非缺失。",
+      "repair_instruction": "无需修复工具步骤。请撤销对 'source_scope_mismatch' 和 'required_metrics_missing' 的告警，并继续执行最终的结果汇总与呈现。",
+      "user_question": "",
+      "revalidated": true
+    }
+  },
+  "average_rejected": true,
+  "average_error": {
+    "code": "invalid_analysis_plan",
+    "message": "plan：期间比率应使用汇总分子/汇总分母，不能聚合原始比率列"
+  },
+  "judgments": {
+    "SemanticContractJudge": [
+      {
+        "task_type": "tabular_compute",
+        "is_grouped": false,
+        "group_dimension": null,
+        "is_audit": false,
+        "entity_predicates": [],
+        "metrics": [
+          "营业收入",
+          "毛利率",
+          "营业利润",
+          "净利润"
+        ],
+        "filter_conditions": [
+          "月份 = '2037年' (或所有属于2037年的月份)"
+        ],
+        "audit_checks": [],
+        "period": "2037年",
+        "operation": null,
+        "dimension": null,
+        "comparison": null,
+        "comparison_basis": null,
+        "ranking": null,
+        "limit": null,
+        "reason": "用户要求对2037年的多个财务指标（收入、毛利、毛利率、营业利润、净利润）进行总结，隐含了基于时间维度（2037年）的聚合计算（如汇总或求均值），属于数据聚合计算任务，而非简单的明细查询。未涉及按业务维度（如部门、项目）分组，也未指定特定实体。"
+      }
+    ],
+    "SemanticFilterJudge": [
+      {
+        "request_period": "2037年",
+        "source_period": "2037年",
+        "matched": true,
+        "reason": "请求期间为2037年。实际来源的标题明确包含'2037年'，且选中行涵盖全年12个月（1月至12月），行标签为月份列，标题中的2037年明确了这些月份所属的年度，证据充分匹配。"
+      },
+      {
+        "request_period": "2037年",
+        "source_period": "2036年",
+        "matched": false,
+        "reason": "请求期间为2037年，但来源标题明确标识为'2036年'，且行标签仅包含月份无年份，无法证明实际数据属于2037年，期间矛盾。"
+      },
+      {
+        "request_period": "2037年",
+        "source_period": "2036年",
+        "matched": false,
+        "reason": "请求期间为2037年，但来源标题明确指出为'2036年'，且实际行数据仅包含月份标签，无2037年证据，期间矛盾。"
+      },
+      {
+        "request_period": "2037年",
+        "source_period": "2036年",
+        "matched": false,
+        "reason": "用户要求期间为2037年，但来源绑定的实际数据表标题（source_labels A1）明确注明为“2036年月度经营明细”，且数据行仅包含月份（无年份列），实际证据确认为2036年数据，与请求期间矛盾。"
+      },
+      {
+        "request_period": "2037年",
+        "source_period": "2036年",
+        "matched": false,
+        "reason": "用户要求期间为2037年。实际来源标题明确标识为“2036年月度经营明细”，且数据行仅包含1-12月（无年份列区分，以标题年度为准），实际来源期间确认为2036年。标题明确为2036年且无2037年证据，故期间不匹配。"
+      },
+      {
+        "request_period": "2037年",
+        "source_period": "2037年",
+        "matched": true,
+        "reason": "来源标题'2037年月度经营明细'明确标识年度为2037年，且选中行包含全年1-12月，满足用户对2037年期间的要求。"
+      },
+      {
+        "request_period": "2037年",
+        "source_period": "2037年",
+        "matched": true,
+        "reason": "来源表标题（source_labels）明确标识为'2037年'，且已选中行（selected_row_labels）包含该表所有月份（1月至12月），满足2037年全年的期间要求。"
+      },
+      {
+        "request_period": "2037年",
+        "source_period": "2037年",
+        "matched": true,
+        "reason": "来源绑定标题明确指出为“2037年月度经营明细”，且已选中全部12个月份（1月至12月）的数据行，无额外过滤条件排除2037年数据，期间条件满足。"
+      },
+      {
+        "request_period": "2037年",
+        "source_period": "2037年",
+        "matched": true,
+        "reason": "用户要求2037年期间。来源绑定中无明确WHERE过滤条件，但源标签A1标题明确包含“2037年”，且所选行涵盖该表所有12个月（A4-A15），符合“所有属于2037年的月份”的口径要求，来源满足期间条件。"
+      },
+      {
+        "request_period": "2037年",
+        "source_period": "2036年",
+        "matched": false,
+        "reason": "请求期间为2037年，但来源标题明确标识为'2036年月度经营明细'，且行标签仅包含月份（1-12月）无年份区分，依据标题确认为2036年数据，与请求期间不符。"
+      }
+    ],
+    "TaskCompletenessJudge": [
+      {
+        "action": "recheck",
+        "category": "gate_false_positive",
+        "complete": false,
+        "dismissed_issue_codes": [
+          "source_scope_mismatch",
+          "required_metrics_missing"
+        ],
+        "supporting_fact_ids": [
+          "712def4813ce4c64ac99b430"
+        ],
+        "reason": "误报：1. 关于 `source_scope_mismatch`：请求明确指定期间为'2037年'，且执行计划中 `scope_requirements` 已正确设定过滤条件为 '月份 = 2037年'。虽然数据源的标题行（A1）文本显示为 '2036年'，但根据门禁复核原则，表头A列的 '月份' 字段值为 '1月' 至 '12月' 且无年份标识，结合请求中的 '2037年' 及 A2 行单位提示，系统将 A4:A15 的数据行关联至 2037 年是符合逻辑的口径映射（通常此类测试数据表仅含月份，年份由请求或全局上下文决定）。执行计划未错误排除数据，因此无范围不匹配问题。2. 关于 `required_metrics_missing`：所有四个指标（营业收入、毛利率、营业利润、净利润）在 `known_headers` 中均存在，且 `execution` 计划中已包含对应的聚合或计算步骤，`execution_evidence_exists` 为 true，并非缺失。",
+        "repair_instruction": "无需修复工具步骤。请撤销对 'source_scope_mismatch' 和 'required_metrics_missing' 的告警，并继续执行最终的结果汇总与呈现。",
+        "user_question": ""
+      },
+      {
+        "action": "recheck",
+        "category": "gate_false_positive",
+        "complete": false,
+        "dismissed_issue_codes": [
+          "required_metrics_missing"
+        ],
+        "supporting_fact_ids": [
+          "revenue",
+          "operating_profit",
+          "net_profit"
+        ],
+        "reason": "系统误报缺失'毛利率'。实际上表头中存在'毛利率'列(D)，且执行计划中已包含对'毛利'(C列)和'营业收入'(B列)的聚合。由于已知'营业收入'总和为1860，'毛利率'在单一年度总结场景下通常由 (Sum(毛利)/Sum(营业收入)) 或基于已计算好的年度指标得出。更关键的是，上下文中的`facts`并未包含毛利率的最终值，但`issues`指出的原因是“分析计划遗漏...请调用aggregate_spreadsheet补充聚合表达式”。检查执行计划，它确实只列出了sum操作，但未明确展示毛利率的衍生计算或最终fact生成。然而，观察`facts`列表，缺失的是`gross_margin`这个fact。但是，`known_headers`里有'毛利率'。问题在于执行计划中虽然列出了`gross_profit` (毛利)，但没有明确列出`gross_margin` (毛利率) 的计算或聚合。通常毛利率是比率。如果执行计划只做了Sum，无法直接得到百分比。但是，如果表格中'毛利率'列本身就是计算好的百分比（如常见财务表），则可以直接Sum（无意义）或取平均/加权。更合理的推断是：系统认为缺失是因为没有生成该指标的Fact。但根据门禁复核员角色，我需要检查执行计划是否真的无法完成。执行计划中有`gross_profit` (Sum of 毛利)。如果'毛利率'是独立列，通常不需要Sum，而是需要Weighted Average或者直接用总毛利/总收入。当前执行计划没有生成`gross_margin`的fact。因此，这确实是一个执行不完整。但是，等等，看`facts`里只有revenue, operating_profit, net_profit。缺少gross_margin。执行计划里metrics只有revenue, gross_profit, operating_profit, net_profit。确实漏算了gross_margin。所以`required_metrics_missing`是正确的警报。我需要执行`repair`。",
+        "repair_instruction": "执行计划遗漏了'毛利率'的计算或聚合。请调用 aggregate_spreadsheet 工具，基于'毛利'和'营业收入'字段计算2037年的综合毛利率（通常为总毛利/总营业收入），或者如果表格中已有'毛利率'列且为单值/平均意义，需明确聚合方式（如加权平均）。生成包含'毛利率'的Fact。",
+        "user_question": ""
+      }
+    ]
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "cached_contract": {
+    "has_filters": true,
+    "metric_row_filter": true,
+    "selected_fact_count": 0,
+    "issue_codes": [
+      "unsolicited_filter_applied",
+      "required_metrics_missing"
+    ],
+    "missing_metric_names": [
+      "营业收入",
+      "毛利率",
+      "营业利润",
+      "净利润"
+    ],
+    "filter_judge_calls": 0,
+    "derivation_source_calls": 0,
+    "compiled_plans": []
+  },
+  "only_has_filters_changed": {
+    "has_filters": false,
+    "metric_row_filter": true,
+    "selected_fact_count": 3,
+    "issue_codes": [
+      "required_metrics_missing"
+    ],
+    "missing_metric_names": [
+      "毛利率"
+    ],
+    "filter_judge_calls": 0,
+    "derivation_source_calls": 1,
+    "compiled_plans": [
+      {
+        "tables": [
+          {
+            "sheet": "利润表",
+            "header_row": 3,
+            "data_range": "A4:D14",
+            "id": "derive_t0"
+          }
+        ],
+        "calculations": [
+          {
+            "id": "derive_m0",
+            "label": "毛利率（注册关系补算）",
+            "metric_id": "finance.gross_margin",
+            "output_unit": "%",
+            "expression": {
+              "op": "divide",
+              "args": [
+                {
+                  "cell": "B6",
+                  "sheet": "利润表",
+                  "unit": "amount"
+                },
+                {
+                  "cell": "B4",
+                  "sheet": "利润表",
+                  "unit": "amount"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "mixed_query_calculations": {
+    "source": "Disposable numeric test fixture; original workbook untouched",
+    "status": "success",
+    "returned_fact_count": 4,
+    "returned_fact_labels": [
+      "营业收入 2026实际",
+      "毛利 2026实际",
+      "营业利润 2026实际",
+      "净利润 2026实际"
+    ],
+    "gross_margin_calculation_executed": false,
+    "query_ir_version": "1"
+  },
+  "scope": "Original receipts and cached contract; file path mapped to identical local source. Model judges mocked, derivation execution observed but not performed. Counterfactual has_filters=False is a diagnostic, not a proposed global fix."
+}

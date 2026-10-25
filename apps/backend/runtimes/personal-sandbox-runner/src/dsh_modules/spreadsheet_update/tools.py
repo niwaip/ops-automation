@@ -67,7 +67,8 @@ def tool_plan_spreadsheet_update(plan, user_id='sandbox_user'):
         _ACTIVE_COORDINATORS[coord.mgr.run_id] = coord
         register_turn_facts(coord.mgr.run_id, facts)
         return _output({'status': 'planned', 'plan_id': result['plan_id'],
-                        'preview': preview, 'warnings': warnings,
+                        'preview': preview, 'operations': internal.get('operations', []),
+                        'warnings': warnings,
                         'reconciliations': reconciliations,
                         'base_sheet': internal['snapshot']['selected_sheet_id'],
                         'new_sheet': internal['snapshot']['new_sheet_name'],
@@ -149,7 +150,9 @@ def dispatch_update_tool(name, params):
     schema = definition['parameters']
     if not isinstance(params, dict):
         return _output(error='工具参数必须为对象')
-    harmless_keys = {'comment', 'notes', 'description', 'reasoning', 'user_instruction', 'source_sheet', 'sheet'}
+    if name == 'plan_spreadsheet_update' and 'file_path' in params and not params.get('target_file'):
+        params['target_file'] = params.pop('file_path')
+    harmless_keys = {'comment', 'notes', 'description', 'reasoning', 'user_instruction', 'source_sheet', 'sheet', 'file_path'}
     unknown = params.keys() - schema['properties'].keys() - harmless_keys
     missing = [key for key in schema['required'] if not params.get(key)]
     if name == 'plan_spreadsheet_update':

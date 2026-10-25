@@ -1,0 +1,17 @@
+{
+  "message": "分别查询员工编号S22009、S17028和E2E_NOT_FOUND，给出每人的记录条数、总工数及金额(K)合计。编号精确匹配，找不到时明确未找到，不要编造姓名或记录。 只在聊天回复，不生成文件，不联网；无法核算时明确说明或向我澄清，不要猜测。",
+  "clientMessageId": "1792909590789-gl9w4j6m",
+  "clientAssistantMessageId": "1792909590789-7xw56pld",
+  "sessionId": "chat-session-1792908948915-ytw0yory",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

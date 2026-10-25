@@ -23,6 +23,7 @@ from .spreadsheet_plan import normalize_plan
 from .analysis_semantics import domain_pack, runtime_domain, validate_domain_calculation, validate_metric_result
 from .spreadsheet_semantic_bindings import semantic_bindings
 from .query_executor import execute_query_plan
+from .source_scope_metadata import attach_source_labels, select_bound_rows
 
 
 def compile_legacy_filters_to_predicate(filters):
@@ -56,7 +57,7 @@ def prepare_tables(plan, workbook, check, apply_filters=True):
     result = {}; cell_budget = 0
     for item in plan:
         check()
-        allowed_tbl_keys = {"id", "sheet", "data_range", "header_row", "filters", "where", "group_by", "having"}
+        allowed_tbl_keys = {"id", "sheet", "data_range", "header_row", "filters", "where", "group_by", "having", "row_ids"}
         if not isinstance(item, dict) or set(item) - allowed_tbl_keys:
             raise ValueError("非法数据表计划")
         if not {"id", "sheet", "data_range", "header_row"} <= set(item):
@@ -83,6 +84,7 @@ def prepare_tables(plan, workbook, check, apply_filters=True):
 
         # 闭环范围约束：自动修剪表尾非业务行（查询条件、报表类别、系统附注、总计行等）
         # 必须带完整词边界或明确分隔符，严禁将 "TotalEnergies" 等正常业务名称误当成 "total" 删行
+        from .spreadsheet_preflight import SUMMARY_ROW_LABEL_RE
         footer_pat = re.compile(
             r'^\s*(?:'
             r'[\*＊#※]'
@@ -93,6 +95,7 @@ def prepare_tables(plan, workbook, check, apply_filters=True):
             r')',
             re.I
         )
+        explicit_filter_str = json.dumps([item.get("filters"), item.get("where")], ensure_ascii=False)
         col_count = b - a + 1
         while end >= start:
             row_cells = [ws.cell(end, c) for c in range(a, b + 1) if ws.cell(end, c).value is not None]
@@ -108,15 +111,16 @@ def prepare_tables(plan, workbook, check, apply_filters=True):
             # （如 'Total Energy Services'、'*Star Consulting'、'Page 3 Solutions' 均为合法业务记录）
             populated_ratio = len(row_cells) / max(col_count, 1)
             has_measure_numbers = any(
-                isinstance(c.value, (int, float, Decimal)) and not isinstance(c.value, bool)
+                (isinstance(c.value, (int, float, Decimal)) and not isinstance(c.value, bool))
+                or (isinstance(c.value, str) and c.value.startswith("="))
                 for c in row_cells[1:]
             )
 
             if populated_ratio >= 0.5 and has_measure_numbers:
-                if re.fullmatch(r'(?:合\s*计|总\s*计|小\s*计|grand\s+total|total|subtotal|summary)[:：]?', first_val, re.I):
+                if end > start and SUMMARY_ROW_LABEL_RE.match(first_val) and (not first_val or first_val not in explicit_filter_str):
                     is_footer = True
             else:
-                if footer_pat.search(first_val):
+                if SUMMARY_ROW_LABEL_RE.match(first_val) or footer_pat.search(first_val):
                     is_footer = True
                 elif col_count >= 4 and len(row_cells) <= max(2, col_count // 4):
                     if any(footer_pat.search(str(c.value or "").strip()) for c in row_cells):
@@ -191,6 +195,7 @@ def prepare_tables(plan, workbook, check, apply_filters=True):
                     rows = [r for r in rows if matches_in(ws.cell(r, col).value)]
                 else:
                     raise ValueError(f"不支持的过滤操作符: {op}")
+        rows = select_bound_rows(item, rows)
         if not rows and not filters:
             raise ValueError("声明范围没有业务记录")
         result[item["id"]] = {**item, "data_range": normalized_data_range, "bounds": bounds, "selected_rows": rows,"excluded_header_rows":excluded,
@@ -283,9 +288,26 @@ def calculate_spreadsheet_analysis(source, plan, deadline=None, domain="generic"
         amount_unit = next(iter(declared)) if len(declared)==1 else "undeclared_amount"
 
         if has_query_features:
+            compiled_calculation_ids = set()
             legacy_pred = compile_legacy_filters_to_predicate(t0.get("filters", []))
+            q_spec = None
             if "query" in plan:
-                q_spec = dict(plan["query"])
+                q_raw = plan["query"]
+                if isinstance(q_raw, str):
+                    clean_q = re.sub(r'[\s,]+$', '', q_raw.strip())
+                    try:
+                        q_raw = json.loads(clean_q)
+                    except Exception:
+                        q_raw = None
+                if isinstance(q_raw, dict):
+                    q_spec = dict(q_raw)
+                elif plan.get("calculations"):
+                    plan.pop("query", None)
+                    q_spec = None
+                else:
+                    raise ValueError("query 必须为有效字典对象")
+
+            if q_spec is not None:
                 if legacy_pred:
                     q_where = q_spec.get("where")
                     q_spec["where"] = {"and": [legacy_pred, q_where]} if q_where else legacy_pred
@@ -300,11 +322,12 @@ def calculate_spreadsheet_analysis(source, plan, deadline=None, domain="generic"
                 for c in plan.get("calculations", []):
                     expr = c.get("expression", {})
                     if isinstance(expr, dict) and (expr.get("ref") in ("task_rows", "rows", "records") or expr.get("mode") == "records"):
+                        compiled_calculation_ids.add(c['id'])
                         if expr.get("fields"):
                             projection_fields.extend(expr.get("fields"))
                         continue
                     col_target = expr.get("column") or expr.get("field")
-                    if not col_target and expr.get("aggregate") not in ("count_rows", "count"):
+                    if not col_target and expr.get("aggregate") not in ("count_rows", "count", "first", "value", "val"):
                         continue
                     metrics_spec.append({
                         "id": c["id"],
@@ -312,7 +335,9 @@ def calculate_spreadsheet_analysis(source, plan, deadline=None, domain="generic"
                         "op": expr.get("aggregate", "sum"),
                         "field": col_target,
                         "unit": c.get("output_unit") or expr.get("unit"),
+                        **({"metric_id": c["metric_id"]} if "metric_id" in c else {}),
                     })
+                    compiled_calculation_ids.add(c['id'])
                 grp = plan.get("group_by") or t0.get("group_by")
                 if not grp:
                     declared_groups = [c.get('expression', {}).get('group_by') for c in plan.get('calculations', [])]
@@ -348,15 +373,55 @@ def calculate_spreadsheet_analysis(source, plan, deadline=None, domain="generic"
                     "select": all_fields,
                 }
 
-            query_res = execute_query_plan(values, q_spec, check, amount_unit)
-            if is_partial_recalc:
-                visited = getattr(query_res, "visited_cells", []) or (query_res.data.get("visited_cells") if isinstance(getattr(query_res, "data", None), dict) else [])
-                err_cell = _check_partial_error_intersection(visited)
-                if err_cell:
-                    return ToolResult.error("calculation_unverified", f"查询涉及的单元格 {err_cell} 包含公式计算错误", data=calculation)
-            canonical = json.dumps(plan, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
-            plan_hash = hashlib.sha256(canonical.encode()).hexdigest()
-            return query_res.to_tool_result(source, source_hash, requested_plan, q_spec, plan_hash, amount_unit)
+            if q_spec and not q_spec.get("metrics") and not q_spec.get("fields") and not q_spec.get("select") and plan.get("calculations"):
+                metrics_spec = []
+                projection_fields = []
+                for c in plan.get("calculations", []):
+                    expr = c.get("expression", {})
+                    if isinstance(expr, dict) and (expr.get("ref") in ("task_rows", "rows", "records") or expr.get("mode") == "records"):
+                        compiled_calculation_ids.add(c['id'])
+                        if expr.get("fields"):
+                            projection_fields.extend(expr.get("fields"))
+                        continue
+                    col_target = expr.get("column") or expr.get("field")
+                    if not col_target and expr.get("aggregate") not in ("count_rows", "count", "first", "value", "val"):
+                        continue
+                    metrics_spec.append({
+                        "id": c["id"],
+                        "label": c.get("label", c["id"]),
+                        "op": expr.get("aggregate", "sum"),
+                        "field": col_target,
+                        "unit": c.get("output_unit") or expr.get("unit"),
+                        **({"metric_id": c["metric_id"]} if "metric_id" in c else {}),
+                    })
+                    compiled_calculation_ids.add(c['id'])
+                if metrics_spec:
+                    q_spec["metrics"] = metrics_spec
+                if projection_fields and not q_spec.get("fields"):
+                    q_spec["fields"] = projection_fields
+
+            if q_spec is not None:
+                query_res = execute_query_plan(values, q_spec, check, amount_unit)
+                from .query_metric_validation import validate_query_metrics
+                validate_query_metrics(query_res, q_spec, domain)
+                attach_source_labels(original, query_res.coverage)
+                if 'query' in plan or 'source' in plan or 'metrics' in plan:
+                    from .query_calculation_stage import execute_query_calculations
+                    post_plan = {**plan, 'calculations': [c for c in plan.get('calculations', [])
+                                                         if c.get('id') not in compiled_calculation_ids]}
+                    q_spec = execute_query_calculations(
+                        query_res, post_plan, q_spec, source, deadline, domain,
+                        calculate_spreadsheet_analysis)
+                if is_partial_recalc:
+                    visited = getattr(query_res, "visited_cells", []) or (query_res.data.get("visited_cells") if isinstance(getattr(query_res, "data", None), dict) else [])
+                    err_cell = _check_partial_error_intersection(visited)
+                    if err_cell:
+                        return ToolResult.error("calculation_unverified", f"查询涉及的单元格 {err_cell} 包含公式计算错误", data=calculation)
+                canonical = json.dumps(plan, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+                plan_hash = hashlib.sha256(canonical.encode()).hexdigest()
+                if hashlib.sha256(source.read_bytes()).hexdigest() != source_hash:
+                    return ToolResult.error('source_changed', '查询与计算期间原件已变化')
+                return query_res.to_tool_result(source, source_hash, requested_plan, q_spec, plan_hash, amount_unit, semantic_domain={"id": domain, "version": pack.VERSION if pack else "1"})
 
         for key, limit in (("tables", 16), ("calculations", 64), ("checks", 32), ("rules", 32)):
             if not isinstance(plan.get(key, []), list) or len(plan.get(key, [])) > limit:
@@ -464,6 +529,7 @@ def calculate_spreadsheet_analysis(source, plan, deadline=None, domain="generic"
                      "excluded_header_rows":t["excluded_header_rows"],
                      "headers":t["headers"],"source_months":t.get("source_months"),
                      "selected_rows":t["selected_rows"],"filters":t.get("filters",[]),"coverage_complete":True} for t in tables.values()]
+        attach_source_labels(original, coverage)
         from openpyxl.utils import column_index_from_string
         extracted_rows = []
         for t in tables.values():
@@ -500,8 +566,22 @@ def calculate_spreadsheet_analysis(source, plan, deadline=None, domain="generic"
             view["total_rows"] = len(extracted_rows)
         for key in ("facts", "checks"):
             view[key]=[{**{k:v for k,v in item.items() if k!="source_cells"},
+                        **({"source_cells": (item["source_cells"] if len(item["source_cells"]) <= 12
+                                             else [*item["source_cells"][:6], "...", *item["source_cells"][-2:]])}
+                           if item.get("source_cells") else {}),
                         "source_cell_count":len(item["source_cells"])} for item in data[key]]
-        view["coverage"]=[{k:v for k,v in c.items() if k!="selected_rows"} for c in coverage]
+        view["coverage"]=[
+            {
+                **{k:v for k,v in c.items() if k!="selected_rows"},
+                **(
+                    {"selected_rows": c["selected_rows"][:500]}
+                    if c.get("selected_rows")
+                    and (c.get("filters") or len(c["selected_rows"]) < c.get("input_records", 0))
+                    else {}
+                ),
+            }
+            for c in coverage
+        ]
         return ToolResult.success(data=data,provenance=provenance,text=json.dumps(view,ensure_ascii=False,default=str))
     except TimeoutError:
         raise
@@ -519,16 +599,26 @@ def execute_spreadsheet_analysis(params, deadline=None):
     # Decode JSON-encoded structured fields at the protocol boundary only.
     # No inference or repair of business ranges/expressions happens here.
     params = dict(params)
-    if "plan" in params and isinstance(params["plan"], dict):
-        plan_obj = params.pop("plan")
-        params.update(plan_obj)
-    for key in ("tables", "calculations", "checks", "rules"):
-        if isinstance(params.get(key),str):
+    if "plan" in params:
+        if isinstance(params["plan"], str):
             try:
-                params[key] = json.loads(params[key])
-            except ValueError:
-                result = ToolResult.error("invalid_analysis_plan",f"{key}必须是JSON数组")
-                return TextToolOutput(result.render_text(),result)
+                plan_cleaned = re.sub(r'[\s,]+$', '', params["plan"].strip())
+                params["plan"] = json.loads(plan_cleaned)
+            except Exception:
+                pass
+        if isinstance(params["plan"], dict):
+            plan_obj = params.pop("plan")
+            params.update(plan_obj)
+    for key in ("tables", "calculations", "checks", "rules", "query", "where", "group_by", "metrics", "having", "order_by"):
+        if isinstance(params.get(key), str):
+            raw_s = params[key].strip()
+            cleaned_s = re.sub(r'[\s,]+$', '', raw_s)
+            try:
+                params[key] = json.loads(cleaned_s)
+            except (ValueError, json.JSONDecodeError):
+                if key in ("tables", "calculations", "checks", "rules"):
+                    result = ToolResult.error("invalid_analysis_plan", f"{key}必须是JSON数组")
+                    return TextToolOutput(result.render_text(), result)
     source, err_res = resolve_session_attachment(params.get("file_path", ""), "当前原生分析")
     if err_res:
         return TextToolOutput(err_res.render_text(), err_res)

@@ -1,0 +1,17 @@
+{
+  "message": "按员工编号汇总全部业务明细，给出总工数最高的前5位员工（同值按员工编号升序，固定5位），列出员工编号、姓名、记录数、工数合计、金额(K)合计。不要把员工单条记录排名当成员工汇总排名。 只在聊天回复，不生成文件，不联网；无法核算时明确说明或向我澄清，不要猜测。",
+  "clientMessageId": "1792915000413-ip8f5wji",
+  "clientAssistantMessageId": "1792915000413-klhqxtmw",
+  "sessionId": "chat-session-1792913884915-mf3awvji",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

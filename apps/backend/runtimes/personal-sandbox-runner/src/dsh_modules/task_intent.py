@@ -212,15 +212,19 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
 
     # Validate unit confirmation
     if 'unit_confirmation' in result and result['unit_confirmation']:
-        try:
-            result['unit_confirmation'] = validate_unit_confirmation(
-                result['unit_confirmation'],
-                [request] if relation == 'standalone' else [request, *users]
-            )
-        except ValueError:
-            if not allow_sanitize:
-                raise
+        u_quote = str((result['unit_confirmation'] or {}).get('quote') or '').strip()
+        if re.fullmatch(r'[\u4e00-\u9fa5A-Za-z0-9_]+\s*[\(（]\s*[A-Za-z\u4e00-\u9fa5]+\s*[\)）](?:合计|总计|汇总|均值|平均)?', u_quote):
             result['unit_confirmation'] = None
+        else:
+            try:
+                result['unit_confirmation'] = validate_unit_confirmation(
+                    result['unit_confirmation'],
+                    [request] if relation == 'standalone' else [request, *users]
+                )
+            except ValueError:
+                if not allow_sanitize:
+                    raise
+                result['unit_confirmation'] = None
 
     # Validate section confirmation (normalizing abbreviations against candidate titles)
     if 'section_confirmation' in result and result['section_confirmation']:

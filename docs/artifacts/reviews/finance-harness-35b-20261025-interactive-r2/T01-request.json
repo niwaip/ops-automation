@@ -1,0 +1,24 @@
+{
+  "message": "请根据附件实际数据，总结2026年全年营业收入、毛利、毛利率、营业利润、净利润和净利率。请读取完整工作簿并核实公式结果，全年利润率按全年利润除以全年收入计算。金额沿用原表单位，给出来源工作表和单元格。只在聊天中回复，不生成文件，不联网。",
+  "clientMessageId": "1792905186522-tbndla2y",
+  "clientAssistantMessageId": "1792905186522-f0dx98yr",
+  "sessionId": "chat-session-1792905175982-7x4tcitx",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [
+    {
+      "fileId": "file-1792905186072-d1grudtl1",
+      "fileName": "AI能力测试_财务报表.xlsx",
+      "mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "size": 32004
+    }
+  ],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

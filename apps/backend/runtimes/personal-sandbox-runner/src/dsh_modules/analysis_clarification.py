@@ -59,13 +59,33 @@ def review_clarification(text, evidence, prompt, model=None, deadline=None):
         for sheet in data.get('sheets', []):
             for candidate in sheet.get('header_candidates', []):
                 headers.update(str(v) for v in candidate.get('columns', {}).values())
+    if not headers:
+        try:
+            import json
+            import os
+            from . import config as _cfg
+            from .spreadsheet_preflight import profile_spreadsheet_for_planning
+            raw_att = os.environ.get('DSH_SESSION_ATTACHMENTS', '').strip()
+            att_files = json.loads(raw_att) if raw_att.startswith('[') else [x.strip() for x in raw_att.split(',') if x.strip()]
+            for fn in att_files:
+                if str(fn).lower().endswith(('.xlsx', '.xlsm', '.xls', '.csv')):
+                    prof = profile_spreadsheet_for_planning(Path(_cfg.WORKSPACE_DIR) / Path(fn).name, prompt=prompt)
+                    if prof:
+                        for s in prof.get('sheets', []):
+                            for h_name in (s.get('headers') or {}).values():
+                                if isinstance(h_name, str) and h_name.strip():
+                                    headers.add(h_name.strip())
+        except Exception:
+            pass
     verdict = judge_task_completeness(prompt, contract, facts, coverage,
         [{'code': 'clarification_claims_need_review',
-          'message': '保留澄清权；核对并移除澄清解释中没有来源支持的字段业务含义、公式或结果断言。'}],
+          'message': '保留澄清权；核对并移除澄清解释中没有来源支持的字段业务含义、公式或结果断言。已挂载附件时严禁要求用户重新上传文件。'}],
         model=model, deadline=deadline,
         context={'clarification_candidate': text, 'known_headers': sorted(headers),
                  'provenance': [r.provenance for r in (evidence or []) if getattr(r, 'is_success', False)]})
     candidate = (verdict or {}).get('user_question', '')
+    if headers and re.search(r'请上传|上传.*(?:文件|表格|附件)', candidate) and not re.search(r'请上传|上传.*(?:文件|表格|附件)', text):
+        return text, verdict
     if ((verdict or {}).get('action') == 'clarify' and len(candidate) >= 10
             and re.search(r'请确认|请问|请提供|请明确|请补充|请选择|能否', candidate)
             and clarification_is_grounded(candidate, evidence)):

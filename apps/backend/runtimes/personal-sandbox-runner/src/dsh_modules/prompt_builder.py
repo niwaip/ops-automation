@@ -417,11 +417,12 @@ def build_user_turn(
             user_parts.append(UPDATE_INSTRUCTIONS)
         elif "bash" in (available_tool_names or []):
             user_parts.append(
-                "【Excel 表格生成硬性执行要求 (Action Grounding)】:\n"
+                "【Excel 表格生成与副本编辑硬性执行要求 (Action Grounding)】:\n"
+                "- 【优先复用内置核算能力 + bash 闭环落盘】：若涉及原表基线核对、分组统计或行号定位，优先调用内置工具（`inspect_spreadsheet_structure`、`aggregate_spreadsheet`、`validate_spreadsheet_rows`）获取确定性基线数据；随后你必须调用 `bash` 工具在 Linux 终端执行 Python `openpyxl` 脚本，将最终生成或副本修改后的表格保存到工作区 `/workspace/<文件名>.xlsx`（严禁覆盖修改原输入附件）！\n"
                 "- 【默认严禁只向用户返回代码】：除非用户指令明确要求‘查看代码’、‘写出代码’或‘给出源码’，否则绝对不要在回复中直接输出 Python 代码半成品！\n"
-                "- 【闭环执行落盘】：你必须调用 `bash` 工具在 Linux 终端执行 Python openpyxl 脚本，将最终生成的表格保存到工作区 `/workspace/<文件名>.xlsx`！\n"
                 "- 【公式与重算规范】：生成公式时，调用 `/opt/dsh/skills/xlsx/scripts/recalc.py <file.xlsx>` 进行静态公式重算；\n"
-                "- 【自愈重试与结果汇报】：若脚本执行报错，修正代码重新运行，直到文件成功生成落盘；生成完成后向用户汇报文件名称与大小。"
+                "- 【财务常识与严禁盲目求和】：生成财务指标摘要表时，收入、毛利、营业利润、净利润等属于纵向层级递进核算指标，严禁在其下方添加 SUM 求和合计行（把收入与净利润相加是无业务意义的严重错误！）；仅当表格行属于同维度的横向并列细分项（如各部门费用、各产品销量）时才允许计算合计；\n"
+                "- 【自愈重试与结果汇报】：若脚本执行报错，修正代码重新运行，直到文件成功生成落盘；生成完成后向用户汇报文件名称、核验结果与大小。"
             )
 
     if is_inspect_intent and not is_generate_intent and not has_update_tools:

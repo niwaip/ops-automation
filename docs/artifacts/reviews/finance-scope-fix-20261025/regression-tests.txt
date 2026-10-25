@@ -1,0 +1,61 @@
+Synthesized summary introduced unverified number '999999'; rejecting synthesis.
+Synthesized summary introduced unverified number '999999'; rejecting synthesis.
+Synthesized summary introduced unverified number '999999'; rejecting synthesis.
+Synthesized summary introduced unverified number '588'; rejecting synthesis.
+Gate review unavailable: test timeout
+Synthesized summary introduced unverified number '115'; rejecting synthesis.
+Synthesized summary claimed zero-match when receipts have non-zero results; rejecting synthesis.
+Synthesized summary contained disclaimer for missing grouping breakdown; rejecting synthesis.
+Synthesized summary introduced unverified number '18.5'; rejecting synthesis.
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 32.5)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 18.7)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 30.0)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 30.0)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 30.0)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 32.5)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 30.0)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 17.0)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 17.0)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 17.0)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 17.0)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 18.7)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 17.0)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 30.0)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 32.5)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 30.0)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 30.0)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 30.0)
+⚡ [Harness Sampling Coverage Guard] 检测到模型在抽样/截断数据下未执行工具便断言核对/查重/审计结论，正在拦截引导使用 Python 进行全量统计...
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 32.5)
+<<<DSH_DELTA_RESET>>>
+⚡ [Harness Tool Call] 正在调用工具: report_informational_spreadsheet({'file_path': '/var/folders/sl/wxt_r0893w313j_k6bpz3_q00000gn/T/tmp214pgdb2/NAS ...)...
+✓ 工具 [report_informational_spreadsheet] 执行完成
+⏳ [Harness Agent] 正在结合前序采集证据进行深入推理与规划 (第 2 轮)...
+⏳ [Harness Agent] 正在根据执行结果汇总交付物 (第 2 轮)...
+⏳ [Harness Agent] 正在根据执行结果汇总交付物 (第 3 轮)...
+⏳ [Harness Agent] 正在根据执行结果汇总交付物 (第 4 轮)...
+<<<DSH_DELTA_RESET>>>
+⚡ [Harness Tool Call] 正在调用工具: analyze_spreadsheet({'file_path': '/var/folders/sl/wxt_r0893w313j_k6bpz3_q00000gn/T/tmpcr7qpdsn/sour...)...
+✓ 工具 [analyze_spreadsheet] 执行完成
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 31.7)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 30.0)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 30.0)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 31.7)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 30.0)
+<<<DSH_DELTA_RESET>>>
+⚡ [Harness Tool Call] 正在调用工具: analyze_spreadsheet({'file_path': '/var/folders/sl/wxt_r0893w313j_k6bpz3_q00000gn/T/tmp8je9rv7c/sour...)...
+✓ 工具 [analyze_spreadsheet] 执行完成
+⚡ [Harness Dynamic Budget] 检测到任务持续推进中，动态追加执行轮次至 3 (硬上限: 4)...
+⏳ [Harness Agent] 正在结合前序采集证据进行深入推理与规划 (第 2 轮)...
+⏳ [Harness Agent] 正在结合前序采集证据进行深入推理与规划 (第 3 轮)...
+⏳ [Harness Agent] 正在结合前序采集证据进行深入推理与规划 (第 4 轮)...
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 30.0)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 30.0)
+🎯 [Skill Router] 采用: xlsx (亲和度得分: 30.0)
+Synthesized summary has no conforming required_facts for contract metrics; rejecting synthesis.
+Synthesized summary missed required source_cells ['月度经营!B16'] for metric '全年营业收入'; falling back to template.
+Synthesized summary missed required source_cells ['月度经营!B16'] for metric '全年营业收入'; falling back to template.
+----------------------------------------------------------------------
+Ran 149 tests in 3.086s
+
+OK

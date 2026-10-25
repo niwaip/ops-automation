@@ -1,0 +1,16 @@
+{
+  "id": "1792914467624-zfn0f9eo",
+  "sessionId": "chat-session-1792913884915-mf3awvji",
+  "role": "assistant",
+  "content": "⚠️ 沙箱任务执行超时（超过 300 秒），已自动中止后台任务。请尝试简化任务或检查模型连通性。",
+  "timestamp": "2026-10-25T07:52:47.676Z",
+  "metadata": {
+    "mode": "chat",
+    "showThinking": true,
+    "clientMessageId": "1792914467624-zfn0f9eo",
+    "executionTrace": {
+      "executed": false,
+      "timeout": true
+    }
+  }
+}

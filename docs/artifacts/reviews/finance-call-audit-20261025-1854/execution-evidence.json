@@ -1,0 +1,1046 @@
+{
+  "schema_version": 1,
+  "turn_id": "1792925672193107554-a83b26751d064e6a98c315e8d55b75d7",
+  "created_at_ns": 1792925672193147887,
+  "source_hashes": {
+    "AI能力测试_财务报表.xlsx": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f"
+  },
+  "query": "【当前会话有效附件清单】: AI能力测试_财务报表.xlsx\n用户指令：总结2026年收入、毛利率、营业利润和净利润。",
+  "verified": false,
+  "guard_decisions": [
+    {
+      "guard": "task_intent_review",
+      "action": "revise",
+      "reason": {
+        "output_mode": "conversation",
+        "task_mode": "execute"
+      }
+    },
+    {
+      "guard": "task_intent",
+      "action": "accept",
+      "reason": {
+        "instruction_relation": "standalone",
+        "task_mode": "execute",
+        "output_mode": "conversation",
+        "artifact_types": [],
+        "unit_confirmation": null,
+        "section_confirmation": null,
+        "skill_invocation": {
+          "mode": "none",
+          "name": "",
+          "replace_defaults": false
+        },
+        "requirements": [
+          {
+            "id": "req_1",
+            "quote": "总结2026年收入、毛利率、营业利润和净利润。"
+          }
+        ]
+      }
+    },
+    {
+      "guard": "skill_admission",
+      "action": "use",
+      "reason": {
+        "initial_candidate": "xlsx",
+        "skill_id": "xlsx",
+        "use_default_rules": false,
+        "reason": "applicable",
+        "requirement_ids": [
+          "req_1"
+        ]
+      }
+    },
+    {
+      "guard": "user_unit_confirmation",
+      "action": "accept",
+      "reason": {
+        "unit": null,
+        "sections": null
+      }
+    },
+    {
+      "guard": "analysis_gate_review",
+      "action": "repair",
+      "reason": {
+        "action": "repair",
+        "category": "execution_incomplete",
+        "complete": false,
+        "dismissed_issue_codes": [],
+        "supporting_fact_ids": [
+          "actual__(('str', '营业收入'),)",
+          "actual__(('str', '营业利润'),)",
+          "actual__(('str', '净利润'),)"
+        ],
+        "reason": "1. 执行计划存在严重逻辑错误（重复聚合导致混淆），且已被系统标记为 invalid_analysis_plan。2. 缺失关键指标'毛利率'的数据提取。3. 现有事实中已正确提取'营业收入'、'营业利润'、'净利润'的2026实际值，但未提取'毛利'数值以计算或验证'毛利率'。需要先修正执行计划，重新提取'毛利'和'营业收入'数据，以便计算或获取毛利率。",
+        "repair_instruction": "1. 修正执行计划：分别对'营业收入'、'毛利'、'营业利润'、'净利润'执行单行条件查询（where field='项目' and value='xxx'），避免group_by冲突。2. 新增查询：提取'毛利'行的'2026实际'值。3. 计算毛利率：使用提取的'毛利'和'营业收入'值计算毛利率（毛利/营业收入），或直接查找表中是否有现成的毛利率列（根据表头'2026实际'等推断可能是计算值，需确认表结构是否隐含或需计算）。若表头仅包含绝对数，则需通过工具计算。",
+        "user_question": ""
+      }
+    },
+    {
+      "guard": "analysis_presentation",
+      "action": "runtime_owned",
+      "reason": {
+        "format": "unparsed",
+        "model_text_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "matched_id_count": 0,
+        "runtime_id_count": 2,
+        "unknown_id_count": null,
+        "missing_id_count": 2
+      }
+    },
+    {
+      "guard": "spreadsheet_evidence",
+      "action": "reject",
+      "reason": "【门禁复核建议】：1. 修正执行计划：分别对'营业收入'、'毛利'、'营业利润'、'净利润'执行单行条件查询（where field='项目' and value='xxx'），避免group_by冲突。2. 新增查询：提取'毛利'行的'2026实际'值。3. 计算毛利率：使用提取的'毛利'和'营业收入'值计算毛利率（毛利/营业收入），或直接查找表中是否有现成的毛利率列（根据表头'2026实际'等推断可能是计算值，需确认表结构是否隐含或需计算）。若表头仅包含绝对数，则需通过工具计算。\n【程序任务状态】\n{\"complete\": false, \"domain\": \"finance\", \"evidence_ids\": [\"26c86f2832c1f2635443cfd7\", \"adb57cfd99c87735e82c429f\"], \"missing_metrics\": [{\"metric_id\": \"finance.gross_margin\", \"name\": \"毛利率\", \"expected_type\": \"percentage\", \"source_column_status\": \"unknown\"}], \"issues\": [{\"code\": \"required_metrics_missing\", \"metrics\": [{\"metric_id\": \"finance.gross_margin\", \"name\": \"毛利率\", \"expected_type\": \"percentage\", \"source_column_status\": \"unknown\"}], \"message\": \"尚未核实指标 毛利率 的来源字段；需先读取真实工作表和表头，不能认定原件缺列。\"}], \"available_sheets\": [\"使用说明\", \"参数\", \"月度经营\", \"利润表\", \"预算对比\", \"资产负债表\", \"现金流量表\", \"部门分析\", \"交易明细\", \"管理驾驶舱\"], \"known_headers\": [\"2026实际\", \"2026预算\", \"差异\", \"项目\"], \"gate_review\": {\"action\": \"repair\", \"category\": \"execution_incomplete\", \"complete\": false, \"dismissed_issue_codes\": [], \"supporting_fact_ids\": [\"actual__(('str', '营业收入'),)\", \"actual__(('str', '营业利润'),)\", \"actual__(('str', '净利润'),)\"], \"reason\": \"1. 执行计划存在严重逻辑错误（重复聚合导致混淆），且已被系统标记为 invalid_analysis_plan。2. 缺失关键指标'毛利率'的数据提取。3. 现有事实中已正确提取'营业收入'、'营业利润'、'净利润'的2026实际值，但未提取'毛利'数值以计算或验证'毛利率'。需要先修正执行计划，重新提取'毛利'和'营业收入'数据，以便计算或获取毛利率。\", \"repair_instruction\": \"1. 修正执行计划：分别对'营业收入'、'毛利'、'营业利润'、'净利润'执行单行条件查询（where field='项目' and value='xxx'），避免group_by冲突。2. 新增查询：提取'毛利'行的'2026实际'值。3. 计算毛利率：使用提取的'毛利'和'营业收入'值计算毛利率（毛利/营业收入），或直接查找表中是否有现成的毛利率列（根据表头'2026实际'等推断可能是计算值，需确认表结构是否隐含或需计算）。若表头仅包含绝对数，则需通过工具计算。\", \"user_question\": \"\"}}\n只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。"
+    }
+  ],
+  "receipts": [
+    {
+      "schema_version": 1,
+      "status": "success",
+      "data": {
+        "kind": "spreadsheet_analysis",
+        "query_ir_version": "1",
+        "plan": {
+          "source": {
+            "sheet": "利润表",
+            "header_row": 3,
+            "data_range": "A4:D14"
+          },
+          "where": {
+            "op": "in",
+            "field": "项目",
+            "values": [
+              "营业收入",
+              "营业成本",
+              "毛利",
+              "营业利润",
+              "净利润"
+            ]
+          },
+          "group_by": [
+            "项目"
+          ],
+          "metrics": [
+            {
+              "id": "actual",
+              "label": "2026实际",
+              "field": "2026实际",
+              "op": "sum",
+              "unit": "amount"
+            },
+            {
+              "id": "budget",
+              "label": "2026预算",
+              "field": "2026预算",
+              "op": "sum",
+              "unit": "amount"
+            },
+            {
+              "id": "variance",
+              "label": "差异",
+              "field": "差异",
+              "op": "sum",
+              "unit": "amount"
+            }
+          ]
+        },
+        "requested_plan": {
+          "query": {
+            "source": {
+              "sheet": "利润表",
+              "header_row": 3,
+              "data_range": "A4:D14"
+            },
+            "where": {
+              "op": "in",
+              "field": "项目",
+              "values": [
+                "营业收入",
+                "营业成本",
+                "毛利",
+                "营业利润",
+                "净利润"
+              ]
+            },
+            "group_by": [
+              "项目"
+            ],
+            "metrics": [
+              {
+                "id": "actual",
+                "label": "2026实际",
+                "field": "2026实际",
+                "op": "sum",
+                "unit": "amount"
+              },
+              {
+                "id": "budget",
+                "label": "2026预算",
+                "field": "2026预算",
+                "op": "sum",
+                "unit": "amount"
+              },
+              {
+                "id": "variance",
+                "label": "差异",
+                "field": "差异",
+                "op": "sum",
+                "unit": "amount"
+              }
+            ]
+          }
+        },
+        "plan_hash": "a161f35c6fa57004d79eda0671957baf2612a980dd9cc94e9180146d51c929af",
+        "facts": [
+          {
+            "id": "actual__(('str', '营业收入'),)",
+            "label": "营业收入 2026实际",
+            "group_key": "营业收入",
+            "group_fields": {
+              "项目": "营业收入"
+            },
+            "value": "124020",
+            "unit": "千元",
+            "source_cells": [
+              "利润表!B4"
+            ],
+            "matched_records": 1
+          },
+          {
+            "id": "budget__(('str', '营业收入'),)",
+            "label": "营业收入 2026预算",
+            "group_key": "营业收入",
+            "group_fields": {
+              "项目": "营业收入"
+            },
+            "value": "120000",
+            "unit": "千元",
+            "source_cells": [
+              "利润表!C4"
+            ],
+            "matched_records": 1
+          },
+          {
+            "id": "variance__(('str', '营业收入'),)",
+            "label": "营业收入 差异",
+            "group_key": "营业收入",
+            "group_fields": {
+              "项目": "营业收入"
+            },
+            "value": "4020",
+            "unit": "千元",
+            "source_cells": [
+              "利润表!D4"
+            ],
+            "matched_records": 1
+          },
+          {
+            "id": "actual__(('str', '营业成本'),)",
+            "label": "营业成本 2026实际",
+            "group_key": "营业成本",
+            "group_fields": {
+              "项目": "营业成本"
+            },
+            "value": "70576.75",
+            "unit": "千元",
+            "source_cells": [
+              "利润表!B5"
+            ],
+            "matched_records": 1
+          },
+          {
+            "id": "budget__(('str', '营业成本'),)",
+            "label": "营业成本 2026预算",
+            "group_key": "营业成本",
+            "group_fields": {
+              "项目": "营业成本"
+            },
+            "value": "70000",
+            "unit": "千元",
+            "source_cells": [
+              "利润表!C5"
+            ],
+            "matched_records": 1
+          },
+          {
+            "id": "variance__(('str', '营业成本'),)",
+            "label": "营业成本 差异",
+            "group_key": "营业成本",
+            "group_fields": {
+              "项目": "营业成本"
+            },
+            "value": "576.749999999985",
+            "unit": "千元",
+            "source_cells": [
+              "利润表!D5"
+            ],
+            "matched_records": 1
+          },
+          {
+            "id": "actual__(('str', '毛利'),)",
+            "label": "毛利 2026实际",
+            "group_key": "毛利",
+            "group_fields": {
+              "项目": "毛利"
+            },
+            "value": "53443.25",
+            "unit": "千元",
+            "source_cells": [
+              "利润表!B6"
+            ],
+            "matched_records": 1
+          },
+          {
+            "id": "budget__(('str', '毛利'),)",
+            "label": "毛利 2026预算",
+            "group_key": "毛利",
+            "group_fields": {
+              "项目": "毛利"
+            },
+            "value": "50000",
+            "unit": "千元",
+            "source_cells": [
+              "利润表!C6"
+            ],
+            "matched_records": 1
+          },
+          {
+            "id": "variance__(('str', '毛利'),)",
+            "label": "毛利 差异",
+            "group_key": "毛利",
+            "group_fields": {
+              "项目": "毛利"
+            },
+            "value": "3443.25",
+            "unit": "千元",
+            "source_cells": [
+              "利润表!D6"
+            ],
+            "matched_records": 1
+          },
+          {
+            "id": "actual__(('str', '营业利润'),)",
+            "label": "营业利润 2026实际",
+            "group_key": "营业利润",
+            "group_fields": {
+              "项目": "营业利润"
+            },
+            "value": "21209.4",
+            "unit": "千元",
+            "source_cells": [
+              "利润表!B10"
+            ],
+            "matched_records": 1
+          },
+          {
+            "id": "budget__(('str', '营业利润'),)",
+            "label": "营业利润 2026预算",
+            "group_key": "营业利润",
+            "group_fields": {
+              "项目": "营业利润"
+            },
+            "value": "18300",
+            "unit": "千元",
+            "source_cells": [
+              "利润表!C10"
+            ],
+            "matched_records": 1
+          },
+          {
+            "id": "variance__(('str', '营业利润'),)",
+            "label": "营业利润 差异",
+            "group_key": "营业利润",
+            "group_fields": {
+              "项目": "营业利润"
+            },
+            "value": "2909.39999999999",
+            "unit": "千元",
+            "source_cells": [
+              "利润表!D10"
+            ],
+            "matched_records": 1
+          },
+          {
+            "id": "actual__(('str', '净利润'),)",
+            "label": "净利润 2026实际",
+            "group_key": "净利润",
+            "group_fields": {
+              "项目": "净利润"
+            },
+            "value": "16038.3",
+            "unit": "千元",
+            "source_cells": [
+              "利润表!B14"
+            ],
+            "matched_records": 1
+          },
+          {
+            "id": "budget__(('str', '净利润'),)",
+            "label": "净利润 2026预算",
+            "group_key": "净利润",
+            "group_fields": {
+              "项目": "净利润"
+            },
+            "value": "13950",
+            "unit": "千元",
+            "source_cells": [
+              "利润表!C14"
+            ],
+            "matched_records": 1
+          },
+          {
+            "id": "variance__(('str', '净利润'),)",
+            "label": "净利润 差异",
+            "group_key": "净利润",
+            "group_fields": {
+              "项目": "净利润"
+            },
+            "value": "2088.3",
+            "unit": "千元",
+            "source_cells": [
+              "利润表!D14"
+            ],
+            "matched_records": 1
+          }
+        ],
+        "rows": [
+          {
+            "group_key": "营业收入",
+            "项目": "营业收入",
+            "actual": "124020",
+            "budget": "120000",
+            "variance": "4020"
+          },
+          {
+            "group_key": "营业成本",
+            "项目": "营业成本",
+            "actual": "70576.75",
+            "budget": "70000",
+            "variance": "576.749999999985"
+          },
+          {
+            "group_key": "毛利",
+            "项目": "毛利",
+            "actual": "53443.25",
+            "budget": "50000",
+            "variance": "3443.25"
+          },
+          {
+            "group_key": "营业利润",
+            "项目": "营业利润",
+            "actual": "21209.4",
+            "budget": "18300",
+            "variance": "2909.39999999999"
+          },
+          {
+            "group_key": "净利润",
+            "项目": "净利润",
+            "actual": "16038.3",
+            "budget": "13950",
+            "variance": "2088.3"
+          }
+        ],
+        "coverage": [
+          {
+            "id": "detail",
+            "sheet": "利润表",
+            "data_range": "A4:D14",
+            "header_row": 3,
+            "input_records": 11,
+            "evaluated_records": 5,
+            "excluded_header_rows": [],
+            "headers": {
+              "A": "项目",
+              "B": "2026实际",
+              "C": "2026预算",
+              "D": "差异"
+            },
+            "selected_rows": [
+              4,
+              5,
+              6,
+              10,
+              14
+            ],
+            "coverage_complete": true,
+            "filters": [
+              {
+                "op": "in",
+                "field": "项目",
+                "values": [
+                  "营业收入",
+                  "营业成本",
+                  "毛利",
+                  "营业利润",
+                  "净利润"
+                ]
+              }
+            ]
+          }
+        ],
+        "visited_cells": [
+          "利润表!B10",
+          "利润表!B14",
+          "利润表!B4",
+          "利润表!B5",
+          "利润表!B6",
+          "利润表!C10",
+          "利润表!C14",
+          "利润表!C4",
+          "利润表!C5",
+          "利润表!C6",
+          "利润表!D10",
+          "利润表!D14",
+          "利润表!D4",
+          "利润表!D5",
+          "利润表!D6"
+        ],
+        "amount_unit": "千元",
+        "stages": {
+          "source_rows": 11,
+          "where_rows": 5,
+          "groups_count": 5,
+          "having_groups_count": 5,
+          "final_rows": 5
+        },
+        "semantic_domain": {
+          "id": "finance",
+          "version": "1"
+        },
+        "evidence_id": "26c86f2832c1f2635443cfd7"
+      },
+      "error": null,
+      "provenance": {
+        "file_path": "/workspace/AI能力测试_财务报表.xlsx",
+        "workbook_id": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+        "plan_hash": "a161f35c6fa57004d79eda0671957baf2612a980dd9cc94e9180146d51c929af",
+        "evidence_id": "26c86f2832c1f2635443cfd7"
+      },
+      "text_representation": "{\"evidence_id\": \"26c86f2832c1f2635443cfd7\", \"amount_unit\": \"千元\", \"stages\": {\"source_rows\": 11, \"where_rows\": 5, \"groups_count\": 5, \"having_groups_count\": 5, \"final_rows\": 5}, \"facts\": [{\"id\": \"actual__(('str', '营业收入'),)\", \"label\": \"营业收入 2026实际\", \"group_key\": \"营业收入\", \"group_fields\": {\"项目\": \"营业收入\"}, \"value\": \"124020\", \"unit\": \"千元\", \"matched_records\": 1, \"source_cells\": [\"利润表!B4\"]}, {\"id\": \"budget__(('str', '营业收入'),)\", \"label\": \"营业收入 2026预算\", \"group_key\": \"营业收入\", \"group_fields\": {\"项目\": \"营业收入\"}, \"value\": \"120000\", \"unit\": \"千元\", \"matched_records\": 1, \"source_cells\": [\"利润表!C4\"]}, {\"id\": \"variance__(('str', '营业收入'),)\", \"label\": \"营业收入 差异\", \"group_key\": \"营业收入\", \"group_fields\": {\"项目\": \"营业收入\"}, \"value\": \"4020\", \"unit\": \"千元\", \"matched_records\": 1, \"source_cells\": [\"利润表!D4\"]}, {\"id\": \"actual__(('str', '营业成本'),)\", \"label\": \"营业成本 2026实际\", \"group_key\": \"营业成本\", \"group_fields\": {\"项目\": \"营业成本\"}, \"value\": \"70576.75\", \"unit\": \"千元\", \"matched_records\": 1, \"source_cells\": [\"利润表!B5\"]}, {\"id\": \"budget__(('str', '营业成本'),)\", \"label\": \"营业成本 2026预算\", \"group_key\": \"营业成本\", \"group_fields\": {\"项目\": \"营业成本\"}, \"value\": \"70000\", \"unit\": \"千元\", \"matched_records\": 1, \"source_cells\": [\"利润表!C5\"]}, {\"id\": \"variance__(('str', '营业成本'),)\", \"label\": \"营业成本 差异\", \"group_key\": \"营业成本\", \"group_fields\": {\"项目\": \"营业成本\"}, \"value\": \"576.749999999985\", \"unit\": \"千元\", \"matched_records\": 1, \"source_cells\": [\"利润表!D5\"]}, {\"id\": \"actual__(('str', '毛利'),)\", \"label\": \"毛利 2026实际\", \"group_key\": \"毛利\", \"group_fields\": {\"项目\": \"毛利\"}, \"value\": \"53443.25\", \"unit\": \"千元\", \"matched_records\": 1, \"source_cells\": [\"利润表!B6\"]}, {\"id\": \"budget__(('str', '毛利'),)\", \"label\": \"毛利 2026预算\", \"group_key\": \"毛利\", \"group_fields\": {\"项目\": \"毛利\"}, \"value\": \"50000\", \"unit\": \"千元\", \"matched_records\": 1, \"source_cells\": [\"利润表!C6\"]}, {\"id\": \"variance__(('str', '毛利'),)\", \"label\": \"毛利 差异\", \"group_key\": \"毛利\", \"group_fields\": {\"项目\": \"毛利\"}, \"value\": \"3443.25\", \"unit\": \"千元\", \"matched_records\": 1, \"source_cells\": [\"利润表!D6\"]}, {\"id\": \"actual__(('str', '营业利润'),)\", \"label\": \"营业利润 2026实际\", \"group_key\": \"营业利润\", \"group_fields\": {\"项目\": \"营业利润\"}, \"value\": \"21209.4\", \"unit\": \"千元\", \"matched_records\": 1, \"source_cells\": [\"利润表!B10\"]}, {\"id\": \"budget__(('str', '营业利润'),)\", \"label\": \"营业利润 2026预算\", \"group_key\": \"营业利润\", \"group_fields\": {\"项目\": \"营业利润\"}, \"value\": \"18300\", \"unit\": \"千元\", \"matched_records\": 1, \"source_cells\": [\"利润表!C10\"]}, {\"id\": \"variance__(('str', '营业利润'),)\", \"label\": \"营业利润 差异\", \"group_key\": \"营业利润\", \"group_fields\": {\"项目\": \"营业利润\"}, \"value\": \"2909.39999999999\", \"unit\": \"千元\", \"matched_records\": 1, \"source_cells\": [\"利润表!D10\"]}, {\"id\": \"actual__(('str', '净利润'),)\", \"label\": \"净利润 2026实际\", \"group_key\": \"净利润\", \"group_fields\": {\"项目\": \"净利润\"}, \"value\": \"16038.3\", \"unit\": \"千元\", \"matched_records\": 1, \"source_cells\": [\"利润表!B14\"]}, {\"id\": \"budget__(('str', '净利润'),)\", \"label\": \"净利润 2026预算\", \"group_key\": \"净利润\", \"group_fields\": {\"项目\": \"净利润\"}, \"value\": \"13950\", \"unit\": \"千元\", \"matched_records\": 1, \"source_cells\": [\"利润表!C14\"]}, {\"id\": \"variance__(('str', '净利润'),)\", \"label\": \"净利润 差异\", \"group_key\": \"净利润\", \"group_fields\": {\"项目\": \"净利润\"}, \"value\": \"2088.3\", \"unit\": \"千元\", \"matched_records\": 1, \"source_cells\": [\"利润表!D14\"]}], \"total_facts\": 15, \"rows\": [{\"group_key\": \"营业收入\", \"项目\": \"营业收入\", \"actual\": \"124020\", \"budget\": \"120000\", \"variance\": \"4020\"}, {\"group_key\": \"营业成本\", \"项目\": \"营业成本\", \"actual\": \"70576.75\", \"budget\": \"70000\", \"variance\": \"576.749999999985\"}, {\"group_key\": \"毛利\", \"项目\": \"毛利\", \"actual\": \"53443.25\", \"budget\": \"50000\", \"variance\": \"3443.25\"}, {\"group_key\": \"营业利润\", \"项目\": \"营业利润\", \"actual\": \"21209.4\", \"budget\": \"18300\", \"variance\": \"2909.39999999999\"}, {\"group_key\": \"净利润\", \"项目\": \"净利润\", \"actual\": \"16038.3\", \"budget\": \"13950\", \"variance\": \"2088.3\"}], \"total_rows\": 5, \"coverage\": [{\"id\": \"detail\", \"sheet\": \"利润表\", \"data_range\": \"A4:D14\", \"header_row\": 3, \"input_records\": 11, \"evaluated_records\": 5, \"excluded_header_rows\": [], \"headers\": {\"A\": \"项目\", \"B\": \"2026实际\", \"C\": \"2026预算\", \"D\": \"差异\"}, \"coverage_complete\": true, \"filters\": [{\"op\": \"in\", \"field\": \"项目\", \"values\": [\"营业收入\", \"营业成本\", \"毛利\", \"营业利润\", \"净利润\"]}], \"selected_rows\": [4, 5, 6, 10, 14]}], \"semantic_domain\": {\"id\": \"finance\", \"version\": \"1\"}}"
+    },
+    {
+      "schema_version": 1,
+      "status": "success",
+      "data": {
+        "kind": "spreadsheet_structure",
+        "workbook_id": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+        "extraction_mode": "SCHEMA_SAMPLE",
+        "available_sheets": [
+          "使用说明",
+          "参数",
+          "月度经营",
+          "利润表",
+          "预算对比",
+          "资产负债表",
+          "现金流量表",
+          "部门分析",
+          "交易明细",
+          "管理驾驶舱"
+        ],
+        "coverage_complete": false,
+        "sheets": [
+          {
+            "sheet": "利润表",
+            "dimensions": "A1:D14",
+            "physical_rows": 14,
+            "label_bands": [
+              {
+                "row": 1,
+                "cells": {
+                  "A1": "2026年度利润表"
+                }
+              },
+              {
+                "row": 3,
+                "cells": {
+                  "A3": "项目",
+                  "B3": "2026实际",
+                  "C3": "2026预算",
+                  "D3": "差异"
+                }
+              }
+            ],
+            "unit_declarations": [],
+            "metadata_scan_complete": true,
+            "coverage_complete": false,
+            "sample_cells": [
+              {
+                "A1": "2026年度利润表"
+              },
+              {
+                "A3": "项目",
+                "B3": "2026实际",
+                "C3": "2026预算",
+                "D3": "差异"
+              },
+              {
+                "A4": "营业收入",
+                "B4": "=月度经营!B16",
+                "C4": "120000",
+                "D4": "=B4-C4"
+              },
+              {
+                "A5": "营业成本",
+                "B5": "=月度经营!C16",
+                "C5": "70000",
+                "D5": "=B5-C5"
+              },
+              {
+                "A6": "毛利",
+                "B6": "=月度经营!D16",
+                "C6": "50000",
+                "D6": "=B6-C6"
+              },
+              {
+                "A7": "销售费用",
+                "B7": "=月度经营!F16",
+                "C7": "14000",
+                "D7": "=B7-C7"
+              },
+              {
+                "A8": "管理费用",
+                "B8": "=月度经营!G16",
+                "C8": "10800",
+                "D8": "=B8-C8"
+              },
+              {
+                "A9": "研发费用",
+                "B9": "=月度经营!H16",
+                "C9": "6900",
+                "D9": "=B9-C9"
+              },
+              {
+                "A10": "营业利润",
+                "B10": "=月度经营!I16",
+                "C10": "18300",
+                "D10": "=B10-C10"
+              },
+              {
+                "A11": "其他收益",
+                "B11": "=月度经营!K16",
+                "C11": "300",
+                "D11": "=B11-C11"
+              },
+              {
+                "A12": "税前利润",
+                "B12": "=月度经营!L16",
+                "C12": "18600",
+                "D12": "=B12-C12"
+              },
+              {
+                "A13": "所得税",
+                "B13": "=月度经营!M16",
+                "C13": "4650",
+                "D13": "=B13-C13"
+              },
+              {
+                "A14": "净利润",
+                "B14": "=月度经营!N16",
+                "C14": "13950",
+                "D14": "=B14-C14"
+              }
+            ],
+            "header_candidates": [
+              {
+                "row": 3,
+                "columns": {
+                  "A": "项目",
+                  "B": "2026实际",
+                  "C": "2026预算",
+                  "D": "差异"
+                }
+              }
+            ],
+            "data_region_candidates": [
+              {
+                "header_row": 3,
+                "data_range": "A4:D14",
+                "reason": "候选来自非公式文本表头；排除末尾显式合计行与说明行，请按任务核对"
+              }
+            ],
+            "row_labels": [
+              {
+                "cell": "A1",
+                "value": "2026年度利润表"
+              },
+              {
+                "cell": "A3",
+                "value": "项目"
+              },
+              {
+                "cell": "A4",
+                "value": "营业收入"
+              },
+              {
+                "cell": "A5",
+                "value": "营业成本"
+              },
+              {
+                "cell": "A6",
+                "value": "毛利"
+              },
+              {
+                "cell": "A7",
+                "value": "销售费用"
+              },
+              {
+                "cell": "A8",
+                "value": "管理费用"
+              },
+              {
+                "cell": "A9",
+                "value": "研发费用"
+              },
+              {
+                "cell": "A10",
+                "value": "营业利润"
+              },
+              {
+                "cell": "A11",
+                "value": "其他收益"
+              },
+              {
+                "cell": "A12",
+                "value": "税前利润"
+              },
+              {
+                "cell": "A13",
+                "value": "所得税"
+              },
+              {
+                "cell": "A14",
+                "value": "净利润"
+              }
+            ]
+          }
+        ]
+      },
+      "error": null,
+      "provenance": {
+        "file_path": "/workspace/AI能力测试_财务报表.xlsx",
+        "workbook_id": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f"
+      },
+      "text_representation": "{\"kind\": \"spreadsheet_structure\", \"workbook_id\": \"9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f\", \"extraction_mode\": \"SCHEMA_SAMPLE\", \"available_sheets\": [\"使用说明\", \"参数\", \"月度经营\", \"利润表\", \"预算对比\", \"资产负债表\", \"现金流量表\", \"部门分析\", \"交易明细\", \"管理驾驶舱\"], \"coverage_complete\": false, \"sheets\": [{\"sheet\": \"利润表\", \"dimensions\": \"A1:D14\", \"physical_rows\": 14, \"label_bands\": [{\"row\": 1, \"cells\": {\"A1\": \"2026年度利润表\"}}, {\"row\": 3, \"cells\": {\"A3\": \"项目\", \"B3\": \"2026实际\", \"C3\": \"2026预算\", \"D3\": \"差异\"}}], \"unit_declarations\": [], \"metadata_scan_complete\": true, \"coverage_complete\": false, \"sample_cells\": [{\"A1\": \"2026年度利润表\"}, {\"A3\": \"项目\", \"B3\": \"2026实际\", \"C3\": \"2026预算\", \"D3\": \"差异\"}, {\"A4\": \"营业收入\", \"B4\": \"=月度经营!B16\", \"C4\": \"120000\", \"D4\": \"=B4-C4\"}, {\"A5\": \"营业成本\", \"B5\": \"=月度经营!C16\", \"C5\": \"70000\", \"D5\": \"=B5-C5\"}, {\"A6\": \"毛利\", \"B6\": \"=月度经营!D16\", \"C6\": \"50000\", \"D6\": \"=B6-C6\"}, {\"A7\": \"销售费用\", \"B7\": \"=月度经营!F16\", \"C7\": \"14000\", \"D7\": \"=B7-C7\"}, {\"A8\": \"管理费用\", \"B8\": \"=月度经营!G16\", \"C8\": \"10800\", \"D8\": \"=B8-C8\"}, {\"A9\": \"研发费用\", \"B9\": \"=月度经营!H16\", \"C9\": \"6900\", \"D9\": \"=B9-C9\"}, {\"A10\": \"营业利润\", \"B10\": \"=月度经营!I16\", \"C10\": \"18300\", \"D10\": \"=B10-C10\"}, {\"A11\": \"其他收益\", \"B11\": \"=月度经营!K16\", \"C11\": \"300\", \"D11\": \"=B11-C11\"}, {\"A12\": \"税前利润\", \"B12\": \"=月度经营!L16\", \"C12\": \"18600\", \"D12\": \"=B12-C12\"}, {\"A13\": \"所得税\", \"B13\": \"=月度经营!M16\", \"C13\": \"4650\", \"D13\": \"=B13-C13\"}, {\"A14\": \"净利润\", \"B14\": \"=月度经营!N16\", \"C14\": \"13950\", \"D14\": \"=B14-C14\"}], \"header_candidates\": [{\"row\": 3, \"columns\": {\"A\": \"项目\", \"B\": \"2026实际\", \"C\": \"2026预算\", \"D\": \"差异\"}}], \"data_region_candidates\": [{\"header_row\": 3, \"data_range\": \"A4:D14\", \"reason\": \"候选来自非公式文本表头；排除末尾显式合计行与说明行，请按任务核对\"}], \"row_labels\": [{\"cell\": \"A1\", \"value\": \"2026年度利润表\"}, {\"cell\": \"A3\", \"value\": \"项目\"}, {\"cell\": \"A4\", \"value\": \"营业收入\"}, {\"cell\": \"A5\", \"value\": \"营业成本\"}, {\"cell\": \"A6\", \"value\": \"毛利\"}, {\"cell\": \"A7\", \"value\": \"销售费用\"}, {\"cell\": \"A8\", \"value\": \"管理费用\"}, {\"cell\": \"A9\", \"value\": \"研发费用\"}, {\"cell\": \"A10\", \"value\": \"营业利润\"}, {\"cell\": \"A11\", \"value\": \"其他收益\"}, {\"cell\": \"A12\", \"value\": \"税前利润\"}, {\"cell\": \"A13\", \"value\": \"所得税\"}, {\"cell\": \"A14\", \"value\": \"净利润\"}]}]}\n[系统提示]: 当前工作表样本包含公式字符串（如 =Sheet!Cell 或 =SUM(...)），inspect_spreadsheet_structure 仅展示未求值的公式文本，严禁据此猜测或硬编码数值。若需获取公式真实计算值或生成新表格，请先调用 query_spreadsheet / analyze_spreadsheet 读取计算结果，或在 bash 中使用重算后的工作簿读取真实计算值。"
+    },
+    {
+      "schema_version": 1,
+      "status": "error",
+      "data": {
+        "requested_plan": {
+          "tables": [
+            {
+              "id": "profit",
+              "sheet": "利润表",
+              "data_range": "A4:D14",
+              "header_row": 3,
+              "filters": [
+                {
+                  "column": "项目",
+                  "op": "in",
+                  "values": [
+                    "营业收入",
+                    "毛利",
+                    "营业利润",
+                    "净利润"
+                  ]
+                }
+              ]
+            }
+          ],
+          "calculations": [
+            {
+              "id": "gross_margin",
+              "label": "毛利率",
+              "expression": {
+                "op": "divide",
+                "args": [
+                  {
+                    "ref": "gross_profit"
+                  },
+                  {
+                    "ref": "revenue"
+                  }
+                ]
+              },
+              "output_unit": "%"
+            }
+          ],
+          "query": {
+            "source": {
+              "sheet": "利润表",
+              "header_row": 3,
+              "data_range": "A4:D14"
+            },
+            "where": {
+              "op": "in",
+              "field": "项目",
+              "values": [
+                "营业收入",
+                "毛利",
+                "营业利润",
+                "净利润"
+              ]
+            },
+            "group_by": [
+              "项目"
+            ],
+            "metrics": [
+              {
+                "id": "revenue",
+                "label": "营业收入 2026实际",
+                "field": "2026实际",
+                "op": "sum",
+                "unit": "amount"
+              },
+              {
+                "id": "gross_profit",
+                "label": "毛利 2026实际",
+                "field": "2026实际",
+                "op": "sum",
+                "unit": "amount"
+              },
+              {
+                "id": "operating_profit",
+                "label": "营业利润 2026实际",
+                "field": "2026实际",
+                "op": "sum",
+                "unit": "amount"
+              },
+              {
+                "id": "net_profit",
+                "label": "净利润 2026实际",
+                "field": "2026实际",
+                "op": "sum",
+                "unit": "amount"
+              }
+            ]
+          }
+        }
+      },
+      "error": {
+        "code": "invalid_analysis_plan",
+        "message": "plan：度量定义冲突：'营业收入 2026实际' 与 '毛利 2026实际' 对同一字段 '2026实际' 执行了完全相同的 'sum' 聚合，这会导致两个不同指标输出完全相同的混加数值。若各指标位于某维度列（如 '项目'/'科目'）的不同行，请设置 group_by 为该维度列并仅保留一个对 '2026实际' 的度量，或分别按单行条件查询。"
+      },
+      "provenance": {
+        "file_path": "/workspace/AI能力测试_财务报表.xlsx",
+        "workbook_id": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+        "plan_hash": "d41e2349a8be357ebecb3d091b020c0629fab742a007f838b667efb3a993f322"
+      }
+    },
+    {
+      "schema_version": 1,
+      "status": "success",
+      "data": {
+        "kind": "spreadsheet_analysis",
+        "query_ir_version": "1",
+        "plan": {
+          "source": {
+            "sheet": "利润表",
+            "header_row": 3,
+            "data_range": "A4:D14"
+          },
+          "where": {
+            "op": "in",
+            "field": "项目",
+            "values": [
+              "营业收入",
+              "毛利",
+              "营业利润",
+              "净利润"
+            ]
+          },
+          "group_by": [
+            "项目"
+          ],
+          "metrics": [
+            {
+              "id": "actual",
+              "label": "2026实际",
+              "field": "2026实际",
+              "op": "sum",
+              "unit": "amount"
+            }
+          ]
+        },
+        "requested_plan": {
+          "query": {
+            "source": {
+              "sheet": "利润表",
+              "header_row": 3,
+              "data_range": "A4:D14"
+            },
+            "where": {
+              "op": "in",
+              "field": "项目",
+              "values": [
+                "营业收入",
+                "毛利",
+                "营业利润",
+                "净利润"
+              ]
+            },
+            "group_by": [
+              "项目"
+            ],
+            "metrics": [
+              {
+                "id": "actual",
+                "label": "2026实际",
+                "field": "2026实际",
+                "op": "sum",
+                "unit": "amount"
+              }
+            ]
+          }
+        },
+        "plan_hash": "f00fbb9fce6731355fff956692ce3a5f21f6a1fd385f8aaa3d7c80064b858ad9",
+        "facts": [
+          {
+            "id": "actual__(('str', '营业收入'),)",
+            "label": "营业收入 2026实际",
+            "group_key": "营业收入",
+            "group_fields": {
+              "项目": "营业收入"
+            },
+            "value": "124020",
+            "unit": "千元",
+            "source_cells": [
+              "利润表!B4"
+            ],
+            "matched_records": 1
+          },
+          {
+            "id": "actual__(('str', '毛利'),)",
+            "label": "毛利 2026实际",
+            "group_key": "毛利",
+            "group_fields": {
+              "项目": "毛利"
+            },
+            "value": "53443.25",
+            "unit": "千元",
+            "source_cells": [
+              "利润表!B6"
+            ],
+            "matched_records": 1
+          },
+          {
+            "id": "actual__(('str', '营业利润'),)",
+            "label": "营业利润 2026实际",
+            "group_key": "营业利润",
+            "group_fields": {
+              "项目": "营业利润"
+            },
+            "value": "21209.4",
+            "unit": "千元",
+            "source_cells": [
+              "利润表!B10"
+            ],
+            "matched_records": 1
+          },
+          {
+            "id": "actual__(('str', '净利润'),)",
+            "label": "净利润 2026实际",
+            "group_key": "净利润",
+            "group_fields": {
+              "项目": "净利润"
+            },
+            "value": "16038.3",
+            "unit": "千元",
+            "source_cells": [
+              "利润表!B14"
+            ],
+            "matched_records": 1
+          }
+        ],
+        "rows": [
+          {
+            "group_key": "营业收入",
+            "项目": "营业收入",
+            "actual": "124020"
+          },
+          {
+            "group_key": "毛利",
+            "项目": "毛利",
+            "actual": "53443.25"
+          },
+          {
+            "group_key": "营业利润",
+            "项目": "营业利润",
+            "actual": "21209.4"
+          },
+          {
+            "group_key": "净利润",
+            "项目": "净利润",
+            "actual": "16038.3"
+          }
+        ],
+        "coverage": [
+          {
+            "id": "detail",
+            "sheet": "利润表",
+            "data_range": "A4:D14",
+            "header_row": 3,
+            "input_records": 11,
+            "evaluated_records": 4,
+            "excluded_header_rows": [],
+            "headers": {
+              "A": "项目",
+              "B": "2026实际",
+              "C": "2026预算",
+              "D": "差异"
+            },
+            "selected_rows": [
+              4,
+              6,
+              10,
+              14
+            ],
+            "coverage_complete": true,
+            "filters": [
+              {
+                "op": "in",
+                "field": "项目",
+                "values": [
+                  "营业收入",
+                  "毛利",
+                  "营业利润",
+                  "净利润"
+                ]
+              }
+            ]
+          }
+        ],
+        "visited_cells": [
+          "利润表!B10",
+          "利润表!B14",
+          "利润表!B4",
+          "利润表!B6"
+        ],
+        "amount_unit": "千元",
+        "stages": {
+          "source_rows": 11,
+          "where_rows": 4,
+          "groups_count": 4,
+          "having_groups_count": 4,
+          "final_rows": 4
+        },
+        "semantic_domain": {
+          "id": "finance",
+          "version": "1"
+        },
+        "evidence_id": "adb57cfd99c87735e82c429f"
+      },
+      "error": null,
+      "provenance": {
+        "file_path": "/workspace/AI能力测试_财务报表.xlsx",
+        "workbook_id": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+        "plan_hash": "f00fbb9fce6731355fff956692ce3a5f21f6a1fd385f8aaa3d7c80064b858ad9",
+        "evidence_id": "adb57cfd99c87735e82c429f"
+      },
+      "text_representation": "{\"evidence_id\": \"adb57cfd99c87735e82c429f\", \"amount_unit\": \"千元\", \"stages\": {\"source_rows\": 11, \"where_rows\": 4, \"groups_count\": 4, \"having_groups_count\": 4, \"final_rows\": 4}, \"facts\": [{\"id\": \"actual__(('str', '营业收入'),)\", \"label\": \"营业收入 2026实际\", \"group_key\": \"营业收入\", \"group_fields\": {\"项目\": \"营业收入\"}, \"value\": \"124020\", \"unit\": \"千元\", \"matched_records\": 1, \"source_cells\": [\"利润表!B4\"]}, {\"id\": \"actual__(('str', '毛利'),)\", \"label\": \"毛利 2026实际\", \"group_key\": \"毛利\", \"group_fields\": {\"项目\": \"毛利\"}, \"value\": \"53443.25\", \"unit\": \"千元\", \"matched_records\": 1, \"source_cells\": [\"利润表!B6\"]}, {\"id\": \"actual__(('str', '营业利润'),)\", \"label\": \"营业利润 2026实际\", \"group_key\": \"营业利润\", \"group_fields\": {\"项目\": \"营业利润\"}, \"value\": \"21209.4\", \"unit\": \"千元\", \"matched_records\": 1, \"source_cells\": [\"利润表!B10\"]}, {\"id\": \"actual__(('str', '净利润'),)\", \"label\": \"净利润 2026实际\", \"group_key\": \"净利润\", \"group_fields\": {\"项目\": \"净利润\"}, \"value\": \"16038.3\", \"unit\": \"千元\", \"matched_records\": 1, \"source_cells\": [\"利润表!B14\"]}], \"total_facts\": 4, \"rows\": [{\"group_key\": \"营业收入\", \"项目\": \"营业收入\", \"actual\": \"124020\"}, {\"group_key\": \"毛利\", \"项目\": \"毛利\", \"actual\": \"53443.25\"}, {\"group_key\": \"营业利润\", \"项目\": \"营业利润\", \"actual\": \"21209.4\"}, {\"group_key\": \"净利润\", \"项目\": \"净利润\", \"actual\": \"16038.3\"}], \"total_rows\": 4, \"coverage\": [{\"id\": \"detail\", \"sheet\": \"利润表\", \"data_range\": \"A4:D14\", \"header_row\": 3, \"input_records\": 11, \"evaluated_records\": 4, \"excluded_header_rows\": [], \"headers\": {\"A\": \"项目\", \"B\": \"2026实际\", \"C\": \"2026预算\", \"D\": \"差异\"}, \"coverage_complete\": true, \"filters\": [{\"op\": \"in\", \"field\": \"项目\", \"values\": [\"营业收入\", \"毛利\", \"营业利润\", \"净利润\"]}], \"selected_rows\": [4, 6, 10, 14]}], \"semantic_domain\": {\"id\": \"finance\", \"version\": \"1\"}}"
+    }
+  ]
+}

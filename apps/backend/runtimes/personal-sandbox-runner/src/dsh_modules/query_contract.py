@@ -42,6 +42,9 @@ CANONICAL_AGGREGATES = {
     "count_rows",
     "count_values",
     "count_distinct",
+    "first",
+    "value",
+    "val",
 }
 
 
@@ -203,6 +206,7 @@ def validate_query_plan(plan: Dict[str, Any], available_columns: Set[str]) -> No
         raise QueryContractError("查询计划必须指定聚合度量 (metrics) 或声明明细投影字段 (fields/select/distinct)")
 
     metric_ids = set()
+    seen_metric_signatures: Dict[tuple, str] = {}
     if metrics:
         if not isinstance(metrics, list):
             raise QueryContractError("metrics 必须是列表")
@@ -225,6 +229,19 @@ def validate_query_plan(plan: Dict[str, Any], available_columns: Set[str]) -> No
                 raise QueryContractError(f"度量 '{mid}' 的聚合操作 '{op}' 必须指定目标字段")
             if field and available_columns and field not in available_columns:
                 raise QueryContractError(f"度量 '{mid}' 引用的字段不存在: '{field}'")
+
+            if field:
+                eff_unit = str(m.get("output_unit") or m.get("unit") or "source").strip().lower()
+                sig = (op, str(field).strip(), eff_unit)
+                curr_label = str(m.get("label") or mid).strip()
+                if sig in seen_metric_signatures and not plan.get("group_by"):
+                    prev_label = seen_metric_signatures[sig]
+                    raise QueryContractError(
+                        f"度量定义冲突：'{prev_label}' 与 '{curr_label}' 对同一字段 '{field}' 执行了完全相同的 '{op}' 聚合，"
+                        f"这会导致两个不同指标输出完全相同的混加数值。若各指标位于某维度列（如 '项目'/'科目'）的不同行，"
+                        f"请设置 group_by 为该维度列并仅保留一个对 '{field}' 的度量，或分别按单行条件查询。"
+                    )
+                seen_metric_signatures[sig] = curr_label
 
     # Validate group_by
     group_by = plan.get("group_by")

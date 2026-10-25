@@ -92,31 +92,108 @@ def analysis_task_state(evidence, prompt='', model=None, deadline=None):
         if any(not c.get('coverage_complete') for c in data.get('coverage',[])):
             issues.append({'code':'scope_incomplete','message':'声明范围尚未完整处理。'})
     # 提取符合当前契约约束的权威事实闭包（自动淘汰未过滤全表试算，后序纠偏覆盖前序，隔离探索口径）
-    facts = resolve_conforming_facts(successful, prompt)
+    scope_decisions = []
+    facts = resolve_conforming_facts(successful, prompt, scope_decisions=scope_decisions,
+                                    model=model, deadline=deadline)
     if successful and not facts and any(r.data.get('facts') for r in successful):
-        issues.append({
-            'code': 'unsolicited_filter_applied',
-            'message': '执行计划包含了未经请求的明细行过滤条件，导致核算事实无法对齐当前指令。请移除多余过滤条件后重新聚合计算。'
-        })
+        from .analysis_fact_selection import _is_unsplit_multi_row_conflation
+        has_conflation = any(
+            _is_unsplit_multi_row_conflation(f, r.data.get('coverage', []), contract)
+            for r in successful for f in r.data.get('facts', [])
+        )
+        if scope_decisions:
+            unresolved = any(d['matched'] is None for d in scope_decisions)
+            issues.append({
+                'code': 'source_scope_unverified' if unresolved else 'source_scope_mismatch',
+                'message': ('本轮尚未核实实际取数列或范围是否符合请求的期间与口径，请核对来源后继续。'
+                            if unresolved else '实际取数列或范围与请求的期间或口径不一致，请修正取数计划。')})
+        elif has_conflation:
+            issues.append({
+                'code': 'conflated_multi_row_metrics',
+                'message': '执行计划在筛选多个不同科目/项目行时未设置 group_by 分组，导致不同指标行被直接混加为同一个数值！请在查询计划中指定 group_by 按科目列分组，或分别按单行条件/单元格提取各指标。'
+            })
+        else:
+            issues.append({
+                'code': 'unsolicited_filter_applied',
+                'message': '执行计划包含了未经请求的明细行过滤条件，导致核算事实无法对齐当前指令。请移除多余过滤条件后重新聚合计算。'
+            })
     # 收集来源表格已知表头字段，用于精确区分「计划未计算」还是「源表确实缺少列」
     known_headers = set()
+    fallback_sheets = set()
     for e in evidence:
         if not getattr(e, 'is_success', False) or not isinstance(getattr(e, 'data', None), dict):
             continue
         d = e.data
         if d.get('kind') == 'spreadsheet_structure':
             for s in d.get('sheets', []):
+                if s.get('sheet'):
+                    fallback_sheets.add(s['sheet'])
                 for h in s.get('header_candidates', []):
                     for v in h.get('columns', {}).values():
                         if isinstance(v, str) and v.strip():
                             known_headers.add(v.strip())
         elif d.get('kind') == 'spreadsheet_analysis':
             for c in d.get('coverage', []):
+                if c.get('sheet'):
+                    fallback_sheets.add(c['sheet'])
                 for v in c.get('headers', {}).values():
                     if isinstance(v, str) and v.strip():
                         known_headers.add(v.strip())
+    if not known_headers:
+        try:
+            import os
+            from . import config as _cfg
+            from .spreadsheet_preflight import profile_spreadsheet_for_planning
+            raw_att = os.environ.get('DSH_SESSION_ATTACHMENTS', '').strip()
+            att_files = json.loads(raw_att) if raw_att.startswith('[') else [x.strip() for x in raw_att.split(',') if x.strip()]
+            for fn in att_files:
+                if str(fn).lower().endswith(('.xlsx', '.xlsm', '.xls', '.csv')):
+                    prof = profile_spreadsheet_for_planning(Path(_cfg.WORKSPACE_DIR) / Path(fn).name, prompt=prompt)
+                    if prof:
+                        for s in prof.get('sheets', []):
+                            if s.get('sheet'):
+                                fallback_sheets.add(s['sheet'])
+                            for h_name in (s.get('headers') or {}).values():
+                                if isinstance(h_name, str) and h_name.strip():
+                                    known_headers.add(h_name.strip())
+        except Exception:
+            pass
 
-    missing=[]
+    # 跨指标同源混加守卫：严禁两个不同业务指标同时绑定到完全相同的多单元格未分组求和结果
+    conflated_sigs = set()
+    if len(contract.metrics) >= 2 and facts:
+        metric_to_sigs = {}
+        for metric in contract.metrics:
+            m_facts = [
+                f for f in facts
+                if (metric.semantic_id and f.get('metric_id') == metric.semantic_id)
+                or (not f.get('metric_id') and any(re.search(alias, f['label']) for alias in metric.aliases))
+            ]
+            sigs = {
+                (tuple(sorted(f.get('source_cells') or [])), str(f.get('value')), str(f.get('unit')))
+                for f in m_facts
+                if f.get('group_key') is None and len(f.get('source_cells') or []) >= 2
+            }
+            if sigs:
+                metric_to_sigs[metric.name] = sigs
+        m_names = list(metric_to_sigs.keys())
+        for i in range(len(m_names)):
+            for j in range(i + 1, len(m_names)):
+                shared = metric_to_sigs[m_names[i]] & metric_to_sigs[m_names[j]]
+                if shared:
+                    conflated_sigs.update(shared)
+    if conflated_sigs:
+        facts = [
+            f for f in facts
+            if (tuple(sorted(f.get('source_cells') or [])), str(f.get('value')), str(f.get('unit'))) not in conflated_sigs
+        ]
+        issues.append({
+            'code': 'conflated_multi_row_metrics',
+            'message': '不同指标绑定了完全相同的来源单元格集合与汇总数值（存在多行科目未分组混加），请按科目列设置 group_by 分组或分别引用各指标对应的真实单元格。'
+        })
+
+    missing = []
+    unit_mismatched = []
     for metric in contract.metrics:
         if any(is_empty_query(r.data) and any(
                 any(re.search(alias, str(m.get('label', m.get('id', '')))) for alias in metric.aliases)
@@ -124,9 +201,19 @@ def analysis_task_state(evidence, prompt='', model=None, deadline=None):
             continue
         matches=[f for f in facts if (metric.semantic_id and f.get('metric_id')==metric.semantic_id)
                  or (not f.get('metric_id') and any(re.search(alias,f['label']) for alias in metric.aliases))]
-        typed=[f for f in matches if (f['unit']=='%' if metric.expected_type=='percentage' else
+        typed=[f for f in matches if (f['unit'] in ('%', 'ratio', 'rate', 'percentage', 'percent') if metric.expected_type=='percentage' else
                                      f['unit']!='%' if metric.expected_type=='number' else True)]
         if not typed:
+            ratio_facts = [f for f in matches if f.get('unit') in ('ratio', 'rate') and metric.expected_type == 'percentage']
+            if ratio_facts:
+                unit_mismatched.append({
+                    'metric_id': metric.semantic_id,
+                    'name': metric.name,
+                    'expected_type': metric.expected_type,
+                    'current_unit': ratio_facts[0].get('unit'),
+                    'current_value': ratio_facts[0].get('value'),
+                })
+                continue
             is_count_metric = any(k in metric.name for k in ("条数", "明细条数", "记录数", "行数", "笔数", "计数"))
             matched_source_cols = [
                 h for h in known_headers
@@ -138,6 +225,11 @@ def analysis_task_state(evidence, prompt='', model=None, deadline=None):
                 'name': metric.name,
                 'expected_type': metric.expected_type
             }
+            if any((metric.semantic_id and f.get('metric_id') == metric.semantic_id)
+                   or (not f.get('metric_id') and any(re.search(alias, f.get('label', ''))
+                                                    for alias in metric.aliases))
+                   for receipt in successful for f in receipt.data.get('facts', [])):
+                metric_entry['execution_evidence_exists'] = True
             if source_col_exists:
                 metric_entry['source_column_exists'] = True
                 metric_entry['matched_source_columns'] = matched_source_cols or ["表格数据行计数"]
@@ -146,11 +238,35 @@ def analysis_task_state(evidence, prompt='', model=None, deadline=None):
             else:
                 metric_entry['source_column_status'] = 'unknown'
             missing.append(metric_entry)
+
+    if unit_mismatched:
+        names_str = '、'.join(m['name'] for m in unit_mismatched)
+        issues.append({
+            'code': 'metric_unit_mismatch',
+            'metrics': unit_mismatched,
+            'message': f'指标【{names_str}】已完成核算，但当前单位为比率(ratio)；请在计算计划中指定 output_unit="%" 换算为百分比后交付。'
+        })
     if missing:
-        uncalc = [m['name'] for m in missing if m.get('source_column_exists')]
+        unresolved_sources = [decision for decision in scope_decisions if decision['matched'] is not True
+                              and any(metric.name in {m['name'] for m in missing} and (
+                                  metric.semantic_id in decision.get('metric_ids', [])
+                                  or any(re.search(alias, label) for alias in metric.aliases
+                                         for label in decision.get('fact_labels', [])))
+                                      for metric in contract.metrics)]
+        if unresolved_sources and not any(issue['code'] in ('source_scope_unverified', 'source_scope_mismatch')
+                                          for issue in issues):
+            unresolved = any(decision['matched'] is None for decision in unresolved_sources)
+            issues.append({'code': 'source_scope_unverified' if unresolved else 'source_scope_mismatch',
+                           'message': ('部分已执行指标的来源期间或口径尚未核实。' if unresolved
+                                       else '部分已执行指标的实际来源期间或口径与请求不一致。')})
+        uncalc = [m['name'] for m in missing if m.get('source_column_exists')
+                  and not m.get('execution_evidence_exists')]
+        unverified = [m['name'] for m in missing if m.get('execution_evidence_exists')]
         gen_miss = [m['name'] for m in missing if m.get('source_column_exists') is False]
         unknown = [m['name'] for m in missing if m.get('source_column_status') == 'unknown']
         msg_parts = []
+        if unverified:
+            msg_parts.append('指标已有执行结果，但尚未通过来源或口径核验：' + '、'.join(unverified))
         if uncalc:
             msg_parts.append('分析计划遗漏所需指标计算：' + '、'.join(uncalc) + '，请调用 aggregate_spreadsheet 补充聚合表达式（如 sum）')
         if gen_miss:
@@ -401,6 +517,42 @@ def analysis_task_state(evidence, prompt='', model=None, deadline=None):
             issues.append({'code':'comparison_windows_missing',
                 'message':'用户要求变化或趋势，需补充同一来源不同期间的对照及比率/变化。'})
     issues.extend(query_delivery_issues(successful, prompt, contract))
+    if contract.audit_checks and successful:
+        missing_checks = []
+        for check_item in contract.audit_checks:
+            if re.search(r'重复|唯一|duplicate|unique', check_item, re.I):
+                has_dup_evidence = any(
+                    any(isinstance(r_rule, dict) and r_rule.get('kind') == 'unique' for r_rule in (r.data.get('rules') or []))
+                    or any(isinstance(p, dict) and p.get('table_duplicate_row_count') is not None for p in (r.data.get('profiles') or []))
+                    or bool((r.data.get('plan') or {}).get('distinct'))
+                    or bool((r.data.get('plan') or {}).get('having'))
+                    for r in successful
+                )
+                if not has_dup_evidence:
+                    missing_checks.append(check_item)
+                continue
+            target_headers = [h for h in known_headers if h in check_item]
+            if target_headers:
+                def _receipt_touches(r_data, h):
+                    plan_s = str(r_data.get('plan') or '')
+                    cov_s = str([c.get('filters') for c in r_data.get('coverage', [])])
+                    rules_s = str(r_data.get('rules') or '')
+                    prof_s = str(r_data.get('profiles') or '')
+                    return h in (plan_s + cov_s + rules_s + prof_s)
+
+                if not any(all(_receipt_touches(r.data, th) for th in target_headers) for r in successful):
+                    missing_checks.append(check_item)
+            else:
+                item_keywords = [w for w in re.findall(r'[\u4e00-\u9fa5A-Za-z0-9]{2,}', check_item) if w not in ('查找', '筛选', '找出', '检查', '记录', '全部', '业务行', '的业务行')]
+                if item_keywords and not any(any(kw in str(r.data) for kw in item_keywords) for r in successful):
+                    missing_checks.append(check_item)
+
+        if missing_checks:
+            issues.append({
+                'code': 'audit_checks_incomplete',
+                'missing_checks': missing_checks,
+                'message': f'用户要求执行 {len(contract.audit_checks)} 项合规检查，当前尚有 {len(missing_checks)} 项未在执行回执中覆盖：' + '、'.join(missing_checks) + '。请补充对应检查项的查询或规则。'
+            })
     if re.search(r'(?:先|首先).*(?:确认|澄清|说明|定义).*(?:暂不|不要|先不).*计算', prompt):
         issues.append({'code': 'clarification_first_required', 'message': '用户要求先确认定义、暂不计算，请先用业务语言提问，不要强制补算。'})
     # LLM diagnoses the gate; only evidence-backed sparse-group false positives
@@ -422,7 +574,11 @@ def analysis_task_state(evidence, prompt='', model=None, deadline=None):
                          'errors': [{'code': r.error_code, 'message': r.error_message}
                                     for r in evidence if getattr(r, 'is_error', False)]}
             )
-            if judge_verdict and judge_verdict.get('action') == 'recheck':
+            if judge_verdict and (
+                judge_verdict.get('action') == 'recheck'
+                or judge_verdict.get('category') == 'gate_false_positive'
+                or bool(judge_verdict.get('dismissed_issue_codes'))
+            ):
                 from .analysis_gate_review import revalidate_review
                 issues, judge_verdict = revalidate_review(issues, judge_verdict, successful, facts)
         except Exception:

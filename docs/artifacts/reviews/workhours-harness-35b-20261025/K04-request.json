@@ -1,0 +1,17 @@
+{
+  "message": "按部门编号及名称、有偿无偿交叉汇总工数和金额(K)，列出全部部门的有偿/无偿工数、部门总工数、部门金额合计、有偿工数占部门工数比例，最后核对部门汇总与全表合计一致。没有匹配记录时可记0，但必须实际核对。 只在聊天回复，不生成文件，不联网；无法核算时明确说明或向我澄清，不要猜测。",
+  "clientMessageId": "1792909186624-a9rlf93e",
+  "clientAssistantMessageId": "1792909186624-9p1wr5s3",
+  "sessionId": "chat-session-1792908948915-ytw0yory",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

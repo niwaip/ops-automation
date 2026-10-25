@@ -58,8 +58,11 @@ def bounded_range_boundaries(ws, range_str: str) -> Tuple[int, int, int, int]:
     return min_col, min_row, max_col, max_row
 
 
-def detect_footer_pruning(ws, min_col: int, start_row: int, max_col: int, end_row: int) -> Tuple[int, List[int]]:
+def detect_footer_pruning(
+    ws, min_col: int, start_row: int, max_col: int, end_row: int, explicit_filter_str: str = ""
+) -> Tuple[int, List[int]]:
     """Trims trailing non-business summary, footer, or note rows."""
+    from .spreadsheet_preflight import SUMMARY_ROW_LABEL_RE
     footer_pat = re.compile(
         r'^\s*(?:'
         r'[\*＊#※]'
@@ -86,15 +89,16 @@ def detect_footer_pruning(ws, min_col: int, start_row: int, max_col: int, end_ro
 
         populated_ratio = len(row_cells) / max(col_count, 1)
         has_measure_numbers = any(
-            isinstance(c.value, (int, float, Decimal)) and not isinstance(c.value, bool)
+            (isinstance(c.value, (int, float, Decimal)) and not isinstance(c.value, bool))
+            or (isinstance(c.value, str) and c.value.startswith("="))
             for c in row_cells[1:]
         )
 
         if populated_ratio >= 0.5 and has_measure_numbers:
-            if re.fullmatch(r'(?:合\s*计|总\s*计|小\s*计|grand\s+total|total|subtotal|summary)[:：]?', first_val, re.I):
+            if curr_end > start_row and SUMMARY_ROW_LABEL_RE.match(first_val) and (not first_val or first_val not in explicit_filter_str):
                 is_footer = True
         else:
-            if footer_pat.search(first_val):
+            if SUMMARY_ROW_LABEL_RE.match(first_val) or footer_pat.search(first_val):
                 is_footer = True
             elif col_count >= 4 and len(row_cells) <= max(2, col_count // 4):
                 if any(footer_pat.search(str(c.value or "").strip()) for c in row_cells):
@@ -107,6 +111,23 @@ def detect_footer_pruning(ws, min_col: int, start_row: int, max_col: int, end_ro
             break
 
     return curr_end, excluded
+
+
+def _extract_multi_in_fields(node: Any) -> List[str]:
+    """Return field names filtered by 'in' with >= 2 target values."""
+    if not isinstance(node, dict):
+        return []
+    fields: List[str] = []
+    for comb in ("and", "or"):
+        if isinstance(node.get(comb), list):
+            for child in node[comb]:
+                fields.extend(_extract_multi_in_fields(child))
+    op = str(node.get("op", "")).strip().lower()
+    vals = node.get("values")
+    field = node.get("field") or node.get("column")
+    if op == "in" and isinstance(vals, list) and len(vals) >= 2 and isinstance(field, str) and field.strip():
+        fields.append(field.strip())
+    return fields
 
 
 def execute_query_plan(
@@ -152,7 +173,11 @@ def execute_query_plan(
         max_row = ws.max_row
 
     # Footer pruning
-    effective_end_row, excluded_rows = detect_footer_pruning(ws, min_col, min_row, max_col, max_row)
+    import json
+    explicit_filter_str = json.dumps([plan.get("where"), plan.get("filters")], ensure_ascii=False)
+    effective_end_row, excluded_rows = detect_footer_pruning(
+        ws, min_col, min_row, max_col, max_row, explicit_filter_str=explicit_filter_str
+    )
 
     # 2. Extract and index column headers
     col_to_header: Dict[int, str] = {}
@@ -253,6 +278,8 @@ def execute_query_plan(
                 seen_tuples.add(tup)
 
             row_res = {}
+            if not is_distinct:
+                row_res["_row"] = r
             for fname, falias in field_specs:
                 col_idx = resolve_col_idx(fname)
                 val = row_dict.get(fname)
@@ -283,9 +310,16 @@ def execute_query_plan(
         if limit is not None:
             projected_rows = projected_rows[:limit]
 
+        if is_distinct:
+            fnames = [fa for _, fa in field_specs if fa]
+            fields_str = "、".join(fnames[:3])
+            stem = re.sub(r"(?:编号|代码|名称|姓名|ID)$", "", fnames[0]) if fnames else "记录"
+            count_label = f"去重{stem}数（{fields_str}，匹配明细行数）" if fields_str else "匹配明细行数"
+        else:
+            count_label = "匹配明细行数"
         fact_count = {
             "id": "matched_rows_count",
-            "label": "匹配明细行数",
+            "label": count_label,
             "group_key": None,
             "group_fields": {},
             "value": str(len(projected_rows)),
@@ -294,6 +328,20 @@ def execute_query_plan(
             "matched_records": len(selected_row_ids),
         }
         projected_facts.append(fact_count)
+        if is_distinct and len(projected_rows) == 1 and len(field_specs) == 1:
+            only_alias = field_specs[0][1]
+            only_val = projected_rows[0].get(only_alias)
+            if only_val is not None:
+                projected_facts.append({
+                    "id": "distinct_single_value",
+                    "label": f"{only_alias}唯一值",
+                    "group_key": None,
+                    "group_fields": {},
+                    "value": str(only_val),
+                    "unit": None,
+                    "source_cells": sorted(visited_cells)[:50],
+                    "matched_records": len(selected_row_ids),
+                })
 
         coverage = [{
             "id": source_spec.get("table_id", "detail"),
@@ -415,6 +463,31 @@ def execute_query_plan(
     metrics_spec = plan.get("metrics", [])
     group_results: List[Dict[str, Any]] = []
 
+    unsplit_multi_filters: Dict[str, List[str]] = {}
+    if not group_specs and len(selected_row_ids) >= 2 and where_node:
+        for f_col in dict.fromkeys(_extract_multi_in_fields(where_node)):
+            c_idx = resolve_col_idx(f_col)
+            h_key = col_to_header.get(c_idx, f_col) if c_idx else f_col
+            matched_vals = sorted({
+                str(row_records[r].get(h_key)).strip()
+                for r in selected_row_ids
+                if row_records[r].get(h_key) is not None and str(row_records[r].get(h_key)).strip()
+            })
+            if len(matched_vals) >= 2:
+                unsplit_multi_filters[h_key] = matched_vals
+                for m in metrics_spec:
+                    op_m = str(m.get("op", "sum")).lower()
+                    if op_m in ("count_rows", "count", "count_distinct"):
+                        continue
+                    m_lbl = str(m.get("label") or m.get("id") or "").strip()
+                    mentioned = [v for v in matched_vals if v in m_lbl]
+                    if 0 < len(mentioned) < len(matched_vals):
+                        raise QueryContractError(
+                            f"查询计划错误：where 在字段 '{h_key}' 上匹配了多个不同条目 {matched_vals}，"
+                            f"但未设置 \"group_by\": [\"{h_key}\"]，导致度量 '{m_lbl}' 将多个不同条目混加为单一指标！"
+                            f"请添加 \"group_by\": [\"{h_key}\"] 或仅在 where 中筛选单个目标条目。"
+                        )
+
     for g_key, g_info in groups.items():
         check()
         g_rows = g_info["rows"]
@@ -464,7 +537,7 @@ def execute_query_plan(
             elif op == "count_values":
                 c = sum(1 for r in g_rows if ws.cell(r, col_idx).value is not None)
                 calc_val = Decimal(c)
-            elif op in ("sum", "min", "max", "avg", "dec_avg"):
+            elif op in ("sum", "min", "max", "avg", "dec_avg", "first", "value", "val"):
                 dec_list = []
                 for r in g_rows:
                     cv = ws.cell(r, col_idx).value if col_idx else None
@@ -480,11 +553,14 @@ def execute_query_plan(
                     calc_val = max(dec_list) if dec_list else None
                 elif op in ("avg", "dec_avg"):
                     calc_val = sum(dec_list) / Decimal(len(dec_list)) if dec_list else None
+                elif op in ("first", "value", "val"):
+                    calc_val = dec_list[0] if dec_list else None
             else:
                 raise ValueError(f"不支持的聚合操作: '{op}'")
 
             # Unit determination and mathematical scaling (B07, B12, D02, D03, D04)
             req_unit = m.get("unit")
+            output_unit = m.get("output_unit")
             src_unit = None
             is_count_op = op in ("count_rows", "count", "count_distinct", "count_values")
 
@@ -496,30 +572,35 @@ def execute_query_plan(
                     m_hdr = re.search(r'[\(（]([^\)）]+)[\)）]', str(real_header))
                     if m_hdr:
                         src_unit = m_hdr.group(1).strip()
+                    elif "%" in str(real_header):
+                        src_unit = "%"
                 if not src_unit:
-                    src_unit = default_amount_unit if op in ("sum", "min", "max", "avg", "dec_avg") else "number"
+                    src_unit = default_amount_unit if op in ("sum", "min", "max", "avg", "dec_avg", "first", "value", "val") else "number"
 
             metric_label = m.get("label") or mid
+            # Target unit resolves from output_unit first, then req_unit
+            target_unit = output_unit if output_unit and output_unit != "source" else req_unit
+
             # If label explicitly declares the source unit (e.g. "合计金额(K)" where src_unit is "K"),
-            # but req_unit loosely specified a conflicting unit (e.g. "元"),
+            # but target_unit loosely specified a conflicting unit (e.g. "元"),
             # honor the declared label/source unit to prevent accidental 1000x scaling disaster.
             if (
                 src_unit
                 and metric_label
                 and re.search(rf'[\(（]\s*{re.escape(src_unit)}\s*[\)）]', metric_label, re.I)
-                and req_unit
-                and req_unit != src_unit
-                and req_unit not in ("source", "amount", "duration")
+                and target_unit
+                and target_unit != src_unit
+                and target_unit not in ("source", "amount", "duration")
             ):
                 final_unit = src_unit
-            elif not req_unit or req_unit == "source":
+            elif not target_unit or target_unit == "source":
                 final_unit = src_unit
-            elif req_unit == "duration":
+            elif target_unit == "duration":
                 final_unit = "小时"
-            elif req_unit == "amount":
-                final_unit = default_amount_unit
+            elif target_unit == "amount":
+                final_unit = src_unit if src_unit in DURATION_SCALE else default_amount_unit
             else:
-                final_unit = req_unit
+                final_unit = target_unit
 
             # Dimensional consistency check (D04): reject converting currency to hours without dimensional conversion
             if final_unit != src_unit and not is_count_op:
@@ -532,11 +613,14 @@ def execute_query_plan(
                     raise ValueError(f"无法将物理量纲 '{src_unit}' 转换为不兼容的量纲 '{final_unit}'")
 
             # Perform mathematical scaling if units differ and known scale factors exist
-            if calc_val is not None and final_unit != src_unit:
-                if src_unit in AMOUNT_SCALE and final_unit in AMOUNT_SCALE:
+            if calc_val is not None:
+                # 比例转百分比 (ratio -> %): 0.430924... * 100 -> 43.0924...%
+                if (req_unit in ("ratio", "rate") or src_unit in ("ratio", "rate")) and final_unit == "%":
+                    calc_val = calc_val * Decimal(100)
+                elif src_unit in AMOUNT_SCALE and final_unit in AMOUNT_SCALE and src_unit != final_unit:
                     scale = AMOUNT_SCALE[src_unit] / AMOUNT_SCALE[final_unit]
                     calc_val = calc_val * scale
-                elif src_unit in DURATION_SCALE and final_unit in DURATION_SCALE:
+                elif src_unit in DURATION_SCALE and final_unit in DURATION_SCALE and src_unit != final_unit:
                     scale = DURATION_SCALE[src_unit] / DURATION_SCALE[final_unit]
                     calc_val = calc_val * scale
 
@@ -563,7 +647,7 @@ def execute_query_plan(
                     effective_metric_label = f"{effective_metric_label}({final_unit})"
 
             fact_id = f"{mid}__{g_key}" if g_key is not None else mid
-            metric_facts.append({
+            fact_entry = {
                 "id": fact_id,
                 "label": f"{g_info['group_key']} {effective_metric_label}" if g_key is not None else effective_metric_label,
                 "group_key": g_info['group_key'],
@@ -572,7 +656,12 @@ def execute_query_plan(
                 "unit": unit,
                 "source_cells": sorted(m_cells),
                 "matched_records": len(g_rows),
-            })
+            }
+            if m.get("metric_id"):
+                fact_entry["metric_id"] = m["metric_id"]
+            if unsplit_multi_filters and g_key is None:
+                fact_entry["unsplit_filter_values"] = unsplit_multi_filters
+            metric_facts.append(fact_entry)
 
         group_results.append({
             "group_key": g_key,

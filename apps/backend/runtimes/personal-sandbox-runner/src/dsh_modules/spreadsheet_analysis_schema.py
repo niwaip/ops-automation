@@ -18,6 +18,8 @@ ANALYSIS_TOOL = {
                         "id": {"type": "string"}, "sheet": {"type": "string"},
                         "data_range": {"type": "string", "description": "业务行范围，排除标题、表头、合计"},
                         "header_row": {"type": "integer", "minimum": 1},
+                        "row_ids": {"type": "array", "items": {"type": "integer", "minimum": 1},
+                                    "description": "可选精确来源行号；必须属于声明范围及过滤结果，用于复用查询事实的来源，不扩大范围"},
                         "filters": {"type": "array", "items": {"type": "object", "properties": {
                             "column": {"type": "string"},
                             "values": {"type": "array", "items": {"type": ["string", "number"]}},
@@ -41,7 +43,9 @@ ANALYSIS_TOOL = {
                 "offset": {"type": "integer", "minimum": 0},
                 "distinct": {"type": "boolean"},
                 "distinct_fields": {"type": "array", "items": {"type": "string"}},
-                "calculations": {"type": "array", "maxItems": 64, "items": {
+                "calculations": {"type": "array", "maxItems": 64,
+                    "description": "可与query同时提交：先查询，再执行全部派生计算。派生来源必须位于查询最终事实引用的单元格内；可ref精确引用query事实ID（含sum/min/max多行汇总），程序按其精确来源重算。计算失败时整份计划失败。",
+                    "items": {
                     "type": "object", "additionalProperties": False,
                     "properties": {
                         "id": {"type": "string"}, "label": {"type": "string"},
@@ -103,6 +107,7 @@ tables/calculations/checks/rules都使用真正JSON数组。业务范围不得�
 提交显式计划，覆盖用户全部要求。不能补造表名或业务规则。指标标签的半年/季度/月期间必须与实际范围一致；错误标签将被拒绝。
 常用数据查询优先用aggregate_spreadsheet的query参数：source={sheet,header_row,data_range}，where筛选明细，group_by为列数组，metrics=[{id,label,op,field,unit}]，having引用度量id，order_by与limit控制最终顺序和数量。例如having={"and":[{"metric":"amount","op":"gt","value":100},{"metric":"records","op":"gte","value":10}]}。不要把逻辑组合写成op=and；and/or的值必须是子条件数组。列出不重复的取值使用query.distinct=true和query.fields=[真实列名]；count_distinct只返回数量，非空/唯一性检查不会交付取值清单。空值口径包括NULL、空串及纯空白时，用where={"field":真实列名,"op":"is_blank"}，不要叠加只匹配少数空串的values过滤缩小范围。
 用户要求变化或趋势时，至少定义两个不同期间的同来源表范围（不同table id与filters），或逐月范围，并计算各期间比率及变化；一个期间的合计不构成变化分析。
+query可与calculations同时提交，先查询再执行全部派生计算；计算项来源必须位于查询最终事实引用的单元格内。可用明确单元格表达式，或ref精确引用查询事实ID（支持sum/min/max多行汇总）；程序按事实的精确来源行和原聚合方法重算，禁止把查询外行重新计入。query中的checks/rules请拆成独立调用。
 需要复用计算可使用{"ref":"calculation id"}，输出单位放在calculation.output_unit，不放在表达式内部。范围规则必须实际填min/max，枚举必须填allowed；当未知具体上下界阈值但需识别数值/金额异常时，使用 kind="outlier"（按四分位距IQR统计准则识别极端离群值）或仅用字段概况，不凭空臆造 min=0。
 等式检查用 checks 声明关系及假设；左右表达式必须完整，不能把合计的一个分项当成整个恒等式，不将差额自动归因为来源公式错误。
 质量检查用 rules 扫描业务全范围；列类型由原件决定，范围、枚举、唯一性、统计离群(outlier)规则声明依据，不将统计异常直接认定为业务违规。

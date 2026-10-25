@@ -1,0 +1,17 @@
+{
+  "message": "从同一附件的利润表读取2026实际营业收入、毛利、营业利润、净利润，生成一个可下载的Excel文件 E2E_finance_35B.xlsx。表中包含指标、数值、单位、来源单元格四列。数值必须来自原件公式重算结果。保留原始附件，不联网。",
+  "clientMessageId": "1792895237837-fyv5a9fl",
+  "clientAssistantMessageId": "1792895237837-rj8a91rh",
+  "sessionId": "chat-session-1792895050474-utx8y6z8",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

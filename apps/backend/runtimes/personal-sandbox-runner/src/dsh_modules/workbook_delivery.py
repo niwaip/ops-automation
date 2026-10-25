@@ -37,6 +37,8 @@ def inspect_generated_workbook(path):
                         refs = name.split(':')
                         if '[' in name or any(ref not in book.sheetnames for ref in refs):
                             issues.append(f'{sheet.title}!{cell.coordinate} 缺少内部公式依赖：{name}')
+        from .workbook_source_grounding import validate_generated_workbook_against_sources
+        issues.extend(validate_generated_workbook_against_sources(Path(path)))
     except Exception as error:
         issues.append(str(error))
     finally:
@@ -150,7 +152,16 @@ def quarantine_invalid_deliverables(workspace, turn_start_time, text, outbounds)
             name = Path(str(item)).name
         if unquote(name) not in names:
             kept.append(item)
+    detail = '；'.join(
+        r['fileName'] + '（' + '；'.join(r['issues'][:4]) + '）' for r in rejected
+    )
+    notice = (
+        '⚠️ **Excel 交付校验未通过（数据或公式核验失败）**\n\n'
+        '系统对生成的 Excel 文件进行了公式与源数据一致性核验，发现以下不一致项，因此未提供该文件的下载链接，且不输出未通过核验的数据结论：\n'
+        f'- {detail}\n\n'
+        '错误文件已隔离保留供排查。建议：请直接重试，或提示先读取重算后的源表真实计算值再生成目标文件。'
+    )
+    if not kept:
+        return notice, kept, rejected
     lines = [line for line in text.splitlines() if not any(name in unquote(line) or quote(name) in line for name in names)]
-    notice = '\n\nExcel 交付校验未通过，未提供该文件的下载链接；错误文件已保留供排查：' + '；'.join(
-        r['fileName'] + '（' + '；'.join(r['issues'][:3]) + '）' for r in rejected)
-    return '\n'.join(lines) + notice, kept, rejected
+    return '\n'.join(lines) + '\n\n' + notice, kept, rejected

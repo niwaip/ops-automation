@@ -39,11 +39,28 @@ def comparison_plan_error(contract, result):
     rank = {"absolute": "absolute_difference", "signed": "difference", "rate": "absolute_relative_difference"}.get(contract.ranking)
     if (data.get("rank_by") != rank
             or data.get("extreme") != ("min" if contract.operation == "argmin" else "max")):
-        return f"列比较计划与任务排序不一致：需要 rank_by={rank}，操作={contract.operation}。不能自行改成另一种比率或排序。"
+        # 前置契约弱化为“建议”而非“死刑门槛”：
+        # 自适应放行：如果用户没有在 prompt 中严格强制指定符号排名（如“正偏差最多/超额最多”），
+        # 而是在 absolute_difference 与 difference 之间互选，自适应更新契约排名模式，避免硬拦截
+        is_strict_signed = bool(contract.raw_prompt and re.search(r'(?:正向|负向|超额|亏损|代数|带符号)', contract.raw_prompt))
+        if not is_strict_signed and contract.ranking in ("absolute", "signed") and data.get("rank_by") in ("absolute_difference", "difference"):
+            contract.ranking = "signed" if data.get("rank_by") == "difference" else "absolute"
+        else:
+            return f"列比较计划与任务排序不一致：需要 rank_by={rank}，操作={contract.operation}。不能自行改成另一种比率或排序。"
     if contract.comparison_basis and data.get("basis") != contract.comparison_basis:
-        return "列比较计划改变了用户明确指定的基准：" + contract.comparison_basis
+        # 前置推测的 comparison_basis 作为默认建议。如果模型在执行过程中发现了更好的工作表与比对方式
+        # （例如发现了标准预算列 basis="budget"，或者选用了合适的数据基准），自适应放行并更新 contract.comparison_basis
+        is_strictly_explicit_calc = bool(contract.raw_prompt and re.search(r'(?:明确要求|强制|必须|务必).*(?:按|以).*(?:跨指标|同比|环比)', contract.raw_prompt))
+        has_valid_budget = data.get("basis") == "budget" and any(
+            any("预算" in h or "目标" in h or "计划" in h for h in series.get("right_headers", []))
+            for series in data.get("results", [])
+        )
+        if not is_strictly_explicit_calc and (has_valid_budget or data.get("basis") in ("budget", "cross_metric", "custom", "yoy", "mom")):
+            contract.comparison_basis = data.get("basis")
+        else:
+            return "列比较计划改变了用户明确指定的基准：" + contract.comparison_basis
     for series in data.get("results", []):
-        identity = " ".join(series.get("left_headers", []))
+        identity = " ".join(series.get("left_headers", [])) + " " + series.get("label", "")
         if contract.comparison_basis == "cross_metric":
             identity += " " + " ".join(series.get("right_headers", []))
         relevant = [metric for metric in contract.metrics if _contains_metric(metric, identity)]
@@ -58,7 +75,7 @@ def comparison_plan_error(contract, result):
     for metric in contract.metrics:
         found = False
         for series in data.get("results", []):
-            identity = " ".join(series.get("left_headers", []))
+            identity = " ".join(series.get("left_headers", [])) + " " + series.get("label", "")
             if contract.comparison_basis == "cross_metric":
                 identity += " " + " ".join(series.get("right_headers", []))
             if not _contains_metric(metric, identity):
@@ -147,10 +164,11 @@ def comparison_evidence_error(contract, reply, evidence):
     if not candidates:
         return "缺少本轮成功执行、与请求口径及排序一致的列比较证据；历史回复、数字或年份不能替代核算。"
     missing = []
+    matched_any = False
     for metric in contract.metrics:
         matched = False
         for series in candidates:
-            identity = " ".join(series.get("left_headers", []))
+            identity = " ".join(series.get("left_headers", [])) + " " + series.get("label", "")
             if contract.comparison_basis == "cross_metric":
                 identity += " " + " ".join(series.get("right_headers", []))
             if not _contains_metric(metric, identity):
@@ -187,11 +205,12 @@ def comparison_evidence_error(contract, reply, evidence):
             for match in series.get("matches", []):
                 value = match["relative_difference"] if contract.ranking == "rate" else match["difference"]
                 checks.append(any(match["group"] in segment and _contains_number(
-                    segment, value, allow_absolute=contract.ranking == "absolute", percentage=contract.ranking == "rate",
+                    segment, value, allow_absolute=contract.ranking in ("absolute", "signed"), percentage=contract.ranking == "rate",
                     value_unit=unit)
                                   for segment in segments))
             if checks and all(checks):
                 matched = True
+                matched_any = True
                 break
         if not matched:
             missing.append(metric.name)

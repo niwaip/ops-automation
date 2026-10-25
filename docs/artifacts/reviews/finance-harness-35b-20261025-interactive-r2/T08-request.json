@@ -1,0 +1,17 @@
+{
+  "message": "读取附件的“预算对比”工作表，比较2026年12个月。分别找出收入差异绝对值最大的月份、净利润差异绝对值最大的月份，列出该月预算、实际、实际减预算的差异及原表单位。只在聊天回复，不生成文件，不联网。",
+  "clientMessageId": "1792905592213-h28qdox6",
+  "clientAssistantMessageId": "1792905592213-rzz0p9bb",
+  "sessionId": "chat-session-1792905175982-7x4tcitx",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

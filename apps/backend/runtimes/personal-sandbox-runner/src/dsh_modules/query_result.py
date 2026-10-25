@@ -9,6 +9,15 @@ from typing import Any, Dict, List, Optional, Set
 from .tool_result import ToolResult
 
 
+def _compact_source_cells(cells: Any) -> List[str]:
+    if not isinstance(cells, list) or not cells:
+        return []
+    str_cells = [str(c) for c in cells if c]
+    if len(str_cells) <= 12:
+        return str_cells
+    return [*str_cells[:6], f"...(共{len(str_cells)}个单元格)", *str_cells[-2:]]
+
+
 @dataclass
 class QueryResult:
     """Encapsulates the full execution lifecycle and evidence of a query."""
@@ -34,6 +43,7 @@ class QueryResult:
         effective_plan: Dict[str, Any],
         plan_hash: str,
         amount_unit: str = "K",
+        semantic_domain: Optional[Dict[str, Any]] = None,
     ) -> ToolResult:
         """Converts to a standardized ToolResult object with evidence ID and provenance."""
         data = {
@@ -55,6 +65,8 @@ class QueryResult:
                 "final_rows": self.final_row_count,
             },
         }
+        if semantic_domain:
+            data["semantic_domain"] = semantic_domain
 
         # Calculate evidence ID
         raw_evidence = source_hash + json.dumps(data, sort_keys=True, ensure_ascii=False, default=str)
@@ -75,17 +87,34 @@ class QueryResult:
             "amount_unit": amount_unit,
             "stages": data["stages"],
             "facts": [
-                {k: v for k, v in f.items() if k != "source_cells"}
+                {
+                    **{k: v for k, v in f.items() if k != "source_cells"},
+                    **(
+                        {"source_cells": _compact_source_cells(f.get("source_cells"))}
+                        if f.get("source_cells")
+                        else {}
+                    ),
+                }
                 for f in self.facts[:50]
             ],
             "total_facts": len(self.facts),
             "rows": self.rows[:50] if self.rows else [],
             "total_rows": len(self.rows) if self.rows else 0,
             "coverage": [
-                {k: v for k, v in c.items() if k != "selected_rows"}
+                {
+                    **{k: v for k, v in c.items() if k != "selected_rows"},
+                    **(
+                        {"selected_rows": c["selected_rows"][:500]}
+                        if c.get("selected_rows")
+                        and (c.get("filters") or len(c["selected_rows"]) < c.get("input_records", 0))
+                        else {}
+                    ),
+                }
                 for c in self.coverage
             ],
         }
+        if semantic_domain:
+            view["semantic_domain"] = semantic_domain
 
         return ToolResult.success(
             data=data,

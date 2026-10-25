@@ -1,0 +1,17 @@
+{
+  "message": "使用本会话已上传的 AI能力测试_财务报表.xlsx 的“预算对比”工作表。按净利润、实际减预算的差异绝对金额，比较2026年全部12个月。请给出最大偏差月份、预算、实际、差额和原表单位。只在聊天回复，不联网。",
+  "clientMessageId": "1792898147049-oanwsd4z",
+  "clientAssistantMessageId": "1792898147049-deck0dln",
+  "sessionId": "chat-session-1792897587482-oobbqctt",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "message": "核对同一个附件中的两条报表等式：资产负债表B11等于B20；现金流量表B17等于资产负债表B4。实际读取公式重算后的数值，分别输出左值、右值、左值减右值的差额以及是否相等，金额单位沿用原表。不要修改任何数据，只在聊天回复核对结果，不联网。",
+  "clientMessageId": "1792905432334-poe0pt75",
+  "clientAssistantMessageId": "1792905432334-hxca8n9y",
+  "sessionId": "chat-session-1792905175982-7x4tcitx",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

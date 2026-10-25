@@ -1,0 +1,17 @@
+{
+  "message": "补充前面的部门交叉汇总口径：没有“名称工数”列，使用原表“工数(小时)”列；全部部门仅指原附件业务明细中出现的部门，不补造零业务部门。请按部门编号和名称汇总有偿/无偿工数、总工数、金额(K)，有偿占比按有偿工数除以部门总工数。核对部门总数与全表，不生成文件，不联网。",
+  "clientMessageId": "1792909471308-kgv8kwc2",
+  "clientAssistantMessageId": "1792909471308-cd5q0i7o",
+  "sessionId": "chat-session-1792908948915-ytw0yory",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

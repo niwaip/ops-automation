@@ -1,0 +1,39 @@
+{
+  "overall_data_acceptance": false,
+  "requests_verified": 9,
+  "blockers": [
+    {
+      "turn": "T02",
+      "type": "WRONG_METRIC_AGGREGATION_ACCEPTED",
+      "details": [
+        {
+          "metric": "revenue",
+          "actual": "140058.3",
+          "expected": "124020"
+        },
+        {
+          "metric": "net_profit",
+          "actual": "140058.3",
+          "expected": "16038.30000"
+        }
+      ]
+    }
+  ],
+  "source_hash": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+  "safe_failure_turns": [
+    "T01",
+    "T03",
+    "T06"
+  ],
+  "metadata_inconsistencies": [
+    "T06"
+  ],
+  "reduced_scope_retry_verified": true,
+  "equations_verified": 2,
+  "monthly_comparison_rows_verified": 36,
+  "old_wrong_source_now_rejected": true,
+  "download_metrics_checked": 4,
+  "download_metrics_correct": 4,
+  "download_sha256": "98bf0237828079c20a681b00d4c5c90d0ba1d92a2bded94ef31730e56dfc940f",
+  "history_messages": 18
+}

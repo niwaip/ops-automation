@@ -113,6 +113,7 @@ def spreadsheet_structure(source, selected_sheets=None, deadline=None):
                 for row in ws.iter_rows(min_row=max(limit+1,ws.max_row-25),max_col=min(ws.max_column,64)):
                     filled=[c for c in row if c.value is not None]
                     if filled:observed[filled[0].row]=filled
+            from .spreadsheet_preflight import SUMMARY_ROW_LABEL_RE
             footer_pattern = re.compile(
                 r"^\s*(?:合计|总计|小计|grand\s*total|total|查询条件|报表类别|报表说明|填报说明|编制说明|编制单位|制表人|打印时间|导出时间|备注|注[:：]|说明[:：]|附注|声明|数据来源|温馨提示|特别提示|[\*＊#])",
                 re.I
@@ -134,7 +135,7 @@ def spreadsheet_structure(source, selected_sheets=None, deadline=None):
                 row_cells = observed[end]
                 first_val = str(row_cells[0].value or '').strip()
                 is_footer = False
-                if footer_pattern.search(first_val):
+                if SUMMARY_ROW_LABEL_RE.match(first_val) or footer_pattern.search(first_val):
                     is_footer = True
                 elif header_col_count >= 4 and len(row_cells) <= max(2, header_col_count // 4):
                     if any(footer_pattern.search(str(c.value or '')) for c in row_cells) or ':' in first_val or '：' in first_val:
@@ -144,8 +145,9 @@ def spreadsheet_structure(source, selected_sheets=None, deadline=None):
                     end -= 1
                 else:
                     break
-            sample_indices=(sorted(observed)[:5]+sorted(observed)[-2:] if selected_sheets is not None
-                            else ([r for r in sorted(observed) if r > best['row']][:5] if best else sorted(observed)[:1]))
+            sample_indices=(sorted(observed) if ws.max_row<=32
+                            else (sorted(observed)[:5]+sorted(observed)[-2:] if selected_sheets is not None
+                            else ([r for r in sorted(observed) if r > best['row']][:5] if best else sorted(observed)[:1])))
             for index in dict.fromkeys(sample_indices):
                 if index in observed:
                     sample.append({c.coordinate:str(c.value)[:150] for c in observed[index][:20]})
@@ -196,4 +198,20 @@ def execute_spreadsheet_structure(params,deadline=None):
         result = ToolResult.error('invalid_sheet_selection', '需要指定真实工作表名')
     else:
         result = spreadsheet_structure(source, params['sheets'], deadline)
-    return TextToolOutput(result.render_text(), result)
+    text = result.render_text()
+    if result.is_success and isinstance(result.data, dict):
+        has_formula_sample = any(
+            isinstance(v, str) and v.startswith('=')
+            for sh in result.data.get('sheets', [])
+            for row_map in sh.get('sample_cells', [])
+            for v in (row_map.values() if isinstance(row_map, dict) else [])
+        )
+        if has_formula_sample:
+            text += (
+                '\n[系统提示]: 当前工作表样本包含公式字符串（如 =Sheet!Cell 或 =SUM(...)），'
+                'inspect_spreadsheet_structure 仅展示未求值的公式文本，严禁据此猜测或硬编码数值。'
+                '若需获取公式真实计算值或生成新表格，请先调用 query_spreadsheet / analyze_spreadsheet 读取计算结果，'
+                '或在 bash 中使用重算后的工作簿读取真实计算值。'
+            )
+            result.text_representation = text
+    return TextToolOutput(text, result)

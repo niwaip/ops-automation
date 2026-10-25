@@ -123,16 +123,17 @@ def select_active_tools(
     contract = build_analysis_contract(prompt)
     is_advisory = contract.is_advisory_intent or contract.is_browse_or_summary
 
-    from .spreadsheet_update.routing import is_workbook_update
+    from .spreadsheet_update.routing import is_workbook_update, is_custom_workbook_or_row_edit
     admission = getattr(skill_res, 'admission', None) or {}
-    is_update_task = is_workbook_update(prompt, admission)
+    is_custom_edit = is_custom_workbook_or_row_edit(prompt)
+    is_update_task = is_workbook_update(prompt, admission) and not is_custom_edit
     if admission.get('task_mode') == 'consult':
         is_guide = True
     update_enabled = os.environ.get("DSH_SPREADSHEET_UPDATE_ENABLED", "true").lower() in ("1", "true", "yes")
 
-    if (is_modify or is_update_task) and has_spreadsheet_analysis_input(skill_res) and update_enabled:
+    if (is_update_task or (is_modify and not is_custom_edit)) and has_spreadsheet_analysis_input(skill_res) and update_enabled:
         from .spreadsheet_analysis_schema import ANALYSIS_TOOL_NAMES
-        if is_guide or has_negative_execution or is_advisory:
+        if is_guide or has_negative_execution or (is_advisory and admission.get('task_mode') != 'execute' and not is_update_task):
             # 咨询/指导或否定执行模式：只允许无副作用的只读分析或规划预览，严禁开放 execute_spreadsheet_update
             update_read_allowed = {
                 "read_file",
@@ -207,12 +208,8 @@ def select_active_tools(
             ]))
         )
         if is_table_or_calc_context:
+            # 始终保留 bash 工具，以便在专用工具受限或多轮错误时可主动退避到 Python 沙箱计算
             allowed.update({"bash", "compare_spreadsheet_columns"})
-            from .analysis_contract import build_analysis_contract, supports_column_comparison
-            if supports_column_comparison(build_analysis_contract(prompt)):
-                # Native comparison results have verifiable input scope and provenance;
-                # arbitrary shell output cannot satisfy this capability's contract.
-                allowed.discard("bash")
         if has_web_search_permission:
             allowed.update({"web_search", "fetch_page"})
         if skill_res.is_send_intent:
@@ -231,9 +228,13 @@ def select_active_tools(
         if skill_res.is_send_intent:
             allowed.add("send_file")
         tools = get_sandbox_tools(allowed_names=allowed)
-    # 3. 复杂生成、组合任务或明确需要物理落盘产物的技能，提供完整执行环境（bash、文件与技能工具）
-    elif not is_text_only_request(prompt) and (is_modify or skill_res.is_generate_intent or skill_res.requires_execution or (skill_res.skill_id and not skill_res.is_inspect_intent)):
-        tools = get_sandbox_tools()
+    # 3. 复杂生成、组合任务或明确需要物理落盘产物的技能，提供完整执行环境（bash、内置分析与文件工具，但排除专用于模板 Sheet 复制回填的 plan/execute_spreadsheet_update）
+    elif not is_text_only_request(prompt) and (is_modify or is_custom_edit or skill_res.is_generate_intent or skill_res.requires_execution or (skill_res.skill_id and not skill_res.is_inspect_intent)):
+        _update_only = {"plan_spreadsheet_update", "execute_spreadsheet_update", "get_spreadsheet_update_status"}
+        tools = [
+            t for t in get_sandbox_tools()
+            if (t.get("function", {}).get("name") or t.get("name", "")) not in _update_only
+        ]
     else:
         allowed = {"web_search", "fetch_page"} if has_web_search_permission else set()
         if WEATHER_RE.search(prompt):
@@ -804,7 +805,7 @@ def cmd_run(args):
             try:
                 existing_history.append({"role": "user", "content": prompt})
                 existing_history.append({"role": "assistant", "content": final_text})
-                if loop_res.execution_evidence:
+                if loop_res.execution_evidence or telemetry.guard_decisions:
                     existing_history[-1]['verification'] = persist_turn_evidence(
                         history_file, original_hashes, prompt, loop_res.execution_evidence, telemetry.guard_decisions)
                 with open(history_file, "w", encoding="utf-8") as f:

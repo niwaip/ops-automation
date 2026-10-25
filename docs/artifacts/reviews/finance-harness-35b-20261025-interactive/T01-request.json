@@ -1,0 +1,17 @@
+{
+  "message": "确认：毛利率=全年毛利/全年营业收入，净利率=全年净利润/全年营业收入，请按百分比展示；其他金额沿用原表单位。请继续核算原先六项指标，如无法完成请明确说明，不要猜测。",
+  "clientMessageId": "1792897678698-g5u7cftd",
+  "clientAssistantMessageId": "1792897678698-c0iokhq2",
+  "sessionId": "chat-session-1792897587482-oobbqctt",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

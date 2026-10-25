@@ -1,0 +1,278 @@
+[
+  {
+    "id": "F01",
+    "sessionId": "chat-session-1792894906850-um5ekgd1",
+    "traceId": "d98b6c78-9598-4228-9f99-bbc64a8a64da",
+    "durationMs": 39097,
+    "tokens": {
+      "prompt_tokens": 55030,
+      "completion_tokens": 1504,
+      "total_tokens": 56534
+    },
+    "exitCode": 0,
+    "llmInvocations": 6,
+    "toolCalls": [
+      {
+        "name": "inspect_spreadsheet_structure",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "status": "success",
+        "error_code": null
+      }
+    ],
+    "done": true,
+    "outcome": "FAIL",
+    "scenario": "全年六项指标"
+  },
+  {
+    "id": "F02",
+    "sessionId": "chat-session-1792894906850-um5ekgd1",
+    "traceId": "6ee775fd-7f75-4c10-b4f1-a94e212a333d",
+    "durationMs": 45925,
+    "tokens": {
+      "prompt_tokens": 73550,
+      "completion_tokens": 2382,
+      "total_tokens": 75932
+    },
+    "exitCode": 0,
+    "llmInvocations": 7,
+    "toolCalls": [
+      {
+        "name": "aggregate_spreadsheet",
+        "status": "error",
+        "error_code": "invalid_analysis_plan"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "status": "success",
+        "error_code": null
+      }
+    ],
+    "done": true,
+    "outcome": "FAIL",
+    "scenario": "简化指标对照"
+  },
+  {
+    "id": "F03",
+    "sessionId": "chat-session-1792895050474-utx8y6z8",
+    "traceId": "751607e1-f566-443e-af46-3a5a333f4c6a",
+    "durationMs": 24796,
+    "tokens": {
+      "prompt_tokens": 41543,
+      "completion_tokens": 1342,
+      "total_tokens": 42885
+    },
+    "exitCode": 0,
+    "llmInvocations": 8,
+    "toolCalls": [
+      {
+        "name": "compare_spreadsheet_columns",
+        "status": "error",
+        "error_code": "invalid_comparison"
+      },
+      {
+        "name": "inspect_spreadsheet_structure",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "compare_spreadsheet_columns",
+        "status": "success",
+        "error_code": null
+      }
+    ],
+    "done": true,
+    "outcome": "RECOVERED",
+    "scenario": "月度预算差异"
+  },
+  {
+    "id": "F04",
+    "sessionId": "chat-session-1792895050474-utx8y6z8",
+    "traceId": "ed505c30-0fb5-4808-84ed-99cab4c04e7e",
+    "durationMs": 36565,
+    "tokens": {
+      "prompt_tokens": 56352,
+      "completion_tokens": 1243,
+      "total_tokens": 57595
+    },
+    "exitCode": 0,
+    "llmInvocations": 6,
+    "toolCalls": [
+      {
+        "name": "inspect_spreadsheet_structure",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "status": "success",
+        "error_code": null
+      }
+    ],
+    "done": true,
+    "outcome": "FAIL_DATA",
+    "scenario": "五类交易异常"
+  },
+  {
+    "id": "F05",
+    "sessionId": "chat-session-1792895050474-utx8y6z8",
+    "traceId": "8aee6da4-3157-477f-a969-414fc122038f",
+    "durationMs": 25878,
+    "tokens": {
+      "prompt_tokens": 38689,
+      "completion_tokens": 974,
+      "total_tokens": 39663
+    },
+    "exitCode": 0,
+    "llmInvocations": 5,
+    "toolCalls": [
+      {
+        "name": "check_spreadsheet_equations",
+        "status": "success",
+        "error_code": null
+      }
+    ],
+    "done": true,
+    "outcome": "PASS",
+    "scenario": "跨表勾稽"
+  },
+  {
+    "id": "F06",
+    "sessionId": "chat-session-1792895050474-utx8y6z8",
+    "traceId": "f7a8d7c2-14e2-4bde-9fda-859916631dae",
+    "durationMs": 39741,
+    "tokens": {
+      "prompt_tokens": 234105,
+      "completion_tokens": 2474,
+      "total_tokens": 236579
+    },
+    "exitCode": 0,
+    "llmInvocations": 12,
+    "toolCalls": [
+      {
+        "name": "inspect_spreadsheet_structure",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "status": "error",
+        "error_code": "invalid_analysis_plan"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "plan_spreadsheet_update",
+        "status": "error",
+        "error_code": "spreadsheet_update_rejected"
+      },
+      {
+        "name": "plan_spreadsheet_update",
+        "status": "error",
+        "error_code": "spreadsheet_update_rejected"
+      },
+      {
+        "name": "plan_spreadsheet_update",
+        "status": "error",
+        "error_code": null
+      }
+    ],
+    "done": true,
+    "outcome": "INCOMPLETE",
+    "scenario": "原文件名Excel交付"
+  },
+  {
+    "id": "F07",
+    "sessionId": "chat-session-1792895050474-utx8y6z8",
+    "traceId": "845df6ed-d1a6-483d-aa16-dd74bd9b8445",
+    "durationMs": 66656,
+    "tokens": {
+      "prompt_tokens": 284538,
+      "completion_tokens": 3787,
+      "total_tokens": 288325
+    },
+    "exitCode": 0,
+    "llmInvocations": 13,
+    "toolCalls": [
+      {
+        "name": "read_file",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "bash",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "bash",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "status": "error",
+        "error_code": "invalid_analysis_plan"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "status": "error",
+        "error_code": "invalid_analysis_plan"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "bash",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "bash",
+        "status": "success",
+        "error_code": null
+      }
+    ],
+    "done": true,
+    "outcome": "RECOVERED_WITH_ISSUES",
+    "scenario": "新文件名Excel诊断对照"
+  }
+]

@@ -1,0 +1,207 @@
+[
+  {
+    "id": "F01",
+    "sessionId": "chat-session-1792891849108-tr03rtwn",
+    "traceId": "15480c46-3edc-4b09-8b56-cd49d42b894d",
+    "durationMs": 54474,
+    "tokens": {
+      "prompt_tokens": 101640,
+      "completion_tokens": 1873,
+      "total_tokens": 103513
+    },
+    "exitCode": 0,
+    "toolCalls": [
+      {
+        "name": "inspect_spreadsheet_structure",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "inspect_spreadsheet_structure",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "status": "success",
+        "error_code": null
+      }
+    ],
+    "llmInvocations": 8,
+    "done": true,
+    "outcome": "FAIL",
+    "scenario": "全年六项指标",
+    "model": "qwen36-35b-a3b",
+    "model_id": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+  },
+  {
+    "id": "F02",
+    "sessionId": "chat-session-1792891849108-tr03rtwn",
+    "traceId": "cf1a65c6-942b-415c-ac5e-6a8aeb4a4224",
+    "durationMs": 50450,
+    "tokens": {
+      "prompt_tokens": 99234,
+      "completion_tokens": 2790,
+      "total_tokens": 102024
+    },
+    "exitCode": 0,
+    "toolCalls": [
+      {
+        "name": "inspect_spreadsheet_structure",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "status": "success",
+        "error_code": null
+      }
+    ],
+    "llmInvocations": 8,
+    "done": true,
+    "outcome": "FAIL",
+    "scenario": "简化指标对照",
+    "model": "qwen36-35b-a3b",
+    "model_id": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+  },
+  {
+    "id": "F03",
+    "sessionId": "chat-session-1792892318750-hpmje4ba",
+    "traceId": "89716ef2-47f7-45a3-9c3c-ba8160684c01",
+    "durationMs": 28794,
+    "tokens": {
+      "prompt_tokens": 43118,
+      "completion_tokens": 1468,
+      "total_tokens": 44586
+    },
+    "exitCode": 0,
+    "toolCalls": [
+      {
+        "name": "compare_spreadsheet_columns",
+        "status": "error",
+        "error_code": "comparison_plan_mismatch"
+      },
+      {
+        "name": "inspect_spreadsheet_structure",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "compare_spreadsheet_columns",
+        "status": "success",
+        "error_code": null
+      }
+    ],
+    "llmInvocations": 8,
+    "done": true,
+    "outcome": "RECOVERED",
+    "scenario": "月度预算差异",
+    "model": "qwen36-35b-a3b",
+    "model_id": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+  },
+  {
+    "id": "F04",
+    "sessionId": "chat-session-1792892318750-hpmje4ba",
+    "traceId": "99a49083-f444-4d16-9327-1b153a0b5344",
+    "durationMs": 52409,
+    "tokens": {
+      "prompt_tokens": 98989,
+      "completion_tokens": 1608,
+      "total_tokens": 100597
+    },
+    "exitCode": 0,
+    "toolCalls": [
+      {
+        "name": "inspect_spreadsheet_structure",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "status": "error",
+        "error_code": "invalid_analysis_plan"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "status": "success",
+        "error_code": null
+      }
+    ],
+    "llmInvocations": 8,
+    "done": true,
+    "outcome": "FAIL",
+    "scenario": "交易异常五项检查",
+    "model": "qwen36-35b-a3b",
+    "model_id": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+  },
+  {
+    "id": "F05",
+    "sessionId": "chat-session-1792892318750-hpmje4ba",
+    "traceId": "ac04ecf3-3ba3-4c68-9524-52060f25cbf0",
+    "durationMs": 27080,
+    "tokens": {
+      "prompt_tokens": 38879,
+      "completion_tokens": 947,
+      "total_tokens": 39826
+    },
+    "exitCode": 0,
+    "toolCalls": [
+      {
+        "name": "check_spreadsheet_equations",
+        "status": "success",
+        "error_code": null
+      }
+    ],
+    "llmInvocations": 5,
+    "done": true,
+    "outcome": "PASS",
+    "scenario": "跨表勾稽",
+    "model": "qwen36-35b-a3b",
+    "model_id": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+  },
+  {
+    "id": "F06",
+    "sessionId": "chat-session-1792892318750-hpmje4ba",
+    "traceId": "4775f35d-6abe-4cbb-b903-b0826a2cc20a",
+    "durationMs": 50145,
+    "tokens": {
+      "prompt_tokens": 146652,
+      "completion_tokens": 1767,
+      "total_tokens": 148419
+    },
+    "exitCode": 0,
+    "toolCalls": [
+      {
+        "name": "read_file",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "bash",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "bash",
+        "status": "success",
+        "error_code": null
+      },
+      {
+        "name": "send_file",
+        "status": "success",
+        "error_code": null
+      }
+    ],
+    "llmInvocations": 8,
+    "done": true,
+    "outcome": "PASS",
+    "scenario": "Excel交付下载",
+    "model": "qwen36-35b-a3b",
+    "model_id": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af"
+  }
+]

@@ -87,6 +87,18 @@ def _clean_fact_label_for_prompt(label: Any) -> str:
     return str(label or "").replace("（注册关系补算）", "").strip()
 
 
+def _format_fact_sources_note(fact: Dict[str, Any]) -> str:
+    sources = fact.get("source_cells") if isinstance(fact, dict) else None
+    if not isinstance(sources, list) or not sources:
+        return ""
+    clean_sources = [str(s).strip() for s in sources if str(s).strip()]
+    if not clean_sources:
+        return ""
+    if len(clean_sources) <= 6:
+        return f"（来源单元格: {', '.join(clean_sources)}）"
+    return f"（来源单元格: {clean_sources[0]} .. {clean_sources[-1]}，共 {len(clean_sources)} 个单元格）"
+
+
 def _is_zero_match_receipts(receipts: List[Any], contract: Any) -> bool:
     """Returns True if receipts represent an executed query that matched 0 records."""
     if not receipts:
@@ -165,19 +177,22 @@ def build_verified_facts_digest(receipts: List[Any], prompt: str = "") -> str:
             req_lines = ["【用户提问核心指标（回答正文中必须完整包含以下数值）】:"]
             for f in required_facts:
                 val_str = quantity(f.get("value"), f.get("unit"))
-                req_lines.append(f"- {_clean_fact_label_for_prompt(f.get('label'))}: {val_str}")
+                src_note = _format_fact_sources_note(f)
+                req_lines.append(f"- {_clean_fact_label_for_prompt(f.get('label'))}: {val_str}{src_note}")
             sections.append("\n".join(req_lines))
 
             opt_lines = ["【底层衍生/辅助核算指标（可按需引用，无需全部罗列，严禁自行口算其他数字）】:"]
             for f in optional_facts:
                 val_str = quantity(f.get("value"), f.get("unit"))
-                opt_lines.append(f"- {_clean_fact_label_for_prompt(f.get('label'))}: {val_str}")
+                src_note = _format_fact_sources_note(f)
+                opt_lines.append(f"- {_clean_fact_label_for_prompt(f.get('label'))}: {val_str}{src_note}")
             sections.append("\n".join(opt_lines))
         elif required_facts:
             fact_lines = ["【已核算指标数值（回答正文中必须包含）】:"]
             for f in required_facts:
                 val_str = quantity(f.get("value"), f.get("unit"))
-                fact_lines.append(f"- {_clean_fact_label_for_prompt(f.get('label'))}: {val_str}")
+                src_note = _format_fact_sources_note(f)
+                fact_lines.append(f"- {_clean_fact_label_for_prompt(f.get('label'))}: {val_str}{src_note}")
             group_facts = [f for f in required_facts if f.get("group_key")]
             if len(group_facts) >= 2:
                 from collections import defaultdict
@@ -230,7 +245,8 @@ def build_verified_facts_digest(receipts: List[Any], prompt: str = "") -> str:
         for c in checks:
             status = "一致" if c.get("passed") else "需核查"
             residual = quantity(c.get("residual"), c.get("unit"))
-            check_lines.append(f"- {c.get('label')}: {status} (左值: {c.get('left')}, 右值: {c.get('right')}, 差额: {residual})")
+            src_note = _format_fact_sources_note(c)
+            check_lines.append(f"- {c.get('label')}: {status} (左值: {c.get('left')}, 右值: {c.get('right')}, 差额: {residual}){src_note}")
         sections.append("\n".join(check_lines))
 
     # 3. 规则核查与异常样本
@@ -248,7 +264,27 @@ def build_verified_facts_digest(receipts: List[Any], prompt: str = "") -> str:
             if examples and v_cnt > 0:
                 samples = [f"{x.get('cell', '')} (值: {x.get('value', '')})" for x in examples[:5] if x.get("cell")]
                 rule_lines.append(f"  典型异常样本: {', '.join(samples)}" + (f" 等共 {v_cnt} 处" if v_cnt > len(samples) else ""))
+            v_rows = r.get("violation_rows") or []
+            if v_rows and v_cnt > 0:
+                rule_lines.append(f"  不符合规则原表行号（共 {v_cnt} 行）: {', '.join(str(x) for x in v_rows[:500])}")
         sections.append("\n".join(rule_lines))
+
+    # 3.2 过滤匹配的原表行号清单 (selected_rows when filtered)
+    filtered_row_lines: List[str] = []
+    for r in receipts or []:
+        data = _receipt_data(r)
+        for cov in data.get("coverage", []):
+            if not isinstance(cov, dict):
+                continue
+            sel_rows = cov.get("selected_rows") or []
+            in_cnt = cov.get("input_records", 0)
+            if sel_rows and (cov.get("filters") or (in_cnt and len(sel_rows) < in_cnt)) and len(sel_rows) <= 500:
+                sheet_lbl = cov.get("sheet") or cov.get("id") or "工作表"
+                filtered_row_lines.append(
+                    f"- {sheet_lbl}（共匹配 {len(sel_rows)} 行，原表行号）：{', '.join(str(x) for x in sel_rows)}"
+                )
+    if filtered_row_lines:
+        sections.append("【筛选匹配的原表行号清单（回答中若用户要求列出全部行号必须完整包含）】:\n" + "\n".join(dict.fromkeys(filtered_row_lines)))
 
     # 3.5 字段全量统计概况与极值/离群分布 (profiles)
     profile_lines: List[str] = []
@@ -270,10 +306,15 @@ def build_verified_facts_digest(receipts: List[Any], prompt: str = "") -> str:
         for p in profs:
             if not isinstance(p, dict):
                 continue
-            if requested_fields and (p.get("table"), p.get("column")) not in requested_fields:
-                continue
             tbl = cov_by_id.get(p.get("table"), {})
             sheet_name = tbl.get("sheet") or p.get("table") or ""
+            if p.get("table_duplicate_row_count") is not None:
+                dup_cnt = p["table_duplicate_row_count"]
+                dup_rows = p.get("table_duplicate_rows") or []
+                dup_note = f"（行号: {', '.join(str(x) for x in dup_rows[:500])}）" if dup_cnt > 0 and dup_rows else ""
+                profile_lines.append(f"- {sheet_name} 全表整行完全重复记录数：{dup_cnt} 条{dup_note}")
+            if requested_fields and (p.get("table"), p.get("column")) not in requested_fields:
+                continue
             col_letter = p.get("column") or ""
             header_name = p.get("header") or col_letter
             rec_cnt = p.get("records", 0)
@@ -281,6 +322,8 @@ def build_verified_facts_digest(receipts: List[Any], prompt: str = "") -> str:
             p_parts = [f"- {sheet_name}!{col_letter}（{header_name}）：总计 {rec_cnt} 条，缺失 {miss_cnt} 条"]
             if 0 < miss_cnt <= 3 and p.get("missing_examples"):
                 p_parts.append(f"缺失位置 {', '.join(p['missing_examples'][:3])}")
+            if miss_cnt > 0 and p.get("missing_rows"):
+                p_parts.append(f"缺失原表行号（共 {miss_cnt} 行）：{', '.join(str(x) for x in p['missing_rows'][:500])}")
             if isinstance(p.get("numeric"), dict):
                 n = p["numeric"]
                 p_parts.append(
@@ -472,10 +515,24 @@ def _collect_allowed_numbers(
                 if isinstance(ex, dict):
                     _add(ex.get("row"))
                     _add(ex.get("value"))
+            for vr in rule.get("violation_rows", []) or []:
+                _add(vr)
         for cov in data.get("coverage", []):
             if isinstance(cov, dict):
                 _add(cov.get("input_records"))
                 _add(cov.get("evaluated_records"))
+                _add(cov.get("header_row"))
+                for ex_r in cov.get("excluded_header_rows", []) or []:
+                    _add(ex_r)
+                for m_rng in re.finditer(r"\d+", str(cov.get("data_range") or "")):
+                    _add(m_rng.group(0))
+                sel_rows = cov.get("selected_rows") or []
+                if len(sel_rows) <= 500:
+                    for sr in sel_rows:
+                        _add(sr)
+                elif sel_rows:
+                    _add(sel_rows[0])
+                    _add(sel_rows[-1])
                 for rc_key in ("input_records", "evaluated_records"):
                     rc_val = cov.get(rc_key)
                     if isinstance(rc_val, int) and rc_val > 0:
@@ -489,6 +546,12 @@ def _collect_allowed_numbers(
                 rec_total = prof.get("records")
                 _add_count_pair(prof.get("missing"), rec_total)
                 _add(prof.get("distinct_values"))
+                if prof.get("table_duplicate_row_count") is not None:
+                    _add_count_pair(prof.get("table_duplicate_row_count"), rec_total)
+                for dr in prof.get("table_duplicate_rows", []) or []:
+                    _add(dr)
+                for mr in prof.get("missing_rows", []) or []:
+                    _add(mr)
                 num_prof = prof.get("numeric")
                 if isinstance(num_prof, dict):
                     _add(num_prof.get("min"))
@@ -633,13 +696,156 @@ def _number_in_text(cand: str, text: str) -> bool:
     return bool(re.search(rf'(?<![A-Za-z0-9]){re.escape(cand)}(?![A-Za-z0-9])', text))
 
 
+_NON_CELL_ABBREVS = {"Q1", "Q2", "Q3", "Q4", "H1", "H2"}
+
+
+def _collect_allowed_cell_references(
+    receipts: List[Any], prompt: str = "", audit: str = ""
+) -> Tuple[Set[str], Set[str], bool]:
+    """Collects verified bare and sheet-qualified cell coordinates from receipts, prompt, and audit."""
+    allowed_bare: Set[str] = set()
+    allowed_qualified: Set[str] = set()
+    has_cell_provenance = False
+
+    def _add_ref(ref_val: Any, is_provenance: bool = False) -> None:
+        nonlocal has_cell_provenance
+        raw = str(ref_val or "").strip().strip("`'\" ").replace("$", "")
+        if not raw:
+            return
+        sheet_part = ""
+        coord_part = raw
+        if "!" in raw:
+            sheet_part, coord_part = raw.rsplit("!", 1)
+            sheet_part = sheet_part.strip("'\" ")
+        coord_up = coord_part.upper()
+        for part in coord_up.split(":"):
+            if re.match(r"^[A-Z]{1,3}[1-9]\d{0,4}$", part):
+                allowed_bare.add(part)
+                if sheet_part:
+                    allowed_qualified.add(f"{sheet_part}!{part}")
+                if is_provenance:
+                    has_cell_provenance = True
+        if ":" in coord_up:
+            allowed_bare.add(coord_up)
+            if sheet_part:
+                allowed_qualified.add(f"{sheet_part}!{coord_up}")
+
+    def _extract_tokens(text_src: Any) -> None:
+        s = str(text_src or "").replace("$", "")
+        for m in re.finditer(r"(?:([A-Za-z0-9_\u4e00-\u9fa5]+)!)?\b([A-Za-z]{1,3}[1-9]\d{0,4}(?::[A-Za-z]{1,3}[1-9]\d{0,4})?)\b", s):
+            sh, cd = m.group(1), m.group(2)
+            _add_ref(f"{sh}!{cd}" if sh else cd, is_provenance=False)
+
+    for receipt in receipts or []:
+        data = _receipt_data(receipt)
+        for vc in data.get("visited_cells", []) or []:
+            _add_ref(vc, is_provenance=True)
+        for us in data.get("unit_sources", []) or []:
+            _add_ref(us, is_provenance=True)
+        for fact in data.get("facts", []) or []:
+            if isinstance(fact, dict):
+                for sc in fact.get("source_cells", []) or []:
+                    _add_ref(sc, is_provenance=True)
+                _extract_tokens(fact.get("label"))
+                _extract_tokens(fact.get("group_key"))
+                _extract_tokens(fact.get("value"))
+        for check in data.get("checks", []) or []:
+            if isinstance(check, dict):
+                for sc in check.get("source_cells", []) or []:
+                    _add_ref(sc, is_provenance=True)
+        for rule in data.get("rules", []) or []:
+            if isinstance(rule, dict):
+                for ex in rule.get("examples", []) or []:
+                    if isinstance(ex, dict) and ex.get("cell"):
+                        _add_ref(ex.get("cell"), is_provenance=True)
+        for cov in data.get("coverage", []) or []:
+            if isinstance(cov, dict):
+                sh = str(cov.get("sheet") or "").strip()
+                dr = str(cov.get("data_range") or "").strip()
+                if dr:
+                    _add_ref(f"{sh}!{dr}" if sh else dr, is_provenance=False)
+                hdr_row = cov.get("header_row")
+                hdrs = cov.get("headers") or {}
+                if isinstance(hdr_row, int) and isinstance(hdrs, dict):
+                    for col_let in hdrs:
+                        _add_ref(f"{sh}!{col_let}{hdr_row}" if sh else f"{col_let}{hdr_row}", is_provenance=False)
+        for prof in data.get("profiles", []) or []:
+            if isinstance(prof, dict):
+                col = str(prof.get("column") or "").strip().upper()
+                for mex in prof.get("missing_examples", []) or []:
+                    _add_ref(mex, is_provenance=True)
+                num_p = prof.get("numeric") or {}
+                if isinstance(num_p, dict):
+                    if col and num_p.get("min_row"):
+                        _add_ref(f"{col}{num_p['min_row']}", is_provenance=True)
+                    if col and num_p.get("max_row"):
+                        _add_ref(f"{col}{num_p['max_row']}", is_provenance=True)
+                    for o in num_p.get("outliers", []) or []:
+                        if isinstance(o, dict) and o.get("cell"):
+                            _add_ref(o.get("cell"), is_provenance=True)
+                v_ex = prof.get("value_examples") or {}
+                if isinstance(v_ex, dict):
+                    for c_list in v_ex.values():
+                        if isinstance(c_list, list):
+                            for c_ref in c_list:
+                                _add_ref(c_ref, is_provenance=True)
+        for row in data.get("rows", []) or []:
+            if isinstance(row, dict):
+                for rv in row.values():
+                    _extract_tokens(rv)
+
+    _extract_tokens(prompt)
+    _extract_tokens(audit)
+    return allowed_bare, allowed_qualified, has_cell_provenance
+
+
+def _has_unverified_cell_references(
+    content: str, receipts: List[Any], prompt: str = "", audit: str = ""
+) -> bool:
+    """Detects whether LLM synthesis fabricated cell coordinates not grounded in receipts."""
+    if not content:
+        return False
+    allowed_bare, allowed_qualified, has_cell_provenance = _collect_allowed_cell_references(
+        receipts, prompt=prompt, audit=audit
+    )
+    if not has_cell_provenance:
+        return False
+
+    text_body = re.sub(r"[^\s/\\<>'\"`]+\.(?:xlsx|xls|csv|docx|doc|pdf|txt|json|zip)\b", " ", content, flags=re.I)
+    for m in re.finditer(
+        r"(?:([A-Za-z0-9_\u4e00-\u9fa5]+)!)?(?<![A-Za-z0-9_!/-])\$?([A-Z]{1,2}[1-9]\d{0,4})(?::\$?([A-Z]{1,2}[1-9]\d{0,4}))?(?![A-Za-z0-9_/-])",
+        text_body,
+    ):
+        sheet_prefix = (m.group(1) or "").strip()
+        c1 = m.group(2).upper()
+        c2 = (m.group(3) or "").upper()
+        if not sheet_prefix and not c2 and c1 in _NON_CELL_ABBREVS:
+            continue
+        for c_part in ([c1, c2] if c2 else [c1]):
+            if sheet_prefix and allowed_qualified:
+                if f"{sheet_prefix}!{c_part}" not in allowed_qualified:
+                    logger.warning(
+                        "Synthesized summary introduced unverified qualified cell reference '%s!%s'; rejecting synthesis.",
+                        sheet_prefix,
+                        c_part,
+                    )
+                    return True
+            if c_part not in allowed_bare:
+                logger.warning(
+                    "Synthesized summary introduced unverified cell reference '%s'; rejecting synthesis.",
+                    c_part,
+                )
+                return True
+    return False
+
+
 def _is_synthesis_grounded(
     content: str, receipts: List[Any], prompt: str = "", audit: str = ""
 ) -> bool:
     """
     Two-way grounding check:
     1. Recall: All required facts matching the user's prompt contract must appear in `content`.
-    2. Precision: Every business number appearing in `content` must belong to the verified whitelist.
+    2. Precision: Every business number and cell reference appearing in `content` must belong to the verified whitelist.
     """
     clean_content = (content or "").replace(",", "").replace("，", "")
     if not clean_content.strip():
@@ -658,7 +864,11 @@ def _is_synthesis_grounded(
             logger.warning("Synthesized summary claimed zero-match when receipts have non-zero results; rejecting synthesis.")
             return False
 
+    requires_cell_source = bool(re.search(r"单元格|坐标|\bcell\b", prompt or "", re.I))
     required_facts, _ = _partition_facts_by_prompt(receipts, prompt)
+    if contract.metrics and not required_facts and any(_receipt_data(r).get("facts") for r in (receipts or [])):
+        logger.warning("Synthesized summary has no conforming required_facts for contract metrics; rejecting synthesis.")
+        return False
     for fact in required_facts:
         val = fact.get("value")
         str_candidates, _ = _numeric_candidates(val)
@@ -674,6 +884,16 @@ def _is_synthesis_grounded(
                 fact.get("value"),
             )
             return False
+        sc_list = [str(c).strip() for c in (fact.get("source_cells") or []) if str(c).strip()]
+        if requires_cell_source and 1 <= len(sc_list) <= 4:
+            bare_cands = [c.rsplit("!", 1)[-1].replace("$", "") for c in sc_list]
+            if not any(re.search(rf"(?<![A-Za-z0-9]){re.escape(bc)}(?![A-Za-z0-9])", content, re.I) for bc in bare_cands if bc):
+                logger.warning(
+                    "Synthesized summary missed required source_cells %s for metric '%s'; falling back to template.",
+                    sc_list,
+                    fact.get("label"),
+                )
+                return False
 
     # Check rule violation counts if rules found violations
     for receipt in receipts or []:
@@ -684,8 +904,24 @@ def _is_synthesis_grounded(
                 if v_strs and not any(_number_in_text(c, clean_content) for c in v_strs):
                     return False
 
+    # Prevent unverified claims of zero duplicate rows when no duplicate check was executed (FALSE_AUDIT_COVERAGE)
+    if re.search(r"重复[^\n。；;]{0,20}(?:0\s*(?:条|行)|无|未发现|不存在)|(?:未发现|不存在|无)[^\n。；;]{0,15}重复", clean_content):
+        has_dup_check = any(
+            any(isinstance(rl, dict) and rl.get("kind") == "unique" for rl in (_receipt_data(rc).get("rules") or []))
+            or any(isinstance(pf, dict) and pf.get("table_duplicate_row_count") is not None for pf in (_receipt_data(rc).get("profiles") or []))
+            or bool((_receipt_data(rc).get("plan") or {}).get("distinct"))
+            or bool((_receipt_data(rc).get("plan") or {}).get("having"))
+            for rc in (receipts or [])
+        )
+        if not has_dup_check:
+            logger.warning("Synthesized summary claimed zero duplicate rows without duplicate check evidence; rejecting synthesis.")
+            return False
+
     allowed_strs, allowed_floats = _collect_allowed_numbers(receipts, prompt=prompt, audit=audit)
     if _has_unverified_numbers(content, allowed_strs, allowed_floats):
+        return False
+
+    if _has_unverified_cell_references(content, receipts, prompt=prompt, audit=audit):
         return False
 
     return True
@@ -723,7 +959,7 @@ def synthesize_analysis_summary(
         "请结合用户最初的询问语句，依据下方已核验的事实数据，给出清晰凝练、友好易读、专业得体的分析回答。\n\n"
         "【极其严格的数值纪律（必须 100% 遵守，违反将直接被质检系统判定为幻觉驳回）】：\n"
         "1. 必须直接针对用户提问进行解答，完整包含【用户提问核心指标】中的所有数值；\n"
-        "2. 【严禁自造区间概数与近似整数】：正文、表格及要点解读中的所有金额数值，必须精确引用下方核验数据。不得自行编造范围、上下限或近似整数；描述分布时只能使用本轮回执中实际存在的分组名称和精确数值；\n"
+        "2. 【严禁自造区间概数、近似整数与虚假单元格坐标】：正文、表格及要点解读中的所有金额数值和来源单元格坐标（如 月度经营!B16），必须精确引用下方核验数据。不得自行编造范围、上下限、近似整数或猜测单元格行号/列号；描述分布时只能使用本轮回执中实际存在的分组名称和精确数值；\n"
         "3. 若涉及异常检查，请结合【数据质量与异常规则筛查】与【字段全量统计概况与极值分布】，明确指明异常类型、异常记录数，并列出关键异常样本（单元格坐标与实际异常值，包含统计离群极值）；\n"
         "4. 【明细与清单要求】：若用户提问是要求查看明细、清单或具体记录，且核验数据中提供了【底层检索到的匹配明细记录清单】，必须在正文中输出 Markdown 明细表格完整展示具体记录的各关键列（如项目、客户、工时、金额等），绝不能只给几个汇总数字；\n"
         "5. 【零匹配/未找到记录的业务引导要求】：若核验数据表明目标实体或条件匹配结果为 0 条（未找到记录）：\n"

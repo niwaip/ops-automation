@@ -1,0 +1,8 @@
+{
+  "method": "Direct deterministic validator replay in current user sandbox; supplemental to real-model E2E",
+  "file": "/workspace/E2E_finance_interactive_20261025.xlsx",
+  "old_bad_workbook_issues": [
+    "2026财务指标!B3 指标「毛利」数值 50120 与所声明的源单元格 利润表!B6 真实值 53443.25 不一致",
+    "2026财务指标!B4 指标「营业利润」数值 21438.3 与所声明的源单元格 利润表!B10 真实值 21209.4 不一致"
+  ]
+}

@@ -113,7 +113,88 @@ def _tables_in(expression):
     return result
 
 
-def resolve_conforming_facts(receipts, prompt=''):
+def _is_metric_row_filter(cond, contract):
+    """Return True if a filter condition purely selects requested metric names on a vertical statement table."""
+    if not isinstance(cond, dict) or not getattr(contract, 'metrics', None):
+        return False
+    op = str(cond.get('op', 'in') or 'in').strip().lower()
+    if op not in ('in', 'eq', '=', '=='):
+        return False
+    vals = cond.get('values') or ([cond['value']] if cond.get('value') is not None else [])
+    if not vals or not isinstance(vals, list):
+        return False
+    str_vals = [str(v).strip() for v in vals if v is not None and str(v).strip()]
+    if not str_vals:
+        return False
+    operand_metrics = []
+    if getattr(contract, 'domain', None):
+        try:
+            from .analysis_semantics import derivation_recipes, domain_pack
+            pack = domain_pack(contract.domain)
+            if pack and hasattr(pack, 'METRICS'):
+                recipes = [r for r in derivation_recipes(contract.domain)
+                           if any(m.semantic_id == r['metric_id'] for m in contract.metrics)]
+                operand_ids = {op for r in recipes for op in r.get('operands', [])}
+                operand_metrics = [dm for dm in pack.METRICS if dm['id'] in operand_ids]
+        except Exception:
+            pass
+
+    for sv in str_vals:
+        matched_any_metric = any(
+            sv == m.name or any(re.search(alias, sv) for alias in getattr(m, 'aliases', []))
+            for m in contract.metrics
+        )
+        if not matched_any_metric and operand_metrics:
+            matched_any_metric = any(
+                sv == dm['name'] or any(re.search(p, sv) for p in dm.get('patterns', []))
+                for dm in operand_metrics
+            )
+        if not matched_any_metric:
+            return False
+    return True
+
+
+def _is_unsplit_multi_row_conflation(fact, scopes, contract, expression=None):
+    """Detect facts that summed multiple distinct 'in'-filtered rows without group_by."""
+    if expression and expression.get('op') in ('add', 'subtract', 'multiply', 'divide'):
+        # Explicit arithmetic may legitimately read multiple metric rows.
+        return False
+    if fact.get('group_key') is not None:
+        return False
+    matched_records = fact.get('matched_records')
+    if matched_records is not None and matched_records <= 1:
+        return False
+    lbl = str(fact.get('label', '') or '').strip()
+    unsplit = fact.get('unsplit_filter_values')
+    if isinstance(unsplit, dict):
+        for _, m_vals in unsplit.items():
+            if isinstance(m_vals, list) and len(m_vals) >= 2:
+                mentioned = [v for v in m_vals if str(v) in lbl]
+                if 0 < len(mentioned) < len(m_vals):
+                    return True
+                if any(
+                    any( str(v) == m.name or any(re.search(alias, str(v)) for alias in getattr(m, 'aliases', []))
+                         for m in getattr(contract, 'metrics', []) )
+                    for v in m_vals
+                ):
+                    return True
+    for s in scopes:
+        for cond in s.get('filters', []):
+            if not isinstance(cond, dict):
+                continue
+            op = str(cond.get('op', 'in') or 'in').strip().lower()
+            vals = cond.get('values') if isinstance(cond.get('values'), list) else []
+            if op in ('in', '') and len(vals) >= 2 and (matched_records is None or matched_records > 1):
+                if _is_metric_row_filter(cond, contract):
+                    return True
+                str_vals = [str(v).strip() for v in vals if v is not None and str(v).strip()]
+                mentioned = [v for v in str_vals if v in lbl]
+                if 0 < len(mentioned) < len(str_vals):
+                    return True
+    return False
+
+
+def resolve_conforming_facts(receipts, prompt='', scope_decisions=None, model=None, deadline=None):
     prompt = user_instruction(prompt)
     contract = build_analysis_contract(prompt)
     items = []
@@ -138,11 +219,19 @@ def resolve_conforming_facts(receipts, prompt=''):
             metric_item = next((m for m in metrics_list if cid == m['id'] or cid.startswith(m['id'] + '__')), {})
             expr = calc.get('expression') or metric_item
             tids = _tables_in(expr) if calc else set()
+            if metric_item or fact.get('calculation_stage') == 'post_query':
+                tids = {plan.get('source', {}).get('table_id', 'detail')}
             # Legacy receipts without a calculation map can bind only a single table.
             if not tids and len(tables) == 1:
                 tids = set(tables)
             scopes = [tables[t] for t in sorted(tids) if t in tables]
-            predicates = [_predicate(c, s.get('headers', {})) for s in scopes for c in s.get('filters', [])]
+            if _is_unsplit_multi_row_conflation(fact, scopes, contract, expr):
+                continue
+            non_metric_filters = [
+                (s, c) for s in scopes for c in s.get('filters', [])
+                if not _is_metric_row_filter(c, contract)
+            ]
+            predicates = [_predicate(c, s.get('headers', {})) for s, c in non_metric_filters]
             try:
                 identity = fact_identity(fact, data, provenance)
             except (KeyError, TypeError):
@@ -158,11 +247,12 @@ def resolve_conforming_facts(receipts, prompt=''):
         business_filter_prompt
     ))
     data_driven_filter = any(
-        _matches_prompt_intent(cond, prompt, all_headers)
+        not _is_metric_row_filter(cond, contract) and _matches_prompt_intent(cond, prompt, all_headers)
         for s in [scope for it in items for scope in it[3]]
         for cond in s.get('filters', [])
     )
-    has_filter_intent = contract.has_filters or explicit_filter_kw or data_driven_filter
+    review_source_scope = getattr(contract, 'requires_source_scope_review', False)
+    has_filter_intent = contract.has_filters or explicit_filter_kw or data_driven_filter or review_source_scope
 
     # Layer 1: 如果有过滤/切片意图，先由 LLM-as-a-Judge 语义裁判裁决（支持大模型理解复杂否定、同义表述与分类切片）
     if has_filter_intent:
@@ -170,17 +260,48 @@ def resolve_conforming_facts(receipts, prompt=''):
         judge_matched = []
         judge_rejected = []
         neutral_filtered = []
+        scope_reviews = {}
         for it in items:
             scopes = it[3]
-            filters = [cond for s in scopes for cond in s.get('filters', [])]
+            filters = [
+                cond for s in scopes for cond in s.get('filters', [])
+                if not _is_metric_row_filter(cond, contract)
+            ]
             if filters:
-                verdict = judge_filter_conformance(prompt, filters, all_headers)
+                if review_source_scope:
+                    from .analysis_scope_context import source_scope_context, record_scope_decision
+                    context = source_scope_context(it[0], scopes, it[4], contract)
+                    verdict = judge_filter_conformance(
+                        prompt, filters, all_headers, model=model, deadline=deadline,
+                        source_context=context)
+                    record_scope_decision(scope_decisions, verdict, context, it[0])
+                else:
+                    verdict = judge_filter_conformance(prompt, filters, all_headers)
                 if verdict is True:
                     judge_matched.append(it)
                 elif verdict is False:
                     judge_rejected.append(it)
+                elif review_source_scope:
+                    # A heuristic predicate match cannot prove an unknown period.
+                    judge_rejected.append(it)
                 else:
                     neutral_filtered.append(it)
+            elif contract.has_filters or review_source_scope:
+                from .analysis_scope_context import source_scope_context, record_scope_decision
+                context = source_scope_context(it[0], scopes, it[4], contract)
+                key = json.dumps(context, sort_keys=True, ensure_ascii=False)
+                if key not in scope_reviews:
+                    scope_reviews[key] = judge_filter_conformance(
+                        prompt, [], all_headers, model=model, deadline=deadline,
+                        source_context=context)
+                verdict = scope_reviews[key]
+                record_scope_decision(scope_decisions, verdict, context, it[0])
+                if verdict is True:
+                    judge_matched.append(it)
+                elif verdict is False or review_source_scope:
+                    # An unknown source period cannot fall through to the
+                    # unfiltered-fact fallback merely because no WHERE exists.
+                    judge_rejected.append(it)
         if judge_matched:
             items = judge_matched
         else:
@@ -190,7 +311,7 @@ def resolve_conforming_facts(receipts, prompt=''):
             except ValueError:
                 required = []
             if required:
-                items = [it for it in items if set(it[2]) == set(required)]
+                items = [it for it in items if it not in judge_rejected and set(it[2]) == set(required)]
             elif neutral_filtered:
                 aligned_filtered = [
                     it for it in neutral_filtered
@@ -204,6 +325,9 @@ def resolve_conforming_facts(receipts, prompt=''):
                 filtered_items = [it for it in items if it[2] and it not in judge_rejected]
                 if filtered_items:
                     items = filtered_items
+                elif not contract.has_filters and not explicit_filter_kw:
+                    unfiltered_items = [it for it in items if not it[2] and it not in judge_rejected]
+                    items = unfiltered_items
                 else:
                     # 组过滤 (HAVING) 兜底：若 prompt 包含的是针对分组/聚合后指标的过滤（而非底表单行过滤），
                     # 且事实本身为原生分组聚合事实（无底表行过滤），应予保留，不因缺少行级谓词而清空
@@ -235,4 +359,11 @@ def resolve_conforming_facts(receipts, prompt=''):
             facts = selected
     if any(f.get('matched_records', 1) for f in facts):
         facts = [f for f in facts if f.get('matched_records') != 0]
+    # Always preserve registered derivations generated for this turn
+    for r in receipts or []:
+        if getattr(r, 'is_success', False) and isinstance(getattr(r, 'data', None), dict):
+            if (r.provenance or {}).get('execution_origin') == 'registered_derivation':
+                for df in r.data.get('facts', []):
+                    if df not in facts:
+                        facts.append(df)
     return facts

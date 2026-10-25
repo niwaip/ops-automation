@@ -20,4 +20,18 @@ def semantic_bindings(expression, workbook, tables):
                                                for arg in expression['args']]}
     # A direct cell can express row-oriented or derived business measures. It is
     # numerically verifiable but not an automatically verified column binding.
-    return {'kind': 'cell' if 'cell' in expression else 'constant'}
+    if 'cell' in expression:
+        ws = workbook[expression['sheet']]
+        addr = expression['cell']
+        cell_obj = ws[addr]
+        row_label = str(ws.cell(cell_obj.row, 1).value or '')
+        col_header = ''
+        if tables:
+            t = next((t for t in tables.values() if t.get('sheet') == expression['sheet']), None)
+            if t and t.get('header_row'):
+                col_header = str(ws.cell(t['header_row'], cell_obj.column).value or '')
+        return {'kind': 'cell', 'source_header': row_label or col_header,
+                'source_scope': (expression['sheet'], (cell_obj.row,)),
+                'field_key': (expression['sheet'], cell_obj.column),
+                'col_header': col_header}
+    return {'kind': 'constant'}

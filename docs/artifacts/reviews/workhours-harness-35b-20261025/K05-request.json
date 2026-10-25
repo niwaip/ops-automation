@@ -1,0 +1,17 @@
+{
+  "message": "检查所有18列完全相同的重复业务行、客户名称为空的业务行，分别给条数和全部原Excel行号。客户为空只标记缺失，不推断数据错误；员工编号重复是正常多项目记录，不能按员工编号去重。 只在聊天回复，不生成文件，不联网；无法核算时明确说明或向我澄清，不要猜测。",
+  "clientMessageId": "1792909270767-cujqf84f",
+  "clientAssistantMessageId": "1792909270767-dzp82qul",
+  "sessionId": "chat-session-1792908948915-ytw0yory",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

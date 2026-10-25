@@ -1,0 +1,73 @@
+{
+  "case_count": 10,
+  "turn_count": 15,
+  "turns": [
+    {
+      "label": "K01",
+      "outcome": "SAFE_RETRY"
+    },
+    {
+      "label": "K01R",
+      "outcome": "PARTIAL_VERIFIED"
+    },
+    {
+      "label": "K02",
+      "outcome": "SAFE_RETRY"
+    },
+    {
+      "label": "K03",
+      "outcome": "DELIVERED_VERIFIED"
+    },
+    {
+      "label": "K04",
+      "outcome": "CLARIFICATION"
+    },
+    {
+      "label": "K05",
+      "outcome": "FALSE_AUDIT_COVERAGE"
+    },
+    {
+      "label": "K05R",
+      "outcome": "SAFE_RETRY"
+    },
+    {
+      "label": "K04R",
+      "outcome": "SAFE_RETRY"
+    },
+    {
+      "label": "K06",
+      "outcome": "CLARIFICATION"
+    },
+    {
+      "label": "K07",
+      "outcome": "CLARIFICATION"
+    },
+    {
+      "label": "K07R",
+      "outcome": "SAFE_RETRY"
+    },
+    {
+      "label": "K08",
+      "outcome": "DELIVERED_VERIFIED"
+    },
+    {
+      "label": "K09",
+      "outcome": "SAFE_FAILURE_TOOL_BLOCKED"
+    },
+    {
+      "label": "K10",
+      "outcome": "SAFE_RETRY"
+    },
+    {
+      "label": "K09R",
+      "outcome": "SAFE_FAILURE_TOOL_BLOCKED"
+    }
+  ],
+  "complete_deliveries": 2,
+  "correct_reduced_scope_delivery": 1,
+  "clarifications": 3,
+  "explicit_safe_failures": 8,
+  "false_audit_claims": 1,
+  "overall_reliability_acceptance": false,
+  "history_note": "Refresh returned latest 20 messages, consistent with SessionService default sliding window; all 15 requests/results independently archived."
+}

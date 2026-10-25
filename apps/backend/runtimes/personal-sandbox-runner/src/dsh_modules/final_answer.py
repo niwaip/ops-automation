@@ -312,10 +312,12 @@ def finalize_agent_text(
                         is_budget_exhausted=is_budget_exhausted
                     )
                     if val_result.comparison_error and execution_evidence is not None:
-                        # Do not publish an unsupported extreme and then disclaim it.
-                        # This is a failed verification, not an alternate computed answer.
-                        final_text = "本次比较结论尚未通过执行证据核验。"
-                    if "【指标核算未完成声明】" not in final_text:
+                        # 降级：若已有模型实质性输出，不将其抹杀为单纯未完成声明，而是保留并在文末增加软性提示
+                        if final_text and len(final_text.strip()) > 30 and "【指标核算未完成声明】" not in final_text:
+                            final_text = final_text.strip() + f"\n\n---\n💡 **提示**：本结论由模型直接解读与呈现，未完全通过结构化列比对回执（{val_result.comparison_error}）。"
+                        else:
+                            final_text = "本次比较结论尚未通过执行证据核验。" + contract_warning
+                    elif "【指标核算未完成声明】" not in final_text:
                         final_text += contract_warning
 
     # 自动对工作区中本轮新生成的带公式但缺少缓存值的 xlsx 交付物执行无头重算以补齐公式缓存

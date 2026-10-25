@@ -79,16 +79,26 @@ def validate_calculation(item, bindings):
             raise ValueError(f"指标标签与来源字段不一致：{item['label']}引用了{header}")
 
     ratios=[m for m in METRICS if m.get('numerator_metric') and m['name'] in requested]
-    if ratios and not re.search(r"变化|增减|增长|差额|差值|change|growth|difference",item['label'],re.I):
+    if ratios and not expr.get('single_source_value') and not re.search(r"变化|增减|增长|差额|差值|change|growth|difference",item['label'],re.I):
         if 'aggregate' in expr:
             raise ValueError('期间比率应使用汇总分子/汇总分母，不能聚合原始比率列')
-        if expr.get('op')=='divide' and len(expr.get('args',[]))==2 and all('aggregate' in arg for arg in expr['args']):
-            names=[];scopes=[]
-            for arg in expr['args']:
-                names.append(matching_metrics(arg['source_header']));scopes.append(arg['source_scope'])
-            if (any(arg['aggregate']!='sum' for arg in expr['args']) or scopes[0]!=scopes[1]
-                    or any(r['numerator_metric'] not in names[0] or r['denominator_metric'] not in names[1] for r in ratios)):
-                raise ValueError(f"比率标签与来源分子/分母或期间不一致：{item['label']}；分子、分母分别来自{names}，行范围{scopes}。请在同一期间计算汇总分子/汇总收入，不删除要求的比率。")
+        if expr.get('op')=='divide' and len(expr.get('args',[]))==2:
+            args = expr['args']
+            if all('aggregate' in arg for arg in args):
+                names=[];scopes=[]
+                for arg in args:
+                    names.append(matching_metrics(arg['source_header']));scopes.append(arg['source_scope'])
+                if (any(arg['aggregate']!='sum' for arg in args) or scopes[0]!=scopes[1]
+                        or any(r['numerator_metric'] not in names[0] or r['denominator_metric'] not in names[1] for r in ratios)):
+                    raise ValueError(f"比率标签与来源分子/分母或期间不一致：{item['label']}；分子、分母分别来自{names}，行范围{scopes}。请在同一期间计算汇总分子/汇总收入，不删除要求的比率。")
+            elif all(arg.get('kind') == 'cell' for arg in args):
+                names = [matching_metrics(arg.get('source_header', '')) for arg in args]
+                col_headers = [arg.get('field_key') for arg in args]
+                if (col_headers[0] != col_headers[1]
+                        or any(r['numerator_metric'] not in names[0] or r['denominator_metric'] not in names[1] for r in ratios)):
+                    raise ValueError(f"比率单元格与来源分子/分母或期间不一致：{item['label']}；分子({names[0]})、分母({names[1]})。请引用同列对应分子与分母单元格。")
+            elif item.get('metric_id'):
+                raise ValueError('已注册期间比率须显式绑定同期间sum分子与sum分母；变化量请使用单独指标')
         elif item.get('metric_id'):
             raise ValueError('已注册期间比率须显式绑定同期间sum分子与sum分母；变化量请使用单独指标')
 

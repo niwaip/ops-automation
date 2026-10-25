@@ -1,0 +1,59 @@
+{
+  "case_count": 10,
+  "turn_count": 10,
+  "delivered_verified": 1,
+  "safe_incomplete": 8,
+  "wrong_data": 1,
+  "K03_all_25_requested_fields_correct": true,
+  "csv_download_after_refresh": true,
+  "csv_all_49_records_19_columns_correct": true,
+  "K09_K10_workspace_only_not_delivered": true,
+  "source_unchanged": true,
+  "runtime_unchanged": true,
+  "K08_expected_top5": [
+    [
+      52,
+      "S10083",
+      124.5,
+      27.09706
+    ],
+    [
+      53,
+      "S09004",
+      124.5,
+      32.95588
+    ],
+    [
+      187,
+      "S22017",
+      98.0,
+      35.16471
+    ],
+    [
+      83,
+      "S14042",
+      97.41,
+      34.953
+    ],
+    [
+      176,
+      "S22014",
+      90.0,
+      23.82353
+    ]
+  ],
+  "K08_wrong_preview": [
+    {
+      "row": 76,
+      "employee": "S19022",
+      "hours": 97,
+      "amount_K": 23.86691
+    },
+    {
+      "row": 102,
+      "employee": "S22009",
+      "hours": 91,
+      "amount_K": 24.12035
+    }
+  ]
+}

@@ -57,7 +57,7 @@ def decision_tool(ids, rule_bases=None, allow_defaults=True):
 
 
 def validate_decision(value, ids, texts):
-    if set(value) - {'instruction_relation', 'unit_confirmation'} != {'action', 'skill_id', 'use_default_rules', 'rule_basis', 'task_mode', 'output_mode', 'artifact_types', 'skill_invocation', 'requirements', 'reason', 'question'}:
+    if set(value) - {'instruction_relation', 'unit_confirmation', 'section_confirmation'} != {'action', 'skill_id', 'use_default_rules', 'rule_basis', 'task_mode', 'output_mode', 'artifact_types', 'skill_invocation', 'requirements', 'reason', 'question'}:
         raise ValueError('技能准入字段不完整')
     action = value['action']; skill = value['skill_id']
     if action not in {'use', 'general', 'clarify'} or not isinstance(value['use_default_rules'], bool):
@@ -185,7 +185,15 @@ def admit_skill(prompt, history, files, provisional, model, policy, telemetry, d
                     "更新预实", "复制最新", "复制sheet", "更新数据", "更新表格", "填入数值", "更新快照", "更新工数", "更新预测"
                 ])
             )
-            if verdict['action'] == 'use' and (len(files) > 1 or is_spreadsheet_update_task) and catalog.get(selected, {}).get('execution_mode') == 'verified_workflow':
+            is_multi_step_analysis = (
+                not verdict.get('use_default_rules')
+                and bool(re.search(
+                    r"原\s*Excel\s*行号|原行号|前\s*\d+\s*条[^\n。；;]{0,25}(?:行号|员工|记录|明细)|有偿[^\n。；;]{0,20}无偿|占比|比重|核对[^\n。；;]{0,15}全表",
+                    request,
+                    re.I,
+                ))
+            )
+            if verdict['action'] == 'use' and (len(files) > 1 or is_spreadsheet_update_task or is_multi_step_analysis) and catalog.get(selected, {}).get('execution_mode') == 'verified_workflow':
                 telemetry.record_guard('skill_admission', 'downgrade_to_general', {
                     'skill_id': selected,
                     'reason': 'multi_file_or_update_composite_task'
@@ -202,9 +210,10 @@ def admit_skill(prompt, history, files, provisional, model, policy, telemetry, d
             if selected and invocation['mode'] == 'execute' and not invocation['replace_defaults']:
                 record = catalog[selected]
                 names = [record['id'], record.get('name', ''), *(record.get('aliases') or [])]
+                has_default_rules = (record.get('type') == 'custom' or record.get('execution_mode') == 'verified_workflow')
                 if invocation['name'] not in names and verdict['use_default_rules']:
                     raise ValueError('整项调用对象与所选技能不一致，不能继承另一项技能的默认规则')
-                if invocation['name'] in names and not verdict['use_default_rules']:
+                if has_default_rules and invocation['name'] in names and not verdict['use_default_rules']:
                     raise ValueError('任务契约明确执行整项技能且未替换默认规则，不能只借用方法；请核对规则后准入或拒绝该候选')
             if verdict['action'] == 'use' and selected not in inspected:
                 telemetry.record_guard('skill_admission', 'inspect_alternative', {'skill_id': selected})
@@ -273,7 +282,9 @@ def emit_admission_stop(error, prompt, history_file, history, telemetry):
     text = str(error) if isinstance(error, AdmissionClarification) else '本次尚未开始执行：' + str(error)
     telemetry.finish_reason = 'skill_admission_rejected'
     if history_file:
-        history.extend([{'role': 'user', 'content': prompt}, {'role': 'assistant', 'content': text}])
+        from .evidence_store import persist_turn_evidence
+        verification = persist_turn_evidence(history_file, {}, prompt, [], telemetry.guard_decisions)
+        history.extend([{'role': 'user', 'content': prompt}, {'role': 'assistant', 'content': text, 'verification': verification}])
         Path(history_file).write_text(json.dumps(history[-20:], ensure_ascii=False), encoding='utf-8')
     telemetry.emit_metrics_event()
     TelemetryStats.emit_final_output(text)

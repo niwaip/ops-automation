@@ -1,0 +1,17 @@
+{
+  "message": "筛选部门编号FC45031、有偿无偿为有偿、工数(小时)严格大于8的全部记录。给出匹配条数、总工数、金额(K)合计，并按工数降序、同值按原Excel行号升序列出前5条的原行号、员工编号、WBS编号、工数和金额。 只在聊天回复，不生成文件，不联网；无法核算时明确说明或向我澄清，不要猜测。",
+  "clientMessageId": "1792909073685-czx8aplq",
+  "clientAssistantMessageId": "1792909073685-c8n9zkpv",
+  "sessionId": "chat-session-1792908948915-ytw0yory",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

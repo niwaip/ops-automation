@@ -1,0 +1,17 @@
+{
+  "message": "附件里利润偏差最大的月份是哪月？只在聊天回复，不联网。",
+  "clientMessageId": "1792905478672-86th8z96",
+  "clientAssistantMessageId": "1792905478672-mlme1p3y",
+  "sessionId": "chat-session-1792905175982-7x4tcitx",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

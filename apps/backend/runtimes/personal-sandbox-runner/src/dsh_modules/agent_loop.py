@@ -64,6 +64,9 @@ from .agent_loop_helpers import (
     sanitize_preview,
     _extract_last_user_prompt,
     _build_fallback_report,
+    find_invalid_new_workbooks,
+    materialize_in_loop_deliverables,
+    materialize_post_loop_deliverables,
 )
 
 
@@ -122,6 +125,7 @@ def _check_no_tool_assertion_guard(
     execution_evidence: Optional[List[ToolResult]] = None,
     hard_ceiling: Optional[int] = None,
     is_search_intent: bool = False,
+    consecutive_comparison_errors: int = 0,
 ) -> Tuple[str, Optional[str], int]:
     """
     Evaluates assertion guards when model returns text without tool calls.
@@ -200,7 +204,8 @@ def _check_no_tool_assertion_guard(
             validation = validate_reply_against_contract(build_analysis_contract(last_user_prompt),
                 reply_text, round_idx, max_rounds, execution_evidence=execution_evidence)
             if validation.comparison_error:
-                return "continue", validation.feedback_message, min(hard_ceiling, max_rounds+1)
+                new_max = min(hard_ceiling, max_rounds + 1) if round_idx >= max_rounds - 1 else max_rounds
+                return "continue", validation.feedback_message, new_max
         return "pass", None, max_rounds
 
     bumped_max_rounds = min(hard_ceiling, max_rounds + 1)
@@ -213,6 +218,20 @@ def _check_no_tool_assertion_guard(
         msg = (
             "检测到当前输出仍为内部执行计划或草稿。若需进一步操作请发起对应工具调用；"
             "若任务已完成，请直接输出最终的中文结论。"
+        )
+        return "continue", msg, bumped_max_rounds
+
+    # 0.5 已生成 Excel 交付物的数据与公式门禁：若已落盘的新 .xlsx/.xlsm 未通过源数据一致性或公式核验，立即给出具体差异促使其修正
+    invalid_workbooks = find_invalid_new_workbooks(WORKSPACE_DIR, start_ts)
+    if invalid_workbooks:
+        details = "；".join(
+            f"{fname}（{'；'.join(issues[:4])}）" for fname, issues in invalid_workbooks
+        )
+        print(f"⚡ [Harness Workbook Grounding Guard] 检测到生成的 Excel 存在源数据或公式不一致: {details}", flush=True)
+        msg = (
+            f"【系统 Excel 数据与公式核验拦截】：检测到你本轮生成的 Excel 文件未通过源表数据一致性或公式校验：\n"
+            f"- {details}\n"
+            "严禁猜测或手工硬编码未求值的公式结果！请立即根据上述真实源表数值修正生成脚本，重新生成正确的 Excel 文件并在正文中同步输出准确数值。"
         )
         return "continue", msg, bumped_max_rounds
 
@@ -452,6 +471,10 @@ def _check_no_tool_assertion_guard(
             )
 
             if is_sheet_listing_reply or is_parroting_history or not val_result.is_pass:
+                # 落地1与落地3：若专用工具连续受限（consecutive_comparison_errors >= 2）或者轮次预算已耗尽，
+                # 不再死循环拦截打回，而是放行由收尾逻辑追加软性提示
+                if consecutive_comparison_errors >= 2 or round_idx >= max_rounds - 1 or (hard_ceiling and round_idx >= hard_ceiling - 1):
+                    return "pass", "", max_rounds
                 feedback = val_result.feedback_message
                 if is_sheet_listing_reply or is_parroting_history:
                     all_metrics_str = "、".join(contract.get_metric_names())
@@ -557,10 +580,27 @@ def run_agent_loop(
             messages[0]["content"] = str(messages[0].get("content") or "") + advisory_guidance
         else:
             messages.insert(0, {"role": "system", "content": advisory_guidance})
-    if spreadsheet_analysis_required:
-        active_tools=select_analysis_tools(active_tools,last_user_prompt)
-    if spreadsheet_analysis_required:
+
+    has_active_update_tools = any(
+        (t.get("function", {}).get("name") or t.get("name", "")).lower() in ("plan_spreadsheet_update", "execute_spreadsheet_update")
+        for t in active_tools
+    )
+    from .intent_contract import is_modify_intent_requested
+    from .task_intent import is_spreadsheet_mutation_requested
+    from .spreadsheet_update.routing import is_custom_workbook_or_row_edit
+    is_update_req = (
+        (is_modify_intent_requested(last_user_prompt) or is_spreadsheet_mutation_requested(last_user_prompt))
+        and not is_custom_workbook_or_row_edit(last_user_prompt)
+    )
+
+    if is_update_req and has_active_update_tools and not is_guide_intent:
+        from .spreadsheet_update.agent_protocol import select_update_tools, UPDATE_INSTRUCTIONS
+        active_tools = select_update_tools(active_tools)
+        messages.insert(0, {'role':'system', 'content':UPDATE_INSTRUCTIONS})
+    elif spreadsheet_analysis_required:
+        active_tools = select_analysis_tools(active_tools, last_user_prompt)
         messages[0]["content"] = str(messages[0].get("content") or "") + ANALYSIS_INSTRUCTIONS + domain_plan_context(last_user_prompt)
+
     requirements = build_analysis_plan_context(last_user_prompt) if is_inspect_intent and not is_guide_intent else ""
     if requirements:
         if messages and messages[0].get("role") == "system":
@@ -569,17 +609,6 @@ def run_agent_loop(
             messages.insert(0, {"role": "system", "content": requirements})
     execution_evidence: List[ToolResult] = list(initial_execution_evidence or [])
     guard_nudges_count = 0
-    has_active_update_tools = any(
-        (t.get("function", {}).get("name") or t.get("name", "")).lower() in ("plan_spreadsheet_update", "execute_spreadsheet_update")
-        for t in active_tools
-    )
-    from .intent_contract import is_modify_intent_requested
-    from .task_intent import is_spreadsheet_mutation_requested
-    is_update_req = is_modify_intent_requested(last_user_prompt) or is_spreadsheet_mutation_requested(last_user_prompt)
-    if is_update_req and has_active_update_tools and not is_guide_intent:
-        from .spreadsheet_update.agent_protocol import select_update_tools, UPDATE_INSTRUCTIONS
-        active_tools = select_update_tools(active_tools)
-        messages.insert(0, {'role':'system', 'content':UPDATE_INSTRUCTIONS})
     force_tool_choice = False
     is_pure_spreadsheet_or_inspect = (
         (spreadsheet_analysis_required and not (is_update_req and has_active_update_tools))
@@ -591,6 +620,7 @@ def run_agent_loop(
 
     round_idx = 0
     consecutive_tool_errors = 0
+    consecutive_comparison_errors = 0
     while round_idx < max_rounds:
         if round_idx > 0:
             if getattr(policy, "thinking", False):
@@ -617,7 +647,7 @@ def run_agent_loop(
             # tool call here would remove the right to clarify.
             tool_choice="required" if (
                 (force_tool_choice and active_tools)
-                or (active_tools and comparison_required and compile_comparison_response(comparison_contract, execution_evidence)[0] is None)
+                or (active_tools and comparison_required and consecutive_comparison_errors < 2 and compile_comparison_response(comparison_contract, execution_evidence)[0] is None)
             ) else None
         )
         reply_text = (llm_res.get("content") or "") if isinstance(llm_res, dict) else str(llm_res or "")
@@ -677,7 +707,7 @@ def run_agent_loop(
                 spreadsheet_analysis_required = True
                 analysis_turn = AnalysisTurn(last_user_prompt,model=model,deadline=deadline)
                 break
-            if comparison_required:
+            if comparison_required and consecutive_comparison_errors < 2:
                 compiled, error = compile_comparison_response(comparison_contract, execution_evidence)
                 telemetry.record_guard('comparison_evidence', 'reject' if error else 'accept', error)
                 if error and round_idx < task_ceiling - 1:
@@ -700,64 +730,62 @@ def run_agent_loop(
                     for t in active_tools
                 )
             )
-            if is_update_req and has_update_tools and not is_guide_intent:
-                has_update_exec = any(
-                    getattr(e, 'is_success', False)
-                    and isinstance(getattr(e, 'data', None), dict)
-                    and e.data.get('status') == 'published'
-                    and e.data.get('published_file')
-                    for e in execution_evidence
+            has_exec_update_tool = bool(
+                active_tools and any(
+                    (t.get("function", {}).get("name") or t.get("name", "")).lower() == "execute_spreadsheet_update"
+                    for t in active_tools
                 )
-                has_new_valid_workbook = False
-                ws_p = Path(WORKSPACE_DIR)
-                if ws_p.exists():
-                    min_mtime = start_ts - 2.0
-                    for p in ws_p.iterdir():
-                        if p.is_file() and p.suffix.lower() in ('.xlsx', '.xlsm') and p.stat().st_size > 0 and p.stat().st_mtime >= min_mtime:
-                            if not p.name.startswith(('~$', 'sample', 'test', 'temp', 'tmp')):
-                                from .deliverable_detection import is_new_deliverable
-                                if is_new_deliverable(p, start_ts, require_update_receipt=True):
-                                    has_new_valid_workbook = True
-                                    break
-                if has_update_exec or has_new_valid_workbook:
-                    if telemetry:
-                        telemetry.record_guard("spreadsheet_update_evidence", "accept", "published_verified")
+            )
+            if is_update_req and has_update_tools and not is_guide_intent:
+                if not has_exec_update_tool:
+                    # 只读规划/预览模式：当前环境未提供 execute_spreadsheet_update 写盘工具，允许生成计划并向用户呈现预览，严禁索要不可用工具触发死锁
+                    pass
                 else:
-                    planned_ev = next(
-                        (e for e in execution_evidence if getattr(e, 'is_success', False) and (
-                            getattr(e, 'name', '') == 'plan_spreadsheet_update' or (getattr(e, 'provenance', None) or {}).get('tool') == 'plan_spreadsheet_update'
-                        ) and isinstance(getattr(e, 'data', None), dict) and getattr(e, 'data', {}).get('plan_id')),
-                        None
+                    has_update_exec = any(
+                        getattr(e, 'is_success', False)
+                        and isinstance(getattr(e, 'data', None), dict)
+                        and e.data.get('status') == 'published'
+                        and e.data.get('published_file')
+                        and (Path(e.data['published_file']).exists() or (Path(WORKSPACE_DIR) / Path(e.data['published_file']).name).exists())
+                        for e in execution_evidence
                     )
-                    if planned_ev:
-                        p_data = planned_ev.data
-                        p_id = p_data.get('plan_id')
-                        p_hash = p_data.get('plan_hash')
-                        r_id = p_data.get('run_id')
-                        update_err = (
-                            f"检测到你已成功锁定更新计划 (Plan ID: {p_id})，但尚未执行物理写盘与公式重算！\n"
-                            f"严禁在此停顿输出文字，目标文件尚未真正写入物理磁盘。请立即发起工具调用：\n"
-                            f"`execute_spreadsheet_update(plan_id='{p_id}')`\n"
-                            f"只有该工具执行成功后新表格才会真正落盘完成交付！"
-                        )
+                    if has_update_exec:
+                        if telemetry:
+                            telemetry.record_guard("spreadsheet_update_evidence", "accept", "published_verified")
                     else:
-                        update_err = (
-                            "检测到任务明确要求更新工作簿/工作表并回填数据，当前仅输出了分析文本，尚未完成物理写盘！"
-                            "严禁在此停顿输出文字，必须立即调用工具完成物理写盘落盘：\n"
-                            "- 方式一（专有工具，推荐）：直接调用 `plan_spreadsheet_update` 提交更新意图（如：target_file、period、section、target_kind、target_unit），计划锁定后紧接着调用 `execute_spreadsheet_update` 写盘；\n"
-                            "只按工具返回的具体错误修正参数；目标不明确时说明需要的信息。\n"
-                            "请立即发起工具调用执行写盘！"
+                        planned_ev = next(
+                            (e for e in execution_evidence if getattr(e, 'is_success', False) and (
+                                getattr(e, 'name', '') == 'plan_spreadsheet_update' or (getattr(e, 'provenance', None) or {}).get('tool') == 'plan_spreadsheet_update'
+                            ) and isinstance(getattr(e, 'data', None), dict) and getattr(e, 'data', {}).get('plan_id')),
+                            None
                         )
-                    telemetry.record_guard("spreadsheet_update_evidence", "reject", update_err)
-                    if round_idx < task_ceiling - 1:
-                        max_rounds = min(task_ceiling, max_rounds + 1)
-                        force_tool_choice = True
+                        if planned_ev:
+                            p_data = planned_ev.data
+                            p_id = p_data.get('plan_id')
+                            p_hash = p_data.get('plan_hash')
+                            r_id = p_data.get('run_id')
+                            update_err = (
+                                f"检测到你已成功锁定更新计划 (Plan ID: {p_id})，但尚未执行物理写盘与公式重算！\n"
+                                f"严禁在此停顿输出文字，目标文件尚未真正写入物理磁盘。请立即发起工具调用：\n"
+                                f"`execute_spreadsheet_update(plan_id='{p_id}')`\n"
+                                f"只有该工具执行成功后新表格才会真正落盘完成交付！"
+                            )
+                        else:
+                            update_err = (
+                                "检测到任务明确要求更新工作簿/工作表并回填数据，当前仅输出了分析文本，尚未完成物理写盘！"
+                                "严禁在此停顿输出文字，必须立即调用工具完成物理写盘落盘：\n"
+                                "- 方式一（专有工具，推荐）：直接调用 `plan_spreadsheet_update` 提交更新意图（如：target_file、period、section、target_kind、target_unit），计划锁定后紧接着调用 `execute_spreadsheet_update` 写盘；\n"
+                                "只按工具返回的具体错误修正参数；目标不明确时说明需要的信息。\n"
+                                "请立即发起工具调用执行写盘！"
+                            )
+                        telemetry.record_guard("spreadsheet_update_evidence", "reject", update_err)
+                        if round_idx < task_ceiling - 1:
+                            max_rounds = min(task_ceiling, max_rounds + 1)
+                            force_tool_choice = True
                         messages.append({"role": "assistant", "content": reply_text})
                         messages.append({"role": "user", "content": f"【系统表格更新门禁拦截】：{update_err}"})
                         round_idx += 1
                         continue
-                    else:
-                        break
 
             if spreadsheet_analysis_required:
                 if analysis_turn.is_clarification(execution_evidence, reply_text):
@@ -773,84 +801,15 @@ def run_agent_loop(
                     round_idx += 1
                     continue
                 break
-            # Markdown 是声明式产物：当模型已经给出完整正文时，由运行时安全编译落盘，
-            # 不再要求小模型拼接 bash/heredoc 命令。
-            markdown_path, created_now = materialize_requested_markdown(
-                last_user_prompt,
-                reply_text,
-                WORKSPACE_DIR,
-                turn_start_time=start_ts,
+            script_execution_error = materialize_in_loop_deliverables(
+                last_user_prompt=last_user_prompt,
+                reply_text=reply_text,
+                workspace_dir=WORKSPACE_DIR,
+                start_ts=start_ts,
+                expected_deliverables=expected_deliverables,
+                outbound_files=outbound_files,
+                executed_calls_history=executed_calls_history,
             )
-            if markdown_path:
-                outbound_payload = json.dumps(
-                    {"filePath": markdown_path, "fileName": Path(markdown_path).name},
-                    ensure_ascii=False,
-                )
-                if outbound_payload not in outbound_files:
-                    outbound_files.append(outbound_payload)
-                if created_now:
-                    print(
-                        f"✨ [Harness Artifact Compiler] 已将最终正文编译为 Markdown 文件: {markdown_path}",
-                        flush=True,
-                    )
-
-            # 物理代码产物（.docx, .xlsx, .pdf 等）：当模型在正文中输出了完整 Python 脚本时，
-            # 自动提取并安全执行落盘，避免因小模型漏发原生 tool_calls 导致交付失败。
-            script_execution_error: Optional[str] = None
-            if expected_deliverables and any(ext.lower() in [".docx", ".xlsx", ".pdf"] for ext in expected_deliverables):
-                script_artifact_path, script_err = materialize_script_deliverable(
-                    reply_text=reply_text,
-                    workspace_dir=WORKSPACE_DIR,
-                    expected_deliverables=expected_deliverables,
-                    turn_start_time=start_ts,
-                )
-                if script_artifact_path:
-                    outbound_payload = json.dumps(
-                        {"filePath": script_artifact_path, "fileName": Path(script_artifact_path).name},
-                        ensure_ascii=False,
-                    )
-                    if outbound_payload not in outbound_files:
-                        outbound_files.append(outbound_payload)
-                    executed_calls_history.append("bash")
-                    print(
-                        f"✨ [Harness Deliverable Compiler] 检测到模型在正文中输出了生成脚本，已自动安全执行落盘: {script_artifact_path}",
-                        flush=True,
-                    )
-                elif script_err:
-                    script_execution_error = script_err
-
-            if expected_deliverables and any(ext.lower() == ".pdf" for ext in expected_deliverables):
-                pdf_artifact_path = materialize_pdf_from_markdown(
-                    prompt=last_user_prompt,
-                    workspace_dir=WORKSPACE_DIR,
-                    turn_start_time=start_ts,
-                    expected_deliverables=expected_deliverables,
-                    final_text=reply_text,
-                )
-                if pdf_artifact_path:
-                    outbound_payload = json.dumps(
-                        {"filePath": pdf_artifact_path, "fileName": Path(pdf_artifact_path).name},
-                        ensure_ascii=False,
-                    )
-                    if outbound_payload not in outbound_files:
-                        outbound_files.append(outbound_payload)
-                    executed_calls_history.append("bash")
-
-            if not is_text_only_request(last_user_prompt):
-                tech_artifacts_mid = materialize_config_or_code_deliverable(
-                    prompt=last_user_prompt,
-                    final_text=reply_text,
-                    workspace_dir=WORKSPACE_DIR,
-                    turn_start_time=start_ts,
-                )
-                for ta in tech_artifacts_mid:
-                    outbound_payload = json.dumps(
-                        {"filePath": ta, "fileName": Path(ta).name},
-                        ensure_ascii=False,
-                    )
-                    ta_name = Path(ta).name.lower()
-                    if outbound_payload not in outbound_files and not any(extract_filename_from_outbound(existing).lower() == ta_name for existing in outbound_files):
-                        outbound_files.append(outbound_payload)
 
             action, guard_msg, max_rounds = _check_no_tool_assertion_guard(
                 reply_text=reply_text,
@@ -871,6 +830,7 @@ def run_agent_loop(
                 execution_evidence=execution_evidence,
                 hard_ceiling=task_ceiling,
                 is_search_intent=is_search_intent,
+                consecutive_comparison_errors=consecutive_comparison_errors,
             )
             if action == "continue":
                 guard_nudges_count += 1
@@ -915,10 +875,24 @@ def run_agent_loop(
 
         if execution_evidence and execution_evidence[-1].is_error:
             consecutive_tool_errors += 1
+            last_tool = (execution_evidence[-1].provenance or {}).get("tool") or ""
+            if last_tool in ("compare_spreadsheet_columns", "aggregate_spreadsheet", "analyze_spreadsheet", "check_spreadsheet_equations", "validate_spreadsheet_rows", "plan_spreadsheet_update"):
+                consecutive_comparison_errors += 1
+                if consecutive_comparison_errors >= 2:
+                    if not any((t.get("function", {}).get("name") or t.get("name", "")) == "bash" for t in active_tools):
+                        active_tools.extend(get_sandbox_tools(allowed_names={"bash"}))
+                    if messages and messages[-1].get("role") == "tool":
+                        fallback_hint = "\n\n【系统指导】专用比对工具受限，请立即编写 Python 脚本提取数据进行计算（使用 bash 运行 python3 脚本），发挥沙箱的原生代码执行优势。"
+                        if fallback_hint not in messages[-1].get("content", ""):
+                            messages[-1]["content"] = messages[-1].get("content", "") + fallback_hint
         elif execution_evidence and execution_evidence[-1].is_success:
             consecutive_tool_errors = 0
+            last_tool = (execution_evidence[-1].provenance or {}).get("tool") or ""
+            if last_tool in ("compare_spreadsheet_columns", "aggregate_spreadsheet", "analyze_spreadsheet", "check_spreadsheet_equations", "validate_spreadsheet_rows", "plan_spreadsheet_update"):
+                consecutive_comparison_errors = 0
 
-        if consecutive_tool_errors >= 4:
+        max_consecutive_errors = int(os.getenv("DSH_MAX_CONSECUTIVE_TOOL_ERRORS", "8"))
+        if consecutive_tool_errors >= max_consecutive_errors:
             print(f"⚠️ [Harness Stagnation Guard] 工具连续出现 {consecutive_tool_errors} 次执行错误且未能恢复，主动终止避免死循环", flush=True)
             break
 
@@ -979,14 +953,14 @@ def run_agent_loop(
                 if tool.get("function", {}).get("name") not in exhausted
             ]
 
-        if (spreadsheet_analysis_required or has_active_update_tools) and execution_evidence and execution_evidence[-1].is_error:
-            if consecutive_tool_errors < 3:
+        if (spreadsheet_analysis_required or comparison_required or has_active_update_tools) and execution_evidence and execution_evidence[-1].is_error:
+            if consecutive_tool_errors < 5:
                 max_rounds = min(task_ceiling, max(max_rounds, round_idx + 2))
 
         # 动态推进预算：只要任务需要生成物理交付物且尚未落盘，或者工具调用成功推进了业务证据，
         # 且轮次临近上限时，动态追加执行轮次预算（最高至 task_ceiling），避免被固定硬轮次截断
         is_making_progress = bool(
-            consecutive_tool_errors < 3 and (
+            consecutive_tool_errors < 5 and (
                 (has_active_update_tools and any(getattr(r, 'is_success', False) for r in (execution_evidence or [])))
                 or (execution_evidence and execution_evidence[-1].is_success)
             )
@@ -1064,11 +1038,54 @@ def run_agent_loop(
 
         round_idx += 1
 
+    compiled_comparison = None
     if comparison_required:
-        compiled, error = compile_comparison_response(comparison_contract, execution_evidence)
-        telemetry.record_guard('comparison_evidence', 'reject' if error else 'accept', error)
-    final_text, healed_files = ((compiled or '本次比较结论尚未通过执行证据核验。\n\n'+error, [])
-        if comparison_required else (analysis_turn.render(execution_evidence,reply_text,telemetry,policy=policy,model=model,deadline=deadline), [])
+        if consecutive_comparison_errors >= 2 and reply_text and len(reply_text.strip()) > 10 and not detect_unexecuted_script_leak(reply_text):
+            soft_tip = "\n\n---\n💡 **提示**：本结论由模型直接解读与呈现，未完全通过结构化列比对回执（专用比对工具连续校验受限，已自动退避至通用计算）。"
+            compiled_comparison = reply_text.strip() + soft_tip
+        else:
+            compiled, error = compile_comparison_response(comparison_contract, execution_evidence)
+            telemetry.record_guard('comparison_evidence', 'reject' if error else 'accept', error)
+            if compiled:
+                compiled_comparison = compiled
+            else:
+                # 降级处理：仅在模型实际进行了工具调用/证据探索后（有执行证据或工具调用历史），才执行软性角标降级；
+                # 若模型完全未调用任何工具凭空口算（0工具调用），仍按规则拦截虚假口算。
+                has_tool_execution = bool(executed_calls_history or execution_evidence)
+                has_substantive_reply = bool(
+                    has_tool_execution and reply_text and len(reply_text.strip()) > 10
+                    and "指标核算未完成声明" not in reply_text
+                    and not detect_unexecuted_script_leak(reply_text)
+                )
+                successful_receipts = [
+                    r for r in (execution_evidence or [])
+                    if getattr(r, "is_success", False) and getattr(r, "data", {}).get("kind") == "column_comparison"
+                ]
+                soft_tip = f"\n\n---\n💡 **提示**：本结论由模型直接解读与呈现，未完全通过结构化列比对回执（{error or '数据对齐存在轻微瑕疵'}）。"
+                if has_substantive_reply:
+                    compiled_comparison = reply_text.strip() + soft_tip
+                elif successful_receipts:
+                    from .report_presentation import comparison_overview
+                    compiled_comparison = comparison_overview(successful_receipts) + soft_tip
+                else:
+                    from .analysis_validation import ContractValidationResult, build_contract_termination_warning
+                    val_result = ContractValidationResult(
+                        status="failed",
+                        satisfied_metrics=[],
+                        missing_metrics=[m.name for m in comparison_contract.metrics] if comparison_contract.metrics else [],
+                        comparison_error=error
+                    )
+                    contract_warning = build_contract_termination_warning(
+                        contract=comparison_contract,
+                        val_result=val_result,
+                        messages=messages,
+                        telemetry=telemetry,
+                        is_budget_exhausted=True
+                    )
+                    compiled_comparison = "本次比较结论尚未通过执行证据核验。" + contract_warning
+
+    final_text, healed_files = ((compiled_comparison, [])
+        if comparison_required and compiled_comparison else (analysis_turn.render(execution_evidence,reply_text,telemetry,policy=policy,model=model,deadline=deadline), [])
         if spreadsheet_analysis_required else _finalize_agent_text(
         reply_text=reply_text,
         messages=messages,
@@ -1090,123 +1107,14 @@ def run_agent_loop(
         if hf not in outbound_files:
             outbound_files.append(hf)
 
-    # 强制总结分支也可能首次产生可交付正文，因此在最终返回前再执行一次声明式产物编译。
-    markdown_path, created_now = materialize_requested_markdown(
-        last_user_prompt,
-        final_text,
-        WORKSPACE_DIR,
-        turn_start_time=start_ts,
+    outbound_files = materialize_post_loop_deliverables(
+        last_user_prompt=last_user_prompt,
+        final_text=final_text,
+        workspace_dir=WORKSPACE_DIR,
+        start_ts=start_ts,
+        expected_deliverables=expected_deliverables,
+        outbound_files=outbound_files,
     )
-    if markdown_path:
-        outbound_payload = json.dumps(
-            {"filePath": markdown_path, "fileName": Path(markdown_path).name},
-            ensure_ascii=False,
-        )
-        if outbound_payload not in outbound_files:
-            outbound_files.append(outbound_payload)
-        if created_now:
-            print(
-                f"✨ [Harness Artifact Compiler] 已将最终正文编译为 Markdown 文件: {markdown_path}",
-                flush=True,
-            )
-
-    # 强制总结分支：若用户期望 PDF，且工作区存在 Markdown 稿件或正文，自动执行编译落盘
-    if expected_deliverables and any(ext.lower() == ".pdf" for ext in expected_deliverables):
-        pdf_path = materialize_pdf_from_markdown(
-            prompt=last_user_prompt,
-            workspace_dir=WORKSPACE_DIR,
-            turn_start_time=start_ts,
-            expected_deliverables=expected_deliverables,
-            final_text=final_text,
-        )
-        if pdf_path:
-            outbound_payload = json.dumps(
-                {"filePath": pdf_path, "fileName": Path(pdf_path).name},
-                ensure_ascii=False,
-            )
-            if outbound_payload not in outbound_files:
-                outbound_files.append(outbound_payload)
-            # 语义净化：用户明确要求 PDF 且已生成 PDF 时，清除中间过渡的同名 md 外发，避免草稿泄露
-            md_stem = Path(pdf_path).stem.lower()
-            filtered_outbounds = []
-            for item_str in outbound_files:
-                try:
-                    obj = json.loads(item_str)
-                    fname = str(obj.get("fileName", "")).lower()
-                    if fname.endswith(".md") and (fname == f"{md_stem}.md" or fname == "result.md" or fname == "report.md"):
-                        continue
-                except Exception:
-                    pass
-                filtered_outbounds.append(item_str)
-            outbound_files = filtered_outbounds
-
-    # 强制总结分支：若正文中输出了 Python 脚本块，自动执行落盘
-    if expected_deliverables and any(ext.lower() in [".docx", ".xlsx", ".pdf"] for ext in expected_deliverables):
-        script_artifact_path, _ = materialize_script_deliverable(
-            reply_text=final_text,
-            workspace_dir=WORKSPACE_DIR,
-            expected_deliverables=expected_deliverables,
-            turn_start_time=start_ts,
-        )
-        if script_artifact_path:
-            outbound_payload = json.dumps(
-                {"filePath": script_artifact_path, "fileName": Path(script_artifact_path).name},
-                ensure_ascii=False,
-            )
-            if outbound_payload not in outbound_files:
-                outbound_files.append(outbound_payload)
-
-    # 强制总结分支：若涉及技术脚本或配置文件 (Dockerfile, docker-compose.yml, *.sh, *.sql, *.py)，自动提取落盘
-    if not is_text_only_request(last_user_prompt):
-        tech_artifacts_final = materialize_config_or_code_deliverable(
-            prompt=last_user_prompt,
-            final_text=final_text,
-            workspace_dir=WORKSPACE_DIR,
-            turn_start_time=start_ts,
-        )
-        for ta in tech_artifacts_final:
-            outbound_payload = json.dumps(
-                {"filePath": ta, "fileName": Path(ta).name},
-                ensure_ascii=False,
-            )
-            ta_name = Path(ta).name.lower()
-            if outbound_payload not in outbound_files and not any(extract_filename_from_outbound(existing).lower() == ta_name for existing in outbound_files):
-                outbound_files.append(outbound_payload)
-
-        # 语义净化：当生成了真实的技术脚本/配置文件且用户并未显式要求 md 时，清除中间草稿（如 *.py.md, *.sh.md）
-        user_wants_md = bool(re.search(r"(?:\.md\b|\bmarkdown\b|md\s*文件)", last_user_prompt or "", re.I))
-        has_primary_tech = any(
-            extract_filename_from_outbound(f).lower().endswith((".py", ".sh", ".sql", ".yml", ".yaml"))
-            or extract_filename_from_outbound(f).lower() == "dockerfile"
-            for f in outbound_files
-        )
-        if has_primary_tech and not user_wants_md:
-            cleaned_outbounds = []
-            for item_str in outbound_files:
-                fname = extract_filename_from_outbound(item_str).lower()
-                if fname.endswith((".py.md", ".sh.md", ".sql.md")) or (fname.endswith(".md") and fname in ("result.md", "script.md")):
-                    continue
-                cleaned_outbounds.append(item_str)
-            outbound_files = cleaned_outbounds
-
-    # 终态物理交付物断言：若用户要求了特定文件但全流程仍未生成任何外发物理文件，进行明确诚信提示
-    if not is_text_only_request(last_user_prompt) and (expected_deliverables or is_generate_intent):
-        missing_final = detect_missing_requested_deliverable(
-            last_user_prompt,
-            start_ts,
-            expected_deliverables=expected_deliverables,
-            is_generate_intent=is_generate_intent,
-            is_inspect_intent=is_inspect_intent,
-        )
-        if missing_final and not outbound_files:
-            telemetry.record_guard("deliverable_contract", "reject", f"missing_physical_file_{missing_final}")
-            warning_notice = (
-                f"> ⚠️ **【重要提示：目标交付物尚未生成落盘】**\n"
-                f"> 本轮已完成前序数据核算与方案规划，但目标文件（`{missing_final}`）未在沙箱内完成物理落盘。\n"
-                f"> **下一步操作**：您可直接回复 **「继续执行更新并生成表格」** 立即完成文件生成与交付。\n\n---\n\n"
-            )
-            if "【重要提示：目标交付物尚未生成落盘】" not in final_text and "【交付物落盘未完成提示】" not in final_text:
-                final_text = warning_notice + final_text
 
     # 交付前对本轮生成/导出的带公式 Excel 进行无头重算以补齐缓存值
     _recalculate_generated_workbooks(WORKSPACE_DIR, turn_start_time=start_ts)
@@ -1216,6 +1124,56 @@ def run_agent_loop(
         WORKSPACE_DIR, start_ts, final_text, outbound_files)
     if rejected:
         telemetry.record_guard("workbook_delivery", "reject", rejected)
+    else:
+        from .deliverable_detection import is_new_deliverable
+        ws_root = Path(WORKSPACE_DIR)
+        has_valid_xlsx = any(
+            extract_filename_from_outbound(f).lower().endswith((".xlsx", ".xlsm"))
+            for f in outbound_files
+        ) or (
+            ws_root.is_dir() and any(
+                p.suffix.lower() in (".xlsx", ".xlsm") and is_new_deliverable(p, start_ts)
+                for p in ws_root.iterdir() if p.is_file() and not p.name.startswith(".")
+            )
+        )
+        if has_valid_xlsx:
+            telemetry.record_guard("workbook_delivery", "accept", "verified_workbook_deliverable")
+
+    # 终态物理交付物断言：若用户要求了特定文件但全流程仍未生成任何外发物理文件（且非被 workbook_delivery 拦截的错误文件），进行明确诚信提示
+    if not rejected and not is_text_only_request(last_user_prompt) and (expected_deliverables or is_generate_intent):
+        missing_final = detect_missing_requested_deliverable(
+            last_user_prompt,
+            start_ts,
+            expected_deliverables=expected_deliverables,
+            is_generate_intent=is_generate_intent,
+            is_inspect_intent=is_inspect_intent,
+        )
+        if missing_final and not outbound_files:
+            telemetry.record_guard("deliverable_contract", "reject", f"missing_physical_file_{missing_final}")
+            has_planned_update = any(
+                getattr(ev, "is_success", False)
+                and isinstance(getattr(ev, "data", None), dict)
+                and ev.data.get("status") == "planned"
+                for ev in (execution_evidence or [])
+            )
+            already_disclosed = bool(re.search(
+                r"尚未生成|未生成|未能生成|无法生成|未完成物理落盘|【重要提示：目标交付物尚未生成落盘】|【交付物落盘未完成提示】|⚠️",
+                final_text or "",
+            ))
+            if has_planned_update:
+                warning_notice = (
+                    f"> ⚠️ **【重要提示：目标交付物尚未生成落盘】**\n"
+                    f"> 本轮已完成前序数据核算与方案规划，但目标文件（`{missing_final}`）未在沙箱内完成物理落盘。\n"
+                    f"> **下一步操作**：您可直接回复 **「继续执行更新并生成表格」** 立即完成文件生成与交付。\n\n---\n\n"
+                )
+                if not already_disclosed:
+                    final_text = warning_notice + final_text
+            elif not already_disclosed:
+                warning_notice = (
+                    f"> ⚠️ **【重要提示：目标交付物尚未生成落盘】**\n"
+                    f"> 目标文件（`{missing_final}`）尚未在沙箱内完成物理落盘，请根据下方说明补充条件或重试生成。\n\n---\n\n"
+                )
+                final_text = warning_notice + final_text
 
     try:
         from .delivery_reconciliation import reconcile_delivery_presentation
@@ -1230,7 +1188,7 @@ def run_agent_loop(
         logger.warning("Delivery reconciliation error in agent loop: %s", e)
 
     # Final success claims must be checked even when intent routing or nudge budgets skipped guards.
-    missing_claims = detect_missing_claimed_artifacts(
+    missing_claims = [] if (rejected and not outbound_files) else detect_missing_claimed_artifacts(
         final_text, is_generate_intent=True, turn_start_time=start_ts, verify_claims_only=True)
     if missing_claims:
         try:

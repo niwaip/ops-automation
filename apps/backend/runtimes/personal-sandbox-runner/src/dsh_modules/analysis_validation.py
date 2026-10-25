@@ -429,7 +429,10 @@ def build_contract_termination_warning(
 
     if val_result.comparison_error:
         reason = f"本轮核算证据或结论一致性校验未通过：{val_result.comparison_error}"
-        advice = "请根据真实表头确认比较计划，使用列比较工具完成所需范围的核算后再作答。"
+        if "缺少本轮成功执行的列比较回执" in val_result.comparison_error:
+            advice = "多轮比对尝试均未能通过列计划核验。建议在提问中明确指定目标工作表名称（如《预算对比》）以及需要比对的列坐标或运算口径，或让沙箱通过 Python 脚本直接提取全表数据进行计算。"
+        else:
+            advice = "请根据真实表头确认比较计划，使用列比较工具完成所需范围的核算后再作答。"
     elif has_tool_error:
         reason = f"代码或工具执行过程中出现异常{tool_error_detail}，未能成功提取或核算对应月份与指标数据。"
         advice = "可检查上方工具执行日志修正计算脚本，或直接指定目标数据源工作表并重新运行重算脚本。"
