@@ -345,6 +345,80 @@ class TestFinancialHarnessFixes(unittest.TestCase):
         feedback_text = task_feedback([r], '查看 各个部门的 有偿 金额的合计')
         self.assertIn('切勿在正文中提及“门禁系统”、“误报”', feedback_text)
 
+    def test_physical_column_lineage_and_fact_retention_for_timesheet_and_amount(self):
+        """Physical column lineage (field) and synonyms must preserve facts and pass gate without false alarm."""
+        from dsh_modules.analysis_contract import AnalysisContract, MetricRequirement
+        from dsh_modules.analysis_task_state import fact_matches_metric, analysis_task_state
+        from dsh_modules.analysis_fact_selection import resolve_conforming_facts
+        from dsh_modules.analysis_gate_review import revalidate_review
+
+        # 1. fact_matches_metric matches '工数(小时)' and '工时' via field and synonym stems
+        m_hours = MetricRequirement(name='工数(小时)', aliases=['工数\\(小时\\)', '工时\\(小时\\)'])
+        f_hours = {
+            'id': 'hours',
+            'label': '工时合计(h)',
+            'value': '170.59',
+            'unit': 'h',
+            'field': '工数(小时)',
+            'metric_label': '工时合计',
+            'matched_records': 6,
+            'source_cells': ['工数实绩明细!O176']
+        }
+        self.assertTrue(fact_matches_metric(f_hours, m_hours))
+
+        f_amount = {
+            'id': 'amount',
+            'label': '金额合计',
+            'value': '45.15617',
+            'unit': 'K',
+            'field': '金额(K)',
+            'metric_label': '金额合计',
+            'matched_records': 6,
+            'source_cells': ['工数实绩明细!P176']
+        }
+        m_amount = MetricRequirement(name='金额(K)', aliases=['金额\\(K\\)', '金额'])
+        self.assertTrue(fact_matches_metric(f_amount, m_amount))
+
+        # 2. resolve_conforming_facts must NOT purge hours when both hours and amount are computed
+        receipt_data = {
+            'kind': 'spreadsheet_analysis',
+            'plan': {
+                'source': {'sheet': '工数实绩明细', 'data_range': 'A5:R278', 'header_row': 4},
+                'where': {'and': [{'field': '员工编号', 'op': 'eq', 'value': 'S22014'}]},
+                'metrics': [
+                    {'id': 'hours', 'label': '工时合计', 'field': '工数(小时)', 'op': 'sum'},
+                    {'id': 'amount', 'label': '金额合计', 'field': '金额(K)', 'op': 'sum'}
+                ]
+            },
+            'facts': [f_hours, f_amount],
+            'coverage': [{'id': 'detail', 'sheet': '工数实绩明细', 'coverage_complete': True, 'headers': {'E': '员工编号', 'O': '工数(小时)', 'P': '金额(K)'}}],
+            'evidence_id': 'eid_timesheet_1'
+        }
+        r = ToolResult.success(receipt_data, provenance={'workbook_id': 'wb_ts_1', 'file_path': '/workspace/test.xlsx', 'tool': 'aggregate_spreadsheet'})
+        prompt = '统计 员工  s22014 的 工时 和金额的 合计'
+        resolved = resolve_conforming_facts([r], prompt)
+        resolved_ids = [f['id'] for f in resolved]
+        self.assertIn('hours', resolved_ids, "Physical field fact 'hours' must not be purged by fact selection")
+        self.assertIn('amount', resolved_ids, "Physical field fact 'amount' must be retained")
+
+        # 3. revalidate_review correctly covers metrics using all_facts and physical column fields
+        issues = [{
+            'code': 'required_metrics_missing',
+            'metrics': [{'name': '工数(小时)'}],
+            'message': '指标已有执行结果，但尚未通过来源或口径核验：工数(小时)。'
+        }]
+        verdict = {
+            'action': 'recheck',
+            'category': 'gate_false_positive',
+            'complete': False,
+            'dismissed_issue_codes': ['required_metrics_missing'],
+            'supporting_fact_ids': ['amount'],
+            'reason': '工数(小时)字段已被聚合计算'
+        }
+        remaining, updated_v = revalidate_review(issues, verdict, [r], [f_amount])
+        self.assertEqual(len(remaining), 0, "Receipt physical field lineage must satisfy revalidation")
+        self.assertTrue(updated_v['complete'])
+
 
 if __name__ == "__main__":
     unittest.main()

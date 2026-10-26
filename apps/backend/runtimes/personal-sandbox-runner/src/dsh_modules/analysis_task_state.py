@@ -80,8 +80,13 @@ def fact_matches_metric(f, metric):
     if metric_lbl and (metric_lbl == metric.name or any(re.search(alias, metric_lbl) for alias in metric.aliases)):
         return True
     stem = re.sub(r'[\(（][^\)）]+[\)）]', '', metric.name).strip()
-    if stem and (stem in lbl or stem in field or stem in metric_lbl):
-        return True
+    field_stem = re.sub(r'[\(（][^\)）]+[\)）]', '', field).strip() if field else ''
+    if stem:
+        synonyms = {'工数', '工时', '时长', '时间', '小时'} if stem in ('工数', '工时', '时长', '时间', '小时') else {stem}
+        if any(s in lbl or s in field or s in metric_lbl for s in synonyms):
+            return True
+        if field_stem and any(s == field_stem or s in field_stem or field_stem in s for s in synonyms):
+            return True
     return False
 
 

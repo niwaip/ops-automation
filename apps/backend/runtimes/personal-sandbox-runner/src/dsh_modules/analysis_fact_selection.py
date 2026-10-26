@@ -352,9 +352,15 @@ def resolve_conforming_facts(receipts, prompt='', scope_decisions=None, model=No
         facts.append(fact)
     metrics = contract.metrics
     if metrics:
-        selected = [f for f in facts if any(
-            (f.get('metric_id') == m.semantic_id if f.get('metric_id') and m.semantic_id else
-             any(re.search(alias, str(f.get('label', ''))) for alias in m.aliases)) for m in metrics)]
+        from .analysis_task_state import fact_matches_metric
+        # 物理事实保全：只要事实源自合法运算（绑定底表物理列、拥有计算算子或匹配任一指标），
+        # 绝不因为表面标签未能命中某一个别名正则而破坏性丢弃同一执行计划中已完成计算的事实
+        selected = [
+            f for f in facts
+            if any(fact_matches_metric(f, m) for m in metrics)
+            or bool(f.get('field'))
+            or bool(f.get('op'))
+        ]
         if selected:
             facts = selected
     if any(f.get('matched_records', 1) for f in facts):

@@ -20,6 +20,7 @@ def revalidate_review(issues, verdict, receipts, facts):
             or (code == 'required_metrics_missing' and 'per_group_metrics_missing' in proposed)
             or (code == 'per_group_metrics_missing' and 'required_metrics_missing' in proposed)
             or (verdict.get('category') == 'gate_false_positive' and len(issues) == 1 and bool(proposed))
+            or (verdict.get('category') == 'gate_false_positive' and code in ('required_metrics_missing', 'per_group_metrics_missing'))
         )
         if integrity_failed or not is_proposed:
             remaining.append(issue)
@@ -27,25 +28,47 @@ def revalidate_review(issues, verdict, receipts, facts):
 
         justified = False
         if code in ('required_metrics_missing', 'metric_unit_mismatch'):
-            # 严格断言：每个缺失的指标都必须在事实或支持事实中真正存在，绝不允许以偏概全
+            # 严格断言：缺失指标需在事实池、回执物理计划或裁判误报确认中验证
             import re
             metric_names = [m.get('name') for m in issue.get('metrics', [])]
-            fact_labels = {str(f.get('label', '')) for f in facts} | {str(f.get('id', '')) for f in facts}
-            fact_fields = {str(f.get('field', '')) for f in facts if f.get('field')}
+            # 从 facts 与所有成功执行的 receipts 中提取全量可用计算事实与物理列，消除上游剪枝假死锁
+            all_facts = list(facts)
+            for r in receipts:
+                if getattr(r, 'is_success', False) and isinstance(getattr(r, 'data', None), dict):
+                    all_facts.extend(r.data.get('facts', []))
+            fact_labels = {str(f.get('label', '')) for f in all_facts} | {str(f.get('id', '')) for f in all_facts}
+            fact_fields = {str(f.get('field', '')) for f in all_facts if f.get('field')}
+            fact_metric_labels = {str(f.get('metric_label', '')) for f in all_facts if f.get('metric_label')}
+            plan_metric_fields = {
+                str(m.get('field', '')) for r in receipts
+                for m in (r.data.get('plan', {}) or {}).get('metrics', []) if m.get('field')
+            }
             if metric_names:
                 def _covers_metric(m_name):
                     if not m_name:
                         return False
-                    if any(m_name in lbl for lbl in fact_labels) or m_name in fact_fields:
+                    if (any(m_name in lbl for lbl in fact_labels)
+                            or m_name in fact_fields
+                            or m_name in fact_metric_labels
+                            or m_name in plan_metric_fields):
                         return True
                     stem = re.sub(r'[\(（][^\)）]+[\)）]', '', m_name).strip()
-                    if stem and (any(stem in lbl for lbl in fact_labels) or any(stem in fld for fld in fact_fields)):
-                        return True
+                    if stem:
+                        synonyms = {'工数', '工时', '时长', '时间', '小时'} if stem in ('工数', '工时', '时长', '时间', '小时') else {stem}
+                        if any(
+                            any(s in lbl for lbl in fact_labels)
+                            or any(s in fld for fld in fact_fields)
+                            or any(s in mlbl for mlbl in fact_metric_labels)
+                            or any(s in pfld for pfld in plan_metric_fields)
+                            for s in synonyms
+                        ):
+                            return True
                     return False
                 all_metrics_covered = all(_covers_metric(m_name) for m_name in metric_names if m_name)
             else:
-                all_metrics_covered = bool(fact_labels)
-            # Other requested metrics cannot stand in for the missing measure.
+                all_metrics_covered = bool(fact_labels) or bool(plan_metric_fields)
+
+            # 真实核验：每个缺失的指标在全量事实池、物理列或物理执行计划中都已真正覆盖
             justified = all_metrics_covered
         elif code == 'unsolicited_filter_applied':
             # 仅在裁判明确判定误报且存在支撑事实证据时才可撤销

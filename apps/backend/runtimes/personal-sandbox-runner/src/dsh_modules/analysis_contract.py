@@ -142,7 +142,11 @@ def _contract_from_judge_verdict(prompt: str, verdict: Dict[str, Any], domain: s
             else:
                 aliases.append(r'[^\s，。！？、]{0,10}' + re.escape(m_name) + r'(?:汇总|总额|总计|合计|\([^)]+\)|（[^）]+）)?')
             if any(k in m_name for k in ("工数", "工时", "时间", "时长")):
-                aliases.extend([r'时间', r'时长', r'小时', r'时数', r'工数\(小时\)', r'工时\(小时\)'])
+                aliases.extend([
+                    r'时间', r'时长', r'小时', r'时数', r'工数', r'工时', r'工数\(小时\)', r'工时\(小时\)',
+                    r'[^\s，。！？、]{0,10}工时(?:汇总|总额|总计|合计|\([^)]+\)|（[^）]+）)?',
+                    r'[^\s，。！？、]{0,10}工数(?:汇总|总额|总计|合计|\([^)]+\)|（[^）]+）)?'
+                ])
             metrics.append(MetricRequirement(
                 name=m_name,
                 aliases=aliases,
@@ -448,6 +452,13 @@ def _build_fallback_contract(prompt: str, domain: Optional[str] = None) -> Analy
                 r'([^\s，。！？、()（）和及与、并]{0,12}(?:' + measure_pattern + r'))',
                 normalized_target_prompt
             )))
+        compact_target_prompt = re.sub(r'\s+', '', expanded_target_prompt)
+        if compact_target_prompt not in (expanded_target_prompt, normalized_target_prompt):
+            matches.extend(list(re.finditer(
+                r'(?:(?:统计|计算|核算|汇总|求|列出|分析)\s*|[和及与、并]\s*)'
+                r'([^\s，。！？、()（）和及与、并]{0,12}(?:' + measure_pattern + r'))',
+                compact_target_prompt
+            )))
         # 兼容中文动宾倒装句式，如“进行金额的统计”、“针对工数进行汇总”、“做部门费用的核算”
         inverted_matches = list(re.finditer(
             r'(?:进行|做|针对|开展|对)\s*'
@@ -483,6 +494,8 @@ def _build_fallback_contract(prompt: str, domain: Optional[str] = None) -> Analy
                 continue
             clean_metric = re.sub(peel_prefixes, '', raw_metric).strip()
             clean_metric = re.sub(r'部分的?', '', clean_metric).strip()
+            # 剥离前置实体限定词（如“员工s22014的工时” -> “工时”），实体属于过滤条件而非物理指标名
+            clean_metric = re.sub(r'^(?:员工|人员|人员姓名|工号|用户|客户|供应商|项目|部门|编码|编号)\s*[:：]?\s*(?:[A-Za-z0-9_#-]+|[^\s，。！？、的]{1,10})\s*(?:的)?', '', clean_metric).strip()
             if re.search(r'(?:所有不同|不重复|去重|唯一).*?(?:负责|所属)', raw_metric):
                 continue  # A categorical column name is not a requested cost metric.
             if not clean_metric:
