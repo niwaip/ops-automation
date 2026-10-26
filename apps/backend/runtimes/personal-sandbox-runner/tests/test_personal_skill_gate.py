@@ -199,5 +199,44 @@ class PersonalSkillGateTests(unittest.TestCase):
         self.assertIsNone(result); self.assertIsNone(route.skill_id)
         self.assertFalse(route.requires_execution)
 
+    def test_render_query_receipt_deduplicates_group_key_and_includes_details(self):
+        from dsh_modules.personal_skill_execution import render_query_receipt
+        from dsh_modules.tool_result import ToolResult
+        receipt = ToolResult.success({
+            'plan': {
+                'source': {'sheet': '明细', 'header_row': 1, 'data_range': 'A2:E10'},
+                'group_by': ['部门编号'],
+                'metrics': [{'id': 'amount', 'label': '金额合计', 'unit': 'K', 'op': 'sum', 'field': '金额'}],
+                'where': {'field': '有偿无偿', 'op': 'eq', 'value': '有偿'}
+            },
+            'rows': [{
+                'group_key': 'FC45031',
+                '部门编号': 'FC45031',
+                '部门名称': '華東MIS',
+                'BU名称': 'Uvance',
+                'amount': '570.75'
+            }],
+            'field_labels': {'部门编号': '部门编号', '部门名称': '部门名称', 'BU名称': 'BU名称'},
+            'coverage': [{'sheet': '明细', 'data_range': 'A2:E10'}],
+            'stages': {'source_rows': 274, 'where_rows': 259, 'having_groups_count': 7},
+            'facts': [{'id': 'amount', 'unit': 'K'}],
+            'evidence_id': 'testev123456789012345678'
+        })
+        receipt.provenance = {
+            'file_path': '/workspace/工数实绩明细_20261020134124.xlsx',
+            'evidence_id': 'testev123456789012345678'
+        }
+        res = render_query_receipt(receipt)
+        # Verify deduplicated headers: no double '部门编号'
+        self.assertIn('| 部门编号 | 部门名称 | BU名称 | 金额合计 (K) |', res)
+        self.assertNotIn('| 部门编号 | 部门编号 |', res)
+        # Verify details block with source and download link
+        self.assertIn('<details>', res)
+        self.assertIn('<summary>查看来源与核算明细</summary>', res)
+        self.assertIn('原始文件：[工数实绩明细_20261020134124.xlsx]', res)
+        self.assertIn('证据 `testev123456789012345678`', res)
+        self.assertIn('明细条件：有偿无偿等于 有偿。', res)
+        self.assertIn('</details>', res)
+
 
 if __name__ == '__main__': unittest.main()
