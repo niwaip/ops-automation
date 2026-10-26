@@ -311,6 +311,19 @@ def _check_no_tool_assertion_guard(
             )
             return "continue", msg, bumped_max_rounds
 
+    # 2.8 表格数据核算零工具调用拦截 (Zero-Tool Calculation Assertion Guard)
+    from .sampling_guard import check_zero_tool_calculation_guard
+    zero_tool_issue = check_zero_tool_calculation_guard(
+        reply_text=reply_text,
+        last_user_prompt=last_user_prompt,
+        executed_calls_history=executed_calls_history,
+        execution_evidence=execution_evidence,
+        is_guide_intent=is_guide_intent,
+    )
+    if zero_tool_issue:
+        print("⚡ [Harness Zero-Tool Calculation Guard] 检测到任务涉及表格数据核算但未执行任何分析工具，正在拦截引导计算...", flush=True)
+        return "continue", zero_tool_issue, bumped_max_rounds
+
     # 3. 契约交付物缺失断言：用户明确要求生成文件，但工作区尚未生成任何物理文件
     has_valid_html = ("```html" in reply_text.lower()) and not is_unclosed_or_truncated_html(reply_text)
     if not is_text_only_request(last_user_prompt) and (is_generate_intent or bool(expected_deliverables)) and not is_guide_intent and not is_search_intent:
@@ -608,13 +621,34 @@ def run_agent_loop(
         and not is_custom_workbook_or_row_edit(last_user_prompt)
     )
 
+    has_visual_or_deliverable = bool(
+        expected_deliverables
+        or is_generate_intent
+        or any(k in (last_user_prompt or "").lower() for k in ("图表", "柱状图", "折线图", "饼图", "散点图", "雷达图", "html", "看板", "可视化", "绘图", "画图", "生成图"))
+    )
+
     if is_update_req and has_active_update_tools and not is_guide_intent:
         from .spreadsheet_update.agent_protocol import select_update_tools, UPDATE_INSTRUCTIONS
         active_tools = select_update_tools(active_tools)
         messages.insert(0, {'role':'system', 'content':UPDATE_INSTRUCTIONS})
     elif spreadsheet_analysis_required:
-        active_tools = select_analysis_tools(active_tools, last_user_prompt)
+        analysis_tools = select_analysis_tools(active_tools, last_user_prompt)
+        if has_visual_or_deliverable:
+            extra_allowed = {"bash", "write_file", "edit_file"}
+            retained_extras = [t for t in active_tools if t.get("function", {}).get("name") in extra_allowed]
+            active_tools = analysis_tools + [t for t in retained_extras if t not in analysis_tools]
+        else:
+            active_tools = analysis_tools
         messages[0]["content"] = str(messages[0].get("content") or "") + ANALYSIS_INSTRUCTIONS + domain_plan_context(last_user_prompt)
+        if has_visual_or_deliverable:
+            visual_flow_guidance = (
+                "\n\n【表格数据核算与可视化交付双阶段规范】\n"
+                "当前任务既要求表格数据核算/过滤，又要求交付可视化图表/页面。你必须严格按以下双阶段执行：\n"
+                "1. **计算阶段**：必须首先调用 `aggregate_spreadsheet`（支持 where/group_by/exclude_prefixes/not_starts_with 等条件过滤）或调用 `bash` 运行 Python 脚本加载原件精准核算，获取经过完整过滤与聚合后的真实数据；\n"
+                "2. **呈现交付阶段**：使用经过工具核算得到的真实精确数据填充图表与明细，调用 `bash` 生成目标文件或以完整代码块交付。\n"
+                "严禁在未调用任何计算工具的情况下跳过计算阶段直接手写数值或凭空臆测！\n"
+            )
+            messages[0]["content"] += visual_flow_guidance
 
     requirements = build_analysis_plan_context(last_user_prompt) if is_inspect_intent and not is_guide_intent else ""
     if requirements:
@@ -625,11 +659,6 @@ def run_agent_loop(
     execution_evidence: List[ToolResult] = list(initial_execution_evidence or [])
     guard_nudges_count = 0
     force_tool_choice = False
-    has_visual_or_deliverable = bool(
-        expected_deliverables
-        or is_generate_intent
-        or any(k in (last_user_prompt or "").lower() for k in ("图表", "柱状图", "折线图", "饼图", "散点图", "雷达图", "html", "看板", "可视化", "绘图", "画图", "生成图"))
-    )
     is_pure_spreadsheet_or_inspect = (
         not has_visual_or_deliverable
         and (
@@ -1143,7 +1172,7 @@ def run_agent_loop(
 
     final_text, healed_files = ((compiled_comparison, [])
         if comparison_required and compiled_comparison else (analysis_turn.render(execution_evidence,reply_text,telemetry,policy=policy,model=model,deadline=deadline), [])
-        if spreadsheet_analysis_required else _finalize_agent_text(
+        if (spreadsheet_analysis_required and not has_visual_or_deliverable) else _finalize_agent_text(
         reply_text=reply_text,
         messages=messages,
         model=model,

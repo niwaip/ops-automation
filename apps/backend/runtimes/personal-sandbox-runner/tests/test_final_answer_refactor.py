@@ -245,5 +245,91 @@ class TestFinalAnswerRefactor(unittest.TestCase):
         self.assertNotIn("blob:", final_text)
 
 
+class TestZeroToolCalculationGuard(unittest.TestCase):
+    def test_intercepts_zero_tool_reply_with_uncalculated_numbers(self):
+        from dsh_modules.sampling_guard import check_zero_tool_calculation_guard
+
+        prompt = "【当前轮次用户上传附件】: 明细.xlsx\n用户指令：按部门统计 金额的合计，不包含（WBS编号）中ex开头的数据，生成柱状图"
+        # Reply with hand-written / uncalculated HTML table numbers
+        reply = (
+            "✨ 交互式页面已生成！\n"
+            "```html\n"
+            "<table><tr><td>华东</td><td>1,887.73 K</td></tr></table>\n"
+            "<script>const dataValues = [677.59, 328.78];</script>\n"
+            "```"
+        )
+
+        issue = check_zero_tool_calculation_guard(
+            reply_text=reply,
+            last_user_prompt=prompt,
+            executed_calls_history=[],
+            execution_evidence=[],
+            is_guide_intent=False
+        )
+        self.assertIsNotNone(issue)
+        self.assertIn("系统数据核验拦截", issue)
+        self.assertIn("aggregate_spreadsheet", issue)
+
+    def test_passes_when_computational_tool_executed(self):
+        from dsh_modules.sampling_guard import check_zero_tool_calculation_guard
+
+        prompt = "【当前轮次用户上传附件】: 明细.xlsx\n用户指令：按部门统计 金额的合计，不包含（WBS编号）中ex开头的数据，生成柱状图"
+        reply = "```html\n<table><tr><td>华东</td><td>1,637.42 K</td></tr></table>\n```"
+
+        # Case 1: with aggregate_spreadsheet in history
+        issue = check_zero_tool_calculation_guard(
+            reply_text=reply,
+            last_user_prompt=prompt,
+            executed_calls_history=["aggregate_spreadsheet:ok"],
+            execution_evidence=[],
+            is_guide_intent=False
+        )
+        self.assertIsNone(issue)
+
+        # Case 2: with bash python in evidence
+        ev = ToolResult.success(data="1637.42", provenance={"tool": "bash", "cmd": "python3 calc.py"})
+        issue2 = check_zero_tool_calculation_guard(
+            reply_text=reply,
+            last_user_prompt=prompt,
+            executed_calls_history=["bash:ok"],
+            execution_evidence=[ev],
+            is_guide_intent=False
+        )
+        self.assertIsNone(issue2)
+
+    def test_passes_for_non_spreadsheet_task(self):
+        from dsh_modules.sampling_guard import check_zero_tool_calculation_guard
+
+        prompt = "帮我生成一个贪吃蛇html游戏"
+        reply = "```html\n<canvas id='game'></canvas>\n```"
+
+        issue = check_zero_tool_calculation_guard(
+            reply_text=reply,
+            last_user_prompt=prompt,
+            executed_calls_history=[],
+            execution_evidence=[],
+            is_guide_intent=False
+        )
+        self.assertIsNone(issue)
+
+
+class TestRequiresSpreadsheetAnalysis(unittest.TestCase):
+    def test_hybrid_spreadsheet_and_chart_task_requires_analysis(self):
+        from dsh_modules.spreadsheet_analysis_evidence import requires_spreadsheet_analysis
+
+        class MockSkillRes:
+            source_formats = [".xlsx"]
+            skill_id = "xlsx"
+            is_generate_intent = True
+            is_modify_intent = False
+            requires_execution = False
+            is_guide_intent = False
+
+        prompt = "按部门统计 金额的合计，不包含（WBS编号）中ex，sy，sp，ip，ib，sz开头的数据，生成柱状图"
+        res = requires_spreadsheet_analysis(prompt, MockSkillRes())
+        self.assertTrue(res, "Hybrid calculation + visual chart task must require spreadsheet analysis")
+
+
 if __name__ == '__main__':
     unittest.main()
+
