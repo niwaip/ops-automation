@@ -233,6 +233,38 @@ class TerminalArtifactClaimTests(unittest.TestCase):
         self.assertNotIn("未完成原因", final_text)
         self.assertIn("部门金额统计看板", final_text)
 
+    def test_repair_json_arguments_handles_truncated_arguments(self):
+        from dsh_modules.llm import repair_json_arguments, normalize_messages_for_llm
+        import json
+
+        # 测试截断的 JSON 补齐
+        bad_args = '{"sheet": "明细", "range": "A1:B'
+        repaired = repair_json_arguments(bad_args)
+        parsed = json.loads(repaired)
+        self.assertIsInstance(parsed, dict)
+
+        # 测试 normalize_messages_for_llm 对残损 arguments 的自动净化
+        messages = [
+            {"role": "user", "content": "hello"},
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "c1",
+                        "type": "function",
+                        "function": {
+                            "name": "aggregate_spreadsheet",
+                            "arguments": '{"source": {"sheet": "工数实绩'
+                        }
+                    }
+                ]
+            }
+        ]
+        normalized = normalize_messages_for_llm(messages)
+        tc_args = normalized[1]["tool_calls"][0]["function"]["arguments"]
+        self.assertIsInstance(json.loads(tc_args), dict)
+
 
 if __name__ == '__main__':
     unittest.main()
