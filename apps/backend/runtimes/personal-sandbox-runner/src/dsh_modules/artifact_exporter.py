@@ -305,6 +305,12 @@ class ArtifactExporter:
                         print(f"⚠️ [Harness Export] 文件 {target_file} 包含系统警告/未完成声明，跳过作为正常产物导出")
                         return cleaned_text, exported_files
 
+                    from .html_report_fallback import detect_mock_or_placeholder_html
+                    placeholder_err = detect_mock_or_placeholder_html(file_content)
+                    if placeholder_err:
+                        print(f"⚠️ [Harness Export] 文件 {target_file} 包含占位符/未填充数据 ({placeholder_err})，跳过作为正常产物导出")
+                        return cleaned_text, exported_files
+
                     exported_files.append(str(target_file))
                     print(f"✨ [Harness Export] 自动从工作区提取生成文件注入卡片: {target_file}")
 

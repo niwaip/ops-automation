@@ -6,12 +6,48 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 
 
+def detect_mock_or_placeholder_html(content: str) -> Optional[str]:
+    """
+    Detects whether an HTML content is an unpopulated mock/placeholder template
+    instead of a genuine deliverable computed from source data.
+    Returns: description string if placeholder detected, else None.
+    """
+    if not content or len(content.strip()) < 30:
+        return None
+
+    # 1. 明确的未填充与占位符话术特征
+    placeholder_patterns = [
+        (r'(?:需要|需)(?:先)?(?:手动)?(?:替换|填充|填入|修改)(?:为)?(?:实际|真实)(?:数据|值|数值)', "包含未填充实际值的占位说明"),
+        (r'请(?:先)?(?:替换|填充|修改)为(?:实际|真实)(?:数据|值|数值)', "包含待替换真实数据的占位说明"),
+        (r'(?:此处|这里|以下)(?:仅)?为(?:示意|示例|mock|测试)(?:数据)?', "包含示意/mock占位声明"),
+        (r'无法直接在(?:此)?html中访问', "包含无法访问数据源的推脱说明"),
+        (r'需(?:要)?先(?:在沙箱|在终端|用python)?(?:执行|处理|运行)(?:python|脚本|数据)', "包含推脱未执行计算的脚本说明"),
+        (r'假设执行.*(?:后)?得到的数据', "包含假设数据的占位说明"),
+        (r'//\s*(?:TODO|todo|Todo)[:：]?\s*(?:从|读取|计算|获取).*数据', "包含数据获取 TODO 占位注释"),
+    ]
+    for pat, desc in placeholder_patterns:
+        if re.search(pat, content, re.IGNORECASE):
+            return desc
+
+    # 2. 检查关键图表数据是否全部为 0 占位且无真实非零数据
+    zero_matches = re.findall(r'(?:amount|value|data|金额|数值)\s*:\s*0\b', content, re.IGNORECASE)
+    if len(zero_matches) >= 3:
+        non_zero_matches = re.findall(r'(?:amount|value|金额)\s*:\s*[1-9]\d*(?:\.\d+)?', content, re.IGNORECASE)
+        if not non_zero_matches and any(k in content for k in ("填充", "实际", "示意", "mock", "0 },", "0},")):
+            return "图表数据全部为 0 占位且包含未填充标记"
+
+    return None
+
+
 def is_plausible_html_content(content: str, min_size: int = 40) -> bool:
     """Validates if an HTML string is a plausible deliverable rather than an empty/placeholder test probe."""
     if not content or len(content.strip()) < min_size:
         return False
     lower = content.lower().strip()
     if not ("<!doctype html" in lower or "<html" in lower):
+        return False
+
+    if detect_mock_or_placeholder_html(content):
         return False
 
     # 提取 body 纯文本

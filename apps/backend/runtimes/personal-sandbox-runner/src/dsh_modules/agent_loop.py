@@ -296,6 +296,21 @@ def _check_no_tool_assertion_guard(
         print("⚠️ [Harness HTML Truncation Guard] 检测到输出的 HTML 代码达到上限被截断，立即停止并由导出器安全闭合与明确告警...", flush=True)
         return "break", None, max_rounds
 
+    # 2.5 虚假/未填充占位符 HTML 交付物拦截 (Mock / Placeholder HTML Deliverable Guard)
+    if not is_guide_intent and ("```html" in (reply_text or "").lower() or "<!doctype html" in (reply_text or "").lower()):
+        from .html_report_fallback import detect_mock_or_placeholder_html
+        placeholder_issue = detect_mock_or_placeholder_html(reply_text or "")
+        if placeholder_issue:
+            print(f"⚡ [Harness Mock Deliverable Guard] 检测到输出的 HTML 包含占位符或未计算标记 ({placeholder_issue})，正在引导模型调用工具计算真实数据...", flush=True)
+            msg = (
+                f"【系统真实数据交付拦截提示】：检测到你生成的 HTML 页面中包含未填充的占位数据或推脱说明（{placeholder_issue}），"
+                f"并未呈现真实从附件中计算的数据结果！\n"
+                f"沙箱具备完整的终端与 Python 计算环境，严禁交付空模板、0值占位或口头示意代码！\n"
+                f"请立即通过 Function Calling 协议调用 `bash` 运行 Python 脚本读取相关附件（如 Excel），"
+                f"完成数据过滤与聚合计算，并将真实计算出的数值与图表完整写入 HTML 代码块中落盘交付！"
+            )
+            return "continue", msg, bumped_max_rounds
+
     # 3. 契约交付物缺失断言：用户明确要求生成文件，但工作区尚未生成任何物理文件
     has_valid_html = ("```html" in reply_text.lower()) and not is_unclosed_or_truncated_html(reply_text)
     if not is_text_only_request(last_user_prompt) and (is_generate_intent or bool(expected_deliverables)) and not is_guide_intent and not is_search_intent:

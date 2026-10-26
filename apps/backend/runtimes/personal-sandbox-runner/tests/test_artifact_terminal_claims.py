@@ -265,6 +265,62 @@ class TerminalArtifactClaimTests(unittest.TestCase):
         tc_args = normalized[1]["tool_calls"][0]["function"]["arguments"]
         self.assertIsInstance(json.loads(tc_args), dict)
 
+    def test_mock_placeholder_html_is_intercepted_and_not_exported(self):
+        from dsh_modules.html_report_fallback import detect_mock_or_placeholder_html
+        from dsh_modules.agent_loop import _check_no_tool_assertion_guard
+        from dsh_modules.artifact_exporter import ArtifactExporter
+
+        mock_html = (
+            "```html\n"
+            "<!DOCTYPE html><html><body>\n"
+            "<h1>部门工数看板</h1>\n"
+            "<script>\n"
+            "// 假设执行Python后得到的数据（请替换为实际值）：\n"
+            "const deptData = [\n"
+            "  { name: '华东MIS', amount: 0 }, // 需要填充实际值\n"
+            "  { name: '华东BAS', amount: 0 },\n"
+            "  { name: '华南BAS', amount: 0 }\n"
+            "];\n"
+            "</script>\n"
+            "</body></html>\n"
+            "```"
+        )
+
+        # 1. 检测占位符特征
+        reason = detect_mock_or_placeholder_html(mock_html)
+        self.assertIsNotNone(reason)
+        self.assertIn("未填充", reason)
+
+        # 2. _check_no_tool_assertion_guard 必须拦截并引导计算
+        prompt = "按部门统计 金额的合计，不包含（WBS编号）中ex，sy，sp，ip，ib，sz开头的数据，生成柱状图"
+        action, guard_msg, _ = _check_no_tool_assertion_guard(
+            reply_text=mock_html,
+            last_user_prompt=prompt,
+            round_idx=0,
+            max_rounds=5,
+            start_ts=self.start,
+            is_guide_intent=False,
+            expected_deliverables=[".html"],
+            is_generate_intent=True,
+            is_inspect_intent=False
+        )
+        self.assertEqual(action, "continue")
+        self.assertIn("真实数据交付拦截", guard_msg)
+        self.assertIn("真实", guard_msg)
+
+        # 3. artifact_exporter 绝不对占位模版打上成功横幅
+        target_file = self.root / "index.html"
+        target_file.write_text(mock_html, encoding="utf-8")
+        final_text, exported = ArtifactExporter.export_html(
+            final_text="文件已生成",
+            is_ppt_intent=False,
+            workspace_dir=str(self.root),
+            turn_start_time=self.start - 5.0,
+            prompt=prompt
+        )
+        self.assertEqual(exported, [])
+        self.assertNotIn("✨ **交互式页面已生成完毕！**", final_text)
+
 
 if __name__ == '__main__':
     unittest.main()

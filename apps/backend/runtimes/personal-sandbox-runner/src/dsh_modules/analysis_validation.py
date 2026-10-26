@@ -341,11 +341,12 @@ def validate_reply_against_contract(
                         sat, val_str, is_year = True, val_str or "已更新至表格交付物", False
 
                 # 兼容可视化/图表交付场景：若当前任务包含可视化或交付物生成（如生成柱状图、折线图、HTML看板等），
-                # 且回复正文中已包含有效 HTML 看板/图表代码（包含 chart/canvas/table/svg 等），
+                # 且回复正文中已包含真实有效的 HTML 看板/图表代码（排除包含未计算占位符或推脱注释的假模版），
                 # 目标指标已作为数据源内嵌于图表/看板交互界面中
                 if not sat:
                     from .task_intent import is_visual_artifact_requested
-                    if is_visual_artifact_requested(contract.raw_prompt):
+                    from .html_report_fallback import detect_mock_or_placeholder_html
+                    if is_visual_artifact_requested(contract.raw_prompt) and not detect_mock_or_placeholder_html(reply_text or ""):
                         reply_lower = (reply_text or "").lower()
                         has_valid_html_reply = ("```html" in reply_lower or "<!doctype html>" in reply_lower)
                         has_visual_components = any(k in reply_lower for k in ("chart", "canvas", "<table", "<svg", "echarts", "d3"))
