@@ -25,17 +25,18 @@ def requires_spreadsheet_analysis(prompt, skill_res):
         return False
     if contract.is_browse_or_summary:
         return False
-    has_visual_need = any(k in (prompt or "").lower() for k in ("柱状图", "折线图", "饼图", "散点图", "雷达图", "图表", "可视化", "画图", "绘图", "html", "png", "看板", "大屏"))
+    has_visual_need = any(k in (prompt or "").lower() for k in ("柱状图", "折线图", "饼图", "散点图", "雷达图", "图表", "可视化", "画图", "绘图", "html", "png", "看板", "大屏", "网页", "report", "报告"))
     from .spreadsheet_update.routing import is_custom_workbook_or_row_edit, is_workbook_update
     if is_workbook_update(prompt, getattr(skill_res, 'admission', None)):
         return False
     if is_custom_workbook_or_row_edit(prompt) and not has_visual_need:
         return False
     allow_generate = getattr(skill_res, "is_generate_intent", False) and (contract.has_metrics or has_visual_need)
+    allow_execution = getattr(skill_res, "requires_execution", False) and (contract.has_metrics or has_visual_need)
     return (has_spreadsheet_analysis_input(skill_res)
             and (not getattr(skill_res, "is_generate_intent", False) or allow_generate)
             and not getattr(skill_res, "is_modify_intent", False)
-            and not getattr(skill_res, "requires_execution", False)
+            and (not getattr(skill_res, "requires_execution", False) or allow_execution)
             and not getattr(skill_res, "is_guide_intent", False)
             and not contract.is_catalog_only
             and not supports_column_comparison(contract))

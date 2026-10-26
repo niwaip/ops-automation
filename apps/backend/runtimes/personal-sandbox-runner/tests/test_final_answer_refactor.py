@@ -329,6 +329,48 @@ class TestRequiresSpreadsheetAnalysis(unittest.TestCase):
         res = requires_spreadsheet_analysis(prompt, MockSkillRes())
         self.assertTrue(res, "Hybrid calculation + visual chart task must require spreadsheet analysis")
 
+    def test_requires_execution_does_not_suppress_analysis_for_hybrid_task(self):
+        from dsh_modules.spreadsheet_analysis_evidence import requires_spreadsheet_analysis
+
+        class MockSkillRes:
+            source_formats = [".xlsx"]
+            skill_id = "xlsx"
+            is_generate_intent = True
+            is_modify_intent = False
+            requires_execution = True  # Audit Finding 2: requires_execution must NOT suppress analysis
+            is_guide_intent = False
+
+        prompt = "按部门统计 金额的合计，不包含（WBS编号）中ex开头的数据，生成柱状图"
+        res = requires_spreadsheet_analysis(prompt, MockSkillRes())
+        self.assertTrue(res, "requires_execution=True should not suppress spreadsheet analysis for hybrid tasks")
+
+
+class TestDeliveryReconciliationEvidence(unittest.TestCase):
+    def test_reconciles_amount_from_execution_evidence_facts(self):
+        from dsh_modules.delivery_reconciliation import reconcile_delivery_presentation
+        from dsh_modules.tool_result import ToolResult
+        from decimal import Decimal
+
+        ev = ToolResult.success(
+            data={
+                "kind": "spreadsheet_analysis",
+                "facts": [
+                    {"label": "金额合计", "op": "sum", "value": "1637.42", "unit": "K"}
+                ]
+            },
+            provenance={"tool": "aggregate_spreadsheet"}
+        )
+
+        reply = "- **总金额(K)**：1,887.730\n按部门统计如下..."
+        reconciled = reconcile_delivery_presentation(
+            reply_text=reply,
+            workspace_dir="/tmp",
+            prompt="按部门统计 金额的合计",
+            execution_evidence=[ev]
+        )
+        self.assertIn("1,637.420", reconciled)
+        self.assertNotIn("1,887.730", reconciled)
+
 
 if __name__ == '__main__':
     unittest.main()

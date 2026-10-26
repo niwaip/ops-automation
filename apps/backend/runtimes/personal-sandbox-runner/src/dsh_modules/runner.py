@@ -599,10 +599,14 @@ def cmd_run(args):
         has_update_tools = any(t.get("function", {}).get("name") in update_tool_names for t in active_tools)
         if not has_update_tools:
             analysis_tools = select_analysis_tools(active_tools, prompt)
-            has_visual_need = any(k in prompt.lower() for k in ("柱状图", "折线图", "饼图", "散点图", "雷达图", "图表", "可视化", "画图", "绘图", "html", "png"))
-            if has_visual_need:
-                extra_allowed = {"bash", "write_file", "edit_file"}
-                retained_extras = [t for t in active_tools if t.get("function", {}).get("name") in extra_allowed]
+            has_visual_need = any(k in prompt.lower() for k in ("柱状图", "折线图", "饼图", "散点图", "雷达图", "图表", "可视化", "画图", "绘图", "html", "png", "看板", "大屏", "网页", "report", "报告"))
+            has_visual_or_deliverable = bool(
+                getattr(skill_res, "deliverables", None)
+                or getattr(skill_res, "is_generate_intent", False)
+                or has_visual_need
+            )
+            if has_visual_or_deliverable:
+                retained_extras = [t for t in active_tools if t.get("function", {}).get("name") not in update_tool_names]
                 active_tools = analysis_tools + [t for t in retained_extras if t not in analysis_tools]
             else:
                 active_tools = analysis_tools

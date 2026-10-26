@@ -329,7 +329,8 @@ def finalize_agent_text(
             workspace_dir,
             messages=messages,
             prompt=last_user_prompt,
-            turn_start_time=turn_start_time
+            turn_start_time=turn_start_time,
+            execution_evidence=execution_evidence
         )
     except Exception as e:
         logger.warning("Delivery reconciliation error: %s", e)

@@ -624,7 +624,7 @@ def run_agent_loop(
     has_visual_or_deliverable = bool(
         expected_deliverables
         or is_generate_intent
-        or any(k in (last_user_prompt or "").lower() for k in ("图表", "柱状图", "折线图", "饼图", "散点图", "雷达图", "html", "看板", "可视化", "绘图", "画图", "生成图"))
+        or any(k in (last_user_prompt or "").lower() for k in ("图表", "柱状图", "折线图", "饼图", "散点图", "雷达图", "html", "看板", "大屏", "网页", "report", "报告", "可视化", "绘图", "画图", "生成图"))
     )
 
     if is_update_req and has_active_update_tools and not is_guide_intent:
@@ -634,8 +634,8 @@ def run_agent_loop(
     elif spreadsheet_analysis_required:
         analysis_tools = select_analysis_tools(active_tools, last_user_prompt)
         if has_visual_or_deliverable:
-            extra_allowed = {"bash", "write_file", "edit_file"}
-            retained_extras = [t for t in active_tools if t.get("function", {}).get("name") in extra_allowed]
+            update_tool_names = {"plan_spreadsheet_update", "execute_spreadsheet_update", "get_spreadsheet_update_status", "read_skill"}
+            retained_extras = [t for t in active_tools if t.get("function", {}).get("name") not in update_tool_names]
             active_tools = analysis_tools + [t for t in retained_extras if t not in analysis_tools]
         else:
             active_tools = analysis_tools
@@ -840,7 +840,7 @@ def run_agent_loop(
                         round_idx += 1
                         continue
 
-            if spreadsheet_analysis_required:
+            if spreadsheet_analysis_required and not has_visual_or_deliverable:
                 if analysis_turn.is_clarification(execution_evidence, reply_text):
                     telemetry.record_guard("spreadsheet_evidence", "accept", "clarification_requested")
                     break
@@ -971,6 +971,26 @@ def run_agent_loop(
             completed=analysis_turn.complete(execution_evidence,telemetry,
                 [t.get('function',{}).get('name') for t in active_tools],deadline)
             if analysis_turn.may_finish(execution_evidence):
+                has_delivered = bool(
+                    outbound_files
+                    or (reply_text and "```html" in reply_text.lower() and not is_unclosed_or_truncated_html(reply_text))
+                )
+                if has_visual_or_deliverable and not has_delivered:
+                    # 计算阶段已完成，但可视化/文件交付尚未完成：平滑过渡到交付阶段，不提前截断
+                    if round_idx < task_ceiling - 1:
+                        max_rounds = min(task_ceiling, max(max_rounds, round_idx + 2))
+                    messages.append({
+                        'role': 'user',
+                        'content': (
+                            "【表格数据核算完成，请执行可视化交付阶段】\n"
+                            "内部分析引擎已精准计算出聚合与过滤结果（参见上方工具返回事实）。\n"
+                            "现在请进入第二阶段：严格使用上述核算得到的事实数据（严禁臆测或篡改数值），"
+                            "生成符合用户要求的数据看板、HTML 图表或目标交付物。\n"
+                            "请直接输出完整的 ```html ... ``` 代码块，或调用相关工具生成落地文件。"
+                        )
+                    })
+                    round_idx += 1
+                    continue
                 if structured_calls:
                     reply_text = ""
                 break
