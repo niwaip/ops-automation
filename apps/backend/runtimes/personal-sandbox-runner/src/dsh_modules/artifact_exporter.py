@@ -401,12 +401,21 @@ class ArtifactExporter:
 
         doc_exts = {".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt", ".pdf", ".md", ".zip", ".csv"}
         tech_exts = {".sh", ".sql", ".py", ".yaml", ".yml"}
+        visual_exts = {".html", ".png", ".jpg", ".jpeg", ".svg"}
         special_tech_files = {"dockerfile", "docker-compose.yml", "docker-compose.yaml"}
         has_tech_intent = bool(
             (expected_deliverables and any(ext.lower() in tech_exts or ext.lower() in special_tech_files for ext in expected_deliverables))
             or (prompt and re.search(r'(?:脚本|\.sh|\.sql|\.py|dockerfile|docker-compose|配置文件|yaml|yml)', prompt, re.I))
         )
-        allowed_exts = doc_exts.union(tech_exts) if has_tech_intent else doc_exts
+        has_visual_intent = bool(
+            (expected_deliverables and any(ext.lower() in visual_exts for ext in expected_deliverables))
+            or (prompt and re.search(r'(?:柱状图|折线图|饼图|散点图|雷达图|图表|可视化|画图|绘图|\.html|\.png|\.svg)', prompt, re.I))
+        )
+        allowed_exts = set(doc_exts)
+        if has_tech_intent:
+            allowed_exts.update(tech_exts)
+        if has_visual_intent:
+            allowed_exts.update(visual_exts)
         excluded_names = set(Path(f).name.lower().strip() for f in (session_files or []))
 
         ws_path = Path(workspace_dir)

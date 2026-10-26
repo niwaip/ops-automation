@@ -31,16 +31,31 @@ def compile_legacy_filters_to_predicate(filters):
         return None
     predicates = []
     for f in filters:
-        col = f.get("column")
-        op = f.get("op", "in")
-        if op == "in":
-            predicates.append({"op": "in", "field": col, "values": f.get("values", [])})
-        elif op == "not_in":
-            predicates.append({"op": "not_in", "field": col, "values": f.get("values", [])})
-        elif op == "prefix":
-            predicates.append({"op": "starts_with", "field": col, "prefixes": f.get("prefixes", [])})
-        elif op == "exclude_prefix":
-            predicates.append({"op": "not_starts_with", "field": col, "prefixes": f.get("exclude_prefixes", f.get("prefixes", []))})
+        col = f.get("column") or f.get("field")
+        # 优先判断是否包含前缀排除/前缀匹配特征，避免无 op 键时错误默认回退为 in
+        if "exclude_prefixes" in f or "exclude_prefix" in f or f.get("op") in ("exclude_prefix", "exclude_prefixes", "not_starts_with"):
+            pref = f.get("exclude_prefixes") or f.get("exclude_prefix") or f.get("prefixes") or f.get("values") or f.get("value", [])
+            prefixes = [pref] if isinstance(pref, str) else list(pref)
+            predicates.append({"op": "not_starts_with", "field": col, "values": prefixes})
+        elif "prefixes" in f or "prefix" in f or f.get("op") in ("prefix", "prefixes", "starts_with"):
+            pref = f.get("prefixes") or f.get("prefix") or f.get("values") or f.get("value", [])
+            prefixes = [pref] if isinstance(pref, str) else list(pref)
+            predicates.append({"op": "starts_with", "field": col, "values": prefixes})
+        else:
+            op = f.get("op", "in")
+            vals = f.get("values")
+            if vals is None and "value" in f:
+                vals = [f["value"]]
+            elif vals is None:
+                vals = []
+            if op in ("not_in", "exclude"):
+                predicates.append({"op": "not_in", "field": col, "values": vals})
+            elif op == "prefix":
+                predicates.append({"op": "starts_with", "field": col, "values": f.get("prefixes", vals)})
+            elif op == "exclude_prefix":
+                predicates.append({"op": "not_starts_with", "field": col, "values": f.get("exclude_prefixes", vals)})
+            else:
+                predicates.append({"op": "in", "field": col, "values": vals})
     if not predicates:
         return None
     if len(predicates) == 1:

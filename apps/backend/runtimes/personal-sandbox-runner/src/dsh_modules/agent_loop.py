@@ -71,7 +71,7 @@ from .agent_loop_helpers import (
 
 
 MAX_AGENT_ROUNDS_HARD_CEILING = int(os.getenv("DSH_MAX_AGENT_ROUNDS_CEILING", "24"))
-MAX_SPREADSHEET_ROUNDS_CEILING = 4
+MAX_SPREADSHEET_ROUNDS_CEILING = int(os.getenv("DSH_MAX_SPREADSHEET_ROUNDS_CEILING", "8"))
 
 
 def extract_filename_from_outbound(item: str) -> str:
@@ -610,13 +610,22 @@ def run_agent_loop(
     execution_evidence: List[ToolResult] = list(initial_execution_evidence or [])
     guard_nudges_count = 0
     force_tool_choice = False
+    has_visual_or_deliverable = bool(
+        expected_deliverables
+        or is_generate_intent
+        or any(k in (last_user_prompt or "").lower() for k in ("图表", "柱状图", "折线图", "饼图", "散点图", "雷达图", "html", "看板", "可视化", "绘图", "画图", "生成图"))
+    )
     is_pure_spreadsheet_or_inspect = (
-        (spreadsheet_analysis_required and not (is_update_req and has_active_update_tools))
-        or comparison_required
-        or (is_inspect_intent and not is_generate_intent and not expected_deliverables and not (is_update_req and has_active_update_tools))
+        not has_visual_or_deliverable
+        and (
+            (spreadsheet_analysis_required and not (is_update_req and has_active_update_tools))
+            or comparison_required
+            or (is_inspect_intent and not is_generate_intent and not expected_deliverables and not (is_update_req and has_active_update_tools))
+        )
     )
     task_ceiling = MAX_SPREADSHEET_ROUNDS_CEILING if is_pure_spreadsheet_or_inspect else MAX_AGENT_ROUNDS_HARD_CEILING
     max_rounds = min(max_rounds, task_ceiling)
+    initial_max_rounds = max_rounds
 
     round_idx = 0
     consecutive_tool_errors = 0
@@ -710,8 +719,8 @@ def run_agent_loop(
             if comparison_required and consecutive_comparison_errors < 2:
                 compiled, error = compile_comparison_response(comparison_contract, execution_evidence)
                 telemetry.record_guard('comparison_evidence', 'reject' if error else 'accept', error)
-                if error and round_idx < task_ceiling - 1:
-                    max_rounds = min(task_ceiling, max_rounds+1)
+                if error and round_idx < task_ceiling - 1 and round_idx < initial_max_rounds + 2:
+                    max_rounds = min(task_ceiling, max(max_rounds, round_idx + 2))
                     messages.append({'role':'assistant', 'content':reply_text})
                     messages.append({'role':'user', 'content':'【系统比较证据验收】：'+error+COMPARISON_DELIVERY_INSTRUCTIONS})
                     round_idx += 1
@@ -794,8 +803,8 @@ def run_agent_loop(
                 response=analysis_turn.response(execution_evidence,reply_text)
                 error=None if response else analysis_turn.feedback(execution_evidence)
                 telemetry.record_guard("spreadsheet_evidence", "reject" if error else "accept", error)
-                if error and round_idx < task_ceiling - 1:
-                    max_rounds = min(task_ceiling, max_rounds+1)
+                if error and round_idx < task_ceiling - 1 and round_idx < initial_max_rounds + 2:
+                    max_rounds = min(task_ceiling, max(max_rounds, round_idx + 2))
                     messages.append({"role":"assistant","content":reply_text})
                     messages.append({"role":"user","content":error})
                     round_idx += 1
@@ -1207,6 +1216,8 @@ def run_agent_loop(
                     f"> 目标文件（`{missing_final}`）尚未在沙箱内完成物理落盘，请根据下方说明补充条件或重试生成。\n\n---\n\n"
                 )
                 final_text = warning_notice + final_text
+        elif not missing_final and outbound_files and not has_valid_xlsx:
+            telemetry.record_guard("deliverable_contract", "accept", "verified_deliverable_present")
 
     try:
         from .delivery_reconciliation import reconcile_delivery_presentation

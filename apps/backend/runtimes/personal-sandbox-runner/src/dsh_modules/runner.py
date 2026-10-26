@@ -598,7 +598,14 @@ def cmd_run(args):
         update_tool_names = {"plan_spreadsheet_update", "execute_spreadsheet_update", "get_spreadsheet_update_status", "read_skill"}
         has_update_tools = any(t.get("function", {}).get("name") in update_tool_names for t in active_tools)
         if not has_update_tools:
-            active_tools = select_analysis_tools(active_tools, prompt)
+            analysis_tools = select_analysis_tools(active_tools, prompt)
+            has_visual_need = any(k in prompt.lower() for k in ("柱状图", "折线图", "饼图", "散点图", "雷达图", "图表", "可视化", "画图", "绘图", "html", "png"))
+            if has_visual_need:
+                extra_allowed = {"bash", "write_file", "edit_file"}
+                retained_extras = [t for t in active_tools if t.get("function", {}).get("name") in extra_allowed]
+                active_tools = analysis_tools + [t for t in retained_extras if t not in analysis_tools]
+            else:
+                active_tools = analysis_tools
     task_context = load_task_context(history_file, original_hashes)
     # 4. 组装 System Prompt 与 User Turn (保持前缀稳定以命中 Prompt Caching)
     system_prompt = build_system_prompt(
@@ -712,10 +719,17 @@ def cmd_run(args):
                     "content": execution_instruction,
                 })
             else:
-                messages.append({
-                    "role": "user",
-                    "content": "【呈现阶段】：上述调研已获取到充分的事实依据。请基于上述调研结论，以专业、清晰、直接的语言向用户输出完整回答（直接在对话中呈现核心事实，无需创建任何物理文件）。",
-                })
+                has_visual_need = any(k in prompt.lower() for k in ("柱状图", "折线图", "饼图", "散点图", "雷达图", "图表", "可视化", "画图", "绘图"))
+                if has_visual_need:
+                    messages.append({
+                        "role": "user",
+                        "content": "【呈现与交付阶段】：已获取到充分的事实依据与统计结果。请基于上述统计结论，直接生成完整可运行的交互式 HTML 图表（包含 ECharts/SVG 组件）或运行 Python 脚本生成图表图片落盘，严禁向用户口头询问‘如需生成请告知’！",
+                    })
+                else:
+                    messages.append({
+                        "role": "user",
+                        "content": "【呈现阶段】：上述调研已获取到充分的事实依据。请基于上述调研结论，以专业、清晰、直接的语言向用户输出完整回答（直接在对话中呈现核心事实，无需创建任何物理文件）。",
+                    })
         planning_evidence = [item for item in retrieval_evidence
                              if (item.provenance or {}).get("phase") == "planning"]
         if planning_evidence:

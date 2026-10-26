@@ -620,6 +620,45 @@ def materialize_post_loop_deliverables(
                 cleaned_outbounds.append(item_str)
             outbound_files = cleaned_outbounds
 
+    # 5. HTML / 图表 / 可视化交互单页物化与工作区落盘
+    from .task_intent import is_visual_artifact_requested
+    wants_html = (
+        (expected_deliverables and any(ext.lower() in [".html", ".htm"] for ext in expected_deliverables))
+        or is_visual_artifact_requested(last_user_prompt)
+        or bool(re.search(r'(?:做成|制作|生成|导出|创建)[^，。\n]{0,8}(?:html|网页|单页|看板|大屏|页面|图表|柱状图|折线图|饼图)', (last_user_prompt or "").lower()))
+    )
+    if wants_html:
+        from .artifact_exporter import ArtifactExporter
+        if "```html" in (final_text or ""):
+            _, exported_htmls = ArtifactExporter.export_html(
+                final_text,
+                is_ppt_intent=False,
+                workspace_dir=workspace_dir,
+                turn_start_time=start_ts,
+                prompt=last_user_prompt,
+            )
+            for hpath in exported_htmls:
+                outbound_payload = json.dumps(
+                    {"filePath": hpath, "fileName": Path(hpath).name},
+                    ensure_ascii=False,
+                )
+                if outbound_payload not in outbound_files and not any(_extract_filename_from_outbound(existing).lower() == Path(hpath).name.lower() for existing in outbound_files):
+                    outbound_files.append(outbound_payload)
+
+        # 检查工作区中本轮已生成的有效 HTML 文件
+        ws_p = Path(workspace_dir)
+        if ws_p.exists():
+            cutoff = (start_ts - 2.0) if start_ts is not None else 0.0
+            for item in ws_p.iterdir():
+                if item.is_file() and item.suffix.lower() in (".html", ".htm") and item.stat().st_size > 0 and item.stat().st_mtime >= cutoff:
+                    if not ArtifactExporter.is_temporary_file(item.name):
+                        outbound_payload = json.dumps(
+                            {"filePath": str(item), "fileName": item.name},
+                            ensure_ascii=False,
+                        )
+                        if outbound_payload not in outbound_files and not any(_extract_filename_from_outbound(f).lower() == item.name.lower() for f in outbound_files):
+                            outbound_files.append(outbound_payload)
+
     return outbound_files
 
 
@@ -714,6 +753,30 @@ def materialize_in_loop_deliverables(
             )
             ta_name = Path(ta).name.lower()
             if outbound_payload not in outbound_files and not any(_extract_filename_from_outbound(existing).lower() == ta_name for existing in outbound_files):
+                outbound_files.append(outbound_payload)
+
+    # HTML / 图表 / 可视化交互单页物化
+    from .task_intent import is_visual_artifact_requested
+    wants_html_mid = (
+        (expected_deliverables and any(ext.lower() in [".html", ".htm"] for ext in expected_deliverables))
+        or is_visual_artifact_requested(last_user_prompt)
+        or bool(re.search(r'(?:做成|制作|生成|导出|创建)[^，。\n]{0,8}(?:html|网页|单页|看板|大屏|页面|图表|柱状图|折线图|饼图)', (last_user_prompt or "").lower()))
+    )
+    if wants_html_mid and "```html" in (reply_text or ""):
+        from .artifact_exporter import ArtifactExporter
+        _, exported_htmls = ArtifactExporter.export_html(
+            reply_text,
+            is_ppt_intent=False,
+            workspace_dir=workspace_dir,
+            turn_start_time=start_ts,
+            prompt=last_user_prompt,
+        )
+        for hpath in exported_htmls:
+            outbound_payload = json.dumps(
+                {"filePath": hpath, "fileName": Path(hpath).name},
+                ensure_ascii=False,
+            )
+            if outbound_payload not in outbound_files and not any(_extract_filename_from_outbound(existing).lower() == Path(hpath).name.lower() for existing in outbound_files):
                 outbound_files.append(outbound_payload)
 
     return script_execution_error

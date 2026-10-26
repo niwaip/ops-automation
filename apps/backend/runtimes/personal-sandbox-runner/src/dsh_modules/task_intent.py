@@ -17,6 +17,15 @@ PHYSICAL_EXPORT_RE = re.compile(
     re.I
 )
 
+VISUAL_EXPORT_RE = re.compile(
+    r'(?:'
+    r'(?:生成|制作|创建|输出|画|绘制|做个|做一份|出个).*(?:柱状图|折线图|饼图|散点图|雷达图|图表|可视化|看板|大屏|架构图|时序图|流程图|拓扑图|图片|图像)|'
+    r'(?:柱状图|折线图|饼图|散点图|雷达图|图表|可视化看板|可视化图表|交互式页面)\b|'
+    r'\.(?:html|png|jpg|jpeg|svg)\b'
+    r')',
+    re.I
+)
+
 SPREADSHEET_MUTATION_RE = re.compile(
     r'(?:'
     r'(?:复制|生成|新建|创建|更新|添加).*(?:sheet|工作表|标签页|工作簿|预测|预实|快照)|'
@@ -29,7 +38,13 @@ SPREADSHEET_MUTATION_RE = re.compile(
 def has_physical_artifact_request(text: str) -> bool:
     if not text or not isinstance(text, str):
         return False
-    return bool(PHYSICAL_EXPORT_RE.search(text))
+    return bool(PHYSICAL_EXPORT_RE.search(text) or VISUAL_EXPORT_RE.search(text))
+
+
+def is_visual_artifact_requested(text: str) -> bool:
+    if not text or not isinstance(text, str):
+        return False
+    return bool(VISUAL_EXPORT_RE.search(text))
 
 
 def is_spreadsheet_mutation_requested(text: str) -> bool:
@@ -44,7 +59,7 @@ instruction_relation分析当前请求与历史对话的关系：
 - followup：对上一轮任务或其结果的明确延续、追加筛选（如“再加个条件”、“只要大于100的”）、追问（“为什么是这个结果”）、纠错重试、或回答助手的确认追问（如补充字段、确认口径、确认区块映射或写入单位）。回答助手的追问属于延续执行，task_mode 必须为 execute，绝不能标记为 consult！
 当前明确要求优先于历史。requirements逐项引用真实用户原话，记录目标、限制、条件和交付，不添加改进偏好。独立任务(standalone)的requirements只能引用当前请求中的原话，禁止从历史中拖拽已过期的修饰符。
 task_mode=consult 仅表示解释或讨论某项能力/技能本身（如“什么是工数”，“这个技能怎么用”）；凡是回答追问、提供业务字段、统计或实际完成任务的，一律为 execute！
-output_mode=conversation表示在对话中回答，含文字、Markdown表格、列出结果；artifact用于用户在当前请求中明确要求生成、下载或导出物理文件的情况。对于要求在现有工作簿/文件中修改、更新、复制工作表(Sheet)、新建工作表(Sheet)、回填数值并保存的任务，属于必须生成/更新持久化交付物的更新任务，output_mode 必须为 artifact，artifact_types 为 ['.xlsx']！
+output_mode=conversation表示在对话中回答，含文字、Markdown表格、列出结果；artifact用于用户在当前请求中明确要求生成、下载或导出物理文件的情况。对于要求在现有工作簿/文件中修改、更新、复制工作表(Sheet)、新建工作表(Sheet)、回填数值并保存的任务，属于必须生成/更新持久化交付物的更新任务，output_mode 必须为 artifact，artifact_types 为 ['.xlsx']！对于要求生成图表（如柱状图、折线图、饼图、雷达图、数据可视化大屏/看板）的任务，必须交付可视化组件或物理图表，output_mode 必须为 artifact，artifact_types 为 ['.html']！
 读取、统计或分析输入附件且无修改时，不意味着要交付相同格式的输出文件。没有明确物理交付要求或更新修改要求时使用conversation和空artifact_types。特别注意：“只要表格”、“列出表格”等是呈现偏好，属于conversation，绝不是生成物理Excel文件的依据。
 artifact_types是用户要求的文件扩展名数组。契约只记录目标，不声明执行完成。
 skill_invocation记录调用意图：mode=execute表示明确执行整项技能，reference表示只借用方法、讨论或否定其执行，none表示没有指定技能；name填写目录中的标准ID或用户原话中的技能名称，none时为空；引用目录ID时不要求该ID字面出现在原话中，调用关系仍须根据用户原话语义判断。
@@ -151,6 +166,10 @@ def extract_task_intent(request, users, model, policy, telemetry, deadline, inpu
                 result['output_mode'] = 'artifact'
                 if not any(t.lower().endswith(('.xlsx', '.xlsm')) for t in result.get('artifact_types', [])):
                     result['artifact_types'] = ['.xlsx']
+            elif is_visual_artifact_requested(request) and result.get('task_mode') == 'execute':
+                result['output_mode'] = 'artifact'
+                if not any(t.lower().endswith(('.html', '.png', '.svg', '.jpg', '.jpeg')) for t in result.get('artifact_types', [])):
+                    result['artifact_types'] = ['.html']
             telemetry.record_guard('task_intent', 'accept', result)
             return result
         except ValueError as error:
@@ -254,6 +273,10 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
         result['output_mode'] = 'artifact'
         if not any(t.lower().endswith(('.xlsx', '.xlsm')) for t in result.get('artifact_types', [])):
             result['artifact_types'] = ['.xlsx']
+    elif is_visual_artifact_requested(request) and result.get('task_mode') == 'execute':
+        result['output_mode'] = 'artifact'
+        if not any(t.lower().endswith(('.html', '.png', '.svg', '.jpg', '.jpeg')) for t in result.get('artifact_types', [])):
+            result['artifact_types'] = ['.html']
 
     if result['task_mode'] not in {'execute', 'consult'} or result['output_mode'] not in {'conversation', 'artifact'}:
         raise ValueError('任务模式无效')
