@@ -295,8 +295,17 @@ def finalize_agent_text(
             is_budget_exhausted = bool(llm_calls >= audit_ceiling)
             if not val_result.is_pass:
                 # 若已通过表格更新专有工具完成物理写盘与门禁校验，或最终输出已通过 verified 交付物摘要呈现，
+                # 或当前任务已成功生成/输出了有效交付物（如 HTML 交互看板、图表等），
                 # 严禁追加矛盾的“指标核算未完成声明”
-                has_verified_published = bool(published_summary or (is_update_req and has_update_deliverable))
+                from .task_intent import is_visual_artifact_requested
+                is_visual_req = is_visual_artifact_requested(last_user_prompt)
+                has_verified_published = bool(
+                    published_summary
+                    or (is_update_req and has_update_deliverable)
+                    or (expected_deliverables and has_physical_artifact)
+                    or has_valid_html
+                    or (is_visual_req and (has_valid_html or has_physical_artifact))
+                )
                 if not has_verified_published and execution_evidence:
                     for ev in execution_evidence:
                         data = getattr(ev, "data", None) or {}

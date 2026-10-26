@@ -168,6 +168,71 @@ class TerminalArtifactClaimTests(unittest.TestCase):
         self.assertNotIn('新工作表_目标.xlsx', missing)
         self.assertEqual(missing, [])
 
+    def test_chart_artifact_delivery_does_not_inject_uncompleted_indicator_disclaimer(self):
+        from dsh_modules.analysis_contract import build_analysis_contract
+        from dsh_modules.analysis_validation import validate_reply_against_contract
+        from dsh_modules.final_answer import finalize_agent_text
+        from dsh_modules.telemetry import TelemetryStats
+        from dsh_modules.runtime_policy import RuntimePolicy
+
+        prompt = "按部门统计 金额的合计，不包含（WBS编号）中ex，sy，sp，ip，ib，sz开头的数据，生成柱状图"
+        html_reply = (
+            "```html\n"
+            "<!DOCTYPE html>\n"
+            "<html>\n"
+            "<head><title>部门金额统计看板</title></head>\n"
+            "<body>\n"
+            "  <div class='chart-container'><canvas id='deptChart'></canvas></div>\n"
+            "  <table>\n"
+            "    <tr><th>部门</th><th>金额合计 (K)</th></tr>\n"
+            "    <tr><td>第一事业部</td><td>3,371.39 K</td></tr>\n"
+            "    <tr><td>第二事业部</td><td>1,250.00 K</td></tr>\n"
+            "  </table>\n"
+            "  <script>\n"
+            "    const data = [{ name: '第一事业部', value: 3371.39 }, { name: '第二事业部', value: 1250.00 }];\n"
+            "    new Chart(ctx, { type: 'bar', data: { labels: data.map(d => d.name), datasets: [{ label: '金额合计 (K)', data: data.map(d => d.value) }] } });\n"
+            "  </script>\n"
+            "</body>\n"
+            "</html>\n"
+            "```"
+        )
+
+        # 1. 验证分析契约校验
+        contract = build_analysis_contract(prompt)
+        val_res = validate_reply_against_contract(
+            contract=contract,
+            reply_text=html_reply,
+            round_idx=1,
+            max_rounds=24
+        )
+        self.assertTrue(val_res.is_pass, f"Contract validation failed: {val_res}")
+        self.assertIn("金额", val_res.satisfied_metrics[0])
+
+        # 2. 验证 final_text 绝不注入指标核算未完成声明
+        final_text, _ = finalize_agent_text(
+            reply_text=html_reply,
+            messages=[{"role": "user", "content": prompt}],
+            model="default",
+            policy=RuntimePolicy(),
+            deadline=None,
+            is_guide_intent=False,
+            executed_calls_history=[],
+            was_token_truncated=False,
+            telemetry=TelemetryStats(),
+            last_user_prompt=prompt,
+            expected_deliverables=[".html"],
+            execution_evidence=[],
+            turn_start_time=self.start,
+            call_model=None,
+            workspace_dir=str(self.root),
+            max_agent_rounds=24,
+            max_spreadsheet_rounds=8,
+        )
+        self.assertNotIn("【指标核算未完成声明】", final_text)
+        self.assertNotIn("已达成指标：无", final_text)
+        self.assertNotIn("未完成原因", final_text)
+        self.assertIn("部门金额统计看板", final_text)
+
 
 if __name__ == '__main__':
     unittest.main()
