@@ -113,6 +113,29 @@ class ReportPresentationTests(unittest.TestCase):
         self.assertIn('不适用（基准为零）', main)
         self.assertIn('-400', main); self.assertIn('+400', main)
 
+    def test_render_analysis_response_deduplicates_redundant_group_key_column(self):
+        from dsh_modules.report_presentation import query_overview
+        receipt_data = {
+            'kind': 'spreadsheet_analysis',
+            'plan': {
+                'source': {'sheet': '明细', 'header_row': 1, 'data_range': 'A2:D10'},
+                'group_by': ['部门名称'],
+                'metrics': [{'id': 'amount', 'label': '有偿金额合计(K)', 'field': '金额(K)'}]
+            },
+            'rows': [
+                {'group_key': '華東MIS', '部门名称': '華東MIS', 'BU名称': 'Uvance', 'amount': '570.75'}
+            ],
+            'facts': [
+                {'id': 'amount__華東MIS', 'label': '華東MIS 有偿金额合计(K)', 'value': '570.75', 'unit': 'K'}
+            ]
+        }
+        r = ToolResult.success(receipt_data, provenance={'file_path': '/workspace/test.xlsx'})
+        contract = build_analysis_contract('按 部门 统计各个部门的 有偿 金额的合计')
+        output = query_overview([r], contract)
+        # Table header must NOT have duplicate '部门名称 | 部门名称'
+        self.assertIn('| 部门名称 | BU名称 | 有偿金额合计(K) |', output)
+        self.assertNotIn('| 部门名称 | 部门名称 |', output)
+
 
 if __name__ == '__main__':
     unittest.main()

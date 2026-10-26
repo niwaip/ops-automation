@@ -246,12 +246,22 @@ def query_overview(receipts, contract):
             for mid in metrics:
                 if fact.get('id') == mid or str(fact.get('id', '')).startswith(mid + '__'):
                     units[mid] = fact.get('unit')
-        columns = list(rows[0])
-        labels = []
-        for col in columns:
+        query_plan = data.get('plan', {})
+        group_fields = [g if isinstance(g, str) else g.get('alias', g.get('field')) for g in (query_plan.get('group_by') or [])]
+        if contract.group_dimension:
+            group_fields.append(contract.group_dimension)
+
+        def _col_label(col):
             label = (contract.group_dimension or '分组') if col == 'group_key' else metrics.get(col, col)
             unit = units.get(col)
-            labels.append(label + (f'（{unit}）' if unit and unit != 'number' and unit not in label else ''))
+            return label + (f'（{unit}）' if unit and unit != 'number' and unit not in label else '')
+
+        raw_columns = list(rows[0])
+        if 'group_key' in raw_columns and (any(gf in raw_columns for gf in group_fields) or any(c != 'group_key' and _col_label(c) == _col_label('group_key') for c in raw_columns)):
+            columns = [c for c in raw_columns if c != 'group_key']
+        else:
+            columns = raw_columns
+        labels = [_col_label(col) for col in columns]
         parts.extend(['按请求执行后的结果如下：', '',
                       '| ' + ' | '.join(text(c) for c in labels) + ' |',
                       '|' + '|'.join('---' for _ in columns) + '|'])
