@@ -1,0 +1,17 @@
+{
+  "message": "基于原附件业务明细生成新的Excel E2E_workhours_report.xlsx。一个“部门汇总”表，列为部门编号、部门名称、工数合计、金额(K)合计、有偿工数、无偿工数、有偿占比；每部门一行，有偿占比用公式有偿工数除以工数合计；末尾合计行工数和金额用SUM公式，占比按整体有偿工数除以整体工数计算，不要平均各部门比例。加一张按部门名称展示工数合计的柱形图，数值单位沿用原表，冻结表头，提供下载。保留原附件，不联网。",
+  "clientMessageId": "1792909970785-dr5th11e",
+  "clientAssistantMessageId": "1792909970785-gbsuf6ia",
+  "sessionId": "chat-session-1792908948915-ytw0yory",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

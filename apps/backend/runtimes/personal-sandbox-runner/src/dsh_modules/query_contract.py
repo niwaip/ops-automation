@@ -9,8 +9,25 @@ import re
 from typing import Any, Dict, List, Optional, Set
 
 
-PREDICATE_ALIASES = {">": "gt", ">=": "gte", "<": "lt", "<=": "lte",
-                     "=": "eq", "==": "eq", "!=": "ne", "<>": "ne"}
+PREDICATE_ALIASES = {
+    ">": "gt", ">=": "gte", "<": "lt", "<=": "lte",
+    "=": "eq", "==": "eq", "!=": "ne", "<>": "ne",
+    "exclude_prefix": "not_starts_with",
+    "exclude_prefixes": "not_starts_with",
+    "not_prefix": "not_starts_with",
+    "not_prefixes": "not_starts_with",
+    "prefix_exclude": "not_starts_with",
+    "prefix": "starts_with",
+    "prefixes": "starts_with",
+    "starts": "starts_with",
+    "startswith": "starts_with",
+    "not_startswith": "not_starts_with",
+    "like": "like",
+    "not_like": "not_like",
+    "not like": "not_like",
+    "ilike": "like",
+    "not_ilike": "not_like",
+}
 
 
 def canonical_predicate_op(op):
@@ -42,6 +59,9 @@ CANONICAL_AGGREGATES = {
     "count_rows",
     "count_values",
     "count_distinct",
+    "first",
+    "value",
+    "val",
 }
 
 
@@ -97,6 +117,38 @@ def validate_predicate_node(
         raise QueryContractError("条件节点必须指定合法的 op 操作符")
 
     op_norm = canonical_predicate_op(op)
+    if op_norm in ("like", "not_like"):
+        val = node.get("value")
+        vals = node.get("values")
+        is_neg = (op_norm == "not_like")
+        if isinstance(val, str):
+            if val.startswith("%") and val.endswith("%"):
+                node["op"] = "not_contains" if is_neg else "contains"
+                node["value"] = val[1:-1]
+            elif val.endswith("%"):
+                node["op"] = "not_starts_with" if is_neg else "starts_with"
+                node["values"] = [val[:-1]]
+            elif val.startswith("%"):
+                node["op"] = "not_ends_with" if is_neg else "ends_with"
+                node["value"] = val[1:]
+            else:
+                node["op"] = "not_contains" if is_neg else "contains"
+                node["value"] = val
+            op_norm = node["op"]
+        elif isinstance(vals, list):
+            if all(isinstance(v, str) and v.endswith("%") and not v.startswith("%") for v in vals):
+                node["op"] = "not_starts_with" if is_neg else "starts_with"
+                node["values"] = [v[:-1] for v in vals]
+            else:
+                node["op"] = "not_contains" if is_neg else "contains"
+                node["values"] = [v.strip("%") if isinstance(v, str) else v for v in vals]
+            op_norm = node["op"]
+        else:
+            node["op"] = "not_contains" if is_neg else "contains"
+            op_norm = node["op"]
+    else:
+        node["op"] = op_norm
+
     if op_norm not in CANONICAL_PREDICATE_OPS:
         raise QueryContractError(f"不支持的操作符: '{op}'")
 
@@ -121,9 +173,27 @@ def validate_predicate_node(
             raise QueryContractError(f"{op_norm} 条件必须包含非空的 values 数组")
 
     elif op_norm in ("starts_with", "not_starts_with"):
-        vals = node.get("values") or node.get("prefixes")
-        if vals is None or not isinstance(vals, list) or len(vals) == 0:
-            raise QueryContractError(f"{op_norm} 前缀匹配必须包含非空的前缀列表")
+        vals = node.get("values") or node.get("prefixes") or node.get("exclude_prefixes")
+        val = node.get("value")
+        if vals is not None:
+            if isinstance(vals, (str, int)):
+                vals = [str(vals)]
+                node["values"] = vals
+            elif not isinstance(vals, list) or len(vals) == 0:
+                raise QueryContractError(f"{op_norm} 前缀匹配必须包含非空的前缀列表")
+            else:
+                node["values"] = [str(v) for v in vals]
+        elif val is not None:
+            if isinstance(val, (str, int)):
+                vals = [str(val)]
+                node["values"] = vals
+            elif isinstance(val, list) and len(val) > 0:
+                vals = [str(v) for v in val]
+                node["values"] = vals
+            else:
+                raise QueryContractError(f"{op_norm} 前缀匹配必须包含非空的前缀")
+        else:
+            raise QueryContractError(f"{op_norm} 前缀匹配必须包含非空的前缀列表 (values/value)")
 
     elif op_norm in ("contains", "not_contains"):
         val = node.get("value")
@@ -203,6 +273,7 @@ def validate_query_plan(plan: Dict[str, Any], available_columns: Set[str]) -> No
         raise QueryContractError("查询计划必须指定聚合度量 (metrics) 或声明明细投影字段 (fields/select/distinct)")
 
     metric_ids = set()
+    seen_metric_signatures: Dict[tuple, str] = {}
     if metrics:
         if not isinstance(metrics, list):
             raise QueryContractError("metrics 必须是列表")
@@ -225,6 +296,19 @@ def validate_query_plan(plan: Dict[str, Any], available_columns: Set[str]) -> No
                 raise QueryContractError(f"度量 '{mid}' 的聚合操作 '{op}' 必须指定目标字段")
             if field and available_columns and field not in available_columns:
                 raise QueryContractError(f"度量 '{mid}' 引用的字段不存在: '{field}'")
+
+            if field:
+                eff_unit = str(m.get("output_unit") or m.get("unit") or "source").strip().lower()
+                sig = (op, str(field).strip(), eff_unit)
+                curr_label = str(m.get("label") or mid).strip()
+                if sig in seen_metric_signatures and not plan.get("group_by"):
+                    prev_label = seen_metric_signatures[sig]
+                    raise QueryContractError(
+                        f"度量定义冲突：'{prev_label}' 与 '{curr_label}' 对同一字段 '{field}' 执行了完全相同的 '{op}' 聚合，"
+                        f"这会导致两个不同指标输出完全相同的混加数值。若各指标位于某维度列（如 '项目'/'科目'）的不同行，"
+                        f"请设置 group_by 为该维度列并仅保留一个对 '{field}' 的度量，或分别按单行条件查询。"
+                    )
+                seen_metric_signatures[sig] = curr_label
 
     # Validate group_by
     group_by = plan.get("group_by")

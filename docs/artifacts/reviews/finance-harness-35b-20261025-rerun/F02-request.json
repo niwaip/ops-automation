@@ -1,0 +1,17 @@
+{
+  "message": "继续读取同一个附件。只核算2026年营业收入、毛利率、营业利润和净利润，提供金额单位和结果。只在聊天回复，不生成文件，不联网。",
+  "clientMessageId": "1792894995722-q2h06o9t",
+  "clientAssistantMessageId": "1792894995722-m540a1h7",
+  "sessionId": "chat-session-1792894906850-um5ekgd1",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

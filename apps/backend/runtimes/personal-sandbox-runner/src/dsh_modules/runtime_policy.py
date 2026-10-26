@@ -87,7 +87,11 @@ class RuntimePolicy:
         # 0. 纯查阅/阅读/分析意图：严禁按复杂交付物预算，只需 2-3 轮（读取+回答）
         is_insp = is_inspect_intent or (skill_res and getattr(skill_res, "is_inspect_intent", False))
         is_gen = is_generate_intent or (skill_res and getattr(skill_res, "is_generate_intent", False))
-        if is_insp and not is_gen:
+        lower_prompt = prompt.lower()
+        has_chart_or_visual = any(w in lower_prompt for w in [
+            "柱状图", "折线图", "饼图", "散点图", "雷达图", "图表", "可视化", "html", "看板", "绘图", "画图", "生成图"
+        ])
+        if is_insp and not is_gen and not has_chart_or_visual:
             return 3
 
         # 1. 显式契约轮数优先
@@ -96,17 +100,17 @@ class RuntimePolicy:
         if skill_res and getattr(skill_res, "default_rounds", 0) > 0:
             return skill_res.default_rounds
 
-        # 2. 交付物或执行要求：契约驱动 (PDF/Word/Excel/HTML等标准复杂交付物)
+        # 2. 交付物或执行要求：契约驱动 (PDF/Word/Excel/HTML/图表等标准交付物)
         delivs = deliverables or (getattr(skill_res, "deliverables", None) if skill_res else None) or []
         req_exec = requires_execution or (getattr(skill_res, "requires_execution", False) if skill_res else False)
-        lower_prompt = prompt.lower()
         is_prompt_deliverable = (
+            has_chart_or_visual or
             any(w in lower_prompt for w in ["生成文件", "导出文件", "制作文件", "写入文件", "输出文件"]) or
             (any(v in lower_prompt for v in ["生成", "导出", "输出", "制作", "创建", "做个", "做一份", "写一份", "转为", "转成"]) and
-             any(ext in lower_prompt for ext in [".pdf", ".docx", ".xlsx", ".csv", ".json", ".md", "pdf", "word", "excel", "ppt", "markdown", "md 文件", "表格", "文档", "报表"]))
+             any(ext in lower_prompt for ext in [".pdf", ".docx", ".xlsx", ".csv", ".json", ".md", ".html", "pdf", "word", "excel", "ppt", "markdown", "md 文件", "表格", "文档", "报表", "图表", "柱状图", "折线图", "饼图"]))
         )
 
-        # 检查是否为复合多阶段任务（包含全网调研/多轮搜索/热点探索 + 交付物落地）
+        # 检查是否为复合多阶段任务（包含全网调研/多轮搜索/热点探索 + 交付物落地，或表格统计 + 图表可视化）
         has_open_search_or_research = (
             is_search or
             getattr(skill_res, "is_research_intent", False) or
@@ -123,8 +127,13 @@ class RuntimePolicy:
             or (req_exec and ("xlsx" in lower_prompt or "excel" in lower_prompt or is_office))
         )
 
-        if delivs or req_exec or is_office or is_prompt_deliverable:
-            if has_open_search_or_research or is_complex_spreadsheet_mutation:
+        # 表格分析与图表可视化并存的复合任务，给予复合任务预算
+        has_spreadsheet_chart_composite = has_chart_or_visual and (
+            is_office or req_exec or any(k in lower_prompt for k in ["统计", "合计", "明细", "表格", "excel", "xlsx", "数据", "部门"])
+        )
+
+        if delivs or req_exec or is_office or is_prompt_deliverable or has_chart_or_visual:
+            if has_open_search_or_research or is_complex_spreadsheet_mutation or has_spreadsheet_chart_composite:
                 return int(os.getenv("DSH_COMPOSITE_MAX_ROUNDS", "8"))
             return int(os.getenv("DSH_MAX_DELIVERABLE_ROUNDS", "5"))
 

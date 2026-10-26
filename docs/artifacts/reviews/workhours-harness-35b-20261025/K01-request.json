@@ -1,0 +1,24 @@
+{
+  "message": "读取附件工数实绩明细，确认真实表头、业务明细范围、业务记录数、去重员工数、去重WBS数、工数合计、金额合计和工数年月。标题和末尾查询条件不是业务数据，单位沿用原列。 只在聊天回复，不生成文件，不联网；无法核算时明确说明或向我澄清，不要猜测。",
+  "clientMessageId": "1792908958815-l3d5ya1j",
+  "clientAssistantMessageId": "1792908958815-51xgqnr6",
+  "sessionId": "chat-session-1792908948915-ytw0yory",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [
+    {
+      "fileId": "file-1792908958395-d96w90kqs",
+      "fileName": "工数实绩明细_20261020134124.xlsx",
+      "mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "size": 39480
+    }
+  ],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

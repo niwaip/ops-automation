@@ -1,0 +1,17 @@
+{
+  "message": "确认直接使用本会话已上传的原附件：员工编号是E列“员工编号”，工数是O列“工数(小时)”，金额是P列“金额(K)”。工数单位小时，金额仅沿用K，原件没有明确币种，不换算也不推断币种。请继续分别精确查询S22009、S17028、E2E_NOT_FOUND的记录数、总工数和金额合计，未找到如实说明。不生成文件，不联网。",
+  "clientMessageId": "1792909659402-dcbxd2zv",
+  "clientAssistantMessageId": "1792909659402-p72k5mg1",
+  "sessionId": "chat-session-1792908948915-ytw0yory",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

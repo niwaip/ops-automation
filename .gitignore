@@ -85,6 +85,7 @@ vite.config.d.ts
 # Carbone Engine templates & outputs (runtime data)
 /templates/
 /outputs/
+output/
 # Generated test files in root
 保密协议*.docx
 confidential_agreement*.docx

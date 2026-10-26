@@ -1,0 +1,17 @@
+{
+  "message": "接下来检查同一个附件的“交易明细”第4至83行。分别列出：凭证号重复的全部记录；部门为空的记录；金额绝对值大于10000的记录；日期不在2026年内的记录；审批状态不是已审批的记录。每类给出条数、Excel行号和关键字段。备注为空不算异常，费用负数不算异常。只在聊天回复，不修改原件，不联网。",
+  "clientMessageId": "1792905314140-5nv3hi2p",
+  "clientAssistantMessageId": "1792905314140-e02eauk3",
+  "sessionId": "chat-session-1792905175982-7x4tcitx",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

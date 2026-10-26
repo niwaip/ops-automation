@@ -246,12 +246,60 @@ def get_source_record_count(
         return None
 
 
+def extract_evidence_totals(execution_evidence: Optional[List[Any]]) -> Optional[Dict[str, Any]]:
+    """
+    Extracts authoritative numeric closures (sum/count) directly from execution_evidence (e.g. aggregate_spreadsheet).
+    """
+    if not execution_evidence:
+        return None
+    for e in execution_evidence:
+        if getattr(e, "is_success", False):
+            data = getattr(e, "data", None)
+            if isinstance(data, dict):
+                # 1. 检查 facts
+                facts = data.get("facts") or []
+                for f in facts:
+                    if isinstance(f, dict):
+                        op = f.get("op") or f.get("aggregation")
+                        label = str(f.get("label", ""))
+                        if op in ("sum", "total") or any(k in label for k in ("总额", "合计", "总金额", "sum", "total")):
+                            val = _parse_decimal_clean(f.get("value"))
+                            if val is not None:
+                                return {
+                                    "amount": val,
+                                    "amount_unit": f.get("unit"),
+                                    "amount_decimals": 2
+                                }
+                # 2. 检查 rows 聚合分组计算合计
+                rows = data.get("rows")
+                if isinstance(rows, list) and rows:
+                    sum_val = Decimal("0")
+                    has_val = False
+                    for r in rows:
+                        if isinstance(r, dict):
+                            for k, v in r.items():
+                                if any(sub in k for sub in ("金额", "amount", "合计", "sum", "total")):
+                                    d = _parse_decimal_clean(v)
+                                    if d is not None:
+                                        sum_val += d
+                                        has_val = True
+                                        break
+                    if has_val and sum_val > Decimal("0"):
+                        return {
+                            "amount": sum_val,
+                            "amount_unit": None,
+                            "amount_decimals": 2
+                        }
+    return None
+
+
 def reconcile_delivery_presentation(
     reply_text: str,
     workspace_dir: str,
     messages: Optional[List[Dict[str, Any]]] = None,
     prompt: str = "",
-    turn_start_time: Optional[float] = None
+    turn_start_time: Optional[float] = None,
+    execution_evidence: Optional[List[Any]] = None
 ) -> str:
     """
     Reconciles agent reply text against authoritative workbook deliverables and markdown tables:
@@ -261,9 +309,10 @@ def reconcile_delivery_presentation(
     if not reply_text:
         return reply_text
 
-    # 1. Gather authoritative totals from generated deliverable and markdown table
+    # 1. Gather authoritative totals from generated deliverable, execution evidence and markdown table
     wb_totals = extract_generated_workbook_totals(workspace_dir, turn_start_time=turn_start_time)
     tbl_totals = extract_markdown_table_totals(reply_text)
+    ev_totals = extract_evidence_totals(execution_evidence)
 
     true_amount: Optional[Decimal] = None
     true_count: Optional[int] = None
@@ -272,6 +321,8 @@ def reconcile_delivery_presentation(
 
     if wb_totals and wb_totals.get("amount") is not None:
         true_amount = wb_totals["amount"]
+    elif ev_totals and ev_totals.get("amount") is not None:
+        true_amount = ev_totals["amount"]
     elif tbl_totals and tbl_totals.get("amount") is not None:
         true_amount = tbl_totals["amount"]
 
@@ -283,6 +334,8 @@ def reconcile_delivery_presentation(
     if tbl_totals:
         amt_decimals = tbl_totals.get("amount_decimals", 3)
         amt_has_comma = tbl_totals.get("amount_has_comma", True)
+    elif ev_totals:
+        amt_decimals = ev_totals.get("amount_decimals", 2)
 
     text = reply_text
 

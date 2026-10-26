@@ -51,16 +51,27 @@ def profiles(workbook, tables, check_deadline):
         ws = workbook[table["sheet"]]
         rows = table["selected_rows"]
         a, _, b, _ = table["bounds"]
+        row_tuples = {}
+        for r in rows:
+            tup = tuple(literal(ws.cell(r, c).value) for c in range(a, b + 1))
+            if any(v is not None and str(v).strip() != "" for v in tup):
+                row_tuples.setdefault(tup, []).append(r)
+        dup_rows = sorted(r for r_list in row_tuples.values() if len(r_list) > 1 for r in r_list)
         for col in range(a, b+1):
             check_deadline()
             col_letter = get_column_letter(col)
             values = [(r, ws.cell(r, col).value) for r in rows]
             nonblank = [(r, v) for r, v in values if v is not None and str(v).strip()]
+            missing_row_list = [r for r, v in values if v is None or not str(v).strip()]
             item = {"table": table["id"], "column": col_letter,
                     "header": str(ws.cell(table["header_row"], col).value or ""),
                     "records": len(rows), "missing": len(rows)-len(nonblank)}
-            item['missing_examples']=[f"{ws.title}!{col_letter}{r}" for r,v in values
-                                      if v is None or not str(v).strip()][:20]
+            if col == a:
+                item["table_duplicate_row_count"] = len(dup_rows)
+                item["table_duplicate_rows"] = dup_rows[:500]
+            if missing_row_list:
+                item["missing_rows"] = missing_row_list[:500]
+            item['missing_examples']=[f"{ws.title}!{col_letter}{r}" for r in missing_row_list[:20]]
             nums = [(r, v) for r, v in nonblank if isinstance(v, (int, float, Decimal)) and not isinstance(v, bool)]
             dates = [(r, v) for r, v in nonblank if isinstance(v, (dt.date, dt.datetime))]
             if nums:
@@ -111,14 +122,28 @@ def evaluate_rule(rule, workbook, tables, check_deadline):
     if not isinstance(rule["assumptions"], str) or not rule["assumptions"].strip():
         raise ValueError("规则必须声明依据或待核查假设")
     table = tables[rule["table"]]; ws = workbook[table["sheet"]]
-    col = source_column(workbook,table,rule["column"])
-    if not table["bounds"][0] <= col <= table["bounds"][2]:
-        raise ValueError("规则列不在声明范围")
-    values = [(r, ws.cell(r, col).value) for r in table["selected_rows"]]
-    counts = Counter(str(literal(v)) for _, v in values if v is not None)
     kind = rule["kind"]
     if kind not in {"unique", "not_empty", "date_range", "allowed_values", "number_range", "outlier"}:
         raise ValueError("未知字段规则")
+    col_raw = str(rule["column"] or "").strip()
+    is_full_row_unique = (
+        kind == "unique"
+        and bool(re.fullmatch(r"(?:\*|all|全列|全行|全部列|所有列|所有\d+列|\d+列)", col_raw, re.I))
+    )
+    if is_full_row_unique:
+        a, _, b, _ = table["bounds"]
+        col = a
+        values = [
+            (r, tuple(literal(ws.cell(r, c).value) for c in range(a, b + 1)))
+            for r in table["selected_rows"]
+        ]
+        counts = Counter(v for _, v in values if any(x is not None and str(x).strip() != "" for x in v))
+    else:
+        col = source_column(workbook,table,rule["column"])
+        if not table["bounds"][0] <= col <= table["bounds"][2]:
+            raise ValueError("规则列不在声明范围")
+        values = [(r, ws.cell(r, col).value) for r in table["selected_rows"]]
+        counts = Counter(str(literal(v)) for _, v in values if v is not None)
     if kind == "allowed_values" and (not isinstance(rule.get("allowed"), list) or not rule["allowed"]):
         raise ValueError("枚举规则需要非空allowed")
     if kind in {"date_range", "number_range"} and not ({"min", "max"} & set(rule)):
@@ -145,7 +170,9 @@ def evaluate_rule(rule, workbook, tables, check_deadline):
     violations = []
     for row, value in values:
         check_deadline()
-        if kind == "unique":
+        if is_full_row_unique:
+            failed = counts.get(value, 0) > 1
+        elif kind == "unique":
             failed = value is None or counts[str(literal(value))] > 1
         elif kind == "not_empty":
             failed = value is None or not str(value).strip()
@@ -159,10 +186,11 @@ def evaluate_rule(rule, workbook, tables, check_deadline):
                 failed = True
         if failed:
             violations.append({"row": row, "cell": f"{ws.title}!{get_column_letter(col)}{row}",
-                               "value": literal(value)})
+                               "value": " | ".join(str(x or "") for x in value[:6]) if is_full_row_unique else literal(value)})
     return {"id": rule["id"], "label": rule["label"], "kind": kind,
             "table": table["id"], "column": rule["column"], "assumptions": rule["assumptions"],
             "evaluated_records": len(values), "violation_count": len(violations),
+            "violation_rows": [v["row"] for v in violations[:500]],
             "passed": not violations, "examples": violations[:20],
             "examples_complete": len(violations) <= 20,
             "basis_status": "declared_unverified",

@@ -1,0 +1,17 @@
+{
+  "message": "先缩小范围重试：只统计这份附件全部业务明细的总工数和金额(K)合计，不统计人数。排除标题、表头和查询条件行，沿用原列单位；无法计算则明确说明。不生成文件，不联网。",
+  "clientMessageId": "1792909026582-r9flowzj",
+  "clientAssistantMessageId": "1792909026582-lozheldx",
+  "sessionId": "chat-session-1792908948915-ytw0yory",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

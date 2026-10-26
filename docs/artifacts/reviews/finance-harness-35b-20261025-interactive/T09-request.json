@@ -1,0 +1,17 @@
+{
+  "message": "从同一附件利润表读取2026实际营业收入、毛利、营业利润、净利润，生成新的可下载Excel文件 E2E_finance_interactive_20261025.xlsx，包含指标、数值、单位、来源单元格四列。数值来自原件公式重算，金额沿用原表单位。不要将这四个独立指标相加成合计，保留原件，不联网。",
+  "clientMessageId": "1792898220036-b77mf0o5",
+  "clientAssistantMessageId": "1792898220036-ylwpkmy0",
+  "sessionId": "chat-session-1792897587482-oobbqctt",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

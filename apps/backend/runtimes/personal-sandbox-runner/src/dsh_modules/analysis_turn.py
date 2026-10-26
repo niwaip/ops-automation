@@ -154,16 +154,7 @@ class AnalysisTurn:
             return False
         from .analysis_task_state import analysis_task_state
         state = analysis_task_state(evidence, self.prompt,model=self.model,deadline=self.deadline)
-        if state.get('complete'):
-            return True
-        if self.contract.metrics and all(m.semantic_id for m in self.contract.metrics):
-            return True
-        if self.contract.is_audit_intent and any(
-            e.is_success and isinstance(e.data, dict) and (e.data.get('rules') or e.data.get('checks'))
-            for e in (evidence or [])
-        ):
-            return True
-        return False
+        return bool(state.get('complete'))
 
     def render(self,evidence,model_text,telemetry,policy=None,model=None,deadline=None):
         if self.is_clarification(evidence, model_text):
@@ -209,11 +200,18 @@ class AnalysisTurn:
             'matched_id_count':len(matched),'runtime_id_count':len(known),
             'unknown_id_count':sum(not isinstance(v,str) or v not in known for v in received) if isinstance(received,list) else None,
             'missing_id_count':len(known-matched)})
-        telemetry.record_guard('spreadsheet_evidence','accept' if state['complete'] else 'reject',
-                               None if state['complete'] else self.feedback(evidence))
         if state['complete']:
-            return render_analysis_response(self.response(evidence,model_text),evidence,self.prompt,
-                                            model=model,policy=policy,deadline=deadline,model_text=model_text)
+            rendered = render_analysis_response(self.response(evidence,model_text),evidence,self.prompt,
+                                                model=model,policy=policy,deadline=deadline,model_text=model_text,
+                                                state_complete=True)
+            # 强联锁：终态交付物渲染核验未通过时，绝不能记录 accept 虚假通过
+            if "本次分析尚未通过执行证据核验" in rendered:
+                telemetry.record_guard('spreadsheet_evidence', 'reject', self.feedback(evidence) or 'render_validation_failed')
+            else:
+                telemetry.record_guard('spreadsheet_evidence', 'accept', None)
+            return rendered
+
+        telemetry.record_guard('spreadsheet_evidence', 'reject', self.feedback(evidence))
         # 阻碍归因：末尾执行确实报错时展示；若后续轮次已成功，不展示已被模型自我修正的历史陈旧报错
         failed = None
         if evidence and getattr(evidence[-1], 'is_error', False):
@@ -222,6 +220,9 @@ class AnalysisTurn:
             failed = next((r for r in reversed(evidence) if getattr(r, 'is_error', False)), None)
         detail = f'\n\n执行阻碍：{failed.error_code}：{failed.error_message}' if failed else ''
         from .report_presentation import render_unverified_guidance
-        guidance=render_unverified_guidance(state,self.prompt,detail)
+        guidance = render_unverified_guidance(state, self.prompt, detail)
+        # 降级：若已有模型实质性分析输出，不将其抹杀为单纯未完成声明，而是优先呈现模型解读结论并在文末附加软性角标
+        if model_text and len(model_text.strip()) > 30 and "本次分析尚未通过" not in model_text:
+            return model_text.strip() + "\n\n---\n💡 **提示**：本分析结论由模型直接解读呈现，未完全通过单列聚合证据核验。"
         # Failure attribution is owned by execution receipts, not a second model rewrite.
         return guidance

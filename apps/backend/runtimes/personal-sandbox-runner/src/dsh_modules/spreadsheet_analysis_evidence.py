@@ -25,10 +25,19 @@ def requires_spreadsheet_analysis(prompt, skill_res):
         return False
     if contract.is_browse_or_summary:
         return False
+    has_visual_need = any(k in (prompt or "").lower() for k in ("柱状图", "折线图", "饼图", "散点图", "雷达图", "图表", "可视化", "画图", "绘图", "html", "png", "看板", "大屏", "网页", "report", "报告"))
+    from .spreadsheet_update.routing import is_custom_workbook_or_row_edit, is_workbook_update
+    if is_workbook_update(prompt, getattr(skill_res, 'admission', None)):
+        return False
+    if is_custom_workbook_or_row_edit(prompt) and not has_visual_need:
+        return False
+    allow_generate = getattr(skill_res, "is_generate_intent", False) and (contract.has_metrics or has_visual_need)
+    allow_execution = getattr(skill_res, "requires_execution", False) and (contract.has_metrics or has_visual_need)
     return (has_spreadsheet_analysis_input(skill_res)
-            and not getattr(skill_res,"is_generate_intent",False)
-            and not getattr(skill_res,"requires_execution",False)
-            and not getattr(skill_res,"is_guide_intent",False)
+            and (not getattr(skill_res, "is_generate_intent", False) or allow_generate)
+            and not getattr(skill_res, "is_modify_intent", False)
+            and (not getattr(skill_res, "requires_execution", False) or allow_execution)
+            and not getattr(skill_res, "is_guide_intent", False)
             and not contract.is_catalog_only
             and not supports_column_comparison(contract))
 
@@ -67,7 +76,7 @@ def verified_response(evidence,prompt="",model_text=''):
     return canonical_response(evidence,model_text) if analysis_task_state(evidence,prompt)['complete'] else None
 
 
-def evidence_error(text, evidence, prompt=""):
+def evidence_error(text, evidence, prompt="", state_complete=False):
     response = parse_response(text)
     if response is None:
         return "最终答案必须引用本轮证据ID的JSON；程序会呈现全部核验结果，不能手工重写数字。"
@@ -95,20 +104,21 @@ def evidence_error(text, evidence, prompt=""):
             return "声明范围尚未完整处理。"
     # Existing recognized metric requirements still apply; unknown semantics do
     # not imply success without a model-selected plan and a successful receipt.
-    facts=[f for e in successful.values() for f in e.data.get("facts",[])]
-    contract=build_analysis_contract(prompt)
-    missing=[]
-    for metric in contract.metrics:
-        if any(is_empty_query(e.data) and any(
-                any(re.search(alias, str(m.get('label', m.get('id', '')))) for alias in metric.aliases)
-                for m in e.data.get('plan', {}).get('metrics', [])) for e in successful.values()):
-            continue
-        matches=[f for f in facts if (metric.semantic_id and f.get('metric_id')==metric.semantic_id)
-                 or (not f.get('metric_id') and any(re.search(alias,f["label"]) for alias in metric.aliases))]
-        if not matches or (metric.expected_type=="percentage" and not any(f["unit"]=="%" for f in matches)):
-            missing.append(metric.name)
-    if missing:
-        return "分析计划遗漏所需指标或类型："+"、".join(missing)+"。请用原生工具补齐，并遵从本轮领域注册表的指标定义。"
+    if not state_complete:
+        facts=[f for e in successful.values() for f in e.data.get("facts",[])]
+        contract=build_analysis_contract(prompt)
+        missing=[]
+        for metric in contract.metrics:
+            if any(is_empty_query(e.data) and any(
+                    any(re.search(alias, str(m.get('label', m.get('id', '')))) for alias in metric.aliases)
+                    for m in e.data.get('plan', {}).get('metrics', [])) for e in successful.values()):
+                continue
+            matches=[f for f in facts if (metric.semantic_id and f.get('metric_id')==metric.semantic_id)
+                     or (not f.get('metric_id') and any(re.search(alias,f["label"]) for alias in metric.aliases))]
+            if not matches or (metric.expected_type=="percentage" and not any(f.get("unit") in ("%", "ratio", "rate", "percentage", "percent") for f in matches)):
+                missing.append(metric.name)
+        if missing:
+            return "分析计划遗漏所需指标或类型："+"、".join(missing)+"。请用原生工具补齐，并遵从本轮领域注册表的指标定义。"
     if re.search(r"变化|趋势|增长|增减|改善|change|trend|growth",prompt,re.I):
         scopes={}
         for e in successful.values():
@@ -174,8 +184,8 @@ def describe_expression(expr, data):
     return str(expr)
 
 
-def render_analysis_response(text,evidence,prompt="",model=None,policy=None,deadline=None,model_text=""):
-    error=evidence_error(text,evidence,prompt)
+def render_analysis_response(text,evidence,prompt="",model=None,policy=None,deadline=None,model_text="",state_complete=False):
+    error=evidence_error(text,evidence,prompt,state_complete=state_complete)
     if error:
         failed=next((e for e in reversed(evidence) if e.is_error),None)
         detail=(f"\n\n执行阻碍：{escape(failed.error_code)}：{escape(failed.error_message)}" if failed else "")
@@ -183,6 +193,7 @@ def render_analysis_response(text,evidence,prompt="",model=None,policy=None,dead
     raw_evidence = evidence
     from .analysis_fact_selection import authoritative_receipts
     evidence = authoritative_receipts(evidence, prompt)
+    contract = build_analysis_contract(prompt)
     response=parse_response(text); by_id={e.data.get("evidence_id"):e for e in evidence if e.is_success and isinstance(e.data,dict)}
     parts=[]; seen_facts=set()
     # Receipt acquisition order is stable; a model's ID ordering cannot choose
@@ -218,11 +229,25 @@ def render_analysis_response(text,evidence,prompt="",model=None,policy=None,dead
                 if calcs:
                     definition = next((v.get('expression', {}) for v in calcs
                                        if v.get('id') == f.get('id') or str(f.get('id', '')).startswith(str(v.get('id', '')) + '__')), {})
-                elif metrics:
+                if not definition and metrics:
                     m_item = next((m for m in metrics if m.get('id') == f.get('id') or str(f.get('id', '')).startswith(str(m.get('id', '')) + '__')), {})
                     if m_item:
                         definition = {"aggregate": m_item.get("op", "sum"), "column": m_item.get("field", "")}
-                parts.append(f"| {escape(f['label'])} | {format_value(f['value'])} | {escape(f['unit'])} | {escape(describe_expression(definition, d))} |")
+                val_str = format_value(f['value'])
+                unit_str = str(f.get('unit', ''))
+                if unit_str in ('ratio', 'rate') and any(m.expected_type == 'percentage' for m in contract.metrics if (m.semantic_id and f.get('metric_id') == m.semantic_id) or any(re.search(a, f['label']) for a in m.aliases)):
+                    try:
+                        dec_v = Decimal(str(f['value']))
+                        if abs(dec_v) <= 1:
+                            val_str = format_value(dec_v * 100)
+                            unit_str = '%'
+                    except Exception:
+                        pass
+                expr_desc = describe_expression(definition, d)
+                sc_list = [str(c).strip() for c in (f.get('source_cells') or []) if str(c).strip()]
+                if sc_list and len(sc_list) <= 6 and not any(c in expr_desc for c in sc_list):
+                    expr_desc += f"；来源单元格：{'、'.join(sc_list)}"
+                parts.append(f"| {escape(f['label'])} | {val_str} | {escape(unit_str)} | {escape(expr_desc)} |")
         if d.get("checks"):
             parts.extend(["", "| 声明检查 | 左值 | 右值 | 残差（左－右） | 单位 | 表达式结果 |", "|---|---:|---:|---:|---|---|"])
             for c in d["checks"]:
@@ -255,10 +280,14 @@ def render_analysis_response(text,evidence,prompt="",model=None,policy=None,dead
                 bound=next((key for key,value in cov_match.get('headers', {}).items() if value==column), str(column).upper())
                 requested_fields.add((rule.get('table'),bound))
             for p in d.get("profiles", []):
+                if p.get("table_duplicate_row_count") is not None:
+                    dup_rows_note = f"（行号{escape(json.dumps(p.get('table_duplicate_rows', []), ensure_ascii=False))}）" if p["table_duplicate_row_count"] > 0 else ""
+                    parts.append(f"- {escape(p['table'])} 全表整行完全重复记录：{p['table_duplicate_row_count']}条{dup_rows_note}。")
                 if requested_fields and (p['table'],p['column']) not in requested_fields:
                     continue
                 line=f"- {escape(p['table'])}.{p['column']}（{escape(p['header'])}）：缺失{p['missing']}条"
                 if 0<p["missing"]<=3:line+=f"；缺失位置{escape(json.dumps(p['missing_examples'],ensure_ascii=False))}"
+                elif p.get("missing_rows"):line+=f"；缺失行号{escape(json.dumps(p['missing_rows'][:200],ensure_ascii=False))}"
                 if "numeric" in p:
                     n=p["numeric"];line+=f"；最小值{n['min']}（原第{n['min_row']}行），最大值{n['max']}（原第{n['max_row']}行）"
                     if n.get("outliers"):

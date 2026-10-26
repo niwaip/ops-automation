@@ -1,0 +1,16 @@
+{
+  "head": "17d0a22680d50639cfc4c0d7aad32c96343b9148",
+  "source_workbook_hash": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+  "source_files": {
+    "analysis_contract.py": "8f73efd4378145746fece54f16eb07163498313526a9ca8d6bfa9f41b0779d97",
+    "analysis_task_state.py": "7a369a73e6cc4c01a1f1780b760bb5e3d3f7623000cd6ffeb99b3d3ba0f5d1fd",
+    "semantic_contract_judge.py": "98fe510c2c05f4e92a986e6d0e2f8f581c09e8fcb6e2b86abc9143a818d1e8ea",
+    "analysis_gate_review.py": "6f947aefc1be4c86250301bd5481a86614036ddc57be95a6aee271f98b7a03db",
+    "evidence_store.py": "3ab5e82e42d5205f72f47d84512ae448cfde5d70d366a52cc2d3e815effa904b",
+    "query_executor.py": "6658b155954a0ed9a5468f8bebe30d08cefe3f370f5b4859cc5927cb6216a50a"
+  },
+  "model": "qwen36-35b-a3b",
+  "model_id": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "same_prompt_baseline": "../finance-harness-35b-20261025",
+  "business_source_modified_by_this_run": false
+}

@@ -89,6 +89,11 @@ def normalize_plan(requested, workbook=None, source_tables=None):
                         changes.append(f'{path}：非百分比金额列聚合维度由ratio修正为amount')
                 except Exception:
                     pass
+        for bin_op in ('add', 'subtract', 'multiply', 'divide'):
+            if bin_op in expr and isinstance(expr[bin_op], list):
+                expr = {'op': bin_op, 'args': expr[bin_op], **{k: v for k, v in expr.items() if k != bin_op}}
+                changes.append(f'{path}：规范化算术操作符{bin_op}到op/args结构')
+                break
         if 'args' in expr:
             if not isinstance(expr['args'],list):raise ValueError(f'{path}.args必须是数组')
             for extra_key in ('unit', 'label', 'description'):

@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
@@ -101,8 +102,29 @@ class CompositeDeliverableTests(unittest.TestCase):
         self.assertNotIn("B站热点日报.md", file_names)
 
     def test_ceiling_separation_preserves_spreadsheet_and_general_limits(self):
-        self.assertEqual(MAX_SPREADSHEET_ROUNDS_CEILING, 4)
+        self.assertGreaterEqual(MAX_SPREADSHEET_ROUNDS_CEILING, 8)
         self.assertGreaterEqual(MAX_AGENT_ROUNDS_HARD_CEILING, 8)
+
+    def test_materialize_post_loop_deliverables_html_chart(self):
+        from dsh_modules.agent_loop_helpers import materialize_post_loop_deliverables
+        prompt = "按部门统计金额的合计，生成柱状图"
+        html_code = (
+            "这里是分析结果：\n\n```html\n"
+            "<!DOCTYPE html><html><head><title>Chart</title></head><body><div id='chart'></div></body></html>\n"
+            "```"
+        )
+        outbounds = materialize_post_loop_deliverables(
+            last_user_prompt=prompt,
+            final_text=html_code,
+            workspace_dir=str(self.workspace_dir),
+            start_ts=time.time(),
+            expected_deliverables=[".html"],
+            outbound_files=[],
+        )
+        self.assertTrue(len(outbounds) > 0)
+        file_names = [json.loads(o)["fileName"] for o in outbounds]
+        self.assertIn("index.html", file_names)
+        self.assertTrue((self.workspace_dir / "index.html").exists())
 
 
 if __name__ == "__main__":

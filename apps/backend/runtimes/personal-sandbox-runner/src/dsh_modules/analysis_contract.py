@@ -7,6 +7,7 @@ Uses optional domain vocabularies to supplement generic operation contracts.
 import re
 import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import List, Optional, Dict, Any
 from .analysis_semantics import domain_definitions, select_domain
 from .analysis_request_text import user_instruction as extract_user_instruction
@@ -51,15 +52,23 @@ class AnalysisContract:
     concepts: List[str] = field(default_factory=list)
     domain: str = "generic"
     has_filters: bool = False
+    requires_source_scope_review: bool = False
+    scope_requirements: Optional[dict] = None
     task_type: str = TASK_TYPE_TABULAR_COMPUTE
     entity_predicates: List[str] = field(default_factory=list)
     attribute_targets: List[str] = field(default_factory=list)
     limit: Optional[int] = None
+    audit_checks: List[str] = field(default_factory=list)
 
 
     @property
     def has_metrics(self) -> bool:
         return len(self.metrics) > 0
+
+    @property
+    def has_distinct_list(self) -> bool:
+        from .analysis_delivery_constraints import has_distinct_list
+        return has_distinct_list(self.raw_prompt)
 
     def get_metric_names(self) -> List[str]:
         return [m.name for m in self.metrics]
@@ -71,7 +80,172 @@ def required_analysis_capabilities(contract):
             for name in definition['capabilities']}
 
 
-def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> AnalysisContract:
+_HEADER_RESOLUTION_CACHE: Dict[str, List[str]] = {}
+
+
+def _resolve_available_headers(prompt: str) -> Optional[List[str]]:
+    """Attempts to discover real table headers from session attachments and preflight profiling."""
+    try:
+        import os
+        from . import config as _cfg
+        from .spreadsheet_preflight import profile_spreadsheet_for_planning
+        raw_att = os.environ.get('DSH_SESSION_ATTACHMENTS', '').strip()
+        cache_key = f"{raw_att}::{prompt.strip()}"
+        if cache_key in _HEADER_RESOLUTION_CACHE:
+            return _HEADER_RESOLUTION_CACHE[cache_key]
+
+        att_files = json.loads(raw_att) if raw_att.startswith('[') else [x.strip() for x in raw_att.split(',') if x.strip()]
+        all_headers: List[str] = []
+        for fn in att_files:
+            if str(fn).lower().endswith(('.xlsx', '.xlsm', '.xls', '.csv')):
+                fpath = Path(_cfg.WORKSPACE_DIR) / Path(fn).name
+                if fpath.exists():
+                    prof = profile_spreadsheet_for_planning(fpath, prompt=prompt)
+                    if prof and prof.get('headers'):
+                        for h in prof['headers'].values():
+                            if h and str(h).strip() and str(h).strip() not in all_headers:
+                                all_headers.append(str(h).strip())
+        if all_headers:
+            _HEADER_RESOLUTION_CACHE[cache_key] = all_headers
+            return all_headers
+    except Exception:
+        pass
+    return None
+
+
+def _contract_from_judge_verdict(prompt: str, verdict: Dict[str, Any], domain: str) -> AnalysisContract:
+    """Builds an AnalysisContract directly from LLM-as-a-Judge semantic adjudication."""
+    metric_definitions, concept_definitions = domain_definitions(domain)
+    metrics: List[MetricRequirement] = []
+    seen_metric_names = set()
+
+    for m_name in verdict.get("metrics", []):
+        if not m_name or m_name in seen_metric_names:
+            continue
+        seen_metric_names.add(m_name)
+        matched_def = next((
+            d for d in metric_definitions
+            if d["name"] == m_name or any(re.search(p, m_name) for p in d.get("patterns", []))
+        ), None)
+        if matched_def:
+            metrics.append(MetricRequirement(
+                name=matched_def["name"],
+                aliases=matched_def.get("patterns", [m_name]),
+                expected_type=matched_def.get("expected_type", "number"),
+                period=verdict.get("period"),
+                semantic_id=matched_def.get("id"),
+            ))
+        else:
+            stem = re.sub(r'[\(（][^\)）]+[\)）]', '', m_name).strip()
+            aliases = [re.escape(m_name), re.escape(m_name) + r'(?:汇总|总额|总计|合计|\([^)]+\)|（[^）]+）)?']
+            if stem and stem != m_name:
+                aliases.extend([
+                    re.escape(stem),
+                    re.escape(stem) + r'(?:汇总|总额|总计|合计|\([^)]+\)|（[^）]+）)?',
+                    r'[^\s，。！？、]{0,10}' + re.escape(stem) + r'(?:汇总|总额|总计|合计|\([^)]+\)|（[^）]+）)?',
+                ])
+            else:
+                aliases.append(r'[^\s，。！？、]{0,10}' + re.escape(m_name) + r'(?:汇总|总额|总计|合计|\([^)]+\)|（[^）]+）)?')
+            if any(k in m_name for k in ("工数", "工时", "时间", "时长")):
+                aliases.extend([
+                    r'时间', r'时长', r'小时', r'时数', r'工数', r'工时', r'工数\(小时\)', r'工时\(小时\)',
+                    r'[^\s，。！？、]{0,10}工时(?:汇总|总额|总计|合计|\([^)]+\)|（[^）]+）)?',
+                    r'[^\s，。！？、]{0,10}工数(?:汇总|总额|总计|合计|\([^)]+\)|（[^）]+）)?'
+                ])
+            metrics.append(MetricRequirement(
+                name=m_name,
+                aliases=aliases,
+                expected_type="number",
+                period=verdict.get("period"),
+            ))
+
+    task_type = verdict.get("task_type", TASK_TYPE_TABULAR_COMPUTE)
+    is_audit = task_type == TASK_TYPE_TABULAR_AUDIT or bool(verdict.get("is_audit"))
+    is_grouped = bool(verdict.get("is_grouped"))
+    group_dimension = verdict.get("group_dimension")
+    entity_predicates = [str(e) for e in verdict.get("entity_predicates", []) if e and str(e).strip()]
+    filter_conditions = [str(f) for f in verdict.get("filter_conditions", []) if f and str(f).strip()]
+    audit_checks = [str(c) for c in verdict.get("audit_checks", []) if c and str(c).strip()]
+
+    attribute_targets = []
+    for pat in [r'(?:工数|工时|单价|金额|产值|费用|成本|收入|明细|实绩|记录|小时|用量|数量|数据)']:
+        for m in re.finditer(pat, prompt):
+            val = m.group(0).strip()
+            if val and val not in attribute_targets:
+                attribute_targets.append(val)
+
+    concepts = []
+    for definition in concept_definitions:
+        if any(re.search(p, prompt, re.I) for p in definition.get('patterns', [])):
+            concepts.append(definition['name'])
+
+    return AnalysisContract(
+        raw_prompt=prompt,
+        period=verdict.get("period"),
+        metrics=metrics,
+        is_audit_intent=is_audit,
+        is_catalog_only=task_type == TASK_TYPE_TABULAR_OVERVIEW,
+        is_advisory_intent=task_type == TASK_TYPE_ADVISORY,
+        is_detail_query=task_type == TASK_TYPE_TABULAR_QUERY,
+        is_grouped=is_grouped,
+        group_dimension=group_dimension,
+        operation=verdict.get("operation"),
+        dimension=verdict.get("dimension"),
+        comparison=verdict.get("comparison"),
+        comparison_basis=verdict.get("comparison_basis"),
+        ranking=verdict.get("ranking", "absolute"),
+        domain=domain,
+        has_filters=bool(filter_conditions),
+        requires_source_scope_review=bool(verdict.get('period')),
+        scope_requirements={'period': verdict.get('period'), 'conditions': filter_conditions,
+                            'entities': entity_predicates, 'group_dimension': group_dimension},
+        task_type=task_type,
+        entity_predicates=entity_predicates,
+        attribute_targets=attribute_targets,
+        limit=verdict.get("limit"),
+        audit_checks=audit_checks,
+        concepts=concepts,
+    )
+
+
+def build_analysis_contract(
+    prompt: str,
+    domain: Optional[str] = None,
+    headers: Optional[List[str]] = None
+) -> AnalysisContract:
+    """
+    Parses a user query into a dynamic AnalysisContract.
+    Prioritizes zero-hardcoding SemanticContractJudge (LLM-as-a-Judge) with persistent caching,
+    falling back to structural baseline for offline unit testing.
+    """
+    if not prompt:
+        return AnalysisContract(raw_prompt="")
+
+    clean_prompt = extract_user_instruction(prompt)
+    active_domain = select_domain(clean_prompt, domain)
+
+    # 1. 尝试从前置探测与会话附件中自动发现已知表头
+    if headers is None:
+        headers = _resolve_available_headers(clean_prompt)
+
+    # 2. 优先调用 LLM-as-a-Judge 进行语义契约裁决（带磁盘持久化缓存，0ms 复用）
+    # 当有真实表格上下文(headers)且可连接代理时，启用智能裁判；无表格附件的纯单测文本直接走快速基线
+    if headers:
+        try:
+            from .analysis_synthesis import _can_reach_proxy
+            if _can_reach_proxy():
+                from .semantic_contract_judge import judge_contract_intent
+                verdict = judge_contract_intent(clean_prompt, headers=headers, domain=active_domain)
+                if verdict and isinstance(verdict, dict) and "task_type" in verdict:
+                    return _contract_from_judge_verdict(clean_prompt, verdict, active_domain)
+        except Exception:
+            pass
+
+    # 3. 离线/单测容灾兜底
+    return _build_fallback_contract(prompt, domain)
+
+
+def _build_fallback_contract(prompt: str, domain: Optional[str] = None) -> AnalysisContract:
     """
     Parses a user query into a dynamic AnalysisContract.
     Extracts recognized metrics and operation hints; source context resolves the schema.
@@ -151,6 +325,24 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
         group_dimension = "部门"
     elif re.search(r'分项目|各项目', clean_prompt):
         group_dimension = "项目"
+
+    # 若抓取到的维度实际上是数据来源/介词指代（如 "根据工作簿计算", "依据附件计算", "根据表格统计"），排除伪分组
+    if group_dimension and any(k in group_dimension for k in ('工作簿', '工作表', '表格', '附件', '文件', '数据', '原件', '模型', '系统', '规则')):
+        group_dimension = None
+        is_grouped = bool(re.search(r'每组|各组|各类别|各个|逐组|分别统计|按组|分部门|各部门|各项目|各员工|各人员', clean_prompt))
+
+    # 若抓取到的维度实际上是算术公式说明（如 "按全年利润除以全年收入计算"），排除伪分组
+    if group_dimension and re.search(r'除以|乘以|加上|减去|[-+*/]|口径|公式|规则|方法', group_dimension):
+        group_dimension = None
+        is_grouped = bool(re.search(r'每组|各组|各类别|各个|逐组|分别统计|按组|分部门|各部门|各项目|各员工|各人员', clean_prompt))
+
+    # 识别以疑问词引导的维度枚举查询（如 "有哪些部门", "工数超过100小时的有哪些员工", "有哪些项目"）
+    m_interrogative_dim = re.search(r'(?:有哪些|哪几个|哪几家|列出所有|查询所有)\s*(部门|员工|人员|项目|客户)', clean_prompt)
+    if not m_interrogative_dim:
+        m_interrogative_dim = re.search(r'(部门|员工|人员|项目|客户)[^\s，。！？、;；]{0,10}?(?:有哪些|哪几个|哪几家)', clean_prompt)
+    if not group_dimension and m_interrogative_dim:
+        group_dimension = m_interrogative_dim.group(1).strip()
+        is_grouped = True
 
     # 2.8 识别定性咨询/管理建议意图与显式计算动词
     advisory_patterns = [
@@ -243,10 +435,12 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
             w1, w2, meas = m.group(1), m.group(2), m.group(3)
             if re.search(f'(?:{measure_pattern})$', w1):
                 return m.group(0)
+            if any(k in w1 for k in ('范围', '表头', '名称', '工作表', '依据')):
+                return m.group(0)
             return f'{w1}{meas}和{w2}{meas}'
 
         expanded_target_prompt = re.sub(
-            r'([^\s，。！？、()（）和及与、并]{1,8})[和与及、并]([^\s，。！？、()（）和及与、并]{1,8})(' + measure_pattern + r')',
+            r'([^\s，。！？、()（）和及与并]{1,8})[和与及并]([^\s，。！？、()（）和及与并]{1,8})(' + measure_pattern + r')',
             _expand_shared_measure,
             clean_prompt
         )
@@ -262,6 +456,13 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
                 r'(?:(?:统计|计算|核算|汇总|求|列出|分析)\s*|[和及与、并]\s*)'
                 r'([^\s，。！？、()（）和及与、并]{0,12}(?:' + measure_pattern + r'))',
                 normalized_target_prompt
+            )))
+        compact_target_prompt = re.sub(r'\s+', '', expanded_target_prompt)
+        if compact_target_prompt not in (expanded_target_prompt, normalized_target_prompt):
+            matches.extend(list(re.finditer(
+                r'(?:(?:统计|计算|核算|汇总|求|列出|分析)\s*|[和及与、并]\s*)'
+                r'([^\s，。！？、()（）和及与、并]{0,12}(?:' + measure_pattern + r'))',
+                compact_target_prompt
             )))
         # 兼容中文动宾倒装句式，如“进行金额的统计”、“针对工数进行汇总”、“做部门费用的核算”
         inverted_matches = list(re.finditer(
@@ -298,6 +499,8 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
                 continue
             clean_metric = re.sub(peel_prefixes, '', raw_metric).strip()
             clean_metric = re.sub(r'部分的?', '', clean_metric).strip()
+            # 剥离前置实体限定词（如“员工s22014的工时” -> “工时”），实体属于过滤条件而非物理指标名
+            clean_metric = re.sub(r'^(?:员工|人员|人员姓名|工号|用户|客户|供应商|项目|部门|编码|编号)\s*[:：]?\s*(?:[A-Za-z0-9_#-]+|[^\s，。！？、的]{1,10})\s*(?:的)?', '', clean_metric).strip()
             if re.search(r'(?:所有不同|不重复|去重|唯一).*?(?:负责|所属)', raw_metric):
                 continue  # A categorical column name is not a requested cost metric.
             if not clean_metric:
@@ -360,8 +563,11 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
         if upper_val and upper_val not in entity_predicates and not re.match(r'^(?:20\d\d)$', upper_val):
             entity_predicates.append(upper_val)
     # 7.2 提取命名业务实体约束 (如 员工杨烨, 部门華東MIS, 客户将军空调)
-    for m in re.finditer(r'(?:员工|人员|用户|同事|部门|客户|项目)\s*[:：=]?\s*([^\s，。！？、的]{2,15})', clean_prompt):
+    for m in re.finditer(r'(?:员工|人员|用户|同事|部门|客户|项目)\s*[:：=]?\s*([^\s，。！？、;；:：的]{2,15})', clean_prompt):
         val = m.group(1).strip()
+        # 排除过滤条件谓词或疑问代词（如 "为空", "是有偿", "缺失", "不存在", "有哪些" 等）
+        if re.search(r'为空|缺失|不存在|为0|异常|重复|哪些|什么|谁|哪个|哪家|列表|清单|记录', val) or val.startswith(('是', '为', '非', '不', '有', '无')):
+            continue
         # 1. 结构化判定：若处于分组连词（用/按/以...）结构中，为聚合维度指定，绝非实体实例
         start_idx = m.start()
         prefix_ctx = clean_prompt[max(0, start_idx - 10):start_idx]
@@ -373,14 +579,16 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
         if val and val not in entity_predicates and not any(k in val for k in ["编号", "姓名", "名称", "明细", "数据", "实绩", "工数", "金额", "列表", "情况"]):
             entity_predicates.append(val)
     # 提取逆序组织实体约束 (如 华东MIS部门, 交付中心BU)
-    for m in re.finditer(r'([^\s，。！？、]{2,10}?)(?:部门|分部|BU|组|中心)', clean_prompt):
+    for m in re.finditer(r'([^\s，。！？、;；:：]{2,10}?)(?:部门|分部|BU|组|中心)', clean_prompt):
         val = m.group(1).strip()
         for prefix in ['调出', '查看', '看下', '查询', '统计', '检索', '定位', '筛选']:
             if val.startswith(prefix):
                 val = val[len(prefix):].strip()
+        if re.search(r'哪些|哪[个家位几]|什么|谁|所有|各个|每个|不同|该|此|所属|负责|对应|列出|按|重复|为空|记录|检查|核验|明细', val):
+            continue
         if group_dimension and (val in group_dimension or group_dimension in val):
             continue
-        if val and val not in entity_predicates and not any(k in val for k in ['所属', '负责', '对应', '各个', '每个', '该', '此', '不同', '所有', '列出', '按']):
+        if val and val not in entity_predicates:
             entity_predicates.append(val)
 
     if group_dimension:
@@ -453,6 +661,23 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
         elif raw_val and raw_val.isdigit():
             limit = int(raw_val)
 
+    audit_checks = []
+    numbered_parts = re.split(r'\s*(?:[1-9][.、]|\b(?:一|二|三|四|五)[.、])\s*', clean_prompt)
+    if len(numbered_parts) > 1:
+        audit_checks = []
+        for part in numbered_parts[1:]:
+            cleaned = re.split(r'[；;\n。]', part)[0].strip()
+            if cleaned:
+                audit_checks.append(cleaned)
+    elif re.search(r'(?:合规性?检查|数据质量核验|质检)[：:]', clean_prompt):
+        m_audit = re.search(r'(?:合规性?检查|数据质量核验|质检)[：:]\s*(.+?)(?:。|\n|$)', clean_prompt)
+        if m_audit:
+            audit_checks = [c.strip() for c in re.split(r'[、；;]', m_audit.group(1)) if c.strip()]
+    elif re.search(r'分别列出[：:]', clean_prompt):
+        m_audit = re.search(r'分别列出[：:]\s*(.+?)(?:。|\n|$)', clean_prompt)
+        if m_audit:
+            audit_checks = [c.strip() for c in re.split(r'[；;]', m_audit.group(1)) if c.strip()]
+
     return AnalysisContract(
         raw_prompt=clean_prompt,
         period=period,
@@ -477,6 +702,7 @@ def build_analysis_contract(prompt: str, domain: Optional[str] = None) -> Analys
         entity_predicates=entity_predicates,
         attribute_targets=attribute_targets,
         limit=limit,
+        audit_checks=audit_checks,
     )
 
 

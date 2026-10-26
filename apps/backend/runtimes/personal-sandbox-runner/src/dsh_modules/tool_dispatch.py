@@ -221,8 +221,13 @@ def dispatch_tool_calls(
         if not isinstance(evidence, ToolResult) and status in ("success", "error"):
             from .tool_result import adapt_tool_output
             evidence = adapt_tool_output(tool_res)
-        if isinstance(evidence, ToolResult) and evidence.provenance is None:
-            evidence.provenance = {"tool": canonical_name, "round": round_idx}
+        if isinstance(evidence, ToolResult):
+            if evidence.provenance is None:
+                evidence.provenance = {}
+            if "tool" not in evidence.provenance:
+                evidence.provenance["tool"] = canonical_name
+            if "round" not in evidence.provenance:
+                evidence.provenance["round"] = round_idx
         if execution_evidence is not None and isinstance(evidence, ToolResult):
             execution_evidence.append(evidence)
             telemetry.record_execution_result(evidence)

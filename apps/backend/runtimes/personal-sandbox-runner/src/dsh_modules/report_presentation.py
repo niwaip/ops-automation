@@ -32,6 +32,22 @@ def quantity(value, unit):
     return number(value) + suffix
 
 
+def _format_facts_source_cells(facts):
+    items = []
+    for fact in facts or []:
+        if not isinstance(fact, dict):
+            continue
+        sc = [str(c).strip() for c in (fact.get('source_cells') or []) if str(c).strip()]
+        if not sc:
+            continue
+        lbl = text(fact.get('label') or fact.get('id') or '')
+        cell_desc = '、'.join(f"`{c}`" for c in sc) if len(sc) <= 4 else f"`{sc[0]}..{sc[-1]}`（共{len(sc)}个单元格）"
+        items.append(f"{lbl}（{cell_desc}）")
+    if items and len(items) <= 12:
+        return "\n来源单元格：" + "、".join(items) + "。"
+    return ""
+
+
 def with_sources(main, audit, receipts):
     sources = dict.fromkeys((r.provenance or {}).get('file_path') for r in receipts)
     links = []
@@ -66,7 +82,7 @@ def select_delivery_queries(queries, contract):
             return entity_queries
 
     # 2. 去重意图：若用户未请求不重复/去重列表，排除纯辅助性的 distinct 探索查询
-    if not contract.has_distinct_list:
+    if not getattr(contract, 'has_distinct_list', False):
         non_distinct = [q for q in queries if not (q.data.get('plan') or {}).get('distinct')]
         if non_distinct:
             return non_distinct
@@ -76,8 +92,12 @@ def select_delivery_queries(queries, contract):
 
 def analysis_overview(receipts, prompt):
     contract = build_analysis_contract(prompt)
+    has_derived = any(
+        (r.provenance or {}).get('execution_origin') == 'registered_derivation'
+        or any(f.get('calculation_stage') == 'post_query' for f in r.data.get('facts', []))
+        for r in receipts)
     queries = [r for r in receipts if r.data.get('query_ir_version') and r.data.get('plan', {}).get('source')]
-    if queries and all(r.data.get('query_ir_version') for r in receipts):
+    if queries and all(r.data.get('query_ir_version') for r in receipts) and not has_derived:
         delivery_queries = select_delivery_queries(queries, contract)
         return query_overview(delivery_queries, contract)
     visible = resolve_conforming_facts(receipts, prompt)
@@ -85,7 +105,8 @@ def analysis_overview(receipts, prompt):
     parts = []
 
     # 若为明细查询任务（且非分组统计汇总任务），优先按明细表格呈现行级数据
-    is_detail = (contract.is_detail_query and not contract.is_grouped) or any(f.get('id') == 'matched_rows_count' for f in visible)
+    is_detail = not has_derived and ((contract.is_detail_query and not contract.is_grouped)
+                                   or any(f.get('id') == 'matched_rows_count' for f in visible))
     if is_detail and all_rows:
         cols = list(dict.fromkeys(k for r in all_rows[:50] for k in r.keys() if k != 'group_key'))
         active_cols = [c for c in cols if any(r.get(c) not in (None, "") for r in all_rows[:50])]
@@ -103,11 +124,17 @@ def analysis_overview(receipts, prompt):
             parts.extend(['', '### 核心指标汇总', '', '| 统计指标 | 核算结果 |', '|---|---:|'])
             for fact in visible:
                 parts.append(f"| {text(fact['label'])} | {quantity(fact['value'], fact['unit'])} |")
+            src_line = _format_facts_source_cells(visible)
+            if src_line:
+                parts.append(src_line)
     elif visible:
         parts.extend(['已完成数据的核算与多维统计，核心核算结果汇总如下（金额与比例的单位分别标注；数值已四舍五入）：', '',
                       '| 统计指标 / 分组 | 核算结果 |', '|---|---:|'])
         for fact in visible:
             parts.append(f"| {text(fact['label'])} | {quantity(fact['value'], fact['unit'])} |")
+        src_line = _format_facts_source_cells(visible)
+        if src_line:
+            parts.append(src_line)
 
         # 若用户请求了总计/合计，且当前仅展示了各分组事实而未包含全表总计，则基于已核验的分组事实补充合计行
         has_total = any(
@@ -154,7 +181,9 @@ def analysis_overview(receipts, prompt):
                         shown_cells.add(x['cell'])
                         sample_strs.append(f"`{x.get('cell', '')}` (值: `{x.get('value', '')}`)")
                 more_str = f" 等共 {rule['violation_count']} 处" if rule['violation_count'] > len(sample_strs) else ""
-                bullet_lines.append(f"- **{text(rule['label'])}**（{rule['violation_count']} 条）：{'、'.join(sample_strs)}{more_str}")
+                v_rows = rule.get('violation_rows') or []
+                rows_note = f"；原表行号：{', '.join(str(r_no) for r_no in v_rows[:200])}" if v_rows else ""
+                bullet_lines.append(f"- **{text(rule['label'])}**（{rule['violation_count']} 条）：{'、'.join(sample_strs)}{more_str}{rows_note}")
         for r in receipts:
             d = r.data
             req_fields = set()
@@ -164,8 +193,20 @@ def analysis_overview(receipts, prompt):
                 bound = next((k for k, v in (cov or {}).get('headers', {}).items() if v == col), col.upper())
                 req_fields.add((rule.get('table'), bound))
             for p in d.get('profiles', []):
+                if p.get('table_duplicate_row_count') is not None:
+                    dup_cnt = p['table_duplicate_row_count']
+                    dup_rows = p.get('table_duplicate_rows') or []
+                    dup_rows_str = f"（原表行号：{', '.join(str(x) for x in dup_rows[:200])}）" if dup_cnt > 0 and dup_rows else ""
+                    bullet_lines.append(f"- **全表整行完全重复记录**：{dup_cnt} 条{dup_rows_str}")
                 if req_fields and (p.get('table'), p.get('column')) not in req_fields:
                     continue
+                if p.get('missing', 0) > 0 and p.get('missing_rows') and not any(
+                    rl.get('kind') == 'not_empty' and (rl.get('column') == p.get('header') or rl.get('column') == p.get('column'))
+                    for rl in d.get('rules', [])
+                ):
+                    bullet_lines.append(
+                        f"- **{text(p.get('header') or p.get('column'))}缺失记录**（{p['missing']} 条）：原表行号 {', '.join(str(x) for x in p['missing_rows'][:200])}"
+                    )
                 outliers = [o for o in p.get('numeric', {}).get('outliers', []) if o.get('cell') not in shown_cells]
                 if outliers:
                     o_strs = [f"`{o.get('cell', '')}` (值: `{o.get('value', '')}`)" for o in outliers[:3]]
@@ -205,17 +246,35 @@ def query_overview(receipts, contract):
             for mid in metrics:
                 if fact.get('id') == mid or str(fact.get('id', '')).startswith(mid + '__'):
                     units[mid] = fact.get('unit')
-        columns = list(rows[0])
-        labels = []
-        for col in columns:
+        query_plan = data.get('plan', {})
+        group_fields = [g if isinstance(g, str) else g.get('alias', g.get('field')) for g in (query_plan.get('group_by') or [])]
+        if contract.group_dimension:
+            group_fields.append(contract.group_dimension)
+
+        def _col_label(col):
             label = (contract.group_dimension or '分组') if col == 'group_key' else metrics.get(col, col)
             unit = units.get(col)
-            labels.append(label + (f'（{unit}）' if unit and unit != 'number' and unit not in label else ''))
+            return label + (f'（{unit}）' if unit and unit != 'number' and unit not in label else '')
+
+        raw_columns = list(rows[0])
+        if 'group_key' in raw_columns and (any(gf in raw_columns for gf in group_fields) or any(c != 'group_key' and _col_label(c) == _col_label('group_key') for c in raw_columns)):
+            columns = [c for c in raw_columns if c != 'group_key']
+        else:
+            columns = raw_columns
+        labels = [_col_label(col) for col in columns]
         parts.extend(['按请求执行后的结果如下：', '',
                       '| ' + ' | '.join(text(c) for c in labels) + ' |',
                       '|' + '|'.join('---' for _ in columns) + '|'])
         parts.extend('| ' + ' | '.join(text('' if row.get(c) is None else row.get(c)) for c in columns) + ' |'
                      for row in rows)
+        src_line = _format_facts_source_cells(data.get('facts', []))
+        if src_line:
+            parts.append(src_line)
+        for cov in data.get('coverage', []):
+            sel_rows = cov.get('selected_rows') or []
+            in_cnt = cov.get('input_records', 0)
+            if sel_rows and (cov.get('filters') or (in_cnt and len(sel_rows) < in_cnt)) and len(sel_rows) <= 200:
+                parts.append(f"\n筛选匹配原表行号（共 {len(sel_rows)} 行）：{', '.join(str(x) for x in sel_rows)}。")
     return '\n'.join(parts)
 
 
@@ -287,9 +346,16 @@ def render_unverified_guidance(state, prompt="", failed_detail=""):
     guidances = []
 
     if missing_metrics:
-        uncalc = [m for m in missing_metrics if m.get('source_column_exists')]
-        gen_miss = [m for m in missing_metrics if m.get('source_column_exists') is False]
-        unknown = [m for m in missing_metrics if m.get('source_column_exists') is None]
+        unverified = [m for m in missing_metrics if m.get('execution_evidence_exists')]
+        uncalc = [m for m in missing_metrics if m.get('source_column_exists')
+                  and not m.get('execution_evidence_exists')]
+        gen_miss = [m for m in missing_metrics if m.get('source_column_exists') is False
+                    and not m.get('execution_evidence_exists')]
+        unknown = [m for m in missing_metrics if m.get('source_column_exists') is None
+                   and not m.get('execution_evidence_exists')]
+        if unverified:
+            names = '、'.join(f"【{m['name']}】" for m in unverified)
+            reasons.append(f"本轮已有 {names} 的计算结果，但这些结果尚未通过来源或口径核验。")
         if uncalc:
             names = '、'.join(f"【{m['name']}】" for m in uncalc)
             source_cols = '、'.join(f"【{c}】" for m in uncalc for c in m.get('matched_source_columns', []))
@@ -324,6 +390,9 @@ def render_unverified_guidance(state, prompt="", failed_detail=""):
         elif code == 'unsolicited_filter_applied':
             reasons.append("当前执行包含了未经请求的过滤条件，导致核算口径偏离。")
             guidances.append("建议重试并移除不必要的行过滤条件。")
+        elif code == 'audit_checks_incomplete':
+            reasons.append(msg or "本次尚未完整执行您要求的多项合规检查规则。")
+            guidances.append("建议继续执行剩余检查项，或分步针对未完成的异常规则发起核对。")
         elif code in ('group_filter_not_applied', 'ordering_not_applied', 'ranking_limit_not_applied',
                       'query_stages_disconnected', 'row_filter_not_applied', 'group_filter_boolean_incomplete',
                       'distinct_not_applied', 'ordering_incomplete'):

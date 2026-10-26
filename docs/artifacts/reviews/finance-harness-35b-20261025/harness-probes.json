@@ -1,0 +1,29 @@
+{
+  "grouping": {
+    "is_grouped": true,
+    "group_dimension": "全年利润除以全年收入",
+    "method": "build_analysis_contract inside the same sandbox; no model"
+  },
+  "entity": {
+    "entities": [
+      "为空",
+      "证号重复的全部记录；"
+    ],
+    "has_filters": true,
+    "task_type": "tabular_audit",
+    "method": "build_analysis_contract inside the same sandbox; no model"
+  },
+  "same_sandbox_calculation": {
+    "status": "recalculated_verified",
+    "engine": "libreoffice_calc_headless",
+    "cache_reused": true,
+    "calculated_at": "2026-10-24T15:35:24.053031+00:00",
+    "values": {
+      "revenue": 124020,
+      "gross_profit": 53443.25,
+      "operating_profit": 21209.4,
+      "net_profit": 16038.3,
+      "cash_flow_end": 20588.3
+    }
+  }
+}

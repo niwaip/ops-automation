@@ -1,0 +1,199 @@
+{
+  "turns": [
+    {
+      "turn": 1,
+      "outcome": "SAFE_RETRY",
+      "trace_id": "180ff026-bfa1-4570-9ce7-cb8fa829289f",
+      "duration_ms": 65195,
+      "tokens": 109148,
+      "tool_calls": 4,
+      "llm_invocations": 7,
+      "tools": [
+        [
+          "aggregate_spreadsheet",
+          "error"
+        ],
+        [
+          "inspect_spreadsheet_structure",
+          "success"
+        ],
+        [
+          "aggregate_spreadsheet",
+          "success"
+        ],
+        [
+          "aggregate_spreadsheet",
+          "success"
+        ]
+      ]
+    },
+    {
+      "turn": 2,
+      "outcome": "WRONG_DATA",
+      "trace_id": "42be35cb-33e9-4a30-a4e6-6607c37feffe",
+      "duration_ms": 34915,
+      "tokens": 58804,
+      "tool_calls": 2,
+      "llm_invocations": 5,
+      "tools": [
+        [
+          "inspect_spreadsheet_structure",
+          "success"
+        ],
+        [
+          "aggregate_spreadsheet",
+          "success"
+        ]
+      ]
+    },
+    {
+      "turn": 3,
+      "outcome": "SAFE_RETRY",
+      "trace_id": "3f812c3a-7fb2-4162-98ac-90fea8acd727",
+      "duration_ms": 39554,
+      "tokens": 107067,
+      "tool_calls": 4,
+      "llm_invocations": 7,
+      "tools": [
+        [
+          "inspect_spreadsheet_structure",
+          "success"
+        ],
+        [
+          "inspect_spreadsheet_structure",
+          "loop_intercepted"
+        ],
+        [
+          "aggregate_spreadsheet",
+          "error"
+        ],
+        [
+          "aggregate_spreadsheet",
+          "error"
+        ]
+      ]
+    },
+    {
+      "turn": 4,
+      "outcome": "DELIVERED_VERIFIED_REDUCED_SCOPE",
+      "trace_id": "a4acb504-f827-448d-857a-03302704d409",
+      "duration_ms": 33546,
+      "tokens": 85185,
+      "tool_calls": 2,
+      "llm_invocations": 6,
+      "tools": [
+        [
+          "inspect_spreadsheet_structure",
+          "success"
+        ],
+        [
+          "aggregate_spreadsheet",
+          "success"
+        ]
+      ]
+    },
+    {
+      "turn": 5,
+      "outcome": "DELIVERED_VERIFIED",
+      "trace_id": "f5de2409-4236-446e-a4a3-e3294187a262",
+      "duration_ms": 29271,
+      "tokens": 38406,
+      "tool_calls": 1,
+      "llm_invocations": 4,
+      "tools": [
+        [
+          "check_spreadsheet_equations",
+          "success"
+        ]
+      ]
+    },
+    {
+      "turn": 6,
+      "outcome": "SAFE_RETRY",
+      "trace_id": "794941c1-b97d-4016-a4d7-c841fc6e61cb",
+      "duration_ms": 46037,
+      "tokens": 111048,
+      "tool_calls": 0,
+      "llm_invocations": 7,
+      "tools": []
+    },
+    {
+      "turn": 7,
+      "outcome": "DELIVERED_VERIFIED",
+      "trace_id": "648a56c4-d6bf-45f8-aab1-3d938b35e9a0",
+      "duration_ms": 31991,
+      "tokens": 70222,
+      "tool_calls": 3,
+      "llm_invocations": 7,
+      "tools": [
+        [
+          "compare_spreadsheet_columns",
+          "error"
+        ],
+        [
+          "inspect_spreadsheet_structure",
+          "success"
+        ],
+        [
+          "compare_spreadsheet_columns",
+          "success"
+        ]
+      ]
+    },
+    {
+      "turn": 8,
+      "outcome": "DELIVERED_VERIFIED",
+      "trace_id": "3d51bb61-052d-4c2b-9afd-53fcee1ea667",
+      "duration_ms": 27481,
+      "tokens": 45908,
+      "tool_calls": 1,
+      "llm_invocations": 6,
+      "tools": [
+        [
+          "compare_spreadsheet_columns",
+          "success"
+        ]
+      ]
+    },
+    {
+      "turn": 9,
+      "outcome": "DELIVERED_VERIFIED",
+      "trace_id": "e43cf998-2db2-4dda-88ea-b2766d9e0c6a",
+      "duration_ms": 57872,
+      "tokens": 202744,
+      "tool_calls": 5,
+      "llm_invocations": 10,
+      "tools": [
+        [
+          "inspect_spreadsheet_structure",
+          "success"
+        ],
+        [
+          "read_file",
+          "success"
+        ],
+        [
+          "bash",
+          "success"
+        ],
+        [
+          "bash",
+          "success"
+        ],
+        [
+          "send_file",
+          "success"
+        ]
+      ]
+    }
+  ],
+  "total_turns": 9,
+  "safe_failure": 3,
+  "verified_deliveries": 5,
+  "wrong_deliveries": 1,
+  "total_tokens": 828532,
+  "total_execution_ms": 365862,
+  "runtime_source_unchanged": true,
+  "source_unchanged": true,
+  "overall_data_acceptance": false
+}

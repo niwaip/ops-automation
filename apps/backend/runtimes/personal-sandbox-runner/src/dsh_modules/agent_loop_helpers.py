@@ -465,3 +465,318 @@ def _build_fallback_report(
         f"{clues_block}\n\n"
         f"💡 建议：{advice}"
     )
+
+
+def find_invalid_new_workbooks(workspace_dir: str, turn_start_time: float) -> List[Tuple[str, List[str]]]:
+    """Finds newly created .xlsx/.xlsm files in workspace_dir that failed formula or source-data validation."""
+    from .file_tools import is_protected_session_file
+    from .workbook_delivery import inspect_generated_workbook
+    try:
+        from .spreadsheet_update.delivery import validate_update_delivery
+    except Exception:
+        validate_update_delivery = None
+
+    root = Path(workspace_dir)
+    if not root.is_dir():
+        return []
+    invalid: List[Tuple[str, List[str]]] = []
+    for path in sorted(root.iterdir()):
+        if (
+            path.is_symlink()
+            or not path.is_file()
+            or path.name.startswith(".")
+            or path.suffix.lower() not in (".xlsx", ".xlsm")
+            or path.stat().st_mtime < turn_start_time - 2
+            or is_protected_session_file(path)
+        ):
+            continue
+        if validate_update_delivery is not None:
+            ok, issues = validate_update_delivery(path)
+        else:
+            res = inspect_generated_workbook(path)
+            ok, issues = res["valid"], res["issues"]
+        if not ok and issues:
+            invalid.append((path.name, list(issues)))
+    return invalid
+
+
+def _extract_filename_from_outbound(item: str) -> str:
+    try:
+        obj = json.loads(item)
+        if isinstance(obj, dict) and "fileName" in obj:
+            return obj["fileName"]
+    except Exception:
+        pass
+    return Path(item).name
+
+
+def materialize_post_loop_deliverables(
+    last_user_prompt: str,
+    final_text: str,
+    workspace_dir: str,
+    start_ts: float,
+    expected_deliverables: Optional[List[str]],
+    outbound_files: List[str],
+) -> List[str]:
+    """Compiles declarative post-loop deliverables (Markdown, PDF, scripts, config files) and cleans intermediate drafts."""
+    from .deliverable_contract import (
+        materialize_requested_markdown,
+        materialize_script_deliverable,
+        materialize_pdf_from_markdown,
+        materialize_config_or_code_deliverable,
+    )
+    from .skill_router import is_text_only_request
+
+    markdown_path, created_now = materialize_requested_markdown(
+        last_user_prompt,
+        final_text,
+        workspace_dir,
+        turn_start_time=start_ts,
+    )
+    if markdown_path:
+        outbound_payload = json.dumps(
+            {"filePath": markdown_path, "fileName": Path(markdown_path).name},
+            ensure_ascii=False,
+        )
+        if outbound_payload not in outbound_files:
+            outbound_files.append(outbound_payload)
+        if created_now:
+            print(
+                f"✨ [Harness Artifact Compiler] 已将最终正文编译为 Markdown 文件: {markdown_path}",
+                flush=True,
+            )
+
+    if expected_deliverables and any(ext.lower() == ".pdf" for ext in expected_deliverables):
+        pdf_path = materialize_pdf_from_markdown(
+            prompt=last_user_prompt,
+            workspace_dir=workspace_dir,
+            turn_start_time=start_ts,
+            expected_deliverables=expected_deliverables,
+            final_text=final_text,
+        )
+        if pdf_path:
+            outbound_payload = json.dumps(
+                {"filePath": pdf_path, "fileName": Path(pdf_path).name},
+                ensure_ascii=False,
+            )
+            if outbound_payload not in outbound_files:
+                outbound_files.append(outbound_payload)
+            md_stem = Path(pdf_path).stem.lower()
+            filtered_outbounds = []
+            for item_str in outbound_files:
+                try:
+                    obj = json.loads(item_str)
+                    fname = str(obj.get("fileName", "")).lower()
+                    if fname.endswith(".md") and (fname == f"{md_stem}.md" or fname == "result.md" or fname == "report.md"):
+                        continue
+                except Exception:
+                    pass
+                filtered_outbounds.append(item_str)
+            outbound_files = filtered_outbounds
+
+    if expected_deliverables and any(ext.lower() in [".docx", ".xlsx", ".pdf"] for ext in expected_deliverables):
+        script_artifact_path, _ = materialize_script_deliverable(
+            reply_text=final_text,
+            workspace_dir=workspace_dir,
+            expected_deliverables=expected_deliverables,
+            turn_start_time=start_ts,
+        )
+        if script_artifact_path:
+            outbound_payload = json.dumps(
+                {"filePath": script_artifact_path, "fileName": Path(script_artifact_path).name},
+                ensure_ascii=False,
+            )
+            if outbound_payload not in outbound_files:
+                outbound_files.append(outbound_payload)
+
+    if not is_text_only_request(last_user_prompt):
+        tech_artifacts_final = materialize_config_or_code_deliverable(
+            prompt=last_user_prompt,
+            final_text=final_text,
+            workspace_dir=workspace_dir,
+            turn_start_time=start_ts,
+        )
+        for ta in tech_artifacts_final:
+            outbound_payload = json.dumps(
+                {"filePath": ta, "fileName": Path(ta).name},
+                ensure_ascii=False,
+            )
+            ta_name = Path(ta).name.lower()
+            if outbound_payload not in outbound_files and not any(_extract_filename_from_outbound(existing).lower() == ta_name for existing in outbound_files):
+                outbound_files.append(outbound_payload)
+
+        user_wants_md = bool(re.search(r"(?:\.md\b|\bmarkdown\b|md\s*文件)", last_user_prompt or "", re.I))
+        has_primary_tech = any(
+            _extract_filename_from_outbound(f).lower().endswith((".py", ".sh", ".sql", ".yml", ".yaml"))
+            or _extract_filename_from_outbound(f).lower() == "dockerfile"
+            for f in outbound_files
+        )
+        if has_primary_tech and not user_wants_md:
+            cleaned_outbounds = []
+            for item_str in outbound_files:
+                fname = _extract_filename_from_outbound(item_str).lower()
+                if fname.endswith((".py.md", ".sh.md", ".sql.md")) or (fname.endswith(".md") and fname in ("result.md", "script.md")):
+                    continue
+                cleaned_outbounds.append(item_str)
+            outbound_files = cleaned_outbounds
+
+    # 5. HTML / 图表 / 可视化交互单页物化与工作区落盘
+    from .task_intent import is_visual_artifact_requested
+    wants_html = (
+        (expected_deliverables and any(ext.lower() in [".html", ".htm"] for ext in expected_deliverables))
+        or is_visual_artifact_requested(last_user_prompt)
+        or bool(re.search(r'(?:做成|制作|生成|导出|创建)[^，。\n]{0,8}(?:html|网页|单页|看板|大屏|页面|图表|柱状图|折线图|饼图)', (last_user_prompt or "").lower()))
+    )
+    if wants_html:
+        from .artifact_exporter import ArtifactExporter
+        if "```html" in (final_text or ""):
+            _, exported_htmls = ArtifactExporter.export_html(
+                final_text,
+                is_ppt_intent=False,
+                workspace_dir=workspace_dir,
+                turn_start_time=start_ts,
+                prompt=last_user_prompt,
+            )
+            for hpath in exported_htmls:
+                outbound_payload = json.dumps(
+                    {"filePath": hpath, "fileName": Path(hpath).name},
+                    ensure_ascii=False,
+                )
+                if outbound_payload not in outbound_files and not any(_extract_filename_from_outbound(existing).lower() == Path(hpath).name.lower() for existing in outbound_files):
+                    outbound_files.append(outbound_payload)
+
+        # 检查工作区中本轮已生成的有效 HTML 文件
+        ws_p = Path(workspace_dir)
+        if ws_p.exists():
+            cutoff = (start_ts - 2.0) if start_ts is not None else 0.0
+            for item in ws_p.iterdir():
+                if item.is_file() and item.suffix.lower() in (".html", ".htm") and item.stat().st_size > 0 and item.stat().st_mtime >= cutoff:
+                    if not ArtifactExporter.is_temporary_file(item.name):
+                        outbound_payload = json.dumps(
+                            {"filePath": str(item), "fileName": item.name},
+                            ensure_ascii=False,
+                        )
+                        if outbound_payload not in outbound_files and not any(_extract_filename_from_outbound(f).lower() == item.name.lower() for f in outbound_files):
+                            outbound_files.append(outbound_payload)
+
+    return outbound_files
+
+
+def materialize_in_loop_deliverables(
+    last_user_prompt: str,
+    reply_text: str,
+    workspace_dir: str,
+    start_ts: float,
+    expected_deliverables: Optional[List[str]],
+    outbound_files: List[str],
+    executed_calls_history: List[str],
+) -> Optional[str]:
+    """Compiles in-loop declarative deliverables (Markdown, script-generated Office/PDF, config files) and returns script_execution_error if any."""
+    from .deliverable_contract import (
+        materialize_requested_markdown,
+        materialize_script_deliverable,
+        materialize_pdf_from_markdown,
+        materialize_config_or_code_deliverable,
+    )
+    from .skill_router import is_text_only_request
+
+    markdown_path, created_now = materialize_requested_markdown(
+        last_user_prompt,
+        reply_text,
+        workspace_dir,
+        turn_start_time=start_ts,
+    )
+    if markdown_path:
+        outbound_payload = json.dumps(
+            {"filePath": markdown_path, "fileName": Path(markdown_path).name},
+            ensure_ascii=False,
+        )
+        if outbound_payload not in outbound_files:
+            outbound_files.append(outbound_payload)
+        if created_now:
+            print(
+                f"✨ [Harness Artifact Compiler] 已将最终正文编译为 Markdown 文件: {markdown_path}",
+                flush=True,
+            )
+
+    script_execution_error: Optional[str] = None
+    if expected_deliverables and any(ext.lower() in [".docx", ".xlsx", ".pdf"] for ext in expected_deliverables):
+        script_artifact_path, script_err = materialize_script_deliverable(
+            reply_text=reply_text,
+            workspace_dir=workspace_dir,
+            expected_deliverables=expected_deliverables,
+            turn_start_time=start_ts,
+        )
+        if script_artifact_path:
+            outbound_payload = json.dumps(
+                {"filePath": script_artifact_path, "fileName": Path(script_artifact_path).name},
+                ensure_ascii=False,
+            )
+            if outbound_payload not in outbound_files:
+                outbound_files.append(outbound_payload)
+            executed_calls_history.append("bash")
+            print(
+                f"✨ [Harness Deliverable Compiler] 检测到模型在正文中输出了生成脚本，已自动安全执行落盘: {script_artifact_path}",
+                flush=True,
+            )
+        elif script_err:
+            script_execution_error = script_err
+
+    if expected_deliverables and any(ext.lower() == ".pdf" for ext in expected_deliverables):
+        pdf_artifact_path = materialize_pdf_from_markdown(
+            prompt=last_user_prompt,
+            workspace_dir=workspace_dir,
+            turn_start_time=start_ts,
+            expected_deliverables=expected_deliverables,
+            final_text=reply_text,
+        )
+        if pdf_artifact_path:
+            outbound_payload = json.dumps(
+                {"filePath": pdf_artifact_path, "fileName": Path(pdf_artifact_path).name},
+                ensure_ascii=False,
+            )
+            if outbound_payload not in outbound_files:
+                outbound_files.append(outbound_payload)
+            executed_calls_history.append("bash")
+
+    if not is_text_only_request(last_user_prompt):
+        tech_artifacts_mid = materialize_config_or_code_deliverable(
+            prompt=last_user_prompt,
+            final_text=reply_text,
+            workspace_dir=workspace_dir,
+            turn_start_time=start_ts,
+        )
+        for ta in tech_artifacts_mid:
+            outbound_payload = json.dumps(
+                {"filePath": ta, "fileName": Path(ta).name},
+                ensure_ascii=False,
+            )
+            ta_name = Path(ta).name.lower()
+            if outbound_payload not in outbound_files and not any(_extract_filename_from_outbound(existing).lower() == ta_name for existing in outbound_files):
+                outbound_files.append(outbound_payload)
+
+    # HTML / 图表 / 可视化交互单页物化
+    from .task_intent import is_visual_artifact_requested
+    wants_html_mid = (
+        (expected_deliverables and any(ext.lower() in [".html", ".htm"] for ext in expected_deliverables))
+        or is_visual_artifact_requested(last_user_prompt)
+        or bool(re.search(r'(?:做成|制作|生成|导出|创建)[^，。\n]{0,8}(?:html|网页|单页|看板|大屏|页面|图表|柱状图|折线图|饼图)', (last_user_prompt or "").lower()))
+    )
+    if wants_html_mid and "```html" in (reply_text or ""):
+        from .artifact_exporter import ArtifactExporter
+        _, exported_htmls = ArtifactExporter.export_html(
+            reply_text,
+            is_ppt_intent=False,
+            workspace_dir=workspace_dir,
+            turn_start_time=start_ts,
+            prompt=last_user_prompt,
+        )
+        for hpath in exported_htmls:
+            outbound_payload = json.dumps(
+                {"filePath": hpath, "fileName": Path(hpath).name},
+                ensure_ascii=False,
+            )
+            if outbound_payload not in outbound_files and not any(_extract_filename_from_outbound(existing).lower() == Path(hpath).name.lower() for existing in outbound_files):
+                outbound_files.append(outbound_payload)
+
+    return script_execution_error

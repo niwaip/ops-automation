@@ -1,0 +1,14 @@
+{
+  "time": "2026-10-25T14:39:04.504100",
+  "runtime_source_changes": [],
+  "source_hashes": {
+    "/Users/chain/Desktop/工数实绩明细_20261020134124.xlsx": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+    "data/users/e7fce333-a8f4-4097-9a53-f0a4c729da46/workspace/工数实绩明细_20261020134124.xlsx": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+  },
+  "expected_file_presence": {
+    "E2E_workhours_filtered.csv": true,
+    "E2E_workhours_edit.xlsx": false,
+    "E2E_workhours_report.xlsx": false
+  },
+  "csv_sha256": "fe8b3ff7c68100b526481bc7f01758a0225c12414531d16f0b25b999cec5275e"
+}

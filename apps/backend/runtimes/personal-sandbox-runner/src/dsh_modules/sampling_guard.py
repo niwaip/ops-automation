@@ -127,3 +127,102 @@ def sampling_feedback(reply_text,last_user_prompt,messages=None,telemetry=None,e
                 return msg
 
     return None
+
+
+def check_zero_tool_calculation_guard(
+    reply_text: str,
+    last_user_prompt: str,
+    executed_calls_history=None,
+    execution_evidence=None,
+    is_guide_intent: bool = False,
+):
+    """Intercepts replies where spreadsheet calculation/aggregation was required,
+    but zero computational tools were run and the model attempts to hand-write numbers.
+    """
+    if is_guide_intent or not reply_text or not last_user_prompt:
+        return None
+
+    # 1. 检查是否存在表格上下文
+    has_spreadsheet_context = bool(
+        re.search(r'【(?:当前轮次用户上传附件|当前会话有效附件清单)】:[^\n]*\.(?:xlsx|xlsm|csv)', last_user_prompt)
+        or any(k in last_user_prompt.lower() for k in ["xlsx", "csv", "表格", "工作表", "明细", "工数"])
+    )
+    if not has_spreadsheet_context:
+        return None
+
+    # 2. 检查是否有统计、核算、过滤需求
+    from .analysis_contract import build_analysis_contract
+    contract = build_analysis_contract(last_user_prompt)
+    if contract.is_catalog_only or contract.is_browse_or_summary:
+        return None
+
+    calc_keywords = [
+        "统计", "合计", "总额", "总金额", "求和", "计算", "排除", "不包含",
+        "过滤", "占比", "按部门", "分组", "排名前", "倒数"
+    ]
+    has_calc_intent = contract.has_metrics or any(k in last_user_prompt for k in calc_keywords)
+    if not has_calc_intent:
+        return None
+
+    # 3. 检查是否执行了实质性的计算工具
+    has_run_computational_tool = False
+    if executed_calls_history:
+        for call in executed_calls_history:
+            call_lower = call.lower()
+            if any(call_lower.startswith(k) for k in (
+                "aggregate_spreadsheet",
+                "analyze_spreadsheet",
+                "validate_spreadsheet_rows",
+                "compare_spreadsheet_columns",
+                "python:",
+            )):
+                has_run_computational_tool = True
+                break
+            if call_lower.startswith("bash:"):
+                cmd = call.split("bash:", 1)[1]
+                if _is_meaningful_computational_command(cmd) or "python" in cmd.lower():
+                    has_run_computational_tool = True
+                    break
+
+    if not has_run_computational_tool and execution_evidence:
+        for e in execution_evidence:
+            if getattr(e, "is_success", False):
+                prov = getattr(e, "provenance", {}) or {}
+                tool_name = prov.get("tool", "")
+                if tool_name in (
+                    "aggregate_spreadsheet", "analyze_spreadsheet",
+                    "validate_spreadsheet_rows", "compare_spreadsheet_columns",
+                    "python"
+                ):
+                    has_run_computational_tool = True
+                    break
+                if tool_name == "bash":
+                    cmd = prov.get("cmd", "") or str(getattr(e, "data", ""))
+                    if _is_meaningful_computational_command(cmd) or "python" in cmd.lower() or len(str(getattr(e, "data", ""))) > 50:
+                        has_run_computational_tool = True
+                        break
+                data = getattr(e, "data", None)
+                if isinstance(data, dict) and data.get("kind") in ("spreadsheet_analysis", "column_comparison"):
+                    has_run_computational_tool = True
+                    break
+
+    if has_run_computational_tool:
+        return None
+
+    # 4. 检查输出中是否包含具体的数字或表格/图表声明
+    contains_numeric_assertion = bool(re.search(
+        r'\b\d+(?:\.\d+)?\s*(?:k|千元|万元|元|小时|h|%)\b|dataValues\s*=|datasets\s*:|<table|<tr|<td|<th>',
+        reply_text, re.I
+    ))
+    if contains_numeric_assertion:
+        msg = (
+            f"【系统数据核验拦截】：当前任务涉及表格数据统计与条件过滤（『{last_user_prompt}』），"
+            "但沙箱尚未通过任何工具（如表格分析工具或 Python 脚本）对原件进行实际查询与计算！\n"
+            "严禁在未读取全量数据并执行过滤的情况下直接手写数值或凭空臆测！\n"
+            "请立即优先通过 Function Calling 协议调用 `aggregate_spreadsheet`、`analyze_spreadsheet` 或 `bash` 运行 Python 脚本加载原件，"
+            "严格执行所有条件过滤与聚合计算，获取精确结果后再生成交付物！"
+        )
+        return msg
+
+    return None
+

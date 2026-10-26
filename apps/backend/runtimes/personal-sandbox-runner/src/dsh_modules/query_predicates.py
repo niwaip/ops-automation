@@ -194,7 +194,8 @@ def eval_predicate_3vl(
         return not any(str(t) in raw_str for t in targets if t is not None)
 
     if op == "starts_with":
-        targets = node.get("values") or node.get("prefixes") or [node.get("value")]
+        raw_targets = node.get("values") or node.get("prefixes") or node.get("value")
+        targets = [raw_targets] if isinstance(raw_targets, (str, int)) else (raw_targets or [])
         val_str = str(raw_val).strip()
         case_sensitive = node.get("case_sensitive", False)
         if not case_sensitive:
@@ -203,7 +204,8 @@ def eval_predicate_3vl(
         return any(val_str.startswith(str(p).strip()) for p in targets if p is not None)
 
     if op == "not_starts_with":
-        targets = node.get("values") or node.get("prefixes") or [node.get("value")]
+        raw_targets = node.get("values") or node.get("prefixes") or node.get("exclude_prefixes") or node.get("value")
+        targets = [raw_targets] if isinstance(raw_targets, (str, int)) else (raw_targets or [])
         val_str = str(raw_val).strip()
         case_sensitive = node.get("case_sensitive", False)
         if not case_sensitive:

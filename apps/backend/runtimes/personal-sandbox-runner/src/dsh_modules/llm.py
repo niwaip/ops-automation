@@ -45,6 +45,36 @@ def _apply_stream_retry_backoff(
     tool_call_deltas.clear()
 
 
+def repair_json_arguments(raw_args: str) -> str:
+    """Repairs unclosed/truncated JSON argument strings to valid JSON for vLLM/OpenAI parsers."""
+    if not raw_args or not raw_args.strip():
+        return "{}"
+    raw = raw_args.strip()
+    try:
+        json.loads(raw)
+        return raw
+    except Exception:
+        pass
+
+    # 尝试补齐未闭合的引号和括号
+    for fix in ['"', '"}', '}', '"]}', '"}}', ']}', '}']:
+        cand = raw + fix
+        try:
+            json.loads(cand)
+            return cand
+        except Exception:
+            pass
+
+    # 尝试使用 JSONDecoder raw_decode 提取前半部分有效 JSON 对象
+    try:
+        obj, _ = json.JSONDecoder(strict=False).raw_decode(raw)
+        return json.dumps(obj, ensure_ascii=False)
+    except Exception:
+        pass
+
+    return "{}"
+
+
 def _format_structured_tool_calls(tool_call_deltas: dict) -> List[Dict[str, Any]]:
     """Converts accumulated SSE tool call deltas into standard OpenAI tool calls list."""
     structured = []
@@ -55,7 +85,7 @@ def _format_structured_tool_calls(tool_call_deltas: dict) -> List[Dict[str, Any]
                 "type": "function",
                 "function": {
                     "name": tc["name"].strip(),
-                    "arguments": tc["arguments"].strip() or "{}"
+                    "arguments": repair_json_arguments(tc["arguments"])
                 }
             })
     return structured
@@ -201,7 +231,20 @@ def normalize_messages_for_llm(messages: list) -> list:
                 normalized.append(converted)
         else:
             seen_non_system = True
-            normalized.append(dict(msg))
+            msg_copy = dict(msg)
+            if msg_copy.get("tool_calls"):
+                cleaned_tcs = []
+                for tc in msg_copy["tool_calls"]:
+                    if isinstance(tc, dict) and "function" in tc and isinstance(tc["function"], dict):
+                        fn = dict(tc["function"])
+                        fn["arguments"] = repair_json_arguments(str(fn.get("arguments") or ""))
+                        tc_c = dict(tc)
+                        tc_c["function"] = fn
+                        cleaned_tcs.append(tc_c)
+                    else:
+                        cleaned_tcs.append(tc)
+                msg_copy["tool_calls"] = cleaned_tcs
+            normalized.append(msg_copy)
     return normalized
 
 

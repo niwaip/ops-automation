@@ -3,6 +3,7 @@
 import hashlib
 import json
 from pathlib import Path
+from urllib.parse import quote
 
 from .personal_skill_workflow_engine import bind_field, digest, execute_workflow, verify_receipt
 from .spreadsheet_analysis import calculate_spreadsheet_analysis
@@ -122,6 +123,9 @@ def render_query_receipt(receipt):
             name = labels.get(column, column)
             unit = units.get(column)
             return cell(f'{name} ({unit})' if unit and unit not in name else name)
+        group_fields = [g if isinstance(g, str) else g.get('alias', g.get('field')) for g in (query.get('group_by') or [])]
+        if 'group_key' in columns and (any(gf in columns for gf in group_fields) or any(c != 'group_key' and heading(c) == heading('group_key') for c in columns)):
+            columns = [c for c in columns if c != 'group_key']
         lines = ['已按本轮条件完成核算并通过校验。', '',
                  '| ' + ' | '.join(heading(c) for c in columns) + ' |',
                  '|' + '|'.join('---' for _ in columns) + '|']
@@ -161,10 +165,25 @@ def render_query_receipt(receipt):
         conditions.append(f"取前 {query['limit']} 项")
     if query.get('offset'):
         conditions.append(f"跳过前 {query['offset']} 项")
-    if conditions:
-        lines += ['', cell('；'.join(conditions)) + '。']
     scope = data['coverage'][0]
     stages = data['stages']
-    lines += ['', f"来源：{cell(Path(receipt.provenance['file_path']).name)}，{cell(scope['sheet'])}，{scope['data_range']}；"
-              f"扫描 {stages['source_rows']} 条，明细筛选后 {stages['where_rows']} 条，聚合后符合条件 {stages['having_groups_count']} 组。"]
+    file_path = (receipt.provenance or {}).get('file_path') or ''
+    file_name = Path(file_path).name if file_path else ''
+    evidence_id = (receipt.provenance or {}).get('evidence_id') or data.get('evidence_id') or ''
+
+    audit_parts = []
+    if file_name:
+        file_link = f'[{cell(file_name)}](/api/ai/chat/workspace-files/me/{quote(file_name, safe="")})'
+        audit_parts.append(f'原始文件：{file_link}。')
+
+    evidence_str = f'；证据 `{evidence_id}`' if evidence_id else ''
+    audit_parts.append(
+        f"来源：{cell(file_name or '附件')}，{cell(scope['sheet'])}，{scope['data_range']}{evidence_str}；"
+        f"扫描 {stages['source_rows']} 条，明细筛选后 {stages['where_rows']} 条，聚合后符合条件 {stages['having_groups_count']} 组。"
+    )
+    if conditions:
+        audit_parts.append('；'.join(conditions) + '。')
+
+    details_content = '\n\n'.join(audit_parts)
+    lines += ['', '<details>', '<summary>查看来源与核算明细</summary>', '', details_content, '', '</details>']
     return '\n'.join(lines)

@@ -1,0 +1,23 @@
+{
+  "scope": "Offline replay of current completion code using original receipts. Task contract/state mocked to admit gross-margin completion; no LLM/network and no full runtime replay.",
+  "source_facts": {
+    "营业收入": "124020",
+    "毛利": "53443.25",
+    "营业利润": "21209.4",
+    "净利润": "16038.3"
+  },
+  "gross_margin_percent": "43.09244476697306885986131269",
+  "query_facts_have_metric_id": false,
+  "plan_metric_ids": [
+    "actual"
+  ],
+  "fact_ids": [
+    "actual__(('str', '营业收入'),)",
+    "actual__(('str', '毛利'),)",
+    "actual__(('str', '营业利润'),)",
+    "actual__(('str', '净利润'),)"
+  ],
+  "derived_receipt_count": 0,
+  "source_execution_count": 0,
+  "assertions_passed": true
+}

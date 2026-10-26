@@ -1,0 +1,1733 @@
+[
+  {
+    "case": "K01",
+    "status": "SAFE_RETRY",
+    "functional_complete": false,
+    "trace": {
+      "executed": false,
+      "rawError": "⚡ [DeepSeek Harness v1.3.0-sandbox | Sandbox: 74fa3ba8d123 | User: sandbox | Mode: Personal]\n🎯 [Skill Router] 候选: xlsx (亲和度得分: 31.7)\n🎯 [Skill Router] 候选: xlsx\n⏳ [Harness Agent] 正在结合前序采集证据进行深入推理与规划 (第 2 轮)...\n<<<DSH_DELTA_RESET>>>\n⚡ [Harness Tool Call] 正在调用工具: aggregate_spreadsheet({'file_path': '工数实绩明细_20261020134124.xlsx', 'tables': [{'id': 'tbl_main', 'sheet...)...\n✓ 工具 [aggregate_spreadsheet] 执行完成\n⏳ [Harness Agent] 正在结合前序采集证据进行深入推理与规划 (第 3 轮)...\n\n/usr/local/lib/python3.11/dist-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default\n  warn(\"Workbook contains no default style, apply openpyxl's default\")\nGate review unavailable: timed out\n\n❌ [DeepSeek Harness 超时]: 任务执行超时: timed out"
+    },
+    "content": "⏱️ 模型在执行文件写入前响应超时或连接中断，本次未生成可用文件。深度思考已关闭，可安全重试本次生成。"
+  },
+  {
+    "case": "K05",
+    "status": "SAFE_RETRY",
+    "functional_complete": false,
+    "trace": {
+      "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+      "harness": "deepseek-harness",
+      "executed": true,
+      "durationMs": 173979,
+      "exitCode": 0,
+      "metrics": {
+        "ttftMs": 65402.49,
+        "durationMs": 173043.98,
+        "llmDurationMs": 145980.07,
+        "toolCallsCount": 4,
+        "toolCalls": [
+          {
+            "name": "inspect_spreadsheet_structure",
+            "params": {
+              "file_path": "工数实绩明细_20261020134124.xlsx",
+              "sheets": "['工数实绩明细']"
+            },
+            "status": "success",
+            "result_status": "success",
+            "kind": "spreadsheet_structure",
+            "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+          },
+          {
+            "name": "inspect_spreadsheet_structure",
+            "params": {
+              "file_path": "工数实绩明细_20261020134124.xlsx",
+              "sheets": "['工数实绩明细']"
+            },
+            "status": "loop_intercepted"
+          },
+          {
+            "name": "aggregate_spreadsheet",
+            "params": {
+              "file_path": "工数实绩明细_20261020134124.xlsx",
+              "query": "{'source': {'sheet': '工数实绩明细', 'header_row': 3, 'data_range': 'A4:R277'}, 'where': {'field': '客户名称', 'op': 'is_blank'}}"
+            },
+            "status": "error",
+            "result_status": "error",
+            "error_code": "invalid_analysis_plan",
+            "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+          },
+          {
+            "name": "inspect_spreadsheet_structure",
+            "params": {
+              "file_path": "工数实绩明细_20261020134124.xlsx",
+              "sheets": "['工数实绩明细']"
+            },
+            "status": "loop_intercepted"
+          }
+        ],
+        "llmInvocations": 7,
+        "tokens": {
+          "prompt_tokens": 76221,
+          "completion_tokens": 1101,
+          "total_tokens": 77322
+        },
+        "finishReason": "tool_calls",
+        "roundFinishReasons": [
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "tool_calls"
+        ],
+        "guardDecisions": [
+          {
+            "guard": "task_intent_review",
+            "action": "accept",
+            "reason": {
+              "output_mode": "conversation",
+              "task_mode": "execute"
+            }
+          },
+          {
+            "guard": "task_intent",
+            "action": "accept",
+            "reason": {
+              "instruction_relation": "standalone",
+              "task_mode": "execute",
+              "output_mode": "conversation",
+              "artifact_types": [],
+              "unit_confirmation": null,
+              "section_confirmation": null,
+              "skill_invocation": {
+                "mode": "none",
+                "name": "",
+                "replace_defaults": false
+              },
+              "requirements": [
+                {
+                  "id": "req_1",
+                  "quote": "检查所有18列完全相同的重复业务行、客户名称为空的业务行，分别给条数和全部原Excel行号。"
+                },
+                {
+                  "id": "req_2",
+                  "quote": "客户为空只标记缺失，不推断数据错误；员工编号重复是正常多项目记录，不能按员工编号去重。"
+                },
+                {
+                  "id": "req_3",
+                  "quote": "只在聊天回复，不生成文件，不联网；无法核算时明确说明或向我澄清，不要猜测。"
+                }
+              ]
+            }
+          },
+          {
+            "guard": "skill_admission",
+            "action": "use",
+            "reason": {
+              "initial_candidate": "xlsx",
+              "skill_id": "xlsx",
+              "use_default_rules": false,
+              "reason": "applicable",
+              "requirement_ids": [
+                "req_1",
+                "req_2",
+                "req_3"
+              ]
+            }
+          },
+          {
+            "guard": "user_unit_confirmation",
+            "action": "accept",
+            "reason": {
+              "unit": null,
+              "sections": null
+            }
+          },
+          {
+            "guard": "analysis_gate_review",
+            "action": "repair",
+            "reason": {
+              "action": "repair",
+              "category": "execution_incomplete",
+              "complete": false,
+              "dismissed_issue_codes": [],
+              "supporting_fact_ids": [],
+              "reason": "系统误判‘客户名称’不存在。已知表头包含‘客户名称’列。当前执行计划为空，导致缺少分析证据。需重新生成针对该列的过滤与统计计划。",
+              "repair_instruction": "请执行以下数据核查步骤：1. 扫描所有行，统计‘客户名称’字段为空（null/empty）的行数，并记录这些行的原始Excel行号。2. 对比所有18个字段（BU名称, BU编号, ..., 金额(K)），找出所有字段值完全相同的重复行组，统计每组的行数（或总重复条数），并记录涉及的原始Excel行号。3. 排除仅因‘员工编号’相同而其他字段不同的情况（本题中员工编号重复属正常，故仅比对全部18列完全一致的情况）。",
+              "user_question": ""
+            }
+          },
+          {
+            "guard": "analysis_presentation",
+            "action": "runtime_owned",
+            "reason": {
+              "format": "unparsed",
+              "model_text_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "matched_id_count": 0,
+              "runtime_id_count": 0,
+              "unknown_id_count": null,
+              "missing_id_count": 0
+            }
+          },
+          {
+            "guard": "spreadsheet_evidence",
+            "action": "reject",
+            "reason": "【门禁复核建议】：请执行以下数据核查步骤：1. 扫描所有行，统计‘客户名称’字段为空（null/empty）的行数，并记录这些行的原始Excel行号。2. 对比所有18个字段（BU名称, BU编号, ..., 金额(K)），找出所有字段值完全相同的重复行组，统计每组的行数（或总重复条数），并记录涉及的原始Excel行号。3. 排除仅因‘员工编号’相同而其他字段不同的情况（本题中员工编号重复属正常，故仅比对全部18列完全一致的情况）。\n【程序任务状态】\n{\"complete\": false, \"domain\": \"generic\", \"evidence_ids\": [], \"missing_metrics\": [], \"issues\": [{\"code\": \"execution_evidence_missing\", \"message\": \"缺少本轮成功的分析执行证据。\"}], \"available_sheets\": [\"工数实绩明细\"], \"known_headers\": [\"BU名称\", \"BU编号\", \"WBS名称\", \"WBS编号\", \"WBS负责成本中心\", \"会计年度\", \"员工姓名\", \"员工编号\", \"员工职级\", \"客户名称\", \"工数(小时)\", \"工数年月\", \"有偿无偿\", \"直接间接\", \"职级单价\", \"部门名称\", \"部门编号\", \"金额(K)\"], \"gate_review\": {\"action\": \"repair\", \"category\": \"execution_incomplete\", \"complete\": false, \"dismissed_issue_codes\": [], \"supporting_fact_ids\": [], \"reason\": \"系统误判‘客户名称’不存在。已知表头包含‘客户名称’列。当前执行计划为空，导致缺少分析证据。需重新生成针对该列的过滤与统计计划。\", \"repair_instruction\": \"请执行以下数据核查步骤：1. 扫描所有行，统计‘客户名称’字段为空（null/empty）的行数，并记录这些行的原始Excel行号。2. 对比所有18个字段（BU名称, BU编号, ..., 金额(K)），找出所有字段值完全相同的重复行组，统计每组的行数（或总重复条数），并记录涉及的原始Excel行号。3. 排除仅因‘员工编号’相同而其他字段不同的情况（本题中员工编号重复属正常，故仅比对全部18列完全一致的情况）。\", \"user_question\": \"\"}}\n只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。"
+          }
+        ],
+        "modelResponses": [
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 61,
+            "cleanChars": 61,
+            "rawSha256": "5acc21cbe8bcdb721f20b8d12d09671ed976025a8aeaf07015c42c28930b2a90",
+            "cleanSha256": "5acc21cbe8bcdb721f20b8d12d09671ed976025a8aeaf07015c42c28930b2a90",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 117,
+            "cleanChars": 117,
+            "rawSha256": "a6131fff1ff45d3e164eaf1d251543a854317291e3d0bfa356ace8aa2ebc47a4",
+            "cleanSha256": "a6131fff1ff45d3e164eaf1d251543a854317291e3d0bfa356ace8aa2ebc47a4",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 81,
+            "cleanChars": 81,
+            "rawSha256": "20a8e2c3f25ac6fc641c65f670850bdc6f911dd1dafb353120be57d2cf9ba077",
+            "cleanSha256": "20a8e2c3f25ac6fc641c65f670850bdc6f911dd1dafb353120be57d2cf9ba077",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 28,
+            "cleanChars": 28,
+            "rawSha256": "790fc74e113d4effec69b900e26517c90c9649071bb50bb208470b2c0e7c0756",
+            "cleanSha256": "790fc74e113d4effec69b900e26517c90c9649071bb50bb208470b2c0e7c0756",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          }
+        ],
+        "answerValidation": {}
+      }
+    },
+    "content": "本次分析尚未通过执行证据核验。\n\n### 分析未完成说明\n\n**无法完成计算的原因：**\n- 本次还没有取得可核验的计算结果，暂不能判断是否缺少业务数据。\n- 当前工作表为【工数实绩明细】。\n- 执行阻碍：invalid_analysis_plan：plan：条件字段不存在于工作表字段中: '客户名称'\n\n**下一步处理建议：**\n1. 可以重试本次分析；系统需要先完成工作表与字段核对。\n\n尚未验证的项目不会被列为完成。"
+  },
+  {
+    "case": "K09",
+    "status": "SAFE_RETRY",
+    "functional_complete": false,
+    "trace": {
+      "executed": false,
+      "timeout": true
+    },
+    "content": "⚠️ 沙箱任务执行超时（超过 300 秒），已自动中止后台任务。请尝试简化任务或检查模型连通性。"
+  },
+  {
+    "case": "K02",
+    "status": "SAFE_RETRY",
+    "functional_complete": false,
+    "trace": {
+      "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+      "harness": "deepseek-harness",
+      "executed": true,
+      "durationMs": 127132,
+      "exitCode": 0,
+      "metrics": {
+        "ttftMs": 65831.84,
+        "durationMs": 126601.57,
+        "llmDurationMs": 97595.3,
+        "toolCallsCount": 3,
+        "toolCalls": [
+          {
+            "name": "aggregate_spreadsheet",
+            "params": {
+              "file_path": "工数实绩明细_20261020134124.xlsx",
+              "query": "{'source': {'sheet': '工数实绩明细', 'header_row': 4, 'data_range': 'A5:R278'}, 'where': {'op': 'and', 'operands': [{'op': 'eq..."
+            },
+            "status": "error",
+            "result_status": "error",
+            "error_code": "invalid_analysis_plan",
+            "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+          },
+          {
+            "name": "aggregate_spreadsheet",
+            "params": {
+              "file_path": "工数实绩明细_20261020134124.xlsx",
+              "query": "{'source': {'sheet': '工数实绩明细', 'header_row': 4, 'data_range': 'A5:R278'}, 'where': {'and': [{'field': '部门编号', 'op': 'eq'..."
+            },
+            "status": "error",
+            "result_status": "error",
+            "error_code": "invalid_analysis_plan",
+            "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+          },
+          {
+            "name": "aggregate_spreadsheet",
+            "params": {
+              "file_path": "工数实绩明细_20261020134124.xlsx",
+              "query": "{'source': {'data_range': 'A5:R278', 'header_row': 4, 'sheet': '工数实绩明细'}, 'where': {'and': [{'field': '部门编号', 'op': 'eq'..."
+            },
+            "status": "success",
+            "result_status": "success",
+            "evidence_id": "d5a1b371bdbfda3ade7197cb",
+            "plan_hash": "783dcdd3da8176d585b839b2e00276de72d4ccfff158457a755846e4c048aed5",
+            "kind": "spreadsheet_analysis",
+            "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+          }
+        ],
+        "llmInvocations": 8,
+        "tokens": {
+          "prompt_tokens": 70240,
+          "completion_tokens": 2565,
+          "total_tokens": 72805
+        },
+        "finishReason": "stop",
+        "roundFinishReasons": [
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "stop"
+        ],
+        "guardDecisions": [
+          {
+            "guard": "task_intent_attempt",
+            "action": "reject",
+            "reason": "当前指令判定为独立任务(standalone)，当前请求未指定调用技能；独立任务禁止继承历史对话中的技能，请将 skill_invocation 修改为 mode=\"none\", name=\"\", replace_defaults=false，且 requirements 只能引用当前请求中的原话"
+          },
+          {
+            "guard": "task_intent_review",
+            "action": "accept",
+            "reason": {
+              "output_mode": "conversation",
+              "task_mode": "execute"
+            }
+          },
+          {
+            "guard": "task_intent",
+            "action": "accept",
+            "reason": {
+              "instruction_relation": "standalone",
+              "task_mode": "execute",
+              "output_mode": "conversation",
+              "artifact_types": [],
+              "unit_confirmation": null,
+              "section_confirmation": null,
+              "skill_invocation": {
+                "mode": "none",
+                "name": "",
+                "replace_defaults": false
+              },
+              "requirements": [
+                {
+                  "id": "req_1",
+                  "quote": "筛选部门编号FC45031、有偿无偿为有偿、工数(小时)严格大于8的全部记录"
+                },
+                {
+                  "id": "req_2",
+                  "quote": "给出匹配条数、总工数、金额(K)合计"
+                },
+                {
+                  "id": "req_3",
+                  "quote": "按工数降序、同值按原Excel行号升序列出前5条的原行号、员工编号、WBS编号、工数和金额"
+                },
+                {
+                  "id": "req_4",
+                  "quote": "只在聊天回复，不生成文件，不联网"
+                }
+              ]
+            }
+          },
+          {
+            "guard": "skill_admission",
+            "action": "downgrade_to_general",
+            "reason": {
+              "skill_id": "dept-summary",
+              "reason": "multi_file_or_update_composite_task"
+            }
+          },
+          {
+            "guard": "skill_admission",
+            "action": "general",
+            "reason": {
+              "initial_candidate": "dept-summary",
+              "skill_id": null,
+              "use_default_rules": false,
+              "reason": "scope_mismatch",
+              "requirement_ids": [
+                "req_1",
+                "req_2",
+                "req_3",
+                "req_4"
+              ]
+            }
+          },
+          {
+            "guard": "user_unit_confirmation",
+            "action": "accept",
+            "reason": {
+              "unit": null,
+              "sections": null
+            }
+          },
+          {
+            "guard": "analysis_repair_budget",
+            "action": "extend",
+            "reason": {
+              "extra_rounds": 1,
+              "next_max_rounds": 4,
+              "issue_codes": [
+                "conflated_multi_row_metrics"
+              ]
+            }
+          },
+          {
+            "guard": "spreadsheet_evidence",
+            "action": "reject",
+            "reason": "【门禁复核建议】：1. 撤销对 'invalid_analysis_plan' 和 'required_metrics_missing' 的告警。2. 基于执行计划中的 WHERE 条件 (部门编号=FC45031, 有偿无偿=有偿, 工数(小时)>8) 重新筛选 A5:R278 范围内的数据。3. 计算筛选后的记录数 (match_count) 和 '工数(小时)' 列的总和 (total_hours)。4. 使用已计算的 '金额(K)' 总和 (total_amount = 518.06867)。5. 按 '工数(小时)' 降序、行号升序排列，提取前5条的原行号、员工编号、WBS编号、工数和金额。6. 返回结构化结果。\n【程序任务状态】\n{\"complete\": false, \"domain\": \"generic\", \"evidence_ids\": [\"d5a1b371bdbfda3ade7197cb\"], \"missing_metrics\": [{\"metric_id\": null, \"name\": \"工数\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"工数年月\", \"工数(小时)\"]}, {\"metric_id\": null, \"name\": \"总工数\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"按工数\", \"expected_type\": \"number\", \"source_column_exists\": false}], \"issues\": [{\"code\": \"conflated_multi_row_metrics\", \"message\": \"不同指标绑定了完全相同的来源单元格集合与汇总数值（存在多行科目未分组混加），请按科目列设置 group_by 分组或分别引用各指标对应的真实单元格。\"}], \"available_sheets\": [], \"known_headers\": [\"BU名称\", \"BU编号\", \"WBS名称\", \"WBS编号\", \"WBS负责成本中心\", \"会计年度\", \"员工姓名\", \"员工编号\", \"员工职级\", \"客户名称\", \"工数(小时)\", \"工数年月\", \"有偿无偿\", \"直接间接\", \"职级单价\", \"部门名称\", \"部门编号\", \"金额(K)\"], \"gate_review\": {\"action\": \"repair\", \"category\": \"gate_false_positive\", \"complete\": false, \"dismissed_issue_codes\": [\"required_metrics_missing\"], \"supporting_fact_ids\": [\"total_amount\"], \"reason\": \"原始错误码 'invalid_analysis_plan' 和 'required_metrics_missing' 系误报。实际执行计划中引用的 '部门编号'、'有偿无偿'、'工数(小时)'、'金额(K)' 均存在于附件表头 (A-R列) 中，且 '原Excel行号' 是逻辑排序字段而非物理列，不导致计划无效。'总工数'和'按工数'在合同定义中虽有别名，但实际意图仅要求输出'工数(小时)'的聚合（即'工数'）及'金额(K)'的聚合。当前执行计划已正确识别所需列并生成事实 'total_amount'。需要重新校验以确认筛选结果的正确性，并补全'匹配条数'和'总工数'的计算输出。\", \"repair_instruction\": \"1. 撤销对 'invalid_analysis_plan' 和 'required_metrics_missing' 的告警。2. 基于执行计划中的 WHERE 条件 (部门编号=FC45031, 有偿无偿=有偿, 工数(小时)>8) 重新筛选 A5:R278 范围内的数据。3. 计算筛选后的记录数 (match_count) 和 '工数(小时)' 列的总和 (total_hours)。4. 使用已计算的 '金额(K)' 总和 (total_amount = 518.06867)。5. 按 '工数(小时)' 降序、行号升序排列，提取前5条的原行号、员工编号、WBS编号、工数和金额。6. 返回结构化结果。\", \"user_question\": \"\", \"revalidated\": true}}\n只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。"
+          },
+          {
+            "guard": "analysis_gate_review",
+            "action": "repair",
+            "reason": {
+              "action": "repair",
+              "category": "gate_false_positive",
+              "complete": false,
+              "dismissed_issue_codes": [
+                "required_metrics_missing"
+              ],
+              "supporting_fact_ids": [
+                "total_amount"
+              ],
+              "reason": "原始错误码 'invalid_analysis_plan' 和 'required_metrics_missing' 系误报。实际执行计划中引用的 '部门编号'、'有偿无偿'、'工数(小时)'、'金额(K)' 均存在于附件表头 (A-R列) 中，且 '原Excel行号' 是逻辑排序字段而非物理列，不导致计划无效。'总工数'和'按工数'在合同定义中虽有别名，但实际意图仅要求输出'工数(小时)'的聚合（即'工数'）及'金额(K)'的聚合。当前执行计划已正确识别所需列并生成事实 'total_amount'。需要重新校验以确认筛选结果的正确性，并补全'匹配条数'和'总工数'的计算输出。",
+              "repair_instruction": "1. 撤销对 'invalid_analysis_plan' 和 'required_metrics_missing' 的告警。2. 基于执行计划中的 WHERE 条件 (部门编号=FC45031, 有偿无偿=有偿, 工数(小时)>8) 重新筛选 A5:R278 范围内的数据。3. 计算筛选后的记录数 (match_count) 和 '工数(小时)' 列的总和 (total_hours)。4. 使用已计算的 '金额(K)' 总和 (total_amount = 518.06867)。5. 按 '工数(小时)' 降序、行号升序排列，提取前5条的原行号、员工编号、WBS编号、工数和金额。6. 返回结构化结果。",
+              "user_question": "",
+              "revalidated": true
+            }
+          },
+          {
+            "guard": "analysis_presentation",
+            "action": "runtime_owned",
+            "reason": {
+              "format": "unparsed",
+              "model_text_hash": "b593bf0709d21ab2e3ebb6bd5e372f298a17ed103d2b459473a96c02e607768a",
+              "matched_id_count": 0,
+              "runtime_id_count": 1,
+              "unknown_id_count": null,
+              "missing_id_count": 1
+            }
+          },
+          {
+            "guard": "spreadsheet_evidence",
+            "action": "reject",
+            "reason": "【门禁复核建议】：1. 撤销对 'invalid_analysis_plan' 和 'required_metrics_missing' 的告警。2. 基于执行计划中的 WHERE 条件 (部门编号=FC45031, 有偿无偿=有偿, 工数(小时)>8) 重新筛选 A5:R278 范围内的数据。3. 计算筛选后的记录数 (match_count) 和 '工数(小时)' 列的总和 (total_hours)。4. 使用已计算的 '金额(K)' 总和 (total_amount = 518.06867)。5. 按 '工数(小时)' 降序、行号升序排列，提取前5条的原行号、员工编号、WBS编号、工数和金额。6. 返回结构化结果。\n【程序任务状态】\n{\"complete\": false, \"domain\": \"generic\", \"evidence_ids\": [\"d5a1b371bdbfda3ade7197cb\"], \"missing_metrics\": [{\"metric_id\": null, \"name\": \"工数\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"工数年月\", \"工数(小时)\"]}, {\"metric_id\": null, \"name\": \"总工数\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"按工数\", \"expected_type\": \"number\", \"source_column_exists\": false}], \"issues\": [{\"code\": \"conflated_multi_row_metrics\", \"message\": \"不同指标绑定了完全相同的来源单元格集合与汇总数值（存在多行科目未分组混加），请按科目列设置 group_by 分组或分别引用各指标对应的真实单元格。\"}], \"available_sheets\": [], \"known_headers\": [\"BU名称\", \"BU编号\", \"WBS名称\", \"WBS编号\", \"WBS负责成本中心\", \"会计年度\", \"员工姓名\", \"员工编号\", \"员工职级\", \"客户名称\", \"工数(小时)\", \"工数年月\", \"有偿无偿\", \"直接间接\", \"职级单价\", \"部门名称\", \"部门编号\", \"金额(K)\"], \"gate_review\": {\"action\": \"repair\", \"category\": \"gate_false_positive\", \"complete\": false, \"dismissed_issue_codes\": [\"required_metrics_missing\"], \"supporting_fact_ids\": [\"total_amount\"], \"reason\": \"原始错误码 'invalid_analysis_plan' 和 'required_metrics_missing' 系误报。实际执行计划中引用的 '部门编号'、'有偿无偿'、'工数(小时)'、'金额(K)' 均存在于附件表头 (A-R列) 中，且 '原Excel行号' 是逻辑排序字段而非物理列，不导致计划无效。'总工数'和'按工数'在合同定义中虽有别名，但实际意图仅要求输出'工数(小时)'的聚合（即'工数'）及'金额(K)'的聚合。当前执行计划已正确识别所需列并生成事实 'total_amount'。需要重新校验以确认筛选结果的正确性，并补全'匹配条数'和'总工数'的计算输出。\", \"repair_instruction\": \"1. 撤销对 'invalid_analysis_plan' 和 'required_metrics_missing' 的告警。2. 基于执行计划中的 WHERE 条件 (部门编号=FC45031, 有偿无偿=有偿, 工数(小时)>8) 重新筛选 A5:R278 范围内的数据。3. 计算筛选后的记录数 (match_count) 和 '工数(小时)' 列的总和 (total_hours)。4. 使用已计算的 '金额(K)' 总和 (total_amount = 518.06867)。5. 按 '工数(小时)' 降序、行号升序排列，提取前5条的原行号、员工编号、WBS编号、工数和金额。6. 返回结构化结果。\", \"user_question\": \"\", \"revalidated\": true}}\n只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。"
+          }
+        ],
+        "modelResponses": [
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 78,
+            "cleanChars": 78,
+            "rawSha256": "b33e8d80f5350879b34190300ec64f23fbd00e1044b6d3aadd0218e9d2c97ed4",
+            "cleanSha256": "b33e8d80f5350879b34190300ec64f23fbd00e1044b6d3aadd0218e9d2c97ed4",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 244,
+            "cleanChars": 244,
+            "rawSha256": "ed6d60136d6dc93b83e558889ccc7d04fd5c78c5ebd606463f609c609296e80c",
+            "cleanSha256": "ed6d60136d6dc93b83e558889ccc7d04fd5c78c5ebd606463f609c609296e80c",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 595,
+            "cleanChars": 595,
+            "rawSha256": "b593bf0709d21ab2e3ebb6bd5e372f298a17ed103d2b459473a96c02e607768a",
+            "cleanSha256": "b593bf0709d21ab2e3ebb6bd5e372f298a17ed103d2b459473a96c02e607768a",
+            "finishReason": "stop",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          }
+        ],
+        "answerValidation": {}
+      }
+    },
+    "content": "本次分析尚未通过执行证据核验。\n\n### 分析未完成说明\n\n**无法完成计算的原因：**\n- 表格中已存在对应列（【工数年月】、【工数(小时)】），但本轮分析计划尚未执行对 【工数】 的聚合计算。\n- 表格中缺少计算 【总工数】、【按工数】 所需的原始列或对应数据。\n- 不同指标绑定了完全相同的来源单元格集合与汇总数值（存在多行科目未分组混加），请按科目列设置 group_by 分组或分别引用各指标对应的真实单元格。\n\n**下一步处理建议：**\n1. 本轮执行尚未完成对 【工数】 的聚合计算，可重新提交分析请求以生成汇总事实。\n2. 请补充提供包含 【总工数】、【按工数】 对应原始列的工作表，或告知具体的计算口径与公式。\n\n尚未验证的项目不会被列为完成。"
+  },
+  {
+    "case": "K03",
+    "status": "DELIVERED_VERIFIED",
+    "functional_complete": true,
+    "trace": {
+      "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+      "harness": "deepseek-harness",
+      "executed": true,
+      "durationMs": 30373,
+      "exitCode": 0,
+      "metrics": {
+        "ttftMs": 3857.6,
+        "durationMs": 29802.43,
+        "llmDurationMs": 15394.54,
+        "toolCallsCount": 1,
+        "toolCalls": [
+          {
+            "name": "aggregate_spreadsheet",
+            "params": {
+              "file_path": "/workspace/工数实绩明细_20261020134124.xlsx",
+              "query": "{'source': {'sheet': '工数实绩明细', 'header_row': 4, 'data_range': 'A5:R278'}, 'group_by': ['员工编号', '员工姓名'], 'metrics': [{'id..."
+            },
+            "status": "success",
+            "result_status": "success",
+            "evidence_id": "4f3af32ba250d29a529b099b",
+            "plan_hash": "72e91ab70998524b2fe23661380f92644d7cc1fe220d50191f23d34407b21b94",
+            "kind": "spreadsheet_analysis",
+            "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+          }
+        ],
+        "llmInvocations": 5,
+        "tokens": {
+          "prompt_tokens": 27303,
+          "completion_tokens": 1140,
+          "total_tokens": 28443
+        },
+        "finishReason": "tool_calls",
+        "roundFinishReasons": [
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "tool_calls"
+        ],
+        "guardDecisions": [
+          {
+            "guard": "task_intent_attempt",
+            "action": "reject",
+            "reason": "当前指令判定为独立任务(standalone)，当前请求未指定调用技能；独立任务禁止继承历史对话中的技能，请将 skill_invocation 修改为 mode=\"none\", name=\"\", replace_defaults=false，且 requirements 只能引用当前请求中的原话"
+          },
+          {
+            "guard": "task_intent_review",
+            "action": "accept",
+            "reason": {
+              "output_mode": "conversation",
+              "task_mode": "execute"
+            }
+          },
+          {
+            "guard": "task_intent",
+            "action": "accept",
+            "reason": {
+              "instruction_relation": "standalone",
+              "task_mode": "execute",
+              "output_mode": "conversation",
+              "artifact_types": [],
+              "unit_confirmation": null,
+              "section_confirmation": null,
+              "skill_invocation": {
+                "mode": "none",
+                "name": "",
+                "replace_defaults": false
+              },
+              "requirements": [
+                {
+                  "id": "summary_scope",
+                  "quote": "按员工编号汇总全部业务明细"
+                },
+                {
+                  "id": "ranking_logic",
+                  "quote": "给出总工数最高的前5位员工（同值按员工编号升序，固定5位）"
+                },
+                {
+                  "id": "ranking_constraint",
+                  "quote": "不要把员工单条记录排名当成员工汇总排名"
+                },
+                {
+                  "id": "output_fields",
+                  "quote": "列出员工编号、姓名、记录数、工数合计、金额(K)合计"
+                },
+                {
+                  "id": "output_format",
+                  "quote": "只在聊天回复，不生成文件，不联网"
+                },
+                {
+                  "id": "error_handling",
+                  "quote": "无法核算时明确说明或向我澄清，不要猜测"
+                }
+              ]
+            }
+          },
+          {
+            "guard": "skill_admission",
+            "action": "general",
+            "reason": {
+              "initial_candidate": "dept-summary",
+              "skill_id": null,
+              "use_default_rules": false,
+              "reason": "scope_mismatch",
+              "requirement_ids": [
+                "summary_scope",
+                "ranking_logic",
+                "ranking_constraint",
+                "output_fields",
+                "output_format",
+                "error_handling"
+              ]
+            }
+          },
+          {
+            "guard": "user_unit_confirmation",
+            "action": "accept",
+            "reason": {
+              "unit": null,
+              "sections": null
+            }
+          },
+          {
+            "guard": "analysis_presentation",
+            "action": "runtime_owned",
+            "reason": {
+              "format": "unparsed",
+              "model_text_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "matched_id_count": 0,
+              "runtime_id_count": 1,
+              "unknown_id_count": null,
+              "missing_id_count": 1
+            }
+          },
+          {
+            "guard": "spreadsheet_evidence",
+            "action": "accept",
+            "reason": null
+          }
+        ],
+        "modelResponses": [
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          }
+        ],
+        "answerValidation": {}
+      }
+    },
+    "content": "按请求执行后的结果如下：\n\n| 员工编号 | 员工姓名 | 部门名称 | BU名称 | 记录数 | 工数合计（小时） | 金额(K)合计 |\n|---|---|---|---|---|---|---|\n| S22019 | 林海宁 | 華東MIS | Uvance &amp; Solution Business Unit | 12 | 181.36 | 48.00707 |\n| S22014 | 杨烨 | 華東MIS | Uvance &amp; Solution Business Unit | 6 | 170.59 | 45.15617 |\n| S05066 | 蒋雪冬 | 華東MIS | Uvance &amp; Solution Business Unit | 22 | 166.35 | 59.69029 |\n| S19022 | 张森 | 華東MIS | Uvance &amp; Solution Business Unit | 9 | 166.35 | 59.6903 |\n| S14042 | 史洪斌 | 華東MIS | Uvance &amp; Solution Business Unit | 4 | 155.24 | 55.70377 |\n\n<details>\n<summary>查看来源与核算明细</summary>\n\n原始文件：[工数实绩明细\\_20261020134124.xlsx](/api/ai/chat/workspace-files/e7fce333-a8f4-4097-9a53-f0a4c729da46/%E5%B7%A5%E6%95%B0%E5%AE%9E%E7%BB%A9%E6%98%8E%E7%BB%86_20261020134124.xlsx)。\n\n来源：工数实绩明细_20261020134124.xlsx；证据 `4f3af32ba250d29a529b099b`。\n语义领域：generic，定义版本1；实际来源绑定和业务假设见下文。\n原件金额单位：K；换算单位见各指标。数值最多显示四位小数；核验使用未舍入值。\n范围：工数实绩明细!A5:R278；业务行274条，实际处理274条。覆盖声明范围，不含表头。\n\n| 计划指标 | 数值 | 单位 | 核算口径 |\n|---|---:|---|---|\n| S22019 - 林海宁 记录数 | 12 | number | 工数实绩明细：工数(小时)，第5至278行，记录计数 |\n| S22019 - 林海宁 工数合计 | 181.36 | 小时 | 工数实绩明细：工数(小时)，第5至278行，求和 |\n| S22019 - 林海宁 金额(K)合计 | 48.0071 | K | 工数实绩明细：金额(K)，第5至278行，求和 |\n| S22014 - 杨烨 记录数 | 6 | number | 工数实绩明细：工数(小时)，第5至278行，记录计数；来源单元格：工数实绩明细!O176、工数实绩明细!O177、工数实绩明细!O178、工数实绩明细!O179、工数实绩明细!O180、工数实绩明细!O181 |\n| S22014 - 杨烨 工数合计 | 170.59 | 小时 | 工数实绩明细：工数(小时)，第5至278行，求和；来源单元格：工数实绩明细!O176、工数实绩明细!O177、工数实绩明细!O178、工数实绩明细!O179、工数实绩明细!O180、工数实绩明细!O181 |\n| S22014 - 杨烨 金额(K)合计 | 45.1562 | K | 工数实绩明细：金额(K)，第5至278行，求和；来源单元格：工数实绩明细!P176、工数实绩明细!P177、工数实绩明细!P178、工数实绩明细!P179、工数实绩明细!P180、工数实绩明细!P181 |\n| S05066 - 蒋雪冬 记录数 | 22 | number | 工数实绩明细：工数(小时)，第5至278行，记录计数 |\n| S05066 - 蒋雪冬 工数合计 | 166.35 | 小时 | 工数实绩明细：工数(小时)，第5至278行，求和 |\n| S05066 - 蒋雪冬 金额(K)合计 | 59.6903 | K | 工数实绩明细：金额(K)，第5至278行，求和 |\n| S19022 - 张森 记录数 | 9 | number | 工数实绩明细：工数(小时)，第5至278行，记录计数 |\n| S19022 - 张森 工数合计 | 166.35 | 小时 | 工数实绩明细：工数(小时)，第5至278行，求和 |\n| S19022 - 张森 金额(K)合计 | 59.6903 | K | 工数实绩明细：金额(K)，第5至278行，求和 |\n| S14042 - 史洪斌 记录数 | 4 | number | 工数实绩明细：工数(小时)，第5至278行，记录计数；来源单元格：工数实绩明细!O82、工数实绩明细!O83、工数实绩明细!O84、工数实绩明细!O85 |\n| S14042 - 史洪斌 工数合计 | 155.24 | 小时 | 工数实绩明细：工数(小时)，第5至278行，求和；来源单元格：工数实绩明细!O82、工数实绩明细!O83、工数实绩明细!O84、工数实绩明细!O85 |\n| S14042 - 史洪斌 金额(K)合计 | 55.7038 | K | 工数实绩明细：金额(K)，第5至278行，求和；来源单元格：工数实绩明细!P82、工数实绩明细!P83、工数实绩明细!P84、工数实绩明细!P85 |\n\n</details>"
+  },
+  {
+    "case": "K04",
+    "status": "SAFE_RETRY",
+    "functional_complete": false,
+    "trace": {
+      "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+      "harness": "deepseek-harness",
+      "executed": true,
+      "durationMs": 63587,
+      "exitCode": 0,
+      "metrics": {
+        "ttftMs": 4110.72,
+        "durationMs": 63108.22,
+        "llmDurationMs": 32616.81,
+        "toolCallsCount": 4,
+        "toolCalls": [
+          {
+            "name": "aggregate_spreadsheet",
+            "params": {
+              "file_path": "工数实绩明细_20261020134124.xlsx",
+              "query": "{'source': {'sheet': '工数实绩明细', 'data_range': 'A5:R278', 'header_row': 4}, 'where': {}, 'group_by': ['部门编号', '部门名称', '有偿无..."
+            },
+            "status": "success",
+            "result_status": "success",
+            "evidence_id": "a6bcf18c1bb5f4b1b6d289ac",
+            "plan_hash": "b0079550785e5f6bc76d2145fd3187137cf67ceb961f36afce90fe197ad325d6",
+            "kind": "spreadsheet_analysis",
+            "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+          },
+          {
+            "name": "aggregate_spreadsheet",
+            "params": {
+              "file_path": "工数实绩明细_20261020134124.xlsx",
+              "query": "{'source': {'data_range': 'A5:R278', 'header_row': 4, 'sheet': '工数实绩明细'}, 'group_by': ['部门编号', '部门名称', '有偿无偿'], 'metrics..."
+            },
+            "status": "success",
+            "result_status": "success",
+            "evidence_id": "108242f6b1e6b6b28d168d7a",
+            "plan_hash": "4cc90afbaa278e91c8e0df3378e024f175bdc754f4a14c641f9d6dff0258fcc5",
+            "kind": "spreadsheet_analysis",
+            "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+          },
+          {
+            "name": "aggregate_spreadsheet",
+            "params": {
+              "file_path": "工数实绩明细_20261020134124.xlsx",
+              "tables": "[{'id': 't_workhours', 'sheet': '工数实绩明细', 'header_row': 4, 'data_range': 'A5:R278'}]",
+              "calculations": "[{'id': 'c_dept_wh', 'label': '部门工数合计', 'expression': {'aggregate': 'sum', 'table': 't_workhours', 'column': '工数(小时)', '..."
+            },
+            "status": "error",
+            "result_status": "error",
+            "error_code": "invalid_analysis_plan",
+            "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+          },
+          {
+            "name": "aggregate_spreadsheet",
+            "params": {
+              "file_path": "工数实绩明细_20261020134124.xlsx",
+              "query": "{'source': {'data_range': 'A5:R278', 'header_row': 4, 'sheet': '工数实绩明细'}, 'group_by': ['部门编号', '部门名称', '有偿无偿'], 'metrics..."
+            },
+            "status": "loop_intercepted"
+          }
+        ],
+        "llmInvocations": 8,
+        "tokens": {
+          "prompt_tokens": 105807,
+          "completion_tokens": 2128,
+          "total_tokens": 107935
+        },
+        "finishReason": "tool_calls",
+        "roundFinishReasons": [
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "tool_calls"
+        ],
+        "guardDecisions": [
+          {
+            "guard": "task_intent_attempt",
+            "action": "reject",
+            "reason": "当前指令判定为独立任务(standalone)，当前请求未指定调用技能；独立任务禁止继承历史对话中的技能，请将 skill_invocation 修改为 mode=\"none\", name=\"\", replace_defaults=false，且 requirements 只能引用当前请求中的原话"
+          },
+          {
+            "guard": "task_intent_review",
+            "action": "revise",
+            "reason": {
+              "output_mode": "conversation",
+              "task_mode": "execute"
+            }
+          },
+          {
+            "guard": "task_intent",
+            "action": "accept",
+            "reason": {
+              "instruction_relation": "standalone",
+              "task_mode": "execute",
+              "output_mode": "conversation",
+              "artifact_types": [],
+              "unit_confirmation": null,
+              "skill_invocation": {
+                "mode": "none",
+                "name": "",
+                "replace_defaults": false
+              },
+              "requirements": [
+                {
+                  "id": "req_1",
+                  "quote": "按部门编号及名称、有偿无偿交叉汇总工数和金额(K)"
+                },
+                {
+                  "id": "req_2",
+                  "quote": "列出全部部门的有偿/无偿工数、部门总工数、部门金额合计、有偿工数占部门工数比例"
+                },
+                {
+                  "id": "req_3",
+                  "quote": "最后核对部门汇总与全表合计一致。没有匹配记录时可记0，但必须实际核对"
+                },
+                {
+                  "id": "req_4",
+                  "quote": "只在聊天回复，不生成文件，不联网"
+                },
+                {
+                  "id": "req_5",
+                  "quote": "无法核算时明确说明或向我澄清，不要猜测"
+                }
+              ]
+            }
+          },
+          {
+            "guard": "skill_admission",
+            "action": "downgrade_to_general",
+            "reason": {
+              "skill_id": "dept-summary",
+              "reason": "multi_file_or_update_composite_task"
+            }
+          },
+          {
+            "guard": "skill_admission",
+            "action": "general",
+            "reason": {
+              "initial_candidate": "dept-summary",
+              "skill_id": null,
+              "use_default_rules": false,
+              "reason": "scope_mismatch",
+              "requirement_ids": [
+                "req_1",
+                "req_2",
+                "req_3",
+                "req_4",
+                "req_5"
+              ]
+            }
+          },
+          {
+            "guard": "user_unit_confirmation",
+            "action": "accept",
+            "reason": {
+              "unit": null,
+              "sections": null
+            }
+          },
+          {
+            "guard": "analysis_gate_review",
+            "action": "repair",
+            "reason": {
+              "action": "repair",
+              "category": "missing_data",
+              "complete": false,
+              "dismissed_issue_codes": [],
+              "supporting_fact_ids": [],
+              "reason": "执行计划失败且缺失关键聚合数据。原始意图要求计算'工数'，但系统错误地将其归类为源数据中不存在的列，导致执行中止。实际上表中存在'工数(小时)'列可用于计算工数。此外，用户要求的'部门总工数'（全部门合计）和'全表合计'的核对步骤尚未执行。",
+              "repair_instruction": "需要修正执行计划：1. 使用'工数(小时)'列进行SUM聚合以获取工数；2. 使用'金额(K)'列进行SUM聚合以获取金额；3. 分组维度为['部门编号', '部门名称', '有偿无偿']；4. 补充计算'有偿工数占部门工数比例'（需注意分母为0的情况）；5. 补充全表维度的总计计算，用于与各部门汇总核对。",
+              "user_question": "为了正确计算工数统计，请问您表格中的'工数'是指哪一列？是根据'工数(小时)'列直接汇总，还是需要结合其他字段（如职级单价）计算？另外，'有偿无偿'列的值是'有偿'/'无偿'还是其他特定标识？",
+              "revalidated": true
+            }
+          },
+          {
+            "guard": "analysis_presentation",
+            "action": "runtime_owned",
+            "reason": {
+              "format": "unparsed",
+              "model_text_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "matched_id_count": 0,
+              "runtime_id_count": 2,
+              "unknown_id_count": null,
+              "missing_id_count": 2
+            }
+          },
+          {
+            "guard": "spreadsheet_evidence",
+            "action": "reject",
+            "reason": "【门禁复核建议】：需要修正执行计划：1. 使用'工数(小时)'列进行SUM聚合以获取工数；2. 使用'金额(K)'列进行SUM聚合以获取金额；3. 分组维度为['部门编号', '部门名称', '有偿无偿']；4. 补充计算'有偿工数占部门工数比例'（需注意分母为0的情况）；5. 补充全表维度的总计计算，用于与各部门汇总核对。\n【提示】：部分请求指标在源数据中未定位到对应列。若无法基于现有字段推导计算，请向用户说明缺失列并请求确认口径，不要捏造数据。\n【程序任务状态】\n{\"complete\": false, \"domain\": \"generic\", \"evidence_ids\": [\"a6bcf18c1bb5f4b1b6d289ac\", \"108242f6b1e6b6b28d168d7a\"], \"missing_metrics\": [{\"metric_id\": null, \"name\": \"有偿无偿交叉汇总工数\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"全部部门的有偿/无偿工数\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"总工数\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"有偿工数占部门工数\", \"expected_type\": \"number\", \"source_column_exists\": false}], \"issues\": [{\"code\": \"required_metrics_missing\", \"metrics\": [{\"metric_id\": null, \"name\": \"有偿无偿交叉汇总工数\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"全部部门的有偿/无偿工数\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"总工数\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"有偿工数占部门工数\", \"expected_type\": \"number\", \"source_column_exists\": false}], \"message\": \"源数据中未定位到指标 有偿无偿交叉汇总工数、全部部门的有偿/无偿工数、总工数、有偿工数占部门工数 对应列。\"}, {\"code\": \"audit_checks_incomplete\", \"missing_checks\": [\"全部部门的有偿/无偿工数\", \"部门总工数\", \"部门金额合计\", \"有偿工数占部门工数比例，最后核对部门汇总与全表合计一致\"], \"message\": \"用户要求执行 4 项合规检查，当前尚有 4 项未在执行回执中覆盖：全部部门的有偿/无偿工数、部门总工数、部门金额合计、有偿工数占部门工数比例，最后核对部门汇总与全表合计一致。请补充对应检查项的查询或规则。\"}], \"available_sheets\": [], \"known_headers\": [\"BU名称\", \"BU编号\", \"WBS名称\", \"WBS编号\", \"WBS负责成本中心\", \"会计年度\", \"员工姓名\", \"员工编号\", \"员工职级\", \"客户名称\", \"工数(小时)\", \"工数年月\", \"有偿无偿\", \"直接间接\", \"职级单价\", \"部门名称\", \"部门编号\", \"金额(K)\"], \"gate_review\": {\"action\": \"repair\", \"category\": \"missing_data\", \"complete\": false, \"dismissed_issue_codes\": [], \"supporting_fact_ids\": [], \"reason\": \"执行计划失败且缺失关键聚合数据。原始意图要求计算'工数'，但系统错误地将其归类为源数据中不存在的列，导致执行中止。实际上表中存在'工数(小时)'列可用于计算工数。此外，用户要求的'部门总工数'（全部门合计）和'全表合计'的核对步骤尚未执行。\", \"repair_instruction\": \"需要修正执行计划：1. 使用'工数(小时)'列进行SUM聚合以获取工数；2. 使用'金额(K)'列进行SUM聚合以获取金额；3. 分组维度为['部门编号', '部门名称', '有偿无偿']；4. 补充计算'有偿工数占部门工数比例'（需注意分母为0的情况）；5. 补充全表维度的总计计算，用于与各部门汇总核对。\", \"user_question\": \"为了正确计算工数统计，请问您表格中的'工数'是指哪一列？是根据'工数(小时)'列直接汇总，还是需要结合其他字段（如职级单价）计算？另外，'有偿无偿'列的值是'有偿'/'无偿'还是其他特定标识？\", \"revalidated\": true}}\n只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。"
+          }
+        ],
+        "modelResponses": [
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          }
+        ],
+        "answerValidation": {}
+      }
+    },
+    "content": "本次分析尚未通过执行证据核验。\n\n### 分析未完成说明\n\n**无法完成计算的原因：**\n- 表格中缺少计算 【有偿无偿交叉汇总工数】、【全部部门的有偿/无偿工数】、【总工数】、【有偿工数占部门工数】 所需的原始列或对应数据。\n- 用户要求执行 4 项合规检查，当前尚有 4 项未在执行回执中覆盖：全部部门的有偿/无偿工数、部门总工数、部门金额合计、有偿工数占部门工数比例，最后核对部门汇总与全表合计一致。请补充对应检查项的查询或规则。\n- 执行阻碍：invalid_analysis_plan：calculations.c_dept_paid（部门有偿工数）：分组聚合需要aggregate、table、column、group_by\n\n**下一步处理建议：**\n1. 请补充提供包含 【有偿无偿交叉汇总工数】、【全部部门的有偿/无偿工数】、【总工数】、【有偿工数占部门工数】 对应原始列的工作表，或告知具体的计算口径与公式。\n2. 建议继续执行剩余检查项，或分步针对未完成的异常规则发起核对。\n\n尚未验证的项目不会被列为完成。"
+  },
+  {
+    "case": "K06",
+    "status": "SAFE_RETRY",
+    "functional_complete": false,
+    "trace": {
+      "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+      "harness": "deepseek-harness",
+      "executed": true,
+      "durationMs": 59715,
+      "exitCode": 0,
+      "metrics": {
+        "ttftMs": 8643.34,
+        "durationMs": 59202.09,
+        "llmDurationMs": 41276.97,
+        "toolCallsCount": 1,
+        "toolCalls": [
+          {
+            "name": "aggregate_spreadsheet",
+            "params": {
+              "file_path": "/workspace/工数实绩明细_20261020134124.xlsx",
+              "query": "{'source': {'sheet': '工数实绩明细', 'header_row': 4, 'data_range': 'A5:R278'}, 'metrics': [{'id': 'rec_count', 'label': '记录数'..."
+            },
+            "status": "success",
+            "result_status": "success",
+            "evidence_id": "9f9f5d50ec1db3a0fa4f0776",
+            "plan_hash": "0bc0ae4580afc652f1ab28c1c04f6d54c15bc1a3b032daab64191ac943c349b1",
+            "kind": "spreadsheet_analysis",
+            "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+          }
+        ],
+        "llmInvocations": 9,
+        "tokens": {
+          "prompt_tokens": 108681,
+          "completion_tokens": 2712,
+          "total_tokens": 111393
+        },
+        "finishReason": "stop",
+        "roundFinishReasons": [
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "stop",
+          "tool_calls",
+          "stop",
+          "stop"
+        ],
+        "guardDecisions": [
+          {
+            "guard": "task_intent_attempt",
+            "action": "reject",
+            "reason": "当前指令判定为独立任务(standalone)，当前请求未指定调用技能；独立任务禁止继承历史对话中的技能，请将 skill_invocation 修改为 mode=\"none\", name=\"\", replace_defaults=false，且 requirements 只能引用当前请求中的原话"
+          },
+          {
+            "guard": "task_intent_review",
+            "action": "revise",
+            "reason": {
+              "output_mode": "conversation",
+              "task_mode": "execute"
+            }
+          },
+          {
+            "guard": "task_intent",
+            "action": "accept",
+            "reason": {
+              "instruction_relation": "standalone",
+              "task_mode": "execute",
+              "output_mode": "conversation",
+              "artifact_types": [],
+              "unit_confirmation": null,
+              "section_confirmation": null,
+              "skill_invocation": {
+                "mode": "none",
+                "name": "",
+                "replace_defaults": false
+              },
+              "requirements": [
+                {
+                  "id": "req_1",
+                  "quote": "帮我按每天统计2026年10月工数"
+                },
+                {
+                  "id": "req_2",
+                  "quote": "如果没有每日日期请明确指出，不能把导出日期当每条记录日期，也不要编造日数据"
+                },
+                {
+                  "id": "req_3",
+                  "quote": "只在聊天回复，不生成文件，不联网"
+                },
+                {
+                  "id": "req_4",
+                  "quote": "无法核算时明确说明或向我澄清，不要猜测"
+                }
+              ]
+            }
+          },
+          {
+            "guard": "skill_admission_attempt",
+            "action": "reject",
+            "reason": "交付格式已由任务契约锁定为conversation，准入层严禁向用户追问交付格式；请直接按通用能力规划(action=general)或准入执行(action=use)"
+          },
+          {
+            "guard": "skill_admission",
+            "action": "use",
+            "reason": {
+              "initial_candidate": "xlsx",
+              "skill_id": "xlsx",
+              "use_default_rules": false,
+              "reason": "applicable",
+              "requirement_ids": [
+                "req_1",
+                "req_2",
+                "req_3",
+                "req_4"
+              ]
+            }
+          },
+          {
+            "guard": "user_unit_confirmation",
+            "action": "accept",
+            "reason": {
+              "unit": null,
+              "sections": null
+            }
+          },
+          {
+            "guard": "spreadsheet_evidence",
+            "action": "reject",
+            "reason": "【门禁复核建议】：无。因缺少关键分组维度信息，无法执行聚合操作。\n【提示】：部分请求指标在源数据中未定位到对应列。若无法基于现有字段推导计算，请向用户说明缺失列并请求确认口径，不要捏造数据。\n【程序任务状态】\n{\"complete\": false, \"domain\": \"generic\", \"evidence_ids\": [], \"missing_metrics\": [{\"metric_id\": null, \"name\": \"2026年10月工数\", \"expected_type\": \"number\", \"source_column_exists\": false}], \"issues\": [{\"code\": \"execution_evidence_missing\", \"message\": \"缺少本轮成功的分析执行证据。\"}, {\"code\": \"required_metrics_missing\", \"metrics\": [{\"metric_id\": null, \"name\": \"2026年10月工数\", \"expected_type\": \"number\", \"source_column_exists\": false}], \"message\": \"源数据中未定位到指标 2026年10月工数 对应列。\"}, {\"code\": \"grouping_incomplete\", \"message\": \"用户要求按【每天】分组统计各组指标，（当前仅计算了全表汇总，未完成各分组细分），尚未完成各分组的核心指标计算与覆盖。可在 aggregate 表达式中指定 group_by=\\\"每天\\\" 自动按各组汇总，或补充各组的聚合计划。\"}], \"available_sheets\": [], \"known_headers\": [\"BU名称\", \"BU编号\", \"WBS名称\", \"WBS编号\", \"WBS负责成本中心\", \"会计年度\", \"员工姓名\", \"员工编号\", \"员工职级\", \"客户名称\", \"工数(小时)\", \"工数年月\", \"有偿无偿\", \"直接间接\", \"职级单价\", \"部门名称\", \"部门编号\", \"金额(K)\"], \"gate_review\": {\"action\": \"repair\", \"category\": \"ambiguous_request\", \"complete\": false, \"dismissed_issue_codes\": [], \"supporting_fact_ids\": [], \"reason\": \"用户明确要求按'每天'分组统计2026年10月的工数，并强调不能混淆日期。当前表头包含'工数年月'（如202610）和'工数(小时)'，但没有任何字段（如日期、年月日等）支持'按天'分组。在无法从现有字段推断出具体每日日期的情况下，执行按天分组属于无法满足的要求，需向用户澄清是否有其他含具体日期的字段，或确认是否只需按月汇总。\", \"repair_instruction\": \"无。因缺少关键分组维度信息，无法执行聚合操作。\", \"user_question\": \"表中只有'工数年月'（例如202610），没有具体的'日期'字段。请问您是指按月统计2026年10月的总工数，还是源数据中还有其他包含具体日期的字段（如日期、填报日期等）可以用于按天分组？\", \"revalidated\": true}}\n只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。"
+          },
+          {
+            "guard": "spreadsheet_evidence",
+            "action": "reject",
+            "reason": "【门禁复核建议】：由于缺失'日期'字段，无法执行按天分组。建议撤销'按天分组'的告警，改为向用户澄清统计粒度。\n【程序任务状态】\n{\"complete\": false, \"domain\": \"generic\", \"evidence_ids\": [\"9f9f5d50ec1db3a0fa4f0776\"], \"missing_metrics\": [{\"metric_id\": null, \"name\": \"2026年10月工数\", \"expected_type\": \"number\", \"source_column_exists\": false}], \"issues\": [{\"code\": \"grouping_incomplete\", \"message\": \"用户要求按【每天】分组统计各组指标，（当前仅计算了全表汇总，未完成各分组细分），尚未完成各分组的核心指标计算与覆盖。可在 aggregate 表达式中指定 group_by=\\\"每天\\\" 自动按各组汇总，或补充各组的聚合计划。\"}], \"available_sheets\": [], \"known_headers\": [\"BU名称\", \"BU编号\", \"WBS名称\", \"WBS编号\", \"WBS负责成本中心\", \"会计年度\", \"员工姓名\", \"员工编号\", \"员工职级\", \"客户名称\", \"工数(小时)\", \"工数年月\", \"有偿无偿\", \"直接间接\", \"职级单价\", \"部门名称\", \"部门编号\", \"金额(K)\"], \"gate_review\": {\"action\": \"repair\", \"category\": \"ambiguous_request\", \"complete\": false, \"dismissed_issue_codes\": [\"required_metrics_missing\"], \"supporting_fact_ids\": [\"rec_count\", \"total_wh\"], \"reason\": \"用户要求按'每天'统计，但原始数据表头中仅有'工数年月'（如'202610'）而无具体'日期'字段。系统无法将月度聚合数据拆解为每日数据，因此需要向用户确认统计粒度是否可接受为'按月'或'按WBS'，而非强行编造每日数据。\", \"repair_instruction\": \"由于缺失'日期'字段，无法执行按天分组。建议撤销'按天分组'的告警，改为向用户澄清统计粒度。\", \"user_question\": \"原始表格中只有'工数年月'（如202610），没有具体的'日期'列，无法拆解到每一天。请问您希望改为'按月统计'（汇总整个10月），还是'按WBS/项目统计'？\", \"revalidated\": true}}\n只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。"
+          },
+          {
+            "guard": "spreadsheet_evidence",
+            "action": "reject",
+            "reason": "【门禁复核建议】：由于缺失'日期'字段，无法执行按天分组。建议撤销'按天分组'的告警，改为向用户澄清统计粒度。\n【程序任务状态】\n{\"complete\": false, \"domain\": \"generic\", \"evidence_ids\": [\"9f9f5d50ec1db3a0fa4f0776\"], \"missing_metrics\": [{\"metric_id\": null, \"name\": \"2026年10月工数\", \"expected_type\": \"number\", \"source_column_exists\": false}], \"issues\": [{\"code\": \"grouping_incomplete\", \"message\": \"用户要求按【每天】分组统计各组指标，（当前仅计算了全表汇总，未完成各分组细分），尚未完成各分组的核心指标计算与覆盖。可在 aggregate 表达式中指定 group_by=\\\"每天\\\" 自动按各组汇总，或补充各组的聚合计划。\"}], \"available_sheets\": [], \"known_headers\": [\"BU名称\", \"BU编号\", \"WBS名称\", \"WBS编号\", \"WBS负责成本中心\", \"会计年度\", \"员工姓名\", \"员工编号\", \"员工职级\", \"客户名称\", \"工数(小时)\", \"工数年月\", \"有偿无偿\", \"直接间接\", \"职级单价\", \"部门名称\", \"部门编号\", \"金额(K)\"], \"gate_review\": {\"action\": \"repair\", \"category\": \"ambiguous_request\", \"complete\": false, \"dismissed_issue_codes\": [\"required_metrics_missing\"], \"supporting_fact_ids\": [\"rec_count\", \"total_wh\"], \"reason\": \"用户要求按'每天'统计，但原始数据表头中仅有'工数年月'（如'202610'）而无具体'日期'字段。系统无法将月度聚合数据拆解为每日数据，因此需要向用户确认统计粒度是否可接受为'按月'或'按WBS'，而非强行编造每日数据。\", \"repair_instruction\": \"由于缺失'日期'字段，无法执行按天分组。建议撤销'按天分组'的告警，改为向用户澄清统计粒度。\", \"user_question\": \"原始表格中只有'工数年月'（如202610），没有具体的'日期'列，无法拆解到每一天。请问您希望改为'按月统计'（汇总整个10月），还是'按WBS/项目统计'？\", \"revalidated\": true}}\n只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。"
+          },
+          {
+            "guard": "analysis_gate_review",
+            "action": "repair",
+            "reason": {
+              "action": "repair",
+              "category": "ambiguous_request",
+              "complete": false,
+              "dismissed_issue_codes": [
+                "required_metrics_missing"
+              ],
+              "supporting_fact_ids": [
+                "rec_count",
+                "total_wh"
+              ],
+              "reason": "用户要求按'每天'统计，但原始数据表头中仅有'工数年月'（如'202610'）而无具体'日期'字段。系统无法将月度聚合数据拆解为每日数据，因此需要向用户确认统计粒度是否可接受为'按月'或'按WBS'，而非强行编造每日数据。",
+              "repair_instruction": "由于缺失'日期'字段，无法执行按天分组。建议撤销'按天分组'的告警，改为向用户澄清统计粒度。",
+              "user_question": "原始表格中只有'工数年月'（如202610），没有具体的'日期'列，无法拆解到每一天。请问您希望改为'按月统计'（汇总整个10月），还是'按WBS/项目统计'？",
+              "revalidated": true
+            }
+          },
+          {
+            "guard": "analysis_presentation",
+            "action": "runtime_owned",
+            "reason": {
+              "format": "unparsed",
+              "model_text_hash": "7001a9e81e4f308550dacbb0ab5d271cbf99b3af5db28a382703452ed24393f3",
+              "matched_id_count": 0,
+              "runtime_id_count": 1,
+              "unknown_id_count": null,
+              "missing_id_count": 1
+            }
+          },
+          {
+            "guard": "spreadsheet_evidence",
+            "action": "reject",
+            "reason": "【门禁复核建议】：由于缺失'日期'字段，无法执行按天分组。建议撤销'按天分组'的告警，改为向用户澄清统计粒度。\n【程序任务状态】\n{\"complete\": false, \"domain\": \"generic\", \"evidence_ids\": [\"9f9f5d50ec1db3a0fa4f0776\"], \"missing_metrics\": [{\"metric_id\": null, \"name\": \"2026年10月工数\", \"expected_type\": \"number\", \"source_column_exists\": false}], \"issues\": [{\"code\": \"grouping_incomplete\", \"message\": \"用户要求按【每天】分组统计各组指标，（当前仅计算了全表汇总，未完成各分组细分），尚未完成各分组的核心指标计算与覆盖。可在 aggregate 表达式中指定 group_by=\\\"每天\\\" 自动按各组汇总，或补充各组的聚合计划。\"}], \"available_sheets\": [], \"known_headers\": [\"BU名称\", \"BU编号\", \"WBS名称\", \"WBS编号\", \"WBS负责成本中心\", \"会计年度\", \"员工姓名\", \"员工编号\", \"员工职级\", \"客户名称\", \"工数(小时)\", \"工数年月\", \"有偿无偿\", \"直接间接\", \"职级单价\", \"部门名称\", \"部门编号\", \"金额(K)\"], \"gate_review\": {\"action\": \"repair\", \"category\": \"ambiguous_request\", \"complete\": false, \"dismissed_issue_codes\": [\"required_metrics_missing\"], \"supporting_fact_ids\": [\"rec_count\", \"total_wh\"], \"reason\": \"用户要求按'每天'统计，但原始数据表头中仅有'工数年月'（如'202610'）而无具体'日期'字段。系统无法将月度聚合数据拆解为每日数据，因此需要向用户确认统计粒度是否可接受为'按月'或'按WBS'，而非强行编造每日数据。\", \"repair_instruction\": \"由于缺失'日期'字段，无法执行按天分组。建议撤销'按天分组'的告警，改为向用户澄清统计粒度。\", \"user_question\": \"原始表格中只有'工数年月'（如202610），没有具体的'日期'列，无法拆解到每一天。请问您希望改为'按月统计'（汇总整个10月），还是'按WBS/项目统计'？\", \"revalidated\": true}}\n只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。"
+          }
+        ],
+        "modelResponses": [
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 762,
+            "cleanChars": 762,
+            "rawSha256": "1f352caf321062d8d7e549191f95986d376e9e4fbac5d98a43cc6f1275537b7c",
+            "cleanSha256": "1f352caf321062d8d7e549191f95986d376e9e4fbac5d98a43cc6f1275537b7c",
+            "finishReason": "stop",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 810,
+            "cleanChars": 810,
+            "rawSha256": "10ff77315760093d8a5b3b2d3dba1143c2bb7ff70f6b2fc2418f5c91e618f500",
+            "cleanSha256": "10ff77315760093d8a5b3b2d3dba1143c2bb7ff70f6b2fc2418f5c91e618f500",
+            "finishReason": "stop",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 727,
+            "cleanChars": 727,
+            "rawSha256": "7001a9e81e4f308550dacbb0ab5d271cbf99b3af5db28a382703452ed24393f3",
+            "cleanSha256": "7001a9e81e4f308550dacbb0ab5d271cbf99b3af5db28a382703452ed24393f3",
+            "finishReason": "stop",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          }
+        ],
+        "answerValidation": {}
+      }
+    },
+    "content": "本次分析尚未通过执行证据核验。\n\n### 分析未完成说明\n\n**无法完成计算的原因：**\n- 表格中缺少计算 【2026年10月工数】 所需的原始列或对应数据。\n- 本次尚未完成您要求的各分组统计。\n\n**下一步处理建议：**\n1. 请补充提供包含 【2026年10月工数】 对应原始列的工作表，或告知具体的计算口径与公式。\n2. 可以重试分组统计；现有数据不会被当作完整分组结果。\n\n尚未验证的项目不会被列为完成。"
+  },
+  {
+    "case": "K07",
+    "status": "SAFE_RETRY",
+    "functional_complete": false,
+    "trace": {
+      "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+      "harness": "deepseek-harness",
+      "executed": true,
+      "durationMs": 48901,
+      "exitCode": 0,
+      "metrics": {
+        "ttftMs": 5316.69,
+        "durationMs": 48397.52,
+        "llmDurationMs": 29597.68,
+        "toolCallsCount": 1,
+        "toolCalls": [
+          {
+            "name": "aggregate_spreadsheet",
+            "params": {
+              "file_path": "工数实绩明细_20261020134124.xlsx",
+              "query": "{'source': {'sheet': '工数实绩明细', 'header_row': 4, 'data_range': 'A5:R278'}, 'where': {'field': '员工编号', 'op': 'in', 'value'..."
+            },
+            "status": "error",
+            "result_status": "error",
+            "error_code": "invalid_analysis_plan",
+            "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+          }
+        ],
+        "llmInvocations": 8,
+        "tokens": {
+          "prompt_tokens": 82421,
+          "completion_tokens": 1990,
+          "total_tokens": 84411
+        },
+        "finishReason": "stop",
+        "roundFinishReasons": [
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "stop",
+          "tool_calls",
+          "stop",
+          "stop"
+        ],
+        "guardDecisions": [
+          {
+            "guard": "task_intent_attempt",
+            "action": "reject",
+            "reason": "当前指令判定为独立任务(standalone)，当前请求未指定调用技能；独立任务禁止继承历史对话中的技能，请将 skill_invocation 修改为 mode=\"none\", name=\"\", replace_defaults=false，且 requirements 只能引用当前请求中的原话"
+          },
+          {
+            "guard": "task_intent_review",
+            "action": "accept",
+            "reason": {
+              "output_mode": "conversation",
+              "task_mode": "execute"
+            }
+          },
+          {
+            "guard": "task_intent",
+            "action": "accept",
+            "reason": {
+              "instruction_relation": "standalone",
+              "task_mode": "execute",
+              "output_mode": "conversation",
+              "artifact_types": [],
+              "unit_confirmation": null,
+              "skill_invocation": {
+                "mode": "none",
+                "name": "",
+                "replace_defaults": false
+              },
+              "requirements": [
+                {
+                  "id": "req_1",
+                  "quote": "分别查询员工编号S22009、S17028和E2E_NOT_FOUND"
+                },
+                {
+                  "id": "req_2",
+                  "quote": "给出每人的记录条数、总工数及金额(K)合计"
+                },
+                {
+                  "id": "req_3",
+                  "quote": "编号精确匹配"
+                },
+                {
+                  "id": "req_4",
+                  "quote": "找不到时明确未找到，不要编造姓名或记录"
+                },
+                {
+                  "id": "req_5",
+                  "quote": "只在聊天回复，不生成文件，不联网"
+                },
+                {
+                  "id": "req_6",
+                  "quote": "无法核算时明确说明或向我澄清，不要猜测"
+                }
+              ]
+            }
+          },
+          {
+            "guard": "skill_admission",
+            "action": "general",
+            "reason": {
+              "initial_candidate": "dept-summary",
+              "skill_id": null,
+              "use_default_rules": false,
+              "reason": "scope_mismatch",
+              "requirement_ids": [
+                "req_1",
+                "req_2",
+                "req_3",
+                "req_4",
+                "req_5",
+                "req_6"
+              ]
+            }
+          },
+          {
+            "guard": "user_unit_confirmation",
+            "action": "accept",
+            "reason": {
+              "unit": null,
+              "sections": null
+            }
+          },
+          {
+            "guard": "spreadsheet_evidence",
+            "action": "reject",
+            "reason": "【门禁复核建议】：需调用数据查询与聚合工具（如 aggregate_spreadsheet 或 query_table），设置过滤条件：员工编号 IN ('S22009', 'S17028', 'E2E_NOT_FOUND')。聚合指标要求：1. 记录条数：COUNT(*)；2. 总工数：SUM(工数(小时))；3. 金额合计：SUM(金额(K))。注意：对于 'E2E_NOT_FOUND' 若未命中数据，需确保返回结果能明确标识‘未找到’状态（如计数为0或NULL）。\n【提示】：部分请求指标在源数据中未定位到对应列。若无法基于现有字段推导计算，请向用户说明缺失列并请求确认口径，不要捏造数据。\n【程序任务状态】\n{\"complete\": false, \"domain\": \"generic\", \"evidence_ids\": [], \"missing_metrics\": [{\"metric_id\": null, \"name\": \"总工数\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"金额\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"金额(K)\"]}], \"issues\": [{\"code\": \"execution_evidence_missing\", \"message\": \"缺少本轮成功的分析执行证据。\"}, {\"code\": \"required_metrics_missing\", \"metrics\": [{\"metric_id\": null, \"name\": \"总工数\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"金额\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"金额(K)\"]}], \"message\": \"分析计划遗漏所需指标计算：金额，请调用 aggregate_spreadsheet 补充聚合表达式（如 sum）；源数据中未定位到指标 总工数 对应列。\"}, {\"code\": \"entity_filter_missing\", \"entities\": [\"S22009\"], \"message\": \"用户明确要求查询特定实体【S22009】的数据，当前分析计划未配置针对【S22009】的过滤条件（filters），严禁用未过滤的全表汇总数据替代单人/单实体指标！请在 aggregate 或 query 的 filters 中指定针对实体列（如员工编号、员工姓名等）的过滤条件并补充计算。\"}], \"available_sheets\": [], \"known_headers\": [\"BU名称\", \"BU编号\", \"WBS名称\", \"WBS编号\", \"WBS负责成本中心\", \"会计年度\", \"员工姓名\", \"员工编号\", \"员工职级\", \"客户名称\", \"工数(小时)\", \"工数年月\", \"有偿无偿\", \"直接间接\", \"职级单价\", \"部门名称\", \"部门编号\", \"金额(K)\"], \"gate_review\": {\"action\": \"repair\", \"category\": \"execution_incomplete\", \"complete\": false, \"dismissed_issue_codes\": [], \"supporting_fact_ids\": [], \"reason\": \"当前执行计划为空，且系统检测到缺失必要的工具调用。根据用户意图，需要针对特定员工编号（S22009, S17028, E2E_NOT_FOUND）进行精确匹配查询并聚合统计。现有证据显示：1. 缺少针对实体过滤（WHERE）的执行步骤；2. 缺少对'记录条数'、'总工数'、'金额(K)'三个指标进行聚合计算（COUNT, SUM）的执行步骤。必须补全这些工具调用以生成事实数据。\", \"repair_instruction\": \"需调用数据查询与聚合工具（如 aggregate_spreadsheet 或 query_table），设置过滤条件：员工编号 IN ('S22009', 'S17028', 'E2E_NOT_FOUND')。聚合指标要求：1. 记录条数：COUNT(*)；2. 总工数：SUM(工数(小时))；3. 金额合计：SUM(金额(K))。注意：对于 'E2E_NOT_FOUND' 若未命中数据，需确保返回结果能明确标识‘未找到’状态（如计数为0或NULL）。\", \"user_question\": \"\"}}\n只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。"
+          },
+          {
+            "guard": "spreadsheet_evidence",
+            "action": "reject",
+            "reason": "【门禁复核建议】：1. 构建包含WHERE子句的查询计划，过滤条件为 `员工编号` IN ('S22009', 'S17028', 'E2E_NOT_FOUND')。2. 聚合指标：`COUNT(*)` 作为记录条数，`SUM(工数(小时))` 作为总工数（需注意空值处理），`SUM(金额(K))` 作为金额合计。3. 使用 `aggregate_spreadsheet` 或类似查询工具执行该计划。4. 对于E2E_NOT_FOUND，若表中无对应行，应在结果中明确标识为‘未找到’或0记录，不得编造数据。\n【提示】：部分请求指标在源数据中未定位到对应列。若无法基于现有字段推导计算，请向用户说明缺失列并请求确认口径，不要捏造数据。\n【程序任务状态】\n{\"complete\": false, \"domain\": \"generic\", \"evidence_ids\": [], \"missing_metrics\": [{\"metric_id\": null, \"name\": \"总工数\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"金额\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"金额(K)\"]}], \"issues\": [{\"code\": \"execution_evidence_missing\", \"message\": \"缺少本轮成功的分析执行证据。\"}, {\"code\": \"required_metrics_missing\", \"metrics\": [{\"metric_id\": null, \"name\": \"总工数\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"金额\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"金额(K)\"]}], \"message\": \"分析计划遗漏所需指标计算：金额，请调用 aggregate_spreadsheet 补充聚合表达式（如 sum）；源数据中未定位到指标 总工数 对应列。\"}, {\"code\": \"entity_filter_missing\", \"entities\": [\"S22009\"], \"message\": \"用户明确要求查询特定实体【S22009】的数据，当前分析计划未配置针对【S22009】的过滤条件（filters），严禁用未过滤的全表汇总数据替代单人/单实体指标！请在 aggregate 或 query 的 filters 中指定针对实体列（如员工编号、员工姓名等）的过滤条件并补充计算。\"}], \"available_sheets\": [], \"known_headers\": [\"BU名称\", \"BU编号\", \"WBS名称\", \"WBS编号\", \"WBS负责成本中心\", \"会计年度\", \"员工姓名\", \"员工编号\", \"员工职级\", \"客户名称\", \"工数(小时)\", \"工数年月\", \"有偿无偿\", \"直接间接\", \"职级单价\", \"部门名称\", \"部门编号\", \"金额(K)\"], \"gate_review\": {\"action\": \"repair\", \"category\": \"execution_incomplete\", \"complete\": false, \"dismissed_issue_codes\": [], \"supporting_fact_ids\": [], \"reason\": \"当前执行上下文缺少有效的分析计划（plans为空）且存在语法错误的尝试记录。用户明确要求针对特定员工编号（S22009, S17028, E2E_NOT_FOUND）进行精确筛选和聚合统计（记录条数、总工数、金额合计），但现有的‘issues’指出分析计划遗漏了针对这些实体的过滤条件（filters）以及必要的聚合逻辑。工具尚未执行，无法提供事实数据，属于典型的执行未完成/计划缺失，需要重新生成并执行正确的查询计划。\", \"repair_instruction\": \"1. 构建包含WHERE子句的查询计划，过滤条件为 `员工编号` IN ('S22009', 'S17028', 'E2E_NOT_FOUND')。2. 聚合指标：`COUNT(*)` 作为记录条数，`SUM(工数(小时))` 作为总工数（需注意空值处理），`SUM(金额(K))` 作为金额合计。3. 使用 `aggregate_spreadsheet` 或类似查询工具执行该计划。4. 对于E2E_NOT_FOUND，若表中无对应行，应在结果中明确标识为‘未找到’或0记录，不得编造数据。\", \"user_question\": \"\"}}\n只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。"
+          },
+          {
+            "guard": "spreadsheet_evidence",
+            "action": "reject",
+            "reason": "【门禁复核建议】：1. 构建包含WHERE子句的查询计划，过滤条件为 `员工编号` IN ('S22009', 'S17028', 'E2E_NOT_FOUND')。2. 聚合指标：`COUNT(*)` 作为记录条数，`SUM(工数(小时))` 作为总工数（需注意空值处理），`SUM(金额(K))` 作为金额合计。3. 使用 `aggregate_spreadsheet` 或类似查询工具执行该计划。4. 对于E2E_NOT_FOUND，若表中无对应行，应在结果中明确标识为‘未找到’或0记录，不得编造数据。\n【提示】：部分请求指标在源数据中未定位到对应列。若无法基于现有字段推导计算，请向用户说明缺失列并请求确认口径，不要捏造数据。\n【程序任务状态】\n{\"complete\": false, \"domain\": \"generic\", \"evidence_ids\": [], \"missing_metrics\": [{\"metric_id\": null, \"name\": \"总工数\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"金额\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"金额(K)\"]}], \"issues\": [{\"code\": \"execution_evidence_missing\", \"message\": \"缺少本轮成功的分析执行证据。\"}, {\"code\": \"required_metrics_missing\", \"metrics\": [{\"metric_id\": null, \"name\": \"总工数\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"金额\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"金额(K)\"]}], \"message\": \"分析计划遗漏所需指标计算：金额，请调用 aggregate_spreadsheet 补充聚合表达式（如 sum）；源数据中未定位到指标 总工数 对应列。\"}, {\"code\": \"entity_filter_missing\", \"entities\": [\"S22009\"], \"message\": \"用户明确要求查询特定实体【S22009】的数据，当前分析计划未配置针对【S22009】的过滤条件（filters），严禁用未过滤的全表汇总数据替代单人/单实体指标！请在 aggregate 或 query 的 filters 中指定针对实体列（如员工编号、员工姓名等）的过滤条件并补充计算。\"}], \"available_sheets\": [], \"known_headers\": [\"BU名称\", \"BU编号\", \"WBS名称\", \"WBS编号\", \"WBS负责成本中心\", \"会计年度\", \"员工姓名\", \"员工编号\", \"员工职级\", \"客户名称\", \"工数(小时)\", \"工数年月\", \"有偿无偿\", \"直接间接\", \"职级单价\", \"部门名称\", \"部门编号\", \"金额(K)\"], \"gate_review\": {\"action\": \"repair\", \"category\": \"execution_incomplete\", \"complete\": false, \"dismissed_issue_codes\": [], \"supporting_fact_ids\": [], \"reason\": \"当前执行上下文缺少有效的分析计划（plans为空）且存在语法错误的尝试记录。用户明确要求针对特定员工编号（S22009, S17028, E2E_NOT_FOUND）进行精确筛选和聚合统计（记录条数、总工数、金额合计），但现有的‘issues’指出分析计划遗漏了针对这些实体的过滤条件（filters）以及必要的聚合逻辑。工具尚未执行，无法提供事实数据，属于典型的执行未完成/计划缺失，需要重新生成并执行正确的查询计划。\", \"repair_instruction\": \"1. 构建包含WHERE子句的查询计划，过滤条件为 `员工编号` IN ('S22009', 'S17028', 'E2E_NOT_FOUND')。2. 聚合指标：`COUNT(*)` 作为记录条数，`SUM(工数(小时))` 作为总工数（需注意空值处理），`SUM(金额(K))` 作为金额合计。3. 使用 `aggregate_spreadsheet` 或类似查询工具执行该计划。4. 对于E2E_NOT_FOUND，若表中无对应行，应在结果中明确标识为‘未找到’或0记录，不得编造数据。\", \"user_question\": \"\"}}\n只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。"
+          },
+          {
+            "guard": "analysis_gate_review",
+            "action": "repair",
+            "reason": {
+              "action": "repair",
+              "category": "execution_incomplete",
+              "complete": false,
+              "dismissed_issue_codes": [],
+              "supporting_fact_ids": [],
+              "reason": "当前执行上下文缺少有效的分析计划（plans为空）且存在语法错误的尝试记录。用户明确要求针对特定员工编号（S22009, S17028, E2E_NOT_FOUND）进行精确筛选和聚合统计（记录条数、总工数、金额合计），但现有的‘issues’指出分析计划遗漏了针对这些实体的过滤条件（filters）以及必要的聚合逻辑。工具尚未执行，无法提供事实数据，属于典型的执行未完成/计划缺失，需要重新生成并执行正确的查询计划。",
+              "repair_instruction": "1. 构建包含WHERE子句的查询计划，过滤条件为 `员工编号` IN ('S22009', 'S17028', 'E2E_NOT_FOUND')。2. 聚合指标：`COUNT(*)` 作为记录条数，`SUM(工数(小时))` 作为总工数（需注意空值处理），`SUM(金额(K))` 作为金额合计。3. 使用 `aggregate_spreadsheet` 或类似查询工具执行该计划。4. 对于E2E_NOT_FOUND，若表中无对应行，应在结果中明确标识为‘未找到’或0记录，不得编造数据。",
+              "user_question": ""
+            }
+          },
+          {
+            "guard": "analysis_presentation",
+            "action": "runtime_owned",
+            "reason": {
+              "format": "unparsed",
+              "model_text_hash": "f7c2525ca4ab3154641ae3a1fc5598d7374b6e8d743755bcbeb0875beeb0a111",
+              "matched_id_count": 0,
+              "runtime_id_count": 0,
+              "unknown_id_count": null,
+              "missing_id_count": 0
+            }
+          },
+          {
+            "guard": "spreadsheet_evidence",
+            "action": "reject",
+            "reason": "【门禁复核建议】：1. 构建包含WHERE子句的查询计划，过滤条件为 `员工编号` IN ('S22009', 'S17028', 'E2E_NOT_FOUND')。2. 聚合指标：`COUNT(*)` 作为记录条数，`SUM(工数(小时))` 作为总工数（需注意空值处理），`SUM(金额(K))` 作为金额合计。3. 使用 `aggregate_spreadsheet` 或类似查询工具执行该计划。4. 对于E2E_NOT_FOUND，若表中无对应行，应在结果中明确标识为‘未找到’或0记录，不得编造数据。\n【提示】：部分请求指标在源数据中未定位到对应列。若无法基于现有字段推导计算，请向用户说明缺失列并请求确认口径，不要捏造数据。\n【程序任务状态】\n{\"complete\": false, \"domain\": \"generic\", \"evidence_ids\": [], \"missing_metrics\": [{\"metric_id\": null, \"name\": \"总工数\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"金额\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"金额(K)\"]}], \"issues\": [{\"code\": \"execution_evidence_missing\", \"message\": \"缺少本轮成功的分析执行证据。\"}, {\"code\": \"required_metrics_missing\", \"metrics\": [{\"metric_id\": null, \"name\": \"总工数\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"金额\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"金额(K)\"]}], \"message\": \"分析计划遗漏所需指标计算：金额，请调用 aggregate_spreadsheet 补充聚合表达式（如 sum）；源数据中未定位到指标 总工数 对应列。\"}, {\"code\": \"entity_filter_missing\", \"entities\": [\"S22009\"], \"message\": \"用户明确要求查询特定实体【S22009】的数据，当前分析计划未配置针对【S22009】的过滤条件（filters），严禁用未过滤的全表汇总数据替代单人/单实体指标！请在 aggregate 或 query 的 filters 中指定针对实体列（如员工编号、员工姓名等）的过滤条件并补充计算。\"}], \"available_sheets\": [], \"known_headers\": [\"BU名称\", \"BU编号\", \"WBS名称\", \"WBS编号\", \"WBS负责成本中心\", \"会计年度\", \"员工姓名\", \"员工编号\", \"员工职级\", \"客户名称\", \"工数(小时)\", \"工数年月\", \"有偿无偿\", \"直接间接\", \"职级单价\", \"部门名称\", \"部门编号\", \"金额(K)\"], \"gate_review\": {\"action\": \"repair\", \"category\": \"execution_incomplete\", \"complete\": false, \"dismissed_issue_codes\": [], \"supporting_fact_ids\": [], \"reason\": \"当前执行上下文缺少有效的分析计划（plans为空）且存在语法错误的尝试记录。用户明确要求针对特定员工编号（S22009, S17028, E2E_NOT_FOUND）进行精确筛选和聚合统计（记录条数、总工数、金额合计），但现有的‘issues’指出分析计划遗漏了针对这些实体的过滤条件（filters）以及必要的聚合逻辑。工具尚未执行，无法提供事实数据，属于典型的执行未完成/计划缺失，需要重新生成并执行正确的查询计划。\", \"repair_instruction\": \"1. 构建包含WHERE子句的查询计划，过滤条件为 `员工编号` IN ('S22009', 'S17028', 'E2E_NOT_FOUND')。2. 聚合指标：`COUNT(*)` 作为记录条数，`SUM(工数(小时))` 作为总工数（需注意空值处理），`SUM(金额(K))` 作为金额合计。3. 使用 `aggregate_spreadsheet` 或类似查询工具执行该计划。4. 对于E2E_NOT_FOUND，若表中无对应行，应在结果中明确标识为‘未找到’或0记录，不得编造数据。\", \"user_question\": \"\"}}\n只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。"
+          }
+        ],
+        "modelResponses": [
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 417,
+            "cleanChars": 417,
+            "rawSha256": "f7c2525ca4ab3154641ae3a1fc5598d7374b6e8d743755bcbeb0875beeb0a111",
+            "cleanSha256": "f7c2525ca4ab3154641ae3a1fc5598d7374b6e8d743755bcbeb0875beeb0a111",
+            "finishReason": "stop",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 417,
+            "cleanChars": 417,
+            "rawSha256": "f7c2525ca4ab3154641ae3a1fc5598d7374b6e8d743755bcbeb0875beeb0a111",
+            "cleanSha256": "f7c2525ca4ab3154641ae3a1fc5598d7374b6e8d743755bcbeb0875beeb0a111",
+            "finishReason": "stop",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 417,
+            "cleanChars": 417,
+            "rawSha256": "f7c2525ca4ab3154641ae3a1fc5598d7374b6e8d743755bcbeb0875beeb0a111",
+            "cleanSha256": "f7c2525ca4ab3154641ae3a1fc5598d7374b6e8d743755bcbeb0875beeb0a111",
+            "finishReason": "stop",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          }
+        ],
+        "answerValidation": {}
+      }
+    },
+    "content": "本次分析尚未通过执行证据核验。\n\n### 分析未完成说明\n\n**无法完成计算的原因：**\n- 表格中已存在对应列（【金额(K)】），但本轮分析计划尚未执行对 【金额】 的聚合计算。\n- 表格中缺少计算 【总工数】 所需的原始列或对应数据。\n- 本次还没有取得可核验的计算结果，暂不能判断是否缺少业务数据。\n- 用户明确要求查询特定实体【S22009】的数据，当前分析计划未配置针对【S22009】的过滤条件（filters），严禁用未过滤的全表汇总数据替代单人/单实体指标！请在 aggregate 或 query 的 filters 中指定针对实体列（如员工编号、员工姓名等）的过滤条件并补充计算。\n- 执行阻碍：invalid_analysis_plan：plan：in 条件必须包含非空的 values 数组\n\n**下一步处理建议：**\n1. 本轮执行尚未完成对 【金额】 的聚合计算，可重新提交分析请求以生成汇总事实。\n2. 请补充提供包含 【总工数】 对应原始列的工作表，或告知具体的计算口径与公式。\n3. 可以重试本次分析；系统需要先完成工作表与字段核对。\n\n尚未验证的项目不会被列为完成。"
+  },
+  {
+    "case": "K08",
+    "status": "WRONG_DATA",
+    "functional_complete": false,
+    "trace": {
+      "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+      "harness": "deepseek-harness",
+      "executed": true,
+      "durationMs": 82733,
+      "exitCode": 0,
+      "metrics": {
+        "ttftMs": 16084.7,
+        "durationMs": 82224.26,
+        "llmDurationMs": 65250.15,
+        "toolCallsCount": 1,
+        "toolCalls": [
+          {
+            "name": "bash",
+            "params": {
+              "cmd": "python3 << 'PYTHON_SCRIPT'\nimport csv\nimport openpyxl\nfrom openpyxl import load_workbook\n\n# 加载原 Excel 文件\ninput_file = '/..."
+            },
+            "status": "success",
+            "result_status": "success",
+            "workbook_id": null
+          }
+        ],
+        "llmInvocations": 7,
+        "tokens": {
+          "prompt_tokens": 85367,
+          "completion_tokens": 5651,
+          "total_tokens": 91018
+        },
+        "finishReason": "stop",
+        "roundFinishReasons": [
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "tool_calls",
+          "stop",
+          "tool_calls",
+          "stop"
+        ],
+        "guardDecisions": [
+          {
+            "guard": "task_intent_attempt",
+            "action": "reject",
+            "reason": "当前指令判定为独立任务(standalone)，当前请求未指定调用技能；独立任务禁止继承历史对话中的技能，请将 skill_invocation 修改为 mode=\"none\", name=\"\", replace_defaults=false，且 requirements 只能引用当前请求中的原话"
+          },
+          {
+            "guard": "task_intent_review",
+            "action": "accept",
+            "reason": {
+              "output_mode": "artifact",
+              "task_mode": "execute"
+            }
+          },
+          {
+            "guard": "task_intent",
+            "action": "accept",
+            "reason": {
+              "instruction_relation": "standalone",
+              "task_mode": "execute",
+              "output_mode": "artifact",
+              "artifact_types": [
+                ".csv"
+              ],
+              "unit_confirmation": null,
+              "section_confirmation": null,
+              "skill_invocation": {
+                "mode": "none",
+                "name": "",
+                "replace_defaults": false
+              },
+              "requirements": [
+                {
+                  "id": "req_1",
+                  "quote": "将部门编号FC45031、有偿无偿为有偿、工数(小时)严格大于8的全部业务明细，按工数降序、同值按原行号升序导出为新的UTF-8 CSV文件 E2E_workhours_r2_filtered.csv"
+                },
+                {
+                  "id": "req_2",
+                  "quote": "首列新增原Excel行号，其后保留原18列及字段值，保留员工编号、年月为文本"
+                },
+                {
+                  "id": "req_3",
+                  "quote": "不要覆盖附件。请提供下载，不联网"
+                }
+              ]
+            }
+          },
+          {
+            "guard": "skill_admission",
+            "action": "use",
+            "reason": {
+              "initial_candidate": "xlsx",
+              "skill_id": "xlsx",
+              "use_default_rules": false,
+              "reason": "applicable",
+              "requirement_ids": [
+                "req_1",
+                "req_2",
+                "req_3"
+              ]
+            }
+          },
+          {
+            "guard": "user_unit_confirmation",
+            "action": "accept",
+            "reason": {
+              "unit": null,
+              "sections": null
+            }
+          }
+        ],
+        "modelResponses": [
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 0,
+            "cleanChars": 0,
+            "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 3495,
+            "cleanChars": 3495,
+            "rawSha256": "1a817ca11b137f0d9cf478882bc1829fdd0075f14605cd9ccdc34ae3ba190fe7",
+            "cleanSha256": "1a817ca11b137f0d9cf478882bc1829fdd0075f14605cd9ccdc34ae3ba190fe7",
+            "finishReason": "stop",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 59,
+            "cleanChars": 59,
+            "rawSha256": "b948d78baba22eed97a92d904104368ec22a1fbd7b44642c9803d50d79dc51f6",
+            "cleanSha256": "b948d78baba22eed97a92d904104368ec22a1fbd7b44642c9803d50d79dc51f6",
+            "finishReason": "tool_calls",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          },
+          {
+            "rawChars": 1367,
+            "cleanChars": 1367,
+            "rawSha256": "90d433926baebce4035ea130f18d26d3da719ec2c849f8b7e5eb6a484ac4a7f5",
+            "cleanSha256": "90d433926baebce4035ea130f18d26d3da719ec2c849f8b7e5eb6a484ac4a7f5",
+            "finishReason": "stop",
+            "finishReasonSource": "upstream",
+            "receivedDone": true
+          }
+        ],
+        "answerValidation": {}
+      },
+      "outboundFiles": [
+        {
+          "filePath": "/workspace/E2E_workhours_r2_filtered.csv",
+          "fileName": "E2E_workhours_r2_filtered.csv"
+        }
+      ]
+    },
+    "content": "✅ **文件已成功生成并落盘**\n\n---\n\n### 📄 输出文件信息\n\n| 项目 | 详情 |\n|------|------|\n| **文件名** | `E2E_workhours_r2_filtered.csv` |\n| **文件路径** | `/workspace/E2E_workhours_r2_filtered.csv` |\n| **编码格式** | UTF-8 (带BOM) |\n| **总行数** | 50 行（含1行表头 + 49行业务数据） |\n\n---\n\n### 🔍 筛选与排序验证\n\n| 验证项 | 结果 |\n|--------|------|\n| **筛选条件** | 部门编号 = FC45031 ✓ |\n| **有偿无偿** | = \"有偿\" ✓ |\n| **工数(小时)** | > 8.0 ✓ |\n| **匹配记录数** | **49 条** |\n| **工数范围** | 8.5 ~ 124.5 小时 |\n| **排序验证** | 工数降序 ✓ / 同值行按原行号升序 ✓ |\n\n---\n\n### 📊 输出结构\n\n| 列序 | 字段名 | 说明 |\n|------|--------|------|\n| 1 | 原Excel行号 | 新增首列，溯源原始Excel中的行号（5~278） |\n| 2 | 会计年度 | 原文第2列 |\n| 3 | 工数年月 | 原文第3列，**文本** |\n| 4 | 部门编号 | 原文第4列，固定为 FC45031 |\n| 5 | 部门名称 | 原文第5列 |\n| 6 | 员工编号 | 原文第6列，**文本** |\n| 7 | 员工姓名 | 原文第7列 |\n| 8 | 员工职级 | 原文第8列 |\n| 9 | 职级单价 | 原文第9列 |\n| 10 | WBS编号 | 原文第10列 |\n| 11 | WBS负责成本中心 | 原文第11列 |\n| 12 | WBS名称 | 原文第12列 |\n| 13 | 客户名称 | 原文第13列 |\n| 14 | 有偿无偿 | 原文第14列，固定为\"有偿\" |\n| 15 | 直接间接 | 原文第15列 |\n| 16 | 工数(小时) | 原文第16列，数值型 |\n| 17 | 金额(K) | 原文第17列，数值型 |\n| 18 | BU编号 | 原文第18列 |\n| 19 | BU名称 | 原文第19列 |\n\n---\n\n### 🎯 前5条记录预览\n\n| 原Excel行号 | 员工编号 | 员工姓名 | 工数(小时) | 金额(K) |\n|-------------|----------|----------|------------|---------|\n| 52 | S10083 | 陶久亮 | 124.5 | 27.09706 |\n| 53 | S09004 | 陈军 | 124.5 | 32.95588 |\n| 187 | S22017 | 王宝玉 | 98.0 | 35.16471 |\n| 76 | S19022 | 张森 | 97.0 | 23.86691 |\n| 102 | S22009 | 王晶云 | 91.0 | 24.12035 |\n\n---\n\n**文件已就绪，可直接下载使用。** 📥\n\n> 📥 **生成产物已就绪**：\n> - 📊 **[《E2E_workhours_r2_filtered.csv》](/api/ai/chat/workspace-files/e7fce333-a8f4-4097-9a53-f0a4c729da46/E2E_workhours_r2_filtered.csv)** (点击直接下载 · 12.7 KB)\n"
+  },
+  {
+    "case": "K10",
+    "status": "SAFE_RETRY",
+    "functional_complete": false,
+    "trace": {
+      "executed": false,
+      "timeout": true
+    },
+    "content": "⚠️ 沙箱任务执行超时（超过 300 秒），已自动中止后台任务。请尝试简化任务或检查模型连通性。"
+  }
+]

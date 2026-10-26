@@ -1,0 +1,17 @@
+{
+  "message": "继续执行并生成 E2E_workhours_edit.xlsx 副本，按我前面已明确的全部修改要求：原件不改，新表第1行表头；原第5行工数改10金额不变，删原第6行，末尾复制原第5行并将员工编号改E2E_TEST、姓名改测试记录、工数8、金额0；新增工数天数公式=工数/8，冻结首行、全表筛选、工数2位小数金额5位、工数>8条件格式。若本轮工具仍不支持，请明确提示无法完成，不要承诺立即生成。请提供实际下载，不联网。",
+  "clientMessageId": "1792910066062-sfane1dt",
+  "clientAssistantMessageId": "1792910066062-abn730lg",
+  "sessionId": "chat-session-1792908948915-ytw0yory",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

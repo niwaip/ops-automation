@@ -1,0 +1,22 @@
+{
+  "analysis_fact_selection.py": {
+    "path": "/usr/local/bin/dsh_modules/analysis_fact_selection.py",
+    "sha256": "73929eadced3db7d9055835b682a0a58ed543bdd68b2e96599ec8d66535d2298"
+  },
+  "query_calculation_stage.py": {
+    "path": "/usr/local/bin/dsh_modules/query_calculation_stage.py",
+    "sha256": "3186c224f40d9498ad34b2378aaa3b53ba5b628d7c6fb05720af34d44ca714fa"
+  },
+  "semantic_filter_judge.py": {
+    "path": "/usr/local/bin/dsh_modules/semantic_filter_judge.py",
+    "sha256": "ac20324af1a517c7f579a682fa2e776a18611a37217b3ddb85a4aa1b819148d9"
+  },
+  "semantic_contract_judge.py": {
+    "path": "/usr/local/bin/dsh_modules/semantic_contract_judge.py",
+    "sha256": "b7db1584293a769e637a570374ee21a7bf6d490b0432773bed52f63590f4fc3f"
+  },
+  "report_presentation.py": {
+    "path": "/usr/local/bin/dsh_modules/report_presentation.py",
+    "sha256": "bf389f44cd4bf5606a91fa8c59f4f608349b301920f2323c4be14235153bcd6a"
+  }
+}

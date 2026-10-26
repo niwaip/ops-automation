@@ -1,0 +1,17 @@
+{
+  "message": "那先只核算2026全年营业收入和净利润，提供原表单位与来源单元格。计算失败请明确提示我重试，不要给未验证结果。不生成文件，不联网。",
+  "clientMessageId": "1792897713567-3i62lo4g",
+  "clientAssistantMessageId": "1792897713567-ls664o4i",
+  "sessionId": "chat-session-1792897587482-oobbqctt",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

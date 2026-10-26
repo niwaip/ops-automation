@@ -12,13 +12,13 @@ def _string(description, **extra):
 
 SPREADSHEET_UPDATE_TOOL_DEFINITIONS = [
     _tool('plan_spreadsheet_update',
-          '根据本轮已验证聚合结果和实际工作簿标签规划按键回填。获得 plan_id 后必须紧接着在同一轮中调用 execute_spreadsheet_update(plan_id=...) 完成实际落盘与交付，严禁停留在计划步骤或向用户索要二次确认。注意：若涉及多个独立区块（如同时更新有偿和无偿、或多个业务板块），严禁拆分多次发布，必须在单次规划中通过 sections 同时传入所有待更新区块并指定各区块的 result_id。',
+          '根据本轮已验证聚合结果和实际工作簿标签规划按键回填。获得 plan_id 后必须紧接着在同一轮中调用 execute_spreadsheet_update(plan_id=...) 完成实际落盘与交付，严禁停留在计划步骤或向用户索要二次确认。注意：若涉及多个独立区块（如多个业务分类区块），严禁拆分多次发布，必须在单次规划中通过 sections 同时传入所有待更新区块并指定各区块的 result_id。',
           {'target_file':_string('本轮目标工作簿路径'),
            'base_sheet':_string('复制模式下目标工作簿内被复制的基准 Sheet。先读取目标清单选择'),
            'new_sheet':_string('复制模式下新生成的工作表名；原地更新时可省略'),
            'target_sheet':_string('可选：原地更新时直接指定目标工作表名；提供本参数或省略 new_sheet 时不新建工作表'),
-           'period':_string('可选：本次业务期间标识（如 202610、Q3），时序更新时需与来源筛选及目标表头一致；非时序更新可省略'),
-           'period_field':_string('可选：来源查询中实际用于期间等值筛选的字段名（如 工数年月、期间）；非时序更新可省略'),
+           'period':_string('可选：本次业务期间标识（如期间代码、季度标识），时序更新时需与来源筛选及目标表头一致；非时序更新可省略'),
+           'period_field':_string('可选：来源查询中实际用于期间等值筛选的字段名（如期间列、业务年月）；非时序更新可省略'),
            'section':_string('业务区块的实际独立标题，从 label_bands 读取；若需同时更新多个区块可使用 sections 参数分别指定各区块配置，也可传逗号分隔名称；若提供 sections 列表则本参数可省略；不能把 period 填入此字段'),
            'sections':{'type':'array','items':{'type':'object'},'description':'多区块更新列表。每个对象包含 section、result_id、target_label、target_kind 等；当需要同时更新多个独立区块时必须使用本参数一次性规划提交，严禁拆分成多次独立发布'},
            'target_label':_string('目标列的实际表头文本，必须从工作簿读取；若在 sections 参数中为每个区块分别指定则本字段可省略'),

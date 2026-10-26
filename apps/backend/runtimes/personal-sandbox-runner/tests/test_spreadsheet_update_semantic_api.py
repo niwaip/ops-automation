@@ -79,7 +79,7 @@ class SemanticUpdateTests(unittest.TestCase):
     def test_preview_has_one_write_in_paid_forecast_and_preserves_unmatched(self):
         before = fingerprint(self.target)
         plan, facts, payload, preview, warnings = build_semantic_plan(self.request, self.ws)
-        self.assertEqual(preview, [{'key':'FC001','coordinate':'C5','value':'67.0353','unit':'K'}])
+        self.assertEqual(preview, [{'key':'FC001','coordinate':'C5','value':'67.0353','unit':'K','old_value':'10','section':'有偿'}])
         self.assertEqual(len(plan['operations']), 2)
         self.assertTrue(warnings)
         self.assertIn('FC002', warnings[0])
@@ -222,6 +222,36 @@ class SemanticUpdateTests(unittest.TestCase):
         self.assertNotIn('DSH_OUTBOUND_FILE',summary)
         path.write_bytes(path.read_bytes()+b'changed')
         self.assertIsNone(render_published_update(evidence,self.ws))
+
+    def test_render_published_update_section_grouping_and_old_values(self):
+        from dsh_modules.spreadsheet_update.presentation import render_published_update
+        from dsh_modules.spreadsheet_update.delivery import register_verified_update
+        from dsh_modules.tool_result import ToolResult
+        path = self.ws / 'diff_output.xlsx'
+        path.write_bytes(self.target.read_bytes())
+        register_verified_update(path, fingerprint(path))
+        planned = ToolResult.success(data={
+            'status': 'planned',
+            'plan_id': 'plan_diff_test',
+            'new_sheet': '1024',
+            'preview': [
+                {'key': 'FC001', 'coordinate': 'C10', 'value': '570.75', 'unit': 'K', 'old_value': '550.00', 'section': '有偿'},
+                {'key': 'FC001', 'coordinate': 'C31', 'value': '120.00', 'unit': 'K', 'old_value': '110.00', 'section': '无偿'}
+            ],
+            'warnings': ['FC002 无匹配，保留原值']
+        })
+        applied = ToolResult.success(
+            data={'status': 'published', 'plan_id': 'plan_diff_test', 'published_file': str(path)},
+            provenance={'tool': 'execute_spreadsheet_update'}
+        )
+        summary = render_published_update([planned, applied], self.ws)
+        self.assertIsNotNone(summary)
+        self.assertIn('【有偿】区块回填结果', summary)
+        self.assertIn('【无偿】区块回填结果', summary)
+        self.assertIn('| 部门编号 | 单元格 | 更新预测值 | 原预测值 |', summary)
+        self.assertIn('| FC001 | C10 | 570.75 | 550.00 |', summary)
+        self.assertIn('| FC001 | C31 | 120.00 | 110.00 |', summary)
+        self.assertNotIn('| 业务键 | 单元格 | 更新值 | 原值 |', summary)
 
     def test_published_receipt_prevents_false_script_leak_failure_in_final_answer(self):
         from dsh_modules.tool_result import ToolResult

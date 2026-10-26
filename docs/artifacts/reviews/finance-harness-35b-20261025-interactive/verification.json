@@ -1,0 +1,94 @@
+{
+  "oracle": {
+    "source_sha256": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+    "method": "Independent Decimal reconstruction from raw literals and formula rates; no model or runtime calculation tools",
+    "golden": {
+      "revenue": "124020",
+      "gross_profit": "53443.250",
+      "operating_profit": "21209.400",
+      "net_profit": "16038.30000",
+      "gross_margin": "0.4309244476697306885986131269",
+      "net_margin": "0.1293202709240445089501693275"
+    },
+    "budget_net_extreme": {
+      "month": "7月",
+      "actual": "934.31250",
+      "budget": "1380",
+      "difference": "-445.68750"
+    },
+    "equations": [
+      {
+        "left": "60950",
+        "right": "67138.30000",
+        "difference": "-6188.30000"
+      },
+      {
+        "left": "20588.30000",
+        "right": "16850",
+        "difference": "3738.30000"
+      }
+    ],
+    "anomaly_rows": {
+      "duplicate_voucher": [
+        12,
+        13
+      ],
+      "blank_department": [
+        28
+      ],
+      "large_amount": [
+        43
+      ],
+      "out_of_period": [
+        58
+      ],
+      "unapproved": [
+        73
+      ]
+    }
+  },
+  "blockers": [
+    {
+      "turn": "T02",
+      "type": "WRONG_SOURCE_BINDING",
+      "actual": [
+        "B10",
+        "B15"
+      ],
+      "expected": [
+        "月度经营!B16",
+        "月度经营!N16"
+      ],
+      "amounts_correct": true,
+      "runtime_verified": true
+    },
+    {
+      "turn": "T09",
+      "type": "WRONG_FINANCIAL_DATA_AND_FALSE_SUCCESS",
+      "mismatches": [
+        {
+          "metric": "毛利",
+          "actual": 50120,
+          "expected": "53443.250"
+        },
+        {
+          "metric": "营业利润",
+          "actual": 21438.3,
+          "expected": "21209.400"
+        }
+      ],
+      "output_formula_count": 0,
+      "note": "Zero formula errors in a literal-only workbook does not verify source financial values"
+    }
+  ],
+  "explicit_failure_handling": true,
+  "reduced_scope_retry_verified": true,
+  "original_five_rule_task_complete": false,
+  "equations_verified": 2,
+  "monthly_comparison_rows_verified": 36,
+  "download_metrics_verified": 2,
+  "download_metrics_checked": 4,
+  "download_sha256": "91026bd7d48e1614755ac5447722156dd1a0e4d83661cb91497ab41418ba4a6b",
+  "history_messages_after_refresh": 20,
+  "overall_data_acceptance": false
+}

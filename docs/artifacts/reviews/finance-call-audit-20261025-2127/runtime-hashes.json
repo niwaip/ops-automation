@@ -1,0 +1,62 @@
+{
+  "analysis_contract": {
+    "path": "/usr/local/bin/dsh_modules/analysis_contract.py",
+    "sha256": "82f4c32c6170ae7faeb5518d96248dc07311b820e17a2989a71859c7d377cd40"
+  },
+  "analysis_fact_selection": {
+    "path": "/usr/local/bin/dsh_modules/analysis_fact_selection.py",
+    "sha256": "256e47f3e90407302b884c23942d99a58054ab73f437ff20ddd4d3ccce6cee05"
+  },
+  "analysis_scope_context": {
+    "path": "/usr/local/bin/dsh_modules/analysis_scope_context.py",
+    "sha256": "a2fb8fe5d6fa4a389a6b4cb975053375f6c18bf8f394fdff900cfdacf031ace1"
+  },
+  "analysis_task_state": {
+    "path": "/usr/local/bin/dsh_modules/analysis_task_state.py",
+    "sha256": "d1ca56091336b53388048e4bd52908f07f09327ea9fa6003c461b87b118fce71"
+  },
+  "query_calculation_stage": {
+    "path": "/usr/local/bin/dsh_modules/query_calculation_stage.py",
+    "sha256": "4dde80675e4d0563115406e7f5f1b61f26a90e2e9c7ab54823d9c42b83fca031"
+  },
+  "query_fact_binding": {
+    "path": "/usr/local/bin/dsh_modules/query_fact_binding.py",
+    "sha256": "32969835299debca982e77f22087fbecfdafd838aaeacd756521cd6b5a770b61"
+  },
+  "query_metric_validation": {
+    "path": "/usr/local/bin/dsh_modules/query_metric_validation.py",
+    "sha256": "b085866ed33fbbb95489fdb6f25b859dd1ce078c3cacec89712c53f01d0beb51"
+  },
+  "registered_metric_completion": {
+    "path": "/usr/local/bin/dsh_modules/registered_metric_completion.py",
+    "sha256": "ea0de2408b08b47ab4001a5e21a9f2cb71b6cd88e1a51df26803250132b449ff"
+  },
+  "semantic_filter_judge": {
+    "path": "/usr/local/bin/dsh_modules/semantic_filter_judge.py",
+    "sha256": "056985b07c6f72ef4b23a180b43cc3119759f4fdc112b05489fda4e4a990f7e2"
+  },
+  "source_scope_metadata": {
+    "path": "/usr/local/bin/dsh_modules/source_scope_metadata.py",
+    "sha256": "444354007793d919cbfec0f8afe96ec99d2a1fb78712ee2f7ab8abfe35e48413"
+  },
+  "spreadsheet_analysis": {
+    "path": "/usr/local/bin/dsh_modules/spreadsheet_analysis.py",
+    "sha256": "54707d747d2b9140b88a82b0e249162d4e6bbd5d222e4bce0b722a9e03ab6d6f"
+  },
+  "spreadsheet_analysis_schema": {
+    "path": "/usr/local/bin/dsh_modules/spreadsheet_analysis_schema.py",
+    "sha256": "8582e0cc9be33c1080021313d1f66c233a5ca4e8d5ab2578463d040358d9c2ff"
+  },
+  "analysis_domain_finance": {
+    "path": "/usr/local/bin/dsh_modules/analysis_domain_finance.py",
+    "sha256": "f3d059ae5278107a5bec32813b64714efebf5b55bdaa393070df38853d411a3f"
+  },
+  "analysis_gate_review": {
+    "path": "/usr/local/bin/dsh_modules/analysis_gate_review.py",
+    "sha256": "c32a4f9e00f5dd6e519fc33a080100671a8c9d648f0007840649595520c0bcf2"
+  },
+  "report_presentation": {
+    "path": "/usr/local/bin/dsh_modules/report_presentation.py",
+    "sha256": "be83456a16ee0dc202670caf8082f96628a40ad26c1d3f174872d0f69f29035e"
+  }
+}

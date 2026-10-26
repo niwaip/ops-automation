@@ -1,0 +1,340 @@
+{
+  "model_requests_verified": 15,
+  "summary_values_verified": 2,
+  "employee_top5_verified": 5,
+  "missing_customer_count_verified": 32,
+  "blockers": [
+    {
+      "case": "K05",
+      "type": "FALSE_AUDIT_COVERAGE",
+      "claim": "18列完整重复行已核验为零",
+      "actual_execution": "Only customer-name-is-blank count was executed",
+      "numeric_zero_matches_oracle": true,
+      "runtime_verified": true
+    }
+  ],
+  "overall_reliability_acceptance": false,
+  "metrics": [
+    {
+      "case": "K01",
+      "trace_id": "9ff4c4d7-4fac-4dc8-bef3-1f0f102320be",
+      "duration_ms": 44985,
+      "tokens": 47016,
+      "tool_calls": 5,
+      "llm_invocations": 5,
+      "tools": [
+        [
+          "aggregate_spreadsheet",
+          "success"
+        ],
+        [
+          "aggregate_spreadsheet",
+          "success"
+        ],
+        [
+          "aggregate_spreadsheet",
+          "success"
+        ],
+        [
+          "aggregate_spreadsheet",
+          "error"
+        ],
+        [
+          "aggregate_spreadsheet",
+          "success"
+        ]
+      ]
+    },
+    {
+      "case": "K01R",
+      "trace_id": "6cc784a2-c9f1-46d7-912a-2cd0965f5dad",
+      "duration_ms": 17974,
+      "tokens": 30909,
+      "tool_calls": 1,
+      "llm_invocations": 7,
+      "tools": [
+        [
+          "aggregate_spreadsheet",
+          "success"
+        ]
+      ]
+    },
+    {
+      "case": "K02",
+      "trace_id": "5f506829-fc6c-42a3-aabb-91acfc22ccd0",
+      "duration_ms": 23920,
+      "tokens": 21962,
+      "tool_calls": 2,
+      "llm_invocations": 6,
+      "tools": [
+        [
+          "aggregate_spreadsheet",
+          "success"
+        ],
+        [
+          "aggregate_spreadsheet",
+          "success"
+        ]
+      ]
+    },
+    {
+      "case": "K03",
+      "trace_id": "240af9c4-4f5f-413c-91bc-4f7f837ec2b3",
+      "duration_ms": 21511,
+      "tokens": 25791,
+      "tool_calls": 1,
+      "llm_invocations": 7,
+      "tools": [
+        [
+          "aggregate_spreadsheet",
+          "success"
+        ]
+      ]
+    },
+    {
+      "case": "K04",
+      "trace_id": "1e052b67-f0e1-4844-9eea-977c5e160d5f",
+      "duration_ms": 43748,
+      "tokens": 85034,
+      "tool_calls": 3,
+      "llm_invocations": 7,
+      "tools": [
+        [
+          "aggregate_spreadsheet",
+          "error"
+        ],
+        [
+          "aggregate_spreadsheet",
+          "success"
+        ],
+        [
+          "aggregate_spreadsheet",
+          "loop_intercepted"
+        ]
+      ]
+    },
+    {
+      "case": "K04R",
+      "trace_id": "7da03a97-7117-4f82-af94-8ae35f022465",
+      "duration_ms": 20127,
+      "tokens": 21421,
+      "tool_calls": 1,
+      "llm_invocations": 5,
+      "tools": [
+        [
+          "aggregate_spreadsheet",
+          "success"
+        ]
+      ]
+    },
+    {
+      "case": "K05",
+      "trace_id": "a0229e34-5fd9-490f-8f33-1d737bfbda14",
+      "duration_ms": 50585,
+      "tokens": 53490,
+      "tool_calls": 2,
+      "llm_invocations": 5,
+      "tools": [
+        [
+          "aggregate_spreadsheet",
+          "error"
+        ],
+        [
+          "aggregate_spreadsheet",
+          "success"
+        ]
+      ]
+    },
+    {
+      "case": "K05R",
+      "trace_id": "e4a24cb8-c257-4b22-b80a-ff3d5ace94a5",
+      "duration_ms": 65012,
+      "tokens": 89855,
+      "tool_calls": 1,
+      "llm_invocations": 8,
+      "tools": [
+        [
+          "inspect_spreadsheet_structure",
+          "success"
+        ]
+      ]
+    },
+    {
+      "case": "K06",
+      "trace_id": "0e93fe8d-1e3a-4cdd-b372-ba77c78416ca",
+      "duration_ms": 35328,
+      "tokens": 91470,
+      "tool_calls": 0,
+      "llm_invocations": 7,
+      "tools": []
+    },
+    {
+      "case": "K07",
+      "trace_id": "ffb7c1f7-ed4a-4a7b-9a93-5417a0e37abd",
+      "duration_ms": 38957,
+      "tokens": 73546,
+      "tool_calls": 0,
+      "llm_invocations": 7,
+      "tools": []
+    },
+    {
+      "case": "K07R",
+      "trace_id": "1d844880-d6c7-428d-a395-100117c30f07",
+      "duration_ms": 46759,
+      "tokens": 74388,
+      "tool_calls": 0,
+      "llm_invocations": 7,
+      "tools": []
+    },
+    {
+      "case": "K08",
+      "trace_id": "99759e34-c64d-4697-b46c-6aa26a84542d",
+      "duration_ms": 62059,
+      "tokens": 202038,
+      "tool_calls": 6,
+      "llm_invocations": 10,
+      "tools": [
+        [
+          "aggregate_spreadsheet",
+          "error"
+        ],
+        [
+          "inspect_spreadsheet_structure",
+          "success"
+        ],
+        [
+          "aggregate_spreadsheet",
+          "error"
+        ],
+        [
+          "aggregate_spreadsheet",
+          "success"
+        ],
+        [
+          "bash",
+          "success"
+        ],
+        [
+          "send_file",
+          "success"
+        ]
+      ]
+    },
+    {
+      "case": "K09",
+      "trace_id": "ee699fd6-698a-45d6-b244-c55100ab6b38",
+      "duration_ms": 129438,
+      "tokens": 293848,
+      "tool_calls": 8,
+      "llm_invocations": 12,
+      "tools": [
+        [
+          "read_file",
+          "error"
+        ],
+        [
+          "read_file",
+          "error"
+        ],
+        [
+          "bash",
+          "blocked"
+        ],
+        [
+          "read_file",
+          "error"
+        ],
+        [
+          "read_file",
+          "loop_intercepted"
+        ],
+        [
+          "execute_spreadsheet_update",
+          "error"
+        ],
+        [
+          "plan_spreadsheet_update",
+          "error"
+        ],
+        [
+          "bash",
+          "blocked"
+        ]
+      ]
+    },
+    {
+      "case": "K09R",
+      "trace_id": "12feac71-1bec-4cf2-8ab7-de7b87bb3d82",
+      "duration_ms": 88206,
+      "tokens": 245824,
+      "tool_calls": 7,
+      "llm_invocations": 11,
+      "tools": [
+        [
+          "read_file",
+          "error"
+        ],
+        [
+          "bash",
+          "blocked"
+        ],
+        [
+          "read_skill",
+          "success"
+        ],
+        [
+          "plan_spreadsheet_update",
+          "error"
+        ],
+        [
+          "bash",
+          "blocked"
+        ],
+        [
+          "plan_spreadsheet_update",
+          "error"
+        ],
+        [
+          "plan_spreadsheet_update",
+          "error"
+        ]
+      ]
+    },
+    {
+      "case": "K10",
+      "trace_id": "ed7f2d87-aa88-4abc-97c5-b57ed2477e46",
+      "duration_ms": 52128,
+      "tokens": 123727,
+      "tool_calls": 4,
+      "llm_invocations": 9,
+      "tools": [
+        [
+          "aggregate_spreadsheet",
+          "error"
+        ],
+        [
+          "analyze_spreadsheet",
+          "error"
+        ],
+        [
+          "aggregate_spreadsheet",
+          "error"
+        ],
+        [
+          "aggregate_spreadsheet",
+          "error"
+        ]
+      ]
+    }
+  ],
+  "total_tokens": 1480319,
+  "total_execution_ms": 740737,
+  "outputs": {
+    "csv_records_checked": 49,
+    "output_issues": [],
+    "downloaded_files": [
+      "E2E_workhours_filtered.csv"
+    ]
+  },
+  "history_messages": 20
+}

@@ -1,0 +1,115 @@
+{
+  "model": "qwen36-35b-a3b",
+  "mode": "chat",
+  "policy": "Interaction allowed; every delivered financial/data claim must be correct; completion tracked separately.",
+  "cases": [
+    {
+      "id": "I01",
+      "prompt": "请根据附件实际数据，总结2026年全年营业收入、毛利、毛利率、营业利润、净利润和净利率。请读取完整工作簿并核实公式结果，全年利润率按全年利润除以全年收入计算。金额沿用原表单位，给出来源工作表和单元格。只在聊天中回复，不生成文件，不联网。",
+      "max_followups": 2,
+      "allowed_outcomes": [
+        "CLARIFICATION",
+        "SAFE_RETRY",
+        "PARTIAL_VERIFIED",
+        "DELIVERED_VERIFIED"
+      ],
+      "reject": [
+        "WRONG_DATA",
+        "FALSE_SUCCESS"
+      ],
+      "followup_policy": "Confirm requested ratio formulas, then reduce to revenue/net profit if explicit failure. Original six-metric request remains incomplete unless all six verified."
+    },
+    {
+      "id": "I02",
+      "prompt": "接下来检查同一个附件的“交易明细”第4至83行。分别列出：凭证号重复的全部记录；部门为空的记录；金额绝对值大于10000的记录；日期不在2026年内的记录；审批状态不是已审批的记录。每类给出条数、Excel行号和关键字段。备注为空不算异常，费用负数不算异常。只在聊天回复，不修改原件，不联网。",
+      "max_followups": 2,
+      "allowed_outcomes": [
+        "CLARIFICATION",
+        "SAFE_RETRY",
+        "PARTIAL_VERIFIED",
+        "DELIVERED_VERIFIED"
+      ],
+      "reject": [
+        "WRONG_DATA",
+        "FALSE_SUCCESS"
+      ],
+      "followup_policy": "Retry blank department only, explicitly defer remaining four checks. Correct reduced delivery does not mark original five-check task complete."
+    },
+    {
+      "id": "I03",
+      "prompt": "核对同一个附件中的两条报表等式：资产负债表B11等于B20；现金流量表B17等于资产负债表B4。实际读取公式重算后的数值，分别输出左值、右值、左值减右值的差额以及是否相等，金额单位沿用原表。不要修改任何数据，只在聊天回复核对结果，不联网。",
+      "max_followups": 2,
+      "allowed_outcomes": [
+        "CLARIFICATION",
+        "SAFE_RETRY",
+        "PARTIAL_VERIFIED",
+        "DELIVERED_VERIFIED"
+      ],
+      "reject": [
+        "WRONG_DATA",
+        "FALSE_SUCCESS"
+      ]
+    },
+    {
+      "id": "I04",
+      "prompt": "附件里利润偏差最大的月份是哪月？只在聊天回复，不联网。",
+      "max_followups": 2,
+      "allowed_outcomes": [
+        "CLARIFICATION",
+        "SAFE_RETRY",
+        "PARTIAL_VERIFIED",
+        "DELIVERED_VERIFIED"
+      ],
+      "reject": [
+        "WRONG_DATA",
+        "FALSE_SUCCESS"
+      ],
+      "followup_policy": "Confirm existing attachment, sheet, net profit, actual minus budget, absolute monetary deviation and 12-month range."
+    },
+    {
+      "id": "I05",
+      "prompt": "按净利润、实际减预算的差异绝对金额，比较2026年全部12个月。请给出最大偏差月份、预算、实际、差额和原表单位。只在聊天回复，不联网。",
+      "max_followups": 2,
+      "allowed_outcomes": [
+        "CLARIFICATION",
+        "SAFE_RETRY",
+        "PARTIAL_VERIFIED",
+        "DELIVERED_VERIFIED"
+      ],
+      "reject": [
+        "WRONG_DATA",
+        "FALSE_SUCCESS"
+      ]
+    },
+    {
+      "id": "I06",
+      "prompt": "从同一附件利润表读取2026实际营业收入、毛利、营业利润、净利润，生成新的可下载Excel文件 E2E_finance_interactive_r2_20261025.xlsx，包含指标、数值、单位、来源单元格四列。数值来自原件公式重算，金额沿用原表单位。不要将这四个独立指标相加成合计，保留原件，不联网。",
+      "max_followups": 2,
+      "allowed_outcomes": [
+        "CLARIFICATION",
+        "SAFE_RETRY",
+        "PARTIAL_VERIFIED",
+        "DELIVERED_VERIFIED"
+      ],
+      "reject": [
+        "WRONG_DATA",
+        "FALSE_SUCCESS"
+      ]
+    },
+    {
+      "id": "I07",
+      "prompt": "读取附件的“预算对比”工作表，比较2026年12个月。分别找出收入差异绝对值最大的月份、净利润差异绝对值最大的月份，列出该月预算、实际、实际减预算的差异及原表单位。只在聊天回复，不生成文件，不联网。",
+      "max_followups": 2,
+      "allowed_outcomes": [
+        "CLARIFICATION",
+        "SAFE_RETRY",
+        "PARTIAL_VERIFIED",
+        "DELIVERED_VERIFIED"
+      ],
+      "reject": [
+        "WRONG_DATA",
+        "FALSE_SUCCESS"
+      ]
+    }
+  ]
+}

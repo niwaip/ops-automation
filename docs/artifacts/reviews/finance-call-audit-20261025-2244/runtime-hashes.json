@@ -1,0 +1,50 @@
+{
+  "analysis_contract.py": {
+    "path": "/usr/local/bin/dsh_modules/analysis_contract.py",
+    "sha256": "82f4c32c6170ae7faeb5518d96248dc07311b820e17a2989a71859c7d377cd40",
+    "local_sha256": "82f4c32c6170ae7faeb5518d96248dc07311b820e17a2989a71859c7d377cd40",
+    "matches": true
+  },
+  "comparison_evidence.py": {
+    "path": "/usr/local/bin/dsh_modules/comparison_evidence.py",
+    "sha256": "6a3d4bb5a39c90b62d0ad8f972a9f4925a1d1040d4d2f5489b7e3c4e28dda6f9",
+    "local_sha256": "6a3d4bb5a39c90b62d0ad8f972a9f4925a1d1040d4d2f5489b7e3c4e28dda6f9",
+    "matches": true
+  },
+  "comparison_delivery.py": {
+    "path": "/usr/local/bin/dsh_modules/comparison_delivery.py",
+    "sha256": "a1c35782a889a62380d6640ec15326d74405edf71708fd02b0162bb5c9add9e5",
+    "local_sha256": "a1c35782a889a62380d6640ec15326d74405edf71708fd02b0162bb5c9add9e5",
+    "matches": true
+  },
+  "table_comparison.py": {
+    "path": "/usr/local/bin/dsh_modules/table_comparison.py",
+    "sha256": "4d4df48cd95f61365623368c1ab96b31b7fe2628a1adf6d3c6665e068048c582",
+    "local_sha256": "4d4df48cd95f61365623368c1ab96b31b7fe2628a1adf6d3c6665e068048c582",
+    "matches": true
+  },
+  "semantic_contract_judge.py": {
+    "path": "/usr/local/bin/dsh_modules/semantic_contract_judge.py",
+    "sha256": "b7db1584293a769e637a570374ee21a7bf6d490b0432773bed52f63590f4fc3f",
+    "local_sha256": "b7db1584293a769e637a570374ee21a7bf6d490b0432773bed52f63590f4fc3f",
+    "matches": true
+  },
+  "semantic_filter_judge.py": {
+    "path": "/usr/local/bin/dsh_modules/semantic_filter_judge.py",
+    "sha256": "056985b07c6f72ef4b23a180b43cc3119759f4fdc112b05489fda4e4a990f7e2",
+    "local_sha256": "056985b07c6f72ef4b23a180b43cc3119759f4fdc112b05489fda4e4a990f7e2",
+    "matches": true
+  },
+  "agent_loop.py": {
+    "path": "/usr/local/bin/dsh_modules/agent_loop.py",
+    "sha256": "9e2df019640e2a89987ed8b29e7b6c5f129c268b4cf868b6b07deb2c8497d2fe",
+    "local_sha256": "9e2df019640e2a89987ed8b29e7b6c5f129c268b4cf868b6b07deb2c8497d2fe",
+    "matches": true
+  },
+  "spreadsheet_preflight.py": {
+    "path": "/usr/local/bin/dsh_modules/spreadsheet_preflight.py",
+    "sha256": "cbf184ce98370c09efd8e322777368006ecccbfc8430e34ff420d427c4214aca",
+    "local_sha256": "cbf184ce98370c09efd8e322777368006ecccbfc8430e34ff420d427c4214aca",
+    "matches": true
+  }
+}

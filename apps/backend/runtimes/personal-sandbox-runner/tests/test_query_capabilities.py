@@ -177,6 +177,61 @@ class QueryCapabilitiesTests(unittest.TestCase):
         self.assertEqual(mis_fact["unit"], "元")
         self.assertIn("合计金额(元)", mis_fact["label"])
 
+    def test_query_prefix_and_exclude_prefix_aliases_and_evaluation(self):
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Sheet1"
+        ws.append(["部门", "WBS编号", "金额(K)"])
+        ws.append(["華東MIS", "ex1001", 10.0])
+        ws.append(["華東MIS", "sy2002", 20.0])
+        ws.append(["華東MIS", "normal01", 30.0])
+        ws.append(["華東BAS", "sp3003", 40.0])
+        ws.append(["華東BAS", "normal02", 50.0])
+
+        plan = {
+            "source": {"sheet": "Sheet1", "header_row": 1, "data_range": "A2:C6"},
+            "where": {
+                "field": "WBS编号",
+                "op": "exclude_prefix",
+                "values": ["ex", "sy", "sp"]
+            },
+            "group_by": ["部门"],
+            "metrics": [
+                {"id": "amount", "label": "金额合计(K)", "op": "sum", "field": "金额(K)"}
+            ]
+        }
+
+        res = execute_query_plan(wb, plan)
+        # 仅 normal01 (30.0) 和 normal02 (50.0) 被保留
+        self.assertEqual(len(res.rows), 2)
+        mis_row = next(r for r in res.rows if r["group_key"] == "華東MIS")
+        bas_row = next(r for r in res.rows if r["group_key"] == "華東BAS")
+        self.assertEqual(mis_row["amount"], "30")
+        self.assertEqual(bas_row["amount"], "50")
+
+    def test_query_like_and_not_like_patterns(self):
+        # 1. not_like with prefix pattern 'ex%'
+        node1 = {"field": "code", "op": "not_like", "value": "ex%"}
+        validate_predicate_node(node1, {"code"})
+        self.assertEqual(node1["op"], "not_starts_with")
+        self.assertEqual(node1["values"], ["ex"])
+        self.assertFalse(eval_row_predicate(node1, {"code": "ex999"}))
+        self.assertTrue(eval_row_predicate(node1, {"code": "ab999"}))
+
+        # 2. like with suffix pattern '%txt'
+        node2 = {"field": "file", "op": "like", "value": "%txt"}
+        validate_predicate_node(node2, {"file"})
+        self.assertEqual(node2["op"], "ends_with")
+        self.assertTrue(eval_row_predicate(node2, {"file": "doc.txt"}))
+        self.assertFalse(eval_row_predicate(node2, {"file": "doc.pdf"}))
+
+        # 3. not_like with contains pattern '%temp%'
+        node3 = {"field": "tag", "op": "not_like", "value": "%temp%"}
+        validate_predicate_node(node3, {"tag"})
+        self.assertEqual(node3["op"], "not_contains")
+        self.assertFalse(eval_row_predicate(node3, {"tag": "this_temp_item"}))
+        self.assertTrue(eval_row_predicate(node3, {"tag": "this_perm_item"}))
+
 
 if __name__ == "__main__":
     unittest.main()

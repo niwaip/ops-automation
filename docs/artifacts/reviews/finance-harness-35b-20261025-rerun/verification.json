@@ -1,0 +1,62 @@
+{
+  "verification_completed": true,
+  "overall_data_acceptance": false,
+  "oracle": "Previous independent Decimal reconstruction, input SHA-256 unchanged",
+  "original_six_outcomes": [
+    "FAIL",
+    "FAIL",
+    "RECOVERED",
+    "FAIL_DATA",
+    "PASS",
+    "INCOMPLETE"
+  ],
+  "F01_F02_verified_but_failed_text": true,
+  "F01_invalid_ratio_units": [
+    {
+      "case": 1,
+      "id": "gross_margin",
+      "unit": "千元"
+    },
+    {
+      "case": 1,
+      "id": "operating_margin",
+      "unit": "千元"
+    }
+  ],
+  "F03_verified_month_metric_groups": 24,
+  "F04_expected_anomaly_rows": {
+    "duplicate_voucher": [
+      12,
+      13
+    ],
+    "blank_department": [
+      28
+    ],
+    "large_amount": [
+      43
+    ],
+    "out_of_period": [
+      58
+    ],
+    "unapproved": [
+      73
+    ]
+  },
+  "F04_false_zero_categories": 4,
+  "F04_wrong_duplicate_rows": [
+    7,
+    9
+  ],
+  "F05_equations_verified": 2,
+  "F06_no_new_delivery": true,
+  "F07_required_metrics_verified": 4,
+  "F07_extra_business_undefined_total": [
+    214710.95
+  ],
+  "download_sha256": "0c2b6ac6d9f0916b6cb9d628365bc95496ff6967a4eb34a3c42e32ebecd225cb",
+  "download_bytes": 6279,
+  "refresh_download_identical": true,
+  "history_messages_after_refresh": 10,
+  "code_unchanged_during_test": true,
+  "source_unchanged": true
+}

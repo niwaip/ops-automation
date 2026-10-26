@@ -1,0 +1,549 @@
+{
+  "data": "entirely generated public test data",
+  "contract": {
+    "raw_prompt": "总结2037年收入、毛利率、营业利润和净利润。附件为完全合成测试数据。",
+    "period": "2037",
+    "currency": null,
+    "metrics": [
+      {
+        "name": "营业收入",
+        "aliases": [
+          "营业收入",
+          "总收入",
+          "主营业务收入",
+          "营收",
+          "收入"
+        ],
+        "expected_type": "number",
+        "period": "2037",
+        "required": true,
+        "semantic_id": "finance.revenue"
+      },
+      {
+        "name": "毛利率",
+        "aliases": [
+          "毛利率",
+          "综合毛利率",
+          "销售毛利率"
+        ],
+        "expected_type": "percentage",
+        "period": "2037",
+        "required": true,
+        "semantic_id": "finance.gross_margin"
+      },
+      {
+        "name": "营业利润",
+        "aliases": [
+          "营业利润",
+          "核心经营利润",
+          "经营利润"
+        ],
+        "expected_type": "number",
+        "period": "2037",
+        "required": true,
+        "semantic_id": "finance.operating_profit"
+      },
+      {
+        "name": "净利润",
+        "aliases": [
+          "净利润",
+          "税后净利",
+          "净收益",
+          "纯利润"
+        ],
+        "expected_type": "number",
+        "period": "2037",
+        "required": true,
+        "semantic_id": "finance.net_profit"
+      }
+    ],
+    "is_audit_intent": false,
+    "is_catalog_only": false,
+    "is_advisory_intent": false,
+    "is_browse_or_summary": false,
+    "is_explicit_calc": false,
+    "is_detail_query": false,
+    "is_grouped": false,
+    "group_dimension": null,
+    "operation": null,
+    "dimension": null,
+    "comparison": null,
+    "comparison_basis": null,
+    "ranking": null,
+    "concepts": [],
+    "domain": "finance",
+    "has_filters": true,
+    "requires_source_scope_review": true,
+    "task_type": "tabular_compute",
+    "entity_predicates": [],
+    "attribute_targets": [
+      "收入",
+      "数据"
+    ],
+    "limit": null,
+    "audit_checks": []
+  },
+  "before": {
+    "complete": false,
+    "domain": "finance",
+    "evidence_ids": [
+      "8167f201347e1d15987366bc"
+    ],
+    "missing_metrics": [
+      {
+        "metric_id": "finance.gross_margin",
+        "name": "毛利率",
+        "expected_type": "percentage",
+        "source_column_status": "unknown"
+      }
+    ],
+    "issues": [
+      {
+        "code": "required_metrics_missing",
+        "metrics": [
+          {
+            "metric_id": "finance.gross_margin",
+            "name": "毛利率",
+            "expected_type": "percentage",
+            "source_column_status": "unknown"
+          }
+        ],
+        "message": "尚未核实指标 毛利率 的来源字段；需先读取真实工作表和表头，不能认定原件缺列。"
+      }
+    ],
+    "available_sheets": [],
+    "known_headers": [
+      "2036实际",
+      "2037实际",
+      "科目"
+    ],
+    "gate_review": {
+      "action": "repair",
+      "category": "gate_false_positive",
+      "complete": false,
+      "dismissed_issue_codes": [],
+      "supporting_fact_ids": [
+        "actual__(('str', '营业收入'),)",
+        "actual__(('str', '营业利润'),)",
+        "actual__(('str', '净利润'),)"
+      ],
+      "reason": "系统误报指出‘毛利率’来源字段未知。但执行计划明确查询范围包含2037年实际列（B列），且覆盖范围显示数据在A4:C8范围内，其中B列为'2037实际'。虽然目前输出事实中未包含毛利率（可能因原始数据中该科目对应值为空或未被提取为有效数值），但这属于数据缺失或过滤结果，而非表头或字段定义缺失。根据门禁规则，不能仅因当前未提取到数值就断言原件缺列。且用户要求的是‘总结’，目前已有收入、营业利润、净利润三个核心指标的明确数据。对于毛利率，若原始数据中无对应值，则应在报告中说明‘无数据’而非报错阻断。目前误报阻止了对已有数据的完整呈现。",
+      "repair_instruction": "移除关于毛利率缺失的误报。重新评估执行计划：检查'2037实际'列中'毛利'行是否有数值。如果有数值但未被提取，需检查提取逻辑；如果无数值，则正常报告该指标不可用。当前主要任务是为已获取的三个指标生成总结。",
+      "user_question": "",
+      "revalidated": true
+    }
+  },
+  "completed": [
+    {
+      "schema_version": 1,
+      "status": "success",
+      "data": {
+        "kind": "spreadsheet_analysis",
+        "plan": {
+          "tables": [
+            {
+              "sheet": "合成报表",
+              "header_row": 3,
+              "data_range": "A4:C8",
+              "id": "derive_t0"
+            }
+          ],
+          "calculations": [
+            {
+              "id": "derive_m0",
+              "label": "毛利率（注册关系补算）",
+              "metric_id": "finance.gross_margin",
+              "output_unit": "%",
+              "expression": {
+                "op": "divide",
+                "args": [
+                  {
+                    "cell": "B6",
+                    "sheet": "合成报表",
+                    "unit": "amount"
+                  },
+                  {
+                    "cell": "B4",
+                    "sheet": "合成报表",
+                    "unit": "amount"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "requested_plan": {
+          "tables": [
+            {
+              "sheet": "合成报表",
+              "header_row": 3,
+              "data_range": "A4:C8",
+              "id": "derive_t0"
+            }
+          ],
+          "calculations": [
+            {
+              "id": "derive_m0",
+              "label": "毛利率（注册关系补算）",
+              "metric_id": "finance.gross_margin",
+              "output_unit": "%",
+              "expression": {
+                "op": "divide",
+                "args": [
+                  {
+                    "cell": "B6",
+                    "sheet": "合成报表",
+                    "unit": "amount"
+                  },
+                  {
+                    "cell": "B4",
+                    "sheet": "合成报表",
+                    "unit": "amount"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "semantic_domain": {
+          "id": "finance",
+          "version": "1"
+        },
+        "normalizations": [],
+        "plan_hash": "f62b9582d512076957579ab4fada1cbc3962d7546fb9bb578bee3f620d1d0ab0",
+        "facts": [
+          {
+            "id": "derive_m0",
+            "label": "毛利率（注册关系补算）",
+            "source_cells": [
+              "合成报表!B4",
+              "合成报表!B6"
+            ],
+            "metric_id": "finance.gross_margin",
+            "value": "30.0",
+            "unit": "%"
+          }
+        ],
+        "checks": [],
+        "rules": [],
+        "profiles": [],
+        "coverage": [
+          {
+            "id": "derive_t0",
+            "sheet": "合成报表",
+            "data_range": "A4:C8",
+            "header_row": 3,
+            "input_records": 5,
+            "evaluated_records": 5,
+            "excluded_header_rows": [],
+            "headers": {
+              "A": "科目",
+              "B": "2037实际",
+              "C": "2036实际"
+            },
+            "source_months": null,
+            "selected_rows": [
+              4,
+              5,
+              6,
+              7,
+              8
+            ],
+            "filters": [],
+            "coverage_complete": true
+          }
+        ],
+        "rows": [],
+        "visited_cells": [
+          "合成报表!B4",
+          "合成报表!B6"
+        ],
+        "amount_unit": "千元",
+        "unit_sources": [
+          "合成报表!A1"
+        ],
+        "evidence_id": "4dbbf04b971f8b407d2999ad"
+      },
+      "error": null,
+      "provenance": {
+        "file_path": "/tmp/public-scope-test-l1o9ra93/public-synthetic.xlsx",
+        "workbook_id": "4137223ab79fa3d3290361d08dbe57145c9fbb5ee7f33046108c8bd28f317df2",
+        "calculation": {
+          "status": "literal_values"
+        },
+        "plan_hash": "f62b9582d512076957579ab4fada1cbc3962d7546fb9bb578bee3f620d1d0ab0",
+        "execution_origin": "registered_derivation",
+        "parent_evidence_ids": [
+          "8167f201347e1d15987366bc"
+        ],
+        "recipe_domain": "finance",
+        "recipe_version": "1"
+      },
+      "text_representation": "{\"evidence_id\": \"4dbbf04b971f8b407d2999ad\", \"rules\": [], \"profiles\": [], \"amount_unit\": \"千元\", \"semantic_domain\": {\"id\": \"finance\", \"version\": \"1\"}, \"facts\": [{\"id\": \"derive_m0\", \"label\": \"毛利率（注册关系补算）\", \"metric_id\": \"finance.gross_margin\", \"value\": \"30.0\", \"unit\": \"%\", \"source_cells\": [\"合成报表!B4\", \"合成报表!B6\"], \"source_cell_count\": 2}], \"checks\": [], \"coverage\": [{\"id\": \"derive_t0\", \"sheet\": \"合成报表\", \"data_range\": \"A4:C8\", \"header_row\": 3, \"input_records\": 5, \"evaluated_records\": 5, \"excluded_header_rows\": [], \"headers\": {\"A\": \"科目\", \"B\": \"2037实际\", \"C\": \"2036实际\"}, \"source_months\": null, \"filters\": [], \"coverage_complete\": true}]}"
+    }
+  ],
+  "after": {
+    "complete": true,
+    "domain": "finance",
+    "evidence_ids": [
+      "8167f201347e1d15987366bc",
+      "4dbbf04b971f8b407d2999ad"
+    ],
+    "missing_metrics": [],
+    "issues": [],
+    "available_sheets": [],
+    "known_headers": [
+      "2036实际",
+      "2037实际",
+      "科目"
+    ],
+    "gate_review": null
+  },
+  "mixed_state": {
+    "complete": true,
+    "domain": "finance",
+    "evidence_ids": [
+      "9c0121bbda345c59437e3b7b"
+    ],
+    "missing_metrics": [],
+    "issues": [],
+    "available_sheets": [],
+    "known_headers": [
+      "2036实际",
+      "2037实际",
+      "科目"
+    ],
+    "gate_review": null
+  },
+  "facts": [
+    {
+      "id": "actual__(('str', '营业收入'),)",
+      "label": "营业收入 实际值",
+      "group_key": "营业收入",
+      "group_fields": {
+        "科目": "营业收入"
+      },
+      "value": "1200",
+      "unit": "千元",
+      "source_cells": [
+        "合成报表!B4"
+      ],
+      "matched_records": 1
+    },
+    {
+      "id": "actual__(('str', '毛利'),)",
+      "label": "毛利 实际值",
+      "group_key": "毛利",
+      "group_fields": {
+        "科目": "毛利"
+      },
+      "value": "360",
+      "unit": "千元",
+      "source_cells": [
+        "合成报表!B6"
+      ],
+      "matched_records": 1
+    },
+    {
+      "id": "actual__(('str', '营业利润'),)",
+      "label": "营业利润 实际值",
+      "group_key": "营业利润",
+      "group_fields": {
+        "科目": "营业利润"
+      },
+      "value": "180",
+      "unit": "千元",
+      "source_cells": [
+        "合成报表!B7"
+      ],
+      "matched_records": 1
+    },
+    {
+      "id": "actual__(('str', '净利润'),)",
+      "label": "净利润 实际值",
+      "group_key": "净利润",
+      "group_fields": {
+        "科目": "净利润"
+      },
+      "value": "120",
+      "unit": "千元",
+      "source_cells": [
+        "合成报表!B8"
+      ],
+      "matched_records": 1
+    },
+    {
+      "id": "derive_m0",
+      "label": "毛利率（注册关系补算）",
+      "source_cells": [
+        "合成报表!B4",
+        "合成报表!B6"
+      ],
+      "metric_id": "finance.gross_margin",
+      "value": "30.0",
+      "unit": "%",
+      "calculation_stage": "post_query"
+    }
+  ],
+  "wrong_period_state": {
+    "complete": false,
+    "domain": "finance",
+    "evidence_ids": [
+      "508e62723e36972aef969574"
+    ],
+    "missing_metrics": [
+      {
+        "metric_id": "finance.revenue",
+        "name": "营业收入",
+        "expected_type": "number",
+        "source_column_status": "unknown"
+      },
+      {
+        "metric_id": "finance.gross_margin",
+        "name": "毛利率",
+        "expected_type": "percentage",
+        "source_column_status": "unknown"
+      },
+      {
+        "metric_id": "finance.operating_profit",
+        "name": "营业利润",
+        "expected_type": "number",
+        "source_column_status": "unknown"
+      },
+      {
+        "metric_id": "finance.net_profit",
+        "name": "净利润",
+        "expected_type": "number",
+        "source_column_status": "unknown"
+      }
+    ],
+    "issues": [
+      {
+        "code": "source_scope_mismatch",
+        "message": "实际取数列或范围与请求的期间或口径不一致，请修正取数计划。"
+      },
+      {
+        "code": "required_metrics_missing",
+        "metrics": [
+          {
+            "metric_id": "finance.revenue",
+            "name": "营业收入",
+            "expected_type": "number",
+            "source_column_status": "unknown"
+          },
+          {
+            "metric_id": "finance.gross_margin",
+            "name": "毛利率",
+            "expected_type": "percentage",
+            "source_column_status": "unknown"
+          },
+          {
+            "metric_id": "finance.operating_profit",
+            "name": "营业利润",
+            "expected_type": "number",
+            "source_column_status": "unknown"
+          },
+          {
+            "metric_id": "finance.net_profit",
+            "name": "净利润",
+            "expected_type": "number",
+            "source_column_status": "unknown"
+          }
+        ],
+        "message": "尚未核实指标 营业收入、毛利率、营业利润、净利润 的来源字段；需先读取真实工作表和表头，不能认定原件缺列。"
+      }
+    ],
+    "available_sheets": [],
+    "known_headers": [
+      "2036实际",
+      "2037实际",
+      "科目"
+    ],
+    "gate_review": {
+      "action": "repair",
+      "category": "gate_false_positive",
+      "complete": false,
+      "dismissed_issue_codes": [],
+      "supporting_fact_ids": [],
+      "reason": "系统误报指标缺失。证据显示表头确实包含['2036实际', '2037实际', '科目']，且执行计划已正确锁定'2037实际'列并过滤了相关科目。告报声称的'来源字段未知'与事实不符，且执行计划已针对2037年制定，不存在取数范围与请求不一致的问题。当前阻碍是执行计划仅配置了'2036实际'的求和运算，缺失对'2037实际'列的计算逻辑，需修正执行计划而非要求澄清。",
+      "repair_instruction": "修正执行计划：将取数列从'2036实际'更改为'2037实际'。具体操作：保留WHERE过滤条件[营业收入, 毛利, 营业利润, 净利润]和GROUP BY [科目]，但将metrics中的聚合字段改为'2037实际'。注意：'毛利'需用于计算毛利率或作为毛利额，需确认系统是否需区分'毛利额'与'毛利率'指标，若需计算毛利率，应确保分母包含'营业收入'。",
+      "user_question": "None",
+      "revalidated": true
+    }
+  },
+  "passed": true,
+  "judgments": {
+    "SemanticFilterJudge": [
+      {
+        "matched": true,
+        "reason": "用户指令要求总结'2037年'的相关财务指标。Source context 明确显示 requested_period 为 '2037'，且 bound_headers 中的列名为 '2037实际'，过滤器为空。这表明数据源已正确锁定在2037年期间，且无额外错误筛选。虽然工具未直接执行显式的字段筛选（Filters为空），但取数范围涵盖了所需期间，符合'忠实、准确'的取数前提，未发现明显矛盾或截断。"
+      },
+      {
+        "matched": true,
+        "reason": "用户要求总结2037年的收入、毛利率、营业利润和净利润。Source context显示工具提取了'2037实际'期间的数据，且通过筛选条件在'科目'字段中包含了'营业收入'（对应收入）、'毛利'（可用于计算毛利率）、'营业利润'和'净利润'。虽然'毛利率'通常由毛利和营业收入计算得出，但提取毛利和营业收入足以支持该指标的核算，且其他三个指标直接匹配。工具未错误截断，筛选逻辑与用户意图一致。"
+      },
+      {
+        "matched": false,
+        "reason": "用户要求总结2037年的数据，但Source context中的bound_headers明确显示实际取数列为'2036实际'，且headers中只有'2036实际'。这意味着工具读取了错误的期间（2036年）而非用户要求的2037年，存在明确的口径矛盾。"
+      }
+    ],
+    "SemanticContractJudge": [
+      {
+        "task_type": "tabular_compute",
+        "is_grouped": false,
+        "group_dimension": null,
+        "is_audit": false,
+        "entity_predicates": [],
+        "metrics": [
+          "收入",
+          "毛利率",
+          "营业利润",
+          "净利润"
+        ],
+        "filter_conditions": [
+          "科目='收入' OR 科目='毛利率' OR 科目='营业利润' OR 科目='净利润'"
+        ],
+        "audit_checks": [],
+        "period": "2037",
+        "operation": null,
+        "dimension": null,
+        "comparison": null,
+        "comparison_basis": null,
+        "ranking": null,
+        "limit": null,
+        "reason": "用户要求对2037年的四项具体财务指标（收入、毛利率、营业利润、净利润）进行总结，这属于基于特定期间和特定指标的数据聚合计算。由于指令未要求按维度分组（如按部门、项目等），而是针对全表/整体数据进行核算展示，因此is_grouped为false。"
+      }
+    ],
+    "TaskCompletenessJudge": [
+      {
+        "action": "recheck",
+        "category": "gate_false_positive",
+        "complete": false,
+        "dismissed_issue_codes": [
+          "source_scope_mismatch",
+          "required_metrics_missing"
+        ],
+        "supporting_fact_ids": [],
+        "reason": "系统误报指标缺失。证据显示表头确实包含['2036实际', '2037实际', '科目']，且执行计划已正确锁定'2037实际'列并过滤了相关科目。告报声称的'来源字段未知'与事实不符，且执行计划已针对2037年制定，不存在取数范围与请求不一致的问题。当前阻碍是执行计划仅配置了'2036实际'的求和运算，缺失对'2037实际'列的计算逻辑，需修正执行计划而非要求澄清。",
+        "repair_instruction": "修正执行计划：将取数列从'2036实际'更改为'2037实际'。具体操作：保留WHERE过滤条件[营业收入, 毛利, 营业利润, 净利润]和GROUP BY [科目]，但将metrics中的聚合字段改为'2037实际'。注意：'毛利'需用于计算毛利率或作为毛利额，需确认系统是否需区分'毛利额'与'毛利率'指标，若需计算毛利率，应确保分母包含'营业收入'。",
+        "user_question": "None"
+      },
+      {
+        "action": "recheck",
+        "category": "gate_false_positive",
+        "complete": false,
+        "dismissed_issue_codes": [
+          "required_metrics_missing"
+        ],
+        "supporting_fact_ids": [
+          "actual__(('str', '营业收入'),)",
+          "actual__(('str', '营业利润'),)",
+          "actual__(('str', '净利润'),)"
+        ],
+        "reason": "系统误报指出‘毛利率’来源字段未知。但执行计划明确查询范围包含2037年实际列（B列），且覆盖范围显示数据在A4:C8范围内，其中B列为'2037实际'。虽然目前输出事实中未包含毛利率（可能因原始数据中该科目对应值为空或未被提取为有效数值），但这属于数据缺失或过滤结果，而非表头或字段定义缺失。根据门禁规则，不能仅因当前未提取到数值就断言原件缺列。且用户要求的是‘总结’，目前已有收入、营业利润、净利润三个核心指标的明确数据。对于毛利率，若原始数据中无对应值，则应在报告中说明‘无数据’而非报错阻断。目前误报阻止了对已有数据的完整呈现。",
+        "repair_instruction": "移除关于毛利率缺失的误报。重新评估执行计划：检查'2037实际'列中'毛利'行是否有数值。如果有数值但未被提取，需检查提取逻辑；如果无数值，则正常报告该指标不可用。当前主要任务是为已获取的三个指标生成总结。",
+        "user_question": ""
+      }
+    ]
+  }
+}

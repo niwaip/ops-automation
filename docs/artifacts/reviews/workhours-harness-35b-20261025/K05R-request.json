@@ -1,0 +1,17 @@
+{
+  "message": "请直接在聊天列出客户名称为空的全部原Excel行号，不需要导出、不需要再次确认。只列行号和条数即可，仍按本会话原附件，不联网。",
+  "clientMessageId": "1792909383394-jp85w7me",
+  "clientAssistantMessageId": "1792909383394-42bncs8r",
+  "sessionId": "chat-session-1792908948915-ytw0yory",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

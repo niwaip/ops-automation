@@ -1,0 +1,19 @@
+{
+  "source_hash": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+  "method": "Decimal arithmetic from original literals and formula rate constants; no cached formula values used",
+  "golden": {
+    "revenue": "124020",
+    "gross_profit": "53443.250",
+    "operating_profit": "21209.400",
+    "net_profit": "16038.30000",
+    "gross_margin": "0.4309244476697306885986131269",
+    "net_margin": "0.1293202709240445089501693275"
+  },
+  "bs_delta": "-6188.30000",
+  "cash_delta": "3738.30000",
+  "budget_monthly_rows_verified": 24,
+  "output_metrics_verified": 4,
+  "refresh_history_messages": 8,
+  "all_six_streams_done": true,
+  "source_unchanged": true
+}

@@ -1,0 +1,17 @@
+{
+  "message": "请重试。可以分步完成：先只检查交易明细第4至83行中部门为空的记录，列出条数、Excel行号、凭证号。其余四类本轮先不检查，不要报告为0。无法完成就明确提示重试。不修改原件，不联网。",
+  "clientMessageId": "1792897851948-3l5k32tn",
+  "clientAssistantMessageId": "1792897851948-tsdsj10j",
+  "sessionId": "chat-session-1792897587482-oobbqctt",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

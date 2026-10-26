@@ -7,10 +7,12 @@ inputs. Every compiled recipe is executed again by the normal source-bound engin
 import copy
 import hashlib
 import json
+import re
 from .analysis_contract import build_analysis_contract
 from .analysis_semantics import derivation_recipes, domain_pack
 from .analysis_task_state import analysis_task_state
 from .spreadsheet_analysis import calculate_spreadsheet_analysis
+from .query_fact_binding import bind_query_fact
 
 
 def _leaf(expression, receipt):
@@ -33,6 +35,29 @@ def _leaf(expression, receipt):
             'table':table,'evidence_id':data['evidence_id']}
 
 
+def _resolve_fact_metric_id(fact, pack):
+    if fact.get('metric_id'):
+        return fact['metric_id']
+    if not pack or not hasattr(pack, 'METRICS'):
+        return None
+    gk = fact.get('group_key')
+    if gk is not None:
+        gk_str = str(gk).strip()
+        for m in pack.METRICS:
+            if m.get('expected_type') != 'percentage' and any(re.search(p, gk_str, re.I) for p in m.get('patterns', [])):
+                return m['id']
+    for v in (fact.get('group_fields') or {}).values():
+        v_str = str(v).strip()
+        for m in pack.METRICS:
+            if m.get('expected_type') != 'percentage' and any(re.search(p, v_str, re.I) for p in m.get('patterns', [])):
+                return m['id']
+    label = fact.get('label') or ''
+    for m in pack.METRICS:
+        if m.get('expected_type') != 'percentage' and any(re.search(p, label, re.I) for p in m.get('patterns', [])):
+            return m['id']
+    return None
+
+
 class RegisteredMetricCompletion:
     """At most four source-plan executions per turn; failed recipes are not retried."""
     def __init__(self):
@@ -46,7 +71,7 @@ class RegisteredMetricCompletion:
                  if any(m.semantic_id==r['metric_id'] for m in contract.metrics)]
         if not recipes:
             return []
-        state=analysis_task_state(evidence,prompt)
+        state=analysis_task_state(evidence,prompt,deadline=deadline)
         if any(issue['code'] not in ('required_metrics_missing','comparison_windows_missing') for issue in state['issues']):
             return []
         pack=domain_pack(contract.domain)
@@ -62,19 +87,59 @@ class RegisteredMetricCompletion:
             if not raw_calcs and plan_obj.get('metrics'):
                 raw_calcs = [{'id': m['id'], 'expression': {'aggregate': m.get('op', 'sum'), 'column': m.get('field', '')}} for m in plan_obj.get('metrics', []) if isinstance(m, dict)]
             calculations = {c['id']: c for c in raw_calcs if isinstance(c, dict)}
+            cov_list = data.get('coverage', [])
+            cov = cov_list[0] if cov_list else {}
+            sheet = cov.get('sheet')
+            prov = receipt.provenance or {}
             for fact in data.get('facts',[]):
-                calculation=calculations.get(fact['id'])
-                if not calculation or not fact.get('metric_id'):
+                metric_id = _resolve_fact_metric_id(fact, pack)
+                query_binding = (bind_query_fact(fact, plan_obj, cov_list)
+                                 if data.get('query_ir_version') else None)
+                if query_binding and metric_id:
+                    expression = query_binding['expression']
+                    if expression.get('aggregate', 'sum') == 'sum':
+                        scope = (prov.get('file_path'), prov.get('workbook_id'), *query_binding['selection'])
+                        binding = {**query_binding, 'scope': scope, 'evidence_id': data['evidence_id']}
+                        key = (metric_id, scope)
+                        bank.setdefault(key, {})[binding['field']] = binding
                     continue
-                expression=calculation['expression']
-                binding=_leaf(expression,receipt)
-                if binding:
-                    key=(fact['metric_id'],binding['scope'])
-                    bank.setdefault(key,{})[binding['field']]=binding
-                elif expression.get('op')=='divide' and len(expression.get('args',[]))==2:
-                    left,right=(_leaf(arg,receipt) for arg in expression['args'])
-                    if left and right and left['scope']==right['scope'] and fact['unit']=='%':
-                        existing.add((fact['metric_id'],left['scope']))
+                calculation = calculations.get(fact['id'])
+                if calculation:
+                    expression = calculation['expression']
+                    binding = _leaf(expression, receipt)
+                    if binding and metric_id:
+                        key = (metric_id, binding['scope'])
+                        bank.setdefault(key, {})[binding['field']] = binding
+                    elif expression.get('op') == 'divide' and len(expression.get('args', [])) == 2:
+                        left, right = (_leaf(arg, receipt) for arg in expression['args'])
+                        if left and right and left['scope'] == right['scope'] and fact.get('unit') == '%':
+                            existing.add((metric_id or fact.get('metric_id'), left['scope']))
+                elif metric_id and sheet and fact.get('source_cells'):
+                    source_cells = fact.get('source_cells') or []
+                    col_key = ''
+                    if source_cells:
+                        first_cell = source_cells[0].split('!')[-1]
+                        col_letter = re.sub(r'\d+', '', first_cell)
+                        col_key = cov.get('headers', {}).get(col_letter, col_letter)
+                    scope = (prov.get('file_path'), prov.get('workbook_id'), sheet, col_key)
+                    field = (col_key, 'cell', fact.get('unit', 'amount'))
+                    if fact.get('unit') == '%':
+                        existing.add((metric_id, scope))
+                    elif len(source_cells) == 1:
+                        cell_addr = source_cells[0].split('!')[-1]
+                        binding = {
+                            'scope': scope,
+                            'field': field,
+                            'expression': {'cell': cell_addr, 'sheet': sheet, 'unit': 'amount'},
+                            'table': {
+                                'sheet': sheet,
+                                'header_row': cov.get('header_row', 1),
+                                'data_range': cov.get('data_range', 'A1:Z100'),
+                            },
+                            'evidence_id': data.get('evidence_id'),
+                        }
+                        key = (metric_id, scope)
+                        bank.setdefault(key, {})[field] = binding
         groups={}
         for recipe in recipes:
             numerator,denominator=recipe['operands']
@@ -96,11 +161,14 @@ class RegisteredMetricCompletion:
             for recipe,bindings in candidates[:8]:
                 args=[]
                 for binding in bindings:
-                    table=copy.deepcopy(binding['table']);table.pop('id')
+                    table=copy.deepcopy(binding['table']);table.pop('id', None)
                     key=json.dumps(table,sort_keys=True,ensure_ascii=False)
                     if key not in tables:
                         tables[key]={**table,'id':f'derive_t{len(tables)}'}
-                    args.append({**binding['expression'],'table':tables[key]['id']})
+                    arg_expr = {**binding['expression']}
+                    if 'table' in arg_expr:
+                        arg_expr['table'] = tables[key]['id']
+                    args.append(arg_expr)
                     parents.add(binding['evidence_id'])
                 calculations.append({'id':f'derive_m{len(calculations)}',
                     'label':recipe['name']+'（注册关系补算）','metric_id':recipe['metric_id'],

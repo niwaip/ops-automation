@@ -181,6 +181,74 @@ def _extract_metric_value_from_reply(
                             except ValueError:
                                 pass
 
+    # 额外支持：解析 HTML 表格 (<table><tr><th>...</th></tr><tr><td>...</td></tr></table>)
+    if "<table" in reply_text.lower() or "<tr" in reply_text.lower():
+        tr_blocks = re.findall(r'<tr[^>]*>(.*?)</tr>', reply_text, re.DOTALL | re.IGNORECASE)
+        target_html_col_indices: List[int] = []
+        for tr in tr_blocks:
+            th_cells = re.findall(r'<th[^>]*>(.*?)</th>', tr, re.DOTALL | re.IGNORECASE)
+            td_cells = re.findall(r'<td[^>]*>(.*?)</td>', tr, re.DOTALL | re.IGNORECASE)
+            if th_cells:
+                th_clean = [re.sub(r'<[^>]+>', '', c).strip() for c in th_cells]
+                matching_indices = [idx for idx, c in enumerate(th_clean) if re.search(combined_pat, c, re.IGNORECASE)]
+                if matching_indices:
+                    target_html_col_indices = matching_indices
+                    continue
+            if td_cells and target_html_col_indices:
+                td_clean = [re.sub(r'<[^>]+>', '', c).strip() for c in td_cells]
+                for col_idx in target_html_col_indices:
+                    if col_idx < len(td_clean):
+                        cell_val = td_clean[col_idx]
+                        num_m = re.search(r'([¥￥$€]\s*)?([+-]?[\d,]+(?:\.\d+)?)\s*(%|万元|千元|亿元|元|件|个|笔|[kKmM])?', cell_val)
+                        if num_m:
+                            curr_p = num_m.group(1) or ""
+                            raw_n = num_m.group(2).replace(",", "")
+                            unit_s = num_m.group(3) or ("元" if curr_p.strip() in ("¥", "￥") else "")
+                            try:
+                                float(raw_n)
+                                val_str = f"{raw_n}{unit_s}" if unit_s else raw_n
+                                return True, val_str, False
+                            except ValueError:
+                                pass
+
+    # 额外支持：解析 JS 图表配置与数据 (Chart.js / ECharts / 包含 label 与 data 数组/对象的配置)
+    if any(k in reply_text.lower() for k in ("chart", "dataset", "canvas", "deptchart", "data.map")):
+        chart_label_match = re.search(
+            r'(?:label|name)\s*:\s*[\'"][^\'"]*(?:' + combined_pat + r')[^\'"]*[\'"]',
+            reply_text,
+            re.IGNORECASE
+        )
+        if chart_label_match:
+            scope = reply_text[max(0, chart_label_match.start() - 500):chart_label_match.start() + 1500]
+            num_m = re.search(r'(?:value|data)\s*:\s*(?:\[\s*)?([+-]?[\d,]+(?:\.\d+)?)', scope)
+            if num_m:
+                raw_n = num_m.group(1).replace(",", "")
+                try:
+                    float(raw_n)
+                    return True, raw_n, False
+                except ValueError:
+                    pass
+
+    # 额外支持：剥离 HTML 标签后的文本中继续寻找包含指标的段落
+    if "<" in reply_text and ">" in reply_text:
+        stripped_text = re.sub(r'<[^>]+>', ' ', reply_text)
+        stripped_segments = re.split(r'[。\n\r；;]', stripped_text)
+        for s_seg in stripped_segments:
+            s_seg = s_seg.strip()
+            if not s_seg or not re.search(combined_pat, s_seg, re.IGNORECASE):
+                continue
+            num_m = re.search(r'([¥￥$€]\s*)?([+-]?[\d,]+(?:\.\d+)?)\s*(%|万元|千元|亿元|元|件|个|笔|[kKmM])?', s_seg)
+            if num_m:
+                curr_p = num_m.group(1) or ""
+                raw_n = num_m.group(2).replace(",", "")
+                unit_s = num_m.group(3) or ("元" if curr_p.strip() in ("¥", "￥") else "")
+                try:
+                    float(raw_n)
+                    val_str = f"{raw_n}{unit_s}" if unit_s else raw_n
+                    return True, val_str, False
+                except ValueError:
+                    pass
+
     return False, None, is_year_hallucination
 
 
@@ -271,6 +339,19 @@ def validate_reply_against_contract(
                                     break
                     if has_published_update:
                         sat, val_str, is_year = True, val_str or "已更新至表格交付物", False
+
+                # 兼容可视化/图表交付场景：若当前任务包含可视化或交付物生成（如生成柱状图、折线图、HTML看板等），
+                # 且回复正文中已包含真实有效的 HTML 看板/图表代码（排除包含未计算占位符或推脱注释的假模版），
+                # 目标指标已作为数据源内嵌于图表/看板交互界面中
+                if not sat:
+                    from .task_intent import is_visual_artifact_requested
+                    from .html_report_fallback import detect_mock_or_placeholder_html
+                    if is_visual_artifact_requested(contract.raw_prompt) and not detect_mock_or_placeholder_html(reply_text or ""):
+                        reply_lower = (reply_text or "").lower()
+                        has_valid_html_reply = ("```html" in reply_lower or "<!doctype html>" in reply_lower)
+                        has_visual_components = any(k in reply_lower for k in ("chart", "canvas", "<table", "<svg", "echarts", "d3"))
+                        if has_valid_html_reply and has_visual_components:
+                            sat, val_str, is_year = True, val_str or "已呈现在图表/看板交付物中", False
 
             if not sat and messages:
                 # 兼容外发场景：若模型已成功通过工具推送交付物，或在前序交互/工具执行中已核算出该指标数值，
@@ -429,7 +510,10 @@ def build_contract_termination_warning(
 
     if val_result.comparison_error:
         reason = f"本轮核算证据或结论一致性校验未通过：{val_result.comparison_error}"
-        advice = "请根据真实表头确认比较计划，使用列比较工具完成所需范围的核算后再作答。"
+        if "缺少本轮成功执行的列比较回执" in val_result.comparison_error:
+            advice = "多轮比对尝试均未能通过列计划核验。建议在提问中明确指定目标工作表名称（如《预算对比》）以及需要比对的列坐标或运算口径，或让沙箱通过 Python 脚本直接提取全表数据进行计算。"
+        else:
+            advice = "请根据真实表头确认比较计划，使用列比较工具完成所需范围的核算后再作答。"
     elif has_tool_error:
         reason = f"代码或工具执行过程中出现异常{tool_error_detail}，未能成功提取或核算对应月份与指标数据。"
         advice = "可检查上方工具执行日志修正计算脚本，或直接指定目标数据源工作表并重新运行重算脚本。"

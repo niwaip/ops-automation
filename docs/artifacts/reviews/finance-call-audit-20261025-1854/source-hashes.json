@@ -1,0 +1,414 @@
+{
+  "data/users/e7fce333-a8f4-4097-9a53-f0a4c729da46/workspace/.dsh/sessions/chat-session-1792925510601-ej9n8j4g.evidence.json": {
+    "sha256": "5ec9f9f3b5dc7cb73c963fe7fb8af755a4024282010edb5fc9dd1dc5458e25a8",
+    "mtime_ns": 1792925672196320967
+  },
+  "data/users/e7fce333-a8f4-4097-9a53-f0a4c729da46/workspace/.sessions/chat-session-1792925510601-ej9n8j4g/AI\u80fd\u529b\u6d4b\u8bd5_\u8d22\u52a1\u62a5\u8868.xlsx": {
+    "sha256": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+    "mtime_ns": 1792925529860621246
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/response_observability.py": {
+    "sha256": "d13968007cef9a71a45ef7fe1b936275671fc61192b2ae9961b5174908277213",
+    "mtime_ns": 1792664153341611346
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/office_tools.py": {
+    "sha256": "94397e82b160140f874ca51167bb09ce182ddc37943bce00f9e03c4f77f869df",
+    "mtime_ns": 1791474356990599839
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/workbook_delivery.py": {
+    "sha256": "d9b335b5f40b7035d85aa556839c33e2f36cbb4e0a881c881ab557e54548672e",
+    "mtime_ns": 1792903862355885175
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/agent_loop_helpers.py": {
+    "sha256": "2b4269b9bbc5f52e7712fcf9dd6e75aaa2bf4d268aa46f501dc8ce84aa70a351",
+    "mtime_ns": 1792904240184922219
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/semantic_decision.py": {
+    "sha256": "26594918dd314dd26c0b73d25cb8ec97dc0634650a62d6e7db5d546caa7e905c",
+    "mtime_ns": 1792676811230125362
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_structure_evidence.py": {
+    "sha256": "f82db6b4ed0a41f3229ae394e7627ab61f1be1782af2aaf28f65fd40d63eeebe",
+    "mtime_ns": 1792809763914055434
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/query_result.py": {
+    "sha256": "eb2a861547fc179cdd24aa30b77014e4261da491b6798a488aa2c618561fc798",
+    "mtime_ns": 1792912842069863357
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/sampling_guard.py": {
+    "sha256": "370b3de262bb2a6ec332660b1bb7343d657619b125800fa09555d7e7a3ff21c1",
+    "mtime_ns": 1791544362734053954
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/domain_memory.py": {
+    "sha256": "ebfd1841516680ab179ff3ae27c2134d7f9a255e6af6e30d91672d8c03b5c8a6",
+    "mtime_ns": 1792848816025847818
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/workbook_calculation.py": {
+    "sha256": "b866820da66031159af00fe058d0a4cf331e2302e24ef70ad686cd5468729211",
+    "mtime_ns": 1792904881315996533
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/analysis_task_state.py": {
+    "sha256": "8011345780b95b486eedbc7b57907ceeedac967bef36caa251e1d0d3cd015a22",
+    "mtime_ns": 1792913558689498091
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/intent_contract.py": {
+    "sha256": "3a11b0a24d31f60779bb9c397c7556fb9f385d7af4b85ac9c507ee0f4a1a90b6",
+    "mtime_ns": 1792809763911736708
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/runner.py": {
+    "sha256": "14f64bc25c311ae856c78a37e72bf5ef4f6559eccc0a6e27a2157858817303f2",
+    "mtime_ns": 1792923211356771590
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_context.py": {
+    "sha256": "a6a800cc17e40d30fc3330f53fd7d6d9c46d4fd13080473c52701fcdbededec0",
+    "mtime_ns": 1792907248062268452
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/web_tools.py": {
+    "sha256": "afef86d8ff5f92c41b682fa3842dbbd1955b2f286919cbf46fc45389058e661b",
+    "mtime_ns": 1791697352845421238
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/analysis_domain_commerce.py": {
+    "sha256": "c5b762dd04a286d81e29e0f3cb81330b56ccffef3b99720b90f538031e4d0eb4",
+    "mtime_ns": 1791549145142892002
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_expression.py": {
+    "sha256": "5a6d86526862db3654ab94de84ad471b5eacdd0d17d31fa9ead252a97191b1c3",
+    "mtime_ns": 1792594580695699658
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_checks.py": {
+    "sha256": "04ad3140d0b80a5747a3d9e3ec27a8e94660f5c59999e673d1ec05073bf42847",
+    "mtime_ns": 1791546607973402227
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/reminder_tools.py": {
+    "sha256": "0a5023b5f9e7afcf9b6b929b93e9166bcba583a9de8ad84320a1ca1cd93cb688",
+    "mtime_ns": 1791701393471599548
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/bounded_summary_recovery.py": {
+    "sha256": "7e217ccf00f50f121d53746164a5c67d1d52ed0dad1293e55cec11bf176cd2eb",
+    "mtime_ns": 1792545443690802050
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_informational.py": {
+    "sha256": "0b7cb9b28e2e37caac362f051eb62273159a6ecddfee32541e5c57742e801423",
+    "mtime_ns": 1792631098826661131
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/analysis_turn.py": {
+    "sha256": "f6aecf7424be6f92c39d07e72f131ebd542233dea66d9cf59359c53de2a7d43a",
+    "mtime_ns": 1792912984823353476
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/evidence_store.py": {
+    "sha256": "e260c7e286e8237c202e7308df3742ea92a8e4b432c322deebb83be782795c4c",
+    "mtime_ns": 1792904064453939795
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/task_completeness_judge.py": {
+    "sha256": "ddd636036023af9e8226acbd2eaf5f0fdf6287aea3c9410dbf831dd8ad5c8c4d",
+    "mtime_ns": 1792650401812063130
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/planning_phase.py": {
+    "sha256": "a075f42c6f180f147250acf53cb75acf67434990a39440f643ff346b59d59bdb",
+    "mtime_ns": 1792664725172473392
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/config.py": {
+    "sha256": "086c52860efdca7b906523bb6a0511fa0906233db6a1c1cb02a707c0f4f553d1",
+    "mtime_ns": 1790432445859830370
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_preflight.py": {
+    "sha256": "cbf184ce98370c09efd8e322777368006ecccbfc8430e34ff420d427c4214aca",
+    "mtime_ns": 1792907825288719675
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/analysis_synthesis.py": {
+    "sha256": "3f69df8fb01c5909b6e06806e2ffdeadc9989428159235eb4c8320b549b818bc",
+    "mtime_ns": 1792913108178751192
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/workbook_reader.py": {
+    "sha256": "3a45590a6b487d551583bf18a2bf506171d8797f1b9d2d5f8ccd2ff8360776e0",
+    "mtime_ns": 1791944824845443925
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/prompt_builder.py": {
+    "sha256": "151c821406ee076f068d3edc428209b9725ac5c4a16d002da040712c57496fe1",
+    "mtime_ns": 1792912694369380492
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/skills.py": {
+    "sha256": "9ef8b72b9e138a41fc96931465756953d294b7307905d0289e6197ad02153beb",
+    "mtime_ns": 1792669975932899130
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/personal_skill_execution.py": {
+    "sha256": "37b8dd98c210e21cc369fe55218c0bfcacad41fe4097abf5fefe9c6dc0817a81",
+    "mtime_ns": 1792718678196036280
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/analysis_validation.py": {
+    "sha256": "3bfcf2dee4fe49f6ce9ae0fa58a7f54326bbbeadeab95ce1280578c5f4a769d6",
+    "mtime_ns": 1792809763910359655
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/action_protocol.py": {
+    "sha256": "dd8806231fbc00b4c6488fba383c7470d2dccbf2b2291d001026f244c767f049",
+    "mtime_ns": 1792388068474738405
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/workbook_delivery_recalc.py": {
+    "sha256": "8419474e7f91f6d9d852a415d30e3fb5eada3bd3776ebd3e9b9109979c095728",
+    "mtime_ns": 1792809763918647054
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_scope.py": {
+    "sha256": "6834a7addc5384139e88bf7350ba6cf91ccb661b61d478e1efd6f94abf5ee799",
+    "mtime_ns": 1791549145143784750
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/tool_result.py": {
+    "sha256": "bdd071d2312e0928159e2c199c92064cd9081075fb3234c4b512d1558e9278bb",
+    "mtime_ns": 1792809763917866881
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_fact_identity.py": {
+    "sha256": "7b06cd574848c448e1d6e58fbf63ee584a35b385bcc30d71518fb94ff25ed4dc",
+    "mtime_ns": 1792647878809012737
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/workbook_source_grounding.py": {
+    "sha256": "368a0d67601aa9479f205067e709280aa94eb49612b49ee56bdfba09a0b7e33d",
+    "mtime_ns": 1792903741590367378
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/eval_skill.py": {
+    "sha256": "ebfb4703a2e3689859e0d796b1a87fb6802badcd58c11b1d1b5f2c9daf7f7d83",
+    "mtime_ns": 1789909522033187796
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/report_presentation.py": {
+    "sha256": "a52f55e53d555998999d07389781e0d495c36028bfb45f5ec89371ce56adf8ec",
+    "mtime_ns": 1792913113498948174
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/worksheet_metadata.py": {
+    "sha256": "3ef864acefd65157f0d1a852a89121da1558eac89b0d6a9a38494ac64dd40f8f",
+    "mtime_ns": 1792482634421622683
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/registered_metric_completion.py": {
+    "sha256": "8cb9e186946118166bb2bdb2342b2b4280cbcb8e72e4dfcf8062d71bb5aacdca",
+    "mtime_ns": 1792858159172617598
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/comparison_delivery.py": {
+    "sha256": "a1c35782a889a62380d6640ec15326d74405edf71708fd02b0162bb5c9add9e5",
+    "mtime_ns": 1791556122975218503
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/tools.py": {
+    "sha256": "1235eb7f8220524d9c1958c663eed0bcfabcc8f3fbb9b9f88c1d2d0273f65595",
+    "mtime_ns": 1792809763918040591
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/agent_loop.py": {
+    "sha256": "d826ffcbf4171bdd5611112d595f9e81ed2d57c4ebffc6229e575bf578f89968",
+    "mtime_ns": 1792924587629009338
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/analysis_delivery_constraints.py": {
+    "sha256": "58c5bb966a6aea4590c33373d21dfdee48a0494a10358c5653249429294777c7",
+    "mtime_ns": 1792809763909615525
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/runtime_policy.py": {
+    "sha256": "b20377bfc4d9ca89f78c23c749e1bc7de5cc1ee3bd9db94fb1cf7117895a826e",
+    "mtime_ns": 1792809763912828591
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_quality.py": {
+    "sha256": "d8d6eea691b1336a3809f300f7c1a8db0046023728b3107f45f7302a67d36f14",
+    "mtime_ns": 1792912840381341797
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/delivery_claim_judge.py": {
+    "sha256": "5da458f547ff9a1ab5fc138e03a9657da5b9598f36fb12f9c479688435ab4c39",
+    "mtime_ns": 1792818054871998393
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/tool_dispatch.py": {
+    "sha256": "c55dcd93e606dfd6c80670eb59f5ceeabd70a244a181948149424cf4c9650edf",
+    "mtime_ns": 1792840465702025964
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/__init__.py": {
+    "sha256": "0b6bbfcf1790bc14b9fcfd15a0064d3337c2a68a07b7c8abba8606d4ca8beb4f",
+    "mtime_ns": 1789104790218691315
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/telemetry.py": {
+    "sha256": "21d9af53a57174b8eff842c41fe998c085ad40a3ad0031fdb858343092ab3575",
+    "mtime_ns": 1792664153371849980
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/llm.py": {
+    "sha256": "85f7b3490bf0c241cc4e98480882d0866ce8a7865df9592929a5aa40138a27b1",
+    "mtime_ns": 1792664153402724120
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/analysis_domain_finance.py": {
+    "sha256": "d287caef9af3a48435d33947707e18c20874f1b6dfbefc2e754e66771846d7be",
+    "mtime_ns": 1791549445161771752
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/semantic_filter_judge.py": {
+    "sha256": "d9b8141bb7eba555c1021dd8f47d14fc41b27636a6c34ecbe267a94f1c7f2382",
+    "mtime_ns": 1792579262680650622
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_expression_schema.py": {
+    "sha256": "1c47bfc7c65b6e40cf3ce7f265d0264838a081b2b0cfc13147cbb0d181cc88f6",
+    "mtime_ns": 1792590650447464369
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/final_answer.py": {
+    "sha256": "decc4c9fe3042a5415c81f8d1324c500127061f4b65dab332c9c4302bbbd705b",
+    "mtime_ns": 1792840045586705043
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/context_budget.py": {
+    "sha256": "7bc612487bdbb2c1d98584bd985e3cc4991fd18bef80c72471b80a2d540b82c3",
+    "mtime_ns": 1792572213773459110
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/file_tools.py": {
+    "sha256": "7ddd9f6e99badad639beca8fde1cd45d0128381dd1e47a466b7b47054cf0cf0f",
+    "mtime_ns": 1792809763911207704
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/personal_skill_workflow.py": {
+    "sha256": "10eb8a544260362d723ce2ecf1c0bf424a0560294660492c50b1c10c6f3ef05b",
+    "mtime_ns": 1792809763911911126
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/retrieval_answer_validation.py": {
+    "sha256": "fe457d4f901d6f6a83e16b802c705f03bcc87e16fe3e489a354649944cb0c770",
+    "mtime_ns": 1792664979218538804
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/task_intent.py": {
+    "sha256": "2ac9d47682d5b71e584e65950353e22351560acfeeaffd2348295bb75863c47f",
+    "mtime_ns": 1792912835291794217
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_analysis.py": {
+    "sha256": "61c375bf18e05801b2e9364b412f51eb4f483b0128d99537b641ce788126c3a3",
+    "mtime_ns": 1792912844105028613
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_analysis_schema.py": {
+    "sha256": "07fb313a64e96ec80e628970a8c68302b1edd8fc93775e4f287cbb7f97b96419",
+    "mtime_ns": 1792809763913757807
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/retrieval_answer_recovery.py": {
+    "sha256": "2e1e8bb62c094f262446d00dad096539881dea86b5d50ab01e35fa9e221cd4a9",
+    "mtime_ns": 1792664725250045140
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/analysis_gate_review.py": {
+    "sha256": "5a37fec3f774767d494ebdece9dc6fdab9fea33076bc3142577ee94c1afc49a3",
+    "mtime_ns": 1792897182498445208
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/analysis_request_text.py": {
+    "sha256": "8e29fd8017f163f79f41e497dcbb066d4e60a17ace41ea26d9f5f48a25195a3a",
+    "mtime_ns": 1792650640693463834
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/deliverable_contract.py": {
+    "sha256": "017cb843134acb6005c34127dd15fd2a9be3067d5398f0ce8c004f4adcf6514b",
+    "mtime_ns": 1791937385518415797
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/deliverable_detection.py": {
+    "sha256": "39d4f3eb5f4567f841f41a5d1dcf37b6a2273a6eebb7f9f32fc5589bb75542e5",
+    "mtime_ns": 1792818084087785589
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/excel_tools.py": {
+    "sha256": "63eb0ef126c68685689ff95f7beee1795b74f6e0fad47faa26eba936f9ba9c04",
+    "mtime_ns": 1792809763911020077
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/skill_router.py": {
+    "sha256": "3ea2580606986991d9655eacb991c0c320ef07986406dd263f21fd2d18fc2569",
+    "mtime_ns": 1792809763913225511
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/table_semantic_profiler.py": {
+    "sha256": "b18802ade62cbe095555af92a4e66aea0df4652bd3c09597acbd99896e345cf0",
+    "mtime_ns": 1792548228578593889
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/analysis_clarification.py": {
+    "sha256": "cfa9edf4b999e063b3a8907e8391b0b97aba27cd16b02b60feddb724e415e2b6",
+    "mtime_ns": 1792913556211593626
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/personal_skill_presentation.py": {
+    "sha256": "7ed06733768fc4ed3f14888629b8a9ea8d1edd100ce5b78647b4384b3746aac4",
+    "mtime_ns": 1792671988756898000
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/html_report_fallback.py": {
+    "sha256": "35501f2949cbd104539e23d1fa9895759fb1ff562ae339b61014775d0bec2a40",
+    "mtime_ns": 1792809763911569207
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/analysis_semantics.py": {
+    "sha256": "fc1854f8baf0560dfa1f7e6738355827e647440f94378770772594929421b79f",
+    "mtime_ns": 1792503894139428511
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/comparison_tool_schema.py": {
+    "sha256": "fa28a0d8f54e65bf4f2dce535a0f388eeec028fd372588a7c963a9afda1586ed",
+    "mtime_ns": 1791536441211445780
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/comparison_context.py": {
+    "sha256": "f2d965c563d0b960616af739dacb73daf17c22770989f82dff9e0ee68b7d70df",
+    "mtime_ns": 1791539785771793958
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/analysis_contract.py": {
+    "sha256": "5c2688b469355f7598875f4db7638c62071ffbd46a5222f64006e1b604139fa3",
+    "mtime_ns": 1792924309058986013
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_semantic_bindings.py": {
+    "sha256": "05f254507f803eb5d55efc8698d17d6d1a4fc3fd4b3d5e4d183064c92d542367",
+    "mtime_ns": 1791549445107216576
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/personal_skill_gate.py": {
+    "sha256": "5352aa4bc71b0f3370b6bdb1885aa4738ab6c438c881734fa9b3478bec28c4fb",
+    "mtime_ns": 1792719010898937736
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/skill_admission.py": {
+    "sha256": "e3c670d76c5a99a5598a844d650bb5ef121f1c63b2c5290d604e1b9af36b8064",
+    "mtime_ns": 1792913165942401329
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/query_predicates.py": {
+    "sha256": "eaf2c72c18a2e83441fe397a86f6216f8e3ac11dd12da19c0aacfaca5218ccff",
+    "mtime_ns": 1792647878839953707
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/personal_skill_workflow_engine.py": {
+    "sha256": "3f6114fe88b70b739379b19695a94a0b5a520561bc5fe941e65d56281557a860",
+    "mtime_ns": 1792669779728040738
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_trends.py": {
+    "sha256": "77ec3eb741fac0b181790e61d892732ad5b969d769be78b804613c6da4a57ce7",
+    "mtime_ns": 1792633923400523932
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/comparison_evidence.py": {
+    "sha256": "6a3d4bb5a39c90b62d0ad8f972a9f4925a1d1040d4d2f5489b7e3c4e28dda6f9",
+    "mtime_ns": 1792633899715317680
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/artifact_exporter.py": {
+    "sha256": "7a27709b46e9c42aa249efb7448be73be264a80fa2e18c81218386cecb064094",
+    "mtime_ns": 1792809763910547865
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/query_executor.py": {
+    "sha256": "a822d58de7f773923384c3afea1d48ca950a285d87681baf342e59dd9522d2c5",
+    "mtime_ns": 1792912832731651201
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/personal_skill_gate_schema.py": {
+    "sha256": "494de726b64dc73eabc0c2780d37d6a8d59d39175157774dfcf6f2bc7629f190",
+    "mtime_ns": 1792719010898783611
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/user_declarations.py": {
+    "sha256": "1927a10a2476e3152392d726151ca80bf0d2f703d03bf687a7f210560c18149f",
+    "mtime_ns": 1792848739652440125
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/semantic_contract_judge.py": {
+    "sha256": "2d153dae2a5b6284c77dc58a0fc4e563d372a431d4c2547308404b7f8fb97798",
+    "mtime_ns": 1792924820820172113
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/table_comparison.py": {
+    "sha256": "4d4df48cd95f61365623368c1ab96b31b7fe2628a1adf6d3c6665e068048c582",
+    "mtime_ns": 1791553072812079714
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/analysis_fact_selection.py": {
+    "sha256": "fb72b4b941f285a25ea26d1063eb20fc2288a9ef98207167652bfc031cf0162a",
+    "mtime_ns": 1792907496191190442
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/query_contract.py": {
+    "sha256": "b41892f7c86cc70d55c7f8e6fb361d14a5e3699b7f1bfd4a91799d7bf7f4c1fc",
+    "mtime_ns": 1792907355581846117
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_request.py": {
+    "sha256": "13e6e386dba76f6068b962ae2f01b102fb2c901319b586f11cfa5ff6541577a2",
+    "mtime_ns": 1792566724705759822
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/doctor.py": {
+    "sha256": "afbcb14076495668639eadf0fc0c283277aa69b8b6e00e4c53922e41df5a5901",
+    "mtime_ns": 1790427554397054855
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_plan.py": {
+    "sha256": "130e2441e4cfaf30a8185155afe03123448d9a7e6680a41d19d8a730375d34e0",
+    "mtime_ns": 1792857708717270958
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/delivery_reconciliation.py": {
+    "sha256": "07f0f89545501a12853a522c0122e2bf7c4cc319f6d464d0b44034ab873ce274",
+    "mtime_ns": 1792544393478817706
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_analysis_evidence.py": {
+    "sha256": "45dd551ef55678db120404af7dc4258937ba5ac2055ecb7d563b362248c3e378",
+    "mtime_ns": 1792913428041228253
+  },
+  "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_units.py": {
+    "sha256": "d495ede6a541a198f79822f5b7e9c4dcff79386a4f36337b96fa414f0fd97710",
+    "mtime_ns": 1792809763914204227
+  }
+}

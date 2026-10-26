@@ -1,0 +1,18 @@
+{
+  "model_free_contract_reproduction": [
+    {
+      "is_grouped": false,
+      "group_dimension": null,
+      "entities": [],
+      "is_audit": false
+    },
+    {
+      "is_grouped": false,
+      "group_dimension": null,
+      "entities": [],
+      "is_audit": true
+    }
+  ],
+  "grounding_accepts_known_wrong_F04_answer": true,
+  "runtime_key_hashes_match_workspace": true
+}

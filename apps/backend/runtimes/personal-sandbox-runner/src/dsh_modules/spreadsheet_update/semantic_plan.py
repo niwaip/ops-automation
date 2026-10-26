@@ -2,6 +2,7 @@
 import datetime
 import hashlib
 import json
+import re
 from decimal import Decimal
 from dataclasses import replace
 from pathlib import Path
@@ -101,9 +102,9 @@ def build_semantic_plan(request, workspace):
         raw_sec = request.get('section')
         if isinstance(raw_sec, (list, tuple)):
             section_configs = [{'section': str(s).strip()} for s in raw_sec]
-        elif isinstance(raw_sec, str) and any(sep in raw_sec for sep in (',', '、', '，')):
-            sep = ',' if ',' in raw_sec else ('、' if '、' in raw_sec else '，')
-            section_configs = [{'section': s.strip()} for s in raw_sec.split(sep) if s.strip()]
+        elif isinstance(raw_sec, str):
+            parts = re.split(r'[,，、\s]+|(?:(?<=[^\x00-\x7f])|(?<=\w))\s*(?:和|与|及)\s*(?=[^\x00-\x7f]|\w)', raw_sec)
+            section_configs = [{'section': s.strip()} for s in parts if s and s.strip()]
         else:
             section_configs = [{'section': str(raw_sec).strip()}]
 
@@ -123,6 +124,28 @@ def build_semantic_plan(request, workspace):
                 raise ValueError(f'目标工作表不存在，候选：{wb.sheetnames}')
             ws = wb[source_sheet]
             ops = []
+
+        # 自动补全同源关联区块：如果用户请求或已验证的聚合结果中包含其他对应分类（如“有偿”与“无偿”），
+        # 且目标工作表中存在该候选区块，自动将遗漏的相关区块纳入本轮一次性回填，避免单次发布遗漏其他区块
+        if not sections_input and len(section_configs) == 1 and RESULTS:
+            existing_secs = {s.get('section') for s in section_configs}
+            for r_id, r in RESULTS.items():
+                p_where = r.get('data', {}).get('plan', {}).get('where', {})
+                w_vals = _extract_where_values(p_where)
+                for f in r.get('data', {}).get('filters', []):
+                    if isinstance(f, dict) and 'value' in f:
+                        w_vals.add(str(f['value']).strip())
+                for cand in w_vals:
+                    if cand and str(cand) != str(period) and cand not in existing_secs:
+                        try:
+                            facts = bind_result(r, request.get('key_field'), request['period_field'], period, request.get('metric_id'))[0].all_facts()
+                            f_keys = {fact.logical_key.department_code for fact in facts}
+                            locate(ws, cand, period, request.get('target_label'), f_keys, request.get('target_range'),
+                                   request.get('protected_labels', []), file_hash=target_hash, file_name=target.name, workspace=workspace)
+                            section_configs.append({'section': cand, 'result_id': r_id})
+                            existing_secs.add(cand)
+                        except Exception:
+                            pass
         confirmation = unit_confirmation()
         unit = verify_unit(ws, unit, request.get('unit_cell'), confirmation)
 
@@ -210,7 +233,14 @@ def build_semantic_plan(request, workspace):
                     'department_code': code, 'metric_id': metric, 'period': period,
                     'value_kind': key.value_kind, 'unit': unit, 'old_value': old_val_str
                 })
-                preview.append({'key': code, 'coordinate': coord, 'value': str(value), 'unit': unit})
+                preview.append({
+                    'key': code,
+                    'coordinate': coord,
+                    'value': str(value),
+                    'unit': unit,
+                    'old_value': old_val_str,
+                    'section': sec_name
+                })
 
             # Detect all unmatched target keys and compute deterministic reconciliation
             unmatched = spec['department_rows'].keys() - {f.logical_key.department_code for f in facts}

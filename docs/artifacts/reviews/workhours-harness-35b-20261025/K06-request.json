@@ -1,0 +1,17 @@
+{
+  "message": "帮我按每天统计2026年10月工数，如果没有每日日期请明确指出，不能把导出日期当每条记录日期，也不要编造日数据。 只在聊天回复，不生成文件，不联网；无法核算时明确说明或向我澄清，不要猜测。",
+  "clientMessageId": "1792909526577-6q0t67zy",
+  "clientAssistantMessageId": "1792909526577-nmkbljr4",
+  "sessionId": "chat-session-1792908948915-ytw0yory",
+  "modelId": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}
