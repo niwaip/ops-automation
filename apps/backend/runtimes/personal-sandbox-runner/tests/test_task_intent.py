@@ -182,5 +182,60 @@ class TaskIntentTests(unittest.TestCase):
             result = extract_task_intent(request, users, 'model', None, TelemetryStats(), time.monotonic()+30)
         self.assertEqual(result['task_mode'], 'execute')
 
+    def test_condition_replacement_heals_standalone_to_followup_and_preserves_chart_artifact(self):
+        users = ['按部门统计 金额的合计，不包含（WBS编号）中ex，sy，sp，ip，ib，sz开头的数据，生成柱状图']
+        request = '按部门统计 金额的合计，只包含（WBS编号）中ex，sy，sp，ip，ib，sz开头的数据'
+        # Model initially misclassifies as standalone but quotes the historical chart requirement
+        model_reply = {'finish_reason': 'stop', 'content': json.dumps({
+            'instruction_relation': 'standalone',
+            'task_mode': 'execute',
+            'output_mode': 'artifact',
+            'artifact_types': ['html'],
+            'skill_invocation': {'mode': 'none', 'name': '', 'replace_defaults': False},
+            'requirements': [
+                {'id': 'r1', 'quote': '按部门统计 金额的合计，只包含(WBS编号)中ex,sy,sp,ip,ib,sz开头的数据'},
+                {'id': 'r2', 'quote': '生成柱状图'}
+            ]
+        })}
+        with patch('dsh_modules.semantic_decision.call_model_proxy', return_value=model_reply):
+            result = extract_task_intent(request, users, 'model', None, TelemetryStats(), time.monotonic()+30)
+        self.assertEqual(result['instruction_relation'], 'followup')
+        self.assertEqual(result['output_mode'], 'artifact')
+        self.assertIn('.html', result['artifact_types'])
+        self.assertEqual(len(result['requirements']), 2)
+
+    def test_clean_dialogue_content_strips_html_and_code_blocks(self):
+        from dsh_modules.task_intent import clean_dialogue_content
+        assistant_raw = (
+            "✨ 交互式页面已生成完毕！\n\n"
+            "输出文件：/workspace/index.html\n"
+            "```html\n<!DOCTYPE html><html><head><style>body { color: red; }</style></head><body><h1>Chart</h1></body></html>\n```\n"
+            "<div>操作提示：请查看看板</div>"
+        )
+        cleaned = clean_dialogue_content('assistant', assistant_raw)
+        self.assertNotIn('```', cleaned)
+        self.assertNotIn('<!DOCTYPE', cleaned)
+        self.assertNotIn('<style>', cleaned)
+        self.assertIn('交互式页面已生成完毕', cleaned)
+        self.assertIn('/workspace/index.html', cleaned)
+        self.assertIn('操作提示：请查看看板', cleaned)
+
+    def test_unrelated_task_does_not_inherit_chart(self):
+        users = ['按部门统计 金额的合计，不包含...生成柱状图']
+        request = '帮我写一封感谢信'
+        model_reply = {'finish_reason': 'stop', 'content': json.dumps({
+            'instruction_relation': 'standalone',
+            'task_mode': 'execute',
+            'output_mode': 'conversation',
+            'artifact_types': [],
+            'skill_invocation': {'mode': 'none', 'name': '', 'replace_defaults': False},
+            'requirements': [{'id': 'r1', 'quote': request}]
+        })}
+        with patch('dsh_modules.semantic_decision.call_model_proxy', return_value=model_reply):
+            result = extract_task_intent(request, users, 'model', None, TelemetryStats(), time.monotonic()+30)
+        self.assertEqual(result['instruction_relation'], 'standalone')
+        self.assertEqual(result['output_mode'], 'conversation')
+        self.assertEqual(result['artifact_types'], [])
+
 
 if __name__ == '__main__': unittest.main()

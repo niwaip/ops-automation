@@ -108,10 +108,59 @@ def is_spreadsheet_mutation_requested(text: str) -> bool:
     return bool(SPREADSHEET_MUTATION_RE.search(text))
 
 
+def clean_dialogue_content(role: str, content: str) -> str:
+    if not content or not isinstance(content, str):
+        return ''
+    c = content.strip()
+    if '用户指令：' in c:
+        c = c.split('用户指令：')[-1].strip()
+    if role == 'assistant':
+        # Remove code blocks (markdown ```...```)
+        c = re.sub(r'```[\s\S]*?```', '', c)
+        # Remove HTML tags
+        c = re.sub(r'<[^>]+>', ' ', c)
+        # Collapse multiple spaces / blank lines
+        c = re.sub(r'[ \t\r\f\v]+', ' ', c)
+        c = re.sub(r'\n\s*\n+', '\n', c).strip()
+        return c[:400]
+    return c[:600]
+
+
+def is_condition_replacement_or_refinement(request: str, users: list) -> bool:
+    if not request or not isinstance(request, str) or not users:
+        return False
+    if is_cancellation_or_abort(request):
+        return False
+
+    req_str = request.strip()
+    # 1. Explicit replacement / refinement phrasing
+    if re.search(r'^(?:再|另外|并且|而且|同时|接着|然后|顺便|重新|继续|修改为|改成|换成|改为|替换为|调整为)\b', req_str):
+        return True
+    if re.search(r'(?:只包含|仅包含|不包含|排除|只看|仅看|只要|只统计|重新按|替换为|改为|换成)', req_str):
+        if any(re.search(r'(?:包含|不包含|排除|按.*统计|金额|合计|明细|工数|数据|记录)', u) for u in users[-2:]):
+            return True
+
+    # 2. Lexical / character overlap with recent user turn
+    last_user = users[-1].strip()
+    chars_curr = set(re.findall(r'[\u4e00-\u9fa5A-Za-z0-9]', req_str))
+    chars_prev = set(re.findall(r'[\u4e00-\u9fa5A-Za-z0-9]', last_user))
+    if chars_curr and chars_prev:
+        overlap = len(chars_curr & chars_prev) / len(chars_curr)
+        if overlap >= 0.55 and any(
+            is_visual_artifact_requested(u) or has_physical_artifact_request(u)
+            or is_spreadsheet_mutation_requested(u)
+            or re.search(r'(?:统计|合计|计算|分析|汇总|筛选|明细|均值|平均)', u)
+            for u in users[-2:]
+        ):
+            return True
+
+    return False
+
+
 INSTRUCTIONS = """仅根据用户当前请求和必要的用户历史提取任务契约，不考虑任何候选的默认行为。skill_names只提供可调用名称，帮助识别用户是否指定执行对象，不包含技能用途或规则。
 instruction_relation分析当前请求与历史对话的关系：
-- standalone：全新独立任务或完整独立指令（如提出新统计、新问题、换了新文件、或语义自包含的任务）。独立任务的目标、范围与格式严格仅以当前请求为准，绝不继承历史对话中未重申的限定、条件或呈现格式（如历史上的“只要表格”、“无需解读”等修饰符已过期）。
-- followup：对上一轮任务或其结果的明确延续、追加筛选（如“再加个条件”、“只要大于100的”）、追问（“为什么是这个结果”）、纠错重试、或回答助手的确认追问（如补充字段、确认口径、确认区块映射或写入单位）。回答助手的追问属于延续执行，task_mode 必须为 execute，绝不能标记为 consult！若用户明确表示“取消任务”、“请先暂停”、“不要修改”、“别动”、“算了”、“放弃”等终止/拒绝意愿，必须尊重用户意愿，task_mode 必须为 consult，output_mode 必须为 conversation，不得执行或导出！
+- standalone：与前序对话无关联的全新独立任务（如提出完全不同的新业务领域、新问题、换了全新文件、或用户明确表示“开启新任务”）。独立任务的目标、范围与格式严格仅以当前请求为准，绝不继承历史对话中未重申的限定、条件或呈现格式（如历史上的“只要表格”、“无需解读”等修饰符已过期）。
+- followup：对上一轮任务或其结果的明确延续、追加筛选（如“再加个条件”、“只要大于100的”）、筛选条件替换或参数调整（如在同一分析中将“不包含”改为“只包含”、调整过滤前缀或阈值）、追问（“为什么是这个结果”）、纠错重试、或回答助手的确认追问（如补充字段、确认口径、确认区块映射或写入单位）。当用户在同一会话中针对相同文件、数据源或同一分析维度调整参数或替换筛选条件时，属于延续和修正前序任务，必须判定为 followup，绝不能判定为 standalone！若上一轮已明确交付形式（如柱状图、可视化看板、导出表格），且本轮用户未显式要求切换格式（如明确要求“不要图表”或“只在聊天中输出”），应延续交付形式（output_mode 为 artifact，artifact_types 继承对应类型如 ['.html']），按新条件重新计算生成交付物！回答助手的追问属于延续执行，task_mode 必须为 execute，绝不能标记为 consult！若用户明确表示“取消任务”、“请先暂停”、“不要修改”、“别动”、“算了”、“放弃”等终止/拒绝意愿，必须尊重用户意愿，task_mode 必须为 consult，output_mode 必须为 conversation，不得执行或导出！
 当前明确要求优先于历史。requirements逐项引用真实用户原话，记录目标、限制、条件和交付，不添加改进偏好。独立任务(standalone)的requirements只能引用当前请求中的原话，禁止从历史中拖拽已过期的修饰符。
 task_mode=consult 表示解释或讨论某项能力/技能本身（如“什么是工数”，“这个技能怎么用”），或用户要求取消、暂停、停止操作；凡是回答追问、提供业务字段、统计或实际完成任务的，一律为 execute！
 output_mode=conversation表示在对话中回答，含文字、Markdown表格、列出结果；若用户明确说明“不要导出文件”、“不生成文件”、“只在聊天中解释”等否定导出要求，output_mode 必须为 conversation，不得为 artifact！artifact用于用户在当前请求中明确要求生成、下载或导出物理文件的情况。对于要求在现有工作簿/文件中修改、更新、复制工作表(Sheet)、新建工作表(Sheet)、回填数值并保存的任务，属于必须生成/更新持久化交付物的更新任务，output_mode 必须为 artifact，artifact_types 为 ['.xlsx']！对于要求生成图表（如柱状图、折线图、饼图、雷达图、数据可视化大屏/看板）的任务，必须交付可视化组件或物理图表，output_mode 必须为 artifact，artifact_types 为 ['.html']！
@@ -133,7 +182,7 @@ REVIEW_INSTRUCTIONS = """
 初稿可能有遗漏或扩大范围，不能因为结构有效就照抄。返回经过修正的完整任务契约，不输出审核说明。
 特别检查：
 1. 交付形式：对话中的表格是一种呈现形式，不等于Excel文件；只有当前请求中明确出现物理文件交付/导出/下载请求，或要求复制Sheet/新建Sheet/更新回填工作簿时才保留artifact。严禁把普通的“只要表格”当成.xlsx文件。若用户明确说明“不要导出文件”、“不生成文件”、“只在聊天中解释”，必须修正为 conversation 且 artifact_types 为空[]。
-2. 历史隔离：若指令是独立任务(standalone)，绝不能继承前序轮次已过期的格式要求（如“只要表格，无需解读”），requirements必须只来自本轮请求。未在本轮明确要求物理导出或工作簿更新的独立任务，output_mode必须修正为conversation且artifact_types为空[]。
+2. 历史隔离与延续：若指令是独立任务(standalone)，绝不能继承前序轮次已过期的格式要求（如“只要表格，无需解读”），requirements必须只来自本轮请求。未在本轮明确要求物理导出或工作簿更新的独立任务，output_mode必须修正为conversation且artifact_types为空[]。但若用户在同一分析任务中微调参数或替换筛选条件（如“不包含”改为“只包含”），必须修正为 followup 并延续图表/文件交付物要求，绝不能误判为 standalone 导致图表交付丢失。
 保留否定限制，完整技能调用不能漏掉；追加结果筛选不是取消原规则。仅讨论或只借用方法不能升级成执行授权。
 """
 
@@ -175,10 +224,9 @@ def extract_task_intent(request, users, model, policy, telemetry, deadline, inpu
         for msg in history[-8:]:
             role = msg.get('role')
             if role in ('user', 'assistant'):
-                c = msg.get('content', '')
-                if '用户指令：' in c:
-                    c = c.split('用户指令：')[-1].strip()
-                recent_dialogue.append({'role': role, 'content': c[:600]})
+                c = clean_dialogue_content(role, msg.get('content', ''))
+                if c:
+                    recent_dialogue.append({'role': role, 'content': c})
 
     feedback = None
     for attempt in range(2):
@@ -238,6 +286,19 @@ def extract_task_intent(request, users, model, policy, telemetry, deadline, inpu
                     result['artifact_types'] = ['.html']
                 elif not any(t.lower().endswith(('.html', '.png', '.svg', '.jpg', '.jpeg', '.pdf')) for t in result['artifact_types']):
                     result['artifact_types'].append('.html')
+            elif result.get('instruction_relation') == 'followup' and result.get('task_mode') == 'execute' and not is_physical_export_negated(request):
+                if any(is_visual_artifact_requested(u) for u in [request, *users]):
+                    result['output_mode'] = 'artifact'
+                    if not result.get('artifact_types'):
+                        result['artifact_types'] = ['.html']
+                    elif not any(t.lower().endswith(('.html', '.png', '.svg', '.jpg', '.jpeg', '.pdf')) for t in result['artifact_types']):
+                        result['artifact_types'].append('.html')
+                elif any(is_spreadsheet_mutation_requested(u) for u in [request, *users]):
+                    result['output_mode'] = 'artifact'
+                    if not result.get('artifact_types'):
+                        result['artifact_types'] = ['.xlsx']
+                    elif not any(t.lower().endswith(('.xlsx', '.xlsm', '.csv')) for t in result['artifact_types']):
+                        result['artifact_types'].append('.xlsx')
 
             if is_physical_export_negated(request):
                 result['output_mode'] = 'conversation'
@@ -315,6 +376,24 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
             elif not any(t.lower().endswith(('.xlsx', '.xlsm', '.csv')) for t in result['artifact_types']):
                 result['artifact_types'].append('.xlsx')
 
+    # Enforce followup and deliverable inheritance when continuing or replacing criteria of previous analysis
+    is_continuation = not is_abort and bool(users) and is_condition_replacement_or_refinement(request, users)
+    if is_continuation:
+        result['instruction_relation'] = 'followup'
+        result['task_mode'] = 'execute'
+        if any(is_visual_artifact_requested(u) for u in [request, *users]) and not is_physical_export_negated(request):
+            result['output_mode'] = 'artifact'
+            if not result.get('artifact_types'):
+                result['artifact_types'] = ['.html']
+            elif not any(t.lower().endswith(('.html', '.png', '.svg', '.jpg', '.jpeg', '.pdf')) for t in result['artifact_types']):
+                result['artifact_types'].append('.html')
+        elif any(is_spreadsheet_mutation_requested(u) for u in [request, *users]) and not is_physical_export_negated(request):
+            result['output_mode'] = 'artifact'
+            if not result.get('artifact_types'):
+                result['artifact_types'] = ['.xlsx']
+            elif not any(t.lower().endswith(('.xlsx', '.xlsm', '.csv')) for t in result['artifact_types']):
+                result['artifact_types'].append('.xlsx')
+
     relation = result.setdefault('instruction_relation', 'standalone')
     if relation not in {'standalone', 'followup'}:
         raise ValueError('指令关系无效')
@@ -370,6 +449,19 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
             result['artifact_types'] = ['.html']
         elif not any(t.lower().endswith(('.html', '.png', '.svg', '.jpg', '.jpeg', '.pdf')) for t in result['artifact_types']):
             result['artifact_types'].append('.html')
+    elif (relation == 'followup' or is_continuation) and result.get('task_mode') == 'execute' and not is_physical_export_negated(request):
+        if any(is_visual_artifact_requested(u) for u in [request, *users]):
+            result['output_mode'] = 'artifact'
+            if not result.get('artifact_types'):
+                result['artifact_types'] = ['.html']
+            elif not any(t.lower().endswith(('.html', '.png', '.svg', '.jpg', '.jpeg', '.pdf')) for t in result['artifact_types']):
+                result['artifact_types'].append('.html')
+        elif any(is_spreadsheet_mutation_requested(u) for u in [request, *users]):
+            result['output_mode'] = 'artifact'
+            if not result.get('artifact_types'):
+                result['artifact_types'] = ['.xlsx']
+            elif not any(t.lower().endswith(('.xlsx', '.xlsm', '.csv')) for t in result['artifact_types']):
+                result['artifact_types'].append('.xlsx')
 
     if is_physical_export_negated(request):
         result['output_mode'] = 'conversation'
@@ -425,9 +517,13 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
             raise ValueError('任务要求没有用户原话依据')
         quote_in_request = ground_user_quote(item['quote'], [request])
         if relation == 'standalone' and quote_in_request is None:
-            if allow_sanitize:
+            if is_continuation:
+                relation = 'followup'
+                result['instruction_relation'] = 'followup'
+            elif allow_sanitize:
                 continue
-            raise ValueError(f'当前指令判定为独立任务(standalone)，任务要求"{item.get("quote")}"来自历史对话；独立任务的 requirements 只能引用当前请求中的原话')
+            else:
+                raise ValueError(f'当前指令判定为独立任务(standalone)，任务要求"{item.get("quote")}"来自历史对话；独立任务的 requirements 只能引用当前请求中的原话')
         item['quote'] = quote_in_request if relation == 'standalone' else quote
         seen.add(item['id'])
         valid_requirements.append(item)

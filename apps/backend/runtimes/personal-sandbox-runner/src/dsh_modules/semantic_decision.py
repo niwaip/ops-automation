@@ -9,17 +9,41 @@ from .llm import call_model_proxy
 from .runtime_policy import RuntimePolicy
 
 
+_PUNCT_TRANS = str.maketrans({
+    '（': '(', '）': ')',
+    '，': ',', '。': '.',
+    '：': ':', '；': ';',
+    '“': '"', '”': '"',
+    '‘': "'", '’': "'",
+    '【': '[', '】': ']',
+    '！': '!', '？': '?',
+    '、': ',',
+})
+
+
 def ground_user_quote(quote, texts):
-    """Resolve whitespace-only normalization back to an actual user source span."""
+    """Resolve whitespace and punctuation normalization back to an actual user source span."""
     if not isinstance(quote, str) or not quote.strip():
         return None
     wanted = ''.join(quote.split())
+    # 1. Exact match across texts
     for text in texts:
         positions = [m.start() for m in re.finditer(r'\S', text)]
         compact = ''.join(text[p] for p in positions)
         at = compact.find(wanted)
         if at >= 0:
             return text[positions[at]:positions[at + len(wanted) - 1] + 1]
+
+    # 2. Punctuation normalized match (full-width vs half-width parentheses, commas, colons, etc.)
+    wanted_norm = wanted.translate(_PUNCT_TRANS)
+    for text in texts:
+        positions = [m.start() for m in re.finditer(r'\S', text)]
+        compact = ''.join(text[p] for p in positions)
+        compact_norm = compact.translate(_PUNCT_TRANS)
+        at = compact_norm.find(wanted_norm)
+        if at >= 0:
+            return text[positions[at]:positions[at + len(wanted_norm) - 1] + 1]
+
     return None
 
 
