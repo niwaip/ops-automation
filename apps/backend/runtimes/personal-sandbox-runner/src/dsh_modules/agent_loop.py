@@ -573,6 +573,10 @@ def run_agent_loop(
                 round_idx=round_idx,
                 max_rounds=max_rounds,
                 task_ceiling=task_ceiling,
+                last_user_prompt=last_user_prompt,
+                expected_deliverables=expected_deliverables,
+                start_ts=start_ts,
+                workspace_dir=WORKSPACE_DIR,
             )
             if transition_msg:
                 messages.append({'role': 'user', 'content': transition_msg})

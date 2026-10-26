@@ -49,27 +49,57 @@ class CompletionDecision:
         return iter((self.action, self.guard_msg, self.max_rounds))
 
 
-def extract_evidence_summary(execution_evidence: List[Any]) -> str:
+def extract_evidence_summary(execution_evidence: List[Any], prompt: Optional[str] = None) -> str:
     """Extracts a concise, structured facts summary for downstream delivery tools to consume."""
-    facts_summary = []
     if not execution_evidence:
         return ""
-    for e in execution_evidence:
-        if getattr(e, "is_success", False):
-            data = getattr(e, "data", None)
-            if isinstance(data, dict):
-                facts = data.get("facts") or []
-                for f in facts:
-                    if isinstance(f, dict):
-                        lbl = f.get("label") or f.get("metric") or f.get("id")
-                        val = f.get("value")
-                        unit = f.get("unit") or ""
-                        if lbl and val is not None:
-                            facts_summary.append(f"- {lbl}: {val} {unit}".strip())
-                rows = data.get("rows")
-                if isinstance(rows, list) and rows and len(rows) <= 15:
-                    facts_summary.append(f"- 聚合明细 ({len(rows)} 组): " + json.dumps(rows, ensure_ascii=False))
-    return "\n".join(facts_summary[:10])
+
+    target_evidence = execution_evidence
+    if prompt:
+        try:
+            from .analysis_fact_selection import authoritative_receipts
+            auth = authoritative_receipts(execution_evidence, prompt)
+            if auth:
+                target_evidence = auth
+        except Exception:
+            target_evidence = execution_evidence
+
+    # Deduplicate facts: later authoritative runs on the same workbook supersede exploratory ones
+    latest_by_wb: Dict[Any, Any] = {}
+    for e in target_evidence:
+        if getattr(e, "is_success", False) and isinstance(getattr(e, "data", None), dict) and e.data.get("facts"):
+            wb_id = (getattr(e, "provenance", None) or {}).get("workbook_id") or id(e)
+            latest_by_wb[wb_id] = e
+
+    active_evidence = list(latest_by_wb.values()) if latest_by_wb else [e for e in target_evidence if getattr(e, "is_success", False)]
+
+    facts_dict: Dict[str, str] = {}
+    row_summaries: List[str] = []
+
+    for e in active_evidence:
+        data = getattr(e, "data", None)
+        if isinstance(data, dict):
+            facts = data.get("facts") or []
+            for f in facts:
+                if isinstance(f, dict):
+                    lbl = f.get("label") or f.get("metric") or f.get("id")
+                    val = f.get("value")
+                    unit = f.get("unit") or ""
+                    if lbl and val is not None:
+                        key = str(f.get("id") or lbl)
+                        facts_dict[key] = f"- {lbl}: {val} {unit}".strip()
+            rows = data.get("rows")
+            if isinstance(rows, list) and rows and len(rows) <= 15:
+                row_summaries.append(f"- 聚合明细 ({len(rows)} 组): " + json.dumps(rows, ensure_ascii=False))
+
+    facts_summary = list(facts_dict.values())
+    if len(facts_summary) > 12:
+        facts_summary = facts_summary[-12:]
+
+    if row_summaries:
+        facts_summary.extend(row_summaries[-2:])
+
+    return "\n".join(facts_summary)
 
 
 def evaluate_tool_execution_turn(
@@ -84,6 +114,10 @@ def evaluate_tool_execution_turn(
     round_idx: int,
     max_rounds: int,
     task_ceiling: int,
+    last_user_prompt: Optional[str] = None,
+    expected_deliverables: Optional[List[str]] = None,
+    start_ts: Optional[float] = None,
+    workspace_dir: Optional[str] = None,
 ) -> Tuple[bool, Optional[str], int]:
     """
     Evaluates whether tool execution has satisfied the analysis phase and whether
@@ -97,14 +131,73 @@ def evaluate_tool_execution_turn(
     if not analysis_turn.may_finish(execution_evidence):
         return False, None, max_rounds
 
-    has_delivered = bool(
-        outbound_files
-        or (reply_text and "```html" in reply_text.lower() and not is_unclosed_or_truncated_html(reply_text))
-    )
+    effective_workspace = workspace_dir or os.environ.get("WORKSPACE_DIR", "/workspace")
+
+    # 1. 物理外发文件实质性核验（必须在磁盘上真实存在且大小 > 0）
+    has_physical_outbound = False
+    if outbound_files:
+        for f in outbound_files:
+            p = f if os.path.isabs(f) else os.path.join(effective_workspace, f)
+            if os.path.exists(p) and os.path.isfile(p) and os.path.getsize(p) > 0:
+                has_physical_outbound = True
+                break
+
+    # 2. HTML 交付物实质性核验（不能为截断、空占位或无数据）
+    has_valid_html = False
+    facts_text = extract_evidence_summary(execution_evidence, prompt=last_user_prompt)
+    fact_nums = re.findall(r':\s*([0-9]+(?:\.[0-9]+)?)', facts_text) if facts_text else []
+
+    if reply_text and ("```html" in reply_text.lower() or "<!doctype html" in reply_text.lower()):
+        if not is_unclosed_or_truncated_html(reply_text) and not detect_mock_or_placeholder_html(reply_text):
+            clean_t = reply_text.lower()
+            has_data_structure = bool(
+                re.search(r'<(?:table|canvas|svg)\b', clean_t)
+                or re.search(r'\b(?:chart|echarts|datasets|data:\s*\[)\b', clean_t)
+                or re.search(r'\b\d+(?:\.\d+)?\b', clean_t)
+            )
+            if has_data_structure:
+                if fact_nums and not any(num in reply_text for num in fact_nums):
+                    has_valid_html = False
+                else:
+                    has_valid_html = True
+
+    index_html_path = os.path.join(effective_workspace, "index.html")
+    if os.path.exists(index_html_path) and os.path.isfile(index_html_path) and os.path.getsize(index_html_path) > 0:
+        try:
+            with open(index_html_path, "r", encoding="utf-8", errors="ignore") as f:
+                head_part = f.read(65536)
+            if not detect_mock_or_placeholder_html(head_part):
+                if fact_nums and not any(num in head_part for num in fact_nums):
+                    pass
+                else:
+                    has_valid_html = True
+        except Exception:
+            pass
+
+    # 3. 契约交付物缺漏检查
+    is_deliverable_satisfied = True
+    if last_user_prompt:
+        try:
+            missing = detect_missing_requested_deliverable(
+                last_user_prompt,
+                start_ts or 0.0,
+                expected_deliverables=expected_deliverables,
+                is_generate_intent=True,
+                workspace=effective_workspace,
+            )
+            if missing:
+                if missing == ".html" and has_valid_html:
+                    is_deliverable_satisfied = True
+                else:
+                    is_deliverable_satisfied = False
+        except Exception:
+            pass
+
+    has_delivered = is_deliverable_satisfied and (has_physical_outbound or has_valid_html)
 
     if has_visual_or_deliverable and not has_delivered:
         new_max = min(task_ceiling, max(max_rounds, round_idx + 2)) if round_idx < task_ceiling - 1 else max_rounds
-        facts_text = extract_evidence_summary(execution_evidence)
+        facts_text = extract_evidence_summary(execution_evidence, prompt=last_user_prompt)
         facts_block = f"\n【已核验确定性数据事实（供直接绑定，严禁篡改）】\n{facts_text}\n" if facts_text else ""
 
         transition_msg = (
@@ -162,6 +255,23 @@ def evaluate_no_tool_turn(
             for t in effective_tools
         )
     )
+    has_execute_update_tool = bool(
+        effective_tools and any(
+            (t.get("function", {}).get("name") or t.get("name", "")).lower() == "execute_spreadsheet_update"
+            for t in effective_tools
+        )
+    )
+    is_preview_only_intent = bool(
+        re.search(r"预览|仅.*计划|只.*计划|不.*(执行|写入|保存|修改)|草案|方案", last_user_prompt or "")
+    )
+
+    if hard_ceiling is None:
+        hard_ceiling = (
+            MAX_SPREADSHEET_ROUNDS_CEILING
+            if (is_inspect_intent and not is_generate_intent and not expected_deliverables and not has_update_tools_effective)
+            else MAX_AGENT_ROUNDS_HARD_CEILING
+        )
+
     has_plan_succeeded = bool(
         (executed_calls_history and any(
             call.startswith("plan_spreadsheet_update:") and not call.startswith("err:")
@@ -194,8 +304,13 @@ def evaluate_no_tool_turn(
                     planned_run_id = e.data.get("plan_id") or e.data.get("run_id")
                     break
 
-    # 强制执行已锁定的表格更新计划：若更新计划已成功生成但尚未落盘，坚决不允许因轮次耗尽或口头汇报而终止
-    if has_update_tools_effective and has_plan_succeeded and not has_update_published:
+    # 强制执行已锁定的表格更新计划：仅在具备 execute_spreadsheet_update 且非只读预览模式下强制推进
+    if has_execute_update_tool and not is_preview_only_intent and has_plan_succeeded and not has_update_published:
+        if round_idx >= MAX_AGENT_ROUNDS_HARD_CEILING - 1:
+            print("⚠️ [Harness Spreadsheet Execution Guard] 已达硬上限轮次，无法继续追加执行轮次", flush=True)
+            return CompletionDecision("break", None, MAX_AGENT_ROUNDS_HARD_CEILING, category="hard_ceiling_reached")
+
+        bumped_budget = min(MAX_AGENT_ROUNDS_HARD_CEILING, max(hard_ceiling or 10, round_idx + 3))
         print("⚡ [Harness Spreadsheet Execution Guard] 检测到更新计划已锁定但未调用 execute_spreadsheet_update，正在强制推进执行...", flush=True)
         run_arg = f"(plan_id='{planned_run_id}')" if planned_run_id else ""
         msg = (
@@ -203,14 +318,8 @@ def evaluate_no_tool_turn(
             f"用户要求的是直接生成/交付更新后的表格文件，绝不能在此中断向用户索要二次确认。"
             f"请立即通过 Function Calling 协议调用 `execute_spreadsheet_update{run_arg}` 完成物理更新与文件交付！"
         )
-        return CompletionDecision("continue", msg, max(hard_ceiling or 10, round_idx + 3), category="spreadsheet_update_force")
+        return CompletionDecision("continue", msg, bumped_budget, category="spreadsheet_update_force")
 
-    if hard_ceiling is None:
-        hard_ceiling = (
-            MAX_SPREADSHEET_ROUNDS_CEILING
-            if (is_inspect_intent and not is_generate_intent and not expected_deliverables and not has_update_tools_effective)
-            else MAX_AGENT_ROUNDS_HARD_CEILING
-        )
     max_guard_nudges = 2 if is_generate_intent else 1
     if guard_nudges_count >= max_guard_nudges or round_idx >= hard_ceiling - 1:
         if execution_evidence is not None and round_idx < hard_ceiling - 1:
@@ -285,16 +394,22 @@ def evaluate_no_tool_turn(
                     f"请立即调用 bash 执行代码将目标文件保存到 /workspace/ 路径下{code_block_hint}。严禁仅做口头汇报！"
                 )
             elif has_update_tools_effective and any(f.lower().endswith((".xlsx", ".xlsm")) for f in missing):
-                if has_plan_succeeded:
-                    run_arg = "(plan_id=上一步返回的计划ID)" if planned_run_id else ""
-                    msg = (
-                        f"【系统表格更新物理断言拦截】：更新计划已就绪，但物理文件尚未生成。"
-                        f"请立即通过 Function Calling 协议调用 `execute_spreadsheet_update{run_arg}` 执行更新落盘！切勿仅做口头汇报！"
-                    )
+                if has_execute_update_tool:
+                    if has_plan_succeeded:
+                        run_arg = "(plan_id=上一步返回的计划ID)" if planned_run_id else ""
+                        msg = (
+                            f"【系统表格更新物理断言拦截】：更新计划已就绪，但物理文件尚未生成。"
+                            f"请立即通过 Function Calling 协议调用 `execute_spreadsheet_update{run_arg}` 执行更新落盘！切勿仅做口头汇报！"
+                        )
+                    else:
+                        msg = (
+                            f"【系统表格更新物理断言拦截】：你在回复中提及已生成或更新文件 {', '.join(missing)}，但当前工作区物理文件并不存在。"
+                            f"请通过 Function Calling 协议调用 `plan_spreadsheet_update` 锁定更新计划，并调用 `execute_spreadsheet_update` 执行物理更新落盘！切勿仅做口头汇报！"
+                        )
                 else:
                     msg = (
-                        f"【系统表格更新物理断言拦截】：你在回复中提及已生成或更新文件 {', '.join(missing)}，但当前工作区物理文件并不存在。"
-                        f"请通过 Function Calling 协议调用 `plan_spreadsheet_update` 锁定更新计划，并调用 `execute_spreadsheet_update` 执行物理更新落盘！切勿仅做口头汇报！"
+                        f"【系统表格更新物理断言拦截】：你在回复中提及已生成或更新文件 {', '.join(missing)}，但当前环境仅支持规划更新（未授权物理写入工具）。"
+                        "请向用户完整汇报更新方案或计划明细，切勿声称已生成物理更新文件。"
                     )
             else:
                 msg = (
@@ -352,16 +467,22 @@ def evaluate_no_tool_turn(
                 print(f"⚡ [Harness Deliverable Assertion Guard] 检测到用户要求生成 {missing_deliverable} 交付物但沙箱尚未生成，正在引导执行工具落盘...", flush=True)
                 if not has_bash:
                     if has_update_tools_effective and missing_deliverable in [".xlsx", ".xlsm"]:
-                        if has_plan_succeeded:
-                            run_arg = "(plan_id=上一步返回的计划ID)" if planned_run_id else ""
-                            msg = (
-                                f"【系统表格更新交付提示】：检测到更新计划已锁定，但尚未执行物理落盘。"
-                                f"请立即调用 `execute_spreadsheet_update{run_arg}` 完成更新并交付！"
-                            )
+                        if has_execute_update_tool:
+                            if has_plan_succeeded:
+                                run_arg = "(plan_id=上一步返回的计划ID)" if planned_run_id else ""
+                                msg = (
+                                    f"【系统表格更新交付提示】：检测到更新计划已锁定，但尚未执行物理落盘。"
+                                    f"请立即调用 `execute_spreadsheet_update{run_arg}` 完成更新并交付！"
+                                )
+                            else:
+                                msg = (
+                                    f"【系统表格更新交付提示】：检测到用户要求更新/交付 {missing_deliverable} 表格文件，当前工作区中尚未检测到更新后的物理产物。"
+                                    f"请通过 Function Calling 协议调用 `plan_spreadsheet_update` 规划复制与回填，并调用 `execute_spreadsheet_update` 执行落盘交付！"
+                                )
                         else:
                             msg = (
-                                f"【系统表格更新交付提示】：检测到用户要求更新/交付 {missing_deliverable} 表格文件，当前工作区中尚未检测到更新后的物理产物。"
-                                f"请通过 Function Calling 协议调用 `plan_spreadsheet_update` 规划复制与回填，并调用 `execute_spreadsheet_update` 执行落盘交付！"
+                                f"【系统表格更新交付提示】：检测到用户要求更新 {missing_deliverable} 表格文件，但当前环境仅支持计划生成（未授权物理写入工具）。"
+                                "请向用户完整输出计划明细或建议方案。"
                             )
                     else:
                         msg = (
