@@ -1084,6 +1084,39 @@ def run_agent_loop(
                     )
                     compiled_comparison = "本次比较结论尚未通过执行证据核验。" + contract_warning
 
+    if spreadsheet_analysis_required:
+        if not reply_text or len(reply_text.strip()) < 20:
+            for m in reversed(messages):
+                if m.get("role") == "assistant" and m.get("content"):
+                    c = str(m["content"]).strip()
+                    if len(c) > 30 and "本次分析尚未通过" not in c and not parse_tool_calls(c):
+                        reply_text = c
+                        break
+        if (not reply_text or len(reply_text.strip()) < 20) and execution_evidence:
+            if not analysis_turn.may_finish(execution_evidence):
+                has_external_calc = any(
+                    getattr(r, 'is_success', False)
+                    and (getattr(r, 'provenance', None) or {}).get('tool') in ('bash', 'sh', 'python')
+                    and isinstance(r.data, str) and len(r.data.strip()) > 30
+                    for r in execution_evidence
+                )
+                if has_external_calc and (deadline is None or deadline - time.monotonic() > 3):
+                    try:
+                        forced_nudge = [{"role": "user", "content": "工具调用轮次已结束。请根据前述工具与脚本的实际执行结果，直接向用户呈现完整、清晰、结构化的计算与分析结论。"}]
+                        forced_res = call_model_proxy(
+                            messages + forced_nudge,
+                            model,
+                            timeout=min(policy.single_request_timeout, 15),
+                            deadline=deadline,
+                            policy=policy
+                        )
+                        telemetry.record_llm_response(forced_res, is_first_round=False)
+                        f_text = (forced_res.get("content") or "") if isinstance(forced_res, dict) else str(forced_res or "")
+                        if f_text and len(f_text.strip()) > 30:
+                            reply_text = f_text.strip()
+                    except Exception:
+                        pass
+
     final_text, healed_files = ((compiled_comparison, [])
         if comparison_required and compiled_comparison else (analysis_turn.render(execution_evidence,reply_text,telemetry,policy=policy,model=model,deadline=deadline), [])
         if spreadsheet_analysis_required else _finalize_agent_text(
