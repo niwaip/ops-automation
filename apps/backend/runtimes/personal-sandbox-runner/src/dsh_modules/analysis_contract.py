@@ -65,6 +65,11 @@ class AnalysisContract:
     def has_metrics(self) -> bool:
         return len(self.metrics) > 0
 
+    @property
+    def has_distinct_list(self) -> bool:
+        from .analysis_delivery_constraints import has_distinct_list
+        return has_distinct_list(self.raw_prompt)
+
     def get_metric_names(self) -> List[str]:
         return [m.name for m in self.metrics]
 

@@ -82,7 +82,7 @@ def select_delivery_queries(queries, contract):
             return entity_queries
 
     # 2. 去重意图：若用户未请求不重复/去重列表，排除纯辅助性的 distinct 探索查询
-    if not contract.has_distinct_list:
+    if not getattr(contract, 'has_distinct_list', False):
         non_distinct = [q for q in queries if not (q.data.get('plan') or {}).get('distinct')]
         if non_distinct:
             return non_distinct
