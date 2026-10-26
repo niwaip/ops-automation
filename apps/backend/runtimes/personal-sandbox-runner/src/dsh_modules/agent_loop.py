@@ -106,429 +106,14 @@ class AgentLoopResult:
     execution_evidence: List[ToolResult] = field(default_factory=list)
 
 
-def _check_no_tool_assertion_guard(
-    reply_text: str,
-    last_user_prompt: str,
-    round_idx: int,
-    max_rounds: int,
-    start_ts: float,
-    is_guide_intent: bool,
-    expected_deliverables: Optional[List[str]],
-    is_generate_intent: bool,
-    is_inspect_intent: bool,
-    executed_calls_history: Optional[List[str]] = None,
-    guard_nudges_count: int = 0,
-    script_execution_error: Optional[str] = None,
-    tools: Optional[List[Dict[str, Any]]] = None,
-    messages: Optional[List[Dict[str, Any]]] = None,
-    telemetry: Optional[TelemetryStats] = None,
-    execution_evidence: Optional[List[ToolResult]] = None,
-    hard_ceiling: Optional[int] = None,
-    is_search_intent: bool = False,
-    consecutive_comparison_errors: int = 0,
-) -> Tuple[str, Optional[str], int]:
-    """
-    Evaluates assertion guards when model returns text without tool calls.
-    Returns: (action, guard_user_message, new_max_rounds)
-      action: "continue" (add message and continue loop), "break" (stop loop), or "pass" (allow completion)
-    """
-    effective_tools = tools if tools is not None else get_sandbox_tools()
-    has_bash = bool(
-        effective_tools and any(
-            (t.get("function", {}).get("name") or t.get("name", "")).lower() in ("bash", "cmd", "terminal", "sh", "exec")
-            for t in effective_tools
-        )
-    )
-    has_update_tools_effective = bool(
-        effective_tools and any(
-            (t.get("function", {}).get("name") or t.get("name", "")).lower() in ("plan_spreadsheet_update", "execute_spreadsheet_update")
-            for t in effective_tools
-        )
-    )
-    has_plan_succeeded = bool(
-        (executed_calls_history and any(
-            call.startswith("plan_spreadsheet_update:") and not call.startswith("err:")
-            for call in executed_calls_history
-        )) or (execution_evidence and any(
-            getattr(e, "is_success", False) and (
-                (getattr(e, "provenance", None) or {}).get("tool") == "plan_spreadsheet_update"
-                or (isinstance(getattr(e, "data", None), dict) and e.data.get("status") == "planned")
-            )
-            for e in execution_evidence
-        ))
-    )
-    has_update_published = bool(
-        execution_evidence and any(
-            getattr(e, "is_success", False) and (
-                (getattr(e, "provenance", None) or {}).get("tool") == "execute_spreadsheet_update"
-                or (isinstance(getattr(e, "data", None), dict) and e.data.get("status") == "published")
-            )
-            for e in execution_evidence
-        )
-    )
-    planned_run_id = None
-    if execution_evidence:
-        for e in reversed(execution_evidence):
-            if getattr(e, "is_success", False) and isinstance(getattr(e, "data", None), dict):
-                if e.data.get("status") == "planned" and ("plan_id" in e.data or "run_id" in e.data):
-                    planned_run_id = e.data.get("plan_id") or e.data.get("run_id")
-                    break
-                elif ("run_id" in e.data or "plan_id" in e.data) and "plan" in e.data:
-                    planned_run_id = e.data.get("plan_id") or e.data.get("run_id")
-                    break
+from .completion_evaluator import (
+    CompletionDecision,
+    evaluate_no_tool_turn,
+    evaluate_tool_execution_turn,
+)
 
-    # 强制执行已锁定的表格更新计划：若更新计划已成功生成但尚未落盘，坚决不允许因轮次耗尽或口头汇报而终止
-    if has_update_tools_effective and has_plan_succeeded and not has_update_published:
-        print("⚡ [Harness Spreadsheet Execution Guard] 检测到更新计划已锁定但未调用 execute_spreadsheet_update，正在强制推进执行...", flush=True)
-        run_arg = f"(plan_id='{planned_run_id}')" if planned_run_id else ""
-        msg = (
-            f"【系统表格更新强制执行指令】：检测到更新计划已成功锁定（plan_id='{planned_run_id}'），但物理文件尚未生成落盘！"
-            f"用户要求的是直接生成/交付更新后的表格文件，绝不能在此中断向用户索要二次确认。"
-            f"请立即通过 Function Calling 协议调用 `execute_spreadsheet_update{run_arg}` 完成物理更新与文件交付！"
-        )
-        return "continue", msg, max(hard_ceiling or 10, round_idx + 3)
-
-    if hard_ceiling is None:
-        hard_ceiling = (
-            MAX_SPREADSHEET_ROUNDS_CEILING
-            if (is_inspect_intent and not is_generate_intent and not expected_deliverables and not has_update_tools_effective)
-            else MAX_AGENT_ROUNDS_HARD_CEILING
-        )
-    # 普通问答只纠偏一次；明确的文件生成任务允许第二次、更加具体的落盘纠偏。
-    # 仍受全局硬轮次上限约束，避免小模型持续规划而不执行。
-    max_guard_nudges = 2 if is_generate_intent else 1
-    if guard_nudges_count >= max_guard_nudges or round_idx >= hard_ceiling - 1:
-        # Verification is independent of the generic filler-recovery budget.
-        # A failed candidate can use a remaining normal round to repair its tool plan.
-        if execution_evidence is not None and round_idx < hard_ceiling - 1:
-            validation = validate_reply_against_contract(build_analysis_contract(last_user_prompt),
-                reply_text, round_idx, max_rounds, execution_evidence=execution_evidence)
-            if validation.comparison_error:
-                new_max = min(hard_ceiling, max_rounds + 1) if round_idx >= max_rounds - 1 else max_rounds
-                return "continue", validation.feedback_message, new_max
-        return "pass", None, max_rounds
-
-    bumped_max_rounds = min(hard_ceiling, max_rounds + 1)
-
-    has_update_tools = has_update_tools_effective
-
-    # 0. 内部计划与伪工具调用拦截：模型仅输出未执行的计划草稿时引导执行
-    if not is_guide_intent and is_internal_plan_output(reply_text):
-        print("⚡ [Harness Plan Guard] 检测到内部执行草稿，正在引导模型调用工具或输出最终结果...", flush=True)
-        msg = (
-            "检测到当前输出仍为内部执行计划或草稿。若需进一步操作请发起对应工具调用；"
-            "若任务已完成，请直接输出最终的中文结论。"
-        )
-        return "continue", msg, bumped_max_rounds
-
-    # 0.5 已生成 Excel 交付物的数据与公式门禁：若已落盘的新 .xlsx/.xlsm 未通过源数据一致性或公式核验，立即给出具体差异促使其修正
-    invalid_workbooks = find_invalid_new_workbooks(WORKSPACE_DIR, start_ts)
-    if invalid_workbooks:
-        details = "；".join(
-            f"{fname}（{'；'.join(issues[:4])}）" for fname, issues in invalid_workbooks
-        )
-        print(f"⚡ [Harness Workbook Grounding Guard] 检测到生成的 Excel 存在源数据或公式不一致: {details}", flush=True)
-        msg = (
-            f"【系统 Excel 数据与公式核验拦截】：检测到你本轮生成的 Excel 文件未通过源表数据一致性或公式校验：\n"
-            f"- {details}\n"
-            "严禁猜测或手工硬编码未求值的公式结果！请立即根据上述真实源表数值修正生成脚本，重新生成正确的 Excel 文件并在正文中同步输出准确数值。"
-        )
-        return "continue", msg, bumped_max_rounds
-
-    # 1. 物理产物声称断言：模型声称生成了文件，但文件物理不存在
-    if not is_text_only_request(last_user_prompt) and (is_generate_intent or (not is_inspect_intent and not is_guide_intent and not is_search_intent)):
-        missing = detect_missing_claimed_artifacts(
-            reply_text,
-            is_generate_intent=is_generate_intent,
-            is_inspect_intent=is_inspect_intent,
-            is_search_intent=is_search_intent,
-            turn_start_time=start_ts,
-        )
-        if missing:
-            try:
-                from .delivery_claim_judge import judge_delivery_claims
-                verdict = judge_delivery_claims(
-                    prompt=last_user_prompt,
-                    reply_text=reply_text,
-                    candidate_missing=missing,
-                    workspace_dir=WORKSPACE_DIR,
-                    turn_start_time=start_ts,
-                    model=model,
-                    deadline=deadline
-                )
-                if verdict and not verdict.get("phantom_claim"):
-                    missing = []
-                elif verdict and isinstance(verdict.get("missing_items"), list):
-                    missing = [str(x) for x in verdict["missing_items"] if x]
-            except Exception:
-                pass
-        if missing:
-            print(f"⚡ [Harness Artifact Assertion Guard] 检测到模型声称生成了文件 {missing}，但物理文件并不存在，正在拦截引导落盘...", flush=True)
-            has_html_in_missing = any(f.endswith(".html") or f.endswith(".htm") for f in missing)
-            code_block_hint = "，或者直接在回复中以完整的代码块（如 ```html\\n<!DOCTYPE html>...\\n```）输出全部源码" if has_html_in_missing else ""
-
-            if has_bash:
-                msg = (
-                    f"【系统产物物理断言拦截】：你在回复中提及已生成或保存文件 {', '.join(missing)}，但当前沙箱物理文件并不存在{code_block_hint and '，且未在回复中提供完整代码块' or ''}。"
-                    f"请立即调用 bash 执行代码将目标文件保存到 /workspace/ 路径下{code_block_hint}。严禁仅做口头汇报！"
-                )
-            elif has_update_tools and any(f.lower().endswith((".xlsx", ".xlsm")) for f in missing):
-                if has_plan_succeeded:
-                    run_arg = "(plan_id=上一步返回的计划ID)" if planned_run_id else ""
-                    msg = (
-                        f"【系统表格更新物理断言拦截】：更新计划已就绪，但物理文件尚未生成。"
-                        f"请立即通过 Function Calling 协议调用 `execute_spreadsheet_update{run_arg}` 执行更新落盘！切勿仅做口头汇报！"
-                    )
-                else:
-                    msg = (
-                        f"【系统表格更新物理断言拦截】：你在回复中提及已生成或更新文件 {', '.join(missing)}，但当前工作区物理文件并不存在。"
-                        f"请通过 Function Calling 协议调用 `plan_spreadsheet_update` 锁定更新计划，并调用 `execute_spreadsheet_update` 执行物理更新落盘！切勿仅做口头汇报！"
-                    )
-            else:
-                msg = (
-                    f"【系统产物物理断言拦截】：你在回复中提及已生成或保存文件 {', '.join(missing)}，但当前沙箱物理文件并不存在。"
-                    "当前任务为只读模式（未提供写盘工具），请直接在当前回复中向用户完整输出 Markdown 格式的回答正文与分析内容，切勿声称已在本地保存文件。"
-                )
-            return "continue", msg, bumped_max_rounds
-
-    # 2. HTML 代码截断拦截
-    if is_unclosed_or_truncated_html(reply_text):
-        print("⚠️ [Harness HTML Truncation Guard] 检测到输出的 HTML 代码达到上限被截断，立即停止并由导出器安全闭合与明确告警...", flush=True)
-        return "break", None, max_rounds
-
-    # 2.5 虚假/未填充占位符 HTML 交付物拦截 (Mock / Placeholder HTML Deliverable Guard)
-    if not is_guide_intent and ("```html" in (reply_text or "").lower() or "<!doctype html" in (reply_text or "").lower()):
-        from .html_report_fallback import detect_mock_or_placeholder_html
-        placeholder_issue = detect_mock_or_placeholder_html(reply_text or "")
-        if placeholder_issue:
-            print(f"⚡ [Harness Mock Deliverable Guard] 检测到输出的 HTML 包含占位符或未计算标记 ({placeholder_issue})，正在引导模型调用工具计算真实数据...", flush=True)
-            msg = (
-                f"【系统真实数据交付拦截提示】：检测到你生成的 HTML 页面中包含未填充的占位数据或推脱说明（{placeholder_issue}），"
-                f"并未呈现真实从附件中计算的数据结果！\n"
-                f"沙箱具备完整的终端与 Python 计算环境，严禁交付空模板、0值占位或口头示意代码！\n"
-                f"请立即通过 Function Calling 协议调用 `bash` 运行 Python 脚本读取相关附件（如 Excel），"
-                f"完成数据过滤与聚合计算，并将真实计算出的数值与图表完整写入 HTML 代码块中落盘交付！"
-            )
-            return "continue", msg, bumped_max_rounds
-
-    # 2.8 表格数据核算零工具调用拦截 (Zero-Tool Calculation Assertion Guard)
-    from .sampling_guard import check_zero_tool_calculation_guard
-    zero_tool_issue = check_zero_tool_calculation_guard(
-        reply_text=reply_text,
-        last_user_prompt=last_user_prompt,
-        executed_calls_history=executed_calls_history,
-        execution_evidence=execution_evidence,
-        is_guide_intent=is_guide_intent,
-    )
-    if zero_tool_issue:
-        print("⚡ [Harness Zero-Tool Calculation Guard] 检测到任务涉及表格数据核算但未执行任何分析工具，正在拦截引导计算...", flush=True)
-        return "continue", zero_tool_issue, bumped_max_rounds
-
-    # 3. 契约交付物缺失断言：用户明确要求生成文件，但工作区尚未生成任何物理文件
-    has_valid_html = ("```html" in reply_text.lower()) and not is_unclosed_or_truncated_html(reply_text)
-    if not is_text_only_request(last_user_prompt) and (is_generate_intent or bool(expected_deliverables)) and not is_guide_intent and not is_search_intent:
-        missing_deliverable = detect_missing_requested_deliverable(
-            last_user_prompt,
-            start_ts,
-            expected_deliverables=expected_deliverables,
-            is_generate_intent=is_generate_intent,
-            is_inspect_intent=is_inspect_intent
-        )
-        if not is_guide_intent and missing_deliverable:
-            if missing_deliverable == ".html" and has_valid_html:
-                missing_deliverable = None
-            if missing_deliverable:
-                print(f"⚡ [Harness Deliverable Assertion Guard] 检测到用户要求生成 {missing_deliverable} 交付物但沙箱尚未生成，正在引导执行工具落盘...", flush=True)
-                if not has_bash:
-                    has_update_tools = bool(
-                        effective_tools and any(
-                            (t.get("function", {}).get("name") or t.get("name", "")).lower() in ("plan_spreadsheet_update", "execute_spreadsheet_update")
-                            for t in effective_tools
-                        )
-                    )
-                    if has_update_tools and missing_deliverable in [".xlsx", ".xlsm"]:
-                        if has_plan_succeeded:
-                            run_arg = "(plan_id=上一步返回的计划ID)" if planned_run_id else ""
-                            msg = (
-                                f"【系统表格更新交付提示】：检测到更新计划已锁定，但尚未执行物理落盘。"
-                                f"请立即调用 `execute_spreadsheet_update{run_arg}` 完成更新并交付！"
-                            )
-                        else:
-                            msg = (
-                                f"【系统表格更新交付提示】：检测到用户要求更新/交付 {missing_deliverable} 表格文件，当前工作区中尚未检测到更新后的物理产物。"
-                                f"请通过 Function Calling 协议调用 `plan_spreadsheet_update` 规划复制与回填，并调用 `execute_spreadsheet_update` 执行落盘交付！"
-                            )
-                    else:
-                        msg = (
-                            f"【系统交付物提示】：当前环境为只读模式（未提供代码执行工具），"
-                            f"请直接在回复中以完整的 Markdown 格式或代码块输出 {missing_deliverable} 对应的全部正文内容。"
-                        )
-                elif script_execution_error:
-                    msg = (
-                        f"【系统脚本执行自愈提示】：检测到你在回复中提供了生成 {missing_deliverable} 的脚本代码，"
-                        f"但在沙箱尝试运行该脚本生成交付物时出现异常报错：\n```\n{script_execution_error}\n```\n"
-                        f"请立即通过 Function Calling 协议调用 `bash` 工具修复并运行脚本，完成物理文件落盘！严禁仅做口头解释！"
-                    )
-                else:
-                    if missing_deliverable in [".html", ".htm"]:
-                        format_write_hint = "，或直接在回复中以完整的代码块（如 ```html\n<!DOCTYPE html>...\n```）输出全部源码"
-                    elif missing_deliverable in [".md", ".markdown"]:
-                        format_write_hint = "，或直接在回复中以完整的 Markdown 代码块输出全部正文"
-                    elif missing_deliverable in [".docx", ".xlsx", ".pdf"]:
-                        format_write_hint = f"（请通过 Function Calling 协议调用 bash 工具运行 Python 脚本生成 {missing_deliverable} 文件）"
-                    else:
-                        format_write_hint = ""
-                    msg = (
-                        f"【系统交付物检查】：用户要求生成 {missing_deliverable} 文件（用户原始指令：『{last_user_prompt}』），当前工作区 (/workspace/) 中尚未检测到该物理文件。"
-                        f"请立即通过 Function Calling 协议调用 `bash` 工具执行代码将完整可运行内容写入 /workspace/{format_write_hint}；不要继续输出功能规划、架构说明、伪代码，"
-                        f"不要要求用户再次确认。严禁仅做口头汇报！"
-                    )
-                return "continue", msg, bumped_max_rounds
-
-    # 4. 行动垫话拦截
-    if not is_guide_intent and not is_text_only_request(last_user_prompt) and is_promising_action(reply_text):
-        print("⚡ [Harness Action Nudge] 检测到模型表达了后续执行意图但遗漏了工具调用，正在提醒模型执行工具...", flush=True)
-        msg = "你提出了具体的行动计划，请直接使用工具函数实际执行该操作，不要仅输出口头承诺。"
-        return "continue", msg, bumped_max_rounds
-
-    # 5. 消极推诿拦截
-    if not is_guide_intent and detect_passive_deflection(reply_text):
-        print("⚡ [Harness Anti-Deflection Guard] 检测到消极推诿向用户索要链接/上下文，正在引导调用工具执行...", flush=True)
-        msg = "沙箱配备了完整的联网检索与系统终端工具，请直接调用相关工具探测解决，严禁推诿索取信息。"
-        return "continue", msg, bumped_max_rounds
-
-    # 6. 未执行工具参数泄漏拦截 (Tool Argument Leakage Guard)
-    if not is_guide_intent and detect_unexecuted_tool_argument_leak(reply_text):
-        print("⚡ [Harness Tool Argument Leak Guard] 检测到模型输出了未执行的工具调用参数片段，正在拦截并引导重新调用...", flush=True)
-        if telemetry:
-            telemetry.record_guard("tool_argument_leak", "reject", "leaked_parameters")
-        msg = (
-            "【系统工具调用规范提示】：检测到你在回复中直接输出了工具参数片段（如 query / freshness 等键值对），"
-            "但未通过标准 Function Calling 协议触发工具调用。口头输出参数无法执行检索或操作。"
-            "若需查询信息或执行任务，请使用规范的 Function Calling 协议调用相应工具；若无需调用工具，请直接用完整自然语言向用户作答。"
-        )
-        return "continue", msg, bumped_max_rounds
-
-    # 7. 未执行脚本泄漏拦截（若已提供完整合法 HTML 交付物则放行至导出器落盘与挂载）
-    if not is_guide_intent and not is_text_only_request(last_user_prompt) and not is_explicit_code_request(last_user_prompt) and not has_valid_html and detect_unexecuted_script_leak(reply_text):
-        print("⚡ [Harness Code Output Guard] 检测到模型直接输出了未执行的代码脚本或文件写入命令，正在引导执行工具落盘...", flush=True)
-        if has_bash:
-            msg = "检测到你输出了未执行的代码脚本或文件写入命令。请调用 bash 工具在终端实际运行脚本完成落盘，然后再向用户汇报完成。"
-        else:
-            msg = "检测到你输出了代码或文件命令。当前环境为只读模式，请直接输出分析结论与解答内容，无需尝试在本地写入文件。"
-        return "continue", msg, bumped_max_rounds
-
-    # 7. 提醒虚假创建断言拦截 (Reminder Assertion Guard)
-    reminder_claims = [
-        "已为您成功创建", "已成功创建日程", "已成功设置提醒", "已为您设置提醒",
-        "已添加提醒", "已成功记录提醒", "写入日程库", "已创建提醒", "已为您定好提醒",
-        "已成功创建提醒", "成功创建提醒"
-    ]
-    has_reminder_claim = any(c in reply_text for c in reminder_claims)
-    user_wants_reminder = has_explicit_reminder_intent(last_user_prompt)
-    has_time_in_user_prompt = bool(re.search(
-        r'(\d+\s*[点时分秒号日周天月年]|明天|后天|大后天|下周|今晚|早上|中午|下午|晚上|半小时|一小时|\d+\s*小时后|\d+\s*分钟后|工作日|每天|每周|每月|准时|到点)',
-        last_user_prompt
-    ))
-    executed = executed_calls_history or []
-    has_executed_reminder = any("create_reminders" in call for call in executed)
-    if user_wants_reminder and has_time_in_user_prompt and has_reminder_claim and not has_executed_reminder:
-        print("⚡ [Harness Reminder Assertion Guard] 检测到模型口头声称已创建提醒但未调用 create_reminders 工具，正在引导调用工具...", flush=True)
-        msg = (
-            "【系统提醒检查】：检测到口头声称已创建提醒，但沙箱中未调用 `create_reminders` 工具。"
-            "口头文字回复无法写入系统数据库与推送通知，请通过 Function Calling 协议调用 `create_reminders` 工具创建真实的系统提醒。"
-        )
-        return "continue", msg, bumped_max_rounds
-
-    reminder_delete_claims = [
-        "已为您处理并取消", "已取消", "已成功取消", "已为您取消", "已删除提醒", "已为您删除", "已成功删除",
-        "已停止执行，之后每日均不再触发", "已移除提醒", "已清空提醒"
-    ]
-    has_delete_claim = any(c in reply_text for c in reminder_delete_claims)
-    is_delete_intent = bool(re.search(r'(?:删除|取消|关掉|关闭|清空|移除|撤销|停用|废弃|去掉|delete|cancel|remove)', last_user_prompt, re.I))
-    has_executed_delete = any("delete_reminder" in call or "delete_reminders" in call for call in executed)
-    if is_delete_intent and has_delete_claim and not has_executed_delete:
-        print("⚡ [Harness Reminder Delete Guard] 检测到模型口头声称已取消/删除提醒但未调用 delete_reminder 工具，正在引导调用工具...", flush=True)
-        msg = (
-            "【系统提醒检查】：检测到口头声称已取消或删除提醒，但沙箱中并未实际调用 `delete_reminder` 工具。"
-            "口头宣称已取消无法在系统数据库中生效，后台仍会继续按原计划推送！请立即通过 Function Calling 协议调用 `delete_reminder` 工具执行删除。"
-        )
-        return "continue", msg, bumped_max_rounds
-
-    # 8. 检索不匹配与消极放弃拦截 (Retrieval Mismatch Guard)
-    has_web_search = bool(
-        tools and any(
-            (isinstance(t, dict) and (t.get("name") in ["web_search", "search_web"] or t.get("function", {}).get("name") in ["web_search", "search_web"]))
-            for t in tools
-        )
-    )
-    if has_web_search and not is_guide_intent and detect_retrieval_mismatch_disclaimer(reply_text):
-        print("⚡ [Harness Retrieval Mismatch Guard] 检测到模型因检索结果不匹配声称无法确认，正在拦截引导重新检索...", flush=True)
-        msg = (
-            "【系统检索纠错提示】：你当前的回复表明现有检索材料与用户问题不匹配，或未能找到关键有效信息。"
-            "请不要直接放弃或回复无法确认！请根据用户问题的核心主体，提炼更精准的搜索词，"
-            "直接调用 `web_search` 工具发起再次检索。"
-        )
-        return "continue", msg, bumped_max_rounds
-
-    # 9. 任务契约与指标逐项验收拦截 (Analysis Contract & Metric Alignment Guard)
-    if not is_guide_intent:
-        contract = build_analysis_contract(last_user_prompt or "")
-        if contract.has_metrics:
-            is_sheet_listing_reply = bool(re.search(
-                r'(?:工作表清单|Sheet\s*名称|主要用途与内容说明|包含\s*\d+\s*个工作表|共包含.*工作表)',
-                reply_text or ""
-            ))
-            is_parroting_history = False
-            if messages:
-                for m in messages:
-                    if isinstance(m, dict) and m.get("role") == "assistant":
-                        c_val = m.get("content")
-                        prev_text = c_val if isinstance(c_val, str) else ""
-                        if is_sheet_listing_reply and ("主要用途与内容说明" in prev_text or "工作表清单" in prev_text):
-                            is_parroting_history = True
-                            break
-
-            val_result = validate_reply_against_contract(
-                contract=contract,
-                reply_text=reply_text or "",
-                round_idx=round_idx,
-                max_rounds=max_rounds,
-                messages=messages,
-                execution_evidence=execution_evidence
-            )
-
-            if is_sheet_listing_reply or is_parroting_history or not val_result.is_pass:
-                # 落地1与落地3：若专用工具连续受限（consecutive_comparison_errors >= 2）或者轮次预算已耗尽，
-                # 不再死循环拦截打回，而是放行由收尾逻辑追加软性提示
-                if consecutive_comparison_errors >= 2 or round_idx >= max_rounds - 1 or (hard_ceiling and round_idx >= hard_ceiling - 1):
-                    return "pass", "", max_rounds
-                feedback = val_result.feedback_message
-                if is_sheet_listing_reply or is_parroting_history:
-                    all_metrics_str = "、".join(contract.get_metric_names())
-                    feedback = (
-                        f"【系统问答对齐与指标核算拦截】：用户明确要求核算具体指标（『{last_user_prompt}』，目标指标：{all_metrics_str}）。\n"
-                        "当前回复重复罗列工作表目录或说明，未回答具体指标数据，未给出核心指标数值，严禁向用户复读目录或反问是否继续！\n"
-                        "请立即调用 `read_file` 读取真实对应的数据源工作表，"
-                        "或调用 `bash` 运行 Python 脚本对数据进行求值，直接给出全部各项指标的具体数值结论及数据来源。"
-                    )
-                print(f"⚡ [Harness Contract Guard] 拦截未完成指标核算回复 (status={val_result.status}, satisfied={val_result.satisfied_metrics}, missing={val_result.missing_metrics})", flush=True)
-                return "continue", feedback, bumped_max_rounds
-
-    # 10. 历史截断标记复读/偷懒拦截 (Truncation Parroting Guard)
-    if re.search(r'(?:因历史消息长度预算超出|中间部分已自动省略|\[内容已截断\]|CONTEXT_BUDGET)', reply_text or ''):
-        print("⚡ [Harness Truncation Parroting Guard] 检测到模型在当前回复中输出截断/省略占位符，正在拦截引导输出完整结果...", flush=True)
-        feedback = (
-            "【系统完整性拦截提示】：检测到你的回复中包含了省略/截断标记（如‘中间部分已自动省略’或‘内容已截断’）导致回答不完整。"
-            "请勿使用任何省略标记，直接向用户完整、详细地输出全部内容和结果！"
-        )
-        return "continue", feedback, bumped_max_rounds
-
-    feedback = sampling_feedback(reply_text,last_user_prompt,messages,telemetry,execution_evidence,is_guide_intent)
-    if feedback:
-        return "continue", feedback, bumped_max_rounds
-
-    return "pass", None, max_rounds
+# Canonical turn completion evaluator (aliased for backwards compatibility)
+_check_no_tool_assertion_guard = evaluate_no_tool_turn
 
 
 def _is_tool_error(tool_res: Any) -> bool:
@@ -884,6 +469,9 @@ def run_agent_loop(
                 hard_ceiling=task_ceiling,
                 is_search_intent=is_search_intent,
                 consecutive_comparison_errors=consecutive_comparison_errors,
+                model=model,
+                deadline=deadline,
+                workspace_dir=WORKSPACE_DIR,
             )
             if action == "continue":
                 guard_nudges_count += 1
@@ -968,29 +556,29 @@ def run_agent_loop(
             break
 
         if analysis_turn:
-            completed=analysis_turn.complete(execution_evidence,telemetry,
-                [t.get('function',{}).get('name') for t in active_tools],deadline)
-            if analysis_turn.may_finish(execution_evidence):
-                has_delivered = bool(
-                    outbound_files
-                    or (reply_text and "```html" in reply_text.lower() and not is_unclosed_or_truncated_html(reply_text))
-                )
-                if has_visual_or_deliverable and not has_delivered:
-                    # 计算阶段已完成，但可视化/文件交付尚未完成：平滑过渡到交付阶段，不提前截断
-                    if round_idx < task_ceiling - 1:
-                        max_rounds = min(task_ceiling, max(max_rounds, round_idx + 2))
-                    messages.append({
-                        'role': 'user',
-                        'content': (
-                            "【表格数据核算完成，请执行可视化交付阶段】\n"
-                            "内部分析引擎已精准计算出聚合与过滤结果（参见上方工具返回事实）。\n"
-                            "现在请进入第二阶段：严格使用上述核算得到的事实数据（严禁臆测或篡改数值），"
-                            "生成符合用户要求的数据看板、HTML 图表或目标交付物。\n"
-                            "请直接输出完整的 ```html ... ``` 代码块，或调用相关工具生成落地文件。"
-                        )
-                    })
-                    round_idx += 1
-                    continue
+            completed = analysis_turn.complete(
+                execution_evidence, telemetry,
+                [t.get('function', {}).get('name') for t in active_tools],
+                deadline
+            )
+            should_finish, transition_msg, max_rounds = evaluate_tool_execution_turn(
+                analysis_turn=analysis_turn,
+                execution_evidence=execution_evidence,
+                active_tools=active_tools,
+                deadline=deadline,
+                telemetry=telemetry,
+                has_visual_or_deliverable=has_visual_or_deliverable,
+                outbound_files=outbound_files,
+                reply_text=reply_text,
+                round_idx=round_idx,
+                max_rounds=max_rounds,
+                task_ceiling=task_ceiling,
+            )
+            if transition_msg:
+                messages.append({'role': 'user', 'content': transition_msg})
+                round_idx += 1
+                continue
+            if should_finish:
                 if structured_calls:
                     reply_text = ""
                 break
