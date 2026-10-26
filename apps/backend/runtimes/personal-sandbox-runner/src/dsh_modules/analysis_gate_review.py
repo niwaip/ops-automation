@@ -15,20 +15,34 @@ def revalidate_review(issues, verdict, receipts, facts):
     remaining = []
     for issue in issues:
         code = issue.get('code')
-        if integrity_failed or code not in proposed:
+        is_proposed = (
+            code in proposed
+            or (code == 'required_metrics_missing' and 'per_group_metrics_missing' in proposed)
+            or (code == 'per_group_metrics_missing' and 'required_metrics_missing' in proposed)
+            or (verdict.get('category') == 'gate_false_positive' and len(issues) == 1 and bool(proposed))
+        )
+        if integrity_failed or not is_proposed:
             remaining.append(issue)
             continue
 
         justified = False
         if code in ('required_metrics_missing', 'metric_unit_mismatch'):
             # 严格断言：每个缺失的指标都必须在事实或支持事实中真正存在，绝不允许以偏概全
+            import re
             metric_names = [m.get('name') for m in issue.get('metrics', [])]
             fact_labels = {str(f.get('label', '')) for f in facts} | {str(f.get('id', '')) for f in facts}
+            fact_fields = {str(f.get('field', '')) for f in facts if f.get('field')}
             if metric_names:
-                all_metrics_covered = all(
-                    any(m_name in lbl for lbl in fact_labels)
-                    for m_name in metric_names if m_name
-                )
+                def _covers_metric(m_name):
+                    if not m_name:
+                        return False
+                    if any(m_name in lbl for lbl in fact_labels) or m_name in fact_fields:
+                        return True
+                    stem = re.sub(r'[\(（][^\)）]+[\)）]', '', m_name).strip()
+                    if stem and (any(stem in lbl for lbl in fact_labels) or any(stem in fld for fld in fact_fields)):
+                        return True
+                    return False
+                all_metrics_covered = all(_covers_metric(m_name) for m_name in metric_names if m_name)
             else:
                 all_metrics_covered = bool(fact_labels)
             # Other requested metrics cannot stand in for the missing measure.

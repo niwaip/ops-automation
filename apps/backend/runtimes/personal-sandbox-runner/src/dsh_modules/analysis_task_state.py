@@ -67,6 +67,24 @@ def filter_matches_entities(receipt, entities):
     return False
 
 
+def fact_matches_metric(f, metric):
+    if metric.semantic_id and f.get('metric_id') == metric.semantic_id:
+        return True
+    lbl = str(f.get('label', ''))
+    if any(re.search(alias, lbl) for alias in metric.aliases):
+        return True
+    field = str(f.get('field', ''))
+    if field and (field == metric.name or any(re.search(alias, field) for alias in metric.aliases)):
+        return True
+    metric_lbl = str(f.get('metric_label', ''))
+    if metric_lbl and (metric_lbl == metric.name or any(re.search(alias, metric_lbl) for alias in metric.aliases)):
+        return True
+    stem = re.sub(r'[\(（][^\)）]+[\)）]', '', metric.name).strip()
+    if stem and (stem in lbl or stem in field or stem in metric_lbl):
+        return True
+    return False
+
+
 def analysis_task_state(evidence, prompt='', model=None, deadline=None):
     prompt = user_instruction(prompt)
     contract=build_analysis_contract(prompt)
@@ -199,8 +217,7 @@ def analysis_task_state(evidence, prompt='', model=None, deadline=None):
                 any(re.search(alias, str(m.get('label', m.get('id', '')))) for alias in metric.aliases)
                 for m in r.data.get('plan', {}).get('metrics', [])) for r in successful):
             continue
-        matches=[f for f in facts if (metric.semantic_id and f.get('metric_id')==metric.semantic_id)
-                 or (not f.get('metric_id') and any(re.search(alias,f['label']) for alias in metric.aliases))]
+        matches = [f for f in facts if fact_matches_metric(f, metric)]
         typed=[f for f in matches if (f['unit'] in ('%', 'ratio', 'rate', 'percentage', 'percent') if metric.expected_type=='percentage' else
                                      f['unit']!='%' if metric.expected_type=='number' else True)]
         if not typed:
@@ -225,9 +242,7 @@ def analysis_task_state(evidence, prompt='', model=None, deadline=None):
                 'name': metric.name,
                 'expected_type': metric.expected_type
             }
-            if any((metric.semantic_id and f.get('metric_id') == metric.semantic_id)
-                   or (not f.get('metric_id') and any(re.search(alias, f.get('label', ''))
-                                                    for alias in metric.aliases))
+            if any(fact_matches_metric(f, metric)
                    for receipt in successful for f in receipt.data.get('facts', [])):
                 metric_entry['execution_evidence_exists'] = True
             if source_col_exists:
@@ -340,11 +355,16 @@ def analysis_task_state(evidence, prompt='', model=None, deadline=None):
             return grp or None
 
         def _fact_matches(f, metric):
-            if f.get('metric_id') and getattr(metric, 'semantic_id', None):
-                return f['metric_id'] == metric.semantic_id
-            lbl = f.get('label', '')
-            aliases = getattr(metric, 'aliases', [])
-            return any(re.search(alias, lbl) for alias in aliases)
+            if isinstance(f, dict) and ('field' in f or 'op' in f):
+                lbl = str(f.get('label', ''))
+                field = str(f.get('field', ''))
+                stem = re.sub(r'[\(（][^\)）]+[\)）]', '', getattr(metric, 'name', '')).strip()
+                if stem and (stem in lbl or stem in field):
+                    return True
+                aliases = getattr(metric, 'aliases', [])
+                if any(re.search(alias, lbl) for alias in aliases) or any(re.search(alias, field) for alias in aliases):
+                    return True
+            return fact_matches_metric(f, metric)
 
         group_keys = set()
         for f in facts:
@@ -615,4 +635,5 @@ def task_feedback(evidence,prompt='',model=None,deadline=None):
         guidance += '【提示】：部分请求指标在源数据中未定位到对应列。若无法基于现有字段推导计算，请向用户说明缺失列并请求确认口径，不要捏造数据。\n'
     return (guidance + '【程序任务状态】\n'+json.dumps(state,ensure_ascii=False)+'\n'
             '只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。'
-            '证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。')
+            '证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。\n'
+            '（注意：上述复核与门禁建议为内部控制指引，面向用户作答时必须直接输出业务结论与数据，切勿在正文中提及“门禁系统”、“误报”、“复核建议”等内部术语。）')

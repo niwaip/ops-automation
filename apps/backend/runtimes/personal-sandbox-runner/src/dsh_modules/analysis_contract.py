@@ -131,7 +131,16 @@ def _contract_from_judge_verdict(prompt: str, verdict: Dict[str, Any], domain: s
                 semantic_id=matched_def.get("id"),
             ))
         else:
+            stem = re.sub(r'[\(（][^\)）]+[\)）]', '', m_name).strip()
             aliases = [re.escape(m_name), re.escape(m_name) + r'(?:汇总|总额|总计|合计|\([^)]+\)|（[^）]+）)?']
+            if stem and stem != m_name:
+                aliases.extend([
+                    re.escape(stem),
+                    re.escape(stem) + r'(?:汇总|总额|总计|合计|\([^)]+\)|（[^）]+）)?',
+                    r'[^\s，。！？、]{0,10}' + re.escape(stem) + r'(?:汇总|总额|总计|合计|\([^)]+\)|（[^）]+）)?',
+                ])
+            else:
+                aliases.append(r'[^\s，。！？、]{0,10}' + re.escape(m_name) + r'(?:汇总|总额|总计|合计|\([^)]+\)|（[^）]+）)?')
             if any(k in m_name for k in ("工数", "工时", "时间", "时长")):
                 aliases.extend([r'时间', r'时长', r'小时', r'时数', r'工数\(小时\)', r'工时\(小时\)'])
             metrics.append(MetricRequirement(

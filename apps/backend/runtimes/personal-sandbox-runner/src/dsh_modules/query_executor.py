@@ -656,6 +656,8 @@ def execute_query_plan(
                 "unit": unit,
                 "source_cells": sorted(m_cells),
                 "matched_records": len(g_rows),
+                "field": field_name,
+                "metric_label": m.get("label"),
             }
             if m.get("metric_id"):
                 fact_entry["metric_id"] = m["metric_id"]

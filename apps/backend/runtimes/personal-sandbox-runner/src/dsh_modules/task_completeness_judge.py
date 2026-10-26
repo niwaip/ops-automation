@@ -119,7 +119,7 @@ class TaskCompletenessJudge:
                 '返回action=clarify、合适的missing_data/ambiguous_request分类，user_question重写为简短具体的业务问题；不要因复核澄清而要求强行计算。\n'
                 '严格返回JSON：{"action":"recheck|repair|clarify",'
                 '"category":"gate_false_positive|execution_incomplete|missing_data|ambiguous_request",'
-                '"complete":false,"dismissed_issue_codes":[],"supporting_fact_ids":[],'
+                '"complete":false,"dismissed_issue_codes":["必须从当前issues中选取待撤销的代码如required_metrics_missing"],"supporting_fact_ids":[],'
                 '"reason":"判定依据","repair_instruction":"补做步骤或重新校验建议",'
                 '"user_question":"仅clarify时填写：说明缺什么并请用户选择/补充"}'
             )

@@ -281,6 +281,70 @@ class TestFinancialHarnessFixes(unittest.TestCase):
         finally:
             Path(tmp_path).unlink(missing_ok=True)
 
+    def test_parenthesized_unit_header_metric_stem_matching_and_revalidation(self):
+        """Parenthesized column metrics like 金额(K) must match custom aggregated labels like 有偿金额合计."""
+        from dsh_modules.analysis_contract import _contract_from_judge_verdict
+        from dsh_modules.analysis_task_state import analysis_task_state, task_feedback
+        from dsh_modules.analysis_gate_review import revalidate_review
+
+        # 1. Contract extraction matches stem aliases
+        verdict = {'task_type': 'tabular_compute', 'metrics': ['金额(K)'], 'is_grouped': True, 'group_dimension': '部门名称'}
+        contract = _contract_from_judge_verdict('查看 各个部门的 有偿 金额的合计', verdict, 'generic')
+        metric = contract.metrics[0]
+        self.assertEqual(metric.name, '金额(K)')
+        import re
+        self.assertTrue(any(re.search(alias, '華東MIS 有偿金额合计') for alias in metric.aliases))
+
+        # 2. Fact with field and custom label is matched by analysis_task_state
+        facts = [{
+            'id': "total_amount__(('str', '華東MIS'),)",
+            'label': '華東MIS 有偿金额合计',
+            'group_key': '華東MIS',
+            'value': '570.75345',
+            'unit': 'K',
+            'field': '金额(K)',
+            'metric_label': '有偿金额合计'
+        }]
+        receipt_data = {
+            'kind': 'spreadsheet_analysis',
+            'plan': {
+                'source': {'sheet': '明细', 'header_row': 4, 'data_range': 'A5:R278'},
+                'group_by': ['部门名称'],
+                'metrics': [{'id': 'total_amount', 'label': '有偿金额合计', 'op': 'sum', 'field': '金额(K)'}],
+                'where': {'field': '有偿无偿', 'op': 'eq', 'value': '有偿'}
+            },
+            'coverage': [{'id': 't1', 'sheet': '明细', 'coverage_complete': True, 'selected_rows': 259, 'headers': {'C': '部门名称', 'P': '金额(K)'}}],
+            'facts': facts,
+            'evidence_id': 'eid_test_123'
+        }
+        r = ToolResult.success(data=receipt_data, text=json.dumps(receipt_data), provenance={'tool': 'aggregate_spreadsheet', 'file_path': '/workspace/test.xlsx', 'workbook_id': 'wb123'})
+        state = analysis_task_state([r], '查看 各个部门的 有偿 金额的合计')
+        # Crucial assertion: static gate must NOT fail with required_metrics_missing
+        missing_metric_names = [m.get('name') for m in state.get('missing_metrics', [])]
+        self.assertNotIn('金额(K)', missing_metric_names)
+
+        # 3. Gate review revalidation handles stem matching and semantic code correlation
+        issues = [{
+            'code': 'required_metrics_missing',
+            'metrics': [{'name': '金额(K)'}],
+            'message': '分析计划遗漏所需指标计算：金额(K)'
+        }]
+        review_verdict = {
+            'action': 'repair',
+            'category': 'gate_false_positive',
+            'complete': False,
+            'dismissed_issue_codes': ['per_group_metrics_missing'],
+            'supporting_fact_ids': ["total_amount__(('str', '華東MIS'),)"],
+            'repair_instruction': '无需补做，直接基于facts输出。'
+        }
+        remaining, updated_review = revalidate_review(issues, review_verdict, [r], facts)
+        self.assertEqual(len(remaining), 0, "Gate review must correlate per_group_metrics_missing to required_metrics_missing on single issue")
+        self.assertTrue(updated_review['complete'])
+
+        # 4. task_feedback includes prompt reminder suppressing internal terminology
+        feedback_text = task_feedback([r], '查看 各个部门的 有偿 金额的合计')
+        self.assertIn('切勿在正文中提及“门禁系统”、“误报”', feedback_text)
+
 
 if __name__ == "__main__":
     unittest.main()
