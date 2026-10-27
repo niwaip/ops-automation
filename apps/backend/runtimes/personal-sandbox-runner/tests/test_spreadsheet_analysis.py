@@ -89,7 +89,7 @@ class SpreadsheetAnalysisTests(unittest.TestCase):
         self.assertEqual(Decimal(r.data['facts'][1]['value']),expected)
         self.assertEqual(r.data['facts'][1]['unit'],'%')
 
-    def test_verified_ratios_produce_factual_direction_without_model_causes(self):
+    def test_verified_ratios_are_displayed_without_unexecuted_delta(self):
         first={'id':'h1','sheet':'月度来源改名','header_row':2,'data_range':'A3:D8'}
         second={'id':'h2','sheet':'月度来源改名','header_row':2,'data_range':'A9:D14'}
         calculations=[{'id':t['id']+'_ratio','label':caption+'毛利率',
@@ -98,8 +98,9 @@ class SpreadsheetAnalysisTests(unittest.TestCase):
         r=self.compute(tables=[first,second],calculations=calculations)
         self.assertTrue(r.is_success,r.error)
         text=render_analysis_response(self.response(r),[r],'解释毛利率变化')
-        self.assertIn('下降1.8045个百分点',text)
-        self.assertIn('不推断经营原因',text)
+        self.assertNotIn('下降1.8045个百分点',text)
+        self.assertIn('上半年毛利率',text)
+        self.assertIn('下半年毛利率',text)
 
     def test_equation_residual_and_assumptions_are_reported(self):
         cell=lambda addr:{'cell':addr,'sheet':'任意余额表','unit':'amount'}

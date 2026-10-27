@@ -97,7 +97,8 @@ def present_verified_workflow(data, table, prompt, model, policy, telemetry, dea
     recorded = False
     try:
         response = call_model_proxy(messages, model=model, tools=None, timeout=20, deadline=end,
-                                    temperature=0, max_tokens=256, policy=active_policy, stream_deltas=False)
+                                    temperature=0, max_tokens=256, policy=active_policy, stream_deltas=False,
+                                    purpose="synthesis")
         telemetry.record_llm_response(response, is_first_round=True)
         recorded = True
         if response.get('finish_reason') != 'stop' or response.get('tool_calls'):

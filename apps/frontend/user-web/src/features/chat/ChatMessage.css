@@ -148,6 +148,18 @@
   max-width: 100%;
 }
 
+.chat-message-markdown .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 6px 0;
+  margin: 0.8em 0;
+}
+
+.chat-message-markdown .katex {
+  font-size: 1.05em;
+  text-rendering: auto;
+}
+
 .chat-message-files {
   margin-top: 12px;
   display: flex;

@@ -6,7 +6,6 @@ import re
 import time
 from .analysis_contract import build_analysis_contract
 from .analysis_task_state import analysis_task_state, task_feedback
-from .registered_metric_completion import RegisteredMetricCompletion
 from .spreadsheet_analysis_evidence import canonical_response, render_analysis_response, parse_response
 from .analysis_clarification import clarification_is_grounded, review_clarification
 
@@ -63,7 +62,6 @@ class AnalysisTurn:
         self._repair_extensions=0
         self._extended_states=set()
         self.contract=build_analysis_contract(prompt)
-        self.completion=RegisteredMetricCompletion()
 
     def has_informational_receipt(self, evidence):
         if not evidence:
@@ -110,7 +108,8 @@ class AnalysisTurn:
         return self.has_informational_receipt(evidence) or self.can_auto_downgrade(evidence, model_text)
 
     def complete(self,evidence,telemetry,allowed_names,deadline=None):
-        return self.completion.complete(evidence,self.prompt,telemetry,allowed_names,deadline)
+        """Compatibility hook: missing calculations must return to the model loop."""
+        return []
 
     def response(self,evidence,model_text=''):
         if self.is_informational_downgrade(evidence, model_text):
@@ -147,14 +146,19 @@ class AnalysisTurn:
             'issue_codes':[i['code'] for i in state['issues']]})
         return max_rounds+1
 
-    def may_finish(self,evidence):
-        if self.is_informational_downgrade(evidence):
+    def may_finish(self, evidence, reply_text=''):
+        if self.is_informational_downgrade(evidence, reply_text):
             return False
-        if self.response(evidence) is None:
-            return False
+        if reply_text and self.is_clarification(evidence, reply_text):
+            return True
         from .analysis_task_state import analysis_task_state
-        state = analysis_task_state(evidence, self.prompt,model=self.model,deadline=self.deadline)
-        return bool(state.get('complete'))
+        state = analysis_task_state(evidence, self.prompt, model=self.model, deadline=self.deadline)
+        if state.get('complete'):
+            return True
+        review = state.get('gate_review') or {}
+        if review.get('action') == 'clarify':
+            return True
+        return False
 
     def render(self,evidence,model_text,telemetry,policy=None,model=None,deadline=None):
         if self.is_clarification(evidence, model_text):
@@ -212,17 +216,66 @@ class AnalysisTurn:
             return rendered
 
         telemetry.record_guard('spreadsheet_evidence', 'reject', self.feedback(evidence))
-        # 阻碍归因：末尾执行确实报错时展示；若后续轮次已成功，不展示已被模型自我修正的历史陈旧报错
+        # 阻碍归因：末尾执行报错时展示；若任务未完成且无原生分析成功凭据，展示最后一个原生阻碍（不能因外部bash成功而吞掉未完成的原生阻碍）
         failed = None
+        has_native_success = any(
+            getattr(r, 'is_success', False)
+            and isinstance(getattr(r, 'data', None), dict)
+            and r.data.get('kind') == 'spreadsheet_analysis'
+            for r in evidence
+        )
         if evidence and getattr(evidence[-1], 'is_error', False):
             failed = evidence[-1]
-        elif not any(getattr(r, 'is_success', False) for r in evidence):
+        elif not has_native_success:
             failed = next((r for r in reversed(evidence) if getattr(r, 'is_error', False)), None)
         detail = f'\n\n执行阻碍：{failed.error_code}：{failed.error_message}' if failed else ''
         from .report_presentation import render_unverified_guidance
         guidance = render_unverified_guidance(state, self.prompt, detail)
-        # 降级：若已有模型实质性分析输出，不将其抹杀为单纯未完成声明，而是优先呈现模型解读结论并在文末附加软性角标
-        if model_text and len(model_text.strip()) > 30 and "本次分析尚未通过" not in model_text:
-            return model_text.strip() + "\n\n---\n💡 **提示**：本分析结论由模型直接解读呈现，未完全通过单列聚合证据核验。"
+        embedded_guidance = render_unverified_guidance(state, self.prompt, detail, mode="embedded")
+        has_success = any(
+            getattr(r, 'is_success', False)
+            and (
+                (isinstance(getattr(r, 'data', None), dict) and r.data.get('kind') == 'spreadsheet_analysis')
+                or (getattr(r, 'provenance', None) or {}).get('tool') in (
+                    'aggregate_spreadsheet', 'analyze_spreadsheet', 'check_spreadsheet_equations',
+                    'compare_spreadsheet_columns', 'validate_spreadsheet_rows'
+                )
+            )
+            for r in evidence
+        )
+        # 1. 部分成功场景：已有部分指标完成核验回执，且模型输出了实质性正文
+        if has_success and model_text and len(model_text.strip()) > 30 and "本次分析尚未通过" not in model_text:
+            disclaimer = (
+                "\n\n---\n"
+                "> [!WARNING] **执行核验状态：部分指标核验未完成 (Partial Verification)**\n"
+                "> 本轮已完成部分指标的聚合计算核验，但未完全覆盖任务约定全部指标。"
+                "文中涉及未核验指标或推测性归因请作为待核实假设，请以已核验表格事实为准。\n\n"
+                + embedded_guidance
+            )
+            return model_text.strip() + disclaimer
+
+        # 2. 文件缺陷或口径澄清场景：当表格缺列、缺少对比期或口径模糊导致无法发起工具计算时，
+        # 若模型向用户清晰诊断了数据缺失或提出了澄清建议，且正文未捏造虚假计算数值（经接地校验通过），
+        # 应当优先将模型的诚实解答与澄清引导交付给用户，并在文末结合结构化核查说明，绝不粗暴抹杀模型输出。
+        is_grounded_explanation = (
+            model_text
+            and len(model_text.strip()) > 30
+            and "本次分析尚未通过" not in model_text
+            and clarification_is_grounded(model_text, evidence)
+            and any(
+                k in model_text
+                for k in ("缺少", "未包含", "未找到", "没有", "口径", "定义", "字段", "列",
+                         "请确认", "请选择", "请提供", "请明确", "建议您", "补充", "期间")
+            )
+        )
+        if is_grounded_explanation:
+            notice = (
+                "\n\n---\n"
+                "> [!NOTE] **数据核查与说明 (Data & Requirement Notice)**\n"
+                "> 本次分析已依据当前表格完成数据核对与业务诊断。对于未能在表格中直接核算的指标，具体原因与建议如下：\n\n"
+                + embedded_guidance
+            )
+            return model_text.strip() + notice
+
         # Failure attribution is owned by execution receipts, not a second model rewrite.
         return guidance

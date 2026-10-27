@@ -34,7 +34,7 @@ class TaskCompletenessJudge:
     def _cache_path(cls, prompt, facts, issues, coverage=None, context=None):
         # Every input visible to the reviewer is part of the cache identity,
         # including filters, selected rows, source bindings and effective plans.
-        payload = {"version": 4, "prompt": prompt, "facts": facts, "issues": issues,
+        payload = {"version": 5, "prompt": prompt, "facts": facts, "issues": issues,
                    "coverage": coverage, "context": context}
         encoded = json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str)
         return cls._resolve_cache_dir() / (hashlib.sha256(encoded.encode()).hexdigest() + '.json')
@@ -116,7 +116,11 @@ class TaskCompletenessJudge:
                 '澄清问题不用技术术语，不写未经核验的数值、公式或业务推断。\n'
                 '工具规范：aggregate_spreadsheet 的 WHERE 仅支持 eq, ne, gt, gte, lt, lte, between, in, not_in, '
                 'starts_with, not_starts_with, contains, not_contains, ends_with, is_null, is_not_null, is_blank。'
-                '前缀排除用 op="not_starts_with", values=["前缀1", "前缀2"]。严禁在 repair_instruction 中建议 SQL 语法的 LIKE/NOT LIKE 或非标准操作符。\n'
+                '前缀排除用 op="not_starts_with", values=["前缀1", "前缀2"]。严禁在 repair_instruction 中建议 SQL 语法的 LIKE/NOT LIKE 或非标准操作符。'
+                '严禁臆造工具未定义的顶层参数（如 columns, operations, calculations 等）；合法顶层参数仅有 tables, where, group_by, metrics, limit, order_by。\n'
+                '度量与口径规范：若多个指标位于某维度列的不同行，必须使用 group_by 分组，严禁对同一物理列进行多次无条件 sum 混加；'
+                '对于毛利率等比率指标，年度比率必须按当期累计（加权）即毛利÷营业收入计算，严禁建议按月度平均毛利率代替。\n'
+                '外部执行（如 bash/python）的输出仅可作为诊断参考，必须通过结构化工具或经过来源校验才能形成可信事实，不能把外部 stdout 直接判定为 gate_false_positive。\n'
                 '如果context.execution含clarification_candidate，优先复核该澄清回复：保留提问和有证据的部分结果，'
                 '移除未经来源证明的字段业务含义和公式。不能把金额字段自行定义成人工成本，或据表名推定财务定义。'
                 '返回action=clarify、合适的missing_data/ambiguous_request分类，user_question重写为简短具体的业务问题；不要因复核澄清而要求强行计算。\n'
@@ -132,7 +136,8 @@ class TaskCompletenessJudge:
                 messages=[{'role': 'system', 'content': system},
                           {'role': 'user', 'content': json.dumps(payload, ensure_ascii=False, default=str)}],
                 model=model or 'default', timeout=18, deadline=review_deadline, policy=review_policy,
-                stream_deltas=False)
+                stream_deltas=False,
+                purpose="gate_review")
             text = (result.get('content') or '') if isinstance(result, dict) else str(result or '')
             match = re.search(r'\{[\s\S]*\}', text)
             verdict = cls._parse(json.loads(match.group()) if match else None)

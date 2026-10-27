@@ -187,7 +187,8 @@ class TableSemanticProfiler:
                 model=model_name or "default",
                 timeout=15,
                 deadline=deadline,
-                stream_deltas=False
+                stream_deltas=False,
+                purpose="table_profiling"
             )
             raw = (res.get("content") or "").strip() if isinstance(res, dict) else str(res or "").strip()
             if raw.startswith("```"):

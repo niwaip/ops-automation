@@ -75,8 +75,10 @@ class GateReviewTests(unittest.TestCase):
     def test_public_aggregate_contract_exposes_the_query_engine(self):
         tool = get_sandbox_tools(allowed_names={'aggregate_spreadsheet'})[0]['function']
         parameters = tool['parameters']
-        self.assertTrue({'query', 'having', 'order_by', 'limit', 'distinct', 'distinct_fields'} <= set(parameters['properties']))
-        self.assertNotIn('calculations', parameters['required'])
+        self.assertEqual({'file_path', 'query'}, set(parameters['properties']))
+        self.assertEqual({'file_path', 'query'}, set(parameters['required']))
+        self.assertTrue({'having', 'order_by', 'limit', 'distinct', 'fields'} <=
+                        set(parameters['properties']['query']['properties']))
         # The independently submitted query-only request is executable too.
         self.assertTrue(calculate_spreadsheet_analysis(self.source, {'query': self.query}).is_success)
 

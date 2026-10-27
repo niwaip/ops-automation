@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import Tuple, List, Optional
 
-from .html_report_fallback import is_plausible_html_file
+from .html_report_fallback import is_plausible_html_file, has_delivery_failure
 
 
 class ArtifactExporter:
@@ -113,6 +113,8 @@ class ArtifactExporter:
         Extracts HTML from output, writes to workspace, and injects interactive banner if needed.
         Returns: (augmented_final_text, exported_file_paths)
         """
+        if has_delivery_failure(final_text):
+            return final_text, []
         exported_files = []
         cleaned_text = final_text
 

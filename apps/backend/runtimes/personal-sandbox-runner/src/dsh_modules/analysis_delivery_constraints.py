@@ -59,6 +59,13 @@ def has_distinct_list(prompt):
     return bool(re.search(r'(?:列出|展示|返回|查看|给出)[^。；;]*(?:所有不同|不同的|不重复|去重)|(?:去重|不重复)[^。；;]*(?:列出|展示|返回)', user_instruction(prompt)))
 
 
+def requires_source_rows(contract, prompt):
+    """Pure detail requests preserve physical row identity, including duplicates."""
+    return (contract.is_detail_query and not contract.is_grouped
+            and not contract.metrics and not contract.is_explicit_calc
+            and not has_distinct_list(prompt))
+
+
 def query_delivery_issues(receipts, prompt, contract):
     """These are execution requirements; a judge cannot promise later rendering."""
     text = user_instruction(prompt)
@@ -68,6 +75,18 @@ def query_delivery_issues(receipts, prompt, contract):
     wants_distinct = has_distinct_list(text)
     plans = [(r.data.get('plan') or {}, r.data) for r in receipts]
     issues = []
+    # A pure detail request must preserve source row grain. SUM/count with one
+    # group per row happens to look correct on sparse files but is not detail.
+    if requires_source_rows(contract, prompt) and plans:
+        row_plans = [(p, d) for p, d in plans
+                     if not p.get('group_by') and not p.get('metrics') and not p.get('distinct')
+                     and (d.get('query_ir_version') or any('_row' in row for row in d.get('rows', [])))]
+        if not row_plans:
+            issues.append({
+                'code': 'detail_granularity_changed',
+                'message': '用户要求原始明细，当前只有聚合结果。请用aggregate_spreadsheet的query提交source/where，'
+                           '省略group_by、metrics及distinct，保留原始列与来源行号；仅请求选列时使用fields。',
+            })
     required = []
     if wants_having:
         required.append(('having', 'group_filter_not_applied', '尚未执行分组后的条件筛选，请用查询计划的 having 对聚合指标筛选。'))

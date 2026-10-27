@@ -31,6 +31,21 @@ def resolve_sheet_name(sheet_name: str, available_sheets: List[str]) -> str:
     return matched or sheet_name
 
 
+SPREADSHEET_SUFFIXES = ('.xlsx', '.xlsm', '.xls', '.csv')
+
+
+def sole_spreadsheet_attachment(attachment_names: List[str], workspace: Path) -> Optional[Path]:
+    """Returns the only existing spreadsheet attachment of this session, or None when ambiguous."""
+    candidates = []
+    for name in attachment_names:
+        if Path(name).suffix.lower() not in SPREADSHEET_SUFFIXES:
+            continue
+        path = (workspace / name).resolve()
+        if path.is_file() and path.is_relative_to(workspace.resolve()) and path not in candidates:
+            candidates.append(path)
+    return candidates[0] if len(candidates) == 1 else None
+
+
 def resolve_session_attachment(
     file_path: str,
     tool_label: str = "当前工具"
@@ -42,13 +57,21 @@ def resolve_session_attachment(
     returns a clear self-healing ToolResult error specifying the allowed attachments.
     """
     import os
-    raw_path = str(file_path or "").strip()
-    if not raw_path:
-        return None, ToolResult.error("source_unavailable", "未指定有效文件路径")
-
     from .config import WORKSPACE_DIR
     ws = Path(WORKSPACE_DIR)
     env_atts = [v.strip() for v in os.getenv("DSH_SESSION_ATTACHMENTS", "").split(",") if v.strip()]
+
+    raw_path = str(file_path or "").strip()
+    if not raw_path:
+        # 唯一表格附件时无歧义：回退到该附件，避免仅因漏传路径导致整轮失败。
+        # 回执 provenance 仍记录真实解析路径与哈希，审计链不受影响。
+        inferred = sole_spreadsheet_attachment(env_atts, ws)
+        if inferred is not None:
+            print(f"ℹ️ [{tool_label}] 未传 file_path，已回退到唯一会话表格附件: {inferred.name}", flush=True)
+            return inferred, None
+        hint = f"当前可用附件: [{', '.join(env_atts)}]。" if env_atts else ""
+        return None, ToolResult.error(
+            "source_unavailable", f"未指定有效文件路径。请在 file_path 中传入 /workspace/<附件文件名>。{hint}")
 
     if env_atts:
         allowed = {(ws / name).resolve() for name in env_atts}

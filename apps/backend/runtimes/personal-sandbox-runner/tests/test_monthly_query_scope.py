@@ -99,15 +99,17 @@ class MonthlyQueryScopeTests(unittest.TestCase):
             self.assertIn('period_and_filters_only', user)
             self.assertNotIn(self.prompt, user)
 
-    def test_registered_completion_uses_multi_row_query_operands(self):
+    def test_explicit_completion_uses_multi_row_query_operands(self):
         evidence = [self.execute()]
         before = analysis_task_state(evidence, self.prompt)
         self.assertEqual([m['name'] for m in before['missing_metrics']], ['毛利率'])
         completed = RegisteredMetricCompletion().complete(
             evidence, self.prompt, Telemetry(), ['aggregate_spreadsheet'])
-        self.assertEqual(len(completed), 1)
-        self.assertTrue(completed[0].is_success, completed[0].error)
-        self.assertAlmostEqual(float(completed[0].data['facts'][0]['value']), 33.8709677419)
+        self.assertEqual(completed, [])
+        self.assertFalse(analysis_task_state(evidence, self.prompt)['complete'])
+        explicit = self.execute([self.margin()])
+        evidence.append(explicit)
+        self.assertAlmostEqual(float(explicit.data['facts'][-1]['value']), 33.8709677419)
         self.assertTrue(analysis_task_state(evidence, self.prompt)['complete'])
 
     def test_monthly_ratio_average_cannot_bypass_domain_validator(self):

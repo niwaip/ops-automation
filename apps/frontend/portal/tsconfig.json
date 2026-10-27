@@ -37,6 +37,9 @@
       "@ant-design/icons": ["node_modules/@ant-design/icons"],
       "react-markdown": ["node_modules/react-markdown"],
       "remark-gfm": ["node_modules/remark-gfm"],
+      "remark-math": ["node_modules/remark-math"],
+      "rehype-katex": ["node_modules/rehype-katex"],
+      "katex": ["node_modules/katex"],
       "dayjs": ["../../../node_modules/.pnpm/node_modules/dayjs"]
     }
   },

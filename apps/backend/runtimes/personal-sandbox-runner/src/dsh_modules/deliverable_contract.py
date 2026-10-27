@@ -246,66 +246,13 @@ def materialize_script_deliverable(
     expected_deliverables: Optional[List[str]] = None,
     turn_start_time: Optional[float] = None,
 ) -> Tuple[Optional[str], Optional[str]]:
-    """
-    Safely executes a Python script found in model output when a physical deliverable
-    (.docx, .xlsx, .pdf) is expected and missing.
-    Returns (created_file_path, error_message).
-    """
-    if not expected_deliverables:
+    """Return execution feedback; a prose code block is never an invocation."""
+    if not expected_deliverables or not extract_python_script_block(reply_text):
         return None, None
-    script = extract_python_script_block(reply_text)
-    if not script:
-        return None, None
-
-    # 安全检查：禁止明显的破坏性指令
-    danger_patterns = [r"\brm\s+-rf\b", r"\bos\.system\(", r"\bshutil\.rmtree\b", r"\bsubprocess\."]
-    if any(re.search(p, script) for p in danger_patterns):
-        return None, "安全拦截：脚本包含未授权的系统或文件删除指令"
-
-    workspace = Path(workspace_dir)
-    workspace.mkdir(parents=True, exist_ok=True)
-
-    with tempfile.NamedTemporaryFile("w", suffix=".py", encoding="utf-8", delete=False) as tmp_f:
-        tmp_script_path = tmp_f.name
-        tmp_f.write(script)
-
-    try:
-        proc = subprocess.run(
-            [sys.executable, tmp_script_path],
-            cwd=str(workspace),
-            timeout=45,
-            capture_output=True,
-            text=True
-        )
-        if proc.returncode != 0:
-            err = (proc.stderr or proc.stdout or "").strip()
-            return None, err[:500]
-
-        # 检查是否生成了目标扩展名的物理产物
-        norm_expected = [ext.lower() for ext in expected_deliverables]
-        cutoff = (turn_start_time - 2.0) if turn_start_time is not None else 0.0
-
-        candidates = []
-        for f in workspace.iterdir():
-            if f.is_file() and f.suffix.lower() in norm_expected and f.stat().st_size > 0:
-                if f.stat().st_mtime >= cutoff:
-                    candidates.append(f)
-
-        if candidates:
-            # 优先选择最新生成的产物
-            candidates.sort(key=lambda item: item.stat().st_mtime, reverse=True)
-            return str(candidates[0]), None
-
-        return None, "脚本执行成功但未在 /workspace/ 下生成目标文件"
-    except subprocess.TimeoutExpired:
-        return None, "脚本执行超时 (45s)"
-    except Exception as e:
-        return None, f"脚本执行异常: {e}"
-    finally:
-        try:
-            Path(tmp_script_path).unlink(missing_ok=True)
-        except Exception:
-            pass
+    return None, (
+        "检测到尚未执行的Python脚本。正文代码不会自动运行，也没有生成交付物；"
+        "请通过Function Calling显式调用当前可用的执行工具完成写盘。"
+    )
 
 
 def materialize_pdf_from_markdown(

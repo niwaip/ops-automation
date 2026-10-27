@@ -47,13 +47,18 @@ def normalize_plan(requested, workbook=None, source_tables=None):
             changes.append(f'{path}：明确行列地址编译到原件单元格')
             return {'cell':f'{get_column_letter(col)}{row}','sheet':table['sheet'],
                     **({'unit':expr['unit']} if 'unit' in expr else {})}
-        if set(expr) in ({'id'},{'ref'}):
-            name=expr.get('ref',expr.get('id'))
-            if not isinstance(name,str) or name not in definitions:
-                raise ValueError(f'{path}：未知计算引用{str(name)}')
-            if name in stack:raise ValueError(f'{path}：计算引用存在循环')
-            changes.append(f'{path}：展开计算引用{name}')
-            return compile_expr(definitions[name],path,stack+(name,))
+        if ('ref' in expr or 'id' in expr) and not any(k in expr for k in ('op', 'args', 'cell', 'aggregate', 'row', 'constant')):
+            benign_ref_keys = {'id', 'ref', 'unit', 'label', 'description', 'name', 'field', 'alias', 'format', 'title'}
+            if not (set(expr) - benign_ref_keys):
+                name=expr.get('ref',expr.get('id'))
+                if not isinstance(name,str) or name not in definitions:
+                    raise ValueError(f'{path}：未知计算引用{str(name)}')
+                if name in stack:raise ValueError(f'{path}：计算引用存在循环')
+                changes.append(f'{path}：展开计算引用{name}')
+                compiled_target = compile_expr(definitions[name],path,stack+(name,))
+                if 'unit' in expr and isinstance(compiled_target, dict) and 'unit' not in compiled_target:
+                    compiled_target = {**compiled_target, 'unit': expr['unit']}
+                return compiled_target
         if 'cell' in expr:
             if 'label' in expr and isinstance(expr['label'],str):
                 expr.pop('label');changes.append(f'{path}：移除展示标签')

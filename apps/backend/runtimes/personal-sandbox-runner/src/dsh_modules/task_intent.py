@@ -342,21 +342,37 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
 
     # Inspect last assistant turn in history to ground clarification follow-ups
     last_assistant = next((h.get('content', '') for h in reversed(history or []) if h.get('role') == 'assistant'), '')
+    is_prev_stopped = bool(
+        last_assistant and any(k in last_assistant for k in ("任务已由用户手动停止", "手动停止", "已停止", "cancelled"))
+    )
+
+    # 检查用户是否明确为轻量口令/仅回复特定文字要求（如：仅回复“取消后可以继续”）
+    is_verbatim_reply = bool(re.search(r'^(?:仅回复|只回复|仅输出|只需回复|只回答)\b', request.strip()))
+    if is_verbatim_reply or (is_prev_stopped and not re.search(r'(?:继续|重试|重新执行|按上次)', request)):
+        result['instruction_relation'] = 'standalone'
+        result['task_mode'] = 'consult'
+        result['output_mode'] = 'conversation'
+        result['artifact_types'] = []
+        result['unit_confirmation'] = None
+        result['section_confirmation'] = None
+        result['skill_invocation'] = {'mode': 'none', 'name': '', 'replace_defaults': False}
+        result['requirements'] = [{'id': 'req_direct', 'quote': request[:120]}]
+
     asked_section = None
     candidates = []
-    if last_assistant:
+    if last_assistant and not is_prev_stopped and not is_verbatim_reply:
         m_sec = re.search(r'未找到名为【([^】]+)】的区块', last_assistant)
         if m_sec:
             asked_section = m_sec.group(1).strip()
         cands = re.findall(r'【([^】]+)】', last_assistant)
         candidates = [c for c in cands if c != asked_section]
 
-    direct_sec = direct_section_reply(request, last_assistant)
-    direct_u = direct_unit_reply(request)
+    direct_sec = direct_section_reply(request, last_assistant) if not is_prev_stopped else None
+    direct_u = direct_unit_reply(request) if not is_prev_stopped else None
 
     # 只有当用户没有表达取消/终止，且确实在积极响应澄清追问时，才认定为澄清响应
     is_clarification_response = False
-    if not is_abort:
+    if not is_abort and not is_prev_stopped and not is_verbatim_reply:
         if result.get('section_confirmation') or direct_sec or direct_u:
             is_clarification_response = True
         elif last_assistant and ('请确认' in last_assistant or '未找到名为' in last_assistant or '本次尚未生成更新文件' in last_assistant):
@@ -366,7 +382,7 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
             )
 
     # Enforce followup and task execution lock when answering an active clarification prompt
-    if is_clarification_response and users and not is_abort:
+    if is_clarification_response and users and not is_abort and not is_prev_stopped and not is_verbatim_reply:
         result['instruction_relation'] = 'followup'
         result['task_mode'] = 'execute'
         if any(is_spreadsheet_mutation_requested(u) for u in [request, *users]) and not is_physical_export_negated(request):
@@ -377,7 +393,7 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
                 result['artifact_types'].append('.xlsx')
 
     # Enforce followup and deliverable inheritance when continuing or replacing criteria of previous analysis
-    is_continuation = not is_abort and bool(users) and is_condition_replacement_or_refinement(request, users)
+    is_continuation = not is_abort and not is_prev_stopped and not is_verbatim_reply and bool(users) and is_condition_replacement_or_refinement(request, users)
     if is_continuation:
         result['instruction_relation'] = 'followup'
         result['task_mode'] = 'execute'
@@ -529,7 +545,7 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
         valid_requirements.append(item)
 
     if not valid_requirements:
-        if relation == 'followup' and users:
+        if relation == 'followup' and users and not is_prev_stopped and not is_verbatim_reply:
             last_u = users[-1].strip()
             if last_u:
                 valid_requirements.append({'id': 'req_inherited', 'quote': last_u[:120]})

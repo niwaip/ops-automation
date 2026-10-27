@@ -22,7 +22,7 @@ class MockAnalysisTurn:
     def __init__(self, may_finish_val=True):
         self._may_finish_val = may_finish_val
 
-    def may_finish(self, evidence):
+    def may_finish(self, evidence, *args, **kwargs):
         return self._may_finish_val
 
 

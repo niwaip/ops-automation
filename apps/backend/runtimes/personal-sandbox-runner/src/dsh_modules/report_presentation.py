@@ -17,19 +17,43 @@ def text(value):
 
 def number(value, signed=False):
     """Display rounding only; exact receipt values remain in the audit section."""
-    value = Decimal(str(value))
-    with localcontext() as context:
-        context.prec = max(32, len(value.as_tuple().digits) + abs(value.as_tuple().exponent) + 6)
-        rounded = value.quantize(Decimal('0.01'))
-    if value and not rounded:
-        return ('+' if signed and value > 0 else '') + str(value)
-    rendered = format(rounded, ',.2f').rstrip('0').rstrip('.')
-    return ('+' if signed and rounded > 0 else '') + rendered
+    if value is None:
+        return ""
+    val_str = str(value).strip()
+    try:
+        cleaned = val_str.replace(",", "")
+        val_dec = Decimal(cleaned)
+        with localcontext() as context:
+            context.prec = max(32, len(val_dec.as_tuple().digits) + abs(val_dec.as_tuple().exponent) + 6)
+            rounded = val_dec.quantize(Decimal('0.01'))
+        if val_dec and not rounded:
+            return ('+' if signed and val_dec > 0 else '') + str(val_dec)
+        rendered = format(rounded, ',.2f').rstrip('0').rstrip('.')
+        return ('+' if signed and rounded > 0 else '') + rendered
+    except Exception:
+        return val_str
 
 
 def quantity(value, unit):
     suffix = '%' if unit == '%' else (' ' + text(unit) if unit and unit != 'number' else '')
     return number(value) + suffix
+
+
+def _cell_sort_key(cell_str):
+    s = str(cell_str).strip()
+    sheet, sep, addr = s.rpartition('!')
+    if not sep:
+        addr = s
+        sheet = ''
+    m = re.match(r'^([A-Za-z]+)(\d+)$', addr.strip("'\""))
+    if m:
+        col_letters = m.group(1).upper()
+        col_num = 0
+        for ch in col_letters:
+            col_num = col_num * 26 + (ord(ch) - ord('A') + 1)
+        row_num = int(m.group(2))
+        return (sheet, col_num, row_num, addr)
+    return (sheet, 999999, 999999, addr)
 
 
 def _format_facts_source_cells(facts):
@@ -40,6 +64,7 @@ def _format_facts_source_cells(facts):
         sc = [str(c).strip() for c in (fact.get('source_cells') or []) if str(c).strip()]
         if not sc:
             continue
+        sc.sort(key=_cell_sort_key)
         lbl = text(fact.get('label') or fact.get('id') or '')
         cell_desc = '、'.join(f"`{c}`" for c in sc) if len(sc) <= 4 else f"`{sc[0]}..{sc[-1]}`（共{len(sc)}个单元格）"
         items.append(f"{lbl}（{cell_desc}）")
@@ -136,28 +161,6 @@ def analysis_overview(receipts, prompt):
         if src_line:
             parts.append(src_line)
 
-        # 若用户请求了总计/合计，且当前仅展示了各分组事实而未包含全表总计，则基于已核验的分组事实补充合计行
-        has_total = any(
-            f.get('group_key') is None
-            or re.match(r'^(?:总|合计|总计|全表|all|total)', str(f.get('label') or ''), re.I)
-            or re.search(r'(?:总和|总计|合计|总额)$', str(f.get('label') or ''))
-            for f in visible
-        )
-        requires_total = bool(re.search(r'(?:总计|合计|总额|各组和总计|附总计|含总计|核对合计)', prompt))
-        group_facts = [f for f in visible if f.get('group_key')]
-        if requires_total and not has_total and len(group_facts) >= 2:
-            by_unit = {}
-            for gf in group_facts:
-                u = gf.get('unit')
-                try:
-                    val = Decimal(str(gf.get('value', '')).replace(',', ''))
-                    by_unit.setdefault(u, Decimal('0'))
-                    by_unit[u] += val
-                except Exception:
-                    pass
-            for u, tot_dec in by_unit.items():
-                tot_lbl = '各组总计'
-                parts.append(f"| **{text(tot_lbl)}** | **{quantity(str(tot_dec), u)}** |")
     checks = [c for r in receipts for c in r.data.get('checks', [])]
     if checks:
         parts.extend(['', '| 检查项 | 结果 | 差额 |', '|---|---|---:|'])
@@ -337,8 +340,8 @@ def comparison_overview(receipts):
     return '\n'.join(parts)
 
 
-def render_unverified_guidance(state, prompt="", failed_detail=""):
-    """生成当数据缺失或无法计算时的明确原因说明与用户输入引导。"""
+def render_unverified_guidance(state, prompt="", failed_detail="", mode="standalone"):
+    """生成当数据缺失或无法计算时的明确原因说明与用户澄清/下一步引导。"""
     missing_metrics = state.get("missing_metrics", [])
     issues = state.get("issues", [])
 
@@ -355,27 +358,38 @@ def render_unverified_guidance(state, prompt="", failed_detail=""):
                    and not m.get('execution_evidence_exists')]
         if unverified:
             names = '、'.join(f"【{m['name']}】" for m in unverified)
-            reasons.append(f"本轮已有 {names} 的计算结果，但这些结果尚未通过来源或口径核验。")
+            reasons.append(f"[数据核验问题] 本轮已有 {names} 的计算结果，但这些结果尚未通过来源或口径核验。")
+            guidances.append(f"【建议澄清】：请确认 {names} 的预期核算来源或允许引用的表格范围。")
         if uncalc:
             names = '、'.join(f"【{m['name']}】" for m in uncalc)
             source_cols = '、'.join(f"【{c}】" for m in uncalc for c in m.get('matched_source_columns', []))
-            reasons.append(f"表格中已存在对应列（{source_cols}），但本轮分析计划尚未执行对 {names} 的聚合计算。")
-            guidances.append(f"本轮执行尚未完成对 {names} 的聚合计算，可重新提交分析请求以生成汇总事实。")
+            has_ext = any(m.get('external_execution_exists') for m in uncalc)
+            has_attempt = any(m.get('plan_attempted_but_unverified') for m in uncalc)
+            if has_ext:
+                reasons.append(f"[执行凭据问题] 外部脚本已尝试计算 {names}，但未生成符合系统规范的结构化核验凭据。")
+                guidances.append(f"【建议下一步】：使用系统专用的声明式分析工具（如 aggregate_spreadsheet）重新执行，以形成可验证的事实闭环。")
+            elif has_attempt:
+                reasons.append(f"[计算计划问题] 模型已提交针对 {names} 的分析计划，但计划校验未通过（如度量冲突或条件语法错误），未能生成有效事实。")
+                guidances.append(f"【建议下一步】：根据执行阻碍提示修正分析计划参数（如按科目设置 group_by 或统一度量），重新提交计算。")
+            else:
+                col_desc = f"（{source_cols}）" if source_cols else ""
+                reasons.append(f"[指标待计算] 表格中已存在对应列{col_desc}，但本轮分析计划尚未执行对 {names} 的合规计算与核验。")
+                guidances.append(f"【建议下一步】：本轮执行尚未完成对 {names} 的聚合计算，可重新提交分析请求以生成汇总事实。")
         if gen_miss:
             names = '、'.join(f"【{m['name']}】" for m in gen_miss)
-            reasons.append(f"表格中缺少计算 {names} 所需的原始列或对应数据。")
-            guidances.append(f"请补充提供包含 {names} 对应原始列的工作表，或告知具体的计算口径与公式。")
+            reasons.append(f"[文件数据缺失] 表格中缺少计算 {names} 所需的原始列或对应数据。")
+            guidances.append(f"【建议下一步】：请补充提供包含 {names} 对应原始列的工作表，或【建议澄清】：告知具体的计算口径与公式。")
         if unknown:
             names = '、'.join(f"【{m['name']}】" for m in unknown)
-            reasons.append(f"本轮尚未核实 {names} 的来源字段，不能据此认定原件缺列。")
+            reasons.append(f"[业务定义未核实] 本轮尚未核实 {names} 的来源字段，不能据此认定原件缺列。")
             guidances.append('应先核实实际工作表和表头，修正执行计划；无需修改原件或重复授权。')
 
     for issue in issues:
         code = issue.get("code")
         msg = issue.get("message", "")
         if code == "comparison_windows_missing":
-            reasons.append("您提出了对比变化或分析趋势的需求，但当前数据范围缺少可对比的其他期间数据。")
-            guidances.append("请补充其他期间（如去年同期、上月或不同季度）的数据区域或说明对比基准。")
+            reasons.append("[对比期间缺失] 您提出了对比变化或分析趋势的需求，但当前数据范围缺少可对比的其他期间数据。")
+            guidances.append("【建议下一步】：请补充其他期间（如去年同期、上月或不同季度）的数据区域，或【建议澄清】：说明对比基准。")
         elif code == "execution_evidence_missing":
             reasons.append("本次还没有取得可核验的计算结果，暂不能判断是否缺少业务数据。")
             available_sheets = state.get('available_sheets', [])
@@ -385,22 +399,22 @@ def render_unverified_guidance(state, prompt="", failed_detail=""):
                 reasons.append('已有工作表：' + '、'.join(available_sheets) + '。')
             guidances.append("可以重试本次分析；系统需要先完成工作表与字段核对。")
         elif code == "grouping_incomplete":
-            reasons.append("本次尚未完成您要求的各分组统计。")
+            reasons.append("[汇总统计未完成] 本次尚未完成您要求的各分组统计。")
             guidances.append("可以重试分组统计；现有数据不会被当作完整分组结果。")
         elif code == 'unsolicited_filter_applied':
-            reasons.append("当前执行包含了未经请求的过滤条件，导致核算口径偏离。")
+            reasons.append("[过滤条件偏离] 当前执行包含了未经请求的过滤条件，导致核算口径偏离。")
             guidances.append("建议重试并移除不必要的行过滤条件。")
         elif code == 'audit_checks_incomplete':
-            reasons.append(msg or "本次尚未完整执行您要求的多项合规检查规则。")
+            reasons.append(msg or "[合规核对未完成] 本次尚未完整执行您要求的多项合规检查规则。")
             guidances.append("建议继续执行剩余检查项，或分步针对未完成的异常规则发起核对。")
         elif code in ('group_filter_not_applied', 'ordering_not_applied', 'ranking_limit_not_applied',
                       'query_stages_disconnected', 'row_filter_not_applied', 'group_filter_boolean_incomplete',
                       'distinct_not_applied', 'ordering_incomplete'):
-            reasons.append("本次尚未完整执行您要求的筛选、排序或结果数量限制。")
+            reasons.append("[查询条件未全覆盖] 本次尚未完整执行您要求的筛选、排序或结果数量限制。")
             guidances.append("可以重试本次查询；无需修改原表或提供工具参数。")
         elif code == 'clarification_first_required':
-            reasons.append('您要求先确认定义，本轮尚未完成口径确认。')
-            guidances.append('请说明希望采用的定义；确认后再继续计算。')
+            reasons.append('[业务口径待确认] 您要求先确认定义，本轮尚未完成口径确认。')
+            guidances.append('【建议澄清】：请说明希望采用的定义；确认后再继续计算。')
         elif code not in ("required_metrics_missing", "comparison_windows_missing", "execution_evidence_missing") and msg:
             reasons.append(msg)
 
@@ -412,7 +426,12 @@ def render_unverified_guidance(state, prompt="", failed_detail=""):
     if not guidances:
         guidances.append("可以重试本次分析；如果涉及业务定义，也可以说明希望采用的口径。")
 
-    parts = ["本次分析尚未通过执行证据核验。\n", "### 分析未完成说明", "", "**无法完成计算的原因：**"]
+    parts = []
+    if mode == "embedded":
+        parts.extend(["### 📋 数据核查与未完成指标说明", "", "**无法完成计算的原因：**"])
+    else:
+        parts.extend(["本次分析尚未通过执行证据核验。\n", "### 分析未完成说明", "", "**无法完成计算的原因：**"])
+
     for r in dict.fromkeys(reasons):
         parts.append(f"- {r}")
 

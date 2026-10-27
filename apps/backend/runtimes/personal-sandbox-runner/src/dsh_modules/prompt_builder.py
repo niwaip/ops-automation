@@ -201,6 +201,17 @@ def build_user_turn(
     """
     user_parts = [f"[User Request]:\n{prompt}"]
 
+    is_verbatim_reply = bool(re.search(
+        r'(?:^|[\n\r]|用户指令[：:])\s*(?:仅回复|只回复|仅输出|只需回复|只回答)\b',
+        prompt
+    ))
+    if is_verbatim_reply:
+        user_parts.append(
+            "【极简/指定回复规范 (Strict Verbatim Output)】:\n"
+            "- 用户明确要求仅回复指定内容。严禁输出任何多余的数据分析、报表总结或解释性文字。\n"
+            "- 必须直接按照用户的指令简明回复指定内容。"
+        )
+
     is_work_boundary = bool(re.search(
         r'(?:'
         r'(?:查看|收取|接收|收发|发送|回复|写|发|读|查|处理|未读|刚发来|收到的?).{0,6}(?:邮件|email|信件|工作邮箱|企业邮箱)'
@@ -222,14 +233,14 @@ def build_user_turn(
         user_parts.append(
             "【Guide Mode】直接给出清晰、可复制的说明与示例；未经授权不要执行安装或修改环境。"
         )
-    elif is_inspect_intent and not is_research_intent:
+    elif is_inspect_intent and not is_research_intent and not is_search_intent and not is_verbatim_reply:
         has_inspectable_context = bool(
-            session_files
-            or file_context.strip()
+            file_context.strip()
             or any(loc in prompt.lower() for loc in [
                 "工作区", "当前目录", "本地文件", "已上传", "附件", "文档", "代码", "脚本",
                 "日志", "配置", "表格", "明细", "对账", "勾稽", "稽核", "核查", "验算", "文件"
             ])
+            or (session_files and not is_search_intent)
         )
         if has_inspectable_context:
             user_parts.append(
@@ -262,7 +273,7 @@ def build_user_turn(
             "若用户询问“附件是什么”或查询当前上传的文件，请直接明确告知当前会话未上传附件，切勿调用 bash 或工具扫描工作区历史遗留文件。"
         )
 
-    if file_context.strip():
+    if file_context.strip() and not is_verbatim_reply:
         user_parts.append(file_context.strip())
         # 若附件解析结果中包含受保护、损坏或无法解析的系统诊断信息
         has_file_diag_err = any(k in file_context for k in [

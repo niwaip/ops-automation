@@ -6,6 +6,13 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 
 
+def has_delivery_failure(text: str) -> bool:
+    """Legacy text boundary; structured workflows bypass HTML recovery entirely."""
+    return any(cue in (text or '') for cue in (
+        '目标交付物尚未生成落盘', '交付物落盘未完成提示', '柱状图尚未完成交付',
+        '指标核算未完成声明', '本次尚未通过执行证据核验', '无法完成计算的原因'))
+
+
 def detect_mock_or_placeholder_html(content: str) -> Optional[str]:
     """
     Detects whether an HTML content is an unpopulated mock/placeholder template
@@ -242,6 +249,9 @@ def materialize_requested_html(
     but omitted the ```html code block and did not call bash to write to workspace.
     Returns (absolute_path, created_now).
     """
+    if has_delivery_failure(final_text):
+        return None, False
+
     # 1. 若最终回复中已包含 ```html 代码块，交由主导出器处理
     if "```html" in (final_text or ""):
         return None, False
@@ -328,7 +338,7 @@ def _recent_report_source(history: List[Dict[str, Any]]) -> str:
         content = str(item.get("content") or "").strip()
         if len(content) < 60:
             continue
-        if error_pattern.search(content):
+        if has_delivery_failure(content) or error_pattern.search(content):
             continue
         if content.startswith("【方案规划】") or content.startswith("【规划阶段"):
             if not planning_candidate:

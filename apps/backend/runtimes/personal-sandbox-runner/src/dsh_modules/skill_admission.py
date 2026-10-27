@@ -237,7 +237,10 @@ def admit_skill(prompt, history, files, provisional, model, policy, telemetry, d
                 verdict['artifact_types'] = list(routed.deliverables)
 
             if not routed.is_generate_intent:
-                routed.is_inspect_intent = not (routed.is_guide_intent or routed.is_research_intent or routed.is_search_intent)
+                if verdict.get('action') == 'general' and verdict.get('reason') == 'no_skill_needed':
+                    routed.is_inspect_intent = False
+                else:
+                    routed.is_inspect_intent = not (routed.is_guide_intent or routed.is_research_intent or routed.is_search_intent)
                 if catalog.get(selected, {}).get('execution_mode') != 'verified_workflow' and not is_spreadsheet_update_task:
                     routed.requires_execution = False
                 else:
@@ -323,5 +326,8 @@ def general_route(prompt, history, files, task_contract=None):
         routed.deliverables = list(contract_data.get('artifact_types', []))
         routed.requires_execution = routed.is_generate_intent
         routed.is_modify_intent = is_spreadsheet_update
-        routed.is_inspect_intent = False if is_spreadsheet_update else (not routed.is_generate_intent)
+        if contract_data.get('reason') == 'no_skill_needed' or contract_data.get('task_mode') == 'consult':
+            routed.is_inspect_intent = False
+        else:
+            routed.is_inspect_intent = False if is_spreadsheet_update else (not routed.is_generate_intent)
     return routed

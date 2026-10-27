@@ -93,62 +93,56 @@ class SummaryScopeDeliveryTests(unittest.TestCase):
         self.assertTrue(Path(rejected[0]['preserved_path']).is_file())
         self.assertEqual(source.read_bytes(), original)
 
-    def test_bounded_recovery_executes_real_categories_prefix_and_formula_free_export(self):
-        source = self.workbook('input.xlsx', [['项目编号', '责任中心', '有偿无偿', '直接间接', '金额(K)', '工数(小时)'],
-            ['xxA', 'Red', '有偿', '直接', 9, 2], ['zzA', 'Red', '有偿', '直接', 7, 3],
-            ['zzB', 'Blue', '无偿', '直接', 5, 4], ['yyA', 'Blue', '有偿', '直接', 11, 6]])
-        before = hashlib.sha256(source.read_bytes()).hexdigest()
-        prompt = '排除项目编号以XX开头的明细，再只保留有偿、直接的明细，按责任中心汇总金额(K)和工数(小时)，生成可下载Excel，文件名结果.xlsx。'
-        with patch.dict(os.environ, {'DSH_SESSION_ATTACHMENTS': source.name}):
-            receipt = recover_summary(prompt, self.root)
-            self.assertTrue(receipt.is_success)
-            self.assertTrue(analysis_task_state([receipt], prompt)['complete'])
-            totals = {f['label']: (f['value'], f['unit']) for f in receipt.data['facts'] if 'group_key' not in f}
-            self.assertEqual(totals['总金额'], ('18', 'K'))
-            self.assertEqual(totals['总工数'], ('9', '小时'))
-            output = export_recovered_summary(receipt, prompt, self.root)
-            self.assertTrue(inspect_generated_workbook(output)['valid'])
-            book = openpyxl.load_workbook(output, data_only=False)
-            self.assertEqual(list(book.active.values)[-1], ('总计', 18, 9))
-            self.assertFalse(any(c.data_type == 'f' for row in book.active for c in row))
-            book.close()
-        self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), before)
-
-    def test_prefix_grouping_is_rendered_without_dictionary_lookup_error(self):
-        source = self.workbook('input.xlsx', [['项目编号', '金额(K)'], ['AB10', 7], ['AB20', 9], ['XY1', 3]])
-        prompt = '按项目编号前两个字母分组，统计每组条数和金额(K)，附总计。'
-        with patch.dict(os.environ, {'DSH_SESSION_ATTACHMENTS': source.name}):
-            receipt = recover_summary(prompt, self.root)
-            self.assertTrue(analysis_task_state([receipt], prompt)['complete'])
-            from dsh_modules.analysis_turn import AnalysisTurn
-            from dsh_modules.telemetry import TelemetryStats
-            text = AnalysisTurn(prompt).render([receipt], '', TelemetryStats())
-            self.assertIn('AB 金额', text)
-            self.assertIn('前2个字符', text)
-            self.assertIn('19', text)
-
-    def test_attachment_transport_banner_does_not_become_second_export_target(self):
-        source = self.workbook('input.xlsx', [['中心', '金额(K)'], ['A', 7], ['B', 9]])
-        prompt = '【当前轮次用户上传附件】: input.xlsx（这是用户本轮刚上传的新文件）\n用户指令：按中心汇总金额(K)，生成可下载Excel，文件名结果.xlsx。'
+    def test_runtime_summary_recovery_never_executes_or_exports(self):
+        source = self.workbook('input.xlsx', [['中心', '金额(K)'], ['甲', 7], ['乙', 9]])
         before = source.read_bytes()
         with patch.dict(os.environ, {'DSH_SESSION_ATTACHMENTS': source.name}):
-            receipt = recover_summary(prompt, self.root)
-            self.assertTrue(receipt.is_success)
-            output = export_recovered_summary(receipt, prompt, self.root)
-        self.assertIsNotNone(output)
-        self.assertEqual(Path(output).name, '结果.xlsx')
-        self.assertTrue(inspect_generated_workbook(output)['valid'])
+            receipt = recover_summary('按中心汇总金额(K)，生成可下载Excel，文件名结果.xlsx。', self.root)
+        self.assertIsNone(receipt)
+        self.assertFalse((self.root / '结果.xlsx').exists())
         self.assertEqual(source.read_bytes(), before)
 
-    def test_category_only_and_zero_match_are_computed(self):
-        source = self.workbook('input.xlsx', [['项目编号', '有偿无偿', '金额(K)'], ['AA', '有偿', 7], ['BB', '无偿', 9]])
+    def test_explicit_prefix_grouping_is_rendered_without_dictionary_lookup_error(self):
+        source = self.workbook('input.xlsx', [['项目编号', '金额(K)'], ['AB10', 7], ['AB20', 9], ['XY1', 3]])
+        prompt = '按项目编号前两个字母分组，统计每组条数和金额(K)，附总计。'
+        group = {'column': 'A', 'prefix_length': 2}
+        table = {'id': 't', 'sheet': '明细', 'header_row': 1, 'data_range': 'A2:B4'}
+        calculations = []
+        for cid, column, unit, op in [('amount', 'B', 'amount', 'sum'), ('count', 'A', 'count', 'count')]:
+            expr = {'aggregate': op, 'table': 't', 'column': column, 'unit': unit}
+            label = '金额' if cid == 'amount' else '条数'
+            calculations.extend([{'id': 'total_' + cid, 'label': '总' + label, 'expression': expr},
+                {'id': cid, 'label': label, 'expression': {**expr, 'group_by': group}}])
+        receipt = calculate_spreadsheet_analysis(source, {'tables': [table], 'calculations': calculations})
+        self.assertTrue(receipt.is_success, receipt.error)
+        self.assertTrue(analysis_task_state([receipt], prompt)['complete'])
+        from dsh_modules.analysis_turn import AnalysisTurn
+        from dsh_modules.telemetry import TelemetryStats
+        text = AnalysisTurn(prompt).render([receipt], '', TelemetryStats())
+        self.assertIn('AB 金额', text)
+        self.assertIn('前2个字符', text)
+        self.assertIn('19', text)
+
+    def test_attachment_banner_cannot_trigger_an_implicit_export(self):
+        source = self.workbook('input.xlsx', [['中心', '金额(K)'], ['A', 7], ['B', 9]])
+        before = source.read_bytes()
+        prompt = '【当前轮次用户上传附件】: input.xlsx\n用户指令：按中心汇总金额(K)，生成可下载Excel，文件名结果.xlsx。'
         with patch.dict(os.environ, {'DSH_SESSION_ATTACHMENTS': source.name}):
-            for prompt, expected in [('只保留有偿的明细，统计条数及金额(K)。', ['1', '7']),
-                                     ('仅保留项目编号以ZZ开头的明细，统计条数及金额(K)。', ['0', '0'])]:
-                receipt = recover_summary(prompt, self.root)
-                self.assertIsNotNone(receipt)
-                self.assertTrue(receipt.is_success)
-                self.assertEqual([f['value'] for f in receipt.data['facts']], expected)
+            self.assertIsNone(recover_summary(prompt, self.root))
+            self.assertIsNone(export_recovered_summary(None, prompt, self.root))
+        self.assertEqual(source.read_bytes(), before)
+        self.assertFalse((self.root / '结果.xlsx').exists())
+
+    def test_explicit_category_and_zero_match_queries_are_computed(self):
+        source = self.workbook('input.xlsx', [['项目编号', '有偿无偿', '金额(K)'], ['AA', '有偿', 7], ['BB', '无偿', 9]])
+        for where, expected in [({'field': '有偿无偿', 'op': 'eq', 'value': '有偿'}, ['1', '7']),
+                                ({'field': '项目编号', 'op': 'starts_with', 'value': 'ZZ'}, ['0', '0'])]:
+            receipt = calculate_spreadsheet_analysis(source, {'query': {
+                'source': {'sheet': '明细', 'header_row': 1, 'data_range': 'A2:C3'}, 'where': where,
+                'metrics': [{'id': 'count', 'op': 'count_rows'},
+                            {'id': 'amount', 'op': 'sum', 'field': '金额(K)', 'unit': 'source'}]}})
+            self.assertTrue(receipt.is_success, receipt.error)
+            self.assertEqual([str(f['value']) for f in receipt.data['facts']], expected)
 
     def test_ambiguous_or_unsupported_requests_decline(self):
         headers = {'A': '编号', 'B': '金额(K)', 'C': '预算金额(K)', 'D': '金额(元)'}

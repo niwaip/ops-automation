@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class SemanticContractJudge:
     _CACHE_DIR = Path("/workspace/.dsh/cache/contract_judgments")
     _FALLBACK_CACHE_DIR = Path("/tmp/.dsh_contract_judgments")
-    _CACHE_VERSION = "v5"
+    _CACHE_VERSION = "v6"
 
     @classmethod
     def _resolve_cache_dir(cls) -> Path:
@@ -31,11 +31,23 @@ class SemanticContractJudge:
         return cls._FALLBACK_CACHE_DIR
 
     @classmethod
-    def _cache_path(cls, prompt: str, headers: Optional[List[str]] = None) -> Path:
+    def _cache_path(
+        cls,
+        prompt: str,
+        headers: Optional[List[str]] = None,
+        domain: Optional[str] = None,
+        model: Optional[str] = None
+    ) -> Path:
         cache_dir = cls._resolve_cache_dir()
         norm_prompt = prompt.strip().casefold()
-        h_str = ",".join(sorted(str(h) for h in headers)) if headers else ""
-        digest = hashlib.sha256(f"{cls._CACHE_VERSION}::{norm_prompt}::{h_str}".encode("utf-8")).hexdigest()
+        key_data = {
+            "version": cls._CACHE_VERSION,
+            "prompt": norm_prompt,
+            "headers": sorted(str(h) for h in headers) if headers else [],
+            "domain": str(domain or "").strip().lower(),
+            "model": str(model or "").strip().lower()
+        }
+        digest = hashlib.sha256(json.dumps(key_data, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
         return cache_dir / f"{digest}.json"
 
     @classmethod
@@ -67,12 +79,19 @@ class SemanticContractJudge:
             return None
 
         # 1. 检查持久化磁盘缓存 (0ms 开销)
-        cache_file = cls._cache_path(prompt, headers)
+        cache_file = cls._cache_path(prompt, headers, domain=domain, model=model)
         if cache_file.exists():
             try:
                 cached_data = json.loads(cache_file.read_text(encoding="utf-8"))
                 if isinstance(cached_data, dict) and "is_grouped" in cached_data:
-                    return cached_data
+                    # 严密过滤：若缓存中残留有情景参数列或抽象目标短语，废弃旧脏缓存重新裁决
+                    cached_metrics = [str(m) for m in cached_data.get("metrics", [])]
+                    is_contaminated = any(
+                        term in m for m in cached_metrics
+                        for term in ('基准值', '乐观', '保守', '情景', '参数值', '假设值', '能力变化', '经营情况', '业绩变化', '经营分析', '业务变化', '数据变化', '趋势变化', '总体情况')
+                    )
+                    if not is_contaminated:
+                        return cached_data
             except Exception as e:
                 logger.warning("Failed to read contract judgment cache: %s", e)
 
@@ -112,6 +131,8 @@ class SemanticContractJudge:
                 "4. 计算指标 (metrics):\n"
                 "   - 保留用户点名的全部业务度量。仅在业务含义相同时映射为表头列名；不要把取值列或期间列替代业务指标。\n"
                 "   - 严禁将表头中的全部候选列（如'收入预算','收入实际','收入差异'）一股脑全量塞入metrics！metrics只提取用户明确询问的核心业务指标（如'收入','净利润'）。\n"
+                "   - 注意：'盈利能力变化'、'经营情况分析'等属于高层分析目标，绝非具体列名！严禁作为指标塞入 metrics，应提取具体涉及的核心业务指标（如净利润、营业收入等）。\n"
+                "   - 严禁包含纯假设情景列（如'基准值'、'乐观情景'、'保守情景'）。\n"
                 "   - 报表可能是行式结构：业务指标写在行标签中，列名仅表示期间或实际/预算。"
                 "这时metrics仍返回用户要求的业务指标，不返回年度金额列名，也不因表头未出现该指标就删除它。\n"
                 "   - 同一请求可以包含直接取值与派生计算；需要比率或算术计算时属于tabular_compute，不能整体降成明细查询。\n"
@@ -119,6 +140,7 @@ class SemanticContractJudge:
                 "5. 极值对比 (operation, dimension, comparison, comparison_basis, ranking):\n"
                 "   - 若寻找最大/最小/极值（如'偏差最大的月份'），operation 填 'argmax' 或 'argmin'，dimension 填 'month'，comparison 填 'variance'。\n"
                 "   - 对财务/经营预算对比任务，'偏差'默认指实际与预算的偏差（comparison_basis填'budget'），ranking默认填'absolute'（绝对偏差最大）；仅当用户明确指示'A减B'或'A与B两者的差额'且无预算背景时才填'cross_metric'。\n"
+                "   - 对同一年内不同期间对比（如'下半年对比上半年'、'Q4对比Q3'），comparison_basis 填 'period_comparison'（或 'mom' 如果是月度），严禁误标为 'yoy'（yoy专指跨年度同比）！\n"
                 "6. 过滤与审计条件 (filter_conditions & audit_checks):\n"
                 "   - 包含的行过滤条件（WHERE）或聚合过滤条件（HAVING）。\n"
                 "   - 若为查重/质检任务，列出具体各项检查项目。\n\n"
@@ -148,16 +170,21 @@ class SemanticContractJudge:
             if headers:
                 user_msg += f"\n\n【表格真实字段 Headers】:\n{json.dumps(headers, ensure_ascii=False)}"
 
+            import time
+            remaining_sec = max(2.0, deadline - time.monotonic()) if deadline is not None else 20.0
+            judge_timeout = min(20, int(remaining_sec))
+
             res = call_model_proxy(
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_msg}
                 ],
                 model=model or os.environ.get("DSH_MODEL") or "default",
-                timeout=20,
+                timeout=judge_timeout,
                 deadline=deadline,
                 policy=judge_policy,
-                stream_deltas=False
+                stream_deltas=False,
+                purpose="contract_intent"
             )
 
             raw_text = (res.get("content") or "").strip() if isinstance(res, dict) else str(res or "").strip()

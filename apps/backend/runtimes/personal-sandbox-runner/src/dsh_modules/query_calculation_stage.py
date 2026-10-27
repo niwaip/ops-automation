@@ -29,21 +29,30 @@ def execute_query_calculations(result, plan, query, source, deadline, domain, ex
 
     def expand(value):
         if isinstance(value, dict):
-            if set(value) == {'ref'} and value['ref'] in fact_ids:
-                if value['ref'] not in bindings:
-                    raise ValueError('该查询事实无法还原为受支持的精确来源表达式，请提供显式来源计算')
-                binding = bindings[value['ref']]
-                expression = copy.deepcopy(binding['expression'])
-                if 'table' in expression:
-                    key = repr(binding['table'])
-                    if key not in operand_tables:
-                        identifier = 'query_operand_' + str(len(operand_tables))
-                        while identifier in used_table_ids:
-                            identifier += '_'
-                        used_table_ids.add(identifier)
-                        operand_tables[key] = {**binding['table'], 'id': identifier}
-                    expression['table'] = operand_tables[key]['id']
-                return expression
+            benign_ref_keys = {'ref', 'unit', 'label', 'id', 'name', 'field', 'alias', 'format', 'description', 'title'}
+            if 'ref' in value and isinstance(value.get('ref'), str) and (set(value) - benign_ref_keys) == set():
+                ref_id = value['ref']
+                if ref_id in fact_ids:
+                    if ref_id not in bindings:
+                        raise ValueError(f'查询事实 [{ref_id}] 无法还原为受支持的精确来源表达式，请提供显式来源计算')
+                    binding = bindings[ref_id]
+                    expression = copy.deepcopy(binding['expression'])
+                    if 'table' in expression:
+                        key = repr(binding['table'])
+                        if key not in operand_tables:
+                            identifier = 'query_operand_' + str(len(operand_tables))
+                            while identifier in used_table_ids:
+                                identifier += '_'
+                            used_table_ids.add(identifier)
+                            operand_tables[key] = {**binding['table'], 'id': identifier}
+                        expression['table'] = operand_tables[key]['id']
+                    if 'unit' in value and 'unit' not in expression:
+                        expression['unit'] = value['unit']
+                    return expression
+                else:
+                    valid_sample = list(sorted(fact_ids))[:5]
+                    sample_str = '、'.join(f'"{s}"' for s in valid_sample)
+                    raise ValueError(f'查询后计算失败：未知计算引用 [{ref_id}]；当前查询返回的可用事实ID包括：{sample_str}（共{len(fact_ids)}项）')
             return {k: expand(v) for k, v in value.items()}
         if isinstance(value, list):
             return [expand(v) for v in value]

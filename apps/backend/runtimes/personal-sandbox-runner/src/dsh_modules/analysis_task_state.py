@@ -250,6 +250,38 @@ def analysis_task_state(evidence, prompt='', model=None, deadline=None):
             if any(fact_matches_metric(f, metric)
                    for receipt in successful for f in receipt.data.get('facts', [])):
                 metric_entry['execution_evidence_exists'] = True
+
+            # 标记是否已有计划曾尝试计算该指标（但校验未通过）
+            attempted_plan_for_metric = False
+            for r in evidence:
+                d = getattr(r, 'data', None)
+                if isinstance(d, dict):
+                    p = d.get('plan') or d.get('requested_plan')
+                    if isinstance(p, dict) and any(
+                        any(re.search(alias, str(m.get('label', m.get('id', '')))) for alias in metric.aliases)
+                        for m in p.get('metrics', [])
+                    ):
+                        attempted_plan_for_metric = True
+                        break
+            if attempted_plan_for_metric:
+                metric_entry['plan_attempted_but_unverified'] = True
+
+            # 标记是否已有外部工具/脚本执行过（如 bash），虽有输出但未接入结构化事实
+            has_external_execution = any(
+                getattr(r, 'is_success', False)
+                and (
+                    (getattr(r, 'provenance', None) or {}).get('tool') in ('bash', 'sh', 'python', 'exec_script')
+                    or (
+                        (getattr(r, 'data', None) or {}).get('kind') not in ('spreadsheet_analysis', 'spreadsheet_structure', 'table_comparison')
+                        and (getattr(r, 'provenance', None) or {}).get('tool') not in (
+                            'inspect_spreadsheet_structure', 'read_file', 'scan_knowledge', 'vision_inspect', 'web_search'
+                        )
+                    )
+                )
+                for r in evidence
+            )
+            if has_external_execution:
+                metric_entry['external_execution_exists'] = True
             if source_col_exists:
                 metric_entry['source_column_exists'] = True
                 metric_entry['matched_source_columns'] = matched_source_cols or ["表格数据行计数"]
@@ -493,6 +525,13 @@ def analysis_task_state(evidence, prompt='', model=None, deadline=None):
                 if _is_total_fact(f) and (_fact_matches(f, metric) or base_metric_name in f.get('label', ''))
             ]
             if not total_facts:
+                if (re.search(r'附(?:上)?总计|含总计|全表(?:总计|合计)|总体(?:总计|合计)|各组和总计', prompt)
+                        and not re.search(r'不含总计|不要总计|无需总计', prompt)):
+                    issues.append({
+                        'code': 'required_totals_missing',
+                        'metric': metric.name,
+                        'message': f'用户要求总计，当前没有【{metric.name}】总计的执行事实；请显式调用分析工具提交该指标的汇总计划。'
+                    })
                 continue
             total_fact = total_facts[0]
             try:
@@ -587,17 +626,53 @@ def analysis_task_state(evidence, prompt='', model=None, deadline=None):
         try:
             from .task_completeness_judge import judge_task_completeness
             all_cov = [c for r in successful for c in r.data.get('coverage', [])]
+            attempted_plans = []
+            for r in evidence:
+                d = getattr(r, 'data', None)
+                if isinstance(d, dict):
+                    p = d.get('plan') or d.get('requested_plan')
+                    if p:
+                        attempted_plans.append({
+                            'plan': p,
+                            'tool': (getattr(r, 'provenance', None) or {}).get('tool'),
+                            'status': 'success' if getattr(r, 'is_success', False) else 'error',
+                            'error_code': getattr(r, 'error_code', None),
+                            'error_message': getattr(r, 'error_message', None),
+                        })
+            other_executions = []
+            for r in evidence:
+                tool_name = (getattr(r, 'provenance', None) or {}).get('tool')
+                d = getattr(r, 'data', None)
+                is_native_analysis = isinstance(d, dict) and d.get('kind') == 'spreadsheet_analysis'
+                if not is_native_analysis:
+                    d_str = str(d) if d is not None else ''
+                    snippet = d_str[:1200] if len(d_str) > 1200 else d_str
+                    other_executions.append({
+                        'tool': tool_name or 'external_tool',
+                        'is_success': bool(getattr(r, 'is_success', False)),
+                        'error_code': getattr(r, 'error_code', None),
+                        'error_message': getattr(r, 'error_message', None),
+                        'output_snippet': snippet,
+                        'output_hash': hashlib.sha256(d_str.encode('utf-8')).hexdigest() if d_str else None,
+                    })
+
             judge_verdict = judge_task_completeness(
                 prompt=prompt,
                 contract=contract,
                 facts=facts,
                 coverage=all_cov,
                 issues=issues, model=model, deadline=deadline,
-                context={'known_headers': sorted(known_headers),
-                         'plans': [r.data.get('plan') for r in successful],
-                         'provenance': [r.provenance for r in successful],
-                         'errors': [{'code': r.error_code, 'message': r.error_message}
-                                    for r in evidence if getattr(r, 'is_error', False)]}
+                context={
+                    'known_headers': sorted(known_headers),
+                    'plans': [r.data.get('plan') for r in successful],
+                    'attempted_plans': attempted_plans,
+                    'provenance': [r.provenance for r in successful],
+                    'errors': [{'code': r.error_code, 'message': r.error_message,
+                                'tool': (getattr(r, 'provenance', None) or {}).get('tool')}
+                               for r in evidence if getattr(r, 'is_error', False)],
+                    'other_executions': other_executions,
+                    'execution_round_count': len(evidence),
+                }
             )
             if judge_verdict and (
                 judge_verdict.get('action') == 'recheck'
@@ -637,8 +712,11 @@ def task_feedback(evidence,prompt='',model=None,deadline=None):
     elif review.get('repair_instruction'):
         guidance += '【门禁复核建议】：' + review['repair_instruction'] + '\n'
     if missing_cols:
-        guidance += '【提示】：部分请求指标在源数据中未定位到对应列。若无法基于现有字段推导计算，请向用户说明缺失列并请求确认口径，不要捏造数据。\n'
-    return (guidance + '【程序任务状态】\n'+json.dumps(state,ensure_ascii=False)+'\n'
-            '只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。'
+        guidance += '【提示】：部分请求指标在源数据中未定位到对应列。若表格中确实缺少原始列（如缺少成本列）导致无法计算，切勿捏造数据或发起无效调用；请向用户呈现已核实的现有事实，明确指出表格缺失的具体字段，并向用户提出具体的澄清建议与下一步操作指引。\n'
+    return (guidance + '【程序任务状态】\n'+json.dumps(state,ensure_ascii=False,default=str)+'\n'
+            '只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。\n'
+            '若源数据中存在对应字段或可通过明确公式推导，缺失指标、总计、期间差额或比率必须由你显式调用当前可用的分析工具，提交包含来源与表达式的计划；'
+            '程序不会自行补算，也不会把正文口算、代码或参数当成已执行回执。\n'
+            '若因表格缺少原始列、缺少对比期或用户指令口径未明确而无法计算：切勿凭空编造计算数值，请向用户交付已核验的现有事实，清晰指出具体缺少哪些表格列或口径有何歧义，并向用户提出具体的澄清建议与下一步操作指引。\n'
             '证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。\n'
             '（注意：上述复核与门禁建议为内部控制指引，面向用户作答时必须直接输出业务结论与数据，切勿在正文中提及“门禁系统”、“误报”、“复核建议”等内部术语。）')

@@ -213,7 +213,7 @@ class TestOfficeSandbox(unittest.TestCase):
         self.assertEqual(r_pdf.skill_id, "pdf")
 
     def test_materialize_script_deliverable_docx(self):
-        """Verify materialize_script_deliverable auto-extracts and runs python-docx script."""
+        """A prose Python script requires an explicit tool invocation."""
         from dsh_modules.deliverable_contract import materialize_script_deliverable
 
         reply_with_docx_script = (
@@ -235,14 +235,9 @@ class TestOfficeSandbox(unittest.TestCase):
             turn_start_time=None
         )
 
-        self.assertIsNone(err)
-        self.assertIsNotNone(out_path)
-        self.assertTrue(Path(out_path).exists())
-        self.assertTrue(out_path.endswith(".docx"))
-
-        # Verify docx content
-        read_doc = docx.Document(out_path)
-        self.assertEqual(read_doc.paragraphs[0].text, "AWS Token Plan 分析报告")
+        self.assertIsNone(out_path)
+        self.assertIn('显式调用', err)
+        self.assertFalse((self.work_dir / 'test_auto_report.docx').exists())
 
     def test_materialize_script_deliverable_error_feedback(self):
         """Verify materialize_script_deliverable returns error string on bad script."""
@@ -265,7 +260,9 @@ class TestOfficeSandbox(unittest.TestCase):
 
         self.assertIsNone(out_path)
         self.assertIsNotNone(err)
-        self.assertIn("Custom Test Error", err)
+        self.assertIn("显式调用", err)
+        self.assertNotIn("Custom Test Error", err)
+        self.assertFalse((self.work_dir / "never_saved.docx").exists())
 
     def test_extract_xlsx_text_all_sheets_and_formulas(self):
         """Verify extract_xlsx_text parses all 10+ sheets in authentic order and handles formula definitions without cache."""

@@ -52,7 +52,7 @@ from .tool_result import ToolResult
 from .comparison_evidence import validate_execution_output
 from .tool_dispatch import dispatch_tool_calls
 from .sampling_guard import sampling_feedback, _is_meaningful_computational_command
-from .spreadsheet_analysis_schema import ANALYSIS_INSTRUCTIONS, select_analysis_tools
+from .spreadsheet_analysis_schema import analysis_instructions_for, select_analysis_tools
 from .analysis_turn import AnalysisTurn
 from .agent_loop_helpers import (
     ACTION_FILLER_KEYWORDS,
@@ -158,6 +158,7 @@ def run_agent_loop(
     initial_execution_evidence: Optional[List[ToolResult]] = None,
     user_prompt: Optional[str] = None,
     user_declarations: Optional[Dict[str, Any]] = None,
+    delivery_session_id: Optional[str] = None,
 ) -> AgentLoopResult:
     """Executes the multi-turn ReAct tool calling loop up to max_rounds."""
     active_tools = tools if tools is not None else get_sandbox_tools()
@@ -177,9 +178,11 @@ def run_agent_loop(
         telemetry.record_guard('user_unit_confirmation', 'accept', declaration)
     last_user_prompt = user_prompt if user_prompt is not None else _extract_last_user_prompt(messages)
     analysis_turn=AnalysisTurn(last_user_prompt,model=model,deadline=deadline) if spreadsheet_analysis_required else None
-    from .bounded_summary_recovery import SummaryRecovery
-    summary_recovery = SummaryRecovery(last_user_prompt, WORKSPACE_DIR, deadline,
-        enabled=not is_guide_intent and (spreadsheet_analysis_required or (is_generate_intent and bool(re.search(r'xlsx|Excel', last_user_prompt, re.I)))))
+    from .spreadsheet_chart_delivery import SpreadsheetChartDelivery, wants_standard_bar_chart, verified_chart_receipt
+    from .spreadsheet_chart_workflow import (
+        is_parameter_error, cross_check_with_scripts, salvage_chart_delivery, failure_presentation)
+    chart_delivery = (SpreadsheetChartDelivery(WORKSPACE_DIR, delivery_session_id)
+                      if analysis_turn and wants_standard_bar_chart(last_user_prompt) else None)
     comparison_contract = build_analysis_contract(last_user_prompt)
     comparison_required = (not is_generate_intent and not is_guide_intent
         and supports_column_comparison(comparison_contract)
@@ -206,10 +209,18 @@ def run_agent_loop(
         and not is_custom_workbook_or_row_edit(last_user_prompt)
     )
 
+    # 仅当明确要求可视化（图表、大屏、看板、HTML）或独立生成文档物化时，才开启全量交付工具；
+    # 纯文本分析报告（如“分析下半年盈利能力并形成简要报告”）保持在裁剪后的最小分析工具集，避免携带天气、提醒、发送等无关工具造成提示词膨胀
+    visual_terms = ("图表", "柱状图", "折线图", "饼图", "散点图", "雷达图", "html", "看板", "大屏", "网页", "可视化", "绘图", "画图", "生成图")
+    artifact_terms = ("word文档", "pdf文件", "ppt演示", "下载链接")
+    # 仅检测真实用户指令部分，严禁将输入附件信封（如 .xlsx）当作输出交付物需求
+    _target_prompt = re.sub(r'【(?:当前轮次用户上传附件|当前会话有效附件清单|当前上下文聚焦文档)】:[^\n]+', '', last_user_prompt or '')
     has_visual_or_deliverable = bool(
         expected_deliverables
         or is_generate_intent
-        or any(k in (last_user_prompt or "").lower() for k in ("图表", "柱状图", "折线图", "饼图", "散点图", "雷达图", "html", "看板", "大屏", "网页", "report", "报告", "可视化", "绘图", "画图", "生成图"))
+        or any(k in _target_prompt.lower() for k in visual_terms)
+        or any(doc in _target_prompt.lower() for doc in artifact_terms)
+        or bool(re.search(r'(?:生成|导出|输出|制作|做成|保存为|下载).*(?:\.xlsx|\.docx|\.pdf|\.pptx|word|excel|ppt|表|文档)', _target_prompt, re.I))
     )
 
     if is_update_req and has_active_update_tools and not is_guide_intent:
@@ -224,8 +235,9 @@ def run_agent_loop(
             active_tools = analysis_tools + [t for t in retained_extras if t not in analysis_tools]
         else:
             active_tools = analysis_tools
-        messages[0]["content"] = str(messages[0].get("content") or "") + ANALYSIS_INSTRUCTIONS + domain_plan_context(last_user_prompt)
-        if has_visual_or_deliverable:
+        messages[0]["content"] = str(messages[0].get("content") or "") + analysis_instructions_for(last_user_prompt) + domain_plan_context(last_user_prompt)
+        # 标准柱状图由运行时托管渲染，不能再引导模型用 bash 生成交付文件（否则必然被拒收）。
+        if has_visual_or_deliverable and not chart_delivery:
             visual_flow_guidance = (
                 "\n\n【表格数据核算与可视化交付双阶段规范】\n"
                 "当前任务既要求表格数据核算/过滤，又要求交付可视化图表/页面。你必须严格按以下双阶段执行：\n"
@@ -234,6 +246,14 @@ def run_agent_loop(
                 "严禁在未调用任何计算工具的情况下跳过计算阶段直接手写数值或凭空臆测！\n"
             )
             messages[0]["content"] += visual_flow_guidance
+
+    if chart_delivery:
+        # This workflow owns rendering. A data-planning model cannot write into
+        # the shared workspace or mistake a pre-existing HTML for its output.
+        active_tools = [t for t in active_tools if t.get('function', {}).get('name') in
+                        {'aggregate_spreadsheet', 'inspect_spreadsheet_structure'}]
+        messages[0]['content'] += ('\n本轮标准柱状图由运行时在聚合证据通过后自动生成、验收并发布。'
+                                   '请仅完成用户要求的筛选、分组和必要指标，不生成HTML或调用写文件工具。')
 
     requirements = build_analysis_plan_context(last_user_prompt) if is_inspect_intent and not is_guide_intent else ""
     if requirements:
@@ -259,6 +279,7 @@ def run_agent_loop(
     round_idx = 0
     consecutive_tool_errors = 0
     consecutive_comparison_errors = 0
+    consecutive_plan_syntax_errors = 0
     while round_idx < max_rounds:
         if round_idx > 0:
             if getattr(policy, "thinking", False):
@@ -286,7 +307,8 @@ def run_agent_loop(
             tool_choice="required" if (
                 (force_tool_choice and active_tools)
                 or (active_tools and comparison_required and consecutive_comparison_errors < 2 and compile_comparison_response(comparison_contract, execution_evidence)[0] is None)
-            ) else None
+            ) else None,
+            purpose="tool_loop"
         )
         reply_text = (llm_res.get("content") or "") if isinstance(llm_res, dict) else str(llm_res or "")
         structured_calls = list(llm_res.get("tool_calls") or []) if isinstance(llm_res, dict) else []
@@ -341,10 +363,6 @@ def run_agent_loop(
 
         # 若当轮无任何工具调用
         if not structured_calls:
-            if summary_recovery.apply(execution_evidence, telemetry, outbound_files):
-                spreadsheet_analysis_required = True
-                analysis_turn = AnalysisTurn(last_user_prompt,model=model,deadline=deadline)
-                break
             if comparison_required and consecutive_comparison_errors < 2:
                 compiled, error = compile_comparison_response(comparison_contract, execution_evidence)
                 telemetry.record_guard('comparison_evidence', 'reject' if error else 'accept', error)
@@ -516,18 +534,52 @@ def run_agent_loop(
 
         if execution_evidence and execution_evidence[-1].is_error:
             consecutive_tool_errors += 1
-            last_tool = (execution_evidence[-1].provenance or {}).get("tool") or ""
-            if last_tool in ("compare_spreadsheet_columns", "aggregate_spreadsheet", "analyze_spreadsheet", "check_spreadsheet_equations", "validate_spreadsheet_rows", "plan_spreadsheet_update"):
-                consecutive_comparison_errors += 1
-                if consecutive_comparison_errors >= 2:
+            last_err = execution_evidence[-1]
+            last_tool = (last_err.provenance or {}).get("tool") or ""
+            err_code = getattr(last_err, "error_code", "") or ""
+            err_msg = getattr(last_err, "error_message", "") or ""
+            is_plan_syntax_error = (
+                err_code in ("invalid_analysis_plan", "invalid_query_plan", "invalid_plan_schema")
+                or err_msg.startswith("plan：")
+                or err_msg.startswith("plan:")
+            )
+            is_param_error = is_parameter_error(err_code)
+            # 列比对流程依赖 consecutive_comparison_errors 计数退避，保持其原有语义。
+            if last_tool in ("aggregate_spreadsheet", "analyze_spreadsheet", "check_spreadsheet_equations", "validate_spreadsheet_rows", "plan_spreadsheet_update", "inspect_spreadsheet_structure") and is_param_error:
+                # 参数类错误（缺少/写错 file_path、工作表名等）：引擎可用，只需修正参数，不应退避到 bash。
+                consecutive_plan_syntax_errors += 1
+                if messages and messages[-1].get("role") == "tool":
+                    param_fix_hint = "\n\n【系统指导】这是工具参数错误（如缺少 file_path、文件名或工作表名不匹配），专用计算引擎完全可用。请按错误提示补全参数后重新调用；file_path 使用 /workspace/<附件文件名>。"
+                    if param_fix_hint not in messages[-1].get("content", ""):
+                        messages[-1]["content"] = messages[-1].get("content", "") + param_fix_hint
+                if consecutive_plan_syntax_errors >= 4 and not chart_delivery:
                     if not any((t.get("function", {}).get("name") or t.get("name", "")) == "bash" for t in active_tools):
                         active_tools.extend(get_sandbox_tools(allowed_names={"bash"}))
+            elif last_tool in ("compare_spreadsheet_columns", "aggregate_spreadsheet", "analyze_spreadsheet", "check_spreadsheet_equations", "validate_spreadsheet_rows", "plan_spreadsheet_update"):
+                if is_plan_syntax_error:
+                    consecutive_plan_syntax_errors += 1
+                    # 计划参数/语法校验失败，计算引擎本身未受限；引导模型修正计划参数继续使用原生工具
                     if messages and messages[-1].get("role") == "tool":
-                        fallback_hint = "\n\n【系统指导】专用比对工具受限，请立即编写 Python 脚本提取数据进行计算（使用 bash 运行 python3 脚本），发挥沙箱的原生代码执行优势。"
-                        if fallback_hint not in messages[-1].get("content", ""):
-                            messages[-1]["content"] = messages[-1].get("content", "") + fallback_hint
+                        plan_fix_hint = "\n\n【系统指导】这是分析计划参数校验未通过（如度量定义冲突、条件语法或分组字段缺失），专用计算引擎完全可用。请仔细阅读上方错误提示，修正计划参数后继续调用专用工具计算。"
+                        if plan_fix_hint not in messages[-1].get("content", ""):
+                            messages[-1]["content"] = messages[-1].get("content", "") + plan_fix_hint
+                    # 只有当连续计划语法错误达到 4 次以上真的无法自愈时，才允许放开退避
+                    if consecutive_plan_syntax_errors >= 4 and not chart_delivery:
+                        if not any((t.get("function", {}).get("name") or t.get("name", "")) == "bash" for t in active_tools):
+                            active_tools.extend(get_sandbox_tools(allowed_names={"bash"}))
+                else:
+                    consecutive_comparison_errors += 1
+                    # 图表托管模式只接受计算引擎回执，退避到 bash 只会产出必然被拒收的交付物。
+                    if consecutive_comparison_errors >= 2 and not chart_delivery:
+                        if not any((t.get("function", {}).get("name") or t.get("name", "")) == "bash" for t in active_tools):
+                            active_tools.extend(get_sandbox_tools(allowed_names={"bash"}))
+                        if messages and messages[-1].get("role") == "tool":
+                            fallback_hint = "\n\n【系统指导】专用比对工具受限，请立即编写 Python 脚本提取数据进行计算（使用 bash 运行 python3 脚本），发挥沙箱的原生代码执行优势。"
+                            if fallback_hint not in messages[-1].get("content", ""):
+                                messages[-1]["content"] = messages[-1].get("content", "") + fallback_hint
         elif execution_evidence and execution_evidence[-1].is_success:
             consecutive_tool_errors = 0
+            consecutive_plan_syntax_errors = 0
             last_tool = (execution_evidence[-1].provenance or {}).get("tool") or ""
             if last_tool in ("compare_spreadsheet_columns", "aggregate_spreadsheet", "analyze_spreadsheet", "check_spreadsheet_equations", "validate_spreadsheet_rows", "plan_spreadsheet_update"):
                 consecutive_comparison_errors = 0
@@ -545,22 +597,18 @@ def run_agent_loop(
                 return AgentLoopResult(final_text=latest.data['question'], telemetry=telemetry,
                                        messages=messages, execution_evidence=execution_evidence)
 
-        # 仅在当轮尚未产生有效分析事实时，才尝试兜底恢复；严禁覆盖主模型已成功完成的分析回执
-        has_completed_analysis = bool(execution_evidence and any(
-            getattr(r, 'is_success', False) and isinstance(getattr(r, 'data', None), dict) and r.data.get('facts')
-            for r in execution_evidence
-        ))
-        if not has_completed_analysis and summary_recovery.apply(execution_evidence, telemetry, outbound_files):
-            spreadsheet_analysis_required = True
-            analysis_turn = AnalysisTurn(last_user_prompt,model=model,deadline=deadline)
-            break
+        if chart_delivery:
+            chart_receipt = verified_chart_receipt(execution_evidence, last_user_prompt, model, deadline)
+            if chart_receipt:
+                if chart_delivery.publish(chart_receipt, last_user_prompt, telemetry):
+                    chart_delivery.cross_check = cross_check_with_scripts(chart_delivery.dataset, execution_evidence)
+                    telemetry.record_guard('chart_cross_check', chart_delivery.cross_check['status'], chart_delivery.cross_check)
+                    return AgentLoopResult(final_text=chart_delivery.presentation(),
+                        outbound_files=chart_delivery.outbound(), telemetry=telemetry,
+                        messages=messages, execution_evidence=execution_evidence)
+                break
 
         if analysis_turn:
-            completed = analysis_turn.complete(
-                execution_evidence, telemetry,
-                [t.get('function', {}).get('name') for t in active_tools],
-                deadline
-            )
             should_finish, transition_msg, max_rounds = evaluate_tool_execution_turn(
                 analysis_turn=analysis_turn,
                 execution_evidence=execution_evidence,
@@ -589,9 +637,6 @@ def run_agent_loop(
             max_rounds=analysis_turn.extend_repair_budget(
                 execution_evidence,round_idx,max_rounds,task_ceiling,telemetry)
             messages.append({'role':'user','content':analysis_turn.feedback(execution_evidence)})
-            if completed:
-                messages.append({'role':'user','content':'【程序注册关系补算回执】\n'+
-                    '\n'.join(r.render_text() for r in completed)})
 
         # A weather lookup already returns current conditions plus forecast, and a successful
         # reminder mutation may not be repeated. Remove only these single-use capabilities
@@ -695,13 +740,52 @@ def run_agent_loop(
                 messages,
                 model,
                 timeout=policy.single_request_timeout,
-                deadline=deadline
+                deadline=deadline,
+                purpose="synthesis"
             )
             telemetry.record_llm_response(final_step, is_first_round=False)
             reply_text = (final_step.get("content") or "") if isinstance(final_step, dict) else str(final_step or "")
             break
 
         round_idx += 1
+
+    if chart_delivery:
+        if salvage_chart_delivery(
+                chart_delivery, messages=messages, tools=active_tools, prompt=last_user_prompt,
+                evidence=execution_evidence, telemetry=telemetry, deadline=deadline, model=model,
+                call_model=lambda msgs, salvage_tools: call_model_proxy(
+                    msgs, model, tools=salvage_tools, timeout=policy.single_request_timeout, deadline=deadline,
+                    policy=policy, stream_deltas=False, tool_choice="required", purpose="chart_salvage"),
+                dispatch=lambda calls: _dispatch_tool_calls(
+                    structured_calls=calls, round_idx=round_idx, messages=messages, telemetry=telemetry,
+                    policy=policy, executed_calls_history=executed_calls_history, outbound_files=outbound_files,
+                    deadline=deadline, is_guide_intent=is_guide_intent, outbound_reminders=outbound_reminders,
+                    last_user_prompt=last_user_prompt, execution_evidence=execution_evidence,
+                    allowed_tool_names=['aggregate_spreadsheet'])):
+            return AgentLoopResult(final_text=chart_delivery.presentation(),
+                                   outbound_files=chart_delivery.outbound(), telemetry=telemetry,
+                                   messages=messages, execution_evidence=execution_evidence)
+        if not chart_delivery.error:
+            chart_delivery.fail('verified_chart_data_unavailable_within_budget', telemetry)
+        allow_unverified = getattr(policy, "allow_unverified_chart_fallback", False) or (
+            os.getenv("DSH_CHART_ALLOW_UNVERIFIED_FALLBACK", "").lower() in ("true", "1", "yes")
+        )
+        unverified_file = None
+        unverified_outbound = []
+        if allow_unverified:
+            from .spreadsheet_chart_workflow import materialize_unverified_chart_fallback
+            unverified_file, _ = materialize_unverified_chart_fallback(
+                chart_delivery, Path(WORKSPACE_DIR), start_ts, telemetry
+            )
+            if unverified_file:
+                unverified_outbound = [json.dumps({
+                    'filePath': str(unverified_file),
+                    'fileName': unverified_file.name,
+                    'unverified': True
+                })]
+        return AgentLoopResult(final_text=failure_presentation(chart_delivery, execution_evidence, reply_text, unverified_file=unverified_file),
+                               outbound_files=unverified_outbound,
+                               telemetry=telemetry, messages=messages, execution_evidence=execution_evidence)
 
     compiled_comparison = None
     if comparison_required:
@@ -758,7 +842,11 @@ def run_agent_loop(
                         reply_text = c
                         break
         if (not reply_text or len(reply_text.strip()) < 20) and execution_evidence:
-            if not analysis_turn.may_finish(execution_evidence):
+            try:
+                turn_may_finish = analysis_turn.may_finish(execution_evidence, reply_text=reply_text)
+            except TypeError:
+                turn_may_finish = analysis_turn.may_finish(execution_evidence)
+            if not turn_may_finish:
                 has_external_calc = any(
                     getattr(r, 'is_success', False)
                     and (getattr(r, 'provenance', None) or {}).get('tool') in ('bash', 'sh', 'python')
@@ -773,7 +861,8 @@ def run_agent_loop(
                             model,
                             timeout=min(policy.single_request_timeout, 15),
                             deadline=deadline,
-                            policy=policy
+                            policy=policy,
+                            purpose="synthesis"
                         )
                         telemetry.record_llm_response(forced_res, is_first_round=False)
                         f_text = (forced_res.get("content") or "") if isinstance(forced_res, dict) else str(forced_res or "")
@@ -784,7 +873,7 @@ def run_agent_loop(
 
     final_text, healed_files = ((compiled_comparison, [])
         if comparison_required and compiled_comparison else (analysis_turn.render(execution_evidence,reply_text,telemetry,policy=policy,model=model,deadline=deadline), [])
-        if (spreadsheet_analysis_required and not has_visual_or_deliverable) else _finalize_agent_text(
+        if (spreadsheet_analysis_required and not (has_visual_or_deliverable and (outbound_files or requests_markdown_artifact(last_user_prompt)))) else _finalize_agent_text(
         reply_text=reply_text,
         messages=messages,
         model=model,

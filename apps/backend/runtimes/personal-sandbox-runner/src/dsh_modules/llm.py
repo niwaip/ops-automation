@@ -124,17 +124,20 @@ def _process_sse_data(
         if thought_chunk:
             if ttft_ms is None:
                 ttft_ms = (time.time() - start_time) * 1000
-            if stream_deltas:
+            thought_chunk = re.sub(r'<\|(?:mask_start|mask_end|im_start|im_end|fim_prefix|fim_suffix|fim_middle|extra_\d+)\|?>', '', thought_chunk)
+            if stream_deltas and thought_chunk:
                 sys.stdout.write(f"<<<DSH_THOUGHT:{json.dumps(thought_chunk, ensure_ascii=False)}>>>\n")
                 sys.stdout.flush()
         chunk = delta.get("content", "")
         if chunk:
             if ttft_ms is None:
                 ttft_ms = (time.time() - start_time) * 1000
-            chunks.append(chunk)
-            if stream_deltas:
-                sys.stdout.write(f"<<<DSH_DELTA:{json.dumps(chunk, ensure_ascii=False)}>>>\n")
-                sys.stdout.flush()
+            chunk = re.sub(r'<\|(?:mask_start|mask_end|im_start|im_end|fim_prefix|fim_suffix|fim_middle|extra_\d+)\|?>', '', chunk)
+            if chunk:
+                chunks.append(chunk)
+                if stream_deltas:
+                    sys.stdout.write(f"<<<DSH_DELTA:{json.dumps(chunk, ensure_ascii=False)}>>>\n")
+                    sys.stdout.flush()
         t_calls = delta.get("tool_calls")
         if t_calls and isinstance(t_calls, list):
             if ttft_ms is None:
@@ -258,7 +261,10 @@ def call_model_proxy(
     max_tokens: int = None,
     policy: Any = None,
     stream_deltas: Optional[bool] = None,
-    tool_choice: Optional[str] = None
+    tool_choice: Optional[str] = None,
+    purpose: Optional[str] = None,
+    parent_span_id: Optional[str] = None,
+    telemetry: Optional[Any] = None
 ) -> dict:
     """Invokes the central model proxy through internal network streaming, returning structured response with metrics and native tool calls"""
     from .runtime_policy import RuntimePolicy
@@ -304,10 +310,19 @@ def call_model_proxy(
     if tools:
         payload["tools"] = tools
         payload["tool_choice"] = tool_choice or "auto"
+    if purpose:
+        payload["call_purpose"] = purpose
+    if parent_span_id:
+        payload["parent_span_id"] = parent_span_id
+    req_headers = {"Content-Type": "application/json", "Authorization": f"Bearer {VIRTUAL_API_KEY}"}
+    if purpose:
+        req_headers["X-Call-Purpose"] = str(purpose)
+    if parent_span_id:
+        req_headers["X-Parent-Span-Id"] = str(parent_span_id)
     req = urllib.request.Request(
         api_endpoint,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {VIRTUAL_API_KEY}"}
+        data=json.dumps(payload, default=str).encode("utf-8"),
+        headers=req_headers
     )
     chunks = []
     tool_call_deltas = {}
@@ -385,12 +400,28 @@ def call_model_proxy(
         # 无工具调用且此前因 tools 处于缓冲模式：
         # 若未发生未执行脚本泄漏，则视为向用户直接回复的最终文本，输出打字机流
         if not detect_unexecuted_script_leak(res_text):
-            sys.stdout.write(f"<<<DSH_DELTA:{json.dumps(res_text, ensure_ascii=False)}>>>\n")
+            clean_res = re.sub(r'<\|(?:mask_start|mask_end|im_start|im_end|fim_prefix|fim_suffix|fim_middle|extra_\d+)\|?>', '', res_text)
+            sys.stdout.write(f"<<<DSH_DELTA:{json.dumps(clean_res, ensure_ascii=False)}>>>\n")
             sys.stdout.flush()
 
     finish_reason_source = "upstream" if finish_reason else ("done_fallback" if received_done else "stream_closed")
     if not finish_reason:
         finish_reason = "stop" if received_done else "stream_closed_prematurely"
+
+    try:
+        from .telemetry import get_active_telemetry
+        active_tel = telemetry or get_active_telemetry()
+        if active_tel and hasattr(active_tel, "record_auxiliary_call"):
+            if purpose and purpose not in ("main_turn", "tool_loop"):
+                active_tel.record_auxiliary_call(
+                    purpose=purpose,
+                    usage=usage,
+                    total_ms=total_ms,
+                    model=model or "default",
+                    span_id=parent_span_id
+                )
+    except Exception:
+        pass
 
     return {
         "content": res_text,

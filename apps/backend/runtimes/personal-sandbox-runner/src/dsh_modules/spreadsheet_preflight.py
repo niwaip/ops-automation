@@ -24,6 +24,7 @@ SUMMARY_ROW_LABEL_RE = re.compile(
 )
 
 COVER_SHEET_NAMES = frozenset({"使用说明", "说明", "填报说明", "编制说明", "目录", "封面", "索引", "readme", "instructions"})
+CONFIG_SHEET_NAMES = frozenset({"参数", "模型参数", "假设", "情景假设", "情景参数", "参数配置", "配置", "config", "parameters", "assumptions", "dictionary", "数据字典"})
 VERTICAL_SUBJECT_HEADERS = frozenset({"项目", "科目", "指标", "核心指标", "参数", "行项目", "报表项目", "指标名称", "科目名称"})
 
 
@@ -313,22 +314,38 @@ def profile_spreadsheet_for_planning(
                 domain_target_profiles = prompt_matched
             else:
                 non_cover = [sp for sp in sheet_profiles if sp["sheet"].strip().lower() not in COVER_SHEET_NAMES] or sheet_profiles
+                business_candidates = [sp for sp in non_cover if sp["sheet"].strip().lower() not in CONFIG_SHEET_NAMES] or non_cover
                 if prompt_text:
-                    scored: List[Tuple[int, Dict[str, Any]]] = []
-                    for sp in non_cover:
+                    scored: List[Tuple[int, int, Dict[str, Any]]] = []
+                    concept_terms: Set[str] = set()
+                    for kw, synonyms in (
+                        ("盈利", ("利润", "毛利", "营业利润", "净利润", "利润率", "收益", "经营")),
+                        ("利润", ("毛利", "营业利润", "净利润", "利润率", "营收", "营业收入")),
+                        ("下半年", ("月份", "7月", "8月", "9月", "10月", "11月", "12月", "H2")),
+                        ("上半年", ("月份", "1月", "2月", "3月", "4月", "5月", "6月", "H1")),
+                        ("费用", ("销售费用", "管理费用", "研发费用", "成本")),
+                        ("成本", ("营业成本", "人员成本", "费用")),
+                    ):
+                        if kw in prompt_text:
+                            concept_terms.update(synonyms)
+
+                    for sp in business_candidates:
                         terms = set(sp["headers"].values()) | {lbl for _, _, lbl in sp.get("row_coord_pairs", [])}
-                        hits = sum(1 for t in terms if len(t) >= 2 and t not in ("项目", "指标", "单位", "备注") and t in prompt_text)
-                        if hits > 0:
-                            scored.append((hits, sp))
+                        direct_hits = sum(1 for t in terms if len(t) >= 2 and t not in ("项目", "指标", "单位", "备注") and t in prompt_text)
+                        concept_hits = sum(1 for t in terms if any(c in t for c in concept_terms)) if concept_terms else 0
+                        total_score = direct_hits * 3 + concept_hits
+                        record_bonus = 1 if sp.get("records", 0) >= 3 else 0
+                        if total_score > 0:
+                            scored.append((total_score + record_bonus, sp.get("records", 0), sp))
                     if scored:
-                        scored.sort(key=lambda item: item[0], reverse=True)
-                        max_hits = scored[0][0]
-                        primary_sp = scored[0][1]
-                        domain_target_profiles = [sp for h, sp in scored if h == max_hits]
+                        scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
+                        max_score = scored[0][0]
+                        primary_sp = scored[0][2]
+                        domain_target_profiles = [sp for s, r, sp in scored if s == max_score]
                     else:
-                        primary_sp = non_cover[0]
+                        primary_sp = business_candidates[0]
                 else:
-                    primary_sp = non_cover[0]
+                    primary_sp = business_candidates[0]
 
         # Domain identification across targeted sheets (or all sheets when prompt doesn't narrow to specific sheets)
         all_header_names: Set[str] = set()

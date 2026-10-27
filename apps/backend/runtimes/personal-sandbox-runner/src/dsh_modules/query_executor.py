@@ -174,7 +174,8 @@ def execute_query_plan(
 
     # Footer pruning
     import json
-    explicit_filter_str = json.dumps([plan.get("where"), plan.get("filters")], ensure_ascii=False)
+    import datetime
+    explicit_filter_str = json.dumps([plan.get("where"), plan.get("filters")], ensure_ascii=False, default=str)
     effective_end_row, excluded_rows = detect_footer_pruning(
         ws, min_col, min_row, max_col, max_row, explicit_filter_str=explicit_filter_str
     )
@@ -222,6 +223,8 @@ def execute_query_plan(
         r_dict: Dict[str, Any] = {}
         for col, hdr in col_to_header.items():
             val = ws.cell(r, col).value
+            if isinstance(val, (datetime.datetime, datetime.date, datetime.time)):
+                val = val.isoformat(sep=" ") if isinstance(val, datetime.datetime) else val.isoformat()
             r_dict[hdr] = val
             r_dict[get_column_letter(col)] = val
         row_records[r] = r_dict

@@ -186,8 +186,10 @@ class ExpressionEvaluator:
             if expr["aggregate"] not in ops:
                 raise ValueError("不支持的聚合操作")
             return Quantity(ops[expr["aggregate"]](vals), final_unit, dimension=final_dim)
-        if set(expr) != {"op", "args"} or not isinstance(expr["args"], list) or not 2<=len(expr['args'])<=8:
-            raise ValueError("二元表达式需要op与两个args")
+        if "ref" in expr:
+            raise ValueError(f"表达式包含未解析的引用节点 [{expr.get('ref')}]，请检查引用ID是否已在查询事实中定义")
+        if (set(expr) - {"op", "args", "unit", "output_unit", "label", "id"}) != set() or not isinstance(expr.get("args"), list) or not (2 <= len(expr["args"]) <= 8):
+            raise ValueError("二元表达式需要op与2至8个args操作数列表")
         if len(expr['args'])>2:
             if expr['op'] not in ('add','multiply'):
                 raise ValueError("减法和除法只能接受两个操作数")
@@ -198,6 +200,13 @@ class ExpressionEvaluator:
         op = expr["op"]
         if op in ("add", "subtract"):
             if a.unit != b.unit:
+                # 支持比率与纯标量常数加减运算（如 (H2/H1) - 1 或 1 - 费用率）
+                if a.unit == "ratio" and b.unit == "number":
+                    unit = "ratio_delta" if op == "subtract" else "ratio"
+                    return Quantity(a.value + b.value if op == "add" else a.value - b.value, unit)
+                if a.unit == "number" and b.unit == "ratio":
+                    unit = "ratio_delta" if op == "subtract" else "ratio"
+                    return Quantity(a.value + b.value if op == "add" else a.value - b.value, unit)
                 raise ValueError("不能相加/相减不同维度")
             unit="ratio_delta" if op=="subtract" and a.unit=="ratio" else a.unit
             return Quantity(a.value+b.value if op == "add" else a.value-b.value, unit)

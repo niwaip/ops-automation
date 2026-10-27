@@ -6,7 +6,6 @@ import re
 from pathlib import Path
 from decimal import Decimal, localcontext
 from .analysis_contract import build_analysis_contract, supports_column_comparison
-from .spreadsheet_trends import render_ratio_trends
 from .spreadsheet_fact_identity import fact_identity
 from .analysis_task_state import analysis_task_state
 from .report_presentation import analysis_overview, with_sources
@@ -20,12 +19,27 @@ def has_spreadsheet_analysis_input(skill_res):
 
 
 def requires_spreadsheet_analysis(prompt, skill_res):
+    admission = getattr(skill_res, 'admission', None) or {}
+    if admission.get('reason') == 'no_skill_needed':
+        return False
     contract = build_analysis_contract(prompt)
     if contract.is_advisory_intent and not contract.is_explicit_calc:
         return False
     if contract.is_browse_or_summary:
         return False
     has_visual_need = any(k in (prompt or "").lower() for k in ("柱状图", "折线图", "饼图", "散点图", "雷达图", "图表", "可视化", "画图", "绘图", "html", "png", "看板", "大屏", "网页", "report", "报告"))
+    has_table_calc_cue = bool(
+        contract.has_metrics
+        or contract.is_explicit_calc
+        or contract.is_audit_intent
+        or contract.is_detail_query
+        or has_visual_need
+    )
+    is_search = getattr(skill_res, 'is_search_intent', False) or getattr(skill_res, 'is_research_intent', False)
+    if is_search and not has_table_calc_cue:
+        return False
+    if admission.get('action') == 'general' and not has_table_calc_cue:
+        return False
     from .spreadsheet_update.routing import is_custom_workbook_or_row_edit, is_workbook_update
     if is_workbook_update(prompt, getattr(skill_res, 'admission', None)):
         return False
@@ -134,14 +148,21 @@ def escape(value):
 
 
 def format_value(value):
-    number=Decimal(str(value))
-    with localcontext() as context:
-        context.prec=max(32,len(number.as_tuple().digits)+abs(number.as_tuple().exponent)+6)
-        rounded=number.quantize(Decimal("0.0001"))
-    if number and not rounded:
-        return str(number)
-    rendered=format(rounded,"f").rstrip("0").rstrip(".") if "." in str(number) else str(number)
-    return rendered or "0"
+    if value is None:
+        return ""
+    val_str = str(value).strip()
+    try:
+        cleaned = val_str.replace(",", "")
+        number = Decimal(cleaned)
+        with localcontext() as context:
+            context.prec = max(32, len(number.as_tuple().digits) + abs(number.as_tuple().exponent) + 6)
+            rounded = number.quantize(Decimal("0.0001"))
+        if number and not rounded:
+            return str(number)
+        rendered = format(rounded, "f").rstrip("0").rstrip(".") if "." in str(number) else str(number)
+        return rendered or "0"
+    except Exception:
+        return val_str
 
 
 def describe_expression(expr, data):
@@ -301,11 +322,6 @@ def render_analysis_response(text,evidence,prompt="",model=None,policy=None,dead
                 parts.append(line+"。")
     audit = "\n".join(parts)
     parts = []
-    if re.search(r"变化|趋势|增长|增减|改善|change|trend|growth",prompt,re.I):
-        trends=render_ratio_trends(evidence,format_value)
-        if trends:
-            parts.append("\n核验数据中的期间变化（只描述数值，不推断经营原因）：")
-            parts.extend(trends)
     last_success=max((i for i,e in enumerate(raw_evidence) if e.is_success),default=-1)
     pending=[e for e in raw_evidence[last_success+1:] if e.is_error]
     if pending:

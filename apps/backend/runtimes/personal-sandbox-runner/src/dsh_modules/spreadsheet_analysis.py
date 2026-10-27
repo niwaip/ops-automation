@@ -73,7 +73,8 @@ def prepare_tables(plan, workbook, check, apply_filters=True):
     for item in plan:
         check()
         allowed_tbl_keys = {"id", "sheet", "data_range", "header_row", "filters", "where", "group_by", "having", "row_ids"}
-        if not isinstance(item, dict) or set(item) - allowed_tbl_keys:
+        benign_tbl_keys = {"name", "title", "description", "notes", "comment", "table_name"}
+        if not isinstance(item, dict) or set(item) - allowed_tbl_keys - benign_tbl_keys:
             raise ValueError("非法数据表计划")
         if not {"id", "sheet", "data_range", "header_row"} <= set(item):
             raise ValueError("数据表计划缺少必要字段")
@@ -238,8 +239,14 @@ def calculate_spreadsheet_analysis(source, plan, deadline=None, domain="generic"
             "query", "where", "group_by", "having", "order_by", "limit",
             "offset", "distinct", "distinct_fields", "fields", "metrics", "source"
         }
-        if set(plan) - allowed_plan_keys:
-            raise ValueError("分析计划包含未知字段")
+        benign_metadata_keys = {
+            "file_path", "filename", "file", "path", "title", "description",
+            "name", "summary", "notes", "comment", "schema_version", "reason",
+            "table_id", "id", "metadata", "mode", "version"
+        }
+        unknown_keys = set(plan) - allowed_plan_keys - benign_metadata_keys
+        if unknown_keys:
+            raise ValueError(f"分析计划包含未知字段：{', '.join(sorted(unknown_keys))}")
 
         source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
         original = openpyxl.load_workbook(source, data_only=False)
@@ -323,11 +330,44 @@ def calculate_spreadsheet_analysis(source, plan, deadline=None, domain="generic"
                     raise ValueError("query 必须为有效字典对象")
 
             if q_spec is not None:
+                if not q_spec.get("source"):
+                    if isinstance(plan.get("source"), dict) and plan["source"].get("sheet"):
+                        q_spec["source"] = dict(plan["source"])
+                    elif t0.get("sheet"):
+                        q_spec["source"] = {
+                            "sheet": t0.get("sheet"),
+                            "header_row": t0.get("header_row", 1),
+                            "data_range": t0.get("data_range"),
+                            "table_id": t0.get("id", "detail"),
+                        }
+                elif isinstance(q_spec.get("source"), dict) and t0.get("sheet"):
+                    src = q_spec["source"]
+                    if not src.get("sheet") and t0.get("sheet"):
+                        src["sheet"] = t0.get("sheet")
+                    if "header_row" not in src and "header_row" in t0:
+                        src["header_row"] = t0["header_row"]
+                    if not src.get("data_range") and t0.get("data_range"):
+                        src["data_range"] = t0["data_range"]
+                if not q_spec.get("group_by"):
+                    grp = plan.get("group_by") or t0.get("group_by")
+                    if grp:
+                        q_spec["group_by"] = grp if isinstance(grp, list) else [grp]
+                if not q_spec.get("order_by") and plan.get("order_by"):
+                    q_spec["order_by"] = plan["order_by"]
+                if not q_spec.get("limit") and plan.get("limit"):
+                    q_spec["limit"] = plan["limit"]
                 if legacy_pred:
                     q_where = q_spec.get("where")
                     q_spec["where"] = {"and": [legacy_pred, q_where]} if q_where else legacy_pred
             elif "metrics" in plan or (isinstance(plan.get("where"), dict) and not plan.get("calculations")):
                 q_spec = dict(plan)
+                if not q_spec.get("source") and t0.get("sheet"):
+                    q_spec["source"] = {
+                        "sheet": t0.get("sheet"),
+                        "header_row": t0.get("header_row", 1),
+                        "data_range": t0.get("data_range"),
+                        "table_id": t0.get("id", "detail"),
+                    }
                 if legacy_pred:
                     q_where = q_spec.get("where")
                     q_spec["where"] = {"and": [legacy_pred, q_where]} if q_where else legacy_pred
@@ -432,7 +472,7 @@ def calculate_spreadsheet_analysis(source, plan, deadline=None, domain="generic"
                     err_cell = _check_partial_error_intersection(visited)
                     if err_cell:
                         return ToolResult.error("calculation_unverified", f"查询涉及的单元格 {err_cell} 包含公式计算错误", data=calculation)
-                canonical = json.dumps(plan, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+                canonical = json.dumps(plan, sort_keys=True, ensure_ascii=False, separators=(",", ":"), default=str)
                 plan_hash = hashlib.sha256(canonical.encode()).hexdigest()
                 if hashlib.sha256(source.read_bytes()).hexdigest() != source_hash:
                     return ToolResult.error('source_changed', '查询与计算期间原件已变化')
