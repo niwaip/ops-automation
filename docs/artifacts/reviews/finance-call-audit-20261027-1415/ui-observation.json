@@ -1,0 +1,20 @@
+{
+  "method": "read-only cua Edge user tab, existing local chat page",
+  "url": "http://192.168.100.143:5174/chat",
+  "session": "chat-session-1793079611033-xilj3v47",
+  "main_table_data_rows": 15,
+  "present_core_values": [
+    "124,020 千元",
+    "43.09%",
+    "21,209.4 千元",
+    "16,038.3 千元"
+  ],
+  "same_label_margin_values": [
+    "43.09%",
+    "41.67%",
+    "85.65%"
+  ],
+  "details_open_when_observed": true,
+  "ui_actions_performed": [],
+  "limitation": "Current DOM observation; original transient display and copying were not recorded."
+}

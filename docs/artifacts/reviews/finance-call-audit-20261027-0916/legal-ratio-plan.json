@@ -1,0 +1,33 @@
+{
+  "tables": [
+    {
+      "sheet": "利润表",
+      "data_range": "A4:D14",
+      "header_row": 3,
+      "id": "derive_t0"
+    }
+  ],
+  "calculations": [
+    {
+      "id": "derive_m0",
+      "label": "毛利率（注册关系补算）",
+      "metric_id": "finance.gross_margin",
+      "output_unit": "%",
+      "expression": {
+        "op": "divide",
+        "args": [
+          {
+            "sheet": "利润表",
+            "cell": "B6",
+            "unit": "amount"
+          },
+          {
+            "sheet": "利润表",
+            "cell": "B4",
+            "unit": "amount"
+          }
+        ]
+      }
+    }
+  ]
+}

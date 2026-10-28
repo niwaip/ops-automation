@@ -1,0 +1,52 @@
+{
+  "source_sha256": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+  "source_unchanged": true,
+  "original_rows": 274,
+  "included_rows": 253,
+  "excluded_rows": 21,
+  "excluded_prefix_counts": {
+    "sp": 9,
+    "ip": 6,
+    "ex": 6
+  },
+  "department_amounts_K": {
+    "華東MIS": "561.75345",
+    "華北BAS": "67.03530",
+    "DM華南BAS": "171.65638",
+    "流通/EBISS": "198.51766",
+    "華南MIS": "164.90159",
+    "SM華南BAS": "212.90759",
+    "華東BAS": "260.64793"
+  },
+  "amount_total_K": "1637.41990",
+  "chart_receipt_equals_independent_oracle": true,
+  "department_paid_hours": {
+    "華東MIS": "1870.48",
+    "華北BAS": "259.0",
+    "DM華南BAS": "584.54",
+    "流通/EBISS": "872.00",
+    "華南MIS": "553.07",
+    "SM華南BAS": "783.54",
+    "華東BAS": "1156.15"
+  },
+  "paid_hours_total": "6078.78",
+  "billable_receipt_equals_independent_oracle": true,
+  "malformed_query_error": "Extra data: line 1 column 187 (char 186)",
+  "fallback_reproduction": {
+    "created_warning_html": true,
+    "success_banner_despite_warning": true,
+    "chart_present": false,
+    "exported_file_count": 1
+  },
+  "runtime_hashes": {
+    "spreadsheet_query_schema": "efc1b0a07c22d4e2d75e8559921a7c481195b5e0996def2c70b7764db5c637d2",
+    "spreadsheet_analysis_schema": "187978aeb7ea1a17140e89ae0c42339981bfcada6440051a1a3ff307a4c37cc3",
+    "html_report_fallback": "e19f6d527dbbea1b01ebb32a6005088946246b970d12824ffea851e766166814",
+    "artifact_exporter": "17aac14c0cdf3a62c72a7eacfcb245b3d840a58b0a33663eac3af905abce28c2",
+    "planning_phase": "2bd34a8d7a8626901862144fc8c9900cb842bd2533e3a7c94a60b322fda29b85",
+    "llm": "9e69bc3150afaff43b2b88cfb60ff5c02945aa422b242c30a106215740a4299c",
+    "telemetry": "3aaf5f4460eb2f4eebbc5f34426fdca197fb5ae5906c7c0b3004f2e680a8ba31",
+    "deliverable_contract": "d3ab1587bbbd97fc9c61791150fc6ce458be55f23e1d1e05b47c2efd51ccdb06",
+    "runner": "68f2917c8557c6ee7f0d37e3a5dfcf905f1f0c64269fb9e4696f5fc0f83808f1"
+  }
+}

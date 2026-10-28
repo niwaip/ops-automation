@@ -1,0 +1,40 @@
+{
+  "network_calls": 0,
+  "checks": [
+    {
+      "name": "clarify_with_dismissals_is_rewritten_to_repair",
+      "observed": "repair",
+      "reproduced": true
+    },
+    {
+      "name": "extraneous_contract_metric_cannot_be_removed_by_evidence_revalidation",
+      "remaining": [
+        {
+          "code": "required_metrics_missing",
+          "metrics": [
+            {
+              "name": "基准值"
+            }
+          ]
+        }
+      ],
+      "reproduced": true
+    },
+    {
+      "name": "raw_success_receipt_can_dismiss_missing_metric_when_conforming_facts_are_empty",
+      "complete": true,
+      "reproduced": true,
+      "scope": "adjacent regression risk; not established as this incident's cause"
+    },
+    {
+      "name": "scenario_headers_and_exact_user_instruction_match_incident_v5_cache_key",
+      "sha256": "e81f717eef25657e25c0e3c732294ca743ea9b00c921da739fe3d1aec65ccb06",
+      "reproduced": true
+    },
+    {
+      "name": "valid_month_where_passes_but_empty_having_and_reproduces_first_error",
+      "error": "and 组合操作需要 1 到 16 个子条件列表",
+      "reproduced": true
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+[
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/bounded_summary_recovery.py",
+    "line": 67,
+    "callee": "calculate_spreadsheet_analysis"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/bounded_summary_recovery.py",
+    "line": 88,
+    "callee": "recover_summary"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/bounded_summary_recovery.py",
+    "line": 98,
+    "callee": "export_recovered_summary"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/planning_phase.py",
+    "line": 36,
+    "callee": "execute_tool"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/planning_phase.py",
+    "line": 35,
+    "callee": "execute_tool"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/personal_skill_execution.py",
+    "line": 88,
+    "callee": "calculate_spreadsheet_analysis"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/registered_metric_completion.py",
+    "line": 181,
+    "callee": "calculate_spreadsheet_analysis"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/tools.py",
+    "line": 522,
+    "callee": "execute_aggregation"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/tools.py",
+    "line": 524,
+    "callee": "execute_spreadsheet_analysis"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/agent_loop.py",
+    "line": 126,
+    "callee": "dispatch_tool_calls"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_analysis.py",
+    "line": 673,
+    "callee": "calculate_spreadsheet_analysis"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_analysis_evidence.py",
+    "line": 320,
+    "callee": "render_ratio_trends"
+  },
+  {
+    "file": "apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules/spreadsheet_update/aggregation_api.py",
+    "line": 84,
+    "callee": "execute_spreadsheet_analysis"
+  }
+]

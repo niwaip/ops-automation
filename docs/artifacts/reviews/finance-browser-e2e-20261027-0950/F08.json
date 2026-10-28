@@ -1,0 +1,8 @@
+{
+  "text": "网页\n检查交易明细的重复凭证号、部门缺失、金额绝对值大\n将刚才的异常清单导出为新的可下载Excel，保留来源行号、凭证号、异常类型和原值，不修改原件；未完成核验的项目请在文件中明确标注。\n10/27 10:34\n查看思考过程\n(2 步)\n\n📊 交易明细异常清单已发送\n\n核心结论：\n\n对 80 条交易明细进行五类异常检测，共发现 6 条异常记录：\n\n异常类型\t凭证号\tExcel行号\t原值\n重复凭证号\tV2026-0009\t第12、13行\t金额分别为 -1,483千元（职能部门）和 1,620千元（销售一部）\n部门缺失\tV2026-0025\t第28行\t部门字段为空，金额 1,475千元\n金额绝对值异常（>50,000）\tV2026-0040\t第43行\t金额 98,000千元，远超阈值\n非2026年日期\tV2026-0055\t第58行\t日期 2027-01-03，跨期交易\n非已审批交易\tV2026-0070\t第73行\t审批状态为\"待审批\"，金额 1,040千元\n\n✅ 文件已保存至 /workspace/交易明细异常清单.xlsx，包含完整凭证号、行号、原值及异常类型标注，未修改原件。\n\n📥 生成产物已就绪：\n\n📊 《交易明细异常清单.xlsx》 (点击直接下载 · 6.1 KB)\n展开全文 (共 726 字)\n10/27 10:34\nTokens:399148\n/\n输入:389195 输出:9953\n助理\n协同\n中\nAuto / 系统默认\n发送",
+  "event": {
+    "url": "http://localhost:5174/api/ai/chat/stream",
+    "status": 201,
+    "error": "Error: response.text: Protocol error (Network.getResponseBody): Request content was evicted from inspector cache\nResponse body is not available for a response that was navigated away from. Read response.body() before triggering any navigation."
+  }
+}

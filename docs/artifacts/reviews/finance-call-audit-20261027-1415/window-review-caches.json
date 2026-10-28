@@ -1,0 +1,77 @@
+{
+  "task_completeness_judgments/ab3faa84153dcb6440629d234279c915d33db19d9ec75a309a9edf2336b01aa4.json": {
+    "action": "repair",
+    "category": "execution_incomplete",
+    "complete": false,
+    "dismissed_issue_codes": [],
+    "supporting_fact_ids": [
+      "actual__(('str', '营业收入'),)",
+      "actual__(('str', '毛利'),)"
+    ],
+    "reason": "原始请求要求提供'毛利率'。执行计划中仅通过聚合工具直接提取了'毛利'（绝对值，单位千元）的数据，未计算'毛利率'（比率，通常由毛利/营业收入得出或单独字段）。当前事实列表中缺少'毛利率'指标。虽然表头已知有'2026实际'列且包含'毛利'和'营业收入'行，但'毛利率'作为衍生指标或需特定计算的字段，尚未在当前执行步骤中生成。需要补充计算毛利率的步骤。",
+    "repair_instruction": "基于已获取的'营业收入'（124020千元）和'毛利'（53443.25千元）实际值，计算2026年毛利率。公式：毛利率 = 毛利 / 营业收入。请执行计算或查询包含毛利率结果的表头（如果存在），或直接计算该比率。注意：若表中有'综合毛利率'或'销售毛利率'单独列，应优先使用；若仅有个别行，需确认是否为全年累计或加权平均。目前基于事实数据计算：53443.25 / 124020 ≈ 43.09%。请在结果中包含此指标。",
+    "user_question": ""
+  },
+  "filter_judgments/c0a7169bb6c732ccaea69b6f49eff505e09785e700f96b9ffb7305b08924587e.json": {
+    "request_period": "2026",
+    "source_period": "2026",
+    "matched": true,
+    "reason": "用户要求2026年实际数据。来源绑定中，表格标题'2026年度利润表'、数据列标题'2026预算'均明确指向2026年。虽然列名为'预算'而非'实际'，但属于业务指标类型的偏差，在期间核对规则中，来源已覆盖请求的2026年期间范围，且无明确排除2026年的证据。根据规则，期间匹配。"
+  },
+  "filter_judgments/47a5910b997423999a566cbcdb098d85ee4a279397d4b9ceb34af2178852ba33.json": {
+    "request_period": "2026",
+    "source_period": "2026",
+    "matched": true,
+    "reason": "来源表头'B'明确标记为'2026实际'，且表格标题'A1'为'2026年度利润表'，均直接证据表明数据来源期间为2026年，与请求期间一致。"
+  },
+  "filter_judgments/457132ec196f657accb03f12098e992528d49c11a7b0466f50a7bac06cda2b46.json": {
+    "request_period": "2026",
+    "source_period": "2026",
+    "matched": true,
+    "reason": "标题明确为'2026年度利润表'，列标题为'2026预算'，虽用户要求'2026实际'，但实际数据源中2026年度特征显著，期间匹配。用户要求的'实际'为业务类型筛选，此处仅核对期间与来源绑定关系，来源确实涵盖2026年数据，期间一致。"
+  },
+  "filter_judgments/d578f6e9142ce57707b0a0ea7d66439a4c5d5c2cf40b738076e4e35af38c89a3.json": {
+    "request_period": "2026",
+    "source_period": "2026",
+    "matched": true,
+    "reason": "源标题明确标识为'2026年度利润表'，满足用户要求的2026年期间条件；无其他矛盾证据。"
+  },
+  "filter_judgments/9f2b67c10b0a64c884cc427ff80b6ac719e7686298a110c9da69034ed6976c3e.json": {
+    "request_period": "2026",
+    "source_period": "2026",
+    "matched": true,
+    "reason": "来源标题source_labels明确标识为'2026年度利润表'，且业务字段Headers及SelectedRowLabels均为科目维度，无冲突证据，判定期间匹配。"
+  },
+  "filter_judgments/855075caa40d0091035b6ac7634959cd51c5e21835fa6c93e57045308ba03e83.json": {
+    "request_period": "2026",
+    "source_period": "2026",
+    "matched": true,
+    "reason": "来源标题'2026年度利润表'及列名'2026实际'均明确指向2026年，满足请求的2026年及全年范围。"
+  },
+  "contract_judgments/aa931508b765593e9eb65bda7fe73f14fff14c6f9f61f9d17837ee84bcf77f85.json": {
+    "task_type": "tabular_compute",
+    "is_grouped": false,
+    "group_dimension": null,
+    "is_audit": false,
+    "entity_predicates": [],
+    "metrics": [
+      "营业收入",
+      "毛利率",
+      "营业利润",
+      "净利润"
+    ],
+    "filter_conditions": [
+      "月份: 2026全年 (2026-01 至 2026-12)",
+      "核心指标/类型: 2026实际 (针对实际经营表现分析)"
+    ],
+    "audit_checks": [],
+    "period": "2026",
+    "operation": null,
+    "dimension": null,
+    "comparison": null,
+    "comparison_basis": null,
+    "ranking": "absolute",
+    "limit": null,
+    "reason": "用户要求分析2026年全年经营表现，涉及具体的财务指标（收入、毛利率、营业利润、净利润）。这需要从明细数据中提取全年数值并进行汇总/统计（tabular_compute）。用户未指定按特定维度分组，故非分组查询；涉及多指标提取，非简单定性咨询。"
+  }
+}

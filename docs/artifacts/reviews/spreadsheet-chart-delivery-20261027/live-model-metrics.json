@@ -1,0 +1,258 @@
+{
+  "ttftMs": 3458.46,
+  "durationMs": 34994.03,
+  "llmDurationMs": 16422.53,
+  "toolCallsCount": 3,
+  "toolCalls": [
+    {
+      "name": "aggregate_spreadsheet",
+      "params": {
+        "query": "{'group_by': ['部门名称'], 'metrics': [{'field': '金额(K)', 'id': 'amount_sum', 'op': 'sum'}], 'source': {'data_range': 'A5:R2..."
+      },
+      "status": "error",
+      "result_status": "error",
+      "error_code": "source_unavailable",
+      "workbook_id": null
+    },
+    {
+      "name": "aggregate_spreadsheet",
+      "params": {
+        "file_path": "工数实绩明细_20261020134124.xlsx",
+        "query": "{'group_by': ['部门名称'], 'metrics': [{'field': '金额(K)', 'id': 'amount_sum', 'op': 'sum'}], 'source': {'data_range': 'A5:R2..."
+      },
+      "status": "success",
+      "result_status": "success",
+      "evidence_id": "96161d1a4f806c167a6e1e33",
+      "plan_hash": "83868640c161a13166e21e27d4a1bfb4d094d79cedafc66e84f4ca979559138d",
+      "kind": "spreadsheet_analysis",
+      "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+    },
+    {
+      "name": "render_spreadsheet_chart",
+      "params": {
+        "evidence_id": "96161d1a4f806c167a6e1e33",
+        "chart_type": "bar",
+        "category_field": "部门名称",
+        "value_field": "amount_sum"
+      },
+      "status": "success"
+    }
+  ],
+  "llmInvocations": 6,
+  "tokens": {
+    "prompt_tokens": 28259,
+    "completion_tokens": 925,
+    "total_tokens": 29184
+  },
+  "finishReason": "tool_calls",
+  "roundFinishReasons": [
+    "tool_calls",
+    "tool_calls",
+    "tool_calls",
+    "tool_calls",
+    "tool_calls"
+  ],
+  "guardDecisions": [
+    {
+      "guard": "task_intent_review",
+      "action": "accept",
+      "reason": {
+        "output_mode": "artifact",
+        "task_mode": "execute"
+      }
+    },
+    {
+      "guard": "task_intent",
+      "action": "accept",
+      "reason": {
+        "instruction_relation": "standalone",
+        "task_mode": "execute",
+        "output_mode": "artifact",
+        "artifact_types": [
+          ".html"
+        ],
+        "unit_confirmation": null,
+        "section_confirmation": null,
+        "skill_invocation": {
+          "mode": "none",
+          "name": "",
+          "replace_defaults": false
+        },
+        "requirements": [
+          {
+            "id": "1",
+            "quote": "按部门统计 金额的合计，不包含（WBS编号）中ex，sy，sp，ip，ib，sz开头的数据，然后生成柱状图"
+          }
+        ]
+      }
+    },
+    {
+      "guard": "skill_admission",
+      "action": "general",
+      "reason": {
+        "initial_candidate": "frontend-design",
+        "skill_id": null,
+        "use_default_rules": false,
+        "reason": "scope_mismatch",
+        "requirement_ids": [
+          "1"
+        ]
+      }
+    },
+    {
+      "guard": "user_unit_confirmation",
+      "action": "accept",
+      "reason": {
+        "unit": null,
+        "sections": null
+      }
+    },
+    {
+      "guard": "chart_delivery",
+      "action": "published",
+      "reason": {
+        "session_id": "chart-delivery-smoke",
+        "turn_id": "26b661e908e24e84a43085a7281c11a5",
+        "status": "published",
+        "transitions": [
+          "calculating",
+          "generating",
+          "validating",
+          "validated",
+          "published"
+        ],
+        "attempts": 1,
+        "evidence_id": "96161d1a4f806c167a6e1e33",
+        "sha256": "e014a76afbf30ef91a6a148ef6ccec4c10ca1e37820a9473a34a51fd026613c9",
+        "groups": 7,
+        "artifact_id": "3e4a546c54b5437dbf285d8203f001df",
+        "file_path": "/tmp/chart-delivery-smoke-vmrdf6a0/chart-chart-delivery-smoke-26b661e908e24e84a43085a7281c11a5-3e4a546c54b5437dbf285d8203f001df.html"
+      }
+    },
+    {
+      "guard": "deliverable_contract",
+      "action": "accept",
+      "reason": {
+        "artifact_id": "3e4a546c54b5437dbf285d8203f001df",
+        "sha256": "e014a76afbf30ef91a6a148ef6ccec4c10ca1e37820a9473a34a51fd026613c9"
+      }
+    }
+  ],
+  "modelResponses": [
+    {
+      "rawChars": 0,
+      "cleanChars": 0,
+      "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "finishReason": "tool_calls",
+      "finishReasonSource": "upstream",
+      "receivedDone": true
+    },
+    {
+      "rawChars": 0,
+      "cleanChars": 0,
+      "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "finishReason": "tool_calls",
+      "finishReasonSource": "upstream",
+      "receivedDone": true
+    },
+    {
+      "rawChars": 0,
+      "cleanChars": 0,
+      "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "finishReason": "tool_calls",
+      "finishReasonSource": "upstream",
+      "receivedDone": true
+    },
+    {
+      "rawChars": 151,
+      "cleanChars": 151,
+      "rawSha256": "2c5edf9edbe349bbfb71f37b7832dfd31f19e7a903627259e7dc415f4e6974f9",
+      "cleanSha256": "2c5edf9edbe349bbfb71f37b7832dfd31f19e7a903627259e7dc415f4e6974f9",
+      "finishReason": "tool_calls",
+      "finishReasonSource": "upstream",
+      "receivedDone": true
+    },
+    {
+      "rawChars": 0,
+      "cleanChars": 0,
+      "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "finishReason": "tool_calls",
+      "finishReasonSource": "upstream",
+      "receivedDone": true
+    }
+  ],
+  "answerValidation": {},
+  "callsLedger": [
+    {
+      "purpose": "tool_loop",
+      "model": "default",
+      "total_ms": 3556.15,
+      "usage": {
+        "prompt_tokens": 2116,
+        "total_tokens": 2298,
+        "completion_tokens": 182
+      },
+      "span_id": null
+    },
+    {
+      "purpose": "tool_loop",
+      "model": "default",
+      "total_ms": 2195.77,
+      "usage": {
+        "prompt_tokens": 2641,
+        "total_tokens": 2823,
+        "completion_tokens": 182
+      },
+      "span_id": null
+    },
+    {
+      "purpose": "tool_loop",
+      "model": "default",
+      "total_ms": 2086.37,
+      "usage": {
+        "prompt_tokens": 5402,
+        "total_tokens": 5493,
+        "completion_tokens": 91
+      },
+      "span_id": null
+    },
+    {
+      "purpose": "tool_loop",
+      "model": "default",
+      "total_ms": 3460.42,
+      "usage": {
+        "prompt_tokens": 8268,
+        "total_tokens": 8483,
+        "completion_tokens": 215
+      },
+      "span_id": null
+    },
+    {
+      "purpose": "tool_loop",
+      "model": "default",
+      "total_ms": 3436.36,
+      "usage": {
+        "prompt_tokens": 9066,
+        "total_tokens": 9231,
+        "completion_tokens": 165
+      },
+      "span_id": null
+    },
+    {
+      "purpose": "filter_conformance",
+      "model": "default",
+      "total_ms": 1687.46,
+      "usage": {
+        "prompt_tokens": 766,
+        "total_tokens": 856,
+        "completion_tokens": 90
+      },
+      "span_id": null
+    }
+  ],
+  "auxiliaryInvocations": 1
+}

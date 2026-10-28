@@ -1,0 +1,795 @@
+[
+  {
+    "index": 0,
+    "guard": "task_intent_review",
+    "action": "revise",
+    "reason": {
+      "output_mode": "conversation",
+      "task_mode": "execute"
+    }
+  },
+  {
+    "index": 1,
+    "guard": "task_intent",
+    "action": "accept",
+    "reason": {
+      "instruction_relation": "standalone",
+      "task_mode": "execute",
+      "output_mode": "conversation",
+      "artifact_types": [],
+      "unit_confirmation": null,
+      "section_confirmation": null,
+      "skill_invocation": {
+        "mode": "none",
+        "name": "",
+        "replace_defaults": false
+      },
+      "requirements": [
+        {
+          "id": "1",
+          "quote": "解释下半年盈利能力变化。"
+        }
+      ]
+    }
+  },
+  {
+    "index": 2,
+    "guard": "skill_admission",
+    "action": "general",
+    "reason": {
+      "initial_candidate": "xlsx",
+      "skill_id": null,
+      "use_default_rules": false,
+      "reason": "better_candidate",
+      "requirement_ids": [
+        "1"
+      ]
+    }
+  },
+  {
+    "index": 3,
+    "guard": "user_unit_confirmation",
+    "action": "accept",
+    "reason": {
+      "unit": null,
+      "sections": null
+    }
+  },
+  {
+    "index": 4,
+    "guard": "spreadsheet_evidence",
+    "action": "reject",
+    "reason": "【门禁复核建议】：1. 调用 aggregate_spreadsheet 工具。2. 设置 aggregation 为分组聚合，group_by=['月份']。3. 在 aggregation 字段中计算关键盈利指标，例如：'sum_净利润': 'sum(净利润)' 或 'avg(净利润)'，以及所需的 'sum(基准值)', 'sum(乐观情景)', 'sum(保守情景)'。4. 由于用户要求解释‘变化’，执行后需比较不同月份（如上半年vs下半年，或逐月趋势）的数值差异。\n【程序任务状态】\n{\"complete\": false, \"domain\": \"finance\", \"evidence_ids\": [], \"missing_metrics\": [{\"metric_id\": null, \"name\": \"基准值\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"基准值\"]}, {\"metric_id\": null, \"name\": \"乐观情景\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"乐观情景\"]}, {\"metric_id\": null, \"name\": \"保守情景\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"保守情景\"]}], \"issues\": [{\"code\": \"execution_evidence_missing\", \"message\": \"缺少本轮成功的分析执行证据。\"}, {\"code\": \"required_metrics_missing\", \"metrics\": [{\"metric_id\": null, \"name\": \"基准值\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"基准值\"]}, {\"metric_id\": null, \"name\": \"乐观情景\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"乐观情景\"]}, {\"metric_id\": null, \"name\": \"保守情景\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"保守情景\"]}], \"message\": \"分析计划遗漏所需指标计算：基准值、乐观情景、保守情景，请调用 aggregate_spreadsheet 补充聚合表达式（如 sum）。\"}, {\"code\": \"comparison_windows_missing\", \"message\": \"用户要求变化或趋势，需补充同一来源不同期间的对照及比率/变化。\"}], \"available_sheets\": [], \"known_headers\": [\"2026实际\", \"2026预算\", \"IT及办公\", \"乐观情景\", \"人员成本\", \"保守情景\", \"其他收益\", \"净利润\", \"凭证号\", \"利润实际\", \"利润差异\", \"利润达成率\", \"利润预算\", \"单位\", \"参数\", \"变动\", \"基准值\", \"备注\", \"审批状态\", \"客户/供应商\", \"差异\", \"差旅费\", \"币种\", \"市场费用\", \"所得税\", \"摘要\", \"收入\", \"收入实际\", \"收入差异\", \"收入预算\", \"数值\", \"日期\", \"月份\", \"期初余额\", \"期末余额\", \"核心指标\", \"毛利\", \"毛利率\", \"研发费用\", \"税前利润\", \"税额\", \"管理费用\", \"类型\", \"营业利润\", \"营业利润率\", \"营业成本\", \"营业收入\", \"说明\", \"费用合计\", \"部门\", \"金额\", \"销售费用\", \"项目\"], \"gate_review\": {\"action\": \"repair\", \"category\": \"execution_incomplete\", \"complete\": false, \"dismissed_issue_codes\": [], \"supporting_fact_ids\": [], \"reason\": \"执行计划为空且存在无效分析计划错误，导致未执行任何聚合计算。同时，为了回答‘变化’，需要补充时间维度的对比。当前已知表头包含‘月份’和‘净利润’（或营业利润等盈利指标），以及‘基准值’、‘乐观情景’、‘保守情景’等列，但缺乏针对这些指标在时间上的聚合与对比逻辑。\", \"repair_instruction\": \"1. 调用 aggregate_spreadsheet 工具。2. 设置 aggregation 为分组聚合，group_by=['月份']。3. 在 aggregation 字段中计算关键盈利指标，例如：'sum_净利润': 'sum(净利润)' 或 'avg(净利润)'，以及所需的 'sum(基准值)', 'sum(乐观情景)', 'sum(保守情景)'。4. 由于用户要求解释‘变化’，执行后需比较不同月份（如上半年vs下半年，或逐月趋势）的数值差异。\", \"user_question\": \"\"}}\n只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。\n（注意：上述复核与门禁建议为内部控制指引，面向用户作答时必须直接输出业务结论与数据，切勿在正文中提及“门禁系统”、“误报”、“复核建议”等内部术语。）",
+    "parsed_state": {
+      "complete": false,
+      "domain": "finance",
+      "evidence_ids": [],
+      "missing_metrics": [
+        {
+          "metric_id": null,
+          "name": "基准值",
+          "expected_type": "number",
+          "source_column_exists": true,
+          "matched_source_columns": [
+            "基准值"
+          ]
+        },
+        {
+          "metric_id": null,
+          "name": "乐观情景",
+          "expected_type": "number",
+          "source_column_exists": true,
+          "matched_source_columns": [
+            "乐观情景"
+          ]
+        },
+        {
+          "metric_id": null,
+          "name": "保守情景",
+          "expected_type": "number",
+          "source_column_exists": true,
+          "matched_source_columns": [
+            "保守情景"
+          ]
+        }
+      ],
+      "issues": [
+        {
+          "code": "execution_evidence_missing",
+          "message": "缺少本轮成功的分析执行证据。"
+        },
+        {
+          "code": "required_metrics_missing",
+          "metrics": [
+            {
+              "metric_id": null,
+              "name": "基准值",
+              "expected_type": "number",
+              "source_column_exists": true,
+              "matched_source_columns": [
+                "基准值"
+              ]
+            },
+            {
+              "metric_id": null,
+              "name": "乐观情景",
+              "expected_type": "number",
+              "source_column_exists": true,
+              "matched_source_columns": [
+                "乐观情景"
+              ]
+            },
+            {
+              "metric_id": null,
+              "name": "保守情景",
+              "expected_type": "number",
+              "source_column_exists": true,
+              "matched_source_columns": [
+                "保守情景"
+              ]
+            }
+          ],
+          "message": "分析计划遗漏所需指标计算：基准值、乐观情景、保守情景，请调用 aggregate_spreadsheet 补充聚合表达式（如 sum）。"
+        },
+        {
+          "code": "comparison_windows_missing",
+          "message": "用户要求变化或趋势，需补充同一来源不同期间的对照及比率/变化。"
+        }
+      ],
+      "available_sheets": [],
+      "known_headers": [
+        "2026实际",
+        "2026预算",
+        "IT及办公",
+        "乐观情景",
+        "人员成本",
+        "保守情景",
+        "其他收益",
+        "净利润",
+        "凭证号",
+        "利润实际",
+        "利润差异",
+        "利润达成率",
+        "利润预算",
+        "单位",
+        "参数",
+        "变动",
+        "基准值",
+        "备注",
+        "审批状态",
+        "客户/供应商",
+        "差异",
+        "差旅费",
+        "币种",
+        "市场费用",
+        "所得税",
+        "摘要",
+        "收入",
+        "收入实际",
+        "收入差异",
+        "收入预算",
+        "数值",
+        "日期",
+        "月份",
+        "期初余额",
+        "期末余额",
+        "核心指标",
+        "毛利",
+        "毛利率",
+        "研发费用",
+        "税前利润",
+        "税额",
+        "管理费用",
+        "类型",
+        "营业利润",
+        "营业利润率",
+        "营业成本",
+        "营业收入",
+        "说明",
+        "费用合计",
+        "部门",
+        "金额",
+        "销售费用",
+        "项目"
+      ],
+      "gate_review": {
+        "action": "repair",
+        "category": "execution_incomplete",
+        "complete": false,
+        "dismissed_issue_codes": [],
+        "supporting_fact_ids": [],
+        "reason": "执行计划为空且存在无效分析计划错误，导致未执行任何聚合计算。同时，为了回答‘变化’，需要补充时间维度的对比。当前已知表头包含‘月份’和‘净利润’（或营业利润等盈利指标），以及‘基准值’、‘乐观情景’、‘保守情景’等列，但缺乏针对这些指标在时间上的聚合与对比逻辑。",
+        "repair_instruction": "1. 调用 aggregate_spreadsheet 工具。2. 设置 aggregation 为分组聚合，group_by=['月份']。3. 在 aggregation 字段中计算关键盈利指标，例如：'sum_净利润': 'sum(净利润)' 或 'avg(净利润)'，以及所需的 'sum(基准值)', 'sum(乐观情景)', 'sum(保守情景)'。4. 由于用户要求解释‘变化’，执行后需比较不同月份（如上半年vs下半年，或逐月趋势）的数值差异。",
+        "user_question": ""
+      }
+    }
+  },
+  {
+    "index": 5,
+    "guard": "analysis_repair_budget",
+    "action": "extend",
+    "reason": {
+      "extra_rounds": 1,
+      "next_max_rounds": 4,
+      "issue_codes": [
+        "execution_evidence_missing",
+        "required_metrics_missing",
+        "comparison_windows_missing"
+      ]
+    }
+  },
+  {
+    "index": 6,
+    "guard": "spreadsheet_evidence",
+    "action": "reject",
+    "reason": "【门禁复核建议】：请先明确回答：1. 重点分析哪个盈利指标（如净利润、毛利率、营业利润率）？2. '变化'是与哪个时间段对比（如：较2025下半年、较2026年1-6月、还是较预算）？\n【程序任务状态】\n{\"complete\": false, \"domain\": \"finance\", \"evidence_ids\": [], \"missing_metrics\": [{\"metric_id\": null, \"name\": \"基准值\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"基准值\"]}, {\"metric_id\": null, \"name\": \"乐观情景\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"乐观情景\"]}, {\"metric_id\": null, \"name\": \"保守情景\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"保守情景\"]}], \"issues\": [{\"code\": \"execution_evidence_missing\", \"message\": \"缺少本轮成功的分析执行证据。\"}, {\"code\": \"required_metrics_missing\", \"metrics\": [{\"metric_id\": null, \"name\": \"基准值\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"基准值\"]}, {\"metric_id\": null, \"name\": \"乐观情景\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"乐观情景\"]}, {\"metric_id\": null, \"name\": \"保守情景\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"保守情景\"]}], \"message\": \"分析计划遗漏所需指标计算：基准值、乐观情景、保守情景，请调用 aggregate_spreadsheet 补充聚合表达式（如 sum）。\"}, {\"code\": \"comparison_windows_missing\", \"message\": \"用户要求变化或趋势，需补充同一来源不同期间的对照及比率/变化。\"}], \"available_sheets\": [], \"known_headers\": [\"2026实际\", \"2026预算\", \"IT及办公\", \"乐观情景\", \"人员成本\", \"保守情景\", \"其他收益\", \"净利润\", \"凭证号\", \"利润实际\", \"利润差异\", \"利润达成率\", \"利润预算\", \"单位\", \"参数\", \"变动\", \"基准值\", \"备注\", \"审批状态\", \"客户/供应商\", \"差异\", \"差旅费\", \"币种\", \"市场费用\", \"所得税\", \"摘要\", \"收入\", \"收入实际\", \"收入差异\", \"收入预算\", \"数值\", \"日期\", \"月份\", \"期初余额\", \"期末余额\", \"核心指标\", \"毛利\", \"毛利率\", \"研发费用\", \"税前利润\", \"税额\", \"管理费用\", \"类型\", \"营业利润\", \"营业利润率\", \"营业成本\", \"营业收入\", \"说明\", \"费用合计\", \"部门\", \"金额\", \"销售费用\", \"项目\"], \"gate_review\": {\"action\": \"repair\", \"category\": \"ambiguous_request\", \"complete\": false, \"dismissed_issue_codes\": [], \"supporting_fact_ids\": [], \"reason\": \"原始请求'解释下半年盈利能力变化'语义模糊。1. '盈利能力'在财务中可指利润额、利润率或ROI等，需明确指标口径；2. '变化'需明确是与上月环比、去年同期同比，还是与预算对比；3. 当前执行计划完全缺失，且表头中存在大量指标（如净利润、毛利率、营业利润等），需先确认具体分析维度。\", \"repair_instruction\": \"请先明确回答：1. 重点分析哪个盈利指标（如净利润、毛利率、营业利润率）？2. '变化'是与哪个时间段对比（如：较2025下半年、较2026年1-6月、还是较预算）？\", \"user_question\": \"为了准确分析，请问：1. 您关注的是哪项盈利指标（例如：净利润、毛利率、还是营业利润）？2. '变化'是指与哪个时间段对比（例如：去年同期、上个月、还是预算）？\", \"revalidated\": true}}\n只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。\n（注意：上述复核与门禁建议为内部控制指引，面向用户作答时必须直接输出业务结论与数据，切勿在正文中提及“门禁系统”、“误报”、“复核建议”等内部术语。）",
+    "parsed_state": {
+      "complete": false,
+      "domain": "finance",
+      "evidence_ids": [],
+      "missing_metrics": [
+        {
+          "metric_id": null,
+          "name": "基准值",
+          "expected_type": "number",
+          "source_column_exists": true,
+          "matched_source_columns": [
+            "基准值"
+          ]
+        },
+        {
+          "metric_id": null,
+          "name": "乐观情景",
+          "expected_type": "number",
+          "source_column_exists": true,
+          "matched_source_columns": [
+            "乐观情景"
+          ]
+        },
+        {
+          "metric_id": null,
+          "name": "保守情景",
+          "expected_type": "number",
+          "source_column_exists": true,
+          "matched_source_columns": [
+            "保守情景"
+          ]
+        }
+      ],
+      "issues": [
+        {
+          "code": "execution_evidence_missing",
+          "message": "缺少本轮成功的分析执行证据。"
+        },
+        {
+          "code": "required_metrics_missing",
+          "metrics": [
+            {
+              "metric_id": null,
+              "name": "基准值",
+              "expected_type": "number",
+              "source_column_exists": true,
+              "matched_source_columns": [
+                "基准值"
+              ]
+            },
+            {
+              "metric_id": null,
+              "name": "乐观情景",
+              "expected_type": "number",
+              "source_column_exists": true,
+              "matched_source_columns": [
+                "乐观情景"
+              ]
+            },
+            {
+              "metric_id": null,
+              "name": "保守情景",
+              "expected_type": "number",
+              "source_column_exists": true,
+              "matched_source_columns": [
+                "保守情景"
+              ]
+            }
+          ],
+          "message": "分析计划遗漏所需指标计算：基准值、乐观情景、保守情景，请调用 aggregate_spreadsheet 补充聚合表达式（如 sum）。"
+        },
+        {
+          "code": "comparison_windows_missing",
+          "message": "用户要求变化或趋势，需补充同一来源不同期间的对照及比率/变化。"
+        }
+      ],
+      "available_sheets": [],
+      "known_headers": [
+        "2026实际",
+        "2026预算",
+        "IT及办公",
+        "乐观情景",
+        "人员成本",
+        "保守情景",
+        "其他收益",
+        "净利润",
+        "凭证号",
+        "利润实际",
+        "利润差异",
+        "利润达成率",
+        "利润预算",
+        "单位",
+        "参数",
+        "变动",
+        "基准值",
+        "备注",
+        "审批状态",
+        "客户/供应商",
+        "差异",
+        "差旅费",
+        "币种",
+        "市场费用",
+        "所得税",
+        "摘要",
+        "收入",
+        "收入实际",
+        "收入差异",
+        "收入预算",
+        "数值",
+        "日期",
+        "月份",
+        "期初余额",
+        "期末余额",
+        "核心指标",
+        "毛利",
+        "毛利率",
+        "研发费用",
+        "税前利润",
+        "税额",
+        "管理费用",
+        "类型",
+        "营业利润",
+        "营业利润率",
+        "营业成本",
+        "营业收入",
+        "说明",
+        "费用合计",
+        "部门",
+        "金额",
+        "销售费用",
+        "项目"
+      ],
+      "gate_review": {
+        "action": "repair",
+        "category": "ambiguous_request",
+        "complete": false,
+        "dismissed_issue_codes": [],
+        "supporting_fact_ids": [],
+        "reason": "原始请求'解释下半年盈利能力变化'语义模糊。1. '盈利能力'在财务中可指利润额、利润率或ROI等，需明确指标口径；2. '变化'需明确是与上月环比、去年同期同比，还是与预算对比；3. 当前执行计划完全缺失，且表头中存在大量指标（如净利润、毛利率、营业利润等），需先确认具体分析维度。",
+        "repair_instruction": "请先明确回答：1. 重点分析哪个盈利指标（如净利润、毛利率、营业利润率）？2. '变化'是与哪个时间段对比（如：较2025下半年、较2026年1-6月、还是较预算）？",
+        "user_question": "为了准确分析，请问：1. 您关注的是哪项盈利指标（例如：净利润、毛利率、还是营业利润）？2. '变化'是指与哪个时间段对比（例如：去年同期、上个月、还是预算）？",
+        "revalidated": true
+      }
+    }
+  },
+  {
+    "index": 7,
+    "guard": "spreadsheet_evidence",
+    "action": "reject",
+    "reason": "【门禁复核建议】：请先明确回答：1. 重点分析哪个盈利指标（如净利润、毛利率、营业利润率）？2. '变化'是与哪个时间段对比（如：较2025下半年、较2026年1-6月、还是较预算）？\n【程序任务状态】\n{\"complete\": false, \"domain\": \"finance\", \"evidence_ids\": [], \"missing_metrics\": [{\"metric_id\": null, \"name\": \"基准值\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"基准值\"]}, {\"metric_id\": null, \"name\": \"乐观情景\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"乐观情景\"]}, {\"metric_id\": null, \"name\": \"保守情景\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"保守情景\"]}], \"issues\": [{\"code\": \"execution_evidence_missing\", \"message\": \"缺少本轮成功的分析执行证据。\"}, {\"code\": \"required_metrics_missing\", \"metrics\": [{\"metric_id\": null, \"name\": \"基准值\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"基准值\"]}, {\"metric_id\": null, \"name\": \"乐观情景\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"乐观情景\"]}, {\"metric_id\": null, \"name\": \"保守情景\", \"expected_type\": \"number\", \"source_column_exists\": true, \"matched_source_columns\": [\"保守情景\"]}], \"message\": \"分析计划遗漏所需指标计算：基准值、乐观情景、保守情景，请调用 aggregate_spreadsheet 补充聚合表达式（如 sum）。\"}, {\"code\": \"comparison_windows_missing\", \"message\": \"用户要求变化或趋势，需补充同一来源不同期间的对照及比率/变化。\"}], \"available_sheets\": [], \"known_headers\": [\"2026实际\", \"2026预算\", \"IT及办公\", \"乐观情景\", \"人员成本\", \"保守情景\", \"其他收益\", \"净利润\", \"凭证号\", \"利润实际\", \"利润差异\", \"利润达成率\", \"利润预算\", \"单位\", \"参数\", \"变动\", \"基准值\", \"备注\", \"审批状态\", \"客户/供应商\", \"差异\", \"差旅费\", \"币种\", \"市场费用\", \"所得税\", \"摘要\", \"收入\", \"收入实际\", \"收入差异\", \"收入预算\", \"数值\", \"日期\", \"月份\", \"期初余额\", \"期末余额\", \"核心指标\", \"毛利\", \"毛利率\", \"研发费用\", \"税前利润\", \"税额\", \"管理费用\", \"类型\", \"营业利润\", \"营业利润率\", \"营业成本\", \"营业收入\", \"说明\", \"费用合计\", \"部门\", \"金额\", \"销售费用\", \"项目\"], \"gate_review\": {\"action\": \"repair\", \"category\": \"ambiguous_request\", \"complete\": false, \"dismissed_issue_codes\": [], \"supporting_fact_ids\": [], \"reason\": \"原始请求'解释下半年盈利能力变化'语义模糊。1. '盈利能力'在财务中可指利润额、利润率或ROI等，需明确指标口径；2. '变化'需明确是与上月环比、去年同期同比，还是与预算对比；3. 当前执行计划完全缺失，且表头中存在大量指标（如净利润、毛利率、营业利润等），需先确认具体分析维度。\", \"repair_instruction\": \"请先明确回答：1. 重点分析哪个盈利指标（如净利润、毛利率、营业利润率）？2. '变化'是与哪个时间段对比（如：较2025下半年、较2026年1-6月、还是较预算）？\", \"user_question\": \"为了准确分析，请问：1. 您关注的是哪项盈利指标（例如：净利润、毛利率、还是营业利润）？2. '变化'是指与哪个时间段对比（例如：去年同期、上个月、还是预算）？\", \"revalidated\": true}}\n只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。\n（注意：上述复核与门禁建议为内部控制指引，面向用户作答时必须直接输出业务结论与数据，切勿在正文中提及“门禁系统”、“误报”、“复核建议”等内部术语。）",
+    "parsed_state": {
+      "complete": false,
+      "domain": "finance",
+      "evidence_ids": [],
+      "missing_metrics": [
+        {
+          "metric_id": null,
+          "name": "基准值",
+          "expected_type": "number",
+          "source_column_exists": true,
+          "matched_source_columns": [
+            "基准值"
+          ]
+        },
+        {
+          "metric_id": null,
+          "name": "乐观情景",
+          "expected_type": "number",
+          "source_column_exists": true,
+          "matched_source_columns": [
+            "乐观情景"
+          ]
+        },
+        {
+          "metric_id": null,
+          "name": "保守情景",
+          "expected_type": "number",
+          "source_column_exists": true,
+          "matched_source_columns": [
+            "保守情景"
+          ]
+        }
+      ],
+      "issues": [
+        {
+          "code": "execution_evidence_missing",
+          "message": "缺少本轮成功的分析执行证据。"
+        },
+        {
+          "code": "required_metrics_missing",
+          "metrics": [
+            {
+              "metric_id": null,
+              "name": "基准值",
+              "expected_type": "number",
+              "source_column_exists": true,
+              "matched_source_columns": [
+                "基准值"
+              ]
+            },
+            {
+              "metric_id": null,
+              "name": "乐观情景",
+              "expected_type": "number",
+              "source_column_exists": true,
+              "matched_source_columns": [
+                "乐观情景"
+              ]
+            },
+            {
+              "metric_id": null,
+              "name": "保守情景",
+              "expected_type": "number",
+              "source_column_exists": true,
+              "matched_source_columns": [
+                "保守情景"
+              ]
+            }
+          ],
+          "message": "分析计划遗漏所需指标计算：基准值、乐观情景、保守情景，请调用 aggregate_spreadsheet 补充聚合表达式（如 sum）。"
+        },
+        {
+          "code": "comparison_windows_missing",
+          "message": "用户要求变化或趋势，需补充同一来源不同期间的对照及比率/变化。"
+        }
+      ],
+      "available_sheets": [],
+      "known_headers": [
+        "2026实际",
+        "2026预算",
+        "IT及办公",
+        "乐观情景",
+        "人员成本",
+        "保守情景",
+        "其他收益",
+        "净利润",
+        "凭证号",
+        "利润实际",
+        "利润差异",
+        "利润达成率",
+        "利润预算",
+        "单位",
+        "参数",
+        "变动",
+        "基准值",
+        "备注",
+        "审批状态",
+        "客户/供应商",
+        "差异",
+        "差旅费",
+        "币种",
+        "市场费用",
+        "所得税",
+        "摘要",
+        "收入",
+        "收入实际",
+        "收入差异",
+        "收入预算",
+        "数值",
+        "日期",
+        "月份",
+        "期初余额",
+        "期末余额",
+        "核心指标",
+        "毛利",
+        "毛利率",
+        "研发费用",
+        "税前利润",
+        "税额",
+        "管理费用",
+        "类型",
+        "营业利润",
+        "营业利润率",
+        "营业成本",
+        "营业收入",
+        "说明",
+        "费用合计",
+        "部门",
+        "金额",
+        "销售费用",
+        "项目"
+      ],
+      "gate_review": {
+        "action": "repair",
+        "category": "ambiguous_request",
+        "complete": false,
+        "dismissed_issue_codes": [],
+        "supporting_fact_ids": [],
+        "reason": "原始请求'解释下半年盈利能力变化'语义模糊。1. '盈利能力'在财务中可指利润额、利润率或ROI等，需明确指标口径；2. '变化'需明确是与上月环比、去年同期同比，还是与预算对比；3. 当前执行计划完全缺失，且表头中存在大量指标（如净利润、毛利率、营业利润等），需先确认具体分析维度。",
+        "repair_instruction": "请先明确回答：1. 重点分析哪个盈利指标（如净利润、毛利率、营业利润率）？2. '变化'是与哪个时间段对比（如：较2025下半年、较2026年1-6月、还是较预算）？",
+        "user_question": "为了准确分析，请问：1. 您关注的是哪项盈利指标（例如：净利润、毛利率、还是营业利润）？2. '变化'是指与哪个时间段对比（例如：去年同期、上个月、还是预算）？",
+        "revalidated": true
+      }
+    }
+  },
+  {
+    "index": 8,
+    "guard": "analysis_repair_budget",
+    "action": "extend",
+    "reason": {
+      "extra_rounds": 2,
+      "next_max_rounds": 7,
+      "issue_codes": [
+        "execution_evidence_missing",
+        "required_metrics_missing",
+        "comparison_windows_missing"
+      ]
+    }
+  },
+  {
+    "index": 9,
+    "guard": "spreadsheet_evidence",
+    "action": "reject",
+    "reason": "【门禁复核建议】：撤销 issues 中的 'required_metrics_missing' 错误。该错误源于门禁规则僵化匹配了未使用的 metrics 定义，与用户实际自然语言意图不符。当前执行计划已完整覆盖用户关于'盈利能力变化'的查询需求。\n【提示】：部分请求指标在源数据中未定位到对应列。若无法基于现有字段推导计算，请向用户说明缺失列并请求确认口径，不要捏造数据。\n【程序任务状态】\n{\"complete\": false, \"domain\": \"finance\", \"evidence_ids\": [\"9726bdc6227ff2bb29f505eb\"], \"missing_metrics\": [{\"metric_id\": null, \"name\": \"基准值\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"乐观情景\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"保守情景\", \"expected_type\": \"number\", \"source_column_exists\": false}], \"issues\": [{\"code\": \"required_metrics_missing\", \"metrics\": [{\"metric_id\": null, \"name\": \"基准值\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"乐观情景\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"保守情景\", \"expected_type\": \"number\", \"source_column_exists\": false}], \"message\": \"源数据中未定位到指标 基准值、乐观情景、保守情景 对应列。\"}], \"available_sheets\": [], \"known_headers\": [\"其他收益\", \"净利润\", \"所得税\", \"月份\", \"毛利\", \"毛利率\", \"研发费用\", \"税前利润\", \"管理费用\", \"营业利润\", \"营业利润率\", \"营业成本\", \"营业收入\", \"销售费用\"], \"gate_review\": {\"action\": \"repair\", \"category\": \"gate_false_positive\", \"complete\": false, \"dismissed_issue_codes\": [], \"supporting_fact_ids\": [\"c_h1_rev\", \"c_h1_gp\", \"c_h1_op\", \"c_h1_np\", \"c_h2_rev\", \"c_h2_gp\", \"c_h2_op\", \"c_h2_np\", \"c_h1_gm\", \"c_h1_opm\", \"c_h1_npmm\", \"c_h2_gm\", \"c_h2_opm\", \"c_h2_npmm\", \"c_rev_chg\", \"c_np_chg\", \"c_gm_chg\", \"c_npmm_chg\"], \"reason\": \"门禁规则错误：系统检测到用户意图为'解释盈利能力变化'，且执行计划已完整计算上下半年的收入、利润、毛利率等关键指标及变化量。但门禁系统因`context.contract.metrics`中定义了'基准值'、'乐观情景'、'保守情景'三个未在源表头中发现的列而报错`required_metrics_missing`。根据用户原始意图（自然语言询问趋势解释），并未要求必须包含情景分析或基准对比列。源表头中确实不存在这些列，且执行计划完全基于可用字段（营业收入、净利润等）生成了合理的分析结果。因此，该缺失指标警告属于误报，应予以撤销，执行计划有效。\", \"repair_instruction\": \"撤销 issues 中的 'required_metrics_missing' 错误。该错误源于门禁规则僵化匹配了未使用的 metrics 定义，与用户实际自然语言意图不符。当前执行计划已完整覆盖用户关于'盈利能力变化'的查询需求。\", \"user_question\": \"\", \"revalidated\": true}}\n只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。\n（注意：上述复核与门禁建议为内部控制指引，面向用户作答时必须直接输出业务结论与数据，切勿在正文中提及“门禁系统”、“误报”、“复核建议”等内部术语。）",
+    "parsed_state": {
+      "complete": false,
+      "domain": "finance",
+      "evidence_ids": [
+        "9726bdc6227ff2bb29f505eb"
+      ],
+      "missing_metrics": [
+        {
+          "metric_id": null,
+          "name": "基准值",
+          "expected_type": "number",
+          "source_column_exists": false
+        },
+        {
+          "metric_id": null,
+          "name": "乐观情景",
+          "expected_type": "number",
+          "source_column_exists": false
+        },
+        {
+          "metric_id": null,
+          "name": "保守情景",
+          "expected_type": "number",
+          "source_column_exists": false
+        }
+      ],
+      "issues": [
+        {
+          "code": "required_metrics_missing",
+          "metrics": [
+            {
+              "metric_id": null,
+              "name": "基准值",
+              "expected_type": "number",
+              "source_column_exists": false
+            },
+            {
+              "metric_id": null,
+              "name": "乐观情景",
+              "expected_type": "number",
+              "source_column_exists": false
+            },
+            {
+              "metric_id": null,
+              "name": "保守情景",
+              "expected_type": "number",
+              "source_column_exists": false
+            }
+          ],
+          "message": "源数据中未定位到指标 基准值、乐观情景、保守情景 对应列。"
+        }
+      ],
+      "available_sheets": [],
+      "known_headers": [
+        "其他收益",
+        "净利润",
+        "所得税",
+        "月份",
+        "毛利",
+        "毛利率",
+        "研发费用",
+        "税前利润",
+        "管理费用",
+        "营业利润",
+        "营业利润率",
+        "营业成本",
+        "营业收入",
+        "销售费用"
+      ],
+      "gate_review": {
+        "action": "repair",
+        "category": "gate_false_positive",
+        "complete": false,
+        "dismissed_issue_codes": [],
+        "supporting_fact_ids": [
+          "c_h1_rev",
+          "c_h1_gp",
+          "c_h1_op",
+          "c_h1_np",
+          "c_h2_rev",
+          "c_h2_gp",
+          "c_h2_op",
+          "c_h2_np",
+          "c_h1_gm",
+          "c_h1_opm",
+          "c_h1_npmm",
+          "c_h2_gm",
+          "c_h2_opm",
+          "c_h2_npmm",
+          "c_rev_chg",
+          "c_np_chg",
+          "c_gm_chg",
+          "c_npmm_chg"
+        ],
+        "reason": "门禁规则错误：系统检测到用户意图为'解释盈利能力变化'，且执行计划已完整计算上下半年的收入、利润、毛利率等关键指标及变化量。但门禁系统因`context.contract.metrics`中定义了'基准值'、'乐观情景'、'保守情景'三个未在源表头中发现的列而报错`required_metrics_missing`。根据用户原始意图（自然语言询问趋势解释），并未要求必须包含情景分析或基准对比列。源表头中确实不存在这些列，且执行计划完全基于可用字段（营业收入、净利润等）生成了合理的分析结果。因此，该缺失指标警告属于误报，应予以撤销，执行计划有效。",
+        "repair_instruction": "撤销 issues 中的 'required_metrics_missing' 错误。该错误源于门禁规则僵化匹配了未使用的 metrics 定义，与用户实际自然语言意图不符。当前执行计划已完整覆盖用户关于'盈利能力变化'的查询需求。",
+        "user_question": "",
+        "revalidated": true
+      }
+    }
+  },
+  {
+    "index": 10,
+    "guard": "analysis_gate_review",
+    "action": "repair",
+    "reason": {
+      "action": "repair",
+      "category": "gate_false_positive",
+      "complete": false,
+      "dismissed_issue_codes": [],
+      "supporting_fact_ids": [
+        "c_h1_rev",
+        "c_h1_gp",
+        "c_h1_op",
+        "c_h1_np",
+        "c_h2_rev",
+        "c_h2_gp",
+        "c_h2_op",
+        "c_h2_np",
+        "c_h1_gm",
+        "c_h1_opm",
+        "c_h1_npmm",
+        "c_h2_gm",
+        "c_h2_opm",
+        "c_h2_npmm",
+        "c_rev_chg",
+        "c_np_chg",
+        "c_gm_chg",
+        "c_npmm_chg"
+      ],
+      "reason": "门禁规则错误：系统检测到用户意图为'解释盈利能力变化'，且执行计划已完整计算上下半年的收入、利润、毛利率等关键指标及变化量。但门禁系统因`context.contract.metrics`中定义了'基准值'、'乐观情景'、'保守情景'三个未在源表头中发现的列而报错`required_metrics_missing`。根据用户原始意图（自然语言询问趋势解释），并未要求必须包含情景分析或基准对比列。源表头中确实不存在这些列，且执行计划完全基于可用字段（营业收入、净利润等）生成了合理的分析结果。因此，该缺失指标警告属于误报，应予以撤销，执行计划有效。",
+      "repair_instruction": "撤销 issues 中的 'required_metrics_missing' 错误。该错误源于门禁规则僵化匹配了未使用的 metrics 定义，与用户实际自然语言意图不符。当前执行计划已完整覆盖用户关于'盈利能力变化'的查询需求。",
+      "user_question": "",
+      "revalidated": true
+    }
+  },
+  {
+    "index": 11,
+    "guard": "analysis_presentation",
+    "action": "runtime_owned",
+    "reason": {
+      "format": "unparsed",
+      "model_text_hash": "335b06b7d3bc27e800b20446e5772ae82ebb5295e30ea484e32b328027284505",
+      "matched_id_count": 0,
+      "runtime_id_count": 1,
+      "unknown_id_count": null,
+      "missing_id_count": 1
+    }
+  },
+  {
+    "index": 12,
+    "guard": "spreadsheet_evidence",
+    "action": "reject",
+    "reason": "【门禁复核建议】：撤销 issues 中的 'required_metrics_missing' 错误。该错误源于门禁规则僵化匹配了未使用的 metrics 定义，与用户实际自然语言意图不符。当前执行计划已完整覆盖用户关于'盈利能力变化'的查询需求。\n【提示】：部分请求指标在源数据中未定位到对应列。若无法基于现有字段推导计算，请向用户说明缺失列并请求确认口径，不要捏造数据。\n【程序任务状态】\n{\"complete\": false, \"domain\": \"finance\", \"evidence_ids\": [\"9726bdc6227ff2bb29f505eb\"], \"missing_metrics\": [{\"metric_id\": null, \"name\": \"基准值\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"乐观情景\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"保守情景\", \"expected_type\": \"number\", \"source_column_exists\": false}], \"issues\": [{\"code\": \"required_metrics_missing\", \"metrics\": [{\"metric_id\": null, \"name\": \"基准值\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"乐观情景\", \"expected_type\": \"number\", \"source_column_exists\": false}, {\"metric_id\": null, \"name\": \"保守情景\", \"expected_type\": \"number\", \"source_column_exists\": false}], \"message\": \"源数据中未定位到指标 基准值、乐观情景、保守情景 对应列。\"}], \"available_sheets\": [], \"known_headers\": [\"其他收益\", \"净利润\", \"所得税\", \"月份\", \"毛利\", \"毛利率\", \"研发费用\", \"税前利润\", \"管理费用\", \"营业利润\", \"营业利润率\", \"营业成本\", \"营业收入\", \"销售费用\"], \"gate_review\": {\"action\": \"repair\", \"category\": \"gate_false_positive\", \"complete\": false, \"dismissed_issue_codes\": [], \"supporting_fact_ids\": [\"c_h1_rev\", \"c_h1_gp\", \"c_h1_op\", \"c_h1_np\", \"c_h2_rev\", \"c_h2_gp\", \"c_h2_op\", \"c_h2_np\", \"c_h1_gm\", \"c_h1_opm\", \"c_h1_npmm\", \"c_h2_gm\", \"c_h2_opm\", \"c_h2_npmm\", \"c_rev_chg\", \"c_np_chg\", \"c_gm_chg\", \"c_npmm_chg\"], \"reason\": \"门禁规则错误：系统检测到用户意图为'解释盈利能力变化'，且执行计划已完整计算上下半年的收入、利润、毛利率等关键指标及变化量。但门禁系统因`context.contract.metrics`中定义了'基准值'、'乐观情景'、'保守情景'三个未在源表头中发现的列而报错`required_metrics_missing`。根据用户原始意图（自然语言询问趋势解释），并未要求必须包含情景分析或基准对比列。源表头中确实不存在这些列，且执行计划完全基于可用字段（营业收入、净利润等）生成了合理的分析结果。因此，该缺失指标警告属于误报，应予以撤销，执行计划有效。\", \"repair_instruction\": \"撤销 issues 中的 'required_metrics_missing' 错误。该错误源于门禁规则僵化匹配了未使用的 metrics 定义，与用户实际自然语言意图不符。当前执行计划已完整覆盖用户关于'盈利能力变化'的查询需求。\", \"user_question\": \"\", \"revalidated\": true}}\n只修复issues中的执行或任务缺项；已有指标不重复计算。比率不是金额。证据ID由程序维护，不需要重写ID或最终数字，也不要为修复hypotheses重新调用工具。\n（注意：上述复核与门禁建议为内部控制指引，面向用户作答时必须直接输出业务结论与数据，切勿在正文中提及“门禁系统”、“误报”、“复核建议”等内部术语。）",
+    "parsed_state": {
+      "complete": false,
+      "domain": "finance",
+      "evidence_ids": [
+        "9726bdc6227ff2bb29f505eb"
+      ],
+      "missing_metrics": [
+        {
+          "metric_id": null,
+          "name": "基准值",
+          "expected_type": "number",
+          "source_column_exists": false
+        },
+        {
+          "metric_id": null,
+          "name": "乐观情景",
+          "expected_type": "number",
+          "source_column_exists": false
+        },
+        {
+          "metric_id": null,
+          "name": "保守情景",
+          "expected_type": "number",
+          "source_column_exists": false
+        }
+      ],
+      "issues": [
+        {
+          "code": "required_metrics_missing",
+          "metrics": [
+            {
+              "metric_id": null,
+              "name": "基准值",
+              "expected_type": "number",
+              "source_column_exists": false
+            },
+            {
+              "metric_id": null,
+              "name": "乐观情景",
+              "expected_type": "number",
+              "source_column_exists": false
+            },
+            {
+              "metric_id": null,
+              "name": "保守情景",
+              "expected_type": "number",
+              "source_column_exists": false
+            }
+          ],
+          "message": "源数据中未定位到指标 基准值、乐观情景、保守情景 对应列。"
+        }
+      ],
+      "available_sheets": [],
+      "known_headers": [
+        "其他收益",
+        "净利润",
+        "所得税",
+        "月份",
+        "毛利",
+        "毛利率",
+        "研发费用",
+        "税前利润",
+        "管理费用",
+        "营业利润",
+        "营业利润率",
+        "营业成本",
+        "营业收入",
+        "销售费用"
+      ],
+      "gate_review": {
+        "action": "repair",
+        "category": "gate_false_positive",
+        "complete": false,
+        "dismissed_issue_codes": [],
+        "supporting_fact_ids": [
+          "c_h1_rev",
+          "c_h1_gp",
+          "c_h1_op",
+          "c_h1_np",
+          "c_h2_rev",
+          "c_h2_gp",
+          "c_h2_op",
+          "c_h2_np",
+          "c_h1_gm",
+          "c_h1_opm",
+          "c_h1_npmm",
+          "c_h2_gm",
+          "c_h2_opm",
+          "c_h2_npmm",
+          "c_rev_chg",
+          "c_np_chg",
+          "c_gm_chg",
+          "c_npmm_chg"
+        ],
+        "reason": "门禁规则错误：系统检测到用户意图为'解释盈利能力变化'，且执行计划已完整计算上下半年的收入、利润、毛利率等关键指标及变化量。但门禁系统因`context.contract.metrics`中定义了'基准值'、'乐观情景'、'保守情景'三个未在源表头中发现的列而报错`required_metrics_missing`。根据用户原始意图（自然语言询问趋势解释），并未要求必须包含情景分析或基准对比列。源表头中确实不存在这些列，且执行计划完全基于可用字段（营业收入、净利润等）生成了合理的分析结果。因此，该缺失指标警告属于误报，应予以撤销，执行计划有效。",
+        "repair_instruction": "撤销 issues 中的 'required_metrics_missing' 错误。该错误源于门禁规则僵化匹配了未使用的 metrics 定义，与用户实际自然语言意图不符。当前执行计划已完整覆盖用户关于'盈利能力变化'的查询需求。",
+        "user_question": "",
+        "revalidated": true
+      }
+    }
+  }
+]
