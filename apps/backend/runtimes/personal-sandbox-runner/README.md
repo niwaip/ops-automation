@@ -55,12 +55,42 @@
 SVG离线绘制，支持负数和零值及悬浮精确数值，不依赖CDN。自定义复杂页面和其他图表仍走现有流程；
 本改动不宣称整个通用沙箱已迁移到按轮次隔离的工作目录。公共HTML导出器还会拒绝将明确交付失败的正文包装为成功产物。
 
+图表指标选择只匹配“用户指令：”之后的当前指令，并排除已核验来源文件的路径及文件名。
+附件清单中的“工数”等字段词不会被视为绘图要求；用户明确选择多个求和指标或未能唯一选择时，仍保留歧义门禁。
+
+模型代理返回唯一 `call_id`，遥测ledger保留该字段。同一调用经辅助统计和上层响应统计时，
+Token、耗时和请求数只累计一次，响应指纹、结束原因及首轮计时仍保留。
+去重不使用Token数、耗时或父span；无call_id的旧响应保留原有累计行为。此变更不回写历史会话统计。
+
 最小回归：`PYTHONPATH=src python3 -m unittest discover -s tests -p test_spreadsheet_chart_delivery.py`。
+指标隔离与记账回归：同样运行 `test_chart_metric_selection.py` 和 `test_llm_accounting.py`。
 容器中的Python模块为只读源码挂载；每次dsh启动新进程加载。验证实际挂载和新进程指纹，无需重建服务。
 
 ---
 
 ## 一、职责与系统定位
+
+### 办公运行环境与目标格式
+
+办公依赖在镜像中预装，不能依靠用户任务中的临时 pip 安装完成部署。从仓库根目录构建：
+
+```bash
+./docker/start-smart.sh dev --profile sandbox-build build user-sandbox-image
+```
+
+构建与启动均以非 root 用户、忽略用户 site-packages 的方式检查办公库，并写入、重读测试 PPTX。
+通过后镜像带 `ops.sandbox.runtime-contract=office-v1` 标识。统一入口同时计算依赖清单指纹并传给构建和 Broker；
+Session Broker 校验运行时标识、依赖指纹和实际镜像 ID，拒绝未构建或依赖清单过期的镜像；
+已停止的旧镜像沙箱会在下次启动时替换，工作区和知识目录挂载保留。运行中或暂停的旧沙箱不会被强制终止，
+需在任务结束并停止后重试。修改镜像后，仅重启原容器不会应用新镜像；销毁旧容器时其可写层会丢失，
+持久文件应保存到 `/workspace` 或 `/knowledge`。
+
+用户明确要求 PPT、Word、Excel 或 PDF 时，任务契约保留对应目标格式，即使技能准入转通用能力执行。
+明确要求 HTML 演示稿时保留 HTML；后续明确切换格式时以新要求为准。发送 HTML 附件不能让缺失的 PPTX 契约通过。
+
+bash 工具使用 Bash 的 `pipefail` 传播流水线失败，`pip ... | tail -5` 不再掩盖安装失败。
+显式使用 `||` 处理的失败仍按命令自身结果返回。Markdown 写入异常也返回结构化 error。
+遇到预装办公库缺失时，自愈提示要求修复镜像，不再引导模型重复安装系统依赖。
 
 - **执行主体**：运行在每个用户的独立隔离沙箱容器（`ops-user-sandbox:local`）内部，以非 root 用户（`sandbox`）权限运行；
 - **核心角色**：DeepSeek Harness (`dsh`) CLI 智能体引擎，负责自主推理（ReAct 循环）、多格式工具调用、技能检索、联网事实检索、办公文档处理与产物导出；

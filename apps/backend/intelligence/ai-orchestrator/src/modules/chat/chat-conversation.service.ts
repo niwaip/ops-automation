@@ -540,6 +540,9 @@ export class ChatConversationService {
     }
     if (params.executionTrace !== undefined) {
       metadata.executionTrace = params.executionTrace;
+      if (Array.isArray(params.executionTrace.artifacts)) {
+        metadata.artifacts = params.executionTrace.artifacts;
+      }
     }
     return metadata;
   }

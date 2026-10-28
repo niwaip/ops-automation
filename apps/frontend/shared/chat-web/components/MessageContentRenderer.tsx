@@ -526,4 +526,4 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
   );
 };
 
-export default MessageContentRenderer;
+export default React.memo(MessageContentRenderer);

@@ -808,6 +808,7 @@ def cmd_run(args):
                 telemetry.record_guard("attachment_diagnostic", "accept", "acknowledged_unreadable_attachment")
 
         # 6. 产物导出与落盘 (HTML/PPT 及各种文档交付物)
+        t_export_start = time.time()
         from .spreadsheet_chart_delivery import managed_chart_export
         if managed_chart_export(loop_res.telemetry):
             # Published files already passed run-scoped acceptance. Do not scan or
@@ -834,6 +835,7 @@ def cmd_run(args):
             )
 
         # 7. 会话历史持久化
+        t_persist_start = time.time()
         if history_file:
             try:
                 existing_history.append({"role": "user", "content": prompt})
@@ -845,6 +847,12 @@ def cmd_run(args):
                     json.dump(existing_history[-policy.recent_history_save_count:], f, ensure_ascii=False, indent=2, default=str)
             except Exception as exc:
                 print(f'⚠️ [Harness Evidence Persistence] 会话或证据保存失败：{type(exc).__name__}', file=sys.stderr)
+
+        t_post_end = time.time()
+        export_ms = (t_persist_start - t_export_start) * 1000
+        persist_ms = (t_post_end - t_persist_start) * 1000
+        if export_ms > 200 or persist_ms > 200:
+            print(f"⏱️ [Harness Post-Processing] Export: {export_ms:.1f}ms, Persistence: {persist_ms:.1f}ms", flush=True)
 
         # 8. 协议标记与结果序列化
         elapsed_ms = (time.time() - overall_start_time) * 1000

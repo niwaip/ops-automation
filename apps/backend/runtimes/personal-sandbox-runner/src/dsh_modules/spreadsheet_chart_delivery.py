@@ -41,10 +41,15 @@ def chart_dataset(receipt, prompt):
     if not isinstance(groups, list) or not groups or not all(isinstance(g, str) for g in groups):
         raise ValueError('chart_requires_grouped_query')
     sums = [m for m in metrics if m.get('op') == 'sum' and m.get('field')]
+    command = str(prompt or '').split('用户指令：')[-1]
+    # Source references are context, even when repeated inside the user's command.
+    source_path = str(receipt.provenance.get('file_path') or '')
+    if source_path:
+        command = command.replace(source_path, '').replace(Path(source_path).name, '')
     # Only choose a metric actually requested; never chart an arbitrary extra metric.
     def mentioned(metric):
         field = re.sub(r'[（(].*?[）)]', '', metric['field'])
-        return field in prompt
+        return field in command
     selected = [m for m in sums if mentioned(m)]
     if len(selected) != 1:
         if len(sums) == 1:

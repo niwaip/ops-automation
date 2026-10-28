@@ -24,6 +24,8 @@ import {
 import { handleSavePersonalSkillChat } from '../personal-skill/personal-skill-chat.handler';
 import { PersonalSkillCaptureService } from '../personal-skill/personal-skill-capture.service';
 
+import { createSandboxAnswerEmitter } from './sandbox-answer-delivery';
+
 const SANDBOX_HISTORY_TURNS_LIMIT = Number(process.env.SANDBOX_HISTORY_TURNS_LIMIT || 16);
 const SANDBOX_HISTORY_ITEM_CHAR_LIMIT = Number(process.env.SANDBOX_HISTORY_ITEM_CHAR_LIMIT || 12000);
 const SANDBOX_ATTACHMENT_TEXT_LIMIT = Number(process.env.SANDBOX_ATTACHMENT_TEXT_LIMIT || 16000);
@@ -234,6 +236,7 @@ export class UserSandboxDispatcherService {
     userId: string,
     abortSignal?: AbortSignal
   ): Promise<boolean> {
+    emit = createSandboxAnswerEmitter(emit);
     const effectiveUserId = (body.userId || userId || '').trim();
     if (!effectiveUserId) {
       throw new BadRequestException('userId 不能为空');
@@ -871,12 +874,14 @@ export class UserSandboxDispatcherService {
       }
 
       // 自动解析沙箱生成/外发的图片与各类交付物文件（Word/Excel/PPT/PDF等），转换为内联 Markdown 或专属下载卡片
+      const deliveryArtifacts: Array<{ type: string; name: string; downloadUrl: string }> = [];
       cleanAnswer = this.embedWorkspaceDeliverablesAndImagesInAnswer(
         effectiveUserId,
         cleanAnswer,
         outboundFiles,
         sessionAttachedFiles,
-        turnStartTime
+        turnStartTime,
+        (artifact) => deliveryArtifacts.push(artifact)
       );
 
       if (!cleanAnswer) {
@@ -922,6 +927,8 @@ export class UserSandboxDispatcherService {
             exitCode: harnessResult.exitCode,
             metrics: executionMetrics,
           },
+          artifacts: deliveryArtifacts.length > 0 ? deliveryArtifacts : undefined,
+          answerStatus: 'committed',
           outboundFiles: filteredOutboundFiles.length > 0 ? filteredOutboundFiles : undefined,
           reminders: createdReminders.length > 0 ? createdReminders : undefined,
         },
@@ -947,6 +954,7 @@ export class UserSandboxDispatcherService {
           durationMs: harnessResult.durationMs,
           exitCode: harnessResult.exitCode,
           metrics: executionMetrics,
+          artifacts: deliveryArtifacts,
           outboundFiles: filteredOutboundFiles.length > 0 ? filteredOutboundFiles : undefined,
         },
       });
@@ -1077,7 +1085,8 @@ export class UserSandboxDispatcherService {
     text: string,
     outboundFiles: Array<{ filePath: string; fileName: string; comment?: string }>,
     sessionFiles: string[] = [],
-    turnStartTime?: number
+    turnStartTime?: number,
+    onArtifact?: (artifact: { type: string; name: string; downloadUrl: string }) => void
   ): string {
     return embedWorkspaceDeliverablesAndImagesInAnswer({
       userId,
@@ -1085,6 +1094,8 @@ export class UserSandboxDispatcherService {
       outboundFiles,
       sessionFiles,
       turnStartTime,
+      embedDownloadCards: !onArtifact,
+      onArtifact,
       getWorkspaceFilePath: (uid, fname) => this.getWorkspaceFilePath(uid, fname),
       onImageResolveError: (fname, err) => {
         this.logger.warn(`Failed to resolve workspace image ${fname}: ${err?.message || err}`);

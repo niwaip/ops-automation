@@ -196,3 +196,43 @@ describe('resolveChatMessageUsage', () => {
 });
 
 
+
+describe('independent chat progress and artifacts', () => {
+  it('does not replace a readable answer or reactivate streaming for progress-only events', () => {
+    const body = '已核验的表格正文';
+    const reduced = reduceChatStreamEvent({ event: {
+      type: StreamEventType.OBSERVATION, content: '正在整理元数据', data: { progressOnly: true },
+    }, accumulatedContent: body, mode: 'chat' });
+    assert.equal(reduced.accumulatedContent, body);
+    assert.equal('content' in reduced.messagePatch, false);
+    assert.equal('contentParts' in reduced.messagePatch, false);
+    assert.equal('isStreaming' in reduced.messagePatch, false);
+    assert.equal(reduced.progressLog?.stage, 'observation');
+    assert.equal(reduced.progressLog?.text, '正在整理元数据');
+  });
+
+  it('attaches downloads without changing body or contentParts', () => {
+    const reduced = reduceChatStreamEvent({ event: {
+      type: StreamEventType.RESULT, content: '', data: { artifactsOnly: true,
+        artifacts: [{ name: 'result.xlsx', downloadUrl: '/api/ai/chat/workspace-files/me/result.xlsx' }] },
+    }, accumulatedContent: '正文保持不变', mode: 'chat' });
+    assert.equal(reduced.accumulatedContent, '正文保持不变');
+    assert.equal('content' in reduced.messagePatch, false);
+    assert.equal('contentParts' in reduced.messagePatch, false);
+    assert.equal('isStreaming' in reduced.messagePatch, false);
+    assert.equal(reduced.messagePatch.metadata?.artifacts?.[0].name, 'result.xlsx');
+  });
+});
+
+ it('keeps provisional text hidden while reporting live progress', () => {
+   for (const text of ['正在查询', '正在查询\n已读取 3 条热点']) {
+     const reduced = reduceChatStreamEvent({ event: {
+       type: StreamEventType.OBSERVATION, content: text,
+       data: { progressOnly: true, isDelta: true },
+     }, accumulatedContent: '正式正文', mode: 'chat' });
+     assert.equal(reduced.accumulatedContent, '正式正文');
+     assert.equal(reduced.progressLog?.text, `正在整理回答（已处理 ${text.length} 字符），等待校验…`);
+     assert.equal('isStreaming' in reduced.messagePatch, false);
+     assert.equal('content' in reduced.messagePatch, false);
+   }
+ });

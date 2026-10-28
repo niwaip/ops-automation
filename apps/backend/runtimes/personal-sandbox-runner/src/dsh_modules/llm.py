@@ -6,6 +6,7 @@ import json
 import re
 import sys
 import time
+import uuid
 import urllib.request
 import urllib.error
 from typing import Any, Optional, List, Dict, Tuple
@@ -408,6 +409,7 @@ def call_model_proxy(
     if not finish_reason:
         finish_reason = "stop" if received_done else "stream_closed_prematurely"
 
+    call_id = uuid.uuid4().hex
     try:
         from .telemetry import get_active_telemetry
         active_tel = telemetry or get_active_telemetry()
@@ -416,14 +418,18 @@ def call_model_proxy(
                 active_tel.record_auxiliary_call(
                     purpose=purpose,
                     usage=usage,
-                    total_ms=total_ms,
+                    total_ms=round(total_ms, 2),
                     model=model or "default",
-                    span_id=parent_span_id
+                    span_id=parent_span_id,
+                    call_id=call_id
                 )
     except Exception:
         pass
 
     return {
+        "call_id": call_id,
+        "model": model or "default",
+        "span_id": parent_span_id,
         "content": res_text,
         "tool_calls": structured_calls,
         "finish_reason": finish_reason,

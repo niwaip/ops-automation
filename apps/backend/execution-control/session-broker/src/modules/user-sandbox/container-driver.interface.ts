@@ -42,6 +42,7 @@ export interface DriverMetadata {
 }
 
 export interface IContainerDriver {
+  inspectImage(image: string): Promise<{ Id: string; Config?: { Labels?: Record<string, string> } }>;
   getContainer(idOrName: string): ContainerHandle;
   createContainer(options: Record<string, unknown>): Promise<ContainerHandle>;
   listContainers(options?: { all?: boolean; filters?: Record<string, string[] | string> }): Promise<any[]>;

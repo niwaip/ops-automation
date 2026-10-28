@@ -42,6 +42,9 @@ echo "Node version: $(node -v 2>/dev/null || echo 'not installed')"
 echo "Python version: $(python3 --version 2>/dev/null || echo 'not installed')"
 echo "Git version: $(git --version 2>/dev/null || echo 'not installed')"
 
+# Fail before accepting tasks when the immutable runtime is incomplete.
+python3 -s /usr/local/bin/check-sandbox-runtime.py
+
 # 执行传入的命令，如果为空则常驻等待
 if [ $# -eq 0 ]; then
   echo "Sandbox is ready. Entering idle listening state..."

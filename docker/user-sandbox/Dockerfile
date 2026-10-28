@@ -91,9 +91,18 @@ RUN chmod -R 755 /opt/dsh/skills 2>/dev/null || true
 # 8. 拷贝入口脚本并设置权限
 COPY docker/user-sandbox/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
+COPY docker/user-sandbox/check-runtime.py /usr/local/bin/check-sandbox-runtime.py
+COPY apps/backend/runtimes/personal-sandbox-runner/requirements.txt /etc/dsh/requirements.txt
+ARG USER_SANDBOX_REQUIREMENTS_SHA256
+RUN test "$(sha256sum /etc/dsh/requirements.txt | cut -d ' ' -f 1)" = "$USER_SANDBOX_REQUIREMENTS_SHA256"
 
 # 切换为普通非 root 用户，严防篡改系统运行时环境
 USER sandbox
+
+# Ignore per-user pip installs: the image itself must supply the dependencies.
+RUN python3 -s /usr/local/bin/check-sandbox-runtime.py
+LABEL ops.sandbox.runtime-contract="office-v1"
+LABEL ops.sandbox.requirements-sha256="$USER_SANDBOX_REQUIREMENTS_SHA256"
 
 EXPOSE 3000 8080
 

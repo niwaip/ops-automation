@@ -6,7 +6,7 @@ import contextvars
 import json
 import re
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict, Any, List, Tuple, Optional, Set
 from .response_observability import response_fingerprint
 
 
@@ -184,6 +184,8 @@ class TelemetryStats:
     model_responses: List[Dict[str, Any]] = field(default_factory=list)
     answer_validation: Dict[str, Any] = field(default_factory=dict)
     calls_ledger: List[Dict[str, Any]] = field(default_factory=list)
+    _accounted_call_ids: Set[str] = field(default_factory=set, init=False, repr=False)
+    _response_call_ids: Set[str] = field(default_factory=set, init=False, repr=False)
 
     def __post_init__(self):
         set_active_telemetry(self)
@@ -194,10 +196,20 @@ class TelemetryStats:
         usage: Optional[Dict[str, Any]] = None,
         total_ms: float = 0.0,
         model: str = "default",
-        span_id: Optional[str] = None
+        span_id: Optional[str] = None,
+        call_id: Optional[str] = None
     ) -> None:
         """Records an auxiliary LLM call (intent, gate_review, filter_conformance) into the unified ledger."""
-        self.auxiliary_invocations += 1
+        self._record_call(purpose, usage, total_ms, model, span_id, call_id, auxiliary=True)
+
+    def _record_call(self, purpose, usage, total_ms, model, span_id, call_id, *, auxiliary=False):
+        """One accounting owner for both layers; equal usage never implies equal calls."""
+        if call_id:
+            if call_id in self._accounted_call_ids:
+                return
+            self._accounted_call_ids.add(call_id)
+        if auxiliary:
+            self.auxiliary_invocations += 1
         self.llm_invocations += 1
         self.total_ms += total_ms
         if usage and isinstance(usage, dict):
@@ -218,7 +230,8 @@ class TelemetryStats:
             "model": model,
             "total_ms": round(total_ms, 2),
             "usage": usage or {},
-            "span_id": span_id
+            "span_id": span_id,
+            "call_id": call_id
         })
 
     def record_guard(self, guard: str, action: str, reason: Any = None) -> None:
@@ -242,35 +255,21 @@ class TelemetryStats:
         if not isinstance(llm_res, dict):
             return
 
-        self.llm_invocations += 1
-        self.total_ms += llm_res.get("total_ms", 0)
+        call_id = llm_res.get("call_id")
+        self._record_call(purpose, llm_res.get("usage"), llm_res.get("total_ms", 0),
+                          llm_res.get("model", "default"), llm_res.get("span_id"), call_id)
         if is_first_round:
             self.ttft_ms = llm_res.get("ttft_ms", 0)
-        new_usage = llm_res.get("usage")
-        if new_usage and isinstance(new_usage, dict):
-            if not self.tokens:
-                self.tokens = {
-                    "prompt_tokens": 0,
-                    "completion_tokens": 0,
-                    "total_tokens": 0
-                }
-            for k in ["prompt_tokens", "completion_tokens", "total_tokens"]:
-                if k in new_usage and isinstance(new_usage[k], (int, float)):
-                    self.tokens[k] = self.tokens.get(k, 0) + int(new_usage[k])
-            for k, v in new_usage.items():
-                if k not in ["prompt_tokens", "completion_tokens", "total_tokens"]:
-                    self.tokens[k] = v
+        # An auxiliary entry owns accounting, while the caller still supplies
+        # the response fingerprint, finish reason and first-round timing.
+        if call_id:
+            if call_id in self._response_call_ids:
+                return
+            self._response_call_ids.add(call_id)
         fr = llm_res.get("finish_reason") or "unknown"
         self.finish_reason = fr
         self.round_finish_reasons.append(fr)
         self.model_responses.append(response_fingerprint(llm_res))
-        self.calls_ledger.append({
-            "purpose": purpose,
-            "model": llm_res.get("model", "default"),
-            "total_ms": round(llm_res.get("total_ms", 0), 2),
-            "usage": new_usage or {},
-            "span_id": llm_res.get("span_id")
-        })
 
     def record_tool_call(
         self,

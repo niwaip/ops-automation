@@ -321,6 +321,7 @@ project_root="$REPO_ROOT"
 ensure_env_file
 
 export PROJECT_ROOT="$project_root"
+export USER_SANDBOX_REQUIREMENTS_SHA256="$(python3 -c 'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())' "$project_root/apps/backend/runtimes/personal-sandbox-runner/requirements.txt")"
 
 if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ] || [ "${1:-}" = "help" ]; then
     print_usage

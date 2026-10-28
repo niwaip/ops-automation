@@ -465,6 +465,23 @@ export const reduceChatStreamEvent = ({
 }: ReduceChatStreamEventParams): ReduceChatStreamEventResult => {
   const data = asRecord(event.data);
   const normalizedResult = normalizeNormalizedResult(data?.normalizedResult);
+  // Progress and attachment metadata never replace a committed Markdown body.
+  if (mode === 'chat' && (data?.progressOnly === true || data?.artifactsOnly === true)) {
+    return {
+      accumulatedContent,
+      progressLog: data.progressOnly === true && event.content.trim() ? {
+        stage: event.type === StreamEventTypeValue.ACTION ? 'action' : 'observation',
+        text: data.isDelta === true
+          ? `正在整理回答（已处理 ${event.content.length} 字符），等待校验…`
+          : compactText(event.content, 300),
+      } : undefined,
+      messagePatch: { metadata: {
+        mode,
+        ...(data.artifactsOnly === true ? { artifacts: normalizeResultArtifacts(data.artifacts) } : {}),
+        ...(typeof data.isQueued === 'boolean' ? { isQueued: data.isQueued } : {}),
+      } },
+    };
+  }
   const contentText = event.content;
   const progressLog = mode === 'task' ? buildTaskProgressLog(event, data, normalizedResult) : undefined;
   const resolvedTaskStatus = resolveTaskStatus(event.type, mode, data);

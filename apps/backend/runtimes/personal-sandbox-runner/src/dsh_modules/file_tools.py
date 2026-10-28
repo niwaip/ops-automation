@@ -17,7 +17,7 @@ import tempfile
 import unicodedata
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Optional, Tuple, List, Dict, Any, Iterable
+from typing import Optional, Tuple, List, Dict, Any, Iterable, Set
 
 IMAGE_MIME_MAP = {
     ".jpg": "image/jpeg",
@@ -200,10 +200,86 @@ def _locate_readable_candidate(raw: str, ws: str, kn: str) -> Optional[Path]:
     return None
 
 
+_PROTECTED_ATTACHMENTS_CACHE: Dict[str, Tuple[float, Set[str]]] = {}
+
+
+def clear_protected_session_files_cache() -> None:
+    """Clears the in-memory protected attachment filenames cache."""
+    global _PROTECTED_ATTACHMENTS_CACHE
+    _PROTECTED_ATTACHMENTS_CACHE.clear()
+
+
+def get_protected_session_attachment_names(ws: Path) -> Set[str]:
+    """Retrieves all protected session attachment filenames across the workspace with memory caching.
+
+    Caches results per workspace directory for 60 seconds to avoid repeating expensive
+    O(N_files * N_sessions) disk scans across hundreds of session directories.
+    """
+    global _PROTECTED_ATTACHMENTS_CACHE
+    ws_key = str(ws.resolve())
+    now = time.time()
+    cached = _PROTECTED_ATTACHMENTS_CACHE.get(ws_key)
+    if cached and (now - cached[0] < 60.0):
+        return cached[1]
+
+    names: Set[str] = set()
+    env_atts = os.environ.get("DSH_SESSION_ATTACHMENTS", "")
+    if env_atts:
+        for fname in env_atts.split(","):
+            if fname.strip():
+                names.add(fname.strip())
+
+    backup_dir = ws / ".dsh" / "inputs_backup"
+    if backup_dir.is_dir():
+        try:
+            for item in backup_dir.iterdir():
+                if item.is_file():
+                    names.add(item.name)
+        except Exception:
+            pass
+
+    sessions_dir = ws / ".dsh" / "sessions"
+    if sessions_dir.is_dir():
+        try:
+            for att_file in sessions_dir.glob("*.attachments.json"):
+                try:
+                    with open(att_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        if isinstance(data, list):
+                            for item in data:
+                                fname = item if isinstance(item, str) else (item.get("fileName", "") if isinstance(item, dict) else "")
+                                if fname:
+                                    names.add(fname)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    user_sess_dir = ws / ".sessions"
+    if user_sess_dir.is_dir():
+        try:
+            for att_file in user_sess_dir.glob("*/attachments.json"):
+                try:
+                    with open(att_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        if isinstance(data, list):
+                            for item in data:
+                                fname = item if isinstance(item, str) else (item.get("fileName", "") if isinstance(item, dict) else "")
+                                if fname:
+                                    names.add(fname)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    _PROTECTED_ATTACHMENTS_CACHE[ws_key] = (now, names)
+    return names
+
+
 def is_protected_session_file(target: Path) -> bool:
     """Checks whether the file is an original input attachment in the current session."""
     try:
-        # 1. 检查环境变量 DSH_SESSION_ATTACHMENTS
+        # 1. 检查环境变量 DSH_SESSION_ATTACHMENTS 快速通道
         env_atts = os.environ.get("DSH_SESSION_ATTACHMENTS", "")
         if env_atts:
             for fname in env_atts.split(","):
@@ -213,40 +289,16 @@ def is_protected_session_file(target: Path) -> bool:
         import dsh_modules.config as cfg
         ws = Path(getattr(cfg, "WORKSPACE_DIR", "/workspace"))
 
-        # 2. 检查 .dsh/inputs_backup/
-        for base in [ws, Path.cwd(), target.parent]:
-            backup = base / ".dsh" / "inputs_backup" / target.name
-            if backup.exists():
-                return True
+        # 2. 检查当前工作区的受保护文件名缓存 (O(1) 查找，彻底消除 glob 400+ 目录的重复 IO)
+        protected_names = get_protected_session_attachment_names(ws)
+        if target.name in protected_names:
+            return True
 
-        # 3. 检查 .dsh/sessions/*.attachments.json 与 .sessions/*/attachments.json
-        for base in [ws, Path.cwd(), target.parent]:
-            sessions_dir = base / ".dsh" / "sessions"
-            if sessions_dir.exists():
-                for att_file in sessions_dir.glob("*.attachments.json"):
-                    try:
-                        with open(att_file, "r", encoding="utf-8") as f:
-                            data = json.load(f)
-                            if isinstance(data, list):
-                                for item in data:
-                                    fname = item if isinstance(item, str) else item.get("fileName", "")
-                                    if fname and target.name == fname:
-                                        return True
-                    except Exception:
-                        pass
-            sess_dir = base / ".sessions"
-            if sess_dir.exists():
-                for att_file in sess_dir.glob("*/attachments.json"):
-                    try:
-                        with open(att_file, "r", encoding="utf-8") as f:
-                            data = json.load(f)
-                            if isinstance(data, list):
-                                for item in data:
-                                    fname = item if isinstance(item, str) else item.get("fileName", "")
-                                    if fname and target.name == fname:
-                                        return True
-                    except Exception:
-                        pass
+        # 3. 容错回退检查 target.parent (若 target 位于非根工作区的独立临时子目录)
+        if target.parent.resolve() != ws.resolve():
+            protected_parent_names = get_protected_session_attachment_names(target.parent)
+            if target.name in protected_parent_names:
+                return True
     except Exception:
         pass
     return False

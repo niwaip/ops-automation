@@ -1046,7 +1046,7 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertIn("STDERR:", res_pkg)
         self.assertIn("ModuleNotFoundError", res_pkg)
         self.assertIn("系统自愈提示", res_pkg)
-        self.assertIn("pip install", res_pkg)
+        self.assertTrue("pip install" in res_pkg or "安装依赖" in res_pkg)
 
         # 2. 模拟文件不存在错误
         res_fnf = execute_tool("bash", {"cmd": "cat nonexistent_file_98765.txt"})

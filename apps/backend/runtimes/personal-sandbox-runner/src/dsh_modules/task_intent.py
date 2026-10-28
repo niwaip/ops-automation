@@ -313,6 +313,14 @@ def extract_task_intent(request, users, model, policy, telemetry, deadline, inpu
                     'user_statements': [request, *users]
                 })
 
+            # Promotions above may imply HTML for charts. They cannot override
+            # an explicitly requested native file, including on follow-ups.
+            if result['task_mode'] == 'execute' and not is_physical_export_negated(request):
+                from .output_format_contract import requested_output_formats
+                requested = requested_output_formats(request, users, result.get('instruction_relation'))
+                if requested:
+                    result['output_mode'] = 'artifact'
+                    result['artifact_types'] = requested
             telemetry.record_guard('task_intent', 'accept', result)
             return result
         except ValueError as error:
@@ -485,6 +493,12 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
 
     if result['task_mode'] not in {'execute', 'consult'} or result['output_mode'] not in {'conversation', 'artifact'}:
         raise ValueError('任务模式无效')
+    if result['task_mode'] == 'execute' and not is_physical_export_negated(request) and not is_abort:
+        from .output_format_contract import requested_output_formats
+        requested = requested_output_formats(request, users, relation)
+        if requested:
+            result['output_mode'] = 'artifact'
+            result['artifact_types'] = requested
     types = result['artifact_types']
     if not isinstance(types, list) or not all(isinstance(t, str) and t.strip('.').isalnum() for t in types):
         raise ValueError('文件类型格式无效')

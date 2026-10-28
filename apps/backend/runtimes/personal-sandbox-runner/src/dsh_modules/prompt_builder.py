@@ -436,6 +436,20 @@ def build_user_turn(
                 "- 【自愈重试与结果汇报】：若脚本执行报错，修正代码重新运行，直到文件成功生成落盘；生成完成后向用户汇报文件名称、核验结果与大小。"
             )
 
+    effective_is_pptx = (
+        is_ppt_intent
+        or (is_office_intent and any(k in prompt.lower() for k in ["ppt", "pptx", "幻灯片", "演示文稿", "deck"]))
+        or any(k in prompt.lower() for k in ["ppt", "pptx", "幻灯片", "做个ppt", "生成ppt", "竞选ppt"])
+    )
+
+    if effective_is_pptx and "bash" in (available_tool_names or []):
+        user_parts.append(
+            "【PPTX 幻灯片演示文稿生成硬性执行要求 (Action Grounding)】:\n"
+            "- 【预装环境与严禁 pip】：沙箱系统已在全局预装 `python-pptx`（版本 1.0.2），严禁调用 `pip install` 重复安装！直接在 Python 脚本中 `from pptx import Presentation` 即可使用。\n"
+            "- 【bash 执行落盘交付】：你必须调用 `bash` 工具执行 Python 脚本，将最终生成的演示文稿物理保存到工作区 `/workspace/<文件名>.pptx`；严禁在回复中仅向用户展示代码而未落盘文件！\n"
+            "- 【脚本转义与自愈规范】：在通过 bash cat 写入 Python 脚本时，字符串请使用三引号或保持简单字面量，严禁在行末续行符后出现未转义字符；若脚本执行报错，分析错误日志并自愈修复后重新运行，直到文件成功落盘；生成完成后向用户汇报文件名称与页面概览。"
+        )
+
     if is_inspect_intent and not is_generate_intent and not has_update_tools:
         names = set(available_tool_names or [])
         calculation_guidance = (

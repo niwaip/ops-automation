@@ -597,6 +597,18 @@ def run_agent_loop(
                 return AgentLoopResult(final_text=latest.data['question'], telemetry=telemetry,
                                        messages=messages, execution_evidence=execution_evidence)
 
+        from .spreadsheet_update.presentation import render_published_update
+        published_update = render_published_update(execution_evidence, WORKSPACE_DIR)
+        if published_update:
+            # The native update already verified scope, formula caches and the
+            # published hash. Its receipt owns the answer; no extra model round.
+            telemetry.record_guard('spreadsheet_update_evidence', 'accept', 'published_verified')
+            telemetry.record_guard('workbook_delivery', 'accept', 'verified_workbook_deliverable')
+            telemetry.record_guard('answer_delivery', 'receipt_owned', 'published_update')
+            return AgentLoopResult(final_text=published_update, outbound_files=outbound_files,
+                outbound_reminders=outbound_reminders, telemetry=telemetry,
+                messages=messages, execution_evidence=execution_evidence)
+
         if chart_delivery:
             chart_receipt = verified_chart_receipt(execution_evidence, last_user_prompt, model, deadline)
             if chart_receipt:
@@ -736,14 +748,17 @@ def run_agent_loop(
                 "role": "user",
                 "content": "文件已成功标记并推送至即时通讯通道。请直接回复用户告知文件已发送，并简要概述核心结论或关键统计数值（无需再调用任何其他工具）。"
             })
+            from .summary_context import build_summary_messages
             final_step = call_model_proxy(
-                messages,
+                build_summary_messages(last_user_prompt, messages, execution_evidence),
                 model,
+                max_tokens=1200,
+                stream_deltas=False,
                 timeout=policy.single_request_timeout,
                 deadline=deadline,
-                purpose="synthesis"
+                purpose="tool_loop"
             )
-            telemetry.record_llm_response(final_step, is_first_round=False)
+            telemetry.record_llm_response(final_step, is_first_round=False, purpose="final_summary")
             reply_text = (final_step.get("content") or "") if isinstance(final_step, dict) else str(final_step or "")
             break
 
@@ -935,7 +950,7 @@ def run_agent_loop(
             is_generate_intent=is_generate_intent,
             is_inspect_intent=is_inspect_intent,
         )
-        if missing_final and not outbound_files:
+        if missing_final:
             telemetry.record_guard("deliverable_contract", "reject", f"missing_physical_file_{missing_final}")
             has_planned_update = any(
                 getattr(ev, "is_success", False)
