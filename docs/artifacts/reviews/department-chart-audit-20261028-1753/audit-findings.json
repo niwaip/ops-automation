@@ -1,0 +1,280 @@
+{
+  "source_sha256": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+  "source_unchanged": true,
+  "scanned": 274,
+  "matched": 259,
+  "groups": 7,
+  "amount_total_k": "1747.12579",
+  "independent_rows": [
+    {
+      "department": "華東MIS",
+      "amount": "570.75345",
+      "hours": "1870.48",
+      "count": 92
+    },
+    {
+      "department": "華北BAS",
+      "amount": "67.03530",
+      "hours": "259.0",
+      "count": 6
+    },
+    {
+      "department": "DM華南BAS",
+      "amount": "171.65638",
+      "hours": "584.54",
+      "count": 17
+    },
+    {
+      "department": "流通/EBISS",
+      "amount": "242.51766",
+      "hours": "872.00",
+      "count": 17
+    },
+    {
+      "department": "華南MIS",
+      "amount": "167.77218",
+      "hours": "553.07",
+      "count": 63
+    },
+    {
+      "department": "SM華南BAS",
+      "amount": "212.90759",
+      "hours": "783.54",
+      "count": 21
+    },
+    {
+      "department": "華東BAS",
+      "amount": "314.48323",
+      "hours": "1156.15",
+      "count": 43
+    }
+  ],
+  "selection_replays": [
+    {
+      "evidence_id": "a1f3a8fa67b8e48d90a8e9b8",
+      "prompt_variant": "original",
+      "elapsed_ms": 0.05716690793633461,
+      "status": "rejected",
+      "reason": "chart_metric_ambiguous"
+    },
+    {
+      "evidence_id": "a1f3a8fa67b8e48d90a8e9b8",
+      "prompt_variant": "user_command_only",
+      "elapsed_ms": 0.029165763407945633,
+      "status": "selected",
+      "metric": "amount",
+      "groups": 7
+    },
+    {
+      "evidence_id": "e0bd822ed93b21d3feda9dcd",
+      "prompt_variant": "original",
+      "elapsed_ms": 0.0037499703466892242,
+      "status": "rejected",
+      "reason": "chart_metric_ambiguous"
+    },
+    {
+      "evidence_id": "e0bd822ed93b21d3feda9dcd",
+      "prompt_variant": "user_command_only",
+      "elapsed_ms": 0.014124903827905655,
+      "status": "selected",
+      "metric": "amount",
+      "groups": 7
+    }
+  ],
+  "published_html_sha256": "2ca5821d43f9338e0af4ec31d4b235a12f903519da494c4d2ad11c8057035133",
+  "published_html_validation": true,
+  "published_matches_independent_workbook": true,
+  "performance": [
+    {
+      "message_id": "1793181171918-gnis1uvj",
+      "http_ms": 21475,
+      "harness_ms": 21432,
+      "dsh_ms": 21056.96,
+      "ttft_ms": 3726.19,
+      "recorded_tokens": {
+        "prompt_tokens": 59299,
+        "completion_tokens": 1401,
+        "total_tokens": 60700
+      },
+      "unique_tokens": {
+        "prompt_tokens": 42775,
+        "completion_tokens": 1184,
+        "total_tokens": 43959
+      },
+      "recorded_calls": 9,
+      "unique_calls": 8,
+      "unique_llm_ms": 20504.98,
+      "residual_dsh_ms": 551.9799999999996,
+      "pre_aggregate_first_four_calls_ms": 9166.62,
+      "ledger": [
+        {
+          "purpose": "tool_loop",
+          "model": "default",
+          "total_ms": 2868.3,
+          "usage": {
+            "prompt_tokens": 2652,
+            "total_tokens": 2817,
+            "completion_tokens": 165
+          },
+          "span_id": null
+        },
+        {
+          "purpose": "tool_loop",
+          "model": "default",
+          "total_ms": 2088.33,
+          "usage": {
+            "prompt_tokens": 3159,
+            "total_tokens": 3324,
+            "completion_tokens": 165
+          },
+          "span_id": null
+        },
+        {
+          "purpose": "tool_loop",
+          "model": "default",
+          "total_ms": 1903.46,
+          "usage": {
+            "prompt_tokens": 5376,
+            "total_tokens": 5467,
+            "completion_tokens": 91
+          },
+          "span_id": null
+        },
+        {
+          "purpose": "contract_intent",
+          "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+          "total_ms": 2306.53,
+          "usage": {
+            "prompt_tokens": 1454,
+            "total_tokens": 1645,
+            "completion_tokens": 191
+          },
+          "span_id": null
+        },
+        {
+          "purpose": "tool_loop",
+          "model": "default",
+          "total_ms": 3726.63,
+          "usage": {
+            "prompt_tokens": 12181,
+            "total_tokens": 12394,
+            "completion_tokens": 213
+          },
+          "span_id": null
+        },
+        {
+          "purpose": "filter_conformance",
+          "model": "default",
+          "total_ms": 1578.56,
+          "usage": {
+            "prompt_tokens": 722,
+            "total_tokens": 806,
+            "completion_tokens": 84
+          },
+          "span_id": null
+        },
+        {
+          "purpose": "chart_salvage",
+          "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+          "total_ms": 4850.21,
+          "usage": {
+            "prompt_tokens": 16524,
+            "total_tokens": 16741,
+            "completion_tokens": 217
+          },
+          "span_id": null
+        },
+        {
+          "purpose": "filter_conformance",
+          "model": "default",
+          "total_ms": 1182.96,
+          "usage": {
+            "prompt_tokens": 707,
+            "total_tokens": 765,
+            "completion_tokens": 58
+          },
+          "span_id": null
+        }
+      ]
+    },
+    {
+      "message_id": "1793181254535-16zwd5xx",
+      "http_ms": 13082,
+      "harness_ms": 13055,
+      "dsh_ms": 12751.94,
+      "ttft_ms": 3137.23,
+      "recorded_tokens": {
+        "prompt_tokens": 24853,
+        "completion_tokens": 765,
+        "total_tokens": 25618
+      },
+      "unique_tokens": {
+        "prompt_tokens": 24853,
+        "completion_tokens": 765,
+        "total_tokens": 25618
+      },
+      "recorded_calls": 5,
+      "unique_calls": 5,
+      "unique_llm_ms": 12334.39,
+      "residual_dsh_ms": 417.5500000000011,
+      "pre_aggregate_first_four_calls_ms": 9196.64,
+      "ledger": [
+        {
+          "purpose": "tool_loop",
+          "model": "default",
+          "total_ms": 2435.06,
+          "usage": {
+            "prompt_tokens": 2977,
+            "total_tokens": 3136,
+            "completion_tokens": 159
+          },
+          "span_id": null
+        },
+        {
+          "purpose": "tool_loop",
+          "model": "default",
+          "total_ms": 2369.1,
+          "usage": {
+            "prompt_tokens": 3478,
+            "total_tokens": 3637,
+            "completion_tokens": 159
+          },
+          "span_id": null
+        },
+        {
+          "purpose": "tool_loop",
+          "model": "default",
+          "total_ms": 1965.83,
+          "usage": {
+            "prompt_tokens": 5420,
+            "total_tokens": 5511,
+            "completion_tokens": 91
+          },
+          "span_id": null
+        },
+        {
+          "purpose": "contract_intent",
+          "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+          "total_ms": 2426.65,
+          "usage": {
+            "prompt_tokens": 1448,
+            "total_tokens": 1640,
+            "completion_tokens": 192
+          },
+          "span_id": null
+        },
+        {
+          "purpose": "tool_loop",
+          "model": "default",
+          "total_ms": 3137.75,
+          "usage": {
+            "prompt_tokens": 11530,
+            "total_tokens": 11694,
+            "completion_tokens": 164
+          },
+          "span_id": null
+        }
+      ]
+    }
+  ]
+}

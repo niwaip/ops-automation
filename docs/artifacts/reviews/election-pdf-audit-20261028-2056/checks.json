@@ -1,0 +1,9 @@
+{
+  "ledger_ms_matches": true,
+  "ledger_tokens_match": true,
+  "calls_match": true,
+  "receipt_count_match": true,
+  "final_size_matches_receipt": true,
+  "final_pages_in_range": true,
+  "all_page_renders_present": true
+}

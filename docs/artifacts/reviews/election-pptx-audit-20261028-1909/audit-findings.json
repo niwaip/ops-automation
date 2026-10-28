@@ -1,0 +1,240 @@
+{
+  "session_id": "chat-session-1793185084401-f6zq4avd",
+  "message_id": "1793185628245-u8cmh7fd",
+  "owner_user_id": "e7fce333-a8f4-4097-9a53-f0a4c729da46",
+  "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+  "turn_id": "1793185754781590385-66e4fef5633b4e9ab4db2b94b804c07a",
+  "duration_ms": 126426,
+  "dsh_duration_ms": 125892.13,
+  "llm_duration_ms": 89567.49,
+  "ttft_ms": 30492.64,
+  "llm_invocations": 11,
+  "tokens": {
+    "prompt_tokens": 118761,
+    "completion_tokens": 9243,
+    "total_tokens": 128004
+  },
+  "tool_calls_count": 5,
+  "tool_sequence": [
+    {
+      "name": "bash",
+      "status": "error",
+      "result_status": "error"
+    },
+    {
+      "name": "bash",
+      "status": "success",
+      "result_status": "success"
+    },
+    {
+      "name": "bash",
+      "status": "success",
+      "result_status": "success"
+    },
+    {
+      "name": "bash",
+      "status": "error",
+      "result_status": "error"
+    },
+    {
+      "name": "bash",
+      "status": "success",
+      "result_status": "success"
+    }
+  ],
+  "guards": [
+    {
+      "guard": "task_intent_review",
+      "action": "accept",
+      "reason": {
+        "output_mode": "artifact",
+        "task_mode": "execute"
+      }
+    },
+    {
+      "guard": "task_intent",
+      "action": "accept",
+      "reason": {
+        "instruction_relation": "standalone",
+        "task_mode": "execute",
+        "output_mode": "artifact",
+        "artifact_types": [
+          ".pptx"
+        ],
+        "unit_confirmation": null,
+        "section_confirmation": null,
+        "skill_invocation": {
+          "mode": "none",
+          "name": "",
+          "replace_defaults": false
+        },
+        "requirements": [
+          {
+            "id": "1",
+            "quote": "帮我生成一个小学生 竞选班干部的ppt，3到4页，主要是自我介绍，个人荣誉，竞选的目标和宣言，或者给你的建议，不要太复杂"
+          }
+        ]
+      }
+    },
+    {
+      "guard": "skill_admission_attempt",
+      "action": "reject",
+      "reason": "候选准入只能提交选择结果，不能改写任务契约"
+    },
+    {
+      "guard": "skill_admission",
+      "action": "use",
+      "reason": {
+        "initial_candidate": "pptx",
+        "skill_id": "pptx",
+        "use_default_rules": false,
+        "reason": "applicable",
+        "requirement_ids": [
+          "1"
+        ]
+      }
+    },
+    {
+      "guard": "user_unit_confirmation",
+      "action": "accept",
+      "reason": {
+        "unit": null,
+        "sections": null
+      }
+    }
+  ],
+  "ledger": [
+    {
+      "purpose": "tool_loop",
+      "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "total_ms": 4697.53,
+      "usage": {
+        "prompt_tokens": 2210,
+        "total_tokens": 2392,
+        "completion_tokens": 182
+      },
+      "span_id": null,
+      "call_id": "00873b2b47df481aa1a637a4beb3d030"
+    },
+    {
+      "purpose": "tool_loop",
+      "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "total_ms": 2085.71,
+      "usage": {
+        "prompt_tokens": 2734,
+        "total_tokens": 2916,
+        "completion_tokens": 182
+      },
+      "span_id": null,
+      "call_id": "4fcd6fd22e104ab8a8ece178e76f3e47"
+    },
+    {
+      "purpose": "tool_loop",
+      "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "total_ms": 9886.27,
+      "usage": {
+        "prompt_tokens": 4668,
+        "total_tokens": 5868,
+        "completion_tokens": 1200
+      },
+      "span_id": null,
+      "call_id": "4941ffbc91d5474b990afb1feb17bc73"
+    },
+    {
+      "purpose": "tool_loop",
+      "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "total_ms": 1445.22,
+      "usage": {
+        "prompt_tokens": 4682,
+        "total_tokens": 4773,
+        "completion_tokens": 91
+      },
+      "span_id": null,
+      "call_id": "d442f8ef98334b44ba82ffd89072d5d8"
+    },
+    {
+      "purpose": "planning",
+      "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "total_ms": 7622.46,
+      "usage": {
+        "prompt_tokens": 3871,
+        "total_tokens": 4519,
+        "completion_tokens": 648
+      },
+      "span_id": null,
+      "call_id": "70512406b3e84eb1a6b0b3b0a35b281e"
+    },
+    {
+      "purpose": "tool_loop",
+      "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "total_ms": 30506.56,
+      "usage": {
+        "prompt_tokens": 12996,
+        "total_tokens": 16397,
+        "completion_tokens": 3401
+      },
+      "span_id": null,
+      "call_id": "82e68c2681774017834fd98b1d1733e4"
+    },
+    {
+      "purpose": "tool_loop",
+      "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "total_ms": 1956.63,
+      "usage": {
+        "prompt_tokens": 16504,
+        "total_tokens": 16543,
+        "completion_tokens": 39
+      },
+      "span_id": null,
+      "call_id": "cc3a0da597334a2fa429c314b1b9aec5"
+    },
+    {
+      "purpose": "tool_loop",
+      "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "total_ms": 1495.81,
+      "usage": {
+        "prompt_tokens": 16638,
+        "total_tokens": 16681,
+        "completion_tokens": 43
+      },
+      "span_id": null,
+      "call_id": "a7c79bf2e8134295924c6fa8f7e64fb9"
+    },
+    {
+      "purpose": "tool_loop",
+      "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "total_ms": 1529.61,
+      "usage": {
+        "prompt_tokens": 16847,
+        "total_tokens": 16885,
+        "completion_tokens": 38
+      },
+      "span_id": null,
+      "call_id": "ba1555fc55824a80b2f9e74de49bafb8"
+    },
+    {
+      "purpose": "tool_loop",
+      "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "total_ms": 25442.72,
+      "usage": {
+        "prompt_tokens": 17182,
+        "total_tokens": 20395,
+        "completion_tokens": 3213
+      },
+      "span_id": null,
+      "call_id": "edbd1d12ace24e97ad703618e69b290a"
+    },
+    {
+      "purpose": "tool_loop",
+      "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+      "total_ms": 2898.97,
+      "usage": {
+        "prompt_tokens": 20429,
+        "total_tokens": 20635,
+        "completion_tokens": 206
+      },
+      "span_id": null,
+      "call_id": "b10a1f0e6d1742648cb5618c17320892"
+    }
+  ]
+}

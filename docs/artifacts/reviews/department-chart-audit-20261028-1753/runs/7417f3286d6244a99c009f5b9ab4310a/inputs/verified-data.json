@@ -1,0 +1,48 @@
+{
+  "chart_type": "bar",
+  "title": "部门名称 · 金额(K)合计",
+  "category_field": "部门名称",
+  "value_field": "amount",
+  "value_label": "金额(K)",
+  "unit": "K",
+  "points": [
+    {
+      "label": "華東MIS",
+      "value": "570.75345"
+    },
+    {
+      "label": "華北BAS",
+      "value": "67.0353"
+    },
+    {
+      "label": "DM華南BAS",
+      "value": "171.65638"
+    },
+    {
+      "label": "流通/EBISS",
+      "value": "242.51766"
+    },
+    {
+      "label": "華南MIS",
+      "value": "167.77218"
+    },
+    {
+      "label": "SM華南BAS",
+      "value": "212.90759"
+    },
+    {
+      "label": "華東BAS",
+      "value": "314.48323"
+    }
+  ],
+  "evidence_id": "5bd18e5d16990bc61f2b62d0",
+  "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+  "source_name": "工数实绩明细_20261020134124.xlsx",
+  "source_range": "工数实绩明细!A5:R278",
+  "where": {
+    "field": "有偿无偿",
+    "op": "eq",
+    "value": "有偿"
+  },
+  "having": null
+}

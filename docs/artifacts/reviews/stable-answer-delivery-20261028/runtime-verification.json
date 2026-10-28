@@ -1,0 +1,11 @@
+{
+  "verified_receipt_rendered_without_model": true,
+  "preserved_warning": true,
+  "source_unchanged": true,
+  "summary_input_chars": 12952,
+  "runtime_hashes": {
+    "agent_loop": "e5dc00107fb0e9c553c1d6fe8bcd7be13e7a521d04a1811e4c4715be2f428444",
+    "final_answer": "e7caddd74e2abcae7a170906bd739697f1cc39d34179a3e2929f2e74b7e3deb8",
+    "summary_context": "72f92f7da0484ac00f21424411ca801b7004529a34782f9dabca03e74ed92935"
+  }
+}

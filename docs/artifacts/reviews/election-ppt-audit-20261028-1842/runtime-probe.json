@@ -1,0 +1,79 @@
+{
+  "python_executable": "/usr/bin/python3",
+  "pptx_module_available": false,
+  "skill_dir": "/opt/dsh/skills",
+  "pptx_skill": {
+    "id": "pptx",
+    "type": "certified",
+    "path": "/opt/dsh/skills/pptx",
+    "deliverables": [
+      ".pptx"
+    ],
+    "requires_execution": true,
+    "description": "PowerPoint (.pptx) 幻灯片演示文稿生成、页面排版、图表与表格制作。当用户需要新建 PPTX、制作汇报幻灯片、生成演讲 Deck 或编辑已有 PPT 时使用此技能。输出必须为物理保存至 /workspace/ 路径下的 .pptx 交付物文件。"
+  },
+  "pptx_skill_sha256": "96b6d4c73cd3c02f82bef89f2fe74c35cc4c62f1b58b1acd2c7adac42ca6d7bc",
+  "deterministic_target_formats": [
+    ".pptx"
+  ],
+  "initial_route": {
+    "skill_id": "pptx",
+    "deliverables": [
+      ".pptx"
+    ],
+    "is_ppt_intent": true,
+    "requires_execution": true
+  },
+  "accepted_recorded_contract": {
+    "instruction_relation": "standalone",
+    "task_mode": "execute",
+    "output_mode": "artifact",
+    "artifact_types": [
+      ".html"
+    ],
+    "unit_confirmation": null,
+    "section_confirmation": null,
+    "skill_invocation": {
+      "mode": "none",
+      "name": "",
+      "replace_defaults": false
+    },
+    "requirements": [
+      {
+        "id": "1",
+        "quote": "帮我生成一个小学生 竞选班干部的ppt"
+      },
+      {
+        "id": "2",
+        "quote": "3到4页"
+      },
+      {
+        "id": "3",
+        "quote": "主要是自我介绍，个人荣誉，竞选的目标和宣言"
+      },
+      {
+        "id": "4",
+        "quote": "不要太复杂"
+      }
+    ]
+  },
+  "general_route": {
+    "skill_id": null,
+    "deliverables": [
+      ".html"
+    ],
+    "is_ppt_intent": false,
+    "requires_execution": true
+  },
+  "execution_instruction": "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n落盘方式（任选其一，推荐方式 1）：\n1. 直接在回复中输出完整的 ```html\n<!DOCTYPE html>\n...完整可运行代码...\n``` 代码块（系统将自动写入 /workspace/index.html 并在前端展示交互预览与全屏组件，彻底免除 Shell 特殊字符转义风险）；\n2. 调用 `bash` 工具（如 `cat << 'EOF' > /workspace/index.html`）写入目标文件（若使用 bash，请保持标准的单层 EOF，严禁使用 `$(cat ...)` 复杂嵌套子 Shell 语法）。\n⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字而不提供代码或工具调用！必须提供完整代码！",
+  "pptx_smoke": {
+    "status": "blocked",
+    "error": "No module named 'pptx'",
+    "generation_attempted": false
+  },
+  "bash_python_check": {
+    "exit_code": 1,
+    "stdout": "/usr/bin/python3\n",
+    "stderr": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'pptx'\n"
+  }
+}

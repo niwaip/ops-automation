@@ -1,0 +1,14 @@
+{
+  "image_id": "sha256:4c2d0fca817688317935986a3ff23a4cd888f40fe8b7f45ea8e63a65d78334a8",
+  "labels": {
+    "com.docker.compose.project": "compose",
+    "com.docker.compose.service": "user-sandbox-image",
+    "com.docker.compose.version": "5.1.0",
+    "description": "Standardized Personal User Sandbox with Immutable Runtime & Non-root Isolation",
+    "maintainer": "Ops Automation Team",
+    "ops.sandbox.requirements-sha256": "54f3b0b8150b7a56daefda8e5f9439f4b7c54bbf2052ccaf0115bbe1f0b9729d",
+    "ops.sandbox.runtime-contract": "office-v1"
+  },
+  "requirements_match": true,
+  "original_files_unchanged": true
+}

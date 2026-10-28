@@ -1,0 +1,73 @@
+{
+  "session_id": "chat-session-1793192056191-tty0t7d5",
+  "turn_id": "1793192217930239460-ea90cdcf3a1043efa355512f2ad0e337",
+  "status": "delivered_with_quality_findings",
+  "model": "qwen36-35b-a3b",
+  "http_duration_ms": 156823,
+  "harness_duration_ms": 156711,
+  "dsh_duration_ms": 156398.94,
+  "model_proxy_wall_time_ms": 154643.72,
+  "non_model_difference_ms": 1755.22,
+  "internal_ttft_ms": 41722.57,
+  "logical_model_calls": 10,
+  "retry_warning_count": 4,
+  "explicit_retry_backoff_ms": 5000,
+  "tool_calls": 5,
+  "failed_tool_calls": 1,
+  "tokens": {
+    "prompt_tokens": 139677,
+    "completion_tokens": 14298,
+    "total_tokens": 153975
+  },
+  "script_generation_ms": 91832.62,
+  "planning_ms": 34539.11,
+  "pdf": {
+    "bytes": 92791,
+    "pages": 4,
+    "sha256": "2e584371107354a9b575656bebda006c47eeb2df75fb7449ee77aef8e069ba11"
+  },
+  "findings": [
+    {
+      "id": "Q1",
+      "priority": "P2",
+      "issue": "Unmarked fictional personal facts and honors"
+    },
+    {
+      "id": "Q2",
+      "priority": "P2",
+      "issue": "Final response page descriptions reflect earlier layout"
+    },
+    {
+      "id": "Q3",
+      "priority": "P2",
+      "issue": "Text extraction compatibility: pypdf NULs; pdfplumber empty; PDFium readable"
+    },
+    {
+      "id": "P1",
+      "issue": "Large planning and repeated script generation dominate wall time"
+    },
+    {
+      "id": "P2",
+      "issue": "Four aborted upstream stream retries recovered"
+    },
+    {
+      "id": "G1",
+      "issue": "Deliverable-present guard does not certify PDF page/content/visual quality"
+    }
+  ],
+  "verification": {
+    "ledger_ms_matches": true,
+    "ledger_tokens_match": true,
+    "calls_match": true,
+    "receipt_count_match": true,
+    "final_size_matches_receipt": true,
+    "final_pages_in_range": true,
+    "all_page_renders_present": true
+  },
+  "limitations": [
+    "No original frontend screenshot or complete client SSE timing",
+    "No reliable user-visible end-to-end TTFT",
+    "No PDF encoding root cause isolation experiment",
+    "No runtime optimization or regenerated document in this audit"
+  ]
+}

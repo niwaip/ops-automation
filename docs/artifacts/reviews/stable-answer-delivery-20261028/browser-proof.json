@@ -1,0 +1,11 @@
+{
+  "bodyMutationCount": 0,
+  "bodyNodePreserved": true,
+  "bodyTopUnchanged": true,
+  "bodyHeightUnchanged": true,
+  "verified_in": "Codex in-app browser, actual ChatDeliveryPanel + MessageContentRenderer + reduceChatStreamEvent",
+  "events": [
+    "artifactsOnly attachment update",
+    "progressOnly late observation"
+  ]
+}
