@@ -367,6 +367,7 @@ def run_planning_phase(
                 timeout=planning_policy.single_request_timeout,
                 deadline=deadline,
                 policy=planning_policy,
+                purpose="planning",
             )
             if telemetry:
                 telemetry.record_llm_response(res, is_first_round=False)

@@ -55,7 +55,7 @@ class RegisteredMetricCompletionQueryTests(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def test_query_facts_auto_derive_gross_margin(self):
+    def test_query_facts_require_explicit_gross_margin_calculation(self):
         plan = {
             "query": {
                 "source": {"sheet": "利润表", "header_row": 3, "data_range": "A4:D8"},
@@ -74,17 +74,22 @@ class RegisteredMetricCompletionQueryTests(unittest.TestCase):
         comp = RegisteredMetricCompletion()
 
         completed = comp.complete(evidence, prompt, sink, ["aggregate_spreadsheet"])
-        self.assertEqual(len(completed), 1)
-        self.assertTrue(completed[0].is_success)
-
-        derived_facts = completed[0].data.get("facts", [])
-        self.assertEqual(len(derived_facts), 1)
-        gross_margin_fact = derived_facts[0]
-        self.assertEqual(gross_margin_fact["metric_id"], "finance.gross_margin")
-        self.assertEqual(gross_margin_fact["unit"], "%")
-        self.assertIn("利润表!B4", gross_margin_fact["source_cells"])
-        self.assertIn("利润表!B6", gross_margin_fact["source_cells"])
-        self.assertAlmostEqual(float(gross_margin_fact["value"]), 43.0924, places=2)
+        self.assertEqual(completed, [])
+        self.assertFalse(analysis_task_state(evidence, prompt)['complete'])
+        explicit_plan = {**plan, 'calculations': [{
+            'id': 'margin', 'label': '2026实际毛利率', 'metric_id': 'finance.gross_margin',
+            'output_unit': '%', 'expression': {'op': 'divide', 'args': [
+                {'sheet': '利润表', 'cell': 'B6', 'unit': 'amount'},
+                {'sheet': '利润表', 'cell': 'B4', 'unit': 'amount'}]}}]}
+        explicit = calculate_spreadsheet_analysis(self.source_path, explicit_plan, domain='finance')
+        self.assertTrue(explicit.is_success, explicit.error)
+        evidence.append(explicit)
+        gross_margin_fact = explicit.data['facts'][-1]
+        self.assertEqual(gross_margin_fact['metric_id'], 'finance.gross_margin')
+        self.assertEqual(gross_margin_fact['unit'], '%')
+        self.assertIn('利润表!B4', gross_margin_fact['source_cells'])
+        self.assertIn('利润表!B6', gross_margin_fact['source_cells'])
+        self.assertAlmostEqual(float(gross_margin_fact['value']), 43.0924, places=2)
 
         turn = AnalysisTurn(prompt)
         self.assertTrue(turn.may_finish(evidence))

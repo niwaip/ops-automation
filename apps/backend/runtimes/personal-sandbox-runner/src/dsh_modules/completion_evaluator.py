@@ -128,7 +128,11 @@ def evaluate_tool_execution_turn(
     if not analysis_turn:
         return True, None, max_rounds
 
-    if not analysis_turn.may_finish(execution_evidence):
+    try:
+        may_finish = analysis_turn.may_finish(execution_evidence, reply_text=reply_text)
+    except TypeError:
+        may_finish = analysis_turn.may_finish(execution_evidence)
+    if not may_finish:
         return False, None, max_rounds
 
     effective_workspace = workspace_dir or os.environ.get("WORKSPACE_DIR", "/workspace")
@@ -162,7 +166,8 @@ def evaluate_tool_execution_turn(
                     has_valid_html = True
 
     index_html_path = os.path.join(effective_workspace, "index.html")
-    if os.path.exists(index_html_path) and os.path.isfile(index_html_path) and os.path.getsize(index_html_path) > 0:
+    if (os.path.isfile(index_html_path) and os.path.getsize(index_html_path) > 0
+            and start_ts is not None and os.path.getmtime(index_html_path) >= start_ts):
         try:
             with open(index_html_path, "r", encoding="utf-8", errors="ignore") as f:
                 head_part = f.read(65536)
@@ -491,8 +496,8 @@ def evaluate_no_tool_turn(
                         )
                 elif script_execution_error:
                     msg = (
-                        f"【系统脚本执行自愈提示】：检测到你在回复中提供了生成 {missing_deliverable} 的脚本代码，"
-                        f"但在沙箱尝试运行该脚本生成交付物时出现异常报错：\n```\n{script_execution_error}\n```\n"
+                        f"【系统脚本执行提示】：检测到你在回复中提供了生成 {missing_deliverable} 的脚本代码，"
+                        f"当前尚无成功的工具执行与交付记录：\n{script_execution_error}\n"
                         f"请立即通过 Function Calling 协议调用 `bash` 工具修复并运行脚本，完成物理文件落盘！严禁仅做口头解释！"
                     )
                 else:

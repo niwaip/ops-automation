@@ -1,0 +1,77 @@
+{
+  "passed": 18,
+  "results": [
+    {
+      "name": "where-only detail",
+      "valid": true
+    },
+    {
+      "name": "prefix and null predicates",
+      "valid": true
+    },
+    {
+      "name": "SQL grouping pipeline",
+      "valid": true
+    },
+    {
+      "name": "between uses two bounds",
+      "valid": true
+    },
+    {
+      "name": "count_rows needs no field",
+      "valid": true
+    },
+    {
+      "name": "missing query",
+      "valid": false
+    },
+    {
+      "name": "missing source",
+      "valid": false
+    },
+    {
+      "name": "legacy mixed calculation is hidden",
+      "valid": false
+    },
+    {
+      "name": "top-level WHERE is hidden",
+      "valid": false
+    },
+    {
+      "name": "HAVING cannot use raw field",
+      "valid": false
+    },
+    {
+      "name": "HAVING needs metrics",
+      "valid": false
+    },
+    {
+      "name": "GROUP BY needs metrics",
+      "valid": false
+    },
+    {
+      "name": "SUM needs field",
+      "valid": false
+    },
+    {
+      "name": "logical operator cannot be op=and",
+      "valid": false
+    },
+    {
+      "name": "prefix list required",
+      "valid": false
+    },
+    {
+      "name": "projection cannot mix with metrics",
+      "valid": false
+    },
+    {
+      "name": "advanced formula remains executable schema",
+      "valid": true
+    },
+    {
+      "name": "advanced tool cannot mix query",
+      "valid": false
+    }
+  ]
+}

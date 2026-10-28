@@ -204,11 +204,11 @@ export const humanizeProgressText = (rawText?: string): string | undefined => {
 
 const resolveTitle = (query?: string): string => {
   const q = (query || '').toLowerCase();
-  if (/(?:research|深度调研|全网调研|多源调研|评价|评测|对比|怎么样)/i.test(q)) {
-    return '正在进行多源深度调研与事实检索';
-  }
-  if (/(?:excel|xlsx|表格|表单|算式|报表|工数|工时|明细|金额|合计|汇总|平均|单价|成本中心|wbs)/i.test(q)) {
+  if (/(?:excel|xlsx|表格|表单|算式|报表|预算|工数|工时|明细|金额|合计|汇总|平均|单价|成本中心|wbs|两表|科目)/i.test(q)) {
     return '正在分析表格数据与核算指标';
+  }
+  if (/(?:research|深度调研|全网调研|多源调研|全网深度)/i.test(q) || (!/(?:两表|预算|报表|表格)/i.test(q) && /(?:评价|评测|怎么样)/i.test(q))) {
+    return '正在进行多源深度调研与事实检索';
   }
   if (/(?:搜索|检索|查找|全网|搜一下|最流行|最新|插件|动态|趋势|现状|社区|skill|生态)/i.test(q)) {
     return '正在检索与分析实时信息';

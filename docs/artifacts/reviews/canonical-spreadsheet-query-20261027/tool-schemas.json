@@ -1,0 +1,1015 @@
+{
+  "query": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "file_path": {
+        "type": "string"
+      },
+      "query": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "SQL式只读查询，按WHERE→GROUP BY→HAVING→ORDER BY→LIMIT执行。明细只填source/where，默认返回全部原始列与行号；fields可显式选列。不做统计时省略metrics和group_by。",
+        "properties": {
+          "source": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "sheet": {
+                "type": "string",
+                "minLength": 1
+              },
+              "header_row": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "data_range": {
+                "type": "string",
+                "pattern": "^[A-Za-z]+[1-9][0-9]*:[A-Za-z]+[1-9][0-9]*$",
+                "description": "真实业务行范围，排除标题、表头、合计与附注"
+              }
+            },
+            "required": [
+              "sheet",
+              "header_row",
+              "data_range"
+            ]
+          },
+          "fields": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "SELECT原始列；省略时明细返回全部列。分组统计使用group_by和metrics，不同时填fields。"
+          },
+          "where": {
+            "$ref": "#/$defs/where_predicate",
+            "description": "过滤原始行。starts_with/not_starts_with用values前缀列表；and/or是子条件数组。"
+          },
+          "group_by": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "prefix_length": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 32
+                    },
+                    "alias": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "field",
+                    "prefix_length"
+                  ]
+                }
+              ]
+            }
+          },
+          "metrics": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "description": "聚合列，只声明一次；id是HAVING与排序使用的稳定别名，无需引用内部事实ID。",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "label": {
+                  "type": "string"
+                },
+                "op": {
+                  "type": "string",
+                  "enum": [
+                    "sum",
+                    "min",
+                    "max",
+                    "avg",
+                    "count_rows",
+                    "count_values",
+                    "count_distinct",
+                    "first"
+                  ]
+                },
+                "field": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "unit": {
+                  "type": "string",
+                  "description": "默认source保留原字段单位；仅明确要求换算时指定目标单位。"
+                }
+              },
+              "required": [
+                "id",
+                "op"
+              ],
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "op": {
+                        "enum": [
+                          "sum",
+                          "min",
+                          "max",
+                          "avg",
+                          "count_values",
+                          "count_distinct",
+                          "first"
+                        ]
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "field"
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          "having": {
+            "$ref": "#/$defs/having_predicate",
+            "description": "聚合后过滤，metric引用本次metrics.id；不能用原始列替代聚合别名。"
+          },
+          "order_by": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "ref": {
+                  "type": "string"
+                },
+                "direction": {
+                  "type": "string",
+                  "enum": [
+                    "asc",
+                    "desc"
+                  ]
+                }
+              },
+              "required": [
+                "ref",
+                "direction"
+              ]
+            }
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "distinct": {
+            "type": "boolean",
+            "description": "去重清单搭配fields使用；count_distinct只返回数量。"
+          }
+        },
+        "required": [
+          "source"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "required": [
+                "having"
+              ]
+            },
+            "then": {
+              "required": [
+                "metrics"
+              ]
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "group_by"
+              ]
+            },
+            "then": {
+              "required": [
+                "metrics"
+              ]
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "metrics"
+              ]
+            },
+            "then": {
+              "not": {
+                "required": [
+                  "fields"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "required": [
+      "file_path",
+      "query"
+    ],
+    "$defs": {
+      "where_predicate": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "field": {
+                "type": "string",
+                "minLength": 1
+              },
+              "op": {
+                "type": "string",
+                "enum": [
+                  "eq",
+                  "ne",
+                  "gt",
+                  "gte",
+                  "lt",
+                  "lte",
+                  "contains",
+                  "not_contains"
+                ]
+              },
+              "value": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "field",
+              "op",
+              "value"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "field": {
+                "type": "string",
+                "minLength": 1
+              },
+              "op": {
+                "type": "string",
+                "enum": [
+                  "in",
+                  "not_in",
+                  "starts_with",
+                  "not_starts_with",
+                  "ends_with"
+                ]
+              },
+              "values": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "field",
+              "op",
+              "values"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "field": {
+                "type": "string",
+                "minLength": 1
+              },
+              "op": {
+                "type": "string",
+                "enum": [
+                  "between"
+                ]
+              },
+              "values": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "field",
+              "op",
+              "values"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "field": {
+                "type": "string",
+                "minLength": 1
+              },
+              "op": {
+                "type": "string",
+                "enum": [
+                  "is_null",
+                  "is_not_null",
+                  "is_blank"
+                ]
+              }
+            },
+            "required": [
+              "field",
+              "op"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "and": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "$ref": "#/$defs/where_predicate"
+                }
+              }
+            },
+            "required": [
+              "and"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "or": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "$ref": "#/$defs/where_predicate"
+                }
+              }
+            },
+            "required": [
+              "or"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "not": {
+                "$ref": "#/$defs/where_predicate"
+              }
+            },
+            "required": [
+              "not"
+            ]
+          }
+        ]
+      },
+      "having_predicate": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "metric": {
+                "type": "string",
+                "minLength": 1
+              },
+              "op": {
+                "type": "string",
+                "enum": [
+                  "eq",
+                  "ne",
+                  "gt",
+                  "gte",
+                  "lt",
+                  "lte",
+                  "contains",
+                  "not_contains"
+                ]
+              },
+              "value": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "metric",
+              "op",
+              "value"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "metric": {
+                "type": "string",
+                "minLength": 1
+              },
+              "op": {
+                "type": "string",
+                "enum": [
+                  "in",
+                  "not_in",
+                  "starts_with",
+                  "not_starts_with",
+                  "ends_with"
+                ]
+              },
+              "values": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "metric",
+              "op",
+              "values"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "metric": {
+                "type": "string",
+                "minLength": 1
+              },
+              "op": {
+                "type": "string",
+                "enum": [
+                  "between"
+                ]
+              },
+              "values": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "metric",
+              "op",
+              "values"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "metric": {
+                "type": "string",
+                "minLength": 1
+              },
+              "op": {
+                "type": "string",
+                "enum": [
+                  "is_null",
+                  "is_not_null",
+                  "is_blank"
+                ]
+              }
+            },
+            "required": [
+              "metric",
+              "op"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "and": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "$ref": "#/$defs/having_predicate"
+                }
+              }
+            },
+            "required": [
+              "and"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "or": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "$ref": "#/$defs/having_predicate"
+                }
+              }
+            },
+            "required": [
+              "or"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "not": {
+                "$ref": "#/$defs/having_predicate"
+              }
+            },
+            "required": [
+              "not"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "formula": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "file_path": {
+        "type": "string"
+      },
+      "tables": {
+        "type": "array",
+        "maxItems": 16,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "sheet": {
+              "type": "string"
+            },
+            "data_range": {
+              "type": "string",
+              "description": "业务行范围，排除标题、表头、合计"
+            },
+            "header_row": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "row_ids": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "description": "可选精确来源行号；必须属于声明范围及过滤结果，用于复用查询事实的来源，不扩大范围"
+            },
+            "filters": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "column": {
+                    "type": "string"
+                  },
+                  "values": {
+                    "type": "array",
+                    "items": {
+                      "type": [
+                        "string",
+                        "number"
+                      ]
+                    }
+                  },
+                  "op": {
+                    "type": "string",
+                    "enum": [
+                      "in",
+                      "not_in",
+                      "prefix",
+                      "exclude_prefix"
+                    ]
+                  },
+                  "prefixes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "exclude_prefixes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "exclude_values": {
+                    "type": "array",
+                    "items": {
+                      "type": [
+                        "string",
+                        "number"
+                      ]
+                    }
+                  },
+                  "case_sensitive": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "column"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "where": {
+              "type": "object",
+              "description": "行过滤谓词树"
+            },
+            "group_by": {
+              "type": [
+                "string",
+                "array",
+                "object"
+              ],
+              "description": "分组维度"
+            },
+            "having": {
+              "type": "object",
+              "description": "分组过滤条件"
+            }
+          },
+          "required": [
+            "id",
+            "sheet",
+            "data_range",
+            "header_row"
+          ]
+        }
+      },
+      "calculations": {
+        "type": "array",
+        "maxItems": 64,
+        "description": "可与query同时提交：先查询，再执行全部派生计算。派生来源必须位于查询最终事实引用的单元格内；可ref精确引用query事实ID（含sum/min/max多行汇总），程序按其精确来源重算。计算失败时整份计划失败。",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "label": {
+              "type": "string"
+            },
+            "metric_id": {
+              "type": "string",
+              "description": "可选：当前领域注册表中的稳定指标ID；不用于选择或切换领域"
+            },
+            "expression": {
+              "$ref": "#/$defs/expression"
+            },
+            "output_unit": {
+              "type": "string",
+              "enum": [
+                "source",
+                "元",
+                "千元",
+                "万元",
+                "亿元",
+                "小时",
+                "h",
+                "天",
+                "分钟",
+                "条",
+                "个",
+                "次",
+                "件",
+                "户",
+                "人",
+                "%",
+                "number"
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "label",
+            "expression"
+          ]
+        }
+      }
+    },
+    "required": [
+      "file_path",
+      "tables",
+      "calculations"
+    ],
+    "$defs": {
+      "expression": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "aggregate": {
+                "type": "string",
+                "enum": [
+                  "sum",
+                  "min",
+                  "max",
+                  "count",
+                  "avg",
+                  "dec_avg",
+                  "count_distinct"
+                ]
+              },
+              "table": {
+                "type": "string"
+              },
+              "column": {
+                "type": "string"
+              },
+              "group_by": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "column": {
+                        "type": "string"
+                      },
+                      "prefix_length": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 32
+                      }
+                    },
+                    "required": [
+                      "column",
+                      "prefix_length"
+                    ]
+                  },
+                  {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 8,
+                    "items": {
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "column": {
+                              "type": "string"
+                            },
+                            "prefix_length": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 32
+                            }
+                          },
+                          "required": [
+                            "column",
+                            "prefix_length"
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "amount",
+                  "duration",
+                  "count",
+                  "number",
+                  "ratio"
+                ]
+              }
+            },
+            "required": [
+              "aggregate",
+              "table",
+              "column"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "cell": {
+                "type": "string"
+              },
+              "sheet": {
+                "type": "string"
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "amount",
+                  "duration",
+                  "count",
+                  "number",
+                  "ratio"
+                ]
+              }
+            },
+            "required": [
+              "cell",
+              "sheet"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "ref": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "ref"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "constant": {
+                "type": "number"
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "number"
+                ]
+              }
+            },
+            "required": [
+              "constant"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "type": "string",
+                "enum": [
+                  "add",
+                  "subtract",
+                  "multiply",
+                  "divide"
+                ]
+              },
+              "args": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 8,
+                "items": {
+                  "$ref": "#/$defs/expression"
+                }
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "amount",
+                  "duration",
+                  "count",
+                  "number",
+                  "ratio"
+                ]
+              }
+            },
+            "required": [
+              "op",
+              "args"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "table_id": {
+                "type": "string"
+              },
+              "column": {
+                "type": "string"
+              },
+              "row": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "amount",
+                  "duration",
+                  "count",
+                  "number",
+                  "ratio"
+                ]
+              }
+            },
+            "required": [
+              "table_id",
+              "column",
+              "row"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

@@ -157,6 +157,18 @@ describe('StreamingActivityCard - Progress Humanization & Status Passthrough', (
     expect(spreadsheetCardHtml).toContain('📊 正在执行数据筛选与指标核算...');
     expect(spreadsheetCardHtml).toContain('指标核算中');
     expect(spreadsheetCardHtml).not.toContain('联网检索中');
+
+    // F03 Regression: Table comparison queries must NOT falsely show "多源深度调研"
+    const tableCompareCardHtml = renderToStaticMarkup(
+      <StreamingActivityCard
+        isStreaming={true}
+        userQuery="两表预算口径对比"
+        currentProgressText={aggToolText}
+        realContentLength={0}
+      />
+    );
+    expect(tableCompareCardHtml).toContain('正在分析表格数据与核算指标');
+    expect(tableCompareCardHtml).not.toContain('多源深度调研');
   });
 });
 

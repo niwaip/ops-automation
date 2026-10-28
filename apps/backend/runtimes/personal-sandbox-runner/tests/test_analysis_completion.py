@@ -53,6 +53,15 @@ class AnalysisCompletionTests(unittest.TestCase):
         self.assertTrue(result.is_success,result.error)
         return result
 
+    def explicit_margin(self, require_success=True):
+        result = calculate_spreadsheet_analysis(self.source, {'tables': [self.table], 'calculations': [{
+            'id': 'margin', 'label': '毛利率', 'metric_id': 'finance.gross_margin', 'output_unit': '%',
+            'expression': {'op': 'divide', 'args': [
+                {'aggregate': 'sum', 'table': 'period', 'column': 'C', 'unit': 'amount'},
+                {'aggregate': 'sum', 'table': 'period', 'column': 'B', 'unit': 'amount'}]}}]}, domain='finance')
+        if require_success: self.assertTrue(result.is_success, result.error)
+        return result
+
     def complete(self,evidence,prompt=QUERY,allowed=('aggregate_spreadsheet',),completion=None):
         completion=completion or RegisteredMetricCompletion()
         return completion.complete(evidence,prompt,TelemetryStats(),allowed)
@@ -63,43 +72,45 @@ class AnalysisCompletionTests(unittest.TestCase):
         self.assertEqual(state['missing_metrics'],[{'metric_id':'finance.gross_margin','name':'毛利率','expected_type':'percentage','source_column_status':'unknown'}])
         self.assertIn('finance.gross_margin',task_feedback([self.receipt()],QUERY))
 
-    def test_duplicate_realistic_receipts_are_completed_once_and_ids_are_runtime_owned(self):
-        evidence=[self.receipt(),self.receipt(table={**self.table,'id':'retry'})]
-        completed=self.complete(evidence)
-        self.assertEqual(len(completed),1)
-        fact=completed[0].data['facts'][0]
-        self.assertEqual(fact['metric_id'],'finance.gross_margin');self.assertEqual(fact['unit'],'%')
-        self.assertAlmostEqual(float(fact['value']),float(Decimal(558)/Decimal(1278)*100))
-        self.assertEqual(completed[0].provenance['execution_origin'],'registered_derivation')
-        response=json.loads(verified_response(evidence,QUERY,'{"evidence_ids":["wrong"],"hypotheses":["2026数字",{},"待验证原因"]}'))
-        self.assertEqual(set(response['evidence_ids']),{r.data['evidence_id'] for r in evidence})
-        self.assertEqual(response['hypotheses'],['待验证原因'])
-        self.assertEqual(self.complete(evidence),[])
+    def test_duplicate_receipts_do_not_trigger_implicit_completion(self):
+        evidence = [self.receipt(), self.receipt(table={**self.table, 'id': 'retry'})]
+        self.assertEqual(self.complete(evidence), [])
+        self.assertEqual(len(evidence), 2)
+        self.assertIsNone(verified_response(evidence, QUERY))
+        self.assertIn('显式调用', task_feedback(evidence, QUERY))
 
-    def test_pipeline_finishes_from_executed_plan_without_a_model_protocol_round(self):
-        receipt=self.receipt()
-        params={'file_path':str(self.source),**receipt.data['plan']}
-        tool={'content':'未验证草稿','finish_reason':'tool_calls','tool_calls':[{'id':'one','type':'function',
-              'function':{'name':'aggregate_spreadsheet','arguments':json.dumps(params)}}]}
-        with patch('dsh_modules.spreadsheet_analysis.resolve_sandboxed_path',return_value=(self.source,None)), \
-             patch.dict(os.environ,{'DSH_SESSION_ATTACHMENTS':''}), \
-             patch('dsh_modules.agent_loop.call_model_proxy',return_value=tool) as model,redirect_stdout(io.StringIO()):
-            result=run_agent_loop([{'role':'system','content':'test'},{'role':'user','content':QUERY}],
+    def test_pipeline_requires_a_second_explicit_tool_call_for_missing_margin(self):
+        receipt = self.receipt()
+        params = {'file_path': str(self.source), **receipt.data['plan']}
+        margin = {'file_path': str(self.source), 'tables': [self.table], 'calculations': [{
+            'id': 'margin', 'label': '毛利率', 'metric_id': 'finance.gross_margin', 'output_unit': '%',
+            'expression': {'op': 'divide', 'args': [
+                {'aggregate': 'sum', 'table': 'period', 'column': 'C', 'unit': 'amount'},
+                {'aggregate': 'sum', 'table': 'period', 'column': 'B', 'unit': 'amount'}]}}]}
+        def call(name, arguments):
+            return {'content': '', 'finish_reason': 'tool_calls', 'tool_calls': [
+                {'id': name, 'type': 'function', 'function': {'name': 'aggregate_spreadsheet',
+                 'arguments': json.dumps(arguments)}}]}
+        with patch('dsh_modules.spreadsheet_analysis.resolve_sandboxed_path', return_value=(self.source,None)), \
+             patch.dict(os.environ, {'DSH_SESSION_ATTACHMENTS': ''}), \
+             patch('dsh_modules.agent_loop.call_model_proxy', side_effect=[call('amounts', params), call('ratio', margin)]) as model, \
+             redirect_stdout(io.StringIO()):
+            result = run_agent_loop([{'role':'system','content':'test'},{'role':'user','content':QUERY}],
                 'test',RuntimePolicy(),4,tools=get_sandbox_tools({'aggregate_spreadsheet'}),spreadsheet_analysis_required=True)
-        self.assertEqual(model.call_count,1)
-        self.assertIn('毛利率（注册关系补算）',result.final_text)
-        self.assertNotIn('未验证草稿',result.final_text)
-        self.assertEqual(result.telemetry.guard_decisions[-1]['action'],'accept')
-        self.assertEqual(result.telemetry.tool_invocations,2)
+        self.assertEqual(model.call_count, 2)
+        self.assertEqual(result.telemetry.tool_invocations, 2)
+        self.assertIn('43.66%', result.final_text)
+        self.assertNotIn('注册关系补算', result.final_text)
+        self.assertEqual(result.telemetry.guard_decisions[-1]['action'], 'accept')
 
     def test_malformed_final_protocol_cannot_block_complete_generic_execution(self):
         source=self.receipt()
-        evidence=[source];self.complete(evidence)
+        evidence=[source, self.explicit_margin()]
         turn=AnalysisTurn(QUERY)
         for text in ['bad JSON','{"evidence_ids":[],"hypotheses":"wrong"}',
                      '{"evidence_ids":["old"],"hypotheses":["2026年收入999"]}']:
             final=turn.render(evidence,text,TelemetryStats())
-            self.assertNotIn('尚未通过',final);self.assertIn('毛利率（注册关系补算）',final)
+            self.assertNotIn('尚未通过',final);self.assertIn('毛利率',final)
             self.assertNotIn('999',final)
 
     def test_cross_period_operands_are_not_combined(self):
@@ -109,14 +120,12 @@ class AnalysisCompletionTests(unittest.TestCase):
                   self.receipt([('finance.revenue','营业收入','B')],last)]
         self.assertEqual(self.complete(evidence,'总结毛利率'),[])
 
-    def test_registered_relationship_is_completed_for_each_matching_period(self):
+    def test_registered_relationships_remain_missing_until_explicit_tool_calls(self):
         evidence=[]
-        for months in (range(1,7),range(7,13)):
+        for months in (range(1,7), range(7,13)):
             evidence.append(self.receipt(table={**self.table,'filters':[{'column':'A','values':[f'{m}月' for m in months]}]}))
-        completed=self.complete(evidence,'解释盈利能力变化')
-        self.assertEqual(len(completed),1)
-        self.assertEqual(len(completed[0].data['facts']),6)
-        self.assertTrue(analysis_task_state(evidence,'解释盈利能力变化')['complete'])
+        self.assertEqual(self.complete(evidence, '解释盈利能力变化'), [])
+        self.assertFalse(analysis_task_state(evidence, '解释盈利能力变化')['complete'])
 
     def test_ambiguous_source_fields_remain_missing(self):
         evidence=[self.receipt(),self.receipt([('finance.gross_profit','毛利润','F')])]
@@ -130,15 +139,15 @@ class AnalysisCompletionTests(unittest.TestCase):
             self.assertEqual(self.complete(evidence),[])
         self.assertEqual(derivation_recipes('generic'),[])
 
-    def test_zero_denominator_is_execution_failure_and_does_not_loop(self):
+    def test_zero_denominator_is_only_executed_when_an_explicit_plan_is_submitted(self):
         workbook=openpyxl.load_workbook(self.source)
-        for row in range(3,15):workbook.active.cell(row,2,0)
+        for row in range(3,15): workbook.active.cell(row,2,0)
         workbook.save(self.source);workbook.close()
-        evidence=[self.receipt()];completion=RegisteredMetricCompletion()
-        result=self.complete(evidence,completion=completion)
-        self.assertEqual(len(result),1);self.assertTrue(result[0].is_error)
+        evidence=[self.receipt()]
+        self.assertEqual(self.complete(evidence), [])
+        self.assertEqual(len(evidence), 1)
+        self.assertTrue(self.explicit_margin(require_success=False).is_error)
         self.assertIsNone(verified_response(evidence,QUERY))
-        self.assertEqual(self.complete(evidence,completion=completion),[])
 
     def test_source_change_and_partial_evidence_cannot_trigger_completion(self):
         receipt=self.receipt()
@@ -154,7 +163,7 @@ class AnalysisCompletionTests(unittest.TestCase):
         receipt=self.receipt();receipt.data['semantic_domain']['version']='old'
         self.assertEqual(self.complete([receipt]),[])
 
-    def test_unregistered_nonfinancial_ratio_uses_the_same_completion_engine_when_registered(self):
+    def test_nonfinancial_registered_ratio_requires_an_explicit_plan(self):
         pack=types.ModuleType('dsh_modules.analysis_domain_experiment')
         pack.VERSION='test';pack.CONCEPTS=[];pack.GUIDANCE='实验指标'
         pack.METRICS=[{'id':'experiment.input','name':'投入','patterns':['投入'],'expected_type':'number'},
@@ -174,7 +183,16 @@ class AnalysisCompletionTests(unittest.TestCase):
             evidence=[calculate_spreadsheet_analysis(self.source,plan,domain='experiment')]
             self.assertTrue(evidence[0].is_success,evidence[0].error)
             result=self.complete(evidence,'总结合格率')
-            self.assertEqual(len(result),1);self.assertEqual(Decimal(result[0].data['facts'][0]['value']),80)
+            self.assertEqual(result, [])
+            self.assertFalse(analysis_task_state(evidence,'总结合格率')['complete'])
+            ratio = calculate_spreadsheet_analysis(self.source, {'tables': plan['tables'], 'calculations': [{
+                'id': 'yield', 'label': '合格率', 'metric_id': 'experiment.yield', 'output_unit': '%',
+                'expression': {'op': 'divide', 'args': [
+                    {'aggregate': 'sum', 'table': 'batch', 'column': 'B', 'unit': 'number'},
+                    {'aggregate': 'sum', 'table': 'batch', 'column': 'A', 'unit': 'number'}]}}]}, domain='experiment')
+            self.assertTrue(ratio.is_success, ratio.error)
+            self.assertEqual(Decimal(ratio.data['facts'][0]['value']), 80)
+            evidence.append(ratio)
             self.assertTrue(analysis_task_state(evidence,'总结合格率')['complete'])
 
     def test_internal_stream_suppresses_both_thoughts_and_content(self):
@@ -184,7 +202,7 @@ class AnalysisCompletionTests(unittest.TestCase):
         self.assertEqual(chunks,['unverified draft']);self.assertEqual(output.getvalue(),'')
 
     def test_presentation_audit_records_shape_without_untrusted_text(self):
-        evidence=[self.receipt()];self.complete(evidence)
+        evidence=[self.receipt(), self.explicit_margin()]
         telemetry=TelemetryStats()
         final=AnalysisTurn(QUERY).render(evidence,'{"evidence_ids":["sensitive-unknown-text"],"hypotheses":[]}',telemetry)
         audit=telemetry.guard_decisions[0]
@@ -193,16 +211,16 @@ class AnalysisCompletionTests(unittest.TestCase):
         self.assertNotIn('sensitive-unknown-text',json.dumps(telemetry.guard_decisions))
         self.assertNotIn('尚未通过',final)
 
-    def test_completion_reexecutes_source_expressions_not_converted_cached_values(self):
+    def test_explicit_plan_reexecutes_source_expressions_not_converted_cached_values(self):
         receipt=self.receipt()
         # Output formatting may express different scales; recipes use the source
         # expressions, not the already-presented numeric strings.
         for fact in receipt.data['facts']:
             if fact['metric_id']=='finance.revenue':
                 fact['value']=str(Decimal(fact['value'])/10);fact['unit']='万元'
-        result=self.complete([receipt])
-        self.assertEqual(len(result),1)
-        self.assertAlmostEqual(float(result[0].data['facts'][0]['value']),float(Decimal(558)/Decimal(1278)*100))
+        self.assertEqual(self.complete([receipt]), [])
+        result = self.explicit_margin()
+        self.assertAlmostEqual(float(result.data['facts'][0]['value']),float(Decimal(558)/Decimal(1278)*100))
 
     def test_registered_number_cannot_be_satisfied_by_a_percentage(self):
         receipt=self.receipt()
@@ -373,7 +391,7 @@ class AnalysisCompletionTests(unittest.TestCase):
             )
             self.assertEqual(res, "兜底模板文本")
 
-    def test_synthesize_analysis_summary_allows_exact_pairwise_arithmetic_derivations(self):
+    def test_synthesize_analysis_summary_rejects_unexecuted_pairwise_arithmetic(self):
         """验证双向数值锚定允许基于已核验指标的精确二元四则派生（如差额、留存占比），同时拒绝幻觉数字"""
         from types import SimpleNamespace
         from dsh_modules.analysis_synthesis import synthesize_analysis_summary
@@ -409,9 +427,7 @@ class AnalysisCompletionTests(unittest.TestCase):
                 model="test-model",
                 policy=SimpleNamespace(single_request_timeout=10)
             )
-            self.assertNotEqual(res, "兜底模板文本")
-            self.assertIn("517.11 万元", res)
-            self.assertIn("75.6%", res)
+            self.assertEqual(res, "兜底模板文本")
             # 确认传给 LLM 的 digest 已经去掉了内部后缀（注册关系补算）
             sent_messages = mock_proxy.call_args.kwargs.get("messages", [])
             user_prompt_text = sent_messages[-1]["content"] if sent_messages else ""
@@ -521,7 +537,7 @@ class AnalysisCompletionTests(unittest.TestCase):
         self.assertTrue(turn.contract.is_audit_intent)
         self.assertTrue(turn.may_finish([receipt]))
 
-    def test_synthesize_analysis_summary_accepts_rule_violation_rates_and_profile_extremes(self):
+    def test_synthesize_analysis_summary_rejects_unexecuted_rule_violation_rates(self):
         """验证异常核查场景下，LLM 报告中的规则违规率 (1/80=1.25%, 79/80=98.75%) 与全列极值 (98,000, 第43行) 不会被误判为幻觉"""
         from types import SimpleNamespace
         from dsh_modules.analysis_synthesis import build_verified_facts_digest, synthesize_analysis_summary
@@ -619,9 +635,7 @@ class AnalysisCompletionTests(unittest.TestCase):
                 model="test-model",
                 policy=SimpleNamespace(single_request_timeout=10)
             )
-            self.assertNotEqual(res, "兜底模板文本")
-            self.assertIn("98,000", res)
-            self.assertIn("1.25%", res)
+            self.assertEqual(res, "兜底模板文本")
 
     def test_grouping_contract_blocks_when_requested_metric_misses_group_by(self):
         """测试门禁防御：当用户要求按部门分组统计金额时，若模型仅对工数/条数分组、核心指标金额仅算总计，严格拦截报错。"""
@@ -789,9 +803,12 @@ class AnalysisCompletionTests(unittest.TestCase):
         }, provenance={"file_path": str(self.source), "workbook_id": wb_hash})
 
         state_ok = analysis_task_state([receipt_filtered], prompt)
-        self.assertTrue(state_ok["complete"], f"Expected complete=True, got issues: {state_ok.get('issues')}")
+        self.assertNotIn('entity_filter_missing', [i['code'] for i in state_ok['issues']])
+        # Filtering the employee repairs scope, but a SUM-only result still
+        # cannot fulfil the original request for source detail rows.
+        self.assertFalse(state_ok['complete'])
+        self.assertIn('detail_granularity_changed', [i['code'] for i in state_ok['issues']])
 
 
 
 if __name__=='__main__':unittest.main()
-

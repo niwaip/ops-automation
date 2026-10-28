@@ -1,0 +1,227 @@
+{
+  "session": "chat-session-1793063116578-l5zqp8j8",
+  "turns": [
+    {
+      "assistant_message_id": "1793063676424-vqv1n1pd",
+      "harness_duration_ms": 135979,
+      "runner_duration_ms": 135378.85,
+      "llm_duration_ms": 100148.56,
+      "llm_invocations": 14,
+      "tokens": {
+        "prompt_tokens": 256914,
+        "completion_tokens": 8044,
+        "total_tokens": 264958
+      },
+      "tools": [
+        {
+          "name": "aggregate_spreadsheet",
+          "status": "error",
+          "error_code": "invalid_analysis_plan"
+        },
+        {
+          "name": "aggregate_spreadsheet",
+          "status": "error",
+          "error_code": "invalid_analysis_plan"
+        },
+        {
+          "name": "bash",
+          "status": "error",
+          "error_code": "legacy_error"
+        },
+        {
+          "name": "bash",
+          "status": "error",
+          "error_code": "legacy_error"
+        },
+        {
+          "name": "bash",
+          "status": "success",
+          "error_code": null
+        }
+      ]
+    },
+    {
+      "assistant_message_id": "1793063909020-jnquus50",
+      "harness_duration_ms": 96562,
+      "runner_duration_ms": 95946.55,
+      "llm_duration_ms": 76113.52,
+      "llm_invocations": 14,
+      "tokens": {
+        "prompt_tokens": 299077,
+        "completion_tokens": 4982,
+        "total_tokens": 304059
+      },
+      "tools": [
+        {
+          "name": "aggregate_spreadsheet",
+          "status": "error",
+          "error_code": "invalid_analysis_plan"
+        },
+        {
+          "name": "aggregate_spreadsheet",
+          "status": "error",
+          "error_code": "invalid_analysis_plan"
+        },
+        {
+          "name": "bash",
+          "status": "error",
+          "error_code": "legacy_error"
+        },
+        {
+          "name": "bash",
+          "status": "success",
+          "error_code": null
+        },
+        {
+          "name": "bash",
+          "status": "success",
+          "error_code": null
+        },
+        {
+          "name": "bash",
+          "status": "success",
+          "error_code": null
+        },
+        {
+          "name": "bash",
+          "status": "success",
+          "error_code": null
+        },
+        {
+          "name": "bash",
+          "status": "success",
+          "error_code": null
+        }
+      ]
+    }
+  ],
+  "offline_checks": {
+    "source_sha256": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+    "scope": "offline; current native engine; no model calls",
+    "original_two_plan_errors_reproduced": [
+      {
+        "code": "invalid_analysis_plan",
+        "message": "plan：度量定义冲突：'营业收入' 与 '毛利' 对同一字段 '2026实际' 执行了完全相同的 'sum' 聚合，这会导致两个不同指标输出完全相同的混加数值。若各指标位于某维度列（如 '项目'/'科目'）的不同行，请设置 group_by 为该维度列并仅保留一个对 '2026实际' 的度量，或分别按单行条件查询。"
+      },
+      {
+        "code": "invalid_analysis_plan",
+        "message": "plan：and 组合操作需要 1 到 16 个子条件列表"
+      }
+    ],
+    "successful_bash_ignored_by_gate_and_review_input": {
+      "complete": false,
+      "issue_codes": [
+        "execution_evidence_missing",
+        "required_metrics_missing"
+      ],
+      "review_inputs_identical_before_after_successful_bash": true,
+      "review_execution_plans": [],
+      "review_fact_count": 0,
+      "last_bash_stdout": "税率: 0.25\n\n=== 2026年全年财务总结（单位：千元人民币） ===\n营业收入: 124,020.00\n毛利率: 43.09%\n营业利润: 21,209.40\n净利润: 16,038.30\n\n=== 补充数据 ===\n营业成本: 70,576.75\n其他收益: 175\n税前利润: 21,384.40\n所得税: 5,346.10\n营业利润率: 17.10%"
+    },
+    "misleading_unexecuted_wording_reproduced": true,
+    "legal_native_plan_succeeds_on_same_source": {
+      "complete": true,
+      "issues": [],
+      "facts": [
+        {
+          "id": "actual__(('str', '营业收入'),)",
+          "label": "营业收入 2026实际",
+          "group_key": "营业收入",
+          "group_fields": {
+            "项目": "营业收入"
+          },
+          "value": "124020",
+          "unit": "千元",
+          "source_cells": [
+            "利润表!B4"
+          ],
+          "matched_records": 1,
+          "field": "2026实际",
+          "metric_label": "2026实际"
+        },
+        {
+          "id": "actual__(('str', '毛利'),)",
+          "label": "毛利 2026实际",
+          "group_key": "毛利",
+          "group_fields": {
+            "项目": "毛利"
+          },
+          "value": "53443.25",
+          "unit": "千元",
+          "source_cells": [
+            "利润表!B6"
+          ],
+          "matched_records": 1,
+          "field": "2026实际",
+          "metric_label": "2026实际"
+        },
+        {
+          "id": "actual__(('str', '营业利润'),)",
+          "label": "营业利润 2026实际",
+          "group_key": "营业利润",
+          "group_fields": {
+            "项目": "营业利润"
+          },
+          "value": "21209.4",
+          "unit": "千元",
+          "source_cells": [
+            "利润表!B10"
+          ],
+          "matched_records": 1,
+          "field": "2026实际",
+          "metric_label": "2026实际"
+        },
+        {
+          "id": "actual__(('str', '净利润'),)",
+          "label": "净利润 2026实际",
+          "group_key": "净利润",
+          "group_fields": {
+            "项目": "净利润"
+          },
+          "value": "16038.3",
+          "unit": "千元",
+          "source_cells": [
+            "利润表!B14"
+          ],
+          "matched_records": 1,
+          "field": "2026实际",
+          "metric_label": "2026实际"
+        },
+        {
+          "id": "derive_m0",
+          "label": "毛利率（注册关系补算）",
+          "source_cells": [
+            "利润表!B4",
+            "利润表!B6"
+          ],
+          "metric_id": "finance.gross_margin",
+          "value": "43.09244476697306885986131269",
+          "unit": "%"
+        }
+      ]
+    },
+    "original_formula_cache": {
+      "利润表!B4": {
+        "formula": "=月度经营!B16",
+        "cached": null
+      },
+      "利润表!B14": {
+        "formula": "=月度经营!N16",
+        "cached": null
+      },
+      "月度经营!B16": {
+        "formula": "=SUM(B4:B15)",
+        "cached": 124020
+      },
+      "月度经营!M16": {
+        "formula": "=SUM(M4:M15)",
+        "cached": null
+      },
+      "月度经营!N16": {
+        "formula": "=SUM(N4:N15)",
+        "cached": null
+      }
+    }
+  }
+}

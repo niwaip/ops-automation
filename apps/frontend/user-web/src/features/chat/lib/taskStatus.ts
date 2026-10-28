@@ -136,7 +136,7 @@ export const resolveMessageTaskStatus = (message: ChatMessage): ChatTaskStatus |
 
   const terminalStatus = [metadataStatus, partsStatus].find(
     (status): status is NonNullable<NonNullable<ChatMessage['metadata']>['taskStatus']> =>
-      Boolean(status && status !== 'running')
+      Boolean(status && terminalTaskStatuses.has(status))
   );
 
   if (terminalStatus) {

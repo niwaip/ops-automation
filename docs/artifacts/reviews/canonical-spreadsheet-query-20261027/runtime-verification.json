@@ -1,0 +1,71 @@
+{
+  "visible_tools": {
+    "inspect_spreadsheet_structure": [
+      "file_path",
+      "sheets"
+    ],
+    "aggregate_spreadsheet": [
+      "file_path",
+      "query"
+    ]
+  },
+  "rows": 6,
+  "original_columns": 18,
+  "row_ids": [
+    176,
+    177,
+    178,
+    179,
+    180,
+    181
+  ],
+  "detail_gate_complete": true,
+  "original_grouped_gate": {
+    "complete": false,
+    "domain": "generic",
+    "evidence_ids": [
+      "c96b5321b99fe80dd1499742"
+    ],
+    "missing_metrics": [],
+    "issues": [
+      {
+        "code": "detail_granularity_changed",
+        "message": "用户要求原始明细，当前只有聚合结果。请用aggregate_spreadsheet的query提交source/where，省略group_by、metrics及distinct，保留原始列与来源行号；仅请求选列时使用fields。"
+      }
+    ],
+    "available_sheets": [],
+    "known_headers": [
+      "BU名称",
+      "BU编号",
+      "WBS名称",
+      "WBS编号",
+      "WBS负责成本中心",
+      "会计年度",
+      "员工姓名",
+      "员工编号",
+      "员工职级",
+      "客户名称",
+      "工数(小时)",
+      "工数年月",
+      "有偿无偿",
+      "直接间接",
+      "职级单价",
+      "部门名称",
+      "部门编号",
+      "金额(K)"
+    ],
+    "gate_review": null
+  },
+  "source_sha256": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+  "source_unchanged": true,
+  "runtime_hashes": {
+    "spreadsheet_query_schema": "efc1b0a07c22d4e2d75e8559921a7c481195b5e0996def2c70b7764db5c637d2",
+    "spreadsheet_analysis_schema": "187978aeb7ea1a17140e89ae0c42339981bfcada6440051a1a3ff307a4c37cc3",
+    "analysis_delivery_constraints": "0dda12a6da004b0ac3134ace2decd28707bf9b3fbab9c36e5554d9baaa2da2a6",
+    "tools": "81e44f6cbdd142840660d46e194b1479d96c3d439da4b7a1623fc47517484b6d",
+    "agent_loop": "90d28aa2f574aacf3b6b50106b7114c2b41a1f5c7b1d5933af2920d4db4d4539"
+  },
+  "detail_instructions_chars": 644,
+  "model_requests": 0
+}
+

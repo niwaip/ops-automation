@@ -163,7 +163,7 @@ def calculate_column_comparison(source, *, sheet, data_range, header_row, group_
         plan = {"sheet": sheet, "data_range": data_range, "header_row": header_row,
                 "group_column": group_column, "comparisons": comparisons, "basis": basis,
                 "rank_by": rank_by, "extreme": extreme, "expected_groups": expected_groups}
-        plan_hash = hashlib.sha256(json.dumps(plan, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+        plan_hash = hashlib.sha256(json.dumps(plan, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
         evidence_id = hashlib.sha256((source_hash+plan_hash).encode()).hexdigest()[:24]
         return ToolResult.success(data={"kind": "column_comparison", "basis": basis,
                                        "plan": plan, "plan_hash": plan_hash, "evidence_id": evidence_id,

@@ -15,6 +15,9 @@ def request_fingerprint(prompt, workbook_id):
 
 
 def authoritative_receipts(receipts, prompt):
+    # Retired runtime-generated receipts cannot become evidence for a new turn.
+    receipts = [r for r in receipts if (getattr(r, 'provenance', None) or {}).get('execution_origin')
+                not in {'registered_derivation', 'bounded_summary_recovery'}]
     native = [r for r in receipts if getattr(r, 'is_success', False)
               and isinstance(getattr(r, 'data', None), dict)
               and (r.data.get('facts') or is_empty_query(r.data))
@@ -35,10 +38,7 @@ def authoritative_receipts(receipts, prompt):
                     latest[(receipt.provenance or {}).get('workbook_id')] = receipt
                 return list(latest.values())
         return native
-    compiled = [r for r in receipts if isinstance(getattr(r, 'data', None), dict)
-                and r.data.get('request_fingerprint') == request_fingerprint(prompt, (r.provenance or {}).get('workbook_id'))
-                and (r.provenance or {}).get('execution_origin') == 'bounded_summary_recovery']
-    return compiled or receipts
+    return receipts
 
 
 def _column(column, headers):
@@ -289,7 +289,7 @@ def resolve_conforming_facts(receipts, prompt='', scope_decisions=None, model=No
             elif contract.has_filters or review_source_scope:
                 from .analysis_scope_context import source_scope_context, record_scope_decision
                 context = source_scope_context(it[0], scopes, it[4], contract)
-                key = json.dumps(context, sort_keys=True, ensure_ascii=False)
+                key = json.dumps(context, sort_keys=True, ensure_ascii=False, default=str)
                 if key not in scope_reviews:
                     scope_reviews[key] = judge_filter_conformance(
                         prompt, [], all_headers, model=model, deadline=deadline,
@@ -365,11 +365,4 @@ def resolve_conforming_facts(receipts, prompt='', scope_decisions=None, model=No
             facts = selected
     if any(f.get('matched_records', 1) for f in facts):
         facts = [f for f in facts if f.get('matched_records') != 0]
-    # Always preserve registered derivations generated for this turn
-    for r in receipts or []:
-        if getattr(r, 'is_success', False) and isinstance(getattr(r, 'data', None), dict):
-            if (r.provenance or {}).get('execution_origin') == 'registered_derivation':
-                for df in r.data.get('facts', []):
-                    if df not in facts:
-                        facts.append(df)
     return facts

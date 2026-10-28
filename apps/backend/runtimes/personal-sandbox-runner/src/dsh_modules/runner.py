@@ -551,6 +551,9 @@ def cmd_run(args):
                         )
                     )
                 continue
+            is_verbatim_reply = bool(re.search(r'(?:^|[\n\r]|用户指令[：:])\s*(?:仅回复|只回复|仅输出|只需回复|只回答)\b', prompt))
+            if is_verbatim_reply:
+                continue
             comparison_context = build_comparison_source_context(fpath, prompt, deadline=task_deadline)
             # A usable schema keeps full numeric rows on the tool path. No
             # eager all-sheet extraction/recalculation is needed for planning.
@@ -593,7 +596,8 @@ def cmd_run(args):
             t for t in active_tools
             if t.get("function", {}).get("name") not in redundant_for_direct_vision
         ]
-    if requires_spreadsheet_analysis(prompt, skill_res):
+    spreadsheet_analysis_needed = requires_spreadsheet_analysis(prompt, skill_res)
+    if spreadsheet_analysis_needed:
         from .spreadsheet_analysis_schema import select_analysis_tools
         update_tool_names = {"plan_spreadsheet_update", "execute_spreadsheet_update", "get_spreadsheet_update_status", "read_skill"}
         has_update_tools = any(t.get("function", {}).get("name") in update_tool_names for t in active_tools)
@@ -610,7 +614,8 @@ def cmd_run(args):
                 active_tools = analysis_tools + [t for t in retained_extras if t not in analysis_tools]
             else:
                 active_tools = analysis_tools
-    task_context = load_task_context(history_file, original_hashes)
+    is_standalone_instruction = (getattr(skill_res, "admission", None) or {}).get("instruction_relation") == "standalone"
+    task_context = load_task_context(history_file, original_hashes) if (spreadsheet_analysis_needed and not is_standalone_instruction) else ""
     # 4. 组装 System Prompt 与 User Turn (保持前缀稳定以命中 Prompt Caching)
     system_prompt = build_system_prompt(
         WORKSPACE_DIR,
@@ -649,7 +654,7 @@ def cmd_run(args):
         is_docx_intent=skill_res.is_docx_intent,
         is_office_intent=skill_res.is_office_intent,
         is_research_intent=skill_res.is_research_intent,
-        is_inspect_intent=skill_res.is_inspect_intent,
+        is_inspect_intent=(skill_res.is_inspect_intent and not is_search_intent and not is_weather_intent),
         is_generate_intent=skill_res.is_generate_intent,
         is_guide_intent=skill_res.is_guide_intent,
         existing_history=existing_history,
@@ -696,6 +701,9 @@ def cmd_run(args):
         session_files=session_files,
         search_context=search_context,
     )
+    from .spreadsheet_chart_delivery import wants_standard_bar_chart
+    if spreadsheet_analysis_needed and wants_standard_bar_chart(prompt):
+        should_plan = False
     # A bounded update already plans from actual query evidence and workbook labels.
     # Do not prepend a second free-text plan without these tool schemas.
     if any(tool.get('function', {}).get('name') == 'plan_spreadsheet_update' for tool in active_tools):
@@ -762,10 +770,11 @@ def cmd_run(args):
             is_generate_intent=skill_res.is_generate_intent,
             is_inspect_intent=skill_res.is_inspect_intent,
             telemetry=telemetry,
-            spreadsheet_analysis_required=requires_spreadsheet_analysis(prompt, skill_res),
+            spreadsheet_analysis_required=spreadsheet_analysis_needed,
             is_search_intent=is_search_intent,
             initial_execution_evidence=retrieval_evidence,
             user_prompt=prompt,
+            delivery_session_id=session_id,
             user_declarations={
                 'unit_confirmation': (skill_res.admission or {}).get('unit_confirmation'),
                 'user_statements': [prompt.split('用户指令：')[-1], *[
@@ -799,24 +808,30 @@ def cmd_run(args):
                 telemetry.record_guard("attachment_diagnostic", "accept", "acknowledged_unreadable_attachment")
 
         # 6. 产物导出与落盘 (HTML/PPT 及各种文档交付物)
-        final_text, exported_html_files = ArtifactExporter.export_html(
-            raw_final_text,
-            skill_res.is_ppt_intent,
-            WORKSPACE_DIR,
-            turn_start_time=overall_start_time,
-            is_design_intent=skill_res.is_design_intent,
-            prompt=prompt,
-            history=existing_history
-        )
+        from .spreadsheet_chart_delivery import managed_chart_export
+        if managed_chart_export(loop_res.telemetry):
+            # Published files already passed run-scoped acceptance. Do not scan or
+            # recompile them into shared index.html, including on failed delivery.
+            final_text, exported_html_files, detected_deliverables = raw_final_text, [], []
+        else:
+            final_text, exported_html_files = ArtifactExporter.export_html(
+                raw_final_text,
+                skill_res.is_ppt_intent,
+                WORKSPACE_DIR,
+                turn_start_time=overall_start_time,
+                is_design_intent=skill_res.is_design_intent,
+                prompt=prompt,
+                history=existing_history
+            )
 
-        detected_deliverables = ArtifactExporter.export_deliverables(
-            WORKSPACE_DIR,
-            final_text,
-            turn_start_time=overall_start_time,
-            session_files=session_files,
-            expected_deliverables=skill_res.deliverables if skill_res else None,
-            prompt=prompt
-        )
+            detected_deliverables = ArtifactExporter.export_deliverables(
+                WORKSPACE_DIR,
+                final_text,
+                turn_start_time=overall_start_time,
+                session_files=session_files,
+                expected_deliverables=skill_res.deliverables if skill_res else None,
+                prompt=prompt
+            )
 
         # 7. 会话历史持久化
         if history_file:
@@ -905,6 +920,8 @@ def cmd_run(args):
             print(f"\n❌ [DeepSeek Harness 超时]: 模型响应超时或连接中断: {raw_error}", file=sys.stderr)
             sys.exit(124)
         else:
+            import traceback
+            traceback.print_exc()
             print(f"\n❌ [DeepSeek Harness 异常]: 执行异常: {e}", file=sys.stderr)
         sys.exit(1)
     finally:

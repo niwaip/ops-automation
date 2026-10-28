@@ -1142,6 +1142,83 @@ class TestFinancialWorkbookFixes(unittest.TestCase):
         self.assertNotIn("请从已有工作表", out_multi)
         self.assertIn("暂不能判断是否缺少业务数据", out_multi)
 
+    def test_source_cells_natural_sort_no_inversion(self):
+        """[F02-P2 Fix] Source cells must be sorted naturally so B10..B9 inversion never occurs."""
+        from dsh_modules.report_presentation import _format_facts_source_cells
+        facts = [{
+            'id': 'fact_1',
+            'label': '营业收入',
+            'source_cells': ['月度经营!B10', '月度经营!B2', '月度经营!B9', '月度经营!B3', '月度经营!B13']
+        }]
+        formatted = _format_facts_source_cells(facts)
+        # B2 should be first, B13 should be last. It must NOT be B10..B9!
+        self.assertIn("`月度经营!B2..月度经营!B13`（共5个单元格）", formatted)
+        self.assertNotIn("B10..B9", formatted)
+
+    def test_datetime_cell_filtering_and_json_serialization(self):
+        """[F06-P1 Fix] Openpyxl datetime cell filtering and tool result json serialization must not crash."""
+        import datetime
+        from dsh_modules.query_executor import execute_query_plan
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "明细表"
+        ws.append(["交易日期", "凭证号", "金额", "审批状态"])
+        ws.append([datetime.datetime(2026, 3, 15, 10, 0), "PZ001", 60000, "已审批"])
+        ws.append([datetime.datetime(2026, 7, 20, 14, 30), "PZ002", 30000, "已审批"])
+        ws.append([datetime.datetime(2025, 12, 1, 9, 0), "PZ003", 80000, "已审批"])
+
+        plan = {
+            "source": {"sheet": "明细表", "header_row": 1},
+            "where": {
+                "and": [
+                    {"field": "交易日期", "op": ">=", "value": "2026-01-01"},
+                    {"field": "交易日期", "op": "<=", "value": "2026-12-31"},
+                    {"field": "金额", "op": ">=", "value": 50000},
+                ]
+            },
+            "fields": ["交易日期", "凭证号", "金额", "审批状态"],
+        }
+
+        q_res = execute_query_plan(wb, plan, lambda: None, "元")
+        self.assertEqual(len(q_res.rows), 1)
+        self.assertEqual(q_res.rows[0]["凭证号"], "PZ001")
+        # Ensure row's 交易日期 is safely serializable
+        serialized = json.dumps(q_res.rows)
+        self.assertIn("2026-03-15", serialized)
+
+    def test_stopped_task_new_verbatim_instruction_standalone(self):
+        """[F12-P1 Fix] When previous task was stopped, new prompt must be standalone and not inherit old task."""
+        from dsh_modules.task_intent import validate_intent
+
+        history = [
+            {"role": "user", "content": "帮我做一份全年财务分析报表并生成 Excel 文件"},
+            {"role": "assistant", "content": "【系统提示】：(任务已由用户手动停止)"},
+        ]
+        users = ["帮我做一份全年财务分析报表并生成 Excel 文件"]
+        intent = {
+            "instruction_relation": "followup",
+            "task_mode": "execute",
+            "output_mode": "artifact",
+            "artifact_types": [".xlsx"],
+            "unit_confirmation": None,
+            "section_confirmation": None,
+            "skill_invocation": {"mode": "none", "name": "", "replace_defaults": False},
+            "requirements": [{"id": "r1", "quote": "帮我做一份全年财务分析报表并生成 Excel 文件"}]
+        }
+
+        # User sends new instruction after stopping
+        validated = validate_intent(intent, '仅回复“取消后可以继续”。', users, [], allow_sanitize=True, history=history)
+        self.assertEqual(validated["instruction_relation"], "standalone")
+        self.assertEqual(validated["task_mode"], "consult")
+        self.assertEqual(validated["output_mode"], "conversation")
+        # Must NOT inherit the old financial analysis task
+        self.assertNotIn("全年财务分析", json.dumps(validated["requirements"], ensure_ascii=False))
+
+
+
+
+
 
 
 if __name__ == "__main__":

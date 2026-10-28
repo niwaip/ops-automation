@@ -1,6 +1,9 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { normalizeTabSeparatedTable } from '../lib/tableNormalizer';
 import { splitReportDetails } from '../lib/reportDetails';
 import { HtmlPreviewBlock } from './HtmlPreviewBlock';
@@ -175,13 +178,34 @@ export const renderWithLineBreaks = (node: React.ReactNode): React.ReactNode => 
   if (Array.isArray(node)) {
     return React.Children.map(node, renderWithLineBreaks);
   }
-  if (React.isValidElement(node) && (node.props as any)?.children) {
-    return React.cloneElement(node, {
-      ...(node.props as any),
-      children: renderWithLineBreaks((node.props as any).children),
-    });
+  if (React.isValidElement(node)) {
+    const className = (node.props as { className?: string })?.className;
+    if (typeof className === 'string' && className.includes('katex')) {
+      return node;
+    }
+    if ((node.props as { children?: React.ReactNode })?.children) {
+      return React.cloneElement(node, {
+        ...(node.props as object),
+        children: renderWithLineBreaks((node.props as { children?: React.ReactNode }).children),
+      });
+    }
   }
   return node;
+};
+
+export const normalizeMathDelimiters = (text: string): string => {
+  if (!text || typeof text !== 'string') return '';
+  const tokens = text.split(/(```[\s\S]*?```|`[^`\n]+`)/g);
+  return tokens
+    .map((token, i) => {
+      if (i % 2 === 1) return token;
+      let res = token;
+      res = res.replace(/\\\[([\s\S]*?)\\\]/g, (_m, formula) => `\n\n$$\n${formula.trim()}\n$$\n\n`);
+      res = res.replace(/\\\(([\s\S]*?)\\\)/g, (_m, formula) => `$${formula.trim()}$`);
+      res = res.replace(/(^|\n)\s*\$\$\s*([^\n$]+?)\s*\$\$\s*(?=\n|$)/g, (_m, prefix, formula) => `${prefix}\n\n$$\n${formula.trim()}\n$$\n\n`);
+      return res;
+    })
+    .join('');
 };
 
 export const hoistHtmlPreviewBlock = (markdownText: string): string => {
@@ -287,7 +311,8 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
   return (
     <div className="chat-message-markdown">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[[rehypeKatex, { strict: false, throwOnError: false }]]}
         urlTransform={safeUrlTransform}
         components={{
           pre: ({ children, className: preClassName, ...props }: React.ComponentPropsWithoutRef<'pre'>) => {
@@ -494,7 +519,7 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
           ),
         }}
       >
-        {normalizeTabSeparatedTable(unwrapOuterMarkdownFence(content))}
+        {normalizeMathDelimiters(normalizeTabSeparatedTable(unwrapOuterMarkdownFence(content)))}
       </ReactMarkdown>
       {isStreaming ? <StreamingIndicator /> : null}
     </div>

@@ -266,7 +266,9 @@ export class UserSandboxController {
               trimmed.startsWith('📝') ||
               trimmed.startsWith('🌐')
             ) {
-              sendEvent('observation', { content: trimmed });
+              if (!trimmed.includes('[Harness Phase Transition]')) {
+                sendEvent('observation', { content: trimmed });
+              }
             }
           }
         },

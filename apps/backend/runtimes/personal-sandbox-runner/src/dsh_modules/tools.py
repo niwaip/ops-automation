@@ -54,14 +54,14 @@ from .reminder_tools import (
 )
 from .deliverable_contract import write_markdown_artifact
 from .comparison_tool_schema import COMPARISON_TOOL
-from .spreadsheet_analysis_schema import ANALYSIS_TOOL, ANALYSIS_CAPABILITIES, ANALYSIS_TOOL_NAMES
+from .spreadsheet_analysis_schema import ANALYSIS_TOOL, ADVANCED_ANALYSIS_TOOL, ANALYSIS_CAPABILITIES, ANALYSIS_TOOL_NAMES
 from .spreadsheet_context import STRUCTURE_TOOL, STRUCTURE_TOOL_NAME
 from .spreadsheet_update.tools import SPREADSHEET_UPDATE_TOOL_DEFINITIONS
 
 SANDBOX_TOOLS = [
     STRUCTURE_TOOL,
     COMPARISON_TOOL,
-    ANALYSIS_TOOL,
+    ADVANCED_ANALYSIS_TOOL,
     *ANALYSIS_CAPABILITIES,
     *SPREADSHEET_UPDATE_TOOL_DEFINITIONS,
     {

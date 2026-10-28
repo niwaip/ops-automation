@@ -94,6 +94,9 @@ def validate_predicate_node(
     if "and" in node or "or" in node:
         op = "and" if "and" in node else "or"
         args = node[op]
+        # 空 HAVING 条件不报错，退化为空过滤
+        if for_having and isinstance(args, list) and len(args) == 0:
+            return
         if not isinstance(args, list) or not (1 <= len(args) <= 16):
             raise QueryContractError(f"{op} 组合操作需要 1 到 16 个子条件列表")
         for child in args:
@@ -331,12 +334,15 @@ def validate_query_plan(plan: Dict[str, Any], available_columns: Set[str]) -> No
     # Validate having
     having_node = plan.get("having")
     if having_node:
-        validate_predicate_node(
-            having_node,
-            available_columns,
-            for_having=True,
-            valid_metric_ids=metric_ids,
-        )
+        if isinstance(having_node, dict) and (having_node.get("and") == [] or having_node.get("or") == []):
+            plan.pop("having", None)
+        else:
+            validate_predicate_node(
+                having_node,
+                available_columns,
+                for_having=True,
+                valid_metric_ids=metric_ids,
+            )
 
     # Validate order_by
     order_by = plan.get("order_by")

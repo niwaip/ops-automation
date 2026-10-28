@@ -1,0 +1,20 @@
+{
+  "source_sha256": "9d71ca8cc6172add7e558ac6a906f677c784fcc5c9d3444cbb17de2772fd992f",
+  "download_bytes": 6213,
+  "download_sha256": "b8773bd5880e2a42f64c79339daff603b021c1f8bfb3248b5d4a8b1c23fe764c",
+  "same_bytes_after_refresh": true,
+  "case_statuses": {
+    "F01": "DEGRADED：识别正确，完成后仍显示排队中",
+    "F02": "DEGRADED：四指标正确，来源坐标倒置",
+    "F03": "DEGRADED：预算数值正确，未明确给一致性结论",
+    "F04": "FAIL：错误月份/差异，并带入排除的利润表",
+    "F05": "FAIL：部分完成，完整异常清单未交付",
+    "F06": "FAIL：干净重跑触发datetime序列化异常",
+    "F07": "DEGRADED：空结果正确，日期附加解释错误",
+    "F08": "DEGRADED：恢复后交付有效XLSX，重复标注有误",
+    "F09": "DEGRADED：差额正确，正式检查未闭环",
+    "F10": "PASS：刷新历史保留，再次下载字节一致",
+    "F11": "PASS：正确请求补充附件",
+    "F12": "FAIL：停止及历史保留成功，新指令却输出旧分析"
+  }
+}

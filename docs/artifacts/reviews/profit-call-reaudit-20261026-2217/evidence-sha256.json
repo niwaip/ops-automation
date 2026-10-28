@@ -1,0 +1,31 @@
+{
+  "contract-binding.json": "69fbe06fa576ded19e3ff2907a05ef5562d3ce964642904655a5f90fffb7ee9f",
+  "contract-caches.json": "35a7552b2f79aa34631a7c108d575696bac0293850609488a4a621c46610a691",
+  "offline-checks.json": "9b93ccff29c5f264cd2be6bec4c3e0c7964ff9535daf130f10ebafd28614e871",
+  "offline-probes.py": "42c9f77fa4b11b2b79630a9e08a1316594cc48005068460dec34313917a03212",
+  "preflight.json": "389e9a3eb0a56185d927f9d2e38617e008c334ff6da0fc825c4255ed5c792a29",
+  "recent-review-cache.json": "8b81f323278800b312de27a0b01901d7903a4b582da0b2b678c595ebc6610d5e",
+  "runtime-hashes.json": "a69dec9308e54f1d4bcc7b5b57de841fdec7589eb987134b4fc053a6f7237ad1",
+  "sandbox.json": "58f99e0216d40cb6ce2666837be484ee69d7c42aac79f9a2a66e38985ce22ef8",
+  "service.log": "4d0b5079ba7c60114e459dca3b9cc27a209e3644f541cb24cfef31598f2917e6",
+  "session.json": "f9776ab3e8d42d916f01ccab4d4333512e0e04c1e47f12d27ce2d17f0c20cf66",
+  "source-snapshots/agent_loop.py": "ccf3b346bdfed7915324409c46fd847046b95dd992275e2cfd389d886118d552",
+  "source-snapshots/analysis_contract.py": "599de992c644269c78089a737ebb7083c464ba874a1e7f9472032980cb058f65",
+  "source-snapshots/analysis_gate_review.py": "a64c1f2f5a70fd5611a7137e1108789a2ac487c9593799ca95432805e5071238",
+  "source-snapshots/analysis_turn.py": "927363d893de2df014b403e7148deb1906571f33dbbcb70d92bb107bfb86ee50",
+  "source-snapshots/analysis_validation.py": "6a00cdc93b330903ed88401f28e574f7d63e4c8fc99886623f25e91027232290",
+  "source-snapshots/completion_evaluator.py": "5ffd8a56c283452ef79a0de9ec6df1fd57114a3c75837a7b0d7a7be076c186b2",
+  "source-snapshots/evidence_store.py": "e260c7e286e8237c202e7308df3742ea92a8e4b432c322deebb83be782795c4c",
+  "source-snapshots/llm.py": "3613c1d03d643112b88937042a69023bbef4729d161cc552986ee318e5e09f85",
+  "source-snapshots/runner.py": "0c388cd9d9116b2fc4659e023e590bc0559a93f3f694d6742b83120d2cde0606",
+  "source-snapshots/semantic_contract_judge.py": "d9869d44c79e6b2c05a4289c188e78de837ab7ab481f20fea0e76ff073658bdc",
+  "source-snapshots/skill_admission.py": "e3c670d76c5a99a5598a844d650bb5ef121f1c63b2c5290d604e1b9af36b8064",
+  "source-snapshots/spreadsheet_analysis_evidence.py": "57a08f1706bca3e190983d701ae8c4a979263f9963d588ee4f1af2bb4a4730e0",
+  "source-snapshots/spreadsheet_preflight.py": "72bac13dc7d477f2cf1bb169ace141d7c36ce619b56a4678b5f1f3eeaaa787bb",
+  "source-snapshots/telemetry.py": "3aaf5f4460eb2f4eebbc5f34426fdca197fb5ae5906c7c0b3004f2e680a8ba31",
+  "summary.json": "08697989fb28611cb33fdaee7dee5bf5c705f42832a8c45ccbd137ed46b1fcb1",
+  "report": {
+    "path": "/Users/chain/Documents/MyProject/ops-automation/docs/audits/profit-call-reaudit-2026-10-26-2217.md",
+    "sha256": "7b80dd81ff9cd3c11fb864d696dfef440e6c6ae7e5d27c98d00d99332fdf1752"
+  }
+}

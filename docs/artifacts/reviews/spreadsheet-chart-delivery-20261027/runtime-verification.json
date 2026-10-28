@@ -1,0 +1,90 @@
+{
+  "original_source_unchanged": true,
+  "original_source_sha256": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+  "shared_stale_index_unchanged": true,
+  "manifest": {
+    "session_id": "chart-delivery-smoke",
+    "turn_id": "26b661e908e24e84a43085a7281c11a5",
+    "status": "published",
+    "transitions": [
+      "calculating",
+      "generating",
+      "validating",
+      "validated",
+      "published"
+    ],
+    "attempts": 1,
+    "evidence_id": "96161d1a4f806c167a6e1e33",
+    "sha256": "e014a76afbf30ef91a6a148ef6ccec4c10ca1e37820a9473a34a51fd026613c9",
+    "groups": 7,
+    "artifact_id": "3e4a546c54b5437dbf285d8203f001df",
+    "file_path": "/tmp/chart-delivery-smoke-vmrdf6a0/chart-chart-delivery-smoke-26b661e908e24e84a43085a7281c11a5-3e4a546c54b5437dbf285d8203f001df.html"
+  },
+  "dataset": {
+    "chart_type": "bar",
+    "title": "部门名称 · 金额(K)合计",
+    "category_field": "部门名称",
+    "value_field": "amount_sum",
+    "value_label": "金额(K)",
+    "unit": "K",
+    "points": [
+      {
+        "label": "華東MIS",
+        "value": "561.75345"
+      },
+      {
+        "label": "華北BAS",
+        "value": "67.0353"
+      },
+      {
+        "label": "DM華南BAS",
+        "value": "171.65638"
+      },
+      {
+        "label": "流通/EBISS",
+        "value": "198.51766"
+      },
+      {
+        "label": "華南MIS",
+        "value": "164.90159"
+      },
+      {
+        "label": "SM華南BAS",
+        "value": "212.90759"
+      },
+      {
+        "label": "華東BAS",
+        "value": "260.64793"
+      }
+    ],
+    "evidence_id": "96161d1a4f806c167a6e1e33",
+    "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+    "source_name": "工数实绩明细_20261020134124.xlsx",
+    "source_range": "工数实绩明细!A5:R278",
+    "where": {
+      "not": {
+        "field": "WBS编号",
+        "op": "starts_with",
+        "values": [
+          "ex",
+          "sy",
+          "sp",
+          "ip",
+          "ib",
+          "sz"
+        ]
+      }
+    },
+    "having": null
+  },
+  "stderr": "/usr/local/lib/python3.11/dist-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default\n  warn(\"Workbook contains no default style, apply openpyxl's default\")\nGate review unavailable: timed out\n",
+  "runtime_hashes": {
+    "agent_loop": "b632a09cb0a26325c5a2df5e8c650258dfde2d2bf5f92404f08f44038861a5ea",
+    "runner": "498c7eb8772973111d2ca3f03e033774e6f16e2b1d71595fefbdca25d5939702",
+    "spreadsheet_chart_renderer": "31a9196a304a123d2fd5f1fac64185a494c59b18db808219015120e566bd3504",
+    "spreadsheet_chart_delivery": "12cfb02704d34f7b33ce12437329908ee90b92c38d51fb60dc1670885a1a3712",
+    "artifact_exporter": "4568f16b28f00b9d2924f9f9e350a01d4636da6816468cb5859c5249ca0f5278",
+    "html_report_fallback": "e04a5530d731760486014ca3f9afe8e76607ba8a53aa2622784a5a4d22bf4a54",
+    "completion_evaluator": "4395bf9968948069cb643281285a85e67ffae3e9113eae621b885b6d9c79ae5b"
+  }
+}

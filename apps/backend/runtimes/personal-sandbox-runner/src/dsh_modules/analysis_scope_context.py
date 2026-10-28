@@ -45,7 +45,7 @@ def source_scope_context(fact, scopes, workbook_id, contract):
             'row_labels_complete': scope.get('row_labels_complete', False),
             'coverage_complete': scope.get('coverage_complete'),
             'selected_row_count': row_count,
-            'selected_rows_hash': hashlib.sha256(json.dumps(rows).encode()).hexdigest(),
+            'selected_rows_hash': hashlib.sha256(json.dumps(rows, default=str).encode()).hexdigest(),
         })
     return {'review_scope': 'period_and_filters_only',
             'workbook_id': workbook_id,

@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "engine": "spreadsheet-group-sum-v1",
+  "group_by": "部门编号",
+  "measure": "金额(K)",
+  "filters": [
+    {
+      "field": "WBS编号",
+      "op": "exclude_prefix",
+      "values": [
+        "ex",
+        "sy",
+        "sp",
+        "ip",
+        "ib",
+        "sz"
+      ]
+    }
+  ],
+  "instructions": [
+    "按照 部门编号 分组统计金额 的合计， 不包含WBS编号 中ex，sy，sp，ip，ib，sz开头的数据"
+  ],
+  "steps": [
+    "绑定本轮唯一附件并计算摘要",
+    "按必需字段定位唯一表头与工作表，排除独立的表尾查询条件说明段",
+    "全量读取业务行并逐条执行筛选",
+    "按分组字段用 Decimal 汇总原单位金额",
+    "核对输入未变、行数守恒、分组金额与总额一致",
+    "只从已验证回执呈现结果"
+  ],
+  "verification": {
+    "source_hash": true,
+    "row_accounting": true,
+    "group_total": true
+  }
+}

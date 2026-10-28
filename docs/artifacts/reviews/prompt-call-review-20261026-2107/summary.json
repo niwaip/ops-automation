@@ -1,0 +1,150 @@
+{
+  "date": "2026-10-26",
+  "timezone": "Asia/Shanghai",
+  "session_id": "chat-session-1793019198260-1llzjmqv",
+  "turn_id": "1793020174836519792-d8466d28c3c14ba29a65e8055e650089",
+  "assistant_message_id": "1793020067816-xw1p82sk",
+  "git_head": "d1b5bcff1d9a12e14469ddd0cf7316a3491885fa",
+  "process_exit_code": 0,
+  "verified": false,
+  "duration_ms": 106920,
+  "recorded_llm_invocations": 11,
+  "recorded_llm_ms": 69454.74,
+  "tokens": {
+    "prompt_tokens": 223349,
+    "completion_tokens": 5006,
+    "total_tokens": 228355
+  },
+  "same_window_proxy_call_count": 16,
+  "same_window_proxy_http_ms_sum": 89248,
+  "proxy_http_durations_ms": [
+    3570,
+    2173,
+    2283,
+    2882,
+    6953,
+    3472,
+    2732,
+    2863,
+    3548,
+    5129,
+    2383,
+    15591,
+    3738,
+    13239,
+    6206,
+    12486
+  ],
+  "tool_receipts": [
+    {
+      "round": 0,
+      "status": "error",
+      "error": {
+        "code": "invalid_analysis_plan",
+        "message": "plan：and 组合操作需要 1 到 16 个子条件列表"
+      },
+      "evidence_id": null
+    },
+    {
+      "round": 2,
+      "status": "error",
+      "error": {
+        "code": "source_unavailable",
+        "message": "未指定有效文件路径"
+      },
+      "evidence_id": null
+    },
+    {
+      "round": 5,
+      "status": "error",
+      "error": {
+        "code": "invalid_analysis_plan",
+        "message": "calculations.rev_growth（收入增长率）：不能相加/相减不同维度"
+      },
+      "evidence_id": null
+    },
+    {
+      "round": 6,
+      "status": "success",
+      "error": null,
+      "evidence_id": "9726bdc6227ff2bb29f505eb"
+    }
+  ],
+  "comparisons_from_success_receipt": {
+    "rev": {
+      "h1": "55120",
+      "h2": "68900",
+      "difference": "13780",
+      "growth_pct": "25.00"
+    },
+    "gp": {
+      "h1": "22970.0",
+      "h2": "30473.25",
+      "difference": "7503.25",
+      "growth_pct": "32.66543317370483239007400960"
+    },
+    "op": {
+      "h1": "8309.6",
+      "h2": "12899.80",
+      "difference": "4590.20",
+      "growth_pct": "55.23972273033599691922595550"
+    },
+    "np": {
+      "h1": "6280.950",
+      "h2": "9757.3500",
+      "difference": "3476.4000",
+      "growth_pct": "55.34831514340983449955818790"
+    },
+    "gm": {
+      "h1_pct": "41.67271407837445573294629898",
+      "h2_pct": "44.22822931785195936139332366",
+      "difference_pp": "2.55551523947750362844702468"
+    },
+    "opm": {
+      "h1_pct": "15.07547169811320754716981132",
+      "h2_pct": "18.72249637155297532656023222",
+      "difference_pp": "3.64702467343976777939042090"
+    },
+    "npmm": {
+      "h1_pct": "11.39504716981132075471698113",
+      "h2_pct": "14.16161103047895500725689405",
+      "difference_pp": "2.76656386066763425253991292"
+    }
+  },
+  "runtime_parity": {
+    "runner.py": true,
+    "agent_loop.py": true,
+    "analysis_contract.py": true,
+    "semantic_contract_judge.py": true,
+    "analysis_task_state.py": true,
+    "analysis_gate_review.py": true,
+    "analysis_turn.py": true,
+    "spreadsheet_preflight.py": true,
+    "tools.py": true,
+    "prompt_builder.py": true,
+    "spreadsheet_analysis_schema.py": true,
+    "telemetry.py": true,
+    "llm.py": true
+  },
+  "current_schema_measurement": {
+    "serialization": "json.dumps(ensure_ascii=False), default separators",
+    "all_tools_count": 25,
+    "all_tools_chars": 31139,
+    "fallback_analysis_tools": [
+      "inspect_spreadsheet_structure",
+      "aggregate_spreadsheet"
+    ],
+    "fallback_analysis_tool_object_chars": [
+      377,
+      5583
+    ],
+    "base_prompt_chars_without_skills": 2136,
+    "historical_wire_request_reconstructed": false
+  },
+  "limits": [
+    "Proxy spans are time/user correlated, not a complete parent-span graph.",
+    "Actual historical per-round messages/tools/tokenizer/cache counts are unavailable.",
+    "The source-read check used data_only=True; some formula cells have no stored values. Net profit comparisons use the original successful calculation receipt.",
+    "Offline AST probes inspect selected functions only; no model replay or performance benchmark was run."
+  ]
+}

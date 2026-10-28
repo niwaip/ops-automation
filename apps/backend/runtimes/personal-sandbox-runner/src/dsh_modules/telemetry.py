@@ -2,11 +2,23 @@
 Telemetry tracking, performance metrics, and DSH protocol event emission.
 """
 
+import contextvars
 import json
 import re
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 from .response_observability import response_fingerprint
+
+
+_ACTIVE_TELEMETRY: contextvars.ContextVar[Optional['TelemetryStats']] = contextvars.ContextVar('_ACTIVE_TELEMETRY', default=None)
+
+
+def get_active_telemetry() -> Optional['TelemetryStats']:
+    return _ACTIVE_TELEMETRY.get()
+
+
+def set_active_telemetry(tracker: Optional['TelemetryStats']):
+    return _ACTIVE_TELEMETRY.set(tracker)
 
 
 def format_dsh_marker(tag: str, payload: str) -> str:
@@ -163,6 +175,7 @@ class TelemetryStats:
     wall_clock_ms: float = 0.0
     tool_invocations: int = 0
     llm_invocations: int = 0
+    auxiliary_invocations: int = 0
     tokens: Dict[str, Any] = field(default_factory=dict)
     finish_reason: str = "unknown"
     round_finish_reasons: List[str] = field(default_factory=list)
@@ -170,6 +183,43 @@ class TelemetryStats:
     guard_decisions: List[Dict[str, Any]] = field(default_factory=list)
     model_responses: List[Dict[str, Any]] = field(default_factory=list)
     answer_validation: Dict[str, Any] = field(default_factory=dict)
+    calls_ledger: List[Dict[str, Any]] = field(default_factory=list)
+
+    def __post_init__(self):
+        set_active_telemetry(self)
+
+    def record_auxiliary_call(
+        self,
+        purpose: str,
+        usage: Optional[Dict[str, Any]] = None,
+        total_ms: float = 0.0,
+        model: str = "default",
+        span_id: Optional[str] = None
+    ) -> None:
+        """Records an auxiliary LLM call (intent, gate_review, filter_conformance) into the unified ledger."""
+        self.auxiliary_invocations += 1
+        self.llm_invocations += 1
+        self.total_ms += total_ms
+        if usage and isinstance(usage, dict):
+            if not self.tokens:
+                self.tokens = {
+                    "prompt_tokens": 0,
+                    "completion_tokens": 0,
+                    "total_tokens": 0
+                }
+            for k in ["prompt_tokens", "completion_tokens", "total_tokens"]:
+                if k in usage and isinstance(usage[k], (int, float)):
+                    self.tokens[k] = self.tokens.get(k, 0) + int(usage[k])
+            for k, v in usage.items():
+                if k not in ["prompt_tokens", "completion_tokens", "total_tokens"]:
+                    self.tokens[k] = v
+        self.calls_ledger.append({
+            "purpose": purpose,
+            "model": model,
+            "total_ms": round(total_ms, 2),
+            "usage": usage or {},
+            "span_id": span_id
+        })
 
     def record_guard(self, guard: str, action: str, reason: Any = None) -> None:
         self.guard_decisions.append({"guard":guard,"action":action,"reason":reason})
@@ -187,7 +237,7 @@ class TelemetryStats:
         if result.provenance:
             detail["workbook_id"] = result.provenance.get("workbook_id")
 
-    def record_llm_response(self, llm_res: Any, is_first_round: bool = False) -> None:
+    def record_llm_response(self, llm_res: Any, is_first_round: bool = False, purpose: str = "tool_loop") -> None:
         """Accumulates latency and usage from an LLM call response across rounds."""
         if not isinstance(llm_res, dict):
             return
@@ -214,6 +264,13 @@ class TelemetryStats:
         self.finish_reason = fr
         self.round_finish_reasons.append(fr)
         self.model_responses.append(response_fingerprint(llm_res))
+        self.calls_ledger.append({
+            "purpose": purpose,
+            "model": llm_res.get("model", "default"),
+            "total_ms": round(llm_res.get("total_ms", 0), 2),
+            "usage": new_usage or {},
+            "span_id": llm_res.get("span_id")
+        })
 
     def record_tool_call(
         self,
@@ -257,6 +314,8 @@ class TelemetryStats:
             "guardDecisions": self.guard_decisions,
             "modelResponses": self.model_responses,
             "answerValidation": self.answer_validation,
+            "callsLedger": self.calls_ledger,
+            "auxiliaryInvocations": self.auxiliary_invocations,
         }
         return json.dumps(data, ensure_ascii=False)
 

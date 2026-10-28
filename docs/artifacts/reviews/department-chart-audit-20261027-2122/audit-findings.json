@@ -1,0 +1,389 @@
+{
+  "session_id": "chat-session-1793107293434-lr4uyhir",
+  "turn_id": "1793107368597734218-dd2dd737c2fe47b7bb93cbfea124ee91",
+  "original_metrics": {
+    "ttftMs": 6322.1,
+    "durationMs": 61280.96,
+    "llmDurationMs": 50110.85,
+    "toolCallsCount": 2,
+    "toolCalls": [
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "工数实绩明细_20261020134124.xlsx",
+          "query": "{\"source\": {\"sheet\": \"工数实绩明细\", \"header_row\": 4, \"data_range\": \"A5:R278\"}, \"where\": {\"and\": [{\"field\": \"WBS编号\", \"op\": \"no..."
+        },
+        "status": "error",
+        "result_status": "error",
+        "error_code": "invalid_analysis_plan",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "工数实绩明细_20261020134124.xlsx",
+          "query": "{'source': {'sheet': '工数实绩明细', 'header_row': 4, 'data_range': 'A5:R278'}, 'where': {'field': 'WBS编号', 'op': 'not_starts_..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "evidence_id": "126b1cd74f88abbffda5b0b5",
+        "plan_hash": "14cfd8c51c693c335fcd4c8e0607dd3fd8553ee6339e69de19abccc4c9268e18",
+        "kind": "spreadsheet_analysis",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+      }
+    ],
+    "llmInvocations": 11,
+    "tokens": {
+      "prompt_tokens": 70935,
+      "completion_tokens": 3992,
+      "total_tokens": 74927
+    },
+    "finishReason": "tool_calls",
+    "roundFinishReasons": [
+      "tool_calls",
+      "tool_calls",
+      "tool_calls",
+      "stop",
+      "tool_calls",
+      "tool_calls"
+    ],
+    "guardDecisions": [
+      {
+        "guard": "task_intent_review",
+        "action": "accept",
+        "reason": {
+          "output_mode": "artifact",
+          "task_mode": "execute"
+        }
+      },
+      {
+        "guard": "task_intent",
+        "action": "accept",
+        "reason": {
+          "instruction_relation": "standalone",
+          "task_mode": "execute",
+          "output_mode": "artifact",
+          "artifact_types": [
+            ".html"
+          ],
+          "unit_confirmation": null,
+          "section_confirmation": null,
+          "skill_invocation": {
+            "mode": "none",
+            "name": "",
+            "replace_defaults": false
+          },
+          "requirements": [
+            {
+              "id": "1",
+              "quote": "按部门统计 金额的合计"
+            },
+            {
+              "id": "2",
+              "quote": "不包含（WBS编号）中ex，sy，sp，ip，ib，sz开头的数据"
+            },
+            {
+              "id": "3",
+              "quote": "生成柱状图"
+            }
+          ]
+        }
+      },
+      {
+        "guard": "skill_admission",
+        "action": "use",
+        "reason": {
+          "initial_candidate": "frontend-design",
+          "skill_id": "frontend-design",
+          "use_default_rules": false,
+          "reason": "applicable",
+          "requirement_ids": [
+            "1",
+            "2",
+            "3"
+          ]
+        }
+      },
+      {
+        "guard": "user_unit_confirmation",
+        "action": "accept",
+        "reason": {
+          "unit": null,
+          "sections": null
+        }
+      },
+      {
+        "guard": "analysis_presentation",
+        "action": "runtime_owned",
+        "reason": {
+          "format": "unparsed",
+          "model_text_hash": "0372d17e3efde6b98b899643071fa58faae7df31baeca0a12470cea49b274694",
+          "matched_id_count": 0,
+          "runtime_id_count": 1,
+          "unknown_id_count": null,
+          "missing_id_count": 1
+        }
+      },
+      {
+        "guard": "spreadsheet_evidence",
+        "action": "accept",
+        "reason": null
+      },
+      {
+        "guard": "deliverable_contract",
+        "action": "reject",
+        "reason": "missing_physical_file_.html"
+      }
+    ],
+    "modelResponses": [
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 763,
+        "cleanChars": 763,
+        "rawSha256": "1a8469c466d31edaf71102854ed6e6f388a980f7db4b7e0d7c6592920362854e",
+        "cleanSha256": "1a8469c466d31edaf71102854ed6e6f388a980f7db4b7e0d7c6592920362854e",
+        "finishReason": "stop",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 110,
+        "cleanChars": 110,
+        "rawSha256": "56ca9d926e44a84aff09cee44779f93fe31ee7b3c87f4a43c9af37830a571b04",
+        "cleanSha256": "56ca9d926e44a84aff09cee44779f93fe31ee7b3c87f4a43c9af37830a571b04",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 45,
+        "cleanChars": 45,
+        "rawSha256": "0372d17e3efde6b98b899643071fa58faae7df31baeca0a12470cea49b274694",
+        "cleanSha256": "0372d17e3efde6b98b899643071fa58faae7df31baeca0a12470cea49b274694",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      }
+    ],
+    "answerValidation": {},
+    "callsLedger": [
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 2644.13,
+        "usage": {
+          "prompt_tokens": 2116,
+          "total_tokens": 2317,
+          "completion_tokens": 201
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 2228.54,
+        "usage": {
+          "prompt_tokens": 2660,
+          "total_tokens": 2861,
+          "completion_tokens": 201
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 2055.51,
+        "usage": {
+          "prompt_tokens": 5457,
+          "total_tokens": 5548,
+          "completion_tokens": 91
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "contract_intent",
+        "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+        "total_ms": 2667.2,
+        "usage": {
+          "prompt_tokens": 1471,
+          "total_tokens": 1725,
+          "completion_tokens": 254
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "planning",
+        "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+        "total_ms": 7371.18,
+        "usage": {
+          "prompt_tokens": 7775,
+          "total_tokens": 8332,
+          "completion_tokens": 557
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 7371.18,
+        "usage": {
+          "prompt_tokens": 7775,
+          "total_tokens": 8332,
+          "completion_tokens": 557
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 6323.09,
+        "usage": {
+          "prompt_tokens": 17940,
+          "total_tokens": 18259,
+          "completion_tokens": 319
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "gate_review",
+        "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+        "total_ms": 3468.88,
+        "usage": {
+          "prompt_tokens": 2126,
+          "total_tokens": 2410,
+          "completion_tokens": 284
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 3802.99,
+        "usage": {
+          "prompt_tokens": 19297,
+          "total_tokens": 19579,
+          "completion_tokens": 282
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "filter_conformance",
+        "model": "default",
+        "total_ms": 1267.39,
+        "usage": {
+          "prompt_tokens": 758,
+          "total_tokens": 817,
+          "completion_tokens": 59
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "analysis_synthesis",
+        "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+        "total_ms": 10910.76,
+        "usage": {
+          "prompt_tokens": 3560,
+          "total_tokens": 4747,
+          "completion_tokens": 1187
+        },
+        "span_id": null
+      }
+    ],
+    "auxiliaryInvocations": 5
+  },
+  "corrected_ledger_estimate": {
+    "invocations": 10,
+    "llm_duration_ms": 42739.67,
+    "tokens": {
+      "prompt_tokens": 63160,
+      "completion_tokens": 3435,
+      "total_tokens": 66595
+    },
+    "basis": "planning response counted both by llm auxiliary recorder and planning_phase main recorder; confirmed 10 proxy HTTP completion entries"
+  },
+  "html": {
+    "sha256": "bbc5d95beead56f0d4c01f4e99a34d70a871ca2d3e5f7280dd4e9a5691e961b1",
+    "bytes": 10014,
+    "has_warning": true,
+    "chart": false,
+    "browser_verified": "展开在线预览后仅见表格和目标交付物尚未生成落盘警告；卡片误标presentation.html、演示文稿"
+  },
+  "independent_verification": {
+    "source_sha256": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+    "source_unchanged": true,
+    "original_rows": 274,
+    "included_rows": 253,
+    "excluded_rows": 21,
+    "excluded_prefix_counts": {
+      "sp": 9,
+      "ip": 6,
+      "ex": 6
+    },
+    "department_amounts_K": {
+      "華東MIS": "561.75345",
+      "華北BAS": "67.03530",
+      "DM華南BAS": "171.65638",
+      "流通/EBISS": "198.51766",
+      "華南MIS": "164.90159",
+      "SM華南BAS": "212.90759",
+      "華東BAS": "260.64793"
+    },
+    "amount_total_K": "1637.41990",
+    "chart_receipt_equals_independent_oracle": true,
+    "department_paid_hours": {
+      "華東MIS": "1870.48",
+      "華北BAS": "259.0",
+      "DM華南BAS": "584.54",
+      "流通/EBISS": "872.00",
+      "華南MIS": "553.07",
+      "SM華南BAS": "783.54",
+      "華東BAS": "1156.15"
+    },
+    "paid_hours_total": "6078.78",
+    "billable_receipt_equals_independent_oracle": true,
+    "malformed_query_error": "Extra data: line 1 column 187 (char 186)",
+    "fallback_reproduction": {
+      "created_warning_html": true,
+      "success_banner_despite_warning": true,
+      "chart_present": false,
+      "exported_file_count": 1
+    },
+    "runtime_hashes": {
+      "spreadsheet_query_schema": "efc1b0a07c22d4e2d75e8559921a7c481195b5e0996def2c70b7764db5c637d2",
+      "spreadsheet_analysis_schema": "187978aeb7ea1a17140e89ae0c42339981bfcada6440051a1a3ff307a4c37cc3",
+      "html_report_fallback": "e19f6d527dbbea1b01ebb32a6005088946246b970d12824ffea851e766166814",
+      "artifact_exporter": "17aac14c0cdf3a62c72a7eacfcb245b3d840a58b0a33663eac3af905abce28c2",
+      "planning_phase": "2bd34a8d7a8626901862144fc8c9900cb842bd2533e3a7c94a60b322fda29b85",
+      "llm": "9e69bc3150afaff43b2b88cfb60ff5c02945aa422b242c30a106215740a4299c",
+      "telemetry": "3aaf5f4460eb2f4eebbc5f34426fdca197fb5ae5906c7c0b3004f2e680a8ba31",
+      "deliverable_contract": "d3ab1587bbbd97fc9c61791150fc6ce458be55f23e1d1e05b47c2efd51ccdb06",
+      "runner": "68f2917c8557c6ee7f0d37e3a5dfcf905f1f0c64269fb9e4696f5fc0f83808f1"
+    }
+  }
+}

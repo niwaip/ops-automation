@@ -444,11 +444,9 @@ def _numeric_candidates(raw_val: Any) -> Tuple[Set[str], Set[float]]:
 def _collect_allowed_numbers(
     receipts: List[Any], prompt: str = "", audit: str = ""
 ) -> Tuple[Set[str], Set[float]]:
-    """Builds the whitelist of verified numbers (and their exact pairwise arithmetic closure) from receipts, prompt, and audit text."""
+    """Allow recorded values and display rounding, never arithmetic combinations."""
     allowed_strs: Set[str] = set()
     allowed_floats: Set[float] = set()
-    fact_nums: List[float] = []
-    row_counts: Set[int] = set()
 
     def _add(val: Any) -> None:
         s_set, f_set = _numeric_candidates(val)
@@ -456,25 +454,12 @@ def _collect_allowed_numbers(
         allowed_floats.update(f_set)
 
     def _add_count_pair(cnt: Any, total: Any) -> None:
+        # Counts are recorded facts; inferred complements/rates need tool calls.
         _add(cnt)
         _add(total)
-        try:
-            c_val = float(cnt)
-            t_val = float(total)
-            if t_val > 0 and 0 <= c_val <= t_val:
-                rem = t_val - c_val
-                _add(rem)
-                _add((c_val / t_val) * 100.0)
-                _add((rem / t_val) * 100.0)
-        except (ValueError, TypeError):
-            pass
 
     for receipt in receipts or []:
         data = _receipt_data(receipt)
-        r_text = getattr(receipt, "text", "") if hasattr(receipt, "text") else (receipt.get("text", "") if isinstance(receipt, dict) else "")
-        if r_text:
-            for m in re.finditer(r"[-+]?\d+(?:\.\d+)?", str(r_text).replace(",", "")):
-                _add(m.group(0))
         facts_list = [f for f in data.get("facts", []) if isinstance(f, dict)]
         if facts_list:
             _add(len(facts_list))
@@ -482,18 +467,6 @@ def _collect_allowed_numbers(
             raw_v = fact.get("value")
             _add(raw_v)
             _add(fact.get("matched_records"))
-            try:
-                fv = float(str(raw_v).replace(",", "").strip())
-                if len(fact_nums) < 16:
-                    fact_nums.append(fv)
-                if 0 < fv < 100:
-                    _add(100.0 - fv)
-            except (ValueError, TypeError):
-                pass
-            for m in re.finditer(r"\d+(?:\.\d+)?", str(fact.get("label") or "")):
-                _add(m.group(0))
-        if fact_nums:
-            _add(sum(fact_nums))
         for check in data.get("checks", []):
             if isinstance(check, dict):
                 _add(check.get("left"))
@@ -503,8 +476,6 @@ def _collect_allowed_numbers(
         rules_list = [r for r in data.get("rules", []) if isinstance(r, dict)]
         if rules_list:
             _add(len(rules_list))
-            total_violations = sum(int(r.get("violation_count") or 0) for r in rules_list)
-            _add(total_violations)
         for rule in rules_list:
             _add_count_pair(rule.get("violation_count"), rule.get("evaluated_records"))
             criteria = rule.get("criteria")
@@ -533,10 +504,6 @@ def _collect_allowed_numbers(
                 elif sel_rows:
                     _add(sel_rows[0])
                     _add(sel_rows[-1])
-                for rc_key in ("input_records", "evaluated_records"):
-                    rc_val = cov.get(rc_key)
-                    if isinstance(rc_val, int) and rc_val > 0:
-                        row_counts.add(rc_val)
         for row in data.get("rows", []):
             if isinstance(row, dict):
                 for rv in row.values():
@@ -571,56 +538,6 @@ def _collect_allowed_numbers(
                 if isinstance(vc, dict):
                     for cnt in vc.values():
                         _add_count_pair(cnt, rec_total)
-
-    # Pre-compute exact pairwise arithmetic derivations between verified facts so
-    # mathematically true comparisons (e.g. difference a - b, ratio a / b * 100%, monthly avg a / N)
-    # are permitted while any inaccurate mental math or fabricated external number is rejected.
-    total_fact_sum = sum(fact_nums) if fact_nums else 0.0
-    if total_fact_sum > 1e-9:
-        _add(total_fact_sum)
-        for a in fact_nums:
-            ratio_pct = (a / total_fact_sum) * 100.0
-            _add(a / total_fact_sum)
-            _add(ratio_pct)
-            if 0 < ratio_pct < 100:
-                _add(100.0 - ratio_pct)
-        # Precompute cumulative sums and percentages for top-k subsets (e.g. top 2, top 3 concentration)
-        sorted_facts = sorted(fact_nums, reverse=True)
-        running_sum = 0.0
-        for val in sorted_facts:
-            running_sum += val
-            _add(running_sum)
-            cum_pct = (running_sum / total_fact_sum) * 100.0
-            _add(cum_pct)
-            if 0 < cum_pct < 100:
-                _add(100.0 - cum_pct)
-
-    for i, a in enumerate(fact_nums):
-        for rc in row_counts:
-            _add(a / rc)
-        for j, b in enumerate(fact_nums):
-            if i == j:
-                continue
-            _add(a + b)
-            _add(abs(a - b))
-            if abs(b) > 1e-9:
-                ratio_pct = (a / b) * 100.0
-                _add(a / b)
-                _add(ratio_pct)
-                if 0 < abs(ratio_pct) < 100:
-                    _add(100.0 - abs(ratio_pct))
-                _add((abs(a - b) / abs(b)) * 100.0)
-
-    # Also allow any numbers explicitly present in the user prompt, deterministic audit text or file paths
-    for source_text in (prompt or "", audit or ""):
-        clean_src = source_text.replace(",", "").replace("，", "")
-        for m in re.finditer(r"[-+]?\d+(?:\.\d+)?", clean_src):
-            _add(m.group(0))
-    for receipt in receipts or []:
-        prov = getattr(receipt, "provenance", {}) or {}
-        if isinstance(prov, dict):
-            for m in re.finditer(r"\d+", str(prov.get("file_path") or "")):
-                _add(m.group(0))
 
     return allowed_strs, allowed_floats
 
@@ -993,7 +910,8 @@ def synthesize_analysis_summary(
             timeout=effective_to,
             deadline=deadline,
             policy=synthesis_policy,
-            stream_deltas=False
+            stream_deltas=False,
+            purpose="analysis_synthesis"
         )
         content = (res.get("content") or "").strip() if isinstance(res, dict) else str(res or "").strip()
 
@@ -1086,7 +1004,8 @@ def synthesize_missing_content_explanation(
             timeout=min(timeout, 20),
             deadline=deadline,
             policy=synthesis_policy,
-            stream_deltas=False
+            stream_deltas=False,
+            purpose="analysis_synthesis"
         )
         content = (res.get("content") or "").strip() if isinstance(res, dict) else str(res or "").strip()
         if content and len(content) >= 20 and not (content.startswith("{") and content.endswith("}")):
@@ -1180,7 +1099,8 @@ def synthesize_informational_presentation(
             timeout=min(timeout, 25),
             deadline=deadline,
             policy=synthesis_policy,
-            stream_deltas=False
+            stream_deltas=False,
+            purpose="analysis_synthesis"
         )
         content = (res.get("content") or "").strip() if isinstance(res, dict) else str(res or "").strip()
         if content and len(content) >= 20 and not (content.startswith("{") and content.endswith("}")):

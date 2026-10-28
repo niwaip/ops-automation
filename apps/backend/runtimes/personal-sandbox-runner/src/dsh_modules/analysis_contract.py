@@ -88,7 +88,7 @@ def _resolve_available_headers(prompt: str) -> Optional[List[str]]:
     try:
         import os
         from . import config as _cfg
-        from .spreadsheet_preflight import profile_spreadsheet_for_planning
+        from .spreadsheet_preflight import profile_spreadsheet_for_planning, COVER_SHEET_NAMES, CONFIG_SHEET_NAMES
         raw_att = os.environ.get('DSH_SESSION_ATTACHMENTS', '').strip()
         cache_key = f"{raw_att}::{prompt.strip()}"
         if cache_key in _HEADER_RESOLUTION_CACHE:
@@ -101,10 +101,22 @@ def _resolve_available_headers(prompt: str) -> Optional[List[str]]:
                 fpath = Path(_cfg.WORKSPACE_DIR) / Path(fn).name
                 if fpath.exists():
                     prof = profile_spreadsheet_for_planning(fpath, prompt=prompt)
-                    if prof and prof.get('headers'):
-                        for h in prof['headers'].values():
-                            if h and str(h).strip() and str(h).strip() not in all_headers:
-                                all_headers.append(str(h).strip())
+                    if prof:
+                        candidate_sheets = [
+                            sp for sp in prof.get('sheets', [])
+                            if sp.get('sheet', '').strip().lower() not in COVER_SHEET_NAMES
+                            and sp.get('sheet', '').strip().lower() not in CONFIG_SHEET_NAMES
+                        ] or prof.get('sheets', [])
+                        # Primary sheet headers first
+                        if prof.get('headers'):
+                            for h in prof['headers'].values():
+                                if h and str(h).strip() and str(h).strip() not in all_headers:
+                                    all_headers.append(str(h).strip())
+                        # Supplement from other candidate business sheets
+                        for sp in candidate_sheets:
+                            for h in sp.get('headers', {}).values():
+                                if h and str(h).strip() and str(h).strip() not in all_headers:
+                                    all_headers.append(str(h).strip())
         if all_headers:
             _HEADER_RESOLUTION_CACHE[cache_key] = all_headers
             return all_headers
@@ -121,6 +133,13 @@ def _contract_from_judge_verdict(prompt: str, verdict: Dict[str, Any], domain: s
 
     for m_name in verdict.get("metrics", []):
         if not m_name or m_name in seen_metric_names:
+            continue
+        # 防御情景参数污染：若指标为情景/参数（如基准值、乐观情景、保守情景），且用户指令未明确要求情景分析，不作为必须指标
+        if any(s in str(m_name) for s in ('乐观', '保守', '情景', '基准值')):
+            if not any(t in prompt for t in ('乐观', '保守', '情景', '基准', 'scenario', 'baseline', 'optimistic', 'pessimistic')):
+                continue
+        # 防御抽象分析目标误作必须数字指标：如“盈利能力变化”、“经营情况分析”、“业绩变化”属于总览任务目标，绝非单列数字度量
+        if any(term in str(m_name) for term in ('能力变化', '经营情况', '业绩变化', '经营分析', '业务变化', '数据变化', '趋势变化', '总体情况')):
             continue
         seen_metric_names.add(m_name)
         matched_def = next((
@@ -179,6 +198,11 @@ def _contract_from_judge_verdict(prompt: str, verdict: Dict[str, Any], domain: s
         if any(re.search(p, prompt, re.I) for p in definition.get('patterns', [])):
             concepts.append(definition['name'])
 
+    comparison_basis = verdict.get("comparison_basis")
+    if comparison_basis == "yoy" and any(p in prompt for p in ("下半年", "上半年", "H2", "H1", "上半年对比", "下半年对比")):
+        if not any(y in prompt for y in ("同比", "去年", "同期", "上年", "yoy")):
+            comparison_basis = "period_comparison"
+
     return AnalysisContract(
         raw_prompt=prompt,
         period=verdict.get("period"),
@@ -192,7 +216,7 @@ def _contract_from_judge_verdict(prompt: str, verdict: Dict[str, Any], domain: s
         operation=verdict.get("operation"),
         dimension=verdict.get("dimension"),
         comparison=verdict.get("comparison"),
-        comparison_basis=verdict.get("comparison_basis"),
+        comparison_basis=comparison_basis,
         ranking=verdict.get("ranking", "absolute"),
         domain=domain,
         has_filters=bool(filter_conditions),
@@ -211,7 +235,9 @@ def _contract_from_judge_verdict(prompt: str, verdict: Dict[str, Any], domain: s
 def build_analysis_contract(
     prompt: str,
     domain: Optional[str] = None,
-    headers: Optional[List[str]] = None
+    headers: Optional[List[str]] = None,
+    deadline: Optional[float] = None,
+    model: Optional[str] = None
 ) -> AnalysisContract:
     """
     Parses a user query into a dynamic AnalysisContract.
@@ -235,7 +261,7 @@ def build_analysis_contract(
             from .analysis_synthesis import _can_reach_proxy
             if _can_reach_proxy():
                 from .semantic_contract_judge import judge_contract_intent
-                verdict = judge_contract_intent(clean_prompt, headers=headers, domain=active_domain)
+                verdict = judge_contract_intent(clean_prompt, headers=headers, domain=active_domain, model=model, deadline=deadline)
                 if verdict and isinstance(verdict, dict) and "task_type" in verdict:
                     return _contract_from_judge_verdict(clean_prompt, verdict, active_domain)
         except Exception:

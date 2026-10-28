@@ -1,0 +1,35 @@
+{
+  "query": {
+    "source": {
+      "sheet": "利润表",
+      "header_row": 3,
+      "data_range": "A4:D14"
+    },
+    "where": {
+      "and": [
+        {
+          "op": "in",
+          "field": "项目",
+          "values": [
+            "营业收入",
+            "毛利",
+            "营业利润",
+            "净利润"
+          ]
+        }
+      ]
+    },
+    "group_by": [
+      "项目"
+    ],
+    "metrics": [
+      {
+        "id": "actual",
+        "label": "2026实际",
+        "field": "2026实际",
+        "op": "sum",
+        "unit": "source"
+      }
+    ]
+  }
+}

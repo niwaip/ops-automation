@@ -1,0 +1,154 @@
+{
+  "runtime_constructs_executes_and_exports_without_model_call": {
+    "plan": {
+      "tables": [
+        {
+          "id": "summary_source",
+          "sheet": "明细",
+          "header_row": 1,
+          "data_range": "A2:B3",
+          "filters": []
+        }
+      ],
+      "calculations": [
+        {
+          "id": "total_0",
+          "label": "总金额",
+          "expression": {
+            "aggregate": "sum",
+            "table": "summary_source",
+            "column": "B",
+            "unit": "number"
+          }
+        },
+        {
+          "id": "group_0",
+          "label": "金额",
+          "expression": {
+            "aggregate": "sum",
+            "table": "summary_source",
+            "column": "B",
+            "unit": "number",
+            "group_by": "A"
+          }
+        }
+      ]
+    },
+    "facts": [
+      {
+        "id": "total_0",
+        "label": "总金额",
+        "source_cells": [
+          "明细!B2",
+          "明细!B3"
+        ],
+        "matched_records": 2,
+        "value": "16",
+        "unit": "K"
+      },
+      {
+        "id": "group_0__乙",
+        "label": "乙 金额",
+        "group_key": "乙",
+        "group_dimension": "A",
+        "source_cells": [
+          "明细!B3"
+        ],
+        "matched_records": 1,
+        "value": "9",
+        "unit": "K"
+      },
+      {
+        "id": "group_0__甲",
+        "label": "甲 金额",
+        "group_key": "甲",
+        "group_dimension": "A",
+        "source_cells": [
+          "明细!B2"
+        ],
+        "matched_records": 1,
+        "value": "7",
+        "unit": "K"
+      }
+    ],
+    "origin": "bounded_summary_recovery",
+    "exported_filename": "结果.xlsx",
+    "source_unchanged": true
+  },
+  "presentation_sums_percentage_facts": {
+    "visible_input_facts": [
+      {
+        "id": "a",
+        "label": "甲组毛利率",
+        "group_key": "甲",
+        "value": "40",
+        "unit": "%"
+      },
+      {
+        "id": "b",
+        "label": "乙组毛利率",
+        "group_key": "乙",
+        "value": "60",
+        "unit": "%"
+      }
+    ],
+    "output": "已完成数据的核算与多维统计，核心核算结果汇总如下（金额与比例的单位分别标注；数值已四舍五入）：\n\n| 统计指标 / 分组 | 核算结果 |\n|---|---:|\n| 甲组毛利率 | 40% |\n| 乙组毛利率 | 60% |\n| **各组总计** | **100%** |",
+    "method": "unit probe: fact selection stubbed, real presentation arithmetic"
+  },
+  "presentation_merges_different_metrics_by_unit": {
+    "visible_input_facts": [
+      {
+        "id": "0",
+        "label": "甲组收入",
+        "group_key": "甲",
+        "value": "1000",
+        "unit": "千元"
+      },
+      {
+        "id": "1",
+        "label": "甲组净利润",
+        "group_key": "甲",
+        "value": "100",
+        "unit": "千元"
+      },
+      {
+        "id": "2",
+        "label": "乙组收入",
+        "group_key": "乙",
+        "value": "2000",
+        "unit": "千元"
+      },
+      {
+        "id": "3",
+        "label": "乙组净利润",
+        "group_key": "乙",
+        "value": "200",
+        "unit": "千元"
+      }
+    ],
+    "output": "已完成数据的核算与多维统计，核心核算结果汇总如下（金额与比例的单位分别标注；数值已四舍五入）：\n\n| 统计指标 / 分组 | 核算结果 |\n|---|---:|\n| 甲组收入 | 1,000 千元 |\n| 甲组净利润 | 100 千元 |\n| 乙组收入 | 2,000 千元 |\n| 乙组净利润 | 200 千元 |\n| **各组总计** | **3,300 千元** |",
+    "expected_separate_totals": {
+      "收入": "3000",
+      "净利润": "300"
+    },
+    "method": "unit probe: fact selection stubbed, real presentation arithmetic"
+  },
+  "presentation_generates_unplanned_period_difference": {
+    "input_fact_values": [
+      "40%",
+      "45%"
+    ],
+    "output": [
+      "- 经营：1,2,3,4,5,6月 → 7,8,9,10,11,12月，毛利÷收入从40%变为45%，提高5个百分点。"
+    ],
+    "receipt_fact_count_after_render": 2
+  },
+  "synthesis_accepts_derived_ratio_without_ratio_tool_receipt": {
+    "input_fact_count": 12,
+    "input_percentage_facts": 0,
+    "candidate": "净利润实际16038.3、预算13950、差额2088.3；营业利润实际21209.4、预算18300、差额2909.4；营业收入实际124020、预算120000、差额4020。全年毛利率85.65%。",
+    "accepted_by_synthesis_grounding": true,
+    "limitation": "synthesis check only; does not claim whole-turn completion would pass without a ratio receipt"
+  },
+  "checks_passed": 5
+}

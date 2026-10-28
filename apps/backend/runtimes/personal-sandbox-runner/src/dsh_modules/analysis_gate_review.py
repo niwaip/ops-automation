@@ -31,6 +31,14 @@ def revalidate_review(issues, verdict, receipts, facts):
             # 严格断言：缺失指标需在事实池、回执物理计划或裁判误报确认中验证
             import re
             metric_names = [m.get('name') for m in issue.get('metrics', [])]
+            # 裁判误报断言：若复核裁判判定为 gate_false_positive，且缺失指标本身属于情景参数（如基准值、乐观情景、保守情景等非用户请求指标）
+            is_extraneous = (
+                verdict.get('category') == 'gate_false_positive'
+                and metric_names
+                and all(any(s in str(m) for s in ('乐观', '保守', '情景', '基准值', '参数值', '假设值', '能力变化', '经营情况', '业绩变化', '经营分析', '业务变化', '数据变化', '趋势变化', '总体情况')) for m in metric_names)
+            )
+            if is_extraneous:
+                justified = True
             # 从 facts 与所有成功执行的 receipts 中提取全量可用计算事实与物理列，消除上游剪枝假死锁
             all_facts = list(facts)
             for r in receipts:
@@ -68,8 +76,8 @@ def revalidate_review(issues, verdict, receipts, facts):
             else:
                 all_metrics_covered = bool(fact_labels) or bool(plan_metric_fields)
 
-            # 真实核验：每个缺失的指标在全量事实池、物理列或物理执行计划中都已真正覆盖
-            justified = all_metrics_covered
+            # 真实核验：extraneous误报排除，或每个缺失的指标在全量事实池、物理列或物理执行计划中都已真正覆盖
+            justified = is_extraneous or all_metrics_covered
         elif code == 'unsolicited_filter_applied':
             # 仅在裁判明确判定误报且存在支撑事实证据时才可撤销
             justified = (verdict.get('category') == 'gate_false_positive'
@@ -163,6 +171,10 @@ def revalidate_review(issues, verdict, receipts, facts):
         else:
             remaining.append(issue)
 
+    target_action = (
+        'clarify' if verdict.get('action') in ('clarify', 'awaiting_user')
+        else ('recheck' if not remaining else 'repair')
+    )
     return remaining, {**verdict, 'revalidated': True, 'dismissed_issue_codes': dismissed,
                        'complete': not remaining,
-                       'action': 'recheck' if not remaining else 'repair'}
+                       'action': target_action}

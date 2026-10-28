@@ -1,0 +1,51 @@
+{
+  "network_calls": 0,
+  "checks": [
+    {
+      "name": "input_filename_changes_deliverable_flag",
+      "reproduced": true,
+      "wrapped_flag": true,
+      "instruction_only_flag": false,
+      "trigger": [
+        ".xlsx"
+      ]
+    },
+    {
+      "name": "heading_number_is_accepted_as_metric_value",
+      "reproduced": true,
+      "heading_result": [
+        true,
+        "2",
+        false
+      ],
+      "actual_answer_result": [
+        true,
+        "2",
+        false
+      ]
+    },
+    {
+      "name": "net_profit_growth_arithmetic_mismatch",
+      "reproduced": true,
+      "exact_pct": "55.34831514340983449955818790",
+      "rounded_pct": "55.35",
+      "answer_pct": "55.36"
+    },
+    {
+      "name": "stored_answer_matches_complete_last_model_response",
+      "reproduced": true,
+      "chars": 683,
+      "received_done": true,
+      "finish_reason": "stop"
+    },
+    {
+      "name": "seven_call_ledger_usage_matches_metrics",
+      "reproduced": true,
+      "usage": {
+        "prompt_tokens": 117873,
+        "completion_tokens": 3299,
+        "total_tokens": 121172
+      }
+    }
+  ]
+}

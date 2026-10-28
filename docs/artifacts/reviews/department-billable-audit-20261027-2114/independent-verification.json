@@ -1,0 +1,15 @@
+{
+  "source_sha256": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+  "source_unchanged": true,
+  "department_paid_hours": {
+    "華東MIS": "1870.48",
+    "華北BAS": "259.0",
+    "DM華南BAS": "584.54",
+    "流通/EBISS": "872.00",
+    "華南MIS": "553.07",
+    "SM華南BAS": "783.54",
+    "華東BAS": "1156.15"
+  },
+  "paid_hours_total": "6078.78",
+  "billable_receipt_equals_independent_oracle": true
+}

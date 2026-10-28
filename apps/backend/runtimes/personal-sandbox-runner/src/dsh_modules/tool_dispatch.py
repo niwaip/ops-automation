@@ -180,7 +180,7 @@ def dispatch_tool_calls(
                 })
                 continue
 
-        call_sig = f"{canonical_name}:{json.dumps(t_params, sort_keys=True, ensure_ascii=False)}"
+        call_sig = f"{canonical_name}:{json.dumps(t_params, sort_keys=True, ensure_ascii=False, default=str)}"
         err_call_sig = f"err:{call_sig}"
         is_idempotent_read = canonical_name in (
             "read_skill", "read_workspace_file", "weather",
@@ -228,6 +228,8 @@ def dispatch_tool_calls(
                 evidence.provenance["tool"] = canonical_name
             if "round" not in evidence.provenance:
                 evidence.provenance["round"] = round_idx
+            evidence.provenance["tool_call_id"] = t_id
+            evidence.provenance["execution_origin"] = "model_tool_call"
         if execution_evidence is not None and isinstance(evidence, ToolResult):
             execution_evidence.append(evidence)
             telemetry.record_execution_result(evidence)

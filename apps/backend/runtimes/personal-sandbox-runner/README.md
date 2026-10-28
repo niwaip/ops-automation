@@ -4,6 +4,62 @@
 
 ---
 
+## 表格查询工具契约
+
+`aggregate_spreadsheet` 面向模型统一接收 `file_path` 和 `query`。查询内使用
+`source / fields / where / group_by / metrics / having / order_by / limit / offset / distinct`，
+按 WHERE → GROUP BY → HAVING → ORDER BY → LIMIT 执行。WHERE使用原始列，HAVING使用
+`metrics.id`聚合别名。前缀匹配使用 `starts_with` / `not_starts_with` 和 `values` 数组。
+
+查看原始明细只提交 `source` 和 `where`，默认返回全部原始列及 `_row` 来源行号。
+用户指定选列时再填 `fields`；不需要 `metrics`、`group_by` 或额外的 `calculations`。
+明细交付门禁拒绝用分组汇总或未经请求的去重结果替代原始记录。
+纯明细任务仅向模型开放结构读取与统一查询两个工具，使用专门的明细提示词，避免注入派生公式和内部事实引用规则。
+
+```json
+{
+  "file_path": "当前附件.xlsx",
+  "query": {
+    "source": {"sheet": "明细", "header_row": 1, "data_range": "A2:G100"},
+    "where": {"field": "员工姓名", "op": "eq", "value": "目标姓名"}
+  }
+}
+```
+
+比率、增长率、期间差额和跨表公式使用 `analyze_spreadsheet` 的
+`file_path / tables / calculations`。公式引用同计划 calculation id，不引用查询引擎的内部事实ID。
+旧顶层查询参数、tables/calculations混合计划仍由内部执行器兼容，普通查询工具不再向模型暴露这些写法。
+原件附件限制、SHA-256、覆盖范围和执行证据门禁仍由原生引擎执行。
+
+源码通过只读挂载进入用户沙箱，每次 `dsh run` 启动独立Python进程。修改这类Python模块后应验证
+实际挂载路径、容器内文件指纹和新进程导入结果；现有长任务不应被视为自动重载。
+
+---
+
+## 标准柱状图的本轮交付闭环
+
+单表分组求和并生成柱状图（不含显式 Excel/Word/PPT/PDF 输出或混合图表）使用受管交付路径：
+
+1. 模型仅提交 `aggregate_spreadsheet` 查询；保留原件、筛选、覆盖范围和执行证据门禁。
+2. 核算证据完整后，运行时调用内置 `render_spreadsheet_chart` 能力；该名称在遥测中标记
+   `execution_origin=runtime_workflow`，不增加一轮模型调用，不是新的模型 function-call 接口。
+3. 每轮创建 `/workspace/.sessions/<sessionId>/runs/<turnId>/`，保存 `inputs/verified-data.json`、
+   `outputs/index.html` 和 `manifest.json`。模型无本路径的 bash/写文件权限；不会扫描共享 `index.html`。
+4. 状态推进为 calculating → calculated → generating → validating → validated → published。
+   SVG与表格逐组绑定精确数值、单位、源文件SHA-256和证据ID；验收核对柱形几何、组数、数据和来源。
+5. 渲染或验收失败最多自动修复两次，复用已核验数据，不重复计算。失败保留证据和manifest，
+   不发布普通表格兜底页，也不显示成功横幅。后续自动恢复尚未实现，manifest保留恢复所需信息。
+6. 通过后以唯一 `chart-<sessionId>-<turnId>-<artifactId>.html` 文件名发布到现有工作区交付接口，
+   下载链接精确指向该产物；复制后再次校验数据与文件哈希。现有公共文件API无需按同名文件搜索会话目录。
+
+SVG离线绘制，支持负数和零值及悬浮精确数值，不依赖CDN。自定义复杂页面和其他图表仍走现有流程；
+本改动不宣称整个通用沙箱已迁移到按轮次隔离的工作目录。公共HTML导出器还会拒绝将明确交付失败的正文包装为成功产物。
+
+最小回归：`PYTHONPATH=src python3 -m unittest discover -s tests -p test_spreadsheet_chart_delivery.py`。
+容器中的Python模块为只读源码挂载；每次dsh启动新进程加载。验证实际挂载和新进程指纹，无需重建服务。
+
+---
+
 ## 一、职责与系统定位
 
 - **执行主体**：运行在每个用户的独立隔离沙箱容器（`ops-user-sandbox:local`）内部，以非 root 用户（`sandbox`）权限运行；

@@ -90,7 +90,7 @@ class SemanticScopeQueryStageTests(unittest.TestCase):
                     {'sheet': '经营数据', 'cell': 'B6', 'unit': 'amount'},
                     {'sheet': '经营数据', 'cell': 'B4', 'unit': 'amount'}]}}
 
-    def test_real_semantic_contract_keeps_amounts_and_auto_completes_margin(self):
+    def test_real_semantic_contract_keeps_amounts_and_accepts_explicit_margin(self):
         evidence = [self.receipt()]
         state = analysis_task_state(evidence, self.prompt)
         self.assertEqual([m['name'] for m in state['missing_metrics']], ['毛利率'])
@@ -98,14 +98,15 @@ class SemanticScopeQueryStageTests(unittest.TestCase):
         self.assertEqual(self.model.call_count, 1)
         completed = RegisteredMetricCompletion().complete(
             evidence, self.prompt, Telemetry(), ['aggregate_spreadsheet'])
-        self.assertEqual(len(completed), 1)
-        self.assertTrue(completed[0].is_success, completed[0].error)
-        self.assertEqual(float(completed[0].data['facts'][0]['value']), 30)
+        self.assertEqual(completed, [])
+        explicit = self.receipt({'query': copy.deepcopy(self.query), 'calculations': [self.margin()]})
+        evidence.append(explicit)
+        self.assertEqual(float(explicit.data['facts'][-1]['value']), 30)
         self.assertTrue(analysis_task_state(evidence, self.prompt)['complete'])
         context = json.loads(self.model.call_args.kwargs['messages'][-1]['content'].split(
             '【实际来源绑定 Source context】:\n')[1].split('\n\n')[0])
         self.assertEqual(context['bindings'][0]['bound_headers'], {'B': '2026实际'})
-        self.assertEqual(self.model.call_count, 2)
+        self.assertEqual(self.model.call_count, 1)
 
     def test_wrong_period_is_judged_from_used_column_and_not_accepted(self):
         self.query['metrics'][0]['field'] = '2025实际'

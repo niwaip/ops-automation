@@ -1,0 +1,529 @@
+import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
+import { normalizeTabSeparatedTable } from '../lib/tableNormalizer';
+import { splitReportDetails } from '../lib/reportDetails';
+import { HtmlPreviewBlock } from './HtmlPreviewBlock';
+
+interface MessageContentRendererProps {
+  content: string;
+  mode: 'plain' | 'markdown';
+  isStreaming?: boolean;
+}
+
+export const safeUrlTransform = (url?: string): string => {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (trimmed.startsWith('//')) {
+    try {
+      const parsed = new URL(`http:${trimmed}`);
+      if (['http:', 'https:'].includes(parsed.protocol)) {
+        return trimmed;
+      }
+    } catch {
+      return '';
+    }
+  }
+  if (
+    trimmed.startsWith('/') ||
+    trimmed.startsWith('./') ||
+    trimmed.startsWith('../') ||
+    trimmed.startsWith('data:image/') ||
+    trimmed.startsWith('blob:')
+  ) {
+    return trimmed;
+  }
+  try {
+    const parsed = new URL(trimmed, 'http://dummy.local');
+    if (['http:', 'https:', 'mailto:', 'tel:'].includes(parsed.protocol)) {
+      return trimmed;
+    }
+  } catch {
+    // Fall back to plain content when parsing fails.
+  }
+  return '';
+};
+
+export const extractLocalAuthToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    // 1. Direct keys
+    const directToken = localStorage.getItem('token') || localStorage.getItem('access_token');
+    if (directToken) return directToken;
+
+    // 2. user-web (packages/user-core): 'ops-user-auth' -> { accessToken: "..." }
+    const opsUserAuth = localStorage.getItem('ops-user-auth');
+    if (opsUserAuth) {
+      const parsed = JSON.parse(opsUserAuth);
+      if (parsed?.accessToken) return parsed.accessToken;
+      if (parsed?.token) return parsed.token;
+    }
+
+    // 3. portal: 'auth-storage' -> { state: { token: "..." } }
+    const authStorage = localStorage.getItem('auth-storage');
+    if (authStorage) {
+      const parsed = JSON.parse(authStorage);
+      if (parsed?.state?.token) return parsed.state.token;
+      if (parsed?.state?.accessToken) return parsed.state.accessToken;
+      if (parsed?.accessToken) return parsed.accessToken;
+    }
+
+    // 4. Fallback: check document.cookie for token=
+    if (typeof document !== 'undefined' && document.cookie) {
+      const m = document.cookie.match(/(?:^|;\s*)token=([^;]+)/);
+      if (m && m[1]) return decodeURIComponent(m[1]).trim();
+    }
+  } catch {
+    // Ignore storage parse errors
+  }
+  return null;
+};
+
+export const appendAuthToken = (url: string): string => {
+  if (typeof window === 'undefined' || !url || !window.location?.origin) return url;
+  const trimmed = url.trim();
+  if (trimmed.startsWith('//')) return url;
+  try {
+    const parsed = new URL(trimmed, window.location.origin);
+    // Must strictly match current window origin to prevent external credential exfiltration
+    if (parsed.origin !== window.location.origin) {
+      return url;
+    }
+    // Must strictly match workspace files API route
+    if (!parsed.pathname.startsWith('/api/ai/chat/workspace-files/')) {
+      return url;
+    }
+    if (parsed.searchParams.has('token') || parsed.searchParams.has('access_token')) {
+      return url;
+    }
+    const token = extractLocalAuthToken();
+    if (!token) return url;
+    parsed.searchParams.set('token', token);
+    return trimmed.startsWith('http://') || trimmed.startsWith('https://')
+      ? parsed.toString()
+      : `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return url;
+  }
+};
+
+
+const isHtmlPreviewBlock = (className?: string, codeText?: string) => {
+  const match = /language-(\w+)/.exec(className || '');
+  if (!match || match[1] !== 'html' || !codeText) return false;
+  return (
+    codeText.includes('<!DOCTYPE html') ||
+    codeText.includes('<html') ||
+    codeText.includes('class="slide') ||
+    codeText.includes('presentation') ||
+    codeText.includes('guizang') ||
+    codeText.includes('diff-ins') ||
+    codeText.includes('diff-del')
+  );
+};
+
+export const unwrapOuterMarkdownFence = (content: string): string => {
+  if (!content) return '';
+  let cleaned = content.trim();
+  // 彻底剔除任何偶发渗透的协议长度标记（如 len=2488:）
+  cleaned = cleaned.replace(/^len=\d+:\s*/, '').trim();
+
+  // 1. 完整包裹的代码块
+  const fullMatch = cleaned.match(/^```(?:markdown|md)\s*\n([\s\S]*?)\n```\s*$/i);
+  if (fullMatch) {
+    return fullMatch[1].trim();
+  }
+
+  // 2. 带有前后过渡引导语或后置说明的代码块
+  const blockMatch = cleaned.match(/^([\s\S]*?)```(?:markdown|md)\s*\n([\s\S]*?)\n```([\s\S]*)$/i);
+  if (blockMatch) {
+    const pre = blockMatch[1].trim();
+    const body = blockMatch[2].trim();
+    const post = blockMatch[3].trim();
+    return [pre, body, post].filter(Boolean).join('\n\n');
+  }
+
+  // 3. 因 Token 上限截断未闭合的代码块
+  const unclosedMatch = cleaned.match(/^([\s\S]*?)```(?:markdown|md)\s*\n([\s\S]*)$/i);
+  if (unclosedMatch) {
+    const pre = unclosedMatch[1].trim();
+    const body = unclosedMatch[2].trim();
+    return [pre, body].filter(Boolean).join('\n\n');
+  }
+
+  return cleaned;
+};
+
+export const StreamingIndicator: React.FC = () => (
+  <span className="streaming-indicator" aria-label="generating">
+    <span className="streaming-dot" />
+    <span className="streaming-dot" />
+    <span className="streaming-dot" />
+    <span className="streaming-dot" />
+    <span className="streaming-dot" />
+  </span>
+);
+
+export const renderWithLineBreaks = (node: React.ReactNode): React.ReactNode => {
+  if (typeof node === 'string') {
+    if (!/<br\s*\/?>/i.test(node)) return node;
+    const parts = node.split(/(<br\s*\/?>)/gi);
+    return parts.map((part, idx) =>
+      /<br\s*\/?>/i.test(part) ? <br key={idx} /> : part
+    );
+  }
+  if (Array.isArray(node)) {
+    return React.Children.map(node, renderWithLineBreaks);
+  }
+  if (React.isValidElement(node)) {
+    const className = (node.props as { className?: string })?.className;
+    if (typeof className === 'string' && className.includes('katex')) {
+      return node;
+    }
+    if ((node.props as { children?: React.ReactNode })?.children) {
+      return React.cloneElement(node, {
+        ...(node.props as object),
+        children: renderWithLineBreaks((node.props as { children?: React.ReactNode }).children),
+      });
+    }
+  }
+  return node;
+};
+
+export const normalizeMathDelimiters = (text: string): string => {
+  if (!text || typeof text !== 'string') return '';
+  const tokens = text.split(/(```[\s\S]*?```|`[^`\n]+`)/g);
+  return tokens
+    .map((token, i) => {
+      if (i % 2 === 1) return token;
+      let res = token;
+      res = res.replace(/\\\[([\s\S]*?)\\\]/g, (_m, formula) => `\n\n$$\n${formula.trim()}\n$$\n\n`);
+      res = res.replace(/\\\(([\s\S]*?)\\\)/g, (_m, formula) => `$${formula.trim()}$`);
+      res = res.replace(/(^|\n)\s*\$\$\s*([^\n$]+?)\s*\$\$\s*(?=\n|$)/g, (_m, prefix, formula) => `${prefix}\n\n$$\n${formula.trim()}\n$$\n\n`);
+      return res;
+    })
+    .join('');
+};
+
+export const hoistHtmlPreviewBlock = (markdownText: string): string => {
+  if (!markdownText || typeof markdownText !== 'string') return markdownText;
+
+  // 匹配完整的自包含 HTML 代码块
+  const htmlBlockRegex = /```html\s*\n(?:<!DOCTYPE html|<html)[\s\S]*?```/i;
+  const match = htmlBlockRegex.exec(markdownText);
+  if (!match) return markdownText;
+
+  const htmlBlock = match[0];
+  const matchIndex = match.index;
+
+  // 探测顶部交付提示 Banner（以 ✨, ⚠️, 💡 或引用/标题起始，通常包含输出文件、操作提示或交付就绪等）
+  const bannerPattern = /^(?:✨|⚠️|💡|[#>])[^\n]+(?:\n+(?:[-*>]|\s*(?:输出文件|操作提示|恢复说明|💡|⚠️))[^\n]+)*/i;
+  const bannerMatch = bannerPattern.exec(markdownText);
+
+  if (bannerMatch) {
+    const bannerEnd = bannerMatch.index + bannerMatch[0].length;
+    // 检查 banner 与 htmlBlock 之间是否只有空行/空白
+    const textBetween = markdownText.slice(bannerEnd, matchIndex).trim();
+    if (textBetween.length === 0) {
+      // 已经紧随顶部 Banner，无需重复提升
+      return markdownText;
+    }
+
+    const banner = bannerMatch[0].trim();
+    const remainingBefore = markdownText.slice(bannerEnd, matchIndex).trim();
+    const remainingAfter = markdownText.slice(matchIndex + htmlBlock.length).trim();
+    const rest = [remainingBefore, remainingAfter].filter(Boolean).join('\n\n');
+
+    return `${banner}\n\n${htmlBlock}\n\n---\n\n${rest}`;
+  }
+
+  // 若无特定顶部 Banner，但前文包含交付产物特征提示，将操作卡片提升至顶部
+  const hasDeliveryCues = /(?:已生成|交付|操作提示|在线预览|全屏查看|\/workspace\/)/.test(
+    markdownText.slice(0, matchIndex)
+  );
+  if (hasDeliveryCues) {
+    const textBefore = markdownText.slice(0, matchIndex).trim();
+    if (textBefore.length === 0) {
+      return markdownText;
+    }
+    const textAfter = markdownText.slice(matchIndex + htmlBlock.length).trim();
+    const rest = [textBefore, textAfter].filter(Boolean).join('\n\n');
+    return `${htmlBlock}\n\n---\n\n${rest}`;
+  }
+
+  return markdownText;
+};
+
+const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
+  content,
+  mode,
+  isStreaming = false,
+}) => {
+  if (!content) {
+    if (isStreaming) {
+      return (
+        <div className="chat-message-markdown">
+          <StreamingIndicator />
+        </div>
+      );
+    }
+    return null;
+  }
+
+  const effectiveContent = mode === 'markdown' && !isStreaming ? hoistHtmlPreviewBlock(content) : content;
+
+  if (mode === 'plain') {
+    return (
+      <div className="chat-message-plain">
+        {splitReportDetails(effectiveContent).map((part) => part.kind === 'details'
+          ? `${part.title}\n\n${part.content.trim()}` : part.content).join('\n\n')}
+        {isStreaming ? <StreamingIndicator /> : null}
+      </div>
+    );
+  }
+
+  const reportParts = splitReportDetails(unwrapOuterMarkdownFence(effectiveContent));
+  if (reportParts.some((part) => part.kind === 'details')) {
+    return (
+      <div className="chat-message-markdown">
+        {reportParts.map((part, index) => part.kind === 'details' ? (
+          <details key={index} className="chat-report-details" style={{
+            marginTop: 16, borderTop: '1px solid var(--border-color, #e5e7eb)', paddingTop: 12,
+          }}>
+            <summary style={{ cursor: 'pointer', color: 'var(--text-secondary, #64748b)', fontSize: 14 }}>
+              {part.title}
+            </summary>
+            <div style={{ marginTop: 12 }}>
+              <MessageContentRenderer content={part.content} mode="markdown" />
+            </div>
+          </details>
+        ) : (
+          <MessageContentRenderer key={index} content={part.content} mode="markdown" />
+        ))}
+        {isStreaming ? <StreamingIndicator /> : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="chat-message-markdown">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[[rehypeKatex, { strict: false, throwOnError: false }]]}
+        urlTransform={safeUrlTransform}
+        components={{
+          pre: ({ children, className: preClassName, ...props }: React.ComponentPropsWithoutRef<'pre'>) => {
+            const childElement = React.isValidElement(children) ? children : null;
+            const childProps = childElement ? (childElement.props as { className?: string; children?: React.ReactNode }) : null;
+            const codeClassName = childProps?.className || '';
+            const codeText = Array.isArray(childProps?.children)
+              ? childProps.children.join('')
+              : String(childProps?.children || '');
+
+            if (isHtmlPreviewBlock(codeClassName, codeText)) {
+              return <>{children}</>;
+            }
+
+            const mergedClass = ['code-block', preClassName, codeClassName].filter(Boolean).join(' ');
+            return (
+              <pre className={mergedClass} {...props}>
+                {children}
+              </pre>
+            );
+          },
+          code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'> & { className?: string }) => {
+            const codeText = Array.isArray(children) ? children.join('') : String(children || '');
+            if (isHtmlPreviewBlock(className, codeText)) {
+              return (
+                <HtmlPreviewBlock
+                  code={codeText.trim()}
+                  className={className}
+                  isStreaming={isStreaming}
+                />
+              );
+            }
+
+            return (
+              <code className={className || 'inline-code'} {...props}>
+                {children}
+              </code>
+            );
+          },
+          img: ({ src, alt, ...props }: React.ComponentPropsWithoutRef<'img'>) => {
+            let finalSrc = src || '';
+            if (finalSrc.startsWith('/workspace/') || finalSrc.startsWith('workspace/')) {
+              const fileName = finalSrc.split('/').pop();
+              if (fileName) {
+                finalSrc = `/api/ai/chat/workspace-files/me/${encodeURIComponent(fileName)}`;
+              }
+            }
+            finalSrc = appendAuthToken(finalSrc);
+
+            return (
+              <span style={{ display: 'block', margin: '12px 0', maxWidth: '100%' }}>
+                <img
+                  src={finalSrc}
+                  alt={alt || 'AI 生成图片'}
+                  loading="lazy"
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '520px',
+                    objectFit: 'contain',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+                    display: 'block',
+                    cursor: 'zoom-in',
+                    border: '1px solid var(--border-color, #e5e7eb)',
+                    background: 'var(--bg-card, #ffffff)',
+                  }}
+                  onClick={() => {
+                    if (finalSrc && typeof window !== 'undefined') {
+                      if (finalSrc.startsWith('data:image/')) {
+                        const w = window.open('', '_blank', 'noopener,noreferrer');
+                        if (w) {
+                          w.document.title = alt || '图片查看器';
+                          const style = w.document.createElement('style');
+                          style.textContent =
+                            'body{margin:0;background:#0f172a;display:flex;justify-content:center;align-items:center;min-height:100vh;}';
+                          w.document.head.appendChild(style);
+                          const img = w.document.createElement('img');
+                          img.src = finalSrc;
+                          img.alt = alt || '图片查看器';
+                          img.style.maxWidth = '96vw';
+                          img.style.maxHeight = '96vh';
+                          img.style.objectFit = 'contain';
+                          img.style.boxShadow = '0 8px 32px rgba(0,0,0,0.6)';
+                          img.style.borderRadius = '8px';
+                          w.document.body.appendChild(img);
+                        }
+                      } else {
+                        window.open(finalSrc, '_blank', 'noopener,noreferrer');
+                      }
+                    }
+                  }}
+                  {...props}
+                />
+                {alt && alt !== 'AI 生成图片' && (
+                  <span
+                    style={{
+                      display: 'block',
+                      fontSize: '12px',
+                      color: 'var(--text-secondary, #64748b)',
+                      marginTop: '6px',
+                      fontStyle: 'italic',
+                    }}
+                  >
+                    📷 {alt}
+                  </span>
+                )}
+              </span>
+            );
+          },
+          a: ({ href, children, onClick, ...props }: React.ComponentPropsWithoutRef<'a'>) => {
+            const isWorkspaceLink = Boolean(href?.includes('/workspaces') && href?.includes('fileId='));
+            if (isWorkspaceLink) {
+              return (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  style={{
+                    wordBreak: 'break-all',
+                    overflowWrap: 'anywhere',
+                    wordWrap: 'break-word',
+                    color: 'var(--primary-color, #1677ff)',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const fileIdMatch = href?.match(/[?&]fileId=([^&]+)/);
+                    const wsMatch = href?.match(/[?&]workspaceId=([^&]+)/);
+                    let fileId = fileIdMatch ? decodeURIComponent(fileIdMatch[1]) : '';
+                    let workspaceId = wsMatch ? decodeURIComponent(wsMatch[1]) : undefined;
+
+                    // 清洗模型幻觉产生的占位符（如 {uuid}、{fileId}、undefined、null 等）
+                    const isPlaceholder = (val?: string) =>
+                      !val || /^[{\[](?:uuid|fileId|workspaceId|id)[}\]]$/i.test(val) || val === 'undefined' || val === 'null';
+                    if (isPlaceholder(workspaceId)) {
+                      workspaceId = undefined;
+                    }
+                    if (isPlaceholder(fileId)) {
+                      fileId = '';
+                    }
+
+                    const fileName = typeof children === 'string' ? children : undefined;
+                    if ((fileId || fileName) && typeof window !== 'undefined') {
+                      window.dispatchEvent(
+                        new CustomEvent('open-workspace-preview', {
+                          detail: {
+                            fileId,
+                            workspaceId,
+                            fileName,
+                          },
+                        })
+                      );
+                    }
+                  }}
+                >
+                  {children}
+                </span>
+              );
+            }
+            let finalHref = href || '';
+            if (finalHref.startsWith('/workspace/') || finalHref.startsWith('workspace/')) {
+              const fileName = finalHref.split('/').pop();
+              if (fileName) {
+                finalHref = `/api/ai/chat/workspace-files/me/${encodeURIComponent(fileName)}`;
+              }
+            }
+            finalHref = appendAuthToken(finalHref);
+            const isDownloadLink = finalHref.includes('/api/ai/chat/workspace-files/');
+            return (
+              <a
+                href={finalHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                download={isDownloadLink ? true : undefined}
+                style={{
+                  wordBreak: 'break-all',
+                  overflowWrap: 'anywhere',
+                  wordWrap: 'break-word',
+                  color: 'var(--primary-color, #1677ff)',
+                  fontWeight: isDownloadLink ? 600 : undefined,
+                }}
+                onClick={onClick}
+                {...props}
+              >
+                {children}
+              </a>
+            );
+          },
+          table: ({ children }: { children?: React.ReactNode }) => (
+            <div className="markdown-table-wrapper">
+              <table>{children}</table>
+            </div>
+          ),
+          td: ({ children, ...props }: React.ComponentPropsWithoutRef<'td'>) => (
+            <td {...props}>{renderWithLineBreaks(children)}</td>
+          ),
+          th: ({ children, ...props }: React.ComponentPropsWithoutRef<'th'>) => (
+            <th {...props}>{renderWithLineBreaks(children)}</th>
+          ),
+          p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => (
+            <p {...props}>{renderWithLineBreaks(children)}</p>
+          ),
+        }}
+      >
+        {normalizeMathDelimiters(normalizeTabSeparatedTable(unwrapOuterMarkdownFence(content)))}
+      </ReactMarkdown>
+      {isStreaming ? <StreamingIndicator /> : null}
+    </div>
+  );
+};
+
+export default MessageContentRenderer;

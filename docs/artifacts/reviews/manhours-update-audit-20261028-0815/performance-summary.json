@@ -1,0 +1,31 @@
+{
+  "http_duration_ms": 142715,
+  "harness_duration_ms": 142651,
+  "runtime_duration_ms": 141491.31,
+  "llm_duration_ms": 113893.7,
+  "native_tool_counts": 8,
+  "llm_invocations": 12,
+  "tokens": {
+    "prompt_tokens": 267285,
+    "completion_tokens": 9567,
+    "total_tokens": 276852
+  },
+  "largest_model_request": {
+    "purpose": "tool_loop",
+    "model": "default",
+    "total_ms": 66920.42,
+    "usage": {
+      "prompt_tokens": 36323,
+      "total_tokens": 42737,
+      "completion_tokens": 6414
+    },
+    "span_id": null
+  },
+  "last_two_context_prompt_tokens": [
+    46216,
+    46823
+  ],
+  "model_purpose_classification": "semantic/admission calls also recorded as tool_loop; no duplicate planning entry observed",
+  "run_scope": "run_id isolated candidate and snapshot; shared root publish path with no-overwrite naming",
+  "published_sha256": "c7a044a191a46cba414ae6c7cf2c8662847233b74abd31aa1691c257604b5919"
+}

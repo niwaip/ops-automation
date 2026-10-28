@@ -94,15 +94,25 @@ def _extract_metric_value_from_reply(
             # 该句提及指标但未关联具体月份，不能作为月度极值分析结论
             continue
 
+        # 排除 Markdown 标题标记 (如 "### ") 与前置列表/章节序号 (如 "2. ", "2、", "2.1 ")，严禁将标题序号误当成指标数值
+        clean_seg = re.sub(r'^\s*#{1,6}\s*', '', seg).strip()
+        clean_seg = re.sub(r'^\s*(?:\d+(?:\.\d+)*|[一二三四五六七八九十]+|\([0-9a-zA-Z一二三四五六七八九十]+\))[\.、\s\):：]\s*', '', clean_seg).strip()
+        if not clean_seg:
+            continue
+
+        # 若原句属于纯标题行（如 "### 2. 盈利能力变化计算"），且不含计算、赋值或陈述动词/等号，直接跳过纯标题行提取
+        if re.match(r'^\s*#{1,6}\s+', seg) and not re.search(r'[=＝:：为达是共计]|(?:达到|合计|总计|分别为|增长|下降|提升|增加)', clean_seg):
+            continue
+
         # 提取候选数值 (支持前缀货币符号 ¥ / $ / ￥ 等)
-        num_matches = list(re.finditer(r'([¥￥$€]\s*)?([+-]?[\d,]+(?:\.\d+)?)\s*(%|万元|千元|亿元|元|件|个|笔|[kKmM])?', seg))
+        num_matches = list(re.finditer(r'([¥￥$€]\s*)?([+-]?[\d,]+(?:\.\d+)?)\s*(%|万元|千元|亿元|元|件|个|笔|[kKmM])?', clean_seg))
         valid_candidates = []
 
         for nm in num_matches:
             curr_prefix = nm.group(1) or ""
             raw_num = nm.group(2).replace(",", "")
             unit = nm.group(3) or ("元" if curr_prefix.strip() in ("¥", "￥") else "")
-            after_context = seg[nm.end():nm.end() + 15]
+            after_context = clean_seg[nm.end():nm.end() + 15]
 
             # 排除紧跟“月”或“年”的日期数字 (如 12月, 2026年)
             if re.match(r'^\s*[年月]', after_context):

@@ -1,0 +1,126 @@
+{
+  "dataset": {
+    "chart_type": "bar",
+    "title": "部门名称 · 金额(K)合计",
+    "category_field": "部门名称",
+    "value_field": "amount",
+    "value_label": "金额(K)",
+    "unit": "K",
+    "points": [
+      {
+        "label": "華東MIS",
+        "value": "561.75345"
+      },
+      {
+        "label": "華東BAS",
+        "value": "260.64793"
+      },
+      {
+        "label": "SM華南BAS",
+        "value": "212.90759"
+      },
+      {
+        "label": "流通/EBISS",
+        "value": "198.51766"
+      },
+      {
+        "label": "DM華南BAS",
+        "value": "171.65638"
+      },
+      {
+        "label": "華南MIS",
+        "value": "164.90159"
+      },
+      {
+        "label": "華北BAS",
+        "value": "67.0353"
+      }
+    ],
+    "evidence_id": "126b1cd74f88abbffda5b0b5",
+    "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+    "source_name": "工数实绩明细_20261020134124.xlsx",
+    "source_range": "工数实绩明细!A5:R278",
+    "where": {
+      "field": "WBS编号",
+      "op": "not_starts_with",
+      "values": [
+        "ex",
+        "sy",
+        "sp",
+        "ip",
+        "ib",
+        "sz"
+      ]
+    },
+    "having": null
+  },
+  "manifest": {
+    "session_id": "native-final",
+    "turn_id": "de05aa2b22fb4ab9bb1331add0681387",
+    "status": "published",
+    "transitions": [
+      "calculating",
+      "calculated",
+      "generating",
+      "validating",
+      "validated",
+      "published"
+    ],
+    "attempts": 1,
+    "evidence_id": "126b1cd74f88abbffda5b0b5",
+    "sha256": "ed4158505438ce8c8ba47abfa817d895dee0854a0a8eb9bc222b68c00406588a",
+    "groups": 7,
+    "artifact_id": "f6f625da5d304ef797c63bf873f0ebd4",
+    "file_path": "/tmp/final-chart-native-9j1sxh4i/chart-native-final-de05aa2b22fb4ab9bb1331add0681387-f6f625da5d304ef797c63bf873f0ebd4.html"
+  },
+  "guards": [
+    {
+      "guard": "spreadsheet_evidence",
+      "action": "accept",
+      "reason": {
+        "evidence_id": "126b1cd74f88abbffda5b0b5"
+      }
+    },
+    {
+      "guard": "chart_delivery",
+      "action": "published",
+      "reason": {
+        "session_id": "native-final",
+        "turn_id": "de05aa2b22fb4ab9bb1331add0681387",
+        "status": "published",
+        "transitions": [
+          "calculating",
+          "calculated",
+          "generating",
+          "validating",
+          "validated",
+          "published"
+        ],
+        "attempts": 1,
+        "evidence_id": "126b1cd74f88abbffda5b0b5",
+        "sha256": "ed4158505438ce8c8ba47abfa817d895dee0854a0a8eb9bc222b68c00406588a",
+        "groups": 7,
+        "artifact_id": "f6f625da5d304ef797c63bf873f0ebd4",
+        "file_path": "/tmp/final-chart-native-9j1sxh4i/chart-native-final-de05aa2b22fb4ab9bb1331add0681387-f6f625da5d304ef797c63bf873f0ebd4.html"
+      }
+    },
+    {
+      "guard": "deliverable_contract",
+      "action": "accept",
+      "reason": {
+        "artifact_id": "f6f625da5d304ef797c63bf873f0ebd4",
+        "sha256": "ed4158505438ce8c8ba47abfa817d895dee0854a0a8eb9bc222b68c00406588a"
+      }
+    }
+  ],
+  "source_unchanged": true,
+  "runtime_hashes": {
+    "agent_loop": "b632a09cb0a26325c5a2df5e8c650258dfde2d2bf5f92404f08f44038861a5ea",
+    "runner": "498c7eb8772973111d2ca3f03e033774e6f16e2b1d71595fefbdca25d5939702",
+    "spreadsheet_chart_renderer": "83a54de3f09952fdf7c4a7bfe06cb71366132271d80c973dd8d1bfbc76fcf161",
+    "spreadsheet_chart_delivery": "c4652e0c2acc6087aae8cb07f03cc7bf3d72cdf2bb0b02c61cb01017ed48c122",
+    "artifact_exporter": "4568f16b28f00b9d2924f9f9e350a01d4636da6816468cb5859c5249ca0f5278",
+    "html_report_fallback": "e04a5530d731760486014ca3f9afe8e76607ba8a53aa2622784a5a4d22bf4a54",
+    "completion_evaluator": "4395bf9968948069cb643281285a85e67ffae3e9113eae621b885b6d9c79ae5b"
+  }
+}

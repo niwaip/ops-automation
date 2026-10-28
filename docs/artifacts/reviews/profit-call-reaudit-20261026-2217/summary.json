@@ -1,0 +1,141 @@
+{
+  "session_id": "chat-session-1793019198260-1llzjmqv",
+  "message_id": "1793024198798-amtdfmo6",
+  "turn_id": "1793024272754487758-60de9d33c5cc452bb35b789a34d0e60b",
+  "time_window": "2026-10-26 22:16:39 to 22:17:52 Asia/Shanghai",
+  "duration_ms": 73867,
+  "verified": false,
+  "guard_decisions": [
+    {
+      "guard": "task_intent_review",
+      "action": "accept",
+      "reason": {
+        "output_mode": "conversation",
+        "task_mode": "execute"
+      }
+    },
+    {
+      "guard": "task_intent",
+      "action": "accept",
+      "reason": {
+        "instruction_relation": "followup",
+        "task_mode": "execute",
+        "output_mode": "conversation",
+        "artifact_types": [],
+        "unit_confirmation": null,
+        "section_confirmation": null,
+        "skill_invocation": {
+          "mode": "none",
+          "name": "",
+          "replace_defaults": false
+        },
+        "requirements": [
+          {
+            "id": "1",
+            "quote": "解释下半年盈利能力变化。"
+          }
+        ]
+      }
+    },
+    {
+      "guard": "skill_admission",
+      "action": "use",
+      "reason": {
+        "initial_candidate": "xlsx",
+        "skill_id": "xlsx",
+        "use_default_rules": false,
+        "reason": "applicable",
+        "requirement_ids": [
+          "1"
+        ]
+      }
+    },
+    {
+      "guard": "user_unit_confirmation",
+      "action": "accept",
+      "reason": {
+        "unit": null,
+        "sections": null
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 117873,
+    "completion_tokens": 3299,
+    "total_tokens": 121172
+  },
+  "llm_invocations": 7,
+  "auxiliary_invocations": 1,
+  "proxy_spans_ms": [
+    3941,
+    2328,
+    1882,
+    9462,
+    5216,
+    18457,
+    6337
+  ],
+  "proxy_spans_count": 7,
+  "proxy_http_ms_sum": 47623,
+  "ledger_usage": {
+    "prompt_tokens": 117873,
+    "completion_tokens": 3299,
+    "total_tokens": 121172
+  },
+  "main_execution_calls": 3,
+  "structured_admission_decision_calls": 3,
+  "gate_review_calls": 1,
+  "classification_note": "The first three tool_loop-labeled ledger entries are structured intent/admission decisions. True tool execution starts at the fourth recorded response.",
+  "receipt_rounds": [
+    0,
+    0
+  ],
+  "receipt_statuses": [
+    "success",
+    "success"
+  ],
+  "fact_counts": [
+    24,
+    24
+  ],
+  "h2_totals": {
+    "营业收入": "68900",
+    "毛利": "30473.25",
+    "营业利润": "12899.80",
+    "净利润": "9757.3500"
+  },
+  "h1_totals": {
+    "营业收入": "55120",
+    "毛利": "22970.0",
+    "营业利润": "8309.6",
+    "净利润": "6280.950"
+  },
+  "net_profit_growth_pct": "55.34831514340983449955818790",
+  "answer_growth_pct": "55.36",
+  "correct_rounded_growth_pct": "55.35",
+  "answer_chars": 683,
+  "answer_matches_last_clean_response": true,
+  "runtime_parity": {
+    "runner.py": true,
+    "agent_loop.py": true,
+    "analysis_contract.py": true,
+    "analysis_gate_review.py": true,
+    "analysis_turn.py": true,
+    "semantic_contract_judge.py": true,
+    "spreadsheet_analysis_evidence.py": true,
+    "telemetry.py": true,
+    "llm.py": true,
+    "spreadsheet_preflight.py": true
+  },
+  "relative_to_2107": {
+    "duration_reduction_pct": "30.91376730265619154508043397",
+    "recorded_tokens_reduction_pct": "46.93700597753497843270346609",
+    "caveat": "Not a controlled A/B test: history, attachment wrapper, skill admission and token accounting differ."
+  },
+  "limits": [
+    "No wire request archive; exact per-round tool/context token breakdown remains unproven.",
+    "Prior 2452-character candidate body was not persisted; its exact content and repair feedback cannot be fully reconstructed.",
+    "About 25 seconds elapsed after the last model response before final save; no stage spans identify the cause.",
+    "No model replay and no application code edits were performed."
+  ]
+}

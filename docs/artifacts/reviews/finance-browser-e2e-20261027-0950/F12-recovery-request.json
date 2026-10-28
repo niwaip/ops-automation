@@ -1,0 +1,16 @@
+{
+  "message": "仅回复“取消后可以继续”。",
+  "clientMessageId": "1793069161176-tilv0ppt",
+  "clientAssistantMessageId": "1793069161176-evmuahhi",
+  "sessionId": "16733314-c016-433b-89bd-bd0af4cd2acf",
+  "files": [],
+  "config": {
+    "mode": "chat",
+    "thinking": true,
+    "reasoning": true,
+    "reasoningEffort": "medium",
+    "webSearch": true,
+    "workspaceSearch": false,
+    "research": false
+  }
+}

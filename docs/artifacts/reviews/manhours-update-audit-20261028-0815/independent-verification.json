@@ -1,0 +1,266 @@
+{
+  "hashes": {
+    "工数3Q预实管理.xlsx": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d",
+    "工数实绩明细_20261020134124.xlsx": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374",
+    "工数3Q预实管理_1028.xlsx": "c7a044a191a46cba414ae6c7cf2c8662847233b74abd31aa1691c257604b5919"
+  },
+  "source_unchanged": true,
+  "published_hash_matches_receipt": true,
+  "original_sheets": [
+    "1019"
+  ],
+  "delivered_sheets": [
+    "1019",
+    "1028"
+  ],
+  "original_sheet_semantic_changes": [],
+  "new_sheet_changed_business_cells": [
+    {
+      "cell": "C8",
+      "old": "160.24706999999998",
+      "new": "314.48323"
+    },
+    {
+      "cell": "C10",
+      "old": "563.9171499999999",
+      "new": "570.75345"
+    },
+    {
+      "cell": "C14",
+      "old": "198.51766",
+      "new": "242.51766"
+    },
+    {
+      "cell": "C16",
+      "old": "164.90159000000006",
+      "new": "167.77218"
+    },
+    {
+      "cell": "C29",
+      "old": "53.835300000000004",
+      "new": "14.3"
+    },
+    {
+      "cell": "C31",
+      "old": "9",
+      "new": "106.83199"
+    },
+    {
+      "cell": "C35",
+      "old": "55.388239999999996",
+      "new": "11.38824"
+    }
+  ],
+  "writes_verified": [
+    {
+      "department": "FC45031",
+      "charge": "有偿",
+      "cell": "C10",
+      "source_K": "570.75345",
+      "delivered_K": "570.75345"
+    },
+    {
+      "department": "FC48005",
+      "charge": "有偿",
+      "cell": "C5",
+      "source_K": "67.03530",
+      "delivered_K": "67.0353"
+    },
+    {
+      "department": "FC44006",
+      "charge": "有偿",
+      "cell": "C15",
+      "source_K": "171.65638",
+      "delivered_K": "171.65638"
+    },
+    {
+      "department": "FC44004",
+      "charge": "有偿",
+      "cell": "C14",
+      "source_K": "242.51766",
+      "delivered_K": "242.51766"
+    },
+    {
+      "department": "FC34022",
+      "charge": "有偿",
+      "cell": "C16",
+      "source_K": "167.77218",
+      "delivered_K": "167.77218"
+    },
+    {
+      "department": "FC44003",
+      "charge": "有偿",
+      "cell": "C13",
+      "source_K": "212.90759",
+      "delivered_K": "212.90759"
+    },
+    {
+      "department": "FC46005",
+      "charge": "有偿",
+      "cell": "C8",
+      "source_K": "314.48323",
+      "delivered_K": "314.48323"
+    },
+    {
+      "department": "FC45031",
+      "charge": "无偿",
+      "cell": "C31",
+      "source_K": "106.83199",
+      "delivered_K": "106.83199"
+    },
+    {
+      "department": "FC44004",
+      "charge": "无偿",
+      "cell": "C35",
+      "source_K": "11.38824",
+      "delivered_K": "11.38824"
+    },
+    {
+      "department": "FC44003",
+      "charge": "无偿",
+      "cell": "C34",
+      "source_K": "8.085",
+      "delivered_K": "8.085"
+    },
+    {
+      "department": "FC46005",
+      "charge": "无偿",
+      "cell": "C29",
+      "source_K": "14.30000",
+      "delivered_K": "14.3"
+    }
+  ],
+  "write_count": 11,
+  "actual_changed_value_count": 7,
+  "plan_columns_unchanged": true,
+  "other_months_unchanged": true,
+  "merged_ranges_preserved": true,
+  "formula_count": 622,
+  "uncached_formulas": [],
+  "formula_errors": [],
+  "source_paid_K": "1747.12579",
+  "source_unpaid_K": "140.60523",
+  "source_charge_counts": {
+    "有偿": 259,
+    "无偿": 15
+  },
+  "unpaid_prefix_counts": {
+    "SP": 9,
+    "IP": 6
+  },
+  "cached_totals": {
+    "C19": 1747.12579,
+    "C40": 143.47582,
+    "C42": 1890.60161
+  },
+  "preserved_unmatched": {
+    "cell": "C37",
+    "department": "FC34022",
+    "value_K": "2.87059"
+  },
+  "copied_header_dates": {
+    "C2": "2026-10-19 00:00:00",
+    "C23": "2026-10-19 00:00:00"
+  },
+  "receipt_reconciliation": [
+    {
+      "section": "有偿",
+      "unit": "K",
+      "source_actual_sum": "1747.12579",
+      "preserved_old_forecast_sum": "0",
+      "delivered_forecast_sum": "1747.12579",
+      "is_balanced": true,
+      "unmatched_count": 4,
+      "unmatched_details": [
+        {
+          "key": "FC32008",
+          "row": 18,
+          "old_forecast": "0",
+          "unit": "K",
+          "has_impact": false
+        },
+        {
+          "key": "FC34001",
+          "row": 11,
+          "old_forecast": "0",
+          "unit": "K",
+          "has_impact": false
+        },
+        {
+          "key": "FC34032",
+          "row": 6,
+          "old_forecast": "0",
+          "unit": "K",
+          "has_impact": false
+        },
+        {
+          "key": "FC44008",
+          "row": 9,
+          "old_forecast": "0",
+          "unit": "K",
+          "has_impact": false
+        }
+      ]
+    },
+    {
+      "section": "*P/*Y/EX（不含*L/*B）",
+      "unit": "K",
+      "source_actual_sum": "140.60523",
+      "preserved_old_forecast_sum": "2.87059",
+      "delivered_forecast_sum": "143.47582",
+      "is_balanced": true,
+      "unmatched_count": 7,
+      "unmatched_details": [
+        {
+          "key": "FC34022",
+          "row": 37,
+          "old_forecast": "2.87059",
+          "unit": "K",
+          "has_impact": true
+        },
+        {
+          "key": "FC32008",
+          "row": 39,
+          "old_forecast": "0",
+          "unit": "K",
+          "has_impact": false
+        },
+        {
+          "key": "FC34001",
+          "row": 32,
+          "old_forecast": "0",
+          "unit": "K",
+          "has_impact": false
+        },
+        {
+          "key": "FC34032",
+          "row": 27,
+          "old_forecast": "0",
+          "unit": "K",
+          "has_impact": false
+        },
+        {
+          "key": "FC44006",
+          "row": 36,
+          "old_forecast": "0",
+          "unit": "K",
+          "has_impact": false
+        },
+        {
+          "key": "FC44008",
+          "row": 30,
+          "old_forecast": "0",
+          "unit": "K",
+          "has_impact": false
+        },
+        {
+          "key": "FC48005",
+          "row": 26,
+          "old_forecast": "0",
+          "unit": "K",
+          "has_impact": false
+        }
+      ]
+    }
+  ]
+}

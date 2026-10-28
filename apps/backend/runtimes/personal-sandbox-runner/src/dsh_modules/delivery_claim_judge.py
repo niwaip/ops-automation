@@ -193,7 +193,8 @@ class DeliveryClaimJudge:
                 timeout=12,
                 deadline=review_deadline,
                 policy=review_policy,
-                stream_deltas=False
+                stream_deltas=False,
+                purpose="delivery_claim"
             )
 
             raw_text = (res.get("content") or "").strip() if isinstance(res, dict) else str(res or "").strip()

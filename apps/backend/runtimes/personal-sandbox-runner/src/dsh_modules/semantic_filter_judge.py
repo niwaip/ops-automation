@@ -143,7 +143,8 @@ class SemanticFilterJudge:
                 timeout=12,
                 deadline=deadline,
                 policy=judge_policy,
-                stream_deltas=False
+                stream_deltas=False,
+                purpose="filter_conformance"
             )
 
             raw_text = (res.get("content") or "").strip() if isinstance(res, dict) else str(res or "").strip()

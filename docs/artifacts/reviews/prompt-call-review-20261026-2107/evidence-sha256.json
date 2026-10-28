@@ -1,0 +1,17 @@
+{
+  "guards.json": "8b5d5ca6e4c1d7460d3ccad6e321a334a75c628697909a0cb06cf17162ec3793",
+  "offline-checks.json": "7ff1386f4cd85a318292308cc60ad1345ad27bcdb891ae02a53be1fc70f53b77",
+  "offline-probes.py": "1ce18620896540f4fa065a9895e8f30c45e0df671f4db73334fd3179192c28fc",
+  "preflight.json": "2a3e2aec1d4cae9dc1570c3b9df034c0983b2f743174fb21b5565e58fe360309",
+  "relevant-cache.json": "6ebbcffab028bc74e204ca43e999bfb2196f4a086905ff767e985dadf1fb8dab",
+  "runtime-hashes.json": "4419f99ce512e4e97fd1ec36b8a6a5aea5d49e7fa4934daf946bc73ca1c417e1",
+  "sandbox.json": "9e89f6d2be7f17767dd382a1e6102772b66a8920c7268a3486a7a3121a849bb9",
+  "service.log": "e217d4032e68108c7964f00ba9e3f6d302be8b6d6446c50017439dff891ec630",
+  "session.json": "c3d3e4eeb268782cba154bb93e12edeb7ecd72a33befd0cb722e8b20fd883a8c",
+  "source-read-check.json": "bcab05cda5a780d650f6049baf40e23a956129ff44fd673311952d922b94d248",
+  "summary.json": "d19e865391057d4d554ca6ce253aa5d07271c310848bdb811a5a3bef79c7a828",
+  "report": {
+    "path": "/Users/chain/Documents/MyProject/ops-automation/docs/audits/prompt-call-review-2026-10-26-2107.md",
+    "sha256": "ce81a71a86a420f20a66d2f82090f03b82b705dab86080e1a861b536216b2f64"
+  }
+}

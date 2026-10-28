@@ -493,20 +493,29 @@ export const reduceChatStreamEvent = ({
     // 也绝不把思考过程作为正文拼接，保证前序轮次摘要（如 ⏳ [Harness Agent] 第2轮...）不被冲刷丢失
     nextAccumulatedContent = accumulatedContent;
   } else if (data?.isDelta) {
-    nextAccumulatedContent = contentText;
+    nextAccumulatedContent = contentText.replace(/<\|(?:mask_start|mask_end|im_start|im_end|fim_prefix|fim_suffix|fim_middle|extra_\d+)\|?>/g, '');
   } else if (
     event.type === StreamEventTypeValue.ACTION ||
     event.type === StreamEventTypeValue.OBSERVATION
   ) {
     if (mode !== 'task') {
-      const prefix =
-        event.type === StreamEventTypeValue.ACTION
-          ? '【行动】'
-          : '【观察】';
-      nextAccumulatedContent = `${accumulatedContent}${accumulatedContent ? '\n' : ''}${prefix}${event.content}`;
+      const isInternalHarnessLog =
+        event.content.includes('[Harness Phase Transition]') ||
+        event.content.includes('[Harness Loop Intercept]') ||
+        event.content.startsWith('⚡ [Harness');
+      if (!isInternalHarnessLog) {
+        const prefix =
+          event.type === StreamEventTypeValue.ACTION
+            ? '【行动】'
+            : '【观察】';
+        const cleanContent = event.content.replace(/<\|(?:mask_start|mask_end|im_start|im_end|fim_prefix|fim_suffix|fim_middle|extra_\d+)\|?>/g, '');
+        if (cleanContent.trim()) {
+          nextAccumulatedContent = `${accumulatedContent}${accumulatedContent ? '\n' : ''}${prefix}${cleanContent}`;
+        }
+      }
     }
   } else if (event.type === StreamEventTypeValue.RESULT && mode === 'chat') {
-      nextAccumulatedContent = contentText;
+      nextAccumulatedContent = contentText.replace(/<\|(?:mask_start|mask_end|im_start|im_end|fim_prefix|fim_suffix|fim_middle|extra_\d+)\|?>/g, '');
   } else if (event.type === StreamEventTypeValue.ERROR) {
     nextAccumulatedContent = contentText;
   } else if (

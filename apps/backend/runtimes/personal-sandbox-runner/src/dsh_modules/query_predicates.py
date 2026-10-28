@@ -6,6 +6,7 @@ and literal string matching.
 
 from decimal import Decimal, InvalidOperation
 import math
+import re
 from .query_contract import canonical_predicate_op
 from typing import Any, Callable, Dict, List, Optional, Union
 
@@ -32,6 +33,23 @@ def to_decimal(val: Any) -> Optional[Decimal]:
         except (InvalidOperation, TypeError):
             return None
     return None
+
+
+def _extract_scalar_target(node: Dict[str, Any]) -> Any:
+    target = node.get("value")
+    if target is None and "values" in node:
+        vals = node["values"]
+        if isinstance(vals, (list, tuple, set)):
+            vals_list = list(vals)
+            if len(vals_list) == 1:
+                target = vals_list[0]
+            elif len(vals_list) == 0:
+                target = None
+            else:
+                target = vals_list
+        else:
+            target = vals
+    return target
 
 
 def eval_predicate_3vl(
@@ -78,55 +96,97 @@ def eval_predicate_3vl(
         return None
 
     if op in ("eq", "=="):
-        target = node.get("value")
+        target = _extract_scalar_target(node)
+        if isinstance(target, list):
+            # 模型传了多值列表（如 values: ["A", "B"]）但将 op 误写成了 eq，容错按 in 语义处理
+            return eval_predicate_3vl({"op": "in", "field": field, "values": target, "case_sensitive": node.get("case_sensitive", False)}, row_dict, field_resolver)
         if target is None:
             return None
         # String identifiers comparison (B02): If both are strings, compare as text directly
         if isinstance(raw_val, str) and isinstance(target, str):
+            case_sensitive = node.get("case_sensitive", False)
+            if not case_sensitive:
+                return raw_val.strip().casefold() == target.strip().casefold()
             return raw_val.strip() == target.strip()
         d_raw = to_decimal(raw_val)
         d_target = to_decimal(target)
         if d_raw is not None and d_target is not None:
             return d_raw == d_target
+        case_sensitive = node.get("case_sensitive", False)
+        if not case_sensitive:
+            return str(raw_val).strip().casefold() == str(target).strip().casefold()
         return str(raw_val).strip() == str(target).strip()
 
     if op in ("ne", "!=", "<>"):
-        target = node.get("value")
+        target = _extract_scalar_target(node)
+        if isinstance(target, list):
+            # 模型传了多值列表但误写成了 ne，容错按 not_in 语义处理
+            return eval_predicate_3vl({"op": "not_in", "field": field, "values": target, "case_sensitive": node.get("case_sensitive", False)}, row_dict, field_resolver)
         if target is None:
             return None
         if isinstance(raw_val, str) and isinstance(target, str):
+            case_sensitive = node.get("case_sensitive", False)
+            if not case_sensitive:
+                return raw_val.strip().casefold() != target.strip().casefold()
             return raw_val.strip() != target.strip()
         d_raw = to_decimal(raw_val)
         d_target = to_decimal(target)
         if d_raw is not None and d_target is not None:
             return d_raw != d_target
+        case_sensitive = node.get("case_sensitive", False)
+        if not case_sensitive:
+            return str(raw_val).strip().casefold() != str(target).strip().casefold()
         return str(raw_val).strip() != str(target).strip()
 
     if op in ("gt", "gte", "lt", "lte", "between"):
+        scalar_target = _extract_scalar_target(node)
+        if isinstance(scalar_target, list):
+            scalar_target = scalar_target[0] if scalar_target else None
         d_raw = to_decimal(raw_val)
-        if d_raw is None:
-            return False
-        if op == "gt":
-            d_target = to_decimal(node.get("value"))
-            return d_target is not None and d_raw > d_target
-        if op == "gte":
-            d_target = to_decimal(node.get("value"))
-            return d_target is not None and d_raw >= d_target
-        if op == "lt":
-            d_target = to_decimal(node.get("value"))
-            return d_target is not None and d_raw < d_target
-        if op == "lte":
-            d_target = to_decimal(node.get("value"))
-            return d_target is not None and d_raw <= d_target
+        if d_raw is not None:
+            if op == "gt":
+                d_target = to_decimal(scalar_target)
+                return d_target is not None and d_raw > d_target
+            if op == "gte":
+                d_target = to_decimal(scalar_target)
+                return d_target is not None and d_raw >= d_target
+            if op == "lt":
+                d_target = to_decimal(scalar_target)
+                return d_target is not None and d_raw < d_target
+            if op == "lte":
+                d_target = to_decimal(scalar_target)
+                return d_target is not None and d_raw <= d_target
+            if op == "between":
+                min_val = to_decimal(node.get("min")) if "min" in node else to_decimal(node.get("values", [None, None])[0])
+                max_val = to_decimal(node.get("max")) if "max" in node else to_decimal(node.get("values", [None, None])[1])
+                if min_val is None or max_val is None:
+                    return False
+                return min_val <= d_raw <= max_val
+        # 日期/时间 ISO 格式字符串支持
+        raw_s = str(raw_val).strip()
+        val_s = str(scalar_target if scalar_target is not None else "").strip()
+        is_date_like = bool(re.match(r'^\d{4}[-/]\d{1,2}', raw_s) and re.match(r'^\d{4}[-/]\d{1,2}', val_s))
+        if is_date_like:
+            if op == "gt":
+                return raw_s > val_s
+            if op == "gte":
+                return raw_s >= val_s
+            if op == "lt":
+                return raw_s < val_s
+            if op == "lte":
+                return raw_s <= val_s
         if op == "between":
-            min_val = to_decimal(node.get("min")) if "min" in node else to_decimal(node.get("values", [None, None])[0])
-            max_val = to_decimal(node.get("max")) if "max" in node else to_decimal(node.get("values", [None, None])[1])
-            if min_val is None or max_val is None:
-                return False
-            return min_val <= d_raw <= max_val
+            min_s = str(node.get("min") if "min" in node else (node.get("values") or ["", ""])[0]).strip()
+            max_s = str(node.get("max") if "max" in node else (node.get("values") or ["", ""])[1]).strip()
+            if bool(re.match(r'^\d{4}[-/]\d{1,2}', raw_s) and re.match(r'^\d{4}[-/]\d{1,2}', min_s)):
+                return min_s <= raw_s <= max_s
+        return False
 
     if op == "in":
-        targets = node.get("values", [])
+        raw_targets = node.get("values")
+        if raw_targets is None and "value" in node:
+            raw_targets = [node["value"]]
+        targets = list(raw_targets) if isinstance(raw_targets, (list, tuple, set)) else ([raw_targets] if raw_targets is not None else [])
         raw_str = str(raw_val).strip()
         case_sensitive = node.get("case_sensitive", False)
         d_raw = to_decimal(raw_val)
@@ -151,7 +211,10 @@ def eval_predicate_3vl(
         return False
 
     if op == "not_in":
-        targets = node.get("values", [])
+        raw_targets = node.get("values")
+        if raw_targets is None and "value" in node:
+            raw_targets = [node["value"]]
+        targets = list(raw_targets) if isinstance(raw_targets, (list, tuple, set)) else ([raw_targets] if raw_targets is not None else [])
         raw_str = str(raw_val).strip()
         case_sensitive = node.get("case_sensitive", False)
         d_raw = to_decimal(raw_val)
@@ -254,7 +317,8 @@ def eval_having_predicate(
     raw_val = metric_values.get(metric_ref)
 
     d_raw = to_decimal(raw_val)
-    d_target = to_decimal(node.get("value"))
+    target_val = _extract_scalar_target(node)
+    d_target = to_decimal(target_val)
 
     if op in ("gt", ">"):
         return d_raw is not None and d_target is not None and d_raw > d_target
@@ -267,10 +331,10 @@ def eval_having_predicate(
     if op in ("eq", "=="):
         if d_raw is not None and d_target is not None:
             return d_raw == d_target
-        return str(raw_val).strip() == str(node.get("value")).strip()
+        return str(raw_val).strip() == str(target_val if target_val is not None else "").strip()
     if op in ("ne", "!=", "<>"):
         if d_raw is not None and d_target is not None:
             return d_raw != d_target
-        return str(raw_val).strip() != str(node.get("value")).strip()
+        return str(raw_val).strip() != str(target_val if target_val is not None else "").strip()
 
     raise ValueError(f"未知或未实现的 HAVING 谓词操作符: '{op}'")

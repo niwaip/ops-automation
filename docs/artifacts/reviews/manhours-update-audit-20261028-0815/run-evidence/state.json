@@ -1,0 +1,39 @@
+{
+  "run_id": "run_b9cca4de9f44",
+  "status": "published",
+  "user_id": "sandbox_user",
+  "target_path": "/workspace/.dsh/spreadsheet-runs/run_b9cca4de9f44/snapshot_工数3Q预实管理.xlsx",
+  "target_hash": "e2a2ad28190d0019a7eb1954e44b2fbb5a5340bfe942a2a2e3c29fcc36fbfa2d",
+  "plan_id": "plan_23c10bb5b631_run_b9cca4de9f44",
+  "plan_hash": "23c10bb5b6314fbfa4de7bb00015dbe4e9a7b73a3829c539a1b5f8ff8eb342a3",
+  "candidate_path": null,
+  "candidate_hash": null,
+  "published_path": "/workspace/工数3Q预实管理_1028.xlsx",
+  "published_hash": "c7a044a191a46cba414ae6c7cf2c8662847233b74abd31aa1691c257604b5919",
+  "idempotency_key": "82bd9196b0ca0465cc96d583d69abd471c35438923b44e9f9728deddbe4b9d1f",
+  "phase_history": [
+    {
+      "status": "discovered",
+      "timestamp": 1793146479.7427084
+    },
+    {
+      "status": "planned",
+      "timestamp": 1793146479.7449026,
+      "details": {
+        "plan_id": "plan_23c10bb5b631_run_b9cca4de9f44",
+        "plan_hash": "23c10bb5b6314fbfa4de7bb00015dbe4e9a7b73a3829c539a1b5f8ff8eb342a3"
+      }
+    },
+    {
+      "status": "published",
+      "timestamp": 1793146487.1651423,
+      "details": {
+        "published_hash": "c7a044a191a46cba414ae6c7cf2c8662847233b74abd31aa1691c257604b5919",
+        "published_path": "/workspace/工数3Q预实管理_1028.xlsx"
+      }
+    }
+  ],
+  "errors": [],
+  "created_at": 1793146479.7427266,
+  "updated_at": 1793146487.165144
+}
