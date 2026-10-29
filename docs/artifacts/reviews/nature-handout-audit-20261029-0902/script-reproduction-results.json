@@ -1,0 +1,22 @@
+[
+  {
+    "script": "generate_handout.py",
+    "sha256": "5adc815af1b3697b4f035726d604f1b92eb2191253d635eedb8c38a0eeebb192",
+    "fpdf_version": "2.8.8",
+    "result": "FPDFException",
+    "message": "Undefined font: nsB - Use built-in fonts or FPDF.add_font() beforehand",
+    "first_failing_line": 134,
+    "method": "Execute original source in original sandbox with FPDF.output intercepted in memory to prevent any final file writes",
+    "historical_tool_receipt": false
+  },
+  {
+    "script": "gen_handout.py",
+    "sha256": "e2c87dec59d92e7675391e819537dba1e56344e4aedf82260f9e09bdacc2ffe2",
+    "fpdf_version": "2.8.8",
+    "result": "FPDFException",
+    "message": "Undefined font: nB - Use built-in fonts or FPDF.add_font() beforehand",
+    "first_failing_line": 125,
+    "method": "Execute original source in original sandbox with FPDF.output intercepted in memory to prevent any final file writes",
+    "historical_tool_receipt": false
+  }
+]

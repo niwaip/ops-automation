@@ -332,6 +332,12 @@ def call_model_proxy(
     usage = {}
     start_time = time.time()
     ttft_ms = None
+    call_id = uuid.uuid4().hex
+    from .telemetry import get_active_telemetry
+    active_tel = telemetry or get_active_telemetry()
+    if active_tel and hasattr(active_tel, 'checkpoint'):
+        active_tel.checkpoint('model_started', {'call_id': call_id, 'purpose': purpose or 'tool_loop',
+                                                'model': model or 'default'})
 
     max_retries = active_policy.model_max_retries
     for attempt in range(max_retries + 1):
@@ -409,7 +415,6 @@ def call_model_proxy(
     if not finish_reason:
         finish_reason = "stop" if received_done else "stream_closed_prematurely"
 
-    call_id = uuid.uuid4().hex
     try:
         from .telemetry import get_active_telemetry
         active_tel = telemetry or get_active_telemetry()

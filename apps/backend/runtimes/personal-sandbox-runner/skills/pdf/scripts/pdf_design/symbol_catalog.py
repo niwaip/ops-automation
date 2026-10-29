@@ -1,0 +1,33 @@
+"""Local vector artwork for common document, news and navigation pictographs."""
+EXTRA_PATHS = {
+    'news': 'M2 4h18v3h3v15H2Zm3 3v5h6V7Zm8 0v2h5V7Zm0 4v2h5v-2ZM5 15v2h13v-2Zm0 4v1h13v-1Z',
+    'ball': 'M12 1a11 11 0 1 0 0 22 11 11 0 0 0 0-22Zm-1 2v8H3a9 9 0 0 1 2-5l6 5V8L7 4a9 9 0 0 1 4-1Zm2 0a9 9 0 0 1 4 1l-4 4v3h8a9 9 0 0 0-2-5l-6 5Zm-2 10v8a9 9 0 0 1-4-1l4-4v-3H3a9 9 0 0 0 2 5l6-5Zm2 0 6 5a9 9 0 0 0 2-5h-8v3l4 4a9 9 0 0 1-4 1Z',
+    'globe': 'M12 1a11 11 0 1 0 0 22 11 11 0 0 0 0-22Zm0 2 3 5H9Zm-5 7h10v4H7Zm2 6h6l-3 5ZM5 7l1 2-1 6-1 2a9 9 0 0 1 1-10Zm14 0a9 9 0 0 1 1 10l-1-2-1-6Z',
+    'money': 'm8 2 4 2 4-2 1 4-3 2c3 2 7 7 7 11 0 4-18 4-18 0 0-4 4-9 7-11L7 6Zm1 9v2h6v-2Zm0 5v2h6v-2Z',
+    'car': 'M6 3h12l4 9v9h-4v-3H6v3H2v-9Zm1 3-2 6h14l-2-6Zm-2 8v2h3v-2Zm11 0v2h3v-2Z',
+    'plane': 'm10 2 4-1 1 8 8 5v3l-8-2-1 5 3 2v2l-5-1-5 1v-2l3-2-1-5-8 2v-3l8-5Z',
+    'speaker': 'M2 9h5l12-6v18l-12-6H2Zm5 7 5 2-2 5H6Z',
+    'clock': 'M12 1a11 11 0 1 0 0 22 11 11 0 0 0 0-22Zm0 2a9 9 0 1 1 0 18 9 9 0 0 1 0-18Zm-1 2h2v7l5 3-1 2-6-4Z',
+    'calendar': 'M4 2h3v3h10V2h3v3h3v18H1V5h3Zm0 8v10h16V10Zm3 2h3v3H7Zm6 0h3v3h-3Z',
+    'check': 'm2 12 6 6L22 4v5L8 23l-6-6Z',
+    'cross': 'm4 2 8 8 8-8 2 2-8 8 8 8-2 2-8-8-8 8-2-2 8-8-8-8Z',
+    'heart': 'M12 22 2 12C-4 3 7-2 12 5c5-7 16-2 10 7Z',
+    'person': 'M12 1a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm-2 12h4c5 0 8 3 8 9H2c0-6 3-9 8-9Z',
+    'chat': 'M2 3h20v15H9l-7 5Zm4 4v2h12V7Zm0 5v2h9v-2Z',
+    'folder': 'M1 4h9l3 3h10v15H1Z',
+    'search': 'M10 1a9 9 0 1 0 5 16l7 7 2-2-7-7a9 9 0 0 0-7-14Zm0 3a6 6 0 1 1 0 12 6 6 0 0 1 0-12Z',
+    'book': 'M1 3h9l2 2 2-2h9v18h-9l-2 2-2-2H1Zm3 3v12h6V6Zm10 0v12h6V6Z',
+    'trophy': 'M6 2h12v3h5v4c0 4-3 6-7 6l-2 2v3h5v3H5v-3h5v-3l-2-2c-4 0-7-2-7-6V5h5Zm-3 5v2c0 2 1 3 4 4L6 7Zm15 0-1 6c3-1 4-2 4-4V7Z',
+    'down': 'M2 4 9 11l4-4 6 7h-5v3h9V8h-3v4l-7-9-4 4-5-6Z',
+    'info': 'M12 1a11 11 0 1 0 0 22 11 11 0 0 0 0-22Zm-1 4v3h2V5Zm0 5v9h2v-9Z',
+}
+EXTRA_SYMBOLS = {
+    '📰':'news', '📢':'speaker', '📣':'speaker', '🏀':'ball', '⚽':'ball',
+    '🌎':'globe', '🌍':'globe', '🌏':'globe', '🌐':'globe', '💰':'money', '💵':'money',
+    '🏦':'building', '🚗':'car', '🚘':'car', '✈':'plane', '⏰':'clock', '🕒':'clock',
+    '📅':'calendar', '🗓':'calendar', '📍':'pin', '✔':'check', '✅':'check',
+    '❌':'cross', '✖':'cross', '❤':'heart', '💖':'heart', '👤':'person', '👥':'person',
+    '💬':'chat', '📁':'folder', '📂':'folder', '🔍':'search', '🔎':'search',
+    '📖':'book', '📚':'book', '🏆':'trophy', '📉':'down', 'ℹ':'info',
+    '⚔':'cross', '🤖':'science', '📐':'science', '💡':'note', '🚀':'plane',
+}

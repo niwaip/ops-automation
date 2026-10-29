@@ -14,6 +14,8 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import axios from 'axios';
 import { ModelService } from './model.service';
+import { bindProxyCancellation } from './model-proxy-cancellation';
+import { sandboxCompletion } from './sandbox-completion-response';
 import { parseAndVerifySandboxToken } from '../../common/guards/ai-auth.guard';
 
 const DEFAULT_DEEPSEEK_ENDPOINT = 'https://api.deepseek.com';
@@ -122,6 +124,9 @@ export class ModelProxyController {
         client = this.modelService.getClient(visionModel.id);
       }
     }
+    if (!client && isVisionRequested) {
+      throw new HttpException('No configured vision-capable model is available', HttpStatus.SERVICE_UNAVAILABLE);
+    }
     if (!client && isGenericOrPlaceholder) {
       if (defaultChat) {
         client = this.modelService.getClient(defaultChat.id);
@@ -142,6 +147,7 @@ export class ModelProxyController {
     }
 
     if (client) {
+      const cancellation = bindProxyCancellation(req, res);
       const resolvedModelName =
         (client as any)?.model ||
         (client as any)?.modelConfig?.name ||
@@ -227,6 +233,7 @@ export class ModelProxyController {
           );
           let primaryStreamErr: any;
           for (let attempt = 0; attempt <= maxStreamRetries; attempt++) {
+            cancellation.signal.throwIfAborted();
             if (attempt > 0 && this.isClientDisconnected(res)) {
               this.logger.warn(`Client connection closed before stream retry ${attempt}, aborting retries.`);
               break;
@@ -242,6 +249,7 @@ export class ModelProxyController {
                   reasoning: resolvedReasoning,
                   timeoutMs: this.resolveAttemptTimeoutMs(body),
                   streamIdleTimeoutMs: this.resolveStreamIdleTimeoutMs(body),
+                  signal: cancellation.signal,
                 },
                 (chunk: string, meta?: any) => writeChunk(chunk, resolvedModelName, meta),
                 resolvedReasoning
@@ -249,6 +257,7 @@ export class ModelProxyController {
               streamSuccess = true;
               break;
             } catch (err: any) {
+              if (cancellation.signal.aborted) throw err;
               primaryStreamErr = err;
               const errMsg = String(err?.message || err);
               const isTransient = this.isTransientError(err);
@@ -287,7 +296,7 @@ export class ModelProxyController {
               primaryStreamErr ||
               new Error(`Primary model [${resolvedModelName}] stream failed to return a response`);
             // 当显式指定了具体模型时，严禁静默 fallback 到其他模型，避免模型欺骗
-            if (body.model && !isGenericOrPlaceholder) {
+            if (body.model && !isGenericOrPlaceholder && !['vision', 'ocr'].includes(body.model)) {
               this.logger.error(
                 `Primary model [${body.model}] stream failed (${finalStreamErr.message}). Explicit model requested; fallback is strictly disabled.`
               );
@@ -307,6 +316,7 @@ export class ModelProxyController {
             );
             const fallbackCandidates = this.getResilientFallbackClients(isVisionRequested, client);
             for (const { id: fbKey, client: fbClient } of fallbackCandidates) {
+              cancellation.signal.throwIfAborted();
               if (chunksSent > 0 && !bufferInternalStream) {
                 // 已有数据写入客户端时，不能中途切换模型拼接输出
                 break;
@@ -319,8 +329,13 @@ export class ModelProxyController {
                 }
                 this.logger.log(`Trying fallback model client stream [${fbKey}]...`);
                 await fbClient.chatCompletionStream(
-                  body.messages || [{ role: 'user', content: body.prompt || '' }],
-                  (chunk: string) => writeChunk(chunk, fbKey)
+                  { messages: body.messages || [{ role: 'user', content: body.prompt || '' }],
+                    temperature: body.temperature, max_tokens: body.max_tokens,
+                    reasoning: resolvedReasoning, tools: body.tools, tool_choice: body.tool_choice,
+                    signal: cancellation.signal, timeoutMs: this.resolveAttemptTimeoutMs(body),
+                    streamIdleTimeoutMs: this.resolveStreamIdleTimeoutMs(body) },
+                  (chunk: string) => writeChunk(chunk, fbKey),
+                  resolvedReasoning
                 );
                 streamSuccess = true;
                 break;
@@ -344,12 +359,16 @@ export class ModelProxyController {
         } else {
           let responseContent = '';
           let responseReasoningContent: string | undefined;
+          let responseFinishReason = 'stop';
+          let responseToolCalls: any;
+          let responseModel = resolvedModelName;
           let responseUsage: any = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
           let nonStreamSuccess = false;
           let primaryNonStreamErr: any;
 
           const maxNonStreamRetries = this.resolveMaxRetries();
           for (let attempt = 0; attempt <= maxNonStreamRetries; attempt++) {
+            cancellation.signal.throwIfAborted();
             if (attempt > 0 && this.isClientDisconnected(res)) {
               this.logger.warn(`Client connection closed before retry ${attempt}, aborting retries.`);
               break;
@@ -363,13 +382,18 @@ export class ModelProxyController {
                 tool_choice: body.tool_choice,
                 reasoning: resolvedReasoning,
                 timeoutMs: this.resolveAttemptTimeoutMs(body),
+                signal: cancellation.signal,
               });
-              responseContent = response.content;
-              responseReasoningContent = response.reasoningContent;
-              responseUsage = response.usage || responseUsage;
+              const completion = sandboxCompletion(response, resolvedModelName, isVisionRequested);
+              responseContent = completion.content;
+              responseReasoningContent = completion.reasoning;
+              responseFinishReason = completion.finishReason;
+              responseToolCalls = completion.tools;
+              responseUsage = completion.usage || responseUsage;
               nonStreamSuccess = true;
               break;
             } catch (err: any) {
+              if (cancellation.signal.aborted) throw err;
               primaryNonStreamErr = err;
               const errMsg = String(err?.message || err);
               const isTransient = this.isTransientError(err);
@@ -390,7 +414,7 @@ export class ModelProxyController {
               primaryNonStreamErr ||
               new Error(`Primary model [${resolvedModelName}] failed to return a response`);
             // 当显式指定了具体模型时，严禁静默 fallback 到其他模型，避免模型欺骗
-            if (body.model && !isGenericOrPlaceholder) {
+            if (body.model && !isGenericOrPlaceholder && !['vision', 'ocr'].includes(body.model)) {
               this.logger.error(
                 `Primary model [${body.model}] failed (${finalNonStreamErr.message}). Explicit model requested; fallback is strictly disabled.`
               );
@@ -411,15 +435,26 @@ export class ModelProxyController {
             const fallbackCandidates = this.getResilientFallbackClients(isVisionRequested, client);
             let fallbackSucceeded = false;
             for (const { id: fbKey, client: fbClient } of fallbackCandidates) {
+              cancellation.signal.throwIfAborted();
               try {
                 this.logger.log(`Trying fallback model client [${fbKey}]...`);
                 const fbRes = await fbClient.chatCompletion({
                   messages: body.messages || [{ role: 'user', content: body.prompt || '' }],
                   temperature: body.temperature,
                   max_tokens: body.max_tokens,
+                  reasoning: resolvedReasoning,
+                  tools: body.tools,
+                  tool_choice: body.tool_choice,
+                  signal: cancellation.signal,
+                  timeoutMs: this.resolveAttemptTimeoutMs(body),
                 });
-                responseContent = fbRes.content;
-                responseUsage = fbRes.usage || responseUsage;
+                const completion = sandboxCompletion(fbRes, fbKey, isVisionRequested);
+                responseContent = completion.content;
+                responseReasoningContent = completion.reasoning;
+                responseFinishReason = completion.finishReason;
+                responseToolCalls = completion.tools;
+                responseUsage = completion.usage || responseUsage;
+                responseModel = fbKey;
                 fallbackSucceeded = true;
                 break;
               } catch (fbErr: any) {
@@ -438,17 +473,18 @@ export class ModelProxyController {
           if (responseReasoningContent) {
             respMessage.reasoning_content = responseReasoningContent;
           }
+          if (responseToolCalls) respMessage.tool_calls = responseToolCalls;
 
           res.status(HttpStatus.OK).json({
             id: `chatcmpl-${Date.now()}`,
             object: 'chat.completion',
             created: Math.floor(Date.now() / 1000),
-            model: resolvedModelName,
+            model: responseModel,
             choices: [
               {
                 index: 0,
                 message: respMessage,
-                finish_reason: 'stop',
+                finish_reason: responseFinishReason,
               },
             ],
             usage: responseUsage,
@@ -456,6 +492,10 @@ export class ModelProxyController {
           return;
         }
       } catch (err: any) {
+        if (cancellation.signal.aborted) {
+          this.logger.log('Sandbox client disconnected; cancelled upstream model request.');
+          return;
+        }
         const errMsg = err?.message || String(err || 'Unknown model execution error');
         this.logger.error(`ModelService execution failed: ${errMsg}`, err?.stack);
         if (res.headersSent || chunksSent > 0) {
@@ -478,6 +518,8 @@ export class ModelProxyController {
           return;
         }
         throw new HttpException(`Sandbox model execution error: ${errMsg}`, HttpStatus.INTERNAL_SERVER_ERROR);
+      } finally {
+        cancellation.dispose();
       }
     }
 
@@ -741,7 +783,7 @@ export class ModelProxyController {
     }
 
     const defaultClient = this.modelService.getClient('default');
-    if (defaultClient && defaultClient !== currentClient && !candidates.some((c) => c.client === defaultClient)) {
+    if (!isVisionRequested && defaultClient && defaultClient !== currentClient && !candidates.some((c) => c.client === defaultClient)) {
       candidates.push({ id: 'default', client: defaultClient });
     }
 

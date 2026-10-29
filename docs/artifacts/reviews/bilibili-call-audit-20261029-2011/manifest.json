@@ -1,0 +1,19 @@
+{
+  "evidence.json": "70e60e6aa09cfe9772e6c6e9b115638af29603ed5cd1b3aba34c58b50bb861ee",
+  "metrics.json": "cf6132f1a8d8e43677de70e3873718750d67e9ccf677080f8a8f1a18af69bedc",
+  "attempt-4.json": "982e3b6670194cb461483d8be897cb34bde2bbbf4b5e8c6bf2c21f22c829a30e",
+  "service-logs.txt": "c22a8438e8b73da4d804c1a2b860ba9d5636741b218f1fa608f4a379e22ef9bb",
+  "session.json": "018f6f126f152b7163743dd4f2e320db61ffcbfd8b90e40af5980ac066266ba5",
+  "reproduction.json": "b3293db03db1daa2dd813ceda9e900c322d63d9a3f568ff90b36f24c1dd79219",
+  "reproduce.py": "40d60e48661dc36c9ce975537724857706b20d513fa7ef7636384df325d3bf08",
+  "attempt-2.json": "ae00eebddfcba89f07adc03530673e5671fd53ca2e8d41d4ddcffffa34aca525",
+  "attempt-3.json": "c5fb24d895fa96e029e692a058a88333aeb8d2aae7661a208e3ce44b3cef15b8",
+  "events.jsonl": "2c57fe746ebf8a2b7eb30ddcf1fd735d5b3f142b9dba0c4d9f5223c7ca64d079",
+  "code-snapshot/pdf_render_tool.py": "5c07b643f92865c5091a19b1a6575a6546e9c8a8f5ce32f1074d814ea1a3b951",
+  "code-snapshot/pdf_workflow.py": "de8955024208726d6f9376603f8b13a8e0bbda5ac4e7cfd1b5cf4180fba6219c",
+  "code-snapshot/agent_loop.py": "1357894380a7c6f6bc18df6937bb765dffa97a407b5355b1f328a883009a9bb1",
+  "code-snapshot/symbols.py": "8d467085efc1ab97d490933d9c7256980d0e94e61a29e1356a47f161715d1129",
+  "code-snapshot/pdf_external_delivery.py": "14024cb3751631394b317a57679b285c39715426d905a89633878ad20da54c0b",
+  "code-snapshot/tool_failure_recovery.py": "00b24e7a285ab3bda6d47d1de0950622adb88d5fb9939ff6bc347536b870b08a",
+  "code-snapshot/pdf_task_contract.py": "c72e8d49c0aa730b7f5a5454234a1b8268119485a3835f63b375330fc34ba8ac"
+}

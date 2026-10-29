@@ -1,0 +1,13 @@
+{
+  "status": 200,
+  "elapsed_ms": 5305,
+  "model": "qwen36-35b-a3b",
+  "finish_reason": "stop",
+  "content": "PASS",
+  "usage": {
+    "prompt_tokens": 1009,
+    "total_tokens": 1011,
+    "completion_tokens": 2,
+    "prompt_tokens_details": null
+  }
+}

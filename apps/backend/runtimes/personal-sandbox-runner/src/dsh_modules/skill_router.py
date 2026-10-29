@@ -224,6 +224,20 @@ def check_generation_target_is_physical(lower_q: str) -> bool:
     return has_physical
 
 
+CONTINUATION_RETRY_RE = re.compile(
+    r'^(?:请|帮我|麻烦)?\s*(?:重新|再次|再)?\s*(?:生成|制作|导出|执行|运行|重试|重做|输出)\s*(?:该文件|此文件|文件|这个文件|脚本|代码|一下|一次|结果)?$'
+    r'|^(?:1|1\.|一是|第一个|确认|确认生成|请生成|retry|regenerate)$',
+    re.I
+)
+
+
+def is_continuation_cue(text: str) -> bool:
+    if not text or not isinstance(text, str):
+        return False
+    t = text.strip().lower()
+    return bool(CONTINUATION_RETRY_RE.search(t))
+
+
 def resolve_file_action_intent(
     query: str,
     history: Optional[List[Dict[str, Any]]] = None,
@@ -240,11 +254,7 @@ def resolve_file_action_intent(
     lower_q = query.lower().strip()
 
     # 0a. 上下文追问/确认/重试优先判定（短续作指令在历史中有生成意图时直接继承）
-    continuation_cues = [
-        "1", "1.", "一是", "第一个", "确认", "生成", "导出", "确认生成", "请生成",
-        "重新生成", "重新制作", "重做", "再次生成", "再生成一次", "重新导出", "retry", "regenerate"
-    ]
-    if history and lower_q in continuation_cues:
+    if history and is_continuation_cue(lower_q):
         for h in reversed(history[-4:]):
             if not isinstance(h, dict) or h.get("role") == "assistant":
                 continue
@@ -762,11 +772,7 @@ class SkillRouter:
             result.skill_id = "frontend-design"
 
         # 4a. 上下文追问/确认/重试继承。基于上一条用户交付要求恢复对应技能与交付物契约
-        continuation_cues = [
-            "1", "1.", "一是", "第一个", "确认", "生成", "导出", "确认生成", "请生成",
-            "重新生成", "重新制作", "重做", "再次生成", "再生成一次", "重新导出", "retry", "regenerate"
-        ]
-        if not result.skill_id and existing_history and lower_query in continuation_cues:
+        if not result.skill_id and existing_history and is_continuation_cue(lower_query):
             for h in reversed(existing_history[-8:]):
                 if not isinstance(h, dict) or h.get("role") != "user":
                     continue

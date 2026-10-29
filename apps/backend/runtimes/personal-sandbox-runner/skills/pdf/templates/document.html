@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="{{ content.language }}">
+<head>
+  <meta charset="utf-8">
+  <title>{{ content.title }}</title>
+  <meta name="author" content="{{ content.author }}">
+  <meta name="description" content="{{ content.subtitle }}">
+</head>
+<body class="{{ tokens.template }}">
+  <div class="running-title">{{ content.title[:20 if tokens.template == 'mobile' else 40] | pdf_symbols }}{% if content.title|length > (20 if tokens.template == 'mobile' else 40) %}…{% endif %}</div>
+  {% if cover %}
+  <section class="cover">
+    <div class="cover-rule"></div>
+    <h1>{{ content.title | pdf_symbols }}</h1>
+    {% if content.subtitle %}<p class="subtitle">{{ content.subtitle | pdf_symbols }}</p>{% endif %}
+    <div class="cover-meta">{{ content.author | pdf_symbols }}{% if content.author and content.date %} · {% endif %}{{ content.date | pdf_symbols }}</div>
+  </section>
+  {% else %}
+  <header class="document-header">
+    <h1>{{ content.title | pdf_symbols }}</h1>
+    {% if content.subtitle %}<p class="subtitle">{{ content.subtitle | pdf_symbols }}</p>{% endif %}
+    {% if content.author or content.date %}<p class="meta">{{ content.author | pdf_symbols }}{% if content.author and content.date %} · {% endif %}{{ content.date | pdf_symbols }}</p>{% endif %}
+  </header>
+  {% endif %}
+  <main>{{ content.body | safe }}</main>
+</body>
+</html>

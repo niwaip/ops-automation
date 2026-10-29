@@ -1,0 +1,10 @@
+{
+  "SKILL.md": true,
+  "scripts/generate_report_pdf.py": true,
+  "templates/document.html": true,
+  "templates/print.css": true,
+  "scripts/pdf_design/renderer.py": true,
+  "scripts/pdf_design/content.py": true,
+  "scripts/pdf_design/themes.py": true,
+  "scripts/pdf_design/quality.py": true
+}

@@ -162,6 +162,13 @@ def run_agent_loop(
 ) -> AgentLoopResult:
     """Executes the multi-turn ReAct tool calling loop up to max_rounds."""
     active_tools = tools if tools is not None else get_sandbox_tools()
+    pdf_repair_required = False
+    managed_pdf = (any(t.get('function', {}).get('name') == 'render_pdf' for t in active_tools)
+                   and not any(t.get('function', {}).get('name') == 'bash' for t in active_tools)
+                   and not any(t.get('function', {}).get('name') == 'web_search' for t in active_tools))
+    if managed_pdf or any(str(item).lower().endswith('.pdf') for item in (expected_deliverables or [])):
+        from .pdf_workflow import configure_pdf_tools
+        active_tools = configure_pdf_tools(active_tools, user_prompt or next((m.get('content', '') for m in reversed(messages) if m.get('role') == 'user'), ''))
     if telemetry is None:
         telemetry = TelemetryStats()
     outbound_files: List[str] = []
@@ -172,11 +179,20 @@ def run_agent_loop(
     start_ts = turn_start_time if turn_start_time is not None else time.time()
     from .spreadsheet_update.tools import reset_turn_results
     reset_turn_results()
+    from .pdf_preview_tool import reset_pdf_renders
+    reset_pdf_renders()
     from .user_declarations import bind_user_declarations
     declaration = bind_user_declarations(user_declarations)
     if declaration:
         telemetry.record_guard('user_unit_confirmation', 'accept', declaration)
     last_user_prompt = user_prompt if user_prompt is not None else _extract_last_user_prompt(messages)
+    if managed_pdf:
+        from .pdf_content_workflow import run_pdf_content_workflow
+        from .config import SKILL_DIR
+        text, files, evidence = run_pdf_content_workflow(last_user_prompt, model, policy,
+            WORKSPACE_DIR, SKILL_DIR, deadline, telemetry, conversation_history=messages)
+        return AgentLoopResult(final_text=text, outbound_files=files, telemetry=telemetry,
+                               messages=messages, execution_evidence=evidence)
     analysis_turn=AnalysisTurn(last_user_prompt,model=model,deadline=deadline) if spreadsheet_analysis_required else None
     from .spreadsheet_chart_delivery import SpreadsheetChartDelivery, wants_standard_bar_chart, verified_chart_receipt
     from .spreadsheet_chart_workflow import (
@@ -304,7 +320,7 @@ def run_agent_loop(
             # A spreadsheet model may ask a valid question before computing.
             # The evidence gate checks assertions after its choice; forcing a
             # tool call here would remove the right to clarify.
-            tool_choice="required" if (
+            tool_choice={'type': 'function', 'function': {'name': 'render_pdf'}} if managed_pdf or pdf_repair_required else "required" if (
                 (force_tool_choice and active_tools)
                 or (active_tools and comparison_required and consecutive_comparison_errors < 2 and compile_comparison_response(comparison_contract, execution_evidence)[0] is None)
             ) else None,
@@ -457,6 +473,21 @@ def run_agent_loop(
                     round_idx += 1
                     continue
                 break
+            from .pdf_preview_tool import has_registered_renders
+            if has_registered_renders():
+                from .pdf_preview_tool import pdf_review_feedback
+                feedback = pdf_review_feedback()
+                if feedback:
+                    telemetry.record_guard('pdf_page_review', 'pending', feedback)
+                    if round_idx < min(task_ceiling - 1, initial_max_rounds + 2):
+                        messages.extend([{'role': 'assistant', 'content': reply_text},
+                                         {'role': 'user', 'content': feedback}])
+                        max_rounds = min(task_ceiling, max(max_rounds, round_idx + 2))
+                        force_tool_choice = True
+                        round_idx += 1
+                        continue
+                    reply_text = 'PDF 尚未完成本轮生成与逐页验收，无法交付最终文件。'
+                    break
             script_execution_error = materialize_in_loop_deliverables(
                 last_user_prompt=last_user_prompt,
                 reply_text=reply_text,
@@ -531,6 +562,32 @@ def run_agent_loop(
             allowed_tool_names=[t.get("function", {}).get("name", t.get("name", ""))
                                 for t in active_tools]
         )
+
+        from .tool_failure_recovery import repeated_execution_failure
+        repeated_failure = repeated_execution_failure(execution_evidence, artifact_task=bool(expected_deliverables or is_generate_intent))
+        if repeated_failure:
+            telemetry.record_guard('repeated_execution_failure', 'stop', repeated_failure)
+            reply_text = '文件生成未完成：执行错误累计达到修复上限，已停止无效重试。'
+            break
+        from .pdf_preview_tool import has_registered_renders
+        if managed_pdf or has_registered_renders():
+            from .pdf_preview_tool import pdf_review_feedback, pdf_delivery_result, review_current_pdf_pages
+            reviews = review_current_pdf_pages(WORKSPACE_DIR, deadline, telemetry, round_idx)
+            execution_evidence.extend(reviews)
+            if any(r.is_error and r.error_code != 'pdf_preview_failed' for r in reviews):
+                telemetry.record_guard('pdf_delivery', 'reject', 'page_review_service_or_budget')
+                text, files = pdf_delivery_result()
+                return AgentLoopResult(final_text=text, outbound_files=files, telemetry=telemetry,
+                                       messages=messages, execution_evidence=execution_evidence)
+            if reviews and reviews[-1].is_error:
+                pdf_repair_required = True
+                messages.append({'role': 'user', 'content': '本轮 PDF 页面检查未通过，请一次修正以下各页问题后重新 render_pdf：' + '\n'.join(r.render_text() for r in reviews if r.is_error)})
+            if pdf_review_feedback() is None:
+                text, files = pdf_delivery_result()
+                if files:
+                    telemetry.record_guard('pdf_delivery', 'accept', 'all_current_pages_reviewed')
+                    return AgentLoopResult(final_text=text, outbound_files=files, telemetry=telemetry,
+                                           messages=messages, execution_evidence=execution_evidence)
 
         if execution_evidence and execution_evidence[-1].is_error:
             consecutive_tool_errors += 1
@@ -885,6 +942,15 @@ def run_agent_loop(
                             reply_text = f_text.strip()
                     except Exception:
                         pass
+
+    from .pdf_preview_tool import has_registered_renders
+    if managed_pdf or has_registered_renders() or any(
+            (receipt.provenance or {}).get('tool') == 'render_pdf' for receipt in execution_evidence):
+        from .pdf_preview_tool import pdf_delivery_result
+        text, files = pdf_delivery_result()
+        telemetry.record_guard('pdf_delivery', 'accept' if files else 'reject', 'managed_pdf_terminal')
+        return AgentLoopResult(final_text=text, outbound_files=files, telemetry=telemetry,
+                               messages=messages, execution_evidence=execution_evidence)
 
     final_text, healed_files = ((compiled_comparison, [])
         if comparison_required and compiled_comparison else (analysis_turn.render(execution_evidence,reply_text,telemetry,policy=policy,model=model,deadline=deadline), [])

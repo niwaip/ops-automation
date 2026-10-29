@@ -1,0 +1,81 @@
+{
+  "valid": true,
+  "errors": [],
+  "page_count": 2,
+  "bytes": 363553,
+  "sha256": "bc249508adcfe5b7bc2818c7391efa1693645264d53a9f01d6ea492de6cf8f9f",
+  "pages": [
+    {
+      "page": 1,
+      "width_pt": 595.28,
+      "height_pt": 841.89,
+      "text_chars": 482,
+      "text": "Bilibili今日热点\n便于阅读\nBilibili 热点速递\n2026年10月29日 星期四\n热搜 TOP 8\nNO.1 — 二十届五中全会公报\n时政 · 头条 全会公报引发热议，涉及国家发展重大战略部署。\nNO.2 — KSG vs 北京WB\n电竞 · KPL KPL 秋季赛焦点对决，战队交锋备受关注。\nNO.3 — AI 完成有限单群分类定理证明\n科技 · AI 人工智能在数学领域取得重大突破，引发科技圈热议。\nNO.4 — 工资改发数字人民币有何变化\n财经 · 民生 数字人民币推广进程加速，工资发放方式调整引发讨论。\nNO.5 — 巴西总统候选人败选后逃往美国\n国际 · 热点 巴西大选结果公布后，候选人败选逃亡事件引发广泛关注。\nNO.6 — 教你暴打叶师傅 Boss 战\n游戏 · 攻略 热门游戏 Boss 战攻略视频，玩家争相学习。\nNO.7 — 科技迷不能错过的节目单来了\n科技 · 推荐 精选科技类优质内容推荐，涵盖前沿技术动态。\nNO.8 — 热火赛季首胜结束四连败\n体育 · NBA 迈阿密热火队迎来赛季首胜，球迷欢呼庆祝。\n1 / 2",
+      "outside_page_glyphs": 0,
+      "fonts": [
+        {
+          "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+          "embedded": true
+        },
+        {
+          "name": "/TSPJMR+Noto-Sans-CJK-SC",
+          "embedded": true
+        }
+      ]
+    },
+    {
+      "page": 2,
+      "width_pt": 595.28,
+      "height_pt": 841.89,
+      "text_chars": 734,
+      "text": "Bilibili今日热点\n热门视频榜\n排名 视频标题 UP 主 播放量\nNO.1 【2026全球总决赛】 哔哩哔哩英雄联盟赛事 525 万\nLYON vs IG\nNO.2 《崩坏：星穹铁道》千 崩坏星穹铁道 281 万\n星纪游PV\nNO.3 《新 三 国 FUNK》 纽毕斯 146 万\nNO.4 红毯爆笑盘点（环大 一只吐槽圆 118 万\n露、刘冲斗娜娜）\nNO.5 【暗区突围手游版本 暗区突围 90 万\nPV】战火重燃\nNO.6 致和游戏一起长大的我 我是日行一扇 88 万\n们（AI全民制作人）\nNO.7 《原神》米提亚角色PV 原神 77 万\n「小小伎俩」\nNO.8 《三鞭抽散厌学魂》 IPx的粉红豹 75 万\n今日趋势分析\n内容领域分布\n· 游戏领域（3项）：全球总决赛、Boss攻略、暗区突围PV — 关注度最高\n· 科技AI（2项）：AI定理证明、科技节目单 — 持续升温\n· 时政民生（2项）：五中全会、数字人民币 — 社会焦点\n· 娱乐体育（2项）：电竞KPL、NBA热火 — 娱乐热度不减\n· 国际新闻（1项）：巴西大选 — 海外事件受关注\n关键洞察\n1. 游戏内容主导热点：全球总决赛与多个游戏PV占据半壁江山，玩家社区活跃度极高\n2. AI 科技突破受瞩目：AI完成数学定理证明成为科技圈热议话题，标志 AI 能力新里程碑\n3. 时政与民生并重：五中全会公报与数字人民币改革并行，用户关注重大社会议题\n4. 电竞热潮持续：KPL 职业赛事与 LOL 全球总决赛形成电竞内容矩阵\n数据来源：搜索引擎实时结果，非 Bilibili 官方 API 数据 · 生成时间 2026-10-29 21:25 (Asia/\nShanghai)\n2 / 2",
+      "outside_page_glyphs": 0,
+      "fonts": [
+        {
+          "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+          "embedded": true
+        },
+        {
+          "name": "/TSPJMR+Noto-Sans-CJK-SC",
+          "embedded": true
+        }
+      ]
+    }
+  ],
+  "visual_review": "passed",
+  "checks": [
+    "parse",
+    "page_range",
+    "text_coverage",
+    "extraction",
+    "page_bounds",
+    "embedded_fonts"
+  ],
+  "template": "handout",
+  "theme": "blue",
+  "fonts": [
+    {
+      "family": "Noto Sans CJK SC",
+      "style": "Regular",
+      "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+    },
+    {
+      "family": "Noto Sans CJK SC",
+      "style": "Bold",
+      "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
+    }
+  ],
+  "warnings": [],
+  "output": "/workspace/Bilibili今日热点.pdf",
+  "timings_ms": {
+    "render": 152.07,
+    "inspect": 55.74,
+    "preview": 241.98,
+    "total": 470.65
+  },
+  "previews": [
+    "/workspace/.pdf-preview/Bilibili今日热点/e1acea5422ce4cdb94a2278ed0c9eb8f/page-1.png",
+    "/workspace/.pdf-preview/Bilibili今日热点/e1acea5422ce4cdb94a2278ed0c9eb8f/page-2.png"
+  ],
+  "source": "/workspace/.pdf-source-e1acea5422ce4cdb94a2278ed0c9eb8f.md"
+}

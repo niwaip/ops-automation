@@ -303,6 +303,7 @@ export class ChatController {
         type: 'done',
         content: 'Stream completed',
       });
+      clearInterval(heartbeatTimer);
       res.end();
       return;
     }

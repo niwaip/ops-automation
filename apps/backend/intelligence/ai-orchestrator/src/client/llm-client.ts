@@ -30,6 +30,8 @@ export interface LLMChatRequest {
   timeoutMs?: number;
   /** Streaming inactivity timeout; reset whenever any upstream data event arrives. */
   streamIdleTimeoutMs?: number;
+  /** Propagates sandbox/client cancellation to the provider transport. Never serialized in the body. */
+  signal?: AbortSignal;
   promptCaching?: PromptCachingConfig;
   reasoning?: {
     enabled?: boolean;

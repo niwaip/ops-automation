@@ -1,6 +1,40 @@
 import { parseChatSlashCommand, isWorkSlashCommand, isPersonalSlashCommand } from './chat-slash-command.util';
 
 describe('parseChatSlashCommand', () => {
+  it.each(['/pdf', '  /PDF \n\t', '/pdf\n'])('returns help for bare %p', (message) => {
+    const parsed = parseChatSlashCommand(message, 'chat');
+    expect(parsed).toEqual({
+      mode: 'chat',
+      message: '',
+      isCommandOnly: true,
+      systemReply: expect.stringContaining('PDF 生成与排版帮助'),
+    });
+    expect(parsed.systemReply).toContain('handout.pdf');
+  });
+
+  it.each(['/pdf 制作2页讲义', '/pdf\n整理附件', '/pdfx', '请解释 /pdf', '/form'])(
+    'keeps generation requests and other commands on their existing path: %p', (message) => {
+      const parsed = parseChatSlashCommand(message, 'chat');
+      expect(parsed.message).toBe(message);
+      expect(parsed.isCommandOnly).toBe(false);
+      expect(parsed.systemReply).toBeUndefined();
+    },
+  );
+
+  it('keeps /pdf-extract as a work command rather than PDF help', () => {
+    expect(parseChatSlashCommand('/pdf-extract', 'chat').systemReply).toContain('个人模式下不能调用工作能力');
+    expect(parseChatSlashCommand('/pdf-extract', 'task')).toEqual({
+      mode: 'task', message: '/pdf-extract', isCommandOnly: false,
+    });
+  });
+
+  it('preserves new-session handling when followed by bare /pdf', () => {
+    const parsed = parseChatSlashCommand('/n /pdf', 'chat');
+    expect(parsed.isNewSession).toBe(true);
+    expect(parsed.isCommandOnly).toBe(true);
+    expect(parsed.systemReply).toContain('PDF 生成与排版帮助');
+  });
+
   it('parses /t short command and switches to task mode', () => {
     const parsed = parseChatSlashCommand('/t 帮我拆分PDF文件');
     expect(parsed.mode).toBe('task');

@@ -78,10 +78,12 @@ export class AnthropicMessagesClient {
   async chatCompletion(request: ChatMessage[] | LLMChatRequest): Promise<LLMResponse> {
     try {
       const normalized = this.normalizeRequest(request);
-      const response = await this.client.post<AnthropicMessageResponse>(
-        '/messages',
-        normalized.body
-      );
+      const transport = Array.isArray(request) || (!request.signal && !request.timeoutMs) ? undefined : {
+        signal: request.signal, timeout: request.timeoutMs ?? this.timeout,
+      };
+      const response = transport
+        ? await this.client.post<AnthropicMessageResponse>('/messages', normalized.body, transport)
+        : await this.client.post<AnthropicMessageResponse>('/messages', normalized.body);
       const content = (response.data?.content || [])
         .filter((item) => item?.type === 'text' && typeof item.text === 'string')
         .map((item) => item.text)

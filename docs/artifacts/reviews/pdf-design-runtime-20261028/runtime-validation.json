@@ -1,0 +1,9 @@
+{
+  "broker_running": true,
+  "broker_requirements_sha256": "30fc044c63f28f175af9ff7791fb738a2ee60a76b2fe758a6447f6f33bfe04ad",
+  "repository_requirements_sha256": "30fc044c63f28f175af9ff7791fb738a2ee60a76b2fe758a6447f6f33bfe04ad",
+  "image_requirements_sha256": "30fc044c63f28f175af9ff7791fb738a2ee60a76b2fe758a6447f6f33bfe04ad",
+  "project_root_matches": true,
+  "image_id": "sha256:1ae504f7bd7291ef4f2b0cb6d5196d81ebdd045a22f8f8f01e677fa0fa17c4d9",
+  "runtime_contract": "office-v1"
+}

@@ -1,0 +1,111 @@
+{
+  "input_origin": "actual model draft from pdf-quality-verification-20261029; writer not rerun",
+  "verification": {
+    "verified": true,
+    "turn_id": "1793247532804061464-d4e8d0d23bb8497aba95112484c31e45",
+    "evidence_ids": [
+      "pdf:c45bfda572cc7912d9ddb03c29bcfd2d0d8f355260f8da03dd87baf5def7e2b0:page:1",
+      "pdf:c45bfda572cc7912d9ddb03c29bcfd2d0d8f355260f8da03dd87baf5def7e2b0:page:2"
+    ]
+  },
+  "answer": "已生成，并检查内容、分页、字体和逐页预览：handout.pdf（2 页）。",
+  "files": [
+    "{\"filePath\": \"/workspace/pdf-quality-final/handout.pdf\", \"fileName\": \"handout.pdf\"}"
+  ],
+  "metrics": {
+    "ttftMs": 0.0,
+    "durationMs": 15809.35,
+    "llmDurationMs": 26891.85,
+    "toolCallsCount": 3,
+    "toolCalls": [
+      {
+        "name": "render_pdf",
+        "params": {
+          "markdown": "## 观察、记录与分享\n\n准备好探索身边的小自然了吗？带上好奇心，我们出发！\n\n### 观察时的温馨提示\n\n> 轻步慢行，不惊扰小动物。\n> 保持安静，倾听自然声音。\n> 爱护环境，不留垃圾痕迹。\n> 安全第一，远离危险区域。\n\n![叶片示...",
+          "output_path": "/workspace/pdf-quality-final/handout.pdf"
+        },
+        "status": "success",
+        "result_status": "success",
+        "kind": "pdf_render",
+        "workbook_id": null
+      },
+      {
+        "name": "inspect_pdf_page",
+        "params": {
+          "file_path": "/workspace/pdf-quality-final/handout.pdf",
+          "page": "1"
+        },
+        "status": "success",
+        "result_status": "success",
+        "evidence_id": "pdf:c45bfda572cc7912d9ddb03c29bcfd2d0d8f355260f8da03dd87baf5def7e2b0:page:1",
+        "kind": "pdf_page_review",
+        "workbook_id": null
+      },
+      {
+        "name": "inspect_pdf_page",
+        "params": {
+          "file_path": "/workspace/pdf-quality-final/handout.pdf",
+          "page": "2"
+        },
+        "status": "success",
+        "result_status": "success",
+        "evidence_id": "pdf:c45bfda572cc7912d9ddb03c29bcfd2d0d8f355260f8da03dd87baf5def7e2b0:page:2",
+        "kind": "pdf_page_review",
+        "workbook_id": null
+      }
+    ],
+    "llmInvocations": 2,
+    "tokens": {
+      "prompt_tokens": 2984,
+      "completion_tokens": 2,
+      "total_tokens": 5064,
+      "completion_tokens_details": {
+        "reasoning_tokens": 1345
+      }
+    },
+    "finishReason": "unknown",
+    "roundFinishReasons": [],
+    "guardDecisions": [
+      {
+        "guard": "pdf_delivery",
+        "action": "accept",
+        "reason": "actual_draft_replay"
+      }
+    ],
+    "modelResponses": [],
+    "answerValidation": {},
+    "callsLedger": [
+      {
+        "purpose": "pdf_page_review",
+        "model": "default",
+        "total_ms": 11734.92,
+        "usage": {
+          "prompt_tokens": 1492,
+          "completion_tokens": 1,
+          "total_tokens": 2226,
+          "completion_tokens_details": {
+            "reasoning_tokens": 733
+          }
+        },
+        "span_id": null,
+        "call_id": "0d716606d0af45cd955abd002032128b"
+      },
+      {
+        "purpose": "pdf_page_review",
+        "model": "default",
+        "total_ms": 15156.93,
+        "usage": {
+          "prompt_tokens": 1492,
+          "completion_tokens": 1,
+          "total_tokens": 2838,
+          "completion_tokens_details": {
+            "reasoning_tokens": 1345
+          }
+        },
+        "span_id": null,
+        "call_id": "68eb23f2b3a34434b7e5a533f7e6e50b"
+      }
+    ],
+    "auxiliaryInvocations": 2
+  }
+}

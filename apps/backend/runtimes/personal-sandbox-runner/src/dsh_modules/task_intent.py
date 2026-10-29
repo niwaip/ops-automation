@@ -400,8 +400,16 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
             elif not any(t.lower().endswith(('.xlsx', '.xlsm', '.csv')) for t in result['artifact_types']):
                 result['artifact_types'].append('.xlsx')
 
-    # Enforce followup and deliverable inheritance when continuing or replacing criteria of previous analysis
-    is_continuation = not is_abort and not is_prev_stopped and not is_verbatim_reply and bool(users) and is_condition_replacement_or_refinement(request, users)
+    # Enforce followup and deliverable inheritance when continuing or replacing criteria of previous analysis,
+    # or when issuing a pure file export command referencing previous conversational findings/results
+    req_str = request.strip()
+    is_pure_export = bool(users) and bool(re.search(
+        r'^(?:生成|导出|制作|做成|转成|输出|保存为|转为|转换成|发我|下载)\s*(?:一份|一个|成|为)?\s*(?:可下载的)?\s*(?:pdf|word|excel|ppt|docx|xlsx|pptx|html|表格|文档|文件|报告)\s*(?:文件|文档|表格|演示文稿|报告)?$',
+        req_str, re.I
+    ))
+    is_continuation = not is_abort and not is_prev_stopped and not is_verbatim_reply and bool(users) and (
+        is_condition_replacement_or_refinement(request, users) or is_pure_export
+    )
     if is_continuation:
         result['instruction_relation'] = 'followup'
         result['task_mode'] = 'execute'
@@ -544,6 +552,8 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
             raise ValueError('任务要求标识无效')
         quote = ground_user_quote(item['quote'], [request, *users])
         if quote is None:
+            if allow_sanitize:
+                continue
             raise ValueError('任务要求没有用户原话依据')
         quote_in_request = ground_user_quote(item['quote'], [request])
         if relation == 'standalone' and quote_in_request is None:

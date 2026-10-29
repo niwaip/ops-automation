@@ -109,6 +109,7 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     expect(success).toBe(true);
     expect(capturedPayload.model).toBe('uuid-1234');
     expect(capturedPayload.modelDisplayName).toBe('qwen36-35b-a3b');
+    expect(capturedPayload.timeoutMs).toBeUndefined();
 
     // Provisional deltas must not become readable body before final validation.
     expect(emittedEvents.filter((e) => e.data?.isDelta)).toHaveLength(0);
@@ -215,6 +216,19 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     // Must emit observation with the actual error reason
     const fallbackObs = emittedEvents.find((e) => e.content?.includes('Sandbox model execution error: aborted'));
     expect(fallbackObs).toBeDefined();
+  });
+
+  it('reports inactivity without falling back or claiming a new artifact', async () => {
+    global.fetch = jest.fn().mockResolvedValue(createMockSseResponse([
+      'event: error\ndata: {"message":"沙箱连续 360 秒无有效执行进展，已停止任务"}\n\n',
+    ]));
+    const events: any[] = [];
+    const handled = await service.dispatchPersonalSandbox(
+      {message:'生成 PDF', userId:'test_user', modelId:'uuid-1234'} as any,
+      event => events.push(event), 'test_user');
+    expect(handled).toBe(true);
+    expect(events.find(event => event.type === StreamEventType.ERROR)?.content).toContain('连续 360 秒');
+    expect(events.find(event => event.type === StreamEventType.ERROR)?.content).toContain('未发布新的交付文件');
   });
 
   it('returns a friendly retryable timeout for artifact generation instead of raw aborted', async () => {

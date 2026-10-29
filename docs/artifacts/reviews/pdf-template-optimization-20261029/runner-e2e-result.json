@@ -1,0 +1,7 @@
+{
+  "exit_code": 0,
+  "wall_ms": 33848.06,
+  "session_id": "pdf-template-e2e-20261029-0925",
+  "workspace": "/workspace/.validation/pdf-template-optimization-20261029",
+  "scope": "Direct DSH execution via normal configured model proxy; excludes browser, broker lock and container cold start"
+}

@@ -1,0 +1,54 @@
+[
+  {
+    "layout": "report",
+    "pages": 2,
+    "bytes": 279645,
+    "valid": true,
+    "timings_ms": {
+      "render": 164.89,
+      "inspect": 28.01,
+      "preview": 194.6,
+      "total": 409.14
+    },
+    "sha256": "c292d10287422b36d284af1773bef31d222b8a9f2f0a738c83c27bf39cad859c"
+  },
+  {
+    "layout": "handout",
+    "pages": 2,
+    "bytes": 279708,
+    "valid": true,
+    "timings_ms": {
+      "render": 110.96,
+      "inspect": 28.15,
+      "preview": 202.69,
+      "total": 355.01
+    },
+    "sha256": "22d113c25df64ecba0450c06700689fd83d7d4a4f7c007166b68059b5d3d1b23"
+  },
+  {
+    "layout": "editorial",
+    "pages": 3,
+    "bytes": 451102,
+    "valid": true,
+    "timings_ms": {
+      "render": 236.68,
+      "inspect": 30.06,
+      "preview": 218.62,
+      "total": 503.46
+    },
+    "sha256": "e5fc4d5067b5e6fc5bd7427f2b66e247c5c57d1aa6df2d3cc4c1ce3a4d530e37"
+  },
+  {
+    "layout": "mobile",
+    "pages": 4,
+    "bytes": 280770,
+    "valid": true,
+    "timings_ms": {
+      "render": 97.47,
+      "inspect": 30.39,
+      "preview": 183.64,
+      "total": 324.67
+    },
+    "sha256": "778bb4be409bda867dbed12a0ca555842b039d5bf177de2445eba1a2d88eb405"
+  }
+]

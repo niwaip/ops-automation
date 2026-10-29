@@ -1,0 +1,37 @@
+{
+  "markdown_version": "3.8.2",
+  "html_controls": {
+    "original": {
+      "tables": 0,
+      "headings": 2,
+      "raw_separator": true
+    },
+    "without_wrappers": {
+      "tables": 2,
+      "headings": 4,
+      "raw_separator": false
+    },
+    "md_in_html_control": {
+      "tables": 2,
+      "headings": 4,
+      "raw_separator": false
+    }
+  },
+  "rank_cleanup": {
+    "input": "| 🥇 | 第一名 |\n| 🥈 | 第二名 |\n| 🥉 | 第三名 |",
+    "output": "|  | 第一名 |\n|  | 第二名 |\n|  | 第三名 |",
+    "empty_rank_cells": 3
+  },
+  "unchanged_failed_page": {
+    "mock_vision_invocations": 2,
+    "results": [
+      "error",
+      "error"
+    ],
+    "render_sha256": "d8eeb3c671a6bd50cb7457de515a4513fa1b6bc23369b28bcb35059a9f23860a"
+  },
+  "repeated_failure_guard": {
+    "actual_visual_failures": 8,
+    "stop_decision": null
+  }
+}

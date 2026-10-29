@@ -1,0 +1,108 @@
+{
+  "verified": true,
+  "sha": "8dc93992bfad734ddecbcc059dc1e6519906522ef8e38852a2c53a5378860c5a",
+  "sha_matches": true,
+  "durationMs": 71720.66,
+  "calls": 7,
+  "auxiliary": 2,
+  "tokens": {
+    "prompt_tokens": 16177,
+    "completion_tokens": 1870,
+    "total_tokens": 24093,
+    "completion_tokens_details": {
+      "reasoning_tokens": 4817
+    }
+  },
+  "ledger": [
+    {
+      "purpose": "tool_loop",
+      "model": "default",
+      "total_ms": 4932.91,
+      "usage": {
+        "prompt_tokens": 2312,
+        "total_tokens": 2715,
+        "completion_tokens": 403
+      },
+      "span_id": null,
+      "call_id": "55640e23a23c430daefdc817c78f1d67"
+    },
+    {
+      "purpose": "tool_loop",
+      "model": "default",
+      "total_ms": 4014.92,
+      "usage": {
+        "prompt_tokens": 3058,
+        "total_tokens": 3466,
+        "completion_tokens": 408
+      },
+      "span_id": null,
+      "call_id": "faa5e4c2d19d4e3c8ab325feda03ff15"
+    },
+    {
+      "purpose": "tool_loop",
+      "model": "default",
+      "total_ms": 11218.99,
+      "usage": {
+        "prompt_tokens": 6268,
+        "total_tokens": 6549,
+        "completion_tokens": 281
+      },
+      "span_id": null,
+      "call_id": "2a217f74a68a43ca972af36d08f94417"
+    },
+    {
+      "purpose": "pdf_content",
+      "model": "default",
+      "total_ms": 3906.13,
+      "usage": {
+        "prompt_tokens": 576,
+        "total_tokens": 916,
+        "completion_tokens": 340
+      },
+      "span_id": null,
+      "call_id": "83f2be3d848e453f84296a572e4734fe"
+    },
+    {
+      "purpose": "pdf_content",
+      "model": "default",
+      "total_ms": 3435.78,
+      "usage": {
+        "prompt_tokens": 979,
+        "total_tokens": 1338,
+        "completion_tokens": 359
+      },
+      "span_id": null,
+      "call_id": "838d9f671f664492922521cf81e8afbf"
+    },
+    {
+      "purpose": "pdf_page_review",
+      "model": "default",
+      "total_ms": 14186.08,
+      "usage": {
+        "prompt_tokens": 1492,
+        "completion_tokens": 1,
+        "total_tokens": 2722,
+        "completion_tokens_details": {
+          "reasoning_tokens": 1229
+        }
+      },
+      "span_id": null,
+      "call_id": "3eb5060a35a54a379f073befb26ef037"
+    },
+    {
+      "purpose": "pdf_page_review",
+      "model": "default",
+      "total_ms": 43352.69,
+      "usage": {
+        "prompt_tokens": 1492,
+        "completion_tokens": 78,
+        "total_tokens": 6387,
+        "completion_tokens_details": {
+          "reasoning_tokens": 4817
+        }
+      },
+      "span_id": null,
+      "call_id": "f26169c0fd4a4500beff39004f74dd76"
+    }
+  ]
+}

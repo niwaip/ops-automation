@@ -23,7 +23,7 @@ from .analysis_validation import validate_reply_against_contract, build_contract
 from .sampling_guard import sampling_feedback
 from .workbook_delivery_recalc import recalculate_generated_workbooks as _recalculate_generated_workbooks
 from .agent_loop_helpers import (
-    ACTION_FILLER_KEYWORDS, is_unclosed_or_truncated_html, is_explicit_code_request,
+    ACTION_FILLER_KEYWORDS, TRIVIAL_STATUS_WORDS, is_unclosed_or_truncated_html, is_explicit_code_request,
     auto_heal_unexecuted_file_writes, detect_unexecuted_tool_argument_leak, _build_fallback_report,
 )
 from .artifact_discovery import (
@@ -68,9 +68,13 @@ def evaluate_answer_state(text: str, has_physical_artifact: bool) -> AnswerState
         ))
     )
 
+    is_trivial_status = (
+        len(cleaned) < 40 and cleaned.lower().strip().strip(".!。！") in TRIVIAL_STATUS_WORDS
+    )
+
     is_filler = (
         len(cleaned) < 120 and
-        (any(kw in cleaned for kw in ACTION_FILLER_KEYWORDS) or is_promising_action(cleaned) or is_hollow)
+        (any(kw in cleaned for kw in ACTION_FILLER_KEYWORDS) or is_promising_action(cleaned) or is_hollow or is_trivial_status)
     )
 
     needs_summary = (
@@ -235,14 +239,21 @@ def finalize_agent_text(
                 print(f"⚠️ [Harness Agent Loop] 自动编译单页 HTML 失败: {e}")
 
         if not final_text or state.is_filler or state.has_internal_plan:
-            inf_cause = "model_empty_final" if executed_calls_history else "model_budget_exhausted"
-            final_text = published_summary or _build_fallback_report(
-                messages,
-                executed_calls_history,
-                cause=inf_cause,
-                pending_items=[f"生成目标交付物 ({', '.join(expected_deliverables)})"] if expected_deliverables else None
-            )
-            state = evaluate_answer_state(final_text, has_physical_artifact)
+            if has_physical_artifact:
+                final_text = (
+                    "✅ **目标交付物已生成就绪！**\n\n"
+                    "目标文件已生成并保存至工作区，您可以通过卡片下载或查看。"
+                )
+                state = evaluate_answer_state(final_text, has_physical_artifact=True)
+            else:
+                inf_cause = "model_empty_final" if executed_calls_history else "model_budget_exhausted"
+                final_text = published_summary or _build_fallback_report(
+                    messages,
+                    executed_calls_history,
+                    cause=inf_cause,
+                    pending_items=[f"生成目标交付物 ({', '.join(expected_deliverables)})"] if expected_deliverables else None
+                )
+                state = evaluate_answer_state(final_text, has_physical_artifact)
 
     # 5. Token truncation suffix
     if was_token_truncated and "```html" not in final_text and not is_unclosed_or_truncated_html(final_text):

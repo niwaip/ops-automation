@@ -481,7 +481,7 @@ export class UserSandboxDispatcherService {
           ? (body.config as any).timeoutMs
           : typeof (body as any).timeoutMs === 'number' && (body as any).timeoutMs > 0
             ? (body as any).timeoutMs
-            : 300000;
+            : undefined;
       let timeoutId: NodeJS.Timeout | undefined = undefined;
       let harnessResult: {
         success: boolean;
@@ -511,7 +511,7 @@ export class UserSandboxDispatcherService {
       }
 
       try {
-        timeoutId = setTimeout(async () => {
+        if (timeoutMs) timeoutId = setTimeout(async () => {
           isTimedOut = true;
           this.logger.warn(`Execution timeout (${timeoutMs / 1000}s) reached for user [${effectiveUserId}], stopping sandbox processes...`);
           controller?.abort();
@@ -694,9 +694,16 @@ export class UserSandboxDispatcherService {
         if (abortSignal?.aborted || (controller?.signal?.aborted && !isTimedOut)) {
           return await handleUserAborted();
         }
+        if (String(fetchErr?.message || '').includes('连续 360 秒无有效执行进展')) {
+          const message = '任务连续 360 秒没有有效执行进展，已停止后台执行。本轮未完成验收，未发布新的交付文件。';
+          emit({type: StreamEventType.ERROR, content: message});
+          await this.persistFriendlyErrorToSession(sessionId, body, effectiveUserId, message,
+            'Execution inactivity watchdog expired', emit, {executed: false, timeout: true});
+          return true;
+        }
         if (isTimedOut) {
           this.logger.warn(`Run harness timed out for user [${effectiveUserId}]`);
-          const timeoutFriendlyMsg = `⚠️ 沙箱任务执行超时（超过 ${timeoutMs / 1000} 秒），已自动中止后台任务。请尝试简化任务或检查模型连通性。`;
+          const timeoutFriendlyMsg = `已达到本轮指定的总执行时限（${timeoutMs / 1000} 秒），已停止后台任务。本轮未完成验收，未发布新的交付文件。`;
           emit({
             type: StreamEventType.ERROR,
             content: timeoutFriendlyMsg,

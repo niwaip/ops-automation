@@ -1,0 +1,62 @@
+{
+  "valid": true,
+  "errors": [],
+  "page_count": 1,
+  "bytes": 270458,
+  "sha256": "d8eeb3c671a6bd50cb7457de515a4513fa1b6bc23369b28bcb35059a9f23860a",
+  "pages": [
+    {
+      "page": 1,
+      "width_pt": 595.28,
+      "height_pt": 841.89,
+      "text_chars": 915,
+      "text": "Bilibili 今日热点\n今日 Bilibili 热点速览\n2026年10月29日 · 星期四 · 每日热门精选\n## 实时热搜 TOP 8 | # | 热搜话题 | 热度标签 | |---|---------|---------| | 1 | 工资改发数字人民币有何变\n化 | 财经 | | 2 | 人生一串 | 美食纪录片 | | 3 | 巴西总统候选人败选后逃往美国 | 国际 | | 4 | 外交部回应\n三丽鸥取消 Vivant 联名 | 文化 | | 5 | 周星驰张柏芝版 Trouble Maker | 娱乐 | | 6 | TheShy 杰斯只有\n爆线这么简单吗 | 电竞 | | 7 | 影之刃零 | 游戏 | | 8 | donk 打出 5-14 战绩 | 电竞 |\n## 热门视频 TOP 5 | 排名 | 视频标题 | UP 主 | 播放量 | |------|---------|-------|--------| | | 【2026全球总\n决赛】LYON vs IG | 英雄联盟赛事 | **452万** | | | 《崩坏：星穹铁道》千星纪游PV·其三 | 崩坏星\n穹铁道 | **212万** | | | 喝可乐不打嗝小游戏~ | 瓜哥超爱玩QAQ | **114万** | | 4 | 【小黄人与大怪\n兽】小黄人逐梦演艺圈 | 哔哩哔哩电影 | **113万** | | 5 | 《新 三 国 FUNK》 | 纽毕斯 | **111万** |\n今日看点\n· 电竞日：英雄联盟全球总决赛上演 LYON vs IG 对决，播放量突破 452 万；TheShy 杰斯精彩操\n作引发热议\n· 文化事件：三丽鸥取消联名引发外交部回应，中日文化联动话题持续发酵\n· 民生话题：数字人民币工资发放引发广泛讨论\n· 新游动态：《崩坏：星穹铁道》新 PV、《影之刃零》备受期待、《原神》米提亚角色 PV 上线\n· 情怀回归：热门美食纪录片《人生一串》再度引发追番热潮\n数据来源：Bilibili 热搜榜 · 热门视频排行 · 2026.10.29 实时抓取 本速览由 AI 自动生成，仅\n供信息参考\n1 / 1",
+      "outside_page_glyphs": 0,
+      "fonts": [
+        {
+          "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+          "embedded": true
+        },
+        {
+          "name": "/TSPJMR+Noto-Sans-CJK-SC",
+          "embedded": true
+        }
+      ]
+    }
+  ],
+  "visual_review": "required",
+  "checks": [
+    "parse",
+    "page_range",
+    "text_coverage",
+    "extraction",
+    "page_bounds",
+    "embedded_fonts"
+  ],
+  "template": "handout",
+  "theme": "slate",
+  "fonts": [
+    {
+      "family": "Noto Sans CJK SC",
+      "style": "Regular",
+      "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+    },
+    {
+      "family": "Noto Sans CJK SC",
+      "style": "Bold",
+      "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
+    }
+  ],
+  "warnings": [],
+  "output": "/workspace/.pdf-preview/Bilibili今日热点/a624049fd20c49b2ac0b1143a589c109/candidate.pdf",
+  "timings_ms": {
+    "render": 262.76,
+    "inspect": 24.76,
+    "preview": 136.1,
+    "total": 444.43
+  },
+  "previews": [
+    "/workspace/.pdf-preview/Bilibili今日热点/a624049fd20c49b2ac0b1143a589c109/page-1.png"
+  ],
+  "source": "/workspace/.pdf-source-a624049fd20c49b2ac0b1143a589c109.md"
+}

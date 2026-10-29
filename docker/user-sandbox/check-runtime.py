@@ -5,10 +5,12 @@ import json
 from pathlib import Path
 import tempfile
 import zipfile
+import sys
 
 
 def main():
-    modules = ('pptx', 'docx', 'openpyxl', 'xlsxwriter', 'PIL', 'pypdf')
+    modules = ('pptx', 'docx', 'openpyxl', 'xlsxwriter', 'PIL', 'pypdf',
+               'weasyprint', 'markdown', 'jinja2', 'pdfplumber')
     for module in modules:
         importlib.import_module(module)
     from pptx import Presentation
@@ -20,8 +22,14 @@ def main():
         assert len(Presentation(target).slides) == 1
         with zipfile.ZipFile(target) as archive:
             assert archive.testzip() is None
+        sys.path.insert(0, '/opt/dsh/skills/pdf/scripts')
+        from pdf_design import render_report
+        from pypdf import PdfReader
+        pdf = Path(folder) / 'check.pdf'
+        render_report(['# 中文运行时检查', '', '正文与 **粗体**：Hello，世界。'], str(pdf))
+        assert '中文运行时检查' in PdfReader(pdf).pages[0].extract_text()
     print(json.dumps({'runtime_contract': 'office-v1', 'modules': list(modules),
-                      'pptx_roundtrip': True}, ensure_ascii=False))
+                      'pptx_roundtrip': True, 'pdf_roundtrip': True}, ensure_ascii=False))
 
 
 if __name__ == '__main__':

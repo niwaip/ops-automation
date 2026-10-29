@@ -88,6 +88,13 @@ ACTION_FILLER_KEYWORDS = [
     "我需要获取", "让我尝试", "再次获取", "我需要查询", "还需要获取"
 ]
 
+# 常见极简英文/无意义状态词（防止模型或回退网关以简短垫话冒充有效答复）
+TRIVIAL_STATUS_WORDS = {
+    "task ready", "task completed", "task finished", "ready", "done", "finished",
+    "completed", "all done", "here is the file", "file ready", "process finished",
+    "ok", "success", "succeeded"
+}
+
 
 def is_unclosed_or_truncated_html(text: str) -> bool:
     """

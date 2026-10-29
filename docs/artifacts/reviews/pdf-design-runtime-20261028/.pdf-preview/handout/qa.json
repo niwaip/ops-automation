@@ -1,0 +1,81 @@
+{
+  "valid": true,
+  "errors": [],
+  "page_count": 2,
+  "bytes": 279708,
+  "sha256": "22d113c25df64ecba0450c06700689fd83d7d4a4f7c007166b68059b5d3d1b23",
+  "pages": [
+    {
+      "page": 1,
+      "width_pt": 595.28,
+      "height_pt": 841.89,
+      "text_chars": 338,
+      "text": "城市自然观察手册\n观察、记录与分享\n阅读与实践\n从身边的一片叶子开始\n城市里也有值得仔细观察的自然。带上一本记录本，在熟悉的小路上停留片刻，看看树叶的颜\n色，听听鸟鸣，比较阳光下和树荫里的变化。\n观察的重点是发现和描述。 不必一次记录很多对象，把一个细节写清楚，也是一份有价值的发\n现。\n放慢脚步，先观察，再记录。保持安静，不采摘植物，不打扰动物。\n出发前的准备\n• 一本便于携带的记录本和一支铅笔。\n• 一条熟悉、安全的观察路线。\n• 一段可以自由停留、不必赶路的时间。\n观察对象 可以记录什么 一个小提示\n树木 叶片轮廓、叶脉、树皮纹理 比较同一棵树上不同的叶子\n鸟类 羽毛颜色、叫声、停留位置 与鸟保持距离\n天空 云的形状、光线、风的方向 隔一段时间再看一次\n1 / 2",
+      "outside_page_glyphs": 0,
+      "fonts": [
+        {
+          "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+          "embedded": true
+        },
+        {
+          "name": "/TSPJMR+Noto-Sans-CJK-SC",
+          "embedded": true
+        }
+      ]
+    },
+    {
+      "page": 2,
+      "width_pt": 595.28,
+      "height_pt": 841.89,
+      "text_chars": 377,
+      "text": "城市自然观察手册\n把观察变成自己的记录\n用日期和地点开始，再写一两句具体的描述。例如：“树荫里的叶片看起来更深，阳光照到的位\n置有一层浅浅的亮色。”这样的记录，比只写“树叶很好看”更容易让别人理解。\n三个简单的问题\n1. 我看见、听见或闻到了什么？\n2. 它和旁边的对象有什么不同？\n3. 如果明天再来，什么可能发生变化？\n交流与分享\n把记录读给同伴听，比较大家关注的细节。不同的人可能在同一条路上发现不同的事物，这正是\n观察有趣的地方。\n下一次出发时，选一个新的问题。带着问题观察，熟悉的地方也会有新的发现。\n小记录卡\n项目 记录内容\n时间与天气 写下观察时的日期、光线和天气\n地点 描述你停留的位置\n最有趣的发现 用短句或简单图画表达\n想继续了解的事 留下一个问题\n延伸阅读：自然观察记录方法。此链接仅作样例排版展示，不参与渲染资源加载。\n2 / 2",
+      "outside_page_glyphs": 0,
+      "fonts": [
+        {
+          "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+          "embedded": true
+        },
+        {
+          "name": "/TSPJMR+Noto-Sans-CJK-SC",
+          "embedded": true
+        }
+      ]
+    }
+  ],
+  "visual_review": "required",
+  "checks": [
+    "parse",
+    "page_range",
+    "text_coverage",
+    "extraction",
+    "page_bounds",
+    "embedded_fonts"
+  ],
+  "template": "handout",
+  "theme": "warm",
+  "fonts": [
+    {
+      "family": "Noto Sans CJK SC",
+      "style": "Regular",
+      "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+    },
+    {
+      "family": "Noto Sans CJK SC",
+      "style": "Bold",
+      "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
+    }
+  ],
+  "warnings": [],
+  "output": "/validation/handout.pdf",
+  "timings_ms": {
+    "render": 110.96,
+    "inspect": 28.15,
+    "preview": 202.69,
+    "total": 355.01
+  },
+  "previews": [
+    "/validation/.pdf-preview/handout/page-1.png",
+    "/validation/.pdf-preview/handout/page-2.png"
+  ],
+  "source": "/opt/dsh/skills/pdf/examples/nature-guide.md"
+}

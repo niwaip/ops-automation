@@ -55,8 +55,12 @@ from .comparison_tool_schema import COMPARISON_TOOL
 from .spreadsheet_analysis_schema import ANALYSIS_TOOL, ADVANCED_ANALYSIS_TOOL, ANALYSIS_CAPABILITIES, ANALYSIS_TOOL_NAMES
 from .spreadsheet_context import STRUCTURE_TOOL, STRUCTURE_TOOL_NAME
 from .spreadsheet_update.tools import SPREADSHEET_UPDATE_TOOL_DEFINITIONS
+from .pdf_render_tool import PDF_RENDER_TOOL
+from .pdf_preview_tool import PDF_PREVIEW_TOOL
 
 SANDBOX_TOOLS = [
+    PDF_RENDER_TOOL,
+    PDF_PREVIEW_TOOL,
     STRUCTURE_TOOL,
     COMPARISON_TOOL,
     ADVANCED_ANALYSIS_TOOL,
@@ -423,6 +427,11 @@ def get_sandbox_tools(available_skills: Optional[list] = None, allowed_names: Op
             tool for tool in tools
             if tool.get("function", {}).get("name") in allowed_names
         ]
+    for tool in tools:
+        fn = tool.get('function', {})
+        if fn.get('name') == 'render_pdf':
+            fn['parameters']['properties']['output_path']['description'] = (
+                f'目标 PDF 路径，必须在工作区 {WORKSPACE_DIR} 内；可使用相对文件名 handout.pdf')
     try:
         if available_skills is None:
             from .skills import get_available_skills
@@ -455,7 +464,17 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
         name_clean = "web_search"
     res = ""
 
-    if name_clean in {'plan_spreadsheet_update', 'execute_spreadsheet_update', 'get_spreadsheet_update_status'}:
+    if name_clean == 'render_pdf':
+        from .pdf_render_tool import render_pdf
+        from .config import SKILL_DIR
+        return render_pdf(params, WORKSPACE_DIR, SKILL_DIR, deadline,
+                          user_prompt=os.environ.get('DSH_LAST_USER_PROMPT', ''))
+
+    elif name_clean == 'inspect_pdf_page':
+        from .pdf_preview_tool import inspect_pdf_page
+        return inspect_pdf_page(params, WORKSPACE_DIR, deadline)
+
+    elif name_clean in {'plan_spreadsheet_update', 'execute_spreadsheet_update', 'get_spreadsheet_update_status'}:
         from .spreadsheet_update.tools import dispatch_update_tool
         return dispatch_update_tool(name_clean, params)
 

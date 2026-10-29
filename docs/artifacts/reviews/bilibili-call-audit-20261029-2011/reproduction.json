@@ -1,0 +1,38 @@
+{
+  "page_item_counts": [
+    3,
+    2,
+    1
+  ],
+  "mixed_failure_stop": {
+    "tool": "render_pdf",
+    "error": "pdf_render_failed",
+    "attempts": 3
+  },
+  "symbol_failure_alone_stop": null,
+  "unsupported_codepoints": [
+    "U+1F1EA",
+    "U+1F1F8",
+    "U+1F30E",
+    "U+1F3C0",
+    "U+1F4B0",
+    "U+1F4CD",
+    "U+1F4F0",
+    "U+1F697"
+  ],
+  "actual_source_error": "Unsupported PDF symbol U+1F4F0; use a local SVG or a text label",
+  "after_removing_only_newspaper": "Unsupported PDF symbol U+1F3C0; use a local SVG or a text label",
+  "selected_tools": [
+    "fetch_page",
+    "inspect_pdf_page",
+    "read_file",
+    "render_pdf",
+    "web_search"
+  ],
+  "selected_page_schema": {
+    "minItems": 1,
+    "maxItems": 100,
+    "description": "必填：每项为一页完整 Markdown，程序自动插入分页；必须实际撰写所有页的正文，不能传空数组或内容占位说明"
+  },
+  "managed_pdf_predicate": false
+}

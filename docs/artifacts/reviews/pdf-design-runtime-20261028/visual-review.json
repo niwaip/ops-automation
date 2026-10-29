@@ -1,0 +1,27 @@
+{
+  "method": "Opened every page PNG with view_image; no obvious missing Chinese glyphs, overlap or clipping observed.",
+  "page_counts": {
+    "report": 2,
+    "handout": 2,
+    "editorial": 3,
+    "mobile": 4
+  },
+  "files": {
+    "mobile": {
+      "sha256": "778bb4be409bda867dbed12a0ca555842b039d5bf177de2445eba1a2d88eb405",
+      "matches_reviewed_pdf": true
+    },
+    "handout": {
+      "sha256": "22d113c25df64ecba0450c06700689fd83d7d4a4f7c007166b68059b5d3d1b23",
+      "matches_reviewed_pdf": true
+    },
+    "editorial": {
+      "sha256": "e5fc4d5067b5e6fc5bd7427f2b66e247c5c57d1aa6df2d3cc4c1ce3a4d530e37",
+      "matches_reviewed_pdf": true
+    },
+    "report": {
+      "sha256": "c292d10287422b36d284af1773bef31d222b8a9f2f0a738c83c27bf39cad859c",
+      "matches_reviewed_pdf": true
+    }
+  }
+}

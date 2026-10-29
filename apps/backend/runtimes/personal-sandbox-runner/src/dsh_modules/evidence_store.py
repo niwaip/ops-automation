@@ -43,6 +43,10 @@ def persist_turn_evidence(history_file, source_hashes, query, receipts, guard_de
             for r in receipts
         ) or any(d.get('guard') == 'workbook_delivery' and d.get('action') == 'accept' for d in guard_decisions)
         accepted = is_artifact_turn and not has_rejection and has_delivery
+    pdf_decisions = [d for d in guard_decisions if d.get('guard') == 'pdf_delivery']
+    if pdf_decisions:
+        from .pdf_publication import has_verified_pdf_publication
+        accepted = pdf_decisions[-1].get('action') == 'accept' and has_verified_pdf_publication(receipts)
     payload = {'schema_version': 1, 'turn_id': turn_id, 'created_at_ns': time.time_ns(),
                'source_hashes': source_hashes, 'query': query, 'verified': accepted,
                'guard_decisions': guard_decisions, 'receipts': [r.to_dict() for r in receipts]}

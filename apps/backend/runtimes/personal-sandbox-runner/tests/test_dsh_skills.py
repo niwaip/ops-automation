@@ -541,13 +541,13 @@ class TestDshSkillsAndArtifacts(unittest.TestCase):
 
         # 2. 验证分层载入：报告场景 vs Word转PDF vs 表单
         pdf_report = read_skill("pdf", prompt="生成一页的pdf")
-        self.assertIn("CleanReportPDF", pdf_report)
-        self.assertIn("add_page()", pdf_report)
+        self.assertIn("generate_report_pdf.py", pdf_report)
+        self.assertIn("--template", pdf_report)
         self.assertIn("report.pdf", pdf_report)
 
         pdf_docx = read_skill("pdf", prompt="把合同转成pdf")
         self.assertIn("docx2pdf.md", pdf_docx)
-        self.assertIn("DOCX_PATH", pdf_docx)
+        self.assertIn("libreoffice", pdf_docx)
 
         pdf_form = read_skill("pdf", prompt="填写这个pdf表单")
         self.assertIn("fill_fillable_fields.py", pdf_form)

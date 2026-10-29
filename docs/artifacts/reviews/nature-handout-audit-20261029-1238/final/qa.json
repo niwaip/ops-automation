@@ -1,0 +1,81 @@
+{
+  "valid": true,
+  "errors": [],
+  "page_count": 2,
+  "bytes": 265735,
+  "sha256": "d8558ed9cd0d0e0f7e763e1724da4acc1925c606729d0a0912d344cc54ca590a",
+  "pages": [
+    {
+      "page": 1,
+      "width_pt": 595.28,
+      "height_pt": 841.89,
+      "text_chars": 225,
+      "text": "城市自然观察手册\n观察、记录与分享\n阅读与实践\n开始观察吧\n在城市角落发现自然秘密，请带上好奇的眼睛。\n温馨提示\n请保持安静，不追逐动物，不破坏植物。\n出发前准备清单\n• [ ] 笔记本和铅笔\n• [ ] 放大镜\n• [ ] 矿泉水\n• [ ] 舒适的鞋子\n• [ ] 纸巾\n观察记录表\n观察对象 可以记录什么 一个小提示\n树木 叶子形状、树皮 摸一摸树皮感受\n鸟类 羽毛颜色、叫声 保持距离安静看\n天空 云朵形状、风向 观察云朵移动方向\n1 / 2",
+      "outside_page_glyphs": 0,
+      "fonts": [
+        {
+          "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+          "embedded": true
+        },
+        {
+          "name": "/TSPJMR+Noto-Sans-CJK-SC",
+          "embedded": true
+        }
+      ]
+    },
+    {
+      "page": 2,
+      "width_pt": 595.28,
+      "height_pt": 841.89,
+      "text_chars": 222,
+      "text": "城市自然观察手册\n记录与分享\n如何写观察记录 你可以用简短的文字描述，画下看到的图形，或贴上照片。记录要真实，不必追\n求完美。\n引导问题 1. 你看到了几种不同颜色的叶子？ 2. 小鸟的叫声像什么声音？ 3. 今天的云朵像什么动\n物？\n交流与分享建议\n• 向同桌展示你的绘画或照片。\n• 交换观察记录卡，互相提问。\n• 小组讨论谁发现最特别。\n• 回家后讲给爸爸妈妈听。\n我的观察卡\n项目 内容\n时间天气\n地点\n有趣发现\n待探索问题\n2 / 2",
+      "outside_page_glyphs": 0,
+      "fonts": [
+        {
+          "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+          "embedded": true
+        },
+        {
+          "name": "/TSPJMR+Noto-Sans-CJK-SC",
+          "embedded": true
+        }
+      ]
+    }
+  ],
+  "visual_review": "passed",
+  "checks": [
+    "parse",
+    "page_range",
+    "text_coverage",
+    "extraction",
+    "page_bounds",
+    "embedded_fonts"
+  ],
+  "template": "handout",
+  "theme": "warm",
+  "fonts": [
+    {
+      "family": "Noto Sans CJK SC",
+      "style": "Regular",
+      "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+    },
+    {
+      "family": "Noto Sans CJK SC",
+      "style": "Bold",
+      "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
+    }
+  ],
+  "warnings": [],
+  "output": "/workspace/handout.pdf",
+  "timings_ms": {
+    "render": 108.99,
+    "inspect": 20.48,
+    "preview": 129.77,
+    "total": 277.3
+  },
+  "previews": [
+    "/workspace/.pdf-preview/handout/9c7fa477b5ac4b959c99549c13cac202/page-1.png",
+    "/workspace/.pdf-preview/handout/9c7fa477b5ac4b959c99549c13cac202/page-2.png"
+  ],
+  "source": "/workspace/.pdf-source-9c7fa477b5ac4b959c99549c13cac202.md"
+}

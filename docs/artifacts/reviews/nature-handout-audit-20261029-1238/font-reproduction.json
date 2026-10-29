@@ -1,0 +1,32 @@
+{
+  "fpdf2_version": "2.8.8",
+  "font_exists": true,
+  "font_bytes": 8331336,
+  "valid_chinese_pdf_bytes": 5308,
+  "errors": [
+    {
+      "family": "/opt/dsh/skills/pdf/assets/NotoSansSC-Regular.otf",
+      "style": "",
+      "type": "FPDFException",
+      "message": "Undefined font: /opt/dsh/skills/pdf/assets/notosanssc-regular.otf - Use built-in fonts or FPDF.add_font() beforehand"
+    },
+    {
+      "family": "NotoSC",
+      "style": "I",
+      "type": "FPDFException",
+      "message": "Undefined font: notoscI - Use built-in fonts or FPDF.add_font() beforehand"
+    },
+    {
+      "family": "NotoSC",
+      "style": "B",
+      "type": "FPDFException",
+      "message": "Undefined font: notoscB - Use built-in fonts or FPDF.add_font() beforehand"
+    }
+  ],
+  "inherited_properties": {
+    "title": "NoneType",
+    "pages": "dict",
+    "h": "float",
+    "w": "float"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "events": {
+    "started": 1,
+    "model_started": 17,
+    "model_completed": 16,
+    "guard": 7,
+    "tool_completed": 12,
+    "tool_started": 11
+  },
+  "usage": {
+    "prompt_tokens": 264903,
+    "total_tokens": 288805,
+    "completion_tokens": 23902
+  },
+  "model_ms": 286420.0399999999,
+  "first": {
+    "timestamp_ns": 1793248386057524762,
+    "event": "started",
+    "data": {
+      "session_id": "chat-session-1793239556339-mxbvx27u"
+    }
+  },
+  "last": {
+    "timestamp_ns": 1793248680008726134,
+    "event": "model_started",
+    "data": {
+      "call_id": "16d62c3301b445049ba7bc6effe07d1e",
+      "purpose": "tool_loop",
+      "model": "default"
+    }
+  }
+}

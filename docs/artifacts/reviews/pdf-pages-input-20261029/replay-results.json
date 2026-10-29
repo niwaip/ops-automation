@@ -1,0 +1,220 @@
+[
+  {
+    "schema_version": 1,
+    "status": "error",
+    "data": {
+      "attempt_path": "/out/workspace-1/.dsh/pdf-attempts/f19162efbb5546e0814e8ba0569ab125.json",
+      "stage": "input",
+      "guidance": "按错误修正参数或内容后重试；无需重写字体和排版代码。"
+    },
+    "error": {
+      "code": "pdf_render_failed",
+      "message": "pages 必须是 Markdown 字符串数组；当前字符串不是有效 JSON 数组"
+    },
+    "provenance": {
+      "tool": "render_pdf"
+    }
+  },
+  {
+    "schema_version": 1,
+    "status": "success",
+    "data": {
+      "kind": "pdf_render",
+      "file_path": "/out/workspace-2/replay-2.pdf",
+      "source": "/out/workspace-2/.pdf-source-0fde9185386f4e25a8a449e4f5dc38ff.md",
+      "qa_path": "/out/workspace-2/.pdf-preview/replay-2/0fde9185386f4e25a8a449e4f5dc38ff/qa.json",
+      "page_count": 4,
+      "sha256": "3eecde78d741c26da21b1b140f77b85118f58f3146f0ca6c3b435812f01fc0c5",
+      "previews": [
+        "/out/workspace-2/.pdf-preview/replay-2/0fde9185386f4e25a8a449e4f5dc38ff/page-1.png",
+        "/out/workspace-2/.pdf-preview/replay-2/0fde9185386f4e25a8a449e4f5dc38ff/page-2.png",
+        "/out/workspace-2/.pdf-preview/replay-2/0fde9185386f4e25a8a449e4f5dc38ff/page-3.png",
+        "/out/workspace-2/.pdf-preview/replay-2/0fde9185386f4e25a8a449e4f5dc38ff/page-4.png"
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "width_pt": 595.28,
+          "height_pt": 841.89,
+          "text_chars": 496,
+          "text": "bilibili热点日报\n2026年10月29日 · 星期四\nAI 生成\nBilibili 每日热点报告\n今日热点聚焦政治大事、游戏大作与全球赛事，B站社区活跃度高涨，多领域内容引爆讨论。\n热搜榜 TOP 8\n排名 热搜话题 所属分区 热度标识\nNO.1 二十届五中全会公报 时政\nNO.2 伊莫S1赛季PV 游戏\nNO.3 巴西总统候选人败选后 国际\n逃往美国\nNO.4 热火赛季首胜 结束四连 体育\n败\nNO.5 工资改发数字人民币有 财经\n何变化\nNO.6 运-20B 解锁一机两用 军事\nNO.7 解读西班牙高铁隐患 国际\nNO.8 科技迷不能错过的节目 科技\n单来了\n今日热点分布概览\n· 时政要闻：二十届五中全会公报登顶热搜，引发全民关注\n· 游戏动态：伊莫S1赛季PV发布，二次元游戏圈热议\n· 国际时事：巴西总统选举结果与西班牙高铁安全问题引发讨论\n· 体育赛事：NBA热火队赛季首胜，球迷激情讨论\n· 财经民生：数字人民币工资改发政策引发广泛关注\n· [SHIELD]军事国防：运-20B解锁新能力，军事爱好者热议\n· 科技前沿：科技类节目单更新，引发科技迷期待\n1 / 4",
+          "outside_page_glyphs": 0,
+          "fonts": [
+            {
+              "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+              "embedded": true
+            },
+            {
+              "name": "/TSPJMR+Noto-Sans-CJK-SC",
+              "embedded": true
+            }
+          ]
+        },
+        {
+          "page": 2,
+          "width_pt": 595.28,
+          "height_pt": 841.89,
+          "text_chars": 601,
+          "text": "bilibili热点日报\n热门视频 TOP 8\n排名 视频标题 UP主 播放量 分区\nNO.1 【2026全球总决 哔哩哔哩英雄联 511万 游戏/电竞\n赛】10月29日 盟赛事\nLYON vs IG\nNO.2 《崩坏：星穹铁 崩坏星穹铁道 272万 游戏/二次元\n道》千星纪游\nPV：有关星空的\n寓言集·其三\nNO.3 喝可乐不打嗝小 瓜哥超爱玩QAQ 145万 娱乐/游戏\n游戏~\nNO.4 新 三 国 FUNK 纽毕斯 138万 音乐/创意\nNO.5 环大露认领，众 一只吐槽圆 101万 娱乐/综艺\n星躲娜扎·红毯\n爆笑盘点\nNO.6 暗区突围手游版 暗区突围 88万 游戏/手游\n本PV：战火重燃\nNO.7 致和游戏一起长 我是日行一扇 80万 生活/记录\n大的我们\nNO.8 《原神》米提亚 原神 74万 游戏/二次元\n角色PV——小小伎\n俩\n数据亮点\n· 播放量冠军：Lyon vs IG 全球总决赛直播，单日播放突破 511万\n· 游戏PV热度：三款游戏PV（崩坏星穹铁道、原神、暗区突围）均进入热门榜\n· 娱乐内容：红毯盘点与搞笑小游戏同样吸睛，播放量超 100万+\n· 音乐创意：三国 FUNK 以 138万 播放量展现 B站音乐区创造力\n[ELECTRIC LIGHT BULB]趋势洞察：游戏相关内容占据今日热门榜单半壁江山，电竞与二次\n元游戏仍是 B站核心流量引擎\n2 / 4",
+          "outside_page_glyphs": 0,
+          "fonts": [
+            {
+              "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+              "embedded": true
+            },
+            {
+              "name": "/TSPJMR+Noto-Sans-CJK-SC",
+              "embedded": true
+            }
+          ]
+        },
+        {
+          "page": 3,
+          "width_pt": 595.28,
+          "height_pt": 841.89,
+          "text_chars": 569,
+          "text": "bilibili热点日报\n热点深度解读\n时政：二十届五中全会公报\n二十届五中全会公报今日登上 B站热搜第一位，反映出 B站用户群体对重大时政议题的高度关注。\n该话题涉及国家未来发展规划，在年轻用户群体中引发广泛讨论与解读。\n讨论要点：\n· 全会公报的核心内容与政策导向\n· 对未来经济和社会发展的影响展望\n· 年轻一代对国家发展的关注与思考\n财经：数字人民币工资改发\n工资改发数字人民币成为今日第五大热搜话题。数字人民币作为国家法定数字货币，其推广使用\n与老百姓日常生活息息相关。\n关注焦点：\n· 数字人民币与现有支付方式的差异\n· 工资改发对普通上班族的影响\n· 数字化支付的便利性与安全性\n游戏：二次元游戏集体霸榜\n今日热门视频榜中，游戏内容占据半壁江山。\n· 《崩坏：星穹铁道》全新 PV 播放量达 272万\n· 《原神》新角色米提亚 PV 播放量 74万\n· 《暗区突围》新版本 PV 播放量 88万\n此外，电竞直播 LYON vs IG 以 511万 播放量成为今日绝对流量冠军，再次证明电竞赛事在 B站的\n内容核心竞争力。\n国际：多领域热点交织\n· 巴西总统选举：候选人败选后逃往美国，引发国际政治讨论\n· 西班牙高铁：安全隐患被深度解读，工程与安全问题成为热点\n· 运-20B：解锁一机两用能力，展示军事科技实力\n3 / 4",
+          "outside_page_glyphs": 0,
+          "fonts": [
+            {
+              "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+              "embedded": true
+            },
+            {
+              "name": "/TSPJMR+Noto-Sans-CJK-SC",
+              "embedded": true
+            }
+          ]
+        },
+        {
+          "page": 4,
+          "width_pt": 595.28,
+          "height_pt": 841.89,
+          "text_chars": 429,
+          "text": "bilibili热点日报\n报告说明\n· 数据来源：Bilibili 实时热搜榜、热门视频排行榜\n· 报告生成时间：2026年10月29日 20:31 (UTC+8)\n· 报告周期：当日实时热点\n· 数据说明：播放量为截至报告生成时间的统计数据，热度标识仅供参考\n[WARNING SIGN] 免责声明\n本报告基于公开可获取的 B站热搜与热门视频数据整理生成，仅供信息参考。\n· 播放量数据随时间动态变化，报告中的数值为采样时刻快照\n· 热搜排名依据 B站实时搜索热度计算，可能随时间波动\n· 本报告不构成任何投资、消费或行为建议\n[CLIPBOARD] 内容索引\n页码 内容\n第 1 页 热搜榜 TOP 8 + 热点分布概览\n第 2 页 热门视频 TOP 8 + 数据亮点\n第 3 页 热点深度解读（时政/财经/游戏/国际）\n第 4 页 报告说明与免责声明\n本报告由 AI 自动生成 · 数据来源：Bilibili 平台公开数据 · 仅供信息参考\n4 / 4",
+          "outside_page_glyphs": 0,
+          "fonts": [
+            {
+              "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+              "embedded": true
+            },
+            {
+              "name": "/TSPJMR+Noto-Sans-CJK-SC",
+              "embedded": true
+            }
+          ]
+        }
+      ],
+      "visual_review": "required",
+      "user_prompt": "",
+      "published": false,
+      "next_step": "逐页调用 inspect_pdf_page(file_path, page)，全部通过后自动发布最终文件"
+    },
+    "error": null,
+    "provenance": {
+      "tool": "render_pdf"
+    },
+    "text_representation": "{\"kind\": \"pdf_render\", \"file_path\": \"/out/workspace-2/replay-2.pdf\", \"source\": \"/out/workspace-2/.pdf-source-0fde9185386f4e25a8a449e4f5dc38ff.md\", \"qa_path\": \"/out/workspace-2/.pdf-preview/replay-2/0fde9185386f4e25a8a449e4f5dc38ff/qa.json\", \"page_count\": 4, \"sha256\": \"3eecde78d741c26da21b1b140f77b85118f58f3146f0ca6c3b435812f01fc0c5\", \"previews\": [\"/out/workspace-2/.pdf-preview/replay-2/0fde9185386f4e25a8a449e4f5dc38ff/page-1.png\", \"/out/workspace-2/.pdf-preview/replay-2/0fde9185386f4e25a8a449e4f5dc38ff/page-2.png\", \"/out/workspace-2/.pdf-preview/replay-2/0fde9185386f4e25a8a449e4f5dc38ff/page-3.png\", \"/out/workspace-2/.pdf-preview/replay-2/0fde9185386f4e25a8a449e4f5dc38ff/page-4.png\"], \"pages\": [{\"page\": 1, \"width_pt\": 595.28, \"height_pt\": 841.89, \"text_chars\": 496, \"text\": \"bilibili热点日报\\n2026年10月29日 · 星期四\\nAI 生成\\nBilibili 每日热点报告\\n今日热点聚焦政治大事、游戏大作与全球赛事，B站社区活跃度高涨，多领域内容引爆讨论。\\n热搜榜 TOP 8\\n排名 热搜话题 所属分区 热度标识\\nNO.1 二十届五中全会公报 时政\\nNO.2 伊莫S1赛季PV 游戏\\nNO.3 巴西总统候选人败选后 国际\\n逃往美国\\nNO.4 热火赛季首胜 结束四连 体育\\n败\\nNO.5 工资改发数字人民币有 财经\\n何变化\\nNO.6 运-20B 解锁一机两用 军事\\nNO.7 解读西班牙高铁隐患 国际\\nNO.8 科技迷不能错过的节目 科技\\n单来了\\n今日热点分布概览\\n· 时政要闻：二十届五中全会公报登顶热搜，引发全民关注\\n· 游戏动态：伊莫S1赛季PV发布，二次元游戏圈热议\\n· 国际时事：巴西总统选举结果与西班牙高铁安全问题引发讨论\\n· 体育赛事：NBA热火队赛季首胜，球迷激情讨论\\n· 财经民生：数字人民币工资改发政策引发广泛关注\\n· [SHIELD]军事国防：运-20B解锁新能力，军事爱好者热议\\n· 科技前沿：科技类节目单更新，引发科技迷期待\\n1 / 4\", \"outside_page_glyphs\": 0, \"fonts\": [{\"name\": \"/DFCEGX+Noto-Sans-CJK-SC-Bold\", \"embedded\": true}, {\"name\": \"/TSPJMR+Noto-Sans-CJK-SC\", \"embedded\": true}]}, {\"page\": 2, \"width_pt\": 595.28, \"height_pt\": 841.89, \"text_chars\": 601, \"text\": \"bilibili热点日报\\n热门视频 TOP 8\\n排名 视频标题 UP主 播放量 分区\\nNO.1 【2026全球总决 哔哩哔哩英雄联 511万 游戏/电竞\\n赛】10月29日 盟赛事\\nLYON vs IG\\nNO.2 《崩坏：星穹铁 崩坏星穹铁道 272万 游戏/二次元\\n道》千星纪游\\nPV：有关星空的\\n寓言集·其三\\nNO.3 喝可乐不打嗝小 瓜哥超爱玩QAQ 145万 娱乐/游戏\\n游戏~\\nNO.4 新 三 国 FUNK 纽毕斯 138万 音乐/创意\\nNO.5 环大露认领，众 一只吐槽圆 101万 娱乐/综艺\\n星躲娜扎·红毯\\n爆笑盘点\\nNO.6 暗区突围手游版 暗区突围 88万 游戏/手游\\n本PV：战火重燃\\nNO.7 致和游戏一起长 我是日行一扇 80万 生活/记录\\n大的我们\\nNO.8 《原神》米提亚 原神 74万 游戏/二次元\\n角色PV——小小伎\\n俩\\n数据亮点\\n· 播放量冠军：Lyon vs IG 全球总决赛直播，单日播放突破 511万\\n· 游戏PV热度：三款游戏PV（崩坏星穹铁道、原神、暗区突围）均进入热门榜\\n· 娱乐内容：红毯盘点与搞笑小游戏同样吸睛，播放量超 100万+\\n· 音乐创意：三国 FUNK 以 138万 播放量展现 B站音乐区创造力\\n[ELECTRIC LIGHT BULB]趋势洞察：游戏相关内容占据今日热门榜单半壁江山，电竞与二次\\n元游戏仍是 B站核心流量引擎\\n2 / 4\", \"outside_page_glyphs\": 0, \"fonts\": [{\"name\": \"/DFCEGX+Noto-Sans-CJK-SC-Bold\", \"embedded\": true}, {\"name\": \"/TSPJMR+Noto-Sans-CJK-SC\", \"embedded\": true}]}, {\"page\": 3, \"width_pt\": 595.28, \"height_pt\": 841.89, \"text_chars\": 569, \"text\": \"bilibili热点日报\\n热点深度解读\\n时政：二十届五中全会公报\\n二十届五中全会公报今日登上 B站热搜第一位，反映出 B站用户群体对重大时政议题的高度关注。\\n该话题涉及国家未来发展规划，在年轻用户群体中引发广泛讨论与解读。\\n讨论要点：\\n· 全会公报的核心内容与政策导向\\n· 对未来经济和社会发展的影响展望\\n· 年轻一代对国家发展的关注与思考\\n财经：数字人民币工资改发\\n工资改发数字人民币成为今日第五大热搜话题。数字人民币作为国家法定数字货币，其推广使用\\n与老百姓日常生活息息相关。\\n关注焦点：\\n· 数字人民币与现有支付方式的差异\\n· 工资改发对普通上班族的影响\\n· 数字化支付的便利性与安全性\\n游戏：二次元游戏集体霸榜\\n今日热门视频榜中，游戏内容占据半壁江山。\\n· 《崩坏：星穹铁道》全新 PV 播放量达 272万\\n· 《原神》新角色米提亚 PV 播放量 74万\\n· 《暗区突围》新版本 PV 播放量 88万\\n此外，电竞直播 LYON vs IG 以 511万 播放量成为今日绝对流量冠军，再次证明电竞赛事在 B站的\\n内容核心竞争力。\\n国际：多领域热点交织\\n· 巴西总统选举：候选人败选后逃往美国，引发国际政治讨论\\n· 西班牙高铁：安全隐患被深度解读，工程与安全问题成为热点\\n· 运-20B：解锁一机两用能力，展示军事科技实力\\n3 / 4\", \"outside_page_glyphs\": 0, \"fonts\": [{\"name\": \"/DFCEGX+Noto-Sans-CJK-SC-Bold\", \"embedded\": true}, {\"name\": \"/TSPJMR+Noto-Sans-CJK-SC\", \"embedded\": true}]}, {\"page\": 4, \"width_pt\": 595.28, \"height_pt\": 841.89, \"text_chars\": 429, \"text\": \"bilibili热点日报\\n报告说明\\n· 数据来源：Bilibili 实时热搜榜、热门视频排行榜\\n· 报告生成时间：2026年10月29日 20:31 (UTC+8)\\n· 报告周期：当日实时热点\\n· 数据说明：播放量为截至报告生成时间的统计数据，热度标识仅供参考\\n[WARNING SIGN] 免责声明\\n本报告基于公开可获取的 B站热搜与热门视频数据整理生成，仅供信息参考。\\n· 播放量数据随时间动态变化，报告中的数值为采样时刻快照\\n· 热搜排名依据 B站实时搜索热度计算，可能随时间波动\\n· 本报告不构成任何投资、消费或行为建议\\n[CLIPBOARD] 内容索引\\n页码 内容\\n第 1 页 热搜榜 TOP 8 + 热点分布概览\\n第 2 页 热门视频 TOP 8 + 数据亮点\\n第 3 页 热点深度解读（时政/财经/游戏/国际）\\n第 4 页 报告说明与免责声明\\n本报告由 AI 自动生成 · 数据来源：Bilibili 平台公开数据 · 仅供信息参考\\n4 / 4\", \"outside_page_glyphs\": 0, \"fonts\": [{\"name\": \"/DFCEGX+Noto-Sans-CJK-SC-Bold\", \"embedded\": true}, {\"name\": \"/TSPJMR+Noto-Sans-CJK-SC\", \"embedded\": true}]}], \"visual_review\": \"required\", \"user_prompt\": \"\", \"published\": false, \"next_step\": \"逐页调用 inspect_pdf_page(file_path, page)，全部通过后自动发布最终文件\"}"
+  },
+  {
+    "schema_version": 1,
+    "status": "success",
+    "data": {
+      "kind": "pdf_render",
+      "file_path": "/out/workspace-3/replay-3.pdf",
+      "source": "/out/workspace-3/.pdf-source-dad3bb948349459ebcf12910146b7129.md",
+      "qa_path": "/out/workspace-3/.pdf-preview/replay-3/dad3bb948349459ebcf12910146b7129/qa.json",
+      "page_count": 4,
+      "sha256": "3eecde78d741c26da21b1b140f77b85118f58f3146f0ca6c3b435812f01fc0c5",
+      "previews": [
+        "/out/workspace-3/.pdf-preview/replay-3/dad3bb948349459ebcf12910146b7129/page-1.png",
+        "/out/workspace-3/.pdf-preview/replay-3/dad3bb948349459ebcf12910146b7129/page-2.png",
+        "/out/workspace-3/.pdf-preview/replay-3/dad3bb948349459ebcf12910146b7129/page-3.png",
+        "/out/workspace-3/.pdf-preview/replay-3/dad3bb948349459ebcf12910146b7129/page-4.png"
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "width_pt": 595.28,
+          "height_pt": 841.89,
+          "text_chars": 496,
+          "text": "bilibili热点日报\n2026年10月29日 · 星期四\nAI 生成\nBilibili 每日热点报告\n今日热点聚焦政治大事、游戏大作与全球赛事，B站社区活跃度高涨，多领域内容引爆讨论。\n热搜榜 TOP 8\n排名 热搜话题 所属分区 热度标识\nNO.1 二十届五中全会公报 时政\nNO.2 伊莫S1赛季PV 游戏\nNO.3 巴西总统候选人败选后 国际\n逃往美国\nNO.4 热火赛季首胜 结束四连 体育\n败\nNO.5 工资改发数字人民币有 财经\n何变化\nNO.6 运-20B 解锁一机两用 军事\nNO.7 解读西班牙高铁隐患 国际\nNO.8 科技迷不能错过的节目 科技\n单来了\n今日热点分布概览\n· 时政要闻：二十届五中全会公报登顶热搜，引发全民关注\n· 游戏动态：伊莫S1赛季PV发布，二次元游戏圈热议\n· 国际时事：巴西总统选举结果与西班牙高铁安全问题引发讨论\n· 体育赛事：NBA热火队赛季首胜，球迷激情讨论\n· 财经民生：数字人民币工资改发政策引发广泛关注\n· [SHIELD]军事国防：运-20B解锁新能力，军事爱好者热议\n· 科技前沿：科技类节目单更新，引发科技迷期待\n1 / 4",
+          "outside_page_glyphs": 0,
+          "fonts": [
+            {
+              "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+              "embedded": true
+            },
+            {
+              "name": "/TSPJMR+Noto-Sans-CJK-SC",
+              "embedded": true
+            }
+          ]
+        },
+        {
+          "page": 2,
+          "width_pt": 595.28,
+          "height_pt": 841.89,
+          "text_chars": 601,
+          "text": "bilibili热点日报\n热门视频 TOP 8\n排名 视频标题 UP主 播放量 分区\nNO.1 【2026全球总决 哔哩哔哩英雄联 511万 游戏/电竞\n赛】10月29日 盟赛事\nLYON vs IG\nNO.2 《崩坏：星穹铁 崩坏星穹铁道 272万 游戏/二次元\n道》千星纪游\nPV：有关星空的\n寓言集·其三\nNO.3 喝可乐不打嗝小 瓜哥超爱玩QAQ 145万 娱乐/游戏\n游戏~\nNO.4 新 三 国 FUNK 纽毕斯 138万 音乐/创意\nNO.5 环大露认领，众 一只吐槽圆 101万 娱乐/综艺\n星躲娜扎·红毯\n爆笑盘点\nNO.6 暗区突围手游版 暗区突围 88万 游戏/手游\n本PV：战火重燃\nNO.7 致和游戏一起长 我是日行一扇 80万 生活/记录\n大的我们\nNO.8 《原神》米提亚 原神 74万 游戏/二次元\n角色PV——小小伎\n俩\n数据亮点\n· 播放量冠军：Lyon vs IG 全球总决赛直播，单日播放突破 511万\n· 游戏PV热度：三款游戏PV（崩坏星穹铁道、原神、暗区突围）均进入热门榜\n· 娱乐内容：红毯盘点与搞笑小游戏同样吸睛，播放量超 100万+\n· 音乐创意：三国 FUNK 以 138万 播放量展现 B站音乐区创造力\n[ELECTRIC LIGHT BULB]趋势洞察：游戏相关内容占据今日热门榜单半壁江山，电竞与二次\n元游戏仍是 B站核心流量引擎\n2 / 4",
+          "outside_page_glyphs": 0,
+          "fonts": [
+            {
+              "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+              "embedded": true
+            },
+            {
+              "name": "/TSPJMR+Noto-Sans-CJK-SC",
+              "embedded": true
+            }
+          ]
+        },
+        {
+          "page": 3,
+          "width_pt": 595.28,
+          "height_pt": 841.89,
+          "text_chars": 569,
+          "text": "bilibili热点日报\n热点深度解读\n时政：二十届五中全会公报\n二十届五中全会公报今日登上 B站热搜第一位，反映出 B站用户群体对重大时政议题的高度关注。\n该话题涉及国家未来发展规划，在年轻用户群体中引发广泛讨论与解读。\n讨论要点：\n· 全会公报的核心内容与政策导向\n· 对未来经济和社会发展的影响展望\n· 年轻一代对国家发展的关注与思考\n财经：数字人民币工资改发\n工资改发数字人民币成为今日第五大热搜话题。数字人民币作为国家法定数字货币，其推广使用\n与老百姓日常生活息息相关。\n关注焦点：\n· 数字人民币与现有支付方式的差异\n· 工资改发对普通上班族的影响\n· 数字化支付的便利性与安全性\n游戏：二次元游戏集体霸榜\n今日热门视频榜中，游戏内容占据半壁江山。\n· 《崩坏：星穹铁道》全新 PV 播放量达 272万\n· 《原神》新角色米提亚 PV 播放量 74万\n· 《暗区突围》新版本 PV 播放量 88万\n此外，电竞直播 LYON vs IG 以 511万 播放量成为今日绝对流量冠军，再次证明电竞赛事在 B站的\n内容核心竞争力。\n国际：多领域热点交织\n· 巴西总统选举：候选人败选后逃往美国，引发国际政治讨论\n· 西班牙高铁：安全隐患被深度解读，工程与安全问题成为热点\n· 运-20B：解锁一机两用能力，展示军事科技实力\n3 / 4",
+          "outside_page_glyphs": 0,
+          "fonts": [
+            {
+              "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+              "embedded": true
+            },
+            {
+              "name": "/TSPJMR+Noto-Sans-CJK-SC",
+              "embedded": true
+            }
+          ]
+        },
+        {
+          "page": 4,
+          "width_pt": 595.28,
+          "height_pt": 841.89,
+          "text_chars": 429,
+          "text": "bilibili热点日报\n报告说明\n· 数据来源：Bilibili 实时热搜榜、热门视频排行榜\n· 报告生成时间：2026年10月29日 20:31 (UTC+8)\n· 报告周期：当日实时热点\n· 数据说明：播放量为截至报告生成时间的统计数据，热度标识仅供参考\n[WARNING SIGN] 免责声明\n本报告基于公开可获取的 B站热搜与热门视频数据整理生成，仅供信息参考。\n· 播放量数据随时间动态变化，报告中的数值为采样时刻快照\n· 热搜排名依据 B站实时搜索热度计算，可能随时间波动\n· 本报告不构成任何投资、消费或行为建议\n[CLIPBOARD] 内容索引\n页码 内容\n第 1 页 热搜榜 TOP 8 + 热点分布概览\n第 2 页 热门视频 TOP 8 + 数据亮点\n第 3 页 热点深度解读（时政/财经/游戏/国际）\n第 4 页 报告说明与免责声明\n本报告由 AI 自动生成 · 数据来源：Bilibili 平台公开数据 · 仅供信息参考\n4 / 4",
+          "outside_page_glyphs": 0,
+          "fonts": [
+            {
+              "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+              "embedded": true
+            },
+            {
+              "name": "/TSPJMR+Noto-Sans-CJK-SC",
+              "embedded": true
+            }
+          ]
+        }
+      ],
+      "visual_review": "required",
+      "user_prompt": "",
+      "published": false,
+      "next_step": "逐页调用 inspect_pdf_page(file_path, page)，全部通过后自动发布最终文件"
+    },
+    "error": null,
+    "provenance": {
+      "tool": "render_pdf"
+    },
+    "text_representation": "{\"kind\": \"pdf_render\", \"file_path\": \"/out/workspace-3/replay-3.pdf\", \"source\": \"/out/workspace-3/.pdf-source-dad3bb948349459ebcf12910146b7129.md\", \"qa_path\": \"/out/workspace-3/.pdf-preview/replay-3/dad3bb948349459ebcf12910146b7129/qa.json\", \"page_count\": 4, \"sha256\": \"3eecde78d741c26da21b1b140f77b85118f58f3146f0ca6c3b435812f01fc0c5\", \"previews\": [\"/out/workspace-3/.pdf-preview/replay-3/dad3bb948349459ebcf12910146b7129/page-1.png\", \"/out/workspace-3/.pdf-preview/replay-3/dad3bb948349459ebcf12910146b7129/page-2.png\", \"/out/workspace-3/.pdf-preview/replay-3/dad3bb948349459ebcf12910146b7129/page-3.png\", \"/out/workspace-3/.pdf-preview/replay-3/dad3bb948349459ebcf12910146b7129/page-4.png\"], \"pages\": [{\"page\": 1, \"width_pt\": 595.28, \"height_pt\": 841.89, \"text_chars\": 496, \"text\": \"bilibili热点日报\\n2026年10月29日 · 星期四\\nAI 生成\\nBilibili 每日热点报告\\n今日热点聚焦政治大事、游戏大作与全球赛事，B站社区活跃度高涨，多领域内容引爆讨论。\\n热搜榜 TOP 8\\n排名 热搜话题 所属分区 热度标识\\nNO.1 二十届五中全会公报 时政\\nNO.2 伊莫S1赛季PV 游戏\\nNO.3 巴西总统候选人败选后 国际\\n逃往美国\\nNO.4 热火赛季首胜 结束四连 体育\\n败\\nNO.5 工资改发数字人民币有 财经\\n何变化\\nNO.6 运-20B 解锁一机两用 军事\\nNO.7 解读西班牙高铁隐患 国际\\nNO.8 科技迷不能错过的节目 科技\\n单来了\\n今日热点分布概览\\n· 时政要闻：二十届五中全会公报登顶热搜，引发全民关注\\n· 游戏动态：伊莫S1赛季PV发布，二次元游戏圈热议\\n· 国际时事：巴西总统选举结果与西班牙高铁安全问题引发讨论\\n· 体育赛事：NBA热火队赛季首胜，球迷激情讨论\\n· 财经民生：数字人民币工资改发政策引发广泛关注\\n· [SHIELD]军事国防：运-20B解锁新能力，军事爱好者热议\\n· 科技前沿：科技类节目单更新，引发科技迷期待\\n1 / 4\", \"outside_page_glyphs\": 0, \"fonts\": [{\"name\": \"/DFCEGX+Noto-Sans-CJK-SC-Bold\", \"embedded\": true}, {\"name\": \"/TSPJMR+Noto-Sans-CJK-SC\", \"embedded\": true}]}, {\"page\": 2, \"width_pt\": 595.28, \"height_pt\": 841.89, \"text_chars\": 601, \"text\": \"bilibili热点日报\\n热门视频 TOP 8\\n排名 视频标题 UP主 播放量 分区\\nNO.1 【2026全球总决 哔哩哔哩英雄联 511万 游戏/电竞\\n赛】10月29日 盟赛事\\nLYON vs IG\\nNO.2 《崩坏：星穹铁 崩坏星穹铁道 272万 游戏/二次元\\n道》千星纪游\\nPV：有关星空的\\n寓言集·其三\\nNO.3 喝可乐不打嗝小 瓜哥超爱玩QAQ 145万 娱乐/游戏\\n游戏~\\nNO.4 新 三 国 FUNK 纽毕斯 138万 音乐/创意\\nNO.5 环大露认领，众 一只吐槽圆 101万 娱乐/综艺\\n星躲娜扎·红毯\\n爆笑盘点\\nNO.6 暗区突围手游版 暗区突围 88万 游戏/手游\\n本PV：战火重燃\\nNO.7 致和游戏一起长 我是日行一扇 80万 生活/记录\\n大的我们\\nNO.8 《原神》米提亚 原神 74万 游戏/二次元\\n角色PV——小小伎\\n俩\\n数据亮点\\n· 播放量冠军：Lyon vs IG 全球总决赛直播，单日播放突破 511万\\n· 游戏PV热度：三款游戏PV（崩坏星穹铁道、原神、暗区突围）均进入热门榜\\n· 娱乐内容：红毯盘点与搞笑小游戏同样吸睛，播放量超 100万+\\n· 音乐创意：三国 FUNK 以 138万 播放量展现 B站音乐区创造力\\n[ELECTRIC LIGHT BULB]趋势洞察：游戏相关内容占据今日热门榜单半壁江山，电竞与二次\\n元游戏仍是 B站核心流量引擎\\n2 / 4\", \"outside_page_glyphs\": 0, \"fonts\": [{\"name\": \"/DFCEGX+Noto-Sans-CJK-SC-Bold\", \"embedded\": true}, {\"name\": \"/TSPJMR+Noto-Sans-CJK-SC\", \"embedded\": true}]}, {\"page\": 3, \"width_pt\": 595.28, \"height_pt\": 841.89, \"text_chars\": 569, \"text\": \"bilibili热点日报\\n热点深度解读\\n时政：二十届五中全会公报\\n二十届五中全会公报今日登上 B站热搜第一位，反映出 B站用户群体对重大时政议题的高度关注。\\n该话题涉及国家未来发展规划，在年轻用户群体中引发广泛讨论与解读。\\n讨论要点：\\n· 全会公报的核心内容与政策导向\\n· 对未来经济和社会发展的影响展望\\n· 年轻一代对国家发展的关注与思考\\n财经：数字人民币工资改发\\n工资改发数字人民币成为今日第五大热搜话题。数字人民币作为国家法定数字货币，其推广使用\\n与老百姓日常生活息息相关。\\n关注焦点：\\n· 数字人民币与现有支付方式的差异\\n· 工资改发对普通上班族的影响\\n· 数字化支付的便利性与安全性\\n游戏：二次元游戏集体霸榜\\n今日热门视频榜中，游戏内容占据半壁江山。\\n· 《崩坏：星穹铁道》全新 PV 播放量达 272万\\n· 《原神》新角色米提亚 PV 播放量 74万\\n· 《暗区突围》新版本 PV 播放量 88万\\n此外，电竞直播 LYON vs IG 以 511万 播放量成为今日绝对流量冠军，再次证明电竞赛事在 B站的\\n内容核心竞争力。\\n国际：多领域热点交织\\n· 巴西总统选举：候选人败选后逃往美国，引发国际政治讨论\\n· 西班牙高铁：安全隐患被深度解读，工程与安全问题成为热点\\n· 运-20B：解锁一机两用能力，展示军事科技实力\\n3 / 4\", \"outside_page_glyphs\": 0, \"fonts\": [{\"name\": \"/DFCEGX+Noto-Sans-CJK-SC-Bold\", \"embedded\": true}, {\"name\": \"/TSPJMR+Noto-Sans-CJK-SC\", \"embedded\": true}]}, {\"page\": 4, \"width_pt\": 595.28, \"height_pt\": 841.89, \"text_chars\": 429, \"text\": \"bilibili热点日报\\n报告说明\\n· 数据来源：Bilibili 实时热搜榜、热门视频排行榜\\n· 报告生成时间：2026年10月29日 20:31 (UTC+8)\\n· 报告周期：当日实时热点\\n· 数据说明：播放量为截至报告生成时间的统计数据，热度标识仅供参考\\n[WARNING SIGN] 免责声明\\n本报告基于公开可获取的 B站热搜与热门视频数据整理生成，仅供信息参考。\\n· 播放量数据随时间动态变化，报告中的数值为采样时刻快照\\n· 热搜排名依据 B站实时搜索热度计算，可能随时间波动\\n· 本报告不构成任何投资、消费或行为建议\\n[CLIPBOARD] 内容索引\\n页码 内容\\n第 1 页 热搜榜 TOP 8 + 热点分布概览\\n第 2 页 热门视频 TOP 8 + 数据亮点\\n第 3 页 热点深度解读（时政/财经/游戏/国际）\\n第 4 页 报告说明与免责声明\\n本报告由 AI 自动生成 · 数据来源：Bilibili 平台公开数据 · 仅供信息参考\\n4 / 4\", \"outside_page_glyphs\": 0, \"fonts\": [{\"name\": \"/DFCEGX+Noto-Sans-CJK-SC-Bold\", \"embedded\": true}, {\"name\": \"/TSPJMR+Noto-Sans-CJK-SC\", \"embedded\": true}]}], \"visual_review\": \"required\", \"user_prompt\": \"\", \"published\": false, \"next_step\": \"逐页调用 inspect_pdf_page(file_path, page)，全部通过后自动发布最终文件\"}"
+  }
+]

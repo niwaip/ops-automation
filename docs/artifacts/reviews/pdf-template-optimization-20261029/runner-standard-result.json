@@ -1,0 +1,7 @@
+{
+  "exit_code": 0,
+  "wall_ms": 110307.98,
+  "session_id": "pdf-template-e2e-20261029-standard",
+  "scope": "Direct DSH execution in standard workspace; excludes browser/broker scheduling",
+  "target_exists": true
+}

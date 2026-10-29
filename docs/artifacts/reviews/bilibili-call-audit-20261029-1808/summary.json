@@ -1,0 +1,32 @@
+{
+  "server_duration_ms": 371233,
+  "runtime_ms": 370703.22,
+  "llm_ms": 359635.92,
+  "vision_ms": 286287.11,
+  "vision_calls": 8,
+  "other_model_ms": 73348.81,
+  "model_calls": 23,
+  "main_prompt_first": 14547,
+  "main_prompt_last": 25208,
+  "main_tokens": {
+    "prompt_tokens": 229033,
+    "completion_tokens": 4914,
+    "total_tokens": 233947
+  },
+  "review_tokens": {
+    "prompt_tokens": 10840,
+    "completion_tokens": 1484,
+    "total_tokens": 38259
+  },
+  "start": "2026-10-29T18:02:16.383740+08:00",
+  "end": "2026-10-29T18:08:27.086149+08:00",
+  "render_sha256": "d8eeb3c671a6bd50cb7457de515a4513fa1b6bc23369b28bcb35059a9f23860a",
+  "existing_output": {
+    "sha256": "b8a14d46e838281fceabce2bb127d8ce5d89a93480137a0e13e47f5591c5fca1",
+    "bytes": 461819,
+    "mtime_beijing": "2026-10-29T17:20:02.443977+08:00"
+  },
+  "cached_contract_mtime_beijing": "2026-10-29T15:33:52.288051+08:00",
+  "vision_share": 77.23,
+  "unchanged_repeat_vision_ms": 260410.13
+}
