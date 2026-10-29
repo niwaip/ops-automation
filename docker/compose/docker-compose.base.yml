@@ -163,6 +163,18 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
 
+  # Build-only target; never part of the default development stack.
+  user-sandbox-image:
+    profiles: ['sandbox-build']
+    image: ${USER_SANDBOX_IMAGE:-ops-user-sandbox:local}
+    build:
+      context: ${PROJECT_ROOT:?PROJECT_ROOT must be set}
+      dockerfile: docker/user-sandbox/Dockerfile
+      args:
+        USER_SANDBOX_REQUIREMENTS_SHA256: ${USER_SANDBOX_REQUIREMENTS_SHA256:?Use docker/start-smart.sh}
+    entrypoint: ['/bin/true']
+    restart: 'no'
+
   session-broker:
     <<: *common-node-service
     container_name: ops-session-broker
@@ -176,6 +188,8 @@ services:
     environment:
       <<: *common-env
       PORT: ${SESSION_BROKER_PORT:-3002}
+      USER_SANDBOX_IMAGE: ${USER_SANDBOX_IMAGE:-ops-user-sandbox:local}
+      USER_SANDBOX_REQUIREMENTS_SHA256: ${USER_SANDBOX_REQUIREMENTS_SHA256:?Use docker/start-smart.sh}
       DOCKER_ENV: true
       PROJECT_ROOT: ${PROJECT_ROOT}
       INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}

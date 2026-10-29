@@ -1,0 +1,13 @@
+{
+  "path": "data/users/e7fce333-a8f4-4097-9a53-f0a4c729da46/workspace/竞选班干部.pptx",
+  "size_bytes": 34666,
+  "sha256": "4c668b5749b0aa58ee4a3108fa5d244dec57d618d41269ad59bd3ea2499a526b",
+  "is_valid_zip": true,
+  "slides": [
+    "ppt/slides/slide1.xml",
+    "ppt/slides/slide2.xml",
+    "ppt/slides/slide3.xml",
+    "ppt/slides/slide4.xml"
+  ],
+  "slides_count": 4
+}

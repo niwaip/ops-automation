@@ -1,0 +1,19 @@
+{
+  "pages_reviewed": [
+    1,
+    2
+  ],
+  "result": "pass",
+  "record_row_height_mm": 22.0,
+  "checks": [
+    "two A4 pages",
+    "no independent cover",
+    "specified title subtitle author",
+    "intro tips leaf checklist and tree/bird/sky table on page 1",
+    "method three questions actionable sharing and four blank record fields on page 2",
+    "clear CJK and page numbers",
+    "no duplicate bare footer numbers",
+    "no visible clipping overlap or Markdown delimiter leakage"
+  ],
+  "sha256": "c45bfda572cc7912d9ddb03c29bcfd2d0d8f355260f8da03dd87baf5def7e2b0"
+}

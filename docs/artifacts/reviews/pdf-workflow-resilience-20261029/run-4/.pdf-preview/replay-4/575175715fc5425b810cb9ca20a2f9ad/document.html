@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>bilibili热点日报</title>
+  <meta name="author" content="热点观察组">
+  <meta name="description" content="二零二六年十月二十九日">
+<style>@page {
+  size: A4;
+  margin: 19mm 18mm 20mm;
+  background: #ffffff;
+  @top-right {
+    content: element(running-title);
+    vertical-align: bottom;
+    padding-bottom: 4mm;
+  }
+  @bottom-right {
+    content: counter(page) " / " counter(pages);
+    font: 8pt "Noto Sans CJK SC";
+    color: #67727c;
+    vertical-align: top;
+    padding-top: 4mm;
+  }
+}
+@page :first { @top-right { content: none; } }
+* { box-sizing: border-box; }
+html { color: #26313b; }
+body {
+  margin: 0;
+  font-family: "Noto Sans CJK SC", sans-serif;
+  font-size: 11.5pt;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.running-title {
+  position: running(running-title);
+  font: 8pt "Noto Sans CJK SC";
+  color: #67727c;
+}
+h1, h2, h3, h4 {
+  font-family: "Noto Sans CJK SC", sans-serif;
+  line-height: 1.35;
+  font-weight: 700;
+  break-after: avoid;
+  color: #1e2c38;
+}
+h1 { font-size: 26pt; margin: 0 0 5mm; letter-spacing: .02em; }
+h2 {
+  font-size: 15pt;
+  margin: 8mm 0 3mm;
+  padding-bottom: 2mm;
+  border-bottom: .6pt solid #28695c;
+}
+h3 { font-size: 12pt; margin: 5mm 0 2mm; }
+h4 { font-size: 11pt; margin: 4mm 0 2mm; }
+p { margin: 0 0 3mm; orphans: 2; widows: 2; }
+.document-header {
+  border-top: 3pt solid #28695c;
+  padding: 6mm 0 4mm;
+  margin-bottom: 6mm;
+  border-bottom: .5pt solid #dce2e6;
+}
+.subtitle { font-size: 12pt; color: #52616e; margin-bottom: 4mm; }
+.meta, figcaption, caption { font-size: 8.5pt; color: #65717d; }
+.meta { margin-bottom: 0; }
+.cover { break-after: page; padding-top: 32mm; }
+.cover-rule { background: #28695c; height: 3mm; width: 18mm; margin-bottom: 14mm; }
+.cover h1 { font-size: 34pt; line-height: 1.35; margin-bottom: 9mm; }
+.cover .subtitle { font-size: 15pt; }
+.cover-meta { margin-top: 22mm; color: #65717d; font-size: 10pt; }
+strong { font-weight: 700; }
+a { color: #28695c; text-decoration: none; }
+ul, ol { padding-left: 1.6em; margin: 2mm 0 4mm; }
+li { margin-bottom: 1.5mm; orphans: 2; widows: 2; }
+li p { margin-bottom: 1.5mm; }
+blockquote {
+  margin: 4mm 0;
+  padding: 3.5mm 4mm;
+  border-left: 2pt solid #28695c;
+  background: #eff6f1;
+}
+blockquote p:last-child { margin-bottom: 0; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 4mm 0 6mm; font-size: .9em; }
+thead { display: table-header-group; }
+th, td { padding: 2.5mm 2.8mm; border-bottom: .5pt solid #dce2e6; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+th { background: #eff6f1; color: #28695c; font-weight: 700; }
+tbody tr:nth-child(even) { background: #f7f8fa; }
+tr { break-inside: avoid; }
+caption { text-align: left; margin-bottom: 2mm; }
+figure { margin: 5mm 0; break-inside: avoid; }
+img { max-width: 100%; height: auto; }
+figcaption { margin-top: 2mm; }
+code { font-family: "DejaVu Sans Mono", "Noto Sans CJK SC", monospace; font-size: .88em; background: #f1f3f5; }
+pre { padding: 4mm; background: #f1f3f5; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+pre code { background: none; }
+hr { border: 0; border-top: .5pt solid #dce2e6; margin: 6mm 0; }
+.page-break { break-before: page; }
+.handout h2 { border: 0; border-left: 3pt solid #28695c; padding: 1mm 0 1mm 3mm; }
+.handout .document-header { padding: 4mm 0 3mm; margin-bottom: 4mm; }
+.handout h2 { font-size: 13pt; margin: 4mm 0 1.5mm; padding-top: .5mm; padding-bottom: .5mm; }
+.handout h3, .handout h4 { margin: 3mm 0 1.5mm; }
+.handout ul, .handout ol { margin: 1.5mm 0 2.5mm; }
+.handout li { margin-bottom: .75mm; }
+.handout blockquote { margin: 2.5mm 0; padding: 2.5mm 3mm; }
+.handout table { margin: 3mm 0 4mm; }
+.handout th, .handout td { padding: 2mm 2.8mm; }
+.handout figure { margin: 3mm 0; }
+.handout img { max-height: 30mm; }
+.handout img.handout-illustration { max-height: 20mm; }
+.editorial .document-header { border-top-width: 1pt; }
+.editorial h1 { font-family: "Noto Serif CJK SC", serif; }
+.mobile h2 { font-size: 14pt; }
+.mobile table { font-size: .8em; }
+.mobile th, .mobile td { padding: 1.5mm; }
+.mobile .cover { padding-top: 16mm; }
+.mobile .cover h1 { font-size: 26pt; }
+
+/* Printable record cards reserve handwriting space, rather than ordinary data-row height. */
+.handout table.record-card th:first-child { width: 24%; }
+.handout table.record-card tbody td { height: 22mm; border: .5pt solid #dce2e6; }
+
+/* Printable task lists: draw boxes independent of glyph availability. */
+.checklist-item { list-style: none; }
+.print-checkbox { display: inline-block; width: 3mm; height: 3mm; border: 0.3mm solid currentColor; margin-right: 1.5mm; vertical-align: middle; line-height: 3mm; text-align: center; }
+
+/* Modern Layout Primitives (shared with frontend-design) */
+.grid-2 { display: flex; gap: 6mm; margin: 3mm 0 5mm; }
+.grid-2 > * { flex: 1 1 0; min-width: 0; }
+.grid-2-1 { display: flex; gap: 6mm; margin: 3mm 0 5mm; }
+.grid-2-1 > *:first-child { flex: 2 1 0; min-width: 0; }
+.grid-2-1 > *:last-child { flex: 1 1 0; min-width: 0; }
+.grid-1-2 { display: flex; gap: 6mm; margin: 3mm 0 5mm; }
+.grid-1-2 > *:first-child { flex: 1 1 0; min-width: 0; }
+.grid-1-2 > *:last-child { flex: 2 1 0; min-width: 0; }
+.grid-3 { display: flex; gap: 4mm; margin: 3mm 0 5mm; }
+.grid-3 > * { flex: 1 1 0; min-width: 0; }
+.row { display: flex; align-items: center; gap: 3mm; }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: 3mm; }
+.stack { display: flex; flex-direction: column; gap: 2.5mm; }
+
+/* Surface & Card Containers */
+.card {
+  background: #ffffff;
+  border: .5pt solid #dce2e6;
+  border-radius: 2.5mm;
+  padding: 3.5mm 4.5mm;
+  margin: 2.5mm 0;
+  break-inside: avoid;
+}
+.card-flat { background: transparent; border: 0; padding: 0; margin: 2mm 0; }
+.card-rule { border-top: 1.5pt solid #28695c; padding-top: 3mm; margin-top: 3mm; }
+
+/* Badges, Pills & Chips */
+.pill {
+  display: inline-block;
+  padding: 1mm 2.8mm;
+  background: #eff6f1;
+  color: #28695c;
+  border-radius: 999px;
+  font-size: 8.5pt;
+  font-weight: 600;
+  margin: 1mm 1.5mm 1mm 0;
+  line-height: 1.25;
+}
+.tag {
+  display: inline-block;
+  padding: 1mm 2.5mm;
+  background: #f1f3f5;
+  color: #52616e;
+  border: .4pt solid #dce2e6;
+  border-radius: 999px;
+  font-size: 8pt;
+  margin: 1mm 1.5mm 1mm 0;
+  line-height: 1.25;
+}
+
+/* Ranking Badges */
+.rank-badge {
+  display: inline-block;
+  width: 5mm;
+  height: 5mm;
+  line-height: 5mm;
+  text-align: center;
+  border-radius: 50%;
+  font-size: 7.5pt;
+  font-weight: 700;
+  color: #ffffff;
+  background: #65717d;
+  margin-right: 1.5mm;
+  vertical-align: middle;
+}
+.rank-1 { background: #d97706; }
+.rank-2 { background: #64748b; }
+.rank-3 { background: #b45309; }
+
+/* Stat Highlights */
+.stat-strip { display: flex; gap: 4mm; margin: 3mm 0 5mm; }
+.stat {
+  flex: 1;
+  background: #eff6f1;
+  border-left: 2.5pt solid #28695c;
+  padding: 2.5mm 3.5mm;
+  border-radius: 1.5mm;
+  break-inside: avoid;
+}
+.stat .stat-num { font-size: 16pt; font-weight: 700; color: #28695c; line-height: 1.1; }
+.stat .stat-label { font-size: 8pt; color: #65717d; margin-top: 1mm; }
+.stat .stat-unit { font-size: 9pt; font-weight: 400; opacity: 0.8; margin-left: 1mm; }</style></head>
+<body class="handout">
+  <div class="running-title">bilibili热点日报</div>
+  
+  <header class="document-header">
+    <h1>bilibili热点日报</h1>
+    <p class="subtitle">二零二六年十月二十九日</p>
+    <p class="meta">热点观察组</p>
+  </header>
+  
+  <main><h2>B站热点速递 二零二六年十月二十九日 星期四</h2>
+<h2>时政要闻</h2>
+<h3>第一 二十届五中全会公报 全站第一</h3>
+<p>二十届五中全会今日公布公报 引发全民关注 会议围绕十五五规划建议 经济高质量发展 科技自立自强等核心议题展开 释放一系列重大政策信号 B站多个官方媒体解读视频播放量迅速破百万 核心议题包括十五五规划建议 高质量发展 科技自立自强 影响领域涉及经济 科技 民生</p>
+<h3>第三 巴西总统候选人败选后逃往美国</h3>
+<p>巴西总统选举结果公布后 败选候选人连夜逃往美国引发国际震动 此事在B站引发大量时政解读视频 UP主们从历史 法律 国际关系等角度深度分析</p>
+<h3>第四 工资改发数字人民币有何变化</h3>
+<p>随着数字人民币推广加速 多地开始试点工资改发数字人民币 这一变化关乎每位打工人的钱包 B站财经UP主们纷纷制作科普视频 解读数字人民币的优势 隐私保护及使用便捷性</p>
+<h3>第八 解读西班牙高铁隐患</h3>
+<p>西班牙多段高铁线路出现严重安全隐患 引发欧洲广泛关注 UP主制作科普视频详解高铁技术原理及安全隐患成因</p>
+<h2>电竞游戏</h2>
+<h3>第五 二零二六全球总决赛 LYON vs IG 五百一十三万播放</h3>
+<p>二零二六英雄联盟全球总决赛今日打响 IG战队迎战欧洲劲旅LYON 全场高能操作不断 成为B站全站当日播放量最高视频 赛事亮点包括IG战队发挥出色 多波团战精彩至极 弹幕刷屏评论区讨论热烈</p>
+<h3>第六 崩坏星穹铁道千星纪游PV 两百七十四万播放</h3>
+<p>崩坏星穹铁道千星纪游PV有关星空的寓言集其三发布 播放量两百七十四万 UP主为崩坏星穹铁道 米哈游旗下爆款游戏以星空为主题 讲述感人至深的星际寓言故事 画面精美剧情催泪</p>
+<h3>第七 新三国FUNK 一百三十九万播放</h3>
+<p>创意十足的三国题材音乐作品 融合FUNK曲风与三国元素 节奏感爆棚 引发全网模仿热潮 UP主为纽毕斯</p>
+<h3>第十五 暗区突围手游版本PV 八十八万播放</h3>
+<p>暗区突围手游迎来重大版本更新 破局战火重燃今日上线 全新玩法与地图让老玩家回归热情高涨 UP主为暗区突围官方</p>
+<h3>第十六 原神米提亚角色PV 七十四万播放</h3>
+<p>原神全新角色米提亚角色PV发布 小小伎俩技能创意十足 角色设计引人注目 UP主为原神官方</p>
+<h2>体育娱乐科技</h2>
+<h3>第十 热火赛季首胜结束四连败</h3>
+<p>NBA迈阿密热火队迎来新赛季首胜 结束了开局四连败的低迷状态 球迷们在B站分享比赛精彩集锦 评论区一片欢呼</p>
+<h3>第十一 张展硕两百自破全国记录</h3>
+<p>中国游泳小将张展硕在两百米自由泳项目中打破全国记录 展现新生代游泳运动员的强劲实力</p>
+<h3>第十二 环大露认领众星躲娜扎 一百零三万播放</h3>
+<p>近期红毯爆笑名场面合集 环大露刘冲斗娜娜等名场面频出 明星们在红毯上的种种趣事引发观众捧腹大笑 UP主为一只吐槽圆</p>
+<h3>第十三 喝可乐不打嗝小游戏 一百四十六万播放</h3>
+<p>简单却极具魔性的小游戏挑战 喝可乐后尝试不打嗝完成一系列动作 搞笑程度拉满 UP主为瓜哥超爱玩QAQ</p>
+<h3>第十四 AI全民制作人 八十一万播放</h3>
+<p>创意AI短片以致和游戏一起长大的我们为主题 用AI技术还原玩家成长历程 引发广泛情感共鸣 UP主为我是日行一扇</p>
+<h3>第十七 运二零B解锁一机两用</h3>
+<p>运二零B运输机解锁新能力 实现一机两用的多用途改造 展现中国航空工业的最新突破</p>
+<h2>排名总览</h2>
+<p>排名一 时政 二十届五中全会</p>
+<p>排名二 电竞 LYON vs IG总决赛</p>
+<p>排名三 全球 巴西总统选举</p>
+<p>排名四 民生 数字人民币</p>
+<p>排名五 体育 热火首胜游泳记录</p>
+<h2>趋势总结</h2>
+<p>时政热度空前 二十届五中全会公报成为全网第一热搜 B站官方解读视频播放量集体破百万</p>
+<p>电竞引爆全站 IG战队全球总决赛对战LYON 播放量达五百一十三万 霸榜全站第一</p>
+<p>游戏内容强势 原神崩坏星穹铁道暗区突围新品PV齐发 游戏区全面开花</p>
+<p>生活娱乐轻松向 红毯盘点小游戏挑战等轻松内容持续高播放量 娱乐区活力满满</p>
+<p>体育双星闪耀 NBA热火首胜加游泳小将破纪录 体育区热度持续走高</p>
+<blockquote>
+<p>一句话总结 今日B站是时政电竞游戏三驾马车并驾齐驱的一天 二十届五中全会引发全民学习热潮 IG战队全球总决赛点燃电竞激情 各大游戏新品PV轮番上线 娱乐生活内容同样精彩不断</p>
+<p>数据来源 Bilibili实时热搜榜热门视频排行榜</p>
+<p>整理时间 二零二六年十月二十九日二十时三十八分</p>
+<p>祝您阅读愉快</p>
+</blockquote></main>
+</body>
+</html>

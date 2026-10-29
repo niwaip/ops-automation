@@ -1,0 +1,21 @@
+{
+  "verified": true,
+  "page_count": 2,
+  "sha256": "d8558ed9cd0d0e0f7e763e1724da4acc1925c606729d0a0912d344cc54ca590a",
+  "usage": {
+    "prompt_tokens": 26119,
+    "total_tokens": 35785,
+    "completion_tokens": 2911
+  },
+  "model_calls": 13,
+  "render_calls": 4,
+  "visual_review": "passed",
+  "manual_pages_checked": [
+    1,
+    2
+  ],
+  "manual_findings": [
+    "A4两页、嵌入中文字体、页码、叶片、三列表格及四项空白记录卡完整，无裁切",
+    "第2页方法和问题使用行内排版，可读但舒展程度有改进空间；准备清单保留了文本方括号复选标记"
+  ]
+}

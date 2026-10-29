@@ -1,0 +1,143 @@
+{
+  "completed_logical_proxy_requests": 27,
+  "completed_before_timeout": 26,
+  "completed_before_timeout_duration_ms": 275585,
+  "all_completed_duration_ms": 303046,
+  "requests": [
+    {
+      "timestamp": "2026-10-29T00:57:51.753583298Z",
+      "duration_ms": 5016,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T00:57:55.775752217Z",
+      "duration_ms": 4006,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T00:57:59.796574385Z",
+      "duration_ms": 4013,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T00:58:03.419763845Z",
+      "duration_ms": 3561,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T00:58:41.836190710Z",
+      "duration_ms": 32299,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T00:58:44.519100545Z",
+      "duration_ms": 2659,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T00:58:49.033882505Z",
+      "duration_ms": 4460,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T00:59:39.763006001Z",
+      "duration_ms": 50659,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T01:00:17.944865130Z",
+      "duration_ms": 38139,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T01:00:48.855690005Z",
+      "duration_ms": 30836,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T01:00:51.075466923Z",
+      "duration_ms": 1938,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T01:00:53.372533299Z",
+      "duration_ms": 2035,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T01:01:21.720093631Z",
+      "duration_ms": 28130,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T01:01:48.089562046Z",
+      "duration_ms": 26292,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T01:01:49.966365047Z",
+      "duration_ms": 1788,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T01:01:58.914179343Z",
+      "duration_ms": 8529,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T01:02:01.405650053Z",
+      "duration_ms": 2421,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T01:02:03.884950387Z",
+      "duration_ms": 2411,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T01:02:07.001824055Z",
+      "duration_ms": 3047,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T01:02:10.200411376Z",
+      "duration_ms": 2926,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T01:02:14.691798211Z",
+      "duration_ms": 4268,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T01:02:17.409524171Z",
+      "duration_ms": 2494,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T01:02:21.372557798Z",
+      "duration_ms": 3695,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T01:02:25.299979550Z",
+      "duration_ms": 3663,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T01:02:27.668160718Z",
+      "duration_ms": 2302,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T01:02:31.733498220Z",
+      "duration_ms": 3998,
+      "after_timeout": false
+    },
+    {
+      "timestamp": "2026-10-29T01:02:59.954021302Z",
+      "duration_ms": 27461,
+      "after_timeout": true
+    }
+  ]
+}

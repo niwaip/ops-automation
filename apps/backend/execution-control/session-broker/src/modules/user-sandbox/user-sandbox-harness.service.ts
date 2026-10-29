@@ -16,6 +16,7 @@ import {
 import { UserSandboxStorageService } from './user-sandbox-storage.service';
 import { UserSandboxContainerService } from './user-sandbox-container.service';
 import { LockService } from '../lock/lock.service';
+import { ExecutionWatchdog } from './execution-watchdog';
 
 const MAX_SANDBOX_OUTPUT_BYTES = 1024 * 1024; // 1MB 硬上限，防止进程大输出拖死 NodeJS 主进程
 
@@ -73,27 +74,27 @@ export class UserSandboxHarnessService {
       Env: mergedEnv,
     });
 
-    const timeoutMs = options?.timeoutMs || 300000;
+    const timeoutMs = options?.timeoutMs;
     const dockerClient = this.containerService.getDockerClient();
 
     return new Promise((resolve, reject) => {
       let timedOut = false;
-      const timer = setTimeout(async () => {
+      const timer = new ExecutionWatchdog(async (reason) => {
         timedOut = true;
         this.logger.warn(
-          `Execution timed out (${timeoutMs}ms) in sandbox [${containerName}], forcibly stopping processes...`
+          `Execution ${reason} watchdog expired (${reason === "total" ? timeoutMs : 360000}ms) in sandbox [${containerName}], forcibly stopping processes...`
         );
         try {
           await this.stopSandboxExecution(userId);
         } catch (killErr: any) {
           this.logger.warn(`Failed to stop sandbox execution on timeout for user [${userId}]: ${killErr.message}`);
         }
-        reject(new BadRequestException(`沙箱命令执行超时 (${timeoutMs}ms)`));
+        reject(new BadRequestException(reason === 'total' ? `沙箱命令达到指定总时限 (${timeoutMs}ms)` : `沙箱连续 360 秒无有效执行进展，已停止任务`));
       }, timeoutMs);
 
       exec.start({ hijack: true, stdin: false }, (err: any, stream: any) => {
         if (err) {
-          clearTimeout(timer);
+          timer.stop();
           return reject(err);
         }
 
@@ -107,6 +108,7 @@ export class UserSandboxHarnessService {
         const stdoutStream = new Writable({
           write(chunk, encoding, callback) {
             const decoded = stdoutDecoder.write(chunk);
+            timer.observe(decoded);
             if (!stdoutTruncated) {
               stdout += decoded;
               if (stdout.length > MAX_SANDBOX_OUTPUT_BYTES) {
@@ -140,6 +142,7 @@ export class UserSandboxHarnessService {
         } else {
           stream.on('data', (chunk: Buffer) => {
             const decoded = stdoutDecoder.write(chunk);
+            timer.observe(decoded);
             if (!stdoutTruncated) {
               stdout += decoded;
               if (stdout.length > MAX_SANDBOX_OUTPUT_BYTES) {
@@ -154,7 +157,7 @@ export class UserSandboxHarnessService {
         }
 
         stream.on('end', async () => {
-          clearTimeout(timer);
+          timer.stop();
           if (timedOut) return;
           if (!stdoutTruncated) {
             stdout += stdoutDecoder.end();
@@ -191,7 +194,7 @@ export class UserSandboxHarnessService {
         });
 
         stream.on('error', (streamErr: any) => {
-          clearTimeout(timer);
+          timer.stop();
           if (!timedOut) reject(streamErr);
         });
       });
@@ -265,11 +268,12 @@ export class UserSandboxHarnessService {
     }
 
     const executor = customExecutor || ((u, c, opts) => this.executeInSandbox(u, c, opts));
-    const timeoutMs = options?.timeoutMs || 300000;
+    const timeoutMs = options?.timeoutMs;
+    let renewal: ReturnType<typeof setInterval> | undefined;
 
     let lockToken: string | null = null;
     if (this.lockService) {
-      const ttlSeconds = Math.ceil(timeoutMs / 1000) + 15;
+      const ttlSeconds = 420;
       const waitTimeoutSeconds =
         typeof options?.waitTimeoutSeconds === 'number'
           ? options.waitTimeoutSeconds
@@ -290,6 +294,23 @@ export class UserSandboxHarnessService {
         );
       }
       lockToken = lockResult.token;
+      let renewing = false;
+      renewal = setInterval(async () => {
+        if (renewing) return;
+        renewing = true;
+        try {
+          this.containerService.recordActivity(sanitizedUserId);
+          if (!await this.lockService!.extendSandboxLock(sanitizedUserId, lockToken!, ttlSeconds) &&
+              this.activeLockOwners.get(sanitizedUserId)?.token === lockToken) {
+            await this.stopSandboxExecution(sanitizedUserId, sanitizedSessionId);
+          }
+        } catch (error: any) {
+          this.logger.error(`Sandbox lock renewal failed: ${error.message}`);
+          if (this.activeLockOwners.get(sanitizedUserId)?.token === lockToken)
+            await this.stopSandboxExecution(sanitizedUserId, sanitizedSessionId).catch(() => {});
+        } finally { renewing = false; }
+      }, 60000);
+
       this.activeLockOwners.set(sanitizedUserId, {
         sessionId: sanitizedSessionId,
         token: lockToken,
@@ -332,6 +353,7 @@ export class UserSandboxHarnessService {
         exitCode: execResult.exitCode,
       };
     } finally {
+      if (renewal) clearInterval(renewal);
       const currentOwner = this.activeLockOwners.get(sanitizedUserId);
       if (currentOwner && currentOwner.token === lockToken) {
         this.activeLockOwners.delete(sanitizedUserId);

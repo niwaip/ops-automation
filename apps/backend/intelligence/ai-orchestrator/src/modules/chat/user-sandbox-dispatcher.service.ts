@@ -24,6 +24,8 @@ import {
 import { handleSavePersonalSkillChat } from '../personal-skill/personal-skill-chat.handler';
 import { PersonalSkillCaptureService } from '../personal-skill/personal-skill-capture.service';
 
+import { createSandboxAnswerEmitter } from './sandbox-answer-delivery';
+
 const SANDBOX_HISTORY_TURNS_LIMIT = Number(process.env.SANDBOX_HISTORY_TURNS_LIMIT || 16);
 const SANDBOX_HISTORY_ITEM_CHAR_LIMIT = Number(process.env.SANDBOX_HISTORY_ITEM_CHAR_LIMIT || 12000);
 const SANDBOX_ATTACHMENT_TEXT_LIMIT = Number(process.env.SANDBOX_ATTACHMENT_TEXT_LIMIT || 16000);
@@ -234,6 +236,7 @@ export class UserSandboxDispatcherService {
     userId: string,
     abortSignal?: AbortSignal
   ): Promise<boolean> {
+    emit = createSandboxAnswerEmitter(emit);
     const effectiveUserId = (body.userId || userId || '').trim();
     if (!effectiveUserId) {
       throw new BadRequestException('userId 不能为空');
@@ -478,7 +481,7 @@ export class UserSandboxDispatcherService {
           ? (body.config as any).timeoutMs
           : typeof (body as any).timeoutMs === 'number' && (body as any).timeoutMs > 0
             ? (body as any).timeoutMs
-            : 300000;
+            : undefined;
       let timeoutId: NodeJS.Timeout | undefined = undefined;
       let harnessResult: {
         success: boolean;
@@ -508,7 +511,7 @@ export class UserSandboxDispatcherService {
       }
 
       try {
-        timeoutId = setTimeout(async () => {
+        if (timeoutMs) timeoutId = setTimeout(async () => {
           isTimedOut = true;
           this.logger.warn(`Execution timeout (${timeoutMs / 1000}s) reached for user [${effectiveUserId}], stopping sandbox processes...`);
           controller?.abort();
@@ -691,9 +694,16 @@ export class UserSandboxDispatcherService {
         if (abortSignal?.aborted || (controller?.signal?.aborted && !isTimedOut)) {
           return await handleUserAborted();
         }
+        if (String(fetchErr?.message || '').includes('连续 360 秒无有效执行进展')) {
+          const message = '任务连续 360 秒没有有效执行进展，已停止后台执行。本轮未完成验收，未发布新的交付文件。';
+          emit({type: StreamEventType.ERROR, content: message});
+          await this.persistFriendlyErrorToSession(sessionId, body, effectiveUserId, message,
+            'Execution inactivity watchdog expired', emit, {executed: false, timeout: true});
+          return true;
+        }
         if (isTimedOut) {
           this.logger.warn(`Run harness timed out for user [${effectiveUserId}]`);
-          const timeoutFriendlyMsg = `⚠️ 沙箱任务执行超时（超过 ${timeoutMs / 1000} 秒），已自动中止后台任务。请尝试简化任务或检查模型连通性。`;
+          const timeoutFriendlyMsg = `已达到本轮指定的总执行时限（${timeoutMs / 1000} 秒），已停止后台任务。本轮未完成验收，未发布新的交付文件。`;
           emit({
             type: StreamEventType.ERROR,
             content: timeoutFriendlyMsg,
@@ -871,12 +881,14 @@ export class UserSandboxDispatcherService {
       }
 
       // 自动解析沙箱生成/外发的图片与各类交付物文件（Word/Excel/PPT/PDF等），转换为内联 Markdown 或专属下载卡片
+      const deliveryArtifacts: Array<{ type: string; name: string; downloadUrl: string }> = [];
       cleanAnswer = this.embedWorkspaceDeliverablesAndImagesInAnswer(
         effectiveUserId,
         cleanAnswer,
         outboundFiles,
         sessionAttachedFiles,
-        turnStartTime
+        turnStartTime,
+        (artifact) => deliveryArtifacts.push(artifact)
       );
 
       if (!cleanAnswer) {
@@ -922,6 +934,8 @@ export class UserSandboxDispatcherService {
             exitCode: harnessResult.exitCode,
             metrics: executionMetrics,
           },
+          artifacts: deliveryArtifacts.length > 0 ? deliveryArtifacts : undefined,
+          answerStatus: 'committed',
           outboundFiles: filteredOutboundFiles.length > 0 ? filteredOutboundFiles : undefined,
           reminders: createdReminders.length > 0 ? createdReminders : undefined,
         },
@@ -947,6 +961,7 @@ export class UserSandboxDispatcherService {
           durationMs: harnessResult.durationMs,
           exitCode: harnessResult.exitCode,
           metrics: executionMetrics,
+          artifacts: deliveryArtifacts,
           outboundFiles: filteredOutboundFiles.length > 0 ? filteredOutboundFiles : undefined,
         },
       });
@@ -1077,7 +1092,8 @@ export class UserSandboxDispatcherService {
     text: string,
     outboundFiles: Array<{ filePath: string; fileName: string; comment?: string }>,
     sessionFiles: string[] = [],
-    turnStartTime?: number
+    turnStartTime?: number,
+    onArtifact?: (artifact: { type: string; name: string; downloadUrl: string }) => void
   ): string {
     return embedWorkspaceDeliverablesAndImagesInAnswer({
       userId,
@@ -1085,6 +1101,8 @@ export class UserSandboxDispatcherService {
       outboundFiles,
       sessionFiles,
       turnStartTime,
+      embedDownloadCards: !onArtifact,
+      onArtifact,
       getWorkspaceFilePath: (uid, fname) => this.getWorkspaceFilePath(uid, fname),
       onImageResolveError: (fname, err) => {
         this.logger.warn(`Failed to resolve workspace image ${fname}: ${err?.message || err}`);

@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>bilibili热点日报</title>
+  <meta name="author" content="">
+  <meta name="description" content="">
+<style>@page {
+  size: A4;
+  margin: 19mm 18mm 20mm;
+  background: #ffffff;
+  @top-right {
+    content: element(running-title);
+    vertical-align: bottom;
+    padding-bottom: 4mm;
+  }
+  @bottom-right {
+    content: counter(page) " / " counter(pages);
+    font: 8pt "Noto Sans CJK SC";
+    color: #67727c;
+    vertical-align: top;
+    padding-top: 4mm;
+  }
+}
+@page :first { @top-right { content: none; } }
+* { box-sizing: border-box; }
+html { color: #26313b; }
+body {
+  margin: 0;
+  font-family: "Noto Sans CJK SC", sans-serif;
+  font-size: 11.5pt;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.running-title {
+  position: running(running-title);
+  font: 8pt "Noto Sans CJK SC";
+  color: #67727c;
+}
+h1, h2, h3, h4 {
+  font-family: "Noto Sans CJK SC", sans-serif;
+  line-height: 1.35;
+  font-weight: 700;
+  break-after: avoid;
+  color: #1e2c38;
+}
+h1 { font-size: 26pt; margin: 0 0 5mm; letter-spacing: .02em; }
+h2 {
+  font-size: 15pt;
+  margin: 8mm 0 3mm;
+  padding-bottom: 2mm;
+  border-bottom: .6pt solid #28695c;
+}
+h3 { font-size: 12pt; margin: 5mm 0 2mm; }
+h4 { font-size: 11pt; margin: 4mm 0 2mm; }
+p { margin: 0 0 3mm; orphans: 2; widows: 2; }
+.document-header {
+  border-top: 3pt solid #28695c;
+  padding: 6mm 0 4mm;
+  margin-bottom: 6mm;
+  border-bottom: .5pt solid #dce2e6;
+}
+.subtitle { font-size: 12pt; color: #52616e; margin-bottom: 4mm; }
+.meta, figcaption, caption { font-size: 8.5pt; color: #65717d; }
+.meta { margin-bottom: 0; }
+.cover { break-after: page; padding-top: 32mm; }
+.cover-rule { background: #28695c; height: 3mm; width: 18mm; margin-bottom: 14mm; }
+.cover h1 { font-size: 34pt; line-height: 1.35; margin-bottom: 9mm; }
+.cover .subtitle { font-size: 15pt; }
+.cover-meta { margin-top: 22mm; color: #65717d; font-size: 10pt; }
+strong { font-weight: 700; }
+a { color: #28695c; text-decoration: none; }
+ul, ol { padding-left: 1.6em; margin: 2mm 0 4mm; }
+li { margin-bottom: 1.5mm; orphans: 2; widows: 2; }
+li p { margin-bottom: 1.5mm; }
+blockquote {
+  margin: 4mm 0;
+  padding: 3.5mm 4mm;
+  border-left: 2pt solid #28695c;
+  background: #eff6f1;
+}
+blockquote p:last-child { margin-bottom: 0; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 4mm 0 6mm; font-size: .9em; }
+thead { display: table-header-group; }
+th, td { padding: 2.5mm 2.8mm; border-bottom: .5pt solid #dce2e6; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+th { background: #eff6f1; color: #28695c; font-weight: 700; }
+tbody tr:nth-child(even) { background: #f7f8fa; }
+tr { break-inside: avoid; }
+caption { text-align: left; margin-bottom: 2mm; }
+figure { margin: 5mm 0; break-inside: avoid; }
+img { max-width: 100%; height: auto; }
+figcaption { margin-top: 2mm; }
+code { font-family: "DejaVu Sans Mono", "Noto Sans CJK SC", monospace; font-size: .88em; background: #f1f3f5; }
+pre { padding: 4mm; background: #f1f3f5; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+pre code { background: none; }
+hr { border: 0; border-top: .5pt solid #dce2e6; margin: 6mm 0; }
+.page-break { break-before: page; }
+.handout h2 { border: 0; border-left: 3pt solid #28695c; padding: 1mm 0 1mm 3mm; }
+.handout .document-header { padding: 4mm 0 3mm; margin-bottom: 4mm; }
+.handout h2 { font-size: 13pt; margin: 4mm 0 1.5mm; padding-top: .5mm; padding-bottom: .5mm; }
+.handout h3, .handout h4 { margin: 3mm 0 1.5mm; }
+.handout ul, .handout ol { margin: 1.5mm 0 2.5mm; }
+.handout li { margin-bottom: .75mm; }
+.handout blockquote { margin: 2.5mm 0; padding: 2.5mm 3mm; }
+.handout table { margin: 3mm 0 4mm; }
+.handout th, .handout td { padding: 2mm 2.8mm; }
+.handout figure { margin: 3mm 0; }
+.handout img { max-height: 30mm; }
+.handout img.handout-illustration { max-height: 20mm; }
+.editorial .document-header { border-top-width: 1pt; }
+.editorial h1 { font-family: "Noto Serif CJK SC", serif; }
+.mobile h2 { font-size: 14pt; }
+.mobile table { font-size: .8em; }
+.mobile th, .mobile td { padding: 1.5mm; }
+.mobile .cover { padding-top: 16mm; }
+.mobile .cover h1 { font-size: 26pt; }
+
+/* Printable record cards reserve handwriting space, rather than ordinary data-row height. */
+.handout table.record-card th:first-child { width: 24%; }
+.handout table.record-card tbody td { height: 22mm; border: .5pt solid #dce2e6; }
+
+/* Printable task lists: draw boxes independent of glyph availability. */
+.checklist-item { list-style: none; }
+.print-checkbox { display: inline-block; width: 3mm; height: 3mm; border: 0.3mm solid currentColor; margin-right: 1.5mm; vertical-align: middle; line-height: 3mm; text-align: center; }
+
+/* Modern Layout Primitives (shared with frontend-design) */
+.grid-2 { display: flex; gap: 6mm; margin: 3mm 0 5mm; }
+.grid-2 > * { flex: 1 1 0; min-width: 0; }
+.grid-2-1 { display: flex; gap: 6mm; margin: 3mm 0 5mm; }
+.grid-2-1 > *:first-child { flex: 2 1 0; min-width: 0; }
+.grid-2-1 > *:last-child { flex: 1 1 0; min-width: 0; }
+.grid-1-2 { display: flex; gap: 6mm; margin: 3mm 0 5mm; }
+.grid-1-2 > *:first-child { flex: 1 1 0; min-width: 0; }
+.grid-1-2 > *:last-child { flex: 2 1 0; min-width: 0; }
+.grid-3 { display: flex; gap: 4mm; margin: 3mm 0 5mm; }
+.grid-3 > * { flex: 1 1 0; min-width: 0; }
+.row { display: flex; align-items: center; gap: 3mm; }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: 3mm; }
+.stack { display: flex; flex-direction: column; gap: 2.5mm; }
+
+/* Surface & Card Containers */
+.card {
+  background: #ffffff;
+  border: .5pt solid #dce2e6;
+  border-radius: 2.5mm;
+  padding: 3.5mm 4.5mm;
+  margin: 2.5mm 0;
+  break-inside: avoid;
+}
+.card-flat { background: transparent; border: 0; padding: 0; margin: 2mm 0; }
+.card-rule { border-top: 1.5pt solid #28695c; padding-top: 3mm; margin-top: 3mm; }
+
+/* Badges, Pills & Chips */
+.pill {
+  display: inline-block;
+  padding: 1mm 2.8mm;
+  background: #eff6f1;
+  color: #28695c;
+  border-radius: 999px;
+  font-size: 8.5pt;
+  font-weight: 600;
+  margin: 1mm 1.5mm 1mm 0;
+  line-height: 1.25;
+}
+.tag {
+  display: inline-block;
+  padding: 1mm 2.5mm;
+  background: #f1f3f5;
+  color: #52616e;
+  border: .4pt solid #dce2e6;
+  border-radius: 999px;
+  font-size: 8pt;
+  margin: 1mm 1.5mm 1mm 0;
+  line-height: 1.25;
+}
+
+/* Ranking Badges */
+.rank-badge {
+  display: inline-block;
+  width: 5mm;
+  height: 5mm;
+  line-height: 5mm;
+  text-align: center;
+  border-radius: 50%;
+  font-size: 7.5pt;
+  font-weight: 700;
+  color: #ffffff;
+  background: #65717d;
+  margin-right: 1.5mm;
+  vertical-align: middle;
+}
+.rank-1 { background: #d97706; }
+.rank-2 { background: #64748b; }
+.rank-3 { background: #b45309; }
+
+/* Stat Highlights */
+.stat-strip { display: flex; gap: 4mm; margin: 3mm 0 5mm; }
+.stat {
+  flex: 1;
+  background: #eff6f1;
+  border-left: 2.5pt solid #28695c;
+  padding: 2.5mm 3.5mm;
+  border-radius: 1.5mm;
+  break-inside: avoid;
+}
+.stat .stat-num { font-size: 16pt; font-weight: 700; color: #28695c; line-height: 1.1; }
+.stat .stat-label { font-size: 8pt; color: #65717d; margin-top: 1mm; }
+.stat .stat-unit { font-size: 9pt; font-weight: 400; opacity: 0.8; margin-left: 1mm; }</style></head>
+<body class="handout">
+  <div class="running-title">bilibili热点日报</div>
+  
+  <header class="document-header">
+    <h1>bilibili热点日报</h1>
+    
+    
+  </header>
+  
+  <main><h2><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTIgMkMxNCA4IDIwIDggMjAgMTVhOCA4IDAgMCAxLTE2IDBjMC00IDMtNyA1LTkgMCA0IDIgNSAzIDYgMi0zIDItNiAwLTEwWiIvPjwvc3ZnPg==" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> B站热点速递</h2>
+<blockquote>
+<p><strong>日期：2026年10月29日（星期四）</strong></p>
+</blockquote>
+<p>今日B站热搜与热门视频聚焦 <strong>重大时政</strong>、<strong>全球要闻</strong>、<strong>电竞赛事</strong>、<strong>游戏新品</strong> 与 <strong>生活娱乐</strong> 五大方向。</p>
+<h2><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJtMTIgMiAxMSA1djJIMVY3Wm0tOCA5aDN2OEg0Wm02IDBoNHY4aC00Wm03IDBoM3Y4aC0zWk0yIDIwaDIwdjJIMloiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 时政要闻</h2>
+<h3>1. 二十届五中全会公报</h3>
+<p><strong>热度：TOP 1</strong></p>
+<p>二十届五中全会今日公布公报，引发全民关注。会议围绕<strong>&quot;十五五&quot;规划建议</strong>、<strong>经济高质量发展</strong>、<strong>科技自立自强</strong>等核心议题展开，释放一系列重大政策信号。B站多个官方媒体解读视频播放量迅速破百万。</p>
+<ul>
+<li><strong>核心议题</strong>：&quot;十五五&quot;规划建议、高质量发展、科技自立自强</li>
+<li><strong>影响领域</strong>：经济、科技、民生</li>
+</ul>
+<h2><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTIgMWExMSAxMSAwIDEgMCAwIDIyIDExIDExIDAgMCAwIDAtMjJabTAgMiAzIDVIOVptLTUgN2gxMHY0SDdabTIgNmg2bC0zIDVaTTUgN2wxIDItMSA2LTEgMmE5IDkgMCAwIDEgMS0xMFptMTQgMGE5IDkgMCAwIDEgMSAxMGwtMS0yLTEtNloiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 全球热点</h2>
+<h3>2. 巴西总统候选人败选后逃往美国</h3>
+<p><strong>热度：TOP 3</strong></p>
+<p>巴西总统选举结果公布后，败选候选人连夜逃往美国引发国际震动。此事在B站引发大量时政解读视频，UP主们从历史、法律、国际关系等角度深度分析。</p>
+<h3>3. 解读西班牙高铁隐患</h3>
+<p><strong>热度：TOP 8</strong></p>
+<p>西班牙多段高铁线路出现严重安全隐患，引发欧洲广泛关注。UP主制作科普视频详解高铁技术原理及安全隐患成因。</p>
+<h2><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJtOCAyIDQgMiA0LTIgMSA0LTMgMmMzIDIgNyA3IDcgMTEgMCA0LTE4IDQtMTggMCAwLTQgNC05IDctMTFMNyA2Wm0xIDl2Mmg2di0yWm0wIDV2Mmg2di0yWiIvPjwvc3ZnPg==" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 民生关注</h2>
+<h3>4. 工资改发数字人民币有何变化</h3>
+<p><strong>热度：TOP 4</strong></p>
+<p>随着数字人民币推广加速，多地开始试点工资改发数字人民币。这一变化关乎每位打工人的钱包，B站财经UP主们纷纷制作科普视频，解读数字人民币的<strong>优势</strong>、<strong>隐私保护</strong>及<strong>使用便捷性</strong>。</p>
+<h2><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTIgMkMxNCA4IDIwIDggMjAgMTVhOCA4IDAgMCAxLTE2IDBjMC00IDMtNyA1LTkgMCA0IDIgNSAzIDYgMi0zIDItNiAwLTEwWiIvPjwvc3ZnPg==" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> B站热点速递（续）</h2>
+<h2><span class="pdf-symbol-label">[CROSSED SWORDS]</span> 电竞·游戏</h2>
+<h3>5. 【2026全球总决赛】LYON vs IG</h3>
+<p><strong><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNiAyaDEydjNoNXY0YzAgNC0zIDYtNyA2bC0yIDJ2M2g1djNINXYtM2g1di0zbC0yLTJjLTQgMC03LTItNy02VjVoNVptLTMgNXYyYzAgMiAxIDMgNCA0TDYgN1ptMTUgMC0xIDZjMy0xIDQtMiA0LTRWN1oiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 当日播放量：513万 · TOP 热门</strong></p>
+<p>2026英雄联盟全球总决赛今日打响！IG战队迎战欧洲劲旅LYON，全场高能操作不断，成为B站全站当日播放量最高视频。</p>
+<ul>
+<li><strong>赛事亮点</strong>：IG战队发挥出色，多波团战精彩至极</li>
+<li><strong>观赛氛围</strong>：弹幕刷屏，评论区讨论热烈</li>
+</ul>
+<h3>6. 《崩坏：星穹铁道》千星纪游PV：「有关星空的寓言集·其三」</h3>
+<p><strong><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNiA2aDEybDQgMTNoLTVsLTMtNGgtNGwtMyA0SDJabTEgM3YySDV2MmgydjJoMnYtMmgydi0ySDlWOVptOSAxdjNoM3YtM1oiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 播放量：274万 · UP主：崩坏星穹铁道</strong></p>
+<p>米哈游旗下爆款游戏《崩坏：星穹铁道》发布全新剧情PV，以&quot;星空&quot;为主题，讲述感人至深的星际寓言故事，画面精美、剧情催泪。</p>
+<h3>7. <img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTMgMSAzIDE0aDdsLTEgOUwyMiA5aC04WiIvPjwvc3ZnPg==" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block">《新 三 国 FUNK》<img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTMgMSAzIDE0aDdsLTEgOUwyMiA5aC04WiIvPjwvc3ZnPg==" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"></h3>
+<p><strong><span class="pdf-symbol-label">[MUSICAL NOTE]</span> 播放量：139万 · UP主：纽毕斯</strong></p>
+<p>创意十足的三国题材音乐作品，融合FUNK曲风与三国元素，节奏感爆棚，引发全网模仿热潮。</p>
+<h2><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTIgMWExMSAxMSAwIDEgMCAwIDIyIDExIDExIDAgMCAwIDAtMjJabS0xIDJ2OEgzYTkgOSAwIDAgMSAyLTVsNiA1VjhMNyA0YTkgOSAwIDAgMSA0LTFabTIgMGE5IDkgMCAwIDEgNCAxbC00IDR2M2g4YTkgOSAwIDAgMC0yLTVsLTYgNVptLTIgMTB2OGE5IDkgMCAwIDEtNC0xbDQtNHYtM0gzYTkgOSAwIDAgMCAyIDVsNi01Wm0yIDAgNiA1YTkgOSAwIDAgMCAyLTVoLTh2M2w0IDRhOSA5IDAgMCAxLTQgMVoiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 体育动态</h2>
+<h3>8. 热火赛季首胜结束四连败</h3>
+<p><strong><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTIgMWExMSAxMSAwIDEgMCAwIDIyIDExIDExIDAgMCAwIDAtMjJabS0xIDJ2OEgzYTkgOSAwIDAgMSAyLTVsNiA1VjhMNyA0YTkgOSAwIDAgMSA0LTFabTIgMGE5IDkgMCAwIDEgNCAxbC00IDR2M2g4YTkgOSAwIDAgMC0yLTVsLTYgNVptLTIgMTB2OGE5IDkgMCAwIDEtNC0xbDQtNHYtM0gzYTkgOSAwIDAgMCAyIDVsNi01Wm0yIDAgNiA1YTkgOSAwIDAgMCAyLTVoLTh2M2w0IDRhOSA5IDAgMCAxLTQgMVoiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 播放量：高热度</strong></p>
+<p>NBA迈阿密热火队迎来新赛季首胜，结束了开局四连败的低迷状态。球迷们在B站分享比赛精彩集锦，评论区一片欢呼。</p>
+<h3>9. 张展硕200自破全国记录</h3>
+<p><strong><span class="pdf-symbol-label">[SWIMMER]</span> 播放量：高热度</strong></p>
+<p>中国游泳小将张展硕在200米自由泳项目中打破全国记录，展现新生代游泳运动员的强劲实力。</p>
+<h2><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTIgMkMxNCA4IDIwIDggMjAgMTVhOCA4IDAgMCAxLTE2IDBjMC00IDMtNyA1LTkgMCA0IDIgNSAzIDYgMi0zIDItNiAwLTEwWiIvPjwvc3ZnPg==" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> B站热点速递（续）</h2>
+<h2><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMiA1aDIwdjE0SDJabTggM3Y4bDctNFoiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 娱乐·生活</h2>
+<h3>10. 环大露认领，刘冲斗娜娜，众星躲娜扎</h3>
+<p><strong><span class="pdf-symbol-label">[FACE WITH TEARS OF JOY]</span> 播放量：103万 · UP主：一只吐槽圆</strong></p>
+<p>近期红毯爆笑名场面合集，&quot;环大露&quot;、&quot;刘冲斗娜娜&quot;等名场面频出，明星们在红毯上的种种趣事引发观众捧腹大笑。</p>
+<h3>11. 喝可乐不打嗝小游戏~</h3>
+<p><strong><span class="pdf-symbol-label">[CUP WITH STRAW]</span> 播放量：146万 · UP主：瓜哥超爱玩QAQ</strong></p>
+<p>简单却极具魔性的小游戏挑战，喝可乐后尝试不打嗝完成一系列动作，搞笑程度拉满。</p>
+<h3>12. 【AI全民制作人】</h3>
+<p><strong><span class="pdf-symbol-label">[ELECTRIC LIGHT BULB]</span> 播放量：81万 · UP主：我是日行一扇</strong></p>
+<p>创意AI短片，以&quot;致和游戏一起长大的我们&quot;为主题，用AI技术还原玩家成长历程，引发广泛情感共鸣。</p>
+<h2><span class="pdf-symbol-label">[ROCKET]</span> 科技·军事</h2>
+<h3>13. 运-20B解锁一机两用</h3>
+<p><strong><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJtMTAgMiA0LTEgMSA4IDggNXYzbC04LTItMSA1IDMgMnYybC01LTEtNSAxdi0ybDMtMi0xLTUtOCAydi0zbDgtNVoiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 热度：高</strong></p>
+<p>运-20B运输机解锁新能力，实现&quot;一机两用&quot;的多用途改造，展现中国航空工业的最新突破。</p>
+<h3>14. 暗区突围手游版本PV：破局，战火重燃</h3>
+<p><strong><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNiA2aDEybDQgMTNoLTVsLTMtNGgtNGwtMyA0SDJabTEgM3YySDV2MmgydjJoMnYtMmgydi0ySDlWOVptOSAxdjNoM3YtM1oiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 播放量：88万 · UP主：暗区突围</strong></p>
+<p>《暗区突围》手游迎来重大版本更新，全新玩法与地图让老玩家回归热情高涨。</p>
+<h3>15. 《原神》米提亚角色PV——&quot;小小伎俩&quot;</h3>
+<p><strong><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNiA2aDEybDQgMTNoLTVsLTMtNGgtNGwtMyA0SDJabTEgM3YySDV2MmgydjJoMnYtMmgydi0ySDlWOVptOSAxdjNoM3YtM1oiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 播放量：74万 · UP主：原神</strong></p>
+<p>《原神》全新角色&quot;米提亚&quot;角色PV发布，技能创意十足，角色设计引人注目。</p>
+<table>
+<thead>
+<tr>
+<th>排名</th>
+<th>类别</th>
+<th>关键词</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>时政</td>
+<td>二十届五中全会</td>
+</tr>
+<tr>
+<td>2</td>
+<td>游戏</td>
+<td>LYON vs IG 总决赛</td>
+</tr>
+<tr>
+<td>3</td>
+<td>全球</td>
+<td>巴西总统选举</td>
+</tr>
+<tr>
+<td>4</td>
+<td>民生</td>
+<td>数字人民币</td>
+</tr>
+<tr>
+<td>5</td>
+<td>体育</td>
+<td>热火首胜 / 游泳记录</td>
+</tr>
+</tbody>
+</table>
+<h2><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMyAyMVYzaDJ2MTZoMTd2MlpNNyAxNnYtNWgzdjVabTUgMFY3aDN2OVptNSAwVjNoM3YxM1oiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 今日热点趋势总结</h2>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>分析</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>时政热度空前</strong></td>
+<td>二十届五中全会公报成为全网第一热搜，B站官方解读视频播放量集体破百万</td>
+</tr>
+<tr>
+<td><strong>电竞引爆全站</strong></td>
+<td>IG战队全球总决赛对战LYON，播放量达513万，霸榜全站第一</td>
+</tr>
+<tr>
+<td><strong>游戏内容强势</strong></td>
+<td>《原神》《崩坏：星穹铁道》《暗区突围》新品PV齐发，游戏区全面开花</td>
+</tr>
+<tr>
+<td><strong>生活娱乐轻松向</strong></td>
+<td>红毯盘点、小游戏挑战等轻松内容持续高播放量，娱乐区活力满满</td>
+</tr>
+<tr>
+<td><strong>体育双星闪耀</strong></td>
+<td>NBA热火首胜 + 游泳小将破纪录，体育区热度持续走高</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>一句话总结</strong>：今日B站是&quot;时政+电竞+游戏&quot;三驾马车并驾齐驱的一天。二十届五中全会引发全民学习热潮，IG战队全球总决赛点燃电竞激情，各大游戏新品PV轮番上线，娱乐生活内容同样精彩不断。</p>
+</blockquote>
+<p><em>数据来源：Bilibili 实时热搜榜 / 热门视频排行榜</em><br />
+<em>整理时间：2026年10月29日 20:38</em>
+<em>祝您阅读愉快！</em></p></main>
+</body>
+</html>

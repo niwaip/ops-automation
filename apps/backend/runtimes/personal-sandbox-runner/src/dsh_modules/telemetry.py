@@ -6,7 +6,7 @@ import contextvars
 import json
 import re
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict, Any, List, Tuple, Optional, Set
 from .response_observability import response_fingerprint
 
 
@@ -167,10 +167,23 @@ def strip_dsh_markers(text: str, tags: List[str]) -> str:
     return res
 
 
+def _merge_usage_details(previous, incoming):
+    """Sum numeric provider details recursively; keep nonnumeric metadata verbatim."""
+    if isinstance(incoming, dict):
+        result = dict(previous) if isinstance(previous, dict) else {}
+        for key, value in incoming.items():
+            result[key] = _merge_usage_details(result.get(key), value)
+        return result
+    if type(incoming) in (int, float):
+        return (previous if type(previous) in (int, float) else 0) + incoming
+    return previous if incoming is None else incoming
+
+
 @dataclass
 class TelemetryStats:
     """Tracks execution latency, tool calls, and token usage."""
     ttft_ms: float = 0.0
+    ttft_scope: str = "model_request"
     total_ms: float = 0.0
     wall_clock_ms: float = 0.0
     tool_invocations: int = 0
@@ -184,9 +197,20 @@ class TelemetryStats:
     model_responses: List[Dict[str, Any]] = field(default_factory=list)
     answer_validation: Dict[str, Any] = field(default_factory=dict)
     calls_ledger: List[Dict[str, Any]] = field(default_factory=list)
+    _accounted_call_ids: Set[str] = field(default_factory=set, init=False, repr=False)
+    _response_call_ids: Set[str] = field(default_factory=set, init=False, repr=False)
+    _journal: Any = field(default=None, init=False, repr=False)
 
     def __post_init__(self):
         set_active_telemetry(self)
+
+    def bind_journal(self, history_file) -> None:
+        from .execution_journal import ExecutionJournal
+        self._journal = ExecutionJournal(history_file)
+
+    def checkpoint(self, event: str, data: Any) -> None:
+        if self._journal:
+            self._journal.append(event, data)
 
     def record_auxiliary_call(
         self,
@@ -194,10 +218,20 @@ class TelemetryStats:
         usage: Optional[Dict[str, Any]] = None,
         total_ms: float = 0.0,
         model: str = "default",
-        span_id: Optional[str] = None
+        span_id: Optional[str] = None,
+        call_id: Optional[str] = None
     ) -> None:
         """Records an auxiliary LLM call (intent, gate_review, filter_conformance) into the unified ledger."""
-        self.auxiliary_invocations += 1
+        self._record_call(purpose, usage, total_ms, model, span_id, call_id, auxiliary=True)
+
+    def _record_call(self, purpose, usage, total_ms, model, span_id, call_id, *, auxiliary=False):
+        """One accounting owner for both layers; equal usage never implies equal calls."""
+        if call_id:
+            if call_id in self._accounted_call_ids:
+                return
+            self._accounted_call_ids.add(call_id)
+        if auxiliary:
+            self.auxiliary_invocations += 1
         self.llm_invocations += 1
         self.total_ms += total_ms
         if usage and isinstance(usage, dict):
@@ -212,19 +246,26 @@ class TelemetryStats:
                     self.tokens[k] = self.tokens.get(k, 0) + int(usage[k])
             for k, v in usage.items():
                 if k not in ["prompt_tokens", "completion_tokens", "total_tokens"]:
-                    self.tokens[k] = v
+                    self.tokens[k] = _merge_usage_details(self.tokens.get(k), v)
         self.calls_ledger.append({
             "purpose": purpose,
             "model": model,
             "total_ms": round(total_ms, 2),
             "usage": usage or {},
-            "span_id": span_id
+            "span_id": span_id,
+            "call_id": call_id
         })
+        self.checkpoint('model_completed', self.calls_ledger[-1])
 
     def record_guard(self, guard: str, action: str, reason: Any = None) -> None:
         self.guard_decisions.append({"guard":guard,"action":action,"reason":reason})
+        self.checkpoint('guard', self.guard_decisions[-1])
 
     def record_execution_result(self, result: Any) -> None:
+        self.checkpoint('tool_completed', {
+            'status': result.status, 'error': result.error, 'provenance': result.provenance,
+            'data_preview': str(result.data)[:4000],
+        })
         if not self.tool_calls_detail:
             return
         detail = self.tool_calls_detail[-1]
@@ -242,35 +283,22 @@ class TelemetryStats:
         if not isinstance(llm_res, dict):
             return
 
-        self.llm_invocations += 1
-        self.total_ms += llm_res.get("total_ms", 0)
+        call_id = llm_res.get("call_id")
+        self._record_call(purpose, llm_res.get("usage"), llm_res.get("total_ms", 0),
+                          llm_res.get("model", "default"), llm_res.get("span_id"), call_id)
         if is_first_round:
             self.ttft_ms = llm_res.get("ttft_ms", 0)
-        new_usage = llm_res.get("usage")
-        if new_usage and isinstance(new_usage, dict):
-            if not self.tokens:
-                self.tokens = {
-                    "prompt_tokens": 0,
-                    "completion_tokens": 0,
-                    "total_tokens": 0
-                }
-            for k in ["prompt_tokens", "completion_tokens", "total_tokens"]:
-                if k in new_usage and isinstance(new_usage[k], (int, float)):
-                    self.tokens[k] = self.tokens.get(k, 0) + int(new_usage[k])
-            for k, v in new_usage.items():
-                if k not in ["prompt_tokens", "completion_tokens", "total_tokens"]:
-                    self.tokens[k] = v
+            self.ttft_scope = "pdf_content_model" if purpose == "pdf_content" else "model_request"
+        # An auxiliary entry owns accounting, while the caller still supplies
+        # the response fingerprint, finish reason and first-round timing.
+        if call_id:
+            if call_id in self._response_call_ids:
+                return
+            self._response_call_ids.add(call_id)
         fr = llm_res.get("finish_reason") or "unknown"
         self.finish_reason = fr
         self.round_finish_reasons.append(fr)
         self.model_responses.append(response_fingerprint(llm_res))
-        self.calls_ledger.append({
-            "purpose": purpose,
-            "model": llm_res.get("model", "default"),
-            "total_ms": round(llm_res.get("total_ms", 0), 2),
-            "usage": new_usage or {},
-            "span_id": llm_res.get("span_id")
-        })
 
     def record_tool_call(
         self,
@@ -303,6 +331,7 @@ class TelemetryStats:
         effective_duration = self.wall_clock_ms if self.wall_clock_ms > 0 else self.total_ms
         data = {
             "ttftMs": self.ttft_ms,
+            "ttftScope": self.ttft_scope,
             "durationMs": round(effective_duration, 2),
             "llmDurationMs": round(self.total_ms, 2),
             "toolCallsCount": self.tool_invocations,
@@ -322,6 +351,7 @@ class TelemetryStats:
     def emit_metrics_event(self) -> None:
         """Prints DSH protocol metric event to stdout."""
         data_str = self.to_metrics_json()
+        self.checkpoint('metrics', json.loads(data_str))
         print(f"\n{format_dsh_marker('METRICS', data_str)}", flush=True)
 
     @staticmethod
@@ -359,4 +389,7 @@ class TelemetryStats:
     def emit_final_output(text: str) -> None:
         """Prints final clean answer delimiter with length prefix and legacy compatibility."""
         out_str = str(text) if text is not None else ""
+        tracker = get_active_telemetry()
+        if tracker:
+            tracker.checkpoint('finished', {'answer_chars': len(out_str)})
         print(f"\n{format_dsh_marker('FINAL_OUTPUT', out_str)}\n<<<DSH_FINAL_OUTPUT>>>\n" + out_str, flush=True)

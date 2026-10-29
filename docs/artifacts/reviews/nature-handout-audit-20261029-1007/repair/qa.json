@@ -1,0 +1,89 @@
+{
+  "valid": true,
+  "errors": [],
+  "page_count": 2,
+  "bytes": 324773,
+  "sha256": "37f59c3325dcc5eb4052f80a68e7c505bdd60cc5930051a3cc3dcc1498bc3fbe",
+  "pages": [
+    {
+      "page": 1,
+      "width_pt": 595.28,
+      "height_pt": 841.89,
+      "text_chars": 332,
+      "text": "城市自然观察手册\n观察、记录与分享\n阅读与实践\n欢迎来到大自然！在这本小手册里，你将学习如何在城市中发现美、记录趣。\n温馨提示\n• 紧跟大人，注意安全\n• 只看不摘，爱护花草和小动物\n• 保持安静，更容易听到鸟叫、看到昆虫\n叶片示意图\n准备清单\n• [ ] 放大镜：观察叶子纹理和小虫子\n• [ ] 笔记本和笔：随时记录发现\n• [ ] 观察记录卡：用表格记录信息\n• [ ] 水壶和帽子：防晒补水\n观察记录表\n观察对象 可以记录什么 一个小提示\n** 树木** 叶子形状、树干颜色、有无果实 摸摸树皮，感觉粗糙还是光滑\n** 鸟类** 羽毛颜色、叫声、在做什么 保持安静，远远观察不打扰\n** 天空** 云朵形状、颜色、太阳位置 找开阔地，抬头看很久\n1 / 2",
+      "outside_page_glyphs": 0,
+      "fonts": [
+        {
+          "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+          "embedded": true
+        },
+        {
+          "name": "/TSPJMR+Noto-Sans-CJK-SC",
+          "embedded": true
+        },
+        {
+          "name": "/KPBOQL+Noto-Sans-CJK-SC-Bold-Oblique",
+          "embedded": true
+        }
+      ]
+    },
+    {
+      "page": 2,
+      "width_pt": 595.28,
+      "height_pt": 841.89,
+      "text_chars": 218,
+      "text": "城市自然观察手册\n用简单的语言描述你看到的、听到的、感受到的。不用很长，只要写清楚就好。\n引导问题\n• 你观察到的东西是什么颜色的？形状像什么？\n• 你听到了什么声音？是什么发出的？\n• 如果你是小动物，你会怎么描述这个地方？\n交流与分享\n• 把观察记录讲给同学听\n• 和爸爸妈妈分享你的发现\n• 把有趣发现画成海报贴在教室\n观察记录卡\n• 时间天气：___\n• 地 点：___\n• 有趣发现：___\n• 待探索问题：___\n2 / 2",
+      "outside_page_glyphs": 0,
+      "fonts": [
+        {
+          "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+          "embedded": true
+        },
+        {
+          "name": "/TSPJMR+Noto-Sans-CJK-SC",
+          "embedded": true
+        },
+        {
+          "name": "/KPBOQL+Noto-Sans-CJK-SC-Bold-Oblique",
+          "embedded": true
+        }
+      ]
+    }
+  ],
+  "visual_review": "passed",
+  "checks": [
+    "parse",
+    "page_range",
+    "text_coverage",
+    "extraction",
+    "page_bounds",
+    "embedded_fonts"
+  ],
+  "template": "handout",
+  "theme": "warm",
+  "fonts": [
+    {
+      "family": "Noto Sans CJK SC",
+      "style": "Regular",
+      "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+    },
+    {
+      "family": "Noto Sans CJK SC",
+      "style": "Bold",
+      "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
+    }
+  ],
+  "warnings": [],
+  "output": "/workspace/城市自然观察手册.pdf",
+  "timings_ms": {
+    "render": 275.32,
+    "inspect": 58.87,
+    "preview": 284.66,
+    "total": 674.47
+  },
+  "previews": [
+    "/workspace/.pdf-preview/城市自然观察手册/401b16579a234f1b93e9be6df31cf241/page-1.png",
+    "/workspace/.pdf-preview/城市自然观察手册/401b16579a234f1b93e9be6df31cf241/page-2.png"
+  ],
+  "source": "/workspace/.pdf-source-401b16579a234f1b93e9be6df31cf241.md"
+}

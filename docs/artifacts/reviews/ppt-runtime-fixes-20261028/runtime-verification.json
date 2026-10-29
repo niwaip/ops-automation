@@ -1,0 +1,10 @@
+{
+  "uid": 1001,
+  "pptx_version": "1.0.2",
+  "pptx_module": "/usr/local/lib/python3.11/dist-packages/pptx/__init__.py",
+  "native_pptx_roundtrip_pages": 4,
+  "test_count": 71,
+  "test_failures": 0,
+  "test_errors": 0,
+  "source_hashes_verified": true
+}

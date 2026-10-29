@@ -1,0 +1,12 @@
+{
+  "session_id": "chat-session-1793180826543-nqx1j95c",
+  "turn_id": "a49b3a3d504a43e5bc744fbad0db378c",
+  "status": "failed",
+  "transitions": [
+    "calculating",
+    "failed",
+    "failed"
+  ],
+  "attempts": 0,
+  "last_error": "chart_metric_ambiguous"
+}

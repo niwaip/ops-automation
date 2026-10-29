@@ -1,0 +1,89 @@
+{
+  "valid": true,
+  "errors": [],
+  "page_count": 2,
+  "bytes": 470574,
+  "sha256": "1e45d2202b9af2dcbcf960cb6674f0d8d74ab5cb78d48d3e10244d70464f8057",
+  "pages": [
+    {
+      "page": 1,
+      "width_pt": 595.28,
+      "height_pt": 841.89,
+      "text_chars": 415,
+      "text": "原失败稿字形检查\nB站每日热点速报 · 2026年10月29日\n全站热搜 TOP 8\n排名 热搜话题 热度标签\n1 二十届五中全会公报 热搜1 · 时政\n2 热火赛季首胜 结束四连败 NBA · 体育\n3 巴西总统候选人败选后逃往美国 国际突发\n4 工资改发数字人民币有何变化 民生政策\n5 运-20B解锁一机两用 军事科技\n6 解读西班牙高铁隐患 [ES] 国际关注\n7 记录西藏那曲震区安置现场 民生纪实\n8 小米SU7 Ultra纽北圈速刷新纪 汽车科技\n录\n游戏区热门视频\n排名 视频标题 播放量 分区\n1 【全球总决赛】LYON 503万播放 电竞\nvs IG\n2 崩坏：星穹铁道 千星纪 266万播放 米哈游\n游PV\n3 伊莫S1赛季PV发布 180万播放 新游情报\n综合热门\n排名 视频标题 播放量 分区\n1 喝可乐不打嗝小游戏~ 141万播放 生活测试\n2 新 三 国 FUNK 134万播放 创意音乐\n1 / 2",
+      "outside_page_glyphs": 0,
+      "fonts": [
+        {
+          "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+          "embedded": true
+        },
+        {
+          "name": "/TSPJMR+Noto-Sans-CJK-SC",
+          "embedded": true
+        },
+        {
+          "name": "/BDBMVJ+Noto-Sans-CJK-SC-Oblique",
+          "embedded": true
+        }
+      ]
+    },
+    {
+      "page": 2,
+      "width_pt": 595.28,
+      "height_pt": 841.89,
+      "text_chars": 238,
+      "text": "原失败稿字形检查\n排名 视频标题 播放量 分区\n3 《原神》米提亚角色PV 72万播放 米哈游\n4 红毯爆笑盘点 92万播放 娱乐盘点\n今日趋势洞察\n· 时政话题霸榜 — 二十届五中全会引发全民热议，占据热搜TOP1\n· 游戏区热度高涨 — S赛直播+新游PV，游戏相关占据大量版面\n· 国际事件突破圈层 — 巴西大选突发状况引发平台级讨论\n· 科技民生双关注 — 数字人民币+运-20B+小米汽车，科技与民生并行\n数据来源：B站热搜榜 · 2026年10月29日\n2 / 2",
+      "outside_page_glyphs": 0,
+      "fonts": [
+        {
+          "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+          "embedded": true
+        },
+        {
+          "name": "/TSPJMR+Noto-Sans-CJK-SC",
+          "embedded": true
+        },
+        {
+          "name": "/BDBMVJ+Noto-Sans-CJK-SC-Oblique",
+          "embedded": true
+        }
+      ]
+    }
+  ],
+  "visual_review": "required",
+  "checks": [
+    "parse",
+    "page_range",
+    "text_coverage",
+    "extraction",
+    "page_bounds",
+    "embedded_fonts"
+  ],
+  "template": "handout",
+  "theme": "warm",
+  "fonts": [
+    {
+      "family": "Noto Sans CJK SC",
+      "style": "Regular",
+      "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+    },
+    {
+      "family": "Noto Sans CJK SC",
+      "style": "Bold",
+      "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
+    }
+  ],
+  "warnings": [],
+  "output": "/out/original-glyph-check.pdf",
+  "timings_ms": {
+    "render": 156.56,
+    "inspect": 44.55,
+    "preview": 177.02,
+    "total": 398.08
+  },
+  "previews": [
+    "/out/original/page-1.png",
+    "/out/original/page-2.png"
+  ],
+  "source": null
+}

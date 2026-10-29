@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>竞选班干部 - 小明</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .slideshow-container {
+            width: 900px;
+            height: 560px;
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .slide {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
+            transform: scale(0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 60px 80px;
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .slide-1 { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        .slide-2 { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .slide-3 { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .slide-4 { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+
+        .slide-1::before { content: ''; position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; background: rgba(255,255,255,0.15); border-radius: 50%; }
+        .slide-1::after { content: ''; position: absolute; bottom: -30px; left: -30px; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%; }
+
+        .slide h1 {
+            font-size: 56px;
+            color: #fff;
+            text-shadow: 2px 4px 8px rgba(0,0,0,0.15);
+            margin-bottom: 10px;
+            font-weight: 900;
+            letter-spacing: 4px;
+        }
+
+        .slide h2 {
+            font-size: 42px;
+            color: #fff;
+            text-shadow: 2px 4px 8px rgba(0,0,0,0.15);
+            margin-bottom: 30px;
+            font-weight: 900;
+        }
+
+        .subtitle {
+            font-size: 28px;
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 40px;
+            font-weight: 700;
+        }
+
+        .intro-box {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 30px 40px;
+            max-width: 600px;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .intro-box p {
+            font-size: 20px;
+            color: #fff;
+            line-height: 2.2;
+            text-align: left;
+        }
+
+        .honor-list, .goal-list {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .honor-item, .goal-item {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 25px 30px;
+            border: 2px solid rgba(255,255,255,0.3);
+            text-align: center;
+            width: 250px;
+            transition: transform 0.3s;
+        }
+
+        .honor-item:hover, .goal-item:hover { transform: translateY(-5px); }
+
+        .honor-item .icon, .goal-item .num {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .goal-item .num {
+            font-size: 36px;
+            font-weight: 900;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            line-height: 60px;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+
+        .honor-item .text, .goal-item .text {
+            font-size: 18px;
+            color: #fff;
+            line-height: 1.8;
+        }
+
+        .slogan-box {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px 50px;
+            border: 3px solid rgba(255,255,255,0.4);
+            margin-bottom: 25px;
+        }
+
+        .slogan {
+            font-size: 38px;
+            color: #fff;
+            font-weight: 900;
+            line-height: 1.5;
+            text-align: center;
+            text-shadow: 2px 3px 6px rgba(0,0,0,0.1);
+        }
+
+        .vote-box {
+            background: rgba(255,255,255,0.25);
+            border-radius: 50px;
+            padding: 15px 40px;
+            margin-bottom: 20px;
+            border: 2px solid rgba(255,255,255,0.4);
+        }
+
+        .vote-box span {
+            font-size: 24px;
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .thanks {
+            font-size: 26px;
+            color: rgba(255,255,255,0.9);
+            font-weight: 700;
+        }
+
+        .nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.25);
+            border: 2px solid rgba(255,255,255,0.4);
+            color: #fff;
+            font-size: 24px;
+            padding: 12px 18px;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 10;
+            transition: all 0.3s;
+            backdrop-filter: blur(5px);
+        }
+
+        .nav-btn:hover { background: rgba(255,255,255,0.4); transform: translateY(-50%) scale(1.1); }
+        .nav-btn.prev { left: 15px; }
+        .nav-btn.next { right: 15px; }
+
+        .page-indicator {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            z-index: 10;
+        }
+
+        .page-dot {
+            width: 14px;
+            height: 14px;
+            background: rgba(255,255,255,0.35);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid rgba(255,255,255,0.5);
+        }
+
+        .page-dot.active { background: #fff; transform: scale(1.2); border-color: #fff; }
+        .page-dot:hover { background: rgba(255,255,255,0.7); }
+
+        .slide-label {
+            position: absolute;
+            top: 15px;
+            left: 25px;
+            font-size: 13px;
+            color: rgba(255,255,255,0.6);
+            font-weight: 700;
+            letter-spacing: 1px;
+            z-index: 5;
+        }
+
+        .bg-emoji { position: absolute; font-size: 100px; opacity: 0.08; }
+        .slide-1 .bg-emoji { top: 20px; right: 30px; }
+        .slide-2 .bg-emoji { top: 15px; right: 25px; }
+        .slide-3 .bg-emoji { top: 15px; right: 25px; }
+        .slide-4 .bg-emoji { bottom: 20px; right: 20px; font-size: 120px; }
+    </style>
+</head>
+<body>
+    <div class="slideshow-container">
+        <div class="slide-label">竞选班干部</div>
+
+        <!-- 第1页：自我介绍 -->
+        <div class="slide slide-1 active" id="slide1">
+            <div class="bg-emoji">🎒</div>
+            <h1>竞选班干部</h1>
+            <div class="subtitle">姓名：小明 &nbsp;|&nbsp; 班级：五年级二班</div>
+            <div class="intro-box">
+                <p>
+                    ✨ 大家好！我性格开朗、乐观向上<br>
+                    📖 我热爱学习、喜欢阅读各类书籍<br>
+                    🏃 我积极参加体育运动，强健体魄<br>
+                    🤝 我乐于助人，关心每一位同学
+                </p>
+            </div>
+        </div>
+
+        <!-- 第2页：个人荣誉 -->
+        <div class="slide slide-2" id="slide2">
+            <div class="bg-emoji">🏆</div>
+            <h2>🏅 个人荣誉</h2>
+            <div class="honor-list">
+                <div class="honor-item">
+                    <div class="icon">🌟</div>
+                    <div class="text">校级<strong>"三好学生"</strong><br>2024—2025学年</div>
+                </div>
+                <div class="honor-item">
+                    <div class="icon">📚</div>
+                    <div class="text"><strong>"阅读之星"</strong><br>连续6个月获选</div>
+                </div>
+                <div class="honor-item">
+                    <div class="icon">🏅</div>
+                    <div class="text">校运动会<br><strong>短跑比赛第二名</strong></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第3页：竞选目标 -->
+        <div class="slide slide-3" id="slide3">
+            <div class="bg-emoji">🎯</div>
+            <h2>🎯 竞选目标</h2>
+            <div class="goal-list">
+                <div class="goal-item">
+                    <div class="num">1</div>
+                    <div class="text">做<strong>老师的小帮手</strong><br>协助管理班级纪律</div>
+                </div>
+                <div class="goal-item">
+                    <div class="num">2</div>
+                    <div class="text">做<strong>同学的好伙伴</strong><br>帮助有困难的同学</div>
+                </div>
+                <div class="goal-item">
+                    <div class="num">3</div>
+                    <div class="text">组织<strong>有趣班级活动</strong><br>让大家共同进步</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第4页：竞选宣言 -->
+        <div class="slide slide-4" id="slide4">
+            <div class="bg-emoji">🎉</div>
+            <h2>💪 竞选宣言</h2>
+            <div class="slogan-box">
+                <div class="slogan">选我当班干部，<br>班级更精彩！</div>
+            </div>
+            <div class="vote-box">
+                <span>🗳️ 请大家支持我，投我一票！</span>
+            </div>
+            <div class="thanks">❤️ 谢谢大家的聆听！❤️</div>
+        </div>
+
+        <button class="nav-btn prev" onclick="changeSlide(-1)">◀</button>
+        <button class="nav-btn next" onclick="changeSlide(1)">▶</button>
+
+        <div class="page-indicator">
+            <div class="page-dot active" onclick="goToSlide(0)"></div>
+            <div class="page-dot" onclick="goToSlide(1)"></div>
+            <div class="page-dot" onclick="goToSlide(2)"></div>
+            <div class="page-dot" onclick="goToSlide(3)"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const totalSlides = 4;
+        const slides = document.querySelectorAll('.slide');
+        const dots = document.querySelectorAll('.page-dot');
+
+        function goToSlide(index) {
+            slides[currentSlide].classList.remove('active');
+            dots[currentSlide].classList.remove('active');
+            currentSlide = index;
+            slides[currentSlide].classList.add('active');
+            dots[currentSlide].classList.add('active');
+        }
+
+        function changeSlide(direction) {
+            let next = currentSlide + direction;
+            if (next < 0) next = totalSlides - 1;
+            if (next >= totalSlides) next = 0;
+            goToSlide(next);
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') changeSlide(-1);
+            else if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') changeSlide(1);
+        });
+
+        let autoPlay = setInterval(() => changeSlide(1), 5000);
+        document.querySelector('.slideshow-container').addEventListener('mouseenter', () => clearInterval(autoPlay));
+        document.querySelector('.slideshow-container').addEventListener('mouseleave', () => { autoPlay = setInterval(() => changeSlide(1), 5000); });
+    </script>
+</body>
+</html>

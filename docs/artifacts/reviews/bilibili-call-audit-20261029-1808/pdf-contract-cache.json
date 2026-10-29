@@ -1,0 +1,11 @@
+{
+  "title": "Bilibili 今日热点",
+  "subtitle": null,
+  "author": null,
+  "template": "handout",
+  "theme": "slate",
+  "min_pages": 1,
+  "max_pages": 1,
+  "cover": false,
+  "output_path": "Bilibili今日热点.pdf"
+}

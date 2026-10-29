@@ -41,6 +41,7 @@ import { SaveWorkflowAction } from './workflow-save/SaveWorkflowAction';
 import { SaveToWorkspaceAction } from './workspace-save/SaveToWorkspaceAction';
 import { SaveToTodoAction } from './todo-save/SaveToTodoAction';
 import { MessageFeedbackActions } from './feedback/MessageFeedbackActions';
+import { ChatDeliveryPanel } from './ChatDeliveryPanel';
 import { CollapsibleMessageContent } from './CollapsibleMessageContent';
 import '../ChatMessage.css';
 import styles from '../pages/ChatPage.module.css';
@@ -445,6 +446,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
           {message.role === 'assistant' &&
           message.isStreaming &&
           !hasTaskCard &&
+          !(message.metadata?.mode === 'chat' && hasProgressLogs) &&
           !(message.metadata?.mode === 'task' && hasProgressLogs) &&
           realGeneratedLength === 0 ? (
             <div style={{ margin: '4px 0 6px 0' }}>
@@ -481,6 +483,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
               </div>
             </CollapsibleMessageContent>
           ) : null}
+          <ChatDeliveryPanel message={message} />
         </div>
         <div className={`${styles['user-chat-message-footer']} ${styles[`role-${message.role}`] || ''}`}>
           <div className={`${styles['user-chat-message-meta']} ${styles[`role-${message.role}`] || ''}`}>

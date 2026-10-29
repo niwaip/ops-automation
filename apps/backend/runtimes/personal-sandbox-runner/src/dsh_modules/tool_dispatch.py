@@ -201,6 +201,8 @@ def dispatch_tool_calls(
             status = "loop_intercepted"
             telemetry.record_tool_call(tool_name=canonical_name, params=t_params, status=status)
         else:
+            telemetry.checkpoint('tool_started', {'name': canonical_name, 'tool_call_id': t_id,
+                                                'round': round_idx})
             try:
                 domain_scope = (analysis_domain_scope(last_user_prompt) if canonical_name in {
                     'analyze_spreadsheet', 'aggregate_spreadsheet',
@@ -211,9 +213,12 @@ def dispatch_tool_calls(
                 status = "error" if error_fn(tool_res) else "success"
                 executed_calls_history.append(call_sig if status == "success" else err_call_sig)
                 telemetry.record_tool_call(tool_name=canonical_name, params=t_params, status=status)
-            except Exception:
+            except Exception as error:
                 executed_calls_history.append(err_call_sig)
                 telemetry.record_tool_call(tool_name=canonical_name, params=t_params, status="error")
+                telemetry.record_execution_result(ToolResult.error(
+                    'tool_exception', str(error)[:4000],
+                    provenance={'tool': canonical_name, 'tool_call_id': t_id, 'round': round_idx}))
                 raise
 
         print(f"✓ 工具 [{canonical_name}] 执行完成", flush=True)

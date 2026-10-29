@@ -204,6 +204,11 @@ export class LockService {
     return released;
   }
 
+  async extendSandboxLock(userId: string, token: string, ttlSeconds: number): Promise<boolean> {
+    const key = `lock:sandbox:exec:${userId.trim().toLowerCase()}`;
+    return (await this.redisService.eval(SAFE_EXTEND_SCRIPT, [key], [token, String(ttlSeconds)])) === 1;
+  }
+
   /**
    * Forcibly release sandbox execution lock regardless of token (e.g. on task cancellation, stop or timeout)
    */

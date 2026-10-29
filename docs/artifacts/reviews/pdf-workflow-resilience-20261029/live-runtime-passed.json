@@ -1,0 +1,108 @@
+{
+  "page_count": 3,
+  "reviews": [
+    {
+      "schema_version": 1,
+      "status": "success",
+      "data": {
+        "kind": "pdf_page_review",
+        "file_path": "/workspace/.dsh/pdf-engineering-check/diagnostic.pdf",
+        "sha256": "f4640a034ef27e472fabd251c8fd95a28b88a0a76a66f8a3aba94e0c0f42242c",
+        "page": 1,
+        "evidence_id": "pdf:f4640a034ef27e472fabd251c8fd95a28b88a0a76a66f8a3aba94e0c0f42242c:page:1",
+        "published": false
+      },
+      "error": null,
+      "provenance": {
+        "tool": "inspect_pdf_page",
+        "execution_origin": "runtime_workflow",
+        "round": 0,
+        "page": 1
+      },
+      "text_representation": "【文档/图片 (page-1.png) 视觉分析与内容识别结果】:\nPASS\nOPTIONAL: 文档下半部分留白超过一半，建议扩充更多热点话题或增加视觉元素以充实版面。\n请继续检查其他页。"
+    },
+    {
+      "schema_version": 1,
+      "status": "success",
+      "data": {
+        "kind": "pdf_page_review",
+        "file_path": "/workspace/.dsh/pdf-engineering-check/diagnostic.pdf",
+        "sha256": "f4640a034ef27e472fabd251c8fd95a28b88a0a76a66f8a3aba94e0c0f42242c",
+        "page": 2,
+        "evidence_id": "pdf:f4640a034ef27e472fabd251c8fd95a28b88a0a76a66f8a3aba94e0c0f42242c:page:2",
+        "published": false
+      },
+      "error": null,
+      "provenance": {
+        "tool": "inspect_pdf_page",
+        "execution_origin": "runtime_workflow",
+        "round": 0,
+        "page": 2
+      },
+      "text_representation": "【文档/图片 (page-2.png) 视觉分析与内容识别结果】:\nPASS\nOPTIONAL: 建议增加页眉的视觉层次感，当前页码与标题字号过小，难以在A4幅面上与正文形成良好的视觉平衡。\nOPTIONAL: 列表项序号采用“数字·标题”格式，建议统一为“数字+标题”或“标题前数字”格式以增强美观度。\n请继续检查其他页。"
+    },
+    {
+      "schema_version": 1,
+      "status": "success",
+      "data": {
+        "kind": "pdf_page_review",
+        "file_path": "/workspace/.dsh/pdf-engineering-check/diagnostic.pdf",
+        "sha256": "f4640a034ef27e472fabd251c8fd95a28b88a0a76a66f8a3aba94e0c0f42242c",
+        "page": 3,
+        "evidence_id": "pdf:f4640a034ef27e472fabd251c8fd95a28b88a0a76a66f8a3aba94e0c0f42242c:page:3",
+        "published": true
+      },
+      "error": null,
+      "provenance": {
+        "tool": "inspect_pdf_page",
+        "execution_origin": "runtime_workflow",
+        "round": 0,
+        "page": 3
+      },
+      "text_representation": "【文档/图片 (page-3.png) 视觉分析与内容识别结果】:\nPASS\n全部页面通过，已发布：/workspace/.dsh/pdf-engineering-check/diagnostic.pdf"
+    }
+  ],
+  "final_text": "已生成，并检查内容、分页、字体和逐页预览：diagnostic.pdf（3 页）。",
+  "published": true,
+  "calls": [
+    {
+      "purpose": "pdf_page_review",
+      "model": "qwen36-35b-a3b",
+      "total_ms": 9100.55,
+      "usage": {
+        "prompt_tokens": 1297,
+        "total_tokens": 1325,
+        "completion_tokens": 28,
+        "prompt_tokens_details": null
+      },
+      "span_id": null,
+      "call_id": "0915514dced14b9ba132f21ae708ee44"
+    },
+    {
+      "purpose": "pdf_page_review",
+      "model": "qwen36-35b-a3b",
+      "total_ms": 4020.08,
+      "usage": {
+        "prompt_tokens": 1297,
+        "total_tokens": 1369,
+        "completion_tokens": 72,
+        "prompt_tokens_details": null
+      },
+      "span_id": null,
+      "call_id": "7cd221673eea48e58a692633069c72c8"
+    },
+    {
+      "purpose": "pdf_page_review",
+      "model": "qwen36-35b-a3b",
+      "total_ms": 2428.37,
+      "usage": {
+        "prompt_tokens": 1297,
+        "total_tokens": 1299,
+        "completion_tokens": 2,
+        "prompt_tokens_details": null
+      },
+      "span_id": null,
+      "call_id": "7e45647f72324bd39cb35327ad95b456"
+    }
+  ]
+}

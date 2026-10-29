@@ -159,14 +159,15 @@ def extract_generated_workbook_totals(
     for fname in os.listdir(workspace_dir):
         if fname.lower().endswith((".xlsx", ".xlsm")) and not fname.startswith("."):
             fpath = ws_path / fname
-            if is_protected_session_file(fpath):
-                continue
             try:
                 mtime = fpath.stat().st_mtime
-                if mtime_threshold is None or mtime >= mtime_threshold:
-                    candidates.append((mtime, fpath))
+                if mtime_threshold is not None and mtime < mtime_threshold:
+                    continue
             except Exception:
-                pass
+                continue
+            if is_protected_session_file(fpath):
+                continue
+            candidates.append((mtime, fpath))
 
     candidates.sort(key=lambda x: x[0], reverse=True)
 

@@ -1,0 +1,62 @@
+{
+  "valid": true,
+  "errors": [],
+  "page_count": 1,
+  "bytes": 236279,
+  "sha256": "4cea776dd3f53e9d9bfb5fb1a488cada51ee26e55d2215ace66a08ac391ea718",
+  "pages": [
+    {
+      "page": 1,
+      "width_pt": 595.28,
+      "height_pt": 841.89,
+      "text_chars": 297,
+      "text": "图标显示检查\n常用图标\n报纸 · 公告 · 体育 · 国际 · 财经 · 地点 · 汽车 · 交通\n日历 · 时钟 · 人物 · 消息 · 文件 · 搜索 · 阅读 · 排名\n热度 · 上升 · 下降 · 持平 · 完成 · 取消 · 关注\n不在资源表中的图标\n[UNICORN FACE] 独角兽：用可读名称显示，不会中断文档。\n[WOMAN + MEDIUM SKIN TONE + PERSONAL COMPUTER] 组合图标：完整保留人物、肤色与职\n业含义。\n[ES] [CN] 国旗：显示地区标识。 1 2 数字键帽：保留数字。\n排名 内容\n1 新闻\n2 体育\n3 财经\n1 / 1",
+      "outside_page_glyphs": 0,
+      "fonts": [
+        {
+          "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+          "embedded": true
+        },
+        {
+          "name": "/TSPJMR+Noto-Sans-CJK-SC",
+          "embedded": true
+        }
+      ]
+    }
+  ],
+  "visual_review": "required",
+  "checks": [
+    "parse",
+    "page_range",
+    "text_coverage",
+    "extraction",
+    "page_bounds",
+    "embedded_fonts"
+  ],
+  "template": "handout",
+  "theme": "warm",
+  "fonts": [
+    {
+      "family": "Noto Sans CJK SC",
+      "style": "Regular",
+      "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+    },
+    {
+      "family": "Noto Sans CJK SC",
+      "style": "Bold",
+      "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
+    }
+  ],
+  "warnings": [],
+  "output": "/out/display-check.pdf",
+  "timings_ms": {
+    "render": 90.7,
+    "inspect": 26.96,
+    "preview": 73.84,
+    "total": 206.13
+  },
+  "previews": [
+    "/out/gallery/page-1.png"
+  ],
+  "source": null
+}

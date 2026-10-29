@@ -1,0 +1,6 @@
+{
+  "exit_code": 0,
+  "wall_ms": 54044.72,
+  "session_id": "pdf-template-e2e-20261029-managed",
+  "scope": "Direct DSH + proxy, original prompt/model, includes runtime page reviews; excludes browser/broker scheduling"
+}

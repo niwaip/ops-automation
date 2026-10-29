@@ -1,0 +1,303 @@
+{
+  "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+  "harness": "deepseek-harness",
+  "executed": true,
+  "durationMs": 21432,
+  "exitCode": 0,
+  "metrics": {
+    "ttftMs": 3726.19,
+    "durationMs": 21056.96,
+    "llmDurationMs": 25355.19,
+    "toolCallsCount": 2,
+    "toolCalls": [
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "query": "{'source': {'sheet': '工数实绩明细', 'header_row': 4, 'data_range': 'A5:R278'}, 'where': {'and': [{'field': '有偿无偿', 'op': 'eq'..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "evidence_id": "a1f3a8fa67b8e48d90a8e9b8",
+        "plan_hash": "e5c297149db551d8a7d1caab232a0ebe912c260146ed40c2a47597efaa55d7ab",
+        "kind": "spreadsheet_analysis",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+      },
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "/workspace/工数实绩明细_20261020134124.xlsx",
+          "query": "{'group_by': ['部门名称'], 'having': {'metric': 'amount', 'op': 'gt', 'value': 0}, 'metrics': [{'field': '金额(K)', 'id': 'amo..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "evidence_id": "e0bd822ed93b21d3feda9dcd",
+        "plan_hash": "7e0ea87fad1658148168c73848b231b92812e9912305003fc1c9b8de2a8bd464",
+        "kind": "spreadsheet_analysis",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+      }
+    ],
+    "llmInvocations": 9,
+    "tokens": {
+      "prompt_tokens": 59299,
+      "completion_tokens": 1401,
+      "total_tokens": 60700
+    },
+    "finishReason": "tool_calls",
+    "roundFinishReasons": [
+      "tool_calls",
+      "tool_calls",
+      "tool_calls",
+      "tool_calls",
+      "tool_calls"
+    ],
+    "guardDecisions": [
+      {
+        "guard": "task_intent_review",
+        "action": "accept",
+        "reason": {
+          "output_mode": "artifact",
+          "task_mode": "execute"
+        }
+      },
+      {
+        "guard": "task_intent",
+        "action": "accept",
+        "reason": {
+          "instruction_relation": "standalone",
+          "task_mode": "execute",
+          "output_mode": "artifact",
+          "artifact_types": [
+            ".html"
+          ],
+          "unit_confirmation": null,
+          "section_confirmation": null,
+          "skill_invocation": {
+            "mode": "none",
+            "name": "",
+            "replace_defaults": false
+          },
+          "requirements": [
+            {
+              "id": "1",
+              "quote": "统计各个部门的 有偿 金额的合计，生成一页的柱状图的html"
+            }
+          ]
+        }
+      },
+      {
+        "guard": "skill_admission",
+        "action": "use",
+        "reason": {
+          "initial_candidate": "frontend-design",
+          "skill_id": "frontend-design",
+          "use_default_rules": false,
+          "reason": "applicable",
+          "requirement_ids": [
+            "1"
+          ]
+        }
+      },
+      {
+        "guard": "user_unit_confirmation",
+        "action": "accept",
+        "reason": {
+          "unit": null,
+          "sections": null
+        }
+      },
+      {
+        "guard": "chart_delivery",
+        "action": "failed",
+        "reason": {
+          "session_id": "chat-session-1793180826543-nqx1j95c",
+          "turn_id": "a49b3a3d504a43e5bc744fbad0db378c",
+          "status": "failed",
+          "transitions": [
+            "calculating",
+            "failed",
+            "failed"
+          ],
+          "attempts": 0,
+          "last_error": "chart_metric_ambiguous"
+        }
+      },
+      {
+        "guard": "deliverable_contract",
+        "action": "reject",
+        "reason": "chart_metric_ambiguous"
+      },
+      {
+        "guard": "chart_delivery",
+        "action": "failed",
+        "reason": {
+          "session_id": "chat-session-1793180826543-nqx1j95c",
+          "turn_id": "a49b3a3d504a43e5bc744fbad0db378c",
+          "status": "failed",
+          "transitions": [
+            "calculating",
+            "failed",
+            "failed"
+          ],
+          "attempts": 0,
+          "last_error": "chart_metric_ambiguous"
+        }
+      },
+      {
+        "guard": "deliverable_contract",
+        "action": "reject",
+        "reason": "chart_metric_ambiguous"
+      }
+    ],
+    "modelResponses": [
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 35,
+        "cleanChars": 35,
+        "rawSha256": "b53e6b527e35ce6322460bad5123e95ee4fd1bb7114c11a7026b71ce3d2d1ce5",
+        "cleanSha256": "b53e6b527e35ce6322460bad5123e95ee4fd1bb7114c11a7026b71ce3d2d1ce5",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      }
+    ],
+    "answerValidation": {},
+    "callsLedger": [
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 2868.3,
+        "usage": {
+          "prompt_tokens": 2652,
+          "total_tokens": 2817,
+          "completion_tokens": 165
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 2088.33,
+        "usage": {
+          "prompt_tokens": 3159,
+          "total_tokens": 3324,
+          "completion_tokens": 165
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 1903.46,
+        "usage": {
+          "prompt_tokens": 5376,
+          "total_tokens": 5467,
+          "completion_tokens": 91
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "contract_intent",
+        "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+        "total_ms": 2306.53,
+        "usage": {
+          "prompt_tokens": 1454,
+          "total_tokens": 1645,
+          "completion_tokens": 191
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 3726.63,
+        "usage": {
+          "prompt_tokens": 12181,
+          "total_tokens": 12394,
+          "completion_tokens": 213
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "filter_conformance",
+        "model": "default",
+        "total_ms": 1578.56,
+        "usage": {
+          "prompt_tokens": 722,
+          "total_tokens": 806,
+          "completion_tokens": 84
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "chart_salvage",
+        "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+        "total_ms": 4850.21,
+        "usage": {
+          "prompt_tokens": 16524,
+          "total_tokens": 16741,
+          "completion_tokens": 217
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "chart_salvage",
+        "model": "default",
+        "total_ms": 4850.21,
+        "usage": {
+          "prompt_tokens": 16524,
+          "total_tokens": 16741,
+          "completion_tokens": 217
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "filter_conformance",
+        "model": "default",
+        "total_ms": 1182.96,
+        "usage": {
+          "prompt_tokens": 707,
+          "total_tokens": 765,
+          "completion_tokens": 58
+        },
+        "span_id": null
+      }
+    ],
+    "auxiliaryInvocations": 4
+  },
+  "artifacts": []
+}

@@ -8,8 +8,9 @@ export function resolveSkillInput(workspace: string, source: SkillSource): strin
   const candidates = source.inputs.flatMap((input) => [
     path.join(workspace, '.sessions', session, path.basename(input.name)), path.join(workspace, path.basename(input.name)),
   ]);
+  const realWorkspace = fs.existsSync(workspace) ? fs.realpathSync(workspace) : path.resolve(workspace);
   return candidates.find((candidate) => fs.existsSync(candidate) &&
-    fs.realpathSync(candidate).startsWith(path.resolve(workspace) + path.sep));
+    fs.realpathSync(candidate).startsWith(realWorkspace + path.sep));
 }
 
 /** Send header names to the authoring model, never raw numeric/employee rows. */

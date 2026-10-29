@@ -1,0 +1,40 @@
+{
+  "valid": true,
+  "errors": [],
+  "page_count": 1,
+  "bytes": 333295,
+  "sha256": "a413689debc3694006910aacc4738195cf9e19ad7a1adbe7bf7aabdcbba3ea72",
+  "pages": [
+    {
+      "page": 1,
+      "width_pt": 595.28,
+      "height_pt": 841.89,
+      "text_chars": 733,
+      "text": "Bilibili 热点日报\n2026年10月29日 · 星期四 | 全站热度指数: LIVE\n今日热搜 TOP 8\n排名 热搜话题 分区 热度 走势\n1 二十届五中全会公报 时政 飙升\n2 锐评IG战胜LYON选手表现 游戏 爆红\n3 巴西总统候选人败选后逃往美国 国际 上升\n4 T1晋级8强赛后采访 游戏 上升\n5 工资改发数字人民币有何变化 财经 上升\n6 我军装甲部队的无人化实战探索 军事 持平\n7 脑机接口超声波唤醒植物人 科技 爆红\n8 奶蛙在高速气流下会变成啥样 科学 上升\n热门视频精选\n游戏区\n排名 视频标题 UP主 播放量\n1 【2026全球总决赛】LYON vs IG B站英雄联盟赛事 483万\n2 《新 三 国 FUNK》 纽毕斯 125万\n3 《崩坏：星穹铁道》星寓言PV·其三 崩坏星穹铁道 250万\n综合热门\n排名 视频标题 UP主 播放量\n4 喝可乐不打嗝小游戏~ 瓜哥超爱玩QAQ 130万\n5 《原神》米提亚角色PV「小小伎俩」 原神 67万\n6 【暗区突围手游】战火重燃PV 暗区突围 78万\n7 近期红毯爆笑盘点 一只吐槽圆 69万\n8 致和游戏一起长大的我们 我是日行一扇 70万\n趋势洞察\n· 游戏区霸榜：英雄联盟全球总决赛 LYON vs IG 引发热议，IG 胜后的选手锐评登顶热搜第二，T1 晋级 8 强采访同样进\n入热搜前四。\n· 时政话题：二十届五中全会公报成为全站热度第一，显示用户对国家政策的高度关注。\n· 科技突破：脑机接口超声波唤醒植物人的科学实验引发热议，登上热搜第七位。\n数据来源：Bilibili 实时热搜榜 & 全站热门视频 | 生成时间：2026-10-29 19:17 CST\n1 / 1",
+      "outside_page_glyphs": 0,
+      "fonts": [
+        {
+          "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+          "embedded": true
+        },
+        {
+          "name": "/TSPJMR+Noto-Sans-CJK-SC",
+          "embedded": true
+        }
+      ]
+    }
+  ],
+  "visual_review": "passed",
+  "checks": [
+    "parse",
+    "page_range",
+    "text_coverage",
+    "extraction",
+    "page_bounds",
+    "embedded_fonts"
+  ],
+  "previews": [
+    "/out/page-1.png"
+  ],
+  "visual_reviewer": "Codex manual inspection of complete page-1.png; icons, text, table ranks, clipping and footer checked"
+}

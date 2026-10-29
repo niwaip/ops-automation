@@ -1,0 +1,89 @@
+{
+  "valid": true,
+  "errors": [],
+  "page_count": 2,
+  "bytes": 379432,
+  "sha256": "36f0b236a9546f9233d29162a2b12e5a76409308d7e1ffca8be94991c709ccf4",
+  "pages": [
+    {
+      "page": 1,
+      "width_pt": 595.28,
+      "height_pt": 841.89,
+      "text_chars": 427,
+      "text": "城市自然观察手册\n观察、记录与分享\n阅读与实践\n欢迎来到城市自然观察手册！ 大自然就在我们身边——小区的花草、公园的小鸟、天空的云\n朵，都是观察的好对象。拿起这本小册子，用眼睛去看，用笔去记录，你会发现自己原来可以\n这么靠近大自然。\n观察时的温馨提示\n安全第一： 在老师或家长陪同下进行观察，不单独行动。 爱护自然： 只看不摘，轻轻走近，\n不惊扰小动物。 注意安全： 不靠近马路、水边等危险区域。\n出发前的准备清单\n• [ ] 观察手册和本册\n• [ ] 铅笔和橡皮\n• [ ] 放大镜（可选）\n• [ ] 彩色铅笔\n• [ ] 装标本的透明袋（可选）\n观察记录表\n观察对象 可以记录什么 一个小提示\n树木 树叶的颜色和形状、树干是粗还 可以摸一摸树皮，感受它的纹理\n是细、有没有果实\n鸟类 羽毛的颜色、叫声是什么样的、 保持安静，鸟儿才敢靠近你\n在做什么\n天空 云朵的形状、天气是晴还是阴、 选一个固定时间观察，更容易发\n有没有彩虹 现变化\n1 / 2",
+      "outside_page_glyphs": 0,
+      "fonts": [
+        {
+          "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+          "embedded": true
+        },
+        {
+          "name": "/TSPJMR+Noto-Sans-CJK-SC",
+          "embedded": true
+        },
+        {
+          "name": "/KPBOQL+Noto-Sans-CJK-SC-Bold-Oblique",
+          "embedded": true
+        }
+      ]
+    },
+    {
+      "page": 2,
+      "width_pt": 595.28,
+      "height_pt": 841.89,
+      "text_chars": 466,
+      "text": "城市自然观察手册\n如何写观察记录\n写观察记录就像给大自然画一幅\"文字画像\"。你可以从这些方面开始：\n• 看一看： 你看到了什么颜色、什么形状？\n• 听一听： 周围有什么声音？小鸟在叫吗？风吹树叶的声音像什么？\n• 闻一闻： 空气中有花香吗？还是泥土的味道？\n• 摸一摸： 树叶是光滑的还是粗糙的？\n小技巧： 先用简单的词语描述，再试着用一句完整的话写下来。比如\"树叶是绿色的\"可以写\n成\"树叶是嫩绿色的，摸上去凉凉的\"。\n三个引导问题\n1. 今天观察到的事物，和你上次看到的一样吗？有什么不一样？\n2. 如果给观察到的事物画一幅画，你会选择什么颜色？\n3. 你觉得大自然最神奇的地方是什么？\n交流与分享建议\n• 和小伙伴互相分享你的观察发现\n• 用画画的方式把观察到的事物画下来\n• 把最有趣的一个发现讲给爸爸妈妈听\n• 和其他同学交换观察手册，看看别人发现了什么\n我的观察记录\n时间天气 今天_月_日，天气：______\n地点 ______\n有趣发现 ______\n______\n待探索问题 ______\n______\n2 / 2",
+      "outside_page_glyphs": 0,
+      "fonts": [
+        {
+          "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+          "embedded": true
+        },
+        {
+          "name": "/TSPJMR+Noto-Sans-CJK-SC",
+          "embedded": true
+        },
+        {
+          "name": "/KPBOQL+Noto-Sans-CJK-SC-Bold-Oblique",
+          "embedded": true
+        }
+      ]
+    }
+  ],
+  "visual_review": "passed",
+  "checks": [
+    "parse",
+    "page_range",
+    "text_coverage",
+    "extraction",
+    "page_bounds",
+    "embedded_fonts"
+  ],
+  "template": "handout",
+  "theme": "warm",
+  "fonts": [
+    {
+      "family": "Noto Sans CJK SC",
+      "style": "Regular",
+      "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+    },
+    {
+      "family": "Noto Sans CJK SC",
+      "style": "Bold",
+      "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
+    }
+  ],
+  "warnings": [],
+  "output": "/workspace/handout.pdf",
+  "timings_ms": {
+    "render": 148.74,
+    "inspect": 39.24,
+    "preview": 190.73,
+    "total": 396.39
+  },
+  "previews": [
+    "/workspace/.pdf-preview/handout/ddb798f185724c6196a359ca00d72e85/page-1.png",
+    "/workspace/.pdf-preview/handout/ddb798f185724c6196a359ca00d72e85/page-2.png"
+  ],
+  "source": "/workspace/.pdf-source-ddb798f185724c6196a359ca00d72e85.md"
+}

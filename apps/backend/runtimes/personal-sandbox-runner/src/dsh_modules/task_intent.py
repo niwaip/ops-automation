@@ -313,6 +313,14 @@ def extract_task_intent(request, users, model, policy, telemetry, deadline, inpu
                     'user_statements': [request, *users]
                 })
 
+            # Promotions above may imply HTML for charts. They cannot override
+            # an explicitly requested native file, including on follow-ups.
+            if result['task_mode'] == 'execute' and not is_physical_export_negated(request):
+                from .output_format_contract import requested_output_formats
+                requested = requested_output_formats(request, users, result.get('instruction_relation'))
+                if requested:
+                    result['output_mode'] = 'artifact'
+                    result['artifact_types'] = requested
             telemetry.record_guard('task_intent', 'accept', result)
             return result
         except ValueError as error:
@@ -392,8 +400,16 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
             elif not any(t.lower().endswith(('.xlsx', '.xlsm', '.csv')) for t in result['artifact_types']):
                 result['artifact_types'].append('.xlsx')
 
-    # Enforce followup and deliverable inheritance when continuing or replacing criteria of previous analysis
-    is_continuation = not is_abort and not is_prev_stopped and not is_verbatim_reply and bool(users) and is_condition_replacement_or_refinement(request, users)
+    # Enforce followup and deliverable inheritance when continuing or replacing criteria of previous analysis,
+    # or when issuing a pure file export command referencing previous conversational findings/results
+    req_str = request.strip()
+    is_pure_export = bool(users) and bool(re.search(
+        r'^(?:生成|导出|制作|做成|转成|输出|保存为|转为|转换成|发我|下载)\s*(?:一份|一个|成|为)?\s*(?:可下载的)?\s*(?:pdf|word|excel|ppt|docx|xlsx|pptx|html|表格|文档|文件|报告)\s*(?:文件|文档|表格|演示文稿|报告)?$',
+        req_str, re.I
+    ))
+    is_continuation = not is_abort and not is_prev_stopped and not is_verbatim_reply and bool(users) and (
+        is_condition_replacement_or_refinement(request, users) or is_pure_export
+    )
     if is_continuation:
         result['instruction_relation'] = 'followup'
         result['task_mode'] = 'execute'
@@ -485,6 +501,12 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
 
     if result['task_mode'] not in {'execute', 'consult'} or result['output_mode'] not in {'conversation', 'artifact'}:
         raise ValueError('任务模式无效')
+    if result['task_mode'] == 'execute' and not is_physical_export_negated(request) and not is_abort:
+        from .output_format_contract import requested_output_formats
+        requested = requested_output_formats(request, users, relation)
+        if requested:
+            result['output_mode'] = 'artifact'
+            result['artifact_types'] = requested
     types = result['artifact_types']
     if not isinstance(types, list) or not all(isinstance(t, str) and t.strip('.').isalnum() for t in types):
         raise ValueError('文件类型格式无效')
@@ -530,6 +552,8 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
             raise ValueError('任务要求标识无效')
         quote = ground_user_quote(item['quote'], [request, *users])
         if quote is None:
+            if allow_sanitize:
+                continue
             raise ValueError('任务要求没有用户原话依据')
         quote_in_request = ground_user_quote(item['quote'], [request])
         if relation == 'standalone' and quote_in_request is None:

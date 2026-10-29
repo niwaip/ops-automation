@@ -1,0 +1,206 @@
+{
+  "session_id": "chat-session-1793239556339-mxbvx27u",
+  "turn_id": "1793250543748897802-e583c4336e984dcbb59eb5e0e296c753",
+  "runner_duration_ms": 46062.03,
+  "first_content_ttft_ms": 3519.11,
+  "llm_sum_ms": 55239.54,
+  "llm_calls": 8,
+  "usage": {
+    "prompt_tokens": 18943,
+    "completion_tokens": 1911,
+    "total_tokens": 23686,
+    "completion_tokens_details": {
+      "reasoning_tokens": 2832
+    }
+  },
+  "front_calls_ms": 11486.67,
+  "content_calls_ms": 9352.18,
+  "visual_calls_ms": [
+    10112.51,
+    24288.18
+  ],
+  "verified": true,
+  "sha256": "7a3daf9b9beb8f53d1c8fedf1fb65d66fc63ca2dc6375be4fb44de7218bb77f1",
+  "manual_preview_pages": [
+    1,
+    2
+  ],
+  "visual_review": "passed",
+  "timeline": [
+    {
+      "seconds": 0.019,
+      "event": "model_started",
+      "purpose": "tool_loop",
+      "tool": null,
+      "status": null
+    },
+    {
+      "seconds": 5.327,
+      "event": "model_completed",
+      "purpose": "tool_loop",
+      "tool": null,
+      "status": null
+    },
+    {
+      "seconds": 5.334,
+      "event": "model_started",
+      "purpose": "tool_loop",
+      "tool": null,
+      "status": null
+    },
+    {
+      "seconds": 9.451,
+      "event": "model_completed",
+      "purpose": "tool_loop",
+      "tool": null,
+      "status": null
+    },
+    {
+      "seconds": 9.5,
+      "event": "model_started",
+      "purpose": "tool_loop",
+      "tool": null,
+      "status": null
+    },
+    {
+      "seconds": 11.564,
+      "event": "model_completed",
+      "purpose": "tool_loop",
+      "tool": null,
+      "status": null
+    },
+    {
+      "seconds": 11.608,
+      "event": "model_started",
+      "purpose": "main_turn",
+      "tool": null,
+      "status": null
+    },
+    {
+      "seconds": 15.129,
+      "event": "model_completed",
+      "purpose": "pdf_content",
+      "tool": null,
+      "status": null
+    },
+    {
+      "seconds": 15.13,
+      "event": "tool_started",
+      "purpose": null,
+      "tool": "render_pdf",
+      "status": null
+    },
+    {
+      "seconds": 15.137,
+      "event": "tool_completed",
+      "purpose": null,
+      "tool": "render_pdf",
+      "status": "error"
+    },
+    {
+      "seconds": 15.137,
+      "event": "model_started",
+      "purpose": "main_turn",
+      "tool": null,
+      "status": null
+    },
+    {
+      "seconds": 17.794,
+      "event": "model_completed",
+      "purpose": "pdf_content",
+      "tool": null,
+      "status": null
+    },
+    {
+      "seconds": 17.796,
+      "event": "tool_started",
+      "purpose": null,
+      "tool": "render_pdf",
+      "status": null
+    },
+    {
+      "seconds": 17.802,
+      "event": "tool_completed",
+      "purpose": null,
+      "tool": "render_pdf",
+      "status": "error"
+    },
+    {
+      "seconds": 17.803,
+      "event": "model_started",
+      "purpose": "main_turn",
+      "tool": null,
+      "status": null
+    },
+    {
+      "seconds": 20.979,
+      "event": "model_completed",
+      "purpose": "pdf_content",
+      "tool": null,
+      "status": null
+    },
+    {
+      "seconds": 20.981,
+      "event": "tool_started",
+      "purpose": null,
+      "tool": "render_pdf",
+      "status": null
+    },
+    {
+      "seconds": 21.694,
+      "event": "tool_completed",
+      "purpose": null,
+      "tool": "render_pdf",
+      "status": "success"
+    },
+    {
+      "seconds": 21.694,
+      "event": "tool_started",
+      "purpose": null,
+      "tool": "inspect_pdf_page",
+      "status": null
+    },
+    {
+      "seconds": 21.694,
+      "event": "tool_started",
+      "purpose": null,
+      "tool": "inspect_pdf_page",
+      "status": null
+    },
+    {
+      "seconds": 45.991,
+      "event": "model_completed",
+      "purpose": "pdf_page_review",
+      "tool": null,
+      "status": null
+    },
+    {
+      "seconds": 45.992,
+      "event": "model_completed",
+      "purpose": "pdf_page_review",
+      "tool": null,
+      "status": null
+    },
+    {
+      "seconds": 45.993,
+      "event": "tool_completed",
+      "purpose": null,
+      "tool": "inspect_pdf_page",
+      "status": "success"
+    },
+    {
+      "seconds": 45.994,
+      "event": "tool_completed",
+      "purpose": null,
+      "tool": "inspect_pdf_page",
+      "status": "success"
+    },
+    {
+      "seconds": 46.061,
+      "event": "finished",
+      "purpose": null,
+      "tool": null,
+      "status": null
+    }
+  ]
+}

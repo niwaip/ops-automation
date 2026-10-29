@@ -1,0 +1,19 @@
+{
+  "session_id": "chat-session-1793180826543-nqx1j95c",
+  "turn_id": "7417f3286d6244a99c009f5b9ab4310a",
+  "status": "published",
+  "transitions": [
+    "calculating",
+    "calculated",
+    "generating",
+    "validating",
+    "validated",
+    "published"
+  ],
+  "attempts": 1,
+  "evidence_id": "5bd18e5d16990bc61f2b62d0",
+  "sha256": "2ca5821d43f9338e0af4ec31d4b235a12f903519da494c4d2ad11c8057035133",
+  "groups": 7,
+  "artifact_id": "6a3c27f713cf49a28e5509cf93d654dc",
+  "file_path": "/workspace/chart-chat-session-1793180826543-nqx1j95c-7417f3286d6244a99c009f5b9ab4310a-6a3c27f713cf49a28e5509cf93d654dc.html"
+}

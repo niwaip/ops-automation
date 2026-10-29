@@ -49,6 +49,12 @@ def recalculate_generated_workbooks(workspace_dir: str, turn_start_time: Optiona
         for fname in os.listdir(workspace_dir):
             if fname.lower().endswith((".xlsx", ".xlsm")) and not fname.startswith("."):
                 fpath = Path(workspace_dir) / fname
+                try:
+                    if mtime_threshold and fpath.stat().st_mtime < mtime_threshold:
+                        continue
+                except OSError:
+                    continue
+
                 if is_protected_session_file(fpath):
                     continue
                 try:
@@ -57,11 +63,6 @@ def recalculate_generated_workbooks(workspace_dir: str, turn_start_time: Optiona
                         continue
                 except Exception:
                     pass
-                try:
-                    if mtime_threshold and fpath.stat().st_mtime < mtime_threshold:
-                        continue
-                except OSError:
-                    continue
 
                 if has_uncalculated_formulas(fpath):
                     print(f"✨ [Harness Auto-Recalc] 检测到本轮生成表格 {fname} 包含未缓存公式，正在执行无头重算补齐缓存...", flush=True)

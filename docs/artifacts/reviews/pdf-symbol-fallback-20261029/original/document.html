@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>原失败稿字形检查</title>
+  <meta name="author" content="">
+  <meta name="description" content="">
+<style>@page {
+  size: A4;
+  margin: 19mm 18mm 20mm;
+  background: #ffffff;
+  @top-right {
+    content: element(running-title);
+    vertical-align: bottom;
+    padding-bottom: 4mm;
+  }
+  @bottom-right {
+    content: counter(page) " / " counter(pages);
+    font: 8pt "Noto Sans CJK SC";
+    color: #67727c;
+    vertical-align: top;
+    padding-top: 4mm;
+  }
+}
+@page :first { @top-right { content: none; } }
+* { box-sizing: border-box; }
+html { color: #26313b; }
+body {
+  margin: 0;
+  font-family: "Noto Sans CJK SC", sans-serif;
+  font-size: 11.5pt;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.running-title {
+  position: running(running-title);
+  font: 8pt "Noto Sans CJK SC";
+  color: #67727c;
+}
+h1, h2, h3, h4 {
+  font-family: "Noto Sans CJK SC", sans-serif;
+  line-height: 1.35;
+  font-weight: 700;
+  break-after: avoid;
+  color: #1e2c38;
+}
+h1 { font-size: 26pt; margin: 0 0 5mm; letter-spacing: .02em; }
+h2 {
+  font-size: 15pt;
+  margin: 8mm 0 3mm;
+  padding-bottom: 2mm;
+  border-bottom: .6pt solid #995638;
+}
+h3 { font-size: 12pt; margin: 5mm 0 2mm; }
+h4 { font-size: 11pt; margin: 4mm 0 2mm; }
+p { margin: 0 0 3mm; orphans: 2; widows: 2; }
+.document-header {
+  border-top: 3pt solid #995638;
+  padding: 6mm 0 4mm;
+  margin-bottom: 6mm;
+  border-bottom: .5pt solid #dce2e6;
+}
+.subtitle { font-size: 12pt; color: #52616e; margin-bottom: 4mm; }
+.meta, figcaption, caption { font-size: 8.5pt; color: #65717d; }
+.meta { margin-bottom: 0; }
+.cover { break-after: page; padding-top: 32mm; }
+.cover-rule { background: #995638; height: 3mm; width: 18mm; margin-bottom: 14mm; }
+.cover h1 { font-size: 34pt; line-height: 1.35; margin-bottom: 9mm; }
+.cover .subtitle { font-size: 15pt; }
+.cover-meta { margin-top: 22mm; color: #65717d; font-size: 10pt; }
+strong { font-weight: 700; }
+a { color: #995638; text-decoration: none; }
+ul, ol { padding-left: 1.6em; margin: 2mm 0 4mm; }
+li { margin-bottom: 1.5mm; orphans: 2; widows: 2; }
+li p { margin-bottom: 1.5mm; }
+blockquote {
+  margin: 4mm 0;
+  padding: 3.5mm 4mm;
+  border-left: 2pt solid #995638;
+  background: #faf2e8;
+}
+blockquote p:last-child { margin-bottom: 0; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 4mm 0 6mm; font-size: .9em; }
+thead { display: table-header-group; }
+th, td { padding: 2.5mm 2.8mm; border-bottom: .5pt solid #dce2e6; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+th { background: #faf2e8; color: #995638; font-weight: 700; }
+tbody tr:nth-child(even) { background: #f7f8fa; }
+tr { break-inside: avoid; }
+caption { text-align: left; margin-bottom: 2mm; }
+figure { margin: 5mm 0; break-inside: avoid; }
+img { max-width: 100%; height: auto; }
+figcaption { margin-top: 2mm; }
+code { font-family: "DejaVu Sans Mono", "Noto Sans CJK SC", monospace; font-size: .88em; background: #f1f3f5; }
+pre { padding: 4mm; background: #f1f3f5; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+pre code { background: none; }
+hr { border: 0; border-top: .5pt solid #dce2e6; margin: 6mm 0; }
+.page-break { break-before: page; }
+.handout h2 { border: 0; border-left: 3pt solid #995638; padding: 1mm 0 1mm 3mm; }
+.handout .document-header { padding: 4mm 0 3mm; margin-bottom: 4mm; }
+.handout h2 { font-size: 13pt; margin: 4mm 0 1.5mm; padding-top: .5mm; padding-bottom: .5mm; }
+.handout h3, .handout h4 { margin: 3mm 0 1.5mm; }
+.handout ul, .handout ol { margin: 1.5mm 0 2.5mm; }
+.handout li { margin-bottom: .75mm; }
+.handout blockquote { margin: 2.5mm 0; padding: 2.5mm 3mm; }
+.handout table { margin: 3mm 0 4mm; }
+.handout th, .handout td { padding: 2mm 2.8mm; }
+.handout figure { margin: 3mm 0; }
+.handout img { max-height: 30mm; }
+.handout img.handout-illustration { max-height: 20mm; }
+.editorial .document-header { border-top-width: 1pt; }
+.editorial h1 { font-family: "Noto Serif CJK SC", serif; }
+.mobile h2 { font-size: 14pt; }
+.mobile table { font-size: .8em; }
+.mobile th, .mobile td { padding: 1.5mm; }
+.mobile .cover { padding-top: 16mm; }
+.mobile .cover h1 { font-size: 26pt; }
+
+/* Printable record cards reserve handwriting space, rather than ordinary data-row height. */
+.handout table.record-card th:first-child { width: 24%; }
+.handout table.record-card tbody td { height: 22mm; border: .5pt solid #dce2e6; }
+
+/* Printable task lists: draw boxes independent of glyph availability. */
+.checklist-item { list-style: none; }
+.print-checkbox { display: inline-block; width: 3mm; height: 3mm; border: 0.3mm solid currentColor; margin-right: 1.5mm; vertical-align: middle; line-height: 3mm; text-align: center; }
+
+/* Modern Layout Primitives (shared with frontend-design) */
+.grid-2 { display: flex; gap: 6mm; margin: 3mm 0 5mm; }
+.grid-2 > * { flex: 1 1 0; min-width: 0; }
+.grid-2-1 { display: flex; gap: 6mm; margin: 3mm 0 5mm; }
+.grid-2-1 > *:first-child { flex: 2 1 0; min-width: 0; }
+.grid-2-1 > *:last-child { flex: 1 1 0; min-width: 0; }
+.grid-1-2 { display: flex; gap: 6mm; margin: 3mm 0 5mm; }
+.grid-1-2 > *:first-child { flex: 1 1 0; min-width: 0; }
+.grid-1-2 > *:last-child { flex: 2 1 0; min-width: 0; }
+.grid-3 { display: flex; gap: 4mm; margin: 3mm 0 5mm; }
+.grid-3 > * { flex: 1 1 0; min-width: 0; }
+.row { display: flex; align-items: center; gap: 3mm; }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: 3mm; }
+.stack { display: flex; flex-direction: column; gap: 2.5mm; }
+
+/* Surface & Card Containers */
+.card {
+  background: #ffffff;
+  border: .5pt solid #dce2e6;
+  border-radius: 2.5mm;
+  padding: 3.5mm 4.5mm;
+  margin: 2.5mm 0;
+  break-inside: avoid;
+}
+.card-flat { background: transparent; border: 0; padding: 0; margin: 2mm 0; }
+.card-rule { border-top: 1.5pt solid #995638; padding-top: 3mm; margin-top: 3mm; }
+
+/* Badges, Pills & Chips */
+.pill {
+  display: inline-block;
+  padding: 1mm 2.8mm;
+  background: #faf2e8;
+  color: #995638;
+  border-radius: 999px;
+  font-size: 8.5pt;
+  font-weight: 600;
+  margin: 1mm 1.5mm 1mm 0;
+  line-height: 1.25;
+}
+.tag {
+  display: inline-block;
+  padding: 1mm 2.5mm;
+  background: #f1f3f5;
+  color: #52616e;
+  border: .4pt solid #dce2e6;
+  border-radius: 999px;
+  font-size: 8pt;
+  margin: 1mm 1.5mm 1mm 0;
+  line-height: 1.25;
+}
+
+/* Ranking Badges */
+.rank-badge {
+  display: inline-block;
+  width: 5mm;
+  height: 5mm;
+  line-height: 5mm;
+  text-align: center;
+  border-radius: 50%;
+  font-size: 7.5pt;
+  font-weight: 700;
+  color: #ffffff;
+  background: #65717d;
+  margin-right: 1.5mm;
+  vertical-align: middle;
+}
+.rank-1 { background: #d97706; }
+.rank-2 { background: #64748b; }
+.rank-3 { background: #b45309; }
+
+/* Stat Highlights */
+.stat-strip { display: flex; gap: 4mm; margin: 3mm 0 5mm; }
+.stat {
+  flex: 1;
+  background: #faf2e8;
+  border-left: 2.5pt solid #995638;
+  padding: 2.5mm 3.5mm;
+  border-radius: 1.5mm;
+  break-inside: avoid;
+}
+.stat .stat-num { font-size: 16pt; font-weight: 700; color: #995638; line-height: 1.1; }
+.stat .stat-label { font-size: 8pt; color: #65717d; margin-top: 1mm; }
+.stat .stat-unit { font-size: 9pt; font-weight: 400; opacity: 0.8; margin-left: 1mm; }</style></head>
+<body class="handout">
+  <div class="running-title">原失败稿字形检查</div>
+  
+  <header class="document-header">
+    <h1>原失败稿字形检查</h1>
+    
+    
+  </header>
+  
+  <main><h2><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMiA0aDE4djNoM3YxNUgyWm0zIDN2NWg2VjdabTggMHYyaDVWN1ptMCA0djJoNXYtMlpNNSAxNXYyaDEzdi0yWm0wIDR2MWgxM3YtMVoiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> B站每日热点速报 · 2026年10月29日</h2>
+<h2><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTIgMkMxNCA4IDIwIDggMjAgMTVhOCA4IDAgMCAxLTE2IDBjMC00IDMtNyA1LTkgMCA0IDIgNSAzIDYgMi0zIDItNiAwLTEwWiIvPjwvc3ZnPg==" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 全站热搜 TOP 8</h2>
+<table>
+<thead>
+<tr>
+<th>排名</th>
+<th>热搜话题</th>
+<th>热度标签</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>二十届五中全会公报</td>
+<td><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJtMTIgMiAzIDYgNyAxLTUgNSAxIDgtNi00LTYgNCAxLTgtNS01IDctMVoiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 热搜1 · 时政</td>
+</tr>
+<tr>
+<td>2</td>
+<td>热火赛季首胜 结束四连败</td>
+<td><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTIgMWExMSAxMSAwIDEgMCAwIDIyIDExIDExIDAgMCAwIDAtMjJabS0xIDJ2OEgzYTkgOSAwIDAgMSAyLTVsNiA1VjhMNyA0YTkgOSAwIDAgMSA0LTFabTIgMGE5IDkgMCAwIDEgNCAxbC00IDR2M2g4YTkgOSAwIDAgMC0yLTVsLTYgNVptLTIgMTB2OGE5IDkgMCAwIDEtNC0xbDQtNHYtM0gzYTkgOSAwIDAgMCAyIDVsNi01Wm0yIDAgNiA1YTkgOSAwIDAgMCAyLTVoLTh2M2w0IDRhOSA5IDAgMCAxLTQgMVoiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> NBA · 体育</td>
+</tr>
+<tr>
+<td>3</td>
+<td>巴西总统候选人败选后逃往美国</td>
+<td><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTIgMWExMSAxMSAwIDEgMCAwIDIyIDExIDExIDAgMCAwIDAtMjJabTAgMiAzIDVIOVptLTUgN2gxMHY0SDdabTIgNmg2bC0zIDVaTTUgN2wxIDItMSA2LTEgMmE5IDkgMCAwIDEgMS0xMFptMTQgMGE5IDkgMCAwIDEgMSAxMGwtMS0yLTEtNloiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 国际突发</td>
+</tr>
+<tr>
+<td>4</td>
+<td>工资改发数字人民币有何变化</td>
+<td><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJtOCAyIDQgMiA0LTIgMSA0LTMgMmMzIDIgNyA3IDcgMTEgMCA0LTE4IDQtMTggMCAwLTQgNC05IDctMTFMNyA2Wm0xIDl2Mmg2di0yWm0wIDV2Mmg2di0yWiIvPjwvc3ZnPg==" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 民生政策</td>
+</tr>
+<tr>
+<td>5</td>
+<td>运-20B解锁一机两用</td>
+<td><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJtMTAgMiA0LTEgMSA4IDggNXYzbC04LTItMSA1IDMgMnYybC01LTEtNSAxdi0ybDMtMi0xLTUtOCAydi0zbDgtNVoiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 军事科技</td>
+</tr>
+<tr>
+<td>6</td>
+<td>解读西班牙高铁隐患</td>
+<td><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTIgMWExMSAxMSAwIDEgMCAwIDIyIDExIDExIDAgMCAwIDAtMjJabTAgMiAzIDVIOVptLTUgN2gxMHY0SDdabTIgNmg2bC0zIDVaTTUgN2wxIDItMSA2LTEgMmE5IDkgMCAwIDEgMS0xMFptMTQgMGE5IDkgMCAwIDEgMSAxMGwtMS0yLTEtNloiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> <span class="pdf-symbol-label">[ES]</span> 国际关注</td>
+</tr>
+<tr>
+<td>7</td>
+<td>记录西藏那曲震区安置现场</td>
+<td><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTIgMmE3IDcgMCAwIDEgNyA3YzAgNS03IDEzLTcgMTNTNSAxNCA1IDlhNyA3IDAgMCAxIDctN1ptMCA0YTMgMyAwIDEgMCAwIDYgMyAzIDAgMCAwIDAtNloiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 民生纪实</td>
+</tr>
+<tr>
+<td>8</td>
+<td>小米SU7 Ultra纽北圈速刷新纪录</td>
+<td><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNiAzaDEybDQgOXY5aC00di0zSDZ2M0gydi05Wm0xIDMtMiA2aDE0bC0yLTZabS0yIDh2Mmgzdi0yWm0xMSAwdjJoM3YtMloiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 汽车科技</td>
+</tr>
+</tbody>
+</table>
+<h2><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNiA2aDEybDQgMTNoLTVsLTMtNGgtNGwtMyA0SDJabTEgM3YySDV2MmgydjJoMnYtMmgydi0ySDlWOVptOSAxdjNoM3YtM1oiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 游戏区热门视频</h2>
+<table>
+<thead>
+<tr>
+<th>排名</th>
+<th>视频标题</th>
+<th>播放量</th>
+<th>分区</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>【全球总决赛】LYON vs IG</td>
+<td>503万播放</td>
+<td>电竞</td>
+</tr>
+<tr>
+<td>2</td>
+<td>崩坏：星穹铁道 千星纪游PV</td>
+<td>266万播放</td>
+<td>米哈游</td>
+</tr>
+<tr>
+<td>3</td>
+<td>伊莫S1赛季PV发布</td>
+<td>180万播放</td>
+<td>新游情报</td>
+</tr>
+</tbody>
+</table>
+<h2><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMiA1aDIwdjE0SDJabTggM3Y4bDctNFoiLz48L3N2Zz4=" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 综合热门</h2>
+<table>
+<thead>
+<tr>
+<th>排名</th>
+<th>视频标题</th>
+<th>播放量</th>
+<th>分区</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>喝可乐不打嗝小游戏~</td>
+<td>141万播放</td>
+<td>生活测试</td>
+</tr>
+<tr>
+<td>2</td>
+<td><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTMgMSAzIDE0aDdsLTEgOUwyMiA5aC04WiIvPjwvc3ZnPg==" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 新 三 国 FUNK <img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTMgMSAzIDE0aDdsLTEgOUwyMiA5aC04WiIvPjwvc3ZnPg==" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"></td>
+<td>134万播放</td>
+<td>创意音乐</td>
+</tr>
+<tr>
+<td>3</td>
+<td>《原神》米提亚角色PV</td>
+<td>72万播放</td>
+<td>米哈游</td>
+</tr>
+<tr>
+<td>4</td>
+<td>红毯爆笑盘点</td>
+<td>92万播放</td>
+<td>娱乐盘点</td>
+</tr>
+</tbody>
+</table>
+<h2><img class="pdf-symbol" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA4N2NhNyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMiAxNyA5IDEwbDQgNCA2LTdoLTVWNGg5djloLTNWOWwtNyA5LTQtNC01IDZaIi8+PC9zdmc+" style="width:1em;height:1em;vertical-align:-0.12em;display:inline-block"> 今日趋势洞察</h2>
+<ul>
+<li><strong>时政话题霸榜</strong> — 二十届五中全会引发全民热议，占据热搜TOP1</li>
+<li><strong>游戏区热度高涨</strong> — S赛直播+新游PV，游戏相关占据大量版面</li>
+<li><strong>国际事件突破圈层</strong> — 巴西大选突发状况引发平台级讨论</li>
+<li><strong>科技民生双关注</strong> — 数字人民币+运-20B+小米汽车，科技与民生并行</li>
+</ul>
+<blockquote>
+<p><em>数据来源：B站热搜榜 · 2026年10月29日</em></p>
+</blockquote></main>
+</body>
+</html>

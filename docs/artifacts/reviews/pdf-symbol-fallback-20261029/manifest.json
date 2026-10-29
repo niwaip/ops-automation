@@ -1,0 +1,14 @@
+{
+  "display-check.pdf": "4cea776dd3f53e9d9bfb5fb1a488cada51ee26e55d2215ace66a08ac391ea718",
+  "original-glyph-check.pdf": "1e45d2202b9af2dcbcf960cb6674f0d8d74ab5cb78d48d3e10244d70464f8057",
+  "validation.json": "a50b2f495262b7d43b7fedf7ba9898944ffa262ee9d6e079eeb19e25d8deb46f",
+  "tests.log": "b6f4e700cd2f5848f4d53744631d4883032f445ce7b2fffef0633eeaa6e58bba",
+  "validate_display.py": "859ad7a0687a90221e52b1b920116f4b356f3e9644b655d23f97e8cc3b825c22",
+  "original/qa.json": "c0995db64265860007ccea5a7e4615a7d722c370b5fa8514bcb17f100f8a1bc7",
+  "original/page-1.png": "b9abcc9bc35fc0fdf4b1eb0393e44046c2e218a7d82d1448e491e1935da505e6",
+  "original/page-2.png": "a7395a15c884eecd1d4c1de3db5ce37be9ff4ccca13ec81d8065fee2042bb332",
+  "original/document.html": "19ed3066e513be2f3c66a3a8ef531963c678dcbe4b9eefe9c77f7b1c053f8bdd",
+  "gallery/qa.json": "211b6e33b55a00929d25a3c2a6dc16aeebb0e7e3db3523b9d16557e0d79d25bd",
+  "gallery/page-1.png": "da8c77b892169d85e459cd91f563ef5908edefa66fb48e3ba0d6b980b240d8c2",
+  "gallery/document.html": "19ba1eaa4211d6764d52a983c7d7273d9d2e0dab53197b9ca84ce825468e462b"
+}

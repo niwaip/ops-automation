@@ -1,0 +1,16 @@
+{
+  "pdf_sha256": "36f0b236a9546f9233d29162a2b12e5a76409308d7e1ffca8be94991c709ccf4",
+  "pages_opened": [
+    "page-1.png",
+    "page-2.png"
+  ],
+  "checks": [
+    "CJK glyphs readable",
+    "requested page content present",
+    "table and illustration visible",
+    "no independent cover",
+    "page numbers 1/2 and 2/2",
+    "no obvious overlap or clipping"
+  ],
+  "scope": "visual review; not a complete semantic guarantee"
+}

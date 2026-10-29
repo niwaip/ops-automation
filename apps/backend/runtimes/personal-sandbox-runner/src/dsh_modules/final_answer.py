@@ -23,7 +23,7 @@ from .analysis_validation import validate_reply_against_contract, build_contract
 from .sampling_guard import sampling_feedback
 from .workbook_delivery_recalc import recalculate_generated_workbooks as _recalculate_generated_workbooks
 from .agent_loop_helpers import (
-    ACTION_FILLER_KEYWORDS, is_unclosed_or_truncated_html, is_explicit_code_request,
+    ACTION_FILLER_KEYWORDS, TRIVIAL_STATUS_WORDS, is_unclosed_or_truncated_html, is_explicit_code_request,
     auto_heal_unexecuted_file_writes, detect_unexecuted_tool_argument_leak, _build_fallback_report,
 )
 from .artifact_discovery import (
@@ -68,9 +68,13 @@ def evaluate_answer_state(text: str, has_physical_artifact: bool) -> AnswerState
         ))
     )
 
+    is_trivial_status = (
+        len(cleaned) < 40 and cleaned.lower().strip().strip(".!。！") in TRIVIAL_STATUS_WORDS
+    )
+
     is_filler = (
         len(cleaned) < 120 and
-        (any(kw in cleaned for kw in ACTION_FILLER_KEYWORDS) or is_promising_action(cleaned) or is_hollow)
+        (any(kw in cleaned for kw in ACTION_FILLER_KEYWORDS) or is_promising_action(cleaned) or is_hollow or is_trivial_status)
     )
 
     needs_summary = (
@@ -154,14 +158,18 @@ def finalize_agent_text(
             nudge_prompt = "工具调用轮次已结束。请根据目前已探索和收集到的所有信息与仓库内容，直接给出深入、结构完整、详尽的最终中文回答（严禁输出中间过渡垫话或未执行的工具标签）。"
         messages.append({"role": "user", "content": nudge_prompt})
         try:
+            from .summary_context import build_summary_messages
             forced_res = call_model(
-                messages,
+                build_summary_messages(last_user_prompt, messages, execution_evidence),
                 model,
+                max_tokens=1200,
+                stream_deltas=False,
+                purpose="tool_loop",
                 timeout=policy.single_request_timeout,
                 deadline=deadline,
                 policy=policy
             )
-            telemetry.record_llm_response(forced_res, is_first_round=False)
+            telemetry.record_llm_response(forced_res, is_first_round=False, purpose="final_summary")
             forced_reply = forced_res.get("content", "") if isinstance(forced_res, dict) else str(forced_res)
             forced_clean = clean_output(forced_reply, is_guide=is_guide_intent) or forced_reply.strip()
 
@@ -231,14 +239,21 @@ def finalize_agent_text(
                 print(f"⚠️ [Harness Agent Loop] 自动编译单页 HTML 失败: {e}")
 
         if not final_text or state.is_filler or state.has_internal_plan:
-            inf_cause = "model_empty_final" if executed_calls_history else "model_budget_exhausted"
-            final_text = published_summary or _build_fallback_report(
-                messages,
-                executed_calls_history,
-                cause=inf_cause,
-                pending_items=[f"生成目标交付物 ({', '.join(expected_deliverables)})"] if expected_deliverables else None
-            )
-            state = evaluate_answer_state(final_text, has_physical_artifact)
+            if has_physical_artifact:
+                final_text = (
+                    "✅ **目标交付物已生成就绪！**\n\n"
+                    "目标文件已生成并保存至工作区，您可以通过卡片下载或查看。"
+                )
+                state = evaluate_answer_state(final_text, has_physical_artifact=True)
+            else:
+                inf_cause = "model_empty_final" if executed_calls_history else "model_budget_exhausted"
+                final_text = published_summary or _build_fallback_report(
+                    messages,
+                    executed_calls_history,
+                    cause=inf_cause,
+                    pending_items=[f"生成目标交付物 ({', '.join(expected_deliverables)})"] if expected_deliverables else None
+                )
+                state = evaluate_answer_state(final_text, has_physical_artifact)
 
     # 5. Token truncation suffix
     if was_token_truncated and "```html" not in final_text and not is_unclosed_or_truncated_html(final_text):
@@ -273,7 +288,7 @@ def finalize_agent_text(
                 executed_calls_history,
                 cause="model_empty_final",
                 trigger_evidence="模型输出了未执行的代码脚本或参数片段，自动执行自愈未通过",
-                retry_advice="请直接回复「请实际在终端运行上述脚本完成落盘」"
+                retry_advice="可直接回复「请重新生成该文件」或重新发送请求重试。"
             )
             state = evaluate_answer_state(final_text, has_physical_artifact)
 
@@ -319,9 +334,12 @@ def finalize_agent_text(
                     final_text = clean_core + guidance_block
 
     # 9. Headless workbook recalculation BEFORE contract validation (so cached values are present)
+    t_recalc_start = time.time()
     _recalculate_generated_workbooks(workspace_dir, turn_start_time=turn_start_time)
+    recalc_ms = (time.time() - t_recalc_start) * 1000
 
     # 10. Reconcile delivery numbers BEFORE metric contract validation
+    t_recon_start = time.time()
     try:
         from .delivery_reconciliation import reconcile_delivery_presentation
         final_text = reconcile_delivery_presentation(
@@ -334,6 +352,10 @@ def finalize_agent_text(
         )
     except Exception as e:
         logger.warning("Delivery reconciliation error: %s", e)
+    recon_ms = (time.time() - t_recon_start) * 1000
+
+    if recalc_ms > 200 or recon_ms > 200:
+        logger.info("Finalization overhead: recalc=%.1fms, reconciliation=%.1fms", recalc_ms, recon_ms)
 
     # 11. Metric contract audit: strictly separates file existence, calculation completeness and text validity
     if not is_guide_intent and last_user_prompt:

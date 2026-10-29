@@ -1,0 +1,15 @@
+{
+  "exact_failed_source_glyphs": "passed",
+  "original_glyph_check_pages": 2,
+  "original_single_page_fits": false,
+  "gallery_one_page": 1,
+  "missing_glyph_errors": [],
+  "scope": "Glyph QA only; original news facts are not reverified and original layout may exceed one page.",
+  "regression_tests": 72,
+  "regression_result": "passed",
+  "guard_subset_tests": 14,
+  "guard_subset_result": "passed",
+  "live_mapped_symbols": 53,
+  "visual_gallery": "passed",
+  "visual_original_pages": "both inspected; glyphs passed; 2 pages are not single-page delivery"
+}

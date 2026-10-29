@@ -108,6 +108,18 @@ def validate_decision(value, ids, texts):
     return value
 
 
+def normalize_admission_echo(verdict, intent):
+    """Ignore byte-for-byte contract echoes; never accept a rewritten contract."""
+    allowed = {'action', 'skill_id', 'use_default_rules', 'rule_basis', 'reason', 'question'}
+    if not isinstance(verdict, dict) or not allowed.issubset(verdict):
+        raise ValueError('候选准入字段不完整')
+    for key in set(verdict) - allowed:
+        expected = intent if key == 'task_contract' else intent.get(key)
+        if (key != 'task_contract' and key not in intent) or verdict[key] != expected:
+            raise ValueError('候选准入只能提交选择结果，不能改写任务契约')
+    return {key: verdict[key] for key in allowed}
+
+
 def admit_skill(prompt, history, files, provisional, model, policy, telemetry, deadline,
                 available_skills=None, read_body=None):
     skills = get_available_skills() if available_skills is None else available_skills
@@ -144,17 +156,14 @@ def admit_skill(prompt, history, files, provisional, model, policy, telemetry, d
             if not body.strip() or len(body) > 60000:
                 raise AdmissionUnavailable('候选技能正文缺失或超出准入预算', intent)
             inspected[current] = body
-        payload = {'request': request, 'user_history': users, 'files': list(files), 'catalog': metadata,
+        payload = {'request': request, 'user_history': [] if intent.get('instruction_relation') == 'standalone' else users, 'files': list(files), 'catalog': metadata,
                    'initial_candidate': provisional.skill_id, 'task_contract': intent, 'inspected_skills': inspected, 'feedback': feedback}
         decision_rule_bases = [request, *[r['quote'] for r in intent['requirements']]] if intent.get('instruction_relation') == 'standalone' else [request, *users, *[r['quote'] for r in intent['requirements']]]
         try:
             verdict = structured_decision(INSTRUCTIONS, payload, decision_tool(list(catalog), decision_rule_bases,
                     allow_defaults=intent['skill_invocation']['mode'] == 'execute' and not intent['skill_invocation']['replace_defaults']), model, policy,
                                           telemetry, deadline, 'skill_admission', max_tokens=1200)
-            # A candidate may not rewrite the independently extracted task contract.
-            allowed = {'action', 'skill_id', 'use_default_rules', 'rule_basis', 'reason', 'question'}
-            if set(verdict) != allowed:
-                raise ValueError('候选准入只能提交选择结果，不能改写任务契约')
+            verdict = normalize_admission_echo(verdict, intent)
             # 容错归一化：若模型在非 use 动作下未及时清除技能字段，自动对齐
             if verdict.get('action') in {'general', 'clarify'}:
                 if verdict.get('skill_id') is not None or verdict.get('use_default_rules'):

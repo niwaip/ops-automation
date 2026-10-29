@@ -1,3 +1,5 @@
+import { PDF_COMMAND_HELP } from './chat-pdf-help';
+
 export interface ParsedChatSlashCommand {
   mode: 'chat' | 'task';
   message: string;
@@ -63,6 +65,15 @@ export function parseChatSlashCommand(
   initialMode: 'chat' | 'task' = 'chat'
 ): ParsedChatSlashCommand {
   const text = (rawMessage || '').trim();
+
+  if (/^\/pdf$/i.test(text)) {
+    return {
+      mode: initialMode,
+      message: '',
+      isCommandOnly: true,
+      systemReply: PDF_COMMAND_HELP,
+    };
+  }
 
   // 1. Help command
   if (/^\s*\/(?:help|\?|帮助)(?:\s+|$)/i.test(text)) {

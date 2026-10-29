@@ -88,6 +88,13 @@ ACTION_FILLER_KEYWORDS = [
     "我需要获取", "让我尝试", "再次获取", "我需要查询", "还需要获取"
 ]
 
+# 常见极简英文/无意义状态词（防止模型或回退网关以简短垫话冒充有效答复）
+TRIVIAL_STATUS_WORDS = {
+    "task ready", "task completed", "task finished", "ready", "done", "finished",
+    "completed", "all done", "here is the file", "file ready", "process finished",
+    "ok", "success", "succeeded"
+}
+
 
 def is_unclosed_or_truncated_html(text: str) -> bool:
     """
@@ -403,13 +410,13 @@ def _build_fallback_report(
         advice = retry_advice or "此为上游接口临时网络抖动，可稍后直接重试。"
     elif cause_key == "model_empty_final":
         header = f"⚠️ 沙箱已成功调用工具（{tool_names}），但上游模型在收尾汇总时未输出最终有效正文。" if tool_names else "⚠️ 沙箱运行正常，但上游模型未返回有效回复内容（收尾汇总时未输出最终有效正文）。"
-        advice = retry_advice or "可直接回复「请根据上方信息输出最终回答」接力生成；原因未确定，不建议切换模型。"
+        advice = retry_advice or "可直接回复「请重新生成」或「请根据上方信息输出最终回答」重试。"
     elif cause_key == "model_budget_exhausted":
         header = f"⚠️ 沙箱已成功调用工具（{tool_names}），但执行达到最大轮次预算上限 ({evidence_desc or '轮次耗尽'})，未能在单轮内完成所有步骤。" if tool_names else f"⚠️ 执行达到最大轮次预算上限 ({evidence_desc or '轮次耗尽'})，未能在单轮内完成所有步骤。"
-        advice = retry_advice or "可根据当前已收集的信息，提示模型在下一轮直接输出最终交付成果。"
+        advice = retry_advice or "可直接发送「请重试」或提示模型直接输出最终交付成果。"
     elif cause_key == "artifact_missing":
         header = f"⚠️ 沙箱已成功调用工具（{tool_names}），但任务要求的目标交付物未在沙箱工作区落盘 ({evidence_desc or '目标文件缺失'})。" if tool_names else f"⚠️ 任务要求生成目标交付物，但在沙箱工作区中未检测到物理文件落盘 ({evidence_desc or '文件未生成'})。"
-        advice = retry_advice or "可直接提示「请调用 Python 脚本直接生成该文件并保存到 /workspace/」。"
+        advice = retry_advice or "可直接回复「请重新生成该文件」重试。"
     elif cause_key == "validation_failed":
         header = f"⚠️ 沙箱已成功调用工具（{tool_names}），但产物未能通过数据一致性或结构安全校验门禁 ({evidence_desc or '校验未通过'})。" if tool_names else f"⚠️ 产物未能通过数据一致性或结构安全校验门禁 ({evidence_desc or '校验未通过'})。"
         advice = retry_advice or "请检查原始输入数据完整性后重试。"
@@ -448,7 +455,7 @@ def _build_fallback_report(
                 return (
                     "⚠️ 沙箱已完成方案分析规划，但在自动执行代码生成物理交付物时未成功创建目标文件。\n\n"
                     f"【已规划的方案参考】:\n{summary_preview}...\n\n"
-                    "💡 建议：可直接回复「请使用 Python 脚本生成该文档并保存到 /workspace/」重试落盘。"
+                    "💡 建议：可直接回复「请重新生成该文档」或重新发送请求重试。"
                 )
             header = "⚠️ 沙箱运行正常，但任务未完成最终交付（原因未确定）。"
             advice = retry_advice or "请细化具体要求后重新发送。"

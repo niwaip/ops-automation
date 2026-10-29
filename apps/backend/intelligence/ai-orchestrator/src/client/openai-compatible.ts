@@ -131,6 +131,7 @@ export class OpenAICompatibleClient {
         normalized.reasoning,
         normalized.maxOutputTokens,
         normalized.timeoutMs,
+        normalized.signal,
       );
 
       const choice = response.data?.choices?.[0];
@@ -196,13 +197,15 @@ export class OpenAICompatibleClient {
     }
     this.applyReasoningConfig(data, normalized.reasoning || reasoning, normalized.maxOutputTokens);
 
+    const streamRequestConfig = {
+      responseType: 'stream' as const,
+      timeout: normalized.timeoutMs ?? this.timeout,
+      signal: normalized.signal,
+    };
     let response: any;
     try {
       // Use /chat/completions since baseURL already includes /v1
-      response = await this.client.post<NodeJS.ReadableStream>('/chat/completions', data, {
-        responseType: 'stream',
-        timeout: normalized.timeoutMs ?? this.timeout,
-      });
+      response = await this.client.post<NodeJS.ReadableStream>('/chat/completions', data, streamRequestConfig);
     } catch (error: unknown) {
       const errorMsg = await this.extractAxiosErrorMessage(error);
       if (
@@ -211,10 +214,7 @@ export class OpenAICompatibleClient {
       ) {
         delete data.stream_options;
         try {
-          response = await this.client.post<NodeJS.ReadableStream>('/chat/completions', data, {
-            responseType: 'stream',
-            timeout: normalized.timeoutMs ?? this.timeout,
-          });
+          response = await this.client.post<NodeJS.ReadableStream>('/chat/completions', data, streamRequestConfig);
         } catch (retryError: unknown) {
           const retryErrorMsg = await this.extractAxiosErrorMessage(retryError);
           throw new Error(`OpenAI API Stream Error: ${retryErrorMsg}`);
@@ -225,10 +225,7 @@ export class OpenAICompatibleClient {
         this.clearReasoningFields(retryData);
         this.applyReasoningConfig(retryData, { enabled: false });
         try {
-          response = await this.client.post<NodeJS.ReadableStream>('/chat/completions', retryData, {
-            responseType: 'stream',
-            timeout: normalized.timeoutMs ?? this.timeout,
-          });
+          response = await this.client.post<NodeJS.ReadableStream>('/chat/completions', retryData, streamRequestConfig);
         } catch (retryError: unknown) {
           const retryErrorMsg = await this.extractAxiosErrorMessage(retryError);
           throw new Error(`OpenAI API Stream Error: ${retryErrorMsg}`);
@@ -311,8 +308,19 @@ export class OpenAICompatibleClient {
           if (settled) return;
           settled = true;
           clearIdleTimer();
+          normalized.signal?.removeEventListener('abort', onAbort);
           reject(error);
         };
+        const onAbort = () => {
+          const error = new Error('Model request cancelled');
+          fail(error);
+          try { (stream as any).destroy?.(); } catch { /* already closed */ }
+        };
+        normalized.signal?.addEventListener('abort', onAbort, { once: true });
+        if (normalized.signal?.aborted) {
+          onAbort();
+          return;
+        }
         refreshIdleTimeout = () => {
           if (!idleTimeoutMs || settled) return;
           clearIdleTimer();
@@ -345,6 +353,7 @@ export class OpenAICompatibleClient {
           }
           settled = true;
           clearIdleTimer();
+          normalized.signal?.removeEventListener('abort', onAbort);
           resolve({
             content: fullContent,
             usage: finalUsage,
@@ -471,8 +480,9 @@ export class OpenAICompatibleClient {
     },
     maxOutputTokens?: number,
     timeoutMs?: number,
+    signal?: AbortSignal,
   ) {
-    const requestConfig = { timeout: timeoutMs ?? this.timeout };
+    const requestConfig = { timeout: timeoutMs ?? this.timeout, signal };
     try {
       return await this.client.post<ChatCompletionResponse>('/chat/completions', data, requestConfig);
     } catch (error: unknown) {
@@ -610,6 +620,7 @@ export class OpenAICompatibleClient {
     tool_choice?: any;
     timeoutMs?: number;
     streamIdleTimeoutMs?: number;
+    signal?: AbortSignal;
   } {
     if (Array.isArray(request)) {
       return {
@@ -631,6 +642,7 @@ export class OpenAICompatibleClient {
         tool_choice: request.tool_choice,
         timeoutMs: request.timeoutMs,
         streamIdleTimeoutMs: request.streamIdleTimeoutMs,
+        signal: request.signal,
       };
     }
 
@@ -653,6 +665,7 @@ export class OpenAICompatibleClient {
         tool_choice: request.tool_choice,
         timeoutMs: request.timeoutMs,
         streamIdleTimeoutMs: request.streamIdleTimeoutMs,
+        signal: request.signal,
       };
     }
 

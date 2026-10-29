@@ -38,6 +38,10 @@ export class DockerodeContainerDriver implements IContainerDriver {
     return this.docker;
   }
 
+  async inspectImage(image: string) {
+    return this.docker.getImage(image).inspect();
+  }
+
   getContainer(idOrName: string): ContainerHandle {
     const container = this.docker.getContainer(idOrName);
     return {

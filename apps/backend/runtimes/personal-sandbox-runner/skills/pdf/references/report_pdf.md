@@ -1,137 +1,93 @@
-# Scenario: Markdown / Direct Report PDF Generation
+# Markdown / JSON → 设计模板 → PDF
 
-适用于：从聊天上下文、Markdown、统计指标、天气预报、分析总结等直接排版生成单页/多页 PDF 报表。
-
-## 推荐标准方案：使用内置 generate_report_pdf.py 命令行工具（100% 避免字符串转义错误）
-
-将生成的内容直接写入 `/workspace/report.md`，然后调用标准脚本生成，完全不用手写复杂的 FPDF 坐标计算与引号转义：
+## 命令入口
 
 ```bash
-cat << 'EOF' > /workspace/report.md
-# 报表标题
-副标题或发布说明
-
-## 一、核心概要
-此处为详细分析与数据总结内容，支持多行文本自适应换行。
-
-| 日期 | 天气状况 | 气温范围 | 降水概率 | 风力 |
-|---|---|---|---|---|
-| 周四 (9/24) | 晴 | 24-31°C | 10% | 3级 |
-| 周五 (9/25) | 多云 | 23-30°C | 20% | 3级 |
-
-> 温馨提示：外出请根据气温适时增减衣物。
-EOF
-
-python3 /opt/dsh/skills/pdf/scripts/generate_report_pdf.py --input /workspace/report.md --output /workspace/report.pdf --theme blue
+python3 /opt/dsh/skills/pdf/scripts/generate_report_pdf.py \
+  --input /workspace/report.md --output /workspace/report.pdf \
+  --template report --theme emerald --min-pages 2 --max-pages 4
 ```
 
----
+保留旧入口 `generate_report_pdf.py` 及 `--input/--text/--output/--title/--subtitle/--author/--date/--theme`。
+内部使用 WeasyPrint，不再用 FPDF 逐行绘制；`--input` 支持 `.md`、`.txt`、`.json`。
+也可通过 stdin 输入。标题默认取第一个 Markdown H1，正文中去除该 H1，避免重复标题。
+作者和日期只在传入时显示；生成器不自行添加组织署名。
 
-## 备选方案：手写原生 Python 模板脚本 (调用 bash 执行)：
+新增选项：
 
-```python
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-import os
-import sys
-from fpdf import FPDF
+| 参数 | 用途 |
+| --- | --- |
+| `--template report/handout/editorial/mobile` | 版面、字号、正文书体 |
+| `--theme blue/emerald/slate/burgundy/warm` | 统一配色；讲义/编辑版默认 warm，其余 blue |
+| `--accent '#RRGGBB'` | 自定义强调色，淡色背景由其自动推导 |
+| `--cover` | 显式增加独立封面 |
+| `--min-pages/--max-pages` | 检查实际页数范围 |
+| `--preview-dir` | 覆盖默认预览目录 |
 
-# 1. 字体路径探测 (系统内置保证 100% 存在)
-FONT_PATH = '/opt/dsh/skills/pdf/assets/NotoSansSC-Regular.otf'
-if not os.path.exists(FONT_PATH):
-    FONT_PATH = '/tmp/font/NotoSansSC-Regular.otf'
-if not os.path.exists(FONT_PATH):
-    raise FileNotFoundError("未检测到本地中文字体，请检查 /opt/dsh/skills/pdf/assets/")
+## Markdown 内容
 
-BOLD_FONT_PATH = '/opt/dsh/skills/pdf/assets/NotoSansSC-Bold.otf'
+支持标题、加粗、斜体、列表、链接、表格、引用、代码块和本地插图。普通段落让引擎自然换行，不按纸面宽度手工拆成许多短行。
 
-class CleanReportPDF(FPDF):
-    def header(self):
-        pass  # 禁用默认 header
+常用火焰、图表、视频等图标由生成器转为本地 SVG，不依赖 emoji 字体；奖牌排名转为数字。
+报纸、体育、财经、交通、定位等常见图符有本地矢量资源；未知图符以可读名称标签显示，
+不会导致整个 PDF 失败。国旗显示地区标识，组合 emoji 整体降级，不能把缺字方框当成正常图标。
+支持的 grid/card 容器会解析内部 Markdown；不要将任意 HTML 容器与 Markdown 混写。
+通过 bash 生成的 PDF 也要经过统一的结构与逐页视觉发布门禁，检查器失败必须修复后重新生成。
 
-    def footer(self):
-        # 页面底部页码
-        self.set_y(-12)
-        self.set_font('Noto', size=9)
-        self.set_text_color(150, 150, 150)
-        self.cell(0, 8, f"第 {self.page_no()} 页", align='C')
+```markdown
+# 城市自然观察手册
 
-# 2. 初始化 PDF 实例
-pdf = CleanReportPDF(orientation='P', unit='mm', format='A4')
-pdf.set_auto_page_break(auto=True, margin=15)
-pdf.set_margins(15, 15, 15)
+## 观察前的准备
 
-# 3. 注册中文字体 (必须在写内容前注册)
-pdf.add_font('Noto', '', FONT_PATH)
-if os.path.exists(BOLD_FONT_PATH):
-    pdf.add_font('Noto', 'B', BOLD_FONT_PATH)
-else:
-    pdf.add_font('Noto', 'B', FONT_PATH)
+带上记录本，从**颜色、形状和声音**三个方面观察。
 
-# ★★★ 必须调用 add_page() 打开页面！严禁在未打开页面前调用 ln() 或 cell() ★★★
-pdf.add_page()
+> 留出时间停下来观察，比匆忙记录更多项目更有帮助。
 
-# 4. 标题与头部排版
-pdf.set_font('Noto', size=20, style='B')
-pdf.set_text_color(33, 37, 41)
-pdf.cell(0, 14, text="报表标题", new_x="LMARGIN", new_y="NEXT", align="C")
+| 观察对象 | 记录内容 |
+| --- | --- |
+| 树木 | 叶片形状与树皮纹理 |
+| 鸟类 | 声音、颜色和活动位置 |
 
-pdf.set_font('Noto', size=10)
-pdf.set_text_color(108, 117, 125)
-pdf.cell(0, 8, text="生成日期: 2026年9月24日", new_x="LMARGIN", new_y="NEXT", align="C")
-pdf.ln(4)
+![叶片示意](images/leaf.png)
 
-# 装饰分割线
-pdf.set_draw_color(220, 224, 230)
-pdf.set_line_width(0.4)
-pdf.line(15, pdf.get_y(), 195, pdf.get_y())
-pdf.ln(6)
+<!-- pagebreak -->
 
-# 5. 正文区块与数据列表
-pdf.set_font('Noto', size=14, style='B')
-pdf.set_text_color(33, 37, 41)
-pdf.cell(0, 10, text="一、核心概要", new_x="LMARGIN", new_y="NEXT", align="L")
-pdf.ln(2)
+## 记录与交流
 
-pdf.set_font('Noto', size=11)
-pdf.set_text_color(49, 53, 59)
-pdf.multi_cell(0, 7, text="此处为详细分析与数据总结内容，支持多行文本自适应换行。")
-pdf.ln(3)
-
-# 列表项规范排版（★严禁使用 set_y(y0) 还原 Y 坐标导致叠印涂黑★）
-avail_w = pdf.w - pdf.r_margin - pdf.l_margin
-for item in ["关键指标 1：业务增长平稳", "关键指标 2：风控合规全面覆盖"]:
-    pdf.set_x(pdf.l_margin + 4)
-    pdf.cell(6, 6, text="•")
-    pdf.set_x(pdf.l_margin + 12)
-    pdf.multi_cell(avail_w - 12, 6, text=item)
-    pdf.set_x(pdf.l_margin)
-    pdf.ln(1.5)
-pdf.ln(3)
-
-# 绘制规范表格（严禁使用 row.index(row)，直接用 enumerate 遍历）
-pdf.set_font('Noto', size=10, style='B')
-pdf.set_fill_color(240, 243, 246)
-col_widths = [35, 45, 45, 30, 25]
-headers = ["日期", "天气状况", "气温范围", "降水概率", "风力"]
-for i, h in enumerate(headers):
-    pdf.cell(col_widths[i], 8, text=h, border=1, fill=True, align='C')
-pdf.ln()
-
-pdf.set_font('Noto', size=9)
-table_rows = [
-    ["今天 (9/24)", "阴", "23.7 ~ 31.3°C", "12%", "3级"],
-    ["明天 (9/25)", "毛毛雨", "23.9 ~ 33.1°C", "72%", "3级"],
-]
-for row_idx, row in enumerate(table_rows):
-    pdf.set_fill_color(255, 255, 255) if row_idx % 2 == 0 else pdf.set_fill_color(248, 250, 252)
-    for col_idx, cell_value in enumerate(row):
-        pdf.cell(col_widths[col_idx], 8, text=str(cell_value), border=1, fill=True, align='C')
-    pdf.ln()
-pdf.ln(6)
-
-# 6. 保存输出：必须保存至 /workspace/ 路径
-output_path = '/workspace/report.pdf'
-pdf.output(output_path)
-print(f"SUCCESS: {output_path}, pages={pdf.page_no()}, size={os.path.getsize(output_path)}")
+把观察结果整理成短句，与同伴比较。
 ```
+
+`<!-- pagebreak -->` 表示主动分页；常规内容依靠自然分页。长表格自动重复表头，行尽量保持完整。不要用固定页面高度加 `overflow:hidden` 掩盖内容溢出。
+
+## 结构化 JSON
+
+图文组件较多、需要可靠复用时使用 JSON；内容字符由程序转义。`markdown` 块可承载必要的富文本。
+
+```json
+{
+  "title": "城市自然观察手册",
+  "subtitle": "观察、记录与分享",
+  "language": "zh-CN",
+  "blocks": [
+    {"type": "heading", "level": 2, "text": "准备"},
+    {"type": "paragraph", "text": "带上记录本和铅笔。"},
+    {"type": "list", "items": ["观察颜色", "记录声音"]},
+    {"type": "callout", "text": "观察时不要打扰动物。"},
+    {"type": "table", "headers": ["对象", "记录"], "rows": [["树木", "叶片形状"]]},
+    {"type": "image", "path": "images/leaf.png", "caption": "叶片示意"},
+    {"type": "pagebreak"},
+    {"type": "markdown", "text": "## 交流\n\n比较大家的记录。"}
+  ]
+}
+```
+
+`heading` 支持 level 2/3/4；`list` 可加 `ordered:true`；`quote` 与 `callout` 都渲染为强调区块。
+`title/subtitle/author/date/language` 为可选文档属性，CLI 显式参数优先。
+未知块或列数不匹配直接报错，不静默丢内容。
+
+## 质量回执
+
+默认生成 `/workspace/.pdf-preview/report/qa.json`、`document.html` 和 `page-1.png` 等。
+回执包含 PDF SHA-256、页数、逐页提取文本、嵌入字体、页面尺寸、错误和渲染/检查/预览耗时。
+`valid` 只表示程序检查通过；`visual_review=required` 提醒模型仍需查看每页 PNG。
+失败回执保留在同一隐藏目录，原始 Markdown/JSON 保留不删除。

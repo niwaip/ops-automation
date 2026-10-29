@@ -10,6 +10,7 @@ import json
 import socket
 import base64
 import time
+import uuid
 import urllib.request
 import urllib.parse
 import urllib.error
@@ -17,7 +18,7 @@ import tempfile
 import unicodedata
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Optional, Tuple, List, Dict, Any, Iterable
+from typing import Optional, Tuple, List, Dict, Any, Iterable, Set
 
 IMAGE_MIME_MAP = {
     ".jpg": "image/jpeg",
@@ -200,10 +201,86 @@ def _locate_readable_candidate(raw: str, ws: str, kn: str) -> Optional[Path]:
     return None
 
 
+_PROTECTED_ATTACHMENTS_CACHE: Dict[str, Tuple[float, Set[str]]] = {}
+
+
+def clear_protected_session_files_cache() -> None:
+    """Clears the in-memory protected attachment filenames cache."""
+    global _PROTECTED_ATTACHMENTS_CACHE
+    _PROTECTED_ATTACHMENTS_CACHE.clear()
+
+
+def get_protected_session_attachment_names(ws: Path) -> Set[str]:
+    """Retrieves all protected session attachment filenames across the workspace with memory caching.
+
+    Caches results per workspace directory for 60 seconds to avoid repeating expensive
+    O(N_files * N_sessions) disk scans across hundreds of session directories.
+    """
+    global _PROTECTED_ATTACHMENTS_CACHE
+    ws_key = str(ws.resolve())
+    now = time.time()
+    cached = _PROTECTED_ATTACHMENTS_CACHE.get(ws_key)
+    if cached and (now - cached[0] < 60.0):
+        return cached[1]
+
+    names: Set[str] = set()
+    env_atts = os.environ.get("DSH_SESSION_ATTACHMENTS", "")
+    if env_atts:
+        for fname in env_atts.split(","):
+            if fname.strip():
+                names.add(fname.strip())
+
+    backup_dir = ws / ".dsh" / "inputs_backup"
+    if backup_dir.is_dir():
+        try:
+            for item in backup_dir.iterdir():
+                if item.is_file():
+                    names.add(item.name)
+        except Exception:
+            pass
+
+    sessions_dir = ws / ".dsh" / "sessions"
+    if sessions_dir.is_dir():
+        try:
+            for att_file in sessions_dir.glob("*.attachments.json"):
+                try:
+                    with open(att_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        if isinstance(data, list):
+                            for item in data:
+                                fname = item if isinstance(item, str) else (item.get("fileName", "") if isinstance(item, dict) else "")
+                                if fname:
+                                    names.add(fname)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    user_sess_dir = ws / ".sessions"
+    if user_sess_dir.is_dir():
+        try:
+            for att_file in user_sess_dir.glob("*/attachments.json"):
+                try:
+                    with open(att_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        if isinstance(data, list):
+                            for item in data:
+                                fname = item if isinstance(item, str) else (item.get("fileName", "") if isinstance(item, dict) else "")
+                                if fname:
+                                    names.add(fname)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    _PROTECTED_ATTACHMENTS_CACHE[ws_key] = (now, names)
+    return names
+
+
 def is_protected_session_file(target: Path) -> bool:
     """Checks whether the file is an original input attachment in the current session."""
     try:
-        # 1. 检查环境变量 DSH_SESSION_ATTACHMENTS
+        # 1. 检查环境变量 DSH_SESSION_ATTACHMENTS 快速通道
         env_atts = os.environ.get("DSH_SESSION_ATTACHMENTS", "")
         if env_atts:
             for fname in env_atts.split(","):
@@ -213,40 +290,16 @@ def is_protected_session_file(target: Path) -> bool:
         import dsh_modules.config as cfg
         ws = Path(getattr(cfg, "WORKSPACE_DIR", "/workspace"))
 
-        # 2. 检查 .dsh/inputs_backup/
-        for base in [ws, Path.cwd(), target.parent]:
-            backup = base / ".dsh" / "inputs_backup" / target.name
-            if backup.exists():
-                return True
+        # 2. 检查当前工作区的受保护文件名缓存 (O(1) 查找，彻底消除 glob 400+ 目录的重复 IO)
+        protected_names = get_protected_session_attachment_names(ws)
+        if target.name in protected_names:
+            return True
 
-        # 3. 检查 .dsh/sessions/*.attachments.json 与 .sessions/*/attachments.json
-        for base in [ws, Path.cwd(), target.parent]:
-            sessions_dir = base / ".dsh" / "sessions"
-            if sessions_dir.exists():
-                for att_file in sessions_dir.glob("*.attachments.json"):
-                    try:
-                        with open(att_file, "r", encoding="utf-8") as f:
-                            data = json.load(f)
-                            if isinstance(data, list):
-                                for item in data:
-                                    fname = item if isinstance(item, str) else item.get("fileName", "")
-                                    if fname and target.name == fname:
-                                        return True
-                    except Exception:
-                        pass
-            sess_dir = base / ".sessions"
-            if sess_dir.exists():
-                for att_file in sess_dir.glob("*/attachments.json"):
-                    try:
-                        with open(att_file, "r", encoding="utf-8") as f:
-                            data = json.load(f)
-                            if isinstance(data, list):
-                                for item in data:
-                                    fname = item if isinstance(item, str) else item.get("fileName", "")
-                                    if fname and target.name == fname:
-                                        return True
-                    except Exception:
-                        pass
+        # 3. 容错回退检查 target.parent (若 target 位于非根工作区的独立临时子目录)
+        if target.parent.resolve() != ws.resolve():
+            protected_parent_names = get_protected_session_attachment_names(target.parent)
+            if target.name in protected_parent_names:
+                return True
     except Exception:
         pass
     return False
@@ -475,7 +528,10 @@ def inspect_image(
     prompt: str = "",
     max_chars: int = 15000,
     deadline: Optional[float] = None,
-    model_name: Optional[str] = None
+    model_name: Optional[str] = None,
+    max_tokens: Optional[int] = None,
+    telemetry: Optional[Any] = None,
+    purpose: str = "image_inspection"
 ) -> str:
     """
     Inspects, analyzes, and extracts visual information/OCR text from an image file
@@ -545,6 +601,12 @@ def inspect_image(
     image_bytes, mime = _optimize_image_bytes_for_vision(image_bytes, mime, max_dimension=1800)
 
     to_vision = check_deadline(deadline, default_timeout=120.0)
+    call_id = uuid.uuid4().hex
+    started = time.monotonic()
+    usage = {}
+    response_model = model_name or os.environ.get('DSH_MODEL') or 'default'
+    if telemetry:
+        telemetry.checkpoint('model_started', {'call_id': call_id, 'purpose': purpose, 'model': model_name or 'default'})
     try:
         b64_str = base64.b64encode(image_bytes).decode("ascii")
 
@@ -574,7 +636,7 @@ def inspect_image(
                 }
             ],
             "temperature": 0.2,
-            "max_tokens": pol.max_tokens,
+            "max_tokens": max_tokens if max_tokens is not None else pol.max_tokens,
             "thinking": False,
             "stream": False
         }
@@ -590,8 +652,13 @@ def inspect_image(
 
         with urllib.request.urlopen(req, timeout=to_vision) as response:
             resp_data = json.loads(response.read().decode("utf-8"))
+            response_model = resp_data.get('model') or target_model
             assert_not_timed_out(deadline, "image vision inspection")
+            usage = resp_data.get('usage') or {}
             choices = resp_data.get("choices", [])
+            if purpose == 'pdf_page_review' and choices and choices[0].get('finish_reason') not in ('stop', None):
+                return ('页面检查响应不完整：model=' + str(resp_data.get('model', target_model))
+                        + ', finish_reason=' + str(choices[0].get('finish_reason')) + '；停止正文重写。')
             if choices:
                 content = choices[0].get("message", {}).get("content", "")
                 if content and content.strip():
@@ -603,15 +670,12 @@ def inspect_image(
                             except Exception:
                                 pass
                     return f"【文档/图片 ({p.name}) 视觉分析与内容识别结果】:\n{content[:max_chars]}"
+            if purpose == 'pdf_page_review':
+                return ('页面检查服务返回空正文：model=' + str(resp_data.get('model', target_model))
+                        + '；这不是页面内容缺陷，停止正文重写。')
             return f"【系统提示】附件 ({p.name}) 属于扫描件/图片，当前选定模型未能识别解析出有效文字内容，无法解析。"
     except TimeoutError:
         raise
-    except urllib.error.URLError as ue:
-        if isinstance(getattr(ue, "reason", None), socket.timeout) or "timed out" in str(ue).lower():
-            if deadline is not None and time.monotonic() >= deadline:
-                raise TimeoutError("Task total execution deadline exceeded during image vision inspection")
-        assert_not_timed_out(deadline, "image vision inspection")
-        return f"【系统提示】附件 ({p.name}) 图像分析网络请求失败，无法解析: {ue}"
     except urllib.error.HTTPError as he:
         assert_not_timed_out(deadline, "image vision inspection")
         err_msg = ""
@@ -624,11 +688,23 @@ def inspect_image(
         if "cannot identify image" in err_msg.lower() or "unidentified" in err_msg.lower():
             return f"【图片格式异常或损坏】附件 ({p.name}) 二进制流无法被视觉模型解码识别（上游解析失败: {err_msg or he}）。"
         return f"【系统提示】附件 ({p.name}) 视觉分析请求异常 ({he.code}): {err_msg or he}"
+    except urllib.error.URLError as ue:
+        if isinstance(getattr(ue, "reason", None), socket.timeout) or "timed out" in str(ue).lower():
+            if deadline is not None and time.monotonic() >= deadline:
+                raise TimeoutError("Task total execution deadline exceeded during image vision inspection")
+        assert_not_timed_out(deadline, "image vision inspection")
+        return f"【系统提示】附件 ({p.name}) 图像分析网络请求失败，无法解析: {ue}"
     except Exception as e:
         assert_not_timed_out(deadline, "image vision inspection")
         if "cannot identify image" in str(e).lower():
             return f"【图片格式异常或损坏】附件 ({p.name}) 二进制流无法被视觉模型识别解析: {e}"
         return f"【系统提示】附件 ({p.name}) 视觉分析异常: {e}"
+
+    finally:
+        if telemetry:
+            telemetry.record_auxiliary_call(purpose=purpose, usage=usage,
+                total_ms=(time.monotonic() - started) * 1000,
+                model=response_model, call_id=call_id)
 
 
 def read_workspace_file(

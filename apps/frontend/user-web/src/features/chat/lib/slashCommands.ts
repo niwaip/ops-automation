@@ -124,11 +124,11 @@ export const PERSONAL_SLASH_COMMANDS: SlashCommandDefinition[] = [
   {
     command: '/pdf',
     aliases: ['/form'],
-    title: 'PDF 报表与交互式表单',
-    description: '生成排版精美 PDF 报表、填充并导出交互式 AcroForm 表单',
+    title: 'PDF 文档设计与表单',
+    description: '生成讲义、报告、阅读长文或手机 PDF；仅输入 /pdf 查看排版建议与提示词示例',
     skillId: 'pdf',
     badge: '生产力',
-    placeholderHint: '输入 PDF 需求，如 /pdf 导出员工录用审批表单',
+    placeholderHint: '直接发送 /pdf 查看帮助，或输入 /pdf 制作2页暖色讲义，A4打印版',
     scope: 'personal',
   },
   {

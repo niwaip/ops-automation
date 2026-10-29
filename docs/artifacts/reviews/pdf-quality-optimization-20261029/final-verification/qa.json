@@ -1,0 +1,81 @@
+{
+  "valid": true,
+  "errors": [],
+  "page_count": 2,
+  "bytes": 321027,
+  "sha256": "8dc93992bfad734ddecbcc059dc1e6519906522ef8e38852a2c53a5378860c5a",
+  "pages": [
+    {
+      "page": 1,
+      "width_pt": 595.28,
+      "height_pt": 841.89,
+      "text_chars": 257,
+      "text": "城市自然观察手册\n观察、记录与分享\n阅读与实践\n准备好探索身边的小自然了吗？带上好奇心，我们出发！\n观察时的温馨提示\n轻步慢行，不惊扰小动物。 保持安静，倾听自然声音。 爱护环境，不留垃圾痕迹。 安全第\n一，远离危险区域。\n出发前的准备清单\n• [ ] 记录本与笔\n• [ ] 放大镜或望远镜\n• [ ] 观察手册\n• [ ] 舒适的鞋子\n观察记录表\n观察对象 可以记录什么 一个小提示\n树木 形状、颜色、纹理 摸摸树皮感觉\n鸟类 羽毛、叫声、动作 保持距离观察\n天空 云朵形状、阳光 找云朵的故事\n1\n1 / 2",
+      "outside_page_glyphs": 0,
+      "fonts": [
+        {
+          "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+          "embedded": true
+        },
+        {
+          "name": "/TSPJMR+Noto-Sans-CJK-SC",
+          "embedded": true
+        }
+      ]
+    },
+    {
+      "page": 2,
+      "width_pt": 595.28,
+      "height_pt": 841.89,
+      "text_chars": 199,
+      "text": "城市自然观察手册\n如何写观察记录\n把你的发现变成文字或图画。记录要真实，就像给自然写信。\n1. 你看到了什么特别的东西？\n2. 它是什么颜色或形状的？\n3. 它当时在做什么？\n记录可以是文字、绘画或照片。 不要粘贴小石头在记录本上。\n交流与分享建议： 和同学交换观察日记，看看谁发现的更多。分享你的趣事，听听别人的故事。\n观察记录卡\n项目 内容\n时间天气\n地点\n有趣发现\n待探索问题\n2\n2 / 2",
+      "outside_page_glyphs": 0,
+      "fonts": [
+        {
+          "name": "/DFCEGX+Noto-Sans-CJK-SC-Bold",
+          "embedded": true
+        },
+        {
+          "name": "/TSPJMR+Noto-Sans-CJK-SC",
+          "embedded": true
+        }
+      ]
+    }
+  ],
+  "visual_review": "passed",
+  "checks": [
+    "parse",
+    "page_range",
+    "text_coverage",
+    "extraction",
+    "page_bounds",
+    "embedded_fonts"
+  ],
+  "template": "handout",
+  "theme": "warm",
+  "fonts": [
+    {
+      "family": "Noto Sans CJK SC",
+      "style": "Regular",
+      "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+    },
+    {
+      "family": "Noto Sans CJK SC",
+      "style": "Bold",
+      "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
+    }
+  ],
+  "warnings": [],
+  "output": "/workspace/handout.pdf",
+  "timings_ms": {
+    "render": 108.3,
+    "inspect": 20.6,
+    "preview": 136.38,
+    "total": 283.58
+  },
+  "previews": [
+    "/workspace/.pdf-preview/handout/5c96ba54c69c4fc28f51a1ae5217475c/page-1.png",
+    "/workspace/.pdf-preview/handout/5c96ba54c69c4fc28f51a1ae5217475c/page-2.png"
+  ],
+  "source": "/workspace/.pdf-source-5c96ba54c69c4fc28f51a1ae5217475c.md"
+}

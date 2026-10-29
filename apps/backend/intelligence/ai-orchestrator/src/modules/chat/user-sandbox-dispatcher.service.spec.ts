@@ -109,12 +109,11 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     expect(success).toBe(true);
     expect(capturedPayload.model).toBe('uuid-1234');
     expect(capturedPayload.modelDisplayName).toBe('qwen36-35b-a3b');
+    expect(capturedPayload.timeoutMs).toBeUndefined();
 
-    // Verify deltas were streamed as observations
-    const deltaEvents = emittedEvents.filter((e) => e.data?.isDelta);
-    expect(deltaEvents.length).toBe(2);
-    expect(deltaEvents[0].content).toBe('你好');
-    expect(deltaEvents[1].content).toBe('你好世界');
+    // Provisional deltas must not become readable body before final validation.
+    expect(emittedEvents.filter((e) => e.data?.isDelta)).toHaveLength(0);
+    expect(emittedEvents.some((e) => e.data?.progressOnly)).toBe(true);
 
     // Verify final result
     const resultEvent = emittedEvents.find((e) => e.type === StreamEventType.RESULT);
@@ -158,10 +157,8 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     expect(roundSummary).toBeDefined();
 
     // 3. Verify delta has NO <think> tags
-    const deltaEvents = emittedEvents.filter((e) => e.data?.isDelta);
-    expect(deltaEvents.length).toBe(1);
-    expect(deltaEvents[0].content).toBe('已完成文件创建');
-    expect(deltaEvents[0].content).not.toContain('<think>');
+    expect(emittedEvents.filter((e) => e.data?.isDelta)).toHaveLength(0);
+    expect(emittedEvents.filter((e) => e.data?.progressOnly).every(e => !e.content.includes('<think>'))).toBe(true);
 
     // 4. Verify RESULT has clean answer and thoughtLogsSnapshot in data
     const resultEvent = emittedEvents.find((e) => e.type === StreamEventType.RESULT);
@@ -189,10 +186,9 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     );
 
     expect(success).toBe(true);
-    const deltaEvents = emittedEvents.filter((e) => e.data?.isDelta);
-    expect(deltaEvents.length).toBe(2);
-    expect(deltaEvents[0].content).toBe('旧的错误');
-    expect(deltaEvents[1].content).toBe('新的正确');
+    expect(emittedEvents.filter((e) => e.data?.isDelta)).toHaveLength(0);
+    expect(emittedEvents.find(e => e.type === StreamEventType.RESULT).content).toBe('新的正确');
+    expect(emittedEvents.some(e => e.content?.includes('旧的错误'))).toBe(false);
   });
 
   it('should NOT swallow SSE error events or fabricate fake success', async () => {
@@ -220,6 +216,19 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     // Must emit observation with the actual error reason
     const fallbackObs = emittedEvents.find((e) => e.content?.includes('Sandbox model execution error: aborted'));
     expect(fallbackObs).toBeDefined();
+  });
+
+  it('reports inactivity without falling back or claiming a new artifact', async () => {
+    global.fetch = jest.fn().mockResolvedValue(createMockSseResponse([
+      'event: error\ndata: {"message":"沙箱连续 360 秒无有效执行进展，已停止任务"}\n\n',
+    ]));
+    const events: any[] = [];
+    const handled = await service.dispatchPersonalSandbox(
+      {message:'生成 PDF', userId:'test_user', modelId:'uuid-1234'} as any,
+      event => events.push(event), 'test_user');
+    expect(handled).toBe(true);
+    expect(events.find(event => event.type === StreamEventType.ERROR)?.content).toContain('连续 360 秒');
+    expect(events.find(event => event.type === StreamEventType.ERROR)?.content).toContain('未发布新的交付文件');
   });
 
   it('returns a friendly retryable timeout for artifact generation instead of raw aborted', async () => {
@@ -463,9 +472,9 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     expect(success).toBe(true);
     const resultEvent = emittedEvents.find((e) => e.type === StreamEventType.RESULT);
     expect(resultEvent).toBeDefined();
-    expect(resultEvent.content).toContain('生成产物已就绪');
-    expect(resultEvent.content).toContain('[《保密合同_审查意见书.docx》](/api/ai/chat/workspace-files/test_user/%E4%BF%9D%E5%AF%86%E5%90%88%E5%90%8C_%E5%AE%A1%E6%9F%A5%E6%84%8F%E8%A7%81%E4%B9%A6.docx)');
-    expect(resultEvent.content).toContain('点击直接下载 · 38.0 KB');
+    expect(resultEvent.content).not.toContain('生成产物已就绪');
+    expect(resultEvent.data.artifacts).toContainEqual({ type: 'file', name: '保密合同_审查意见书.docx',
+      downloadUrl: '/api/ai/chat/workspace-files/test_user/%E4%BF%9D%E5%AF%86%E5%90%88%E5%90%8C_%E5%AE%A1%E6%9F%A5%E6%84%8F%E8%A7%81%E4%B9%A6.docx' });
   });
 
   it('should embed generated Markdown deliverables as download cards', async () => {
@@ -494,10 +503,9 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
 
     expect(success).toBe(true);
     const resultEvent = emittedEvents.find((e) => e.type === StreamEventType.RESULT);
-    expect(resultEvent.content).toContain('生成产物已就绪');
-    expect(resultEvent.content).toContain('ai-daily-news-20260926.md');
-    expect(resultEvent.content).toContain('点击直接下载 · 2.1 KB');
-    expect(resultEvent.content).toContain('/api/ai/chat/workspace-files/test_user/ai-daily-news-20260926.md');
+    expect(resultEvent.content).not.toContain('生成产物已就绪');
+    expect(resultEvent.data.artifacts).toContainEqual({ type: 'file', name: 'ai-daily-news-20260926.md',
+      downloadUrl: '/api/ai/chat/workspace-files/test_user/ai-daily-news-20260926.md' });
   });
 
   it('should NEVER include uploaded session input files in deliverable download cards', async () => {
@@ -561,10 +569,11 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     expect(success).toBe(true);
     const resultEvent = emittedEvents.find((e) => e.type === StreamEventType.RESULT);
     expect(resultEvent).toBeDefined();
-    expect(resultEvent.content).toContain('生成产物已就绪');
+    expect(resultEvent.content).not.toContain('生成产物已就绪');
     expect(resultEvent.content).toContain('东大方餐饮门店数字化服务巡检分析报告.pdf');
     // 关键断言：test.pdf 必须被过滤掉，不能出现在交付卡片中
     expect(resultEvent.content).not.toContain('test.pdf');
+    expect(resultEvent.data.artifacts?.some(a => a.name === 'test.pdf')).not.toBe(true);
   });
 
   it('should NOT treat historical or example files mentioned in environment diagnostics as deliverables', async () => {
@@ -630,9 +639,9 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     expect(success).toBe(true);
     const resultEvent = emittedEvents.find((e) => e.type === StreamEventType.RESULT);
     expect(resultEvent).toBeDefined();
-    expect(resultEvent.content).toContain('生成产物已就绪');
+    expect(resultEvent.content).not.toContain('生成产物已就绪');
     expect(resultEvent.content).toContain('本轮新鲜生成的周报.xlsx');
-    expect(resultEvent.content).toContain('点击直接下载');
+    expect(resultEvent.data.artifacts?.some(a => a.name === '本轮新鲜生成的周报.xlsx')).toBe(true);
   });
 
   it('should NOT append duplicate download card when model output already contains /api/ai/chat/workspace-files link', async () => {

@@ -1,0 +1,16 @@
+{
+  "tests": 56,
+  "test_result": "passed",
+  "original_pdf_structural_check": "rejected: pypdf extraction contains NUL or replacement characters",
+  "original_query_tool_names": [
+    "render_pdf",
+    "inspect_pdf_page",
+    "web_search",
+    "fetch_page",
+    "read_file"
+  ],
+  "runtime": "Canonical dsh_modules bind mount; synchronized shared PDF skill; full restart session-broker completed",
+  "corrected_pdf_sha256": "a413689debc3694006910aacc4738195cf9e19ad7a1adbe7bf7aabdcbba3ea72",
+  "corrected_pdf_manual_visual_review": "passed",
+  "snapshot_time": "2026-10-29 19:17 Asia/Shanghai; original data retained, not refreshed"
+}

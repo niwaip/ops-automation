@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Bilibili 今日热点</title>
+  <meta name="author" content="">
+  <meta name="description" content="">
+<style>@page {
+  size: A4;
+  margin: 19mm 18mm 20mm;
+  background: #ffffff;
+  @top-right {
+    content: element(running-title);
+    vertical-align: bottom;
+    padding-bottom: 4mm;
+  }
+  @bottom-right {
+    content: counter(page) " / " counter(pages);
+    font: 8pt "Noto Sans CJK SC";
+    color: #67727c;
+    vertical-align: top;
+    padding-top: 4mm;
+  }
+}
+@page :first { @top-right { content: none; } }
+* { box-sizing: border-box; }
+html { color: #26313b; }
+body {
+  margin: 0;
+  font-family: "Noto Sans CJK SC", sans-serif;
+  font-size: 11.5pt;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.running-title {
+  position: running(running-title);
+  font: 8pt "Noto Sans CJK SC";
+  color: #67727c;
+}
+h1, h2, h3, h4 {
+  font-family: "Noto Sans CJK SC", sans-serif;
+  line-height: 1.35;
+  font-weight: 700;
+  break-after: avoid;
+  color: #1e2c38;
+}
+h1 { font-size: 26pt; margin: 0 0 5mm; letter-spacing: .02em; }
+h2 {
+  font-size: 15pt;
+  margin: 8mm 0 3mm;
+  padding-bottom: 2mm;
+  border-bottom: .6pt solid #475569;
+}
+h3 { font-size: 12pt; margin: 5mm 0 2mm; }
+h4 { font-size: 11pt; margin: 4mm 0 2mm; }
+p { margin: 0 0 3mm; orphans: 2; widows: 2; }
+.document-header {
+  border-top: 3pt solid #475569;
+  padding: 6mm 0 4mm;
+  margin-bottom: 6mm;
+  border-bottom: .5pt solid #dce2e6;
+}
+.subtitle { font-size: 12pt; color: #52616e; margin-bottom: 4mm; }
+.meta, figcaption, caption { font-size: 8.5pt; color: #65717d; }
+.meta { margin-bottom: 0; }
+.cover { break-after: page; padding-top: 32mm; }
+.cover-rule { background: #475569; height: 3mm; width: 18mm; margin-bottom: 14mm; }
+.cover h1 { font-size: 34pt; line-height: 1.35; margin-bottom: 9mm; }
+.cover .subtitle { font-size: 15pt; }
+.cover-meta { margin-top: 22mm; color: #65717d; font-size: 10pt; }
+strong { font-weight: 700; }
+a { color: #475569; text-decoration: none; }
+ul, ol { padding-left: 1.6em; margin: 2mm 0 4mm; }
+li { margin-bottom: 1.5mm; orphans: 2; widows: 2; }
+li p { margin-bottom: 1.5mm; }
+blockquote {
+  margin: 4mm 0;
+  padding: 3.5mm 4mm;
+  border-left: 2pt solid #475569;
+  background: #f1f3f5;
+}
+blockquote p:last-child { margin-bottom: 0; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 4mm 0 6mm; font-size: .9em; }
+thead { display: table-header-group; }
+th, td { padding: 2.5mm 2.8mm; border-bottom: .5pt solid #dce2e6; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+th { background: #f1f3f5; color: #475569; font-weight: 700; }
+tbody tr:nth-child(even) { background: #f7f8fa; }
+tr { break-inside: avoid; }
+caption { text-align: left; margin-bottom: 2mm; }
+figure { margin: 5mm 0; break-inside: avoid; }
+img { max-width: 100%; height: auto; }
+figcaption { margin-top: 2mm; }
+code { font-family: "DejaVu Sans Mono", "Noto Sans CJK SC", monospace; font-size: .88em; background: #f1f3f5; }
+pre { padding: 4mm; background: #f1f3f5; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+pre code { background: none; }
+hr { border: 0; border-top: .5pt solid #dce2e6; margin: 6mm 0; }
+.page-break { break-before: page; }
+.handout h2 { border: 0; border-left: 3pt solid #475569; padding: 1mm 0 1mm 3mm; }
+.handout .document-header { padding: 4mm 0 3mm; margin-bottom: 4mm; }
+.handout h2 { font-size: 13pt; margin: 4mm 0 1.5mm; padding-top: .5mm; padding-bottom: .5mm; }
+.handout h3, .handout h4 { margin: 3mm 0 1.5mm; }
+.handout ul, .handout ol { margin: 1.5mm 0 2.5mm; }
+.handout li { margin-bottom: .75mm; }
+.handout blockquote { margin: 2.5mm 0; padding: 2.5mm 3mm; }
+.handout table { margin: 3mm 0 4mm; }
+.handout th, .handout td { padding: 2mm 2.8mm; }
+.handout figure { margin: 3mm 0; }
+.handout img { max-height: 30mm; }
+.handout img.handout-illustration { max-height: 20mm; }
+.editorial .document-header { border-top-width: 1pt; }
+.editorial h1 { font-family: "Noto Serif CJK SC", serif; }
+.mobile h2 { font-size: 14pt; }
+.mobile table { font-size: .8em; }
+.mobile th, .mobile td { padding: 1.5mm; }
+.mobile .cover { padding-top: 16mm; }
+.mobile .cover h1 { font-size: 26pt; }
+
+/* Printable record cards reserve handwriting space, rather than ordinary data-row height. */
+.handout table.record-card th:first-child { width: 24%; }
+.handout table.record-card tbody td { height: 22mm; border: .5pt solid #dce2e6; }
+
+/* Printable task lists: draw boxes independent of glyph availability. */
+.checklist-item { list-style: none; }
+.print-checkbox { display: inline-block; width: 3mm; height: 3mm; border: 0.3mm solid currentColor; margin-right: 1.5mm; vertical-align: middle; line-height: 3mm; text-align: center; }
+
+/* Modern Layout Primitives (shared with frontend-design) */
+.grid-2 { display: flex; gap: 6mm; margin: 3mm 0 5mm; }
+.grid-2 > * { flex: 1 1 0; min-width: 0; }
+.grid-2-1 { display: flex; gap: 6mm; margin: 3mm 0 5mm; }
+.grid-2-1 > *:first-child { flex: 2 1 0; min-width: 0; }
+.grid-2-1 > *:last-child { flex: 1 1 0; min-width: 0; }
+.grid-1-2 { display: flex; gap: 6mm; margin: 3mm 0 5mm; }
+.grid-1-2 > *:first-child { flex: 1 1 0; min-width: 0; }
+.grid-1-2 > *:last-child { flex: 2 1 0; min-width: 0; }
+.grid-3 { display: flex; gap: 4mm; margin: 3mm 0 5mm; }
+.grid-3 > * { flex: 1 1 0; min-width: 0; }
+.row { display: flex; align-items: center; gap: 3mm; }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: 3mm; }
+.stack { display: flex; flex-direction: column; gap: 2.5mm; }
+
+/* Surface & Card Containers */
+.card {
+  background: #ffffff;
+  border: .5pt solid #dce2e6;
+  border-radius: 2.5mm;
+  padding: 3.5mm 4.5mm;
+  margin: 2.5mm 0;
+  break-inside: avoid;
+}
+.card-flat { background: transparent; border: 0; padding: 0; margin: 2mm 0; }
+.card-rule { border-top: 1.5pt solid #475569; padding-top: 3mm; margin-top: 3mm; }
+
+/* Badges, Pills & Chips */
+.pill {
+  display: inline-block;
+  padding: 1mm 2.8mm;
+  background: #f1f3f5;
+  color: #475569;
+  border-radius: 999px;
+  font-size: 8.5pt;
+  font-weight: 600;
+  margin: 1mm 1.5mm 1mm 0;
+  line-height: 1.25;
+}
+.tag {
+  display: inline-block;
+  padding: 1mm 2.5mm;
+  background: #f1f3f5;
+  color: #52616e;
+  border: .4pt solid #dce2e6;
+  border-radius: 999px;
+  font-size: 8pt;
+  margin: 1mm 1.5mm 1mm 0;
+  line-height: 1.25;
+}
+
+/* Ranking Badges */
+.rank-badge {
+  display: inline-block;
+  width: 5mm;
+  height: 5mm;
+  line-height: 5mm;
+  text-align: center;
+  border-radius: 50%;
+  font-size: 7.5pt;
+  font-weight: 700;
+  color: #ffffff;
+  background: #65717d;
+  margin-right: 1.5mm;
+  vertical-align: middle;
+}
+.rank-1 { background: #d97706; }
+.rank-2 { background: #64748b; }
+.rank-3 { background: #b45309; }
+
+/* Stat Highlights */
+.stat-strip { display: flex; gap: 4mm; margin: 3mm 0 5mm; }
+.stat {
+  flex: 1;
+  background: #f1f3f5;
+  border-left: 2.5pt solid #475569;
+  padding: 2.5mm 3.5mm;
+  border-radius: 1.5mm;
+  break-inside: avoid;
+}
+.stat .stat-num { font-size: 16pt; font-weight: 700; color: #475569; line-height: 1.1; }
+.stat .stat-label { font-size: 8pt; color: #65717d; margin-top: 1mm; }
+.stat .stat-unit { font-size: 9pt; font-weight: 400; opacity: 0.8; margin-left: 1mm; }</style></head>
+<body class="handout">
+  <div class="running-title">Bilibili 今日热点</div>
+  
+  <header class="document-header">
+    <h1>Bilibili 今日热点</h1>
+    
+    
+  </header>
+  
+  <main><h2>今日 Bilibili 热点速览</h2>
+<p><strong>2026年10月29日 · 星期四 · 每日热门精选</strong></p>
+<div class="grid-2">
+
+##  实时热搜 TOP 8
+
+| # | 热搜话题 | 热度标签 |
+|---|---------|---------|
+| 1 | 工资改发数字人民币有何变化 |  财经 |
+| 2 | 人生一串 |  美食纪录片 |
+| 3 | 巴西总统候选人败选后逃往美国 |  国际 |
+| 4 | 外交部回应三丽鸥取消 Vivant 联名 |  文化 |
+| 5 | 周星驰张柏芝版 Trouble Maker |  娱乐 |
+| 6 | TheShy 杰斯只有爆线这么简单吗 |  电竞 |
+| 7 | 影之刃零 |  游戏 |
+| 8 | donk 打出 5-14 战绩 |  电竞 |
+
+</div>
+
+<div class="grid-2">
+
+##  热门视频 TOP 5
+
+| 排名 | 视频标题 | UP 主 | 播放量 |
+|------|---------|-------|--------|
+|  | 【2026全球总决赛】LYON vs IG | 英雄联盟赛事 | **452万** |
+|  | 《崩坏：星穹铁道》千星纪游PV·其三 | 崩坏星穹铁道 | **212万** |
+|  | 喝可乐不打嗝小游戏~ | 瓜哥超爱玩QAQ | **114万** |
+| 4 | 【小黄人与大怪兽】小黄人逐梦演艺圈 | 哔哩哔哩电影 | **113万** |
+| 5 | 《新 三 国 FUNK》 | 纽毕斯 | **111万** |
+
+</div>
+
+<h2>今日看点</h2>
+<ul>
+<li><strong>电竞日</strong>：英雄联盟全球总决赛上演 LYON vs IG 对决，播放量突破 452 万；TheShy 杰斯精彩操作引发热议</li>
+<li><strong>文化事件</strong>：三丽鸥取消联名引发外交部回应，中日文化联动话题持续发酵</li>
+<li><strong>民生话题</strong>：数字人民币工资发放引发广泛讨论</li>
+<li><strong>新游动态</strong>：《崩坏：星穹铁道》新 PV、《影之刃零》备受期待、《原神》米提亚角色 PV 上线</li>
+<li><strong>情怀回归</strong>：热门美食纪录片《人生一串》再度引发追番热潮</li>
+</ul>
+<blockquote>
+<p>数据来源：Bilibili 热搜榜 · 热门视频排行 · 2026.10.29 实时抓取
+本速览由 AI 自动生成，仅供信息参考</p>
+</blockquote></main>
+</body>
+</html>

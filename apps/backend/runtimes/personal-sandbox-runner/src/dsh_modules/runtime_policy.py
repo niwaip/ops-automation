@@ -22,8 +22,8 @@ class RuntimePolicy:
     param_preview_chars: int = 80
     recent_history_save_count: int = 20
     single_request_timeout: int = 180
-    total_task_timeout: int = 300
-    timeout_seconds: int = 300
+    total_task_timeout: int = 0
+    timeout_seconds: int = 0
     timezone: str = "Asia/Shanghai"
     temperature: float = 0.4
     max_tokens: int = 16384
@@ -39,7 +39,7 @@ class RuntimePolicy:
     def from_env(cls) -> "RuntimePolicy":
         """Factory method to load defaults with environment overrides."""
         single_to = int(os.getenv("DSH_SINGLE_TIMEOUT_SECONDS", "180"))
-        total_to = int(os.getenv("DSH_TOTAL_TIMEOUT_SECONDS", os.getenv("DSH_TIMEOUT_SECONDS", "300")))
+        total_to = int(os.getenv("DSH_TOTAL_TIMEOUT_SECONDS", os.getenv("DSH_TIMEOUT_SECONDS", "0")))
         thinking_env = os.getenv("DSH_THINKING", "").lower() in ("true", "1", "yes")
         reasoning_effort_env = os.getenv("DSH_REASONING_EFFORT", None) or None
         allow_unverified_env = os.getenv("DSH_CHART_ALLOW_UNVERIFIED_FALLBACK", "").lower() in ("true", "1", "yes")

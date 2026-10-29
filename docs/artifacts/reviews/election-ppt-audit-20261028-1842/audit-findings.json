@@ -1,0 +1,48 @@
+{
+  "session_id": "chat-session-1793184040235-pdu0fsgg",
+  "turn_id": "1793184172574324680-6cb6b5bd0d89492b91494c92fa2c78d6",
+  "html_sha256": "e7b5256ab9a5c2d0902fd9d4db09549eb062cd2d3c2c397628d05428e81c4e43",
+  "html_bytes": 12242,
+  "html_slide_ids": [
+    "slide1",
+    "slide2",
+    "slide3",
+    "slide4"
+  ],
+  "http_ms": 127003,
+  "harness_ms": 126968,
+  "dsh_ms": 125949.69,
+  "llm_ms": 91307.83,
+  "llm_fraction": 0.7249547815480928,
+  "non_llm_residual_ms": 34641.86,
+  "model_calls": 8,
+  "unique_call_ids": 8,
+  "tokens": {
+    "prompt_tokens": 61163,
+    "completion_tokens": 10257,
+    "total_tokens": 71420
+  },
+  "html_writing_model_ms": 69559.45,
+  "tool_actual_outcomes": [
+    {
+      "tool": "write_markdown",
+      "reported_status": "success",
+      "data_prefix": "写入 Markdown 文件失败: write_markdown only accepts .md files"
+    },
+    {
+      "tool": "bash",
+      "reported_status": "success",
+      "data_prefix": "--- 文件已生成 ---\n-rw-r--r-- 1 sandbox sandbox 12242 Oct 28 18:42 /workspace/竞选班干部.html"
+    },
+    {
+      "tool": "send_file",
+      "reported_status": "success",
+      "data_prefix": "<<<DSH_OUTBOUND_FILE:len=292:{\"filePath\": \"/workspace/竞选班干部.html\", \"fileName\": \"竞选班干部.html\", \"comment\": \"🎒 小学生竞选班干部 PPT（共4页），已生成！\\n\\n页面结构：\\n1️⃣ 封面 + 自"
+    }
+  ],
+  "image": {
+    "id": "sha256:fe8c1c9492d21b69086dfaaad4b284e3f079d561bd2178ac5f2c8974bd543b96",
+    "created_utc": "2026-09-21T23:50:59.181209179Z",
+    "local_tag_is_same_image": true
+  }
+}

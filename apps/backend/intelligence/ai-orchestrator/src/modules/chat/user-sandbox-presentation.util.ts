@@ -131,6 +131,8 @@ export interface EmbedWorkspaceDeliverablesOptions {
   outboundFiles: Array<{ filePath: string; fileName: string; comment?: string }>;
   sessionFiles?: string[];
   turnStartTime?: number;
+  embedDownloadCards?: boolean;
+  onArtifact?: (artifact: { type: string; name: string; downloadUrl: string }) => void;
   getWorkspaceFilePath: (userId: string, fileName: string) => string | null;
   onImageResolveError?: (fileName: string, err: any) => void;
 }
@@ -376,7 +378,7 @@ export function embedWorkspaceDeliverablesAndImagesInAnswer(
   // 2.3 生成下载卡片
   const downloadCards: string[] = [];
   for (const item of candidateDeliverables) {
-    if (handledFiles.has(item.fileName)) continue;
+    if (handledFiles.has(item.fileName) && options.embedDownloadCards !== false) continue;
     const filePath = item.filePath && fs.existsSync(item.filePath)
       ? item.filePath
       : getWorkspaceFilePath(userId, item.fileName);
@@ -394,6 +396,8 @@ export function embedWorkspaceDeliverablesAndImagesInAnswer(
       // ignore
     }
     const fileUrl = `/api/ai/chat/workspace-files/${encodeURIComponent(userId)}/${encodeURIComponent(item.fileName)}`;
+    options.onArtifact?.({ type: 'file', name: item.fileName, downloadUrl: fileUrl });
+    if (options.embedDownloadCards === false) continue;
     const displayName = item.fileName.startsWith('《') && item.fileName.endsWith('》')
       ? item.fileName
       : `《${item.fileName}》`;

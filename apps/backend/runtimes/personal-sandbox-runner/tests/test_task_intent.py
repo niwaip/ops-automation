@@ -237,5 +237,53 @@ class TaskIntentTests(unittest.TestCase):
         self.assertEqual(result['output_mode'], 'conversation')
         self.assertEqual(result['artifact_types'], [])
 
+    def test_sanitize_drops_flawed_requirement_in_retry(self):
+        from dsh_modules.task_intent import validate_intent
+        request = '生成一份自然观察手册，共2页，使用warm主题'
+        raw = {
+            'instruction_relation': 'standalone',
+            'task_mode': 'execute',
+            'output_mode': 'artifact',
+            'artifact_types': ['.pdf'],
+            'unit_confirmation': None,
+            'section_confirmation': None,
+            'skill_invocation': {'mode': 'none', 'name': '', 'replace_defaults': False},
+            'requirements': [
+                {'id': 'r1', 'quote': '生成一份自然观察手册'},
+                {'id': 'r2', 'quote': '这一句在用户原话中根本不存在的编造要求'}
+            ]
+        }
+        # In first round (allow_sanitize=False), must raise ValueError
+        with self.assertRaises(ValueError) as cm:
+            validate_intent(dict(raw), request, [], None, allow_sanitize=False)
+        self.assertIn('用户原话依据', str(cm.exception))
+
+        # In retry round (allow_sanitize=True), flawed requirement is sanitized away
+        cleaned = validate_intent(dict(raw), request, [], None, allow_sanitize=True)
+        self.assertEqual(len(cleaned['requirements']), 1)
+        self.assertEqual(cleaned['requirements'][0]['id'], 'r1')
+
+    def test_pure_export_command_resolves_to_followup(self):
+        from dsh_modules.task_intent import validate_intent
+        request = '生成pdf文件'
+        users = ['查看今天微博的热点新闻']
+        raw = {
+            'instruction_relation': 'standalone',
+            'task_mode': 'execute',
+            'output_mode': 'artifact',
+            'artifact_types': ['.pdf'],
+            'unit_confirmation': None,
+            'section_confirmation': None,
+            'skill_invocation': {'mode': 'none', 'name': '', 'replace_defaults': False},
+            'requirements': [
+                {'id': 'r1', 'quote': '生成pdf文件'}
+            ]
+        }
+        validated = validate_intent(dict(raw), request, users, None, allow_sanitize=False)
+        self.assertEqual(validated['instruction_relation'], 'followup')
+        self.assertEqual(validated['task_mode'], 'execute')
+        self.assertEqual(validated['output_mode'], 'artifact')
+        self.assertEqual(validated['artifact_types'], ['.pdf'])
+
 
 if __name__ == '__main__': unittest.main()

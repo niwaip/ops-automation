@@ -399,17 +399,9 @@ def build_user_turn(
         is_office_intent and any(k in prompt.lower() for k in ["pdf", "导出pdf", "生成pdf", "pdf报告"])
     ) or any(k in prompt.lower() for k in ["pdf", "导出pdf", "生成pdf", "pdf报表", "转成pdf", "转为pdf"])
 
-    if effective_is_pdf:
-        user_parts.append(
-            "【PDF 文档生成硬性执行要求 (Action Grounding)】:\n"
-            "- 【默认严禁只向用户返回代码】：除非用户指令明确要求‘查看代码’、‘写出代码’或‘给出源码’，否则绝对不要直接在回复中输出 Python/Bash 代码半成品！\n"
-            "- 【闭环执行落盘】：你必须调用 `bash` 工具在 Linux 终端静默执行 Python 脚本，将最终生成的 PDF 文件保存到工作区 `/workspace/<文件名>.pdf`！\n"
-            "- 【关键代码约束】：\n"
-            "  1. 必须使用内置中文字体 `/opt/dsh/skills/pdf/assets/NotoSansSC-Regular.otf`（或 `/tmp/font/NotoSansSC-Regular.otf`）；\n"
-            "  2. 初始化 FPDF 后，【必须先显式调用 `pdf.add_page()` 打开页面】，严禁在未调用 add_page() 前直接调用 ln() 或 cell()；\n"
-            "  3. 必须输出到 `/workspace/` 路径（如 `pdf.output('/workspace/天气预报.pdf')`），前端才能自动挂载下载卡片；\n"
-            "- 【自愈重试与结果汇报】：若脚本执行报错，分析 STDERR 报错并自愈修改代码后重新运行，直到文件成功生成落盘；生成完成后向用户汇报文件名称与大小。"
-        )
+    if effective_is_pdf and not is_guide_intent and not (is_inspect_intent and not is_generate_intent):
+        from .pdf_prompt import pdf_execution_guidance
+        user_parts.append(pdf_execution_guidance(prompt, available_tool_names))
 
     has_update_tools = "plan_spreadsheet_update" in (available_tool_names or [])
     effective_is_xlsx = (
@@ -435,6 +427,20 @@ def build_user_turn(
                 "- 【财务常识与严禁盲目求和】：生成财务指标摘要表时，收入、毛利、营业利润、净利润等属于纵向层级递进核算指标，严禁在其下方添加 SUM 求和合计行（把收入与净利润相加是无业务意义的严重错误！）；仅当表格行属于同维度的横向并列细分项（如各部门费用、各产品销量）时才允许计算合计；\n"
                 "- 【自愈重试与结果汇报】：若脚本执行报错，修正代码重新运行，直到文件成功生成落盘；生成完成后向用户汇报文件名称、核验结果与大小。"
             )
+
+    effective_is_pptx = (
+        is_ppt_intent
+        or (is_office_intent and any(k in prompt.lower() for k in ["ppt", "pptx", "幻灯片", "演示文稿", "deck"]))
+        or any(k in prompt.lower() for k in ["ppt", "pptx", "幻灯片", "做个ppt", "生成ppt", "竞选ppt"])
+    )
+
+    if effective_is_pptx and "bash" in (available_tool_names or []):
+        user_parts.append(
+            "【PPTX 幻灯片演示文稿生成硬性执行要求 (Action Grounding)】:\n"
+            "- 【预装环境与严禁 pip】：沙箱系统已在全局预装 `python-pptx`（版本 1.0.2），严禁调用 `pip install` 重复安装！直接在 Python 脚本中 `from pptx import Presentation` 即可使用。\n"
+            "- 【bash 执行落盘交付】：你必须调用 `bash` 工具执行 Python 脚本，将最终生成的演示文稿物理保存到工作区 `/workspace/<文件名>.pptx`；严禁在回复中仅向用户展示代码而未落盘文件！\n"
+            "- 【脚本转义与自愈规范】：在通过 bash cat 写入 Python 脚本时，字符串请使用三引号或保持简单字面量，严禁在行末续行符后出现未转义字符；若脚本执行报错，分析错误日志并自愈修复后重新运行，直到文件成功落盘；生成完成后向用户汇报文件名称与页面概览。"
+        )
 
     if is_inspect_intent and not is_generate_intent and not has_update_tools:
         names = set(available_tool_names or [])

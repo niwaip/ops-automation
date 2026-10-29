@@ -1,0 +1,1 @@
+{"status": "error", "error": {"code": "pdf_render_failed", "message": "Expected at most 2 pages, got 3"}, "data": {"guidance": "修正内容或页数后重试 render_pdf；无需重写字体和排版代码。"}, "root": "/tmp/pdf-first-draft-final-s87jy22i"}

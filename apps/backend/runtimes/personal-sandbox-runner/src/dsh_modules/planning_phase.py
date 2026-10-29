@@ -46,6 +46,23 @@ def is_fast_path_task(prompt: str, skill_res: Any) -> bool:
     p = (prompt or "").strip()
     if not p:
         return True
+    from .pdf_workflow import is_template_pdf_task
+    if is_template_pdf_task(prompt, skill_res):
+        return True
+
+    # 任何涉及检索、探索、复合多步骤或跨域联动的任务，绝不走单步直出快路径
+    if getattr(skill_res, "is_research_intent", False) or getattr(skill_res, "is_search_intent", False):
+        return False
+
+    compound_conjunctions = [
+        r'(?:并|并且|同时|接着|然后|顺便|同步|在此基础上)[^\n。；;]{0,10}(?:核算|计算|更新|生成|分析|重算|比对|整理|出具|输出|制作|写|绘制|排查|评估|优化|对比)',
+        r'对比分析',
+        r'多阶段',
+        r'方案设计',
+        r'系统架构',
+    ]
+    if any(re.search(pat, p) for pat in compound_conjunctions):
+        return False
 
     # 1. 明确的字段修改/局部替换任务（如将 Word 预算由 30000 改为 36000，保持原版）
     replace_patterns = [
@@ -243,7 +260,11 @@ def build_deliverable_execution_instruction(skill_res: Any) -> str:
     elif getattr(skill_res, "deliverables", None) and any(ext.lower() == ".pdf" for ext in skill_res.deliverables):
         return (
             "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
-            "落盘方式：调用 `write_markdown` 或运行脚本生成目标 PDF 文件保存至 `/workspace/`。\n"
+            "落盘方式：调用 `render_pdf` 工具（直接传入 markdown 正文及目标 output_path，保存至 `/workspace/`）。\n"
+            "【宏观内容与排版规范】：\n"
+            "1. 完整保真（内容底线）：完整保留用户指定的核心信息与各榜单/细项条目（例如用户要求 TOP 8 时必须完整列出 8 项），严禁为迎合版面或页数擅自删减内容；篇幅较多时由排版引擎自然向下跨页或主动使用 `<!-- pagebreak -->`；\n"
+            "2. 结构自洽（格式底线）：使用清晰的标准 Markdown（各级标题、段落、列表、表格），让模板引擎负责版式与字体；严禁手写 `<div class='grid-2'>`、卡片等内联 HTML 标签以防打印溢出裁剪；标号使用纯文本（如 1. / 2. 或 NO.1 / NO.2），不使用特殊表情符号（Emoji）；\n"
+            "3. 真实落盘：必须实际调用 render_pdf 生成物理文件，并在验收通过后向用户汇报实际产物。\n"
             "⚠️ 严禁仅输出口头文字！必须实际调用工具完成物理文件落盘！"
         )
     elif getattr(skill_res, "skill_id", None) == "pptx" or (

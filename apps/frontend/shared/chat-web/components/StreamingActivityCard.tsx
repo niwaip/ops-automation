@@ -1,5 +1,6 @@
 import React from 'react';
 import { LoadingOutlined } from '@ant-design/icons';
+import { pdfProgress } from '../lib/pdfProgress';
 
 export interface StreamingActivityCardProps {
   isStreaming: boolean;
@@ -41,6 +42,8 @@ const GENERAL_PHASES = [
 
 const humanizeSingleLine = (rawLine: string): string | undefined => {
   let text = rawLine.trim();
+  const pdfStage = pdfProgress(text);
+  if (pdfStage) return pdfStage;
   // 去除 【观察】 或 【行动】 等通用协议前缀
   text = text.replace(/^【(?:观察|行动)】\s*/u, '').trim();
 
@@ -310,6 +313,10 @@ export const StreamingActivityCard: React.FC<StreamingActivityCardProps> = ({
       : '表格分析中'
     : isSearchQuery
     ? '联网检索中'
+    : activeProgress?.includes('页面验收')
+    ? '页面验收中'
+    : activeProgress?.includes('候选')
+    ? '候选生成中'
     : isDeliverableQuery
     ? '排版构建中'
     : activeProgress

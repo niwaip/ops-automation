@@ -23,6 +23,7 @@ from .skill_router import SkillRouter, is_text_only_request
 from .agent_loop import run_agent_loop, _is_tool_error
 from .artifact_exporter import ArtifactExporter
 from .telemetry import TelemetryStats
+from .pdf_workflow import is_template_pdf_task, PDF_EXECUTION_INSTRUCTION
 from .comparison_context import build_comparison_source_context
 from .spreadsheet_analysis_evidence import requires_spreadsheet_analysis, has_spreadsheet_analysis_input
 from .spreadsheet_context import build_spreadsheet_source_context, STRUCTURE_TOOL_NAME
@@ -76,6 +77,33 @@ WEATHER_RE = re.compile(
 REMINDER_RE = re.compile(r'(提醒|闹钟|待办|日程|remind\s+me|reminder|alarm)', re.I)
 
 
+def is_weather_inquiry(prompt: str, skill_res: Any = None) -> bool:
+    """Accurately distinguishes genuine weather inquiry intents from document formatting fields (e.g. '时间天气记录卡')."""
+    if not prompt or not isinstance(prompt, str):
+        return False
+    lower = prompt.lower()
+    from .skill_router import is_network_search_forbidden
+    if is_network_search_forbidden(lower):
+        return False
+    # 消除文档模板、排版表头中的假阳性（如“时间天气、地点、有趣发现四项记录卡”、“表格列：天气状况”）
+    if re.search(r'(?:字段|表头|列名|记录卡|栏目|项目)[：:\s]*.*(?:时间)?天气', prompt) or '时间天气' in prompt:
+        return False
+    # 如果是文档/代码/文件生成任务，且用户未显式要求查询或插入实时天气数据
+    is_gen = getattr(skill_res, 'is_generate_intent', False) or getattr(skill_res, 'skill_id', None) in {'pdf', 'docx', 'xlsx', 'pptx'}
+    has_explicit_weather_query = any(k in lower for k in ['查天气', '天气如何', '天气预报', '今天天气', '实时天气', '明天天气', '后天天气', '查看天气', '当前天气'])
+    if is_gen and not has_explicit_weather_query:
+        return False
+    # 真实的天气查询句式匹配
+    weather_query_patterns = [
+        r'(?:查|查看|查询|告诉我|看下|搜下|了解|关注).*(?:天气|气温|预报|下雨|降水|降雪)',
+        r'(?:今天|明天|后天|本周|当前|实时|近期|周末).*(?:天气|气温|下雨|下雪|晴天|阴天|气象)',
+        r'(?:天气|气温|气象预报|天气预报).*(?:怎么样|如何|好不好|多少度|冷不冷|热不热|预测)',
+        r'(?:会|会否|是否|有没有).*(?:下雨|下雪|降温|降水)',
+        r'\bweather\b.*\b(?:in|at|for|today|tomorrow)\b',
+    ]
+    return any(re.search(pat, prompt, re.I) for pat in weather_query_patterns) or bool(WEATHER_RE.search(prompt) and not is_gen)
+
+
 from .planning_phase import (
     is_fast_path_task,
     should_run_planning_phase,
@@ -85,8 +113,6 @@ from .planning_phase import (
 from .intent_contract import is_modify_intent_requested, is_network_search_forbidden
 
 _run_planning_phase = run_planning_phase
-
-
 
 
 
@@ -104,6 +130,19 @@ def select_active_tools(
     """
     if is_network_search_forbidden(prompt):
         has_web_search_permission = False
+    from .pdf_workflow import is_retrieval_pdf_task
+    if is_retrieval_pdf_task(skill_res):
+        allowed = {'render_pdf', 'read_file', 'inspect_pdf_page'}
+        if has_web_search_permission:
+            allowed.update({'web_search', 'fetch_page'})
+        if getattr(skill_res, 'is_send_intent', False):
+            allowed.add('send_file')
+        return get_sandbox_tools(allowed_names=allowed)
+    if is_template_pdf_task(prompt, skill_res):
+        allowed = {'render_pdf', 'read_file', 'inspect_pdf_page'}
+        if getattr(skill_res, 'is_send_intent', False):
+            allowed.add('send_file')
+        return get_sandbox_tools(allowed_names=allowed)
 
     is_modify = getattr(skill_res, "is_modify_intent", False) or is_modify_intent_requested(prompt)
 
@@ -190,10 +229,25 @@ def select_active_tools(
 
     if not is_modify and skill_res.is_generate_intent and requests_markdown_artifact(prompt) and not skill_res.skill_id:
         allowed = {"write_markdown"}
+        needs_read = (
+            skill_res.is_knowledge_intent
+            or skill_res.is_inspect_intent
+            or any(k in prompt.lower() for k in ["读取", "查看", "参考", "基于", "分析文件", "read", "数据源", "根据上传", "基于原"])
+        )
+        if needs_read:
+            allowed.add("read_file")
+        needs_exec = (
+            getattr(skill_res, "requires_execution", False)
+            or any(k in prompt.lower() for k in ["python", "bash", "脚本", "运行", "执行", "统计", "计算", "代码", "分析", "核算", "测试", "查重", "对照", "核对"])
+        )
+        if needs_exec:
+            allowed.add("bash")
         if has_web_search_permission:
             allowed.update({"web_search", "fetch_page"})
-        if skill_res.is_knowledge_intent or skill_res.is_inspect_intent:
-            allowed.update({"scan_knowledge", "read_file"})
+        if skill_res.is_knowledge_intent:
+            allowed.add("scan_knowledge")
+        if getattr(skill_res, "is_send_intent", False):
+            allowed.add("send_file")
         return get_sandbox_tools(allowed_names=allowed)
 
     # 1. 纯查看/审阅/归纳/数据分析意图：限制在只读分析工具面，阻断 patch_file、write_markdown、create_reminders 等副作用写盘工具
@@ -218,7 +272,7 @@ def select_active_tools(
     # 2. 纯查阅/审阅/只读归纳任务：严格遵循最小特权原则，仅开放只读工具，严禁授予 bash
     elif not is_modify and skill_res.is_inspect_intent and not skill_res.is_generate_intent:
         allowed = {"web_search", "fetch_page"} if has_web_search_permission else set()
-        if WEATHER_RE.search(prompt):
+        if is_weather_inquiry(prompt, skill_res):
             allowed.add("weather")
         if REMINDER_RE.search(prompt):
             allowed.update({"create_reminders", "update_reminder", "delete_reminder"})
@@ -237,7 +291,7 @@ def select_active_tools(
         ]
     else:
         allowed = {"web_search", "fetch_page"} if has_web_search_permission else set()
-        if WEATHER_RE.search(prompt):
+        if is_weather_inquiry(prompt, skill_res):
             allowed.add("weather")
         if REMINDER_RE.search(prompt):
             allowed.update({"create_reminders", "update_reminder", "delete_reminder"})
@@ -387,7 +441,7 @@ def cmd_run(args):
     if cli_effort:
         policy.reasoning_effort = str(cli_effort)
 
-    task_deadline = time.monotonic() + policy.total_task_timeout
+    task_deadline = time.monotonic() + policy.total_task_timeout if policy.total_task_timeout > 0 else None
     session_id = getattr(args, "session_id", None)
     history_file, existing_history = load_session_history(session_id)
 
@@ -395,9 +449,11 @@ def cmd_run(args):
     allow_research = bool(getattr(args, "research", False))
     session_files = resolve_session_attachments(args, session_id)
     telemetry = TelemetryStats()
+    telemetry.bind_journal(history_file)
     skill_res = SkillRouter.route(prompt, existing_history, allow_research=allow_research, files=session_files,
                                   load_skill_context=False)
     from .skill_admission import admit_skill, emit_admission_stop, AdmissionClarification, AdmissionUnavailable, general_route
+    template_candidate = skill_res if not session_files and is_template_pdf_task(prompt, skill_res) else None
     try:
         skill_res = admit_skill(prompt, existing_history, session_files, skill_res,
             getattr(args, 'model', None) or os.environ.get('DSH_MODEL'), policy, telemetry, task_deadline)
@@ -405,12 +461,18 @@ def cmd_run(args):
         emit_admission_stop(error, prompt, history_file, existing_history, telemetry)
         return
     except AdmissionUnavailable as error:
-        telemetry.record_guard('skill_admission', 'fallback_to_general', str(error)[:300])
-        print(f"⚠️ [Skill Admission] 技能准入复核未通过 ({error})，已安全降级为通用能力执行")
-        skill_res = general_route(prompt, existing_history, session_files, error.task_contract)
+        telemetry.record_guard('skill_admission', 'owned_pdf_fallback' if template_candidate else 'fallback_to_general', str(error)[:300])
+        print('🛡️ 使用受控 PDF 模板继续执行' if template_candidate else f'⚠️ [Skill Admission] 技能准入复核未通过 ({error})，已降级为通用能力执行')
+        skill_res = template_candidate or general_route(prompt, existing_history, session_files, error.task_contract)
     except ValueError as error:
         emit_admission_stop(error, prompt, history_file, existing_history, telemetry)
         return
+    template_pdf = is_template_pdf_task(prompt, skill_res)
+    if template_pdf:
+        # The managed renderer replaces CLI/code examples; do not let examples
+        # compete with the user's actual page outline during a repair.
+        skill_res.skill_context = PDF_EXECUTION_INSTRUCTION
+        telemetry.record_guard('pdf_template', 'direct_execution', 'owned_renderer')
     from .personal_skill_workflow import try_run_personal_workflow
     if try_run_personal_workflow(skill_res, session_files, prompt, history_file,
                                  existing_history, overall_start_time, task_deadline,
@@ -425,7 +487,7 @@ def cmd_run(args):
     # 只有当用户显式要求搜索（如以 /search 起始）或语义路由命中真实外部资讯检索意图（is_search_intent）时，才执行前置联网检索
     forbidden_network = is_network_search_forbidden(prompt)
     has_web_search_permission = bool(args.web_search) and not forbidden_network
-    is_weather_intent = bool(WEATHER_RE.search(prompt)) and not forbidden_network
+    is_weather_intent = is_weather_inquiry(prompt, skill_res) and not forbidden_network and not template_pdf
     is_search_intent = (
         not forbidden_network
         and (
@@ -808,8 +870,10 @@ def cmd_run(args):
                 telemetry.record_guard("attachment_diagnostic", "accept", "acknowledged_unreadable_attachment")
 
         # 6. 产物导出与落盘 (HTML/PPT 及各种文档交付物)
+        t_export_start = time.time()
         from .spreadsheet_chart_delivery import managed_chart_export
-        if managed_chart_export(loop_res.telemetry):
+        from .pdf_preview_tool import managed_pdf_export
+        if managed_chart_export(loop_res.telemetry) or managed_pdf_export(loop_res.telemetry):
             # Published files already passed run-scoped acceptance. Do not scan or
             # recompile them into shared index.html, including on failed delivery.
             final_text, exported_html_files, detected_deliverables = raw_final_text, [], []
@@ -833,7 +897,15 @@ def cmd_run(args):
                 prompt=prompt
             )
 
+        # Shell and legacy exporters must pass the same PDF publication gate.
+        from .pdf_external_delivery import enforce_external_pdf_delivery
+        from .config import SKILL_DIR
+        if enforce_external_pdf_delivery(loop_res, WORKSPACE_DIR, SKILL_DIR,
+                overall_start_time, prompt, task_deadline, session_files):
+            final_text, exported_html_files, detected_deliverables = loop_res.final_text, [], []
+
         # 7. 会话历史持久化
+        t_persist_start = time.time()
         if history_file:
             try:
                 existing_history.append({"role": "user", "content": prompt})
@@ -845,6 +917,12 @@ def cmd_run(args):
                     json.dump(existing_history[-policy.recent_history_save_count:], f, ensure_ascii=False, indent=2, default=str)
             except Exception as exc:
                 print(f'⚠️ [Harness Evidence Persistence] 会话或证据保存失败：{type(exc).__name__}', file=sys.stderr)
+
+        t_post_end = time.time()
+        export_ms = (t_persist_start - t_export_start) * 1000
+        persist_ms = (t_post_end - t_persist_start) * 1000
+        if export_ms > 200 or persist_ms > 200:
+            print(f"⏱️ [Harness Post-Processing] Export: {export_ms:.1f}ms, Persistence: {persist_ms:.1f}ms", flush=True)
 
         # 8. 协议标记与结果序列化
         elapsed_ms = (time.time() - overall_start_time) * 1000
@@ -980,7 +1058,7 @@ def _emit_tool_result_recovery(messages, prompt, existing_history, history_file,
         m for m in tool_messages
         if "气象" in str(m.get("content", "")) or "weather" in str(m.get("name", "")).lower()
     ]
-    if weather_tools and re.search(r'(天气|气象|预报|气温|下雨|晴天|温度|降雨|weather)', prompt, re.I):
+    if weather_tools and is_weather_inquiry(prompt):
         weather_content = str(weather_tools[-1].get("content", "")).strip()
         final_text = (
             "## 实时天气与气象预报\n\n"

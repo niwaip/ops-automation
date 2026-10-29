@@ -1,0 +1,65 @@
+{
+  "page_count": 3,
+  "reviews": [
+    {
+      "schema_version": 1,
+      "status": "success",
+      "data": {
+        "kind": "pdf_page_review",
+        "file_path": "/workspace/.dsh/pdf-engineering-check/diagnostic.pdf",
+        "sha256": "f4640a034ef27e472fabd251c8fd95a28b88a0a76a66f8a3aba94e0c0f42242c",
+        "page": 2,
+        "evidence_id": "pdf:f4640a034ef27e472fabd251c8fd95a28b88a0a76a66f8a3aba94e0c0f42242c:page:2",
+        "published": false
+      },
+      "error": null,
+      "provenance": {
+        "tool": "inspect_pdf_page",
+        "execution_origin": "runtime_workflow",
+        "round": 0,
+        "page": 2
+      },
+      "text_representation": "【文档/图片 (page-2.png) 视觉分析与内容识别结果】:\nPASS\nOPTIONAL: 页面顶部存在较大留白（约占三分之一），建议增加标题或调整行距，将“体育·娱乐·科技”小标题上移，优化版面重心。\n请继续检查其他页。"
+    },
+    {
+      "schema_version": 1,
+      "status": "error",
+      "data": null,
+      "error": {
+        "code": "pdf_review_unavailable",
+        "message": "timed out"
+      },
+      "provenance": {
+        "tool": "inspect_pdf_page",
+        "execution_origin": "runtime_workflow",
+        "round": 0,
+        "page": 1
+      }
+    }
+  ],
+  "final_text": "PDF 尚未通过验收，未发布新的交付文件。原因：timed out",
+  "published": false,
+  "calls": [
+    {
+      "purpose": "pdf_page_review",
+      "model": "vision",
+      "total_ms": 40004.32,
+      "usage": {},
+      "span_id": null,
+      "call_id": "9dc3a556dca74dc682452f1009ba3cc4"
+    },
+    {
+      "purpose": "pdf_page_review",
+      "model": "qwen36-35b-a3b",
+      "total_ms": 5572.89,
+      "usage": {
+        "prompt_tokens": 1297,
+        "total_tokens": 1339,
+        "completion_tokens": 42,
+        "prompt_tokens_details": null
+      },
+      "span_id": null,
+      "call_id": "212b5d825310470082347f0bb5c3c688"
+    }
+  ]
+}

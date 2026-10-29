@@ -1,0 +1,25 @@
+{
+  "first_model_ttft_ms": 3182.41,
+  "ttft_scope": "model_request",
+  "harness_wall_ms": 130565.16,
+  "broker_ms": 130936,
+  "model_calls": 15,
+  "input_tokens": 76181,
+  "output_tokens": 5632,
+  "llm_duration_sum_ms": 134981.45,
+  "queries": [
+    {
+      "query": "B站 bilibili 热点 今日热门 2026年10月29日",
+      "freshness": "day"
+    },
+    {
+      "query": "bilibili 热门视频排行榜 今日 2026年10月",
+      "freshness": "week"
+    },
+    {
+      "query": "bilibili 热搜 趋势 今天 热门话题",
+      "freshness": "day"
+    }
+  ],
+  "artifact_sha256": "bc249508adcfe5b7bc2818c7391efa1693645264d53a9f01d6ea492de6cf8f9f"
+}

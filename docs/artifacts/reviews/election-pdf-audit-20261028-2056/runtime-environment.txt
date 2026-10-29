@@ -1,0 +1,5 @@
+python 3.11.2
+fpdf 2.8.8 /usr/local/lib/python3.11/dist-packages/fpdf/__init__.py
+pypdf 6.19.0
+regular_font_sha256 faa6c9df652116dde789d351359f3d7e5d2285a2b2a1f04a2d7244df706d5ea9
+bold_exists False

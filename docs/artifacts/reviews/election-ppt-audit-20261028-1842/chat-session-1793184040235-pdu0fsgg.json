@@ -1,0 +1,15 @@
+[
+  {
+    "role": "user",
+    "content": "帮我生成一个小学生 竞选班干部的ppt，3到4页，主要是自我介绍，个人荣誉，竞选的目标和宣言，或者给你的建议，不要太复杂"
+  },
+  {
+    "role": "assistant",
+    "content": "\n\n重要警告：无法生成标准 PPT 格式，文件为网页形式。\n\n必要下一步：请在浏览器中打开该文件查看或打印。",
+    "verification": {
+      "verified": true,
+      "turn_id": "1793184172574324680-6cb6b5bd0d89492b91494c92fa2c78d6",
+      "evidence_ids": []
+    }
+  }
+]

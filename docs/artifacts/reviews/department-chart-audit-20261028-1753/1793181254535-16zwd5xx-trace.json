@@ -1,0 +1,257 @@
+{
+  "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+  "harness": "deepseek-harness",
+  "executed": true,
+  "durationMs": 13055,
+  "exitCode": 0,
+  "metrics": {
+    "ttftMs": 3137.23,
+    "durationMs": 12751.94,
+    "llmDurationMs": 12334.39,
+    "toolCallsCount": 2,
+    "toolCalls": [
+      {
+        "name": "aggregate_spreadsheet",
+        "params": {
+          "file_path": "/workspace/工数实绩明细_20261020134124.xlsx",
+          "query": "{'group_by': ['部门名称'], 'metrics': [{'field': '金额(K)', 'id': 'amount', 'op': 'sum'}], 'source': {'data_range': 'A5:R278',..."
+        },
+        "status": "success",
+        "result_status": "success",
+        "evidence_id": "5bd18e5d16990bc61f2b62d0",
+        "plan_hash": "8db219cf1283201963d17318b66bd2f8ea23660fc6d06f03eb3777566fc92297",
+        "kind": "spreadsheet_analysis",
+        "workbook_id": "5d5b57bdcb5e3257b93ccd4e2f5b194e96c3c573e651b93799c3dec2ec8d5374"
+      },
+      {
+        "name": "render_spreadsheet_chart",
+        "params": {
+          "evidence_id": "5bd18e5d16990bc61f2b62d0",
+          "chart_type": "bar",
+          "category_field": "部门名称",
+          "value_field": "amount",
+          "execution_origin": "runtime_workflow"
+        },
+        "status": "success"
+      }
+    ],
+    "llmInvocations": 5,
+    "tokens": {
+      "prompt_tokens": 24853,
+      "completion_tokens": 765,
+      "total_tokens": 25618
+    },
+    "finishReason": "tool_calls",
+    "roundFinishReasons": [
+      "tool_calls",
+      "tool_calls",
+      "tool_calls",
+      "tool_calls"
+    ],
+    "guardDecisions": [
+      {
+        "guard": "task_intent_review",
+        "action": "accept",
+        "reason": {
+          "output_mode": "artifact",
+          "task_mode": "execute"
+        }
+      },
+      {
+        "guard": "task_intent",
+        "action": "accept",
+        "reason": {
+          "instruction_relation": "followup",
+          "task_mode": "execute",
+          "output_mode": "artifact",
+          "artifact_types": [
+            ".html"
+          ],
+          "unit_confirmation": null,
+          "section_confirmation": null,
+          "skill_invocation": {
+            "mode": "none",
+            "name": "",
+            "replace_defaults": false
+          },
+          "requirements": [
+            {
+              "id": "1",
+              "quote": "按部门统计金额合计并生成柱状图"
+            }
+          ]
+        }
+      },
+      {
+        "guard": "skill_admission",
+        "action": "general",
+        "reason": {
+          "initial_candidate": "frontend-design",
+          "skill_id": null,
+          "use_default_rules": false,
+          "reason": "scope_mismatch",
+          "requirement_ids": [
+            "1"
+          ]
+        }
+      },
+      {
+        "guard": "user_unit_confirmation",
+        "action": "accept",
+        "reason": {
+          "unit": null,
+          "sections": null
+        }
+      },
+      {
+        "guard": "spreadsheet_evidence",
+        "action": "accept",
+        "reason": {
+          "evidence_id": "5bd18e5d16990bc61f2b62d0"
+        }
+      },
+      {
+        "guard": "chart_delivery",
+        "action": "published",
+        "reason": {
+          "session_id": "chat-session-1793180826543-nqx1j95c",
+          "turn_id": "7417f3286d6244a99c009f5b9ab4310a",
+          "status": "published",
+          "transitions": [
+            "calculating",
+            "calculated",
+            "generating",
+            "validating",
+            "validated",
+            "published"
+          ],
+          "attempts": 1,
+          "evidence_id": "5bd18e5d16990bc61f2b62d0",
+          "sha256": "2ca5821d43f9338e0af4ec31d4b235a12f903519da494c4d2ad11c8057035133",
+          "groups": 7,
+          "artifact_id": "6a3c27f713cf49a28e5509cf93d654dc",
+          "file_path": "/workspace/chart-chat-session-1793180826543-nqx1j95c-7417f3286d6244a99c009f5b9ab4310a-6a3c27f713cf49a28e5509cf93d654dc.html"
+        }
+      },
+      {
+        "guard": "deliverable_contract",
+        "action": "accept",
+        "reason": {
+          "artifact_id": "6a3c27f713cf49a28e5509cf93d654dc",
+          "sha256": "2ca5821d43f9338e0af4ec31d4b235a12f903519da494c4d2ad11c8057035133"
+        }
+      },
+      {
+        "guard": "chart_cross_check",
+        "action": "absent",
+        "reason": {
+          "status": "absent"
+        }
+      }
+    ],
+    "modelResponses": [
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 35,
+        "cleanChars": 35,
+        "rawSha256": "ba92acfd2c8597c3577e4167b4f64d10869f93106dbf79970ca282d4b4a80d76",
+        "cleanSha256": "ba92acfd2c8597c3577e4167b4f64d10869f93106dbf79970ca282d4b4a80d76",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      }
+    ],
+    "answerValidation": {},
+    "callsLedger": [
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 2435.06,
+        "usage": {
+          "prompt_tokens": 2977,
+          "total_tokens": 3136,
+          "completion_tokens": 159
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 2369.1,
+        "usage": {
+          "prompt_tokens": 3478,
+          "total_tokens": 3637,
+          "completion_tokens": 159
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 1965.83,
+        "usage": {
+          "prompt_tokens": 5420,
+          "total_tokens": 5511,
+          "completion_tokens": 91
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "contract_intent",
+        "model": "d13e0d30-87b9-4e87-b96a-d8b1b3cf78af",
+        "total_ms": 2426.65,
+        "usage": {
+          "prompt_tokens": 1448,
+          "total_tokens": 1640,
+          "completion_tokens": 192
+        },
+        "span_id": null
+      },
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 3137.75,
+        "usage": {
+          "prompt_tokens": 11530,
+          "total_tokens": 11694,
+          "completion_tokens": 164
+        },
+        "span_id": null
+      }
+    ],
+    "auxiliaryInvocations": 1
+  },
+  "artifacts": [],
+  "outboundFiles": [
+    {
+      "filePath": "/workspace/chart-chat-session-1793180826543-nqx1j95c-7417f3286d6244a99c009f5b9ab4310a-6a3c27f713cf49a28e5509cf93d654dc.html",
+      "fileName": "chart-chat-session-1793180826543-nqx1j95c-7417f3286d6244a99c009f5b9ab4310a-6a3c27f713cf49a28e5509cf93d654dc.html"
+    }
+  ]
+}

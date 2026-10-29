@@ -465,13 +465,14 @@ class TestDshCoreModules(unittest.TestCase):
     def test_sandbox_tools_schema_completeness(self):
         """AC-1: 验证 SANDBOX_TOOLS 包含完整工具集及受控 Markdown 写入能力"""
         tool_names = [t["function"]["name"] for t in SANDBOX_TOOLS]
-        self.assertEqual(len(tool_names), 25)
+        self.assertEqual(len(tool_names), 27)
         expected_tools = (
             "plan_spreadsheet_update", "execute_spreadsheet_update", "get_spreadsheet_update_status",
             "inspect_spreadsheet_structure", "analyze_spreadsheet", "report_informational_spreadsheet",
             "compare_spreadsheet_columns", "vision_inspect", "image_gen", "patch_file", "weather",
             "web_search", "fetch_page", "read_file", "bash", "scan_knowledge", "read_skill",
             "send_file", "create_reminders", "update_reminder", "delete_reminder", "write_markdown",
+            "render_pdf", "inspect_pdf_page",
         )
         for name in expected_tools:
             self.assertIn(name, tool_names)
@@ -1046,7 +1047,7 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertIn("STDERR:", res_pkg)
         self.assertIn("ModuleNotFoundError", res_pkg)
         self.assertIn("系统自愈提示", res_pkg)
-        self.assertIn("pip install", res_pkg)
+        self.assertTrue("pip install" in res_pkg or "安装依赖" in res_pkg)
 
         # 2. 模拟文件不存在错误
         res_fnf = execute_tool("bash", {"cmd": "cat nonexistent_file_98765.txt"})

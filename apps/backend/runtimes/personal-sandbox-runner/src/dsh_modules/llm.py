@@ -6,6 +6,7 @@ import json
 import re
 import sys
 import time
+import uuid
 import urllib.request
 import urllib.error
 from typing import Any, Optional, List, Dict, Tuple
@@ -331,6 +332,12 @@ def call_model_proxy(
     usage = {}
     start_time = time.time()
     ttft_ms = None
+    call_id = uuid.uuid4().hex
+    from .telemetry import get_active_telemetry
+    active_tel = telemetry or get_active_telemetry()
+    if active_tel and hasattr(active_tel, 'checkpoint'):
+        active_tel.checkpoint('model_started', {'call_id': call_id, 'purpose': purpose or 'tool_loop',
+                                                'model': model or 'default'})
 
     max_retries = active_policy.model_max_retries
     for attempt in range(max_retries + 1):
@@ -416,14 +423,18 @@ def call_model_proxy(
                 active_tel.record_auxiliary_call(
                     purpose=purpose,
                     usage=usage,
-                    total_ms=total_ms,
+                    total_ms=round(total_ms, 2),
                     model=model or "default",
-                    span_id=parent_span_id
+                    span_id=parent_span_id,
+                    call_id=call_id
                 )
     except Exception:
         pass
 
     return {
+        "call_id": call_id,
+        "model": model or "default",
+        "span_id": parent_span_id,
         "content": res_text,
         "tool_calls": structured_calls,
         "finish_reason": finish_reason,

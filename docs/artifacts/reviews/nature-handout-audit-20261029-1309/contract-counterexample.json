@@ -1,0 +1,10 @@
+{
+  "different_topic_bound": {
+    "output_path": "insects.pdf",
+    "min_pages": 3,
+    "max_pages": 3,
+    "title": "校园昆虫观察册",
+    "template": "handout"
+  },
+  "different_fields_output": "\n<table class=\"record-card\"><thead><tr><th>项目</th><th>内容</th></tr></thead><tbody><tr><td>日期</td><td></td></tr><tr><td>样本编号</td><td></td></tr><tr><td>颜色</td><td></td></tr><tr><td>疑问</td><td></td></tr></tbody></table>\n"
+}

@@ -15,6 +15,7 @@ import {
 import { UserSandboxStorageService } from './user-sandbox-storage.service';
 import { IContainerDriver, ContainerHandle, ContainerInspectData, CONTAINER_DRIVER } from './container-driver.interface';
 import { DockerodeContainerDriver } from './dockerode-container.driver';
+import { resolveSandboxImage, retireStoppedOutdatedSandbox } from './user-sandbox-runtime';
 
 const DEFAULT_DOCKER_SOCKET = '/var/run/docker.sock';
 const DEFAULT_IMAGE_NAME = 'ops-user-sandbox:local';
@@ -256,7 +257,13 @@ export class UserSandboxContainerService {
 
     this.logger.log(`Ensuring user sandbox for [${userId}], container: ${containerName}`);
 
-    const existing = await this.findContainer(containerName);
+    const imageId = await resolveSandboxImage(this.docker, this.sandboxImage);
+    let existing = await this.findContainer(containerName);
+
+    if (existing && await retireStoppedOutdatedSandbox(existing, await existing.inspect(), imageId)) {
+      this.logger.log(`Removed stopped sandbox ${containerName} to apply image ${imageId}`);
+      existing = null;
+    }
 
     if (existing) {
       const inspect = await existing.inspect();
@@ -302,7 +309,7 @@ export class UserSandboxContainerService {
     const memoryLimitMb = options.memoryLimitMb || userQuota.memoryLimitMb;
 
     const containerOptions = {
-      Image: this.sandboxImage,
+      Image: imageId,
       name: containerName,
       Tty: true,
       OpenStdin: true,

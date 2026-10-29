@@ -1,0 +1,27 @@
+{
+  "full_generation": {
+    "tokens": {
+      "prompt_tokens": 16177,
+      "completion_tokens": 1870,
+      "total_tokens": 24093,
+      "completion_tokens_details": {
+        "reasoning_tokens": 6046
+      }
+    },
+    "calls": 7,
+    "auxiliary": 2
+  },
+  "layout_replay": {
+    "tokens": {
+      "prompt_tokens": 2984,
+      "completion_tokens": 2,
+      "total_tokens": 5064,
+      "completion_tokens_details": {
+        "reasoning_tokens": 2078
+      }
+    },
+    "calls": 2,
+    "auxiliary": 2
+  },
+  "origin": "Recomputed from real immutable provider ledgers using the final aggregator; no new model requests"
+}
