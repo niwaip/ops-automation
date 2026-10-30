@@ -9,7 +9,6 @@ from typing import List, Dict, Any, Optional
 import os
 
 from .config import WORKSPACE_DIR
-from .spreadsheet_preflight import profile_spreadsheet_for_planning
 
 
 def probe_session_attachments(
@@ -59,6 +58,7 @@ def probe_session_attachments(
         if ext in (".xlsx", ".xlsm"):
             has_spreadsheet = True
             try:
+                from .spreadsheet_preflight import profile_spreadsheet_for_planning
                 prof = profile_spreadsheet_for_planning(p, prompt=prompt, max_distinct_sample=8)
                 domain_cue = prof.get("domain", "generic")
                 if domain_cue != "generic" and primary_domain == "generic":
