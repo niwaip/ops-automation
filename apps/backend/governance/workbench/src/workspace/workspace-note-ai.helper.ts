@@ -94,9 +94,9 @@ export class WorkspaceNoteAiHelper {
         '',
         '请严格输出合法 JSON（不要输出 markdown 代码块以外的冗余文本），JSON 结构定义如下：',
         '{',
-        `  "folderName": "规范命名的专属文件夹名称。必须严格遵守格式：${dateTag}_[分类标签]_[核心业务主题]，例如：${dateTag}_生活出行_上海实时天气与出行指南，或者 ${dateTag}_数据分析_8月销售数据复盘。分类为2~4个汉字，核心主题为6~20个汉字，不要有特殊符号",`,
+        `  "folderName": "规范命名的专属文件夹名称。必须严格遵守格式：${dateTag}_[分类标签]_[核心业务主题]，例如：${dateTag}_技术调研_DeepSeek Harness安装配置指南，或者 ${dateTag}_架构设计_分布式工作流编排方案。分类为2~4个汉字，核心主题为6~20个汉字，不要有特殊符号",`,
         '  "title": "高度凝练、结构清晰的中文文档标题（不超过 30 个字，包含关键实体与事件）",',
-        '  "tags": ["3~6个精准分类标签，如天气预报、生活出行、上海等"],',
+        '  "tags": ["3~6个紧密关联本会话具体内容的核心技术/业务标签（如技术栈名、工具名、架构模块、方案类型等，例如：DeepSeek、Harness、环境部署、安装配置、技术调研），严禁输出' + "'AI沉淀'、'问答沉淀'、'知识候选'、'总结'等无意义泛化空话" + '"],',
         '  "summary": "150~250字的高浓度业务与运维执行摘要",',
         '  "refinedContent": "清洗去噪、层级分明的结构化 Markdown 正文（包含核心结论、关键细节与实操建议，不要包含一级标题，使用 ## 与 ### 分块。若原文包含图片语法 ![...](...)，请务必在正文相应位置原样保留完整的图片引用语法，严禁丢弃图片！）",',
         '  "artifactsDescription": [',
@@ -252,17 +252,33 @@ export class WorkspaceNoteAiHelper {
       bodySections.push(`# ${refinedTitle}`);
       bodySections.push('');
 
+      // 顶部结构化元数据面板：提问背景 + 核心标签 + 高浓缩 Executive Summary
+      const metaLines: string[] = [];
       if (dto.userQuery && dto.userQuery.trim()) {
-        bodySections.push('## 📌 提问背景');
-        bodySections.push(`> ${dto.userQuery.trim()}`);
+        metaLines.push(`> 📌 **提问背景**：${dto.userQuery.trim()}`);
+      }
+      if (refinedTags.length > 0) {
+        const tagBadges = refinedTags.map((t) => `\`#${t}\``).join(' ');
+        metaLines.push(`> 🏷️ **核心标签**：${tagBadges}`);
+      }
+      if (refinedSummary) {
+        metaLines.push(`> 💡 **核心摘要**：${refinedSummary}`);
+      }
+      if (metaLines.length > 0) {
+        bodySections.push(metaLines.join('  \n'));
+        bodySections.push('');
+        bodySections.push('---');
         bodySections.push('');
       }
 
-      bodySections.push('## 💡 核心结论与 AI 归纳总结');
+      // 规范正文（若已具备 ## 二级标题，则平级呈现；若无标题，补齐核心引导二级标题）
+      if (!refinedBody.startsWith('#')) {
+        bodySections.push('## 💡 核心要点与操作指南');
+      }
       bodySections.push(refinedBody);
       bodySections.push('');
 
-      // 插入资产清单与同级文件跳转导航
+      // 插入资产清单与同级文件跳转导航（仅在真正有交付资产时展示）
       if (syncedArtifacts.length > 0) {
         const descMap = new Map<string, string>();
         if (Array.isArray(parsed.artifactsDescription)) {
@@ -285,27 +301,6 @@ export class WorkspaceNoteAiHelper {
         }
         bodySections.push('');
       }
-
-      if (dto.rawResultData) {
-        bodySections.push('## 🔍 原始佐证与执行详情');
-        bodySections.push('<details>');
-        bodySections.push('<summary>展开查看原始结构化数据</summary>');
-        bodySections.push('');
-        bodySections.push('```json');
-        bodySections.push(
-          typeof dto.rawResultData === 'string'
-            ? dto.rawResultData
-            : JSON.stringify(dto.rawResultData, null, 2)
-        );
-        bodySections.push('```');
-        bodySections.push('</details>');
-        bodySections.push('');
-      }
-
-      bodySections.push('## 📝 知识核验与批注');
-      bodySections.push('- [ ] 待人工确认准确性');
-      bodySections.push('- 状态：专属文件夹已归档 (Candidate Package)');
-      bodySections.push('');
 
       const newMarkdownText = `${frontMatterLines.join('\n')}\n${bodySections.join('\n')}`;
       const newBuffer = Buffer.from(newMarkdownText, 'utf-8');

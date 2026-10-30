@@ -27,13 +27,21 @@ export function SaveToWorkspaceAction({ message, userQuery }: SaveToWorkspaceAct
   const parsedContent = parseMessageContent(message.content);
   const plainContent = (message.role === 'assistant' ? parsedContent.answer : message.content).trim();
 
-  // 提取原始结构化结果或原始数据
+  // 提取原始结构化结果或原始数据（严格过滤底层系统监控/运行耗时等纯 APM 遥测垃圾数据）
   const rawResult = useMemo(() => {
-    return (
+    const candidate =
       message.metadata?.normalizedResult?.structuredData ??
       message.metadata?.finalResultData ??
-      message.metadata?.finalResult
+      message.metadata?.finalResult;
+
+    if (!candidate || typeof candidate !== 'object') return undefined;
+
+    // 若对象仅包含 internal 遥测属性，则不当作业务佐证数据
+    const keys = Object.keys(candidate);
+    const isPureTelemetry = keys.every((k) =>
+      ['mode', 'usage', 'sandbox', 'answerStatus', 'traceId', 'metrics'].includes(k)
     );
+    return isPureTelemetry ? undefined : candidate;
   }, [message.metadata]);
 
   // 智能提取基础标题
@@ -53,19 +61,53 @@ export function SaveToWorkspaceAction({ message, userQuery }: SaveToWorkspaceAct
     return `AI对话知识沉淀_${date}`;
   }, [message.metadata?.resultTitle, message.metadata?.finalSummary, userQuery]);
 
-  // 默认标签
+  // 智能内容感知初始标签提取（坚决剔除“AI沉淀/知识候选/问答沉淀”等无意义纯占位词，即时提取真实专有名词与技术类型）
   const defaultTags = useMemo(() => {
-    const tags = ['AI沉淀', '知识候选'];
-    if (message.metadata?.mode === 'task') {
-      tags.push('任务结果');
-    } else {
-      tags.push('问答沉淀');
+    const tagsSet = new Set<string>();
+    const textToAnalyze = `${userQuery || ''} ${defaultTitle || ''} ${plainContent.slice(0, 400)}`;
+
+    // 1. 提取英文专有名词与技术实体 (如 DeepSeek, Harness, DSH, Docker, API, Python, Node, Web)
+    const engEntities = textToAnalyze.match(/\b[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*\b/g) || [];
+    for (const ent of engEntities) {
+      if (
+        ent.length >= 2 &&
+        !/^(the|and|for|with|this|that|from|into|view|show|get|post|have|will|can|not)$/i.test(ent)
+      ) {
+        if (/^[A-Z]/.test(ent) || ent.length >= 4) {
+          tagsSet.add(ent);
+        }
+      }
+      if (tagsSet.size >= 3) break;
     }
+
+    // 2. 提取中文核心业务关键词与动作分类
+    const KEYWORD_PATTERNS = [
+      { pattern: /(?:安装|部署|配置|环境|初始化)/, tag: '安装配置' },
+      { pattern: /(?:调研|方案|剖析|选型|对比)/, tag: '技术调研' },
+      { pattern: /(?:排错|报错|故障|修复|诊断)/, tag: '运维排错' },
+      { pattern: /(?:接口|API|SDK|联调|协议)/, tag: '接口集成' },
+      { pattern: /(?:性能|时延|压测|优化|基准)/, tag: '性能优化' },
+      { pattern: /(?:数据|报表|指标|统计|分析)/, tag: '数据分析' },
+      { pattern: /(?:规范|指南|文档|手册|教程)/, tag: '使用指南' },
+    ];
+    for (const kp of KEYWORD_PATTERNS) {
+      if (kp.pattern.test(textToAnalyze)) {
+        tagsSet.add(kp.tag);
+      }
+      if (tagsSet.size >= 4) break;
+    }
+
+    // 3. 关联使用的特定技能
     if (message.metadata?.skillUsed) {
-      tags.push(message.metadata.skillUsed);
+      tagsSet.add(message.metadata.skillUsed);
     }
-    return tags;
-  }, [message.metadata?.mode, message.metadata?.skillUsed]);
+
+    if (tagsSet.size === 0) {
+      tagsSet.add(message.metadata?.mode === 'task' ? '任务交付' : '技术笔记');
+    }
+
+    return Array.from(tagsSet).slice(0, 5);
+  }, [userQuery, defaultTitle, plainContent, message.metadata?.mode, message.metadata?.skillUsed]);
 
   // 默认归档目录（工作模式保存到任务成果，个人模式保存到沙盒保存内容）
   const isTaskMode = message.metadata?.mode === 'task' || Boolean(executionId);

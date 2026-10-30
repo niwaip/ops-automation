@@ -5,15 +5,6 @@ import {
   ClearOutlined,
   CloudServerOutlined,
   DeleteOutlined,
-  DesktopOutlined,
-  DownloadOutlined,
-  EyeOutlined,
-  FileExcelOutlined,
-  FileOutlined,
-  FilePdfOutlined,
-  FilePptOutlined,
-  FileTextOutlined,
-  FileWordOutlined,
   FolderOpenOutlined,
   FolderOutlined,
   HomeOutlined,
@@ -39,8 +30,7 @@ import {
   Upload,
   message as antdMessage,
 } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from 'react-query';
 import { useStore } from 'zustand';
 import {
@@ -55,128 +45,16 @@ import {
 import { authStore } from '../../../adapters/auth/authStore';
 import { FileDigestDrawer } from '../components/FileDigestDrawer';
 import { DocumentPreviewModal } from '../components/DocumentPreviewModal';
+import { ResizableHeaderCell } from '../components/ResizableHeaderCell';
 import { useWorkspaceUrlFilePreview } from '../hooks/useWorkspaceUrlFilePreview';
+import { useWorkspaceColumnWidths } from '../hooks/useWorkspaceColumnWidths';
+import {
+  type BreadcrumbItem,
+  formatBytes,
+  getNodeDisplayName,
+  useWorkspaceTableColumns,
+} from '../hooks/useWorkspaceTableColumns';
 import styles from './WorkspacePage.module.css';
-
-interface BreadcrumbItem {
-  id: string | null;
-  name: string;
-}
-
-function formatBytes(bytesStr: string | number): string {
-  const bytes = Number(bytesStr);
-  if (!bytes || isNaN(bytes) || bytes <= 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
-}
-
-interface SystemFolderMeta {
-  isSystem: boolean;
-  key: 'tasks' | 'saved' | 'temp';
-  displayName: string;
-  categoryLabel: string;
-  tagColor: string;
-  iconColor: string;
-}
-
-function getSystemFolderMeta(node: WorkspaceNode, isRoot: boolean): SystemFolderMeta | null {
-  if (node.type !== 'folder' || !isRoot) return null;
-  const lower = node.name.toLowerCase();
-  if (lower.includes('tasks') || lower.includes('工作任务成果')) {
-    return {
-      isSystem: true,
-      key: 'tasks',
-      displayName: '工作模式成果',
-      categoryLabel: '工作模式',
-      tagColor: 'blue',
-      iconColor: '#3b82f6',
-    };
-  }
-  if (lower.includes('saved') || lower.includes('沙盒保存内容')) {
-    return {
-      isSystem: true,
-      key: 'saved',
-      displayName: '个人模式成果',
-      categoryLabel: '个人模式',
-      tagColor: 'green',
-      iconColor: '#10b981',
-    };
-  }
-  if (lower.includes('temp') || lower.includes('临时工作区')) {
-    return {
-      isSystem: true,
-      key: 'temp',
-      displayName: '临时文件',
-      categoryLabel: '临时文件',
-      tagColor: 'gold',
-      iconColor: '#f59e0b',
-    };
-  }
-  return null;
-}
-
-function getNodeDisplayName(node: WorkspaceNode, isRoot: boolean): string {
-  const meta = getSystemFolderMeta(node, isRoot);
-  return meta ? meta.displayName : node.name;
-}
-
-function getFileIcon(node: WorkspaceNode, sysMeta?: SystemFolderMeta | null) {
-  if (node.type === 'folder') {
-    if (sysMeta) {
-      const bgMap = {
-        tasks: 'rgba(59, 130, 246, 0.16)',
-        saved: 'rgba(16, 185, 129, 0.16)',
-        temp: 'rgba(245, 158, 11, 0.16)',
-      };
-      return (
-        <span
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            background: bgMap[sysMeta.key] || 'rgba(59, 130, 246, 0.16)',
-            color: sysMeta.iconColor,
-            fontSize: 17,
-            flexShrink: 0,
-          }}
-        >
-          <FolderOutlined />
-        </span>
-      );
-    }
-    return (
-      <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 30,
-          height: 30,
-          borderRadius: 6,
-          background: 'rgba(250, 173, 20, 0.12)',
-          color: '#faad14',
-          fontSize: 16,
-          flexShrink: 0,
-        }}
-      >
-        <FolderOutlined />
-      </span>
-    );
-  }
-  const ext = (node.name.split('.').pop() || '').toLowerCase();
-  if (ext === 'pdf') return <FilePdfOutlined className={styles['node-icon-pdf']} />;
-  if (['docx', 'doc'].includes(ext)) return <FileWordOutlined className={styles['node-icon-word']} />;
-  if (['pptx', 'ppt'].includes(ext)) return <FilePptOutlined className={styles['node-icon-ppt']} />;
-  if (['xlsx', 'xls', 'csv'].includes(ext)) return <FileExcelOutlined className={styles['node-icon-excel']} />;
-  if (['html', 'htm'].includes(ext)) return <DesktopOutlined style={{ color: '#fa8c16' }} className={styles['node-icon-default']} />;
-  if (['txt', 'md', 'json', 'yaml', 'yml'].includes(ext)) return <FileTextOutlined className={styles['node-icon-default']} />;
-  return <FileOutlined className={styles['node-icon-default']} />;
-}
 
 export function WorkspacePage() {
   const currentUser = useStore(authStore, (s) => s.user);
@@ -202,6 +80,8 @@ export function WorkspacePage() {
 
   const [activeTab, setActiveTab] = useState<'personal' | 'department' | 'company' | 'process'>('personal');
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([{ id: null, name: '根目录' }]);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
   const [sortField, setSortField] = useState<string>('updatedAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -232,11 +112,12 @@ export function WorkspacePage() {
     return workspacesData.department;
   }, [workspacesData, activeTab]);
 
-  // 切换工作空间 Tab 时重置路径与搜索
+  // 切换工作空间 Tab 时重置路径与搜索及多选项
   const handleTabChange = useCallback((tab: 'personal' | 'department' | 'company' | 'process') => {
     setActiveTab(tab);
     setBreadcrumbs([{ id: null, name: '根目录' }]);
     setSearchKeyword('');
+    setSelectedRowKeys([]);
   }, []);
 
   // 2. 获取当前目录下节点列表（支持按修改时间倒序等排序）
@@ -263,18 +144,27 @@ export function WorkspacePage() {
     setDigestDrawerNode((prev) => (prev?.id === nodeId ? { ...prev, digest } : prev));
   }, [refetchNodes]);
 
-  // 全文内容检索 Query（当 searchMode 为 content 且关键字长度 >= 2 时自动触发）
+  // 全文内容检索防抖（300ms 避免快速输入与拼音组合时发起密集请求堵塞后端扫描）
+  const [debouncedKeyword, setDebouncedKeyword] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedKeyword(searchKeyword.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchKeyword]);
+
+  // 全文内容检索 Query（当 searchMode 为 content 且关键字长度 >= 2 时自动触发，精准收敛到当前文件夹与已保存成果）
   const {
     data: contentSearchResults,
     isLoading: isContentSearching,
   } = useQuery(
-    ['workspace-content-search-page', currentWorkspace?.id, searchKeyword],
+    ['workspace-content-search-page', currentWorkspace?.id, currentFolderId, debouncedKeyword],
     () => {
-      if (!searchKeyword.trim() || searchKeyword.trim().length < 2) return Promise.resolve([]);
-      return workspaceApi.searchContent(searchKeyword.trim(), currentWorkspace?.id);
+      if (!debouncedKeyword || debouncedKeyword.length < 2) return Promise.resolve([]);
+      return workspaceApi.searchContent(debouncedKeyword, currentWorkspace?.id, currentFolderId);
     },
     {
-      enabled: searchMode === 'content' && Boolean(searchKeyword.trim().length >= 2),
+      enabled: searchMode === 'content' && Boolean(debouncedKeyword.length >= 2),
       staleTime: 5000,
     }
   );
@@ -416,6 +306,26 @@ export function WorkspacePage() {
     }
   };
 
+  // 5.1 批量删除选中项目
+  const handleBatchDelete = async () => {
+    if (!currentWorkspace?.id || selectedRowKeys.length === 0) return;
+    setIsBatchDeleting(true);
+    try {
+      const res = await workspaceApi.batchDeleteNodes(
+        currentWorkspace.id,
+        selectedRowKeys as string[]
+      );
+      void antdMessage.success(`成功批量删除 ${res.deletedCount} 个项目`);
+      setSelectedRowKeys([]);
+      void refetchNodes();
+      void refetchWorkspaces();
+    } catch (err: unknown) {
+      void antdMessage.error(err instanceof Error ? err.message : '批量删除失败');
+    } finally {
+      setIsBatchDeleting(false);
+    }
+  };
+
   // 6. 下载文件
   const handleDownloadNode = async (node: WorkspaceNode) => {
     if (!currentWorkspace?.id) return;
@@ -434,12 +344,14 @@ export function WorkspacePage() {
     const displayName = getNodeDisplayName(folder, isRoot);
     setBreadcrumbs((prev) => [...prev, { id: folder.id, name: displayName }]);
     setSearchKeyword('');
+    setSelectedRowKeys([]);
   };
 
   // 8. 点击面包屑回退
   const handleBreadcrumbClick = (index: number) => {
     setBreadcrumbs((prev) => prev.slice(0, index + 1));
     setSearchKeyword('');
+    setSelectedRowKeys([]);
   };
 
   // 9. 返回上一层
@@ -447,28 +359,47 @@ export function WorkspacePage() {
     if (breadcrumbs.length > 1) {
       setBreadcrumbs((prev) => prev.slice(0, prev.length - 1));
       setSearchKeyword('');
+      setSelectedRowKeys([]);
     }
   };
 
-  // 9.1 一键清理临时工作区
-  const handleCleanupTemp = async () => {
+  // 9.1 一键清理临时工作区（默认清理超 7 天旧临时文件与失效缓存）
+  const handleCleanupTemp = async (forceEmpty: boolean = false) => {
     if (!currentWorkspace?.id) return;
     setIsCleaningTemp(true);
-    void antdMessage.loading({ content: '正在智能整理并清理临时工作区...', key: 'cleanup-temp' });
+    void antdMessage.loading({
+      content: forceEmpty ? '正在彻底清空临时工作区全部文件...' : '正在智能清理超7天过期文件与系统冗余缓存...',
+      key: 'cleanup-temp',
+    });
     try {
-      const res = await workspaceApi.cleanupTempWorkspace(currentWorkspace.id);
+      const res = await workspaceApi.cleanupTempWorkspace(currentWorkspace.id, {
+        retentionDays: forceEmpty ? 0 : 7,
+        forceEmpty,
+      });
       if (res.totalCleaned > 0) {
+        const parts: string[] = [];
+        if (res.expiredFilesCleaned && res.expiredFilesCleaned > 0) {
+          parts.push(`${res.expiredFilesCleaned} 个超7天过期临时文件`);
+        }
+        if (res.cacheFilesCleaned > 0) {
+          parts.push(`${res.cacheFilesCleaned} 个衍生提取缓存`);
+        }
+        if (res.ghostNodesCleaned > 0) {
+          parts.push(`${res.ghostNodesCleaned} 个失效幽灵记录`);
+        }
+        const detailStr = parts.join('、') || `${res.totalCleaned} 项`;
         void antdMessage.success({
-          content: `清理完成！共清理 ${res.ghostNodesCleaned} 个失效幽灵记录与 ${res.cacheFilesCleaned} 个衍生提取缓存，保留 ${res.remainingFiles} 个有效成果`,
+          content: `清理完成！共清理 ${detailStr}，保留 ${res.remainingFiles} 个有效成果（默认保留7天内文件）`,
           key: 'cleanup-temp',
           duration: 5,
         });
       } else {
         void antdMessage.info({
-          content: '临时工作区很整洁，未发现失效记录或冗余缓存',
+          content: '临时工作区很整洁，未发现失效记录或超7天过期文件',
           key: 'cleanup-temp',
         });
       }
+      setSelectedRowKeys([]);
       void refetchNodes();
       void refetchWorkspaces();
     } catch (err: unknown) {
@@ -484,211 +415,44 @@ export function WorkspacePage() {
   // 是否只读（公司公共盘与流程管理空间默认非管理员只读，确保归档文档安全防篡改）
   const isReadOnly = (activeTab === 'company' || activeTab === 'process') && !isAdmin;
 
-  // 表格列定义
-  const columns: ColumnsType<WorkspaceNode> = [
-    {
-      title: '名称',
-      dataIndex: 'name',
-      key: 'name',
-      ellipsis: true,
-      sorter: true,
-      sortOrder: sortField === 'name' ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
-      render: (_, record) => {
-        const matches = (record as any).matches as ContentMatchSnippet[] | undefined;
-        const keyTopics = record.digest?.keyTopics;
+  const { widths, updateWidth, resetWidth } = useWorkspaceColumnWidths();
+
+  // 表格列定义（支持拖拽调整列宽与持久化记忆）
+  const columns = useWorkspaceTableColumns({
+    widths,
+    updateWidth,
+    resetWidth,
+    sortField,
+    sortOrder,
+    breadcrumbs,
+    isReadOnly,
+    onEnterFolder: handleEnterFolder,
+    onPreviewNode: (file) => void handlePreviewNode(file),
+    onDownloadNode: (node) => void handleDownloadNode(node),
+    onDeleteNode: (node) => void handleDeleteNode(node),
+    onOpenDigestDrawer: setDigestDrawerNode,
+  });
+
+  const isTempFolder = useMemo(() => {
+    if (breadcrumbs.length <= 1) return false;
+    const currentName = breadcrumbs[breadcrumbs.length - 1].name;
+    return currentName.includes('临时') || currentName.includes('temp');
+  }, [breadcrumbs]);
+
+  const rowSelection = useMemo(() => {
+    if (isReadOnly) return undefined;
+    return {
+      selectedRowKeys,
+      onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
+      getCheckboxProps: (record: WorkspaceNode) => {
         const isRoot = breadcrumbs.length === 1;
-        const sysMeta = getSystemFolderMeta(record, isRoot);
-        const displayName = getNodeDisplayName(record, isRoot);
-
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '2px 0' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <span
-                className={styles['node-item-name']}
-                onClick={() => {
-                  if (record.type === 'folder') {
-                    handleEnterFolder(record);
-                  } else {
-                    void handlePreviewNode(record);
-                  }
-                }}
-              >
-                {getFileIcon(record, sysMeta)}
-                <span style={{ fontWeight: record.type === 'folder' ? 500 : 400, fontSize: 13.5 }}>
-                  {displayName}
-                </span>
-              </span>
-
-              {keyTopics && keyTopics.length > 0 && (
-                <div style={{ display: 'inline-flex', gap: 4, marginLeft: 4 }}>
-                  {keyTopics.slice(0, 3).map((topic, i) => (
-                    <Tag
-                      key={i}
-                      color="blue"
-                      bordered={false}
-                      style={{
-                        fontSize: 10,
-                        lineHeight: '16px',
-                        padding: '0 4px',
-                        borderRadius: 4,
-                        margin: 0,
-                      }}
-                    >
-                      #{topic}
-                    </Tag>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {matches && matches.length > 0 && (
-              <div style={{ fontSize: 12, color: 'var(--primary-color, #1677ff)', paddingLeft: 42, marginTop: 2 }}>
-                <Tag color="cyan" bordered={false} style={{ marginRight: 6, fontSize: 10 }}>全文命中</Tag>
-                <span>第 {matches[0].line} 行: {matches[0].snippet}</span>
-              </div>
-            )}
-          </div>
-        );
+        const isSystemFolder = isRoot && record.type === 'folder' && ['tasks', 'saved', 'temp'].some(k => record.name.toLowerCase().includes(k));
+        return {
+          disabled: isReadOnly || isSystemFolder,
+        };
       },
-    },
-    {
-      title: '大小',
-      dataIndex: 'fileSize',
-      key: 'fileSize',
-      width: 130,
-      sorter: true,
-      sortOrder: sortField === 'fileSize' ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
-      render: (size: string, record) => {
-        if (record.type === 'folder') {
-          const count = record.fileCount ?? 0;
-          return (
-            <span style={{ color: count > 0 ? 'var(--text-primary)' : 'var(--text-secondary)', fontSize: 12.5 }}>
-              {count} 项
-            </span>
-          );
-        }
-        return <span style={{ fontSize: 12.5 }}>{formatBytes(size)}</span>;
-      },
-    },
-    {
-      title: '类型',
-      key: 'type',
-      width: 140,
-      render: (_, record) => {
-        const isRoot = breadcrumbs.length === 1;
-        const sysMeta = getSystemFolderMeta(record, isRoot);
-        if (sysMeta) {
-          return <Tag color={sysMeta.tagColor} bordered={false}>{sysMeta.categoryLabel}</Tag>;
-        }
-        if (record.type === 'folder') {
-          return <Tag bordered={false}>文件夹</Tag>;
-        }
-        const ext = (record.name.split('.').pop() || '文件').toUpperCase();
-        return <Tag color="default" bordered={false}>{ext}</Tag>;
-      },
-    },
-    {
-      title: '修改时间',
-      dataIndex: 'updatedAt',
-      key: 'updatedAt',
-      width: 190,
-      sorter: true,
-      sortOrder: sortField === 'updatedAt' ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
-      render: (val: string, record) => {
-        const targetTime = record.latestUpdatedAt || val;
-        if (!targetTime) return '-';
-        const d = new Date(targetTime);
-        const hasLatestFromChildren = record.type === 'folder' && Boolean(record.latestUpdatedAt);
-        return (
-          <Tooltip title={hasLatestFromChildren ? `最新文件修改时间: ${d.toLocaleString()}` : d.toLocaleString()}>
-            <span style={{ color: hasLatestFromChildren ? 'var(--text-primary)' : 'var(--text-secondary)', fontSize: 12.5 }}>
-              {d.toLocaleString()}
-            </span>
-          </Tooltip>
-        );
-      },
-    },
-    {
-      title: '操作',
-      key: 'action',
-      width: 150,
-      fixed: 'right',
-      render: (_, record) => {
-        const isRoot = breadcrumbs.length === 1;
-        const sysMeta = getSystemFolderMeta(record, isRoot);
-
-        return (
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            {record.type === 'folder' ? (
-              <Button
-                type="link"
-                size="small"
-                className={styles['btn-open-folder']}
-                onClick={() => handleEnterFolder(record)}
-              >
-                打开
-              </Button>
-            ) : (
-              <>
-                <Tooltip title="文档摘要卡片">
-                  <Button
-                    type="text"
-                    size="small"
-                    className={styles['action-icon-btn']}
-                    icon={
-                      <AuditOutlined
-                        style={{ color: record.digest ? 'var(--primary-color, #1677ff)' : undefined }}
-                      />
-                    }
-                    onClick={() => setDigestDrawerNode(record)}
-                  />
-                </Tooltip>
-                <Tooltip title="快速预览">
-                  <Button
-                    type="text"
-                    size="small"
-                    className={styles['action-icon-btn']}
-                    icon={<EyeOutlined />}
-                    onClick={() => void handlePreviewNode(record)}
-                  />
-                </Tooltip>
-                <Tooltip title="下载">
-                  <Button
-                    type="text"
-                    size="small"
-                    className={styles['action-icon-btn']}
-                    icon={<DownloadOutlined />}
-                    onClick={() => handleDownloadNode(record)}
-                  />
-                </Tooltip>
-              </>
-            )}
-            {/* 系统内置根目录严禁出现删除按钮 */}
-            {!isReadOnly && !sysMeta && (
-              <Popconfirm
-                title={`确定要删除 "${record.name}" 吗？`}
-                description={record.type === 'folder' ? '文件夹内的所有子文件也将被永久删除！' : undefined}
-                overlayStyle={{ maxWidth: 280 }}
-                okText="确定"
-                cancelText="取消"
-                okButtonProps={{ danger: true }}
-                onConfirm={() => handleDeleteNode(record)}
-              >
-                <Tooltip title="删除">
-                  <Button
-                    type="text"
-                    size="small"
-                    className={styles['action-icon-btn-danger']}
-                    icon={<DeleteOutlined />}
-                  />
-                </Tooltip>
-              </Popconfirm>
-            )}
-          </div>
-        );
-      },
-    },
-  ];
+    };
+  }, [isReadOnly, selectedRowKeys, breadcrumbs.length]);
 
   const quotaPercent = useMemo(() => {
     if (!currentWorkspace) return 0;
@@ -898,21 +662,53 @@ export function WorkspacePage() {
               ]}
             />
 
+            {/* 批量操作工具条 */}
+            {selectedRowKeys.length > 0 && !isReadOnly && (
+              <div className={styles['batch-actions-bar']}>
+                <span className={styles['batch-selected-count']}>
+                  已选择 <strong>{selectedRowKeys.length}</strong> 项
+                </span>
+                <Button
+                  size="small"
+                  onClick={() => setSelectedRowKeys([])}
+                  className={styles['btn-batch-cancel']}
+                >
+                  取消
+                </Button>
+                <Popconfirm
+                  title="批量删除确认"
+                  description={`确定删除选中的 ${selectedRowKeys.length} 个项目吗？将同步彻底清理底层磁盘文件，不可恢复。`}
+                  overlayStyle={{ maxWidth: 300 }}
+                  okText="确认删除"
+                  cancelText="取消"
+                  okButtonProps={{ danger: true, loading: isBatchDeleting }}
+                  onConfirm={handleBatchDelete}
+                >
+                  <Button
+                    danger
+                    type="primary"
+                    size="small"
+                    icon={<DeleteOutlined />}
+                    loading={isBatchDeleting}
+                  >
+                    批量删除
+                  </Button>
+                </Popconfirm>
+              </div>
+            )}
+
             {!isReadOnly && (
               <>
                 {/* 仅在进入临时文件目录后才展示一键清理按钮，首页绝不显示 */}
-                {activeTab === 'personal' &&
-                  breadcrumbs.length > 1 &&
-                  (breadcrumbs[breadcrumbs.length - 1].name.includes('临时') ||
-                   breadcrumbs[breadcrumbs.length - 1].name.includes('temp')) && (
+                {activeTab === 'personal' && isTempFolder && (
                   <Popconfirm
-                    title="清理临时文件"
-                    description="将自动清理已失效的历史记录与系统提取缓存。真实的交付成果、代码及报告不会被删除。是否继续？"
-                    overlayStyle={{ maxWidth: 320 }}
+                    title="一键清理临时文件"
+                    description="将自动清理已失效的历史记录、衍生缓存，以及超过 7 天（一星期）的旧临时文件。近 7 天内的成果文件将被安全保留。是否继续？"
+                    overlayStyle={{ maxWidth: 340 }}
                     okText="确定清理"
                     cancelText="取消"
                     okButtonProps={{ danger: true, loading: isCleaningTemp }}
-                    onConfirm={handleCleanupTemp}
+                    onConfirm={() => handleCleanupTemp(false)}
                   >
                     <Button
                       className={styles['btn-cleanup-action']}
@@ -968,6 +764,13 @@ export function WorkspacePage() {
           </div>
         </header>
 
+        {/* 临时工作区 7 天保留期提示条 */}
+        {isTempFolder && (
+          <div className={styles['temp-folder-hint-bar']}>
+            <span>💡 提示：临时文件默认最多保存一个星期（7天）。如需长期保存，请在会话中点击「保存」按钮归档至成果空间。</span>
+          </div>
+        )}
+
         {/* 内容表格区 */}
         <div
           className={`${styles['workspace-content-body']}${isDragOver ? ` ${styles['is-drag-over']}` : ''}`}
@@ -977,9 +780,15 @@ export function WorkspacePage() {
         >
           <Table<WorkspaceNode>
             className={styles['workspace-table']}
+            components={{
+              header: {
+                cell: ResizableHeaderCell,
+              },
+            }}
             columns={columns}
             dataSource={displayNodes}
             rowKey="id"
+            rowSelection={rowSelection}
             scroll={{ x: 720 }}
             tableLayout="fixed"
             loading={isWsLoading || (searchMode === 'name' ? isNodesLoading : isContentSearching)}

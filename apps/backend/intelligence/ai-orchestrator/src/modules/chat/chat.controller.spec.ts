@@ -227,4 +227,59 @@ describe('ChatController - slash commands persistence', () => {
     );
     expect(res.response).toContain('快捷指令帮助');
   });
+
+  it('resets and clears session without polluting history when /clear command is received in chatStream', async () => {
+    const writtenData: string[] = [];
+    const mockRes: any = {
+      setHeader: jest.fn(),
+      write: jest.fn((chunk: string) => writtenData.push(chunk)),
+      end: jest.fn(),
+      writableEnded: false,
+    };
+    const mockReq: any = {
+      socket: { setTimeout: jest.fn() },
+      headers: { authorization: 'Bearer test-token' },
+    };
+    const body: any = {
+      message: '/clear',
+      sessionId: 'chat-session-to-clear',
+      clientMessageId: 'user-msg-clear',
+      clientAssistantMessageId: 'asst-msg-clear',
+      config: { mode: 'chat' },
+    };
+
+    await controller.chatStream(body, mockReq, mockRes);
+
+    expect(chatConversationService.deleteSession).toHaveBeenCalledWith(
+      'chat-session-to-clear',
+      'law01'
+    );
+    expect(chatConversationService.persistConversation).not.toHaveBeenCalled();
+    expect(mockRes.end).toHaveBeenCalled();
+    const joined = writtenData.join('');
+    expect(joined).toContain('已为你开启全新会话');
+    expect(joined).toContain('Stream completed');
+  });
+
+  it('resets and clears session when /clear command is received in non-streaming chat', async () => {
+    const mockReq: any = {
+      headers: { authorization: 'Bearer test-token' },
+    };
+    const body: any = {
+      message: '/clear',
+      sessionId: 'chat-session-sync-clear',
+      clientMessageId: 'user-msg-sync-clear',
+      clientAssistantMessageId: 'asst-msg-sync-clear',
+      config: { mode: 'chat' },
+    };
+
+    const res = await controller.chat(body, mockReq);
+
+    expect(chatConversationService.deleteSession).toHaveBeenCalledWith(
+      'chat-session-sync-clear',
+      'law01'
+    );
+    expect(chatConversationService.persistConversation).not.toHaveBeenCalled();
+    expect(res.response).toContain('已为你开启全新会话');
+  });
 });

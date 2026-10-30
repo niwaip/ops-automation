@@ -55,7 +55,14 @@ export function resolveChatFilePreviewUrl(file: UploadedFileDescriptor | Record<
   }
   if (file.fileId) {
     const base = resolveAiPath(`/chat/files/${file.fileId}`);
-    return file.ticket ? `${base}?ticket=${encodeURIComponent(file.ticket)}` : base;
+    if (file.ticket) {
+      return `${base}?ticket=${encodeURIComponent(file.ticket)}`;
+    }
+    const token = authStore.getState().accessToken;
+    if (token) {
+      return `${base}?token=${encodeURIComponent(token)}`;
+    }
+    return base;
   }
   if (file.url && typeof file.url === 'string') {
     return file.url;

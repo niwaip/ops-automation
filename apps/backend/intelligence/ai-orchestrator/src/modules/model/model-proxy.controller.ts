@@ -25,7 +25,7 @@ const DEFAULT_MAX_RETRIES = 1;
 /** 硬上限（绝不允许无限重试） */
 const ABSOLUTE_MAX_RETRIES = 3;
 const FAST_INTERNAL_SYNTHESIS_TIMEOUT_MS = 15_000;
-const DEFAULT_SANDBOX_ATTEMPT_TIMEOUT_MS = 60_000;
+const DEFAULT_SANDBOX_ATTEMPT_TIMEOUT_MS = 30_000;
 const GENERATION_SANDBOX_ATTEMPT_TIMEOUT_MS = 90_000;
 const DOCUMENT_GENERATION_ATTEMPT_TIMEOUT_MS = 120_000;
 const LARGE_TOOL_SURFACE_THRESHOLD = 8;
@@ -615,7 +615,7 @@ export class ModelProxyController {
                 Authorization: `Bearer ${apiKey}`,
                 'Content-Type': 'application/json',
               },
-              timeout: 60000,
+              timeout: 30000,
             });
             break;
           } catch (err: any) {
@@ -915,7 +915,7 @@ export class ModelProxyController {
     ) {
       return FAST_INTERNAL_SYNTHESIS_TIMEOUT_MS;
     }
-    return 60_000;
+    return 30_000;
   }
 
   /**

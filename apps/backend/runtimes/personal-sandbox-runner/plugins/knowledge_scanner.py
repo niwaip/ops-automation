@@ -15,6 +15,9 @@ def scan_knowledge(knowledge_dir="/knowledge"):
     files = []
     for item in p.glob("**/*"):
         if item.is_file() and not item.name.startswith("."):
+            # 严格过滤 skills 目录及其定义脚本
+            if "skills" in item.relative_to(p).parts:
+                continue
             files.append({
                 "name": item.name,
                 "path": str(item.relative_to(p)),

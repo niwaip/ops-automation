@@ -31,6 +31,11 @@ export class ContentSearchQueryDto {
   @IsOptional()
   @IsString()
   workspaceId?: string;
+
+  @ApiPropertyOptional({ description: '指定文件夹 ID（只检索此目录及子目录下的文件）' })
+  @IsOptional()
+  @IsString()
+  folderId?: string;
 }
 
 export class RegenerateDigestDto {
@@ -238,6 +243,24 @@ export interface WorkspaceFileDigest {
   cleanedByAi?: boolean;
   aiModel?: string;
   cleanPrompt?: string;
+}
+
+export class BatchDeleteNodesDto {
+  @ApiProperty({ description: '要删除的文件或文件夹节点 ID 列表', type: [String] })
+  @IsArray()
+  @IsNotEmpty()
+  nodeIds!: string[];
+}
+
+export class TempCleanupDto {
+  @ApiPropertyOptional({ description: '临时文件保留天数，默认 7 天；超过 7 天的文件自动清理' })
+  @IsOptional()
+  retentionDays?: number;
+
+  @ApiPropertyOptional({ description: '是否彻底清空临时目录全部文件' })
+  @IsOptional()
+  @IsBoolean()
+  forceEmpty?: boolean;
 }
 
 export interface WorkspaceNodeDto {

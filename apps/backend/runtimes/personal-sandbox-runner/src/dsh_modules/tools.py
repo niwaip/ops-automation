@@ -39,6 +39,7 @@ from .office_tools import (
 
 from .file_tools import (
     scan_personal_knowledge,
+    get_last_scanned_knowledge_files,
     inspect_image,
     read_workspace_file,
     patch_workspace_file,
@@ -628,7 +629,8 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
         res = execute_shell(cmd, WORKSPACE_DIR, deadline)
 
     elif name_clean in ["knowledge_search", "scan_knowledge"]:
-        res = scan_personal_knowledge()
+        q = (params.get("query") or params.get("prompt") or params.get("keyword")) if params else None
+        res = scan_personal_knowledge(prompt=q)
 
     elif name_clean in ["read_skill", "get_skill", "load_skill", "use_skill", "skill"]:
         skill_name = (

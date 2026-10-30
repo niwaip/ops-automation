@@ -1,0 +1,15 @@
+{
+  "evidence.json": "ca8b852c0205b389dd3ca716c6cda828ce637ec3ab60bc8acd05dffb6c17c55b",
+  "audit-summary.json": "64163248f094e877b716df3cb6851af7b3b6a09e70ffd6a489fdcadc9b44fe1b",
+  "attachments.json": "a6c249d23d3919f33302b8a3ff27590794a4f8b12006aee75ff7811b4f89bf8e",
+  "execution-trace.json": "ef2b30545d7e05a41dbfa7866a7460edc3e801fb42ff95f9cb3a0a78ea0da329",
+  "code-evidence.md": "1e0088ea0d995cdea253a12f6ac388206b07003b218a0a0801d69de4cb2a364a",
+  "ops-ai-orchestrator.log": "ed9cad41f50fc068da9781c801ec76f555ee68d3799dca2f1e8411b278038380",
+  "pdf-inspection.json": "f46edb146febb73fc1e0dd31a8b5856c43d7e86551bc91d560ef88cd61fdd9b7",
+  "events.jsonl": "bb4c4bbd2676d86314e99cf9835ac19326d1ef7f44a89b54bd571c8b444bc5f9",
+  "chat-turn.json": "36604d2e5a7e6469bbc42ae0b8a254bc75616bd936bc2d06ee6a1ea15abb3939",
+  "source.pdf": "7bf634e4f82c9500e1e15b036b7c1b683f82f41f5650912d5514950e004eba9a",
+  "ops-session-broker.log": "94f0561d19d623f5fc97e5d21e2ecdb2141538de44024fa77beb519058403844",
+  "source-page.png": "ad6bb2ecc604a42ccd14af21963e692129a298b52ee0ca4770c786e7908c4910",
+  "sandbox-session.json": "42f9cc7ca55a9595d4b8d8d561922e8acee93829f2173182b820c6c4f14b9906"
+}

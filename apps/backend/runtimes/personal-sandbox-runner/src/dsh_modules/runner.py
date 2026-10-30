@@ -245,7 +245,7 @@ def cmd_run(args):
                                  model=getattr(args, 'model', None) or os.environ.get('DSH_MODEL'), policy=policy,
                                  present=True, telemetry=telemetry):
         return
-    knowledge_context = scan_personal_knowledge() if skill_res.is_knowledge_intent else ""
+    knowledge_context = scan_personal_knowledge(prompt=prompt) if skill_res.is_knowledge_intent else ""
 
 
     # 2. 联网前置检索
@@ -668,6 +668,16 @@ def cmd_run(args):
         if enforce_external_pdf_delivery(loop_res, WORKSPACE_DIR, SKILL_DIR,
                 overall_start_time, prompt, task_deadline, session_files):
             final_text, exported_html_files, detected_deliverables = loop_res.final_text, [], []
+
+        # 追加结构化资料与引用来源页脚（本地知识库与网络检索）
+        from .response_sources import append_retrieval_sources_footer
+        from .file_tools import get_last_scanned_knowledge_files
+        final_text = append_retrieval_sources_footer(
+            final_text,
+            prompt=prompt,
+            search_context=search_context,
+            local_knowledge_files=get_last_scanned_knowledge_files(),
+        )
 
         # 7. 会话历史持久化
         t_persist_start = time.time()

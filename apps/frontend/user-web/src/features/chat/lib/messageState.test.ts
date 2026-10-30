@@ -62,6 +62,30 @@ describe('mergeDefinedMetadata', () => {
     expect(mergeDefinedMetadata(current, undefined)).toBe(current);
     expect(mergeDefinedMetadata(current, { taskStatus: undefined })).toBe(current);
   });
+
+  it('should preserve local previewUrl for matching files when patch omits it', () => {
+    const current: ChatMessage['metadata'] = {
+      files: [
+        {
+          fileId: 'file-123',
+          fileName: 'test.png',
+          previewUrl: 'blob:http://localhost:5174/local-blob',
+        } as any,
+      ],
+    };
+    const patch: ChatMessage['metadata'] = {
+      files: [
+        {
+          fileId: 'file-123',
+          fileName: 'test.png',
+          size: 1024,
+        } as any,
+      ],
+    };
+    const merged = mergeDefinedMetadata(current, patch);
+    expect((merged?.files?.[0] as any)?.previewUrl).toBe('blob:http://localhost:5174/local-blob');
+    expect((merged?.files?.[0] as any)?.size).toBe(1024);
+  });
 });
 
 describe('areMessagesEquivalent', () => {

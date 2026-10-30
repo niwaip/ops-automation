@@ -217,6 +217,8 @@ def extract_source_and_target_artifacts(
     lower = query.lower()
     INSPECT_SOURCE_PREFIXES = r'(?:读取|基于|根据|来自|从|查看|输入|将|把|上传的|附件|核对|阅读|总结|分析|检查|审阅|提取|抽取|对账|看下|看一下|看看)'
 
+    TARGET_GENERATION_PREFIXES = r'(?:命名为|保存为|另存为|导出为|生成|制作|编写|创建|输出为|名称为|做成|另存|写成|转为|转成|转换为|转换成)'
+
     # 1. 提取所有带引号的文件名并根据前缀分配给 source 或 target
     quoted_matches = list(re.finditer(
         r'[\"“\'‘`「]([^\"”\'’`」]+\.(?:docx?|xlsx?|csv|pdf|txt|md|pptx?|json|sh|sql|py))[\"”\'’`」]',
@@ -312,19 +314,60 @@ def extract_source_and_target_artifacts(
             if ext not in target_formats:
                 target_formats.append(ext)
 
-    # 纯只读/查阅/审阅保护：若用户无正向生成动词，且明确为查阅/总结/核对意图，清空目标产物契约
-    # 防止将所查看/核对的文件（如“生产日报.xlsx”、“制作说明.docx”）误作为生成交付物
-    from .skill_router import GENERATE_ACTION_PATTERNS, INSPECT_ACTION_PATTERNS, READONLY_SUMMARY_PATTERNS
+    # 纯只读/查阅保护（核心架构原则：不要用关键字判断！）：
+    # 只要用户语句中没有正向物理文件生成动作，目标交付物契约必须严格为空！
+    # 彻底杜绝把正在查看、核对、总结的文件误当作目标产物
+    from .skill_router import GENERATE_ACTION_PATTERNS
     has_pos_gen = has_positive_generate_action(query, GENERATE_ACTION_PATTERNS)
-    is_pure_inspect = (
-        not has_pos_gen
-        and (any(k in lower for k in INSPECT_ACTION_PATTERNS) or any(k in lower for k in READONLY_SUMMARY_PATTERNS))
-    )
-    if is_pure_inspect:
+    if not has_pos_gen:
         target_formats = []
         target_files = []
 
     return source_files, target_formats, target_files
+
+
+ACTION_MODE_READ = "read"
+ACTION_MODE_WRITE = "write"
+ACTION_MODE_MODIFY = "modify"
+ACTION_MODE_CONVERT = "convert"
+
+
+def resolve_task_action_mode(
+    query: str,
+    attached_files: Optional[List[str]] = None,
+    history: Optional[List[Dict[str, Any]]] = None
+) -> str:
+    """
+    Decoupled structural resolution of primary action mode.
+    Does NOT rely on brittle keyword whitelists:
+    1. If explicit modification of existing tables/cells/content is requested -> MODIFY
+    2. If explicit physical deliverable generation/export is requested:
+       - If there are input source files and different target formats -> CONVERT
+       - Otherwise -> WRITE
+    3. Otherwise (in-chat Q&A, inspection, extraction, summarization, consultation) -> READ
+    """
+    if not query:
+        return ACTION_MODE_READ
+
+    # 1. 检查是否为原地修改更新
+    if is_modify_intent_requested(query, attached_files):
+        return ACTION_MODE_MODIFY
+
+    # 2. 检查是否有正向生成交付物意图
+    from .skill_router import GENERATE_ACTION_PATTERNS, is_text_only_request
+    if is_text_only_request(query):
+        return ACTION_MODE_READ
+
+    has_pos_gen = has_positive_generate_action(query, GENERATE_ACTION_PATTERNS)
+    if has_pos_gen:
+        src_files, tgt_fmts, tgt_files = extract_source_and_target_artifacts(query, attached_files)
+        if tgt_fmts or tgt_files:
+            if src_files and tgt_fmts and not any(Path(s).suffix.lower() in tgt_fmts for s in src_files):
+                return ACTION_MODE_CONVERT
+            return ACTION_MODE_WRITE
+
+    # 3. 其余所有情况默认均为只读消费与对话解答模式
+    return ACTION_MODE_READ
 
 
 DEFAULT_GENERATE_PATTERNS = [

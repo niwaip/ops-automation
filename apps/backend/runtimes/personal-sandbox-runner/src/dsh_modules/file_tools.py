@@ -350,46 +350,15 @@ def resolve_sandboxed_path(
 
 
 
-def scan_personal_knowledge() -> str:
-    """Scans personal knowledge space for reference material, saved deliverables, and custom skills"""
-    import dsh_modules.config as cfg
-    kn_dir = getattr(cfg, "KNOWLEDGE_DIR", KNOWLEDGE_DIR)
-    kn_path = Path(kn_dir)
-    if not kn_path.exists():
-        return ""
-    try:
-        kn_resolved = kn_path.resolve()
-    except Exception:
-        return ""
-
-    files = list(kn_path.glob("**/*"))
-    valid_entries = []
-    for f in files:
-        if f.name.startswith("."):
-            continue
-        try:
-            # 严格解析真实物理路径，禁止通过符号链接逃逸到 /knowledge 之外（如逃逸至 /etc/hosts 等）
-            resolved, err = resolve_sandboxed_path(str(f), for_write=False, for_outbound=False)
-            if err or not resolved or not resolved.is_file():
-                continue
-            if not is_path_within(resolved, [kn_resolved]):
-                continue
-            valid_entries.append((f, resolved))
-        except Exception:
-            continue
-
-    if not valid_entries:
-        return "Personal Knowledge Base (/knowledge) 目前为空。你可以将持久化交付物、报表、文档或自定义技能 (/knowledge/skills) 保存在此处。"
-
-    summary = ["Personal Knowledge Base (/knowledge) contents:"]
-    for f, resolved in valid_entries[:15]:
-        try:
-            rel = f.relative_to(kn_path)
-            content_preview = resolved.read_text(encoding="utf-8", errors="ignore")[:300]
-            summary.append(f"- File: {rel} ({resolved.stat().st_size} bytes)\n  Preview: {content_preview.strip()}")
-        except Exception:
-            continue
-    return "\n".join(summary)
+# ---------------------------------------------------------------------------
+# 个人知识库与产出成果库检索能力已拆分下沉至 personal_knowledge_search 模块
+# ---------------------------------------------------------------------------
+from .personal_knowledge_search import (
+    get_last_scanned_knowledge_files,
+    scan_personal_knowledge,
+    _extract_knowledge_query_keywords,
+    _get_file_type_tier_and_score,
+)
 
 
 def validate_image_bytes(p: Path, image_bytes: bytes, suffix: Optional[str] = None) -> Optional[str]:

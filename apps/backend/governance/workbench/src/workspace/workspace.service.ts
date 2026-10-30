@@ -561,25 +561,36 @@ export class WorkspaceService implements OnModuleInit {
       }
     }
 
-    // 收集所有需要清理物理文件的子孙文件节点
-    const filesToDelete: { storagePath: string | null; fileSize: bigint }[] = [];
+    // 收集所有需要清理物理文件的子孙文件节点以及物理文件夹
+    const filesToDelete: { id: string; name: string; storagePath: string | null; fileSize: bigint }[] = [];
+    const foldersToDelete: string[] = [];
     if (node.type === 'file') {
-      filesToDelete.push({ storagePath: node.storagePath, fileSize: node.fileSize });
+      filesToDelete.push({ id: node.id, name: node.name, storagePath: node.storagePath, fileSize: node.fileSize });
     } else {
+      foldersToDelete.push(node.name);
       const descendants = await this.getAllDescendantNodes(workspaceId, [node.id]);
       for (const d of descendants) {
         if (d.type === 'file') {
-          filesToDelete.push({ storagePath: d.storagePath, fileSize: d.fileSize });
+          filesToDelete.push({ id: d.id, name: d.name, storagePath: d.storagePath, fileSize: d.fileSize });
+        } else if (d.type === 'folder') {
+          foldersToDelete.push(d.name);
         }
       }
     }
 
-    // 删除物理磁盘文件
+    // 1. 删除 storageDriver 中的对象存储副本
     for (const f of filesToDelete) {
       if (f.storagePath) {
         await this.storage.deleteFile(f.storagePath).catch(() => undefined);
       }
     }
+
+    // 2. 彻底同步物理删除沙箱底层磁盘文件与文件夹 (workspace & knowledge)，断绝重新进入目录被扫描复活
+    await this.tempCleaner.deletePhysicalUserFiles(
+      userId,
+      filesToDelete.map((f) => f.name),
+      foldersToDelete
+    );
 
     // 数据库级联删除
     await this.prisma.workspaceNode.delete({
@@ -603,16 +614,122 @@ export class WorkspaceService implements OnModuleInit {
   }
 
   /**
-   * 一键清理临时工作区 (temp)：清理失效幽灵记录与衍生文本缓存
+   * 批量删除文件或文件夹（同步彻底清理沙箱底层物理磁盘与对象存储，杜绝复活）
+   */
+  public async batchDeleteNodes(
+    workspaceId: string,
+    nodeIds: string[],
+    userId: string,
+    userRoles: string[] = [],
+    departmentId?: string
+  ): Promise<{ success: boolean; deletedCount: number }> {
+    await this.assertAccess(workspaceId, userId, departmentId, 'delete', userRoles);
+    if (!nodeIds || nodeIds.length === 0) {
+      return { success: true, deletedCount: 0 };
+    }
+
+    const nodes = await this.prisma.workspaceNode.findMany({
+      where: { id: { in: nodeIds }, workspaceId },
+    });
+    if (nodes.length === 0) {
+      return { success: true, deletedCount: 0 };
+    }
+
+    // 过滤掉根目录系统保护文件夹（tasks/saved/temp）
+    const validNodes = nodes.filter((node) => {
+      if (node.type === 'folder' && !node.parentId) {
+        const lower = node.name.toLowerCase();
+        if (
+          lower.includes('tasks') ||
+          lower.includes('saved') ||
+          lower.includes('temp') ||
+          lower.includes('工作任务成果') ||
+          lower.includes('沙盒保存内容') ||
+          lower.includes('临时工作区')
+        ) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    if (validNodes.length === 0) {
+      return { success: true, deletedCount: 0 };
+    }
+
+    const folderNodes = validNodes.filter((n) => n.type === 'folder');
+    const folderIds = folderNodes.map((n) => n.id);
+    const foldersToDelete: string[] = folderNodes.map((n) => n.name);
+
+    const descendantFiles: Array<{ id: string; name: string; storagePath: string | null; fileSize: bigint }> = [];
+    if (folderIds.length > 0) {
+      const descendants = await this.getAllDescendantNodes(workspaceId, folderIds);
+      for (const d of descendants) {
+        if (d.type === 'file') {
+          descendantFiles.push({ id: d.id, name: d.name, storagePath: d.storagePath, fileSize: d.fileSize });
+        } else if (d.type === 'folder') {
+          foldersToDelete.push(d.name);
+        }
+      }
+    }
+
+    const filesToDelete = [
+      ...validNodes.filter((n) => n.type === 'file').map((n) => ({ id: n.id, name: n.name, storagePath: n.storagePath, fileSize: n.fileSize })),
+      ...descendantFiles,
+    ];
+
+    // 1. 删除 storageDriver 中的文件副本
+    for (const f of filesToDelete) {
+      if (f.storagePath) {
+        await this.storage.deleteFile(f.storagePath).catch(() => undefined);
+      }
+    }
+
+    // 2. 彻底同步物理删除沙箱底层磁盘文件与文件夹 (workspace & knowledge)
+    await this.tempCleaner.deletePhysicalUserFiles(
+      userId,
+      filesToDelete.map((f) => f.name),
+      foldersToDelete
+    );
+
+    // 3. 收集所有要删除的节点 ID
+    const allIdsToDelete = Array.from(new Set([
+      ...validNodes.map((n) => n.id),
+      ...descendantFiles.map((d) => d.id),
+    ]));
+
+    await this.prisma.workspaceNode.deleteMany({
+      where: { id: { in: allIdsToDelete } },
+    });
+
+    // 4. 扣减配额
+    const totalFreed = filesToDelete.reduce((acc, curr) => acc + curr.fileSize, 0n);
+    if (totalFreed > 0n) {
+      const currentWs = await this.prisma.workspace.findUnique({ where: { id: workspaceId } });
+      if (currentWs) {
+        const remaining = currentWs.usedBytes > totalFreed ? currentWs.usedBytes - totalFreed : 0n;
+        await this.prisma.workspace.update({
+          where: { id: workspaceId },
+          data: { usedBytes: remaining },
+        });
+      }
+    }
+
+    return { success: true, deletedCount: allIdsToDelete.length };
+  }
+
+  /**
+   * 一键清理临时工作区 (temp)：清理失效幽灵记录、衍生文本缓存与超 7 天过期临时文件
    */
   public async cleanupTempWorkspace(
     workspaceId: string,
     userId: string,
     userRoles: string[] = [],
-    departmentId?: string
+    departmentId?: string,
+    options?: { retentionDays?: number; forceEmpty?: boolean }
   ) {
     await this.assertAccess(workspaceId, userId, departmentId, 'write', userRoles);
-    return await this.tempCleaner.cleanupTempWorkspace(workspaceId, userId);
+    return await this.tempCleaner.cleanupTempWorkspace(workspaceId, userId, options);
   }
 
   /**
@@ -660,7 +777,8 @@ export class WorkspaceService implements OnModuleInit {
     departmentId: string | undefined,
     query: string,
     workspaceId?: string,
-    userRoles: string[] = []
+    userRoles: string[] = [],
+    folderId?: string
   ): Promise<ContentSearchResultDto[]> {
     const q = (query || '').trim();
     if (!q || q.length < 2) {
@@ -692,8 +810,51 @@ export class WorkspaceService implements OnModuleInit {
       targetWorkspaceIds = [workspaceId];
     }
 
-    const tokenProfile = buildQueryTokenProfile(q);
-    const searchTokens = tokenProfile.hasCoreEntities ? tokenProfile.coreEntities : tokenProfile.tokens;
+    // 目录作用域收敛与临时文件隔离：
+    // 1. 若前端传入具体 folderId，仅检索当前文件夹及其子孙目录；
+    // 2. 若在空间根目录下检索，默认严格排除「临时工作区 (temp)」下的临时中间物，确保只检索已保存的正式成果
+    let scopedFileNodeIds: string[] | undefined = undefined;
+    const excludedFileNodeIds: string[] = [];
+
+    if (folderId) {
+      const targetWorkspaceId = workspaceId || targetWorkspaceIds[0];
+      const descendants = await this.getAllDescendantNodes(targetWorkspaceId, [folderId]);
+      scopedFileNodeIds = descendants.filter((d) => d.type === 'file').map((d) => d.id);
+      if (scopedFileNodeIds.length === 0) {
+        return [];
+      }
+    } else {
+      const tempFolders = await this.prisma.workspaceNode.findMany({
+        where: {
+          workspaceId: { in: targetWorkspaceIds },
+          parentId: null,
+          type: 'folder',
+          OR: [
+            { name: { contains: 'temp', mode: 'insensitive' } },
+            { name: { contains: '临时' } },
+          ],
+        },
+        select: { id: true, workspaceId: true },
+      });
+      for (const tf of tempFolders) {
+        const tempDescendants = await this.getAllDescendantNodes(tf.workspaceId, [tf.id]);
+        for (const td of tempDescendants) {
+          if (td.type === 'file') excludedFileNodeIds.push(td.id);
+        }
+      }
+    }
+
+    const nodeScopeFilter: any = {};
+    if (scopedFileNodeIds) {
+      nodeScopeFilter.id = { in: scopedFileNodeIds };
+    } else if (excludedFileNodeIds.length > 0) {
+      nodeScopeFilter.id = { notIn: excludedFileNodeIds };
+    }
+
+    const cleanQ = q.replace(/^#+/, '').trim() || q;
+    const tokenProfile = buildQueryTokenProfile(cleanQ);
+    const rawTokens = tokenProfile.hasCoreEntities ? tokenProfile.coreEntities : tokenProfile.tokens;
+    const searchTokens = Array.from(new Set([cleanQ, ...rawTokens])).filter((t) => t.length >= 2);
 
     // 1. 文件名全文与核心关键词检索（覆盖可见空间高频匹配）
     const matchedNodes = await this.prisma.workspaceNode.findMany({
@@ -701,8 +862,9 @@ export class WorkspaceService implements OnModuleInit {
         workspaceId: { in: targetWorkspaceIds },
         type: 'file',
         storagePath: { not: null },
+        ...nodeScopeFilter,
         OR: [
-          { name: { contains: q, mode: 'insensitive' } },
+          { name: { contains: cleanQ, mode: 'insensitive' } },
           ...searchTokens.map((token) => ({ name: { contains: token, mode: 'insensitive' as const } })),
         ],
       },
@@ -714,7 +876,7 @@ export class WorkspaceService implements OnModuleInit {
     // 2. 跨全空间通过数据库检索伴生结构化摘要与元数据（解除 80 份滑动窗口截断，盘活沉淀历史文档）
     let metadataMatchedNodes: typeof matchedNodes = [];
     try {
-      const searchTerms = Array.from(new Set([q, ...searchTokens])).slice(0, 5);
+      const searchTerms = Array.from(new Set([cleanQ, ...searchTokens])).slice(0, 5);
       const orConditions = searchTerms.map((_, idx) => `digest_json::text ILIKE $${idx + 2}`).join(' OR ');
       const rawRows = await this.prisma.$queryRawUnsafe<Array<{ id: string }>>(
         `SELECT id FROM workspace_nodes WHERE workspace_id = ANY($1::uuid[]) AND type = 'file' AND storage_path IS NOT NULL AND (${orConditions}) ORDER BY updated_at DESC LIMIT 100`,
@@ -726,27 +888,36 @@ export class WorkspaceService implements OnModuleInit {
           where: { id: { in: rawRows.map((r) => r.id) } },
           include: { workspace: true },
         });
+        if (scopedFileNodeIds) {
+          const allowedSet = new Set(scopedFileNodeIds);
+          metadataMatchedNodes = metadataMatchedNodes.filter((n) => allowedSet.has(n.id));
+        } else if (excludedFileNodeIds.length > 0) {
+          const excludeSet = new Set(excludedFileNodeIds);
+          metadataMatchedNodes = metadataMatchedNodes.filter((n) => !excludeSet.has(n.id));
+        }
       }
     } catch (err: any) {
       this.logger.warn(`Metadata full-text search fallback: ${err.message}`);
     }
 
-    // 3. 补充最近更新文件候选（确保新上传/无摘要文件可被物理 Grep 扫描到）
-    // 针对包含精确编号或核心实体的查询，自适应放宽候选窗口；若元数据与标题全未命中，深度探测可进一步扩大至 1000 份，消除窗口外正文事实漏检
+    // 3. 补充最近更新文件候选（若已从元数据/标题获取充分候选，收敛扫描窗口至 60 份，极大降低全量磁盘 I/O）
+    const hasStrongMatches = matchedNodes.length > 0 || metadataMatchedNodes.length > 0;
     const isDeepExactScan =
       tokenProfile.exactIdentifiers.length > 0 &&
-      matchedNodes.length === 0 &&
-      metadataMatchedNodes.length === 0;
+      !hasStrongMatches;
     const recentTakeLimit = isDeepExactScan
-      ? 1000
-      : tokenProfile.exactIdentifiers.length > 0 || tokenProfile.hasCoreEntities
       ? 500
-      : 250;
+      : hasStrongMatches
+      ? 60
+      : tokenProfile.exactIdentifiers.length > 0 || tokenProfile.hasCoreEntities
+      ? 200
+      : 80;
     const recentNodes = await this.prisma.workspaceNode.findMany({
       where: {
         workspaceId: { in: targetWorkspaceIds },
         type: 'file',
         storagePath: { not: null },
+        ...nodeScopeFilter,
       },
       include: { workspace: true },
       orderBy: { updatedAt: 'desc' },
@@ -789,121 +960,129 @@ export class WorkspaceService implements OnModuleInit {
     const seenFileIdentities = new Set<string>();
     const admittedCandidates: Array<{ item: ContentSearchResultDto; relevanceScore: number }> = [];
 
-    for (const node of nodes) {
-      if (!node.storagePath) continue;
-      if (seenNodeIds.has(node.id)) continue;
-      const fileIdentity = `${node.workspaceId}:${node.parentId || 'root'}:${node.name.trim().toLowerCase()}`;
-      if (seenFileIdentities.has(fileIdentity)) continue;
-      seenNodeIds.add(node.id);
-      seenFileIdentities.add(fileIdentity);
+    // 分批并发加速扫描与高分贪心提前熔断（单批 12 个并发，达 30 命中立即返回，杜绝 500 次串行 I/O 拖垮响应）
+    const BATCH_SIZE = 12;
+    for (let i = 0; i < nodes.length; i += BATCH_SIZE) {
+      if (admittedCandidates.length >= 30) {
+        break;
+      }
+      const batch = nodes.slice(i, i + BATCH_SIZE);
+      await Promise.all(
+        batch.map(async (node) => {
+          if (!node.storagePath) return;
+          if (seenNodeIds.has(node.id)) return;
+          const fileIdentity = `${node.workspaceId}:${node.parentId || 'root'}:${node.name.trim().toLowerCase()}`;
+          if (seenFileIdentities.has(fileIdentity)) return;
+          seenNodeIds.add(node.id);
+          seenFileIdentities.add(fileIdentity);
 
-      let matches: Array<ContentMatchSnippet> = (
-        await this.contentIndexer.grepFile(
-          node.storagePath,
-          node.name,
-          node.mimeType,
-          q,
-          3
-        )
-      ).map((m) => ({ ...m, sourceKind: 'physical_line' as const }));
+          let matches: Array<ContentMatchSnippet> = (
+            await this.contentIndexer.grepFile(
+              node.storagePath,
+              node.name,
+              node.mimeType,
+              cleanQ,
+              3
+            )
+          ).map((m) => ({ ...m, sourceKind: 'physical_line' as const }));
 
-      if (matches.length === 0 && searchTokens.length > 0) {
-        const seenLines = new Set<number>();
-        for (const token of searchTokens) {
-          const subMatches = await this.contentIndexer.grepFile(
-            node.storagePath,
-            node.name,
-            node.mimeType,
-            token,
-            2
-          );
-          for (const m of subMatches) {
-            if (!seenLines.has(m.line)) {
-              seenLines.add(m.line);
-              matches.push({ ...m, sourceKind: 'physical_line' as const });
+          if (matches.length === 0 && searchTokens.length > 0) {
+            const seenLines = new Set<number>();
+            for (const token of searchTokens) {
+              const subMatches = await this.contentIndexer.grepFile(
+                node.storagePath,
+                node.name,
+                node.mimeType,
+                token,
+                2
+              );
+              for (const m of subMatches) {
+                if (!seenLines.has(m.line)) {
+                  seenLines.add(m.line);
+                  matches.push({ ...m, sourceKind: 'physical_line' as const });
+                }
+              }
+              if (matches.length >= 8) break;
             }
           }
-          if (matches.length >= 8) break;
-        }
-      }
 
-      if (matches.length === 0) {
-        matches = extractMetadataMatchSnippets({
-          digestJson: (node as any).digestJson,
-          searchTokens,
-          rawQuery: q,
-        });
-      }
-
-      if (matches.length === 0 && searchTokens.some((t) => node.name.toLowerCase().includes(t.toLowerCase()))) {
-        try {
-          const preview = await this.getFileContent(
-            node.workspaceId,
-            node.id,
-            userId,
-            ['admin'],
-            departmentId,
-            1,
-            3
-          );
-          if (preview.content) {
-            matches = preview.content
-              .split('\n')
-              .filter((l) => l.trim().length > 0)
-              .slice(0, 3)
-              .map((line, idx) => ({
-                line: idx + 1,
-                snippet: line,
-                sourceKind: 'physical_line' as const,
-              }));
+          if (matches.length === 0) {
+            matches = extractMetadataMatchSnippets({
+              digestJson: (node as any).digestJson,
+              searchTokens,
+              rawQuery: cleanQ,
+            });
           }
-        } catch {
-          // ignore preview error
-        }
-      }
 
-      if (matches.length > 0) {
-        // 核心实体联合门禁（Co-occurrence Filter）与综合相关性硬阈值裁剪（充分结合 AI 清洗数据）
-        const relevanceEval = evaluateDocumentRelevance({
-          nodeName: node.name,
-          digestSummary: (node as any).digestJson?.summary,
-          digestJson: (node as any).digestJson,
-          profile: tokenProfile,
-          contentMatches: matches,
-          baseScore: scoreNode(node),
-        });
-
-        if (!relevanceEval.admitted) {
-          continue; // 彻底拦截仅凭高频通用泛词（如“安装”）误命中的无关文档
-        }
-
-        // 对于中小型文档（<= 8000 字符），提取纯文本完整内容提供给 RAG 上下文，彻底避免由于片段截断遗漏口令等关键字段
-        let fullTextPreview: string | undefined;
-        try {
-          const extracted = await this.contentIndexer.getExtractedText(
-            node.storagePath,
-            node.name,
-            node.mimeType
-          );
-          if (extracted && extracted.length <= 8000) {
-            fullTextPreview = extracted;
+          if (matches.length === 0 && searchTokens.some((t) => node.name.toLowerCase().includes(t.toLowerCase()))) {
+            try {
+              const preview = await this.getFileContent(
+                node.workspaceId,
+                node.id,
+                userId,
+                ['admin'],
+                departmentId,
+                1,
+                3
+              );
+              if (preview.content) {
+                matches = preview.content
+                  .split('\n')
+                  .filter((l) => l.trim().length > 0)
+                  .slice(0, 3)
+                  .map((line, idx) => ({
+                    line: idx + 1,
+                    snippet: line,
+                    sourceKind: 'physical_line' as const,
+                  }));
+              }
+            } catch {
+              // ignore preview error
+            }
           }
-        } catch {
-          // 忽略纯文本提取失败，降级依赖 matches
-        }
 
-        admittedCandidates.push({
-          item: {
-            ...this.toNodeDto(node),
-            workspaceType: node.workspace.type,
-            workspaceName: node.workspace.name,
-            matches,
-            fullTextPreview,
-            physicalVerified: relevanceEval.physicalVerified,
-          },
-          relevanceScore: relevanceEval.totalScore,
-        });
-      }
+          if (matches.length > 0) {
+            const relevanceEval = evaluateDocumentRelevance({
+              nodeName: node.name,
+              digestSummary: (node as any).digestJson?.summary,
+              digestJson: (node as any).digestJson,
+              profile: tokenProfile,
+              contentMatches: matches,
+              baseScore: scoreNode(node),
+            });
+
+            if (!relevanceEval.admitted) {
+              return;
+            }
+
+            let fullTextPreview: string | undefined;
+            try {
+              const extracted = await this.contentIndexer.getExtractedText(
+                node.storagePath,
+                node.name,
+                node.mimeType
+              );
+              if (extracted && extracted.length <= 8000) {
+                fullTextPreview = extracted;
+              }
+            } catch {
+              // ignore preview error
+            }
+
+            admittedCandidates.push({
+              item: {
+                ...this.toNodeDto(node),
+                workspaceType: node.workspace.type,
+                workspaceName: node.workspace.name,
+                matches,
+                fullTextPreview,
+                physicalVerified: relevanceEval.physicalVerified,
+              },
+              relevanceScore: relevanceEval.totalScore,
+            });
+          }
+        })
+      );
     }
 
     // 全局按最终相关度打分倒序排序，确保交付的相关性最高

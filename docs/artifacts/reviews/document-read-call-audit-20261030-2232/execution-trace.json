@@ -1,0 +1,101 @@
+{
+  "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+  "harness": "deepseek-harness",
+  "executed": true,
+  "durationMs": 95743,
+  "exitCode": 0,
+  "metrics": {
+    "ttftMs": 15667.25,
+    "ttftScope": "model_request",
+    "durationMs": 95109.67,
+    "llmDurationMs": 85535.47,
+    "toolCallsCount": 1,
+    "toolCalls": [
+      {
+        "name": "vision_inspect",
+        "params": {
+          "file_path": "1.pdf",
+          "prompt": "请详细识别并转录图片中的全部文字内容。包括标题、正文、表格（如果有）、页眉页脚等所有可见信息。请保持原有的段落结构和格式，如果包含表格请转换为Markdown表格。如果图片中有图片、图表也请描述其内容。"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      }
+    ],
+    "llmInvocations": 2,
+    "tokens": {
+      "prompt_tokens": 8011,
+      "completion_tokens": 593,
+      "total_tokens": 8604
+    },
+    "finishReason": "stop",
+    "roundFinishReasons": [
+      "tool_calls",
+      "stop"
+    ],
+    "guardDecisions": [
+      {
+        "guard": "preflight_probe",
+        "action": "inspected",
+        "reason": "PDF附件[1.pdf|大小:60.1KB]"
+      },
+      {
+        "guard": "user_unit_confirmation",
+        "action": "accept",
+        "reason": {
+          "unit": null,
+          "sections": null
+        }
+      }
+    ],
+    "modelResponses": [
+      {
+        "rawChars": 151,
+        "cleanChars": 151,
+        "rawSha256": "4bf1d8b2e10ae5b7987f969019a178d3fd47b06b4e2b428288d6321c521cb24a",
+        "cleanSha256": "4bf1d8b2e10ae5b7987f969019a178d3fd47b06b4e2b428288d6321c521cb24a",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 712,
+        "cleanChars": 712,
+        "rawSha256": "b51e392409f79e3accfd8d11bd69a9b0018aabc9b7dcbb9c0f4369a7cc391490",
+        "cleanSha256": "b51e392409f79e3accfd8d11bd69a9b0018aabc9b7dcbb9c0f4369a7cc391490",
+        "finishReason": "stop",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      }
+    ],
+    "answerValidation": {},
+    "callsLedger": [
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 15669.18,
+        "usage": {
+          "prompt_tokens": 3530,
+          "total_tokens": 3707,
+          "completion_tokens": 177
+        },
+        "span_id": null,
+        "call_id": "a934264e6cd242b29f55e54486de4d12"
+      },
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 69866.29,
+        "usage": {
+          "prompt_tokens": 4481,
+          "total_tokens": 4897,
+          "completion_tokens": 416
+        },
+        "span_id": null,
+        "call_id": "e9aa2baaca054658ac0eda4f3307a430"
+      }
+    ],
+    "auxiliaryInvocations": 0
+  },
+  "artifacts": []
+}
