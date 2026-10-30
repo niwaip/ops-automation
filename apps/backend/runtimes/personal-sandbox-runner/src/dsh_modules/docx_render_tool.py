@@ -5,6 +5,7 @@ Bounded DOCX CLI adapter: model supplies content, owned engine supplies typograp
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import time
@@ -28,7 +29,7 @@ DOCX_RENDER_TOOL = {
                 },
                 "output_path": {
                     "type": "string",
-                    "description": "目标 Word 文档路径，必须以 /workspace/ 开头且为 .docx 后缀，如 /workspace/DeepSeek_Harness_安装指南.docx"
+                    "description": "目标 Word 文档路径（可选），推荐以 /workspace/ 开头且为 .docx 后缀，如 /workspace/DeepSeek_Harness_安装指南.docx；缺省时自动根据文档标题生成"
                 },
                 "theme": {
                     "type": "string",
@@ -52,15 +53,15 @@ DOCX_RENDER_TOOL = {
                     "description": "是否自动渲染高清 PNG 预览图（便于质检验收），默认 true"
                 }
             },
-            "required": ["markdown", "output_path"],
+            "required": ["markdown"],
             "additionalProperties": False
         }
     }
 }
 
 
-def _make_error(msg: str, provenance: dict) -> TextToolOutput:
-    res = ToolResult.error(msg, provenance=provenance)
+def _make_error(msg: str, provenance: dict, code: str = "docx_render_failed") -> TextToolOutput:
+    res = ToolResult.error(code, msg, provenance=provenance)
     return TextToolOutput(res.render_text(), res)
 
 
@@ -72,10 +73,25 @@ def render_docx(params: dict, workspace_dir: str, skill_dir: str, deadline: floa
         out_path = params.get("output_path", "")
 
         if not isinstance(content, str) or not content.strip():
-            return _make_error("markdown 参数必须为非空字符串", provenance)
+            return _make_error("markdown 参数必须为非空字符串", provenance, code="invalid_markdown")
 
-        if not isinstance(out_path, str) or not out_path.strip().endswith(".docx"):
-            return _make_error("output_path 必须为以 .docx 结尾的文件路径，例如 /workspace/安装指南.docx", provenance)
+        # 智能容错与路径推断：若模型漏传 output_path，依据标题或用户指令自动命名
+        if not out_path or not isinstance(out_path, str) or not out_path.strip():
+            doc_title = params.get("title") or ""
+            if not doc_title and user_prompt:
+                m = re.search(r'《([^》]+)》|[“"]([^”"]+)[”"]', user_prompt)
+                if m:
+                    doc_title = m.group(1) or m.group(2)
+            if not doc_title and isinstance(content, str):
+                first_line = content.strip().split("\n", 1)[0].strip()
+                if first_line.startswith("#"):
+                    doc_title = first_line.lstrip("#").strip()
+            if not doc_title:
+                doc_title = "文档"
+            clean_title = re.sub(r'[^\w\-\u4e00-\u9fa5]+', '_', doc_title).strip('_') or "文档"
+            out_path = f"{clean_title}.docx"
+        elif not out_path.strip().endswith(".docx"):
+            out_path = f"{out_path.strip()}.docx"
 
         root = Path(workspace_dir).resolve()
         target = Path(out_path)
@@ -84,10 +100,13 @@ def render_docx(params: dict, workspace_dir: str, skill_dir: str, deadline: floa
         else:
             target = target.resolve()
 
+        if target.is_dir():
+            target = target / "文档.docx"
+
         try:
             target.relative_to(root)
         except ValueError:
-            return _make_error(f"输出路径必须位于工作区 {workspace_dir} 内", provenance)
+            return _make_error(f"输出路径必须位于工作区 {workspace_dir} 内", provenance, code="invalid_path")
 
         # Check deadline
         if deadline is not None and time.monotonic() >= deadline:
@@ -106,7 +125,7 @@ def render_docx(params: dict, workspace_dir: str, skill_dir: str, deadline: floa
                 break
 
         if not generator:
-            return _make_error("未找到 Word 报告排版引擎脚本 (generate_report_docx.py)", provenance)
+            return _make_error("未找到 Word 报告排版引擎脚本 (generate_report_docx.py)", provenance, code="engine_script_missing")
 
         # Temp markdown source file
         run_id = uuid.uuid4().hex
@@ -138,7 +157,7 @@ def render_docx(params: dict, workspace_dir: str, skill_dir: str, deadline: floa
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=60)
         if proc.returncode != 0:
             err_msg = proc.stderr.strip() or proc.stdout.strip() or "未知执行错误"
-            return _make_error(f"Word 生成引擎执行失败: {err_msg}", provenance)
+            return _make_error(f"Word 生成引擎执行失败: {err_msg}", provenance, code="docx_engine_failed")
 
         # Parse output report
         report = {}
@@ -182,4 +201,4 @@ def render_docx(params: dict, workspace_dir: str, skill_dir: str, deadline: floa
         return TextToolOutput(result_summary, res)
 
     except Exception as e:
-        return _make_error(f"render_docx 执行异常: {str(e)}", provenance)
+        return _make_error(f"render_docx 执行异常: {str(e)}", provenance, code="docx_render_exception")
