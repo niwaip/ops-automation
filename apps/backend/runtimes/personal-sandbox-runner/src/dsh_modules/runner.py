@@ -461,8 +461,20 @@ def cmd_run(args):
     # 1. 意图与技能解析 (精确规则 + Slash 命令)
     allow_research = bool(getattr(args, "research", False))
     session_files = resolve_session_attachments(args, session_id)
+    from .preflight_probe import probe_session_attachments
+    attachment_probe = probe_session_attachments(session_files, prompt=prompt)
+    if attachment_probe.get("primary_domain") == "finance_fpna":
+        os.environ["DSH_PROBED_DOMAIN"] = "finance"
+    elif attachment_probe.get("primary_domain") == "timesheet_wbs":
+        os.environ["DSH_PROBED_DOMAIN"] = "timesheet"
+    else:
+        os.environ.pop("DSH_PROBED_DOMAIN", None)
+
     telemetry = TelemetryStats()
     telemetry.bind_journal(history_file)
+    if attachment_probe.get("summary"):
+        telemetry.record_guard("preflight_probe", "inspected", attachment_probe["summary"])
+
     skill_res = SkillRouter.route(prompt, existing_history, allow_research=allow_research, files=session_files,
                                   load_skill_context=False)
     from .skill_admission import admit_skill, emit_admission_stop, AdmissionClarification, AdmissionUnavailable, general_route
@@ -470,7 +482,8 @@ def cmd_run(args):
     template_candidate = skill_res if not session_files and (is_template_pdf_task(prompt, skill_res) or is_template_docx_task(prompt, skill_res)) else None
     try:
         skill_res = admit_skill(prompt, existing_history, session_files, skill_res,
-            getattr(args, 'model', None) or os.environ.get('DSH_MODEL'), policy, telemetry, task_deadline)
+            getattr(args, 'model', None) or os.environ.get('DSH_MODEL'), policy, telemetry, task_deadline,
+            attachment_probe=attachment_probe)
     except AdmissionClarification as error:
         emit_admission_stop(error, prompt, history_file, existing_history, telemetry)
         return

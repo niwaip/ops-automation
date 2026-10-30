@@ -52,6 +52,9 @@ def select_domain(prompt='', configured=None):
     if requested != 'auto':
         domain_pack(requested)  # Unknown trusted configuration must fail closed.
         return requested
+    probed = os.getenv('DSH_PROBED_DOMAIN')
+    if probed and probed in DOMAIN_MODULES:
+        return probed
     candidates = []
     for domain in DOMAIN_MODULES:
         pack = domain_pack(domain)

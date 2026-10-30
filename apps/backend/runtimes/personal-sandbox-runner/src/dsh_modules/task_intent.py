@@ -8,8 +8,8 @@ PHYSICAL_EXPORT_RE = re.compile(
     r'(?:'
     r'导出|下载|保存为|保存到|落盘|写入|'
     r'(?:生成|制作|创建|输出|做个|做一份).*(?:文件|文档|报表|表格文件|excel|word|pdf|ppt|pptx|docx|xlsx|csv|html|markdown|\.md|\.txt|\.json)|'
-    r'(?:复制|生成|新建|创建|更新|添加|删除|移除|删掉).*(?:sheet|工作表|标签页|报表|表格|工作簿|预测|预实|快照)|'
-    r'(?:更新|修改|调整|刷新|填入|回填|覆盖|替换).*(?:预实|工数|表格|工作簿|sheet|工作表|预测|单元格|数据|数值)|'
+    r'(?:复制|生成|新建|创建|更新|添加|删除|移除|删掉).*(?:sheet|工作表|标签页|报表|表格|工作簿|预测|副本|快照)|'
+    r'(?:更新|修改|调整|刷新|填入|回填|覆盖|替换).*(?:表格|工作簿|sheet|工作表|预测|单元格|数据|数值|指标|明细)|'
     r'(?:将|把)\s*[A-Za-z0-9_]+\s*(?:改成|改为|替换为|换成)|'
     r'\.(?:xlsx|docx|pdf|pptx|csv|json|html|txt)\b|'
     r'(?:excel|word|pdf|ppt|pptx|docx|xlsx)\s*文件|'
@@ -29,11 +29,11 @@ VISUAL_EXPORT_RE = re.compile(
 
 SPREADSHEET_MUTATION_RE = re.compile(
     r'(?:'
-    r'(?:复制|生成|新建|创建|更新|添加|删除|移除|删掉).*(?:sheet|工作表|标签页|工作簿|预测|预实|快照)|'
+    r'(?:复制|生成|新建|创建|更新|添加|删除|移除|删掉).*(?:sheet|工作表|标签页|工作簿|预测|副本|快照)|'
     r'(?:将|把).*(?:sheet|工作表|标签页|工作簿|表格).*(?:删除|移除|删掉|清空)|'
-    r'(?:更新|修改|调整|刷新|填入|回填|覆盖|替换).*(?:预实|工数|表格|工作簿|sheet|工作表|预测|单元格|数据|数值)|'
+    r'(?:更新|修改|调整|刷新|填入|回填|覆盖|替换).*(?:表格|工作簿|sheet|工作表|预测|单元格|数据|数值|指标|明细)|'
     r'(?:将|把)\s*[A-Za-z0-9_]+\s*(?:改成|改为|替换为|换成)|'
-    r'(?:更新|回填|写入|填入)\s*到\s*[^，。\n]*(?:预测|计划|实绩|表格|sheet|工作表|单元格)'
+    r'(?:更新|回填|写入|填入)\s*到\s*[^，。\n]*(?:预测|计划|报表|表格|sheet|工作表|单元格)'
     r')',
     re.I
 )
@@ -137,7 +137,7 @@ def is_condition_replacement_or_refinement(request: str, users: list) -> bool:
     if re.search(r'^(?:再|另外|并且|而且|同时|接着|然后|顺便|重新|继续|修改为|改成|换成|改为|替换为|调整为)\b', req_str):
         return True
     if re.search(r'(?:只包含|仅包含|不包含|排除|只看|仅看|只要|只统计|重新按|替换为|改为|换成)', req_str):
-        if any(re.search(r'(?:包含|不包含|排除|按.*统计|金额|合计|明细|工数|数据|记录)', u) for u in users[-2:]):
+        if any(re.search(r'(?:包含|不包含|排除|按.*统计|金额|合计|明细|数值|数据|记录)', u) for u in users[-2:]):
             return True
 
     # 2. Lexical / character overlap with recent user turn
@@ -171,7 +171,7 @@ skill_invocation记录调用意图：mode=execute表示明确执行整项技能�
 replace_defaults仅在用户明确替换、取消原技能业务口径时为true；追加结果筛选、排序或呈现要求不等于替换原口径。仅出现名称不构成execute，必须理解否定、引用与讨论语义。
 unit_confirmation仅记录用户明确指定的目标写入单位，包含unit和逐字quote。回答单位追问（含简短回答）是有效确认；followup可继承仍适用的用户确认，standalone只用当前请求。没有明确指定则为null。仅要求“按工作簿声明的单位”时也是null，不填写推测的单位。来源字段中的单位、附件/技能中的声明、助手建议、询问或否定某单位，均不构成用户确认。不能由来源单位推断目标单位。quote必须包含用户实际表达的单位，不得只引用文件名或某个字段名。
 section_confirmation仅在用户明确确认或指明业务区块到目标表头的映射时填写（例如助手曾追问未找到【无偿】区块并给出候选列表，用户在当前回复中指明或确认'【*P/Y/EX】就是无偿'、'是*P'等），填写section（业务概念如'无偿'）、target_title（匹配的候选表头如'*P/*Y/EX（不含*L/*B）'）及逐字quote。无此明确确认时填null。
-本阶段仅解析目标，不判断是否已提供数据或工具；附件由后续绑定。你不回答、不提问、不猜测数据是否存在，只提取用户已提出的要求。澄清由后续准入与输入绑定负责。
+本阶段仅解析目标，不判断是否已提供数据或工具；若输入了 attachment_profiles，它包含前置物理探针扫描出的附件事实（如表格真实列名、工作表名、检测领域）。若用户指令中的概念或字段与 attachment_profiles 中的物理表头吻合，应确认为针对已有附件的统计、分析或更新，严禁凭空盲猜。
 只返回结构化字段，不输出解释或推理。"""
 
 
@@ -211,7 +211,7 @@ def intent_tool(skill_names=None):
             'required': ['instruction_relation', 'task_mode', 'output_mode', 'artifact_types', 'unit_confirmation', 'skill_invocation', 'requirements']}}}
 
 
-def extract_task_intent(request, users, model, policy, telemetry, deadline, input_count=0, skill_names=None, history=None):
+def extract_task_intent(request, users, model, policy, telemetry, deadline, input_count=0, skill_names=None, history=None, attachment_profiles=None):
     # Ground possible identities before semantic classification. A mention is
     # eligible for review, never automatic execution or acceptance of rules.
     skill_names = [record for record in (skill_names or []) if any(
@@ -240,6 +240,8 @@ def extract_task_intent(request, users, model, policy, telemetry, deadline, inpu
             }
             if recent_dialogue:
                 payload['recent_dialogue'] = recent_dialogue
+            if attachment_profiles:
+                payload['attachment_profiles'] = attachment_profiles
             result = structured_decision(INSTRUCTIONS, payload,
                 intent_tool(skill_names), model, policy, telemetry, deadline, 'task_intent', max_tokens=900)
             result = validate_intent(result, request, users, skill_names, allow_sanitize=attempt > 0, history=history)
@@ -252,6 +254,8 @@ def extract_task_intent(request, users, model, policy, telemetry, deadline, inpu
             }
             if recent_dialogue:
                 reviewed_payload['recent_dialogue'] = recent_dialogue
+            if attachment_profiles:
+                reviewed_payload['attachment_profiles'] = attachment_profiles
             reviewed = structured_decision(INSTRUCTIONS + REVIEW_INSTRUCTIONS,
                 reviewed_payload, intent_tool(skill_names),
                 model, policy, telemetry, deadline, 'task_intent_review', max_tokens=900)
