@@ -95,8 +95,11 @@ export function useWorkbenchSummary({
             // 避免被路由到 general_document_generator 并卡在 templateName。
             mode: 'chat',
             // 关闭 reasoning：后端会关闭推理、剥离 think 标签，且系统提示词要求
-            // "直接输出结论，不要输出思考过程或  "-// 标签"。工作台总结只需干净 markdown。
+            // "直接输出结论，不要输出思考过程或 <think> 标签"。工作台总结只需干净 markdown。
             thinking: false,
+            // 绕过个人安全沙箱：工作台总结属于纯前端卡片文本摘要展示，
+            // 无需独占容器沙箱和执行锁，避免阻塞用户在前台聊天界面中的交互提问。
+            bypassSandbox: true,
           },
         };
         let finalContent = '';

@@ -104,6 +104,47 @@ describe('ChatController - slash commands persistence', () => {
     expect(userSandboxDispatcherService.dispatchPersonalSandbox).not.toHaveBeenCalled();
   });
 
+  it('bypasses personal sandbox for workbench-summary sessions in streaming mode', async () => {
+    const res: any = {
+      setHeader: jest.fn(),
+      write: jest.fn(),
+      end: jest.fn(),
+    };
+    const req: any = {
+      headers: { authorization: 'Bearer test-token' },
+      on: jest.fn(),
+    };
+    await controller.chatStream(
+      {
+        message: '请生成今日工作总结',
+        sessionId: 'workbench-summary-daily-12345678',
+        config: { mode: 'chat', thinking: false },
+      },
+      req,
+      res
+    );
+    expect(userSandboxDispatcherService.dispatchPersonalSandbox).not.toHaveBeenCalled();
+    expect(chatConversationService.streamChat).toHaveBeenCalledTimes(1);
+  });
+
+  it('bypasses personal sandbox when bypassSandbox is explicitly true in non-streaming mode', async () => {
+    chatConversationService.chat.mockResolvedValueOnce({ events: [], response: 'ok' });
+    const req: any = {
+      headers: { authorization: 'Bearer test-token' },
+      on: jest.fn(),
+    };
+    await controller.chat(
+      {
+        message: '请生成周总结',
+        sessionId: 'custom-summary-001',
+        config: { mode: 'chat', bypassSandbox: true },
+      },
+      req
+    );
+    expect(userSandboxDispatcherService.dispatchPersonalSandbox).not.toHaveBeenCalled();
+    expect(chatConversationService.chat).toHaveBeenCalledTimes(1);
+  });
+
   it('also returns /pdf help for an authenticated internal chat request', async () => {
     const verifySecret = jest.spyOn(authGuard, 'verifyInternalSecret').mockReturnValue(true);
     try {

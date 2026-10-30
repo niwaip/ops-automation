@@ -202,6 +202,8 @@ export interface ChatRequest {
     webSearch?: boolean;
     workspaceSearch?: boolean;
     research?: boolean;
+    bypassSandbox?: boolean;
+    source?: string;
   };
 }
 

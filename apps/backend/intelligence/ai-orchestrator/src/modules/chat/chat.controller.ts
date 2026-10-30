@@ -354,6 +354,7 @@ export class ChatController {
       if (mode === 'chat') {
         const shouldBypassSandbox =
           body.sessionId?.startsWith('office-') ||
+          body.sessionId?.startsWith('workbench-summary-') ||
           (body.config as any)?.source === 'office-addin' ||
           (body.config as any)?.bypassSandbox === true;
 
@@ -729,6 +730,7 @@ export class ChatController {
     };
     const shouldBypassSandbox =
       body.sessionId?.startsWith('office-') ||
+      body.sessionId?.startsWith('workbench-summary-') ||
       (body.config as any)?.source === 'office-addin' ||
       (body.config as any)?.bypassSandbox === true;
 
