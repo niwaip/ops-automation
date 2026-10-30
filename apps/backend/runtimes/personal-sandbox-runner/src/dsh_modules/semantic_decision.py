@@ -25,6 +25,8 @@ def ground_user_quote(quote, texts):
     """Resolve whitespace and punctuation normalization back to an actual user source span."""
     if not isinstance(quote, str) or not quote.strip():
         return None
+    if isinstance(quote, str):
+        quote = quote.replace('\\n', '\n').replace('\\r', '\r').replace('\\t', '\t')
     wanted = ''.join(quote.split())
     # 1. Exact match across texts
     for text in texts:
