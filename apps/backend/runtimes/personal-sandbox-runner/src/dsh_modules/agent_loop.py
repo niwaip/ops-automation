@@ -166,6 +166,8 @@ def run_agent_loop(
     managed_pdf = (any(t.get('function', {}).get('name') == 'render_pdf' for t in active_tools)
                    and not any(t.get('function', {}).get('name') == 'bash' for t in active_tools)
                    and not any(t.get('function', {}).get('name') == 'web_search' for t in active_tools))
+    managed_docx = (any(t.get('function', {}).get('name') == 'render_docx' for t in active_tools)
+                    and not any(t.get('function', {}).get('name') == 'bash' for t in active_tools))
     if managed_pdf or any(str(item).lower().endswith('.pdf') for item in (expected_deliverables or [])):
         from .pdf_workflow import configure_pdf_tools
         active_tools = configure_pdf_tools(active_tools, user_prompt or next((m.get('content', '') for m in reversed(messages) if m.get('role') == 'user'), ''))
@@ -320,10 +322,18 @@ def run_agent_loop(
             # A spreadsheet model may ask a valid question before computing.
             # The evidence gate checks assertions after its choice; forcing a
             # tool call here would remove the right to clarify.
-            tool_choice={'type': 'function', 'function': {'name': 'render_pdf'}} if managed_pdf or pdf_repair_required else "required" if (
-                (force_tool_choice and active_tools)
-                or (active_tools and comparison_required and consecutive_comparison_errors < 2 and compile_comparison_response(comparison_contract, execution_evidence)[0] is None)
-            ) else None,
+            tool_choice=(
+                {'type': 'function', 'function': {'name': 'render_pdf'}} if managed_pdf or pdf_repair_required else (
+                    {'type': 'function', 'function': {'name': 'render_docx'}} if (
+                        (managed_docx or any(str(item).lower().endswith('.docx') for item in (expected_deliverables or [])))
+                        and any(t.get('function', {}).get('name') == 'render_docx' for t in active_tools)
+                        and not any((receipt.provenance or {}).get('tool') == 'render_docx' for receipt in execution_evidence)
+                    ) else "required" if (
+                        (force_tool_choice and active_tools)
+                        or (active_tools and comparison_required and consecutive_comparison_errors < 2 and compile_comparison_response(comparison_contract, execution_evidence)[0] is None)
+                    ) else None
+                )
+            ),
             purpose="tool_loop"
         )
         reply_text = (llm_res.get("content") or "") if isinstance(llm_res, dict) else str(llm_res or "")

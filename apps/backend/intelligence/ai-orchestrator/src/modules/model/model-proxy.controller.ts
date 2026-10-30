@@ -27,6 +27,7 @@ const ABSOLUTE_MAX_RETRIES = 3;
 const FAST_INTERNAL_SYNTHESIS_TIMEOUT_MS = 15_000;
 const DEFAULT_SANDBOX_ATTEMPT_TIMEOUT_MS = 60_000;
 const GENERATION_SANDBOX_ATTEMPT_TIMEOUT_MS = 90_000;
+const DOCUMENT_GENERATION_ATTEMPT_TIMEOUT_MS = 120_000;
 const LARGE_TOOL_SURFACE_THRESHOLD = 8;
 
 @ApiTags('AI-Proxy')
@@ -169,6 +170,7 @@ export class ModelProxyController {
                 : undefined);
       let chunksSent = 0;
       let visibleOutputChunksSent = 0;
+      let heartbeatTimer: NodeJS.Timeout | undefined;
       try {
         if (isStream) {
           res.setHeader('Content-Type', 'text/event-stream');
@@ -178,6 +180,20 @@ export class ModelProxyController {
           let streamSuccess = false;
           const bufferInternalStream = body.stream_visibility === 'internal';
           let bufferedSseFrames: string[] = [];
+
+          if (bufferInternalStream) {
+            // 在内部全量缓冲期间，每 10 秒向客户端 Socket 发送一次 SSE 注释心跳，
+            // 确保下游沙箱的 Socket 读超时得到持续续约，避免长时间生成或重试时发生假死超时
+            heartbeatTimer = setInterval(() => {
+              if (!this.isClientDisconnected(res)) {
+                try {
+                  res.write(': heartbeat\n\n');
+                } catch {
+                  /* ignore */
+                }
+              }
+            }, 10_000);
+          }
           const writeChunk = (chunk: string, modelName: string, meta?: any) => {
             chunksSent++;
             const deltaPayload: any = {};
@@ -519,6 +535,10 @@ export class ModelProxyController {
         }
         throw new HttpException(`Sandbox model execution error: ${errMsg}`, HttpStatus.INTERNAL_SERVER_ERROR);
       } finally {
+        if (heartbeatTimer) {
+          clearInterval(heartbeatTimer);
+          heartbeatTimer = undefined;
+        }
         cancellation.dispose();
       }
     }
@@ -565,6 +585,13 @@ export class ModelProxyController {
         }
 
         res.status(upstreamResponse.status);
+        try {
+          const req = upstreamResponse.request as any;
+          if (req?.setTimeout) req.setTimeout(0);
+          if (req?.removeAllListeners) req.removeAllListeners('timeout');
+          if (req?.socket?.setTimeout) req.socket.setTimeout(0);
+          if (req?.socket?.removeAllListeners) req.socket.removeAllListeners('timeout');
+        } catch { /* ignore */ }
         for (const [key, value] of Object.entries(upstreamResponse.headers)) {
           if (value !== undefined) {
             res.setHeader(key, value as string);
@@ -818,10 +845,33 @@ export class ModelProxyController {
     );
   }
 
+  /**
+   * 判断请求是否涉及重交付物生成（Word、PDF、PPT、复杂报表等）
+   */
+  hasDocumentOrArtifactGeneration(body?: Record<string, any>): boolean {
+    if (!body) return false;
+    const tools = Array.isArray(body.tools) ? body.tools : [];
+    const toolChoiceName = String(
+      body.tool_choice?.function?.name ||
+      (typeof body.tool_choice === 'string' ? body.tool_choice : '')
+    ).toLowerCase();
+    const docKeywords = ['render_docx', 'render_pdf', 'render_spreadsheet', 'generate_report', 'docx', 'pptx'];
+    if (docKeywords.some(kw => toolChoiceName.includes(kw))) {
+      return true;
+    }
+    return tools.some((t: any) => {
+      const name = String(t?.function?.name || t?.name || '').toLowerCase();
+      return docKeywords.some(kw => name.includes(kw));
+    });
+  }
+
   resolveAttemptTimeoutMs(body?: Record<string, any>): number {
     const parsed = Number(process.env.SANDBOX_MODEL_ATTEMPT_TIMEOUT_MS);
     if (Number.isFinite(parsed)) {
-      return Math.min(90_000, Math.max(5_000, Math.trunc(parsed)));
+      return Math.min(180_000, Math.max(5_000, Math.trunc(parsed)));
+    }
+    if (this.hasDocumentOrArtifactGeneration(body)) {
+      return DOCUMENT_GENERATION_ATTEMPT_TIMEOUT_MS;
     }
     // Large capability surfaces and multimodal vision inputs need more prefill/decoding time.
     // Small read-only/tool turns keep the short bound so weather/search failures cannot
@@ -847,6 +897,9 @@ export class ModelProxyController {
     const parsed = Number(process.env.SANDBOX_MODEL_STREAM_IDLE_TIMEOUT_MS);
     if (Number.isFinite(parsed)) {
       return Math.min(180_000, Math.max(5_000, Math.trunc(parsed)));
+    }
+    if (this.hasDocumentOrArtifactGeneration(body)) {
+      return 90_000;
     }
     if (
       this.hasMultimodalImageContent(body) ||

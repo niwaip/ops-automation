@@ -143,6 +143,19 @@ def select_active_tools(
         if getattr(skill_res, 'is_send_intent', False):
             allowed.add('send_file')
         return get_sandbox_tools(allowed_names=allowed)
+    from .docx_workflow import is_retrieval_docx_task, is_template_docx_task
+    if is_retrieval_docx_task(skill_res):
+        allowed = {'render_docx', 'read_file'}
+        if has_web_search_permission:
+            allowed.update({'web_search', 'fetch_page'})
+        if getattr(skill_res, 'is_send_intent', False):
+            allowed.add('send_file')
+        return get_sandbox_tools(allowed_names=allowed)
+    if is_template_docx_task(prompt, skill_res):
+        allowed = {'render_docx', 'read_file'}
+        if getattr(skill_res, 'is_send_intent', False):
+            allowed.add('send_file')
+        return get_sandbox_tools(allowed_names=allowed)
 
     is_modify = getattr(skill_res, "is_modify_intent", False) or is_modify_intent_requested(prompt)
 
@@ -453,7 +466,8 @@ def cmd_run(args):
     skill_res = SkillRouter.route(prompt, existing_history, allow_research=allow_research, files=session_files,
                                   load_skill_context=False)
     from .skill_admission import admit_skill, emit_admission_stop, AdmissionClarification, AdmissionUnavailable, general_route
-    template_candidate = skill_res if not session_files and is_template_pdf_task(prompt, skill_res) else None
+    from .docx_workflow import is_template_docx_task, DOCX_EXECUTION_INSTRUCTION
+    template_candidate = skill_res if not session_files and (is_template_pdf_task(prompt, skill_res) or is_template_docx_task(prompt, skill_res)) else None
     try:
         skill_res = admit_skill(prompt, existing_history, session_files, skill_res,
             getattr(args, 'model', None) or os.environ.get('DSH_MODEL'), policy, telemetry, task_deadline)
@@ -461,8 +475,8 @@ def cmd_run(args):
         emit_admission_stop(error, prompt, history_file, existing_history, telemetry)
         return
     except AdmissionUnavailable as error:
-        telemetry.record_guard('skill_admission', 'owned_pdf_fallback' if template_candidate else 'fallback_to_general', str(error)[:300])
-        print('🛡️ 使用受控 PDF 模板继续执行' if template_candidate else f'⚠️ [Skill Admission] 技能准入复核未通过 ({error})，已降级为通用能力执行')
+        telemetry.record_guard('skill_admission', 'owned_template_fallback' if template_candidate else 'fallback_to_general', str(error)[:300])
+        print('🛡️ 使用受控文档排版模板继续执行' if template_candidate else f'⚠️ [Skill Admission] 技能准入复核未通过 ({error})，已降级为通用能力执行')
         skill_res = template_candidate or general_route(prompt, existing_history, session_files, error.task_contract)
     except ValueError as error:
         emit_admission_stop(error, prompt, history_file, existing_history, telemetry)
@@ -473,6 +487,10 @@ def cmd_run(args):
         # compete with the user's actual page outline during a repair.
         skill_res.skill_context = PDF_EXECUTION_INSTRUCTION
         telemetry.record_guard('pdf_template', 'direct_execution', 'owned_renderer')
+    template_docx = is_template_docx_task(prompt, skill_res)
+    if template_docx:
+        skill_res.skill_context = DOCX_EXECUTION_INSTRUCTION
+        telemetry.record_guard('docx_template', 'direct_execution', 'owned_renderer')
     from .personal_skill_workflow import try_run_personal_workflow
     if try_run_personal_workflow(skill_res, session_files, prompt, history_file,
                                  existing_history, overall_start_time, task_deadline,
@@ -544,8 +562,7 @@ def cmd_run(args):
     model_display_name = resolve_model_display_name(model_name, raw_display_name)
 
     # 3. 提取当前会话附件内容并建立只读保护快照
-    if session_files:
-        os.environ["DSH_SESSION_ATTACHMENTS"] = ",".join(session_files)
+    os.environ["DSH_SESSION_ATTACHMENTS"] = ",".join(session_files or [])
 
     original_hashes: Dict[str, str] = {}
     inputs_backup_dir = Path(WORKSPACE_DIR) / ".dsh" / "inputs_backup"

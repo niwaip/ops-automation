@@ -57,8 +57,10 @@ from .spreadsheet_context import STRUCTURE_TOOL, STRUCTURE_TOOL_NAME
 from .spreadsheet_update.tools import SPREADSHEET_UPDATE_TOOL_DEFINITIONS
 from .pdf_render_tool import PDF_RENDER_TOOL
 from .pdf_preview_tool import PDF_PREVIEW_TOOL
+from .docx_render_tool import DOCX_RENDER_TOOL
 
 SANDBOX_TOOLS = [
+    DOCX_RENDER_TOOL,
     PDF_RENDER_TOOL,
     PDF_PREVIEW_TOOL,
     STRUCTURE_TOOL,
@@ -464,7 +466,13 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
         name_clean = "web_search"
     res = ""
 
-    if name_clean == 'render_pdf':
+    if name_clean == 'render_docx':
+        from .docx_render_tool import render_docx
+        from .config import SKILL_DIR
+        return render_docx(params, WORKSPACE_DIR, SKILL_DIR, deadline,
+                           user_prompt=os.environ.get('DSH_LAST_USER_PROMPT', ''))
+
+    elif name_clean == 'render_pdf':
         from .pdf_render_tool import render_pdf
         from .config import SKILL_DIR
         return render_pdf(params, WORKSPACE_DIR, SKILL_DIR, deadline,

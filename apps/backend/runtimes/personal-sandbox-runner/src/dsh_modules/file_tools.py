@@ -281,11 +281,10 @@ def is_protected_session_file(target: Path) -> bool:
     """Checks whether the file is an original input attachment in the current session."""
     try:
         # 1. 检查环境变量 DSH_SESSION_ATTACHMENTS 快速通道
-        env_atts = os.environ.get("DSH_SESSION_ATTACHMENTS", "")
-        if env_atts:
-            for fname in env_atts.split(","):
-                if fname.strip() and target.name == fname.strip():
-                    return True
+        if "DSH_SESSION_ATTACHMENTS" in os.environ:
+            env_atts = os.environ.get("DSH_SESSION_ATTACHMENTS", "")
+            current_attachments = {f.strip() for f in env_atts.split(",") if f.strip()}
+            return target.name in current_attachments
 
         import dsh_modules.config as cfg
         ws = Path(getattr(cfg, "WORKSPACE_DIR", "/workspace"))

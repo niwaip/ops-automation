@@ -160,7 +160,7 @@ def is_condition_replacement_or_refinement(request: str, users: list) -> bool:
 INSTRUCTIONS = """仅根据用户当前请求和必要的用户历史提取任务契约，不考虑任何候选的默认行为。skill_names只提供可调用名称，帮助识别用户是否指定执行对象，不包含技能用途或规则。
 instruction_relation分析当前请求与历史对话的关系：
 - standalone：与前序对话无关联的全新独立任务（如提出完全不同的新业务领域、新问题、换了全新文件、或用户明确表示“开启新任务”）。独立任务的目标、范围与格式严格仅以当前请求为准，绝不继承历史对话中未重申的限定、条件或呈现格式（如历史上的“只要表格”、“无需解读”等修饰符已过期）。
-- followup：对上一轮任务或其结果的明确延续、追加筛选（如“再加个条件”、“只要大于100的”）、筛选条件替换或参数调整（如在同一分析中将“不包含”改为“只包含”、调整过滤前缀或阈值）、追问（“为什么是这个结果”）、纠错重试、或回答助手的确认追问（如补充字段、确认口径、确认区块映射或写入单位）。当用户在同一会话中针对相同文件、数据源或同一分析维度调整参数或替换筛选条件时，属于延续和修正前序任务，必须判定为 followup，绝不能判定为 standalone！若上一轮已明确交付形式（如柱状图、可视化看板、导出表格），且本轮用户未显式要求切换格式（如明确要求“不要图表”或“只在聊天中输出”），应延续交付形式（output_mode 为 artifact，artifact_types 继承对应类型如 ['.html']），按新条件重新计算生成交付物！回答助手的追问属于延续执行，task_mode 必须为 execute，绝不能标记为 consult！若用户明确表示“取消任务”、“请先暂停”、“不要修改”、“别动”、“算了”、“放弃”等终止/拒绝意愿，必须尊重用户意愿，task_mode 必须为 consult，output_mode 必须为 conversation，不得执行或导出！
+- followup：对上一轮任务或其结果的明确延续、追加筛选（如“再加个条件”、“只要大于100的”）、筛选条件替换或参数调整（如在同一分析中将“不包含”改为“只包含”、调整过滤前缀或阈值）、追问（“为什么是这个结果”）、纠错重试、回答助手的确认追问（如补充字段、确认口径、确认区块映射或写入单位），以及【成果固化与格式导出】（当用户要求将上一轮助手的对话回答、分析结论、知识问答、梳理要点或功能清单整理、排版、导出为指定格式文件时，如“生成一份word的指南”、“做成pdf”、“导出为excel表格”、“输出成word文档”、“整理成文档发我”，属于对前序内容的格式转换与成果交付，必须判定为 followup，task_mode 为 execute，output_mode 为 artifact，正文内容严格来源于上一轮对话讨论成果，绝不能判定为 standalone 去从零构思全新不相干内容！）。当用户在同一会话中针对相同文件、数据源或同一分析维度调整参数或替换筛选条件时，属于延续和修正前序任务，必须判定为 followup，绝不能判定为 standalone！若上一轮已明确交付形式（如柱状图、可视化看板、导出表格），且本轮用户未显式要求切换格式（如明确要求“不要图表”或“只在聊天中输出”），应延续交付形式（output_mode 为 artifact，artifact_types 继承对应类型如 ['.html']），按新条件重新计算生成交付物！回答助手的追问属于延续执行，task_mode 必须为 execute，绝不能标记为 consult！若用户明确表示“取消任务”、“请先暂停”、“不要修改”、“别动”、“算了”、“放弃”等终止/拒绝意愿，必须尊重用户意愿，task_mode 必须为 consult，output_mode 必须为 conversation，不得执行或导出！
 当前明确要求优先于历史。requirements逐项引用真实用户原话，记录目标、限制、条件和交付，不添加改进偏好。独立任务(standalone)的requirements只能引用当前请求中的原话，禁止从历史中拖拽已过期的修饰符。
 task_mode=consult 表示解释或讨论某项能力/技能本身（如“什么是工数”，“这个技能怎么用”），或用户要求取消、暂停、停止操作；凡是回答追问、提供业务字段、统计或实际完成任务的，一律为 execute！
 output_mode=conversation表示在对话中回答，含文字、Markdown表格、列出结果；若用户明确说明“不要导出文件”、“不生成文件”、“只在聊天中解释”等否定导出要求，output_mode 必须为 conversation，不得为 artifact！artifact用于用户在当前请求中明确要求生成、下载或导出物理文件的情况。对于要求在现有工作簿/文件中修改、更新、复制工作表(Sheet)、新建工作表(Sheet)、回填数值并保存的任务，属于必须生成/更新持久化交付物的更新任务，output_mode 必须为 artifact，artifact_types 为 ['.xlsx']！对于要求生成图表（如柱状图、折线图、饼图、雷达图、数据可视化大屏/看板）的任务，必须交付可视化组件或物理图表，output_mode 必须为 artifact，artifact_types 为 ['.html']！
@@ -182,7 +182,7 @@ REVIEW_INSTRUCTIONS = """
 初稿可能有遗漏或扩大范围，不能因为结构有效就照抄。返回经过修正的完整任务契约，不输出审核说明。
 特别检查：
 1. 交付形式：对话中的表格是一种呈现形式，不等于Excel文件；只有当前请求中明确出现物理文件交付/导出/下载请求，或要求复制Sheet/新建Sheet/更新回填工作簿时才保留artifact。严禁把普通的“只要表格”当成.xlsx文件。若用户明确说明“不要导出文件”、“不生成文件”、“只在聊天中解释”，必须修正为 conversation 且 artifact_types 为空[]。
-2. 历史隔离与延续：若指令是独立任务(standalone)，绝不能继承前序轮次已过期的格式要求（如“只要表格，无需解读”），requirements必须只来自本轮请求。未在本轮明确要求物理导出或工作簿更新的独立任务，output_mode必须修正为conversation且artifact_types为空[]。但若用户在同一分析任务中微调参数或替换筛选条件（如“不包含”改为“只包含”），必须修正为 followup 并延续图表/文件交付物要求，绝不能误判为 standalone 导致图表交付丢失。
+2. 历史隔离与延续：若指令是独立任务(standalone)，绝不能继承前序轮次已过期的格式要求（如“只要表格，无需解读”），requirements必须只来自本轮请求。未在本轮明确要求物理导出或工作簿更新的独立任务，output_mode必须修正为conversation且artifact_types为空[]。但若用户在同一分析任务中微调参数或替换筛选条件（如“不包含”改为“只包含”），或者要求将上一轮助手的回答/分析结果导出/排版为文档（如“生成一份word的指南”、“导出为pdf”），必须修正为 followup 并设定 artifact 交付物要求，绝不能误判为 standalone 导致上下文丢失或从零重写无关内容。
 保留否定限制，完整技能调用不能漏掉；追加结果筛选不是取消原规则。仅讨论或只借用方法不能升级成执行授权。
 """
 
@@ -401,10 +401,10 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
                 result['artifact_types'].append('.xlsx')
 
     # Enforce followup and deliverable inheritance when continuing or replacing criteria of previous analysis,
-    # or when issuing a pure file export command referencing previous conversational findings/results
+    # or when issuing a file export/solidification command referencing previous conversational findings/results
     req_str = request.strip()
     is_pure_export = bool(users) and bool(re.search(
-        r'^(?:生成|导出|制作|做成|转成|输出|保存为|转为|转换成|发我|下载)\s*(?:一份|一个|成|为)?\s*(?:可下载的)?\s*(?:pdf|word|excel|ppt|docx|xlsx|pptx|html|表格|文档|文件|报告)\s*(?:文件|文档|表格|演示文稿|报告)?$',
+        r'^(?:生成|导出|制作|做成|转成|输出|保存为|转为|转换成|整理成|整理为|发我|下载)\s*(?:一份|一个|成|为)?\s*(?:可下载的)?\s*(?:pdf|word|excel|ppt|docx|xlsx|pptx|html|表格|文档|文件|报告|图表|数据|内容|结果|清单|指南|手册|材料|说明)\s*(?:格式)?\s*(?:的)?\s*(?:文件|文档|表格|演示文稿|报告|指南|手册|说明|材料|清单|页面)?$',
         req_str, re.I
     ))
     is_continuation = not is_abort and not is_prev_stopped and not is_verbatim_reply and bool(users) and (
@@ -425,6 +425,12 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
                 result['artifact_types'] = ['.xlsx']
             elif not any(t.lower().endswith(('.xlsx', '.xlsm', '.csv')) for t in result['artifact_types']):
                 result['artifact_types'].append('.xlsx')
+        elif is_pure_export and not is_physical_export_negated(request):
+            from .output_format_contract import requested_output_formats
+            fmts = requested_output_formats(request, users, 'followup')
+            if fmts:
+                result['output_mode'] = 'artifact'
+                result['artifact_types'] = fmts
 
     relation = result.setdefault('instruction_relation', 'standalone')
     if relation not in {'standalone', 'followup'}:
