@@ -219,6 +219,7 @@ export class UserSandboxHarnessService {
       waitTimeoutSeconds?: number;
       thinking?: boolean;
       reasoningEffort?: string;
+      customEnv?: Record<string, string>;
       signal?: AbortSignal;
       onLockAcquired?: () => void;
       onWaiting?: (waitedMs: number) => void;
@@ -331,9 +332,47 @@ export class UserSandboxHarnessService {
         this.storageService.writeSessionAttachments(sanitizedUserId, sanitizedSessionId, options.files);
       }
 
+      // 提取针对该用户的环境变量（如用户配置的专属 JINA_API_KEY）
+      const userEnvMap: Record<string, string> = { ...(options?.customEnv || {}) };
+      try {
+        const platformHost = process.env.PLATFORM_SERVICE_HOST || process.env.PLATFORM_HOST || 'platform';
+        const platformPort = process.env.PLATFORM_PORT || '3001';
+        const secret = process.env.INTERNAL_API_SHARED_SECRET || 'ops_internal_shared_secret_change_me';
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
+        const timer = controller ? setTimeout(() => controller.abort(), 2000) : undefined;
+        const res = await fetch(
+          `http://${platformHost}:${platformPort}/internal/credentials/user-env/${encodeURIComponent(sanitizedUserId)}`,
+          {
+            headers: { 'x-internal-auth': secret },
+            signal: controller?.signal,
+          }
+        );
+        if (timer) clearTimeout(timer);
+        if (res.ok) {
+          const fetchedEnv = await res.json();
+          if (fetchedEnv && typeof fetchedEnv === 'object') {
+            for (const [k, v] of Object.entries(fetchedEnv)) {
+              if (typeof v === 'string' && !userEnvMap[k]) {
+                userEnvMap[k] = v;
+              }
+            }
+          }
+        }
+      } catch {
+        // 静默容错，不阻断执行流程
+      }
+
+      const userEnvList: string[] = [];
+      for (const [k, v] of Object.entries(userEnvMap)) {
+        if (typeof v === 'string' && v.trim()) {
+          userEnvList.push(`${k}=${v.trim()}`);
+        }
+      }
+
       const execResult = await executor(sanitizedUserId, dshCmd, {
         timeoutMs,
         workDir: '/workspace',
+        env: userEnvList.length > 0 ? userEnvList : undefined,
         onStdoutChunk: options?.onStdoutChunk,
       });
 

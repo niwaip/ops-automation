@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
@@ -13,6 +13,7 @@ import {
   Popconfirm,
   Radio,
   Row,
+  Segmented,
   Space,
   Spin,
   Tag,
@@ -20,6 +21,7 @@ import {
   theme,
 } from 'antd';
 import {
+  BankOutlined,
   DeleteOutlined,
   KeyOutlined,
   LockOutlined,
@@ -27,6 +29,7 @@ import {
   PlusOutlined,
   RobotOutlined,
   SafetyCertificateOutlined,
+  SearchOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
@@ -75,7 +78,9 @@ export const UserCredentialVaultPanel: React.FC = () => {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<CredentialCategory>('api_key');
+  const [selectedCategory, setSelectedCategory] = useState<CredentialCategory>('basic_auth');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [searchKeyword, setSearchKeyword] = useState<string>('');
   const [form] = Form.useForm();
   const { token } = theme.useToken();
 
@@ -93,6 +98,33 @@ export const UserCredentialVaultPanel: React.FC = () => {
   );
 
   const credentials: UserCredentialItem[] = Array.isArray(rawCredentials) ? rawCredentials : [];
+
+  // 仅保留工作与业务系统凭据（个人专用的 JINA、TAVILY 等在“个人 API 密钥”面板中专享）
+  const workCredentials = useMemo(() => {
+    return credentials.filter((c) => {
+      if (/JINA/i.test(c.name) || /TAVILY/i.test(c.name)) return false;
+      if (filterCategory !== 'all' && c.category !== filterCategory) return false;
+      if (searchKeyword.trim()) {
+        const kw = searchKeyword.trim().toLowerCase();
+        const matchName = c.name.toLowerCase().includes(kw);
+        const matchDesc = (c.description || '').toLowerCase().includes(kw);
+        return matchName || matchDesc;
+      }
+      return true;
+    });
+  }, [credentials, filterCategory, searchKeyword]);
+
+  const formatTitle = (name: string) => {
+    if (name.includes('live-export-replay-')) {
+      const match = name.match(/live-export-replay-\d+-?([a-zA-Z0-9]+)?/);
+      const hash = match && match[1] ? match[1] : '';
+      return {
+        displayTitle: hash ? `流程回放认证 (${hash})` : '流程回放认证凭据',
+        rawName: name,
+      };
+    }
+    return { displayTitle: name, rawName: undefined };
+  };
 
   // 2. Mutations
   const createMutation = useMutation(
@@ -167,33 +199,68 @@ export const UserCredentialVaultPanel: React.FC = () => {
 
   return (
     <div>
+      {/* 业务系统与工作凭证标题区 */}
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           marginBottom: 20,
           flexWrap: 'wrap',
           gap: 12,
         }}
       >
         <div>
-          <Title level={4} style={{ margin: 0 }}>
-            个人凭证保管库
+          <Title level={4} style={{ margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <BankOutlined style={{ color: '#3b82f6' }} />
+            工作与业务系统凭据保管库
           </Title>
-          <Text type="secondary" style={{ fontSize: 13 }}>
-            集中保管您为数字员工配置的安全凭证。所有密钥均采用 AES-256 加密保护，执行时仅在沙箱内存安全解密注入。
+          <Text type="secondary" style={{ fontSize: 13, lineHeight: 1.6 }}>
+            集中保管在岗数字员工执行业务流程所需的 OA、财务系统账号密码、设备 Key 等通用凭据。所有敏感内容均受 AES-256-GCM 加密保护，仅在对应数字员工执行时安全注入。
           </Text>
         </div>
         <Space wrap>
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            onClick={() => openCreateModal('api_key')}
+            onClick={() => openCreateModal('basic_auth')}
           >
-            新建凭证
+            新建业务凭据
           </Button>
         </Space>
+      </div>
+
+      {/* 过滤与搜索工具栏 */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 12,
+          marginBottom: 20,
+        }}
+      >
+        <Segmented
+          value={filterCategory}
+          onChange={(val) => setFilterCategory(val as string)}
+          options={[
+            { label: '全部凭据', value: 'all' },
+            { label: '账号与密码', value: 'basic_auth' },
+            { label: '设备识别码', value: 'device_key' },
+            { label: '访问令牌', value: 'bearer_token' },
+            { label: '通用自定义', value: 'custom' },
+          ]}
+        />
+
+        <Input
+          placeholder="搜索业务凭据名称或描述..."
+          prefix={<SearchOutlined style={{ color: token.colorTextQuaternary }} />}
+          value={searchKeyword}
+          onChange={(e) => setSearchKeyword(e.target.value)}
+          allowClear
+          style={{ width: 240 }}
+        />
       </div>
 
       {isError && (
@@ -213,19 +280,21 @@ export const UserCredentialVaultPanel: React.FC = () => {
 
       {isLoading ? (
         <div style={{ textAlign: 'center', padding: '60px 0' }}>
-          <Spin tip="正在加载凭证..." />
+          <Spin tip="正在加载工作业务凭据..." />
         </div>
-      ) : credentials.length === 0 ? (
-        <Card style={{ borderRadius: 12, textAlign: 'center', padding: '48px 0' }}>
+      ) : workCredentials.length === 0 ? (
+        <Card style={{ borderRadius: 14, textAlign: 'center', padding: '48px 0', borderColor: token.colorBorderSecondary }}>
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description={
               <div>
                 <Paragraph strong style={{ fontSize: 16, marginBottom: 8 }}>
-                  暂无已保存的运行凭据
+                  {searchKeyword || filterCategory !== 'all' ? '未找到符合条件的业务凭据' : '暂无已保存的工作业务凭据'}
                 </Paragraph>
                 <Paragraph type="secondary" style={{ maxWidth: 520, margin: '0 auto 24px', fontSize: 13 }}>
-                  初期无需在此手动预置。您可以直接前往【在岗数字员工】列表，为需要专属密钥或账号密码的数字员工点击【配置】，配置后将自动在此处生成并安全保管。
+                  {searchKeyword || filterCategory !== 'all'
+                    ? '请尝试清除过滤条件或搜索关键字'
+                    : '当数字员工需要登录内网系统、OA 审批平台或执行网页自动化任务时，可在此添加专属账号密码。配置后数字员工将自动使用。'}
                 </Paragraph>
                 <Space size={12}>
                   <Button
@@ -237,9 +306,9 @@ export const UserCredentialVaultPanel: React.FC = () => {
                   </Button>
                   <Button
                     icon={<PlusOutlined />}
-                    onClick={() => openCreateModal('api_key')}
+                    onClick={() => openCreateModal('basic_auth')}
                   >
-                    手动新建凭据
+                    新建业务凭据
                   </Button>
                 </Space>
               </div>
@@ -248,20 +317,25 @@ export const UserCredentialVaultPanel: React.FC = () => {
         </Card>
       ) : (
         <Row gutter={[16, 16]}>
-          {credentials.map((cred) => {
+          {workCredentials.map((cred) => {
             const meta =
               (cred.category in CATEGORY_META
                 ? CATEGORY_META[cred.category as CredentialCategory]
                 : undefined) || CATEGORY_META.custom;
+            const { displayTitle, rawName } = formatTitle(cred.name);
+
             return (
               <Col xs={24} sm={12} lg={8} key={cred.id}>
                 <Card
                   hoverable
                   style={{
-                    borderRadius: 12,
+                    borderRadius: 14,
                     height: '100%',
                     display: 'flex',
                     flexDirection: 'column',
+                    borderColor: token.colorBorderSecondary,
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
+                    transition: 'all 0.2s ease',
                   }}
                   styles={{
                     body: {
@@ -269,6 +343,7 @@ export const UserCredentialVaultPanel: React.FC = () => {
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between',
+                      padding: 20,
                     },
                   }}
                 >
@@ -278,28 +353,49 @@ export const UserCredentialVaultPanel: React.FC = () => {
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        marginBottom: 10,
+                        marginBottom: 12,
                       }}
                     >
-                      <Tag color={meta.color} icon={meta.icon}>
+                      <Tag color={meta.color} icon={meta.icon} style={{ borderRadius: 6, margin: 0 }}>
                         {meta.label}
                       </Tag>
                       {cred.bindingCount && cred.bindingCount > 0 ? (
-                        <Tag color="geekblue">{cred.bindingCount} 个数字员工使用中</Tag>
+                        <Tag color="geekblue" style={{ borderRadius: 6, margin: 0 }}>
+                          {cred.bindingCount} 个数字员工使用中
+                        </Tag>
                       ) : (
-                        <Tag>未绑定员工</Tag>
+                        <Tag style={{ borderRadius: 6, margin: 0, color: token.colorTextSecondary }}>
+                          未绑定员工
+                        </Tag>
                       )}
                     </div>
 
-                    <Title level={5} style={{ margin: '0 0 6px' }}>
-                      {cred.name}
+                    <Title level={5} style={{ margin: '0 0 4px', fontSize: 15 }}>
+                      {displayTitle}
                     </Title>
+
+                    {rawName && (
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontFamily: 'monospace',
+                          color: token.colorTextQuaternary,
+                          marginBottom: 8,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                        title={rawName}
+                      >
+                        {rawName}
+                      </div>
+                    )}
 
                     {cred.description && (
                       <Paragraph
                         type="secondary"
                         ellipsis={{ rows: 2 }}
-                        style={{ fontSize: 12, marginBottom: 10 }}
+                        style={{ fontSize: 12, marginBottom: 12, lineHeight: 1.5 }}
                       >
                         {cred.description}
                       </Paragraph>
@@ -316,9 +412,13 @@ export const UserCredentialVaultPanel: React.FC = () => {
                         color: token.colorTextSecondary,
                         marginBottom: 12,
                         wordBreak: 'break-all',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
                       }}
                     >
-                      {cred.maskedPreview?.summary || '••••••••'}
+                      <LockOutlined style={{ color: '#10b981', flexShrink: 0 }} />
+                      <span>{cred.maskedPreview?.summary || '••••••••'}</span>
                     </div>
                   </div>
 
@@ -328,7 +428,7 @@ export const UserCredentialVaultPanel: React.FC = () => {
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       borderTop: `1px solid ${token.colorBorderSecondary}`,
-                      paddingTop: 10,
+                      paddingTop: 12,
                     }}
                   >
                     <Text type="secondary" style={{ fontSize: 11 }}>

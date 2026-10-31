@@ -86,15 +86,53 @@ export class UserCredentialController {
     const userId = req.user?.id || req.user?.userId;
     return this.bindingService.unbindSkillCredential(userId, skillId, paramName);
   }
+
+  @Post('verify-jina')
+  async verifyJina(
+    @Request() req: any,
+    @Body('token') token: string,
+    @Body('credentialId') credentialId?: string
+  ) {
+    const userId = req.user?.id || req.user?.userId;
+    return this.vaultService.verifyJinaApiKey(token, userId, credentialId);
+  }
+
+  @Post('verify-firecrawl')
+  async verifyFirecrawl(
+    @Request() req: any,
+    @Body('token') token: string,
+    @Body('credentialId') credentialId?: string
+  ) {
+    const userId = req.user?.id || req.user?.userId;
+    return this.vaultService.verifyFirecrawlApiKey(token, userId, credentialId);
+  }
+
+  @Post('verify-tavily')
+  async verifyTavily(
+    @Request() req: any,
+    @Body('token') token: string,
+    @Body('credentialId') credentialId?: string
+  ) {
+    const userId = req.user?.id || req.user?.userId;
+    return this.vaultService.verifyTavilyApiKey(token, userId, credentialId);
+  }
 }
 
 @Public()
 @Controller(['internal/credentials', 'api/internal/credentials'])
 export class InternalUserCredentialController {
-  constructor(private readonly bindingService: UserSkillCredentialBindingService) {}
+  constructor(
+    private readonly bindingService: UserSkillCredentialBindingService,
+    private readonly vaultService: UserCredentialVaultService
+  ) {}
 
   @Post('resolve-runtime-input')
   async resolveRuntimeInput(@Body() dto: ResolveRuntimeInputRequestDto) {
     return this.bindingService.resolveRuntimeInput(dto.userId, dto.skillId, dto.inputJson);
+  }
+
+  @Get('user-env/:userId')
+  async getUserEnv(@Param('userId') userId: string) {
+    return this.vaultService.getUserEnv(userId);
   }
 }

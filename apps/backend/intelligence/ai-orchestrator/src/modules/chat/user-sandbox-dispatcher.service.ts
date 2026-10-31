@@ -9,6 +9,7 @@ import { ChatMediaService } from './chat-media.service';
 import { ModelService } from '../model/model.service';
 import { isWorkSlashCommand } from './chat-slash-command.util';
 import { getInternalServiceHeaders } from '../../config/internal-service-auth';
+import { getAuthServiceUrl } from '../../config/service-endpoints';
 import { PersonalReminderBridgeService, extractDshMarkers, stripDshMarkers } from './personal-reminder-bridge.service';
 import {
   stripToolCallArtifacts,
@@ -543,6 +544,20 @@ export class UserSandboxDispatcherService {
         const reasoningEffortRequested =
           isThinkingRequested === false ? undefined : configuredReasoningEffort;
 
+        let customEnv: Record<string, string> | undefined;
+        try {
+          const authUrl = getAuthServiceUrl();
+          const envRes = await fetch(`${authUrl}/internal/credentials/user-env/${encodeURIComponent(effectiveUserId)}`, {
+            headers: getInternalServiceHeaders(),
+            signal: typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal ? (AbortSignal as any).timeout(2000) : undefined,
+          });
+          if (envRes.ok) {
+            customEnv = await envRes.json();
+          }
+        } catch (err: any) {
+          this.logger.warn(`Failed to fetch user-env credentials for [${effectiveUserId}]: ${err?.message || err}`);
+        }
+
         const payload = {
           userId: effectiveUserId,
           prompt: promptForSandbox,
@@ -557,6 +572,7 @@ export class UserSandboxDispatcherService {
           modelDisplayName,
           timeoutMs,
           waitTimeoutSeconds: 35,
+          customEnv: customEnv && Object.keys(customEnv).length > 0 ? customEnv : undefined,
         };
 
         let res = await fetch(`${this.sessionBrokerUrl}/user-sandboxes/run-harness-stream`, {

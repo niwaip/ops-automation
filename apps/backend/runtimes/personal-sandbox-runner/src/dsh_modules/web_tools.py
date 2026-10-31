@@ -193,157 +193,21 @@ def fetch_weather(query_or_city: str, deadline: Optional[float] = None) -> str:
     return "\n".join(lines)
 
 
-FORBIDDEN_HOSTS = {
-    'localhost',
-    'metadata.google.internal',
-    'instance-data',
-    '169.254.169.254',
-    'ops-postgres',
-    'ops-redis',
-    'ops-platform',
-    'ops-session-broker',
-    'ops-control-plane',
-    'ops-ai-orchestrator',
-    'session-broker',
-    'control-plane',
-    'platform',
-    'ai-orchestrator',
-}
-
-MAX_FETCH_RESPONSE_BYTES = 5 * 1024 * 1024  # 5MB 响应读取硬上限
-
-
-def resolve_and_validate_destination(host: str, port: int) -> Tuple[bool, str]:
-    """
-    Resolves host and verifies that resolved IP does not fall into forbidden/private/loopback ranges.
-    Returns (True, safe_ip_str) or (False, error_reason).
-    """
-    clean_host = (host or '').strip().lower()
-    if not clean_host:
-        return False, "缺少主机名"
-
-    if clean_host in FORBIDDEN_HOSTS or clean_host.endswith('.internal') or clean_host.endswith('.local'):
-        return False, f"禁止访问内部网络或云元数据服务: {clean_host}"
-
-    try:
-        addr_info = socket.getaddrinfo(clean_host, port, proto=socket.IPPROTO_TCP)
-    except Exception as dns_err:
-        return False, f"无法解析目标主机: {dns_err}"
-
-    if not addr_info:
-        return False, f"无法解析目标域名: {clean_host}"
-
-    for item in addr_info:
-        ip_str = item[4][0]
-        try:
-            ip = ipaddress.ip_address(ip_str)
-            if (
-                ip.is_loopback
-                or ip.is_private
-                or ip.is_link_local
-                or ip.is_multicast
-                or ip.is_reserved
-                or ip.is_unspecified
-            ):
-                return False, f"禁止访问私有内网或元数据地址 ({ip_str})"
-        except ValueError:
-            return False, f"无效的 IP 地址: {ip_str}"
-
-    return True, addr_info[0][4][0]
-
-
-def is_safe_web_url(url: str) -> Tuple[bool, str]:
-    """SSRF 校验：检查 URL 协议及目标 IP 是否属于私网、回环、保留地址或云元数据地址"""
-    try:
-        parsed = urllib.parse.urlparse(url)
-        if parsed.scheme not in ('http', 'https'):
-            return False, f"不支持的 URL 协议: {parsed.scheme}，仅允许 http 与 https"
-
-        hostname = (parsed.hostname or '').strip().lower()
-        if not hostname:
-            return False, "无效的 URL: 缺少主机名"
-
-        port = parsed.port or (443 if parsed.scheme == 'https' else 80)
-        safe, ip_or_err = resolve_and_validate_destination(hostname, port)
-        if not safe:
-            return False, ip_or_err
-        return True, ""
-    except Exception as e:
-        return False, f"URL 解析或安全检查失败: {e}"
-
-
-class SSRFPinnedHTTPConnection(http.client.HTTPConnection):
-    """Pins socket connection directly to pre-validated IP to eliminate DNS rebinding attacks"""
-    def connect(self):
-        sys.audit("http.client.connect", self, self.host, self.port)
-        safe, ip_or_err = resolve_and_validate_destination(self.host, self.port)
-        if not safe:
-            raise OSError(f"SSRF Blocked: {ip_or_err}")
-        self.sock = self._create_connection(
-            (ip_or_err, self.port), self.timeout, self.source_address
-        )
-        try:
-            self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        except OSError:
-            pass
-        if self._tunnel_host:
-            self._tunnel()
-
-
-class SSRFPinnedHTTPSConnection(http.client.HTTPSConnection):
-    """Pins socket connection directly to pre-validated IP and performs SNI/cert verification with host"""
-    def connect(self):
-        safe, ip_or_err = resolve_and_validate_destination(self.host, self.port)
-        if not safe:
-            raise OSError(f"SSRF Blocked: {ip_or_err}")
-        self.sock = self._create_connection(
-            (ip_or_err, self.port), self.timeout, self.source_address
-        )
-        try:
-            self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        except OSError:
-            pass
-        server_hostname = self._tunnel_host if self._tunnel_host else self.host
-        self.sock = self._context.wrap_socket(self.sock, server_hostname=server_hostname)
-
-
-class SSRFHTTPHandler(urllib.request.HTTPHandler):
-    def http_open(self, req):
-        return self.do_open(SSRFPinnedHTTPConnection, req)
-
-
-class SSRFHTTPSHandler(urllib.request.HTTPSHandler):
-    def https_open(self, req):
-        return self.do_open(
-            SSRFPinnedHTTPSConnection,
-            req,
-            context=self._context,
-            check_hostname=self._check_hostname
-        )
-
-
-class SSRFSafeRedirectHandler(urllib.request.HTTPRedirectHandler):
-    """防止重定向跳转至内部网络或元数据服务的安全重定向处理器"""
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        safe, err = is_safe_web_url(newurl)
-        if not safe:
-            raise urllib.error.HTTPError(newurl, 403, f"SSRF Blocked: {err}", headers, fp)
-        return super().redirect_request(req, fp, code, msg, headers, newurl)
-
-
-def _read_limited_response(resp, max_bytes: int = MAX_FETCH_RESPONSE_BYTES) -> str:
-    """分块读取 HTTP 响应并在达到字节上限时截断，防止大文件耗尽内存"""
-    chunks = []
-    total = 0
-    while True:
-        chunk = resp.read(64 * 1024)
-        if not chunk:
-            break
-        chunks.append(chunk)
-        total += len(chunk)
-        if total >= max_bytes:
-            break
-    return b"".join(chunks).decode("utf-8", errors="ignore")
+from .web_ssrf import (
+    FORBIDDEN_HOSTS,
+    MAX_FETCH_RESPONSE_BYTES,
+    resolve_and_validate_destination,
+    is_safe_web_url,
+    SSRFPinnedHTTPConnection,
+    SSRFPinnedHTTPSConnection,
+    SSRFHTTPHandler,
+    SSRFHTTPSHandler,
+    SSRFSafeRedirectHandler,
+    read_limited_response as _read_limited_response,
+)
+from .web_classifier import classify_web_page, WebOutcome, PageClassificationResult
+from .browser_runtime import get_browser_driver, default_auth_vault, html_to_clean_markdown
+from .tool_result import ToolResult
 
 
 def _parse_html_articles(raw_html: str, target_url: str) -> Optional[str]:
@@ -396,60 +260,176 @@ def _parse_html_main(raw_html: str, target_url: str, max_chars: int) -> Optional
     return f"【网页内容解析 ({target_url})】:\n" + result
 
 
-def _fetch_jina_fallback(target_url: str, max_chars: int, timeout: float, deadline: Optional[float]) -> Tuple[Optional[str], Optional[str]]:
-    """备用：调用 Jina Reader 智能转 Markdown"""
+def _fetch_jina_fallback(
+    target_url: str,
+    max_chars: int,
+    timeout: float,
+    deadline: Optional[float],
+    auth_state: Optional[dict] = None
+) -> Tuple[Optional[str], Optional[str]]:
+    """备用：调用 Jina Reader 智能转 Markdown (含严格安全隐私隔离与专属Key耗尽自动降级)"""
+    if not default_auth_vault.assert_safe_for_external_fallback(target_url, auth_state=auth_state):
+        return None, f"【隐私安全隔离】拒绝将带有身份凭据或认证特征的目标网址 ({target_url}) 转发至第三方外部服务"
+
     jina_url = f"https://r.jina.ai/{target_url}"
     safe_jina, _ = is_safe_web_url(jina_url)
     if not safe_jina:
         return None, f"获取网页内容失败 ({target_url}): Jina Reader 地址受限"
+
+    def _do_jina_http_request(api_key: Optional[str], to: float) -> Tuple[Optional[str], Optional[int], Optional[str]]:
+        try:
+            headers = {"User-Agent": "Mozilla/5.0"}
+            if api_key:
+                headers["Authorization"] = f"Bearer {api_key}"
+
+            req = urllib.request.Request(jina_url, headers=headers)
+            opener = urllib.request.build_opener(SSRFSafeRedirectHandler())
+            with opener.open(req, timeout=to) as resp:
+                text = _read_limited_response(resp)
+            assert_not_timed_out(deadline, "webpage fetch fallback")
+            cleaned_md = re.sub(r'(?:\[[^\]\n]{1,30}\]\([^\)]+\)\s*){5,}', '\n', text)
+            if cleaned_md and len(cleaned_md.strip()) > 50:
+                content = cleaned_md.strip()
+                if len(content) > max_chars:
+                    hint = (
+                        f"\n\n[⚠️ 网页长文本截断提醒]: 网页 Markdown 总长 {len(content)} 字符，已展示前 {max_chars} 字符。"
+                        f"\n💡 [通用建议]: 如需查看特定章节，请结合具体关键词检索]"
+                    )
+                    return content[:max_chars] + hint, None, None
+                return content, None, None
+            return None, None, "Jina Reader 返回正文过短或为空"
+        except urllib.error.HTTPError as http_err:
+            if http_err.code == 403 and "SSRF Blocked" in str(http_err):
+                return None, 403, f"【安全拦截】重定向目标受限 ({target_url}): {http_err.reason}"
+            return None, http_err.code, f"HTTP Error {http_err.code}: {http_err.reason}"
+        except TimeoutError as timeout_err:
+            return None, 408, f"获取网页内容超时 ({target_url}): {timeout_err}"
+        except Exception as e:
+            return None, 500, f"获取网页内容失败 ({target_url}): {e}"
+
+    jina_api_key = os.environ.get("JINA_API_KEY", "").strip()
+    if jina_api_key:
+        content, code, err = _do_jina_http_request(jina_api_key, timeout)
+        if content:
+            return content, None
+
+        # 当用户专属 Key 遇到 401(无效/过期), 402(配额耗尽), 429(触发频控) 时，无缝自动降级至公共池重试
+        if code in (401, 402, 429):
+            print(
+                f"⚠️ [Jina Fallback] 专属 JINA_API_KEY 返回 HTTP {code} (配额耗尽或凭据受限)，正在自动降级至 Jina 公共限流池重试...",
+                flush=True
+            )
+            anon_budget = check_deadline(deadline, default_timeout=7.0)
+            anon_content, _, anon_err = _do_jina_http_request(None, anon_budget)
+            if anon_content:
+                return anon_content, None
+            return None, f"专属 Key 受限 ({err})，公共池重试失败: {anon_err}"
+
+        return None, err
+    else:
+        content, _, err = _do_jina_http_request(None, timeout)
+        return content, err
+
+
+def _fetch_firecrawl_scrape_fallback(
+    target_url: str,
+    max_chars: int,
+    timeout: float,
+    deadline: Optional[float],
+    auth_state: Optional[dict] = None
+) -> Tuple[Optional[str], Optional[str]]:
+    """备用：调用 Firecrawl /v1/scrape 单页抓取转 Markdown (含安全隐私隔离)"""
+    if not default_auth_vault.assert_safe_for_external_fallback(target_url, auth_state=auth_state):
+        return None, f"【隐私安全隔离】拒绝将带有身份凭据或认证特征的目标网址 ({target_url}) 转发至第三方外部服务"
+
+    firecrawl_key = os.environ.get("FIRECRAWL_API_KEY", "").strip()
+    if not firecrawl_key:
+        return None, None
+
+    firecrawl_url = "https://api.firecrawl.dev/v1/scrape"
+    safe, _ = is_safe_web_url(firecrawl_url)
+    if not safe:
+        return None, f"获取网页内容失败 ({target_url}): Firecrawl Scrape 地址受限"
+
     try:
-        req = urllib.request.Request(jina_url, headers={"User-Agent": "Mozilla/5.0"})
+        payload = json.dumps({"url": target_url, "formats": ["markdown"]}).encode("utf-8")
+        headers = {
+            "Authorization": f"Bearer {firecrawl_key}",
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0"
+        }
+        req = urllib.request.Request(firecrawl_url, data=payload, headers=headers, method="POST")
         opener = urllib.request.build_opener(SSRFSafeRedirectHandler())
         with opener.open(req, timeout=timeout) as resp:
-            text = _read_limited_response(resp)
-        assert_not_timed_out(deadline, "webpage fetch fallback")
-        cleaned_md = re.sub(r'(?:\[[^\]\n]{1,30}\]\([^\)]+\)\s*){5,}', '\n', text)
-        if cleaned_md and len(cleaned_md.strip()) > 50:
-            content = cleaned_md.strip()
-            if len(content) > max_chars:
-                hint = (
-                    f"\n\n[⚠️ 网页长文本截断提醒]: 网页 Markdown 总长 {len(content)} 字符，已展示前 {max_chars} 字符。"
-                    f"\n💡 [通用建议]: 如需查看特定章节，请结合具体关键词检索]"
-                )
-                return content[:max_chars] + hint, None
-            return content, None
+            data = json.loads(_read_limited_response(resp))
+        assert_not_timed_out(deadline, "firecrawl scrape fallback")
+        if data.get("success") and data.get("data", {}).get("markdown"):
+            md = data["data"]["markdown"].strip()
+            if len(md) > 50:
+                if len(md) > max_chars:
+                    hint = f"\n\n[⚠️ 网页长文本截断提醒]: 网页 Markdown 总长 {len(md)} 字符，已展示前 {max_chars} 字符。"
+                    return md[:max_chars] + hint, None
+                return md, None
+        err_msg = data.get("error") or "Firecrawl 未返回有效正文"
+        return None, f"Firecrawl 抓取失败 ({target_url}): {err_msg}"
     except TimeoutError as timeout_err:
-        assert_not_timed_out(deadline, "webpage fetch fallback")
-        return None, f"获取网页内容超时 ({target_url}): {timeout_err}"
-    except urllib.error.HTTPError as http_err:
-        if http_err.code == 403 and "SSRF Blocked" in str(http_err):
-            return None, f"【安全拦截】重定向目标受限 ({target_url}): {http_err.reason}"
-        assert_not_timed_out(deadline, "webpage fetch fallback")
-        return None, f"获取网页内容失败 ({target_url}): {http_err}"
+        assert_not_timed_out(deadline, "firecrawl scrape fallback")
+        return None, f"Firecrawl 抓取超时 ({target_url}): {timeout_err}"
     except Exception as e:
-        assert_not_timed_out(deadline, "webpage fetch fallback")
-        return None, f"获取网页内容失败 ({target_url}): {e}"
-    return None, None
+        assert_not_timed_out(deadline, "firecrawl scrape fallback")
+        return None, f"Firecrawl 抓取失败 ({target_url}): {e}"
 
 
-def fetch_page(url: str, max_chars: int = 20000, deadline: Optional[float] = None) -> str:
-    """Universal webpage reader: extracts clean structured text, articles and links from any live URL"""
+def fetch_page_detailed(
+    url: str,
+    max_chars: int = 35000,
+    deadline: Optional[float] = None,
+    auth_domain: Optional[str] = None
+) -> ToolResult:
+    """
+    Standard Structured Webpage Reader.
+    Coordinates SSRF verification, multi-layer content classification,
+    stateless headless browser rendering, and auth credential injection.
+    """
+    start_time = time.monotonic()
     target_url = url.strip()
     if not target_url.startswith(("http://", "https://")):
         target_url = f"https://{target_url}"
 
-    # SSRF 前置安全拦截
-    safe, reason = is_safe_web_url(target_url)
-    if not safe:
-        return f"【安全拦截】无法访问目标网址 ({target_url}): {reason}"
-
-    # 支持环境变量动态放宽
     env_limit = os.environ.get("DSH_FETCH_PAGE_MAX_CHARS")
     if env_limit and env_limit.isdigit():
         max_chars = int(env_limit)
 
-    # 1. 优先采用直接 HTTP 请求与语义化结构提取（快速、可靠、无第三方限流）
+    provenance = {
+        "requested_url": url,
+        "target_url": target_url,
+        "backend": "urllib",
+        "outcome": WebOutcome.EMPTY_RESPONSE.value,
+        "truncated": False,
+        "auth_injected": False,
+    }
+
+    # 1. SSRF 前置安全校验
+    safe, reason = is_safe_web_url(target_url)
+    if not safe:
+        err_msg = f"【安全拦截】无法访问目标网址 ({target_url}): {reason}"
+        provenance["outcome"] = "ssrf_blocked"
+        return ToolResult.error(
+            code="ssrf_blocked",
+            message=err_msg,
+            text=err_msg,
+            provenance=provenance
+        )
+
+    # 2. 检查是否有针对目标域名的会话认证凭据
+    auth_state = default_auth_vault.load_storage_state(auth_domain or target_url)
+    if auth_state:
+        provenance["auth_injected"] = True
+
+    # 3. 优先执行 HTTP 请求 + 正文提取
     to1 = check_deadline(deadline, default_timeout=10.0)
+    raw_html = ""
+    http_status = 200
     try:
         req = urllib.request.Request(
             target_url,
@@ -465,36 +445,197 @@ def fetch_page(url: str, max_chars: int = 20000, deadline: Optional[float] = Non
         )
         with opener.open(req, timeout=to1) as resp:
             raw_html = _read_limited_response(resp)
-        assert_not_timed_out(deadline, "webpage fetch")
-
-        articles_summary = _parse_html_articles(raw_html, target_url)
-        if articles_summary:
-            return articles_summary
-
-        main_summary = _parse_html_main(raw_html, target_url, max_chars)
-        if main_summary:
-            return main_summary
-    except TimeoutError:
-        # A socket/read timeout belongs to this source, not to the whole task. Only
-        # propagate when the shared task deadline itself has actually elapsed.
-        assert_not_timed_out(deadline, "webpage fetch")
+            http_status = getattr(resp, "status", 200)
     except urllib.error.HTTPError as http_err:
+        http_status = http_err.code
         if http_err.code == 403 and "SSRF Blocked" in str(http_err):
-            return f"【安全拦截】重定向目标受限 ({target_url}): {http_err.reason}"
-        assert_not_timed_out(deadline, "webpage fetch")
+            err_msg = f"【安全拦截】重定向目标受限 ({target_url}): {http_err.reason}"
+            return ToolResult.error(code="ssrf_blocked", message=err_msg, text=err_msg, provenance=provenance)
+        try:
+            raw_html = http_err.read().decode("utf-8", errors="ignore")
+        except Exception:
+            raw_html = ""
     except Exception:
-        assert_not_timed_out(deadline, "webpage fetch")
-
-    # 2. 备用：调用 Jina Reader 智能转 Markdown (仅当目标仍然合规时)
-    to2 = check_deadline(deadline, default_timeout=10.0)
-    jina_content, jina_err = _fetch_jina_fallback(target_url, max_chars, to2, deadline)
-    if jina_content:
-        return jina_content
-    if jina_err:
-        return jina_err
+        raw_html = ""
 
     assert_not_timed_out(deadline, "webpage fetch")
-    return f"未能获取网页有效内容 ({target_url})"
+
+    # 4. 解析正文并由分类器做深度语义诊断
+    candidate_summary = None
+    if raw_html:
+        candidate_summary = _parse_html_articles(raw_html, target_url) or _parse_html_main(raw_html, target_url, max_chars)
+
+    classification = classify_web_page(
+        raw_html=raw_html,
+        target_url=target_url,
+        http_status=http_status,
+        parsed_markdown=candidate_summary
+    )
+    provenance["outcome"] = classification.outcome.value
+
+    # 场景 A: 拿到高质量有效正文
+    if classification.outcome == WebOutcome.VALID_CONTENT and candidate_summary:
+        provenance["latency_ms"] = round((time.monotonic() - start_time) * 1000, 2)
+        return ToolResult.success(
+            data={"url": target_url, "content": candidate_summary},
+            text=candidate_summary,
+            provenance=provenance
+        )
+
+    # 场景 B: 明确要求登录鉴权 (Login Required)
+    if classification.outcome == WebOutcome.LOGIN_REQUIRED:
+        if not auth_state:
+            notice = (
+                f"【访问受限】目标页面 ({target_url}) 需要用户登录鉴权（检测到登录网关或会话重定向）。\n"
+                f"当前沙箱处于匿名访问模式，未挂载该站点的有效会话凭据 (storageState)。\n"
+                f"💡 [建议]: 若需访问该私密内容，请在工作区凭据库配置对应站点会话凭据。"
+            )
+            provenance["latency_ms"] = round((time.monotonic() - start_time) * 1000, 2)
+            return ToolResult.partial(
+                data={"url": target_url, "requires_auth": True, "reason": classification.reason},
+                text=notice,
+                provenance=provenance
+            )
+
+    # 场景 C: 记录原生 HTTP 遇到的人机挑战 / 403 拦截 (不提前退出，继续放行给 Tier 2 / Tier 3 穿透救场)
+    native_intercept_notice = None
+    if classification.outcome in (WebOutcome.BOT_CHALLENGE, WebOutcome.ACCESS_DENIED):
+        native_intercept_notice = (
+            f"【访问受限】目标站点 ({target_url}) 触发了安全访问拦截 ({classification.reason})。\n"
+            f"目标平台可能开启了人机挑战验证码 (Cloudflare / WAF) 或限制了自动化访问。"
+        )
+
+    # 场景 D: 私密页面或携带认证凭据 (auth_state) -> 隐私屏障生效，直接走本地浏览器 (Tier 3)
+    if auth_state:
+        browser_driver = get_browser_driver()
+        if browser_driver.is_available():
+            remaining_budget = max(2.0, check_deadline(deadline, default_timeout=12.0) - (time.monotonic() - start_time))
+            render_res = browser_driver.render_page_stateless(
+                target_url,
+                timeout_budget=remaining_budget,
+                auth_state=auth_state
+            )
+            if render_res.success and (render_res.content_md or render_res.raw_html):
+                clean_auth_md = html_to_clean_markdown(render_res.raw_html, fallback_text=render_res.content_md)
+                post_classification = classify_web_page(
+                    raw_html=render_res.raw_html,
+                    target_url=render_res.url or target_url,
+                    parsed_markdown=clean_auth_md
+                )
+                if post_classification.outcome == WebOutcome.VALID_CONTENT:
+                    provenance["backend"] = "headless_browser"
+                    provenance["outcome"] = "rendered_valid_content"
+                    provenance["latency_ms"] = round((time.monotonic() - start_time) * 1000, 2)
+                    formatted = f"【网页内容解析 (无头浏览器渲染 - {target_url})】:\n" + clean_auth_md[:max_chars]
+                    return ToolResult.success(
+                        data={"url": target_url, "content": formatted},
+                        text=formatted,
+                        provenance=provenance
+                    )
+                elif post_classification.outcome == WebOutcome.LOGIN_REQUIRED:
+                    provenance["backend"] = "headless_browser"
+                    provenance["outcome"] = "login_required"
+                    notice = (
+                        f"【访问受限】通过无头浏览器加载目标页面 ({target_url}) 后，页面仍呈现为登录认证界面。\n"
+                        f"可能该站点的 Cookie 凭证已过期或失效。"
+                    )
+                    return ToolResult.partial(
+                        data={"url": target_url, "requires_auth": True},
+                        text=notice,
+                        provenance=provenance
+                    )
+        notice = f"【访问受限】携带个人凭据加载页面 ({target_url}) 失败。本地浏览器驱动未就绪或渲染异常。"
+        return ToolResult.error(code="auth_render_failed", message=notice, text=notice, provenance=provenance)
+
+    # 场景 E: 公开页面遇到 SPA 空壳或内容过少 -> 优先尝试 Tier 2 (Jina Reader 云端轻量渲染，配置专属 Key 享 10.0s 充裕预算，公共限流模式享 7.0s 预算)
+    jina_err = None
+    if default_auth_vault.assert_safe_for_external_fallback(target_url, auth_state=auth_state):
+        has_jina_key = bool(os.environ.get("JINA_API_KEY", "").strip())
+        jina_default_budget = 10.0 if has_jina_key else 7.0
+        to_jina = check_deadline(deadline, default_timeout=jina_default_budget)
+        jina_content, jina_err = _fetch_jina_fallback(target_url, max_chars, to_jina, deadline, auth_state=auth_state)
+        if jina_content:
+            provenance["backend"] = "jina_fallback"
+            provenance["outcome"] = "jina_fallback_success"
+            provenance["latency_ms"] = round((time.monotonic() - start_time) * 1000, 2)
+            return ToolResult.success(
+                data={"url": target_url, "content": jina_content},
+                text=jina_content,
+                provenance=provenance
+            )
+        if jina_err:
+            provenance["jina_fallback_error"] = jina_err
+
+    # 场景 E.2: Jina 失败后，尝试 Tier 2.5 (Firecrawl /v1/scrape 单页抓取备选，含隐私保护校验)
+    firecrawl_err = None
+    if default_auth_vault.assert_safe_for_external_fallback(target_url, auth_state=auth_state) and os.environ.get("FIRECRAWL_API_KEY", "").strip():
+        to_fc = check_deadline(deadline, default_timeout=10.0)
+        fc_content, firecrawl_err = _fetch_firecrawl_scrape_fallback(target_url, max_chars, to_fc, deadline, auth_state=auth_state)
+        if fc_content:
+            provenance["backend"] = "firecrawl_scrape_fallback"
+            provenance["outcome"] = "firecrawl_scrape_success"
+            provenance["latency_ms"] = round((time.monotonic() - start_time) * 1000, 2)
+            return ToolResult.success(
+                data={"url": target_url, "content": fc_content},
+                text=fc_content,
+                provenance=provenance
+            )
+        if firecrawl_err:
+            provenance["firecrawl_scrape_error"] = firecrawl_err
+
+    # 场景 F: Tier 3 终极救场兜底 -> Jina/Firecrawl 失败后或未走云端时，尝试沙箱本地无头浏览器接盘
+    browser_driver = get_browser_driver()
+    remaining_budget = check_deadline(deadline, default_timeout=10.0) - (time.monotonic() - start_time)
+    if browser_driver.is_available() and remaining_budget >= 2.5:
+        render_res = browser_driver.render_page_stateless(
+            target_url,
+            timeout_budget=remaining_budget,
+            auth_state=auth_state
+        )
+        if render_res.success and (render_res.content_md or render_res.raw_html):
+            clean_rendered_md = html_to_clean_markdown(render_res.raw_html, fallback_text=render_res.content_md)
+            post_classification = classify_web_page(
+                raw_html=render_res.raw_html,
+                target_url=render_res.url or target_url,
+                parsed_markdown=clean_rendered_md
+            )
+            if post_classification.outcome == WebOutcome.VALID_CONTENT:
+                provenance["backend"] = "headless_browser_fallback"
+                provenance["outcome"] = "rendered_valid_content"
+                provenance["latency_ms"] = round((time.monotonic() - start_time) * 1000, 2)
+                formatted = f"【网页内容解析 (本地无头浏览器兜底 - {target_url})】:\n" + clean_rendered_md[:max_chars]
+                return ToolResult.success(
+                    data={"url": target_url, "content": formatted},
+                    text=formatted,
+                    provenance=provenance
+                )
+            elif post_classification.outcome == WebOutcome.LOGIN_REQUIRED:
+                provenance["backend"] = "headless_browser_fallback"
+                provenance["outcome"] = "login_required"
+                notice = (
+                    f"【访问受限】通过本地无头浏览器加载目标页面 ({target_url}) 后，页面呈现为登录认证界面。\n"
+                    f"未检测到登录后的有效正文内容。"
+                )
+                return ToolResult.partial(
+                    data={"url": target_url, "requires_auth": True},
+                    text=notice,
+                    provenance=provenance
+                )
+
+    assert_not_timed_out(deadline, "webpage fetch")
+    fail_text = firecrawl_err or jina_err or native_intercept_notice or f"未能获取网页有效内容 ({target_url})"
+    return ToolResult.error(
+        code="fetch_failed",
+        message=fail_text,
+        text=fail_text,
+        provenance=provenance
+    )
+
+
+def fetch_page(url: str, max_chars: int = 35000, deadline: Optional[float] = None) -> str:
+    """Universal webpage reader: extracts clean structured text, articles and links from any live URL"""
+    detailed = fetch_page_detailed(url=url, max_chars=max_chars, deadline=deadline)
+    return detailed.render_text()
 
 
 def extract_query_freshness(q: str) -> Optional[str]:
@@ -914,6 +1055,13 @@ def perform_platform_web_search(
     }
     if freshness in days_map:
         payload['days'] = days_map[freshness]
+    custom_keys = {}
+    if os.environ.get("TAVILY_API_KEY", "").strip():
+        custom_keys["TAVILY_API_KEY"] = os.environ["TAVILY_API_KEY"].strip()
+    if os.environ.get("FIRECRAWL_API_KEY", "").strip():
+        custom_keys["FIRECRAWL_API_KEY"] = os.environ["FIRECRAWL_API_KEY"].strip()
+    if custom_keys:
+        payload['customApiKeys'] = custom_keys
     endpoint = f"{DEFAULT_PROXY_URL.rstrip('/')}/search/web"
     request = urllib.request.Request(
         endpoint,

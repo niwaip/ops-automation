@@ -196,4 +196,9 @@ export class RunHarnessDto {
   @IsOptional()
   @IsString()
   reasoningEffort?: string;
+
+  @ApiPropertyOptional({ description: '针对本轮执行动态注入的用户私有环境变量（如 JINA_API_KEY）' })
+  @IsOptional()
+  @IsObject()
+  customEnv?: Record<string, string>;
 }

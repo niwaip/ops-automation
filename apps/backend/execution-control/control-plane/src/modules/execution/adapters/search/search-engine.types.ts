@@ -12,6 +12,7 @@ export type SearchRequestOptions = {
   excludeDomains?: string[];
   timeoutMs?: number;
   sourcePolicy?: SearchSourcePolicy;
+  customApiKeys?: Record<string, string>;
 };
 
 export type SearchResultItem = {

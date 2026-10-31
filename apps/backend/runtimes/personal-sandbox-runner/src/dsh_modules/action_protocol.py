@@ -230,7 +230,7 @@ def has_explicit_reminder_intent(user_prompt: Optional[str]) -> bool:
             command_text,
             re.I
         ) or re.search(
-            r'(?:设置|建|定|加|新增).{0,4}(?:闹钟|提醒|待办)',
+            r'(?:帮我|请|给我|麻烦)?(?:设置|创建|建|定|加|设|新增).{0,10}(?:闹钟|提醒|待办|日程)',
             command_text,
             re.I
         ) or re.search(

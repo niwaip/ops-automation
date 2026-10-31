@@ -28,10 +28,11 @@ export class FirecrawlProvider implements SearchEngineProvider {
   public readonly name = 'firecrawl';
   private readonly rotator = new KeyRotator('firecrawl');
 
-  private resolveKeys(runtimeConfigs?: Record<string, string>): string[] {
+  private resolveKeys(runtimeConfigs?: Record<string, string>, userKey?: string): string[] {
+    const fromUser = userKey?.trim();
     const fromEnv = process.env.FIRECRAWL_API_KEY;
     const fromRuntime = runtimeConfigs?.FIRECRAWL_API_KEY;
-    const raw = fromEnv || fromRuntime || '';
+    const raw = [fromUser, fromEnv, fromRuntime].filter(Boolean).join(',');
     this.rotator.setRawKeys(raw);
     return this.rotator.getAllKeys();
   }
@@ -52,7 +53,8 @@ export class FirecrawlProvider implements SearchEngineProvider {
     options: SearchRequestOptions,
     runtimeConfigs?: Record<string, string>
   ): Promise<SearchEngineResponse> {
-    const keys = this.resolveKeys(runtimeConfigs);
+    const userKey = options.customApiKeys?.FIRECRAWL_API_KEY;
+    const keys = this.resolveKeys(runtimeConfigs, userKey);
     const allowKeyless =
       process.env.FIRECRAWL_KEYLESS_ENABLED === 'true' ||
       runtimeConfigs?.FIRECRAWL_KEYLESS_ENABLED === 'true' ||

@@ -25,10 +25,11 @@ export class TavilyProvider implements SearchEngineProvider {
   public readonly name = 'tavily';
   private readonly rotator = new KeyRotator('tavily');
 
-  private resolveKeys(runtimeConfigs?: Record<string, string>): string[] {
+  private resolveKeys(runtimeConfigs?: Record<string, string>, userKey?: string): string[] {
+    const fromUser = userKey?.trim();
     const fromEnv = process.env.TAVILY_API_KEY || process.env.SEARCH_API_KEY;
     const fromRuntime = runtimeConfigs?.TAVILY_API_KEY || runtimeConfigs?.SEARCH_API_KEY;
-    const raw = fromEnv || fromRuntime || '';
+    const raw = [fromUser, fromEnv, fromRuntime].filter(Boolean).join(',');
     this.rotator.setRawKeys(raw);
     return this.rotator.getAllKeys();
   }
@@ -42,7 +43,8 @@ export class TavilyProvider implements SearchEngineProvider {
     options: SearchRequestOptions,
     runtimeConfigs?: Record<string, string>
   ): Promise<SearchEngineResponse> {
-    this.resolveKeys(runtimeConfigs);
+    const userKey = options.customApiKeys?.TAVILY_API_KEY;
+    this.resolveKeys(runtimeConfigs, userKey);
     const keys = this.rotator.getAllKeys();
     if (keys.length === 0) {
       throw new Error('Tavily API Key 未配置');

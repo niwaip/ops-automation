@@ -189,4 +189,67 @@ describe('User Credential Vault & Digital Employee Binding', () => {
       });
     });
   });
+
+  describe('UserCredentialVaultService.getUserEnv', () => {
+    it('should aggregate JINA_API_KEY, TAVILY_API_KEY and custom env for specific user', async () => {
+      const jinaEncrypted = crypto.encrypt({ token: 'jina_secret_key_12345' });
+      const tavilyEncrypted = crypto.encrypt({ token: 'tvly-secret-key-67890' });
+      const customEncrypted = crypto.encrypt({ customKey: 'MY_CUSTOM_VAR', customValue: 'hello_world' });
+
+      const mockPrisma: any = {
+        userCredential: {
+          findMany: jest.fn().mockImplementation(({ where }) => {
+            if (where.userId === 'user-1') {
+              return Promise.resolve([
+                {
+                  id: 'c1',
+                  userId: 'user-1',
+                  name: 'JINA_API_KEY',
+                  category: 'api_key',
+                  encryptedData: jinaEncrypted,
+                  status: 'active',
+                },
+                {
+                  id: 'c2',
+                  userId: 'user-1',
+                  name: 'Tavily Search Key',
+                  category: 'api_key',
+                  encryptedData: tavilyEncrypted,
+                  status: 'active',
+                },
+                {
+                  id: 'c3',
+                  userId: 'user-1',
+                  name: '自定义环境变量',
+                  category: 'custom',
+                  encryptedData: customEncrypted,
+                  status: 'active',
+                },
+              ]);
+            }
+            return Promise.resolve([]);
+          }),
+        },
+      };
+
+      const vaultService = new UserCredentialVaultService(mockPrisma, crypto);
+      const env = await vaultService.getUserEnv('user-1');
+
+      expect(env['JINA_API_KEY']).toBe('jina_secret_key_12345');
+      expect(env['TAVILY_API_KEY']).toBe('tvly-secret-key-67890');
+      expect(env['MY_CUSTOM_VAR']).toBe('hello_world');
+
+      // User isolation test
+      const envUser2 = await vaultService.getUserEnv('user-2');
+      expect(envUser2).toEqual({});
+    });
+
+    it('should gracefully handle empty or invalid token in verifyJinaApiKey', async () => {
+      const mockPrisma: any = {};
+      const vaultService = new UserCredentialVaultService(mockPrisma, crypto);
+      const res = await vaultService.verifyJinaApiKey('');
+      expect(res.valid).toBe(false);
+      expect(res.message).toContain('不能为空');
+    });
+  });
 });

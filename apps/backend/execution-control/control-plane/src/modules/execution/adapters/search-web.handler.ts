@@ -57,6 +57,11 @@ export async function executeWebSearch(
   );
 
   try {
+    const customApiKeys =
+      input.customApiKeys && typeof input.customApiKeys === 'object'
+        ? (input.customApiKeys as Record<string, string>)
+        : undefined;
+
     const searchOptions: Omit<SearchRequestOptions, 'query'> = {
       maxResults,
       topic,
@@ -66,6 +71,7 @@ export async function executeWebSearch(
       includeDomains: stringList(input.includeDomains),
       excludeDomains: stringList(input.excludeDomains),
       timeoutMs,
+      customApiKeys,
     };
     const searchResponse = queries.length > 0
       ? await defaultSearchOrchestrator.searchMany([query, ...queries], searchOptions)

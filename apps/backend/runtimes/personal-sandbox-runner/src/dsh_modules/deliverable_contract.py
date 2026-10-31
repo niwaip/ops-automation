@@ -94,26 +94,32 @@ def requests_markdown_artifact(prompt: str) -> bool:
         return False
     if is_term_negated(prompt, "md") or is_term_negated(prompt, "markdown") or is_term_negated(prompt, "文件"):
         return False
+    # 过滤 URL 链接，防止 URL 路径中的 .md（如 https://github.com/.../SKILL.md）被误判为 Markdown 交付物生成请求
+    clean_prompt = re.sub(r'https?://[^\s]+', '', prompt)
+    if not clean_prompt.strip():
+        return False
     # If the prompt merely specifies markdown format/table in chat without requesting a physical file
     is_pure_formatting = (
-        re.search(r'(?:markdown|md)\s*(?:格式|表格|对比|排版|语法|样式)', prompt, re.I)
-        and not re.search(r'(?:\.md\b|md\s*文件|markdown\s*文件|写入\s*md|生成\s*md|导出\s*md|可下载|下载)', prompt, re.I)
+        re.search(r'(?:markdown|md)\s*(?:格式|表格|对比|排版|语法|样式)', clean_prompt, re.I)
+        and not re.search(r'(?:\.md\b|md\s*文件|markdown\s*文件|写入\s*md|生成\s*md|导出\s*md|可下载|下载)', clean_prompt, re.I)
     )
     if is_pure_formatting:
         return False
-    return bool(MARKDOWN_REQUEST_RE.search(prompt))
+    return bool(MARKDOWN_REQUEST_RE.search(clean_prompt))
 
 
 def resolve_markdown_filename(prompt: str, candidate_text: str = "") -> str:
     """Resolves an explicit safe filename or derives a stable default from the request topic."""
-    for source in (prompt or "", candidate_text or ""):
+    # 过滤 prompt 中的 URL，避免将网页链接中的文件名（如 docx/SKILL.md）误认作目标生成产物名称
+    clean_prompt = re.sub(r'https?://[^\s]+', '', prompt or '')
+    for source in (clean_prompt, candidate_text or ""):
         q_match = QUOTED_MARKDOWN_RE.search(source)
         if q_match:
             candidate = clean_markdown_filename(Path(q_match.group(1)).name)
             if candidate and candidate.lower().endswith(".md") and candidate != ".md":
                 return candidate
 
-    for source in (prompt or "", candidate_text or ""):
+    for source in (clean_prompt, candidate_text or ""):
         match = MARKDOWN_FILE_RE.search(source)
         if match:
             candidate = clean_markdown_filename(Path(match.group(1)).name)
