@@ -1,0 +1,35 @@
+.resizable-th {
+  position: relative !important;
+}
+
+.col-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+  touch-action: none;
+  user-select: none;
+}
+
+.col-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 20%;
+  bottom: 20%;
+  right: 3px;
+  width: 1px;
+  background-color: var(--border-color, rgba(255, 255, 255, 0.15));
+  transition: all 150ms ease;
+}
+
+.col-resize-handle:hover::after,
+.col-resize-handle:active::after {
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: var(--primary-color, #1677ff);
+  box-shadow: 0 0 6px rgba(22, 119, 255, 0.6);
+}

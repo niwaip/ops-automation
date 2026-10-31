@@ -169,6 +169,15 @@ export function DocumentPreviewModal({
 
   const rawText = previewData?.content || '';
 
+  const renderedMarkdown = useMemo(() => {
+    if (!rawText) return '';
+    const standardFm = rawText.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n([\s\S]*)$/);
+    if (standardFm) {
+      return standardFm[1].trim();
+    }
+    return rawText;
+  }, [rawText]);
+
   return (
     <Modal
       title={
@@ -385,7 +394,7 @@ export function DocumentPreviewModal({
                       ),
                     }}
                   >
-                    {rawText}
+                    {renderedMarkdown}
                   </ReactMarkdown>
                 ) : (
                   <Empty description="暂无内容" />

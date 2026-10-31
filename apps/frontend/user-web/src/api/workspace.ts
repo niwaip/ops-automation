@@ -172,6 +172,13 @@ export const workspaceApi = {
     return await apiClient.delete(`/workspaces/${workspaceId}/nodes/${nodeId}`);
   },
 
+  batchDeleteNodes: async (
+    workspaceId: string,
+    nodeIds: string[]
+  ): Promise<{ success: boolean; deletedCount: number }> => {
+    return await apiClient.post(`/workspaces/${workspaceId}/nodes/batch-delete`, { nodeIds });
+  },
+
   downloadFile: async (workspaceId: string, nodeId: string, fileName: string): Promise<void> => {
     const token = (await apiClient.ensureFreshAccessToken()) || authStore.getState().accessToken;
     const res = await fetch(`/api/workspaces/${workspaceId}/nodes/${nodeId}/download`, {
@@ -196,10 +203,17 @@ export const workspaceApi = {
     return await apiClient.get(`/workspaces/search${params}`);
   },
 
-  searchContent: async (query: string, workspaceId?: string): Promise<ContentSearchResult[]> => {
+  searchContent: async (
+    query: string,
+    workspaceId?: string,
+    folderId?: string | null
+  ): Promise<ContentSearchResult[]> => {
     let url = `/workspaces/search-content?q=${encodeURIComponent(query)}`;
     if (workspaceId) {
       url += `&workspaceId=${encodeURIComponent(workspaceId)}`;
+    }
+    if (folderId) {
+      url += `&folderId=${encodeURIComponent(folderId)}`;
     }
     return await apiClient.get(url);
   },
@@ -224,14 +238,16 @@ export const workspaceApi = {
   },
 
   cleanupTempWorkspace: async (
-    workspaceId: string
+    workspaceId: string,
+    options?: { retentionDays?: number; forceEmpty?: boolean }
   ): Promise<{
     success: boolean;
     ghostNodesCleaned: number;
     cacheFilesCleaned: number;
+    expiredFilesCleaned?: number;
     totalCleaned: number;
     remainingFiles: number;
   }> => {
-    return await apiClient.post(`/workspaces/${workspaceId}/temp-cleanup`);
+    return await apiClient.post(`/workspaces/${workspaceId}/temp-cleanup`, options || {});
   },
 };

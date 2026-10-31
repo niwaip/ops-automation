@@ -8,6 +8,7 @@ import re
 import math
 from collections import Counter
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple
 
 from .skills import get_available_skills, read_skill
@@ -38,85 +39,26 @@ class SkillRoutingResult:
     source_formats: List[str] = field(default_factory=list)
 
 
-STOP_WORDS = {
-    '的', '了', '在', '是', '我', '你', '他', '它', '她', '们', '这', '那', '有', '和', '与',
-    '帮', '请', '个', '把', '向', '到', '用', '为', '被', '给', '让', '得', '地',
-    '一下', '看看', '了解', '分析', '研究', '这篇文章', '这段话', '这个', '那个', '什么', '怎么',
-    '如何', '为什么', '有没有', '对比', '以前', '最近', '现在', '今天', '一个', '一份', '一张',
-    '意思', '逻辑', '业务', '语法', '英文', '不同', '解释',
-    '生成', '要生', '要生成', '不要', '不用', '严禁', '禁止', '无需', '切勿', '必须', '需要', '使用',
-    '提供', '支持', '进行', '以及', '或者', '还有', '可以', '能够', '即可', '通过', '完成', '用于'
-}
-
-GENERIC_VERBS = {'生成', '制作', '创建', '做', '写', '导出', '设计', '开发', '处理', '新建', '使用', '提供'}
-
-SEND_PATTERNS = [
-    "通过微信发送", "发送到微信", "发到微信", "发我微信", "微信发我",
-    "微信推送", "发送给用户微信", "推送给我微信", "发送文件给用户"
-]
-
-KNOWLEDGE_PATTERNS = [
-    "个人空间", "知识库", "知识空间", "我的个人文档", "personal knowledge"
-]
-
-GUIDE_PATTERNS = [
-    "安装方法", "安装教程", "安装步骤", "安装指南", "怎么安装", "如何安装",
-    "部署方法", "部署教程", "部署指南", "怎么部署", "如何部署",
-    "使用教程", "使用方法", "使用指南", "使用说明", "怎么使用", "如何使用", "怎么用",
-    "配置指南", "配置方法", "配置教程", "怎么配置", "如何配置",
-    "实现原理", "工作原理", "架构原理", "架构设计", "系统架构",
-    "命令说明", "参数说明", "写法说明", "语法说明", "定义是什么", "概念是什么", "技术原理是什么", "有什么用"
-]
-
-GENERATE_ACTION_PATTERNS = [
-    "生成", "制作", "创建", "导出", "新建", "编写", "写一个", "写一段", "写个脚本", "写一份脚本",
-    "做个", "做一份", "做一张", "做个表", "做个ppt", "做个幻灯片",
-    "写一份", "写个", "写出", "输出", "输出为", "保存为", "转为", "转成", "落盘", "另存为", "写成",
-    "汇总成", "总结成", "整理成", "归纳成", "提炼成", "做成", "制成", "输出成", "排版成", "编成", "改写成",
-    "做张ppt", "做套ppt", "做张表", "做份报告", "出份报告", "一张ppt", "一份ppt", "一套ppt",
-    "一份word", "一份pdf", "一个excel", "一张excel", "一份报表",
-    "generate", "create", "export", "build", "make", "produce"
-]
-
-INSPECT_ACTION_PATTERNS = [
-    "查看", "阅读", "查阅", "读取", "看下", "看一下", "看看", "检查", "分析", "审阅", "浏览",
-    "排查", "检索", "探查", "诊断", "查下", "查一下", "搜索", "搜下", "搜一下", "提取内容", "提取", "抽取", "只提取", "仅提取", "问答",
-    "帮我看", "看代码", "查代码", "解释", "说明", "对比", "比较", "排序", "核对", "校验", "识别", "为什么",
-    "检验", "稽核", "对账", "核查", "核验", "验算", "勾稽",
-    "评估", "测算", "测一下", "变化", "原因", "read", "view", "inspect", "check", "examine", "analyze", "cat", "show", "explain", "compare"
-]
-
-READONLY_SUMMARY_PATTERNS = [
-    "总结", "归纳", "汇总", "统计", "计算", "核算", "盘点", "梳理", "提炼", "列出", "列举", "概括",
-    "找下", "找一下", "找出", "找到", "定位", "查出", "求出", "计算出", "算下", "算一下", "算一算",
-    "求和", "占比", "达成率", "偏差", "最大", "最小"
-]
-
-CONTENT_QUERY_PATTERNS = [
-    "内容是什么", "有什么内容", "写了什么", "讲了什么", "包含什么", "里面有", "里面写了", "里写了",
-    "有哪些表", "有哪些工作表", "有什么表", "有哪些sheet", "什么sheet", "列出sheet", "清单", "用途",
-    "附件是什么", "文件是什么", "这是什么", "上传的是什么", "上传了什么", "上传的是啥", "传了什么", "这是啥", "是什么文件",
-    "这个文件是啥", "这是什么图", "图里是什么", "图片是什么", "文件内容", "附件内容", "识别图片", "解读图片",
-    "商品是什么", "照片里是什么", "照片是什么", "照片里的", "图片里的", "图中的", "照片中是什么", "图片中是什么"
-]
-
-GENERATIVE_SLASH_COMMANDS = {
-    "ppt", "slides", "deck", "image", "draw", "pdf", "excel", "table", "word", "docx", "doc", "design", "ui"
-}
-
-
-TEXT_ONLY_ACTION_TARGETS = [
-    "总结", "摘要", "分析", "结论", "建议", "提纲", "大纲", "概述", "要点",
-    "问答", "回答", "观点", "归纳", "汇报", "说明", "纪要", "备忘", "意见", "心法", "经验",
-    "介绍", "理解", "解释", "思考", "看法", "梳理", "草案", "方案"
-]
-
-PHYSICAL_DELIVERABLE_TARGETS = [
-    ".pdf", ".docx", ".xlsx", ".pptx", ".html", ".csv", ".json", ".md", ".png", ".jpg", ".jpeg",
-    ".sql", ".sh", ".yml", ".yaml", "dockerfile", "docker-compose", "docker-compose.yml",
-    "pdf", "word", "excel", "ppt", "html", "markdown", "md文件", "md 文件", "表格", "幻灯片", "演示文稿", "报表",
-    "图片", "海报", "图", "代码文件", "脚本", "落地文件", "物理文件", "本地文件", "单页", "原型", "看板", "网页", "单页报告"
-]
+from .intent_lexicon import (
+    STOP_WORDS,
+    GENERIC_VERBS,
+    SEND_PATTERNS,
+    KNOWLEDGE_PATTERNS,
+    GUIDE_PATTERNS,
+    GENERATE_ACTION_PATTERNS,
+    INSPECT_ACTION_PATTERNS,
+    READONLY_SUMMARY_PATTERNS,
+    CONTENT_QUERY_PATTERNS,
+    SLASH_ALIASES,
+    GENERATIVE_SLASH_COMMANDS,
+    TEXT_ONLY_ACTION_TARGETS,
+    PHYSICAL_DELIVERABLE_TARGETS,
+    SEARCH_CUES,
+    LOCAL_DISAMBIGUATION,
+    EXPLICIT_FORMAT_CUES,
+    GAME_ITERATION_CUES,
+)
+from .intent_judge import IntentJudge
 
 
 def is_text_only_request(query: str) -> bool:
@@ -155,8 +97,13 @@ def check_generation_target_is_physical(lower_q: str) -> bool:
     """
     Distinguishes whether a generative action targets a physical file deliverable
     (.pdf, .docx, .xlsx, .pptx, etc.) or pure in-chat textual content (summary, outline, advice).
+    Guarantees that queries without generative actions are NEVER treated as physical file generation.
     """
     if is_text_only_request(lower_q):
+        return False
+
+    # 若未包含任何正向生成动词，绝不属于物理文件生成
+    if not has_positive_generate_action(lower_q, GENERATE_ACTION_PATTERNS):
         return False
 
     _, target_fmts, target_files = extract_source_and_target_artifacts(lower_q)
@@ -199,12 +146,11 @@ def check_generation_target_is_physical(lower_q: str) -> bool:
         "word", "excel", "ppt", "html", "markdown", "md 文件", "md文件", "导出为", "保存为",
         "pdf report", "as a pdf", "word document", "pdf报告", "word文档", "excel文件"
     ]
-    has_regex_format = bool(
-        re.search(r'\b(?:pdf|docx|xlsx|pptx|csv|json)\b', lower_q)
-        and not is_term_negated(lower_q, "pdf")
-    )
     if not m:
-        return any(p in lower_q and not is_term_negated(lower_q, p) for p in valid_cues) or has_regex_format
+        # 仅当明确存在带有生成语境的物理格式指引时才返回 True
+        return any(p in lower_q and not is_term_negated(lower_q, p) for p in [
+            "导出为", "保存为", "另存为", "写成文件", "生成文件", "下载表格", "导出表格", "pdf report", "word document", "excel文件", "pdf报告", "word文档"
+        ])
 
     target = m.group(1).strip()
     if is_term_negated(lower_q, target):
@@ -215,7 +161,6 @@ def check_generation_target_is_physical(lower_q: str) -> bool:
     has_physical = (
         (any(p in target for p in PHYSICAL_DELIVERABLE_TARGETS) and not is_term_negated(lower_q, target))
         or any(ext in lower_q and not is_term_negated(lower_q, ext) for ext in valid_cues)
-        or has_regex_format
     )
     has_text_only = any(t in target for t in TEXT_ONLY_ACTION_TARGETS)
     if has_text_only and not any(p in target for p in PHYSICAL_DELIVERABLE_TARGETS):
@@ -291,38 +236,35 @@ def resolve_file_action_intent(
     has_inspect = (
         any(k in masked_q for k in INSPECT_ACTION_PATTERNS)
         or any(k in masked_q for k in CONTENT_QUERY_PATTERNS)
-        or bool(re.search(r'(?:照片|图片|截图|附件|文件).*(?:是什么|是啥|有什么|包含什么|写了什么|是谁|哪家|哪个)', masked_q))
+        or bool(re.search(r'(?:照片|图片|截图|附件|文件|文档).*(?:是什么|是啥|有什么|包含什么|写了什么|是谁|哪家|哪个|内容)', masked_q))
         or bool(re.search(r'(?:只|仅)?(?:提取|抽取).*(?:文字|文本|内容)', masked_q))
     )
     has_summary = any(k in masked_q for k in READONLY_SUMMARY_PATTERNS)
     has_generate = has_positive_generate_action(masked_q, GENERATE_ACTION_PATTERNS)
 
-    # 4. 纯查看/分析/归纳意图
-    if (has_inspect or has_summary) and not has_generate:
+    # 4. 无正向生成动作时：只要有附件或涉及文档问答/查阅/提炼，一律天然为纯只读模式 (Read Mode)
+    # 彻底告别脆弱的机械关键字枚举，对任何只读问答天然支持！
+    if not has_generate:
+        is_read_mode = (
+            bool(attached_files)
+            or has_inspect
+            or has_summary
+            or any(k in lower_q for k in ["文件", "文档", "内容", "附件", "pdf", "word", "excel", "表格", "报告", "讲了什么", "写了什么", "主要内容"])
+        )
+        return False, is_read_mode
+
+    # 5. 存在正向生成动作时的结构分析
+    # 情况 A: 主语/谓词为查看，修饰语包含生成（如：“查看生成的文件”、“看看刚才导出的pdf”、“检查已生成的代码”）
+    if has_inspect and re.search(r'(查看|看下|看一下|看看|检查|阅读|查阅|分析|浏览)\s*(?:刚才|之前|已|历史|沙箱)?\s*(生成|输出|制作|导出|新建)的?', masked_q):
         return False, True
 
-    # 5. 纯生成/导出/创建意图
-    if has_generate and not has_inspect:
-        is_physical = check_generation_target_is_physical(lower_q)
-        if is_physical:
-            return True, False
-        else:
-            return False, False
-
-    # 6. 同时包含查阅与生成动词时的结构分析
-    if has_inspect and has_generate:
-        # 情况 A: 主语/谓词为查看，修饰语包含生成（如：“查看生成的文件”、“看看刚才导出的pdf”、“检查已生成的代码”、“查看刚才生成的交接.md”）
-        if re.search(r'(查看|看下|看一下|看看|检查|阅读|查阅|分析|浏览)\s*(?:刚才|之前|已|历史|沙箱)?\s*(生成|输出|制作|导出|新建)的?', masked_q):
-            return False, True
-
-        # 情况 B: 查阅并在其基础上进行后续产出
-        is_physical = check_generation_target_is_physical(lower_q)
-        if is_physical:
-            return True, True
-        else:
-            return False, True
-
-    return False, False
+    is_physical = check_generation_target_is_physical(lower_q)
+    if is_physical:
+        # 若同时包含输入分析与输出生成（如：“读取1.pdf生成word文档”），两者均置为 True
+        return True, (has_inspect or bool(attached_files))
+    else:
+        # 生成的并非物理文件（如“生成一段建议”、“写个总结回答”），对话内交付
+        return False, (bool(attached_files) or has_inspect or has_summary)
 
 
 def clean_semantic_query(q: str) -> str:
@@ -604,6 +546,130 @@ class SkillRouter:
     AFFINITY_THRESHOLD = 7.5
 
     @classmethod
+    def _bind_skill_metadata(
+        cls,
+        result: SkillRoutingResult,
+        effective_query: str,
+        lower_query: str,
+        available_skills: Optional[List[Dict[str, Any]]],
+        target_formats: List[str],
+        target_files: List[str],
+        load_skill_context: bool = True
+    ) -> None:
+        """Binds skill deliverables contract, execution requirements, and instructions context."""
+        if not result.skill_id:
+            return
+        if result.skill_id in ["guizang-ppt", "pptx", "slides", "html-ppt"]:
+            result.is_ppt_intent = True
+        elif result.skill_id in ["frontend-design", "dashboard", "saas-landing", "web-prototype", "taste-skill"]:
+            result.is_design_intent = True
+        elif result.skill_id == "docx":
+            result.is_docx_intent = True
+            result.is_office_intent = True
+        elif result.skill_id in ["xlsx", "pdf"]:
+            result.is_office_intent = True
+        elif result.skill_id == "research":
+            result.is_research_intent = True
+            result.is_inspect_intent = False
+
+        all_skills = available_skills or get_available_skills()
+        for s in all_skills:
+            if s.get("id") == result.skill_id or s.get("name") == result.skill_id:
+                skill_delivs = list(s.get("deliverables") or [])
+                skill_req_exec = bool(s.get("requires_execution", False))
+                skill_rounds = int(s.get("default_rounds") or 0)
+
+                if s.get('execution_mode') == 'verified_workflow':
+                    result.deliverables = []
+                    result.requires_execution = True
+                    result.default_rounds = 1
+                elif is_text_only_request(lower_query):
+                    result.deliverables = []
+                    result.requires_execution = False
+                    result.default_rounds = min(skill_rounds, 3) if skill_rounds > 0 else 2
+                elif result.is_generate_intent:
+                    inherited_delivs = list(result.deliverables) if result.deliverables else []
+                    result.deliverables = [
+                        d for d in skill_delivs
+                        if not is_term_negated(lower_query, d)
+                        and not is_term_negated(lower_query, d.lstrip("."))
+                    ]
+                    for idf in inherited_delivs:
+                        if idf not in result.deliverables:
+                            result.deliverables.append(idf)
+                    for tf in target_files:
+                        if tf not in result.deliverables:
+                            result.deliverables.append(tf)
+                    for tfmt in target_formats:
+                        if tfmt not in result.deliverables:
+                            result.deliverables.append(tfmt)
+                    result.requires_execution = skill_req_exec and bool(result.deliverables)
+                    result.default_rounds = skill_rounds
+                elif result.is_inspect_intent:
+                    result.deliverables = []
+                    result.requires_execution = False
+                    result.default_rounds = min(skill_rounds, 3) if skill_rounds > 0 else 2
+                else:
+                    result.deliverables = []
+                    result.requires_execution = False
+                    result.default_rounds = min(skill_rounds, 3) if skill_rounds > 0 else 3
+                break
+
+        reasons_info = f" (亲和度得分: {result.affinity_score:.1f})" if result.affinity_score > 0 else ""
+        print(f"🎯 [Skill Router] {'采用' if load_skill_context else '候选'}: {result.skill_id}{reasons_info}", flush=True)
+        if load_skill_context:
+            result.skill_context = read_skill(result.skill_id, prompt=effective_query)
+
+    @classmethod
+    def _try_fast_path(
+        cls,
+        lower_query: str,
+        effective_query: str,
+        available_skills: Optional[List[Dict[str, Any]]],
+        load_skill_context: bool
+    ) -> Optional[SkillRoutingResult]:
+        """Fast-Path Router (< 1ms): Instantly resolves explicit slash commands without latency."""
+        if not lower_query.startswith("/"):
+            return None
+
+        parts = lower_query.split()
+        cmd = parts[0][1:]
+        result = SkillRoutingResult()
+
+        if cmd in SLASH_ALIASES:
+            result.skill_id = SLASH_ALIASES[cmd]
+        else:
+            all_skills = available_skills or get_available_skills()
+            for s in all_skills:
+                if s["id"].lower() == cmd or cmd in [a.lower() for a in s.get("aliases", [])]:
+                    result.skill_id = s["id"]
+                    break
+
+        if cmd == "search":
+            result.is_search_intent = True
+            result.matched_reasons = [f"fast_path:slash_command(/{cmd})"]
+            return result
+
+        if result.skill_id:
+            if cmd in GENERATIVE_SLASH_COMMANDS:
+                result.is_generate_intent = True
+            if cmd in ["research", "last30days"]:
+                result.is_search_intent = True
+                result.is_research_intent = True
+            result.matched_reasons = [f"fast_path:slash_command(/{cmd})"]
+            cls._bind_skill_metadata(
+                result=result,
+                effective_query=effective_query,
+                lower_query=lower_query,
+                available_skills=available_skills,
+                target_formats=[],
+                target_files=[],
+                load_skill_context=load_skill_context
+            )
+            return result
+        return None
+
+    @classmethod
     def route(
         cls,
         prompt: str,
@@ -615,7 +681,8 @@ class SkillRouter:
         load_skill_context: bool = True,
     ) -> SkillRoutingResult:
         """
-        Determines skill and intent for a given prompt via semantic affinity matching.
+        Determines skill and intent for a given prompt via dual-track routing:
+        Fast-Path (< 1ms) -> Intent Judge (Ambiguity) -> Semantic Affinity Heuristics.
         """
         effective_query = prompt
         # 提取上传附件或有效附件信息，用于指代消歧与多模态文件亲和度解析
@@ -635,6 +702,18 @@ class SkillRouter:
             effective_query = prompt.split("用户指令:")[-1].strip()
 
         lower_query = effective_query.lower().strip()
+
+        # 0. 快轨 (Fast Path, < 1ms): 针对显式自定义命令或 Slash 指令瞬间返回 (仅在未显式注入 selection 准入时生效)
+        if selection is None:
+            fast_res = cls._try_fast_path(
+                lower_query=lower_query,
+                effective_query=effective_query,
+                available_skills=available_skills,
+                load_skill_context=load_skill_context
+            )
+            if fast_res is not None:
+                return fast_res
+
         result = SkillRoutingResult()
 
         # 1. 探测知识库检索意图（精确词组）
@@ -678,12 +757,29 @@ class SkillRouter:
 
         # 结构化文件动作与产物目标解析
         source_files, target_formats, target_files = extract_source_and_target_artifacts(effective_query, attached_files)
+        all_sources = list(attached_files) + list(source_files)
+        result.source_formats = list(dict.fromkeys(Path(f).suffix.lower() for f in all_sources if Path(f).suffix))
         is_gen, is_insp = resolve_file_action_intent(effective_query, existing_history, attached_files)
         if not (is_insp and not is_gen) and (target_formats or target_files):
             is_gen = True
         elif is_insp and not is_gen:
             target_formats = []
             target_files = []
+
+        # 语义仲裁轨: 仅在检测到双重冲突或否定修饰等模糊场景触发 LLM Intent Judge 裁决
+        if IntentJudge.should_trigger(effective_query, is_gen, is_insp, target_formats, attached_files):
+            judge_verdict = IntentJudge.judge_intent(
+                prompt=effective_query,
+                available_skills=available_skills,
+                attached_files=attached_files
+            )
+            if judge_verdict:
+                if judge_verdict.get("skill_id"):
+                    result.skill_id = judge_verdict["skill_id"]
+                is_gen = judge_verdict.get("is_generate_intent", is_gen)
+                is_insp = judge_verdict.get("is_inspect_intent", is_insp)
+                result.matched_reasons.append(f"intent_judge:{judge_verdict.get('reason')}")
+
         result.is_generate_intent = is_gen
 
         # 若涉及本地附件/文件查看或查阅总结，绝不能被误判为开放域检索或通用安装指南
@@ -831,6 +927,7 @@ class SkillRouter:
             all_skills = available_skills or get_available_skills()
             if all_skills:
                 matcher = SemanticSkillMatcher(all_skills)
+                # 语义匹配主要基于用户自身指令；若无显式格式线索且有附件，注入标准扩展名提示
                 semantic_query = effective_query
                 EXPLICIT_FORMAT_CUES = [
                     ".pdf", ".docx", ".xlsx", ".pptx", ".html", ".md",
@@ -838,7 +935,9 @@ class SkillRouter:
                 ]
                 has_explicit_format = any(fmt in lower_query for fmt in EXPLICIT_FORMAT_CUES)
                 if attached_files and not has_explicit_format:
-                    semantic_query = f"{effective_query} {' '.join(attached_files)}"
+                    ext_cues = " ".join([Path(f).suffix.lstrip(".").lower() for f in attached_files if Path(f).suffix])
+                    if ext_cues:
+                        semantic_query = f"{effective_query} {ext_cues}"
                 matches = matcher.match(semantic_query)
                 if matches:
                     top_id, top_score, top_reasons = matches[0]
@@ -935,71 +1034,15 @@ class SkillRouter:
 
         # 7. 标记意图分类与读取技能内容
         if result.skill_id:
-            if result.skill_id in ["guizang-ppt", "pptx", "slides", "html-ppt"]:
-                result.is_ppt_intent = True
-            elif result.skill_id in ["frontend-design", "dashboard", "saas-landing", "web-prototype", "taste-skill"]:
-                result.is_design_intent = True
-            elif result.skill_id == "docx":
-                result.is_docx_intent = True
-                result.is_office_intent = True
-            elif result.skill_id in ["xlsx", "pdf"]:
-                result.is_office_intent = True
-            elif result.skill_id == "research":
-                result.is_research_intent = True
-                result.is_inspect_intent = False
-
-            # 填充技能契约元数据 (deliverables, requires_execution, default_rounds)
-            all_skills = available_skills or get_available_skills()
-            for s in all_skills:
-                if s.get("id") == result.skill_id or s.get("name") == result.skill_id:
-                    skill_delivs = list(s.get("deliverables") or [])
-                    skill_req_exec = bool(s.get("requires_execution", False))
-                    skill_rounds = int(s.get("default_rounds") or 0)
-
-                    # 核心解耦规则：仅当用户意图属于产物生成/输出时，才绑定交付物契约与执行强制要求。
-                    # 当用户为纯查阅、阅读、分析、检查已有文件时，保留技能参考上下文，但不强制产物物理交付闭环。
-                    if s.get('execution_mode') == 'verified_workflow':
-                        # Computation is mandatory even when delivery is text-only.
-                        result.deliverables = []
-                        result.requires_execution = True
-                        result.default_rounds = 1
-                    elif is_text_only_request(lower_query):
-                        result.deliverables = []
-                        result.requires_execution = False
-                        result.default_rounds = min(skill_rounds, 3) if skill_rounds > 0 else 2
-                    elif result.is_generate_intent:
-                        inherited_delivs = list(result.deliverables) if result.deliverables else []
-                        result.deliverables = [
-                            d for d in skill_delivs
-                            if not is_term_negated(lower_query, d)
-                            and not is_term_negated(lower_query, d.lstrip("."))
-                        ]
-                        for idf in inherited_delivs:
-                            if idf not in result.deliverables:
-                                result.deliverables.append(idf)
-                        for tf in target_files:
-                            if tf not in result.deliverables:
-                                result.deliverables.append(tf)
-                        for tfmt in target_formats:
-                            if tfmt not in result.deliverables:
-                                result.deliverables.append(tfmt)
-                        result.requires_execution = skill_req_exec and bool(result.deliverables)
-                        result.default_rounds = skill_rounds
-                    elif result.is_inspect_intent:
-                        result.deliverables = []
-                        result.requires_execution = False
-                        result.default_rounds = min(skill_rounds, 3) if skill_rounds > 0 else 2
-                    else:
-                        # 兜底安全原则（Opt-in）：若无显式物理文件生成意图，绝不强行断言物理交付物！
-                        result.deliverables = []
-                        result.requires_execution = False
-                        result.default_rounds = min(skill_rounds, 3) if skill_rounds > 0 else 3
-                    break
-
-            reasons_info = f" (亲和度得分: {result.affinity_score:.1f})" if result.affinity_score > 0 else ""
-            print(f"🎯 [Skill Router] {'采用' if load_skill_context else '候选'}: {result.skill_id}{reasons_info}", flush=True)
-            if load_skill_context:
-                result.skill_context = read_skill(result.skill_id, prompt=effective_query)
+            cls._bind_skill_metadata(
+                result=result,
+                effective_query=effective_query,
+                lower_query=lower_query,
+                available_skills=available_skills,
+                target_formats=target_formats,
+                target_files=target_files,
+                load_skill_context=load_skill_context
+            )
 
         # 8. 探测技术脚本与配置交付物意图 (Dockerfile, docker-compose, *.sh, *.sql, *.py, *.md, *.csv, *.json)
         # 保护原则：若已判定为纯查阅/只读意图，绝不扫描并强行开启生成！

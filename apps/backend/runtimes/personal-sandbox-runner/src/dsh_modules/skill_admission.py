@@ -121,11 +121,23 @@ def normalize_admission_echo(verdict, intent):
 
 
 def admit_skill(prompt, history, files, provisional, model, policy, telemetry, deadline,
-                available_skills=None, read_body=None):
+                available_skills=None, read_body=None, attachment_probe=None):
     skills = get_available_skills() if available_skills is None else available_skills
+    if attachment_probe is None and files:
+        from .preflight_probe import probe_session_attachments
+        attachment_probe = probe_session_attachments(files, prompt=prompt)
     spreadsheet_input = any(Path(f).suffix.lower() in {'.xlsx', '.xlsm', '.xls', '.csv'} for f in files)
-    if not provisional.skill_id and not spreadsheet_input:
-        # No skill will execute, so there is no skill admission to bypass.
+
+    # 纯只读/查阅模式免检快轨 (Read Mode Fast Path, < 1ms):
+    # 若任务不要求生成任何物理交付物，且无专有执行流水线要求 (not requires_execution)，且不涉及表格工作簿原地更新:
+    # 纯只读提取、问答与分析天然安全无副作用，直接 Fast-path 放行，彻底绕过耗时 40s 的重型意图准入审核！
+    is_pure_read = (
+        not getattr(provisional, "is_generate_intent", False)
+        and not getattr(provisional, "deliverables", [])
+        and not getattr(provisional, "requires_execution", False)
+        and getattr(provisional, "is_inspect_intent", False)
+    )
+    if (not provisional.skill_id or is_pure_read) and not spreadsheet_input:
         provisional.source_formats = list(dict.fromkeys(Path(f).suffix.lower() for f in files))
         return provisional
     catalog = {s['id']: s for s in skills}
@@ -136,7 +148,8 @@ def admit_skill(prompt, history, files, provisional, model, policy, telemetry, d
         raise ValueError('技能准入上下文超出预算，未执行候选技能')
     intent = extract_task_intent(request, users, model, policy, telemetry, deadline, input_count=len(files),
         skill_names=[{'id': s['id'], 'name': s.get('name', s['id']), 'aliases': s.get('aliases', [])} for s in skills],
-        history=history)
+        history=history,
+        attachment_profiles=attachment_probe.get('profiles') if attachment_probe else None)
     from .spreadsheet_update.routing import is_workbook_update
     if (spreadsheet_input and is_workbook_update(request, intent, history)
             and intent['skill_invocation']['mode'] != 'execute'):
@@ -158,6 +171,8 @@ def admit_skill(prompt, history, files, provisional, model, policy, telemetry, d
             inspected[current] = body
         payload = {'request': request, 'user_history': [] if intent.get('instruction_relation') == 'standalone' else users, 'files': list(files), 'catalog': metadata,
                    'initial_candidate': provisional.skill_id, 'task_contract': intent, 'inspected_skills': inspected, 'feedback': feedback}
+        if attachment_probe and attachment_probe.get('profiles'):
+            payload['attachment_profiles'] = attachment_probe['profiles']
         decision_rule_bases = [request, *[r['quote'] for r in intent['requirements']]] if intent.get('instruction_relation') == 'standalone' else [request, *users, *[r['quote'] for r in intent['requirements']]]
         try:
             verdict = structured_decision(INSTRUCTIONS, payload, decision_tool(list(catalog), decision_rule_bases,

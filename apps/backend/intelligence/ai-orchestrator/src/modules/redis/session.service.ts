@@ -280,6 +280,7 @@ export class SessionService {
       return sessions
         .filter((item): item is NonNullable<ChatSessionData['session']> => Boolean(item))
         .filter((item) => !ownerUserId || item.ownerUserId === ownerUserId)
+        .filter((item) => !item.id.startsWith('workbench-summary-'))
         .sort(
           (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
         );

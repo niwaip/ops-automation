@@ -292,7 +292,14 @@ def build_user_turn(
             )
 
     if knowledge_context.strip():
-        user_parts.append(f"[Mounted Personal Knowledge Base]:\n{knowledge_context.strip()}")
+        user_parts.append(
+            "[Mounted Personal Knowledge Base — 个人空间/知识库资料]:\n"
+            f"{knowledge_context.strip()}\n\n"
+            "【个人空间文档优先硬约束】\n"
+            "- 用户已指定或涉及个人空间/知识库。上述个人空间中的文档是本次回答的核心事实依据；\n"
+            "- 当个人空间中存在与用户需求匹配的文档（如操作指南、代码、表格或说明）时，必须优先以个人空间文档为准作答；\n"
+            "- 严禁忽视个人空间文档而脱离本地资料只使用外部网络检索。"
+        )
 
     if skill_context.strip():
         clipped_skill = ContextBudget.clip_skill(skill_context, max_chars=max_skill_chars)

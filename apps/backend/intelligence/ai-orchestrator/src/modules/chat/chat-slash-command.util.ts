@@ -78,20 +78,37 @@ export function parseChatSlashCommand(
   // 1. Help command
   if (/^\s*\/(?:help|\?|帮助)(?:\s+|$)/i.test(text)) {
     const isWorkMode = initialMode === 'task';
-    const modeSpecificHelp = isWorkMode
-      ? '• 企业工作能力（当前已就绪）：`/doc` 工作空间探索、`/extract` 文档提取、`/email` 邮件助手'
-      : '• 工作模式专属能力（`/doc` 工作空间探索、`/extract` 文档提取、`/email` 邮件助手）需在左下方切换至【工作模式】使用。';
+    const systemReply = isWorkMode
+      ? '💡 快捷指令帮助（工作模式）：\n\n' +
+        '🏢 企业工作能力（当前已就绪）：\n' +
+        '• `/doc <问题>`：工作空间文档探索，自主研读知识库文档、代码与规范（别名：`/workspace`, `/rag`）\n' +
+        '• `/extract [文档]`：文档内容提取，结构化解析 PDF、Word、PPTX 文档与元数据\n' +
+        '• `/email <指令>`：工作邮件助手，快速查询收件箱、邮件整理与起草\n\n' +
+        '🌐 常用会话指令：\n' +
+        '• `/search <内容>`：联网检索公开最新资讯与网页来源（别名：`/web`）\n' +
+        '• `/clear` 或 `/n`：清空上下文并开启全新会话（别名：`/new`, `/reset`）\n' +
+        '• `/help`：查看指令帮助\n\n' +
+        '💡 如需体验 PPT 制作、深度技术调研、Excel/Word 生产力工具或生图，请在左下方切换至【个人模式】。'
+      : '💡 快捷指令帮助（个人模式）：\n\n' +
+        '🛠️ 生产力创作与沙箱工具：\n' +
+        '• `/ppt <主题>`：商业汇报幻灯片与交互报告（别名：`/slides`, `/deck`）\n' +
+        '• `/research <主题>`：深度全网多源技术调研（Web + GitHub + HackerNews，别名：`/last30days`, `/调研`）\n' +
+        '• `/excel <需求>`：Excel 电子表格与数据计算，支持公式重算校验（别名：`/xlsx`, `/table`, `/表格`）\n' +
+        '• `/word <需求>`：Word 文档起草、合同合规审查与批注留痕（别名：`/docx`）\n' +
+        '• `/pdf [需求]`：PDF 排版设计与生成；直接输入 `/pdf` 查看排版示例（别名：`/form`）\n' +
+        '• `/image <画面>`：AI 图像创作与海报设计（别名：`/draw`, `/生图`）\n' +
+        '• `/design <构想>`：前端单页交互原型与数据大屏设计（别名：`/ui`, `/prototype`）\n\n' +
+        '🌐 常用会话指令：\n' +
+        '• `/search <内容>`：联网检索公开最新资讯与网页来源（别名：`/web`）\n' +
+        '• `/clear` 或 `/n`：清空上下文并开启全新会话（别名：`/new`, `/reset`）\n' +
+        '• `/help`：查看指令帮助\n\n' +
+        '💡 如需使用企业工作能力（`/doc`、`/extract`、`/email`），需在左下方切换至【工作模式】使用。';
 
     return {
       mode: initialMode,
       message: '',
       isCommandOnly: true,
-      systemReply:
-        '💡 快捷指令帮助：\n' +
-        '• `/search <内容>`：联网检索公开资讯与网页来源\n' +
-        '• `/clear` 或 `/n`：清空上下文并开启全新会话\n' +
-        '• `/help`：查看指令帮助\n' +
-        modeSpecificHelp,
+      systemReply,
     };
   }
 

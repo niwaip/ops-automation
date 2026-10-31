@@ -7,6 +7,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 import { WORKBENCH_PRISMA, WorkbenchPrismaPort } from '../ports';
 import { STORAGE_DRIVER, type StorageDriver } from './storage/storage-driver.interface';
 import { WorkspaceContentIndexerService } from './workspace-content-indexer.service';
@@ -226,6 +228,27 @@ export class WorkspaceNoteService {
       },
     });
 
+    // 6.1 同步至用户沙箱成果库目录 (/workspace/deliverables/)，供 Agent 检索参考
+    try {
+      const candidateRoots = [
+        path.join('/workspace/data/users', userId, 'workspace'),
+        path.join(process.cwd(), 'data/users', userId, 'workspace'),
+        path.resolve(process.cwd(), '../../../../data/users', userId, 'workspace'),
+      ];
+      for (const cand of candidateRoots) {
+        if (fs.existsSync(cand)) {
+          const targetDir = path.join(cand, 'deliverables', targetFolderName);
+          if (!fs.existsSync(targetDir)) {
+            fs.mkdirSync(targetDir, { recursive: true });
+          }
+          fs.writeFileSync(path.join(targetDir, finalFileName), fileBuffer);
+          break;
+        }
+      }
+    } catch (deliverableSyncErr: any) {
+      this.logger.warn(`Failed to sync note to user deliverables dir: ${deliverableSyncErr.message}`);
+    }
+
     // 7. 更新已用空间配额
     await this.prisma.workspace.update({
       where: { id: workspace.id },
@@ -281,7 +304,7 @@ export class WorkspaceNoteService {
     const tags =
       Array.isArray(dto.tags) && dto.tags.length > 0
         ? dto.tags.map((t) => String(t).trim()).filter(Boolean)
-        : ['AI沉淀', '知识候选'];
+        : this.extractFallbackTags(dto.title, dto.userQuery, dto.content);
 
     const frontMatterLines = [
       '---',
@@ -305,44 +328,69 @@ export class WorkspaceNoteService {
     bodySections.push(`# ${dto.title.trim()}`);
     bodySections.push('');
 
+    // 顶部结构化元数据面板：提问背景 + 核心标签
+    const metaLines: string[] = [];
     if (dto.userQuery && dto.userQuery.trim()) {
-      bodySections.push('## 📌 提问背景');
-      bodySections.push(`> ${dto.userQuery.trim()}`);
+      metaLines.push(`> 📌 **提问背景**：${dto.userQuery.trim()}`);
+    }
+    if (tags.length > 0) {
+      const tagBadges = tags.map((t) => `\`#${t}\``).join(' ');
+      metaLines.push(`> 🏷️ **核心标签**：${tagBadges}`);
+    }
+    if (metaLines.length > 0) {
+      bodySections.push(metaLines.join('  \n'));
+      bodySections.push('');
+      bodySections.push('---');
       bodySections.push('');
     }
 
     if (!rawContent.startsWith('#')) {
-      bodySections.push('## 💡 核心结论与 AI 总结');
+      bodySections.push('## 💡 核心要点与记录');
     }
     bodySections.push(rawContent);
     bodySections.push('');
 
-    if (dto.rawResultData) {
-      bodySections.push('## 🔍 原始佐证与执行详情');
-      bodySections.push('<details>');
-      bodySections.push('<summary>展开查看原始结构化数据</summary>');
-      bodySections.push('');
-      bodySections.push('```json');
-      try {
-        const jsonText =
-          typeof dto.rawResultData === 'string'
-            ? JSON.stringify(JSON.parse(dto.rawResultData), null, 2)
-            : JSON.stringify(dto.rawResultData, null, 2);
-        bodySections.push(jsonText);
-      } catch {
-        bodySections.push(String(dto.rawResultData));
+    return `${frontMatterLines.join('\n')}\n${bodySections.join('\n')}`;
+  }
+
+  private extractFallbackTags(title: string, userQuery?: string, content?: string): string[] {
+    const tagsSet = new Set<string>();
+    const textToAnalyze = `${title || ''} ${userQuery || ''} ${(content || '').slice(0, 400)}`;
+
+    const engEntities = textToAnalyze.match(/\b[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*\b/g) || [];
+    for (const ent of engEntities) {
+      if (
+        ent.length >= 2 &&
+        !/^(the|and|for|with|this|that|from|into|view|show|get|post|have|will|can|not)$/i.test(ent)
+      ) {
+        if (/^[A-Z]/.test(ent) || ent.length >= 4) {
+          tagsSet.add(ent);
+        }
       }
-      bodySections.push('```');
-      bodySections.push('</details>');
-      bodySections.push('');
+      if (tagsSet.size >= 3) break;
     }
 
-    bodySections.push('## 📝 知识核验与批注');
-    bodySections.push('- [ ] 待人工确认准确性');
-    bodySections.push('- 状态：个人知识候选 (Candidate)');
-    bodySections.push('');
+    const KEYWORD_PATTERNS = [
+      { pattern: /(?:安装|部署|配置|环境|初始化)/, tag: '安装配置' },
+      { pattern: /(?:调研|方案|剖析|选型|对比)/, tag: '技术调研' },
+      { pattern: /(?:排错|报错|故障|修复|诊断)/, tag: '运维排错' },
+      { pattern: /(?:接口|API|SDK|联调|协议)/, tag: '接口集成' },
+      { pattern: /(?:性能|时延|压测|优化|基准)/, tag: '性能优化' },
+      { pattern: /(?:数据|报表|指标|统计|分析)/, tag: '数据分析' },
+      { pattern: /(?:规范|指南|文档|手册|教程)/, tag: '使用指南' },
+    ];
+    for (const kp of KEYWORD_PATTERNS) {
+      if (kp.pattern.test(textToAnalyze)) {
+        tagsSet.add(kp.tag);
+      }
+      if (tagsSet.size >= 4) break;
+    }
 
-    return `${frontMatterLines.join('\n')}\n${bodySections.join('\n')}`;
+    if (tagsSet.size === 0) {
+      tagsSet.add('技术笔记');
+    }
+
+    return Array.from(tagsSet).slice(0, 5);
   }
 
   /**

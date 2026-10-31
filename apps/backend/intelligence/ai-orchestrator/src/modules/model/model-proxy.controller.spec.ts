@@ -462,9 +462,9 @@ describe('ModelProxyController', () => {
       const originalEnv = process.env.SANDBOX_MODEL_ATTEMPT_TIMEOUT_MS;
       try {
         delete process.env.SANDBOX_MODEL_ATTEMPT_TIMEOUT_MS;
-        expect(controller.resolveAttemptTimeoutMs({ tools: [{}, {}, {}] })).toBe(60_000);
+        expect(controller.resolveAttemptTimeoutMs({ tools: [{}, {}, {}] })).toBe(30_000);
         expect(controller.resolveAttemptTimeoutMs({ tools: Array.from({ length: 8 }, () => ({})) })).toBe(90_000);
-        expect(controller.resolveStreamIdleTimeoutMs({ tools: [{}, {}, {}] })).toBe(60_000);
+        expect(controller.resolveStreamIdleTimeoutMs({ tools: [{}, {}, {}] })).toBe(30_000);
         expect(controller.resolveStreamIdleTimeoutMs({ tools: Array.from({ length: 8 }, () => ({})) })).toBe(90_000);
         expect(controller.resolveAttemptTimeoutMs({ request_context: 'web_search_synthesis' })).toBe(90_000);
         expect(controller.resolveStreamIdleTimeoutMs({ request_context: 'web_search_synthesis' })).toBe(90_000);

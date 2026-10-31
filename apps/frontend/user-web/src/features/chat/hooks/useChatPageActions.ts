@@ -140,8 +140,25 @@ export function useChatPageActions({
       pendingExecutionId || getLatestWaitingInputExecutionId(activeMessages);
     const now = toChatTimestamp();
 
+    // 检查是否为 /clear 或 /n 或 /reset 等清空并开启新会话指令
+    const clearMatch = content.match(/^\s*\/(?:n|new|reset|clear|新会话)(?:\s+|$)([\s\S]*)/i);
+    let targetSession = selectedSession;
+    if (clearMatch) {
+      const remainingPrompt = (clearMatch[1] || '').trim();
+      setDraft('');
+      clearError();
+      const nextSession = createDraftSession('新对话', now);
+      if (!remainingPrompt && (!filesToSend || filesToSend.length === 0)) {
+        isSubmittingRef.current = false;
+        void toast.success('已清空上下文并开启全新会话');
+        return;
+      }
+      content = remainingPrompt;
+      targetSession = nextSession;
+    }
+
     // 留在当前会话页面，不需要切换视窗！
-    const session = ensureSession(now);
+    const session = targetSession || ensureSession(now);
     const userMessageId = buildMessageId();
     const userMessage: ChatMessage = {
       id: userMessageId,

@@ -1,0 +1,78 @@
+{
+  "session_id": "chat-session-1793368057935-d38o9jqi",
+  "turn_id": "1793370730654058386-dfe6cd6c043043fd9b1b8404b016881b",
+  "run_id": "cb01150474f345c58483598d08f32b90",
+  "http_ms": 95775,
+  "harness_ms": 95743,
+  "sandbox_ms": 95109.67,
+  "lock_wait_ms": 1,
+  "tool_wall_ms": 9159.549,
+  "vision_proxy_ms": 9065,
+  "main_model_ms": 85535.47,
+  "main_proxy_plus_vision_ms": 94600.47,
+  "logical_model_requests_observed": 3,
+  "logical_model_requests_recorded": 2,
+  "recorded_usage_excludes_vision_and_failed_attempts": true,
+  "recorded_tokens": {
+    "prompt_tokens": 8011,
+    "completion_tokens": 593,
+    "total_tokens": 8604
+  },
+  "timeline": [
+    {
+      "event": "started",
+      "time_beijing": "2026-10-30T22:30:35.548466+08:00",
+      "relative_ms": 0.0
+    },
+    {
+      "event": "guard",
+      "time_beijing": "2026-10-30T22:30:35.548759+08:00",
+      "relative_ms": 0.294
+    },
+    {
+      "event": "guard",
+      "time_beijing": "2026-10-30T22:30:35.651994+08:00",
+      "relative_ms": 103.528
+    },
+    {
+      "event": "model_started",
+      "time_beijing": "2026-10-30T22:30:35.654331+08:00",
+      "relative_ms": 105.865
+    },
+    {
+      "event": "model_completed",
+      "time_beijing": "2026-10-30T22:30:51.324130+08:00",
+      "relative_ms": 15775.664
+    },
+    {
+      "event": "tool_started",
+      "time_beijing": "2026-10-30T22:30:51.334336+08:00",
+      "relative_ms": 15785.87
+    },
+    {
+      "event": "tool_completed",
+      "time_beijing": "2026-10-30T22:31:00.493885+08:00",
+      "relative_ms": 24945.419
+    },
+    {
+      "event": "model_started",
+      "time_beijing": "2026-10-30T22:31:00.500313+08:00",
+      "relative_ms": 24951.847
+    },
+    {
+      "event": "model_completed",
+      "time_beijing": "2026-10-30T22:32:10.370797+08:00",
+      "relative_ms": 94822.331
+    },
+    {
+      "event": "metrics",
+      "time_beijing": "2026-10-30T22:32:10.655824+08:00",
+      "relative_ms": 95107.359
+    },
+    {
+      "event": "finished",
+      "time_beijing": "2026-10-30T22:32:10.656158+08:00",
+      "relative_ms": 95107.692
+    }
+  ]
+}

@@ -99,4 +99,27 @@ describe('Decoupled Slash Commands Toolchain', () => {
     expect(isPersonalSlashCommand('/doc 架构设计')).toBe(false);
     expect(isPersonalSlashCommand('/email 查邮件')).toBe(false);
   });
+
+  it('should register /clear and /help commands with aliases in both modes', () => {
+    const workCommands = matchSlashCommands('/', 'task');
+    const personalCommands = matchSlashCommands('/', 'chat');
+
+    const workClear = workCommands.find((c) => c.command === '/clear');
+    const workHelp = workCommands.find((c) => c.command === '/help');
+    expect(workClear).toBeDefined();
+    expect(workClear?.aliases).toContain('/new');
+    expect(workClear?.aliases).toContain('/reset');
+    expect(workHelp).toBeDefined();
+    expect(workHelp?.aliases).toContain('/?');
+    expect(workHelp?.aliases).toContain('/帮助');
+
+    const personalClear = personalCommands.find((c) => c.command === '/clear');
+    const personalHelp = personalCommands.find((c) => c.command === '/help');
+    expect(personalClear).toBeDefined();
+    expect(personalClear?.aliases).toContain('/new');
+    expect(personalClear?.aliases).toContain('/reset');
+    expect(personalHelp).toBeDefined();
+    expect(personalHelp?.aliases).toContain('/?');
+    expect(personalHelp?.aliases).toContain('/帮助');
+  });
 });

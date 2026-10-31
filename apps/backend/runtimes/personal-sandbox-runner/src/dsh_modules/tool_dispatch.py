@@ -248,12 +248,13 @@ def dispatch_tool_calls(
                 except Exception as ex:
                     print(f"⚠️ [harvest_analytical_facts] Warning: {ex}", flush=True)
 
-        for m, _, _ in extract_dsh_markers(tool_res, "OUTBOUND_FILE"):
+        tool_res_str = tool_res.render_text() if isinstance(tool_res, ToolResult) else str(tool_res)
+        for m, _, _ in extract_dsh_markers(tool_res_str, "OUTBOUND_FILE"):
             outbound_files.append(m.strip())
 
         if outbound_reminders is not None:
             for tag in ("REMINDER_CREATE", "REMINDER_UPDATE", "REMINDER_DELETE"):
-                for m, _, _ in extract_dsh_markers(tool_res, tag):
+                for m, _, _ in extract_dsh_markers(tool_res_str, tag):
                     outbound_reminders.append(m.strip())
 
         if (

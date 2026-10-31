@@ -447,7 +447,7 @@ def _build_fallback_contract(prompt: str, domain: Optional[str] = None) -> Analy
         is_audit = True
 
     # 5. 通用后备匹配：检测类似于 "统计X金额" / "计算X总额" / "汇总金额和工数" 的通用需求
-    if not requested_metrics and not is_catalog_only and not (is_detail_query and not has_explicit_agg_verb and not is_explicit_calc):
+    if not is_catalog_only and not (is_detail_query and not has_explicit_agg_verb and not is_explicit_calc):
         peel_prefixes = (
             r'^(?:(?:各|该|所有)?(?:附件|工作表|表格|文件|数据|表内|其中|对应|相关|上述)(?:[中里内])?(?:的)?|'
             r'(?:每|每个|各|各个|该|所有|逐)?(?:组|类别|部门|中心|项目)(?:的)?|'
@@ -546,12 +546,13 @@ def _build_fallback_contract(prompt: str, domain: Optional[str] = None) -> Analy
             elif clean_metric in ("工数", "工时"):
                 aliases.extend([r'时间', r'时长', r'小时', r'时数'])
 
-            requested_metrics.append(MetricRequirement(
-                name=clean_metric,
-                aliases=aliases,
-                expected_type="number",
-                period=period,
-            ))
+            if clean_metric not in [m.name for m in requested_metrics]:
+                requested_metrics.append(MetricRequirement(
+                    name=clean_metric,
+                    aliases=aliases,
+                    expected_type="number",
+                    period=period,
+                ))
 
     # 6. 定性咨询场景中，匹配到的指标（如“如何提升毛利率”中的毛利率）属于咨询议题，而非底层公式取数
     if is_advisory and not is_explicit_calc:

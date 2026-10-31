@@ -333,8 +333,22 @@ export class OpenAICompatibleClient {
           }, idleTimeoutMs);
         };
         // Axios' request timeout bounds the initial response. Once headers arrive,
-        // this watchdog measures stream inactivity and is refreshed by every raw event.
-        try { (stream as any).setTimeout?.(0); } catch { /* ignore */ }
+        // clear socket timeout so Axios does not abort an actively streaming response.
+        // Stream inactivity is then strictly governed by refreshIdleTimeout() which
+        // is renewed on every raw SSE event.
+        try {
+          const req = response.request as any;
+          if (req?.setTimeout) req.setTimeout(0);
+          if (req?.removeAllListeners) req.removeAllListeners('timeout');
+          if (req?.socket?.setTimeout) req.socket.setTimeout(0);
+          if (req?.socket?.removeAllListeners) req.socket.removeAllListeners('timeout');
+          if ((response.data as any)?.socket?.setTimeout) (response.data as any).socket.setTimeout(0);
+          if ((response.data as any)?.socket?.removeAllListeners) (response.data as any).socket.removeAllListeners('timeout');
+          if ((stream as any)?.socket?.setTimeout) (stream as any).socket.setTimeout(0);
+          if ((stream as any)?.socket?.removeAllListeners) (stream as any).socket.removeAllListeners('timeout');
+          if (typeof (stream as any)?.setTimeout === 'function') (stream as any).setTimeout(0);
+          if (typeof (stream as any)?.removeAllListeners === 'function') (stream as any).removeAllListeners('timeout');
+        } catch { /* ignore */ }
         refreshIdleTimeout();
 
         stream.on('end', () => {

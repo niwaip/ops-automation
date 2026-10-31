@@ -187,15 +187,31 @@ export class WorkspaceArtifactSyncHelper {
 
       if (foundFiles.size === 0) return syncedList;
 
-      const targetKnowledgeDirs = [
-        path.join('/workspace/data/users', userId, 'knowledge'),
-        path.join(process.cwd(), 'data/users', userId, 'knowledge'),
+      const targetWorkspaceDirs = [
+        path.join('/workspace/data/users', userId, 'workspace'),
+        path.join(process.cwd(), 'data/users', userId, 'workspace'),
+        path.resolve(process.cwd(), '../../../../data/users', userId, 'workspace'),
       ];
-      let activeKnowledgeDir: string | null = null;
-      for (const kd of targetKnowledgeDirs) {
-        if (fs.existsSync(kd)) {
-          activeKnowledgeDir = kd;
+      let activeWorkspaceDir: string | null = null;
+      for (const wd of targetWorkspaceDirs) {
+        if (fs.existsSync(wd)) {
+          activeWorkspaceDir = wd;
           break;
+        }
+      }
+
+      let targetFolderName = '';
+      if (targetFolderId) {
+        try {
+          const folderNode = await this.prisma.workspaceNode.findUnique({
+            where: { id: targetFolderId },
+            select: { name: true },
+          });
+          if (folderNode?.name) {
+            targetFolderName = folderNode.name;
+          }
+        } catch {
+          // ignore
         }
       }
 
@@ -310,14 +326,24 @@ export class WorkspaceArtifactSyncHelper {
 
         if (!fileBuffer || fileBuffer.length === 0) continue;
 
-        // 物理同步到沙箱 /knowledge 目录（仅非任务模式或沙箱产物）
-        if (physicalPath && activeKnowledgeDir && !isTaskMode) {
-          const targetPersistPath = path.join(activeKnowledgeDir, fileName);
+        // 物理同步到沙箱工作区产出成果库 (/workspace/deliverables/)
+        if (physicalPath && activeWorkspaceDir) {
+          const deliverablesDir = targetFolderName
+            ? path.join(activeWorkspaceDir, 'deliverables', targetFolderName)
+            : path.join(activeWorkspaceDir, 'deliverables');
+          if (!fs.existsSync(deliverablesDir)) {
+            try {
+              fs.mkdirSync(deliverablesDir, { recursive: true });
+            } catch {
+              // best-effort
+            }
+          }
+          const targetPersistPath = path.join(deliverablesDir, fileName);
           if (!fs.existsSync(targetPersistPath)) {
             try {
               fs.copyFileSync(physicalPath, targetPersistPath);
             } catch (copyErr: any) {
-              this.logger.warn(`Failed to copy artifact to knowledge: ${copyErr.message}`);
+              this.logger.warn(`Failed to copy artifact to deliverables: ${copyErr.message}`);
             }
           }
         }

@@ -101,7 +101,36 @@ export class WorkspaceDigestService implements OnApplicationBootstrap {
     fileName: string,
     _mimeType?: string | null
   ): WorkspaceFileDigest {
-    const lines = text.split(/\r?\n/);
+    // 0. 先行剥离 Markdown Frontmatter 元数据行，杜绝 YAML 字段污染摘要与正文
+    let cleanText = text;
+    const standardFm = cleanText.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
+    if (standardFm) {
+      cleanText = standardFm[2].trim();
+    } else {
+      const rawLines = cleanText.split(/\r?\n/);
+      let cutoff = 0;
+      const FM_KEY_REGEX = /^(?:title|created_at|createdat|tags|folder_name|foldername|session_id|message_id|requested_model|execution_id|skill_used|type|status|source|channel|ai_model):/i;
+      for (let i = 0; i < rawLines.length; i++) {
+        const l = rawLines[i].trim();
+        if (!l) {
+          if (cutoff > 0) {
+            cutoff = i + 1;
+            break;
+          }
+          continue;
+        }
+        if (l === '---' || FM_KEY_REGEX.test(l)) {
+          cutoff = i + 1;
+        } else {
+          break;
+        }
+      }
+      if (cutoff > 0) {
+        cleanText = rawLines.slice(cutoff).join('\n').trim();
+      }
+    }
+
+    const lines = cleanText.split(/\r?\n/);
     const headings: string[] = [];
     const paragraphs: string[] = [];
 
@@ -123,20 +152,35 @@ export class WorkspaceDigestService implements OnApplicationBootstrap {
         }
       }
 
-      // 收集正文段落
+      // 收集正文段落（排除分割线与代码围栏）
       if (line.length > 20 && !line.startsWith('---') && !line.startsWith('```')) {
         paragraphs.push(line);
       }
     }
 
     // 2. 提取 Executive Summary (100~200 字精简摘要)
+    // 优先：从标准文档标记「💡 **核心摘要**：」中抽取
     let summary = '';
-    for (const p of paragraphs) {
-      const cleanP = p.replace(/[*_`[\]]/g, '').trim();
-      if (cleanP.length >= 25) {
-        summary += (summary ? ' ' : '') + cleanP;
-        if (summary.length >= 160) break;
+    const summaryMatch = cleanText.match(/(?:💡\s*\*{0,2}核心摘要\*{0,2}[：:]\s*|##\s*核心摘要\s*\r?\n)([^\r\n]+)/);
+    if (summaryMatch && summaryMatch[1]) {
+      summary = summaryMatch[1].replace(/[*_`[\]]/g, '').trim();
+    }
+
+    // 次优：从正文段落中抽取（过滤元数据标记如 📌 提问背景、🏷️ 核心标签）
+    if (!summary) {
+      for (const p of paragraphs) {
+        if (p.includes('📌') || p.includes('🏷️') || p.startsWith('>')) {
+          continue;
+        }
+        const cleanP = p.replace(/[*_`[\]]/g, '').trim();
+        if (cleanP.length >= 25) {
+          summary += (summary ? ' ' : '') + cleanP;
+          if (summary.length >= 160) break;
+        }
       }
+    }
+    if (!summary && paragraphs.length > 0) {
+      summary = paragraphs.slice(0, 3).join(' ').replace(/[*_`[\]]/g, '').trim();
     }
     if (!summary && lines.length > 0) {
       summary = lines.slice(0, 5).join(' ').replace(/[*_`[\]]/g, '').trim();
@@ -146,12 +190,12 @@ export class WorkspaceDigestService implements OnApplicationBootstrap {
     }
 
     // 3. 统计指标
-    const charCount = text.length;
-    const wordCount = text.split(/\s+/).filter(Boolean).length;
+    const charCount = cleanText.length;
+    const wordCount = cleanText.split(/\s+/).filter(Boolean).length;
     const readingTimeMinutes = Math.max(1, Math.ceil(charCount / 500));
 
     // 4. 抽取关键主题标签 (Key Topics) 与特定业务指标事实 (Extracted Data)
-    const keyTopics = this.extractKeyTopics(text, fileName);
+    const keyTopics = this.extractKeyTopics(cleanText, fileName);
 
     const extractedData: Record<string, any> = {};
     const FACT_PATTERNS = [
@@ -178,8 +222,8 @@ export class WorkspaceDigestService implements OnApplicationBootstrap {
       }
     }
 
-    // 5. 组装高信息密度精炼正文 (cleanedContent，保留全部有效正文段落，最大 32KB，杜绝正文关键事实在非 AI 模式下丢失)
-    const cleanedContent = (paragraphs.length > 0 ? paragraphs.join('\n') : text).slice(0, 32000);
+    // 5. 组装高信息密度精炼正文 (保留已剥离 YAML Frontmatter 的完整 cleanText，最大 32KB)
+    const cleanedContent = (cleanText || summary || '').slice(0, 32000);
 
     return {
       summary: summary || '（文档内容精简，未包含足够段落描述）',

@@ -16,6 +16,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes,ApiOperation,ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import {
+BatchDeleteNodesDto,
 BatchRegenerateDigestDto,
 ContentSearchQueryDto,
 CreateFolderDto,
@@ -23,6 +24,7 @@ MulterUploadedFile,
 RegenerateDigestDto,
 SaveTextNoteDto,
 SearchFilesQueryDto,
+TempCleanupDto,
 } from './dto/workspace.dto';
 import { WorkspaceService } from './workspace.service';
 
@@ -82,7 +84,8 @@ export class WorkspaceController {
       departmentId,
       query.q,
       query.workspaceId,
-      userRoles
+      userRoles,
+      query.folderId
     );
   }
 
@@ -282,18 +285,37 @@ export class WorkspaceController {
     );
   }
 
+  @Post(':workspaceId/nodes/batch-delete')
+  @ApiOperation({ summary: '批量删除文件或文件夹（同步清理底层磁盘与对象存储）' })
+  async batchDeleteNodes(
+    @Request() req: any,
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: BatchDeleteNodesDto
+  ) {
+    const { userId, departmentId, userRoles } = this.extractAuth(req);
+    return await this.workspaceService.batchDeleteNodes(
+      workspaceId,
+      body?.nodeIds || [],
+      userId,
+      userRoles,
+      departmentId
+    );
+  }
+
   @Post(':workspaceId/temp-cleanup')
-  @ApiOperation({ summary: '一键清理临时工作区（清理失效幽灵记录与衍生文本缓存）' })
+  @ApiOperation({ summary: '一键清理临时工作区（清理失效幽灵记录、衍生文本缓存与超7天过期临时文件）' })
   async cleanupTempWorkspace(
     @Request() req: any,
-    @Param('workspaceId') workspaceId: string
+    @Param('workspaceId') workspaceId: string,
+    @Body() body?: TempCleanupDto
   ) {
     const { userId, departmentId, userRoles } = this.extractAuth(req);
     return await this.workspaceService.cleanupTempWorkspace(
       workspaceId,
       userId,
       userRoles,
-      departmentId
+      departmentId,
+      body
     );
   }
 }

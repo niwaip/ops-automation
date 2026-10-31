@@ -15,6 +15,7 @@ from contextvars import ContextVar
 DOMAIN_MODULES = {
     'finance': '.analysis_domain_finance',
     'commerce': '.analysis_domain_commerce',
+    'timesheet': '.analysis_domain_timesheet',
 }
 GENERIC_CONCEPTS = [
     {'name': 'data_quality',
@@ -28,7 +29,7 @@ def domain_pack(domain):
     if domain == 'generic':
         return None
     if domain not in DOMAIN_MODULES:
-        raise ValueError(f'未知分析领域：{domain}；可用 generic、finance、commerce、auto')
+        raise ValueError(f'未知分析领域：{domain}；可用 generic、finance、commerce、timesheet、auto')
     return importlib.import_module(DOMAIN_MODULES[domain], __package__)
 
 
@@ -52,6 +53,9 @@ def select_domain(prompt='', configured=None):
     if requested != 'auto':
         domain_pack(requested)  # Unknown trusted configuration must fail closed.
         return requested
+    probed = os.getenv('DSH_PROBED_DOMAIN')
+    if probed and probed in DOMAIN_MODULES:
+        return probed
     candidates = []
     for domain in DOMAIN_MODULES:
         pack = domain_pack(domain)

@@ -24,13 +24,62 @@ import {
   message as antdMessage,
 } from 'antd';
 import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   workspaceApi,
   type WorkspaceFileDigest,
   type WorkspaceNode,
 } from '../../../api/workspace';
+import styles from './DocumentPreviewModal.module.css';
 
 const { Paragraph, Text, Title } = Typography;
+
+function cleanMarkdownForDisplay(text: string): string {
+  if (!text) return '';
+  // 1. 标准 --- ... --- Frontmatter
+  const standardFm = text.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n([\s\S]*)$/);
+  if (standardFm) {
+    return standardFm[1].trim();
+  }
+  // 2. 剥离无包裹线的头部 YAML 字段
+  const lines = text.split(/\r?\n/);
+  let cutoff = 0;
+  const FM_KEY_REGEX = /^(?:title|created_at|createdat|tags|folder_name|foldername|session_id|message_id|requested_model|execution_id|skill_used|type|status|source|channel|ai_model):/i;
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i].trim();
+    if (!l) {
+      if (cutoff > 0) {
+        cutoff = i + 1;
+        break;
+      }
+      continue;
+    }
+    if (l === '---' || FM_KEY_REGEX.test(l)) {
+      cutoff = i + 1;
+    } else {
+      break;
+    }
+  }
+  if (cutoff > 0) {
+    return lines.slice(cutoff).join('\n').trim();
+  }
+  return text;
+}
+
+function cleanSummaryForDisplay(summary: string): string {
+  if (!summary) return '';
+  const FM_KEY_REGEX = /^(?:title|created_at|createdat|tags|folder_name|foldername|session_id|message_id|requested_model):/i;
+  if (summary.includes('title:') || summary.includes('tags:') || summary.includes('created_at:')) {
+    const lines = summary.split(/\r?\n/);
+    const nonFmLines = lines.filter((l) => !FM_KEY_REGEX.test(l.trim()));
+    if (nonFmLines.length > 0) {
+      return nonFmLines.join(' ').replace(/[*_`[\]]/g, '').trim();
+    }
+    return summary.replace(FM_KEY_REGEX, '').replace(/["']/g, '').trim();
+  }
+  return summary;
+}
 
 interface FileDigestDrawerProps {
   open: boolean;
@@ -266,7 +315,7 @@ export function FileDigestDrawer({
                   color: 'var(--text-primary)',
                 }}
               >
-                {digest.summary}
+                {cleanSummaryForDisplay(digest.summary)}
               </Paragraph>
             </Card>
           </div>
@@ -377,19 +426,15 @@ export function FileDigestDrawer({
                   borderLeft: '4px solid #722ed1',
                   borderColor: 'rgba(114, 46, 209, 0.25)',
                   borderRadius: '4px 8px 8px 4px',
+                  maxHeight: 520,
+                  overflowY: 'auto',
                 }}
               >
-                <Paragraph
-                  style={{
-                    margin: 0,
-                    fontSize: 13,
-                    lineHeight: 1.7,
-                    whiteSpace: 'pre-wrap',
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  {digest.cleanedContent}
-                </Paragraph>
+                <div className={styles['preview-markdown']} style={{ fontSize: 13, lineHeight: 1.7 }}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {cleanMarkdownForDisplay(digest.cleanedContent)}
+                  </ReactMarkdown>
+                </div>
               </Card>
             </div>
           )}

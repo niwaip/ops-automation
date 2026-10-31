@@ -50,10 +50,32 @@ export const mergeDefinedMetadata = (
     return currentMetadata;
   }
 
-  return {
+  const merged = {
     ...(currentMetadata || {}),
     ...Object.fromEntries(definedEntries),
   };
+
+  // 关键保护：保留本地内存中已存在的图片 blob 预览地址，防止服务端返回不含 blob 的元数据时发生裂图
+  if (
+    currentMetadata?.files &&
+    Array.isArray(currentMetadata.files) &&
+    merged.files &&
+    Array.isArray(merged.files)
+  ) {
+    merged.files = merged.files.map((nextFile: any) => {
+      const matchOld = (currentMetadata.files as any[]).find(
+        (oldFile: any) =>
+          (oldFile?.fileId && oldFile.fileId === nextFile?.fileId) ||
+          (oldFile?.fileName && oldFile.fileName === nextFile?.fileName)
+      );
+      if (matchOld?.previewUrl && !nextFile.previewUrl) {
+        return { ...nextFile, previewUrl: matchOld.previewUrl };
+      }
+      return nextFile;
+    });
+  }
+
+  return merged;
 };
 
 export const mergeContentParts = (

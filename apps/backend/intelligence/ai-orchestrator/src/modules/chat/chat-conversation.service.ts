@@ -337,15 +337,44 @@ export class ChatConversationService {
 
   async getChatHistory(sessionId: string, ownerUserId?: string): Promise<ChatHistoryItem[]> {
     const chatSession = await this.sessionService.getChatSession(sessionId);
-    if (ownerUserId && chatSession?.session?.ownerUserId !== ownerUserId) return [];
-    return (chatSession?.history || []).map((message, index) => ({
-      id: message.id || `${sessionId}-${index}`,
-      sessionId,
-      role: message.role,
-      content: message.content,
-      timestamp: message.timestamp,
-      metadata: message.metadata,
-    }));
+    const resolvedOwner = ownerUserId || chatSession?.session?.ownerUserId;
+    if (ownerUserId && chatSession?.session?.ownerUserId && chatSession.session.ownerUserId !== ownerUserId) {
+      return [];
+    }
+    return (chatSession?.history || []).map((message, index) => {
+      let metadata = message.metadata;
+      if (metadata && Array.isArray((metadata as any).files) && resolvedOwner) {
+        const enrichedFiles = ((metadata as any).files as any[]).map((file) => {
+          if (file && typeof file === 'object' && file.fileId) {
+            try {
+              const freshTicket = this.chatMediaService.createPreviewTicket(file.fileId, resolvedOwner);
+              const freshUrl = `/api/ai/chat/files/${encodeURIComponent(file.fileId)}?ticket=${encodeURIComponent(freshTicket)}`;
+              return {
+                ...file,
+                ticket: freshTicket,
+                url: freshUrl,
+              };
+            } catch {
+              return file;
+            }
+          }
+          return file;
+        });
+        metadata = {
+          ...metadata,
+          files: enrichedFiles,
+        };
+      }
+
+      return {
+        id: message.id || `${sessionId}-${index}`,
+        sessionId,
+        role: message.role,
+        content: message.content,
+        timestamp: message.timestamp,
+        metadata,
+      };
+    });
   }
 
   async persistTaskConversation(params: {
@@ -496,15 +525,21 @@ export class ChatConversationService {
       if (typeof f === 'string') {
         results.push({ fileName: f });
       } else if (f && typeof f === 'object') {
+        const fileObj = f as Record<string, any>;
         results.push({
-          fileId: f.fileId,
-          fileName: f.fileName,
-          mimeType: f.mimeType,
-          size: f.size,
-          source: f.source || 'upload',
-          ...(f.workspaceNodeId ? { workspaceNodeId: f.workspaceNodeId } : {}),
-          ...(f.workspaceId ? { workspaceId: f.workspaceId } : {}),
-          ...(f.storagePath ? { storagePath: f.storagePath } : {}),
+          fileId: fileObj.fileId,
+          fileName: fileObj.fileName,
+          mimeType: fileObj.mimeType,
+          size: fileObj.size,
+          source: fileObj.source || 'upload',
+          ...(fileObj.url ? { url: fileObj.url } : {}),
+          ...(fileObj.ticket ? { ticket: fileObj.ticket } : {}),
+          ...(fileObj.previewUrl && !String(fileObj.previewUrl).startsWith('blob:')
+            ? { previewUrl: fileObj.previewUrl }
+            : {}),
+          ...(fileObj.workspaceNodeId ? { workspaceNodeId: fileObj.workspaceNodeId } : {}),
+          ...(fileObj.workspaceId ? { workspaceId: fileObj.workspaceId } : {}),
+          ...(fileObj.storagePath ? { storagePath: fileObj.storagePath } : {}),
         });
       }
     }

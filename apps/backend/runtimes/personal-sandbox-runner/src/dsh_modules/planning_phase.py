@@ -49,6 +49,9 @@ def is_fast_path_task(prompt: str, skill_res: Any) -> bool:
     from .pdf_workflow import is_template_pdf_task
     if is_template_pdf_task(prompt, skill_res):
         return True
+    from .docx_workflow import is_template_docx_task
+    if is_template_docx_task(prompt, skill_res):
+        return True
 
     # 任何涉及检索、探索、复合多步骤或跨域联动的任务，绝不走单步直出快路径
     if getattr(skill_res, "is_research_intent", False) or getattr(skill_res, "is_search_intent", False):
@@ -243,11 +246,19 @@ def build_deliverable_execution_instruction(skill_res: Any) -> str:
     if getattr(skill_res, "is_docx_intent", False) or (
         getattr(skill_res, "deliverables", None) and any(ext.lower() == ".docx" for ext in skill_res.deliverables)
     ):
-        target_fn = next((d for d in (skill_res.deliverables or []) if d.lower().endswith(".docx")), "<文件名>.docx")
+        target_fn = next((d for d in (skill_res.deliverables or []) if d.lower().endswith(".docx")), "document.docx")
+        if not target_fn.startswith("/workspace/"):
+            target_fn = f"/workspace/{target_fn}"
+        is_followup = (getattr(skill_res, "admission", None) or {}).get("instruction_relation") == "followup"
+        content_source_hint = (
+            "【正文内容来源】：本轮任务是对前序对话讨论成果/助手回答的固化与导出（followup）。请直接梳理并提取上轮对话中已形成的详细结论、分析报告或功能要点作为 Markdown 正文，严禁脱离历史对话凭空编写不相干的教程！\n"
+            if is_followup else ""
+        )
         return (
-            "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
-            f"落盘方式：调用 `bash` 工具运行 Python 脚本生成 `/workspace/{target_fn}`（使用 python-docx 库创建并排版，表格推荐 `table.style = 'Table Grid'`；若需 XML 操作请 `from docx.oxml import OxmlElement`，切勿调用不存在的 `doc.oxml`）。\n"
-            "⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字而不提供代码或工具调用！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！"
+            "【执行与文档落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
+            f"{content_source_hint}"
+            f"落盘方式：优先直接调用 `render_docx` 工具（传入 markdown 正文及目标 output_path='{target_fn}'，由底层引擎自动完成企业级版式渲染、自适应表格、提示框排版与生成预览图）。\n"
+            "⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字！必须实际调用 render_docx 工具完成物理文件落盘！"
         )
     elif getattr(skill_res, "is_office_intent", False) and (
         getattr(skill_res, "deliverables", None) and any(ext.lower() == ".xlsx" for ext in skill_res.deliverables)

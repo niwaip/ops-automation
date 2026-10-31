@@ -31,18 +31,77 @@ default_rounds: 5
 
 ---
 
-## 1. 运行环境与核心规范
+## 1. 核心任务路径导航 (Task Routing)
 
-- ✅ **预装依赖**：沙箱已预装 `python-docx`、`defusedxml`，直接使用，严禁 `pip install`！
-- ✅ **黑盒脚本工具库**：脚本位于 `/opt/dsh/skills/docx/scripts/`，调用时请使用 CLI 方式，严禁将脚本源码读取并刷入模型上下文。
-- ✅ **中文字体规范**：中文字体统一指定为 `微软雅黑` 或 `宋体`，英文指定为 `Calibri` 或 `Arial`。
-  - ⚠️ **底层字体初始化安全红线**：全新空白文档中 `doc.styles['Normal'].element.rPr` 默认是 `None`，**严禁直接访问** `doc.styles['Normal'].element.rPr.rFonts`（必报 `AttributeError: 'NoneType' object has no attribute 'rFonts'`）！
-  - **标准全局设置方式**：必须先执行 `style.font.name = 'Microsoft YaHei'` 初始化底层属性，再设置 `style.element.get_or_add_rPr().get_or_add_rFonts().set(docx.oxml.ns.qn('w:eastAsia'), 'Microsoft YaHei')`；或者直接在段落/Run 级别设置 `run.font.name = 'Microsoft YaHei'`。
-- ✅ **输出位置**：生成或修改的文件必须保存至 `/workspace/<filename>.docx`。
+按用户任务目标严格选择对应路径，禁止无意义的手写底层拼装脚本：
+
+| 任务类型 | 首选路径 | 核心规范与工具 |
+| :--- | :--- | :--- |
+| **新建专业文档 / 报告 / 安装指南** | **路径一：`render_docx` 工具 (推荐优先)** | 提交连续 Markdown 正文与主题，底层引擎全自动应用排版系统，严禁手写数百行 python-docx 代码！ |
+| **视觉呈现与交付验收 (Visual Inspection)** | **页面预览图验收** | 渲染器自动生成 `.docx-preview/<name>/page-*.png`，使用 `vision_inspect` 检查排版质量。 |
+| **合同/文档审阅修订留痕 (Tracked Changes)** | **路径二：XML 红线留痕流水线** | `unzip` → `merge_runs.py` → 注入 `<w:ins>`/`<w:del>` → `zip` → `validate.py` 严格校验。 |
+| **向已有文档添加原生侧边批注 (Comments)** | **路径三：`add_comment.py` 一键注入** | 无需解包，直接调用脚本在段落或目标文字处注入侧边原生批注。 |
+| **基于既有模板占位符批量回填** | **路径四：模板占位符替换** | 针对企业已有 `{d.party_a}` 模板，执行快速安全文本置换。 |
 
 ---
 
-## 2. 场景一：合同/文档审阅修订留痕与批注注入 (Tracked Changes & Comments)
+## 2. 场景一：新建专业 Word 文档（高阶分层渲染）
+
+### 方式一：直接调用 `render_docx` 工具（强烈推荐）
+运行时提供了 `render_docx` 工具时，直接传入 Markdown 正文及目标路径。无需编写 Python 排版脚本：
+
+```json
+{
+  "name": "render_docx",
+  "arguments": {
+    "title": "DeepSeek Harness 安装与部署指南",
+    "subtitle": "企业级自动化平台环境准备与多环境实战手册",
+    "author": "Ops Automation Platform",
+    "theme": "tech-blue",
+    "output_path": "/workspace/DeepSeek_Harness_安装指南.docx",
+    "markdown": "# 概述\n\n本文档介绍 DeepSeek Harness 的安装与配置。\n\n> [!NOTE]\n> 安装前请确认系统已预装 Python 3.11 与 Node.js 20+。\n\n## 一、前置环境\n\n| 平台 | 最低配置 | 推荐环境 |\n| --- | --- | --- |\n| macOS | macOS 13+ | Apple Silicon (M系列) |\n| Linux | Ubuntu 22.04 | 4C 8G 内存 |\n\n## 二、安装命令\n\n```bash\nnpx @deepseek-ai/dsh web --port 8080\n```\n"
+  }
+}
+```
+
+### 方式二：无原生工具时调用 CLI 引擎
+若在纯 bash 命令行环境下，直接调用系统内置的固化生成器：
+```bash
+python3 /opt/dsh/skills/docx/scripts/generate_report_docx.py \
+  --input /workspace/content.md \
+  --output /workspace/output.docx \
+  --theme tech-blue \
+  --title "文档主标题" \
+  --preview-dir /workspace/.docx-preview/output
+```
+
+### 视觉主题配置 (`theme`)：
+- `tech-blue`（默认）：深科技蓝 (`#1E40AF`)，适合技术白皮书、架构设计、安装部署指南；
+- `business-navy`：商务灰蓝 (`#0F172A`)，适合工作汇报、管理方案、立项报告；
+- `elegant-teal`：雅致青绿 (`#0F766E`)，适合产品手册、调研总结、运营报告；
+- `crimson-red`：典雅朱红 (`#991B1B`)，适合正式通报、决议纪要、红头公文；
+- `modern-graphite`：现代冷灰 (`#18181B`)，适合极简设计、技术规范。
+
+---
+
+## 3. 页面呈现与视觉质检验收 (Visual Quality & Verification)
+
+参考 Anthropic 优秀验证范式，文档生成后应当进行真实视觉质检验收：
+
+1. **自动生成的高清预览**：
+   - 渲染器已集成 LibreOffice (`soffice`) 与 Poppler (`pdftoppm`)；
+   - 生成文档时会自动将各页导出至 `/workspace/.docx-preview/<文件名>/page-1.png`、`page-2.png` 等。
+2. **视觉抽检**：
+   - 可调用 `vision_inspect`（或 `inspect_image`）查看关键页面预览图，核对标题层次、表格排版与文字留白；
+   - 排版标准要求：
+     - **表格美化**：主题色深色表头，白色粗体字；交替行浅灰斑马纹；单元格具备防挤压内边距；
+     - **提示框（Callout）**：左侧 3pt 粗边条、浅色填充底色；支持 Note、Tip、Warning、Important；
+     - **代码块**：浅灰底色 `#F8FAFC`、等宽 `Consolas` 字体、浅边框，禁止溢出与换行错位；
+     - **字体统一**：中文字体统一采用 `微软雅黑`，英文字体统一采用 `Calibri`。
+
+---
+
+## 4. 场景二：合同/文档审阅修订留痕与批注注入 (Tracked Changes & Comments)
 
 对已有 `.docx` 进行专业合同审查、修改条款并留下 Word 原生红线修订与侧边批注时，提供两种使用方式：
 
@@ -70,14 +129,13 @@ python3 /opt/dsh/skills/docx/scripts/merge_runs.py /workspace/unpacked/
 python3 /opt/dsh/skills/docx/scripts/comment.py /workspace/unpacked/ "合规风险：违约金比例过高，建议下调至 20%" --author "AI法务审查员"
 
 # 4. 在 document.xml 中加入修订留痕 (Tracked Changes)
-#    - 插入文本: 使用 <w:ins w:id="1" w:author="AI法务审查员" w:date="2026-09-19T00:00:00Z"><w:r><w:t>新增文本</w:t></w:r></w:ins>
-#    - 删除文本: 使用 <w:del w:id="2" w:author="AI法务审查员" w:date="2026-09-19T00:00:00Z"><w:r><w:delText>被删除文本</w:delText></w:r></w:del>
+#    - 插入文本: 使用 <w:ins w:id="1" w:author="AI法务审查员" w:date="2026-10-29T00:00:00Z"><w:r><w:t>新增文本</w:t></w:r></w:ins>
+#    - 删除文本: 使用 <w:del w:id="2" w:author="AI法务审查员" w:date="2026-10-29T00:00:00Z"><w:r><w:delText>被删除文本</w:delText></w:r></w:del>
 
 # 5. 重新打包生成审查后文档
 (cd /workspace/unpacked && rm -f /workspace/reviewed.docx && zip -q -Xr /workspace/reviewed.docx .)
-```
 
-# 6. (可选) 验证生成的 docx 结构完整性
+# 6. 验证生成的 docx 结构完整性 (严格保证 XSD 校验通过)
 python3 /opt/dsh/skills/docx/scripts/office/validate.py /workspace/reviewed.docx --original /workspace/original.docx
 ```
 
@@ -88,9 +146,9 @@ python3 /opt/dsh/skills/docx/scripts/accept_changes.py /workspace/reviewed.docx 
 
 ---
 
-## 3. 场景二：基于模板替换占位符填充（如合同/服务规格书）
+## 5. 场景三：基于既有模板替换占位符填充
 
-当用户工作区已有模板文件（包含 `{d.contract.partyA_cn}` 等占位符时）：
+当用户工作区已有包含 `{d.party_a}` 等占位符的现有模板文件时：
 
 ```python
 #!/usr/bin/env python3
@@ -99,14 +157,10 @@ from docx import Document
 
 def fill_docx_placeholders(src_path, dst_path, replacements):
     doc = Document(src_path)
-    
-    # 替换段落中的占位符
     for p in doc.paragraphs:
         for k, v in replacements.items():
             if k in p.text:
                 p.text = p.text.replace(k, str(v))
-                
-    # 替换表格中的占位符
     for tbl in doc.tables:
         for row in tbl.rows:
             for cell in row.cells:
@@ -114,81 +168,6 @@ def fill_docx_placeholders(src_path, dst_path, replacements):
                     for k, v in replacements.items():
                         if k in p.text:
                             p.text = p.text.replace(k, str(v))
-                            
     doc.save(dst_path)
     print(f"SUCCESS: {dst_path}")
-```
-
----
-
-## 4. 场景三：从零创建专业排版 Word 文档/研究报告
-
-```python
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-import docx
-from docx.shared import Inches, Pt, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.oxml.ns import qn
-
-doc = docx.Document()
-
-# 1. 页面边距 (A4，标准 1 英寸)
-for s in doc.sections:
-    s.top_margin = Inches(1.0)
-    s.bottom_margin = Inches(1.0)
-    s.left_margin = Inches(1.0)
-    s.right_margin = Inches(1.0)
-
-# 2. 全局默认字体与样式初始化 (⚠️ 严禁直接访问 style.element.rPr.rFonts，先赋值 font.name 激活底层属性)
-style = doc.styles['Normal']
-style.font.name = 'Microsoft YaHei'
-style.element.get_or_add_rPr().get_or_add_rFonts().set(qn('w:eastAsia'), 'Microsoft YaHei')
-style.font.size = Pt(10.5)
-style.paragraph_format.line_spacing = 1.25
-
-# 3. 标题
-title_p = doc.add_paragraph()
-title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-run_title = title_p.add_run("企业级智能自动化平台设计报告")
-run_title.font.name = "Microsoft YaHei"
-run_title.font.size = Pt(20)
-run_title.font.bold = True
-run_title.font.color.rgb = RGBColor(0x1F, 0x4E, 0x79)
-title_p.paragraph_format.space_after = Pt(18)
-
-# 3. 结构化段落
-h1 = doc.add_heading(level=1)
-h1_run = h1.add_run("一、项目概述")
-h1_run.font.name = "Microsoft YaHei"
-h1_run.font.size = Pt(14)
-h1_run.font.bold = True
-h1.paragraph_format.space_before = Pt(12)
-h1.paragraph_format.space_after = Pt(6)
-
-p = doc.add_paragraph()
-p_run = p.add_run("本系统通过融合两阶段确定性规划与沙箱环境，为企业提供受控的高可用自动化执行能力。")
-p_run.font.name = "Microsoft YaHei"
-p_run.font.size = Pt(10.5)
-p.paragraph_format.line_spacing = 1.25
-p.paragraph_format.space_after = Pt(8)
-
-# 4. 表格
-tbl = doc.add_table(rows=1, cols=3)
-tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
-hdr_cells = tbl.rows[0].cells
-for i, title in enumerate(["模块", "状态", "SLA"]):
-    hdr_cells[i].text = title
-    hdr_cells[i].paragraphs[0].runs[0].font.name = "Microsoft YaHei"
-    hdr_cells[i].paragraphs[0].runs[0].font.bold = True
-
-for row in [("API网关", "Active", "99.99%"), ("执行沙箱", "Isolated", "99.95%")]:
-    r_cells = tbl.add_row().cells
-    for i, val in enumerate(row):
-        r_cells[i].text = val
-        r_cells[i].paragraphs[0].runs[0].font.name = "Microsoft YaHei"
-
-doc.save("/workspace/企业级智能自动化平台设计报告.docx")
-print("SUCCESS: /workspace/企业级智能自动化平台设计报告.docx")
 ```

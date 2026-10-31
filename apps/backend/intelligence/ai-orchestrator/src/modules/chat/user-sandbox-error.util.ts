@@ -59,6 +59,39 @@ export interface ClassifiedSandboxError {
 }
 
 /**
+ * 从沙箱错误日志中提取真实业务异常明细，避免误匹配 Traceback 堆栈源码中的行
+ */
+export function extractSandboxExecutionDetail(errMsg: string): string {
+  if (!errMsg) return '';
+
+  // 1. 优先提取标准 Harness 收尾行：[DeepSeek Harness 异常]: 执行异常: <detail>
+  const harnessMatch = errMsg.match(/\[DeepSeek Harness 异常\]:\s*执行异常:\s*([^\n\r]+)/);
+  if (harnessMatch?.[1]) {
+    return harnessMatch[1].trim();
+  }
+
+  // 2. 匹配所有 "执行异常:"，过滤掉包含 Python 源码特征的行，取最后一个真实的异常信息
+  const allMatches = Array.from(errMsg.matchAll(/(?:^|\n|\b)执行异常:\s*([^\n\r]+)/g));
+  if (allMatches.length > 0) {
+    for (let i = allMatches.length - 1; i >= 0; i--) {
+      const candidate = allMatches[i][1]?.trim();
+      if (
+        candidate &&
+        !candidate.includes('provenance') &&
+        !candidate.startsWith('f"') &&
+        !candidate.startsWith("f'") &&
+        !candidate.includes('_make_error')
+      ) {
+        return candidate;
+      }
+    }
+    return allMatches[allMatches.length - 1][1]?.trim() || errMsg;
+  }
+
+  return errMsg;
+}
+
+/**
  * 将个人沙箱执行期间抛出的异常分类为用户友好的结构化错误描述。
  * 若返回 null，表示属于基础设施未就绪类错误，可由调用方决定是否降级。
  */
@@ -156,8 +189,7 @@ export function classifyPersonalSandboxError(options: {
 
   // 4.0. 沙箱代码/工具级执行异常（优先于鉴权，防止日志正文业务字符如 FC34032 误判为鉴权失败）
   if (isSandboxExecutionError(errMsg)) {
-    const detailMatch = errMsg.match(/执行异常:\s*([^\n\r]+)/);
-    const detail = detailMatch?.[1] ? detailMatch[1].trim() : errMsg;
+    const detail = extractSandboxExecutionDetail(errMsg);
     return {
       friendlyError: `❌ 沙箱工具执行异常：${detail}。本次任务未能完成，请检查输入文件格式与参数要求。`,
       eventData: {

@@ -84,12 +84,15 @@ class ToolResult:
     def _error_result(
         cls,
         code: str,
-        message: str,
+        message: Optional[str] = None,
         data: Any = None,
         error_details: Optional[Dict[str, Any]] = None,
         provenance: Optional[Dict[str, Any]] = None,
         text: Optional[str] = None,
     ) -> "ToolResult":
+        if message is None:
+            message = code
+            code = "tool_error"
         err_dict = {"code": code, "message": message}
         if error_details:
             err_dict.update(error_details)

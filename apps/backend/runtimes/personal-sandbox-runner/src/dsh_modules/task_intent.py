@@ -8,8 +8,8 @@ PHYSICAL_EXPORT_RE = re.compile(
     r'(?:'
     r'导出|下载|保存为|保存到|落盘|写入|'
     r'(?:生成|制作|创建|输出|做个|做一份).*(?:文件|文档|报表|表格文件|excel|word|pdf|ppt|pptx|docx|xlsx|csv|html|markdown|\.md|\.txt|\.json)|'
-    r'(?:复制|生成|新建|创建|更新|添加|删除|移除|删掉).*(?:sheet|工作表|标签页|报表|表格|工作簿|预测|预实|快照)|'
-    r'(?:更新|修改|调整|刷新|填入|回填|覆盖|替换).*(?:预实|工数|表格|工作簿|sheet|工作表|预测|单元格|数据|数值)|'
+    r'(?:复制|生成|新建|创建|更新|添加|删除|移除|删掉).*(?:sheet|工作表|标签页|报表|表格|工作簿|预测|副本|快照)|'
+    r'(?:更新|修改|调整|刷新|填入|回填|覆盖|替换).*(?:表格|工作簿|sheet|工作表|预测|单元格|数据|数值|指标|明细)|'
     r'(?:将|把)\s*[A-Za-z0-9_]+\s*(?:改成|改为|替换为|换成)|'
     r'\.(?:xlsx|docx|pdf|pptx|csv|json|html|txt)\b|'
     r'(?:excel|word|pdf|ppt|pptx|docx|xlsx)\s*文件|'
@@ -29,11 +29,11 @@ VISUAL_EXPORT_RE = re.compile(
 
 SPREADSHEET_MUTATION_RE = re.compile(
     r'(?:'
-    r'(?:复制|生成|新建|创建|更新|添加|删除|移除|删掉).*(?:sheet|工作表|标签页|工作簿|预测|预实|快照)|'
+    r'(?:复制|生成|新建|创建|更新|添加|删除|移除|删掉).*(?:sheet|工作表|标签页|工作簿|预测|副本|快照)|'
     r'(?:将|把).*(?:sheet|工作表|标签页|工作簿|表格).*(?:删除|移除|删掉|清空)|'
-    r'(?:更新|修改|调整|刷新|填入|回填|覆盖|替换).*(?:预实|工数|表格|工作簿|sheet|工作表|预测|单元格|数据|数值)|'
+    r'(?:更新|修改|调整|刷新|填入|回填|覆盖|替换).*(?:表格|工作簿|sheet|工作表|预测|单元格|数据|数值|指标|明细)|'
     r'(?:将|把)\s*[A-Za-z0-9_]+\s*(?:改成|改为|替换为|换成)|'
-    r'(?:更新|回填|写入|填入)\s*到\s*[^，。\n]*(?:预测|计划|实绩|表格|sheet|工作表|单元格)'
+    r'(?:更新|回填|写入|填入)\s*到\s*[^，。\n]*(?:预测|计划|报表|表格|sheet|工作表|单元格)'
     r')',
     re.I
 )
@@ -137,7 +137,7 @@ def is_condition_replacement_or_refinement(request: str, users: list) -> bool:
     if re.search(r'^(?:再|另外|并且|而且|同时|接着|然后|顺便|重新|继续|修改为|改成|换成|改为|替换为|调整为)\b', req_str):
         return True
     if re.search(r'(?:只包含|仅包含|不包含|排除|只看|仅看|只要|只统计|重新按|替换为|改为|换成)', req_str):
-        if any(re.search(r'(?:包含|不包含|排除|按.*统计|金额|合计|明细|工数|数据|记录)', u) for u in users[-2:]):
+        if any(re.search(r'(?:包含|不包含|排除|按.*统计|金额|合计|明细|数值|数据|记录)', u) for u in users[-2:]):
             return True
 
     # 2. Lexical / character overlap with recent user turn
@@ -157,34 +157,58 @@ def is_condition_replacement_or_refinement(request: str, users: list) -> bool:
     return False
 
 
-INSTRUCTIONS = """仅根据用户当前请求和必要的用户历史提取任务契约，不考虑任何候选的默认行为。skill_names只提供可调用名称，帮助识别用户是否指定执行对象，不包含技能用途或规则。
-instruction_relation分析当前请求与历史对话的关系：
-- standalone：与前序对话无关联的全新独立任务（如提出完全不同的新业务领域、新问题、换了全新文件、或用户明确表示“开启新任务”）。独立任务的目标、范围与格式严格仅以当前请求为准，绝不继承历史对话中未重申的限定、条件或呈现格式（如历史上的“只要表格”、“无需解读”等修饰符已过期）。
-- followup：对上一轮任务或其结果的明确延续、追加筛选（如“再加个条件”、“只要大于100的”）、筛选条件替换或参数调整（如在同一分析中将“不包含”改为“只包含”、调整过滤前缀或阈值）、追问（“为什么是这个结果”）、纠错重试、或回答助手的确认追问（如补充字段、确认口径、确认区块映射或写入单位）。当用户在同一会话中针对相同文件、数据源或同一分析维度调整参数或替换筛选条件时，属于延续和修正前序任务，必须判定为 followup，绝不能判定为 standalone！若上一轮已明确交付形式（如柱状图、可视化看板、导出表格），且本轮用户未显式要求切换格式（如明确要求“不要图表”或“只在聊天中输出”），应延续交付形式（output_mode 为 artifact，artifact_types 继承对应类型如 ['.html']），按新条件重新计算生成交付物！回答助手的追问属于延续执行，task_mode 必须为 execute，绝不能标记为 consult！若用户明确表示“取消任务”、“请先暂停”、“不要修改”、“别动”、“算了”、“放弃”等终止/拒绝意愿，必须尊重用户意愿，task_mode 必须为 consult，output_mode 必须为 conversation，不得执行或导出！
-当前明确要求优先于历史。requirements逐项引用真实用户原话，记录目标、限制、条件和交付，不添加改进偏好。独立任务(standalone)的requirements只能引用当前请求中的原话，禁止从历史中拖拽已过期的修饰符。
-task_mode=consult 表示解释或讨论某项能力/技能本身（如“什么是工数”，“这个技能怎么用”），或用户要求取消、暂停、停止操作；凡是回答追问、提供业务字段、统计或实际完成任务的，一律为 execute！
-output_mode=conversation表示在对话中回答，含文字、Markdown表格、列出结果；若用户明确说明“不要导出文件”、“不生成文件”、“只在聊天中解释”等否定导出要求，output_mode 必须为 conversation，不得为 artifact！artifact用于用户在当前请求中明确要求生成、下载或导出物理文件的情况。对于要求在现有工作簿/文件中修改、更新、复制工作表(Sheet)、新建工作表(Sheet)、回填数值并保存的任务，属于必须生成/更新持久化交付物的更新任务，output_mode 必须为 artifact，artifact_types 为 ['.xlsx']！对于要求生成图表（如柱状图、折线图、饼图、雷达图、数据可视化大屏/看板）的任务，必须交付可视化组件或物理图表，output_mode 必须为 artifact，artifact_types 为 ['.html']！
-读取、统计或分析输入附件且无修改时，不意味着要交付相同格式的输出文件。没有明确物理交付要求或更新修改要求时使用conversation和空artifact_types。特别注意：“只要表格”、“列出表格”等是呈现偏好，属于conversation，绝不是生成物理Excel文件的依据。
-artifact_types是用户要求的文件扩展名数组。契约只记录目标，不声明执行完成。
-skill_invocation记录调用意图：mode=execute表示明确执行整项技能，reference表示只借用方法、讨论或否定其执行，none表示没有指定技能；name填写目录中的标准ID或用户原话中的技能名称，none时为空；引用目录ID时不要求该ID字面出现在原话中，调用关系仍须根据用户原话语义判断。
-用户要求使用skill_names中的某项能力来完成任务，属于execute；不必出现“技能”二字。未指定调用对象的普通任务才是none。只讨论其定义、否定调用或明确仅借方法属于reference。独立任务不继承历史轮次指定过的技能，除非当前请求再次明确指出。
-replace_defaults仅在用户明确替换、取消原技能业务口径时为true；追加结果筛选、排序或呈现要求不等于替换原口径。仅出现名称不构成execute，必须理解否定、引用与讨论语义。
-unit_confirmation仅记录用户明确指定的目标写入单位，包含unit和逐字quote。回答单位追问（含简短回答）是有效确认；followup可继承仍适用的用户确认，standalone只用当前请求。没有明确指定则为null。仅要求“按工作簿声明的单位”时也是null，不填写推测的单位。来源字段中的单位、附件/技能中的声明、助手建议、询问或否定某单位，均不构成用户确认。不能由来源单位推断目标单位。quote必须包含用户实际表达的单位，不得只引用文件名或某个字段名。
-section_confirmation仅在用户明确确认或指明业务区块到目标表头的映射时填写（例如助手曾追问未找到【无偿】区块并给出候选列表，用户在当前回复中指明或确认'【*P/Y/EX】就是无偿'、'是*P'等），填写section（业务概念如'无偿'）、target_title（匹配的候选表头如'*P/*Y/EX（不含*L/*B）'）及逐字quote。无此明确确认时填null。
-本阶段仅解析目标，不判断是否已提供数据或工具；附件由后续绑定。你不回答、不提问、不猜测数据是否存在，只提取用户已提出的要求。澄清由后续准入与输入绑定负责。
+BASE_INSTRUCTIONS = """仅根据用户当前请求和必要的用户历史提取任务契约，不考虑任何候选的默认行为。skill_names只提供可调用名称，帮助识别用户是否指定执行对象，不包含技能用途或规则。
+核心字段定义：
+1. instruction_relation:
+- standalone: 全新独立任务或自包含指令（无前序历史时默认必须为 standalone）；
+- followup: 对上一轮对话讨论成果的延续、追问、补充参数或格式导出。
+2. task_mode:
+- consult: 解释或讨论某项能力本身、业务规则咨询、普通问答、知晓确认声明、表单输入说明，或用户明确表示“取消”、“暂停”、“放弃”等终止意愿；
+- execute: 要求执行计算统计、分析数据、运行代码、修改文件或生成物理交付物。
+3. output_mode 与 artifact_types:
+- conversation: 在对话中回答，含文字、Markdown表格、列出结果；若用户未明确要求导出/下载/生成物理文件，或用户说明“不要导出”，必须为 conversation 且 artifact_types 为空[]。严禁在没有明确文件交付指令时随意猜测 output_mode=artifact。“只要表格”、“列出表格”等是呈现偏好，属于 conversation。
+- artifact: 仅当用户在当前请求中【字面上明确出现】生成、下载或导出物理文件（如“导出excel”、“生成word/文档”、“做成pdf”、“下载”等包含具体文件输出动词）时使用！若用户仅仅是提交一段文字、表单内容、会议决议知晓声明、咨询讨论，哪怕文中包含《决议》等文档名称，也绝不能脑补或猜测 output_mode 为 artifact，必须严格使用 conversation 与 consult！artifact_types 为对应的扩展名列表（如 ['.docx']）。
+4. skill_invocation:
+- mode: execute(明确要求使用某项能力完成任务), reference(仅讨论定义或借用方法), none(未指定特定技能);
+- name: 填写标准ID或用户原话技能名称，none时为空字符串;
+- replace_defaults: 仅在明确替换或取消原业务口径时为true。
+5. requirements: 逐项引用真实用户原话，记录目标、限制、条件和交付，不添加偏好。独立任务(standalone)的 requirements 只能引用当前请求中的原话，禁止从历史中拖拽已过期的修饰符。
 只返回结构化字段，不输出解释或推理。"""
 
+ATTACHMENT_SPREADSHEET_BLOCK = """【数据与表格附件处理】
+- attachment_profiles 包含前置物理探针扫描出的附件事实（真实列名、工作表名、检测领域）。若用户指令中的概念或字段与真实表头吻合，确认为针对已有附件的统计、分析或更新，严禁凭空盲猜。
+- 对于要求在现有工作簿/文件中修改、更新、复制工作表(Sheet)、新建工作表(Sheet)、回填数值并保存的任务，属于必须生成/更新持久化交付物的更新任务，output_mode 必须为 artifact，artifact_types 为 ['.xlsx']！对于要求生成图表（如柱状图、折线图、饼图、雷达图、数据可视化大屏/看板）的任务，必须交付可视化组件或物理图表，output_mode 必须为 artifact，artifact_types 为 ['.html']！
+- unit_confirmation: 仅记录用户明确指定的目标写入单位（如元、万元、小时、h等）与逐字quote。回答单位追问是有效确认；无明确指定则为null，禁止从来源单位推断。
+- section_confirmation: 仅在用户明确确认或指明业务概念到目标表头的映射时填写（例如指明某业务区块对应候选表头），包含section、target_title及逐字quote，无明确确认则为null。"""
 
-REVIEW_INSTRUCTIONS = """
-本轮是独立复核：先从原始用户请求重新检查目标、禁止事项、交付方式和技能调用，再审查proposed_contract。
+MULTITURN_FOLLOWUP_BLOCK = """【多轮上下文与延续规则】
+instruction_relation分析当前请求与历史对话的关系：
+- standalone: 与前序对话无关联的全新独立任务（如提出完全不同的新业务领域、新问题、换了全新文件、或用户明确表示“开启新任务”）。独立任务的目标、范围与格式严格仅以当前请求为准，绝不继承历史对话中未重申的限定、条件或呈现格式（如历史上的“只要表格”、“无需解读”等修饰符已过期）。
+- followup: 对上一轮任务或其结果的明确延续、追加筛选（如“再加个条件”、“只要大于100的”）、筛选条件替换或参数调整（如在同一分析中将“不包含”改为“只包含”、调整过滤前缀或阈值）、追问（“为什么是这个结果”）、纠错重试、回答助手的确认追问（如补充字段、确认口径、确认区块映射或写入单位），以及【成果固化与格式导出】（当用户要求将上一轮助手的对话回答、分析结论、知识问答、梳理要点或功能清单整理、排版、导出为指定格式文件时，如“生成一份word的指南”、“做成pdf”、“导出为excel表格”、“输出成word文档”、“整理成文档发我”，属于对前序内容的格式转换与成果交付，必须判定为 followup，task_mode 为 execute，output_mode 为 artifact，正文内容严格来源于上一轮对话讨论成果，绝不能判定为 standalone 去从零构思全新不相干内容！）。当用户在同一会话中针对相同文件、数据源或同一分析维度调整参数或替换筛选条件时，属于延续和修正前序任务，必须判定为 followup，绝不能判定为 standalone！若上一轮已明确交付形式（如柱状图、可视化看板、导出表格），且本轮用户未显式要求切换格式（如明确要求“不要图表”或“只在聊天中输出”），应延续交付形式（output_mode 为 artifact，artifact_types 继承对应类型如 ['.html']），按新条件重新计算生成交付物！回答助手的追问属于延续执行，task_mode 必须为 execute，绝不能标记为 consult！若用户明确表示“取消任务”、“请先暂停”、“不要修改”、“别动”、“算了”、“放弃”等终止/拒绝意愿，必须尊重用户意愿，task_mode 必须为 consult，output_mode 必须为 conversation，不得执行或导出！"""
+
+REVIEW_BLOCK = """本轮是独立复核：先从原始用户请求重新检查目标、禁止事项、交付方式和技能调用，再审查proposed_contract。
 独立核对unit_confirmation的目标含义及用户原话；不能把来源单位、询问、否定或助手建议当作确认，也不能丢弃用户对单位追问的简短回答。
-独立核对section_confirmation：若用户当前请求是在回答助手关于区块映射的澄清追问（如【无偿】对应哪个候选表头），必须保留section_confirmation并将task_mode设为execute、instruction_relation设为followup。若用户明确表示“取消”、“暂停”、“放弃”等终止意愿，必须修正为 consult 与 conversation，绝不强制执行。
+独立核对section_confirmation：若用户当前请求是在回答助手关于区块映射的澄清追问（如业务概念对应哪个候选表头），必须保留section_confirmation并将task_mode设为execute、instruction_relation设为followup。若用户明确表示“取消”、“暂停”、“放弃”等终止意愿，必须修正为 consult 与 conversation，绝不强制执行。
 初稿可能有遗漏或扩大范围，不能因为结构有效就照抄。返回经过修正的完整任务契约，不输出审核说明。
 特别检查：
 1. 交付形式：对话中的表格是一种呈现形式，不等于Excel文件；只有当前请求中明确出现物理文件交付/导出/下载请求，或要求复制Sheet/新建Sheet/更新回填工作簿时才保留artifact。严禁把普通的“只要表格”当成.xlsx文件。若用户明确说明“不要导出文件”、“不生成文件”、“只在聊天中解释”，必须修正为 conversation 且 artifact_types 为空[]。
-2. 历史隔离与延续：若指令是独立任务(standalone)，绝不能继承前序轮次已过期的格式要求（如“只要表格，无需解读”），requirements必须只来自本轮请求。未在本轮明确要求物理导出或工作簿更新的独立任务，output_mode必须修正为conversation且artifact_types为空[]。但若用户在同一分析任务中微调参数或替换筛选条件（如“不包含”改为“只包含”），必须修正为 followup 并延续图表/文件交付物要求，绝不能误判为 standalone 导致图表交付丢失。
-保留否定限制，完整技能调用不能漏掉；追加结果筛选不是取消原规则。仅讨论或只借用方法不能升级成执行授权。
-"""
+2. 历史隔离与延续：若指令是独立任务(standalone)，绝不能继承前序轮次已过期的格式要求（如“只要表格，无需解读”），requirements必须只来自本轮请求。未在本轮明确要求物理导出或工作簿更新的独立任务，output_mode必须修正为conversation且artifact_types为空[]。但若用户在同一分析任务中微调参数或替换筛选条件（如“不包含”改为“只包含”），或者要求将上一轮助手的回答/分析结果导出/排版为文档（如“生成一份word的指南”、“导出为pdf”），必须修正为 followup 并设定 artifact 交付物要求，绝不能误判为 standalone 导致上下文丢失或从零重写无关内容。
+保留否定限制，完整技能调用不能漏掉；追加结果筛选不是取消原规则。仅讨论或只借用方法不能升级成执行授权。"""
+
+
+def build_intent_instructions(attachment_profiles=None, users=None, is_review=False):
+    blocks = [BASE_INSTRUCTIONS]
+    if attachment_profiles:
+        blocks.append(ATTACHMENT_SPREADSHEET_BLOCK)
+    if users:
+        blocks.append(MULTITURN_FOLLOWUP_BLOCK)
+    if is_review:
+        blocks.append(REVIEW_BLOCK)
+    return "\n\n".join(blocks)
+
+
+INSTRUCTIONS = build_intent_instructions(attachment_profiles=True, users=['prior'], is_review=False)
+REVIEW_INSTRUCTIONS = REVIEW_BLOCK
 
 
 def intent_tool(skill_names=None):
@@ -211,12 +235,19 @@ def intent_tool(skill_names=None):
             'required': ['instruction_relation', 'task_mode', 'output_mode', 'artifact_types', 'unit_confirmation', 'skill_invocation', 'requirements']}}}
 
 
-def extract_task_intent(request, users, model, policy, telemetry, deadline, input_count=0, skill_names=None, history=None):
+def extract_task_intent(request, users, model, policy, telemetry, deadline, input_count=0, skill_names=None, history=None, attachment_profiles=None):
     # Ground possible identities before semantic classification. A mention is
     # eligible for review, never automatic execution or acceptance of rules.
-    skill_names = [record for record in (skill_names or []) if any(
-        ground_user_quote(name, [request, *users]) is not None
-        for name in [record['id'], record.get('name', ''), *record.get('aliases', [])])]
+    # Check both identifier/aliases and declared triggers for personal skills grounding.
+    matched_skills = []
+    for record in (skill_names or []):
+        names_to_check = [record.get('id', ''), record.get('name', ''), *record.get('aliases', [])]
+        triggers_to_check = record.get('triggers', [])
+        if any(ground_user_quote(name, [request, *users]) is not None for name in names_to_check if name):
+            matched_skills.append(record)
+        elif any(ground_user_quote(trig, [request, *users]) is not None for trig in triggers_to_check if trig):
+            matched_skills.append(record)
+    skill_names = matched_skills
 
     # Extract recent dialogue (both user and assistant) so LLM has context of prior questions
     recent_dialogue = []
@@ -227,6 +258,9 @@ def extract_task_intent(request, users, model, policy, telemetry, deadline, inpu
                 c = clean_dialogue_content(role, msg.get('content', ''))
                 if c:
                     recent_dialogue.append({'role': role, 'content': c})
+
+    # Dynamically assemble minimal instructions based on attachment presence and multi-turn state
+    instructions = build_intent_instructions(attachment_profiles, users, is_review=False)
 
     feedback = None
     for attempt in range(2):
@@ -240,25 +274,46 @@ def extract_task_intent(request, users, model, policy, telemetry, deadline, inpu
             }
             if recent_dialogue:
                 payload['recent_dialogue'] = recent_dialogue
-            result = structured_decision(INSTRUCTIONS, payload,
+            if attachment_profiles:
+                payload['attachment_profiles'] = attachment_profiles
+            result = structured_decision(instructions, payload,
                 intent_tool(skill_names), model, policy, telemetry, deadline, 'task_intent', max_tokens=900)
             result = validate_intent(result, request, users, skill_names, allow_sanitize=attempt > 0, history=history)
-            reviewed_payload = {
-                'request': request,
-                'user_history': users,
-                'input_count': input_count,
-                'skill_names': skill_names,
-                'proposed_contract': result
-            }
-            if recent_dialogue:
-                reviewed_payload['recent_dialogue'] = recent_dialogue
-            reviewed = structured_decision(INSTRUCTIONS + REVIEW_INSTRUCTIONS,
-                reviewed_payload, intent_tool(skill_names),
-                model, policy, telemetry, deadline, 'task_intent_review', max_tokens=900)
-            reviewed = validate_intent(reviewed, request, users, skill_names, allow_sanitize=True, history=history)
-            telemetry.record_guard('task_intent_review', 'accept' if reviewed == result else 'revise',
-                {'output_mode': reviewed['output_mode'], 'task_mode': reviewed['task_mode']})
-            result = reviewed
+
+            # Fast-Path Gating: Pure text/consultation requests with no attachments, no files, no skills,
+            # and no pending confirmations can safely bypass the second-round review to save latency and tokens.
+            can_fast_path = (
+                not attachment_profiles and input_count == 0
+                and result.get('task_mode') == 'consult'
+                and result.get('output_mode') == 'conversation'
+                and (not result.get('skill_invocation') or result['skill_invocation'].get('mode') == 'none')
+                and not result.get('unit_confirmation')
+                and not result.get('section_confirmation')
+            )
+
+            if not can_fast_path:
+                review_instructions = build_intent_instructions(attachment_profiles, users, is_review=True)
+                reviewed_payload = {
+                    'request': request,
+                    'user_history': users,
+                    'input_count': input_count,
+                    'skill_names': skill_names,
+                    'proposed_contract': result
+                }
+                if recent_dialogue:
+                    reviewed_payload['recent_dialogue'] = recent_dialogue
+                if attachment_profiles:
+                    reviewed_payload['attachment_profiles'] = attachment_profiles
+                reviewed = structured_decision(review_instructions,
+                    reviewed_payload, intent_tool(skill_names),
+                    model, policy, telemetry, deadline, 'task_intent_review', max_tokens=900)
+                reviewed = validate_intent(reviewed, request, users, skill_names, allow_sanitize=True, history=history)
+                telemetry.record_guard('task_intent_review', 'accept' if reviewed == result else 'revise',
+                    {'output_mode': reviewed['output_mode'], 'task_mode': reviewed['task_mode']})
+                result = reviewed
+            else:
+                telemetry.record_guard('task_intent_review', 'fast_path_accepted',
+                    {'output_mode': result['output_mode'], 'task_mode': result['task_mode']})
 
             # 取消/中止意图保全：用户明确叫停时严格保持 consult 与 conversation
             if is_cancellation_or_abort(request):
@@ -401,10 +456,10 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
                 result['artifact_types'].append('.xlsx')
 
     # Enforce followup and deliverable inheritance when continuing or replacing criteria of previous analysis,
-    # or when issuing a pure file export command referencing previous conversational findings/results
+    # or when issuing a file export/solidification command referencing previous conversational findings/results
     req_str = request.strip()
     is_pure_export = bool(users) and bool(re.search(
-        r'^(?:生成|导出|制作|做成|转成|输出|保存为|转为|转换成|发我|下载)\s*(?:一份|一个|成|为)?\s*(?:可下载的)?\s*(?:pdf|word|excel|ppt|docx|xlsx|pptx|html|表格|文档|文件|报告)\s*(?:文件|文档|表格|演示文稿|报告)?$',
+        r'^(?:生成|导出|制作|做成|转成|输出|保存为|转为|转换成|整理成|整理为|发我|下载)\s*(?:一份|一个|成|为)?\s*(?:可下载的)?\s*(?:pdf|word|excel|ppt|docx|xlsx|pptx|html|表格|文档|文件|报告|图表|数据|内容|结果|清单|指南|手册|材料|说明)\s*(?:格式)?\s*(?:的)?\s*(?:文件|文档|表格|演示文稿|报告|指南|手册|说明|材料|清单|页面)?$',
         req_str, re.I
     ))
     is_continuation = not is_abort and not is_prev_stopped and not is_verbatim_reply and bool(users) and (
@@ -425,6 +480,12 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
                 result['artifact_types'] = ['.xlsx']
             elif not any(t.lower().endswith(('.xlsx', '.xlsm', '.csv')) for t in result['artifact_types']):
                 result['artifact_types'].append('.xlsx')
+        elif is_pure_export and not is_physical_export_negated(request):
+            from .output_format_contract import requested_output_formats
+            fmts = requested_output_formats(request, users, 'followup')
+            if fmts:
+                result['output_mode'] = 'artifact'
+                result['artifact_types'] = fmts
 
     relation = result.setdefault('instruction_relation', 'standalone')
     if relation not in {'standalone', 'followup'}:
