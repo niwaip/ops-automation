@@ -162,6 +162,7 @@ export class UserSandboxController {
       waitTimeoutSeconds: dto.waitTimeoutSeconds,
       thinking: dto.thinking,
       reasoningEffort: dto.reasoningEffort,
+      customEnv: dto.customEnv,
     });
   }
 
@@ -218,6 +219,7 @@ export class UserSandboxController {
         waitTimeoutSeconds: dto.waitTimeoutSeconds,
         thinking: dto.thinking,
         reasoningEffort: dto.reasoningEffort,
+        customEnv: dto.customEnv,
         signal: abortController?.signal,
         onLockAcquired: () => {
           if (isClientClosed || abortController?.signal?.aborted) {

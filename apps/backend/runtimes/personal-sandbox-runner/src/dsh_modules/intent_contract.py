@@ -214,7 +214,8 @@ def extract_source_and_target_artifacts(
     target_formats: List[str] = []
     target_files: List[str] = []
 
-    lower = query.lower()
+    query_clean = re.sub(r'https?://[^\s]+', '', query)
+    lower = query_clean.lower()
     INSPECT_SOURCE_PREFIXES = r'(?:读取|基于|根据|来自|从|查看|输入|将|把|上传的|附件|核对|阅读|总结|分析|检查|审阅|提取|抽取|对账|看下|看一下|看看)'
 
     TARGET_GENERATION_PREFIXES = r'(?:命名为|保存为|另存为|导出为|生成|制作|编写|创建|输出为|名称为|做成|另存|写成|转为|转成|转换为|转换成)'
@@ -222,13 +223,13 @@ def extract_source_and_target_artifacts(
     # 1. 提取所有带引号的文件名并根据前缀分配给 source 或 target
     quoted_matches = list(re.finditer(
         r'[\"“\'‘`「]([^\"”\'’`」]+\.(?:docx?|xlsx?|csv|pdf|txt|md|pptx?|json|sh|sql|py))[\"”\'’`」]',
-        query,
+        query_clean,
         re.I
     ))
     for qm in quoted_matches:
         fn = qm.group(1).strip()
         start = qm.start()
-        prefix = query[max(0, start - 20):start].lower()
+        prefix = query_clean[max(0, start - 20):start].lower()
         ext = "." + fn.rsplit(".", 1)[-1]
         ext_lower = ext.lower()
         if re.search(r"(?:命名为|保存为|另存为|导出为|生成|编写|创建|输出为|名称为)\s*$", prefix):
@@ -246,7 +247,7 @@ def extract_source_and_target_artifacts(
                     target_formats.append(ext_lower)
 
     # 2. 按标点与连词切分分句，提取未带引号的源文件与目标文件
-    clauses = re.split(r'[，。！？；;,\n]+|(?:并|且|再|然后)', query)
+    clauses = re.split(r'[，。！？；;,\n]+|(?:并|且|再|然后)', query_clean)
     valid_exts = {".docx", ".doc", ".xlsx", ".xls", ".csv", ".pdf", ".txt", ".md", ".pptx", ".ppt", ".json", ".sh", ".sql", ".py"}
 
     for c in clauses:

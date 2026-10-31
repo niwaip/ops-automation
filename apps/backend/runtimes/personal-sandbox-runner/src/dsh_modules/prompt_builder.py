@@ -190,6 +190,7 @@ def build_user_turn(
     is_inspect_intent: bool = False,
     is_generate_intent: bool = False,
     is_guide_intent: bool = False,
+    is_weather_intent: Optional[bool] = None,
     existing_history: Optional[List[dict]] = None,
     max_skill_chars: int = 5000,
     timestamp_str: Optional[str] = None,
@@ -241,6 +242,8 @@ def build_user_turn(
                 "日志", "配置", "表格", "明细", "对账", "勾稽", "稽核", "核查", "验算", "文件"
             ])
             or (session_files and not is_search_intent)
+            or re.search(r'https?://[^\s]+', prompt)
+            or any(k in prompt.lower() for k in ["打开", "查看", "看下", "阅读", "主要内容", "内容"])
         )
         if has_inspectable_context:
             user_parts.append(
@@ -390,10 +393,16 @@ def build_user_turn(
                 "- 【落盘要求】：请直接在回复中以完整的 ```html\n<!DOCTYPE html>...\n``` 代码块输出单页报告源码，或调用 bash 写入 `/workspace/index.html` 完成落盘。"
             )
 
-    effective_is_docx = is_docx_intent or any(
-        k in prompt.lower() for k in ["批注", "添加批注", "加批注", "审阅", "审查", "合同审阅", "合同审查", "修订留痕", "word批注"]
+    prompt_no_urls = re.sub(r'https?://[^\s]+', '', prompt)
+    prompt_no_urls_lower = prompt_no_urls.lower()
+
+    effective_is_docx = (
+        (is_docx_intent and not (is_inspect_intent and not is_generate_intent))
+        or any(
+            k in prompt_no_urls_lower for k in ["批注", "添加批注", "加批注", "合同审阅", "合同审查", "修订留痕", "word批注"]
+        )
     )
-    if effective_is_docx:
+    if effective_is_docx and "bash" in (available_tool_names or []) and not (is_inspect_intent and not is_generate_intent):
         user_parts.append(
             "【Word/合同审阅与批注硬性执行要求】:\n"
             "- 沙箱预置了高精度 Word 批注与修订脚本 `/opt/dsh/skills/docx/scripts/add_comment.py`（基于原生 OpenXML 注入，支持自动拆分 text run 与精准锚定）。\n"
@@ -403,8 +412,8 @@ def build_user_turn(
         )
 
     effective_is_pdf = (
-        is_office_intent and any(k in prompt.lower() for k in ["pdf", "导出pdf", "生成pdf", "pdf报告"])
-    ) or any(k in prompt.lower() for k in ["pdf", "导出pdf", "生成pdf", "pdf报表", "转成pdf", "转为pdf"])
+        is_office_intent and any(k in prompt_no_urls_lower for k in ["pdf", "导出pdf", "生成pdf", "pdf报告"])
+    ) or any(k in prompt_no_urls_lower for k in ["pdf", "导出pdf", "生成pdf", "pdf报表", "转成pdf", "转为pdf"])
 
     if effective_is_pdf and not is_guide_intent and not (is_inspect_intent and not is_generate_intent):
         from .pdf_prompt import pdf_execution_guidance
@@ -415,8 +424,8 @@ def build_user_turn(
         has_update_tools
         or (
             (
-                (is_office_intent and any(k in prompt.lower() for k in ["excel", "xlsx", "表格", "表单", "算式"]))
-                or any(k in prompt.lower() for k in ["excel", "xlsx", "做个表", "生成excel", "导出excel"])
+                (is_office_intent and any(k in prompt_no_urls_lower for k in ["excel", "xlsx", "表格", "表单", "算式"]))
+                or any(k in prompt_no_urls_lower for k in ["excel", "xlsx", "做个表", "生成excel", "导出excel"])
             ) and (is_generate_intent or not is_inspect_intent)
         )
     )
@@ -436,12 +445,12 @@ def build_user_turn(
             )
 
     effective_is_pptx = (
-        is_ppt_intent
-        or (is_office_intent and any(k in prompt.lower() for k in ["ppt", "pptx", "幻灯片", "演示文稿", "deck"]))
-        or any(k in prompt.lower() for k in ["ppt", "pptx", "幻灯片", "做个ppt", "生成ppt", "竞选ppt"])
+        (is_ppt_intent and not (is_inspect_intent and not is_generate_intent))
+        or (is_office_intent and any(k in prompt_no_urls_lower for k in ["ppt", "pptx", "幻灯片", "演示文稿", "deck"]) and not (is_inspect_intent and not is_generate_intent))
+        or any(k in prompt_no_urls_lower for k in ["做个ppt", "生成ppt", "竞选ppt"])
     )
 
-    if effective_is_pptx and "bash" in (available_tool_names or []):
+    if effective_is_pptx and "bash" in (available_tool_names or []) and not (is_inspect_intent and not is_generate_intent):
         user_parts.append(
             "【PPTX 幻灯片演示文稿生成硬性执行要求 (Action Grounding)】:\n"
             "- 【预装环境与严禁 pip】：沙箱系统已在全局预装 `python-pptx`（版本 1.0.2），严禁调用 `pip install` 重复安装！直接在 Python 脚本中 `from pptx import Presentation` 即可使用。\n"
@@ -468,7 +477,9 @@ def build_user_turn(
                           + "。本轮仅可调用这些工具；技能文档中的其他运行方式不构成本轮能力授权。")
 
     if is_send_intent:
-        user_parts.append("[Delivery Intent]: 检测到用户要求通过即时通讯通道接收文件。请使用 `send_file` 工具将对应文件推送给用户。")
+        has_send_tool = bool(available_tool_names is None or any(t in available_tool_names for t in ["send_file", "send_file_to_user"]))
+        if has_send_tool:
+            user_parts.append("[Delivery Intent]: 检测到用户要求通过即时通讯通道接收文件。请使用 `send_file` 工具将对应文件推送给用户。")
 
     if is_research_intent:
         research_directives = [
@@ -511,35 +522,44 @@ def build_user_turn(
                 "- 已被正文直接确认的插件才可放入紧凑表格（名称/用途/来源/可信度）；没有可确认具体插件时，就明确说明并只给出官方入口和社区目录。\n"
                 "- 删除 README 提交片段、HTML 噪声和被截断的句子；不复述内部检索过程。"
             )
-    elif is_search_intent or bool(re.search(r'(?:今天|今日|最新|近期|最近|实时|赛程|赛事|比赛|热点|热搜|行情|资讯|新闻|202\d)', prompt)):
-        user_parts.append(
-            "[Live Information Retrieval Directive]:\n"
-            "- 检测到时效性、最新动态或外部实时资讯需求。\n"
-            "- 沙箱本地仅为执行环境，并不包含外部世界的最新情报与动态。你的可用工具包含 `web_search` 与 `fetch_page`。\n"
-            "- 严禁以‘知识库截止’、‘无法访问未来/实时数据’或‘工具受限’为由推诿或直接凭空推断！\n"
-            "- 必须主动调用 `web_search` 检索真实的最新动态或客观事实，再基于搜索结果给出带事实依据的回答。"
-        )
+    elif is_search_intent:
+        has_search_tool = bool(available_tool_names is None or any(t in available_tool_names for t in ["web_search", "search_web"]))
+        if has_search_tool:
+            user_parts.append(
+                "[Live Information Retrieval Directive]:\n"
+                "- 检测到时效性、最新动态或外部实时资讯需求。\n"
+                "- 沙箱本地仅为执行环境，并不包含外部世界的最新情报与动态。你的可用工具包含 `web_search` 与 `fetch_page`。\n"
+                "- 严禁以‘知识库截止’、‘无法访问未来/实时数据’或‘工具受限’为由推诿或直接凭空推断！\n"
+                "- 必须主动调用 `web_search` 检索真实的最新动态或客观事实，再基于搜索结果给出带事实依据的回答。"
+            )
 
-    is_weather_intent = bool(re.search(r'(天气|气象|气温|温度|下雨|降雨|暴雨|晴天|预报|几度|转晴|多云)', prompt))
-    if is_weather_intent:
+    effective_is_weather = is_weather_intent
+    if effective_is_weather is None:
+        try:
+            from .tool_routing import is_weather_inquiry
+            effective_is_weather = is_weather_inquiry(prompt)
+        except Exception:
+            effective_is_weather = bool(re.search(r'(天气|气象|气温|温度|下雨|降雨|暴雨|晴天|预报|几度|转晴|多云)', prompt))
+
+    if effective_is_weather and (available_tool_names is None or "weather" in available_tool_names):
         user_parts.append(
             "【Weather】调用 `weather` 获取实时数据后简洁回答；不得凭记忆编造。"
         )
 
-    if re.search(r'(?:\.md\b|\bmarkdown\b|(?:md|markdown)\s*(?:格式)?\s*文件)', prompt, re.I):
+    if (
+        "write_markdown" in (available_tool_names or [])
+        and not (is_inspect_intent and not is_generate_intent)
+        and re.search(r'(?:\.md\b|\bmarkdown\b|(?:md|markdown)\s*(?:格式)?\s*文件)', prompt_no_urls, re.I)
+    ):
         user_parts.append(
             "【Markdown Deliverable】调用 `write_markdown` 生成真实、非空的 `.md` 文件；成功后只给简短说明，不展示工具 JSON。"
         )
 
-    reminder_keywords = ["提醒我", "设个提醒", "设置提醒", "建个提醒", "加到提醒", "定个提醒", "定闹钟", "到点提醒", "提醒观看", "比赛提醒", "会议提醒", "定时提醒"]
-    is_create_reminder = bool(
-        any(k in prompt for k in reminder_keywords) or
-        re.search(r'(提醒我|设[个一]?提醒|设置提醒|建[个一]?提醒|加[入到]提醒|定[个一]?提醒|定[个一]?闹钟|设[个一]?闹钟|到点提醒|到时间提醒|定时提醒|比赛提醒|会议提醒)', prompt) or
-        (re.search(r'(\d+[点时分秒号日]|明天|后天|下周|今晚|早上|中午|下午|晚上).*(提醒|闹钟)', prompt) and not re.search(r'(查看|查询|列出|有哪些|有没有|删除|取消|修改)', prompt))
-    )
-    if is_create_reminder:
-        has_time = bool(re.search(r'(\d+\s*[点时分秒号日周天月年]|明天|后天|大后天|下周|今晚|早上|中午|下午|晚上|半小时|一小时|\d+\s*小时后|\d+\s*分钟后|工作日|每天|每周|每月|准时|到点)', prompt))
-        if has_time:
+    from .action_protocol import has_explicit_reminder_intent, has_explicit_reminder_time
+    is_create_reminder = has_explicit_reminder_intent(prompt)
+    has_reminder_tool = bool(available_tool_names is None or any(t in available_tool_names for t in ["create_reminders", "create_reminder", "set_reminder"]))
+    if is_create_reminder and has_reminder_tool:
+        if has_explicit_reminder_time(prompt):
             user_parts.append(
                 "【Reminder】按下方当前时间把用户给出的时间换算为 ISO 8601，调用 `create_reminders`；仅在工具成功后确认。"
             )

@@ -1,10 +1,11 @@
-import { MessageOutlined, MailOutlined, SettingOutlined, KeyOutlined } from '@ant-design/icons';
+import { MessageOutlined, MailOutlined, SettingOutlined, KeyOutlined, BankOutlined } from '@ant-design/icons';
 import { Alert, Button, Space, Tabs, Typography } from 'antd';
 import { Component, Suspense, lazy, useMemo, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 const ImChannelsPage = lazy(() => import('../../im-channels/pages/ImChannelsPage'));
 const UserEmailSettingsPage = lazy(() => import('../../email/pages/UserEmailSettingsPage'));
+const PersonalApiKeyPanel = lazy(() => import('../components/PersonalApiKeyPanel'));
 const UserCredentialVaultPanel = lazy(() => import('../components/UserCredentialVaultPanel'));
 
 const { Title, Text } = Typography;
@@ -57,7 +58,14 @@ class TabErrorBoundary extends Component<TabErrorBoundaryProps, TabErrorBoundary
 export function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab');
-  const activeKey = rawTab === 'credentials' ? 'credentials' : rawTab === 'email' ? 'email' : 'im';
+  const activeKey =
+    rawTab === 'work'
+      ? 'work'
+      : rawTab === 'im'
+      ? 'im'
+      : rawTab === 'email'
+      ? 'email'
+      : 'personal';
 
   const handleTabChange = (key: string) => {
     setSearchParams({ tab: key });
@@ -66,11 +74,27 @@ export function SettingsPage() {
   const tabItems = useMemo(
     () => [
       {
-        key: 'credentials',
+        key: 'personal',
         label: (
           <Space>
             <KeyOutlined />
-            <span>凭证与密钥中心</span>
+            <span>个人 API 密钥</span>
+          </Space>
+        ),
+        children: (
+          <TabErrorBoundary>
+            <Suspense fallback={<div style={{ minHeight: 300, display: 'grid', placeItems: 'center' }}>加载中...</div>}>
+              <PersonalApiKeyPanel />
+            </Suspense>
+          </TabErrorBoundary>
+        ),
+      },
+      {
+        key: 'work',
+        label: (
+          <Space>
+            <BankOutlined />
+            <span>工作与业务凭据</span>
           </Space>
         ),
         children: (
@@ -118,15 +142,15 @@ export function SettingsPage() {
   );
 
   return (
-    <div style={{ width: '100%', maxWidth: 1120, margin: '0 auto', padding: '24px 20px 48px' }}>
+    <div style={{ width: '100%', maxWidth: 1160, margin: '0 auto', padding: '24px 20px 48px' }}>
       {/* 统一页头 */}
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 16 }}>
         <Title level={3} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
           <SettingOutlined style={{ color: 'var(--primary-color, #6366f1)' }} />
           系统设置与连接
         </Title>
         <Text type="secondary" style={{ fontSize: 14, marginTop: 4, display: 'block' }}>
-          集中管理您的消息通信通道、外部应用集成与邮箱服务连接。
+          集中管理您的个人 API 密钥（如 Jina AI 网页解析）、工作业务系统安全凭据、IM 消息渠道与个人邮箱连接。
         </Text>
       </div>
 
@@ -136,8 +160,7 @@ export function SettingsPage() {
         onChange={handleTabChange}
         items={tabItems}
         size="large"
-        type="card"
-        style={{ marginTop: 8 }}
+        style={{ marginTop: 4 }}
       />
     </div>
   );

@@ -190,19 +190,19 @@ def detect_unexecuted_script_leak(text: str) -> bool:
     for lang, b in blocks:
         b_str = b.strip()
         lang_lower = lang.lower()
-        # A: 文件写入或数据导出脚本
+        # A: 文件写入或数据导出脚本（使用精准语法匹配，避免包含 .docx 文件名参数的 bash 指令被误杀）
         if any(k in b_str for k in [
             ".output(", ".save(", "to_excel(", "to_csv(", "savefig(",
-            "/workspace/", "fpdf", "openpyxl", "docx", "pptx",
-            "write_file", "cat >", "cat <<", "Path('/workspace", "Path(\"/workspace"
-        ]):
+            "/workspace/", "write_file", "cat >", "cat <<", "Path('/workspace", "Path(\"/workspace"
+        ]) or re.search(r'\b(?:import\s+(?:docx|pptx|openpyxl|fpdf)|from\s+(?:docx|pptx|openpyxl|fpdf)\s+import|docx\.|openpyxl\.|pptx\.|Document\(|Presentation\(|Workbook\(|FPDF\()', b_str):
             return True
         # B: 包含完整 HTML 文档标签（<!DOCTYPE html 或 <html）的代码块
         if ("<!doctype html" in b_str.lower() or "<html" in b_str.lower()) and len(b_str) > 100:
             return True
-        # C: Bash/Python 脚本且代码长度较长（超过 8 行且包含业务逻辑）
+        # C: Bash/Python 脚本且代码长度较长（超过 8 行且包含业务写盘/生成逻辑）
         if lang_lower in ["python", "py", "bash", "sh", "shell"] and len(b_str.splitlines()) > 8:
-            return True
+            if any(k in b_str for k in [".save(", ".output(", "to_excel(", "to_csv(", "/workspace/", "cat ", "write_file", "tee "]) or re.search(r'\b(?:import\s+(?:docx|pptx|openpyxl|fpdf)|from\s+(?:docx|pptx|openpyxl|fpdf)\s+import)', b_str):
+                return True
 
     return False
 

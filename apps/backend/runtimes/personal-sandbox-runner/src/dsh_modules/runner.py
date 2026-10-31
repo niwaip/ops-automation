@@ -484,6 +484,7 @@ def cmd_run(args):
         is_inspect_intent=(skill_res.is_inspect_intent and not is_search_intent and not is_weather_intent),
         is_generate_intent=skill_res.is_generate_intent,
         is_guide_intent=skill_res.is_guide_intent,
+        is_weather_intent=is_weather_intent,
         existing_history=existing_history,
         max_skill_chars=policy.max_skill_chars,
         timestamp_str=get_current_timestamp_str(policy.timezone),

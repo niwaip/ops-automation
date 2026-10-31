@@ -346,6 +346,50 @@ def evaluate_no_tool_turn(
         )
         return CompletionDecision("continue", msg, bumped_max_rounds, category="internal_plan")
 
+    # 0.1 虚假工具调用/失败捏造拦截 (Fake Tool Execution/Failure Claim Guard)
+    fake_tool_match = re.search(
+        r'(?:调用|执行)\s*[`\'"]?(?:fetch_page|web_search|bash|read_file|search_web|plan_spreadsheet_update|execute_spreadsheet_update)[`\'"]?\s*(?:获取|搜索|执行|运行)?.*?(?:失败|异常|报错|超时|无法访问|出错)',
+        reply_text or "",
+        re.I
+    )
+    if fake_tool_match and not executed_calls_history:
+        claimed_snippet = fake_tool_match.group(0)
+        target_urls = re.findall(r'https?://[^\s)\]>"\']+', last_user_prompt or "")
+        print(f"⚡ [Harness Fake Tool Call Guard] 检测到模型在未执行任何工具时声称工具调用失败 ({claimed_snippet})，正在强制纠正...", flush=True)
+        if target_urls and any((t.get("function", {}).get("name") or t.get("name", "")) == "fetch_page" for t in (tools or [])):
+            msg = (
+                f"【系统工具调用事实拦截】：你在当前回复中声称『{claimed_snippet}』，但沙箱后台记录显示你【未发起任何实际工具调用】！\n"
+                f"系统绝不允许凭空伪造工具调用或伪造调用失败！\n"
+                f"请立即通过 Function Calling 协议调用 `fetch_page(url='{target_urls[0]}')` 抓取真实页面内容，再进行分析作答！"
+            )
+        else:
+            msg = (
+                f"【系统工具调用事实拦截】：你在当前回复中声称『{claimed_snippet}』，但沙箱记录显示当前轮次你【并未发起任何工具调用】！\n"
+                "沙箱具备真实可用的工具环境，严禁在未调用工具前凭空捏造调用结果或失败结论！"
+                "请立即通过 Function Calling 协议发起实际工具调用，或如实向用户作答。"
+            )
+        return CompletionDecision("continue", msg, bumped_max_rounds, category="fake_tool_claim")
+
+    # 0.2 网页查阅/提取任务未执行抓取拦截 (Unexecuted Target URL Fetch Guard)
+    target_urls_in_prompt = re.findall(r'https?://[^\s)\]>"\']+', last_user_prompt or "")
+    if (
+        not is_guide_intent
+        and round_idx == 0
+        and target_urls_in_prompt
+        and any((t.get("function", {}).get("name") or t.get("name", "")) == "fetch_page" for t in (tools or []))
+        and not any("fetch_page" in call for call in (executed_calls_history or []))
+        and re.search(r'(?:打开|查看|看下|阅读|分析|总结|抓取|获取|提取|浏览|主要内容|网页内容|页面内容)', last_user_prompt or "")
+        and len((reply_text or "").strip()) < 350
+    ):
+        print(f"⚡ [Harness URL Fetch Guard] 检测到用户要求打开/查看 URL 但模型未调用 fetch_page，正在引导抓取...", flush=True)
+        msg = (
+            f"【系统网页内容抓取提示】：检测到用户明确要求查看/提取网页内容（目标链接：{target_urls_in_prompt[0]}），"
+            f"但当前沙箱尚未调用 `fetch_page` 获取该页面正文。\n"
+            f"请立即通过 Function Calling 协议调用 `fetch_page(url='{target_urls_in_prompt[0]}')` 读取页面实际内容，"
+            f"再向用户提供准确的内容归纳与分析！"
+        )
+        return CompletionDecision("continue", msg, bumped_max_rounds, category="unexecuted_url_fetch")
+
     # 0.5 已生成 Excel 交付物的数据与公式门禁
     invalid_workbooks = find_invalid_new_workbooks(effective_workspace, start_ts)
     if invalid_workbooks:
@@ -540,14 +584,36 @@ def evaluate_no_tool_turn(
         )
         return CompletionDecision("continue", msg, bumped_max_rounds, category="tool_argument_leak")
 
-    # 7. 未执行脚本泄漏拦截
-    if not is_guide_intent and not is_text_only_request(last_user_prompt) and not is_explicit_code_request(last_user_prompt) and not has_valid_html and detect_unexecuted_script_leak(reply_text):
-        print("⚡ [Harness Code Output Guard] 检测到模型直接输出了未执行的代码脚本或文件写入命令，正在引导执行工具落盘...", flush=True)
-        if has_bash:
+    # 7. 未执行脚本泄漏拦截（契约守卫原则：只读查阅任务绝对豁免，且必须在沙箱具备 bash 工具时才判定执行泄露）
+    is_inspect_or_search_only = (is_inspect_intent and not is_generate_intent) or (is_search_intent and not is_generate_intent)
+    if (
+        not is_guide_intent
+        and not is_inspect_or_search_only
+        and has_bash
+        and not is_text_only_request(last_user_prompt)
+        and not is_explicit_code_request(last_user_prompt)
+        and not has_valid_html
+        and detect_unexecuted_script_leak(reply_text)
+    ):
+        # 引入 LLM-as-a-Judge 终审：当正文存在实质性自然语言解释时，由裁判模型判定是否为说明性示例
+        is_leak = True
+        if len(reply_text.strip()) > 150:
+            try:
+                from .script_leak_judge import judge_script_leak
+                verdict = judge_script_leak(
+                    prompt=last_user_prompt,
+                    reply_text=reply_text,
+                    model=model,
+                    deadline=deadline
+                )
+                if verdict and not verdict.get("is_unexecuted_script_leak"):
+                    is_leak = False
+            except Exception:
+                pass
+        if is_leak:
+            print("⚡ [Harness Code Output Guard] 检测到模型直接输出了未执行的代码脚本或文件写入命令，正在引导执行工具落盘...", flush=True)
             msg = "检测到你输出了未执行的代码脚本或文件写入命令。请调用 bash 工具在终端实际运行脚本完成落盘，然后再向用户汇报完成。"
-        else:
-            msg = "检测到你输出了代码或文件命令。当前环境为只读模式，请直接输出分析结论与解答内容，无需尝试在本地写入文件。"
-        return CompletionDecision("continue", msg, bumped_max_rounds, category="script_leak")
+            return CompletionDecision("continue", msg, bumped_max_rounds, category="script_leak")
 
     # 7.5 提醒虚假创建与删除断言拦截
     reminder_claims = [

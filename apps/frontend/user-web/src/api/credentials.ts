@@ -91,6 +91,27 @@ export const credentialApi = {
     return apiClient.delete(`/credentials/${id}`);
   },
 
+  verifyJinaApiKey: async (
+    token: string,
+    credentialId?: string
+  ): Promise<{ valid: boolean; message: string; httpStatus?: number }> => {
+    return apiClient.post('/credentials/verify-jina', { token, credentialId });
+  },
+
+  verifyFirecrawlApiKey: async (
+    token: string,
+    credentialId?: string
+  ): Promise<{ valid: boolean; message: string; httpStatus?: number; credits?: number }> => {
+    return apiClient.post('/credentials/verify-firecrawl', { token, credentialId });
+  },
+
+  verifyTavilyApiKey: async (
+    token: string,
+    credentialId?: string
+  ): Promise<{ valid: boolean; message: string; httpStatus?: number }> => {
+    return apiClient.post('/credentials/verify-tavily', { token, credentialId });
+  },
+
   getSkillStatus: async (skillId: string): Promise<SkillCredentialStatus> => {
     return apiClient.get(`/credentials/skills/${encodeURIComponent(skillId)}/status`);
   },

@@ -107,6 +107,10 @@ def finalize_agent_text(
     execution_evidence: Optional[List[ToolResult]] = None,
     turn_start_time: Optional[float] = None,
     *,
+    is_inspect_intent: bool = False,
+    is_generate_intent: bool = False,
+    is_search_intent: bool = False,
+    has_bash: bool = False,
     call_model,
     workspace_dir: str,
     max_agent_rounds: int,
@@ -267,7 +271,8 @@ def finalize_agent_text(
             final_text += truncation_suffix
 
     # 6. Auto-heal unexecuted file writes & refresh artifact/state
-    if not is_guide_intent and not is_text_only_request(last_user_prompt) and not is_explicit_code_request(last_user_prompt):
+    is_inspect_or_search_only = (is_inspect_intent and not is_generate_intent) or (is_search_intent and not is_generate_intent)
+    if not is_guide_intent and not is_inspect_or_search_only and not is_text_only_request(last_user_prompt) and not is_explicit_code_request(last_user_prompt):
         final_text, extra_healed = auto_heal_unexecuted_file_writes(final_text, workspace_dir)
         healed_files.extend(extra_healed)
         if extra_healed:
@@ -281,16 +286,34 @@ def finalize_agent_text(
             sys.stdout.write("<<<DSH_DELTA_RESET>>>\n")
             sys.stdout.write(f"<<<DSH_DELTA:{json.dumps(final_text, ensure_ascii=False)}>>>\n")
             sys.stdout.flush()
-        elif not state.has_valid_html and (detect_unexecuted_script_leak(final_text) or detect_unexecuted_tool_argument_leak(final_text)):
-            print("⚠️ [Harness Script Leak Guard] 检测到模型输出了未执行的脚本或参数回显且未能自愈，触发安全兜底...", flush=True)
-            final_text = published_summary or _build_fallback_report(
-                messages,
-                executed_calls_history,
-                cause="model_empty_final",
-                trigger_evidence="模型输出了未执行的代码脚本或参数片段，自动执行自愈未通过",
-                retry_advice="可直接回复「请重新生成该文件」或重新发送请求重试。"
-            )
-            state = evaluate_answer_state(final_text, has_physical_artifact)
+        elif has_bash and not state.has_valid_html and (detect_unexecuted_script_leak(final_text) or detect_unexecuted_tool_argument_leak(final_text)):
+            # 引入 LLM-as-a-Judge 终审：当正文存在自然语言解释时，由裁判模型判定是否为说明性代码
+            is_leak = True
+            if len(final_text.strip()) > 150:
+                try:
+                    from .script_leak_judge import judge_script_leak
+                    verdict = judge_script_leak(
+                        prompt=last_user_prompt,
+                        reply_text=final_text,
+                        model=model,
+                        deadline=deadline
+                    )
+                    if verdict and not verdict.get("is_unexecuted_script_leak"):
+                        is_leak = False
+                except Exception:
+                    pass
+            # 只有在确属执行泄漏且正文缺乏实质性内容时才触发兜底抹除；实质性详尽正文绝对保护保留！
+            from .deliverable_contract import is_substantive_final_content
+            if is_leak and not is_substantive_final_content(final_text):
+                print("⚠️ [Harness Script Leak Guard] 检测到模型输出了未执行的脚本或参数回显且未能自愈，触发安全兜底...", flush=True)
+                final_text = published_summary or _build_fallback_report(
+                    messages,
+                    executed_calls_history,
+                    cause="model_empty_final",
+                    trigger_evidence="模型输出了未执行的代码脚本或参数片段，自动执行自愈未通过",
+                    retry_advice="可直接回复「请重新生成该文件」或重新发送请求重试。"
+                )
+                state = evaluate_answer_state(final_text, has_physical_artifact)
 
     # 7. Sampling guard feedback
     feedback = sampling_feedback(final_text, last_user_prompt, messages, telemetry, execution_evidence, is_guide_intent)

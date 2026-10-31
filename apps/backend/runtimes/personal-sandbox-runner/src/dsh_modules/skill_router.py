@@ -927,17 +927,19 @@ class SkillRouter:
             all_skills = available_skills or get_available_skills()
             if all_skills:
                 matcher = SemanticSkillMatcher(all_skills)
-                # 语义匹配主要基于用户自身指令；若无显式格式线索且有附件，注入标准扩展名提示
-                semantic_query = effective_query
+                # 语义匹配主要基于用户自身指令（剥离 URL 路径以免 URL 片段中的 /docx/ 等误导技能亲和度）；若无显式格式线索且有附件，注入标准扩展名提示
+                clean_query = re.sub(r'https?://[^\s]+', '', effective_query).strip() or effective_query
+                semantic_query = clean_query
                 EXPLICIT_FORMAT_CUES = [
                     ".pdf", ".docx", ".xlsx", ".pptx", ".html", ".md",
                     "pdf", "word", "excel", "ppt", "表格", "幻灯片", "演示文稿", "报表", "海报", "图片", "代码", "markdown", "md"
                 ]
-                has_explicit_format = any(fmt in lower_query for fmt in EXPLICIT_FORMAT_CUES)
+                clean_lower = clean_query.lower()
+                has_explicit_format = any(fmt in clean_lower for fmt in EXPLICIT_FORMAT_CUES)
                 if attached_files and not has_explicit_format:
                     ext_cues = " ".join([Path(f).suffix.lstrip(".").lower() for f in attached_files if Path(f).suffix])
                     if ext_cues:
-                        semantic_query = f"{effective_query} {ext_cues}"
+                        semantic_query = f"{clean_query} {ext_cues}"
                 matches = matcher.match(semantic_query)
                 if matches:
                     top_id, top_score, top_reasons = matches[0]
