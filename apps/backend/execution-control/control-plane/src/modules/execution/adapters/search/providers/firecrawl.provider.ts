@@ -37,8 +37,12 @@ export class FirecrawlProvider implements SearchEngineProvider {
     return this.rotator.getAllKeys();
   }
 
-  public isConfigured(runtimeConfigs?: Record<string, string>): boolean {
-    const hasKey = this.resolveKeys(runtimeConfigs).length > 0;
+  public isConfigured(
+    runtimeConfigs?: Record<string, string>,
+    options?: SearchRequestOptions
+  ): boolean {
+    const userKey = options?.customApiKeys?.FIRECRAWL_API_KEY;
+    const hasKey = this.resolveKeys(runtimeConfigs, userKey).length > 0;
     const explicitInOrder =
       process.env.SEARCH_PROVIDER_ORDER?.includes('firecrawl') ||
       runtimeConfigs?.SEARCH_PROVIDER_ORDER?.includes('firecrawl');

@@ -56,7 +56,10 @@ export class SearchOrchestrator {
     }
   }
 
-  public resolveProviderChain(runtimeConfigs: Record<string, string>): SearchEngineProvider[] {
+  public resolveProviderChain(
+    runtimeConfigs: Record<string, string>,
+    options?: SearchRequestOptions
+  ): SearchEngineProvider[] {
     const defaultOrder = ['tavily', 'firecrawl', 'exa', 'bing', 'duckduckgo'];
     const customOrderStr =
       process.env.SEARCH_PROVIDER_ORDER ||
@@ -73,7 +76,7 @@ export class SearchOrchestrator {
     const chain: SearchEngineProvider[] = [];
     for (const name of targetOrder) {
       const provider = this.providers.get(name);
-      if (provider && provider.isConfigured(runtimeConfigs)) {
+      if (provider && provider.isConfigured(runtimeConfigs, options)) {
         chain.push(provider);
       }
     }
@@ -83,7 +86,7 @@ export class SearchOrchestrator {
 
   public async search(options: SearchRequestOptions): Promise<SearchEngineResponse> {
     const runtimeConfigs = await this.fetchRuntimeConfigs();
-    const chain = this.resolveProviderChain(runtimeConfigs);
+    const chain = this.resolveProviderChain(runtimeConfigs, options);
 
     if (chain.length === 0) {
       throw new Error(
