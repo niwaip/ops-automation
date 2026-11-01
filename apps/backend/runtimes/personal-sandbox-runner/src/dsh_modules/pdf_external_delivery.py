@@ -100,6 +100,14 @@ def enforce_external_pdf_delivery(loop_result, workspace, skill_dir, start, prom
     # Suppress draft and raw shell file markers; authoritative files come only
     # from the matching structural/page receipts.
     loop_result.outbound_files = files if accepted else []
-    loop_result.final_text = text if accepted else ('PDF 尚未通过验收，未发布新的交付文件。原因：' +
-                                                    ('；'.join(failures)[:1200] or text))
+    if accepted:
+        loop_result.final_text = text
+    else:
+        reason = ('；'.join(failures)[:1200] or text)
+        from .pdf_preview_tool import build_pdf_failure_suggestion
+        suggestion = build_pdf_failure_suggestion(reason)
+        if '💡 建议：' not in reason:
+            loop_result.final_text = f'PDF 尚未通过验收，未发布新的交付文件。原因：{reason}{suggestion}'
+        else:
+            loop_result.final_text = f'PDF 尚未通过验收，未发布新的交付文件。原因：{reason}'
     return True

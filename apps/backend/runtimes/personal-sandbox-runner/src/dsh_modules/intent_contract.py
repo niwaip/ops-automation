@@ -300,10 +300,14 @@ def extract_source_and_target_artifacts(
     masked_for_cues, _ = mask_file_references(lower, attached_files)
     format_cue_mappings = [
         (r'(?:转为|转成|生成|制作|导出|另存为|输出为)[^，。！？；;\n]*(?:pdf|pdf文件|pdf报告)', ".pdf", "pdf"),
+        (r'(?:^|\s)/(?:pdf)\b', ".pdf", "pdf"),
         (r'(?:转为|转成|生成|制作|导出|另存为|输出为)[^，。！？；;\n]*(?:html|html文件|html报告|网页|页面|单页|柱状图|折线图|饼图|图表)', ".html", "html"),
         (r'(?:转为|转成|生成|制作|导出|另存为|输出为)[^，。！？；;\n]*(?:word|word文档|docx|doc)', ".docx", "docx"),
+        (r'(?:^|\s)/(?:docx|word)\b', ".docx", "docx"),
         (r'(?:转为|转成|生成|制作|导出|另存为|输出为)[^，。！？；;\n]*(?:excel|excel文件|表格|xlsx|xls)', ".xlsx", "xlsx"),
+        (r'(?:^|\s)/(?:xlsx|excel)\b', ".xlsx", "xlsx"),
         (r'(?:转为|转成|生成|制作|导出|另存为|输出为)[^，。！？；;\n]*(?:pptx?|幻灯片|演示文稿)', ".pptx", "pptx"),
+        (r'(?:^|\s)/(?:pptx|ppt)\b', ".pptx", "pptx"),
         (r'(?:转为|转成|生成|制作|导出|另存为|输出为|保存为)[^，。！？；;\n]*(?:markdown|md文件|markdown文件)', ".md", "md"),
         (r'(?:导出为|保存为|生成)[^，。！？；;\n]*(?:csv|csv文件)', ".csv", "csv"),
         (r'(?:导出为|保存为|生成)[^，。！？；;\n]*(?:json|json文件)', ".json", "json"),

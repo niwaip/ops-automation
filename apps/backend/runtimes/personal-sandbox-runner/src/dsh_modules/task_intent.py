@@ -13,6 +13,7 @@ PHYSICAL_EXPORT_RE = re.compile(
     r'(?:将|把)\s*[A-Za-z0-9_]+\s*(?:改成|改为|替换为|换成)|'
     r'\.(?:xlsx|docx|pdf|pptx|csv|json|html|txt)\b|'
     r'(?:excel|word|pdf|ppt|pptx|docx|xlsx)\s*文件|'
+    r'(?:^|\s)/(?:pdf|docx|xlsx|pptx|word|excel|ppt)\b|'
     r'可下载'
     r')',
     re.I
@@ -459,7 +460,7 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
     # or when issuing a file export/solidification command referencing previous conversational findings/results
     req_str = request.strip()
     is_pure_export = bool(users) and bool(re.search(
-        r'^(?:生成|导出|制作|做成|转成|输出|保存为|转为|转换成|整理成|整理为|发我|下载)\s*(?:一份|一个|成|为)?\s*(?:可下载的)?\s*(?:pdf|word|excel|ppt|docx|xlsx|pptx|html|表格|文档|文件|报告|图表|数据|内容|结果|清单|指南|手册|材料|说明)\s*(?:格式)?\s*(?:的)?\s*(?:文件|文档|表格|演示文稿|报告|指南|手册|说明|材料|清单|页面)?$',
+        r'^(?:重新生成|重新做|重做|重试|再试一次|再生成|重新导出|重写|生成|导出|制作|做成|转成|输出|保存为|转为|转换成|整理成|整理为|发我|下载)\s*(?:一份|一个|成|为)?\s*(?:可下载的)?\s*(?:pdf|word|excel|ppt|docx|xlsx|pptx|html|表格|文档|文件|报告|图表|数据|内容|结果|清单|指南|手册|材料|说明)\s*(?:格式)?\s*(?:的)?\s*(?:文件|文档|表格|演示文稿|报告|指南|手册|说明|材料|清单|页面)?$',
         req_str, re.I
     ))
     is_continuation = not is_abort and not is_prev_stopped and not is_verbatim_reply and bool(users) and (

@@ -42,9 +42,17 @@ def bind_pdf_request(params, prompt, deadline=None, model=None, policy=None, tel
     filename = re.search(r'(?:文件名(?:为|是)?|命名为)[：:\s]*[“"]?([^/\s“”"。；，、]+\.pdf)', prompt, re.I)
     if filename:
         bound['output_path'] = filename[1]
-    pages = re.search(r'(?:共|恰好|总共)\s*(\d+)\s*页', prompt)
-    if pages:
-        bound.update(min_pages=int(pages[1]), max_pages=int(pages[1]))
+    from .deliverable_contract import resolve_pdf_page_bounds
+    low, high = resolve_pdf_page_bounds(prompt)
+    if low is not None or high is not None:
+        if low is not None:
+            bound['min_pages'] = low
+        if high is not None:
+            bound['max_pages'] = high
+    else:
+        pages = re.search(r'(?:共|恰好|总共)\s*(\d+)\s*页', prompt)
+        if pages:
+            bound.update(min_pages=int(pages[1]), max_pages=int(pages[1]))
     for key, pattern in (
         ('title', r'《([^》]+)》'),
         ('subtitle', r'副标题(?:为|是)?[：:\s]*[“"]([^”"]+)[”"]'),

@@ -66,6 +66,23 @@ def pdf_review_feedback():
     return None
 
 
+def build_pdf_failure_suggestion(reason: str) -> str:
+    """Provide actionable suggestions when PDF acceptance fails."""
+    if not reason:
+        return '\n\n💡 建议：您可以补充具体内容需求、调整版式或页数要求后重新发起生成。'
+    if re.search(r'Expected at least \d+ pages|少于|页数不足|不足', reason, re.I):
+        return '\n\n💡 建议：当前正文内容量不足以支撑预期页数。您可以扩充各章节细节与说明清单、补充段落内容，或在提示词中放宽页数要求（也可直接回复“扩写内容并重新生成”）。'
+    if re.search(r'Expected at most \d+ pages|超过|页数过多', reason, re.I):
+        return '\n\n💡 建议：当前正文篇幅超过了预期页数上限。您可以精简段落措辞、合并小节，或在提示词中放宽页数要求。'
+    if re.search(r'缺少|未找到|找不到|No such file', reason, re.I):
+        return '\n\n💡 建议：所需参考文件或素材缺失。您可以上传或补充对应文件，或指示系统直接根据文字描述自主编写正文。'
+    if re.search(r'格式|Markdown|JSON|precheck|结构', reason, re.I):
+        return '\n\n💡 建议：正文格式或分页标记未通过校验。您可以提示“使用标准 Markdown 格式并按页排版”重新生成。'
+    if re.search(r'视觉|留白|重叠|preview|布局', reason, re.I):
+        return '\n\n💡 建议：页面视觉排版未达标。您可以尝试更换版式（如 report / handout）或调整单页文字密度后重新生成。'
+    return '\n\n💡 建议：您可以补充具体内容需求、调整版式或页数要求后重新发起生成。'
+
+
 def pdf_delivery_result():
     files = []
     descriptions = []
@@ -76,11 +93,15 @@ def pdf_delivery_result():
             descriptions.append(f'{Path(target).name}（{data["page_count"]} 页）')
     if pdf_review_feedback() or not files:
         if not _RENDERS and _LAST_FAILURE.get('stage') == 'content_precheck':
-            return '最后一次正文未通过内容预检，未发布新的 PDF。原因：' + _LAST_FAILURE['message'][:800], []
+            msg = _LAST_FAILURE['message'][:800]
+            return f'最后一次正文未通过内容预检，未发布新的 PDF。原因：{msg}{build_pdf_failure_suggestion(msg)}', []
         if _LAST_FAILURE.get('message'):
-            return 'PDF 尚未通过验收，未发布新的交付文件。原因：' + _LAST_FAILURE['message'][:800], []
-        return '本轮 PDF 尚未通过内容、分页与逐页预览验收，未发布新的交付文件。', []
-    return '已生成，并检查内容、分页、字体和逐页预览：' + '、'.join(descriptions) + '。', files
+            msg = _LAST_FAILURE['message'][:800]
+            return f'PDF 尚未通过验收，未发布新的交付文件。原因：{msg}{build_pdf_failure_suggestion(msg)}', []
+        return f'本轮 PDF 尚未通过内容、分页与逐页预览验收，未发布新的交付文件。{build_pdf_failure_suggestion("review_unpassed")}', []
+    summary = '已生成，并检查内容、分页、字体和逐页预览：' + '、'.join(descriptions) + '。'
+    followup = '\n\n如需调整正文内容、更改主题版式或调整字号，可直接告诉我进行微调。'
+    return summary + followup, files
 
 
 def managed_pdf_export(telemetry):
