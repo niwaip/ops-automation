@@ -555,7 +555,7 @@ def inspect_image(
 
             if not target_pages and raw_page_str:
                 if raw_page_str.lower() in ("all", "全部", "所有", "整份"):
-                    target_pages = list(range(1, min(total_pages, 6) + 1))
+                    target_pages = list(range(1, min(total_pages, 4) + 1))
                 elif "-" in raw_page_str:
                     parts = raw_page_str.split("-", 1)
                     try:
@@ -578,9 +578,9 @@ def inspect_image(
             if not target_pages:
                 return f"【PDF 识别提示】指定的页码超出文档范围（文档共 {total_pages} 页，收到请求: {page}）。"
 
-            # 限制单次拼接最多 6 页以防图片尺寸过大超限
-            if len(target_pages) > 6:
-                target_pages = target_pages[:6]
+            # 限制单次拼接最多 4 页，避免超长条带拉伸导致的 ViT 超时与文字模糊
+            if len(target_pages) > 4:
+                target_pages = target_pages[:4]
 
             # 3. 光栅化渲染指定页
             rendered_images = []
@@ -616,7 +616,7 @@ def inspect_image(
                 txt_fallback = read_workspace_file(str(p), max_chars=max_chars, deadline=deadline, model_name=model_name)
                 return f"【PDF 识别提示】文档 {p.name} 无法提取第 {target_pages} 页有效图像，已尝试提取纯文本内容：\n{txt_fallback}"
 
-            # 4. 生成单页或多页合成图
+            # 4. 生成单页或多页合成图（多页时采用 2 列网格高清平铺排版，避免极端长条图拉伸）
             if len(rendered_images) == 1:
                 curr_p, single_img = rendered_images[0]
                 buf = io.BytesIO()
@@ -626,20 +626,52 @@ def inspect_image(
                 pdf_page_meta = f"【PDF 视觉分析上下文：当前检测的是第 {curr_p} 页 / 全档共 {total_pages} 页】\n"
                 if total_pages > 1:
                     pdf_page_meta += f"（提示：如需查看其他页面，请调用 vision_inspect(file_path='{p.name}', page=页码)，例如 page=2）\n"
+                pdf_page_meta += "（业务交互指引：以上仅为工具内部定位上下文。在最终回复用户时，请直接给出业务要点与提取内容，切勿向用户照抄或复读工具内部页码声明！）\n"
             else:
-                total_w = max(img.width for _, img in rendered_images)
-                total_h = sum(img.height for _, img in rendered_images)
-                stitched = Image.new("RGB", (total_w, total_h), (255, 255, 255))
-                y_pos = 0
-                for pg, img in rendered_images:
-                    stitched.paste(img.convert("RGB"), (0, y_pos))
-                    y_pos += img.height
+                n_imgs = len(rendered_images)
+                cols = 2
+                rows = (n_imgs + cols - 1) // cols
+                cell_w = max(img.width for _, img in rendered_images)
+                cell_h = max(img.height for _, img in rendered_images)
+
+                grid_w = cell_w * cols
+                grid_h = cell_h * rows
+                stitched = Image.new("RGB", (grid_w, grid_h), (255, 255, 255))
+
+                for idx, (pg, img) in enumerate(rendered_images):
+                    r = idx // cols
+                    c = idx % cols
+                    x = c * cell_w
+                    y = r * cell_h
+                    w = getattr(img, "width", getattr(img, "size", [cell_w, cell_h])[0])
+                    h = getattr(img, "height", getattr(img, "size", [cell_w, cell_h])[1])
+                    stitched.paste(img.convert("RGB"), (x, y, x + w, y + h))
+
                 buf = io.BytesIO()
                 stitched.save(buf, format="JPEG", quality=85)
                 image_bytes = buf.getvalue()
                 mime = "image/jpeg"
+
                 pgs_str = ", ".join(f"第 {pg} 页" for pg, _ in rendered_images)
-                pdf_page_meta = f"【PDF 视觉分析上下文：当前已拼接检测 {pgs_str}（共 {len(rendered_images)} 页 / 全档共 {total_pages} 页）】\n"
+                if cols == 2 and rows == 1:
+                    layout_desc = f"排版说明：采用双页横向并排高清排布（左侧: 第 {rendered_images[0][0]} 页, 右侧: 第 {rendered_images[1][0]} 页）。"
+                else:
+                    positions = ["左上", "右上", "左下", "右下"]
+                    pos_labels = [f"{positions[idx]}: 第 {pg} 页" for idx, (pg, _) in enumerate(rendered_images)]
+                    layout_desc = f"排版说明：采用 2x2 网格高清排布（{', '.join(pos_labels)}）。"
+
+                pdf_page_meta = (
+                    f"【PDF 视觉分析上下文：当前已采用多页网格高清拼接检测 {pgs_str}（共 {len(rendered_images)} 页 / 全档共 {total_pages} 页）】\n"
+                    f"{layout_desc}\n"
+                )
+                max_pg = max(pg for pg, _ in rendered_images)
+                if total_pages > max_pg:
+                    next_s = max_pg + 1
+                    next_e = min(total_pages, next_s + 3)
+                    next_range = f"{next_s}-{next_e}" if next_s < next_e else str(next_s)
+                    pdf_page_meta += f"（提示：全档共 {total_pages} 页，本次已提取至第 {max_pg} 页。如需继续查阅后续页面，请继续调用 vision_inspect(file_path='{p.name}', page='{next_range}')）\n"
+
+                pdf_page_meta += "（业务交互指引：以上排版与页码说明仅为工具内部定位上下文。在最终回复用户时，请直接给出业务要点与提取内容，切勿向用户照抄或复读工具内部页码声明！）\n"
         except Exception as e:
             assert_not_timed_out(deadline, "image vision inspection")
             return f"从 PDF 提取页面图片失败 ({p.name}): {e}"
@@ -657,7 +689,8 @@ def inspect_image(
     if diag_err:
         return diag_err
 
-    image_bytes, mime = _optimize_image_bytes_for_vision(image_bytes, mime, max_dimension=1800)
+    max_dim = 2048 if suffix == ".pdf" else 1800
+    image_bytes, mime = _optimize_image_bytes_for_vision(image_bytes, mime, max_dimension=max_dim)
 
     to_vision = check_deadline(deadline, default_timeout=120.0)
     call_id = uuid.uuid4().hex

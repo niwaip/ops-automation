@@ -274,7 +274,7 @@ SANDBOX_TOOLS = [
         "type": "function",
         "function": {
             "name": "vision_inspect",
-            "description": "检查并深度分析沙箱工作区或知识库中的图片或多页 PDF 视觉内容（支持 png, jpg, jpeg, webp 等图片以及扫描/画册型 pdf 的 OCR、排版与视觉理解）。对多页 PDF 可通过 page 参数指定页码或页码范围。",
+            "description": "检查并深度分析沙箱工作区或知识库中的图片或多页 PDF 视觉内容（支持 png, jpg, jpeg, webp 等图片以及扫描/画册型 pdf 的 OCR、排版与视觉理解）。对多页 PDF 支持以 2 列高清网格平铺批量阅读（推荐单次传入 2~4 页范围，例如 '1-4'、'5-8'）。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -284,7 +284,7 @@ SANDBOX_TOOLS = [
                     },
                     "page": {
                         "type": ["integer", "string"],
-                        "description": "可选。针对 PDF 文档时指定的页码（从 1 开始，例如 1 或 2）或页码范围（例如 '2-4'、'all'）"
+                        "description": "可选。针对 PDF 文档时指定的页码（例如 1 或 2）或页码范围（例如 '1-4'、'5-8'、'all'）。单次推荐最多指定 4 页以保证文字清晰度与响应时效。"
                     },
                     "prompt": {
                         "type": "string",
