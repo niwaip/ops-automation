@@ -274,17 +274,21 @@ SANDBOX_TOOLS = [
         "type": "function",
         "function": {
             "name": "vision_inspect",
-            "description": "检查并深度分析沙箱工作区或知识库中的图片视觉内容（支持 png, jpg, jpeg, webp 等图片 OCR、排版与视觉理解）",
+            "description": "检查并深度分析沙箱工作区或知识库中的图片或多页 PDF 视觉内容（支持 png, jpg, jpeg, webp 等图片以及扫描/画册型 pdf 的 OCR、排版与视觉理解）。对多页 PDF 可通过 page 参数指定页码或页码范围。",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "file_path": {
                         "type": "string",
-                        "description": "待分析的图片文件名或路径，例如 'screenshot.png' 或 'diagram.jpg'"
+                        "description": "待分析的图片或 PDF 文件名或路径，例如 'screenshot.png' 或 'doc.pdf'"
+                    },
+                    "page": {
+                        "type": ["integer", "string"],
+                        "description": "可选。针对 PDF 文档时指定的页码（从 1 开始，例如 1 或 2）或页码范围（例如 '2-4'、'all'）"
                     },
                     "prompt": {
                         "type": "string",
-                        "description": "针对该图片的具体分析指令或问题"
+                        "description": "针对该图片或页面的具体分析指令或问题"
                     }
                 },
                 "required": ["file_path"]
@@ -618,8 +622,9 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
             (str(list(params.values())[0]) if params else "")
         )
         prompt = params.get("prompt") or params.get("instruction") or params.get("query") or ""
+        page = params.get("page") or params.get("page_number") or params.get("page_no") or params.get("pages")
         current_model = os.environ.get("DSH_MODEL") or None
-        res = inspect_image(str(fpath), prompt, deadline=deadline, model_name=current_model)
+        res = inspect_image(str(fpath), prompt, page=page, deadline=deadline, model_name=current_model)
 
     elif name_clean in ["bash", "cmd", "terminal", "sh", "exec"]:
         cmd = params.get("cmd") or params.get("command") or ""
