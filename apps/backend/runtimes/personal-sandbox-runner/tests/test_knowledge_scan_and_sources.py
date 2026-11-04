@@ -445,24 +445,28 @@ tags: ["markdown", "Based", "thorough", "1996", "时空可组合性", "分布式
             shutil.rmtree(ws_tmp, ignore_errors=True)
 
     def test_url_and_repo_keyword_filtering_and_word_boundaries(self):
-        """测试针对外部 URL 与代码仓库的停用词过滤与词边界匹配，彻底杜绝短词子串误撞"""
+        """测试针对外部 URL 与代码仓库的停用词过滤与词边界匹配，严禁对 URL 和文件名切词拆分"""
         from dsh_modules.personal_knowledge_search import _matches_keyword
 
-        # 1. 验证关键词提取中的 URL 协议、域名与噪音虚词过滤
+        # 1. 验证严禁对 URL 进行切词拆分，且噪音虚词彻底过滤
         prompt1 = "查看和风险这个文章的内容 https://github.com/vercel-labs/agent-desktop/"
         kws1 = _extract_knowledge_query_keywords(prompt1)
-        for noise in ["https", "http", "github", "com", "github.com", "风险", "这个", "文章", "和风险"]:
-            self.assertNotIn(noise, kws1)
-        self.assertIn("vercel-labs", kws1)
-        self.assertIn("agent-desktop", kws1)
+        self.assertEqual(kws1, [])
 
-        # 2. 验证英文介词与通用代码词过滤
+        # 2. 验证严禁对附件文件名进行切词拆分（绝不拆解为 ai, other, pptx 造成误撞）
+        prompt_file = "【当前轮次用户上传附件】: FDE in the Age of AI - Insights from Other Companies -.pptx（这是用户本轮刚上传的新文件，为本次指令的主要处理对象）\n用户指令：查看附件，分析内容，并且给出要点总结"
+        kws_file = _extract_knowledge_query_keywords(prompt_file)
+        self.assertEqual(kws_file, [])
+        for noise in ["ai", "fde", "other", "companies", "pptx", "查看附件", "要点", "总结"]:
+            self.assertNotIn(noise, kws_file)
+
+        # 3. 验证英文介词与通用代码词过滤
         prompt2 = "查看和分析 GitHub - vercel-labs/agent-desktop: Computer use CLI for AI agents · GitHub"
         kws2 = _extract_knowledge_query_keywords(prompt2)
         for noise in ["github", "for", "use", "cli", "和分析"]:
             self.assertNotIn(noise, kws2)
 
-        # 3. 验证 _matches_keyword 严格遵循词边界
+        # 4. 验证 _matches_keyword 严格遵循词边界
         self.assertFalse(_matches_keyword("contain detail daily", "ai"))
         self.assertTrue(_matches_keyword("ai agent application", "ai"))
         self.assertFalse(_matches_keyword("platform information", "for"))

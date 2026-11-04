@@ -26,18 +26,20 @@ _LAST_SCANNED_KNOWLEDGE_FILES: List[Dict[str, Any]] = []
 
 KNOWLEDGE_STOP_WORDS = {
     # 知识库指令与空间虚词
-    "个人", "空间", "知识", "知识库", "文档", "文件", "方法", "安装", "教程",
+    "个人", "空间", "知识", "知识库", "文档", "文件", "附件", "方法", "安装", "教程",
     "怎么", "如何", "查看", "查询", "使用", "指南", "搜索", "检索", "阅读",
     "浏览", "看一下", "查一下", "找一下", "内容", "关于", "有关", "相关",
     "的", "了", "在", "是", "中", "里", "内", "上", "有", "有啥", "包含",
     "是什么", "总结", "归纳", "分析", "报告", "资料", "库", "请问", "帮我",
     "服务", "介绍", "情况", "哪些", "有哪些", "有什么", "什么", "怎样", "多少", "一下",
     "今天", "明天", "昨天", "现在", "当前", "最新", "近期", "最近", "日常", "实时",
+    "查看附件", "用户指令", "指令",
 
     # 中文泛化虚词与问答噪音词
     "这个", "那个", "文章", "和分析", "和风险", "风险", "来看", "帮我看看", "这个文章",
     "这里面", "这篇", "那篇", "这些", "那些", "下面", "上面", "关于这个", "看下", "全文",
     "原文", "链接", "网页", "地址", "页面", "项目", "仓库", "代码仓库", "开源项目", "地址是",
+    "要点", "并且", "给出", "归纳", "要点总结", "核心要点", "详细内容", "分析内容",
 
     # 网络协议、顶级域名与代码托管通用词（严禁作为个人知识库匹配词）
     "http", "https", "url", "uri", "ftp", "www", "com", "cn", "org", "net", "io",
@@ -84,38 +86,39 @@ def _extract_knowledge_query_keywords(prompt: Optional[str]) -> List[str]:
         return []
     p = prompt.strip().lower()
 
-    # 1. 优先提取外部 URL 与在线代码仓库中有实质意义的 slug/owner/repo
-    url_matches = re.findall(r'https?://[^\s]+', p)
-    url_slugs = []
-    for u in url_matches:
-        try:
-            parsed = urllib.parse.urlparse(u)
-            segments = [s.strip() for s in parsed.path.split('/') if s.strip()]
-            for s in segments:
-                s_clean = re.sub(r'^[_\-\.]+|[_\-\.]+$', '', s)
-                if s_clean and len(s_clean) >= 3 and s_clean.lower() not in KNOWLEDGE_STOP_WORDS:
-                    url_slugs.append(s_clean.lower())
-        except Exception:
-            pass
-        p = p.replace(u, " ")
+    # 0. 剥离系统包装前缀（如平台注入的【当前轮次用户上传附件】或【当前会话有效附件清单】）
+    p = re.sub(r'【当前(?:轮次用户上传附件|会话有效附件清单)】:[^\n]+(?:\([^\)]+\)|（[^）]+）)?\s*(?:用户指令[：:])?', ' ', p)
 
-    # 提取类似 "GitHub - owner/repo" 或 "github.com/owner/repo" 中的实质标识
-    repo_matches = re.findall(r'(?:github|gitlab|gitee)\s*(?:[-–—:]|\.com/)\s*([a-zA-Z0-9_\-]+)/([a-zA-Z0-9_\-]+)', p, re.I)
-    for owner, repo in repo_matches:
-        if owner.lower() not in KNOWLEDGE_STOP_WORDS and len(owner) >= 3:
-            url_slugs.append(owner.lower())
-        if repo.lower() not in KNOWLEDGE_STOP_WORDS and len(repo) >= 3:
-            url_slugs.append(repo.lower())
-    p = re.sub(r'(?:github|gitlab|gitee)\s*(?:[-–—:]|\.com/)\s*[a-zA-Z0-9_\-]+/[a-zA-Z0-9_\-]+', ' ', p, flags=re.I)
+    # 1. 严禁对外部 URL 或代码仓库链接进行拆分，直接完整移除，绝不作为个人知识库拆解词
+    p = re.sub(r'https?://[^\s]+', ' ', p)
+    p = re.sub(r'(?:github|gitlab|gitee)\s*(?:[-–—:]|\.com/)\s*[^\s]+', ' ', p, flags=re.I)
 
-    # 2. 剥离无意义前缀与空间限定词
-    p = re.sub(r'^(?:请问|请帮我|帮我|麻烦|查看|查询|看一下|查一下|找一下|检索|搜索|阅读|浏览|评估|分析)\s*', '', p)
+    # 2. 严禁对完整文件名进行切词拆分（防止将 "FDE in the Age of AI...pptx" 碎化拆解为 "ai", "other", "pptx"）
+    # 提取完整文件名作为一个不可拆分的整体实体，并在正文中完整移除该文件名
+    file_matches = re.findall(
+        r'[\w\-\.\s\(\)]+\.(?:pptx?|docx?|xlsx?|pdf|md|txt|csv|png|jpe?g|html|json|py|sh|zip)\b',
+        p,
+        re.I
+    )
+    intact_file_entities: List[str] = []
+    for fm in file_matches:
+        fm_clean = fm.strip().lower()
+        if fm_clean and len(fm_clean) >= 3 and fm_clean not in KNOWLEDGE_STOP_WORDS:
+            intact_file_entities.append(fm_clean)
+            # 提取去扩展名的主干作为整体实体（不拆分内部词汇）
+            stem = re.sub(r'\.[a-zA-Z0-9]+$', '', fm_clean).strip()
+            if stem and len(stem) >= 3 and stem not in KNOWLEDGE_STOP_WORDS:
+                intact_file_entities.append(stem)
+        p = p.replace(fm, ' ')
+
+    # 3. 剥离无意义前缀与空间限定词、噪音动作词
+    p = re.sub(r'^(?:请问|请帮我|帮我|麻烦|查看|查询|看一下|查一下|找一下|检索|搜索|阅读|浏览|评估|分析|总结|归纳)\s*', '', p)
     p = re.sub(r'(?:在|从)?(?:个人空间|知识库|知识空间|我的个人文档|工作区|我的文档)(?:中|里|内|上的?)?\s*', ' ', p)
     p = re.sub(r'(?:关于|有关|相关(?:的)?)\s*', ' ', p)
-    p = re.sub(r'(?:和风险|和分析|和评价|和总结|风险|这个文章|这篇文章|这个|那个|这里面|这篇|那篇|文章|详细内容|内容)', ' ', p)
+    p = re.sub(r'(?:和风险|和分析|和评价|和总结|风险|这个文章|这篇文章|这个|那个|这里面|这篇|那篇|文章|详细内容|内容|要点总结|核心要点|要点|给出|并且|分析内容)', ' ', p)
     p = re.sub(r'(?:的)?(?:安装方法|安装教程|安装指南|部署方法|使用方法|使用教程|怎么用|如何用|怎么做|是什么|有啥|项目|仓库)', ' ', p)
 
-    # 3. 提取英文/数字词汇（剔除停用词与域名后缀）
+    # 4. 提取英文/数字词汇（剔除停用词与域名后缀）
     raw_ascii = re.findall(r'[a-zA-Z0-9_\-\.]{2,}', p)
     ascii_words = []
     for w in raw_ascii:
@@ -128,7 +131,7 @@ def _extract_knowledge_query_keywords(prompt: Optional[str]) -> List[str]:
         ):
             ascii_words.append(w_clean)
 
-    # 4. 中文多关键词分词提取
+    # 5. 中文多关键词分词提取
     chinese_blocks = re.findall(r'[\u4e00-\u9fa5]+', p)
     chinese_words = []
     for blk in chinese_blocks:
@@ -150,17 +153,10 @@ def _extract_knowledge_query_keywords(prompt: Optional[str]) -> List[str]:
                         chinese_words.append(sub3)
 
     keywords: List[str] = []
-    for w in (ascii_words + chinese_words + url_slugs):
+    for w in (intact_file_entities + ascii_words + chinese_words):
         w_clean = w.strip().lower()
         if w_clean not in KNOWLEDGE_STOP_WORDS and len(w_clean) >= 2 and w_clean not in keywords:
             keywords.append(w_clean)
-
-    # 5. 从原始 prompt 中补充提取关键英文字词（严格过滤停用词）
-    raw_ascii = re.findall(r'[a-zA-Z0-9_\-]{2,}', prompt.lower())
-    for a in raw_ascii:
-        a_clean = a.strip().lower()
-        if a_clean not in keywords and a_clean not in KNOWLEDGE_STOP_WORDS:
-            keywords.append(a_clean)
 
     return list(dict.fromkeys(keywords))
 
@@ -447,9 +443,15 @@ def scan_personal_knowledge(prompt: Optional[str] = None, auto_match_only: bool 
             pass
 
     if not valid_entries:
+        if auto_match_only:
+            _LAST_SCANNED_KNOWLEDGE_FILES = []
+            return ""
         return "个人知识库 (/knowledge) 与 产出成果库 (/workspace/deliverables) 目前均为空。"
 
     keywords = _extract_knowledge_query_keywords(prompt)
+    if auto_match_only and not keywords:
+        _LAST_SCANNED_KNOWLEDGE_FILES = []
+        return ""
 
     # 评分与多级深度排序（文件名 + 正文 grep + 格式 Tier + 新鲜度加权）
     scored_entries = []

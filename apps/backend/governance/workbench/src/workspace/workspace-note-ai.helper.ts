@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import * as path from 'path';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
@@ -49,6 +50,7 @@ export class WorkspaceNoteAiHelper {
       noteStorageKey,
       dto,
       workspace,
+      userId,
       syncedArtifacts,
     } = params;
 
@@ -318,9 +320,88 @@ export class WorkspaceNoteAiHelper {
       // 更新物理存储文件
       await this.storage.putFile(noteStorageKey, newBuffer);
 
-      // 计算更专业的文件名
-      const safeRefinedTitle = refinedTitle.replace(/[\\/:*?"<>|]/g, '_');
-      const newFileName = `${safeRefinedTitle}.md`;
+      // 计算更专业的文件名：参考文件夹名称与提炼标题，确定最终规范文件名
+      let derivedFileTopic = refinedTitle;
+      const isPromptLikeTitle = (str: string) =>
+        str.endsWith('...的总结') ||
+        str.endsWith(' 总结') ||
+        /^(?:查看|请帮我|帮我|看一下|查一下|找一下|总结|归纳|分析|阅读|评估)/.test(str);
+
+      if (!derivedFileTopic || derivedFileTopic.length < 2 || isPromptLikeTitle(derivedFileTopic)) {
+        // 从规范专属文件夹名称中提取核心业务主题 (如 "20261104_技术架构_Microsoft Agentic AI 企业架构概览" -> "Microsoft Agentic AI 企业架构概览")
+        const folderParts = finalFolderName.replace(/^\d{8}_?/, '').split('_');
+        derivedFileTopic = folderParts.length > 1 ? folderParts.slice(1).join('_') : folderParts[0];
+      }
+      const safeFileTopic = (derivedFileTopic || '成果总结')
+        .replace(/[\\/:*?"<>|]/g, '_')
+        .replace(/\.md$/i, '')
+        .trim();
+      const newFileName = `${safeFileTopic}.md`;
+
+      // 同步重命名与刷新用户沙箱成果库目录 (/workspace/deliverables/)
+      try {
+        const candidateRoots = [
+          path.join('/workspace/data/users', userId, 'workspace'),
+          path.join(process.cwd(), 'data/users', userId, 'workspace'),
+          path.resolve(process.cwd(), '../../../../data/users', userId, 'workspace'),
+        ];
+        for (const cand of candidateRoots) {
+          if (fs.existsSync(cand)) {
+            const deliverablesBase = path.join(cand, 'deliverables');
+            if (!fs.existsSync(deliverablesBase)) {
+              fs.mkdirSync(deliverablesBase, { recursive: true });
+            }
+            const oldDirPath = path.join(deliverablesBase, currentFolderName);
+            const newDirPath = path.join(deliverablesBase, finalFolderName);
+
+            // 若文件夹名称发生更名且旧文件夹存在
+            if (currentFolderName && currentFolderName !== finalFolderName && fs.existsSync(oldDirPath)) {
+              if (!fs.existsSync(newDirPath)) {
+                fs.renameSync(oldDirPath, newDirPath);
+              } else {
+                // 若新文件夹已存在，将旧目录文件迁移入新目录后删除旧目录
+                const files = fs.readdirSync(oldDirPath);
+                for (const f of files) {
+                  const src = path.join(oldDirPath, f);
+                  const dst = path.join(newDirPath, f);
+                  if (!fs.existsSync(dst)) {
+                    fs.renameSync(src, dst);
+                  }
+                }
+                try {
+                  fs.rmdirSync(oldDirPath);
+                } catch {
+                  // ignore
+                }
+              }
+            } else if (!fs.existsSync(newDirPath)) {
+              fs.mkdirSync(newDirPath, { recursive: true });
+            }
+
+            // 写入最新提炼的 Markdown 文件
+            const targetFilePath = path.join(newDirPath, newFileName);
+            fs.writeFileSync(targetFilePath, newBuffer);
+
+            // 若文件名变更，清理旧的残留文件
+            if (
+              params.currentNoteFileName &&
+              params.currentNoteFileName !== newFileName &&
+              fs.existsSync(path.join(newDirPath, params.currentNoteFileName))
+            ) {
+              try {
+                fs.unlinkSync(path.join(newDirPath, params.currentNoteFileName));
+              } catch {
+                // ignore
+              }
+            }
+            break;
+          }
+        }
+      } catch (diskSyncErr: any) {
+        this.logger.warn(
+          `Failed to synchronize refined folder and note to deliverables on disk: ${diskSyncErr.message}`
+        );
+      }
 
       // 提取目录 headings
       const headings = newMarkdownText
