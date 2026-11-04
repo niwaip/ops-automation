@@ -520,6 +520,25 @@ tags: ["markdown", "Based", "thorough", "1996", "时空可组合性", "分布式
         res2 = SkillRouter.route("查看和分析 GitHub - vercel-labs/agent-desktop: Computer use CLI for AI agents · GitHub")
         self.assertTrue(res2.is_search_intent)
 
+    def test_multi_turn_attachment_wrapper_stripping(self):
+        """验证多轮会话中包含历史参考附件和平台注入文案时，关键词抽取仅关注真实用户指令，杜绝误引入历史成果"""
+        from dsh_modules.personal_knowledge_search import _extract_knowledge_query_keywords
+        prompt = (
+            "【当前轮次用户上传附件】: E2E_workhours_filtered.csv（这是用户本轮刚上传的新文件，为本次指令的主要处理对象）\n"
+            "【历史会话参考附件】: FDE in the Age of AI - Insights from Other Companies -.pptx（仅作为历史背景，除非用户指令明确要求对比或关联历史文件，否则默认只处理本轮上传附件）\n"
+            "用户指令：附件是什么"
+        )
+        kws = _extract_knowledge_query_keywords(prompt)
+        self.assertEqual(kws, [])
+
+        prompt2 = (
+            "【当前轮次用户上传附件】: E2E_workhours_filtered.csv\n"
+            "【历史会话参考附件】: FDE.pptx\n"
+            "用户指令：帮我查找个人空间中关于启明星辰的报告"
+        )
+        kws2 = _extract_knowledge_query_keywords(prompt2)
+        self.assertTrue(any("启明" in k for k in kws2))
+
 
 if __name__ == "__main__":
     unittest.main()
