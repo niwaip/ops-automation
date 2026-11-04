@@ -7,6 +7,7 @@ import 'katex/dist/katex.min.css';
 import { normalizeTabSeparatedTable } from '../lib/tableNormalizer';
 import { splitReportDetails } from '../lib/reportDetails';
 import { HtmlPreviewBlock } from './HtmlPreviewBlock';
+import { MermaidBlock } from './MermaidBlock';
 
 interface MessageContentRendererProps {
   content: string;
@@ -123,6 +124,24 @@ const isHtmlPreviewBlock = (className?: string, codeText?: string) => {
     codeText.includes('diff-ins') ||
     codeText.includes('diff-del')
   );
+};
+
+export const isMermaidBlock = (className?: string, codeText?: string): boolean => {
+  if (!codeText) return false;
+  const trimmed = codeText.trim();
+  const match = /language-(\w+)/.exec(className || '');
+  const lang = (match ? match[1] : '').toLowerCase();
+
+  if (['mermaid', 'graph', 'flowchart'].includes(lang)) {
+    return true;
+  }
+
+  // 即使未显式标注语言，若代码内容以标准 Mermaid 关键字开头，亦识别为架构/流程图
+  const mermaidKeywords = [
+    /^(?:graph|flowchart)\s+(?:TB|TD|BT|RL|LR)\b/i,
+    /^(?:sequenceDiagram|classDiagram|classDiagram-v2|stateDiagram|stateDiagram-v2|erDiagram|journey|gantt|pie|gitGraph|mindmap|timeline|quadrantChart|xychart-beta|architecture-beta)\b/i,
+  ];
+  return mermaidKeywords.some((re) => re.test(trimmed));
 };
 
 export const unwrapOuterMarkdownFence = (content: string): string => {
@@ -323,7 +342,7 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
               ? childProps.children.join('')
               : String(childProps?.children || '');
 
-            if (isHtmlPreviewBlock(codeClassName, codeText)) {
+            if (isHtmlPreviewBlock(codeClassName, codeText) || isMermaidBlock(codeClassName, codeText)) {
               return <>{children}</>;
             }
 
@@ -339,6 +358,16 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
             if (isHtmlPreviewBlock(className, codeText)) {
               return (
                 <HtmlPreviewBlock
+                  code={codeText.trim()}
+                  className={className}
+                  isStreaming={isStreaming}
+                />
+              );
+            }
+
+            if (isMermaidBlock(className, codeText)) {
+              return (
+                <MermaidBlock
                   code={codeText.trim()}
                   className={className}
                   isStreaming={isStreaming}
