@@ -31,6 +31,60 @@ export class WorkspaceNoteService {
   ) {}
 
   /**
+   * 参考正文标题、附件名与用户意图提取规范的业务主题名称，避免使用冗长提示词片段
+   */
+  private resolveCleanNoteTitle(dto: SaveTextNoteDto): string {
+    const rawTitle = (dto.title || '').trim().replace(/[\\/:*?"<>|]/g, '_');
+
+    // 1. 若外部传递了明确具体的业务标题且非提示词截断格式，优先使用
+    const isPromptLike =
+      rawTitle.endsWith('...的总结') ||
+      rawTitle.endsWith(' 总结') ||
+      rawTitle.length > 35 ||
+      /^(?:查看|请帮我|帮我|看一下|查一下|找一下|总结|归纳|分析|阅读|评估)/.test(rawTitle);
+
+    if (rawTitle && !isPromptLike && rawTitle.length >= 2) {
+      return rawTitle;
+    }
+
+    // 2. 优先从正文第一级 Markdown 标题提取（例如 "# FDE in the Age of AI 要点总结" -> "FDE in the Age of AI 要点总结"）
+    if (dto.content && dto.content.trim()) {
+      const lines = dto.content.split('\n').map((l) => l.trim()).filter(Boolean);
+      for (const line of lines.slice(0, 8)) {
+        const hMatch = line.match(/^#{1,3}\s+(.+)$/);
+        if (hMatch) {
+          const cand = hMatch[1]
+            .replace(/[\\/:*?"<>|]/g, '_')
+            .replace(/^[#\-*>\s]+/, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+          if (
+            cand.length >= 3 &&
+            !/^(?:核心要点与记录|核心要点|要点总结|目录|引言|概述|总结|归纳|简介|详情)$/.test(cand)
+          ) {
+            return cand.length > 50 ? `${cand.slice(0, 50)}` : cand;
+          }
+        }
+      }
+    }
+
+    // 3. 从 userQuery 中清洗噪音操作动词后提取
+    if (dto.userQuery && dto.userQuery.trim()) {
+      const q = dto.userQuery.trim()
+        .replace(/^【当前(?:轮次用户上传附件|会话有效附件清单)】:[^\n]+(?:（[^）]+）)?\s*(?:用户指令[：:])?/, '')
+        .replace(/^(?:请问|请帮我|帮我|麻烦|查看|查询|看一下|查一下|找一下|检索|搜索|阅读|浏览|评估|分析|总结|归纳)\s*/, '')
+        .replace(/[？?。！!]$/, '')
+        .replace(/[\\/:*?"<>|]/g, '_')
+        .trim();
+      if (q.length >= 3) {
+        return q.length > 30 ? `${q.slice(0, 30)}` : q;
+      }
+    }
+
+    return rawTitle || '会话成果归档';
+  }
+
+  /**
    * 将文本/AI对话及伴生产物异步智能归档至「沙盒保存内容」下的专属成果文件夹中
    */
   public async saveTextNote(
@@ -118,10 +172,11 @@ export class WorkspaceNoteService {
       throw new BadRequestException('工作空间存储配额已满，无法保存文档');
     }
 
-    // 5. 在分类目录下创建本次保存的专属成果文件夹（支持 YYYYMMDD_主题 初始命名，防重幂等）
+    // 5. 在分类目录下创建本次保存的专属成果文件夹（支持 YYYYMMDD_[分类]_[主题] 规范命名，防重幂等）
     const dateTag = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-    const safeTitle = dto.title.trim().replace(/[\\/:*?"<>|]/g, '_');
-    const baseFolderName = `${dateTag}_${safeTitle}`;
+    const safeTitle = this.resolveCleanNoteTitle(dto);
+    const category = this.extractPrimaryCategory(dto.title, dto.userQuery, dto.content);
+    const baseFolderName = `${dateTag}_${category}_${safeTitle}`;
 
     // 检查是否存在同名基础成果文件夹
     const existingFolder = await this.prisma.workspaceNode.findFirst({
@@ -328,19 +383,15 @@ export class WorkspaceNoteService {
     bodySections.push(`# ${dto.title.trim()}`);
     bodySections.push('');
 
-    // 顶部结构化元数据面板：提问背景 + 核心标签
-    const metaLines: string[] = [];
     if (dto.userQuery && dto.userQuery.trim()) {
-      metaLines.push(`> 📌 **提问背景**：${dto.userQuery.trim()}`);
+      bodySections.push('## 📌 提问背景');
+      bodySections.push(`> ${dto.userQuery.trim()}`);
+      bodySections.push('');
     }
+
     if (tags.length > 0) {
       const tagBadges = tags.map((t) => `\`#${t}\``).join(' ');
-      metaLines.push(`> 🏷️ **核心标签**：${tagBadges}`);
-    }
-    if (metaLines.length > 0) {
-      bodySections.push(metaLines.join('  \n'));
-      bodySections.push('');
-      bodySections.push('---');
+      bodySections.push(`> 🏷️ **核心标签**：${tagBadges}`);
       bodySections.push('');
     }
 
@@ -350,6 +401,22 @@ export class WorkspaceNoteService {
     bodySections.push(rawContent);
     bodySections.push('');
 
+    if (dto.rawResultData) {
+      bodySections.push('## 🔍 原始佐证与执行详情');
+      bodySections.push('```json');
+      bodySections.push(
+        typeof dto.rawResultData === 'string'
+          ? dto.rawResultData
+          : JSON.stringify(dto.rawResultData, null, 2)
+      );
+      bodySections.push('```');
+      bodySections.push('');
+    }
+
+    bodySections.push('## 📝 知识核验与批注');
+    bodySections.push('- [ ] 待人工确认准确性');
+    bodySections.push('');
+
     return `${frontMatterLines.join('\n')}\n${bodySections.join('\n')}`;
   }
 
@@ -357,13 +424,22 @@ export class WorkspaceNoteService {
     const tagsSet = new Set<string>();
     const textToAnalyze = `${title || ''} ${userQuery || ''} ${(content || '').slice(0, 400)}`;
 
+    const JUNK_ENG = new Set([
+      'the', 'and', 'for', 'with', 'this', 'that', 'from', 'into', 'view', 'show', 'get', 'post', 'have',
+      'will', 'can', 'not', 'markdown', 'md', 'pdf', 'doc', 'docx', 'pptx', 'ppt', 'xlsx', 'xls', 'html',
+      'txt', 'json', 'csv', 'yaml', 'yml', 'based', 'thorough', 'review', 'entire', 'summary', 'note',
+      'please', 'user', 'assistant', 'content', 'page', 'also', 'more', 'about', 'some', 'what', 'when'
+    ]);
+
     const engEntities = textToAnalyze.match(/\b[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*\b/g) || [];
     for (const ent of engEntities) {
+      const lower = ent.toLowerCase();
       if (
         ent.length >= 2 &&
-        !/^(the|and|for|with|this|that|from|into|view|show|get|post|have|will|can|not)$/i.test(ent)
+        !/^\d+$/.test(ent) &&
+        !JUNK_ENG.has(lower)
       ) {
-        if (/^[A-Z]/.test(ent) || ent.length >= 4) {
+        if (/^[A-Z][a-zA-Z0-9]+$/.test(ent) || /^[A-Z]{2,}$/.test(ent)) {
           tagsSet.add(ent);
         }
       }
@@ -391,6 +467,28 @@ export class WorkspaceNoteService {
     }
 
     return Array.from(tagsSet).slice(0, 5);
+  }
+
+  private extractPrimaryCategory(title: string, userQuery?: string, content?: string): string {
+    const textToAnalyze = `${title || ''} ${userQuery || ''} ${(content || '').slice(0, 400)}`;
+    const CATEGORY_PATTERNS = [
+      { pattern: /(?:架构|系统|设计|蓝图|模型|微服务)/, tag: '技术架构' },
+      { pattern: /(?:厂商|产品|安全|防护|防火墙|态势感知)/, tag: '厂商方案' },
+      { pattern: /(?:学术|论文|形式化|理论|编程范式)/, tag: '学术研究' },
+      { pattern: /(?:调研|方案|剖析|选型|对比|落地|实践|咨询)/, tag: '技术调研' },
+      { pattern: /(?:安装|部署|配置|环境|初始化)/, tag: '安装配置' },
+      { pattern: /(?:排错|报错|故障|修复|诊断)/, tag: '运维排错' },
+      { pattern: /(?:接口|API|SDK|联调|协议)/, tag: '接口集成' },
+      { pattern: /(?:性能|时延|压测|优化|基准)/, tag: '性能优化' },
+      { pattern: /(?:数据|报表|指标|统计|分析)/, tag: '数据分析' },
+      { pattern: /(?:规范|指南|文档|手册|教程)/, tag: '使用指南' },
+    ];
+    for (const cp of CATEGORY_PATTERNS) {
+      if (cp.pattern.test(textToAnalyze)) {
+        return cp.tag;
+      }
+    }
+    return '技术调研';
   }
 
   /**

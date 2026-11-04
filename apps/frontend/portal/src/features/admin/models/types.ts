@@ -103,6 +103,7 @@ export function mapConfigToFormValues(config?: AIModelConfig) {
 
   return {
     display_name: safeConfig.display_name,
+    audio_transcription_endpoint: safeConfig.audio_transcription_endpoint,
     description: safeConfig.description,
     capability_tier: safeConfig.capability_tier || 'standard',
     defaultScopes,
@@ -136,6 +137,7 @@ export function buildConfigFromValues(values: Record<string, unknown>): AIModelC
     : undefined;
 
   return {
+    audio_transcription_endpoint: typeof values.audio_transcription_endpoint === 'string' ? values.audio_transcription_endpoint.trim() || undefined : undefined,
     display_name:
       typeof values.display_name === 'string' && values.display_name.trim()
         ? values.display_name.trim()

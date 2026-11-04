@@ -1080,6 +1080,55 @@ class TestDshCoreModules(unittest.TestCase):
             self.assertNotIn("L9: ", res_slice)
             self.assertNotIn("L16: ", res_slice)
 
+    def test_read_file_safe_line_truncation_with_next_start_hint(self):
+        """验证 read_file 在超出单次字符限制时不会截断行中间，且返回诚实请求范围和接力指引"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_file = Path(tmpdir) / "large_document.txt"
+            # 每行 100 字符，生成 400 行 = 40,000 字符，超出 30,000 字符上限
+            lines = [f"Line {i:03d} - " + ("x" * 85) for i in range(1, 401)]
+            test_file.write_text("\n".join(lines), encoding="utf-8")
+
+            res = execute_tool("read_file", {
+                "file_path": str(test_file),
+                "start_line": 1,
+                "end_line": 400
+            })
+            self.assertIn("请求范围: 第 1 至 400 行", res)
+            self.assertIn("实际展示: 第 1 至", res)
+            self.assertIn("单次字符上限截断提醒", res)
+            self.assertIn("接力读取建议", res)
+            self.assertIn("start_line=", res)
+            # 确认最后输出的行号是完整的，无破坏半行
+            self.assertIn("L1: Line 001", res)
+            self.assertNotIn("L400: ", res)
+
+    def test_read_file_document_outline_on_unsliced_large_document(self):
+        """验证无切片参数读取超长大文档时，自动提取并展示章节结构索引与接力建议"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_file = Path(tmpdir) / "paper_with_outline.md"
+            doc_lines = [
+                "# System Architecture Overview",
+                "Abstract",
+                "This paper discusses dynamic component composition.",
+                "1. Introduction",
+                "Background details here...",
+                *["Normal body paragraph content..." * 5 for _ in range(500)],
+                "2. Mathematical Formulation",
+                "Formulations here...",
+                *["Mathematical equations and proofs..." * 5 for _ in range(500)],
+                "References"
+            ]
+            test_file.write_text("\n".join(doc_lines), encoding="utf-8")
+
+            res = execute_tool("read_file", {
+                "file_path": str(test_file)
+            })
+            self.assertIn("长文档截断提醒", res)
+            self.assertIn("文档核心结构索引", res)
+            self.assertIn("Introduction", res)
+            self.assertIn("Mathematical Formulation", res)
+            self.assertIn("接力读取建议", res)
+
     def test_patch_workspace_file(self):
         """验证 patch_file 工具的精准局部匹配与原子替换"""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1360,6 +1409,7 @@ class TestDshCoreModules(unittest.TestCase):
             policy=policy,
             deadline=None,
             is_guide_intent=False,
+            has_bash=True,
             executed_calls_history=[],
             was_token_truncated=False,
             telemetry=telemetry,
@@ -1584,6 +1634,56 @@ class TestDshCoreModules(unittest.TestCase):
                     self.assertIn("系统自愈提示", res)
                     self.assertIn("doc.styles['Normal'].element.rPr.rFonts", res)
                     self.assertIn("font.name", res)
+
+    def test_compact_active_loop_messages_preserves_protocol_and_stubs_old_tools(self):
+        """验证 ReAct 循环中前序轮次的大工具切片被折叠，保留当前轮次切片，严格保全 tool_call_id"""
+        large_slice_1 = "切片 lines 1-200 / 共 4000 行:\n" + ("Paragraph content line\n" * 200)
+        large_slice_2 = "切片 lines 201-400 / 共 4000 行:\n" + ("New Paragraph content line\n" * 200)
+        short_result = "Short output 123"
+
+        messages = [
+            {"role": "user", "content": "分析这篇超长论文"},
+            {
+                "role": "assistant",
+                "content": "正在读取前 200 行...",
+                "tool_calls": [{"id": "call_1", "type": "function", "function": {"name": "read_file"}}]
+            },
+            {
+                "role": "tool",
+                "tool_call_id": "call_1",
+                "name": "read_file",
+                "content": large_slice_1
+            },
+            {
+                "role": "assistant",
+                "content": "分析完前 200 行，继续读取第 201-400 行...",
+                "tool_calls": [{"id": "call_2", "type": "function", "function": {"name": "read_file"}}]
+            },
+            {
+                "role": "tool",
+                "tool_call_id": "call_2",
+                "name": "read_file",
+                "content": large_slice_2
+            }
+        ]
+
+        # 执行就地折叠
+        compacted = ContextBudget.compact_active_loop_messages(messages, min_chars_to_compact=1000)
+
+        # 1. 结构和消息总数保持完全一致
+        self.assertEqual(len(compacted), 5)
+
+        # 2. 验证第一个 tool（历史轮次）：tool_call_id 完整保留，正文被折叠为语义桩
+        self.assertEqual(compacted[2]["tool_call_id"], "call_1")
+        self.assertIn("切片 lines 1-200", compacted[2]["content"])
+        self.assertIn("前序切片正文已完成分析并归档", compacted[2]["content"])
+        self.assertIn(str(len(large_slice_1)), compacted[2]["content"])
+        self.assertLess(len(compacted[2]["content"]), 300)
+
+        # 3. 验证第二个 tool（当前轮次，在最后的 assistant 之后）：必须完整保留，绝不提前折叠
+        self.assertEqual(compacted[4]["tool_call_id"], "call_2")
+        self.assertEqual(compacted[4]["content"], large_slice_2)
+        self.assertGreater(len(compacted[4]["content"]), 1000)
 
 
 if __name__ == "__main__":

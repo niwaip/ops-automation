@@ -98,30 +98,45 @@ export const PersonalApiKeyPanel: React.FC = () => {
       id,
       name,
       tokenVal,
+      proxyUrl,
+      baseUrl,
       description,
     }: {
       id?: string;
       name: string;
-      tokenVal: string;
+      tokenVal?: string;
+      proxyUrl?: string;
+      baseUrl?: string;
       description?: string;
     }) => {
+      const payload: Record<string, any> = {};
+      if (tokenVal && tokenVal.trim()) {
+        payload.token = tokenVal.trim();
+      }
+      if (proxyUrl !== undefined) {
+        payload.proxyUrl = proxyUrl.trim();
+      }
+      if (baseUrl !== undefined) {
+        payload.baseUrl = baseUrl.trim();
+      }
+
       if (id) {
         return credentialApi.update(id, {
           name,
           description,
-          payload: { token: tokenVal.trim() },
+          payload,
         });
       }
       return credentialApi.create({
         name,
         category: 'api_key',
         description,
-        payload: { token: tokenVal.trim() },
+        payload,
       });
     },
     {
       onSuccess: () => {
-        message.success('API 密钥保存成功并已加密存储');
+        message.success('API 密钥与连接配置保存成功并已加密存储');
         queryClient.invalidateQueries(['user-credentials']);
         setIsJinaModalOpen(false);
         setIsFirecrawlModalOpen(false);
@@ -155,6 +170,8 @@ export const PersonalApiKeyPanel: React.FC = () => {
   // Verify Jina Key
   const handleVerifyJina = async (tokenInput?: string) => {
     let testKey = tokenInput?.trim();
+    let proxyUrl = isJinaModalOpen ? jinaForm.getFieldValue('proxyUrl')?.trim() : undefined;
+    let baseUrl = isJinaModalOpen ? jinaForm.getFieldValue('baseUrl')?.trim() : undefined;
     if (!testKey && isJinaModalOpen) {
       testKey = jinaForm.getFieldValue('token')?.trim();
     }
@@ -165,7 +182,12 @@ export const PersonalApiKeyPanel: React.FC = () => {
 
     setIsVerifyingJina(true);
     try {
-      const res = await credentialApi.verifyJinaApiKey(testKey || 'SAVED_KEY', jinaCredential?.id);
+      const res = await credentialApi.verifyJinaApiKey(
+        testKey || 'SAVED_KEY',
+        jinaCredential?.id,
+        proxyUrl,
+        baseUrl
+      );
       if (res.valid) {
         message.success(res.message || 'Jina API Key 验证通过，服务连接正常！');
       } else {
@@ -255,7 +277,11 @@ export const PersonalApiKeyPanel: React.FC = () => {
       },
       onEdit: () => {
         jinaForm.resetFields();
-        jinaForm.setFieldsValue({ description: jinaCredential?.description || 'Jina AI 网页解析专属密钥' });
+        jinaForm.setFieldsValue({
+          description: jinaCredential?.description || 'Jina AI 网页解析专属密钥',
+          proxyUrl: jinaCredential?.maskedPreview?.fields?.proxyUrl || '',
+          baseUrl: jinaCredential?.maskedPreview?.fields?.baseUrl || '',
+        });
         setIsJinaModalOpen(true);
       },
       onVerify: () => handleVerifyJina(),
@@ -801,6 +827,8 @@ export const PersonalApiKeyPanel: React.FC = () => {
               id: jinaCredential?.id,
               name: 'JINA_API_KEY',
               tokenVal: values.token,
+              proxyUrl: values.proxyUrl,
+              baseUrl: values.baseUrl,
               description: values.description?.trim(),
             });
           } catch {
@@ -810,7 +838,7 @@ export const PersonalApiKeyPanel: React.FC = () => {
         confirmLoading={saveMutation.isLoading}
         okText="安全保存"
         cancelText="取消"
-        width={500}
+        width={520}
         destroyOnClose
       >
         <Form form={jinaForm} layout="vertical" style={{ marginTop: 16 }}>
@@ -818,10 +846,13 @@ export const PersonalApiKeyPanel: React.FC = () => {
             name="token"
             label="Jina API Key 明文"
             rules={[
-              { required: true, message: '请输入 Jina API Key' },
+              { required: !jinaCredential, message: '请输入 Jina API Key' },
               {
                 validator: (_, value) => {
                   if (!value || value.trim().length >= 8) {
+                    return Promise.resolve();
+                  }
+                  if (jinaCredential && !value) {
                     return Promise.resolve();
                   }
                   return Promise.reject(new Error('请输入格式正确的 API Key'));
@@ -831,9 +862,31 @@ export const PersonalApiKeyPanel: React.FC = () => {
             tooltip="通常以 jina_ 开头，可在 jina.ai/reader 免费申请"
           >
             <Input.Password
-              placeholder="例如：jina_99e902b781a94e1e813a07817cf2d9c4..."
+              placeholder={jinaCredential ? '••••••••  (若不修改则保留原密钥)' : '例如：jina_99e902b781a94e1e813a07817cf2d9c4...'}
               prefix={<KeyOutlined style={{ color: token.colorTextQuaternary }} />}
-              autoFocus
+              autoFocus={!jinaCredential}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="proxyUrl"
+            label="国内代理服务器设置 (推荐中国大陆网络配置)"
+            tooltip="支持 HTTP(S) 代理服务器，例如 http://127.0.0.1:7890、http://192.168.1.100:7890 或公司代理地址。配置后系统与沙箱将自动通过此代理穿透访问 Jina Reader。"
+          >
+            <Input
+              placeholder="例如：http://127.0.0.1:7890 或 http://proxy.company.com:8080"
+              prefix={<ApiOutlined style={{ color: token.colorTextQuaternary }} />}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="baseUrl"
+            label="自定义 Jina 镜像加速端点 (可选)"
+            tooltip="若您拥有国内可直连的 Jina Reader 反代端点或加速镜像，可在此指定。留空默认使用官方 https://r.jina.ai。"
+          >
+            <Input
+              placeholder="留空默认官方 https://r.jina.ai (例如 https://my-jina-mirror.example.com)"
+              prefix={<GlobalOutlined style={{ color: token.colorTextQuaternary }} />}
             />
           </Form.Item>
 

@@ -18,7 +18,7 @@ import tempfile
 import unicodedata
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Optional, Tuple, List, Dict, Any, Iterable, Set
+from typing import Optional, Tuple, List, Dict, Any, Iterable, Set, Union
 
 IMAGE_MIME_MAP = {
     ".jpg": "image/jpeg",
@@ -34,7 +34,14 @@ IMAGE_EXTENSIONS = tuple(IMAGE_MIME_MAP.keys())
 
 from .config import WORKSPACE_DIR, KNOWLEDGE_DIR, DEFAULT_PROXY_URL, VIRTUAL_API_KEY, SKILL_DIR, CUSTOM_SKILL_DIR, PLUGIN_DIR
 from .web_tools import check_deadline, assert_not_timed_out
-from .office_tools import extract_docx_text, extract_xlsx_text, extract_pdf_text, extract_pptx_text
+from .office_tools import (
+    extract_docx_text,
+    extract_xlsx_text,
+    extract_pdf_text,
+    extract_pptx_text,
+    slice_lines_with_char_limit,
+    format_unsliced_document_view,
+)
 
 
 def get_allowed_roots(for_write: bool = False, for_outbound: bool = False) -> List[Path]:
@@ -494,6 +501,7 @@ def prepare_multimodal_image_attachment(
 def inspect_image(
     image_path: str,
     prompt: str = "",
+    page: Optional[Union[int, str]] = None,
     max_chars: int = 15000,
     deadline: Optional[float] = None,
     model_name: Optional[str] = None,
@@ -504,6 +512,7 @@ def inspect_image(
     """
     Inspects, analyzes, and extracts visual information/OCR text from an image file
     or scanned PDF located in /workspace or /knowledge via multimodal vision model proxy.
+    Supports multi-page PDFs with targeted page extraction or multi-page stitching.
     """
     assert_not_timed_out(deadline, "image vision inspection")
     p, err = resolve_sandboxed_path(image_path, for_write=False, for_outbound=False)
@@ -517,38 +526,159 @@ def inspect_image(
 
     image_bytes = None
     mime = "image/jpeg"
+    pdf_page_meta = ""
 
     if suffix == ".pdf":
         try:
-            # 1. 优先使用 pdf2image 高清光栅化整页（获取完整文字、图章与版面）
+            import io
+            from PIL import Image
+
+            # 1. 探查总页数
+            total_pages = 1
+            try:
+                import pypdf
+                reader = pypdf.PdfReader(str(p))
+                total_pages = len(reader.pages)
+            except Exception:
+                try:
+                    import pdf2image
+                    info = pdf2image.pdfinfo_from_path(str(p))
+                    total_pages = int(info.get("Pages", 1))
+                except Exception:
+                    pass
+
+            # 2. 解析请求的页码（优先显式 page 参数，缺省时从 prompt 探测）
+            target_pages = []
+            raw_page_str = str(page).strip() if page is not None else ""
+
+            if not raw_page_str and prompt:
+                m_range = re.search(r'第\s*(\d+)\s*(?:至|到|-)\s*(\d+)\s*页', prompt)
+                m_single = re.search(r'第\s*(\d+)\s*页', prompt) or re.search(r'page\s*(\d+)', prompt, re.I)
+                if m_range:
+                    p_start, p_end = int(m_range.group(1)), int(m_range.group(2))
+                    target_pages = list(range(max(1, min(p_start, p_end)), min(total_pages, max(p_start, p_end)) + 1))
+                elif m_single:
+                    target_pages = [int(m_single.group(1))]
+
+            if not target_pages and raw_page_str:
+                if raw_page_str.lower() in ("all", "全部", "所有", "整份"):
+                    target_pages = list(range(1, min(total_pages, 4) + 1))
+                elif "-" in raw_page_str:
+                    parts = raw_page_str.split("-", 1)
+                    try:
+                        s_p, e_p = int(parts[0].strip()), int(parts[1].strip())
+                        target_pages = list(range(max(1, min(s_p, e_p)), min(total_pages, max(s_p, e_p)) + 1))
+                    except ValueError:
+                        pass
+                elif "," in raw_page_str or "，" in raw_page_str:
+                    parts = re.split(r'[,，\s]+', raw_page_str)
+                    for pt in parts:
+                        if pt.isdigit():
+                            target_pages.append(int(pt))
+                elif raw_page_str.isdigit():
+                    target_pages = [int(raw_page_str)]
+
+            if not target_pages:
+                target_pages = [1]
+
+            target_pages = [pg for pg in target_pages if 1 <= pg <= total_pages]
+            if not target_pages:
+                return f"【PDF 识别提示】指定的页码超出文档范围（文档共 {total_pages} 页，收到请求: {page}）。"
+
+            # 限制单次拼接最多 4 页，避免超长条带拉伸导致的 ViT 超时与文字模糊
+            if len(target_pages) > 4:
+                target_pages = target_pages[:4]
+
+            # 3. 光栅化渲染指定页
+            rendered_images = []
             try:
                 import pdf2image
-                import io
-                imgs = pdf2image.convert_from_path(str(p), dpi=150, first_page=1, last_page=3)
-                if imgs:
-                    buf = io.BytesIO()
-                    imgs[0].save(buf, format="JPEG", quality=85)
-                    image_bytes = buf.getvalue()
-                    mime = "image/jpeg"
+                first_p = min(target_pages)
+                last_p = max(target_pages)
+                raw_imgs = pdf2image.convert_from_path(str(p), dpi=150, first_page=first_p, last_page=last_p)
+                for pg in target_pages:
+                    idx = pg - first_p
+                    if 0 <= idx < len(raw_imgs):
+                        rendered_images.append((pg, raw_imgs[idx]))
             except Exception:
                 pass
 
-            # 2. 备选方案：通过 pypdf 提取嵌入的独立位图对象
-            if not image_bytes:
-                import pypdf
-                reader = pypdf.PdfReader(str(p))
-                for page in reader.pages:
-                    if getattr(page, "images", None) and len(page.images) > 0:
-                        sorted_imgs = sorted(page.images, key=lambda img: len(img.data), reverse=True)
-                        best_img = sorted_imgs[0]
-                        image_bytes = best_img.data
-                        img_ext = Path(best_img.name).suffix.lower()
-                        mime = mime_map.get(img_ext, "image/jpeg")
-                        break
+            # 备选：pypdf 提取位图对象
+            if not rendered_images:
+                try:
+                    import pypdf
+                    reader = pypdf.PdfReader(str(p))
+                    for pg in target_pages:
+                        if pg - 1 < len(reader.pages):
+                            page_obj = reader.pages[pg - 1]
+                            if getattr(page_obj, "images", None) and len(page_obj.images) > 0:
+                                sorted_imgs = sorted(page_obj.images, key=lambda img: len(img.data), reverse=True)
+                                img_data = sorted_imgs[0].data
+                                img_obj = Image.open(io.BytesIO(img_data))
+                                rendered_images.append((pg, img_obj))
+                except Exception:
+                    pass
 
-            if not image_bytes:
+            if not rendered_images:
                 txt_fallback = read_workspace_file(str(p), max_chars=max_chars, deadline=deadline, model_name=model_name)
-                return f"【PDF 识别提示】文档 {p.name} 无法提取有效页面图像，已尝试提取纯文本内容：\n{txt_fallback}"
+                return f"【PDF 识别提示】文档 {p.name} 无法提取第 {target_pages} 页有效图像，已尝试提取纯文本内容：\n{txt_fallback}"
+
+            # 4. 生成单页或多页合成图（多页时采用 2 列网格高清平铺排版，避免极端长条图拉伸）
+            if len(rendered_images) == 1:
+                curr_p, single_img = rendered_images[0]
+                buf = io.BytesIO()
+                single_img.convert("RGB").save(buf, format="JPEG", quality=85)
+                image_bytes = buf.getvalue()
+                mime = "image/jpeg"
+                pdf_page_meta = f"【PDF 视觉分析上下文：当前检测的是第 {curr_p} 页 / 全档共 {total_pages} 页】\n"
+                if total_pages > 1:
+                    pdf_page_meta += f"（提示：如需查看其他页面，请调用 vision_inspect(file_path='{p.name}', page=页码)，例如 page=2）\n"
+                pdf_page_meta += "（业务交互指引：以上仅为工具内部定位上下文。在最终回复用户时，请直接给出业务要点与提取内容，切勿向用户照抄或复读工具内部页码声明！）\n"
+            else:
+                n_imgs = len(rendered_images)
+                cols = 2
+                rows = (n_imgs + cols - 1) // cols
+                cell_w = max(img.width for _, img in rendered_images)
+                cell_h = max(img.height for _, img in rendered_images)
+
+                grid_w = cell_w * cols
+                grid_h = cell_h * rows
+                stitched = Image.new("RGB", (grid_w, grid_h), (255, 255, 255))
+
+                for idx, (pg, img) in enumerate(rendered_images):
+                    r = idx // cols
+                    c = idx % cols
+                    x = c * cell_w
+                    y = r * cell_h
+                    w = getattr(img, "width", getattr(img, "size", [cell_w, cell_h])[0])
+                    h = getattr(img, "height", getattr(img, "size", [cell_w, cell_h])[1])
+                    stitched.paste(img.convert("RGB"), (x, y, x + w, y + h))
+
+                buf = io.BytesIO()
+                stitched.save(buf, format="JPEG", quality=85)
+                image_bytes = buf.getvalue()
+                mime = "image/jpeg"
+
+                pgs_str = ", ".join(f"第 {pg} 页" for pg, _ in rendered_images)
+                if cols == 2 and rows == 1:
+                    layout_desc = f"排版说明：采用双页横向并排高清排布（左侧: 第 {rendered_images[0][0]} 页, 右侧: 第 {rendered_images[1][0]} 页）。"
+                else:
+                    positions = ["左上", "右上", "左下", "右下"]
+                    pos_labels = [f"{positions[idx]}: 第 {pg} 页" for idx, (pg, _) in enumerate(rendered_images)]
+                    layout_desc = f"排版说明：采用 2x2 网格高清排布（{', '.join(pos_labels)}）。"
+
+                pdf_page_meta = (
+                    f"【PDF 视觉分析上下文：当前已采用多页网格高清拼接检测 {pgs_str}（共 {len(rendered_images)} 页 / 全档共 {total_pages} 页）】\n"
+                    f"{layout_desc}\n"
+                )
+                max_pg = max(pg for pg, _ in rendered_images)
+                if total_pages > max_pg:
+                    next_s = max_pg + 1
+                    next_e = min(total_pages, next_s + 3)
+                    next_range = f"{next_s}-{next_e}" if next_s < next_e else str(next_s)
+                    pdf_page_meta += f"（提示：全档共 {total_pages} 页，本次已提取至第 {max_pg} 页。如需继续查阅后续页面，请继续调用 vision_inspect(file_path='{p.name}', page='{next_range}')）\n"
+
+                pdf_page_meta += "（业务交互指引：以上排版与页码说明仅为工具内部定位上下文。在最终回复用户时，请直接给出业务要点与提取内容，切勿向用户照抄或复读工具内部页码声明！）\n"
         except Exception as e:
             assert_not_timed_out(deadline, "image vision inspection")
             return f"从 PDF 提取页面图片失败 ({p.name}): {e}"
@@ -566,7 +696,8 @@ def inspect_image(
     if diag_err:
         return diag_err
 
-    image_bytes, mime = _optimize_image_bytes_for_vision(image_bytes, mime, max_dimension=1800)
+    max_dim = 2048 if suffix == ".pdf" else 1800
+    image_bytes, mime = _optimize_image_bytes_for_vision(image_bytes, mime, max_dimension=max_dim)
 
     to_vision = check_deadline(deadline, default_timeout=120.0)
     call_id = uuid.uuid4().hex
@@ -630,14 +761,16 @@ def inspect_image(
             if choices:
                 content = choices[0].get("message", {}).get("content", "")
                 if content and content.strip():
-                    for txt_name in [f"{p.stem}.txt", f"{p.name}.txt"]:
-                        tp = p.parent / txt_name
-                        if not tp.exists():
-                            try:
-                                tp.write_text(content, encoding="utf-8")
-                            except Exception:
-                                pass
-                    return f"【文档/图片 ({p.name}) 视觉分析与内容识别结果】:\n{content[:max_chars]}"
+                    if suffix != ".pdf":
+                        for txt_name in [f"{p.stem}.txt", f"{p.name}.txt"]:
+                            tp = p.parent / txt_name
+                            if not tp.exists():
+                                try:
+                                    tp.write_text(content, encoding="utf-8")
+                                except Exception:
+                                    pass
+                    meta_prefix = f"{pdf_page_meta}\n" if pdf_page_meta else ""
+                    return f"{meta_prefix}【文档/图片 ({p.name}) 视觉分析与内容识别结果】:\n{content[:max_chars]}"
             if purpose == 'pdf_page_review':
                 return ('页面检查服务返回空正文：model=' + str(resp_data.get('model', target_model))
                         + '；这不是页面内容缺陷，停止正文重写。')
@@ -765,18 +898,22 @@ def read_workspace_file(
         all_lines = raw.splitlines()
         total_lines = len(all_lines)
         if start_line is not None or end_line is not None:
-            s_idx = max(0, (start_line or 1) - 1)
-            e_idx = min(total_lines, end_line if end_line is not None else total_lines)
-            sliced = [f"L{s_idx + 1 + i}: {line}" for i, line in enumerate(all_lines[s_idx:e_idx])]
-            content = "\n".join(sliced)
-            return f"【文本文件 ({p.name}) 切片内容（第 {s_idx + 1} 至 {e_idx} 行，共 {total_lines} 行）】:\n" + content[:max_chars]
+            return slice_lines_with_char_limit(
+                all_lines,
+                total_lines=total_lines,
+                start_line=start_line,
+                end_line=end_line,
+                max_chars=max_chars,
+                header_label=f"文本文件 ({p.name}) 切片内容",
+                line_prefix="L"
+            )
 
         if len(raw) > max_chars:
-            hint = (
-                f"\n\n[⚠️ 文件长文本截断提醒]: 文件总长 {len(raw)} 字符 / {total_lines} 行，已读取展示前 {max_chars} 字符。"
-                f"\n💡 [通用建议]: 若需查看未展示的后续内容，请在调用 read_file 时指定 `start_line` 与 `end_line` 参数（例如 start_line={min(total_lines, (max_chars // 60))} 分页切片读取），或调用 bash 执行 `grep -n '关键词'` 精准定位。"
+            return format_unsliced_document_view(
+                raw,
+                max_chars=max_chars,
+                header_label=f"文本文件 ({p.name}) 内容"
             )
-            return f"【文本文件 ({p.name}) 内容】:\n" + raw[:max_chars] + hint
         return f"【文本文件 ({p.name}) 内容】:\n" + raw
     except Exception as e:
         return f"读取文件异常 ({p.name}): {e}"

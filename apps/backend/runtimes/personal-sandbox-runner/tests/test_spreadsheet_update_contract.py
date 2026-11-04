@@ -291,6 +291,29 @@ class TestSpreadsheetUpdateContract(unittest.TestCase):
             if meta.get("total_errors", 0) > 0:
                 self.assertNotEqual(meta["status"], "verified")
 
+    def test_compile_aggregation_with_advanced_filters(self):
+        from dsh_modules.spreadsheet_update.aggregation_api import compile_aggregation
+        params = {
+            "file_path": "test.xlsx",
+            "sheet": "Sheet1",
+            "header_row": 1,
+            "filters": [
+                {"field": "年", "op": "eq", "value": "2026"},
+                {"field": "编号", "op": "not_starts_with", "value": ["ex", "sy", "sp"]},
+                {"field": "状态", "op": "in", "value": "正常, 补填"}
+            ],
+            "group_by": ["部门"],
+            "value_field": "金额",
+            "operation": "sum"
+        }
+        compiled = compile_aggregation(params)
+        where_and = compiled["query"]["where"]["and"]
+        self.assertEqual(len(where_and), 3)
+        self.assertEqual(where_and[1]["op"], "not_starts_with")
+        self.assertEqual(where_and[1]["values"], ["ex", "sy", "sp"])
+        self.assertEqual(where_and[2]["op"], "in")
+        self.assertEqual(where_and[2]["values"], ["正常", "补填"])
+
 
 if __name__ == "__main__":
     unittest.main()

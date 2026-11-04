@@ -8,8 +8,9 @@ import { getPublicHost } from './config/service-endpoints';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
-  app.use(express.json({ limit: '50mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+  const maxBodyLimit = process.env.MAX_HTTP_BODY_LIMIT || '100mb';
+  app.use(express.json({ limit: maxBodyLimit }));
+  app.use(express.urlencoded({ extended: true, limit: maxBodyLimit }));
 
   // Enable validation globally
   app.useGlobalPipes(

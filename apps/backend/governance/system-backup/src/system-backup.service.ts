@@ -154,7 +154,10 @@ export class SystemBackupService {
         skills: [],
         ...skillsData,
       };
-      counts.skills = skillsData.skillConfigs.length;
+      counts.skills =
+        skillsData.skillConfigs.length +
+        skillsData.toolCatalogs.length +
+        (skillsData.skillSchedules?.length || 0);
     }
 
     if (selectedModules.has('temporalWorkflows')) {
@@ -188,7 +191,13 @@ export class SystemBackupService {
     if (selectedModules.has('userOrganizations')) {
       const userOrgData = await this.userOrgHandler.export();
       modulesData.userOrganizations = userOrgData;
-      counts.userOrganizations = userOrgData.users.length + userOrgData.organizations.length;
+      counts.userOrganizations =
+        userOrgData.users.length +
+        userOrgData.organizations.length +
+        userOrgData.departments.length +
+        userOrgData.roles.length +
+        userOrgData.teams.length +
+        (userOrgData.credentials?.length || 0);
     }
 
     if (selectedModules.has('taskPolicies')) {
@@ -197,7 +206,8 @@ export class SystemBackupService {
       counts.taskPolicies =
         tpData.policySets.length +
         tpData.recipes.length +
-        tpData.commandAliases.length;
+        tpData.commandAliases.length +
+        (tpData.capabilityBindings?.length || 0);
     }
 
     if (selectedModules.has('workspaces')) {

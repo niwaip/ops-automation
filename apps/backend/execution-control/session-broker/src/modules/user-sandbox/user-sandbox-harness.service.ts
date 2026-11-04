@@ -362,6 +362,14 @@ export class UserSandboxHarnessService {
         // 静默容错，不阻断执行流程
       }
 
+      // 宿主机环境变量兜底（若用户凭据中未配置专属代理/镜像，则使用运维在宿主机配置的全局代理）
+      if (!userEnvMap['JINA_PROXY_URL'] && (process.env.JINA_PROXY_URL || process.env.HTTPS_PROXY || process.env.HTTP_PROXY)) {
+        userEnvMap['JINA_PROXY_URL'] = (process.env.JINA_PROXY_URL || process.env.HTTPS_PROXY || process.env.HTTP_PROXY)!.trim();
+      }
+      if (!userEnvMap['JINA_BASE_URL'] && process.env.JINA_BASE_URL) {
+        userEnvMap['JINA_BASE_URL'] = process.env.JINA_BASE_URL.trim();
+      }
+
       const userEnvList: string[] = [];
       for (const [k, v] of Object.entries(userEnvMap)) {
         if (typeof v === 'string' && v.trim()) {

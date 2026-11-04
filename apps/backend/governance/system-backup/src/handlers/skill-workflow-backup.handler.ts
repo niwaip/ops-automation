@@ -15,11 +15,20 @@ export class SkillWorkflowBackupHandler {
   ) {}
 
   async countSkills(): Promise<number> {
-    return this.prisma.skillConfig.count();
+    const [skillConfigs, toolCatalogs, skillSchedules] = await Promise.all([
+      this.prisma.skillConfig.count(),
+      this.prisma.toolCatalog ? this.prisma.toolCatalog.count() : 0,
+      this.prisma.skillSchedule ? this.prisma.skillSchedule.count() : 0,
+    ]);
+    return skillConfigs + toolCatalogs + skillSchedules;
   }
 
   async countWorkflows(): Promise<number> {
-    return this.prisma.temporalWorkflow.count();
+    const [workflows, activities] = await Promise.all([
+      this.prisma.temporalWorkflow.count(),
+      this.prisma.activity ? this.prisma.activity.count() : 0,
+    ]);
+    return workflows + activities;
   }
 
   async exportSkills(): Promise<{
@@ -27,13 +36,15 @@ export class SkillWorkflowBackupHandler {
     toolCatalogs: any[];
     skillToolBindings: any[];
     skillPermissions: any[];
+    skillSchedules: any[];
   }> {
-    const [skillConfigs, toolCatalogs, skillToolBindings, skillPermissions] =
+    const [skillConfigs, toolCatalogs, skillToolBindings, skillPermissions, skillSchedules] =
       await Promise.all([
         this.prisma.skillConfig.findMany(),
         this.prisma.toolCatalog.findMany(),
         this.prisma.skillToolBinding.findMany(),
         this.prisma.skillPermission.findMany(),
+        this.prisma.skillSchedule ? this.prisma.skillSchedule.findMany() : [],
       ]);
 
     return {
@@ -41,6 +52,7 @@ export class SkillWorkflowBackupHandler {
       toolCatalogs,
       skillToolBindings,
       skillPermissions,
+      skillSchedules: Array.isArray(skillSchedules) ? skillSchedules : [],
     };
   }
 
@@ -62,30 +74,73 @@ export class SkillWorkflowBackupHandler {
   async previewSkills(backupData?: {
     skillConfigs?: any[];
     toolCatalogs?: any[];
+    skillSchedules?: any[];
   }): Promise<BackupModulePreview> {
     const backupSkills = backupData?.skillConfigs || [];
-    const currentSkills = await this.prisma.skillConfig.findMany({
-      select: { id: true, name: true },
-    });
+    const backupTools = backupData?.toolCatalogs || [];
+    const backupSchedules = backupData?.skillSchedules || [];
+
+    const allItems = [
+      ...backupSkills.map((s) => ({ ...s, _type: 'Skill' })),
+      ...backupTools.map((t) => ({ ...t, _type: 'Tool' })),
+      ...backupSchedules.map((sc) => ({ ...sc, _type: 'Schedule' })),
+    ];
+
     const currentMap = new Map<string, any>();
-    for (const s of currentSkills) {
-      currentMap.set(s.id, s);
-      if (s.name) currentMap.set(`name:${s.name}`, s);
+    try {
+      const currentSkills = await this.prisma.skillConfig.findMany({
+        select: { id: true, name: true },
+      });
+      for (const s of currentSkills) {
+        currentMap.set(`skill:${s.id}`, s);
+        if (s.name) currentMap.set(`skill:name:${s.name}`, s);
+      }
+
+      if (this.prisma.toolCatalog) {
+        const currentTools = await this.prisma.toolCatalog.findMany({
+          select: { id: true, name: true },
+        });
+        for (const t of currentTools) {
+          currentMap.set(`tool:${t.id}`, t);
+          if (t.name) currentMap.set(`tool:name:${t.name}`, t);
+        }
+      }
+
+      if (this.prisma.skillSchedule) {
+        const currentSchedules = await this.prisma.skillSchedule.findMany({
+          select: { id: true, name: true },
+        });
+        for (const sc of currentSchedules) {
+          currentMap.set(`sched:${sc.id}`, sc);
+          if (sc.name) currentMap.set(`sched:name:${sc.name}`, sc);
+        }
+      }
+    } catch (err) {
+      this.logger.debug(`Error reading current skills for preview: ${err}`);
     }
 
     const items: BackupConflictItem[] = [];
     let newCount = 0;
     let conflictCount = 0;
 
-    for (const item of backupSkills) {
+    for (const item of allItems) {
       const id = item.id;
       const name = item.name || id;
-      const exists = currentMap.has(id) || currentMap.has(`name:${name}`);
+      let exists = false;
+
+      if (item._type === 'Skill') {
+        exists = currentMap.has(`skill:${id}`) || (item.name && currentMap.has(`skill:name:${item.name}`));
+      } else if (item._type === 'Tool') {
+        exists = currentMap.has(`tool:${id}`) || (item.name && currentMap.has(`tool:name:${item.name}`));
+      } else if (item._type === 'Schedule') {
+        exists = currentMap.has(`sched:${id}`) || (item.name && currentMap.has(`sched:name:${item.name}`));
+      }
+
       if (exists) {
         conflictCount += 1;
         items.push({
           key: id,
-          name: `Skill: ${name}`,
+          name: `${item._type}: ${name}`,
           existsInTarget: true,
           action: 'update',
         });
@@ -93,7 +148,7 @@ export class SkillWorkflowBackupHandler {
         newCount += 1;
         items.push({
           key: id,
-          name: `Skill: ${name}`,
+          name: `${item._type}: ${name}`,
           existsInTarget: false,
           action: 'create',
         });
@@ -102,7 +157,7 @@ export class SkillWorkflowBackupHandler {
 
     return {
       moduleKey: 'skills',
-      totalInBackup: backupSkills.length,
+      totalInBackup: allItems.length,
       newCount,
       conflictCount,
       items,
@@ -114,28 +169,56 @@ export class SkillWorkflowBackupHandler {
     activities?: any[];
   }): Promise<BackupModulePreview> {
     const backupWorkflows = backupData?.temporalWorkflows || [];
-    const currentWorkflows = await this.prisma.temporalWorkflow.findMany({
-      select: { id: true, name: true },
-    });
+    const backupActivities = backupData?.activities || [];
+
+    const allItems = [
+      ...backupWorkflows.map((w) => ({ ...w, _type: 'Workflow' })),
+      ...backupActivities.map((a) => ({ ...a, _type: 'Activity' })),
+    ];
+
     const currentMap = new Map<string, any>();
-    for (const w of currentWorkflows) {
-      currentMap.set(w.id, w);
-      if (w.name) currentMap.set(`name:${w.name}`, w);
+    try {
+      const currentWorkflows = await this.prisma.temporalWorkflow.findMany({
+        select: { id: true, name: true },
+      });
+      for (const w of currentWorkflows) {
+        currentMap.set(`wf:${w.id}`, w);
+        if (w.name) currentMap.set(`wf:name:${w.name}`, w);
+      }
+
+      if (this.prisma.activity) {
+        const currentActivities = await this.prisma.activity.findMany({
+          select: { id: true, name: true },
+        });
+        for (const a of currentActivities) {
+          currentMap.set(`act:${a.id}`, a);
+          if (a.name) currentMap.set(`act:name:${a.name}`, a);
+        }
+      }
+    } catch (err) {
+      this.logger.debug(`Error reading current workflows for preview: ${err}`);
     }
 
     const items: BackupConflictItem[] = [];
     let newCount = 0;
     let conflictCount = 0;
 
-    for (const item of backupWorkflows) {
+    for (const item of allItems) {
       const id = item.id;
       const name = item.name || id;
-      const exists = currentMap.has(id) || currentMap.has(`name:${name}`);
+      let exists = false;
+
+      if (item._type === 'Workflow') {
+        exists = currentMap.has(`wf:${id}`) || (item.name && currentMap.has(`wf:name:${item.name}`));
+      } else if (item._type === 'Activity') {
+        exists = currentMap.has(`act:${id}`) || (item.name && currentMap.has(`act:name:${item.name}`));
+      }
+
       if (exists) {
         conflictCount += 1;
         items.push({
           key: id,
-          name: `Workflow: ${name}`,
+          name: `${item._type}: ${name}`,
           existsInTarget: true,
           action: 'update',
         });
@@ -143,7 +226,7 @@ export class SkillWorkflowBackupHandler {
         newCount += 1;
         items.push({
           key: id,
-          name: `Workflow: ${name}`,
+          name: `${item._type}: ${name}`,
           existsInTarget: false,
           action: 'create',
         });
@@ -152,7 +235,7 @@ export class SkillWorkflowBackupHandler {
 
     return {
       moduleKey: 'temporalWorkflows',
-      totalInBackup: backupWorkflows.length,
+      totalInBackup: allItems.length,
       newCount,
       conflictCount,
       items,
@@ -165,6 +248,7 @@ export class SkillWorkflowBackupHandler {
       toolCatalogs?: any[];
       skillToolBindings?: any[];
       skillPermissions?: any[];
+      skillSchedules?: any[];
     },
     strategy: BackupImportStrategy
   ): Promise<{ created: number; updated: number; skipped: number }> {
@@ -176,15 +260,38 @@ export class SkillWorkflowBackupHandler {
     const toolCatalogs = backupData.toolCatalogs || [];
     for (const tool of toolCatalogs) {
       if (!tool.name) continue;
-      const existing = await this.prisma.toolCatalog.findUnique({ where: { name: tool.name } });
-      if (existing) {
-        if (strategy === 'merge_override') {
-          await this.prisma.toolCatalog.update({
-            where: { name: tool.name },
+      try {
+        const existing = await this.prisma.toolCatalog.findUnique({ where: { name: tool.name } });
+        if (existing) {
+          if (strategy === 'merge_override') {
+            await this.prisma.toolCatalog.update({
+              where: { name: tool.name },
+              data: {
+                displayName: tool.displayName || tool.name,
+                description: tool.description,
+                category: tool.category,
+                runtimeType: tool.runtimeType,
+                status: tool.status || 'active',
+                riskLevel: tool.riskLevel || 'L0',
+                allowSkillBinding: tool.allowSkillBinding ?? true,
+                promptExposure: tool.promptExposure || 'prompt_and_runtime',
+                defaultRequiresConfirmation: tool.defaultRequiresConfirmation ?? false,
+                defaultRequiresApproval: tool.defaultRequiresApproval ?? false,
+                metadataJson: tool.metadataJson || {},
+              },
+            });
+            updated += 1;
+          } else {
+            skipped += 1;
+          }
+        } else {
+          await this.prisma.toolCatalog.create({
             data: {
+              id: tool.id,
+              name: tool.name,
               displayName: tool.displayName || tool.name,
               description: tool.description,
-              category: tool.category,
+              category: tool.category || 'system',
               runtimeType: tool.runtimeType,
               status: tool.status || 'active',
               riskLevel: tool.riskLevel || 'L0',
@@ -195,25 +302,11 @@ export class SkillWorkflowBackupHandler {
               metadataJson: tool.metadataJson || {},
             },
           });
+          created += 1;
         }
-      } else {
-        await this.prisma.toolCatalog.create({
-          data: {
-            id: tool.id,
-            name: tool.name,
-            displayName: tool.displayName || tool.name,
-            description: tool.description,
-            category: tool.category || 'system',
-            runtimeType: tool.runtimeType,
-            status: tool.status || 'active',
-            riskLevel: tool.riskLevel || 'L0',
-            allowSkillBinding: tool.allowSkillBinding ?? true,
-            promptExposure: tool.promptExposure || 'prompt_and_runtime',
-            defaultRequiresConfirmation: tool.defaultRequiresConfirmation ?? false,
-            defaultRequiresApproval: tool.defaultRequiresApproval ?? false,
-            metadataJson: tool.metadataJson || {},
-          },
-        });
+      } catch (err) {
+        this.logger.warn(`Failed to import tool catalog ${tool.name}: ${err}`);
+        skipped += 1;
       }
     }
 
@@ -221,14 +314,40 @@ export class SkillWorkflowBackupHandler {
     const skillConfigs = backupData.skillConfigs || [];
     for (const skill of skillConfigs) {
       if (!skill.name) continue;
-      const existing = await this.prisma.skillConfig.findUnique({
-        where: { name: skill.name },
-      });
-      if (existing) {
-        if (strategy === 'merge_override') {
-          await this.prisma.skillConfig.update({
-            where: { name: skill.name },
+      try {
+        const existing = await this.prisma.skillConfig.findUnique({
+          where: { name: skill.name },
+        });
+        if (existing) {
+          if (strategy === 'merge_override') {
+            await this.prisma.skillConfig.update({
+              where: { name: skill.name },
+              data: {
+                description: skill.description,
+                triggerKeywords: skill.triggerKeywords || [],
+                paramsSchema: skill.paramsSchema || {},
+                outputSchema: skill.outputSchema || {},
+                candidateSchemaJson: skill.candidateSchemaJson,
+                templateId: skill.templateId,
+                carboneTemplateId: skill.carboneTemplateId,
+                carboneSkillId: skill.carboneSkillId,
+                apiEndpoints: skill.apiEndpoints,
+                executionFlow: skill.executionFlow || [],
+                executionFlowTemplateIds: skill.executionFlowTemplateIds || [],
+                tools: skill.tools || [],
+                configStatus: skill.configStatus || 'draft',
+                isActive: skill.isActive ?? true,
+              },
+            });
+            updated += 1;
+          } else {
+            skipped += 1;
+          }
+        } else {
+          await this.prisma.skillConfig.create({
             data: {
+              id: skill.id,
+              name: skill.name,
               description: skill.description,
               triggerKeywords: skill.triggerKeywords || [],
               paramsSchema: skill.paramsSchema || {},
@@ -245,32 +364,11 @@ export class SkillWorkflowBackupHandler {
               isActive: skill.isActive ?? true,
             },
           });
-          updated += 1;
-        } else {
-          skipped += 1;
+          created += 1;
         }
-      } else {
-        await this.prisma.skillConfig.create({
-          data: {
-            id: skill.id,
-            name: skill.name,
-            description: skill.description,
-            triggerKeywords: skill.triggerKeywords || [],
-            paramsSchema: skill.paramsSchema || {},
-            outputSchema: skill.outputSchema || {},
-            candidateSchemaJson: skill.candidateSchemaJson,
-            templateId: skill.templateId,
-            carboneTemplateId: skill.carboneTemplateId,
-            carboneSkillId: skill.carboneSkillId,
-            apiEndpoints: skill.apiEndpoints,
-            executionFlow: skill.executionFlow || [],
-            executionFlowTemplateIds: skill.executionFlowTemplateIds || [],
-            tools: skill.tools || [],
-            configStatus: skill.configStatus || 'draft',
-            isActive: skill.isActive ?? true,
-          },
-        });
-        created += 1;
+      } catch (err) {
+        this.logger.warn(`Failed to import skill config ${skill.name}: ${err}`);
+        skipped += 1;
       }
     }
 
@@ -310,6 +408,76 @@ export class SkillWorkflowBackupHandler {
       }
     }
 
+    // 4. Skill Permissions
+    const permissions = backupData.skillPermissions || [];
+    for (const perm of permissions) {
+      if (!perm.skillId || !perm.roleId) continue;
+      try {
+        if (!this.prisma.skillPermission) continue;
+        const [skillExists, roleExists] = await Promise.all([
+          this.prisma.skillConfig.findUnique({ where: { id: perm.skillId } }),
+          this.prisma.role ? this.prisma.role.findUnique({ where: { id: perm.roleId } }) : true,
+        ]);
+        if (!skillExists || !roleExists) continue;
+
+        await this.prisma.skillPermission.upsert({
+          where: {
+            skillId_roleId: {
+              skillId: perm.skillId,
+              roleId: perm.roleId,
+            },
+          },
+          create: {
+            skillId: perm.skillId,
+            roleId: perm.roleId,
+            grantedAt: perm.grantedAt || new Date(),
+            grantedBy: perm.grantedBy,
+          },
+          update: {
+            grantedBy: perm.grantedBy,
+          },
+        });
+      } catch (err) {
+        this.logger.debug(`SkillPermission insert error: ${err}`);
+      }
+    }
+
+    // 5. Skill Schedules
+    const schedules = backupData.skillSchedules || [];
+    for (const sched of schedules) {
+      if (!sched.id || !sched.name || !sched.skillId) continue;
+      try {
+        if (!this.prisma.skillSchedule) continue;
+        const skillExists = await this.prisma.skillConfig.findUnique({
+          where: { id: sched.skillId },
+        });
+        if (!skillExists) continue;
+
+        const existing = await this.prisma.skillSchedule.findUnique({
+          where: { id: sched.id },
+        });
+        if (existing) {
+          if (strategy === 'merge_override') {
+            const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = sched;
+            await this.prisma.skillSchedule.update({
+              where: { id: sched.id },
+              data: rest,
+            });
+            updated += 1;
+          } else {
+            skipped += 1;
+          }
+        } else {
+          await this.prisma.skillSchedule.create({
+            data: sched,
+          });
+          created += 1;
+        }
+      } catch (err) {
+        this.logger.debug(`SkillSchedule import skipped: ${err}`);
+      }
+    }
+
     return { created, updated, skipped };
   }
 
@@ -328,12 +496,31 @@ export class SkillWorkflowBackupHandler {
     const activities = backupData.activities || [];
     for (const act of activities) {
       if (!act.name) continue;
-      const existing = await this.prisma.activity.findUnique({ where: { name: act.name } });
-      if (existing) {
-        if (strategy === 'merge_override') {
-          await this.prisma.activity.update({
-            where: { name: act.name },
+      try {
+        const existing = await this.prisma.activity.findUnique({ where: { name: act.name } });
+        if (existing) {
+          if (strategy === 'merge_override') {
+            await this.prisma.activity.update({
+              where: { name: act.name },
+              data: {
+                fn: act.fn || act.name,
+                timeout: act.timeout || '30s',
+                retryPolicy: act.retryPolicy,
+                handler: act.handler || 'script',
+                config: act.config || {},
+                generatedCode: act.generatedCode,
+                isActive: act.isActive ?? true,
+              },
+            });
+            updated += 1;
+          } else {
+            skipped += 1;
+          }
+        } else {
+          await this.prisma.activity.create({
             data: {
+              id: act.id,
+              name: act.name,
               fn: act.fn || act.name,
               timeout: act.timeout || '30s',
               retryPolicy: act.retryPolicy,
@@ -343,21 +530,11 @@ export class SkillWorkflowBackupHandler {
               isActive: act.isActive ?? true,
             },
           });
+          created += 1;
         }
-      } else {
-        await this.prisma.activity.create({
-          data: {
-            id: act.id,
-            name: act.name,
-            fn: act.fn || act.name,
-            timeout: act.timeout || '30s',
-            retryPolicy: act.retryPolicy,
-            handler: act.handler || 'script',
-            config: act.config || {},
-            generatedCode: act.generatedCode,
-            isActive: act.isActive ?? true,
-          },
-        });
+      } catch (err) {
+        this.logger.warn(`Failed to import activity ${act.name}: ${err}`);
+        skipped += 1;
       }
     }
 
@@ -365,12 +542,35 @@ export class SkillWorkflowBackupHandler {
     const workflows = backupData.temporalWorkflows || [];
     for (const wf of workflows) {
       if (!wf.id) continue;
-      const existing = await this.prisma.temporalWorkflow.findUnique({ where: { id: wf.id } });
-      if (existing) {
-        if (strategy === 'merge_override') {
-          await this.prisma.temporalWorkflow.update({
-            where: { id: wf.id },
+      try {
+        const existing = await this.prisma.temporalWorkflow.findUnique({ where: { id: wf.id } });
+        if (existing) {
+          if (strategy === 'merge_override') {
+            await this.prisma.temporalWorkflow.update({
+              where: { id: wf.id },
+              data: {
+                name: wf.name,
+                description: wf.description,
+                taskQueue: wf.taskQueue || 'SKILL_TASK_QUEUE',
+                workflowDsl: wf.workflowDsl || {},
+                activityDsl: wf.activityDsl || {},
+                generatedCode: wf.generatedCode,
+                artifactVersion: wf.artifactVersion || 1,
+                artifactHash: wf.artifactHash,
+                validationStatus: wf.validationStatus || 'draft',
+                validationScore: wf.validationScore || 0,
+                validationResultJson: wf.validationResultJson || wf.validationResult || null,
+                isActive: wf.isActive ?? true,
+              },
+            });
+            updated += 1;
+          } else {
+            skipped += 1;
+          }
+        } else {
+          await this.prisma.temporalWorkflow.create({
             data: {
+              id: wf.id,
               name: wf.name,
               description: wf.description,
               taskQueue: wf.taskQueue || 'SKILL_TASK_QUEUE',
@@ -385,29 +585,11 @@ export class SkillWorkflowBackupHandler {
               isActive: wf.isActive ?? true,
             },
           });
-          updated += 1;
-        } else {
-          skipped += 1;
+          created += 1;
         }
-      } else {
-        await this.prisma.temporalWorkflow.create({
-          data: {
-            id: wf.id,
-            name: wf.name,
-            description: wf.description,
-            taskQueue: wf.taskQueue || 'SKILL_TASK_QUEUE',
-            workflowDsl: wf.workflowDsl || {},
-            activityDsl: wf.activityDsl || {},
-            generatedCode: wf.generatedCode,
-            artifactVersion: wf.artifactVersion || 1,
-            artifactHash: wf.artifactHash,
-            validationStatus: wf.validationStatus || 'draft',
-            validationScore: wf.validationScore || 0,
-            validationResultJson: wf.validationResultJson || wf.validationResult || null,
-            isActive: wf.isActive ?? true,
-          },
-        });
-        created += 1;
+      } catch (err) {
+        this.logger.warn(`Failed to import temporal workflow ${wf.name || wf.id}: ${err}`);
+        skipped += 1;
       }
     }
 

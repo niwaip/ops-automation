@@ -25,7 +25,8 @@ from .llm import (
     parse_tool_calls,
     clean_output,
     is_promising_action,
-    detect_unexecuted_script_leak
+    detect_unexecuted_script_leak,
+    ModelRepetitionLoopError
 )
 from .config import WORKSPACE_DIR, KNOWLEDGE_DIR
 from .action_protocol import (
@@ -311,31 +312,58 @@ def run_agent_loop(
             print(f"⚠️ [Harness Timeout] 总任务执行已达到硬截止时间 ({policy.total_task_timeout}s)，立即终止", flush=True)
             raise TimeoutError(f"Task total execution deadline ({policy.total_task_timeout}s) exceeded")
 
-        llm_res = call_model_proxy(
-            messages,
-            model,
-            tools=active_tools,
-            timeout=policy.single_request_timeout,
-            deadline=deadline,
-            policy=policy,
-            stream_deltas=False if spreadsheet_analysis_required or comparison_required else None,
-            # A spreadsheet model may ask a valid question before computing.
-            # The evidence gate checks assertions after its choice; forcing a
-            # tool call here would remove the right to clarify.
-            tool_choice=(
-                {'type': 'function', 'function': {'name': 'render_pdf'}} if managed_pdf or pdf_repair_required else (
-                    {'type': 'function', 'function': {'name': 'render_docx'}} if (
-                        (managed_docx or any(str(item).lower().endswith('.docx') for item in (expected_deliverables or [])))
-                        and any(t.get('function', {}).get('name') == 'render_docx' for t in active_tools)
-                        and not any((receipt.provenance or {}).get('tool') == 'render_docx' for receipt in execution_evidence)
-                    ) else "required" if (
-                        (force_tool_choice and active_tools)
-                        or (active_tools and comparison_required and consecutive_comparison_errors < 2 and compile_comparison_response(comparison_contract, execution_evidence)[0] is None)
-                    ) else None
-                )
-            ),
-            purpose="tool_loop"
-        )
+        # 对多轮长程循环中的前序超大工具回包执行就地语义折叠，防止 Prompt 产生 O(N^2) 滚雪球膨胀
+        ContextBudget.compact_active_loop_messages(messages, min_chars_to_compact=2500)
+
+        try:
+            llm_res = call_model_proxy(
+                messages,
+                model,
+                tools=active_tools,
+                timeout=policy.single_request_timeout,
+                deadline=deadline,
+                policy=policy,
+                stream_deltas=False if spreadsheet_analysis_required or comparison_required else None,
+                # A spreadsheet model may ask a valid question before computing.
+                # The evidence gate checks assertions after its choice; forcing a
+                # tool call here would remove the right to clarify.
+                tool_choice=(
+                    {'type': 'function', 'function': {'name': 'render_pdf'}} if managed_pdf or pdf_repair_required else (
+                        {'type': 'function', 'function': {'name': 'render_docx'}} if (
+                            (managed_docx or any(str(item).lower().endswith('.docx') for item in (expected_deliverables or [])))
+                            and any(t.get('function', {}).get('name') == 'render_docx' for t in active_tools)
+                            and not any((receipt.provenance or {}).get('tool') == 'render_docx' for receipt in execution_evidence)
+                        ) else "required" if (
+                            (force_tool_choice and active_tools)
+                            or (active_tools and comparison_required and consecutive_comparison_errors < 2 and compile_comparison_response(comparison_contract, execution_evidence)[0] is None)
+                        ) else None
+                    )
+                ),
+                purpose="tool_loop"
+            )
+        except ModelRepetitionLoopError as e:
+            breaker_msg = (
+                "⚠️ **模型推理陷入死循环，已触发主动熔断保护**\n\n"
+                f"- **异常原因**：检测到大模型在生成推理思考链或回复内容时陷入周期性机械重复（连续复读模式，模式长 {len(e.pattern)} 字，已复读 {e.repeat_count} 次）。为避免无休止等待与算力浪费，平台已主动为您熔断打断。\n"
+                "- **💡 建议操作**：\n"
+                "  1. 请直接重新发送指令，或稍后点击重试；\n"
+                "  2. 若持续出现该现象，可尝试暂时关闭思考模式（关闭 Thinking）或更换提问关键词以打破模型的注意力陷阱。"
+            )
+            if telemetry:
+                telemetry.record_guard("model_repetition_breaker", "tripped", {
+                    "pattern_len": len(e.pattern),
+                    "repeat_count": e.repeat_count,
+                    "target": e.target
+                })
+            print(f"\n⚡ [Harness Breaker] {e} -> 立即熔断并呈现重试建议", flush=True)
+            return AgentLoopResult(
+                final_text=breaker_msg,
+                outbound_files=outbound_files,
+                outbound_reminders=outbound_reminders,
+                telemetry=telemetry,
+                messages=messages,
+                execution_evidence=execution_evidence
+            )
         reply_text = (llm_res.get("content") or "") if isinstance(llm_res, dict) else str(llm_res or "")
         structured_calls = list(llm_res.get("tool_calls") or []) if isinstance(llm_res, dict) else []
 

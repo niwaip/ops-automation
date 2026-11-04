@@ -267,14 +267,24 @@ def _fetch_jina_fallback(
     deadline: Optional[float],
     auth_state: Optional[dict] = None
 ) -> Tuple[Optional[str], Optional[str]]:
-    """备用：调用 Jina Reader 智能转 Markdown (含严格安全隐私隔离与专属Key耗尽自动降级)"""
+    """备用：调用 Jina Reader 智能转 Markdown (含严格安全隐私隔离、代理穿透与专属Key耗尽自动降级)"""
     if not default_auth_vault.assert_safe_for_external_fallback(target_url, auth_state=auth_state):
         return None, f"【隐私安全隔离】拒绝将带有身份凭据或认证特征的目标网址 ({target_url}) 转发至第三方外部服务"
 
-    jina_url = f"https://r.jina.ai/{target_url}"
-    safe_jina, _ = is_safe_web_url(jina_url)
-    if not safe_jina:
-        return None, f"获取网页内容失败 ({target_url}): Jina Reader 地址受限"
+    jina_base_url = (os.environ.get("JINA_BASE_URL", "").strip() or "https://r.jina.ai").rstrip("/")
+    jina_url = f"{jina_base_url}/{target_url}"
+
+    proxy_url = (
+        os.environ.get("JINA_PROXY_URL", "").strip() or
+        os.environ.get("HTTPS_PROXY", "").strip() or
+        os.environ.get("HTTP_PROXY", "").strip()
+    )
+
+    # 仅在非已知公网 Reader 端点且未配置前置代理时进行本地 SSRF 探针校验（有代理时由代理端接管解析与连接）
+    if not proxy_url and not jina_base_url.startswith("https://r.jina.ai"):
+        safe_jina, reason = is_safe_web_url(jina_url)
+        if not safe_jina:
+            return None, f"获取网页内容失败 ({target_url}): Jina Reader 地址受限 ({reason})"
 
     def _do_jina_http_request(api_key: Optional[str], to: float) -> Tuple[Optional[str], Optional[int], Optional[str]]:
         try:
@@ -283,7 +293,14 @@ def _fetch_jina_fallback(
                 headers["Authorization"] = f"Bearer {api_key}"
 
             req = urllib.request.Request(jina_url, headers=headers)
-            opener = urllib.request.build_opener(SSRFSafeRedirectHandler())
+            handlers = [SSRFSafeRedirectHandler()]
+            if proxy_url:
+                handlers.append(urllib.request.ProxyHandler({
+                    'http': proxy_url,
+                    'https': proxy_url
+                }))
+
+            opener = urllib.request.build_opener(*handlers)
             with opener.open(req, timeout=to) as resp:
                 text = _read_limited_response(resp)
             assert_not_timed_out(deadline, "webpage fetch fallback")
@@ -303,9 +320,11 @@ def _fetch_jina_fallback(
                 return None, 403, f"【安全拦截】重定向目标受限 ({target_url}): {http_err.reason}"
             return None, http_err.code, f"HTTP Error {http_err.code}: {http_err.reason}"
         except TimeoutError as timeout_err:
-            return None, 408, f"获取网页内容超时 ({target_url}): {timeout_err}"
+            proxy_hint = f" (已使用代理: {proxy_url})" if proxy_url else " (未配置代理服务器，国内直连可能超时)"
+            return None, 408, f"获取网页内容超时 ({target_url}){proxy_hint}: {timeout_err}"
         except Exception as e:
-            return None, 500, f"获取网页内容失败 ({target_url}): {e}"
+            proxy_hint = f" (已使用代理: {proxy_url})" if proxy_url else " (未配置代理服务器，国内直连可能受阻)"
+            return None, 500, f"获取网页内容失败 ({target_url}){proxy_hint}: {e}"
 
     jina_api_key = os.environ.get("JINA_API_KEY", "").strip()
     if jina_api_key:

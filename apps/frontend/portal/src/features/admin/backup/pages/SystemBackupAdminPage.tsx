@@ -22,6 +22,7 @@ import {
   FileWordOutlined,
   AuditOutlined,
   FolderOpenOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import { systemBackupApi } from '@/api/system-backup';
 import { BackupExportCard } from '../components/BackupExportCard';
@@ -223,6 +224,22 @@ export const SystemBackupAdminPage: React.FC = () => {
                 </Space>
               }
               value={summary?.counts?.workspaces ?? 0}
+              loading={loadingSummary}
+              valueStyle={{ fontWeight: 600, fontSize: 20 }}
+            />
+          </Card>
+        </Col>
+
+        <Col xs={12} sm={8} md={6} lg={3}>
+          <Card size="small" style={{ borderRadius: 10 }}>
+            <Statistic
+              title={
+                <Space size={4}>
+                  <TeamOutlined style={{ color: '#52c41a' }} />
+                  <Text type="secondary" style={{ fontSize: 12 }}>用户与组织凭据</Text>
+                </Space>
+              }
+              value={summary?.counts?.userOrganizations ?? 0}
               loading={loadingSummary}
               valueStyle={{ fontWeight: 600, fontSize: 20 }}
             />

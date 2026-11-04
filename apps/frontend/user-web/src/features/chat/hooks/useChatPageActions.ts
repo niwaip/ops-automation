@@ -17,6 +17,7 @@ import {
   getPendingWorkflowParameters,
 } from '../lib/workflowNaturalLanguageRouter';
 import { useChatStore } from '../chatStore';
+import { passportChatReplies } from '../lib/passportChatReplies';
 import { upsertMessage } from '../lib/messageState';
 import { summarizeSessionTitle } from '../lib/sessionView';
 import { getLatestWaitingInputExecutionId } from '../lib/taskStatus';
@@ -121,12 +122,12 @@ export function useChatPageActions({
       }
     }
     if ((!content && !hasFiles) || isSubmittingRef.current) {
-      return;
+      return false;
     }
 
     // 任务模式（task）下：streaming 时不允许发送（保持原有行为）
     if (isStreaming && chatMode !== 'chat') {
-      return;
+      return false;
     }
 
     isSubmittingRef.current = true;
@@ -186,6 +187,7 @@ export function useChatPageActions({
       },
     };
 
+    passportChatReplies.start(session.id, assistantMessage);
     updateSessionMessages(session.id, (current) => [...current, userMessage, assistantMessage]);
     updateSessionMeta(session.id, {
       title: summarizeSessionTitle(content || filesToSend?.[0]?.fileName || '附件消息'),

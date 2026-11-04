@@ -34,7 +34,10 @@ export type SearchEngineResponse = {
 
 export interface SearchEngineProvider {
   readonly name: string;
-  isConfigured(runtimeConfigs?: Record<string, string>): boolean;
+  isConfigured(
+    runtimeConfigs?: Record<string, string>,
+    options?: SearchRequestOptions
+  ): boolean;
   search(
     options: SearchRequestOptions,
     runtimeConfigs?: Record<string, string>

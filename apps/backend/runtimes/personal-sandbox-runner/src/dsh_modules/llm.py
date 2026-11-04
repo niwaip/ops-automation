@@ -20,6 +20,55 @@ TRANSIENT_STREAM_TOKENS = (
 )
 
 
+class ModelRepetitionLoopError(RuntimeError):
+    """Raised when streaming tokens indicate the model has entered an infinite repetition loop."""
+    def __init__(self, message: str, pattern: str = "", repeat_count: int = 0, target: str = "thought"):
+        super().__init__(message)
+        self.pattern = pattern
+        self.repeat_count = repeat_count
+        self.target = target
+
+
+def detect_repetition_loop(
+    text: str,
+    min_unit_len: int = 12,
+    max_unit_len: int = 400,
+    min_repeats: int = 3,
+    min_total_repeat_chars: int = 50
+) -> Optional[Tuple[str, int]]:
+    """
+    Checks if the end of text has entered a periodic repetition loop.
+    Returns (pattern, repeat_count) if detected, else None.
+    """
+    if not text or len(text) < min_total_repeat_chars:
+        return None
+
+    # Sliding window on the most recent 3000 characters
+    window = text[-3000:]
+    window_len = len(window)
+
+    for unit_len in range(min_unit_len, min(max_unit_len, window_len // min_repeats) + 1):
+        pattern = window[-unit_len:]
+        clean_pat = pattern.strip()
+        # Exclude pure punctuation, simple dividers or uniform symbols (e.g. ------, =====)
+        if len(set(clean_pat)) <= 3:
+            continue
+        # Require meaningful natural language semantic characters
+        if len(re.findall(r'[\u4e00-\u9fa5a-zA-Z]', clean_pat)) < 6:
+            continue
+
+        repeats = 0
+        idx = window_len
+        while idx >= unit_len and window[idx - unit_len:idx] == pattern:
+            repeats += 1
+            idx -= unit_len
+
+        if repeats >= min_repeats and (repeats * unit_len) >= min_total_repeat_chars:
+            return pattern, repeats
+
+    return None
+
+
 def _is_transient_error(err_msg: str, status_code: Optional[int] = None) -> bool:
     """Checks if an HTTP or stream error is transient and safe to retry."""
     lower = (err_msg or "").lower()
@@ -98,7 +147,8 @@ def _process_sse_data(
     tool_call_deltas: dict,
     start_time: float,
     ttft_ms: Optional[float],
-    stream_deltas: bool = True
+    stream_deltas: bool = True,
+    thought_chunks: Optional[List[str]] = None
 ) -> Tuple[Optional[str], Optional[dict], Optional[float]]:
     """Parses SSE JSON data and updates streaming tokens and tool call deltas."""
     finish_reason = None
@@ -126,6 +176,17 @@ def _process_sse_data(
             if ttft_ms is None:
                 ttft_ms = (time.time() - start_time) * 1000
             thought_chunk = re.sub(r'<\|(?:mask_start|mask_end|im_start|im_end|fim_prefix|fim_suffix|fim_middle|extra_\d+)\|?>', '', thought_chunk)
+            if thought_chunks is not None and thought_chunk:
+                thought_chunks.append(thought_chunk)
+                if len(thought_chunks) % 4 == 0:
+                    accumulated_t = "".join(thought_chunks)
+                    loop_t = detect_repetition_loop(accumulated_t, min_unit_len=12, max_unit_len=400, min_repeats=3, min_total_repeat_chars=50)
+                    if loop_t:
+                        pat, count = loop_t
+                        raise ModelRepetitionLoopError(
+                            f"检测到大模型在生成推理思考链时陷入死循环（已连续复读 {count} 次，模式长度 {len(pat)} 字）",
+                            pattern=pat, repeat_count=count, target="thought"
+                        )
             if stream_deltas and thought_chunk:
                 sys.stdout.write(f"<<<DSH_THOUGHT:{json.dumps(thought_chunk, ensure_ascii=False)}>>>\n")
                 sys.stdout.flush()
@@ -136,6 +197,15 @@ def _process_sse_data(
             chunk = re.sub(r'<\|(?:mask_start|mask_end|im_start|im_end|fim_prefix|fim_suffix|fim_middle|extra_\d+)\|?>', '', chunk)
             if chunk:
                 chunks.append(chunk)
+                if len(chunks) % 6 == 0:
+                    accumulated_c = "".join(chunks)
+                    loop_c = detect_repetition_loop(accumulated_c, min_unit_len=20, max_unit_len=400, min_repeats=3, min_total_repeat_chars=100)
+                    if loop_c:
+                        pat, count = loop_c
+                        raise ModelRepetitionLoopError(
+                            f"检测到大模型在生成正文内容时陷入死循环（已连续复读 {count} 次，模式长度 {len(pat)} 字）",
+                            pattern=pat, repeat_count=count, target="content"
+                        )
                 if stream_deltas:
                     sys.stdout.write(f"<<<DSH_DELTA:{json.dumps(chunk, ensure_ascii=False)}>>>\n")
                     sys.stdout.flush()
@@ -326,6 +396,7 @@ def call_model_proxy(
         headers=req_headers
     )
     chunks = []
+    thought_chunks = []
     tool_call_deltas = {}
     finish_reason = None
     received_done = False
@@ -364,13 +435,18 @@ def call_model_proxy(
                         received_done = True
                         break
                     fr, us, ttft_ms = _process_sse_data(
-                        d, chunks, tool_call_deltas, start_time, ttft_ms, stream_deltas=effective_stream_deltas
+                        d, chunks, tool_call_deltas, start_time, ttft_ms,
+                        stream_deltas=effective_stream_deltas,
+                        thought_chunks=thought_chunks
                     )
                     if fr:
                         finish_reason = fr
                     if us:
                         usage = us
             break
+        except ModelRepetitionLoopError:
+            # 明确捕获思维与文本死循环熔断，严禁重试，直接抛出
+            raise
         except urllib.error.HTTPError as e:
             err_msg = e.read().decode("utf-8", errors="ignore")
             if _is_transient_error(err_msg, e.code) and attempt < max_retries:
@@ -860,6 +936,8 @@ def clean_output(text: str, is_guide: bool = False) -> str:
     # 移除单独成行的函数调用伪代码，如 weather(city="上海") 或 web_search(query="...")
     text = re.sub(r'^\s*(?:(?:tool_code|tool_call|call|action)\s*[:：]\s*)?(?:weather|web_search|fetch_page|read_file|write_markdown)\([^\n]*\)\s*$', '', text, flags=re.MULTILINE | re.IGNORECASE)
     text = re.sub(r'\[web_search(?:\s*[:\(][^\]]*\))?\]', '', text, flags=re.IGNORECASE)
+    # 移除可能偶发残留的内部 PDF 视觉分析上下文元数据标记
+    text = re.sub(r'【PDF 视觉分析上下文：[^\n]+】\s*', '', text)
 
     # 移除裸露的命令行执行管道遗留
     text = re.sub(r'curl\s+[^\n]+(?:\s*&&\s*python3\s*<<\s*[\'"]?EOF[\'"]?[\s\S]*?EOF)?', '', text, flags=re.DOTALL)

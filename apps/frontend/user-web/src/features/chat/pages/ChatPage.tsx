@@ -32,6 +32,7 @@ import { UserChatComposer } from '../components/UserChatComposer';
 import { useChatPageActions } from '../hooks/useChatPageActions';
 import { useChatSessions } from '../hooks/useChatSessions';
 import { useChatStreaming } from '../hooks/useChatStreaming';
+import { usePassportChatInbox } from '../hooks/usePassportChatInbox';
 import {
   useChatStore,
   CHAT_FONT_SIZE_OPTIONS,
@@ -310,6 +311,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   // Wrap handleSend to push draft into sent history before clearing it
   const handleSendWithHistory = useCallback((files?: UploadedFileDescriptor[], contentOverride?: string) => {
     const textToSave = contentOverride !== undefined ? contentOverride : draft;
+    if (handleSend(files, contentOverride) === false) return false;
     if (textToSave.trim()) {
       setSentHistory((prev) => {
         const next = [...prev, textToSave.trim()];
@@ -317,8 +319,13 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
       });
     }
     setIsChatBackgroundUnlocked(false);
-    handleSend(files, contentOverride);
+    return true;
   }, [draft, handleSend]);
+
+  usePassportChatInbox({
+    selectedSessionId, busy: isStreaming, draft, setDraft,
+    send: (text) => handleSendWithHistory([], text),
+  });
 
   const handleChatModeChange = useCallback(
     (nextMode: 'chat' | 'task') => {

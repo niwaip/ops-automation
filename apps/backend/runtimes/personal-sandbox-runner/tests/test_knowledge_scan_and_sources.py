@@ -293,6 +293,252 @@ class KnowledgeScanAndSourcesTests(unittest.TestCase):
         self.assertIn("DeepSeek_Harness_安装指南.md", summary)
         self.assertNotIn("E2E企业协同基础算力与格式遵循回归测试报告.md", summary)
 
+    def test_auto_match_deliverable_on_tag_and_keyword(self):
+        """测试在无显式个人空间意图下，当 prompt 包含成果 frontmatter 中的 tag 或文件名实体时，自动引入成果"""
+        import dsh_modules.config as cfg
+        ws_tmp = tempfile.mkdtemp()
+        orig_ws = getattr(cfg, "WORKSPACE_DIR", "/workspace")
+        cfg.WORKSPACE_DIR = ws_tmp
+
+        try:
+            deliv_dir = Path(ws_tmp) / "deliverables" / "20261104_安全方案总结"
+            deliv_dir.mkdir(parents=True)
+            doc_content = (
+                "---\n"
+                "title: \"启明星辰安全解决方案及案例简介 总结\"\n"
+                "tags: [\"Venusgroup\", \"安全服务\", \"启明星辰\"]\n"
+                "---\n\n"
+                "# 启明星辰安全解决方案及案例简介\n"
+                "涵盖专业安全服务 PSS、RSS、MSS 等体系...\n"
+            )
+            (deliv_dir / "安全方案总结.md").write_text(doc_content, encoding="utf-8")
+
+            # 1. 普通提问包含 tag 'Venusgroup'，无任何 '个人空间/知识库' 指令 -> 应自动触发引入
+            res_matched = scan_personal_knowledge(prompt="Venusgroup 有什么服务", auto_match_only=True)
+            self.assertTrue(bool(res_matched))
+            self.assertIn("安全方案总结.md", res_matched)
+            scanned = get_last_scanned_knowledge_files()
+            self.assertTrue(any(f.get("matched") for f in scanned))
+
+            # 2. 普通提问包含实体 '启明星辰' -> 命中 title 和 tag -> 应自动触发引入
+            res_entity = scan_personal_knowledge(prompt="启明星辰有什么服务", auto_match_only=True)
+            self.assertTrue(bool(res_entity))
+            self.assertIn("安全方案总结.md", res_entity)
+
+            # 3. 完全无关的提问 -> auto_match_only 应返回空，绝不污染上下文
+            res_unrelated = scan_personal_knowledge(prompt="今天北京天气怎么样", auto_match_only=True)
+            self.assertEqual(res_unrelated, "")
+            scanned_unrelated = get_last_scanned_knowledge_files()
+            self.assertEqual(len(scanned_unrelated), 0)
+        finally:
+            cfg.WORKSPACE_DIR = orig_ws
+            shutil.rmtree(ws_tmp, ignore_errors=True)
+
+    def test_dynamic_web_search_sources_in_footer(self):
+        """测试当 ReAct 循环内动态调用 web_search 时，提取来源链接并正确生成 ### 📚 资料与引用来源"""
+        from dsh_modules.response_sources import append_retrieval_sources_footer
+        
+        reply_text = "根据最新公开资料，启明星辰提供专业的网络安全服务。"
+        dynamic_search_output = (
+            "【平台联网检索｜来源: tavily】\n\n"
+            "查询覆盖：启明星辰 安全服务 产品与服务体系\n\n"
+            "1. [启明星辰官网](https://www.venustech.com.cn/new_type/zyaqfw)\n"
+            "    专业安全服务提供覆盖客户信息系统规划、设计、建设、运行全生命周期。\n"
+            "2. [百度百科 - 启明星辰](https://baike.baidu.com/item/%E5%90%AF%E6%98%8E%E6%98%9F%E8%BE%B0/10964436)\n"
+            "    国内领先的网络安全企业。\n"
+        )
+
+        final_reply = append_retrieval_sources_footer(
+            reply_text,
+            prompt="启明星辰有什么服务",
+            search_context=dynamic_search_output,
+            local_knowledge_files=[]
+        )
+
+        self.assertIn("### 📚 资料与引用来源", final_reply)
+        self.assertIn("**网络检索来源：**", final_reply)
+        self.assertIn("[启明星辰官网](https://www.venustech.com.cn/new_type/zyaqfw)", final_reply)
+        self.assertIn("[百度百科 - 启明星辰](https://baike.baidu.com/item/%E5%90%AF%E6%98%8E%E6%98%9F%E8%BE%B0/10964436)", final_reply)
+
+    def test_derived_cache_files_excluded_from_retrieval_and_citations(self):
+        """测试内部派生文本缓存 (*.pptx.txt, 同名 .txt 派生) 及临时目录严禁被检索或引用"""
+        import dsh_modules.config as cfg
+        ws_tmp = tempfile.mkdtemp()
+        orig_ws = getattr(cfg, "WORKSPACE_DIR", "/workspace")
+        cfg.WORKSPACE_DIR = ws_tmp
+
+        try:
+            deliv_dir = Path(ws_tmp) / "deliverables" / "20261104_安全方案总结"
+            deliv_dir.mkdir(parents=True)
+            # 真实成果：pptx 和 md
+            (deliv_dir / "启明星辰安全解决方案.pptx").write_bytes(b"PK\x03\x04 fake pptx")
+            (deliv_dir / "启明星辰安全解决方案 总结.md").write_text("# 启明星辰方案总结", encoding="utf-8")
+            # 内部派生提取缓存：.pptx.txt 以及同名 .txt
+            (deliv_dir / "启明星辰安全解决方案.pptx.txt").write_text("内部提取缓存文本", encoding="utf-8")
+            (deliv_dir / "启明星辰安全解决方案.txt").write_text("内部同名提取文本", encoding="utf-8")
+
+            res = scan_personal_knowledge(prompt="启明星辰有什么服务", auto_match_only=True)
+            scanned = get_last_scanned_knowledge_files()
+            scanned_names = [f["name"] for f in scanned]
+
+            # 验证内部派生文件已被完全过滤，绝不注入 Prompt
+            self.assertFalse(any("pptx.txt" in name for name in scanned_names))
+            self.assertFalse(any(name.endswith("启明星辰安全解决方案.txt") for name in scanned_names))
+            # 真实成果必须正常保留
+            self.assertTrue(any(name.endswith(".pptx") for name in scanned_names))
+            self.assertTrue(any(name.endswith(".md") for name in scanned_names))
+
+            # 验证引用来源页脚绝不展示派生 txt
+            footer = format_retrieval_sources_footer(local_files=scanned)
+            self.assertNotIn(".pptx.txt", footer)
+            self.assertNotIn("启明星辰安全解决方案.txt", footer)
+            self.assertIn("启明星辰安全解决方案.pptx", footer)
+        finally:
+            cfg.WORKSPACE_DIR = orig_ws
+            shutil.rmtree(ws_tmp, ignore_errors=True)
+
+    def test_frontmatter_tag_cleaning_and_folder_preservation(self):
+        """测试 Frontmatter 标签清洗（剔除基于词、停用词、数字、格式词）以及文件夹/标题保真输出"""
+        from dsh_modules.personal_knowledge_search import _extract_markdown_frontmatter
+        raw_md = """---
+title: "时空可组合性论文归纳分析"
+tags: ["markdown", "Based", "thorough", "1996", "时空可组合性", "分布式系统", "数据分析"]
+---
+# 正文
+"""
+        fm = _extract_markdown_frontmatter(raw_md)
+        self.assertEqual(fm["title"], "时空可组合性论文归纳分析")
+        # 验证 markdown, Based, thorough, 1996 等无效垃圾标签已被清洗
+        self.assertNotIn("markdown", fm["tags"])
+        self.assertNotIn("Based", fm["tags"])
+        self.assertNotIn("thorough", fm["tags"])
+        self.assertNotIn("1996", fm["tags"])
+        self.assertIn("时空可组合性", fm["tags"])
+        self.assertIn("分布式系统", fm["tags"])
+        self.assertIn("数据分析", fm["tags"])
+
+        # 测试扫描输出中包含归档成果文件夹与文档标题保真字段
+        import dsh_modules.config as cfg
+        ws_tmp = tempfile.mkdtemp()
+        orig_ws = getattr(cfg, "WORKSPACE_DIR", "/workspace")
+        cfg.WORKSPACE_DIR = ws_tmp
+
+        try:
+            folder_name = "20261104_分析和归纳文件的详细内容，markdown，需要方...的总结"
+            deliv_dir = Path(ws_tmp) / "deliverables" / folder_name
+            deliv_dir.mkdir(parents=True)
+            doc_file = deliv_dir / "分析总结.md"
+            doc_file.write_text(raw_md, encoding="utf-8")
+
+            # 同时放置一个自动化回归测试文件夹，验证是否被拦截
+            test_dir = Path(ws_tmp) / "deliverables" / "20261019_回归测试_企业协同回归计算链路验证"
+            test_dir.mkdir(parents=True)
+            (test_dir / "测试报告.md").write_text("---\ntitle: '回归报告'\ntags: ['端到端测试', '回归测试']\n---\n", encoding="utf-8")
+
+            summary = scan_personal_knowledge(prompt="查看个人空间有哪些内容")
+            self.assertIn("业务主题/成果名称 (Topic): 时空可组合性论文归纳分析", summary)
+            self.assertIn("核心分类标签 (Tags): #时空可组合性 #分布式系统 #数据分析", summary)
+            # 确认回归测试文件夹被过滤拦截
+            self.assertNotIn("20261019_回归测试_企业协同回归计算链路验证", summary)
+        finally:
+            cfg.WORKSPACE_DIR = orig_ws
+            shutil.rmtree(ws_tmp, ignore_errors=True)
+
+    def test_url_and_repo_keyword_filtering_and_word_boundaries(self):
+        """测试针对外部 URL 与代码仓库的停用词过滤与词边界匹配，严禁对 URL 和文件名切词拆分"""
+        from dsh_modules.personal_knowledge_search import _matches_keyword
+
+        # 1. 验证严禁对 URL 进行切词拆分，且噪音虚词彻底过滤
+        prompt1 = "查看和风险这个文章的内容 https://github.com/vercel-labs/agent-desktop/"
+        kws1 = _extract_knowledge_query_keywords(prompt1)
+        self.assertEqual(kws1, [])
+
+        # 2. 验证严禁对附件文件名进行切词拆分（绝不拆解为 ai, other, pptx 造成误撞）
+        prompt_file = "【当前轮次用户上传附件】: FDE in the Age of AI - Insights from Other Companies -.pptx（这是用户本轮刚上传的新文件，为本次指令的主要处理对象）\n用户指令：查看附件，分析内容，并且给出要点总结"
+        kws_file = _extract_knowledge_query_keywords(prompt_file)
+        self.assertEqual(kws_file, [])
+        for noise in ["ai", "fde", "other", "companies", "pptx", "查看附件", "要点", "总结"]:
+            self.assertNotIn(noise, kws_file)
+
+        # 3. 验证英文介词与通用代码词过滤
+        prompt2 = "查看和分析 GitHub - vercel-labs/agent-desktop: Computer use CLI for AI agents · GitHub"
+        kws2 = _extract_knowledge_query_keywords(prompt2)
+        for noise in ["github", "for", "use", "cli", "和分析"]:
+            self.assertNotIn(noise, kws2)
+
+        # 4. 验证 _matches_keyword 严格遵循词边界
+        self.assertFalse(_matches_keyword("contain detail daily", "ai"))
+        self.assertTrue(_matches_keyword("ai agent application", "ai"))
+        self.assertFalse(_matches_keyword("platform information", "for"))
+        self.assertTrue(_matches_keyword("designed for users", "for"))
+        self.assertFalse(_matches_keyword("telecom community", "com"))
+
+    def test_external_url_auto_match_does_not_inject_deliverables(self):
+        """验证 auto_match_only 模式下，针对外部 URL 或仓库的提问绝不误撞注入本地历史成果产物"""
+        import dsh_modules.config as cfg
+        ws_tmp = tempfile.mkdtemp()
+        orig_ws = getattr(cfg, "WORKSPACE_DIR", "/workspace")
+        cfg.WORKSPACE_DIR = ws_tmp
+
+        try:
+            # 模拟一个内容包含大量 github, for, use, 风险 等技术词汇的历史产出成果
+            deliv_dir = Path(ws_tmp) / "deliverables" / "20261104_阿里AI开发新范式"
+            deliv_dir.mkdir(parents=True)
+            doc_file = deliv_dir / "阿里-AI开发-新范式.md"
+            doc_file.write_text(
+                "---\ntitle: '阿里-AI开发-新范式'\ntags: ['AI架构', '范式', '工程演化']\n---\n"
+                "本文介绍了 AI Agent 的发展与风险评估。详情参见 https://github.com/alibaba/harness 项目。\n"
+                "Computer use is a powerful paradigm for agents.\n",
+                encoding="utf-8"
+            )
+
+            # 用户提问纯外部仓库 URL，且未带个人空间修饰
+            res1 = scan_personal_knowledge(
+                prompt="查看和风险这个文章的内容 https://github.com/vercel-labs/agent-desktop/",
+                auto_match_only=True
+            )
+            self.assertEqual(res1, "")
+            self.assertEqual(len(get_last_scanned_knowledge_files()), 0)
+
+            res2 = scan_personal_knowledge(
+                prompt="查看和分析 GitHub - vercel-labs/agent-desktop: Computer use CLI for AI agents · GitHub",
+                auto_match_only=True
+            )
+            self.assertEqual(res2, "")
+            self.assertEqual(len(get_last_scanned_knowledge_files()), 0)
+        finally:
+            cfg.WORKSPACE_DIR = orig_ws
+            shutil.rmtree(ws_tmp, ignore_errors=True)
+
+    def test_skill_router_external_url_and_repo_search_intent(self):
+        """验证 SkillRouter 对外部 URL 与 GitHub 仓库的提问准确激活 is_search_intent"""
+        from dsh_modules.skill_router import SkillRouter
+
+        res1 = SkillRouter.route("查看和风险这个文章的内容 https://github.com/vercel-labs/agent-desktop/")
+        self.assertTrue(res1.is_search_intent)
+
+        res2 = SkillRouter.route("查看和分析 GitHub - vercel-labs/agent-desktop: Computer use CLI for AI agents · GitHub")
+        self.assertTrue(res2.is_search_intent)
+
+    def test_multi_turn_attachment_wrapper_stripping(self):
+        """验证多轮会话中包含历史参考附件和平台注入文案时，关键词抽取仅关注真实用户指令，杜绝误引入历史成果"""
+        from dsh_modules.personal_knowledge_search import _extract_knowledge_query_keywords
+        prompt = (
+            "【当前轮次用户上传附件】: E2E_workhours_filtered.csv（这是用户本轮刚上传的新文件，为本次指令的主要处理对象）\n"
+            "【历史会话参考附件】: FDE in the Age of AI - Insights from Other Companies -.pptx（仅作为历史背景，除非用户指令明确要求对比或关联历史文件，否则默认只处理本轮上传附件）\n"
+            "用户指令：附件是什么"
+        )
+        kws = _extract_knowledge_query_keywords(prompt)
+        self.assertEqual(kws, [])
+
+        prompt2 = (
+            "【当前轮次用户上传附件】: E2E_workhours_filtered.csv\n"
+            "【历史会话参考附件】: FDE.pptx\n"
+            "用户指令：帮我查找个人空间中关于启明星辰的报告"
+        )
+        kws2 = _extract_knowledge_query_keywords(prompt2)
+        self.assertTrue(any("启明" in k for k in kws2))
+
 
 if __name__ == "__main__":
     unittest.main()

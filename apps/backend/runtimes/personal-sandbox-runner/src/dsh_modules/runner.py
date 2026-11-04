@@ -21,6 +21,7 @@ from .context_budget import ContextBudget
 from .prompt_builder import build_system_prompt, build_user_turn
 from .skill_router import SkillRouter, is_text_only_request
 from .agent_loop import run_agent_loop, _is_tool_error
+from .llm import ModelRepetitionLoopError
 from .artifact_exporter import ArtifactExporter
 from .telemetry import TelemetryStats
 from .pdf_workflow import is_template_pdf_task, PDF_EXECUTION_INSTRUCTION
@@ -245,7 +246,17 @@ def cmd_run(args):
                                  model=getattr(args, 'model', None) or os.environ.get('DSH_MODEL'), policy=policy,
                                  present=True, telemetry=telemetry):
         return
-    knowledge_context = scan_personal_knowledge(prompt=prompt) if skill_res.is_knowledge_intent else ""
+    # 扫描个人知识库与产出成果库：
+    # 1. 若用户有显式知识库意图（is_knowledge_intent），执行全量扫描
+    # 2. 否则进行轻量关键词/tag自动探测，若命中成果库/知识库中的特定标签、文件名或高权内容，自动引入！
+    knowledge_context = ""
+    if skill_res.is_knowledge_intent:
+        knowledge_context = scan_personal_knowledge(prompt=prompt)
+    else:
+        auto_knowledge = scan_personal_knowledge(prompt=prompt, auto_match_only=True)
+        if auto_knowledge:
+            knowledge_context = auto_knowledge
+            skill_res.is_knowledge_intent = True
 
 
     # 2. 联网前置检索
@@ -488,7 +499,8 @@ def cmd_run(args):
         existing_history=existing_history,
         max_skill_chars=policy.max_skill_chars,
         timestamp_str=get_current_timestamp_str(policy.timezone),
-        available_tool_names=[t['function']['name'] for t in active_tools]
+        available_tool_names=[t['function']['name'] for t in active_tools],
+        deliverables=skill_res.deliverables
     )
     user_message_content: Any = (
         [{"type": "text", "text": user_turn_text}, *multimodal_image_parts]
@@ -644,12 +656,18 @@ def cmd_run(args):
             # recompile them into shared index.html, including on failed delivery.
             final_text, exported_html_files, detected_deliverables = raw_final_text, [], []
         else:
+            is_active_ppt_gen = bool(
+                skill_res
+                and skill_res.is_ppt_intent
+                and skill_res.is_generate_intent
+                and not (skill_res.is_inspect_intent and not skill_res.is_generate_intent)
+            )
             final_text, exported_html_files = ArtifactExporter.export_html(
                 raw_final_text,
-                skill_res.is_ppt_intent,
+                is_active_ppt_gen,
                 WORKSPACE_DIR,
                 turn_start_time=overall_start_time,
-                is_design_intent=skill_res.is_design_intent,
+                is_design_intent=skill_res.is_design_intent if skill_res else False,
                 prompt=prompt,
                 history=existing_history
             )
@@ -671,6 +689,23 @@ def cmd_run(args):
             final_text, exported_html_files, detected_deliverables = loop_res.final_text, [], []
 
         # 追加结构化资料与引用来源页脚（本地知识库与网络检索）
+        # 收集执行循环中的网络检索与页面抓取证据，确保动态触发的搜索来源能够正确追加至页脚
+        loop_search_chunks = []
+        for ev in (loop_res.execution_evidence or []):
+            tool_name = (getattr(ev, 'provenance', None) or {}).get('tool')
+            if tool_name in ('web_search', 'fetch_page'):
+                raw_data = getattr(ev, 'data', None) or (ev.render_text() if hasattr(ev, 'render_text') else None)
+                if raw_data and isinstance(raw_data, str) and raw_data not in loop_search_chunks:
+                    loop_search_chunks.append(raw_data)
+        for msg in (loop_res.messages or []):
+            if msg.get('role') == 'tool' and isinstance(msg.get('content'), str):
+                content = msg['content']
+                if '【平台联网检索' in content or 'http://' in content or 'https://' in content:
+                    if content not in loop_search_chunks:
+                        loop_search_chunks.append(content)
+        if loop_search_chunks:
+            search_context = f"{search_context}\n\n" + "\n\n".join(loop_search_chunks) if search_context else "\n\n".join(loop_search_chunks)
+
         from .response_sources import append_retrieval_sources_footer
         from .file_tools import get_last_scanned_knowledge_files
         final_text = append_retrieval_sources_footer(
@@ -761,6 +796,24 @@ def cmd_run(args):
 
         print(f"\n❌ [DeepSeek Harness 异常]: 大模型代理调用失败 ({e.code}): {err_detail}", file=sys.stderr)
         sys.exit(1)
+    except ModelRepetitionLoopError as e:
+        breaker_msg = (
+            "⚠️ **模型推理陷入死循环，已触发主动熔断保护**\n\n"
+            f"- **异常原因**：检测到大模型在生成推理思考链或回复内容时陷入周期性机械重复（连续复读模式，模式长 {len(e.pattern)} 字，已复读 {e.repeat_count} 次）。为避免无休止等待与算力浪费，平台已主动为您熔断打断。\n"
+            "- **💡 建议操作**：\n"
+            "  1. 请直接重新发送指令，或稍后点击重试；\n"
+            "  2. 若持续出现该现象，可尝试暂时关闭思考模式（关闭 Thinking）或更换提问关键词以打破模型的注意力陷阱。"
+        )
+        TelemetryStats.emit_final_output(breaker_msg)
+        if history_file:
+            try:
+                existing_history.append({"role": "user", "content": prompt})
+                existing_history.append({"role": "assistant", "content": breaker_msg})
+                with open(history_file, "w", encoding="utf-8") as f:
+                    json.dump(existing_history[-policy.recent_history_save_count:], f, ensure_ascii=False, indent=2, default=str)
+            except Exception:
+                pass
+        sys.exit(0)
     except Exception as e:
         raw_error = str(e)
         is_auth = any(

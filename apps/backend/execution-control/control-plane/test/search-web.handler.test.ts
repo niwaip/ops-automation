@@ -40,6 +40,55 @@ describe('executeWebSearch', () => {
     expect(mockedPost).not.toHaveBeenCalled();
   });
 
+  it('prioritizes user customApiKeys.TAVILY_API_KEY even when system environment has no key', async () => {
+    delete process.env.TAVILY_API_KEY;
+    delete process.env.SEARCH_API_KEY;
+    delete process.env.FIRECRAWL_API_KEY;
+    delete process.env.EXA_API_KEY;
+    delete process.env.FIRECRAWL_KEYLESS_ENABLED;
+    // Note: Bing and DuckDuckGo remain default/enabled, so if customApiKeys is ignored, it would fall back to Bing/DDG
+    mockedPost.mockResolvedValueOnce({
+      data: {
+        answer: 'Tavily result for user key',
+        results: [
+          {
+            title: 'Tavily User Result',
+            url: 'https://example.com/tavily',
+            content: 'Content from user Tavily',
+            score: 0.99,
+          },
+        ],
+      },
+    });
+
+    const result = await executeWebSearch({
+      input: {
+        query: 'test query',
+        customApiKeys: { TAVILY_API_KEY: 'user-custom-tavily-key' },
+      },
+    } as any);
+
+    expect(result).toMatchObject({
+      success: true,
+      output: {
+        provider: 'tavily',
+        results: [
+          {
+            title: 'Tavily User Result',
+            url: 'https://example.com/tavily',
+          },
+        ],
+      },
+    });
+    expect(mockedPost).toHaveBeenCalledWith(
+      'https://api.tavily.com/search',
+      expect.objectContaining({ query: 'test query' }),
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer user-custom-tavily-key' }),
+      })
+    );
+  });
+
   it('normalizes Tavily results and keeps credentials outside the output', async () => {
     process.env.TAVILY_API_KEY = 'test-secret';
     mockedPost.mockResolvedValue({

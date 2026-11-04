@@ -2,6 +2,7 @@ import { Alert, App, Button, Card, Input, List, Space, Switch, Tag, Typography }
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { imChannelApi, type XiaozhiChannelStatus } from '@/api';
+import PassportPairingCard from './PassportPairingCard';
 
 const { Text, Paragraph } = Typography;
 
@@ -37,8 +38,9 @@ export default function XiaozhiChannelCard() {
   const channel = status.data;
 
   return <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-    <Alert type="info" showIcon message="小智语音 / AI Passport" description="设备通过小智云端识别和播报。这里的在线状态表示 ops 与小智 MCP 的连接状态，不表示设备在线。长任务会先受理，之后可以询问“刚才任务的结果是什么”。" />
-    <Card title="连接设置" extra={<Space><Tag color={channel?.status === 'online' ? 'success' : 'default'}>{STATUS_TEXT[channel?.status || 'unconfigured']}</Tag><Switch checked={channel?.enabled} disabled={!channel?.configured} loading={enabled.isLoading} onChange={(value) => enabled.mutate(value)} /></Space>}>
+    <Alert type="info" showIcon message="小智语音 / AI Passport" description="AI Passport 蓝牙语音直接发送到网页聊天，不需要配置小智 MCP。下方小智云连接为另一种可选接入方式；MCP 在线状态不代表蓝牙设备在线。" />
+    <PassportPairingCard />
+    <Card title="小智 MCP 连接（可选）" extra={<Space><Tag color={channel?.status === 'online' ? 'success' : 'default'}>{STATUS_TEXT[channel?.status || 'unconfigured']}</Tag><Switch checked={channel?.enabled} disabled={!channel?.configured} loading={enabled.isLoading} onChange={(value) => enabled.mutate(value)} /></Space>}>
       <Space direction="vertical" style={{ width: '100%' }}>
         <Text>智能体别名</Text><Input value={alias} onChange={(event) => setAlias(event.target.value)} placeholder={channel?.alias || '例如：办公室小智'} maxLength={100} />
         <Text>MCP 接入点 {channel?.configured && <Tag color="green">已配置</Tag>}</Text>
@@ -48,7 +50,7 @@ export default function XiaozhiChannelCard() {
         {channel?.lastConnectedAt && <Text type="secondary">上次连接：{new Date(channel.lastConnectedAt).toLocaleString()}</Text>}
       </Space>
     </Card>
-    <Card title="已开放能力"><Paragraph>ops_submit_task：提交任务并获得受理号。ops_get_task_status：查询当前连接最近任务或指定任务的真实状态。审批与补充信息请在网页处理。</Paragraph></Card>
+    <Card title="小智 MCP 能力"><Paragraph>ops_submit_task：提交任务并获得受理号。ops_get_task_status：查询当前连接最近任务或指定任务的真实状态。审批与补充信息请在网页处理。蓝牙消息与回复请在聊天窗口查看。</Paragraph></Card>
     <Card title="最近任务" loading={tasks.isLoading}><List dataSource={tasks.data || []} locale={{ emptyText: '暂无语音任务' }} renderItem={(task) => <List.Item actions={task.detail_path ? [<a key="detail" href={task.detail_path}>执行详情</a>] : []}><List.Item.Meta title={<Space><Text>{task.instruction}</Text><Tag>{task.status}</Tag></Space>} description={<><Text type="secondary">{new Date(task.createdAt).toLocaleString()} · {task.request_id}</Text><br />{task.speech}</>} /></List.Item>} /></Card>
   </Space>;
 }

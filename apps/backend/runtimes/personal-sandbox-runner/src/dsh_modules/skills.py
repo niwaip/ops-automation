@@ -26,6 +26,9 @@ def get_available_skills() -> list:
             skill_file = item / "SKILL.md" if (item / "SKILL.md").exists() else item / "README.md"
             manifest_file = item / "manifest.json"
             triggers = []
+            tags = []
+            mode = ""
+            category = ""
             if manifest_file.exists():
                 try:
                     import json
@@ -34,6 +37,13 @@ def get_available_skills() -> list:
                         raw_trig = m_data.get("triggers") or m_data.get("keywords") or []
                         if isinstance(raw_trig, list):
                             triggers.extend([str(t).strip().lower() for t in raw_trig if t])
+                        raw_tags = m_data.get("tags") or []
+                        if isinstance(raw_tags, list):
+                            tags.extend([str(t).strip().lower() for t in raw_tags if t])
+                        if m_data.get("mode"):
+                            mode = str(m_data["mode"]).strip().lower()
+                        if m_data.get("category"):
+                            category = str(m_data["category"]).strip().lower()
                 except Exception:
                     pass
 
@@ -72,7 +82,10 @@ def get_available_skills() -> list:
                 "aliases": [item.name.lower()],
                 "deliverables": default_deliv,
                 "requires_execution": default_exec,
-                "default_rounds": default_rounds
+                "default_rounds": default_rounds,
+                "tags": tags,
+                "mode": mode,
+                "category": category,
             }
             if skill_file.exists():
                 try:
@@ -116,6 +129,25 @@ def get_available_skills() -> list:
                                         i += 1
                                         continue
 
+                                    if stripped.startswith("-") and current_block_key == "tags":
+                                        tag_item = stripped.lstrip("-").strip().strip("\"'").lower()
+                                        if tag_item:
+                                            meta["tags"].append(tag_item)
+                                        i += 1
+                                        continue
+
+                                    if (line.startswith("  ") or line.startswith("\t")) and current_block_key == "od":
+                                        if ":" in stripped:
+                                            sub_k, sub_v = stripped.split(":", 1)
+                                            sub_k = sub_k.strip().lower()
+                                            sub_v = sub_v.strip().strip("\"'").lower()
+                                            if sub_k == "mode" and sub_v:
+                                                meta["mode"] = sub_v
+                                            elif sub_k == "category" and sub_v:
+                                                meta["category"] = sub_v
+                                        i += 1
+                                        continue
+
                                     if (line.startswith("  ") or line.startswith("\t")) and current_block_key in ("description", "zh_description"):
                                         block_lines.append(stripped)
                                         i += 1
@@ -145,6 +177,12 @@ def get_available_skills() -> list:
                                                 meta["triggers"].extend(parts_trig)
                                             else:
                                                 current_block_key = "triggers"
+                                        elif k == "tags":
+                                            if v.startswith("[") and v.endswith("]"):
+                                                parts_tags = [t.strip().strip("\"'").lower() for t in v[1:-1].split(",") if t.strip()]
+                                                meta["tags"].extend(parts_tags)
+                                            else:
+                                                current_block_key = "tags"
                                         elif k == "deliverables":
                                             if v.startswith("[") and v.endswith("]"):
                                                 parts_d = [t.strip().strip("\"'").lower() for t in v[1:-1].split(",") if t.strip()]
@@ -152,6 +190,14 @@ def get_available_skills() -> list:
                                             else:
                                                 meta["deliverables"] = []
                                                 current_block_key = "deliverables"
+                                        elif k == "mode":
+                                            if v:
+                                                meta["mode"] = v.lower()
+                                        elif k == "category":
+                                            if v:
+                                                meta["category"] = v.lower()
+                                        elif k == "od":
+                                            current_block_key = "od"
                                         elif k == "requires_execution":
                                             meta["requires_execution"] = v.lower() in ("true", "1", "yes")
                                         elif k == "execution_mode":
@@ -163,6 +209,7 @@ def get_available_skills() -> list:
                                                 pass
                                     i += 1
                                 flush_block()
+                                meta["tags"] = list(dict.fromkeys(meta["tags"]))
 
                         if not meta["description"] or meta["description"] in ["|", ">"]:
                             body = parts[2] if len(parts) >= 3 else content

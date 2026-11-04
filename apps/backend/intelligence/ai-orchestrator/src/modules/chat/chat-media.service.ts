@@ -2,7 +2,7 @@ import { HttpException, HttpStatus, Injectable, Logger, Optional } from '@nestjs
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import axios from 'axios';
+import { resolveAudioTranscriptionUrl, requestAudioTranscription } from './audio-transcription.adapter';
 import type { ContentBlock } from '../../interfaces';
 import { ModelService } from '../model/model.service';
 import { StorageConfigService } from '../storage/storage-config.service';
@@ -48,32 +48,31 @@ export class ChatMediaService {
   ) {}
 
   /**
+   * Resolve and ensure all candidate durable storage directories for chat uploads across environments.
+   */
+  getUploadCandidateRoots(): string[] {
+    const fromConfig = this.storageConfigService ? this.storageConfigService.getConfig().localRoot?.trim() : undefined;
+    return [
+      process.env.CHAT_UPLOAD_STORAGE_ROOT,
+      fromConfig,
+      process.env.WORKSPACE_STORAGE_ROOT ? path.join(process.env.WORKSPACE_STORAGE_ROOT, 'uploads') : '',
+      path.join(process.cwd(), 'apps/backend/intelligence/ai-orchestrator/data/storage/uploads'),
+      '/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads',
+      path.resolve(__dirname, '../../data/storage/uploads'),
+      path.resolve(__dirname, '../../../../data/storage/uploads'),
+      path.resolve(__dirname, '../../../../../../../data/storage/uploads'),
+      '/app/data/storage/uploads',
+      '/workspace/data/storage/uploads',
+      path.join(process.cwd(), 'data/storage/uploads'),
+      '/tmp/ops-chat-uploads',
+    ].filter(Boolean) as string[];
+  }
+
+  /**
    * Resolve and ensure the durable storage directory for chat uploads.
    */
   getUploadStorageDir(): string {
-    if (this.storageConfigService) {
-      const cfg = this.storageConfigService.getConfig();
-      if (cfg.localRoot && cfg.localRoot.trim()) {
-        const configuredRoot = cfg.localRoot.trim();
-        try {
-          if (!fs.existsSync(configuredRoot)) {
-            fs.mkdirSync(configuredRoot, { recursive: true });
-          }
-          return configuredRoot;
-        } catch {
-          // ignore fallback
-        }
-      }
-    }
-
-    const candidateRoots = [
-      process.env.CHAT_UPLOAD_STORAGE_ROOT,
-      process.env.WORKSPACE_STORAGE_ROOT ? path.join(process.env.WORKSPACE_STORAGE_ROOT, 'uploads') : '',
-      '/workspace/data/storage/uploads',
-      path.join(process.cwd(), 'data/storage/uploads'),
-      path.resolve(__dirname, '../../../../../../../data/storage/uploads'),
-    ].filter(Boolean) as string[];
-
+    const candidateRoots = this.getUploadCandidateRoots();
     const chosen =
       candidateRoots.find((dir) => fs.existsSync(dir)) ||
       candidateRoots[0] ||
@@ -152,36 +151,38 @@ export class ChatMediaService {
         continue;
       }
 
-      // 2. Check disk-backed upload storage with strict UUID, realpath, and tenant checks
+      // 2. Check disk-backed upload storage across all candidate directories with strict UUID, realpath, and tenant checks
       if (file.fileId && VALID_FILE_ID_REGEX.test(file.fileId)) {
         try {
-          const uploadDir = path.resolve(this.getUploadStorageDir());
-          let realUploadDir = uploadDir;
-          try {
-            if (fs.existsSync(uploadDir)) {
-              realUploadDir = fs.realpathSync(uploadDir);
-            }
-          } catch {
-            // fallback
-          }
+          const candidateDirs = this.getUploadCandidateRoots();
+          let matchedMeta: any = null;
+          let matchedUploadDir = '';
+          let realUploadDir = '';
 
-          const metaPath = path.resolve(uploadDir, `${file.fileId}.meta.json`);
-
-          if (fs.existsSync(metaPath)) {
-            let realMetaPath = metaPath;
+          for (const candDir of candidateDirs) {
             try {
-              realMetaPath = fs.realpathSync(metaPath);
+              if (!fs.existsSync(candDir)) continue;
+              const directMetaPath = path.resolve(candDir, `${file.fileId}.meta.json`);
+              if (!fs.existsSync(directMetaPath)) continue;
+
+              const rUploadDir = fs.realpathSync(candDir);
+              const rMetaPath = fs.realpathSync(directMetaPath);
+              if (!rMetaPath.startsWith(rUploadDir + path.sep)) {
+                this.logger.warn(`Symlink or path traversal blocked for meta file: ${directMetaPath}`);
+                continue;
+              }
+
+              matchedMeta = JSON.parse(fs.readFileSync(rMetaPath, 'utf-8'));
+              matchedUploadDir = candDir;
+              realUploadDir = rUploadDir;
+              break;
             } catch {
               continue;
             }
+          }
 
-            if (!realMetaPath.startsWith(realUploadDir + path.sep)) {
-              this.logger.warn(`Symlink or path traversal blocked for meta file: ${metaPath}`);
-              continue;
-            }
-
-            const meta = JSON.parse(fs.readFileSync(realMetaPath, 'utf-8'));
-
+          if (matchedMeta) {
+            const meta = matchedMeta;
             // Multi-tenant check against meta owner
             if (!isAdmin) {
               const hasOwnerMatch = Boolean(
@@ -205,8 +206,19 @@ export class ChatMediaService {
             let content = file.content;
             let buf: Buffer | undefined;
 
-            if (meta.filePath && typeof meta.filePath === 'string') {
-              const resolvedFilePath = path.resolve(meta.filePath);
+            let targetFilePath = meta.filePath;
+            // 跨环境路径漂移自愈：若 meta.filePath 记录的绝对路径在当前环境不存在（例如容器内与宿主机路径差异）
+            if (targetFilePath && typeof targetFilePath === 'string') {
+              if (!fs.existsSync(targetFilePath)) {
+                const fallbackInDir = path.join(matchedUploadDir, path.basename(targetFilePath));
+                if (fs.existsSync(fallbackInDir)) {
+                  targetFilePath = fallbackInDir;
+                }
+              }
+            }
+
+            if (targetFilePath && typeof targetFilePath === 'string') {
+              const resolvedFilePath = path.resolve(targetFilePath);
               if (fs.existsSync(resolvedFilePath)) {
                 let realFilePath = resolvedFilePath;
                 try {
@@ -216,8 +228,12 @@ export class ChatMediaService {
                 }
                 // CRITICAL: Ensure realFilePath is strictly contained within realUploadDir (symlink defense)
                 if (realFilePath.startsWith(realUploadDir + path.sep)) {
-                  buf = fs.readFileSync(realFilePath);
-                  content = buf.toString('base64');
+                  try {
+                    buf = fs.readFileSync(realFilePath);
+                    content = buf.toString('base64');
+                  } catch (readErr: any) {
+                    this.logger.warn(`Failed reading physical file content for ${realFilePath}: ${readErr.message}`);
+                  }
                 } else {
                   this.logger.warn(`Symlink escape or path traversal blocked for filePath: ${meta.filePath}`);
                   continue;
@@ -236,7 +252,7 @@ export class ChatMediaService {
               mimeType: meta.mimeType || file.mimeType,
               size: meta.size || file.size || (buf ? buf.length : 0),
               content,
-              filePath: meta.filePath,
+              filePath: targetFilePath,
               extractedText,
             };
             this.fileStore.set(file.fileId, {
@@ -244,7 +260,7 @@ export class ChatMediaService {
               mimeType: item.mimeType,
               size: item.size,
               content: content || '',
-              filePath: meta.filePath,
+              filePath: targetFilePath,
               extractedText,
               ownerUserId: meta.ownerUserId,
               organizationId: meta.organizationId,
@@ -1003,50 +1019,10 @@ export class ChatMediaService {
     }
 
     const config = client.getConfig();
-    const baseURL = config.baseURL.replace(/\/chat\/completions$/, '').replace(/\/$/, '');
-    const formData = new FormData();
-    const blob = new Blob([new Uint8Array(file.buffer)], { type: file.mimetype });
-    formData.append('file', blob, file.originalname);
-    formData.append('model', model.name);
-
-    this.logger.log(
-      `Transcribing audio with URL: ${baseURL}/audio/transcriptions and model: ${model.name}`
+    const url = resolveAudioTranscriptionUrl(
+      model.api_endpoint || config.baseURL,
+      model.config?.audio_transcription_endpoint,
     );
-    try {
-      const response = await axios.post(`${baseURL}/audio/transcriptions`, formData, {
-        headers: {
-          Authorization: `Bearer ${config.apiKey}`,
-        },
-        maxBodyLength: Infinity,
-        maxContentLength: Infinity,
-      } as any);
-
-      const resData = response.data as any;
-      let text = '';
-      if (typeof resData === 'string') {
-        text = resData;
-      } else if (resData && typeof resData.text === 'string') {
-        text = resData.text;
-      } else if (resData && typeof resData.result === 'string') {
-        text = resData.result;
-      } else if (resData?.data && typeof resData.data.text === 'string') {
-        text = resData.data.text;
-      } else {
-        this.logger.warn(
-          `Unexpected transcription response format: ${JSON.stringify(response.data)}`
-        );
-        text = JSON.stringify(response.data);
-      }
-
-      return { text };
-    } catch (error: any) {
-      this.logger.error(`Audio transcription failed: ${error.message}`, error.response?.data);
-      throw new HttpException(
-        error.response?.data?.error?.message ||
-          error.response?.data?.message ||
-          'Audio transcription failed',
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
-      );
-    }
+    return requestAudioTranscription(file, { url, model: model.name, apiKey: config.apiKey });
   }
 }

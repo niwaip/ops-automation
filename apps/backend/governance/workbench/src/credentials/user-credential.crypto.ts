@@ -86,8 +86,19 @@ export class UserCredentialCrypto {
         const token = String(payload.apiKey || payload.token || payload.key || '');
         const masked = this.maskSecret(token);
         fields.token = masked;
+        if (payload.proxyUrl) {
+          fields.proxyUrl = String(payload.proxyUrl);
+        }
+        if (payload.baseUrl) {
+          fields.baseUrl = String(payload.baseUrl);
+        }
+        const extraSummary = payload.proxyUrl
+          ? ` (代理: ${payload.proxyUrl})`
+          : payload.baseUrl
+          ? ` (镜像: ${payload.baseUrl})`
+          : '';
         return {
-          summary: `凭证: ${masked}`,
+          summary: `凭证: ${masked}${extraSummary}`,
           fields,
         };
       }

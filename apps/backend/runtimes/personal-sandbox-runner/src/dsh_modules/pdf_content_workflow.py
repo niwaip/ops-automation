@@ -41,26 +41,78 @@ def content_parameters(source, bound):
 
 
 
+def _is_rejection_or_system_error(text: str) -> bool:
+    if not text or not isinstance(text, str):
+        return False
+    rejection_markers = (
+        '尚未通过验收',
+        '未通过验收',
+        '未发布新的交付文件',
+        '未通过内容预检',
+        '未通过内容、分页与逐页预览验收',
+        '页面内容修复已达3个版本',
+        '验收服务或运行时异常',
+        '执行异常',
+        '抱歉，处理您的请求时出现异常',
+    )
+    return any(marker in text for marker in rejection_markers)
+
+
+def _find_prior_user_task(conversation_history):
+    """Find the most recent substantive user request in history."""
+    if not conversation_history:
+        return ''
+    retry_re = re.compile(
+        r'^(?:重新生成|重新做|重做|重试|再试一次|再生成|重新导出|重写)(?:\s*(?:一份|一个)?\s*(?:pdf|word|excel|ppt|文档|文件)?)?$',
+        re.I
+    )
+    for m in reversed(conversation_history[:-1]):
+        if m.get('role') == 'user':
+            content = str(m.get('content') or '').strip()
+            if content and not retry_re.match(content) and len(content) >= 6:
+                return content
+    return ''
+
+
 def run_pdf_content_workflow(prompt, model, policy, workspace, skill_dir, deadline, telemetry, conversation_history=None):
     receipts = []
-    bound = bind_pdf_request({'output_path': 'handout.pdf' if 'handout' in prompt.lower() else 'document.pdf'}, prompt,
-                             deadline=deadline, model=model, policy=policy, telemetry=telemetry)
-    assets = sorted(p.name for p in (Path(skill_dir) / 'pdf/examples').glob('*.svg') if p.is_file() and not p.is_symlink())
-    density = 'handout每页正文建议200–350个中文字，简介1–2句，清单与表格每项一个短句；用户指定细节优先。' if bound.get('template') == 'handout' else ''
-    instruction = CONTENT_INSTRUCTION + density + '\n可用本地素材（文件名，不代表必须使用）：' + ', '.join(assets)
-    tokens, attempts = content_budget(bound, policy)
     user_prompt_content = prompt
+    effective_prompt = prompt
     if conversation_history:
         prior_assistant = next((
             m.get('content', '') for m in reversed(conversation_history[:-1])
             if m.get('role') == 'assistant' and isinstance(m.get('content'), str) and m.get('content').strip()
         ), '')
+        prior_user_task = _find_prior_user_task(conversation_history)
         is_brief_prompt = len(prompt.strip()) < 35
         is_pure_export = bool(re.search(
-            r'^(?:生成|导出|制作|做成|转成|输出|保存为|转为|转换成)\s*(?:一份|一个|成|为)?\s*(?:可下载的)?\s*(?:pdf|word|excel|ppt|docx|xlsx|pptx|html)?(?:\s*文件|\s*文档|\s*表格|\s*演示文稿|\s*报告)?$',
+            r'^(?:重新生成|重新做|重做|重试|再试一次|再生成|重新导出|重写|生成|导出|制作|做成|转成|输出|保存为|转为|转换成)\s*(?:一份|一个|成|为)?\s*(?:可下载的)?\s*(?:pdf|word|excel|ppt|docx|xlsx|pptx|html)?(?:\s*文件|\s*文档|\s*表格|\s*演示文稿|\s*报告)?$',
             prompt.strip(), re.I
         ))
-        if prior_assistant and (is_brief_prompt or is_pure_export):
+
+        if prior_assistant and _is_rejection_or_system_error(prior_assistant):
+            # Previous turn was an acceptance failure or rejection notice; never treat it as content!
+            reason_match = re.search(r'原因[：:]([^\n]+)', prior_assistant)
+            failure_reason = reason_match[1].strip() if reason_match else ''
+            failure_reason = re.sub(r'💡.*$', '', failure_reason).strip()
+
+            if prior_user_task:
+                effective_prompt = f"{prior_user_task} {prompt}"
+                reason_directive = (
+                    f"\n\n【前序验收未通过原因及改进要求】：\n"
+                    f"{failure_reason}。\n"
+                    f"请特别注意针对性扩充正文内容结构与各章节细节，合理增加小节、清单与说明，确保正文篇幅达到全部页数与排版规范，严禁脱离主题编造无关指引！"
+                    if failure_reason else ""
+                )
+                user_prompt_content = (
+                    f"【核心生成任务（请严格根据以下用户原始要求与主题编写完整正文并排版）：】\n"
+                    f"{prior_user_task}\n\n"
+                    f"【用户重新生成指示】：{prompt}"
+                    f"{reason_directive}"
+                )
+        elif prior_assistant and (is_brief_prompt or is_pure_export):
+            if prior_user_task and ('页' in prior_user_task or 'handout' in prior_user_task.lower() or '暖色' in prior_user_task):
+                effective_prompt = f"{prior_user_task} {prompt}"
             cleaned_prior = re.sub(r'(?ms)\n*---\n*\*\*说明\*\*：.*$', '', prior_assistant)
             cleaned_prior = re.sub(r'(?ms)\n*(?:注意|说明|提示)[：:].*?请使用.*$', '', cleaned_prior).strip()
             if cleaned_prior:
@@ -69,6 +121,13 @@ def run_pdf_content_workflow(prompt, model, policy, workspace, skill_dir, deadli
                     f"【前序会话正文资料（用户要求基于此内容排版生成 PDF，请提取并排版以下核心内容，保留关键事实与数据，不要编造无关指引）：】\n"
                     f"{cleaned_prior[:8000]}"
                 )
+
+    bound = bind_pdf_request({'output_path': 'handout.pdf' if 'handout' in effective_prompt.lower() else 'document.pdf'},
+                             effective_prompt, deadline=deadline, model=model, policy=policy, telemetry=telemetry)
+    assets = sorted(p.name for p in (Path(skill_dir) / 'pdf/examples').glob('*.svg') if p.is_file() and not p.is_symlink())
+    density = 'handout每页正文建议200–350个中文字，简介1–2句，清单与表格每项一个短句；用户指定细节优先。' if bound.get('template') == 'handout' else ''
+    instruction = CONTENT_INSTRUCTION + density + '\n可用本地素材（文件名，不代表必须使用）：' + ', '.join(assets)
+    tokens, attempts = content_budget(bound, policy)
     messages = [{'role': 'system', 'content': instruction}, {'role': 'user', 'content': user_prompt_content}]
     for attempt in range(attempts):
         response = call_model_proxy(messages, model=model, policy=replace(policy, thinking=False),

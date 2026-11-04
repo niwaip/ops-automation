@@ -1,20 +1,21 @@
 import {
-BadRequestException,
-Body,
-Controller,
-Delete,
-Get,
-Logger,
-Param,
-Post,
-Put,
-Query,
-Req,
-Res,
-UnauthorizedException,
-UploadedFile,
-UseGuards,
-UseInterceptors,
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Logger,
+  Param,
+  Post,
+  Put,
+  Query,
+  Req,
+  Res,
+  UnauthorizedException,
+  UploadedFile,
+  UseFilters,
+  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes,ApiOperation,ApiResponse,ApiTags } from '@nestjs/swagger';
@@ -41,6 +42,13 @@ ChatUploadFileResponseDTO,
 } from './chat.dto';
 import { UserSandboxDispatcherService } from './user-sandbox-dispatcher.service';
 import { WorkspaceArtifactService } from './workspace-artifact.service';
+import {
+  ALLOWED_AUDIO_EXTENSIONS,
+  ALLOWED_CHAT_FILE_EXTENSIONS,
+  getChatAudioMaxFileSize,
+  getChatUploadMaxFileSize,
+} from './chat-upload.constants';
+import { ChatUploadExceptionFilter } from './chat-upload.filter';
 
 type SseEventPayload = {
   type: string;
@@ -877,29 +885,20 @@ export class ChatController {
 
   @Post('chat/upload')
   @UseGuards(AiAuthGuard, ChatRateLimiterGuard)
+  @UseFilters(new ChatUploadExceptionFilter('file'))
   @ChatRateLimit(30, 60000, 'Upload rate limit exceeded. Please wait a minute.')
   @ApiOperation({ summary: 'Upload file for chat' })
   @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 200, description: 'File uploaded successfully' })
   @UseInterceptors(
     FileInterceptor('file', {
-      limits: { fileSize: 20 * 1024 * 1024 },
+      limits: { fileSize: getChatUploadMaxFileSize() },
       fileFilter: (req: any, file, callback) => {
         const ext = path.extname(file.originalname).toLowerCase();
-        const allowedExtensions = new Set([
-          // Images & Icons
-          '.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg', '.bmp', '.dib', '.tiff', '.tif', '.ico', '.avif', '.heic', '.heif', '.emf', '.wmf',
-          // Audio
-          '.mp3', '.wav', '.webm', '.ogg', '.m4a',
-          // Documents & Data
-          '.pdf', '.txt', '.md', '.csv', '.tsv', '.json', '.jsonl', '.xml',
-          '.docx', '.xlsx', '.pptx', '.doc', '.xls', '.ppt',
-          // Code, Scripts, Logs & Configs (DevOps / Tech Assistant)
-          '.log', '.sql', '.sh', '.bash', '.zsh', '.py', '.js', '.ts', '.tsx', '.jsx',
-          '.yaml', '.yml', '.conf', '.ini', '.env', '.toml', '.properties',
-        ]);
-        const isDockerfile = file.originalname.toLowerCase() === 'dockerfile' || file.originalname.toLowerCase().startsWith('dockerfile.');
-        if (!allowedExtensions.has(ext) && !isDockerfile) {
+        const isDockerfile =
+          file.originalname.toLowerCase() === 'dockerfile' ||
+          file.originalname.toLowerCase().startsWith('dockerfile.');
+        if (!ALLOWED_CHAT_FILE_EXTENSIONS.has(ext) && !isDockerfile) {
           req.fileValidationError = `Unsupported file type extension: ${ext || 'none'}`;
           return callback(null, false);
         }
@@ -929,16 +928,16 @@ export class ChatController {
 
   @Post('chat/audio/transcriptions')
   @UseGuards(AiAuthGuard)
+  @UseFilters(new ChatUploadExceptionFilter('audio'))
   @ApiOperation({ summary: 'Transcribe audio file using the selected model' })
   @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 200, description: 'Audio transcribed successfully' })
   @UseInterceptors(
     FileInterceptor('file', {
-      limits: { fileSize: 25 * 1024 * 1024 },
+      limits: { fileSize: getChatAudioMaxFileSize() },
       fileFilter: (req: any, file, callback) => {
         const ext = path.extname(file.originalname).toLowerCase();
-        const allowedAudioExts = new Set(['.mp3', '.wav', '.webm', '.ogg', '.m4a', '.flac', '.aac']);
-        if (!allowedAudioExts.has(ext)) {
+        if (!ALLOWED_AUDIO_EXTENSIONS.has(ext)) {
           req.fileValidationError = `Only audio files are permitted for transcription: ${ext || 'none'}`;
           return callback(null, false);
         }

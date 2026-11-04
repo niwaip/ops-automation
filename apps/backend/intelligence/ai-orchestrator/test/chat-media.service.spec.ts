@@ -218,6 +218,44 @@ describe('ChatMediaService with Durable Storage', () => {
 
       delete process.env.WORKSPACE_STORAGE_ROOT;
     });
+
+    it('should self-heal cross-environment path drift and recover disk-backed upload file', async () => {
+      const fileId = 'file-test-drift-12345';
+      const actualPdfPath = path.join(tempStorageDir, `${fileId}-paper.pdf`);
+      fs.writeFileSync(actualPdfPath, '%PDF-1.4 sample content');
+
+      // 制造一个指向不存在的跨环境路径（如宿主机路径在容器内失效）的 meta.json
+      const metaPath = path.join(tempStorageDir, `${fileId}.meta.json`);
+      fs.writeFileSync(
+        metaPath,
+        JSON.stringify({
+          fileId,
+          fileName: 'paper.pdf',
+          mimeType: 'application/pdf',
+          size: 24,
+          filePath: '/invalid/host/path/that/does/not/exist/' + `${fileId}-paper.pdf`,
+          ownerUserId: defaultUser.userId,
+          organizationId: defaultUser.organizationId,
+          createdAt: new Date().toISOString(),
+        })
+      );
+
+      // 清空内存缓存，强制走磁盘回捞
+      const freshService = new ChatMediaService(mockModelService as ModelService);
+
+      const resolved = await freshService.resolveUploadedFiles(
+        [{ fileId, fileName: 'paper.pdf' } as ChatUploadedFileDTO],
+        defaultUser
+      );
+
+      expect(resolved).toHaveLength(1);
+      expect(resolved[0].fileId).toBe(fileId);
+      // 验证 filePath 已自愈为实际物理存在的路径
+      expect(resolved[0].filePath).toBe(actualPdfPath);
+      expect(fs.existsSync(resolved[0].filePath!)).toBe(true);
+      // 验证 content 也被成功读取为 Base64
+      expect(resolved[0].content).toBe(Buffer.from('%PDF-1.4 sample content').toString('base64'));
+    });
   });
 
   describe('buildMessageContent', () => {

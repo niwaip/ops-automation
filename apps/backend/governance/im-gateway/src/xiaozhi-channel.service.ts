@@ -72,6 +72,16 @@ export class XiaozhiChannelService {
 
   async listTasks(userId: string, limit: number) { return this.tasks.listForUser(userId, limit); }
 
+  async submitTask(userId: string, instruction: string, idempotencyKey: string) {
+    const connection = await this.owned(userId);
+    return this.tasks.submit(connection.id, instruction, idempotencyKey);
+  }
+
+  async getTask(userId: string, requestId: string) {
+    const connection = await this.owned(userId);
+    return this.tasks.get(connection.id, requestId);
+  }
+
   private async owned(userId: string) {
     const connection = await this.prisma.imChannelConnection.findUnique({ where: { userId_channel: { userId, channel: 'xiaozhi' } } });
     if (!connection?.encryptedCredential) throw new NotFoundException('尚未配置小智接入点');
@@ -92,4 +102,3 @@ export class XiaozhiChannelService {
     return value || null;
   }
 }
-

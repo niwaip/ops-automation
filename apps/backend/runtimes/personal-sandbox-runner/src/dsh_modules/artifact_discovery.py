@@ -55,6 +55,9 @@ def discover_physical_artifacts(
                 continue
             if name_lower in input_names:
                 continue
+            # 排除沙箱内部运行脚本与编译缓存，绝不作为业务交付物直接外送
+            if entry.suffix.lower() in ('.py', '.sh', '.bash', '.pyc', '.swp', '.bak'):
+                continue
             try:
                 stat = entry.stat()
                 if stat.st_size <= 0:

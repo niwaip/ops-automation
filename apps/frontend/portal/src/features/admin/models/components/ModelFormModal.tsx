@@ -181,6 +181,10 @@ export const ModelFormModal: React.FC<ModelFormModalProps> = ({
 
   const handleRunTest = async () => {
     const values = form.getFieldsValue();
+    if (values.defaultScopes?.includes('audio_transcription') || detectedProfile?.routing_tags?.includes('audio_transcription')) {
+      message.info('语音识别模型请保存后在聊天窗口用录音测试；此按钮用于对话模型连通性测试。');
+      return;
+    }
     const modelName = values.name;
     const apiKey = values.apiKey;
     const providerConfig = values.providerConfigId
@@ -335,6 +339,15 @@ export const ModelFormModal: React.FC<ModelFormModalProps> = ({
             form.setFieldsValue({ input: next });
           }}
         />
+
+        <Form.Item
+          name="audio_transcription_endpoint"
+          label="语音转写 URL 覆盖（可选）"
+          extra="仅用于 ASR，填写完整接口地址。留空则从服务商地址自动生成；沿用服务商 API Key。硅基流动：https://api.siliconflow.cn/v1/audio/transcriptions"
+          rules={[{ type: 'url', message: '请输入完整的 HTTP(S) 地址' }, { pattern: /^https?:\/\//i, message: '仅支持 HTTP(S) 地址' }]}
+        >
+          <Input placeholder="https://api.siliconflow.cn/v1/audio/transcriptions" allowClear />
+        </Form.Item>
 
         {/* Section 3: 接口凭据与凭据状态 (左右严格等高对齐) */}
         <Row gutter={12}>

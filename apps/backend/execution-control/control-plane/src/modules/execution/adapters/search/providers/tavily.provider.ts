@@ -34,8 +34,12 @@ export class TavilyProvider implements SearchEngineProvider {
     return this.rotator.getAllKeys();
   }
 
-  public isConfigured(runtimeConfigs?: Record<string, string>): boolean {
-    const keys = this.resolveKeys(runtimeConfigs);
+  public isConfigured(
+    runtimeConfigs?: Record<string, string>,
+    options?: SearchRequestOptions
+  ): boolean {
+    const userKey = options?.customApiKeys?.TAVILY_API_KEY;
+    const keys = this.resolveKeys(runtimeConfigs, userKey);
     return keys.length > 0;
   }
 

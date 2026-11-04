@@ -905,6 +905,57 @@ class TestDshSkillsAndArtifacts(unittest.TestCase):
         self.assertIn("本轮绝对严禁再次输出'报告已生成，请查看下载卡片'等重复模板", turn)
         self.assertIn("必须在当前聊天窗口中直接输出全面、详尽、结构完整的 Markdown 正文总结与解答", turn)
 
+    def test_pptx_attachment_summary_no_html_generation_and_no_hardcode(self):
+        """验证上传 PPTX 仅要求'总结内容'时，属于纯只读审阅，绝不注入 HTML 演示文稿生成指令；同时验证技能判定不依赖硬编码"""
+        from dsh_modules.prompt_builder import build_user_turn
+        from dsh_modules.skill_router import SkillRoutingResult
+
+        # 1. 还原用户现场：上传 PPTX 并要求“总结内容”
+        prompt = (
+            "【当前轮次用户上传附件】: 启明星辰安全解决方案及案例简介.pptx（这是用户本轮刚上传的新文件，为本次指令的主要处理对象）\n"
+            "用户指令：总结内容"
+        )
+        files = ["启明星辰安全解决方案及案例简介.pptx"]
+        res = SkillRouter.route(prompt, files=files)
+
+        self.assertTrue(res.is_inspect_intent)
+        self.assertFalse(res.is_generate_intent)
+        self.assertEqual(res.deliverables, [])
+
+        turn = build_user_turn(
+            prompt=prompt,
+            session_files=files,
+            is_ppt_intent=res.is_ppt_intent,
+            is_inspect_intent=res.is_inspect_intent,
+            is_generate_intent=res.is_generate_intent,
+            deliverables=res.deliverables
+        )
+        # 核心断言：绝对严禁出现任何 HTML 演示文稿 / presentation.html 落盘指令
+        self.assertNotIn("HTML 演示文稿 / 报告生成要求", turn)
+        self.assertNotIn("presentation.html", turn)
+        # 必须呈现只读审阅与对话内输出要求
+        self.assertIn("只读审阅与内容归纳规范", turn)
+
+        # 2. 验证非硬编码动态能力判定：任意自定义 Deck 技能只需声明 mode: deck 即可自动识别为 is_ppt_intent
+        custom_deck = {
+            "id": "enterprise-custom-deck",
+            "name": "enterprise-custom-deck",
+            "mode": "deck",
+            "category": "slides",
+            "tags": ["presentation"],
+            "deliverables": [".html"]
+        }
+        res_custom = SkillRoutingResult(skill_id="enterprise-custom-deck", is_generate_intent=True)
+        SkillRouter._bind_skill_metadata(
+            result=res_custom,
+            effective_query="做个汇报",
+            lower_query="做个汇报",
+            available_skills=[custom_deck],
+            target_formats=[],
+            target_files=[]
+        )
+        self.assertTrue(res_custom.is_ppt_intent)
+
 
 if __name__ == "__main__":
     unittest.main()

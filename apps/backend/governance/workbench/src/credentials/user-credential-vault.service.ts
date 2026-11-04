@@ -1,3 +1,4 @@
+import axios from 'axios';
 import {
   BadRequestException,
   Inject,
@@ -156,8 +157,17 @@ export class UserCredentialVaultService {
     if (dto.expiresAt !== undefined) data.expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : null;
 
     if (dto.payload && Object.keys(dto.payload).length > 0) {
-      data.encryptedData = this.crypto.encrypt(dto.payload);
-      data.maskedPreview = this.crypto.buildMaskedPreview(existing.category, dto.payload);
+      let mergedPayload = dto.payload;
+      try {
+        const oldPayload = this.crypto.decrypt(existing.encryptedData);
+        if (oldPayload && typeof oldPayload === 'object') {
+          mergedPayload = { ...oldPayload, ...dto.payload };
+        }
+      } catch {
+        // ignore
+      }
+      data.encryptedData = this.crypto.encrypt(mergedPayload);
+      data.maskedPreview = this.crypto.buildMaskedPreview(existing.category, mergedPayload);
     }
 
     const updated = await this.prisma.userCredential.update({
@@ -256,6 +266,12 @@ export class UserCredentialVaultService {
         // 2. 识别常用标准服务 Key
         if (/JINA/i.test(rawName)) {
           if (strVal) env['JINA_API_KEY'] = strVal;
+          if (payload.proxyUrl) {
+            env['JINA_PROXY_URL'] = String(payload.proxyUrl).trim();
+          }
+          if (payload.baseUrl) {
+            env['JINA_BASE_URL'] = String(payload.baseUrl).trim();
+          }
         } else if (/TAVILY/i.test(rawName)) {
           if (strVal) env['TAVILY_API_KEY'] = strVal;
         } else if (/SERPER/i.test(rawName)) {
@@ -333,47 +349,90 @@ export class UserCredentialVaultService {
   }
 
   /**
-   * 验证 Jina API Key 连通性与合法性
+   * 验证 Jina API Key 连通性与合法性（支持自定义代理服务器与国内镜像加速）
    */
   async verifyJinaApiKey(
     token: string,
     userId?: string,
-    credentialId?: string
-  ): Promise<{ valid: boolean; message: string; httpStatus?: number }> {
+    credentialId?: string,
+    proxyUrl?: string,
+    baseUrl?: string
+  ): Promise<{ valid: boolean; message: string; httpStatus?: number; proxyUsed?: string }> {
     const finalToken = await this.resolveTestToken(token, userId, credentialId, 'JINA');
     if (!finalToken) {
-      return { valid: false, message: '未找到可供验证的 Jina API Key' };
+      return { valid: false, message: '未找到可供验证的 Jina API Key (API Key 不能为空)' };
     }
 
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 6000);
+    let resolvedProxy = (proxyUrl || '').trim();
+    let resolvedBaseUrl = (baseUrl || '').trim();
 
-      const res = await fetch('https://r.jina.ai/https://example.com', {
-        method: 'GET',
+    // 若未显式传入代理或镜像地址，尝试从已有凭证 payload 中恢复
+    if ((!resolvedProxy || !resolvedBaseUrl) && (credentialId || userId)) {
+      try {
+        const where: any = credentialId
+          ? { id: credentialId, status: 'active' }
+          : { userId, status: 'active', category: 'api_key', name: { contains: 'JINA', mode: 'insensitive' } };
+        const existingCred = await this.prisma.userCredential.findFirst({ where, orderBy: { updatedAt: 'desc' } });
+        if (existingCred) {
+          const payload = this.crypto.decrypt(existingCred.encryptedData);
+          if (!resolvedProxy && payload.proxyUrl) resolvedProxy = String(payload.proxyUrl).trim();
+          if (!resolvedBaseUrl && payload.baseUrl) resolvedBaseUrl = String(payload.baseUrl).trim();
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // 系统环境变量兜底
+    if (!resolvedProxy) {
+      resolvedProxy = (process.env.JINA_PROXY_URL || process.env.HTTPS_PROXY || process.env.HTTP_PROXY || '').trim();
+    }
+    if (!resolvedBaseUrl) {
+      resolvedBaseUrl = (process.env.JINA_BASE_URL || 'https://r.jina.ai').trim();
+    }
+    resolvedBaseUrl = resolvedBaseUrl.replace(/\/+$/, '');
+
+    const targetEndpoint = `${resolvedBaseUrl}/https://example.com`;
+
+    try {
+      const axiosConfig: any = {
+        method: 'get',
+        url: targetEndpoint,
         headers: {
           Authorization: `Bearer ${finalToken}`,
           Accept: 'text/markdown',
+          'X-No-Cache': 'true',
         },
-        signal: controller.signal,
-      });
+        timeout: 8000,
+      };
 
-      clearTimeout(timer);
-
-      if (res.ok || res.status === 200) {
-        return { valid: true, message: 'Jina API Key 验证通过，服务连接正常', httpStatus: res.status };
+      if (resolvedProxy) {
+        try {
+          const { HttpsProxyAgent } = require('https-proxy-agent');
+          axiosConfig.httpsAgent = new HttpsProxyAgent(resolvedProxy);
+          axiosConfig.httpAgent = new HttpsProxyAgent(resolvedProxy);
+          axiosConfig.proxy = false;
+        } catch {
+          const pUrl = new URL(resolvedProxy);
+          axiosConfig.proxy = {
+            protocol: pUrl.protocol.replace(':', ''),
+            host: pUrl.hostname,
+            port: parseInt(pUrl.port, 10) || (pUrl.protocol === 'https:' ? 443 : 80),
+            ...(pUrl.username ? { auth: { username: pUrl.username, password: pUrl.password } } : {}),
+          };
+        }
       }
 
-      if (res.status === 401) {
-        return { valid: false, message: 'Jina API Key 无效或未激活 (401 Unauthorized)', httpStatus: 401 };
-      }
+      const res = await axios(axiosConfig);
 
-      if (res.status === 402) {
-        return { valid: false, message: 'Jina 账户额度已用尽 (402 Payment Required)', httpStatus: 402 };
-      }
-
-      if (res.status === 403) {
-        return { valid: false, message: 'Jina API Key 权限不足或被禁用 (403 Forbidden)', httpStatus: 403 };
+      const proxyNote = resolvedProxy ? ` (已通过代理 ${resolvedProxy} 连通)` : '';
+      if (res.status === 200 || (res.status >= 200 && res.status < 300)) {
+        return {
+          valid: true,
+          message: `Jina API Key 验证通过，服务连接正常！${proxyNote}`,
+          httpStatus: res.status,
+          proxyUsed: resolvedProxy || undefined,
+        };
       }
 
       return {
@@ -382,12 +441,27 @@ export class UserCredentialVaultService {
         httpStatus: res.status,
       };
     } catch (err: any) {
-      const isTimeout = err?.name === 'AbortError' || err?.message?.includes('aborted');
+      const status = err.response?.status;
+      const proxyNote = resolvedProxy ? ` (代理: ${resolvedProxy})` : ' (直连官方 r.jina.ai)';
+      if (status === 401) {
+        return { valid: false, message: 'Jina API Key 无效或未激活 (401 Unauthorized)', httpStatus: 401 };
+      }
+      if (status === 402) {
+        return { valid: false, message: 'Jina 账户额度已用尽 (402 Payment Required)', httpStatus: 402 };
+      }
+      if (status === 403) {
+        return { valid: false, message: 'Jina API Key 权限不足或被禁用 (403 Forbidden)', httpStatus: 403 };
+      }
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        return {
+          valid: false,
+          message: `网络连接超时${proxyNote}。中国大陆地区若直连受阻，请配置代理服务器或反代镜像地址。`,
+        };
+      }
       return {
         valid: false,
-        message: isTimeout
-          ? '验证超时 (6s)，请检查网络连接或稍后重试'
-          : `连接验证失败: ${err?.message || '未知网络错误'}`,
+        message: `连接验证失败${proxyNote}: ${err?.message || '网络连接异常'}`,
+        httpStatus: status,
       };
     }
   }

@@ -24,23 +24,29 @@ export class ExaProvider implements SearchEngineProvider {
   public readonly name = 'exa';
   private readonly rotator = new KeyRotator('exa');
 
-  private resolveKeys(runtimeConfigs?: Record<string, string>): string[] {
+  private resolveKeys(runtimeConfigs?: Record<string, string>, userKey?: string): string[] {
+    const fromUser = userKey?.trim();
     const fromEnv = process.env.EXA_API_KEY;
     const fromRuntime = runtimeConfigs?.EXA_API_KEY;
-    const raw = fromEnv || fromRuntime || '';
+    const raw = [fromUser, fromEnv, fromRuntime].filter(Boolean).join(',');
     this.rotator.setRawKeys(raw);
     return this.rotator.getAllKeys();
   }
 
-  public isConfigured(runtimeConfigs?: Record<string, string>): boolean {
-    return this.resolveKeys(runtimeConfigs).length > 0;
+  public isConfigured(
+    runtimeConfigs?: Record<string, string>,
+    options?: SearchRequestOptions
+  ): boolean {
+    const userKey = options?.customApiKeys?.EXA_API_KEY;
+    return this.resolveKeys(runtimeConfigs, userKey).length > 0;
   }
 
   public async search(
     options: SearchRequestOptions,
     runtimeConfigs?: Record<string, string>
   ): Promise<SearchEngineResponse> {
-    this.resolveKeys(runtimeConfigs);
+    const userKey = options.customApiKeys?.EXA_API_KEY;
+    this.resolveKeys(runtimeConfigs, userKey);
     const keys = this.rotator.getAllKeys();
     if (keys.length === 0) {
       throw new Error('Exa API Key 未配置');

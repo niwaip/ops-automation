@@ -27,6 +27,16 @@ const PRESET_MODEL_CATALOG: Array<{
   matcher: (norm: string) => boolean;
   profile: RecognizedModelProfile;
 }> = [
+  {
+    matcher: (n) => n.includes('xingchenasr'),
+    profile: {
+      display_name: 'XingChen ASR（语音识别）',
+      capability_tier: 'standard', supports_reasoning: false,
+      input: ['audio'], routing_tags: ['audio_transcription'], defaultScopes: ['audio_transcription'],
+      description: '语音转写模型，通过 audio/transcriptions 接口将录音转换为文字。',
+      highlights: ['语音转写', 'ASR 专用接口'],
+    },
+  },
   // --- DeepSeek 系列 ---
   {
     matcher: (n) => n.includes('deepseek-reasoner') || n.includes('deepseek-r1') || n.endsWith('/r1'),

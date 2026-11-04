@@ -220,6 +220,8 @@ def build_semantic_plan(request, workspace):
             sec_fact_sum = Decimal('0')
             for fact in facts:
                 code = fact.logical_key.department_code
+                if code not in spec['department_rows']:
+                    continue
                 key = LogicalKey(spec['region_id'], code, metric, period, sec_target_kind, unit)
                 value = convert_value(fact.numeric_value, fact.unit, unit)
                 sec_fact_sum += value
@@ -241,6 +243,11 @@ def build_semantic_plan(request, workspace):
                     'old_value': old_val_str,
                     'section': sec_name
                 })
+
+            unmatched_source = spec.get('unmatched_source_keys') or []
+            if unmatched_source:
+                prefix = f'{sec_name}区块' if len(section_configs) > 1 else ''
+                warnings.append(f"{prefix}来源统计中存在未在目标区块列出的业务键（共 {len(unmatched_source)} 项：{', '.join(unmatched_source)}），按规则跳过未包含行。")
 
             # Detect all unmatched target keys and compute deterministic reconciliation
             unmatched = spec['department_rows'].keys() - {f.logical_key.department_code for f in facts}

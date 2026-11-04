@@ -27,6 +27,7 @@ export interface ModelPricing {
 }
 
 export interface AIModelConfig {
+  audio_transcription_endpoint?: string;
   display_name?: string;
   description?: string;
   default?: boolean;

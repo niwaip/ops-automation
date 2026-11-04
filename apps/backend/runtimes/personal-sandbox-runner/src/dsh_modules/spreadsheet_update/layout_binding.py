@@ -221,8 +221,8 @@ def locate(ws, section, period, target_label, source_keys, target_range=None,
         keys[key] = row
 
     missing = source_keys - keys.keys()
-    if missing:
-        raise ValueError('来源键未匹配当前区块：' + ', '.join(sorted(missing)))
+    if not (source_keys & keys.keys()):
+        raise ValueError('来源键未匹配当前区块中任何有效业务行：' + ', '.join(sorted(missing)))
 
     protected = []
     for column in range(min_c, max_c + 1):
@@ -234,7 +234,8 @@ def locate(ws, section, period, target_label, source_keys, target_range=None,
         'region_id': section, 'header_row': first - 1, 'key_col': key_col,
         'min_row': start, 'max_row': boundary, 'min_col': min_c, 'max_col': max_c,
         'period_columns': {period: col}, 'department_rows': keys,
-        'protected_coordinates': protected
+        'protected_coordinates': protected,
+        'unmatched_source_keys': sorted(missing)
     }, col
 
 

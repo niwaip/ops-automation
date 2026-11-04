@@ -46,34 +46,78 @@ export function SaveToWorkspaceAction({ message, userQuery }: SaveToWorkspaceAct
 
   // 智能提取基础标题
   const defaultTitle = useMemo(() => {
+    // 1. 若元数据中已有明确结果标题
     if (message.metadata?.resultTitle?.trim()) {
       return message.metadata.resultTitle.trim();
     }
-    if (userQuery?.trim()) {
-      const q = userQuery.trim().replace(/[？?。！!]$/, '');
-      return q.length > 25 ? `${q.slice(0, 25)}...的总结` : `${q} 总结`;
+
+    // 2. 优先从正文或摘要的第一级/第二级 Markdown 标题中提取真实业务主题
+    const searchContent = plainContent || message.metadata?.finalSummary || '';
+    if (searchContent) {
+      const lines = searchContent.split('\n').map((l) => l.trim()).filter(Boolean);
+      for (const line of lines.slice(0, 8)) {
+        const hMatch = line.match(/^#{1,3}\s+(.+)$/);
+        if (hMatch) {
+          const cand = hMatch[1]
+            .replace(/[\\/:*?"<>|]/g, '_')
+            .replace(/^[#\-*>\s]+/, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+          if (
+            cand.length >= 3 &&
+            !/^(?:核心要点与记录|核心要点|要点总结|目录|引言|概述|总结|归纳|简介|详情)$/.test(cand)
+          ) {
+            return cand.length > 35 ? `${cand.slice(0, 35)}` : cand;
+          }
+        }
+      }
     }
+
+    // 3. 从用户提问中清洗噪音提示动词后提取规范主题
+    if (userQuery?.trim()) {
+      const q = userQuery
+        .trim()
+        .replace(/^【当前(?:轮次用户上传附件|会话有效附件清单)】:[^\n]+(?:（[^）]+）)?\s*(?:用户指令[：:])?/, '')
+        .replace(/^(?:请问|请帮我|帮我|麻烦|查看|查询|看一下|查一下|找一下|检索|搜索|阅读|浏览|评估|分析|总结|归纳)\s*/, '')
+        .replace(/[？?。！!]$/, '')
+        .replace(/[\\/:*?"<>|]/g, '_')
+        .trim();
+      if (q.length >= 3) {
+        return q.length > 30 ? `${q.slice(0, 30)}` : q;
+      }
+    }
+
     if (message.metadata?.finalSummary?.trim()) {
       const firstLine = message.metadata.finalSummary.trim().split('\n')[0].replace(/^[#\-*>\s]+/, '');
-      return firstLine.length > 30 ? `${firstLine.slice(0, 30)}...` : firstLine;
+      return firstLine.length > 30 ? `${firstLine.slice(0, 30)}` : firstLine;
     }
+
     const date = new Date().toISOString().slice(0, 10);
-    return `AI对话知识沉淀_${date}`;
-  }, [message.metadata?.resultTitle, message.metadata?.finalSummary, userQuery]);
+    return `业务成果总结_${date}`;
+  }, [message.metadata?.resultTitle, message.metadata?.finalSummary, userQuery, plainContent]);
 
   // 智能内容感知初始标签提取（坚决剔除“AI沉淀/知识候选/问答沉淀”等无意义纯占位词，即时提取真实专有名词与技术类型）
   const defaultTags = useMemo(() => {
     const tagsSet = new Set<string>();
     const textToAnalyze = `${userQuery || ''} ${defaultTitle || ''} ${plainContent.slice(0, 400)}`;
 
+    const JUNK_ENG = new Set([
+      'the', 'and', 'for', 'with', 'this', 'that', 'from', 'into', 'view', 'show', 'get', 'post', 'have',
+      'will', 'can', 'not', 'markdown', 'md', 'pdf', 'doc', 'docx', 'pptx', 'ppt', 'xlsx', 'xls', 'html',
+      'txt', 'json', 'csv', 'yaml', 'yml', 'based', 'thorough', 'review', 'entire', 'summary', 'note',
+      'please', 'user', 'assistant', 'content', 'page', 'also', 'more', 'about', 'some', 'what', 'when'
+    ]);
+
     // 1. 提取英文专有名词与技术实体 (如 DeepSeek, Harness, DSH, Docker, API, Python, Node, Web)
     const engEntities = textToAnalyze.match(/\b[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*\b/g) || [];
     for (const ent of engEntities) {
+      const lower = ent.toLowerCase();
       if (
         ent.length >= 2 &&
-        !/^(the|and|for|with|this|that|from|into|view|show|get|post|have|will|can|not)$/i.test(ent)
+        !/^\d+$/.test(ent) &&
+        !JUNK_ENG.has(lower)
       ) {
-        if (/^[A-Z]/.test(ent) || ent.length >= 4) {
+        if (/^[A-Z][a-zA-Z0-9]+$/.test(ent) || /^[A-Z]{2,}$/.test(ent)) {
           tagsSet.add(ent);
         }
       }
