@@ -285,5 +285,36 @@ class TaskIntentTests(unittest.TestCase):
         self.assertEqual(validated['output_mode'], 'artifact')
         self.assertEqual(validated['artifact_types'], ['.pdf'])
 
+    def test_stopped_task_followed_by_new_slash_pdf_command(self):
+        """When previous task was manually stopped, a new slash PDF command must remain execute and bound to pdf skill."""
+        from dsh_modules.task_intent import validate_intent
+
+        history = [
+            {"role": "user", "content": "/pdf 为小学生制作一份竞选班干部的介绍，3到4页，、暖色主题..."},
+            {"role": "assistant", "content": "【系统提示】：(任务已由用户手动停止)"},
+        ]
+        users = ["/pdf 为小学生制作一份竞选班干部的介绍，3到4页，、暖色主题..."]
+        request = "/pdf 为小学生制作一份竞选班干部的介绍，3到4页，使用 handout 讲义版式、暖色主题。请直接编写并生成。"
+        skill_names = [{'id': 'pdf', 'name': 'PDF生成', 'aliases': ['pdf生成', '生成pdf']}]
+
+        raw = {
+            'instruction_relation': 'standalone',
+            'task_mode': 'execute',
+            'output_mode': 'artifact',
+            'artifact_types': ['.pdf'],
+            'unit_confirmation': None,
+            'section_confirmation': None,
+            'skill_invocation': {'mode': 'execute', 'name': 'pdf', 'replace_defaults': False},
+            'requirements': [{'id': 'r1', 'quote': request}]
+        }
+
+        validated = validate_intent(dict(raw), request, users, skill_names, allow_sanitize=False, history=history)
+        self.assertEqual(validated['instruction_relation'], 'standalone')
+        self.assertEqual(validated['task_mode'], 'execute')
+        self.assertEqual(validated['output_mode'], 'artifact')
+        self.assertIn('.pdf', validated['artifact_types'])
+        self.assertEqual(validated['skill_invocation']['mode'], 'execute')
+        self.assertEqual(validated['skill_invocation']['name'], 'pdf')
+
 
 if __name__ == '__main__': unittest.main()

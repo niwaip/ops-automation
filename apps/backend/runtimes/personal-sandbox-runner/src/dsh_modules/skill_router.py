@@ -505,10 +505,12 @@ class SemanticSkillMatcher:
                     any(k in lower_q for k in [".xlsx", ".xls", ".csv", "工作簿", "excel", "附件"])
                     or (any(k in lower_q for k in ["表格", "工作表"]) and any(k in lower_q for k in ["明细", "工数", "统计", "核算", "求和", "计算", "数据", "行", "列"]))
                 )
-                physical_skills = {"docx", "pdf", "guizang-ppt", "pptx", "html-ppt", "saas-landing", "frontend-design", "web-prototype"}
-                if not has_spreadsheet_analysis:
-                    physical_skills.add("xlsx")
-                if s_id in physical_skills:
+                is_physical = (
+                    bool(data.get("deliverables"))
+                    or data.get("requires_execution")
+                    or data.get("mode") in ("deck", "prototype")
+                )
+                if not has_spreadsheet_analysis and is_physical:
                     score = 0.0
                     reasons = ['text_only_suppressed']
 
@@ -521,9 +523,12 @@ class SemanticSkillMatcher:
                 reasons = ['skill_explicitly_negated']
 
             # 7. Document generation skills require at least one trigger or alias cue in query
-            doc_skills = {"pdf", "xlsx", "docx", "guizang-ppt", "html-ppt"}
-            if s_id in doc_skills:
-                extra_cues = [".xlsx", ".xls", "表格", "工作表", "工作簿", "附件", "明细"] if s_id == "xlsx" else []
+            is_doc_skill = (
+                bool(set(data.get("deliverables") or []) & {".pdf", ".xlsx", ".docx", ".pptx", ".html"})
+                or data.get("mode") == "deck"
+            )
+            if is_doc_skill:
+                extra_cues = [".xlsx", ".xls", "表格", "工作表", "工作簿", "附件", "明细"] if (s_id == "xlsx" or ".xlsx" in (data.get("deliverables") or [])) else []
                 all_cues = data['triggers'] + data['aliases'] + [s_id] + extra_cues
                 has_doc_cue = (
                     any(c in lower_q for c in all_cues)
@@ -559,20 +564,65 @@ class SkillRouter:
         """Binds skill deliverables contract, execution requirements, and instructions context."""
         if not result.skill_id:
             return
-        if result.skill_id in ["guizang-ppt", "pptx", "slides", "html-ppt"]:
-            result.is_ppt_intent = True
-        elif result.skill_id in ["frontend-design", "dashboard", "saas-landing", "web-prototype", "taste-skill"]:
-            result.is_design_intent = True
-        elif result.skill_id == "docx":
-            result.is_docx_intent = True
-            result.is_office_intent = True
-        elif result.skill_id in ["xlsx", "pdf"]:
-            result.is_office_intent = True
-        elif result.skill_id == "research":
-            result.is_research_intent = True
-            result.is_inspect_intent = False
 
         all_skills = available_skills or get_available_skills()
+        matching_skill = next((s for s in all_skills if s.get("id") == result.skill_id or s.get("name") == result.skill_id), None)
+
+        if matching_skill:
+            s_mode = (matching_skill.get("mode") or "").lower()
+            s_category = (matching_skill.get("category") or "").lower()
+            s_tags = set(str(t).lower() for t in (matching_skill.get("tags") or []))
+            s_delivs = set(str(d).lower() for d in (matching_skill.get("deliverables") or []))
+            s_aliases = set(str(a).lower() for a in (matching_skill.get("aliases") or []))
+            s_triggers = set(str(tr).lower() for tr in (matching_skill.get("triggers") or []))
+            s_id = (matching_skill.get("id") or "").lower()
+            all_s_terms = s_tags | s_aliases | s_triggers | {s_id}
+
+            # 1. 演示文稿 / Deck 意图判定 (基于契约声明与交付物，无硬编码技能名)
+            if (
+                s_mode == "deck"
+                or s_category == "slides"
+                or bool(all_s_terms & {"deck", "ppt", "pptx", "slides", "presentation", "html-ppt", "guizang-ppt"})
+                or ".pptx" in s_delivs
+            ):
+                result.is_ppt_intent = True
+
+            # 2. 前端原型 / UI 设计意图判定
+            elif (
+                s_mode == "prototype"
+                or s_category in ("web-artifacts", "ui", "design")
+                or bool(all_s_terms & {"design", "prototype", "frontend", "ui", "dashboard", "landing", "taste-skill"})
+            ):
+                result.is_design_intent = True
+
+            # 3. Word 文档意图判定
+            elif ".docx" in s_delivs or bool(all_s_terms & {"docx", "word"}):
+                result.is_docx_intent = True
+                result.is_office_intent = True
+
+            # 4. 办公表格 / PDF 文档意图判定
+            elif bool(s_delivs & {".xlsx", ".pdf"}) or s_category == "office" or bool(all_s_terms & {"excel", "xlsx", "pdf", "spreadsheet"}):
+                result.is_office_intent = True
+
+            # 5. 深度调研意图判定
+            elif s_mode == "research" or bool(all_s_terms & {"research", "调研"}):
+                result.is_research_intent = True
+                result.is_inspect_intent = False
+        else:
+            sid_lower = str(result.skill_id).lower()
+            if any(k in sid_lower for k in ["ppt", "slides", "deck"]):
+                result.is_ppt_intent = True
+            elif any(k in sid_lower for k in ["design", "prototype", "dashboard", "ui"]):
+                result.is_design_intent = True
+            elif "docx" in sid_lower or "word" in sid_lower:
+                result.is_docx_intent = True
+                result.is_office_intent = True
+            elif any(k in sid_lower for k in ["xlsx", "excel", "pdf"]):
+                result.is_office_intent = True
+            elif "research" in sid_lower:
+                result.is_research_intent = True
+                result.is_inspect_intent = False
+
         for s in all_skills:
             if s.get("id") == result.skill_id or s.get("name") == result.skill_id:
                 skill_delivs = list(s.get("deliverables") or [])

@@ -192,7 +192,11 @@ describe('User Credential Vault & Digital Employee Binding', () => {
 
   describe('UserCredentialVaultService.getUserEnv', () => {
     it('should aggregate JINA_API_KEY, TAVILY_API_KEY and custom env for specific user', async () => {
-      const jinaEncrypted = crypto.encrypt({ token: 'jina_secret_key_12345' });
+      const jinaEncrypted = crypto.encrypt({
+        token: 'jina_secret_key_12345',
+        proxyUrl: 'http://127.0.0.1:7890',
+        baseUrl: 'https://jina-mirror.custom.com',
+      });
       const tavilyEncrypted = crypto.encrypt({ token: 'tvly-secret-key-67890' });
       const customEncrypted = crypto.encrypt({ customKey: 'MY_CUSTOM_VAR', customValue: 'hello_world' });
 
@@ -236,6 +240,8 @@ describe('User Credential Vault & Digital Employee Binding', () => {
       const env = await vaultService.getUserEnv('user-1');
 
       expect(env['JINA_API_KEY']).toBe('jina_secret_key_12345');
+      expect(env['JINA_PROXY_URL']).toBe('http://127.0.0.1:7890');
+      expect(env['JINA_BASE_URL']).toBe('https://jina-mirror.custom.com');
       expect(env['TAVILY_API_KEY']).toBe('tvly-secret-key-67890');
       expect(env['MY_CUSTOM_VAR']).toBe('hello_world');
 

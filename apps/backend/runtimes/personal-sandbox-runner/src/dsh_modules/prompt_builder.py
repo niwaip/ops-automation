@@ -194,7 +194,8 @@ def build_user_turn(
     existing_history: Optional[List[dict]] = None,
     max_skill_chars: int = 5000,
     timestamp_str: Optional[str] = None,
-    available_tool_names: Optional[List[str]] = None
+    available_tool_names: Optional[List[str]] = None,
+    deliverables: Optional[List[str]] = None
 ) -> str:
     """
     Assembles user prompt and scoped environmental contexts into a coherent user message.
@@ -301,7 +302,8 @@ def build_user_turn(
             "【个人空间文档优先硬约束】\n"
             "- 用户已指定或涉及个人空间/知识库。上述个人空间中的文档是本次回答的核心事实依据；\n"
             "- 当个人空间中存在与用户需求匹配的文档（如操作指南、代码、表格或说明）时，必须优先以个人空间文档为准作答；\n"
-            "- 严禁忽视个人空间文档而脱离本地资料只使用外部网络检索。"
+            "- 严禁忽视个人空间文档而脱离本地资料只使用外部网络检索；\n"
+            "- 【内容主题陈述原则】：向用户介绍、列举或汇总个人空间/成果库的内容时，直接使用【业务主题/成果名称】（Topic）进行友好、自然的陈述，**严禁向用户展示带有时间戳、底层路径或生硬提问截断的原始名称**（如 `20261104_...`、`deliverables/...` 或 `...的总结`）；展示标签时直接使用清洗后的核心分类标签（Tags）。"
         )
 
     if skill_context.strip():
@@ -363,7 +365,27 @@ def build_user_turn(
         k in prompt.lower() for k in ["音效", "声音", "音乐", "修改", "改一下", "调整", "重新", "优化", "加个", "没有", "样式", "速度", "颜色", "按钮", "重开", "悔棋", "对战", "规则", "再加", "继续", "完善", "bug", "报错", "停了", "卡住", "不动了", "没反应"]
     )
 
-    if is_ppt_intent:
+    prompt_no_urls = re.sub(r'https?://[^\s]+', '', prompt)
+    prompt_no_urls_lower = prompt_no_urls.lower()
+
+    # 原生 PPTX 物理文件生成判定：必须显式请求 .pptx 格式或契约独占 .pptx，且非只读审阅
+    is_explicit_pptx = (
+        (deliverables and ".pptx" in deliverables and ".html" not in deliverables)
+        or any(k in prompt_no_urls_lower for k in [".pptx", "pptx", "python-pptx", "做个pptx", "生成pptx"])
+    )
+    effective_is_pptx = (
+        is_explicit_pptx
+        and not (is_inspect_intent and not is_generate_intent)
+    )
+
+    # 单文件 HTML 演示文稿生成判定：有演示文稿意图、非只读审阅，且非原生 PPTX
+    is_html_deck = (
+        is_ppt_intent
+        and not (is_inspect_intent and not is_generate_intent)
+        and not effective_is_pptx
+    )
+
+    if is_html_deck:
         user_parts.append(
             "【HTML 演示文稿 / 报告生成要求】:\n"
             "- 请直接基于当前会话讨论的实质内容与数据（或附件主题），设计并输出精炼、高保真的现代化单文件 HTML 演示文稿 / 报告（4-6 页核心幻灯片，基于极简杂志/电子墨水风格，内嵌完整 CSS 与左右翻页交互）。\n"
@@ -377,7 +399,7 @@ def build_user_turn(
             "- 请直接基于已有设计进行升级开发：对于音效，优先采用纯前端 Web Audio API 动态合成声音（无需外部音频文件）；\n"
             "- 【闭环落盘约束】：可以直接在回复中以完整的 ```html\n<!DOCTYPE html>...\n``` 代码块输出修改后的完整源码（系统将自动提取落盘至 `/workspace/index.html` 并挂载预览组件），或调用 `bash` 工具重新写入 `/workspace/index.html`。严禁仅输出口头文字承诺！"
         )
-    elif is_design_intent or any(k in prompt.lower() for k in ["五子棋", "游戏", "小游戏", "html游戏", "canvas", "前端应用", "交互页面", "web应用", "网页游戏"]):
+    elif (is_design_intent and not (is_inspect_intent and not is_generate_intent)) or any(k in prompt.lower() for k in ["五子棋", "游戏", "小游戏", "html游戏", "canvas", "前端应用", "交互页面", "web应用", "网页游戏"]):
         user_parts.append(
             "【交互式网页 / 游戏开发要求】:\n"
             "- 请直接设计并输出高保真、纯前端自包含的单文件交互应用/游戏/报告（内嵌完整 CSS 与 JS 逻辑，支持鼠标悬停、点击与移动端触控）。\n"
@@ -392,9 +414,6 @@ def build_user_turn(
                 "严禁在正文之前堆砌复杂冗长的内联 SVG 矢量图标（如长 path 打印机/仪表盘图标）、冗余工具栏或过度装饰的 CSS，以防在输出核心财务指标与表格前耗尽输出预算导致中途截断。\n"
                 "- 【落盘要求】：请直接在回复中以完整的 ```html\n<!DOCTYPE html>...\n``` 代码块输出单页报告源码，或调用 bash 写入 `/workspace/index.html` 完成落盘。"
             )
-
-    prompt_no_urls = re.sub(r'https?://[^\s]+', '', prompt)
-    prompt_no_urls_lower = prompt_no_urls.lower()
 
     effective_is_docx = (
         (is_docx_intent and not (is_inspect_intent and not is_generate_intent))
@@ -444,11 +463,6 @@ def build_user_turn(
                 "- 【自愈重试与结果汇报】：若脚本执行报错，修正代码重新运行，直到文件成功生成落盘；生成完成后向用户汇报文件名称、核验结果与大小。"
             )
 
-    effective_is_pptx = (
-        (is_ppt_intent and not (is_inspect_intent and not is_generate_intent))
-        or (is_office_intent and any(k in prompt_no_urls_lower for k in ["ppt", "pptx", "幻灯片", "演示文稿", "deck"]) and not (is_inspect_intent and not is_generate_intent))
-        or any(k in prompt_no_urls_lower for k in ["做个ppt", "生成ppt", "竞选ppt"])
-    )
 
     if effective_is_pptx and "bash" in (available_tool_names or []) and not (is_inspect_intent and not is_generate_intent):
         user_parts.append(

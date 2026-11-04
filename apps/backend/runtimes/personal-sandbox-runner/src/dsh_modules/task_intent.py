@@ -290,6 +290,8 @@ def extract_task_intent(request, users, model, policy, telemetry, deadline, inpu
                 and (not result.get('skill_invocation') or result['skill_invocation'].get('mode') == 'none')
                 and not result.get('unit_confirmation')
                 and not result.get('section_confirmation')
+                and not has_physical_artifact_request(request)
+                and not re.search(r'^(?:/\w+)', request.strip())
             )
 
             if not can_fast_path:
@@ -412,7 +414,7 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
 
     # 检查用户是否明确为轻量口令/仅回复特定文字要求（如：仅回复“取消后可以继续”）
     is_verbatim_reply = bool(re.search(r'^(?:仅回复|只回复|仅输出|只需回复|只回答)\b', request.strip()))
-    if is_verbatim_reply or (is_prev_stopped and not re.search(r'(?:继续|重试|重新执行|按上次)', request)):
+    if is_verbatim_reply:
         result['instruction_relation'] = 'standalone'
         result['task_mode'] = 'consult'
         result['output_mode'] = 'conversation'
@@ -421,6 +423,51 @@ def validate_intent(result, request, users, skill_names, allow_sanitize=False, h
         result['section_confirmation'] = None
         result['skill_invocation'] = {'mode': 'none', 'name': '', 'replace_defaults': False}
         result['requirements'] = [{'id': 'req_direct', 'quote': request[:120]}]
+    elif is_prev_stopped and not re.search(r'(?:继续|重试|重新执行|按上次)', request):
+        # 上一轮任务被手动停止，且当前未要求“继续”：切断对前序旧任务的 followup 继承，强制转为 standalone
+        result['instruction_relation'] = 'standalone'
+        has_new_task = (
+            has_physical_artifact_request(request)
+            or is_spreadsheet_mutation_requested(request)
+            or is_visual_artifact_requested(request)
+            or bool(re.search(r'^(?:/\w+)', request.strip()))
+        )
+        if not has_new_task and result.get('task_mode') == 'consult':
+            result['task_mode'] = 'consult'
+            result['output_mode'] = 'conversation'
+            result['artifact_types'] = []
+            result['unit_confirmation'] = None
+            result['section_confirmation'] = None
+            result['skill_invocation'] = {'mode': 'none', 'name': '', 'replace_defaults': False}
+            result['requirements'] = [{'id': 'req_direct', 'quote': request[:120]}]
+
+    # 显式斜杠指令 (Slash Command) 提权与技能绑定：例如 /pdf, /docx, /xlsx, /pptx 等
+    slash_match = re.match(r'^/(\w+)', request.strip())
+    if slash_match and not is_abort and not is_physical_export_negated(request):
+        slash_cmd = slash_match.group(1).lower()
+        slash_skill_map = {
+            'pdf': ('.pdf', 'pdf'),
+            'docx': ('.docx', 'docx'),
+            'word': ('.docx', 'docx'),
+            'xlsx': ('.xlsx', 'xlsx'),
+            'excel': ('.xlsx', 'xlsx'),
+            'pptx': ('.pptx', 'pptx'),
+            'ppt': ('.pptx', 'pptx'),
+        }
+        if slash_cmd in slash_skill_map:
+            ext, sk_id = slash_skill_map[slash_cmd]
+            result['task_mode'] = 'execute'
+            result['output_mode'] = 'artifact'
+            if ext not in result.get('artifact_types', []):
+                result.setdefault('artifact_types', []).append(ext)
+            for record in (skill_names or []):
+                if record.get('id') == sk_id or sk_id in record.get('aliases', []):
+                    result['skill_invocation'] = {
+                        'mode': 'execute',
+                        'name': record['id'],
+                        'replace_defaults': False
+                    }
+                    break
 
     asked_section = None
     candidates = []

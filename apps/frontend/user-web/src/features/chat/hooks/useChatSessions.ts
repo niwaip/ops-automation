@@ -9,6 +9,7 @@ import {
 import { parseMessageContent } from '../lib/messageContent';
 import { createChatSessionId } from '../lib/session';
 import { pruneChatHistories } from '../lib/historyCache';
+import { passportChatReplies } from '../lib/passportChatReplies';
 import {
   getSessionSortTime,
   isSameSession,
@@ -189,6 +190,7 @@ export function useChatSessions({
   }, []);
 
   const updateMessage = useCallback((sessionId: string, messageId: string, patch: Partial<ChatMessage>) => {
+    passportChatReplies.patch(sessionId, messageId, patch);
     updateSessionMessages(sessionId, (messages) =>
       messages.map((message) =>
         message.id === messageId ? buildPatchedMessage(message, patch) : message

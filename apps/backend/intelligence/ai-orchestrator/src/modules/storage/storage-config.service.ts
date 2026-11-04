@@ -15,6 +15,19 @@ import type {
 @Injectable()
 export class StorageConfigService implements OnModuleInit {
   private readonly logger = new Logger(StorageConfigService.name);
+  private getDefaultLocalRoot(): string {
+    const candidateUploadDirs = [
+      path.join(process.cwd(), 'apps/backend/intelligence/ai-orchestrator/data/storage/uploads'),
+      '/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads',
+      path.resolve(__dirname, '../../data/storage/uploads'),
+      path.resolve(__dirname, '../../../../data/storage/uploads'),
+      '/app/data/storage/uploads',
+      '/workspace/data/storage/uploads',
+      path.join(process.cwd(), 'data/storage/uploads'),
+    ].filter(Boolean) as string[];
+    return candidateUploadDirs.find((d) => fs.existsSync(d)) || candidateUploadDirs[0];
+  }
+
   private currentConfig: StorageConfigDTO = {
     protocol: 'local',
     localRoot: path.join(process.cwd(), 'data/storage/uploads'),
@@ -22,7 +35,21 @@ export class StorageConfigService implements OnModuleInit {
   };
 
   private getDataDir(): string {
-    return process.env.DATA_DIR || path.join(process.cwd(), 'data');
+    if (process.env.DATA_DIR && process.env.DATA_DIR.trim()) {
+      return process.env.DATA_DIR.trim();
+    }
+    const candidateDirs = [
+      path.join(process.cwd(), 'apps/backend/intelligence/ai-orchestrator/data'),
+      '/workspace/apps/backend/intelligence/ai-orchestrator/data',
+      path.resolve(__dirname, '../../data'),
+      path.resolve(__dirname, '../../../../data'),
+      '/app/data',
+      path.join(process.cwd(), 'data'),
+    ].filter(Boolean) as string[];
+    for (const dir of candidateDirs) {
+      if (fs.existsSync(dir)) return dir;
+    }
+    return candidateDirs[0] || path.join(process.cwd(), 'data');
   }
 
   private getConfigFile(): string {
@@ -41,7 +68,7 @@ export class StorageConfigService implements OnModuleInit {
     if (process.env.STORAGE_PROTOCOL) {
       this.currentConfig = {
         protocol: (process.env.STORAGE_PROTOCOL as StorageProtocol) || 'local',
-        localRoot: process.env.STORAGE_LOCAL_ROOT || path.join(process.cwd(), 'data/storage/uploads'),
+        localRoot: process.env.STORAGE_LOCAL_ROOT || this.getDefaultLocalRoot(),
         endpoint: process.env.STORAGE_ENDPOINT,
         bucket: process.env.STORAGE_BUCKET,
         region: process.env.STORAGE_REGION || 'us-east-1',
@@ -68,7 +95,7 @@ export class StorageConfigService implements OnModuleInit {
         const parsed = JSON.parse(raw);
         this.currentConfig = {
           protocol: parsed.protocol || 'local',
-          localRoot: parsed.localRoot || path.join(process.cwd(), 'data/storage/uploads'),
+          localRoot: parsed.localRoot || this.getDefaultLocalRoot(),
           endpoint: parsed.endpoint,
           bucket: parsed.bucket,
           region: parsed.region || 'us-east-1',

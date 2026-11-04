@@ -93,9 +93,11 @@ export const credentialApi = {
 
   verifyJinaApiKey: async (
     token: string,
-    credentialId?: string
-  ): Promise<{ valid: boolean; message: string; httpStatus?: number }> => {
-    return apiClient.post('/credentials/verify-jina', { token, credentialId });
+    credentialId?: string,
+    proxyUrl?: string,
+    baseUrl?: string
+  ): Promise<{ valid: boolean; message: string; httpStatus?: number; proxyUsed?: string }> => {
+    return apiClient.post('/credentials/verify-jina', { token, credentialId, proxyUrl, baseUrl });
   },
 
   verifyFirecrawlApiKey: async (

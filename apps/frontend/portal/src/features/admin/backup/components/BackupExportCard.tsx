@@ -49,7 +49,7 @@ const MODULE_OPTIONS: ModuleOption[] = [
   {
     key: 'skills',
     label: '技能与工具注册表',
-    desc: '包含已注册 Skill、参数 Schema 及系统工具绑定',
+    desc: '包含已注册 Skill、参数 Schema、权限策略与系统工具调度绑定',
     icon: <ThunderboltOutlined style={{ color: '#faad14' }} />,
   },
   {
@@ -61,13 +61,13 @@ const MODULE_OPTIONS: ModuleOption[] = [
   {
     key: 'capabilityReleases',
     label: '能力发布中心版本',
-    desc: '包含已发布版本、源码快照、LLM 生成代码构建产物',
+    desc: '包含已发布版本、源码快照、LLM 生成代码构建产物与发布审计',
     icon: <BranchesOutlined style={{ color: '#722ed1' }} />,
   },
   {
     key: 'documentTemplates',
     label: 'Carbone 文档模版与渲染资产',
-    desc: '包含 Office 模版源文件（Base64 封装）、语义标注规则、变量定义与 AI 技能配置',
+    desc: '包含 Office 模版源文件（Base64 封装）、语义标注规则、变量定义与 AI 技能配置（自动排除草稿）',
     icon: <FileWordOutlined style={{ color: '#13c2c2' }} />,
   },
   {
@@ -97,7 +97,7 @@ const MODULE_OPTIONS: ModuleOption[] = [
   {
     key: 'userOrganizations',
     label: '用户组织与凭据绑定',
-    desc: '包含企业组织结构、用户账号、角色权限与加密凭据映射',
+    desc: '包含企业法人档案、多租户组织架构、账号角色、部门团队及凭据映射',
     icon: <TeamOutlined style={{ color: '#52c41a' }} />,
   },
 ];

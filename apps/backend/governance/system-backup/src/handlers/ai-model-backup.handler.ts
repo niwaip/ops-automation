@@ -89,12 +89,20 @@ export class AIModelBackupHandler {
     providerApiKeys?: any[];
   }): Promise<BackupModulePreview> {
     const backupModels = backupData?.models || [];
+    const backupProviders = backupData?.providers || [];
     const currentModels = this.readJsonFile<any[]>('ai-models.json', []);
+    const currentProviders = this.readJsonFile<any[]>('ai-providers.json', []);
+
     const currentMap = new Map<string, any>();
     for (const item of currentModels) {
       const m = item.model || item;
-      if (m?.id) currentMap.set(m.id, m);
-      if (m?.name) currentMap.set(`name:${m.name}`, m);
+      if (m?.id) currentMap.set(`model:${m.id}`, m);
+      if (m?.name) currentMap.set(`model:name:${m.name}`, m);
+    }
+    for (const item of currentProviders) {
+      const p = item.provider || item;
+      const pId = p?.id || item.id;
+      if (pId) currentMap.set(`provider:${pId}`, p);
     }
 
     const items: BackupConflictItem[] = [];
@@ -105,7 +113,7 @@ export class AIModelBackupHandler {
       const m = item.model || item;
       const id = m?.id || 'unknown';
       const name = m?.name || id;
-      const exists = currentMap.has(id) || currentMap.has(`name:${name}`);
+      const exists = currentMap.has(`model:${id}`) || currentMap.has(`model:name:${name}`);
       if (exists) {
         conflictCount += 1;
         items.push({
@@ -125,9 +133,33 @@ export class AIModelBackupHandler {
       }
     }
 
+    for (const item of backupProviders) {
+      const p = item.provider || item;
+      const id = p?.id || item.id || 'unknown';
+      const name = p?.name || id;
+      const exists = currentMap.has(`provider:${id}`);
+      if (exists) {
+        conflictCount += 1;
+        items.push({
+          key: id,
+          name: `AI Provider: ${name}`,
+          existsInTarget: true,
+          action: 'update',
+        });
+      } else {
+        newCount += 1;
+        items.push({
+          key: id,
+          name: `AI Provider: ${name}`,
+          existsInTarget: false,
+          action: 'create',
+        });
+      }
+    }
+
     return {
       moduleKey: 'aiModels',
-      totalInBackup: backupModels.length,
+      totalInBackup: backupModels.length + backupProviders.length,
       newCount,
       conflictCount,
       items,

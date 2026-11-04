@@ -28,7 +28,9 @@ KNOWLEDGE_STOP_WORDS = {
     "怎么", "如何", "查看", "查询", "使用", "指南", "搜索", "检索", "阅读",
     "浏览", "看一下", "查一下", "找一下", "内容", "关于", "有关", "相关",
     "的", "了", "在", "是", "中", "里", "内", "上", "有", "有啥", "包含",
-    "是什么", "总结", "归纳", "分析", "报告", "资料", "库", "请问", "帮我"
+    "是什么", "总结", "归纳", "分析", "报告", "资料", "库", "请问", "帮我",
+    "服务", "介绍", "情况", "哪些", "有哪些", "有什么", "什么", "怎样", "多少", "一下",
+    "今天", "明天", "昨天", "现在", "当前", "最新", "近期", "最近", "日常", "实时"
 }
 
 
@@ -174,14 +176,134 @@ def _calculate_freshness_boost(mtime: float) -> int:
     return 0
 
 
-def scan_personal_knowledge(prompt: Optional[str] = None) -> str:
+JUNK_TAG_WORDS = {
+    "markdown", "md", "pdf", "doc", "docx", "pptx", "ppt", "xlsx", "xls", "html", "txt", "json", "csv", "yaml", "yml",
+    "based", "thorough", "review", "entire", "summary", "note", "file", "document", "content", "page",
+    "please", "user", "assistant", "candidate", "qa_note", "task_result",
+    "回归测试", "端到端测试", "算力校验", "指令遵循"
+}
+
+
+def _extract_markdown_frontmatter(text: str) -> Dict[str, Any]:
+    """Extracts frontmatter tags and title from markdown text, filtering out junk format/stop tags."""
+    meta = {"tags": [], "title": ""}
+    if not text or not text.strip().startswith("---"):
+        return meta
+    parts = text.split("---", 2)
+    if len(parts) >= 3:
+        fm = parts[1]
+        t_match = re.search(r'title:\s*["\']?(.*?)["\']?\s*$', fm, re.M)
+        if t_match:
+            meta["title"] = t_match.group(1).strip()
+        tags_match = re.search(r'tags:\s*\[(.*?)\]', fm)
+        raw_tags = []
+        if tags_match:
+            tags_str = tags_match.group(1)
+            raw_tags = [re.sub(r'["\']', '', t).strip() for t in tags_str.split(",")]
+        else:
+            list_tags = re.findall(r'^\s*-\s+["\']?(.*?)["\']?\s*$', fm, re.M)
+            if list_tags:
+                raw_tags = [t.strip() for t in list_tags if t.strip()]
+
+        cleaned_tags = []
+        for t in raw_tags:
+            t_strip = re.sub(r'^[#\s]+', '', t).strip()
+            if not t_strip or len(t_strip) <= 1:
+                continue
+            if re.match(r'^\d+$', t_strip):
+                continue
+            if t_strip.lower() in JUNK_TAG_WORDS:
+                continue
+            cleaned_tags.append(t_strip)
+        meta["tags"] = cleaned_tags
+    return meta
+
+
+def _resolve_clean_topic(text: str, default_stem: str, frontmatter_title: str = "") -> str:
+    """
+    Extracts a human-friendly business topic title, avoiding raw prompt clippings, timestamps, and ellipses.
+    """
+    # 1. 如果 Frontmatter 中的 title 已经是干净业务标题（非包含提问短语或 '...的总结'），优先使用
+    if frontmatter_title:
+        clean_fm = frontmatter_title.strip()
+        if not re.search(r'^(?:分析和归纳|查看和归纳|总结和归纳|提问背景).*?(?:\.\.\.的总结|总结)$', clean_fm):
+            return clean_fm
+
+    # 2. 从正文中解析次级真实业务大标题 (H1 / H2)
+    lines = text.splitlines() if text else []
+    for line in lines:
+        line_clean = line.strip()
+        if re.match(r"^#{1,2}\s+", line_clean):
+            t = re.sub(r"^#{1,2}\s+", "", line_clean)
+            t = re.sub(r"^[📄💡📌\s]+", "", t).strip()
+            if not re.search(r"^(?:分析和归纳|查看和归纳|总结和归纳|查看|分析|提问背景|核心结论|核心要点|概览|总结)", t):
+                return t
+            elif "：" in t or ":" in t:
+                sub = re.split(r"[:：]", t, 1)[-1].strip()
+                if sub and not re.search(r"^(?:分析和归纳|查看和归纳|总结和归纳)", sub):
+                    return sub
+
+    # 3. 从加粗核心实体或书名号提取
+    for line in lines[:30]:
+        m = re.search(r"关于\s*\*\*([^*]+)\*\*", line)
+        if m:
+            return m.group(1).strip()
+        m2 = re.search(r"《([^》]+)》", line)
+        if m2:
+            return m2.group(1).strip()
+
+    # 4. 兜底清洗：剥离日期前缀与截断后缀
+    clean = re.sub(r"^\d{8}_", "", default_stem)
+    clean = re.sub(r"\.\.\.的总结$", "", clean)
+    clean = re.sub(r"\s*总结$", "", clean).strip()
+    return clean or default_stem
+
+
+def is_derived_cache_file(f: Path) -> bool:
+    """Checks whether a file is an internal derived text/thumbnail cache generated for office/pdf docs."""
+    name = f.name
+    # 1. Direct compound extension like .pptx.txt, .pdf.txt, .docx.txt, .xlsx.txt
+    if re.search(r'\.(docx|pdf|xlsx|pptx)\.txt$', name, re.I):
+        return True
+    # 2. Sibling office document with identical stem (e.g. foo.txt generated alongside foo.pptx)
+    if name.lower().endswith(".txt"):
+        parent = f.parent
+        stem = f.stem
+        for office_ext in [".pptx", ".pdf", ".docx", ".xlsx", ".doc"]:
+            if (parent / f"{stem}{office_ext}").exists():
+                return True
+    # 3. Hidden or temporary cache files / preview folders
+    rel_parts = [p.lower() for p in f.parts]
+    if any(p in ("pdf_tmp", ".cache", ".pdf-preview", ".docx-preview", "tmp", "temp") for p in rel_parts):
+        return True
+    return False
+
+
+def is_excluded_knowledge_entry(f: Path) -> bool:
+    """Checks whether a file or directory should be excluded from personal knowledge retrieval."""
+    if f.name.startswith("."):
+        return True
+    if is_derived_cache_file(f):
+        return True
+    # 严格过滤自动化回归测试残留物及测试用例目录，避免企业端到端测试污染个人空间
+    parts_lower = [p.lower() for p in f.parts]
+    if any(p in ("fixtures", "__tests__", "regression_test") for p in parts_lower):
+        return True
+    path_str = str(f)
+    if "回归测试_企业协同" in path_str or "e2e企业协同" in path_str.lower():
+        return True
+    return False
+
+
+def scan_personal_knowledge(prompt: Optional[str] = None, auto_match_only: bool = False) -> str:
     """
     Scans personal knowledge space and saved deliverables for reference material.
     Performs:
     1. Multi-keyword extraction from prompt.
-    2. Deep content grep for plain text and office documents.
-    3. Multi-tier format weighting and recent freshness decay ranking.
-    4. Windowed snippet preview extraction.
+    2. Frontmatter tags & title parsing.
+    3. Deep content grep for plain text and office documents.
+    4. Multi-tier format weighting and recent freshness decay ranking.
+    5. Windowed snippet preview extraction.
     Strictly excludes execution skills (/knowledge/skills) from retrieval.
     """
     global _LAST_SCANNED_KNOWLEDGE_FILES
@@ -202,7 +324,7 @@ def scan_personal_knowledge(prompt: Optional[str] = None) -> str:
         try:
             kn_resolved = kn_path.resolve()
             for f in kn_path.glob("**/*"):
-                if f.name.startswith("."):
+                if is_excluded_knowledge_entry(f):
                     continue
                 # 严格过滤 skills 目录及版本控制文件，skills 为执行技能，不作为检索访问
                 rel_parts = f.relative_to(kn_path).parts
@@ -231,7 +353,7 @@ def scan_personal_knowledge(prompt: Optional[str] = None) -> str:
         try:
             d_resolved = d_candidate.resolve()
             for f in d_candidate.glob("**/*"):
-                if f.name.startswith("."):
+                if is_excluded_knowledge_entry(f):
                     continue
                 try:
                     resolved, err = resolve_sandboxed_path(str(f), for_write=False, for_outbound=False)
@@ -274,11 +396,55 @@ def scan_personal_knowledge(prompt: Optional[str] = None) -> str:
                     matched_name_kw = True
                     kw_score += 200
 
-        # 2. 正文 Grep 全文检索（针对纯文本与轻量文档预读）
-        if keywords and suffix in [".md", ".txt", ".json", ".csv", ".py", ".yaml", ".yml", ".html"]:
+        # 2. 标签 (Tags) 与 标题 (Title) 匹配（产出成果库元数据高权匹配）
+        matched_tag = False
+        matched_title = False
+        fm = {"tags": [], "title": ""}
+        clean_topic = ""
+        if suffix in [".md", ".txt"]:
+            try:
+                raw_head = resolved.read_text(encoding="utf-8", errors="ignore")[:4096]
+                fm = _extract_markdown_frontmatter(raw_head)
+                # 严格排除自动化回归测试标签的成果物
+                if any(t in ("回归测试", "端到端测试", "算力校验") for t in (fm.get("tags") or [])):
+                    continue
+                clean_topic = _resolve_clean_topic(raw_head, resolved.stem, fm.get("title", ""))
+                p_clean = prompt.lower() if prompt else ""
+                if fm["tags"]:
+                    for tag in fm["tags"]:
+                        tag_clean = tag.lower().strip()
+                        if not tag_clean:
+                            continue
+                        if (p_clean and tag_clean in p_clean) or (keywords and any(kw == tag_clean or kw in tag_clean for kw in keywords)):
+                            matched_tag = True
+                            kw_score += 450
+                            break
+                if fm["title"] and (keywords or p_clean):
+                    title_clean = fm["title"].lower().strip()
+                    if any(kw in title_clean for kw in keywords) or (len(title_clean) >= 3 and title_clean in p_clean):
+                        matched_title = True
+                        kw_score += 300
+            except Exception:
+                pass
+        elif suffix in [".docx", ".pptx", ".pdf", ".xlsx"]:
+            clean_topic = re.sub(r"^\d{8}_", "", resolved.stem).strip()
+
+        # 3. 正文 Grep 全文检索（针对纯文本文档，或利用内部 .txt 衍生缓存毫秒级预读加速）
+        text_source_file = None
+        if suffix in [".md", ".txt", ".json", ".csv", ".py", ".yaml", ".yml", ".html"]:
+            text_source_file = resolved
+        else:
+            # 内部保留 .txt 缓存以极大加快处理速度：若存在同名文本缓存，直接预读缓存
+            txt_sib = resolved.parent / f"{resolved.name}.txt"
+            if not txt_sib.exists():
+                txt_sib = resolved.parent / f"{resolved.stem}.txt"
+            if txt_sib.exists():
+                text_source_file = txt_sib
+
+        if keywords and text_source_file:
             try:
                 # 快速读取前 64KB 内容用于 grep
-                raw_head = resolved.read_text(encoding="utf-8", errors="ignore")[:65536]
+                raw_head = text_source_file.read_text(encoding="utf-8", errors="ignore")[:65536]
                 lower_head = raw_head.lower()
                 for kw in keywords:
                     if kw in lower_head:
@@ -290,8 +456,11 @@ def scan_personal_knowledge(prompt: Optional[str] = None) -> str:
             except Exception:
                 pass
 
-        # 必须有实际关键词命中且关键词分 >= 180，杜绝纯靠时间/格式虚高
-        matched_kw = bool((matched_name_kw or matched_content_kw) and kw_score >= 180)
+        # 必须有实际关键词/tag/标题命中且关键词分 >= 180，杜绝纯靠时间/格式虚高
+        matched_kw = bool((matched_name_kw or matched_tag or matched_title or matched_content_kw) and kw_score >= 180)
+        if auto_match_only:
+            # 自动探测模式下执行更严格的主题门禁：必须明确命中标签、标题、文件名，或正文多重关键词命中 (kw_score >= 360)
+            matched_kw = bool((matched_name_kw or matched_tag or matched_title) or (matched_content_kw and kw_score >= 360))
 
         # 产出成果库加权
         if source_cat == "deliverable" and matched_kw:
@@ -321,6 +490,9 @@ def scan_personal_knowledge(prompt: Optional[str] = None) -> str:
             "tier": tier,
             "source_category": source_cat,
             "cached_preview": content_preview_cached,
+            "frontmatter_title": fm.get("title", ""),
+            "frontmatter_tags": fm.get("tags", []),
+            "clean_topic": clean_topic or fm.get("title") or resolved.stem,
         })
 
     # 排序策略：综合得分高优先 -> Tier 格式优先 -> 最近修改时间优先 -> 字典序
@@ -347,7 +519,14 @@ def scan_personal_knowledge(prompt: Optional[str] = None) -> str:
 
     # 当存在明确查询关键词且有达到相关性阈值的高相关文件时，只注入高相关文档，防止注入低分无关文档导致模型发散与自作多情
     has_matched = any(x["matched_kw"] and x["total_score"] >= RELEVANCE_SCORE_THRESHOLD for x in scored_entries)
-    if keywords and has_matched:
+    if auto_match_only:
+        if not has_matched:
+            _LAST_SCANNED_KNOWLEDGE_FILES = []
+            return ""
+        # 自动匹配模式：仅保留高分命中项作为上下文与可引用来源
+        _LAST_SCANNED_KNOWLEDGE_FILES = [f for f in _LAST_SCANNED_KNOWLEDGE_FILES if f.get("matched") and f.get("score", 0) >= RELEVANCE_SCORE_THRESHOLD]
+
+    if (keywords or auto_match_only) and has_matched:
         selected = [x for x in scored_entries if x["matched_kw"] and x["total_score"] >= RELEVANCE_SCORE_THRESHOLD][:8]
         summary = ["Personal Knowledge Base & Deliverables contents (filtered by high relevance):"]
     elif keywords and not has_matched:
@@ -417,7 +596,14 @@ def scan_personal_knowledge(prompt: Optional[str] = None) -> str:
         if content_preview.startswith("PK\x03\x04") or content_preview.startswith("%PDF"):
             content_preview = "[二进制格式暂无法直接显示]"
 
-        summary.append(f"- File: {prefix_tag}{rel} ({size} bytes)\n  Preview: {content_preview}")
+        topic = item.get("clean_topic") or item.get("frontmatter_title") or resolved.stem
+        tags = item.get("frontmatter_tags") or []
+        header_parts = [f"- File: {prefix_tag}{rel} ({size} bytes)"]
+        header_parts.append(f"  - 业务主题/成果名称 (Topic): {topic}")
+        if tags:
+            header_parts.append(f"  - 核心分类标签 (Tags): {' '.join('#' + t for t in tags)}")
+        header_parts.append(f"  Preview: {content_preview}")
+        summary.append("\n".join(header_parts))
 
     # 若本次为无关键词概览扫描，但前序已有带关键词命中的有效项，合并保留高分项
     if not keywords and prior_matched_files:

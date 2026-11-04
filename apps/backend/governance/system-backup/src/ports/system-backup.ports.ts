@@ -18,6 +18,7 @@ export interface SystemBackupPrismaPort {
   toolCatalog?: any;
   skillToolBinding?: any;
   skillPermission?: any;
+  skillSchedule?: any;
   temporalWorkflow?: any;
   activity?: any;
   executionFlowTemplate?: any;

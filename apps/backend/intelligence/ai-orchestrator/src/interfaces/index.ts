@@ -142,6 +142,7 @@ export interface ModelInvocationConfig {
 }
 
 export interface AIModelConfig {
+  audio_transcription_endpoint?: string;
   display_name?: string;
   description?: string;
   supports_reasoning?: boolean;

@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useStore } from 'zustand';
 import { UserChatWidget } from '@/features/chat/components/UserChatWidget';
+import { PassportProvider } from '@/features/im-channels/components/PassportProvider';
 import { useChatStore } from '@/features/chat';
 import { GlobalWorkspacePreviewModal } from '@/features/workspace/components/GlobalWorkspacePreviewModal';
 import { preferencesStore } from '../../adapters/preferences/preferencesStore';
@@ -52,6 +53,7 @@ export function UserLayout() {
   const sidebarWidth = sidebarCollapsed ? 80 : 200;
 
   return (
+    <PassportProvider>
     <Layout
       className={styles['user-shell']}
       style={
@@ -78,5 +80,6 @@ export function UserLayout() {
       {isChatRoute ? null : <UserChatWidget />}
       <GlobalWorkspacePreviewModal />
     </Layout>
+    </PassportProvider>
   );
 }

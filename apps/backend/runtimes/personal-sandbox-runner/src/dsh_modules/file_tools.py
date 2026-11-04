@@ -34,7 +34,14 @@ IMAGE_EXTENSIONS = tuple(IMAGE_MIME_MAP.keys())
 
 from .config import WORKSPACE_DIR, KNOWLEDGE_DIR, DEFAULT_PROXY_URL, VIRTUAL_API_KEY, SKILL_DIR, CUSTOM_SKILL_DIR, PLUGIN_DIR
 from .web_tools import check_deadline, assert_not_timed_out
-from .office_tools import extract_docx_text, extract_xlsx_text, extract_pdf_text, extract_pptx_text
+from .office_tools import (
+    extract_docx_text,
+    extract_xlsx_text,
+    extract_pdf_text,
+    extract_pptx_text,
+    slice_lines_with_char_limit,
+    format_unsliced_document_view,
+)
 
 
 def get_allowed_roots(for_write: bool = False, for_outbound: bool = False) -> List[Path]:
@@ -891,18 +898,22 @@ def read_workspace_file(
         all_lines = raw.splitlines()
         total_lines = len(all_lines)
         if start_line is not None or end_line is not None:
-            s_idx = max(0, (start_line or 1) - 1)
-            e_idx = min(total_lines, end_line if end_line is not None else total_lines)
-            sliced = [f"L{s_idx + 1 + i}: {line}" for i, line in enumerate(all_lines[s_idx:e_idx])]
-            content = "\n".join(sliced)
-            return f"【文本文件 ({p.name}) 切片内容（第 {s_idx + 1} 至 {e_idx} 行，共 {total_lines} 行）】:\n" + content[:max_chars]
+            return slice_lines_with_char_limit(
+                all_lines,
+                total_lines=total_lines,
+                start_line=start_line,
+                end_line=end_line,
+                max_chars=max_chars,
+                header_label=f"文本文件 ({p.name}) 切片内容",
+                line_prefix="L"
+            )
 
         if len(raw) > max_chars:
-            hint = (
-                f"\n\n[⚠️ 文件长文本截断提醒]: 文件总长 {len(raw)} 字符 / {total_lines} 行，已读取展示前 {max_chars} 字符。"
-                f"\n💡 [通用建议]: 若需查看未展示的后续内容，请在调用 read_file 时指定 `start_line` 与 `end_line` 参数（例如 start_line={min(total_lines, (max_chars // 60))} 分页切片读取），或调用 bash 执行 `grep -n '关键词'` 精准定位。"
+            return format_unsliced_document_view(
+                raw,
+                max_chars=max_chars,
+                header_label=f"文本文件 ({p.name}) 内容"
             )
-            return f"【文本文件 ({p.name}) 内容】:\n" + raw[:max_chars] + hint
         return f"【文本文件 ({p.name}) 内容】:\n" + raw
     except Exception as e:
         return f"读取文件异常 ({p.name}): {e}"

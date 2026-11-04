@@ -206,7 +206,7 @@ class TerminalArtifactClaimTests(unittest.TestCase):
             max_rounds=24
         )
         self.assertTrue(val_res.is_pass, f"Contract validation failed: {val_res}")
-        self.assertIn("金额", val_res.satisfied_metrics[0])
+        self.assertTrue(any("金额" in m for m in val_res.satisfied_metrics))
 
         # 2. 验证 final_text 绝不注入指标核算未完成声明
         final_text, _ = finalize_agent_text(

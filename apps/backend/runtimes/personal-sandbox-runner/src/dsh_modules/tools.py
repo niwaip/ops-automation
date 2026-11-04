@@ -225,7 +225,7 @@ SANDBOX_TOOLS = [
         "type": "function",
         "function": {
             "name": "scan_knowledge",
-            "description": "扫描并读取挂载的个人知识库 (/knowledge) 中的参考文档与记忆",
+            "description": "扫描并读取挂载的个人知识库 (/knowledge) 及个人成果库 (/workspace/deliverables) 中的参考文档与沉淀成果条目",
             "parameters": {
                 "type": "object",
                 "properties": {}

@@ -61,6 +61,61 @@ class ContextBudget:
         return compacted
 
     @classmethod
+    def compact_active_loop_messages(
+        cls,
+        messages: List[Dict[str, Any]],
+        min_chars_to_compact: int = 2500
+    ) -> List[Dict[str, Any]]:
+        """
+        Compacts verbose historical tool outputs (such as massive read_file slices) within the current
+        ReAct agent loop in-place, while strictly preserving tool_call_id contract for Function Calling API.
+        Keeps the current round's tool results intact for immediate reasoning, and folds earlier bulky tool
+        payloads into concise semantic stubs. Prevents O(N^2) token explosion in long-document multi-round reads.
+        """
+        if not messages or len(messages) <= 3:
+            return messages
+
+        # 找到最后一条 assistant 消息的索引。最后一条 assistant 之后追加的工具回包属于当前轮次，必须完整保留
+        last_assistant_idx = max(
+            (i for i, m in enumerate(messages) if isinstance(m, dict) and m.get("role") == "assistant"),
+            default=-1
+        )
+        if last_assistant_idx < 0:
+            return messages
+
+        for idx, msg in enumerate(messages):
+            if not isinstance(msg, dict) or msg.get("role") != "tool":
+                continue
+            # 仅折叠最后一条 assistant 消息之前的旧轮次工具回包（即非当前轮次的旧回包）
+            if idx >= last_assistant_idx:
+                continue
+
+            content = msg.get("content")
+            if not isinstance(content, str) or len(content) <= min_chars_to_compact:
+                continue
+
+            orig_len = len(content)
+            first_line = content.split("\n", 1)[0].strip()
+
+            # 针对大文件切片的专有结构化语义桩
+            if any(k in first_line for k in ("切片", "提取文本", "内容提取")):
+                stub = (
+                    f"{first_line}\n"
+                    f"[✅ 前序切片正文已完成分析并归档。为控制多轮长文档上下文预算，原始 {orig_len} 字符已安全折叠。"
+                    f"如需再次核验细节，可指定行号重新调用 read_file]"
+                )
+            else:
+                header = first_line[:120] if len(first_line) > 120 else first_line
+                stub = (
+                    f"{header}\n"
+                    f"[✅ 前序工具输出已完成分析。为控制多轮上下文预算，原始 {orig_len} 字符已安全归档折叠。]"
+                )
+
+            msg["content"] = stub
+
+        return messages
+
+    @classmethod
     def budget_history(
         cls,
         existing_history: List[Dict[str, Any]],

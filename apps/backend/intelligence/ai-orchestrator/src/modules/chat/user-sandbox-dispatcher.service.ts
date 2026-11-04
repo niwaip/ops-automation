@@ -93,39 +93,108 @@ export class UserSandboxDispatcherService {
           const sessionDestPath = path.join(sessionDir, fileName);
           const rootDestPath = path.join(userWorkspaceDir, fileName);
           const filePath = typeof file === 'string' ? file : file?.filePath;
+
+          let fileWritten = false;
+
+          // 1. 优先直接从解析出的物理文件路径复制
           if (filePath && fs.existsSync(filePath)) {
-            fs.copyFileSync(filePath, sessionDestPath);
-            fs.copyFileSync(filePath, rootDestPath);
-            try { fs.chmodSync(sessionDestPath, 0o666); } catch { /* best-effort */ }
-            try { fs.chmodSync(rootDestPath, 0o666); } catch { /* best-effort */ }
+            try {
+              fs.copyFileSync(filePath, sessionDestPath);
+              fs.copyFileSync(filePath, rootDestPath);
+              try { fs.chmodSync(sessionDestPath, 0o666); } catch { /* best-effort */ }
+              try { fs.chmodSync(rootDestPath, 0o666); } catch { /* best-effort */ }
+              fileWritten = true;
 
-            // 如果存在提取的文本文件，也一并同步为 .txt 与 .extracted.txt
-            const extractedSrc = `${filePath}.extracted.txt`;
-            if (fs.existsSync(extractedSrc)) {
-              const sessionTxt = path.join(sessionDir, `${fileName}.txt`);
-              const rootTxt = path.join(userWorkspaceDir, `${fileName}.txt`);
-              fs.copyFileSync(extractedSrc, sessionTxt);
-              fs.copyFileSync(extractedSrc, rootTxt);
-              try { fs.chmodSync(sessionTxt, 0o666); } catch { /* best-effort */ }
-              try { fs.chmodSync(rootTxt, 0o666); } catch { /* best-effort */ }
+              // 如果存在提取的文本文件，也一并同步为 .txt 与 .extracted.txt
+              const extractedSrc = `${filePath}.extracted.txt`;
+              if (fs.existsSync(extractedSrc)) {
+                const sessionTxt = path.join(sessionDir, `${fileName}.txt`);
+                const rootTxt = path.join(userWorkspaceDir, `${fileName}.txt`);
+                fs.copyFileSync(extractedSrc, sessionTxt);
+                fs.copyFileSync(extractedSrc, rootTxt);
+                try { fs.chmodSync(sessionTxt, 0o666); } catch { /* best-effort */ }
+                try { fs.chmodSync(rootTxt, 0o666); } catch { /* best-effort */ }
+              }
+            } catch (copyErr: any) {
+              this.logger.warn(`Failed copying file from filePath [${filePath}]: ${copyErr.message}`);
             }
-          } else if (file?.content) {
-            const buf = Buffer.from(file.content, 'base64');
-            fs.writeFileSync(sessionDestPath, buf);
-            fs.writeFileSync(rootDestPath, buf);
-            try { fs.chmodSync(sessionDestPath, 0o666); } catch { /* best-effort */ }
-            try { fs.chmodSync(rootDestPath, 0o666); } catch { /* best-effort */ }
+          }
 
-            if (file.extractedText) {
-              const sessionTxt = path.join(sessionDir, `${fileName}.txt`);
-              const rootTxt = path.join(userWorkspaceDir, `${fileName}.txt`);
+          // 2. 尝试从 Base64 content 写入
+          if (!fileWritten && file?.content) {
+            try {
+              const buf = Buffer.from(file.content, 'base64');
+              fs.writeFileSync(sessionDestPath, buf);
+              fs.writeFileSync(rootDestPath, buf);
+              try { fs.chmodSync(sessionDestPath, 0o666); } catch { /* best-effort */ }
+              try { fs.chmodSync(rootDestPath, 0o666); } catch { /* best-effort */ }
+              fileWritten = true;
+            } catch (writeErr: any) {
+              this.logger.warn(`Failed writing file from base64 content: ${writeErr.message}`);
+            }
+          }
+
+          // 3. 兜底策略 1：检查沙箱用户工作区根目录是否已有该同名文件（避免因路径漂移导致会话内丢失实体）
+          if (!fileWritten && fs.existsSync(rootDestPath) && !fs.existsSync(sessionDestPath)) {
+            try {
+              fs.copyFileSync(rootDestPath, sessionDestPath);
+              try { fs.chmodSync(sessionDestPath, 0o666); } catch { /* best-effort */ }
+              fileWritten = true;
+              this.logger.log(`Self-healed session attached file [${fileName}] from workspace root into session [${cleanSid}]`);
+            } catch { /* best-effort */ }
+          }
+
+          // 4. 兜底策略 2：尝试在上传目录候选根中按 fileId 或 fileName 匹配物理文件
+          if (!fileWritten) {
+            const candUploadDirs = [
+              path.join(process.cwd(), 'apps/backend/intelligence/ai-orchestrator/data/storage/uploads'),
+              '/workspace/apps/backend/intelligence/ai-orchestrator/data/storage/uploads',
+              path.resolve(__dirname, '../../data/storage/uploads'),
+              path.resolve(__dirname, '../../../../data/storage/uploads'),
+              path.resolve(__dirname, '../../../../../../../data/storage/uploads'),
+              path.join(process.cwd(), 'data/storage/uploads'),
+              '/workspace/data/storage/uploads',
+              '/app/data/storage/uploads',
+            ];
+            for (const uDir of candUploadDirs) {
+              try {
+                if (!fs.existsSync(uDir)) continue;
+                const entries = fs.readdirSync(uDir);
+                const matched = entries.find((e) => {
+                  if (file?.fileId && e.startsWith(file.fileId) && !e.endsWith('.meta.json')) return true;
+                  if (e.endsWith(`-${fileName}`) || e === fileName) return true;
+                  return false;
+                });
+                if (matched) {
+                  const src = path.join(uDir, matched);
+                  fs.copyFileSync(src, sessionDestPath);
+                  fs.copyFileSync(src, rootDestPath);
+                  try { fs.chmodSync(sessionDestPath, 0o666); } catch { /* best-effort */ }
+                  try { fs.chmodSync(rootDestPath, 0o666); } catch { /* best-effort */ }
+                  fileWritten = true;
+                  this.logger.log(`Self-healed session attached file [${fileName}] from upload dir [${src}] into session [${cleanSid}]`);
+                  break;
+                }
+              } catch { /* best-effort */ }
+            }
+          }
+
+          if (file?.extractedText) {
+            const sessionTxt = path.join(sessionDir, `${fileName}.txt`);
+            const rootTxt = path.join(userWorkspaceDir, `${fileName}.txt`);
+            try {
               fs.writeFileSync(sessionTxt, file.extractedText, 'utf-8');
               fs.writeFileSync(rootTxt, file.extractedText, 'utf-8');
               try { fs.chmodSync(sessionTxt, 0o666); } catch { /* best-effort */ }
               try { fs.chmodSync(rootTxt, 0o666); } catch { /* best-effort */ }
-            }
+            } catch { /* best-effort */ }
           }
-          this.logger.log(`Synced attached file [${fileName}] to session [${cleanSid}] and workspace: ${sessionDestPath}`);
+
+          if (fileWritten) {
+            this.logger.log(`Synced attached file [${fileName}] to session [${cleanSid}] and workspace: ${sessionDestPath}`);
+          } else {
+            this.logger.warn(`⚠️ Attached file [${fileName}] entity could not be located or written to session [${cleanSid}]`);
+          }
         }
       } catch (e: any) {
         this.logger.warn(`Failed to sync attached files to sandbox workspace: ${e.message}`);

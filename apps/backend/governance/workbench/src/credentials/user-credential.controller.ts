@@ -91,10 +91,12 @@ export class UserCredentialController {
   async verifyJina(
     @Request() req: any,
     @Body('token') token: string,
-    @Body('credentialId') credentialId?: string
+    @Body('credentialId') credentialId?: string,
+    @Body('proxyUrl') proxyUrl?: string,
+    @Body('baseUrl') baseUrl?: string
   ) {
     const userId = req.user?.id || req.user?.userId;
-    return this.vaultService.verifyJinaApiKey(token, userId, credentialId);
+    return this.vaultService.verifyJinaApiKey(token, userId, credentialId, proxyUrl, baseUrl);
   }
 
   @Post('verify-firecrawl')

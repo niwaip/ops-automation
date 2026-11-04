@@ -302,9 +302,10 @@ def finalize_agent_text(
                         is_leak = False
                 except Exception:
                     pass
-            # 只有在确属执行泄漏且正文缺乏实质性内容时才触发兜底抹除；实质性详尽正文绝对保护保留！
+            # 只有在确属执行泄漏且正文缺乏实质性内容（排除泄漏的代码块本身）时才触发兜底抹除；实质性详尽正文绝对保护保留！
             from .deliverable_contract import is_substantive_final_content
-            if is_leak and not is_substantive_final_content(final_text):
+            text_without_leak = re.sub(r'```(?:bash|sh|shell|python|json|cmd)?\s*[\s\S]*?```', '', final_text).strip()
+            if is_leak and not is_substantive_final_content(text_without_leak):
                 print("⚠️ [Harness Script Leak Guard] 检测到模型输出了未执行的脚本或参数回显且未能自愈，触发安全兜底...", flush=True)
                 final_text = published_summary or _build_fallback_report(
                     messages,

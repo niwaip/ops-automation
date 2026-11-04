@@ -66,14 +66,23 @@ export function SaveToWorkspaceAction({ message, userQuery }: SaveToWorkspaceAct
     const tagsSet = new Set<string>();
     const textToAnalyze = `${userQuery || ''} ${defaultTitle || ''} ${plainContent.slice(0, 400)}`;
 
+    const JUNK_ENG = new Set([
+      'the', 'and', 'for', 'with', 'this', 'that', 'from', 'into', 'view', 'show', 'get', 'post', 'have',
+      'will', 'can', 'not', 'markdown', 'md', 'pdf', 'doc', 'docx', 'pptx', 'ppt', 'xlsx', 'xls', 'html',
+      'txt', 'json', 'csv', 'yaml', 'yml', 'based', 'thorough', 'review', 'entire', 'summary', 'note',
+      'please', 'user', 'assistant', 'content', 'page', 'also', 'more', 'about', 'some', 'what', 'when'
+    ]);
+
     // 1. 提取英文专有名词与技术实体 (如 DeepSeek, Harness, DSH, Docker, API, Python, Node, Web)
     const engEntities = textToAnalyze.match(/\b[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*\b/g) || [];
     for (const ent of engEntities) {
+      const lower = ent.toLowerCase();
       if (
         ent.length >= 2 &&
-        !/^(the|and|for|with|this|that|from|into|view|show|get|post|have|will|can|not)$/i.test(ent)
+        !/^\d+$/.test(ent) &&
+        !JUNK_ENG.has(lower)
       ) {
-        if (/^[A-Z]/.test(ent) || ent.length >= 4) {
+        if (/^[A-Z][a-zA-Z0-9]+$/.test(ent) || /^[A-Z]{2,}$/.test(ent)) {
           tagsSet.add(ent);
         }
       }

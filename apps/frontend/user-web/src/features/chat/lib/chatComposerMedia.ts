@@ -2,6 +2,7 @@ import type { UploadedFileDescriptor } from '@ops/user-core';
 import { apiClient, runtimeConfig } from '../../../api';
 import { authStore } from '../../../adapters/auth/authStore';
 
+export const MAX_CHAT_UPLOAD_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 export const SPEECH_LANGUAGE_STORAGE_KEY = 'user-chat.speech.lang';
 
 export const normalizeSpeechLanguage = (value?: string | null): string => {
@@ -91,7 +92,10 @@ export async function uploadChatFile(file: File): Promise<UploadedFileDescriptor
   });
 
   if (!response.ok) {
-    let errMsg = `HTTP error: ${response.status}`;
+    let errMsg =
+      response.status === 413
+        ? '文件体积超过上传限制（当前单文件最大允许 100MB）'
+        : `HTTP error: ${response.status}`;
     try {
       const errJson = await response.json();
       if (errJson?.message) {
@@ -100,6 +104,9 @@ export async function uploadChatFile(file: File): Promise<UploadedFileDescriptor
     } catch {
       const errText = await response.text().catch(() => '');
       if (errText) errMsg = `${errMsg} ${errText}`;
+    }
+    if (errMsg === 'File too large' || errMsg.includes('File too large')) {
+      errMsg = '文件体积超过上传限制（当前单文件最大允许 100MB）';
     }
     throw new Error(errMsg);
   }
@@ -120,9 +127,9 @@ export async function uploadChatFile(file: File): Promise<UploadedFileDescriptor
   };
 }
 
-export async function transcribeAudio(file: Blob | File, modelId: string): Promise<string> {
+export async function transcribeAudio(file: Blob | File, modelId: string, signal?: AbortSignal): Promise<string> {
   const formData = new FormData();
-  formData.append('file', file, 'audio.webm');
+  formData.append('file', file, file.type === 'audio/wav' ? 'audio.wav' : 'audio.webm');
   formData.append('modelId', modelId);
 
   const token = (await apiClient.ensureFreshAccessToken()) || authStore.getState().accessToken;
@@ -130,6 +137,7 @@ export async function transcribeAudio(file: Blob | File, modelId: string): Promi
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     body: formData,
+    signal,
   });
 
   if (!response.ok) {

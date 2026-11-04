@@ -122,6 +122,12 @@ def format_retrieval_sources_footer(
             # 过滤内部派生/文本缓存文件
             if re.search(r'\.(docx|pdf|xlsx|pptx)\.txt$', fname, re.I):
                 continue
+            if fname.lower().endswith(".txt"):
+                f_path = Path(str(f.get("path") or fname))
+                stem = f_path.stem
+                parent = f_path.parent
+                if any((parent / f"{stem}{ext}").exists() for ext in [".pptx", ".pdf", ".docx", ".xlsx", ".doc"]):
+                    continue
             # 按文件名主干去重，同主干仅保留最高优先级文件
             stem = re.sub(r'\.[a-zA-Z0-9]+$', '', fname).lower()
             if stem in seen_stems:
@@ -134,11 +140,13 @@ def format_retrieval_sources_footer(
                 or fname.startswith("outputs/")
             )
             clean_display = re.sub(r'^(?:deliverables|outputs)/', '', fname)
+            # 仅展示成果物规范文件名，去除底层原始文件夹长路径与时间戳
+            clean_name = Path(clean_display).name
 
             if is_deliverable:
-                deliverable_items.append(clean_display)
+                deliverable_items.append(clean_name)
             else:
-                knowledge_items.append(clean_display)
+                knowledge_items.append(clean_name)
 
             if len(deliverable_items) + len(knowledge_items) >= MAX_LOCAL_CITATION_COUNT:
                 break

@@ -33,6 +33,7 @@ Recommended modes:
   dev:workflow    Core stack + Temporal workflow engine & workers
   dev:doc         Core stack + Report service (report)
   dev:xiaozhi     Core stack + Xiaozhi voice channel connector
+  dev:dispatch    Core stack + Durable Dispatch workers (execution-dispatcher & schedule-trigger)
   full            Start the full stack (all 20 containers)
   infra           Start postgres + redis only
   addin           Start Office Add-in related services
@@ -268,6 +269,11 @@ resolve_target() {
             target_entry="dev:xiaozhi"
             compose_files=("$(resolve_compose_file "compose/docker-compose.base.yml")")
             target_profiles+=("xiaozhi")
+            ;;
+        dev:dispatch|dispatch|durable-dispatch)
+            target_entry="dev:dispatch"
+            compose_files=("$(resolve_compose_file "compose/docker-compose.base.yml")")
+            target_profiles+=("durable-dispatch")
             ;;
         dev:fe|fe|frontend)
             target_entry="dev:fe"

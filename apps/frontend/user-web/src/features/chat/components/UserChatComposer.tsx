@@ -14,7 +14,7 @@ import { SlashCommandDropdown } from './SlashCommandDropdown';
 import { isWorkSlashCommand, isPersonalSlashCommand, type SlashCommandDefinition } from '../lib/slashCommands';
 import type { WorkspaceNode } from '../../../api/workspace';
 import { shouldSubmitChatComposerOnEnter } from '../lib/chatComposerKeyboard';
-import { uploadChatFile } from '../lib/chatComposerMedia';
+import { MAX_CHAT_UPLOAD_FILE_SIZE, uploadChatFile } from '../lib/chatComposerMedia';
 import { useChatStore } from '../chatStore';
 
 import styles from '../pages/ChatPage.module.css';
@@ -378,6 +378,10 @@ export function UserChatComposer(props: UserChatComposerProps) {
 
   const activeUploadsCountRef = useRef(0);
   const handleFileUpload = useCallback(async (file: File) => {
+    if (file.size > MAX_CHAT_UPLOAD_FILE_SIZE) {
+      void antdMessage.error(`附件上传失败："${file.name}" 体积超过限制（最大支持 100MB）`);
+      return false;
+    }
     activeUploadsCountRef.current += 1;
     setIsUploadingFile(true);
     try {
@@ -388,6 +392,8 @@ export function UserChatComposer(props: UserChatComposerProps) {
       let msg = err instanceof Error ? err.message : '附件上传失败';
       if (msg === 'Failed to fetch') {
         msg = '附件上传失败：网络连接中断或服务异常';
+      } else if (msg === 'File too large' || msg.includes('File too large') || msg.includes('413')) {
+        msg = `附件上传失败："${file.name}" 体积超过限制（最大支持 100MB）`;
       }
       void antdMessage.error(msg);
     } finally {

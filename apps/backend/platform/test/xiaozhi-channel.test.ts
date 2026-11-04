@@ -1,6 +1,23 @@
 import { ChannelTaskGatewayService, ImCredentialCipher, XiaozhiChannelService, XiaozhiTaskService } from '@ops/im-gateway';
 
 describe('Xiaozhi channel', () => {
+  it('resolves companion task ownership from the authenticated user', async () => {
+    const prisma: any = { imChannelConnection: { findUnique: jest.fn().mockResolvedValue({ id: 'owned-connection', encryptedCredential: 'cipher' }) } };
+    const tasks: any = { submit: jest.fn().mockResolvedValue({ status: 'accepted' }), get: jest.fn().mockResolvedValue({ status: 'running' }) };
+    const service = new XiaozhiChannelService(prisma, {} as any, tasks);
+    await service.submitTask('authenticated-user', '巡检', 'device-12345678');
+    await service.getTask('authenticated-user', 'request-id');
+    expect(prisma.imChannelConnection.findUnique).toHaveBeenCalledWith({ where: { userId_channel: { userId: 'authenticated-user', channel: 'xiaozhi' } } });
+    expect(tasks.submit).toHaveBeenCalledWith('owned-connection', '巡检', 'device-12345678');
+    expect(tasks.get).toHaveBeenCalledWith('owned-connection', 'request-id');
+  });
+
+  it('rejects an unbound companion before task submission', async () => {
+    const tasks: any = { submit: jest.fn() };
+    const service = new XiaozhiChannelService({ imChannelConnection: { findUnique: jest.fn().mockResolvedValue(null) } } as any, {} as any, tasks);
+    await expect(service.submitTask('user', '巡检', 'device-12345678')).rejects.toThrow('尚未配置');
+    expect(tasks.submit).not.toHaveBeenCalled();
+  });
   const previousKey = process.env.IM_CHANNEL_ENCRYPTION_KEY;
   beforeEach(() => { process.env.IM_CHANNEL_ENCRYPTION_KEY = '7fd6414a543574effddb645132638c2357ba2f12a57c09216bc45880f5271757'; });
   afterEach(() => {
