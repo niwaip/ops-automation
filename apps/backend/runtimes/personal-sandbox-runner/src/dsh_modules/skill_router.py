@@ -509,6 +509,7 @@ class SemanticSkillMatcher:
                     bool(data.get("deliverables"))
                     or data.get("requires_execution")
                     or data.get("mode") in ("deck", "prototype")
+                    or s_id in {"docx", "pdf", "guizang-ppt", "pptx", "html-ppt", "saas-landing", "frontend-design", "web-prototype", "xlsx"}
                 )
                 if not has_spreadsheet_analysis and is_physical:
                     score = 0.0
@@ -776,20 +777,6 @@ class SkillRouter:
         result.is_guide_intent = any(k in lower_query for k in GUIDE_PATTERNS)
 
         # 4. 探测全网实时检索与最新动态意图（开放域外部资讯/大宗商品原料价格/开源生态/最新发布/会议展会时间，而非本地工作区）
-        SEARCH_CUES = [
-            "最新的", "最新", "最近", "近期", "当前最", "最热门", "热门", "新出", "最新发布",
-            "流行", "最流行", "流行度", "主流", "火爆", "大家都在用", "推荐哪些", "推荐几个", "好用的",
-            "实时", "热点", "热搜", "热榜", "榜单", "排行榜", "趋势榜", "今日榜", "实时榜",
-            "安装方法", "安装教程", "如何安装", "怎么安装", "安装指南", "installation guide", "how to install",
-            "外部生态", "开源社区", "社区生态", "网上", "全网", "市场动态",
-            "插件", "扩展", "第三方库", "有哪些插件", "有哪些扩展", "有哪些库", "有哪些工具", "插件生态", "生态插件",
-            "近年", "近几年", "历年", "历届", "举办时间", "什么时候举办", "什么时候开", "召开时间",
-            "铜价", "金价", "油价", "钢价", "原料价格", "行情", "走势", "汇率", "股价", "今日价格", "最新价格", "今日行情",
-            "联网查询", "联网搜索", "上网查", "网上查", "查一下网络"
-        ]
-        LOCAL_DISAMBIGUATION = [
-            "工作区", "当前目录", "本地文件", "已上传", "生成的", "刚才生成", "历史", "附件"
-        ]
         is_asking_local = any(loc in lower_query for loc in LOCAL_DISAMBIGUATION) or bool(attached_files)
         is_cues_match = any(cue in lower_query for cue in SEARCH_CUES)
 
@@ -799,7 +786,12 @@ class SkillRouter:
             and re.search(r'(?:插件|扩展|生态|组件|工具|库|有哪些|支持哪些|怎么配|怎么用|是什么)', lower_query)
         )
 
-        result.is_search_intent = (is_cues_match or is_tech_ecosystem_inquiry) and not is_asking_local
+        # 外部网址/在线仓库引用探测（如 https://... 或 GitHub - owner/repo）
+        is_external_url_or_repo = bool(
+            re.search(r'https?://[^\s]+|github\.com/[a-zA-Z0-9_\-]+/[a-zA-Z0-9_\-]+|github\s*[-–—:]\s*[a-zA-Z0-9_\-]+/[a-zA-Z0-9_\-]+', lower_query)
+        )
+
+        result.is_search_intent = (is_cues_match or is_tech_ecosystem_inquiry or is_external_url_or_repo) and not is_asking_local
 
         if is_network_search_forbidden(lower_query):
             result.is_search_intent = False

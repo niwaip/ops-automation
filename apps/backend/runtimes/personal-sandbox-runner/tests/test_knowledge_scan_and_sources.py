@@ -444,6 +444,78 @@ tags: ["markdown", "Based", "thorough", "1996", "时空可组合性", "分布式
             cfg.WORKSPACE_DIR = orig_ws
             shutil.rmtree(ws_tmp, ignore_errors=True)
 
+    def test_url_and_repo_keyword_filtering_and_word_boundaries(self):
+        """测试针对外部 URL 与代码仓库的停用词过滤与词边界匹配，彻底杜绝短词子串误撞"""
+        from dsh_modules.personal_knowledge_search import _matches_keyword
+
+        # 1. 验证关键词提取中的 URL 协议、域名与噪音虚词过滤
+        prompt1 = "查看和风险这个文章的内容 https://github.com/vercel-labs/agent-desktop/"
+        kws1 = _extract_knowledge_query_keywords(prompt1)
+        for noise in ["https", "http", "github", "com", "github.com", "风险", "这个", "文章", "和风险"]:
+            self.assertNotIn(noise, kws1)
+        self.assertIn("vercel-labs", kws1)
+        self.assertIn("agent-desktop", kws1)
+
+        # 2. 验证英文介词与通用代码词过滤
+        prompt2 = "查看和分析 GitHub - vercel-labs/agent-desktop: Computer use CLI for AI agents · GitHub"
+        kws2 = _extract_knowledge_query_keywords(prompt2)
+        for noise in ["github", "for", "use", "cli", "和分析"]:
+            self.assertNotIn(noise, kws2)
+
+        # 3. 验证 _matches_keyword 严格遵循词边界
+        self.assertFalse(_matches_keyword("contain detail daily", "ai"))
+        self.assertTrue(_matches_keyword("ai agent application", "ai"))
+        self.assertFalse(_matches_keyword("platform information", "for"))
+        self.assertTrue(_matches_keyword("designed for users", "for"))
+        self.assertFalse(_matches_keyword("telecom community", "com"))
+
+    def test_external_url_auto_match_does_not_inject_deliverables(self):
+        """验证 auto_match_only 模式下，针对外部 URL 或仓库的提问绝不误撞注入本地历史成果产物"""
+        import dsh_modules.config as cfg
+        ws_tmp = tempfile.mkdtemp()
+        orig_ws = getattr(cfg, "WORKSPACE_DIR", "/workspace")
+        cfg.WORKSPACE_DIR = ws_tmp
+
+        try:
+            # 模拟一个内容包含大量 github, for, use, 风险 等技术词汇的历史产出成果
+            deliv_dir = Path(ws_tmp) / "deliverables" / "20261104_阿里AI开发新范式"
+            deliv_dir.mkdir(parents=True)
+            doc_file = deliv_dir / "阿里-AI开发-新范式.md"
+            doc_file.write_text(
+                "---\ntitle: '阿里-AI开发-新范式'\ntags: ['AI架构', '范式', '工程演化']\n---\n"
+                "本文介绍了 AI Agent 的发展与风险评估。详情参见 https://github.com/alibaba/harness 项目。\n"
+                "Computer use is a powerful paradigm for agents.\n",
+                encoding="utf-8"
+            )
+
+            # 用户提问纯外部仓库 URL，且未带个人空间修饰
+            res1 = scan_personal_knowledge(
+                prompt="查看和风险这个文章的内容 https://github.com/vercel-labs/agent-desktop/",
+                auto_match_only=True
+            )
+            self.assertEqual(res1, "")
+            self.assertEqual(len(get_last_scanned_knowledge_files()), 0)
+
+            res2 = scan_personal_knowledge(
+                prompt="查看和分析 GitHub - vercel-labs/agent-desktop: Computer use CLI for AI agents · GitHub",
+                auto_match_only=True
+            )
+            self.assertEqual(res2, "")
+            self.assertEqual(len(get_last_scanned_knowledge_files()), 0)
+        finally:
+            cfg.WORKSPACE_DIR = orig_ws
+            shutil.rmtree(ws_tmp, ignore_errors=True)
+
+    def test_skill_router_external_url_and_repo_search_intent(self):
+        """验证 SkillRouter 对外部 URL 与 GitHub 仓库的提问准确激活 is_search_intent"""
+        from dsh_modules.skill_router import SkillRouter
+
+        res1 = SkillRouter.route("查看和风险这个文章的内容 https://github.com/vercel-labs/agent-desktop/")
+        self.assertTrue(res1.is_search_intent)
+
+        res2 = SkillRouter.route("查看和分析 GitHub - vercel-labs/agent-desktop: Computer use CLI for AI agents · GitHub")
+        self.assertTrue(res2.is_search_intent)
+
 
 if __name__ == "__main__":
     unittest.main()

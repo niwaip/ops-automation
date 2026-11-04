@@ -11,6 +11,7 @@ Provides:
 import os
 import re
 import time
+import urllib.parse
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple
 
@@ -24,13 +25,31 @@ from .office_tools import (
 _LAST_SCANNED_KNOWLEDGE_FILES: List[Dict[str, Any]] = []
 
 KNOWLEDGE_STOP_WORDS = {
+    # 知识库指令与空间虚词
     "个人", "空间", "知识", "知识库", "文档", "文件", "方法", "安装", "教程",
     "怎么", "如何", "查看", "查询", "使用", "指南", "搜索", "检索", "阅读",
     "浏览", "看一下", "查一下", "找一下", "内容", "关于", "有关", "相关",
     "的", "了", "在", "是", "中", "里", "内", "上", "有", "有啥", "包含",
     "是什么", "总结", "归纳", "分析", "报告", "资料", "库", "请问", "帮我",
     "服务", "介绍", "情况", "哪些", "有哪些", "有什么", "什么", "怎样", "多少", "一下",
-    "今天", "明天", "昨天", "现在", "当前", "最新", "近期", "最近", "日常", "实时"
+    "今天", "明天", "昨天", "现在", "当前", "最新", "近期", "最近", "日常", "实时",
+
+    # 中文泛化虚词与问答噪音词
+    "这个", "那个", "文章", "和分析", "和风险", "风险", "来看", "帮我看看", "这个文章",
+    "这里面", "这篇", "那篇", "这些", "那些", "下面", "上面", "关于这个", "看下", "全文",
+    "原文", "链接", "网页", "地址", "页面", "项目", "仓库", "代码仓库", "开源项目", "地址是",
+
+    # 网络协议、顶级域名与代码托管通用词（严禁作为个人知识库匹配词）
+    "http", "https", "url", "uri", "ftp", "www", "com", "cn", "org", "net", "io",
+    "dev", "html", "htm", "php", "jsp", "github", "github.com", "gitlab", "gitlab.com",
+    "gitee", "blob", "raw", "main", "master", "releases", "readme", "issues", "pull",
+    "cli", "cmd", "repo", "repository", "git", "commit", "commits", "branch", "branches",
+
+    # 英文常用介词、虚词、代词与高频语法词（防止子串误撞）
+    "for", "and", "the", "a", "an", "in", "on", "at", "to", "of", "by", "from",
+    "with", "without", "as", "is", "are", "was", "were", "be", "been", "or", "not",
+    "use", "using", "used", "all", "any", "some", "this", "that", "these", "those",
+    "it", "its", "we", "you", "they", "our", "your", "their", "via"
 }
 
 
@@ -43,32 +62,81 @@ def get_last_scanned_knowledge_files() -> List[Dict[str, Any]]:
     return list(_LAST_SCANNED_KNOWLEDGE_FILES)
 
 
+def _matches_keyword(text: str, kw: str) -> bool:
+    """
+    Matches keyword in target text.
+    Enforces word boundaries for ASCII terms to prevent false substring collisions
+    (e.g. 'ai' matching 'contain', 'for' matching 'platform').
+    """
+    if not text or not kw:
+        return False
+    if re.match(r'^[a-zA-Z0-9_\-]+$', kw):
+        return bool(re.search(r'(?<![a-zA-Z0-9])' + re.escape(kw) + r'(?![a-zA-Z0-9])', text, re.I))
+    return kw.lower() in text.lower()
+
+
 def _extract_knowledge_query_keywords(prompt: Optional[str]) -> List[str]:
     """
     Extracts multiple entity keywords from user prompt for personal knowledge retrieval.
-    Strips noise preambles and stop words, extracting both ASCII and Chinese keyword entities.
+    Strips noise preambles, external URL protocol/domain tokens, and stop words.
     """
     if not prompt or not isinstance(prompt, str):
         return []
     p = prompt.strip().lower()
-    
-    # 剥离无意义前缀与空间限定词
-    p = re.sub(r'^(?:请问|请帮我|帮我|麻烦|查看|查询|看一下|查一下|找一下|检索|搜索|阅读|浏览)\s*', '', p)
+
+    # 1. 优先提取外部 URL 与在线代码仓库中有实质意义的 slug/owner/repo
+    url_matches = re.findall(r'https?://[^\s]+', p)
+    url_slugs = []
+    for u in url_matches:
+        try:
+            parsed = urllib.parse.urlparse(u)
+            segments = [s.strip() for s in parsed.path.split('/') if s.strip()]
+            for s in segments:
+                s_clean = re.sub(r'^[_\-\.]+|[_\-\.]+$', '', s)
+                if s_clean and len(s_clean) >= 3 and s_clean.lower() not in KNOWLEDGE_STOP_WORDS:
+                    url_slugs.append(s_clean.lower())
+        except Exception:
+            pass
+        p = p.replace(u, " ")
+
+    # 提取类似 "GitHub - owner/repo" 或 "github.com/owner/repo" 中的实质标识
+    repo_matches = re.findall(r'(?:github|gitlab|gitee)\s*(?:[-–—:]|\.com/)\s*([a-zA-Z0-9_\-]+)/([a-zA-Z0-9_\-]+)', p, re.I)
+    for owner, repo in repo_matches:
+        if owner.lower() not in KNOWLEDGE_STOP_WORDS and len(owner) >= 3:
+            url_slugs.append(owner.lower())
+        if repo.lower() not in KNOWLEDGE_STOP_WORDS and len(repo) >= 3:
+            url_slugs.append(repo.lower())
+    p = re.sub(r'(?:github|gitlab|gitee)\s*(?:[-–—:]|\.com/)\s*[a-zA-Z0-9_\-]+/[a-zA-Z0-9_\-]+', ' ', p, flags=re.I)
+
+    # 2. 剥离无意义前缀与空间限定词
+    p = re.sub(r'^(?:请问|请帮我|帮我|麻烦|查看|查询|看一下|查一下|找一下|检索|搜索|阅读|浏览|评估|分析)\s*', '', p)
     p = re.sub(r'(?:在|从)?(?:个人空间|知识库|知识空间|我的个人文档|工作区|我的文档)(?:中|里|内|上的?)?\s*', ' ', p)
     p = re.sub(r'(?:关于|有关|相关(?:的)?)\s*', ' ', p)
-    p = re.sub(r'(?:的)?(?:安装方法|安装教程|安装指南|部署方法|使用方法|使用教程|怎么用|如何用|怎么做|是什么|有啥|内容)\b', ' ', p)
+    p = re.sub(r'(?:和风险|和分析|和评价|和总结|风险|这个文章|这篇文章|这个|那个|这里面|这篇|那篇|文章|详细内容|内容)', ' ', p)
+    p = re.sub(r'(?:的)?(?:安装方法|安装教程|安装指南|部署方法|使用方法|使用教程|怎么用|如何用|怎么做|是什么|有啥|项目|仓库)', ' ', p)
 
-    # 提取英文/数字词汇
-    ascii_words = [w.lower() for w in re.findall(r'[a-zA-Z0-9_\-\.]{2,}', p)]
-    
-    # 中文多关键词分词提取
+    # 3. 提取英文/数字词汇（剔除停用词与域名后缀）
+    raw_ascii = re.findall(r'[a-zA-Z0-9_\-\.]{2,}', p)
+    ascii_words = []
+    for w in raw_ascii:
+        w_clean = re.sub(r'^[_\-\.]+|[_\-\.]+$', '', w.lower())
+        if (
+            w_clean
+            and len(w_clean) >= 2
+            and w_clean not in KNOWLEDGE_STOP_WORDS
+            and not w_clean.endswith(('.com', '.cn', '.org', '.net', '.io', '.dev'))
+        ):
+            ascii_words.append(w_clean)
+
+    # 4. 中文多关键词分词提取
     chinese_blocks = re.findall(r'[\u4e00-\u9fa5]+', p)
     chinese_words = []
     for blk in chinese_blocks:
         if blk in KNOWLEDGE_STOP_WORDS:
             continue
         if len(blk) <= 4:
-            chinese_words.append(blk)
+            if blk not in KNOWLEDGE_STOP_WORDS:
+                chinese_words.append(blk)
         else:
             # 较长中文短语拆解为 2~3 字的子词
             for i in range(len(blk) - 1):
@@ -82,15 +150,17 @@ def _extract_knowledge_query_keywords(prompt: Optional[str]) -> List[str]:
                         chinese_words.append(sub3)
 
     keywords: List[str] = []
-    for w in (ascii_words + chinese_words):
-        if w not in KNOWLEDGE_STOP_WORDS and len(w) >= 2 and w not in keywords:
-            keywords.append(w)
+    for w in (ascii_words + chinese_words + url_slugs):
+        w_clean = w.strip().lower()
+        if w_clean not in KNOWLEDGE_STOP_WORDS and len(w_clean) >= 2 and w_clean not in keywords:
+            keywords.append(w_clean)
 
-    # 从原始 prompt 中补充提取关键英文字词（如 harness, dsh 等）
+    # 5. 从原始 prompt 中补充提取关键英文字词（严格过滤停用词）
     raw_ascii = re.findall(r'[a-zA-Z0-9_\-]{2,}', prompt.lower())
     for a in raw_ascii:
-        if a not in keywords and a not in {"http", "https", "url"}:
-            keywords.append(a)
+        a_clean = a.strip().lower()
+        if a_clean not in keywords and a_clean not in KNOWLEDGE_STOP_WORDS:
+            keywords.append(a_clean)
 
     return list(dict.fromkeys(keywords))
 
@@ -125,20 +195,28 @@ def _extract_grep_snippet(text: str, keywords: List[str], max_chars: int = 1200)
     """
     Performs full-text content grep against text.
     If keywords are found, returns a focused window snippet centered around the best match.
+    Enforces word boundary alignment for ASCII keywords to prevent mid-word false matches.
     """
     if not text or not keywords:
         return text[:max_chars].strip(), False
 
-    lower_text = text.lower()
     best_pos = -1
     matched_any = False
 
     for kw in keywords:
-        pos = lower_text.find(kw)
-        if pos != -1:
-            matched_any = True
-            if best_pos == -1 or pos < best_pos:
-                best_pos = pos
+        if re.match(r'^[a-zA-Z0-9_\-]+$', kw):
+            m = re.search(r'(?<![a-zA-Z0-9])' + re.escape(kw) + r'(?![a-zA-Z0-9])', text, re.I)
+            if m:
+                matched_any = True
+                pos = m.start()
+                if best_pos == -1 or pos < best_pos:
+                    best_pos = pos
+        else:
+            pos = text.lower().find(kw.lower())
+            if pos != -1:
+                matched_any = True
+                if best_pos == -1 or pos < best_pos:
+                    best_pos = pos
 
     if not matched_any or best_pos == -1:
         return text[:max_chars].strip(), False
@@ -382,19 +460,29 @@ def scan_personal_knowledge(prompt: Optional[str] = None, auto_match_only: bool 
 
         tier, base_score = _get_file_type_tier_and_score(suffix)
         kw_score = 0
+        substantive_kw_hits = 0
         matched_name_kw = False
         matched_content_kw = False
         content_preview_cached = ""
 
-        # 1. 文件名与路径匹配
+        # 1. 文件名与路径匹配（严格使用词边界与实质性词汇检验，短词如 'ai' 绝不单独触发强命中）
         if keywords:
             for kw in keywords:
-                if kw in fname_lower:
-                    matched_name_kw = True
-                    kw_score += 500  # 文件名完全包含关键词
-                elif kw in rel_str:
-                    matched_name_kw = True
-                    kw_score += 200
+                is_substantive = bool(len(kw) >= 3 or re.search(r'[\u4e00-\u9fa5]', kw))
+                if _matches_keyword(fname_lower, kw):
+                    if is_substantive:
+                        matched_name_kw = True
+                        kw_score += 500  # 实质性关键词完全包含在文件名中
+                        substantive_kw_hits += 1
+                    else:
+                        kw_score += 100  # 超短通用词（如 'ai'）仅给予辅助弱加分，不单独置位
+                elif _matches_keyword(rel_str, kw):
+                    if is_substantive:
+                        matched_name_kw = True
+                        kw_score += 200
+                        substantive_kw_hits += 1
+                    else:
+                        kw_score += 50
 
         # 2. 标签 (Tags) 与 标题 (Title) 匹配（产出成果库元数据高权匹配）
         matched_tag = False
@@ -415,15 +503,34 @@ def scan_personal_knowledge(prompt: Optional[str] = None, auto_match_only: bool 
                         tag_clean = tag.lower().strip()
                         if not tag_clean:
                             continue
-                        if (p_clean and tag_clean in p_clean) or (keywords and any(kw == tag_clean or kw in tag_clean for kw in keywords)):
-                            matched_tag = True
-                            kw_score += 450
+                        for kw in keywords:
+                            if _matches_keyword(tag_clean, kw):
+                                is_substantive = bool(len(kw) >= 3 or re.search(r'[\u4e00-\u9fa5]', kw))
+                                if is_substantive:
+                                    matched_tag = True
+                                    kw_score += 450
+                                    substantive_kw_hits += 1
+                                else:
+                                    kw_score += 100
+                                break
+                        if matched_tag:
                             break
                 if fm["title"] and (keywords or p_clean):
                     title_clean = fm["title"].lower().strip()
-                    if any(kw in title_clean for kw in keywords) or (len(title_clean) >= 3 and title_clean in p_clean):
+                    for kw in keywords:
+                        if _matches_keyword(title_clean, kw):
+                            is_substantive = bool(len(kw) >= 3 or re.search(r'[\u4e00-\u9fa5]', kw))
+                            if is_substantive:
+                                matched_title = True
+                                kw_score += 300
+                                substantive_kw_hits += 1
+                            else:
+                                kw_score += 80
+                            break
+                    if not matched_title and p_clean and len(title_clean) >= 4 and title_clean in p_clean:
                         matched_title = True
                         kw_score += 300
+                        substantive_kw_hits += 1
             except Exception:
                 pass
         elif suffix in [".docx", ".pptx", ".pdf", ".xlsx"]:
@@ -447,20 +554,40 @@ def scan_personal_knowledge(prompt: Optional[str] = None, auto_match_only: bool 
                 raw_head = text_source_file.read_text(encoding="utf-8", errors="ignore")[:65536]
                 lower_head = raw_head.lower()
                 for kw in keywords:
-                    if kw in lower_head:
+                    # 过滤超短通用词（长度<=2的纯ASCII词），防止全文正文高频误撞
+                    if len(kw) <= 2 and not re.search(r'[\u4e00-\u9fa5]', kw):
+                        continue
+                    if _matches_keyword(lower_head, kw):
                         matched_content_kw = True
                         kw_score += 180  # 正文命中关键词加分
+                        substantive_kw_hits += 1
                 if matched_content_kw:
                     snippet, _ = _extract_grep_snippet(raw_head, keywords, max_chars=2500)
                     content_preview_cached = snippet
             except Exception:
                 pass
 
+        has_external_ref = bool(
+            prompt and re.search(
+                r'https?://[^\s]+|github\.com/[a-zA-Z0-9_\-]+/[a-zA-Z0-9_\-]+|github\s*[-–—:]\s*[a-zA-Z0-9_\-]+/[a-zA-Z0-9_\-]+',
+                prompt,
+                re.I
+            )
+        )
+        has_explicit_knowledge_cue = bool(prompt and re.search(r'(?:个人空间|知识库|我的成果|我的文档|本地)', prompt))
+
         # 必须有实际关键词/tag/标题命中且关键词分 >= 180，杜绝纯靠时间/格式虚高
         matched_kw = bool((matched_name_kw or matched_tag or matched_title or matched_content_kw) and kw_score >= 180)
         if auto_match_only:
-            # 自动探测模式下执行更严格的主题门禁：必须明确命中标签、标题、文件名，或正文多重关键词命中 (kw_score >= 360)
-            matched_kw = bool((matched_name_kw or matched_tag or matched_title) or (matched_content_kw and kw_score >= 360))
+            # 自动探测模式下执行更严格的主题门禁：
+            # 1. 提示词包含外部 URL 或代码仓库，且未明确指定个人空间：仅允许强实体文件名直接匹配 (score >= 500)，禁止正文泛匹配
+            if has_external_ref and not has_explicit_knowledge_cue:
+                matched_kw = bool(matched_name_kw and substantive_kw_hits >= 1 and kw_score >= 500)
+            else:
+                matched_kw = bool(
+                    ((matched_name_kw or matched_tag or matched_title) and substantive_kw_hits >= 1)
+                    or (matched_content_kw and substantive_kw_hits >= 2 and kw_score >= 360)
+                )
 
         # 产出成果库加权
         if source_cat == "deliverable" and matched_kw:
