@@ -56,13 +56,15 @@ def structured_decision(instructions, payload, tool, model, policy, telemetry, d
         raise ValueError('语义决策剩余时间不足')
     active = replace(policy or RuntimePolicy.from_env(), thinking=False, reasoning_effort=None, model_max_retries=0)
     started = time.monotonic(); recorded = False
+    calls_before = telemetry.llm_invocations
     try:
         response = (caller or call_model_proxy)([
             {'role': 'system', 'content': instructions + '\n通过唯一的结构化函数提交结论。函数仅记录决策，没有外部副作用。'},
             {'role': 'user', 'content': json.dumps(payload, ensure_ascii=False, default=str)},
         ], model=model, tools=[tool], tool_choice='required', timeout=min(30, remaining), deadline=deadline,
-            temperature=0, max_tokens=max_tokens, policy=active, stream_deltas=False)
-        telemetry.record_llm_response(response, is_first_round=telemetry.llm_invocations == 0)
+            temperature=0, max_tokens=max_tokens, policy=active, stream_deltas=False,
+            purpose=guard, telemetry=telemetry)
+        telemetry.record_llm_response(response, is_first_round=calls_before == 0, purpose=guard)
         recorded = True
         if response.get('finish_reason') not in {'stop', 'tool_calls'}:
             raise ValueError('语义决策响应未完整结束')
@@ -79,8 +81,8 @@ def structured_decision(instructions, payload, tool, model, policy, telemetry, d
             raise ValueError('语义决策必须返回对象')
         return result
     except Exception as error:
-        if not recorded:
+        if not recorded and telemetry.llm_invocations == calls_before:
             telemetry.record_llm_response({'content': '', 'finish_reason': 'error',
-                'total_ms': (time.monotonic() - started) * 1000}, is_first_round=telemetry.llm_invocations == 0)
+                'total_ms': (time.monotonic() - started) * 1000}, is_first_round=calls_before == 0, purpose=guard)
         telemetry.record_guard(guard, 'reject', type(error).__name__)
         raise ValueError('语义决策不可用或响应无效') from error

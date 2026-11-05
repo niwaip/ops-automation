@@ -1,0 +1,599 @@
+{
+  "session": {
+    "id": "9354284d-8567-43ef-bbe4-ae3b600c45c0",
+    "ownerUserId": "e7fce333-a8f4-4097-9a53-f0a4c729da46",
+    "status": "active",
+    "channel": "local",
+    "createdAt": "2026-11-04T14:21:41.146Z",
+    "updatedAt": "2026-11-05T01:01:13.766Z",
+    "title": "用Microsoft Learn mcp 查找"
+  },
+  "answer": "根据 Microsoft Learn 官方文档，以下是 Azure VPN 设置方法的完整指南：\n\n---\n\n## Azure VPN 网关设置方法\n\n### 一、准备工作\n\n#### 1. 创建虚拟网络\n- **资源组**：选择或创建资源组\n- **区域**：选择部署区域\n- **IPv4 地址空间**：例如 `10.1.0.0/16`\n\n#### 2. 创建网关子网（关键步骤）\n- 在虚拟网络的 **子网** 页面，点击 **\"+ 子网\"**\n- **子网目的**：选择 **\"虚拟网络网关\"**\n- 子网名称自动设为 **`GatewaySubnet`**（固定名称，不可更改）\n- 建议地址范围：**`/27` 或更大**（如 `10.1.255.0/27`）\n- ⚠️ **注意**：网关子网不支持 NSG（网络安全组），关联 NSG 可能导致网关停止工作\n\n---\n\n### 二、创建 VPN 网关\n\n在 Azure 门户创建 **\"虚拟网络网关\"**，关键配置：\n\n| 设置项 | 推荐值 |\n|--------|--------|\n| 名称 | 自定义（如 `VNetGW-01`） |\n| 区域 | 与虚拟网络相同 |\n| VPN 网关类型 | **VNet 网关** |\n| 网关类型 | **VPN** |\n| 生成 | **Generation 2**（推荐） |\n| SKU | 按需求选择（如 `VpnGw2AZ`，支持可用性区域则选 AZ 后缀） |\n| 可用区 | 区域支持时选\"区域冗余\" |\n| BGP 配置 | 除非有特殊需求，否则选择 **已禁用** |\n\n> ⏱️ 网关创建通常需要 **45 分钟或更长时间**。\n\n---\n\n### 三、三种连接场景\n\n#### 场景 1：站点到站点（S2S）\n\n适用于将**本地数据中心连接到 Azure**。\n\n**步骤：**\n1. **创建本地网络网关**\n   - 指定本地 VPN 设备的公网 IP 地址\n   - 定义本地地址前缀（如 `192.168.1.0/24`）\n2. **创建 VPN 连接**\n   - 选择刚创建的网关和当地网络网关\n   - 连接类型：**Site-to-site**\n   - 配置 **共享密钥（pre-shared key）** 进行认证\n3. **验证连接**\n   - 在网关的 **\"连接\"** 页面查看隧道状态（应显示 **\"已连接\"**）\n\n**高可用配置 — Active-Active 模式：**\n- 两个网关 VM 实例同时建立 S2S 隧道\n- 需为本地 VPN 设备配置**两个公网 IP 地址**（GW Instance 1 & 2）\n\n---\n\n#### 场景 2：点到站点（P2S）\n\n适用于**远程用户通过客户端安全访问 Azure 资源**。\n\n**步骤：**\n1. 在 VPN 网关的 **\"点到站点配置\"** 页面点击 **\"立即配置\"**\n2. 设置参数：\n\n| 参数 | 说明 |\n|------|------|\n| 地址池 | 为客户端分配的 IP 范围（如 `172.16.0.0/24`） |\n| 隧道类型 | **OpenVPN (SSL)** 或 **IKEv2** |\n| 身份验证类型 | 本地证书 / Microsoft Entra ID |\n\n3. **生成并下载客户端配置配置文件**（`.xml` 格式）\n4. 用户在设备上安装 **Azure VPN Client**，导入配置文件后连接\n\n> 🔐 **使用 Microsoft Entra ID 认证：** 需配置 Entra ID 租户、客户端应用 ID（Audience: `41b23e61-6c1e-4545-b367-cd054e0ed4b4`），并启用证书认证。\n\n---\n\n#### 场景 3：VNet 对等互连\n\n- 通过 VPN 网关实现 **VNet 之间的加密通信**\n- 支持跨订阅 VNet 互连\n\n---\n\n### 四、常用管理操作\n\n| 操作 | 说明 |\n|------|------|\n| **查看连接状态** | 网关 → 连接 → 查看隧道状态（已连接/未连接/连接中） |\n| **查看数据量** | 网关指标 → 查看\"入站/出站\"数据量 |\n| **扩展 SKU** | 网关 → 配置 → 升级 SKU 以增加带宽和连接数 |\n| **查看公共 IP** | 网关 → 属性 → 查看每个 VM 实例的公共 IP（Active-Active 模式下有两个） |\n| **重置网关** | 网关 → 管理 → 重置（用于故障恢复） |\n\n---\n\n### 五、官方参考资源\n\n| 文档 | 链接 |\n|------|------|\n| 教程：使用 Azure 门户创建和管理工作虚拟网络网关 | [learn.microsoft.com/azure/vpn-gateway/tutorial-create-gateway-portal](https://learn.microsoft.com/azure/vpn-gateway/tutorial-create-gateway-portal) |\n| 教程：在 Azure 门户中创建站点到站点 VPN 连接 | [learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal](https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal) |\n| 关于 VPN 网关配置设置 | [learn.microsoft.com/azure/vpn-gateway/vpn-gateway-about-vpn-gateway-settings](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-about-vpn-gateway-settings) |\n| 关于 Azure VPN 网关 | [learn.microsoft.com/azure/vpn-gateway/vpn-gateway-about-vpngateways](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-about-vpngateways) |\n| 点到站点连接概述 | [learn.microsoft.com/azure/vpn-gateway/point-to-site-about](https://learn.microsoft.com/azure/vpn-gateway/point-to-site-about) |\n\n---\n\n### 快速总结\n\n1. **创建虚拟网络 → 创建 `GatewaySubnet` 子网**（名称必须为 `GatewaySubnet`，地址范围 `/27` 或更大）\n2. **创建 VPN 网关**（选择 SKU 和 Generation 2）\n3. **根据需求配置连接类型：**\n   - **S2S** → 本地网络网关 + VPN 连接（共享密钥）\n   - **P2S** → 点到站点配置 + 客户端证书/Azure VPN Client\n   - **VNet 对等互连** → 通过 VPN 实现 VNet 间加密通信\n\n如需针对具体场景（如 S2S 或 P2S）的详细配置步骤，我可以进一步展开。\n\n---\n### 📚 资料与引用来源\n\n**产出成果库：**\n- `ZH-CN-Ebook - Enterprise Architecture for Agentic AI.pdf`\n- `Microsoft Agentic AI 企业级架构全景解析与治理指南.md`\n- `阿里-AI开发-新范式.pdf`",
+  "answerTime": "2026-11-05T01:01:13.766Z",
+  "trace": {
+    "containerName": "ops-user-sandbox-e7fce333-a8f4-4097-9a53-f0a4c729da46",
+    "harness": "deepseek-harness",
+    "executed": true,
+    "durationMs": 194660,
+    "exitCode": 0,
+    "metrics": {
+      "ttftMs": 2798.8,
+      "ttftScope": "model_request",
+      "durationMs": 193941.39,
+      "llmDurationMs": 86507.13,
+      "toolCallsCount": 7,
+      "toolCalls": [
+        {
+          "name": "list_external_tools",
+          "params": {
+            "skill_id": "mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd"
+          },
+          "status": "success",
+          "result_status": "success",
+          "workbook_id": null
+        },
+        {
+          "name": "call_external_tool",
+          "params": {
+            "binding_id": "e0449587-d7ee-4500-9cdc-ffdbd55fb4e6",
+            "arguments": "{'query': 'Azure VPN gateway configuration settings setup', 'topic': 'Azure VPN', 'language': 'en-US'}"
+          },
+          "status": "error",
+          "result_status": "error",
+          "error_code": "MCP_CALL_UNVERIFIED",
+          "workbook_id": null
+        },
+        {
+          "name": "list_external_tools",
+          "params": {
+            "skill_id": "mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd",
+            "tool_name": "microsoft_docs_search"
+          },
+          "status": "success",
+          "result_status": "success",
+          "workbook_id": null
+        },
+        {
+          "name": "call_external_tool",
+          "params": {
+            "binding_id": "e0449587-d7ee-4500-9cdc-ffdbd55fb4e6",
+            "arguments": "{'query': 'Azure VPN gateway configuration settings setup'}"
+          },
+          "status": "error",
+          "result_status": "error",
+          "error_code": "MCP_CALL_UNVERIFIED",
+          "workbook_id": null
+        },
+        {
+          "name": "list_external_tools",
+          "params": {
+            "skill_id": "mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd"
+          },
+          "status": "success",
+          "result_status": "success",
+          "workbook_id": null
+        },
+        {
+          "name": "call_external_tool",
+          "params": {
+            "binding_id": "e0449587-d7ee-4500-9cdc-ffdbd55fb4e6",
+            "arguments": "{'query': 'Azure VPN gateway configuration settings setup'}"
+          },
+          "status": "success",
+          "result_status": "success",
+          "workbook_id": null
+        },
+        {
+          "name": "call_external_tool",
+          "params": {
+            "binding_id": "e0449587-d7ee-4500-9cdc-ffdbd55fb4e6",
+            "arguments": "{'query': 'Azure VPN Gateway create tutorial portal GatewaySubnet site-to-site point-to-site'}"
+          },
+          "status": "success",
+          "result_status": "success",
+          "workbook_id": null
+        }
+      ],
+      "llmInvocations": 11,
+      "tokens": {
+        "prompt_tokens": 87979,
+        "completion_tokens": 2603,
+        "total_tokens": 90582
+      },
+      "finishReason": "stop",
+      "roundFinishReasons": [
+        "tool_calls",
+        "tool_calls",
+        "tool_calls",
+        "tool_calls",
+        "tool_calls",
+        "tool_calls",
+        "tool_calls",
+        "tool_calls",
+        "tool_calls",
+        "tool_calls",
+        "stop"
+      ],
+      "guardDecisions": [
+        {
+          "guard": "task_intent_review",
+          "action": "accept",
+          "reason": {
+            "output_mode": "conversation",
+            "task_mode": "execute"
+          }
+        },
+        {
+          "guard": "task_intent",
+          "action": "accept",
+          "reason": {
+            "instruction_relation": "standalone",
+            "task_mode": "execute",
+            "output_mode": "conversation",
+            "artifact_types": [],
+            "unit_confirmation": null,
+            "section_confirmation": null,
+            "skill_invocation": {
+              "mode": "execute",
+              "name": "mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd",
+              "replace_defaults": false
+            },
+            "requirements": [
+              {
+                "id": "req1",
+                "quote": "用Microsoft Learn mcp 查找 azure vpn设置的方法"
+              }
+            ]
+          }
+        },
+        {
+          "guard": "skill_admission",
+          "action": "use",
+          "reason": {
+            "initial_candidate": "mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd",
+            "skill_id": "mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd",
+            "use_default_rules": false,
+            "reason": "applicable",
+            "requirement_ids": [
+              "req1"
+            ]
+          }
+        },
+        {
+          "guard": "user_unit_confirmation",
+          "action": "accept",
+          "reason": {
+            "unit": null,
+            "sections": null
+          }
+        }
+      ],
+      "modelResponses": [
+        {
+          "rawChars": 0,
+          "cleanChars": 0,
+          "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "finishReason": "tool_calls",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        },
+        {
+          "rawChars": 0,
+          "cleanChars": 0,
+          "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "finishReason": "tool_calls",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        },
+        {
+          "rawChars": 0,
+          "cleanChars": 0,
+          "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "finishReason": "tool_calls",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        },
+        {
+          "rawChars": 49,
+          "cleanChars": 49,
+          "rawSha256": "f3ebc74871d1e19fab20b25c7a89fcacf40b37e0c857345c2a380904f09b1945",
+          "cleanSha256": "f3ebc74871d1e19fab20b25c7a89fcacf40b37e0c857345c2a380904f09b1945",
+          "finishReason": "tool_calls",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        },
+        {
+          "rawChars": 0,
+          "cleanChars": 0,
+          "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "finishReason": "tool_calls",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        },
+        {
+          "rawChars": 23,
+          "cleanChars": 23,
+          "rawSha256": "da9ea3b42060afee968e8b47c45527a029d955580a4283f3c8936fd9334e58ed",
+          "cleanSha256": "da9ea3b42060afee968e8b47c45527a029d955580a4283f3c8936fd9334e58ed",
+          "finishReason": "tool_calls",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        },
+        {
+          "rawChars": 0,
+          "cleanChars": 0,
+          "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "finishReason": "tool_calls",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        },
+        {
+          "rawChars": 0,
+          "cleanChars": 0,
+          "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "finishReason": "tool_calls",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        },
+        {
+          "rawChars": 0,
+          "cleanChars": 0,
+          "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "finishReason": "tool_calls",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        },
+        {
+          "rawChars": 0,
+          "cleanChars": 0,
+          "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "finishReason": "tool_calls",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        },
+        {
+          "rawChars": 3186,
+          "cleanChars": 3186,
+          "rawSha256": "f0b8245ccefdd5e42d42b313bb66ccd9d920299fbec48bef5bbbf33660370181",
+          "cleanSha256": "f0b8245ccefdd5e42d42b313bb66ccd9d920299fbec48bef5bbbf33660370181",
+          "finishReason": "stop",
+          "finishReasonSource": "upstream",
+          "receivedDone": true
+        }
+      ],
+      "answerValidation": {},
+      "callsLedger": [
+        {
+          "purpose": "tool_loop",
+          "model": "default",
+          "total_ms": 4277.29,
+          "usage": {
+            "prompt_tokens": 1736,
+            "total_tokens": 1932,
+            "completion_tokens": 196
+          },
+          "span_id": null,
+          "call_id": "bd62e1e3a5a240f5adb02ac2afe962e4"
+        },
+        {
+          "purpose": "tool_loop",
+          "model": "default",
+          "total_ms": 2527.45,
+          "usage": {
+            "prompt_tokens": 2306,
+            "total_tokens": 2502,
+            "completion_tokens": 196
+          },
+          "span_id": null,
+          "call_id": "6ab8471b1e67442b972ea67f9b5c691a"
+        },
+        {
+          "purpose": "tool_loop",
+          "model": "default",
+          "total_ms": 2188.25,
+          "usage": {
+            "prompt_tokens": 3753,
+            "total_tokens": 3878,
+            "completion_tokens": 125
+          },
+          "span_id": null,
+          "call_id": "163280adc1c2409eb77dde7b7449165a"
+        },
+        {
+          "purpose": "tool_loop",
+          "model": "default",
+          "total_ms": 2799.84,
+          "usage": {
+            "prompt_tokens": 8312,
+            "total_tokens": 8392,
+            "completion_tokens": 80
+          },
+          "span_id": null,
+          "call_id": "e6cb6b99c3834236bfac15c8e1ee4704"
+        },
+        {
+          "purpose": "tool_loop",
+          "model": "default",
+          "total_ms": 2439.6,
+          "usage": {
+            "prompt_tokens": 8845,
+            "total_tokens": 8938,
+            "completion_tokens": 93
+          },
+          "span_id": null,
+          "call_id": "e044f5eeee784e3c87a15663cd5b5a9d"
+        },
+        {
+          "purpose": "tool_loop",
+          "model": "default",
+          "total_ms": 2045.9,
+          "usage": {
+            "prompt_tokens": 9005,
+            "total_tokens": 9096,
+            "completion_tokens": 91
+          },
+          "span_id": null,
+          "call_id": "d16a83447955495c89376b115c9d65ec"
+        },
+        {
+          "purpose": "tool_loop",
+          "model": "default",
+          "total_ms": 1775.77,
+          "usage": {
+            "prompt_tokens": 9280,
+            "total_tokens": 9359,
+            "completion_tokens": 79
+          },
+          "span_id": null,
+          "call_id": "f679ab5ef5bc4252ad0b3878c2670ed8"
+        },
+        {
+          "purpose": "tool_loop",
+          "model": "default",
+          "total_ms": 1914.17,
+          "usage": {
+            "prompt_tokens": 9425,
+            "total_tokens": 9488,
+            "completion_tokens": 63
+          },
+          "span_id": null,
+          "call_id": "baa9433bb5f64f8485b19bcb96473eb6"
+        },
+        {
+          "purpose": "tool_loop",
+          "model": "default",
+          "total_ms": 2101.27,
+          "usage": {
+            "prompt_tokens": 9941,
+            "total_tokens": 10020,
+            "completion_tokens": 79
+          },
+          "span_id": null,
+          "call_id": "ec118a66dcfc43f2b62f441afa8aed6c"
+        },
+        {
+          "purpose": "tool_loop",
+          "model": "default",
+          "total_ms": 2917.57,
+          "usage": {
+            "prompt_tokens": 12725,
+            "total_tokens": 12813,
+            "completion_tokens": 88
+          },
+          "span_id": null,
+          "call_id": "fcd679ffcc6741b397cdae7459438b0d"
+        },
+        {
+          "purpose": "tool_loop",
+          "model": "default",
+          "total_ms": 61520.02,
+          "usage": {
+            "prompt_tokens": 12651,
+            "total_tokens": 14164,
+            "completion_tokens": 1513
+          },
+          "span_id": null,
+          "call_id": "8a883adb786341af8ac37becc850da13"
+        }
+      ],
+      "auxiliaryInvocations": 0
+    },
+    "artifacts": []
+  },
+  "calls": [
+    {
+      "id": "ffe01cc7-1c35-49a4-b692-4e8bb0960031",
+      "userId": "e7fce333-a8f4-4097-9a53-f0a4c729da46",
+      "connectionId": "b8886e38-4c6d-4053-86ba-09197d38c9cd",
+      "bindingId": "e0449587-d7ee-4500-9cdc-ffdbd55fb4e6",
+      "requestKey": "21dfdc87-2df2-411b-b2c8-c9d126de39f0",
+      "inputHash": "85f18ac138f2a64abd31891838c159846409534a4e7b21a4e5da61aa50d31b67",
+      "status": "failed",
+      "result": {
+        "code": "MCP_CALL_UNVERIFIED"
+      },
+      "createdAt": "2026-11-05T00:58:14.278Z",
+      "updatedAt": "2026-11-05T00:59:00.863Z"
+    },
+    {
+      "id": "456ec3ea-79df-4560-a3e2-08a391dec9a1",
+      "userId": "e7fce333-a8f4-4097-9a53-f0a4c729da46",
+      "connectionId": "b8886e38-4c6d-4053-86ba-09197d38c9cd",
+      "bindingId": "e0449587-d7ee-4500-9cdc-ffdbd55fb4e6",
+      "requestKey": "4896a30d-08eb-442e-b8d3-5107c886f9f1",
+      "inputHash": "007278a30fdc6fd6ee973211c4b45da5de2017b58fd4acf05d63785981de1c15",
+      "status": "failed",
+      "result": {
+        "code": "MCP_CALL_UNVERIFIED"
+      },
+      "createdAt": "2026-11-05T00:59:04.737Z",
+      "updatedAt": "2026-11-05T00:59:50.385Z"
+    },
+    {
+      "id": "f057624b-543d-4f27-908f-97a4fe5b5a59",
+      "userId": "e7fce333-a8f4-4097-9a53-f0a4c729da46",
+      "connectionId": "b8886e38-4c6d-4053-86ba-09197d38c9cd",
+      "bindingId": "e0449587-d7ee-4500-9cdc-ffdbd55fb4e6",
+      "requestKey": "215dbf93-e187-4dcb-803f-a0122a35e836",
+      "inputHash": "007278a30fdc6fd6ee973211c4b45da5de2017b58fd4acf05d63785981de1c15",
+      "status": "completed",
+      "result": {
+        "content": [
+          {
+            "text": "{\"results\":[{\"title\":\"Azure VPN Gateway: Point-to-Site Configuration - Microsoft Q\\u0026A\",\"content\":\"Azure VPN Gateway: Point-to-Site Configuration - Microsoft Q\\u0026A \\n##Accepted Answers:\\nThanks for posting your question in the Microsoft Q\\u0026amp;A forum.\\nFollow these steps:\\nStep 1: Create and Configure VPN Gateway\\nCreate a Virtual Network Gateway in Azure Portal\\nSelect VPN as the gateway type\\nChoose Route-based VPN type\\nSelect an appropriate SKU (e.g., VpnGw1 or higher for better performance)\\nConfigure Point-to-Site settings\\nGo to your VPN gateway\\u0027s \\u0026quot;Point-to-site configuration\\u0026quot; page\\nClick \\u0026quot;Configure now\\u0026quot;\\nSet the Address pool for VPN clients\\nFor Tunnel type, select \\u0026quot;OpenVPN (SSL)\\u0026quot;\\nFor Authentication type, choose \\u0026quot;Azure Active Directory\\u0026quot;\\nStep 2: Set Up Azure AD Authentication\\nRegister a new application in Azure AD\\nGo to Azure Active Directory in the Azure Portal\\nNavigate to \\u0026quot;App registrations\\u0026quot; and create a new application\\nNote down the Application ID and Tenant ID\\nConfigure the VPN gateway to use Azure AD authentication\\nIn the Point-to-site configuration, add the Azure AD tenant information\\nInclude the Application ID from the registered app\\nStep 3: Configure Client Settings\\nDownload the VPN client configuration package\\nOn the Point-to-site configuration page, click \\u0026quot;Download VPN client\\u0026quot;\\nSet up AzureVPN Client for Windows and MacOS\\nDownload and install AzureVPN Client for respective operating systems\\nImport the downloaded configuration into the AzureVPN Client\\nStep 4: Enable Multi-Factor Authentication\\nConfigure Azure AD Conditional Access\\nCreate a new policy in Azure AD Conditional Access\\nSet the policy to require MFA for VPN connections\\nSet up Microsoft Authenticator for users\\nGuide users to install and configure Microsoft Authenticator app\\nPlease don\\u0027t forget to close up the thread here by\\nupvoting\\nand\\naccept it as an answer\\nif it is helpful\",\"contentUrl\":\"https://learn.microsoft.com/answers/a/1880689\"},{\"title\":\"Configure VPN gateway settings for Azure Stack Hub\",\"content\":\"# Configure VPN gateway settings for Azure Stack Hub\\n## VPN gateway settings\\nThe following Resource Manager PowerShell example shows a gateway subnet named **GatewaySubnet**. You can see the CIDR notation specifies a /27, which allows for enough IP addresses for most configurations that currently exist.\\n\\u0060\\u0060\\u0060powershell\\nAdd-AzVirtualNetworkSubnetConfig -Name \\u0027GatewaySubnet\\u0027 -AddressPrefix 10.0.3.0/27\\n\\u0060\\u0060\\u0060\\nImportant\\nWhen working with gateway subnets, avoid associating a network security group (NSG) to the gateway subnet. Associating a network security group to this subnet can cause your VPN gateway to stop functioning as expected. For more information about network security groups, see [What is a network security group?](https://learn.microsoft.com/en-us/azure/virtual-network/virtual-networks-nsg).\\n### Local network gateways\\nWhen you create a VPN gateway configuration in Azure, the local network gateway often represents your on-premises location. In Azure Stack Hub, it represents any remote VPN device that sits outside Azure Stack Hub. This device could be a VPN device in your datacenter (or a remote datacenter), or a VPN gateway in Azure.\\nYou give the local network gateway a name, the public IP address of the remote VPN device, and specify the address prefixes that are on the on-premises location. Azure Stack Hub looks at the destination address prefixes for network traffic, consults the configuration that you specified for your local network gateway, and routes packets accordingly.\\nThis PowerShell example creates a new local network gateway:\\n\\u0060\\u0060\\u0060powershell\\nNew-AzLocalNetworkGateway -Name LocalSite -ResourceGroupName testrg \\u0060\\n   -Location \\u0027West US\\u0027 -GatewayIpAddress \\u0027198.51.100.101\\u0027 -AddressPrefix \\u002710.5.51.0/24\\u0027\\n\\u0060\\u0060\\u0060\\nSometimes you need to modify the local network gateway settings. For example, you might need to change the address range or if the IP address of the VPN device changes. For more info, see [Modify local network gateway settings using PowerShell](https://learn.microsoft.com/en-us/azure/vpn-gateway/vpn-gateway-modify-local-network-gateway).\",\"contentUrl\":\"https://learn.microsoft.com/azure-stack/user/azure-stack-vpn-gateway-settings?view=azs-2604#vpn-gateway-settings\"},{\"title\":\"Configure VPN gateway settings for Azure Stack Hub\",\"content\":\"# Configure VPN gateway settings for Azure Stack Hub\\n## VPN gateway settings\\n| SKU | VPN Type | Connection type | Active routing support (BGP) | Remote endpoint NAT-T Enabled| \\n|  --- | --- | --- | --- | ---  |\\n| Basic VNG SKU | Route-based VPN | IPSec Pre-shared key | Not Supported | Required |\\n| Standard VNG SKU | Route-based VPN | IPSec Pre-shared key | Supported, up to 150 routes | Required |\\n| High-Performance VNG SKU | Route-based VPN | IPSec Pre-shared key | Supported, up to 150 routes | Required |\\n| VPNGw1 VNG SKU | Route-based VPN | IPSec Pre-shared key | Supported, up to 150 routes | Required |\\n| VPNGw2 VNG SKU | Route-based VPN | IPSec Pre-shared key | Supported, up to 150 routes | Required |\\n| VPNGw2 VNG SKU | Route-based VPN | IPSec Pre-shared key | Supported, up to 150 routes | Required |\\n\\n### Gateway subnet\\nBefore you create a VPN gateway, you must create a gateway subnet. The gateway subnet has the IP addresses that the virtual network gateway VMs and services use. When you create your virtual network gateway and the connection, the Gateway VM owning the connection is linked to the gateway subnet and is configured with the required VPN gateway settings. Don\\u0027t deploy anything else (for example, additional VMs) to the gateway subnet.\\nImportant\\nThe gateway subnet must be named **GatewaySubnet** to work properly. Azure Stack Hub uses this name to identify the subnet to which to deploy the virtual network gateway VMs and services.\\nWhen you create the gateway subnet, you specify the number of IP addresses that the subnet contains. The IP addresses in the gateway subnet are allocated to the gateway VMs and gateway services. Some configurations require more IP addresses than others. Look at the instructions for the configuration that you want to create and verify that the gateway subnet you want to create meets those requirements.\\nAdditionally, make sure your gateway subnet has enough IP addresses to handle additional future configurations. Although you can create a gateway subnet as small as /29, create a gateway subnet of /28 or larger (/28, /27, /26, and so on.) That way, if you add functionality in the future, you don\\u0027t have to tear down your gateway, then delete and recreate the gateway subnet to allow for more IP addresses.\",\"contentUrl\":\"https://learn.microsoft.com/azure-stack/user/azure-stack-vpn-gateway-settings?view=azs-2604#vpn-gateway-settings\"},{\"title\":\"Configure VPN gateway settings for Azure Stack Hub\",\"content\":\"# Configure VPN gateway settings for Azure Stack Hub\\n## VPN gateway settings\\n### Gateway types\\nEach Azure Stack Hub virtual network supports a single virtual network gateway, which must be of the type **Vpn**. This support is different from Azure, which supports additional types.\\nWhen you create a virtual network gateway, you must make sure that the gateway type is correct for your configuration. A VPN gateway requires the \\u0060-GatewayType Vpn\\u0060 flag; for example:\\n\\u0060\\u0060\\u0060powershell\\nNew-AzVirtualNetworkGateway -Name vnetgw1 -ResourceGroupName testrg \\u0060\\n   -Location \\u0027West US\\u0027 -IpConfigurations $gwipconfig -GatewayType Vpn \\u0060\\n   -VpnType RouteBased\\n\\u0060\\u0060\\u0060\\n### Gateway SKUs without VPN Fast Path Enabled\\nWhen you create a virtual network gateway, specify the SKU that you want to use. Select the SKUs that satisfy your requirements based on the types of workloads, throughput, features, and SLAs.\\nYou can have 10 high performance gateways or 20 basic and standard before you reach the maximum capacity.\\nAzure Stack Hub offers the VPN gateway SKUs shown in the following table:\\n| SKU | Max VPN Connection throughput | Max # of connections per active GW VM | Max # of VPN Connections per stamp| \\n|  --- | --- | --- | ---  |\\n| **Basic** | 100 Mbps Tx/Rx | 10 | 20 |\\n| **Standard** | 100 Mbps Tx/Rx | 10 | 20 |\\n| **High Performance** | 200 Mbps Tx/Rx | 5 | 10 |\\n\\n### Gateway SKUs with VPN Fast Path enabled\\nWhen Microsoft released the VPN Fast Path public preview, Azure Stack Hub added support for three new SKUs with higher throughput.\\nWhen you enable VPN Fast Path on your Azure Stack stamp, you get new limits and throughput.\\nAzure Stack Hub offers the VPN gateway SKUs shown in the following table:\",\"contentUrl\":\"https://learn.microsoft.com/azure-stack/user/azure-stack-vpn-gateway-settings?view=azs-2604#vpn-gateway-settings\"},{\"title\":\"Configure VPN gateway settings for Azure Stack Hub\",\"content\":\"# Configure VPN gateway settings for Azure Stack Hub\\n## VPN gateway settings\\n\\u0060\\u0060\\u0060powershell\\nNew-AzVirtualNetworkGateway -Name vnetgw1 -ResourceGroupName testrg \\u0060\\n   -Location \\u0027West US\\u0027 -IpConfigurations $gwipconfig -GatewaySku Standard \\u0060\\n   -GatewayType Vpn -VpnType RouteBased\\n\\u0060\\u0060\\u0060\\n### Connection types\\nIn the Resource Manager deployment model, each configuration requires a specific virtual network gateway connection type. The available Resource Manager PowerShell values for \\u0060-ConnectionType\\u0060 are **IPsec**.\\nIn the following PowerShell example, you create a S2S connection that requires the IPsec connection type:\\n\\u0060\\u0060\\u0060powershell\\nNew-AzVirtualNetworkGatewayConnection -Name localtovon -ResourceGroupName testrg \\u0060\\n   -Location \\u0027West US\\u0027 -VirtualNetworkGateway1 $gateway1 -LocalNetworkGateway2 $local \\u0060\\n   -ConnectionType IPsec -RoutingWeight 10 -SharedKey \\u0027abc123\\u0027\\n\\u0060\\u0060\\u0060\\n### VPN types\\nWhen you create the virtual network gateway for a VPN gateway configuration, you must specify a VPN type. The VPN type that you choose depends on the connection topology that you want to create. A VPN type can also depend on the hardware that you\\u0027re using. S2S configurations require a VPN device. Some VPN devices only support a certain VPN type.\\nImportant\\nCurrently, Azure Stack Hub only supports the route-based VPN type. If your device only supports policy-based VPNs, connections to those devices from Azure Stack Hub aren\\u0027t supported.\\nIn addition, Azure Stack Hub doesn\\u0027t support using policy-based traffic selectors for route-based gateways at this time, because Azure Stack Hub doesn\\u0027t support policy-based traffic selectors, although they\\u0027re supported in Azure.\\n1. **PolicyBased**: Policy-based VPNs encrypt and direct packets through IPsec tunnels based on the IPsec policies that you configure with combinations of address prefixes between your on-premises network and the Azure Stack Hub VNet. The policy, or traffic selector, is usually an access list in the VPN device configuration.\\n  Note\\n  **PolicyBased** is supported in Azure, but not in Azure Stack Hub.\",\"contentUrl\":\"https://learn.microsoft.com/azure-stack/user/azure-stack-vpn-gateway-settings?view=azs-2604#vpn-gateway-settings\"},{\"title\":\"Configure VPN gateway settings for Azure Stack Hub\",\"content\":\"# Configure VPN gateway settings for Azure Stack Hub\\n## VPN gateway settings\\n| SKU | Max VPN Connection throughput | Max # of connections per active GW VM | Max # of VPN Connections per stamp| \\n|  --- | --- | --- | ---  |\\n| **Basic** | 100 Mbps Tx/Rx | 25 | 50 |\\n| **Standard** | 100 Mbps Tx/Rx | 25 | 50 |\\n| **High Performance** | 200 Mbps Tx/Rx | 12 | 24 |\\n| **VPNGw1** | 650 Mbps Tx/Rx | 3 | 6 |\\n| **VPNGw2** | 1000 Mbps Tx/Rx | 2 | 4 |\\n| **VPNGw3** | 1250 Mbps Tx/Rx | 2 | 4 |\\n\\n### Resizing virtual network gateway SKUs\\nAzure Stack Hub doesn\\u0027t support resizing from a supported legacy SKU (**Basic**, **Standard**, and **HighPerformance**) to a newer SKU supported by Azure (**VpnGw1**, **VpnGw2**, and **VpnGw3**).\\nTo use the new SKUs enabled by VPN Fast Path, you need to create new virtual network gateways and connections.\\n### Configure the virtual network gateway SKU\\n#### Azure Stack Hub portal\\nIf you use the Azure Stack Hub portal to create a virtual network gateway, select the SKU from the dropdown list. To see the new VPN Fast Path SKUs (**VpnGw1**, **VpnGw2**, **VpnGw3**), add the query parameter **\\u0022?azurestacknewvpnskus=true\\u0022** to the URL and refresh the page.\\nThe following URL example makes the new virtual network gateway SKUs visible in the Azure Stack Hub user portal:\\n\\u0060\\u0060\\u0060http\\nhttps://portal.local.azurestack.local/?azurestacknewvpnskus=true\\n\\u0060\\u0060\\u0060\\nBefore creating these resources, the operator must enable VPN Fast Path on the Azure Stack Hub stamp. For more information, see [VPN Fast Path for operators](https://learn.microsoft.com/azure-stack/operator/azure-stack-vpn-fast-path-operators?view=azs-2604).\\n![Screenshot shows Azure VNG new SKUs.](https://learn.microsoft.com/azure-stack/user/media/azure-stack-vpn-gateway-settings/vpn-fast-path-vng-new-skus.png?view=azs-2604)\\n#### PowerShell\\nThe following PowerShell example specifies the \\u0060-GatewaySku\\u0060 parameter as **Standard**:\",\"contentUrl\":\"https://learn.microsoft.com/azure-stack/user/azure-stack-vpn-gateway-settings?view=azs-2604#vpn-gateway-settings\"},{\"title\":\"Configure VPN gateway settings for Azure Stack Hub\",\"content\":\"# Configure VPN gateway settings for Azure Stack Hub\\n## VPN gateway settings\\n2. **RouteBased**: Route-based VPNs use routes that you configure in the IP forwarding or routing table to direct packets to their corresponding tunnel interfaces. The tunnel interfaces then encrypt or decrypt the packets in and out of the tunnels. You configure the policy, or traffic selector, for **RouteBased** VPNs as any-to-any (or use wild cards). By default, you can\\u0027t change it. The value for a **RouteBased** VPN type is **RouteBased**.\\nThe following PowerShell example specifies the \\u0060-VpnType\\u0060 as **RouteBased**. When you create a gateway, make sure that the \\u0060-VpnType\\u0060 is correct for your configuration.\\n\\u0060\\u0060\\u0060powershell\\nNew-AzVirtualNetworkGateway -Name vnetgw1 -ResourceGroupName testrg \\u0060\\n   -Location \\u0027West US\\u0027 -IpConfigurations $gwipconfig \\u0060\\n   -GatewayType Vpn -VpnType RouteBased\\n\\u0060\\u0060\\u0060\\n### Virtual network gateways supported configurations when VPN Fast Path is not enabled\\n| SKU | VPN Type | Connection type | Active Routing support (BGP) | Remote endpoint NAT-T Enabled| \\n|  --- | --- | --- | --- | ---  |\\n| Basic VNG SKU | Route-based VPN | IPSec Pre-shared key | Not Supported | Not required |\\n| Standard VNG SKU | Route-based VPN | IPSec Pre-shared key | Supported, up to 150 routes | Not required |\\n| High-Performance VNG SKU | Route-based VPN | IPSec Pre-shared key | Supported, up to 150 routes | Not required |\\n\\n### Virtual network gateways supported configurations when VPN Fast Path is enabled\",\"contentUrl\":\"https://learn.microsoft.com/azure-stack/user/azure-stack-vpn-gateway-settings?view=azs-2604#vpn-gateway-settings\"},{\"title\":\"Configure server settings for P2S VPN Gateway RADIUS authentication\",\"content\":\"# Configure server settings for P2S VPN Gateway RADIUS authentication\\n## Verify your VPN gateway\\nYou must have a route-based VPN gateway that\\u0027s compatible with the P2S configuration that you want to create and the connecting VPN clients. To help determine the P2S configuration that you need, see the VPN client table. The Basic SKU doesn\\u0027t support RADIUS authentication, so use a different gateway SKU for this configuration. For more information, see [About gateway SKUs](https://learn.microsoft.com/azure/vpn-gateway/about-gateway-skus).\\nIf you don\\u0027t yet have a functioning VPN gateway that\\u0027s compatible with the P2S configuration that you want to create, see [Create and manage a VPN gateway](https://learn.microsoft.com/azure/vpn-gateway/tutorial-create-gateway-portal). Create a compatible VPN gateway, then return to this article to configure P2S settings.\\n## Add the VPN client address pool\\nThe client address pool is a range of private IP addresses that you specify. The clients that connect over a point-to-site VPN dynamically receive an IP address from this range. Use a private IP address range that doesn\\u0027t overlap with the on-premises location that you connect from, or the virtual network that you want to connect to. If you configure multiple protocols and SSTP is one of the protocols, then the configured address pool is split between the configured protocols equally.\\n1. In the Azure portal, go to your VPN gateway.\\n2. On the page for your gateway, in the left pane, select **Point-to-site configuration**.\\n3. On the **Point-to-site configuration** page, click **Configure now**.\\n4. On the point-to-site configuration page, you\\u0027ll see the configuration box for **Address pool**.\\n5. In the **Address pool** box, add the private IP address range that you want to use. For example, if you add the address range \\u0060172.16.201.0/24\\u0060, connecting VPN clients receive one of the IP addresses from this range. The minimum subnet mask is 29 bit for active/passive and 28 bit for active/active configuration.\\nAfter you add the range, continue to the next sections to configure the rest of the required settings.\",\"contentUrl\":\"https://learn.microsoft.com/azure/vpn-gateway/point-to-site-radius-gateway#verify-your-vpn-gateway\"},{\"title\":\"Configure VPN gateway settings for Azure Stack Hub\",\"content\":\"# Configure VPN gateway settings for Azure Stack Hub\\n## IPsec/IKE parameters\\nWhen you set up a VPN connection in Azure Stack Hub, you must configure the connection at both ends. If you\\u0027re configuring a VPN connection between Azure Stack Hub and a hardware device such as a switch or router that acts as a VPN gateway, that device might require additional settings.\\nUnlike Azure, which supports multiple offers as both an initiator and a responder, Azure Stack Hub supports only one offer by default. If you need to use different IPSec/IKE settings to work with your VPN device, you can configure your connection manually. For more information, see [Configure IPsec/IKE policy for site-to-site VPN connections](https://learn.microsoft.com/azure-stack/user/azure-stack-vpn-s2s?view=azs-2604).\\nImportant\\nWhen you use the S2S tunnel, packets are further encapsulated with additional headers which increases the overall size of the packet. In these scenarios, you must clamp TCP **MSS** at **1350**. Or, if your VPN devices don\\u0027t support MSS clamping, you can alternatively set the **MTU** on the tunnel interface to **1400** bytes instead. For more information, see [Virutal Network TCPIP performance tuning](https://learn.microsoft.com/en-us/azure/virtual-network/virtual-network-tcpip-performance-tuning).\\n### IKE Phase 1 (Main Mode) parameters\\n| Property | Value| \\n|  --- | ---  |\\n| IKE Version | IKEv2 |\\n| Diffie-Hellman Group\\\\* | ECP384 |\\n| Authentication Method | Pre-Shared Key |\\n| Encryption \\u0026 Hashing Algorithms\\\\* | AES256, SHA384 |\\n| SA Lifetime (Time) | 28,800 seconds |\\n\\n### IKE Phase 2 (Quick Mode) parameters\\n| Property | Value| \\n|  --- | ---  |\\n| IKE Version | IKEv2 |\\n| Encryption \\u0026 Hashing Algorithms (Encryption) | GCMAES256 |\\n| Encryption \\u0026 Hashing Algorithms (Authentication) | GCMAES256 |\\n| SA Lifetime (Time) | 27,000 seconds |\\n| SA Lifetime (Kilobytes) | 33,553,408 |\\n| Perfect Forward Secrecy (PFS)\\\\* | ECP384 |\\n| Dead Peer Detection | Supported |\\n\\n\\\\* New or changed parameter.\",\"contentUrl\":\"https://learn.microsoft.com/azure-stack/user/azure-stack-vpn-gateway-settings?view=azs-2604#ipsec-ike-parameters\"},{\"title\":\"Configure a VNet-to-VNet VPN connection - Azure portal\",\"content\":\"# Configure a VNet-to-VNet VPN connection - Azure portal\\n## Create and configure VNet1\\n15.7.1. Verify the [active-active design](https://learn.microsoft.com/azure/vpn-gateway/about-active-active-gateways#active-active-mode-design) that you want to use. Connections with your on-premises VPN device must be configured specifically to take advantage of active-active mode.\\n15.7.2. Some VPN devices don\\u0027t support active-active mode. If you\\u0027re not sure, check with your VPN device vendor. If you\\u0027re using a VPN device that doesn\\u0027t support active-active mode, you can select **Disabled** for this setting.\\n15.8. **Second public IP address:** Select **Create new**. This is available only if you selected **Enabled** for the **Enable active-active mode** setting.\\n15.9. **Public IP address name**: In the text box, enter a name for your public IP address instance.\\n15.10. **Public IP address SKU**: Setting is autoselected to Standard SKU.\\n15.11. **Availability zone**: Select Zone-redundant, unless you know you want to specify a zone.\\n15.12. **Configure BGP:** Select Disabled unless your configuration specifically requires this setting. If you do require this setting, the default ASN is 65515, although this value can be changed.\\n15.13. **Enable Key Vault Access**: Select Disabled unless your configuration specifically requires this setting.\\n16. Select **Review \\u002B create** to run validation.\\n17. After validation passes, select **Create** to deploy the VPN gateway.\\nA gateway can take 45 minutes or more to fully create and deploy. You can see the deployment status on the **Overview** page for your gateway. After the gateway is created, you can view the IP address that has been assigned to it by looking at the virtual network in the portal. The gateway appears as a connected device.\\nImportant\\nNSGs on the gateway subnet aren\\u0027t supported. Associating a network security group to this subnet might cause your virtual network gateway (VPN and ExpressRoute gateways) to stop functioning as expected. For more information about network security groups, see [What is a network security group?](https://learn.microsoft.com/en-us/azure/virtual-network/network-security-groups-overview)\",\"contentUrl\":\"https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-howto-vnet-vnet-resource-manager-portal#create-and-configure-vnet1\"}]}",
+            "type": "text"
+          }
+        ],
+        "structuredContent": {
+          "results": [
+            {
+              "title": "Azure VPN Gateway: Point-to-Site Configuration - Microsoft Q&A",
+              "content": "Azure VPN Gateway: Point-to-Site Configuration - Microsoft Q&A \n##Accepted Answers:\nThanks for posting your question in the Microsoft Q&amp;A forum.\nFollow these steps:\nStep 1: Create and Configure VPN Gateway\nCreate a Virtual Network Gateway in Azure Portal\nSelect VPN as the gateway type\nChoose Route-based VPN type\nSelect an appropriate SKU (e.g., VpnGw1 or higher for better performance)\nConfigure Point-to-Site settings\nGo to your VPN gateway's &quot;Point-to-site configuration&quot; page\nClick &quot;Configure now&quot;\nSet the Address pool for VPN clients\nFor Tunnel type, select &quot;OpenVPN (SSL)&quot;\nFor Authentication type, choose &quot;Azure Active Directory&quot;\nStep 2: Set Up Azure AD Authentication\nRegister a new application in Azure AD\nGo to Azure Active Directory in the Azure Portal\nNavigate to &quot;App registrations&quot; and create a new application\nNote down the Application ID and Tenant ID\nConfigure the VPN gateway to use Azure AD authentication\nIn the Point-to-site configuration, add the Azure AD tenant information\nInclude the Application ID from the registered app\nStep 3: Configure Client Settings\nDownload the VPN client configuration package\nOn the Point-to-site configuration page, click &quot;Download VPN client&quot;\nSet up AzureVPN Client for Windows and MacOS\nDownload and install AzureVPN Client for respective operating systems\nImport the downloaded configuration into the AzureVPN Client\nStep 4: Enable Multi-Factor Authentication\nConfigure Azure AD Conditional Access\nCreate a new policy in Azure AD Conditional Access\nSet the policy to require MFA for VPN connections\nSet up Microsoft Authenticator for users\nGuide users to install and configure Microsoft Authenticator app\nPlease don't forget to close up the thread here by\nupvoting\nand\naccept it as an answer\nif it is helpful",
+              "contentUrl": "https://learn.microsoft.com/answers/a/1880689"
+            },
+            {
+              "title": "Configure VPN gateway settings for Azure Stack Hub",
+              "content": "# Configure VPN gateway settings for Azure Stack Hub\n## VPN gateway settings\nThe following Resource Manager PowerShell example shows a gateway subnet named **GatewaySubnet**. You can see the CIDR notation specifies a /27, which allows for enough IP addresses for most configurations that currently exist.\n```powershell\nAdd-AzVirtualNetworkSubnetConfig -Name 'GatewaySubnet' -AddressPrefix 10.0.3.0/27\n```\nImportant\nWhen working with gateway subnets, avoid associating a network security group (NSG) to the gateway subnet. Associating a network security group to this subnet can cause your VPN gateway to stop functioning as expected. For more information about network security groups, see [What is a network security group?](https://learn.microsoft.com/en-us/azure/virtual-network/virtual-networks-nsg).\n### Local network gateways\nWhen you create a VPN gateway configuration in Azure, the local network gateway often represents your on-premises location. In Azure Stack Hub, it represents any remote VPN device that sits outside Azure Stack Hub. This device could be a VPN device in your datacenter (or a remote datacenter), or a VPN gateway in Azure.\nYou give the local network gateway a name, the public IP address of the remote VPN device, and specify the address prefixes that are on the on-premises location. Azure Stack Hub looks at the destination address prefixes for network traffic, consults the configuration that you specified for your local network gateway, and routes packets accordingly.\nThis PowerShell example creates a new local network gateway:\n```powershell\nNew-AzLocalNetworkGateway -Name LocalSite -ResourceGroupName testrg `\n   -Location 'West US' -GatewayIpAddress '198.51.100.101' -AddressPrefix '10.5.51.0/24'\n```\nSometimes you need to modify the local network gateway settings. For example, you might need to change the address range or if the IP address of the VPN device changes. For more info, see [Modify local network gateway settings using PowerShell](https://learn.microsoft.com/en-us/azure/vpn-gateway/vpn-gateway-modify-local-network-gateway).",
+              "contentUrl": "https://learn.microsoft.com/azure-stack/user/azure-stack-vpn-gateway-settings?view=azs-2604#vpn-gateway-settings"
+            },
+            {
+              "title": "Configure VPN gateway settings for Azure Stack Hub",
+              "content": "# Configure VPN gateway settings for Azure Stack Hub\n## VPN gateway settings\n| SKU | VPN Type | Connection type | Active routing support (BGP) | Remote endpoint NAT-T Enabled| \n|  --- | --- | --- | --- | ---  |\n| Basic VNG SKU | Route-based VPN | IPSec Pre-shared key | Not Supported | Required |\n| Standard VNG SKU | Route-based VPN | IPSec Pre-shared key | Supported, up to 150 routes | Required |\n| High-Performance VNG SKU | Route-based VPN | IPSec Pre-shared key | Supported, up to 150 routes | Required |\n| VPNGw1 VNG SKU | Route-based VPN | IPSec Pre-shared key | Supported, up to 150 routes | Required |\n| VPNGw2 VNG SKU | Route-based VPN | IPSec Pre-shared key | Supported, up to 150 routes | Required |\n| VPNGw2 VNG SKU | Route-based VPN | IPSec Pre-shared key | Supported, up to 150 routes | Required |\n\n### Gateway subnet\nBefore you create a VPN gateway, you must create a gateway subnet. The gateway subnet has the IP addresses that the virtual network gateway VMs and services use. When you create your virtual network gateway and the connection, the Gateway VM owning the connection is linked to the gateway subnet and is configured with the required VPN gateway settings. Don't deploy anything else (for example, additional VMs) to the gateway subnet.\nImportant\nThe gateway subnet must be named **GatewaySubnet** to work properly. Azure Stack Hub uses this name to identify the subnet to which to deploy the virtual network gateway VMs and services.\nWhen you create the gateway subnet, you specify the number of IP addresses that the subnet contains. The IP addresses in the gateway subnet are allocated to the gateway VMs and gateway services. Some configurations require more IP addresses than others. Look at the instructions for the configuration that you want to create and verify that the gateway subnet you want to create meets those requirements.\nAdditionally, make sure your gateway subnet has enough IP addresses to handle additional future configurations. Although you can create a gateway subnet as small as /29, create a gateway subnet of /28 or larger (/28, /27, /26, and so on.) That way, if you add functionality in the future, you don't have to tear down your gateway, then delete and recreate the gateway subnet to allow for more IP addresses.",
+              "contentUrl": "https://learn.microsoft.com/azure-stack/user/azure-stack-vpn-gateway-settings?view=azs-2604#vpn-gateway-settings"
+            },
+            {
+              "title": "Configure VPN gateway settings for Azure Stack Hub",
+              "content": "# Configure VPN gateway settings for Azure Stack Hub\n## VPN gateway settings\n### Gateway types\nEach Azure Stack Hub virtual network supports a single virtual network gateway, which must be of the type **Vpn**. This support is different from Azure, which supports additional types.\nWhen you create a virtual network gateway, you must make sure that the gateway type is correct for your configuration. A VPN gateway requires the `-GatewayType Vpn` flag; for example:\n```powershell\nNew-AzVirtualNetworkGateway -Name vnetgw1 -ResourceGroupName testrg `\n   -Location 'West US' -IpConfigurations $gwipconfig -GatewayType Vpn `\n   -VpnType RouteBased\n```\n### Gateway SKUs without VPN Fast Path Enabled\nWhen you create a virtual network gateway, specify the SKU that you want to use. Select the SKUs that satisfy your requirements based on the types of workloads, throughput, features, and SLAs.\nYou can have 10 high performance gateways or 20 basic and standard before you reach the maximum capacity.\nAzure Stack Hub offers the VPN gateway SKUs shown in the following table:\n| SKU | Max VPN Connection throughput | Max # of connections per active GW VM | Max # of VPN Connections per stamp| \n|  --- | --- | --- | ---  |\n| **Basic** | 100 Mbps Tx/Rx | 10 | 20 |\n| **Standard** | 100 Mbps Tx/Rx | 10 | 20 |\n| **High Performance** | 200 Mbps Tx/Rx | 5 | 10 |\n\n### Gateway SKUs with VPN Fast Path enabled\nWhen Microsoft released the VPN Fast Path public preview, Azure Stack Hub added support for three new SKUs with higher throughput.\nWhen you enable VPN Fast Path on your Azure Stack stamp, you get new limits and throughput.\nAzure Stack Hub offers the VPN gateway SKUs shown in the following table:",
+              "contentUrl": "https://learn.microsoft.com/azure-stack/user/azure-stack-vpn-gateway-settings?view=azs-2604#vpn-gateway-settings"
+            },
+            {
+              "title": "Configure VPN gateway settings for Azure Stack Hub",
+              "content": "# Configure VPN gateway settings for Azure Stack Hub\n## VPN gateway settings\n```powershell\nNew-AzVirtualNetworkGateway -Name vnetgw1 -ResourceGroupName testrg `\n   -Location 'West US' -IpConfigurations $gwipconfig -GatewaySku Standard `\n   -GatewayType Vpn -VpnType RouteBased\n```\n### Connection types\nIn the Resource Manager deployment model, each configuration requires a specific virtual network gateway connection type. The available Resource Manager PowerShell values for `-ConnectionType` are **IPsec**.\nIn the following PowerShell example, you create a S2S connection that requires the IPsec connection type:\n```powershell\nNew-AzVirtualNetworkGatewayConnection -Name localtovon -ResourceGroupName testrg `\n   -Location 'West US' -VirtualNetworkGateway1 $gateway1 -LocalNetworkGateway2 $local `\n   -ConnectionType IPsec -RoutingWeight 10 -SharedKey 'abc123'\n```\n### VPN types\nWhen you create the virtual network gateway for a VPN gateway configuration, you must specify a VPN type. The VPN type that you choose depends on the connection topology that you want to create. A VPN type can also depend on the hardware that you're using. S2S configurations require a VPN device. Some VPN devices only support a certain VPN type.\nImportant\nCurrently, Azure Stack Hub only supports the route-based VPN type. If your device only supports policy-based VPNs, connections to those devices from Azure Stack Hub aren't supported.\nIn addition, Azure Stack Hub doesn't support using policy-based traffic selectors for route-based gateways at this time, because Azure Stack Hub doesn't support policy-based traffic selectors, although they're supported in Azure.\n1. **PolicyBased**: Policy-based VPNs encrypt and direct packets through IPsec tunnels based on the IPsec policies that you configure with combinations of address prefixes between your on-premises network and the Azure Stack Hub VNet. The policy, or traffic selector, is usually an access list in the VPN device configuration.\n  Note\n  **PolicyBased** is supported in Azure, but not in Azure Stack Hub.",
+              "contentUrl": "https://learn.microsoft.com/azure-stack/user/azure-stack-vpn-gateway-settings?view=azs-2604#vpn-gateway-settings"
+            },
+            {
+              "title": "Configure VPN gateway settings for Azure Stack Hub",
+              "content": "# Configure VPN gateway settings for Azure Stack Hub\n## VPN gateway settings\n| SKU | Max VPN Connection throughput | Max # of connections per active GW VM | Max # of VPN Connections per stamp| \n|  --- | --- | --- | ---  |\n| **Basic** | 100 Mbps Tx/Rx | 25 | 50 |\n| **Standard** | 100 Mbps Tx/Rx | 25 | 50 |\n| **High Performance** | 200 Mbps Tx/Rx | 12 | 24 |\n| **VPNGw1** | 650 Mbps Tx/Rx | 3 | 6 |\n| **VPNGw2** | 1000 Mbps Tx/Rx | 2 | 4 |\n| **VPNGw3** | 1250 Mbps Tx/Rx | 2 | 4 |\n\n### Resizing virtual network gateway SKUs\nAzure Stack Hub doesn't support resizing from a supported legacy SKU (**Basic**, **Standard**, and **HighPerformance**) to a newer SKU supported by Azure (**VpnGw1**, **VpnGw2**, and **VpnGw3**).\nTo use the new SKUs enabled by VPN Fast Path, you need to create new virtual network gateways and connections.\n### Configure the virtual network gateway SKU\n#### Azure Stack Hub portal\nIf you use the Azure Stack Hub portal to create a virtual network gateway, select the SKU from the dropdown list. To see the new VPN Fast Path SKUs (**VpnGw1**, **VpnGw2**, **VpnGw3**), add the query parameter **\"?azurestacknewvpnskus=true\"** to the URL and refresh the page.\nThe following URL example makes the new virtual network gateway SKUs visible in the Azure Stack Hub user portal:\n```http\nhttps://portal.local.azurestack.local/?azurestacknewvpnskus=true\n```\nBefore creating these resources, the operator must enable VPN Fast Path on the Azure Stack Hub stamp. For more information, see [VPN Fast Path for operators](https://learn.microsoft.com/azure-stack/operator/azure-stack-vpn-fast-path-operators?view=azs-2604).\n![Screenshot shows Azure VNG new SKUs.](https://learn.microsoft.com/azure-stack/user/media/azure-stack-vpn-gateway-settings/vpn-fast-path-vng-new-skus.png?view=azs-2604)\n#### PowerShell\nThe following PowerShell example specifies the `-GatewaySku` parameter as **Standard**:",
+              "contentUrl": "https://learn.microsoft.com/azure-stack/user/azure-stack-vpn-gateway-settings?view=azs-2604#vpn-gateway-settings"
+            },
+            {
+              "title": "Configure VPN gateway settings for Azure Stack Hub",
+              "content": "# Configure VPN gateway settings for Azure Stack Hub\n## VPN gateway settings\n2. **RouteBased**: Route-based VPNs use routes that you configure in the IP forwarding or routing table to direct packets to their corresponding tunnel interfaces. The tunnel interfaces then encrypt or decrypt the packets in and out of the tunnels. You configure the policy, or traffic selector, for **RouteBased** VPNs as any-to-any (or use wild cards). By default, you can't change it. The value for a **RouteBased** VPN type is **RouteBased**.\nThe following PowerShell example specifies the `-VpnType` as **RouteBased**. When you create a gateway, make sure that the `-VpnType` is correct for your configuration.\n```powershell\nNew-AzVirtualNetworkGateway -Name vnetgw1 -ResourceGroupName testrg `\n   -Location 'West US' -IpConfigurations $gwipconfig `\n   -GatewayType Vpn -VpnType RouteBased\n```\n### Virtual network gateways supported configurations when VPN Fast Path is not enabled\n| SKU | VPN Type | Connection type | Active Routing support (BGP) | Remote endpoint NAT-T Enabled| \n|  --- | --- | --- | --- | ---  |\n| Basic VNG SKU | Route-based VPN | IPSec Pre-shared key | Not Supported | Not required |\n| Standard VNG SKU | Route-based VPN | IPSec Pre-shared key | Supported, up to 150 routes | Not required |\n| High-Performance VNG SKU | Route-based VPN | IPSec Pre-shared key | Supported, up to 150 routes | Not required |\n\n### Virtual network gateways supported configurations when VPN Fast Path is enabled",
+              "contentUrl": "https://learn.microsoft.com/azure-stack/user/azure-stack-vpn-gateway-settings?view=azs-2604#vpn-gateway-settings"
+            },
+            {
+              "title": "Configure server settings for P2S VPN Gateway RADIUS authentication",
+              "content": "# Configure server settings for P2S VPN Gateway RADIUS authentication\n## Verify your VPN gateway\nYou must have a route-based VPN gateway that's compatible with the P2S configuration that you want to create and the connecting VPN clients. To help determine the P2S configuration that you need, see the VPN client table. The Basic SKU doesn't support RADIUS authentication, so use a different gateway SKU for this configuration. For more information, see [About gateway SKUs](https://learn.microsoft.com/azure/vpn-gateway/about-gateway-skus).\nIf you don't yet have a functioning VPN gateway that's compatible with the P2S configuration that you want to create, see [Create and manage a VPN gateway](https://learn.microsoft.com/azure/vpn-gateway/tutorial-create-gateway-portal). Create a compatible VPN gateway, then return to this article to configure P2S settings.\n## Add the VPN client address pool\nThe client address pool is a range of private IP addresses that you specify. The clients that connect over a point-to-site VPN dynamically receive an IP address from this range. Use a private IP address range that doesn't overlap with the on-premises location that you connect from, or the virtual network that you want to connect to. If you configure multiple protocols and SSTP is one of the protocols, then the configured address pool is split between the configured protocols equally.\n1. In the Azure portal, go to your VPN gateway.\n2. On the page for your gateway, in the left pane, select **Point-to-site configuration**.\n3. On the **Point-to-site configuration** page, click **Configure now**.\n4. On the point-to-site configuration page, you'll see the configuration box for **Address pool**.\n5. In the **Address pool** box, add the private IP address range that you want to use. For example, if you add the address range `172.16.201.0/24`, connecting VPN clients receive one of the IP addresses from this range. The minimum subnet mask is 29 bit for active/passive and 28 bit for active/active configuration.\nAfter you add the range, continue to the next sections to configure the rest of the required settings.",
+              "contentUrl": "https://learn.microsoft.com/azure/vpn-gateway/point-to-site-radius-gateway#verify-your-vpn-gateway"
+            },
+            {
+              "title": "Configure VPN gateway settings for Azure Stack Hub",
+              "content": "# Configure VPN gateway settings for Azure Stack Hub\n## IPsec/IKE parameters\nWhen you set up a VPN connection in Azure Stack Hub, you must configure the connection at both ends. If you're configuring a VPN connection between Azure Stack Hub and a hardware device such as a switch or router that acts as a VPN gateway, that device might require additional settings.\nUnlike Azure, which supports multiple offers as both an initiator and a responder, Azure Stack Hub supports only one offer by default. If you need to use different IPSec/IKE settings to work with your VPN device, you can configure your connection manually. For more information, see [Configure IPsec/IKE policy for site-to-site VPN connections](https://learn.microsoft.com/azure-stack/user/azure-stack-vpn-s2s?view=azs-2604).\nImportant\nWhen you use the S2S tunnel, packets are further encapsulated with additional headers which increases the overall size of the packet. In these scenarios, you must clamp TCP **MSS** at **1350**. Or, if your VPN devices don't support MSS clamping, you can alternatively set the **MTU** on the tunnel interface to **1400** bytes instead. For more information, see [Virutal Network TCPIP performance tuning](https://learn.microsoft.com/en-us/azure/virtual-network/virtual-network-tcpip-performance-tuning).\n### IKE Phase 1 (Main Mode) parameters\n| Property | Value| \n|  --- | ---  |\n| IKE Version | IKEv2 |\n| Diffie-Hellman Group\\* | ECP384 |\n| Authentication Method | Pre-Shared Key |\n| Encryption & Hashing Algorithms\\* | AES256, SHA384 |\n| SA Lifetime (Time) | 28,800 seconds |\n\n### IKE Phase 2 (Quick Mode) parameters\n| Property | Value| \n|  --- | ---  |\n| IKE Version | IKEv2 |\n| Encryption & Hashing Algorithms (Encryption) | GCMAES256 |\n| Encryption & Hashing Algorithms (Authentication) | GCMAES256 |\n| SA Lifetime (Time) | 27,000 seconds |\n| SA Lifetime (Kilobytes) | 33,553,408 |\n| Perfect Forward Secrecy (PFS)\\* | ECP384 |\n| Dead Peer Detection | Supported |\n\n\\* New or changed parameter.",
+              "contentUrl": "https://learn.microsoft.com/azure-stack/user/azure-stack-vpn-gateway-settings?view=azs-2604#ipsec-ike-parameters"
+            },
+            {
+              "title": "Configure a VNet-to-VNet VPN connection - Azure portal",
+              "content": "# Configure a VNet-to-VNet VPN connection - Azure portal\n## Create and configure VNet1\n15.7.1. Verify the [active-active design](https://learn.microsoft.com/azure/vpn-gateway/about-active-active-gateways#active-active-mode-design) that you want to use. Connections with your on-premises VPN device must be configured specifically to take advantage of active-active mode.\n15.7.2. Some VPN devices don't support active-active mode. If you're not sure, check with your VPN device vendor. If you're using a VPN device that doesn't support active-active mode, you can select **Disabled** for this setting.\n15.8. **Second public IP address:** Select **Create new**. This is available only if you selected **Enabled** for the **Enable active-active mode** setting.\n15.9. **Public IP address name**: In the text box, enter a name for your public IP address instance.\n15.10. **Public IP address SKU**: Setting is autoselected to Standard SKU.\n15.11. **Availability zone**: Select Zone-redundant, unless you know you want to specify a zone.\n15.12. **Configure BGP:** Select Disabled unless your configuration specifically requires this setting. If you do require this setting, the default ASN is 65515, although this value can be changed.\n15.13. **Enable Key Vault Access**: Select Disabled unless your configuration specifically requires this setting.\n16. Select **Review + create** to run validation.\n17. After validation passes, select **Create** to deploy the VPN gateway.\nA gateway can take 45 minutes or more to fully create and deploy. You can see the deployment status on the **Overview** page for your gateway. After the gateway is created, you can view the IP address that has been assigned to it by looking at the virtual network in the portal. The gateway appears as a connected device.\nImportant\nNSGs on the gateway subnet aren't supported. Associating a network security group to this subnet might cause your virtual network gateway (VPN and ExpressRoute gateways) to stop functioning as expected. For more information about network security groups, see [What is a network security group?](https://learn.microsoft.com/en-us/azure/virtual-network/network-security-groups-overview)",
+              "contentUrl": "https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-howto-vnet-vnet-resource-manager-portal#create-and-configure-vnet1"
+            }
+          ]
+        }
+      },
+      "createdAt": "2026-11-05T00:59:54.458Z",
+      "updatedAt": "2026-11-05T01:00:01.072Z"
+    },
+    {
+      "id": "4c878329-1dce-4b19-ab0c-d4a2c65f2867",
+      "userId": "e7fce333-a8f4-4097-9a53-f0a4c729da46",
+      "connectionId": "b8886e38-4c6d-4053-86ba-09197d38c9cd",
+      "bindingId": "e0449587-d7ee-4500-9cdc-ffdbd55fb4e6",
+      "requestKey": "9cd05677-bc06-4a74-8412-052e11ea6d53",
+      "inputHash": "8c2116b089a3370162067b8af63f39f53368a023de9246227091f97d240a4158",
+      "status": "completed",
+      "result": {
+        "content": [
+          {
+            "text": "{\"results\":[{\"title\":\"Tutorial: Create and manage a VPN gateway using the Azure portal\",\"content\":\"# Tutorial: Create and manage a VPN gateway using the Azure portal\\nThis tutorial helps you create and manage a virtual network gateway (VPN gateway) using the Azure portal. The VPN gateway is one part of the connection architecture that helps you securely access resources within a virtual network using VPN Gateway.\\n[![Diagram that shows a virtual network and a VPN gateway.](https://learn.microsoft.com/azure/vpn-gateway/media/tutorial-create-gateway-portal/gateway-diagram.png)](media/tutorial-create-gateway-portal/gateway-diagram-expand.png#lightbox)\\n1. The left side of the diagram shows the virtual network and the VPN gateway that you create by using the steps in this article.\\n2. You can later add different types of connections, as shown on the right side of the diagram. For example, you can create [site-to-site](https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal) and [point-to-site](https://learn.microsoft.com/azure/vpn-gateway/point-to-site-about) connections. To view different design architectures that you can build, see [VPN gateway design](https://learn.microsoft.com/azure/vpn-gateway/design).\\n3. For more information about Azure VPN Gateway, see [What is Azure VPN Gateway](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-about-vpngateways)? If you want to learn more about the configuration settings used in this tutorial, see [About VPN Gateway configuration settings](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-about-vpn-gateway-settings).\\nIn this tutorial, you learn how to:\\n1. Create a virtual network.\\n2. Create an active-active mode zone-redundant VPN gateway.\\n3. View the gateway public IP address.\\n4. Upgrade a VPN gateway SKU.\\n5. Reset a VPN gateway.\\nNote\\nThe steps in this article use the gateway SKU **VpnGw2AZ**, which is a SKU that supports Azure availability zones. Effective May 2025, all regions will accept an **AZ** SKU, regardless of whether availability zones are supported in that region. For more information about gateway SKUs, see [About gateway SKUs](https://learn.microsoft.com/azure/vpn-gateway/about-gateway-skus).\\n## Prerequisites\\nYou need an Azure account with an active subscription. If you don\\u0027t have one, [create one for free](https://azure.microsoft.com/pricing/purchase-options/azure-account?cid=msft_learn).\",\"contentUrl\":\"https://learn.microsoft.com/azure/vpn-gateway/tutorial-create-gateway-portal\"},{\"title\":\"Tutorial: Create a site-to-site VPN connection in the Azure portal\",\"content\":\"# Tutorial: Create a site-to-site VPN connection in the Azure portal\\n## Create a gateway subnet\\nThe virtual network gateway requires a specific subnet named **GatewaySubnet**. The gateway subnet is part of the IP address range for your virtual network and contains the IP addresses that the virtual network gateway resources and services use.\\nWhen you create the gateway subnet, you specify the number of IP addresses that the subnet contains. The number of IP addresses needed depends on the VPN gateway configuration that you want to create. Some configurations require more IP addresses than others. It\\u0027s best to specify /27 or larger (/26, /25, etc.) for your gateway subnet.\\n1. On the page for your virtual network, on the left pane, select **Subnets** to open the **Subnets** page.\\n2. At the top of the page, select **\\u002B Subnet** to open the **Add subnet** pane.\\n3. For **Subnet purpose**, select **Virtual Network Gateway** from the dropdown.\\n4. The name is automatically entered as **GatewaySubnet**. Adjust starting IP address and size if necessary. For example, **10.1.255.0/27**.\\n5. Don\\u0027t adjust the other values on the page. Click **Add** to add the subnet.\\nFor more information about adding a subnet to your virtual network, see [Add, change, or delete a virtual network subnet](https://learn.microsoft.com/azure/virtual-network/virtual-network-manage-subnet). For steps to add an address range to your virtual network, see [Add or remove an address range](https://learn.microsoft.com/azure/virtual-network/manage-virtual-network).\\nImportant\\nNSGs on the gateway subnet aren\\u0027t supported. Associating a network security group to this subnet might cause your virtual network gateway (VPN and ExpressRoute gateways) to stop functioning as expected. For more information about network security groups, see [What is a network security group?](https://learn.microsoft.com/en-us/azure/virtual-network/network-security-groups-overview)\",\"contentUrl\":\"https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal#create-a-gateway-subnet\"},{\"title\":\"Tutorial: Create a site-to-site VPN connection in the Azure portal\",\"content\":\"# Tutorial: Create a site-to-site VPN connection in the Azure portal\\nIn this tutorial, you use the Azure portal to create a site-to-site (S2S) VPN gateway connection between your on-premises network and a virtual network. You can also create this configuration by using [Azure PowerShell](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-create-site-to-site-rm-powershell) or the [Azure CLI](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-howto-site-to-site-resource-manager-cli). This configuration uses a specified pre-shared key for the connection between the Azure VPN gateway and your on-premises VPN device. You can also configure a site-to-site connection using [certificate authentication](https://learn.microsoft.com/azure/vpn-gateway/site-to-site-certificate-authentication-gateway).\\n[![Diagram that shows site-to-site VPN gateway cross-premises connections.](https://learn.microsoft.com/azure/vpn-gateway/media/tutorial-site-to-site-portal/diagram.png)](media/tutorial-site-to-site-portal/diagram.png#lightbox)\\n## What you accomplish\\nIn this tutorial, you:\\n1. Create a virtual network.\\n2. Create a VPN gateway.\\n3. Create a local network gateway.\\n4. Create a VPN connection.\\n5. Verify the connection.\\n6. Connect to a virtual machine.\\n**Estimated time to complete**: 90-120 minutes (including gateway deployment time)\",\"contentUrl\":\"https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal\"},{\"title\":\"Tutorial: Create a site-to-site VPN connection in the Azure portal\",\"content\":\"# Tutorial: Create a site-to-site VPN connection in the Azure portal\\n## Create a VPN gateway\\nNSGs on the gateway subnet aren\\u0027t supported. Associating a network security group to this subnet might cause your virtual network gateway (VPN and ExpressRoute gateways) to stop functioning as expected. For more information about network security groups, see [What is a network security group?](https://learn.microsoft.com/en-us/azure/virtual-network/network-security-groups-overview)\\n### View public IP address\\nTo view the IP address associated with each virtual network gateway VM instance, go to your virtual network gateway in the portal.\\n1. Go to your virtual network gateway **Properties** page (not the Overview page). You might need to expand **Settings** to see the **Properties** page in the list.\\n2. If your gateway in active-passive mode, you\\u0027ll only see one IP address. If your gateway is in active-active mode, you\\u0027ll see two public IP addresses listed, one for each gateway VM instance. When you create a site-to-site connection, you must specify each IP address when configuring your VPN device because both gateway VMs are active.\\n3. To view more information about the IP address object, click the associated IP address link.\",\"contentUrl\":\"https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal#create-a-vpn-gateway\"},{\"title\":\"Tutorial: Create a site-to-site VPN connection in the Azure portal\",\"content\":\"# Tutorial: Create a site-to-site VPN connection in the Azure portal\\n## Create a virtual network\\n4.4. **Region**: Select the location for your virtual network. The location determines where the resources that you deploy to this virtual network will reside.\\n5. Select **Next** or **Security** to go to the **Security** tab. For this exercise, leave the default values for all the services on this page.\\n6. Select **IP Addresses** to go to the **IP Addresses** tab. On the **IP Addresses** tab, configure the settings.\\n6.1. **IPv4 address space**: By default, an address space is automatically created. You can select the address space and adjust it to reflect your own values. You can also add a different address space and remove the default that was automatically created. For example, you can specify the starting address as **10.1.0.0** and specify the address space size as **/16**. Then select **Add** to add that address space.\\n6.2. **\\u002B Add subnet**: If you use the default address space, a default subnet is created automatically. If you change the address space, add a new subnet within that address space. Select **\\u002B Add subnet** to open the **Add subnet** window. Configure the following settings, and then select **Add** at the bottom of the page to add the values.\\n6.2.1. **Subnet name**: You can use the default, or specify the name. Example: **FrontEnd**.\\n6.2.2. **Subnet address range**: The address range for this subnet. Examples are **10.1.0.0** and **/24**.\\n7. Review the **IP addresses** page and remove any address spaces or subnets that you don\\u0027t need.\\n8. Select **Review \\u002B create** to validate the virtual network settings.\\n9. After the settings are validated, select **Create** to create the virtual network.\\nAfter you create your virtual network, you can optionally configure Azure DDoS Protection. Azure DDoS Protection is simple to enable on any new or existing virtual network, and it requires no application or resource changes. For more information about Azure DDoS Protection, see [What is Azure DDoS Protection?](https://learn.microsoft.com/azure/ddos-protection/ddos-protection-overview)\",\"contentUrl\":\"https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal#create-a-virtual-network\"},{\"title\":\"Tutorial: Create a site-to-site VPN connection in the Azure portal\",\"content\":\"# Tutorial: Create a site-to-site VPN connection in the Azure portal\\n## Create a virtual network\\nIn this section, you create a virtual network by using the following values:\\n1. **Resource group**: TestRG1\\n2. **Name**: VNet1\\n3. **Region**: (US) East US\\n4. **IPv4 address space**: 10.1.0.0/16\\n5. **Subnet name**: FrontEnd\\n6. **Subnet address space**: 10.1.0.0/24\\nNote\\nWhen you use a virtual network as part of a cross-premises architecture, be sure to coordinate with your on-premises network administrator to carve out an IP address range that you can use specifically for this virtual network. If a duplicate address range exists on both sides of the VPN connection, traffic will route in an unexpected way. Additionally, if you want to connect this virtual network to another virtual network, the address space can\\u0027t overlap with the other virtual network. Plan your network configuration accordingly.\\n1. Sign in to the Azure portal.\\n2. In **Search resources, service, and docs (G\\u002B/)** at the top of the portal page, enter **virtual network**. Select **Virtual network** from the **Marketplace** search results to open the **Virtual network** page.\\n3. On the **Virtual network** page, select **Create** to open the **Create virtual network** page.\\n4. On the **Basics** tab, configure the virtual network settings for **Project details** and **Instance details**. You see a green check mark when the values you enter are validated. You can adjust the values shown in the example according to the settings that you require.\\n [![Screenshot that shows the Basics tab.](https://learn.microsoft.com/azure/includes/media/vpn-gateway-basic-vnet-rm-portal-include/basics.png)](../includes/media/vpn-gateway-basic-vnet-rm-portal-include/basics.png#lightbox)\\n4.1. **Subscription**: Verify that the subscription listed is the correct one. You can change subscriptions by using the dropdown box.\\n4.2. **Resource group**: Select an existing resource group or select **Create new** to create a new one. For more information about resource groups, see [Azure Resource Manager overview](https://learn.microsoft.com/azure/azure-resource-manager/management/overview#resource-groups).\\n4.3. **Name**: Enter the name for your virtual network.\",\"contentUrl\":\"https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal#create-a-virtual-network\"},{\"title\":\"Tutorial: Create a site-to-site VPN connection in the Azure portal\",\"content\":\"# Tutorial: Create a site-to-site VPN connection in the Azure portal\\n## Create a VPN gateway\\nIn this step, you create a virtual network gateway (VPN gateway) for your virtual network. Creating a gateway can often take 45 minutes or more, depending on the selected gateway SKU.\\n### Create a VPN gateway\\nCreate a virtual network gateway (VPN gateway) by using the following values:\\n1. **Name**: VNet1GW\\n2. **Gateway type**: VPN\\n3. **SKU**: VpnGw2AZ\\n4. **Generation**: Generation 2\\n5. **Virtual network**: VNet1\\n6. **Gateway subnet address range**: 10.1.255.0/27\\n7. **Public IP address**: Create new\\n8. **Public IP address name:** VNet1GWpip1\\n9. **Public IP address SKU:** Standard\\n10. **Assignment:** Static\\n11. **Second Public IP address name:** VNet1GWpip2\\n12. **Enable active-active mode**: Enabled\\n13. **Configure BGP**: Disabled\\n14. In **Search resources, services, and docs (G\\u002B/)**, enter **virtual network gateway**. Locate **Virtual network gateway** in the **Marketplace** search results and select it to open the **Create virtual network gateway** page.\\n15. On the **Basics** tab, fill in the values for **Project details** and **Instance details**.\\n [![Screenshot that shows the Instance fields.](https://learn.microsoft.com/azure/includes/media/vpn-gateway-add-azgw-portal/instance-details.png)](../includes/media/vpn-gateway-add-azgw-portal/instance-details.png#lightbox)\\n15.1. **Subscription**: Select the subscription you want to use from the dropdown list.\\n15.2. **Resource group**: This value is autofilled when you select your virtual network on this page.\\n15.3. **Name**: This is the name of the gateway object you\\u0027re creating. This is different than the gateway subnet to which gateway resources will be deployed.\\n15.4. **Region**: Select the region in which you want to create this resource. The region for the gateway must be the same as the virtual network.\\n15.5. **Gateway type**: Select **VPN**. VPN gateways use the virtual network gateway type **VPN**.\\n15.6. **SKU**: From the dropdown list, select a [gateway SKU](https://learn.microsoft.com/azure/vpn-gateway/about-gateway-skus) that supports the features you want to use.\",\"contentUrl\":\"https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal#create-a-vpn-gateway\"},{\"title\":\"Tutorial: Create and manage a VPN gateway using the Azure portal\",\"content\":\"# Tutorial: Create and manage a VPN gateway using the Azure portal\\n## Create a VPN gateway\\n | Setting | Value |\\n | --- | --- |\\n | Public IP address name | Example: VNet1GWpip1 |\\n | Availability zone | This setting is available for AZ SKUs in regions that support [availability zones](https://learn.microsoft.com/azure/vpn-gateway/about-zone-redundant-vnet-gateways). Example: **Zone-redundant**. |\\n | Enable active-active mode | - Select **Enabled** to take advantage of the benefits of an [active-active gateway](https://learn.microsoft.com/azure/vpn-gateway/about-active-active-gateways). An active-active gateway requires an additional public IP address.- If you plan to use this gateway for site-to-site connections, verify the [active-active design](https://learn.microsoft.com/azure/vpn-gateway/about-active-active-gateways#active-active-mode-design) that you want to use.- Connections with your on-premises VPN device must be configured specifically to take advantage of active-active mode.- Some VPN devices don\\u0027t support active-active mode. If you\\u0027re not sure, check with your VPN device vendor. If you\\u0027re using a VPN device that doesn\\u0027t support active-active mode, you can select **Disabled** for this setting. |\\n | Second public IP address name | Only available for active-active mode gateways. Example: VNet1GWpip2 |\\n | Availability zone | Example: **Zone-redundant**. |\\n | Configure BGP | Select **Disabled**, unless your configuration specifically requires this setting. If you do require this setting, the default ASN is 65515. |\\n | Enable Key Vault Access | Select **Disabled** unless you have a specific requirement to enable this setting. |\\n4. Select **Review \\u002B create** to run validation.\\n5. After validation passes, select **Create** to deploy the VPN gateway.\\nYou can see the deployment status on the **Overview** page for your gateway. Once the gateway is created, you can view the IP address assigned to it by looking at the virtual network in the portal. The gateway appears as a connected device.\\n## View public IP address\\nTo view public IP addresses associated to your virtual network gateway, navigate to your gateway in the portal.\\n1. On the **Virtual network gateway** portal page, under **Settings**, open the **Properties** page.\\n2. To view more information about the IP address object, click the associated IP address link.\",\"contentUrl\":\"https://learn.microsoft.com/azure/vpn-gateway/tutorial-create-gateway-portal#create-a-vpn-gateway\"},{\"title\":\"Tutorial: Create a site-to-site VPN connection in the Azure portal\",\"content\":\"# Tutorial: Create a site-to-site VPN connection in the Azure portal\\n## Prerequisites\\n1. You need an Azure account with an active subscription. If you don\\u0027t have one, you can [create one for free](https://azure.microsoft.com/pricing/purchase-options/azure-account?cid=msft_learn).\\n2. If you\\u0027re unfamiliar with the IP address ranges located in your on-premises network configuration, you need to coordinate with someone who can provide those details for you. When you create this configuration, you must specify the IP address range prefixes that Azure routes to your on-premises location. None of the subnets of your on-premises network can overlap with the virtual network subnets that you want to connect to.\\n3. VPN devices:\\n3.1. Make sure you have a compatible VPN device and someone who can configure it. For more information about compatible VPN devices and device configuration, see [About VPN devices](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-about-vpn-devices).\\n3.2. Verify that you have an externally facing public IPv4 address for your VPN device.\\n3.3. Verify that your VPN device supports active-active mode gateways. This article creates an active-active mode VPN gateway, which is recommended for highly available connectivity. Active-active mode specifies that both gateway VM instances are active and uses two public IP addresses, one for each gateway VM instance. You configure your VPN device to connect to the IP address for each gateway VM instance. If your VPN device doesn\\u0027t support this mode, don\\u0027t enable this mode for your gateway. For more information, see [Design highly available connectivity for cross-premises and VNet-to-VNet connections](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-highlyavailable) and [About active-active mode VPN gateways](https://learn.microsoft.com/azure/vpn-gateway/about-active-active-gateways).\",\"contentUrl\":\"https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal#prerequisites\"},{\"title\":\"Tutorial: Create a site-to-site VPN connection in the Azure portal\",\"content\":\"# Tutorial: Create a site-to-site VPN connection in the Azure portal\\n## Configure your VPN device\\n5. For cryptographic requirements, see [About cryptographic requirements and Azure VPN gateways](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-about-compliance-crypto).\\n6. For information about IPsec/IKE parameters, see [About VPN devices and IPsec/IKE parameters for site-to-site VPN gateway connections](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-about-vpn-devices#ipsec). This link shows information about IKE version, Diffie-Hellman Group, authentication method, encryption and hashing algorithms, SA lifetime, PFS, and DPD, in addition to other parameter information that you need to complete your configuration.\\n7. For IPsec/IKE policy configuration steps, see [Configure IPsec/IKE policy for site-to-site VPN or VNet-to-VNet connections](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-ipsecikepolicy-rm-powershell).\\n8. To connect multiple policy-based VPN devices, see [Connect Azure VPN gateways to multiple on-premises policy-based VPN devices using PowerShell](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-connect-multiple-policybased-rm-ps).\",\"contentUrl\":\"https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal#configure-your-vpn-device\"}]}",
+            "type": "text"
+          }
+        ],
+        "structuredContent": {
+          "results": [
+            {
+              "title": "Tutorial: Create and manage a VPN gateway using the Azure portal",
+              "content": "# Tutorial: Create and manage a VPN gateway using the Azure portal\nThis tutorial helps you create and manage a virtual network gateway (VPN gateway) using the Azure portal. The VPN gateway is one part of the connection architecture that helps you securely access resources within a virtual network using VPN Gateway.\n[![Diagram that shows a virtual network and a VPN gateway.](https://learn.microsoft.com/azure/vpn-gateway/media/tutorial-create-gateway-portal/gateway-diagram.png)](media/tutorial-create-gateway-portal/gateway-diagram-expand.png#lightbox)\n1. The left side of the diagram shows the virtual network and the VPN gateway that you create by using the steps in this article.\n2. You can later add different types of connections, as shown on the right side of the diagram. For example, you can create [site-to-site](https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal) and [point-to-site](https://learn.microsoft.com/azure/vpn-gateway/point-to-site-about) connections. To view different design architectures that you can build, see [VPN gateway design](https://learn.microsoft.com/azure/vpn-gateway/design).\n3. For more information about Azure VPN Gateway, see [What is Azure VPN Gateway](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-about-vpngateways)? If you want to learn more about the configuration settings used in this tutorial, see [About VPN Gateway configuration settings](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-about-vpn-gateway-settings).\nIn this tutorial, you learn how to:\n1. Create a virtual network.\n2. Create an active-active mode zone-redundant VPN gateway.\n3. View the gateway public IP address.\n4. Upgrade a VPN gateway SKU.\n5. Reset a VPN gateway.\nNote\nThe steps in this article use the gateway SKU **VpnGw2AZ**, which is a SKU that supports Azure availability zones. Effective May 2025, all regions will accept an **AZ** SKU, regardless of whether availability zones are supported in that region. For more information about gateway SKUs, see [About gateway SKUs](https://learn.microsoft.com/azure/vpn-gateway/about-gateway-skus).\n## Prerequisites\nYou need an Azure account with an active subscription. If you don't have one, [create one for free](https://azure.microsoft.com/pricing/purchase-options/azure-account?cid=msft_learn).",
+              "contentUrl": "https://learn.microsoft.com/azure/vpn-gateway/tutorial-create-gateway-portal"
+            },
+            {
+              "title": "Tutorial: Create a site-to-site VPN connection in the Azure portal",
+              "content": "# Tutorial: Create a site-to-site VPN connection in the Azure portal\n## Create a gateway subnet\nThe virtual network gateway requires a specific subnet named **GatewaySubnet**. The gateway subnet is part of the IP address range for your virtual network and contains the IP addresses that the virtual network gateway resources and services use.\nWhen you create the gateway subnet, you specify the number of IP addresses that the subnet contains. The number of IP addresses needed depends on the VPN gateway configuration that you want to create. Some configurations require more IP addresses than others. It's best to specify /27 or larger (/26, /25, etc.) for your gateway subnet.\n1. On the page for your virtual network, on the left pane, select **Subnets** to open the **Subnets** page.\n2. At the top of the page, select **+ Subnet** to open the **Add subnet** pane.\n3. For **Subnet purpose**, select **Virtual Network Gateway** from the dropdown.\n4. The name is automatically entered as **GatewaySubnet**. Adjust starting IP address and size if necessary. For example, **10.1.255.0/27**.\n5. Don't adjust the other values on the page. Click **Add** to add the subnet.\nFor more information about adding a subnet to your virtual network, see [Add, change, or delete a virtual network subnet](https://learn.microsoft.com/azure/virtual-network/virtual-network-manage-subnet). For steps to add an address range to your virtual network, see [Add or remove an address range](https://learn.microsoft.com/azure/virtual-network/manage-virtual-network).\nImportant\nNSGs on the gateway subnet aren't supported. Associating a network security group to this subnet might cause your virtual network gateway (VPN and ExpressRoute gateways) to stop functioning as expected. For more information about network security groups, see [What is a network security group?](https://learn.microsoft.com/en-us/azure/virtual-network/network-security-groups-overview)",
+              "contentUrl": "https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal#create-a-gateway-subnet"
+            },
+            {
+              "title": "Tutorial: Create a site-to-site VPN connection in the Azure portal",
+              "content": "# Tutorial: Create a site-to-site VPN connection in the Azure portal\nIn this tutorial, you use the Azure portal to create a site-to-site (S2S) VPN gateway connection between your on-premises network and a virtual network. You can also create this configuration by using [Azure PowerShell](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-create-site-to-site-rm-powershell) or the [Azure CLI](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-howto-site-to-site-resource-manager-cli). This configuration uses a specified pre-shared key for the connection between the Azure VPN gateway and your on-premises VPN device. You can also configure a site-to-site connection using [certificate authentication](https://learn.microsoft.com/azure/vpn-gateway/site-to-site-certificate-authentication-gateway).\n[![Diagram that shows site-to-site VPN gateway cross-premises connections.](https://learn.microsoft.com/azure/vpn-gateway/media/tutorial-site-to-site-portal/diagram.png)](media/tutorial-site-to-site-portal/diagram.png#lightbox)\n## What you accomplish\nIn this tutorial, you:\n1. Create a virtual network.\n2. Create a VPN gateway.\n3. Create a local network gateway.\n4. Create a VPN connection.\n5. Verify the connection.\n6. Connect to a virtual machine.\n**Estimated time to complete**: 90-120 minutes (including gateway deployment time)",
+              "contentUrl": "https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal"
+            },
+            {
+              "title": "Tutorial: Create a site-to-site VPN connection in the Azure portal",
+              "content": "# Tutorial: Create a site-to-site VPN connection in the Azure portal\n## Create a VPN gateway\nNSGs on the gateway subnet aren't supported. Associating a network security group to this subnet might cause your virtual network gateway (VPN and ExpressRoute gateways) to stop functioning as expected. For more information about network security groups, see [What is a network security group?](https://learn.microsoft.com/en-us/azure/virtual-network/network-security-groups-overview)\n### View public IP address\nTo view the IP address associated with each virtual network gateway VM instance, go to your virtual network gateway in the portal.\n1. Go to your virtual network gateway **Properties** page (not the Overview page). You might need to expand **Settings** to see the **Properties** page in the list.\n2. If your gateway in active-passive mode, you'll only see one IP address. If your gateway is in active-active mode, you'll see two public IP addresses listed, one for each gateway VM instance. When you create a site-to-site connection, you must specify each IP address when configuring your VPN device because both gateway VMs are active.\n3. To view more information about the IP address object, click the associated IP address link.",
+              "contentUrl": "https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal#create-a-vpn-gateway"
+            },
+            {
+              "title": "Tutorial: Create a site-to-site VPN connection in the Azure portal",
+              "content": "# Tutorial: Create a site-to-site VPN connection in the Azure portal\n## Create a virtual network\n4.4. **Region**: Select the location for your virtual network. The location determines where the resources that you deploy to this virtual network will reside.\n5. Select **Next** or **Security** to go to the **Security** tab. For this exercise, leave the default values for all the services on this page.\n6. Select **IP Addresses** to go to the **IP Addresses** tab. On the **IP Addresses** tab, configure the settings.\n6.1. **IPv4 address space**: By default, an address space is automatically created. You can select the address space and adjust it to reflect your own values. You can also add a different address space and remove the default that was automatically created. For example, you can specify the starting address as **10.1.0.0** and specify the address space size as **/16**. Then select **Add** to add that address space.\n6.2. **+ Add subnet**: If you use the default address space, a default subnet is created automatically. If you change the address space, add a new subnet within that address space. Select **+ Add subnet** to open the **Add subnet** window. Configure the following settings, and then select **Add** at the bottom of the page to add the values.\n6.2.1. **Subnet name**: You can use the default, or specify the name. Example: **FrontEnd**.\n6.2.2. **Subnet address range**: The address range for this subnet. Examples are **10.1.0.0** and **/24**.\n7. Review the **IP addresses** page and remove any address spaces or subnets that you don't need.\n8. Select **Review + create** to validate the virtual network settings.\n9. After the settings are validated, select **Create** to create the virtual network.\nAfter you create your virtual network, you can optionally configure Azure DDoS Protection. Azure DDoS Protection is simple to enable on any new or existing virtual network, and it requires no application or resource changes. For more information about Azure DDoS Protection, see [What is Azure DDoS Protection?](https://learn.microsoft.com/azure/ddos-protection/ddos-protection-overview)",
+              "contentUrl": "https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal#create-a-virtual-network"
+            },
+            {
+              "title": "Tutorial: Create a site-to-site VPN connection in the Azure portal",
+              "content": "# Tutorial: Create a site-to-site VPN connection in the Azure portal\n## Create a virtual network\nIn this section, you create a virtual network by using the following values:\n1. **Resource group**: TestRG1\n2. **Name**: VNet1\n3. **Region**: (US) East US\n4. **IPv4 address space**: 10.1.0.0/16\n5. **Subnet name**: FrontEnd\n6. **Subnet address space**: 10.1.0.0/24\nNote\nWhen you use a virtual network as part of a cross-premises architecture, be sure to coordinate with your on-premises network administrator to carve out an IP address range that you can use specifically for this virtual network. If a duplicate address range exists on both sides of the VPN connection, traffic will route in an unexpected way. Additionally, if you want to connect this virtual network to another virtual network, the address space can't overlap with the other virtual network. Plan your network configuration accordingly.\n1. Sign in to the Azure portal.\n2. In **Search resources, service, and docs (G+/)** at the top of the portal page, enter **virtual network**. Select **Virtual network** from the **Marketplace** search results to open the **Virtual network** page.\n3. On the **Virtual network** page, select **Create** to open the **Create virtual network** page.\n4. On the **Basics** tab, configure the virtual network settings for **Project details** and **Instance details**. You see a green check mark when the values you enter are validated. You can adjust the values shown in the example according to the settings that you require.\n [![Screenshot that shows the Basics tab.](https://learn.microsoft.com/azure/includes/media/vpn-gateway-basic-vnet-rm-portal-include/basics.png)](../includes/media/vpn-gateway-basic-vnet-rm-portal-include/basics.png#lightbox)\n4.1. **Subscription**: Verify that the subscription listed is the correct one. You can change subscriptions by using the dropdown box.\n4.2. **Resource group**: Select an existing resource group or select **Create new** to create a new one. For more information about resource groups, see [Azure Resource Manager overview](https://learn.microsoft.com/azure/azure-resource-manager/management/overview#resource-groups).\n4.3. **Name**: Enter the name for your virtual network.",
+              "contentUrl": "https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal#create-a-virtual-network"
+            },
+            {
+              "title": "Tutorial: Create a site-to-site VPN connection in the Azure portal",
+              "content": "# Tutorial: Create a site-to-site VPN connection in the Azure portal\n## Create a VPN gateway\nIn this step, you create a virtual network gateway (VPN gateway) for your virtual network. Creating a gateway can often take 45 minutes or more, depending on the selected gateway SKU.\n### Create a VPN gateway\nCreate a virtual network gateway (VPN gateway) by using the following values:\n1. **Name**: VNet1GW\n2. **Gateway type**: VPN\n3. **SKU**: VpnGw2AZ\n4. **Generation**: Generation 2\n5. **Virtual network**: VNet1\n6. **Gateway subnet address range**: 10.1.255.0/27\n7. **Public IP address**: Create new\n8. **Public IP address name:** VNet1GWpip1\n9. **Public IP address SKU:** Standard\n10. **Assignment:** Static\n11. **Second Public IP address name:** VNet1GWpip2\n12. **Enable active-active mode**: Enabled\n13. **Configure BGP**: Disabled\n14. In **Search resources, services, and docs (G+/)**, enter **virtual network gateway**. Locate **Virtual network gateway** in the **Marketplace** search results and select it to open the **Create virtual network gateway** page.\n15. On the **Basics** tab, fill in the values for **Project details** and **Instance details**.\n [![Screenshot that shows the Instance fields.](https://learn.microsoft.com/azure/includes/media/vpn-gateway-add-azgw-portal/instance-details.png)](../includes/media/vpn-gateway-add-azgw-portal/instance-details.png#lightbox)\n15.1. **Subscription**: Select the subscription you want to use from the dropdown list.\n15.2. **Resource group**: This value is autofilled when you select your virtual network on this page.\n15.3. **Name**: This is the name of the gateway object you're creating. This is different than the gateway subnet to which gateway resources will be deployed.\n15.4. **Region**: Select the region in which you want to create this resource. The region for the gateway must be the same as the virtual network.\n15.5. **Gateway type**: Select **VPN**. VPN gateways use the virtual network gateway type **VPN**.\n15.6. **SKU**: From the dropdown list, select a [gateway SKU](https://learn.microsoft.com/azure/vpn-gateway/about-gateway-skus) that supports the features you want to use.",
+              "contentUrl": "https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal#create-a-vpn-gateway"
+            },
+            {
+              "title": "Tutorial: Create and manage a VPN gateway using the Azure portal",
+              "content": "# Tutorial: Create and manage a VPN gateway using the Azure portal\n## Create a VPN gateway\n | Setting | Value |\n | --- | --- |\n | Public IP address name | Example: VNet1GWpip1 |\n | Availability zone | This setting is available for AZ SKUs in regions that support [availability zones](https://learn.microsoft.com/azure/vpn-gateway/about-zone-redundant-vnet-gateways). Example: **Zone-redundant**. |\n | Enable active-active mode | - Select **Enabled** to take advantage of the benefits of an [active-active gateway](https://learn.microsoft.com/azure/vpn-gateway/about-active-active-gateways). An active-active gateway requires an additional public IP address.- If you plan to use this gateway for site-to-site connections, verify the [active-active design](https://learn.microsoft.com/azure/vpn-gateway/about-active-active-gateways#active-active-mode-design) that you want to use.- Connections with your on-premises VPN device must be configured specifically to take advantage of active-active mode.- Some VPN devices don't support active-active mode. If you're not sure, check with your VPN device vendor. If you're using a VPN device that doesn't support active-active mode, you can select **Disabled** for this setting. |\n | Second public IP address name | Only available for active-active mode gateways. Example: VNet1GWpip2 |\n | Availability zone | Example: **Zone-redundant**. |\n | Configure BGP | Select **Disabled**, unless your configuration specifically requires this setting. If you do require this setting, the default ASN is 65515. |\n | Enable Key Vault Access | Select **Disabled** unless you have a specific requirement to enable this setting. |\n4. Select **Review + create** to run validation.\n5. After validation passes, select **Create** to deploy the VPN gateway.\nYou can see the deployment status on the **Overview** page for your gateway. Once the gateway is created, you can view the IP address assigned to it by looking at the virtual network in the portal. The gateway appears as a connected device.\n## View public IP address\nTo view public IP addresses associated to your virtual network gateway, navigate to your gateway in the portal.\n1. On the **Virtual network gateway** portal page, under **Settings**, open the **Properties** page.\n2. To view more information about the IP address object, click the associated IP address link.",
+              "contentUrl": "https://learn.microsoft.com/azure/vpn-gateway/tutorial-create-gateway-portal#create-a-vpn-gateway"
+            },
+            {
+              "title": "Tutorial: Create a site-to-site VPN connection in the Azure portal",
+              "content": "# Tutorial: Create a site-to-site VPN connection in the Azure portal\n## Prerequisites\n1. You need an Azure account with an active subscription. If you don't have one, you can [create one for free](https://azure.microsoft.com/pricing/purchase-options/azure-account?cid=msft_learn).\n2. If you're unfamiliar with the IP address ranges located in your on-premises network configuration, you need to coordinate with someone who can provide those details for you. When you create this configuration, you must specify the IP address range prefixes that Azure routes to your on-premises location. None of the subnets of your on-premises network can overlap with the virtual network subnets that you want to connect to.\n3. VPN devices:\n3.1. Make sure you have a compatible VPN device and someone who can configure it. For more information about compatible VPN devices and device configuration, see [About VPN devices](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-about-vpn-devices).\n3.2. Verify that you have an externally facing public IPv4 address for your VPN device.\n3.3. Verify that your VPN device supports active-active mode gateways. This article creates an active-active mode VPN gateway, which is recommended for highly available connectivity. Active-active mode specifies that both gateway VM instances are active and uses two public IP addresses, one for each gateway VM instance. You configure your VPN device to connect to the IP address for each gateway VM instance. If your VPN device doesn't support this mode, don't enable this mode for your gateway. For more information, see [Design highly available connectivity for cross-premises and VNet-to-VNet connections](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-highlyavailable) and [About active-active mode VPN gateways](https://learn.microsoft.com/azure/vpn-gateway/about-active-active-gateways).",
+              "contentUrl": "https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal#prerequisites"
+            },
+            {
+              "title": "Tutorial: Create a site-to-site VPN connection in the Azure portal",
+              "content": "# Tutorial: Create a site-to-site VPN connection in the Azure portal\n## Configure your VPN device\n5. For cryptographic requirements, see [About cryptographic requirements and Azure VPN gateways](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-about-compliance-crypto).\n6. For information about IPsec/IKE parameters, see [About VPN devices and IPsec/IKE parameters for site-to-site VPN gateway connections](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-about-vpn-devices#ipsec). This link shows information about IKE version, Diffie-Hellman Group, authentication method, encryption and hashing algorithms, SA lifetime, PFS, and DPD, in addition to other parameter information that you need to complete your configuration.\n7. For IPsec/IKE policy configuration steps, see [Configure IPsec/IKE policy for site-to-site VPN or VNet-to-VNet connections](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-ipsecikepolicy-rm-powershell).\n8. To connect multiple policy-based VPN devices, see [Connect Azure VPN gateways to multiple on-premises policy-based VPN devices using PowerShell](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-connect-multiple-policybased-rm-ps).",
+              "contentUrl": "https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal#configure-your-vpn-device"
+            }
+          ]
+        }
+      },
+      "createdAt": "2026-11-05T01:00:04.006Z",
+      "updatedAt": "2026-11-05T01:00:11.823Z"
+    }
+  ],
+  "connection": {
+    "id": "b8886e38-4c6d-4053-86ba-09197d38c9cd",
+    "name": "Microsoft Learn（公开测试）",
+    "endpoint": "https://learn.microsoft.com/api/mcp"
+  },
+  "bindings": [
+    {
+      "id": "e0449587-d7ee-4500-9cdc-ffdbd55fb4e6",
+      "remoteName": "microsoft_docs_search",
+      "effect": "read"
+    }
+  ]
+}

@@ -189,7 +189,7 @@ def should_run_planning_phase(
     return is_fact_needed, False
 
 
-def build_deliverable_execution_instruction(skill_res: Any) -> str:
+def build_deliverable_execution_instruction(skill_res: Any, prompt: str = "") -> str:
     """Builds appropriate execution instruction based on skill and deliverables."""
     delivs = getattr(skill_res, "deliverables", None) or []
     named_targets = [d for d in delivs if not d.startswith(".") and d.lower() != "dockerfile"]
@@ -282,6 +282,18 @@ def build_deliverable_execution_instruction(skill_res: Any) -> str:
         getattr(skill_res, "deliverables", None) and any(ext.lower().endswith(".pptx") for ext in skill_res.deliverables)
     ):
         target_fn = next((d for d in skill_res.deliverables if d.lower().endswith(".pptx")), "presentation.pptx")
+        is_translate_task = bool(re.search(r'翻译|日文版|日语版|英文版|本地化|多语言', prompt or ""))
+        if is_translate_task:
+            return (
+                "【执行与高保真翻译落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
+                "⚠️ 核心硬性红线：严禁从空白重绘画布；严禁模型在对话或脚本中手写长字典！\n"
+                "落盘方式：必须调用 `bash` 工具执行沙箱内置的高性能 OOXML 翻译工具：\n"
+                f"【推荐一键全自动命令】：`python3 /opt/dsh/skills/pptx/scripts/ooxml_translate.py auto \"<原始输入文件>.pptx\" \"/workspace/{target_fn}\" --lang ja-JP --font 'Yu Gothic'`\n"
+                "（该命令会自动完成解包、并发批量翻译与版面自适应打包，一步闭环）；\n"
+                "若需分步执行：`unpack` -> `translate <in.json> <out.json> --lang ja-JP` -> `pack`。\n"
+                "4. 最终回复规范：面向最终业务用户提供极简精悍的商务交付汇报（篇幅严格控制在 250~350 字以内），包含 2~3 句核心概览、4~6 个代表性关键术语中日对照及简洁微调建议；严禁长篇大论罗列每页流水账，严禁向用户堆砌 CLI 参数、测试暗语与 `/workspace/` 内部路径！\n"
+                "⚠️ 第一步必须实际调用 bash 工具执行上述翻译命令完成物理文件落盘！严禁仅输出口头文字！"
+            )
         return (
             "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
             f"落盘方式：立即调用 `bash` 工具运行 Python 脚本生成目标演示文稿（使用 python-pptx 库排版并保存至 `/workspace/{target_fn}`）。\n"

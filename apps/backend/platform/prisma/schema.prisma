@@ -1945,6 +1945,8 @@ model UserCredential {
   orgId         String?            @map("org_id") @db.Uuid
   name          String             @db.VarChar(128)
   category      CredentialCategory
+  purpose       String?            @db.VarChar(32)
+  revision      Int                @default(1)
   description   String?            @db.VarChar(255)
   encryptedData String             @map("encrypted_data") @db.Text
   maskedPreview Json               @map("masked_preview")
@@ -1959,6 +1961,80 @@ model UserCredential {
   @@index([userId, category])
   @@index([orgId])
   @@map("user_credentials")
+}
+
+model McpConnection {
+  id               String   @id @default(uuid()) @db.Uuid
+  scope            String   @db.VarChar(24)
+  ownerUserId      String   @map("owner_user_id") @db.Uuid
+  orgId            String?  @map("org_id") @db.Uuid
+  name             String   @db.VarChar(128)
+  status           String   @default("active") @db.VarChar(24)
+  activeRevisionId String?  @map("active_revision_id") @db.Uuid
+  capabilitySummary Json?   @map("capability_summary")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  @@index([ownerUserId, scope])
+  @@index([orgId, scope])
+  @@map("mcp_connections")
+}
+
+model McpConnectionRevision {
+  id           String   @id @default(uuid()) @db.Uuid
+  connectionId String   @map("connection_id") @db.Uuid
+  revision     Int
+  config       Json
+  digest       String   @db.VarChar(64)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  @@unique([connectionId, revision])
+  @@map("mcp_connection_revisions")
+}
+
+model UserMcpAuthorization {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  connectionId String   @map("connection_id") @db.Uuid
+  revisionId   String   @map("revision_id") @db.Uuid
+  credentialId String   @map("credential_id") @db.Uuid
+  status       String   @default("active") @db.VarChar(24)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  @@unique([userId, connectionId])
+  @@map("user_mcp_authorizations")
+}
+
+model McpToolBinding {
+  id           String   @id @default(uuid()) @db.Uuid
+  connectionId String   @map("connection_id") @db.Uuid
+  revisionId   String   @map("revision_id") @db.Uuid
+  remoteName   String   @map("remote_name") @db.VarChar(255)
+  description  String   @db.Text
+  inputSchema  Json     @map("input_schema")
+  outputSchema Json?    @map("output_schema")
+  schemaDigest String   @map("schema_digest") @db.VarChar(64)
+  effect       String   @default("unknown") @db.VarChar(24)
+  allowedRoles Json     @default("[]") @map("allowed_roles")
+  status       String   @default("published") @db.VarChar(24)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  @@unique([revisionId, remoteName])
+  @@index([connectionId, status])
+  @@map("mcp_tool_bindings")
+}
+
+model McpInvocation {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  connectionId String   @map("connection_id") @db.Uuid
+  bindingId    String   @map("binding_id") @db.Uuid
+  requestKey   String   @map("request_key") @db.VarChar(128)
+  inputHash    String   @map("input_hash") @db.VarChar(64)
+  status       String   @default("dispatched") @db.VarChar(32)
+  result       Json?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  @@unique([userId, requestKey])
+  @@index([connectionId, createdAt])
+  @@map("mcp_invocations")
 }
 
 model UserSkillCredentialBinding {

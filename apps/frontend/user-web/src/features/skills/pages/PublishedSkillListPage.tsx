@@ -22,6 +22,7 @@ import { OrganizationWorkflowList } from '@/features/skills/components/Organizat
 import { ContractReviewRulesModal } from '@/features/skills/components/ContractReviewRulesModal';
 import { ReminderConfigModal } from '@/features/skills/components/ReminderConfigModal';
 import type { PublishedSkillCatalogItem } from '@/api/skill';
+import { McpSkillList } from '@/features/skills/components/McpSkillList';
 import styles from '../components/EmployeeManagement.module.css';
 
 function PublishedSkillsContent() {
@@ -197,7 +198,7 @@ export function PublishedSkillListPage() {
   const { t } = useTranslation('skill');
   const [searchParams, setSearchParams] = useSearchParams();
   const currentTab = searchParams.get('tab');
-  const activeTab = currentTab === 'org-workflows' || currentTab === 'my-workflows'
+  const activeTab = currentTab === 'org-workflows' || currentTab === 'my-workflows' || currentTab === 'mcp-skills'
     ? currentTab
     : 'published';
 
@@ -242,6 +243,7 @@ export function PublishedSkillListPage() {
           setSearchParams(next);
         }}
         items={[
+          { key: 'mcp-skills', label: '外部 MCP Skills', children: <McpSkillList /> },
           {
             key: 'published',
             label: (

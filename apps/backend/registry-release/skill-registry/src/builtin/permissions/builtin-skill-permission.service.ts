@@ -4,6 +4,7 @@ import {
   SkillRegistryPrismaPort,
 } from '../../registry/skill-registry.ports';
 import { BuiltinSkillRegistryService } from '../registry/builtin-skill-registry.service';
+import { authorizeMcpBinding } from './mcp-binding-permission';
 
 export interface AuthorizeInput {
   userId?: string;
@@ -36,6 +37,10 @@ export class BuiltinSkillPermissionService {
 
     if (!skill.isEnabled) {
       return { authorized: false, reason: 'BUILTIN_SKILL_DISABLED' };
+    }
+    if (input.capabilityKey.startsWith('platform.mcp.')) {
+      const scoped = await authorizeMcpBinding(this.prisma, input.capabilityKey, input.userId, input.orgId);
+      if (!scoped.authorized) return scoped;
     }
 
     // Action check for 'manage': requires admin role or explicit manage permission

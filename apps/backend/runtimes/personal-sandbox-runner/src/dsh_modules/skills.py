@@ -224,6 +224,8 @@ def get_available_skills() -> list:
             meta["aliases"] = list(dict.fromkeys(meta["aliases"]))
             skills.append(meta)
             seen_ids.add(item.name)
+    from .mcp_skill_catalog import available_mcp_skills
+    skills.extend(s for s in available_mcp_skills() if s["id"] not in seen_ids)
     return skills
 
 
@@ -252,6 +254,10 @@ def cmd_skills(args):
 
 def read_skill(skill_name: str, prompt: Optional[str] = None) -> str:
     """Reads skill documentation, style guide, and templates from CUSTOM_SKILL_DIR or SKILL_DIR with hierarchical progressive loading."""
+    from .mcp_skill_catalog import read_mcp_skill
+    remote = read_mcp_skill(skill_name)
+    if remote is not None:
+        return remote
     clean_name = skill_name.strip().lower()
     target_dir = None
 

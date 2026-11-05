@@ -539,6 +539,53 @@ tags: ["markdown", "Based", "thorough", "1996", "时空可组合性", "分布式
         kws2 = _extract_knowledge_query_keywords(prompt2)
         self.assertTrue(any("启明" in k for k in kws2))
 
+    def test_attachment_inspection_not_polluted_by_deliverable_tags_or_verbs(self):
+        """测试用户上传附件并指令分析/解决什么时，绝对不被既往成果库动词或无Tag原始资产误匹配"""
+        import dsh_modules.config as cfg
+        ws_tmp = tempfile.mkdtemp()
+        orig_ws = getattr(cfg, "WORKSPACE_DIR", "/workspace")
+        cfg.WORKSPACE_DIR = ws_tmp
+
+        try:
+            # 模拟现有成果库
+            deliv_sec = Path(ws_tmp) / "deliverables" / "20261104_安全方案"
+            deliv_sec.mkdir(parents=True)
+            (deliv_sec / "启明星辰四大安全解决方案及标杆案例归纳.md").write_text(
+                "---\ntitle: \"启明星辰四大安全解决方案及标杆案例归纳\"\ntags: [\"启明星辰\", \"网络安全\", \"安全运营\"]\n---\n# 启明星辰报告\n针对安全问题解决...",
+                encoding="utf-8"
+            )
+
+            deliv_ali = Path(ws_tmp) / "deliverables" / "20261104_阿里方案"
+            deliv_ali.mkdir(parents=True)
+            (deliv_ali / "阿里云AI应用开发新范式.md").write_text(
+                "---\ntitle: \"阿里云AI应用开发新范式\"\ntags: [\"阿里云\", \"AI Agent\", \"大模型开发\"]\n---\n# 阿里云报告\n解决应用架构...",
+                encoding="utf-8"
+            )
+            # 原始 PDF 与其 .txt 缓存
+            (deliv_ali / "阿里-AI开发-新范式.pdf").write_bytes(b"%PDF fake content")
+            (deliv_ali / "阿里-AI开发-新范式.pdf.txt").write_text("详细解决和分析了具体问题，需要进行...", encoding="utf-8")
+
+            # 用户本轮上传新文件并提问提炼分析与解决
+            query = (
+                "【当前轮次用户上传附件】: 三景様向けAIご紹介資料(2回目）202609.pptx（这是用户本轮刚上传的新文件，为本次指令的主要处理对象）\n"
+                "用户指令：查看附件内容，进行分析和提炼内容，需要包含具体提了什么，解决了什么"
+            )
+
+            # 1. auto_match_only 必须返回空，严禁命中任何成果库文件
+            res = scan_personal_knowledge(prompt=query, auto_match_only=True)
+            self.assertEqual(res, "")
+            scanned = get_last_scanned_knowledge_files()
+            self.assertEqual(len(scanned), 0)
+
+            # 2. 只有当用户显式提问某实体时，才精准匹配对应的 .md 成果
+            res_target = scan_personal_knowledge(prompt="查看启明星辰的安全运营方案", auto_match_only=True)
+            self.assertTrue(bool(res_target))
+            self.assertIn("启明星辰四大安全解决方案及标杆案例归纳.md", res_target)
+            self.assertNotIn("阿里", res_target)
+        finally:
+            cfg.WORKSPACE_DIR = orig_ws
+            shutil.rmtree(ws_tmp, ignore_errors=True)
+
 
 if __name__ == "__main__":
     unittest.main()

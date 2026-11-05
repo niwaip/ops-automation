@@ -255,6 +255,7 @@ export const NAV_STRUCTURE: (NavItemConfig | NavGroupConfig)[] = [
     icon: <SettingOutlined />,
     requiresAdmin: true,
     children: [
+      { key: '/admin/mcp', labelKey: 'mcpConnections', defaultLabel: '外部工具连接', icon: <CloudServerOutlined />, requiresAdmin: true },
       {
         key: '/admin/models',
         labelKey: 'models',

@@ -127,7 +127,7 @@ export class UserSkillCredentialBindingService {
     credentialId: string
   ): Promise<{ success: boolean; bindingId: string }> {
     // Verify credential belongs to this user
-    await this.vaultService.getUserCredential(userId, credentialId);
+    await this.vaultService.getDecryptedPayload(userId, credentialId);
 
     const binding = await this.prisma.userSkillCredentialBinding.upsert({
       where: {

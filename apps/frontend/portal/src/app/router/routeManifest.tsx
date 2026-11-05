@@ -35,6 +35,7 @@ const RecorderDebugDetailPage = lazy(() => import('@/features/recorder/pages/Rec
 const DepartmentAdminPage = lazy(() => import('@/features/admin/departments/pages/DepartmentAdminPage'));
 const UserAdminPage = lazy(() => import('@/features/admin/users/pages/UserAdminPage'));
 const StorageAdminPage = lazy(() => import('@/features/admin/storage/pages/StorageAdminPage'));
+const McpAdminPage = lazy(() => import('@/features/admin/mcp/pages/McpAdminPage'));
 const ObservabilityAdminPage = lazy(() => import('@/features/admin/observability/pages/ObservabilityAdminPage'));
 
 
@@ -112,6 +113,7 @@ const renderUserWebRedirect = (path: string) => {
 };
 
 export const portalRouteEntries: PortalRouteEntry[] = [
+  { path: '/admin/mcp', element: <McpAdminPage />, requiresAdmin: true, activeMenuKey: '/admin/mcp' },
   { path: '/login', element: <LoginPage /> },
   { path: '/', redirectTo: '/dashboard', isIndex: true },
   {

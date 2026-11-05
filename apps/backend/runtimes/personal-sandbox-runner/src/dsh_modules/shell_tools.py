@@ -2,6 +2,7 @@
 import os
 import re
 import shutil
+import signal
 import subprocess
 import threading
 import time
@@ -19,7 +20,16 @@ def execute_shell(cmd, workspace, deadline=None):
     if shutil.which("python") is None and shutil.which("python3") is not None:
         cmd = re.sub(r'(^|[;&|]\s*)python\b', r'\1python3', cmd)
     bash_max = float(os.getenv("DSH_BASH_TIMEOUT", "60.0"))
+    # 自适应超时：针对重型文档本地化/翻译/多媒体生成，或显式带 timeout 声明的命令，动态放宽超时限制
+    is_heavy_task = bool(re.search(r'ooxml_translate|render_docx|render_pdf|render_spreadsheet', cmd))
+    m_timeout = re.search(r'\btimeout\s+(\d+)\b', cmd)
+    if is_heavy_task:
+        bash_max = max(bash_max, 240.0)
+    if m_timeout:
+        cmd_timeout = float(m_timeout.group(1))
+        bash_max = max(bash_max, cmd_timeout + 5.0)
     bash_to = max(0.5, min(bash_max, remaining)) if remaining is not None else bash_max
+    proc = None
     try:
         proc = subprocess.Popen(
             ["/bin/bash", "-o", "pipefail", "-c", cmd],
@@ -29,6 +39,7 @@ def execute_shell(cmd, workspace, deadline=None):
             text=True,
             bufsize=1,
             universal_newlines=True,
+            preexec_fn=os.setsid,
         )
 
         stdout_lines = []
@@ -64,9 +75,12 @@ def execute_shell(cmd, workspace, deadline=None):
         while proc.poll() is None:
             if time.monotonic() - start_t > bash_to:
                 try:
-                    proc.kill()
+                    os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
                 except Exception:
-                    pass
+                    try:
+                        proc.kill()
+                    except Exception:
+                        pass
                 t_out.join(timeout=0.5)
                 t_err.join(timeout=0.5)
                 raise subprocess.TimeoutExpired(cmd, bash_to)
@@ -125,6 +139,15 @@ def execute_shell(cmd, workspace, deadline=None):
     except Exception as e:
         failed = True
         res = f"命令执行异常: {e}"
+    finally:
+        if proc is not None and proc.poll() is None:
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
 
     result = (ToolResult.error('shell_command_failed', res, provenance={'tool': 'bash'},
                               error_details={'exit_code': exit_code})

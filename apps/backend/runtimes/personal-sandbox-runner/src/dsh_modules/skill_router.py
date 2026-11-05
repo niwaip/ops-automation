@@ -35,6 +35,8 @@ class SkillRoutingResult:
     deliverables: List[str] = field(default_factory=list)
     requires_execution: bool = False
     default_rounds: int = 0
+    disclosure_steps: int = 0
+    mcp_read_only: bool = False
     admission: Dict[str, Any] = field(default_factory=dict)
     source_formats: List[str] = field(default_factory=list)
 
@@ -425,6 +427,9 @@ class SemanticSkillMatcher:
             triggers = [t.lower() for t in s.get('triggers', []) if len(t) >= 2]
             aliases = [a.lower() for a in s.get('aliases', []) if len(a) >= 2]
             desc_text = s.get('description', '')
+            if s.get('source') == 'mcp':
+                from .mcp_affinity import routing_description
+                desc_text = routing_description(s)
             pos_desc = desc_text.split('不要用于', 1)[0].split('not for', 1)[0]
             desc_features = [f for f in extract_query_features(pos_desc) if f not in GENERIC_VERBS and f not in STOP_WORDS]
             neg_features = []
@@ -490,6 +495,12 @@ class SemanticSkillMatcher:
             if desc_score > 0:
                 score += desc_score
                 reasons.append(f'desc_terms({desc_score:.1f})')
+            if data['meta'].get('source') == 'mcp':
+                from .mcp_affinity import capability_phrase_score
+                phrase_score, phrase = capability_phrase_score(query, data['description'])
+                if phrase_score:
+                    score += phrase_score
+                    reasons.append(f'mcp_capability:{phrase}(+{phrase_score:.1f})')
 
             # 4. Anti-overtriggering / Boundary Check
             if data['neg_features']:
@@ -570,6 +581,10 @@ class SkillRouter:
         matching_skill = next((s for s in all_skills if s.get("id") == result.skill_id or s.get("name") == result.skill_id), None)
 
         if matching_skill:
+            result.disclosure_steps = min(3, max(0, int(matching_skill.get('disclosure_steps', 0))))
+            result.mcp_read_only = matching_skill.get('source') == 'mcp' and matching_skill.get('read_only') is True
+            if matching_skill.get('source') == 'mcp' and matching_skill.get('read_only') and not result.is_generate_intent:
+                result.is_inspect_intent = True
             s_mode = (matching_skill.get("mode") or "").lower()
             s_category = (matching_skill.get("category") or "").lower()
             s_tags = set(str(t).lower() for t in (matching_skill.get("tags") or []))
@@ -634,6 +649,10 @@ class SkillRouter:
                     result.deliverables = []
                     result.requires_execution = True
                     result.default_rounds = 1
+                elif s.get('source') == 'mcp' and result.disclosure_steps and not result.is_generate_intent:
+                    result.deliverables = []
+                    result.requires_execution = False
+                    result.default_rounds = min(12, max(6, skill_rounds))
                 elif is_text_only_request(lower_query):
                     result.deliverables = []
                     result.requires_execution = False

@@ -157,6 +157,7 @@ export class RuntimeCredentialResolverService {
                         isMissingOrPlaceholder(resolved[p])
                     )));
 
+              if (b.credential?.purpose === 'mcp_transport') throw new Error('Runtime credential resolution failed: MCP credentials require a connection binding');
               if ((isMissing || needsCompanionUsername) && b.credential?.encryptedData) {
                 try {
                   const payload = this.decryptPayload(b.credential.encryptedData);
@@ -364,7 +365,9 @@ export class RuntimeCredentialResolverService {
     credentialId: string
   ): Promise<Record<string, any>> {
     const cred = await (this.prisma as any).userCredential?.findFirst({
-      where: { id: credentialId, userId, status: 'active' },
+      where: { id: credentialId, userId, status: 'active',
+        AND: [{ OR: [{ purpose: null }, { purpose: { not: 'mcp_transport' } }] },
+          { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }] },
     });
 
     if (!cred || !cred.encryptedData) {
@@ -514,4 +517,3 @@ export function isMissingOrPlaceholder(val: unknown): boolean {
   }
   return false;
 }
-

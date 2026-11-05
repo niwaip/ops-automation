@@ -17,6 +17,7 @@ import { UserWorkflowReviewModule } from './modules/user-workflow-review/user-wo
 import { StorageConfigModule } from './modules/storage/storage-config.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { PersonalSkillModule } from './modules/personal-skill/personal-skill.module';
+import { McpClientModule } from './modules/mcp-client/mcp-client.module';
 
 import { APP_GUARD } from '@nestjs/core';
 import { AiAuthGuard } from './common/guards/ai-auth.guard';
@@ -44,6 +45,7 @@ import { HealthController } from './modules/health/health.controller';
     StorageConfigModule,
     MetricsModule,
     PersonalSkillModule,
+    McpClientModule,
   ],
   providers: [
     {

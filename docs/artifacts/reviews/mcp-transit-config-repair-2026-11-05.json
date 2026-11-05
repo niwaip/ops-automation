@@ -1,0 +1,60 @@
+{
+  "configuredAt": "2026-11-05T07:41:31.978Z",
+  "connectionId": "243083c4-31a0-44ff-b24f-2acf67029cc4",
+  "revisionUnchanged": true,
+  "credentialsUnchanged": true,
+  "before": [
+    {
+      "name": "maps_direction_bicycling",
+      "effect": "read"
+    },
+    {
+      "name": "maps_direction_driving",
+      "effect": "read"
+    },
+    {
+      "name": "maps_direction_transit_integrated",
+      "effect": "read"
+    }
+  ],
+  "published": [
+    {
+      "id": "185fe27a-0ac5-49ce-b33f-ffb752824e8b",
+      "name": "maps_direction_transit_integrated",
+      "effect": "read"
+    },
+    {
+      "id": "05cc4a20-58a6-400f-941d-8b7f349eb053",
+      "name": "maps_geo",
+      "effect": "read"
+    },
+    {
+      "id": "eee09119-e72d-402d-9947-54a51755e48e",
+      "name": "maps_text_search",
+      "effect": "read"
+    }
+  ],
+  "skill": {
+    "id": "mcp-243083c4-31a0-44ff-b24f-2acf67029cc4",
+    "name": "amap-maps-streamableHTTP",
+    "source": "mcp",
+    "type": "mcp",
+    "description": "骑行路径规划用于规划骑行通勤方案，规划时会考虑天桥、单行线、封路等情况。最大支持 500km 的骑行路线规划；驾车路径规划 API 可以根据用户起终点经纬度坐标规划以小客车、轿车通勤出行的方案，并且返回通勤方案的数据。；根据用户起终点经纬度坐标规划综合各类公共交通方式的通勤方案，并且返回通勤方案的数据，跨城场景下必须传起点城市与终点城市；将详细的结构化地址转换为经纬度坐标。支持对地标性名胜景区、建筑物名称解析为经纬度坐标；关键字搜索 API 根据用户输入的关键字进行 POI 搜索，并返回相关的信息",
+    "aliases": [
+      "amap-maps-streamableHTTP"
+    ],
+    "triggers": [
+      "amap-maps-streamableHTTP"
+    ],
+    "category": "integration",
+    "execution_mode": "mcp",
+    "read_only": true,
+    "disclosure_steps": 3,
+    "deliverables": [],
+    "requires_execution": false,
+    "default_rounds": 6,
+    "configured": true,
+    "scope": "personal",
+    "connectionId": "243083c4-31a0-44ff-b24f-2acf67029cc4"
+  }
+}

@@ -14,6 +14,8 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import axios from 'axios';
 import { ModelService } from './model.service';
+import { SandboxFallbackPolicy } from './sandbox-fallback.policy';
+import { guardedSandboxStream, SandboxStreamGuardError } from './sandbox-stream-guard';
 import { bindProxyCancellation } from './model-proxy-cancellation';
 import { sandboxCompletion } from './sandbox-completion-response';
 import { parseAndVerifySandboxToken } from '../../common/guards/ai-auth.guard';
@@ -34,6 +36,7 @@ const LARGE_TOOL_SURFACE_THRESHOLD = 8;
 @Controller('ai/proxy/v1')
 export class ModelProxyController {
   private readonly logger = new Logger(ModelProxyController.name);
+  private readonly fallbackPolicy = new SandboxFallbackPolicy();
 
   constructor(private readonly modelService: ModelService) {}
 
@@ -242,11 +245,8 @@ export class ModelProxyController {
           };
 
           // Internal tool-selection output is buffered and therefore safe to replay.
-          // Give it up to 2 same-model retries when buffered internally to withstand transient network drops.
-          const maxStreamRetries = Math.max(
-            this.resolveMaxRetries(),
-            bufferInternalStream ? 2 : 1
-          );
+          // Respect the configured retry bound for both visible and buffered streams.
+          const maxStreamRetries = this.resolveMaxRetries();
           let primaryStreamErr: any;
           for (let attempt = 0; attempt <= maxStreamRetries; attempt++) {
             cancellation.signal.throwIfAborted();
@@ -255,7 +255,7 @@ export class ModelProxyController {
               break;
             }
             try {
-              await client.chatCompletionStream(
+              await guardedSandboxStream(client,
                 {
                   messages: body.messages || [{ role: 'user', content: body.prompt || '' }],
                   temperature: body.temperature,
@@ -268,11 +268,13 @@ export class ModelProxyController {
                   signal: cancellation.signal,
                 },
                 (chunk: string, meta?: any) => writeChunk(chunk, resolvedModelName, meta),
-                resolvedReasoning
+                resolvedReasoning,
+                { buffered: bufferInternalStream, mcpSelection: body.request_context === 'mcp_tool_selection' }
               );
               streamSuccess = true;
               break;
             } catch (err: any) {
+              if (err instanceof SandboxStreamGuardError) throw err;
               if (cancellation.signal.aborted) throw err;
               primaryStreamErr = err;
               const errMsg = String(err?.message || err);
@@ -344,18 +346,21 @@ export class ModelProxyController {
                   visibleOutputChunksSent = 0;
                 }
                 this.logger.log(`Trying fallback model client stream [${fbKey}]...`);
-                await fbClient.chatCompletionStream(
+                await guardedSandboxStream(fbClient,
                   { messages: body.messages || [{ role: 'user', content: body.prompt || '' }],
                     temperature: body.temperature, max_tokens: body.max_tokens,
                     reasoning: resolvedReasoning, tools: body.tools, tool_choice: body.tool_choice,
                     signal: cancellation.signal, timeoutMs: this.resolveAttemptTimeoutMs(body),
                     streamIdleTimeoutMs: this.resolveStreamIdleTimeoutMs(body) },
-                  (chunk: string) => writeChunk(chunk, fbKey),
-                  resolvedReasoning
+                  (chunk: string, meta?: any) => writeChunk(chunk, fbKey, meta),
+                  resolvedReasoning,
+                  { buffered: bufferInternalStream, mcpSelection: body.request_context === 'mcp_tool_selection' }
                 );
                 streamSuccess = true;
                 break;
               } catch (fbErr: any) {
+                if (fbErr instanceof SandboxStreamGuardError) throw fbErr;
+                this.fallbackPolicy.failed(fbClient, fbErr);
                 this.logger.warn(`Fallback client stream [${fbKey}] also failed: ${fbErr.message}`);
               }
             }
@@ -474,6 +479,7 @@ export class ModelProxyController {
                 fallbackSucceeded = true;
                 break;
               } catch (fbErr: any) {
+                this.fallbackPolicy.failed(fbClient, fbErr);
                 this.logger.warn(`Fallback client [${fbKey}] also failed: ${fbErr.message}`);
               }
             }
@@ -508,6 +514,15 @@ export class ModelProxyController {
           return;
         }
       } catch (err: any) {
+        if (err instanceof SandboxStreamGuardError) {
+          this.logger.warn(`Sandbox stream stopped: ${err.code} ${JSON.stringify(err.details)}`);
+          if (!res.writableEnded && !res.destroyed) {
+            res.write(`data: ${JSON.stringify({ error: { code: err.code, message: err.code, details: err.details } })}\n\n`);
+            res.write('data: [DONE]\n\n');
+            res.end();
+          }
+          return;
+        }
         if (cancellation.signal.aborted) {
           this.logger.log('Sandbox client disconnected; cancelled upstream model request.');
           return;
@@ -784,37 +799,7 @@ export class ModelProxyController {
     isVisionRequested: boolean,
     currentClient: any
   ): Array<{ id: string; client: any }> {
-    const candidates: Array<{ id: string; client: any }> = [];
-    const seen = new Set<string>();
-
-    if (isVisionRequested) {
-      const visionModel = this.modelService.getPreferredVisionModel();
-      if (visionModel) {
-        const vClient = this.modelService.getClient(visionModel.id);
-        if (vClient && vClient !== currentClient) {
-          candidates.push({ id: visionModel.name || visionModel.id, client: vClient });
-          seen.add(visionModel.id);
-        }
-      }
-    }
-
-    const activeModels = this.modelService.listActiveModelsForRouting();
-    for (const model of activeModels) {
-      if (seen.has(model.id)) continue;
-      if (isVisionRequested && !this.modelService.isVisionCapableModel(model)) continue;
-      const mClient = this.modelService.getClient(model.id);
-      if (mClient && mClient !== currentClient) {
-        candidates.push({ id: model.name || model.id, client: mClient });
-        seen.add(model.id);
-      }
-    }
-
-    const defaultClient = this.modelService.getClient('default');
-    if (!isVisionRequested && defaultClient && defaultClient !== currentClient && !candidates.some((c) => c.client === defaultClient)) {
-      candidates.push({ id: 'default', client: defaultClient });
-    }
-
-    return candidates;
+    return this.fallbackPolicy.select(this.modelService, isVisionRequested, currentClient);
   }
 
   /**
@@ -850,6 +835,12 @@ export class ModelProxyController {
    */
   hasDocumentOrArtifactGeneration(body?: Record<string, any>): boolean {
     if (!body) return false;
+    if (
+      body.request_context === 'document_translation' ||
+      body.request_context === 'artifact_generation'
+    ) {
+      return true;
+    }
     const tools = Array.isArray(body.tools) ? body.tools : [];
     const toolChoiceName = String(
       body.tool_choice?.function?.name ||

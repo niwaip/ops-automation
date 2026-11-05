@@ -1,0 +1,49 @@
+# Isolated opt-in MCP fixture. Start only through start-smart.sh with explicit test env values.
+services:
+  mcp-test-runner:
+    image: ${NODE_IMAGE:-node:22-bookworm}
+    working_dir: /workspace/apps/backend/runtimes/mcp-client-runner
+    command: node dist/main.js
+    environment:
+      MCP_RUNNER_SECRET: ${MCP_TEST_RUNNER_SECRET:?Test secret required}
+      MCP_PRIVATE_HOST_ALLOWLIST: mcp-test-fixture
+    volumes:
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
+    networks:
+      - ops-network
+  mcp-test-platform:
+    image: ${NODE_IMAGE:-node:22-bookworm}
+    working_dir: /workspace/apps/backend/platform
+    command: node dist/main.js
+    environment:
+      NODE_ENV: development
+      PLATFORM_PORT: 3016
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}
+      JWT_SECRET: ${MCP_TEST_JWT_SECRET:?Test secret required}
+      INTERNAL_API_SHARED_SECRET: ${MCP_TEST_INTERNAL_SECRET:?Test secret required}
+      USER_CREDENTIAL_ENCRYPTION_KEY: ${MCP_TEST_VAULT_KEY:?Test secret required}
+      MCP_RUNNER_URL: http://mcp-test-runner:3015
+      MCP_RUNNER_SECRET: ${MCP_TEST_RUNNER_SECRET:?Test secret required}
+      MCP_PRIVATE_HOST_ALLOWLIST: mcp-test-fixture
+      MCP_TEST_TOKENS: ${MCP_TEST_TOKENS:?Test-only tokens required}
+      MCP_TEST_RUN: ${MCP_TEST_RUN:?Test run ID required}
+    volumes:
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
+    networks:
+      - ops-network
+  mcp-test-fixture:
+    image: ${NODE_IMAGE:-node:22-bookworm}
+    working_dir: /workspace/apps/backend/runtimes/mcp-client-runner
+    command: node test/fixture.cjs
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}
+      MCP_TEST_RUN: ${MCP_TEST_RUN:?Test run ID required}
+      MCP_TEST_TOKENS: ${MCP_TEST_TOKENS:?Test-only tokens required}
+    volumes:
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
+    networks:
+      - ops-network
+networks:
+  ops-network:
+    external: true
+    name: ${NETWORK_NAME:-ops-network}
