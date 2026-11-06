@@ -1,0 +1,145 @@
+{
+  "testedAt": "2026-11-05T08:51:20.976Z",
+  "checks": {
+    "initialLoadHasNoToolSchemaRequests": true,
+    "indexResponsesHaveNoSchemas": true,
+    "overviewDidNotLoadSchemas": true,
+    "expansionOnlyReadsSelectedTool": true,
+    "selectedSchemaVerified": true,
+    "switchClearsPreviousToolDetails": true,
+    "manualCallDialogPreparesSelectedContract": true,
+    "noInvocationSent": true
+  },
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/connections",
+      "query": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/tools",
+      "query": "?mode=personal&view=index"
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/tools",
+      "query": "?mode=work&view=index"
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/invocations",
+      "query": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/skills",
+      "query": "?mode=personal"
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/skills",
+      "query": "?mode=work"
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/connections",
+      "query": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/tools",
+      "query": "?mode=personal&view=index"
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/tools",
+      "query": "?mode=work&view=index"
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/invocations",
+      "query": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/skills",
+      "query": "?mode=personal"
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/skills",
+      "query": "?mode=work"
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/skills/mcp-243083c4-31a0-44ff-b24f-2acf67029cc4",
+      "query": "?mode=personal"
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/skills/mcp-243083c4-31a0-44ff-b24f-2acf67029cc4",
+      "query": "?mode=personal"
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/skills/mcp-243083c4-31a0-44ff-b24f-2acf67029cc4/tools/maps_geo",
+      "query": "?mode=personal"
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/skills/mcp-243083c4-31a0-44ff-b24f-2acf67029cc4/tools/maps_geo",
+      "query": "?mode=personal"
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/skills/mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd",
+      "query": "?mode=personal"
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/skills/mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd",
+      "query": "?mode=personal"
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/skills/mcp-243083c4-31a0-44ff-b24f-2acf67029cc4/tools/maps_geo",
+      "query": "?mode=personal"
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/skills/mcp-243083c4-31a0-44ff-b24f-2acf67029cc4",
+      "query": "?mode=personal"
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-integrations/skills/mcp-243083c4-31a0-44ff-b24f-2acf67029cc4",
+      "query": "?mode=personal"
+    }
+  ],
+  "indexResponses": [
+    {
+      "path": "/api/mcp-integrations/tools",
+      "query": "?mode=work&view=index",
+      "noSchemas": true
+    },
+    {
+      "path": "/api/mcp-integrations/tools",
+      "query": "?mode=personal&view=index",
+      "noSchemas": true
+    },
+    {
+      "path": "/api/mcp-integrations/tools",
+      "query": "?mode=personal&view=index",
+      "noSchemas": true
+    },
+    {
+      "path": "/api/mcp-integrations/tools",
+      "query": "?mode=work&view=index",
+      "noSchemas": true
+    }
+  ],
+  "externalMcpCalled": false,
+  "modelCalled": false,
+  "passed": true
+}

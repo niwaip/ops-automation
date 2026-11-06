@@ -1,0 +1,65 @@
+{
+  "testedAt": "2026-11-05T09:22:34.622Z",
+  "generation": {
+    "status": 201,
+    "elapsedMs": 5091,
+    "body": {
+      "description": "提供高德地图地理编码、POI搜索及驾车、骑行、公交路径规划能力。",
+      "coverage": [
+        {
+          "capability": "地址地理编码",
+          "tools": [
+            "maps_geo"
+          ],
+          "keywords": []
+        },
+        {
+          "capability": "关键字POI搜索",
+          "tools": [
+            "maps_text_search"
+          ],
+          "keywords": [
+            "POI搜索"
+          ]
+        },
+        {
+          "capability": "驾车与骑行路线规划",
+          "tools": [
+            "maps_direction_driving",
+            "maps_direction_bicycling"
+          ],
+          "keywords": [
+            "路径规划"
+          ]
+        },
+        {
+          "capability": "公共交通综合规划",
+          "tools": [
+            "maps_direction_transit_integrated"
+          ],
+          "keywords": []
+        }
+      ],
+      "model": "qwen36-35b-a3b",
+      "attempts": 1,
+      "revisionId": "aca539be-715d-4ba4-8afc-9ce563c960c1",
+      "toolsetDigest": "a1e3788e97a41aaadf837e8fa85cf42e503c85bd9f9b465d10de523a52ab2de1",
+      "toolCount": 5
+    },
+    "draftText": "提供高德地图地理编码、POI搜索及驾车、骑行、公交路径规划能力。"
+  },
+  "ui": {
+    "passed": true,
+    "generatedDescription": "提供高德地图地理编码、POI搜索及驾车、骑行、公交路径规划能力。",
+    "editedDescription": "支持地址转经纬度、POI 地点搜索，以及驾车、骑行和公共交通路线规划。",
+    "saveStatus": 200,
+    "saved": {
+      "description": "支持地址转经纬度、POI 地点搜索，以及驾车、骑行和公共交通路线规划。",
+      "source": "curated"
+    },
+    "coverageVisible": true,
+    "persistedAfterReload": true,
+    "catalogPreview": "- mcp-243083c4-31a0-44ff-b24f-2acf67029cc4 (amap-maps-streamableHTTP): 支持地址转经纬度、POI 地点搜索，以及驾车、骑行和公共交通路线规划。"
+  },
+  "externalMcpInvoked": false
+}

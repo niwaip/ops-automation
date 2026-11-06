@@ -224,7 +224,8 @@ class TelemetryStats:
         """Records an auxiliary LLM call (intent, gate_review, filter_conformance) into the unified ledger."""
         self._record_call(purpose, usage, total_ms, model, span_id, call_id, auxiliary=True)
 
-    def _record_call(self, purpose, usage, total_ms, model, span_id, call_id, *, auxiliary=False):
+    def _record_call(self, purpose, usage, total_ms, model, span_id, call_id, *, auxiliary=False,
+                     status='completed', error_code=None):
         """One accounting owner for both layers; equal usage never implies equal calls."""
         if call_id:
             if call_id in self._accounted_call_ids:
@@ -253,9 +254,23 @@ class TelemetryStats:
             "total_ms": round(total_ms, 2),
             "usage": usage or {},
             "span_id": span_id,
-            "call_id": call_id
+            "call_id": call_id,
+            "status": status,
+            "error_code": error_code,
+            "usageKnown": bool(usage) and all(k in usage for k in ('prompt_tokens', 'completion_tokens', 'total_tokens')),
         })
-        self.checkpoint('model_completed', self.calls_ledger[-1])
+        self.checkpoint('model_completed' if status == 'completed' else 'model_failed', self.calls_ledger[-1])
+
+    def record_model_failure(self, *, call_id, purpose, model, total_ms, code, usage=None,
+                             content='', details=None):
+        if call_id in self._accounted_call_ids:
+            return
+        self._record_call(purpose, usage, total_ms, model, None, call_id,
+                          auxiliary=purpose not in ('main_turn', 'tool_loop'), status='failed', error_code=code)
+        self.finish_reason = code
+        self.round_finish_reasons.append(code)
+        self.model_responses.append({**response_fingerprint({'content': content, 'finish_reason': code}),
+                                     'call_id': call_id, 'error_code': code, 'details': details or {}})
 
     def record_guard(self, guard: str, action: str, reason: Any = None) -> None:
         self.guard_decisions.append({"guard":guard,"action":action,"reason":reason})
@@ -338,6 +353,7 @@ class TelemetryStats:
             "toolCalls": self.tool_calls_detail,
             "llmInvocations": self.llm_invocations,
             "tokens": self.tokens,
+            "tokenUsageComplete": all(c.get('usageKnown', False) for c in self.calls_ledger),
             "finishReason": self.finish_reason,
             "roundFinishReasons": self.round_finish_reasons,
             "guardDecisions": self.guard_decisions,

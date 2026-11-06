@@ -51,7 +51,7 @@ from .reminder_tools import (
     delete_personal_reminders,
     update_personal_reminder,
 )
-from .deliverable_contract import write_markdown_artifact
+from .deliverable_contract import write_markdown_artifact, write_json_artifact
 from .comparison_tool_schema import COMPARISON_TOOL
 from .spreadsheet_analysis_schema import ANALYSIS_TOOL, ADVANCED_ANALYSIS_TOOL, ANALYSIS_CAPABILITIES, ANALYSIS_TOOL_NAMES
 from .spreadsheet_context import STRUCTURE_TOOL, STRUCTURE_TOOL_NAME
@@ -59,8 +59,10 @@ from .spreadsheet_update.tools import SPREADSHEET_UPDATE_TOOL_DEFINITIONS
 from .pdf_render_tool import PDF_RENDER_TOOL
 from .pdf_preview_tool import PDF_PREVIEW_TOOL
 from .docx_render_tool import DOCX_RENDER_TOOL
+from .mcp_tools import MCP_TOOLS, MCP_TOOL_NAMES, execute_mcp_tool
 
 SANDBOX_TOOLS = [
+    *MCP_TOOLS,
     DOCX_RENDER_TOOL,
     PDF_RENDER_TOOL,
     PDF_PREVIEW_TOOL,
@@ -198,6 +200,31 @@ SANDBOX_TOOLS = [
                     "content": {
                         "type": "string",
                         "description": "需要写入文件的完整 Markdown 正文"
+                    }
+                },
+                "required": ["file_path", "content"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "write_json",
+            "description": "将结构化数据或 JSON 文本安全校验并格式化写入沙箱工作区的 .json 文件。写入前会自动进行完整的 JSON 语法校验（检查引号转义、括号闭合与多余逗号），确保生成的 JSON 文件 100% 合法可用",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "工作区内的 JSON 文件名或路径，例如 translation_output.json"
+                    },
+                    "content": {
+                        "type": ["string", "object", "array"],
+                        "description": "要写入的 JSON 内容（支持 JSON 格式字符串，或直接传递对象/数组）"
+                    },
+                    "indent": {
+                        "type": "integer",
+                        "description": "格式化缩进空格数，默认为 2"
                     }
                 },
                 "required": ["file_path", "content"]
@@ -467,6 +494,8 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
         remaining = None
 
     name_clean = re.sub(r'^[a-zA-Z0-9_\-]+[:.]', '', tool_name.strip()).lower()
+    if name_clean in MCP_TOOL_NAMES:
+        return execute_mcp_tool(name_clean, params, deadline)
     if name_clean == "search_web":
         name_clean = "web_search"
     res = ""
@@ -517,11 +546,33 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
     elif name_clean in ["write_markdown", "write_md", "save_markdown"]:
         file_path = params.get("file_path") or params.get("path") or params.get("filename") or "result.md"
         content = params.get("content") or params.get("markdown") or params.get("text") or ""
+        # 智能重定向：若模型误用 write_markdown 写入 json 文件，自动转由 write_json 校验并写入
+        if str(file_path).lower().endswith(".json"):
+            try:
+                res = write_json_artifact(WORKSPACE_DIR, str(file_path), content)
+            except Exception as e:
+                from .tool_result import ToolResult, TextToolOutput
+                error = ToolResult.error('json_validation_failed', f"写入 JSON 文件失败: {e}",
+                                         provenance={'tool': name_clean})
+                res = TextToolOutput(error.render_text(), error)
+        else:
+            try:
+                res = write_markdown_artifact(WORKSPACE_DIR, str(file_path), str(content))
+            except Exception as e:
+                from .tool_result import ToolResult, TextToolOutput
+                error = ToolResult.error('artifact_write_failed', f"写入 Markdown 文件失败: {e}",
+                                         provenance={'tool': name_clean})
+                res = TextToolOutput(error.render_text(), error)
+
+    elif name_clean in ["write_json", "save_json", "create_json"]:
+        file_path = params.get("file_path") or params.get("path") or params.get("filename") or "data.json"
+        content = params.get("content") if "content" in params else (params.get("json") or params.get("data") or "")
+        indent = int(params.get("indent") or 2)
         try:
-            res = write_markdown_artifact(WORKSPACE_DIR, str(file_path), str(content))
+            res = write_json_artifact(WORKSPACE_DIR, str(file_path), content, indent=indent)
         except Exception as e:
             from .tool_result import ToolResult, TextToolOutput
-            error = ToolResult.error('artifact_write_failed', f"写入 Markdown 文件失败: {e}",
+            error = ToolResult.error('json_validation_failed', f"写入 JSON 文件失败: {e}",
                                      provenance={'tool': name_clean})
             res = TextToolOutput(error.render_text(), error)
 

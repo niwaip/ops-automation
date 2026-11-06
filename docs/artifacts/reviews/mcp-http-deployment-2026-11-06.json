@@ -1,0 +1,23 @@
+{
+  "testedAt": "2026-11-06T02:16:27.534Z",
+  "checks": {
+    "savesHttp": true,
+    "localhostMapsToHost": true,
+    "exactScreenshotRootEndpointWorks": true,
+    "mcpPathWorks": true,
+    "discoversTools": true,
+    "publishesCurrentContract": true,
+    "invokesReadOnlyTool": true,
+    "anonymousNeedsNoCredential": true,
+    "customPublicHttpPortSaves": true,
+    "neighboringLocalPortRejected": true
+  },
+  "externalBusinessServiceCalled": false,
+  "normalizedEndpoint": "http://host.docker.internal:9000/",
+  "result": {
+    "fixture": true,
+    "transport": "http"
+  },
+  "passed": true,
+  "temporaryConnectionsRemoved": true
+}

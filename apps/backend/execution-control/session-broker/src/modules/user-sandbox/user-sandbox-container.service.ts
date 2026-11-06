@@ -266,10 +266,18 @@ export class UserSandboxContainerService {
     }
 
     if (existing) {
-      const inspect = await existing.inspect();
-      const state = inspect.State || {};
+      let inspect = await existing.inspect();
+      let state = inspect.State || {};
 
-      if (state.Running) {
+      // 若容器处于瞬态过渡状态（如 stopping 或 restarting），等待其状态稳定后再继续
+      if (state.Status === 'stopping' || state.Status === 'restarting') {
+        this.logger.warn(`Container ${containerName} is in transient status [${state.Status}]. Waiting for stabilization...`);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        inspect = await existing.inspect();
+        state = inspect.State || {};
+      }
+
+      if (state.Running && state.Status === 'running') {
         this.logger.log(`Container ${containerName} is already running.`);
         return this.mapInspectToStatus(userId, containerName, paths, inspect);
       }

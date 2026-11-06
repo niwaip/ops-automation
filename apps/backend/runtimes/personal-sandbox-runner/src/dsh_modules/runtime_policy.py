@@ -87,6 +87,12 @@ class RuntimePolicy:
         if is_guide or (skill_res and getattr(skill_res, "is_guide_intent", False)):
             return 2
 
+        # Progressive skills need discovery/contract/invocation rounds before synthesis.
+        disclosure_steps = getattr(skill_res, 'disclosure_steps', 0) if skill_res else 0
+        if disclosure_steps:
+            # Two prerequisite reads plus a target need disclosure/call pairs and an answer.
+            return min(12, max(4, disclosure_steps + 2, getattr(skill_res, 'default_rounds', 0)))
+
         # 0. 纯查阅/阅读/分析意图：严禁按复杂交付物预算，只需 2-3 轮（读取+回答）
         is_insp = is_inspect_intent or (skill_res and getattr(skill_res, "is_inspect_intent", False))
         is_gen = is_generate_intent or (skill_res and getattr(skill_res, "is_generate_intent", False))

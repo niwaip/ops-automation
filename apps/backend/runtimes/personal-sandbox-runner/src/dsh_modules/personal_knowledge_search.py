@@ -42,6 +42,10 @@ KNOWLEDGE_STOP_WORDS = {
     "这里面", "这篇", "那篇", "这些", "那些", "下面", "上面", "关于这个", "看下", "全文",
     "原文", "链接", "网页", "地址", "页面", "项目", "仓库", "代码仓库", "开源项目", "地址是",
     "要点", "并且", "给出", "归纳", "要点总结", "核心要点", "详细内容", "分析内容",
+    # 问答操作泛动词与任务动词（严禁作为个人知识库实体检索词）
+    "解决", "解决了", "提了", "提了什么", "具体", "需要", "包含", "进行", "提炼", "方案", "要点",
+    "核心", "详细", "详细内容", "主要", "说明", "梳理", "汇报", "做了什么", "说了什么", "分析了什么",
+    "安全解决方案", "技术调研", "论文分析", "安装配置", "环境部署", "配置指南",
 
     # 网络协议、顶级域名与代码托管通用词（严禁作为个人知识库匹配词）
     "http", "https", "url", "uri", "ftp", "www", "com", "cn", "org", "net", "io",
@@ -124,10 +128,21 @@ def _extract_knowledge_query_keywords(prompt: Optional[str]) -> List[str]:
         p = p.replace(fm, ' ')
 
     # 3. 剥离无意义前缀与空间限定词、噪音动作词
+    task_action_patterns = [
+        r'进行(?:分析|提炼|归纳|总结|说明|梳理|汇报)?',
+        r'(?:具体)?(?:提了什么|提到了什么|解决了什么|说明了什么|包含什么|有哪些内容|主要内容|核心要点|做了什么)',
+        r'(?:需要|希望|必须)?(?:包含|具备|体现|涵盖)(?:具体)?',
+        r'查看(?:附件|文档|文件|内容)?',
+        r'分析(?:和)?(?:提炼|归纳|总结)?(?:内容)?',
+        r'提炼(?:和)?(?:分析|归纳|总结)?(?:内容)?',
+    ]
+    for pat in task_action_patterns:
+        p = re.sub(pat, ' ', p)
+
     p = re.sub(r'^(?:请问|请帮我|帮我|麻烦|查看|查询|看一下|查一下|找一下|检索|搜索|阅读|浏览|评估|分析|总结|归纳)\s*', '', p)
     p = re.sub(r'(?:在|从)?(?:个人空间|知识库|知识空间|我的个人文档|工作区|我的文档)(?:中|里|内|上的?)?\s*', ' ', p)
     p = re.sub(r'(?:关于|有关|相关(?:的)?)\s*', ' ', p)
-    p = re.sub(r'(?:和风险|和分析|和评价|和总结|风险|这个文章|这篇文章|这个|那个|这里面|这篇|那篇|文章|详细内容|内容|要点总结|核心要点|要点|给出|并且|分析内容)', ' ', p)
+    p = re.sub(r'(?:和风险|和分析|和评价|和总结|风险|这个文章|这篇文章|这个|那个|这里面|这篇|那篇|文章|详细内容|内容|要点总结|核心要点|要点|给出|并且|分析内容|提炼内容)', ' ', p)
     p = re.sub(r'(?:的)?(?:安装方法|安装教程|安装指南|部署方法|使用方法|使用教程|怎么用|如何用|怎么做|是什么|有啥|项目|仓库)', ' ', p)
 
     # 4. 提取英文/数字词汇（剔除停用词与域名后缀）
@@ -266,7 +281,8 @@ JUNK_TAG_WORDS = {
     "markdown", "md", "pdf", "doc", "docx", "pptx", "ppt", "xlsx", "xls", "html", "txt", "json", "csv", "yaml", "yml",
     "based", "thorough", "review", "entire", "summary", "note", "file", "document", "content", "page",
     "please", "user", "assistant", "candidate", "qa_note", "task_result",
-    "回归测试", "端到端测试", "算力校验", "指令遵循"
+    "回归测试", "端到端测试", "算力校验", "指令遵循",
+    "解决方案", "安全解决方案", "技术调研", "论文分析", "软件安装", "安装配置", "环境部署", "配置指南", "报告", "总结", "指南", "方案"
 }
 
 
@@ -482,7 +498,11 @@ def scan_personal_knowledge(prompt: Optional[str] = None, auto_match_only: bool 
         # 1. 文件名与路径匹配（严格使用词边界与实质性词汇检验，短词如 'ai' 绝不单独触发强命中）
         if keywords:
             for kw in keywords:
-                is_substantive = bool(len(kw) >= 3 or re.search(r'[\u4e00-\u9fa5]', kw))
+                # 实质性关键词判定：长度>=3，或短词全词等于文件主干/超短文件名
+                is_substantive = bool(
+                    len(kw) >= 3
+                    or (len(kw) >= 2 and (kw == resolved.stem.lower() or len(resolved.stem) <= 5))
+                )
                 if _matches_keyword(fname_lower, kw):
                     if is_substantive:
                         matched_name_kw = True
@@ -517,33 +537,41 @@ def scan_personal_knowledge(prompt: Optional[str] = None, auto_match_only: bool 
                         tag_clean = tag.lower().strip()
                         if not tag_clean:
                             continue
-                        for kw in keywords:
-                            if _matches_keyword(tag_clean, kw):
-                                is_substantive = bool(len(kw) >= 3 or re.search(r'[\u4e00-\u9fa5]', kw))
-                                if is_substantive:
-                                    matched_tag = True
-                                    kw_score += 450
-                                    substantive_kw_hits += 1
-                                else:
-                                    kw_score += 100
-                                break
+                        # 标签匹配机制：严禁用单字/泛动词逆向模糊匹配 Tag
+                        # 判定规则：用户提问中完整出现了该 Tag 实体，或实质性关键词全词覆盖 Tag
+                        tag_in_prompt = _matches_keyword(p_clean, tag_clean)
+                        tag_in_kw = any(
+                            kw.lower() == tag_clean or (len(kw) >= len(tag_clean) and tag_clean in kw.lower())
+                            for kw in keywords
+                        )
+                        if tag_in_prompt or tag_in_kw:
+                            is_substantive = bool(len(tag_clean) >= 2)
+                            if is_substantive:
+                                matched_tag = True
+                                kw_score += 500
+                                substantive_kw_hits += 1
+                            else:
+                                kw_score += 100
+                            break
                         if matched_tag:
                             break
                 if fm["title"] and (keywords or p_clean):
                     title_clean = fm["title"].lower().strip()
-                    for kw in keywords:
-                        if _matches_keyword(title_clean, kw):
-                            is_substantive = bool(len(kw) >= 3 or re.search(r'[\u4e00-\u9fa5]', kw))
-                            if is_substantive:
-                                matched_title = True
-                                kw_score += 300
-                                substantive_kw_hits += 1
-                            else:
-                                kw_score += 80
-                            break
-                    if not matched_title and p_clean and len(title_clean) >= 4 and title_clean in p_clean:
+                    # 标题匹配：用户提示词包含标题实体，或实质性关键词与标题主题精确命中
+                    title_in_prompt = bool(len(title_clean) >= 4 and title_clean in p_clean)
+                    title_topic_in_prompt = bool(clean_topic and len(clean_topic) >= 3 and clean_topic.lower() in p_clean)
+                    title_in_kw = any(
+                        len(kw) >= 3 and kw.lower() in title_clean and kw.lower() not in KNOWLEDGE_STOP_WORDS
+                        for kw in keywords
+                    ) if not title_in_prompt and not title_topic_in_prompt else False
+
+                    if title_in_prompt or title_topic_in_prompt:
                         matched_title = True
-                        kw_score += 300
+                        kw_score += 400
+                        substantive_kw_hits += 1
+                    elif title_in_kw:
+                        matched_title = True
+                        kw_score += 200
                         substantive_kw_hits += 1
             except Exception:
                 pass
@@ -593,14 +621,14 @@ def scan_personal_knowledge(prompt: Optional[str] = None, auto_match_only: bool 
         # 必须有实际关键词/tag/标题命中且关键词分 >= 180，杜绝纯靠时间/格式虚高
         matched_kw = bool((matched_name_kw or matched_tag or matched_title or matched_content_kw) and kw_score >= 180)
         if auto_match_only:
-            # 自动探测模式下执行更严格的主题门禁：
+            # 自动探测模式下执行严格的实体准入门禁：
             # 1. 提示词包含外部 URL 或代码仓库，且未明确指定个人空间：仅允许强实体文件名直接匹配 (score >= 500)，禁止正文泛匹配
             if has_external_ref and not has_explicit_knowledge_cue:
                 matched_kw = bool(matched_name_kw and substantive_kw_hits >= 1 and kw_score >= 500)
             else:
+                # 必须命中文件名强实体、标签 (Tag) 或标题 (Title)，彻底废除纯正文 Grep 泛动词偷跑准入！
                 matched_kw = bool(
-                    ((matched_name_kw or matched_tag or matched_title) and substantive_kw_hits >= 1)
-                    or (matched_content_kw and substantive_kw_hits >= 2 and kw_score >= 360)
+                    (matched_name_kw or matched_tag or matched_title) and substantive_kw_hits >= 1
                 )
 
         # 产出成果库加权

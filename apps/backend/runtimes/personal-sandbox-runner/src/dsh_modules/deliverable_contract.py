@@ -6,7 +6,7 @@ import sys
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Union, Any
 
 from .action_protocol import is_internal_plan_output
 from .telemetry import format_dsh_marker
@@ -178,6 +178,72 @@ def write_markdown_artifact(workspace_dir: str, file_path: str, content: str) ->
         ensure_ascii=False,
     )
     return format_dsh_marker("OUTBOUND_FILE", payload)
+
+
+def write_json_artifact(
+    workspace_dir: str,
+    file_path: str,
+    content: Any,
+    indent: int = 2
+) -> str:
+    """Writes a JSON artifact inside the workspace with syntax validation and returns an outbound-file marker."""
+    clean_name = Path(str(file_path or "data.json")).name
+    if not clean_name.lower().endswith(".json"):
+        clean_name = f"{clean_name}.json"
+    if not re.fullmatch(r"[a-zA-Z0-9_\-\.\u4e00-\u9fa5]+\.json", clean_name, re.I):
+        raise ValueError("invalid JSON file name")
+
+    parsed_data = None
+    if isinstance(content, (dict, list)):
+        parsed_data = content
+    elif isinstance(content, str):
+        raw_text = content.strip()
+        # 剥离可能由 LLM 附带的外层 ```json 或 ``` 格式栅栏
+        m_fence = re.fullmatch(r"```(?:json)?\s*\n([\s\S]*?)\n```\s*", raw_text, re.I)
+        if m_fence:
+            raw_text = m_fence.group(1).strip()
+        elif raw_text.startswith("```json") and raw_text.endswith("```"):
+            raw_text = raw_text[7:-3].strip()
+        elif raw_text.startswith("```") and raw_text.endswith("```"):
+            raw_text = raw_text[3:-3].strip()
+
+        if not raw_text:
+            raise ValueError("JSON content must not be empty")
+        try:
+            parsed_data = json.loads(raw_text)
+        except json.JSONDecodeError as err:
+            line_no = err.lineno
+            col_no = err.colno
+            lines = raw_text.splitlines()
+            snippet = lines[line_no - 1] if 0 <= line_no - 1 < len(lines) else ""
+            indicator = " " * (col_no - 1) + "^" if col_no > 0 else "^"
+            err_msg = (
+                f"JSON 格式语法校验失败: 第 {line_no} 行第 {col_no} 列处解析出错 ({err.msg})。\n"
+                f"出错行上下文:\n  {snippet}\n  {indicator}\n"
+                f"请检查是否包含未转义的双引号、多余的末尾逗号(trailing comma)或未闭合的括号。"
+            )
+            raise ValueError(err_msg) from err
+    elif content is None:
+        raise ValueError("JSON content must not be empty")
+    else:
+        raise ValueError(f"Unsupported content type for JSON: {type(content).__name__}")
+
+    serialized = json.dumps(parsed_data, ensure_ascii=False, indent=indent)
+
+    workspace = Path(workspace_dir)
+    workspace.mkdir(parents=True, exist_ok=True)
+    target = workspace / clean_name
+    target.write_text(serialized.rstrip() + "\n", encoding="utf-8")
+
+    item_count = len(parsed_data) if isinstance(parsed_data, (dict, list)) else 1
+    file_size = target.stat().st_size
+    payload = json.dumps(
+        {"filePath": str(target), "fileName": target.name},
+        ensure_ascii=False,
+    )
+    marker = format_dsh_marker("OUTBOUND_FILE", payload)
+    return f"{marker}\n✅ JSON 文件已成功校验并落盘: {clean_name} (有效结构包含 {item_count} 项元素, 文件大小: {file_size} 字节)"
+
 
 
 def materialize_requested_markdown(

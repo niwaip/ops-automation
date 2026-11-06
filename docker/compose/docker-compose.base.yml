@@ -101,6 +101,11 @@ services:
     restart: unless-stopped
     environment:
       <<: *common-env
+      MCP_RUNNER_URL: http://mcp-client-runner:3015
+      MCP_RUNNER_SECRET: ${MCP_RUNNER_SECRET:-}
+      MCP_PRIVATE_HOST_ALLOWLIST: ${MCP_PRIVATE_HOST_ALLOWLIST:-}
+      MCP_TRUSTED_ENDPOINTS: ${MCP_TRUSTED_ENDPOINTS:-}
+      MCP_LOCAL_HOST: ${MCP_LOCAL_HOST:-host.docker.internal}
       DOCKER_ENV: true
       PORT: ${PLATFORM_PORT:-3001}
       JWT_SECRET: ${JWT_SECRET:-ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa}
@@ -140,6 +145,24 @@ services:
         condition: service_healthy
       carbone-engine:
         condition: service_healthy
+
+  mcp-client-runner:
+    <<: *common-node-service
+    container_name: ops-mcp-client-runner
+    restart: unless-stopped
+    command: sh -c "corepack enable && pnpm --filter @ops/mcp-client-runner build && pnpm --filter @ops/mcp-client-runner start"
+    environment:
+      PORT: 3015
+      MCP_RUNNER_SECRET: ${MCP_RUNNER_SECRET:-}
+      MCP_PRIVATE_HOST_ALLOWLIST: ${MCP_PRIVATE_HOST_ALLOWLIST:-}
+      MCP_TRUSTED_ENDPOINTS: ${MCP_TRUSTED_ENDPOINTS:-}
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    volumes:
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
+    depends_on:
+      workspace-deps-init:
+        condition: service_completed_successfully
 
   xiaozhi-connector:
     <<: *common-node-service

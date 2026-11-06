@@ -1,0 +1,366 @@
+{
+  "sessionId": "mcp-review-recovery-test-085235a2-7174-472d-8649-241b9a016ac3",
+  "faultInjection": "first review forced to empty claims; subsequent MCP and model are real",
+  "passed": true,
+  "durationMs": 13547.67,
+  "metrics": {
+    "ttftMs": 5461.71,
+    "ttftScope": "model_request",
+    "durationMs": 5462.01,
+    "llmDurationMs": 5462.01,
+    "toolCallsCount": 4,
+    "toolCalls": [
+      {
+        "name": "list_external_tools",
+        "params": {
+          "skill_id": "mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd",
+          "tool_name": "microsoft_docs_search"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "call_external_tool",
+        "params": {
+          "binding_id": "e0449587-d7ee-4500-9cdc-ffdbd55fb4e6",
+          "arguments": "{'query': 'Azure VPN gateway setup configuration guide official tutorial'}"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "list_external_tools",
+        "params": {
+          "skill_id": "mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd",
+          "tool_name": "microsoft_docs_fetch"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "call_external_tool",
+        "params": {
+          "binding_id": "2dcb0e40-d683-491c-a9bd-c935ece579fb",
+          "arguments": "{'url': 'https://learn.microsoft.com/azure/vpn-gateway/tutorial-create-gateway-portal'}"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      }
+    ],
+    "llmInvocations": 1,
+    "tokens": {
+      "prompt_tokens": 8679,
+      "completion_tokens": 347,
+      "total_tokens": 9026
+    },
+    "tokenUsageComplete": true,
+    "finishReason": "tool_calls",
+    "roundFinishReasons": [
+      "tool_calls"
+    ],
+    "guardDecisions": [
+      {
+        "guard": "mcp_review_sources",
+        "action": "selected",
+        "reason": {
+          "attempt": 1,
+          "candidate_chunks": 5,
+          "unique_documents": 5,
+          "selected_documents": 5,
+          "selected_chars": 10611,
+          "sources": [
+            {
+              "id": "s-8f12da3279d55774",
+              "url": "https://learn.microsoft.com/azure/vpn-gateway/tutorial-create-gateway-portal",
+              "kind": "document",
+              "segments": [
+                {
+                  "id": "p-f8f7e7003fe2bcc1",
+                  "invocationId": "6982805d-4b4e-4b2f-a215-6601967fe66b",
+                  "kind": "search",
+                  "chars": 2200,
+                  "truncated": false
+                }
+              ]
+            },
+            {
+              "id": "s-90c32088eba2f6d4",
+              "url": "https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal",
+              "kind": "document",
+              "segments": [
+                {
+                  "id": "p-dea88835b95e063e",
+                  "invocationId": "6982805d-4b4e-4b2f-a215-6601967fe66b",
+                  "kind": "search",
+                  "chars": 2200,
+                  "truncated": false
+                }
+              ]
+            },
+            {
+              "id": "s-32634938295185d7",
+              "url": "https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-download-vpndevicescript",
+              "kind": "document",
+              "segments": [
+                {
+                  "id": "p-8306f42f8eb486f1",
+                  "invocationId": "6982805d-4b4e-4b2f-a215-6601967fe66b",
+                  "kind": "search",
+                  "chars": 2200,
+                  "truncated": false
+                }
+              ]
+            },
+            {
+              "id": "s-cb7d30af91f7262a",
+              "url": "https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-howto-vnet-vnet-resource-manager-portal",
+              "kind": "document",
+              "segments": [
+                {
+                  "id": "p-54fe0c11b96f3c4e",
+                  "invocationId": "6982805d-4b4e-4b2f-a215-6601967fe66b",
+                  "kind": "search",
+                  "chars": 2183,
+                  "truncated": false
+                }
+              ]
+            },
+            {
+              "id": "s-a25d37a3a7450106",
+              "url": "https://learn.microsoft.com/answers/a/1880689",
+              "kind": "community",
+              "segments": [
+                {
+                  "id": "p-c8f2e4685dbd95d8",
+                  "invocationId": "6982805d-4b4e-4b2f-a215-6601967fe66b",
+                  "kind": "search",
+                  "chars": 1828,
+                  "truncated": false
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "guard": "mcp_answer_review",
+        "action": "insufficient",
+        "reason": {
+          "attempt": 1,
+          "candidate_count": 0,
+          "rejections": [],
+          "rejection_counts": {
+            "empty_claims": 1
+          },
+          "grounded_claims": 0,
+          "claims": []
+        }
+      },
+      {
+        "guard": "mcp_review_recovery",
+        "action": "completed",
+        "reason": {
+          "source_id": "s-8f12da3279d55774",
+          "binding_id": "2dcb0e40-d683-491c-a9bd-c935ece579fb",
+          "error_code": null,
+          "invocation_id": "e10dae80-63ce-43a0-a228-910a8137a2ca"
+        }
+      },
+      {
+        "guard": "mcp_review_sources",
+        "action": "selected",
+        "reason": {
+          "attempt": 2,
+          "candidate_chunks": 6,
+          "unique_documents": 5,
+          "selected_documents": 5,
+          "selected_chars": 12411,
+          "sources": [
+            {
+              "id": "s-8f12da3279d55774",
+              "url": "https://learn.microsoft.com/azure/vpn-gateway/tutorial-create-gateway-portal",
+              "kind": "document",
+              "segments": [
+                {
+                  "id": "p-ab308ecaf8608def",
+                  "invocationId": "e10dae80-63ce-43a0-a228-910a8137a2ca",
+                  "kind": "fetch",
+                  "chars": 4000,
+                  "truncated": true
+                }
+              ]
+            },
+            {
+              "id": "s-90c32088eba2f6d4",
+              "url": "https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal",
+              "kind": "document",
+              "segments": [
+                {
+                  "id": "p-dea88835b95e063e",
+                  "invocationId": "6982805d-4b4e-4b2f-a215-6601967fe66b",
+                  "kind": "search",
+                  "chars": 2200,
+                  "truncated": false
+                }
+              ]
+            },
+            {
+              "id": "s-32634938295185d7",
+              "url": "https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-download-vpndevicescript",
+              "kind": "document",
+              "segments": [
+                {
+                  "id": "p-8306f42f8eb486f1",
+                  "invocationId": "6982805d-4b4e-4b2f-a215-6601967fe66b",
+                  "kind": "search",
+                  "chars": 2200,
+                  "truncated": false
+                }
+              ]
+            },
+            {
+              "id": "s-cb7d30af91f7262a",
+              "url": "https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-howto-vnet-vnet-resource-manager-portal",
+              "kind": "document",
+              "segments": [
+                {
+                  "id": "p-54fe0c11b96f3c4e",
+                  "invocationId": "6982805d-4b4e-4b2f-a215-6601967fe66b",
+                  "kind": "search",
+                  "chars": 2183,
+                  "truncated": false
+                }
+              ]
+            },
+            {
+              "id": "s-a25d37a3a7450106",
+              "url": "https://learn.microsoft.com/answers/a/1880689",
+              "kind": "community",
+              "segments": [
+                {
+                  "id": "p-c8f2e4685dbd95d8",
+                  "invocationId": "6982805d-4b4e-4b2f-a215-6601967fe66b",
+                  "kind": "search",
+                  "chars": 1828,
+                  "truncated": false
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "guard": "mcp_answer_review",
+        "action": "accept",
+        "reason": {
+          "attempt": 2,
+          "candidate_count": 4,
+          "rejections": [
+            {
+              "index": 1,
+              "reason": "unknown_span",
+              "source_id": "s-cb7d30af91f7262a",
+              "suggested_source_id": "s-cb7d30af91f7262a",
+              "suggested_span_id": "q-39204feafd1ac495",
+              "statement": "创建站点到站点 VPN 连接时，需配置本地网络网关以代表对等本地网络和 VPN 设备，并在 Azure 中创建连接。",
+              "quote": "",
+              "quote_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          ],
+          "rejection_counts": {
+            "unknown_span": 1
+          },
+          "grounded_claims": 3,
+          "claims": [
+            {
+              "statement": "使用 Azure 门户创建 VPN 网关时，需先创建虚拟网络和名为 GatewaySubnet 的网关子网。",
+              "url": "https://learn.microsoft.com/azure/vpn-gateway/tutorial-create-gateway-portal",
+              "source_id": "s-8f12da3279d55774",
+              "segment_id": "p-ab308ecaf8608def",
+              "span_id": "q-fba5463614d9726e",
+              "invocationId": "e10dae80-63ce-43a0-a228-910a8137a2ca",
+              "quote": "Virtual network gateway resources are deployed to a specific subnet named **GatewaySubnet**. The gateway subnet is part of the virtual network IP address range that you specify when you configure your virtual network."
+            },
+            {
+              "statement": "支持下载 VPN 设备配置脚本以简化本地 VPN 设备的配置，该脚本预填充了 Azure VPN 网关、虚拟网络和连接的相关值。",
+              "url": "https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-download-vpndevicescript",
+              "source_id": "s-32634938295185d7",
+              "segment_id": "p-8306f42f8eb486f1",
+              "span_id": "q-ac96dbf3a656c84e",
+              "invocationId": "6982805d-4b4e-4b2f-a215-6601967fe66b",
+              "quote": "You can complete steps 1 through 3 in the workflow using the Azure [portal](https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal), [PowerShell](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-create-site-to-site-rm-powershell), or [CLI](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-howto-site-to-site-resource-manager-cli). Step 4 involves configuring the on-premises VPN devices outside of Azure. The steps in this article help you download a configuration script for your VPN device with the corresponding values of your Azure VPN gateway, virtual network, on-premises network address prefixes, and VPN connection properties already filled in. You can use the script as a starting point, or apply the script directly to your on-premises VPN devices via the configuration console."
+            },
+            {
+              "statement": "配置 VNet 到 VNet VPN 连接时，需选择适当的 SKU 并可选择启用活动-活动模式以支持多个网关 VM 实例。",
+              "url": "https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-howto-vnet-vnet-resource-manager-portal",
+              "source_id": "s-cb7d30af91f7262a",
+              "segment_id": "p-54fe0c11b96f3c4e",
+              "span_id": "q-2a53e39bfc681b06",
+              "invocationId": "6982805d-4b4e-4b2f-a215-6601967fe66b",
+              "quote": "15.8. **Second public IP address:** Select **Create new**. This is available only if you selected **Enabled** for the **Enable active-active mode** setting."
+            }
+          ]
+        }
+      }
+    ],
+    "modelResponses": [
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      }
+    ],
+    "answerValidation": {},
+    "callsLedger": [
+      {
+        "purpose": "mcp_answer_review_repair",
+        "model": "default",
+        "total_ms": 5462.01,
+        "usage": {
+          "prompt_tokens": 8679,
+          "total_tokens": 9026,
+          "completion_tokens": 347
+        },
+        "span_id": null,
+        "call_id": "a42f84da6a6e4e04857452e7d05cfcab",
+        "status": "completed",
+        "error_code": null,
+        "usageKnown": true
+      }
+    ],
+    "auxiliaryInvocations": 1
+  },
+  "answer": "根据本轮 MCP 返回资料，可核对的配置要点如下：\n\n- 使用 Azure 门户创建 VPN 网关时，需先创建虚拟网络和名为 GatewaySubnet 的网关子网。 [原文](https://learn.microsoft.com/azure/vpn-gateway/tutorial-create-gateway-portal)\n\n- 支持下载 VPN 设备配置脚本以简化本地 VPN 设备的配置，该脚本预填充了 Azure VPN 网关、虚拟网络和连接的相关值。 [原文](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-download-vpndevicescript)\n\n- 配置 VNet 到 VNet VPN 连接时，需选择适当的 SKU 并可选择启用活动-活动模式以支持多个网关 VM 实例。 [原文](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-howto-vnet-vnet-resource-manager-portal)\n\n这些要点仅覆盖上述资料支持的范围；其他场景和具体参数需继续核对相应教程。",
+  "verification": {
+    "verified": false,
+    "turn_id": "1793850322333488343-54d5837dc9ad4f839c25e554ff67ad11",
+    "evidence_ids": []
+  },
+  "invocationIds": [
+    "6982805d-4b4e-4b2f-a215-6601967fe66b",
+    "e10dae80-63ce-43a0-a228-910a8137a2ca"
+  ],
+  "calls": [
+    {
+      "id": "6982805d-4b4e-4b2f-a215-6601967fe66b",
+      "bindingId": "e0449587-d7ee-4500-9cdc-ffdbd55fb4e6",
+      "status": "completed",
+      "createdAt": "2026-11-05T03:45:08.798Z"
+    },
+    {
+      "id": "e10dae80-63ce-43a0-a228-910a8137a2ca",
+      "bindingId": "2dcb0e40-d683-491c-a9bd-c935ece579fb",
+      "status": "completed",
+      "createdAt": "2026-11-05T03:45:12.669Z"
+    }
+  ],
+  "exitCode": 0
+}

@@ -128,6 +128,102 @@ python3 /opt/dsh/skills/xlsx/scripts/recalc.py /workspace/业务度量统计报�
 3. **动态公式**：求和、均值等汇总项必须使用动态公式（`=SUM(...)`、`=AVERAGE(...)`），严禁硬编码计算结果；
 4. **重算校验**：生成后必须执行 `python3 /opt/dsh/skills/xlsx/scripts/recalc.py <output_file>` 固化缓存并校验 `verified` 状态。
 
+---
+
+## 5. 既有表格原地编辑与多语言翻译保真规范 (In-Place Mutation & Translation)
+
+⚠️ **【重大红线：严禁新建空工作簿逐格搬运】**：
+在对既有 Excel 进行**翻译、单元格回填、文字更新或修改**时，**严禁使用 `openpyxl.Workbook()` 从头新建空白工作簿并手动拷贝单元格！**
+从头新建会导致原工作簿的以下底层 OOXML 结构 100% 丢失：
+1. **数据验证下拉框 (`ws.data_validations`)**：所有下拉选择列表、输入提示与验证规则全部丢失！
+2. **条件格式 (`ws.conditional_formatting`)**：所有预设的动态高亮、底色标记全部丢失！
+3. **视图属性 (`ws.freeze_panes`, `ws.views`)**：首行/首列冻结与多窗口分割全部丢失！
+4. **图表、矢量形状与图片** 全部丢失！
+
+### 推荐方案：一键全自动端到端翻译（耗时最短、保真度 100%）
+直接调用沙箱内置的原生 OOXML Excel 翻译引擎，底层自动执行 `sharedStrings.xml` 字符串去重流式并发翻译、工作表名称更新、数据验证下拉框选项翻译，并驱动无头 LibreOffice 完成动态公式重算校验：
+
+- **翻译为中文 Excel 表格 (Simplified Chinese)**：
+  ```bash
+  python3 /opt/dsh/skills/xlsx/scripts/ooxml_xlsx_translate.py auto \
+    "/workspace/<输入文件>.xlsx" \
+    "/workspace/<输出文件>.xlsx" \
+    --target-lang zh-CN
+  ```
+
+- **翻译为英文 Excel 表格 (English)**：
+  ```bash
+  python3 /opt/dsh/skills/xlsx/scripts/ooxml_xlsx_translate.py auto \
+    "/workspace/<输入文件>.xlsx" \
+    "/workspace/<输出文件>.xlsx" \
+    --target-lang en-US
+  ```
+
+- **翻译为日文 Excel 表格 (Japanese)**：
+  ```bash
+  python3 /opt/dsh/skills/xlsx/scripts/ooxml_xlsx_translate.py auto \
+    "/workspace/<输入文件>.xlsx" \
+    "/workspace/<输出文件>.xlsx" \
+    --target-lang ja-JP
+  ```
+
+### 备用方案：分步流水线法
+如需中间干预或查看译文数据：
+1. **第 1 步：解包提取待翻译 JSON 字典**
+   ```bash
+   python3 /opt/dsh/skills/xlsx/scripts/ooxml_xlsx_translate.py unpack "/workspace/<输入文件>.xlsx" --out-json /workspace/translation_input.json --temp-dir /workspace/.ooxml_temp
+   ```
+2. **第 2 步：并发批量翻译**
+   ```bash
+   python3 /opt/dsh/skills/xlsx/scripts/ooxml_xlsx_translate.py translate /workspace/translation_input.json /workspace/translation_output.json --target-lang zh-CN
+   ```
+3. **第 3 步：注入并重新打包**
+   ```bash
+   python3 /opt/dsh/skills/xlsx/scripts/ooxml_xlsx_translate.py pack /workspace/.ooxml_temp /workspace/translation_output.json "/workspace/<输出文件>.xlsx" --target-lang zh-CN
+   ```
+
+### 备用方案二：openpyxl 原地改写模式 (仅用于局部单元格数值/公式更新)
+若属于小规模定制逻辑（非全量翻译），必须遵循以下**原地加载并另存**流程：
+```python
+import openpyxl
+
+# 1. 直接加载原工作簿 (必须携带 data_only=False 保留原始公式与元数据)
+wb = openpyxl.load_workbook(src_path, data_only=False)
+ws = wb.active
+
+# 2. 原地修改单元格值 (自动保留所有单元格样式、边框、字体、背景)
+for row in ws.iter_rows():
+    for cell in row:
+        if cell.value and isinstance(cell.value, str) and not cell.value.startswith('='):
+            if cell.value in translation_dict:
+                cell.value = translation_dict[cell.value]
+
+# 3. 原地更新数据验证下拉框中的选项文字
+for dv in ws.data_validations.dataValidation:
+    if dv.formula1:
+        dv.formula1 = dv.formula1.replace('選択', '选择').replace('その他', '其他')
+
+# 4. 原地直接另存为目标交付文件
+wb.save(output_path)
+
+# 5. 执行无头公式重算校验
+# python3 /opt/dsh/skills/xlsx/scripts/recalc.py <output_path>
+```
+
+### 面向用户的友好交付汇报规范（【极简精悍原则，篇幅控制在 250~350 字以内】）
+当打包与校验完成后，在聊天窗口向用户进行交付汇报时，必须采用**面向最终商务/技术用户的精炼、专业视角**，内容务必简洁干练：
+- 🚫 **红线约束**：
+  - **严禁输出关键术语对照字典**：严禁罗列“术语 -> 译文”对照列表，用户需要的是业务交付成果说明，不是字典；
+  - **严禁全表文字倾泻**：严禁在聊天窗口粘贴大量表格内容；
+  - **严禁输出测试员暗语**：严禁堆砌 `--target-lang`、`unpack/pack`、`sharedStrings`、`ooxml` 等内部底层名词；
+  - **严禁泄露容器路径**：严禁在回复中直接展示 `/workspace/` 等内部沙箱物理路径；
+- ✅ **标准商务交付结构（四段式，清新明快）**：
+  1. **任务完成状态（## ✅ Excel 表格翻译完成）**：明确说明 Excel 文档已完成高保真本地化与数据校验；
+  2. **主要处理内容（### 📋 主要处理内容）**：概述翻译覆盖的工作表表头、明细清单、选项判定规则及汇总统计区域；
+  3. **交付成果物（### 📦 交付成果物）**：列明交付文件名，明确原表格**数据验证下拉列表**、**条件格式动态高亮**、**计算公式（如 COUNTIF/SUM）**及冻结窗格已 100% 完整保留，引导用户点击卡片下载；
+  4. **提示与使用建议 / 警告（### 💡 提示与使用建议）**：说明下拉框可直接点击单元格展开选择，或提供数据重算/业务填写建议；若有特殊宏脚本或未识别公式进行友好预警。
+- ⚠️ **失败场景规范**：若执行异常或无法生成文件，严禁输出“执行错误达到上限”等内部暗语；必须按【⚠️ 目标文件未能成功生成】明确说明原因（如文件密码保护或宏脚本不兼容），并提供 3 条清晰可操作的下一步建议。
+
 期间标签中的半年、季度、月份需与原件分组值相符，已知直接指标需与实际字段相符；不符时拒绝整个计划并返回修正原因。字段概况保留低频值的原件坐标。规则判定仅表示符合已声明规则，其业务适用性未经独立证明；无法据此声称业务合规。失败回执保留计划与哈希，最终数值由当前成功回执编译，分析草稿不直接流式发布。
 
 协议编译支持同一计划中通过 `ref`（兼容单字段 `id`）引用计算表达式，拒绝循环/未知引用；展示单位始终属于计算项。明确同表地址的四则算式可编译成受限 AST，不执行代码或猜引用。字段范围允许单边边界，未声明的边界不会补造；规则缺字段一次返回全部位置。公式检查拒绝将简单加减合计的单个分项冒充恒等式，明确分项比较可声明 `relation_type=component_comparison`。

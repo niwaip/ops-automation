@@ -6,6 +6,10 @@
 
 ## 0. 领域功能设计
 
+- **MCP 使用、配置与验证**：[`MCP-Outbound-Operations.md`](MCP-Outbound-Operations.md)
+- **MCP 外部工具接入与用户凭证**：[`MCP-Outbound-Integration-Design_v1.0.md`](MCP-Outbound-Integration-Design_v1.0.md)
+  *仅作为客户端接入外部服务；个人连接由用户配置，工作连接由组织管理员发布，调用使用用户自己的凭证。包含模块接线、凭证边界、版本与写入恢复，以及分批实施和验收矩阵。*
+
 - **Excel 理解、跨文件更新与验证交付**：[`Spreadsheet-Update-and-Delivery-Design_v1.0.md`](Spreadsheet-Update-and-Delivery-Design_v1.0.md)
   *自然语言生成受限更新计划，多来源取数后在副本中更新，经重算、变更核对与统一交付门禁输出新 Excel。包含模块拆分、历史错误策略及六个实施 PR。*
 

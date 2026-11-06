@@ -5,8 +5,36 @@ while allowing bash/script execution for specialized low-level tasks
 (e.g., modifying existing files, XML track changes, template substitution).
 """
 
+from pathlib import Path
 import re
 from typing import Any, List, Optional
+
+
+def is_docx_in_place_transform_task(prompt: str, skill: Any, files: Optional[List[str]] = None) -> bool:
+    """Determines whether a DOCX task is an in-place transformation (e.g. document translation,
+    format preservation modification) on an existing Word document.
+    Routes to the native OOXML stream replacement engine rather than Pandoc/render_docx or scratch Document().
+    """
+    files = files or []
+    source_fmts = getattr(skill, 'source_formats', None) or [Path(f).suffix.lower() for f in files]
+    has_input_docx = any(fmt in ('.docx', '.doc') for fmt in source_fmts)
+    if not has_input_docx:
+        if not re.search(r'\.(?:docx?)\b', prompt, re.I):
+            return False
+
+    req = prompt.split('用户指令：')[-1].lower()
+    contract = getattr(skill, 'task_contract', None) or {}
+    requirements = contract.get('requirements') or []
+    quotes = ' '.join(r.get('quote', '').lower() for r in requirements)
+    combined_text = f"{req} {quotes}"
+
+    in_place_signals = (
+        '保持格式', '保持原格式', '保留格式', '格式不变', '原版式',
+        '翻译', '变成日语', '变成英语', '变成中文', '变成日文', '变成英文',
+        '转成日语', '转成英语', '转成中文', '转成日文', '转成英文',
+        'translate', 'translation', 'format preservation', 'in-place'
+    )
+    return any(sig in combined_text for sig in in_place_signals)
 
 
 def is_retrieval_docx_task(skill: Any) -> bool:
@@ -112,3 +140,26 @@ DOCX_EXECUTION_INSTRUCTION = """
 【DOCX 生成执行】：使用 `render_docx` 工具提交完整 markdown 正文及目标 output_path（如 /workspace/<文件名>.docx）。
 排版引擎负责企业级主题、双语字体（微软雅黑/Calibri）、行间距、表格、代码块及预览图生成，不需编写底层 python-docx 脚本。
 """ + DOCX_EDITORIAL_INSTRUCTION
+
+
+DOCX_IN_PLACE_TRANSLATE_INSTRUCTION = """
+【DOCX 原地无损翻译与版式保留执行规范】：
+1. 检测到输入为既有 Word 文档，且任务要求【保持格式不变 / 翻译 / 原地转换】。
+2. ⚠️ 严禁使用 `python-docx` 的 `Document()` 从头新建文档！
+   从头新建会彻底损坏原文档的页面设置（A4/Letter）、精确边距、动态页脚页码（footer1/2.xml 域代码）、字体和样式树。
+3. ✅ 必须通过 bash 调用已验证的原生 OOXML 原地流式翻译引擎：
+   python3 /opt/dsh/skills/docx/scripts/ooxml_docx_translate.py auto <输入文件.docx> <输出文件.docx> --target-lang <ja|en|zh|ko...>
+   该引擎在 XML Text 节点执行合并与流式翻译，100% 保持 ECMA-376 架构、页面边距、表格与动态页脚。
+4. 交付总结规范（面向用户的四段式业务交付，篇幅严格控制在 200~300 字以内）：
+   - 🚫 红线禁令：
+     * 严禁输出“关键术语对照字典”或罗列术语对照表（用户需要的是业务成果说明，不是字典！）；
+     * 严禁全文倾泻长篇协议全文或长表格；
+     * 严禁输出测试员暗语与工程黑话（如 Runs整合 / document.xml / OOXML / XML级注入 / 原生节点等）；
+     * 严禁向客户汇报内部处理数字（如“共 21 处”、“89 处整合”）；
+     * 严禁泄露容器路径：严禁在回复中直接展示 /workspace/ 等内部沙箱物理路径；
+   - ✅ 标准业务交付结构：
+     1. ✅ 任务完成状态（1 句话）：明确告知 Word 文档已完成高保真本地化；
+     2. 📋 主要处理内容（2~3 句话）：清晰概述翻译处理的章节范围（如前言、各正式条款、表格与签署栏已全部地道转换）；
+     3. 📦 交付成果物（2~3 句话）：说明生成的 Word 文件名称，确认原文档的纸张规格、版心边距、动态页脚页码及表格排版已 100% 完整保留；
+     4. 💡 提示与使用建议（1~2 句话）：温和提示用户可直接点击下方文件卡片一键下载查阅，特定内部简称可直接在 Word 中微调。
+"""

@@ -23,7 +23,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
   users, organizations, departments, teams, team_memberships, org_memberships,
   roles, user_roles, org_role_bindings, identity_provider_configs, audit_logs,
   workbench_inbox_items, workbench_todos, workspace_nodes, workspaces,
-  user_credentials, user_skill_credential_bindings, im_channel_connections
+  user_credentials, user_skill_credential_bindings, im_channel_connections,
+  mcp_connections, mcp_connection_revisions, user_mcp_authorizations, mcp_invocations
 TO ops_governance_writer;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
@@ -33,7 +34,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
   capability_releases, capability_source_snapshots, capability_builds,
   capability_validations, capability_fixtures, capability_attestations,
   deployment_records, release_audit_events, skill_configs, skill_drafts,
-  skill_permissions, skill_access_requests, skill_tool_bindings, tool_catalogs
+  skill_permissions, skill_access_requests, skill_tool_bindings, tool_catalogs, mcp_tool_bindings
 TO ops_registry_writer;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE

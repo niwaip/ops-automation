@@ -22,6 +22,7 @@ import { BuiltinSkillModule } from '@ops/skill-registry/builtin';
 import {
   UserConnectionModule,
   UserCredentialModule,
+  McpIntegrationModule,
   WorkspaceModule,
   WorkbenchTodoModule,
   WorkbenchInboxModule,
@@ -72,6 +73,7 @@ import { JwtSecretValidatorService } from './jwt-secret-validator.service';
     ImChannelModule,
     UserConnectionModule,
     UserCredentialModule,
+    McpIntegrationModule,
     WorkspaceModule,
     WorkbenchTodoModule,
     WorkbenchInboxModule,

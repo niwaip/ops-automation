@@ -1,0 +1,53 @@
+{
+  "testedAt": "2026-11-05T09:25:19.170Z",
+  "checks": {
+    "savedSummaryInCatalogAndPreview": true,
+    "withinPromptBudget": true,
+    "noSchemaInCatalog": true,
+    "unfilteredMetadataHidden": true,
+    "sameConnectionRevision": true,
+    "sameAuthorization": true,
+    "sameToolContracts": true,
+    "noNewMcpInvocation": true,
+    "longSummaryRejected": true,
+    "staleDraftRejected": true,
+    "anonymousGenerationRejected": true,
+    "restoreAutomaticWithoutAi": true
+  },
+  "snapshot": {
+    "connectionId": "243083c4-31a0-44ff-b24f-2acf67029cc4",
+    "revisionId": "aca539be-715d-4ba4-8afc-9ce563c960c1",
+    "authorizationFingerprint": "da36bc1e0bdd30297377cd2b3ff9fae9c82da07c17673552209b2b270369cd69",
+    "bindingFingerprint": "8361d1ab93ccc5161f087abd84a98560d85abf0f85830fc9f7922f8a2f32d166",
+    "invocationCount": 38
+  },
+  "skill": {
+    "id": "mcp-243083c4-31a0-44ff-b24f-2acf67029cc4",
+    "name": "amap-maps-streamableHTTP",
+    "source": "mcp",
+    "type": "mcp",
+    "description": "支持地址转经纬度、POI 地点搜索，以及驾车、骑行和公共交通路线规划。",
+    "routing_description": "骑行路径规划用于规划骑行通勤方案，规划时会考虑天桥、单行线、封路等情况。最大支持 500km 的骑行路线规划；驾车路径规划 API 可以根据用户起终点经纬度坐标规划以小客车、轿车通勤出行的方案，并且返回通勤方案的数据。；根据用户起终点经纬度坐标规划综合各类公共交通方式的通勤方案，并且返回通勤方案的数据，跨城场景下必须传起点城市与终点城市；将详细的结构化地址转换为经纬度坐标。支持对地标性名胜景区、建筑物名称解析为经纬度坐标；关键字搜索 API 根据用户输入的关键字进行 POI 搜索，并返回相关的信息；支持地址转经纬度、POI 地点搜索，以及驾车、骑行和公共交通路线规划。",
+    "descriptionSource": "curated",
+    "canManageSummary": true,
+    "summaryStale": false,
+    "aliases": [
+      "amap-maps-streamableHTTP"
+    ],
+    "triggers": [
+      "amap-maps-streamableHTTP"
+    ],
+    "category": "integration",
+    "execution_mode": "mcp",
+    "read_only": true,
+    "disclosure_steps": 3,
+    "deliverables": [],
+    "requires_execution": false,
+    "default_rounds": 10,
+    "configured": true,
+    "scope": "personal",
+    "connectionId": "243083c4-31a0-44ff-b24f-2acf67029cc4"
+  },
+  "catalogEntry": "- mcp-243083c4-31a0-44ff-b24f-2acf67029cc4 (amap-maps-streamableHTTP): 支持地址转经纬度、POI 地点搜索，以及驾车、骑行和公共交通路线规划。",
+  "passed": true
+}

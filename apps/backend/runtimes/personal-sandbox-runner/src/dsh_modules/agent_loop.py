@@ -16,6 +16,7 @@ from typing import List, Dict, Any, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
+from .model_failures import ModelStreamError, model_failure_text
 from .runtime_policy import RuntimePolicy
 from .context_budget import ContextBudget
 from .telemetry import TelemetryStats, extract_dsh_markers, strip_dsh_markers
@@ -105,6 +106,7 @@ class AgentLoopResult:
     telemetry: TelemetryStats = field(default_factory=TelemetryStats)
     messages: List[Dict[str, Any]] = field(default_factory=list)
     execution_evidence: List[ToolResult] = field(default_factory=list)
+    stop_reason: Optional[str] = None
 
 
 from .completion_evaluator import (
@@ -160,9 +162,12 @@ def run_agent_loop(
     user_prompt: Optional[str] = None,
     user_declarations: Optional[Dict[str, Any]] = None,
     delivery_session_id: Optional[str] = None,
+    mcp_readonly_skill_id: Optional[str] = None,
 ) -> AgentLoopResult:
     """Executes the multi-turn ReAct tool calling loop up to max_rounds."""
     active_tools = tools if tools is not None else get_sandbox_tools()
+    from .mcp_execution import McpExecutionGate
+    mcp_gate = McpExecutionGate(mcp_readonly_skill_id, user_prompt or _extract_last_user_prompt(messages))
     pdf_repair_required = False
     managed_pdf = (any(t.get('function', {}).get('name') == 'render_pdf' for t in active_tools)
                    and not any(t.get('function', {}).get('name') == 'bash' for t in active_tools)
@@ -291,7 +296,9 @@ def run_agent_loop(
             or (is_inspect_intent and not is_generate_intent and not expected_deliverables and not (is_update_req and has_active_update_tools))
         )
     )
-    task_ceiling = MAX_SPREADSHEET_ROUNDS_CEILING if is_pure_spreadsheet_or_inspect else MAX_AGENT_ROUNDS_HARD_CEILING
+    task_ceiling = MAX_SPREADSHEET_ROUNDS_CEILING if is_pure_spreadsheet_or_inspect and not mcp_readonly_skill_id else MAX_AGENT_ROUNDS_HARD_CEILING
+    if mcp_readonly_skill_id:
+        task_ceiling = min(task_ceiling, 12)
     max_rounds = min(max_rounds, task_ceiling)
     initial_max_rounds = max_rounds
 
@@ -314,12 +321,13 @@ def run_agent_loop(
 
         # 对多轮长程循环中的前序超大工具回包执行就地语义折叠，防止 Prompt 产生 O(N^2) 滚雪球膨胀
         ContextBudget.compact_active_loop_messages(messages, min_chars_to_compact=2500)
+        round_tools, mcp_choice = mcp_gate.select(active_tools, execution_evidence)
 
         try:
             llm_res = call_model_proxy(
                 messages,
                 model,
-                tools=active_tools,
+                tools=round_tools,
                 timeout=policy.single_request_timeout,
                 deadline=deadline,
                 policy=policy,
@@ -327,7 +335,7 @@ def run_agent_loop(
                 # A spreadsheet model may ask a valid question before computing.
                 # The evidence gate checks assertions after its choice; forcing a
                 # tool call here would remove the right to clarify.
-                tool_choice=(
+                tool_choice=mcp_choice or (
                     {'type': 'function', 'function': {'name': 'render_pdf'}} if managed_pdf or pdf_repair_required else (
                         {'type': 'function', 'function': {'name': 'render_docx'}} if (
                             (managed_docx or any(str(item).lower().endswith('.docx') for item in (expected_deliverables or [])))
@@ -341,20 +349,11 @@ def run_agent_loop(
                 ),
                 purpose="tool_loop"
             )
-        except ModelRepetitionLoopError as e:
-            breaker_msg = (
-                "⚠️ **模型推理陷入死循环，已触发主动熔断保护**\n\n"
-                f"- **异常原因**：检测到大模型在生成推理思考链或回复内容时陷入周期性机械重复（连续复读模式，模式长 {len(e.pattern)} 字，已复读 {e.repeat_count} 次）。为避免无休止等待与算力浪费，平台已主动为您熔断打断。\n"
-                "- **💡 建议操作**：\n"
-                "  1. 请直接重新发送指令，或稍后点击重试；\n"
-                "  2. 若持续出现该现象，可尝试暂时关闭思考模式（关闭 Thinking）或更换提问关键词以打破模型的注意力陷阱。"
-            )
+        except ModelStreamError as e:
+            breaker_msg = model_failure_text(e.code)
             if telemetry:
-                telemetry.record_guard("model_repetition_breaker", "tripped", {
-                    "pattern_len": len(e.pattern),
-                    "repeat_count": e.repeat_count,
-                    "target": e.target
-                })
+                telemetry.record_guard("model_repetition_breaker" if e.code == 'MODEL_REPETITION' else 'model_stream_guard',
+                                       "tripped", {'code': e.code, **e.details})
             print(f"\n⚡ [Harness Breaker] {e} -> 立即熔断并呈现重试建议", flush=True)
             return AgentLoopResult(
                 final_text=breaker_msg,
@@ -362,7 +361,8 @@ def run_agent_loop(
                 outbound_reminders=outbound_reminders,
                 telemetry=telemetry,
                 messages=messages,
-                execution_evidence=execution_evidence
+                execution_evidence=execution_evidence,
+                stop_reason=e.code
             )
         reply_text = (llm_res.get("content") or "") if isinstance(llm_res, dict) else str(llm_res or "")
         structured_calls = list(llm_res.get("tool_calls") or []) if isinstance(llm_res, dict) else []
@@ -598,14 +598,22 @@ def run_agent_loop(
             last_user_prompt=last_user_prompt,
             execution_evidence=execution_evidence,
             allowed_tool_names=[t.get("function", {}).get("name", t.get("name", ""))
-                                for t in active_tools]
+                                for t in (round_tools if mcp_choice else active_tools)]
         )
 
         from .tool_failure_recovery import repeated_execution_failure
         repeated_failure = repeated_execution_failure(execution_evidence, artifact_task=bool(expected_deliverables or is_generate_intent))
         if repeated_failure:
             telemetry.record_guard('repeated_execution_failure', 'stop', repeated_failure)
-            reply_text = '文件生成未完成：执行错误累计达到修复上限，已停止无效重试。'
+            reply_text = (
+                "## ⚠️ 目标文件未能成功生成\n\n"
+                "### 🔍 原因说明\n"
+                "在处理文档本地化与生成过程中遇到异常（底层处理脚本连续执行未通过校验，已停止重试以避免资源耗尽）。\n\n"
+                "### 💡 下一步建议\n"
+                "1. **检查源文档**：请确认上传的文件未被密码保护或加密，且格式未受损；\n"
+                "2. **分段或简化**：若文档包含超大宏表、大量复杂嵌套公式或损坏图表，建议另存为标准格式后重试；\n"
+                "3. **重新发起生成**：您可以再次上传原文件，并使用明确简练的指令重新发起处理。"
+            )
             break
         from .pdf_preview_tool import has_registered_renders
         if managed_pdf or has_registered_renders():
@@ -1124,8 +1132,15 @@ def run_agent_loop(
 
     if missing_claims:
         telemetry.record_guard("artifact_delivery", "reject", {"missing_files": missing_claims})
-        final_text = "本次文件生成未完成，以下文件尚未生成可用的交付版本：" + "、".join(
-            f"`{name}`" for name in missing_claims) + "。当前无法提供这些文件的下载。"
+        missing_str = "、".join(f"「{name}」" for name in missing_claims)
+        final_text = (
+            f"## ⚠️ 目标文件未能成功生成\n\n"
+            f"### 🔍 说明\n"
+            f"本次处理未生成可用的交付版本：{missing_str}。\n\n"
+            f"### 💡 下一步建议\n"
+            f"1. **检查参数与指令**：请确认输入的文件路径及生成要求清晰明确；\n"
+            f"2. **重试发起**：建议重新上传源文件并简化提示词后重新发起处理。"
+        )
 
     return AgentLoopResult(
         final_text=final_text,

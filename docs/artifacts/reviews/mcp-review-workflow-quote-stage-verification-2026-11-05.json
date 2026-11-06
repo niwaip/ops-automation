@@ -1,0 +1,472 @@
+{
+  "sessionId": "mcp-skill-test-6f1f1d77-a64d-4d38-9602-0a6aad82539f",
+  "seededHistory": true,
+  "startedAt": "2026-11-05T03:38:33.052Z",
+  "finishedAt": "2026-11-05T03:39:22.434Z",
+  "exitCode": 0,
+  "calls": [
+    {
+      "id": "e3e89c9c-45ce-4d95-a388-44ed3e2b93e7",
+      "connectionId": "b8886e38-4c6d-4053-86ba-09197d38c9cd",
+      "bindingId": "2dcb0e40-d683-491c-a9bd-c935ece579fb",
+      "status": "completed",
+      "createdAt": "2026-11-05T03:38:40.623Z"
+    },
+    {
+      "id": "2e2816bb-c749-4913-9f43-29d2fe748abb",
+      "connectionId": "b8886e38-4c6d-4053-86ba-09197d38c9cd",
+      "bindingId": "2dcb0e40-d683-491c-a9bd-c935ece579fb",
+      "status": "completed",
+      "createdAt": "2026-11-05T03:38:47.488Z"
+    },
+    {
+      "id": "6ff01de3-a8b9-4f01-b136-7be5dcd98736",
+      "connectionId": "b8886e38-4c6d-4053-86ba-09197d38c9cd",
+      "bindingId": "2dcb0e40-d683-491c-a9bd-c935ece579fb",
+      "status": "completed",
+      "createdAt": "2026-11-05T03:38:55.888Z"
+    },
+    {
+      "id": "cc3caaf2-c1ac-4f7f-b5f2-7db516aff7f3",
+      "connectionId": "b8886e38-4c6d-4053-86ba-09197d38c9cd",
+      "bindingId": "2dcb0e40-d683-491c-a9bd-c935ece579fb",
+      "status": "completed",
+      "createdAt": "2026-11-05T03:39:01.096Z"
+    }
+  ],
+  "metrics": {
+    "ttftMs": 3267.21,
+    "ttftScope": "model_request",
+    "durationMs": 49106.25,
+    "llmDurationMs": 32304.13,
+    "toolCallsCount": 7,
+    "toolCalls": [
+      {
+        "name": "read_skill",
+        "params": {
+          "skill_name": "mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "list_external_tools",
+        "params": {
+          "skill_id": "mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd",
+          "tool_name": "microsoft_docs_fetch"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "call_external_tool",
+        "params": {
+          "binding_id": "2dcb0e40-d683-491c-a9bd-c935ece579fb",
+          "arguments": "{'url': 'https://learn.microsoft.com/azure/vpn-gateway/tutorial-create-gateway-portal'}"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "call_external_tool",
+        "params": {
+          "binding_id": "2dcb0e40-d683-491c-a9bd-c935ece579fb",
+          "arguments": "{'url': 'https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal'}"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "list_external_tools",
+        "params": {
+          "skill_id": "mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd",
+          "tool_name": "microsoft_docs_fetch"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "call_external_tool",
+        "params": {
+          "binding_id": "2dcb0e40-d683-491c-a9bd-c935ece579fb",
+          "arguments": "{'url': 'https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-howto-p2s-point-to-site-azure-portal'}"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      },
+      {
+        "name": "call_external_tool",
+        "params": {
+          "binding_id": "2dcb0e40-d683-491c-a9bd-c935ece579fb",
+          "arguments": "{'url': 'https://learn.microsoft.com/azure/vpn-gateway/configure-point-to-site-portal'}"
+        },
+        "status": "success",
+        "result_status": "success",
+        "workbook_id": null
+      }
+    ],
+    "llmInvocations": 9,
+    "tokens": {
+      "prompt_tokens": 34880,
+      "completion_tokens": 2016,
+      "total_tokens": 36896
+    },
+    "tokenUsageComplete": true,
+    "finishReason": "tool_calls",
+    "roundFinishReasons": [
+      "stop",
+      "stop",
+      "stop",
+      "tool_calls",
+      "tool_calls",
+      "stop",
+      "tool_calls",
+      "stop",
+      "tool_calls"
+    ],
+    "guardDecisions": [
+      {
+        "guard": "user_unit_confirmation",
+        "action": "accept",
+        "reason": {
+          "unit": null,
+          "sections": null
+        }
+      },
+      {
+        "guard": "mcp_review_sources",
+        "action": "selected",
+        "reason": {
+          "attempt": 1,
+          "candidate_chunks": 2,
+          "unique_documents": 2,
+          "selected_documents": 2,
+          "selected_chars": 10000,
+          "sources": [
+            {
+              "id": "s-8f12da3279d55774",
+              "url": "https://learn.microsoft.com/azure/vpn-gateway/tutorial-create-gateway-portal",
+              "kind": "document",
+              "segments": [
+                {
+                  "id": "p-ab308ecaf8608def",
+                  "invocationId": "e3e89c9c-45ce-4d95-a388-44ed3e2b93e7",
+                  "kind": "fetch",
+                  "chars": 5000,
+                  "truncated": true
+                }
+              ]
+            },
+            {
+              "id": "s-90c32088eba2f6d4",
+              "url": "https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal",
+              "kind": "document",
+              "segments": [
+                {
+                  "id": "p-7aaf9ca18d2243c3",
+                  "invocationId": "2e2816bb-c749-4913-9f43-29d2fe748abb",
+                  "kind": "fetch",
+                  "chars": 5000,
+                  "truncated": true
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "guard": "mcp_answer_review",
+        "action": "accept",
+        "reason": {
+          "attempt": 1,
+          "candidate_count": 5,
+          "rejections": [
+            {
+              "index": 0,
+              "reason": "quote_not_found",
+              "source_id": "s-8f12da3279d55774",
+              "suggested_source_id": "s-8f12da3279d55774",
+              "statement": "创建虚拟网络网关资源需要部署在名为 GatewaySubnet 的子网中，建议使用 /27 或更大范围的地址空间。",
+              "quote": "Virtual network gateway resources are deployed to a specific subnet named **GatewaySubnet**. ... We recommend that you create a gateway subnet that uses a /27 (or larger).",
+              "quote_sha256": "54a6a5fb98f5f7d4d951aebc94a8d2d29cafa287345b8fceba5e17c97d330d01"
+            },
+            {
+              "index": 3,
+              "reason": "quote_not_found",
+              "source_id": "s-8f12da3279d55774",
+              "suggested_source_id": "s-8f12da3279d55774",
+              "statement": "Azure VPN 网关部署通常需要 15 到 45 分钟，整个站点到站点教程预计完成时间为 90-120 分钟。",
+              "quote": "Note: The steps in this article use the gateway SKU **VpnGw2AZ**...",
+              "quote_sha256": "db8b8063484aac89363d4224573d833688bd02dc51d6eaa0a86609e86df3ed7f"
+            },
+            {
+              "index": 4,
+              "reason": "quote_not_found",
+              "source_id": "s-90c32088eba2f6d4",
+              "suggested_source_id": "s-90c32088eba2f6d4",
+              "statement": "若要创建活动-活动模式的网关以支持高可用性，需确保 VPN 设备支持该模式，该模式使用两个公共 IP 地址。",
+              "quote": "Verify that your VPN device supports active-active mode gateways. This article creates an active-active mode VPN gateway... Active-active mode specifies that both gateway VM instances are active and uses two public IP addresses",
+              "quote_sha256": "c645c5d4495675a7f74cf27c3e8bb57f5e7eb709c2640a5cbc43ba42fa5a80df"
+            }
+          ],
+          "rejection_counts": {
+            "quote_not_found": 3
+          },
+          "grounded_claims": 2,
+          "claims": [
+            {
+              "statement": "在创建站点到站点连接时，必须指定预共享密钥（Pre-Shared Key）用于 Azure VPN 网关与本地 VPN 设备之间的连接认证。",
+              "url": "https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal",
+              "source_id": "s-90c32088eba2f6d4",
+              "segment_id": "p-7aaf9ca18d2243c3",
+              "invocationId": "2e2816bb-c749-4913-9f43-29d2fe748abb",
+              "quote": "This configuration uses a specified pre-shared key for the connection between the Azure VPN gateway and your on-premises VPN device."
+            },
+            {
+              "statement": "站点到站点连接要求本地 VPN 设备具备外部可见的公共 IPv4 地址。",
+              "url": "https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal",
+              "source_id": "s-90c32088eba2f6d4",
+              "segment_id": "p-7aaf9ca18d2243c3",
+              "invocationId": "2e2816bb-c749-4913-9f43-29d2fe748abb",
+              "quote": "Verify that you have an externally facing public IPv4 address for your VPN device."
+            }
+          ]
+        }
+      }
+    ],
+    "modelResponses": [
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "stop",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "stop",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "stop",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "stop",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 1846,
+        "cleanChars": 1846,
+        "rawSha256": "3f94826b5c356503e5000481915df1d577ff658bc28f6c6504e8a6f37cc283ed",
+        "cleanSha256": "3f94826b5c356503e5000481915df1d577ff658bc28f6c6504e8a6f37cc283ed",
+        "finishReason": "stop",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      },
+      {
+        "rawChars": 0,
+        "cleanChars": 0,
+        "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cleanSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "finishReason": "tool_calls",
+        "finishReasonSource": "upstream",
+        "receivedDone": true
+      }
+    ],
+    "answerValidation": {},
+    "callsLedger": [
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 3267.67,
+        "usage": {
+          "prompt_tokens": 2068,
+          "total_tokens": 2130,
+          "completion_tokens": 62
+        },
+        "span_id": null,
+        "call_id": "89cbc11c68c143f1b90b7677d6f76e55",
+        "status": "completed",
+        "error_code": null,
+        "usageKnown": true
+      },
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 1651.74,
+        "usage": {
+          "prompt_tokens": 2562,
+          "total_tokens": 2640,
+          "completion_tokens": 78
+        },
+        "span_id": null,
+        "call_id": "c592416ce06b4ba8b7c715841ccd48db",
+        "status": "completed",
+        "error_code": null,
+        "usageKnown": true
+      },
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 2286.86,
+        "usage": {
+          "prompt_tokens": 2745,
+          "total_tokens": 2835,
+          "completion_tokens": 90
+        },
+        "span_id": null,
+        "call_id": "c36d5964d80743a186751c9037136b66",
+        "status": "completed",
+        "error_code": null,
+        "usageKnown": true
+      },
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 2337.1,
+        "usage": {
+          "prompt_tokens": 5735,
+          "total_tokens": 5824,
+          "completion_tokens": 89
+        },
+        "span_id": null,
+        "call_id": "58ea56302c9d4148943c396f1f6db4c5",
+        "status": "completed",
+        "error_code": null,
+        "usageKnown": true
+      },
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 1998.33,
+        "usage": {
+          "prompt_tokens": 5865,
+          "total_tokens": 5943,
+          "completion_tokens": 78
+        },
+        "span_id": null,
+        "call_id": "a53eba3ac753482da63deaf7a1ec0981",
+        "status": "completed",
+        "error_code": null,
+        "usageKnown": true
+      },
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 1967.13,
+        "usage": {
+          "prompt_tokens": 3338,
+          "total_tokens": 3437,
+          "completion_tokens": 99
+        },
+        "span_id": null,
+        "call_id": "077cd90891c749c187f11ac96ec62ad2",
+        "status": "completed",
+        "error_code": null,
+        "usageKnown": true
+      },
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 1645.26,
+        "usage": {
+          "prompt_tokens": 3933,
+          "total_tokens": 4023,
+          "completion_tokens": 90
+        },
+        "span_id": null,
+        "call_id": "c5d80660792d43499882fe59a008523d",
+        "status": "completed",
+        "error_code": null,
+        "usageKnown": true
+      },
+      {
+        "purpose": "tool_loop",
+        "model": "default",
+        "total_ms": 11606.29,
+        "usage": {
+          "prompt_tokens": 4125,
+          "total_tokens": 5082,
+          "completion_tokens": 957
+        },
+        "span_id": null,
+        "call_id": "f4e0262b7ffc4270ac24360577c3cf70",
+        "status": "completed",
+        "error_code": null,
+        "usageKnown": true
+      },
+      {
+        "purpose": "mcp_answer_review",
+        "model": "default",
+        "total_ms": 5543.75,
+        "usage": {
+          "prompt_tokens": 4509,
+          "total_tokens": 4982,
+          "completion_tokens": 473
+        },
+        "span_id": null,
+        "call_id": "4237f4a0e95643788349ee2bfc9a3d21",
+        "status": "completed",
+        "error_code": null,
+        "usageKnown": true
+      }
+    ],
+    "auxiliaryInvocations": 1
+  },
+  "answer": "根据本轮 MCP 返回资料，可核对的配置要点如下：\n\n- 在创建站点到站点连接时，必须指定预共享密钥（Pre-Shared Key）用于 Azure VPN 网关与本地 VPN 设备之间的连接认证。 [原文](https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal)\n\n- 站点到站点连接要求本地 VPN 设备具备外部可见的公共 IPv4 地址。 [原文](https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal)\n\n这些要点仅覆盖上述资料支持的范围；其他场景和具体参数需继续核对相应教程。\n\n---\n### 📚 本轮 MCP 检索来源\n\n- [Tutorial: Create a site-to-site VPN connection in the Azure portal](https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal)\n\n以上为本轮成功检索返回的文档片段来源，不代表已阅读全文。",
+  "passed": true,
+  "proofVerified": true,
+  "progressiveDisclosureVerified": true,
+  "stdout": "⚡ [DeepSeek Harness v1.3.0-sandbox | Sandbox: 6410d8f0b8c3 | User: sandbox | Mode: Personal]\n🎯 [Skill Router] 候选: mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd (亲和度得分: 54.4)\n<<<DSH_PROGRESS>>>\n<<<DSH_DELTA_RESET>>>\n⚡ [Harness Tool Call] 正在调用工具: read_skill({'skill_name': 'mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd'})...\n✓ 工具 [read_skill] 执行完成\n<<<DSH_PROGRESS>>>\n⏳ [Harness Agent] 正在结合前序采集证据进行深入推理与规划 (第 2 轮)...\n<<<DSH_PROGRESS>>>\n<<<DSH_DELTA_RESET>>>\n⚡ [Harness Tool Call] 正在调用工具: list_external_tools({'skill_id': 'mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd', 'tool_name': 'microsoft...)...\n✓ 工具 [list_external_tools] 执行完成\n<<<DSH_PROGRESS>>>\n⏳ [Harness Agent] 正在结合前序采集证据进行深入推理与规划 (第 3 轮)...\n<<<DSH_PROGRESS>>>\n<<<DSH_DELTA_RESET>>>\n⚡ [Harness Tool Call] 正在调用工具: call_external_tool({'binding_id': '2dcb0e40-d683-491c-a9bd-c935ece579fb', 'arguments': {'url': 'htt...)...\n✓ 工具 [call_external_tool] 执行完成\n<<<DSH_PROGRESS>>>\n⏳ [Harness Agent] 正在结合前序采集证据进行深入推理与规划 (第 4 轮)...\n<<<DSH_PROGRESS>>>\n<<<DSH_DELTA_RESET>>>\n⚡ [Harness Tool Call] 正在调用工具: call_external_tool({'binding_id': '2dcb0e40-d683-491c-a9bd-c935ece579fb', 'arguments': {'url': 'htt...)...\n✓ 工具 [call_external_tool] 执行完成\n<<<DSH_PROGRESS>>>\n⚡ [Harness Dynamic Budget] 检测到任务持续推进中，动态追加执行轮次至 6 (硬上限: 8)...\n⏳ [Harness Agent] 正在结合前序采集证据进行深入推理与规划 (第 5 轮)...\n<<<DSH_PROGRESS>>>\n<<<DSH_DELTA_RESET>>>\n⚡ [Harness Tool Call] 正在调用工具: list_external_tools({'skill_id': 'mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd', 'tool_name': 'microsoft...)...\n✓ 工具 [list_external_tools] 执行完成\n<<<DSH_PROGRESS>>>\n⚡ [Harness Dynamic Budget] 检测到任务持续推进中，动态追加执行轮次至 7 (硬上限: 8)...\n⏳ [Harness Agent] 正在结合前序采集证据进行深入推理与规划 (第 6 轮)...\n<<<DSH_PROGRESS>>>\n<<<DSH_DELTA_RESET>>>\n⚡ [Harness Tool Call] 正在调用工具: call_external_tool({'binding_id': '2dcb0e40-d683-491c-a9bd-c935ece579fb', 'arguments': {'url': 'htt...)...\n✓ 工具 [call_external_tool] 执行完成\n<<<DSH_PROGRESS>>>\n⚡ [Harness Dynamic Budget] 检测到任务持续推进中，动态追加执行轮次至 8 (硬上限: 8)...\n⏳ [Harness Agent] 正在结合前序采集证据进行深入推理与规划 (第 7 轮)...\n<<<DSH_PROGRESS>>>\n<<<DSH_DELTA_RESET>>>\n⚡ [Harness Tool Call] 正在调用工具: call_external_tool({'binding_id': '2dcb0e40-d683-491c-a9bd-c935ece579fb', 'arguments': {'url': 'htt...)...\n✓ 工具 [call_external_tool] 执行完成\n<<<DSH_PROGRESS>>>\n⚡ [Harness Dynamic Budget] 检测到任务持续推进中，动态追加执行轮次至 8 (硬上限: 8)...\n⏳ [Harness Agent] 正在结合前序采集证据进行深入推理与规划 (第 8 轮)...\n<<<DSH_DELTA:\"基于对 Microsoft Azure 官方文档的执行查阅，以下是配置 Azure VPN 网关的标准操作步骤总结。由于 Azure 门户界面可能随版本微调，具体按钮名称请以当前门户为准，但核心逻辑一致：\\n\\n### 1. 准备前置资源（必须）\\n在创建 VPN 网关前，需确保已创建以下资源：\\n*   **虚拟网络 (VNet)**：目标网络地址范围。\\n*   **网关子网 (GatewaySubnet)**：必须在 VNet 中创建一个名为 `GatewaySubnet` 的子网（地址范围建议 /27 或更大）。\\n*   **公共 IP 地址**：为网关分配一个静态公共 IP。\\n\\n### 2. 创建 VPN 网关\\n1.  在 Azure 门户顶部点击 **“创建资源”**，搜索 **“VPN 网关”** 并选择。\\n2.  **基本信息**：\\n    *   **订阅/资源组**：选择对应的项。\\n    *   **名称**：输入网关名称（如 `MyVpnGateway`）。\\n    *   **区域**：与 VNet 区域一致。\\n    *   **VPN 类型**：选择 “Route-based”（推荐，支持多种 VPN 设备互连）。\\n    *   **SKU**：推荐选择 `VpnGw1` 或更高（支持隧道数、吞吐量更大）；`Basic` 仅支持单个站点到站点连接。\\n3.  **配置选项**：\\n    *   **网关子网**：选择之前创建的 `GatewaySubnet`，并为公共 IP 分配新建或现有的公共 IP。\\n    *   **配置选项**：若为站点到站点 (S2S) 连接，可选择“仅站点到站点”；若同时需要点对站点 (P2S)，需后续单独配置客户端。\\n4.  点击 **“查看 + 创建”** 并 **“创建”**。部署通常需 15-45 分钟。\\n\\n### 3. 配置连接类型（根据需求选择）\\n\\n#### A. 站点到站点 (S2S) 连接（连接本地数据中心）\\n1.  进入已创建的 VPN 网关资源。\\n2.  在左侧菜单 **“设置”** 下点击 **“站点到站点”**。\\n3.  点击 **“+ 添加”**：\\n    *   **连接类型**：VPN。\\n    *   **连接协议**：IKEv2（推荐）或 IKEv1/IKEv2。\\n    *   **本地网络网关**：选择或新建，填入本地防火墙的公共 IP。\\n    *   **共享密钥**：输入与本地 VPN 设备配置一致的 Pre-Shared Key。\\n    *   **BGP**：若使用动态路由需启用并配置 BGP ASN；静态路由则保持关闭。\\n4.  点击 **“添加”**，等待连接状态变为 “Connected”。\\n\\n#### B. 点对站点 (P2S) 连接（远程用户接入）\\n1.  在 VPN 网关资源中，进入 **“点对站点”** 设置。\\n2.  **生成客户端包**：\\n    *   **身份验证方法**：选择 “Azure Certificate”（推荐）或 “RADIUS”。\\n    *   **隧道类型**：通常选择 “IKEv2”。\\n    *   **Root 证书**：上传或生成用于客户端认证的根证书。\\n    *   **客户端根证书**：若使用证书验证，需上传客户端证书。\\n3.  点击 **“保存”**，系统会自动生成并下载客户端配置包。\\n4.  用户在 Windows 上双击安装配置包并连接；Mac/Linux 需使用 Azure VPN Client 或手动导入证书。\\n\\n### 4. 验证连接\\n*   **S2S**：在网关 “站点到站点” 列表中检查状态为 “Connected”。\\n*   **P2S**：在网关 “点对站点” 列表中检查已连接客户端数量；在本地服务器上测试从客户端子网到 VNet 的连通性。\\n\\n> **注意**：若连接失败，请检查本地设备配置（IP、密钥、路由）、NAT 遍历（若本地网络有 NAT）、以及 Azure 网关健康状态日志。建议参考 Microsoft Learn 文档 [“故障排除 VPN 网关”](https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-troubleshoot-azure-portal) 获取详细排查步骤。\">>>\n<<<DSH_PROGRESS>>>\n<<<DSH_PROGRESS>>>\n⏱️ [Harness Post-Processing] Export: 5904.1ms, Persistence: 6.7ms\n\n<<<DSH_METRICS:len=10441:{\"ttftMs\": 3267.21, \"ttftScope\": \"model_request\", \"durationMs\": 49106.25, \"llmDurationMs\": 32304.13, \"toolCallsCount\": 7, \"toolCalls\": [{\"name\": \"read_skill\", \"params\": {\"skill_name\": \"mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd\"}, \"status\": \"success\", \"result_status\": \"success\", \"workbook_id\": null}, {\"name\": \"list_external_tools\", \"params\": {\"skill_id\": \"mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd\", \"tool_name\": \"microsoft_docs_fetch\"}, \"status\": \"success\", \"result_status\": \"success\", \"workbook_id\": null}, {\"name\": \"call_external_tool\", \"params\": {\"binding_id\": \"2dcb0e40-d683-491c-a9bd-c935ece579fb\", \"arguments\": \"{'url': 'https://learn.microsoft.com/azure/vpn-gateway/tutorial-create-gateway-portal'}\"}, \"status\": \"success\", \"result_status\": \"success\", \"workbook_id\": null}, {\"name\": \"call_external_tool\", \"params\": {\"binding_id\": \"2dcb0e40-d683-491c-a9bd-c935ece579fb\", \"arguments\": \"{'url': 'https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal'}\"}, \"status\": \"success\", \"result_status\": \"success\", \"workbook_id\": null}, {\"name\": \"list_external_tools\", \"params\": {\"skill_id\": \"mcp-b8886e38-4c6d-4053-86ba-09197d38c9cd\", \"tool_name\": \"microsoft_docs_fetch\"}, \"status\": \"success\", \"result_status\": \"success\", \"workbook_id\": null}, {\"name\": \"call_external_tool\", \"params\": {\"binding_id\": \"2dcb0e40-d683-491c-a9bd-c935ece579fb\", \"arguments\": \"{'url': 'https://learn.microsoft.com/azure/vpn-gateway/vpn-gateway-howto-p2s-point-to-site-azure-portal'}\"}, \"status\": \"success\", \"result_status\": \"success\", \"workbook_id\": null}, {\"name\": \"call_external_tool\", \"params\": {\"binding_id\": \"2dcb0e40-d683-491c-a9bd-c935ece579fb\", \"arguments\": \"{'url': 'https://learn.microsoft.com/azure/vpn-gateway/configure-point-to-site-portal'}\"}, \"status\": \"success\", \"result_status\": \"success\", \"workbook_id\": null}], \"llmInvocations\": 9, \"tokens\": {\"prompt_tokens\": 34880, \"completion_tokens\": 2016, \"total_tokens\": 36896}, \"tokenUsageComplete\": true, \"finishReason\": \"tool_calls\", \"roundFinishReasons\": [\"stop\", \"stop\", \"stop\", \"tool_calls\", \"tool_calls\", \"stop\", \"tool_calls\", \"stop\", \"tool_calls\"], \"guardDecisions\": [{\"guard\": \"user_unit_confirmation\", \"action\": \"accept\", \"reason\": {\"unit\": null, \"sections\": null}}, {\"guard\": \"mcp_review_sources\", \"action\": \"selected\", \"reason\": {\"attempt\": 1, \"candidate_chunks\": 2, \"unique_documents\": 2, \"selected_documents\": 2, \"selected_chars\": 10000, \"sources\": [{\"id\": \"s-8f12da3279d55774\", \"url\": \"https://learn.microsoft.com/azure/vpn-gateway/tutorial-create-gateway-portal\", \"kind\": \"document\", \"segments\": [{\"id\": \"p-ab308ecaf8608def\", \"invocationId\": \"e3e89c9c-45ce-4d95-a388-44ed3e2b93e7\", \"kind\": \"fetch\", \"chars\": 5000, \"truncated\": true}]}, {\"id\": \"s-90c32088eba2f6d4\", \"url\": \"https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal\", \"kind\": \"document\", \"segments\": [{\"id\": \"p-7aaf9ca18d2243c3\", \"invocationId\": \"2e2816bb-c749-4913-9f43-29d2fe748abb\", \"kind\": \"fetch\", \"chars\": 5000, \"truncated\": true}]}]}}, {\"guard\": \"mcp_answer_review\", \"action\": \"accept\", \"reason\": {\"attempt\": 1, \"candidate_count\": 5, \"rejections\": [{\"index\": 0, \"reason\": \"quote_not_found\", \"source_id\": \"s-8f12da3279d55774\", \"suggested_source_id\": \"s-8f12da3279d55774\", \"statement\": \"创建虚拟网络网关资源需要部署在名为 GatewaySubnet 的子网中，建议使用 /27 或更大范围的地址空间。\", \"quote\": \"Virtual network gateway resources are deployed to a specific subnet named **GatewaySubnet**. ... We recommend that you create a gateway subnet that uses a /27 (or larger).\", \"quote_sha256\": \"54a6a5fb98f5f7d4d951aebc94a8d2d29cafa287345b8fceba5e17c97d330d01\"}, {\"index\": 3, \"reason\": \"quote_not_found\", \"source_id\": \"s-8f12da3279d55774\", \"suggested_source_id\": \"s-8f12da3279d55774\", \"statement\": \"Azure VPN 网关部署通常需要 15 到 45 分钟，整个站点到站点教程预计完成时间为 90-120 分钟。\", \"quote\": \"Note: The steps in this article use the gateway SKU **VpnGw2AZ**...\", \"quote_sha256\": \"db8b8063484aac89363d4224573d833688bd02dc51d6eaa0a86609e86df3ed7f\"}, {\"index\": 4, \"reason\": \"quote_not_found\", \"source_id\": \"s-90c32088eba2f6d4\", \"suggested_source_id\": \"s-90c32088eba2f6d4\", \"statement\": \"若要创建活动-活动模式的网关以支持高可用性，需确保 VPN 设备支持该模式，该模式使用两个公共 IP 地址。\", \"quote\": \"Verify that your VPN device supports active-active mode gateways. This article creates an active-active mode VPN gateway... Active-active mode specifies that both gateway VM instances are active and uses two public IP addresses\", \"quote_sha256\": \"c645c5d4495675a7f74cf27c3e8bb57f5e7eb709c2640a5cbc43ba42fa5a80df\"}], \"rejection_counts\": {\"quote_not_found\": 3}, \"grounded_claims\": 2, \"claims\": [{\"statement\": \"在创建站点到站点连接时，必须指定预共享密钥（Pre-Shared Key）用于 Azure VPN 网关与本地 VPN 设备之间的连接认证。\", \"url\": \"https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal\", \"source_id\": \"s-90c32088eba2f6d4\", \"segment_id\": \"p-7aaf9ca18d2243c3\", \"invocationId\": \"2e2816bb-c749-4913-9f43-29d2fe748abb\", \"quote\": \"This configuration uses a specified pre-shared key for the connection between the Azure VPN gateway and your on-premises VPN device.\"}, {\"statement\": \"站点到站点连接要求本地 VPN 设备具备外部可见的公共 IPv4 地址。\", \"url\": \"https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal\", \"source_id\": \"s-90c32088eba2f6d4\", \"segment_id\": \"p-7aaf9ca18d2243c3\", \"invocationId\": \"2e2816bb-c749-4913-9f43-29d2fe748abb\", \"quote\": \"Verify that you have an externally facing public IPv4 address for your VPN device.\"}]}}], \"modelResponses\": [{\"rawChars\": 0, \"cleanChars\": 0, \"rawSha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"cleanSha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"finishReason\": \"stop\", \"finishReasonSource\": \"upstream\", \"receivedDone\": true}, {\"rawChars\": 0, \"cleanChars\": 0, \"rawSha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"cleanSha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"finishReason\": \"stop\", \"finishReasonSource\": \"upstream\", \"receivedDone\": true}, {\"rawChars\": 0, \"cleanChars\": 0, \"rawSha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"cleanSha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"finishReason\": \"stop\", \"finishReasonSource\": \"upstream\", \"receivedDone\": true}, {\"rawChars\": 0, \"cleanChars\": 0, \"rawSha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"cleanSha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"finishReason\": \"tool_calls\", \"finishReasonSource\": \"upstream\", \"receivedDone\": true}, {\"rawChars\": 0, \"cleanChars\": 0, \"rawSha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"cleanSha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"finishReason\": \"tool_calls\", \"finishReasonSource\": \"upstream\", \"receivedDone\": true}, {\"rawChars\": 0, \"cleanChars\": 0, \"rawSha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"cleanSha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"finishReason\": \"stop\", \"finishReasonSource\": \"upstream\", \"receivedDone\": true}, {\"rawChars\": 0, \"cleanChars\": 0, \"rawSha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"cleanSha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"finishReason\": \"tool_calls\", \"finishReasonSource\": \"upstream\", \"receivedDone\": true}, {\"rawChars\": 1846, \"cleanChars\": 1846, \"rawSha256\": \"3f94826b5c356503e5000481915df1d577ff658bc28f6c6504e8a6f37cc283ed\", \"cleanSha256\": \"3f94826b5c356503e5000481915df1d577ff658bc28f6c6504e8a6f37cc283ed\", \"finishReason\": \"stop\", \"finishReasonSource\": \"upstream\", \"receivedDone\": true}, {\"rawChars\": 0, \"cleanChars\": 0, \"rawSha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"cleanSha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"finishReason\": \"tool_calls\", \"finishReasonSource\": \"upstream\", \"receivedDone\": true}], \"answerValidation\": {}, \"callsLedger\": [{\"purpose\": \"tool_loop\", \"model\": \"default\", \"total_ms\": 3267.67, \"usage\": {\"prompt_tokens\": 2068, \"total_tokens\": 2130, \"completion_tokens\": 62}, \"span_id\": null, \"call_id\": \"89cbc11c68c143f1b90b7677d6f76e55\", \"status\": \"completed\", \"error_code\": null, \"usageKnown\": true}, {\"purpose\": \"tool_loop\", \"model\": \"default\", \"total_ms\": 1651.74, \"usage\": {\"prompt_tokens\": 2562, \"total_tokens\": 2640, \"completion_tokens\": 78}, \"span_id\": null, \"call_id\": \"c592416ce06b4ba8b7c715841ccd48db\", \"status\": \"completed\", \"error_code\": null, \"usageKnown\": true}, {\"purpose\": \"tool_loop\", \"model\": \"default\", \"total_ms\": 2286.86, \"usage\": {\"prompt_tokens\": 2745, \"total_tokens\": 2835, \"completion_tokens\": 90}, \"span_id\": null, \"call_id\": \"c36d5964d80743a186751c9037136b66\", \"status\": \"completed\", \"error_code\": null, \"usageKnown\": true}, {\"purpose\": \"tool_loop\", \"model\": \"default\", \"total_ms\": 2337.1, \"usage\": {\"prompt_tokens\": 5735, \"total_tokens\": 5824, \"completion_tokens\": 89}, \"span_id\": null, \"call_id\": \"58ea56302c9d4148943c396f1f6db4c5\", \"status\": \"completed\", \"error_code\": null, \"usageKnown\": true}, {\"purpose\": \"tool_loop\", \"model\": \"default\", \"total_ms\": 1998.33, \"usage\": {\"prompt_tokens\": 5865, \"total_tokens\": 5943, \"completion_tokens\": 78}, \"span_id\": null, \"call_id\": \"a53eba3ac753482da63deaf7a1ec0981\", \"status\": \"completed\", \"error_code\": null, \"usageKnown\": true}, {\"purpose\": \"tool_loop\", \"model\": \"default\", \"total_ms\": 1967.13, \"usage\": {\"prompt_tokens\": 3338, \"total_tokens\": 3437, \"completion_tokens\": 99}, \"span_id\": null, \"call_id\": \"077cd90891c749c187f11ac96ec62ad2\", \"status\": \"completed\", \"error_code\": null, \"usageKnown\": true}, {\"purpose\": \"tool_loop\", \"model\": \"default\", \"total_ms\": 1645.26, \"usage\": {\"prompt_tokens\": 3933, \"total_tokens\": 4023, \"completion_tokens\": 90}, \"span_id\": null, \"call_id\": \"c5d80660792d43499882fe59a008523d\", \"status\": \"completed\", \"error_code\": null, \"usageKnown\": true}, {\"purpose\": \"tool_loop\", \"model\": \"default\", \"total_ms\": 11606.29, \"usage\": {\"prompt_tokens\": 4125, \"total_tokens\": 5082, \"completion_tokens\": 957}, \"span_id\": null, \"call_id\": \"f4e0262b7ffc4270ac24360577c3cf70\", \"status\": \"completed\", \"error_code\": null, \"usageKnown\": true}, {\"purpose\": \"mcp_answer_review\", \"model\": \"default\", \"total_ms\": 5543.75, \"usage\": {\"prompt_tokens\": 4509, \"total_tokens\": 4982, \"completion_tokens\": 473}, \"span_id\": null, \"call_id\": \"4237f4a0e95643788349ee2bfc9a3d21\", \"status\": \"completed\", \"error_code\": null, \"usageKnown\": true}], \"auxiliaryInvocations\": 1}>>>\n\n<<<DSH_FINAL_OUTPUT:len=541:根据本轮 MCP 返回资料，可核对的配置要点如下：\n\n- 在创建站点到站点连接时，必须指定预共享密钥（Pre-Shared Key）用于 Azure VPN 网关与本地 VPN 设备之间的连接认证。 [原文](https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal)\n\n- 站点到站点连接要求本地 VPN 设备具备外部可见的公共 IPv4 地址。 [原文](https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal)\n\n这些要点仅覆盖上述资料支持的范围；其他场景和具体参数需继续核对相应教程。\n\n---\n### 📚 本轮 MCP 检索来源\n\n- [Tutorial: Create a site-to-site VPN connection in the Azure portal](https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal)\n\n以上为本轮成功检索返回的文档片段来源，不代表已阅读全文。>>>\n<<<DSH_FINAL_OUTPUT>>>\n根据本轮 MCP 返回资料，可核对的配置要点如下：\n\n- 在创建站点到站点连接时，必须指定预共享密钥（Pre-Shared Key）用于 Azure VPN 网关与本地 VPN 设备之间的连接认证。 [原文](https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal)\n\n- 站点到站点连接要求本地 VPN 设备具备外部可见的公共 IPv4 地址。 [原文](https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal)\n\n这些要点仅覆盖上述资料支持的范围；其他场景和具体参数需继续核对相应教程。\n\n---\n### 📚 本轮 MCP 检索来源\n\n- [Tutorial: Create a site-to-site VPN connection in the Azure portal](https://learn.microsoft.com/azure/vpn-gateway/tutorial-site-to-site-portal)\n\n以上为本轮成功检索返回的文档片段来源，不代表已阅读全文。\n",
+  "stderr": ""
+}

@@ -21,7 +21,7 @@ from .context_budget import ContextBudget
 from .prompt_builder import build_system_prompt, build_user_turn
 from .skill_router import SkillRouter, is_text_only_request
 from .agent_loop import run_agent_loop, _is_tool_error
-from .llm import ModelRepetitionLoopError
+from .model_failures import ModelStreamError, model_failure_text
 from .artifact_exporter import ArtifactExporter
 from .telemetry import TelemetryStats
 from .pdf_workflow import is_template_pdf_task, PDF_EXECUTION_INSTRUCTION
@@ -213,8 +213,19 @@ def cmd_run(args):
 
     skill_res = SkillRouter.route(prompt, existing_history, allow_research=allow_research, files=session_files,
                                   load_skill_context=False)
+    from .mcp_objective import record_mcp_route
+    record_mcp_route(prompt, skill_res, telemetry)
     from .skill_admission import admit_skill, emit_admission_stop, AdmissionClarification, AdmissionUnavailable, general_route
-    from .docx_workflow import is_template_docx_task, DOCX_EXECUTION_INSTRUCTION
+    from .docx_workflow import (
+        is_template_docx_task,
+        is_docx_in_place_transform_task,
+        DOCX_EXECUTION_INSTRUCTION,
+        DOCX_IN_PLACE_TRANSLATE_INSTRUCTION,
+    )
+    from .xlsx_workflow import (
+        is_xlsx_in_place_transform_task,
+        XLSX_IN_PLACE_TRANSLATE_INSTRUCTION,
+    )
     template_candidate = skill_res if not session_files and (is_template_pdf_task(prompt, skill_res) or is_template_docx_task(prompt, skill_res)) else None
     try:
         skill_res = admit_skill(prompt, existing_history, session_files, skill_res,
@@ -240,6 +251,12 @@ def cmd_run(args):
     if template_docx:
         skill_res.skill_context = DOCX_EXECUTION_INSTRUCTION
         telemetry.record_guard('docx_template', 'direct_execution', 'owned_renderer')
+    elif is_docx_in_place_transform_task(prompt, skill_res, session_files):
+        skill_res.skill_context = DOCX_IN_PLACE_TRANSLATE_INSTRUCTION
+        telemetry.record_guard('docx_in_place', 'direct_execution', 'ooxml_docx_translate')
+    elif is_xlsx_in_place_transform_task(prompt, skill_res, session_files):
+        skill_res.skill_context = XLSX_IN_PLACE_TRANSLATE_INSTRUCTION
+        telemetry.record_guard('xlsx_in_place', 'direct_execution', 'ooxml_xlsx_translate')
     from .personal_skill_workflow import try_run_personal_workflow
     if try_run_personal_workflow(skill_res, session_files, prompt, history_file,
                                  existing_history, overall_start_time, task_deadline,
@@ -249,10 +266,16 @@ def cmd_run(args):
     # 扫描个人知识库与产出成果库：
     # 1. 若用户有显式知识库意图（is_knowledge_intent），执行全量扫描
     # 2. 否则进行轻量关键词/tag自动探测，若命中成果库/知识库中的特定标签、文件名或高权内容，自动引入！
+    # 3. 隔离约束：若本轮上传了具体会话附件且为附件审阅/分析任务，在未显式要求结合知识库时，默认静默自动知识库探测
+    has_pure_attachment_task = bool(
+        session_files
+        and any(k in prompt.lower() for k in ["查看附件", "分析附件", "附件内容", "上传的附件", "看下附件", "提炼内容", "这是什么", "是什么"])
+        and not any(k in prompt.lower() for k in ["知识库", "个人空间", "成果库", "历史成果", "结合我的文档", "结合知识库", "我的文档"])
+    )
     knowledge_context = ""
     if skill_res.is_knowledge_intent:
         knowledge_context = scan_personal_knowledge(prompt=prompt)
-    else:
+    elif not getattr(skill_res, 'disclosure_steps', 0) and not has_pure_attachment_task:
         auto_knowledge = scan_personal_knowledge(prompt=prompt, auto_match_only=True)
         if auto_knowledge:
             knowledge_context = auto_knowledge
@@ -396,7 +419,12 @@ def cmd_run(args):
             # A usable schema keeps full numeric rows on the tool path. No
             # eager all-sheet extraction/recalculation is needed for planning.
             if fpath.suffix.lower() in (".xlsx", ".xlsm"):
-                extracted = comparison_context or build_spreadsheet_source_context(fpath, deadline=task_deadline, prompt=prompt)
+                if is_xlsx_in_place_transform_task(prompt, skill_res, session_files):
+                    extracted = f"【既有 Excel 工作簿 ({fname}) 预检通过：已识别为原地无损转换/高保真翻译任务。底层包含数据验证下拉框与条件格式，已接入原生 OOXML 原地流式翻译流水线，无需在对话提示中倾泻全量单元格数据】"
+                else:
+                    extracted = comparison_context or build_spreadsheet_source_context(fpath, deadline=task_deadline, prompt=prompt)
+            elif fpath.suffix.lower() in (".docx", ".doc") and is_docx_in_place_transform_task(prompt, skill_res, session_files):
+                extracted = f"【既有 Word 文档 ({fname}) 预检通过：已识别为原地无损转换/高保真翻译任务。已接入原生 OOXML 原地流式翻译流水线，无需在对话提示中倾泻全量段落数据】"
             else:
                 extracted = comparison_context or read_workspace_file(
                     fname, deadline=task_deadline, model_name=model_name, prompt=prompt)
@@ -565,7 +593,7 @@ def cmd_run(args):
             messages.append({"role": "assistant", "content": f"【方案规划】\n{plan_text}"})
 
             if is_deliverable_task:
-                execution_instruction = build_deliverable_execution_instruction(skill_res)
+                execution_instruction = build_deliverable_execution_instruction(skill_res, prompt=prompt)
                 messages.append({
                     "role": "user",
                     "content": execution_instruction,
@@ -615,6 +643,8 @@ def cmd_run(args):
             initial_execution_evidence=retrieval_evidence,
             user_prompt=prompt,
             delivery_session_id=session_id,
+            mcp_readonly_skill_id=(skill_res.skill_id if getattr(skill_res, 'mcp_read_only', False)
+                                  and not skill_res.is_generate_intent else None),
             user_declarations={
                 'unit_confirmation': (skill_res.admission or {}).get('unit_confirmation'),
                 'user_statements': [prompt.split('用户指令：')[-1], *[
@@ -708,12 +738,18 @@ def cmd_run(args):
 
         from .response_sources import append_retrieval_sources_footer
         from .file_tools import get_last_scanned_knowledge_files
-        final_text = append_retrieval_sources_footer(
-            final_text,
-            prompt=prompt,
-            search_context=search_context,
-            local_knowledge_files=get_last_scanned_knowledge_files(),
-        )
+        from .mcp_answer_review import review_mcp_answer
+        if not loop_res.stop_reason:
+            final_text = review_mcp_answer(final_text, prompt, loop_res.execution_evidence or [],
+                model_name, policy, telemetry, task_deadline,
+                readonly_skill_id=skill_res.skill_id if getattr(skill_res, 'mcp_read_only', False) else None)
+        from .mcp_sources import finalize_mcp_sources
+        mcp_text = finalize_mcp_sources(final_text, loop_res.execution_evidence or [],
+            selected=bool(getattr(skill_res, 'disclosure_steps', 0)), prompt=prompt,
+            stop_reason=loop_res.stop_reason, skill_id=skill_res.skill_id, telemetry=telemetry)
+        final_text = mcp_text if mcp_text is not None else append_retrieval_sources_footer(
+            final_text, prompt=prompt, search_context=search_context,
+            local_knowledge_files=get_last_scanned_knowledge_files())
 
         # 7. 会话历史持久化
         t_persist_start = time.time()
@@ -796,14 +832,10 @@ def cmd_run(args):
 
         print(f"\n❌ [DeepSeek Harness 异常]: 大模型代理调用失败 ({e.code}): {err_detail}", file=sys.stderr)
         sys.exit(1)
-    except ModelRepetitionLoopError as e:
-        breaker_msg = (
-            "⚠️ **模型推理陷入死循环，已触发主动熔断保护**\n\n"
-            f"- **异常原因**：检测到大模型在生成推理思考链或回复内容时陷入周期性机械重复（连续复读模式，模式长 {len(e.pattern)} 字，已复读 {e.repeat_count} 次）。为避免无休止等待与算力浪费，平台已主动为您熔断打断。\n"
-            "- **💡 建议操作**：\n"
-            "  1. 请直接重新发送指令，或稍后点击重试；\n"
-            "  2. 若持续出现该现象，可尝试暂时关闭思考模式（关闭 Thinking）或更换提问关键词以打破模型的注意力陷阱。"
-        )
+    except ModelStreamError as e:
+        breaker_msg = model_failure_text(e.code)
+        telemetry.set_wall_clock_duration((time.time() - overall_start_time) * 1000)
+        telemetry.emit_metrics_event()
         TelemetryStats.emit_final_output(breaker_msg)
         if history_file:
             try:
