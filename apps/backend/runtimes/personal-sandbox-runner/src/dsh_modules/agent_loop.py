@@ -605,7 +605,15 @@ def run_agent_loop(
         repeated_failure = repeated_execution_failure(execution_evidence, artifact_task=bool(expected_deliverables or is_generate_intent))
         if repeated_failure:
             telemetry.record_guard('repeated_execution_failure', 'stop', repeated_failure)
-            reply_text = '文件生成未完成：执行错误累计达到修复上限，已停止无效重试。'
+            reply_text = (
+                "## ⚠️ 目标文件未能成功生成\n\n"
+                "### 🔍 原因说明\n"
+                "在处理文档本地化与生成过程中遇到异常（底层处理脚本连续执行未通过校验，已停止重试以避免资源耗尽）。\n\n"
+                "### 💡 下一步建议\n"
+                "1. **检查源文档**：请确认上传的文件未被密码保护或加密，且格式未受损；\n"
+                "2. **分段或简化**：若文档包含超大宏表、大量复杂嵌套公式或损坏图表，建议另存为标准格式后重试；\n"
+                "3. **重新发起生成**：您可以再次上传原文件，并使用明确简练的指令重新发起处理。"
+            )
             break
         from .pdf_preview_tool import has_registered_renders
         if managed_pdf or has_registered_renders():
@@ -1124,8 +1132,15 @@ def run_agent_loop(
 
     if missing_claims:
         telemetry.record_guard("artifact_delivery", "reject", {"missing_files": missing_claims})
-        final_text = "本次文件生成未完成，以下文件尚未生成可用的交付版本：" + "、".join(
-            f"`{name}`" for name in missing_claims) + "。当前无法提供这些文件的下载。"
+        missing_str = "、".join(f"「{name}」" for name in missing_claims)
+        final_text = (
+            f"## ⚠️ 目标文件未能成功生成\n\n"
+            f"### 🔍 说明\n"
+            f"本次处理未生成可用的交付版本：{missing_str}。\n\n"
+            f"### 💡 下一步建议\n"
+            f"1. **检查参数与指令**：请确认输入的文件路径及生成要求清晰明确；\n"
+            f"2. **重试发起**：建议重新上传源文件并简化提示词后重新发起处理。"
+        )
 
     return AgentLoopResult(
         final_text=final_text,

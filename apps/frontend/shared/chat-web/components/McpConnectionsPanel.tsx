@@ -115,11 +115,11 @@ export default function McpConnectionsPanel({ api, administrator = false }: { ap
       <Form form={form} layout="vertical">
         <Form.Item name="name" label="名称" rules={[{ required: true }]}><Input maxLength={128} /></Form.Item>
         <Form.Item name="transport" label="传输方式" extra="当前仅支持远程 Streamable HTTP；其他方式尚未实现。"><Select options={[{ value: 'streamable_http', label: 'Streamable HTTP' }, { value: 'sse', label: 'HTTP + SSE（旧版，尚未支持）', disabled: true }, { value: 'stdio', label: 'stdio（本地进程，尚未支持）', disabled: true }]} /></Form.Item>
-        <Form.Item name="endpoint" label="MCP 服务地址" extra="只填写服务地址，不包含 ?key=…。API Key 请在保存后通过「连接我的账号」设置。" rules={[{ required: true }, { type: 'url' }, { validator: async (_, value) => {
+        <Form.Item name="endpoint" label="MCP 服务地址" extra="支持 HTTP 和 HTTPS，请填写完整 MCP 路径（如 /mcp）。容器部署的宿主机服务使用 host.docker.internal；配置本机映射后，localhost 会自动转换。API Key 请通过「连接我的账号」单独设置。" rules={[{ required: true }, { type: 'url' }, { validator: async (_, value) => {
           if (!value) return;
           let url: URL; try { url = new URL(value); } catch { return; }
           if (url.search || url.hash || url.username || url.password) throw new Error('请移除地址中的凭证、查询参数或片段；API Key 可选择查询参数方式');
-        } }]}><Input placeholder="https://mcp.example.com/mcp" /></Form.Item>
+        } }]}><Input placeholder="https://mcp.example.com/mcp 或 http://host.docker.internal:9000/mcp" /></Form.Item>
         <Form.Item name="authType" label="认证方式"><Select options={[{ value: 'none', label: '无需认证（公开服务）' }, { value: 'bearer', label: 'Bearer Token' }, { value: 'api_key', label: 'API Key' }]} /></Form.Item>
         {authType === 'api_key' && <>
           <Form.Item name="authLocation" label="API Key 位置"><Select options={[{ value: 'header', label: '请求头' }, { value: 'query', label: '查询参数' }]} /></Form.Item>

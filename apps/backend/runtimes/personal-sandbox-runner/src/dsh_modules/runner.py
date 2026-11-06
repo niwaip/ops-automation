@@ -216,7 +216,16 @@ def cmd_run(args):
     from .mcp_objective import record_mcp_route
     record_mcp_route(prompt, skill_res, telemetry)
     from .skill_admission import admit_skill, emit_admission_stop, AdmissionClarification, AdmissionUnavailable, general_route
-    from .docx_workflow import is_template_docx_task, DOCX_EXECUTION_INSTRUCTION
+    from .docx_workflow import (
+        is_template_docx_task,
+        is_docx_in_place_transform_task,
+        DOCX_EXECUTION_INSTRUCTION,
+        DOCX_IN_PLACE_TRANSLATE_INSTRUCTION,
+    )
+    from .xlsx_workflow import (
+        is_xlsx_in_place_transform_task,
+        XLSX_IN_PLACE_TRANSLATE_INSTRUCTION,
+    )
     template_candidate = skill_res if not session_files and (is_template_pdf_task(prompt, skill_res) or is_template_docx_task(prompt, skill_res)) else None
     try:
         skill_res = admit_skill(prompt, existing_history, session_files, skill_res,
@@ -242,6 +251,12 @@ def cmd_run(args):
     if template_docx:
         skill_res.skill_context = DOCX_EXECUTION_INSTRUCTION
         telemetry.record_guard('docx_template', 'direct_execution', 'owned_renderer')
+    elif is_docx_in_place_transform_task(prompt, skill_res, session_files):
+        skill_res.skill_context = DOCX_IN_PLACE_TRANSLATE_INSTRUCTION
+        telemetry.record_guard('docx_in_place', 'direct_execution', 'ooxml_docx_translate')
+    elif is_xlsx_in_place_transform_task(prompt, skill_res, session_files):
+        skill_res.skill_context = XLSX_IN_PLACE_TRANSLATE_INSTRUCTION
+        telemetry.record_guard('xlsx_in_place', 'direct_execution', 'ooxml_xlsx_translate')
     from .personal_skill_workflow import try_run_personal_workflow
     if try_run_personal_workflow(skill_res, session_files, prompt, history_file,
                                  existing_history, overall_start_time, task_deadline,
@@ -404,7 +419,12 @@ def cmd_run(args):
             # A usable schema keeps full numeric rows on the tool path. No
             # eager all-sheet extraction/recalculation is needed for planning.
             if fpath.suffix.lower() in (".xlsx", ".xlsm"):
-                extracted = comparison_context or build_spreadsheet_source_context(fpath, deadline=task_deadline, prompt=prompt)
+                if is_xlsx_in_place_transform_task(prompt, skill_res, session_files):
+                    extracted = f"【既有 Excel 工作簿 ({fname}) 预检通过：已识别为原地无损转换/高保真翻译任务。底层包含数据验证下拉框与条件格式，已接入原生 OOXML 原地流式翻译流水线，无需在对话提示中倾泻全量单元格数据】"
+                else:
+                    extracted = comparison_context or build_spreadsheet_source_context(fpath, deadline=task_deadline, prompt=prompt)
+            elif fpath.suffix.lower() in (".docx", ".doc") and is_docx_in_place_transform_task(prompt, skill_res, session_files):
+                extracted = f"【既有 Word 文档 ({fname}) 预检通过：已识别为原地无损转换/高保真翻译任务。已接入原生 OOXML 原地流式翻译流水线，无需在对话提示中倾泻全量段落数据】"
             else:
                 extracted = comparison_context or read_workspace_file(
                     fname, deadline=task_deadline, model_name=model_name, prompt=prompt)

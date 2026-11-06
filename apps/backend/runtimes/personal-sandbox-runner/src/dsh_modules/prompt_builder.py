@@ -425,13 +425,31 @@ def build_user_turn(
         )
     )
     if effective_is_docx and "bash" in (available_tool_names or []) and not (is_inspect_intent and not is_generate_intent):
-        user_parts.append(
-            "【Word/合同审阅与批注硬性执行要求】:\n"
-            "- 沙箱预置了高精度 Word 批注与修订脚本 `/opt/dsh/skills/docx/scripts/add_comment.py`（基于原生 OpenXML 注入，支持自动拆分 text run 与精准锚定）。\n"
-            "- 当用户要求审阅/审查文档、提出修改建议或添加批注时，【你必须调用 bash 工具在 Linux 终端执行相应的脚本命令（如 `python3 /opt/dsh/skills/docx/scripts/add_comment.py <输入文件> --target \"定位词\" --comment \"批注内容\" -o <输出文件>`）实际完成文件批注并落盘保存新文件（例如 `/workspace/xxx_批注版.docx`）】！\n"
-            "- 若需保存至个人空间或知识库，请在生成后执行命令复制到 `/knowledge/`（如 `cp <新文件> /knowledge/`）。\n"
-            "- 【严禁只在最终文字回复中口头声称已修改/已保存，但实际未调用任何工具执行落盘！】系统与用户需要看到真实生成落盘的文件。"
+        is_docx_translate = bool(re.search(r'翻译|日文版|日语版|英文版|本地化|多语言|保持格式|格式不变', prompt or "")) and (
+            any(str(f).lower().endswith(('.docx', '.doc')) for f in (session_files or []))
+            or bool(re.search(r'\.(?:docx?)\b', prompt or "", re.I))
         )
+        if is_docx_translate:
+            target_lang = "ja-JP"
+            if any(k in prompt_no_urls_lower for k in ["英语", "英文", "en-us"]):
+                target_lang = "en-US"
+            elif any(k in prompt_no_urls_lower for k in ["中文", "汉语", "zh-cn"]):
+                target_lang = "zh-CN"
+            user_parts.append(
+                "【已有 Word 文档高保真翻译与版式保留硬性规范 (Action Grounding)】:\n"
+                "- 【严禁使用 python-docx 从头新建文档或手写长字典】：本任务基于已有 Word 文档进行多语言翻译，严禁从头新建，否则会损坏页面设置、页眉页脚与动态页码！\n"
+                "- 【优先使用内置高性能原生 OOXML 翻译引擎】：必须调用 `bash` 运行沙箱内置的 `/opt/dsh/skills/docx/scripts/ooxml_docx_translate.py`：\n"
+                f"  * 推荐一键命令：`python3 /opt/dsh/skills/docx/scripts/ooxml_docx_translate.py auto \"<原始输入文件>.docx\" \"/workspace/<目标文件>.docx\" --lang {target_lang}`（自动完成高质量本地化并保持原文档版式架构与动态页脚，一步闭环！）；\n"
+                "- 【面向客户的标准交付回复】：文风务必精炼干练（篇幅控制在 200~300 字以内），采用标准四段式结构（## ✅ 任务完成标题、### 📋 主要处理内容、### 📦 交付成果物、### 💡 提示与使用建议），温和引导用户点击卡片下载；严禁输出枯燥的“关键术语对照字典”，严禁在回复中暴露“OOXML”、“XML级注入”、“sharedStrings”或内部处理项数/去重数等工程细节，严禁向用户暴露 `/workspace/` 等任何内部容器路径！"
+            )
+        else:
+            user_parts.append(
+                "【Word/合同审阅与批注硬性执行要求】:\n"
+                "- 沙箱预置了高精度 Word 批注与修订脚本 `/opt/dsh/skills/docx/scripts/add_comment.py`（基于原生 OpenXML 注入，支持自动拆分 text run 与精准锚定）。\n"
+                "- 当用户要求审阅/审查文档、提出修改建议或添加批注时，【你必须调用 bash 工具在 Linux 终端执行相应的脚本命令（如 `python3 /opt/dsh/skills/docx/scripts/add_comment.py <输入文件> --target \"定位词\" --comment \"批注内容\" -o <输出文件>`）实际完成文件批注并落盘保存新文件（例如 `/workspace/xxx_批注版.docx`）】！\n"
+                "- 若需保存至个人空间或知识库，请在生成后执行命令复制到 `/knowledge/`（如 `cp <新文件> /knowledge/`）。\n"
+                "- 【严禁只在最终文字回复中口头声称已修改/已保存，但实际未调用任何工具执行落盘！】系统与用户需要看到真实生成落盘的文件。"
+            )
 
     effective_is_pdf = (
         is_office_intent and any(k in prompt_no_urls_lower for k in ["pdf", "导出pdf", "生成pdf", "pdf报告"])
@@ -453,9 +471,26 @@ def build_user_turn(
     )
 
     if effective_is_xlsx and not effective_is_pdf:
+        is_xlsx_translate = bool(re.search(r'翻译|日文版|日语版|英文版|本地化|多语言|保持格式|格式不变', prompt or "")) and (
+            any(str(f).lower().endswith(('.xlsx', '.xlsm', '.xls')) for f in (session_files or []))
+            or bool(re.search(r'\.(?:xlsx?|xlsm)\b', prompt or "", re.I))
+        )
         if has_update_tools:
             from .spreadsheet_update.agent_protocol import UPDATE_INSTRUCTIONS
             user_parts.append(UPDATE_INSTRUCTIONS)
+        elif is_xlsx_translate and "bash" in (available_tool_names or []):
+            target_lang = "zh-CN"
+            if any(k in prompt_no_urls_lower for k in ["日语", "日文", "ja-jp"]):
+                target_lang = "ja-JP"
+            elif any(k in prompt_no_urls_lower for k in ["英语", "英文", "en-us"]):
+                target_lang = "en-US"
+            user_parts.append(
+                "【已有 Excel 工作簿高保真翻译与版式保留硬性规范 (Action Grounding)】:\n"
+                "- 【严禁使用 openpyxl 从头新建或手写 Python 脚本】：本任务基于已有 Excel 进行多语言翻译，严禁使用 openpyxl 手写循环提取或修改，否则会造成数据验证下拉框、条件格式、公式缓存与冻结窗格 100% 丢失！\n"
+                "- 【优先使用内置高性能原生 OOXML 翻译引擎】：必须调用 `bash` 运行沙箱内置的 `/opt/dsh/skills/xlsx/scripts/ooxml_xlsx_translate.py`：\n"
+                f"  * 推荐一键命令：`python3 /opt/dsh/skills/xlsx/scripts/ooxml_xlsx_translate.py auto \"<原始输入文件>.xlsx\" \"/workspace/<目标文件>.xlsx\" --lang {target_lang}`（自动完成高质量本地化，保护下拉框与条件格式，并自动刷新公式缓存，一步闭环！）；\n"
+                "- 【面向客户的标准交付回复】：文风务必精炼干练（篇幅控制在 200~300 字以内），采用标准四段式结构（## ✅ 任务完成标题、### 📋 主要处理内容、### 📦 交付成果物、### 💡 提示与使用建议），温和引导用户点击卡片下载；严禁输出枯燥的“关键术语对照字典”，严禁在回复中暴露“OOXML”、“XML级注入”、“sharedStrings”、“LibreOffice”或内部处理项数/去重数等工程细节，严禁向用户暴露 `/workspace/` 等任何内部容器路径！"
+            )
         elif "bash" in (available_tool_names or []):
             user_parts.append(
                 "【Excel 表格生成与副本编辑硬性执行要求 (Action Grounding)】:\n"
@@ -476,7 +511,7 @@ def build_user_turn(
                 "- 【优先使用内置高性能翻译引擎】：必须调用 `bash` 运行沙箱内置的 `/opt/dsh/skills/pptx/scripts/ooxml_translate.py`：\n"
                 "  * 推荐一键命令：`python3 /opt/dsh/skills/pptx/scripts/ooxml_translate.py auto \"<原始源文件>.pptx\" \"/workspace/<目标文件>.pptx\" --lang ja-JP --font 'Yu Gothic'`（自动并发多线程翻译并完成版面自适应打包，一步闭环！）；\n"
                 "  * 或分步命令：`unpack` -> `translate <in.json> <out.json> --lang ja-JP` -> `pack`；\n"
-                "- 【极简精悍的商务交付回复】：交付汇报时必须以“最终商务用户/演讲人”视角沟通，文风务必精炼干练（篇幅控制在 250~350 字以内），严禁长篇流水账或多页细述；重点提供：2~3句核心概览、4~6个代表性术语地道对照、母版与跨平台字体说明，温和引导用户点击卡片下载，严禁向用户暴露 `--shrink-font`、`--auto-fit`、`解包/打包`、`段落计数` 或 `/workspace/` 等任何内部路径！"
+                "- 【面向客户的标准商务交付回复】：文风务必精炼干练（篇幅控制在 250~350 字以内），采用标准四段式结构（## ✅ 任务完成标题、### 📋 主要处理内容、### 📦 交付成果物、### 💡 提示与使用建议），温和引导用户点击卡片下载；严禁长篇流水账或输出枯燥的“关键术语对照字典”，严禁向用户暴露 `--shrink-font`、`--auto-fit`、`解包/打包`、`段落计数` 或 `/workspace/` 等任何内部路径！"
             )
         else:
             user_parts.append(

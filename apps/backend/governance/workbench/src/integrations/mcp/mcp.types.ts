@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { createHash } from 'node:crypto';
+import { normalizeMcpEndpoint } from './mcp-endpoint-policy';
 
 export interface McpActor { userId: string; orgId: string | null; role: string; orgAdmin: boolean }
 export interface McpConfig {
@@ -18,12 +19,12 @@ export function configFrom(input: any, organization: boolean): McpConfig {
   if (url.username || url.password || url.search || url.hash || !['https:', 'http:'].includes(url.protocol)) {
     throw new BadRequestException('服务地址不能包含凭证、查询参数或片段；如需 ?key=…，请选择 API Key 的查询参数方式，并单独设置本人凭证');
   }
+  url = normalizeMcpEndpoint(url);
   const privateHosts = organization && Array.isArray(input.privateHosts)
     ? [...new Set<string>(input.privateHosts.map((s: any) => String(s).trim().toLowerCase()))] : [];
   const host = url.hostname.replace(/^\[|\]$/g, '').toLowerCase();
   const operator = (process.env.MCP_PRIVATE_HOST_ALLOWLIST || '').split(',').map(s => s.trim().toLowerCase());
   if (privateHosts.some(s => !operator.includes(s) || s !== host)) throw new BadRequestException('内网目标需要运维允许名单');
-  if (url.protocol === 'http:' && !privateHosts.includes(host)) throw new BadRequestException('个人与公网连接必须使用 HTTPS');
   const authType = input.authType === 'none' ? 'none' : input.authType === 'api_key' ? 'api_key' : input.authType === 'bearer' ? 'bearer' : null;
   if (!authType) throw new BadRequestException('当前支持无需认证、Bearer Token 和 API Key 认证');
   const authLocation = input.authLocation ?? 'header';

@@ -127,18 +127,25 @@ def admit_skill(prompt, history, files, provisional, model, policy, telemetry, d
         from .preflight_probe import probe_session_attachments
         attachment_probe = probe_session_attachments(files, prompt=prompt)
     spreadsheet_input = any(Path(f).suffix.lower() in {'.xlsx', '.xlsm', '.xls', '.csv'} for f in files)
+    request = prompt.split('用户指令：')[-1]
+    from .task_intent import has_physical_artifact_request
+    has_artifact_req = has_physical_artifact_request(request)
 
     # 纯只读/查阅模式免检快轨 (Read Mode Fast Path, < 1ms):
-    # 若任务不要求生成任何物理交付物，且无专有执行流水线要求 (not requires_execution)，且不涉及表格工作簿原地更新:
+    # 若任务不要求生成任何物理交付物，且无专有执行流水线要求 (not requires_execution)，且不涉及表格工作簿原地更新与文档交付:
     # 纯只读提取、问答与分析天然安全无副作用，直接 Fast-path 放行，彻底绕过耗时 40s 的重型意图准入审核！
     is_pure_read = (
         not getattr(provisional, "is_generate_intent", False)
         and not getattr(provisional, "deliverables", [])
         and not getattr(provisional, "requires_execution", False)
         and getattr(provisional, "is_inspect_intent", False)
+        and not has_artifact_req
     )
-    if (not provisional.skill_id or is_pure_read) and not spreadsheet_input:
+    if (not provisional.skill_id or is_pure_read) and not spreadsheet_input and not has_artifact_req:
         provisional.source_formats = list(dict.fromkeys(Path(f).suffix.lower() for f in files))
+        if provisional.skill_id and not getattr(provisional, "skill_context", ""):
+            body_reader = read_body or (lambda identifier: read_skill(identifier, prompt=request))
+            provisional.skill_context = body_reader(provisional.skill_id) or ""
         return provisional
     catalog = {s['id']: s for s in skills}
     request = prompt.split('用户指令：')[-1]

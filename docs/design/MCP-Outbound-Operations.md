@@ -22,7 +22,24 @@
 3. 执行 `PROJECT_ROOT="$PWD" ./docker/start-smart.sh dev up -d`。新增服务为 `mcp-client-runner`，无宿主机发布端口。
 4. 构建或依赖变更后显式重启相关服务，不能假定热更新生效。
 
-默认只允许公开 HTTPS、443 端口，保存的服务地址禁止 URL 内嵌认证、查询参数及片段，调用禁止跳转及跨路径请求。API Key 可配置为请求头或单个查询参数；查询参数只由 Runner 在校验目标后注入，不进入保存的地址或 SDK 地址配置。企业内网 MCP 需要运维在 Platform 和 Runner 同时设置逗号分隔的 `MCP_PRIVATE_HOST_ALLOWLIST`，并由组织管理员在连接里选择同一个精确主机名。个人连接不能自行开启内网访问；即使显式允许，也禁止回环及云元数据地址。
+支持公开 HTTP（含自定义端口）和 HTTPS（默认 443）。保存的服务地址禁止 URL 内嵌认证、查询参数及片段，调用禁止跳转及跨路径请求。API Key 可配置为请求头或单个查询参数；查询参数只由 Runner 在校验目标后注入，不进入保存的地址或 SDK 地址配置。企业内网 MCP 可继续使用 Platform 和 Runner 中的 `MCP_PRIVATE_HOST_ALLOWLIST` 与管理员连接的精确主机名单。个人连接不能自行扩大内网访问范围；需要访问本机服务时使用下方的运维精确端点配置。云元数据、链路本地、广播等地址仍被拒绝。
+
+### HTTP 与平台宿主机服务
+
+传输方式仍选择 `Streamable HTTP`，服务地址可以填写 `http://主机:端口/mcp`，不需要新增一种传输类型。路径必须与 MCP Server 实际提供的路径一致；支持根路径的服务也可填写 `http://主机:端口`。
+
+`localhost` 指平台侧服务所在环境，不是浏览器用户的电脑。Docker 中配置 `MCP_LOCAL_HOST=host.docker.internal` 后，保存 `http://localhost:9000/mcp`、`127.0.0.1` 或 `::1` 会转换为宿主机域名；页面及授权提示展示转换后地址。Runner 配置 `host.docker.internal:host-gateway`，兼容 Linux 宿主机访问。
+
+本机或其他专用服务必须由运维在 Platform 和 Runner 同时设置 `MCP_TRUSTED_ENDPOINTS`，逗号分隔**完整 URL**。例如本地开发环境：
+
+```dotenv
+MCP_LOCAL_HOST=host.docker.internal
+MCP_TRUSTED_ENDPOINTS=http://host.docker.internal:9000/,http://host.docker.internal:9000/mcp
+```
+
+该策略只放行精确的协议、主机、端口和路径，不放行相邻端口及其他路径；个人连接和工作连接均可使用运维已批准的端点，仍保留原有所有权、组织角色、本人凭证及写入确认检查。允许某个本机端点不等于共享管理员账号或取消网络检查；云元数据与链路本地地址即使写进名单仍被拒绝。
+
+变更环境变量后须从仓库根目录通过 `PROJECT_ROOT="$PWD" ./docker/start-smart.sh dev up -d --no-deps platform mcp-client-runner` 重新创建相关服务，单纯重启不会载入新的 Compose 环境。代码变更需要构建并核对运行结果。未启动 MCP 服务时，配置可以保存，但发现工具仍会提示连接失败。
 
 ## API Key 查询参数认证（高德地图等）
 

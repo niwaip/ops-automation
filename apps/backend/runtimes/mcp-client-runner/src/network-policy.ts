@@ -14,26 +14,37 @@ export function publicAddress(address: string): boolean {
   } catch { return false; }
 }
 
-function forbiddenAddress(address: string): boolean {
+function forbiddenAddress(address: string, trustedLocal = false): boolean {
   try {
     let parsed = ipaddr.parse(address);
     if (parsed.kind() === 'ipv6' && (parsed as ipaddr.IPv6).isIPv4MappedAddress()) parsed = (parsed as ipaddr.IPv6).toIPv4Address();
-    return !['unicast', 'private', 'uniqueLocal'].includes(parsed.range());
+    return !['unicast', 'private', 'uniqueLocal', ...(trustedLocal ? ['loopback'] : [])].includes(parsed.range());
   } catch { return true; }
+}
+
+function trustedEndpoint(endpoint: URL): boolean {
+  return (process.env.MCP_TRUSTED_ENDPOINTS || '').split(',').some(value => {
+    try {
+      const allowed = new URL(value.trim());
+      return ['http:', 'https:'].includes(allowed.protocol) && !allowed.username && !allowed.password &&
+        !allowed.search && !allowed.hash && allowed.href === endpoint.href;
+    } catch { return false; }
+  });
 }
 
 export function validateEndpoint(endpoint: string, privateHosts: string[] = []): URL {
   const url = new URL(endpoint);
   const host = url.hostname.replace(/^\[|\]$/g, '').toLowerCase();
   if (url.username || url.password || url.hash || url.search) throw new Error('MCP_ENDPOINT_CREDENTIALS_FORBIDDEN');
-  // Private targets require an operator allowlist AND an administrator-authored connection policy.
-  const allowed = privateHosts.includes(host);
-  if (host === 'localhost' || host.endsWith('.localhost') || (isIP(host) && forbiddenAddress(host))) throw new Error('MCP_NETWORK_DENIED');
-  if (url.protocol !== 'https:' && !(allowed && url.protocol === 'http:')) throw new Error('MCP_HTTPS_REQUIRED');
+  // An exact operator-authored endpoint also permits personal connections to vetted local services.
+  const trusted = trustedEndpoint(url);
+  const allowed = privateHosts.includes(host) || trusted;
+  if ((!trusted && (host === 'localhost' || host.endsWith('.localhost'))) || (isIP(host) && forbiddenAddress(host, trusted))) throw new Error('MCP_NETWORK_DENIED');
+  if (!['https:', 'http:'].includes(url.protocol)) throw new Error('MCP_PROTOCOL_DENIED');
   if (!allowed && (host === 'localhost' || host.endsWith('.localhost') || (isIP(host) && !publicAddress(host)))) {
     throw new Error('MCP_NETWORK_DENIED');
   }
-  if (!allowed && !['', '443'].includes(url.port)) throw new Error('MCP_PORT_DENIED');
+  if (!allowed && url.protocol === 'https:' && !['', '443'].includes(url.port)) throw new Error('MCP_PORT_DENIED');
   return url;
 }
 
@@ -42,10 +53,12 @@ export function createProtectedFetch(endpoint: string, requestedPrivateHosts: st
   const privateHosts = requestedPrivateHosts.filter(h => operatorHosts.includes(h));
   const target = validateEndpoint(endpoint, privateHosts);
   const host = target.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  const trusted = trustedEndpoint(target);
   const agent = new Agent({ connect: {
     lookup: ((hostname: string, options: any, callback: any) => {
       lookup(hostname, { all: true }).then(addresses => {
-        if (!addresses.length || addresses.some(a => forbiddenAddress(a.address)) || (!privateHosts.includes(host) && addresses.some(a => !publicAddress(a.address)))) {
+        if (!addresses.length || addresses.some(a => forbiddenAddress(a.address, trusted)) ||
+            (!trusted && !privateHosts.includes(host) && addresses.some(a => !publicAddress(a.address)))) {
           callback(new Error('MCP_NETWORK_DENIED')); return;
         }
         // DNS is resolved and validated in the actual socket lookup, rather than before a separate fetch.

@@ -38,6 +38,14 @@ export class UserSandboxHarnessService {
   ) {}
 
   /**
+   * 判断当前用户沙箱是否正在执行前台或 Harness 任务
+   */
+  isUserExecuting(userId: string): boolean {
+    const sanitized = this.storageService.sanitizeUserId(userId);
+    return this.activeLockOwners.has(sanitized);
+  }
+
+  /**
    * 在用户的安全沙箱中执行命令（非 root 用户权限）
    */
   async executeInSandbox(
