@@ -201,6 +201,15 @@ def run_agent_loop(
             WORKSPACE_DIR, SKILL_DIR, deadline, telemetry, conversation_history=messages)
         return AgentLoopResult(final_text=text, outbound_files=files, telemetry=telemetry,
                                messages=messages, execution_evidence=evidence)
+    from .pdf_translation_workflow import fixed_translation, run_fixed_translation
+    session_files = [name for name in os.getenv('DSH_SESSION_ATTACHMENTS', '').split(',') if name]
+    if (not is_guide_intent and any(t.get('function', {}).get('name') == 'bash' for t in active_tools)
+            and fixed_translation(last_user_prompt, session_files, expected_deliverables)):
+        from .config import SKILL_DIR
+        result = run_fixed_translation(last_user_prompt, session_files, expected_deliverables,
+            WORKSPACE_DIR, SKILL_DIR, start_ts, deadline, telemetry)
+        return AgentLoopResult(final_text=result.final_text, outbound_files=result.outbound_files,
+            telemetry=telemetry, messages=messages, execution_evidence=result.execution_evidence)
     analysis_turn=AnalysisTurn(last_user_prompt,model=model,deadline=deadline) if spreadsheet_analysis_required else None
     from .spreadsheet_chart_delivery import SpreadsheetChartDelivery, wants_standard_bar_chart, verified_chart_receipt
     from .spreadsheet_chart_workflow import (
@@ -600,6 +609,12 @@ def run_agent_loop(
             allowed_tool_names=[t.get("function", {}).get("name", t.get("name", ""))
                                 for t in (round_tools if mcp_choice else active_tools)]
         )
+
+        from .pdf_translation_workflow import candidate_handoff
+        if candidate_handoff(execution_evidence, telemetry, expected_deliverables):
+            telemetry.record_guard('pdf_candidate_handoff', 'runtime_acceptance', 'candidate_ready')
+            return AgentLoopResult(final_text='', telemetry=telemetry, messages=messages,
+                                   execution_evidence=execution_evidence)
 
         from .tool_failure_recovery import repeated_execution_failure
         repeated_failure = repeated_execution_failure(execution_evidence, artifact_task=bool(expected_deliverables or is_generate_intent))

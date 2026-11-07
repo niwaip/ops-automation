@@ -586,6 +586,50 @@ tags: ["markdown", "Based", "thorough", "1996", "时空可组合性", "分布式
             cfg.WORKSPACE_DIR = orig_ws
             shutil.rmtree(ws_tmp, ignore_errors=True)
 
+    def test_translate_pdf_not_polluted_by_pdf_deliverables(self):
+        """测试用户指令翻译PDF或生成日语版本时，绝对不因为指令含pdf而误匹配成果库中的无关pdf文件"""
+        import dsh_modules.config as cfg
+        ws_tmp = tempfile.mkdtemp()
+        orig_ws = getattr(cfg, "WORKSPACE_DIR", "/workspace")
+        cfg.WORKSPACE_DIR = ws_tmp
+
+        try:
+            deliv_ali = Path(ws_tmp) / "deliverables" / "20261104_技术调研_阿里云AI应用开发新范式"
+            deliv_ali.mkdir(parents=True)
+            (deliv_ali / "阿里-AI开发-新范式.pdf").write_bytes(b"%PDF fake content")
+            (deliv_ms) = Path(ws_tmp) / "deliverables" / "20261104_技术架构_Microsoft Agentic AI 企业级架构"
+            deliv_ms.mkdir(parents=True)
+            (deliv_ms / "ZH-CN-Ebook - Enterprise Architecture for Agentic AI.pdf").write_bytes(b"%PDF fake content")
+
+            query = (
+                "【当前轮次用户上传附件】: 保密合同_狗宝_v1_20261012.pdf（这是用户本轮刚上传的新文件，为本次指令的主要处理对象）\n"
+                "用户指令：翻译这个pdf，生成日语版本"
+            )
+
+            # 提取关键词中严禁包含 'pdf' 等格式词或泛动作词
+            kws = _extract_knowledge_query_keywords(query)
+            self.assertNotIn("pdf", kws)
+            self.assertNotIn("翻译", kws)
+            self.assertNotIn("生成", kws)
+
+            # auto_match_only 必须返回空，严禁命中任何历史 PDF 成果
+            res = scan_personal_knowledge(prompt=query, auto_match_only=True)
+            self.assertEqual(res, "")
+            scanned = get_last_scanned_knowledge_files()
+            self.assertEqual(len(scanned), 0)
+
+            # 验证页脚绝不追加产出成果库
+            final_text = append_retrieval_sources_footer(
+                "已生成：保密合同_狗宝_v1_JP_20261012.pdf",
+                prompt=query,
+                local_knowledge_files=scanned
+            )
+            self.assertNotIn("资料与引用来源", final_text)
+            self.assertNotIn("阿里-AI开发-新范式", final_text)
+        finally:
+            cfg.WORKSPACE_DIR = orig_ws
+            shutil.rmtree(ws_tmp, ignore_errors=True)
+
 
 if __name__ == "__main__":
     unittest.main()

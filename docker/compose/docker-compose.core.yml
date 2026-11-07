@@ -129,6 +129,7 @@ services:
       PORT: ${SESSION_BROKER_PORT:-3002}
       EXTERNAL_HOST: ${HOST_IP:-localhost}
       INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
+      DSH_PDF_TRANSLATION_ENGINE: ${DSH_PDF_TRANSLATION_ENGINE:-layout-html-v1}
     ports:
       - '${SESSION_BROKER_BIND_IP:-127.0.0.1}:${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}'
     volumes:

@@ -1,0 +1,914 @@
+{
+  "id": "p2",
+  "number": 2,
+  "width_pt": 595.276,
+  "height_pt": 841.89,
+  "rotation": 0,
+  "lines": [
+    {
+      "id": "p2_l1",
+      "text": "1. File-reading",
+      "rotated": false,
+      "bbox": [
+        95.7,
+        88.76,
+        142.81,
+        95.33
+      ]
+    },
+    {
+      "id": "p2_l2",
+      "text": "5. Re-rendering",
+      "rotated": false,
+      "bbox": [
+        389.3,
+        88.76,
+        436.77,
+        95.33
+      ]
+    },
+    {
+      "id": "p2_l3",
+      "text": "INTRODUCTION:",
+      "rotated": false,
+      "bbox": [
+        271.71,
+        124.55,
+        330.13,
+        131.85
+      ]
+    },
+    {
+      "id": "p2_l4",
+      "text": "Censorship has",
+      "rotated": false,
+      "bbox": [
+        271.71,
+        132.95,
+        326.5,
+        140.25
+      ]
+    },
+    {
+      "id": "p2_l5",
+      "text": "a long history in",
+      "rotated": false,
+      "bbox": [
+        271.71,
+        141.35,
+        328.11,
+        148.65
+      ]
+    },
+    {
+      "id": "p2_l6",
+      "text": "China,",
+      "rotated": false,
+      "bbox": [
+        271.71,
+        149.74,
+        294.03,
+        157.05
+      ]
+    },
+    {
+      "id": "p2_l7",
+      "text": "extending from",
+      "rotated": false,
+      "bbox": [
+        271.71,
+        158.14,
+        324.46,
+        165.45
+      ]
+    },
+    {
+      "id": "p2_l8",
+      "text": "the efforts of",
+      "rotated": false,
+      "bbox": [
+        271.71,
+        166.54,
+        316.34,
+        173.85
+      ]
+    },
+    {
+      "id": "p2_l9",
+      "text": "Emperor Qin to",
+      "rotated": false,
+      "bbox": [
+        271.71,
+        174.94,
+        324.87,
+        182.24
+      ]
+    },
+    {
+      "id": "p2_l10",
+      "text": "burn Confucian",
+      "rotated": false,
+      "bbox": [
+        271.71,
+        183.34,
+        325.67,
+        190.64
+      ]
+    },
+    {
+      "id": "p2_l11",
+      "text": "texts in the third",
+      "rotated": false,
+      "bbox": [
+        271.71,
+        191.74,
+        328.52,
+        199.04
+      ]
+    },
+    {
+      "id": "p2_l12",
+      "text": "century B.C.E ...",
+      "rotated": false,
+      "bbox": [
+        271.71,
+        200.14,
+        327.72,
+        207.44
+      ]
+    },
+    {
+      "id": "p2_l13",
+      "text": "- COMPATIBLE",
+      "rotated": false,
+      "bbox": [
+        452.92,
+        278.13,
+        481.34,
+        282.14
+      ]
+    },
+    {
+      "id": "p2_l14",
+      "text": "2. Layout Parsing",
+      "rotated": false,
+      "bbox": [
+        118.09,
+        322.11,
+        175.31,
+        328.68
+      ]
+    },
+    {
+      "id": "p2_l15",
+      "text": "3. Streamlining",
+      "rotated": false,
+      "bbox": [
+        257.71,
+        322.11,
+        308.23,
+        328.68
+      ]
+    },
+    {
+      "id": "p2_l16",
+      "text": "4. Content Translation",
+      "rotated": false,
+      "bbox": [
+        377.22,
+        322.11,
+        448.45,
+        328.68
+      ]
+    },
+    {
+      "id": "p2_l17",
+      "text": "Figure 1: The architecture of PDFMathTranslate",
+      "rotated": false,
+      "bbox": [
+        200.81,
+        360.38,
+        394.47,
+        370.34
+      ]
+    },
+    {
+      "id": "p2_l18",
+      "text": "2.1 Precise layout parser",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        394.03,
+        193.1,
+        404.94
+      ]
+    },
+    {
+      "id": "p2_l19",
+      "text": "of these languages as either the input or output",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        394.11,
+        524.41,
+        405.02
+      ]
+    },
+    {
+      "id": "p2_l20",
+      "text": "language when translating documents.",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        407.66,
+        473.39,
+        418.57
+      ]
+    },
+    {
+      "id": "p2_l21",
+      "text": "Preserving layouts requires precise layout extrac-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        413.04,
+        290.94,
+        423.95
+      ]
+    },
+    {
+      "id": "p2_l22",
+      "text": "Two, PDFMathTranslate supports at least 23",
+      "rotated": false,
+      "bbox": [
+        317.05,
+        421.53,
+        524.41,
+        432.44
+      ]
+    },
+    {
+      "id": "p2_l23",
+      "text": "tion. To precisely parse the position of document el-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        426.59,
+        290.95,
+        437.5
+      ]
+    },
+    {
+      "id": "p2_l24",
+      "text": "popular services for translation. The list of services",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        435.08,
+        524.41,
+        445.99
+      ]
+    },
+    {
+      "id": "p2_l25",
+      "text": "ements, we propose a pipeline consisting of layout",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        440.14,
+        289.13,
+        451.05
+      ]
+    },
+    {
+      "id": "p2_l26",
+      "text": "includes prominent online services such as Google",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        448.63,
+        524.41,
+        459.54
+      ]
+    },
+    {
+      "id": "p2_l27",
+      "text": "detection, splitting, processing, and re-rendering.",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        453.69,
+        291.04,
+        464.6
+      ]
+    },
+    {
+      "id": "p2_l28",
+      "text": "Translate and OpenAI, as well as local deployments",
+      "rotated": false,
+      "bbox": [
+        305.8,
+        462.18,
+        524.41,
+        473.09
+      ]
+    },
+    {
+      "id": "p2_l29",
+      "text": "In the beginning, we exploit a recent advance in lay-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        467.24,
+        290.95,
+        478.14
+      ]
+    },
+    {
+      "id": "p2_l30",
+      "text": "of models for either translation or dialogs (see Ap-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        475.73,
+        526.22,
+        486.64
+      ]
+    },
+    {
+      "id": "p2_l31",
+      "text": "out detection, DocLayout-YOLO-DocStructBench-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        480.53,
+        290.94,
+        491.69
+      ]
+    },
+    {
+      "id": "p2_l32",
+      "text": "pendix A). In addition to explicitly listed services,",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        489.28,
+        525.78,
+        500.19
+      ]
+    },
+    {
+      "id": "p2_l33",
+      "text": "onnx. The model is another version of a SOTA",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        494.08,
+        289.53,
+        505.24
+      ]
+    },
+    {
+      "id": "p2_l34",
+      "text": "users can integrate any new service complying with",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        502.83,
+        524.41,
+        513.74
+      ]
+    },
+    {
+      "id": "p2_l35",
+      "text": "solution in object detection, Yolov10 (Wang et al.,",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        507.63,
+        290.5,
+        518.79
+      ]
+    },
+    {
+      "id": "p2_l36",
+      "text": "OpenAI protocols 3.",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        514.72,
+        394.55,
+        527.29
+      ]
+    },
+    {
+      "id": "p2_l37",
+      "text": "2024), and is fast and accurate in the specific",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        521.43,
+        289.14,
+        532.34
+      ]
+    },
+    {
+      "id": "p2_l38",
+      "text": "Moreover, to simplify the addition of new ser-",
+      "rotated": false,
+      "bbox": [
+        317.05,
+        530.25,
+        526.22,
+        541.16
+      ]
+    },
+    {
+      "id": "p2_l39",
+      "text": "task (Zhao et al., 2024).",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        534.98,
+        174.79,
+        545.89
+      ]
+    },
+    {
+      "id": "p2_l40",
+      "text": "vices, we designed a structure that separates layout",
+      "rotated": false,
+      "bbox": [
+        305.87,
+        543.8,
+        524.41,
+        554.71
+      ]
+    },
+    {
+      "id": "p2_l41",
+      "text": "To increase the compatibility of this model, we",
+      "rotated": false,
+      "bbox": [
+        81.78,
+        549.26,
+        289.13,
+        560.17
+      ]
+    },
+    {
+      "id": "p2_l42",
+      "text": "flows from translation flows. In this structure, lan-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        557.35,
+        526.22,
+        568.26
+      ]
+    },
+    {
+      "id": "p2_l43",
+      "text": "support two model formats: the Open Neural Net-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        562.56,
+        290.95,
+        573.72
+      ]
+    },
+    {
+      "id": "p2_l44",
+      "text": "2",
+      "rotated": false,
+      "bbox": [
+        181.79,
+        574.71,
+        185.77,
+        582.68
+      ]
+    },
+    {
+      "id": "p2_l45",
+      "text": "guage services receive only textual inputs, enhanc-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        570.9,
+        526.22,
+        581.81
+      ]
+    },
+    {
+      "id": "p2_l46",
+      "text": "work Exchange (ONNX) standard and a pytorch",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        576.11,
+        289.14,
+        587.27
+      ]
+    },
+    {
+      "id": "p2_l47",
+      "text": "ing the generalizability and sustainability of our",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        584.45,
+        524.59,
+        595.36
+      ]
+    },
+    {
+      "id": "p2_l48",
+      "text": "version. The ONNX version was chosen as default",
+      "rotated": false,
+      "bbox": [
+        70.59,
+        589.91,
+        289.13,
+        600.82
+      ]
+    },
+    {
+      "id": "p2_l49",
+      "text": "project. As a result, implementing any language",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        598.0,
+        524.41,
+        608.91
+      ]
+    },
+    {
+      "id": "p2_l50",
+      "text": "to ensure the compatibility of our parsing pipeline",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        603.46,
+        289.13,
+        614.37
+      ]
+    },
+    {
+      "id": "p2_l51",
+      "text": "service requires only a concise function of fewer",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        611.55,
+        524.59,
+        622.46
+      ]
+    },
+    {
+      "id": "p2_l52",
+      "text": "for diverse hardware.",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        617.01,
+        163.31,
+        627.92
+      ]
+    },
+    {
+      "id": "p2_l53",
+      "text": "than 15 lines.",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        625.1,
+        364.63,
+        636.01
+      ]
+    },
+    {
+      "id": "p2_l54",
+      "text": "Three, PDFMathTranslate provides additional",
+      "rotated": false,
+      "bbox": [
+        317.05,
+        638.98,
+        524.41,
+        649.88
+      ]
+    },
+    {
+      "id": "p2_l55",
+      "text": "2.2 Flexible translation middleware",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        641.86,
+        243.7,
+        652.77
+      ]
+    },
+    {
+      "id": "p2_l56",
+      "text": "customizability in translation. We designed a cus-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        652.52,
+        526.22,
+        663.43
+      ]
+    },
+    {
+      "id": "p2_l57",
+      "text": "Translation middleware offers flexibility in terms",
+      "rotated": false,
+      "bbox": [
+        70.53,
+        660.87,
+        289.13,
+        671.77
+      ]
+    },
+    {
+      "id": "p2_l58",
+      "text": "tomization feature prompting strategies that poten-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        666.07,
+        526.22,
+        676.98
+      ]
+    },
+    {
+      "id": "p2_l59",
+      "text": "of language diversity, supported services, and cus-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        674.16,
+        290.94,
+        685.32
+      ]
+    },
+    {
+      "id": "p2_l60",
+      "text": "tially increase the quality of translation or its adapt-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        679.62,
+        526.23,
+        690.53
+      ]
+    },
+    {
+      "id": "p2_l61",
+      "text": "tomization capabilities. One, PDFMathTranslate",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        687.71,
+        289.14,
+        698.87
+      ]
+    },
+    {
+      "id": "p2_l62",
+      "text": "ability in domain-specific tasks. This feature al-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        693.17,
+        526.22,
+        704.08
+      ]
+    },
+    {
+      "id": "p2_l63",
+      "text": "supports at least 194 languages (see Appendix A),",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        701.51,
+        290.5,
+        712.42
+      ]
+    },
+    {
+      "id": "p2_l64",
+      "text": "lows users to exploit advanced prompting strategies",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        706.72,
+        524.41,
+        717.63
+      ]
+    },
+    {
+      "id": "p2_l65",
+      "text": "including popular ones such as English, and some",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        714.81,
+        289.13,
+        725.97
+      ]
+    },
+    {
+      "id": "p2_l66",
+      "text": "such as few-shots (Brown et al., 2020), Chain-of-",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        720.27,
+        526.22,
+        731.18
+      ]
+    },
+    {
+      "id": "p2_l67",
+      "text": "languages shared by relatively smaller communi-",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        728.61,
+        290.94,
+        739.52
+      ]
+    },
+    {
+      "id": "p2_l68",
+      "text": "Thought (Wei et al., 2022), Role-playing (Kong",
+      "rotated": false,
+      "bbox": [
+        305.8,
+        733.82,
+        524.41,
+        744.73
+      ]
+    },
+    {
+      "id": "p2_l69",
+      "text": "ties, such as Cherokee. Users can freely select any",
+      "rotated": false,
+      "bbox": [
+        70.87,
+        741.91,
+        289.51,
+        753.07
+      ]
+    },
+    {
+      "id": "p2_l70",
+      "text": "3See:",
+      "rotated": false,
+      "bbox": [
+        318.79,
+        754.38,
+        338.03,
+        764.81
+      ]
+    },
+    {
+      "id": "p2_l71",
+      "text": "https://platform.openai.com/docs/api-",
+      "rotated": false,
+      "bbox": [
+        388.21,
+        755.84,
+        525.9,
+        764.81
+      ]
+    },
+    {
+      "id": "p2_l72",
+      "text": "2See https://onnx.ai/",
+      "rotated": false,
+      "bbox": [
+        83.52,
+        764.34,
+        173.93,
+        774.77
+      ]
+    },
+    {
+      "id": "p2_l73",
+      "text": "reference/chat/create",
+      "rotated": false,
+      "bbox": [
+        306.14,
+        765.8,
+        380.81,
+        774.77
+      ]
+    }
+  ],
+  "visual_bounds": [
+    [
+      85.71919188444001,
+      98.73224704594998,
+      211.45644561796001,
+      262.94755132027
+    ],
+    [
+      107.62644678839,
+      155.34657993496,
+      235.92284401687,
+      320.27920772462994
+    ],
+    [
+      263.3052694731,
+      232.27325999999994,
+      341.09711651003,
+      290.33529
+    ],
+    [
+      380.36301256175,
+      99.71654999999998,
+      507.77646232587,
+      262.94754
+    ],
+    [
+      460.86755999999997,
+      296.17801,
+      474.16676510672,
+      309.47721510672
+    ],
+    [
+      378.33914,
+      296.17801,
+      391.63834510672,
+      309.47721510672
+    ],
+    [
+      398.95292405593,
+      296.17801,
+      412.25212916265,
+      309.47721510672
+    ],
+    [
+      419.40962074194,
+      296.33146283291,
+      432.86590189830997,
+      309.47721510672
+    ],
+    [
+      380.16499,
+      274.26780999999994,
+      393.46419510672,
+      287.56701510671996
+    ],
+    [
+      401.44372050784,
+      274.26780999999994,
+      414.74292561456,
+      287.56701510671996
+    ],
+    [
+      422.20295725231995,
+      274.26780999999994,
+      432.6968606884399,
+      287.56701364604
+    ],
+    [
+      440.41803999999996,
+      296.17801,
+      453.71724510672,
+      309.47721510672
+    ],
+    [
+      439.32253,
+      274.26780999999994,
+      452.62173510672,
+      287.56701510671996
+    ],
+    [
+      70.866,
+      70.86811999999998,
+      524.40714,
+      349.858
+    ]
+  ],
+  "preview": "/workspace/.dsh/validation/pdf-repair-1793980304/.dsh/pdf-jobs/7bbe0b42dd074890a4369a9e233e49cd/09964ba7958344e4ada0b79b4dc03a07/source-2.png",
+  "table_candidates": [
+    [
+      89.48967,
+      86.57042999999999,
+      242.13072999999997,
+      333.06018
+    ],
+    [
+      371.40090999999995,
+      86.57042999999999,
+      505.05313,
+      333.06018
+    ]
+  ],
+  "columns": 2
+}

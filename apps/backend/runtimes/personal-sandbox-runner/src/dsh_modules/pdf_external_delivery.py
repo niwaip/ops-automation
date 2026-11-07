@@ -25,7 +25,7 @@ def _candidate_files(workspace, start, session_files):
             yield path
 
 
-def _stage_and_check(target, root, skill_dir, prompt, deadline):
+def _stage_and_check(target, root, skill_dir, prompt, deadline, staged_input=None):
     # Keep shell-produced PDFs private until acceptance; a printed "RC: 1"
     # inside a successful shell process can never bypass this independent check.
     folder = root / '.pdf-preview' / target.stem / uuid.uuid4().hex
@@ -33,7 +33,11 @@ def _stage_and_check(target, root, skill_dir, prompt, deadline):
         raise ValueError('PDF 验收目录不得为符号链接')
     folder.mkdir(parents=True, exist_ok=False)
     staged = folder / 'candidate.pdf'
-    os.replace(target, staged)
+    if staged_input is None:
+        os.replace(target, staged)
+    else:
+        import shutil
+        shutil.copyfile(staged_input, staged)
     from .deliverable_contract import resolve_pdf_page_bounds
     low, high = resolve_pdf_page_bounds(prompt)
     if low is None and high is None:
@@ -71,8 +75,12 @@ def enforce_external_pdf_delivery(loop_result, workspace, skill_dir, start, prom
     """Return whether this boundary took ownership of final delivery."""
     from .pdf_preview_tool import (managed_pdf_export, register_pdf_render,
         record_pdf_failure, review_current_pdf_pages, pdf_delivery_result)
+    from .pdf_translation_delivery import enforce_translation_delivery
     if managed_pdf_export(loop_result.telemetry):
         return False
+    if enforce_translation_delivery(loop_result, workspace, skill_dir, start, prompt,
+                                    deadline, session_files, _candidate_files):
+        return True
     candidates = list(_candidate_files(workspace, start, session_files))
     if not candidates:
         return False

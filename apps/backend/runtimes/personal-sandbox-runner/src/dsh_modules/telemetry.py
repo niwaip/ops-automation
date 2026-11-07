@@ -5,6 +5,7 @@ Telemetry tracking, performance metrics, and DSH protocol event emission.
 import contextvars
 import json
 import re
+import threading
 from dataclasses import dataclass, field
 from typing import Dict, Any, List, Tuple, Optional, Set
 from .response_observability import response_fingerprint
@@ -200,8 +201,10 @@ class TelemetryStats:
     _accounted_call_ids: Set[str] = field(default_factory=set, init=False, repr=False)
     _response_call_ids: Set[str] = field(default_factory=set, init=False, repr=False)
     _journal: Any = field(default=None, init=False, repr=False)
+    _lock: Any = field(default=None, init=False, repr=False)
 
     def __post_init__(self):
+        self._lock = threading.RLock()
         set_active_telemetry(self)
 
     def bind_journal(self, history_file) -> None:
@@ -227,39 +230,40 @@ class TelemetryStats:
     def _record_call(self, purpose, usage, total_ms, model, span_id, call_id, *, auxiliary=False,
                      status='completed', error_code=None):
         """One accounting owner for both layers; equal usage never implies equal calls."""
-        if call_id:
-            if call_id in self._accounted_call_ids:
-                return
-            self._accounted_call_ids.add(call_id)
-        if auxiliary:
-            self.auxiliary_invocations += 1
-        self.llm_invocations += 1
-        self.total_ms += total_ms
-        if usage and isinstance(usage, dict):
-            if not self.tokens:
-                self.tokens = {
-                    "prompt_tokens": 0,
-                    "completion_tokens": 0,
-                    "total_tokens": 0
-                }
-            for k in ["prompt_tokens", "completion_tokens", "total_tokens"]:
-                if k in usage and isinstance(usage[k], (int, float)):
-                    self.tokens[k] = self.tokens.get(k, 0) + int(usage[k])
-            for k, v in usage.items():
-                if k not in ["prompt_tokens", "completion_tokens", "total_tokens"]:
-                    self.tokens[k] = _merge_usage_details(self.tokens.get(k), v)
-        self.calls_ledger.append({
-            "purpose": purpose,
-            "model": model,
-            "total_ms": round(total_ms, 2),
-            "usage": usage or {},
-            "span_id": span_id,
-            "call_id": call_id,
-            "status": status,
-            "error_code": error_code,
-            "usageKnown": bool(usage) and all(k in usage for k in ('prompt_tokens', 'completion_tokens', 'total_tokens')),
-        })
-        self.checkpoint('model_completed' if status == 'completed' else 'model_failed', self.calls_ledger[-1])
+        with self._lock:
+            if call_id:
+                if call_id in self._accounted_call_ids:
+                    return
+                self._accounted_call_ids.add(call_id)
+            if auxiliary:
+                self.auxiliary_invocations += 1
+            self.llm_invocations += 1
+            self.total_ms += total_ms
+            if usage and isinstance(usage, dict):
+                if not self.tokens:
+                    self.tokens = {
+                        "prompt_tokens": 0,
+                        "completion_tokens": 0,
+                        "total_tokens": 0
+                    }
+                for k in ["prompt_tokens", "completion_tokens", "total_tokens"]:
+                    if k in usage and isinstance(usage[k], (int, float)):
+                        self.tokens[k] = self.tokens.get(k, 0) + int(usage[k])
+                for k, v in usage.items():
+                    if k not in ["prompt_tokens", "completion_tokens", "total_tokens"]:
+                        self.tokens[k] = _merge_usage_details(self.tokens.get(k), v)
+            self.calls_ledger.append({
+                "purpose": purpose,
+                "model": model,
+                "total_ms": round(total_ms, 2),
+                "usage": usage or {},
+                "span_id": span_id,
+                "call_id": call_id,
+                "status": status,
+                "error_code": error_code,
+                "usageKnown": bool(usage) and all(k in usage for k in ('prompt_tokens', 'completion_tokens', 'total_tokens')),
+            })
+            self.checkpoint('model_completed' if status == 'completed' else 'model_failed', self.calls_ledger[-1])
 
     def record_model_failure(self, *, call_id, purpose, model, total_ms, code, usage=None,
                              content='', details=None):

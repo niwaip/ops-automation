@@ -64,6 +64,7 @@ describe('UserSandboxService', () => {
       ).toBe(true);
       expect(sanitized.some((e: string) => e.startsWith('DEEPSEEK_BASE_URL='))).toBe(true);
       expect(sanitized).toContain('SAFE_CUSTOM_VAR=hello');
+      expect(sanitized).toContain('DSH_PDF_TRANSLATION_ENGINE=layout-html-v1');
 
       // 绝不包含用户私自覆盖的真实 Key 与生产工作流凭据
       expect(sanitized).not.toContain('DEEPSEEK_API_KEY=attempt_bypass_real_key');
@@ -203,6 +204,7 @@ describe('UserSandboxService', () => {
           /^DEEPSEEK_API_KEY=sandbox-user-token-test_user_dynamic\.[0-9]+\.[A-Za-z0-9_.-]+$/u.test(e)
         )
       ).toBe(true);
+      expect(env).toContain('DSH_PDF_TRANSLATION_ENGINE=layout-html-v1');
     });
 
     it('should accurately detect expired or expiring container tokens', () => {

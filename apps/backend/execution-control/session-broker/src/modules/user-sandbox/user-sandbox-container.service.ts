@@ -142,6 +142,7 @@ export class UserSandboxContainerService {
       `DEEPSEEK_API_KEY=${virtualUserToken}`,
       `OPENAI_BASE_URL=${proxyBaseUrl}`,
       `OPENAI_API_KEY=${virtualUserToken}`,
+      `DSH_PDF_TRANSLATION_ENGINE=${process.env.DSH_PDF_TRANSLATION_ENGINE || 'layout-html-v1'}`,
     ];
   }
 
@@ -188,6 +189,7 @@ export class UserSandboxContainerService {
       `DEEPSEEK_API_KEY=${virtualUserToken}`,
       `OPENAI_BASE_URL=${proxyBaseUrl}`,
       `OPENAI_API_KEY=${virtualUserToken}`,
+      `DSH_PDF_TRANSLATION_ENGINE=${process.env.DSH_PDF_TRANSLATION_ENGINE || 'layout-html-v1'}`,
     ];
 
     if (options.customEnv) {

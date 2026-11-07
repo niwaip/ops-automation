@@ -4,6 +4,23 @@ import re
 
 def pdf_execution_guidance(prompt, tool_names=None):
     names = set(tool_names or [])
+    is_translate_task = bool(re.search(r'翻译|日文版|日语版|英文版|中文版|本地化|多语言|保持格式|格式不变|原格式', prompt or ""))
+    if is_translate_task:
+        return (
+            "【PDF 高保真翻译与版式保留核心规范】\n"
+            "高保真科学定义：内容完整与阅读顺序优先，在可读字号下尽量保留原章节、分栏和图文关系，允许自然跨页。\n"
+            "调用现有CLI：`python3 /opt/dsh/skills/pdf/scripts/flow_pdf_translate.py auto \"<输入.pdf>\" \"/workspace/<输出.pdf>\" --lang zh-CN`；"
+            "若用户明确要求保持格式、原页数或格式不变，CLI 命令必须追加 `--layout preserve` 参数。\n"
+            "该工具使用多模态布局分析、结构化翻译与HTML/CSS排版，候选保存到隐藏目录。\n"
+            "工具返回candidate_ready仅代表候选就绪，目标文件在全部页面验收通过后由运行时发布；"
+            "不要用ls目标文件不存在作为重新生成的理由，不要发送旧文件或隐藏候选。\n"
+            "恢复由运行时在原任务预算内有限执行；失败后报告原因，不自行重跑auto/unpack/pack或猜测检查点。\n"
+            "工具失败须按明确错误有限修复，不能回填原文报成功、把错误说明编成PDF或临时重写排版器。\n"
+            "禁止PyMuPDF/fitz无约束覆盖写字；不要将整篇PDF扁平化后套单页报告。"
+            "工具内部负责布局与字体，不能以删段或过度缩小字号维持原页数。\n"
+            "正常只需执行生成工具并简要说明候选已提交验收，不暴露源码与内部路径，不提前声称交付完成。"
+        )
+
     common = ('【PDF 执行与验收】\n生成文件须保存到 /workspace/，完成内容、字体、分页和逐页预览检查后再交付。'
               '失败时根据具体错误有限修复，连续失败应停止并说明原因，不得无限重试或宣称已完成。\n')
     if 'render_pdf' in names:

@@ -168,6 +168,9 @@ def should_run_planning_phase(
     Returns:
         (should_plan: bool, is_deliverable_task: bool)
     """
+    from .pdf_translation_workflow import fixed_translation
+    if fixed_translation(prompt, session_files, getattr(skill_res, 'deliverables', None)):
+        return False, bool(getattr(skill_res, 'requires_execution', False))
     if not getattr(policy, "thinking", False):
         return False, False
 
@@ -277,7 +280,9 @@ def build_deliverable_execution_instruction(skill_res: Any, prompt: str = "") ->
             f"落盘方式：优先直接调用 `render_docx` 工具（传入 markdown 正文及目标 output_path='{target_fn}'，由底层引擎自动完成企业级版式渲染、自适应表格、提示框排版与生成预览图）。\n"
             "⚠️ 严禁仅输出‘已存在’、‘已保存’等口头文字！必须实际调用 render_docx 工具完成物理文件落盘！"
         )
-    elif getattr(skill_res, "skill_id", None) == "xlsx" or getattr(skill_res, "is_office_intent", False) or (
+    elif getattr(skill_res, "skill_id", None) == "xlsx" or (
+        getattr(skill_res, "is_office_intent", False) and getattr(skill_res, "skill_id", None) not in ["pdf", "pptx", "docx"]
+    ) or (
         getattr(skill_res, "deliverables", None) and any(ext.lower().endswith(".xlsx") for ext in skill_res.deliverables)
     ):
         is_translate_task = bool(re.search(r'翻译|日文版|日语版|英文版|本地化|多语言|保持格式|格式不变', prompt or ""))
@@ -305,7 +310,14 @@ def build_deliverable_execution_instruction(skill_res: Any, prompt: str = "") ->
             "落盘方式：调用 `bash` 工具运行 Python 脚本（使用 openpyxl 库创建并排版表格，保存至 `/workspace/<文件名>.xlsx`）。\n"
             "⚠️ 严禁仅输出口头文字！必须实际调用 bash 工具执行 Python 脚本完成物理文件落盘！"
         )
-    elif getattr(skill_res, "deliverables", None) and any(ext.lower() == ".pdf" for ext in skill_res.deliverables):
+    elif getattr(skill_res, "skill_id", None) == "pdf" or (
+        getattr(skill_res, "deliverables", None) and any(ext.lower().endswith(".pdf") or ext.lower() == ".pdf" for ext in skill_res.deliverables)
+    ):
+        is_translate_task = bool(re.search(r'翻译|日文版|日语版|英文版|中文版|本地化|多语言|保持格式|格式不变|原格式', prompt or ""))
+        if is_translate_task:
+            from .pdf_prompt import pdf_execution_guidance
+            return '【执行与高保真 PDF 翻译落盘阶段】\n' + pdf_execution_guidance(prompt, ['bash'])
+
         return (
             "【执行与代码落盘阶段】：方案规划已完成。请严格按照上述规划方案实施落盘。\n"
             "落盘方式：调用 `render_pdf` 工具（直接传入 markdown 正文及目标 output_path，保存至 `/workspace/`）。\n"
@@ -407,14 +419,14 @@ def run_planning_phase(
                 "1. 深入分析用户目标、页面/内容结构、排版与视觉设计规范。\n"
                 "2. 若涉及外部开源项目、未知技术组件、最新库/API 或特定插件生态，你可以调用 `web_search` 与 `fetch_page` 检索一手技术事实与官方依据（本阶段仅开放只读网络检索，严禁且不支持写文件或执行命令工具）。\n"
                 "3. 给出详细的实现与落盘规划（包括功能模块划分、代码逻辑与目标落盘文件路径，如根据用户交付需求规划目标文件 `/workspace/<文件名>.<扩展名>`）。\n"
-                "4. 输出清晰详尽的规划方案。本阶段仅负责思考与架构规划，规划完成后系统将切换至执行与代码落盘阶段。"
+                "4. 输出清晰详尽的规划方案。本阶段仅负责思考与架构规划，规划完成后系统将切换至执行与代码落盘阶段。严禁在规划末尾向用户询问“是否确认/是否进入执行”，执行阶段会自动开始。"
             )
         else:
             planning_instruction = (
                 "【规划阶段任务】：请针对用户的需求与交付物目标进行深入思考与方案规划。\n"
                 "1. 深入分析用户目标，充分结合会话中已有的有效数据与附件内容，规划页面/内容结构、排版与视觉设计规范。\n"
                 "2. 给出详细的实现与落盘规划（包括功能模块划分、数据呈现、核心卡片/表格与目标落盘文件路径，如 `/workspace/<文件名>.<扩展名>`）。\n"
-                "3. 输出清晰详尽的规划方案。本阶段仅负责思考与架构规划，规划完成后系统将切换至执行与代码落盘阶段。"
+                "3. 输出清晰详尽的规划方案。本阶段仅负责思考与架构规划，规划完成后系统将切换至执行与代码落盘阶段。严禁在规划末尾向用户询问“是否确认/是否进入执行”，执行阶段会自动开始。"
             )
     else:
         planning_instruction = (

@@ -435,6 +435,9 @@ def finalize_agent_text(
     max_spreadsheet_rounds: int,
 ) -> Tuple[str, List[str]]:
     """Finalizes agent text, requesting forced summary if needed and applying fallback reports."""
+    from .pdf_translation_bridge import has_pdf_translation
+    if has_pdf_translation(telemetry):
+        return 'PDF翻译执行已结束，最终结果以运行时完整性和逐页验收为准。', []
     has_pending_tool_calls = bool(parse_tool_calls(reply_text, is_guide=is_guide_intent))
     final_text = clean_output(reply_text, is_guide=is_guide_intent)
     from .spreadsheet_update.presentation import render_published_update

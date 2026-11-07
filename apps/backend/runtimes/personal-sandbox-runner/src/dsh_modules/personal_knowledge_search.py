@@ -24,6 +24,12 @@ from .office_tools import (
 
 _LAST_SCANNED_KNOWLEDGE_FILES: List[Dict[str, Any]] = []
 
+COMMON_FILE_FORMAT_TERMS = {
+    "pdf", "docx", "doc", "xlsx", "xls", "pptx", "ppt", "txt", "md", "csv", "json",
+    "html", "htm", "png", "jpg", "jpeg", "svg", "zip", "tar", "gz", "7z", "py", "sh",
+    "word", "excel", "powerpoint", "markdown", "表格", "幻灯片", "演示文稿", "工作簿"
+}
+
 KNOWLEDGE_STOP_WORDS = {
     # 知识库指令与空间虚词
     "个人", "空间", "知识", "知识库", "文档", "文件", "附件", "方法", "安装", "教程",
@@ -46,6 +52,17 @@ KNOWLEDGE_STOP_WORDS = {
     "解决", "解决了", "提了", "提了什么", "具体", "需要", "包含", "进行", "提炼", "方案", "要点",
     "核心", "详细", "详细内容", "主要", "说明", "梳理", "汇报", "做了什么", "说了什么", "分析了什么",
     "安全解决方案", "技术调研", "论文分析", "安装配置", "环境部署", "配置指南",
+
+    # 常见文档格式、文件扩展名与文档类型操作词（严禁作为个人知识库匹配词与检索实体）
+    "pdf", "docx", "doc", "xlsx", "xls", "pptx", "ppt", "txt", "md", "csv", "json",
+    "html", "htm", "png", "jpg", "jpeg", "svg", "zip", "tar", "gz", "7z", "py", "sh",
+    "word", "excel", "powerpoint", "markdown", "表格", "幻灯片", "演示文稿", "工作簿",
+
+    # 翻译、转换、导出与多语言泛化词汇（严禁作为个人知识库实体检索词）
+    "翻译", "生成", "版本", "导出", "转换", "转成", "转为", "改写", "润色", "排版", "重排",
+    "格式", "版式", "样式", "预览", "原版", "原文", "译文", "日文版", "中文版", "英文版",
+    "日语版", "汉语版", "成日", "日语", "日文", "英语", "英文", "中文", "汉语", "法文", "德文",
+    "生成日", "成日语", "语版", "语版本",
 
     # 网络协议、顶级域名与代码托管通用词（严禁作为个人知识库匹配词）
     "http", "https", "url", "uri", "ftp", "www", "com", "cn", "org", "net", "io",
@@ -135,11 +152,15 @@ def _extract_knowledge_query_keywords(prompt: Optional[str]) -> List[str]:
         r'查看(?:附件|文档|文件|内容)?',
         r'分析(?:和)?(?:提炼|归纳|总结)?(?:内容)?',
         r'提炼(?:和)?(?:分析|归纳|总结)?(?:内容)?',
+        r'翻译(?:这个|这份|该|此)?(?:pdf|word|docx|文档|文件|合同|附件)?(?:成|为|到)?(?:日语|日文|英文|英语|中文)?(?:版本)?',
+        r'生成(?:日语|日文|英文|英语|中文)?(?:版本)?',
+        r'转(?:成|为|换)?(?:日语|日文|英文|英语|中文)?(?:版本)?',
+        r'导出(?:为|成)?(?:pdf|word|docx|excel)?',
     ]
     for pat in task_action_patterns:
         p = re.sub(pat, ' ', p)
 
-    p = re.sub(r'^(?:请问|请帮我|帮我|麻烦|查看|查询|看一下|查一下|找一下|检索|搜索|阅读|浏览|评估|分析|总结|归纳)\s*', '', p)
+    p = re.sub(r'^(?:请问|请帮我|帮我|麻烦|查看|查询|看一下|查一下|找一下|检索|搜索|阅读|浏览|评估|分析|总结|归纳|翻译|生成|导出|转换)\s*', '', p)
     p = re.sub(r'(?:在|从)?(?:个人空间|知识库|知识空间|我的个人文档|工作区|我的文档)(?:中|里|内|上的?)?\s*', ' ', p)
     p = re.sub(r'(?:关于|有关|相关(?:的)?)\s*', ' ', p)
     p = re.sub(r'(?:和风险|和分析|和评价|和总结|风险|这个文章|这篇文章|这个|那个|这里面|这篇|那篇|文章|详细内容|内容|要点总结|核心要点|要点|给出|并且|分析内容|提炼内容)', ' ', p)
@@ -485,7 +506,9 @@ def scan_personal_knowledge(prompt: Optional[str] = None, auto_match_only: bool 
     scored_entries = []
     for f, resolved, source_cat, rel in valid_entries:
         fname_lower = resolved.name.lower()
+        stem_lower = resolved.stem.lower()
         rel_str = str(rel).lower()
+        rel_stem_str = str(rel.with_suffix("")).lower() if rel.suffix else str(rel).lower()
         suffix = resolved.suffix.lower()
 
         tier, base_score = _get_file_type_tier_and_score(suffix)
@@ -495,22 +518,24 @@ def scan_personal_knowledge(prompt: Optional[str] = None, auto_match_only: bool 
         matched_content_kw = False
         content_preview_cached = ""
 
-        # 1. 文件名与路径匹配（严格使用词边界与实质性词汇检验，短词如 'ai' 绝不单独触发强命中）
+        # 1. 文件名与路径匹配（严格使用文件名主干 stem 匹配，严禁通过 .pdf 等扩展名直接匹配；短词如 'ai' 绝不单独触发强命中）
         if keywords:
             for kw in keywords:
-                # 实质性关键词判定：长度>=3，或短词全词等于文件主干/超短文件名
+                if kw in COMMON_FILE_FORMAT_TERMS:
+                    continue
+                # 实质性关键词判定：长度>=3，或短词全词等于文件主干/超短文件名（必须作用于主干 stem，绝不匹配扩展名）
                 is_substantive = bool(
                     len(kw) >= 3
-                    or (len(kw) >= 2 and (kw == resolved.stem.lower() or len(resolved.stem) <= 5))
+                    or (len(kw) >= 2 and (kw == stem_lower or len(stem_lower) <= 5))
                 )
-                if _matches_keyword(fname_lower, kw):
+                if _matches_keyword(stem_lower, kw):
                     if is_substantive:
                         matched_name_kw = True
-                        kw_score += 500  # 实质性关键词完全包含在文件名中
+                        kw_score += 500  # 实质性关键词完全包含在文件名主干中
                         substantive_kw_hits += 1
                     else:
                         kw_score += 100  # 超短通用词（如 'ai'）仅给予辅助弱加分，不单独置位
-                elif _matches_keyword(rel_str, kw):
+                elif _matches_keyword(rel_stem_str, kw):
                     if is_substantive:
                         matched_name_kw = True
                         kw_score += 200

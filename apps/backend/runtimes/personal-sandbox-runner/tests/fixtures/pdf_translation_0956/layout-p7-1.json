@@ -1,0 +1,306 @@
+{
+  "columns": 1,
+  "blocks": [
+    {
+      "type": "reference",
+      "line_ids": [
+        "p7_g1",
+        "p7_g2"
+      ],
+      "bbox": [
+        70.87,
+        73.8,
+        495.81,
+        105.89
+      ],
+      "column": 0
+    },
+    {
+      "type": "reference",
+      "line_ids": [
+        "p7_g3"
+      ],
+      "bbox": [
+        70.87,
+        115.86,
+        290.38,
+        169.66
+      ],
+      "column": 0
+    },
+    {
+      "type": "reference",
+      "line_ids": [
+        "p7_g4",
+        "p7_g5"
+      ],
+      "bbox": [
+        70.87,
+        179.62,
+        495.81,
+        222.46
+      ],
+      "column": 0
+    },
+    {
+      "type": "title",
+      "line_ids": [
+        "p7_g6"
+      ],
+      "bbox": [
+        70.87,
+        234.76,
+        140.98,
+        246.71
+      ],
+      "column": 0
+    },
+    {
+      "type": "heading",
+      "line_ids": [
+        "p7_g7"
+      ],
+      "bbox": [
+        70.87,
+        256.5,
+        255.74,
+        280.96
+      ],
+      "column": 0
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p7_g8"
+      ],
+      "bbox": [
+        70.87,
+        287.6,
+        289.14,
+        339.16
+      ],
+      "column": 0
+    },
+    {
+      "type": "caption",
+      "line_ids": [
+        "p7_g9"
+      ],
+      "bbox": [
+        70.56,
+        351.68,
+        290.79,
+        373.59
+      ],
+      "column": 0
+    },
+    {
+      "type": "table",
+      "line_ids": [
+        "p7_g10",
+        "p7_g11",
+        "p7_g12",
+        "p7_g13",
+        "p7_g14",
+        "p7_g15",
+        "p7_g16",
+        "p7_g17",
+        "p7_g18",
+        "p7_g19",
+        "p7_g20",
+        "p7_g21",
+        "p7_g22",
+        "p7_g23",
+        "p7_g24",
+        "p7_g25",
+        "p7_g26",
+        "p7_g27",
+        "p7_g28",
+        "p7_g29",
+        "p7_g30",
+        "p7_g31",
+        "p7_g32",
+        "p7_g33",
+        "p7_g34",
+        "p7_g35",
+        "p7_g36",
+        "p7_g37",
+        "p7_g38",
+        "p7_g39",
+        "p7_g40",
+        "p7_g41",
+        "p7_g42",
+        "p7_g43"
+      ],
+      "bbox": [
+        70.87,
+        383.191,
+        481.825,
+        713.567
+      ],
+      "column": 0,
+      "cells": [
+        {
+          "row": 0,
+          "col": 0,
+          "rowspan": 1,
+          "colspan": 1,
+          "header": true,
+          "line_ids": [
+            "p7_g10"
+          ]
+        },
+        {
+          "row": 0,
+          "col": 1,
+          "rowspan": 1,
+          "colspan": 1,
+          "header": true,
+          "line_ids": [
+            "p7_g11"
+          ]
+        },
+        {
+          "row": 0,
+          "col": 2,
+          "rowspan": 1,
+          "colspan": 1,
+          "header": true,
+          "line_ids": [
+            "p7_g12"
+          ]
+        },
+        {
+          "row": 1,
+          "col": 0,
+          "rowspan": 2,
+          "colspan": 1,
+          "header": false,
+          "line_ids": [
+            "p7_g15",
+            "p7_g16"
+          ]
+        },
+        {
+          "row": 1,
+          "col": 1,
+          "rowspan": 2,
+          "colspan": 1,
+          "header": false,
+          "line_ids": [
+            "p7_g13"
+          ]
+        },
+        {
+          "row": 1,
+          "col": 2,
+          "rowspan": 1,
+          "colspan": 1,
+          "header": false,
+          "line_ids": [
+            "p7_g14"
+          ]
+        },
+        {
+          "row": 2,
+          "col": 1,
+          "rowspan": 2,
+          "colspan": 1,
+          "header": false,
+          "line_ids": [
+            "p7_g17",
+            "p7_g18",
+            "p7_g19"
+          ]
+        },
+        {
+          "row": 2,
+          "col": 2,
+          "rowspan": 1,
+          "colspan": 1,
+          "header": false,
+          "line_ids": [
+            "p7_g20"
+          ]
+        },
+        {
+          "row": 3,
+          "col": 0,
+          "rowspan": 2,
+          "colspan": 1,
+          "header": false,
+          "line_ids": [
+            "p7_g21",
+            "p7_g23",
+            "p7_g25"
+          ]
+        },
+        {
+          "row": 3,
+          "col": 1,
+          "rowspan": 2,
+          "colspan": 1,
+          "header": false,
+          "line_ids": [
+            "p7_g22",
+            "p7_g24",
+            "p7_g26",
+            "p7_g27",
+            "p7_g28",
+            "p7_g29",
+            "p7_g30",
+            "p7_g31",
+            "p7_g32",
+            "p7_g33",
+            "p7_g34",
+            "p7_g35",
+            "p7_g36",
+            "p7_g37",
+            "p7_g38",
+            "p7_g39",
+            "p7_g40",
+            "p7_g41",
+            "p7_g42"
+          ]
+        },
+        {
+          "row": 3,
+          "col": 2,
+          "rowspan": 1,
+          "colspan": 1,
+          "header": false,
+          "line_ids": [
+            "p7_g43"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "footnote",
+      "line_ids": [
+        "p7_g45",
+        "p7_g46"
+      ],
+      "bbox": [
+        87.23,
+        742.99,
+        338.14,
+        753.55
+      ],
+      "column": 0
+    },
+    {
+      "type": "footnote",
+      "line_ids": [
+        "p7_g44"
+      ],
+      "bbox": [
+        87.23,
+        713.1,
+        495.81,
+        743.59
+      ],
+      "column": 0
+    }
+  ]
+}

@@ -1,0 +1,280 @@
+{
+  "columns": 2,
+  "blocks": [
+    {
+      "type": "title",
+      "line_ids": [
+        "p1_g1"
+      ],
+      "bbox": [
+        74.11,
+        78.4,
+        521.18,
+        92.75
+      ],
+      "column": 0
+    },
+    {
+      "type": "author",
+      "line_ids": [
+        "p1_g2"
+      ],
+      "bbox": [
+        129.5,
+        109.13,
+        468.27,
+        122.39
+      ],
+      "column": 0
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p1_g3"
+      ],
+      "bbox": [
+        95.64,
+        123.25,
+        499.63,
+        136.42
+      ],
+      "column": 0
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p1_g4"
+      ],
+      "bbox": [
+        150.53,
+        137.2,
+        444.75,
+        150.37
+      ],
+      "column": 0
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p1_g5"
+      ],
+      "bbox": [
+        185.57,
+        151.15,
+        409.71,
+        164.32
+      ],
+      "column": 0
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p1_g6"
+      ],
+      "bbox": [
+        191.7,
+        166.42,
+        410.83,
+        178.37
+      ],
+      "column": 0
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p1_g7"
+      ],
+      "bbox": [
+        173.47,
+        178.98,
+        421.81,
+        192.32
+      ],
+      "column": 0
+    },
+    {
+      "type": "furniture",
+      "line_ids": [
+        "p1_g8",
+        "p1_g23"
+      ],
+      "bbox": [
+        16.34,
+        247.62,
+        36.34,
+        594.26
+      ],
+      "column": 0
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p1_g10"
+      ],
+      "bbox": [
+        87.52,
+        246.1,
+        273.78,
+        423.44
+      ],
+      "column": 1
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p1_g9"
+      ],
+      "bbox": [
+        157.76,
+        221.41,
+        202.24,
+        233.36
+      ],
+      "column": 2
+    },
+    {
+      "type": "heading",
+      "line_ids": [
+        "p1_g11"
+      ],
+      "bbox": [
+        70.87,
+        436.87,
+        153.68,
+        448.82
+      ],
+      "column": 1
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p1_g12"
+      ],
+      "bbox": [
+        70.87,
+        459.31,
+        290.94,
+        497.31
+      ],
+      "column": 1
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p1_g13"
+      ],
+      "bbox": [
+        70.47,
+        486.4,
+        290.95,
+        646.35
+      ],
+      "column": 1
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p1_g14",
+        "p1_g15"
+      ],
+      "bbox": [
+        70.66,
+        647.34,
+        290.94,
+        700.55
+      ],
+      "column": 1
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p1_g16"
+      ],
+      "bbox": [
+        70.87,
+        703.44,
+        291.04,
+        755.0
+      ],
+      "column": 1
+    },
+    {
+      "type": "footnote",
+      "line_ids": [
+        "p1_g17"
+      ],
+      "bbox": [
+        83.52,
+        764.34,
+        273.05,
+        774.77
+      ],
+      "column": 1
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p1_g18"
+      ],
+      "bbox": [
+        306.14,
+        222.31,
+        526.22,
+        341.62
+      ],
+      "column": 2
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p1_g19"
+      ],
+      "bbox": [
+        306.14,
+        345.38,
+        526.23,
+        505.41
+      ],
+      "column": 2
+    },
+    {
+      "type": "heading",
+      "line_ids": [
+        "p1_g20"
+      ],
+      "bbox": [
+        306.14,
+        521.51,
+        448.49,
+        533.46
+      ],
+      "column": 2
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p1_g21"
+      ],
+      "bbox": [
+        305.75,
+        546.3,
+        526.32,
+        706.25
+      ],
+      "column": 2
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p1_g22"
+      ],
+      "bbox": [
+        306.14,
+        709.83,
+        526.22,
+        775.19
+      ],
+      "column": 2
+    }
+  ]
+}

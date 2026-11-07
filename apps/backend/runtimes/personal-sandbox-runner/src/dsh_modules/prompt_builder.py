@@ -261,7 +261,8 @@ def build_user_turn(
                     "- 严禁调用 bash 或写文件工具在工作区生成临时报告或 Markdown 文件！用户需要的是在当前对话流中直接阅读分析结果，无需落盘交付物。"
                 )
 
-    if is_generate_intent:
+    from .pdf_translation_workflow import fixed_translation
+    if is_generate_intent and not fixed_translation(prompt, session_files, deliverables):
         user_parts.append(
             "【双通道交付硬性规范 (Dual-Channel Delivery Protocol)】:\n"
             "- 渠道一（聊天窗口交互通道）：必须在回复中直接呈现完整、自闭环的结构化核心内容（如摘要要点、数据分析/图表说明、核心结论或执行指引），严禁仅输出'已生成/请查看卡片'等空洞推脱话术。\n"

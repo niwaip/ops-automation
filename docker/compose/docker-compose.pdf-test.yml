@@ -1,0 +1,29 @@
+# Isolated document regression runner. Run from root via docker/start-smart.sh.
+services:
+  pdf-translation-test:
+    image: ${USER_SANDBOX_IMAGE:-ops-user-sandbox:local}
+    entrypoint: [python3]
+    command: [-m, unittest, discover, -s, tests, -p, 'test_pdf_translation*.py', -v]
+    working_dir: /repo/apps/backend/runtimes/personal-sandbox-runner
+    environment:
+      PYTHONPATH: /usr/local/bin:/opt/dsh/skills/pdf/scripts
+      WORKSPACE: /workspace
+      DSH_SKILL_DIR: /opt/dsh/skills
+      PDF_DESIGN_SCRIPTS: /opt/dsh/skills/pdf/scripts
+      DSH_PDF_TRANSLATION_ENGINE: layout-html-v1
+      DEEPSEEK_BASE_URL: http://ops-ai-orchestrator:3007/ai/proxy/v1
+      DEEPSEEK_API_KEY: ${PDF_TRANSLATION_TEST_TOKEN:-test-token}
+      DSH_MODEL: ${PDF_TRANSLATION_TEST_MODEL:-default}
+      DSH_VISION_MODEL: ${PDF_TRANSLATION_TEST_VISION_MODEL:-vision}
+    volumes:
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/repo:ro
+      - ${PROJECT_ROOT}/apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules:/usr/local/bin/dsh_modules:ro
+      - ${PROJECT_ROOT}/apps/backend/runtimes/personal-sandbox-runner/skills:/opt/dsh/skills:ro
+      - ${PROJECT_ROOT}/docs/artifacts/reviews/pdf-translation-implementation-20261106:/artifacts
+    tmpfs:
+      - /workspace:mode=1777,size=512m
+    networks: [ops-test-network]
+networks:
+  ops-test-network:
+    external: true
+    name: ${SANDBOX_NETWORK_NAME:-ops-sandbox-network}

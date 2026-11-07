@@ -1,0 +1,288 @@
+{
+  "columns": 2,
+  "blocks": [
+    {
+      "type": "figure",
+      "line_ids": [
+        "p2_g12",
+        "p2_g13",
+        "p2_g14",
+        "p2_g15",
+        "p2_g23",
+        "p2_g24",
+        "p2_g25"
+      ],
+      "bbox": [
+        70.0,
+        87.0,
+        529.0,
+        319.0
+      ],
+      "column": 0
+    },
+    {
+      "type": "caption",
+      "line_ids": [
+        "p2_g11"
+      ],
+      "bbox": [
+        200.81,
+        333.0,
+        394.47,
+        370.34
+      ],
+      "column": 0
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p2_g2"
+      ],
+      "bbox": [
+        271.71,
+        132.95,
+        326.5,
+        140.25
+      ],
+      "column": 0
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p2_g3"
+      ],
+      "bbox": [
+        271.71,
+        141.35,
+        328.11,
+        148.65
+      ],
+      "column": 0
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p2_g4"
+      ],
+      "bbox": [
+        271.71,
+        158.14,
+        324.46,
+        165.45
+      ],
+      "column": 0
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p2_g5"
+      ],
+      "bbox": [
+        271.71,
+        166.54,
+        316.34,
+        173.85
+      ],
+      "column": 0
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p2_g6"
+      ],
+      "bbox": [
+        271.71,
+        174.94,
+        324.87,
+        182.24
+      ],
+      "column": 0
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p2_g7"
+      ],
+      "bbox": [
+        271.71,
+        183.34,
+        325.67,
+        190.64
+      ],
+      "column": 0
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p2_g8"
+      ],
+      "bbox": [
+        271.71,
+        191.74,
+        328.52,
+        199.04
+      ],
+      "column": 0
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p2_g9"
+      ],
+      "bbox": [
+        271.71,
+        200.14,
+        327.72,
+        207.44
+      ],
+      "column": 0
+    },
+    {
+      "type": "heading",
+      "line_ids": [
+        "p2_g1"
+      ],
+      "bbox": [
+        271.71,
+        124.55,
+        330.13,
+        131.85
+      ],
+      "column": 0
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p2_g16"
+      ],
+      "bbox": [
+        70.87,
+        394.03,
+        291.04,
+        545.89
+      ],
+      "column": 1
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p2_g17",
+        "p2_g19"
+      ],
+      "bbox": [
+        70.59,
+        549.26,
+        290.95,
+        627.92
+      ],
+      "column": 1
+    },
+    {
+      "type": "footnote",
+      "line_ids": [
+        "p2_g18"
+      ],
+      "bbox": [
+        70.59,
+        574.71,
+        185.77,
+        574.71
+      ],
+      "column": 1
+    },
+    {
+      "type": "heading",
+      "line_ids": [
+        "p2_g20"
+      ],
+      "bbox": [
+        70.87,
+        641.86,
+        243.7,
+        652.77
+      ],
+      "column": 1
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p2_g21",
+        "p2_g26"
+      ],
+      "bbox": [
+        70.53,
+        660.87,
+        290.94,
+        753.07
+      ],
+      "column": 1
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p2_g27",
+        "p2_g28"
+      ],
+      "bbox": [
+        306.14,
+        421.53,
+        526.22,
+        527.29
+      ],
+      "column": 2
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p2_g29"
+      ],
+      "bbox": [
+        305.87,
+        530.25,
+        526.22,
+        636.01
+      ],
+      "column": 2
+    },
+    {
+      "type": "paragraph",
+      "line_ids": [
+        "p2_g30"
+      ],
+      "bbox": [
+        305.8,
+        638.98,
+        526.23,
+        744.73
+      ],
+      "column": 2
+    },
+    {
+      "type": "footnote",
+      "line_ids": [
+        "p2_g22"
+      ],
+      "bbox": [
+        70.53,
+        764.34,
+        173.93,
+        764.34
+      ],
+      "column": 1
+    },
+    {
+      "type": "footnote",
+      "line_ids": [
+        "p2_g31",
+        "p2_g32"
+      ],
+      "bbox": [
+        306.14,
+        754.38,
+        525.9,
+        774.77
+      ],
+      "column": 2
+    }
+  ]
+}

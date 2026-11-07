@@ -707,74 +707,39 @@ def inspect_image(
     if telemetry:
         telemetry.checkpoint('model_started', {'call_id': call_id, 'purpose': purpose, 'model': model_name or 'default'})
     try:
-        b64_str = base64.b64encode(image_bytes).decode("ascii")
-
+        from .model_image_transport import request_image_completion
         analysis_prompt = prompt.strip() if prompt and prompt.strip() else (
-            "请详细分析并解读这张图片/扫描件的内容，识别并提取图中的所有关键文字（OCR）、表格数据、条款与主体信息，给出清晰准确的中文说明。"
-        )
-
-        api_endpoint = f"{DEFAULT_PROXY_URL.rstrip('/')}/chat/completions"
+            "请详细分析并解读这张图片/扫描件的内容，识别并提取图中的所有关键文字（OCR）、表格数据、条款与主体信息，给出清晰准确的中文说明。")
         from .runtime_policy import RuntimePolicy
-        pol = RuntimePolicy.from_env()
         target_model = model_name or os.environ.get("DSH_MODEL") or "default"
-        payload = {
-            "model": target_model,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": analysis_prompt},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:{mime};base64,{b64_str}",
-                                "detail": "auto"
-                            }
-                        }
-                    ]
-                }
-            ],
-            "temperature": 0.2,
-            "max_tokens": max_tokens if max_tokens is not None else pol.max_tokens,
-            "thinking": False,
-            "stream": False
-        }
-
-        req = urllib.request.Request(
-            api_endpoint,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {VIRTUAL_API_KEY}"
-            }
-        )
-
-        with urllib.request.urlopen(req, timeout=to_vision) as response:
-            resp_data = json.loads(response.read().decode("utf-8"))
-            response_model = resp_data.get('model') or target_model
-            assert_not_timed_out(deadline, "image vision inspection")
-            usage = resp_data.get('usage') or {}
-            choices = resp_data.get("choices", [])
-            if purpose == 'pdf_page_review' and choices and choices[0].get('finish_reason') not in ('stop', None):
-                return ('页面检查响应不完整：model=' + str(resp_data.get('model', target_model))
-                        + ', finish_reason=' + str(choices[0].get('finish_reason')) + '；停止正文重写。')
-            if choices:
-                content = choices[0].get("message", {}).get("content", "")
-                if content and content.strip():
-                    if suffix != ".pdf":
-                        for txt_name in [f"{p.stem}.txt", f"{p.name}.txt"]:
-                            tp = p.parent / txt_name
-                            if not tp.exists():
-                                try:
-                                    tp.write_text(content, encoding="utf-8")
-                                except Exception:
-                                    pass
-                    meta_prefix = f"{pdf_page_meta}\n" if pdf_page_meta else ""
-                    return f"{meta_prefix}【文档/图片 ({p.name}) 视觉分析与内容识别结果】:\n{content[:max_chars]}"
-            if purpose == 'pdf_page_review':
-                return ('页面检查服务返回空正文：model=' + str(resp_data.get('model', target_model))
-                        + '；这不是页面内容缺陷，停止正文重写。')
-            return f"【系统提示】附件 ({p.name}) 属于扫描件/图片，当前选定模型未能识别解析出有效文字内容，无法解析。"
+        resp_data = request_image_completion(image_bytes, mime, analysis_prompt, target_model,
+            max_tokens=max_tokens if max_tokens is not None else RuntimePolicy.from_env().max_tokens,
+            timeout=to_vision, api_endpoint=f"{DEFAULT_PROXY_URL.rstrip('/')}/chat/completions",
+            api_key=VIRTUAL_API_KEY)
+        response_model = resp_data.get('model') or target_model
+        assert_not_timed_out(deadline, "image vision inspection")
+        usage = resp_data.get('usage') or {}
+        choices = resp_data.get("choices", [])
+        if purpose == 'pdf_page_review' and choices and choices[0].get('finish_reason') not in ('stop', None):
+            return ('页面检查响应不完整：model=' + str(resp_data.get('model', target_model))
+                    + ', finish_reason=' + str(choices[0].get('finish_reason')) + '；停止正文重写。')
+        if choices:
+            content = choices[0].get("message", {}).get("content", "")
+            if content and content.strip():
+                if suffix != ".pdf":
+                    for txt_name in [f"{p.stem}.txt", f"{p.name}.txt"]:
+                        tp = p.parent / txt_name
+                        if not tp.exists():
+                            try:
+                                tp.write_text(content, encoding="utf-8")
+                            except Exception:
+                                pass
+                meta_prefix = f"{pdf_page_meta}\n" if pdf_page_meta else ""
+                return f"{meta_prefix}【文档/图片 ({p.name}) 视觉分析与内容识别结果】:\n{content[:max_chars]}"
+        if purpose == 'pdf_page_review':
+            return ('页面检查服务返回空正文：model=' + str(resp_data.get('model', target_model))
+                    + '；这不是页面内容缺陷，停止正文重写。')
+        return f"【系统提示】附件 ({p.name}) 属于扫描件/图片，当前选定模型未能识别解析出有效文字内容，无法解析。"
     except TimeoutError:
         raise
     except urllib.error.HTTPError as he:
@@ -988,6 +953,10 @@ def send_workspace_file(file_path: str, comment: str = "") -> str:
         return f"发送失败：目标路径 ({p.name}) 不是普通文件（不支持直接外发目录、FIFO管道或特殊设备文件）。"
     if not os.access(p, os.R_OK):
         return f"发送失败：文件不可读，缺少读取权限 ({p.name})"
+    if p.suffix.lower() == '.pdf':
+        from .pdf_translation_bridge import has_pdf_translation
+        if has_pdf_translation():
+            return '发送失败：本轮翻译须先完成运行时PDF发布验收，请勿发送隐藏候选或旧版本。'
 
     try:
         size = p.stat().st_size

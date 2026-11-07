@@ -1189,7 +1189,7 @@ class TestDshCoreModules(unittest.TestCase):
     def test_scan_personal_knowledge_symlink_defense(self):
         """[P1] 验证知识库扫描杜绝跟随软链接逃逸至 /knowledge 之外系统文件"""
         from dsh_modules.file_tools import scan_personal_knowledge
-        with tempfile.TemporaryDirectory() as tmp_dir:
+        with tempfile.TemporaryDirectory(dir="/workspace") as tmp_dir:
             tmp_kn = Path(tmp_dir) / "knowledge"
             tmp_kn.mkdir()
 

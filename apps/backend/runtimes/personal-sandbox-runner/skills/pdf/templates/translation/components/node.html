@@ -1,0 +1,15 @@
+{% if node.type == 'title' %}
+<h1 id="{{ node.id }}" data-node-id="{{ node.id }}">{{ node.html_display }}</h1>
+{% elif node.type == 'heading' %}
+<h2 id="{{ node.id }}" data-node-id="{{ node.id }}">{{ node.html_display }}</h2>
+{% elif node.type == 'table' %}
+<table id="{{ node.id }}" data-node-id="{{ node.id }}"{% if node.column_widths %} class="native-grid"{% endif %}>{% if node.column_widths %}<colgroup>{% for width in node.column_widths %}<col style="width:{{ width }}%">{% endfor %}</colgroup>{% endif %}{% if node.head_rows %}<thead>{% for row in node.head_rows %}{% include 'components/table_row.html' %}{% endfor %}</thead>{% endif %}
+<tbody>{% for row in node.body_rows %}{% include 'components/table_row.html' %}{% endfor %}</tbody></table>
+{% elif node.type in ['figure', 'formula'] %}
+<figure id="{{ node.id }}" data-node-id="{{ node.id }}"><img src="{{ node.asset | default('') }}" alt="">
+{% if node.display %}<figcaption class="figure-legend">图中文字译文：{{ node.html_display }}</figcaption>{% endif %}</figure>
+{% elif node.type == 'caption' %}
+<p id="{{ node.id }}" data-node-id="{{ node.id }}" class="caption">{{ node.html_display }}</p>
+{% else %}
+<p id="{{ node.id }}" data-node-id="{{ node.id }}" class="{{ node.type }}">{{ node.html_display }}</p>
+{% endif %}

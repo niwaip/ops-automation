@@ -6,6 +6,12 @@
 
 ## 0. 领域功能设计
 
+- **复杂 PDF 翻译与可读排版**：[`PDF-Translation-Layout-and-Readable-Rendering-Design_v1.0.md`](PDF-Translation-Layout-and-Readable-Rendering-Design_v1.0.md)
+  *保留现有服务、模型工具及发布调用结构，在现有PDF翻译CLI内部实现多模态布局理解、结构化翻译、HTML/CSS重排与隐藏候选验收。*
+
+- **PDF 翻译失败页局部修复与页面级验收门禁**：[`PDF-Translation-Page-Repair-Design_v1.0.md`](PDF-Translation-Page-Repair-Design_v1.0.md)
+  *保留整本流式排版，门禁失败后按源节点局部修复、整表原子重建、节点缓存增量重译与整本重排，仅复审变化页，3轮预算与未收敛阻断。*
+
 - **MCP 使用、配置与验证**：[`MCP-Outbound-Operations.md`](MCP-Outbound-Operations.md)
 - **MCP 外部工具接入与用户凭证**：[`MCP-Outbound-Integration-Design_v1.0.md`](MCP-Outbound-Integration-Design_v1.0.md)
   *仅作为客户端接入外部服务；个人连接由用户配置，工作连接由组织管理员发布，调用使用用户自己的凭证。包含模块接线、凭证边界、版本与写入恢复，以及分批实施和验收矩阵。*

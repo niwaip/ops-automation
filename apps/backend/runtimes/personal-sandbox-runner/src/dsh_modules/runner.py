@@ -241,6 +241,11 @@ def cmd_run(args):
     except ValueError as error:
         emit_admission_stop(error, prompt, history_file, existing_history, telemetry)
         return
+    from .pdf_translation_workflow import fixed_translation, attachment_metadata
+    fixed_pdf_translation = fixed_translation(prompt, session_files, skill_res.deliverables)
+    if fixed_pdf_translation:
+        # The runtime owns the translation path; do not inject the full skill body.
+        skill_res.skill_context = ''
     template_pdf = is_template_pdf_task(prompt, skill_res)
     if template_pdf:
         # The managed renderer replaces CLI/code examples; do not let examples
@@ -269,7 +274,10 @@ def cmd_run(args):
     # 3. 隔离约束：若本轮上传了具体会话附件且为附件审阅/分析任务，在未显式要求结合知识库时，默认静默自动知识库探测
     has_pure_attachment_task = bool(
         session_files
-        and any(k in prompt.lower() for k in ["查看附件", "分析附件", "附件内容", "上传的附件", "看下附件", "提炼内容", "这是什么", "是什么"])
+        and any(k in prompt.lower() for k in [
+            "查看附件", "分析附件", "附件内容", "上传的附件", "看下附件", "提炼内容", "这是什么", "是什么",
+            "翻译这个", "翻译附件", "翻译此", "翻译该", "转成", "转为", "转换这个", "转换附件", "处理附件"
+        ])
         and not any(k in prompt.lower() for k in ["知识库", "个人空间", "成果库", "历史成果", "结合我的文档", "结合知识库", "我的文档"])
     )
     knowledge_context = ""
@@ -414,6 +422,9 @@ def cmd_run(args):
                 continue
             is_verbatim_reply = bool(re.search(r'(?:^|[\n\r]|用户指令[：:])\s*(?:仅回复|只回复|仅输出|只需回复|只回答)\b', prompt))
             if is_verbatim_reply:
+                continue
+            if fixed_pdf_translation and fpath.suffix.lower() == '.pdf':
+                file_context += '\n[PDF Source Metadata]: ' + attachment_metadata(fpath)
                 continue
             comparison_context = build_comparison_source_context(fpath, prompt, deadline=task_deadline)
             # A usable schema keeps full numeric rows on the tool path. No
