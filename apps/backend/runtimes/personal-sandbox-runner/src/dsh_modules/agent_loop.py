@@ -1052,9 +1052,9 @@ def run_agent_loop(
     # 交付前对本轮生成/导出的带公式 Excel 进行无头重算以补齐缓存值
     _recalculate_generated_workbooks(WORKSPACE_DIR, turn_start_time=start_ts)
 
-    from .workbook_delivery import quarantine_invalid_deliverables
+    from .workbook_delivery import quarantine_invalid_deliverables, is_delivery_veto_enabled
     final_text, outbound_files, rejected = quarantine_invalid_deliverables(
-        WORKSPACE_DIR, start_ts, final_text, outbound_files)
+        WORKSPACE_DIR, start_ts, final_text, outbound_files, strict=is_delivery_veto_enabled())
     if rejected:
         telemetry.record_guard("workbook_delivery", "reject", rejected)
     else:
