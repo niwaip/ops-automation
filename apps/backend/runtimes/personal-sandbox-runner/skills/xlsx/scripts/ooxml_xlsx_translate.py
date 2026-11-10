@@ -24,6 +24,7 @@ import time
 import subprocess
 import urllib.request
 import urllib.error
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from xml.etree import ElementTree as ET
 
@@ -375,8 +376,8 @@ def _translate_single_batch_streaming(batch_dict: dict, target_lang: str, api_ba
 
 
 def translate_texts(input_json_path: str, output_json_path: str, target_lang: str = 'zh-CN',
-                    batch_size: int = 60, concurrency: int = 4) -> dict:
-    """读取待翻译 JSON 字典，通过去重、透传过滤与并发流式调用模型代理进行高质量翻译"""
+                    batch_size: int = 80, concurrency: int = 4) -> dict:
+    """读取待翻译 JSON 字典，通过去重、透传过滤、断点检查点与并发流式调用模型代理进行高质量翻译"""
     if not os.path.isfile(input_json_path):
         raise FileNotFoundError(f"找不到输入的待翻译字典: {input_json_path}")
 
@@ -391,6 +392,19 @@ def translate_texts(input_json_path: str, output_json_path: str, target_lang: st
     api_base = os.environ.get('OPENAI_BASE_URL') or os.environ.get('DEEPSEEK_BASE_URL') or 'http://ops-ai-orchestrator:3007/ai/proxy/v1'
     api_key = os.environ.get('OPENAI_API_KEY') or os.environ.get('DEEPSEEK_API_KEY') or ''
 
+    # 0. 断点检查点缓存初始化
+    cache_file = os.path.join(os.path.dirname(os.path.abspath(output_json_path)), '.translation_cache.json')
+    translated_unique_map = {}
+    if os.path.isfile(cache_file):
+        try:
+            with open(cache_file, 'r', encoding='utf-8') as cf:
+                cached_data = json.load(cf)
+                if isinstance(cached_data, dict):
+                    translated_unique_map.update(cached_data)
+                    print(f"📦 [Cache] 命中断点检查点，已恢复 {len(translated_unique_map)} 处已完成翻译项。")
+        except Exception as e:
+            print(f"⚠️ [Cache] 加载断点缓存失败: {e}")
+
     # 1. 文本去重与透传过滤
     unique_to_translate = {}
     passthrough_translations = {}
@@ -402,10 +416,11 @@ def translate_texts(input_json_path: str, output_json_path: str, target_lang: st
             if text not in unique_to_translate:
                 unique_to_translate[text] = f"t_{len(unique_to_translate)}"
 
-    print(f"🌐 [2/4] 启动智能并发表格翻译 (总项: {len(all_texts)}，去重后需翻译项: {len(unique_to_translate)}，免翻译透传项: {len(passthrough_translations)})...")
+    pending_to_translate = {t: uid for t, uid in unique_to_translate.items() if t not in translated_unique_map}
+    print(f"🌐 [2/4] 启动智能并发表格翻译 (总项: {len(all_texts)}，需翻译总项: {len(unique_to_translate)}，已命中缓存: {len(translated_unique_map)}，待处理项: {len(pending_to_translate)}，免翻译透传项: {len(passthrough_translations)})...")
 
-    # 2. 分批并发翻译
-    unique_items = list(unique_to_translate.items())
+    # 2. 分批并发翻译未缓存项
+    unique_items = list(pending_to_translate.items())
     batches = []
     current_batch = {}
 
@@ -417,11 +432,20 @@ def translate_texts(input_json_path: str, output_json_path: str, target_lang: st
     if current_batch:
         batches.append(current_batch)
 
-    translated_unique_map = {}
     total_batches = len(batches)
+    cache_lock = threading.Lock()
+
+    def _flush_cache():
+        try:
+            tmp_cache = cache_file + '.tmp'
+            with open(tmp_cache, 'w', encoding='utf-8') as cf:
+                json.dump(translated_unique_map, cf, ensure_ascii=False)
+            os.replace(tmp_cache, cache_file)
+        except Exception:
+            pass
 
     if total_batches > 0:
-        print(f"  ⚡ 智能划分为 {total_batches} 批并发处理 (并发度: {concurrency})...")
+        print(f"  ⚡ 智能划分为 {total_batches} 批并发处理 (并发度: {concurrency}，批大小: {batch_size})...")
         with ThreadPoolExecutor(max_workers=concurrency) as executor:
             future_to_idx = {
                 executor.submit(_translate_single_batch_streaming, b, target_lang, api_base, api_key, model="default"): idx
@@ -435,15 +459,19 @@ def translate_texts(input_json_path: str, output_json_path: str, target_lang: st
                 print(f"  ✓ 本地化处理进度: {completed_batches}/{total_batches} ({pct}%)", flush=True)
                 try:
                     b_res = future.result()
-                    for uid, trans in b_res.items():
-                        orig_candidates = [t for t, u in unique_to_translate.items() if u == uid]
-                        if orig_candidates:
-                            translated_unique_map[orig_candidates[0]] = trans
+                    with cache_lock:
+                        for uid, trans in b_res.items():
+                            orig_candidates = [t for t, u in unique_to_translate.items() if u == uid]
+                            if orig_candidates:
+                                translated_unique_map[orig_candidates[0]] = trans
+                        _flush_cache()
                 except Exception as e:
                     print(f"  ⚠️ 批次 {idx} 发生异常: {e}")
-                    for uid, text in batches[idx].items():
-                        orig_text = [t for t, u in unique_to_translate.items() if u == uid][0]
-                        translated_unique_map[orig_text] = orig_text
+                    with cache_lock:
+                        for uid, text in batches[idx].items():
+                            orig_text = [t for t, u in unique_to_translate.items() if u == uid][0]
+                            translated_unique_map[orig_text] = orig_text
+                        _flush_cache()
 
     # 3. 回填映射
     final_output = {}
@@ -505,6 +533,12 @@ def translate_texts(input_json_path: str, output_json_path: str, target_lang: st
 
     with open(output_json_path, 'w', encoding='utf-8') as f:
         json.dump(final_output, f, ensure_ascii=False, indent=2)
+
+    if os.path.exists(cache_file):
+        try:
+            os.remove(cache_file)
+        except Exception:
+            pass
 
     print(f"✅ 文本本地化完成！已保存高质量译文字典至: {output_json_path}")
     return final_output
@@ -704,7 +738,7 @@ def pack_xlsx(temp_dir: str, translated_json_path: str, output_xlsx: str,
 
 
 def auto_translate_xlsx(xlsx_path: str, output_xlsx: str, lang: str = 'zh-CN',
-                        batch_size: int = 60, concurrency: int = 4,
+                        batch_size: int = 80, concurrency: int = 4,
                         temp_dir: str = None, keep_temp: bool = False,
                         run_recalc: bool = True) -> str:
     """一键全自动端到端翻译 Excel 工作簿 (解包+并发翻译+回填打包)"""
@@ -714,17 +748,22 @@ def auto_translate_xlsx(xlsx_path: str, output_xlsx: str, lang: str = 'zh-CN',
     if not temp_dir:
         temp_dir = os.path.join(os.path.dirname(output_xlsx), f".ooxml_{os.path.basename(output_xlsx)}")
 
+    os.makedirs(temp_dir, exist_ok=True)
     in_json = os.path.join(temp_dir, 'translation_input.json')
     out_json = os.path.join(temp_dir, 'translation_output.json')
 
+    success = False
     try:
         unpack_xlsx(xlsx_path, temp_dir, in_json)
         translate_texts(in_json, out_json, target_lang=lang,
                         batch_size=batch_size, concurrency=concurrency)
         pack_xlsx(temp_dir, out_json, output_xlsx, lang=lang, run_recalc=run_recalc)
+        success = True
     finally:
-        if not keep_temp and os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir)
+        # 仅在完整打包成功且未开启 keep_temp 时清理临时目录；
+        # 异常/超时时保留 temp_dir（含断点缓存 .translation_cache.json），供重试时秒级断点续传
+        if success and not keep_temp and os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
     return output_xlsx
 
@@ -738,7 +777,7 @@ def main():
     auto_parser.add_argument("xlsx", help="输入的原始 XLSX 路径")
     auto_parser.add_argument("output_xlsx", help="输出的目标 XLSX 文件路径")
     auto_parser.add_argument("--lang", "--target-lang", dest="lang", default="zh-CN", help="目标语言代码 (如: zh-CN, en-US, ja-JP，默认: zh-CN)")
-    auto_parser.add_argument("--batch-size", type=int, default=60, help="每批翻译项数 (默认: 60)")
+    auto_parser.add_argument("--batch-size", type=int, default=80, help="每批翻译项数 (默认: 80)")
     auto_parser.add_argument("--concurrency", type=int, default=4, help="并发线程数 (默认: 4)")
     auto_parser.add_argument("--temp-dir", default=None, help="解压临时目录")
     auto_parser.add_argument("--keep-temp", action="store_true", default=False, help="保留临时解包目录 (默认自动清理)")
@@ -755,7 +794,7 @@ def main():
     translate_parser.add_argument("in_json", help="输入的待翻译 JSON 字典路径")
     translate_parser.add_argument("out_json", help="输出的译文 JSON 字典路径")
     translate_parser.add_argument("--lang", "--target-lang", dest="lang", default="zh-CN", help="目标语言代码 (默认: zh-CN)")
-    translate_parser.add_argument("--batch-size", type=int, default=60, help="每批翻译项数 (默认: 60)")
+    translate_parser.add_argument("--batch-size", type=int, default=80, help="每批翻译项数 (默认: 80)")
     translate_parser.add_argument("--concurrency", type=int, default=4, help="并发线程数 (默认: 4)")
 
     # pack 子命令

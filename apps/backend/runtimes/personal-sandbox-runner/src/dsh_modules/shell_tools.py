@@ -22,10 +22,10 @@ def execute_shell(cmd, workspace, deadline=None, *, _allow_pdf_recovery=True):
         cmd = re.sub(r'(^|[;&|]\s*)python\b', r'\1python3', cmd)
     bash_max = float(os.getenv("DSH_BASH_TIMEOUT", "60.0"))
     # 自适应超时：针对重型文档本地化/翻译/多媒体生成，或显式带 timeout 声明的命令，动态放宽超时限制
-    is_heavy_task = bool(re.search(r'ooxml_translate|render_docx|render_pdf|render_spreadsheet', cmd))
+    is_heavy_task = bool(re.search(r'(?:ooxml|flow).*translate|render_(?:docx|pdf|spreadsheet)', cmd))
     m_timeout = re.search(r'\btimeout\s+(\d+)\b', cmd)
     if is_heavy_task:
-        bash_max = max(bash_max, 240.0)
+        bash_max = max(bash_max, 300.0)
     if m_timeout:
         cmd_timeout = float(m_timeout.group(1))
         bash_max = max(bash_max, cmd_timeout + 5.0)
@@ -171,6 +171,8 @@ def execute_shell(cmd, workspace, deadline=None, *, _allow_pdf_recovery=True):
             raise TimeoutError("Task total execution deadline exceeded during bash command")
         if 'flow_pdf_translate.py' in cmd:
             opt_tip = f"💡 [文档耗时提示]: 该PDF文档页面较多或版式内容复杂，处理耗时超出当前批次限时（{bash_to:.1f}s）。系统已保留已解析页面检查点，可直接发起重试或继续恢复执行。"
+        elif re.search(r'ooxml.*translate', cmd):
+            opt_tip = f"💡 [文档耗时提示]: 该Office文档包含较多文本项，处理耗时超出当前批次限时（{bash_to:.1f}s）。系统已保留已完成翻译项检查点，可直接再次执行命令继续断点续译完成。"
         else:
             opt_tip = f"💡 [优化建议]: 该命令执行耗时超过了限制（{bash_to:.1f}s），请检查是否存在交互式输入阻塞（如 apt/pip 缺少 -y）、网络下载慢或死循环，建议将复杂逻辑拆分处理。"
         res = (
