@@ -140,3 +140,45 @@ class OoxmlTranslateTimeoutAndCacheTests(unittest.TestCase):
         res_file = format_client_safe_tool_preview("read_file", read_file_params, dummy_preview, 100)
         self.assertEqual(res_file, "'System_Security_Plan_Sheets_FCH.xlsx'")
         self.assertNotIn("/workspace/upload", res_file)
+
+    def test_preserve_root_tag_write_preserves_custom_namespaces_like_xdr(self):
+        import sys
+        import xml.etree.ElementTree as ET
+        skill_script_dir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "../skills/xlsx/scripts")
+        )
+        if skill_script_dir not in sys.path:
+            sys.path.insert(0, skill_script_dir)
+
+        import ooxml_xlsx_translate
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            xml_path = os.path.join(temp_dir, "sheet.xml")
+            raw_xml = (
+                '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+                'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" '
+                'xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing">'
+                '<sheetData/>'
+                '<drawing><xdr:col>5</xdr:col></drawing>'
+                '</worksheet>'
+            )
+
+            # Register dynamic namespaces as pack_xlsx does
+            ooxml_xlsx_translate._register_all_namespaces(raw_xml)
+            tree = ET.ElementTree(ET.fromstring(raw_xml))
+
+            # Modify an element
+            sheet_data = tree.getroot().find('{http://schemas.openxmlformats.org/spreadsheetml/2006/main}sheetData')
+            sheet_data.set('modified', '1')
+
+            # Write via _preserve_root_tag_write
+            ooxml_xlsx_translate._preserve_root_tag_write(tree, xml_path, raw_xml)
+
+            # Verification: the resulting file MUST be parsable without unbound prefix error
+            with open(xml_path, 'r', encoding='utf-8') as f:
+                saved_text = f.read()
+
+            parsed = ET.fromstring(saved_text)
+            self.assertEqual(parsed.tag, '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}worksheet')
+            self.assertNotIn("ns4:", saved_text)
+            self.assertIn("xdr:", saved_text)

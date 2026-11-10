@@ -67,11 +67,21 @@ def _is_passthrough_text(text: str) -> bool:
     return False
 
 
+def _register_all_namespaces(xml_text: str):
+    """提取 XML 文本中的所有命名空间声明并注册，防止 ElementTree 序列化生成未声明的 nsX 前缀"""
+    for match in re.finditer(r'xmlns:([a-zA-Z0-9_\-]+)="([^"]+)"', xml_text):
+        try:
+            ET.register_namespace(match.group(1), match.group(2))
+        except Exception:
+            pass
+
+
 def _preserve_root_tag_write(tree: ET.ElementTree, xml_path: str, orig_xml_text: str):
     """
     序列化 ElementTree 并精确恢复原始根标签的所有命名空间与属性声明，
-    杜绝 Python ElementTree.write 丢失命名空间导致的 Office 结构报错。
+    同时保留任何 ElementTree 新生成的命名空间，杜绝 Office 结构与命名空间解析报错。
     """
+    _register_all_namespaces(orig_xml_text)
     new_xml_bytes = ET.tostring(tree.getroot(), encoding='utf-8', xml_declaration=True)
     new_xml_text = new_xml_bytes.decode('utf-8')
 
@@ -80,6 +90,18 @@ def _preserve_root_tag_write(tree: ET.ElementTree, xml_path: str, orig_xml_text:
 
     if orig_root_tag_match and new_root_tag_match:
         orig_root_tag = orig_root_tag_match.group(0)
+        new_root_tag = new_root_tag_match.group(0)
+
+        # 提取 new_root_tag 中可能新增的 xmlns:nsX 声明，并安全补全至 orig_root_tag
+        extra_xmlns = []
+        for ns_m in re.finditer(r'xmlns:([a-zA-Z0-9_\-]+)="([^"]+)"', new_root_tag):
+            prefix_decl = f'xmlns:{ns_m.group(1)}='
+            if prefix_decl not in orig_root_tag:
+                extra_xmlns.append(f'{prefix_decl}"{ns_m.group(2)}"')
+
+        if extra_xmlns:
+            orig_root_tag = orig_root_tag[:-1] + " " + " ".join(extra_xmlns) + ">"
+
         final_xml_text = (
             new_xml_text[:new_root_tag_match.start()]
             + orig_root_tag
@@ -672,6 +694,7 @@ def pack_xlsx(temp_dir: str, translated_json_path: str, output_xlsx: str,
                 with open(ws_path, 'r', encoding='utf-8', errors='ignore') as f:
                     orig_ws_text = f.read()
 
+                _register_all_namespaces(orig_ws_text)
                 ws_tree = ET.parse(ws_path)
                 ws_root = ws_tree.getroot()
                 sheet_modified = False
