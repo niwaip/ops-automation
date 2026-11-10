@@ -169,9 +169,13 @@ def execute_shell(cmd, workspace, deadline=None, *, _allow_pdf_recovery=True):
             if pdf_job:
                 pdf_job.finish(True, 'Task total execution deadline exceeded during PDF translation')
             raise TimeoutError("Task total execution deadline exceeded during bash command")
+        if 'flow_pdf_translate.py' in cmd:
+            opt_tip = f"💡 [文档耗时提示]: 该PDF文档页面较多或版式内容复杂，处理耗时超出当前批次限时（{bash_to:.1f}s）。系统已保留已解析页面检查点，可直接发起重试或继续恢复执行。"
+        else:
+            opt_tip = f"💡 [优化建议]: 该命令执行耗时超过了限制（{bash_to:.1f}s），请检查是否存在交互式输入阻塞（如 apt/pip 缺少 -y）、网络下载慢或死循环，建议将复杂逻辑拆分处理。"
         res = (
             f"⚠️ [命令执行超时 ({bash_to:.1f}s)]: `{cmd[:80]}`\n"
-            f"💡 [优化建议]: 该命令执行耗时超过了限制（{bash_to:.1f}s），请检查是否存在交互式输入阻塞（如 apt/pip 缺少 -y）、网络下载慢或死循环，建议将复杂逻辑拆分处理。"
+            f"{opt_tip}"
         )
     except Exception as e:
         failed = True

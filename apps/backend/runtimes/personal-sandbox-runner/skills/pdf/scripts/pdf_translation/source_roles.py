@@ -1,6 +1,8 @@
 """Reconcile native margin, caption and section roles without discarding line IDs."""
 import re
 
+from .contracts import is_formula
+
 
 def isolate_margin_lines(blocks, page):
     lines = {line['id']: line for line in page['lines']}
@@ -22,6 +24,10 @@ def isolate_margin_lines(blocks, page):
             line = lines[current['line_ids'][0]]
             if len(line['text']) < 100 and re.match(r'^\d+\.\d+(?:\.\d+)*\s+[A-Z]', line['text']):
                 current['type'] = 'heading'
+        if current.get('type') == 'figure' and current.get('line_ids'):
+            block_text = ' '.join(lines[lid]['text'] for lid in current['line_ids'] if lid in lines)
+            if is_formula(block_text):
+                current['type'] = 'formula'
         if current['line_ids'] or current.get('type') in ('figure', 'formula'):
             result.append(current)
         for lid in caption_ids:

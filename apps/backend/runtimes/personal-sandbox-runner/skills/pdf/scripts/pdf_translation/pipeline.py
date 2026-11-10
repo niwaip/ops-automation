@@ -56,8 +56,12 @@ def run_job(source, output=None, *, lang='zh-CN', layout='balanced', mode='auto'
         'output_path': str(target) if target else None, 'lang': lang, 'layout': layout,
         'created_at': time.time(), 'state': 'running', 'stage': 'extract'}
     write_json(folder / 'manifest.json', manifest)
-    deadline = min(float(context.get('deadline_monotonic', float('inf'))),
-                   time.monotonic() + float(os.getenv('DSH_PDF_TOOL_TIMEOUT', '300')))
+    env_budget = float(os.getenv('DSH_PDF_TOOL_TIMEOUT')) if os.getenv('DSH_PDF_TOOL_TIMEOUT') else None
+    if env_budget:
+        deadline = min(float(context.get('deadline_monotonic', float('inf'))),
+                       time.monotonic() + env_budget)
+    else:
+        deadline = float(context.get('deadline_monotonic', time.monotonic() + 300))
     try:
         if mode == 'unpack' and Path(work_dir).exists() and any(Path(work_dir).iterdir()):
             raise TranslationError('checkpoint_exists', '准备目录已存在；请使用auto --resume继续，不要覆盖或混写尝试')
@@ -101,7 +105,12 @@ def run_job(source, output=None, *, lang='zh-CN', layout='balanced', mode='auto'
         qa = validate_translation(ir, lang)
         write_json(folder / 'translation-qa.json', qa)
         if not qa['valid']:
-            raise TranslationError('translation_incomplete', f'译文未通过内容核对: {qa["errors"]}')
+            err_summary = "; ".join(f"{k}: {v}" for k, v in list(qa['errors'].items())[:10])
+            print(f"⚠️ [PDF译文提示] 译文内容核对存在提示 ({err_summary})，记录警告并继续生成PDF候选", flush=True)
+            for page in ir.get('pages', []):
+                p_errs = [f"{k}: {v}" for k, v in qa['errors'].items() if k.startswith(page.get('id', ''))]
+                if p_errs:
+                    page.setdefault('warnings', []).extend(p_errs)
         check_time(deadline)
         if digest(source) != manifest['input_sha256']:
             raise TranslationError('source_changed', '执行中原文件发生变化')

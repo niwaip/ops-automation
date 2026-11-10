@@ -31,8 +31,15 @@ def main():
         print(json.dumps({'manifest_path': str(result), 'published': False}, ensure_ascii=False))
         return 0
     except Exception as error:
-        print(json.dumps({'error_code': getattr(error, 'code', 'pdf_translation_failed'),
-                          'message': str(error)[:1600], 'published': False}, ensure_ascii=False), file=sys.stderr)
+        err_msg = str(error)
+        code = getattr(error, 'code', None)
+        if not code:
+            if 'timed out' in err_msg.lower() or isinstance(error, TimeoutError):
+                code = 'budget_exhausted'
+            else:
+                code = 'pdf_translation_failed'
+        print(json.dumps({'error_code': code,
+                          'message': err_msg[:1600], 'published': False}, ensure_ascii=False), file=sys.stderr)
         return 1
 
 

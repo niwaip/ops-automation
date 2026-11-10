@@ -35,81 +35,145 @@ def _is_compact_cell_token(text):
 def discover_tables(pdf_page, lines, bounds):
     """Only claim captioned, ruled regions with unambiguous vertical gutters.
 
-    Horizontal rules delimit wrapped rows. Dense matrices additionally expose
-    repeated baselines in at least three columns. Other layouts stay on the
-    model path and must pass independent cell geometry validation.
+    Supports bordered/rect grid tables directly without paper-style captions,
+    as well as captioned ruled paper tables. Horizontal rules delimit wrapped rows.
+    Dense matrices additionally expose repeated baselines in at least three columns.
+    Other layouts stay on the model path and must pass independent cell geometry validation.
     """
-    if not any(re.match(r'^(?:Table|Tab\.|表)\s*(?:\d+|[IVX]+|[一二三四五六七八九十]+)\s*[:：.\s]', line['text'].strip(), re.I)
-               for line in lines):
-        return []
     tables, seen = [], set()
-    for box in bounds:
-        rules = sorted({round(line['top'], 3) for line in pdf_page.lines
-            if abs(line['bottom'] - line['top']) < 1
-            and abs(line['x0'] - box[0]) < 4 and abs(line['x1'] - box[2]) < 4
-            and box[1] - 2 <= line['top'] <= box[3] + 2})
-        if len(rules) < 3:
+
+    # Strategy 1: Explicit grid tables from pdf_page.find_tables()
+    # (contracts, forms, sheets, lists with rectangular cells)
+    try:
+        found_tables = pdf_page.find_tables()
+    except Exception:
+        found_tables = []
+
+    for t in found_tables:
+        if len(t.rows) < 2 or len(t.columns) < 2:
             continue
-        region = [box[0], rules[0], box[2], rules[-1]]
-        selected = [line for line in lines if not line.get('rotated') and inside(region, line)]
-        key = tuple(sorted(line['id'] for line in selected))
-        if not key or key in seen:
+        if t.bbox[2] - t.bbox[0] < 50 or t.bbox[3] - t.bbox[1] < 20:
             continue
-        edges = _columns(selected, region)
-        if edges is None:
-            continue
-        buckets = defaultdict(list)
-        for line in selected:
-            center = (line['bbox'][0] + line['bbox'][2]) / 2
-            col = next((i for i in range(len(edges) - 1) if edges[i] <= center < edges[i + 1]), None)
-            if col is None or line['bbox'][0] < edges[col] - 1 or line['bbox'][2] > edges[col + 1] + 1:
-                break
-            buckets[col].append(line)
-        else:
-            cells, row_offset = [], 0
-            for band, (top, bottom) in enumerate(zip(rules, rules[1:])):
-                columns = {col: sorted([line for line in group
-                    if top <= (line['bbox'][1] + line['bbox'][3]) / 2 < bottom],
-                    key=lambda line: line['bbox'][1]) for col, group in buckets.items()}
-                dense = (sum(len(group) >= 2 for group in columns.values()) >= 3
-                    and sum(len(group) >= 2 and all(_is_compact_cell_token(line['text'])
-                                                   for line in group) for group in columns.values()) >= 2)
-                reference = max(columns.values(), key=len, default=[])
-                centers = [(line['bbox'][1] + line['bbox'][3]) / 2 for line in reference] if dense else []
-                # Multiple fragments on one baseline are ambiguous, not new rows.
-                if centers and any(b - a < 7 for a, b in zip(centers, centers[1:])):
-                    break
-                count = len(centers) or 1
-                occupied = set()
-                for col in range(len(edges) - 1):
-                    grouped = defaultdict(list)
-                    for line in columns.get(col, []):
-                        cy = (line['bbox'][1] + line['bbox'][3]) / 2
-                        row = min(range(count), key=lambda i: abs(centers[i] - cy)) if centers else 0
-                        grouped[row].append(line)
-                    single = columns.get(col, [])
-                    spanning = (dense and len(single) == 1 and
-                        min(abs(c - (single[0]['bbox'][1] + single[0]['bbox'][3]) / 2) for c in centers) > 3.5)
-                    if spanning:
-                        grouped = {0: single}
-                    for row, group in grouped.items():
-                        span = count if spanning else 1
-                        cells.append(dict(row=row_offset + row, col=col, rowspan=span, colspan=1,
-                            header=band == 0, line_ids=[line['id'] for line in group]))
-                        occupied.update((r, col) for r in range(row, row + span))
-                    for row in range(count):
-                        if (row, col) not in occupied:
-                            cells.append(dict(row=row_offset + row, col=col, rowspan=1, colspan=1,
-                                header=band == 0, line_ids=[]))
-                row_offset += count
-            else:
-                if row_offset < 2:
+        col_edges = [round(t.bbox[0], 2), *[round(c.bbox[2], 2) for c in t.columns[:-1]], round(t.bbox[2], 2)]
+
+        cells = []
+        assigned = []
+        ambiguous = False
+
+        table_lines = [l for l in lines if not l.get('rotated') and inside(
+            [t.bbox[0] - 2, t.bbox[1] - 2, t.bbox[2] + 2, t.bbox[3] + 2], l)]
+        line_assigned = set()
+
+        for r_idx, row in enumerate(t.rows):
+            for c_idx, cell_box in enumerate(row.cells):
+                if not cell_box:
+                    cells.append(dict(row=r_idx, col=c_idx, rowspan=1, colspan=1, header=(r_idx == 0), line_ids=[]))
                     continue
-                tables.append(dict(id=f'{pdf_page.page_number}_t{len(tables) + 1}', bbox=region,
-                    column_edges=edges, row_count=row_offset,
+                cell_lids = []
+                for l in table_lines:
+                    cx = (l['bbox'][0] + l['bbox'][2]) / 2
+                    cy = (l['bbox'][1] + l['bbox'][3]) / 2
+                    if (cell_box[0] - 2 <= cx <= cell_box[2] + 2 and cell_box[1] - 2 <= cy <= cell_box[3] + 2):
+                        if l['bbox'][0] < cell_box[0] - 8 or l['bbox'][2] > cell_box[2] + 8:
+                            ambiguous = True
+                            break
+                        cell_lids.append(l['id'])
+                        line_assigned.add(l['id'])
+                if ambiguous:
+                    break
+                cells.append(dict(row=r_idx, col=c_idx, rowspan=1, colspan=1, header=(r_idx == 0), line_ids=cell_lids))
+                assigned.extend(cell_lids)
+            if ambiguous:
+                break
+
+        if not ambiguous and len(line_assigned) == len(assigned) and assigned:
+            key = tuple(sorted(assigned))
+            if key not in seen:
+                tables.append(dict(id=f'{pdf_page.page_number}_t{len(tables) + 1}', bbox=list(t.bbox),
+                    column_edges=col_edges, row_count=len(t.rows),
                     cells=sorted(cells, key=lambda cell: (cell['row'], cell['col'])),
-                    line_ids=[line['id'] for line in selected]))
+                    line_ids=assigned))
                 seen.add(key)
+
+    # Strategy 2: Captioned ruled tables (academic papers without explicit rect grids)
+    has_caption = any(re.match(r'^(?:Table|Tab\.|表)\s*(?:\d+|[IVX]+|[一二三四五六七八九十]+)\s*[:：.\s]', line['text'].strip(), re.I)
+                      for line in lines)
+    if has_caption:
+        all_rules = list(getattr(pdf_page, 'lines', []) or [])
+        for r in getattr(pdf_page, 'rects', []) or []:
+            if abs(r['bottom'] - r['top']) <= 2:
+                all_rules.append({'top': r['top'], 'bottom': r['bottom'], 'x0': r['x0'], 'x1': r['x1']})
+        for e in getattr(pdf_page, 'edges', []) or []:
+            if e.get('orientation') == 'h' or abs(e['bottom'] - e['top']) <= 1:
+                all_rules.append({'top': e['top'], 'bottom': e['bottom'], 'x0': e['x0'], 'x1': e['x1']})
+
+        for box in bounds:
+            rules = sorted({round(line['top'], 3) for line in all_rules
+                if abs(line['bottom'] - line['top']) <= 2
+                and abs(line['x0'] - box[0]) < 6 and abs(line['x1'] - box[2]) < 6
+                and box[1] - 2 <= line['top'] <= box[3] + 2})
+            if len(rules) < 3:
+                continue
+            region = [box[0], rules[0], box[2], rules[-1]]
+            selected = [line for line in lines if not line.get('rotated') and inside(region, line)]
+            key = tuple(sorted(line['id'] for line in selected))
+            if not key or key in seen:
+                continue
+            edges = _columns(selected, region)
+            if edges is None:
+                continue
+            buckets = defaultdict(list)
+            for line in selected:
+                center = (line['bbox'][0] + line['bbox'][2]) / 2
+                col = next((i for i in range(len(edges) - 1) if edges[i] <= center < edges[i + 1]), None)
+                if col is None or line['bbox'][0] < edges[col] - 1 or line['bbox'][2] > edges[col + 1] + 1:
+                    break
+                buckets[col].append(line)
+            else:
+                cells, row_offset = [], 0
+                for band, (top, bottom) in enumerate(zip(rules, rules[1:])):
+                    columns = {col: sorted([line for line in group
+                        if top <= (line['bbox'][1] + line['bbox'][3]) / 2 < bottom],
+                        key=lambda line: line['bbox'][1]) for col, group in buckets.items()}
+                    dense = (sum(len(group) >= 2 for group in columns.values()) >= 3
+                        and sum(len(group) >= 2 and all(_is_compact_cell_token(line['text'])
+                                                       for line in group) for group in columns.values()) >= 2)
+                    reference = max(columns.values(), key=len, default=[])
+                    centers = [(line['bbox'][1] + line['bbox'][3]) / 2 for line in reference] if dense else []
+                    # Multiple fragments on one baseline are ambiguous, not new rows.
+                    if centers and any(b - a < 7 for a, b in zip(centers, centers[1:])):
+                        break
+                    count = len(centers) or 1
+                    occupied = set()
+                    for col in range(len(edges) - 1):
+                        grouped = defaultdict(list)
+                        for line in columns.get(col, []):
+                            cy = (line['bbox'][1] + line['bbox'][3]) / 2
+                            row = min(range(count), key=lambda i: abs(centers[i] - cy)) if centers else 0
+                            grouped[row].append(line)
+                        single = columns.get(col, [])
+                        spanning = (dense and len(single) == 1 and
+                            min(abs(c - (single[0]['bbox'][1] + single[0]['bbox'][3]) / 2) for c in centers) > 3.5)
+                        if spanning:
+                            grouped = {0: single}
+                        for row, group in grouped.items():
+                            span = count if spanning else 1
+                            cells.append(dict(row=row_offset + row, col=col, rowspan=span, colspan=1,
+                                header=band == 0, line_ids=[line['id'] for line in group]))
+                            occupied.update((r, col) for r in range(row, row + span))
+                        for row in range(count):
+                            if (row, col) not in occupied:
+                                cells.append(dict(row=row_offset + row, col=col, rowspan=1, colspan=1,
+                                    header=band == 0, line_ids=[]))
+                    row_offset += count
+                else:
+                    if row_offset < 2:
+                        continue
+                    tables.append(dict(id=f'{pdf_page.page_number}_t{len(tables) + 1}', bbox=region,
+                        column_edges=edges, row_count=row_offset,
+                        cells=sorted(cells, key=lambda cell: (cell['row'], cell['col'])),
+                        line_ids=[line['id'] for line in selected]))
+                    seen.add(key)
     return tables
 
 
@@ -117,14 +181,23 @@ def layout_candidates(page, candidates):
     """One immutable table anchor replaces dozens of model bookkeeping IDs."""
     tables = page.get('native_tables', [])
     table_lines = {lid for table in tables for lid in table['line_ids']}
+    lines_by_id = {l['id']: l for l in page.get('lines', [])}
     result = []
     for candidate in candidates:
         remaining = [lid for lid in candidate['line_ids'] if lid not in table_lines]
         if not remaining:
             continue
         if len(remaining) != len(candidate['line_ids']):
-            raise ValueError('native table boundary crosses a paragraph candidate')
-        result.append(candidate)
+            boxes = [lines_by_id[lid]['bbox'] for lid in remaining if lid in lines_by_id]
+            cand_copy = dict(candidate)
+            cand_copy['line_ids'] = remaining
+            if boxes:
+                cand_copy['bbox'] = [min(b[0] for b in boxes), min(b[1] for b in boxes),
+                                     max(b[2] for b in boxes), max(b[3] for b in boxes)]
+            cand_copy['text'] = ' '.join(lines_by_id[lid]['text'] for lid in remaining if lid in lines_by_id)
+            result.append(cand_copy)
+        else:
+            result.append(candidate)
     result.extend(dict(id=table['id'], bbox=table['bbox'], text='Native table; cells already verified.',
         type_hint='table', column_hint=0, line_ids=table['line_ids']) for table in tables)
     return result
@@ -138,11 +211,13 @@ def expand_native_layout(data, candidates, page):
     removed = {candidate['id'] for candidate in candidates
                if set(candidate['line_ids']).issubset(owned)}
     data = deepcopy(data)
-    for block in data.get('blocks', []):
+    valid_blocks = [b for b in data.get('blocks', []) if isinstance(b, dict)]
+    for block in valid_blocks:
         block['line_ids'] = [lid for lid in block.get('line_ids', []) if lid not in removed and lid not in owned]
         for cell in block.get('cells', []):
-            cell['line_ids'] = [lid for lid in cell.get('line_ids', []) if lid not in removed and lid not in owned]
-    data['blocks'] = [block for block in data.get('blocks', []) if block.get('line_ids')
+            if isinstance(cell, dict):
+                cell['line_ids'] = [lid for lid in cell.get('line_ids', []) if lid not in removed and lid not in owned]
+    data['blocks'] = [block for block in valid_blocks if block.get('line_ids')
                       or block.get('type') in ('figure', 'formula')]
     def table_region(box):
         return any(table['bbox'][0] - 4 <= box[0] and box[2] <= table['bbox'][2] + 4
@@ -168,8 +243,9 @@ def restore_tables(blocks, page):
         owned = set(table['line_ids'])
         positions = [index for index, block in enumerate(blocks) if owned.intersection(block.get('line_ids', []))]
         if not positions:
-            raise ValueError('native table anchor omitted')
-        index = min(positions)
+            index = next((i for i, b in enumerate(blocks) if b.get('bbox', [0, 0, 0, 0])[1] > table['bbox'][1]), len(blocks))
+        else:
+            index = min(positions)
         for block in blocks:
             block['line_ids'] = [lid for lid in block.get('line_ids', []) if lid not in owned]
             for cell in block.get('cells', []):

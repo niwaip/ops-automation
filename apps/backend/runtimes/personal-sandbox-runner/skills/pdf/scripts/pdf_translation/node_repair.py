@@ -81,6 +81,16 @@ def repair_nodes(
                 if attempt:
                     raise TranslationError('translation_incomplete', protocol_error)
                 continue
+            if len(source) == 1 and not list(result.values())[0].strip():
+                protocol_error = 'Repaired translation cannot be empty.'
+                if attempt:
+                    raise TranslationError('translation_incomplete', protocol_error)
+                continue
+            if all(not val.strip() for val in result.values()):
+                protocol_error = 'Repaired translations cannot all be empty.'
+                if attempt:
+                    raise TranslationError('translation_incomplete', protocol_error)
+                continue
             translations.update(result)
             cache.update(result)
             break

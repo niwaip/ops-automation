@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import time
 import uuid
 
@@ -11,6 +12,37 @@ IR_SCHEMA = 'pdf-document-ir/1'
 TYPES = {'title', 'heading', 'author', 'paragraph', 'list', 'table', 'figure',
          'caption', 'formula', 'footnote', 'reference', 'furniture'}
 EXEMPT = {'author', 'formula', 'furniture', 'reference'}
+
+MATH_SYMBOLS = set("=±×÷∑∏∫∮∂∇√∛∝∞∠∧∨∩∪∈∉∋⊆⊇⊂⊃⊄⊕⊗⊥∥≤≥≠≈≡∼≃≅∝≪≫→←↔⇒⇐⇔↦θτωεπρστυϕχψωαβγδεζηικλμνξΓΔΘΛΞΠΣΥΦΨΩℓˆ|")
+MATH_KEYWORDS = {
+    "arg", "min", "max", "argmin", "argmax", "exp", "log", "ln", "sin", "cos", "tan",
+    "det", "dim", "ker", "lim", "sup", "inf", "elbo", "mdl", "loss", "var", "cov",
+    "diag", "tr", "vec", "rank", "st", "sub", "cid", "eq", "neq", "geq", "leq"
+}
+
+
+def is_formula(text: str) -> bool:
+    if not isinstance(text, str):
+        return False
+    raw = text.strip()
+    if not raw:
+        return False
+    if re.search(r'[\u4e00-\u9fff\u3040-\u30ff]', raw):
+        return False
+    words = [w.lower() for w in re.findall(r'[a-zA-Z]+', raw)]
+    stopwords = {'the', 'of', 'and', 'in', 'to', 'for', 'with', 'is', 'are', 'was', 'were',
+                 'this', 'that', 'these', 'those', 'from', 'which', 'each', 'then', 'when'}
+    if any(w in stopwords for w in words):
+        return False
+
+    s = re.sub(r'\(cid:\d+\)', ' ', raw)
+    has_math_sym = any(c in MATH_SYMBOLS for c in s) or bool(
+        re.search(r'[=≠≤≥]|->|-->|=>|p_\w+|p\s*[θϕ]|q\s*[θϕ]|\b(?:d[xyst]|dτ|ds)\b', s)
+    )
+    if not has_math_sym:
+        return False
+    non_math_words = [w for w in words if len(w) > 1 and w not in MATH_KEYWORDS]
+    return len(non_math_words) <= 2
 
 
 class TranslationError(ValueError):
@@ -56,7 +88,16 @@ def validate_ir(ir):
     assigned = [x for node in nodes for x in node['line_ids']]
     if len(assigned) != len(set(assigned)) or set(lines) != set(assigned):
         raise TranslationError('layout_unresolved', '原始文字归属不完整或重复，停止翻译')
+    from .source_text import join_lines as _join
+    native_lines = {line['id']: line for page in ir['pages'] for line in page['lines']}
     for node in nodes:
+        if node.get('line_ids') and node.get('text'):
+            if node['text'] != _join(node['line_ids'], native_lines):
+                raise TranslationError('source_changed', f"节点 {node['id']} 结构块文字与原生行不一致")
+        for cell in node.get('cells', []):
+            if cell.get('line_ids') and cell.get('text'):
+                if cell['text'] != _join(cell['line_ids'], native_lines):
+                    raise TranslationError('source_changed', f"单元格 {cell['id']} 文字与原生行不一致")
         if node.get('type') not in TYPES:
             raise TranslationError('invalid_ir', '未知节点类型')
         if node['type'] == 'table':
@@ -65,10 +106,20 @@ def validate_ir(ir):
             try:
                 validate_table(node, page)
             except ValueError as error:
+                if not node.get('native_table_id'):
+                    node['type'] = 'paragraph'
+                    node.pop('cells', None)
+                    page.setdefault('warnings', []).append(f"第{page.get('number', page.get('id', ''))}页表格格式异常({error})，已转为普通段落放行")
+                    continue
                 raise TranslationError('layout_unresolved', str(error)) from error
             cells = node.get('cells', [])
             cell_lines = [x for c in cells for x in c['line_ids']]
             if set(cell_lines) != set(node['line_ids']) or len(cell_lines) != len(set(cell_lines)):
+                if not node.get('native_table_id'):
+                    node['type'] = 'paragraph'
+                    node.pop('cells', None)
+                    page.setdefault('warnings', []).append(f"第{page.get('number', page.get('id', ''))}页表格文字归属不完整，已转为普通段落放行")
+                    continue
                 raise TranslationError('layout_unresolved', '表格文字归属不完整或重复')
         if node.get('legend_units'):
             legends = node['legend_units']
@@ -101,4 +152,6 @@ def text_units(ir):
         elif node.get('legend_units'):
             yield from node['legend_units']
         elif node.get('text', '').strip():
+            if node.get('type') == 'figure' and node.get('asset') and is_formula(node.get('text', '')):
+                continue
             yield node

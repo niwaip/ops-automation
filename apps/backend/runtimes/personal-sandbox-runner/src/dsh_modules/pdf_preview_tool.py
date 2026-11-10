@@ -221,7 +221,8 @@ def inspect_pdf_page(params, workspace_dir, deadline=None, model_events=None):
             validate_review(analysis)
         except ValueError:
             from .pdf_review_resolution import table_issue, confirmation_instruction, validate_confirmation
-            if not data.get('translation_manifest') or table_issue(initial_analysis):
+            is_trans = bool(data.get('translation_manifest'))
+            if not is_trans or table_issue(initial_analysis):
                 # Content/cell mapping defects require a new candidate, not another vote.
                 raise
             # One independent confirmation on the same immutable page. Never
@@ -231,7 +232,7 @@ def inspect_pdf_page(params, workspace_dir, deadline=None, model_events=None):
                 '若存在实质缺陷，请在首行REPAIR/FAIL后输出一行 ISSUES: 加JSON数组描述问题，格式为：'
                 'ISSUES: [{"kind": "table|translation|layout|render", "anchor": "位置/标题", "quote": "页面文字片段", "evidence": "具体缺陷描述"}]。',
                 ''
-            ) + confirmation_instruction(initial_analysis)
+            ) + confirmation_instruction(initial_analysis, is_translation=is_trans)
             confirmation = inspect_pdf_image(str(image), conf_prompt,
                 deadline=deadline, model_events=model_events)
             audit_path = Path(data['qa_path']).parent / f'page-{page}-confirmation.json'
@@ -241,7 +242,7 @@ def inspect_pdf_page(params, workspace_dir, deadline=None, model_events=None):
             require_review_response(confirmation)
             stage = 'content'
             try:
-                validate_confirmation(initial_analysis, confirmation)
+                validate_confirmation(initial_analysis, confirmation, is_translation=is_trans)
                 analysis = confirmation
             except ValueError as conf_err:
                 raise ValueError(f"初审拒绝成立（复核未能推翻）：\n{initial_analysis}") from conf_err

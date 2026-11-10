@@ -242,6 +242,8 @@ def cmd_run(args):
         emit_admission_stop(error, prompt, history_file, existing_history, telemetry)
         return
     from .pdf_translation_workflow import fixed_translation, attachment_metadata
+    from .pdf_translation_routing import normalize_pdf_translation_route
+    skill_res = normalize_pdf_translation_route(prompt, session_files, skill_res, telemetry)
     fixed_pdf_translation = fixed_translation(prompt, session_files, skill_res.deliverables)
     if fixed_pdf_translation:
         # The runtime owns the translation path; do not inject the full skill body.

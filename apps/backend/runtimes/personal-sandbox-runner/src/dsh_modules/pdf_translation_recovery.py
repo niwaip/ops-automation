@@ -1,5 +1,6 @@
 """One runtime-owned checkpoint retry under the original task deadline."""
 from pathlib import Path
+import json
 import shlex
 import time
 
@@ -20,11 +21,18 @@ def recover_pdf_translation(result, job, cmd, workspace, deadline, execute_once)
     current_job_id = job.job_id
     current_manifest = str(job.manifest_path)
     while current.is_error and current.error_code in (
-            'translation_incomplete', 'layout_unresolved', 'budget_exhausted'):
+            'translation_incomplete', 'layout_unresolved', 'budget_exhausted', 'image_transport_failed',
+            'model_protocol_failed'):
         resume = (current.data or {}).get('resume_dir')
         if not resume or (deadline is not None and deadline - time.monotonic() <= 45):
             break
-        stage = 'layout' if current.error_code == 'layout_unresolved' else 'translate'
+        stage = 'layout' if current.error_code in ('layout_unresolved', 'image_transport_failed') else 'translate'
+        try:
+            manifest = json.loads(Path(current_manifest).read_text())
+            if isinstance(manifest, dict) and manifest.get('stage') in ('layout', 'translate'):
+                stage = manifest['stage']
+        except (OSError, ValueError, TypeError):
+            pass
         stage_key = (*key, stage)
         if stage_key in stage_attempted:
             break

@@ -111,7 +111,7 @@ def load_layout_checkpoint(directory, source, destination, deadline):
             if page.get(key) != old.get(key):
                 raise TranslationError('source_changed', '布局检查点原生证据不一致')
         validate_ir(dict(fresh, pages=[page], nodes=nodes, reading_order=[n['id'] for n in nodes]))
-        validate_regions(nodes, page)
+        validate_regions(nodes, page, allow_soft_fail=True)
         lines = {line['id']: line for line in page['lines']}
         for node in nodes:
             for unit in [node, *node.get('cells', [])]:

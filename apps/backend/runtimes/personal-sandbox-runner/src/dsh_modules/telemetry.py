@@ -269,12 +269,19 @@ class TelemetryStats:
                              content='', details=None):
         if call_id in self._accounted_call_ids:
             return
+        is_auxiliary = purpose not in ('main_turn', 'tool_loop')
         self._record_call(purpose, usage, total_ms, model, None, call_id,
-                          auxiliary=purpose not in ('main_turn', 'tool_loop'), status='failed', error_code=code)
-        self.finish_reason = code
+                          auxiliary=is_auxiliary, status='failed', error_code=code)
+        if not is_auxiliary:
+            self.finish_reason = code
         self.round_finish_reasons.append(code)
         self.model_responses.append({**response_fingerprint({'content': content, 'finish_reason': code}),
                                      'call_id': call_id, 'error_code': code, 'details': details or {}})
+
+    def set_terminal_finish_reason(self, reason: str) -> None:
+        """Sets the final business blocking reason on telemetry if not already explicitly completed."""
+        if reason:
+            self.finish_reason = reason
 
     def record_guard(self, guard: str, action: str, reason: Any = None) -> None:
         self.guard_decisions.append({"guard":guard,"action":action,"reason":reason})

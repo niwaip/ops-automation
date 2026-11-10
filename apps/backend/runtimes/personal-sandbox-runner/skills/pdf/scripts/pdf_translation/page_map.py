@@ -67,8 +67,10 @@ def build_page_map(pdf_path: Path, ir: Dict[str, Any]) -> Dict[str, Any]:
                 if not frag:
                     continue
                 # 短文本完全匹配，长文本滑动分片匹配
+                src_p_num = int(re.sub(r'\D', '', node.get('page_id', '0')) or 0)
                 if len(frag) <= 20:
-                    if frag in norm_text:
+                    # 对于极短文本 (<=5字)，避免跨越过远物理页面发生子串碰撞误匹配
+                    if frag in norm_text and (len(frag) > 5 or abs(src_p_num - page_idx) <= 3):
                         matched_nodes.append(nid)
                         node_to_pages.setdefault(nid, []).append(page_idx)
                 else:

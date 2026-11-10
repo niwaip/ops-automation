@@ -122,6 +122,10 @@ def reconcile_graphic_candidates(blocks, candidates, page=None):
                     if extra in blocks:
                         blocks.remove(extra)
                 primary['bbox'] = list(cluster)
+            else:
+                new_fig = {'type': 'figure', 'bbox': list(cluster), 'line_ids': [], 'column': col, 'geometry_origin': 'native_graphic'}
+                cap_idx = next((i for i, b in enumerate(blocks) if cid in b.get('line_ids', [])), len(blocks))
+                blocks.insert(cap_idx, new_fig)
     for block in list(blocks):
         if block.get('type') not in ('figure', 'formula'):
             continue

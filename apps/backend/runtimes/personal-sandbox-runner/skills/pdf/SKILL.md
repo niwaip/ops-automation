@@ -3,7 +3,7 @@ name: pdf
 zh_name: "PDF 文档设计与处理"
 description: "创建、排版、导出或处理 PDF，包括中文报告、讲义、手机阅读文档、Word 转 PDF 和表单填写。新建文档使用本地设计模板和 WeasyPrint，生成后检查文本、字体、分页并逐页查看预览。仅讨论代码或普通聊天时不生成文件。"
 tags: [pdf, document, report, docx-to-pdf, export-pdf, form-fill]
-triggers: [生成pdf, 导出pdf, 转为pdf, 转成pdf, pdf report, pdf表单, 填写pdf, 表单填报]
+triggers: [生成pdf, 导出pdf, 转为pdf, 转成pdf, pdf report, pdf表单, 填写pdf, 表单填报, 翻译pdf, pdf翻译, 翻译为pdf, 翻译成pdf]
 deliverables: [.pdf]
 requires_execution: true
 default_rounds: 5
@@ -37,7 +37,9 @@ python3 /opt/dsh/skills/pdf/scripts/flow_pdf_translate.py auto \
 - 首版受运行环境灰度开关控制。收到`engine_not_enabled`时说明尚未开放，应报告状态；不要自行设置环境变量绕过灰度或改走通用PDF生成器。
 - `candidate_ready`只代表隐藏候选生成，目标文件由运行时全部页验收通过后发布。不要查找目标不存在就重新生成，不发送隐藏候选或旧文件。
 - 图形保留完整区域，图中标签附中文译文；扫描件/无法可靠解析区域会明确失败，不猜测原文。严格图内替换需求不应宣称已满足。
-- `auto`的可恢复失败由运行时在同一任务deadline内自动恢复一次，复用合格布局和译文；不要另行重试、查找旧PDF或复制历史候选。回执含`recovered_from`表示恢复已用尽，仍失败就报告原因并停止。旋转边注与正文独立保留，不按普通段落翻译。检查点版本为layout-html/10，旧版本必须重新解析。
+- `auto`的可恢复失败由运行时在同一任务deadline内按布局/翻译阶段各最多恢复一次，复用合格布局和译文；JSON协议失败也纳入同一预算。翻译先按失败ID做一次局部纠正，仍失败才续跑检查点，不重新解析整本。不要另行重试、查找旧PDF或复制历史候选。回执含`recovered_from`表示已执行恢复，仍失败就报告原因并停止。旋转边注与正文独立保留，不按普通段落翻译。检查点版本为layout-html/10，旧版本必须重新解析。
+- 翻译协议拒绝响应保存在当前Job的`translation-rejected/*.json`（权限0600），包含原始正文、call_id、结束标记与解析位置；批次attempt关联该记录，主调用guard记录协议失败，不能把`model_completed`等同于译文协议通过。
+- 单个PDF明确要求“保存格式不变”且未指定转为Word等格式时，输出类型按PDF约束修正；多文件、总结等复合任务及用户明确指定的其他格式保持原任务契约。
 - 逐页验收失败时，运行时启动受控局部修复回路，按节点ID重译或重建受影响表格，整本重排并复用内容未变页面的验收结果；最多进行3轮局部修复。未收敛或不可恢复错误整份拒绝发布。
 - 用户后续明确要求继续时，才用`auto INPUT OUTPUT --resume <工具回执中的resume_dir>`恢复；参数是`--resume`，不存在`--resume-dir`。没有`resume_dir`不得猜测目录。命令单独执行，不附加echo、分号或其他命令；运行时拒绝会掩盖退出状态的包装。禁止手改source.ir.json。
 - 分步流程：`unpack INPUT WORKDIR`使用新的空目录，生成版本化检查点；随后可用`auto INPUT OUTPUT --resume WORKDIR`自动翻译。手动`pack WORKDIR OUTPUT`必须先完整填写按节点/单元格ID映射的`WORKDIR/translated.json`，并通过校验；pack不负责翻译。不存在`auto --unpack`参数，不猜测IR字段或反复检查不存在的blocks。

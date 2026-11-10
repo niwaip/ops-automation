@@ -51,7 +51,12 @@ def reconcile_columns(blocks, page, columns):
     result = []
     for block in blocks:
         if block['type'] not in ('paragraph', 'list', 'heading', 'footnote'):
-            result.append(block)
+            b_box = block.get('bbox')
+            if b_box and ((b_box[0] < mid < b_box[2] and (b_box[2] - b_box[0]) > page['width_pt'] * 0.45)
+                          or (b_box[2] - b_box[0]) > page['width_pt'] * 0.55):
+                result.append(dict(block, column=0))
+            else:
+                result.append(block)
             continue
         ids = block.get('line_ids', [])
         lanes = {}
@@ -59,8 +64,12 @@ def reconcile_columns(blocks, page, columns):
             box = lines[lid]['bbox']
             column = 1 if box[2] < mid else 2 if box[0] > mid else 0
             lanes.setdefault(column, []).append(lid)
-        if 0 in lanes:
-            result.append(block)
+        b_box = block.get('bbox')
+        is_full_width = (0 in lanes or
+                         (b_box and (b_box[0] < mid < b_box[2] and (b_box[2] - b_box[0]) > page['width_pt'] * 0.45)) or
+                         (b_box and (b_box[2] - b_box[0]) > page['width_pt'] * 0.55))
+        if is_full_width:
+            result.append(dict(block, column=0))
             continue
         for column, lane in sorted(lanes.items()):
             pending = []

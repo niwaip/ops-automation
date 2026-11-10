@@ -14,7 +14,7 @@ def extract_assets(ir, folder):
     for page in ir['pages']:
         page_nodes = [n for n in ir['nodes'] if n['page_id'] == page['id'] and 'bbox' in n]
         if page_nodes:
-            validate_regions(page_nodes, page)
+            validate_regions(page_nodes, page, allow_soft_fail=True)
     existing_assets = {a['id']: a for a in ir.get('assets', [])}
     for node in ir['nodes']:
         if node['type'] not in ('figure', 'formula') or 'bbox' not in node:

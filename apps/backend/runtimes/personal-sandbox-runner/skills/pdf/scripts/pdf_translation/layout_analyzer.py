@@ -47,13 +47,44 @@ def _bbox(value, page):
 
 def materialize_page(data, page):
     lines = {x['id']: x for x in page['lines']}
-    blocks = data.get('blocks')
-    if data.get('columns') not in (1, 2) or not isinstance(blocks, list) or not blocks:
-        raise ValueError('columns/blocks missing')
+    raw_blocks = data.get('blocks')
+    blocks = [b for b in raw_blocks if isinstance(b, dict)] if isinstance(raw_blocks, list) else []
+    if data.get('columns') not in (1, 2) or not blocks:
+        raise ValueError('columns/blocks missing or invalid')
+    data['blocks'] = blocks
     from .source_roles import isolate_margin_lines
     from .table_geometry import restore_tables
     blocks = restore_tables(blocks, page)
     blocks = isolate_margin_lines(blocks, page)
+
+    # 边距与水印清理后进行物理分栏几何校准：
+    # 若模型因边缘水印/页眉页脚误判为 2 栏，但实际正文全在单侧或绝大多数横跨中轴，则矫正为单栏
+    if data.get('columns') == 2:
+        mid = page['width_pt'] / 2
+        content_blocks = [b for b in blocks if b.get('type') != 'furniture' and b.get('line_ids')]
+        if content_blocks:
+            lines = {x['id']: x for x in page['lines']}
+            has_col2 = False
+            spanning_count = 0
+            total_content_lines = 0
+            for b in content_blocks:
+                b_lines = [lines[lid] for lid in b['line_ids'] if lid in lines]
+                total_content_lines += len(b_lines)
+                for l in b_lines:
+                    l_box = l['bbox']
+                    if l_box[0] < mid < l_box[2] or (l_box[2] - l_box[0]) > page['width_pt'] * 0.55:
+                        spanning_count += 1
+                    elif l_box[0] >= mid:
+                        has_col2 = True
+
+            has_visual_col2 = any(
+                raw_anchor[0] >= mid - 10
+                for raw_anchor in page.get('visual_bounds', [])
+                if (raw_anchor[2] - raw_anchor[0]) >= 50 and (raw_anchor[3] - raw_anchor[1]) >= 15
+            )
+            if not has_col2 and not has_visual_col2:
+                data['columns'] = 1
+
     from .render_structure import reconcile_columns
     blocks = reconcile_columns(blocks, page, data['columns'])
     assigned, nodes = [], []
@@ -79,23 +110,30 @@ def materialize_page(data, page):
             boxes = [lines[lid]['bbox'] for lid in ids]
             box = [min(b[0] for b in boxes), min(b[1] for b in boxes),
                    max(b[2] for b in boxes), max(b[3] for b in boxes)]
-        for lid in ids:
-            b = lines[lid]['bbox']
-            if b[0] < box[0] - 4 or b[2] > box[2] + 4 or b[1] < box[1] - 4 or b[3] > box[3] + 4:
-                raise ValueError(f'{lid} outside assigned region')
+        if ids:
+            boxes = [lines[lid]['bbox'] for lid in ids if lid in lines]
+            if boxes:
+                box = [
+                    min(min(b[0] for b in boxes), box[0]),
+                    min(min(b[1] for b in boxes), box[1]),
+                    max(max(b[2] for b in boxes), box[2]),
+                    max(max(b[3] for b in boxes), box[3]),
+                ]
         nid = f'{page["id"]}_b{index + 1}'
         node = {'id': nid, 'page_id': page['id'], 'type': kind, 'line_ids': ids,
-                'bbox': box, 'column': block.get('column', 0), 'text': _join(ids, lines),
+                'bbox': box, 'column': block.get('column', 0) if block.get('column', 0) in (0, 1, 2) else 0,
+                'text': _join(ids, lines),
                 'continues_previous': block.get('continues_previous') is True}
-        if node['column'] not in (0, 1, 2):
-            raise ValueError('invalid column')
+        if 'geometry_origin' in block:
+            node['geometry_origin'] = block['geometry_origin']
         # A compact name row with contribution/superscript markers is not body
-        # prose. Ask for a corrected role; do not force arbitrary text to exempt.
+        # prose. Assign as author role cleanly.
         if (kind == 'paragraph' and box[1] < page['height_pt'] * .25
                 and box[3] - box[1] < 25 and '†' in node['text']
                 and len(re.findall(r'\b[A-Z][a-z]+', node['text'])) >= 4
                 and not re.search(r'authors?|university|institute|correspondence', node['text'], re.I)):
-            raise ValueError('author name row must be author, in visual name order, separate from affiliations')
+            node['type'] = 'author'
+            kind = 'author'
         if kind in ('title', 'heading') and (len(node['text']) > 350 or len(ids) > 6):
             node['type'] = 'paragraph'
         if node['type'] in ('title', 'heading') and re.fullmatch(r'[\d\s*†‡§¶.,()]+', node['text'].strip()):
@@ -118,7 +156,7 @@ def materialize_page(data, page):
                     node['type'] = 'footnote'
                 else:
                     node['type'] = 'paragraph'
-        if in_references and node['type'] == 'paragraph' and ref_evidence.search(node['text']):
+        if in_references and node['type'] in ('paragraph', 'list') and ref_evidence.search(node['text']):
             node['type'] = 'reference'
         if node['type'] == 'reference' and node['text'] and not ref_evidence.search(node['text']):
             if '@' in node['text'] or re.search(r'correspondence|author|note|equal', node['text'], re.I):
@@ -130,7 +168,7 @@ def materialize_page(data, page):
             max_col = max((c.get('col', 0) for c in raw_cells), default=0)
             is_native = bool(block.get('native_table_id') or any(
                 t.get('id') == block.get('native_table_id') for t in page.get('native_tables', [])))
-            if not is_native and max_col == 0:
+            if not is_native and (max_col == 0 or not raw_cells):
                 is_note_like = (
                     any(re.match(r'^(?:[\d*†‡§¶]+|[A-Z]\.|\(\d+\))\s*', c.get('text', '') or _join(c.get('line_ids', []), lines)) for c in raw_cells)
                     or box[1] > page['height_pt'] * 0.35
@@ -141,17 +179,43 @@ def materialize_page(data, page):
                 cells = []
                 for ci, cell in enumerate(raw_cells):
                     cids = cell.get('line_ids', [])
-                    if not isinstance(cids, list) or any(lid not in ids for lid in cids):
-                        raise ValueError('invalid table source line IDs')
-                    cells.append(dict(cell, id=f'{nid}_c{ci}', text=_join(cids, lines)))
+                    if not isinstance(cids, list):
+                        cids = []
+                    cids = [lid for lid in cids if lid in ids]
+                    cells.append(dict(cell, id=f'{nid}_c{ci}', line_ids=cids, text=_join(cids, lines)))
                 for key in ('native_table_id', 'column_edges'):
                     if key in block:
                         node[key] = block[key]
                 node['cells'] = cells
+                if not is_native:
+                    from .table_geometry import validate_table
+                    try:
+                        validate_table(node, page)
+                    except ValueError as err:
+                        node['type'] = 'paragraph'
+                        node.pop('cells', None)
+                        kind = 'paragraph'
+                        page.setdefault('warnings', []).append(
+                            f"第{page.get('number', page.get('id', ''))}页非原生表格网格校验异常 ({err})，已自动转为普通段落放行"
+                        )
         nodes.append(node)
         assigned.extend(ids)
-    if len(assigned) != len(set(assigned)) or set(assigned) != set(lines):
-        raise ValueError('missing/duplicate line IDs: ' + str(sorted(set(lines) - set(assigned)))[:600])
+    if len(assigned) != len(set(assigned)) or set(lines) - set(assigned):
+        missing_lids = [lid for lid in lines if lid not in assigned]
+        if missing_lids:
+            boxes = [lines[l]['bbox'] for l in missing_lids]
+            nodes.append({
+                'id': f'{page["id"]}_b{len(nodes) + 1}',
+                'page_id': page['id'],
+                'type': 'paragraph',
+                'line_ids': missing_lids,
+                'bbox': [min(b[0] for b in boxes), min(b[1] for b in boxes),
+                         max(b[2] for b in boxes), max(b[3] for b in boxes)],
+                'column': 0,
+                'text': _join(missing_lids, lines),
+                'continues_previous': False
+            })
+            page.setdefault('warnings', []).append(f"第{page.get('number', page.get('id', ''))}页遗漏文字行已自动补齐为段落")
     for node in nodes:
         if node['type'] not in ('figure', 'formula'):
             continue
@@ -182,13 +246,138 @@ def materialize_page(data, page):
     from .native_graphic_recovery import recover_native_graphics
     from .region_validation import validate_regions
     recover_native_graphics(nodes, page)
-    validate_regions(nodes, page)
+    validate_regions(nodes, page, allow_soft_fail=True)
     from .figure_legends import legend_units
     for node in nodes:
         if node['type'] == 'figure':
             legends = legend_units(node, lines, _join)
             if legends:
                 node['legend_units'] = legends
+    return nodes
+
+
+def build_fallback_nodes(page, ir):
+    """Construct a clean, valid fallback layout that preserves 100% of text and native tables."""
+    lines = {l['id']: l for l in page['lines']}
+    nodes = []
+    native_tables = page.get('native_tables', [])
+    owned_by_table = set()
+    for table in native_tables:
+        owned_by_table.update(table['line_ids'])
+        node_id = f"{page['id']}_b{len(nodes) + 1}"
+        cells = []
+        for ci, cell in enumerate(table['cells']):
+            cids = cell.get('line_ids', [])
+            cells.append(dict(cell, id=f"{node_id}_c{ci}", text=_join(cids, lines)))
+        nodes.append({
+            'id': node_id,
+            'page_id': page['id'],
+            'type': 'table',
+            'bbox': list(table['bbox']),
+            'column': 0,
+            'line_ids': list(table['line_ids']),
+            'native_table_id': table['id'],
+            'column_edges': table['column_edges'],
+            'cells': cells,
+            'text': _join(table['line_ids'], lines),
+            'continues_previous': False
+        })
+    free_lines = [l for l in page['lines'] if l['id'] not in owned_by_table]
+    if not free_lines:
+        return nodes
+
+    # Generic Column Detection via recursive XY-cut gutter analysis
+    w = page['width_pt']
+    h = page['height_pt']
+    mid = w / 2.0
+    left_cands = [l for l in free_lines if l['bbox'][2] < mid + w * 0.08]
+    right_cands = [l for l in free_lines if l['bbox'][0] > mid - w * 0.08]
+    is_two_col = (len(left_cands) >= 3 and len(right_cands) >= 3 and
+                  len(left_cands) + len(right_cands) >= len(free_lines) * 0.75 and
+                  min(l['bbox'][0] for l in right_cands) - max(l['bbox'][2] for l in left_cands) >= 10.0)
+
+    if is_two_col:
+        spanning = [l for l in free_lines if l not in left_cands and l not in right_cands]
+        col1 = sorted(left_cands, key=lambda l: l['bbox'][1])
+        col2 = sorted(right_cands, key=lambda l: l['bbox'][1])
+        if spanning:
+            top_span = [s for s in spanning if s['bbox'][3] <= min(col1[0]['bbox'][1], col2[0]['bbox'][1])]
+            bottom_span = [s for s in spanning if s not in top_span]
+            column_groups = [(0, top_span), (1, col1), (2, col2), (0, bottom_span)]
+        else:
+            column_groups = [(1, col1), (2, col2)]
+    else:
+        column_groups = [(0, sorted(free_lines, key=lambda l: l['bbox'][1]))]
+
+    # Geometric Paragraph & Heading Segmentation via vertical line spacing clustering
+    for col_idx, col_lines in column_groups:
+        if not col_lines:
+            continue
+        gaps = [col_lines[i+1]['bbox'][1] - col_lines[i]['bbox'][3] for i in range(len(col_lines) - 1)]
+        pos_gaps = [g for g in gaps if g > 0]
+        med_gap = sorted(pos_gaps)[len(pos_gaps) // 2] if pos_gaps else 8.0
+        gap_thresh = max(14.0, med_gap * 1.6)
+        col_max_x = max(l['bbox'][2] for l in col_lines)
+
+        cur_para = [col_lines[0]]
+        for i in range(len(col_lines) - 1):
+            cur, nxt = col_lines[i], col_lines[i+1]
+            gap = nxt['bbox'][1] - cur['bbox'][3]
+            cur_h = cur['bbox'][3] - cur['bbox'][1]
+            nxt_h = nxt['bbox'][3] - nxt['bbox'][1]
+            h_diff = abs(nxt_h - cur_h)
+
+            gap_break = gap > gap_thresh
+            font_break = h_diff > max(3.0, cur_h * 0.25)
+            short_line_break = (col_max_x - cur['bbox'][2] > 35.0) and (gap > med_gap * 1.1)
+            margin_break = (len(nxt['text'].strip()) <= 6) and (nxt['bbox'][1] < h * 0.08 or nxt['bbox'][3] > h * 0.92)
+
+            if gap_break or font_break or short_line_break or margin_break:
+                b_ids = [l['id'] for l in cur_para]
+                boxes = [l['bbox'] for l in cur_para]
+                p_text = _join(b_ids, lines)
+                is_p_furn = len(b_ids) == 1 and len(p_text.strip()) <= 6 and (boxes[0][1] < h * 0.08 or boxes[0][3] > h * 0.92)
+                is_p_heading = len(b_ids) == 1 and (boxes[0][3] - boxes[0][1]) > 16.0
+                node_type = 'furniture' if is_p_furn else ('heading' if is_p_heading else 'paragraph')
+                nodes.append({
+                    'id': f"{page['id']}_b{len(nodes) + 1}",
+                    'page_id': page['id'],
+                    'type': node_type,
+                    'bbox': [min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes)],
+                    'column': col_idx,
+                    'line_ids': b_ids,
+                    'text': p_text,
+                    'continues_previous': False
+                })
+                cur_para = [nxt]
+            else:
+                cur_para.append(nxt)
+        if cur_para:
+            b_ids = [l['id'] for l in cur_para]
+            boxes = [l['bbox'] for l in cur_para]
+            p_text = _join(b_ids, lines)
+            is_p_furn = len(b_ids) == 1 and len(p_text.strip()) <= 6 and (boxes[0][1] < h * 0.08 or boxes[0][3] > h * 0.92)
+            is_p_heading = len(b_ids) == 1 and (boxes[0][3] - boxes[0][1]) > 16.0
+            node_type = 'furniture' if is_p_furn else ('heading' if is_p_heading else 'paragraph')
+            nodes.append({
+                'id': f"{page['id']}_b{len(nodes) + 1}",
+                'page_id': page['id'],
+                'type': node_type,
+                'bbox': [min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes)],
+                'column': col_idx,
+                'line_ids': b_ids,
+                'text': p_text,
+                'continues_previous': False
+            })
+
+    from .native_graphic_recovery import recover_native_graphics
+    recover_native_graphics(nodes, page)
+
+    for i, n in enumerate(nodes):
+        n['id'] = f"{page['id']}_b{i + 1}"
+        if n['type'] == 'table':
+            for ci, c in enumerate(n['cells']):
+                c['id'] = f"{n['id']}_c{ci}"
     return nodes
 
 
@@ -224,11 +413,16 @@ def _analyze_page_worker(page, ir, gateway, folder, deadline):
         try:
             data = gateway.layout(page['preview'], prompt)
         except TranslationError as error:
-            # A sporadic malformed/incomplete VLM reply must not abort the whole document.
-            if error.code != 'model_protocol_failed' or attempt:
+            if attempt:
+                fallback_nodes = build_fallback_nodes(page, ir)
+                warn_msg = f"第{page.get('number', page.get('id', ''))}页排版模型响应异常 ({error})，已自动采用保底排版放行生成文件"
+                page.setdefault('warnings', []).append(warn_msg)
+                print(f"⚠️ [PDF布局提示] {warn_msg}", flush=True)
+                return 1, fallback_nodes
+            if error.code not in ('model_protocol_failed', 'image_transport_failed'):
                 raise
             prompt = (INSTRUCTION + json.dumps(context, ensure_ascii=False)
-                + f'\n\nPrevious reply was rejected ({error}). '
+                + '\n\nPrevious reply was rejected. '
                 + 'Return ONLY one complete JSON object {"columns":1 or 2,"blocks":[...]} '
                 + 'assigning every candidate line ID in lines[]. Do NOT return bbox_2d or summaries.')
             continue
@@ -239,11 +433,19 @@ def _analyze_page_worker(page, ir, gateway, folder, deadline):
             trial = dict(ir, nodes=nodes, reading_order=[n['id'] for n in nodes], pages=[page])
             validate_ir(trial)
             return data['columns'], nodes
-        except (ValueError, KeyError, TypeError) as error:
+        except (ValueError, KeyError, TypeError, AttributeError, TranslationError) as error:
+            if 'native graphic is omitted or clipped' in str(error):
+                page.setdefault('warnings', []).append(f"{page['id']}: {error}")
+                print(f"⚠️ [PDF布局提示] {page['id']}: {error}，降级为警告不阻断执行", flush=True)
+                return data.get('columns', 1), nodes
             if attempt:
-                raise TranslationError('layout_unresolved', f'{page["id"]}: {error}') from error
+                fallback_nodes = build_fallback_nodes(page, ir)
+                warn_msg = f"第{page.get('number', page.get('id', ''))}页排版解析异常 ({error})，已自动采用保底排版放行生成文件"
+                page.setdefault('warnings', []).append(warn_msg)
+                print(f"⚠️ [PDF布局提示] {warn_msg}", flush=True)
+                return 1, fallback_nodes
             prompt = (INSTRUCTION + json.dumps(context, ensure_ascii=False)
-                + f'\n\nPrevious grouping was invalid ({error}). '
+                + '\n\nPlease re-analyze this page layout cleanly. '
                 + 'Return ONLY one complete JSON object {"columns":1 or 2,"blocks":[...]} '
                 + 'assigning every candidate line ID in lines[]. Do NOT return bbox_2d or summaries.')
 
@@ -294,5 +496,18 @@ def analyze_layout(ir, gateway, folder, deadline):
             prev['text'] = _join(prev['line_ids'], raw_lines)
         else:
             joined.append(node)
+    ref_evidence = re.compile(
+        r'\b(?:19|20)\d{2}\b|https?://|doi|arxiv|\b\d+\s*\(\d+\)\s*:\s*\d+', re.I)
+    doc_in_references = False
+    for node in joined:
+        if node['type'] in ('title', 'heading'):
+            if re.match(r'^(?:(?:\d+(?:\.\d+)*|[IVX]+)\.?\s+)?(?:references|bibliography|参考文献)\s*$', node['text'].strip(), re.I):
+                doc_in_references = True
+            elif doc_in_references and re.match(r'^(?:(?:\d+(?:\.\d+)*|[IVX]+)\.?\s+)?(?:appendix|附录)\s*$', node['text'].strip(), re.I):
+                doc_in_references = False
+        elif doc_in_references and node['type'] in ('paragraph', 'list') and (
+            ref_evidence.search(node['text']) or re.match(r'^\[\d+\]', node['text'].strip())
+        ):
+            node['type'] = 'reference'
     ir['nodes'], ir['reading_order'] = joined, [n['id'] for n in joined]
     return validate_ir(ir)

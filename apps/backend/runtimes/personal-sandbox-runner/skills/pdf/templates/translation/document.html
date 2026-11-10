@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="{{ language }}"><head><meta charset="utf-8"><title>文档译文</title></head><body>
 {% for segment in segments %}
-<section class="segment columns-{{ segment.columns }}{% if segment.is_header %} paper-header{% endif %}{% if loop.previtem is defined and loop.previtem.page_id != segment.page_id %} source-page-start{% endif %}">
+<section class="segment columns-{{ segment.columns }}{% if segment.is_header %} paper-header{% endif %}{% if loop.previtem is defined and loop.previtem.page_id != segment.page_id %} source-page-start{% endif %}" data-section-idx="{{ loop.index0 }}">
 {% for group in segment.groups %}
-<div class="block-group{% if group.keep %} keep-related{% endif %}{% if group.notes | default(false) %} source-notes{% endif %}">
+<div class="block-group{% if group.keep %} keep-related{% endif %}{% if group.notes | default(false) %} source-notes{% endif %}{% if group.column == 2 %} col-right{% elif group.column == 1 %} col-left{% endif %}">
 {% for node in group.nodes %}
 {% include 'components/node.html' %}
 {% endfor %}

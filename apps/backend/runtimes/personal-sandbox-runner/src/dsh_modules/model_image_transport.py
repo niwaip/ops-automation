@@ -9,7 +9,7 @@ from .config import DEFAULT_PROXY_URL, VIRTUAL_API_KEY
 
 
 def request_image_completion(image_bytes, mime, prompt, model, *, max_tokens=8192,
-                             timeout=60, telemetry=None, purpose='pdf_layout_analysis',
+                             timeout=180, telemetry=None, purpose='pdf_layout_analysis',
                              api_endpoint=None, api_key=None):
     call_id, started, usage = uuid.uuid4().hex, time.monotonic(), {}
     if telemetry:
@@ -34,5 +34,6 @@ def request_image_completion(image_bytes, mime, prompt, model, *, max_tokens=819
     except Exception as error:
         if telemetry:
             telemetry.record_model_failure(call_id=call_id, purpose=purpose, model=model,
-                total_ms=(time.monotonic() - started) * 1000, code='image_transport_failed', usage=usage)
+                total_ms=(time.monotonic() - started) * 1000, code='image_transport_failed', usage=usage,
+                details={'error_type': type(error).__name__, 'error_message': str(error)})
         raise

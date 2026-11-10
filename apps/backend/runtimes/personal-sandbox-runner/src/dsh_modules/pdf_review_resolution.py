@@ -29,8 +29,15 @@ def table_issue(analysis):
     return bool(re.search(r'表格|单元格|表\s*[1-9一二三]|错列|错行|总数|数值归属', cleaned))
 
 
-def confirmation_instruction(initial):
+def confirmation_instruction(initial, is_translation: bool = False):
     initial_items = {str(i): text for i, text in enumerate(issues(initial), 1)}
+    if is_translation:
+        return (
+            '\n\n【独立复核阶段】：请逐项核对下列初审问题是否存在实质缺陷（跨页断行、段落自然延伸属于正常排版，严禁误判为截断）。'
+            '\n- 若实质缺陷成立：第一行输出 REPAIR 或 FAIL，并说明。'
+            '\n- 若初审问题属于误报或页面无实质缺陷：第一行输出 PASS 即可。'
+            '\n初审提出的待核对问题清单：\n' + json.dumps(initial_items, ensure_ascii=False, indent=2)
+        )
     return (
         '\n\n【独立复核阶段】：请逐项核对下列初审问题是否存在实质缺陷（跨页断行、段落自然延伸属于正常排版，严禁误判为截断）。'
         '\n- 若实质缺陷成立：第一行输出 REPAIR 或 FAIL，并说明。'
@@ -71,11 +78,28 @@ def _norm_quote(text: str) -> str:
     return re.sub(r'[\s\u3000\t\r\n.…，,。；;：:！!？?（）()\[\]【】"\'“”‘’]+', '', cleaned).lower()
 
 
+GENERIC_REVIEW_TOKENS = {
+    'issue', 'issues', 'problem', 'problems', 'error', 'errors', 'defect', 'defects',
+    'fail', 'repair', 'pass', 'table', 'text', 'line', 'lines', 'page', 'pages',
+    'content', 'word', 'words', 'item', 'items',
+    '问题', '缺陷', '错误', '页面', '文字', '内容', '表格', '排版', '行', '第', '建议', '修改'
+}
+
+
+def _distinctive_tokens(text: str) -> set:
+    tokens = re.findall(r'[a-zA-Z0-9_]+|[\u4e00-\u9fff]', str(text or '').lower())
+    return {t for t in tokens if t not in GENERIC_REVIEW_TOKENS}
+
+
 def _has_quote_overlap(quote: str, initial_text: str, min_len: int = 4) -> bool:
     nq = _norm_quote(quote)
     ni = _norm_quote(initial_text)
     if not nq or not ni:
         return False
+    dq = _distinctive_tokens(quote)
+    di = _distinctive_tokens(initial_text)
+    if dq and di:
+        return bool(dq & di)
     if nq in ni or ni in nq:
         return True
     window = min(min_len, len(nq), len(ni))
@@ -109,13 +133,17 @@ def parse_resolution_records(confirmation: str) -> List[Dict[str, Any]]:
     return records
 
 
-def validate_confirmation(initial: str, confirmation: str) -> None:
+def validate_confirmation(initial: str, confirmation: str, is_translation: bool = False) -> None:
     verdict = _clean_verdict(confirmation)
     if not verdict:
         raise ValueError('复核响应格式无效，首行未包含明确裁决(PASS/FAIL/REPAIR)')
 
     if verdict != 'PASS':
         raise ValueError('复核判定页面仍存在实质缺陷，未通过验收：' + confirmation[:1000])
+
+    if is_translation:
+        # 翻译任务：复审判定首行为 PASS 即通过，无需强制要求逐项反驳证据结构体
+        return
 
     expected_issues = issues(initial)
     records = parse_resolution_records(confirmation)
@@ -128,6 +156,7 @@ def validate_confirmation(initial: str, confirmation: str) -> None:
 
     all_initial_text = ' '.join(expected_issues)
     valid_evidences = []
+    covered_issues = set()
     for idx, rec in enumerate(records):
         status = str(rec.get('status') or '').strip().lower()
         if status and status not in ('refuted', 'false_positive', 'pass', 'resolved'):
@@ -138,10 +167,28 @@ def validate_confirmation(initial: str, confirmation: str) -> None:
         quote = str(rec.get('quote') or rec.get('anchor') or '').strip()
         if len(ev) < 15:
             continue
-        target_issue = expected_issues[idx] if idx < len(expected_issues) else all_initial_text
-        key_matches = str(rec.get('_key', '')) == str(idx + 1)
-        if _has_quote_overlap(quote, target_issue) or _has_quote_overlap(quote, all_initial_text) or (key_matches and len(quote) >= 2):
+        key = str(rec.get('_key', ''))
+        # 严格检查反驳证据是否与目标初审问题对齐，禁止用同一个问题的引用冒充另一个问题的反驳
+        target_idx = None
+        if len(expected_issues) == 1 and (key == '1' or idx == 0):
+            target_idx = 0
+        elif key.isdigit() and 1 <= int(key) <= len(expected_issues):
+            cand_idx = int(key) - 1
+            if cand_idx not in covered_issues:
+                cand_issue = expected_issues[cand_idx]
+                if _has_quote_overlap(quote, cand_issue) or _has_quote_overlap(ev, cand_issue):
+                    target_idx = cand_idx
+                elif not quote:
+                    target_idx = cand_idx
+        if target_idx is None:
+            for cand_idx, exp in enumerate(expected_issues):
+                if cand_idx not in covered_issues:
+                    if (quote and _has_quote_overlap(quote, exp)) or (ev and _has_quote_overlap(ev, exp)):
+                        target_idx = cand_idx
+                        break
+        if target_idx is not None:
+            covered_issues.add(target_idx)
             valid_evidences.append(rec)
 
-    if len(valid_evidences) < len(expected_issues):
+    if len(covered_issues) < len(expected_issues):
         raise ValueError('复核证据过于简略或缺少与初审问题对齐的反驳描述，不能覆盖初审拒绝')

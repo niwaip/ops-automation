@@ -1,5 +1,5 @@
 """Geometric grouping reduces VLM bookkeeping without discarding native evidence."""
-from collections import defaultdict
+from collections import Counter, defaultdict
 import re
 
 
@@ -112,7 +112,9 @@ def expand_candidates(data, candidates, page=None):
     page_w = page['width_pt'] if page else 600
     page_h = page['height_pt'] if page else 800
 
-    blocks = data.get('blocks', [])
+    raw_blocks = data.get('blocks', [])
+    blocks = [b for b in raw_blocks if isinstance(b, dict)]
+    data['blocks'] = blocks
 
     # 1. 规范化候选 ID：如果模型误填原生 line_id，自动映射回 candidate_id
     for block in blocks:
@@ -154,6 +156,16 @@ def expand_candidates(data, candidates, page=None):
                         fbox[3] = min_y - 1
 
             # 吸收处于图形内部的所有文字候选（表格/说明文字除外）
+            # 同时清除模型错误分配给图形但实际处于图形外部的文字候选
+            valid_cids = []
+            for cid in block.get('line_ids', []):
+                if cid in c_by_id:
+                    cb = c_by_id[cid]['bbox']
+                    # 只有实际与图形 bbox 相交的行才保留在图形内
+                    if max(fbox[0], cb[0]) < min(fbox[2], cb[2]) and max(fbox[1], cb[1]) < min(fbox[3], cb[3]):
+                        valid_cids.append(cid)
+            block['line_ids'] = valid_cids
+
             for cand in candidates:
                 cb = cand['bbox']
                 cx, cy = (cb[0] + cb[2]) / 2, (cb[1] + cb[3]) / 2
@@ -278,9 +290,7 @@ def expand_candidates(data, candidates, page=None):
             btype = 'footnote'
         elif re.match(r'^(?:Table|Tab\.|Figure|Fig\.|表|图)\s*(?:\d+|[IVX]+|[A-Z])\s*[:：.\s]', text, re.I):
             btype = 'caption'
-        elif re.match(r'^(?:[0-9]+(?:\.[0-9]+)*\s+[A-Z]|Abstract|Introduction|References?|Conclusion|Related Work)', text):
-            btype = 'heading'
-        elif len(text) < 80 and not text.endswith(('.', '。', ';', '；')) and not re.match(r'^(?:[\d*†‡§¶]+\s*)?(?:See\b|https?://)', text, re.I):
+        elif re.match(r'^(?:[0-9]+(?:\.[0-9]+)*\s+[A-Za-z\u4e00-\u9fa5]|(?:Chapter|Section|Part|Appendix)\s+[0-9IVX]+|第[0-9一二三四五六七八九十]+[章节篇部]|Abstract\b|Introduction\b|Executive Summary\b|References?\b|Conclusion\b|Related Work\b|Overview\b|Background\b|Methods?\b|Results?\b|Discussion\b)', text, re.I):
             btype = 'heading'
         else:
             btype = 'paragraph'
@@ -309,20 +319,65 @@ def expand_candidates(data, candidates, page=None):
                 block['line_ids'] = [lid for cid in block['line_ids'] for lid in mapping.get(cid, [])]
                 block['cells'] = []  # materialize_page restores immutable native cells
                 continue
+            if not block.get('cells'):
+                first_text = ''
+                for cid in block.get('line_ids', []):
+                    if cid in c_by_id:
+                        first_text = c_by_id[cid].get('text', '')
+                        break
+                if re.match(r'^(?:Table|Tab\.|Figure|Fig\.|表|图)\s*(?:\d+|[IVX]+|[A-Z])\s*[:：.\s]', first_text.strip(), re.I):
+                    block['type'] = 'caption'
+                else:
+                    block['type'] = 'paragraph'
+                ids = block.get('line_ids', [])
+                block['line_ids'] = [lid for gid in ids for lid in mapping.get(gid, [])]
+                if page is not None:
+                    page.setdefault('warnings', []).append(f"第{page.get('number', page.get('id', ''))}页无单元格表格已自动转为{block['type']}放行")
+                continue
             assigned = []
+            seen_assigned = set()
             for cell in block.get('cells', []):
                 ids = cell.get('line_ids', [])
                 if not isinstance(ids, list):
-                    raise ValueError('table cell IDs must be a list')
+                    cell['line_ids'] = ids = []
                 normalized = [cid if cid in mapping else native_to_cand.get(cid) for cid in ids]
-                if any(cid is None for cid in normalized):
-                    raise ValueError('unknown table cell source ID')
-                if len(set(normalized)) != len(normalized):
-                    raise ValueError('duplicate candidate in table cell')
-                assigned.extend(normalized)
-                cell['line_ids'] = [lid for cid in normalized for lid in mapping[cid]]
-            if len(assigned) != len(set(assigned)) or set(assigned) != set(block.get('line_ids', [])):
-                raise ValueError('table cell ownership missing or duplicate; do not fill arbitrary cells')
+                clean_normalized = []
+                for cid in normalized:
+                    if cid is not None and cid not in seen_assigned and cid in mapping:
+                        clean_normalized.append(cid)
+                        seen_assigned.add(cid)
+                cell['line_ids'] = [lid for cid in clean_normalized for lid in mapping[cid]]
+                assigned.extend(clean_normalized)
+            block_lids = list(dict.fromkeys(block.get('line_ids', []) + [cid for cid in assigned if cid not in block.get('line_ids', [])]))
+            block['line_ids'] = block_lids
+            if len(assigned) != len(set(assigned)) or set(assigned) != set(block['line_ids']):
+                missing = sorted(set(block['line_ids']) - set(assigned))
+                extra = sorted(set(assigned) - set(block['line_ids']))
+                dups = sorted(cid for cid, count in Counter(assigned).items() if count > 1)
+                details = []
+                if missing:
+                    details.append(f"missing in cells: {missing}")
+                if extra:
+                    details.append(f"extra in cells: {extra}")
+                if dups:
+                    details.append(f"duplicate across cells: {dups}")
+                detail_str = "; ".join(details) if details else "inconsistent assigned set"
+                if missing and block.get('cells'):
+                    max_row = max((c.get('row', 0) for c in block['cells']), default=0)
+                    missing_lids = [lid for cid in missing for lid in mapping.get(cid, [])]
+                    block['cells'].append({
+                        'row': max_row + 1,
+                        'col': 0,
+                        'rowspan': 1,
+                        'colspan': 1,
+                        'header': False,
+                        'line_ids': missing_lids
+                    })
+                    assigned.extend(missing)
+                if extra:
+                    block['line_ids'] = list(dict.fromkeys(block['line_ids'] + extra))
+                if page is not None:
+                    page.setdefault('warnings', []).append(f"第{page.get('number', page.get('id', ''))}页表格单元格归属不一致({detail_str})，已自动补齐放行")
             block['line_ids'] = [lid for cid in assigned for lid in mapping[cid]]
 
         else:

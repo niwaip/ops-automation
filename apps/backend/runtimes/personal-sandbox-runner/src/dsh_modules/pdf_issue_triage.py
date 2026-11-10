@@ -63,27 +63,49 @@ def triage_review_issues(issues: List[Dict[str, Any]], ir: Dict[str, Any], page_
         target_node = None
 
         if kind == 'table':
-            # 表格问题：锁定表格节点
+            # 表格问题：精确锁定表格节点
             matched_table_id = None
+
+            table_candidates = []
             for tid in cand_tables:
-                matched_table_id = tid
-                break
-            if not matched_table_id:
-                # 尝试从 cand_node_ids 中查找 table 类型节点
+                node = nodes_by_id.get(tid) or next((n for n in ir.get('nodes', []) if n.get('native_table_id') == tid), None)
+                table_candidates.append((tid, node))
+            if not table_candidates:
                 for nid in cand_node_ids:
-                    if nodes_by_id.get(nid, {}).get('type') == 'table':
-                        matched_table_id = nid
+                    node = nodes_by_id.get(nid, {})
+                    if node.get('type') == 'table':
+                        table_candidates.append((nid, node))
+
+            # 1. 优先通过 anchor 匹配表格 ID
+            if norm_anchor:
+                for tid, node in table_candidates:
+                    node_id = node.get('id', '') if node else ''
+                    if norm_anchor in (normalize_text(tid), normalize_text(node_id)):
+                        matched_table_id = tid
                         break
-            if not matched_table_id and ir.get('nodes'):
-                # 兜底查找整个文档的表格
-                first_table = next((n for n in ir['nodes'] if n.get('type') == 'table'), None)
-                if first_table:
-                    matched_table_id = first_table['id']
+            # 2. 通过 quote 或 anchor 文本匹配表格正文或单元格
+            if not matched_table_id and (norm_quote or norm_anchor):
+                q = quote or anchor
+                for tid, node in table_candidates:
+                    if node:
+                        tbl_txt = node.get('text', '') + ' ' + ' '.join(c.get('text', '') for c in node.get('cells', []))
+                        if _quote_in_text(q, tbl_txt):
+                            matched_table_id = tid
+                            break
+            # 3. 若当前页只有唯一表格候选，直接锁定
+            if not matched_table_id and len(table_candidates) == 1:
+                matched_table_id = table_candidates[0][0]
+            # 4. 尝试从 evidence 中提取表格 ID
+            if not matched_table_id and evidence:
+                for tid, node in table_candidates:
+                    if tid in evidence or (node and node.get('id') in evidence):
+                        matched_table_id = tid
+                        break
 
             if matched_table_id:
                 tables_to_rebuild.add(matched_table_id)
             else:
-                # 找不到表格，降级为源页布局重试
+                # 无法精确定位表格，降级为源页布局重试，严禁随意篡改第一张表格
                 source_p = next((n['page_id'] for n in [nodes_by_id.get(nid) for nid in cand_node_ids] if n), f'p{page_num}')
                 pages_to_relayout.add(source_p)
             continue
@@ -121,13 +143,26 @@ def triage_review_issues(issues: List[Dict[str, Any]], ir: Dict[str, Any], page_
             # 纯留白/空白偏大属于不可通过重构自动修复的主观排版抱怨，不作为可执行版面重构目标
             if not target_node and re.search(r'留白|空白较多|版面空旷|间距较大', evidence + anchor):
                 continue
+            # 纯折行/词内换行/字间距微调属于排版行内微排版建议，无法通过整页重排修复，严禁触发重构
+            if not target_node and re.search(r'断开在|移至下一行|词内断开|词内换行|跨行断开|调整字间距|建议若版面允许', evidence + anchor):
+                continue
             if target_node and target_node.get('type') in ('paragraph', 'caption', 'title', 'heading', 'footnote') and \
                     re.search(r'粘连|括号|标点|未闭合|数字|脚注|重译|漏译|语病|乱码', evidence):
                 nodes_to_retranslate.add(target_node['id'])
             if target_node:
-                pages_to_relayout.add(target_node['page_id'])
+                t_src_num = int(re.sub(r'\D', '', target_node.get('page_id', '0')) or 0)
+                if abs(t_src_num - page_num) <= 3:
+                    pages_to_relayout.add(target_node['page_id'])
+                else:
+                    pages_to_relayout.add(f'p{page_num}')
             else:
-                src_page_id = next((nodes_by_id[nid]['page_id'] for nid in cand_node_ids if nid in nodes_by_id), f'p{page_num}')
+                from collections import Counter
+                src_pages = [nodes_by_id[nid]['page_id'] for nid in cand_node_ids
+                             if nid in nodes_by_id and abs(int(re.sub(r'\D', '', nodes_by_id[nid]['page_id']) or 0) - page_num) <= 3]
+                if src_pages:
+                    src_page_id = Counter(src_pages).most_common(1)[0][0]
+                else:
+                    src_page_id = f'p{page_num}'
                 pages_to_relayout.add(src_page_id)
 
     return {

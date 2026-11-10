@@ -23,8 +23,6 @@ triggers:
   - "翻译docx"
   - "word翻译"
   - "docx翻译"
-  - "翻译文档"
-  - "文档翻译"
 deliverables:
   - ".docx"
 requires_execution: true

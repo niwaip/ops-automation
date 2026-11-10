@@ -2,7 +2,6 @@
 import json
 import os
 from pathlib import Path
-import re
 import threading
 import time
 
@@ -11,6 +10,7 @@ from dsh_modules.model_image_transport import request_image_completion
 from dsh_modules.runtime_policy import RuntimePolicy
 from dsh_modules.telemetry import TelemetryStats
 from .contracts import TranslationError, check_time
+from .response_protocol import json_response, record_rejection
 
 
 class EventFile:
@@ -22,25 +22,6 @@ class EventFile:
         with self.lock:
             with self.path.open('a', encoding='utf-8') as stream:
                 stream.write(json.dumps(record, ensure_ascii=False) + '\n')
-
-
-def json_response(content):
-    text = content.strip()
-    match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', text)
-    if match:
-        text = match.group(1).strip()
-    else:
-        start = text.find('{')
-        end = text.rfind('}')
-        if start != -1 and end != -1 and end > start:
-            text = text[start:end+1].strip()
-    try:
-        value = json.loads(text)
-        if not isinstance(value, dict):
-            raise ValueError('expected object')
-        return value
-    except (ValueError, TypeError) as error:
-        raise TranslationError('model_protocol_failed', '模型未返回完整JSON对象') from error
 
 
 class ModelGateway:
@@ -56,12 +37,15 @@ class ModelGateway:
     def layout(self, image, prompt):
         check_time(self.deadline)
         last_error = None
+        vision_timeout = float(os.getenv('DSH_VISION_TIMEOUT', '180'))
         for attempt in range(3):
             try:
                 check_time(self.deadline)
+                rem = max(5.0, self.deadline - time.monotonic()) if self.deadline is not None else vision_timeout
+                req_timeout = min(vision_timeout, rem)
                 data = request_image_completion(Path(image).read_bytes(), 'image/png', prompt,
                     self.context.get('vision_model') or os.getenv('DSH_VISION_MODEL') or 'vision',
-                    max_tokens=10000, timeout=min(60, self.deadline - time.monotonic()),
+                    max_tokens=10000, timeout=req_timeout,
                     telemetry=self.telemetry, purpose='pdf_layout_analysis')
                 choices = data.get('choices') or []
                 if not choices or choices[0].get('finish_reason') != 'stop':
@@ -81,7 +65,9 @@ class ModelGateway:
                 if attempt < 2:
                     time.sleep(2 * (attempt + 1))
                 else:
-                    raise last_error
+                    if self.deadline is not None and time.monotonic() >= self.deadline:
+                        raise TranslationError('budget_exhausted', 'PDF翻译工具预算已耗尽，保留检查点，未发布文件。') from last_error
+                    raise TranslationError('image_transport_failed', f'视觉布局分析请求失败或超时: {last_error}') from last_error
 
     def translate(self, prompt):
         check_time(self.deadline)
@@ -93,14 +79,24 @@ class ModelGateway:
             from .protected_numbers import protect_prompt, restore_response
             prompt, protected = protect_prompt(prompt)
         timeout = min(90, max(5, self.deadline - time.monotonic())) if self.deadline is not None else 90
-        result = call_model_proxy([{'role': 'user', 'content': prompt}],
-            model=self.context.get('model') or os.getenv('DSH_MODEL') or 'default',
-            max_tokens=8192, temperature=.1, stream_deltas=False, deadline=self.deadline,
-            timeout=timeout, policy=self.policy,
-            purpose='pdf_translation', telemetry=self.telemetry)
-        if result.get('finish_reason') != 'stop' or not result.get('received_done'):
-            raise TranslationError('translation_incomplete', '翻译响应未完整结束，不能回填原文')
-        raw = json_response(result.get('content') or '')
+        try:
+            result = call_model_proxy([{'role': 'user', 'content': prompt}],
+                model=self.context.get('model') or os.getenv('DSH_MODEL') or 'default',
+                max_tokens=8192, temperature=.1, stream_deltas=False, deadline=self.deadline,
+                timeout=timeout, policy=self.policy,
+                purpose='pdf_translation', telemetry=self.telemetry)
+        except Exception as e:
+            if self.deadline is not None and time.monotonic() >= self.deadline:
+                raise TranslationError('budget_exhausted', 'PDF翻译工具预算已耗尽，保留检查点，未发布文件。') from e
+            raise
+        try:
+            if result.get('finish_reason') != 'stop' or not result.get('received_done'):
+                raise TranslationError('translation_incomplete', '翻译响应未完整结束，不能回填原文')
+            raw = json_response(result.get('content') or '')
+        except TranslationError as error:
+            details = record_rejection(self.folder, result, error)
+            self.telemetry.record_guard('pdf_model_protocol', 'reject', details)
+            raise
         if use_opaque_tokens and protected is not None:
             return restore_response(raw, protected)
         return raw

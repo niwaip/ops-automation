@@ -43,6 +43,18 @@ def recognized_command(cmd, workspace):
     return str((root / source).resolve()), str((root / output).resolve()) if output else None
 
 
+def estimate_pdf_budget(input_path: str, default_base: float = 300.0) -> float:
+    env_budget = os.getenv('DSH_PDF_TOOL_TIMEOUT')
+    if env_budget:
+        return float(env_budget)
+    try:
+        from pypdf import PdfReader
+        page_count = len(PdfReader(input_path).pages)
+        return max(default_base, 120.0 + page_count * 45.0)
+    except Exception:
+        return default_base
+
+
 class PdfTranslationBridge:
     def __init__(self, paths, workspace, deadline, options=None):
         self.telemetry = get_active_telemetry()
@@ -59,7 +71,7 @@ class PdfTranslationBridge:
         self.folder.mkdir(parents=True, exist_ok=False)
         self.context_path = self.folder / 'context.json'
         self.manifest_path = self.folder / 'manifest.json'
-        budget = float(os.getenv('DSH_PDF_TOOL_TIMEOUT', '300'))
+        budget = estimate_pdf_budget(paths[0])
         if not math.isfinite(budget) or budget <= 0:
             raise ValueError('PDF工具预算必须为正数')
         self.timeout = min(budget, max(0, deadline - time.monotonic() - 40)) if deadline else budget
@@ -96,6 +108,10 @@ class PdfTranslationBridge:
                     event = json.loads(raw)
                     data = event['data']
                     cid = data.get('call_id', '')
+                    if (event.get('job_id') == self.job_id and event.get('event') == 'guard'
+                            and data.get('guard') == 'pdf_model_protocol'):
+                        self.telemetry.record_guard(data['guard'], data['action'], data.get('reason'))
+                        continue
                     if event.get('job_id') != self.job_id or not re.fullmatch('[0-9a-f]{32}', cid):
                         continue
                     purpose = data.get('purpose')

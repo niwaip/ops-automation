@@ -54,7 +54,8 @@ def run_fixed_translation(prompt, files, deliverables, workspace, skill_dir, sta
     if not named and len(set(requested)) == 1:
         output = requested[0]
     target = Path(workspace) / output
-    layout = 'preserve' if re.search(r'页数不变|严格保页|保持(?:原)?页数', prompt) else 'balanced'
+    from .pdf_translation_routing import preserves_pdf_format
+    layout = 'preserve' if preserves_pdf_format(prompt) or re.search(r'页数不变|严格保页|保持(?:原)?页数', prompt) else 'balanced'
     command = shlex.join(['python3', str(Path(skill_dir) / 'pdf/scripts/flow_pdf_translate.py'),
         'auto', str(source), str(target), '--lang', language, '--layout', layout])
     telemetry.record_guard('pdf_translation_workflow', 'direct_execution', {'file': source.name})
@@ -63,30 +64,7 @@ def run_fixed_translation(prompt, files, deliverables, workspace, skill_dir, sta
     receipt.provenance.update(tool='bash', execution_origin='runtime_workflow')
     telemetry.record_tool_call('bash', {'cmd': command}, receipt.status)
     telemetry.record_execution_result(receipt)
-    if receipt.is_error:
-        import time
-        remaining_time = deadline - time.monotonic() if deadline is not None else 60
-        if remaining_time > 20:
-            jobs = getattr(telemetry, '_pdf_translation_jobs', [])
-            if jobs:
-                last_job_dir = Path(jobs[-1]).parent
-                manifest_file = last_job_dir / 'manifest.json'
-                if manifest_file.is_file():
-                    try:
-                        mf = json.loads(manifest_file.read_text())
-                        if mf.get('state') == 'failed' and mf.get('stage') == 'translate':
-                            resume_cmd = shlex.join(['python3', str(Path(skill_dir) / 'pdf/scripts/flow_pdf_translate.py'),
-                                'auto', str(source), str(target), '--resume', str(last_job_dir),
-                                '--lang', language, '--layout', layout])
-                            telemetry.record_guard('pdf_translation_recovery', 'auto_resume', {'job_id': mf.get('job_id')})
-                            retry_receipt = execute_shell(resume_cmd, workspace, deadline).tool_result
-                            retry_receipt.provenance.update(tool='bash', execution_origin='runtime_workflow')
-                            telemetry.record_tool_call('bash', {'cmd': resume_cmd}, retry_receipt.status)
-                            telemetry.record_execution_result(retry_receipt)
-                            if retry_receipt.is_success:
-                                receipt = retry_receipt
-                    except Exception:
-                        pass
+    # execute_shell owns the shared per-stage recovery budget for every entry path.
     loop = SimpleNamespace(telemetry=telemetry, execution_evidence=[receipt], final_text='', outbound_files=[])
     enforce_external_pdf_delivery(loop, workspace, skill_dir, start, prompt, deadline, files)
     return loop
