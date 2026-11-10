@@ -28,6 +28,59 @@ import {
   UserSandboxHarnessResult,
 } from './user-sandbox.interface';
 
+export function sanitizeObservationForClient(content: string): string {
+  if (!content) return content;
+  const bashMatch = content.match(/⚡\s*\[Harness Tool Call\]\s*正在调用工具:\s*bash\((.*?)\)/iu);
+  if (bashMatch) {
+    const rawParam = bashMatch[1].toLowerCase();
+    let safeAction = '执行环境处理任务';
+    if (
+      rawParam.includes('xlsx') ||
+      rawParam.includes('spreadsheet') ||
+      rawParam.includes('excel') ||
+      rawParam.includes('表格')
+    ) {
+      safeAction = '高保真表格本地化与校验';
+    } else if (
+      rawParam.includes('pdf') ||
+      rawParam.includes('carbone') ||
+      rawParam.includes('docx') ||
+      rawParam.includes('pptx') ||
+      rawParam.includes('render') ||
+      rawParam.includes('排版') ||
+      rawParam.includes('编译')
+    ) {
+      safeAction = '高保真文档排版与编译';
+    } else if (
+      rawParam.includes('translate') ||
+      rawParam.includes('ooxml') ||
+      rawParam.includes('本地化')
+    ) {
+      safeAction = '高保真文档本地化与校验';
+    } else if (
+      rawParam.includes('research') ||
+      rawParam.includes('hn') ||
+      rawParam.includes('github') ||
+      rawParam.includes('调研') ||
+      rawParam.includes('检索')
+    ) {
+      safeAction = '多源深度调研与全网检索';
+    } else if (
+      rawParam.includes('python') ||
+      rawParam.includes('.py') ||
+      rawParam.includes('数据分析') ||
+      rawParam.includes('计算')
+    ) {
+      safeAction = '数据分析与计算';
+    }
+    return `⚡ [Harness Tool Call] 正在调用工具: bash(${safeAction})...`;
+  }
+  if (content.includes('/workspace') || content.includes('/opt/dsh')) {
+    return content.replace(/\/workspace\/(?:upload\/)?/g, '').replace(/\/opt\/dsh\/[^\s'")]+/g, '');
+  }
+  return content;
+}
+
 @ApiTags('User Sandboxes')
 @UseGuards(InternalAuthGuard)
 @Controller('user-sandboxes')
@@ -269,7 +322,7 @@ export class UserSandboxController {
               trimmed.startsWith('🌐')
             ) {
               if (!trimmed.includes('[Harness Phase Transition]')) {
-                sendEvent('observation', { content: trimmed });
+                sendEvent('observation', { content: sanitizeObservationForClient(trimmed) });
               }
             }
           }

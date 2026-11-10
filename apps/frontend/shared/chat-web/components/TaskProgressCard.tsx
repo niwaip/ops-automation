@@ -1,6 +1,7 @@
 import React from 'react';
 import { LoadingOutlined } from '@ant-design/icons';
 import { Tag, Typography } from 'antd';
+import { humanizeProgressText } from './StreamingActivityCard';
 
 export interface SharedChatProgressLog {
   stage: 'thought' | 'action' | 'observation';
@@ -40,7 +41,15 @@ export const humanizeTaskProgressText = (value: string): string => {
   if (!value) return value;
   let text = normalizeLegacyGrossMarginThresholdText(value);
 
-  // 将暴露给用户的英文技术类名（如 ConfidentialityAgreementGenerationWorkflow）人性化清洗
+  // 1. 优先对内部工具调用与底层环境状态进行人性化转换，绝不透传命令行
+  if (/⚡\s*\[Harness Tool Call\]|正在调用工具:|^✓\s*工具/iu.test(text)) {
+    const humanized = humanizeProgressText(text);
+    if (humanized) {
+      return humanized;
+    }
+  }
+
+  // 2. 将暴露给用户的英文技术类名（如 ConfidentialityAgreementGenerationWorkflow）人性化清洗
   const skillMatch = text.match(/已识别到技能[:：]\s*([A-Za-z0-9_-]+)(.*)/);
   if (skillMatch) {
     const rawSkill = skillMatch[1];
@@ -51,6 +60,11 @@ export const humanizeTaskProgressText = (value: string): string => {
     } else if (/(?:Workflow|Activity|Service|Handler|Step|Execution)$/i.test(rawSkill)) {
       text = `已识别对应业务流程${tail ? `，${tail.replace(/^[,，]\s*/, '')}` : ''}`;
     }
+  }
+
+  // 3. 兜底防护：严禁将包含沙箱路径、Python 脚本或 bash 调用的内容泄露给普通用户
+  if (/(?:\/opt\/dsh|\/workspace|bash\(|python3?\b)/i.test(text)) {
+    return '⚙️ 正在处理数据与执行环境任务...';
   }
 
   return text;

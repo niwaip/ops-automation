@@ -80,3 +80,63 @@ class OoxmlTranslateTimeoutAndCacheTests(unittest.TestCase):
             # Verify cache file was cleaned up on success
             self.assertFalse(os.path.exists(cache_file))
             self.assertTrue(os.path.exists(out_json))
+
+    def test_unpack_xlsx_preserves_existing_checkpoint_cache(self):
+        import sys
+        import zipfile
+        skill_script_dir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "../skills/xlsx/scripts")
+        )
+        if skill_script_dir not in sys.path:
+            sys.path.insert(0, skill_script_dir)
+
+        import ooxml_xlsx_translate
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            xlsx_path = os.path.join(temp_dir, "dummy.xlsx")
+            unpacked_dir = os.path.join(temp_dir, "unpacked")
+            os.makedirs(unpacked_dir, exist_ok=True)
+
+            # Create a minimal valid zip file as dummy xlsx
+            with zipfile.ZipFile(xlsx_path, "w") as z:
+                z.writestr("xl/sharedStrings.xml", b"<sst xmlns='http://schemas.openxmlformats.org/spreadsheetml/2006/main'><si><t>Test</t></si></sst>")
+
+            # Simulate existing checkpoint cache from previous interrupted attempt
+            cache_file = os.path.join(unpacked_dir, ".translation_cache.json")
+            with open(cache_file, "w", encoding="utf-8") as f:
+                json.dump({"Old Text": "已翻译旧文本"}, f)
+
+            out_json = os.path.join(unpacked_dir, "translation_input.json")
+            # Unpack should NOT destroy .translation_cache.json
+            ooxml_xlsx_translate.unpack_xlsx(xlsx_path, unpacked_dir, out_json)
+
+            self.assertTrue(os.path.exists(cache_file), "断点缓存文件在 unpack_xlsx 重新解压后必须被完整保留")
+            with open(cache_file, "r", encoding="utf-8") as f:
+                restored = json.load(f)
+            self.assertEqual(restored.get("Old Text"), "已翻译旧文本")
+
+    def test_format_client_safe_tool_preview_sanitizes_bash_and_paths(self):
+        from dsh_modules.tool_dispatch import format_client_safe_tool_preview
+
+        def dummy_preview(val, max_chars=100):
+            return str(val)[:max_chars]
+
+        # 1. Heavy XLSX translation command -> High-level description without any paths
+        bash_xlsx = {
+            "cmd": "cd /workspace && python3 /opt/dsh/skills/xlsx/scripts/ooxml_xlsx_translate.py auto /workspace/upload/System_Security_Plan_Sheets_FCH.xlsx"
+        }
+        res = format_client_safe_tool_preview("bash", bash_xlsx, dummy_preview, 100)
+        self.assertEqual(res, "高保真表格本地化与校验")
+        self.assertNotIn("/workspace", res)
+        self.assertNotIn("/opt/dsh", res)
+        self.assertNotIn("python3", res)
+
+        # 2. PDF rendering / compilation
+        bash_pdf = {"cmd": "python3 /opt/dsh/skills/pdf/scripts/flow_pdf_translate.py auto in.pdf out.pdf"}
+        self.assertEqual(format_client_safe_tool_preview("bash", bash_pdf, dummy_preview, 100), "高保真文档排版与编译")
+
+        # 3. File operations -> Clean filename only
+        read_file_params = {"file_path": "/workspace/upload/System_Security_Plan_Sheets_FCH.xlsx"}
+        res_file = format_client_safe_tool_preview("read_file", read_file_params, dummy_preview, 100)
+        self.assertEqual(res_file, "'System_Security_Plan_Sheets_FCH.xlsx'")
+        self.assertNotIn("/workspace/upload", res_file)

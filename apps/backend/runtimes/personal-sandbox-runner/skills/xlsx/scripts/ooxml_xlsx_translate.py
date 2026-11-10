@@ -99,9 +99,28 @@ def unpack_xlsx(xlsx_path: str, temp_dir: str, out_json_path: str) -> dict:
     if not os.path.isfile(xlsx_path):
         raise FileNotFoundError(f"找不到输入的 XLSX 文件: {xlsx_path}")
 
+    # 提取并备份已有断点缓存文件（.translation_cache.json 或 *.cache.json），避免每次 unpack 清空前序进度
+    cached_entries = {}
     if os.path.exists(temp_dir):
+        try:
+            for entry in os.listdir(temp_dir):
+                if entry.endswith('.cache.json') or entry == '.translation_cache.json':
+                    entry_path = os.path.join(temp_dir, entry)
+                    if os.path.isfile(entry_path):
+                        with open(entry_path, 'r', encoding='utf-8') as cf:
+                            cached_entries[entry] = cf.read()
+        except Exception:
+            pass
         shutil.rmtree(temp_dir)
+
     os.makedirs(temp_dir, exist_ok=True)
+    for fname, fcontent in cached_entries.items():
+        try:
+            with open(os.path.join(temp_dir, fname), 'w', encoding='utf-8') as cf:
+                cf.write(fcontent)
+            print(f"📦 [Cache] 已自动衔接断点缓存状态: {fname}")
+        except Exception:
+            pass
 
     print(f"📦 [1/3] 正在解析原始 Excel 工作簿归档: {os.path.basename(xlsx_path)}")
     with zipfile.ZipFile(xlsx_path, 'r') as z:
@@ -738,7 +757,7 @@ def pack_xlsx(temp_dir: str, translated_json_path: str, output_xlsx: str,
 
 
 def auto_translate_xlsx(xlsx_path: str, output_xlsx: str, lang: str = 'zh-CN',
-                        batch_size: int = 80, concurrency: int = 4,
+                        batch_size: int = 100, concurrency: int = 4,
                         temp_dir: str = None, keep_temp: bool = False,
                         run_recalc: bool = True) -> str:
     """一键全自动端到端翻译 Excel 工作簿 (解包+并发翻译+回填打包)"""
@@ -777,7 +796,7 @@ def main():
     auto_parser.add_argument("xlsx", help="输入的原始 XLSX 路径")
     auto_parser.add_argument("output_xlsx", help="输出的目标 XLSX 文件路径")
     auto_parser.add_argument("--lang", "--target-lang", dest="lang", default="zh-CN", help="目标语言代码 (如: zh-CN, en-US, ja-JP，默认: zh-CN)")
-    auto_parser.add_argument("--batch-size", type=int, default=80, help="每批翻译项数 (默认: 80)")
+    auto_parser.add_argument("--batch-size", type=int, default=100, help="每批翻译项数 (默认: 100)")
     auto_parser.add_argument("--concurrency", type=int, default=4, help="并发线程数 (默认: 4)")
     auto_parser.add_argument("--temp-dir", default=None, help="解压临时目录")
     auto_parser.add_argument("--keep-temp", action="store_true", default=False, help="保留临时解包目录 (默认自动清理)")
@@ -794,7 +813,7 @@ def main():
     translate_parser.add_argument("in_json", help="输入的待翻译 JSON 字典路径")
     translate_parser.add_argument("out_json", help="输出的译文 JSON 字典路径")
     translate_parser.add_argument("--lang", "--target-lang", dest="lang", default="zh-CN", help="目标语言代码 (默认: zh-CN)")
-    translate_parser.add_argument("--batch-size", type=int, default=80, help="每批翻译项数 (默认: 80)")
+    translate_parser.add_argument("--batch-size", type=int, default=100, help="每批翻译项数 (默认: 100)")
     translate_parser.add_argument("--concurrency", type=int, default=4, help="并发线程数 (默认: 4)")
 
     # pack 子命令

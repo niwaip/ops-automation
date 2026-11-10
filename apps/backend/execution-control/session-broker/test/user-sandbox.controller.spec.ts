@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { EventEmitter } from 'events';
-import { UserSandboxController } from '../src/modules/user-sandbox/user-sandbox.controller';
+import { UserSandboxController, sanitizeObservationForClient } from '../src/modules/user-sandbox/user-sandbox.controller';
 import { UserSandboxService } from '../src/modules/user-sandbox/user-sandbox.service';
 import { RunHarnessDto } from '../src/modules/user-sandbox/user-sandbox.dto';
 
@@ -172,5 +172,37 @@ describe('UserSandboxController - SSE Stream & Disconnect Handling', () => {
       exitCode: 0,
     });
     await streamPromise;
+  });
+
+  it('should sanitize raw bash tool call commands and internal paths in SSE observations', async () => {
+    const rawXlsxBash = '⚡ [Harness Tool Call] 正在调用工具: bash(cd /workspace && python3 /opt/dsh/skills/xlsx/scripts/ooxml_xlsx_translate.py auto /workspace/upload/test.xlsx)...';
+    const sanitized = sanitizeObservationForClient(rawXlsxBash);
+    expect(sanitized).toBe('⚡ [Harness Tool Call] 正在调用工具: bash(高保真表格本地化与校验)...');
+    expect(sanitized).not.toContain('/workspace');
+    expect(sanitized).not.toContain('python3');
+    expect(sanitized).not.toContain('/opt/dsh');
+
+    const res = createMockResponse();
+    const dto: RunHarnessDto = {
+      userId: 'test_user',
+      prompt: 'translate table',
+    };
+
+    (mockService.runHarness as jest.Mock).mockImplementation(async (userId, prompt, options) => {
+      options.onStdoutChunk(rawXlsxBash + '\n');
+      return {
+        success: true,
+        output: 'done',
+        containerName: 'c1',
+        durationMs: 100,
+        exitCode: 0,
+      };
+    });
+
+    await controller.runHarnessStream(dto, res);
+    const joinedOutput = res.writtenData.join('');
+    expect(joinedOutput).toContain('event: observation\ndata: {"content":"⚡ [Harness Tool Call] 正在调用工具: bash(高保真表格本地化与校验)..."}\n\n');
+    expect(joinedOutput).not.toContain('/workspace');
+    expect(joinedOutput).not.toContain('ooxml_xlsx_translate.py');
   });
 });
